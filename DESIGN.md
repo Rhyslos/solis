@@ -1,6 +1,6 @@
 # Solis: design
 
-> A free, open-source 3D game engine. Part of the Rhylib family, alongside Aventail 3D and Halberd.
+> A free, open-source 3D game engine.
 >
 > **Status:** design only. No code yet. Lust comes first; Solis ramps up once native Lust builds work.
 
