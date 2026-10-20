@@ -2,7 +2,7 @@
 
 > A free, open-source 3D game engine.
 >
-> **Status:** design only. No code yet. Lust comes first; Solis ramps up once native Lust builds work.
+> **Status:** design only. No code yet. Lust comes first; Solis ramps up once Lust can build programs through Rust.
 
 Sections marked **(to decide)** are open. Everything else is the current plan, and changes go in the decision log (§17) with a file in `docs/decisions/`.
 
@@ -41,21 +41,36 @@ Game-specific systems (squads, hardpoints, hangars, a campaign map, fleet caps) 
 
 | Language | Job | Runs as |
 | --- | --- | --- |
-| **Lust** (`.lust`) | The engine itself and all game code: components, gameplay, everything that ships | Machine code (native Lust, through LLVM) |
+| **Lust** (`.lust`) | The engine itself and all game code: components, gameplay, everything that ships | Rust, which Lust writes and Rust's compiler turns into machine code |
 | **LustScript** (`.lsc`) and **Lua** | **Editor scripting only:** custom tools, batch jobs, importers, generators, in a scripting window like Blender's or 3ds Max's. Never game code. | Luau, through `mlua`, the same as Aventail |
 | **LustQL** (`.lql`) | Stored data in SQLite | **(to design in Lust first)** |
 
 - **Lust is written once and compiled natively.** No swapping from Lua to Lust later is needed: editor scripts stay LustScript/Lua permanently, as Blender never replaced Python. `lua { }` blocks and plain `.lua` files are fine in editor scripts.
-- **If native Lust is late,** the fallback is building the Rust foundation, renderer and editor shell first (§4), which don't need Lust. See §15.
+- **Lust compiles to Rust** (Lust's own plan, LUST.md). So a Solis game, the engine and its libraries are all one Rust build in the end, and Lust calls Rust crates directly: no C interface in between.
+- **If Lust is late,** the fallback is building the Rust foundation, renderer and editor shell first (§4), which don't need Lust. See §15.
 
 ### What Solis needs from Lust v2
 
-These should go into Lust's design before its native compiler is built:
+These should go into Lust's design while its Rust output is being built:
 
-1. **Calling C and Rust libraries** (a C interface). Essential: the foundation (§4) is Rust.
+1. **Using Rust crates from Lust.** Essential: the foundation (§4) is Rust, and `fetch solis;` is a Rust crate seen from Lust. Lust already has this on its to-design list, as its standard library; Solis is its biggest test.
 2. **Threads or a job system.** The engine has to use every CPU core.
 3. **Plain data in packed arrays.** cArrays are close; thousands of units need their rows tightly packed in memory.
-4. **States that own memory** fit zones (§8) and game modes: when a zone or a battle unloads, its memory is freed in one go.
+4. **States that own memory** fit zones (§8) and game modes: when a zone or a battle unloads, its memory is freed in one go. Lust plans arenas with handles for this in Rust, which is also how ECS storage works (§5), so the two may share one design.
+5. **Rust that compiles quickly.** See §3.1.
+
+### 3.1 Iteration speed (to decide)
+
+Rust compiles slowly. Godot users are used to pressing Play and seeing a change in a second or two; a Rust build after changing one component can take 10 to 60 seconds. For a beginner-focused engine, this is the biggest open question.
+
+Options, which can be combined:
+
+1. **The engine comes prebuilt.** Only the game's own crate is compiled, and Rust only rebuilds what changed. Probably a few seconds for small changes.
+2. **A faster compiler for development:** Cranelift instead of LLVM for debug builds, and a fast linker (mold on Linux, lld on Windows).
+3. **Hot reload:** game code built as a library the running editor swaps in, so play mode keeps going (as `hot-lib-reloader` does for Rust today). Fiddly, but the best feel.
+4. **Running Lust through Lua while developing,** compiled to Rust only for builds. Fastest to start, but the two can behave differently (numbers, memory), so bugs could show up only in the shipped game. Probably ruled out.
+
+The target to decide against: **a change to one component is running in play mode within 2 seconds.**
 
 ---
 
@@ -71,7 +86,7 @@ These should go into Lust's design before its native compiler is built:
 ├──────────────────────────────────────────────┤
 │ Editor scripting (LustScript / Lua, Luau)    │
 ├──────────────────────────────────────────────┤
-│ Foundation (Rust, behind a C interface):     │
+│ Foundation (Rust crates, used from Lust):    │
 │ wgpu, windows and input, physics (Rapier),   │
 │ audio (Kira, Steam Audio), sockets, Luau     │
 └──────────────────────────────────────────────┘
@@ -251,7 +266,7 @@ The area to spend extra time on. In order of payoff:
 
 | Months | Focus |
 | --- | --- |
-| 1–3 | LustScript and native Lust. For Solis: this document and its decisions. |
+| 1–3 | LustScript, then Lust through Rust. For Solis: this document and its decisions. |
 | 4–6 | Rust foundation, renderer, editor shell. |
 | 7–9 | Components in Lust, physics, sound, the scripting window. |
 | 10–12 | The flagship sample, lockstep netcode, polish, 0.1. |
@@ -261,8 +276,9 @@ The area to spend extra time on. In order of payoff:
 **Not in 0.1:** open-world streaming, the full Solis Eclipse toolkit, the UI editor, rollback, advanced animation.
 
 **Risks:**
-1. **Native Lust is on the critical path.** If it slips, Solis slows but doesn't stop: the foundation, renderer and editor shell don't need it.
-2. **Time.** The pace is set by decisions, testing and review, not by writing code. Too many projects at full speed turns a year into three.
+1. **Lust is on the critical path.** Compiling to Rust makes this much smaller than the LLVM plan was. If it slips, Solis slows but doesn't stop: the foundation, renderer and editor shell don't need it.
+2. **Iteration speed** (§3.1). If changes take too long to see, the engine feels slow however fast games run.
+3. **Time.** The pace is set by decisions, testing and review, not by writing code. Too many projects at full speed turns a year into three.
 
 ---
 
@@ -271,7 +287,7 @@ The area to spend extra time on. In order of payoff:
 Tandem work, with issues tagged by difficulty so there's always something the right size.
 
 - **The project lead:** editor panels and the theme, the asset library, built-in components, the sample game's logic, and LustScript editor tools.
-- **Claude:** the native Lust compiler, the Rust foundation and its bindings, the renderer, component storage, deterministic netcode and world streaming.
+- **Claude:** Lust's Rust output, the Rust foundation and its bindings, the renderer, component storage, deterministic netcode and world streaming.
 
 Both sides review each other's pull requests.
 
@@ -283,7 +299,8 @@ Both sides review each other's pull requests.
 
 - 2026-10-20: Solis is 3D only, aimed at stylized, strategy, online co-op/PvP and open-world games.
 - 2026-10-20: Lust for the engine and game code; LustScript/Lua only for editor scripting.
-- 2026-10-20: A thin Rust foundation behind a C interface, with the engine in Lust.
+- 2026-10-20: A thin Rust foundation, with the engine in Lust.
+- 2026-10-21: Lust compiles to Rust (Lust's decision), so Lust uses the foundation's crates directly, with no C interface.
 - 2026-10-20: Entities and components with typed events; no node tree or signals.
 - 2026-10-20: Scale target: Empire at War-style battles (§2). Game-specific systems stay out of the engine.
 - 2026-10-20: [0001](docs/decisions/0001-builds-on-demand.md): builds and checks don't run on every push.
