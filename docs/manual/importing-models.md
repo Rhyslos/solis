@@ -40,7 +40,8 @@ Then:
 - **Problem:** the model is tiny or enormous. **Why:** it was made in other units (centimetres, inches). **Fix:** check the size in the Console; scale it in your modelling program, or set the export's scale.
 - **Problem:** the Console says a texture was left out. **Why:** the image file isn't next to the `.gltf`, or it isn't PNG or JPEG. **Fix:** export as **glTF Binary (.glb)**, which keeps everything in one file.
 - **Problem:** "Couldn't import … the file is damaged". **Why:** the file is incomplete or broken. **Fix:** export it again.
-- **Problem:** the model looks flat and grey-blue in the shadows. **Why:** for now it's lit by one fixed sun and the sky. Real lights arrive in milestone 4.
+- **Problem:** the model looks flat and grey-blue in the shadows. **Why:** where the sun doesn't reach, only the sky's soft light does. **Fix:** move the sun or add lamps; see [Lights and shadows](lights.md).
+- **Lights in the file:** lamps exported from Blender (point lights and spotlights) come in with the model, are listed in the Scene panel, and leave when it is removed; a sun in the file sets the scene's sun. Turn on **Punctual Lights** under Include in Blender's glTF export to export them.
 - **Want to see how it should look?** **Help > Add the sample scene** brings in a scene made for checking the [looks](looks.md).
 
 ## Related

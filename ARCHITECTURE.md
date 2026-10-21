@@ -20,9 +20,9 @@ Planned: `world` (entities and components, layer 0 or 1) and `assets` (layer 1) 
 1. **Input:** winit delivers mouse and keyboard events to egui (through eframe).
 2. **Editor:** the workbench draws the top bar and the docked panels and returns any actions (such as Quit) for the app to carry out.
 3. **Camera:** the viewport turns the mouse and keys into a `FlyInput`, and `Camera::fly` (in `editor/src/camera.rs`) moves the camera.
-4. **Imports:** File > Import model (or a file dropped on the window) asks the app to import; the app reads the file with `assets` on a thread of its own, then uploads it with `render` and tells the workbench, which lists it and frames the camera on it.
-5. **Viewport:** the viewport panel asks a `ViewportRenderer` for an image of its size. The app's implementation renders it with `render` on the window's own GPU device and hands it to egui as a texture.
-6. **Closing:** eframe saves the window size, the panel layout and the camera in a per-user folder named after `APP_ID`.
+4. **Imports:** File > Import model (or a file dropped on the window) asks the app to import; the app reads the file with `assets` on a thread of its own, then uploads it with `render` and tells the workbench, which lists it (with any lamps the file carries) and frames the camera on it.
+5. **Viewport:** the viewport panel asks a `ViewportRenderer` for an image of its size, with the sun's settings and the lamps. The app's implementation renders it with `render` on the window's own GPU device (first the sun's shadow map, then the view) and hands it to egui as a texture.
+6. **Closing:** eframe saves the window size, the panel layout, the camera, the look and the sun's settings in a per-user folder named after `APP_ID`.
 
 ## Colour in the viewport
 

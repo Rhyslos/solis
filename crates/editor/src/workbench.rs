@@ -8,6 +8,7 @@
 use crate::camera::Camera;
 use crate::icons::{self, Icon};
 use crate::layout::{self, Preset};
+use crate::lighting::{Lamp, LampFromFile, LampId, LampRequest, Selection, SunSettings};
 use crate::models::{ModelId, ModelInfo};
 use crate::panel::Panel;
 use crate::theme::{self, Accent};
@@ -133,6 +134,10 @@ pub struct Workbench {
     console: Console,
     /// The imported models, in the order they arrived.
     models: Vec<ModelInfo>,
+    /// What's selected in the Scene panel.
+    selection: Selection,
+    /// The number the next lamp gets.
+    next_lamp: u64,
     /// Whether files are being dragged over the window.
     files_hovering: bool,
     about_open: bool,
@@ -156,6 +161,8 @@ impl Workbench {
                 search: String::new(),
             },
             models: Vec::new(),
+            selection: Selection::Nothing,
+            next_lamp: 1,
             files_hovering: false,
             about_open: false,
             in_front: HashSet::new(),
@@ -209,13 +216,115 @@ impl Workbench {
         &self.models
     }
 
-    /// Takes a model out of the list (the app frees it on the GPU).
+    /// Takes a model out of the list, with any lamps that came in with it
+    /// (the app frees it on the GPU).
     fn remove_model(&mut self, id: ModelId) {
         if let Some(i) = self.models.iter().position(|m| m.id == id) {
             let gone = self.models.remove(i);
             self.log(LogLevel::Info, format!("Removed {}.", gone.name));
         }
+        self.viewport.lamps.retain(|l| l.from_model != Some(id));
+        if self.selection == Selection::Model(id) || !self.selection_exists() {
+            self.selection = Selection::Nothing;
+        }
         self.sync_models();
+    }
+
+    /// Whether what's selected is still there.
+    fn selection_exists(&self) -> bool {
+        match self.selection {
+            Selection::Nothing | Selection::Sun => true,
+            Selection::Lamp(id) => self.viewport.lamps.iter().any(|l| l.id == id),
+            Selection::Model(id) => self.models.iter().any(|m| m.id == id),
+        }
+    }
+
+    /// Adds the lamps a model's file carries, removed along with the model.
+    pub fn add_model_lamps(&mut self, model: ModelId, lamps: &[LampFromFile]) {
+        for lamp in lamps {
+            let id = self.new_lamp_id();
+            self.viewport.lamps.push(Lamp::from_file(id, lamp, model));
+        }
+        if !lamps.is_empty() {
+            let s = if lamps.len() == 1 { "" } else { "s" };
+            self.log(
+                LogLevel::Info,
+                format!("The file brought {} light{s} with it.", lamps.len()),
+            );
+        }
+    }
+
+    fn new_lamp_id(&mut self) -> LampId {
+        let id = LampId(self.next_lamp);
+        self.next_lamp += 1;
+        id
+    }
+
+    /// Adds a point light above where the camera looks, and selects it.
+    pub fn add_point_light(&mut self) {
+        let id = self.new_lamp_id();
+        let lamp = Lamp::point(id, self.viewport.camera.focus());
+        self.log(LogLevel::Info, format!("Added {}.", lamp.name));
+        self.viewport.lamps.push(lamp);
+        self.selection = Selection::Lamp(id);
+    }
+
+    /// Adds a spotlight at the camera, shining where it looks, and selects
+    /// it.
+    pub fn add_spotlight(&mut self) {
+        let id = self.new_lamp_id();
+        let camera = &self.viewport.camera;
+        let lamp = Lamp::spot(id, camera.position, camera.forward());
+        self.log(LogLevel::Info, format!("Added {}.", lamp.name));
+        self.viewport.lamps.push(lamp);
+        self.selection = Selection::Lamp(id);
+    }
+
+    /// The lamps, in the order they were added.
+    pub fn lamps(&self) -> &[Lamp] {
+        &self.viewport.lamps
+    }
+
+    /// What's selected in the Scene panel.
+    pub fn selection(&self) -> Selection {
+        self.selection
+    }
+
+    /// Selects `selection` (as clicking it in the Scene panel does).
+    pub fn select(&mut self, selection: Selection) {
+        self.selection = selection;
+        if !self.selection_exists() {
+            self.selection = Selection::Nothing;
+        }
+    }
+
+    /// Uses `sun` (as saved last time), with anything out of range put
+    /// back in range.
+    #[must_use]
+    pub fn with_sun(mut self, sun: SunSettings) -> Self {
+        self.viewport.sun = sun.sanitized();
+        self
+    }
+
+    /// Sets the sun from one a model file carries: the way its light
+    /// travels, its linear colour and its strength in W/m².
+    pub fn use_sun_from_file(
+        &mut self,
+        name: &str,
+        direction: glam::Vec3,
+        color: [f32; 3],
+        strength: f32,
+    ) {
+        self.viewport.sun = SunSettings::from_file(direction, color, strength, self.viewport.sun);
+        self.log(
+            LogLevel::Info,
+            format!("The file's sun ({name}) now lights the scene; change it under Sun."),
+        );
+    }
+
+    /// The sun's settings, for saving.
+    pub fn sun(&self) -> SunSettings {
+        self.viewport.sun
     }
 
     /// Tells the viewport which models to draw.
@@ -320,6 +429,7 @@ impl Workbench {
                         renderer,
                         console: &mut self.console,
                         models: &self.models,
+                        selection: &mut self.selection,
                         removed: &mut removed,
                         accent: self.accent,
                         in_front: &self.in_front,
@@ -410,10 +520,28 @@ impl Workbench {
             ui.checkbox(&mut overlays.stats, "Frame rate and entity count");
         });
         ui.menu_button("Entity", |ui| {
-            for item in ["Add entity", "Add light", "Add camera"] {
-                ui.add_enabled(false, egui::Button::new(item))
-                    .on_disabled_hover_text("Entities arrive in Phase 2");
+            ui.add_enabled(false, egui::Button::new("Add entity"))
+                .on_disabled_hover_text("Entities arrive in Phase 2");
+            ui.separator();
+            if ui
+                .button("Add point light")
+                .on_hover_text("A bulb shining every way, placed above where the camera looks")
+                .clicked()
+            {
+                self.add_point_light();
+                ui.close();
             }
+            if ui
+                .button("Add spotlight")
+                .on_hover_text("A cone of light at the camera, shining where it looks")
+                .clicked()
+            {
+                self.add_spotlight();
+                ui.close();
+            }
+            ui.separator();
+            ui.add_enabled(false, egui::Button::new("Add camera"))
+                .on_disabled_hover_text("Cameras arrive with entities in Phase 2");
         });
         ui.menu_button("Build", |ui| {
             for item in ["Build", "Build & Play"] {
@@ -637,6 +765,7 @@ struct PanelViewer<'a> {
     renderer: &'a mut dyn ViewportRenderer,
     console: &'a mut Console,
     models: &'a [ModelInfo],
+    selection: &'a mut Selection,
     removed: &'a mut Vec<ModelId>,
     accent: Accent,
     in_front: &'a HashSet<Panel>,
@@ -715,7 +844,14 @@ impl TabViewer for PanelViewer<'_> {
         match tab {
             Panel::Scene => {
                 menu_row(ui, &["Edit", "View", "Entity"]);
-                model_list(ui, self.models, self.removed, self.accent);
+                scene_list(
+                    ui,
+                    &self.viewport.lamps,
+                    self.models,
+                    self.selection,
+                    self.removed,
+                    self.accent,
+                );
             }
             Panel::Layers => {
                 menu_row(ui, &["Edit", "View"]);
@@ -723,7 +859,7 @@ impl TabViewer for PanelViewer<'_> {
             }
             Panel::Properties => {
                 menu_row(ui, &["Mode", "Edit", "Units"]);
-                placeholder(ui, "Nothing selected.");
+                properties(ui, self.viewport, self.models, self.selection, self.removed);
             }
             Panel::Library => {
                 menu_row(ui, &["Import", "View"]);
@@ -769,64 +905,192 @@ fn menu_row(ui: &mut Ui, items: &[&str]) {
     });
 }
 
-/// The Scene panel's contents until entities arrive: the imported models,
-/// each with a button to remove it.
-fn model_list(ui: &mut Ui, models: &[ModelInfo], removed: &mut Vec<ModelId>, accent: Accent) {
-    if models.is_empty() {
-        placeholder(
-            ui,
-            "No entities yet; they arrive in Phase 2. To see a model, use File > Import model, \
-             or drop a .gltf or .glb file onto the window.",
-        );
-        return;
+/// One row of the Scene panel: an icon, a name, a quiet note on the
+/// right, highlighted when selected, and a × when `remove` names what it
+/// removes. Returns the row's response and whether × was clicked.
+fn scene_row(
+    ui: &mut Ui,
+    (icon, icon_color): (Icon, Color32),
+    name: &str,
+    note: &str,
+    selected: bool,
+    accent: Accent,
+    remove: Option<&str>,
+) -> (egui::Response, bool) {
+    let (row, response) =
+        ui.allocate_exact_size(egui::vec2(ui.available_width(), 21.0), egui::Sense::click());
+    response.widget_info(|| {
+        egui::WidgetInfo::selected(egui::WidgetType::SelectableLabel, true, selected, name)
+    });
+    if selected {
+        ui.painter()
+            .rect_filled(row, 3.0, accent.colors().fill.gamma_multiply(0.45));
+    } else if response.hovered() {
+        ui.painter().rect_filled(row, 3.0, theme::HOVER);
     }
+    let mut row_ui = ui.new_child(
+        egui::UiBuilder::new()
+            .max_rect(row.shrink2(egui::vec2(4.0, 0.0)))
+            .layout(Layout::left_to_right(Align::Center)),
+    );
+    let ui = &mut row_ui;
+    let (icon_rect, _) = ui.allocate_exact_size(egui::vec2(12.0, 12.0), egui::Sense::hover());
+    icons::icon(ui.painter(), icon_rect, icon, icon_color);
+    ui.add(egui::Label::new(name).truncate().selectable(false));
+    let mut removed = false;
+    ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
+        if let Some(what) = remove {
+            let button = ui
+                .add(egui::Button::new(RichText::new("×").color(theme::TEXT_WEAK)).frame(false))
+                .on_hover_text(format!("Remove {what} from the viewport"));
+            button.widget_info(|| {
+                egui::WidgetInfo::labeled(egui::WidgetType::Button, true, format!("Remove {what}"))
+            });
+            removed = button.clicked();
+        }
+        ui.add(egui::Label::new(RichText::new(note).color(theme::TEXT_WEAK)).selectable(false));
+    });
+    (response, removed)
+}
+
+/// The Scene panel's contents until entities arrive: the sun, the lamps
+/// and the imported models. Clicking one shows it in Properties.
+fn scene_list(
+    ui: &mut Ui,
+    lamps: &[Lamp],
+    models: &[ModelInfo],
+    selection: &mut Selection,
+    removed: &mut Vec<ModelId>,
+    accent: Accent,
+) {
     egui::Frame::new()
         .inner_margin(egui::Margin::symmetric(6, 4))
         .show(ui, |ui| {
-            for model in models {
-                let (row, _) = ui.allocate_exact_size(
-                    egui::vec2(ui.available_width(), 21.0),
-                    egui::Sense::hover(),
-                );
-                let mut row_ui = ui.new_child(
-                    egui::UiBuilder::new()
-                        .max_rect(row)
-                        .layout(Layout::left_to_right(Align::Center)),
-                );
-                let ui = &mut row_ui;
-                let (icon, _) =
-                    ui.allocate_exact_size(egui::vec2(12.0, 12.0), egui::Sense::hover());
-                icons::icon(ui.painter(), icon, Icon::Model, accent.colors().light);
-                ui.add(egui::Label::new(&model.name).truncate());
-                ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
-                    let remove = ui
-                        .add(
-                            egui::Button::new(RichText::new("×").color(theme::TEXT_WEAK))
-                                .frame(false),
-                        )
-                        .on_hover_text(format!("Remove {} from the viewport", model.name));
-                    remove.widget_info(|| {
-                        egui::WidgetInfo::labeled(
-                            egui::WidgetType::Button,
-                            true,
-                            format!("Remove {}", model.name),
-                        )
-                    });
-                    if remove.clicked() {
-                        removed.push(model.id);
-                    }
-                    ui.label(
-                        RichText::new(format!("{} tris", crate::models::grouped(model.triangles)))
-                            .color(theme::TEXT_WEAK),
-                    );
-                });
+            ui.spacing_mut().item_spacing.y = 1.0;
+            let light = theme::WARNING;
+            if scene_row(
+                ui,
+                (Icon::Light, light),
+                "Sun",
+                "",
+                *selection == Selection::Sun,
+                accent,
+                None,
+            )
+            .0
+            .clicked()
+            {
+                *selection = Selection::Sun;
             }
-            ui.add_space(4.0);
-            ui.label(
-                RichText::new("Imported models aren't saved yet: scenes arrive in Phase 2.")
-                    .color(theme::TEXT_WEAK)
-                    .size(11.0),
-            );
+            for lamp in lamps {
+                let [r, g, b] = lamp.color;
+                if scene_row(
+                    ui,
+                    (Icon::Light, Color32::from_rgb(r, g, b)),
+                    &lamp.name,
+                    lamp.kind.name(),
+                    *selection == Selection::Lamp(lamp.id),
+                    accent,
+                    None,
+                )
+                .0
+                .clicked()
+                {
+                    *selection = Selection::Lamp(lamp.id);
+                }
+            }
+            for model in models {
+                let (response, remove) = scene_row(
+                    ui,
+                    (Icon::Model, accent.colors().light),
+                    &model.name,
+                    &format!("{} tris", crate::models::grouped(model.triangles)),
+                    *selection == Selection::Model(model.id),
+                    accent,
+                    Some(&model.name),
+                );
+                if remove {
+                    removed.push(model.id);
+                } else if response.clicked() {
+                    *selection = Selection::Model(model.id);
+                }
+            }
+            ui.add_space(6.0);
+            let note = if models.is_empty() && lamps.is_empty() {
+                "To see a model, use File > Import model, or drop a .gltf or .glb file onto \
+                 the window. Entity > Add point light adds a lamp."
+            } else {
+                "Models and lamps aren't saved yet: scenes arrive in Phase 2."
+            };
+            ui.label(RichText::new(note).color(theme::TEXT_WEAK).size(11.0));
+        });
+}
+
+/// The Properties panel: the fields of whatever is selected.
+fn properties(
+    ui: &mut Ui,
+    viewport: &mut Viewport,
+    models: &[ModelInfo],
+    selection: &mut Selection,
+    removed: &mut Vec<ModelId>,
+) {
+    if *selection == Selection::Nothing {
+        placeholder(ui, "Nothing selected. Pick something in the Scene panel.");
+        return;
+    }
+    egui::Frame::new()
+        .inner_margin(theme::panel_margin())
+        .show(ui, |ui| match *selection {
+            Selection::Nothing => {}
+            Selection::Sun => {
+                ui.label(RichText::new("Sun").strong());
+                ui.add_space(4.0);
+                crate::lighting::sun_properties(ui, &mut viewport.sun);
+            }
+            Selection::Lamp(id) => {
+                let Some(i) = viewport.lamps.iter().position(|l| l.id == id) else {
+                    *selection = Selection::Nothing;
+                    return;
+                };
+                let request = crate::lighting::lamp_properties(ui, &mut viewport.lamps[i]);
+                match request {
+                    LampRequest::None => {}
+                    LampRequest::MoveHere => {
+                        let camera = viewport.camera;
+                        viewport.lamps[i].move_here(
+                            camera.position,
+                            camera.forward(),
+                            camera.focus(),
+                        );
+                    }
+                    LampRequest::Delete => {
+                        viewport.lamps.remove(i);
+                        *selection = Selection::Nothing;
+                    }
+                }
+            }
+            Selection::Model(id) => {
+                let Some(model) = models.iter().find(|m| m.id == id) else {
+                    *selection = Selection::Nothing;
+                    return;
+                };
+                ui.label(RichText::new(&model.name).strong());
+                ui.add_space(4.0);
+                ui.label(format!(
+                    "{} triangles",
+                    crate::models::grouped(model.triangles)
+                ));
+                ui.label(model.size_text());
+                ui.add_space(6.0);
+                if ui
+                    .button("Remove")
+                    .on_hover_text("Take it out of the viewport, with any lights it brought")
+                    .clicked()
+                {
+                    removed.push(model.id);
+                    *selection = Selection::Nothing;
+                }
+            }
         });
 }
 
@@ -1403,5 +1667,100 @@ mod tests {
         h.get_by_label("Add the sample scene").click();
         h.run();
         assert!(h.state().1.contains(&WorkbenchAction::AddSampleScene));
+    }
+
+    #[test]
+    fn the_entity_menu_adds_lamps_shown_in_scene_and_properties() {
+        let mut h = harness();
+        h.run();
+        // The top bar's menu (the Scene panel's menu row also says Entity).
+        h.get_all_by_label("Entity").next().unwrap().click();
+        h.run();
+        h.get_by_label("Add point light").click();
+        h.run();
+        let w = h.state();
+        assert_eq!(w.lamps().len(), 1);
+        let lamp = &w.lamps()[0];
+        assert_eq!(lamp.name, "Point light 1");
+        assert_eq!(w.selection(), Selection::Lamp(lamp.id));
+        assert_eq!(
+            lamp.position,
+            w.camera().focus() + glam::Vec3::Z * Lamp::POINT_HEIGHT
+        );
+        // Listed in the Scene panel, its fields in Properties.
+        assert!(h.query_all_by_label("Point light 1").next().is_some());
+        let _ = h.get_by_label("Move here");
+        // The top bar's menu (the Scene panel's menu row also says Entity).
+        h.get_all_by_label("Entity").next().unwrap().click();
+        h.run();
+        h.get_by_label("Add spotlight").click();
+        h.run();
+        let spot = h.state().lamps()[1].clone();
+        assert_eq!(spot.position, h.state().camera().position);
+        assert!(matches!(spot.kind, crate::lighting::LampKind::Spot { .. }));
+        // Delete removes it and clears the selection.
+        h.get_by_label("Delete").click();
+        h.run();
+        assert_eq!(h.state().lamps().len(), 1);
+        assert_eq!(h.state().selection(), Selection::Nothing);
+    }
+
+    #[test]
+    fn the_sun_is_selected_from_the_scene_panel() {
+        let mut h = harness();
+        h.run();
+        h.get_all_by_label("Sun").next().unwrap().click();
+        h.run();
+        assert_eq!(h.state().selection(), Selection::Sun);
+        let _ = h.get_by_label("Heading");
+        let _ = h.get_by_label("Shadows");
+    }
+
+    #[test]
+    fn lamps_from_a_model_leave_with_it() {
+        let mut w = Workbench::new(info(), None);
+        let model = ModelInfo {
+            id: ModelId(4),
+            name: "Room".into(),
+            triangles: 2,
+            min: glam::Vec3::ZERO,
+            max: glam::Vec3::ONE,
+        };
+        w.add_model(model, &[], 0.1);
+        let from_file = LampFromFile {
+            name: "Bulb".into(),
+            cone: None,
+            position: glam::Vec3::ONE,
+            direction: -glam::Vec3::Z,
+            color: [1.0; 3],
+            strength: 100.0,
+            range: None,
+        };
+        w.add_model_lamps(ModelId(4), &[from_file.clone(), from_file]);
+        w.add_point_light();
+        assert_eq!(w.lamps().len(), 3);
+        assert_eq!(w.lamps()[0].name, "Bulb");
+        w.select(Selection::Lamp(w.lamps()[0].id));
+        w.remove_model(ModelId(4));
+        assert_eq!(w.lamps().len(), 1, "the hand-placed lamp stays");
+        assert_eq!(w.selection(), Selection::Nothing);
+        // Selecting something that isn't there selects nothing.
+        w.select(Selection::Model(ModelId(99)));
+        assert_eq!(w.selection(), Selection::Nothing);
+    }
+
+    #[test]
+    fn a_sun_from_a_file_sets_the_scene_sun() {
+        let mut w = Workbench::new(info(), None).with_sun(SunSettings {
+            shadows: false,
+            ..SunSettings::default()
+        });
+        w.use_sun_from_file("Sun", -glam::Vec3::Z, [1.0, 0.0, 0.0], 7.0);
+        let sun = w.sun();
+        assert!((sun.height - 90.0).abs() < 1e-3);
+        assert_eq!(
+            (sun.color, sun.strength, sun.shadows),
+            ([255, 0, 0], 7.0, false)
+        );
     }
 }

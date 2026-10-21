@@ -358,3 +358,132 @@ fn damaged_json_never_crashes_the_reader() {
         let _ = load_bytes(&bytes, None, "X", &limits());
     }
 }
+
+#[test]
+fn lights_in_the_file_come_in_placed_and_in_blender_units() {
+    use crate::lights::{LUMENS_PER_WATT, LampKind};
+    use std::f32::consts::{FRAC_1_SQRT_2, PI};
+    let mut b = Builder::default();
+    let mesh = b.add_cube_mesh(0.5, None);
+    b.json_lights = vec![
+        // 1000 W point light, as Blender exports it.
+        format!(
+            r#"{{"name":"Bulb","type":"point","color":[1,0.5,0.25],"intensity":{},"range":20}}"#,
+            1000.0 * LUMENS_PER_WATT / (4.0 * PI)
+        ),
+        r#"{"type":"spot","intensity":100,"spot":{"innerConeAngle":0.2,"outerConeAngle":0.6}}"#
+            .into(),
+        format!(
+            r#"{{"type":"directional","intensity":{}}}"#,
+            3.0 * LUMENS_PER_WATT
+        ),
+    ];
+    b.json_nodes = vec![
+        format!(r#"{{"mesh":{mesh}}}"#),
+        // 3 m up (glTF Y).
+        r#"{"translation":[0,3,0],"extensions":{"KHR_lights_punctual":{"light":0}}}"#.into(),
+        // Turned to point straight down: -90 degrees about X.
+        format!(
+            r#"{{"translation":[2,4,0],"rotation":[{},0,0,{}],"extensions":{{"KHR_lights_punctual":{{"light":1}}}}}}"#,
+            -FRAC_1_SQRT_2, FRAC_1_SQRT_2
+        ),
+        r#"{"extensions":{"KHR_lights_punctual":{"light":2}}}"#.into(),
+    ];
+    let model = load_bytes(&b.glb(), None, "Lit", &limits()).unwrap();
+    assert_eq!(model.lamps.len(), 3);
+    let bulb = &model.lamps[0];
+    assert_eq!(bulb.name, "Bulb");
+    assert_eq!(bulb.kind, LampKind::Point);
+    assert!(close(bulb.position, Vec3::new(0.0, 0.0, 3.0)));
+    assert!((bulb.strength - 1000.0).abs() < 0.1);
+    assert_eq!(bulb.color, [1.0, 0.5, 0.25]);
+    assert_eq!(bulb.range, Some(20.0));
+    let spot = &model.lamps[1];
+    assert!(
+        matches!(spot.kind, LampKind::Spot { inner, outer } if (inner - 0.2).abs() < 1e-6 && (outer - 0.6).abs() < 1e-6)
+    );
+    assert!(close(spot.position, Vec3::new(2.0, 0.0, 4.0)));
+    assert!(close(spot.direction, -Vec3::Z), "{}", spot.direction);
+    let sun = &model.lamps[2];
+    assert_eq!(sun.kind, LampKind::Sun);
+    assert!((sun.strength - 3.0).abs() < 1e-3);
+    // glTF lights shine along -Z, which is -Y... turned: glTF's -Z is
+    // Solis's +Y.
+    assert!(close(sun.direction, Vec3::Y), "{}", sun.direction);
+}
+
+#[test]
+fn a_file_of_lights_only_still_reads() {
+    let json = r#"{"asset":{"version":"2.0"},"scene":0,"scenes":[{"nodes":[0]}],
+        "nodes":[{"translation":[1,2,3],"extensions":{"KHR_lights_punctual":{"light":0}}}],
+        "extensionsUsed":["KHR_lights_punctual"],
+        "extensions":{"KHR_lights_punctual":{"lights":[{"type":"point","intensity":10}]}}}"#;
+    let model = load_bytes(json.as_bytes(), None, "Lights", &limits()).unwrap();
+    assert!(model.meshes.is_empty());
+    assert_eq!(model.lamps.len(), 1);
+    assert!(close(model.bounds.center(), Vec3::new(1.0, -3.0, 2.0)));
+}
+
+#[test]
+fn silly_light_values_are_tidied() {
+    let mut b = Builder::default();
+    let mesh = b.add_cube_mesh(0.5, None);
+    b.json_lights = vec![
+        r#"{"type":"spot","intensity":-5,"color":[9,-1,0.5],"range":-3,"spot":{"innerConeAngle":1.0,"outerConeAngle":0.5}}"#.into(),
+    ];
+    b.json_nodes = vec![
+        format!(r#"{{"mesh":{mesh}}}"#),
+        r#"{"extensions":{"KHR_lights_punctual":{"light":0}}}"#.into(),
+    ];
+    match load_bytes(&b.glb(), None, "X", &limits()) {
+        Ok(model) => {
+            let lamp = &model.lamps[0];
+            assert!(lamp.strength >= 0.0);
+            assert_eq!(lamp.color, [1.0, 0.0, 0.5]);
+            assert_eq!(lamp.range, None);
+            if let crate::lights::LampKind::Spot { inner, outer } = lamp.kind {
+                assert!(inner <= outer);
+            }
+        }
+        // The gltf crate may refuse values outside the rules; that's fine
+        // too, as long as it doesn't crash.
+        Err(e) => assert!(!e.to_string().is_empty()),
+    }
+}
+
+/// Randomly damaged files with lights in them: read or refused, never a
+/// crash, and any lights read are usable.
+#[test]
+fn damaged_files_with_lights_never_crash_the_reader() {
+    let mut b = Builder::default();
+    let mesh = b.add_cube_mesh(0.5, None);
+    b.json_lights = vec![
+        r#"{"type":"point","intensity":50,"range":10}"#.into(),
+        r#"{"type":"spot","intensity":80,"spot":{"innerConeAngle":0.1,"outerConeAngle":0.5}}"#
+            .into(),
+        r#"{"type":"directional","intensity":2000}"#.into(),
+    ];
+    b.json_nodes = vec![
+        format!(r#"{{"mesh":{mesh}}}"#),
+        r#"{"translation":[0,3,0],"extensions":{"KHR_lights_punctual":{"light":0}}}"#.into(),
+        r#"{"translation":[2,4,0],"extensions":{"KHR_lights_punctual":{"light":1}}}"#.into(),
+        r#"{"extensions":{"KHR_lights_punctual":{"light":2}}}"#.into(),
+    ];
+    let good = b.glb();
+    let json_end = 20 + u32::from_le_bytes([good[12], good[13], good[14], good[15]]) as usize;
+    let mut noise = Noise(99);
+    for _ in 0..3_000 {
+        let mut bytes = good.clone();
+        for _ in 0..1 + noise.below(3) {
+            let at = 20 + noise.below(json_end - 20);
+            bytes[at] = b"0123456789,[]{}\":-e.x"[noise.below(21)];
+        }
+        if let Ok(model) = load_bytes(&bytes, None, "X", &limits()) {
+            for lamp in &model.lamps {
+                assert!(lamp.position.is_finite() && lamp.direction.is_finite());
+                assert!(lamp.strength.is_finite() && lamp.strength >= 0.0);
+                assert!(lamp.color.iter().all(|c| (0.0..=1.0).contains(c)));
+            }
+        }
+    }
+}

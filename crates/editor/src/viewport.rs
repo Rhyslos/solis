@@ -11,6 +11,7 @@
 
 use crate::camera::{Camera, FlyInput};
 use crate::icons;
+use crate::lighting::{Lamp, SunSettings};
 use crate::look::{Look, LookKind};
 use crate::models::ModelId;
 use crate::theme::{self, Accent};
@@ -120,6 +121,10 @@ pub struct ViewportView {
     pub look: Look,
     /// The stylized look's outline width in pixels; 0 for none.
     pub outline_px: f32,
+    /// The sun.
+    pub sun: SunSettings,
+    /// The lamps.
+    pub lamps: Vec<Lamp>,
 }
 
 /// Draws viewport images. The app implements it on the window's GPU; tests
@@ -167,6 +172,10 @@ pub struct Viewport {
     pub look: Look,
     /// How many triangles they have together, for the corner.
     pub triangles: usize,
+    /// The sun's settings.
+    pub sun: SunSettings,
+    /// The lamps.
+    pub lamps: Vec<Lamp>,
     /// While looking around with the right mouse button: where the mouse
     /// was when it started, to put it back afterwards.
     flying_from: Option<egui::Pos2>,
@@ -188,6 +197,8 @@ impl Default for Viewport {
             models: Vec::new(),
             look: Look::default(),
             triangles: 0,
+            sun: SunSettings::default(),
+            lamps: Vec::new(),
         }
     }
 }
@@ -226,6 +237,8 @@ impl Viewport {
             models: self.models.clone(),
             look: self.look,
             outline_px: self.look.outline_px(pixels_per_point),
+            sun: self.sun,
+            lamps: self.lamps.clone(),
         }
     }
 

@@ -12,5 +12,6 @@ New to game engines? Start with [Concepts](concepts.md).
 - [Moving around the viewport: the fly camera, the grid and the corner controls](navigating-the-viewport.md)
 - [Importing models: glTF files from Blender, Aventail and other programs](importing-models.md)
 - [Looks: standard, stylized and unlit](looks.md)
+- [Lights and shadows: the sun, point lights and spotlights](lights.md)
 - [The Console: messages, filters and search](console.md)
 - [Keyboard shortcuts: every key in one place](keyboard-shortcuts.md)

@@ -35,6 +35,15 @@
 - **Normal texture:** a texture that stores small bumps and grooves as directions, so a flat surface catches the light as if it were carved. It looks light blue, because "facing straight out" is stored as blue.
 - **Look:** how models are shaded in the viewport: standard, stylized (cel-shaded) or unlit. See [Looks](looks.md).
 
+## Light
+
+- **Sun:** light from very far away, arriving in parallel from one direction everywhere, like daylight. One per scene. See [Lights and shadows](lights.md).
+- **Lamp:** a light in the scene. A **point light** shines every way from one spot, like a bare bulb; a **spotlight** shines a cone, like a torch or a stage light.
+- **Watts (W):** how strong a lamp is, in the same units as Blender, so numbers carry over. The sun's strength is in watts per square metre (W/m²).
+- **Range:** how far a lamp reaches. Real light fades on forever, getting weaker with distance; a range makes it stop sooner, which games use to keep many lamps cheap.
+- **Shadow:** where something blocks a light. Solis draws the sun's shadows with a **shadow map**: the scene drawn once more from the sun's side, so each point can be checked for whether it sees the sun.
+- **Sky light (ambient light):** the soft light that comes from the whole sky rather than from the sun, so shadows are never black.
+
 ## Tools
 
 - **Tool:** what a click in the viewport does: Select, Move, Rotate, Scale or Transform. The tools work once there are things in a scene to use them on (Phase 2).

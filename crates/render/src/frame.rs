@@ -40,6 +40,8 @@ pub struct FrameParams {
     /// The image's size in pixels (for outlines a set number of pixels
     /// wide).
     pub size_px: [u32; 2],
+    /// The sun's direction, colour, strength and shadows.
+    pub sun: crate::lighting::Sun,
 }
 
 /// The ways models can be shaded.
@@ -123,10 +125,40 @@ pub(crate) struct FrameUniforms {
     ground: [f32; 4],
     shading: [f32; 4],
     screen: [f32; 4],
+    sun_view_proj: [[f32; 4]; 4],
+    sun_direction: [f32; 4],
+    sun_color: [f32; 4],
+    shadow: [f32; 4],
+}
+
+/// What the renderer worked out about the sun and lamps for one frame.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub(crate) struct FrameLight {
+    /// The sun's view, for its shadow map.
+    pub sun_view_projection: Mat4,
+    /// One shadow-map texel's width in metres.
+    pub texel: f32,
+    /// Whether the shadow map was drawn this frame.
+    pub shadows_drawn: bool,
+    /// How many lamps are in the lamp list.
+    pub lamps: u32,
+}
+
+impl Default for FrameLight {
+    fn default() -> Self {
+        Self {
+            sun_view_projection: Mat4::IDENTITY,
+            texel: 0.0,
+            shadows_drawn: false,
+            lamps: 0,
+        }
+    }
 }
 
 impl FrameUniforms {
-    pub(crate) fn new(params: &FrameParams) -> Self {
+    pub(crate) fn new(params: &FrameParams, light: &FrameLight) -> Self {
+        let (sun_direction, sun_color) =
+            crate::lighting::sun_uniforms(&params.sun, light.shadows_drawn);
         let reach = grid_reach(params.camera_position.distance(params.focus));
         let [fine, major, super_level] = GRID_SPACINGS;
         let [a, b, c] = GRID_STRENGTHS;
@@ -155,6 +187,15 @@ impl FrameUniforms {
                 0.0,
             ],
             screen: [params.size_px[0] as f32, params.size_px[1] as f32, 0.0, 0.0],
+            sun_view_proj: light.sun_view_projection.to_cols_array_2d(),
+            sun_direction,
+            sun_color,
+            shadow: [
+                light.texel,
+                crate::lighting::SHADOW_MAP_SIZE as f32,
+                light.lamps as f32,
+                0.0,
+            ],
         }
     }
 }
@@ -173,13 +214,14 @@ mod tests {
             ground: [0.22, 0.22, 0.22],
             shading: Shading::default(),
             size_px: [800, 600],
+            sun: crate::lighting::Sun::default(),
         }
     }
 
     #[test]
     fn uniforms_match_the_shader_layout() {
-        // Two matrices and seven vectors, each 16 bytes per column/row.
-        assert_eq!(std::mem::size_of::<FrameUniforms>(), 2 * 64 + 9 * 16);
+        // Three matrices and twelve vectors of 16 bytes.
+        assert_eq!(std::mem::size_of::<FrameUniforms>(), 3 * 64 + 12 * 16);
     }
 
     #[test]
@@ -201,7 +243,7 @@ mod tests {
 
     #[test]
     fn uniforms_carry_the_frame() {
-        let u = FrameUniforms::new(&params());
+        let u = FrameUniforms::new(&params(), &FrameLight::default());
         assert_eq!(u.camera, [0.0, -10.0, 5.0, 1.0]);
         assert_eq!(u.focus[3], grid_reach(params().camera_position.length()));
         assert_eq!(u.grid, [1.0, 10.0, 100.0, GRID_HALF_EXTENT]);
@@ -216,20 +258,55 @@ mod tests {
             bands: 2,
             outline_px: 3.0,
         };
-        let u = FrameUniforms::new(&p);
+        let u = FrameUniforms::new(&p, &FrameLight::default());
         assert_eq!(u.shading, [1.0, 2.0, 3.0, 0.0]);
         assert_eq!(u.screen[..2], [800.0, 600.0]);
         // Outlines belong to the stylized look only.
         p.shading.look = Look::Standard;
-        assert_eq!(FrameUniforms::new(&p).shading[2], 0.0);
+        assert_eq!(
+            FrameUniforms::new(&p, &FrameLight::default()).shading[2],
+            0.0
+        );
         // Silly values are kept in range.
         p.shading = Shading {
             look: Look::Stylized,
             bands: 999,
             outline_px: f32::INFINITY,
         };
-        let u = FrameUniforms::new(&p);
+        let u = FrameUniforms::new(&p, &FrameLight::default());
         assert_eq!(u.shading[1], 8.0);
         assert_eq!(u.shading[2], 16.0);
+    }
+}
+
+#[cfg(test)]
+mod light_tests {
+    use super::*;
+
+    #[test]
+    fn the_sun_and_lamps_reach_the_shader() {
+        let params = FrameParams {
+            view_projection: Mat4::IDENTITY,
+            camera_position: Vec3::ZERO,
+            focus: Vec3::ZERO,
+            sky_top: [0.0; 3],
+            sky_horizon: [0.0; 3],
+            ground: [0.0; 3],
+            shading: Shading::default(),
+            size_px: [1, 1],
+            sun: crate::lighting::Sun::default(),
+        };
+        let light = FrameLight {
+            sun_view_projection: Mat4::from_scale(Vec3::splat(2.0)),
+            texel: 0.01,
+            shadows_drawn: true,
+            lamps: 3,
+        };
+        let u = FrameUniforms::new(&params, &light);
+        assert_eq!(u.shadow[0], 0.01);
+        assert_eq!(u.shadow[2], 3.0);
+        assert_eq!(u.sun_direction[3], 1.0);
+        assert_eq!(u.sun_view_proj[0][0], 2.0);
+        assert!(u.sun_direction[2] > 0.0, "towards the sun, which is up");
     }
 }
