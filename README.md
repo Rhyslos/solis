@@ -18,10 +18,14 @@ cargo run --release -p app
 
 The first build takes a few minutes. `cargo run -p app -- --help` lists the options.
 
+**The manual** ([docs/manual](docs/manual/SUMMARY.md)) explains everything Solis can do so far, starting with [getting started](docs/manual/getting-started.md).
+
 **Moving around the viewport** ([decision 0009](docs/decisions/0009-fly-camera-controls.md)): hold the right mouse button and move the mouse to look around; while it's held, W A S D move, Q and E go down and up, the wheel changes speed, and Shift goes faster. The wheel on its own moves forward and back, and dragging with the middle button slides the view.
 
 - [DESIGN.md](DESIGN.md): what Solis is and how it's planned
 - [ROADMAP.md](ROADMAP.md): the phases to Solis 0.1
 - [docs/decisions](docs/decisions): decisions and their reasons
+- [docs/manual](docs/manual/SUMMARY.md): the user manual
+- [CONTRIBUTING.md](CONTRIBUTING.md): how Solis is developed, and its ground rules
 
 MIT licensed: see [LICENSE](LICENSE).

@@ -4,7 +4,7 @@ Solis is a 3D game engine. Read DESIGN.md before any change; it is the plan, and
 
 ## Start of every session
 
-1. Read `README.md` (what's built, what's next), `ROADMAP.md` and `ARCHITECTURE.md`.
+1. Read `README.md` (what's built, what's next), `ROADMAP.md`, `ARCHITECTURE.md` and `CONTRIBUTING.md` (the ground rules).
 2. Read the README of every crate you will touch.
 3. Check `docs/decisions/` before changing anything a decision covers.
 
@@ -27,10 +27,15 @@ The repo is private, so CI minutes are limited.
 
 ## Code
 
-- Tests for every batch (normal, edge, failure, regression), and the whole suite run before pushing.
-- Update documentation in the same pull request: code comments, crate READMEs, `ARCHITECTURE.md`, `CHANGELOG.md`, and the README status when a milestone completes.
+- Follow every ground rule in `CONTRIBUTING.md`; CI enforces many of them, review enforces the rest.
+- Tests for every batch (normal, edge, failure, regression, round trip, fuzz, benchmarks as relevant), and the whole suite run before pushing. Anything that reads files or saved settings gets a fuzz test.
+- Update documentation in the same pull request: code comments, crate READMEs, `ARCHITECTURE.md`, `CHANGELOG.md` (CI checks it), the **user manual**, and the README status when a milestone completes. Fill in the pull request template.
+- **The user manual is required.** Any change a user would notice updates `docs/manual/` in the same pull request, following `docs/manual/_template.md`. Write for someone new to game engines: explain *why* as well as *how*, and link terms to `docs/manual/concepts.md` (add new terms there). The manual describes only what exists in `main`.
+- **Scale check:** at the end of each phase, and whenever the project lead asks, run `tools/scale/scale-check.sh` and put its table in the pull request (decision 0011). Not on every pull request.
+- Any new place the program's name must appear gets added to `RENAMING.md` in the same pull request.
 - The pull request's "How to test" list covers what automated tests can't (feel, looks), written for a non-programmer.
 - Never hard-code the program's name: use `crates/app/src/branding.rs`.
+- Ask the project lead before building a feature that adds keys or mouse actions: offer a recommended choice and alternatives (CONTRIBUTING.md, rule 17).
 - Aventail's code may be copied in and adapted (decision 0007).
 
 ## Local environment notes

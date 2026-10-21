@@ -36,10 +36,11 @@ pub fn parse(args: impl IntoIterator<Item = OsString>) -> Result<Command, String
 pub fn usage(program: &str) -> String {
     format!(
         "Usage: {program} [--version | --help]\n\n\
-         Opens the Solis editor.\n\n\
+         Opens the {name} editor.\n\n\
          Options:\n  \
          -V, --version   Print the version and exit\n  \
-         -h, --help      Print this help and exit\n"
+         -h, --help      Print this help and exit\n",
+        name = crate::branding::APP_NAME
     )
 }
 
@@ -73,5 +74,65 @@ mod tests {
     #[test]
     fn usage_names_the_program() {
         assert!(usage("solis").starts_with("Usage: solis"));
+    }
+
+    #[test]
+    fn usage_takes_the_name_from_branding() {
+        assert!(usage("x").contains(crate::branding::APP_NAME));
+    }
+
+    /// Thousands of random argument lists, including broken text: the
+    /// parser always answers, and never crashes.
+    #[test]
+    fn random_arguments_never_crash_the_parser() {
+        let pieces = [
+            "--version",
+            "-V",
+            "--help",
+            "-h",
+            "-",
+            "--",
+            "",
+            " ",
+            "--VERSION",
+            "-vh",
+            "é",
+            "--help=1",
+            "\u{0}",
+            "solis",
+        ];
+        let mut seed: u64 = 0x5eed;
+        let mut next = |n: usize| {
+            seed = seed
+                .wrapping_mul(6_364_136_223_846_793_005)
+                .wrapping_add(1_442_695_040_888_963_407);
+            (seed >> 33) as usize % n
+        };
+        for _ in 0..5_000 {
+            let count = next(5);
+            let list: Vec<OsString> = (0..count)
+                .map(|_| OsString::from(pieces[next(pieces.len())]))
+                .collect();
+            let only_known = list
+                .iter()
+                .all(|a| matches!(a.to_str(), Some("--version" | "-V" | "--help" | "-h")));
+            match parse(list.clone()) {
+                Ok(_) => assert!(
+                    only_known
+                        || list
+                            .iter()
+                            .any(|a| matches!(a.to_str(), Some("--help" | "-h")))
+                ),
+                Err(message) => assert!(message.contains("--help"), "{message}"),
+            }
+        }
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn arguments_that_are_not_text_are_explained() {
+        use std::os::unix::ffi::OsStringExt;
+        let broken = OsString::from_vec(vec![0x66, 0x6f, 0xff, 0xfe]);
+        assert!(parse(vec![broken]).is_err());
     }
 }
