@@ -1,0 +1,48 @@
+# Checks that a pull request changing code also adds a CHANGELOG.md entry,
+# unless it is labelled "internal" (users wouldn't notice the change).
+# A separate, tiny workflow (no Rust build, a few seconds on Linux), so that
+# adding or removing the label re-checks without re-running everything
+# else. Runs only on pull requests ready for review (decision 0001).
+name: Changelog
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, ready_for_review, labeled, unlabeled]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: changelog-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  changelog:
+    name: Changelog updated
+    if: >-
+      github.event_name == 'pull_request' && !github.event.pull_request.draft
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+          fetch-depth: 0
+      - name: Require a CHANGELOG.md entry when code changes
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          INTERNAL: ${{ contains(github.event.pull_request.labels.*.name, 'internal') }}
+        run: |
+          changed="$(git diff --name-only "$BASE_SHA" "$HEAD_SHA")"
+          echo "Changed files:"; echo "$changed"
+          if [ "$INTERNAL" = "true" ]; then
+            echo "Labelled 'internal': no changelog entry required."
+            exit 0
+          fi
+          if echo "$changed" | grep -qE '^(crates/|tools/|Cargo\.(toml|lock)$)'; then
+            if ! echo "$changed" | grep -qx 'CHANGELOG.md'; then
+              echo "::error::Code changed but CHANGELOG.md did not. Add an entry, or label the pull request 'internal' if users would not notice."
+              exit 1
+            fi
+          fi
+          echo "Changelog check passed."

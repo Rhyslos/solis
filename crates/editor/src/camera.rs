@@ -86,7 +86,48 @@ pub struct FlyInput {
     pub view_height: f32,
 }
 
+/// The narrowest and widest field of view a saved camera may have, in
+/// radians.
+const FOV_RANGE: std::ops::RangeInclusive<f32> = 0.17..=2.1;
+
 impl Camera {
+    /// The camera with anything unusable replaced: a damaged or hand-edited
+    /// save can hold numbers that would break the picture (not a number,
+    /// infinite, out of range). Each such part falls back to the default.
+    #[must_use]
+    pub fn sanitized(self) -> Self {
+        let default = Self::default();
+        let position = if self.position.is_finite() && self.position.abs().max_element() < 1.0e7 {
+            self.position
+        } else {
+            default.position
+        };
+        let heading = if self.heading.abs() <= std::f32::consts::PI {
+            self.heading
+        } else if self.heading.is_finite() {
+            wrap_angle(self.heading)
+        } else {
+            default.heading
+        };
+        let tilt = if self.tilt.is_finite() {
+            self.tilt.clamp(-MAX_TILT, MAX_TILT)
+        } else {
+            default.tilt
+        };
+        let fov_y = if FOV_RANGE.contains(&self.fov_y) {
+            self.fov_y
+        } else {
+            default.fov_y
+        };
+        Self {
+            position,
+            heading,
+            tilt,
+            fov_y,
+            speed: self.speed.clamp(1, SPEEDS.len() as u8),
+        }
+    }
+
     /// Nearest distance drawn, in metres.
     pub const NEAR: f32 = 0.05;
     /// Furthest distance drawn, in metres.
@@ -525,5 +566,64 @@ mod tests {
         let partial: Camera = ron::from_str("(speed: 2)").unwrap();
         assert_eq!(partial.speed, 2);
         assert_eq!(partial.position, Camera::default().position);
+    }
+
+    fn usable(camera: &Camera) -> bool {
+        camera.position.is_finite()
+            && camera.heading.is_finite()
+            && camera.tilt.abs() <= MAX_TILT
+            && FOV_RANGE.contains(&camera.fov_y)
+            && (1..=8).contains(&camera.speed)
+            && camera.view_projection(1.5).is_finite()
+    }
+
+    #[test]
+    fn a_damaged_save_is_made_usable() {
+        let broken = Camera {
+            position: Vec3::new(f32::NAN, 1.0, f32::INFINITY),
+            heading: f32::NAN,
+            tilt: 50.0,
+            fov_y: 0.0,
+            speed: 0,
+        };
+        let fixed = broken.sanitized();
+        assert!(usable(&fixed));
+        assert_eq!(fixed.position, Camera::default().position);
+        assert_eq!(fixed.tilt, MAX_TILT);
+        assert_eq!(fixed.speed, 1);
+        // A good camera is left as it is.
+        let good = Camera::default();
+        assert_eq!(good.sanitized(), good);
+    }
+
+    /// Random damage to a saved camera, thousands of times: reading it
+    /// never crashes, and whatever reads back is made usable.
+    #[test]
+    fn random_damage_to_a_saved_camera_never_breaks_it() {
+        let saved = ron::to_string(&Camera::default()).unwrap();
+        let bytes = saved.as_bytes();
+        let replacements: &[&[u8]] = &[
+            b"NaN", b"inf", b"-inf", b"1e39", b"-0", b"999", b"(", b")", b",", b"\"", b"",
+        ];
+        let mut seed: u64 = 7;
+        let mut next = |n: usize| {
+            seed = seed
+                .wrapping_mul(6_364_136_223_846_793_005)
+                .wrapping_add(1_442_695_040_888_963_407);
+            (seed >> 33) as usize % n.max(1)
+        };
+        for _ in 0..3_000 {
+            let mut damaged = bytes.to_vec();
+            for _ in 0..1 + next(3) {
+                let at = next(damaged.len());
+                let cut = next(4).min(damaged.len() - at);
+                let with = replacements[next(replacements.len())];
+                damaged.splice(at..at + cut, with.iter().copied());
+            }
+            let text = String::from_utf8_lossy(&damaged);
+            if let Ok(camera) = ron::from_str::<Camera>(&text) {
+                assert!(usable(&camera.sanitized()), "{text}");
+            }
+        }
     }
 }

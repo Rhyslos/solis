@@ -173,10 +173,11 @@ impl Workbench {
         self.accent
     }
 
-    /// Uses `camera` (as saved last time).
+    /// Uses `camera` (as saved last time), with anything unusable in it
+    /// replaced (see [`Camera::sanitized`]).
     #[must_use]
     pub fn with_camera(mut self, camera: Camera) -> Self {
-        self.viewport.camera = camera;
+        self.viewport.camera = camera.sanitized();
         self
     }
 
@@ -703,22 +704,26 @@ fn console(ui: &mut Ui, console: &mut Console, accent: Accent) {
             });
         });
     });
-    egui::ScrollArea::vertical()
-        .auto_shrink(false)
-        .stick_to_bottom(true)
+    // Only the rows in view are laid out, so a full console (2,000
+    // messages) costs no more per frame than a short one.
+    let shown: Vec<&LogLine> = console.shown().collect();
+    egui::Frame::new()
+        .inner_margin(egui::Margin::symmetric(6, 4))
         .show(ui, |ui| {
-            egui::Frame::new()
-                .inner_margin(egui::Margin::same(6))
-                .show(ui, |ui| {
-                    // Rows 18 points apart, as in the mockup.
-                    ui.spacing_mut().item_spacing = egui::vec2(6.0, 4.0);
-                    ui.spacing_mut().interact_size.y = 14.0;
-                    for line in console.shown() {
+            ui.spacing_mut().item_spacing = egui::vec2(6.0, 0.0);
+            egui::ScrollArea::vertical()
+                .auto_shrink(false)
+                .stick_to_bottom(true)
+                .show_rows(ui, CONSOLE_ROW, shown.len(), |ui, rows| {
+                    for line in &shown[rows] {
                         console_line(ui, line);
                     }
                 });
         });
 }
+
+/// The height of one console row, as in the mockup.
+const CONSOLE_ROW: f32 = 18.0;
 
 /// One level's filter button: its icon and count, filled with the accent
 /// while that level is shown.
@@ -782,21 +787,34 @@ fn level_filter(
 
 /// One console message: the time, the level's icon and the text.
 fn console_line(ui: &mut Ui, line: &LogLine) {
-    ui.horizontal_wrapped(|ui| {
-        ui.label(
-            RichText::new(&line.time)
-                .monospace()
-                .color(theme::TEXT_TIME),
-        );
-        let size = 11.0;
-        let (rect, _) = ui.allocate_exact_size(egui::vec2(size, size), egui::Sense::hover());
-        icons::icon(ui.painter(), rect, line.level.icon(), line.level.color());
-        ui.label(
+    let (row, _) = ui.allocate_exact_size(
+        egui::vec2(ui.available_width(), CONSOLE_ROW),
+        egui::Sense::hover(),
+    );
+    let mut row_ui = ui.new_child(
+        egui::UiBuilder::new()
+            .max_rect(row)
+            .layout(Layout::left_to_right(Align::Center)),
+    );
+    let ui = &mut row_ui;
+    ui.label(
+        RichText::new(&line.time)
+            .monospace()
+            .color(theme::TEXT_TIME),
+    );
+    let size = 11.0;
+    let (rect, _) = ui.allocate_exact_size(egui::vec2(size, size), egui::Sense::hover());
+    icons::icon(ui.painter(), rect, line.level.icon(), line.level.color());
+    // One row per message: a long one is cut short, and shows in full when
+    // pointed at.
+    ui.add(
+        egui::Label::new(
             RichText::new(&line.text)
                 .monospace()
                 .color(line.level.color()),
-        );
-    });
+        )
+        .truncate(),
+    );
 }
 
 #[cfg(test)]
@@ -1126,5 +1144,29 @@ mod tests {
         h.run();
         let last = h.state().log_lines().last().map(|l| l.text.clone());
         assert!(last.is_some_and(|t| t.contains("Phase 8")));
+    }
+
+    /// Part of the scale check (`tools/scale/scale-check.sh`, decision
+    /// 0011): how long the editor takes to lay out and draw one frame of
+    /// its interface, with a full console. Not run with the normal tests.
+    #[test]
+    #[ignore = "scale check: run by tools/scale/scale-check.sh"]
+    #[allow(clippy::print_stdout)]
+    fn scale_check_editor_frame() {
+        const TARGET_MS: f64 = 4.0;
+        let mut h = harness();
+        for i in 0..CONSOLE_LIMIT {
+            h.state_mut().log(LogLevel::Info, format!("Message {i}"));
+        }
+        h.run();
+        let frames = 200;
+        let start = std::time::Instant::now();
+        for _ in 0..frames {
+            h.step();
+        }
+        let ms = start.elapsed().as_secs_f64() * 1000.0 / f64::from(frames);
+        let verdict = if ms <= TARGET_MS { "ok" } else { "SLOW" };
+        println!("Scale check: editor frame {ms:.2} ms (target {TARGET_MS} ms) {verdict}");
+        assert!(ms <= TARGET_MS, "the editor takes {ms:.2} ms per frame");
     }
 }

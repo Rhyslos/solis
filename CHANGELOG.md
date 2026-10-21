@@ -6,9 +6,15 @@ What changed in each version, for people using Solis. Newest first.
 
 ### Changed
 
+- The Console stays fast when full: it lays out only the messages in view (a full Console took about 10 ms a frame, now 0.3 ms). Long messages are cut to one line and show in full when pointed at.
+- A camera saved with broken numbers (from a damaged settings file) is repaired when Solis starts, instead of showing a broken view.
+- `solis --help` takes the program's name from one place, like the rest of the editor.
+
 - The editor looks more like the final mockup: the scene tab sits on a lighter strip with an icon and ×; every panel tab has an icon and a deeper accent underline; the menus are roomier; Play, Play with others and Stop are icon buttons; panel menu rows end in a search icon; the console has compact filter buttons (icon and count), times on every message and JetBrains Mono text; and the viewport fades from dark above to a lighter ground, with a cool grey-blue grid and no hard horizon.
 
 ### Added
+
+- The user manual (`docs/manual`): getting started, concepts, a tour of the interface, moving around the viewport, the Console and every shortcut.
 
 - A ready-made `solis.exe` for Windows, built on GitHub whenever code is merged (Actions tab, **Windows EXE**). Release builds on Windows open without a console window.
 
