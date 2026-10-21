@@ -1,0 +1,172 @@
+//! Renders real frames on a GPU and checks the pixels.
+//!
+//! Machines without a GPU skip these tests with a note, unless the
+//! environment variable `REQUIRE_GPU` is set, in which case a missing GPU is
+//! a failure. The CI window job sets it and installs a software driver, so
+//! these tests always run somewhere.
+
+#![allow(clippy::unwrap_used, clippy::expect_used, clippy::print_stderr)]
+
+use glam::{Mat4, Vec3, Vec4};
+use render::{FrameParams, ViewportRenderer, best_sample_count, read_pixels};
+
+/// The editor's backdrop, sRGB 0 to 255 (as in the editor theme).
+const SKY_TOP: [u8; 3] = [0x2c, 0x30, 0x38];
+const SKY_HORIZON: [u8; 3] = [0x22, 0x25, 0x2b];
+const GROUND: [u8; 3] = [0x1c, 0x1e, 0x22];
+
+fn srgb(c: [u8; 3]) -> [f32; 3] {
+    c.map(|v| f32::from(v) / 255.0)
+}
+
+struct Gpu {
+    adapter: wgpu::Adapter,
+    device: wgpu::Device,
+    queue: wgpu::Queue,
+}
+
+fn gpu() -> Option<Gpu> {
+    let instance =
+        wgpu::Instance::new(wgpu::InstanceDescriptor::new_without_display_handle().with_env());
+    let found =
+        pollster::block_on(instance.request_adapter(&wgpu::RequestAdapterOptions::default()))
+            .ok()
+            .and_then(|adapter| {
+                let (device, queue) =
+                    pollster::block_on(adapter.request_device(&wgpu::DeviceDescriptor::default()))
+                        .ok()?;
+                Some(Gpu {
+                    adapter,
+                    device,
+                    queue,
+                })
+            });
+    if found.is_none() {
+        assert!(
+            std::env::var_os("REQUIRE_GPU").is_none(),
+            "REQUIRE_GPU is set but no GPU adapter was found"
+        );
+        eprintln!("No GPU adapter available; skipping GPU rendering test.");
+    }
+    found
+}
+
+/// A camera at `eye` looking straight along +Y (level with the horizon),
+/// 60° tall view, square image.
+fn looking_north(eye: Vec3) -> Mat4 {
+    let (near, far) = (0.1, 1000.0);
+    let scale = 1.0 / (30.0_f32.to_radians()).tan();
+    let depth = far / (near - far);
+    let projection = Mat4::from_cols(
+        Vec4::new(scale, 0.0, 0.0, 0.0),
+        Vec4::new(0.0, scale, 0.0, 0.0),
+        Vec4::new(0.0, 0.0, depth, -1.0),
+        Vec4::new(0.0, 0.0, depth * near, 0.0),
+    );
+    // Right is +X, up is +Z, forward is +Y (camera looks down its -Z).
+    let view = Mat4::from_cols(
+        Vec4::new(1.0, 0.0, 0.0, 0.0),
+        Vec4::new(0.0, 0.0, -1.0, 0.0),
+        Vec4::new(0.0, 1.0, 0.0, 0.0),
+        Vec4::new(-eye.x, -eye.z, eye.y, 1.0),
+    );
+    projection * view
+}
+
+fn pixel(pixels: &[u8], size: u32, x: u32, y: u32) -> [u8; 3] {
+    let at = ((y * size + x) * 4) as usize;
+    [pixels[at], pixels[at + 1], pixels[at + 2]]
+}
+
+fn between(value: [u8; 3], low: [u8; 3], high: [u8; 3]) -> bool {
+    (0..3).all(|i| value[i] + 3 >= low[i].min(high[i]) && value[i] <= low[i].max(high[i]) + 3)
+}
+
+#[test]
+fn the_backdrop_shows_sky_above_and_ground_below_in_the_right_colours() {
+    let Some(gpu) = gpu() else { return };
+    let renderer = ViewportRenderer::new(&gpu.device, best_sample_count(&gpu.adapter));
+    let size = 64;
+    let target = renderer.create_target(&gpu.device, [size, size]);
+    let eye = Vec3::new(0.0, 0.0, 2.0);
+    renderer.render(
+        &gpu.device,
+        &gpu.queue,
+        &target,
+        &FrameParams {
+            view_projection: looking_north(eye),
+            camera_position: eye,
+            // Far away, so no grid lines land on the pixels checked.
+            // The axes are still drawn.
+            focus: Vec3::new(1.0e7, 1.0e7, 0.0),
+            sky_top: srgb(SKY_TOP),
+            sky_horizon: srgb(SKY_HORIZON),
+            ground: srgb(GROUND),
+        },
+    );
+    let pixels = read_pixels(&gpu.device, &gpu.queue, &target).unwrap();
+    assert_eq!(pixels.len(), (size * size * 4) as usize);
+
+    // The top row is sky, between the horizon and top colours. Written as
+    // stored sRGB values: if the shader forgot to encode, these would come
+    // out far darker.
+    let top = pixel(&pixels, size, size / 2, 0);
+    assert!(between(top, SKY_HORIZON, SKY_TOP), "top pixel {top:?}");
+    // The bottom row is ground, no lighter than the ground colour. (Off
+    // centre: the green Y axis runs straight ahead down the middle.)
+    let bottom = pixel(&pixels, size, size / 4, size - 1);
+    assert!(
+        between(bottom, [0, 0, 0], GROUND),
+        "bottom pixel {bottom:?}"
+    );
+    assert!(
+        top[2] > bottom[2],
+        "sky {top:?} not lighter than ground {bottom:?}"
+    );
+}
+
+#[test]
+fn the_ground_axes_show_in_red_and_green() {
+    let Some(gpu) = gpu() else { return };
+    let renderer = ViewportRenderer::new(&gpu.device, best_sample_count(&gpu.adapter));
+    let size = 64;
+    let target = renderer.create_target(&gpu.device, [size, size]);
+    // Standing on the Y axis, so it runs straight ahead into the middle of
+    // the lower half; the X axis crosses in front.
+    let eye = Vec3::new(0.0, -10.0, 2.0);
+    renderer.render(
+        &gpu.device,
+        &gpu.queue,
+        &target,
+        &FrameParams {
+            view_projection: looking_north(eye),
+            camera_position: eye,
+            focus: Vec3::ZERO,
+            sky_top: srgb(SKY_TOP),
+            sky_horizon: srgb(SKY_HORIZON),
+            ground: srgb(GROUND),
+        },
+    );
+    let pixels = read_pixels(&gpu.device, &gpu.queue, &target).unwrap();
+    let greenish = (size / 2..size)
+        .map(|y| pixel(&pixels, size, size / 2, y))
+        .any(|[r, g, b]| g > r + 20 && g > b + 20);
+    let reddish = (0..size)
+        .flat_map(|y| (0..size).map(move |x| (x, y)))
+        .map(|(x, y)| pixel(&pixels, size, x, y))
+        .any(|[r, g, b]| r > g + 20 && r > b + 20);
+    assert!(greenish, "no green Y axis down the middle");
+    assert!(reddish, "no red X axis");
+}
+
+#[test]
+fn tiny_and_huge_sizes_are_clamped() {
+    let Some(gpu) = gpu() else { return };
+    let renderer = ViewportRenderer::new(&gpu.device, 1);
+    assert_eq!(renderer.create_target(&gpu.device, [0, 0]).size(), [1, 1]);
+    let max = gpu.device.limits().max_texture_dimension_2d;
+    assert_eq!(
+        renderer.create_target(&gpu.device, [u32::MAX, 3]).size(),
+        [max, 3]
+    );
+}
