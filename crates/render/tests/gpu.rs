@@ -8,7 +8,10 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::print_stderr)]
 
 use glam::{Mat4, Vec3, Vec4};
-use render::{FrameParams, Look, Shading, ViewportRenderer, best_sample_count, read_pixels};
+use render::{
+    FrameParams, Light, LightKind, Look, Shading, Sun, ViewportRenderer, best_sample_count,
+    read_pixels,
+};
 
 /// The editor's backdrop, sRGB 0 to 255 (as in the editor theme).
 const SKY_TOP: [u8; 3] = [0x16, 0x18, 0x1d];
@@ -118,7 +121,9 @@ fn the_backdrop_shows_sky_above_and_ground_below_in_the_right_colours() {
             ground: srgb(GROUND),
             shading: Shading::default(),
             size_px: [64, 64],
+            sun: Sun::default(),
         },
+        &[],
         &[],
     );
     let pixels = read_pixels(&gpu.device, &gpu.queue, &target).unwrap();
@@ -164,7 +169,9 @@ fn the_ground_axes_show_in_red_and_green() {
             ground: srgb(GROUND),
             shading: Shading::default(),
             size_px: [64, 64],
+            sun: Sun::default(),
         },
+        &[],
         &[],
     );
     let pixels = read_pixels(&gpu.device, &gpu.queue, &target).unwrap();
@@ -212,11 +219,12 @@ fn scale_check_viewport_frame() {
         ground: srgb(GROUND),
         shading: Shading::default(),
         size_px: [1920, 1080],
+        sun: Sun::default(),
     };
     let frames = 60;
     let start = std::time::Instant::now();
     for _ in 0..frames {
-        renderer.render(&gpu.device, &gpu.queue, &target, &params, &[]);
+        renderer.render(&gpu.device, &gpu.queue, &target, &params, &[], &[]);
         gpu.device
             .poll(wgpu::PollType::Wait {
                 submission_index: None,
@@ -239,6 +247,28 @@ fn render_with(
     shading: Shading,
     size: u32,
 ) -> Option<(Vec<u8>, u32)> {
+    render_lit(
+        model,
+        looking_north(eye),
+        eye,
+        shading,
+        size,
+        Sun::default(),
+        &[],
+    )
+}
+
+/// Renders a model seen through `view_projection` from `eye`, lit by `sun`
+/// and `lights`, and returns the pixels of a `size`-pixel square.
+fn render_lit(
+    model: &assets::Model,
+    view_projection: Mat4,
+    eye: Vec3,
+    shading: Shading,
+    size: u32,
+    sun: Sun,
+    lights: &[Light],
+) -> Option<(Vec<u8>, u32)> {
     let gpu = gpu()?;
     let renderer = ViewportRenderer::new(&gpu.device, best_sample_count(&gpu.adapter));
     let target = renderer.create_target(&gpu.device, [size, size]);
@@ -249,7 +279,7 @@ fn render_with(
         &gpu.queue,
         &target,
         &FrameParams {
-            view_projection: looking_north(eye),
+            view_projection,
             camera_position: eye,
             focus: Vec3::new(1.0e7, 1.0e7, 0.0),
             sky_top: srgb(SKY_TOP),
@@ -257,8 +287,10 @@ fn render_with(
             ground: srgb(GROUND),
             shading,
             size_px: [size, size],
+            sun,
         },
         &[&uploaded],
+        lights,
     );
     Some((read_pixels(&gpu.device, &gpu.queue, &target).unwrap(), size))
 }
@@ -514,4 +546,367 @@ fn dump_renders_to_look_at() {
         }
         std::fs::write(std::path::Path::new(&dir).join(format!("{name}.ppm")), ppm).unwrap();
     }
+    // The sample lit by a warm spotlight and a blue point light, with the
+    // sun's shadows.
+    let eye = Vec3::new(1.5, -6.0, 2.6);
+    let lights = [
+        Light {
+            kind: LightKind::Spot {
+                inner: 0.3,
+                outer: 0.45,
+            },
+            position: Vec3::new(-2.0, -2.0, 3.0),
+            direction: Vec3::new(2.0, 2.0, -3.0),
+            color: [1.0, 0.7, 0.4],
+            strength: 3000.0,
+            range: None,
+        },
+        Light {
+            kind: LightKind::Point,
+            position: Vec3::new(1.5, -1.0, 0.5),
+            direction: -Vec3::Z,
+            color: [0.3, 0.5, 1.0],
+            strength: 400.0,
+            range: None,
+        },
+    ];
+    for (name, look) in [("lit", Look::Standard), ("lit-stylized", Look::Stylized)] {
+        let Some((pixels, size)) = render_lit(
+            &sample(),
+            looking_north(eye),
+            eye,
+            shading(look),
+            256,
+            Sun::default(),
+            &lights,
+        ) else {
+            return;
+        };
+        let mut ppm = format!("P6 {size} {size} 255\n").into_bytes();
+        for c in pixels.chunks_exact(4) {
+            ppm.extend_from_slice(&c[..3]);
+        }
+        std::fs::write(std::path::Path::new(&dir).join(format!("{name}.ppm")), ppm).unwrap();
+    }
+}
+
+// ------------------------------------------------------------ lights ---
+
+/// A camera at `eye` looking straight down (-Z), +X to the right and +Y
+/// up the image, 60° tall view, square image.
+fn looking_down(eye: Vec3) -> Mat4 {
+    let (near, far) = (0.1, 1000.0);
+    let scale = 1.0 / (30.0_f32.to_radians()).tan();
+    let depth = far / (near - far);
+    let projection = Mat4::from_cols(
+        Vec4::new(scale, 0.0, 0.0, 0.0),
+        Vec4::new(0.0, scale, 0.0, 0.0),
+        Vec4::new(0.0, 0.0, depth, -1.0),
+        Vec4::new(0.0, 0.0, depth * near, 0.0),
+    );
+    projection * Mat4::from_translation(-eye)
+}
+
+/// The pixel showing ground point (`x`, `y`) to [`looking_down`] from 10 m
+/// above the origin, in a `size`-pixel image.
+fn ground_pixel(pixels: &[u8], size: u32, x: f32, y: f32) -> [u8; 3] {
+    let half = 10.0 * 30.0_f32.to_radians().tan();
+    let px = ((x / half + 1.0) * 0.5 * size as f32) as u32;
+    let py = ((1.0 - y / half) * 0.5 * size as f32) as u32;
+    pixel(pixels, size, px, py)
+}
+
+/// A flat square facing up at height `z`, `half` metres each way from
+/// (`cx`, 0).
+fn square(cx: f32, z: f32, half: f32) -> assets::Mesh {
+    let corner = |x: f32, y: f32| assets::Vertex {
+        position: [cx + x, y, z],
+        normal: [0.0, 0.0, 1.0],
+        uv: [0.0, 0.0],
+    };
+    assets::Mesh {
+        vertices: vec![
+            corner(-half, -half),
+            corner(half, -half),
+            corner(half, half),
+            corner(-half, half),
+        ],
+        indices: vec![0, 1, 2, 0, 2, 3],
+        material: None,
+    }
+}
+
+/// A grey floor 12 m across (raised a little, above the grid and axes),
+/// and optionally a small square floating over its middle.
+fn floor(with_roof: bool) -> assets::Model {
+    let mut meshes = vec![square(0.0, 0.05, 6.0)];
+    if with_roof {
+        meshes.push(square(0.0, 1.5, 0.5));
+    }
+    assets::Model {
+        name: "Floor".into(),
+        meshes,
+        materials: Vec::new(),
+        textures: Vec::new(),
+        lamps: Vec::new(),
+        bounds: assets::Bounds {
+            min: Vec3::new(-6.0, -6.0, 0.0),
+            max: Vec3::new(6.0, 6.0, 1.5),
+        },
+        warnings: Vec::new(),
+    }
+}
+
+fn brightness(c: [u8; 3]) -> i32 {
+    c.iter().map(|&v| i32::from(v)).sum()
+}
+
+/// A sun shining down at 45° towards +X.
+fn slanted_sun(shadows: bool) -> Sun {
+    Sun {
+        direction: Vec3::new(1.0, 0.0, -1.0).normalize(),
+        shadows,
+        ..Sun::default()
+    }
+}
+
+#[test]
+fn the_sun_casts_a_shadow_where_it_should() {
+    let eye = Vec3::new(0.0, 0.0, 10.0);
+    for look in [Look::Standard, Look::Stylized] {
+        let render = |shadows| {
+            render_lit(
+                &floor(true),
+                looking_down(eye),
+                eye,
+                Shading {
+                    look,
+                    ..Shading::default()
+                },
+                128,
+                slanted_sun(shadows),
+                &[],
+            )
+        };
+        let Some((with, size)) = render(true) else {
+            return;
+        };
+        let (without, _) = render(false).unwrap();
+        // The square 1.5 m up throws its shadow 1.5 m towards +X.
+        let shadow = ground_pixel(&with, size, 1.5, 0.2);
+        let open = ground_pixel(&with, size, -2.5, 0.2);
+        assert!(
+            brightness(shadow) + 60 < brightness(open),
+            "{look:?}: shadow {shadow:?} not darker than open ground {open:?}"
+        );
+        // Without shadows, the same spot is lit like the rest.
+        let unshadowed = ground_pixel(&without, size, 1.5, 0.2);
+        assert!(
+            (brightness(unshadowed) - brightness(open)).abs() < 12,
+            "{look:?}: {unshadowed:?} vs {open:?}"
+        );
+        // Beyond the shadow, the ground is lit again.
+        let past = ground_pixel(&with, size, 3.5, 0.2);
+        assert!((brightness(past) - brightness(open)).abs() < 12, "{past:?}");
+    }
+}
+
+#[test]
+fn the_sun_shadow_falls_on_the_ground_grid_too() {
+    let eye = Vec3::new(0.0, 0.0, 10.0);
+    let mut floating = floor(true);
+    floating.meshes.remove(0);
+    floating.bounds.min = Vec3::new(-0.5, -0.5, 1.5);
+    let render = |shadows| {
+        render_lit(
+            &floating,
+            looking_down(eye),
+            eye,
+            Shading::default(),
+            128,
+            slanted_sun(shadows),
+            &[],
+        )
+    };
+    let Some((with, size)) = render(true) else {
+        return;
+    };
+    let (without, _) = render(false).unwrap();
+    let shadow = ground_pixel(&with, size, 1.5, 0.2);
+    let open = ground_pixel(&with, size, -2.5, 0.2);
+    assert!(
+        brightness(shadow) + 15 < brightness(open),
+        "{shadow:?} vs {open:?}"
+    );
+    let plain = ground_pixel(&without, size, 1.5, 0.2);
+    assert!(
+        (brightness(plain) - brightness(open)).abs() < 6,
+        "{plain:?}"
+    );
+}
+
+fn no_sun() -> Sun {
+    Sun {
+        strength: 0.0,
+        ..Sun::default()
+    }
+}
+
+fn lamp(kind: LightKind, position: Vec3) -> Light {
+    Light {
+        kind,
+        position,
+        direction: -Vec3::Z,
+        color: [1.0, 0.6, 0.3],
+        strength: 60.0,
+        range: None,
+    }
+}
+
+#[test]
+fn a_point_light_lights_the_ground_near_it_most() {
+    let eye = Vec3::new(0.0, 0.0, 10.0);
+    for look in [Look::Standard, Look::Stylized] {
+        let shading = Shading {
+            look,
+            ..Shading::default()
+        };
+        let render = |lights: &[Light]| {
+            render_lit(
+                &floor(false),
+                looking_down(eye),
+                eye,
+                shading,
+                128,
+                no_sun(),
+                lights,
+            )
+        };
+        let Some((dark, size)) = render(&[]) else {
+            return;
+        };
+        let (lit, _) = render(&[lamp(LightKind::Point, Vec3::new(2.0, 0.0, 1.0))]).unwrap();
+        let under = ground_pixel(&lit, size, 2.0, 0.3);
+        let far = ground_pixel(&lit, size, -3.5, 0.3);
+        let before = ground_pixel(&dark, size, 2.0, 0.3);
+        assert!(
+            brightness(under) > brightness(before) + 50,
+            "{look:?}: {under:?} vs unlit {before:?}"
+        );
+        assert!(
+            brightness(under) > brightness(far) + 60,
+            "{look:?}: {under:?} vs far {far:?}"
+        );
+        // Warm light: it adds more red than blue.
+        let gain = |c: usize| i32::from(under[c]) - i32::from(before[c]);
+        assert!(gain(0) > gain(2) + 20, "{look:?}: {under:?} vs {before:?}");
+    }
+}
+
+#[test]
+fn a_spotlight_lights_only_inside_its_cone() {
+    let eye = Vec3::new(0.0, 0.0, 10.0);
+    let spot = Light {
+        strength: 1000.0,
+        ..lamp(
+            LightKind::Spot {
+                inner: 0.25,
+                outer: 0.35,
+            },
+            Vec3::new(0.0, 0.0, 3.0),
+        )
+    };
+    let render = |lights: &[Light]| {
+        render_lit(
+            &floor(false),
+            looking_down(eye),
+            eye,
+            Shading::default(),
+            128,
+            no_sun(),
+            lights,
+        )
+    };
+    let Some((lit, size)) = render(&[spot]) else {
+        return;
+    };
+    let (dark, _) = render(&[]).unwrap();
+    // The cone reaches about 1.1 m out on the ground.
+    let inside = ground_pixel(&lit, size, 0.4, 0.3);
+    let outside = ground_pixel(&lit, size, 2.5, 0.3);
+    let outside_dark = ground_pixel(&dark, size, 2.5, 0.3);
+    assert!(
+        brightness(inside) > brightness(outside) + 100,
+        "{inside:?} {outside:?}"
+    );
+    assert!(
+        (brightness(outside) - brightness(outside_dark)).abs() < 6,
+        "outside the cone stays as it was: {outside:?} vs {outside_dark:?}"
+    );
+}
+
+#[test]
+fn a_lamp_with_a_range_stops_there() {
+    let eye = Vec3::new(0.0, 0.0, 10.0);
+    let mut short = lamp(LightKind::Point, Vec3::new(0.0, 0.0, 0.5));
+    short.range = Some(2.0);
+    let render = |lights: &[Light]| {
+        render_lit(
+            &floor(false),
+            looking_down(eye),
+            eye,
+            Shading::default(),
+            128,
+            no_sun(),
+            lights,
+        )
+    };
+    let Some((lit, size)) = render(&[short]) else {
+        return;
+    };
+    let (dark, _) = render(&[]).unwrap();
+    let near = ground_pixel(&lit, size, 0.5, 0.3);
+    let beyond = ground_pixel(&lit, size, 3.0, 0.3);
+    let beyond_dark = ground_pixel(&dark, size, 3.0, 0.3);
+    assert!(
+        brightness(near) > brightness(beyond) + 60,
+        "{near:?} {beyond:?}"
+    );
+    assert!((brightness(beyond) - brightness(beyond_dark)).abs() < 6);
+}
+
+#[test]
+fn many_lamps_and_odd_values_draw_without_trouble() {
+    let eye = Vec3::new(0.0, 0.0, 10.0);
+    let mut lights: Vec<Light> = (0..40)
+        .map(|i| lamp(LightKind::Point, Vec3::new(i as f32 * 0.2 - 4.0, 0.0, 1.0)))
+        .collect();
+    lights.push(Light {
+        strength: f32::NAN,
+        ..lamp(LightKind::Point, Vec3::ZERO)
+    });
+    lights.push(lamp(
+        LightKind::Spot {
+            inner: f32::INFINITY,
+            outer: -1.0,
+        },
+        Vec3::new(0.0, 0.0, f32::NAN),
+    ));
+    let weird_sun = Sun {
+        direction: Vec3::ZERO,
+        strength: f32::INFINITY,
+        ..Sun::default()
+    };
+    let Some((pixels, size)) = render_lit(
+        &floor(true),
+        looking_down(eye),
+        eye,
+        Shading::default(),
+        64,
+        weird_sun,
+        &lights,
+    ) else {
+        return;
+    };
+    assert_eq!(pixels.len(), (size * size * 4) as usize);
 }

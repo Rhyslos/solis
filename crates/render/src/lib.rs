@@ -1,6 +1,6 @@
 //! Draws viewports with wgpu: the backdrop, models (uploaded once with
 //! [`ViewportRenderer::upload_model`]), the ground grid and the axes. Full
-//! materials and lights arrive later in Phase 1 (ROADMAP.md).
+//! materials, the sun with its shadows, and lamps.
 //!
 //! Layer 1 (engine). Knows nothing about the editor or any interface: it
 //! receives a [`FrameParams`] (camera and colours) and produces an image in
@@ -8,6 +8,7 @@
 
 mod frame;
 mod gpu_model;
+mod lighting;
 mod readback;
 mod renderer;
 
@@ -16,6 +17,10 @@ pub use frame::{
     GRID_STRENGTHS, Look, Shading, grid_reach, srgb_to_linear,
 };
 pub use gpu_model::GpuModel;
+pub use lighting::{
+    Light, LightKind, MAX_LIGHTS, SHADOW_FORMAT, SHADOW_MAP_SIZE, Sun, light_markers,
+    sun_view_projection,
+};
 pub use readback::read_pixels;
 pub use renderer::{
     AXIS_X_COLOR, AXIS_Y_COLOR, COLOR_FORMAT, DEPTH_FORMAT, LineVertex, SHADER_SOURCE,
@@ -61,6 +66,7 @@ mod shader_tests {
                 "mesh_vs",
                 "outline_fs",
                 "outline_vs",
+                "shadow_vs",
                 "sky_fs",
                 "sky_vs"
             ]

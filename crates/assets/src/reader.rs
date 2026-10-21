@@ -77,17 +77,20 @@ fn read_model(
 
     let (materials, textures) = read_materials(document, &buffers, folder, limits, &mut warnings);
     let meshes = geometry::read_meshes(document, &buffers, limits, &mut warnings)?;
+    let lamps = crate::lights::read_lamps(&geometry::placed_nodes(document)?, &mut warnings)?;
     let bounds = Bounds::around(
         meshes
             .iter()
             .flat_map(|m| m.vertices.iter().map(|v| glam::Vec3::from(v.position))),
     )
+    .or_else(|| Bounds::around(lamps.iter().map(|l| l.position)))
     .ok_or(ImportError::Empty)?;
     Ok(Model {
         name: name.to_string(),
         meshes,
         materials,
         textures,
+        lamps,
         bounds,
         warnings,
     })
