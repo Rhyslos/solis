@@ -32,8 +32,8 @@ Phases 0–6 don't need Lust. If Lust isn't ready by Phase 7, Phases 8 and 9 go 
 - A Cargo workspace with layered crates and a test that enforces the layers (as in Aventail).
 - CI following [decision 0001](docs/decisions/0001-builds-on-demand.md): ready pull requests and manual runs only.
 - A window (winit) with wgpu drawing into it.
-- The egui editor shell: empty panels where the entity list, inspector, library and terminal will go, and the top bar with Build and Play.
-- **The theme, first try:** mid-greys and accent gradients, kept in one file so it's easy to adjust.
+- The egui editor shell, as in [decision 0004](docs/decisions/0004-editor-layout.md): the one-row top bar with document tabs, and dockable panels (`egui_dock`) for Scene, Properties, the viewport, the library and the console, empty for now. Layouts saved per computer, with the three presets.
+- **The theme:** dark greys and one accent colour, kept in one file so it's easy to adjust.
 
 **Decide before starting:** the licence (MIT proposed). Whether to copy Aventail's foundation code or share it as a common crate: copy now, share later is recommended, so neither project waits for the other.
 
