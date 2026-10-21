@@ -22,7 +22,7 @@ Solis is a 3D game engine. Read DESIGN.md before any change; it is the plan, and
 The repo is private, so CI minutes are limited.
 
 - Never add a workflow that runs on every push, on a schedule, or for docs-only changes.
-- Workflows run on ready-for-review pull requests and by hand only. Linux by default; Windows and macOS by hand or for release tags.
+- Workflows run on ready-for-review pull requests and by hand only. Linux by default; Windows and macOS by hand or for release tags. The one exception is the Windows EXE build, which also runs when code is merged into main (decision 0010).
 - Run the full checks locally before pushing, and list the results in the pull request: `cargo fmt --all -- --check`, `cargo clippy --workspace --all-targets -- -D warnings`, `cargo test --workspace`, `cargo deny check`, the GPU tests with `REQUIRE_GPU=1`, and `tools/smoke/window-smoke.sh` under `xvfb-run` (see ARCHITECTURE.md, Checks).
 
 ## Code

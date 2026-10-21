@@ -314,3 +314,4 @@ Both sides review each other's pull requests.
 - 2026-10-21: [0007](docs/decisions/0007-mit-licence-and-separate-from-aventail.md): MIT licence; Solis stays separate from Aventail, copying and adapting Aventail's code, which its owner relicenses.
 - 2026-10-21: [0008](docs/decisions/0008-lighting-is-a-project-choice.md): lighting is a choice per project; real-time lights with sky light come first, baked and global illumination later.
 - 2026-10-21: [0009](docs/decisions/0009-fly-camera-controls.md): the viewport camera flies with Unreal's controls (hold right mouse; W A S D, Q and E).
+- 2026-10-21: [0010](docs/decisions/0010-windows-exe-on-merge.md): a Windows `solis.exe` is built on GitHub when code is merged into main, and by hand. Loosens 0001 for this one build.

@@ -6,6 +6,10 @@ A free, open-source 3D game engine for stylized games, strategy games, online co
 
 ## Running it
 
+**On Windows, without building it yourself:** open the repo's **Actions** tab, click the latest **Windows EXE** run, and download **solis-windows**. Unzip it and run `solis.exe`. A new one is built whenever code is merged; to build one now, choose **Windows EXE** and **Run workflow**.
+
+**From the source code:**
+
 You need [Rust](https://rustup.rs). Then, in this folder:
 
 ```
