@@ -64,7 +64,7 @@ Milestones, one pull request each:
 - The asset database: stable IDs kept in a small text file beside each asset, so renaming a file doesn't break anything; assets reload when changed on disk.
 - Undo and redo for every edit.
 
-**Decide before starting:** storage (`bevy_ecs` on its own, or Solis's own) and the scene file format.
+**Decide before starting:** storage (`bevy_ecs` on its own, or Solis's own) and the scene file format. The file names are already settled ([decision 0014](docs/decisions/0014-file-names.md)): `project.solis` marks a project, and scenes, prefabs and materials are `.solscene`, `.solprefab` and `.solmat` files.
 
 **Gate:** save a scene, change it in a text editor, and see it reload. Rename a texture and nothing breaks. Two people change different entities in the same scene on two branches, and Git merges them without a conflict.
 

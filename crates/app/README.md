@@ -11,7 +11,7 @@ Wire the engine and the editor together. It owns the window and the GPU device, 
 ## Must never
 
 - Hold feature logic: that belongs in the engine or the editor
-- Hard-code the program's name outside `branding.rs`
+- Hard-code the program's name outside `branding.rs`. That includes the file names that carry it: `PROJECT_FILE` (`project.solis`) and the scene, prefab and material extensions ([decision 0014](../../docs/decisions/0014-file-names.md)) live there too.
 
 ## Depends on
 

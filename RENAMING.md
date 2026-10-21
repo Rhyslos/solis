@@ -16,9 +16,10 @@ The engine is currently called **Solis**. The name is kept in as few places as p
 5. **`.github/workflows/windows-exe.yml`**: the file copied into the download (`solis.exe`) and the download's name (`solis-windows`).
 6. **`Cargo.toml`** (root): the `repository` URL, if the GitHub repository is renamed.
 7. **`LICENSE`**: only if the copyright line should name the program.
-8. **Installer and icons** (when they exist).
-9. **Docs**: search and replace the name in `README.md`, `DESIGN.md`, `ROADMAP.md`, `CLAUDE.md`, `ARCHITECTURE.md`, `CONTRIBUTING.md` and `docs/manual/`. Add a `CHANGELOG.md` entry about the rename.
-10. **GitHub**: rename the repository in its settings. GitHub redirects the old URL automatically.
-11. **Decision record**: add one to `docs/decisions/` explaining the new name.
+8. **File names** in `crates/app/src/branding.rs`: `PROJECT_FILE` (`project.solis`) and the extensions `SCENE_EXTENSION` (`solscene`), `PREFAB_EXTENSION` (`solprefab`) and `MATERIAL_EXTENSION` (`solmat`) carry the name. Changing them means old projects need converting (or reading under both names), so decide on purpose. Aventail 3D finds Solis projects by `project.solis` (its `fileio::engine::SOLIS_PROJECT_FILE`), so change it there too.
+9. **Installer and icons** (when they exist).
+10. **Docs**: search and replace the name in `README.md`, `DESIGN.md`, `ROADMAP.md`, `CLAUDE.md`, `ARCHITECTURE.md`, `CONTRIBUTING.md` and `docs/manual/`. Add a `CHANGELOG.md` entry about the rename.
+11. **GitHub**: rename the repository in its settings. GitHub redirects the old URL automatically.
+12. **Decision record**: add one to `docs/decisions/` explaining the new name.
 
 Places get added to this list whenever the name appears somewhere new.

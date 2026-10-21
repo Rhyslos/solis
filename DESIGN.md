@@ -318,3 +318,4 @@ Both sides review each other's pull requests.
 - 2026-10-21: [0011](docs/decisions/0011-scale-check-at-phase-gates.md): a scale check (`tools/scale/scale-check.sh`) at every phase gate and on request, growing into the §2 target in Phase 4.
 - 2026-10-21: [0012](docs/decisions/0012-windows-only.md): Solis is made for Windows, the editor and exported games; Linux and macOS builds are dropped. CI's checks still run on a Linux machine, the cheapest kind.
 - 2026-10-21: [0013](docs/decisions/0013-looks-for-the-whole-view-first.md): the standard, stylized (cel-shaded, with outlines) and unlit looks, chosen for the whole view until materials become assets in Phase 2.
+- 2026-10-22: [0014](docs/decisions/0014-file-names.md): file names, the project lead's choice: `project.solis` (one per game, like `project.godot`), `.solscene`, `.solprefab` and `.solmat`. What goes inside them is decided in Phase 2.
