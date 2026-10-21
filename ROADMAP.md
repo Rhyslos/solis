@@ -35,7 +35,7 @@ Phases 0–6 don't need Lust. If Lust isn't ready by Phase 7, Phases 8 and 9 go 
 - The egui editor shell, as in [decision 0004](docs/decisions/0004-editor-layout.md): the one-row top bar with document tabs, and dockable panels (`egui_dock`) for Scene, Properties, the viewport, the library and the console, empty for now. Layouts saved per computer, with the three presets.
 - **The theme:** dark greys and one accent colour, kept in one file so it's easy to adjust.
 
-**Decide before starting:** the licence (MIT proposed). Whether to copy Aventail's foundation code or share it as a common crate: copy now, share later is recommended, so neither project waits for the other.
+**Decided:** MIT, and Aventail's foundation code is copied in and adapted rather than shared ([decision 0007](docs/decisions/0007-mit-licence-and-separate-from-aventail.md)).
 
 **Gate:** the editor opens on your PC, panels move and remember their places, and the theme feels right.
 
