@@ -236,8 +236,12 @@ The area to spend extra time on. In order of payoff:
 
 ## 13. The editor
 
-- **Layout:** a standard 3D editor. Entity list and inspector on the right, the library (assets and code) on the left or bottom and collapsible, a terminal, and Build and Build-and-Play in the top bar with tools.
-- **Theme:** dark, but not the overdone near-black. Contrasting mid-greys with a few accent colours, possibly as gradients. Tried out as we go, and shared with Aventail and Halberd where it fits.
+Settled in [decision 0004](docs/decisions/0004-editor-layout.md): Halberd's panels with Unreal's tabs, and every panel dockable.
+
+- **Top bar, one row:** menus on the left, document tabs in the centre (scenes, prefabs and code files, Unreal-style), and Play, Build and Build & Play on the right.
+- **Default arrangement:** Scene and Layers above Properties on the right, full height; the viewport in the centre with Unreal-style view buttons and Halberd's tool strip; the library beside the console underneath.
+- **Dockable:** drag any panel to an edge, onto another panel to tab them, or out to float it. Saved per computer, with presets in Window → Layouts (Default, Wide screen with the library on the left, Small screen with the library and console as tabs). Built on `egui_dock`.
+- **Theme:** dark neutral greys with one solid accent colour from the settings (petrol blue by default; red, green and plum as in Aventail).
 - **Basics:** undo and redo, gizmos, several viewports, and a play mode that resets the scene when you stop.
 - **The scripting window** (§3).
 - **Debugging:** a frame profiler, debug drawing for physics and navigation, a command console, and stepping through Lust code.
@@ -305,3 +309,4 @@ Both sides review each other's pull requests.
 - 2026-10-20: [0001](docs/decisions/0001-builds-on-demand.md): builds and checks don't run on every push.
 - 2026-10-21: [0002](docs/decisions/0002-engine-in-rust-games-in-lust.md): the engine is Rust; games are Lust. Replaces "the engine in Lust on a thin Rust foundation". The build order is in [ROADMAP.md](ROADMAP.md).
 - 2026-10-21: [0003](docs/decisions/0003-games-in-rust-lust-or-lua.md): games can be written in Lust, Rust or Lua. Replaces "LustScript/Lua only for editor scripting, never game code".
+- 2026-10-21: [0004](docs/decisions/0004-editor-layout.md): the editor's layout and theme. Halberd's panels with Unreal's tabs, every panel dockable, dark greys with one accent. Replaces "mid-greys with accent gradients".
