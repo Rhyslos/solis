@@ -20,7 +20,7 @@ Each phase ends with a **gate**: something the project lead tries by hand before
 | 7. Lust and Lua join | 7–8 | Components written in Lust or Lua, in play mode within 2 seconds |
 | 8. Netcode | 8–10 | Two PCs playing together over the internet |
 | 9. Effects and game UI | 9–10 | Solis Eclipse basics; HUDs and menus |
-| 10. Scripting and export | 10–11 | The scripting window; games packaged for Windows and Linux |
+| 10. Scripting, export and Git | 10–11 | The scripting window; games packaged for Windows and Linux; working in teams through Git |
 | 11. Solis 0.1 | 11–12 | The flagship space battle, docs, release |
 
 Phases 0–6 don't need Lust. If Lust isn't ready by Phase 7, Phases 8 and 9 go first.
@@ -56,14 +56,15 @@ Phases 0–6 don't need Lust. If Lust isn't ready by Phase 7, Phases 8 and 9 go 
 - Entity and component storage (ECS style).
 - Transforms and parenting.
 - Components that describe themselves, so the inspector can show any component, built-in or custom.
-- Scenes as text files that merge cleanly in git.
+- Scenes as text files that merge cleanly in Git: one entity per block, stable IDs, fields in a fixed order ([decision 0006](docs/decisions/0006-git-built-in.md)).
+- New projects come with a `.gitignore` and `.gitattributes` (Git LFS for models, textures and sound); generated files stay out of the repository.
 - Prefabs: nested, with per-instance overrides.
-- The asset database: stable IDs, so renaming a file doesn't break anything; assets reload when changed on disk.
+- The asset database: stable IDs kept in a small text file beside each asset, so renaming a file doesn't break anything; assets reload when changed on disk.
 - Undo and redo for every edit.
 
 **Decide before starting:** storage (`bevy_ecs` on its own, or Solis's own) and the scene file format.
 
-**Gate:** save a scene, change it in a text editor, and see it reload. Rename a texture and nothing breaks.
+**Gate:** save a scene, change it in a text editor, and see it reload. Rename a texture and nothing breaks. Two people change different entities in the same scene on two branches, and Git merges them without a conflict.
 
 ## Phase 3: The editor
 
@@ -122,11 +123,13 @@ Components in Rust work from Phase 2, since they're the engine's own kind. This 
 
 ## Phase 8: Netcode
 
-- Lockstep for strategy games: only inputs are sent.
-- Desync detection with the checksums from Phase 5, and replays.
-- Lobbies, and connecting players behind home routers (relays or Steam's networking).
+Netcode in layers ([decision 0005](docs/decisions/0005-netcode-in-layers.md)):
+
+- **Transport and sessions:** connections, reliable and unreliable messages, encryption, lobbies, and relays or Steam's networking for players behind home routers.
+- **Tools:** a lag and packet-loss simulator, network stats, desync detection with the checksums from Phase 5, and replays.
+- **Lockstep,** as an optional module, for strategy games.
+- **Other models plug in:** check that `lightyear` (server-authoritative) and `ggrs` (rollback) work with Solis, with a small example each.
 - Dedicated server builds.
-- A lag and packet-loss simulator for testing.
 
 **Decide before starting:** relays of our own or Steam's networking.
 
@@ -140,12 +143,14 @@ Components in Rust work from Phase 2, since they're the engine's own kind. This 
 
 **Gate:** laser bolts, hits and explosions look good in the stylized look, with a health bar and a pause menu on screen.
 
-## Phase 10: Scripting and export
+## Phase 10: Scripting, export and Git
 
 - **The scripting window:** LustScript and Lua through Luau, calling the same commands as the built-in tools, with undo, a sandbox and time limits (the design Aventail plans for its Phase 9).
 - **Build and export:** packaged games for Windows and Linux, and Build-and-Play from the top bar.
+- **The Git panel** ([decision 0006](docs/decisions/0006-git-built-in.md)): changes with plain-language scene summaries, commit, pull and push, branches, history, Git LFS locking, markers in the library and scene tree, and new projects from or published to a repository.
+- **The scene merge tool:** merges scenes and prefabs entity by entity; when two people changed the same field, asks which to keep.
 
-**Gate:** write a small editor tool that places objects in a ring; export a game and run it on a PC without Solis installed.
+**Gate:** write a small editor tool that places objects in a ring; export a game and run it on a PC without Solis installed. Two people on two PCs work on the same project through GitHub for an evening: commit, pull, lock a model, and resolve one real scene conflict in the editor.
 
 ## Phase 11: Solis 0.1
 
