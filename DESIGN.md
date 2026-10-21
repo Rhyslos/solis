@@ -235,10 +235,11 @@ The area to spend extra time on. In order of payoff:
 
 Settled in [decision 0004](docs/decisions/0004-editor-layout.md): Halberd's panels with Unreal's tabs, and every panel dockable.
 
-- **Top bar, one row:** menus on the left, document tabs in the centre (scenes, prefabs and code files, Unreal-style), and Play, Build and Build & Play on the right.
-- **Default arrangement:** Scene and Layers above Properties on the right, full height; the viewport in the centre with Unreal-style view buttons and Halberd's tool strip; the library beside the console underneath.
+- **Top bar, one row:** menus and document tabs on the left (Unreal's tab system), the tools as icons in the centre (Select, Move, Rotate, Scale, Transform), and Play, Build and Build & Play on the right.
+- **Default arrangement:** Scene and Layers above Properties on the right, full height; the viewport in the centre, its overlays in the corners and switchable from its ≡ menu; the library beside the console underneath. The camera is Fly only.
+- **Shaped like Aventail:** flat panels with underlined tabs and a small menu row under each title, bordered buttons with small corners, square fields.
 - **Dockable:** drag any panel to an edge, onto another panel to tab them, or out to float it. Saved per computer, with presets in Window → Layouts (Default, Wide screen with the library on the left, Small screen with the library and console as tabs). Built on `egui_dock`.
-- **Theme:** dark neutral greys with one solid accent colour from the settings (petrol blue by default; red, green and plum as in Aventail).
+- **Theme:** Aventail's dark neutral greys with one solid accent colour from the settings (petrol blue by default; red, green and plum as in Aventail).
 - **Basics:** undo and redo, gizmos, several viewports, and a play mode that resets the scene when you stop.
 - **The scripting window** (§3).
 - **Debugging:** a frame profiler, debug drawing for physics and navigation, a command console, and stepping through Lust code.
