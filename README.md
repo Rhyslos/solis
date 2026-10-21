@@ -7,3 +7,5 @@ A free, open-source 3D game engine for stylized games, strategy games, online co
 - [DESIGN.md](DESIGN.md): what Solis is and how it's planned
 - [ROADMAP.md](ROADMAP.md): the phases to Solis 0.1
 - [docs/decisions](docs/decisions): decisions and their reasons
+
+MIT licensed: see [LICENSE](LICENSE).
