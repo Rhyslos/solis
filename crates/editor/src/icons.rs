@@ -1,5 +1,6 @@
-//! The tool icons, drawn in code (no image files), so they stay sharp at any
-//! size and take the colour they are given.
+//! The editor's icons, drawn in code (no image files), so they stay sharp at
+//! any size and take the colour they are given: the tools, and the small
+//! symbols on tabs and buttons ([`Icon`]).
 
 use crate::viewport::Tool;
 use egui::{Color32, Painter, Pos2, Rect, Shape, Stroke, pos2, vec2};
@@ -105,6 +106,155 @@ fn scale(painter: &Painter, at: &dyn Fn(f32, f32) -> Pos2, stroke: Stroke) {
     painter.line_segment([at(0.17, 0.83), at(0.83, 0.17)], stroke);
 }
 
+/// The small symbols on tabs and buttons, after the final mockup
+/// ([decision 0004](../../../docs/decisions/0004-editor-layout.md)).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Icon {
+    /// A screen: the Viewport panel.
+    Viewport,
+    /// A play symbol in a screen: the Game panel.
+    Game,
+    /// A tree of lines: the Scene panel.
+    Scene,
+    /// Stacked sheets: the Layers panel.
+    Layers,
+    /// Lines of fields: the Properties panel.
+    Properties,
+    /// A folder: the Library panel.
+    Library,
+    /// Angle brackets: the Code panel.
+    Code,
+    /// A prompt: the Console panel.
+    Console,
+    /// A warning sign: the Problems panel.
+    Problems,
+    /// Hills: a scene document.
+    SceneFile,
+    /// A filled triangle: Play.
+    Play,
+    /// Two people: play with others.
+    PlayTogether,
+    /// A filled square: Stop.
+    Stop,
+    /// An "i" in a circle: information.
+    Info,
+    /// "!" in a triangle: a warning.
+    Warning,
+    /// A cross: an error.
+    Error,
+    /// A magnifying glass: search.
+    Search,
+}
+
+/// Draws `icon` in `rect` with `color`. Shapes are given on a 24-unit
+/// square, as in the mockup.
+pub fn icon(painter: &Painter, rect: Rect, icon: Icon, color: Color32) {
+    let side = rect.width().min(rect.height());
+    let square = Rect::from_center_size(rect.center(), vec2(side, side));
+    let unit = side / 24.0;
+    let v = |x: f32, y: f32| pos2(square.left() + x * unit, square.top() + y * unit);
+    let stroke = Stroke::new((2.0 * unit).max(1.0), color);
+    let line = |points: &[(f32, f32)]| {
+        painter.add(Shape::line(
+            points.iter().map(|&(x, y)| v(x, y)).collect(),
+            stroke,
+        ));
+    };
+    let outline = |points: &[(f32, f32)]| {
+        painter.add(Shape::closed_line(
+            points.iter().map(|&(x, y)| v(x, y)).collect(),
+            stroke,
+        ));
+    };
+    let fill = |points: &[(f32, f32)]| {
+        painter.add(Shape::convex_polygon(
+            points.iter().map(|&(x, y)| v(x, y)).collect(),
+            color,
+            Stroke::NONE,
+        ));
+    };
+    match icon {
+        Icon::Viewport => outline(&[(3.0, 5.0), (21.0, 5.0), (21.0, 19.0), (3.0, 19.0)]),
+        Icon::Game => {
+            outline(&[(3.0, 5.0), (21.0, 5.0), (21.0, 19.0), (3.0, 19.0)]);
+            fill(&[(10.0, 8.5), (16.0, 12.0), (10.0, 15.5)]);
+        }
+        Icon::Scene => {
+            line(&[(4.0, 6.0), (20.0, 6.0)]);
+            line(&[(8.0, 12.0), (20.0, 12.0)]);
+            line(&[(8.0, 18.0), (20.0, 18.0)]);
+            line(&[(4.0, 12.0), (4.0, 18.0)]);
+        }
+        Icon::Layers => {
+            outline(&[(12.0, 4.0), (21.0, 9.0), (12.0, 14.0), (3.0, 9.0)]);
+            line(&[(3.0, 14.0), (12.0, 19.0), (21.0, 14.0)]);
+        }
+        Icon::Properties => {
+            line(&[(4.0, 6.0), (20.0, 6.0)]);
+            line(&[(4.0, 12.0), (20.0, 12.0)]);
+            line(&[(4.0, 18.0), (14.0, 18.0)]);
+        }
+        Icon::Library => outline(&[
+            (3.0, 6.0),
+            (9.0, 6.0),
+            (11.0, 8.0),
+            (21.0, 8.0),
+            (21.0, 19.0),
+            (3.0, 19.0),
+        ]),
+        Icon::Code => {
+            line(&[(8.0, 7.0), (3.0, 12.0), (8.0, 17.0)]);
+            line(&[(16.0, 7.0), (21.0, 12.0), (16.0, 17.0)]);
+        }
+        Icon::Console => {
+            line(&[(4.0, 6.0), (10.0, 12.0), (4.0, 18.0)]);
+            line(&[(12.0, 18.0), (20.0, 18.0)]);
+        }
+        Icon::Problems | Icon::Warning => {
+            outline(&[(12.0, 3.0), (22.0, 20.0), (2.0, 20.0)]);
+            line(&[(12.0, 9.0), (12.0, 14.0)]);
+            painter.circle_filled(v(12.0, 17.0), 1.2 * unit, color);
+        }
+        Icon::SceneFile => outline(&[
+            (3.0, 20.0),
+            (8.0, 4.0),
+            (12.0, 14.0),
+            (15.0, 9.0),
+            (21.0, 20.0),
+        ]),
+        Icon::Play => fill(&[(7.0, 4.0), (20.0, 12.0), (7.0, 20.0)]),
+        Icon::PlayTogether => {
+            let thin = Stroke::new((1.6 * unit).max(1.0), color);
+            painter.circle_stroke(v(8.0, 9.0), 3.0 * unit, thin);
+            painter.circle_stroke(v(16.0, 9.0), 3.0 * unit, thin);
+            for x in [0.0, 8.0] {
+                let body: Vec<Pos2> = (0..=8)
+                    .map(|i| {
+                        let t = i as f32 / 8.0;
+                        let angle = std::f32::consts::PI * (1.0 + t);
+                        v(8.0 + x + 5.0 * angle.cos(), 19.0 + 4.0 * angle.sin())
+                    })
+                    .collect();
+                painter.add(Shape::line(body, thin));
+            }
+        }
+        Icon::Stop => fill(&[(5.0, 5.0), (19.0, 5.0), (19.0, 19.0), (5.0, 19.0)]),
+        Icon::Info => {
+            painter.circle_stroke(v(12.0, 12.0), 9.0 * unit, stroke);
+            line(&[(12.0, 11.0), (12.0, 17.0)]);
+            painter.circle_filled(v(12.0, 7.5), 1.2 * unit, color);
+        }
+        Icon::Error => {
+            line(&[(6.0, 6.0), (18.0, 18.0)]);
+            line(&[(18.0, 6.0), (6.0, 18.0)]);
+        }
+        Icon::Search => {
+            painter.circle_stroke(v(10.0, 10.0), 6.0 * unit, stroke);
+            line(&[(14.5, 14.5), (20.0, 20.0)]);
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -125,5 +275,41 @@ mod tests {
         let mut textures = output.textures_delta;
         textures.clear();
         assert!(shapes >= Tool::ALL.len());
+    }
+
+    #[test]
+    fn every_icon_draws_something() {
+        use Icon::*;
+        let all = [
+            Viewport,
+            Game,
+            Scene,
+            Layers,
+            Properties,
+            Library,
+            Code,
+            Console,
+            Problems,
+            SceneFile,
+            Play,
+            PlayTogether,
+            Stop,
+            Info,
+            Warning,
+            Error,
+            Search,
+        ];
+        let mut counts = Vec::new();
+        for each in all {
+            let ctx = egui::Context::default();
+            let mut output = ctx.run_ui(egui::RawInput::default(), |ui| {
+                let painter = ui.ctx().layer_painter(egui::LayerId::background());
+                let rect = Rect::from_min_size(pos2(0.0, 0.0), vec2(12.0, 12.0));
+                icon(&painter, rect, each, Color32::WHITE);
+            });
+            output.textures_delta.clear();
+            counts.push(output.shapes.len());
+        }
+        assert!(counts.iter().all(|&n| n > 0), "{counts:?}");
     }
 }

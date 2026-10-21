@@ -31,6 +31,8 @@ eframe = { version = "0.36", features = ["persistence"] }
 egui = "0.36"
 # Dockable panels (decision 0004).
 egui_dock = { version = "0.21", features = ["serde"] }
+# The local time on console messages.
+chrono = { version = "0.4", default-features = false, features = ["clock", "std"] }
 # Development only.
 egui_kittest = "0.36"
 pollster = "1.0"
