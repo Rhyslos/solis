@@ -25,7 +25,7 @@ Milestone:
 - [ ] Decision record
 - [ ] User manual (docs/manual)
 - [ ] CHANGELOG.md
-- [ ] README status (milestone completed)
+- [ ] README progress tracker (milestone completed)
 - [ ] RENAMING.md (the program's name appears somewhere new)
 - [ ] No documentation change needed, because:
 
