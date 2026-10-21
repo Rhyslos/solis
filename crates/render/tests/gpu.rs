@@ -172,3 +172,41 @@ fn tiny_and_huge_sizes_are_clamped() {
         [max, 3]
     );
 }
+
+/// Part of the scale check (`tools/scale/scale-check.sh`, decision 0011):
+/// how long one viewport frame takes at 1920×1080. The number depends on
+/// the graphics card, so it is reported, not judged. Not run with the
+/// normal tests.
+#[test]
+#[ignore = "scale check: run by tools/scale/scale-check.sh"]
+#[allow(clippy::print_stdout)]
+fn scale_check_viewport_frame() {
+    let Some(gpu) = gpu() else { return };
+    let renderer = ViewportRenderer::new(&gpu.device, best_sample_count(&gpu.adapter));
+    let target = renderer.create_target(&gpu.device, [1920, 1080]);
+    let eye = Vec3::new(-16.0, -24.0, 10.0);
+    let params = FrameParams {
+        view_projection: looking_north(eye),
+        camera_position: eye,
+        focus: Vec3::ZERO,
+        sky_top: srgb(SKY_TOP),
+        sky_horizon: srgb(SKY_HORIZON),
+        ground: srgb(GROUND),
+    };
+    let frames = 60;
+    let start = std::time::Instant::now();
+    for _ in 0..frames {
+        renderer.render(&gpu.device, &gpu.queue, &target, &params);
+        gpu.device
+            .poll(wgpu::PollType::Wait {
+                submission_index: None,
+                timeout: None,
+            })
+            .unwrap();
+    }
+    let ms = start.elapsed().as_secs_f64() * 1000.0 / f64::from(frames);
+    println!(
+        "Scale check: viewport frame at 1920x1080 {ms:.2} ms on {}",
+        gpu.adapter.get_info().name
+    );
+}
