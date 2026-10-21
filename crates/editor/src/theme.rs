@@ -117,7 +117,7 @@ impl Accent {
     /// The accent's shades.
     pub fn colors(self) -> AccentColors {
         let (fill, light) = match self {
-            Self::PetrolBlue => ([0x1f, 0x6a, 0x8f], [0x5c, 0xb0, 0xd8]),
+            Self::PetrolBlue => ([0x1f, 0x6a, 0x8f], [0x7c, 0xc4, 0xe4]),
             Self::Red => ([0xc2, 0x43, 0x3d], [0xe5, 0x73, 0x6b]),
             Self::Green => ([0x16, 0x6a, 0x62], [0x3e, 0x9d, 0x93]),
             Self::Plum => ([0x9b, 0x3f, 0x7a], [0xcf, 0x72, 0xab]),
@@ -152,6 +152,15 @@ pub fn set_accent(ctx: &Context, accent: Accent) {
     ctx.set_style_of(egui::Theme::Light, style_with(accent));
 }
 
+/// Glyphs drawn as a browser draws them, without snapping their outlines
+/// to the pixel grid: softer and closer to the mockup than egui's default.
+fn soft() -> egui::FontTweak {
+    egui::FontTweak {
+        hinting: Some(false),
+        ..Default::default()
+    }
+}
+
 /// Inter for interface text and JetBrains Mono for monospace text, in front
 /// of egui's own fonts (which stay as
 /// fallbacks for symbols and other scripts).
@@ -162,11 +171,11 @@ pub fn fonts() -> FontDefinitions {
     let mut fonts = FontDefinitions::default();
     fonts.font_data.insert(
         "inter".into(),
-        Arc::new(FontData::from_static(INTER_REGULAR)),
+        Arc::new(FontData::from_static(INTER_REGULAR).tweak(soft())),
     );
     fonts.font_data.insert(
         "inter-semibold".into(),
-        Arc::new(FontData::from_static(INTER_SEMIBOLD)),
+        Arc::new(FontData::from_static(INTER_SEMIBOLD).tweak(soft())),
     );
     let proportional = fonts.families.entry(FontFamily::Proportional).or_default();
     proportional.insert(0, "inter".into());
@@ -192,7 +201,7 @@ pub fn fonts() -> FontDefinitions {
 }
 
 /// The size of interface text, in points.
-pub const TEXT_SIZE: f32 = 12.5;
+pub const TEXT_SIZE: f32 = 12.0;
 
 /// Colours, sizes and spacing, with the given accent.
 pub fn style_with(accent: Accent) -> Style {

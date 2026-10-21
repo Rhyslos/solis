@@ -271,6 +271,8 @@ impl Workbench {
     }
 
     fn top_bar(&mut self, ui: &mut Ui, actions: &mut Vec<WorkbenchAction>) {
+        // The whole bar, so the scene tab can fill its full height.
+        let bar = ui.max_rect();
         // The right-hand buttons go first, so the menu bar (which takes all
         // the width it is given) only gets what is left.
         ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
@@ -282,7 +284,7 @@ impl Workbench {
                     ui.spacing_mut().item_spacing.x = 2.0;
                     self.menus(ui, actions);
                     ui.add_space(8.0);
-                    document_tabs(ui, self.accent);
+                    document_tabs(ui, bar, self.accent);
                 });
             });
         });
@@ -458,7 +460,7 @@ fn icon_button(
 /// The open documents as tabs, as in the mockup: the front one on a
 /// lighter strip with the accent underline, its icon, its name and ×.
 /// For now there is only the one scene; opening more arrives in Phase 2.
-fn document_tabs(ui: &mut Ui, accent: Accent) {
+fn document_tabs(ui: &mut Ui, bar: egui::Rect, accent: Accent) {
     let name = "Untitled scene";
     let font = egui::TextStyle::Button.resolve(ui.style());
     let text = ui
@@ -469,10 +471,13 @@ fn document_tabs(ui: &mut Ui, accent: Accent) {
         .layout_no_wrap("×".to_string(), font, theme::TEXT_WEAK);
     let (pad, icon_size, gap) = (12.0, 12.0, 7.0);
     let width = pad + icon_size + gap + text.size().x + gap + close.size().x + pad;
-    let (rect, response) = ui.allocate_exact_size(
-        egui::vec2(width, ui.max_rect().height()),
+    let (row, response) = ui.allocate_exact_size(
+        egui::vec2(width, ui.available_height().min(bar.height())),
         egui::Sense::click(),
     );
+    // The tab reaches from the top of the bar to its bottom edge, as in the
+    // mockup.
+    let rect = egui::Rect::from_x_y_ranges(row.x_range(), bar.y_range());
     response.widget_info(|| egui::WidgetInfo::selected(egui::WidgetType::Button, true, true, name));
     let painter = ui.painter();
     painter.rect_filled(rect, 0.0, theme::MENU_ROW);
