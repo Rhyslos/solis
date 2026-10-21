@@ -1,6 +1,11 @@
 //! The program's entry point: reads the command line, then opens the editor
 //! (or prints the version or usage).
 
+// On Windows, a release build opens without a black console window behind
+// the editor. Debug builds keep it, for messages while developing. (So
+// `solis --version` prints nothing from a release build on Windows.)
+#![cfg_attr(all(windows, not(debug_assertions)), windows_subsystem = "windows")]
+
 use app::cli::{self, Command};
 use std::io::Write;
 use std::process::ExitCode;
