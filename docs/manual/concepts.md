@@ -31,6 +31,9 @@
 - **Triangle:** the smallest piece of a 3D shape. Graphics cards draw everything as triangles; a game character has a few thousand to tens of thousands.
 - **Material:** how a surface looks: its colour, how shiny, how see-through.
 - **Texture:** an image wrapped around a model, giving it detail (paint, wood grain, panels).
+- **Metallic and roughness:** the two numbers that decide how a surface shines. Metal reflects its surroundings; rough surfaces spread their shine out until it disappears.
+- **Normal texture:** a texture that stores small bumps and grooves as directions, so a flat surface catches the light as if it were carved. It looks light blue, because "facing straight out" is stored as blue.
+- **Look:** how models are shaded in the viewport: standard, stylized (cel-shaded) or unlit. See [Looks](looks.md).
 
 ## Tools
 
