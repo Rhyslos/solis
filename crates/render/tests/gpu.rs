@@ -25,9 +25,20 @@ struct Gpu {
     adapter: wgpu::Adapter,
     device: wgpu::Device,
     queue: wgpu::Queue,
+    /// Held while a test uses the GPU: tests take turns, since some
+    /// software drivers (as on CI) can stall with several devices busy at
+    /// once.
+    _turn: std::sync::MutexGuard<'static, ()>,
 }
 
+/// Whose turn it is to use the GPU.
+static GPU_TURN: std::sync::Mutex<()> = std::sync::Mutex::new(());
+
 fn gpu() -> Option<Gpu> {
+    // A test that failed while holding the turn still lets the others run.
+    let turn = GPU_TURN
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
     let instance =
         wgpu::Instance::new(wgpu::InstanceDescriptor::new_without_display_handle().with_env());
     let found =
@@ -41,6 +52,7 @@ fn gpu() -> Option<Gpu> {
                     adapter,
                     device,
                     queue,
+                    _turn: turn,
                 })
             });
     if found.is_none() {
