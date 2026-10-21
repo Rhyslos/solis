@@ -1,6 +1,6 @@
 # Solis roadmap
 
-The plan from an empty repo to **Solis 0.1**, in phases. The engine is Rust; games are written in Lust ([decision 0002](docs/decisions/0002-engine-in-rust-games-in-lust.md)). DESIGN.md says what Solis is; this file says in what order it gets built.
+The plan from an empty repo to **Solis 0.1**, in phases. The engine is Rust; games are written in Lust, Rust or Lua ([decisions 0002](docs/decisions/0002-engine-in-rust-games-in-lust.md) and [0003](docs/decisions/0003-games-in-rust-lust-or-lua.md)). DESIGN.md says what Solis is; this file says in what order it gets built.
 
 **About a year,** if Solis gets steady attention alongside Lust. Months are a guide, not a promise: the pace is set by decisions, testing on Windows and reviews.
 
@@ -17,7 +17,7 @@ Each phase ends with a **gate**: something the project lead tries by hand before
 | 4. Scale | 4–5 | 2,000 units and 20,000 projectiles at 60 fps |
 | 5. Simulation and play | 5–6 | Physics, input, a deterministic simulation |
 | 6. Sound and animation | 6–7 | Sound events and buses; animated characters |
-| 7. Lust joins | 7–8 | Components written in Lust, in play mode within 2 seconds |
+| 7. Lust and Lua join | 7–8 | Components written in Lust or Lua, in play mode within 2 seconds |
 | 8. Netcode | 8–10 | Two PCs playing together over the internet |
 | 9. Effects and game UI | 9–10 | Solis Eclipse basics; HUDs and menus |
 | 10. Scripting and export | 10–11 | The scripting window; games packaged for Windows and Linux |
@@ -103,7 +103,9 @@ The phase that proves DESIGN.md §2 early, while changing course is still cheap.
 
 **Gate:** a character walks and runs with smooth blending, footsteps play on the right frames, and a reverb zone changes how they sound.
 
-## Phase 7: Lust joins
+## Phase 7: Lust and Lua join
+
+Components in Rust work from Phase 2, since they're the engine's own kind. This phase adds the other two.
 
 **Needs from Lust:** its Rust output, and using Rust crates from Lust.
 
@@ -111,11 +113,12 @@ The phase that proves DESIGN.md §2 early, while changing course is still cheap.
 - `object … like Component` compiles to the same kind of component the engine's own are, with `has` fields in the inspector.
 - Typed events between components.
 - Fast changes (DESIGN.md §3.1): the engine prebuilt, only the game's code compiled, a faster compiler for development, and hot reload.
+- **Lua components** through Luau: the same inspector fields, events and entities, with the game API's Lua face, and warnings where Lua code could break determinism.
 - The ready-made gameplay components move from Rust to Lust, as examples for game makers.
 
 **Decide before starting:** how fast changes reach play mode (DESIGN.md §3.1).
 
-**Gate:** change a Lust component while the game is running and see the change within **2 seconds**. A mistake in Lust shows a friendly message, never a Rust error.
+**Gate:** change a Lust component while the game is running and see the change within **2 seconds**; a Lua component changes instantly. A mistake in Lust shows a friendly message, never a Rust error. One entity can carry a Rust, a Lust and a Lua component that talk to each other through events.
 
 ## Phase 8: Netcode
 
