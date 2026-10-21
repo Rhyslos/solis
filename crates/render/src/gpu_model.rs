@@ -84,12 +84,34 @@ pub struct GpuModel {
     meshes: Vec<GpuMesh>,
     materials: Vec<GpuMaterial>,
     triangles: usize,
+    bounds: (glam::Vec3, glam::Vec3),
 }
 
 impl GpuModel {
     /// How many triangles it draws.
     pub fn triangles(&self) -> usize {
         self.triangles
+    }
+
+    /// The box the model fits in, lowest and highest corners, in metres.
+    pub fn bounds(&self) -> (glam::Vec3, glam::Vec3) {
+        self.bounds
+    }
+
+    /// Draws every solid and cut-out mesh's shape only, for the sun's
+    /// shadow map (blended ones, like glass, cast no shadow).
+    pub(crate) fn draw_depth(&self, render_pass: &mut wgpu::RenderPass<'_>) {
+        for mesh in &self.meshes {
+            let Some(material) = self.materials.get(mesh.material) else {
+                continue;
+            };
+            if material.pass == Pass::Blended || mesh.index_count == 0 {
+                continue;
+            }
+            render_pass.set_vertex_buffer(0, mesh.vertices.slice(..));
+            render_pass.set_index_buffer(mesh.indices.slice(..), wgpu::IndexFormat::Uint32);
+            render_pass.draw_indexed(0..mesh.index_count, 0, 0..1);
+        }
     }
 
     /// Draws the meshes that belong in `pass`, with the pipeline already
@@ -330,6 +352,7 @@ impl ModelPipelines {
             meshes,
             materials,
             triangles: model.triangles(),
+            bounds: (model.bounds.min, model.bounds.max),
         }
     }
 }
@@ -545,6 +568,47 @@ fn create_outline_pipeline(
                 write_mask: wgpu::ColorWrites::ALL,
             })],
         }),
+        multiview_mask: None,
+        cache: None,
+    })
+}
+
+/// The pipeline that draws models into the sun's shadow map: depth only,
+/// both sides of every triangle, pushed back a little (depth bias) so
+/// surfaces don't shadow themselves in stripes.
+pub(crate) fn create_shadow_pipeline(
+    device: &wgpu::Device,
+    layout: &wgpu::PipelineLayout,
+    shader: &wgpu::ShaderModule,
+) -> wgpu::RenderPipeline {
+    device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+        label: Some("shadow pipeline"),
+        layout: Some(layout),
+        vertex: wgpu::VertexState {
+            module: shader,
+            entry_point: Some("shadow_vs"),
+            compilation_options: wgpu::PipelineCompilationOptions::default(),
+            buffers: &[Some(vertex_layout())],
+        },
+        primitive: wgpu::PrimitiveState {
+            topology: wgpu::PrimitiveTopology::TriangleList,
+            front_face: wgpu::FrontFace::Ccw,
+            cull_mode: None,
+            ..Default::default()
+        },
+        depth_stencil: Some(wgpu::DepthStencilState {
+            format: crate::lighting::SHADOW_FORMAT,
+            depth_write_enabled: Some(true),
+            depth_compare: Some(wgpu::CompareFunction::Less),
+            stencil: wgpu::StencilState::default(),
+            bias: wgpu::DepthBiasState {
+                constant: 2,
+                slope_scale: 2.0,
+                clamp: 0.0,
+            },
+        }),
+        multisample: wgpu::MultisampleState::default(),
+        fragment: None,
         multiview_mask: None,
         cache: None,
     })

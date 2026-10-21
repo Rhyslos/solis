@@ -9,6 +9,7 @@
 pub mod camera;
 pub mod icons;
 pub mod layout;
+pub mod lighting;
 pub mod look;
 pub mod models;
 pub mod panel;
@@ -19,6 +20,7 @@ pub mod workbench;
 pub use camera::{Camera, FlyInput};
 pub use egui_dock::DockState;
 pub use layout::Preset;
+pub use lighting::{Lamp, LampFromFile, LampId, LampKind, Selection, SunSettings};
 pub use look::{Look, LookKind};
 pub use models::{ModelId, ModelInfo};
 pub use panel::Panel;

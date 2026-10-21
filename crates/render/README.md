@@ -2,11 +2,11 @@
 
 **Layer 1 · Engine**
 
-Draws viewports with wgpu into offscreen images: the backdrop (a calm sky with a horizon), imported models with glTF's full material in the standard, stylized (with outlines) or unlit look, lit by a fixed sun and the sky, the ground grid (1 m, 10 m and 100 m lines) and the X and Y axes. Full materials, lights and shadows arrive later in Phase 1.
+Draws viewports with wgpu into offscreen images: the backdrop (a calm sky with a horizon), imported models with glTF's full material in the standard, stylized (with outlines) or unlit look, lit by the sun (with a shadow map, also darkening the ground), up to 16 point lights and spotlights, and the sky; the ground grid (1 m, 10 m and 100 m lines), the X and Y axes, and small markers where lamps are. `lighting.rs` holds the sun and lamps, in Blender's units ([decision 0014](../../docs/decisions/0014-lights-placed-two-ways.md)).
 
 ## Purpose
 
-Turn a camera and a few colours ([`FrameParams`]) into a finished image in a `ViewportTarget`, on whatever GPU device it is given. The editor shows that image in its viewport panel; games will draw through the same crate.
+Turn a camera, a few colours and the sun ([`FrameParams`]), plus models and lamps, into a finished image in a `ViewportTarget`, on whatever GPU device it is given. The editor shows that image in its viewport panel; games will draw through the same crate.
 
 ## Must never
 
@@ -28,4 +28,4 @@ The image is plain 8-bit RGBA; the shaders convert linear colour to sRGB as they
 
 ## Status
 
-Phase 1, milestone 3: backdrop, grid, axes, and models in three looks.
+Phase 1, milestone 4: backdrop, grid, axes, models in three looks, the sun with shadows, and lamps.

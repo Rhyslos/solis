@@ -146,6 +146,8 @@ pub enum Icon {
     Search,
     /// A box seen from a corner: a model.
     Model,
+    /// A small sun with rays: a light.
+    Light,
 }
 
 /// Draws `icon` in `rect` with `color`. Shapes are given on a 24-unit
@@ -261,6 +263,17 @@ pub fn icon(painter: &Painter, rect: Rect, icon: Icon, color: Color32) {
             ]);
             line(&[(4.0, 7.5), (12.0, 12.0), (20.0, 7.5)]);
             line(&[(12.0, 12.0), (12.0, 21.0)]);
+        }
+        Icon::Light => {
+            painter.circle_stroke(v(12.0, 12.0), 4.0 * unit, stroke);
+            for i in 0..8 {
+                let a = i as f32 * std::f32::consts::FRAC_PI_4;
+                let (s, c) = a.sin_cos();
+                line(&[
+                    (12.0 + 7.0 * c, 12.0 + 7.0 * s),
+                    (12.0 + 10.0 * c, 12.0 + 10.0 * s),
+                ]);
+            }
         }
         Icon::Search => {
             painter.circle_stroke(v(10.0, 10.0), 6.0 * unit, stroke);

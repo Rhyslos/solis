@@ -141,6 +141,8 @@ pub struct Builder {
     pub json_images: Vec<String>,
     /// Nodes, as JSON objects; every one is placed in the scene.
     pub json_nodes: Vec<String>,
+    /// Lights (the `KHR_lights_punctual` extension), as JSON objects.
+    pub json_lights: Vec<String>,
 }
 
 impl Builder {
@@ -287,6 +289,13 @@ impl Builder {
         }
         if !self.json_textures.is_empty() {
             json.push_str(r#","samplers":[{"wrapS":10497,"wrapT":10497}]"#);
+        }
+        if !self.json_lights.is_empty() {
+            let _ = write!(
+                json,
+                r#","extensionsUsed":["KHR_lights_punctual"],"extensions":{{"KHR_lights_punctual":{{"lights":[{}]}}}}"#,
+                list(&self.json_lights)
+            );
         }
         json.push('}');
         json
