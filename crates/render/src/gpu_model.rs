@@ -1,7 +1,8 @@
 //! Models on the GPU: an [`assets::Model`] uploaded once into vertex and
 //! index buffers, textures and per-material settings, then drawn every
-//! frame with the simple material (a colour, a colour texture, and light
-//! from a fixed sun and the sky until real lights arrive in milestone 4).
+//! frame in the chosen look (standard, stylized or unlit; see
+//! `viewport.wgsl`), lit by a fixed sun and the sky until real lights
+//! arrive in milestone 4.
 
 use crate::renderer::{COLOR_FORMAT, DEPTH_FORMAT};
 use assets::{AlphaMode, Material, Model, Texture, Wrap};
@@ -13,8 +14,12 @@ use wgpu::util::DeviceExt;
 #[repr(C)]
 #[derive(Debug, Clone, Copy, PartialEq, Pod, Zeroable)]
 pub(crate) struct MaterialUniform {
-    /// Linear RGBA, multiplied with the texture.
+    /// Linear RGBA, multiplied with the colour texture.
     base_color: [f32; 4],
+    /// Glow, linear RGB; w unused.
+    emissive: [f32; 4],
+    /// Metallic, roughness, normal strength, occlusion strength.
+    surface: [f32; 4],
     /// x: alpha cutoff; y: 0 solid, 1 cut out, 2 blended; zw unused.
     alpha: [f32; 4],
 }
@@ -26,8 +31,16 @@ impl MaterialUniform {
             AlphaMode::Mask(cutoff) => (cutoff, 1.0),
             AlphaMode::Blend => (0.0, 2.0),
         };
+        let [r, g, b] = material.emissive;
         Self {
             base_color: material.base_color,
+            emissive: [r, g, b, 0.0],
+            surface: [
+                material.metallic,
+                material.roughness,
+                material.normal_scale,
+                material.occlusion_strength,
+            ],
             alpha: [cutoff, mode, 0.0, 0.0],
         }
     }
@@ -48,11 +61,17 @@ pub(crate) enum Pass {
 struct GpuMaterial {
     bind_group: wgpu::BindGroup,
     pass: Pass,
+    /// Whether the stylized look draws an outline around it: solid,
+    /// single-sided surfaces without cut-out parts.
+    outlined: bool,
 }
 
 #[derive(Debug)]
 struct GpuMesh {
     vertices: wgpu::Buffer,
+    /// The same corners with smoothed normals, for outlines (only for
+    /// outlined materials).
+    outline_vertices: Option<wgpu::Buffer>,
     indices: wgpu::Buffer,
     index_count: u32,
     material: usize,
@@ -73,13 +92,35 @@ impl GpuModel {
         self.triangles
     }
 
-    /// Draws the meshes that belong in `pass`, with `pipeline` already set.
+    /// Draws the meshes that belong in `pass`, with the pipeline already
+    /// set.
     pub(crate) fn draw(&self, render_pass: &mut wgpu::RenderPass<'_>, pass: Pass) {
+        self.draw_where(render_pass, |m| m.pass == pass);
+    }
+
+    /// Draws the meshes that get outlines, with the outline pipeline
+    /// already set.
+    pub(crate) fn draw_outlines(&self, render_pass: &mut wgpu::RenderPass<'_>) {
+        for mesh in &self.meshes {
+            let Some(outline) = &mesh.outline_vertices else {
+                continue;
+            };
+            render_pass.set_vertex_buffer(0, outline.slice(..));
+            render_pass.set_index_buffer(mesh.indices.slice(..), wgpu::IndexFormat::Uint32);
+            render_pass.draw_indexed(0..mesh.index_count, 0, 0..1);
+        }
+    }
+
+    fn draw_where(
+        &self,
+        render_pass: &mut wgpu::RenderPass<'_>,
+        wanted: impl Fn(&GpuMaterial) -> bool,
+    ) {
         for mesh in &self.meshes {
             let Some(material) = self.materials.get(mesh.material) else {
                 continue;
             };
-            if material.pass != pass || mesh.index_count == 0 {
+            if !wanted(material) || mesh.index_count == 0 {
                 continue;
             }
             render_pass.set_bind_group(1, &material.bind_group, &[]);
@@ -90,6 +131,10 @@ impl GpuModel {
     }
 }
 
+/// The textures a material reads, in binding order: colour, metal and
+/// roughness, normals, occlusion, glow.
+const TEXTURE_SLOTS: usize = 5;
+
 /// The parts every model's materials share.
 #[derive(Debug)]
 pub(crate) struct ModelPipelines {
@@ -97,6 +142,7 @@ pub(crate) struct ModelPipelines {
     pub(crate) solid: wgpu::RenderPipeline,
     pub(crate) solid_double_sided: wgpu::RenderPipeline,
     pub(crate) blended: wgpu::RenderPipeline,
+    pub(crate) outline: wgpu::RenderPipeline,
 }
 
 impl ModelPipelines {
@@ -106,40 +152,48 @@ impl ModelPipelines {
         shader: &wgpu::ShaderModule,
         sample_count: u32,
     ) -> Self {
+        let mut entries = vec![wgpu::BindGroupLayoutEntry {
+            binding: 0,
+            visibility: wgpu::ShaderStages::FRAGMENT,
+            ty: wgpu::BindingType::Buffer {
+                ty: wgpu::BufferBindingType::Uniform,
+                has_dynamic_offset: false,
+                min_binding_size: None,
+            },
+            count: None,
+        }];
+        for slot in 0..TEXTURE_SLOTS as u32 {
+            entries.push(wgpu::BindGroupLayoutEntry {
+                binding: 1 + slot,
+                visibility: wgpu::ShaderStages::FRAGMENT,
+                ty: wgpu::BindingType::Texture {
+                    sample_type: wgpu::TextureSampleType::Float { filterable: true },
+                    view_dimension: wgpu::TextureViewDimension::D2,
+                    multisampled: false,
+                },
+                count: None,
+            });
+        }
+        for slot in 0..TEXTURE_SLOTS as u32 {
+            entries.push(wgpu::BindGroupLayoutEntry {
+                binding: 1 + TEXTURE_SLOTS as u32 + slot,
+                visibility: wgpu::ShaderStages::FRAGMENT,
+                ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
+                count: None,
+            });
+        }
         let material_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             label: Some("material layout"),
-            entries: &[
-                wgpu::BindGroupLayoutEntry {
-                    binding: 0,
-                    visibility: wgpu::ShaderStages::FRAGMENT,
-                    ty: wgpu::BindingType::Buffer {
-                        ty: wgpu::BufferBindingType::Uniform,
-                        has_dynamic_offset: false,
-                        min_binding_size: None,
-                    },
-                    count: None,
-                },
-                wgpu::BindGroupLayoutEntry {
-                    binding: 1,
-                    visibility: wgpu::ShaderStages::FRAGMENT,
-                    ty: wgpu::BindingType::Texture {
-                        sample_type: wgpu::TextureSampleType::Float { filterable: true },
-                        view_dimension: wgpu::TextureViewDimension::D2,
-                        multisampled: false,
-                    },
-                    count: None,
-                },
-                wgpu::BindGroupLayoutEntry {
-                    binding: 2,
-                    visibility: wgpu::ShaderStages::FRAGMENT,
-                    ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
-                    count: None,
-                },
-            ],
+            entries: &entries,
         });
         let layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: Some("model layout"),
             bind_group_layouts: &[Some(frame_layout), Some(&material_layout)],
+            immediate_size: 0,
+        });
+        let outline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+            label: Some("outline layout"),
+            bind_group_layouts: &[Some(frame_layout)],
             immediate_size: 0,
         });
         let pipeline = |pass| create_pipeline(device, &layout, shader, sample_count, pass);
@@ -147,12 +201,13 @@ impl ModelPipelines {
             solid: pipeline(Pass::Solid),
             solid_double_sided: pipeline(Pass::SolidDoubleSided),
             blended: pipeline(Pass::Blended),
+            outline: create_outline_pipeline(device, &outline_layout, shader, sample_count),
             material_layout,
         }
     }
 
     /// Uploads `model`. Textures larger than the GPU allows are replaced by
-    /// plain white rather than failing (the loader is normally told the
+    /// plain ones rather than failing (the loader is normally told the
     /// GPU's limit, so this doesn't happen).
     pub(crate) fn upload(
         &self,
@@ -161,17 +216,24 @@ impl ModelPipelines {
         model: &Model,
     ) -> GpuModel {
         let max_side = device.limits().max_texture_dimension_2d;
-        let white = assets::texture::solid([255, 255, 255, 255]);
-        let textures: Vec<(wgpu::TextureView, wgpu::Sampler)> = model
+        let textures: Vec<Option<(wgpu::TextureView, wgpu::Sampler)>> = model
             .textures
             .iter()
             .map(|t| {
                 let usable =
                     t.width <= max_side && t.height <= max_side && t.width > 0 && t.height > 0;
-                upload_texture(device, queue, if usable { t } else { &white })
+                usable.then(|| upload_texture(device, queue, t))
             })
             .collect();
-        let fallback = upload_texture(device, queue, &white);
+        // What a material without a given texture reads instead: white
+        // (factors alone), or a flat normal.
+        let white_colour = upload_texture(device, queue, &assets::texture::solid([255; 4], true));
+        let white_data = upload_texture(device, queue, &assets::texture::solid([255; 4], false));
+        let flat_normal = upload_texture(
+            device,
+            queue,
+            &assets::texture::solid([128, 128, 255, 255], false),
+        );
         // Each material, then the plain default last for meshes without one.
         let mut materials: Vec<&Material> = model.materials.iter().collect();
         let default = Material::default();
@@ -179,39 +241,55 @@ impl ModelPipelines {
         let materials: Vec<GpuMaterial> = materials
             .into_iter()
             .map(|material| {
-                let (view, sampler) = material
-                    .base_color_texture
-                    .and_then(|i| textures.get(i))
-                    .unwrap_or(&fallback);
+                let pick = |index: Option<usize>, fallback| {
+                    index
+                        .and_then(|i| textures.get(i))
+                        .and_then(Option::as_ref)
+                        .unwrap_or(fallback)
+                };
+                let slots = [
+                    pick(material.base_color_texture, &white_colour),
+                    pick(material.metallic_roughness_texture, &white_data),
+                    pick(material.normal_texture, &flat_normal),
+                    pick(material.occlusion_texture, &white_data),
+                    pick(material.emissive_texture, &white_colour),
+                ];
                 let uniform = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
                     label: Some("material"),
                     contents: bytemuck::bytes_of(&MaterialUniform::new(material)),
                     usage: wgpu::BufferUsages::UNIFORM,
                 });
+                let mut entries = vec![wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: uniform.as_entire_binding(),
+                }];
+                for (slot, (view, _)) in slots.iter().enumerate() {
+                    entries.push(wgpu::BindGroupEntry {
+                        binding: 1 + slot as u32,
+                        resource: wgpu::BindingResource::TextureView(view),
+                    });
+                }
+                for (slot, (_, sampler)) in slots.iter().enumerate() {
+                    entries.push(wgpu::BindGroupEntry {
+                        binding: 1 + TEXTURE_SLOTS as u32 + slot as u32,
+                        resource: wgpu::BindingResource::Sampler(sampler),
+                    });
+                }
                 let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
                     label: Some("material bind group"),
                     layout: &self.material_layout,
-                    entries: &[
-                        wgpu::BindGroupEntry {
-                            binding: 0,
-                            resource: uniform.as_entire_binding(),
-                        },
-                        wgpu::BindGroupEntry {
-                            binding: 1,
-                            resource: wgpu::BindingResource::TextureView(view),
-                        },
-                        wgpu::BindGroupEntry {
-                            binding: 2,
-                            resource: wgpu::BindingResource::Sampler(sampler),
-                        },
-                    ],
+                    entries: &entries,
                 });
                 let pass = match (material.alpha, material.double_sided) {
                     (AlphaMode::Blend, _) => Pass::Blended,
                     (_, true) => Pass::SolidDoubleSided,
                     (_, false) => Pass::Solid,
                 };
-                GpuMaterial { bind_group, pass }
+                GpuMaterial {
+                    bind_group,
+                    pass,
+                    outlined: pass == Pass::Solid && material.alpha == AlphaMode::Opaque,
+                }
             })
             .collect();
         let default_material = materials.len() - 1;
@@ -219,22 +297,33 @@ impl ModelPipelines {
             .meshes
             .iter()
             .filter(|m| !m.indices.is_empty() && !m.vertices.is_empty())
-            .map(|mesh| GpuMesh {
-                vertices: device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                    label: Some("mesh vertices"),
-                    contents: bytemuck::cast_slice(&mesh.vertices),
-                    usage: wgpu::BufferUsages::VERTEX,
-                }),
-                indices: device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                    label: Some("mesh indices"),
-                    contents: bytemuck::cast_slice(&mesh.indices),
-                    usage: wgpu::BufferUsages::INDEX,
-                }),
-                index_count: mesh.indices.len() as u32,
-                material: mesh
+            .map(|mesh| {
+                let material = mesh
                     .material
                     .filter(|&m| m < default_material)
-                    .unwrap_or(default_material),
+                    .unwrap_or(default_material);
+                let outlined = materials.get(material).is_some_and(|m| m.outlined);
+                GpuMesh {
+                    vertices: device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                        label: Some("mesh vertices"),
+                        contents: bytemuck::cast_slice(&mesh.vertices),
+                        usage: wgpu::BufferUsages::VERTEX,
+                    }),
+                    outline_vertices: outlined.then(|| {
+                        device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                            label: Some("outline vertices"),
+                            contents: bytemuck::cast_slice(&outline_vertices(&mesh.vertices)),
+                            usage: wgpu::BufferUsages::VERTEX,
+                        })
+                    }),
+                    indices: device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                        label: Some("mesh indices"),
+                        contents: bytemuck::cast_slice(&mesh.indices),
+                        usage: wgpu::BufferUsages::INDEX,
+                    }),
+                    index_count: mesh.indices.len() as u32,
+                    material,
+                }
             })
             .collect();
         GpuModel {
@@ -243,6 +332,31 @@ impl ModelPipelines {
             triangles: model.triangles(),
         }
     }
+}
+
+/// The corners with each normal replaced by the average of all normals at
+/// that same position, so a hard-edged shape (a box: three normals at each
+/// corner) is pushed out evenly and its outline has no gaps.
+pub(crate) fn outline_vertices(vertices: &[assets::Vertex]) -> Vec<assets::Vertex> {
+    use std::collections::HashMap;
+    let key = |v: &assets::Vertex| v.position.map(f32::to_bits);
+    let mut sums: HashMap<[u32; 3], glam::Vec3> = HashMap::new();
+    for v in vertices {
+        *sums.entry(key(v)).or_default() += glam::Vec3::from(v.normal);
+    }
+    vertices
+        .iter()
+        .map(|v| {
+            let smooth = sums
+                .get(&key(v))
+                .and_then(|n| n.try_normalize())
+                .unwrap_or(glam::Vec3::from(v.normal));
+            assets::Vertex {
+                normal: smooth.to_array(),
+                ..*v
+            }
+        })
+        .collect()
 }
 
 fn upload_texture(
@@ -261,8 +375,13 @@ fn upload_texture(
         mip_level_count: texture.levels.len().max(1) as u32,
         sample_count: 1,
         dimension: wgpu::TextureDimension::D2,
-        // The pixels are sRGB; sampling turns them into linear colour.
-        format: wgpu::TextureFormat::Rgba8UnormSrgb,
+        // Colours are stored as sRGB, and sampling turns them into linear
+        // light; data textures (metal, roughness, normals) are read as is.
+        format: if texture.srgb {
+            wgpu::TextureFormat::Rgba8UnormSrgb
+        } else {
+            wgpu::TextureFormat::Rgba8Unorm
+        },
         usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
         view_formats: &[],
     });
@@ -317,6 +436,18 @@ fn upload_texture(
     )
 }
 
+/// How a mesh corner is laid out in the vertex buffer.
+const VERTEX_ATTRIBUTES: [wgpu::VertexAttribute; 3] =
+    wgpu::vertex_attr_array![0 => Float32x3, 1 => Float32x3, 2 => Float32x2];
+
+fn vertex_layout() -> wgpu::VertexBufferLayout<'static> {
+    wgpu::VertexBufferLayout {
+        array_stride: std::mem::size_of::<assets::Vertex>() as wgpu::BufferAddress,
+        step_mode: wgpu::VertexStepMode::Vertex,
+        attributes: &VERTEX_ATTRIBUTES,
+    }
+}
+
 fn create_pipeline(
     device: &wgpu::Device,
     layout: &wgpu::PipelineLayout,
@@ -324,13 +455,6 @@ fn create_pipeline(
     sample_count: u32,
     pass: Pass,
 ) -> wgpu::RenderPipeline {
-    const ATTRIBUTES: [wgpu::VertexAttribute; 3] =
-        wgpu::vertex_attr_array![0 => Float32x3, 1 => Float32x3, 2 => Float32x2];
-    let vertex_layout = wgpu::VertexBufferLayout {
-        array_stride: std::mem::size_of::<assets::Vertex>() as wgpu::BufferAddress,
-        step_mode: wgpu::VertexStepMode::Vertex,
-        attributes: &ATTRIBUTES,
-    };
     let blended = pass == Pass::Blended;
     device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
         label: Some(match pass {
@@ -343,7 +467,7 @@ fn create_pipeline(
             module: shader,
             entry_point: Some("mesh_vs"),
             compilation_options: wgpu::PipelineCompilationOptions::default(),
-            buffers: &[Some(vertex_layout)],
+            buffers: &[Some(vertex_layout())],
         },
         primitive: wgpu::PrimitiveState {
             topology: wgpu::PrimitiveTopology::TriangleList,
@@ -377,18 +501,90 @@ fn create_pipeline(
     })
 }
 
+/// The outline pass: the back faces only (front faces culled), pushed out
+/// by the vertex shader, behind the model itself.
+fn create_outline_pipeline(
+    device: &wgpu::Device,
+    layout: &wgpu::PipelineLayout,
+    shader: &wgpu::ShaderModule,
+    sample_count: u32,
+) -> wgpu::RenderPipeline {
+    device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+        label: Some("outline pipeline"),
+        layout: Some(layout),
+        vertex: wgpu::VertexState {
+            module: shader,
+            entry_point: Some("outline_vs"),
+            compilation_options: wgpu::PipelineCompilationOptions::default(),
+            buffers: &[Some(vertex_layout())],
+        },
+        primitive: wgpu::PrimitiveState {
+            topology: wgpu::PrimitiveTopology::TriangleList,
+            front_face: wgpu::FrontFace::Ccw,
+            cull_mode: Some(wgpu::Face::Front),
+            ..Default::default()
+        },
+        depth_stencil: Some(wgpu::DepthStencilState {
+            format: DEPTH_FORMAT,
+            depth_write_enabled: Some(true),
+            depth_compare: Some(wgpu::CompareFunction::Less),
+            stencil: wgpu::StencilState::default(),
+            bias: wgpu::DepthBiasState::default(),
+        }),
+        multisample: wgpu::MultisampleState {
+            count: sample_count,
+            ..Default::default()
+        },
+        fragment: Some(wgpu::FragmentState {
+            module: shader,
+            entry_point: Some("outline_fs"),
+            compilation_options: wgpu::PipelineCompilationOptions::default(),
+            targets: &[Some(wgpu::ColorTargetState {
+                format: COLOR_FORMAT,
+                blend: None,
+                write_mask: wgpu::ColorWrites::ALL,
+            })],
+        }),
+        multiview_mask: None,
+        cache: None,
+    })
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
 
     #[test]
+    fn outline_normals_average_the_normals_at_a_corner() {
+        let corner = |normal: [f32; 3]| assets::Vertex {
+            position: [1.0, 1.0, 1.0],
+            normal,
+            uv: [0.0, 0.0],
+        };
+        let smoothed = outline_vertices(&[
+            corner([1.0, 0.0, 0.0]),
+            corner([0.0, 1.0, 0.0]),
+            corner([0.0, 0.0, 1.0]),
+        ]);
+        let expected = glam::Vec3::ONE.normalize();
+        for v in smoothed {
+            assert!((glam::Vec3::from(v.normal) - expected).length() < 1e-5);
+        }
+    }
+
+    #[test]
     fn material_settings_match_the_shader_layout() {
-        assert_eq!(std::mem::size_of::<MaterialUniform>(), 32);
+        assert_eq!(std::mem::size_of::<MaterialUniform>(), 64);
         let m = MaterialUniform::new(&Material {
             alpha: AlphaMode::Mask(0.3),
+            metallic: 1.0,
+            roughness: 0.25,
+            emissive: [1.0, 0.5, 0.0],
             ..Material::default()
         });
         assert_eq!(m.alpha[..2], [0.3, 1.0]);
+        assert_eq!(m.surface, [1.0, 0.25, 1.0, 1.0]);
+        assert_eq!(m.emissive, [1.0, 0.5, 0.0, 0.0]);
         assert_eq!(
             MaterialUniform::new(&Material::default()).base_color,
             [1.0; 4]

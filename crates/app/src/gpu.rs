@@ -1,7 +1,7 @@
 //! Connects the viewport renderer (the `render` crate) to the window's wgpu
 //! device and to egui, so the viewport panel can show the rendered image.
 
-use editor::{ModelId, ViewportRenderer, ViewportView};
+use editor::{LookKind, ModelId, ViewportRenderer, ViewportView};
 use eframe::egui;
 use eframe::egui_wgpu::RenderState;
 use eframe::wgpu;
@@ -112,6 +112,16 @@ impl ViewportRenderer for GpuViewport {
             sky_top: view.sky_top,
             sky_horizon: view.sky_horizon,
             ground: view.ground,
+            shading: render::Shading {
+                look: match view.look.kind {
+                    LookKind::Standard => render::Look::Standard,
+                    LookKind::Stylized => render::Look::Stylized,
+                    LookKind::Unlit => render::Look::Unlit,
+                },
+                bands: u32::from(view.look.bands),
+                outline_px: view.outline_px,
+            },
+            size_px: view.size_px,
         };
         self.prepare_image(view.size_px);
         let image = self

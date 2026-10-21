@@ -45,6 +45,8 @@ jobs:
     # Draft pull requests don't build.
     if: github.event_name != 'pull_request' || !github.event.pull_request.draft
     runs-on: ubuntu-latest
+    # A stuck step stops here instead of using up hours of the allowance.
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
@@ -60,6 +62,7 @@ jobs:
     name: Tests and documentation (Linux)
     needs: checks
     runs-on: ubuntu-latest
+    timeout-minutes: 30
     env:
       # Broken links or malformed docs fail the build.
       RUSTDOCFLAGS: -D warnings
@@ -75,6 +78,8 @@ jobs:
     name: Window and GPU tests (Linux)
     needs: checks
     runs-on: ubuntu-latest
+    # A stuck step stops here instead of using up hours of the allowance.
+    timeout-minutes: 30
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
@@ -86,6 +91,7 @@ jobs:
       - run: cargo build --locked -p app
       # GPU rendering tests: here a missing GPU is a failure, not a skip.
       - run: cargo test --locked -p render --test gpu
+        timeout-minutes: 10
         env:
           REQUIRE_GPU: "1"
       # The window title starts with the program's name (APP_NAME in
@@ -109,6 +115,7 @@ jobs:
       startsWith(github.ref, 'refs/tags/v') ||
       (github.event_name == 'workflow_dispatch' && inputs.windows)
     runs-on: windows-latest
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:

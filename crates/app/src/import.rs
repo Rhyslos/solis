@@ -80,6 +80,28 @@ impl Importer {
         id
     }
 
+    /// Starts reading the built-in sample scene, as if from a file named
+    /// `name`.
+    pub fn start_sample(&mut self, name: &str) -> ModelId {
+        let id = ModelId(self.next_id);
+        self.next_id += 1;
+        self.running += 1;
+        let sender = self.sender.clone();
+        let limits = self.limits;
+        let name = name.to_string();
+        std::thread::spawn(move || {
+            let started = Instant::now();
+            let result = assets::load_bytes(&assets::sample::showcase_glb(), None, &name, &limits);
+            let _ = sender.send(Finished {
+                id,
+                path: PathBuf::from(format!("{name}.glb")),
+                result,
+                seconds: started.elapsed().as_secs_f32(),
+            });
+        });
+        id
+    }
+
     /// The imports that have finished since last asked.
     pub fn finished(&mut self) -> Vec<Finished> {
         let done: Vec<Finished> = self.receiver.try_iter().collect();
@@ -124,6 +146,17 @@ mod tests {
         assert_eq!(done[0].result.as_ref().unwrap().name, "sample");
         assert!(!importer.busy());
         let _ = std::fs::remove_dir_all(&folder);
+    }
+
+    #[test]
+    fn the_sample_scene_reads_in_the_background() {
+        let mut importer = Importer::new(4096);
+        let id = importer.start_sample("Sample scene");
+        let done = wait(&mut importer);
+        assert_eq!(done[0].id, id);
+        let model = done[0].result.as_ref().unwrap();
+        assert_eq!(model.name, "Sample scene");
+        assert!(model.meshes.len() > 10);
     }
 
     #[test]

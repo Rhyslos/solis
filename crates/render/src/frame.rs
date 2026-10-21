@@ -35,6 +35,51 @@ pub struct FrameParams {
     pub sky_horizon: [f32; 3],
     /// The ground just below the horizon, sRGB 0 to 1.
     pub ground: [f32; 3],
+    /// How models are shaded.
+    pub shading: Shading,
+    /// The image's size in pixels (for outlines a set number of pixels
+    /// wide).
+    pub size_px: [u32; 2],
+}
+
+/// The ways models can be shaded.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum Look {
+    /// Realistic: metal and roughness, highlights, soft sky light.
+    #[default]
+    Standard,
+    /// Cel-shaded: flat bands of light, crisp highlights, outlines.
+    Stylized,
+    /// Colours and textures only, without light.
+    Unlit,
+}
+
+/// How models are shaded in a frame.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct Shading {
+    /// Which look.
+    pub look: Look,
+    /// The stylized look's bands of light (2 to 4).
+    pub bands: u32,
+    /// The stylized look's outline width in pixels; 0 for none.
+    pub outline_px: f32,
+}
+
+impl Default for Shading {
+    fn default() -> Self {
+        Self {
+            look: Look::Standard,
+            bands: 3,
+            outline_px: 0.0,
+        }
+    }
+}
+
+impl Shading {
+    /// Whether outlines are drawn.
+    pub fn outlines(&self) -> bool {
+        self.look == Look::Stylized && self.outline_px > 0.0
+    }
 }
 
 /// Converts one sRGB channel (0 to 1) to linear light, as the shaders work.
@@ -76,6 +121,8 @@ pub(crate) struct FrameUniforms {
     sky_top: [f32; 4],
     sky_horizon: [f32; 4],
     ground: [f32; 4],
+    shading: [f32; 4],
+    screen: [f32; 4],
 }
 
 impl FrameUniforms {
@@ -93,6 +140,21 @@ impl FrameUniforms {
             sky_top: linear(params.sky_top),
             sky_horizon: linear(params.sky_horizon),
             ground: linear(params.ground),
+            shading: [
+                match params.shading.look {
+                    Look::Standard => 0.0,
+                    Look::Stylized => 1.0,
+                    Look::Unlit => 2.0,
+                },
+                params.shading.bands.clamp(1, 8) as f32,
+                if params.shading.outlines() {
+                    params.shading.outline_px.clamp(0.0, 16.0)
+                } else {
+                    0.0
+                },
+                0.0,
+            ],
+            screen: [params.size_px[0] as f32, params.size_px[1] as f32, 0.0, 0.0],
         }
     }
 }
@@ -109,13 +171,15 @@ mod tests {
             sky_top: [0.29, 0.29, 0.29],
             sky_horizon: [0.24, 0.24, 0.24],
             ground: [0.22, 0.22, 0.22],
+            shading: Shading::default(),
+            size_px: [800, 600],
         }
     }
 
     #[test]
     fn uniforms_match_the_shader_layout() {
         // Two matrices and seven vectors, each 16 bytes per column/row.
-        assert_eq!(std::mem::size_of::<FrameUniforms>(), 2 * 64 + 7 * 16);
+        assert_eq!(std::mem::size_of::<FrameUniforms>(), 2 * 64 + 9 * 16);
     }
 
     #[test]
@@ -142,5 +206,30 @@ mod tests {
         assert_eq!(u.focus[3], grid_reach(params().camera_position.length()));
         assert_eq!(u.grid, [1.0, 10.0, 100.0, GRID_HALF_EXTENT]);
         assert!(u.sky_top[0] < 0.29, "colours are converted to linear");
+    }
+
+    #[test]
+    fn the_look_reaches_the_shader() {
+        let mut p = params();
+        p.shading = Shading {
+            look: Look::Stylized,
+            bands: 2,
+            outline_px: 3.0,
+        };
+        let u = FrameUniforms::new(&p);
+        assert_eq!(u.shading, [1.0, 2.0, 3.0, 0.0]);
+        assert_eq!(u.screen[..2], [800.0, 600.0]);
+        // Outlines belong to the stylized look only.
+        p.shading.look = Look::Standard;
+        assert_eq!(FrameUniforms::new(&p).shading[2], 0.0);
+        // Silly values are kept in range.
+        p.shading = Shading {
+            look: Look::Stylized,
+            bands: 999,
+            outline_px: f32::INFINITY,
+        };
+        let u = FrameUniforms::new(&p);
+        assert_eq!(u.shading[1], 8.0);
+        assert_eq!(u.shading[2], 16.0);
     }
 }
