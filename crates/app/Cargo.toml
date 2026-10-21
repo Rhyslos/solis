@@ -1,0 +1,27 @@
+[package]
+name = "app"
+description = "The application: opens the window and wires the engine and editor together"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+publish.workspace = true
+
+# Architecture layer, checked by tools/layer-check:
+# a crate may only depend on crates in its own layer or below.
+[package.metadata.architecture]
+layer = 3
+
+[[bin]]
+name = "solis"
+path = "src/main.rs"
+
+[dependencies]
+editor.workspace = true
+render.workspace = true
+eframe.workspace = true
+
+[lints]
+workspace = true
