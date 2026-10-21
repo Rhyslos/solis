@@ -34,7 +34,7 @@ fn main() -> ExitCode {
     match cli::parse(args) {
         Ok(Command::Version) => exit_with(say(&format!("{}\n", app::version_banner()), false)),
         Ok(Command::Help) => exit_with(say(&cli::usage(&program), false)),
-        Ok(Command::Run) => match app::window::run(app::app_info()) {
+        Ok(Command::Run(imports)) => match app::window::run(app::app_info(), imports) {
             Ok(()) => ExitCode::SUCCESS,
             Err(reason) => {
                 say(

@@ -8,7 +8,7 @@ When finding your way around, or making the layout suit your screen.
 ## How to use it
 
 **The top bar**, from left to right:
-- **Menus:** File, Edit, View, Entity, Build, Window and Help. Items that don't work yet are greyed out; point at one to see which phase brings it.
+- **Menus:** File, Edit, View, Entity, Build, Window and Help. **File > Import model…** brings a model in (see [Importing models](importing-models.md)). Items that don't work yet are greyed out; point at one to see which phase brings it.
 - **The scene tab:** the open scene ("Untitled scene"). Opening more scenes, prefabs and code side by side arrives in Phase 2.
 - **Play**, **Play with two players** and **Stop**, then **Build** and **Build & Play**, on the right. They tell you in the Console which phase brings them.
 
@@ -18,7 +18,7 @@ When finding your way around, or making the layout suit your screen.
 |---|---|---|
 | Viewport | Game | The 3D world. See [Moving around the viewport](navigating-the-viewport.md). |
 | Game | Viewport | The running game, when you press Play (Phase 5). |
-| Scene | Layers | Everything in the scene, as a tree (Phase 2). |
+| Scene | Layers | Everything in the scene, as a tree (Phase 2). For now it lists [imported models](importing-models.md), with a × to remove each. |
 | Layers | Scene | The scene's layers (Phase 2). |
 | Properties | | The settings of whatever is selected (Phase 2). |
 | Library | Code | Models, textures, sounds and prefabs (Phase 2). |

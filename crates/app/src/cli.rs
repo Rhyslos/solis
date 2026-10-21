@@ -1,12 +1,14 @@
-//! The command line: `--version`, `--help`, or nothing to open the editor.
+//! The command line: `--version`, `--help`, or nothing to open the editor
+//! (with `--import <file>` to bring models in as it opens).
 
 use std::ffi::OsString;
+use std::path::PathBuf;
 
 /// What the command line asks for.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Command {
-    /// Open the editor.
-    Run,
+    /// Open the editor, importing these models.
+    Run(Vec<PathBuf>),
     /// Print the version and exit.
     Version,
     /// Print how to use the program and exit.
@@ -16,11 +18,17 @@ pub enum Command {
 /// Reads the arguments after the program's name. Anything unknown is
 /// explained in the error.
 pub fn parse(args: impl IntoIterator<Item = OsString>) -> Result<Command, String> {
-    let mut command = Command::Run;
-    for arg in args {
+    let mut version = false;
+    let mut imports = Vec::new();
+    let mut args = args.into_iter();
+    while let Some(arg) = args.next() {
         match arg.to_str() {
-            Some("--version" | "-V") => command = Command::Version,
+            Some("--version" | "-V") => version = true,
             Some("--help" | "-h") => return Ok(Command::Help),
+            Some("--import") => match args.next() {
+                Some(file) => imports.push(PathBuf::from(file)),
+                None => return Err("--import needs a file after it. Try --help.".to_string()),
+            },
             _ => {
                 return Err(format!(
                     "Unknown option {}. Try --help.",
@@ -29,17 +37,22 @@ pub fn parse(args: impl IntoIterator<Item = OsString>) -> Result<Command, String
             }
         }
     }
-    Ok(command)
+    Ok(if version {
+        Command::Version
+    } else {
+        Command::Run(imports)
+    })
 }
 
 /// How to use the program, for `--help`.
 pub fn usage(program: &str) -> String {
     format!(
-        "Usage: {program} [--version | --help]\n\n\
+        "Usage: {program} [--import <file>]... [--version | --help]\n\n\
          Opens the {name} editor.\n\n\
          Options:\n  \
-         -V, --version   Print the version and exit\n  \
-         -h, --help      Print this help and exit\n",
+         --import <file>  Import a glTF model (.gltf or .glb) as the editor opens\n  \
+         -V, --version    Print the version and exit\n  \
+         -h, --help       Print this help and exit\n",
         name = crate::branding::APP_NAME
     )
 }
@@ -54,7 +67,7 @@ mod tests {
 
     #[test]
     fn nothing_opens_the_editor() {
-        assert_eq!(parse(args(&[])), Ok(Command::Run));
+        assert_eq!(parse(args(&[])), Ok(Command::Run(Vec::new())));
     }
 
     #[test]
@@ -63,6 +76,19 @@ mod tests {
         assert_eq!(parse(args(&["-V"])), Ok(Command::Version));
         assert_eq!(parse(args(&["--help"])), Ok(Command::Help));
         assert_eq!(parse(args(&["--version", "-h"])), Ok(Command::Help));
+    }
+
+    #[test]
+    fn models_can_be_imported_from_the_command_line() {
+        assert_eq!(
+            parse(args(&["--import", "a.glb", "--import", "b c.gltf"])),
+            Ok(Command::Run(vec![
+                PathBuf::from("a.glb"),
+                PathBuf::from("b c.gltf")
+            ]))
+        );
+        let err = parse(args(&["--import"])).unwrap_err();
+        assert!(err.contains("needs a file"), "{err}");
     }
 
     #[test]
@@ -113,16 +139,24 @@ mod tests {
             let list: Vec<OsString> = (0..count)
                 .map(|_| OsString::from(pieces[next(pieces.len())]))
                 .collect();
-            let only_known = list
+            // Every argument is a known option or the file after --import.
+            let mut only_known = true;
+            let mut after_import = false;
+            for a in &list {
+                let known = matches!(
+                    a.to_str(),
+                    Some("--version" | "-V" | "--help" | "-h" | "--import")
+                );
+                if !after_import && !known {
+                    only_known = false;
+                }
+                after_import = !after_import && a.to_str() == Some("--import");
+            }
+            let help = list
                 .iter()
-                .all(|a| matches!(a.to_str(), Some("--version" | "-V" | "--help" | "-h")));
+                .any(|a| matches!(a.to_str(), Some("--help" | "-h")));
             match parse(list.clone()) {
-                Ok(_) => assert!(
-                    only_known
-                        || list
-                            .iter()
-                            .any(|a| matches!(a.to_str(), Some("--help" | "-h")))
-                ),
+                Ok(_) => assert!(only_known || help, "{list:?}"),
                 Err(message) => assert!(message.contains("--help"), "{message}"),
             }
         }

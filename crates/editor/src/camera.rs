@@ -162,6 +162,31 @@ impl Camera {
         self.tilt = (to.z / to.length()).asin().clamp(-MAX_TILT, MAX_TILT);
     }
 
+    /// Moves the camera back from the box `min` to `max` until all of it
+    /// is in view, keeping the direction it looks (or, if it looks up or
+    /// level, looking down at a gentle angle), and picks a speed that
+    /// suits the box's size: crossing it takes a few seconds.
+    pub fn frame(&mut self, min: Vec3, max: Vec3) {
+        if !min.is_finite() || !max.is_finite() {
+            return;
+        }
+        let center = (min + max) * 0.5;
+        let radius = ((max - min).length() * 0.5).max(0.05);
+        if self.tilt > -0.15 {
+            self.tilt = -0.35;
+        }
+        let distance = radius / (self.fov_y * 0.5).sin().max(0.05) * 1.1;
+        self.position = center - self.forward() * distance;
+        // The speed step whose metres per second is closest to the box's
+        // size.
+        let size = radius * 2.0;
+        self.speed = SPEEDS
+            .iter()
+            .enumerate()
+            .min_by(|(_, a), (_, b)| (*a - size).abs().total_cmp(&(*b - size).abs()))
+            .map_or(DEFAULT_SPEED, |(i, _)| i as u8 + 1);
+    }
+
     /// The current speed in metres per second.
     pub fn speed_mps(&self) -> f32 {
         let step = usize::from(self.speed.clamp(1, SPEEDS.len() as u8)) - 1;
@@ -625,5 +650,54 @@ mod tests {
                 assert!(usable(&camera.sanitized()), "{text}");
             }
         }
+    }
+
+    #[test]
+    fn framing_a_box_brings_all_of_it_into_view() {
+        for (min, max) in [
+            (Vec3::new(-1.0, -1.0, 0.0), Vec3::new(1.0, 1.0, 2.0)),
+            (Vec3::new(100.0, 50.0, 0.0), Vec3::new(400.0, 90.0, 30.0)),
+            (Vec3::splat(-0.01), Vec3::splat(0.01)),
+        ] {
+            let mut camera = Camera::default();
+            camera.frame(min, max);
+            let vp = camera.view_projection(1.0);
+            for corner in 0..8 {
+                let p = Vec3::new(
+                    if corner & 1 == 0 { min.x } else { max.x },
+                    if corner & 2 == 0 { min.y } else { max.y },
+                    if corner & 4 == 0 { min.z } else { max.z },
+                );
+                let clip = vp * p.extend(1.0);
+                let ndc = clip.truncate() / clip.w;
+                assert!(
+                    clip.w > 0.0 && ndc.x.abs() <= 1.0 && ndc.y.abs() <= 1.0,
+                    "{p} -> {ndc}"
+                );
+            }
+        }
+    }
+
+    #[test]
+    fn framing_picks_a_speed_to_suit_the_size() {
+        let mut small = Camera::default();
+        small.frame(Vec3::splat(-0.5), Vec3::splat(0.5));
+        let mut big = Camera::default();
+        big.frame(Vec3::splat(-200.0), Vec3::splat(200.0));
+        assert!(small.speed < big.speed);
+        assert_eq!(big.speed, 8);
+    }
+
+    #[test]
+    fn framing_looks_down_when_the_camera_looked_up() {
+        let mut camera = Camera {
+            tilt: 0.5,
+            ..Camera::default()
+        };
+        camera.frame(Vec3::ZERO, Vec3::ONE);
+        assert!(camera.tilt < 0.0);
+        let before = camera;
+        camera.frame(Vec3::NAN, Vec3::ONE);
+        assert_eq!(camera, before, "a broken box changes nothing");
     }
 }

@@ -2,7 +2,7 @@
 
 **Layer 1 · Engine**
 
-Draws viewports with wgpu into offscreen images: for now the backdrop (a calm sky with a horizon), the ground grid (1 m, 10 m and 100 m lines) and the X and Y axes. Shapes, materials, lights and shadows arrive in Phase 1.
+Draws viewports with wgpu into offscreen images: the backdrop (a calm sky with a horizon), imported models with the simple material (colour and colour texture, lit by a fixed sun and the sky), the ground grid (1 m, 10 m and 100 m lines) and the X and Y axes. Full materials, lights and shadows arrive later in Phase 1.
 
 ## Purpose
 
@@ -24,8 +24,8 @@ The image is plain 8-bit RGBA; the shaders convert linear colour to sRGB as they
 
 ## Depends on
 
-wgpu, glam and bytemuck. No Solis crates.
+`assets` (for the model data it uploads), wgpu, glam and bytemuck.
 
 ## Status
 
-Phase 0: backdrop, grid and axes.
+Phase 1, milestone 2: backdrop, grid, axes and models with the simple material.

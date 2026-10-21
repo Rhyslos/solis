@@ -1,4 +1,5 @@
-//! Drawing a viewport into an offscreen image on the GPU.
+//! Drawing a viewport into an offscreen image on the GPU: the backdrop,
+//! models, the grid and the axes.
 //!
 //! Each viewport renders into its own [`ViewportTarget`] (colour and depth
 //! images, with multisampling when the GPU supports it). The caller then
@@ -6,6 +7,7 @@
 //! egui as a texture.
 
 use crate::frame::{FrameParams, FrameUniforms, GRID_HALF_EXTENT};
+use crate::gpu_model::{GpuModel, ModelPipelines, Pass};
 use bytemuck::{Pod, Zeroable};
 use wgpu::util::DeviceExt;
 
@@ -219,6 +221,7 @@ pub struct ViewportRenderer {
     sky_pipeline: wgpu::RenderPipeline,
     grid_pipeline: wgpu::RenderPipeline,
     line_pipeline: wgpu::RenderPipeline,
+    models: ModelPipelines,
     axes: wgpu::Buffer,
     axis_count: u32,
 }
@@ -276,11 +279,23 @@ impl ViewportRenderer {
             sky_pipeline: pipeline(Kind::Sky),
             grid_pipeline: pipeline(Kind::Grid),
             line_pipeline: pipeline(Kind::Lines),
+            models: ModelPipelines::new(device, &bind_group_layout, &shader, sample_count),
             uniform_buffer,
             bind_group,
             axes,
             axis_count: axis_vertices.len() as u32,
         }
+    }
+
+    /// Uploads `model` to the GPU, ready to pass to [`Self::render`]. Done
+    /// once per model, not every frame.
+    pub fn upload_model(
+        &self,
+        device: &wgpu::Device,
+        queue: &wgpu::Queue,
+        model: &assets::Model,
+    ) -> GpuModel {
+        self.models.upload(device, queue, model)
     }
 
     /// Samples per pixel in use (1 or 4).
@@ -344,14 +359,15 @@ impl ViewportRenderer {
         }
     }
 
-    /// Draws one frame into `target` and submits it. Never waits for the
-    /// GPU to finish.
+    /// Draws one frame into `target`, with `models` in it, and submits it.
+    /// Never waits for the GPU to finish.
     pub fn render(
         &self,
         device: &wgpu::Device,
         queue: &wgpu::Queue,
         target: &ViewportTarget,
         params: &FrameParams,
+        models: &[&GpuModel],
     ) {
         queue.write_buffer(
             &self.uniform_buffer,
@@ -398,11 +414,26 @@ impl ViewportRenderer {
             pass.set_bind_group(0, &self.bind_group, &[]);
             pass.set_pipeline(&self.sky_pipeline);
             pass.draw(0..3, 0..1);
+            // Solid shapes first, so the see-through grid and axes are
+            // hidden behind them; blended shapes last, over everything.
+            for (pipeline, kind) in [
+                (&self.models.solid, Pass::Solid),
+                (&self.models.solid_double_sided, Pass::SolidDoubleSided),
+            ] {
+                pass.set_pipeline(pipeline);
+                for model in models {
+                    model.draw(&mut pass, kind);
+                }
+            }
             pass.set_pipeline(&self.grid_pipeline);
             pass.draw(0..6, 0..1);
             pass.set_pipeline(&self.line_pipeline);
             pass.set_vertex_buffer(0, self.axes.slice(..));
             pass.draw(0..self.axis_count, 0..1);
+            pass.set_pipeline(&self.models.blended);
+            for model in models {
+                model.draw(&mut pass, Pass::Blended);
+            }
         }
         queue.submit([encoder.finish()]);
     }
