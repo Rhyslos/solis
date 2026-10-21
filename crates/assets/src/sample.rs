@@ -29,6 +29,83 @@ pub fn sample_glb() -> Vec<u8> {
     b.glb()
 }
 
+/// A bigger scene for looking at materials: the sample's cube on its base;
+/// in front, a row of plastic spheres from glossy to rough and a row of
+/// metal ones; behind, a wall with grooves in its normal texture and a
+/// glowing stripe. Help > Add the sample scene brings it in.
+pub fn showcase_glb() -> Vec<u8> {
+    let mut b = Builder::default();
+    let checker = b.add_image(&checker_png(64, 8));
+    let grooves = b.add_image(&grooves_normal_png(128, 8));
+    b.json_textures = vec![
+        format!(r#"{{"source":{checker},"sampler":0}}"#),
+        format!(r#"{{"source":{grooves},"sampler":0}}"#),
+    ];
+    let mut materials = vec![
+        r#"{"name":"Checker","pbrMetallicRoughness":{"baseColorTexture":{"index":0},"metallicFactor":0,"roughnessFactor":0.6}}"#.to_string(),
+        r#"{"name":"Red","pbrMetallicRoughness":{"baseColorFactor":[0.8,0.1,0.08,1.0],"metallicFactor":0,"roughnessFactor":0.7}}"#.to_string(),
+        r#"{"name":"Grooved wall","pbrMetallicRoughness":{"baseColorFactor":[0.55,0.57,0.6,1.0],"metallicFactor":0,"roughnessFactor":0.8},"normalTexture":{"index":1}}"#.to_string(),
+        r#"{"name":"Glow","pbrMetallicRoughness":{"baseColorFactor":[0.1,0.1,0.1,1.0]},"emissiveFactor":[1.0,0.55,0.1]}"#.to_string(),
+    ];
+    let cube = b.add_cube_mesh(1.0, Some(0));
+    let base = b.add_box_mesh([3.0, 0.1, 3.0], Some(1));
+    let wall = b.add_box_mesh([3.0, 1.5, 0.1], Some(2));
+    let stripe = b.add_box_mesh([2.5, 0.06, 0.04], Some(3));
+    let mut nodes = vec![
+        format!(r#"{{"name":"Cube","mesh":{cube},"translation":[0,1.1,0]}}"#),
+        format!(r#"{{"name":"Base","mesh":{base}}}"#),
+        format!(r#"{{"name":"Wall","mesh":{wall},"translation":[0,1.5,-3.6]}}"#),
+        format!(r#"{{"name":"Glowing stripe","mesh":{stripe},"translation":[0,2.6,-3.46]}}"#),
+    ];
+    for (row, metallic) in [(0, 0.0), (1, 1.0)] {
+        for i in 0..5 {
+            let roughness = 0.1 + 0.2 * i as f32;
+            let color = if metallic > 0.5 {
+                "[0.95,0.75,0.4,1.0]"
+            } else {
+                "[0.15,0.35,0.8,1.0]"
+            };
+            materials.push(format!(
+                r#"{{"name":"{} {roughness:.1}","pbrMetallicRoughness":{{"baseColorFactor":{color},"metallicFactor":{metallic},"roughnessFactor":{roughness}}}}}"#,
+                if metallic > 0.5 { "Metal" } else { "Plastic" }
+            ));
+            let sphere = b.add_sphere_mesh(0.45, Some(materials.len() - 1));
+            nodes.push(format!(
+                r#"{{"name":"Sphere","mesh":{sphere},"translation":[{},0.45,{}]}}"#,
+                -2.4 + 1.2 * i as f32,
+                4.0 + 1.2 * f32::from(row as u8)
+            ));
+        }
+    }
+    b.json_materials = materials;
+    b.json_nodes = nodes;
+    b.glb()
+}
+
+/// A normal texture of horizontal grooves: `size` pixels square, `count`
+/// grooves down it. Flat parts face straight out (the light blue of normal
+/// textures); each groove's sides lean up and down.
+pub fn grooves_normal_png(size: u32, count: u32) -> Vec<u8> {
+    let period = (size / count.max(1)).max(4);
+    let image = image::RgbaImage::from_fn(size, size, |_, y| {
+        let t = (y % period) as f32 / period as f32;
+        // A V-shaped groove in the middle third of each band.
+        let lean: f32 = if (0.33..0.5).contains(&t) {
+            -0.6
+        } else if (0.5..0.67).contains(&t) {
+            0.6
+        } else {
+            0.0
+        };
+        let n = glam::Vec3::new(0.0, lean, 1.0).normalize();
+        let byte = |v: f32| ((v * 0.5 + 0.5) * 255.0).round() as u8;
+        image::Rgba([byte(n.x), byte(n.y), byte(n.z), 255])
+    });
+    let mut bytes = Vec::new();
+    let _ = image.write_to(&mut Cursor::new(&mut bytes), image::ImageFormat::Png);
+    bytes
+}
+
 /// A checker texture as a PNG: `size` pixels square, `squares` across.
 pub fn checker_png(size: u32, squares: u32) -> Vec<u8> {
     let cell = (size / squares.max(1)).max(1);
@@ -128,23 +205,50 @@ impl Builder {
     /// index.
     pub fn add_box_mesh(&mut self, half: [f32; 3], material: Option<usize>) -> usize {
         let (positions, normals, uvs, indices) = box_data(half);
+        self.add_mesh(&positions, &normals, &uvs, &indices, material)
+    }
+
+    /// Adds a sphere `radius` metres across from its middle, and returns
+    /// the mesh's index.
+    pub fn add_sphere_mesh(&mut self, radius: f32, material: Option<usize>) -> usize {
+        let (positions, normals, uvs, indices) = sphere_data(radius, 32, 16);
+        self.add_mesh(&positions, &normals, &uvs, &indices, material)
+    }
+
+    /// Adds a mesh from its corners, normals, texture coordinates and
+    /// triangles, and returns its index.
+    pub fn add_mesh(
+        &mut self,
+        positions: &[[f32; 3]],
+        normals: &[[f32; 3]],
+        uvs: &[[f32; 2]],
+        indices: &[u16],
+        material: Option<usize>,
+    ) -> usize {
+        let (mut min, mut max) = ([f32::MAX; 3], [f32::MIN; 3]);
+        for p in positions {
+            for i in 0..3 {
+                min[i] = min[i].min(p[i]);
+                max[i] = max[i].max(p[i]);
+            }
+        }
         let p = self.add_accessor(
-            bytemuck::cast_slice(&positions),
+            bytemuck::cast_slice(positions),
             positions.len(),
             "VEC3",
             5126,
-            Some(([-half[0], -half[1], -half[2]], half)),
+            Some((min, max)),
         );
         let n = self.add_accessor(
-            bytemuck::cast_slice(&normals),
+            bytemuck::cast_slice(normals),
             normals.len(),
             "VEC3",
             5126,
             None,
         );
-        let t = self.add_accessor(bytemuck::cast_slice(&uvs), uvs.len(), "VEC2", 5126, None);
+        let t = self.add_accessor(bytemuck::cast_slice(uvs), uvs.len(), "VEC2", 5126, None);
         let i = self.add_accessor(
-            bytemuck::cast_slice(&indices),
+            bytemuck::cast_slice(indices),
             indices.len(),
             "SCALAR",
             5123,
@@ -215,6 +319,36 @@ impl Builder {
 
 type BoxData = (Vec<[f32; 3]>, Vec<[f32; 3]>, Vec<[f32; 2]>, Vec<u16>);
 
+/// A sphere's corners, normals, texture coordinates and triangles:
+/// `segments` around and `rings` from top to bottom.
+fn sphere_data(radius: f32, segments: u16, rings: u16) -> BoxData {
+    use std::f32::consts::{PI, TAU};
+    let (mut positions, mut normals, mut uvs, mut indices) =
+        (Vec::new(), Vec::new(), Vec::new(), Vec::new());
+    for ring in 0..=rings {
+        let v = f32::from(ring) / f32::from(rings);
+        let (sin_t, cos_t) = (v * PI).sin_cos();
+        for seg in 0..=segments {
+            let u = f32::from(seg) / f32::from(segments);
+            let (sin_p, cos_p) = (u * TAU).sin_cos();
+            // glTF is Y-up: rings go from +Y down to -Y.
+            let n = [sin_t * cos_p, cos_t, -sin_t * sin_p];
+            positions.push(n.map(|c| c * radius));
+            normals.push(n);
+            uvs.push([u, v]);
+        }
+    }
+    let row = segments + 1;
+    for ring in 0..rings {
+        for seg in 0..segments {
+            let a = ring * row + seg;
+            let b = a + row;
+            indices.extend_from_slice(&[a, b, a + 1, a + 1, b, b + 1]);
+        }
+    }
+    (positions, normals, uvs, indices)
+}
+
 /// A box's corners (four per face, so each face has its own normal),
 /// normals, texture coordinates and triangles.
 fn box_data(half: [f32; 3]) -> BoxData {
@@ -253,6 +387,31 @@ mod tests {
         assert_eq!(&glb[..4], b"glTF");
         assert_eq!(glb.len() % 4, 0);
         assert!(gltf::Gltf::from_slice(&glb).is_ok());
+    }
+
+    #[test]
+    fn the_showcase_is_a_valid_glb() {
+        assert!(gltf::Gltf::from_slice(&showcase_glb()).is_ok());
+    }
+
+    #[test]
+    fn sphere_faces_point_outwards() {
+        let (positions, _, _, indices) = sphere_data(1.0, 12, 6);
+        for t in indices.chunks_exact(3) {
+            let [a, b, c] = [t[0], t[1], t[2]].map(|i| glam::Vec3::from(positions[i as usize]));
+            let face = (b - a).cross(c - a);
+            if face.length() < 1e-6 {
+                continue; // the slivers at the poles
+            }
+            assert!(face.dot((a + b + c) / 3.0) > 0.0);
+        }
+    }
+
+    #[test]
+    fn flat_parts_of_the_grooves_face_straight_out() {
+        let png = grooves_normal_png(64, 4);
+        let image = image::load_from_memory(&png).unwrap().to_rgba8();
+        assert_eq!(image.get_pixel(0, 0).0, [128, 128, 255, 255]);
     }
 
     #[test]

@@ -13,7 +13,12 @@ const MAX_DECODE_BYTES: u64 = 1 << 30;
 /// first if it is wider or taller than `limits.max_texture_side`. Images
 /// bigger than `limits.max_image_side`, or in formats other than PNG and
 /// JPEG, are refused with a reason.
-pub fn decode(bytes: &[u8], sampler: Sampler, limits: &Limits) -> Result<Texture, String> {
+pub fn decode(
+    bytes: &[u8],
+    sampler: Sampler,
+    srgb: bool,
+    limits: &Limits,
+) -> Result<Texture, String> {
     let mut reader = ImageReader::new(Cursor::new(bytes))
         .with_guessed_format()
         .map_err(|e| format!("couldn't read the image: {e}"))?;
@@ -40,22 +45,23 @@ pub fn decode(bytes: &[u8], sampler: Sampler, limits: &Limits) -> Result<Texture
         let height = ((f64::from(rgba.height()) * scale).round() as u32).clamp(1, side);
         rgba = image::imageops::resize(&rgba, width, height, FilterType::Triangle);
     }
-    Ok(with_mips(rgba, sampler))
+    Ok(with_mips(rgba, sampler, srgb))
 }
 
 /// A texture of one colour, one pixel in size (used where a material has
 /// no texture, so every material is drawn the same way).
-pub fn solid(rgba: [u8; 4]) -> Texture {
+pub fn solid(rgba: [u8; 4], srgb: bool) -> Texture {
     Texture {
         width: 1,
         height: 1,
         levels: vec![rgba.to_vec()],
         sampler: Sampler::default(),
+        srgb,
     }
 }
 
 /// `image` with every smaller level added, each half the size of the last.
-pub fn with_mips(image: RgbaImage, sampler: Sampler) -> Texture {
+pub fn with_mips(image: RgbaImage, sampler: Sampler, srgb: bool) -> Texture {
     let (width, height) = image.dimensions();
     let mut levels = Vec::new();
     let mut level = image;
@@ -75,6 +81,7 @@ pub fn with_mips(image: RgbaImage, sampler: Sampler) -> Texture {
         height,
         levels,
         sampler,
+        srgb,
     }
 }
 
@@ -100,7 +107,7 @@ mod tests {
 
     #[test]
     fn a_png_decodes_with_every_mip_level() {
-        let t = decode(&png(16, 4), Sampler::default(), &Limits::default()).unwrap();
+        let t = decode(&png(16, 4), Sampler::default(), true, &Limits::default()).unwrap();
         assert_eq!((t.width, t.height), (16, 4));
         assert_eq!(t.levels.len() as u32, level_count(16, 4));
         let sizes: Vec<usize> = t.levels.iter().map(Vec::len).collect();
@@ -121,7 +128,7 @@ mod tests {
             max_texture_side: 8,
             ..Limits::default()
         };
-        let t = decode(&png(32, 16), Sampler::default(), &limits).unwrap();
+        let t = decode(&png(32, 16), Sampler::default(), true, &limits).unwrap();
         assert_eq!((t.width, t.height), (8, 4));
     }
 
@@ -131,15 +138,15 @@ mod tests {
             max_image_side: 8,
             ..Limits::default()
         };
-        let err = decode(&png(32, 16), Sampler::default(), &limits).unwrap_err();
+        let err = decode(&png(32, 16), Sampler::default(), true, &limits).unwrap_err();
         assert!(err.contains("bigger than 8"), "{err}");
     }
 
     #[test]
     fn other_formats_and_rubbish_are_refused_politely() {
-        assert!(decode(b"GIF89a....", Sampler::default(), &Limits::default()).is_err());
-        assert!(decode(b"", Sampler::default(), &Limits::default()).is_err());
-        assert!(decode(&[0xff; 64], Sampler::default(), &Limits::default()).is_err());
+        assert!(decode(b"GIF89a....", Sampler::default(), true, &Limits::default()).is_err());
+        assert!(decode(b"", Sampler::default(), true, &Limits::default()).is_err());
+        assert!(decode(&[0xff; 64], Sampler::default(), true, &Limits::default()).is_err());
     }
 
     /// A PNG whose header claims an enormous size: refused before any
@@ -150,7 +157,7 @@ mod tests {
         // Width and height sit at bytes 16..24 of a PNG (in the IHDR chunk).
         bytes[16..20].copy_from_slice(&100_000u32.to_be_bytes());
         bytes[20..24].copy_from_slice(&100_000u32.to_be_bytes());
-        assert!(decode(&bytes, Sampler::default(), &Limits::default()).is_err());
+        assert!(decode(&bytes, Sampler::default(), true, &Limits::default()).is_err());
     }
 
     /// Thousands of randomly damaged images: always an answer, never a
@@ -180,13 +187,13 @@ mod tests {
                     bytes.insert(at, next(256) as u8);
                 }
             }
-            let _ = decode(&bytes, Sampler::default(), &Limits::default());
+            let _ = decode(&bytes, Sampler::default(), true, &Limits::default());
         }
     }
 
     #[test]
     fn a_solid_texture_is_one_pixel() {
-        let t = solid([255, 0, 0, 255]);
+        let t = solid([255, 0, 0, 255], true);
         assert_eq!(t.levels, vec![vec![255, 0, 0, 255]]);
     }
 }

@@ -33,6 +33,8 @@ pub enum WorkbenchAction {
     Quit,
     /// Ask which model file to import (File > Import model…).
     ImportModel,
+    /// Bring in the built-in sample scene (Help > Add the sample scene).
+    AddSampleScene,
     /// Take an imported model out of the viewport and free it.
     RemoveModel(ModelId),
 }
@@ -240,6 +242,19 @@ impl Workbench {
         self
     }
 
+    /// Uses `look` (as saved last time), with anything out of range put
+    /// back in range.
+    #[must_use]
+    pub fn with_look(mut self, look: crate::look::Look) -> Self {
+        self.viewport.look = look.sanitized();
+        self
+    }
+
+    /// How models are shaded, for saving.
+    pub fn look(&self) -> crate::look::Look {
+        self.viewport.look
+    }
+
     /// The viewport camera, for saving.
     pub fn camera(&self) -> Camera {
         self.viewport.camera
@@ -434,6 +449,18 @@ impl Workbench {
             });
         });
         ui.menu_button("Help", |ui| {
+            if ui
+                .button("Add the sample scene")
+                .on_hover_text(
+                    "A small scene for trying the looks: a checker cube, rows of plastic and \
+                     metal spheres, and a grooved wall with a glowing stripe",
+                )
+                .clicked()
+            {
+                actions.push(WorkbenchAction::AddSampleScene);
+                ui.close();
+            }
+            ui.separator();
             if ui.button(format!("About {}", self.info.name)).clicked() {
                 self.about_open = true;
                 ui.close();
@@ -1334,5 +1361,47 @@ mod tests {
         let verdict = if ms <= TARGET_MS { "ok" } else { "SLOW" };
         println!("Scale check: editor frame {ms:.2} ms (target {TARGET_MS} ms) {verdict}");
         assert!(ms <= TARGET_MS, "the editor takes {ms:.2} ms per frame");
+    }
+
+    #[test]
+    fn the_look_menu_switches_the_look() {
+        let mut h = harness();
+        h.run();
+        h.get_by_label("Standard ▴").click();
+        h.run();
+        h.get_by_label("Stylized").click();
+        h.run();
+        assert_eq!(h.state().look().kind, crate::look::LookKind::Stylized);
+        // The menu stays open while its settings change, and the button now
+        // names the look.
+        let _ = h.get_by_label("Stylized ▴");
+        h.get_by_label("2").click();
+        h.run();
+        assert_eq!(h.state().look().bands, 2);
+        h.get_by_label("Outlines").click();
+        h.run();
+        assert!(!h.state().look().outlines);
+    }
+
+    #[test]
+    fn help_offers_the_sample_scene() {
+        let mut h = egui_kittest::Harness::builder()
+            .with_size(egui::vec2(1440.0, 900.0))
+            .build_ui_state(
+                |ui, state: &mut (Workbench, Vec<WorkbenchAction>)| {
+                    let mut renderer = NoRenderer {
+                        reason: "testing".into(),
+                    };
+                    let actions = state.0.show(ui, &mut renderer);
+                    state.1.extend(actions);
+                },
+                (Workbench::new(info(), None), Vec::new()),
+            );
+        h.run();
+        h.get_by_label("Help").click();
+        h.run();
+        h.get_by_label("Add the sample scene").click();
+        h.run();
+        assert!(h.state().1.contains(&WorkbenchAction::AddSampleScene));
     }
 }

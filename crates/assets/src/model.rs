@@ -48,16 +48,35 @@ pub enum AlphaMode {
     Blend,
 }
 
-/// How a surface looks. For now: a colour, a colour texture, and
-/// see-through handling; the full materials arrive in milestone 3.
+/// How a surface looks: glTF's metal-and-roughness material, the standard
+/// most programs export. Each texture is an index into the model's
+/// textures, and multiplies the matching factor.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Material {
     /// The material's name in the file, if it had one.
     pub name: String,
     /// The colour, in linear RGBA (multiplied with the texture).
     pub base_color: [f32; 4],
-    /// The colour texture: an index into the model's textures.
+    /// The colour texture (sRGB).
     pub base_color_texture: Option<usize>,
+    /// How metal the surface is: 0 paint, plastic, wood; 1 bare metal.
+    pub metallic: f32,
+    /// How rough: 0 mirror-smooth, 1 chalky.
+    pub roughness: f32,
+    /// Metal in its blue channel, roughness in its green (linear).
+    pub metallic_roughness_texture: Option<usize>,
+    /// Small surface detail (bumps, panel lines) as directions (linear).
+    pub normal_texture: Option<usize>,
+    /// How strongly the normal texture bends the surface (1 as made).
+    pub normal_scale: f32,
+    /// Darkening in creases and corners, in its red channel (linear).
+    pub occlusion_texture: Option<usize>,
+    /// How much of the occlusion texture applies (0 to 1).
+    pub occlusion_strength: f32,
+    /// Light the surface gives off itself, linear RGB (lamps, screens).
+    pub emissive: [f32; 3],
+    /// The glowing parts' colour (sRGB), multiplied with `emissive`.
+    pub emissive_texture: Option<usize>,
     /// How see-through parts are handled.
     pub alpha: AlphaMode,
     /// Whether both sides of each triangle are drawn.
@@ -70,6 +89,18 @@ impl Default for Material {
             name: String::new(),
             base_color: [1.0; 4],
             base_color_texture: None,
+            // A plain, slightly glossy surface for meshes without a
+            // material. (glTF's own default is rough bare metal, which
+            // looks dark without a sky to reflect.)
+            metallic: 0.0,
+            roughness: 0.5,
+            metallic_roughness_texture: None,
+            normal_texture: None,
+            normal_scale: 1.0,
+            occlusion_texture: None,
+            occlusion_strength: 1.0,
+            emissive: [0.0; 3],
+            emissive_texture: None,
             alpha: AlphaMode::Opaque,
             double_sided: false,
         }
@@ -112,6 +143,9 @@ pub struct Texture {
     pub levels: Vec<Vec<u8>>,
     /// How it is sampled.
     pub sampler: Sampler,
+    /// Whether the pixels are colours in sRGB (colour and glow textures),
+    /// rather than plain numbers (metal, roughness, normals, occlusion).
+    pub srgb: bool,
 }
 
 /// The box a model fits in, in metres.
