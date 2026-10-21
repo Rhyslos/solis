@@ -19,7 +19,6 @@ Option 3, on the look chosen in the mockups ("Solis editor · layout picker" on 
 
 **Top bar, one row:**
 - **On the left:** the menus (File, Edit, View, Entity, Build, Window, Help), as in Halberd, then the **document tabs** (Unreal's tab system): scenes, prefabs and code files open as tabs, each with an icon and ×, and + opens a new one.
-- **In the centre, the tools as icons:** Select (Q, a mouse pointer), Move (W), Rotate (R), Scale (S) and Transform (T, all three at once). There is no separate Place tool: dragging from the library to place things is part of Select.
 - **On the right:** Play, Play with two players, Stop, Build ▾ and Build & Play.
 - No logo button and no layout buttons: the layout is set by docking (below).
 
@@ -32,6 +31,7 @@ Option 3, on the look chosen in the mockups ("Solis editor · layout picker" on 
 **The default arrangement:**
 - **Right, full height:** Scene and Layers (a tree), above Properties. Properties shows the entity's components under underlined headings with their language (Lust, Rust or Lua), labels and values in two columns, and X/Y/Z fields colour-coded.
 - **Centre:** the viewport, with Viewport and Game tabs. Over the view, kept to the corners:
+  - **Bottom centre, the tools as icons:** Select (Q, a mouse pointer), Move (W), Rotate (R), Scale (S) and Transform (T, all three at once). There is no separate Place tool: dragging from the library to place things is part of Select.
   - **Bottom left:** ≡, Perspective ▴, Lit ▴, Show ▴. The ≡ menu (opening upwards) has checkboxes to show or hide the other overlays, plus grid and camera speed settings.
   - **Bottom right:** grid, angle and camera speed.
   - **Top right:** frame rate and entity count.
