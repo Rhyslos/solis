@@ -117,7 +117,30 @@ TOOL_CHANGE="$(changed_pixels first move-tool 200x50+450+630)"
 echo "Pixels changed in the tool bar by pressing W: $TOOL_CHANGE"
 [ "$TOOL_CHANGE" -gt 100 ] || fail "W did not pick the Move tool"
 
-# 3. Drag the Console tab onto the right-hand column, below Properties.
+# 3. Fly: hold the right mouse button in the viewport, turn a little and
+#    press W. The view changes, and W moves the camera instead of picking a
+#    tool (Move is still the tool).
+xdotool mousemove 500 300
+sleep 0.3
+xdotool mousedown 3
+sleep 0.3
+for i in $(seq 1 10); do
+    xdotool mousemove_relative -- 6 0
+    sleep 0.05
+done
+xdotool keydown w
+sleep 1.5
+xdotool keyup w
+xdotool mouseup 3
+shot flown
+FLY_CHANGE="$(changed_pixels move-tool flown 1000x500+50+120)"
+echo "Pixels changed in the viewport by flying: $FLY_CHANGE"
+[ "$FLY_CHANGE" -gt 5000 ] || fail "right mouse and W did not fly the camera"
+TOOL_AFTER="$(changed_pixels move-tool flown 200x50+450+630)"
+echo "Pixels changed in the tool bar by flying: $TOOL_AFTER"
+[ "$TOOL_AFTER" -lt 100 ] || fail "W picked a tool while flying"
+
+# 4. Drag the Console tab onto the right-hand column, below Properties.
 xdotool mousemove 721 689
 sleep 0.3
 xdotool mousedown 1
@@ -128,18 +151,19 @@ done
 sleep 0.5
 xdotool mouseup 1
 shot dragged
-DRAG_CHANGE="$(changed_pixels move-tool dragged)"
+DRAG_CHANGE="$(changed_pixels flown dragged)"
 echo "Pixels changed by dragging the Console: $DRAG_CHANGE"
 [ "$DRAG_CHANGE" -gt 5000 ] || fail "dragging the Console tab moved nothing"
 
-# 4. Quit, and the layout was saved.
+# 5. Quit, and the layout was saved.
 quit
 SAVED="$(grep -rl "panel_layout" "$TEST_HOME" 2>/dev/null | head -1 || true)"
 [ -n "$SAVED" ] || fail "the panel layout was not saved"
 echo "Layout saved in: ${SAVED#"$TEST_HOME"/}"
 
-# 5. The next launch puts the Console back where it was dragged: the
-#    screen matches the dragged one, not the first one.
+# 6. The next launch puts the Console back where it was dragged and the
+#    camera where it flew: the screen matches the dragged one, not the
+#    first one.
 launch
 shot reopened
 SAME="$(changed_pixels dragged reopened)"

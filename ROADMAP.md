@@ -41,13 +41,15 @@ Phases 0–6 don't need Lust. If Lust isn't ready by Phase 7, Phases 8 and 9 go 
 
 ## Phase 1: Seeing things
 
-- Importing glTF models and textures.
-- The viewport camera and navigation, from Aventail.
-- Materials: a standard lit material and a stylized/toon option.
-- Directional, point and spot lights; shadows from the sun.
-- Tonemapping, sky and fog.
+**Decided:** lighting is a choice per project, with real-time lights and sky light first ([decision 0008](docs/decisions/0008-lighting-is-a-project-choice.md)); the camera flies with Unreal's controls ([decision 0009](docs/decisions/0009-fly-camera-controls.md)).
 
-**Decide before starting:** the lighting approach (baked lightmaps, light probes or real-time GI, DESIGN.md §7).
+Milestones, one pull request each:
+
+1. **Fly camera:** moving around the viewport, with the speed shown and remembered.
+2. **Models:** importing glTF models and textures, drawn with a simple material.
+3. **Materials:** a standard lit material and a stylized/toon option.
+4. **Lights and shadows:** directional, point and spot lights; shadows from the sun; ambient light from the sky.
+5. **The finished picture:** HDR, tonemapping, sky and fog.
 
 **Gate:** a model from Aventail or Blender looks good in the viewport, in both the standard and the stylized look.
 
