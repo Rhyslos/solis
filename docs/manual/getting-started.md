@@ -15,7 +15,7 @@ The first time, and whenever you want the newest version.
 
 A new `solis.exe` is built every time code is merged into the main version. To build one straight away, open **Windows EXE** in the Actions tab and press **Run workflow**. Each download stays available for 30 days.
 
-**Build it yourself (Windows, macOS or Linux):**
+**Build it yourself:**
 1. Install Rust from [rustup.rs](https://rustup.rs).
 2. In the `solis` folder, run `cargo run --release -p app`. The first build takes a few minutes; later ones are quicker.
 

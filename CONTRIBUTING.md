@@ -25,7 +25,7 @@ Optional, matching CI: `cargo install cargo-deny` and run `cargo deny check`.
 
 **GPU tests** (`cargo test -p render --test gpu`) draw real frames and check their pixels. Without a GPU they skip with a note; set `REQUIRE_GPU=1` to make a missing GPU a failure instead, as CI does. Without a graphics card, Mesa's software driver works: add `WGPU_BACKEND=gl`.
 
-**The window test** (Linux only) opens the real editor on a virtual screen, as CI does. It checks the viewport's colours, picks a tool with its key, flies the camera, drags a panel to a new place, quits with File > Quit, and checks that the next launch puts the panel and camera back. Pass the program's name (`APP_NAME` in `crates/app/src/branding.rs`) as the window title:
+**The window test** runs on Linux only, because CI's cheapest machines are Linux ones with a virtual screen (Solis itself is made for Windows, [decision 0012](docs/decisions/0012-windows-only.md)). It opens the real editor on a virtual screen, as CI does. It checks the viewport's colours, picks a tool with its key, flies the camera, drags a panel to a new place, quits with File > Quit, and checks that the next launch puts the panel and camera back. Pass the program's name (`APP_NAME` in `crates/app/src/branding.rs`) as the window title:
 
 ```
 sudo apt-get install xvfb xdotool imagemagick mesa-vulkan-drivers libxkbcommon-x11-0
@@ -89,7 +89,7 @@ A change is not done until its documentation is.
 | `docs/decisions/` | A major choice is made or reversed |
 | User manual (`docs/manual/`) | Anything a user would notice. Follow `docs/manual/_template.md`. |
 | `CHANGELOG.md` | Any change a user would notice (CI checks this) |
-| README status | A milestone or gate is completed |
+| README progress tracker | A milestone or gate is completed |
 | `RENAMING.md` | The program's name appears somewhere new |
 
 ## Testing: two sign-offs per pull request
