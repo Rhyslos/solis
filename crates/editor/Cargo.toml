@@ -18,6 +18,7 @@ layer = 2
 egui.workspace = true
 egui_dock.workspace = true
 glam.workspace = true
+chrono.workspace = true
 serde.workspace = true
 
 [dev-dependencies]

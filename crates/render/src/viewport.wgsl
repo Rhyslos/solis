@@ -56,16 +56,16 @@ fn sky_vs(@builtin(vertex_index) index: u32) -> SkyOut {
     return out;
 }
 
-// A calm backdrop with a horizon: the sky lightens gently towards the top,
-// and below the horizon lies a slightly darker ground that darkens a little
-// more towards your feet. The horizon follows the camera as it tilts.
+// A calm backdrop, as in the mockup: dark above, lightening gently towards
+// the horizon, and the ground lightening a little more towards your feet,
+// so the horizon is barely seen. It follows the camera as it tilts.
 @fragment
 fn sky_fs(in: SkyOut) -> @location(0) vec4<f32> {
     let far = frame.inv_view_proj * vec4<f32>(in.ndc, 1.0, 1.0);
     let direction = normalize(far.xyz / far.w - frame.camera.xyz);
     let elevation = direction.z;
     let sky = mix(frame.sky_horizon.rgb, frame.sky_top.rgb, smoothstep(0.0, 0.7, elevation));
-    let ground = frame.ground.rgb * mix(1.0, 0.8, smoothstep(0.0, 0.7, -elevation));
+    let ground = frame.ground.rgb * mix(1.0, 1.15, smoothstep(0.0, 0.7, -elevation));
     // Soften the horizon over about one pixel, so it never looks jagged.
     let edge = max(fwidth(elevation), 1e-5);
     let above = smoothstep(-edge, edge, elevation);
@@ -125,7 +125,8 @@ fn grid_fs(in: GridOut) -> @location(0) vec4<f32> {
     if alpha <= 0.002 {
         discard;
     }
-    return vec4<f32>(1.0, 1.0, 1.0, alpha);
+    // A cool grey-blue (sRGB #9aa4b4), as in the mockup.
+    return vec4<f32>(encode(vec3<f32>(0.323, 0.371, 0.456)), alpha);
 }
 
 // ------------------------------------------------------------- lines ---

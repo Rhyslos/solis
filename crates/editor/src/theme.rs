@@ -36,6 +36,12 @@ pub const TEXT: Color32 = Color32::from_rgb(0xc8, 0xc8, 0xc8);
 pub const TEXT_STRONG: Color32 = Color32::from_rgb(0xf0, 0xf0, 0xf0);
 /// Quieter text: labels and hints.
 pub const TEXT_WEAK: Color32 = Color32::from_rgb(0xa5, 0xa5, 0xa5);
+/// Console text, a touch brighter than normal text (as in the mockup).
+pub const TEXT_CONSOLE: Color32 = Color32::from_rgb(0xd4, 0xd4, 0xd4);
+/// Times in the console.
+pub const TEXT_TIME: Color32 = Color32::from_rgb(0x9a, 0x9a, 0x9a);
+/// The Library's folder icon: a warm yellow.
+pub const FOLDER: Color32 = Color32::from_rgb(0xe8, 0xc3, 0x5a);
 /// Text that warns: a soft amber, readable on the panels.
 pub const WARNING: Color32 = Color32::from_rgb(0xe8, 0xb3, 0x4a);
 /// Text that reports a failure: a soft red, readable on the panels.
@@ -48,12 +54,12 @@ pub const OVERLAY: Color32 = Color32::from_rgba_premultiplied(0x1f, 0x1f, 0x1f, 
 pub mod backdrop {
     use egui::Color32;
 
-    /// The sky straight up.
-    pub const SKY_TOP: Color32 = Color32::from_rgb(0x2c, 0x30, 0x38);
+    /// The sky straight up: the darkest part, as in the mockup.
+    pub const SKY_TOP: Color32 = Color32::from_rgb(0x16, 0x18, 0x1d);
     /// The sky at the horizon.
-    pub const HORIZON: Color32 = Color32::from_rgb(0x22, 0x25, 0x2b);
-    /// The ground just below the horizon.
-    pub const GROUND: Color32 = Color32::from_rgb(0x1c, 0x1e, 0x22);
+    pub const HORIZON: Color32 = Color32::from_rgb(0x1c, 0x1e, 0x23);
+    /// The ground just below the horizon (it lightens towards your feet).
+    pub const GROUND: Color32 = Color32::from_rgb(0x1e, 0x21, 0x26);
 }
 
 /// Axis colours: X red, Y green, Z blue (Z is up).
@@ -111,7 +117,7 @@ impl Accent {
     /// The accent's shades.
     pub fn colors(self) -> AccentColors {
         let (fill, light) = match self {
-            Self::PetrolBlue => ([0x1f, 0x6a, 0x8f], [0x5c, 0xb0, 0xd8]),
+            Self::PetrolBlue => ([0x1f, 0x6a, 0x8f], [0x7c, 0xc4, 0xe4]),
             Self::Red => ([0xc2, 0x43, 0x3d], [0xe5, 0x73, 0x6b]),
             Self::Green => ([0x16, 0x6a, 0x62], [0x3e, 0x9d, 0x93]),
             Self::Plum => ([0x9b, 0x3f, 0x7a], [0xcf, 0x72, 0xab]),
@@ -130,6 +136,7 @@ pub const SEMIBOLD: &str = "semibold";
 /// Inter, the interface font (SIL Open Font License 1.1; see licenses/fonts).
 const INTER_REGULAR: &[u8] = include_bytes!("../assets/fonts/Inter-Regular.ttf");
 const INTER_SEMIBOLD: &[u8] = include_bytes!("../assets/fonts/Inter-SemiBold.ttf");
+const JETBRAINS_MONO: &[u8] = include_bytes!("../assets/fonts/JetBrainsMonoNL-Regular.ttf");
 
 /// Applies the theme to the whole editor with `accent`. The editor is
 /// always dark, whatever the system prefers.
@@ -145,7 +152,17 @@ pub fn set_accent(ctx: &Context, accent: Accent) {
     ctx.set_style_of(egui::Theme::Light, style_with(accent));
 }
 
-/// Inter for interface text, in front of egui's own fonts (which stay as
+/// Glyphs drawn as a browser draws them, without snapping their outlines
+/// to the pixel grid: softer and closer to the mockup than egui's default.
+fn soft() -> egui::FontTweak {
+    egui::FontTweak {
+        hinting: Some(false),
+        ..Default::default()
+    }
+}
+
+/// Inter for interface text and JetBrains Mono for monospace text, in front
+/// of egui's own fonts (which stay as
 /// fallbacks for symbols and other scripts).
 ///
 /// Every symbol the editor writes must be in one of these fonts, or it
@@ -154,11 +171,11 @@ pub fn fonts() -> FontDefinitions {
     let mut fonts = FontDefinitions::default();
     fonts.font_data.insert(
         "inter".into(),
-        Arc::new(FontData::from_static(INTER_REGULAR)),
+        Arc::new(FontData::from_static(INTER_REGULAR).tweak(soft())),
     );
     fonts.font_data.insert(
         "inter-semibold".into(),
-        Arc::new(FontData::from_static(INTER_SEMIBOLD)),
+        Arc::new(FontData::from_static(INTER_SEMIBOLD).tweak(soft())),
     );
     let proportional = fonts.families.entry(FontFamily::Proportional).or_default();
     proportional.insert(0, "inter".into());
@@ -170,11 +187,21 @@ pub fn fonts() -> FontDefinitions {
     fonts
         .families
         .insert(FontFamily::Name(SEMIBOLD.into()), semibold);
-    // And the other way round: Inter's symbols for monospace text.
+    // Monospace text (the console, the frame rate) is JetBrains Mono, as
+    // in the mockup, with egui's Hack and then Inter for any symbol it
+    // lacks.
+    fonts.font_data.insert(
+        "jetbrains-mono".into(),
+        Arc::new(FontData::from_static(JETBRAINS_MONO)),
+    );
     let monospace = fonts.families.entry(FontFamily::Monospace).or_default();
-    monospace.insert(1.min(monospace.len()), "inter".into());
+    monospace.insert(0, "jetbrains-mono".into());
+    monospace.insert(2.min(monospace.len()), "inter".into());
     fonts
 }
+
+/// The size of interface text, in points.
+pub const TEXT_SIZE: f32 = 12.0;
 
 /// Colours, sizes and spacing, with the given accent.
 pub fn style_with(accent: Accent) -> Style {
@@ -184,13 +211,13 @@ pub fn style_with(accent: Accent) -> Style {
     };
     style.text_styles = [
         (TextStyle::Small, FontId::proportional(11.0)),
-        (TextStyle::Body, FontId::proportional(12.5)),
-        (TextStyle::Button, FontId::proportional(12.5)),
+        (TextStyle::Body, FontId::proportional(TEXT_SIZE)),
+        (TextStyle::Button, FontId::proportional(TEXT_SIZE)),
         (
             TextStyle::Heading,
             FontId::new(16.0, FontFamily::Name(SEMIBOLD.into())),
         ),
-        (TextStyle::Monospace, FontId::monospace(12.0)),
+        (TextStyle::Monospace, FontId::monospace(11.0)),
     ]
     .into();
     let spacing = &mut style.spacing;
@@ -385,7 +412,15 @@ mod tests {
     #[test]
     fn text_reads_on_every_surface() {
         for surface in [PANEL, HEADER, MENU_ROW, FIELD, BACKGROUND] {
-            for text in [TEXT, TEXT_STRONG, TEXT_WEAK, WARNING, ERROR] {
+            for text in [
+                TEXT,
+                TEXT_STRONG,
+                TEXT_WEAK,
+                TEXT_CONSOLE,
+                TEXT_TIME,
+                WARNING,
+                ERROR,
+            ] {
                 let ratio = contrast(text, surface);
                 assert!(
                     ratio >= READABLE,
@@ -408,9 +443,21 @@ mod tests {
     }
 
     #[test]
-    fn accent_underlines_stand_out_from_the_title_bar() {
+    fn the_front_tab_stands_out() {
+        // The front tab's name is bright and the others are quieter, so the
+        // accent underline (the mockup's deep accent) is never the only cue.
+        assert!(contrast(TEXT_STRONG, HEADER) > contrast(TEXT_WEAK, HEADER) + 3.0);
         for accent in Accent::ALL {
-            assert!(contrast(accent.colors().light, HEADER) >= 3.0);
+            assert!(
+                contrast(accent.colors().fill, HEADER) >= 1.8,
+                "{}",
+                accent.name()
+            );
+            assert!(
+                contrast(accent.colors().light, HEADER) >= 3.0,
+                "{}",
+                accent.name()
+            );
         }
     }
 

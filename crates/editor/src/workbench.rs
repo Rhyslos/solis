@@ -6,6 +6,7 @@
 //! viewport through a [`ViewportRenderer`] it is handed each frame.
 
 use crate::camera::Camera;
+use crate::icons::{self, Icon};
 use crate::layout::{self, Preset};
 use crate::panel::Panel;
 use crate::theme::{self, Accent};
@@ -46,11 +47,11 @@ impl LogLevel {
     /// Every level, in the console's filter order.
     pub const ALL: [Self; 3] = [Self::Info, Self::Warning, Self::Error];
 
-    fn mark(self) -> &'static str {
+    fn icon(self) -> Icon {
         match self {
-            Self::Info => "●",
-            Self::Warning => "⚠",
-            Self::Error => "✖",
+            Self::Info => Icon::Info,
+            Self::Warning => Icon::Warning,
+            Self::Error => Icon::Error,
         }
     }
 
@@ -64,7 +65,7 @@ impl LogLevel {
 
     fn color(self) -> Color32 {
         match self {
-            Self::Info => theme::TEXT,
+            Self::Info => theme::TEXT_CONSOLE,
             Self::Warning => theme::WARNING,
             Self::Error => theme::ERROR,
         }
@@ -74,6 +75,8 @@ impl LogLevel {
 /// One console message.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct LogLine {
+    /// When it was written, local time, such as "12:04:31".
+    pub time: String,
     /// How serious it is.
     pub level: LogLevel,
     /// What it says.
@@ -93,7 +96,8 @@ const CONSOLE_LIMIT: usize = 2_000;
 
 impl Console {
     fn push(&mut self, level: LogLevel, text: String) {
-        self.lines.push(LogLine { level, text });
+        let time = chrono::Local::now().format("%H:%M:%S").to_string();
+        self.lines.push(LogLine { time, level, text });
         if self.lines.len() > CONSOLE_LIMIT {
             let extra = self.lines.len() - CONSOLE_LIMIT;
             self.lines.drain(..extra);
@@ -267,15 +271,20 @@ impl Workbench {
     }
 
     fn top_bar(&mut self, ui: &mut Ui, actions: &mut Vec<WorkbenchAction>) {
+        // The whole bar, so the scene tab can fill its full height.
+        let bar = ui.max_rect();
         // The right-hand buttons go first, so the menu bar (which takes all
         // the width it is given) only gets what is left.
         ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
             self.play_and_build(ui);
             ui.with_layout(Layout::left_to_right(Align::Center), |ui| {
                 egui::MenuBar::new().ui(ui, |ui| {
+                    // The mockup's roomier menu titles.
+                    ui.spacing_mut().button_padding = egui::vec2(7.0, 4.0);
+                    ui.spacing_mut().item_spacing.x = 2.0;
                     self.menus(ui, actions);
                     ui.add_space(8.0);
-                    document_tabs(ui, self.accent);
+                    document_tabs(ui, bar, self.accent);
                 });
             });
         });
@@ -351,33 +360,39 @@ impl Workbench {
         });
     }
 
-    /// Play, Stop, Build and Build & Play, right to left.
+    /// Play, Play with others, Stop, Build and Build & Play, laid out
+    /// right to left.
     fn play_and_build(&mut self, ui: &mut Ui) {
         let fill = self.accent.colors().fill;
-        if ui
-            .add(egui::Button::new(RichText::new("Build & Play").color(Color32::WHITE)).fill(fill))
-            .clicked()
-        {
+        ui.spacing_mut().item_spacing.x = 4.0;
+        let build_and_play = egui::Button::new(RichText::new("Build & Play").color(Color32::WHITE))
+            .fill(fill)
+            .stroke(egui::Stroke::NONE)
+            .min_size(egui::vec2(0.0, BAR_BUTTON.y));
+        if ui.add(build_and_play).clicked() {
             self.log(
                 LogLevel::Info,
                 "Building games arrives in Phase 10 (ROADMAP.md).",
             );
         }
-        if ui.button("Build ▾").clicked() {
+        let build = egui::Button::new("Build ▾").min_size(egui::vec2(0.0, BAR_BUTTON.y));
+        if ui.add(build).clicked() {
             self.log(
                 LogLevel::Info,
                 "Building games arrives in Phase 10 (ROADMAP.md).",
             );
         }
-        ui.add_space(6.0);
-        if ui.button("■").on_hover_text("Stop").clicked() {
+        ui.add_space(4.0);
+        if icon_button(ui, Icon::Stop, 11.0, None, "Stop").clicked() {
             self.log(LogLevel::Info, "Nothing is running.");
         }
-        if ui
-            .add(egui::Button::new(RichText::new("▶").color(Color32::WHITE)).fill(fill))
-            .on_hover_text("Play")
-            .clicked()
-        {
+        if icon_button(ui, Icon::PlayTogether, 15.0, None, "Play with two players").clicked() {
+            self.log(
+                LogLevel::Info,
+                "Playing with others arrives with netcode in Phase 8 (ROADMAP.md).",
+            );
+        }
+        if icon_button(ui, Icon::Play, 13.0, Some(fill), "Play").clicked() {
             self.log(
                 LogLevel::Info,
                 "Playing the scene arrives in Phase 5 (ROADMAP.md).",
@@ -405,22 +420,108 @@ impl Workbench {
     }
 }
 
-/// The open documents as tabs, the front one underlined in the accent.
-/// For now there is only the one scene; opening more arrives in Phase 2.
-fn document_tabs(ui: &mut Ui, accent: Accent) {
-    let response = ui.add(
-        egui::Label::new(RichText::new("Untitled scene").color(theme::TEXT_STRONG))
-            .selectable(false),
+/// Size of the icon buttons in the top bar (Play, Stop).
+const BAR_BUTTON: egui::Vec2 = egui::vec2(30.0, 26.0);
+
+/// A top-bar button showing `icon` at `size` points, filled with `fill`
+/// (or plain until pointed at), named `name` for hover text and screen
+/// readers.
+fn icon_button(
+    ui: &mut Ui,
+    icon: Icon,
+    size: f32,
+    fill: Option<Color32>,
+    name: &str,
+) -> egui::Response {
+    let (rect, response) = ui.allocate_exact_size(BAR_BUTTON, egui::Sense::click());
+    let response = response.on_hover_text(name);
+    response.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Button, true, name));
+    let background = match fill {
+        Some(fill) if response.hovered() => fill.gamma_multiply(1.15),
+        Some(fill) => fill,
+        None if response.hovered() => theme::HOVER,
+        None => Color32::TRANSPARENT,
+    };
+    ui.painter().rect_filled(rect, 4.0, background);
+    let color = if fill.is_some() {
+        Color32::WHITE
+    } else {
+        theme::TEXT_CONSOLE
+    };
+    icons::icon(
+        ui.painter(),
+        egui::Rect::from_center_size(rect.center(), egui::vec2(size, size)),
+        icon,
+        color,
     );
-    let rect = response.rect.expand2(egui::vec2(10.0, 0.0));
-    ui.painter().hline(
-        rect.x_range(),
-        ui.max_rect().bottom() - 1.0,
-        egui::Stroke::new(2.0, accent.colors().light),
-    );
-    ui.add_enabled(false, egui::Button::new("+").frame(false))
-        .on_disabled_hover_text("Opening more scenes, prefabs and code arrives in Phase 2");
+    response
 }
+
+/// The open documents as tabs, as in the mockup: the front one on a
+/// lighter strip with the accent underline, its icon, its name and ×.
+/// For now there is only the one scene; opening more arrives in Phase 2.
+fn document_tabs(ui: &mut Ui, bar: egui::Rect, accent: Accent) {
+    let name = "Untitled scene";
+    let font = egui::TextStyle::Button.resolve(ui.style());
+    let text = ui
+        .painter()
+        .layout_no_wrap(name.to_string(), font.clone(), theme::TEXT_STRONG);
+    let close = ui
+        .painter()
+        .layout_no_wrap("×".to_string(), font, theme::TEXT_WEAK);
+    let (pad, icon_size, gap) = (12.0, 12.0, 7.0);
+    let width = pad + icon_size + gap + text.size().x + gap + close.size().x + pad;
+    let (row, response) = ui.allocate_exact_size(
+        egui::vec2(width, ui.available_height().min(bar.height())),
+        egui::Sense::click(),
+    );
+    // The tab reaches from the top of the bar to its bottom edge, as in the
+    // mockup.
+    let rect = egui::Rect::from_x_y_ranges(row.x_range(), bar.y_range());
+    response.widget_info(|| egui::WidgetInfo::selected(egui::WidgetType::Button, true, true, name));
+    let painter = ui.painter();
+    painter.rect_filled(rect, 0.0, theme::MENU_ROW);
+    painter.hline(
+        rect.x_range(),
+        rect.bottom() - 1.0,
+        egui::Stroke::new(2.0, accent.colors().fill),
+    );
+    let mut x = rect.left() + pad;
+    icons::icon(
+        painter,
+        egui::Rect::from_min_size(
+            egui::pos2(x, rect.center().y - icon_size / 2.0),
+            egui::vec2(icon_size, icon_size),
+        ),
+        Icon::SceneFile,
+        accent.colors().light,
+    );
+    x += icon_size + gap;
+    let text_width = text.size().x;
+    painter.galley(
+        egui::pos2(x, rect.center().y - text.size().y / 2.0),
+        text,
+        theme::TEXT_STRONG,
+    );
+    x += text_width + gap;
+    painter.galley(
+        egui::pos2(x, rect.center().y - close.size().y / 2.0),
+        close,
+        theme::TEXT_WEAK,
+    );
+    let new_tab = ui.add_enabled(
+        false,
+        egui::Button::new(RichText::new("+").color(theme::TEXT_WEAK))
+            .frame(false)
+            .min_size(egui::vec2(28.0, 0.0)),
+    );
+    new_tab.on_disabled_hover_text("Opening more scenes, prefabs and code arrives in Phase 2");
+}
+
+/// Where egui_dock starts a tab's text, from the tab's left edge.
+const TAB_TEXT_INSET: f32 = 8.0;
+/// Room left before a tab's name for its icon.
+const TAB_ICON_SPACE: f32 = 18.0;
 
 /// Draws each docked panel.
 struct PanelViewer<'a> {
@@ -440,7 +541,20 @@ impl TabViewer for PanelViewer<'_> {
     }
 
     fn title(&mut self, tab: &mut Panel) -> WidgetText {
-        tab.title().into()
+        // Room before the name for the panel's icon, drawn in
+        // `on_tab_button`. The colour comes from the dock style (bright in
+        // front, quieter behind).
+        let mut job = egui::text::LayoutJob::default();
+        job.append(
+            tab.title(),
+            TAB_ICON_SPACE,
+            egui::TextFormat {
+                font_id: egui::FontId::proportional(theme::TEXT_SIZE),
+                color: Color32::PLACEHOLDER,
+                ..Default::default()
+            },
+        );
+        job.into()
     }
 
     fn on_tab_button(&mut self, tab: &mut Panel, response: &egui::Response) {
@@ -449,13 +563,32 @@ impl TabViewer for PanelViewer<'_> {
         response.widget_info(|| {
             egui::WidgetInfo::selected(egui::WidgetType::Button, true, in_front, tab.title())
         });
-        // The tab in front gets Aventail's underline in the accent colour.
-        if self.in_front.contains(tab) {
-            let painter = response.ctx.layer_painter(response.layer_id);
+        let painter = response.ctx.layer_painter(response.layer_id);
+        // The icon, in colour on the front tab and quiet behind it.
+        let color = match (in_front, *tab) {
+            (true, Panel::Library) => theme::FOLDER,
+            (true, _) => self.accent.colors().light,
+            (false, _) => theme::TEXT_WEAK,
+        };
+        let size = 12.0;
+        icons::icon(
+            &painter,
+            egui::Rect::from_min_size(
+                egui::pos2(
+                    response.rect.left() + TAB_TEXT_INSET,
+                    response.rect.center().y - size / 2.0,
+                ),
+                egui::vec2(size, size),
+            ),
+            tab.icon(),
+            color,
+        );
+        // The tab in front is underlined in the accent colour.
+        if in_front {
             painter.hline(
                 response.rect.x_range(),
                 response.rect.bottom() - 1.0,
-                egui::Stroke::new(2.0, self.accent.colors().light),
+                egui::Stroke::new(2.0, self.accent.colors().fill),
             );
         }
     }
@@ -490,7 +623,17 @@ impl TabViewer for PanelViewer<'_> {
                 );
             }
             Panel::Game => placeholder(ui, "Press Play to run the game here (Phase 5)."),
+            Panel::Code => {
+                menu_row(ui, &["File", "Edit", "View"]);
+                placeholder(
+                    ui,
+                    "Writing game code in Lust, Rust or Lua arrives in Phase 7.",
+                );
+            }
             Panel::Console => console(ui, self.console, self.accent),
+            Panel::Problems => {
+                placeholder(ui, "No problems. Mistakes in code and scenes show here.");
+            }
             Panel::Viewport => {}
         }
     }
@@ -506,6 +649,12 @@ fn menu_row(ui: &mut Ui, items: &[&str]) {
             for item in items {
                 ui.label(*item);
             }
+            ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
+                let (rect, response) =
+                    ui.allocate_exact_size(egui::vec2(12.0, 12.0), egui::Sense::hover());
+                response.on_hover_text("Searching arrives with the panel's contents");
+                icons::icon(ui.painter(), rect, Icon::Search, theme::TEXT_WEAK);
+            });
         });
     });
 }
@@ -519,21 +668,16 @@ fn placeholder(ui: &mut Ui, text: &str) {
         });
 }
 
-/// The console: filters by level, a search box, and the messages.
+/// The console: filters by level, a search box, and the messages with
+/// their times.
 fn console(ui: &mut Ui, console: &mut Console, accent: Accent) {
     theme::menu_row_frame().show(ui, |ui| {
         ui.set_min_width(ui.available_width());
         ui.horizontal(|ui| {
+            ui.spacing_mut().item_spacing.x = 4.0;
             for level in LogLevel::ALL {
                 let on = !console.hidden.contains(&level);
-                let text = format!("{} {} {}", level.mark(), level.name(), console.count(level));
-                let button = if on {
-                    egui::Button::new(RichText::new(text).color(Color32::WHITE))
-                        .fill(accent.colors().fill)
-                } else {
-                    egui::Button::new(text)
-                };
-                if ui.add(button).clicked() {
+                if level_filter(ui, level, console.count(level), on, accent).clicked() {
                     if on {
                         console.hidden.insert(level);
                     } else {
@@ -541,16 +685,20 @@ fn console(ui: &mut Ui, console: &mut Console, accent: Accent) {
                     }
                 }
             }
-            // Clear at the right edge, and the search box shrinks to fit
-            // whatever width is left.
+            ui.add_space(4.0);
+            // Clear at the right edge, and the search box takes the width
+            // that is left.
             ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
-                if ui.button("Clear").clicked() {
+                if ui
+                    .add(egui::Button::new("Clear").min_size(egui::vec2(0.0, 20.0)))
+                    .clicked()
+                {
                     console.lines.clear();
                 }
                 ui.add(
                     egui::TextEdit::singleline(&mut console.search)
                         .hint_text("Search")
-                        .desired_width(ui.available_width().clamp(40.0, 200.0)),
+                        .desired_width(ui.available_width().max(40.0)),
                 );
             });
         });
@@ -560,17 +708,95 @@ fn console(ui: &mut Ui, console: &mut Console, accent: Accent) {
         .stick_to_bottom(true)
         .show(ui, |ui| {
             egui::Frame::new()
-                .inner_margin(theme::panel_margin())
+                .inner_margin(egui::Margin::same(6))
                 .show(ui, |ui| {
+                    // Rows 18 points apart, as in the mockup.
+                    ui.spacing_mut().item_spacing = egui::vec2(6.0, 4.0);
+                    ui.spacing_mut().interact_size.y = 14.0;
                     for line in console.shown() {
-                        ui.label(
-                            RichText::new(format!("{} {}", line.level.mark(), line.text))
-                                .monospace()
-                                .color(line.level.color()),
-                        );
+                        console_line(ui, line);
                     }
                 });
         });
+}
+
+/// One level's filter button: its icon and count, filled with the accent
+/// while that level is shown.
+fn level_filter(
+    ui: &mut Ui,
+    level: LogLevel,
+    count: usize,
+    on: bool,
+    accent: Accent,
+) -> egui::Response {
+    let font = egui::TextStyle::Button.resolve(ui.style());
+    let (text_color, fill) = if on {
+        (Color32::WHITE, accent.colors().fill)
+    } else {
+        (theme::TEXT_WEAK, theme::MENU_ROW)
+    };
+    let number = ui
+        .painter()
+        .layout_no_wrap(count.to_string(), font, text_color);
+    let icon_size = 11.0;
+    let size = egui::vec2(8.0 + icon_size + 5.0 + number.size().x + 8.0, 20.0);
+    let (rect, response) = ui.allocate_exact_size(size, egui::Sense::click());
+    let response = response.on_hover_text(format!(
+        "{}: {} (click to {} them)",
+        level.name(),
+        count,
+        if on { "hide" } else { "show" }
+    ));
+    response.widget_info(|| {
+        egui::WidgetInfo::selected(egui::WidgetType::Button, true, on, level.name())
+    });
+    let painter = ui.painter();
+    painter.rect_filled(rect, 3.0, fill);
+    if !on {
+        painter.rect_stroke(
+            rect,
+            3.0,
+            egui::Stroke::new(1.0, theme::BUTTON_BORDER),
+            egui::StrokeKind::Inside,
+        );
+    }
+    icons::icon(
+        painter,
+        egui::Rect::from_min_size(
+            egui::pos2(rect.left() + 8.0, rect.center().y - icon_size / 2.0),
+            egui::vec2(icon_size, icon_size),
+        ),
+        level.icon(),
+        text_color,
+    );
+    painter.galley(
+        egui::pos2(
+            rect.left() + 8.0 + icon_size + 5.0,
+            rect.center().y - number.size().y / 2.0,
+        ),
+        number,
+        text_color,
+    );
+    response
+}
+
+/// One console message: the time, the level's icon and the text.
+fn console_line(ui: &mut Ui, line: &LogLine) {
+    ui.horizontal_wrapped(|ui| {
+        ui.label(
+            RichText::new(&line.time)
+                .monospace()
+                .color(theme::TEXT_TIME),
+        );
+        let size = 11.0;
+        let (rect, _) = ui.allocate_exact_size(egui::vec2(size, size), egui::Sense::hover());
+        icons::icon(ui.painter(), rect, line.level.icon(), line.level.color());
+        ui.label(
+            RichText::new(&line.text)
+                .monospace()
+                .color(line.level.color()),
+        );
+    });
 }
 
 #[cfg(test)]
@@ -634,7 +860,10 @@ mod tests {
         w.apply_preset(Preset::SmallScreen);
         let path = w.layout().find_tab(&Panel::Console).unwrap();
         let group = w.layout()[path.surface][path.node].tabs().unwrap().to_vec();
-        assert_eq!(group, [Panel::Library, Panel::Console]);
+        assert_eq!(
+            group,
+            [Panel::Library, Panel::Code, Panel::Console, Panel::Problems]
+        );
     }
 
     /// The whole editor in a test window, with no GPU behind the viewport.
@@ -706,7 +935,7 @@ mod tests {
     fn play_says_when_it_arrives() {
         let mut h = harness();
         h.run();
-        h.get_by_label("▶").click();
+        h.get_by_label("Play").click();
         h.run();
         let last = h.state().log_lines().last().map(|l| l.text.clone());
         assert_eq!(
@@ -841,5 +1070,61 @@ mod tests {
         h.key_press(egui::Key::R);
         h.run();
         assert_eq!(h.state().tool(), Tool::Rotate);
+    }
+
+    #[test]
+    fn console_messages_carry_the_time() {
+        let mut w = Workbench::new(info(), None);
+        w.log(LogLevel::Info, "hello");
+        let time = &w.log_lines()[0].time;
+        let parts: Vec<_> = time.split(':').collect();
+        assert_eq!(parts.len(), 3, "{time}");
+        assert!(
+            parts
+                .iter()
+                .all(|p| p.len() == 2 && p.chars().all(|c| c.is_ascii_digit()))
+        );
+    }
+
+    #[test]
+    fn a_level_filter_hides_and_shows_its_messages() {
+        let mut h = harness();
+        h.state_mut().log(LogLevel::Warning, "Shader slow to build");
+        h.run();
+        assert!(h.query_by_label("Shader slow to build").is_some());
+        h.get_by_label("Warnings").click();
+        h.run();
+        assert!(h.query_by_label("Shader slow to build").is_none());
+        h.get_by_label("Warnings").click();
+        h.run();
+        assert!(h.query_by_label("Shader slow to build").is_some());
+    }
+
+    #[test]
+    fn every_panel_has_a_named_tab_and_the_bar_has_its_buttons() {
+        let mut h = harness();
+        h.run();
+        for panel in Panel::ALL {
+            let _ = h.get_by_label(panel.title());
+        }
+        for button in [
+            "Play",
+            "Play with two players",
+            "Stop",
+            "Build ▾",
+            "Build & Play",
+        ] {
+            let _ = h.get_by_label(button);
+        }
+    }
+
+    #[test]
+    fn play_with_others_says_when_it_arrives() {
+        let mut h = harness();
+        h.run();
+        h.get_by_label("Play with two players").click();
+        h.run();
+        let last = h.state().log_lines().last().map(|l| l.text.clone());
+        assert!(last.is_some_and(|t| t.contains("Phase 8")));
     }
 }
