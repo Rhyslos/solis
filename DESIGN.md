@@ -98,7 +98,7 @@ The target to decide against: **a change to one component is running in play mod
 ```
 
 - **The game API is the line between the two languages:** small, stable, and designed for Lust to read well. Until Lust is ready, it's used from Rust.
-- **Shared with Aventail and Halberd:** the wgpu setup, picking, the viewport camera, the egui editor shell and theme, and the layered crates with generic names. These may move into a shared Rhylib core repo later **(to decide)**.
+- **Separate from Aventail** ([decision 0007](docs/decisions/0007-mit-licence-and-separate-from-aventail.md)): no shared crates. Aventail's wgpu setup, picking, camera, egui shell, docking and theme are copied in and adapted, which its owner can relicense as MIT.
 - **What doesn't carry over from Aventail:** its renderer is built for modelling. Solis's renderer grows its own game features (§7) on the same foundation.
 - **Layers:** like Aventail, a crate or module may only depend on its own layer or below, checked by tests.
 
@@ -264,7 +264,7 @@ Settled in [decision 0004](docs/decisions/0004-editor-layout.md): Halberd's pane
 - **Cutscene timeline.**
 
 **Decisions:**
-- **License:** MIT proposed (the indie-engine norm; Godot and Bevy use it). **(to decide)**
+- **License:** MIT ([decision 0007](docs/decisions/0007-mit-licence-and-separate-from-aventail.md)).
 - **Platforms:** PC only. Consoles need NDAs that clash with open source, as with Godot.
 - **Documentation, templates and tutorials** are a pillar of their own for a beginner-focused engine.
 
@@ -311,3 +311,4 @@ Both sides review each other's pull requests.
 - 2026-10-21: [0004](docs/decisions/0004-editor-layout.md): the editor's layout and theme. Halberd's panels with Unreal's tabs, every panel dockable, dark greys with one accent. Replaces "mid-greys with accent gradients".
 - 2026-10-21: [0005](docs/decisions/0005-netcode-in-layers.md): netcode in layers: transport, sessions, foundations and tools built in; lockstep as an optional model; other models through existing crates. Replaces "deterministic by default" as the netcode pitch.
 - 2026-10-21: [0006](docs/decisions/0006-git-built-in.md): Git built into the editor, with project files made to merge, Git LFS, locking, and a scene merge tool.
+- 2026-10-21: [0007](docs/decisions/0007-mit-licence-and-separate-from-aventail.md): MIT licence; Solis stays separate from Aventail, copying and adapting Aventail's code, which its owner relicenses.
