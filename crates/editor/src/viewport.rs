@@ -9,10 +9,11 @@
 //! The image itself comes from a [`ViewportRenderer`], so this crate never
 //! touches the GPU and runs in tests without one.
 
+use crate::camera::{Camera, FlyInput};
 use crate::icons;
 use crate::theme::{self, Accent};
 use egui::{Align, Color32, Layout, Rect, RichText, Sense, Ui, UiBuilder, Vec2, vec2};
-use glam::{Mat4, Vec3, Vec4};
+use glam::{Mat4, Vec3};
 use serde::{Deserialize, Serialize};
 
 /// The tools ([decision 0004](../../../docs/decisions/0004-editor-layout.md)).
@@ -94,82 +95,6 @@ impl Default for Overlays {
     }
 }
 
-/// The viewport's camera. For now it holds still; flying around (the only
-/// camera mode, decision 0004) arrives with the rest of navigation in
-/// Phase 1.
-#[derive(Debug, Clone, Copy, PartialEq)]
-pub struct Camera {
-    /// Where the camera is, in metres.
-    pub position: Vec3,
-    /// The point it looks at.
-    pub target: Vec3,
-    /// Vertical field of view, in radians.
-    pub fov_y: f32,
-}
-
-impl Default for Camera {
-    fn default() -> Self {
-        Self {
-            position: Vec3::new(-16.0, -24.0, 10.0),
-            target: Vec3::new(0.0, 0.0, 1.0),
-            fov_y: 50f32.to_radians(),
-        }
-    }
-}
-
-impl Camera {
-    /// Nearest distance drawn, in metres.
-    pub const NEAR: f32 = 0.05;
-    /// Furthest distance drawn, in metres.
-    pub const FAR: f32 = 5_000.0;
-
-    /// World-to-screen transform for an image `aspect` wide per unit high
-    /// (depth 0 at near, 1 at far). Z is up.
-    pub fn view_projection(&self, aspect: f32) -> Mat4 {
-        let aspect = if aspect.is_finite() && aspect > 0.0 {
-            aspect
-        } else {
-            1.0
-        };
-        // Right-handed perspective with depth 0 at near and 1 at far, as
-        // wgpu expects.
-        let y_scale = 1.0 / (self.fov_y * 0.5).tan();
-        let x_scale = y_scale / aspect;
-        let depth = Self::FAR / (Self::NEAR - Self::FAR);
-        let projection = Mat4::from_cols(
-            Vec4::new(x_scale, 0.0, 0.0, 0.0),
-            Vec4::new(0.0, y_scale, 0.0, 0.0),
-            Vec4::new(0.0, 0.0, depth, -1.0),
-            Vec4::new(0.0, 0.0, depth * Self::NEAR, 0.0),
-        );
-        projection * self.view_matrix()
-    }
-
-    /// World-to-camera transform: the camera looks down its own -Z, with Y
-    /// up on screen and the world's Z up.
-    pub fn view_matrix(&self) -> Mat4 {
-        let forward = (self.target - self.position).normalize_or(Vec3::Y);
-        let right = forward.cross(Vec3::Z).normalize_or(Vec3::X);
-        let up = right.cross(forward);
-        Mat4::from_cols(
-            Vec4::new(right.x, up.x, -forward.x, 0.0),
-            Vec4::new(right.y, up.y, -forward.y, 0.0),
-            Vec4::new(right.z, up.z, -forward.z, 0.0),
-            Vec4::new(
-                -right.dot(self.position),
-                -up.dot(self.position),
-                forward.dot(self.position),
-                1.0,
-            ),
-        )
-    }
-
-    /// The point on the ground the grid is centred on: below the target.
-    pub fn focus(&self) -> Vec3 {
-        Vec3::new(self.target.x, self.target.y, 0.0)
-    }
-}
-
 /// What one viewport frame needs from the renderer.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct ViewportView {
@@ -228,6 +153,12 @@ pub struct Viewport {
     menu_open: bool,
     /// The time per frame, smoothed, in seconds.
     frame_time: f32,
+    /// While looking around with the right mouse button: where the mouse
+    /// was when it started, to put it back afterwards.
+    flying_from: Option<egui::Pos2>,
+    /// Wheel movement not yet a whole notch (trackpads scroll in small
+    /// amounts), in notches.
+    wheel_carry: f32,
 }
 
 impl Default for Viewport {
@@ -238,6 +169,8 @@ impl Default for Viewport {
             overlays: Overlays::default(),
             menu_open: false,
             frame_time: 1.0 / 60.0,
+            flying_from: None,
+            wheel_carry: 0.0,
         }
     }
 }
@@ -249,6 +182,12 @@ impl Viewport {
     /// Whether the ≡ menu is open.
     pub fn menu_open(&self) -> bool {
         self.menu_open
+    }
+
+    /// Whether the right mouse button is held on the viewport, so W A S D,
+    /// Q and E move the camera instead of picking tools.
+    pub fn is_flying(&self) -> bool {
+        self.flying_from.is_some()
     }
 
     /// The frame rate shown in the corner.
@@ -277,10 +216,11 @@ impl Viewport {
             self.frame_time += (dt - self.frame_time) * FRAME_TIME_SMOOTHING;
         }
         let rect = ui.max_rect();
-        let response = ui.allocate_rect(rect, Sense::click());
+        let response = ui.allocate_rect(rect, Sense::click_and_drag());
         if response.clicked() {
             self.menu_open = false;
         }
+        self.navigate(ui, &response, dt);
         let ppp = ui.ctx().pixels_per_point();
         let size_px = [
             (rect.width() * ppp).round().max(1.0) as u32,
@@ -343,8 +283,86 @@ impl Viewport {
         }
         if self.overlays.snapping {
             let mut bottom_right = corner(ui, "snapping", Layout::bottom_up(Align::Max));
-            snapping(&mut bottom_right, accent);
+            snapping(&mut bottom_right, accent, self.camera.speed);
         }
+    }
+
+    /// Flies the camera from this frame's mouse and keys
+    /// ([decision 0009](../../../docs/decisions/0009-fly-camera-controls.md)).
+    fn navigate(&mut self, ui: &Ui, response: &egui::Response, dt: f32) {
+        use egui::{Key, PointerButton, ViewportCommand};
+        let ctx = ui.ctx();
+        let (pressed_here, held, pointer) = ui.input(|i| {
+            (
+                i.pointer.button_pressed(PointerButton::Secondary),
+                i.pointer.button_down(PointerButton::Secondary),
+                i.pointer.interact_pos(),
+            )
+        });
+        let starting = self.flying_from.is_none()
+            && pressed_here
+            && response.hovered()
+            && response.is_pointer_button_down_on();
+        if starting {
+            self.flying_from = pointer.or(Some(response.rect.center()));
+            self.menu_open = false;
+            // Keys now steer the camera, not a text field.
+            ctx.memory_mut(|m| {
+                if let Some(id) = m.focused() {
+                    m.surrender_focus(id);
+                }
+            });
+            ctx.send_viewport_cmd(ViewportCommand::CursorVisible(false));
+            ctx.send_viewport_cmd(ViewportCommand::CursorGrab(grab_mode()));
+        }
+        if let Some(from) = self.flying_from
+            && !held
+        {
+            self.flying_from = None;
+            ctx.send_viewport_cmd(ViewportCommand::CursorGrab(egui::CursorGrab::None));
+            ctx.send_viewport_cmd(ViewportCommand::CursorVisible(true));
+            ctx.send_viewport_cmd(ViewportCommand::CursorPosition(from));
+        }
+
+        let flying = self.flying_from.is_some();
+        let notches = if flying || response.hovered() {
+            let (whole, carry) = wheel_notches(ui, self.wheel_carry);
+            self.wheel_carry = carry;
+            whole
+        } else {
+            self.wheel_carry = 0.0;
+            0.0
+        };
+        let mut input = FlyInput {
+            dt,
+            view_height: response.rect.height(),
+            ..FlyInput::default()
+        };
+        if flying {
+            ui.input(|i| {
+                // Raw mouse movement keeps going when the hidden pointer
+                // reaches the edge of the screen.
+                let look = i.pointer.motion().unwrap_or(i.pointer.delta());
+                input.look = glam::Vec2::new(look.x, look.y);
+                let axis = |plus: Key, minus: Key| {
+                    f32::from(u8::from(i.key_down(plus))) - f32::from(u8::from(i.key_down(minus)))
+                };
+                input.movement = glam::Vec3::new(
+                    axis(Key::D, Key::A),
+                    axis(Key::W, Key::S),
+                    axis(Key::E, Key::Q),
+                );
+                input.boost = i.modifiers.shift;
+            });
+            input.speed_notches = notches as i32;
+        } else {
+            input.dolly_notches = notches;
+            if response.dragged_by(PointerButton::Middle) {
+                let delta = response.drag_delta();
+                input.pan = glam::Vec2::new(delta.x, delta.y);
+            }
+        }
+        self.camera.fly(&input);
     }
 
     fn stats(&self, ui: &mut Ui) {
@@ -425,6 +443,44 @@ impl Viewport {
     }
 }
 
+/// How the hidden pointer is held while looking around: macOS can only
+/// lock it in place, other systems can only keep it inside the window.
+fn grab_mode() -> egui::CursorGrab {
+    if cfg!(target_os = "macos") {
+        egui::CursorGrab::Locked
+    } else {
+        egui::CursorGrab::Confined
+    }
+}
+
+/// Points of scrolling that count as one wheel notch, for trackpads and
+/// mice that report points.
+const POINTS_PER_NOTCH: f32 = 50.0;
+
+/// Whole wheel notches this frame (up is positive), and the part of a notch
+/// left over, added to `carry` from earlier frames.
+fn wheel_notches(ui: &Ui, carry: f32) -> (f32, f32) {
+    let scrolled = ui.input(|i| {
+        i.events
+            .iter()
+            .map(|event| match event {
+                egui::Event::MouseWheel { unit, delta, .. } => match unit {
+                    egui::MouseWheelUnit::Line => delta.y,
+                    egui::MouseWheelUnit::Point => delta.y / POINTS_PER_NOTCH,
+                    egui::MouseWheelUnit::Page => delta.y * 3.0,
+                },
+                _ => 0.0,
+            })
+            .sum::<f32>()
+    });
+    let total = carry + scrolled;
+    if !total.is_finite() {
+        return (0.0, 0.0);
+    }
+    let whole = total.trunc();
+    (whole, total - whole)
+}
+
 /// One tool button's size.
 const TOOL_BUTTON: Vec2 = vec2(30.0, 26.0);
 /// Space between tool buttons.
@@ -469,12 +525,17 @@ fn tool_button(ui: &mut Ui, tool: Tool, chosen: bool, accent: Accent) -> egui::R
 }
 
 /// Grid, angle and camera speed, bottom right.
-fn snapping(ui: &mut Ui, accent: Accent) {
+fn snapping(ui: &mut Ui, accent: Accent, camera_speed: u8) {
+    let speed = camera_speed.to_string();
     // Laid out from the right edge, so the boxes go in backwards to read
     // "Grid, Angle, Camera" from left to right.
     ui.with_layout(Layout::right_to_left(Align::Max), |ui| {
         ui.spacing_mut().item_spacing.x = 3.0;
-        for (label, value) in [("Camera", "4"), ("Angle", "15°"), ("Grid", "1 m")] {
+        for (label, value) in [
+            ("Camera", speed.as_str()),
+            ("Angle", "15°"),
+            ("Grid", "1 m"),
+        ] {
             theme::overlay_frame()
                 .inner_margin(egui::Margin::symmetric(8, 4))
                 .show(ui, |ui| {
@@ -500,40 +561,6 @@ mod tests {
         assert_eq!(keys.len(), Tool::ALL.len());
         assert_eq!(Tool::Move.hint(), "Move (W)");
         assert_eq!(Tool::Transform.key(), egui::Key::T);
-    }
-
-    #[test]
-    fn the_camera_looks_at_its_target() {
-        let camera = Camera::default();
-        let clip = camera.view_projection(16.0 / 9.0) * camera.target.extend(1.0);
-        let ndc = clip.truncate() / clip.w;
-        assert!(ndc.x.abs() < 1e-4 && ndc.y.abs() < 1e-4, "{ndc}");
-        assert!((0.0..1.0).contains(&ndc.z), "depth 0 to 1");
-    }
-
-    #[test]
-    fn up_on_screen_is_up_in_the_world() {
-        let camera = Camera::default();
-        let vp = camera.view_projection(1.0);
-        let project = |p: Vec3| {
-            let c = vp * p.extend(1.0);
-            c.truncate() / c.w
-        };
-        assert!(project(camera.target + Vec3::Z).y > project(camera.target).y);
-    }
-
-    #[test]
-    fn a_bad_aspect_does_not_break_the_camera() {
-        let camera = Camera::default();
-        for aspect in [0.0, -1.0, f32::NAN, f32::INFINITY] {
-            assert!(camera.view_projection(aspect).is_finite());
-        }
-    }
-
-    #[test]
-    fn the_grid_is_centred_under_the_target() {
-        let camera = Camera::default();
-        assert_eq!(camera.focus(), Vec3::new(0.0, 0.0, 0.0));
     }
 
     #[test]

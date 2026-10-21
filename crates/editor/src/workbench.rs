@@ -5,6 +5,7 @@
 //! returns [`WorkbenchAction`]s for the app to carry out, and draws the
 //! viewport through a [`ViewportRenderer`] it is handed each frame.
 
+use crate::camera::Camera;
 use crate::layout::{self, Preset};
 use crate::panel::Panel;
 use crate::theme::{self, Accent};
@@ -168,6 +169,18 @@ impl Workbench {
         self.accent
     }
 
+    /// Uses `camera` (as saved last time).
+    #[must_use]
+    pub fn with_camera(mut self, camera: Camera) -> Self {
+        self.viewport.camera = camera;
+        self
+    }
+
+    /// The viewport camera, for saving.
+    pub fn camera(&self) -> Camera {
+        self.viewport.camera
+    }
+
     /// Which viewport overlays are shown, for saving.
     pub fn overlays(&self) -> Overlays {
         self.viewport.overlays
@@ -239,7 +252,8 @@ impl Workbench {
 
     /// Q, W, R, S and T pick the tools, unless typing in a field.
     fn tool_keys(&mut self, ui: &Ui) {
-        if ui.ctx().egui_wants_keyboard_input() {
+        // While flying, W A S D, Q and E move the camera instead.
+        if ui.ctx().egui_wants_keyboard_input() || self.viewport.is_flying() {
             return;
         }
         let pressed = ui.input(|i| {
@@ -699,5 +713,133 @@ mod tests {
             last.as_deref(),
             Some("Playing the scene arrives in Phase 5 (ROADMAP.md).")
         );
+    }
+
+    /// A point in the middle of the viewport, clear of its corner controls.
+    const IN_VIEW: egui::Pos2 = egui::pos2(500.0, 300.0);
+
+    fn button(
+        h: &egui_kittest::Harness<'_, Workbench>,
+        button: egui::PointerButton,
+        pressed: bool,
+        at: egui::Pos2,
+    ) {
+        h.event(egui::Event::PointerButton {
+            pos: at,
+            button,
+            pressed,
+            modifiers: egui::Modifiers::NONE,
+        });
+    }
+
+    #[test]
+    fn holding_right_mouse_and_w_flies_forward_without_changing_tool() {
+        let mut h = harness();
+        h.hover_at(IN_VIEW);
+        h.run();
+        let start = h.state().camera();
+        button(&h, egui::PointerButton::Secondary, true, IN_VIEW);
+        h.run();
+        assert!(h.state().viewport.is_flying());
+        h.key_down(egui::Key::W);
+        h.run_steps(5);
+        h.key_up(egui::Key::W);
+        button(&h, egui::PointerButton::Secondary, false, IN_VIEW);
+        h.run();
+        assert!(!h.state().viewport.is_flying());
+        let moved = h.state().camera().position - start.position;
+        assert!(moved.dot(start.forward()) > 0.0, "moved {moved}");
+        assert_eq!(
+            h.state().tool(),
+            Tool::Select,
+            "W flew instead of picking Move"
+        );
+    }
+
+    #[test]
+    fn right_dragging_looks_around() {
+        let mut h = harness();
+        h.hover_at(IN_VIEW);
+        h.run();
+        let start = h.state().camera();
+        button(&h, egui::PointerButton::Secondary, true, IN_VIEW);
+        h.run();
+        h.event(egui::Event::PointerMoved(IN_VIEW + egui::vec2(80.0, 0.0)));
+        h.run();
+        button(&h, egui::PointerButton::Secondary, false, IN_VIEW);
+        h.run();
+        assert!(h.state().camera().heading > start.heading);
+        assert_eq!(h.state().camera().position, start.position);
+    }
+
+    #[test]
+    fn the_wheel_changes_speed_while_flying_and_moves_otherwise() {
+        let wheel = |h: &egui_kittest::Harness<'_, Workbench>| {
+            h.event(egui::Event::MouseWheel {
+                unit: egui::MouseWheelUnit::Line,
+                delta: egui::vec2(0.0, 1.0),
+                phase: egui::TouchPhase::Move,
+                modifiers: egui::Modifiers::NONE,
+            });
+        };
+        let mut h = harness();
+        h.hover_at(IN_VIEW);
+        h.run();
+        let start = h.state().camera();
+        wheel(&h);
+        h.run();
+        let after_wheel = h.state().camera();
+        assert!((after_wheel.position - start.position).dot(start.forward()) > 0.0);
+        assert_eq!(after_wheel.speed, start.speed);
+
+        button(&h, egui::PointerButton::Secondary, true, IN_VIEW);
+        h.run();
+        wheel(&h);
+        h.run();
+        button(&h, egui::PointerButton::Secondary, false, IN_VIEW);
+        h.run();
+        assert_eq!(h.state().camera().speed, start.speed + 1);
+        assert_eq!(h.state().camera().position, after_wheel.position);
+        let _ = h.get_by_label(&(start.speed + 1).to_string());
+    }
+
+    #[test]
+    fn middle_dragging_slides_the_camera() {
+        let mut h = harness();
+        h.hover_at(IN_VIEW);
+        h.run();
+        let start = h.state().camera();
+        button(&h, egui::PointerButton::Middle, true, IN_VIEW);
+        h.run();
+        for step in 1..=5 {
+            h.event(egui::Event::PointerMoved(
+                IN_VIEW + egui::vec2(step as f32 * 20.0, 0.0),
+            ));
+            h.run();
+        }
+        button(
+            &h,
+            egui::PointerButton::Middle,
+            false,
+            IN_VIEW + egui::vec2(100.0, 0.0),
+        );
+        h.run();
+        let moved = h.state().camera().position - start.position;
+        assert!(moved.dot(start.right()) < 0.0, "moved {moved}");
+        assert_eq!(h.state().camera().heading, start.heading);
+    }
+
+    #[test]
+    fn tool_keys_still_work_after_flying() {
+        let mut h = harness();
+        h.hover_at(IN_VIEW);
+        h.run();
+        button(&h, egui::PointerButton::Secondary, true, IN_VIEW);
+        h.run();
+        button(&h, egui::PointerButton::Secondary, false, IN_VIEW);
+        h.run();
+        h.key_press(egui::Key::R);
+        h.run();
+        assert_eq!(h.state().tool(), Tool::Rotate);
     }
 }
