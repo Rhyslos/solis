@@ -1,0 +1,65 @@
+[workspace]
+resolver = "3"
+members = ["crates/*", "tools/layer-check"]
+
+[workspace.package]
+version = "0.0.1"
+edition = "2024"
+rust-version = "1.97"
+license = "MIT"
+repository = "https://github.com/Rhyslos/solis"
+authors = ["Rhyslos"]
+publish = false
+
+# Solis's own crates, so any crate can depend on another by name.
+# Which crate may depend on which is decided by layers (see ARCHITECTURE.md)
+# and enforced by the test in tools/layer-check.
+[workspace.dependencies]
+render = { path = "crates/render" }
+editor = { path = "crates/editor" }
+
+# Outside libraries. Every one must have a licence compatible with MIT,
+# checked by `cargo deny check` (see deny.toml and decision 0007).
+toml = "1.1"
+serde = { version = "1.0", features = ["derive"] }
+glam = { version = "0.34", features = ["serde", "bytemuck"] }
+# Must match the wgpu version eframe uses (one GPU device is shared).
+wgpu = "30.0"
+bytemuck = { version = "1.25", features = ["derive"] }
+# The window and frame loop (winit + wgpu underneath).
+eframe = { version = "0.36", features = ["persistence"] }
+egui = "0.36"
+# Dockable panels (decision 0004).
+egui_dock = { version = "0.21", features = ["serde"] }
+# Development only.
+egui_kittest = "0.36"
+pollster = "1.0"
+ron = "0.12"
+
+[workspace.lints.rust]
+# No unsafe code. "deny" rather than "forbid" so that a reviewed exception,
+# with its own decision record, can allow it on one small module.
+unsafe_code = "deny"
+# Every public item must be documented.
+missing_docs = "deny"
+unreachable_pub = "warn"
+
+[workspace.lints.clippy]
+# Library code never crashes on purpose. Tests are exempt through clippy.toml.
+unwrap_used = "deny"
+expect_used = "deny"
+panic = "deny"
+todo = "deny"
+unimplemented = "deny"
+dbg_macro = "deny"
+print_stdout = "warn"
+print_stderr = "warn"
+
+[profile.release]
+lto = "thin"
+codegen-units = 1
+
+# Keep debug builds usable: optimise dependencies even in development, so
+# the editor stays smooth while working on it.
+[profile.dev.package."*"]
+opt-level = 2
