@@ -24,7 +24,7 @@ fn workspace_follows_architecture_rules() {
 fn every_planned_crate_exists() {
     let crates = layer_check::load_workspace(workspace_root()).unwrap();
     let names: Vec<&str> = crates.iter().map(|c| c.name.as_str()).collect();
-    assert_eq!(names, ["app", "editor", "render"]);
+    assert_eq!(names, ["app", "assets", "editor", "render"]);
 }
 
 #[test]

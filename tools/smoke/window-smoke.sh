@@ -1,9 +1,10 @@
 #!/usr/bin/env bash
-# Window smoke test: opens the real editor on a virtual screen and checks the
-# Phase 0 gate as far as a script can: the window opens, the viewport is
-# drawn in the right colours, a tool key picks a tool, a panel can be dragged
-# to a new place, File > Quit quits, and the next launch puts the panel back
-# where it was dragged.
+# Window smoke test: opens the real editor on a virtual screen and checks
+# what a script can: the window opens, the viewport is drawn in the right
+# colours, a tool key picks a tool, the camera flies (right mouse and W), a
+# panel can be dragged to a new place, File > Quit quits, the next launch
+# puts the panel and the camera back where they were, and (with
+# SAMPLE_MODEL set) an imported model is drawn.
 #
 # Usage (needs Xvfb, xdotool, ImageMagick and a GPU driver, such as Mesa's
 # software one):
@@ -46,9 +47,10 @@ fail() {
     exit 1
 }
 
-# Starts the program and waits up to 60 seconds for its window.
+# Starts the program (with any arguments given) and waits up to 60 seconds
+# for its window.
 launch() {
-    "$BIN" >>"$OUT/app.log" 2>&1 </dev/null &
+    "$BIN" "$@" >>"$OUT/app.log" 2>&1 </dev/null &
     PID=$!
     for _ in $(seq 1 60); do
         if xdotool search --name "$TITLE" >/dev/null 2>&1; then break; fi
@@ -89,7 +91,7 @@ changed_pixels() {
 quit() {
     xdotool mousemove 19 16 click 1
     sleep 1
-    xdotool mousemove 40 "${QUIT_Y:-134}" click 1
+    xdotool mousemove 40 "${QUIT_Y:-171}" click 1
     for _ in $(seq 1 15); do
         kill -0 "$PID" 2>/dev/null || break
         sleep 1
@@ -172,5 +174,20 @@ echo "Pixels different from the dragged layout: $SAME; from the first launch: $F
 [ "$SAME" -lt "$FIRST" ] || fail "the dragged layout was not restored"
 [ "$SAME" -lt 20000 ] || fail "the reopened editor does not match the dragged layout"
 quit
+
+# 7. Importing a model: start with --import and the sample model (a
+#    checker cube on a red base; SAMPLE_MODEL names the file, made with
+#    `cargo run -p assets --example sample -- sample.glb`). The camera
+#    frames it, so red fills part of the middle of the viewport.
+if [ -n "${SAMPLE_MODEL:-}" ]; then
+    launch --import "$SAMPLE_MODEL"
+    sleep 4
+    shot imported
+    RED="$(convert "$OUT/imported.png" -crop 600x400+250+150 +repage -fx 'r>0.6 && g<0.45 && b<0.45 ? 1 : 0' -format '%[fx:int(mean*w*h)]' info:)"
+    echo "Red pixels of the sample's base in the viewport: $RED"
+    [ "$RED" -gt 2000 ] || fail "the imported model is not drawn"
+    grep -q "No 3D view" "$OUT/app.log" && fail "the 3D view could not be shown"
+    quit
+fi
 
 echo "Window smoke test passed."

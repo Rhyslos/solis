@@ -19,6 +19,8 @@ A new `solis.exe` is built every time code is merged into the main version. To b
 1. Install Rust from [rustup.rs](https://rustup.rs).
 2. In the `solis` folder, run `cargo run --release -p app`. The first build takes a few minutes; later ones are quicker.
 
+**Opening with a model:** `solis --import ship.glb` opens Solis and imports the model straight away (repeat `--import` for more than one).
+
 ## Settings
 Solis remembers your panel layout, accent colour, camera and viewport controls in your user folder, so each start looks like the last.
 

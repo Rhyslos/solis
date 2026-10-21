@@ -19,9 +19,11 @@ name = "solis"
 path = "src/main.rs"
 
 [dependencies]
+assets.workspace = true
 editor.workspace = true
 render.workspace = true
 eframe.workspace = true
+rfd.workspace = true
 
 [lints]
 workspace = true

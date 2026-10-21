@@ -90,7 +90,11 @@ jobs:
           REQUIRE_GPU: "1"
       # The window title starts with the program's name (APP_NAME in
       # crates/app/src/branding.rs).
+      # The sample model the window test imports.
+      - run: mkdir -p smoke-output && cargo run --locked -q -p assets --example sample -- smoke-output/sample.glb
       - run: xvfb-run -s "-screen 0 1440x900x24" tools/smoke/window-smoke.sh target/debug/solis "Solis" smoke-output
+        env:
+          SAMPLE_MODEL: smoke-output/sample.glb
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         if: always()
         with:

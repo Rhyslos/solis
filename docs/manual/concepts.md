@@ -23,4 +23,15 @@
 - **Metres:** one unit in Solis is one metre. The grid's small squares are 1 metre across.
 - **Grid:** lines on the ground to judge size and distance by. Brighter lines mark every 10 and 100 metres. The grid fades out with distance so it doesn't clutter the horizon.
 - **Fly camera:** the way you move around the viewport: you steer the camera like a drone. See [Moving around the viewport](navigating-the-viewport.md).
+## Models
+
+- **Model:** a 3D object made in a modelling program (Blender, Aventail): its shape, and how its surface looks. See [Importing models](importing-models.md).
+- **glTF:** the standard file format for game models, in two forms: `.glb` (everything in one file) and `.gltf` (a text file, with its data and textures in files beside it).
+- **Mesh:** a model's shape, made of triangles.
+- **Triangle:** the smallest piece of a 3D shape. Graphics cards draw everything as triangles; a game character has a few thousand to tens of thousands.
+- **Material:** how a surface looks: its colour, how shiny, how see-through.
+- **Texture:** an image wrapped around a model, giving it detail (paint, wood grain, panels).
+
+## Tools
+
 - **Tool:** what a click in the viewport does: Select, Move, Rotate, Scale or Transform. The tools work once there are things in a scene to use them on (Phase 2).

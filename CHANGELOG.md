@@ -14,6 +14,8 @@ What changed in each version, for people using Solis. Newest first.
 
 ### Added
 
+- Importing models: **File > Import model…**, or drop a `.glb` or `.gltf` file onto the window. Meshes, colour textures, see-through and double-sided surfaces come in, upright (glTF's Y-up becomes Solis's Z-up), lit by a fixed sun and the sky. The camera frames the new model; the Scene panel lists imported models, each with a × to remove it. Models are read in the background, and damaged files are explained, never a crash. Also `solis --import <file>`.
+
 - The user manual (`docs/manual`): getting started, concepts, a tour of the interface, moving around the viewport, the Console and every shortcut.
 
 - A ready-made `solis.exe` for Windows, built on GitHub whenever code is merged (Actions tab, **Windows EXE**). Release builds on Windows open without a console window.
