@@ -185,6 +185,7 @@ wgpu, lightweight, built for medium-poly, stylized games.
 ## 8. Worlds, zones and streaming
 
 - **Scenes** are text files, made to merge in Git: one entity per block, stable IDs, fields in a fixed order (a selling point: Unity and Godot scenes are notorious for conflicts; [decision 0006](docs/decisions/0006-git-built-in.md)).
+- **File extensions:** `project.solis` for the project, `.solscene` for scenes, `.solprefab` for prefabs and `.solmat` for materials ([decision 0015](docs/decisions/0015-file-extensions.md)).
 - **Prefabs,** nested, with per-instance overrides.
 - **Game state above scenes:** state that outlives a scene (a campaign, a save), with loading a scene and returning as a normal operation.
 - **Zones** stream in and out by distance, each owning its memory (§3).
@@ -319,3 +320,4 @@ Both sides review each other's pull requests.
 - 2026-10-21: [0012](docs/decisions/0012-windows-only.md): Solis is made for Windows, the editor and exported games; Linux and macOS builds are dropped. CI's checks still run on a Linux machine, the cheapest kind.
 - 2026-10-21: [0013](docs/decisions/0013-looks-for-the-whole-view-first.md): the standard, stylized (cel-shaded, with outlines) and unlit looks, chosen for the whole view until materials become assets in Phase 2.
 - 2026-10-22: [0014](docs/decisions/0014-lights-placed-two-ways.md): lights come two ways until scenes arrive: with a model's glTF file, or added from the Entity menu; strengths in Blender's units (W, W/m²); shadows from the sun only, up to 16 lamps at once.
+- 2026-10-22: [0015](docs/decisions/0015-file-extensions.md): file extensions `project.solis`, `.solscene`, `.solprefab` and `.solmat`; `.sol` is Solidity's.
