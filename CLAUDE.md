@@ -22,14 +22,14 @@ Solis is a 3D game engine. Read DESIGN.md before any change; it is the plan, and
 The repo is private, so CI minutes are limited.
 
 - Never add a workflow that runs on every push, on a schedule, or for docs-only changes.
-- Workflows run on ready-for-review pull requests and by hand only. Linux by default; Windows and macOS by hand or for release tags. The one exception is the Windows EXE build, which also runs when code is merged into main (decision 0010).
+- Workflows run on ready-for-review pull requests and by hand only, on Linux machines (the cheapest). Solis is made for Windows only (decision 0012): a Windows test run happens by hand or for release tags, and the Windows EXE is built when code is merged into main (decision 0010). No macOS.
 - Run the full checks locally before pushing, and list the results in the pull request: `cargo fmt --all -- --check`, `cargo clippy --workspace --all-targets -- -D warnings`, `cargo test --workspace`, `cargo deny check`, the GPU tests with `REQUIRE_GPU=1`, and `tools/smoke/window-smoke.sh` under `xvfb-run` (see ARCHITECTURE.md, Checks).
 
 ## Code
 
 - Follow every ground rule in `CONTRIBUTING.md`; CI enforces many of them, review enforces the rest.
 - Tests for every batch (normal, edge, failure, regression, round trip, fuzz, benchmarks as relevant), and the whole suite run before pushing. Anything that reads files or saved settings gets a fuzz test.
-- Update documentation in the same pull request: code comments, crate READMEs, `ARCHITECTURE.md`, `CHANGELOG.md` (CI checks it), the **user manual**, and the README status when a milestone completes. Fill in the pull request template.
+- Update documentation in the same pull request: code comments, crate READMEs, `ARCHITECTURE.md`, `CHANGELOG.md` (CI checks it), the **user manual**, and the README progress tracker when a milestone completes. Fill in the pull request template.
 - **The user manual is required.** Any change a user would notice updates `docs/manual/` in the same pull request, following `docs/manual/_template.md`. Write for someone new to game engines: explain *why* as well as *how*, and link terms to `docs/manual/concepts.md` (add new terms there). The manual describes only what exists in `main`.
 - **Scale check:** at the end of each phase, and whenever the project lead asks, run `tools/scale/scale-check.sh` and put its table in the pull request (decision 0011). Not on every pull request.
 - Any new place the program's name must appear gets added to `RENAMING.md` in the same pull request.

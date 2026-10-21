@@ -20,7 +20,7 @@ Each phase ends with a **gate**: something the project lead tries by hand before
 | 7. Lust and Lua join | 7–8 | Components written in Lust or Lua, in play mode within 2 seconds |
 | 8. Netcode | 8–10 | Two PCs playing together over the internet |
 | 9. Effects and game UI | 9–10 | Solis Eclipse basics; HUDs and menus |
-| 10. Scripting, export and Git | 10–11 | The scripting window; games packaged for Windows and Linux; working in teams through Git |
+| 10. Scripting, export and Git | 10–11 | The scripting window; games packaged for Windows; working in teams through Git |
 | 11. Solis 0.1 | 11–12 | The flagship space battle, docs, release |
 
 Phases 0–6 don't need Lust. If Lust isn't ready by Phase 7, Phases 8 and 9 go first.
@@ -148,7 +148,7 @@ Netcode in layers ([decision 0005](docs/decisions/0005-netcode-in-layers.md)):
 ## Phase 10: Scripting, export and Git
 
 - **The scripting window:** LustScript and Lua through Luau, calling the same commands as the built-in tools, with undo, a sandbox and time limits (the design Aventail plans for its Phase 9).
-- **Build and export:** packaged games for Windows and Linux, and Build-and-Play from the top bar.
+- **Build and export:** packaged games for Windows ([decision 0012](docs/decisions/0012-windows-only.md)), and Build-and-Play from the top bar.
 - **The Git panel** ([decision 0006](docs/decisions/0006-git-built-in.md)): changes with plain-language scene summaries, commit, pull and push, branches, history, Git LFS locking, markers in the library and scene tree, and new projects from or published to a repository.
 - **The scene merge tool:** merges scenes and prefabs entity by entity; when two people changed the same field, asks which to keep.
 
@@ -167,7 +167,7 @@ Netcode in layers ([decision 0005](docs/decisions/0005-netcode-in-layers.md)):
 
 ## Not in 0.1
 
-Open-world streaming and terrain, navigation and AI, the full Solis Eclipse toolkit, the visual UI editor, the shader editor, rollback netcode, advanced animation (IK, root motion), Steam features, macOS.
+Open-world streaming and terrain, navigation and AI, the full Solis Eclipse toolkit, the visual UI editor, the shader editor, rollback netcode, advanced animation (IK, root motion), Steam features, Linux and macOS (decision 0012).
 
 ## Who does what
 
