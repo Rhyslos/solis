@@ -19,8 +19,9 @@ Planned: `world` (entities and components, layer 0 or 1) and `assets` (layer 1) 
 
 1. **Input:** winit delivers mouse and keyboard events to egui (through eframe).
 2. **Editor:** the workbench draws the top bar and the docked panels and returns any actions (such as Quit) for the app to carry out.
-3. **Viewport:** the viewport panel asks a `ViewportRenderer` for an image of its size. The app's implementation renders it with `render` on the window's own GPU device and hands it to egui as a texture.
-4. **Closing:** eframe saves the window size and the panel layout in a per-user folder named after `APP_ID`.
+3. **Camera:** the viewport turns the mouse and keys into a `FlyInput`, and `Camera::fly` (in `editor/src/camera.rs`) moves the camera.
+4. **Viewport:** the viewport panel asks a `ViewportRenderer` for an image of its size. The app's implementation renders it with `render` on the window's own GPU device and hands it to egui as a texture.
+5. **Closing:** eframe saves the window size, the panel layout and the camera in a per-user folder named after `APP_ID`.
 
 ## Colour in the viewport
 
@@ -30,7 +31,7 @@ The viewport draws into a plain 8-bit RGBA image, which egui shows as it is. Sha
 
 - `cargo fmt --all -- --check`, `cargo clippy --workspace --all-targets -- -D warnings`, `cargo test --workspace` and `cargo deny check` run locally before every push.
 - `crates/render/tests/gpu.rs` renders real frames. Without a GPU it skips; with `REQUIRE_GPU=1` a missing GPU is a failure.
-- `tools/smoke/window-smoke.sh` opens the real editor on a virtual screen, drags a panel, quits and reopens, and checks the layout came back.
+- `tools/smoke/window-smoke.sh` opens the real editor on a virtual screen, flies the camera, drags a panel, quits and reopens, and checks the layout and camera came back.
 - CI (`.github/workflows/ci.yml`) runs all of these on ready pull requests and by hand only ([decision 0001](docs/decisions/0001-builds-on-demand.md)).
 
 ## Conventions

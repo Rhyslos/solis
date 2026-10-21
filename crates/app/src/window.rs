@@ -4,7 +4,7 @@
 use crate::branding;
 use crate::gpu::GpuViewport;
 use editor::{
-    AppInfo, DockState, LogLevel, NoRenderer, Overlays, Panel, ViewportRenderer, Workbench,
+    AppInfo, Camera, DockState, LogLevel, NoRenderer, Overlays, Panel, ViewportRenderer, Workbench,
     WorkbenchAction, theme::Accent,
 };
 use eframe::egui;
@@ -15,6 +15,7 @@ const LAYOUT_KEY: &str = "panel_layout";
 const ACCENT_KEY: &str = "accent";
 /// Key under which the viewport's corner controls are remembered.
 const OVERLAYS_KEY: &str = "viewport_overlays";
+const CAMERA_KEY: &str = "viewport_camera";
 /// Window size on first launch, in logical pixels.
 const FIRST_SIZE: [f32; 2] = [1440.0, 900.0];
 /// The smallest the window may get while staying usable.
@@ -37,13 +38,17 @@ impl App {
         let accent: Accent = storage
             .and_then(|s| eframe::get_value(s, ACCENT_KEY))
             .unwrap_or_default();
+        let camera: Camera = storage
+            .and_then(|s| eframe::get_value(s, CAMERA_KEY))
+            .unwrap_or_default();
         let overlays: Overlays = storage
             .and_then(|s| eframe::get_value(s, OVERLAYS_KEY))
             .unwrap_or_default();
         editor::theme::apply(&cc.egui_ctx, accent);
         let mut workbench = Workbench::new(info.clone(), layout)
             .with_accent(accent)
-            .with_overlays(overlays);
+            .with_overlays(overlays)
+            .with_camera(camera);
         workbench.log(
             LogLevel::Info,
             format!("{} {} started.", info.name, info.version),
@@ -89,6 +94,7 @@ impl eframe::App for App {
         eframe::set_value(storage, LAYOUT_KEY, self.workbench.layout());
         eframe::set_value(storage, ACCENT_KEY, &self.workbench.accent());
         eframe::set_value(storage, OVERLAYS_KEY, &self.workbench.overlays());
+        eframe::set_value(storage, CAMERA_KEY, &self.workbench.camera());
     }
 }
 
