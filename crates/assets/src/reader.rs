@@ -254,9 +254,72 @@ fn check_accessors(
     Ok(())
 }
 
+/// Reads textures once each, however many materials use them.
+struct TextureReader<'a> {
+    buffers: &'a [Vec<u8>],
+    folder: Option<&'a Path>,
+    limits: &'a Limits,
+    textures: Vec<Texture>,
+    /// One texture per (image, sampler, colour or not) the file uses.
+    made: HashMap<(usize, Option<usize>, bool), Option<usize>>,
+    warnings: Vec<String>,
+}
+
+impl TextureReader<'_> {
+    /// The texture for `texture`, read if it hasn't been yet; `None` (with a
+    /// warning) if it can't be read. `srgb` says whether its pixels are
+    /// colours.
+    fn get(
+        &mut self,
+        texture: &gltf::Texture<'_>,
+        tex_coord: u32,
+        srgb: bool,
+        owner: &str,
+    ) -> Option<usize> {
+        if tex_coord != 0 {
+            self.warnings.push(format!(
+                "{owner}: only the first set of texture coordinates is used"
+            ));
+        }
+        let image = texture.source();
+        let key = (image.index(), texture.sampler().index(), srgb);
+        if let Some(&made) = self.made.get(&key) {
+            return made;
+        }
+        let sampler = sampler(&texture.sampler());
+        let result = match read_image(&image, self.buffers, self.folder, self.limits)
+            .and_then(|bytes| texture::decode(&bytes, sampler, srgb, self.limits))
+        {
+            Ok(texture) => {
+                self.textures.push(texture);
+                Some(self.textures.len() - 1)
+            }
+            Err(why) => {
+                self.warnings.push(format!(
+                    "{}: its texture was left out ({why})",
+                    image_name(&image)
+                ));
+                None
+            }
+        };
+        self.made.insert(key, result);
+        result
+    }
+}
+
+/// A number from the file, kept within `low..=high`, or `fallback` if it
+/// isn't a number at all.
+fn tidy(value: f32, low: f32, high: f32, fallback: f32) -> f32 {
+    if value.is_finite() {
+        value.clamp(low, high)
+    } else {
+        fallback
+    }
+}
+
 /// The materials, and the textures they use. A texture that can't be read
-/// is left out (the material keeps its colour) with a warning, rather than
-/// refusing the whole model.
+/// is left out (the material keeps its plain values) with a warning, rather
+/// than refusing the whole model.
 fn read_materials(
     document: &gltf::Document,
     buffers: &[Vec<u8>],
@@ -264,69 +327,64 @@ fn read_materials(
     limits: &Limits,
     warnings: &mut Vec<String>,
 ) -> (Vec<Material>, Vec<Texture>) {
-    let mut textures = Vec::new();
-    // One texture per (image, sampler) pair the file uses.
-    let mut made: HashMap<(usize, Option<usize>), Option<usize>> = HashMap::new();
+    let mut reader = TextureReader {
+        buffers,
+        folder,
+        limits,
+        textures: Vec::new(),
+        made: HashMap::new(),
+        warnings: Vec::new(),
+    };
     let materials = document
         .materials()
         .map(|material| {
+            let name = material_name(&material);
             let pbr = material.pbr_metallic_roughness();
-            let base_color_texture = pbr.base_color_texture().and_then(|info| {
-                if info.tex_coord() != 0 {
-                    warnings.push(format!(
-                        "{}: only the first set of texture coordinates is used",
-                        material_name(&material)
-                    ));
-                }
-                let gltf_texture = info.texture();
-                let image = gltf_texture.source();
-                let key = (image.index(), gltf_texture.sampler().index());
-                *made.entry(key).or_insert_with(|| {
-                    let sampler = sampler(&gltf_texture.sampler());
-                    match read_image(&image, buffers, folder, limits)
-                        .and_then(|bytes| texture::decode(&bytes, sampler, limits))
-                    {
-                        Ok(texture) => {
-                            textures.push(texture);
-                            Some(textures.len() - 1)
-                        }
-                        Err(why) => {
-                            warnings.push(format!(
-                                "{}: its texture was left out ({why})",
-                                image_name(&image)
-                            ));
-                            None
-                        }
-                    }
-                })
-            });
+            let base_color_texture = pbr
+                .base_color_texture()
+                .and_then(|info| reader.get(&info.texture(), info.tex_coord(), true, &name));
+            let metallic_roughness_texture = pbr
+                .metallic_roughness_texture()
+                .and_then(|info| reader.get(&info.texture(), info.tex_coord(), false, &name));
+            let normal = material.normal_texture();
+            let normal_texture = normal
+                .as_ref()
+                .and_then(|n| reader.get(&n.texture(), n.tex_coord(), false, &name));
+            let occlusion = material.occlusion_texture();
+            let occlusion_texture = occlusion
+                .as_ref()
+                .and_then(|o| reader.get(&o.texture(), o.tex_coord(), false, &name));
+            let emissive_texture = material
+                .emissive_texture()
+                .and_then(|info| reader.get(&info.texture(), info.tex_coord(), true, &name));
             Material {
-                name: material_name(&material),
-                base_color: pbr.base_color_factor().map(|c| {
-                    if c.is_finite() {
-                        c.clamp(0.0, 1.0)
-                    } else {
-                        1.0
-                    }
-                }),
+                base_color: pbr.base_color_factor().map(|c| tidy(c, 0.0, 1.0, 1.0)),
                 base_color_texture,
+                metallic: tidy(pbr.metallic_factor(), 0.0, 1.0, 1.0),
+                roughness: tidy(pbr.roughness_factor(), 0.0, 1.0, 1.0),
+                metallic_roughness_texture,
+                normal_texture,
+                normal_scale: normal.map_or(1.0, |n| tidy(n.scale(), -10.0, 10.0, 1.0)),
+                occlusion_texture,
+                occlusion_strength: occlusion.map_or(1.0, |o| tidy(o.strength(), 0.0, 1.0, 1.0)),
+                // Brighter than 1 only through the strength extension,
+                // which isn't read yet.
+                emissive: material.emissive_factor().map(|c| tidy(c, 0.0, 1.0, 0.0)),
+                emissive_texture,
                 alpha: match material.alpha_mode() {
                     gltf::material::AlphaMode::Opaque => AlphaMode::Opaque,
                     gltf::material::AlphaMode::Mask => {
-                        let cutoff = material.alpha_cutoff().unwrap_or(0.5);
-                        AlphaMode::Mask(if cutoff.is_finite() {
-                            cutoff.clamp(0.0, 1.0)
-                        } else {
-                            0.5
-                        })
+                        AlphaMode::Mask(tidy(material.alpha_cutoff().unwrap_or(0.5), 0.0, 1.0, 0.5))
                     }
                     gltf::material::AlphaMode::Blend => AlphaMode::Blend,
                 },
                 double_sided: material.double_sided(),
+                name,
             }
         })
         .collect();
-    (materials, textures)
+    warnings.append(&mut reader.warnings);
+    (materials, reader.textures)
 }
 
 fn material_name(material: &gltf::Material<'_>) -> String {

@@ -425,6 +425,12 @@ impl ViewportRenderer {
                     model.draw(&mut pass, kind);
                 }
             }
+            if params.shading.outlines() {
+                pass.set_pipeline(&self.models.outline);
+                for model in models {
+                    model.draw_outlines(&mut pass);
+                }
+            }
             pass.set_pipeline(&self.grid_pipeline);
             pass.draw(0..6, 0..1);
             pass.set_pipeline(&self.line_pipeline);

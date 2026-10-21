@@ -11,6 +11,7 @@
 
 use crate::camera::{Camera, FlyInput};
 use crate::icons;
+use crate::look::{Look, LookKind};
 use crate::models::ModelId;
 use crate::theme::{self, Accent};
 use egui::{Align, Color32, Layout, Rect, RichText, Sense, Ui, UiBuilder, Vec2, vec2};
@@ -115,6 +116,10 @@ pub struct ViewportView {
     pub ground: [f32; 3],
     /// The imported models to draw.
     pub models: Vec<ModelId>,
+    /// How models are shaded.
+    pub look: Look,
+    /// The stylized look's outline width in pixels; 0 for none.
+    pub outline_px: f32,
 }
 
 /// Draws viewport images. The app implements it on the window's GPU; tests
@@ -158,6 +163,8 @@ pub struct Viewport {
     frame_time: f32,
     /// The imported models drawn in the view.
     pub models: Vec<ModelId>,
+    /// How models are shaded.
+    pub look: Look,
     /// How many triangles they have together, for the corner.
     pub triangles: usize,
     /// While looking around with the right mouse button: where the mouse
@@ -179,6 +186,7 @@ impl Default for Viewport {
             flying_from: None,
             wheel_carry: 0.0,
             models: Vec::new(),
+            look: Look::default(),
             triangles: 0,
         }
     }
@@ -205,7 +213,7 @@ impl Viewport {
     }
 
     /// The view for an image of `size_px` physical pixels.
-    pub fn view(&self, size_px: [u32; 2]) -> ViewportView {
+    pub fn view(&self, size_px: [u32; 2], pixels_per_point: f32) -> ViewportView {
         let aspect = size_px[0].max(1) as f32 / size_px[1].max(1) as f32;
         ViewportView {
             size_px,
@@ -216,6 +224,8 @@ impl Viewport {
             sky_horizon: rgb(theme::backdrop::HORIZON),
             ground: rgb(theme::backdrop::GROUND),
             models: self.models.clone(),
+            look: self.look,
+            outline_px: self.look.outline_px(pixels_per_point),
         }
     }
 
@@ -237,7 +247,7 @@ impl Viewport {
             (rect.height() * ppp).round().max(1.0) as u32,
         ];
         let painter = ui.painter_at(rect);
-        match renderer.render(&self.view(size_px)) {
+        match renderer.render(&self.view(size_px, ppp)) {
             Ok(texture) => {
                 painter.image(
                     texture,
@@ -413,21 +423,18 @@ impl Viewport {
             if menu.clicked() {
                 self.menu_open = !self.menu_open;
             }
-            ui.menu_button("Perspective ▴", |ui| {
+            up_menu(ui, "Perspective ▴", |ui| {
                 let _ = ui.add(egui::Button::new("Perspective").selected(true));
                 for view in ["Top", "Front", "Right"] {
                     ui.add_enabled(false, egui::Button::new(view))
                         .on_disabled_hover_text("Flat views arrive in Phase 1");
                 }
             });
-            ui.menu_button("Lit ▴", |ui| {
-                let _ = ui.add(egui::Button::new("Lit").selected(true));
-                for look in ["Unlit", "Wireframe"] {
-                    ui.add_enabled(false, egui::Button::new(look))
-                        .on_disabled_hover_text("Other looks arrive with lighting in Phase 1");
-                }
+            let look = &mut self.look;
+            up_menu(ui, format!("{} ▴", look.kind.name()), |ui| {
+                look_menu(ui, look)
             });
-            ui.menu_button("Show ▴", |ui| {
+            up_menu(ui, "Show ▴", |ui| {
                 for thing in ["Grid", "Axes", "Lights", "Cameras", "Colliders"] {
                     ui.add_enabled(false, egui::Checkbox::new(&mut true, thing))
                         .on_disabled_hover_text(
@@ -461,6 +468,51 @@ impl Viewport {
             });
         });
     }
+}
+
+/// A menu that opens upwards from its button (the ▴ says so), since the
+/// buttons sit at the bottom of the viewport. It stays open while its
+/// settings are changed, and closes on a click elsewhere.
+fn up_menu(ui: &mut Ui, title: impl Into<egui::WidgetText>, content: impl FnOnce(&mut Ui)) {
+    let response = ui.add(egui::Button::new(title));
+    egui::Popup::menu(&response)
+        .align(egui::RectAlign::TOP_START)
+        .close_behavior(egui::PopupCloseBehavior::CloseOnClickOutside)
+        .show(content);
+}
+
+/// The look menu: the three looks, and the stylized look's settings.
+fn look_menu(ui: &mut Ui, look: &mut Look) {
+    for kind in LookKind::ALL {
+        if ui
+            .add(egui::Button::new(kind.name()).selected(look.kind == kind))
+            .on_hover_text(kind.hint())
+            .clicked()
+        {
+            look.kind = kind;
+        }
+    }
+    ui.add_enabled(false, egui::Button::new("Wireframe"))
+        .on_disabled_hover_text("Wireframe arrives with the editor's tools in Phase 3");
+    ui.separator();
+    let stylized = look.kind == LookKind::Stylized;
+    ui.add_enabled_ui(stylized, |ui| {
+        ui.label(RichText::new("Stylized look").color(theme::TEXT_WEAK));
+        ui.horizontal(|ui| {
+            ui.label("Bands of light");
+            for bands in Look::BANDS {
+                if ui
+                    .add(egui::Button::new(bands.to_string()).selected(look.bands == bands))
+                    .clicked()
+                {
+                    look.bands = bands;
+                }
+            }
+        });
+        ui.checkbox(&mut look.outlines, "Outlines");
+    })
+    .response
+    .on_disabled_hover_text("Choose Stylized to change these");
 }
 
 /// How the hidden pointer is held while looking around: macOS can only
@@ -585,7 +637,7 @@ mod tests {
 
     #[test]
     fn the_view_carries_the_size_and_backdrop() {
-        let view = Viewport::default().view([800, 600]);
+        let view = Viewport::default().view([800, 600], 1.0);
         assert_eq!(view.size_px, [800, 600]);
         assert_eq!(view.sky_top, rgb(theme::backdrop::SKY_TOP));
         assert!(view.view_projection.is_finite());
@@ -610,7 +662,7 @@ mod tests {
             reason: "no GPU".into(),
         };
         assert_eq!(
-            r.render(&Viewport::default().view([1, 1])),
+            r.render(&Viewport::default().view([1, 1], 1.0)),
             Err("no GPU".to_string())
         );
     }

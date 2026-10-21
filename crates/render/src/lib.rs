@@ -13,7 +13,7 @@ mod renderer;
 
 pub use frame::{
     FrameParams, GRID_HALF_EXTENT, GRID_MIN_REACH, GRID_REACH_PER_DISTANCE, GRID_SPACINGS,
-    GRID_STRENGTHS, grid_reach, srgb_to_linear,
+    GRID_STRENGTHS, Look, Shading, grid_reach, srgb_to_linear,
 };
 pub use gpu_model::GpuModel;
 pub use readback::read_pixels;
@@ -53,7 +53,15 @@ mod shader_tests {
         assert_eq!(
             names,
             [
-                "grid_fs", "grid_vs", "line_fs", "line_vs", "mesh_fs", "mesh_vs", "sky_fs",
+                "grid_fs",
+                "grid_vs",
+                "line_fs",
+                "line_vs",
+                "mesh_fs",
+                "mesh_vs",
+                "outline_fs",
+                "outline_vs",
+                "sky_fs",
                 "sky_vs"
             ]
         );
