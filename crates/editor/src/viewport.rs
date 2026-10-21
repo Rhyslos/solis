@@ -11,6 +11,7 @@
 
 use crate::camera::{Camera, FlyInput};
 use crate::icons;
+use crate::models::ModelId;
 use crate::theme::{self, Accent};
 use egui::{Align, Color32, Layout, Rect, RichText, Sense, Ui, UiBuilder, Vec2, vec2};
 use glam::{Mat4, Vec3};
@@ -96,7 +97,7 @@ impl Default for Overlays {
 }
 
 /// What one viewport frame needs from the renderer.
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub struct ViewportView {
     /// The image size in physical pixels.
     pub size_px: [u32; 2],
@@ -112,6 +113,8 @@ pub struct ViewportView {
     pub sky_horizon: [f32; 3],
     /// The ground below the horizon, sRGB 0 to 1.
     pub ground: [f32; 3],
+    /// The imported models to draw.
+    pub models: Vec<ModelId>,
 }
 
 /// Draws viewport images. The app implements it on the window's GPU; tests
@@ -153,6 +156,10 @@ pub struct Viewport {
     menu_open: bool,
     /// The time per frame, smoothed, in seconds.
     frame_time: f32,
+    /// The imported models drawn in the view.
+    pub models: Vec<ModelId>,
+    /// How many triangles they have together, for the corner.
+    pub triangles: usize,
     /// While looking around with the right mouse button: where the mouse
     /// was when it started, to put it back afterwards.
     flying_from: Option<egui::Pos2>,
@@ -171,6 +178,8 @@ impl Default for Viewport {
             frame_time: 1.0 / 60.0,
             flying_from: None,
             wheel_carry: 0.0,
+            models: Vec::new(),
+            triangles: 0,
         }
     }
 }
@@ -206,6 +215,7 @@ impl Viewport {
             sky_top: rgb(theme::backdrop::SKY_TOP),
             sky_horizon: rgb(theme::backdrop::HORIZON),
             ground: rgb(theme::backdrop::GROUND),
+            models: self.models.clone(),
         }
     }
 
@@ -380,6 +390,16 @@ impl Viewport {
                         .size(11.0),
                     );
                     ui.label(RichText::new("0 entities").monospace().size(11.0));
+                    if self.triangles > 0 {
+                        ui.label(
+                            RichText::new(format!(
+                                "{} triangles",
+                                crate::models::grouped(self.triangles)
+                            ))
+                            .monospace()
+                            .size(11.0),
+                        );
+                    }
                 });
             });
     }

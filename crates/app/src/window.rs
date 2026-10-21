@@ -3,11 +3,13 @@
 
 use crate::branding;
 use crate::gpu::GpuViewport;
+use crate::import::{Finished, Importer};
 use editor::{
-    AppInfo, Camera, DockState, LogLevel, NoRenderer, Overlays, Panel, ViewportRenderer, Workbench,
+    AppInfo, Camera, DockState, LogLevel, ModelInfo, NoRenderer, Overlays, Panel, Workbench,
     WorkbenchAction, theme::Accent,
 };
 use eframe::egui;
+use std::path::{Path, PathBuf};
 
 /// Key under which the panel layout is remembered between sessions.
 const LAYOUT_KEY: &str = "panel_layout";
@@ -15,6 +17,7 @@ const LAYOUT_KEY: &str = "panel_layout";
 const ACCENT_KEY: &str = "accent";
 /// Key under which the viewport's corner controls are remembered.
 const OVERLAYS_KEY: &str = "viewport_overlays";
+/// Key under which the viewport camera is remembered.
 const CAMERA_KEY: &str = "viewport_camera";
 /// Window size on first launch, in logical pixels.
 const FIRST_SIZE: [f32; 2] = [1440.0, 900.0];
@@ -24,14 +27,18 @@ const MIN_SIZE: [f32; 2] = [960.0, 600.0];
 /// The running editor.
 struct App {
     workbench: Workbench,
-    /// Draws the viewport on the window's GPU.
-    renderer: Box<dyn ViewportRenderer>,
+    /// Draws the viewport on the window's GPU, if it has one.
+    gpu: Option<GpuViewport>,
+    /// Explains the empty viewport when there is no GPU.
+    no_gpu: NoRenderer,
+    /// Reads model files in the background.
+    importer: Importer,
     /// The window title last set, to change it only when it changes.
     title: String,
 }
 
 impl App {
-    fn new(cc: &eframe::CreationContext<'_>, info: AppInfo) -> Self {
+    fn new(cc: &eframe::CreationContext<'_>, info: AppInfo, imports: Vec<PathBuf>) -> Self {
         let storage = cc.storage;
         let layout: Option<DockState<Panel>> =
             storage.and_then(|s| eframe::get_value(s, LAYOUT_KEY));
@@ -53,32 +60,124 @@ impl App {
             LogLevel::Info,
             format!("{} {} started.", info.name, info.version),
         );
-        let renderer: Box<dyn ViewportRenderer> = match cc.wgpu_render_state.as_ref() {
-            Some(state) => {
-                let gpu = GpuViewport::new(state);
-                workbench.log(LogLevel::Info, gpu.describe());
-                Box::new(gpu)
-            }
-            None => {
-                let reason = "the window has no GPU device".to_string();
-                workbench.log(LogLevel::Error, format!("No 3D view: {reason}."));
-                Box::new(NoRenderer { reason })
-            }
+        let gpu = cc.wgpu_render_state.as_ref().map(GpuViewport::new);
+        let no_gpu = NoRenderer {
+            reason: "the window has no GPU device".to_string(),
         };
-        Self {
+        match &gpu {
+            Some(gpu) => workbench.log(LogLevel::Info, gpu.describe()),
+            None => workbench.log(LogLevel::Error, format!("No 3D view: {}.", no_gpu.reason)),
+        }
+        let importer = Importer::new(gpu.as_ref().map_or(4096, GpuViewport::max_texture_side));
+        let mut app = Self {
             workbench,
-            renderer,
+            gpu,
+            no_gpu,
+            importer,
             title: String::new(),
+        };
+        for path in imports {
+            app.import(&path);
+        }
+        app
+    }
+
+    /// Starts importing the model at `path`, or explains why it won't.
+    fn import(&mut self, path: &Path) {
+        let file = file_name(path);
+        if assets::is_model_file(path) {
+            self.importer.start(path);
+            self.workbench
+                .log(LogLevel::Info, format!("Importing {file}…"));
+        } else {
+            self.workbench.log(
+                LogLevel::Warning,
+                format!("{file} isn't a glTF model. Solis imports .gltf and .glb files."),
+            );
         }
     }
+
+    /// Puts finished imports into the viewport, or reports why they failed.
+    fn collect_imports(&mut self) {
+        for Finished {
+            id,
+            path,
+            result,
+            seconds,
+        } in self.importer.finished()
+        {
+            match (result, self.gpu.as_mut()) {
+                (Ok(model), Some(gpu)) => {
+                    gpu.add_model(id, &model);
+                    let info = ModelInfo {
+                        id,
+                        name: model.name.clone(),
+                        triangles: model.triangles(),
+                        min: model.bounds.min,
+                        max: model.bounds.max,
+                    };
+                    self.workbench.add_model(info, &model.warnings, seconds);
+                }
+                (Ok(_), None) => self.workbench.log(
+                    LogLevel::Error,
+                    format!("Couldn't show {}: there is no 3D view.", file_name(&path)),
+                ),
+                (Err(why), _) => self.workbench.log(
+                    LogLevel::Error,
+                    format!("Couldn't import {}: {why}.", file_name(&path)),
+                ),
+            }
+        }
+    }
+}
+
+/// A file's name, for messages.
+fn file_name(path: &Path) -> String {
+    path.file_name().map_or_else(
+        || path.display().to_string(),
+        |n| n.to_string_lossy().into_owned(),
+    )
 }
 
 impl eframe::App for App {
     fn ui(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
         let ctx = ui.ctx().clone();
-        for action in self.workbench.show(ui, self.renderer.as_mut()) {
+        // Files dropped onto the window, and whether some are being
+        // dragged over it right now.
+        let (dropped, hovering) = ctx.input(|i| {
+            (
+                i.raw
+                    .dropped_files
+                    .iter()
+                    .map(|f| f.path().to_path_buf())
+                    .filter(|p| !p.as_os_str().is_empty())
+                    .collect::<Vec<_>>(),
+                !i.raw.hovered_files.is_empty(),
+            )
+        });
+        for path in dropped {
+            self.import(&path);
+        }
+        self.collect_imports();
+        self.workbench.set_files_hovering(hovering);
+        let renderer: &mut dyn editor::ViewportRenderer = match self.gpu.as_mut() {
+            Some(gpu) => gpu,
+            None => &mut self.no_gpu,
+        };
+        for action in self.workbench.show(ui, renderer) {
             match action {
                 WorkbenchAction::Quit => ctx.send_viewport_cmd(egui::ViewportCommand::Close),
+                WorkbenchAction::ImportModel => {
+                    if let Some((_, path)) = self.importer.ask_and_start() {
+                        self.workbench
+                            .log(LogLevel::Info, format!("Importing {}…", file_name(&path)));
+                    }
+                }
+                WorkbenchAction::RemoveModel(id) => {
+                    if let Some(gpu) = self.gpu.as_mut() {
+                        gpu.remove_model(id);
+                    }
+                }
             }
         }
         let title = self.workbench.title();
@@ -99,7 +198,7 @@ impl eframe::App for App {
 }
 
 /// Opens the editor window and runs until it closes.
-pub fn run(info: AppInfo) -> Result<(), String> {
+pub fn run(info: AppInfo, imports: Vec<PathBuf>) -> Result<(), String> {
     let title = format!("{} {}", info.name, info.version);
     let options = eframe::NativeOptions {
         viewport: egui::ViewportBuilder::default()
@@ -114,7 +213,7 @@ pub fn run(info: AppInfo) -> Result<(), String> {
         eframe::run_native(
             branding::APP_ID,
             options,
-            Box::new(move |cc| Ok(Box::new(App::new(cc, info)))),
+            Box::new(move |cc| Ok(Box::new(App::new(cc, info, imports)))),
         )
     }));
     match outcome {

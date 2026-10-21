@@ -1,7 +1,8 @@
-// Viewport shaders: the backdrop, the ground grid and the ground axes.
+// Viewport shaders: the backdrop, models, the ground grid and the ground
+// axes.
 //
-// Colours are written in linear space; the render target is sRGB, so the
-// GPU converts them when storing. Z is up and units are metres; the grid
+// Colours are worked out in linear space and encoded to sRGB as they are
+// written (see `encode`). Z is up and units are metres; the grid
 // lies on the X-Y plane.
 
 struct Frame {
@@ -158,4 +159,65 @@ fn line_fs(in: LineOut) -> @location(0) vec4<f32> {
     let distance = length(in.world.xy - frame.focus.xy);
     let fade = 1.0 - smoothstep(reach * 0.35, reach, distance);
     return vec4<f32>(encode(in.color.rgb), in.color.a * fade);
+}
+
+// ------------------------------------------------------------ models ---
+
+// One material's settings (group 1), as MaterialUniform in gpu_model.rs.
+struct Material {
+    // Linear RGBA, multiplied with the texture.
+    base_color: vec4<f32>,
+    // x: alpha cutoff; y: 0 solid, 1 cut out, 2 blended.
+    alpha: vec4<f32>,
+};
+
+@group(1) @binding(0) var<uniform> material: Material;
+@group(1) @binding(1) var base_texture: texture_2d<f32>;
+@group(1) @binding(2) var base_sampler: sampler;
+
+struct MeshIn {
+    @location(0) position: vec3<f32>,
+    @location(1) normal: vec3<f32>,
+    @location(2) uv: vec2<f32>,
+};
+
+struct MeshOut {
+    @builtin(position) clip: vec4<f32>,
+    @location(0) normal: vec3<f32>,
+    @location(1) uv: vec2<f32>,
+};
+
+@vertex
+fn mesh_vs(in: MeshIn) -> MeshOut {
+    var out: MeshOut;
+    out.clip = frame.view_proj * vec4<f32>(in.position, 1.0);
+    out.normal = in.normal;
+    out.uv = in.uv;
+    return out;
+}
+
+// The simple material: the colour and texture, lit by a fixed sun and by
+// soft light from the sky above and the ground below. Real lights replace
+// the fixed sun in milestone 4.
+const SUN_DIRECTION: vec3<f32> = vec3<f32>(0.35, -0.55, 0.76);
+const SUN_COLOR: vec3<f32> = vec3<f32>(0.95, 0.92, 0.86);
+const SKY_LIGHT: vec3<f32> = vec3<f32>(0.30, 0.34, 0.40);
+const GROUND_LIGHT: vec3<f32> = vec3<f32>(0.10, 0.09, 0.08);
+
+@fragment
+fn mesh_fs(in: MeshOut, @builtin(front_facing) front: bool) -> @location(0) vec4<f32> {
+    let color = material.base_color * textureSample(base_texture, base_sampler, in.uv);
+    if material.alpha.y == 1.0 && color.a < material.alpha.x {
+        discard;
+    }
+    // The back of a double-sided surface is lit as its own front.
+    var n = normalize(in.normal);
+    if !front {
+        n = -n;
+    }
+    let sun = max(dot(n, normalize(SUN_DIRECTION)), 0.0);
+    let sky = mix(GROUND_LIGHT, SKY_LIGHT, n.z * 0.5 + 0.5);
+    let lit = color.rgb * (sky + SUN_COLOR * sun);
+    let alpha = select(1.0, color.a, material.alpha.y == 2.0);
+    return vec4<f32>(encode(lit), alpha);
 }

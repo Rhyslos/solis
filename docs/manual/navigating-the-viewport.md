@@ -21,7 +21,7 @@ Whenever you want to look at the world from somewhere else. Solis has one camera
 - **Hold the middle button (the wheel) and drag:** slides the view sideways and up or down. The ground under the pointer moves with it.
 
 **The corner controls:**
-- **Top right:** frames per second, the time each frame takes, and how many entities are in the scene.
+- **Top right:** frames per second, the time each frame takes, how many entities are in the scene, and how many triangles the imported models have.
 - **Bottom left:** **≡** chooses which corner controls show. **Perspective**, **Lit** and **Show** list views and looks that arrive in later phases.
 - **Bottom centre:** the tools, Select (**Q**), Move (**W**), Rotate (**R**), Scale (**S**) and Transform (**T**). They work on things once scenes have them (Phase 2).
 - **Bottom right:** Grid, Angle and Camera. **Camera** is the camera's speed step.

@@ -105,6 +105,7 @@ fn the_backdrop_shows_sky_above_and_ground_below_in_the_right_colours() {
             sky_horizon: srgb(SKY_HORIZON),
             ground: srgb(GROUND),
         },
+        &[],
     );
     let pixels = read_pixels(&gpu.device, &gpu.queue, &target).unwrap();
     assert_eq!(pixels.len(), (size * size * 4) as usize);
@@ -148,6 +149,7 @@ fn the_ground_axes_show_in_red_and_green() {
             sky_horizon: srgb(SKY_HORIZON),
             ground: srgb(GROUND),
         },
+        &[],
     );
     let pixels = read_pixels(&gpu.device, &gpu.queue, &target).unwrap();
     let greenish = (size / 2..size)
@@ -196,7 +198,7 @@ fn scale_check_viewport_frame() {
     let frames = 60;
     let start = std::time::Instant::now();
     for _ in 0..frames {
-        renderer.render(&gpu.device, &gpu.queue, &target, &params);
+        renderer.render(&gpu.device, &gpu.queue, &target, &params, &[]);
         gpu.device
             .poll(wgpu::PollType::Wait {
                 submission_index: None,
@@ -209,4 +211,90 @@ fn scale_check_viewport_frame() {
         "Scale check: viewport frame at 1920x1080 {ms:.2} ms on {}",
         gpu.adapter.get_info().name
     );
+}
+
+/// Renders a model and returns the pixels, looking at it from `eye`
+/// (looking along +Y, level).
+fn render_model(model: &assets::Model, eye: Vec3) -> Option<(Vec<u8>, u32)> {
+    let gpu = gpu()?;
+    let renderer = ViewportRenderer::new(&gpu.device, best_sample_count(&gpu.adapter));
+    let size = 64;
+    let target = renderer.create_target(&gpu.device, [size, size]);
+    let uploaded = renderer.upload_model(&gpu.device, &gpu.queue, model);
+    assert_eq!(uploaded.triangles(), model.triangles());
+    renderer.render(
+        &gpu.device,
+        &gpu.queue,
+        &target,
+        &FrameParams {
+            view_projection: looking_north(eye),
+            camera_position: eye,
+            focus: Vec3::new(1.0e7, 1.0e7, 0.0),
+            sky_top: srgb(SKY_TOP),
+            sky_horizon: srgb(SKY_HORIZON),
+            ground: srgb(GROUND),
+        },
+        &[&uploaded],
+    );
+    Some((read_pixels(&gpu.device, &gpu.queue, &target).unwrap(), size))
+}
+
+fn sample() -> assets::Model {
+    assets::load_bytes(
+        &assets::sample::sample_glb(),
+        None,
+        "Sample",
+        &assets::Limits::default(),
+    )
+    .unwrap()
+}
+
+#[test]
+fn an_imported_model_is_drawn_with_its_texture_and_light() {
+    // 6 m in front of the sample's cube (which is 1.1 m up, Z up in
+    // Solis), level with its middle.
+    let Some((pixels, size)) = render_model(&sample(), Vec3::new(0.0, -6.0, 1.1)) else {
+        return;
+    };
+    // The middle of the picture is the cube's front face: the checker's
+    // light and blue squares, lit, far brighter than the dark backdrop.
+    let mut light = 0;
+    let mut blue = 0;
+    for y in size / 2 - 6..size / 2 + 6 {
+        for x in size / 2 - 6..size / 2 + 6 {
+            let [r, g, b] = pixel(&pixels, size, x, y);
+            if r > 100 && g > 100 && b > 100 {
+                light += 1;
+            }
+            if b > r + 30 {
+                blue += 1;
+            }
+        }
+    }
+    assert!(light > 10 && blue > 10, "light {light}, blue {blue}");
+    // The top-left corner is still sky: the cube doesn't fill the view.
+    let corner = pixel(&pixels, size, 1, 1);
+    assert!(between(corner, SKY_HORIZON, SKY_TOP), "corner {corner:?}");
+}
+
+#[test]
+fn the_red_base_shows_below_the_cube() {
+    // From above the base's edge, looking level: the base is the band just
+    // below the cube.
+    let Some((pixels, size)) = render_model(&sample(), Vec3::new(0.0, -8.0, 0.6)) else {
+        return;
+    };
+    let reddish = (size / 2..size)
+        .map(|y| pixel(&pixels, size, size / 2, y))
+        .any(|[r, g, b]| r > g + 40 && r > b + 40);
+    assert!(reddish, "no red base");
+}
+
+#[test]
+fn a_model_behind_the_camera_draws_nothing() {
+    let Some((pixels, size)) = render_model(&sample(), Vec3::new(0.0, 10.0, 1.1)) else {
+        return;
+    };
+    let middle = pixel(&pixels, size, size / 2, size / 4);
+    assert!(between(middle, SKY_HORIZON, SKY_TOP), "{middle:?}");
 }

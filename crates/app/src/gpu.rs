@@ -1,11 +1,12 @@
 //! Connects the viewport renderer (the `render` crate) to the window's wgpu
 //! device and to egui, so the viewport panel can show the rendered image.
 
-use editor::{ViewportRenderer, ViewportView};
+use editor::{ModelId, ViewportRenderer, ViewportView};
 use eframe::egui;
 use eframe::egui_wgpu::RenderState;
 use eframe::wgpu;
-use render::{FrameParams, ViewportTarget};
+use render::{FrameParams, GpuModel, ViewportTarget};
+use std::collections::HashMap;
 
 /// The viewport's image and the egui texture showing it.
 struct Image {
@@ -20,6 +21,8 @@ pub struct GpuViewport {
     state: RenderState,
     renderer: render::ViewportRenderer,
     image: Option<Image>,
+    /// Imported models, uploaded.
+    models: HashMap<ModelId, GpuModel>,
 }
 
 impl GpuViewport {
@@ -30,6 +33,7 @@ impl GpuViewport {
             renderer: render::ViewportRenderer::new(&state.device, samples),
             state: state.clone(),
             image: None,
+            models: HashMap::new(),
         }
     }
 
@@ -42,6 +46,24 @@ impl GpuViewport {
             info.backend,
             self.renderer.sample_count()
         )
+    }
+
+    /// The widest texture the graphics card holds, in pixels.
+    pub fn max_texture_side(&self) -> u32 {
+        self.state.device.limits().max_texture_dimension_2d
+    }
+
+    /// Uploads an imported model, to draw whenever the viewport lists `id`.
+    pub fn add_model(&mut self, id: ModelId, model: &assets::Model) {
+        let uploaded = self
+            .renderer
+            .upload_model(&self.state.device, &self.state.queue, model);
+        self.models.insert(id, uploaded);
+    }
+
+    /// Frees an imported model.
+    pub fn remove_model(&mut self, id: ModelId) {
+        self.models.remove(&id);
     }
 
     /// Makes the image `size` pixels, unless it already is.
@@ -96,11 +118,17 @@ impl ViewportRenderer for GpuViewport {
             .image
             .as_ref()
             .ok_or("the viewport image could not be made")?;
+        let models: Vec<&GpuModel> = view
+            .models
+            .iter()
+            .filter_map(|id| self.models.get(id))
+            .collect();
         self.renderer.render(
             &self.state.device,
             &self.state.queue,
             &image.target,
             &params,
+            &models,
         );
         Ok(image.texture)
     }
