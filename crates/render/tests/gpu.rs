@@ -11,9 +11,11 @@ use glam::{Mat4, Vec3, Vec4};
 use render::{FrameParams, ViewportRenderer, best_sample_count, read_pixels};
 
 /// The editor's backdrop, sRGB 0 to 255 (as in the editor theme).
-const SKY_TOP: [u8; 3] = [0x2c, 0x30, 0x38];
-const SKY_HORIZON: [u8; 3] = [0x22, 0x25, 0x2b];
-const GROUND: [u8; 3] = [0x1c, 0x1e, 0x22];
+const SKY_TOP: [u8; 3] = [0x16, 0x18, 0x1d];
+const SKY_HORIZON: [u8; 3] = [0x1c, 0x1e, 0x23];
+const GROUND: [u8; 3] = [0x1e, 0x21, 0x26];
+/// The ground straight down: 15% lighter than at the horizon.
+const GROUND_BELOW: [u8; 3] = [0x23, 0x26, 0x2c];
 
 fn srgb(c: [u8; 3]) -> [f32; 3] {
     c.map(|v| f32::from(v) / 255.0)
@@ -112,16 +114,16 @@ fn the_backdrop_shows_sky_above_and_ground_below_in_the_right_colours() {
     // out far darker.
     let top = pixel(&pixels, size, size / 2, 0);
     assert!(between(top, SKY_HORIZON, SKY_TOP), "top pixel {top:?}");
-    // The bottom row is ground, no lighter than the ground colour. (Off
+    // The bottom row is ground, lightening towards the feet. (Off
     // centre: the green Y axis runs straight ahead down the middle.)
     let bottom = pixel(&pixels, size, size / 4, size - 1);
     assert!(
-        between(bottom, [0, 0, 0], GROUND),
+        between(bottom, GROUND, GROUND_BELOW),
         "bottom pixel {bottom:?}"
     );
     assert!(
-        top[2] > bottom[2],
-        "sky {top:?} not lighter than ground {bottom:?}"
+        top[2] < bottom[2],
+        "sky {top:?} not darker than ground {bottom:?}"
     );
 }
 
