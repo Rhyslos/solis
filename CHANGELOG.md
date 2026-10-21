@@ -14,6 +14,8 @@ What changed in each version, for people using Solis. Newest first.
 
 ### Added
 
+- Lights and shadows: the sun casts shadows on models and the ground, and its direction, colour and strength can be changed (select **Sun** in the Scene panel); it's remembered between sessions. **Entity > Add point light** and **Add spotlight** place lamps, listed in the Scene panel and edited in Properties (colour, strength in watts as in Blender, range, cone, **Move here**, **Delete**). Lamps and a sun in an imported glTF file (as Blender exports them) come in with the model. Lamps show as small crosses in the viewport, and light both the standard and stylized looks. Selecting a model in the Scene panel shows its size in Properties.
+
 - Materials and looks: models now show glTF's full material (metal, roughness, normal, occlusion and glow textures). The viewport's look menu (bottom left) chooses **Standard**, **Stylized** (cel-shaded in 2 to 4 bands of light, with crisp highlights, a rim of sky light and dark outlines) or **Unlit**, remembered between sessions. **Help > Add the sample scene** brings in spheres from glossy to rough, plastic and metal, a grooved wall and a glowing stripe for trying them.
 - The viewport's bottom-left menus now open upwards and stay open while you change their settings.
 

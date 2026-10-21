@@ -1,7 +1,7 @@
 //! Connects the viewport renderer (the `render` crate) to the window's wgpu
 //! device and to egui, so the viewport panel can show the rendered image.
 
-use editor::{LookKind, ModelId, ViewportRenderer, ViewportView};
+use editor::{Lamp, LampKind, LookKind, ModelId, ViewportRenderer, ViewportView};
 use eframe::egui;
 use eframe::egui_wgpu::RenderState;
 use eframe::wgpu;
@@ -103,6 +103,24 @@ impl GpuViewport {
     }
 }
 
+/// An editor lamp as the renderer takes it.
+fn to_render_light(lamp: &Lamp) -> render::Light {
+    render::Light {
+        kind: match lamp.kind {
+            LampKind::Point => render::LightKind::Point,
+            LampKind::Spot { inner, outer } => render::LightKind::Spot {
+                inner: inner.to_radians(),
+                outer: outer.to_radians(),
+            },
+        },
+        position: lamp.position,
+        direction: lamp.direction,
+        color: lamp.color.map(|c| f32::from(c) / 255.0),
+        strength: lamp.strength,
+        range: lamp.range,
+    }
+}
+
 impl ViewportRenderer for GpuViewport {
     fn render(&mut self, view: &ViewportView) -> Result<egui::TextureId, String> {
         let params = FrameParams {
@@ -122,7 +140,14 @@ impl ViewportRenderer for GpuViewport {
                 outline_px: view.outline_px,
             },
             size_px: view.size_px,
+            sun: render::Sun {
+                direction: view.sun.direction(),
+                color: view.sun.color.map(|c| f32::from(c) / 255.0),
+                strength: view.sun.strength,
+                shadows: view.sun.shadows,
+            },
         };
+        let lights: Vec<render::Light> = view.lamps.iter().map(to_render_light).collect();
         self.prepare_image(view.size_px);
         let image = self
             .image
@@ -139,6 +164,7 @@ impl ViewportRenderer for GpuViewport {
             &image.target,
             &params,
             &models,
+            &lights,
         );
         Ok(image.texture)
     }

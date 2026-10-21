@@ -193,7 +193,10 @@ pub struct Model {
     pub materials: Vec<Material>,
     /// The textures materials refer to.
     pub textures: Vec<Texture>,
-    /// The box around every mesh.
+    /// The lights the file carries, placed.
+    pub lamps: Vec<crate::lights::Lamp>,
+    /// The box around every mesh (or, for a file of lights only, around
+    /// the lights).
     pub bounds: Bounds,
     /// Things in the file that were left out or replaced, in plain words.
     pub warnings: Vec<String>,

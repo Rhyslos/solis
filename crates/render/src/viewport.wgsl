@@ -30,9 +30,37 @@ struct Frame {
     shading: vec4<f32>,
     // The image size in pixels (xy).
     screen: vec4<f32>,
+    // The sun's view of the models, for its shadow map.
+    sun_view_proj: mat4x4<f32>,
+    // Towards the sun (xyz); w = 1 when its shadows are drawn.
+    sun_direction: vec4<f32>,
+    // The sun's linear colour times its strength (rgb).
+    sun_color: vec4<f32>,
+    // x: the width of one shadow-map texel in metres; y: the shadow map's
+    // size in texels; z: how many lamps are in `lights`.
+    shadow: vec4<f32>,
+};
+
+// One lamp, as LightUniform in lighting.rs.
+struct Light {
+    // Position (xyz); w = range in metres, 0 for no limit.
+    position: vec4<f32>,
+    // Linear colour times strength in watts (rgb); w = 0 point, 1 spot.
+    color: vec4<f32>,
+    // The way a spotlight shines (xyz).
+    direction: vec4<f32>,
+    // Cosines of the spot's inner and outer angles (xy).
+    cone: vec4<f32>,
+};
+
+struct Lights {
+    lights: array<Light, 16>,
 };
 
 @group(0) @binding(0) var<uniform> frame: Frame;
+@group(0) @binding(1) var<uniform> lamps: Lights;
+@group(0) @binding(2) var shadow_map: texture_depth_2d;
+@group(0) @binding(3) var shadow_sampler: sampler_comparison;
 
 // ---------------------------------------------------------- backdrop ---
 
@@ -128,12 +156,24 @@ fn grid_fs(in: GridOut) -> @location(0) vec4<f32> {
     let distance_fade = 1.0 - smoothstep(reach * 0.25, reach, distance);
 
     let strength = frame.grid_strength;
-    let alpha = max(max(fine * strength.x, major * strength.y), super_ * strength.z) * distance_fade;
+    let line = max(max(fine * strength.x, major * strength.y), super_ * strength.z) * distance_fade;
+
+    // The sun's shadows fall on the ground too, as a soft darkening, so
+    // models sit on the grid instead of floating over it.
+    var shade = 0.0;
+    if frame.sun_direction.w > 0.5 && frame.sun_direction.z > 0.0 {
+        let sun = frame.sun_color.rgb;
+        let sun_strength = clamp(dot(sun, vec3<f32>(0.2126, 0.7152, 0.0722)) / 2.0, 0.0, 1.0);
+        shade = (1.0 - sun_shadow(vec3<f32>(in.world, 0.0), vec3<f32>(0.0, 0.0, 1.0)))
+            * 0.45 * sun_strength;
+    }
+    let alpha = line + shade * (1.0 - line);
     if alpha <= 0.002 {
         discard;
     }
-    // A cool grey-blue (sRGB #9aa4b4), as in the mockup.
-    return vec4<f32>(encode(vec3<f32>(0.323, 0.371, 0.456)), alpha);
+    // A cool grey-blue (sRGB #9aa4b4), as in the mockup, over the shadow.
+    let grid_color = vec3<f32>(0.323, 0.371, 0.456);
+    return vec4<f32>(encode(grid_color * (line / alpha)), alpha);
 }
 
 // ------------------------------------------------------------- lines ---
@@ -216,12 +256,8 @@ fn mesh_vs(in: MeshIn) -> MeshOut {
     return out;
 }
 
-// The light, until real lights arrive in milestone 4: a fixed sun, and
-// soft light from the sky above and the ground below (the "sky light" of
-// decision 0008, the first source of indirect light).
-const SUN_DIRECTION: vec3<f32> = vec3<f32>(0.35, -0.55, 0.76);
-const SUN_COLOR: vec3<f32> = vec3<f32>(1.0, 0.96, 0.9);
-const SUN_STRENGTH: f32 = 3.0;
+// Soft light from the sky above and the ground below: the "sky light" of
+// decision 0008, the first source of indirect light.
 const SKY_LIGHT: vec3<f32> = vec3<f32>(0.30, 0.34, 0.40);
 const GROUND_LIGHT: vec3<f32> = vec3<f32>(0.10, 0.09, 0.08);
 const PI: f32 = 3.14159265;
@@ -231,11 +267,65 @@ fn sky_light(d: vec3<f32>) -> vec3<f32> {
     return mix(GROUND_LIGHT, SKY_LIGHT, clamp(d.z * 0.5 + 0.5, 0.0, 1.0));
 }
 
-// The standard look: glTF's metal-and-roughness material, lit by the sun
-// (GGX highlights, the same maths as most engines) and the sky light.
-fn standard(base: vec3<f32>, metallic: f32, roughness: f32, occlusion: f32,
-            n: vec3<f32>, v: vec3<f32>) -> vec3<f32> {
-    let l = normalize(SUN_DIRECTION);
+// How much of the sun reaches `world` (0 in shadow, 1 in sunlight), from
+// the shadow map, softened over nine nearby texels. Looked up a little way
+// out along the surface's normal, so surfaces don't shadow themselves.
+fn sun_shadow(world: vec3<f32>, n: vec3<f32>) -> f32 {
+    if frame.sun_direction.w < 0.5 {
+        return 1.0;
+    }
+    let lifted = world + n * frame.shadow.x * 1.5;
+    let p = frame.sun_view_proj * vec4<f32>(lifted, 1.0);
+    let ndc = p.xyz / p.w;
+    let uv = vec2<f32>(ndc.x * 0.5 + 0.5, 0.5 - ndc.y * 0.5);
+    if any(uv < vec2<f32>(0.0)) || any(uv > vec2<f32>(1.0)) || ndc.z > 1.0 {
+        return 1.0;
+    }
+    let texel = 1.0 / max(frame.shadow.y, 1.0);
+    var sum = 0.0;
+    for (var x = -1; x <= 1; x++) {
+        for (var y = -1; y <= 1; y++) {
+            let offset = vec2<f32>(f32(x), f32(y)) * texel;
+            sum += textureSampleCompareLevel(shadow_map, shadow_sampler, uv + offset, ndc.z - 0.0005);
+        }
+    }
+    return sum / 9.0;
+}
+
+// The direction towards lamp `i` from `world`, and the light arriving
+// from it: its strength falls off with the square of the distance, ends
+// smoothly at its range, and for a spotlight fades towards the cone's edge.
+// Watts become light as in Blender (P / 4π² d²), so a lamp of the same
+// strength lights a scene about as brightly in both.
+struct LampLight {
+    l: vec3<f32>,
+    radiance: vec3<f32>,
+};
+
+fn lamp_light(i: u32, world: vec3<f32>) -> LampLight {
+    let lamp = lamps.lights[i];
+    let to_lamp = lamp.position.xyz - world;
+    let d2 = max(dot(to_lamp, to_lamp), 0.0001);
+    let l = to_lamp * inverseSqrt(d2);
+    var falloff = 1.0 / (4.0 * PI * PI * d2);
+    let range = lamp.position.w;
+    if range > 0.0 {
+        let r = d2 / (range * range);
+        let window = clamp(1.0 - r * r, 0.0, 1.0);
+        falloff *= window * window;
+    }
+    if lamp.color.w > 0.5 {
+        let cos_angle = dot(-l, normalize(lamp.direction.xyz));
+        falloff *= smoothstep(lamp.cone.y, max(lamp.cone.x, lamp.cone.y + 0.0001), cos_angle);
+    }
+    return LampLight(l, lamp.color.rgb * falloff);
+}
+
+// Light reflected towards the viewer from one light arriving from `l` with
+// `radiance`: glTF's metal-and-roughness material with GGX highlights, the
+// same maths as most engines.
+fn brdf(base: vec3<f32>, metallic: f32, roughness: f32, n: vec3<f32>, v: vec3<f32>,
+        l: vec3<f32>, radiance: vec3<f32>) -> vec3<f32> {
     let h = normalize(v + l);
     let n_dot_l = max(dot(n, l), 0.0);
     let n_dot_v = max(dot(n, v), 0.0001);
@@ -251,11 +341,26 @@ fn standard(base: vec3<f32>, metallic: f32, roughness: f32, occlusion: f32,
     let fresnel = f0 + (vec3<f32>(1.0) - f0) * pow(1.0 - v_dot_h, 5.0);
     let specular = distribution * geometry * fresnel / (4.0 * n_dot_v * n_dot_l + 0.0001);
     let diffuse = (vec3<f32>(1.0) - fresnel) * (1.0 - metallic) * base / PI;
-    let direct = (diffuse + specular) * SUN_COLOR * SUN_STRENGTH * n_dot_l;
+    return (diffuse + specular) * radiance * n_dot_l;
+}
+
+// The standard look: the sun (with its shadow), every lamp, and the sky
+// light.
+fn standard(base: vec3<f32>, metallic: f32, roughness: f32, occlusion: f32,
+            n: vec3<f32>, v: vec3<f32>, world: vec3<f32>, shadow: f32) -> vec3<f32> {
+    var direct = brdf(base, metallic, roughness, n, v, normalize(frame.sun_direction.xyz),
+        frame.sun_color.rgb) * shadow;
+    let count = u32(frame.shadow.z);
+    for (var i = 0u; i < count; i++) {
+        let lamp = lamp_light(i, world);
+        direct += brdf(base, metallic, roughness, n, v, lamp.l, lamp.radiance);
+    }
 
     // Indirect light from the sky: diffuse from around the normal, and a
     // reflection of the sky, weighted by a well-known fit (Karis) of how
     // much a surface of this roughness reflects.
+    let n_dot_v = max(dot(n, v), 0.0001);
+    let f0 = mix(vec3<f32>(0.04), base, metallic);
     let c0 = vec4<f32>(-1.0, -0.0275, -0.572, 0.022);
     let c1 = vec4<f32>(1.0, 0.0425, 1.04, -0.04);
     let r = roughness * c0 + c1;
@@ -266,24 +371,39 @@ fn standard(base: vec3<f32>, metallic: f32, roughness: f32, occlusion: f32,
     return direct + indirect;
 }
 
-// The stylized look: light in a few flat bands with crisp edges, a sharp
-// highlight on glossy surfaces, and a rim of sky light around the edges.
+// Light in `bands` flat steps, `edge` wide where one step meets the next.
+fn banded(x: f32, bands: f32, edge: f32) -> f32 {
+    let y = clamp(x, 0.0, 1.0) * bands;
+    return (floor(y) + smoothstep(0.5 - edge, 0.5 + edge, fract(y))) / bands;
+}
+
+// The stylized look: the sun's light in a few flat bands with crisp
+// edges (shadows crisp too), lamps banded the same way, a sharp highlight
+// on glossy surfaces, and a rim of sky light around the edges.
 // `band_edge` is how wide one pixel is in the banded light, so band edges
 // stay smooth instead of jagged.
 fn stylized(base: vec3<f32>, roughness: f32, occlusion: f32, n: vec3<f32>,
-            v: vec3<f32>, bands: f32, band_edge: f32) -> vec3<f32> {
-    let l = normalize(SUN_DIRECTION);
-    let n_dot_l = max(dot(n, l), 0.0);
-    let x = n_dot_l * bands;
-    let banded = (floor(x) + smoothstep(0.5 - band_edge, 0.5 + band_edge, fract(x))) / bands;
-    let shadow = sky_light(n) * 1.3 * occlusion;
-    let lit = base * (shadow + SUN_COLOR * 0.95 * banded);
+            v: vec3<f32>, world: vec3<f32>, shadow: f32, bands: f32,
+            band_edge: f32) -> vec3<f32> {
+    let l = normalize(frame.sun_direction.xyz);
+    let crisp_shadow = smoothstep(0.35, 0.65, shadow);
+    let n_dot_l = max(dot(n, l), 0.0) * crisp_shadow;
+    var light = frame.sun_color.rgb / PI * banded(n_dot_l, bands, band_edge);
+    let count = u32(frame.shadow.z);
+    for (var i = 0u; i < count; i++) {
+        let lamp = lamp_light(i, world);
+        let strength = max(lamp.radiance.r, max(lamp.radiance.g, lamp.radiance.b));
+        let colour = lamp.radiance / max(strength, 0.0001);
+        light += colour * banded(max(dot(n, lamp.l), 0.0) * strength / PI, bands, 0.02);
+    }
+    let lit = base * (sky_light(n) * 1.3 * occlusion + light * 0.95);
     let h = normalize(v + l);
     let gloss = 1.0 - roughness;
     let highlight = smoothstep(0.5 - band_edge, 0.5 + band_edge,
         pow(max(dot(n, h), 0.0), 8.0 + 120.0 * gloss * gloss)) * gloss * 0.6;
     let rim = smoothstep(0.55, 0.65, 1.0 - max(dot(n, v), 0.0)) * 0.35;
-    return lit + SUN_COLOR * highlight * step(0.001, n_dot_l) + SKY_LIGHT * rim;
+    let sun_tint = frame.sun_color.rgb / max(frame.sun_color.r + frame.sun_color.g + frame.sun_color.b, 0.0001) * 3.0;
+    return lit + sun_tint * highlight * step(0.001, n_dot_l) + SKY_LIGHT * rim;
 }
 
 @fragment
@@ -326,19 +446,22 @@ fn mesh_fs(in: MeshOut, @builtin(front_facing) front: bool) -> @location(0) vec4
     let glow = material.emissive.rgb * emissive_sample;
 
     let bands = max(frame.shading.y, 1.0);
-    let band_edge = 0.5 * bands * fwidth(dot(n, normalize(SUN_DIRECTION))) + 0.01;
+    let band_edge = 0.5 * bands * fwidth(dot(n, normalize(frame.sun_direction.xyz))) + 0.01;
     // Cut-out parts are dropped only now, after the slopes above.
     if material.alpha.y == 1.0 && color.a < material.alpha.x {
         discard;
     }
 
     var lit: vec3<f32>;
-    if frame.shading.x == 1.0 {
-        lit = stylized(color.rgb, roughness, occlusion, n, v, bands, band_edge);
-    } else if frame.shading.x == 2.0 {
+    if frame.shading.x == 2.0 {
         lit = color.rgb;
     } else {
-        lit = standard(color.rgb, metallic, roughness, occlusion, n, v);
+        let shadow = sun_shadow(in.world, ng);
+        if frame.shading.x == 1.0 {
+            lit = stylized(color.rgb, roughness, occlusion, n, v, in.world, shadow, bands, band_edge);
+        } else {
+            lit = standard(color.rgb, metallic, roughness, occlusion, n, v, in.world, shadow);
+        }
     }
     let alpha = select(1.0, color.a, material.alpha.y == 2.0);
     return vec4<f32>(encode(min(lit + glow, vec3<f32>(1.0))), alpha);
@@ -363,4 +486,12 @@ fn outline_vs(in: MeshIn) -> @builtin(position) vec4<f32> {
 @fragment
 fn outline_fs() -> @location(0) vec4<f32> {
     return vec4<f32>(0.0, 0.0, 0.004, 1.0);
+}
+
+// ----------------------------------------------------------- shadows ---
+
+// The shadow map: each model drawn from the sun's side, depth only.
+@vertex
+fn shadow_vs(in: MeshIn) -> @builtin(position) vec4<f32> {
+    return frame.sun_view_proj * vec4<f32>(in.position, 1.0);
 }

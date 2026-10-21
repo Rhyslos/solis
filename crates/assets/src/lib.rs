@@ -7,12 +7,14 @@
 //! never a crash. See this crate's README for its purpose and limits.
 
 mod geometry;
+pub mod lights;
 pub mod model;
 mod reader;
 pub mod sample;
 pub mod texture;
 
 pub use geometry::Y_UP_TO_Z_UP;
+pub use lights::{Lamp, LampKind};
 pub use model::{
     AlphaMode, Bounds, ImportError, Limits, Material, Mesh, Model, Sampler, Texture, Vertex, Wrap,
 };

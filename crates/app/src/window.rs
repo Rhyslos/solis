@@ -5,8 +5,8 @@ use crate::branding;
 use crate::gpu::GpuViewport;
 use crate::import::{Finished, Importer};
 use editor::{
-    AppInfo, Camera, DockState, LogLevel, Look, ModelInfo, NoRenderer, Overlays, Panel, Workbench,
-    WorkbenchAction, theme::Accent,
+    AppInfo, Camera, DockState, LampFromFile, LogLevel, Look, ModelId, ModelInfo, NoRenderer,
+    Overlays, Panel, SunSettings, Workbench, WorkbenchAction, theme::Accent,
 };
 use eframe::egui;
 use std::path::{Path, PathBuf};
@@ -19,6 +19,8 @@ const ACCENT_KEY: &str = "accent";
 const OVERLAYS_KEY: &str = "viewport_overlays";
 /// Key under which the viewport's look is remembered.
 const LOOK_KEY: &str = "viewport_look";
+/// Key under which the sun's settings are remembered.
+const SUN_KEY: &str = "viewport_sun";
 /// Key under which the viewport camera is remembered.
 const CAMERA_KEY: &str = "viewport_camera";
 /// Window size on first launch, in logical pixels.
@@ -53,6 +55,9 @@ impl App {
         let look: Look = storage
             .and_then(|s| eframe::get_value(s, LOOK_KEY))
             .unwrap_or_default();
+        let sun: SunSettings = storage
+            .and_then(|s| eframe::get_value(s, SUN_KEY))
+            .unwrap_or_default();
         let overlays: Overlays = storage
             .and_then(|s| eframe::get_value(s, OVERLAYS_KEY))
             .unwrap_or_default();
@@ -61,7 +66,8 @@ impl App {
             .with_accent(accent)
             .with_overlays(overlays)
             .with_camera(camera)
-            .with_look(look);
+            .with_look(look)
+            .with_sun(sun);
         workbench.log(
             LogLevel::Info,
             format!("{} {} started.", info.name, info.version),
@@ -103,6 +109,37 @@ impl App {
         }
     }
 
+    /// Hands the lights a model file carries to the editor: lamps join the
+    /// Scene panel; a sun in the file sets the scene's sun.
+    fn add_file_lights(&mut self, id: ModelId, lamps: &[assets::Lamp]) {
+        let mut from_file = Vec::new();
+        for lamp in lamps {
+            let cone = match lamp.kind {
+                assets::LampKind::Sun => {
+                    self.workbench.use_sun_from_file(
+                        &lamp.name,
+                        lamp.direction,
+                        lamp.color,
+                        lamp.strength,
+                    );
+                    continue;
+                }
+                assets::LampKind::Point => None,
+                assets::LampKind::Spot { inner, outer } => Some((inner, outer)),
+            };
+            from_file.push(LampFromFile {
+                name: lamp.name.clone(),
+                cone,
+                position: lamp.position,
+                direction: lamp.direction,
+                color: lamp.color,
+                strength: lamp.strength,
+                range: lamp.range,
+            });
+        }
+        self.workbench.add_model_lamps(id, &from_file);
+    }
+
     /// Puts finished imports into the viewport, or reports why they failed.
     fn collect_imports(&mut self) {
         for Finished {
@@ -123,6 +160,7 @@ impl App {
                         max: model.bounds.max,
                     };
                     self.workbench.add_model(info, &model.warnings, seconds);
+                    self.add_file_lights(id, &model.lamps);
                 }
                 (Ok(_), None) => self.workbench.log(
                     LogLevel::Error,
@@ -206,6 +244,7 @@ impl eframe::App for App {
         eframe::set_value(storage, OVERLAYS_KEY, &self.workbench.overlays());
         eframe::set_value(storage, CAMERA_KEY, &self.workbench.camera());
         eframe::set_value(storage, LOOK_KEY, &self.workbench.look());
+        eframe::set_value(storage, SUN_KEY, &self.workbench.sun());
     }
 }
 

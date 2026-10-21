@@ -16,48 +16,60 @@ pub const Y_UP_TO_Z_UP: Mat4 = Mat4::from_cols(
     Vec4::new(0.0, 0.0, 0.0, 1.0),
 );
 
-/// Every mesh the file shows, placed. Uses the file's main scene (or its
-/// first); a file without scenes shows each mesh once, unplaced.
+/// Every node of the file's main scene (or its first), with where it is
+/// placed in Solis's space. Empty for a file without scenes.
+pub(crate) fn placed_nodes(
+    document: &gltf::Document,
+) -> Result<Vec<(gltf::Node<'_>, Mat4)>, ImportError> {
+    let Some(scene) = document
+        .default_scene()
+        .or_else(|| document.scenes().next())
+    else {
+        return Ok(Vec::new());
+    };
+    // Walked with a list rather than recursion, so a deep or looping node
+    // tree can't overflow the stack. glTF forbids loops; the step limit
+    // stops a damaged file that has one. Kept in reverse, so nodes come
+    // out in the file's order.
+    let mut placed = Vec::new();
+    let mut todo: Vec<(gltf::Node<'_>, Mat4)> = scene.nodes().map(|n| (n, Y_UP_TO_Z_UP)).collect();
+    todo.reverse();
+    let mut steps = 0usize;
+    while let Some((node, parent)) = todo.pop() {
+        steps += 1;
+        if steps > 1_000_000 {
+            return Err(ImportError::Damaged("its node tree loops".into()));
+        }
+        let local = Mat4::from_cols_array_2d(&node.transform().matrix());
+        let world = if local.is_finite() {
+            parent * local
+        } else {
+            parent
+        };
+        let children: Vec<_> = node.children().map(|child| (child, world)).collect();
+        todo.extend(children.into_iter().rev());
+        placed.push((node, world));
+    }
+    Ok(placed)
+}
+
+/// Every mesh the file shows, placed. A file without scenes shows each
+/// mesh once, unplaced. May be empty (a file of lights only).
 pub(crate) fn read_meshes(
     document: &gltf::Document,
     buffers: &[Vec<u8>],
     limits: &Limits,
     warnings: &mut Vec<String>,
 ) -> Result<Vec<Mesh>, ImportError> {
-    let mut placed: Vec<(gltf::Mesh<'_>, Mat4)> = Vec::new();
-    match document
-        .default_scene()
-        .or_else(|| document.scenes().next())
-    {
-        Some(scene) => {
-            // Walked with a list rather than recursion, so a deep or looping
-            // node tree can't overflow the stack. glTF forbids loops; the
-            // step limit stops a damaged file that has one.
-            // Kept in reverse, so meshes come out in the file's order.
-            let mut todo: Vec<(gltf::Node<'_>, Mat4)> =
-                scene.nodes().map(|n| (n, Y_UP_TO_Z_UP)).collect();
-            todo.reverse();
-            let mut steps = 0usize;
-            while let Some((node, parent)) = todo.pop() {
-                steps += 1;
-                if steps > 1_000_000 {
-                    return Err(ImportError::Damaged("its node tree loops".into()));
-                }
-                let local = Mat4::from_cols_array_2d(&node.transform().matrix());
-                let world = if local.is_finite() {
-                    parent * local
-                } else {
-                    parent
-                };
-                if let Some(mesh) = node.mesh() {
-                    placed.push((mesh, world));
-                }
-                let children: Vec<_> = node.children().map(|child| (child, world)).collect();
-                todo.extend(children.into_iter().rev());
-            }
-        }
-        None => placed.extend(document.meshes().map(|m| (m, Y_UP_TO_Z_UP))),
-    }
+    let nodes = placed_nodes(document)?;
+    let placed: Vec<(gltf::Mesh<'_>, Mat4)> = if document.scenes().next().is_some() {
+        nodes
+            .into_iter()
+            .filter_map(|(node, world)| node.mesh().map(|m| (m, world)))
+            .collect()
+    } else {
+        document.meshes().map(|m| (m, Y_UP_TO_Z_UP)).collect()
+    };
 
     let mut meshes = Vec::new();
     let (mut vertices, mut triangles) = (0usize, 0usize);
@@ -77,9 +89,6 @@ pub(crate) fn read_meshes(
             }
             meshes.push(read);
         }
-    }
-    if meshes.is_empty() {
-        return Err(ImportError::Empty);
     }
     Ok(meshes)
 }
