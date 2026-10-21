@@ -317,3 +317,4 @@ Both sides review each other's pull requests.
 - 2026-10-21: [0010](docs/decisions/0010-windows-exe-on-merge.md): a Windows `solis.exe` is built on GitHub when code is merged into main, and by hand. Loosens 0001 for this one build.
 - 2026-10-21: [0011](docs/decisions/0011-scale-check-at-phase-gates.md): a scale check (`tools/scale/scale-check.sh`) at every phase gate and on request, growing into the §2 target in Phase 4.
 - 2026-10-21: [0012](docs/decisions/0012-windows-only.md): Solis is made for Windows, the editor and exported games; Linux and macOS builds are dropped. CI's checks still run on a Linux machine, the cheapest kind.
+- 2026-10-21: [0013](docs/decisions/0013-looks-for-the-whole-view-first.md): the standard, stylized (cel-shaded, with outlines) and unlit looks, chosen for the whole view until materials become assets in Phase 2.

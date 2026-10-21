@@ -6,9 +6,9 @@ Reads models and textures from files into plain data the renderer can upload: gl
 
 ## Purpose
 
-Turn a model file into a `Model`: meshes already placed where the file's nodes put them, in Solis's units (metres, Z up; glTF's Y-up is turned so its up becomes Z), with materials (a colour, a colour texture, see-through handling, double-sided) and textures with every mip level worked out. Missing normals are filled in; triangle strips and fans become plain triangles; points and lines are left out with a warning.
+Turn a model file into a `Model`: meshes already placed where the file's nodes put them, in Solis's units (metres, Z up; glTF's Y-up is turned so its up becomes Z), with materials (glTF's metal and roughness: colour, metal, roughness, normal, occlusion and glow, each with its texture; see-through handling; double-sided) and textures with every mip level worked out. Missing normals are filled in; triangle strips and fans become plain triangles; points and lines are left out with a warning.
 
-`sample` builds a small model in code (a textured cube on a red base), for tests and for trying the importer: `cargo run -p assets --example sample -- sample.glb`.
+`sample` builds models in code, for tests and for trying the importer: a textured cube on a red base, and a bigger scene for checking the looks (`showcase_glb`, also Help > Add the sample scene). `cargo run -p assets --example sample -- [--scene] out.glb` writes them to a file.
 
 ## Must never
 
@@ -22,4 +22,4 @@ Turn a model file into a `Model`: meshes already placed where the file's nodes p
 
 ## Status
 
-Phase 1, milestone 2: glTF models with colour textures. The rest of the material (metal, roughness, normal maps) arrives with materials in milestone 3; animation in Phase 6.
+Phase 1, milestone 3: glTF models with their full materials. Animation arrives in Phase 6.

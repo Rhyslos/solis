@@ -28,7 +28,7 @@ Then:
 | What Solis reads | Notes |
 |---|---|
 | Meshes | Placed where the file puts them. Triangles only: points and lines are left out, with a warning in the Console. |
-| Colour and colour texture | PNG or JPEG textures, inside the `.glb` or as files beside a `.gltf`. Metal, roughness and normal maps arrive with materials in milestone 3. |
+| Material | Colour, metal, roughness, normal, occlusion and glow, with their textures (PNG or JPEG, inside the `.glb` or as files beside a `.gltf`). See [Looks](looks.md). |
 | See-through parts | Cut-out (leaves, fences) and blended (glass). |
 | Double-sided surfaces | Drawn from both sides when the file says so; otherwise the back of a surface is hidden. |
 | Units | Metres, as glTF uses. The Console shows the model's size, so you can spot one exported 100 times too big. |
@@ -41,6 +41,7 @@ Then:
 - **Problem:** the Console says a texture was left out. **Why:** the image file isn't next to the `.gltf`, or it isn't PNG or JPEG. **Fix:** export as **glTF Binary (.glb)**, which keeps everything in one file.
 - **Problem:** "Couldn't import … the file is damaged". **Why:** the file is incomplete or broken. **Fix:** export it again.
 - **Problem:** the model looks flat and grey-blue in the shadows. **Why:** for now it's lit by one fixed sun and the sky. Real lights arrive in milestone 4.
+- **Want to see how it should look?** **Help > Add the sample scene** brings in a scene made for checking the [looks](looks.md).
 
 ## Related
 - [Moving around the viewport](navigating-the-viewport.md)
