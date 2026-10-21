@@ -41,15 +41,15 @@ Game-specific systems (squads, hardpoints, hangars, a campaign map, fleet caps) 
 
 | Language | Job | Runs as |
 | --- | --- | --- |
-| **Rust** | The engine itself | Machine code, prebuilt |
-| **Lust** (`.lust`) | All game code: components, gameplay, everything a game ships, and the engine's ready-made gameplay components | Rust, which Lust writes and Rust's compiler turns into machine code |
-| **LustScript** (`.lsc`) and **Lua** | **Editor scripting only:** custom tools, batch jobs, importers, generators, in a scripting window like Blender's or 3ds Max's. Never game code. | Luau, through `mlua`, the same as Aventail |
+| **Rust** | The engine itself; also game code, for people who prefer it | Machine code; the engine comes prebuilt |
+| **Lust** (`.lust`) | Game code: the language the docs teach first, and the engine's ready-made gameplay components | Rust, which Lust writes and Rust's compiler turns into machine code |
+| **Lua** and **LustScript** (`.lsc`) | Game code, for people who know Lua; and editor scripting: custom tools, batch jobs, importers, generators, in a scripting window like Blender's or 3ds Max's | Luau, through `mlua`, the same as Aventail |
 | **LustQL** (`.lql`) | Stored data in SQLite | **(to design in Lust first)** |
 
-- **Lust game code is compiled natively.** No swapping from Lua to Lust later is needed: editor scripts stay LustScript/Lua permanently, as Blender never replaced Python. `lua { }` blocks and plain `.lua` files are fine in editor scripts.
+- **Games can be written in Lust, Rust or Lua** ([decision 0003](docs/decisions/0003-games-in-rust-lust-or-lua.md)). Nobody has to learn Lust to make a game. All three see the same game API (components, inspector fields, typed events), and a game can mix them.
+- **Lua is quick to change and slower to run:** no compile step, but slower than compiled code, with a garbage collector. Fine for most gameplay; heavy per-unit work at the scale in §2 is better in Lust or Rust. For deterministic netcode (§6), Lua code has to follow a few rules, such as not relying on the order `pairs` walks a table in.
 - **The engine is Rust; games are Lust** ([decision 0002](docs/decisions/0002-engine-in-rust-games-in-lust.md)), the split Godot (C++ and GDScript) and Unity (C++ and C#) use. An engine needs the control Lust deliberately hides; game makers need what Lust is good at.
 - **Lust compiles to Rust** (Lust's own plan, LUST.md), so a Lust component becomes the same kind of Rust struct as the engine's own components, and the engine can't tell them apart. No C interface in between.
-- **Games could also be written in Rust,** for people who prefer it. Lust is the one the docs teach.
 - **The engine doesn't wait for Lust.** Lust is needed from [ROADMAP.md](ROADMAP.md) Phase 7.
 
 ### What Solis needs from Lust v2
@@ -80,11 +80,11 @@ The target to decide against: **a change to one component is running in play mod
 
 ```
 ┌──────────────────────────────────────────────┐
-│ Games (Lust), and the ready-made gameplay    │
-│ components (Lust)                            │
+│ Games (Lust, Rust or Lua), and the           │
+│ ready-made gameplay components (Lust)        │
 ├──────────────────────────────────────────────┤
-│ Game API: fetch solis; (Rust, shaped for     │
-│ Lust)                                        │
+│ Game API: fetch solis; (Rust, with Lust and  │
+│ Lua faces)                                   │
 ├──────────────────────────────────────────────┤
 │ Editor scripting (LustScript / Lua, Luau)    │
 ├──────────────────────────────────────────────┤
@@ -269,7 +269,7 @@ The area to spend extra time on. In order of payoff:
 
 ## 15. Roadmap
 
-**Solis 0.1 in about a year,** in twelve phases (0 to 11), each ending with a gate the project lead tries by hand. The full plan is in [ROADMAP.md](ROADMAP.md). In short: groundwork and the editor shell, rendering, the world, the editor, scale, simulation, sound and animation, then **Lust joins** (Phase 7), netcode, effects and game UI, scripting and export, and the 0.1 release.
+**Solis 0.1 in about a year,** in twelve phases (0 to 11), each ending with a gate the project lead tries by hand. The full plan is in [ROADMAP.md](ROADMAP.md). In short: groundwork and the editor shell, rendering, the world, the editor, scale, simulation, sound and animation, then **Lust and Lua join** (Phase 7), netcode, effects and game UI, scripting and export, and the 0.1 release.
 
 **The flagship sample:** a small space battle. Two capital ships, a carrier launching fighter squadrons, a few hundred lasers in the air, over the network. It tests instancing, components, VFX and lockstep at once.
 
@@ -304,3 +304,4 @@ Both sides review each other's pull requests.
 - 2026-10-20: Scale target: Empire at War-style battles (§2). Game-specific systems stay out of the engine.
 - 2026-10-20: [0001](docs/decisions/0001-builds-on-demand.md): builds and checks don't run on every push.
 - 2026-10-21: [0002](docs/decisions/0002-engine-in-rust-games-in-lust.md): the engine is Rust; games are Lust. Replaces "the engine in Lust on a thin Rust foundation". The build order is in [ROADMAP.md](ROADMAP.md).
+- 2026-10-21: [0003](docs/decisions/0003-games-in-rust-lust-or-lua.md): games can be written in Lust, Rust or Lua. Replaces "LustScript/Lua only for editor scripting, never game code".
