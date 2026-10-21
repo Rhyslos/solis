@@ -31,8 +31,11 @@ The viewport draws into a plain 8-bit RGBA image, which egui shows as it is. Sha
 
 - `cargo fmt --all -- --check`, `cargo clippy --workspace --all-targets -- -D warnings`, `cargo test --workspace` and `cargo deny check` run locally before every push.
 - `crates/render/tests/gpu.rs` renders real frames. Without a GPU it skips; with `REQUIRE_GPU=1` a missing GPU is a failure.
+- Fuzz tests feed thousands of randomly damaged inputs (saved layouts, saved cameras, command lines) to everything that reads them; none may crash.
+- `tools/scale/scale-check.sh` times the editor and the viewport against their targets, at every phase gate and on request ([decision 0011](docs/decisions/0011-scale-check-at-phase-gates.md)).
 - `tools/smoke/window-smoke.sh` opens the real editor on a virtual screen, flies the camera, drags a panel, quits and reopens, and checks the layout and camera came back.
 - CI (`.github/workflows/ci.yml`) runs all of these on ready pull requests and by hand only ([decision 0001](docs/decisions/0001-builds-on-demand.md)).
+- `.github/workflows/changelog.yml` fails a ready pull request that changes code without a `CHANGELOG.md` entry, unless it is labelled `internal`.
 - `.github/workflows/windows-exe.yml` builds a downloadable `solis.exe` when code is merged into main, and by hand ([decision 0010](docs/decisions/0010-windows-exe-on-merge.md)).
 
 ## Conventions

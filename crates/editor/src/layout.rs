@@ -225,4 +225,58 @@ mod tests {
             assert_eq!(text(&back), saved);
         }
     }
+
+    /// Random damage to a saved layout, thousands of times: reading it
+    /// never crashes, and what comes back always has every panel exactly
+    /// once.
+    #[test]
+    fn random_damage_to_a_saved_layout_never_loses_panels() {
+        let mut moved = Preset::WideScreen.layout();
+        let path = moved.find_tab(&Panel::Console).unwrap();
+        let tab = moved.remove_tab(path).unwrap();
+        moved.push_to_focused_leaf(tab);
+        let saved = ron::to_string(&moved).unwrap();
+        let bytes = saved.as_bytes();
+        let names: Vec<&str> = Panel::ALL.iter().map(|p| p.title()).collect();
+        let mut seed: u64 = 11;
+        let mut next = |n: usize| {
+            seed = seed
+                .wrapping_mul(6_364_136_223_846_793_005)
+                .wrapping_add(1_442_695_040_888_963_407);
+            (seed >> 33) as usize % n.max(1)
+        };
+        let mut read_back = 0;
+        for _ in 0..2_000 {
+            let mut damaged = bytes.to_vec();
+            for _ in 0..1 + next(3) {
+                let at = next(damaged.len());
+                let cut = next(6).min(damaged.len() - at);
+                // Swap in another panel's name, a number, a bracket, or
+                // nothing: the kinds of damage that still parse sometimes.
+                let with: Vec<u8> = match next(5) {
+                    0 => names[next(names.len())].as_bytes().to_vec(),
+                    1 => b"99999".to_vec(),
+                    2 => b"-1.5".to_vec(),
+                    3 => b"]".to_vec(),
+                    _ => Vec::new(),
+                };
+                damaged.splice(at..at + cut, with);
+            }
+            let text = String::from_utf8_lossy(&damaged);
+            let parsed = ron::from_str::<DockState<Panel>>(&text).ok();
+            read_back += usize::from(parsed.is_some());
+            assert!(is_complete(&restore(parsed)), "{text}");
+        }
+        // Make sure the test really exercised damaged layouts that still
+        // read back, not only ones refused outright.
+        assert!(read_back > 0);
+    }
+
+    #[test]
+    fn a_layout_with_a_panel_twice_is_not_used() {
+        let mut dock = Preset::Default.layout();
+        dock.push_to_focused_leaf(Panel::Console);
+        assert!(!is_complete(&dock));
+        assert!(is_complete(&restore(Some(dock))));
+    }
 }
