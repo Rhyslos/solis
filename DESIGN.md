@@ -144,22 +144,19 @@ end
 
 ## 6. Simulation and netcode
 
-**The gameplay simulation is deterministic by default:** the same inputs always give exactly the same result. One core then gives:
+No single netcode fits every game, so Solis provides it in layers ([decision 0005](docs/decisions/0005-netcode-in-layers.md)).
 
-- **Lockstep** for strategy games: only inputs are sent.
-- **Rollback** for small PvP games (later).
-- **Server-authoritative snapshots** with client prediction, for larger co-op.
-- **Replays and desync detection,** for free.
+**Built in, for every game:**
+- **Transport:** connections, reliable and unreliable messages, encryption.
+- **Sessions:** lobbies, invites, relays to get through home routers, and Steam networking.
+- **Foundations:** a fixed simulation timestep, separate from the frame rate; seeded randomness; compact message encoding.
+- **Tools:** a lag and packet-loss simulator, network stats, replays, and desync detection.
 
-No free engine offers this out of the box, and it's Solis's netcode pitch.
+**One model, optional: lockstep** for strategy games, where only inputs are sent. Strict cross-platform determinism (careful float maths; Rapier's determinism mode for physics) is switched on for lockstep games, and Lust's checker can help keep to its rules.
 
-**The cost is discipline,** which Lust's checker can help enforce:
+**Other models plug in through existing Rust crates:** `renet` or `lightyear` for server-authoritative games, `ggrs` for rollback, `matchbox` for peer-to-peer. Solis makes sure they fit and documents how.
 
-- a fixed simulation timestep, separate from the frame rate
-- seeded randomness only
-- careful float maths (Rapier's cross-platform determinism mode covers physics)
-
-**Also needed:** lobbies, connecting players behind home routers (relays, or Steam's networking), dedicated server builds, and a lag and packet-loss simulator for testing.
+**The pitch:** the shared networking layers built in properly, with a strategy-ready model included.
 
 ---
 
@@ -187,7 +184,7 @@ wgpu, lightweight, built for medium-poly, stylized games.
 
 ## 8. Worlds, zones and streaming
 
-- **Scenes** are text files, merge-friendly in git (a selling point: Unity and Godot scenes are notorious for conflicts).
+- **Scenes** are text files, made to merge in Git: one entity per block, stable IDs, fields in a fixed order (a selling point: Unity and Godot scenes are notorious for conflicts; [decision 0006](docs/decisions/0006-git-built-in.md)).
 - **Prefabs,** nested, with per-instance overrides.
 - **Game state above scenes:** state that outlives a scene (a campaign, a save), with loading a scene and returning as a normal operation.
 - **Zones** stream in and out by distance, each owning its memory (§3).
@@ -256,6 +253,7 @@ Settled in [decision 0004](docs/decisions/0004-editor-layout.md): Halberd's pane
 - **Physics:** Rapier.
 - **Save games.**
 - **Build and export:** Windows and Linux, macOS later.
+- **Git, for teams** ([decision 0006](docs/decisions/0006-git-built-in.md)): project files made to merge, Git LFS for big files, a Git panel with commits, history and locking, and a merge tool that merges scenes entity by entity.
 
 **Later:**
 - **Navigation and AI:** navmeshes, flowfields (moving many units), behaviour trees or state machines.
@@ -310,3 +308,5 @@ Both sides review each other's pull requests.
 - 2026-10-21: [0002](docs/decisions/0002-engine-in-rust-games-in-lust.md): the engine is Rust; games are Lust. Replaces "the engine in Lust on a thin Rust foundation". The build order is in [ROADMAP.md](ROADMAP.md).
 - 2026-10-21: [0003](docs/decisions/0003-games-in-rust-lust-or-lua.md): games can be written in Lust, Rust or Lua. Replaces "LustScript/Lua only for editor scripting, never game code".
 - 2026-10-21: [0004](docs/decisions/0004-editor-layout.md): the editor's layout and theme. Halberd's panels with Unreal's tabs, every panel dockable, dark greys with one accent. Replaces "mid-greys with accent gradients".
+- 2026-10-21: [0005](docs/decisions/0005-netcode-in-layers.md): netcode in layers: transport, sessions, foundations and tools built in; lockstep as an optional model; other models through existing crates. Replaces "deterministic by default" as the netcode pitch.
+- 2026-10-21: [0006](docs/decisions/0006-git-built-in.md): Git built into the editor, with project files made to merge, Git LFS, locking, and a scene merge tool.
