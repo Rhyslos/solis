@@ -5,7 +5,7 @@ use crate::branding;
 use crate::gpu::GpuViewport;
 use crate::import::{Finished, Importer};
 use editor::{
-    AppInfo, Camera, DockState, LogLevel, ModelInfo, NoRenderer, Overlays, Panel, Workbench,
+    AppInfo, Camera, DockState, LogLevel, Look, ModelInfo, NoRenderer, Overlays, Panel, Workbench,
     WorkbenchAction, theme::Accent,
 };
 use eframe::egui;
@@ -17,6 +17,8 @@ const LAYOUT_KEY: &str = "panel_layout";
 const ACCENT_KEY: &str = "accent";
 /// Key under which the viewport's corner controls are remembered.
 const OVERLAYS_KEY: &str = "viewport_overlays";
+/// Key under which the viewport's look is remembered.
+const LOOK_KEY: &str = "viewport_look";
 /// Key under which the viewport camera is remembered.
 const CAMERA_KEY: &str = "viewport_camera";
 /// Window size on first launch, in logical pixels.
@@ -48,6 +50,9 @@ impl App {
         let camera: Camera = storage
             .and_then(|s| eframe::get_value(s, CAMERA_KEY))
             .unwrap_or_default();
+        let look: Look = storage
+            .and_then(|s| eframe::get_value(s, LOOK_KEY))
+            .unwrap_or_default();
         let overlays: Overlays = storage
             .and_then(|s| eframe::get_value(s, OVERLAYS_KEY))
             .unwrap_or_default();
@@ -55,7 +60,8 @@ impl App {
         let mut workbench = Workbench::new(info.clone(), layout)
             .with_accent(accent)
             .with_overlays(overlays)
-            .with_camera(camera);
+            .with_camera(camera)
+            .with_look(look);
         workbench.log(
             LogLevel::Info,
             format!("{} {} started.", info.name, info.version),
@@ -173,6 +179,11 @@ impl eframe::App for App {
                             .log(LogLevel::Info, format!("Importing {}…", file_name(&path)));
                     }
                 }
+                WorkbenchAction::AddSampleScene => {
+                    self.importer.start_sample("Sample scene");
+                    self.workbench
+                        .log(LogLevel::Info, "Adding the sample scene…".to_string());
+                }
                 WorkbenchAction::RemoveModel(id) => {
                     if let Some(gpu) = self.gpu.as_mut() {
                         gpu.remove_model(id);
@@ -194,6 +205,7 @@ impl eframe::App for App {
         eframe::set_value(storage, ACCENT_KEY, &self.workbench.accent());
         eframe::set_value(storage, OVERLAYS_KEY, &self.workbench.overlays());
         eframe::set_value(storage, CAMERA_KEY, &self.workbench.camera());
+        eframe::set_value(storage, LOOK_KEY, &self.workbench.look());
     }
 }
 

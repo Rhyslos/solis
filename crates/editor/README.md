@@ -8,7 +8,7 @@ The editor's interface, as decided in [decision 0004](../../docs/decisions/0004-
 
 Draw the editor with egui and egui_dock, keep its state between frames (the panel layout, the chosen tool, the accent colour, the camera, the console), and tell the app what to do through `WorkbenchAction`s.
 
-`models.rs` lists the imported models (the app holds them on the GPU). `camera.rs` holds the viewport camera and how it flies ([decision 0009](../../docs/decisions/0009-fly-camera-controls.md)). The viewport turns each frame's mouse and keys into a `FlyInput`, and `Camera::fly` does the maths, so tests can fly the camera without a window.
+`look.rs` holds the viewport's look (standard, stylized or unlit). `models.rs` lists the imported models (the app holds them on the GPU). `camera.rs` holds the viewport camera and how it flies ([decision 0009](../../docs/decisions/0009-fly-camera-controls.md)). The viewport turns each frame's mouse and keys into a `FlyInput`, and `Camera::fly` does the maths, so tests can fly the camera without a window.
 
 ## Must never
 

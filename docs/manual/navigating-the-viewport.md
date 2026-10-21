@@ -22,7 +22,7 @@ Whenever you want to look at the world from somewhere else. Solis has one camera
 
 **The corner controls:**
 - **Top right:** frames per second, the time each frame takes, how many entities are in the scene, and how many triangles the imported models have.
-- **Bottom left:** **≡** chooses which corner controls show. **Perspective**, **Lit** and **Show** list views and looks that arrive in later phases.
+- **Bottom left:** **≡** chooses which corner controls show. The look button (**Standard ▴**) chooses how models are shaded; see [Looks](looks.md). **Perspective** and **Show** list views that arrive in later phases. These menus open upwards.
 - **Bottom centre:** the tools, Select (**Q**), Move (**W**), Rotate (**R**), Scale (**S**) and Transform (**T**). They work on things once scenes have them (Phase 2).
 - **Bottom right:** Grid, Angle and Camera. **Camera** is the camera's speed step.
 

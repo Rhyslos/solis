@@ -8,7 +8,7 @@
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::print_stderr)]
 
 use glam::{Mat4, Vec3, Vec4};
-use render::{FrameParams, ViewportRenderer, best_sample_count, read_pixels};
+use render::{FrameParams, Look, Shading, ViewportRenderer, best_sample_count, read_pixels};
 
 /// The editor's backdrop, sRGB 0 to 255 (as in the editor theme).
 const SKY_TOP: [u8; 3] = [0x16, 0x18, 0x1d];
@@ -25,9 +25,20 @@ struct Gpu {
     adapter: wgpu::Adapter,
     device: wgpu::Device,
     queue: wgpu::Queue,
+    /// Held while a test uses the GPU: tests take turns, since some
+    /// software drivers (as on CI) can stall with several devices busy at
+    /// once.
+    _turn: std::sync::MutexGuard<'static, ()>,
 }
 
+/// Whose turn it is to use the GPU.
+static GPU_TURN: std::sync::Mutex<()> = std::sync::Mutex::new(());
+
 fn gpu() -> Option<Gpu> {
+    // A test that failed while holding the turn still lets the others run.
+    let turn = GPU_TURN
+        .lock()
+        .unwrap_or_else(std::sync::PoisonError::into_inner);
     let instance =
         wgpu::Instance::new(wgpu::InstanceDescriptor::new_without_display_handle().with_env());
     let found =
@@ -41,6 +52,7 @@ fn gpu() -> Option<Gpu> {
                     adapter,
                     device,
                     queue,
+                    _turn: turn,
                 })
             });
     if found.is_none() {
@@ -104,6 +116,8 @@ fn the_backdrop_shows_sky_above_and_ground_below_in_the_right_colours() {
             sky_top: srgb(SKY_TOP),
             sky_horizon: srgb(SKY_HORIZON),
             ground: srgb(GROUND),
+            shading: Shading::default(),
+            size_px: [64, 64],
         },
         &[],
     );
@@ -148,6 +162,8 @@ fn the_ground_axes_show_in_red_and_green() {
             sky_top: srgb(SKY_TOP),
             sky_horizon: srgb(SKY_HORIZON),
             ground: srgb(GROUND),
+            shading: Shading::default(),
+            size_px: [64, 64],
         },
         &[],
     );
@@ -194,6 +210,8 @@ fn scale_check_viewport_frame() {
         sky_top: srgb(SKY_TOP),
         sky_horizon: srgb(SKY_HORIZON),
         ground: srgb(GROUND),
+        shading: Shading::default(),
+        size_px: [1920, 1080],
     };
     let frames = 60;
     let start = std::time::Instant::now();
@@ -213,12 +231,16 @@ fn scale_check_viewport_frame() {
     );
 }
 
-/// Renders a model and returns the pixels, looking at it from `eye`
-/// (looking along +Y, level).
-fn render_model(model: &assets::Model, eye: Vec3) -> Option<(Vec<u8>, u32)> {
+/// Renders a model in `shading` and returns the pixels of a `size`-pixel
+/// square, looking from `eye` along +Y, level.
+fn render_with(
+    model: &assets::Model,
+    eye: Vec3,
+    shading: Shading,
+    size: u32,
+) -> Option<(Vec<u8>, u32)> {
     let gpu = gpu()?;
     let renderer = ViewportRenderer::new(&gpu.device, best_sample_count(&gpu.adapter));
-    let size = 64;
     let target = renderer.create_target(&gpu.device, [size, size]);
     let uploaded = renderer.upload_model(&gpu.device, &gpu.queue, model);
     assert_eq!(uploaded.triangles(), model.triangles());
@@ -233,10 +255,17 @@ fn render_model(model: &assets::Model, eye: Vec3) -> Option<(Vec<u8>, u32)> {
             sky_top: srgb(SKY_TOP),
             sky_horizon: srgb(SKY_HORIZON),
             ground: srgb(GROUND),
+            shading,
+            size_px: [size, size],
         },
         &[&uploaded],
     );
     Some((read_pixels(&gpu.device, &gpu.queue, &target).unwrap(), size))
+}
+
+/// Renders a model in the standard look, 64 pixels square.
+fn render_model(model: &assets::Model, eye: Vec3) -> Option<(Vec<u8>, u32)> {
+    render_with(model, eye, Shading::default(), 64)
 }
 
 fn sample() -> assets::Model {
@@ -297,4 +326,192 @@ fn a_model_behind_the_camera_draws_nothing() {
     };
     let middle = pixel(&pixels, size, size / 2, size / 4);
     assert!(between(middle, SKY_HORIZON, SKY_TOP), "{middle:?}");
+}
+
+fn showcase() -> assets::Model {
+    assets::load_bytes(
+        &assets::sample::showcase_glb(),
+        None,
+        "Showcase",
+        &assets::Limits::default(),
+    )
+    .unwrap()
+}
+
+fn shading(look: Look) -> Shading {
+    Shading {
+        look,
+        bands: 3,
+        outline_px: 2.0,
+    }
+}
+
+#[test]
+fn the_unlit_look_shows_the_texture_as_it_is() {
+    let Some((pixels, size)) = render_with(
+        &sample(),
+        Vec3::new(0.0, -3.0, 1.1),
+        shading(Look::Unlit),
+        128,
+    ) else {
+        return;
+    };
+    let near = |p: [u8; 3], want: [u8; 3]| (0..3).all(|i| p[i].abs_diff(want[i]) <= 12);
+    let middle: Vec<[u8; 3]> = (size / 2 - 16..size / 2 + 16)
+        .flat_map(|y| (size / 2 - 16..size / 2 + 16).map(move |x| (x, y)))
+        .map(|(x, y)| pixel(&pixels, size, x, y))
+        .collect();
+    // The checker's two colours, exactly as painted.
+    assert!(
+        middle.iter().any(|&p| near(p, [235, 235, 235])),
+        "no light squares"
+    );
+    assert!(
+        middle.iter().any(|&p| near(p, [40, 110, 150])),
+        "no blue squares"
+    );
+}
+
+#[test]
+fn the_stylized_look_draws_dark_outlines_and_the_standard_one_does_not() {
+    // A little to the side and above, as a model is usually seen (seen
+    // exactly head-on, a box's sides are edge-on and have no outline).
+    let eye = Vec3::new(1.5, -6.0, 2.6);
+    let dark = |pixels: &[u8], size: u32| {
+        (0..size * size)
+            .map(|i| pixel(pixels, size, i % size, i / size))
+            .filter(|p| p.iter().all(|&c| c < 10))
+            .count()
+    };
+    let Some((stylized, size)) = render_with(&sample(), eye, shading(Look::Stylized), 64) else {
+        return;
+    };
+    let Some((standard, _)) = render_with(&sample(), eye, shading(Look::Standard), 64) else {
+        return;
+    };
+    assert!(
+        dark(&stylized, size) > 40,
+        "outlines: {}",
+        dark(&stylized, size)
+    );
+    assert_eq!(dark(&standard, size), 0);
+    // Without outlines, the stylized look has none either.
+    let plain = Shading {
+        outline_px: 0.0,
+        ..shading(Look::Stylized)
+    };
+    let Some((no_outline, _)) = render_with(&sample(), eye, plain, 64) else {
+        return;
+    };
+    assert_eq!(dark(&no_outline, size), 0);
+}
+
+#[test]
+fn glowing_parts_glow_in_every_look() {
+    for look in [Look::Standard, Look::Stylized, Look::Unlit] {
+        let Some((pixels, size)) =
+            render_with(&showcase(), Vec3::new(0.0, -8.0, 2.0), shading(look), 128)
+        else {
+            return;
+        };
+        let orange = (0..size * size)
+            .map(|i| pixel(&pixels, size, i % size, i / size))
+            .filter(|&[r, g, b]| r > 200 && (110..235).contains(&g) && r > b.saturating_add(80))
+            .count();
+        assert!(orange > 20, "{look:?}: {orange} glowing pixels");
+    }
+}
+
+#[test]
+fn the_normal_texture_shapes_the_light_on_the_wall() {
+    let eye = Vec3::new(0.0, -8.0, 1.5);
+    let with = showcase();
+    let mut without = showcase();
+    for material in &mut without.materials {
+        material.normal_texture = None;
+    }
+    let Some((a, size)) = render_with(&with, eye, Shading::default(), 128) else {
+        return;
+    };
+    let Some((b, _)) = render_with(&without, eye, Shading::default(), 128) else {
+        return;
+    };
+    let changed = (0..size * size)
+        .filter(|&i| {
+            let (pa, pb) = (
+                pixel(&a, size, i % size, i / size),
+                pixel(&b, size, i % size, i / size),
+            );
+            (0..3).any(|c| pa[c].abs_diff(pb[c]) > 6)
+        })
+        .count();
+    assert!(changed > 200, "the grooves changed {changed} pixels");
+}
+
+#[test]
+fn metal_reflects_the_sky_and_plastic_shows_its_colour() {
+    // Looking at the two rows of spheres from the front: the plastic row
+    // is blue, the metal row gold.
+    let Some((pixels, size)) = render_with(
+        &showcase(),
+        Vec3::new(0.0, -9.5, 0.6),
+        Shading::default(),
+        128,
+    ) else {
+        return;
+    };
+    let all: Vec<[u8; 3]> = (0..size * size)
+        .map(|i| pixel(&pixels, size, i % size, i / size))
+        .collect();
+    let wide = |p: &[u8; 3]| p.map(i32::from);
+    let blue = all
+        .iter()
+        .map(wide)
+        .filter(|&[r, g, b]| b > r + 40 && b > g + 10)
+        .count();
+    let gold = all
+        .iter()
+        .map(wide)
+        .filter(|&[r, g, b]| r > b + 40 && g > b + 20)
+        .count();
+    assert!(blue > 50 && gold > 50, "blue {blue}, gold {gold}");
+}
+
+/// Not a check: when `DUMP_DIR` is set, writes a few renders there as PPM
+/// images, for looking at the looks by eye while working on them.
+#[test]
+fn dump_renders_to_look_at() {
+    let Some(dir) = std::env::var_os("DUMP_DIR") else {
+        return;
+    };
+    for (name, model, eye, look) in [
+        ("unlit", sample(), Vec3::new(0.0, -3.0, 1.1), Look::Unlit),
+        (
+            "stylized",
+            sample(),
+            Vec3::new(1.5, -6.0, 2.6),
+            Look::Stylized,
+        ),
+        (
+            "showcase",
+            showcase(),
+            Vec3::new(0.0, -8.0, 2.0),
+            Look::Standard,
+        ),
+        (
+            "spheres",
+            showcase(),
+            Vec3::new(0.0, -9.5, 0.6),
+            Look::Standard,
+        ),
+    ] {
+        let Some((pixels, size)) = render_with(&model, eye, shading(look), 128) else {
+            return;
+        };
+        let mut ppm = format!("P6 {size} {size} 255\n").into_bytes();
+        for c in pixels.chunks_exact(4) {
+            ppm.extend_from_slice(&c[..3]);
+        }
+        std::fs::write(std::path::Path::new(&dir).join(format!("{name}.ppm")), ppm).unwrap();
+    }
 }

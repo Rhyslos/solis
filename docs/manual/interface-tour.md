@@ -8,7 +8,7 @@ When finding your way around, or making the layout suit your screen.
 ## How to use it
 
 **The top bar**, from left to right:
-- **Menus:** File, Edit, View, Entity, Build, Window and Help. **File > Import model…** brings a model in (see [Importing models](importing-models.md)). Items that don't work yet are greyed out; point at one to see which phase brings it.
+- **Menus:** File, Edit, View, Entity, Build, Window and Help. **File > Import model…** brings a model in (see [Importing models](importing-models.md)); **Help > Add the sample scene** brings in a ready-made one. Items that don't work yet are greyed out; point at one to see which phase brings it.
 - **The scene tab:** the open scene ("Untitled scene"). Opening more scenes, prefabs and code side by side arrives in Phase 2.
 - **Play**, **Play with two players** and **Stop**, then **Build** and **Build & Play**, on the right. They tell you in the Console which phase brings them.
 
