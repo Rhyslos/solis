@@ -55,6 +55,9 @@ impl Preset {
     /// │ Library  │Console│      │   │     │  Console   │      │   │ Library · Console│      │
     /// └──────────┴───────┴──────┘   └─────┴────────────┴──────┘   └──────────────────┴──────┘
     /// ```
+    ///
+    /// Scene shares its group with Layers, Library with Code and Console
+    /// with Problems, as in the mockup.
     pub fn layout(self) -> DockState<Panel> {
         let mut dock = DockState::new(vec![Panel::Viewport, Panel::Game]);
         let tree = dock.main_surface_mut();
@@ -66,20 +69,26 @@ impl Preset {
         tree.split_below(right_column, SCENE_HEIGHT, vec![Panel::Properties]);
         match self {
             Self::Default => {
-                let [_, bottom] =
-                    tree.split_below(main_area, VIEWPORT_HEIGHT, vec![Panel::Library]);
-                tree.split_right(bottom, LIBRARY_WIDTH, vec![Panel::Console]);
+                let [_, bottom] = tree.split_below(
+                    main_area,
+                    VIEWPORT_HEIGHT,
+                    vec![Panel::Library, Panel::Code],
+                );
+                tree.split_right(bottom, LIBRARY_WIDTH, vec![Panel::Console, Panel::Problems]);
             }
             Self::WideScreen => {
-                let [_, view] =
-                    tree.split_left(main_area, LIBRARY_COLUMN_WIDTH, vec![Panel::Library]);
-                tree.split_below(view, VIEWPORT_HEIGHT, vec![Panel::Console]);
+                let [_, view] = tree.split_left(
+                    main_area,
+                    LIBRARY_COLUMN_WIDTH,
+                    vec![Panel::Library, Panel::Code],
+                );
+                tree.split_below(view, VIEWPORT_HEIGHT, vec![Panel::Console, Panel::Problems]);
             }
             Self::SmallScreen => {
                 tree.split_below(
                     main_area,
                     VIEWPORT_HEIGHT,
-                    vec![Panel::Library, Panel::Console],
+                    vec![Panel::Library, Panel::Code, Panel::Console, Panel::Problems],
                 );
             }
         }
@@ -144,8 +153,14 @@ mod tests {
     #[test]
     fn the_default_puts_library_and_console_side_by_side() {
         let dock = Preset::Default.layout();
-        assert_eq!(tab_group_of(&dock, Panel::Library), [Panel::Library]);
-        assert_eq!(tab_group_of(&dock, Panel::Console), [Panel::Console]);
+        assert_eq!(
+            tab_group_of(&dock, Panel::Library),
+            [Panel::Library, Panel::Code]
+        );
+        assert_eq!(
+            tab_group_of(&dock, Panel::Console),
+            [Panel::Console, Panel::Problems]
+        );
         assert_eq!(
             tab_group_of(&dock, Panel::Scene),
             [Panel::Scene, Panel::Layers]
@@ -158,15 +173,21 @@ mod tests {
         let dock = Preset::SmallScreen.layout();
         assert_eq!(
             tab_group_of(&dock, Panel::Library),
-            [Panel::Library, Panel::Console]
+            [Panel::Library, Panel::Code, Panel::Console, Panel::Problems]
         );
     }
 
     #[test]
     fn the_wide_screen_layout_keeps_library_and_console_apart() {
         let dock = Preset::WideScreen.layout();
-        assert_eq!(tab_group_of(&dock, Panel::Library), [Panel::Library]);
-        assert_eq!(tab_group_of(&dock, Panel::Console), [Panel::Console]);
+        assert_eq!(
+            tab_group_of(&dock, Panel::Library),
+            [Panel::Library, Panel::Code]
+        );
+        assert_eq!(
+            tab_group_of(&dock, Panel::Console),
+            [Panel::Console, Panel::Problems]
+        );
         assert_ne!(text(&dock), text(&Preset::Default.layout()));
     }
 

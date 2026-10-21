@@ -2,7 +2,7 @@
 
 **Layer 2 · Editor**
 
-The editor's interface, as decided in [decision 0004](../../docs/decisions/0004-editor-layout.md): the one-row top bar (menus, document tabs, Play and Build), the dockable panels (Viewport and Game, Scene and Layers, Properties, Library, Console), the controls in the viewport's corners, and the theme.
+The editor's interface, as decided in [decision 0004](../../docs/decisions/0004-editor-layout.md): the one-row top bar (menus, document tabs, Play and Build), the dockable panels (Viewport and Game, Scene and Layers, Properties, Library and Code, Console and Problems), the controls in the viewport's corners, the icons (drawn in code, in `icons.rs`), and the theme. Interface text is Inter and monospace text JetBrains Mono (both OFL, in `assets/fonts`, licences in `licenses/fonts`).
 
 ## Purpose
 

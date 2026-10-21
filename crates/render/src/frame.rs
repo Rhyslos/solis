@@ -11,7 +11,7 @@ pub const GRID_SPACINGS: [f32; 3] = [1.0, 10.0, 100.0];
 /// How strongly each grid level is drawn (opacity of a white line, 0 to 1),
 /// in the same order as [`GRID_SPACINGS`]. Kept low so the grid stays a
 /// quiet guide rather than a pattern.
-pub const GRID_STRENGTHS: [f32; 3] = [0.04, 0.08, 0.13];
+pub const GRID_STRENGTHS: [f32; 3] = [0.07, 0.14, 0.2];
 /// The least distance around the focus point that the grid reaches, in
 /// metres: even close in, the ground stretches well beyond what is in view.
 pub const GRID_MIN_REACH: f32 = 60.0;

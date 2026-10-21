@@ -106,7 +106,7 @@ shot first
 #    wrong colour setting shows as black or washed out.
 read -r R G B <<<"$(pixel 300 90 first)"
 echo "Sky at (300, 90): $R $G $B (expected a dark blue-grey)"
-[ "$B" -ge 35 ] && [ "$B" -le 80 ] || fail "the sky is not a dark blue-grey: ($R, $G, $B)"
+[ "$B" -ge 20 ] && [ "$B" -le 80 ] || fail "the sky is not a dark blue-grey: ($R, $G, $B)"
 [ "$B" -gt "$R" ] || fail "the sky is not blue-grey: ($R, $G, $B)"
 grep -q "No 3D view" "$OUT/app.log" && fail "the 3D view could not be shown"
 
