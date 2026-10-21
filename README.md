@@ -2,7 +2,7 @@
 
 A free, open-source 3D game engine for stylized games, strategy games, online co-op and PvP, and big open worlds. Lightweight and beginner-friendly. The engine is written in Rust, and games in [Lust](https://github.com/Rhyslos/Lust), Rust or Lua.
 
-**Status:** Phase 1 (seeing things) has begun: the editor opens with its dockable panels, theme and a viewport you can fly around in. Nothing can be made in it yet; models arrive next. Solis is made for Windows ([decision 0012](docs/decisions/0012-windows-only.md)).
+**Status:** Phase 1 (seeing things): the editor opens with its dockable panels and theme, you can fly around the viewport, and glTF models from Blender or Aventail can be imported and looked at. Materials and lights come next. Solis is made for Windows ([decision 0012](docs/decisions/0012-windows-only.md)).
 
 ## Running it
 
@@ -26,9 +26,9 @@ The first build takes a few minutes. `cargo run -p app -- --help` lists the opti
 
 Solis is built in phases, one milestone per pull request. Each phase ends with a **gate** the project lead tries by hand before the next starts. This tracker is updated by the pull request that finishes each milestone; the full plan is in [ROADMAP.md](ROADMAP.md).
 
-**Overall: 8 of 60 milestones** `██░░░░░░░░░░░` 13%
+**Overall: 9 of 60 milestones** `██░░░░░░░░░░░` 15%
 
-**Now:** Phase 1, milestone 2: importing models.
+**Now:** Phase 1, milestone 3: materials.
 
 ### Phase 0 · Groundwork — 7 of 7
 
@@ -44,13 +44,13 @@ Solis is built in phases, one milestone per pull request. Each phase ends with a
 
 **Gate:** the editor opens, panels move and remember their places, and the theme feels right. *Passed 2026-10-21.*
 
-### Phase 1 · Seeing things — 1 of 5
+### Phase 1 · Seeing things — 2 of 5
 
-`███░░░░░░░░░░` 20%
+`█████░░░░░░░░` 40%
 
 - [x] Fly camera: moving around the viewport, with the speed shown and remembered
-- [ ] Models: importing glTF models and textures, drawn with a simple material **(in progress)**
-- [ ] Materials: a standard lit material and a stylized/toon option
+- [x] Models: importing glTF models and textures, drawn with a simple material
+- [ ] Materials: a standard lit material and a stylized/toon option **(next)**
 - [ ] Lights and shadows: sun, point and spot lights; shadows from the sun; ambient light from the sky
 - [ ] The finished picture: HDR, tonemapping, sky and fog
 

@@ -144,6 +144,8 @@ pub enum Icon {
     Error,
     /// A magnifying glass: search.
     Search,
+    /// A box seen from a corner: a model.
+    Model,
 }
 
 /// Draws `icon` in `rect` with `color`. Shapes are given on a 24-unit
@@ -248,6 +250,18 @@ pub fn icon(painter: &Painter, rect: Rect, icon: Icon, color: Color32) {
             line(&[(6.0, 6.0), (18.0, 18.0)]);
             line(&[(18.0, 6.0), (6.0, 18.0)]);
         }
+        Icon::Model => {
+            outline(&[
+                (12.0, 3.0),
+                (20.0, 7.5),
+                (20.0, 16.5),
+                (12.0, 21.0),
+                (4.0, 16.5),
+                (4.0, 7.5),
+            ]);
+            line(&[(4.0, 7.5), (12.0, 12.0), (20.0, 7.5)]);
+            line(&[(12.0, 12.0), (12.0, 21.0)]);
+        }
         Icon::Search => {
             painter.circle_stroke(v(10.0, 10.0), 6.0 * unit, stroke);
             line(&[(14.5, 14.5), (20.0, 20.0)]);
@@ -298,6 +312,7 @@ mod tests {
             Warning,
             Error,
             Search,
+            Model,
         ];
         let mut counts = Vec::new();
         for each in all {

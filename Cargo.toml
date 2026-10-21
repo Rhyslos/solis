@@ -15,6 +15,7 @@ publish = false
 # Which crate may depend on which is decided by layers (see ARCHITECTURE.md)
 # and enforced by the test in tools/layer-check.
 [workspace.dependencies]
+assets = { path = "crates/assets" }
 render = { path = "crates/render" }
 editor = { path = "crates/editor" }
 
@@ -31,6 +32,16 @@ eframe = { version = "0.36", features = ["persistence"] }
 egui = "0.36"
 # Dockable panels (decision 0004).
 egui_dock = { version = "0.21", features = ["serde"] }
+# Reading glTF models: the JSON and binary layout only. Buffers and
+# images are read by Solis itself, with size limits (crates/assets).
+gltf = { version = "1.4", default-features = false, features = ["names", "utils"] }
+# Decoding PNG and JPEG textures, with limits on size and memory.
+image = { version = "0.25", default-features = false, features = ["png", "jpeg"] }
+# Data inside glTF files ("data:" addresses).
+base64 = "0.22"
+percent-encoding = "2.3"
+# The Open file window (Windows; elsewhere through the desktop portal).
+rfd = "0.17"
 # The local time on console messages.
 chrono = { version = "0.4", default-features = false, features = ["clock", "std"] }
 # Development only.

@@ -8,7 +8,7 @@ Solis is a Rust program split into small, single-purpose crates. **Lower layers 
 | --- | --- | --- | --- |
 | 3 | App | `app` | Opens the window, owns the frame loop, wires the rest together. No feature logic. |
 | 2 | Editor | `editor` | The editor's interface: top bar, dockable panels, theme. Never needed by a game. |
-| 1 | Engine | `render` | What games run on. Knows nothing about the editor. |
+| 1 | Engine | `render`, `assets` | What games run on. Knows nothing about the editor. `assets` reads model files; `render` draws. |
 | 0 | Core | none yet | Shared building blocks with no GPU, window or interface (math, IDs, components). |
 
 Each crate's `README.md` states its purpose and what it **must never** do. Read it before changing the crate.
@@ -20,8 +20,9 @@ Planned: `world` (entities and components, layer 0 or 1) and `assets` (layer 1) 
 1. **Input:** winit delivers mouse and keyboard events to egui (through eframe).
 2. **Editor:** the workbench draws the top bar and the docked panels and returns any actions (such as Quit) for the app to carry out.
 3. **Camera:** the viewport turns the mouse and keys into a `FlyInput`, and `Camera::fly` (in `editor/src/camera.rs`) moves the camera.
-4. **Viewport:** the viewport panel asks a `ViewportRenderer` for an image of its size. The app's implementation renders it with `render` on the window's own GPU device and hands it to egui as a texture.
-5. **Closing:** eframe saves the window size, the panel layout and the camera in a per-user folder named after `APP_ID`.
+4. **Imports:** File > Import model (or a file dropped on the window) asks the app to import; the app reads the file with `assets` on a thread of its own, then uploads it with `render` and tells the workbench, which lists it and frames the camera on it.
+5. **Viewport:** the viewport panel asks a `ViewportRenderer` for an image of its size. The app's implementation renders it with `render` on the window's own GPU device and hands it to egui as a texture.
+6. **Closing:** eframe saves the window size, the panel layout and the camera in a per-user folder named after `APP_ID`.
 
 ## Colour in the viewport
 

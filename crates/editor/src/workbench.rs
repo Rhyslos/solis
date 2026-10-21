@@ -8,6 +8,7 @@
 use crate::camera::Camera;
 use crate::icons::{self, Icon};
 use crate::layout::{self, Preset};
+use crate::models::{ModelId, ModelInfo};
 use crate::panel::Panel;
 use crate::theme::{self, Accent};
 use crate::viewport::{Overlays, Tool, Viewport, ViewportRenderer};
@@ -30,6 +31,10 @@ pub struct AppInfo {
 pub enum WorkbenchAction {
     /// Close the window.
     Quit,
+    /// Ask which model file to import (File > Import model…).
+    ImportModel,
+    /// Take an imported model out of the viewport and free it.
+    RemoveModel(ModelId),
 }
 
 /// How serious a console message is.
@@ -124,6 +129,10 @@ pub struct Workbench {
     accent: Accent,
     viewport: Viewport,
     console: Console,
+    /// The imported models, in the order they arrived.
+    models: Vec<ModelInfo>,
+    /// Whether files are being dragged over the window.
+    files_hovering: bool,
     about_open: bool,
     /// The tabs that were in front last frame, to underline them in the
     /// accent colour.
@@ -144,6 +153,8 @@ impl Workbench {
                 hidden: HashSet::new(),
                 search: String::new(),
             },
+            models: Vec::new(),
+            files_hovering: false,
             about_open: false,
             in_front: HashSet::new(),
         }
@@ -161,6 +172,54 @@ impl Workbench {
     pub fn with_overlays(mut self, overlays: Overlays) -> Self {
         self.viewport.overlays = overlays;
         self
+    }
+
+    /// Adds an imported model to the viewport, frames the camera on it,
+    /// and says so in the console with its size and any `warnings` (parts
+    /// of the file that were left out).
+    pub fn add_model(&mut self, info: ModelInfo, warnings: &[String], seconds: f32) {
+        self.log(
+            LogLevel::Info,
+            format!(
+                "Imported {}: {} triangles, {}, in {seconds:.1} s.",
+                info.name,
+                crate::models::grouped(info.triangles),
+                info.size_text()
+            ),
+        );
+        for warning in warnings {
+            self.log(LogLevel::Warning, format!("{}: {warning}", info.name));
+        }
+        self.viewport.camera.frame(info.min, info.max);
+        self.models.retain(|m| m.id != info.id);
+        self.models.push(info);
+        self.sync_models();
+    }
+
+    /// Tells the workbench whether files are being dragged over the window,
+    /// so it can show where to drop them.
+    pub fn set_files_hovering(&mut self, hovering: bool) {
+        self.files_hovering = hovering;
+    }
+
+    /// The imported models, in the order they arrived.
+    pub fn models(&self) -> &[ModelInfo] {
+        &self.models
+    }
+
+    /// Takes a model out of the list (the app frees it on the GPU).
+    fn remove_model(&mut self, id: ModelId) {
+        if let Some(i) = self.models.iter().position(|m| m.id == id) {
+            let gone = self.models.remove(i);
+            self.log(LogLevel::Info, format!("Removed {}.", gone.name));
+        }
+        self.sync_models();
+    }
+
+    /// Tells the viewport which models to draw.
+    fn sync_models(&mut self) {
+        self.viewport.models = self.models.iter().map(|m| m.id).collect();
+        self.viewport.triangles = self.models.iter().map(|m| m.triangles).sum();
     }
 
     /// The panel layout, for saving.
@@ -230,6 +289,7 @@ impl Workbench {
             .show(ui, |ui| self.top_bar(ui, &mut actions));
         let style = theme::dock_style(ui.style().as_ref(), self.accent);
         let mut shown = HashSet::new();
+        let mut removed = Vec::new();
         theme::dock_frame().show(ui, |ui| {
             DockArea::new(&mut self.dock)
                 .style(style)
@@ -244,6 +304,8 @@ impl Workbench {
                         viewport: &mut self.viewport,
                         renderer,
                         console: &mut self.console,
+                        models: &self.models,
+                        removed: &mut removed,
                         accent: self.accent,
                         in_front: &self.in_front,
                         shown: &mut shown,
@@ -251,6 +313,13 @@ impl Workbench {
                 );
         });
         self.in_front = shown;
+        for id in removed {
+            self.remove_model(id);
+            actions.push(WorkbenchAction::RemoveModel(id));
+        }
+        if self.files_hovering {
+            drop_hint(ui, self.accent);
+        }
         self.about(ui);
         actions
     }
@@ -296,6 +365,17 @@ impl Workbench {
             for item in ["New scene", "Open…", "Save"] {
                 ui.add_enabled(false, egui::Button::new(item))
                     .on_disabled_hover_text("Scenes arrive in Phase 2");
+            }
+            ui.separator();
+            if ui
+                .button("Import model…")
+                .on_hover_text(
+                    "A glTF model (.gltf or .glb). You can also drop one onto the window.",
+                )
+                .clicked()
+            {
+                actions.push(WorkbenchAction::ImportModel);
+                ui.close();
             }
             ui.separator();
             if ui.button("Quit").clicked() {
@@ -529,6 +609,8 @@ struct PanelViewer<'a> {
     viewport: &'a mut Viewport,
     renderer: &'a mut dyn ViewportRenderer,
     console: &'a mut Console,
+    models: &'a [ModelInfo],
+    removed: &'a mut Vec<ModelId>,
     accent: Accent,
     in_front: &'a HashSet<Panel>,
     shown: &'a mut HashSet<Panel>,
@@ -606,7 +688,7 @@ impl TabViewer for PanelViewer<'_> {
         match tab {
             Panel::Scene => {
                 menu_row(ui, &["Edit", "View", "Entity"]);
-                placeholder(ui, "No entities yet. They arrive in Phase 2.");
+                model_list(ui, self.models, self.removed, self.accent);
             }
             Panel::Layers => {
                 menu_row(ui, &["Edit", "View"]);
@@ -658,6 +740,90 @@ fn menu_row(ui: &mut Ui, items: &[&str]) {
             });
         });
     });
+}
+
+/// The Scene panel's contents until entities arrive: the imported models,
+/// each with a button to remove it.
+fn model_list(ui: &mut Ui, models: &[ModelInfo], removed: &mut Vec<ModelId>, accent: Accent) {
+    if models.is_empty() {
+        placeholder(
+            ui,
+            "No entities yet; they arrive in Phase 2. To see a model, use File > Import model, \
+             or drop a .gltf or .glb file onto the window.",
+        );
+        return;
+    }
+    egui::Frame::new()
+        .inner_margin(egui::Margin::symmetric(6, 4))
+        .show(ui, |ui| {
+            for model in models {
+                let (row, _) = ui.allocate_exact_size(
+                    egui::vec2(ui.available_width(), 21.0),
+                    egui::Sense::hover(),
+                );
+                let mut row_ui = ui.new_child(
+                    egui::UiBuilder::new()
+                        .max_rect(row)
+                        .layout(Layout::left_to_right(Align::Center)),
+                );
+                let ui = &mut row_ui;
+                let (icon, _) =
+                    ui.allocate_exact_size(egui::vec2(12.0, 12.0), egui::Sense::hover());
+                icons::icon(ui.painter(), icon, Icon::Model, accent.colors().light);
+                ui.add(egui::Label::new(&model.name).truncate());
+                ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
+                    let remove = ui
+                        .add(
+                            egui::Button::new(RichText::new("×").color(theme::TEXT_WEAK))
+                                .frame(false),
+                        )
+                        .on_hover_text(format!("Remove {} from the viewport", model.name));
+                    remove.widget_info(|| {
+                        egui::WidgetInfo::labeled(
+                            egui::WidgetType::Button,
+                            true,
+                            format!("Remove {}", model.name),
+                        )
+                    });
+                    if remove.clicked() {
+                        removed.push(model.id);
+                    }
+                    ui.label(
+                        RichText::new(format!("{} tris", crate::models::grouped(model.triangles)))
+                            .color(theme::TEXT_WEAK),
+                    );
+                });
+            }
+            ui.add_space(4.0);
+            ui.label(
+                RichText::new("Imported models aren't saved yet: scenes arrive in Phase 2.")
+                    .color(theme::TEXT_WEAK)
+                    .size(11.0),
+            );
+        });
+}
+
+/// Shown while files are dragged over the window: where they'll go.
+fn drop_hint(ui: &Ui, accent: Accent) {
+    let screen = ui.ctx().content_rect();
+    let painter = ui.ctx().layer_painter(egui::LayerId::new(
+        egui::Order::Foreground,
+        Id::new("drop hint"),
+    ));
+    painter.rect_filled(screen, 0.0, Color32::from_black_alpha(140));
+    painter.rect_stroke(
+        screen.shrink(6.0),
+        6.0,
+        egui::Stroke::new(2.0, accent.colors().light),
+        egui::StrokeKind::Inside,
+    );
+    painter.text(
+        screen.center(),
+        egui::Align2::CENTER_CENTER,
+        "Drop to import the model (.gltf or .glb)",
+        egui::FontId::proportional(18.0),
+        theme::TEXT_STRONG,
+    );
 }
 
 /// A quiet note in a panel that has nothing to show yet.
