@@ -68,7 +68,7 @@ Rust compiles slowly. Godot users are used to pressing Play and seeing a change 
 Options, which can be combined:
 
 1. **The engine comes prebuilt.** Only the game's own crate is compiled, and Rust only rebuilds what changed. Probably a few seconds for small changes.
-2. **A faster compiler for development:** Cranelift instead of LLVM for debug builds, and a fast linker (mold on Linux, lld on Windows).
+2. **A faster compiler for development:** Cranelift instead of LLVM for debug builds, and a fast linker (lld on Windows).
 3. **Hot reload:** game code built as a library the running editor swaps in, so play mode keeps going (as `hot-lib-reloader` does for Rust today). Fiddly, but the best feel.
 4. **Running Lust through Lua while developing,** compiled to Rust only for builds. Fastest to start, but the two can behave differently (numbers, memory), so bugs could show up only in the shipped game. Probably ruled out.
 
@@ -253,7 +253,7 @@ Settled in [decision 0004](docs/decisions/0004-editor-layout.md): Halberd's pane
 - **Input:** named actions instead of raw keys, gamepads, rebinding.
 - **Physics:** Rapier.
 - **Save games.**
-- **Build and export:** Windows and Linux, macOS later.
+- **Build and export:** Windows ([decision 0012](docs/decisions/0012-windows-only.md)). Linux and macOS only if that changes.
 - **Git, for teams** ([decision 0006](docs/decisions/0006-git-built-in.md)): project files made to merge, Git LFS for big files, a Git panel with commits, history and locking, and a merge tool that merges scenes entity by entity.
 
 **Later:**
@@ -265,7 +265,7 @@ Settled in [decision 0004](docs/decisions/0004-editor-layout.md): Halberd's pane
 
 **Decisions:**
 - **License:** MIT ([decision 0007](docs/decisions/0007-mit-licence-and-separate-from-aventail.md)).
-- **Platforms:** PC only. Consoles need NDAs that clash with open source, as with Godot.
+- **Platforms:** Windows PCs ([decision 0012](docs/decisions/0012-windows-only.md)): the editor and the games it builds. Consoles need NDAs that clash with open source, as with Godot.
 - **Documentation, templates and tutorials** are a pillar of their own for a beginner-focused engine.
 
 ---
@@ -316,3 +316,4 @@ Both sides review each other's pull requests.
 - 2026-10-21: [0009](docs/decisions/0009-fly-camera-controls.md): the viewport camera flies with Unreal's controls (hold right mouse; W A S D, Q and E).
 - 2026-10-21: [0010](docs/decisions/0010-windows-exe-on-merge.md): a Windows `solis.exe` is built on GitHub when code is merged into main, and by hand. Loosens 0001 for this one build.
 - 2026-10-21: [0011](docs/decisions/0011-scale-check-at-phase-gates.md): a scale check (`tools/scale/scale-check.sh`) at every phase gate and on request, growing into the §2 target in Phase 4.
+- 2026-10-21: [0012](docs/decisions/0012-windows-only.md): Solis is made for Windows, the editor and exported games; Linux and macOS builds are dropped. CI's checks still run on a Linux machine, the cheapest kind.

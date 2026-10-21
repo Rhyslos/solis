@@ -5,7 +5,9 @@
 #   never on every push, never on a schedule;
 # - skips changes that touch only documentation;
 # - cheap checks first: the build and tests run only if they pass;
-# - Linux only, unless run by hand with "all platforms" or for a release tag.
+# - the checks run on a Linux machine, the cheapest kind (this is not a Linux
+#   build: Solis is made for Windows only, decision 0012); a Windows test run
+#   is added by hand ("also test on Windows") or for a release tag.
 name: CI
 
 on:
@@ -20,8 +22,8 @@ on:
     tags: ["v*"]
   workflow_dispatch:
     inputs:
-      all_platforms:
-        description: "Also build and test on Windows and macOS"
+      windows:
+        description: "Also test on Windows"
         type: boolean
         default: false
 
@@ -96,22 +98,16 @@ jobs:
           path: smoke-output/
           retention-days: 14
 
-  other-platforms:
-    name: Tests (${{ matrix.os }})
+  windows:
+    name: Tests (Windows)
     needs: checks
     if: >-
       startsWith(github.ref, 'refs/tags/v') ||
-      (github.event_name == 'workflow_dispatch' && inputs.all_platforms)
-    strategy:
-      fail-fast: false
-      matrix:
-        os: [windows-latest, macos-latest]
-    runs-on: ${{ matrix.os }}
+      (github.event_name == 'workflow_dispatch' && inputs.windows)
+    runs-on: windows-latest
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           persist-credentials: false
       - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2
       - run: cargo test --workspace --locked --no-fail-fast
-      - run: cargo build --release --locked -p app
-
