@@ -178,7 +178,7 @@ wgpu, lightweight, built for medium-poly, stylized games.
 - A node-based shader editor (stylized games live on custom shaders)
 - Impostors for distant objects
 
-**Lighting approach (to decide):** baked lightmaps, light probes, or real-time global illumination. It shapes a lot, so decide early.
+**Lighting approach:** a choice per project ([decision 0008](docs/decisions/0008-lighting-is-a-project-choice.md)). Real-time lights with sky light come first; baked lightmaps, light probes and real-time global illumination are added later as other sources of indirect light.
 
 ---
 
@@ -312,3 +312,5 @@ Both sides review each other's pull requests.
 - 2026-10-21: [0005](docs/decisions/0005-netcode-in-layers.md): netcode in layers: transport, sessions, foundations and tools built in; lockstep as an optional model; other models through existing crates. Replaces "deterministic by default" as the netcode pitch.
 - 2026-10-21: [0006](docs/decisions/0006-git-built-in.md): Git built into the editor, with project files made to merge, Git LFS, locking, and a scene merge tool.
 - 2026-10-21: [0007](docs/decisions/0007-mit-licence-and-separate-from-aventail.md): MIT licence; Solis stays separate from Aventail, copying and adapting Aventail's code, which its owner relicenses.
+- 2026-10-21: [0008](docs/decisions/0008-lighting-is-a-project-choice.md): lighting is a choice per project; real-time lights with sky light come first, baked and global illumination later.
+- 2026-10-21: [0009](docs/decisions/0009-fly-camera-controls.md): the viewport camera flies with Unreal's controls (hold right mouse; W A S D, Q and E).
