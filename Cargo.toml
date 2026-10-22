@@ -38,7 +38,7 @@ gltf = { version = "1.4", default-features = false, features = ["names", "utils"
 # Decoding PNG and JPEG textures, with limits on size and memory.
 image = { version = "0.25", default-features = false, features = ["png", "jpeg"] }
 # Data inside glTF files ("data:" addresses).
-base64 = "0.22"
+base64 = "0.23"
 percent-encoding = "2.3"
 # The Open file window (Windows; elsewhere through the desktop portal).
 rfd = "0.17"
