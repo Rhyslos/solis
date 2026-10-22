@@ -107,13 +107,59 @@ pub fn is_complete(dock: &DockState<Panel>) -> bool {
     }) && dock.iter_all_tabs().count() == Panel::ALL.len()
 }
 
-/// The saved arrangement if it is usable, otherwise the default one. A
-/// layout saved by an older version that lacks a panel, or one that is
-/// damaged, falls back to the default rather than hiding panels.
+/// The saved arrangement, with any panel it lacks (a layout saved before
+/// that panel existed) added back beside the panel it shares a tab group
+/// with in the default layout, as decision 0004 says. A damaged layout,
+/// one with a panel twice, or `None`, gives the default one.
 pub fn restore(saved: Option<DockState<Panel>>) -> DockState<Panel> {
-    match saved {
-        Some(dock) if is_complete(&dock) => dock,
-        _ => Preset::Default.layout(),
+    let Some(mut dock) = saved else {
+        return Preset::Default.layout();
+    };
+    let twice = Panel::ALL.iter().any(|panel| {
+        dock.iter_all_tabs()
+            .filter(|(_, tab)| *tab == panel)
+            .count()
+            > 1
+    });
+    if twice || dock.iter_all_tabs().next().is_none() {
+        return Preset::Default.layout();
+    }
+    for panel in Panel::ALL {
+        if dock.find_tab(&panel).is_none() {
+            add_beside_its_group(&mut dock, panel);
+        }
+    }
+    if is_complete(&dock) {
+        dock
+    } else {
+        Preset::Default.layout()
+    }
+}
+
+/// Adds `panel` to the tab group of a panel it shares a group with in the
+/// default layout; or, if none of them is there, beside the viewport (or
+/// in the first group).
+fn add_beside_its_group(dock: &mut DockState<Panel>, panel: Panel) {
+    let default = Preset::Default.layout();
+    let companions: Vec<Panel> = default
+        .find_tab(&panel)
+        .and_then(|path| {
+            default[path.surface][path.node]
+                .tabs()
+                .map(<[Panel]>::to_vec)
+        })
+        .unwrap_or_default();
+    let home = companions
+        .iter()
+        .chain(std::iter::once(&Panel::Viewport))
+        .find_map(|companion| dock.find_tab(companion));
+    match home {
+        Some(path) => {
+            dock[path.surface][path.node].append_tab(panel);
+            // The tab that was in front stays in front.
+            let _ = dock.set_active_tab(path);
+        }
+        None => dock.push_to_first_leaf(panel),
     }
 }
 
@@ -192,14 +238,32 @@ mod tests {
     }
 
     #[test]
-    fn a_damaged_or_old_saved_layout_falls_back_to_the_default() {
-        let mut missing = Preset::Default.layout();
-        let path = missing.find_tab(&Panel::Console).unwrap();
-        missing.remove_tab(path);
-        assert!(!is_complete(&missing));
-        let default = text(&Preset::Default.layout());
-        assert_eq!(text(&restore(Some(missing))), default);
-        assert_eq!(text(&restore(None)), default);
+    fn an_old_layout_gets_its_missing_panels_back_and_keeps_the_rest() {
+        // A wide-screen layout saved before Problems and Code existed.
+        let mut old = Preset::WideScreen.layout();
+        for panel in [Panel::Problems, Panel::Code] {
+            let path = old.find_tab(&panel).unwrap();
+            old.remove_tab(path);
+        }
+        assert!(!is_complete(&old));
+        let restored = restore(Some(old));
+        assert!(is_complete(&restored));
+        // The rest of the arrangement is kept: still wide screen.
+        assert_eq!(text(&restored), text(&Preset::WideScreen.layout()));
+        assert_eq!(text(&restore(None)), text(&Preset::Default.layout()));
+    }
+
+    #[test]
+    fn a_missing_panel_goes_beside_the_viewport_when_its_group_is_gone() {
+        let mut old = Preset::Default.layout();
+        for panel in [Panel::Console, Panel::Problems] {
+            let path = old.find_tab(&panel).unwrap();
+            old.remove_tab(path);
+        }
+        let restored = restore(Some(old));
+        assert!(is_complete(&restored));
+        let beside = beside_viewport(&restored);
+        assert!(beside.contains(&Panel::Console), "{beside:?}");
     }
 
     #[test]

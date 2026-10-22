@@ -3,7 +3,7 @@
 //! Remembered between sessions with the editor's other settings, until
 //! scenes arrive in Phase 2.
 
-use crate::lighting::row;
+use crate::properties::row;
 use egui::Ui;
 use serde::{Deserialize, Serialize};
 

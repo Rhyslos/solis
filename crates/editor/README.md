@@ -8,6 +8,17 @@ The editor's interface, as decided in [decision 0004](../../docs/decisions/0004-
 
 Draw the editor with egui and egui_dock, keep its state between frames (the panel layout, the chosen tool, the accent colour, the camera, the console), and tell the app what to do through `WorkbenchAction`s.
 
+**Where things are:**
+
+- `workbench.rs`: the editor's state, and `show`, which draws a frame and returns the actions.
+- `top_bar.rs`: the menus, document tabs, Play and Build.
+- `panels.rs`: draws each docked panel and the bits panels share.
+- `scene_panel.rs`, `properties.rs`, `console.rs`: those panels' contents.
+- `viewport.rs`: the viewport and its corner controls.
+- `layout.rs`: the presets, and restoring a saved layout.
+
+Tests of the whole editor (drawn with egui_kittest, without a GPU) are in `workbench_tests.rs`.
+
 `look.rs` holds the viewport's look (standard, stylized or unlit). `models.rs` lists the imported models (the app holds them on the GPU). `environment.rs` holds the sky, fog, exposure and tone mapping. `lighting.rs` holds the sun's settings and the lamps, what's selected in the Scene panel, and their fields in Properties. `camera.rs` holds the viewport camera and how it flies ([decision 0009](../../docs/decisions/0009-fly-camera-controls.md)). The viewport turns each frame's mouse and keys into a `FlyInput`, and `Camera::fly` does the maths, so tests can fly the camera without a window.
 
 ## Must never

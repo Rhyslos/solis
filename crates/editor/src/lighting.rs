@@ -8,6 +8,7 @@
 //! settings are, with the editor's other settings.
 
 use crate::models::ModelId;
+use crate::properties::row;
 use egui::{RichText, Ui};
 use glam::Vec3;
 use serde::{Deserialize, Serialize};
@@ -287,18 +288,6 @@ pub enum Selection {
     Lamp(LampId),
     /// An imported model.
     Model(ModelId),
-}
-
-/// A labelled row in Properties: the name on the left, the field after it.
-pub(crate) fn row<R>(ui: &mut Ui, label: &str, add: impl FnOnce(&mut Ui) -> R) -> R {
-    ui.horizontal(|ui| {
-        ui.add_sized(
-            egui::vec2(78.0, 18.0),
-            egui::Label::new(RichText::new(label).color(crate::theme::TEXT_WEAK)),
-        );
-        add(ui)
-    })
-    .inner
 }
 
 /// The sun's fields in the Properties panel.

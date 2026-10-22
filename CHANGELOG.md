@@ -6,6 +6,8 @@ What changed in each version, for people using Solis. Newest first.
 
 ### Fixed
 
+- A layout saved before a panel existed keeps its arrangement and gets the new panel beside its usual neighbours, instead of being reset to the default.
+- A full Console no longer slows each new message down.
 - Damaged or hostile model files can no longer use up all memory: a buffer only reads the bytes it says it holds, a model's files and textures each have an overall budget, a tiny file asking for millions of corners is refused before reading, and one mesh placed too many times is refused. Files are only read from the model's folder.
 - A very large mesh no longer crashes Solis: it's split into pieces the graphics card can hold.
 - Mirrored parts of a model without normals were lit as if inside out.
