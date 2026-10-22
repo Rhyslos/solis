@@ -17,12 +17,12 @@ Solis is a 3D game engine. Read DESIGN.md before any change; it is the plan, and
 - **Game-specific systems stay out of the engine.** The engine meets the scale target in DESIGN.md §2; squads, campaigns and the like belong in games.
 - **Tandem work:** the project lead writes some of the code. Leave issues tagged by difficulty, explain what you build in plain words, and review their pull requests kindly and concretely.
 
-## Builds (decision 0001)
+## Builds (decision 0018)
 
-The repo is private, so CI minutes are limited.
+The repo is public, so GitHub's machines are free (decision 0018, which replaces 0001).
 
-- Never add a workflow that runs on every push, on a schedule, or for docs-only changes.
-- Workflows run on ready-for-review pull requests and by hand only, on Linux machines (the cheapest). Solis is made for Windows only (decision 0012): a Windows test run happens by hand or for release tags, and the Windows EXE is built when code is merged into main (decision 0010). No macOS.
+- Checks run on every update to a non-draft pull request and on merges into main, on Linux and Windows, skipping docs-only changes. A weekly security check and Dependabot keep dependencies safe. The Windows EXE is built when code is merged into main (decision 0010). Solis is made for Windows only (decision 0012); no macOS.
+- Keep workflows cheap anyway: cheap checks first, cancel older runs, cache builds, pin actions by commit.
 - Run the full checks locally before pushing, and list the results in the pull request: `cargo fmt --all -- --check`, `cargo clippy --workspace --all-targets -- -D warnings`, `cargo test --workspace`, `cargo deny check`, the GPU tests with `REQUIRE_GPU=1`, and `tools/smoke/window-smoke.sh` under `xvfb-run` (see ARCHITECTURE.md, Checks).
 
 ## Code

@@ -1,6 +1,6 @@
 # 0001. Builds run on demand, not on every update
 
-- **Status:** Accepted
+- **Status:** Replaced by [decision 0018](0018-checks-for-a-public-repo.md) (the repository became public)
 - **Date:** 2026-10-20
 
 ## Problem

@@ -295,7 +295,7 @@ Tandem work, with issues tagged by difficulty so there's always something the ri
 
 Both sides review each other's pull requests.
 
-**Builds:** the repo is private, so builds don't run on every update. See [decision 0001](docs/decisions/0001-builds-on-demand.md).
+**Builds:** the repo is public, so checks run on every pull request update, on Linux and Windows. See [decision 0018](docs/decisions/0018-checks-for-a-public-repo.md).
 
 ---
 
@@ -323,3 +323,4 @@ Both sides review each other's pull requests.
 - 2026-10-22: [0015](docs/decisions/0015-file-extensions.md): file extensions `project.solis`, `.solscene`, `.solprefab` and `.solmat`; `.sol` is Solidity's.
 - 2026-10-22: [0016](docs/decisions/0016-how-lust-joins-solis.md): Lust joins in Phase 4, right after the editor; the engine is described to Lust in generated `solis/*.lst` files with `native` methods, and a game's Lust is built as a library the engine includes. Scale, simulation, and sound and animation become Phases 5–7.
 - 2026-10-22: [0017](docs/decisions/0017-hdr-tone-mapping-sky-and-fog.md): the world drawn in HDR and tone mapped (AgX by default, ACES or none), with exposure; the editor backdrop or a daylight sky that follows the sun; distance fog. The editor's own backdrop and lines are never tone mapped.
+- 2026-10-22: [0018](docs/decisions/0018-checks-for-a-public-repo.md): the repository is public, so checks run on every pull request update and merge, with Windows and Direct3D 12 GPU tests, a weekly security check and Dependabot. Replaces 0001.

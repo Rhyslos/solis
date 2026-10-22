@@ -1,13 +1,14 @@
-# Checks for pull requests. The repo is private and Actions minutes are
-# limited, so this follows decision 0001 (docs/decisions/0001-*.md):
+# Checks for pull requests and merges, as decision 0018 sets out
+# (docs/decisions/0018-checks-for-a-public-repo.md). The repository is
+# public, so GitHub's machines are free:
 #
-# - runs only on pull requests that are ready for review, and by hand;
-#   never on every push, never on a schedule;
+# - runs on every update to a pull request that isn't a draft, on every
+#   merge into main, for release tags, and by hand;
 # - skips changes that touch only documentation;
 # - cheap checks first: the build and tests run only if they pass;
-# - the checks run on a Linux machine, the cheapest kind (this is not a Linux
-#   build: Solis is made for Windows only, decision 0012); a Windows test run
-#   is added by hand ("also test on Windows") or for a release tag.
+# - tests on Linux and on Windows. Solis is made for Windows only
+#   (decision 0012); the Linux runs are extra checks (a second GPU driver,
+#   and the window test, which needs X11 tools).
 name: CI
 
 on:
@@ -19,13 +20,14 @@ on:
       - "LICENSE"
       - "licenses/**"
   push:
+    branches: [main]
     tags: ["v*"]
+    paths-ignore:
+      - "**/*.md"
+      - "docs/**"
+      - "LICENSE"
+      - "licenses/**"
   workflow_dispatch:
-    inputs:
-      windows:
-        description: "Also test on Windows"
-        type: boolean
-        default: false
 
 # Read-only by default; no job here needs to write anything.
 permissions:
@@ -45,7 +47,7 @@ jobs:
     # Draft pull requests don't build.
     if: github.event_name != 'pull_request' || !github.event.pull_request.draft
     runs-on: ubuntu-latest
-    # A stuck step stops here instead of using up hours of the allowance.
+    # A stuck step stops here instead of running for hours.
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
@@ -78,7 +80,7 @@ jobs:
     name: Window and GPU tests (Linux)
     needs: checks
     runs-on: ubuntu-latest
-    # A stuck step stops here instead of using up hours of the allowance.
+    # A stuck step stops here instead of running for hours.
     timeout-minutes: 30
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
@@ -109,11 +111,8 @@ jobs:
           retention-days: 14
 
   windows:
-    name: Tests (Windows)
+    name: Tests and GPU tests (Windows)
     needs: checks
-    if: >-
-      startsWith(github.ref, 'refs/tags/v') ||
-      (github.event_name == 'workflow_dispatch' && inputs.windows)
     runs-on: windows-latest
     timeout-minutes: 45
     steps:
@@ -121,4 +120,10 @@ jobs:
         with:
           persist-credentials: false
       - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2
+      # Every test, with the GPU tests on Direct3D 12, the graphics path
+      # Solis ships on, through Windows' software renderer (WARP). A
+      # missing GPU is a failure here, not a skip.
       - run: cargo test --workspace --locked --no-fail-fast
+        env:
+          REQUIRE_GPU: "1"
+          WGPU_BACKEND: dx12

@@ -1,0 +1,26 @@
+# A weekly check for newly found security problems in Solis's dependencies
+# (decision 0018). Pull requests check them too; this catches advisories
+# published between pull requests. A few seconds on Linux, no build.
+name: Security
+
+on:
+  schedule:
+    # Mondays at 06:17 UTC.
+    - cron: "17 6 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  advisories:
+    name: Security advisories
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - uses: EmbarkStudios/cargo-deny-action@3c6349835b2b7b196a839186cb8b78e02f7b5f25 # v2
+        with:
+          command: check advisories
