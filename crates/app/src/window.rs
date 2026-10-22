@@ -5,8 +5,8 @@ use crate::branding;
 use crate::gpu::GpuViewport;
 use crate::import::{Finished, Importer};
 use editor::{
-    AppInfo, Camera, DockState, LampFromFile, LogLevel, Look, ModelId, ModelInfo, NoRenderer,
-    Overlays, Panel, SunSettings, Workbench, WorkbenchAction, theme::Accent,
+    AppInfo, Camera, DockState, EnvironmentSettings, LampFromFile, LogLevel, Look, ModelId,
+    ModelInfo, NoRenderer, Overlays, Panel, SunSettings, Workbench, WorkbenchAction, theme::Accent,
 };
 use eframe::egui;
 use std::path::{Path, PathBuf};
@@ -21,6 +21,8 @@ const OVERLAYS_KEY: &str = "viewport_overlays";
 const LOOK_KEY: &str = "viewport_look";
 /// Key under which the sun's settings are remembered.
 const SUN_KEY: &str = "viewport_sun";
+/// Key under which the sky, fog and exposure are remembered.
+const ENVIRONMENT_KEY: &str = "viewport_environment";
 /// Key under which the viewport camera is remembered.
 const CAMERA_KEY: &str = "viewport_camera";
 /// Window size on first launch, in logical pixels.
@@ -58,6 +60,9 @@ impl App {
         let sun: SunSettings = storage
             .and_then(|s| eframe::get_value(s, SUN_KEY))
             .unwrap_or_default();
+        let environment: EnvironmentSettings = storage
+            .and_then(|s| eframe::get_value(s, ENVIRONMENT_KEY))
+            .unwrap_or_default();
         let overlays: Overlays = storage
             .and_then(|s| eframe::get_value(s, OVERLAYS_KEY))
             .unwrap_or_default();
@@ -67,7 +72,8 @@ impl App {
             .with_overlays(overlays)
             .with_camera(camera)
             .with_look(look)
-            .with_sun(sun);
+            .with_sun(sun)
+            .with_environment(environment);
         workbench.log(
             LogLevel::Info,
             format!("{} {} started.", info.name, info.version),
@@ -245,6 +251,7 @@ impl eframe::App for App {
         eframe::set_value(storage, CAMERA_KEY, &self.workbench.camera());
         eframe::set_value(storage, LOOK_KEY, &self.workbench.look());
         eframe::set_value(storage, SUN_KEY, &self.workbench.sun());
+        eframe::set_value(storage, ENVIRONMENT_KEY, &self.workbench.environment());
     }
 }
 

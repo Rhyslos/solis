@@ -276,6 +276,8 @@ pub enum Selection {
     Nothing,
     /// The sun.
     Sun,
+    /// The sky, fog and exposure.
+    Environment,
     /// A lamp.
     Lamp(LampId),
     /// An imported model.
@@ -283,7 +285,7 @@ pub enum Selection {
 }
 
 /// A labelled row in Properties: the name on the left, the field after it.
-fn row<R>(ui: &mut Ui, label: &str, add: impl FnOnce(&mut Ui) -> R) -> R {
+pub(crate) fn row<R>(ui: &mut Ui, label: &str, add: impl FnOnce(&mut Ui) -> R) -> R {
     ui.horizontal(|ui| {
         ui.add_sized(
             egui::vec2(78.0, 18.0),

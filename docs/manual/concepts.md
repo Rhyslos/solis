@@ -43,6 +43,10 @@
 - **Range:** how far a lamp reaches. Real light fades on forever, getting weaker with distance; a range makes it stop sooner, which games use to keep many lamps cheap.
 - **Shadow:** where something blocks a light. Solis draws the sun's shadows with a **shadow map**: the scene drawn once more from the sun's side, so each point can be checked for whether it sees the sun.
 - **Sky light (ambient light):** the soft light that comes from the whole sky rather than from the sun, so shadows are never black.
+- **HDR (high dynamic range):** working out light brighter than a screen's white, as the real world is: a sunlit wall can be many times brighter than a shaded one.
+- **Exposure:** how bright the picture is made, in stops (EV) as on a camera: +1 doubles the brightness, -1 halves it.
+- **Tone mapping:** squeezing HDR light into what a screen can show, so bright highlights roll off softly instead of turning flat white. Solis uses AgX, as Blender does, unless you choose otherwise.
+- **Fog:** distant things fading into a colour, as in haze or mist. It gives a sense of distance and depth.
 
 ## Tools
 

@@ -26,7 +26,9 @@ Planned: `world` (entities and components, layer 0 or 1) and `assets` (layer 1) 
 
 ## Colour in the viewport
 
-The viewport draws into a plain 8-bit RGBA image, which egui shows as it is. Shaders work in linear colour and convert to sRGB themselves as they write (`encode` in `crates/render/src/viewport.wgsl`). Letting the GPU convert would need a second "view" of the image in another format, which older and software GPUs (OpenGL) can't make, and the editor has to open on those too. Phase 1's lit renderer will draw into a linear HDR image and convert in one final pass.
+The world is drawn in linear HDR colour (brighter than white allowed) into a 16-bit floating-point image, with multisampling. A last pass (`post_fs` in `crates/render/src/viewport.wgsl`) applies exposure and tone mapping (AgX, ACES or none) and converts to sRGB into a plain 8-bit RGBA image, which egui shows as it is ([decision 0017](docs/decisions/0017-hdr-tone-mapping-sky-and-fog.md)). The shader converts to sRGB itself, because letting the GPU do it would need a second "view" of the image in another format, which older and software GPUs (OpenGL) can't make, and the editor has to open on those too.
+
+The HDR image's alpha channel is a mask, not opacity: 1 where the lit world is (tone mapped), 0 for the editor's backdrop and the lines over it (shown exactly as the theme has them). Lines and the grid therefore blend their colour only and leave alpha alone, and they pick an opacity that looks the same as blending in sRGB (`overlay_alpha`), as the mockup was drawn.
 
 ## Checks
 

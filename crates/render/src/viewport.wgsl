@@ -1,8 +1,12 @@
 // Viewport shaders: the backdrop, models, the ground grid and the ground
 // axes.
 //
-// Colours are worked out in linear space and encoded to sRGB as they are
-// written (see `encode`). Z is up and units are metres; the grid
+// Everything is drawn in linear HDR colour (brighter than white allowed)
+// into a floating-point image. A last pass (`post_fs`) applies exposure and
+// tone mapping and encodes to sRGB (see `encode`). The image's alpha
+// channel marks which pixels are tone mapped: 1 for the lit world, 0 for
+// the editor's own backdrop and the lines drawn over it, which are shown
+// exactly as the theme has them. Z is up and units are metres; the grid
 // lies on the X-Y plane.
 
 struct Frame {
@@ -39,6 +43,15 @@ struct Frame {
     // x: the width of one shadow-map texel in metres; y: the shadow map's
     // size in texels; z: how many lamps are in `lights`.
     shadow: vec4<f32>,
+    // The soft sky light arriving from above and from below (rgb, linear).
+    light_above: vec4<f32>,
+    light_below: vec4<f32>,
+    // Fog: colour (rgb, linear); w = how quickly it thickens (ln 2 over the
+    // distance that hides half), 0 for none.
+    fog: vec4<f32>,
+    // x: exposure multiplier; y: tone mapping (0 AgX, 1 ACES, 2 none);
+    // z: 1 for the daylight sky, 0 for the editor's backdrop.
+    post: vec4<f32>,
 };
 
 // One lamp, as LightUniform in lighting.rs.
@@ -70,12 +83,31 @@ struct SkyOut {
     @location(0) ndc: vec2<f32>,
 };
 
-// Linear colour to sRGB, done here because the viewport image is plain
-// RGBA (see COLOR_FORMAT in renderer.rs).
+// Linear colour to sRGB, done in the last pass because the finished image
+// is plain RGBA (see COLOR_FORMAT in renderer.rs).
 fn encode(c: vec3<f32>) -> vec3<f32> {
     let low = c * 12.92;
     let high = 1.055 * pow(max(c, vec3<f32>(0.0)), vec3<f32>(1.0 / 2.4)) - 0.055;
     return select(high, low, c <= vec3<f32>(0.0031308));
+}
+
+// sRGB to linear colour.
+fn decode(c: vec3<f32>) -> vec3<f32> {
+    let low = c / 12.92;
+    let high = pow((max(c, vec3<f32>(0.0)) + 0.055) / 1.055, vec3<f32>(2.4));
+    return select(high, low, c <= vec3<f32>(0.04045));
+}
+
+// The opacity that, blending in linear colour over the backdrop's ground,
+// looks the same as `alpha` blended in sRGB, as the editor's lines were
+// tuned (and as egui draws). Linear blending makes faint light lines on a
+// dark background much brighter, so they'd look heavier than the mockup.
+fn overlay_alpha(color: vec3<f32>, alpha: f32) -> f32 {
+    let under = frame.ground.rgb;
+    let wanted = decode(encode(under) + alpha * (encode(color) - encode(under)));
+    let reach = color - under;
+    let per_channel = (wanted - under) / select(reach, vec3<f32>(1.0), abs(reach) < vec3<f32>(1e-5));
+    return clamp(dot(per_channel, vec3<f32>(1.0 / 3.0)), 0.0, 1.0);
 }
 
 // One triangle that covers the whole view.
@@ -104,7 +136,35 @@ fn sky_fs(in: SkyOut) -> @location(0) vec4<f32> {
     // Soften the horizon over about one pixel, so it never looks jagged.
     let edge = max(fwidth(elevation), 1e-5);
     let above = smoothstep(-edge, edge, elevation);
-    return vec4<f32>(encode(mix(ground, sky, above)), 1.0);
+    var color = mix(ground, sky, above);
+    let daylight = frame.post.z > 0.5;
+    if daylight {
+        // The daylight sky: a glow around the sun, brightest near the
+        // horizon, and the sun's disc (about twice its real size, so it's
+        // easy to find).
+        let towards_sun = normalize(frame.sun_direction.xyz);
+        let facing = max(dot(direction, towards_sun), 0.0);
+        let sun = frame.sun_color.rgb;
+        let glow = sun * (0.02 * pow(facing, 8.0) + 0.1 * pow(facing, 64.0));
+        let haze = 1.0 - smoothstep(0.0, 0.4, abs(elevation));
+        let disc = smoothstep(0.99985, 0.99990, facing) * above;
+        color = color + glow * (0.4 + haze) * above + sun * 8.0 * disc;
+    }
+    return vec4<f32>(color, select(0.0, 1.0, daylight));
+}
+
+// ------------------------------------------------------------------ fog ---
+
+// How much of something `distance` metres from the camera shows through
+// the fog (1 all of it, 0 none).
+fn fog_visibility(world: vec3<f32>) -> f32 {
+    return exp(-frame.fog.w * distance(world, frame.camera.xyz));
+}
+
+// The mask for the last pass: things far into the fog over the editor's
+// backdrop fade to the backdrop exactly as the theme shows it.
+fn world_mask(visibility: f32) -> f32 {
+    return select(visibility, 1.0, frame.post.z > 0.5);
 }
 
 // -------------------------------------------------------------- grid ---
@@ -173,7 +233,9 @@ fn grid_fs(in: GridOut) -> @location(0) vec4<f32> {
     }
     // A cool grey-blue (sRGB #9aa4b4), as in the mockup, over the shadow.
     let grid_color = vec3<f32>(0.323, 0.371, 0.456);
-    return vec4<f32>(encode(grid_color * (line / alpha)), alpha);
+    let color = grid_color * (line / alpha);
+    // Fog hides the grid with everything else.
+    return vec4<f32>(color, overlay_alpha(color, alpha) * fog_visibility(vec3<f32>(in.world, 0.0)));
 }
 
 // ------------------------------------------------------------- lines ---
@@ -204,7 +266,7 @@ fn line_fs(in: LineOut) -> @location(0) vec4<f32> {
     let reach = frame.focus.w;
     let distance = length(in.world.xy - frame.focus.xy);
     let fade = 1.0 - smoothstep(reach * 0.35, reach, distance);
-    return vec4<f32>(encode(in.color.rgb), in.color.a * fade);
+    return vec4<f32>(in.color.rgb, overlay_alpha(in.color.rgb, in.color.a * fade) * fog_visibility(in.world));
 }
 
 // ------------------------------------------------------------ models ---
@@ -256,15 +318,13 @@ fn mesh_vs(in: MeshIn) -> MeshOut {
     return out;
 }
 
-// Soft light from the sky above and the ground below: the "sky light" of
-// decision 0008, the first source of indirect light.
-const SKY_LIGHT: vec3<f32> = vec3<f32>(0.30, 0.34, 0.40);
-const GROUND_LIGHT: vec3<f32> = vec3<f32>(0.10, 0.09, 0.08);
 const PI: f32 = 3.14159265;
 
-// The light arriving from the sky and ground along direction `d`.
+// The soft light arriving along direction `d` from the sky above and the
+// ground below: the "sky light" of decision 0008, the first source of
+// indirect light. It follows the sky in use.
 fn sky_light(d: vec3<f32>) -> vec3<f32> {
-    return mix(GROUND_LIGHT, SKY_LIGHT, clamp(d.z * 0.5 + 0.5, 0.0, 1.0));
+    return mix(frame.light_below.rgb, frame.light_above.rgb, clamp(d.z * 0.5 + 0.5, 0.0, 1.0));
 }
 
 // How much of the sun reaches `world` (0 in shadow, 1 in sunlight), from
@@ -403,7 +463,7 @@ fn stylized(base: vec3<f32>, roughness: f32, occlusion: f32, n: vec3<f32>,
         pow(max(dot(n, h), 0.0), 8.0 + 120.0 * gloss * gloss)) * gloss * 0.6;
     let rim = smoothstep(0.55, 0.65, 1.0 - max(dot(n, v), 0.0)) * 0.35;
     let sun_tint = frame.sun_color.rgb / max(frame.sun_color.r + frame.sun_color.g + frame.sun_color.b, 0.0001) * 3.0;
-    return lit + sun_tint * highlight * step(0.001, n_dot_l) + SKY_LIGHT * rim;
+    return lit + sun_tint * highlight * step(0.001, n_dot_l) + frame.light_above.rgb * rim;
 }
 
 @fragment
@@ -463,8 +523,14 @@ fn mesh_fs(in: MeshOut, @builtin(front_facing) front: bool) -> @location(0) vec4
             lit = standard(color.rgb, metallic, roughness, occlusion, n, v, in.world, shadow);
         }
     }
-    let alpha = select(1.0, color.a, material.alpha.y == 2.0);
-    return vec4<f32>(encode(min(lit + glow, vec3<f32>(1.0))), alpha);
+    // Fog, then the mask for the last pass: the unlit look's colours are
+    // shown as painted, never tone mapped. (Blended surfaces use their
+    // alpha for blending instead.)
+    let visibility = fog_visibility(in.world);
+    let fogged = mix(frame.fog.rgb, lit + glow, visibility);
+    let mask = select(world_mask(visibility), 0.0, frame.shading.x == 2.0);
+    let alpha = select(mask, color.a, material.alpha.y == 2.0);
+    return vec4<f32>(fogged, alpha);
 }
 
 // ---------------------------------------------------------- outlines ---
@@ -473,19 +539,29 @@ fn mesh_fs(in: MeshOut, @builtin(front_facing) front: bool) -> @location(0) vec4
 // faces pushed outwards by a few pixels and filled near-black, so a dark
 // edge shows around it (the "inverted hull" outline many cel-shaded games
 // use).
+struct OutlineOut {
+    @builtin(position) clip: vec4<f32>,
+    @location(0) world: vec3<f32>,
+};
+
 @vertex
-fn outline_vs(in: MeshIn) -> @builtin(position) vec4<f32> {
+fn outline_vs(in: MeshIn) -> OutlineOut {
     let clip = frame.view_proj * vec4<f32>(in.position, 1.0);
     let normal_clip = (frame.view_proj * vec4<f32>(in.normal, 0.0)).xy;
     let len = length(normal_clip);
     let direction = select(vec2<f32>(0.0), normal_clip / len, len > 1e-6);
     let offset = direction * frame.shading.z * 2.0 / max(frame.screen.xy, vec2<f32>(1.0)) * clip.w;
-    return vec4<f32>(clip.xy + offset, clip.zw);
+    var out: OutlineOut;
+    out.clip = vec4<f32>(clip.xy + offset, clip.zw);
+    out.world = in.position;
+    return out;
 }
 
 @fragment
-fn outline_fs() -> @location(0) vec4<f32> {
-    return vec4<f32>(0.0, 0.0, 0.004, 1.0);
+fn outline_fs(in: OutlineOut) -> @location(0) vec4<f32> {
+    let visibility = fog_visibility(in.world);
+    let color = mix(frame.fog.rgb, vec3<f32>(0.0, 0.0, 0.0003), visibility);
+    return vec4<f32>(color, world_mask(visibility));
 }
 
 // ----------------------------------------------------------- shadows ---
@@ -494,4 +570,75 @@ fn outline_fs() -> @location(0) vec4<f32> {
 @vertex
 fn shadow_vs(in: MeshIn) -> @builtin(position) vec4<f32> {
     return frame.sun_view_proj * vec4<f32>(in.position, 1.0);
+}
+
+// ------------------------------------------------------- last pass ---
+
+// The finished HDR image (group 2; group 1 is the models' materials).
+@group(2) @binding(0) var hdr_image: texture_2d<f32>;
+
+struct PostOut {
+    @builtin(position) clip: vec4<f32>,
+};
+
+@vertex
+fn post_vs(@builtin(vertex_index) index: u32) -> PostOut {
+    var corners = array<vec2<f32>, 3>(
+        vec2<f32>(-1.0, -1.0), vec2<f32>(3.0, -1.0), vec2<f32>(-1.0, 3.0),
+    );
+    var out: PostOut;
+    out.clip = vec4<f32>(corners[index], 0.0, 1.0);
+    return out;
+}
+
+// AgX, Blender's default view since 4.0, using the well-known fit of its
+// curve by Benjamin Wrensch: colours are squeezed into a log range, put
+// through an S-curve, and turned back to linear. Bright colours drift
+// towards white, as on film.
+fn agx(c: vec3<f32>) -> vec3<f32> {
+    let inset = mat3x3<f32>(
+        vec3<f32>(0.842479062253094, 0.0423282422610123, 0.0423756549057051),
+        vec3<f32>(0.0784335999999992, 0.878468636469772, 0.0784336),
+        vec3<f32>(0.0792237451477643, 0.0791661274605434, 0.879142973793104),
+    );
+    let outset = mat3x3<f32>(
+        vec3<f32>(1.19687900512017, -0.0528968517574562, -0.0529716355144438),
+        vec3<f32>(-0.0980208811401368, 1.15190312990417, -0.0980434501171241),
+        vec3<f32>(-0.0990297440797205, -0.0989611768448433, 1.15107367264116),
+    );
+    let min_ev = -12.47393;
+    let max_ev = 4.026069;
+    var v = inset * max(c, vec3<f32>(1e-10));
+    v = clamp(log2(v), vec3<f32>(min_ev), vec3<f32>(max_ev));
+    v = (v - min_ev) / (max_ev - min_ev);
+    let v2 = v * v;
+    let v4 = v2 * v2;
+    v = 15.5 * v4 * v2 - 40.14 * v4 * v + 31.96 * v4 - 6.868 * v2 * v + 0.4298 * v2 + 0.1191 * v - 0.00232;
+    v = outset * v;
+    return pow(max(v, vec3<f32>(0.0)), vec3<f32>(2.2));
+}
+
+// The ACES film curve as most games fit it (Krzysztof Narkowicz's fit).
+fn aces(c: vec3<f32>) -> vec3<f32> {
+    let x = c * 0.6;
+    return clamp((x * (2.51 * x + 0.03)) / (x * (2.43 * x + 0.59) + 0.14), vec3<f32>(0.0), vec3<f32>(1.0));
+}
+
+// Exposure and tone mapping for the lit world, then sRGB for the screen.
+// Pixels marked 0 (the editor's backdrop and its lines) are left as they
+// are; partly covered ones blend between the two.
+@fragment
+fn post_fs(in: PostOut) -> @location(0) vec4<f32> {
+    let hdr = textureLoad(hdr_image, vec2<i32>(in.clip.xy), 0);
+    let exposed = max(hdr.rgb, vec3<f32>(0.0)) * frame.post.x;
+    var mapped: vec3<f32>;
+    if frame.post.y == 0.0 {
+        mapped = agx(exposed);
+    } else if frame.post.y == 1.0 {
+        mapped = aces(exposed);
+    } else {
+        mapped = exposed;
+    }
+    let shown = mix(hdr.rgb, mapped, clamp(hdr.a, 0.0, 1.0));
+    return vec4<f32>(encode(clamp(shown, vec3<f32>(0.0), vec3<f32>(1.0))), 1.0);
 }

@@ -6,6 +6,7 @@
 //! viewport through a [`ViewportRenderer`] it is handed each frame.
 
 use crate::camera::Camera;
+use crate::environment::EnvironmentSettings;
 use crate::icons::{self, Icon};
 use crate::layout::{self, Preset};
 use crate::lighting::{Lamp, LampFromFile, LampId, LampRequest, Selection, SunSettings};
@@ -233,7 +234,7 @@ impl Workbench {
     /// Whether what's selected is still there.
     fn selection_exists(&self) -> bool {
         match self.selection {
-            Selection::Nothing | Selection::Sun => true,
+            Selection::Nothing | Selection::Sun | Selection::Environment => true,
             Selection::Lamp(id) => self.viewport.lamps.iter().any(|l| l.id == id),
             Selection::Model(id) => self.models.iter().any(|m| m.id == id),
         }
@@ -320,6 +321,19 @@ impl Workbench {
             LogLevel::Info,
             format!("The file's sun ({name}) now lights the scene; change it under Sun."),
         );
+    }
+
+    /// Uses `environment` (as saved last time), with anything out of range
+    /// put back in range.
+    #[must_use]
+    pub fn with_environment(mut self, environment: EnvironmentSettings) -> Self {
+        self.viewport.environment = environment.sanitized();
+        self
+    }
+
+    /// The sky, fog and exposure, for saving.
+    pub fn environment(&self) -> EnvironmentSettings {
+        self.viewport.environment
     }
 
     /// The sun's settings, for saving.
@@ -982,6 +996,20 @@ fn scene_list(
             {
                 *selection = Selection::Sun;
             }
+            if scene_row(
+                ui,
+                (Icon::SceneFile, accent.colors().light),
+                "Environment",
+                "sky, fog",
+                *selection == Selection::Environment,
+                accent,
+                None,
+            )
+            .0
+            .clicked()
+            {
+                *selection = Selection::Environment;
+            }
             for lamp in lamps {
                 let [r, g, b] = lamp.color;
                 if scene_row(
@@ -1046,6 +1074,9 @@ fn properties(
                 ui.label(RichText::new("Sun").strong());
                 ui.add_space(4.0);
                 crate::lighting::sun_properties(ui, &mut viewport.sun);
+            }
+            Selection::Environment => {
+                crate::environment::environment_properties(ui, &mut viewport.environment);
             }
             Selection::Lamp(id) => {
                 let Some(i) = viewport.lamps.iter().position(|l| l.id == id) else {
@@ -1762,5 +1793,22 @@ mod tests {
             (sun.color, sun.strength, sun.shadows),
             ([255, 0, 0], 7.0, false)
         );
+    }
+
+    #[test]
+    fn the_environment_is_edited_in_properties() {
+        let mut h = harness();
+        h.run();
+        h.get_all_by_label("Environment").next().unwrap().click();
+        h.run();
+        assert_eq!(h.state().selection(), Selection::Environment);
+        let _ = h.get_by_label("Exposure");
+        h.get_by_label("On").click();
+        h.run();
+        assert!(h.state().environment().fog);
+        let _ = h.get_by_label("Half hidden at");
+        let saved = h.state().environment();
+        let restored = Workbench::new(info(), None).with_environment(saved);
+        assert_eq!(restored.environment(), saved);
     }
 }

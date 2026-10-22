@@ -4,7 +4,7 @@
 //! `viewport.wgsl`), lit by a fixed sun and the sky until real lights
 //! arrive in milestone 4.
 
-use crate::renderer::{COLOR_FORMAT, DEPTH_FORMAT};
+use crate::renderer::{DEPTH_FORMAT, HDR_FORMAT};
 use assets::{AlphaMode, Material, Model, Texture, Wrap};
 use bytemuck::{Pod, Zeroable};
 use wgpu::util::DeviceExt;
@@ -514,7 +514,7 @@ fn create_pipeline(
             entry_point: Some("mesh_fs"),
             compilation_options: wgpu::PipelineCompilationOptions::default(),
             targets: &[Some(wgpu::ColorTargetState {
-                format: COLOR_FORMAT,
+                format: HDR_FORMAT,
                 blend: blended.then_some(wgpu::BlendState::ALPHA_BLENDING),
                 write_mask: wgpu::ColorWrites::ALL,
             })],
@@ -563,7 +563,7 @@ fn create_outline_pipeline(
             entry_point: Some("outline_fs"),
             compilation_options: wgpu::PipelineCompilationOptions::default(),
             targets: &[Some(wgpu::ColorTargetState {
-                format: COLOR_FORMAT,
+                format: HDR_FORMAT,
                 blend: None,
                 write_mask: wgpu::ColorWrites::ALL,
             })],
