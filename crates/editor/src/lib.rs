@@ -7,6 +7,7 @@
 //! See this crate's README for its purpose and limits.
 
 pub mod camera;
+pub mod console;
 pub mod environment;
 pub mod icons;
 pub mod layout;
@@ -14,11 +15,16 @@ pub mod lighting;
 pub mod look;
 pub mod models;
 pub mod panel;
+mod panels;
+mod properties;
+mod scene_panel;
 pub mod theme;
+mod top_bar;
 pub mod viewport;
 pub mod workbench;
 
 pub use camera::{Camera, FlyInput};
+pub use console::{LogLevel, LogLine};
 pub use egui_dock::DockState;
 pub use environment::{EnvironmentSettings, SkyKind, ToneMapping};
 pub use layout::Preset;
@@ -27,4 +33,4 @@ pub use look::{Look, LookKind};
 pub use models::{ModelId, ModelInfo};
 pub use panel::Panel;
 pub use viewport::{NoRenderer, Overlays, Tool, Viewport, ViewportRenderer, ViewportView};
-pub use workbench::{AppInfo, LogLevel, LogLine, Workbench, WorkbenchAction};
+pub use workbench::{AppInfo, Workbench, WorkbenchAction};
