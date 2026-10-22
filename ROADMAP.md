@@ -14,16 +14,16 @@ Each phase ends with a **gate**: something the project lead tries by hand before
 | 1. Seeing things | ½–2 | Models, materials, lights and shadows in the viewport |
 | 2. The world | 2–3 | Entities, components, scenes and prefabs, saved as text |
 | 3. The editor | 3–4 | Building a scene by hand, with play mode |
-| 4. Scale | 4–5 | 2,000 units and 20,000 projectiles at 60 fps |
-| 5. Simulation and play | 5–6 | Physics, input, a deterministic simulation |
-| 6. Sound and animation | 6–7 | Sound events and buses; animated characters |
-| 7. Lust and Lua join | 7–8 | Components written in Lust or Lua, in play mode within 2 seconds |
+| 4. Lust and Lua join | 4–5 | Components written in Lust or Lua, in play mode within 2 seconds |
+| 5. Scale | 5–6 | 2,000 units and 20,000 projectiles at 60 fps |
+| 6. Simulation and play | 6–7 | Physics, input, a deterministic simulation |
+| 7. Sound and animation | 7–8 | Sound events and buses; animated characters |
 | 8. Netcode | 8–10 | Two PCs playing together over the internet |
 | 9. Effects and game UI | 9–10 | Solis Eclipse basics; HUDs and menus |
 | 10. Scripting, export and Git | 10–11 | The scripting window; games packaged for Windows; working in teams through Git |
 | 11. Solis 0.1 | 11–12 | The flagship space battle, docs, release |
 
-Phases 0–6 don't need Lust. If Lust isn't ready by Phase 7, Phases 8 and 9 go first.
+Lust joins in Phase 4, right after the editor, so game logic can be written in Lust from then on ([decision 0016](docs/decisions/0016-how-lust-joins-solis.md)). Phases 0–3 don't need Lust; if it isn't ready by Phase 4, Phase 5 (Scale) goes first.
 
 ---
 
@@ -78,7 +78,24 @@ Milestones, one pull request each:
 
 **Gate:** build a small scene from scratch in the editor, press Play, stop, and everything is back as it was.
 
-## Phase 4: Scale
+## Phase 4: Lust and Lua join
+
+Components in Rust work from Phase 2, since they're the engine's own kind. This phase adds the other two. It comes straight after the editor, because Lust components need the inspector and play mode, and nothing in Phases 5 to 7 has to wait for it ([decision 0016](docs/decisions/0016-how-lust-joins-solis.md)).
+
+**Ready in Lust already:** `native` methods and `lust build --library` (LUST.md §21), tested with a small Rust program standing in for Solis.
+
+- **Lust builds into Solis:** Solis writes the files that describe the engine to Lust (`solis/entity.lst`, `solis/world.lst` and so on) from its own Rust code; a game's Lust is built as a library the engine includes, and its `native` methods call the engine.
+- `object … like Component` becomes the same kind of component the engine's own are, with `has` fields in the inspector. Lust's mistakes show in the Problems panel with file and line, never a Rust error.
+- **Engine types and events:** vectors and rotations as real value types in Lust, and typed events between components (`onHit(Entity by, int damage)`).
+- **Fast changes** (DESIGN.md §3.1): the engine prebuilt, only the game's Lust built, and loaded into play mode without restarting.
+- **Lua components** through Luau: the same inspector fields, events and entities, with the game API's Lua face.
+- **A first game in Lust:** a small sample (a turret with ammo, cooldown and damage) that the later phases keep growing, and a first page of the Lust guide for Solis.
+
+**Decide before starting:** how fast changes reach play mode (DESIGN.md §3.1).
+
+**Gate:** change a Lust component while the game is running and see the change within **2 seconds**; a Lua component changes instantly. A mistake in Lust shows a friendly message, never a Rust error. One entity can carry a Rust, a Lust and a Lua component that talk to each other through events.
+
+## Phase 5: Scale
 
 The phase that proves DESIGN.md §2 early, while changing course is still cheap.
 
@@ -89,46 +106,29 @@ The phase that proves DESIGN.md §2 early, while changing course is still cheap.
 
 **Gate:** the benchmark runs at 60 fps on your PC, and the frame profiler shows where the time goes.
 
-## Phase 5: Simulation and play
+## Phase 6: Simulation and play
 
 - A fixed-timestep simulation, separate from the frame rate.
-- Determinism rules: seeded randomness, checksums of the game state, and Rapier physics in its determinism mode.
+- Determinism rules: seeded randomness, checksums of the game state, and Rapier physics in its determinism mode; Lust's checker and Lua warnings flag code that could break them.
 - Input as named actions, with gamepads and rebinding.
 - Save games.
-- The first ready-made gameplay components, in Rust for now: a character controller and a camera controller.
+- The first ready-made gameplay components, written in Lust as examples for game makers: a character controller and a camera controller.
 
 **Gate:** walk a character around a level with physics, save, quit and load. The same recorded inputs always give exactly the same result.
 
-## Phase 6: Sound and animation
+## Phase 7: Sound and animation
 
 - **Sound** (Kira): sound events with random clips, pitch and volume; buses and ducking; 3D falloff; reverb zones.
 - **Animation:** skeletal animation from glTF, state machines, blending, and animation events.
 
 **Gate:** a character walks and runs with smooth blending, footsteps play on the right frames, and a reverb zone changes how they sound.
 
-## Phase 7: Lust and Lua join
-
-Components in Rust work from Phase 2, since they're the engine's own kind. This phase adds the other two.
-
-**Needs from Lust:** its Rust output, and using Rust crates from Lust.
-
-- `fetch solis;`: the game API as Lust sees it.
-- `object … like Component` compiles to the same kind of component the engine's own are, with `has` fields in the inspector.
-- Typed events between components.
-- Fast changes (DESIGN.md §3.1): the engine prebuilt, only the game's code compiled, a faster compiler for development, and hot reload.
-- **Lua components** through Luau: the same inspector fields, events and entities, with the game API's Lua face, and warnings where Lua code could break determinism.
-- The ready-made gameplay components move from Rust to Lust, as examples for game makers.
-
-**Decide before starting:** how fast changes reach play mode (DESIGN.md §3.1).
-
-**Gate:** change a Lust component while the game is running and see the change within **2 seconds**; a Lua component changes instantly. A mistake in Lust shows a friendly message, never a Rust error. One entity can carry a Rust, a Lust and a Lua component that talk to each other through events.
-
 ## Phase 8: Netcode
 
 Netcode in layers ([decision 0005](docs/decisions/0005-netcode-in-layers.md)):
 
 - **Transport and sessions:** connections, reliable and unreliable messages, encryption, lobbies, and relays or Steam's networking for players behind home routers.
-- **Tools:** a lag and packet-loss simulator, network stats, desync detection with the checksums from Phase 5, and replays.
+- **Tools:** a lag and packet-loss simulator, network stats, desync detection with the checksums from Phase 6, and replays.
 - **Lockstep,** as an optional module, for strategy games.
 - **Other models plug in:** check that `lightyear` (server-authoritative) and `ggrs` (rollback) work with Solis, with a small example each.
 - Dedicated server builds.
@@ -157,7 +157,7 @@ Netcode in layers ([decision 0005](docs/decisions/0005-netcode-in-layers.md)):
 ## Phase 11: Solis 0.1
 
 - **The flagship sample, written in Lust:** a small space battle. Two capital ships, a carrier launching fighter squadrons, a few hundred lasers in the air, over the network.
-- **Docs:** getting started, a first-game tutorial, and a reference for `fetch solis;`.
+- **Docs:** getting started, a first-game tutorial, and a reference for the engine as Lust sees it (the `solis/` files).
 - Templates for a new project.
 - The 0.1 release.
 
@@ -171,5 +171,5 @@ Open-world streaming and terrain, navigation and AI, the full Solis Eclipse tool
 
 ## Who does what
 
-- **Claude:** the engine in Rust, and the Lust side of Phase 7 in the Lust repo.
-- **The project lead:** the decisions before each phase, every gate, the theme, and choosing controls. From Phase 7: the gameplay components in Lust, the flagship sample's game logic, and LustScript editor tools. Before then, small Rust tasks tagged `good first issue`, if you want to try some.
+- **Claude:** the engine in Rust, and the Lust side of Phase 4 in the Lust repo.
+- **The project lead:** the decisions before each phase, every gate, the theme, and choosing controls. From Phase 4: the gameplay components in Lust, the flagship sample's game logic, and LustScript editor tools. Before then, small Rust tasks tagged `good first issue`, if you want to try some.

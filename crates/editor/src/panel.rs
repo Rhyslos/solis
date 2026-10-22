@@ -8,7 +8,7 @@ use serde::{Deserialize, Serialize};
 pub enum Panel {
     /// The 3D view of the scene.
     Viewport,
-    /// The running game, beside the viewport (Phase 5).
+    /// The running game, beside the viewport (Phase 3).
     Game,
     /// The scene's entities, as a tree.
     Scene,
@@ -18,7 +18,7 @@ pub enum Panel {
     Properties,
     /// Assets: models, textures, sounds, prefabs.
     Library,
-    /// Game code in Lust, Rust or Lua (Phase 7).
+    /// Game code in Lust, Rust or Lua (Phase 4).
     Code,
     /// Messages from the editor, the build and the game.
     Console,

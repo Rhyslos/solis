@@ -6,6 +6,7 @@ What changed in each version, for people using Solis. Newest first.
 
 ### Changed
 
+- Writing game code in Lust now arrives in Phase 4, right after the editor, instead of Phase 7; the editor's panels say so. Playing the scene arrives with the editor, in Phase 3.
 - The Console stays fast when full: it lays out only the messages in view (a full Console took about 10 ms a frame, now 0.3 ms). Long messages are cut to one line and show in full when pointed at.
 - A camera saved with broken numbers (from a damaged settings file) is repaired when Solis starts, instead of showing a broken view.
 - `solis --help` takes the program's name from one place, like the rest of the editor.
