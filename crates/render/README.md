@@ -2,7 +2,7 @@
 
 **Layer 1 · Engine**
 
-Draws viewports with wgpu into offscreen images: the backdrop (a calm sky with a horizon), imported models with glTF's full material in the standard, stylized (with outlines) or unlit look, lit by the sun (with a shadow map, also darkening the ground), up to 16 point lights and spotlights, and the sky; the ground grid (1 m, 10 m and 100 m lines), the X and Y axes, and small markers where lamps are. `lighting.rs` holds the sun and lamps, in Blender's units ([decision 0014](../../docs/decisions/0014-lights-placed-two-ways.md)).
+Draws viewports with wgpu into offscreen images: the backdrop (a calm sky with a horizon), imported models with glTF's full material in the standard, stylized (with outlines) or unlit look, lit by the sun (with a shadow map, also darkening the ground), up to 16 point lights and spotlights, and the sky; drawn in HDR and tone mapped (AgX, ACES or none) with exposure, under the editor's backdrop or a daylight sky, with optional fog (`environment.rs`, [decision 0017](../../docs/decisions/0017-hdr-tone-mapping-sky-and-fog.md)); the ground grid (1 m, 10 m and 100 m lines), the X and Y axes, and small markers where lamps are. `lighting.rs` holds the sun and lamps, in Blender's units ([decision 0014](../../docs/decisions/0014-lights-placed-two-ways.md)).
 
 ## Purpose
 
@@ -28,4 +28,4 @@ The image is plain 8-bit RGBA; the shaders convert linear colour to sRGB as they
 
 ## Status
 
-Phase 1, milestone 4: backdrop, grid, axes, models in three looks, the sun with shadows, and lamps.
+Phase 1 complete: backdrop and daylight sky, grid, axes, models in three looks, the sun with shadows, lamps, fog, HDR and tone mapping.

@@ -7,6 +7,7 @@
 //! See this crate's README for its purpose and limits.
 
 pub mod camera;
+pub mod environment;
 pub mod icons;
 pub mod layout;
 pub mod lighting;
@@ -19,6 +20,7 @@ pub mod workbench;
 
 pub use camera::{Camera, FlyInput};
 pub use egui_dock::DockState;
+pub use environment::{EnvironmentSettings, SkyKind, ToneMapping};
 pub use layout::Preset;
 pub use lighting::{Lamp, LampFromFile, LampId, LampKind, Selection, SunSettings};
 pub use look::{Look, LookKind};

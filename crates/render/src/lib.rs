@@ -1,17 +1,20 @@
 //! Draws viewports with wgpu: the backdrop, models (uploaded once with
 //! [`ViewportRenderer::upload_model`]), the ground grid and the axes. Full
-//! materials, the sun with its shadows, and lamps.
+//! materials, the sun with its shadows, lamps, the sky and fog, drawn in HDR
+//! and tone mapped.
 //!
 //! Layer 1 (engine). Knows nothing about the editor or any interface: it
 //! receives a [`FrameParams`] (camera and colours) and produces an image in
 //! a [`ViewportTarget`]. See this crate's README for its purpose and limits.
 
+mod environment;
 mod frame;
 mod gpu_model;
 mod lighting;
 mod readback;
 mod renderer;
 
+pub use environment::{Environment, Fog, Sky, Tonemap};
 pub use frame::{
     FrameParams, GRID_HALF_EXTENT, GRID_MIN_REACH, GRID_REACH_PER_DISTANCE, GRID_SPACINGS,
     GRID_STRENGTHS, Look, Shading, grid_reach, srgb_to_linear,
@@ -23,7 +26,7 @@ pub use lighting::{
 };
 pub use readback::read_pixels;
 pub use renderer::{
-    AXIS_X_COLOR, AXIS_Y_COLOR, COLOR_FORMAT, DEPTH_FORMAT, LineVertex, SHADER_SOURCE,
+    AXIS_X_COLOR, AXIS_Y_COLOR, COLOR_FORMAT, DEPTH_FORMAT, HDR_FORMAT, LineVertex, SHADER_SOURCE,
     ViewportRenderer, ViewportTarget, best_sample_count, ground_axes,
 };
 
@@ -66,6 +69,8 @@ mod shader_tests {
                 "mesh_vs",
                 "outline_fs",
                 "outline_vs",
+                "post_fs",
+                "post_vs",
                 "shadow_vs",
                 "sky_fs",
                 "sky_vs"

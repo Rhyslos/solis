@@ -9,8 +9,8 @@
 
 use glam::{Mat4, Vec3, Vec4};
 use render::{
-    FrameParams, Light, LightKind, Look, Shading, Sun, ViewportRenderer, best_sample_count,
-    read_pixels,
+    Environment, Fog, FrameParams, Light, LightKind, Look, Shading, Sky, Sun, Tonemap,
+    ViewportRenderer, best_sample_count, read_pixels,
 };
 
 /// The editor's backdrop, sRGB 0 to 255 (as in the editor theme).
@@ -122,6 +122,7 @@ fn the_backdrop_shows_sky_above_and_ground_below_in_the_right_colours() {
             shading: Shading::default(),
             size_px: [64, 64],
             sun: Sun::default(),
+            environment: Environment::default(),
         },
         &[],
         &[],
@@ -170,6 +171,7 @@ fn the_ground_axes_show_in_red_and_green() {
             shading: Shading::default(),
             size_px: [64, 64],
             sun: Sun::default(),
+            environment: Environment::default(),
         },
         &[],
         &[],
@@ -220,6 +222,7 @@ fn scale_check_viewport_frame() {
         shading: Shading::default(),
         size_px: [1920, 1080],
         sun: Sun::default(),
+        environment: Environment::default(),
     };
     let frames = 60;
     let start = std::time::Instant::now();
@@ -269,6 +272,39 @@ fn render_lit(
     sun: Sun,
     lights: &[Light],
 ) -> Option<(Vec<u8>, u32)> {
+    render_env(
+        model,
+        view_projection,
+        eye,
+        shading,
+        size,
+        sun,
+        lights,
+        unmapped(),
+    )
+}
+
+/// No tone mapping: the lighting tests check light itself, so colours past
+/// white are cut off as before (tone mapping has tests of its own).
+fn unmapped() -> Environment {
+    Environment {
+        tonemap: Tonemap::Standard,
+        ..Environment::default()
+    }
+}
+
+/// As [`render_lit`], with the sky, fog and tone mapping in `environment`.
+#[allow(clippy::too_many_arguments)]
+fn render_env(
+    model: &assets::Model,
+    view_projection: Mat4,
+    eye: Vec3,
+    shading: Shading,
+    size: u32,
+    sun: Sun,
+    lights: &[Light],
+    environment: Environment,
+) -> Option<(Vec<u8>, u32)> {
     let gpu = gpu()?;
     let renderer = ViewportRenderer::new(&gpu.device, best_sample_count(&gpu.adapter));
     let target = renderer.create_target(&gpu.device, [size, size]);
@@ -288,6 +324,7 @@ fn render_lit(
             shading,
             size_px: [size, size],
             sun,
+            environment,
         },
         &[&uploaded],
         lights,
@@ -546,9 +583,9 @@ fn dump_renders_to_look_at() {
         }
         std::fs::write(std::path::Path::new(&dir).join(format!("{name}.ppm")), ppm).unwrap();
     }
-    // The sample lit by a warm spotlight and a blue point light, with the
-    // sun's shadows.
-    let eye = Vec3::new(1.5, -6.0, 2.6);
+    // The showcase lit by a warm spotlight and a blue point light, with the
+    // sun's shadows, under each sky.
+    let eye = Vec3::new(1.5, -9.0, 2.6);
     let lights = [
         Light {
             kind: LightKind::Spot {
@@ -570,15 +607,41 @@ fn dump_renders_to_look_at() {
             range: None,
         },
     ];
-    for (name, look) in [("lit", Look::Standard), ("lit-stylized", Look::Stylized)] {
-        let Some((pixels, size)) = render_lit(
-            &sample(),
+    let day = Sky::Daylight { strength: 1.0 };
+    let haze = Some(Fog {
+        half_distance: 15.0,
+        color: None,
+    });
+    for (name, look, environment) in [
+        ("lit", Look::Standard, Environment::default()),
+        ("lit-stylized", Look::Stylized, Environment::default()),
+        ("day", Look::Standard, env(day, None, 0.0, Tonemap::Agx)),
+        (
+            "day-stylized",
+            Look::Stylized,
+            env(day, None, 0.0, Tonemap::Agx),
+        ),
+        (
+            "day-aces",
+            Look::Standard,
+            env(day, None, 0.0, Tonemap::Aces),
+        ),
+        ("fog", Look::Standard, env(day, haze, 0.0, Tonemap::Agx)),
+        (
+            "backdrop-fog",
+            Look::Standard,
+            env(Sky::Backdrop, haze, 0.0, Tonemap::Agx),
+        ),
+    ] {
+        let Some((pixels, size)) = render_env(
+            &showcase_on_floor(),
             looking_north(eye),
             eye,
             shading(look),
             256,
             Sun::default(),
             &lights,
+            environment,
         ) else {
             return;
         };
@@ -909,4 +972,228 @@ fn many_lamps_and_odd_values_draw_without_trouble() {
         return;
     };
     assert_eq!(pixels.len(), (size * size * 4) as usize);
+}
+
+// ---------------------------------------------- sky, fog and exposure ---
+
+/// The showcase scene standing on a big floor, for looking at.
+fn showcase_on_floor() -> assets::Model {
+    let mut model = showcase();
+    let floor = big_floor(60.0);
+    model.meshes.extend(floor.meshes);
+    model.bounds.min = model.bounds.min.min(floor.bounds.min);
+    model.bounds.max = model.bounds.max.max(floor.bounds.max);
+    model
+}
+
+/// A grey floor `half` metres each way, a little above the grid.
+fn big_floor(half: f32) -> assets::Model {
+    let mut model = floor(false);
+    model.meshes = vec![square(0.0, 0.05, half)];
+    model.bounds = assets::Bounds {
+        min: Vec3::new(-half, -half, 0.0),
+        max: Vec3::new(half, half, 0.05),
+    };
+    model
+}
+
+fn env(sky: Sky, fog: Option<Fog>, exposure: f32, tonemap: Tonemap) -> Environment {
+    Environment {
+        sky,
+        fog,
+        exposure,
+        tonemap,
+    }
+}
+
+#[test]
+fn tone_mapping_rolls_off_bright_light_and_exposure_scales_it() {
+    let eye = Vec3::new(0.0, 0.0, 10.0);
+    let bright = Sun {
+        strength: 12.0,
+        shadows: false,
+        ..Sun::default()
+    };
+    let render = |environment| {
+        render_env(
+            &floor(false),
+            looking_down(eye),
+            eye,
+            Shading::default(),
+            64,
+            bright,
+            &[],
+            environment,
+        )
+    };
+    let Some((standard, size)) = render(env(Sky::Backdrop, None, 0.0, Tonemap::Standard)) else {
+        return;
+    };
+    let (agx, _) = render(env(Sky::Backdrop, None, 0.0, Tonemap::Agx)).unwrap();
+    let (aces, _) = render(env(Sky::Backdrop, None, 0.0, Tonemap::Aces)).unwrap();
+    let (darker, _) = render(env(Sky::Backdrop, None, -3.0, Tonemap::Agx)).unwrap();
+    let at = |p: &[u8]| ground_pixel(p, size, 1.0, 1.0);
+    assert!(
+        at(&standard).iter().all(|&c| c >= 250),
+        "cut off at white: {:?}",
+        at(&standard)
+    );
+    assert!(
+        at(&agx).iter().all(|&c| c < 250),
+        "AgX rolls off: {:?}",
+        at(&agx)
+    );
+    assert!(brightness(at(&aces)) > brightness(at(&darker)));
+    assert!(
+        brightness(at(&darker)) + 100 < brightness(at(&agx)),
+        "-3 EV: {:?} vs {:?}",
+        at(&darker),
+        at(&agx)
+    );
+}
+
+#[test]
+fn the_editor_backdrop_ignores_exposure_and_tone_mapping() {
+    let eye = Vec3::new(0.0, 0.0, 2.0);
+    let render = |environment| {
+        render_env(
+            &floor(false),
+            looking_north(eye),
+            eye,
+            Shading::default(),
+            64,
+            Sun::default(),
+            &[],
+            environment,
+        )
+    };
+    let Some((plain, size)) = render(env(Sky::Backdrop, None, 0.0, Tonemap::Standard)) else {
+        return;
+    };
+    let (exposed, _) = render(env(Sky::Backdrop, None, 4.0, Tonemap::Aces)).unwrap();
+    let top = |p: &[u8]| pixel(p, size, size / 2, 0);
+    assert_eq!(top(&plain), top(&exposed));
+}
+
+#[test]
+fn the_daylight_sky_follows_the_sun() {
+    let eye = Vec3::new(0.0, 0.0, 2.0);
+    let render = |sun: Sun| {
+        render_env(
+            &floor(false),
+            looking_north(eye),
+            eye,
+            Shading::default(),
+            64,
+            sun,
+            &[],
+            env(Sky::Daylight { strength: 1.0 }, None, 0.0, Tonemap::Agx),
+        )
+    };
+    // The sun behind the camera, high: a blue sky ahead.
+    let noon = Sun {
+        direction: Vec3::new(0.0, 0.5, -1.0).normalize(),
+        ..Sun::default()
+    };
+    let Some((day, size)) = render(noon) else {
+        return;
+    };
+    let up = pixel(&day, size, size / 2, 2);
+    assert!(up[2] > up[0] + 30, "blue overhead: {up:?}");
+    // The sun setting straight ahead: warm at the horizon, and its disc
+    // shows bright in the middle of the view.
+    let setting = Sun {
+        direction: Vec3::new(0.0, -1.0, -0.02).normalize(),
+        ..Sun::default()
+    };
+    let (dusk, _) = render(setting).unwrap();
+    let beside = pixel(&dusk, size, size / 4, size / 2 - 3);
+    assert!(beside[0] > beside[2], "warm horizon: {beside:?}");
+    let disc = pixel(&dusk, size, size / 2, size / 2 - 1);
+    assert!(brightness(disc) > 650, "the sun's disc: {disc:?}");
+    // At night, the sky is dark.
+    let night = Sun {
+        direction: Vec3::new(0.0, 0.3, 1.0).normalize(),
+        ..Sun::default()
+    };
+    let (dark, _) = render(night).unwrap();
+    assert!(brightness(pixel(&dark, size, size / 2, 2)) < 40);
+}
+
+#[test]
+fn fog_hides_the_distance_into_the_horizon() {
+    let eye = Vec3::new(0.0, 0.0, 2.0);
+    let render = |fog| {
+        render_env(
+            &big_floor(2000.0),
+            looking_north(eye),
+            eye,
+            Shading::default(),
+            128,
+            Sun {
+                shadows: false,
+                ..Sun::default()
+            },
+            &[],
+            env(Sky::Backdrop, fog, 0.0, Tonemap::Agx),
+        )
+    };
+    let Some((clear, size)) = render(None) else {
+        return;
+    };
+    let fog = Fog {
+        half_distance: 20.0,
+        color: None,
+    };
+    let (foggy, _) = render(Some(fog)).unwrap();
+    // Just below the horizon the floor is a kilometre away: lost in
+    // the fog, it shows the backdrop's horizon colour exactly. Near the
+    // bottom of the view it's a few metres away and barely changes.
+    let far = pixel(&foggy, size, size / 4, size / 2);
+    let horizon = pixel(&clear, size, size / 4, size / 2 - 2);
+    assert!(
+        (brightness(far) - brightness(horizon)).abs() < 12,
+        "{far:?} vs horizon {horizon:?}"
+    );
+    let near_clear = pixel(&clear, size, size / 4, size - 2);
+    let near_foggy = pixel(&foggy, size, size / 4, size - 2);
+    assert!(brightness(far) + 100 < brightness(near_foggy));
+    assert!((brightness(near_clear) - brightness(near_foggy)).abs() < 80);
+    // A fog colour of its own.
+    let red = Fog {
+        half_distance: 1.0,
+        color: Some([1.0, 0.0, 0.0]),
+    };
+    let (reddened, _) = render(Some(red)).unwrap();
+    let p = pixel(&reddened, size, size / 4, size / 2 + 4);
+    assert!(i32::from(p[0]) > i32::from(p[1]) + 100, "{p:?}");
+}
+
+#[test]
+fn the_unlit_look_ignores_exposure() {
+    let eye = Vec3::new(0.0, 0.0, 10.0);
+    let render = |exposure| {
+        render_env(
+            &floor(false),
+            looking_down(eye),
+            eye,
+            Shading {
+                look: Look::Unlit,
+                ..Shading::default()
+            },
+            64,
+            Sun::default(),
+            &[],
+            env(Sky::Backdrop, None, exposure, Tonemap::Agx),
+        )
+    };
+    let Some((a, size)) = render(0.0) else {
+        return;
+    };
+    let (b, _) = render(3.0).unwrap();
+    assert_eq!(
+        ground_pixel(&a, size, 1.0, 1.0),
+        ground_pixel(&b, size, 1.0, 1.0)
+    );
+    assert_eq!(ground_pixel(&a, size, 1.0, 1.0), [255, 255, 255]);
 }

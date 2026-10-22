@@ -8,7 +8,7 @@ The editor's interface, as decided in [decision 0004](../../docs/decisions/0004-
 
 Draw the editor with egui and egui_dock, keep its state between frames (the panel layout, the chosen tool, the accent colour, the camera, the console), and tell the app what to do through `WorkbenchAction`s.
 
-`look.rs` holds the viewport's look (standard, stylized or unlit). `models.rs` lists the imported models (the app holds them on the GPU). `lighting.rs` holds the sun's settings and the lamps, what's selected in the Scene panel, and their fields in Properties. `camera.rs` holds the viewport camera and how it flies ([decision 0009](../../docs/decisions/0009-fly-camera-controls.md)). The viewport turns each frame's mouse and keys into a `FlyInput`, and `Camera::fly` does the maths, so tests can fly the camera without a window.
+`look.rs` holds the viewport's look (standard, stylized or unlit). `models.rs` lists the imported models (the app holds them on the GPU). `environment.rs` holds the sky, fog, exposure and tone mapping. `lighting.rs` holds the sun's settings and the lamps, what's selected in the Scene panel, and their fields in Properties. `camera.rs` holds the viewport camera and how it flies ([decision 0009](../../docs/decisions/0009-fly-camera-controls.md)). The viewport turns each frame's mouse and keys into a `FlyInput`, and `Camera::fly` does the maths, so tests can fly the camera without a window.
 
 ## Must never
 
@@ -22,4 +22,4 @@ egui, egui_dock, glam and serde. No Solis crates yet; the engine's crates join a
 
 ## Status
 
-Phase 1, milestone 4: the shell, a flying camera, imported models, looks, and lights. The panels other than the viewport and the console say what arrives in which phase.
+Phase 1 complete: the shell, a flying camera, imported models, looks, lights, sky and fog. The panels other than the viewport and the console say what arrives in which phase.

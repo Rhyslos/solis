@@ -42,6 +42,8 @@ pub struct FrameParams {
     pub size_px: [u32; 2],
     /// The sun's direction, colour, strength and shadows.
     pub sun: crate::lighting::Sun,
+    /// The sky, fog, exposure and tone mapping.
+    pub environment: crate::environment::Environment,
 }
 
 /// The ways models can be shaded.
@@ -94,13 +96,15 @@ pub fn srgb_to_linear(c: f32) -> f32 {
     }
 }
 
-fn linear(rgb: [f32; 3]) -> [f32; 4] {
-    [
-        srgb_to_linear(rgb[0]),
-        srgb_to_linear(rgb[1]),
-        srgb_to_linear(rgb[2]),
-        1.0,
-    ]
+/// A colour with a fourth number of 1 added, as the shader's vectors are.
+trait ExtendOne {
+    fn extend_one(self) -> [f32; 4];
+}
+
+impl ExtendOne for [f32; 3] {
+    fn extend_one(self) -> [f32; 4] {
+        [self[0], self[1], self[2], 1.0]
+    }
 }
 
 /// How far around the focus point the grid reaches, for a camera at
@@ -129,6 +133,10 @@ pub(crate) struct FrameUniforms {
     sun_direction: [f32; 4],
     sun_color: [f32; 4],
     shadow: [f32; 4],
+    light_above: [f32; 4],
+    light_below: [f32; 4],
+    fog: [f32; 4],
+    post: [f32; 4],
 }
 
 /// What the renderer worked out about the sun and lamps for one frame.
@@ -159,6 +167,14 @@ impl FrameUniforms {
     pub(crate) fn new(params: &FrameParams, light: &FrameLight) -> Self {
         let (sun_direction, sun_color) =
             crate::lighting::sun_uniforms(&params.sun, light.shadows_drawn);
+        let sky = crate::environment::sky_colors(
+            params.environment.sky,
+            [params.sky_top, params.sky_horizon, params.ground],
+            params.sun.direction,
+            params.sun.strength,
+        );
+        let mut post = crate::environment::post_uniform(&params.environment);
+        post[2] = if sky.daylight { 1.0 } else { 0.0 };
         let reach = grid_reach(params.camera_position.distance(params.focus));
         let [fine, major, super_level] = GRID_SPACINGS;
         let [a, b, c] = GRID_STRENGTHS;
@@ -169,9 +185,9 @@ impl FrameUniforms {
             focus: [params.focus.x, params.focus.y, params.focus.z, reach],
             grid: [fine, major, super_level, GRID_HALF_EXTENT],
             grid_strength: [a, b, c, 0.0],
-            sky_top: linear(params.sky_top),
-            sky_horizon: linear(params.sky_horizon),
-            ground: linear(params.ground),
+            sky_top: sky.top.extend_one(),
+            sky_horizon: sky.horizon.extend_one(),
+            ground: sky.ground.extend_one(),
             shading: [
                 match params.shading.look {
                     Look::Standard => 0.0,
@@ -196,6 +212,10 @@ impl FrameUniforms {
                 light.lamps as f32,
                 0.0,
             ],
+            light_above: sky.light_above.extend_one(),
+            light_below: sky.light_below.extend_one(),
+            fog: crate::environment::fog_uniform(params.environment.fog, &sky),
+            post,
         }
     }
 }
@@ -215,13 +235,14 @@ mod tests {
             shading: Shading::default(),
             size_px: [800, 600],
             sun: crate::lighting::Sun::default(),
+            environment: crate::environment::Environment::default(),
         }
     }
 
     #[test]
     fn uniforms_match_the_shader_layout() {
-        // Three matrices and twelve vectors of 16 bytes.
-        assert_eq!(std::mem::size_of::<FrameUniforms>(), 3 * 64 + 12 * 16);
+        // Three matrices and sixteen vectors of 16 bytes.
+        assert_eq!(std::mem::size_of::<FrameUniforms>(), 3 * 64 + 16 * 16);
     }
 
     #[test]
@@ -295,6 +316,7 @@ mod light_tests {
             shading: Shading::default(),
             size_px: [1, 1],
             sun: crate::lighting::Sun::default(),
+            environment: crate::environment::Environment::default(),
         };
         let light = FrameLight {
             sun_view_projection: Mat4::from_scale(Vec3::splat(2.0)),

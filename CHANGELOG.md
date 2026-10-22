@@ -15,6 +15,8 @@ What changed in each version, for people using Solis. Newest first.
 
 ### Added
 
+- The finished picture: light is worked out brighter than white (HDR) and tone mapped as in Blender (AgX by default, or ACES, or Standard), so bright highlights roll off softly instead of flattening to white. Select **Environment** in the Scene panel for the sky (the editor backdrop, or a daylight sky that follows the sun from blue noon to orange sunset and dark night), fog, exposure and tone mapping; they're remembered between sessions. The editor's backdrop and grid look as before.
+
 - Lights and shadows: the sun casts shadows on models and the ground, and its direction, colour and strength can be changed (select **Sun** in the Scene panel); it's remembered between sessions. **Entity > Add point light** and **Add spotlight** place lamps, listed in the Scene panel and edited in Properties (colour, strength in watts as in Blender, range, cone, **Move here**, **Delete**). Lamps and a sun in an imported glTF file (as Blender exports them) come in with the model. Lamps show as small crosses in the viewport, and light both the standard and stylized looks. Selecting a model in the Scene panel shows its size in Properties.
 
 - Materials and looks: models now show glTF's full material (metal, roughness, normal, occlusion and glow textures). The viewport's look menu (bottom left) chooses **Standard**, **Stylized** (cel-shaded in 2 to 4 bands of light, with crisp highlights, a rim of sky light and dark outlines) or **Unlit**, remembered between sessions. **Help > Add the sample scene** brings in spheres from glossy to rough, plastic and metal, a grooved wall and a glowing stripe for trying them.

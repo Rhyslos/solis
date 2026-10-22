@@ -1,7 +1,10 @@
 //! Connects the viewport renderer (the `render` crate) to the window's wgpu
 //! device and to egui, so the viewport panel can show the rendered image.
 
-use editor::{Lamp, LampKind, LookKind, ModelId, ViewportRenderer, ViewportView};
+use editor::{
+    EnvironmentSettings, Lamp, LampKind, LookKind, ModelId, SkyKind, ToneMapping, ViewportRenderer,
+    ViewportView,
+};
 use eframe::egui;
 use eframe::egui_wgpu::RenderState;
 use eframe::wgpu;
@@ -103,6 +106,28 @@ impl GpuViewport {
     }
 }
 
+/// The editor's sky, fog and exposure as the renderer takes them.
+fn to_render_environment(env: &EnvironmentSettings) -> render::Environment {
+    render::Environment {
+        sky: match env.sky {
+            SkyKind::Backdrop => render::Sky::Backdrop,
+            SkyKind::Daylight => render::Sky::Daylight {
+                strength: env.sky_strength,
+            },
+        },
+        fog: env.fog.then(|| render::Fog {
+            half_distance: env.fog_distance,
+            color: (!env.fog_matches_sky).then(|| env.fog_color.map(|c| f32::from(c) / 255.0)),
+        }),
+        exposure: env.exposure,
+        tonemap: match env.tone_mapping {
+            ToneMapping::Agx => render::Tonemap::Agx,
+            ToneMapping::Aces => render::Tonemap::Aces,
+            ToneMapping::Standard => render::Tonemap::Standard,
+        },
+    }
+}
+
 /// An editor lamp as the renderer takes it.
 fn to_render_light(lamp: &Lamp) -> render::Light {
     render::Light {
@@ -146,6 +171,7 @@ impl ViewportRenderer for GpuViewport {
                 strength: view.sun.strength,
                 shadows: view.sun.shadows,
             },
+            environment: to_render_environment(&view.environment),
         };
         let lights: Vec<render::Light> = view.lamps.iter().map(to_render_light).collect();
         self.prepare_image(view.size_px);

@@ -10,6 +10,7 @@
 //! touches the GPU and runs in tests without one.
 
 use crate::camera::{Camera, FlyInput};
+use crate::environment::EnvironmentSettings;
 use crate::icons;
 use crate::lighting::{Lamp, SunSettings};
 use crate::look::{Look, LookKind};
@@ -125,6 +126,8 @@ pub struct ViewportView {
     pub sun: SunSettings,
     /// The lamps.
     pub lamps: Vec<Lamp>,
+    /// The sky, fog and exposure.
+    pub environment: EnvironmentSettings,
 }
 
 /// Draws viewport images. The app implements it on the window's GPU; tests
@@ -176,6 +179,8 @@ pub struct Viewport {
     pub sun: SunSettings,
     /// The lamps.
     pub lamps: Vec<Lamp>,
+    /// The sky, fog and exposure.
+    pub environment: EnvironmentSettings,
     /// While looking around with the right mouse button: where the mouse
     /// was when it started, to put it back afterwards.
     flying_from: Option<egui::Pos2>,
@@ -199,6 +204,7 @@ impl Default for Viewport {
             triangles: 0,
             sun: SunSettings::default(),
             lamps: Vec::new(),
+            environment: EnvironmentSettings::default(),
         }
     }
 }
@@ -239,6 +245,7 @@ impl Viewport {
             outline_px: self.look.outline_px(pixels_per_point),
             sun: self.sun,
             lamps: self.lamps.clone(),
+            environment: self.environment,
         }
     }
 

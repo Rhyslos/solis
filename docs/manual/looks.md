@@ -35,8 +35,8 @@ What the standard look reads from a model's [material](concepts.md#models):
 | Glow (emissive) | Light the surface gives off itself: screens, lamps, engines. It glows in every look. |
 
 ## Tips and common problems
-- **Problem:** metal looks dark or dull. **Why:** metal shows what it reflects, and for now it reflects only the sky's soft light and the highlights of the sun and lamps. **Fix:** add a lamp near it ([Lights and shadows](lights.md)); reflections improve with the sky (milestone 5).
-- **Problem:** the brightest highlights look flat white. **Why:** colours are cut off at white until tonemapping arrives (milestone 5).
+- **Problem:** metal looks dark or dull. **Why:** metal shows what it reflects, and for now it reflects only the sky's soft light and the highlights of the sun and lamps. **Fix:** add a lamp near it ([Lights and shadows](lights.md)), or switch to the daylight sky ([Sky, fog and exposure](sky-fog-and-exposure.md)), which metal reflects.
+- **Problem:** white surfaces look light grey rather than pure white. **Why:** the AgX tone mapping, as in Blender, keeps room above white for brighter light. **Fix:** raise the exposure, or choose Standard tone mapping ([Sky, fog and exposure](sky-fog-and-exposure.md)).
 - **Problem:** no outline on part of a model. **Why:** outlines are drawn only on solid, one-sided surfaces; see-through and double-sided ones are left without.
 - **Problem:** everything looks the same in Unlit. **Why:** that's the point: no light, just colour.
 

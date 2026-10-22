@@ -15,16 +15,16 @@ use bytemuck::{Pod, Zeroable};
 use glam::Vec3;
 use wgpu::util::DeviceExt;
 
-/// Colour format the viewport renders in: plain 8-bit RGBA, which is what
-/// egui expects for native textures. The shaders work in linear colour and
-/// encode to sRGB themselves as they write (`encode` in `viewport.wgsl`).
-///
-/// An sRGB format with a plain "view" of it would let the GPU do the
-/// encoding, but older and software GPUs (OpenGL) cannot make such views,
-/// and the editor must open on them. Blending therefore happens on encoded
-/// colours, as egui's own drawing does; the lit 3D renderer (Phase 1) will
-/// draw into a linear HDR image and encode in one final pass.
+/// The finished image's format: plain 8-bit RGBA, which is what egui
+/// expects for native textures. The last pass encodes to sRGB itself
+/// (`encode` in `viewport.wgsl`): an sRGB format with a plain "view" of it
+/// would let the GPU do it, but older and software GPUs (OpenGL) cannot
+/// make such views, and the editor must open on them.
 pub const COLOR_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba8Unorm;
+/// The format the world is drawn in before the last pass: linear HDR
+/// colour, brighter than white allowed, 16-bit floats per channel. Alpha
+/// marks the pixels the last pass tone maps (see `viewport.wgsl`).
+pub const HDR_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Rgba16Float;
 /// Depth buffer format.
 pub const DEPTH_FORMAT: wgpu::TextureFormat = wgpu::TextureFormat::Depth32Float;
 /// The viewport shaders, in WGSL.
@@ -44,7 +44,7 @@ pub fn best_sample_count(adapter: &wgpu::Adapter) -> u32 {
             .flags
             .sample_count_supported(4)
     };
-    if supports(COLOR_FORMAT) && supports(DEPTH_FORMAT) {
+    if supports(HDR_FORMAT) && supports(DEPTH_FORMAT) {
         4
     } else {
         1
@@ -56,9 +56,13 @@ pub fn best_sample_count(adapter: &wgpu::Adapter) -> u32 {
 #[derive(Debug)]
 pub struct ViewportTarget {
     size: [u32; 2],
-    /// Multisampled colour image (only when multisampling).
+    /// Multisampled HDR image (only when multisampling).
     msaa_view: Option<wgpu::TextureView>,
-    /// The finished, single-sample colour image.
+    /// The single-sample HDR image the last pass reads.
+    hdr_view: wgpu::TextureView,
+    /// The last pass's view of `hdr_view`.
+    post_bind_group: wgpu::BindGroup,
+    /// The finished, tone-mapped sRGB image.
     resolved: wgpu::Texture,
     resolved_view: wgpu::TextureView,
     depth_view: wgpu::TextureView,
@@ -167,14 +171,27 @@ fn create_pipeline(
             lines,
         ),
     };
-    let blend = (kind != Kind::Sky).then_some(wgpu::BlendState::ALPHA_BLENDING);
+    // See-through lines blend their colour, and leave the alpha below them
+    // alone: it marks which pixels the last pass tone maps.
+    let blend = (kind != Kind::Sky).then_some(wgpu::BlendState {
+        color: wgpu::BlendComponent {
+            src_factor: wgpu::BlendFactor::SrcAlpha,
+            dst_factor: wgpu::BlendFactor::OneMinusSrcAlpha,
+            operation: wgpu::BlendOperation::Add,
+        },
+        alpha: wgpu::BlendComponent {
+            src_factor: wgpu::BlendFactor::Zero,
+            dst_factor: wgpu::BlendFactor::One,
+            operation: wgpu::BlendOperation::Add,
+        },
+    });
     let depth_compare = if kind == Kind::Sky {
         wgpu::CompareFunction::Always
     } else {
         wgpu::CompareFunction::LessEqual
     };
     let targets = [Some(wgpu::ColorTargetState {
-        format: COLOR_FORMAT,
+        format: HDR_FORMAT,
         blend,
         write_mask: wgpu::ColorWrites::ALL,
     })];
@@ -216,6 +233,45 @@ fn create_pipeline(
     })
 }
 
+/// The last pass: reads the HDR image and writes the finished one.
+fn create_post_pipeline(
+    device: &wgpu::Device,
+    frame_layout: &wgpu::BindGroupLayout,
+    post_layout: &wgpu::BindGroupLayout,
+    shader: &wgpu::ShaderModule,
+) -> wgpu::RenderPipeline {
+    let layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+        label: Some("last pass layout"),
+        bind_group_layouts: &[Some(frame_layout), None, Some(post_layout)],
+        immediate_size: 0,
+    });
+    device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+        label: Some("last pass pipeline"),
+        layout: Some(&layout),
+        vertex: wgpu::VertexState {
+            module: shader,
+            entry_point: Some("post_vs"),
+            compilation_options: wgpu::PipelineCompilationOptions::default(),
+            buffers: &[],
+        },
+        primitive: wgpu::PrimitiveState::default(),
+        depth_stencil: None,
+        multisample: wgpu::MultisampleState::default(),
+        fragment: Some(wgpu::FragmentState {
+            module: shader,
+            entry_point: Some("post_fs"),
+            compilation_options: wgpu::PipelineCompilationOptions::default(),
+            targets: &[Some(wgpu::ColorTargetState {
+                format: COLOR_FORMAT,
+                blend: None,
+                write_mask: wgpu::ColorWrites::ALL,
+            })],
+        }),
+        multiview_mask: None,
+        cache: None,
+    })
+}
+
 /// Draws viewports: the pipelines and buffers they share.
 #[derive(Debug)]
 pub struct ViewportRenderer {
@@ -227,6 +283,8 @@ pub struct ViewportRenderer {
     shadow_bind_group: wgpu::BindGroup,
     shadow_pipeline: wgpu::RenderPipeline,
     sky_pipeline: wgpu::RenderPipeline,
+    post_layout: wgpu::BindGroupLayout,
+    post_pipeline: wgpu::RenderPipeline,
     grid_pipeline: wgpu::RenderPipeline,
     line_pipeline: wgpu::RenderPipeline,
     models: ModelPipelines,
@@ -373,6 +431,20 @@ impl ViewportRenderer {
             immediate_size: 0,
         });
         let pipeline = |kind| create_pipeline(device, &layout, &shader, sample_count, kind);
+        let post_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
+            label: Some("last pass layout"),
+            entries: &[wgpu::BindGroupLayoutEntry {
+                binding: 0,
+                visibility: wgpu::ShaderStages::FRAGMENT,
+                ty: wgpu::BindingType::Texture {
+                    sample_type: wgpu::TextureSampleType::Float { filterable: false },
+                    view_dimension: wgpu::TextureViewDimension::D2,
+                    multisampled: false,
+                },
+                count: None,
+            }],
+        });
+        let post_pipeline = create_post_pipeline(device, &bind_group_layout, &post_layout, &shader);
         let axis_vertices = ground_axes();
         let axes = device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
             label: Some("ground axes"),
@@ -382,6 +454,8 @@ impl ViewportRenderer {
         Self {
             sample_count,
             sky_pipeline: pipeline(Kind::Sky),
+            post_layout,
+            post_pipeline,
             grid_pipeline: pipeline(Kind::Grid),
             line_pipeline: pipeline(Kind::Lines),
             models: ModelPipelines::new(device, &bind_group_layout, &shader, sample_count),
@@ -442,14 +516,29 @@ impl ViewportRenderer {
                 | wgpu::TextureUsages::COPY_SRC,
             1,
         );
+        let hdr_view = texture(
+            "viewport HDR",
+            HDR_FORMAT,
+            wgpu::TextureUsages::RENDER_ATTACHMENT | wgpu::TextureUsages::TEXTURE_BINDING,
+            1,
+        )
+        .create_view(&wgpu::TextureViewDescriptor::default());
         let msaa_view = (self.sample_count > 1).then(|| {
             texture(
-                "viewport colour (multisampled)",
-                COLOR_FORMAT,
+                "viewport HDR (multisampled)",
+                HDR_FORMAT,
                 wgpu::TextureUsages::RENDER_ATTACHMENT,
                 self.sample_count,
             )
             .create_view(&wgpu::TextureViewDescriptor::default())
+        });
+        let post_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("last pass bind group"),
+            layout: &self.post_layout,
+            entries: &[wgpu::BindGroupEntry {
+                binding: 0,
+                resource: wgpu::BindingResource::TextureView(&hdr_view),
+            }],
         });
         let depth_view = texture(
             "viewport depth",
@@ -462,6 +551,8 @@ impl ViewportRenderer {
         ViewportTarget {
             size,
             msaa_view,
+            hdr_view,
+            post_bind_group,
             resolved,
             resolved_view,
             depth_view,
@@ -540,10 +631,10 @@ impl ViewportRenderer {
             }
         }
         // With multisampling, drawing goes into the multisampled image,
-        // which is smoothed into the finished one at the end.
+        // which is smoothed into the single-sample HDR one at the end.
         let (view, resolve_target) = match &target.msaa_view {
-            Some(msaa) => (msaa, Some(&target.resolved_view)),
-            None => (&target.resolved_view, None),
+            Some(msaa) => (msaa, Some(&target.hdr_view)),
+            None => (&target.hdr_view, None),
         };
         {
             let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
@@ -606,6 +697,30 @@ impl ViewportRenderer {
             for model in models {
                 model.draw(&mut pass, Pass::Blended);
             }
+        }
+        // The last pass: exposure, tone mapping and sRGB, into the
+        // finished image.
+        {
+            let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                label: Some("viewport last pass"),
+                color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                    view: &target.resolved_view,
+                    depth_slice: None,
+                    resolve_target: None,
+                    ops: wgpu::Operations {
+                        load: wgpu::LoadOp::Clear(wgpu::Color::BLACK),
+                        store: wgpu::StoreOp::Store,
+                    },
+                })],
+                depth_stencil_attachment: None,
+                timestamp_writes: None,
+                occlusion_query_set: None,
+                multiview_mask: None,
+            });
+            pass.set_pipeline(&self.post_pipeline);
+            pass.set_bind_group(0, &self.bind_group, &[]);
+            pass.set_bind_group(2, &target.post_bind_group, &[]);
+            pass.draw(0..3, 0..1);
         }
         queue.submit([encoder.finish()]);
     }

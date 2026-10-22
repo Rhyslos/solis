@@ -55,12 +55,13 @@ Lamps:
 ## Tips and common problems
 - **Problem:** a lamp lights through a wall. **Why:** for now only the sun casts shadows; lamps don't. Shadows from lamps come with the lighting choices of [decision 0008](../decisions/0008-lighting-is-a-project-choice.md).
 - **Problem:** a lamp seems to have no effect. **Why:** it may be too weak for its distance: light gets four times weaker each time the distance doubles. **Fix:** raise its strength, or move it closer.
-- **Problem:** everything is washed out white near a lamp. **Why:** colours are cut off at white until tonemapping arrives (milestone 5). **Fix:** lower its strength.
+- **Problem:** everything is washed out near a lamp. **Why:** the lamp is very strong for its distance. **Fix:** lower its strength, or the exposure under [Environment](sky-fog-and-exposure.md).
 - **Problem:** lamps far from the camera stop lighting. **Why:** up to 16 lamps light the view at once, the ones nearest the camera.
 - **Problem:** shadows look blurry in a big scene. **Why:** one shadow map covers every model, so in a large scene each of its pixels covers more ground.
 - **Problem:** I added lamps, closed Solis, and they're gone. **Why:** lamps aren't saved until scenes arrive in Phase 2.
 
 ## Related
 - [Looks](looks.md): both the standard and stylized looks are lit; the unlit look ignores light.
+- [Sky, fog and exposure](sky-fog-and-exposure.md): a daylight sky that follows the sun, and how bright the picture is.
 - [Importing models](importing-models.md)
 - Concepts: [sun, lamp, watts, range, shadow, sky light](concepts.md#light)

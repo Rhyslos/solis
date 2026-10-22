@@ -13,5 +13,6 @@ New to game engines? Start with [Concepts](concepts.md).
 - [Importing models: glTF files from Blender, Aventail and other programs](importing-models.md)
 - [Looks: standard, stylized and unlit](looks.md)
 - [Lights and shadows: the sun, point lights and spotlights](lights.md)
+- [Sky, fog and exposure: the world around your models, and how bright the picture is](sky-fog-and-exposure.md)
 - [The Console: messages, filters and search](console.md)
 - [Keyboard shortcuts: every key in one place](keyboard-shortcuts.md)
