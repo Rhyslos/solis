@@ -41,6 +41,8 @@ Then:
 - **Problem:** the Console says a texture was left out. **Why:** the image file isn't next to the `.gltf`, or it isn't PNG or JPEG. **Fix:** export as **glTF Binary (.glb)**, which keeps everything in one file.
 - **Problem:** "Couldn't import … the file is damaged". **Why:** the file is incomplete or broken. **Fix:** export it again.
 - **Problem:** the model looks flat and grey-blue in the shadows. **Why:** where the sun doesn't reach, only the sky's soft light does. **Fix:** move the sun or add lamps; see [Lights and shadows](lights.md).
+- **Problem:** "it needs a glTF extension Solis doesn't read yet". **Why:** the file was saved with compression (Draco or meshopt, common from Sketchfab or gltfpack). **Fix:** export it again without compression; in Blender, untick **Compression** in the glTF export.
+- **Very large models** are split into pieces the graphics card can hold; you won't see the seams, but the Scene panel's triangle count stays the same.
 - **Lights in the file:** lamps exported from Blender (point lights and spotlights) come in with the model, are listed in the Scene panel, and leave when it is removed; a sun in the file sets the scene's sun. Turn on **Punctual Lights** under Include in Blender's glTF export to export them.
 - **Want to see how it should look?** **Help > Add the sample scene** brings in a scene made for checking the [looks](looks.md).
 

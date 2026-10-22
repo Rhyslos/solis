@@ -4,6 +4,18 @@ What changed in each version, for people using Solis. Newest first.
 
 ## Unreleased
 
+### Fixed
+
+- Damaged or hostile model files can no longer use up all memory: a buffer only reads the bytes it says it holds, a model's files and textures each have an overall budget, a tiny file asking for millions of corners is refused before reading, and one mesh placed too many times is refused. Files are only read from the model's folder.
+- A very large mesh no longer crashes Solis: it's split into pieces the graphics card can hold.
+- Mirrored parts of a model without normals were lit as if inside out.
+- A model needing a glTF extension Solis doesn't read (such as Draco compression) now says which, instead of "refers to parts that don't exist".
+- The Import model window no longer freezes the editor while it's open, and an import that fails unexpectedly reports an error instead of "Importing…" forever.
+- Distant surfaces no longer flicker against each other (depth is now reversed, keeping precision far away).
+- Showing the sun or a lamp in Properties no longer changes values that came from a file (a sun below the horizon, a lamp's long range).
+- A model with impossibly large bounds no longer breaks the camera.
+- Several viewports no longer share one set of frame data, ready for the game view and split views.
+
 ### Changed
 
 - Writing game code in Lust now arrives in Phase 4, right after the editor, instead of Phase 7; the editor's panels say so. Playing the scene arrives with the editor, in Phase 3.

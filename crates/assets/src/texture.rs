@@ -18,7 +18,26 @@ pub fn decode(
     sampler: Sampler,
     srgb: bool,
     limits: &Limits,
+    budget: u64,
 ) -> Result<Texture, String> {
+    // The size it will take, worked out from the image's header before
+    // any pixels are decoded: refused if it's past what's left of the
+    // model's texture budget.
+    let (width, height) = ImageReader::new(Cursor::new(bytes))
+        .with_guessed_format()
+        .map_err(|e| format!("couldn't read the image: {e}"))?
+        .into_dimensions()
+        .map_err(|e| format!("the image is damaged: {e}"))?;
+    let side = limits.max_texture_side.max(1);
+    let scale = f64::from(side) / f64::from(width.max(height).max(side));
+    let kept = (f64::from(width) * scale) * (f64::from(height) * scale);
+    let needed = (kept * 4.0 * 4.0 / 3.0) as u64;
+    if needed > budget {
+        return Err(format!(
+            "the model's textures would need more than {} MB",
+            limits.max_texture_bytes / 1_000_000
+        ));
+    }
     let mut reader = ImageReader::new(Cursor::new(bytes))
         .with_guessed_format()
         .map_err(|e| format!("couldn't read the image: {e}"))?;
@@ -37,8 +56,7 @@ pub fn decode(
         }
         other => format!("the image is damaged: {other}"),
     })?;
-    let mut rgba = decoded.to_rgba8();
-    let side = limits.max_texture_side.max(1);
+    let mut rgba = decoded.into_rgba8();
     if rgba.width() > side || rgba.height() > side {
         let scale = f64::from(side) / f64::from(rgba.width().max(rgba.height()));
         let width = ((f64::from(rgba.width()) * scale).round() as u32).clamp(1, side);
@@ -107,7 +125,14 @@ mod tests {
 
     #[test]
     fn a_png_decodes_with_every_mip_level() {
-        let t = decode(&png(16, 4), Sampler::default(), true, &Limits::default()).unwrap();
+        let t = decode(
+            &png(16, 4),
+            Sampler::default(),
+            true,
+            &Limits::default(),
+            u64::MAX,
+        )
+        .unwrap();
         assert_eq!((t.width, t.height), (16, 4));
         assert_eq!(t.levels.len() as u32, level_count(16, 4));
         let sizes: Vec<usize> = t.levels.iter().map(Vec::len).collect();
@@ -128,7 +153,7 @@ mod tests {
             max_texture_side: 8,
             ..Limits::default()
         };
-        let t = decode(&png(32, 16), Sampler::default(), true, &limits).unwrap();
+        let t = decode(&png(32, 16), Sampler::default(), true, &limits, u64::MAX).unwrap();
         assert_eq!((t.width, t.height), (8, 4));
     }
 
@@ -138,15 +163,33 @@ mod tests {
             max_image_side: 8,
             ..Limits::default()
         };
-        let err = decode(&png(32, 16), Sampler::default(), true, &limits).unwrap_err();
+        let err = decode(&png(32, 16), Sampler::default(), true, &limits, u64::MAX).unwrap_err();
         assert!(err.contains("bigger than 8"), "{err}");
     }
 
     #[test]
     fn other_formats_and_rubbish_are_refused_politely() {
-        assert!(decode(b"GIF89a....", Sampler::default(), true, &Limits::default()).is_err());
-        assert!(decode(b"", Sampler::default(), true, &Limits::default()).is_err());
-        assert!(decode(&[0xff; 64], Sampler::default(), true, &Limits::default()).is_err());
+        assert!(
+            decode(
+                b"GIF89a....",
+                Sampler::default(),
+                true,
+                &Limits::default(),
+                u64::MAX
+            )
+            .is_err()
+        );
+        assert!(decode(b"", Sampler::default(), true, &Limits::default(), u64::MAX).is_err());
+        assert!(
+            decode(
+                &[0xff; 64],
+                Sampler::default(),
+                true,
+                &Limits::default(),
+                u64::MAX
+            )
+            .is_err()
+        );
     }
 
     /// A PNG whose header claims an enormous size: refused before any
@@ -157,7 +200,16 @@ mod tests {
         // Width and height sit at bytes 16..24 of a PNG (in the IHDR chunk).
         bytes[16..20].copy_from_slice(&100_000u32.to_be_bytes());
         bytes[20..24].copy_from_slice(&100_000u32.to_be_bytes());
-        assert!(decode(&bytes, Sampler::default(), true, &Limits::default()).is_err());
+        assert!(
+            decode(
+                &bytes,
+                Sampler::default(),
+                true,
+                &Limits::default(),
+                u64::MAX
+            )
+            .is_err()
+        );
     }
 
     /// Thousands of randomly damaged images: always an answer, never a
@@ -187,8 +239,29 @@ mod tests {
                     bytes.insert(at, next(256) as u8);
                 }
             }
-            let _ = decode(&bytes, Sampler::default(), true, &Limits::default());
+            let _ = decode(
+                &bytes,
+                Sampler::default(),
+                true,
+                &Limits::default(),
+                u64::MAX,
+            );
         }
+    }
+
+    #[test]
+    fn textures_past_the_budget_are_refused_before_decoding() {
+        let bytes = png(64, 64);
+        assert!(decode(&bytes, Sampler::default(), true, &Limits::default(), 1_000).is_err());
+        let t = decode(
+            &bytes,
+            Sampler::default(),
+            true,
+            &Limits::default(),
+            100_000,
+        )
+        .unwrap();
+        assert!(t.byte_size() <= 64 * 64 * 4 * 4 / 3 + 64);
     }
 
     #[test]

@@ -86,7 +86,11 @@ impl App {
             Some(gpu) => workbench.log(LogLevel::Info, gpu.describe()),
             None => workbench.log(LogLevel::Error, format!("No 3D view: {}.", no_gpu.reason)),
         }
-        let importer = Importer::new(gpu.as_ref().map_or(4096, GpuViewport::max_texture_side));
+        let importer = Importer::new(
+            gpu.as_ref().map_or(4096, GpuViewport::max_texture_side),
+            gpu.as_ref()
+                .map_or(256 << 20, GpuViewport::max_buffer_bytes),
+        );
         let mut app = Self {
             workbench,
             gpu,
@@ -110,7 +114,10 @@ impl App {
         } else {
             self.workbench.log(
                 LogLevel::Warning,
-                format!("{file} isn't a glTF model. Solis imports .gltf and .glb files."),
+                format!(
+                    "{file} isn't a glTF model. {} imports .gltf and .glb files.",
+                    branding::APP_NAME
+                ),
             );
         }
     }
@@ -208,6 +215,9 @@ impl eframe::App for App {
         for path in dropped {
             self.import(&path);
         }
+        if let Some(path) = self.importer.chosen() {
+            self.import(&path);
+        }
         self.collect_imports();
         self.workbench.set_files_hovering(hovering);
         let renderer: &mut dyn editor::ViewportRenderer = match self.gpu.as_mut() {
@@ -217,12 +227,7 @@ impl eframe::App for App {
         for action in self.workbench.show(ui, renderer) {
             match action {
                 WorkbenchAction::Quit => ctx.send_viewport_cmd(egui::ViewportCommand::Close),
-                WorkbenchAction::ImportModel => {
-                    if let Some((_, path)) = self.importer.ask_and_start() {
-                        self.workbench
-                            .log(LogLevel::Info, format!("Importing {}…", file_name(&path)));
-                    }
-                }
+                WorkbenchAction::ImportModel => self.importer.ask(),
                 WorkbenchAction::AddSampleScene => {
                     self.importer.start_sample("Sample scene");
                     self.workbench

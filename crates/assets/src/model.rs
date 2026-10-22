@@ -148,6 +148,13 @@ pub struct Texture {
     pub srgb: bool,
 }
 
+impl Texture {
+    /// How many bytes its pixels take, every mip level included.
+    pub fn byte_size(&self) -> u64 {
+        self.levels.iter().map(|l| l.len() as u64).sum()
+    }
+}
+
 /// The box a model fits in, in metres.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Bounds {
@@ -229,6 +236,16 @@ pub struct Limits {
     pub max_texture_side: u32,
     /// The widest or tallest image decoded at all; bigger ones are refused.
     pub max_image_side: u32,
+    /// The most bytes all of a model's textures may take once decoded,
+    /// with their mip levels; textures past it are left out.
+    pub max_texture_bytes: u64,
+    /// The most meshes in the whole model, counting each placement of a
+    /// mesh the file reuses.
+    pub max_meshes: usize,
+    /// The most vertices in one mesh; bigger meshes are split into pieces
+    /// this size. Set it to what one GPU buffer can hold (32 bytes a
+    /// vertex).
+    pub max_mesh_vertices: usize,
 }
 
 impl Default for Limits {
@@ -239,6 +256,11 @@ impl Default for Limits {
             max_triangles: 30_000_000,
             max_texture_side: 8192,
             max_image_side: 16_384,
+            max_texture_bytes: 2 << 30,
+            max_meshes: 100_000,
+            // 256 MiB, the smallest buffer limit a GPU may have, at 32
+            // bytes a vertex.
+            max_mesh_vertices: (256 << 20) / 32,
         }
     }
 }

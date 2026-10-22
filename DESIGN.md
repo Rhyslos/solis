@@ -2,7 +2,7 @@
 
 > A free, open-source 3D game engine.
 >
-> **Status:** design only. No code yet. The engine is Rust and games are Lust ([decision 0002](docs/decisions/0002-engine-in-rust-games-in-lust.md)); the build order is in [ROADMAP.md](ROADMAP.md).
+> **Status:** Phase 1 (seeing things) is built; the progress tracker is in [README.md](README.md). The engine is Rust and games are Lust ([decision 0002](docs/decisions/0002-engine-in-rust-games-in-lust.md)); the build order is in [ROADMAP.md](ROADMAP.md).
 
 Sections marked **(to decide)** are open. Everything else is the current plan, and changes go in the decision log (§17) with a file in `docs/decisions/`.
 
@@ -316,7 +316,7 @@ Both sides review each other's pull requests.
 - 2026-10-21: [0008](docs/decisions/0008-lighting-is-a-project-choice.md): lighting is a choice per project; real-time lights with sky light come first, baked and global illumination later.
 - 2026-10-21: [0009](docs/decisions/0009-fly-camera-controls.md): the viewport camera flies with Unreal's controls (hold right mouse; W A S D, Q and E).
 - 2026-10-21: [0010](docs/decisions/0010-windows-exe-on-merge.md): a Windows `solis.exe` is built on GitHub when code is merged into main, and by hand. Loosens 0001 for this one build.
-- 2026-10-21: [0011](docs/decisions/0011-scale-check-at-phase-gates.md): a scale check (`tools/scale/scale-check.sh`) at every phase gate and on request, growing into the §2 target in Phase 4.
+- 2026-10-21: [0011](docs/decisions/0011-scale-check-at-phase-gates.md): a scale check (`tools/scale/scale-check.sh`) at every phase gate and on request, growing into the §2 target in Phase 5 (Scale, numbered 4 before decision 0016).
 - 2026-10-21: [0012](docs/decisions/0012-windows-only.md): Solis is made for Windows, the editor and exported games; Linux and macOS builds are dropped. CI's checks still run on a Linux machine, the cheapest kind.
 - 2026-10-21: [0013](docs/decisions/0013-looks-for-the-whole-view-first.md): the standard, stylized (cel-shaded, with outlines) and unlit looks, chosen for the whole view until materials become assets in Phase 2.
 - 2026-10-22: [0014](docs/decisions/0014-lights-placed-two-ways.md): lights come two ways until scenes arrive: with a model's glTF file, or added from the Entity menu; strengths in Blender's units (W, W/m²); shadows from the sun only, up to 16 lamps at once.

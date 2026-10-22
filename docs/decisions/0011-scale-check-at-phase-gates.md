@@ -28,3 +28,5 @@ What it times grows with the engine:
 
 - Each phase's gate pull request carries the scale check's table.
 - The first run found the console laying out every message each frame, about 10 ms with a full console. The console now lays out only the rows in view (0.3 ms).
+
+> **Note (2026-10-22):** the Scale phase is now Phase 5, not 4 ([decision 0016](0016-how-lust-joins-solis.md)).

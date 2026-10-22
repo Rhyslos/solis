@@ -10,7 +10,7 @@
 #   tools/scale/scale-check.sh
 #
 # Today it times one frame of the editor's interface and one viewport frame
-# at 1920x1080. From Phase 4 it grows into the scale target in DESIGN.md §2
+# at 1920x1080. From Phase 5 (Scale) it grows into the scale target in DESIGN.md §2
 # (2,000 units and 20,000 projectiles at 60 frames a second). The viewport
 # time depends on the graphics card, so it is reported, not judged.
 set -euo pipefail

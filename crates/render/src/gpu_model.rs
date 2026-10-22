@@ -319,6 +319,14 @@ impl ModelPipelines {
             .meshes
             .iter()
             .filter(|m| !m.indices.is_empty() && !m.vertices.is_empty())
+            // A mesh too big for one of the card's buffers would make wgpu
+            // stop the program; the importer splits meshes to fit, so this
+            // only guards against a model read with other limits.
+            .filter(|m| {
+                let max = device.limits().max_buffer_size;
+                (std::mem::size_of_val(m.vertices.as_slice()) as u64) <= max
+                    && (std::mem::size_of_val(m.indices.as_slice()) as u64) <= max
+            })
             .map(|mesh| {
                 let material = mesh
                     .material
@@ -501,7 +509,7 @@ fn create_pipeline(
         depth_stencil: Some(wgpu::DepthStencilState {
             format: DEPTH_FORMAT,
             depth_write_enabled: Some(!blended),
-            depth_compare: Some(wgpu::CompareFunction::Less),
+            depth_compare: Some(wgpu::CompareFunction::Greater),
             stencil: wgpu::StencilState::default(),
             bias: wgpu::DepthBiasState::default(),
         }),
@@ -550,7 +558,7 @@ fn create_outline_pipeline(
         depth_stencil: Some(wgpu::DepthStencilState {
             format: DEPTH_FORMAT,
             depth_write_enabled: Some(true),
-            depth_compare: Some(wgpu::CompareFunction::Less),
+            depth_compare: Some(wgpu::CompareFunction::Greater),
             stencil: wgpu::StencilState::default(),
             bias: wgpu::DepthBiasState::default(),
         }),

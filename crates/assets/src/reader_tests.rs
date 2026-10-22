@@ -487,3 +487,187 @@ fn damaged_files_with_lights_never_crash_the_reader() {
         }
     }
 }
+
+// ------------------------------------- holes found by the Phase 1 review ---
+
+#[test]
+fn a_buffer_reads_only_what_it_declares_from_a_bigger_file() {
+    let folder = std::env::temp_dir().join(format!("solis-prefix-{}", std::process::id()));
+    std::fs::create_dir_all(&folder).unwrap();
+    let mut b = Builder::default();
+    let mesh = b.add_cube_mesh(0.5, None);
+    b.json_nodes = vec![format!(r#"{{"mesh":{mesh}}}"#)];
+    // The .bin file is far bigger than the limit; the buffer declares only
+    // the cube's bytes, so only those are read.
+    let mut bin = b.bin.clone();
+    bin.resize(bin.len() + 2_000_000, 7);
+    std::fs::write(folder.join("big.bin"), &bin).unwrap();
+    let path = folder.join("cube.gltf");
+    std::fs::write(&path, b.json(Some("big.bin"))).unwrap();
+    let tight = Limits {
+        max_file_bytes: 100_000,
+        ..limits()
+    };
+    let model = load(&path, &tight).unwrap();
+    assert_eq!(model.triangles(), 12);
+    // Many buffers all pointing at the same big file add up against one
+    // budget, and are refused before they are read.
+    let json = b.json(Some("big.bin"));
+    let buffer = json
+        .split(r#""buffers":["#)
+        .nth(1)
+        .and_then(|rest| rest.split(']').next())
+        .unwrap()
+        .to_string();
+    let many = vec![buffer.as_str(); 200].join(",");
+    let json = json.replacen(&buffer, &many, 1);
+    std::fs::write(&path, json).unwrap();
+    let err = load(&path, &tight).unwrap_err();
+    assert!(matches!(err, ImportError::TooBig { .. }), "{err}");
+    let _ = std::fs::remove_dir_all(&folder);
+}
+
+#[test]
+fn files_are_never_read_from_outside_the_models_folder() {
+    let mut b = Builder::default();
+    let mesh = b.add_cube_mesh(1.0, None);
+    b.json_nodes = vec![format!(r#"{{"mesh":{mesh}}}"#)];
+    let folder = std::env::temp_dir();
+    for uri in ["../secret.bin", "parts/../../secret.bin", "..%2Fsecret.bin"] {
+        let err =
+            load_bytes(b.json(Some(uri)).as_bytes(), Some(&folder), "X", &limits()).unwrap_err();
+        assert!(err.to_string().contains("doesn't fetch"), "{uri}: {err}");
+    }
+}
+
+#[test]
+fn a_tiny_file_asking_for_millions_of_corners_is_refused_before_reading() {
+    // A sparse accessor without data of its own is all zeros, of any
+    // length, plus a few changed entries: a few hundred bytes asking for
+    // 50 million corners.
+    let json = r#"{
+        "asset":{"version":"2.0"},
+        "buffers":[{"byteLength":16}],
+        "bufferViews":[{"buffer":0,"byteOffset":0,"byteLength":4},
+                       {"buffer":0,"byteOffset":4,"byteLength":12}],
+        "accessors":[{"componentType":5126,"count":50000000,"type":"VEC3",
+                      "min":[0,0,0],"max":[1,1,1],
+                      "sparse":{"count":1,
+                                "indices":{"bufferView":0,"componentType":5125},
+                                "values":{"bufferView":1}}}],
+        "meshes":[{"primitives":[{"attributes":{"POSITION":0}}]}],
+        "nodes":[{"mesh":0}],
+        "scenes":[{"nodes":[0]}],
+        "scene":0
+    }"#;
+    let mut bin = 0u32.to_le_bytes().to_vec();
+    for v in [1.0f32, 1.0, 1.0] {
+        bin.extend_from_slice(&v.to_le_bytes());
+    }
+    let err = load_bytes(&glb_from(json, &bin), None, "X", &limits()).unwrap_err();
+    assert!(matches!(err, ImportError::TooManyTriangles(_)), "{err}");
+}
+
+#[test]
+fn one_mesh_placed_too_many_times_is_refused() {
+    let mut b = Builder::default();
+    let mesh = b.add_cube_mesh(0.1, None);
+    // One parent listing the same child node 50 times, five levels deep:
+    // 50^5 placements of one small cube.
+    let children = vec!["1"; 50].join(",");
+    b.json_nodes = vec![
+        format!(r#"{{"children":[{children}]}}"#),
+        format!(r#"{{"children":[{}]}}"#, vec!["2"; 50].join(",")),
+        format!(r#"{{"children":[{}]}}"#, vec!["3"; 50].join(",")),
+        format!(r#"{{"mesh":{mesh}}}"#),
+        "{}".into(),
+    ];
+    let few = Limits {
+        max_meshes: 1_000,
+        ..limits()
+    };
+    let err = load_bytes(&b.glb(), None, "X", &few).unwrap_err();
+    assert!(
+        matches!(
+            err,
+            ImportError::TooManyTriangles(_) | ImportError::Damaged(_)
+        ),
+        "{err}"
+    );
+}
+
+#[test]
+fn a_mesh_too_big_for_one_gpu_buffer_is_split_into_pieces() {
+    let small = Limits {
+        max_mesh_vertices: 10,
+        ..limits()
+    };
+    let whole = load_bytes(&sample_glb(), None, "X", &limits()).unwrap();
+    let split = load_bytes(&sample_glb(), None, "X", &small).unwrap();
+    assert!(split.meshes.len() > whole.meshes.len());
+    assert_eq!(split.triangles(), whole.triangles(), "no triangle lost");
+    for mesh in &split.meshes {
+        assert!(mesh.vertices.len() <= 10);
+        assert!(
+            mesh.indices
+                .iter()
+                .all(|&i| (i as usize) < mesh.vertices.len())
+        );
+    }
+    // A mesh that fits stays whole.
+    assert_eq!(geometry::split(whole.meshes[0].clone(), 1_000_000).len(), 1);
+}
+
+#[test]
+fn mirrored_meshes_without_normals_still_have_outward_normals() {
+    let mut b = Builder::default();
+    let mesh = b.add_cube_mesh(1.0, None);
+    b.json_nodes = vec![format!(
+        r#"{{"mesh":{mesh},"translation":[5,0,0],"scale":[-1,1,1]}}"#
+    )];
+    let json = b.json(None).replace(r#""NORMAL":1,"#, "");
+    let model = load_bytes(&glb_from(&json, &b.bin), None, "X", &limits()).unwrap();
+    let centre = Vec3::new(5.0, 0.0, 0.0);
+    for v in &model.meshes[0].vertices {
+        let n = Vec3::from(v.normal);
+        assert!(
+            n.dot(Vec3::from(v.position) - centre) > 0.0,
+            "points outwards"
+        );
+    }
+}
+
+#[test]
+fn textures_past_the_models_budget_are_left_out_with_a_warning() {
+    let little = Limits {
+        max_texture_bytes: 100,
+        ..limits()
+    };
+    let model = load_bytes(&sample_glb(), None, "X", &little).unwrap();
+    assert!(model.textures.is_empty());
+    assert!(
+        model
+            .warnings
+            .iter()
+            .any(|w| w.contains("would need more than")),
+        "{:?}",
+        model.warnings
+    );
+}
+
+#[test]
+fn a_file_needing_an_unknown_extension_says_which() {
+    let mut b = Builder::default();
+    let mesh = b.add_cube_mesh(1.0, None);
+    b.json_nodes = vec![format!(r#"{{"mesh":{mesh}}}"#)];
+    let json = b.json(None).replacen(
+        r#""asset":"#,
+        r#""extensionsUsed":["KHR_draco_mesh_compression"],"extensionsRequired":["KHR_draco_mesh_compression"],"asset":"#,
+        1,
+    );
+    let err = load_bytes(&glb_from(&json, &b.bin), None, "X", &limits()).unwrap_err();
+    assert!(
+        err.to_string().contains("KHR_draco_mesh_compression"),
+        "{err}"
+    );
+}

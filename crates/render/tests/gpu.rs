@@ -68,18 +68,22 @@ fn gpu() -> Option<Gpu> {
     found
 }
 
+/// A 60° tall perspective for a square image, with depth reversed as the
+/// editor's camera has it (1 near, 0 far).
+fn projection() -> Mat4 {
+    let (near, far) = (0.1, 1000.0);
+    let scale = 1.0 / (30.0_f32.to_radians()).tan();
+    Mat4::from_cols(
+        Vec4::new(scale, 0.0, 0.0, 0.0),
+        Vec4::new(0.0, scale, 0.0, 0.0),
+        Vec4::new(0.0, 0.0, near / (far - near), -1.0),
+        Vec4::new(0.0, 0.0, far * near / (far - near), 0.0),
+    )
+}
+
 /// A camera at `eye` looking straight along +Y (level with the horizon),
 /// 60° tall view, square image.
 fn looking_north(eye: Vec3) -> Mat4 {
-    let (near, far) = (0.1, 1000.0);
-    let scale = 1.0 / (30.0_f32.to_radians()).tan();
-    let depth = far / (near - far);
-    let projection = Mat4::from_cols(
-        Vec4::new(scale, 0.0, 0.0, 0.0),
-        Vec4::new(0.0, scale, 0.0, 0.0),
-        Vec4::new(0.0, 0.0, depth, -1.0),
-        Vec4::new(0.0, 0.0, depth * near, 0.0),
-    );
     // Right is +X, up is +Z, forward is +Y (camera looks down its -Z).
     let view = Mat4::from_cols(
         Vec4::new(1.0, 0.0, 0.0, 0.0),
@@ -87,7 +91,7 @@ fn looking_north(eye: Vec3) -> Mat4 {
         Vec4::new(0.0, 1.0, 0.0, 0.0),
         Vec4::new(-eye.x, -eye.z, eye.y, 1.0),
     );
-    projection * view
+    projection() * view
 }
 
 fn pixel(pixels: &[u8], size: u32, x: u32, y: u32) -> [u8; 3] {
@@ -658,16 +662,7 @@ fn dump_renders_to_look_at() {
 /// A camera at `eye` looking straight down (-Z), +X to the right and +Y
 /// up the image, 60° tall view, square image.
 fn looking_down(eye: Vec3) -> Mat4 {
-    let (near, far) = (0.1, 1000.0);
-    let scale = 1.0 / (30.0_f32.to_radians()).tan();
-    let depth = far / (near - far);
-    let projection = Mat4::from_cols(
-        Vec4::new(scale, 0.0, 0.0, 0.0),
-        Vec4::new(0.0, scale, 0.0, 0.0),
-        Vec4::new(0.0, 0.0, depth, -1.0),
-        Vec4::new(0.0, 0.0, depth * near, 0.0),
-    );
-    projection * Mat4::from_translation(-eye)
+    projection() * Mat4::from_translation(-eye)
 }
 
 /// The pixel showing ground point (`x`, `y`) to [`looking_down`] from 10 m
@@ -1196,4 +1191,59 @@ fn the_unlit_look_ignores_exposure() {
         ground_pixel(&b, size, 1.0, 1.0)
     );
     assert_eq!(ground_pixel(&a, size, 1.0, 1.0), [255, 255, 255]);
+}
+
+#[test]
+fn two_viewports_keep_their_own_frames() {
+    let Some(gpu) = gpu() else { return };
+    let renderer = ViewportRenderer::new(&gpu.device, best_sample_count(&gpu.adapter));
+    let floor = renderer.upload_model(&gpu.device, &gpu.queue, &floor(false));
+    let params = |view_projection, eye, look| FrameParams {
+        view_projection,
+        camera_position: eye,
+        focus: Vec3::new(1.0e7, 1.0e7, 0.0),
+        sky_top: srgb(SKY_TOP),
+        sky_horizon: srgb(SKY_HORIZON),
+        ground: srgb(GROUND),
+        shading: Shading {
+            look,
+            ..Shading::default()
+        },
+        size_px: [32, 32],
+        sun: Sun::default(),
+        environment: Environment::default(),
+    };
+    let down = Vec3::new(0.0, 0.0, 10.0);
+    let away = Vec3::new(0.0, -100.0, 50.0);
+    let a = renderer.create_target(&gpu.device, [32, 32]);
+    let b = renderer.create_target(&gpu.device, [32, 32]);
+    // Both drawn before either is read: each must keep its own camera and
+    // look.
+    renderer.render(
+        &gpu.device,
+        &gpu.queue,
+        &a,
+        &params(looking_down(down), down, Look::Unlit),
+        &[&floor],
+        &[],
+    );
+    renderer.render(
+        &gpu.device,
+        &gpu.queue,
+        &b,
+        &params(looking_north(away), away, Look::Standard),
+        &[&floor],
+        &[],
+    );
+    let pa = read_pixels(&gpu.device, &gpu.queue, &a).unwrap();
+    let pb = read_pixels(&gpu.device, &gpu.queue, &b).unwrap();
+    assert_eq!(
+        pixel(&pa, 32, 16, 16),
+        [255, 255, 255],
+        "A: the unlit floor from above"
+    );
+    assert!(
+        brightness(pixel(&pb, 32, 16, 2)) < 120,
+        "B: sky above the far floor"
+    );
 }

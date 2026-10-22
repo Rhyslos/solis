@@ -1,5 +1,6 @@
-# cargo-deny configuration: which dependencies the app may use.
-# Runs in CI on every change. See docs/decisions/0004-gpl-license.md.
+# cargo-deny configuration: which dependencies Solis may use.
+# Runs in CI's checks (see .github/workflows/ci.yml). Solis is MIT
+# (docs/decisions/0007-mit-licence-and-separate-from-aventail.md).
 
 [graph]
 all-features = true
@@ -10,7 +11,6 @@ version = 2
 yanked = "deny"
 # "Unmaintained" notices (not vulnerabilities) accepted one by one, with a
 # reason. Remove an entry as soon as the library using it moves on.
-# See docs/decisions/0008-window-and-panels.md.
 ignore = [
     { id = "RUSTSEC-2024-0436", reason = "paste: macro helper used only at compile time by egui_dock; no replacement upstream yet" },
     { id = "RUSTSEC-2026-0192", reason = "ttf-parser: font reading inside winit's Linux window decorations; no replacement upstream yet" },
@@ -21,8 +21,8 @@ ignore = [
 
 [licenses]
 version = 2
-# The app itself is GPL-3.0-or-later, but every dependency must be
-# permissive: that keeps future options such as dual licensing open.
+# Solis itself is MIT, and every dependency must be permissive too, so
+# games made with it can be released under any licence.
 # Adding a license here needs a pull request that explains why.
 allow = [
     "Apache-2.0",
