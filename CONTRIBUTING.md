@@ -103,7 +103,7 @@ Both must pass before merging.
 
 - One milestone or one fix per pull request, on its own branch (for example `phase1/models`).
 - Fill in the pull request template: what changed, test results, docs updated, how to test.
-- All CI checks must be green. CI runs only when the pull request is ready for review ([decision 0001](docs/decisions/0001-builds-on-demand.md)), so run the checks locally first.
+- All CI checks must be green. CI runs on every update to a pull request ([decision 0018](docs/decisions/0018-checks-for-a-public-repo.md)), but run the checks locally first: CI is the second line, not the first.
 - If users wouldn't notice the change, label the pull request `internal` and the changelog check lets it through without an entry.
 - Commit messages: a short summary line in plain words ("Add the fly camera"), then details if needed.
 
