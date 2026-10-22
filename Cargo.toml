@@ -45,7 +45,7 @@ rfd = "0.17"
 # The local time on console messages.
 chrono = { version = "0.4", default-features = false, features = ["clock", "std"] }
 # Development only.
-egui_kittest = "0.36"
+egui_kittest = "0.37"
 pollster = "1.0"
 ron = "0.12"
 
