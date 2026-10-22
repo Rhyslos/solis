@@ -93,7 +93,25 @@ Solis is built in phases, one milestone per pull request. Each phase ends with a
 
 **Gate:** build a small scene from scratch, press Play, stop, and everything is back as it was.
 
-### Phase 4 · Scale — 0 of 4
+### Phase 4 · Lust and Lua join — 0 of 6
+
+`░░░░░░░░░░░░░` 0%
+
+<details>
+<summary>Milestones</summary>
+
+- [ ] Lust builds into Solis: the engine described to Lust (`solis/*.lst`), Lust built as a library, native calls (decision 0016)
+- [ ] Lust components, with their fields in the inspector and mistakes in the Problems panel
+- [ ] Vectors and rotations in Lust, and typed events between components
+- [ ] Fast changes: a Lust edit in play mode within 2 seconds
+- [ ] Lua components
+- [ ] A first game in Lust: a small sample the later phases keep growing
+
+</details>
+
+**Gate:** change a Lust component while the game runs and see it within 2 seconds; Rust, Lust and Lua components talk through events.
+
+### Phase 5 · Scale — 0 of 4
 
 `░░░░░░░░░░░░░` 0%
 
@@ -109,7 +127,7 @@ Solis is built in phases, one milestone per pull request. Each phase ends with a
 
 **Gate:** the benchmark runs at 60 fps on your PC.
 
-### Phase 5 · Simulation and play — 0 of 5
+### Phase 6 · Simulation and play — 0 of 5
 
 `░░░░░░░░░░░░░` 0%
 
@@ -120,13 +138,13 @@ Solis is built in phases, one milestone per pull request. Each phase ends with a
 - [ ] Determinism: seeded randomness, state checksums, deterministic physics
 - [ ] Input as named actions, with gamepads and rebinding
 - [ ] Save games
-- [ ] Ready-made components: character and camera controllers
+- [ ] Ready-made components in Lust: character and camera controllers
 
 </details>
 
 **Gate:** walk a character around a level, save, quit and load; the same inputs always give the same result.
 
-### Phase 6 · Sound and animation — 0 of 4
+### Phase 7 · Sound and animation — 0 of 4
 
 `░░░░░░░░░░░░░` 0%
 
@@ -141,24 +159,6 @@ Solis is built in phases, one milestone per pull request. Each phase ends with a
 </details>
 
 **Gate:** a character walks and runs with smooth blending, and its footsteps sound right.
-
-### Phase 7 · Lust and Lua join — 0 of 6
-
-`░░░░░░░░░░░░░` 0%
-
-<details>
-<summary>Milestones</summary>
-
-- [ ] `fetch solis;`: the game API in Lust
-- [ ] Lust components, with their fields in the inspector
-- [ ] Typed events between components
-- [ ] Fast changes: a Lust edit in play mode within 2 seconds
-- [ ] Lua components
-- [ ] The ready-made components rewritten in Lust
-
-</details>
-
-**Gate:** change a Lust component while the game runs and see it within 2 seconds; Rust, Lust and Lua components talk through events.
 
 ### Phase 8 · Netcode — 0 of 5
 

@@ -50,13 +50,13 @@ Game-specific systems (squads, hardpoints, hangars, a campaign map, fleet caps) 
 - **Lua is quick to change and slower to run:** no compile step, but slower than compiled code, with a garbage collector. Fine for most gameplay; heavy per-unit work at the scale in §2 is better in Lust or Rust. For deterministic netcode (§6), Lua code has to follow a few rules, such as not relying on the order `pairs` walks a table in.
 - **The engine is Rust; games are Lust** ([decision 0002](docs/decisions/0002-engine-in-rust-games-in-lust.md)), the split Godot (C++ and GDScript) and Unity (C++ and C#) use. An engine needs the control Lust deliberately hides; game makers need what Lust is good at.
 - **Lust compiles to Rust** (Lust's own plan, LUST.md), so a Lust component becomes the same kind of Rust struct as the engine's own components, and the engine can't tell them apart. No C interface in between.
-- **The engine doesn't wait for Lust.** Lust is needed from [ROADMAP.md](ROADMAP.md) Phase 7.
+- **Lust joins in Phase 4,** right after the editor ([ROADMAP.md](ROADMAP.md), [decision 0016](docs/decisions/0016-how-lust-joins-solis.md)). Solis describes the engine to Lust in plain Lust files with `native` methods (`solis/entity.lst` and so on, generated from the engine's Rust), and a game's Lust is built as a Rust library the engine includes.
 
 ### What Solis needs from Lust v2
 
 These should go into Lust's design while its Rust output is being built:
 
-1. **Using Rust crates from Lust.** Essential: the engine is Rust, and `fetch solis;` is a Rust crate seen from Lust. Lust already has this on its to-design list, as its standard library; Solis is its biggest test.
+1. **Using Rust crates from Lust.** Essential: the engine is Rust. Its own API reaches Lust through description files with `native` methods (done: LUST.md §21, decision 0016); other crates through Lust's standard library. Lust already has this on its to-design list, as its standard library; Solis is its biggest test.
 2. **Plain data in packed arrays.** Components written in Lust have to be stored as tightly as the engine's own; cArrays are close.
 3. **States that own memory** fit zones (§8) and game modes: when a zone or a battle unloads, its memory is freed in one go. Lust plans arenas with handles for this in Rust, which is also how ECS storage works (§5), so the two may share one design.
 4. **Rust that compiles quickly.** See §3.1.
@@ -83,8 +83,8 @@ The target to decide against: **a change to one component is running in play mod
 │ Games (Lust, Rust or Lua), and the           │
 │ ready-made gameplay components (Lust)        │
 ├──────────────────────────────────────────────┤
-│ Game API: fetch solis; (Rust, with Lust and  │
-│ Lua faces)                                   │
+│ Game API: Rust, described to Lust in solis/  │
+│ files, with a Lua face                       │
 ├──────────────────────────────────────────────┤
 │ Editor scripting (LustScript / Lua, Luau)    │
 ├──────────────────────────────────────────────┤
@@ -114,10 +114,10 @@ Solis has **entities with components**, stored ECS-style underneath (packed arra
 - **A `has` block puts fields in the inspector,** with their starting values, as Aventail does with command settings.
 - **Built-in components:** transform, mesh, camera, light, collider, rigid body, audio source, animator, and more. Everything else is custom, written the same way.
 
-A sketch. `like Component` and `entity:send` are proposals, not settled Lust:
+A sketch. `like Component` and `entity:send` are proposals, not settled Lust. The engine's side comes from the generated `solis/` files (decision 0016):
 
 ```
-fetch solis;
+fetch "solis/entity":Component, Died;
 
 object Health like Component {
     has {
@@ -273,14 +273,14 @@ Settled in [decision 0004](docs/decisions/0004-editor-layout.md): Halberd's pane
 
 ## 15. Roadmap
 
-**Solis 0.1 in about a year,** in twelve phases (0 to 11), each ending with a gate the project lead tries by hand. The full plan is in [ROADMAP.md](ROADMAP.md). In short: groundwork and the editor shell, rendering, the world, the editor, scale, simulation, sound and animation, then **Lust and Lua join** (Phase 7), netcode, effects and game UI, scripting and export, and the 0.1 release.
+**Solis 0.1 in about a year,** in twelve phases (0 to 11), each ending with a gate the project lead tries by hand. The full plan is in [ROADMAP.md](ROADMAP.md). In short: groundwork and the editor shell, rendering, the world, the editor, **Lust and Lua join** (Phase 4), scale, simulation, sound and animation, netcode, effects and game UI, scripting and export, and the 0.1 release.
 
 **The flagship sample:** a small space battle. Two capital ships, a carrier launching fighter squadrons, a few hundred lasers in the air, over the network. It tests instancing, components, VFX and lockstep at once.
 
 **Not in 0.1:** open-world streaming, the full Solis Eclipse toolkit, the UI editor, rollback, advanced animation.
 
 **Risks:**
-1. **Lust is needed from Phase 7.** Phases 0–6 don't need it, and if it's late, Phases 8 and 9 go first.
+1. **Lust is needed from Phase 4** (decision 0016). Its connection to the engine is built and tested already; if the rest is late, Phase 5 (Scale) goes first.
 2. **Iteration speed** (§3.1). If changes take too long to see, the engine feels slow however fast games run.
 3. **Time.** The pace is set by decisions, testing and review, not by writing code. Too many projects at full speed turns a year into three.
 
@@ -290,8 +290,8 @@ Settled in [decision 0004](docs/decisions/0004-editor-layout.md): Halberd's pane
 
 Tandem work, with issues tagged by difficulty so there's always something the right size.
 
-- **The project lead:** the decisions before each phase, every gate, the theme, and choosing controls. From Phase 7: the ready-made gameplay components in Lust, the flagship sample's game logic, and LustScript editor tools. Before then, small Rust tasks tagged `good first issue`, if wanted.
-- **Claude:** the engine in Rust, and the Lust side of Phase 7 in the Lust repo.
+- **The project lead:** the decisions before each phase, every gate, the theme, and choosing controls. From Phase 4: the ready-made gameplay components in Lust, the flagship sample's game logic, and LustScript editor tools. Before then, small Rust tasks tagged `good first issue`, if wanted.
+- **Claude:** the engine in Rust, and the Lust side of Phase 4 in the Lust repo.
 
 Both sides review each other's pull requests.
 
@@ -321,3 +321,4 @@ Both sides review each other's pull requests.
 - 2026-10-21: [0013](docs/decisions/0013-looks-for-the-whole-view-first.md): the standard, stylized (cel-shaded, with outlines) and unlit looks, chosen for the whole view until materials become assets in Phase 2.
 - 2026-10-22: [0014](docs/decisions/0014-lights-placed-two-ways.md): lights come two ways until scenes arrive: with a model's glTF file, or added from the Entity menu; strengths in Blender's units (W, W/m²); shadows from the sun only, up to 16 lamps at once.
 - 2026-10-22: [0015](docs/decisions/0015-file-extensions.md): file extensions `project.solis`, `.solscene`, `.solprefab` and `.solmat`; `.sol` is Solidity's.
+- 2026-10-22: [0016](docs/decisions/0016-how-lust-joins-solis.md): Lust joins in Phase 4, right after the editor; the engine is described to Lust in generated `solis/*.lst` files with `native` methods, and a game's Lust is built as a library the engine includes. Scale, simulation, and sound and animation become Phases 5–7.

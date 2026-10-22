@@ -631,7 +631,7 @@ impl Workbench {
         if icon_button(ui, Icon::Play, 13.0, Some(fill), "Play").clicked() {
             self.log(
                 LogLevel::Info,
-                "Playing the scene arrives in Phase 5 (ROADMAP.md).",
+                "Playing the scene arrives in Phase 3 (ROADMAP.md).",
             );
         }
     }
@@ -868,12 +868,12 @@ impl TabViewer for PanelViewer<'_> {
                     "The library arrives with the asset database in Phase 2.",
                 );
             }
-            Panel::Game => placeholder(ui, "Press Play to run the game here (Phase 5)."),
+            Panel::Game => placeholder(ui, "Press Play to run the game here (Phase 3)."),
             Panel::Code => {
                 menu_row(ui, &["File", "Edit", "View"]);
                 placeholder(
                     ui,
-                    "Writing game code in Lust, Rust or Lua arrives in Phase 7.",
+                    "Writing game code in Lust, Rust or Lua arrives in Phase 4.",
                 );
             }
             Panel::Console => console(ui, self.console, self.accent),
@@ -1415,7 +1415,7 @@ mod tests {
         let last = h.state().log_lines().last().map(|l| l.text.clone());
         assert_eq!(
             last.as_deref(),
-            Some("Playing the scene arrives in Phase 5 (ROADMAP.md).")
+            Some("Playing the scene arrives in Phase 3 (ROADMAP.md).")
         );
     }
 

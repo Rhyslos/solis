@@ -22,4 +22,4 @@ Turn a model file into a `Model`: meshes already placed where the file's nodes p
 
 ## Status
 
-Phase 1, milestone 4: glTF models with their full materials and lights. Animation arrives in Phase 6.
+Phase 1, milestone 4: glTF models with their full materials and lights. Animation arrives in Phase 7.
