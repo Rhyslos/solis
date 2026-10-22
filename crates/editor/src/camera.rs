@@ -172,6 +172,11 @@ impl Camera {
         }
         let center = (min + max) * 0.5;
         let radius = ((max - min).length() * 0.5).max(0.05);
+        // A box so big its size overflows (a damaged model) would make the
+        // camera's position meaningless.
+        if !center.is_finite() || !radius.is_finite() {
+            return;
+        }
         if self.tilt > -0.15 {
             self.tilt = -0.35;
         }
@@ -239,24 +244,27 @@ impl Camera {
         }
     }
 
-    /// World-to-screen transform for an image `aspect` wide per unit high
-    /// (depth 0 at near, 1 at far).
+    /// World-to-screen transform for an image `aspect` wide per unit high,
+    /// with depth reversed: 1 at near, 0 at far. Floating-point depth has
+    /// most of its precision near 0, so reversing it spreads precision
+    /// evenly over distance instead of wasting it close to the camera
+    /// ("reversed-Z"): surfaces a kilometre away still don't flicker
+    /// against each other.
     pub fn view_projection(&self, aspect: f32) -> Mat4 {
         let aspect = if aspect.is_finite() && aspect > 0.0 {
             aspect
         } else {
             1.0
         };
-        // Right-handed perspective with depth 0 at near and 1 at far, as
-        // wgpu expects.
+        // Right-handed perspective with depth 1 at near and 0 at far.
         let y_scale = 1.0 / (self.fov_y * 0.5).tan();
         let x_scale = y_scale / aspect;
-        let depth = Self::FAR / (Self::NEAR - Self::FAR);
+        let range = Self::FAR - Self::NEAR;
         let projection = Mat4::from_cols(
             Vec4::new(x_scale, 0.0, 0.0, 0.0),
             Vec4::new(0.0, y_scale, 0.0, 0.0),
-            Vec4::new(0.0, 0.0, depth, -1.0),
-            Vec4::new(0.0, 0.0, depth * Self::NEAR, 0.0),
+            Vec4::new(0.0, 0.0, Self::NEAR / range, -1.0),
+            Vec4::new(0.0, 0.0, Self::FAR * Self::NEAR / range, 0.0),
         );
         projection * self.view_matrix()
     }
@@ -329,6 +337,36 @@ mod tests {
         let ndc = clip.truncate() / clip.w;
         assert!(ndc.x.abs() < 1e-4 && ndc.y.abs() < 1e-4, "{ndc}");
         assert!(ndc.z > 0.0 && ndc.z < 1.0);
+    }
+
+    #[test]
+    fn depth_is_reversed_one_near_and_zero_far() {
+        let camera = Camera {
+            position: Vec3::ZERO,
+            heading: 0.0,
+            tilt: 0.0,
+            ..Camera::default()
+        };
+        let vp = camera.view_projection(1.0);
+        let depth = |distance: f32| {
+            let c = vp * Vec3::new(0.0, distance, 0.0).extend(1.0);
+            c.z / c.w
+        };
+        assert!((depth(Camera::NEAR) - 1.0).abs() < 1e-5);
+        assert!(depth(Camera::FAR).abs() < 1e-5);
+        assert!(depth(10.0) > depth(100.0), "nearer is deeper");
+        // A kilometre away, a few centimetres still tell surfaces apart.
+        let gap = depth(1000.0) - depth(1000.05);
+        assert!(gap > 4.0 * f32::EPSILON * depth(1000.0), "{gap}");
+    }
+
+    #[test]
+    fn a_box_too_big_to_measure_leaves_the_camera_as_it_was() {
+        let mut camera = Camera::default();
+        let before = camera;
+        camera.frame(Vec3::splat(-3e38), Vec3::splat(3e38));
+        assert_eq!(camera, before);
+        assert!(camera.view_projection(1.0).is_finite());
     }
 
     #[test]

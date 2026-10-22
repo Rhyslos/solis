@@ -9,7 +9,8 @@
 use crate::frame::{FrameLight, FrameParams, FrameUniforms, GRID_HALF_EXTENT};
 use crate::gpu_model::{GpuModel, ModelPipelines, Pass};
 use crate::lighting::{
-    Light, LightsUniform, SHADOW_FORMAT, SHADOW_MAP_SIZE, light_markers, sun_view_projection,
+    Light, LightsUniform, MARKER_VERTICES, SHADOW_FORMAT, SHADOW_MAP_SIZE, light_markers,
+    sun_view_projection,
 };
 use bytemuck::{Pod, Zeroable};
 use glam::Vec3;
@@ -66,6 +67,110 @@ pub struct ViewportTarget {
     resolved: wgpu::Texture,
     resolved_view: wgpu::TextureView,
     depth_view: wgpu::TextureView,
+    /// This viewport's own frame data, lamps, shadow map and lamp
+    /// markers, so several viewports never overwrite each other's.
+    frame: FrameResources,
+}
+
+/// The most lamps shown with a marker; more are drawn without one.
+const MAX_MARKED_LAMPS: usize = 1024;
+
+/// The GPU data one viewport's frames use.
+#[derive(Debug)]
+struct FrameResources {
+    uniform_buffer: wgpu::Buffer,
+    lights_buffer: wgpu::Buffer,
+    shadow_view: wgpu::TextureView,
+    bind_group: wgpu::BindGroup,
+    shadow_bind_group: wgpu::BindGroup,
+    /// Room for every lamp's marker lines, filled each frame.
+    markers: wgpu::Buffer,
+}
+
+impl FrameResources {
+    fn new(
+        device: &wgpu::Device,
+        frame_layout: &wgpu::BindGroupLayout,
+        shadow_layout: &wgpu::BindGroupLayout,
+        shadow_sampler: &wgpu::Sampler,
+    ) -> Self {
+        let uniform_buffer = device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("frame uniforms"),
+            size: std::mem::size_of::<FrameUniforms>() as wgpu::BufferAddress,
+            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+            mapped_at_creation: false,
+        });
+        let lights_buffer = device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("lamps"),
+            size: std::mem::size_of::<LightsUniform>() as wgpu::BufferAddress,
+            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
+            mapped_at_creation: false,
+        });
+        // The sun's shadow map: a depth image the models are drawn into
+        // from the sun's side, then looked up while shading.
+        let shadow_view = device
+            .create_texture(&wgpu::TextureDescriptor {
+                label: Some("sun shadow map"),
+                size: wgpu::Extent3d {
+                    width: SHADOW_MAP_SIZE,
+                    height: SHADOW_MAP_SIZE,
+                    depth_or_array_layers: 1,
+                },
+                mip_level_count: 1,
+                sample_count: 1,
+                dimension: wgpu::TextureDimension::D2,
+                format: SHADOW_FORMAT,
+                usage: wgpu::TextureUsages::RENDER_ATTACHMENT
+                    | wgpu::TextureUsages::TEXTURE_BINDING,
+                view_formats: &[],
+            })
+            .create_view(&wgpu::TextureViewDescriptor::default());
+        let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("frame bind group"),
+            layout: frame_layout,
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: uniform_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: lights_buffer.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 2,
+                    resource: wgpu::BindingResource::TextureView(&shadow_view),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 3,
+                    resource: wgpu::BindingResource::Sampler(shadow_sampler),
+                },
+            ],
+        });
+        let shadow_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
+            label: Some("shadow frame bind group"),
+            layout: shadow_layout,
+            entries: &[wgpu::BindGroupEntry {
+                binding: 0,
+                resource: uniform_buffer.as_entire_binding(),
+            }],
+        });
+        let markers = device.create_buffer(&wgpu::BufferDescriptor {
+            label: Some("lamp markers"),
+            size: (MAX_MARKED_LAMPS * MARKER_VERTICES * std::mem::size_of::<LineVertex>())
+                as wgpu::BufferAddress,
+            usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
+            mapped_at_creation: false,
+        });
+        Self {
+            uniform_buffer,
+            lights_buffer,
+            shadow_view,
+            bind_group,
+            shadow_bind_group,
+            markers,
+        }
+    }
 }
 
 impl ViewportTarget {
@@ -188,7 +293,9 @@ fn create_pipeline(
     let depth_compare = if kind == Kind::Sky {
         wgpu::CompareFunction::Always
     } else {
-        wgpu::CompareFunction::LessEqual
+        // Depth is reversed (1 near, 0 far: see the camera), so nearer
+        // means greater.
+        wgpu::CompareFunction::GreaterEqual
     };
     let targets = [Some(wgpu::ColorTargetState {
         format: HDR_FORMAT,
@@ -276,11 +383,9 @@ fn create_post_pipeline(
 #[derive(Debug)]
 pub struct ViewportRenderer {
     sample_count: u32,
-    uniform_buffer: wgpu::Buffer,
-    bind_group: wgpu::BindGroup,
-    lights_buffer: wgpu::Buffer,
-    shadow_view: wgpu::TextureView,
-    shadow_bind_group: wgpu::BindGroup,
+    frame_layout: wgpu::BindGroupLayout,
+    shadow_layout: wgpu::BindGroupLayout,
+    shadow_sampler: wgpu::Sampler,
     shadow_pipeline: wgpu::RenderPipeline,
     sky_pipeline: wgpu::RenderPipeline,
     post_layout: wgpu::BindGroupLayout,
@@ -301,37 +406,6 @@ impl ViewportRenderer {
             label: Some("viewport shader"),
             source: wgpu::ShaderSource::Wgsl(SHADER_SOURCE.into()),
         });
-        let uniform_buffer = device.create_buffer(&wgpu::BufferDescriptor {
-            label: Some("frame uniforms"),
-            size: std::mem::size_of::<FrameUniforms>() as wgpu::BufferAddress,
-            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-            mapped_at_creation: false,
-        });
-        let lights_buffer = device.create_buffer(&wgpu::BufferDescriptor {
-            label: Some("lamps"),
-            size: std::mem::size_of::<LightsUniform>() as wgpu::BufferAddress,
-            usage: wgpu::BufferUsages::UNIFORM | wgpu::BufferUsages::COPY_DST,
-            mapped_at_creation: false,
-        });
-        // The sun's shadow map: a depth image the models are drawn into
-        // from the sun's side, then looked up while shading.
-        let shadow_view = device
-            .create_texture(&wgpu::TextureDescriptor {
-                label: Some("sun shadow map"),
-                size: wgpu::Extent3d {
-                    width: SHADOW_MAP_SIZE,
-                    height: SHADOW_MAP_SIZE,
-                    depth_or_array_layers: 1,
-                },
-                mip_level_count: 1,
-                sample_count: 1,
-                dimension: wgpu::TextureDimension::D2,
-                format: SHADOW_FORMAT,
-                usage: wgpu::TextureUsages::RENDER_ATTACHMENT
-                    | wgpu::TextureUsages::TEXTURE_BINDING,
-                view_formats: &[],
-            })
-            .create_view(&wgpu::TextureViewDescriptor::default());
         let shadow_sampler = device.create_sampler(&wgpu::SamplerDescriptor {
             label: Some("sun shadow sampler"),
             mag_filter: wgpu::FilterMode::Linear,
@@ -381,41 +455,11 @@ impl ViewportRenderer {
                 },
             ],
         });
-        let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
-            label: Some("frame bind group"),
-            layout: &bind_group_layout,
-            entries: &[
-                wgpu::BindGroupEntry {
-                    binding: 0,
-                    resource: uniform_buffer.as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 1,
-                    resource: lights_buffer.as_entire_binding(),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 2,
-                    resource: wgpu::BindingResource::TextureView(&shadow_view),
-                },
-                wgpu::BindGroupEntry {
-                    binding: 3,
-                    resource: wgpu::BindingResource::Sampler(&shadow_sampler),
-                },
-            ],
-        });
         // Drawing the shadow map can't read the shadow map, so it gets a
         // layout with the frame data alone.
         let shadow_layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             label: Some("shadow frame layout"),
             entries: &[uniform_entry],
-        });
-        let shadow_bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
-            label: Some("shadow frame bind group"),
-            layout: &shadow_layout,
-            entries: &[wgpu::BindGroupEntry {
-                binding: 0,
-                resource: uniform_buffer.as_entire_binding(),
-            }],
         });
         let shadow_pipeline_layout =
             device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
@@ -459,11 +503,9 @@ impl ViewportRenderer {
             grid_pipeline: pipeline(Kind::Grid),
             line_pipeline: pipeline(Kind::Lines),
             models: ModelPipelines::new(device, &bind_group_layout, &shader, sample_count),
-            uniform_buffer,
-            bind_group,
-            lights_buffer,
-            shadow_view,
-            shadow_bind_group,
+            frame_layout: bind_group_layout,
+            shadow_layout,
+            shadow_sampler,
             shadow_pipeline,
             axes,
             axis_count: axis_vertices.len() as u32,
@@ -549,6 +591,12 @@ impl ViewportRenderer {
         .create_view(&wgpu::TextureViewDescriptor::default());
         let resolved_view = resolved.create_view(&wgpu::TextureViewDescriptor::default());
         ViewportTarget {
+            frame: FrameResources::new(
+                device,
+                &self.frame_layout,
+                &self.shadow_layout,
+                &self.shadow_sampler,
+            ),
             size,
             msaa_view,
             hdr_view,
@@ -591,20 +639,18 @@ impl ViewportRenderer {
             let max = max.max(Vec3::new(max.x, max.y, 0.0));
             (light.sun_view_projection, light.texel) = sun_view_projection(&params.sun, min, max);
         }
+        let frame = &target.frame;
         queue.write_buffer(
-            &self.uniform_buffer,
+            &frame.uniform_buffer,
             0,
             bytemuck::bytes_of(&FrameUniforms::new(params, &light)),
         );
-        queue.write_buffer(&self.lights_buffer, 0, bytemuck::bytes_of(&lamps));
-        let markers = light_markers(lights);
-        let marker_buffer = (!markers.is_empty()).then(|| {
-            device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
-                label: Some("lamp markers"),
-                contents: bytemuck::cast_slice(&markers),
-                usage: wgpu::BufferUsages::VERTEX,
-            })
-        });
+        queue.write_buffer(&frame.lights_buffer, 0, bytemuck::bytes_of(&lamps));
+        let marked = &lights[..lights.len().min(MAX_MARKED_LAMPS)];
+        let markers = light_markers(marked);
+        if !markers.is_empty() {
+            queue.write_buffer(&frame.markers, 0, bytemuck::cast_slice(&markers));
+        }
         let mut encoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
             label: Some("viewport frame"),
         });
@@ -613,7 +659,7 @@ impl ViewportRenderer {
                 label: Some("sun shadow map"),
                 color_attachments: &[],
                 depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
-                    view: &self.shadow_view,
+                    view: &frame.shadow_view,
                     depth_ops: Some(wgpu::Operations {
                         load: wgpu::LoadOp::Clear(1.0),
                         store: wgpu::StoreOp::Store,
@@ -624,7 +670,7 @@ impl ViewportRenderer {
                 occlusion_query_set: None,
                 multiview_mask: None,
             });
-            pass.set_bind_group(0, &self.shadow_bind_group, &[]);
+            pass.set_bind_group(0, &frame.shadow_bind_group, &[]);
             pass.set_pipeline(&self.shadow_pipeline);
             for model in models {
                 model.draw_depth(&mut pass);
@@ -655,7 +701,7 @@ impl ViewportRenderer {
                 depth_stencil_attachment: Some(wgpu::RenderPassDepthStencilAttachment {
                     view: &target.depth_view,
                     depth_ops: Some(wgpu::Operations {
-                        load: wgpu::LoadOp::Clear(1.0),
+                        load: wgpu::LoadOp::Clear(0.0),
                         store: wgpu::StoreOp::Discard,
                     }),
                     stencil_ops: None,
@@ -664,7 +710,7 @@ impl ViewportRenderer {
                 occlusion_query_set: None,
                 multiview_mask: None,
             });
-            pass.set_bind_group(0, &self.bind_group, &[]);
+            pass.set_bind_group(0, &frame.bind_group, &[]);
             pass.set_pipeline(&self.sky_pipeline);
             pass.draw(0..3, 0..1);
             // Solid shapes first, so the see-through grid and axes are
@@ -689,8 +735,8 @@ impl ViewportRenderer {
             pass.set_pipeline(&self.line_pipeline);
             pass.set_vertex_buffer(0, self.axes.slice(..));
             pass.draw(0..self.axis_count, 0..1);
-            if let Some(buffer) = &marker_buffer {
-                pass.set_vertex_buffer(0, buffer.slice(..));
+            if !markers.is_empty() {
+                pass.set_vertex_buffer(0, frame.markers.slice(..));
                 pass.draw(0..markers.len() as u32, 0..1);
             }
             pass.set_pipeline(&self.models.blended);
@@ -718,7 +764,7 @@ impl ViewportRenderer {
                 multiview_mask: None,
             });
             pass.set_pipeline(&self.post_pipeline);
-            pass.set_bind_group(0, &self.bind_group, &[]);
+            pass.set_bind_group(0, &frame.bind_group, &[]);
             pass.set_bind_group(2, &target.post_bind_group, &[]);
             pass.draw(0..3, 0..1);
         }

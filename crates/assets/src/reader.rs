@@ -59,9 +59,36 @@ fn describe_gltf_error(error: &gltf::Error) -> String {
     match error {
         gltf::Error::Io(e) => format!("reading failed ({e})"),
         gltf::Error::Deserialize(e) => format!("its text isn't valid glTF ({e})"),
-        gltf::Error::Validation(_) => "it refers to parts that don't exist".into(),
+        gltf::Error::Validation(errors) => {
+            // A file that needs an extension Solis doesn't read (Draco or
+            // meshopt compression, say) fails validation too: say which.
+            let needed: Vec<String> = errors
+                .iter()
+                .filter(|(_, e)| *e == gltf::json::validation::Error::Unsupported)
+                .map(|(path, _)| {
+                    // The path reads `extensionsRequired[0] = "NAME"`.
+                    path.0
+                        .split('"')
+                        .nth(1)
+                        .unwrap_or(path.0.as_str())
+                        .to_string()
+                })
+                .collect();
+            if needed.is_empty() {
+                "it refers to parts that don't exist".into()
+            } else {
+                format!(
+                    "it needs a glTF extension Solis doesn't read yet ({}); export it without compression",
+                    needed.join(", ")
+                )
+            }
+        }
         gltf::Error::Binary(_) => "its binary layout is broken".into(),
     }
+}
+
+fn limits_mb(bytes: u64) -> u64 {
+    bytes / 1_000_000
 }
 
 fn read_model(
@@ -107,6 +134,20 @@ fn read_limited(path: &Path, limit: u64) -> Result<Vec<u8>, ImportError> {
     std::fs::read(path).map_err(|e| ImportError::Unreadable(format!("{} ({e})", path.display())))
 }
 
+/// Reads at most `length` bytes from the start of a file: a buffer only
+/// ever takes what it declares, however big the file it points at is.
+fn read_prefix(path: &Path, length: u64) -> Result<Vec<u8>, ImportError> {
+    use std::io::Read;
+    let unreadable =
+        |e: std::io::Error| ImportError::Unreadable(format!("{} ({e})", path.display()));
+    let file = std::fs::File::open(path).map_err(unreadable)?;
+    let mut data = Vec::new();
+    file.take(length)
+        .read_to_end(&mut data)
+        .map_err(unreadable)?;
+    Ok(data)
+}
+
 /// Where a `uri` in the file points.
 enum Address<'a> {
     /// Data inside the address itself.
@@ -138,7 +179,17 @@ fn resolve<'a>(uri: &'a str, folder: Option<&Path>) -> Result<Address<'a>, Impor
         return Ok(Address::Refused(uri));
     };
     let decoded = percent_encoding::percent_decode_str(uri).decode_utf8_lossy();
-    Ok(Address::File(folder.join(decoded.as_ref())))
+    // Only files in the model's folder or below it: never `..` out of it.
+    let relative = Path::new(decoded.as_ref());
+    if relative.components().any(|c| {
+        !matches!(
+            c,
+            std::path::Component::Normal(_) | std::path::Component::CurDir
+        )
+    }) {
+        return Ok(Address::Refused(uri));
+    }
+    Ok(Address::File(folder.join(relative)))
 }
 
 fn read_buffers(
@@ -165,18 +216,16 @@ fn read_buffers(
                     .to_vec(),
                 gltf::buffer::Source::Uri(uri) => match resolve(uri, folder)? {
                     Address::Data(data) => data,
-                    Address::File(path) => {
-                        read_limited(&path, limits.max_file_bytes).map_err(|e| match e {
-                            ImportError::Unreadable(_) => ImportError::Damaged(format!(
-                                "it needs the file {}, which isn't there",
-                                path.file_name().map_or_else(
-                                    || uri.to_string(),
-                                    |n| n.to_string_lossy().into_owned()
-                                )
-                            )),
-                            other => other,
-                        })?
-                    }
+                    Address::File(path) => read_prefix(&path, declared).map_err(|e| match e {
+                        ImportError::Unreadable(_) => ImportError::Damaged(format!(
+                            "it needs the file {}, which isn't there",
+                            path.file_name().map_or_else(
+                                || uri.to_string(),
+                                |n| n.to_string_lossy().into_owned()
+                            )
+                        )),
+                        other => other,
+                    })?,
                     Address::Refused(uri) => {
                         return Err(ImportError::Damaged(format!(
                             "it needs data from {uri}, which Solis doesn't fetch"
@@ -190,6 +239,8 @@ fn read_buffers(
                     data.len()
                 )));
             }
+            let mut data = data;
+            data.truncate(declared as usize);
             Ok(data)
         })
         .collect()
@@ -266,6 +317,10 @@ struct TextureReader<'a> {
     /// One texture per (image, sampler, colour or not) the file uses.
     made: HashMap<(usize, Option<usize>, bool), Option<usize>>,
     warnings: Vec<String>,
+    /// Bytes still allowed to be read from image files beside the model.
+    file_budget: u64,
+    /// Bytes still allowed for decoded textures.
+    texture_budget: u64,
 }
 
 impl TextureReader<'_> {
@@ -290,10 +345,12 @@ impl TextureReader<'_> {
             return made;
         }
         let sampler = sampler(&texture.sampler());
-        let result = match read_image(&image, self.buffers, self.folder, self.limits)
-            .and_then(|bytes| texture::decode(&bytes, sampler, srgb, self.limits))
-        {
+        let result = match read_image(&image, self.buffers, self.folder, &mut self.file_budget)
+            .and_then(|bytes| {
+                texture::decode(&bytes, sampler, srgb, self.limits, self.texture_budget)
+            }) {
             Ok(texture) => {
+                self.texture_budget = self.texture_budget.saturating_sub(texture.byte_size());
                 self.textures.push(texture);
                 Some(self.textures.len() - 1)
             }
@@ -330,6 +387,7 @@ fn read_materials(
     limits: &Limits,
     warnings: &mut Vec<String>,
 ) -> (Vec<Material>, Vec<Texture>) {
+    let buffer_bytes: u64 = buffers.iter().map(|b| b.len() as u64).sum();
     let mut reader = TextureReader {
         buffers,
         folder,
@@ -337,6 +395,8 @@ fn read_materials(
         textures: Vec::new(),
         made: HashMap::new(),
         warnings: Vec::new(),
+        file_budget: limits.max_file_bytes.saturating_sub(buffer_bytes),
+        texture_budget: limits.max_texture_bytes,
     };
     let materials = document
         .materials()
@@ -420,12 +480,13 @@ fn sampler(sampler: &gltf::texture::Sampler<'_>) -> Sampler {
     }
 }
 
-/// The encoded bytes of an image (still PNG or JPEG).
+/// The encoded bytes of an image (still PNG or JPEG). Image files beside
+/// the model share `file_budget` bytes with each other and the buffers.
 fn read_image(
     image: &gltf::Image<'_>,
     buffers: &[Vec<u8>],
     folder: Option<&Path>,
-    limits: &Limits,
+    file_budget: &mut u64,
 ) -> Result<Vec<u8>, String> {
     match image.source() {
         gltf::image::Source::View { view, .. } => {
@@ -444,13 +505,20 @@ fn read_image(
         gltf::image::Source::Uri { uri, .. } => {
             match resolve(uri, folder).map_err(|e| e.to_string())? {
                 Address::Data(data) => Ok(data),
-                Address::File(path) => read_limited(&path, limits.max_file_bytes).map_err(|_| {
-                    format!(
-                        "the file {} isn't there",
-                        path.file_name()
-                            .map_or_else(|| uri.to_string(), |n| n.to_string_lossy().into_owned())
-                    )
-                }),
+                Address::File(path) => {
+                    let name = path
+                        .file_name()
+                        .map_or_else(|| uri.to_string(), |n| n.to_string_lossy().into_owned());
+                    let data = read_limited(&path, *file_budget).map_err(|e| match e {
+                        ImportError::TooBig { .. } => format!(
+                            "{name} would take the model past {} MB of files",
+                            limits_mb(*file_budget)
+                        ),
+                        _ => format!("the file {name} isn't there"),
+                    })?;
+                    *file_budget = file_budget.saturating_sub(data.len() as u64);
+                    Ok(data)
+                }
                 Address::Refused(uri) => Err(format!("it is at {uri}, which Solis doesn't fetch")),
             }
         }

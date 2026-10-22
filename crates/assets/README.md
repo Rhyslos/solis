@@ -12,7 +12,7 @@ Turn a model file into a `Model`: meshes already placed where the file's nodes p
 
 ## Must never
 
-- Crash on a damaged or hostile file. Every file is treated as hostile (CONTRIBUTING.md, rule 9): sizes are checked against `Limits` before anything big is allocated, every buffer, view and accessor is checked to fit before it is read, images are decoded with size and memory limits, and errors explain the problem in plain words. Fuzz tests feed it thousands of damaged files.
+- Crash on a damaged or hostile file. Every file is treated as hostile (CONTRIBUTING.md, rule 9): sizes are checked against `Limits` before anything big is allocated (a buffer only ever reads the bytes it declares, buffers and image files share one byte budget, decoded textures another, and corner counts are checked from the file's own numbers before reading), every buffer, view and accessor is checked to fit before it is read, images are decoded with size and memory limits, files are only read from the model's folder or below, and errors explain the problem in plain words. Fuzz tests feed it thousands of damaged files.
 - Touch the GPU, the window or the editor
 - Fetch anything from the internet: a model that refers to data elsewhere is refused
 
@@ -22,4 +22,4 @@ Turn a model file into a `Model`: meshes already placed where the file's nodes p
 
 ## Status
 
-Phase 1, milestone 4: glTF models with their full materials and lights. Animation arrives in Phase 7.
+Phase 1 complete: glTF models with their full materials and lights, read within memory limits (and meshes split to fit the graphics card's buffers). Animation arrives in Phase 7.

@@ -73,24 +73,101 @@ pub(crate) fn read_meshes(
 
     let mut meshes = Vec::new();
     let (mut vertices, mut triangles) = (0usize, 0usize);
+    let too_big = |vertices: usize, triangles: usize| {
+        ImportError::TooManyTriangles(format!(
+            "more than {} triangles or {} corners; the limits are {} and {}",
+            triangles, vertices, limits.max_triangles, limits.max_vertices
+        ))
+    };
     for (mesh, world) in placed {
         for primitive in mesh.primitives() {
+            // Counted from the file's own numbers before anything is read,
+            // so a small file can't ask for millions of corners (a list
+            // with no data is all zeros, of any length).
+            let corners = primitive
+                .get(&gltf::Semantic::Positions)
+                .map_or(0, |a| a.count());
+            let listed = primitive.indices().map_or(corners, |a| a.count());
+            if vertices.saturating_add(corners) > limits.max_vertices
+                || triangles.saturating_add(listed / 3) > limits.max_triangles
+            {
+                return Err(too_big(
+                    vertices.saturating_add(corners),
+                    triangles.saturating_add(listed / 3),
+                ));
+            }
             let Some(read) = read_primitive(&primitive, buffers, world, warnings)? else {
                 continue;
             };
             vertices = vertices.saturating_add(read.vertices.len());
             triangles = triangles.saturating_add(read.triangles());
             if vertices > limits.max_vertices || triangles > limits.max_triangles {
+                return Err(too_big(vertices, triangles));
+            }
+            let pieces = split(read, limits.max_mesh_vertices);
+            if meshes.len() + pieces.len() > limits.max_meshes {
                 return Err(ImportError::TooManyTriangles(format!(
-                    "more than {} triangles; the limit is {}",
-                    triangles.max(vertices),
-                    limits.max_triangles
+                    "more than {} meshes, counting each placement",
+                    limits.max_meshes
                 )));
             }
-            meshes.push(read);
+            meshes.extend(pieces);
         }
     }
     Ok(meshes)
+}
+
+/// `mesh` in pieces of at most `max_vertices` corners each (and as many
+/// triangle corners as fit one GPU buffer), so a huge mesh still fits the
+/// graphics card's buffers. A mesh that fits stays whole.
+pub(crate) fn split(mesh: Mesh, max_vertices: usize) -> Vec<Mesh> {
+    use std::collections::HashMap;
+    let max_vertices = max_vertices.max(3);
+    // Indices are 4 bytes, vertices 32: the same buffer holds 8 times as
+    // many indices as vertices.
+    let max_indices = max_vertices.saturating_mul(8) / 3 * 3;
+    if mesh.vertices.len() <= max_vertices && mesh.indices.len() <= max_indices {
+        return vec![mesh];
+    }
+    let mut pieces = Vec::new();
+    let mut piece = Mesh {
+        material: mesh.material,
+        ..Mesh::default()
+    };
+    let mut remap: HashMap<u32, u32> = HashMap::new();
+    for triangle in mesh.indices.chunks_exact(3) {
+        let new_corners = triangle.iter().filter(|i| !remap.contains_key(i)).count();
+        if piece.vertices.len() + new_corners > max_vertices
+            || piece.indices.len() + 3 > max_indices
+        {
+            pieces.push(std::mem::replace(
+                &mut piece,
+                Mesh {
+                    material: mesh.material,
+                    ..Mesh::default()
+                },
+            ));
+            remap.clear();
+        }
+        for &i in triangle {
+            let next = piece.vertices.len() as u32;
+            let local = *remap.entry(i).or_insert_with(|| {
+                piece
+                    .vertices
+                    .push(mesh.vertices.get(i as usize).copied().unwrap_or(Vertex {
+                        position: [0.0; 3],
+                        normal: [0.0, 0.0, 1.0],
+                        uv: [0.0; 2],
+                    }));
+                next
+            });
+            piece.indices.push(local);
+        }
+    }
+    if !piece.indices.is_empty() {
+        pieces.push(piece);
+    }
+    pieces
 }
 
 /// One glTF primitive as a mesh, or `None` (with a warning) for kinds
@@ -174,7 +251,9 @@ fn read_primitive(
         if m.determinant().abs() > 1e-12 {
             m.inverse().transpose()
         } else {
-            Mat3::IDENTITY
+            // Squashed flat (a zero scale): keep at least the turn from
+            // glTF's axes to Solis's.
+            Mat3::from_mat4(Y_UP_TO_Z_UP)
         }
     };
     let positions: Vec<Vec3> = points
@@ -188,6 +267,17 @@ fn read_primitive(
             }
         })
         .collect();
+    // A mirrored placement turns triangles inside out; flip them back so
+    // their front stays outside.
+    let indices = if Mat3::from_mat4(world).determinant() < 0.0 {
+        indices
+            .chunks_exact(3)
+            .flat_map(|t| [t[0], t[2], t[1]])
+            .collect()
+    } else {
+        indices
+    };
+    // Normals worked out here come after the flip, so they face out too.
     let normals = match normals {
         Some(normals) => normals
             .iter()
@@ -205,16 +295,7 @@ fn read_primitive(
             uv: uv.map(|v| if v.is_finite() { v } else { 0.0 }),
         })
         .collect();
-    // A mirrored placement turns triangles inside out; flip them back so
-    // their front stays outside.
-    let indices = if Mat3::from_mat4(world).determinant() < 0.0 {
-        indices
-            .chunks_exact(3)
-            .flat_map(|t| [t[0], t[2], t[1]])
-            .collect()
-    } else {
-        indices
-    };
+
     Ok(Some(Mesh {
         vertices,
         indices,

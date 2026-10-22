@@ -203,6 +203,10 @@ pub fn sun_view_projection(sun: &Sun, min: Vec3, max: Vec3) -> (Mat4, f32) {
     (projection * view, 2.0 * radius / SHADOW_MAP_SIZE as f32)
 }
 
+/// The most line ends one lamp's marker uses (a cross, and a spotlight's
+/// line).
+pub(crate) const MARKER_VERTICES: usize = 8;
+
 /// Small markers showing where lamps are: a cross in the lamp's colour,
 /// and for a spotlight a line the way it shines.
 pub fn light_markers(lights: &[Light]) -> Vec<LineVertex> {

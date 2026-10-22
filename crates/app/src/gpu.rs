@@ -56,6 +56,11 @@ impl GpuViewport {
         self.state.device.limits().max_texture_dimension_2d
     }
 
+    /// The biggest single GPU buffer the graphics card allows, in bytes.
+    pub fn max_buffer_bytes(&self) -> u64 {
+        self.state.device.limits().max_buffer_size
+    }
+
     /// Uploads an imported model, to draw whenever the viewport lists `id`.
     pub fn add_model(&mut self, id: ModelId, model: &assets::Model) {
         let uploaded = self

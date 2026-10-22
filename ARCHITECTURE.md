@@ -13,7 +13,7 @@ Solis is a Rust program split into small, single-purpose crates. **Lower layers 
 
 Each crate's `README.md` states its purpose and what it **must never** do. Read it before changing the crate.
 
-Planned: `world` (entities and components, layer 0 or 1) and `assets` (layer 1) in Phase 2; physics, sound and networking crates in later phases. See ROADMAP.md.
+Planned: `world` (entities and components, layer 0 or 1) in Phase 2; physics, sound and networking crates in later phases. See ROADMAP.md.
 
 ## How a frame runs
 

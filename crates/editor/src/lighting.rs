@@ -141,6 +141,8 @@ pub struct Lamp {
 impl Lamp {
     /// The strongest lamp the fields allow, in watts.
     pub const MAX_STRENGTH: f32 = 100_000.0;
+    /// The furthest range the field allows, in metres.
+    pub const MAX_RANGE: f32 = 1_000_000.0;
     /// A new lamp's strength in watts: a bright room light, as in Blender.
     pub const DEFAULT_STRENGTH: f32 = 1000.0;
     /// How far above the camera's focus point a new point light goes.
@@ -224,7 +226,10 @@ impl Lamp {
         self.direction = self.direction.try_normalize().unwrap_or(-Vec3::Z);
         self.strength =
             finite(self.strength, Self::DEFAULT_STRENGTH).clamp(0.0, Self::MAX_STRENGTH);
-        self.range = self.range.filter(|r| r.is_finite() && *r > 0.0);
+        self.range = self
+            .range
+            .filter(|r| r.is_finite() && *r > 0.0)
+            .map(|r| r.clamp(0.01, Self::MAX_RANGE));
         if let LampKind::Spot { inner, outer } = &mut self.kind {
             *outer = finite(*outer, 30.0).clamp(1.0, 89.0);
             *inner = finite(*inner, 0.0).clamp(0.0, *outer);
@@ -310,7 +315,7 @@ pub fn sun_properties(ui: &mut Ui, sun: &mut SunSettings) {
     row(ui, "Height", |ui| {
         ui.add(
             egui::DragValue::new(&mut sun.height)
-                .range(-10.0..=90.0)
+                .range(-90.0..=90.0)
                 .speed(0.5)
                 .suffix("°"),
         )
@@ -368,7 +373,7 @@ pub fn lamp_properties(ui: &mut Ui, lamp: &mut Lamp) -> LampRequest {
         if limited {
             ui.add(
                 egui::DragValue::new(&mut range)
-                    .range(0.1..=10_000.0)
+                    .range(0.01..=Lamp::MAX_RANGE)
                     .speed(0.1)
                     .suffix(" m"),
             );

@@ -32,3 +32,5 @@ Lust stays what every Solis game is made of, and where Solis is different: compo
 - The game API (`fetch solis;`) is designed from the start for Lust to read well, and tested from Rust until Lust arrives.
 - Games could also be written in Rust, for people who prefer it. Lust is the one the docs teach.
 - The engine is no longer a test of Lust as a language for big systems. Games are its test instead.
+
+> **Note (2026-10-22):** Lust now joins in Phase 4, not 7 ([decision 0016](0016-how-lust-joins-solis.md)).
