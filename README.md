@@ -28,7 +28,7 @@ Solis is built in phases, one milestone per pull request. Each phase ends with a
 
 **Overall: 19 of 60 milestones** `████░░░░░░░░░` 32%
 
-**Now:** Phase 2, the world, is built ([plan](docs/plans/phase-2.md)) and waits for its gate; Phase 1's gate is still to be tried by hand too. Phase 3, the editor, comes next.
+**Now:** Phase 3, the editor ([plan](docs/plans/phase-3.md)). Phases 1 and 2 are built and wait for their gates to be tried by hand.
 
 ### Phase 0 · Groundwork — 7 of 7
 

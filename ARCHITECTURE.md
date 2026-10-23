@@ -13,7 +13,7 @@ Solis is a Rust program split into small, single-purpose crates. **Lower layers 
 
 Each crate's `README.md` states its purpose and what it **must never** do. Read it before changing the crate.
 
-Planned: the game's own fast storage in Phase 3 ([decision 0019](docs/decisions/0019-scene-document-now-game-storage-later.md)); physics, sound and networking crates in later phases. See ROADMAP.md.
+Planned: the game's own fast storage in Phase 3, on `hecs` in a `world` crate ([decision 0024](docs/decisions/0024-game-storage-is-hecs.md)); physics, sound and networking crates in later phases. See ROADMAP.md.
 
 ## The area
 

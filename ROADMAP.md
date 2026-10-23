@@ -72,11 +72,11 @@ The working plan, with the order milestones are built in, is [docs/plans/phase-2
 
 ## Phase 3: The editor
 
-- **First:** the game's fast storage, chosen with a benchmark at the scale target (`hecs` or Solis's own), built from the area document when Play is pressed ([decision 0019](docs/decisions/0019-scene-document-now-game-storage-later.md)).
+- **First:** the game's fast storage, chosen with a benchmark at the scale target (`hecs` or Solis's own), built from the area document when Play is pressed ([decision 0019](docs/decisions/0019-scene-document-now-game-storage-later.md)). Chosen: `hecs` ([decision 0024](docs/decisions/0024-game-storage-is-hecs.md)). The working plan is [docs/plans/phase-3.md](docs/plans/phase-3.md).
 - Picking and selection in the viewport, and move, rotate and scale gizmos.
 - The entity list and the inspector.
 - The library: assets and code, with a collapsible panel.
-- The terminal: logs, errors and commands.
+- The console: logs, errors and commands.
 - Play mode, which resets the area when you stop. Several viewports.
 
 **Gate:** build a small area from scratch in the editor, press Play, stop, and everything is back as it was.
