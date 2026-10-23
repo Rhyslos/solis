@@ -362,11 +362,16 @@ impl Tools {
         size: Vec2,
         ppp: f32,
     ) {
-        let fallback = camera
-            .ray_through(at, size)
-            .hit_ground(0.0)
-            .filter(|p| p.distance(camera.position) < 1_000.0)
-            .unwrap_or_else(|| camera.focus());
+        let ray = camera.ray_through(at, size);
+        let fallback = if camera.is_flat() {
+            // A flat view: the point under the mouse, as deep as the
+            // view's middle (in a front view, at the height pointed at).
+            ray.at((camera.position - ray.origin).dot(ray.direction))
+        } else {
+            ray.hit_ground(0.0)
+                .filter(|p| p.distance(camera.position) < 1_000.0)
+                .unwrap_or_else(|| camera.focus())
+        };
         let px = (at * ppp).floor().max(Vec2::ZERO);
         self.ask(
             [px.x as u32, px.y as u32, 1, 1],

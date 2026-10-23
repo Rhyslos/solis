@@ -27,7 +27,7 @@ Make a project as soon as you start something you want to keep. Without one, Sol
 - Point at a file to see its full path and what you can do with it.
 
 **Place a model or assembly**
-- **Drag it from the Library into the viewport**: it goes on whatever surface is under the mouse when you let go (a table, the floor), or on the ground. It's selected, ready to move.
+- **Drag it from the Library into the viewport**: it goes on whatever surface is under the mouse when you let go (a table, the floor), or on the ground. In a flat Front or Right view, dropped on empty space, it goes exactly where you point, at that height. It's selected, ready to move.
 - **Drag it onto an entity in the Area panel**: it goes under that entity, at its place.
 - Or **double-click** it (or click the **+** on its picture) to place it where the camera looks.
 

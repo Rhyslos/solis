@@ -277,3 +277,26 @@ fn a_click_on_a_cameras_marker_picks_it_unless_it_is_locked() {
     assert!(tools.events.is_empty(), "asks the renderer instead");
     assert!(tools.rect_to_send().is_some());
 }
+
+#[test]
+fn a_drop_in_a_flat_view_falls_back_to_the_point_under_the_mouse() {
+    let front = Camera {
+        position: Vec3::new(0.0, 0.0, 2.0),
+        kind: crate::camera::ViewKind::Front,
+        flat_height: 10.0,
+        ..Camera::default()
+    };
+    let goal = Vec3::new(3.0, 0.0, 4.0);
+    let at = front.project(goal, SIZE).unwrap();
+    let mut tools = Tools::default();
+    let asset = reflect::AssetId::random();
+    tools.drop_asset(asset, at, &front, &AreaView::default(), SIZE, 1.0);
+    let Some(Pick {
+        purpose: PickPurpose::Drop { fallback, .. },
+        ..
+    }) = &tools.pick
+    else {
+        panic!("a drop was asked about")
+    };
+    assert!(fallback.distance(goal) < 1e-3, "{fallback}");
+}
