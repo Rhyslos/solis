@@ -24,5 +24,14 @@
 | Scale | S |
 | Transform (move, rotate and scale) | T |
 
+## Editing
+
+| Action | Shortcut |
+|---|---|
+| Undo | Ctrl + Z |
+| Redo | Ctrl + Y, or Ctrl + Shift + Z |
+
+These don't work while you're typing in a field: there they undo the typing. See [Undo and redo](undo.md).
+
 ## Related
 - [Moving around the viewport](navigating-the-viewport.md)
