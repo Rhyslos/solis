@@ -186,7 +186,7 @@ The ROADMAP lists Phase 2's parts; they're built in this order. **Undo comes sec
   - the watcher, with a simulated save by rename;
   - the template files.
 
-### M6. Areas saved as text ☐
+### M6. Areas saved as text ☑
 
 - **The format** (decision 0020): Lust-style data blocks, one per entity, sorted by ID, one line per field.
   - Floats written as the shortest text that reads back exactly.

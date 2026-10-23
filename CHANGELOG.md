@@ -13,6 +13,7 @@ What changed in each version, for people using Solis. Newest first.
 
 ### Added
 
+- Saving areas: **Ctrl + S**, **Ctrl + Shift + S**, **Ctrl + O** and **Ctrl + N** (also in the File menu). Areas are `.solarea` text files: one block per entity, one line per setting, made so Git merges two people's work cleanly, and safe to edit by hand. The tab shows a • while there are unsaved changes, and Solis asks before losing them. A file changed on disk (a Git pull) is loaded as one step Ctrl + Z can undo, or, with unsaved changes, Solis asks which to keep.
 - Projects: **File > New project…**, **Open project…** and **Recent projects**; the last project opens again on start. A project is a folder with an `assets` folder (watched for changes), a `.solis` cache and Git files set up for games. Imported models are copied into it.
 - The **Library** lists the project's models; double-click one (or click its +) to place it.
 - Renaming or moving a model breaks nothing: each asset's ID lives in a `.solmeta` file beside it, which follows a file renamed in Explorer. Copies get IDs of their own.

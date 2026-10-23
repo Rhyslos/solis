@@ -91,7 +91,13 @@ changed_pixels() {
 quit() {
     xdotool mousemove 19 16 click 1
     sleep 1
-    xdotool mousemove 40 "${QUIT_Y:-259}" click 1
+    xdotool mousemove 40 "${QUIT_Y:-285}" click 1
+    sleep 2
+    # With unsaved changes (an imported model), Solis asks first: answer
+    # Don't save, in the middle of the window.
+    if kill -0 "$PID" 2>/dev/null; then
+        xdotool mousemove "${DONT_SAVE_X:-647}" "${DONT_SAVE_Y:-485}" click 1
+    fi
     for _ in $(seq 1 15); do
         kill -0 "$PID" 2>/dev/null || break
         sleep 1

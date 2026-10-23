@@ -30,6 +30,10 @@
 |---|---|
 | Undo | Ctrl + Z |
 | Redo | Ctrl + Y, or Ctrl + Shift + Z |
+| New area | Ctrl + N |
+| Open area | Ctrl + O |
+| Save area | Ctrl + S |
+| Save area as | Ctrl + Shift + S |
 | Delete the selection | Delete |
 | Duplicate the selection | Ctrl + D |
 | Rename | F2 |

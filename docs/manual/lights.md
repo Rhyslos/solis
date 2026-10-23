@@ -11,7 +11,7 @@ Light decides how a model reads: which side is bright, where its shadows fall, w
 
 Everything also gets soft **sky light**, so shadows are never pitch black.
 
-Every light is an [entity](concepts.md#the-area) with a **Light** [component](concepts.md#the-area); where it is and which way it points come from its **Transform**. Until saving areas arrives later in Phase 2, lights aren't kept when you close Solis, and the sun starts as it was.
+Every light is an [entity](concepts.md#the-area) with a **Light** [component](concepts.md#the-area); where it is and which way it points come from its **Transform**. Lights are saved with the [area](saving-areas.md).
 
 ## How to use it
 
@@ -56,7 +56,6 @@ Every light is an [entity](concepts.md#the-area) with a **Light** [component](co
 - **Problem:** everything is washed out near a lamp. **Why:** the lamp is very strong for its distance. **Fix:** lower its strength, or the exposure under [Environment](sky-fog-and-exposure.md).
 - **Problem:** lamps far from the camera stop lighting. **Why:** up to 16 lamps light the view at once, the ones nearest the camera.
 - **Problem:** shadows look blurry in a big area. **Why:** one shadow map covers every model, so in a large area each of its pixels covers more ground.
-- **Problem:** I added lamps, closed Solis, and they're gone. **Why:** areas can't be saved until later in Phase 2.
 - **Problem:** I deleted the sun and everything went dark. **Why:** the sun was the only light. **Fix:** undo (Ctrl + Z), or add an entity and give it a Light (**Add component > Light**) with **Kind** set to Sun.
 
 ## Related

@@ -57,3 +57,7 @@ The HDR image's alpha channel is a mask, not opacity: 1 where the lit world is (
 
 A project is a folder: `project.solis`, `assets/` and the `.solis/` cache. `asset_db::AssetDb` is worked out from `assets/` (the folder is the truth); each asset's `AssetId` lives in a `.solmeta` sidecar beside it, so renaming, moving or switching Git branches breaks nothing. The app (`crates/app/src/project.rs`) holds the database and a watcher; when the watcher reports something, the database rescans and the app reloads changed models in use on worker threads, through the import cache, and swaps them in by ID. A model imported while a project is open is copied into `assets/` first. The editor only sees `ProjectInfo` and the Library's list ([decision 0021](docs/decisions/0021-asset-database-and-models.md)).
 
+## Area files
+
+An area is saved as a `.solarea` text file: `area::text::write` and `read` turn an `Area` into Lust-style blocks and back, made to merge in Git ([decision 0020](docs/decisions/0020-scene-files-in-lust-style.md)). The editor never touches files: it asks (`SaveArea`, `OpenArea`…) and the app (`crates/app/src/area_file.rs`) shows the system's windows, writes through a temporary file and a swap, and checks the open file once a second for changes made elsewhere, which the editor loads as one undoable step. `area::History::state` tells whether there are unsaved changes: it comes back to the saved value when undo or redo return to the save.
+
