@@ -3,7 +3,7 @@
 //! shown while files are dragged over the window.
 
 use crate::area_panel::{AreaPanelState, AreaRequest, area_tree};
-use crate::console::{Console, console};
+use crate::console::{Console, ConsoleRequest, console};
 use crate::document::Document;
 use crate::icons::{self, Icon};
 use crate::library::{LibraryItem, LibraryRequest, LibraryState, ProjectInfo, library};
@@ -32,6 +32,8 @@ pub(crate) struct PanelViewer<'a> {
     pub(crate) viewport: &'a mut Viewport,
     pub(crate) renderer: &'a mut dyn ViewportRenderer,
     pub(crate) console: &'a mut Console,
+    pub(crate) console_requests: &'a mut Vec<ConsoleRequest>,
+    pub(crate) problems: &'a [crate::problems::Problem],
     pub(crate) document: &'a Document,
     pub(crate) models: &'a BTreeMap<AssetId, ModelInfo>,
     pub(crate) area_requests: &'a mut Vec<AreaRequest>,
@@ -68,6 +70,17 @@ impl TabViewer for PanelViewer<'_> {
                 ..Default::default()
             },
         );
+        if *tab == Panel::Problems && !self.problems.is_empty() {
+            job.append(
+                &self.problems.len().to_string(),
+                6.0,
+                egui::TextFormat {
+                    font_id: egui::FontId::proportional(theme::TEXT_SIZE),
+                    color: theme::WARNING,
+                    ..Default::default()
+                },
+            );
+        }
         job.into()
     }
 
@@ -153,9 +166,16 @@ impl TabViewer for PanelViewer<'_> {
                 self.library_requests.extend(requests);
             }
             Panel::Game => placeholder(ui, "Press Play to run the game here (Phase 3)."),
-            Panel::Console => console(ui, self.console, self.accent),
+            Panel::Console => {
+                if let Some(request) = console(ui, self.console, self.accent) {
+                    self.console_requests.push(request);
+                }
+            }
             Panel::Problems => {
-                placeholder(ui, "No problems. Mistakes in code and areas show here.");
+                if let Some(entity) = crate::problems::problems_panel(ui, self.problems) {
+                    self.area_state.reveal = Some(entity);
+                    self.area_requests.push(AreaRequest::Select(entity));
+                }
             }
             Panel::Viewport => {}
         }

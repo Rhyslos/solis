@@ -10,6 +10,7 @@ pub mod branding;
 pub mod cli;
 pub mod gpu;
 pub mod import;
+pub mod logger;
 pub mod project;
 pub mod thumbnails;
 pub mod window;

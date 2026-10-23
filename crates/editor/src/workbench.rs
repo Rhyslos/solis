@@ -153,6 +153,8 @@ pub struct Workbench {
     /// Where assets being placed go, when they were dropped somewhere:
     /// the point, and the entity they go under.
     pub(crate) place_targets: BTreeMap<AssetId, (glam::Vec3, Option<EntityId>)>,
+    /// Mistakes found in the area, for the Problems panel.
+    pub(crate) problems: crate::problems::Problems,
 }
 
 impl Workbench {
@@ -177,6 +179,7 @@ impl Workbench {
             folders: Vec::new(),
             library_state: Default::default(),
             place_targets: BTreeMap::new(),
+            problems: Default::default(),
             assemblies: BTreeMap::new(),
             outbox: Vec::new(),
             unsaved_prompt: None,
@@ -439,6 +442,7 @@ impl Workbench {
         self.undo_keys(ui);
         self.editing_keys(ui);
         self.file_keys(ui, &mut actions);
+        self.console_key(ui);
         egui::Panel::top("top_bar")
             .frame(theme::top_bar_frame())
             .exact_size(34.0)
@@ -447,6 +451,7 @@ impl Workbench {
         let mut shown = HashSet::new();
         let mut area_requests = Vec::new();
         let mut library_requests = Vec::new();
+        let mut console_requests = Vec::new();
         let part = self.assembly_part();
         let mut requests = Vec::new();
         let (hidden, locked) = self.area_panel.in_effect(self.document.area());
@@ -454,6 +459,7 @@ impl Workbench {
             AreaView::of_shown(self.document.area(), &self.models, &hidden, &locked);
         self.viewport.entities = self.document.area().len();
         self.prepare_tools();
+        self.find_problems();
         let menu = crate::menu_items::MenuState::of(self);
         let copied: Vec<String> = self.copied.iter().map(|(name, _)| name.clone()).collect();
         theme::dock_frame().show(ui, |ui| {
@@ -473,6 +479,8 @@ impl Workbench {
                         viewport: &mut self.viewport,
                         renderer,
                         console: &mut self.console,
+                        console_requests: &mut console_requests,
+                        problems: &self.problems.list,
                         document: &self.document,
                         models: &self.models,
                         area_requests: &mut area_requests,
@@ -497,6 +505,9 @@ impl Workbench {
         actions.append(&mut self.outbox);
         for request in library_requests {
             self.library_request(request, &mut actions);
+        }
+        for request in console_requests {
+            self.console_request(request, ui.ctx(), &mut actions);
         }
         for request in area_requests {
             match request {
@@ -526,6 +537,117 @@ impl Workbench {
         if let Some(tool) = pressed {
             self.viewport.tool = tool;
         }
+    }
+
+    /// The `'` key (beside Æ on a Norwegian keyboard) jumps to the
+    /// console's command line, bringing the Console to the front (decided
+    /// with the project lead, 2026-10-23). Not while typing.
+    pub(crate) fn console_key(&mut self, ui: &Ui) {
+        if ui.ctx().egui_wants_keyboard_input() || self.viewport.is_flying() {
+            return;
+        }
+        let pressed = ui.input_mut(|i| {
+            let pressed = i.events.iter().any(|e| {
+                matches!(
+                    e,
+                    egui::Event::Key {
+                        key: egui::Key::Quote,
+                        pressed: true,
+                        modifiers,
+                        ..
+                    } if !modifiers.shift && !modifiers.command && !modifiers.alt
+                )
+            });
+            // The ' itself isn't typed into the command line: dropped now,
+            // or, if it comes a frame later, by the command line.
+            let typed = pressed
+                && i.events
+                    .iter()
+                    .any(|e| matches!(e, egui::Event::Text(t) if t == "'"));
+            if typed {
+                i.events
+                    .retain(|e| !matches!(e, egui::Event::Text(t) if t == "'"));
+            }
+            (pressed, pressed && !typed)
+        });
+        let (pressed, later) = pressed;
+        if pressed {
+            self.open_command_line();
+            self.console.swallow_quote = later;
+        }
+    }
+
+    /// Brings the Console to the front and puts the keyboard in its
+    /// command line.
+    pub(crate) fn open_command_line(&mut self) {
+        if let Some(found) = self.dock.find_tab(&crate::panel::Panel::Console) {
+            let _ = self.dock.set_active_tab(found);
+        }
+        self.console.focus = true;
+    }
+
+    /// Commands typed in the console, and Tab.
+    pub(crate) fn console_request(
+        &mut self,
+        request: crate::console::ConsoleRequest,
+        ctx: &egui::Context,
+        actions: &mut Vec<WorkbenchAction>,
+    ) {
+        match request {
+            crate::console::ConsoleRequest::Run(line) => self.run_command(&line, ctx, actions),
+            crate::console::ConsoleRequest::Complete => {
+                let done = self.complete(&self.console.input);
+                self.console.input = done.line;
+                self.console.choices = done.choices;
+                self.console.cursor_to_end = true;
+                self.console.focus = true;
+            }
+        }
+    }
+
+    /// Uses `history` as the console's earlier commands (as saved last
+    /// time).
+    #[must_use]
+    pub fn with_console_history(mut self, history: Vec<String>) -> Self {
+        self.console.set_history(history);
+        self
+    }
+
+    /// Looks for problems in the area again, if anything they depend on
+    /// changed.
+    pub(crate) fn find_problems(&mut self) {
+        use crate::problems::{Fingerprint, Sources};
+        let print = Fingerprint::of(
+            &self.document,
+            self.models.len(),
+            self.library.len(),
+            self.assemblies.len(),
+        );
+        if self.problems.is_from(&print) {
+            return;
+        }
+        let known: HashSet<AssetId> = self.library.iter().filter_map(|i| i.id).collect();
+        let assemblies: HashSet<AssetId> = self.assemblies.keys().copied().collect();
+        self.problems.refresh(
+            print,
+            &Sources {
+                area: self.document.area(),
+                registry: &self.document.registry,
+                models: &self.models,
+                known: &known,
+                assemblies: &assemblies,
+            },
+        );
+    }
+
+    /// The problems found in the area, for the app and tests.
+    pub fn problems(&self) -> &[crate::problems::Problem] {
+        &self.problems.list
+    }
+
+    /// The console's earlier commands, oldest first, for saving.
+    pub fn console_history(&self) -> &[String] {
+        self.console.history()
     }
 
     /// Ctrl+Z undoes; Ctrl+Y or Ctrl+Shift+Z redoes. Not while typing in a

@@ -12,6 +12,7 @@ pub mod camera;
 mod commands;
 mod commands_many;
 pub mod console;
+mod console_commands;
 pub mod document;
 pub mod gizmo;
 pub mod icons;
@@ -24,6 +25,7 @@ pub mod models;
 pub mod panel;
 mod panels;
 pub mod picking;
+pub mod problems;
 mod properties;
 pub mod screen;
 #[cfg(test)]
