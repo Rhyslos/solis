@@ -46,8 +46,6 @@ percent-encoding = "2.3"
 rfd = "0.17"
 # The local time on console messages.
 chrono = { version = "0.4", default-features = false, features = ["clock", "std"] }
-# Random IDs for entities and assets (decisions 0019 and 0020).
-getrandom = "0.3"
 # Development only.
 egui_kittest = "0.36"
 pollster = "1.0"
