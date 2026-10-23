@@ -124,6 +124,10 @@ pub struct Workbench {
     /// While a gizmo is dragged: what moves, as it was when the drag
     /// began, and the drag's gesture.
     pub(crate) moving: Option<(crate::transforming::Targets, u64)>,
+    /// What the Area panel searches for, folds, hides and locks.
+    pub(crate) area_panel: crate::area_panel::AreaPanelState,
+    /// Components' values copied in Properties, to paste.
+    pub(crate) copied: Vec<(String, reflect::ComponentData)>,
 }
 
 impl Workbench {
@@ -143,6 +147,8 @@ impl Workbench {
             in_front: HashSet::new(),
             gesture: 0,
             moving: None,
+            area_panel: Default::default(),
+            copied: Vec::new(),
             assemblies: BTreeMap::new(),
             outbox: Vec::new(),
             unsaved_prompt: None,
@@ -406,9 +412,13 @@ impl Workbench {
         let mut place = None;
         let part = self.assembly_part();
         let mut requests = Vec::new();
-        self.viewport.area = AreaView::of(self.document.area(), &self.models);
+        let (hidden, locked) = self.area_panel.in_effect(self.document.area());
+        self.viewport.area =
+            AreaView::of_shown(self.document.area(), &self.models, &hidden, &locked);
         self.viewport.entities = self.document.area().len();
         self.prepare_tools();
+        let menu = crate::menu_items::MenuState::of(self);
+        let copied: Vec<String> = self.copied.iter().map(|(name, _)| name.clone()).collect();
         theme::dock_frame().show(ui, |ui| {
             DockArea::new(&mut self.dock)
                 .style(style)
@@ -420,6 +430,9 @@ impl Workbench {
                 .show_inside(
                     ui,
                     &mut PanelViewer {
+                        area_state: &mut self.area_panel,
+                        copied: &copied,
+                        menu: &menu,
                         viewport: &mut self.viewport,
                         renderer,
                         console: &mut self.console,
@@ -447,7 +460,10 @@ impl Workbench {
             actions.push(WorkbenchAction::PlaceAsset(id));
         }
         for request in area_requests {
-            self.apply_area_request(request);
+            match request {
+                crate::area_panel::AreaRequest::Command(command) => self.run(command, ui.ctx()),
+                other => self.apply_area_request(other),
+            }
         }
         if self.files_hovering {
             drop_hint(ui, self.accent);

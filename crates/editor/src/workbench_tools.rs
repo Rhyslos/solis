@@ -40,9 +40,11 @@ impl Workbench {
     /// box, or a point for anything else.
     fn outlines(&self) -> Vec<Outline> {
         let area = self.document.area();
+        let hidden = self.area_panel.in_effect(area).0;
         self.document
             .selection
             .iter()
+            .filter(|id| !hidden.contains(id))
             .filter_map(|id| {
                 let entity = area.get(id)?;
                 let world = area.world_matrix(id);
@@ -97,10 +99,12 @@ impl Workbench {
                 ViewportEvent::Click { hit, mode } => {
                     self.document.selection =
                         after_click(self.document.area(), &self.document.selection, hit, mode);
+                    self.area_panel.reveal = self.document.selection.primary();
                 }
                 ViewportEvent::Box { hits, mode } => {
                     self.document.selection =
                         after_box(self.document.area(), &self.document.selection, &hits, mode);
+                    self.area_panel.reveal = self.document.selection.primary();
                 }
             }
         }
@@ -164,11 +168,7 @@ impl Workbench {
             self.document.selection.clear();
         }
         if all {
-            let ids: Vec<_> = self.document.area().iter().map(|(id, _)| id).collect();
-            if let Some(&first) = ids.first() {
-                let primary = self.document.selection.primary().unwrap_or(first);
-                self.document.selection.select_all(ids, primary);
-            }
+            self.select_all();
         }
         let snapping = &mut self.viewport.snapping;
         for (pressed, axis) in [(x, 0), (y, 1), (z, 2)] {

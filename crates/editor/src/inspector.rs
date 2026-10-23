@@ -19,6 +19,10 @@ pub(crate) enum FieldChange {
         field: String,
         /// Its new value.
         value: Value,
+        /// For a field of three numbers (a position, a rotation in
+        /// degrees), which one was changed and to what: with several
+        /// entities selected, only that one changes on each.
+        part: Option<(usize, f64)>,
     },
     /// Put it back to its assembly's value.
     Revert(String),
@@ -61,27 +65,91 @@ fn row_marked<R>(
     .inner
 }
 
+/// Whether a field's value differs between the selected entities: the
+/// whole value, and each of its three numbers (a position, or a rotation's
+/// degrees).
+#[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
+pub(crate) struct Mixed {
+    pub(crate) whole: bool,
+    pub(crate) parts: [bool; 3],
+}
+
+impl Mixed {
+    /// How `value` (the entity Properties shows) compares with the same
+    /// field in `others`.
+    pub(crate) fn of(field: &FieldInfo, value: &Value, others: &[&ComponentData]) -> Self {
+        let mut mixed = Self::default();
+        let mine = three(field, value);
+        for other in others {
+            let theirs = other.get(&field.name).unwrap_or(&field.default);
+            if theirs == value {
+                continue;
+            }
+            mixed.whole = true;
+            if let (Some(a), Some(b)) = (mine, three(field, theirs)) {
+                for i in 0..3 {
+                    mixed.parts[i] |= (a[i] - b[i]).abs() > 1e-4;
+                }
+            } else {
+                mixed.parts = [true; 3];
+            }
+        }
+        mixed
+    }
+}
+
+/// A field's three numbers as Properties shows them (a rotation in
+/// degrees), if it has three.
+fn three(field: &FieldInfo, value: &Value) -> Option<[f64; 3]> {
+    match field.kind {
+        FieldKind::Vec3 => value.as_floats::<3>().map(|v| v.map(f64::from)),
+        FieldKind::Rotation => Some(degrees_of(value)),
+        _ => None,
+    }
+}
+
+/// A rotation's degrees around X, Y and Z, as Properties shows them.
+pub(crate) fn degrees_of(value: &Value) -> [f64; 3] {
+    let q = value
+        .as_floats::<4>()
+        .map(Quat::from_array)
+        .filter(|q| q.length_squared() > 1e-12)
+        .map_or(Quat::IDENTITY, Quat::normalize);
+    let (z, x, y) = q.to_euler(EULER);
+    [x, y, z].map(|a| f64::from(a.to_degrees()))
+}
+
+/// The rotation for degrees around X, Y and Z.
+pub(crate) fn rotation_of(degrees: [f64; 3]) -> Value {
+    let [x, y, z] = degrees.map(|d| (d as f32).to_radians());
+    Value::quat(Quat::from_euler(EULER, z, x, y))
+}
+
 /// Draws every field of `schema` with its value in `data`, and returns what
 /// the user did. Fields `data` doesn't have show their starting value. With
 /// `assembly` (the component as the entity's assembly has it), fields that
-/// differ are bold, with Revert and Apply buttons.
+/// differ are bold, with Revert and Apply buttons. `others` are the same
+/// component on the other selected entities: values that differ show as
+/// "—".
 pub(crate) fn fields(
     ui: &mut Ui,
     schema: &ComponentSchema,
     data: &ComponentData,
     assembly: Option<&ComponentData>,
+    others: &[&ComponentData],
     models: &BTreeMap<AssetId, ModelInfo>,
 ) -> Vec<FieldChange> {
     let mut changes = Vec::new();
     for field in &schema.fields {
         let value = data.get(&field.name).unwrap_or(&field.default);
+        let mixed = Mixed::of(field, value, others);
         let changed =
             assembly.is_some_and(|a| a.get(&field.name).unwrap_or(&field.default) != value);
         let id = ui.id().with((&schema.name, &field.name));
         ui.push_id(id, |ui| {
             let (set, revert, apply) =
                 row_marked(ui, &field.label, field.hint.help, changed, |ui| {
-                    let set = field_widget(ui, field, value, models);
+                    let set = field_widget(ui, field, value, models, mixed);
                     if !changed {
                         return (set, false, false);
                     }
@@ -113,10 +181,11 @@ pub(crate) fn fields(
                     );
                     (set, revert, apply)
                 });
-            if let Some(value) = set {
+            if let Some((value, part)) = set {
                 changes.push(FieldChange::Set {
                     field: field.name.clone(),
                     value,
+                    part,
                 });
             }
             if revert {
@@ -130,41 +199,52 @@ pub(crate) fn fields(
     changes
 }
 
-/// One field's widget; `Some` with the new value when the user changed it.
+/// One field's widget; `Some` with the new value when the user changed it
+/// (and, for three numbers, which one). Values that differ between the
+/// selected entities (`mixed`) show as "—".
 fn field_widget(
     ui: &mut Ui,
     field: &FieldInfo,
     value: &Value,
     models: &BTreeMap<AssetId, ModelInfo>,
-) -> Option<Value> {
+    mixed: Mixed,
+) -> Option<(Value, Option<(usize, f64)>)> {
+    let whole = |v: Option<Value>| v.map(|v| (v, None));
     match &field.kind {
         FieldKind::Bool => {
             let mut on = matches!(value, Value::Bool(true));
-            ui.checkbox(&mut on, "")
-                .changed()
-                .then_some(Value::Bool(on))
+            whole(
+                ui.add(egui::Checkbox::new(&mut on, "").indeterminate(mixed.whole))
+                    .changed()
+                    .then_some(Value::Bool(on)),
+            )
         }
         FieldKind::Int => {
             let mut n = match value {
                 Value::Int(n) => *n,
                 _ => 0,
             };
-            ui.add(egui::DragValue::new(&mut n).suffix(field.hint.unit))
-                .changed()
-                .then_some(Value::Int(n))
+            let mut drag = egui::DragValue::new(&mut n).suffix(field.hint.unit);
+            if mixed.whole {
+                drag = drag.custom_formatter(|_, _| "—".to_string());
+            }
+            whole(ui.add(drag).changed().then_some(Value::Int(n)))
         }
         FieldKind::Float => {
             let mut v = value.as_f64().unwrap_or(0.0);
-            number(ui, &mut v, field).then_some(Value::Float(v))
+            whole(number(ui, &mut v, field, mixed.whole).then_some(Value::Float(v)))
         }
         FieldKind::Text => {
             let mut text = match value {
-                Value::Text(t) => t.clone(),
+                Value::Text(t) if !mixed.whole => t.clone(),
                 _ => String::new(),
             };
-            ui.text_edit_singleline(&mut text)
-                .changed()
-                .then_some(Value::Text(text))
+            let edit = egui::TextEdit::singleline(&mut text).hint_text(if mixed.whole {
+                "—"
+            } else {
+                ""
+            });
+            whole(ui.add(edit).changed().then_some(Value::Text(text)))
         }
         FieldKind::Choice(options) => {
             let current = match value {
@@ -172,50 +252,49 @@ fn field_widget(
                 _ => String::new(),
             };
             let mut chosen = None;
+            let shown = if mixed.whole { "—" } else { current.as_str() };
             egui::ComboBox::from_id_salt("choice")
-                .selected_text(&current)
+                .selected_text(shown)
                 .show_ui(ui, |ui| {
                     for option in options {
-                        if ui.selectable_label(*option == current, option).clicked()
-                            && *option != current
+                        let picked = *option == current && !mixed.whole;
+                        if ui.selectable_label(picked, option).clicked()
+                            && (*option != current || mixed.whole)
                         {
                             chosen = Some(Value::Text(option.clone()));
                         }
                     }
                 });
-            chosen
+            whole(chosen)
         }
         FieldKind::Vec3 => {
             let mut v = value.as_floats::<3>().unwrap_or([0.0; 3]).map(f64::from);
-            let mut changed = false;
-            for c in &mut v {
-                changed |= number(ui, c, field);
+            let mut part = None;
+            for (i, c) in v.iter_mut().enumerate() {
+                if number(ui, c, field, mixed.parts[i]) {
+                    part = Some((i, *c));
+                }
             }
-            changed.then(|| Value::floats(&v.map(|c| c as f32)))
+            part.map(|p| (Value::floats(&v.map(|c| c as f32)), Some(p)))
         }
         FieldKind::Rotation => {
-            let q = value
-                .as_floats::<4>()
-                .map(Quat::from_array)
-                .filter(|q| q.length_squared() > 1e-12)
-                .map_or(Quat::IDENTITY, Quat::normalize);
-            let (z, x, y) = q.to_euler(EULER);
-            let mut degrees = [x, y, z].map(|a| f64::from(a.to_degrees()));
-            let mut changed = false;
-            for c in &mut degrees {
-                changed |= number(ui, c, field);
+            let mut degrees = degrees_of(value);
+            let mut part = None;
+            for (i, c) in degrees.iter_mut().enumerate() {
+                if number(ui, c, field, mixed.parts[i]) {
+                    part = Some((i, *c));
+                }
             }
-            changed.then(|| {
-                let [x, y, z] = degrees.map(|d| (d as f32).to_radians());
-                Value::quat(Quat::from_euler(EULER, z, x, y))
-            })
+            part.map(|p| (rotation_of(degrees), Some(p)))
         }
         FieldKind::Color => {
             let c = value.as_floats::<3>().unwrap_or([1.0; 3]);
             let mut bytes = c.map(|v| (v.clamp(0.0, 1.0) * 255.0).round() as u8);
-            ui.color_edit_button_srgb(&mut bytes)
-                .changed()
-                .then(|| Value::floats(&bytes.map(|b| f32::from(b) / 255.0)))
+            whole(
+                ui.color_edit_button_srgb(&mut bytes)
+                    .changed()
+                    .then(|| Value::floats(&bytes.map(|b| f32::from(b) / 255.0))),
+            )
         }
         FieldKind::Asset => {
             let text = match value {
@@ -240,13 +319,17 @@ fn field_widget(
 }
 
 /// A number field: drags within the hint's range, but never changes a
-/// value that's outside it just by being shown (decision 0019).
-fn number(ui: &mut Ui, value: &mut f64, field: &FieldInfo) -> bool {
+/// value that's outside it just by being shown (decision 0019). A value
+/// that differs between the selected entities (`mixed`) shows as "—".
+fn number(ui: &mut Ui, value: &mut f64, field: &FieldInfo, mixed: bool) -> bool {
     let mut drag = egui::DragValue::new(value)
         .speed(field.hint.speed.unwrap_or(0.1))
         .max_decimals(3)
         .suffix(field.hint.unit)
         .clamp_existing_to_range(false);
+    if mixed {
+        drag = drag.custom_formatter(|_, _| "—".to_string());
+    }
     if let Some((low, high)) = field.hint.range {
         drag = drag.range(low..=high);
     }

@@ -2,11 +2,12 @@
 //! small menu row under a title, a quiet placeholder note, and the hint
 //! shown while files are dragged over the window.
 
-use crate::area_panel::{AreaRequest, area_tree};
+use crate::area_panel::{AreaPanelState, AreaRequest, area_tree};
 use crate::console::{Console, console};
 use crate::document::Document;
 use crate::icons::{self, Icon};
 use crate::library::{LibraryItem, ProjectInfo, library};
+use crate::menu_items::MenuState;
 use crate::models::ModelInfo;
 use crate::panel::Panel;
 use crate::properties::{AssemblyPart, PropertyRequest, properties};
@@ -24,6 +25,10 @@ pub(crate) const TAB_ICON_SPACE: f32 = 18.0;
 
 /// Draws each docked panel.
 pub(crate) struct PanelViewer<'a> {
+    pub(crate) area_state: &'a mut AreaPanelState,
+    /// The components whose values were copied, by name.
+    pub(crate) copied: &'a [String],
+    pub(crate) menu: &'a MenuState,
     pub(crate) viewport: &'a mut Viewport,
     pub(crate) renderer: &'a mut dyn ViewportRenderer,
     pub(crate) console: &'a mut Console,
@@ -111,17 +116,26 @@ impl TabViewer for PanelViewer<'_> {
         }
         match tab {
             Panel::Area => {
-                menu_row(ui, &["Edit", "View", "Entity"]);
-                let requests = area_tree(ui, self.document, self.models, self.accent);
+                let requests = area_tree(
+                    ui,
+                    self.document,
+                    self.models,
+                    self.accent,
+                    self.area_state,
+                    self.menu,
+                );
                 self.area_requests.extend(requests);
             }
             Panel::Layers => {
                 menu_row(ui, &["Edit", "View"]);
-                placeholder(ui, "Layers arrive with areas in Phase 2.");
+                placeholder(
+                    ui,
+                    "Layers (groups of entities to show, hide or lock together) aren't built \
+                     yet. Until then, hide and lock entities in the Area panel.",
+                );
             }
             Panel::Properties => {
-                menu_row(ui, &["Mode", "Edit", "Units"]);
-                let requests = properties(ui, self.document, self.part, self.models);
+                let requests = properties(ui, self.document, self.part, self.models, self.copied);
                 self.requests.extend(requests);
             }
             Panel::Library => {

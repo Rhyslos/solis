@@ -72,7 +72,7 @@ The working plan for Phase 3 (ROADMAP.md, "Phase 3: The editor"). It records the
 - **Manual:** a new "Selecting and moving things" page; keyboard shortcuts; concepts (gizmo, snapping, pivot).
 - **Built** ([decision 0025](../decisions/0025-picking-and-gizmos.md)): as planned. The axis locks are switches, as in Aventail, shown as X, Y and Z buttons in the corner (red while locked), rather than only working during a drag. The corner is two rows so it stays clear of the tools. Snapping to other objects' surfaces (Aventail has it) waits; moves snap to the grid.
 
-### M2. The entity list and the inspector ☐
+### M2. The entity list and the inspector ☑
 
 - **Area panel:**
   - The search box filters by name (matches shown with their parents).
@@ -83,6 +83,7 @@ The working plan for Phase 3 (ROADMAP.md, "Phase 3: The editor"). It records the
   - Its menu row becomes real: Edit (copy a component's values, paste them, reset to defaults) and Units (centimetres or metres; the rotation in degrees always). Mode is dropped; there is only one so far.
 - **Layers:** the Layers panel's note is corrected. Layers aren't in any phase of the roadmap yet; the project lead is asked when they should come.
 - **Tests:** filter, hide and lock with picking; multi-edit is one step and undoes on every entity; copy and paste values.
+- **Built:** as planned, plus folding the tree (▾/▸, View > Fold or Unfold everything), unfolding the way to something picked in the viewport, and the Area panel's Edit and Entity menus shared with the top bar's (`menu_items.rs`; the top bar's Edit menu gains the selection commands). Different from the plan: Properties' **Units** and **Mode** menus are dropped rather than built, since lengths are always metres and there is only one mode; Edit (copy and paste components) is its only menu. Changing one number of a position or rotation on several entities changes only that number on each.
 
 ### M3. The library: assets and code ☐
 
