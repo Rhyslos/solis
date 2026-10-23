@@ -45,6 +45,8 @@ base64 = "0.22"
 percent-encoding = "2.3"
 # The Open file window (Windows; elsewhere through the desktop portal).
 rfd = "0.17"
+# Messages from the libraries (the GPU layer, say), shown in the Console.
+log = "0.4"
 # The local time on console messages.
 chrono = { version = "0.4", default-features = false, features = ["clock", "std"] }
 # Development only.

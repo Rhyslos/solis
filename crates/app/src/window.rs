@@ -32,6 +32,8 @@ const CAMERA_KEY: &str = "viewport_camera";
 const LAST_PROJECT_KEY: &str = "last_project";
 /// Key under which the recent projects are remembered.
 const RECENT_PROJECTS_KEY: &str = "recent_projects";
+/// Key under which the console's earlier commands are remembered.
+const CONSOLE_HISTORY_KEY: &str = "console_history";
 /// Window size on first launch, in logical pixels.
 const FIRST_SIZE: [f32; 2] = [1440.0, 900.0];
 /// The smallest the window may get while staying usable.
@@ -61,6 +63,8 @@ struct App {
     queued: VecDeque<WorkbenchAction>,
     /// The window title last set, to change it only when it changes.
     title: String,
+    /// Messages the libraries wrote, for the Console.
+    messages: Option<crate::logger::Messages>,
 }
 
 impl App {
@@ -83,6 +87,9 @@ impl App {
         let snapping: editor::Snapping = storage
             .and_then(|s| eframe::get_value(s, SNAPPING_KEY))
             .unwrap_or_default();
+        let console_history: Vec<String> = storage
+            .and_then(|s| eframe::get_value(s, CONSOLE_HISTORY_KEY))
+            .unwrap_or_default();
         let last_project = storage.and_then(saved_last_project);
         let recent: Vec<PathBuf> = storage
             .and_then(|s| eframe::get_value(s, RECENT_PROJECTS_KEY))
@@ -93,7 +100,8 @@ impl App {
             .with_overlays(overlays)
             .with_snapping(snapping)
             .with_camera(camera)
-            .with_look(look);
+            .with_look(look)
+            .with_console_history(console_history);
         workbench.log(
             LogLevel::Info,
             format!("{} {} started.", info.name, info.version),
@@ -123,6 +131,7 @@ impl App {
             area_files: AreaFiles::default(),
             queued: VecDeque::new(),
             title: String::new(),
+            messages: crate::logger::install(),
         };
         app.workbench.set_recent(app.projects.recent().to_vec());
         if let Some(root) = last_project.filter(|r| r.join(asset_db::PROJECT_FILE).is_file()) {
@@ -222,6 +231,21 @@ impl App {
 
     /// Puts finished imports into the viewport (placing new ones, swapping
     /// in reloaded ones), or reports why they failed.
+    /// Shows in the Console what the libraries wrote since last frame.
+    fn show_library_messages(&mut self) {
+        let Some(messages) = &self.messages else {
+            return;
+        };
+        for (level, text) in messages.take() {
+            let level = match level {
+                crate::logger::Level::Info => LogLevel::Info,
+                crate::logger::Level::Warning => LogLevel::Warning,
+                crate::logger::Level::Error => LogLevel::Error,
+            };
+            self.workbench.log(level, text);
+        }
+    }
+
     fn collect_imports(&mut self) {
         for Finished {
             id,
@@ -825,6 +849,7 @@ impl eframe::App for App {
             ctx.send_viewport_cmd(egui::ViewportCommand::CancelClose);
         }
         self.collect_imports();
+        self.show_library_messages();
         self.workbench.set_files_hovering(hovering);
         let renderer: &mut dyn editor::ViewportRenderer = match self.gpu.as_mut() {
             Some(gpu) => gpu,
@@ -851,6 +876,11 @@ impl eframe::App for App {
         eframe::set_value(storage, LOOK_KEY, &self.workbench.look());
         eframe::set_value(storage, LAST_PROJECT_KEY, &self.projects.root());
         eframe::set_value(storage, RECENT_PROJECTS_KEY, &self.projects.recent());
+        eframe::set_value(
+            storage,
+            CONSOLE_HISTORY_KEY,
+            &self.workbench.console_history(),
+        );
     }
 }
 

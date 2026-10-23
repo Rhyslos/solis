@@ -204,6 +204,7 @@ dependencies = [
  "eframe",
  "glam",
  "image",
+ "log",
  "opener",
  "reflect",
  "render",

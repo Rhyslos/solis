@@ -98,13 +98,14 @@ The working plan for Phase 3 (ROADMAP.md, "Phase 3: The editor"). It records the
 - **Tests:** listing kinds, rename and move keep IDs, drop placement with a stand-in pick, search, thumbnails on the GPU.
 - **Built:** as planned, with two differences. Thumbnails stay on the GPU (a model is drawn once into a small image, copied into a texture of its own) rather than being saved in `.solis/cache/thumbnails`: drawing one takes a few milliseconds, so they're simply made again each time the project opens, a few at a time. Renaming is a small window (Rename…) rather than typing on the tile. Two bugs found along the way are fixed here: the last project never reopened on start (saved as an optional path, read back as a plain one), and the ground axes were one line each from end to end of the grid, which Mesa's Vulkan driver drew as a filled wedge from close by; they're now drawn in 10 m pieces.
 
-### M4. The console: commands as well as messages ☐
+### M4. The console: commands as well as messages ☑
 
 - **A command line** under the messages. `'` jumps to it, Up and Down go through earlier commands (kept between sessions), Tab completes names, Enter runs.
 - **Commands** use the same editor commands as the menus, so they're undoable: `help`, `clear`, `select`, `find`, `frame`, `delete`, `duplicate`, `new` (an entity), `get` and `set` (any component field), `undo`, `redo`, `save`, `look`, `tool`, `stats`. Play mode adds `play`, `pause` and `stop` in M5.
 - **Messages from the engine:** the app passes warnings and errors from Solis's crates and its libraries (wgpu, for example) to the console through the `log` facade.
 - **Problems:** a list of what's wrong in the open area, worked out when it changes: models or assemblies missing from the project, components nobody registered, overrides whose target is gone. Clicking one selects its entity.
 - **Tests:** every command, with good and bad arguments (bad ones give a plain-language error, never a crash); history and completion; a fuzz test of the command reader; Problems for each kind.
+- **Built:** as planned (`console_commands.rs`, `problems.rs`, the app's `logger.rs`), with these differences. Problems finds a Model with no model chosen and entities whose parent is missing (after a merge); "overrides whose target is gone" is left out, as rebuilding a copy already drops those. Long answers (`help`, `get`, `find`, `stats`) come one line each, since a console row is cut short. Every library's warnings and errors reach the Console, but information messages only from Solis's own crates; a message repeated every frame shows once. Problems are looked for again only when the area, the loaded models, the Library or the assemblies change, so a big area costs nothing frame to frame; the tab shows how many there are.
 
 ### M5. Play mode ☐
 
