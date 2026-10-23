@@ -5,7 +5,6 @@
 //! returns [`WorkbenchAction`]s for the app to carry out, and draws the
 //! viewport through a [`ViewportRenderer`] it is handed each frame.
 
-use crate::area_panel::AreaRequest;
 use crate::area_view::AreaView;
 use crate::camera::Camera;
 #[cfg(test)]
@@ -198,6 +197,7 @@ impl Workbench {
         }
         self.tool_keys(ui);
         self.undo_keys(ui);
+        self.editing_keys(ui);
         egui::Panel::top("top_bar")
             .frame(theme::top_bar_frame())
             .exact_size(34.0)
@@ -237,10 +237,7 @@ impl Workbench {
             self.apply_property(request, self.gesture);
         }
         for request in area_requests {
-            match request {
-                AreaRequest::Select(id) => self.select(id),
-                AreaRequest::Delete(id) => self.delete(id),
-            }
+            self.apply_area_request(request);
         }
         if self.files_hovering {
             drop_hint(ui, self.accent);
@@ -286,6 +283,42 @@ impl Workbench {
             self.redo();
         } else if undo {
             self.undo();
+        }
+    }
+
+    /// Delete deletes the selection, Ctrl+D duplicates it, F2 renames it
+    /// and F frames it (decided with the project lead, 2026-10-23). Not
+    /// while typing, nor while flying.
+    pub(crate) fn editing_keys(&mut self, ui: &Ui) {
+        if ui.ctx().egui_wants_keyboard_input() || self.viewport.is_flying() {
+            return;
+        }
+        let (delete, duplicate, rename, frame) = ui.input_mut(|i| {
+            let plain = |i: &egui::InputState, key| i.key_pressed(key) && i.modifiers.is_none();
+            (
+                plain(i, egui::Key::Delete),
+                i.consume_shortcut(&egui::KeyboardShortcut::new(
+                    egui::Modifiers::COMMAND,
+                    egui::Key::D,
+                )),
+                plain(i, egui::Key::F2),
+                plain(i, egui::Key::F),
+            )
+        });
+        if delete {
+            self.delete_selection();
+        }
+        if duplicate {
+            self.duplicate_selection();
+        }
+        if rename
+            && let Some(id) = self.document.selection.primary()
+            && let Some(entity) = self.document.area().get(id)
+        {
+            crate::area_panel::begin_rename(ui.ctx(), id, &entity.name);
+        }
+        if frame {
+            self.frame_selection();
         }
     }
 

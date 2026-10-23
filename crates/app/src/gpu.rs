@@ -193,19 +193,24 @@ impl ViewportRenderer for GpuViewport {
         self.prepare_image(view.size_px);
         let image = self
             .image
-            .as_ref()
+            .as_mut()
             .ok_or("the viewport image could not be made")?;
-        let models: Vec<&GpuModel> = view
+        let placed: Vec<render::Placement<'_>> = view
             .models
             .iter()
-            .filter_map(|id| self.models.get(id))
+            .filter_map(|(id, transform)| {
+                self.models.get(id).map(|model| render::Placement {
+                    model,
+                    transform: *transform,
+                })
+            })
             .collect();
         self.renderer.render(
             &self.state.device,
             &self.state.queue,
-            &image.target,
+            &mut image.target,
             &params,
-            &models,
+            &placed,
             &lights,
         );
         Ok(image.texture)

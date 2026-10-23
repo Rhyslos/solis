@@ -162,6 +162,57 @@ impl Area {
         out.into_iter().map(|(_, id)| id).collect()
     }
 
+    /// Every entity's children at once, in sibling order (`None` holds the
+    /// top level), worked out in one pass, for drawing the whole tree.
+    pub fn hierarchy(&self) -> std::collections::HashMap<Option<EntityId>, Vec<EntityId>> {
+        let mut map: std::collections::HashMap<Option<EntityId>, Vec<(&str, EntityId)>> =
+            std::collections::HashMap::new();
+        for (&id, e) in &self.entities {
+            let parent = e.parent.filter(|p| self.entities.contains_key(p));
+            map.entry(parent).or_default().push((e.order.as_str(), id));
+        }
+        map.into_iter()
+            .map(|(parent, mut kids)| {
+                kids.sort();
+                (parent, kids.into_iter().map(|(_, id)| id).collect())
+            })
+            .collect()
+    }
+
+    /// Every entity in tree order: each parent, then its children, as the
+    /// Area panel lists them. Entities caught in a loop of a damaged area
+    /// come last, so nothing is ever left out.
+    pub fn depth_first(&self) -> Vec<EntityId> {
+        let tree = self.hierarchy();
+        let mut out = Vec::with_capacity(self.entities.len());
+        let mut seen = std::collections::HashSet::new();
+        let mut todo: Vec<EntityId> = tree.get(&None).cloned().unwrap_or_default();
+        todo.reverse();
+        while let Some(id) = todo.pop() {
+            if !seen.insert(id) {
+                continue;
+            }
+            out.push(id);
+            if let Some(kids) = tree.get(&Some(id)) {
+                todo.extend(kids.iter().rev());
+            }
+        }
+        out.extend(self.entities.keys().filter(|id| !seen.contains(id)));
+        out
+    }
+
+    /// A sibling order that sorts after every child of `parent` now, so a
+    /// new entity goes at the end of the list.
+    pub fn order_at_end(&self, parent: Option<EntityId>) -> String {
+        let last = self
+            .entities
+            .values()
+            .filter(|e| e.parent.filter(|p| self.entities.contains_key(p)) == parent)
+            .map(|e| e.order.as_str())
+            .max();
+        order_after(last)
+    }
+
     /// Where `id` is in the world: its transform after its parents'. An
     /// entity without a `Transform` sits where its parent is. A loop in a
     /// damaged area stops the walk instead of hanging.
@@ -191,6 +242,43 @@ impl Area {
             .iter()
             .filter_map(|(&id, e)| e.get::<T>().map(|c| (id, c)))
     }
+}
+
+/// A short text that sorts after `last` (or the first one, "a0").
+///
+/// Orders written by Solis are a counting number in base 36 (digits, then
+/// lower-case letters), led by a letter for how many digits follow ("a"
+/// one, "b" two…), so they sort as numbers do and stay short: "a0" to
+/// "az", then "b10", and so on. Anything else (a hand-edited file) gets a
+/// "1" added, which still sorts after it.
+pub fn order_after(last: Option<&str>) -> String {
+    const DIGITS: &[u8] = b"0123456789abcdefghijklmnopqrstuvwxyz";
+    let Some(last) = last.filter(|l| !l.is_empty()) else {
+        return "a0".to_string();
+    };
+    let parsed = (|| {
+        let (head, digits) = last.split_at_checked(1)?;
+        let len = usize::from(head.as_bytes()[0].checked_sub(b'a')?) + 1;
+        if len > 12 || digits.len() != len {
+            return None;
+        }
+        u64::from_str_radix(digits, 36).ok()
+    })();
+    let Some(n) = parsed.and_then(|n| n.checked_add(1)) else {
+        return format!("{last}1");
+    };
+    let mut digits = Vec::new();
+    let mut rest = n;
+    loop {
+        digits.push(DIGITS[(rest % 36) as usize]);
+        rest /= 36;
+        if rest == 0 {
+            break;
+        }
+    }
+    digits.reverse();
+    let head = char::from(b'a' + (digits.len() - 1) as u8);
+    format!("{head}{}", String::from_utf8_lossy(&digits))
 }
 
 #[cfg(test)]
@@ -271,5 +359,46 @@ mod tests {
         s.insert(a, ea);
         s.insert(b, eb);
         assert_eq!(s.tree(a).len(), 2);
+    }
+
+    #[test]
+    fn orders_after_always_sort_later_and_stay_short() {
+        let mut key = order_after(None);
+        assert_eq!(key, "a0");
+        for _ in 0..2_000 {
+            let next = order_after(Some(&key));
+            assert!(next > key, "{next} after {key}");
+            key = next;
+        }
+        assert!(key.len() <= 4, "{key}");
+        assert_eq!(order_after(Some("a9")), "aa");
+        assert_eq!(order_after(Some("az")), "b10");
+        // Hand-edited orders still get one that sorts after them.
+        for odd in ["a~", "a0000", "zzz", "B"] {
+            assert!(order_after(Some(odd)).as_str() > odd, "{odd}");
+        }
+    }
+
+    #[test]
+    fn the_tree_comes_out_in_order_and_new_entities_go_last() {
+        let mut s = Area::new();
+        let root = s.spawn(EntityData::new("Root"));
+        let mut a = EntityData::new("A");
+        a.parent = Some(root);
+        a.order = s.order_at_end(Some(root));
+        let a = s.spawn(a);
+        let mut b = EntityData::new("B");
+        b.parent = Some(root);
+        b.order = s.order_at_end(Some(root));
+        let b = s.spawn(b);
+        let mut top = EntityData::new("Top");
+        top.order = s.order_at_end(None);
+        let top = s.spawn(top);
+        assert_eq!(s.children(Some(root)), [a, b]);
+        assert_eq!(s.depth_first(), [root, a, b, top]);
+        assert_eq!(s.hierarchy()[&Some(root)], [a, b]);
+        // A loop still lists everyone.
+        s.get_mut(root).unwrap().parent = Some(b);
+        assert_eq!(s.depth_first().len(), 4);
     }
 }

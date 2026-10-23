@@ -2,6 +2,7 @@
 //! with egui_kittest, without a GPU.
 
 use super::*;
+use crate::area_panel::AreaRequest;
 use crate::commands::POINT_LIGHT_HEIGHT;
 use crate::models::{FileLight, FileLightKind};
 use crate::properties::PropertyRequest;
@@ -863,4 +864,187 @@ fn delete_undoes_with_everything_under_it() {
     w.move_here(model);
     w.undo();
     assert_eq!(w.document().area(), &before);
+}
+
+/// A workbench with three lights in a row at the top level.
+fn three_lights() -> (Workbench, [EntityId; 3]) {
+    let mut w = Workbench::new(info(), None);
+    let a = w.add_point_light();
+    let b = w.add_point_light();
+    let c = w.add_spotlight();
+    (w, [a, b, c])
+}
+
+#[test]
+fn new_entities_go_to_the_end_of_the_list() {
+    let (w, [a, b, c]) = three_lights();
+    let order = w.document().area().depth_first();
+    let at = |id| order.iter().position(|&e| e == id).unwrap();
+    assert!(at(a) < at(b) && at(b) < at(c), "{order:?}");
+}
+
+#[test]
+fn ctrl_and_shift_clicks_build_a_selection() {
+    let (mut w, [a, b, c]) = three_lights();
+    w.select(a);
+    w.apply_area_request(AreaRequest::SelectRange(c));
+    let selected: Vec<_> = w.document().selection.iter().collect();
+    assert!(selected.contains(&a) && selected.contains(&b) && selected.contains(&c));
+    assert_eq!(w.selection(), Some(a), "Properties keeps the first one");
+    w.apply_area_request(AreaRequest::Toggle(b));
+    assert!(!w.document().selection.contains(b));
+    w.apply_area_request(AreaRequest::Toggle(b));
+    assert_eq!(w.selection(), Some(b));
+}
+
+#[test]
+fn dragging_onto_another_keeps_the_place_in_the_world_and_undoes() {
+    let (mut w, [a, b, _]) = three_lights();
+    // Move and turn the new parent, so its children's numbers must change.
+    w.apply_property(
+        PropertyRequest::SetField {
+            entity: a,
+            component: "Transform".into(),
+            field: "rotation".into(),
+            value: reflect::Value::quat(glam::Quat::from_rotation_z(1.0)),
+        },
+        1,
+    );
+    let before = w.document().area().world_matrix(b);
+    w.apply_area_request(AreaRequest::Reparent {
+        entity: b,
+        onto: Some(a),
+    });
+    let area = w.document().area();
+    assert_eq!(area.get(b).unwrap().parent, Some(a));
+    let after = area.world_matrix(b);
+    assert!(after.abs_diff_eq(before, 1e-4), "stays put in the world");
+    assert_eq!(
+        w.document().history().undo_label(),
+        Some("Move under Point light 1")
+    );
+    // A parent can't go under its own child.
+    w.apply_area_request(AreaRequest::Reparent {
+        entity: a,
+        onto: Some(b),
+    });
+    assert_eq!(w.document().area().get(a).unwrap().parent, None);
+    // Dropping on empty space goes back to the top level.
+    w.apply_area_request(AreaRequest::Reparent {
+        entity: b,
+        onto: None,
+    });
+    assert_eq!(w.document().area().get(b).unwrap().parent, None);
+    assert!(
+        w.document()
+            .area()
+            .world_matrix(b)
+            .abs_diff_eq(before, 1e-4)
+    );
+    w.undo();
+    w.undo();
+    assert_eq!(w.document().area().get(b).unwrap().parent, None);
+    assert!(
+        w.document()
+            .area()
+            .world_matrix(b)
+            .abs_diff_eq(before, 1e-4)
+    );
+}
+
+#[test]
+fn dragging_a_selected_entity_moves_the_whole_selection() {
+    let (mut w, [a, b, c]) = three_lights();
+    w.select(b);
+    w.apply_area_request(AreaRequest::Toggle(c));
+    w.apply_area_request(AreaRequest::Reparent {
+        entity: c,
+        onto: Some(a),
+    });
+    assert_eq!(w.document().area().children(Some(a)), [b, c]);
+    assert_eq!(
+        w.document().history().undo_len(),
+        4,
+        "three adds and one move"
+    );
+}
+
+#[test]
+fn duplicate_copies_the_tree_selects_the_copy_and_undoes_in_one_step() {
+    let (mut w, [a, b, _]) = three_lights();
+    w.apply_area_request(AreaRequest::Reparent {
+        entity: b,
+        onto: Some(a),
+    });
+    let count = w.document().area().len();
+    w.select(a);
+    w.duplicate_selection();
+    let area = w.document().area();
+    assert_eq!(area.len(), count + 2, "the light and the one under it");
+    let copy = w.selection().unwrap();
+    assert_ne!(copy, a);
+    assert_eq!(area.get(copy).unwrap().name, "Point light 1");
+    assert_eq!(area.children(Some(copy)).len(), 1, "with its own child");
+    assert_eq!(area.children(Some(a)), [b], "the original keeps its child");
+    w.undo();
+    assert_eq!(w.document().area().len(), count);
+    assert_eq!(w.selection(), Some(a));
+}
+
+#[test]
+fn the_delete_key_deletes_the_whole_selection_in_one_step() {
+    let (mut w, [a, b, c]) = three_lights();
+    w.select(a);
+    w.apply_area_request(AreaRequest::Toggle(c));
+    let mut h = harness_with(w);
+    h.run();
+    h.key_press(egui::Key::Delete);
+    h.run();
+    let area = h.state().document().area();
+    assert!(!area.contains(a) && !area.contains(c) && area.contains(b));
+    h.key_press_modifiers(egui::Modifiers::COMMAND, egui::Key::Z);
+    h.run();
+    assert!(h.state().document().area().contains(a));
+    assert!(h.state().document().area().contains(c));
+}
+
+#[test]
+fn f2_renames_in_the_area_panel_and_ctrl_d_duplicates() {
+    let (mut w, [a, ..]) = three_lights();
+    w.select(a);
+    let mut h = harness_with(w);
+    h.run();
+    h.key_press(egui::Key::F2);
+    h.run();
+    h.run();
+    h.key_press_modifiers(egui::Modifiers::COMMAND, egui::Key::A);
+    h.event(egui::Event::Text("Lantern".into()));
+    h.key_press(egui::Key::Enter);
+    h.run();
+    assert_eq!(h.state().document().area().get(a).unwrap().name, "Lantern");
+    let count = h.state().document().area().len();
+    h.key_press_modifiers(egui::Modifiers::COMMAND, egui::Key::D);
+    h.run();
+    assert_eq!(h.state().document().area().len(), count + 1);
+}
+
+#[test]
+fn f_frames_the_selection() {
+    let (mut w, _) = with_a_model();
+    let far = Workbench::new(info(), None).camera().focus() + Vec3::new(50.0, 0.0, 0.0);
+    w.viewport.camera.frame(far, far + Vec3::ONE);
+    let model = w.document().area().depth_first()[0];
+    let model = w
+        .document()
+        .area()
+        .depth_first()
+        .into_iter()
+        .find(|&id| w.document().area().get(id).unwrap().has("Model"))
+        .unwrap_or(model);
+    w.select(model);
+    w.frame_selection();
+    // The camera now looks straight at the model's middle.
+    let camera = w.camera();
+    let to_middle = (Vec3::splat(0.5) - camera.position).normalize();
+    assert!(to_middle.dot(camera.forward()) > 0.999, "{camera:?}");
 }

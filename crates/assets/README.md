@@ -6,7 +6,7 @@ Reads models and textures from files into plain data the renderer can upload: gl
 
 ## Purpose
 
-Turn a model file into a `Model`: meshes already placed where the file's nodes put them, in Solis's units (metres, Z up; glTF's Y-up is turned so its up becomes Z), with materials (glTF's metal and roughness: colour, metal, roughness, normal, occlusion and glow, each with its texture; see-through handling; double-sided) and textures with every mip level worked out. Lights the file carries (`KHR_lights_punctual`, as Blender exports them: suns, point lights and spotlights) come in placed, in Blender's units (`lights.rs`). Missing normals are filled in; triangle strips and fans become plain triangles; points and lines are left out with a warning.
+Turn a model file into a `Model`: each mesh once, in its own space, and a tree of nodes placing them (a mesh used many times is stored once; glTF's node placement `T` becomes `C·T·C⁻¹` in Solis's axes; `Model::placed_meshes()` bakes the old flat view), in Solis's units (metres, Z up; glTF's Y-up is turned so its up becomes Z), with materials (glTF's metal and roughness: colour, metal, roughness, normal, occlusion and glow, each with its texture; see-through handling; double-sided) and textures with every mip level worked out. Lights the file carries (`KHR_lights_punctual`, as Blender exports them: suns, point lights and spotlights) come in placed, in Blender's units (`lights.rs`). Missing normals are filled in; triangle strips and fans become plain triangles; points and lines are left out with a warning.
 
 `sample` builds models in code, for tests and for trying the importer: a textured cube on a red base, and a bigger scene for checking the looks (`showcase_glb`, also Help > Add the sample scene). `cargo run -p assets --example sample -- [--scene] out.glb` writes them to a file.
 
@@ -22,4 +22,4 @@ Turn a model file into a `Model`: meshes already placed where the file's nodes p
 
 ## Status
 
-Phase 1 complete: glTF models with their full materials and lights, read within memory limits (and meshes split to fit the graphics card's buffers). Animation arrives in Phase 7.
+Phase 1 complete: glTF models with their full materials and lights, read within memory limits (and meshes split to fit the graphics card's buffers). Phase 2: meshes in their own space with a node tree. Animation arrives in Phase 7.

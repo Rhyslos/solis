@@ -78,10 +78,15 @@ struct GpuMesh {
 }
 
 /// A model uploaded to the GPU, ready to draw with
-/// [`ViewportRenderer::render`](crate::ViewportRenderer::render).
+/// [`ViewportRenderer::render`](crate::ViewportRenderer::render): each mesh
+/// once, and where the model places each (decision 0021).
 #[derive(Debug)]
 pub struct GpuModel {
-    meshes: Vec<GpuMesh>,
+    /// The meshes, by their index in the model; `None` for one that can't
+    /// be drawn (empty, or too big for the card).
+    meshes: Vec<Option<GpuMesh>>,
+    /// Every mesh as drawn: which, and where in the model.
+    placements: Vec<(usize, glam::Mat4)>,
     materials: Vec<GpuMaterial>,
     triangles: usize,
     bounds: (glam::Vec3, glam::Vec3),
@@ -98,58 +103,76 @@ impl GpuModel {
         self.bounds
     }
 
-    /// Draws every solid and cut-out mesh's shape only, for the sun's
-    /// shadow map (blended ones, like glass, cast no shadow).
-    pub(crate) fn draw_depth(&self, render_pass: &mut wgpu::RenderPass<'_>) {
-        for mesh in &self.meshes {
-            let Some(material) = self.materials.get(mesh.material) else {
-                continue;
-            };
-            if material.pass == Pass::Blended || mesh.index_count == 0 {
-                continue;
-            }
-            render_pass.set_vertex_buffer(0, mesh.vertices.slice(..));
-            render_pass.set_index_buffer(mesh.indices.slice(..), wgpu::IndexFormat::Uint32);
-            render_pass.draw_indexed(0..mesh.index_count, 0, 0..1);
-        }
+    /// Every mesh as drawn: which, and where in the model.
+    pub(crate) fn placements(&self) -> &[(usize, glam::Mat4)] {
+        &self.placements
     }
 
-    /// Draws the meshes that belong in `pass`, with the pipeline already
-    /// set.
-    pub(crate) fn draw(&self, render_pass: &mut wgpu::RenderPass<'_>, pass: Pass) {
-        self.draw_where(render_pass, |m| m.pass == pass);
+    /// The mesh and its material, if it can be drawn.
+    fn mesh(&self, mesh: usize) -> Option<(&GpuMesh, &GpuMaterial)> {
+        let mesh = self.meshes.get(mesh)?.as_ref()?;
+        let material = self.materials.get(mesh.material)?;
+        (mesh.index_count > 0).then_some((mesh, material))
     }
 
-    /// Draws the meshes that get outlines, with the outline pipeline
-    /// already set.
-    pub(crate) fn draw_outlines(&self, render_pass: &mut wgpu::RenderPass<'_>) {
-        for mesh in &self.meshes {
-            let Some(outline) = &mesh.outline_vertices else {
-                continue;
-            };
-            render_pass.set_vertex_buffer(0, outline.slice(..));
-            render_pass.set_index_buffer(mesh.indices.slice(..), wgpu::IndexFormat::Uint32);
-            render_pass.draw_indexed(0..mesh.index_count, 0, 0..1);
-        }
+    /// Which pass a mesh is drawn in.
+    pub(crate) fn pass_of(&self, mesh: usize) -> Option<Pass> {
+        self.mesh(mesh).map(|(_, material)| material.pass)
     }
 
-    fn draw_where(
+    /// Draws `instances` of a mesh's shape only, for the sun's shadow map
+    /// (blended ones, like glass, cast no shadow).
+    pub(crate) fn draw_depth(
         &self,
         render_pass: &mut wgpu::RenderPass<'_>,
-        wanted: impl Fn(&GpuMaterial) -> bool,
+        mesh: usize,
+        instances: std::ops::Range<u32>,
     ) {
-        for mesh in &self.meshes {
-            let Some(material) = self.materials.get(mesh.material) else {
-                continue;
-            };
-            if !wanted(material) || mesh.index_count == 0 {
-                continue;
-            }
-            render_pass.set_bind_group(1, &material.bind_group, &[]);
-            render_pass.set_vertex_buffer(0, mesh.vertices.slice(..));
-            render_pass.set_index_buffer(mesh.indices.slice(..), wgpu::IndexFormat::Uint32);
-            render_pass.draw_indexed(0..mesh.index_count, 0, 0..1);
+        let Some((mesh, material)) = self.mesh(mesh) else {
+            return;
+        };
+        if material.pass == Pass::Blended {
+            return;
         }
+        render_pass.set_vertex_buffer(0, mesh.vertices.slice(..));
+        render_pass.set_index_buffer(mesh.indices.slice(..), wgpu::IndexFormat::Uint32);
+        render_pass.draw_indexed(0..mesh.index_count, 0, instances);
+    }
+
+    /// Draws `instances` of a mesh with its material, with the pipeline
+    /// for its pass already set.
+    pub(crate) fn draw(
+        &self,
+        render_pass: &mut wgpu::RenderPass<'_>,
+        mesh: usize,
+        instances: std::ops::Range<u32>,
+    ) {
+        let Some((mesh, material)) = self.mesh(mesh) else {
+            return;
+        };
+        render_pass.set_bind_group(1, &material.bind_group, &[]);
+        render_pass.set_vertex_buffer(0, mesh.vertices.slice(..));
+        render_pass.set_index_buffer(mesh.indices.slice(..), wgpu::IndexFormat::Uint32);
+        render_pass.draw_indexed(0..mesh.index_count, 0, instances);
+    }
+
+    /// Draws the outline of `instances` of a mesh, if it gets one, with
+    /// the outline pipeline already set.
+    pub(crate) fn draw_outline(
+        &self,
+        render_pass: &mut wgpu::RenderPass<'_>,
+        mesh: usize,
+        instances: std::ops::Range<u32>,
+    ) {
+        let Some((mesh, _)) = self.mesh(mesh) else {
+            return;
+        };
+        let Some(outline) = &mesh.outline_vertices else {
+            return;
+        };
+        render_pass.set_vertex_buffer(0, outline.slice(..));
+        render_pass.set_index_buffer(mesh.indices.slice(..), wgpu::IndexFormat::Uint32);
+        render_pass.draw_indexed(0..mesh.index_count, 0, instances);
     }
 }
 
@@ -157,14 +180,34 @@ impl GpuModel {
 /// roughness, normals, occlusion, glow.
 const TEXTURE_SLOTS: usize = 5;
 
-/// The parts every model's materials share.
+/// The pipelines for one way of winding triangles.
 #[derive(Debug)]
-pub(crate) struct ModelPipelines {
-    pub(crate) material_layout: wgpu::BindGroupLayout,
+pub(crate) struct Facing {
     pub(crate) solid: wgpu::RenderPipeline,
     pub(crate) solid_double_sided: wgpu::RenderPipeline,
     pub(crate) blended: wgpu::RenderPipeline,
     pub(crate) outline: wgpu::RenderPipeline,
+}
+
+impl Facing {
+    /// The pipeline for meshes in `pass`.
+    pub(crate) fn for_pass(&self, pass: Pass) -> &wgpu::RenderPipeline {
+        match pass {
+            Pass::Solid => &self.solid,
+            Pass::SolidDoubleSided => &self.solid_double_sided,
+            Pass::Blended => &self.blended,
+        }
+    }
+}
+
+/// The parts every model's materials share.
+#[derive(Debug)]
+pub(crate) struct ModelPipelines {
+    pub(crate) material_layout: wgpu::BindGroupLayout,
+    /// For copies as made.
+    pub(crate) normal: Facing,
+    /// For mirrored copies, whose triangles wind the other way.
+    pub(crate) mirrored: Facing,
 }
 
 impl ModelPipelines {
@@ -218,12 +261,25 @@ impl ModelPipelines {
             bind_group_layouts: &[Some(frame_layout)],
             immediate_size: 0,
         });
-        let pipeline = |pass| create_pipeline(device, &layout, shader, sample_count, pass);
+        let facing = |front| {
+            let pipeline =
+                |pass| create_pipeline(device, &layout, shader, sample_count, pass, front);
+            Facing {
+                solid: pipeline(Pass::Solid),
+                solid_double_sided: pipeline(Pass::SolidDoubleSided),
+                blended: pipeline(Pass::Blended),
+                outline: create_outline_pipeline(
+                    device,
+                    &outline_layout,
+                    shader,
+                    sample_count,
+                    front,
+                ),
+            }
+        };
         Self {
-            solid: pipeline(Pass::Solid),
-            solid_double_sided: pipeline(Pass::SolidDoubleSided),
-            blended: pipeline(Pass::Blended),
-            outline: create_outline_pipeline(device, &outline_layout, shader, sample_count),
+            normal: facing(wgpu::FrontFace::Ccw),
+            mirrored: facing(wgpu::FrontFace::Cw),
             material_layout,
         }
     }
@@ -318,22 +374,26 @@ impl ModelPipelines {
         let meshes = model
             .meshes
             .iter()
-            .filter(|m| !m.indices.is_empty() && !m.vertices.is_empty())
-            // A mesh too big for one of the card's buffers would make wgpu
-            // stop the program; the importer splits meshes to fit, so this
-            // only guards against a model read with other limits.
-            .filter(|m| {
+            .map(|mesh| {
+                // A mesh too big for one of the card's buffers would make
+                // wgpu stop the program; the importer splits meshes to
+                // fit, so this only guards against a model read with other
+                // limits.
                 let max = device.limits().max_buffer_size;
-                (std::mem::size_of_val(m.vertices.as_slice()) as u64) <= max
-                    && (std::mem::size_of_val(m.indices.as_slice()) as u64) <= max
+                let drawable = !mesh.indices.is_empty()
+                    && !mesh.vertices.is_empty()
+                    && (std::mem::size_of_val(mesh.vertices.as_slice()) as u64) <= max
+                    && (std::mem::size_of_val(mesh.indices.as_slice()) as u64) <= max;
+                drawable.then_some(mesh)
             })
             .map(|mesh| {
+                let mesh = mesh?;
                 let material = mesh
                     .material
                     .filter(|&m| m < default_material)
                     .unwrap_or(default_material);
                 let outlined = materials.get(material).is_some_and(|m| m.outlined);
-                GpuMesh {
+                Some(GpuMesh {
                     vertices: device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
                         label: Some("mesh vertices"),
                         contents: bytemuck::cast_slice(&mesh.vertices),
@@ -353,11 +413,12 @@ impl ModelPipelines {
                     }),
                     index_count: mesh.indices.len() as u32,
                     material,
-                }
+                })
             })
             .collect();
         GpuModel {
             meshes,
+            placements: model.placements().collect(),
             materials,
             triangles: model.triangles(),
             bounds: (model.bounds.min, model.bounds.max),
@@ -485,6 +546,7 @@ fn create_pipeline(
     shader: &wgpu::ShaderModule,
     sample_count: u32,
     pass: Pass,
+    front_face: wgpu::FrontFace,
 ) -> wgpu::RenderPipeline {
     let blended = pass == Pass::Blended;
     device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
@@ -498,11 +560,11 @@ fn create_pipeline(
             module: shader,
             entry_point: Some("mesh_vs"),
             compilation_options: wgpu::PipelineCompilationOptions::default(),
-            buffers: &[Some(vertex_layout())],
+            buffers: &[Some(vertex_layout()), Some(crate::instances::layout())],
         },
         primitive: wgpu::PrimitiveState {
             topology: wgpu::PrimitiveTopology::TriangleList,
-            front_face: wgpu::FrontFace::Ccw,
+            front_face,
             cull_mode: (pass == Pass::Solid).then_some(wgpu::Face::Back),
             ..Default::default()
         },
@@ -539,6 +601,7 @@ fn create_outline_pipeline(
     layout: &wgpu::PipelineLayout,
     shader: &wgpu::ShaderModule,
     sample_count: u32,
+    front_face: wgpu::FrontFace,
 ) -> wgpu::RenderPipeline {
     device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
         label: Some("outline pipeline"),
@@ -547,11 +610,11 @@ fn create_outline_pipeline(
             module: shader,
             entry_point: Some("outline_vs"),
             compilation_options: wgpu::PipelineCompilationOptions::default(),
-            buffers: &[Some(vertex_layout())],
+            buffers: &[Some(vertex_layout()), Some(crate::instances::layout())],
         },
         primitive: wgpu::PrimitiveState {
             topology: wgpu::PrimitiveTopology::TriangleList,
-            front_face: wgpu::FrontFace::Ccw,
+            front_face,
             cull_mode: Some(wgpu::Face::Front),
             ..Default::default()
         },
@@ -596,7 +659,7 @@ pub(crate) fn create_shadow_pipeline(
             module: shader,
             entry_point: Some("shadow_vs"),
             compilation_options: wgpu::PipelineCompilationOptions::default(),
-            buffers: &[Some(vertex_layout())],
+            buffers: &[Some(vertex_layout()), Some(crate::instances::layout())],
         },
         primitive: wgpu::PrimitiveState {
             topology: wgpu::PrimitiveTopology::TriangleList,

@@ -35,8 +35,8 @@ pub struct ViewLight {
 /// What the viewport draws.
 #[derive(Debug, Clone, PartialEq, Default)]
 pub struct AreaView {
-    /// The models to draw.
-    pub models: Vec<AssetId>,
+    /// The models to draw, each where its entity is in the world.
+    pub models: Vec<(AssetId, glam::Mat4)>,
     /// The sun (the first sun in the area), if there is one.
     pub sun: Option<ViewLight>,
     /// Every other light.
@@ -59,9 +59,9 @@ impl AreaView {
                 .unwrap_or_default(),
             ..Self::default()
         };
-        for (_, model) in area.with::<Model>() {
+        for (id, model) in area.with::<Model>() {
             if let Some(info) = model.asset.and_then(|r| models.get(&r.asset)) {
-                view.models.push(info.asset);
+                view.models.push((info.asset, area.world_matrix(id)));
                 view.triangles += info.triangles;
             }
         }
@@ -161,7 +161,7 @@ mod tests {
             },
         );
         let view = AreaView::of(&area, &models);
-        assert_eq!(view.models, [asset]);
+        assert_eq!(view.models, [(asset, glam::Mat4::IDENTITY)]);
         assert_eq!(view.triangles, 12);
     }
 }

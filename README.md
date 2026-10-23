@@ -26,7 +26,7 @@ The first build takes a few minutes. `cargo run -p app -- --help` lists the opti
 
 Solis is built in phases, one milestone per pull request. Each phase ends with a **gate** the project lead tries by hand before the next starts. This tracker is updated by the pull request that finishes each milestone; the full plan is in [ROADMAP.md](ROADMAP.md).
 
-**Overall: 14 of 60 milestones** `███░░░░░░░░░░` 23%
+**Overall: 15 of 60 milestones** `███░░░░░░░░░░` 25%
 
 **Now:** Phase 2, the world ([plan](docs/plans/phase-2.md)). Phase 1's gate is still to be tried by hand.
 
@@ -56,16 +56,16 @@ Solis is built in phases, one milestone per pull request. Each phase ends with a
 
 **Gate:** a model from Aventail or Blender looks good in the viewport, in both the standard and the stylized look.
 
-### Phase 2 · The world — 2 of 7
+### Phase 2 · The world — 3 of 7
 
-`████░░░░░░░░░` 29%
+`██████░░░░░░░` 43%
 
 <details>
 <summary>Milestones</summary>
 
 - [x] Entities and components, in an area document (decision 0019)
 - [x] Undo and redo for every edit (decision 0022)
-- [ ] Transforms and parenting
+- [x] Transforms and parenting
 - [ ] Components that describe themselves, so the inspector can show any of them
 - [ ] The asset database: renaming a file breaks nothing; assets reload when changed (decision 0021)
 - [ ] Areas saved as text that Git merges cleanly; new projects set up for Git (decision 0020)
