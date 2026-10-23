@@ -73,7 +73,10 @@ jobs:
         with:
           persist-credentials: false
       - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2
-      - run: cargo test --workspace --locked --no-fail-fast
+      - run: cargo test --workspace --locked --no-fail-fast 2>&1 | tee test-output.txt; exit ${PIPESTATUS[0]}
+        shell: bash
+      - if: failure()
+        run: tools/ci/failed-tests.sh test-output.txt
       - run: cargo doc --workspace --no-deps --locked
 
   window:
@@ -128,10 +131,7 @@ jobs:
         env:
           REQUIRE_GPU: "1"
           WGPU_BACKEND: dx12
-      # Which tests failed and why, as one annotation on the run, readable
-      # without downloading the whole log.
+      # Which tests failed and why, as one annotation on the run.
       - if: failure()
         shell: bash
-        run: |
-          msg=$(grep -E "^---- |panicked at|^  left|^ right|assertion|^failures:|^    [a-z_:]+$" test-output.txt | head -60 | sed ':a;N;$!ba;s/%/%25/g;s/\r//g;s/\n/%0A/g')
-          echo "::error title=Failed tests::$msg"
+        run: tools/ci/failed-tests.sh test-output.txt
