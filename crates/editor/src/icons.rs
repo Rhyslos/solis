@@ -148,6 +148,10 @@ pub enum Icon {
     Model,
     /// A small sun with rays: a light.
     Light,
+    /// An eye with a line through it: hidden in the editor.
+    Hidden,
+    /// A padlock: can't be picked in the viewport.
+    Lock,
 }
 
 /// Draws `icon` in `rect` with `color`. Shapes are given on a 24-unit
@@ -279,6 +283,36 @@ pub fn icon(painter: &Painter, rect: Rect, icon: Icon, color: Color32) {
             painter.circle_stroke(v(10.0, 10.0), 6.0 * unit, stroke);
             line(&[(14.5, 14.5), (20.0, 20.0)]);
         }
+        Icon::Hidden => {
+            // An eye: two arcs and the pupil, crossed out.
+            let arc = |top: bool| {
+                let points: Vec<Pos2> = (0..=12)
+                    .map(|i| {
+                        let t = i as f32 / 12.0;
+                        let x = 3.0 + 18.0 * t;
+                        let bulge = 6.0 * (std::f32::consts::PI * t).sin();
+                        v(x, if top { 12.0 - bulge } else { 12.0 + bulge })
+                    })
+                    .collect();
+                painter.add(Shape::line(points, stroke));
+            };
+            arc(true);
+            arc(false);
+            painter.circle_filled(v(12.0, 12.0), 2.5 * unit, color);
+            line(&[(4.0, 20.0), (20.0, 4.0)]);
+        }
+        Icon::Lock => {
+            outline(&[(5.0, 11.0), (19.0, 11.0), (19.0, 21.0), (5.0, 21.0)]);
+            let shackle: Vec<Pos2> = (0..=10)
+                .map(|i| {
+                    let a = std::f32::consts::PI * (1.0 + i as f32 / 10.0);
+                    v(12.0 + 5.0 * a.cos(), 9.0 + 5.0 * a.sin())
+                })
+                .collect();
+            painter.add(Shape::line(shackle, stroke));
+            line(&[(7.0, 9.0), (7.0, 11.0)]);
+            line(&[(17.0, 9.0), (17.0, 11.0)]);
+        }
     }
 }
 
@@ -326,6 +360,9 @@ mod tests {
             Error,
             Search,
             Model,
+            Light,
+            Hidden,
+            Lock,
         ];
         let mut counts = Vec::new();
         for each in all {

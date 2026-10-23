@@ -6,7 +6,7 @@ use area::Area;
 use area::builtin::{Environment, Light, LightKind, Model};
 use glam::Vec3;
 use reflect::AssetId;
-use std::collections::BTreeMap;
+use std::collections::{BTreeMap, HashSet};
 
 /// A light, placed in the world.
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -55,6 +55,8 @@ pub struct AreaView {
     pub models: Vec<ViewModel>,
     /// The entity behind each pick number (number 1 is the first).
     pub pickable: Vec<reflect::EntityId>,
+    /// Entities that can't be picked (locked in the Area panel).
+    pub locked: HashSet<reflect::EntityId>,
     /// The sun (the first sun in the area), if there is one.
     pub sun: Option<ViewLight>,
     /// Every other light.
@@ -69,6 +71,17 @@ impl AreaView {
     /// What to draw of `area`, with `models` saying which assets are
     /// loaded.
     pub fn of(area: &Area, models: &BTreeMap<AssetId, ModelInfo>) -> Self {
+        Self::of_shown(area, models, &HashSet::new(), &HashSet::new())
+    }
+
+    /// [`Self::of`], leaving out entities `hidden` in the editor, and
+    /// making `locked` ones impossible to pick.
+    pub fn of_shown(
+        area: &Area,
+        models: &BTreeMap<AssetId, ModelInfo>,
+        hidden: &HashSet<reflect::EntityId>,
+        locked: &HashSet<reflect::EntityId>,
+    ) -> Self {
         let mut view = Self {
             environment: area
                 .with::<Environment>()
@@ -77,7 +90,11 @@ impl AreaView {
                 .unwrap_or_default(),
             ..Self::default()
         };
+        view.locked = locked.clone();
         for (id, model) in area.with::<Model>() {
+            if hidden.contains(&id) {
+                continue;
+            }
             let Some(r) = model.asset else { continue };
             let Some(info) = models.get(&r.asset) else {
                 continue;
@@ -93,15 +110,23 @@ impl AreaView {
             if node.is_none() {
                 view.triangles += info.triangles;
             }
-            view.pickable.push(id);
+            let pick = if locked.contains(&id) {
+                0
+            } else {
+                view.pickable.push(id);
+                view.pickable.len() as u32
+            };
             view.models.push(ViewModel {
                 asset: info.asset,
                 node,
                 transform: area.world_matrix(id),
-                pick: view.pickable.len() as u32,
+                pick,
             });
         }
         for (id, light) in area.with::<Light>() {
+            if hidden.contains(&id) {
+                continue;
+            }
             let world = area.world_matrix(id);
             let placed = place(id, &light, world);
             if light.kind == LightKind::Sun && view.sun.is_none() {

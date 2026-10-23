@@ -115,23 +115,14 @@ impl Workbench {
 
     /// The Edit menu.
     fn edit_menu(&mut self, ui: &mut Ui) {
-        ui.menu_button("Edit", |ui| {
-            let history = self.document.history();
-            let undo = history.undo_label().map(|l| format!("Undo {l}"));
-            let redo = history.redo_label().map(|l| format!("Redo {l}"));
-            let undo_button =
-                egui::Button::new(undo.as_deref().unwrap_or("Undo")).shortcut_text("Ctrl+Z");
-            if ui.add_enabled(undo.is_some(), undo_button).clicked() {
-                self.undo();
-                ui.close();
-            }
-            let redo_button =
-                egui::Button::new(redo.as_deref().unwrap_or("Redo")).shortcut_text("Ctrl+Y");
-            if ui.add_enabled(redo.is_some(), redo_button).clicked() {
-                self.redo();
-                ui.close();
-            }
-        });
+        let state = crate::menu_items::MenuState::of(self);
+        let picked = ui
+            .menu_button("Edit", |ui| crate::menu_items::edit_items(ui, &state))
+            .inner
+            .flatten();
+        if let Some(command) = picked {
+            self.run(command, ui.ctx());
+        }
     }
 
     /// The View menu.
@@ -146,53 +137,14 @@ impl Workbench {
 
     /// The Entity menu.
     fn entity_menu(&mut self, ui: &mut Ui) {
-        ui.menu_button("Entity", |ui| {
-            if ui
-                .button("Add entity")
-                .on_hover_text("An empty entity, at the point the camera looks at")
-                .clicked()
-            {
-                self.add_entity();
-                ui.close();
-            }
-            ui.separator();
-            if ui
-                .button("Add point light")
-                .on_hover_text("A bulb shining every way, placed above where the camera looks")
-                .clicked()
-            {
-                self.add_point_light();
-                ui.close();
-            }
-            if ui
-                .button("Add spotlight")
-                .on_hover_text("A cone of light at the camera, shining where it looks")
-                .clicked()
-            {
-                self.add_spotlight();
-                ui.close();
-            }
-            ui.separator();
-            let selected = self.document.selection.primary();
-            if ui
-                .add_enabled(
-                    selected.is_some(),
-                    egui::Button::new("Create assembly from selection"),
-                )
-                .on_hover_text(
-                    "Saves the selected entity, and everything under it, as an assembly in the \
-                     project, and turns it into a copy of it",
-                )
-                .clicked()
-                && let Some(id) = selected
-            {
-                self.outbox.push(WorkbenchAction::CreateAssembly(id));
-                ui.close();
-            }
-            ui.separator();
-            ui.add_enabled(false, egui::Button::new("Add camera"))
-                .on_disabled_hover_text("Cameras arrive with play mode in Phase 3");
-        });
+        let state = crate::menu_items::MenuState::of(self);
+        let picked = ui
+            .menu_button("Entity", |ui| crate::menu_items::entity_items(ui, &state))
+            .inner
+            .flatten();
+        if let Some(command) = picked {
+            self.run(command, ui.ctx());
+        }
     }
 
     /// The Build menu.

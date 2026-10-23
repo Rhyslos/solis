@@ -72,6 +72,57 @@ pub(crate) enum PropertyRequest {
     Delete(EntityId),
     /// Move an entity to where the camera is looking.
     MoveHere(EntityId),
+    /// Set a field on several entities at once, as one undo step: the
+    /// whole value, or one of its three numbers (`part`) on each.
+    SetFieldMany {
+        /// The entities.
+        entities: Vec<EntityId>,
+        /// The component's name.
+        component: String,
+        /// The field's name.
+        field: String,
+        /// The new value, as the entity Properties shows has it.
+        value: Value,
+        /// Which of three numbers changed, and to what (degrees for a
+        /// rotation).
+        part: Option<(usize, f64)>,
+    },
+    /// Give several entities a component, each one that lacks it.
+    AddComponentMany {
+        /// The entities.
+        entities: Vec<EntityId>,
+        /// The component's name.
+        component: String,
+    },
+    /// Take a component off several entities.
+    RemoveComponentMany {
+        /// The entities.
+        entities: Vec<EntityId>,
+        /// The component's name.
+        component: String,
+    },
+    /// Copy an entity's components' values (or only one's).
+    CopyComponents {
+        /// The entity.
+        entity: EntityId,
+        /// Only this component, or all of them.
+        only: Option<String>,
+    },
+    /// Paste the copied values onto entities (or only one component's),
+    /// adding components they lack.
+    PasteComponents {
+        /// The entities.
+        entities: Vec<EntityId>,
+        /// Only this component, or every one copied.
+        only: Option<String>,
+    },
+    /// Put a component's fields back to their starting values.
+    ResetComponent {
+        /// The entities.
+        entities: Vec<EntityId>,
+        /// The component's name.
+        component: String,
+    },
 }
 
 /// What the selected entity's assembly says about it.
@@ -87,12 +138,15 @@ pub(crate) struct AssemblyPart {
 }
 
 /// The Properties panel. `part` is set when the selected entity comes from
-/// a placed assembly.
+/// a placed assembly; `copied` names the components whose values were
+/// copied (for Paste). With several entities selected, it shows the
+/// components they all have, and a change applies to all of them.
 pub(crate) fn properties(
     ui: &mut Ui,
     document: &Document,
     part: Option<&AssemblyPart>,
     models: &BTreeMap<AssetId, ModelInfo>,
+    copied: &[String],
 ) -> Vec<PropertyRequest> {
     let mut requests = Vec::new();
     let Some((id, entity)) = document
@@ -100,47 +154,103 @@ pub(crate) fn properties(
         .primary()
         .and_then(|id| document.area().get(id).map(|e| (id, e)))
     else {
-        placeholder(ui, "Nothing selected. Pick something in the Area panel.");
+        menu_row(ui, None, copied, &mut requests);
+        placeholder(
+            ui,
+            "Nothing selected. Pick something in the viewport or the Area panel.",
+        );
         return requests;
     };
+    // The one Properties shows first, then the rest of the selection.
+    let mut selected = vec![id];
+    selected.extend(
+        document
+            .selection
+            .iter()
+            .filter(|&e| e != id && document.area().contains(e)),
+    );
+    let many = selected.len() > 1;
+    menu_row(ui, Some(&selected), copied, &mut requests);
     egui::ScrollArea::vertical()
         .auto_shrink(false)
         .show(ui, |ui| {
             egui::Frame::new()
                 .inner_margin(theme::panel_margin())
                 .show(ui, |ui| {
-                    let mut name = entity.name.clone();
-                    inspector::row(ui, "Name", "What the Area panel calls it.", |ui| {
-                        if ui.text_edit_singleline(&mut name).changed() {
-                            requests.push(PropertyRequest::Rename { entity: id, name });
+                    if many {
+                        ui.label(
+                            RichText::new(format!(
+                                "{} entities selected: what they all have is shown, and a                                  change applies to each.",
+                                selected.len()
+                            ))
+                            .color(theme::TEXT_WEAK),
+                        );
+                    } else {
+                        let mut name = entity.name.clone();
+                        inspector::row(ui, "Name", "What the Area panel calls it.", |ui| {
+                            if ui.text_edit_singleline(&mut name).changed() {
+                                requests.push(PropertyRequest::Rename { entity: id, name });
+                            }
+                        });
+                        if let Some(part) = part {
+                            assembly_note(ui, id, part, &mut requests);
                         }
-                    });
-                    if let Some(part) = part {
-                        assembly_note(ui, id, part, &mut requests);
                     }
                     ui.add_space(4.0);
                     // Transform first, as in every engine; the rest by name.
-                    let mut names: Vec<&String> = entity.components.keys().collect();
+                    // With several selected, only what every one has.
+                    let mut names: Vec<&String> = entity
+                        .components
+                        .keys()
+                        .filter(|n| {
+                            !many
+                                || (document.registry.get(n).is_some()
+                                    && selected.iter().all(|&e| {
+                                        document.area().get(e).is_some_and(|d| d.has(n))
+                                    }))
+                        })
+                        .collect();
                     names.sort_by_key(|n| (n.as_str() != "Transform", n.as_str()));
                     for component in names {
                         let data = &entity.components[component];
                         ui.separator();
                         match document.registry.get(component) {
                             Some(schema) => {
-                                if component_header(ui, component, &schema.help) {
-                                    requests.push(PropertyRequest::RemoveComponent {
-                                        entity: id,
-                                        component: component.clone(),
-                                    });
+                                let header = component_header(
+                                    ui,
+                                    component,
+                                    &schema.help,
+                                    copied.contains(component),
+                                );
+                                if let Some(action) = header {
+                                    requests.push(header_request(
+                                        action, &selected, component,
+                                    ));
                                 }
                                 let assembly = part
+                                    .filter(|_| !many)
                                     .and_then(|p| p.expected.as_ref())
                                     .and_then(|e| e.components.get(component));
-                                for change in inspector::fields(ui, schema, data, assembly, models)
+                                let others: Vec<&reflect::ComponentData> = selected[1..]
+                                    .iter()
+                                    .filter_map(|&e| document.area().get(e))
+                                    .filter_map(|d| d.components.get(component))
+                                    .collect();
+                                for change in
+                                    inspector::fields(ui, schema, data, assembly, &others, models)
                                 {
                                     let (entity, component) = (id, component.clone());
                                     requests.push(match change {
-                                        FieldChange::Set { field, value } => {
+                                        FieldChange::Set { field, value, part } if many => {
+                                            PropertyRequest::SetFieldMany {
+                                                entities: selected.clone(),
+                                                component,
+                                                field,
+                                                value,
+                                                part,
+                                            }
+                                        }
+                                        FieldChange::Set { field, value, .. } => {
                                             PropertyRequest::SetField {
                                                 entity,
                                                 component,
@@ -182,11 +292,21 @@ pub(crate) fn properties(
                         }
                     }
                     ui.separator();
-                    if let Some(component) = add_component_menu(ui, document, entity) {
-                        requests.push(PropertyRequest::AddComponent {
-                            entity: id,
-                            component,
+                    if let Some(component) = add_component_menu(ui, document, &selected) {
+                        requests.push(if many {
+                            PropertyRequest::AddComponentMany {
+                                entities: selected.clone(),
+                                component,
+                            }
+                        } else {
+                            PropertyRequest::AddComponent {
+                                entity: id,
+                                component,
+                            }
                         });
+                    }
+                    if many {
+                        return;
                     }
                     ui.add_space(4.0);
                     ui.horizontal(|ui| {
@@ -232,9 +352,47 @@ pub(crate) fn properties(
     requests
 }
 
-/// A component's name, with a × on the right to remove it. Returns
-/// whether × was clicked.
-fn component_header(ui: &mut Ui, name: &str, help: &str) -> bool {
+/// What a component's header was asked to do.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum HeaderAction {
+    Remove,
+    Copy,
+    Paste,
+    Reset,
+}
+
+/// The request for a header action on `component` of the `selected`
+/// entities (the first is the one Properties shows).
+fn header_request(action: HeaderAction, selected: &[EntityId], component: &str) -> PropertyRequest {
+    let entities = selected.to_vec();
+    let component = component.to_string();
+    match action {
+        HeaderAction::Remove if entities.len() == 1 => PropertyRequest::RemoveComponent {
+            entity: entities[0],
+            component,
+        },
+        HeaderAction::Remove => PropertyRequest::RemoveComponentMany {
+            entities,
+            component,
+        },
+        HeaderAction::Copy => PropertyRequest::CopyComponents {
+            entity: entities[0],
+            only: Some(component),
+        },
+        HeaderAction::Paste => PropertyRequest::PasteComponents {
+            entities,
+            only: Some(component),
+        },
+        HeaderAction::Reset => PropertyRequest::ResetComponent {
+            entities,
+            component,
+        },
+    }
+}
+
+/// A component's name, with a ⋯ menu (copy, paste, reset) and a × to
+/// remove it on the right. Returns what was asked for.
+fn component_header(ui: &mut Ui, name: &str, help: &str, can_paste: bool) -> Option<HeaderAction> {
     ui.horizontal(|ui| {
         ui.label(RichText::new(name).strong()).on_hover_text(help);
         ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
@@ -244,25 +402,98 @@ fn component_header(ui: &mut Ui, name: &str, help: &str) -> bool {
             button.widget_info(|| {
                 egui::WidgetInfo::labeled(egui::WidgetType::Button, true, format!("Remove {name}"))
             });
-            button.clicked()
+            if button.clicked() {
+                return Some(HeaderAction::Remove);
+            }
+            let mut picked = None;
+            let menu = ui.menu_button(RichText::new("⋯").color(theme::TEXT_WEAK), |ui| {
+                if ui.button("Copy values").clicked() {
+                    picked = Some(HeaderAction::Copy);
+                    ui.close();
+                }
+                if ui
+                    .add_enabled(can_paste, egui::Button::new("Paste values"))
+                    .on_disabled_hover_text(format!("Copy a {name}'s values first"))
+                    .clicked()
+                {
+                    picked = Some(HeaderAction::Paste);
+                    ui.close();
+                }
+                ui.separator();
+                if ui
+                    .button("Reset to defaults")
+                    .on_hover_text("Puts every setting back to its starting value")
+                    .clicked()
+                {
+                    picked = Some(HeaderAction::Reset);
+                    ui.close();
+                }
+            });
+            menu.response.widget_info(|| {
+                egui::WidgetInfo::labeled(egui::WidgetType::Button, true, format!("{name} menu"))
+            });
+            picked
         })
         .inner
     })
     .inner
 }
 
-/// The Add component menu: every registered component the entity doesn't
-/// have yet, by name. Returns the one picked.
-fn add_component_menu(
+/// The panel's menu row: ≡ and its Edit menu, to copy every component's
+/// values of the entity shown and paste them onto the selection.
+fn menu_row(
     ui: &mut Ui,
-    document: &Document,
-    entity: &area::EntityData,
-) -> Option<String> {
+    selected: Option<&[EntityId]>,
+    copied: &[String],
+    requests: &mut Vec<PropertyRequest>,
+) {
+    theme::menu_row_frame().show(ui, |ui| {
+        ui.set_min_width(ui.available_width());
+        egui::MenuBar::new().ui(ui, |ui| {
+            ui.spacing_mut().item_spacing.x = 8.0;
+            ui.label("≡");
+            ui.menu_button("Edit", |ui| {
+                let first = selected.and_then(|s| s.first().copied());
+                if ui
+                    .add_enabled(first.is_some(), egui::Button::new("Copy components"))
+                    .on_hover_text("Copies the values of every component of the entity shown")
+                    .clicked()
+                    && let Some(entity) = first
+                {
+                    requests.push(PropertyRequest::CopyComponents { entity, only: None });
+                    ui.close();
+                }
+                let paste = egui::Button::new("Paste components");
+                if ui
+                    .add_enabled(selected.is_some() && !copied.is_empty(), paste)
+                    .on_hover_text(
+                        "Gives the selection the copied components' values, adding any it                          lacks",
+                    )
+                    .clicked()
+                    && let Some(entities) = selected
+                {
+                    requests.push(PropertyRequest::PasteComponents {
+                        entities: entities.to_vec(),
+                        only: None,
+                    });
+                    ui.close();
+                }
+            });
+        });
+    });
+}
+
+/// The Add component menu: every registered component one of `selected`
+/// doesn't have yet, by name. Returns the one picked.
+fn add_component_menu(ui: &mut Ui, document: &Document, selected: &[EntityId]) -> Option<String> {
     let mut picked = None;
     ui.menu_button("Add component", |ui| {
         let mut any = false;
         for schema in document.registry.iter() {
-            if entity.has(&schema.name) {
+            let everyone_has = selected
+                .iter()
+                .all(|&e| document.area().get(e).is_none_or(|d| d.has(&schema.name)));
+            if everyone_has {
                 continue;
             }
             any = true;

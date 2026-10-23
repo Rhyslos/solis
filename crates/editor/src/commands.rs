@@ -367,6 +367,31 @@ impl Workbench {
                 field,
             } => self.apply_field(entity, &component, &field),
             PropertyRequest::Unpack(root) => self.unpack(root),
+            PropertyRequest::SetFieldMany {
+                entities,
+                component,
+                field,
+                value,
+                part,
+            } => self.set_field_many(&entities, &component, &field, &value, part, gesture),
+            PropertyRequest::AddComponentMany {
+                entities,
+                component,
+            } => self.add_component_many(&entities, &component),
+            PropertyRequest::RemoveComponentMany {
+                entities,
+                component,
+            } => self.remove_component_many(&entities, &component),
+            PropertyRequest::CopyComponents { entity, only } => {
+                self.copy_components(entity, only.as_deref());
+            }
+            PropertyRequest::PasteComponents { entities, only } => {
+                self.paste_components(&entities, only.as_deref());
+            }
+            PropertyRequest::ResetComponent {
+                entities,
+                component,
+            } => self.reset_component(&entities, &component),
         }
     }
 
@@ -710,6 +735,9 @@ impl Workbench {
             AreaRequest::Rename { entity, name } => {
                 self.command("Rename", vec![Edit::Rename { entity, name }], None, None);
             }
+            // Menu commands need the window (to start renaming), so the
+            // workbench runs them where it has it.
+            AreaRequest::Command(_) => {}
         }
     }
 
