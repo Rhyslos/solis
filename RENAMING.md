@@ -17,7 +17,7 @@ The engine is currently called **Solis**. The name is kept in as few places as p
 6. **`Cargo.toml`** (root): the `repository` URL, if the GitHub repository is renamed.
 7. **`LICENSE`**: only if the copyright line should name the program.
 8. **Installer and icons** (when they exist).
-   - **File extensions** (`project.solis`, `.solscene`, `.solprefab`, `.solmat`, [decision 0015](docs/decisions/0015-file-extensions.md); `.solmeta` sidecars, [decision 0021](docs/decisions/0021-asset-database-and-models.md); the cache folder `.solis/`): keep them, since existing projects use them, or read both the old and new ones.
+   - **File extensions** (`project.solis`, `.solarea`, `.solassembly`, `.solmat`, [decision 0015](docs/decisions/0015-file-extensions.md); `.solmeta` sidecars, [decision 0021](docs/decisions/0021-asset-database-and-models.md); the cache folder `.solis/`): keep them, since existing projects use them, or read both the old and new ones.
 9. **Docs**: search and replace the name in `README.md`, `DESIGN.md`, `ROADMAP.md`, `CLAUDE.md`, `ARCHITECTURE.md`, `CONTRIBUTING.md` and `docs/manual/`. Add a `CHANGELOG.md` entry about the rename.
 10. **GitHub**: rename the repository in its settings. GitHub redirects the old URL automatically.
 11. **Decision record**: add one to `docs/decisions/` explaining the new name.

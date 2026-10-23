@@ -2,13 +2,13 @@
 //! small menu row under a title, a quiet placeholder note, and the hint
 //! shown while files are dragged over the window.
 
+use crate::area_panel::{AreaRequest, area_tree};
 use crate::console::{Console, console};
 use crate::document::Document;
 use crate::icons::{self, Icon};
 use crate::models::ModelInfo;
 use crate::panel::Panel;
 use crate::properties::{PropertyRequest, properties};
-use crate::scene_panel::{SceneRequest, scene_tree};
 use crate::theme::{self, Accent};
 use crate::viewport::{Viewport, ViewportRenderer};
 use egui::{Align, Color32, Id, Layout, RichText, Ui, WidgetText};
@@ -28,7 +28,7 @@ pub(crate) struct PanelViewer<'a> {
     pub(crate) console: &'a mut Console,
     pub(crate) document: &'a Document,
     pub(crate) models: &'a BTreeMap<AssetId, ModelInfo>,
-    pub(crate) scene_requests: &'a mut Vec<SceneRequest>,
+    pub(crate) area_requests: &'a mut Vec<AreaRequest>,
     pub(crate) requests: &'a mut Vec<PropertyRequest>,
     pub(crate) accent: Accent,
     pub(crate) in_front: &'a HashSet<Panel>,
@@ -105,14 +105,14 @@ impl TabViewer for PanelViewer<'_> {
             return;
         }
         match tab {
-            Panel::Scene => {
+            Panel::Area => {
                 menu_row(ui, &["Edit", "View", "Entity"]);
-                let requests = scene_tree(ui, self.document, self.models, self.accent);
-                self.scene_requests.extend(requests);
+                let requests = area_tree(ui, self.document, self.models, self.accent);
+                self.area_requests.extend(requests);
             }
             Panel::Layers => {
                 menu_row(ui, &["Edit", "View"]);
-                placeholder(ui, "Layers arrive with scenes in Phase 2.");
+                placeholder(ui, "Layers arrive with areas in Phase 2.");
             }
             Panel::Properties => {
                 menu_row(ui, &["Mode", "Edit", "Units"]);
@@ -136,7 +136,7 @@ impl TabViewer for PanelViewer<'_> {
             }
             Panel::Console => console(ui, self.console, self.accent),
             Panel::Problems => {
-                placeholder(ui, "No problems. Mistakes in code and scenes show here.");
+                placeholder(ui, "No problems. Mistakes in code and areas show here.");
             }
             Panel::Viewport => {}
         }

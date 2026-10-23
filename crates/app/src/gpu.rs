@@ -1,13 +1,13 @@
 //! Connects the viewport renderer (the `render` crate) to the window's wgpu
 //! device and to egui, so the viewport panel can show the rendered image.
 
+use area::builtin::{Environment, LightKind, Sky, ToneMapping};
 use editor::{LookKind, ViewLight, ViewportRenderer, ViewportView};
 use eframe::egui;
 use eframe::egui_wgpu::RenderState;
 use eframe::wgpu;
 use reflect::AssetId;
 use render::{FrameParams, GpuModel, ViewportTarget};
-use scene::builtin::{Environment, LightKind, Sky, ToneMapping};
 use std::collections::HashMap;
 
 /// The viewport's image and the egui texture showing it.
@@ -110,7 +110,7 @@ impl GpuViewport {
     }
 }
 
-/// The scene's sky, fog and exposure as the renderer takes them.
+/// The area's sky, fog and exposure as the renderer takes them.
 fn to_render_environment(env: &Environment) -> render::Environment {
     render::Environment {
         sky: match env.sky {
@@ -132,7 +132,7 @@ fn to_render_environment(env: &Environment) -> render::Environment {
     }
 }
 
-/// The scene's sun as the renderer takes it; with no sun, a dark one.
+/// The area's sun as the renderer takes it; with no sun, a dark one.
 fn to_render_sun(sun: Option<&ViewLight>) -> render::Sun {
     sun.map_or(
         render::Sun {
@@ -149,7 +149,7 @@ fn to_render_sun(sun: Option<&ViewLight>) -> render::Sun {
     )
 }
 
-/// A scene light as the renderer takes it.
+/// An area light as the renderer takes it.
 fn to_render_light(light: &ViewLight) -> render::Light {
     render::Light {
         kind: match light.kind {

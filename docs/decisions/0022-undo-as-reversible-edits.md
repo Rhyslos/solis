@@ -2,6 +2,7 @@
 
 - **Status:** Accepted
 - **Date:** 2026-10-23
+- **Wording:** scenes are now called *areas* and prefabs *assemblies* ([decision 0023](0023-areas-and-assemblies.md)).
 
 ## Problem
 

@@ -114,8 +114,8 @@ pub enum Icon {
     Viewport,
     /// A play symbol in a screen: the Game panel.
     Game,
-    /// A tree of lines: the Scene panel.
-    Scene,
+    /// A tree of lines: the Area panel.
+    Area,
     /// Stacked sheets: the Layers panel.
     Layers,
     /// Lines of fields: the Properties panel.
@@ -128,8 +128,8 @@ pub enum Icon {
     Console,
     /// A warning sign: the Problems panel.
     Problems,
-    /// Hills: a scene document.
-    SceneFile,
+    /// Hills: an area document.
+    AreaFile,
     /// A filled triangle: Play.
     Play,
     /// Two people: play with others.
@@ -183,7 +183,7 @@ pub fn icon(painter: &Painter, rect: Rect, icon: Icon, color: Color32) {
             outline(&[(3.0, 5.0), (21.0, 5.0), (21.0, 19.0), (3.0, 19.0)]);
             fill(&[(10.0, 8.5), (16.0, 12.0), (10.0, 15.5)]);
         }
-        Icon::Scene => {
+        Icon::Area => {
             line(&[(4.0, 6.0), (20.0, 6.0)]);
             line(&[(8.0, 12.0), (20.0, 12.0)]);
             line(&[(8.0, 18.0), (20.0, 18.0)]);
@@ -219,7 +219,7 @@ pub fn icon(painter: &Painter, rect: Rect, icon: Icon, color: Color32) {
             line(&[(12.0, 9.0), (12.0, 14.0)]);
             painter.circle_filled(v(12.0, 17.0), 1.2 * unit, color);
         }
-        Icon::SceneFile => outline(&[
+        Icon::AreaFile => outline(&[
             (3.0, 20.0),
             (8.0, 4.0),
             (12.0, 14.0),
@@ -310,14 +310,14 @@ mod tests {
         let all = [
             Viewport,
             Game,
-            Scene,
+            Area,
             Layers,
             Properties,
             Library,
             Code,
             Console,
             Problems,
-            SceneFile,
+            AreaFile,
             Play,
             PlayTogether,
             Stop,

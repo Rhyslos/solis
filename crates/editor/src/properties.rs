@@ -1,6 +1,6 @@
 //! The Properties panel: the selected entity's name and components, with
 //! fields drawn from each component's schema (decision 0019). It never
-//! changes the scene itself: it returns what the user asked for, and the
+//! changes the area itself: it returns what the user asked for, and the
 //! workbench applies it (as undo steps, decision 0022).
 
 use crate::document::Document;
@@ -56,9 +56,9 @@ pub(crate) fn properties(
     let Some((id, entity)) = document
         .selection
         .primary()
-        .and_then(|id| document.scene().get(id).map(|e| (id, e)))
+        .and_then(|id| document.area().get(id).map(|e| (id, e)))
     else {
-        placeholder(ui, "Nothing selected. Pick something in the Scene panel.");
+        placeholder(ui, "Nothing selected. Pick something in the Area panel.");
         return requests;
     };
     egui::ScrollArea::vertical()
@@ -68,7 +68,7 @@ pub(crate) fn properties(
                 .inner_margin(theme::panel_margin())
                 .show(ui, |ui| {
                     let mut name = entity.name.clone();
-                    inspector::row(ui, "Name", "What the Scene panel calls it.", |ui| {
+                    inspector::row(ui, "Name", "What the Area panel calls it.", |ui| {
                         if ui.text_edit_singleline(&mut name).changed() {
                             requests.push(PropertyRequest::Rename { entity: id, name });
                         }

@@ -1,11 +1,11 @@
-//! What the viewport draws, worked out from the scene each frame: the
+//! What the viewport draws, worked out from the area each frame: the
 //! models, the sun, the lamps and the environment, in the world's terms.
 
 use crate::models::ModelInfo;
+use area::Area;
+use area::builtin::{Environment, Light, LightKind, Model};
 use glam::Vec3;
 use reflect::AssetId;
-use scene::Scene;
-use scene::builtin::{Environment, Light, LightKind, Model};
 use std::collections::BTreeMap;
 
 /// A light, placed in the world.
@@ -34,39 +34,39 @@ pub struct ViewLight {
 
 /// What the viewport draws.
 #[derive(Debug, Clone, PartialEq, Default)]
-pub struct SceneView {
+pub struct AreaView {
     /// The models to draw.
     pub models: Vec<AssetId>,
-    /// The sun (the first sun in the scene), if there is one.
+    /// The sun (the first sun in the area), if there is one.
     pub sun: Option<ViewLight>,
     /// Every other light.
     pub lamps: Vec<ViewLight>,
-    /// The sky, fog and picture settings (the first in the scene).
+    /// The sky, fog and picture settings (the first in the area).
     pub environment: Environment,
     /// How many triangles the models have together.
     pub triangles: usize,
 }
 
-impl SceneView {
-    /// What to draw of `scene`, with `models` saying which assets are
+impl AreaView {
+    /// What to draw of `area`, with `models` saying which assets are
     /// loaded.
-    pub fn of(scene: &Scene, models: &BTreeMap<AssetId, ModelInfo>) -> Self {
+    pub fn of(area: &Area, models: &BTreeMap<AssetId, ModelInfo>) -> Self {
         let mut view = Self {
-            environment: scene
+            environment: area
                 .with::<Environment>()
                 .next()
                 .map(|(_, e)| e)
                 .unwrap_or_default(),
             ..Self::default()
         };
-        for (_, model) in scene.with::<Model>() {
+        for (_, model) in area.with::<Model>() {
             if let Some(info) = model.asset.and_then(|r| models.get(&r.asset)) {
                 view.models.push(info.asset);
                 view.triangles += info.triangles;
             }
         }
-        for (id, light) in scene.with::<Light>() {
-            let world = scene.world_matrix(id);
+        for (id, light) in area.with::<Light>() {
+            let world = area.world_matrix(id);
             let placed = place(&light, world);
             if light.kind == LightKind::Sun && view.sun.is_none() {
                 view.sun = Some(placed);
@@ -103,12 +103,12 @@ fn place(light: &Light, world: glam::Mat4) -> ViewLight {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use scene::EntityData;
-    use scene::builtin::Transform;
+    use area::EntityData;
+    use area::builtin::Transform;
 
     #[test]
-    fn the_starter_scene_has_a_sun_shining_down_and_no_lamps() {
-        let view = SceneView::of(&scene::builtin::starter_scene(), &BTreeMap::new());
+    fn the_starter_area_has_a_sun_shining_down_and_no_lamps() {
+        let view = AreaView::of(&area::builtin::starter_area(), &BTreeMap::new());
         let sun = view.sun.unwrap();
         assert!(sun.direction.z < -0.7);
         assert!(view.lamps.is_empty());
@@ -117,8 +117,8 @@ mod tests {
 
     #[test]
     fn lamps_are_placed_by_their_parents() {
-        let mut scene = Scene::new();
-        let parent = scene.spawn(EntityData::new("Post").with(&Transform {
+        let mut area = Area::new();
+        let parent = area.spawn(EntityData::new("Post").with(&Transform {
             position: Vec3::new(5.0, 0.0, 0.0),
             ..Transform::default()
         }));
@@ -132,8 +132,8 @@ mod tests {
                 ..Light::spot()
             });
         bulb.parent = Some(parent);
-        scene.spawn(bulb);
-        let view = SceneView::of(&scene, &BTreeMap::new());
+        area.spawn(bulb);
+        let view = AreaView::of(&area, &BTreeMap::new());
         assert!(view.sun.is_none());
         let lamp = view.lamps[0];
         assert!(lamp.position.abs_diff_eq(Vec3::new(5.0, 0.0, 3.0), 1e-5));
@@ -144,11 +144,11 @@ mod tests {
 
     #[test]
     fn models_draw_only_when_their_asset_is_loaded() {
-        let mut scene = Scene::new();
+        let mut area = Area::new();
         let asset = AssetId::random();
         let r = reflect::AssetRef { asset, part: None };
-        scene.spawn(EntityData::new("Crate").with(&Model { asset: Some(r) }));
-        assert!(SceneView::of(&scene, &BTreeMap::new()).models.is_empty());
+        area.spawn(EntityData::new("Crate").with(&Model { asset: Some(r) }));
+        assert!(AreaView::of(&area, &BTreeMap::new()).models.is_empty());
         let mut models = BTreeMap::new();
         models.insert(
             asset,
@@ -160,7 +160,7 @@ mod tests {
                 max: Vec3::ONE,
             },
         );
-        let view = SceneView::of(&scene, &models);
+        let view = AreaView::of(&area, &models);
         assert_eq!(view.models, [asset]);
         assert_eq!(view.triangles, 12);
     }

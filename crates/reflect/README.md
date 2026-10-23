@@ -9,9 +9,9 @@ How components describe themselves ([decision 0019](../../docs/decisions/0019-sc
 Give every part of Solis one way to see any component, whether it's built in, written in Lust or defined in Lua:
 
 - the inspector draws fields from a schema;
-- scene files write values in a schema's field order;
+- area files write values in a schema's field order;
 - undo records values;
-- prefab overrides name a component and a field.
+- assembly overrides name a component and a field.
 
 Nothing here knows Rust types beyond the [`Component`] trait for typed access, so components defined while the program runs work the same way as built-in ones.
 

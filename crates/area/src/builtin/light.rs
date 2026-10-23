@@ -61,7 +61,7 @@ impl Default for Light {
 }
 
 impl Light {
-    /// A sun as a new scene has it.
+    /// A sun as a new area has it.
     pub fn sun() -> Self {
         Self {
             kind: LightKind::Sun,

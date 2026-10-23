@@ -7,7 +7,7 @@ use std::collections::BTreeMap;
 /// One entity: its name, where it sits in the tree, and its components.
 #[derive(Debug, Clone, PartialEq, Default)]
 pub struct EntityData {
-    /// The name shown in the Scene panel.
+    /// The name shown in the Area panel.
     pub name: String,
     /// The entity it belongs to, if any.
     pub parent: Option<EntityId>,
@@ -53,14 +53,14 @@ impl EntityData {
     }
 }
 
-/// A scene: its entities, by ID. Sorted by ID, as scene files are.
+/// An area: its entities, by ID. Sorted by ID, as area files are.
 #[derive(Debug, Clone, PartialEq, Default)]
-pub struct Scene {
+pub struct Area {
     entities: BTreeMap<EntityId, EntityData>,
 }
 
-impl Scene {
-    /// An empty scene.
+impl Area {
+    /// An empty area.
     pub fn new() -> Self {
         Self::default()
     }
@@ -104,7 +104,7 @@ impl Scene {
         let mut i = 0;
         while i < out.len() {
             let children = self.children(Some(out[i]));
-            // A damaged scene could loop; never visit an entity twice.
+            // A damaged area could loop; never visit an entity twice.
             for child in children {
                 if !out.contains(&child) {
                     out.push(child);
@@ -164,7 +164,7 @@ impl Scene {
 
     /// Where `id` is in the world: its transform after its parents'. An
     /// entity without a `Transform` sits where its parent is. A loop in a
-    /// damaged scene stops the walk instead of hanging.
+    /// damaged area stops the walk instead of hanging.
     pub fn world_matrix(&self, id: EntityId) -> glam::Mat4 {
         let mut matrix = glam::Mat4::IDENTITY;
         let mut at = Some(id);
@@ -200,7 +200,7 @@ mod tests {
 
     #[test]
     fn entities_are_spawned_found_and_removed() {
-        let mut s = Scene::new();
+        let mut s = Area::new();
         let a = s.spawn(EntityData::new("A").with(&Transform::default()));
         let b = s.spawn(EntityData::new("B"));
         assert_eq!(s.len(), 2);
@@ -214,7 +214,7 @@ mod tests {
 
     #[test]
     fn trees_come_out_parents_first_and_in_order() {
-        let mut s = Scene::new();
+        let mut s = Area::new();
         let root = s.spawn(EntityData::new("Root"));
         let mut second = EntityData::new("Second");
         second.parent = Some(root);
@@ -235,7 +235,7 @@ mod tests {
 
     #[test]
     fn world_matrices_add_up_parents() {
-        let mut s = Scene::new();
+        let mut s = Area::new();
         let parent = s.spawn(EntityData::new("P").with(&Transform {
             position: glam::Vec3::new(10.0, 0.0, 0.0),
             ..Transform::default()
@@ -255,7 +255,7 @@ mod tests {
 
     #[test]
     fn an_orphan_shows_at_the_top_and_a_loop_never_hangs() {
-        let mut s = Scene::new();
+        let mut s = Area::new();
         let ghost = EntityId::random();
         let mut orphan = EntityData::new("Orphan");
         orphan.parent = Some(ghost);

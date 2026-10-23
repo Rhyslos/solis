@@ -5,6 +5,8 @@
 //! returns [`WorkbenchAction`]s for the app to carry out, and draws the
 //! viewport through a [`ViewportRenderer`] it is handed each frame.
 
+use crate::area_panel::AreaRequest;
+use crate::area_view::AreaView;
 use crate::camera::Camera;
 #[cfg(test)]
 use crate::console::CONSOLE_LIMIT;
@@ -14,8 +16,6 @@ use crate::layout::{self, Preset};
 use crate::models::ModelInfo;
 use crate::panel::Panel;
 use crate::panels::{PanelViewer, drop_hint};
-use crate::scene_panel::SceneRequest;
-use crate::scene_view::SceneView;
 use crate::theme::{self, Accent};
 use crate::viewport::{Overlays, Tool, Viewport, ViewportRenderer};
 use egui::Ui;
@@ -40,8 +40,8 @@ pub enum WorkbenchAction {
     Quit,
     /// Ask which model file to import (File > Import model…).
     ImportModel,
-    /// Bring in the built-in sample scene (Help > Add the sample scene).
-    AddSampleScene,
+    /// Bring in the built-in sample area (Help > Add the sample area).
+    AddSampleArea,
 }
 
 /// The editor's state, kept between frames.
@@ -51,7 +51,7 @@ pub struct Workbench {
     pub(crate) accent: Accent,
     pub(crate) viewport: Viewport,
     pub(crate) console: Console,
-    /// The open scene and what's selected in it.
+    /// The open area and what's selected in it.
     pub(crate) document: Document,
     /// What the editor knows about the imported models, by asset.
     pub(crate) models: BTreeMap<AssetId, ModelInfo>,
@@ -68,7 +68,7 @@ pub struct Workbench {
 
 impl Workbench {
     /// A workbench with a saved panel layout, if it is usable (otherwise the
-    /// default one), and a new scene.
+    /// default one), and a new area.
     pub fn new(info: AppInfo, saved_layout: Option<DockState<Panel>>) -> Self {
         Self {
             info,
@@ -110,7 +110,7 @@ impl Workbench {
         &self.models
     }
 
-    /// The open scene and its selection.
+    /// The open area and its selection.
     pub fn document(&self) -> &Document {
         &self.document
     }
@@ -181,9 +181,9 @@ impl Workbench {
         self.dock = preset.layout();
     }
 
-    /// The window title: the program, its version and the open scene.
+    /// The window title: the program, its version and the open area.
     pub fn title(&self) -> String {
-        format!("{} {} · Untitled scene", self.info.name, self.info.version)
+        format!("{} {} · Untitled area", self.info.name, self.info.version)
     }
 
     /// Draws the editor filling `ui`, and returns what the app must do.
@@ -204,10 +204,10 @@ impl Workbench {
             .show(ui, |ui| self.top_bar(ui, &mut actions));
         let style = theme::dock_style(ui.style().as_ref(), self.accent);
         let mut shown = HashSet::new();
-        let mut scene_requests = Vec::new();
+        let mut area_requests = Vec::new();
         let mut requests = Vec::new();
-        self.viewport.scene = SceneView::of(self.document.scene(), &self.models);
-        self.viewport.entities = self.document.scene().len();
+        self.viewport.area = AreaView::of(self.document.area(), &self.models);
+        self.viewport.entities = self.document.area().len();
         theme::dock_frame().show(ui, |ui| {
             DockArea::new(&mut self.dock)
                 .style(style)
@@ -224,7 +224,7 @@ impl Workbench {
                         console: &mut self.console,
                         document: &self.document,
                         models: &self.models,
-                        scene_requests: &mut scene_requests,
+                        area_requests: &mut area_requests,
                         requests: &mut requests,
                         accent: self.accent,
                         in_front: &self.in_front,
@@ -236,10 +236,10 @@ impl Workbench {
         for request in requests {
             self.apply_property(request, self.gesture);
         }
-        for request in scene_requests {
+        for request in area_requests {
             match request {
-                SceneRequest::Select(id) => self.select(id),
-                SceneRequest::Delete(id) => self.delete(id),
+                AreaRequest::Select(id) => self.select(id),
+                AreaRequest::Delete(id) => self.delete(id),
             }
         }
         if self.files_hovering {

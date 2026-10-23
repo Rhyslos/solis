@@ -63,17 +63,17 @@ Solis is built in phases, one milestone per pull request. Each phase ends with a
 <details>
 <summary>Milestones</summary>
 
-- [x] Entities and components, in a scene document (decision 0019)
+- [x] Entities and components, in an area document (decision 0019)
 - [x] Undo and redo for every edit (decision 0022)
 - [ ] Transforms and parenting
 - [ ] Components that describe themselves, so the inspector can show any of them
 - [ ] The asset database: renaming a file breaks nothing; assets reload when changed (decision 0021)
-- [ ] Scenes saved as text that Git merges cleanly; new projects set up for Git (decision 0020)
-- [ ] Prefabs: nested, with per-instance changes
+- [ ] Areas saved as text that Git merges cleanly; new projects set up for Git (decision 0020)
+- [ ] Assemblies: nested, with per-instance changes
 
 </details>
 
-**Gate:** save a scene, edit it in a text editor and see it reload; rename a texture and nothing breaks; Git merges two people's changes to one scene.
+**Gate:** save an area, edit it in a text editor and see it reload; rename a texture and nothing breaks; Git merges two people's changes to one area.
 
 ### Phase 3 · The editor — 0 of 6
 
@@ -86,12 +86,12 @@ Solis is built in phases, one milestone per pull request. Each phase ends with a
 - [ ] The entity list and the inspector
 - [ ] The library: assets and code
 - [ ] The console: commands as well as messages
-- [ ] Play mode, which puts the scene back when you stop
+- [ ] Play mode, which puts the area back when you stop
 - [ ] Several viewports
 
 </details>
 
-**Gate:** build a small scene from scratch, press Play, stop, and everything is back as it was.
+**Gate:** build a small area from scratch, press Play, stop, and everything is back as it was.
 
 ### Phase 4 · Lust and Lua join — 0 of 6
 
@@ -121,7 +121,7 @@ Solis is built in phases, one milestone per pull request. Each phase ends with a
 - [ ] GPU instancing, frustum culling and LODs
 - [ ] A job system that uses every CPU core
 - [ ] Thousands of projectiles drawn cheaply
-- [ ] The benchmark scene: 2,000 moving units and 20,000 projectiles
+- [ ] The benchmark area: 2,000 moving units and 20,000 projectiles
 
 </details>
 
@@ -202,7 +202,7 @@ Solis is built in phases, one milestone per pull request. Each phase ends with a
 - [ ] The scripting window: editor tools in LustScript or Lua
 - [ ] Exporting games for Windows
 - [ ] The Git panel: commit, pull, push, branches, locking
-- [ ] The scene merge tool
+- [ ] The area merge tool
 
 </details>
 
