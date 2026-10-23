@@ -1358,27 +1358,29 @@ fn one_model_placed_twice_is_drawn_twice() {
         eye,
     )
     .unwrap();
-    // The copies show red (the base) at the sides, where the single one
-    // in the middle shows far less. Counted over whole strips rather than
-    // one row, and compared rather than required to be zero, because
-    // GPUs (Windows' WARP especially) differ a little at edges and in the
-    // ground's colour.
-    let red_in = |p: &[u8], xs: std::ops::Range<u32>| {
+    // Compared picture to picture rather than by colour, because GPUs
+    // (Windows' WARP especially) differ in shading and at edges: the two
+    // copies change the sides of the picture a lot, and leave the middle,
+    // where the single copy stood.
+    let changed_in = |xs: std::ops::Range<u32>| {
         let mut n = 0;
         for y in 0..64u32 {
             for x in xs.clone() {
                 let i = ((y * 64 + x) * 4) as usize;
-                if p[i] > p[i + 1] + 40 {
+                let diff = (0..3)
+                    .map(|c| once[i + c].abs_diff(twice[i + c]))
+                    .max()
+                    .unwrap_or(0);
+                if diff > 30 {
                     n += 1;
                 }
             }
         }
         n
     };
-    let (left, right) = (red_in(&twice, 0..12), red_in(&twice, 52..64));
-    let (once_left, once_right) = (red_in(&once, 0..12), red_in(&once, 52..64));
+    let (left, middle, right) = (changed_in(0..16), changed_in(26..38), changed_in(48..64));
     assert!(
-        left > once_left + 10 && right > once_right + 10,
-        "both copies drawn: {left} and {right} red pixels at the sides, against {once_left} and {once_right} for one copy"
+        left > 40 && right > 40 && middle > 40,
+        "the picture changes at both sides and in the middle: {left}, {right} and {middle} pixels"
     );
 }
