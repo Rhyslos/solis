@@ -23,7 +23,11 @@ impl Workbench {
                     ui.spacing_mut().item_spacing.x = 2.0;
                     self.menus(ui, actions);
                     ui.add_space(8.0);
-                    document_tabs(ui, bar, self.accent);
+                    let mut name = self.document.name();
+                    if self.document.is_dirty() {
+                        name.push_str(" •");
+                    }
+                    document_tabs(ui, bar, self.accent, &name);
                 });
             });
         });
@@ -47,13 +51,14 @@ impl Workbench {
                 .on_hover_text("Makes a folder into a project: its assets, settings and areas")
                 .clicked()
             {
-                actions.push(WorkbenchAction::NewProject);
+                self.request(WorkbenchAction::NewProject, actions);
                 ui.close();
             }
             if ui.button("Open project…").clicked() {
-                actions.push(WorkbenchAction::OpenProject);
+                self.request(WorkbenchAction::OpenProject, actions);
                 ui.close();
             }
+            let mut pending = Vec::new();
             ui.add_enabled_ui(!self.recent.is_empty(), |ui| {
                 ui.menu_button("Recent projects", |ui| {
                     for path in &self.recent {
@@ -66,16 +71,29 @@ impl Workbench {
                             .on_hover_text(path.display().to_string())
                             .clicked()
                         {
-                            actions.push(WorkbenchAction::OpenRecent(path.clone()));
+                            pending.push(WorkbenchAction::OpenRecent(path.clone()));
                             ui.close();
                         }
                     }
                 });
             });
+            for action in pending {
+                self.request(action, actions);
+            }
             ui.separator();
-            for item in ["New area", "Open area…", "Save area"] {
-                ui.add_enabled(false, egui::Button::new(item))
-                    .on_disabled_hover_text("Saving areas arrives in the next update");
+            for (item, keys, action) in [
+                ("New area", "Ctrl+N", WorkbenchAction::NewArea),
+                ("Open area…", "Ctrl+O", WorkbenchAction::OpenArea),
+                ("Save area", "Ctrl+S", WorkbenchAction::SaveArea),
+                ("Save area as…", "Ctrl+Shift+S", WorkbenchAction::SaveAreaAs),
+            ] {
+                if ui
+                    .add(egui::Button::new(item).shortcut_text(keys))
+                    .clicked()
+                {
+                    self.request(action, actions);
+                    ui.close();
+                }
             }
             ui.separator();
             if ui
@@ -90,7 +108,7 @@ impl Workbench {
             }
             ui.separator();
             if ui.button("Quit").clicked() {
-                actions.push(WorkbenchAction::Quit);
+                self.request(WorkbenchAction::Quit, actions);
             }
         });
     }
@@ -303,9 +321,9 @@ pub(crate) fn icon_button(
 
 /// The open documents as tabs, as in the mockup: the front one on a
 /// lighter strip with the accent underline, its icon, its name and ×.
-/// For now there is only the one area; opening more arrives in Phase 2.
-pub(crate) fn document_tabs(ui: &mut Ui, bar: egui::Rect, accent: Accent) {
-    let name = "Untitled area";
+/// For now there is only the one area at a time. A dot after the name
+/// means unsaved changes.
+pub(crate) fn document_tabs(ui: &mut Ui, bar: egui::Rect, accent: Accent, name: &str) {
     let font = egui::TextStyle::Button.resolve(ui.style());
     let text = ui
         .painter()

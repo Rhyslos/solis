@@ -60,7 +60,7 @@ The **Transform** every placed entity has:
 
 ## Tips and common problems
 - **Problem:** Properties says **Missing component**. **Why:** the area uses a component Solis doesn't know, such as one from game code that isn't there. **Fix:** nothing is lost: its values are kept as they are. Click **Remove** if you don't need it.
-- **Problem:** my entities are gone after closing Solis. **Why:** areas can't be saved yet; that arrives later in Phase 2.
+- **Problem:** my entities are gone after closing Solis. **Why:** the area wasn't saved. **Fix:** save with **Ctrl + S** ([Saving areas](saving-areas.md)); Solis asks before closing with unsaved changes.
 - **Problem:** I dragged an entity onto another and nothing happened. **Why:** an entity can't go under itself or its own children (that would make a loop). 
 - Every change here can be undone with **Ctrl + Z** ([Undo and redo](undo.md)).
 

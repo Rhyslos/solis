@@ -10,6 +10,7 @@ pub mod builtin;
 mod document;
 mod edit;
 mod history;
+pub mod text;
 
 pub use document::{Area, EntityData, order_after};
 pub use edit::{Edit, EditError};
