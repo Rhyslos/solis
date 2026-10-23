@@ -10,7 +10,7 @@ use egui::{Align, Color32, Layout, RichText, Ui};
 
 impl Workbench {
     pub(crate) fn top_bar(&mut self, ui: &mut Ui, actions: &mut Vec<WorkbenchAction>) {
-        // The whole bar, so the scene tab can fill its full height.
+        // The whole bar, so the area tab can fill its full height.
         let bar = ui.max_rect();
         // The right-hand buttons go first, so the menu bar (which takes all
         // the width it is given) only gets what is left.
@@ -42,9 +42,9 @@ impl Workbench {
     /// The File menu.
     fn file_menu(&mut self, ui: &mut Ui, actions: &mut Vec<WorkbenchAction>) {
         ui.menu_button("File", |ui| {
-            for item in ["New scene", "Open…", "Save"] {
+            for item in ["New area", "Open…", "Save"] {
                 ui.add_enabled(false, egui::Button::new(item))
-                    .on_disabled_hover_text("Scenes arrive in Phase 2");
+                    .on_disabled_hover_text("Areas arrive in Phase 2");
             }
             ui.separator();
             if ui
@@ -174,14 +174,14 @@ impl Workbench {
     fn help_menu(&mut self, ui: &mut Ui, actions: &mut Vec<WorkbenchAction>) {
         ui.menu_button("Help", |ui| {
             if ui
-                .button("Add the sample scene")
+                .button("Add the sample area")
                 .on_hover_text(
-                    "A small scene for trying the looks: a checker cube, rows of plastic and \
+                    "A small area for trying the looks: a checker cube, rows of plastic and \
                      metal spheres, and a grooved wall with a glowing stripe",
                 )
                 .clicked()
             {
-                actions.push(WorkbenchAction::AddSampleScene);
+                actions.push(WorkbenchAction::AddSampleArea);
                 ui.close();
             }
             ui.separator();
@@ -227,7 +227,7 @@ impl Workbench {
         if icon_button(ui, Icon::Play, 13.0, Some(fill), "Play").clicked() {
             self.log(
                 LogLevel::Info,
-                "Playing the scene arrives in Phase 3 (ROADMAP.md).",
+                "Playing the area arrives in Phase 3 (ROADMAP.md).",
             );
         }
     }
@@ -272,9 +272,9 @@ pub(crate) fn icon_button(
 
 /// The open documents as tabs, as in the mockup: the front one on a
 /// lighter strip with the accent underline, its icon, its name and ×.
-/// For now there is only the one scene; opening more arrives in Phase 2.
+/// For now there is only the one area; opening more arrives in Phase 2.
 pub(crate) fn document_tabs(ui: &mut Ui, bar: egui::Rect, accent: Accent) {
-    let name = "Untitled scene";
+    let name = "Untitled area";
     let font = egui::TextStyle::Button.resolve(ui.style());
     let text = ui
         .painter()
@@ -306,7 +306,7 @@ pub(crate) fn document_tabs(ui: &mut Ui, bar: egui::Rect, accent: Accent) {
             egui::pos2(x, rect.center().y - icon_size / 2.0),
             egui::vec2(icon_size, icon_size),
         ),
-        Icon::SceneFile,
+        Icon::AreaFile,
         accent.colors().light,
     );
     x += icon_size + gap;
@@ -328,5 +328,5 @@ pub(crate) fn document_tabs(ui: &mut Ui, bar: egui::Rect, accent: Accent) {
             .frame(false)
             .min_size(egui::vec2(28.0, 0.0)),
     );
-    new_tab.on_disabled_hover_text("Opening more scenes, prefabs and code arrives in Phase 2");
+    new_tab.on_disabled_hover_text("Opening more areas, assemblies and code arrives in Phase 2");
 }

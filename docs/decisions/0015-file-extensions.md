@@ -2,6 +2,7 @@
 
 - **Status:** Accepted
 - **Date:** 2026-10-22
+- **Amended by:** [0023](0023-areas-and-assemblies.md): scenes are now called *areas* (`.solarea`) and prefabs *assemblies* (`.solassembly`).
 
 ## Problem
 

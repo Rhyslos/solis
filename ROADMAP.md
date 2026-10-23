@@ -12,8 +12,8 @@ Each phase ends with a **gate**: something the project lead tries by hand before
 | --- | --- | --- |
 | 0. Groundwork | 0–½ | The editor window opens, in Solis's theme |
 | 1. Seeing things | ½–2 | Models, materials, lights and shadows in the viewport |
-| 2. The world | 2–3 | Entities, components, scenes and prefabs, saved as text |
-| 3. The editor | 3–4 | Building a scene by hand, with play mode |
+| 2. The world | 2–3 | Entities, components, areas and assemblies, saved as text |
+| 3. The editor | 3–4 | Building an area by hand, with play mode |
 | 4. Lust and Lua join | 4–5 | Components written in Lust or Lua, in play mode within 2 seconds |
 | 5. Scale | 5–6 | 2,000 units and 20,000 projectiles at 60 fps |
 | 6. Simulation and play | 6–7 | Physics, input, a deterministic simulation |
@@ -32,7 +32,7 @@ Lust joins in Phase 4, right after the editor, so game logic can be written in L
 - A Cargo workspace with layered crates and a test that enforces the layers (as in Aventail).
 - CI following [decision 0001](docs/decisions/0001-builds-on-demand.md): ready pull requests and manual runs only.
 - A window (winit) with wgpu drawing into it.
-- The egui editor shell, as in [decision 0004](docs/decisions/0004-editor-layout.md): the one-row top bar with document tabs, and dockable panels (`egui_dock`) for Scene, Properties, the viewport, the library and the console, empty for now. Layouts saved per computer, with the three presets.
+- The egui editor shell, as in [decision 0004](docs/decisions/0004-editor-layout.md): the one-row top bar with document tabs, and dockable panels (`egui_dock`) for Area, Properties, the viewport, the library and the console, empty for now. Layouts saved per computer, with the three presets.
 - **The theme:** dark greys and one accent colour, kept in one file so it's easy to adjust.
 
 **Decided:** MIT, and Aventail's foundation code is copied in and adapted rather than shared ([decision 0007](docs/decisions/0007-mit-licence-and-separate-from-aventail.md)).
@@ -57,29 +57,29 @@ Milestones, one pull request each:
 
 The working plan, with the order milestones are built in, is [docs/plans/phase-2.md](docs/plans/phase-2.md).
 
-- Entities and components, in a scene document ([decision 0019](docs/decisions/0019-scene-document-now-game-storage-later.md)).
+- Entities and components, in an area document ([decision 0019](docs/decisions/0019-scene-document-now-game-storage-later.md)).
 - Transforms and parenting.
 - Components that describe themselves, so the inspector can show any component, built-in or custom.
-- Scenes as text files that merge cleanly in Git: one entity per block, stable IDs, fields in a fixed order ([decision 0006](docs/decisions/0006-git-built-in.md)).
+- Areas as text files that merge cleanly in Git: one entity per block, stable IDs, fields in a fixed order ([decision 0006](docs/decisions/0006-git-built-in.md)).
 - New projects come with a `.gitignore` and `.gitattributes` (Git LFS for models, textures and sound); generated files stay out of the repository.
-- Prefabs: nested, with per-instance overrides.
+- Assemblies: nested, with per-instance overrides.
 - The asset database: stable IDs kept in a small text file beside each asset, so renaming a file doesn't break anything; assets reload when changed on disk.
 - Undo and redo for every edit.
 
-**Decided:** a scene document now and the game's fast storage in Phase 3 (0019); Lust-style scene files (0020); the asset database and models as node trees (0021); undo as reversible edits (0022).
+**Decided:** an area document now and the game's fast storage in Phase 3 (0019); Lust-style area files (0020); the asset database and models as node trees (0021); undo as reversible edits (0022).
 
-**Gate:** save a scene, change it in a text editor, and see it reload. Rename a texture and nothing breaks. Two people change different entities in the same scene on two branches, and Git merges them without a conflict.
+**Gate:** save an area, change it in a text editor, and see it reload. Rename a texture and nothing breaks. Two people change different entities in the same area on two branches, and Git merges them without a conflict.
 
 ## Phase 3: The editor
 
-- **First:** the game's fast storage, chosen with a benchmark at the scale target (`hecs` or Solis's own), built from the scene document when Play is pressed ([decision 0019](docs/decisions/0019-scene-document-now-game-storage-later.md)).
+- **First:** the game's fast storage, chosen with a benchmark at the scale target (`hecs` or Solis's own), built from the area document when Play is pressed ([decision 0019](docs/decisions/0019-scene-document-now-game-storage-later.md)).
 - Picking and selection in the viewport, and move, rotate and scale gizmos.
 - The entity list and the inspector.
 - The library: assets and code, with a collapsible panel.
 - The terminal: logs, errors and commands.
-- Play mode, which resets the scene when you stop. Several viewports.
+- Play mode, which resets the area when you stop. Several viewports.
 
-**Gate:** build a small scene from scratch in the editor, press Play, stop, and everything is back as it was.
+**Gate:** build a small area from scratch in the editor, press Play, stop, and everything is back as it was.
 
 ## Phase 4: Lust and Lua join
 
@@ -105,7 +105,7 @@ The phase that proves DESIGN.md §2 early, while changing course is still cheap.
 - GPU instancing, frustum culling and LODs.
 - A job system, so the engine uses every CPU core.
 - Drawing large numbers of small, fast things (projectiles) cheaply.
-- A benchmark scene in the repo: **2,000 moving units and 20,000 projectiles.**
+- A benchmark area in the repo: **2,000 moving units and 20,000 projectiles.**
 
 **Gate:** the benchmark runs at 60 fps on your PC, and the frame profiler shows where the time goes.
 
@@ -138,7 +138,7 @@ Netcode in layers ([decision 0005](docs/decisions/0005-netcode-in-layers.md)):
 
 **Decide before starting:** relays of our own or Steam's networking.
 
-**Gate:** two PCs on different networks play the benchmark scene together without desyncing, with simulated lag.
+**Gate:** two PCs on different networks play the benchmark area together without desyncing, with simulated lag.
 
 ## Phase 9: Effects and game UI
 
@@ -152,10 +152,10 @@ Netcode in layers ([decision 0005](docs/decisions/0005-netcode-in-layers.md)):
 
 - **The scripting window:** LustScript and Lua through Luau, calling the same commands as the built-in tools, with undo, a sandbox and time limits (the design Aventail plans for its Phase 9).
 - **Build and export:** packaged games for Windows ([decision 0012](docs/decisions/0012-windows-only.md)), and Build-and-Play from the top bar.
-- **The Git panel** ([decision 0006](docs/decisions/0006-git-built-in.md)): changes with plain-language scene summaries, commit, pull and push, branches, history, Git LFS locking, markers in the library and scene tree, and new projects from or published to a repository.
-- **The scene merge tool:** merges scenes and prefabs entity by entity; when two people changed the same field, asks which to keep.
+- **The Git panel** ([decision 0006](docs/decisions/0006-git-built-in.md)): changes with plain-language area summaries, commit, pull and push, branches, history, Git LFS locking, markers in the library and area tree, and new projects from or published to a repository.
+- **The area merge tool:** merges areas and assemblies entity by entity; when two people changed the same field, asks which to keep.
 
-**Gate:** write a small editor tool that places objects in a ring; export a game and run it on a PC without Solis installed. Two people on two PCs work on the same project through GitHub for an evening: commit, pull, lock a model, and resolve one real scene conflict in the editor.
+**Gate:** write a small editor tool that places objects in a ring; export a game and run it on a PC without Solis installed. Two people on two PCs work on the same project through GitHub for an evening: commit, pull, lock a model, and resolve one real area conflict in the editor.
 
 ## Phase 11: Solis 0.1
 

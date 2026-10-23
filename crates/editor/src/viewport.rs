@@ -9,10 +9,10 @@
 //! The image itself comes from a [`ViewportRenderer`], so this crate never
 //! touches the GPU and runs in tests without one.
 
+use crate::area_view::{AreaView, ViewLight};
 use crate::camera::{Camera, FlyInput};
 use crate::icons;
 use crate::look::{Look, LookKind};
-use crate::scene_view::{SceneView, ViewLight};
 use crate::theme::{self, Accent};
 use egui::{Align, Color32, Layout, Rect, RichText, Sense, Ui, UiBuilder, Vec2, vec2};
 use glam::{Mat4, Vec3};
@@ -120,12 +120,12 @@ pub struct ViewportView {
     pub look: Look,
     /// The stylized look's outline width in pixels; 0 for none.
     pub outline_px: f32,
-    /// The sun, if the scene has one.
+    /// The sun, if the area has one.
     pub sun: Option<ViewLight>,
     /// The other lights.
     pub lamps: Vec<ViewLight>,
     /// The sky, fog and exposure.
-    pub environment: scene::builtin::Environment,
+    pub environment: area::builtin::Environment,
 }
 
 /// Draws viewport images. The app implements it on the window's GPU; tests
@@ -169,9 +169,9 @@ pub struct Viewport {
     frame_time: f32,
     /// How models are shaded.
     pub look: Look,
-    /// What the scene shows, worked out each frame by the workbench.
-    pub scene: SceneView,
-    /// How many entities the scene has, for the corner.
+    /// What the area shows, worked out each frame by the workbench.
+    pub area: AreaView,
+    /// How many entities the area has, for the corner.
     pub entities: usize,
     /// While looking around with the right mouse button: where the mouse
     /// was when it started, to put it back afterwards.
@@ -192,7 +192,7 @@ impl Default for Viewport {
             flying_from: None,
             wheel_carry: 0.0,
             look: Look::default(),
-            scene: SceneView::default(),
+            area: AreaView::default(),
             entities: 0,
         }
     }
@@ -229,12 +229,12 @@ impl Viewport {
             sky_top: rgb(theme::backdrop::SKY_TOP),
             sky_horizon: rgb(theme::backdrop::HORIZON),
             ground: rgb(theme::backdrop::GROUND),
-            models: self.scene.models.clone(),
+            models: self.area.models.clone(),
             look: self.look,
             outline_px: self.look.outline_px(pixels_per_point),
-            sun: self.scene.sun,
-            lamps: self.scene.lamps.clone(),
-            environment: self.scene.environment,
+            sun: self.area.sun,
+            lamps: self.area.lamps.clone(),
+            environment: self.area.environment,
         }
     }
 
@@ -417,11 +417,11 @@ impl Viewport {
                         .monospace()
                         .size(11.0),
                     );
-                    if self.scene.triangles > 0 {
+                    if self.area.triangles > 0 {
                         ui.label(
                             RichText::new(format!(
                                 "{} triangles",
-                                crate::models::grouped(self.scene.triangles)
+                                crate::models::grouped(self.area.triangles)
                             ))
                             .monospace()
                             .size(11.0),

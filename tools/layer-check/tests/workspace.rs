@@ -26,7 +26,7 @@ fn every_planned_crate_exists() {
     let names: Vec<&str> = crates.iter().map(|c| c.name.as_str()).collect();
     assert_eq!(
         names,
-        ["app", "assets", "editor", "reflect", "render", "scene"]
+        ["app", "area", "assets", "editor", "reflect", "render"]
     );
 }
 

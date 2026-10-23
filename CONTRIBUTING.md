@@ -73,7 +73,7 @@ A pull request that breaks one of these is sent back, however good the feature.
 **Feel**
 
 17. **Ask before adding controls.** A feature that adds keys or mouse actions starts with a question to the project lead: a recommended choice (common in game engines, no clashes) and alternatives. If there's no answer, use the recommended choice and say so at the top of the pull request.
-18. **Speed is a feature.** Code on a performance path gets a benchmark or a scale-check entry, and the editor stays under its frame target with everything full (a full console, a big scene).
+18. **Speed is a feature.** Code on a performance path gets a benchmark or a scale-check entry, and the editor stays under its frame target with everything full (a full console, a big area).
 
 ## Documentation rule
 

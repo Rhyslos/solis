@@ -197,13 +197,13 @@ dependencies = [
 name = "app"
 version = "0.0.1"
 dependencies = [
+ "area",
  "assets",
  "editor",
  "eframe",
  "reflect",
  "render",
  "rfd",
- "scene",
 ]
 
 [[package]]
@@ -224,6 +224,14 @@ dependencies = [
  "percent-encoding",
  "windows-sys 0.60.2",
  "x11rb",
+]
+
+[[package]]
+name = "area"
+version = "0.0.1"
+dependencies = [
+ "glam",
+ "reflect",
 ]
 
 [[package]]
@@ -850,6 +858,7 @@ dependencies = [
 name = "editor"
 version = "0.0.1"
 dependencies = [
+ "area",
  "chrono",
  "egui",
  "egui_dock",
@@ -857,7 +866,6 @@ dependencies = [
  "glam",
  "reflect",
  "ron",
- "scene",
  "serde",
 ]
 
@@ -2949,14 +2957,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "93fc1dc3aaa9bfed95e02e6eadabb4baf7e3078b0bd1b4d7b6b0b68378900502"
 dependencies = [
  "winapi-util",
-]
-
-[[package]]
-name = "scene"
-version = "0.0.1"
-dependencies = [
- "glam",
- "reflect",
 ]
 
 [[package]]

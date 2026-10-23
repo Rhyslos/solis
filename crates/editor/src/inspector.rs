@@ -1,6 +1,6 @@
 //! Fields drawn from a component's schema (decision 0019): the inspector
 //! knows no component by name, so built-in, Lust and Lua components all
-//! show the same way. Widgets never change the scene: they report the
+//! show the same way. Widgets never change the area: they report the
 //! values the user typed or dragged, and the caller applies them (as undo
 //! steps, decision 0022).
 
@@ -205,7 +205,7 @@ mod tests {
             assert!((rz.to_degrees() - z).abs() < 1e-3);
         }
         // The starting sun reads as a tilt of 40° turned 30° round.
-        let sun = scene::builtin::sun_rotation(150.0, 50.0);
+        let sun = area::builtin::sun_rotation(150.0, 50.0);
         let (z, x, _) = sun.to_euler(EULER);
         assert!((x.to_degrees() - 40.0).abs() < 0.5, "{}", x.to_degrees());
         assert!((z.to_degrees() - 30.0).abs() < 0.5, "{}", z.to_degrees());

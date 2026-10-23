@@ -23,10 +23,10 @@
 - **Metres:** one unit in Solis is one metre. The grid's small squares are 1 metre across.
 - **Grid:** lines on the ground to judge size and distance by. Brighter lines mark every 10 and 100 metres. The grid fades out with distance so it doesn't clutter the horizon.
 - **Fly camera:** the way you move around the viewport: you steer the camera like a drone. See [Moving around the viewport](navigating-the-viewport.md).
-## The scene
+## The area
 
-- **Scene:** everything in one place of your game (a level, a menu, a room), made of entities. See [Entities and components](entities.md).
-- **Entity:** one thing in a scene: a model, a light, the sky. On its own it's only a name; its components make it something.
+- **Area:** everything in one place of your game (a level, a menu, a room), made of entities. Other engines call this a *scene*. See [Entities and components](entities.md).
+- **Entity:** one thing in an area: a model, a light, the sky. On its own it's only a name; its components make it something.
 - **Component:** one part of what an entity is, with settings. A **Transform** says where it is; a **Light** makes it shine; a **Model** draws an imported model. Mixing components makes different things, the way one Lego brick goes into many builds.
 - **Transform:** an entity's position, rotation and scale.
 - **Parent and child:** an entity can belong to another, like a lamp to the room model it came with. A child moves with its parent, and deleting the parent deletes its children.
@@ -45,11 +45,11 @@
 
 ## Light
 
-- **Sun:** light from very far away, arriving in parallel from one direction everywhere, like daylight. One per scene. See [Lights and shadows](lights.md).
-- **Lamp:** a light in the scene. A **point light** shines every way from one spot, like a bare bulb; a **spotlight** shines a cone, like a torch or a stage light.
+- **Sun:** light from very far away, arriving in parallel from one direction everywhere, like daylight. One per area. See [Lights and shadows](lights.md).
+- **Lamp:** a light in the area. A **point light** shines every way from one spot, like a bare bulb; a **spotlight** shines a cone, like a torch or a stage light.
 - **Watts (W):** how strong a lamp is, in the same units as Blender, so numbers carry over. The sun's strength is in watts per square metre (W/m²).
 - **Range:** how far a lamp reaches. Real light fades on forever, getting weaker with distance; a range makes it stop sooner, which games use to keep many lamps cheap.
-- **Shadow:** where something blocks a light. Solis draws the sun's shadows with a **shadow map**: the scene drawn once more from the sun's side, so each point can be checked for whether it sees the sun.
+- **Shadow:** where something blocks a light. Solis draws the sun's shadows with a **shadow map**: the area drawn once more from the sun's side, so each point can be checked for whether it sees the sun.
 - **Sky light (ambient light):** the soft light that comes from the whole sky rather than from the sun, so shadows are never black.
 - **HDR (high dynamic range):** working out light brighter than a screen's white, as the real world is: a sunlit wall can be many times brighter than a shaded one.
 - **Exposure:** how bright the picture is made, in stops (EV) as on a camera: +1 doubles the brightness, -1 halves it.
@@ -58,4 +58,4 @@
 
 ## Tools
 
-- **Tool:** what a click in the viewport does: Select, Move, Rotate, Scale or Transform. The tools work once there are things in a scene to use them on (Phase 2).
+- **Tool:** what a click in the viewport does: Select, Move, Rotate, Scale or Transform. The tools work once there are things in an area to use them on (Phase 2).

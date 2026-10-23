@@ -1,6 +1,6 @@
 //! The built-in components. Each is a typed Rust struct that turns into
 //! values and back (`reflect::Component`); missing or damaged values take
-//! their defaults, so an older or damaged scene still loads.
+//! their defaults, so an older or damaged area still loads.
 
 mod environment;
 mod light;
@@ -12,7 +12,7 @@ pub use light::{Light, LightKind, aim, sun_rotation};
 pub use model::Model;
 pub use transform::Transform;
 
-use crate::document::{EntityData, Scene};
+use crate::document::{Area, EntityData};
 use reflect::{Registry, RegistryError};
 
 /// A registry holding every built-in component.
@@ -25,11 +25,11 @@ pub fn registry() -> Result<Registry, RegistryError> {
     Ok(registry)
 }
 
-/// A new scene, as File > New scene makes: a sun and an environment (the
-/// sun, sky and fog live in each scene).
-pub fn starter_scene() -> Scene {
-    let mut scene = Scene::new();
-    scene.spawn(
+/// A new area, as File > New area makes: a sun and an environment (the
+/// sun, sky and fog live in each area).
+pub fn starter_area() -> Area {
+    let mut area = Area::new();
+    area.spawn(
         EntityData::new("Sun")
             .with(&Transform {
                 rotation: light::sun_rotation(150.0, 50.0),
@@ -37,8 +37,8 @@ pub fn starter_scene() -> Scene {
             })
             .with(&Light::sun()),
     );
-    scene.spawn(EntityData::new("Environment").with(&Environment::default()));
-    scene
+    area.spawn(EntityData::new("Environment").with(&Environment::default()));
+    area
 }
 
 /// Field-building shorthand for the built-in schemas.
@@ -166,11 +166,11 @@ mod tests {
     }
 
     #[test]
-    fn a_new_scene_has_a_sun_and_an_environment() {
-        let scene = starter_scene();
-        assert_eq!(scene.len(), 2);
-        let (_, sun) = scene.with::<Light>().next().unwrap();
+    fn a_new_area_has_a_sun_and_an_environment() {
+        let area = starter_area();
+        assert_eq!(area.len(), 2);
+        let (_, sun) = area.with::<Light>().next().unwrap();
         assert_eq!(sun.kind, LightKind::Sun);
-        assert_eq!(scene.with::<Environment>().count(), 1);
+        assert_eq!(area.with::<Environment>().count(), 1);
     }
 }

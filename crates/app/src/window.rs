@@ -206,10 +206,10 @@ impl eframe::App for App {
             match action {
                 WorkbenchAction::Quit => ctx.send_viewport_cmd(egui::ViewportCommand::Close),
                 WorkbenchAction::ImportModel => self.importer.ask(),
-                WorkbenchAction::AddSampleScene => {
-                    self.importer.start_sample("Sample scene");
+                WorkbenchAction::AddSampleArea => {
+                    self.importer.start_sample("Sample area");
                     self.workbench
-                        .log(LogLevel::Info, "Adding the sample scene…".to_string());
+                        .log(LogLevel::Info, "Adding the sample area…".to_string());
                 }
             }
         }

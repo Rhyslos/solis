@@ -1,6 +1,6 @@
 //! The world around the models: the sky, fog, exposure and tone mapping
 //! ([decision 0017](../../../../docs/decisions/0017-hdr-tone-mapping-sky-and-fog.md)).
-//! Saved with each scene.
+//! Saved with each area.
 
 use super::field;
 use reflect::{Component, ComponentData, ComponentSchema, Fields, Value};
@@ -73,7 +73,7 @@ impl Component for Environment {
         let d = Self::default();
         ComponentSchema {
             name: Self::NAME.into(),
-            help: "The sky, fog, exposure and tone mapping of the scene.".into(),
+            help: "The sky, fog, exposure and tone mapping of the area.".into(),
             fields: vec![
                 field::choice(
                     "sky",

@@ -132,12 +132,12 @@ macro_rules! typed_id {
 }
 
 typed_id!(
-    /// An entity in a scene, stable forever: in files, undo, selection and
-    /// prefab overrides.
+    /// An entity in an area, stable forever: in files, undo, selection and
+    /// assembly overrides.
     EntityId
 );
 typed_id!(
-    /// An asset (a model, a texture, a prefab), kept in its `.solmeta`
+    /// An asset (a model, a texture, an assembly), kept in its `.solmeta`
     /// file beside it so renaming the file breaks nothing.
     AssetId
 );

@@ -16,7 +16,7 @@ layer = 2
 
 [dependencies]
 reflect.workspace = true
-scene.workspace = true
+area.workspace = true
 egui.workspace = true
 egui_dock.workspace = true
 glam.workspace = true
