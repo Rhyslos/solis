@@ -3,7 +3,7 @@
 //! copy, and expanded into ordinary entities while it's edited.
 //!
 //! Each entity inside a placed copy gets an ID worked out from the copy's
-//! root and the entity's ID inside the assembly ([`derive`]), so the same
+//! root and the entity's ID inside the assembly ([`derive()`]), so the same
 //! file always expands to the same IDs: undo, selection and references to
 //! them keep working when the assembly changes, and overrides find their
 //! entity again.
