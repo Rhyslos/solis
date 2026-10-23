@@ -19,7 +19,7 @@
 //! files (CONTRIBUTING.md, rule 9): sizes are checked before anything is
 //! kept, and every mistake is reported with its line, never a crash.
 
-use crate::document::{Area, EntityData};
+use crate::document::{Area, EntityData, Origin};
 use reflect::{AssetId, AssetRef, ComponentData, EntityId, FieldKind, Registry, Value};
 use std::collections::BTreeMap;
 use std::fmt::{self, Write as _};
@@ -60,63 +60,209 @@ impl std::error::Error for ParseError {}
 
 // ---------------------------------------------------------------- write ---
 
-/// `area` as text. Components `registry` knows write their fields in their
-/// declared order (fields it doesn't know come after, sorted); others are
-/// written sorted. `asset_path` names an asset for a comment beside its
-/// ID, which is only for people: it's never read back.
+/// What a file holds: an area, or an assembly with its root.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum FileKind {
+    /// An area (`.solarea`).
+    Area,
+    /// An assembly (`.solassembly`), whose entities all sit under `root`.
+    Assembly {
+        /// The assembly's top entity.
+        root: EntityId,
+    },
+}
+
+/// The changes a placed assembly makes to one of its entities
+/// (decision 0020): only what differs from the assembly.
+#[derive(Debug, Clone, PartialEq, Default)]
+pub struct Override {
+    /// A new name.
+    pub name: Option<String>,
+    /// A new parent.
+    pub parent: Option<EntityId>,
+    /// A new place among its siblings.
+    pub order: Option<String>,
+    /// Gone from this copy.
+    pub removed: bool,
+    /// Components taken off in this copy.
+    pub remove: Vec<String>,
+    /// Fields set in this copy (a whole component, if it was added).
+    pub components: BTreeMap<String, ComponentData>,
+}
+
+impl Override {
+    /// Whether it changes nothing.
+    pub fn is_empty(&self) -> bool {
+        *self == Self::default()
+    }
+}
+
+/// A file as written: its entities, with placed assemblies as their root
+/// entity plus overrides, never copies.
+#[derive(Debug, Clone, PartialEq)]
+pub struct AreaFile {
+    /// Area or assembly.
+    pub kind: FileKind,
+    /// The plain entities, and each placed assembly's root (with its
+    /// [`Origin`] and no components: its changes are in `overrides`).
+    pub area: Area,
+    /// Overrides, by placed root and the way to the entity inside (empty
+    /// for the root itself).
+    pub overrides: BTreeMap<(EntityId, Vec<EntityId>), Override>,
+}
+
+impl AreaFile {
+    /// A file holding the plain `area`.
+    pub fn plain(area: Area) -> Self {
+        Self {
+            kind: FileKind::Area,
+            area,
+            overrides: BTreeMap::new(),
+        }
+    }
+}
+
+/// A plain `area` (no placed assemblies) as text: see [`write_file`].
 pub fn write(
     area: &Area,
     registry: &Registry,
     asset_path: &dyn Fn(AssetId) -> Option<String>,
 ) -> String {
+    write_file(&AreaFile::plain(area.clone()), registry, asset_path)
+}
+
+/// `file` as text. Components `registry` knows write their fields in their
+/// declared order (fields it doesn't know come after, sorted); others are
+/// written sorted. `asset_path` names an asset for a comment beside its
+/// ID, which is only for people: it's never read back. Blocks are sorted
+/// by their name, so an override block (`root/inner`) follows its root.
+pub fn write_file(
+    file: &AreaFile,
+    registry: &Registry,
+    asset_path: &dyn Fn(AssetId) -> Option<String>,
+) -> String {
     let mut out = String::new();
-    out.push_str("-- An area. Safe to edit by hand: one block per entity, one line per field.\n");
-    let _ = writeln!(out, "area version {VERSION};");
-    for (id, entity) in area.iter() {
-        out.push('\n');
-        let _ = writeln!(out, "entity {id} {{");
-        let _ = writeln!(out, "    name = {};", quoted(&entity.name));
-        if let Some(parent) = entity.parent {
-            let _ = writeln!(out, "    parent = \"{parent}\";");
-        }
-        let _ = writeln!(out, "    order = {};", quoted(&entity.order));
-        for (component, data) in &entity.components {
-            let declared: Vec<&str> = registry
-                .get(component)
-                .map(|s| s.fields.iter().map(|f| f.name.as_str()).collect())
-                .unwrap_or_default();
-            let mut names: Vec<&str> = declared
-                .iter()
-                .copied()
-                .filter(|f| data.fields.contains_key(*f))
-                .collect();
-            names.extend(
-                data.fields
-                    .keys()
-                    .map(String::as_str)
-                    .filter(|f| !declared.contains(f)),
+    match file.kind {
+        FileKind::Area => {
+            out.push_str(
+                "-- An area. Safe to edit by hand: one block per entity, one line per field.\n",
             );
-            if names.is_empty() {
-                // A component with no fields still has to be kept.
-                let _ = writeln!(out, "    {component} = {{}};");
-            }
-            for field in names {
-                let value = &data.fields[field];
-                let mut line = format!("    {component}.{field} = ");
-                write_value(&mut line, value);
-                line.push(';');
-                if let Value::Asset(Some(r)) = value
-                    && let Some(path) = asset_path(r.asset)
-                {
+            let _ = writeln!(out, "area version {VERSION};");
+        }
+        FileKind::Assembly { root } => {
+            out.push_str(
+                "-- An assembly. Safe to edit by hand: one block per entity, one line per field.\n",
+            );
+            let _ = writeln!(out, "assembly version {VERSION} root {root};");
+        }
+    }
+    let mut blocks: Vec<(String, String)> = Vec::new();
+    for (id, entity) in file.area.iter() {
+        let mut body = String::new();
+        let _ = writeln!(body, "    name = {};", quoted(&entity.name));
+        if let Some(parent) = entity.parent {
+            let _ = writeln!(body, "    parent = \"{parent}\";");
+        }
+        let _ = writeln!(body, "    order = {};", quoted(&entity.order));
+        match &entity.origin {
+            Some(origin) if origin.path.is_empty() => {
+                let mut line = format!("    assembly = \"{}\";", origin.assembly);
+                if let Some(path) = asset_path(origin.assembly) {
                     let _ = write!(line, "  -- {}", path.replace('\n', " "));
                 }
-                out.push_str(&line);
-                out.push('\n');
+                body.push_str(&line);
+                body.push('\n');
+                if let Some(changes) = file.overrides.get(&(id, Vec::new())) {
+                    write_remove(&mut body, &changes.remove);
+                    write_components(&mut body, &changes.components, registry, asset_path);
+                }
             }
+            _ => write_components(&mut body, &entity.components, registry, asset_path),
         }
-        out.push_str("}\n");
+        blocks.push((id.to_string(), body));
+    }
+    for ((root, path), changes) in &file.overrides {
+        if path.is_empty() {
+            continue;
+        }
+        let mut key = root.to_string();
+        for step in path {
+            let _ = write!(key, "/{step}");
+        }
+        let mut body = String::new();
+        if let Some(name) = &changes.name {
+            let _ = writeln!(body, "    name = {};", quoted(name));
+        }
+        if let Some(parent) = changes.parent {
+            let _ = writeln!(body, "    parent = \"{parent}\";");
+        }
+        if let Some(order) = &changes.order {
+            let _ = writeln!(body, "    order = {};", quoted(order));
+        }
+        if changes.removed {
+            body.push_str("    removed = true;\n");
+        }
+        write_remove(&mut body, &changes.remove);
+        write_components(&mut body, &changes.components, registry, asset_path);
+        blocks.push((key, body));
+    }
+    blocks.sort_by(|a, b| a.0.cmp(&b.0));
+    for (key, body) in blocks {
+        let _ = write!(out, "\nentity {key} {{\n{body}}}\n");
     }
     out
+}
+
+fn write_remove(out: &mut String, remove: &[String]) {
+    if remove.is_empty() {
+        return;
+    }
+    let list: Vec<Value> = remove.iter().map(|c| Value::Text(c.clone())).collect();
+    out.push_str("    remove = ");
+    write_value(out, &Value::List(list));
+    out.push_str(";\n");
+}
+
+fn write_components(
+    out: &mut String,
+    components: &BTreeMap<String, ComponentData>,
+    registry: &Registry,
+    asset_path: &dyn Fn(AssetId) -> Option<String>,
+) {
+    for (component, data) in components {
+        let declared: Vec<&str> = registry
+            .get(component)
+            .map(|s| s.fields.iter().map(|f| f.name.as_str()).collect())
+            .unwrap_or_default();
+        let mut names: Vec<&str> = declared
+            .iter()
+            .copied()
+            .filter(|f| data.fields.contains_key(*f))
+            .collect();
+        names.extend(
+            data.fields
+                .keys()
+                .map(String::as_str)
+                .filter(|f| !declared.contains(f)),
+        );
+        if names.is_empty() {
+            // A component with no fields still has to be kept.
+            let _ = writeln!(out, "    {component} = {{}};");
+        }
+        for field in names {
+            let value = &data.fields[field];
+            let mut line = format!("    {component}.{field} = ");
+            write_value(&mut line, value);
+            line.push(';');
+            if let Value::Asset(Some(r)) = value
+                && let Some(path) = asset_path(r.asset)
+            {
+                let _ = write!(line, "  -- {}", path.replace('\n', " "));
+            }
+            out.push_str(&line);
+            out.push('\n');
+        }
+    }
 }
 
 fn quoted(text: &str) -> String {
@@ -206,11 +352,31 @@ fn write_value(out: &mut String, value: &Value) {
 
 // ----------------------------------------------------------------- read ---
 
-/// Reads an area from `text`. Values are turned into the kinds `registry`
-/// declares (asset and entity references, decimals written as whole
-/// numbers); components it doesn't know are kept exactly as read. A file
-/// from a newer version is refused, never half-read.
+/// Reads a plain area (one with no placed assemblies) from `text`: see
+/// [`read_file`]. Placed assemblies need their contents to be read; use
+/// [`crate::assembly`].
 pub fn read(text: &str, registry: &Registry) -> Result<Area, ParseError> {
+    let file = read_file(text, registry)?;
+    if file.kind != FileKind::Area {
+        return Err(ParseError {
+            line: 1,
+            message: "this is an assembly, not an area".into(),
+        });
+    }
+    if let Some((id, _)) = file.area.iter().find(|(_, e)| e.origin.is_some()) {
+        return Err(ParseError {
+            line: 0,
+            message: format!("{id} is a placed assembly, which needs its assembly to be read"),
+        });
+    }
+    Ok(file.area)
+}
+
+/// Reads an area or assembly file from `text`. Values are turned into the
+/// kinds `registry` declares (asset and entity references, decimals written
+/// as whole numbers); components it doesn't know are kept exactly as read.
+/// A file from a newer version is refused, never half-read.
+pub fn read_file(text: &str, registry: &Registry) -> Result<AreaFile, ParseError> {
     if text.len() > MAX_BYTES {
         return Err(ParseError {
             line: 0,
@@ -232,37 +398,144 @@ pub fn read(text: &str, registry: &Registry) -> Result<Area, ParseError> {
         chars: text.char_indices().peekable(),
         line: 1,
     };
-    p.header()?;
-    let mut area = Area::new();
-    let mut lines: BTreeMap<EntityId, (usize, String)> = BTreeMap::new();
+    let kind = p.header()?;
+    let mut file = AreaFile {
+        kind,
+        area: Area::new(),
+        overrides: BTreeMap::new(),
+    };
+    let mut lines: BTreeMap<String, (usize, String)> = BTreeMap::new();
+    let mut blocks = 0usize;
     while p.skip_space() {
         let start = p.line;
         p.keyword("entity")?;
-        let id_text = p.word()?;
-        if id_text.contains('/') {
-            return p.fail("overrides inside assemblies (a/b) can't be read yet");
+        let key = p.word()?;
+        let path = key
+            .split('/')
+            .map(|part| {
+                part.parse::<EntityId>().map_err(|e| ParseError {
+                    line: start,
+                    message: format!("{e}"),
+                })
+            })
+            .collect::<Result<Vec<EntityId>, _>>()?;
+        if path.len() > MAX_NESTING + 1 {
+            return p.fail(&format!(
+                "more than {MAX_NESTING} assemblies inside each other"
+            ));
         }
-        let id: EntityId = id_text.parse().map_err(|e| ParseError {
-            line: start,
-            message: format!("{e}"),
-        })?;
-        let entity = p.block(registry)?;
-        if let Some((first, name)) = lines.get(&id) {
+        let block = p.block(registry)?;
+        let label = block.name.clone().unwrap_or_default();
+        if let Some((first, name)) = lines.get(&key) {
             return Err(ParseError {
                 line: start,
                 message: format!(
-                    "the ID {id} is used twice: by \"{name}\" (line {first}) and \"{}\"",
-                    entity.name
+                    "the ID {key} is used twice: by \"{name}\" (line {first}) and \"{label}\""
                 ),
             });
         }
-        if lines.len() >= MAX_ENTITIES {
+        blocks += 1;
+        if blocks > MAX_ENTITIES {
             return p.fail(&format!("more than {MAX_ENTITIES} entities"));
         }
-        lines.insert(id, (start, entity.name.clone()));
-        area.insert(id, entity);
+        lines.insert(key.clone(), (start, label));
+        let fail = |message: &str| {
+            Err(ParseError {
+                line: start,
+                message: message.to_string(),
+            })
+        };
+        let (root, inside) = (path[0], path[1..].to_vec());
+        if inside.is_empty() {
+            if block.removed {
+                return fail("removed = true; is only for parts of a placed assembly");
+            }
+            let mut entity = EntityData::new(&block.name.unwrap_or_default());
+            entity.parent = block.parent;
+            if let Some(order) = block.order {
+                entity.order = order;
+            }
+            match block.assembly {
+                Some(assembly) => {
+                    entity.origin = Some(Origin {
+                        assembly,
+                        instance: root,
+                        path: Vec::new(),
+                    });
+                    let changes = Override {
+                        remove: block.remove,
+                        components: block.components,
+                        ..Override::default()
+                    };
+                    if !changes.is_empty() {
+                        file.overrides.insert((root, Vec::new()), changes);
+                    }
+                }
+                None => {
+                    if !block.remove.is_empty() {
+                        return fail("remove = […]; is only for a placed assembly");
+                    }
+                    entity.components = block.components;
+                }
+            }
+            file.area.insert(root, entity);
+        } else {
+            if block.assembly.is_some() {
+                return fail("an assembly can't be placed inside another's override");
+            }
+            file.overrides.insert(
+                (root, inside),
+                Override {
+                    name: block.name,
+                    parent: block.parent,
+                    order: block.order,
+                    removed: block.removed,
+                    remove: block.remove,
+                    components: block.components,
+                },
+            );
+        }
     }
-    Ok(area)
+    // Every override belongs to a placed assembly in this file.
+    for (root, path) in file.overrides.keys() {
+        let placed = file.area.get(*root).is_some_and(|e| e.origin.is_some());
+        if !placed {
+            let key = std::iter::once(*root)
+                .chain(path.iter().copied())
+                .map(|id| id.to_string())
+                .collect::<Vec<_>>()
+                .join("/");
+            let line = lines.get(&key).map_or(0, |(l, _)| *l);
+            return Err(ParseError {
+                line,
+                message: format!("{key} changes a part of {root}, which isn't a placed assembly"),
+            });
+        }
+    }
+    if let FileKind::Assembly { root } = file.kind
+        && !file.area.contains(root)
+    {
+        return Err(ParseError {
+            line: 1,
+            message: format!("the assembly's root {root} isn't in the file"),
+        });
+    }
+    Ok(file)
+}
+
+/// How deep assemblies may be placed inside each other.
+pub const MAX_NESTING: usize = 16;
+
+/// One block as read: every key it may hold, checked later.
+#[derive(Default)]
+struct Block {
+    name: Option<String>,
+    parent: Option<EntityId>,
+    order: Option<String>,
+    assembly: Option<AssetId>,
+    removed: bool,
+    remove: Vec<String>,
+    components: BTreeMap<String, ComponentData>,
 }
 
 struct Parser<'a> {
@@ -351,13 +624,14 @@ impl Parser<'_> {
         }
     }
 
-    /// `area version N;`, refusing newer versions.
-    fn header(&mut self) -> Result<(), ParseError> {
+    /// `area version N;` or `assembly version N root ID;`, refusing newer
+    /// versions.
+    fn header(&mut self) -> Result<FileKind, ParseError> {
         if !self.skip_space() {
             return self.fail("the file is empty");
         }
         let kind = self.word()?;
-        if kind != "area" {
+        if kind != "area" && kind != "assembly" {
             return self.fail(&format!(
                 "this isn't an area file (it starts with \"{kind}\", not \"area version\")"
             ));
@@ -376,13 +650,22 @@ impl Parser<'_> {
         if version == 0 {
             return self.fail("there is no layout version 0");
         }
-        self.expect(';')
+        let kind = if kind == "assembly" {
+            self.keyword("root")?;
+            let root = self.word()?;
+            let root: EntityId = root.parse().or_else(|e| self.fail(&format!("{e}")))?;
+            FileKind::Assembly { root }
+        } else {
+            FileKind::Area
+        };
+        self.expect(';')?;
+        Ok(kind)
     }
 
     /// `{ key = value; … }`
-    fn block(&mut self, registry: &Registry) -> Result<EntityData, ParseError> {
+    fn block(&mut self, registry: &Registry) -> Result<Block, ParseError> {
         self.expect('{')?;
-        let mut entity = EntityData::new("");
+        let mut entity = Block::default();
         let mut fields = 0usize;
         loop {
             self.skip_space();
@@ -417,7 +700,7 @@ impl Parser<'_> {
 
     fn apply(
         &self,
-        entity: &mut EntityData,
+        entity: &mut Block,
         key: &str,
         value: Value,
         line: usize,
@@ -429,16 +712,54 @@ impl Parser<'_> {
                 message: format!("{key} should be {what}"),
             })
         };
+        let twice = |given: bool| {
+            if given {
+                Err(ParseError {
+                    line,
+                    message: format!("{key} is given twice"),
+                })
+            } else {
+                Ok(())
+            }
+        };
         match (key, value) {
-            ("name", Value::Text(t)) => entity.name = t,
+            ("name", Value::Text(t)) => {
+                twice(entity.name.is_some())?;
+                entity.name = Some(t);
+            }
             ("name", _) => return wrong("text"),
-            ("order", Value::Text(t)) => entity.order = t,
+            ("order", Value::Text(t)) => {
+                twice(entity.order.is_some())?;
+                entity.order = Some(t);
+            }
             ("order", _) => return wrong("text"),
             ("parent", Value::Text(t)) => match t.parse() {
-                Ok(id) => entity.parent = Some(id),
+                Ok(id) => {
+                    twice(entity.parent.is_some())?;
+                    entity.parent = Some(id);
+                }
                 Err(e) => return wrong(&format!("an entity's ID ({e})")),
             },
             ("parent", _) => return wrong("an entity's ID in quotes"),
+            ("assembly", Value::Text(t)) => match t.parse() {
+                Ok(id) => {
+                    twice(entity.assembly.is_some())?;
+                    entity.assembly = Some(id);
+                }
+                Err(e) => return wrong(&format!("an assembly's ID ({e})")),
+            },
+            ("assembly", _) => return wrong("an assembly's ID in quotes"),
+            ("removed", Value::Bool(b)) => entity.removed = b,
+            ("removed", _) => return wrong("true or false"),
+            ("remove", Value::List(items)) => {
+                for item in items {
+                    match item {
+                        Value::Text(t) => entity.remove.push(t),
+                        _ => return wrong("a list of components' names in quotes"),
+                    }
+                }
+            }
+            ("remove", _) => return wrong("a list of components' names in quotes"),
             (key, value) => {
                 let Some((component, field)) = key.split_once('.') else {
                     return wrong("Component.field (a component's name, a dot and a field)");
@@ -785,7 +1106,17 @@ mod tests {
             (
                 "area version 1;\nentity 0000000000001/0000000000002 {}",
                 2,
-                "assemblies",
+                "isn't a placed assembly",
+            ),
+            (
+                "area version 1;\nentity 0000000000001 { removed = true; }",
+                2,
+                "only for parts",
+            ),
+            (
+                "assembly version 1 root 0000000000009;\nentity 0000000000001 {}",
+                1,
+                "root",
             ),
         ];
         for (text, line, words) in cases {

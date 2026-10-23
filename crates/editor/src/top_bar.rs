@@ -173,6 +173,23 @@ impl Workbench {
                 ui.close();
             }
             ui.separator();
+            let selected = self.document.selection.primary();
+            if ui
+                .add_enabled(
+                    selected.is_some(),
+                    egui::Button::new("Create assembly from selection"),
+                )
+                .on_hover_text(
+                    "Saves the selected entity, and everything under it, as an assembly in the \
+                     project, and turns it into a copy of it",
+                )
+                .clicked()
+                && let Some(id) = selected
+            {
+                self.outbox.push(WorkbenchAction::CreateAssembly(id));
+                ui.close();
+            }
+            ui.separator();
             ui.add_enabled(false, egui::Button::new("Add camera"))
                 .on_disabled_hover_text("Cameras arrive with play mode in Phase 3");
         });

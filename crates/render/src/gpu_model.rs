@@ -87,6 +87,8 @@ pub struct GpuModel {
     meshes: Vec<Option<GpuMesh>>,
     /// Every mesh as drawn: which, and where in the model.
     placements: Vec<(usize, glam::Mat4)>,
+    /// Each node's own meshes, for drawing one part on its own.
+    nodes: Vec<Vec<usize>>,
     materials: Vec<GpuMaterial>,
     triangles: usize,
     bounds: (glam::Vec3, glam::Vec3),
@@ -106,6 +108,11 @@ impl GpuModel {
     /// Every mesh as drawn: which, and where in the model.
     pub(crate) fn placements(&self) -> &[(usize, glam::Mat4)] {
         &self.placements
+    }
+
+    /// Node `node`'s own meshes (none for a node that isn't there).
+    pub(crate) fn node_meshes(&self, node: usize) -> &[usize] {
+        self.nodes.get(node).map_or(&[], Vec::as_slice)
     }
 
     /// The mesh and its material, if it can be drawn.
@@ -419,6 +426,7 @@ impl ModelPipelines {
         GpuModel {
             meshes,
             placements: model.placements().collect(),
+            nodes: model.nodes.iter().map(|n| n.meshes.clone()).collect(),
             materials,
             triangles: model.triangles(),
             bounds: (model.bounds.min, model.bounds.max),

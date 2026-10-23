@@ -124,6 +124,10 @@ impl Projects {
             .values()
             .map(|r| LibraryItem {
                 id: r.id,
+                kind: match r.kind {
+                    asset_db::AssetKind::Model => editor::LibraryKind::Model,
+                    asset_db::AssetKind::Assembly => editor::LibraryKind::Assembly,
+                },
                 name: r.name(),
                 path: r.path.display().to_string(),
             })

@@ -2,7 +2,7 @@
 
 A free, open-source 3D game engine for stylized games, strategy games, online co-op and PvP, and big open worlds. Lightweight and beginner-friendly. The engine is written in Rust, and games in [Lust](https://github.com/Rhyslos/Lust), Rust or Lua.
 
-**Status:** Phase 1 (seeing things): the editor opens with its dockable panels and theme, you can fly around the viewport, and glTF models from Blender or Aventail can be imported and looked at. Models can be seen in a standard, stylized (cel-shaded) or unlit look, lit by a sun with shadows and by point lights and spotlights, under a daylight sky with fog, and tone mapped as in Blender. Phase 1 is built and waits for its gate; Phase 2, the world, comes next. Solis is made for Windows ([decision 0012](docs/decisions/0012-windows-only.md)).
+**Status:** Phase 1 (seeing things): the editor opens with its dockable panels and theme, you can fly around the viewport, and glTF models from Blender or Aventail can be imported and looked at. Models can be seen in a standard, stylized (cel-shaded) or unlit look, lit by a sun with shadows and by point lights and spotlights, under a daylight sky with fog, and tone mapped as in Blender. Phase 2 (the world) adds entities and components, undo, parenting, projects with a Library and hot reload, areas saved as text Git can merge, and assemblies; Phases 1 and 2 are built and wait for their gates. Solis is made for Windows ([decision 0012](docs/decisions/0012-windows-only.md)).
 
 ## Running it
 
@@ -26,9 +26,9 @@ The first build takes a few minutes. `cargo run -p app -- --help` lists the opti
 
 Solis is built in phases, one milestone per pull request. Each phase ends with a **gate** the project lead tries by hand before the next starts. This tracker is updated by the pull request that finishes each milestone; the full plan is in [ROADMAP.md](ROADMAP.md).
 
-**Overall: 18 of 60 milestones** `████░░░░░░░░░` 30%
+**Overall: 19 of 60 milestones** `████░░░░░░░░░` 32%
 
-**Now:** Phase 2, the world ([plan](docs/plans/phase-2.md)). Phase 1's gate is still to be tried by hand.
+**Now:** Phase 2, the world, is built ([plan](docs/plans/phase-2.md)) and waits for its gate; Phase 1's gate is still to be tried by hand too. Phase 3, the editor, comes next.
 
 ### Phase 0 · Groundwork — 7 of 7
 
@@ -56,9 +56,9 @@ Solis is built in phases, one milestone per pull request. Each phase ends with a
 
 **Gate:** a model from Aventail or Blender looks good in the viewport, in both the standard and the stylized look.
 
-### Phase 2 · The world — 6 of 7
+### Phase 2 · The world — 7 of 7
 
-`███████████░░` 86%
+`█████████████` 100%
 
 <details>
 <summary>Milestones</summary>
@@ -69,7 +69,7 @@ Solis is built in phases, one milestone per pull request. Each phase ends with a
 - [x] Components that describe themselves, so the inspector can show any of them
 - [x] The asset database: renaming a file breaks nothing; assets reload when changed (decision 0021)
 - [x] Areas saved as text that Git merges cleanly; new projects set up for Git (decision 0020)
-- [ ] Assemblies: nested, with per-instance changes
+- [x] Assemblies: nested, with per-copy changes
 
 </details>
 

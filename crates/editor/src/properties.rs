@@ -4,7 +4,7 @@
 //! workbench applies it (as undo steps, decision 0022).
 
 use crate::document::Document;
-use crate::inspector;
+use crate::inspector::{self, FieldChange};
 use crate::models::ModelInfo;
 use crate::panels::placeholder;
 use crate::theme;
@@ -48,16 +48,50 @@ pub(crate) enum PropertyRequest {
         /// The component's name.
         component: String,
     },
+    /// Put a field back to its assembly's value.
+    RevertField {
+        /// The entity.
+        entity: EntityId,
+        /// The component's name.
+        component: String,
+        /// The field's name.
+        field: String,
+    },
+    /// Make a field's value the assembly's, for every copy.
+    ApplyField {
+        /// The entity.
+        entity: EntityId,
+        /// The component's name.
+        component: String,
+        /// The field's name.
+        field: String,
+    },
+    /// Turn a placed assembly into plain entities.
+    Unpack(EntityId),
     /// Delete an entity and everything below it.
     Delete(EntityId),
     /// Move an entity to where the camera is looking.
     MoveHere(EntityId),
 }
 
-/// The Properties panel.
+/// What the selected entity's assembly says about it.
+#[derive(Debug, Clone, PartialEq)]
+pub(crate) struct AssemblyPart {
+    /// The assembly's name.
+    pub name: String,
+    /// The entity as the assembly has it, or `None` if its part is gone
+    /// from the assembly.
+    pub expected: Option<area::EntityData>,
+    /// Whether it's the placed copy's root.
+    pub root: bool,
+}
+
+/// The Properties panel. `part` is set when the selected entity comes from
+/// a placed assembly.
 pub(crate) fn properties(
     ui: &mut Ui,
     document: &Document,
+    part: Option<&AssemblyPart>,
     models: &BTreeMap<AssetId, ModelInfo>,
 ) -> Vec<PropertyRequest> {
     let mut requests = Vec::new();
@@ -81,6 +115,9 @@ pub(crate) fn properties(
                             requests.push(PropertyRequest::Rename { entity: id, name });
                         }
                     });
+                    if let Some(part) = part {
+                        assembly_note(ui, id, part, &mut requests);
+                    }
                     ui.add_space(4.0);
                     // Transform first, as in every engine; the rest by name.
                     let mut names: Vec<&String> = entity.components.keys().collect();
@@ -96,12 +133,33 @@ pub(crate) fn properties(
                                         component: component.clone(),
                                     });
                                 }
-                                for change in inspector::fields(ui, schema, data, models) {
-                                    requests.push(PropertyRequest::SetField {
-                                        entity: id,
-                                        component: component.clone(),
-                                        field: change.field,
-                                        value: change.value,
+                                let assembly = part
+                                    .and_then(|p| p.expected.as_ref())
+                                    .and_then(|e| e.components.get(component));
+                                for change in inspector::fields(ui, schema, data, assembly, models)
+                                {
+                                    let (entity, component) = (id, component.clone());
+                                    requests.push(match change {
+                                        FieldChange::Set { field, value } => {
+                                            PropertyRequest::SetField {
+                                                entity,
+                                                component,
+                                                field,
+                                                value,
+                                            }
+                                        }
+                                        FieldChange::Revert(field) => {
+                                            PropertyRequest::RevertField {
+                                                entity,
+                                                component,
+                                                field,
+                                            }
+                                        }
+                                        FieldChange::Apply(field) => PropertyRequest::ApplyField {
+                                            entity,
+                                            component,
+                                            field,
+                                        },
                                     });
                                 }
                             }
@@ -142,6 +200,24 @@ pub(crate) fn properties(
                                 .clicked()
                         {
                             requests.push(PropertyRequest::MoveHere(id));
+                        }
+                        let whole_model = entity.origin.is_none()
+                            && entity
+                                .get::<area::builtin::Model>()
+                                .and_then(|m| m.asset)
+                                .filter(|r| r.part.is_none())
+                                .and_then(|r| models.get(&r.asset))
+                                .is_some_and(|info| !info.nodes.is_empty());
+                        if whole_model
+                            && ui
+                                .button("Unpack")
+                                .on_hover_text(
+                                    "Splits the model into one entity per part, so each can be \
+                                     moved or changed on its own",
+                                )
+                                .clicked()
+                        {
+                            requests.push(PropertyRequest::Unpack(id));
                         }
                         if ui
                             .button("Delete")
@@ -206,4 +282,44 @@ fn add_component_menu(
     .response
     .on_hover_text("Gives it another component, such as a Light");
     picked
+}
+
+/// Which assembly the entity comes from, with Unpack on a copy's root, or
+/// a warning when its part is gone from the assembly.
+fn assembly_note(
+    ui: &mut Ui,
+    id: EntityId,
+    part: &AssemblyPart,
+    requests: &mut Vec<PropertyRequest>,
+) {
+    ui.horizontal(|ui| {
+        if part.expected.is_none() && !part.root {
+            ui.label(
+                RichText::new(format!("This part is gone from {}.", part.name)).color(theme::WARNING),
+            )
+            .on_hover_text(
+                "Its changes are kept, in case the part comes back. Remove it if you don't need \
+                 them.",
+            );
+            if ui.button("Remove").clicked() {
+                requests.push(PropertyRequest::Delete(id));
+            }
+            return;
+        }
+        let text = if part.root {
+            format!("A copy of {}", part.name)
+        } else {
+            format!("Part of {}", part.name)
+        };
+        ui.label(RichText::new(text).color(theme::TEXT_WEAK))
+            .on_hover_text("Bold settings differ from the assembly: ↺ puts one back, ↑ makes it the assembly's");
+        if part.root
+            && ui
+                .button("Unpack")
+                .on_hover_text("Turns this copy into plain entities, no longer following the assembly")
+                .clicked()
+        {
+            requests.push(PropertyRequest::Unpack(id));
+        }
+    });
 }

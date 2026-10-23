@@ -17,12 +17,22 @@ use std::time::SystemTime;
 pub enum AssetKind {
     /// A glTF model.
     Model,
+    /// An assembly (`.solassembly`): entities to place many times.
+    Assembly,
 }
+
+/// The extension of assembly files.
+pub const ASSEMBLY_EXTENSION: &str = "solassembly";
 
 impl AssetKind {
     /// The kind of the file at `path`, by its extension, if Solis reads it.
     pub fn of(path: &Path) -> Option<Self> {
-        assets::is_model_file(path).then_some(Self::Model)
+        if assets::is_model_file(path) {
+            return Some(Self::Model);
+        }
+        path.extension()
+            .is_some_and(|e| e.eq_ignore_ascii_case(ASSEMBLY_EXTENSION))
+            .then_some(Self::Assembly)
     }
 }
 
@@ -451,6 +461,24 @@ mod tests {
         assert_eq!(changes.len(), 2, "all added, as it's a fresh database");
         let barrel = again.id_at(&assets.join("props/barrel.glb")).unwrap();
         assert_eq!(again.get(barrel).unwrap().name(), "barrel");
+    }
+
+    #[test]
+    fn assemblies_are_assets_too() {
+        let (project, assets) = project("db-assemblies");
+        std::fs::create_dir_all(assets.join("assemblies")).unwrap();
+        std::fs::write(
+            assets.join("assemblies/lamp post.solassembly"),
+            "assembly version 1 root 0000000000001;\nentity 0000000000001 { name = \"Post\"; }\n",
+        )
+        .unwrap();
+        let (db, changes, _) = open(project);
+        assert_eq!(changes.len(), 1);
+        let id = db
+            .id_at(&assets.join("assemblies/lamp post.solassembly"))
+            .unwrap();
+        assert_eq!(db.get(id).unwrap().kind, AssetKind::Assembly);
+        assert_eq!(db.get(id).unwrap().name(), "lamp post");
     }
 
     #[test]
