@@ -28,4 +28,4 @@ The image is plain 8-bit RGBA; the shaders convert linear colour to sRGB as they
 
 ## Status
 
-Phase 1 complete: backdrop and daylight sky, grid, axes, models in three looks, the sun with shadows, lamps, fog, HDR and tone mapping. Phase 2: every mesh copy is an instance in one buffer per frame, each mesh drawn once for all its copies; mirrored copies use pipelines that treat the other side as the front. A placement can draw one node of a model on its own (an unpacked part).
+Phase 1 complete: backdrop and daylight sky, grid, axes, models in three looks, the sun with shadows, lamps, fog, HDR and tone mapping. Phase 3: picking (`pick.rs`): on request, the placements are drawn into an ID image (each pixel: the placement's number and depth) inside the rectangle asked about, and read back without waiting. Phase 2: every mesh copy is an instance in one buffer per frame, each mesh drawn once for all its copies; mirrored copies use pipelines that treat the other side as the front. A placement can draw one node of a model on its own (an unpacked part).

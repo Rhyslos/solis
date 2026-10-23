@@ -68,6 +68,8 @@ pub struct ViewportTarget {
     resolved: wgpu::Texture,
     resolved_view: wgpu::TextureView,
     depth_view: wgpu::TextureView,
+    /// The picking images, made the first time something is picked.
+    pick: Option<crate::pick::PickImages>,
     /// This viewport's own frame data, lamps, shadow map and lamp
     /// markers, so several viewports never overwrite each other's.
     frame: FrameResources,
@@ -225,6 +227,17 @@ impl ViewportTarget {
     /// The finished colour image as a texture (for copying).
     pub fn color_texture(&self) -> &wgpu::Texture {
         &self.resolved
+    }
+
+    /// The answer to [`ViewportRenderer::request_pick`], once the GPU has
+    /// it (usually the frame after). Never waits.
+    pub fn poll_pick(&mut self, device: &wgpu::Device) -> Option<crate::PickResult> {
+        self.pick.as_mut()?.poll(device)
+    }
+
+    /// Whether a pick asked for is still waiting for its answer.
+    pub fn is_picking(&self) -> bool {
+        self.pick.as_ref().is_some_and(|p| p.is_waiting())
     }
 }
 
@@ -433,6 +446,7 @@ pub struct ViewportRenderer {
     models: ModelPipelines,
     axes: wgpu::Buffer,
     axis_count: u32,
+    pick: crate::pick::PickPipeline,
 }
 
 impl ViewportRenderer {
@@ -547,7 +561,30 @@ impl ViewportRenderer {
             shadow_pipeline,
             axes,
             axis_count: axis_vertices.len() as u32,
+            pick: crate::pick::PickPipeline::new(device),
         }
+    }
+
+    /// Asks what is drawn inside `rect` of `target` (x, y, width and
+    /// height in image pixels), seen through `view_projection`: each
+    /// pixel's placement number ([`Placement::pick`]) and depth. Collect
+    /// the answer with [`ViewportTarget::poll_pick`]. Returns `false`, and
+    /// asks nothing, while the last question is still waiting or when the
+    /// rectangle is empty. Never waits for the GPU.
+    pub fn request_pick(
+        &self,
+        device: &wgpu::Device,
+        queue: &wgpu::Queue,
+        target: &mut ViewportTarget,
+        view_projection: glam::Mat4,
+        placed: &[Placement<'_>],
+        rect: [u32; 4],
+    ) -> bool {
+        let size = target.size;
+        let images = target
+            .pick
+            .get_or_insert_with(|| crate::pick::PickImages::new(device, &self.pick, size));
+        images.request(device, queue, &self.pick, view_projection, placed, rect)
     }
 
     /// Uploads `model` to the GPU, ready to pass to [`Self::render`]. Done
@@ -642,6 +679,7 @@ impl ViewportRenderer {
             resolved,
             resolved_view,
             depth_view,
+            pick: None,
         }
     }
 

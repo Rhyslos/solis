@@ -146,6 +146,22 @@ impl GpuModel {
         render_pass.draw_indexed(0..mesh.index_count, 0, instances);
     }
 
+    /// Draws `instances` of a mesh's shape only, whatever its material
+    /// (glass too), for picking.
+    pub(crate) fn draw_shape(
+        &self,
+        render_pass: &mut wgpu::RenderPass<'_>,
+        mesh: usize,
+        instances: std::ops::Range<u32>,
+    ) {
+        let Some((mesh, _)) = self.mesh(mesh) else {
+            return;
+        };
+        render_pass.set_vertex_buffer(0, mesh.vertices.slice(..));
+        render_pass.set_index_buffer(mesh.indices.slice(..), wgpu::IndexFormat::Uint32);
+        render_pass.draw_indexed(0..mesh.index_count, 0, instances);
+    }
+
     /// Draws `instances` of a mesh with its material, with the pipeline
     /// for its pass already set.
     pub(crate) fn draw(
@@ -540,7 +556,7 @@ fn upload_texture(
 const VERTEX_ATTRIBUTES: [wgpu::VertexAttribute; 3] =
     wgpu::vertex_attr_array![0 => Float32x3, 1 => Float32x3, 2 => Float32x2];
 
-fn vertex_layout() -> wgpu::VertexBufferLayout<'static> {
+pub(crate) fn vertex_layout() -> wgpu::VertexBufferLayout<'static> {
     wgpu::VertexBufferLayout {
         array_stride: std::mem::size_of::<assets::Vertex>() as wgpu::BufferAddress,
         step_mode: wgpu::VertexStepMode::Vertex,

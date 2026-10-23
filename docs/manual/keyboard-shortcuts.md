@@ -24,6 +24,23 @@
 | Scale | S |
 | Transform (move, rotate and scale) | T |
 
+## Selecting and moving (in the viewport)
+
+| Action | Shortcut |
+|---|---|
+| Select | Click |
+| Add to or take from the selection | Ctrl + click |
+| Select with a box | Drag on empty space (Ctrl + drag adds) |
+| Select nothing | Esc |
+| Select everything | Ctrl + A |
+| Snapping on or off for one drag | Hold Ctrl while dragging a gizmo |
+| Ten times finer | Hold Shift while dragging a gizmo |
+| Cancel a drag | Esc, or right click |
+| Lock or free an axis | X, Y, Z |
+| World or object axes | L |
+
+See [Selecting and moving things](selecting-and-moving.md).
+
 ## Editing
 
 | Action | Shortcut |

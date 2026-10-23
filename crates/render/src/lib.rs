@@ -12,6 +12,7 @@ mod frame;
 mod gpu_model;
 mod instances;
 mod lighting;
+mod pick;
 mod readback;
 mod renderer;
 
@@ -26,6 +27,7 @@ pub use lighting::{
     Light, LightKind, MAX_LIGHTS, SHADOW_FORMAT, SHADOW_MAP_SIZE, Sun, light_markers,
     sun_view_projection,
 };
+pub use pick::{PICK_SHADER_SOURCE, PickResult};
 pub use readback::read_pixels;
 pub use renderer::{
     AXIS_X_COLOR, AXIS_Y_COLOR, COLOR_FORMAT, DEPTH_FORMAT, HDR_FORMAT, LineVertex, SHADER_SOURCE,

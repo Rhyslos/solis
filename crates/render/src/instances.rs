@@ -18,10 +18,12 @@ pub(crate) struct InstanceRaw {
     model: [[f32; 4]; 4],
     /// The normals' matrix (inverse transpose), column by column.
     normal: [[f32; 3]; 3],
+    /// The placement's number for picking (0: not pickable).
+    pick: u32,
 }
 
 impl InstanceRaw {
-    pub(crate) fn new(model: Mat4) -> Self {
+    pub(crate) fn new(model: Mat4, pick: u32) -> Self {
         let turn = Mat3::from_mat4(model);
         let normal = if turn.determinant().abs() > 1e-12 {
             turn.inverse().transpose()
@@ -32,14 +34,15 @@ impl InstanceRaw {
         Self {
             model: model.to_cols_array_2d(),
             normal: normal.to_cols_array_2d(),
+            pick,
         }
     }
 }
 
 /// How an instance is laid out in the instance buffer (vertex buffer 1).
-const ATTRIBUTES: [wgpu::VertexAttribute; 7] = wgpu::vertex_attr_array![
+const ATTRIBUTES: [wgpu::VertexAttribute; 8] = wgpu::vertex_attr_array![
     3 => Float32x4, 4 => Float32x4, 5 => Float32x4, 6 => Float32x4,
-    7 => Float32x3, 8 => Float32x3, 9 => Float32x3,
+    7 => Float32x3, 8 => Float32x3, 9 => Float32x3, 10 => Uint32,
 ];
 
 pub(crate) fn layout() -> wgpu::VertexBufferLayout<'static> {
@@ -74,6 +77,9 @@ pub struct Placement<'a> {
     pub node: Option<usize>,
     /// Where it is.
     pub transform: Mat4,
+    /// Its number in the picking image ([`crate::PickResult`]), or 0 when
+    /// it can't be picked.
+    pub pick: u32,
 }
 
 /// Every mesh copy of `placements`, grouped into batches, and for each
@@ -84,7 +90,7 @@ pub(crate) fn gather(placements: &[Placement<'_>]) -> (Vec<InstanceRaw>, Vec<Bat
     // that first showed it.
     let mut models: Vec<usize> = Vec::new();
     let mut seen: std::collections::HashMap<*const GpuModel, usize> = Default::default();
-    let mut entries: Vec<(usize, usize, bool, Mat4)> = Vec::new();
+    let mut entries: Vec<(usize, usize, bool, Mat4, u32)> = Vec::new();
     for (i, placement) in placements.iter().enumerate() {
         if !placement.transform.is_finite() {
             continue;
@@ -115,15 +121,15 @@ pub(crate) fn gather(placements: &[Placement<'_>]) -> (Vec<InstanceRaw>, Vec<Bat
         for (mesh, local) in meshes {
             let world = placement.transform * *local;
             let mirrored = Mat3::from_mat4(world).determinant() < 0.0;
-            entries.push((model, *mesh, mirrored, world));
+            entries.push((model, *mesh, mirrored, world, placement.pick));
         }
     }
-    entries.sort_by_key(|&(model, mesh, mirrored, _)| (model, mesh, mirrored));
+    entries.sort_by_key(|&(model, mesh, mirrored, _, _)| (model, mesh, mirrored));
     let mut raw = Vec::with_capacity(entries.len());
     let mut batches: Vec<Batch> = Vec::new();
-    for (model, mesh, mirrored, world) in entries {
+    for (model, mesh, mirrored, world, pick) in entries {
         let index = raw.len() as u32;
-        raw.push(InstanceRaw::new(world));
+        raw.push(InstanceRaw::new(world, pick));
         match batches.last_mut() {
             Some(b) if b.model == model && b.mesh == mesh && b.mirrored == mirrored => {
                 b.instances.end = index + 1;
@@ -173,19 +179,19 @@ mod tests {
 
     #[test]
     fn instances_match_the_shader_layout() {
-        // 4 columns of 4 floats, then 3 of 3: 25 floats.
-        assert_eq!(std::mem::size_of::<InstanceRaw>(), 25 * 4);
+        // 4 columns of 4 floats, then 3 of 3, then the pick number.
+        assert_eq!(std::mem::size_of::<InstanceRaw>(), 26 * 4);
         let last = ATTRIBUTES.last().unwrap();
-        assert_eq!(last.offset + 12, std::mem::size_of::<InstanceRaw>() as u64);
+        assert_eq!(last.offset + 4, std::mem::size_of::<InstanceRaw>() as u64);
     }
 
     #[test]
     fn normals_follow_stretching_and_mirroring() {
-        let stretched = InstanceRaw::new(Mat4::from_scale(Vec3::new(2.0, 1.0, 1.0)));
+        let stretched = InstanceRaw::new(Mat4::from_scale(Vec3::new(2.0, 1.0, 1.0)), 0);
         // A slanted surface's normal leans away from the stretch.
         let n = Mat3::from_cols_array_2d(&stretched.normal) * Vec3::new(1.0, 1.0, 0.0);
         assert!(n.x < n.y);
-        let flat = InstanceRaw::new(Mat4::from_scale(Vec3::new(1.0, 1.0, 0.0)));
+        let flat = InstanceRaw::new(Mat4::from_scale(Vec3::new(1.0, 1.0, 0.0)), 0);
         assert_eq!(Mat3::from_cols_array_2d(&flat.normal), Mat3::IDENTITY);
     }
 }

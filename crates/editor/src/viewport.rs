@@ -9,11 +9,13 @@
 //! The image itself comes from a [`ViewportRenderer`], so this crate never
 //! touches the GPU and runs in tests without one.
 
-use crate::area_view::{AreaView, ViewLight};
+use crate::area_view::{AreaView, ViewLight, ViewModel};
 use crate::camera::{Camera, FlyInput};
 use crate::icons;
 use crate::look::{Look, LookKind};
 use crate::theme::{self, Accent};
+use crate::transforming::Snapping;
+use crate::viewport_tools::{self, PickAnswer, ToolInput, Tools};
 use egui::{Align, Color32, Layout, Rect, RichText, Sense, Ui, UiBuilder, Vec2, vec2};
 use glam::{Mat4, Vec3};
 use serde::{Deserialize, Serialize};
@@ -114,9 +116,8 @@ pub struct ViewportView {
     pub sky_horizon: [f32; 3],
     /// The ground below the horizon, sRGB 0 to 1.
     pub ground: [f32; 3],
-    /// The models to draw: the model, one part of it (a node's index) or
-    /// the whole, and where.
-    pub models: Vec<(reflect::AssetId, Option<usize>, glam::Mat4)>,
+    /// The models to draw, with their pick numbers.
+    pub models: Vec<ViewModel>,
     /// How models are shaded.
     pub look: Look,
     /// The stylized look's outline width in pixels; 0 for none.
@@ -127,6 +128,10 @@ pub struct ViewportView {
     pub lamps: Vec<ViewLight>,
     /// The sky, fog and exposure.
     pub environment: area::builtin::Environment,
+    /// A rectangle of the image (x, y, width, height in pixels) to find
+    /// out what's under, after drawing this frame: the answer comes from
+    /// [`ViewportRenderer::picked`] on a later frame.
+    pub pick: Option<[u32; 4]>,
 }
 
 /// Draws viewport images. The app implements it on the window's GPU; tests
@@ -135,6 +140,13 @@ pub trait ViewportRenderer {
     /// Draws a frame and returns the egui texture showing it, or a
     /// plain-language reason why it could not.
     fn render(&mut self, view: &ViewportView) -> Result<egui::TextureId, String>;
+
+    /// The answer to the last [`ViewportView::pick`], once it has arrived
+    /// (usually the frame after). Never waits. A renderer that can't pick
+    /// never answers.
+    fn picked(&mut self) -> Option<PickAnswer> {
+        None
+    }
 }
 
 /// A renderer that never draws, with a reason to show instead.
@@ -180,6 +192,14 @@ pub struct Viewport {
     /// Wheel movement not yet a whole notch (trackpads scroll in small
     /// amounts), in notches.
     wheel_carry: f32,
+    /// Picking, the gizmo and the selection's outline.
+    pub(crate) tools: Tools,
+    /// Snapping, axis locks and world or object axes.
+    pub snapping: Snapping,
+    /// Where the viewport was drawn last frame, on screen.
+    pub(crate) rect: Rect,
+    /// Where the corner controls were last frame: clicks there are theirs.
+    covered: Vec<Rect>,
 }
 
 impl Default for Viewport {
@@ -195,6 +215,10 @@ impl Default for Viewport {
             look: Look::default(),
             area: AreaView::default(),
             entities: 0,
+            tools: Tools::default(),
+            snapping: Snapping::default(),
+            rect: Rect::NOTHING,
+            covered: Vec::new(),
         }
     }
 }
@@ -236,6 +260,7 @@ impl Viewport {
             sun: self.area.sun,
             lamps: self.area.lamps.clone(),
             environment: self.area.environment,
+            pick: None,
         }
     }
 
@@ -246,6 +271,7 @@ impl Viewport {
             self.frame_time += (dt - self.frame_time) * FRAME_TIME_SMOOTHING;
         }
         let rect = ui.max_rect();
+        self.rect = rect;
         let response = ui.allocate_rect(rect, Sense::click_and_drag());
         if response.clicked() {
             self.menu_open = false;
@@ -256,8 +282,35 @@ impl Viewport {
             (rect.width() * ppp).round().max(1.0) as u32,
             (rect.height() * ppp).round().max(1.0) as u32,
         ];
+        let size = glam::Vec2::new(rect.width(), rect.height());
+        self.tools.receive(renderer.picked());
+        if !self.is_flying() {
+            // egui gives the viewport the hover even under a corner button
+            // (it's the only thing there that can be dragged), so a press
+            // on the corner controls is left out by hand.
+            let on_corner = ui
+                .input(|i| i.pointer.latest_pos())
+                .is_some_and(|p| self.covered.iter().any(|r| r.contains(p)));
+            let input = ui.input(|i| ToolInput {
+                mouse: i
+                    .pointer
+                    .latest_pos()
+                    .map(|p| glam::Vec2::new(p.x - rect.min.x, p.y - rect.min.y)),
+                pressed: i.pointer.primary_pressed(),
+                down: i.pointer.primary_down(),
+                released: i.pointer.primary_released(),
+                right_pressed: i.pointer.secondary_pressed(),
+                ctrl: i.modifiers.command,
+                shift: i.modifiers.shift,
+                on_viewport: response.hovered() && !on_corner,
+            });
+            self.tools
+                .interact(input, &self.camera, &self.area, &self.snapping, size, ppp);
+        }
+        let mut view = self.view(size_px, ppp);
+        view.pick = self.tools.rect_to_send();
         let painter = ui.painter_at(rect);
-        match renderer.render(&self.view(size_px, ppp)) {
+        match renderer.render(&view) {
             Ok(texture) => {
                 painter.image(
                     texture,
@@ -281,6 +334,27 @@ impl Viewport {
                 );
             }
         }
+        viewport_tools::draw(
+            ui,
+            rect,
+            &self.tools,
+            &self.camera,
+            self.snapping.locked,
+            accent,
+        );
+        if let viewport_tools::Pressing::Gizmo {
+            last: Some(change), ..
+        } = &self.tools.pressing
+            && let Some(mouse) = ui.input(|i| i.pointer.latest_pos())
+        {
+            painter.text(
+                mouse + egui::vec2(18.0, 14.0),
+                egui::Align2::LEFT_TOP,
+                viewport_tools::readout(*change),
+                egui::FontId::monospace(12.0),
+                theme::TEXT_STRONG,
+            );
+        }
         let inner = rect.shrink(8.0);
         let corner = |ui: &mut Ui, salt: &str, layout: Layout| {
             ui.new_child(
@@ -290,12 +364,15 @@ impl Viewport {
                     .layout(layout),
             )
         };
+        let mut covered = Vec::new();
         if self.overlays.stats {
             let mut top_right = corner(ui, "stats", Layout::top_down(Align::Max));
             self.stats(&mut top_right);
+            covered.push(top_right.min_rect());
         }
         let mut bottom_left = corner(ui, "view", Layout::bottom_up(Align::Min));
         self.view_controls(&mut bottom_left);
+        covered.push(bottom_left.min_rect());
         if self.overlays.tools {
             // A centred layout would stretch the bar, so it gets a rect of
             // exactly its own width, centred along the bottom.
@@ -310,11 +387,19 @@ impl Viewport {
                     .layout(Layout::left_to_right(Align::Center)),
             );
             self.tools(&mut bottom_centre, accent);
+            covered.push(bottom_centre.min_rect());
         }
         if self.overlays.snapping {
             let mut bottom_right = corner(ui, "snapping", Layout::bottom_up(Align::Max));
-            snapping(&mut bottom_right, accent, self.camera.speed);
+            viewport_tools::snapping_corner(
+                &mut bottom_right,
+                &mut self.snapping,
+                accent,
+                self.camera.speed,
+            );
+            covered.push(bottom_right.min_rect());
         }
+        self.covered = covered;
     }
 
     /// Flies the camera from this frame's mouse and keys
@@ -330,6 +415,7 @@ impl Viewport {
             )
         });
         let starting = self.flying_from.is_none()
+            && !self.tools.dragging()
             && pressed_here
             && response.hovered()
             && response.is_pointer_button_down_on();
@@ -612,31 +698,6 @@ fn tool_button(ui: &mut Ui, tool: Tool, chosen: bool, accent: Accent) -> egui::R
         egui::WidgetInfo::selected(egui::WidgetType::Button, true, chosen, tool.hint())
     });
     response
-}
-
-/// Grid, angle and camera speed, bottom right.
-fn snapping(ui: &mut Ui, accent: Accent, camera_speed: u8) {
-    let speed = camera_speed.to_string();
-    // Laid out from the right edge, so the boxes go in backwards to read
-    // "Grid, Angle, Camera" from left to right.
-    ui.with_layout(Layout::right_to_left(Align::Max), |ui| {
-        ui.spacing_mut().item_spacing.x = 3.0;
-        for (label, value) in [
-            ("Camera", speed.as_str()),
-            ("Angle", "15°"),
-            ("Grid", "1 m"),
-        ] {
-            theme::overlay_frame()
-                .inner_margin(egui::Margin::symmetric(8, 4))
-                .show(ui, |ui| {
-                    // Still right to left inside: the value goes in first.
-                    ui.horizontal(|ui| {
-                        ui.label(RichText::new(value).color(accent.colors().light).strong());
-                        ui.label(label);
-                    });
-                });
-        }
-    });
 }
 
 #[cfg(test)]

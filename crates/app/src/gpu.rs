@@ -2,7 +2,7 @@
 //! device and to egui, so the viewport panel can show the rendered image.
 
 use area::builtin::{Environment, LightKind, Sky, ToneMapping};
-use editor::{LookKind, ViewLight, ViewportRenderer, ViewportView};
+use editor::{LookKind, PickAnswer, ViewLight, ViewportRenderer, ViewportView};
 use eframe::egui;
 use eframe::egui_wgpu::RenderState;
 use eframe::wgpu;
@@ -167,6 +167,18 @@ fn to_render_light(light: &ViewLight) -> render::Light {
     }
 }
 
+/// What the renderer found, as the editor takes it.
+fn to_answer(result: &render::PickResult) -> PickAnswer {
+    let [x, y, w, h] = result.rect;
+    let (mx, my) = (x + w / 2, y + h / 2);
+    PickAnswer {
+        rect: result.rect,
+        found: result.all().into_iter().collect(),
+        middle: result.pick_at(mx, my),
+        point: result.point_at(mx, my),
+    }
+}
+
 impl ViewportRenderer for GpuViewport {
     fn render(&mut self, view: &ViewportView) -> Result<egui::TextureId, String> {
         let params = FrameParams {
@@ -198,11 +210,12 @@ impl ViewportRenderer for GpuViewport {
         let placed: Vec<render::Placement<'_>> = view
             .models
             .iter()
-            .filter_map(|(id, node, transform)| {
-                self.models.get(id).map(|model| render::Placement {
+            .filter_map(|m| {
+                self.models.get(&m.asset).map(|model| render::Placement {
                     model,
-                    node: *node,
-                    transform: *transform,
+                    node: m.node,
+                    transform: m.transform,
+                    pick: m.pick,
                 })
             })
             .collect();
@@ -214,6 +227,24 @@ impl ViewportRenderer for GpuViewport {
             &placed,
             &lights,
         );
+        if let Some(rect) = view.pick {
+            // Drawn after the frame, never waited for: the answer is
+            // collected by `picked` on a later frame.
+            self.renderer.request_pick(
+                &self.state.device,
+                &self.state.queue,
+                &mut image.target,
+                view.view_projection,
+                &placed,
+                rect,
+            );
+        }
         Ok(image.texture)
+    }
+
+    fn picked(&mut self) -> Option<PickAnswer> {
+        let image = self.image.as_mut()?;
+        let result = image.target.poll_pick(&self.state.device)?;
+        Some(to_answer(&result))
     }
 }

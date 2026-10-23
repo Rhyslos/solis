@@ -11,6 +11,8 @@ use std::collections::BTreeMap;
 /// A light, placed in the world.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct ViewLight {
+    /// The entity it belongs to (for picking its marker).
+    pub entity: reflect::EntityId,
     /// Sun, point or spot.
     pub kind: LightKind,
     /// Where it is.
@@ -32,12 +34,27 @@ pub struct ViewLight {
     pub shadows: bool,
 }
 
+/// A model to draw.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct ViewModel {
+    /// The model asset.
+    pub asset: AssetId,
+    /// One of its parts (a node's index), or the whole model.
+    pub node: Option<usize>,
+    /// Where its entity is in the world.
+    pub transform: glam::Mat4,
+    /// Its number for picking: its entity is `pickable[pick - 1]` of the
+    /// [`AreaView`]; 0 when it can't be picked.
+    pub pick: u32,
+}
+
 /// What the viewport draws.
 #[derive(Debug, Clone, PartialEq, Default)]
 pub struct AreaView {
-    /// The models to draw: the model, one of its parts (a node's index)
-    /// or the whole, and where its entity is in the world.
-    pub models: Vec<(AssetId, Option<usize>, glam::Mat4)>,
+    /// The models to draw.
+    pub models: Vec<ViewModel>,
+    /// The entity behind each pick number (number 1 is the first).
+    pub pickable: Vec<reflect::EntityId>,
     /// The sun (the first sun in the area), if there is one.
     pub sun: Option<ViewLight>,
     /// Every other light.
@@ -65,23 +82,28 @@ impl AreaView {
             let Some(info) = models.get(&r.asset) else {
                 continue;
             };
-            match r.part {
-                None => {
-                    view.models.push((info.asset, None, area.world_matrix(id)));
-                    view.triangles += info.triangles;
-                }
+            let node = match r.part {
+                None => None,
                 // One part: drawn only if the model still has it.
-                Some(part) => {
-                    if let Some(node) = info.node_of(part) {
-                        view.models
-                            .push((info.asset, Some(node), area.world_matrix(id)));
-                    }
-                }
+                Some(part) => match info.node_of(part) {
+                    Some(node) => Some(node),
+                    None => continue,
+                },
+            };
+            if node.is_none() {
+                view.triangles += info.triangles;
             }
+            view.pickable.push(id);
+            view.models.push(ViewModel {
+                asset: info.asset,
+                node,
+                transform: area.world_matrix(id),
+                pick: view.pickable.len() as u32,
+            });
         }
         for (id, light) in area.with::<Light>() {
             let world = area.world_matrix(id);
-            let placed = place(&light, world);
+            let placed = place(id, &light, world);
             if light.kind == LightKind::Sun && view.sun.is_none() {
                 view.sun = Some(placed);
             } else if light.kind != LightKind::Sun {
@@ -93,12 +115,13 @@ impl AreaView {
 }
 
 /// `light` placed by `world`: shining along the entity's -Z.
-fn place(light: &Light, world: glam::Mat4) -> ViewLight {
+fn place(entity: reflect::EntityId, light: &Light, world: glam::Mat4) -> ViewLight {
     let outer = light.cone.clamp(0.5, 89.5).to_radians();
     let inner = (light.cone - light.soft_edge.max(0.0))
         .clamp(0.0, light.cone)
         .to_radians();
     ViewLight {
+        entity,
         kind: light.kind,
         position: world.transform_point3(Vec3::ZERO),
         direction: world
@@ -176,7 +199,16 @@ mod tests {
             },
         );
         let view = AreaView::of(&area, &models);
-        assert_eq!(view.models, [(asset, None, glam::Mat4::IDENTITY)]);
+        assert_eq!(
+            view.models,
+            [ViewModel {
+                asset,
+                node: None,
+                transform: glam::Mat4::IDENTITY,
+                pick: 1,
+            }]
+        );
+        assert_eq!(view.pickable.len(), 1);
         assert_eq!(view.triangles, 12);
     }
 }
