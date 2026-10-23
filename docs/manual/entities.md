@@ -39,7 +39,7 @@ The **Transform** every placed entity has:
 ## Tips and common problems
 - **Problem:** Properties says **Missing component**. **Why:** the scene uses a component Solis doesn't know, such as one from game code that isn't there. **Fix:** nothing is lost: its values are kept as they are. Click **Remove** if you don't need it.
 - **Problem:** my entities are gone after closing Solis. **Why:** scenes can't be saved yet; that arrives later in Phase 2.
-- There is no undo yet; it arrives next.
+- Every change here can be undone with **Ctrl + Z** ([Undo and redo](undo.md)).
 
 ## Related
 - [Lights and shadows](lights.md)

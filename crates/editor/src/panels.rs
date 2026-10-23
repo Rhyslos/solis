@@ -8,12 +8,12 @@ use crate::icons::{self, Icon};
 use crate::models::ModelInfo;
 use crate::panel::Panel;
 use crate::properties::{PropertyRequest, properties};
-use crate::scene_panel::scene_tree;
+use crate::scene_panel::{SceneRequest, scene_tree};
 use crate::theme::{self, Accent};
 use crate::viewport::{Viewport, ViewportRenderer};
 use egui::{Align, Color32, Id, Layout, RichText, Ui, WidgetText};
 use egui_dock::TabViewer;
-use reflect::{AssetId, EntityId};
+use reflect::AssetId;
 use std::collections::{BTreeMap, HashSet};
 
 /// Where egui_dock starts a tab's text, from the tab's left edge.
@@ -26,9 +26,9 @@ pub(crate) struct PanelViewer<'a> {
     pub(crate) viewport: &'a mut Viewport,
     pub(crate) renderer: &'a mut dyn ViewportRenderer,
     pub(crate) console: &'a mut Console,
-    pub(crate) document: &'a mut Document,
+    pub(crate) document: &'a Document,
     pub(crate) models: &'a BTreeMap<AssetId, ModelInfo>,
-    pub(crate) removed: &'a mut Vec<EntityId>,
+    pub(crate) scene_requests: &'a mut Vec<SceneRequest>,
     pub(crate) requests: &'a mut Vec<PropertyRequest>,
     pub(crate) accent: Accent,
     pub(crate) in_front: &'a HashSet<Panel>,
@@ -107,8 +107,8 @@ impl TabViewer for PanelViewer<'_> {
         match tab {
             Panel::Scene => {
                 menu_row(ui, &["Edit", "View", "Entity"]);
-                let removed = scene_tree(ui, self.document, self.models, self.accent);
-                self.removed.extend(removed);
+                let requests = scene_tree(ui, self.document, self.models, self.accent);
+                self.scene_requests.extend(requests);
             }
             Panel::Layers => {
                 menu_row(ui, &["Edit", "View"]);

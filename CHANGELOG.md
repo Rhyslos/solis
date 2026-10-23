@@ -12,6 +12,7 @@ What changed in each version, for people using Solis. Newest first.
 
 ### Added
 
+- Undo and redo for every change to the scene: **Ctrl + Z**, and **Ctrl + Y** or **Ctrl + Shift + Z**, or **Edit > Undo** and **Redo**, which name the change. A whole drag is one step, and undo selects what it changed.
 - **Entity > Add entity** adds an empty entity at the point the camera looks at.
 - A component Solis doesn't know (for example from game code that isn't there) is kept untouched and shown as **Missing component**, with **Remove**.
 

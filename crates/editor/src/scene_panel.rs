@@ -97,15 +97,25 @@ fn looks(
     (Icon::Scene, theme::TEXT_WEAK, String::new())
 }
 
-/// The Scene panel: every entity, as a tree. Selecting one changes the
-/// document's selection; returns the entities whose × was clicked.
+/// Something the user asked for in the Scene panel. Like Properties, the
+/// panel never changes the scene or the selection itself.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum SceneRequest {
+    /// Select only this entity.
+    Select(EntityId),
+    /// Delete this entity and everything below it.
+    Delete(EntityId),
+}
+
+/// The Scene panel: every entity, as a tree. Returns what the user asked
+/// for.
 pub(crate) fn scene_tree(
     ui: &mut Ui,
-    document: &mut Document,
+    document: &Document,
     models: &BTreeMap<AssetId, ModelInfo>,
     accent: Accent,
-) -> Vec<EntityId> {
-    let mut removed = Vec::new();
+) -> Vec<SceneRequest> {
+    let mut requests = Vec::new();
     egui::ScrollArea::vertical()
         .auto_shrink(false)
         .show(ui, |ui| {
@@ -115,7 +125,7 @@ pub(crate) fn scene_tree(
                 ui.spacing_mut().item_spacing.y = 1.0;
                 // Depth-first, parents before children.
                 let mut todo: Vec<(EntityId, usize)> = document
-                    .scene
+                    .scene()
                     .children(None)
                     .into_iter()
                     .rev()
@@ -124,10 +134,10 @@ pub(crate) fn scene_tree(
                 let mut shown = 0;
                 while let Some((id, depth)) = todo.pop() {
                     shown += 1;
-                    if shown > document.scene.len() {
+                    if shown > document.scene().len() {
                         break;
                     }
-                    let Some(entity) = document.scene.get(id) else {
+                    let Some(entity) = document.scene().get(id) else {
                         continue;
                     };
                     let (icon, color, note) = looks(entity, models, accent);
@@ -144,12 +154,12 @@ pub(crate) fn scene_tree(
                             removable,
                         );
                         if remove {
-                            removed.push(id);
+                            requests.push(SceneRequest::Delete(id));
                         } else if response.clicked() {
-                            document.selection.select_only(id);
+                            requests.push(SceneRequest::Select(id));
                         }
                     });
-                    for child in document.scene.children(Some(id)).into_iter().rev() {
+                    for child in document.scene().children(Some(id)).into_iter().rev() {
                         todo.push((child, depth + 1));
                     }
                 }
@@ -163,5 +173,5 @@ pub(crate) fn scene_tree(
                 ui.label(RichText::new(note).color(theme::TEXT_WEAK).size(11.0));
             });
         });
-    removed
+    requests
 }

@@ -56,7 +56,7 @@ pub(crate) fn properties(
     let Some((id, entity)) = document
         .selection
         .primary()
-        .and_then(|id| document.scene.get(id).map(|e| (id, e)))
+        .and_then(|id| document.scene().get(id).map(|e| (id, e)))
     else {
         placeholder(ui, "Nothing selected. Pick something in the Scene panel.");
         return requests;
