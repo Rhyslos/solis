@@ -29,6 +29,8 @@
 - **Entity:** one thing in an area: a model, a light, the sky. On its own it's only a name; its components make it something.
 - **Component:** one part of what an entity is, with settings. A **Transform** says where it is; a **Light** makes it shine; a **Model** draws an imported model. Mixing components makes different things, the way one Lego brick goes into many builds.
 - **Transform:** an entity's position, rotation and scale.
+- **Assembly:** a group of entities saved once and placed many times; each placed **copy** follows the assembly but can have its own changes. Other engines call it a *prefab*. See [Assemblies](assemblies.md).
+- **Unpack:** turning a copy of an assembly, or an imported model, into separate ordinary entities.
 - **Parent and child:** an entity can belong to another, like a lamp to the room model it came with. A child moves with its parent, and deleting the parent deletes its children. A child's position is measured from its parent, so moving the parent carries it along.
 - **Instance:** one copy of a mesh drawn somewhere. A mesh used many times (a crate in a hundred places) is stored once and drawn as many instances, which is much faster than storing a hundred crates.
 

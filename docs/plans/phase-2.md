@@ -208,7 +208,7 @@ The ROADMAP lists Phase 2's parts; they're built in this order. **Undo comes sec
   - a newer version is refused with a message;
   - reload on disk change.
 
-### M7. Assemblies ☐
+### M7. Assemblies ☑
 
 - **A `.solassembly`** is the same format with one root.
 - **An instance in an area** is a reference plus overrides, never a copy.
@@ -216,7 +216,7 @@ The ROADMAP lists Phase 2's parts; they're built in this order. **Undo comes sec
   - Entities inside an instance are addressed as `instance/inner`. Their blocks sort straight after the instance's.
 - **Nesting:** up to 16 levels. Expanding stops at the entity limit, which is counted before allocating, so a file can't explode.
 - **Cycles** are refused, naming the chain.
-- **An imported model is a read-only assembly.** Placing it makes one instance, as the project lead asked: one object by default.
+- **An imported model is a read-only assembly.** Placing it makes one instance, as the project lead asked: one object by default. (Built: a placed model stays one entity drawing the whole model; **Unpack** splits it into plain entities, one per node, each drawing its own part through a `Model` reference to the node's `PartId`, so the link survives a re-export. Model parts aren't expanded as linked copies before unpacking: nothing needed them yet.)
   - **Unpack** turns an instance into plain entities.
   - Entities inside a model instance get IDs derived from (instance, node `PartId`), so overrides survive a re-import.
 - **Editor:**

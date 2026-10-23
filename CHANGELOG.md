@@ -13,6 +13,8 @@ What changed in each version, for people using Solis. Newest first.
 
 ### Added
 
+- Assemblies: **Entity > Create assembly from selection** saves an entity and everything under it as an assembly in the project; place copies from the Library. Each copy can have its own changes, shown in bold in Properties with ↺ (put back) and ↑ (apply to the assembly, for every copy). Editing the assembly (or a Git pull) updates every copy and keeps their changes. Assemblies can hold other assemblies. Areas store copies as one block plus only what differs.
+- **Unpack** in Properties: turns a copy of an assembly into plain entities, or splits an imported model into one entity per part of the file, each drawing only its own part.
 - Saving areas: **Ctrl + S**, **Ctrl + Shift + S**, **Ctrl + O** and **Ctrl + N** (also in the File menu). Areas are `.solarea` text files: one block per entity, one line per setting, made so Git merges two people's work cleanly, and safe to edit by hand. The tab shows a • while there are unsaved changes, and Solis asks before losing them. A file changed on disk (a Git pull) is loaded as one step Ctrl + Z can undo, or, with unsaved changes, Solis asks which to keep.
 - Projects: **File > New project…**, **Open project…** and **Recent projects**; the last project opens again on start. A project is a folder with an `assets` folder (watched for changes), a `.solis` cache and Git files set up for games. Imported models are copied into it.
 - The **Library** lists the project's models; double-click one (or click its +) to place it.

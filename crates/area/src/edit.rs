@@ -4,7 +4,7 @@
 //! back its inverse, which is how undo works; the same edits will describe
 //! changes in the Git panel and in assembly overrides.
 
-use crate::document::{Area, EntityData};
+use crate::document::{Area, EntityData, Origin};
 use reflect::{ComponentData, EntityId, Value};
 use std::fmt;
 
@@ -56,6 +56,14 @@ pub enum Edit {
         entity: EntityId,
         /// Its new name.
         name: String,
+    },
+    /// Links an entity to the assembly it comes from, or unlinks it
+    /// (Unpack).
+    SetOrigin {
+        /// The entity.
+        entity: EntityId,
+        /// Where it comes from, or `None` for a plain entity.
+        origin: Option<Origin>,
     },
     /// Moves an entity under a new parent (or to the top level), at
     /// `order` among its new siblings.
@@ -121,6 +129,7 @@ impl Edit {
             Self::Despawn { .. } => 0,
             Self::Rename { name, .. } => name.len(),
             Self::Reparent { order, .. } => order.len(),
+            Self::SetOrigin { origin, .. } => origin.as_ref().map_or(0, |o| o.path.len() * 8 + 16),
         }
     }
 }
@@ -237,6 +246,14 @@ impl Area {
                 let old = std::mem::replace(&mut e.name, name);
                 Ok(Edit::Rename { entity, name: old })
             }
+            Edit::SetOrigin { entity, origin } => {
+                let e = self.get_mut(entity).ok_or(EditError::NoEntity(entity))?;
+                let old = std::mem::replace(&mut e.origin, origin);
+                Ok(Edit::SetOrigin {
+                    entity,
+                    origin: old,
+                })
+            }
             Edit::Reparent {
                 entity,
                 parent,
@@ -339,6 +356,14 @@ mod tests {
             },
             Edit::Spawn {
                 entities: vec![(new_id, EntityData::new("New"))],
+            },
+            Edit::SetOrigin {
+                entity: b,
+                origin: Some(Origin {
+                    assembly: reflect::AssetId::random(),
+                    instance: a,
+                    path: vec![b],
+                }),
             },
             Edit::Despawn { root: a },
         ];

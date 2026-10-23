@@ -332,6 +332,7 @@ fn render_env(
         },
         &[Placement {
             model: &uploaded,
+            node: None,
             transform: glam::Mat4::IDENTITY,
         }],
         lights,
@@ -1236,6 +1237,7 @@ fn two_viewports_keep_their_own_frames() {
         &params(looking_down(down), down, Look::Unlit),
         &[Placement {
             model: &floor,
+            node: None,
             transform: glam::Mat4::IDENTITY,
         }],
         &[],
@@ -1247,6 +1249,7 @@ fn two_viewports_keep_their_own_frames() {
         &params(looking_north(away), away, Look::Standard),
         &[Placement {
             model: &floor,
+            node: None,
             transform: glam::Mat4::IDENTITY,
         }],
         &[],
@@ -1269,15 +1272,27 @@ fn two_viewports_keep_their_own_frames() {
 /// Renders `model` once for each of `transforms`, in the standard look,
 /// 64 pixels square, looking north from `eye`.
 fn render_placed(model: &assets::Model, transforms: &[Mat4], eye: Vec3) -> Option<Vec<u8>> {
+    let whole: Vec<(Option<usize>, Mat4)> = transforms.iter().map(|&t| (None, t)).collect();
+    render_parts(model, &whole, eye)
+}
+
+/// As [`render_placed`], each placement the whole model (`None`) or one of
+/// its nodes.
+fn render_parts(
+    model: &assets::Model,
+    placements: &[(Option<usize>, Mat4)],
+    eye: Vec3,
+) -> Option<Vec<u8>> {
     let gpu = gpu()?;
     let renderer = ViewportRenderer::new(&gpu.device, best_sample_count(&gpu.adapter));
     let size = 64;
     let mut target = renderer.create_target(&gpu.device, [size, size]);
     let uploaded = renderer.upload_model(&gpu.device, &gpu.queue, model);
-    let placed: Vec<Placement<'_>> = transforms
+    let placed: Vec<Placement<'_>> = placements
         .iter()
-        .map(|&transform| Placement {
+        .map(|&(node, transform)| Placement {
             model: &uploaded,
+            node,
             transform,
         })
         .collect();
@@ -1369,5 +1384,41 @@ fn one_model_placed_twice_is_drawn_twice() {
     assert!(
         !(0..12).any(|x| red(&once, x)),
         "one copy stays in the middle"
+    );
+}
+
+#[test]
+fn one_part_of_a_model_can_be_drawn_on_its_own() {
+    // The sample's cube without its red base: what an unpacked part draws.
+    let eye = Vec3::new(0.0, -7.0, 1.4);
+    let model = sample();
+    let cube = model
+        .nodes
+        .iter()
+        .position(|n| {
+            n.meshes
+                .iter()
+                .any(|&m| model.meshes[m].material == Some(0))
+        })
+        .unwrap();
+    let Some(part) = render_parts(&model, &[(Some(cube), model.nodes[cube].world)], eye) else {
+        return;
+    };
+    let whole = render_parts(&model, &[(None, Mat4::IDENTITY)], eye).unwrap();
+    let red = |p: &[u8]| {
+        p.chunks_exact(4)
+            .filter(|c| c[0] > 120 && c[1] < 80 && c[2] < 80)
+            .count()
+    };
+    // The red X axis on the ground shows either way; the base adds far more.
+    let (whole_red, part_red) = (red(&whole), red(&part));
+    assert!(
+        whole_red > 4 * part_red,
+        "{whole_red} vs {part_red}: the cube alone has no base"
+    );
+    assert_ne!(
+        part,
+        render_parts(&model, &[], eye).unwrap(),
+        "but the cube is there"
     );
 }

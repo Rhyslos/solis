@@ -18,11 +18,23 @@ pub struct ProjectInfo {
     pub root: PathBuf,
 }
 
+/// What kind of asset a Library item is.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum LibraryKind {
+    /// A model.
+    #[default]
+    Model,
+    /// An assembly.
+    Assembly,
+}
+
 /// One asset in the Library.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct LibraryItem {
     /// Its ID.
     pub id: AssetId,
+    /// What kind of asset.
+    pub kind: LibraryKind,
     /// Its name (the file's, without the extension).
     pub name: String,
     /// Where it is inside the project's assets, for the tooltip.
@@ -79,7 +91,11 @@ pub(crate) fn library(
                             egui::pos2(rect.left() + 4.0, rect.center().y - 6.0),
                             egui::vec2(12.0, 12.0),
                         );
-                        icons::icon(ui.painter(), icon, Icon::Model, accent.colors().light);
+                        let (glyph, color) = match item.kind {
+                            LibraryKind::Model => (Icon::Model, accent.colors().light),
+                            LibraryKind::Assembly => (Icon::Area, theme::FOLDER),
+                        };
+                        icons::icon(ui.painter(), icon, glyph, color);
                         ui.painter().text(
                             egui::pos2(rect.left() + 22.0, rect.center().y),
                             egui::Align2::LEFT_CENTER,

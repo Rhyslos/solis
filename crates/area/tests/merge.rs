@@ -184,3 +184,75 @@ fn a_delete_next_to_an_edit_merges() {
     assert!(!merged.contains(gone));
     assert_eq!(merged.get(edited).unwrap().name, "Renamed");
 }
+
+/// Merges two changed area files as text with `git merge-file`.
+fn merge_files(
+    base: &text::AreaFile,
+    ours: &text::AreaFile,
+    theirs: &text::AreaFile,
+) -> Option<text::AreaFile> {
+    let as_area = |file: &text::AreaFile| text::write_file(file, &registry(), &|_| None);
+    let folder = std::env::temp_dir().join(format!("solis-merge-files-{}", std::process::id()));
+    std::fs::create_dir_all(&folder).unwrap();
+    let paths: Vec<std::path::PathBuf> = [("ours", ours), ("base", base), ("theirs", theirs)]
+        .iter()
+        .map(|(name, file)| {
+            let path = folder.join(name);
+            std::fs::write(&path, as_area(file)).unwrap();
+            path
+        })
+        .collect();
+    let out = Command::new("git")
+        .args(["merge-file", "-p"])
+        .args(paths.iter().map(|p| p.as_os_str()))
+        .output()
+        .ok()?;
+    let _ = std::fs::remove_dir_all(&folder);
+    assert!(
+        out.status.success(),
+        "conflict:\n{}",
+        String::from_utf8_lossy(&out.stdout)
+    );
+    Some(text::read_file(&String::from_utf8(out.stdout).unwrap(), &registry()).unwrap())
+}
+
+#[test]
+fn changes_to_two_copies_of_an_assembly_merge() {
+    use area::Origin;
+    use text::{AreaFile, Override};
+    let assembly: reflect::AssetId = "4WQ0B7M2KD9TS".parse().unwrap();
+    let lamp = id("0000000000002");
+    let mut base = AreaFile::plain(Area::new());
+    for root in ["1000000000001", "C000000000001"] {
+        let mut placed = EntityData::new("Lamp post");
+        placed.origin = Some(Origin {
+            assembly,
+            instance: id(root),
+            path: Vec::new(),
+        });
+        base.area.insert(id(root), placed);
+    }
+    let change = |field: &str, value: reflect::Value| {
+        let mut light = reflect::ComponentData::default();
+        light.fields.insert(field.into(), value);
+        Override {
+            components: [("Light".to_string(), light)].into(),
+            ..Override::default()
+        }
+    };
+    let mut ours = base.clone();
+    ours.overrides.insert(
+        (id("1000000000001"), vec![lamp]),
+        change("strength", reflect::Value::Float(5.0)),
+    );
+    let mut theirs = base.clone();
+    theirs.overrides.insert(
+        (id("C000000000001"), vec![lamp]),
+        change("color", reflect::Value::floats(&[1.0, 0.5, 0.0])),
+    );
+    if Command::new("git").arg("--version").output().is_err() {
+        return;
+    }
+    let merged = merge_files(&base, &ours, &theirs).unwrap();
+    assert_eq!(merged.overrides.len(), 2);
+}

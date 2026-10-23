@@ -1,8 +1,23 @@
 //! The document itself: entities by ID, each with a name, a parent, a
 //! sibling order and components.
 
-use reflect::{Component, ComponentData, EntityId};
+use reflect::{AssetId, Component, ComponentData, EntityId};
 use std::collections::BTreeMap;
+
+/// Where an entity comes from when it's part of an assembly placed in the
+/// area (decision 0020): the assembly, the placed copy's root, and the
+/// way to it inside the assembly (empty for the root itself; one ID per
+/// assembly nested on the way).
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
+pub struct Origin {
+    /// The assembly.
+    pub assembly: AssetId,
+    /// The placed copy's root entity in the area.
+    pub instance: EntityId,
+    /// The entity inside the assembly: empty for the root, else the IDs
+    /// leading to it through nested assemblies.
+    pub path: Vec<EntityId>,
+}
 
 /// One entity: its name, where it sits in the tree, and its components.
 #[derive(Debug, Clone, PartialEq, Default)]
@@ -16,6 +31,8 @@ pub struct EntityData {
     pub order: String,
     /// Its components, by component name.
     pub components: BTreeMap<String, ComponentData>,
+    /// The assembly it comes from, if it's part of a placed one.
+    pub origin: Option<Origin>,
 }
 
 impl EntityData {
@@ -26,6 +43,7 @@ impl EntityData {
             parent: None,
             order: "a0".to_string(),
             components: BTreeMap::new(),
+            origin: None,
         }
     }
 

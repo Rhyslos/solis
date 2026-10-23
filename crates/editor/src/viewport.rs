@@ -114,8 +114,9 @@ pub struct ViewportView {
     pub sky_horizon: [f32; 3],
     /// The ground below the horizon, sRGB 0 to 1.
     pub ground: [f32; 3],
-    /// The models to draw, and where.
-    pub models: Vec<(reflect::AssetId, glam::Mat4)>,
+    /// The models to draw: the model, one part of it (a node's index) or
+    /// the whole, and where.
+    pub models: Vec<(reflect::AssetId, Option<usize>, glam::Mat4)>,
     /// How models are shaded.
     pub look: Look,
     /// The stylized look's outline width in pixels; 0 for none.

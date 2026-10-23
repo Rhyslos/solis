@@ -32,7 +32,7 @@ pub use console::{LogLevel, LogLine};
 pub use document::{Document, Selection};
 pub use egui_dock::DockState;
 pub use layout::Preset;
-pub use library::{LibraryItem, ProjectInfo};
+pub use library::{LibraryItem, LibraryKind, ProjectInfo};
 pub use look::{Look, LookKind};
 pub use models::{FileLight, FileLightKind, ModelInfo};
 pub use panel::Panel;

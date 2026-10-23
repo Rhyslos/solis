@@ -63,11 +63,15 @@ pub(crate) struct Batch {
     pub(crate) instances: Range<u32>,
 }
 
-/// A model placed in the world: one copy of it, all its meshes.
+/// A model placed in the world: one copy of it, all its meshes, or one
+/// part of it (a node: its own meshes only, at the transform given, for a
+/// model unpacked into entities).
 #[derive(Debug, Clone, Copy)]
 pub struct Placement<'a> {
     /// The model.
     pub model: &'a GpuModel,
+    /// One node's meshes only, or `None` for the whole model.
+    pub node: Option<usize>,
     /// Where it is.
     pub transform: Mat4,
 }
@@ -91,7 +95,24 @@ pub(crate) fn gather(placements: &[Placement<'_>]) -> (Vec<InstanceRaw>, Vec<Bat
                 models.push(i);
                 models.len() - 1
             });
-        for (mesh, local) in placement.model.placements() {
+        let whole;
+        let part;
+        let meshes: &[(usize, Mat4)] = match placement.node {
+            None => {
+                whole = placement.model.placements();
+                whole
+            }
+            Some(node) => {
+                part = placement
+                    .model
+                    .node_meshes(node)
+                    .iter()
+                    .map(|&m| (m, Mat4::IDENTITY))
+                    .collect::<Vec<_>>();
+                &part
+            }
+        };
+        for (mesh, local) in meshes {
             let world = placement.transform * *local;
             let mirrored = Mat3::from_mat4(world).determinant() < 0.0;
             entries.push((model, *mesh, mirrored, world));
