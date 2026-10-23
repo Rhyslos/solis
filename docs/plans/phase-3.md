@@ -85,7 +85,7 @@ The working plan for Phase 3 (ROADMAP.md, "Phase 3: The editor"). It records the
 - **Tests:** filter, hide and lock with picking; multi-edit is one step and undoes on every entity; copy and paste values.
 - **Built:** as planned, plus folding the tree (▾/▸, View > Fold or Unfold everything), unfolding the way to something picked in the viewport, and the Area panel's Edit and Entity menus shared with the top bar's (`menu_items.rs`; the top bar's Edit menu gains the selection commands). Different from the plan: Properties' **Units** and **Mode** menus are dropped rather than built, since lengths are always metres and there is only one mode; Edit (copy and paste components) is its only menu. Changing one number of a position or rotation on several entities changes only that number on each.
 
-### M3. The library: assets and code ☐
+### M3. The library: assets and code ☑
 
 - **`asset_db`** lists every file under `assets/`: models and assemblies (with IDs, as now), plus areas, textures and code (`.lst`, `.lua`, `.rs`), which are listed but don't need IDs yet.
 - **The Library panel:**
@@ -96,6 +96,7 @@ The working plan for Phase 3 (ROADMAP.md, "Phase 3: The editor"). It records the
 - **Right-click:** Place, Open, Rename (F2), Show in Explorer, Delete (to the Recycle Bin), New folder. Renaming and moving (dragging onto a folder) keep the asset's ID: the sidecar moves with it.
 - **Code** (the Library's second tab, the Code panel): the project's code files, the same way. Writing code in Solis comes in Phase 10; until then double-click opens the file in the system's editor.
 - **Tests:** listing kinds, rename and move keep IDs, drop placement with a stand-in pick, search, thumbnails on the GPU.
+- **Built:** as planned, with two differences. Thumbnails stay on the GPU (a model is drawn once into a small image, copied into a texture of its own) rather than being saved in `.solis/cache/thumbnails`: drawing one takes a few milliseconds, so they're simply made again each time the project opens, a few at a time. Renaming is a small window (Rename…) rather than typing on the tile. Two bugs found along the way are fixed here: the last project never reopened on start (saved as an optional path, read back as a plain one), and the ground axes were one line each from end to end of the grid, which Mesa's Vulkan driver drew as a filled wedge from close by; they're now drawn in 10 m pieces.
 
 ### M4. The console: commands as well as messages ☐
 

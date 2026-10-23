@@ -34,6 +34,7 @@ pub mod transforming;
 pub mod viewport;
 mod viewport_tools;
 pub mod workbench;
+mod workbench_library;
 mod workbench_tools;
 
 pub use area_view::{AreaView, ViewLight, ViewModel};

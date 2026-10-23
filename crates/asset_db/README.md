@@ -6,7 +6,7 @@ The project folder and its assets ([decision 0021](../../docs/decisions/0021-ass
 
 ## Purpose
 
-Know every asset in a project (models, and assemblies: `.solassembly`) by an ID that survives renaming, read them quickly, and notice when they change.
+Know every asset in a project (models, and assemblies: `.solassembly`) by an ID that survives renaming, read them quickly, and notice when they change; list every file and folder for the Library, and rename, move and delete them with their sidecars (`files.rs`; deleting goes to the Recycle Bin through `trash`).
 
 - **The project** (`project.rs`): `project.solis` (TOML: name, format), `assets/` with everything the user owns, and `.solis/`, a cache that can be deleted at any time. New projects get a `.gitignore` and a `.gitattributes` (Solis's text files with Unix line endings; models, images and sound through Git LFS).
 - **Sidecars** (`sidecar.rs`): `<file>.solmeta` beside each asset, in TOML: its `AssetId`, its content hash (to find it again after a rename outside Solis), importer settings, and stable part IDs for its nodes, meshes and materials. Parts are matched on re-import by name path, then name and order, then index; lost parts are kept, marked missing. Written only when something changes, through a temporary file.
@@ -27,4 +27,4 @@ Know every asset in a project (models, and assemblies: `.solassembly`) by an ID 
 
 ## Status
 
-Phase 2, milestone 5: projects, sidecars, the cache, watching and workers.
+Phase 2, milestone 5: projects, sidecars, the cache, watching and workers. Phase 3: listing every file, and renaming, moving, new folders and deleting from the Library.

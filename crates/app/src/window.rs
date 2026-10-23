@@ -51,6 +51,10 @@ struct App {
     /// Models being read to be placed in the area when they arrive (the
     /// rest being read are reloads).
     to_place: HashSet<AssetId>,
+    /// The Library's thumbnails.
+    thumbnails: crate::thumbnails::Thumbnails,
+    /// What's in the assets folder, as the Library last showed it.
+    listing: asset_db::Listing,
     /// The open area's file: saving, opening, and changes on disk.
     area_files: AreaFiles,
     /// Actions waiting for a Save window to close (Save, then quit).
@@ -79,8 +83,7 @@ impl App {
         let snapping: editor::Snapping = storage
             .and_then(|s| eframe::get_value(s, SNAPPING_KEY))
             .unwrap_or_default();
-        let last_project: Option<PathBuf> =
-            storage.and_then(|s| eframe::get_value(s, LAST_PROJECT_KEY));
+        let last_project = storage.and_then(saved_last_project);
         let recent: Vec<PathBuf> = storage
             .and_then(|s| eframe::get_value(s, RECENT_PROJECTS_KEY))
             .unwrap_or_default();
@@ -115,6 +118,8 @@ impl App {
             importer,
             projects: Projects::with_recent(recent),
             to_place: HashSet::new(),
+            thumbnails: crate::thumbnails::Thumbnails::default(),
+            listing: asset_db::Listing::default(),
             area_files: AreaFiles::default(),
             queued: VecDeque::new(),
             title: String::new(),
@@ -136,6 +141,7 @@ impl App {
                 if let Some(gpu) = self.gpu.as_mut() {
                     gpu.clear_models();
                 }
+                self.thumbnails.clear(self.gpu.as_ref());
                 self.to_place.clear();
                 self.area_files.forget();
                 self.workbench.set_project(Some(opened.info));
@@ -149,7 +155,7 @@ impl App {
                          show when the project is opened again.",
                     );
                 }
-                self.workbench.set_library(self.projects.library());
+                self.refresh_library();
                 self.workbench.set_recent(self.projects.recent().to_vec());
             }
             Err(why) => self.workbench.log(
@@ -178,7 +184,7 @@ impl App {
             } else {
                 (AssetId::random(), path.to_path_buf())
             };
-            self.workbench.set_library(self.projects.library());
+            self.refresh_library();
             self.to_place.insert(id);
             self.importer.start(id, &source, self.projects.cache());
             self.workbench
@@ -307,12 +313,29 @@ impl App {
                     self.load_area_models();
                     continue;
                 }
+                Change::Changed(id)
+                    if db
+                        .get(*id)
+                        .is_some_and(|r| self.thumbnails.get(&r.path).is_some()) =>
+                {
+                    // Its thumbnail is made again, and it's read again if
+                    // it's in use.
+                    if let Some(record) = db.get(*id) {
+                        self.thumbnails.forget(&record.path, self.gpu.as_ref());
+                    }
+                    if self.workbench.has_model(*id)
+                        && let Some(file) = db.file(*id)
+                    {
+                        self.importer.start(*id, &file, self.projects.cache());
+                    }
+                }
                 Change::Changed(id) if self.workbench.has_model(*id) => {
                     if let Some(file) = db.file(*id) {
                         self.importer.start(*id, &file, self.projects.cache());
                     }
                 }
                 Change::Moved { id, from } => {
+                    self.thumbnails.forget(from, self.gpu.as_ref());
                     if let Some(record) = db.get(*id) {
                         self.workbench.log(
                             LogLevel::Info,
@@ -335,7 +358,7 @@ impl App {
                 _ => {}
             }
         }
-        self.workbench.set_library(self.projects.library());
+        self.refresh_library();
     }
 
     /// Starts reading every model the open area uses that isn't loaded
@@ -524,8 +547,80 @@ impl App {
                     self.area_files.ask(Purpose::Save, folder, &name);
                     return;
                 }
+                WorkbenchAction::OpenAreaFile(path) => self.open_area(&path),
+                WorkbenchAction::OpenExternally(path) => {
+                    if let Err(why) = opener::open(&path) {
+                        self.workbench.log(
+                            LogLevel::Error,
+                            format!("Couldn't open {}: {why}.", file_name(&path)),
+                        );
+                    }
+                }
+                WorkbenchAction::MoveFile { from, to } => {
+                    match self.projects.move_path(&from, &to) {
+                        Ok(()) => self.workbench.log(
+                            LogLevel::Info,
+                            format!("Moved {} to {}.", from.display(), to.display()),
+                        ),
+                        Err(why) => self.workbench.log(
+                            LogLevel::Error,
+                            format!("Couldn't move {}: {why}.", from.display()),
+                        ),
+                    }
+                    self.rescan_now();
+                }
+                WorkbenchAction::NewFolder(parent) => {
+                    if let Err(why) = self.projects.new_folder(&parent) {
+                        self.workbench
+                            .log(LogLevel::Error, format!("Couldn't make a folder: {why}."));
+                    }
+                    self.rescan_now();
+                }
+                WorkbenchAction::DeleteFile(path) => {
+                    match self.projects.delete(&path) {
+                        Ok(()) => self.workbench.log(
+                            LogLevel::Info,
+                            format!(
+                                "Moved {} to the Recycle Bin; anything using it keeps the \
+                                 last version until Solis restarts.",
+                                path.display()
+                            ),
+                        ),
+                        Err(why) => self.workbench.log(
+                            LogLevel::Error,
+                            format!("Couldn't delete {}: {why}.", path.display()),
+                        ),
+                    }
+                    self.rescan_now();
+                }
             }
         }
+    }
+
+    /// Looks at the assets folder now (after Solis changed it), rather
+    /// than waiting for the watcher.
+    fn rescan_now(&mut self) {
+        let (changes, notes) = self.projects.rescan();
+        self.follow_changes(changes, notes);
+        self.refresh_library();
+    }
+
+    /// Lists the assets folder again for the Library, and asks for any
+    /// thumbnails missing.
+    fn refresh_library(&mut self) {
+        self.listing = self.projects.listing();
+        if let Some(db) = self.projects.db() {
+            self.thumbnails.want(&self.listing, &db.project().assets());
+        }
+        self.show_library();
+    }
+
+    /// Hands the Library its list, with the thumbnails made so far.
+    fn show_library(&mut self) {
+        let thumbnails = &self.thumbnails;
+        let (items, folders) = Projects::library(&self.listing, |p| thumbnails.get(p));
+        self.workbench.set_library(items);
+        self.workbench.set_folders(folders);
     }
 
     /// Saves `root` and everything under it as a new assembly in the
@@ -645,6 +740,12 @@ impl App {
     }
 }
 
+/// The project open when Solis last closed, as saved (an optional path:
+/// none when no project was open).
+fn saved_last_project(storage: &dyn eframe::Storage) -> Option<PathBuf> {
+    eframe::get_value::<Option<PathBuf>>(storage, LAST_PROJECT_KEY).flatten()
+}
+
 /// A file's name, for messages.
 fn file_name(path: &Path) -> String {
     path.file_name().map_or_else(
@@ -680,6 +781,12 @@ impl eframe::App for App {
         }
         let (changes, notes) = self.projects.poll();
         self.follow_changes(changes, notes);
+        if self.projects.take_changed() {
+            self.refresh_library();
+        }
+        if self.thumbnails.poll(&ctx, self.gpu.as_mut()) {
+            self.show_library();
+        }
         match self.area_files.chosen() {
             Some((Purpose::Open, Some(path))) => self.open_area(&path),
             Some((Purpose::Save, Some(path))) => {
@@ -802,5 +909,35 @@ mod tests {
         assert_eq!(explain_panic(other.as_ref()), "boom");
         let unknown: Box<dyn std::any::Any + Send> = Box::new(42);
         assert!(explain_panic(unknown.as_ref()).contains("unexpectedly"));
+    }
+
+    /// Settings kept in memory, as eframe keeps them on disk.
+    #[derive(Default)]
+    struct Memory(std::collections::HashMap<String, String>);
+
+    impl eframe::Storage for Memory {
+        fn get_string(&self, key: &str) -> Option<String> {
+            self.0.get(key).cloned()
+        }
+        fn set_string(&mut self, key: &str, value: String) {
+            self.0.insert(key.to_string(), value);
+        }
+        fn remove_string(&mut self, key: &str) {
+            self.0.remove(key);
+        }
+        fn flush(&mut self) {}
+    }
+
+    #[test]
+    fn the_last_project_reopens_as_it_was_saved() {
+        // Regression: it was saved as an optional path but read back as a
+        // plain one, so it never reopened.
+        let mut storage = Memory::default();
+        let root = Path::new("/projects/harbour");
+        eframe::set_value(&mut storage, LAST_PROJECT_KEY, &Some(root));
+        assert_eq!(saved_last_project(&storage), Some(root.to_path_buf()));
+        eframe::set_value(&mut storage, LAST_PROJECT_KEY, &None::<&Path>);
+        assert_eq!(saved_last_project(&storage), None);
+        assert_eq!(saved_last_project(&Memory::default()), None);
     }
 }

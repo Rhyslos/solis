@@ -143,10 +143,18 @@ impl Workbench {
         for warning in warnings {
             self.log(LogLevel::Warning, format!("{}: {warning}", info.name));
         }
-        self.viewport.camera.frame(info.min, info.max);
+        // Dropped somewhere: placed there (and selected); otherwise at the
+        // origin, with the camera framing it.
+        let target = self.take_place_target(info.asset);
+        if target.is_none() {
+            self.viewport.camera.frame(info.min, info.max);
+        }
         let id = EntityId::random();
         let model = EntityData::new(&info.name)
-            .with(&Transform::default())
+            .with(&Transform {
+                position: target.map_or(Vec3::ZERO, |(at, _)| at),
+                ..Transform::default()
+            })
             .with(&Model {
                 asset: Some(AssetRef {
                     asset: info.asset,
@@ -154,7 +162,8 @@ impl Workbench {
                 }),
             });
         let mut model = model;
-        model.order = self.document.area().order_at_end(None);
+        model.parent = target.and_then(|(_, parent)| parent);
+        model.order = self.document.area().order_at_end(model.parent);
         let mut entities = vec![(id, model)];
         let mut edits = Vec::new();
         let mut order = None;
@@ -187,7 +196,12 @@ impl Workbench {
         edits.insert(0, Edit::Spawn { entities });
         let label = format!("Import {}", info.name);
         self.models.insert(info.asset, info);
-        self.command(&label, edits, None, None);
+        let select = target.map(|_| {
+            let mut s = Selection::default();
+            s.select_only(id);
+            s
+        });
+        self.command(&label, edits, None, select);
         id
     }
 
@@ -412,7 +426,7 @@ impl Workbench {
     pub(crate) fn asset_name(&self, id: AssetId) -> String {
         self.library
             .iter()
-            .find(|item| item.id == id)
+            .find(|item| item.id == Some(id))
             .map_or_else(|| "its assembly".to_string(), |item| item.name.clone())
     }
 
@@ -627,8 +641,10 @@ impl Workbench {
     /// Places a copy of assembly `id` where the camera looks, selected.
     pub fn place_assembly(&mut self, id: AssetId) {
         let root = EntityId::random();
+        let target = self.take_place_target(id);
         let mut placed = EntityData::new(&self.asset_name(id));
-        placed.order = self.document.area().order_at_end(None);
+        placed.parent = target.and_then(|(_, parent)| parent);
+        placed.order = self.document.area().order_at_end(placed.parent);
         let entities = {
             let lookup = |asset| self.assemblies.get(&asset).cloned();
             Expander::new(&lookup).place(id, root, &placed)
@@ -643,11 +659,12 @@ impl Workbench {
                 return;
             }
         };
-        // Where the camera looks: the copy's own placement.
-        let focus = self.viewport.camera.focus();
+        // Where it was dropped, or where the camera looks: the copy's own
+        // placement.
+        let at = target.map_or_else(|| self.viewport.camera.focus(), |(at, _)| at);
         if let Some((_, data)) = entities.iter_mut().find(|(e, _)| *e == root) {
             let mut transform = data.get::<Transform>().unwrap_or_default();
-            transform.position = focus;
+            transform.position = at;
             data.set(&transform);
         }
         let mut selected = Selection::default();
@@ -738,6 +755,10 @@ impl Workbench {
             // Menu commands need the window (to start renaming), so the
             // workbench runs them where it has it.
             AreaRequest::Command(_) => {}
+            AreaRequest::PlaceUnder { asset, parent } => {
+                let at = self.document.area().world_matrix(parent).w_axis.truncate();
+                self.place_dropped(asset, at, Some(parent));
+            }
         }
     }
 

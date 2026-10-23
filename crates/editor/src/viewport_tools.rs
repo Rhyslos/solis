@@ -60,6 +60,13 @@ pub(crate) enum ViewportEvent {
         /// Replace or add.
         mode: PickMode,
     },
+    /// An asset dragged from the Library was dropped here.
+    Drop {
+        /// The model or assembly.
+        asset: reflect::AssetId,
+        /// Where in the world: the surface under the mouse, or the ground.
+        at: Vec3,
+    },
 }
 
 /// What a pick sent to the renderer is for.
@@ -70,6 +77,12 @@ pub(crate) enum PickPurpose {
         mode: PickMode,
         /// Lamps whose markers are inside the box (they have no surface).
         markers: Vec<EntityId>,
+    },
+    /// Where to put an asset dropped from the Library; `fallback` (the
+    /// ground under the mouse) if there's no surface there.
+    Drop {
+        asset: reflect::AssetId,
+        fallback: Vec3,
     },
 }
 
@@ -340,6 +353,31 @@ impl Tools {
         );
     }
 
+    /// An asset dragged from the Library was dropped at `at`: it goes on
+    /// the surface there, or on the ground (or where the camera looks, if
+    /// the ground isn't under the mouse).
+    pub(crate) fn drop_asset(
+        &mut self,
+        asset: reflect::AssetId,
+        at: Vec2,
+        camera: &Camera,
+        area: &AreaView,
+        size: Vec2,
+        ppp: f32,
+    ) {
+        let fallback = camera
+            .ray_through(at, size)
+            .hit_ground(0.0)
+            .filter(|p| p.distance(camera.position) < 1_000.0)
+            .unwrap_or_else(|| camera.focus());
+        let px = (at * ppp).floor().max(Vec2::ZERO);
+        self.ask(
+            [px.x as u32, px.y as u32, 1, 1],
+            PickPurpose::Drop { asset, fallback },
+            area,
+        );
+    }
+
     /// Asks the renderer about `rect`. A newer question replaces one not
     /// yet sent.
     fn ask(&mut self, rect: [u32; 4], purpose: PickPurpose, area: &AreaView) {
@@ -383,6 +421,13 @@ impl Tools {
         let Some(answer) = answer else {
             *waited += 1;
             if *waited > PICK_PATIENCE {
+                // A drop still lands, on the ground, rather than being lost.
+                if let PickPurpose::Drop { asset, fallback } = pick.purpose {
+                    self.events.push(ViewportEvent::Drop {
+                        asset,
+                        at: fallback,
+                    });
+                }
                 self.pick = self.next.take();
             }
             return;
@@ -402,6 +447,10 @@ impl Tools {
                 hits.extend(markers);
                 ViewportEvent::Box { hits, mode: *mode }
             }
+            PickPurpose::Drop { asset, fallback } => ViewportEvent::Drop {
+                asset: *asset,
+                at: answer.point.unwrap_or(*fallback),
+            },
         };
         self.events.push(event);
         self.pick = self.next.take();

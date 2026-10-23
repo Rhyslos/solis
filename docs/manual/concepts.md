@@ -39,7 +39,9 @@
 - **Project:** a folder holding one game: its assets, settings and areas. See [Projects and the Library](projects-and-the-library.md).
 - **Asset:** a file the game uses: a model now, textures, sounds and code later.
 - **Sidecar:** the small `.solmeta` text file beside each asset holding its ID, so renaming the file breaks nothing. Commit it with the asset.
-- **Library:** the panel listing the project's assets.
+- **Library:** the panel showing the project's files, folder by folder, with thumbnails; drag from it to place things.
+- **Thumbnail:** a small picture of a file, so you can see what a model or picture is without opening it.
+- **Recycle Bin:** where deleted files wait until you empty it; deleting in the Library sends files there, so nothing is lost by accident.
 - **Cache:** files Solis makes to work faster (models it has already read). Safe to delete: they're made again.
 - **Hot reload:** a changed file shows in Solis straight away, without restarting.
 

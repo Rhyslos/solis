@@ -54,6 +54,12 @@ ron = "0.12"
 # Watching the project folder for changed files (decision 0021).
 notify = "8.2"
 notify-debouncer-mini = "0.7"
+# Deleting from the Library moves files to the Recycle Bin, so nothing is
+# lost by accident.
+trash = "5.2"
+# Opening a file in its own program, or a folder in the system's file
+# browser, from the Library.
+opener = "0.9"
 
 [workspace.lints.rust]
 # No unsafe code. "deny" rather than "forbid" so that a reviewed exception,

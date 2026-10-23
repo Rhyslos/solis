@@ -101,6 +101,7 @@ impl Workbench {
                         after_click(self.document.area(), &self.document.selection, hit, mode);
                     self.area_panel.reveal = self.document.selection.primary();
                 }
+                ViewportEvent::Drop { asset, at } => self.place_dropped(asset, at, None),
                 ViewportEvent::Box { hits, mode } => {
                     self.document.selection =
                         after_box(self.document.area(), &self.document.selection, &hits, mode);
