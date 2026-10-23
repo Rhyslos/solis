@@ -581,13 +581,14 @@ impl Parser<'_> {
 
 /// A number read from `text`: if the text is exactly how an `f32` is
 /// written, it's that `f32` (so every value Solis writes reads back to the
-/// same bits); otherwise the nearest `f64`.
+/// same bits); otherwise the nearest `f64` (`v`). The `f32` is read from
+/// the text itself, not from `v`: rounding twice (to `f64`, then `f32`)
+/// can land on the wrong neighbour.
 fn read_float(v: f64, text: &str) -> f64 {
-    let single = v as f32;
-    if single.is_finite() && single_text(single) == text.trim_start_matches('+') {
-        f64::from(single)
-    } else {
-        v
+    let text = text.trim_start_matches('+');
+    match text.parse::<f32>() {
+        Ok(single) if single.is_finite() && single_text(single) == text => f64::from(single),
+        _ => v,
     }
 }
 
