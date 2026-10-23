@@ -60,6 +60,11 @@ pub mod backdrop {
     pub const HORIZON: Color32 = Color32::from_rgb(0x1c, 0x1e, 0x23);
     /// The ground just below the horizon (it lightens towards your feet).
     pub const GROUND: Color32 = Color32::from_rgb(0x1e, 0x21, 0x26);
+
+    /// A colour as the renderer takes it: sRGB, 0 to 1.
+    pub fn rgb(c: Color32) -> [f32; 3] {
+        [c.r(), c.g(), c.b()].map(|v| f32::from(v) / 255.0)
+    }
 }
 
 /// Axis colours: X red, Y green, Z blue (Z is up).

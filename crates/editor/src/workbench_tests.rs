@@ -1207,14 +1207,16 @@ fn the_library_lists_the_project_and_a_double_click_places() {
     w.set_project(Some(crate::library::ProjectInfo {
         name: "Harbour".into(),
         root: "/projects/harbour".into(),
+        assets: "/projects/harbour/assets".into(),
     }));
     assert_eq!(w.title(), "Test Engine 9.9.9 · Harbour · Untitled area");
     let id = AssetId(reflect::Id::from_raw(42).unwrap());
     w.set_library(vec![crate::library::LibraryItem {
-        id,
+        id: Some(id),
         kind: crate::library::LibraryKind::Model,
         name: "Lighthouse".into(),
-        path: "props/lighthouse.glb".into(),
+        path: "lighthouse.glb".into(),
+        thumbnail: None,
     }]);
     let mut h = acting(w);
     h.run();
@@ -1263,6 +1265,7 @@ fn opening_another_project_starts_a_new_area_and_reloads_swap_models() {
     w.set_project(Some(crate::library::ProjectInfo {
         name: "Other".into(),
         root: "/other".into(),
+        assets: std::path::PathBuf::from("/other").join("assets"),
     }));
     assert!(w.models().is_empty());
     assert_eq!(w.document().area().len(), 2, "a fresh area");

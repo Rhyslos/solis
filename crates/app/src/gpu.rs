@@ -25,6 +25,8 @@ pub struct GpuViewport {
     image: Option<Image>,
     /// Imported models, uploaded.
     models: HashMap<AssetId, GpuModel>,
+    /// The image thumbnails are drawn into, made the first time.
+    thumbnail_target: Option<ViewportTarget>,
 }
 
 impl GpuViewport {
@@ -36,7 +38,99 @@ impl GpuViewport {
             state: state.clone(),
             image: None,
             models: HashMap::new(),
+            thumbnail_target: None,
         }
+    }
+
+    /// Draws `model` from a three-quarter view into a small image of its
+    /// own for the Library, and returns the egui texture showing it. The
+    /// model is uploaded only for this and let go straight after.
+    pub fn thumbnail(&mut self, model: &assets::Model) -> Option<egui::TextureId> {
+        let side = crate::thumbnails::SIDE;
+        let device = &self.state.device;
+        let queue = &self.state.queue;
+        let target = self
+            .thumbnail_target
+            .get_or_insert_with(|| self.renderer.create_target(device, [side, side]));
+        let (min, max) = (model.bounds.min, model.bounds.max);
+        if !(min.is_finite() && max.is_finite()) {
+            return None;
+        }
+        let centre = (min + max) * 0.5;
+        let radius = ((max - min).length() * 0.5).max(0.05);
+        let mut camera = editor::Camera {
+            position: centre + glam::Vec3::new(1.0, -1.5, 0.9).normalize() * radius * 2.4,
+            ..editor::Camera::default()
+        };
+        camera.look_at(centre);
+        let uploaded = self.renderer.upload_model(device, queue, model);
+        let params = FrameParams {
+            view_projection: camera.view_projection(1.0),
+            camera_position: camera.position,
+            // The grid under the model, as in the viewport.
+            focus: glam::Vec3::new(centre.x, centre.y, 0.0),
+            sky_top: editor::theme::backdrop::rgb(editor::theme::backdrop::SKY_TOP),
+            sky_horizon: editor::theme::backdrop::rgb(editor::theme::backdrop::HORIZON),
+            ground: editor::theme::backdrop::rgb(editor::theme::backdrop::GROUND),
+            shading: render::Shading {
+                look: render::Look::Standard,
+                bands: 3,
+                outline_px: 0.0,
+            },
+            size_px: [side, side],
+            sun: render::Sun::default(),
+            environment: to_render_environment(&Environment::default()),
+        };
+        self.renderer.render(
+            device,
+            queue,
+            target,
+            &params,
+            &[render::Placement {
+                model: &uploaded,
+                node: None,
+                transform: glam::Mat4::IDENTITY,
+                pick: 0,
+            }],
+            &[],
+        );
+        // Copied into a texture of its own, so the next thumbnail can be
+        // drawn in the same image.
+        let size = wgpu::Extent3d {
+            width: side,
+            height: side,
+            depth_or_array_layers: 1,
+        };
+        let texture = device.create_texture(&wgpu::TextureDescriptor {
+            label: Some("thumbnail"),
+            size,
+            mip_level_count: 1,
+            sample_count: 1,
+            dimension: wgpu::TextureDimension::D2,
+            format: render::COLOR_FORMAT,
+            usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
+            view_formats: &[],
+        });
+        let mut encoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
+            label: Some("thumbnail copy"),
+        });
+        encoder.copy_texture_to_texture(
+            target.color_texture().as_image_copy(),
+            texture.as_image_copy(),
+            size,
+        );
+        queue.submit([encoder.finish()]);
+        let view = texture.create_view(&wgpu::TextureViewDescriptor::default());
+        Some(self.state.renderer.write().register_native_texture(
+            device,
+            &view,
+            wgpu::FilterMode::Linear,
+        ))
+    }
+
+    /// Lets go of a thumbnail made by [`Self::thumbnail`].
+    pub fn free_thumbnail(&self, id: egui::TextureId) {
+        self.state.renderer.write().free_texture(&id);
     }
 
     /// A line for the console about the GPU in use.

@@ -11,6 +11,7 @@ pub mod cli;
 pub mod gpu;
 pub mod import;
 pub mod project;
+pub mod thumbnails;
 pub mod window;
 
 /// The text shown by `--version`: the name and version.

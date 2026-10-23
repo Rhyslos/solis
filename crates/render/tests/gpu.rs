@@ -1537,3 +1537,69 @@ fn picking_finds_the_placement_under_a_pixel_and_where_it_is() {
     assert_eq!(one.pick_at(x, row), Some(7));
     assert_eq!(one.all().len(), 1);
 }
+
+/// The camera at `eye` looking at `at`, Z up, as the editor's camera sees:
+/// 50° tall, from 5 cm to 5 km.
+fn looking_at(eye: Vec3, at: Vec3) -> Mat4 {
+    let (near, far) = (0.05_f32, 5_000.0_f32);
+    let scale = 1.0 / (25.0_f32.to_radians()).tan();
+    let projection = Mat4::from_cols(
+        Vec4::new(scale, 0.0, 0.0, 0.0),
+        Vec4::new(0.0, scale, 0.0, 0.0),
+        Vec4::new(0.0, 0.0, near / (far - near), -1.0),
+        Vec4::new(0.0, 0.0, far * near / (far - near), 0.0),
+    );
+    let f = (at - eye).normalize();
+    let r = f.cross(Vec3::Z).normalize();
+    let u = r.cross(f);
+    let view = Mat4::from_cols(
+        Vec4::new(r.x, u.x, -f.x, 0.0),
+        Vec4::new(r.y, u.y, -f.y, 0.0),
+        Vec4::new(r.z, u.z, -f.z, 0.0),
+        Vec4::new(-r.dot(eye), -u.dot(eye), f.dot(eye), 1.0),
+    );
+    projection * view
+}
+
+#[test]
+fn the_ground_axes_stay_thin_lines_close_up() {
+    // Regression: each axis was one line from end to end of the grid. Seen
+    // from close by (as a Library thumbnail is), Mesa's Vulkan driver drew
+    // the line passing behind the camera as a filled green wedge.
+    let Some(gpu) = gpu() else {
+        return;
+    };
+    let renderer = ViewportRenderer::new(&gpu.device, best_sample_count(&gpu.adapter));
+    let size = 128;
+    let mut target = renderer.create_target(&gpu.device, [size, size]);
+    let eye = Vec3::new(5.2, -7.8, 5.7);
+    renderer.render(
+        &gpu.device,
+        &gpu.queue,
+        &mut target,
+        &FrameParams {
+            view_projection: looking_at(eye, Vec3::Z),
+            camera_position: eye,
+            focus: Vec3::ZERO,
+            sky_top: srgb(SKY_TOP),
+            sky_horizon: srgb(SKY_HORIZON),
+            ground: srgb(GROUND),
+            shading: Shading::default(),
+            size_px: [size, size],
+            sun: Sun::default(),
+            environment: unmapped(),
+        },
+        &[],
+        &[],
+    );
+    let pixels = read_pixels(&gpu.device, &gpu.queue, &target).unwrap();
+    let green = pixels
+        .chunks(4)
+        .filter(|p| p[1] > p[0].saturating_add(40) && p[1] > p[2].saturating_add(40))
+        .count();
+    assert!(green > 0, "the Y axis is drawn");
+    assert!(
+        green < (size * size / 20) as usize,
+        "{green} green pixels: the axis is a line, not a wedge"
+    );
+}

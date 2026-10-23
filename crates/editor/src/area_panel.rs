@@ -250,6 +250,14 @@ pub(crate) enum AreaRequest {
     },
     /// Something picked from the panel's menus.
     Command(MenuCommand),
+    /// Place a model or assembly dragged from the Library under this
+    /// entity.
+    PlaceUnder {
+        /// The asset.
+        asset: AssetId,
+        /// The entity it goes under.
+        parent: EntityId,
+    },
 }
 
 /// Where the name being typed is kept between frames.
@@ -622,7 +630,21 @@ fn entity_row(
         set.insert(id);
     }
     response.dnd_set_drag_payload(id);
-    if let Some(dragged) = response.dnd_release_payload::<EntityId>() {
+    let from_library = response
+        .dnd_hover_payload::<crate::library::LibraryDrag>()
+        .filter(|d| d.0.kind.placeable());
+    if let Some(dropped) = response.dnd_release_payload::<crate::library::LibraryDrag>()
+        && let Some(asset) = dropped.0.id.filter(|_| dropped.0.kind.placeable())
+    {
+        requests.push(AreaRequest::PlaceUnder { asset, parent: id });
+    } else if from_library.is_some() {
+        ui.painter().rect_stroke(
+            response.rect,
+            3.0,
+            egui::Stroke::new(1.5, accent.colors().light),
+            egui::StrokeKind::Inside,
+        );
+    } else if let Some(dragged) = response.dnd_release_payload::<EntityId>() {
         if *dragged != id {
             requests.push(AreaRequest::Reparent {
                 entity: *dragged,

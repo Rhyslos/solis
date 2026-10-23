@@ -261,28 +261,31 @@ impl LineVertex {
     };
 }
 
-/// The X and Y axes along the ground, as line pairs, as far as the grid
-/// reaches.
-pub fn ground_axes() -> [LineVertex; 4] {
+/// How long each piece of the ground axes is, in metres. One line from end
+/// to end of the grid passes behind a nearby camera, and some GPUs (Mesa's
+/// software Vulkan driver, for one) then draw it as a filled wedge; short
+/// pieces are clipped properly everywhere.
+const AXIS_PIECE: f32 = 10.0;
+
+/// The X and Y axes along the ground, as line pairs (X first), as far as
+/// the grid reaches, in short pieces.
+pub fn ground_axes() -> Vec<LineVertex> {
     let h = GRID_HALF_EXTENT;
-    [
-        LineVertex {
-            position: [-h, 0.0, 0.0],
-            color: AXIS_X_COLOR,
-        },
-        LineVertex {
-            position: [h, 0.0, 0.0],
-            color: AXIS_X_COLOR,
-        },
-        LineVertex {
-            position: [0.0, -h, 0.0],
-            color: AXIS_Y_COLOR,
-        },
-        LineVertex {
-            position: [0.0, h, 0.0],
-            color: AXIS_Y_COLOR,
-        },
-    ]
+    let pieces = (2.0 * h / AXIS_PIECE).ceil() as usize;
+    let mut lines = Vec::with_capacity(pieces * 4);
+    for (along, color) in [(Vec3::X, AXIS_X_COLOR), (Vec3::Y, AXIS_Y_COLOR)] {
+        for i in 0..pieces {
+            let a = -h + i as f32 * AXIS_PIECE;
+            let b = (a + AXIS_PIECE).min(h);
+            for t in [a, b] {
+                lines.push(LineVertex {
+                    position: (along * t).to_array(),
+                    color,
+                });
+            }
+        }
+    }
+    lines
 }
 
 /// The kinds of thing the viewport draws, in drawing order.
@@ -889,9 +892,22 @@ mod tests {
     fn the_axes_lie_on_the_ground_through_the_origin() {
         let axes = ground_axes();
         assert!(axes.iter().all(|v| v.position[2] == 0.0));
-        assert_eq!(axes[0].color, AXIS_X_COLOR);
-        assert_eq!(axes[2].color, AXIS_Y_COLOR);
-        assert_eq!(axes[0].position[1], 0.0, "X runs along y = 0");
-        assert_eq!(axes[2].position[0], 0.0, "Y runs along x = 0");
+        let (x, y): (Vec<&LineVertex>, Vec<&LineVertex>) =
+            axes.iter().partition(|v| v.color == AXIS_X_COLOR);
+        assert!(x.iter().all(|v| v.position[1] == 0.0), "X runs along y = 0");
+        assert!(y.iter().all(|v| v.color == AXIS_Y_COLOR));
+        assert!(y.iter().all(|v| v.position[0] == 0.0), "Y runs along x = 0");
+        // From one end of the grid to the other, in short pieces.
+        let ends = |line: &[&LineVertex], i: usize| {
+            line.iter()
+                .map(|v| v.position[i])
+                .fold((f32::MAX, f32::MIN), |(lo, hi), p| (lo.min(p), hi.max(p)))
+        };
+        assert_eq!(ends(&x, 0), (-GRID_HALF_EXTENT, GRID_HALF_EXTENT));
+        assert_eq!(ends(&y, 1), (-GRID_HALF_EXTENT, GRID_HALF_EXTENT));
+        for pair in axes.chunks(2) {
+            let length = Vec3::from(pair[0].position).distance(Vec3::from(pair[1].position));
+            assert!(length <= AXIS_PIECE + 1e-3);
+        }
     }
 }

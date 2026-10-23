@@ -162,10 +162,7 @@ impl ViewportRenderer for NoRenderer {
     }
 }
 
-/// sRGB 0 to 1 from a colour.
-fn rgb(c: Color32) -> [f32; 3] {
-    [c.r(), c.g(), c.b()].map(|v| f32::from(v) / 255.0)
-}
+use theme::backdrop::rgb;
 
 /// The viewport's state between frames.
 #[derive(Debug, Clone)]
@@ -307,6 +304,16 @@ impl Viewport {
             self.tools
                 .interact(input, &self.camera, &self.area, &self.snapping, size, ppp);
         }
+        let mouse = ui
+            .input(|i| i.pointer.latest_pos())
+            .map(|p| glam::Vec2::new(p.x - rect.min.x, p.y - rect.min.y));
+        if let Some(dropped) = response.dnd_release_payload::<crate::library::LibraryDrag>()
+            && let (Some(asset), Some(at)) = (dropped.0.id, mouse)
+            && dropped.0.kind.placeable()
+        {
+            self.tools
+                .drop_asset(asset, at, &self.camera, &self.area, size, ppp);
+        }
         let mut view = self.view(size_px, ppp);
         view.pick = self.tools.rect_to_send();
         let painter = ui.painter_at(rect);
@@ -342,6 +349,18 @@ impl Viewport {
             self.snapping.locked,
             accent,
         );
+        if let Some(dragged) = response.dnd_hover_payload::<crate::library::LibraryDrag>()
+            && dragged.0.kind.placeable()
+            && let Some(at) = ui.input(|i| i.pointer.latest_pos())
+        {
+            painter.text(
+                at + egui::vec2(18.0, 14.0),
+                egui::Align2::LEFT_TOP,
+                format!("Drop to place {}", dragged.0.name),
+                egui::FontId::proportional(12.0),
+                theme::TEXT_STRONG,
+            );
+        }
         if let viewport_tools::Pressing::Gizmo {
             last: Some(change), ..
         } = &self.tools.pressing

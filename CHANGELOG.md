@@ -13,6 +13,8 @@ What changed in each version, for people using Solis. Newest first.
 
 ### Added
 
+- **The Library** shows the project's folders (a tree you can put away) and every file in the folder chosen: models and pictures as **thumbnails**, areas, assemblies and other files with a coloured stripe per kind, or as a list; a search box finds files in every folder. **Drag a model or assembly into the viewport** to place it on the surface under the mouse, or **onto an entity** in the Area panel to place it under that one. Double-click opens areas, and other files in their own program. Right-click to rename, show in Explorer, or delete to the Recycle Bin; drag a file onto a folder to move it. IDs always follow.
+- **The Code tab** lists the project's code files (Lust, Lua and Rust); double-click opens one in your code editor.
 - **The Area panel** has a search box, folds (▾/▸ before an entity with children, and View > Fold or Unfold everything), and on each row an **eye** to hide an entity in the editor and a **padlock** so clicks in the viewport pass through it. Its **Edit** and **Entity** menus work (the same as the top bar's, where Edit also gains Duplicate, Delete, Rename, Select all and Select nothing). Selecting in the viewport unfolds the way to it.
 - **Properties with several entities selected** shows the components they all have; settings that differ show **—**, and a change applies to every one as one undo step (changing one number of a position or rotation changes only that number on each). Add component and × work on all of them.
 - **Copy and paste components' values:** the ⋯ beside a component has Copy values, Paste values (adding the component where it's missing) and Reset to defaults; Properties' Edit menu copies and pastes all of them.
@@ -37,6 +39,9 @@ What changed in each version, for people using Solis. Newest first.
 - A component Solis doesn't know (for example from game code that isn't there) is kept untouched and shown as **Missing component**, with **Remove**.
 
 ### Fixed
+
+- The last project now opens again when Solis starts (it was saved but never read back).
+- The red and green axes on the ground could show as a large filled wedge on some graphics drivers when the camera was close to them.
 
 - A layout saved before a panel existed keeps its arrangement and gets the new panel beside its usual neighbours, instead of being reset to the default.
 - A full Console no longer slows each new message down.

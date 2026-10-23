@@ -64,6 +64,24 @@ pub enum WorkbenchAction {
     /// project, then turn it into a copy of it with
     /// [`Workbench::make_copy`].
     CreateAssembly(EntityId),
+    /// Open this area file (a double-click in the Library); the app reads
+    /// it and calls [`Workbench::open_area`].
+    OpenAreaFile(std::path::PathBuf),
+    /// Open this file or folder in the system's own program or file
+    /// browser.
+    OpenExternally(std::path::PathBuf),
+    /// Rename or move a file or folder inside the project's assets, with
+    /// its sidecar.
+    MoveFile {
+        /// Where it is, inside the assets.
+        from: std::path::PathBuf,
+        /// Where it goes, inside the assets.
+        to: std::path::PathBuf,
+    },
+    /// Make a new folder inside this one (inside the assets).
+    NewFolder(std::path::PathBuf),
+    /// Move a file or folder (inside the assets) to the Recycle Bin.
+    DeleteFile(std::path::PathBuf),
     /// Change one field of an entity inside an assembly's file (Apply to
     /// assembly); the app saves it and hands it back with
     /// [`Workbench::set_assembly`], which updates every copy.
@@ -128,6 +146,13 @@ pub struct Workbench {
     pub(crate) area_panel: crate::area_panel::AreaPanelState,
     /// Components' values copied in Properties, to paste.
     pub(crate) copied: Vec<(String, reflect::ComponentData)>,
+    /// The project's folders, for the Library's tree.
+    pub(crate) folders: Vec<String>,
+    /// How the Library is shown.
+    pub(crate) library_state: crate::library::LibraryState,
+    /// Where assets being placed go, when they were dropped somewhere:
+    /// the point, and the entity they go under.
+    pub(crate) place_targets: BTreeMap<AssetId, (glam::Vec3, Option<EntityId>)>,
 }
 
 impl Workbench {
@@ -149,6 +174,9 @@ impl Workbench {
             moving: None,
             area_panel: Default::default(),
             copied: Vec::new(),
+            folders: Vec::new(),
+            library_state: Default::default(),
+            place_targets: BTreeMap::new(),
             assemblies: BTreeMap::new(),
             outbox: Vec::new(),
             unsaved_prompt: None,
@@ -233,9 +261,18 @@ impl Workbench {
         self.recent = recent;
     }
 
-    /// The project's assets, for the Library.
+    /// The project's files, for the Library.
     pub fn set_library(&mut self, items: Vec<LibraryItem>) {
         self.library = items;
+    }
+
+    /// The project's folders inside its assets, `/` between names, for
+    /// the Library's tree.
+    pub fn set_folders(&mut self, folders: Vec<String>) {
+        if !folders.contains(&self.library_state.folder) {
+            self.library_state.folder.clear();
+        }
+        self.folders = folders;
     }
 
     /// Whether the model `id` is loaded (placed or reloaded before).
@@ -409,7 +446,7 @@ impl Workbench {
         let style = theme::dock_style(ui.style().as_ref(), self.accent);
         let mut shown = HashSet::new();
         let mut area_requests = Vec::new();
-        let mut place = None;
+        let mut library_requests = Vec::new();
         let part = self.assembly_part();
         let mut requests = Vec::new();
         let (hidden, locked) = self.area_panel.in_effect(self.document.area());
@@ -441,7 +478,9 @@ impl Workbench {
                         area_requests: &mut area_requests,
                         project: self.project.as_ref(),
                         library: &self.library,
-                        place: &mut place,
+                        folders: &self.folders,
+                        library_state: &mut self.library_state,
+                        library_requests: &mut library_requests,
                         part: part.as_ref(),
                         requests: &mut requests,
                         accent: self.accent,
@@ -456,8 +495,8 @@ impl Workbench {
             self.apply_property(request, self.gesture);
         }
         actions.append(&mut self.outbox);
-        if let Some(id) = place {
-            actions.push(WorkbenchAction::PlaceAsset(id));
+        for request in library_requests {
+            self.library_request(request, &mut actions);
         }
         for request in area_requests {
             match request {
@@ -555,6 +594,7 @@ impl Workbench {
             action,
             WorkbenchAction::NewArea
                 | WorkbenchAction::OpenArea
+                | WorkbenchAction::OpenAreaFile(_)
                 | WorkbenchAction::OpenProject
                 | WorkbenchAction::NewProject
                 | WorkbenchAction::OpenRecent(_)
