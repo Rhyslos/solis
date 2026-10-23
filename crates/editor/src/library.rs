@@ -9,7 +9,7 @@
 //!
 //! The app keeps the list up to date from the asset database and makes
 //! the thumbnails; the panel only shows them and returns
-//! [`LibraryRequest`]s.
+//! `LibraryRequest`s.
 
 use crate::icons::{self, Icon};
 use crate::theme::{self, Accent};

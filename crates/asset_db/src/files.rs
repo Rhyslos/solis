@@ -278,7 +278,11 @@ mod tests {
         let kinds: Vec<(String, FileKind, bool)> = listing
             .files
             .iter()
-            .map(|f| (f.path.display().to_string(), f.kind, f.id.is_some()))
+            // `/` between folders on every system (Windows shows `\`).
+            .map(|f| {
+                let path: Vec<_> = f.path.iter().map(|p| p.to_string_lossy()).collect();
+                (path.join("/"), f.kind, f.id.is_some())
+            })
             .collect();
         assert_eq!(
             kinds,
