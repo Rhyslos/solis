@@ -9,11 +9,17 @@ Solis is a Rust program split into small, single-purpose crates. **Lower layers 
 | 3 | App | `app` | Opens the window, owns the frame loop, wires the rest together. No feature logic. |
 | 2 | Editor | `editor` | The editor's interface: top bar, dockable panels, theme. Never needed by a game. |
 | 1 | Engine | `render`, `assets` | What games run on. Knows nothing about the editor. `assets` reads model files; `render` draws. |
-| 0 | Core | none yet | Shared building blocks with no GPU, window or interface (math, IDs, components). |
+| 0 | Core | `reflect`, `scene` | Shared building blocks with no GPU, window or interface. `reflect` holds IDs, values and component schemas; `scene` holds the scene document and the built-in components. |
 
 Each crate's `README.md` states its purpose and what it **must never** do. Read it before changing the crate.
 
-Planned: `world` (entities and components, layer 0 or 1) in Phase 2; physics, sound and networking crates in later phases. See ROADMAP.md.
+Planned: `asset_db` (layer 1) later in Phase 2; the game's own fast storage in Phase 3 ([decision 0019](docs/decisions/0019-scene-document-now-game-storage-later.md)); physics, sound and networking crates in later phases. See ROADMAP.md.
+
+## The scene
+
+The editor edits a **scene document** (`scene::Scene`): entities by stable random ID, each with a name, a parent, an order among its siblings, and components stored as plain values (`reflect::ComponentData`). A component's fields are described by a **schema** looked up by name in a `reflect::Registry`, so Properties draws any component (built-in now, Lust and Lua later) without knowing it, and a component nobody registered is kept untouched and shown as missing ([decision 0019](docs/decisions/0019-scene-document-now-game-storage-later.md)). Built-in components (`Transform`, `Light`, `Model`, `Environment`) are Rust structs that convert to and from their values.
+
+Panels never change the document: Properties returns `PropertyRequest`s and the Scene panel returns entities to delete; the workbench applies them (so undo can record them). Each frame the workbench turns the document into a `SceneView` (models to draw, the sun, lamps placed in the world, the environment), which the app maps to the renderer's types.
 
 ## How a frame runs
 

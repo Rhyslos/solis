@@ -1,14 +1,13 @@
 //! Connects the viewport renderer (the `render` crate) to the window's wgpu
 //! device and to egui, so the viewport panel can show the rendered image.
 
-use editor::{
-    EnvironmentSettings, Lamp, LampKind, LookKind, ModelId, SkyKind, ToneMapping, ViewportRenderer,
-    ViewportView,
-};
+use editor::{LookKind, ViewLight, ViewportRenderer, ViewportView};
 use eframe::egui;
 use eframe::egui_wgpu::RenderState;
 use eframe::wgpu;
+use reflect::AssetId;
 use render::{FrameParams, GpuModel, ViewportTarget};
+use scene::builtin::{Environment, LightKind, Sky, ToneMapping};
 use std::collections::HashMap;
 
 /// The viewport's image and the egui texture showing it.
@@ -25,7 +24,7 @@ pub struct GpuViewport {
     renderer: render::ViewportRenderer,
     image: Option<Image>,
     /// Imported models, uploaded.
-    models: HashMap<ModelId, GpuModel>,
+    models: HashMap<AssetId, GpuModel>,
 }
 
 impl GpuViewport {
@@ -62,7 +61,7 @@ impl GpuViewport {
     }
 
     /// Uploads an imported model, to draw whenever the viewport lists `id`.
-    pub fn add_model(&mut self, id: ModelId, model: &assets::Model) {
+    pub fn add_model(&mut self, id: AssetId, model: &assets::Model) {
         let uploaded = self
             .renderer
             .upload_model(&self.state.device, &self.state.queue, model);
@@ -70,7 +69,7 @@ impl GpuViewport {
     }
 
     /// Frees an imported model.
-    pub fn remove_model(&mut self, id: ModelId) {
+    pub fn remove_model(&mut self, id: AssetId) {
         self.models.remove(&id);
     }
 
@@ -111,18 +110,18 @@ impl GpuViewport {
     }
 }
 
-/// The editor's sky, fog and exposure as the renderer takes them.
-fn to_render_environment(env: &EnvironmentSettings) -> render::Environment {
+/// The scene's sky, fog and exposure as the renderer takes them.
+fn to_render_environment(env: &Environment) -> render::Environment {
     render::Environment {
         sky: match env.sky {
-            SkyKind::Backdrop => render::Sky::Backdrop,
-            SkyKind::Daylight => render::Sky::Daylight {
+            Sky::Backdrop => render::Sky::Backdrop,
+            Sky::Daylight => render::Sky::Daylight {
                 strength: env.sky_strength,
             },
         },
         fog: env.fog.then(|| render::Fog {
             half_distance: env.fog_distance,
-            color: (!env.fog_matches_sky).then(|| env.fog_color.map(|c| f32::from(c) / 255.0)),
+            color: (!env.fog_matches_sky).then_some(env.fog_color),
         }),
         exposure: env.exposure,
         tonemap: match env.tone_mapping {
@@ -133,21 +132,38 @@ fn to_render_environment(env: &EnvironmentSettings) -> render::Environment {
     }
 }
 
-/// An editor lamp as the renderer takes it.
-fn to_render_light(lamp: &Lamp) -> render::Light {
-    render::Light {
-        kind: match lamp.kind {
-            LampKind::Point => render::LightKind::Point,
-            LampKind::Spot { inner, outer } => render::LightKind::Spot {
-                inner: inner.to_radians(),
-                outer: outer.to_radians(),
-            },
+/// The scene's sun as the renderer takes it; with no sun, a dark one.
+fn to_render_sun(sun: Option<&ViewLight>) -> render::Sun {
+    sun.map_or(
+        render::Sun {
+            strength: 0.0,
+            shadows: false,
+            ..render::Sun::default()
         },
-        position: lamp.position,
-        direction: lamp.direction,
-        color: lamp.color.map(|c| f32::from(c) / 255.0),
-        strength: lamp.strength,
-        range: lamp.range,
+        |sun| render::Sun {
+            direction: sun.direction,
+            color: sun.color,
+            strength: sun.strength,
+            shadows: sun.shadows,
+        },
+    )
+}
+
+/// A scene light as the renderer takes it.
+fn to_render_light(light: &ViewLight) -> render::Light {
+    render::Light {
+        kind: match light.kind {
+            LightKind::Spot => render::LightKind::Spot {
+                inner: light.inner,
+                outer: light.outer,
+            },
+            _ => render::LightKind::Point,
+        },
+        position: light.position,
+        direction: light.direction,
+        color: light.color,
+        strength: light.strength,
+        range: light.range,
     }
 }
 
@@ -170,12 +186,7 @@ impl ViewportRenderer for GpuViewport {
                 outline_px: view.outline_px,
             },
             size_px: view.size_px,
-            sun: render::Sun {
-                direction: view.sun.direction(),
-                color: view.sun.color.map(|c| f32::from(c) / 255.0),
-                strength: view.sun.strength,
-                shadows: view.sun.shadows,
-            },
+            sun: to_render_sun(view.sun.as_ref()),
             environment: to_render_environment(&view.environment),
         };
         let lights: Vec<render::Light> = view.lamps.iter().map(to_render_light).collect();

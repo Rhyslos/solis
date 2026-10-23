@@ -26,7 +26,7 @@ The first build takes a few minutes. `cargo run -p app -- --help` lists the opti
 
 Solis is built in phases, one milestone per pull request. Each phase ends with a **gate** the project lead tries by hand before the next starts. This tracker is updated by the pull request that finishes each milestone; the full plan is in [ROADMAP.md](ROADMAP.md).
 
-**Overall: 12 of 60 milestones** `███░░░░░░░░░░` 20%
+**Overall: 13 of 60 milestones** `███░░░░░░░░░░` 22%
 
 **Now:** Phase 2, the world ([plan](docs/plans/phase-2.md)). Phase 1's gate is still to be tried by hand.
 
@@ -56,14 +56,14 @@ Solis is built in phases, one milestone per pull request. Each phase ends with a
 
 **Gate:** a model from Aventail or Blender looks good in the viewport, in both the standard and the stylized look.
 
-### Phase 2 · The world — 0 of 7
+### Phase 2 · The world — 1 of 7
 
-`░░░░░░░░░░░░░` 0%
+`██░░░░░░░░░░░` 14%
 
 <details>
 <summary>Milestones</summary>
 
-- [ ] Entities and components, in a scene document (decision 0019)
+- [x] Entities and components, in a scene document (decision 0019)
 - [ ] Undo and redo for every edit (decision 0022)
 - [ ] Transforms and parenting
 - [ ] Components that describe themselves, so the inspector can show any of them

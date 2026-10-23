@@ -19,7 +19,7 @@ Draw the editor with egui and egui_dock, keep its state between frames (the pane
 
 Tests of the whole editor (drawn with egui_kittest, without a GPU) are in `workbench_tests.rs`.
 
-`look.rs` holds the viewport's look (standard, stylized or unlit). `models.rs` lists the imported models (the app holds them on the GPU). `environment.rs` holds the sky, fog, exposure and tone mapping. `lighting.rs` holds the sun's settings and the lamps, what's selected in the Scene panel, and their fields in Properties. `camera.rs` holds the viewport camera and how it flies ([decision 0009](../../docs/decisions/0009-fly-camera-controls.md)). The viewport turns each frame's mouse and keys into a `FlyInput`, and `Camera::fly` does the maths, so tests can fly the camera without a window.
+`look.rs` holds the viewport's look (standard, stylized or unlit). `document.rs` holds the open scene (a `scene::Scene`), its component registry and the selection. `inspector.rs` draws any component's fields from its schema; `properties.rs` uses it and returns `PropertyRequest`s that the workbench applies, so panels never change the scene themselves. `scene_view.rs` works out what the viewport draws from the scene each frame (models, the sun, lamps placed in the world, the environment). `models.rs` holds what the editor knows about imported models, by asset ID (the app holds them on the GPU), and the lights a model's file carries. `camera.rs` holds the viewport camera and how it flies ([decision 0009](../../docs/decisions/0009-fly-camera-controls.md)). The viewport turns each frame's mouse and keys into a `FlyInput`, and `Camera::fly` does the maths, so tests can fly the camera without a window.
 
 ## Must never
 

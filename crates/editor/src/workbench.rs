@@ -9,17 +9,22 @@ use crate::camera::Camera;
 #[cfg(test)]
 use crate::console::CONSOLE_LIMIT;
 use crate::console::{Console, LogLevel, LogLine};
-use crate::environment::EnvironmentSettings;
+use crate::document::Document;
 use crate::layout::{self, Preset};
-use crate::lighting::{Lamp, LampFromFile, LampId, Selection, SunSettings};
-use crate::models::{ModelId, ModelInfo};
+use crate::models::{FileLight, FileLightKind, ModelInfo};
 use crate::panel::Panel;
 use crate::panels::{PanelViewer, drop_hint};
+use crate::properties::PropertyRequest;
+use crate::scene_view::SceneView;
 use crate::theme::{self, Accent};
 use crate::viewport::{Overlays, Tool, Viewport, ViewportRenderer};
 use egui::Ui;
 use egui_dock::{DockArea, DockState};
-use std::collections::HashSet;
+use glam::Vec3;
+use reflect::{AssetId, AssetRef, EntityId};
+use scene::EntityData;
+use scene::builtin::{Light, LightKind, Model, Transform};
+use std::collections::{BTreeMap, HashSet};
 
 /// Facts about the program, shown in the window title and the About box.
 /// The app passes these in, so this crate never names the program itself.
@@ -40,9 +45,11 @@ pub enum WorkbenchAction {
     ImportModel,
     /// Bring in the built-in sample scene (Help > Add the sample scene).
     AddSampleScene,
-    /// Take an imported model out of the viewport and free it.
-    RemoveModel(ModelId),
 }
+
+/// How far above the camera's focus point a new point light goes, in
+/// metres.
+const POINT_LIGHT_HEIGHT: f32 = 2.0;
 
 /// The editor's state, kept between frames.
 pub struct Workbench {
@@ -51,12 +58,10 @@ pub struct Workbench {
     pub(crate) accent: Accent,
     pub(crate) viewport: Viewport,
     pub(crate) console: Console,
-    /// The imported models, in the order they arrived.
-    pub(crate) models: Vec<ModelInfo>,
-    /// What's selected in the Scene panel.
-    pub(crate) selection: Selection,
-    /// The number the next lamp gets.
-    pub(crate) next_lamp: u64,
+    /// The open scene and what's selected in it.
+    pub(crate) document: Document,
+    /// What the editor knows about the imported models, by asset.
+    pub(crate) models: BTreeMap<AssetId, ModelInfo>,
     /// Whether files are being dragged over the window.
     pub(crate) files_hovering: bool,
     pub(crate) about_open: bool,
@@ -67,7 +72,7 @@ pub struct Workbench {
 
 impl Workbench {
     /// A workbench with a saved panel layout, if it is usable (otherwise the
-    /// default one).
+    /// default one), and a new scene.
     pub fn new(info: AppInfo, saved_layout: Option<DockState<Panel>>) -> Self {
         Self {
             info,
@@ -75,9 +80,8 @@ impl Workbench {
             accent: Accent::default(),
             viewport: Viewport::default(),
             console: Console::default(),
-            models: Vec::new(),
-            selection: Selection::Nothing,
-            next_lamp: 1,
+            document: Document::default(),
+            models: BTreeMap::new(),
             files_hovering: false,
             about_open: false,
             in_front: HashSet::new(),
@@ -98,10 +102,17 @@ impl Workbench {
         self
     }
 
-    /// Adds an imported model to the viewport, frames the camera on it,
-    /// and says so in the console with its size and any `warnings` (parts
-    /// of the file that were left out).
-    pub fn add_model(&mut self, info: ModelInfo, warnings: &[String], seconds: f32) {
+    /// Adds an imported model to the scene as an entity (with any lights its
+    /// file carries as entities under it; a sun in the file sets the scene's
+    /// sun), frames the camera on it, and says so in the console with its
+    /// size and any `warnings` (parts of the file that were left out).
+    pub fn add_model(
+        &mut self,
+        info: ModelInfo,
+        warnings: &[String],
+        seconds: f32,
+        lights: &[FileLight],
+    ) -> EntityId {
         self.log(
             LogLevel::Info,
             format!(
@@ -115,9 +126,108 @@ impl Workbench {
             self.log(LogLevel::Warning, format!("{}: {warning}", info.name));
         }
         self.viewport.camera.frame(info.min, info.max);
-        self.models.retain(|m| m.id != info.id);
-        self.models.push(info);
-        self.sync_models();
+        let entity = self.document.scene.spawn(
+            EntityData::new(&info.name)
+                .with(&Transform::default())
+                .with(&Model {
+                    asset: Some(AssetRef {
+                        asset: info.asset,
+                        part: None,
+                    }),
+                }),
+        );
+        self.models.insert(info.asset, info);
+        self.add_file_lights(entity, lights);
+        entity
+    }
+
+    /// The lights a model's file carries: lamps become entities under the
+    /// model; a sun sets the scene's sun.
+    fn add_file_lights(&mut self, model: EntityId, lights: &[FileLight]) {
+        let mut lamps = 0;
+        for (i, light) in lights.iter().enumerate() {
+            let color = light.color.map(crate::models::linear_to_srgb);
+            let rotation = scene::builtin::aim(light.direction);
+            let strength = if light.strength.is_finite() {
+                light.strength.max(0.0)
+            } else {
+                0.0
+            };
+            if light.kind == FileLightKind::Sun {
+                self.use_file_sun(&light.name, rotation, color, strength);
+                continue;
+            }
+            let (kind, cone, soft_edge) = match light.kind {
+                FileLightKind::Spot { inner, outer } => {
+                    let outer = outer.to_degrees().clamp(1.0, 89.0);
+                    let inner = inner.to_degrees().clamp(0.0, outer);
+                    (LightKind::Spot, outer, outer - inner)
+                }
+                _ => (LightKind::Point, 30.0, 10.0),
+            };
+            let name = if light.name.trim().is_empty() {
+                format!("Light {}", i + 1)
+            } else {
+                light.name.clone()
+            };
+            let position = if light.position.is_finite() {
+                light.position
+            } else {
+                Vec3::ZERO
+            };
+            let mut data = EntityData::new(&name)
+                .with(&Transform {
+                    position,
+                    rotation,
+                    ..Transform::default()
+                })
+                .with(&Light {
+                    kind,
+                    color,
+                    strength,
+                    range: light
+                        .range
+                        .filter(|r| r.is_finite() && *r > 0.0)
+                        .unwrap_or(0.0),
+                    cone,
+                    soft_edge,
+                    ..Light::point()
+                });
+            data.parent = Some(model);
+            data.order = format!("a{i:04}");
+            self.document.scene.spawn(data);
+            lamps += 1;
+        }
+        if lamps > 0 {
+            let s = if lamps == 1 { "" } else { "s" };
+            self.log(
+                LogLevel::Info,
+                format!("The file brought {lamps} light{s} with it."),
+            );
+        }
+    }
+
+    /// Sets the scene's sun (or adds one) from a sun in a model's file.
+    fn use_file_sun(&mut self, name: &str, rotation: glam::Quat, color: [f32; 3], strength: f32) {
+        let scene = &mut self.document.scene;
+        let sun = scene
+            .with::<Light>()
+            .find(|(_, l)| l.kind == LightKind::Sun)
+            .map(|(id, _)| id);
+        let id = sun.unwrap_or_else(|| scene.spawn(EntityData::new("Sun").with(&Light::sun())));
+        if let Some(entity) = scene.get_mut(id) {
+            let mut light = entity.get::<Light>().unwrap_or_else(Light::sun);
+            light.color = color;
+            light.strength = strength;
+            let mut transform = entity.get::<Transform>().unwrap_or_default();
+            transform.rotation = rotation;
+            entity.set(&light);
+            entity.set(&transform);
+        }
+        self.log(
+            LogLevel::Info,
+            format!("The file's sun ({name}) now lights the scene; change it under Sun."),
+        );
     }
 
     /// Tells the workbench whether files are being dragged over the window,
@@ -126,139 +236,155 @@ impl Workbench {
         self.files_hovering = hovering;
     }
 
-    /// The imported models, in the order they arrived.
-    pub fn models(&self) -> &[ModelInfo] {
+    /// What the editor knows about the imported models, by asset.
+    pub fn models(&self) -> &BTreeMap<AssetId, ModelInfo> {
         &self.models
     }
 
-    /// Takes a model out of the list, with any lamps that came in with it
-    /// (the app frees it on the GPU).
-    pub(crate) fn remove_model(&mut self, id: ModelId) {
-        if let Some(i) = self.models.iter().position(|m| m.id == id) {
-            let gone = self.models.remove(i);
-            self.log(LogLevel::Info, format!("Removed {}.", gone.name));
-        }
-        self.viewport.lamps.retain(|l| l.from_model != Some(id));
-        if self.selection == Selection::Model(id) || !self.selection_exists() {
-            self.selection = Selection::Nothing;
-        }
-        self.sync_models();
+    /// The open scene and its selection.
+    pub fn document(&self) -> &Document {
+        &self.document
     }
 
-    /// Whether what's selected is still there.
-    pub(crate) fn selection_exists(&self) -> bool {
-        match self.selection {
-            Selection::Nothing | Selection::Sun | Selection::Environment => true,
-            Selection::Lamp(id) => self.viewport.lamps.iter().any(|l| l.id == id),
-            Selection::Model(id) => self.models.iter().any(|m| m.id == id),
+    /// The entity shown in Properties, if any.
+    pub fn selection(&self) -> Option<EntityId> {
+        self.document.selection.primary()
+    }
+
+    /// Selects only `id` (as clicking it in the Scene panel does); nothing
+    /// if it isn't in the scene.
+    pub fn select(&mut self, id: EntityId) {
+        if self.document.scene.contains(id) {
+            self.document.selection.select_only(id);
+        } else {
+            self.document.selection.clear();
         }
     }
 
-    /// Adds the lamps a model's file carries, removed along with the model.
-    pub fn add_model_lamps(&mut self, model: ModelId, lamps: &[LampFromFile]) {
-        for lamp in lamps {
-            let id = self.new_lamp_id();
-            self.viewport.lamps.push(Lamp::from_file(id, lamp, model));
-        }
-        if !lamps.is_empty() {
-            let s = if lamps.len() == 1 { "" } else { "s" };
-            self.log(
-                LogLevel::Info,
-                format!("The file brought {} light{s} with it.", lamps.len()),
-            );
-        }
-    }
-
-    pub(crate) fn new_lamp_id(&mut self) -> LampId {
-        let id = LampId(self.next_lamp);
-        self.next_lamp += 1;
-        id
+    /// Adds an entity with only a transform, at the point the camera looks
+    /// at, and selects it.
+    pub fn add_entity(&mut self) -> EntityId {
+        let focus = self.viewport.camera.focus();
+        self.spawn_selected(EntityData::new("Entity").with(&Transform {
+            position: focus,
+            ..Transform::default()
+        }))
     }
 
     /// Adds a point light above where the camera looks, and selects it.
-    pub fn add_point_light(&mut self) {
-        let id = self.new_lamp_id();
-        let lamp = Lamp::point(id, self.viewport.camera.focus());
-        self.log(LogLevel::Info, format!("Added {}.", lamp.name));
-        self.viewport.lamps.push(lamp);
-        self.selection = Selection::Lamp(id);
+    pub fn add_point_light(&mut self) -> EntityId {
+        let n = self.count_lights(LightKind::Point) + 1;
+        let position = self.viewport.camera.focus() + Vec3::Z * POINT_LIGHT_HEIGHT;
+        self.spawn_selected(
+            EntityData::new(&format!("Point light {n}"))
+                .with(&Transform {
+                    position,
+                    ..Transform::default()
+                })
+                .with(&Light::point()),
+        )
     }
 
     /// Adds a spotlight at the camera, shining where it looks, and selects
     /// it.
-    pub fn add_spotlight(&mut self) {
-        let id = self.new_lamp_id();
+    pub fn add_spotlight(&mut self) -> EntityId {
+        let n = self.count_lights(LightKind::Spot) + 1;
         let camera = &self.viewport.camera;
-        let lamp = Lamp::spot(id, camera.position, camera.forward());
-        self.log(LogLevel::Info, format!("Added {}.", lamp.name));
-        self.viewport.lamps.push(lamp);
-        self.selection = Selection::Lamp(id);
+        self.spawn_selected(
+            EntityData::new(&format!("Spotlight {n}"))
+                .with(&Transform {
+                    position: camera.position,
+                    rotation: scene::builtin::aim(camera.forward()),
+                    ..Transform::default()
+                })
+                .with(&Light::spot()),
+        )
     }
 
-    /// The lamps, in the order they were added.
-    pub fn lamps(&self) -> &[Lamp] {
-        &self.viewport.lamps
+    fn count_lights(&self, kind: LightKind) -> usize {
+        self.document
+            .scene
+            .with::<Light>()
+            .filter(|(_, l)| l.kind == kind)
+            .count()
     }
 
-    /// What's selected in the Scene panel.
-    pub fn selection(&self) -> Selection {
-        self.selection
+    fn spawn_selected(&mut self, data: EntityData) -> EntityId {
+        self.log(LogLevel::Info, format!("Added {}.", data.name));
+        let id = self.document.scene.spawn(data);
+        self.document.selection.select_only(id);
+        id
     }
 
-    /// Selects `selection` (as clicking it in the Scene panel does).
-    pub fn select(&mut self, selection: Selection) {
-        self.selection = selection;
-        if !self.selection_exists() {
-            self.selection = Selection::Nothing;
+    /// Carries out what the user asked for in Properties.
+    pub(crate) fn apply_property(&mut self, request: PropertyRequest) {
+        let scene = &mut self.document.scene;
+        match request {
+            PropertyRequest::SetField {
+                entity,
+                component,
+                field,
+                value,
+            } => {
+                if let Some(data) = scene
+                    .get_mut(entity)
+                    .and_then(|e| e.components.get_mut(&component))
+                {
+                    data.set(&field, value);
+                }
+            }
+            PropertyRequest::Rename { entity, name } => {
+                if let Some(e) = scene.get_mut(entity) {
+                    e.name = name;
+                }
+            }
+            PropertyRequest::RemoveComponent { entity, component } => {
+                if let Some(e) = scene.get_mut(entity) {
+                    e.components.remove(&component);
+                }
+            }
+            PropertyRequest::Delete(entity) => self.delete(entity),
+            PropertyRequest::MoveHere(entity) => self.move_here(entity),
         }
     }
 
-    /// Uses `sun` (as saved last time), with anything out of range put
-    /// back in range.
-    #[must_use]
-    pub fn with_sun(mut self, sun: SunSettings) -> Self {
-        self.viewport.sun = sun.sanitized();
-        self
+    /// Deletes `id` and everything below it.
+    pub fn delete(&mut self, id: EntityId) {
+        let gone = self.document.scene.remove_tree(id);
+        if let Some((_, first)) = gone.first() {
+            let more = gone.len() - 1;
+            let extra = match more {
+                0 => String::new(),
+                1 => " and 1 entity under it".into(),
+                n => format!(" and {n} entities under it"),
+            };
+            self.log(LogLevel::Info, format!("Deleted {}{extra}.", first.name));
+        }
+        self.document
+            .selection
+            .retain_existing(&self.document.scene);
     }
 
-    /// Sets the sun from one a model file carries: the way its light
-    /// travels, its linear colour and its strength in W/m².
-    pub fn use_sun_from_file(
-        &mut self,
-        name: &str,
-        direction: glam::Vec3,
-        color: [f32; 3],
-        strength: f32,
-    ) {
-        self.viewport.sun = SunSettings::from_file(direction, color, strength, self.viewport.sun);
-        self.log(
-            LogLevel::Info,
-            format!("The file's sun ({name}) now lights the scene; change it under Sun."),
-        );
-    }
-
-    /// Uses `environment` (as saved last time), with anything out of range
-    /// put back in range.
-    #[must_use]
-    pub fn with_environment(mut self, environment: EnvironmentSettings) -> Self {
-        self.viewport.environment = environment.sanitized();
-        self
-    }
-
-    /// The sky, fog and exposure, for saving.
-    pub fn environment(&self) -> EnvironmentSettings {
-        self.viewport.environment
-    }
-
-    /// The sun's settings, for saving.
-    pub fn sun(&self) -> SunSettings {
-        self.viewport.sun
-    }
-
-    /// Tells the viewport which models to draw.
-    pub(crate) fn sync_models(&mut self) {
-        self.viewport.models = self.models.iter().map(|m| m.id).collect();
-        self.viewport.triangles = self.models.iter().map(|m| m.triangles).sum();
+    /// Moves `id` to where the camera looks: a point light above that
+    /// point, a spotlight to the camera, shining the same way, anything
+    /// else to the point itself.
+    pub fn move_here(&mut self, id: EntityId) {
+        let camera = self.viewport.camera;
+        let Some(entity) = self.document.scene.get_mut(id) else {
+            return;
+        };
+        let mut transform = entity.get::<Transform>().unwrap_or_default();
+        match entity.get::<Light>().map(|l| l.kind) {
+            Some(LightKind::Spot) => {
+                transform.position = camera.position;
+                transform.rotation = scene::builtin::aim(camera.forward());
+            }
+            Some(LightKind::Point) => {
+                transform.position = camera.focus() + Vec3::Z * POINT_LIGHT_HEIGHT;
+            }
+            _ => transform.position = camera.focus(),
+        }
+        entity.set(&transform);
     }
 
     /// The panel layout, for saving.
@@ -342,6 +468,9 @@ impl Workbench {
         let style = theme::dock_style(ui.style().as_ref(), self.accent);
         let mut shown = HashSet::new();
         let mut removed = Vec::new();
+        let mut requests = Vec::new();
+        self.viewport.scene = SceneView::of(&self.document.scene, &self.models);
+        self.viewport.entities = self.document.scene.len();
         theme::dock_frame().show(ui, |ui| {
             DockArea::new(&mut self.dock)
                 .style(style)
@@ -356,9 +485,10 @@ impl Workbench {
                         viewport: &mut self.viewport,
                         renderer,
                         console: &mut self.console,
+                        document: &mut self.document,
                         models: &self.models,
-                        selection: &mut self.selection,
                         removed: &mut removed,
+                        requests: &mut requests,
                         accent: self.accent,
                         in_front: &self.in_front,
                         shown: &mut shown,
@@ -366,9 +496,11 @@ impl Workbench {
                 );
         });
         self.in_front = shown;
+        for request in requests {
+            self.apply_property(request);
+        }
         for id in removed {
-            self.remove_model(id);
-            actions.push(WorkbenchAction::RemoveModel(id));
+            self.delete(id);
         }
         if self.files_hovering {
             drop_hint(ui, self.accent);

@@ -1,93 +1,138 @@
-//! The Properties panel: the fields of whatever is selected in the Scene
-//! panel. Until the self-describing inspector arrives (Phase 2), each kind
-//! of thing has a hand-written form.
+//! The Properties panel: the selected entity's name and components, with
+//! fields drawn from each component's schema (decision 0019). It never
+//! changes the scene itself: it returns what the user asked for, and the
+//! workbench applies it (as undo steps, decision 0022).
 
-use crate::lighting::{LampRequest, Selection};
-use crate::models::{ModelId, ModelInfo};
+use crate::document::Document;
+use crate::inspector;
+use crate::models::ModelInfo;
 use crate::panels::placeholder;
 use crate::theme;
-use crate::viewport::Viewport;
 use egui::{RichText, Ui};
+use reflect::{AssetId, EntityId, Value};
+use std::collections::BTreeMap;
 
-/// The Properties panel: the fields of whatever is selected.
-pub(crate) fn properties(
-    ui: &mut Ui,
-    viewport: &mut Viewport,
-    models: &[ModelInfo],
-    selection: &mut Selection,
-    removed: &mut Vec<ModelId>,
-) {
-    if *selection == Selection::Nothing {
-        placeholder(ui, "Nothing selected. Pick something in the Scene panel.");
-        return;
-    }
-    egui::Frame::new()
-        .inner_margin(theme::panel_margin())
-        .show(ui, |ui| match *selection {
-            Selection::Nothing => {}
-            Selection::Sun => {
-                ui.label(RichText::new("Sun").strong());
-                ui.add_space(4.0);
-                crate::lighting::sun_properties(ui, &mut viewport.sun);
-            }
-            Selection::Environment => {
-                crate::environment::environment_properties(ui, &mut viewport.environment);
-            }
-            Selection::Lamp(id) => {
-                let Some(i) = viewport.lamps.iter().position(|l| l.id == id) else {
-                    *selection = Selection::Nothing;
-                    return;
-                };
-                let request = crate::lighting::lamp_properties(ui, &mut viewport.lamps[i]);
-                match request {
-                    LampRequest::None => {}
-                    LampRequest::MoveHere => {
-                        let camera = viewport.camera;
-                        viewport.lamps[i].move_here(
-                            camera.position,
-                            camera.forward(),
-                            camera.focus(),
-                        );
-                    }
-                    LampRequest::Delete => {
-                        viewport.lamps.remove(i);
-                        *selection = Selection::Nothing;
-                    }
-                }
-            }
-            Selection::Model(id) => {
-                let Some(model) = models.iter().find(|m| m.id == id) else {
-                    *selection = Selection::Nothing;
-                    return;
-                };
-                ui.label(RichText::new(&model.name).strong());
-                ui.add_space(4.0);
-                ui.label(format!(
-                    "{} triangles",
-                    crate::models::grouped(model.triangles)
-                ));
-                ui.label(model.size_text());
-                ui.add_space(6.0);
-                if ui
-                    .button("Remove")
-                    .on_hover_text("Take it out of the viewport, with any lights it brought")
-                    .clicked()
-                {
-                    removed.push(model.id);
-                    *selection = Selection::Nothing;
-                }
-            }
-        });
+/// Something the user asked for in Properties.
+#[derive(Debug, Clone, PartialEq)]
+pub(crate) enum PropertyRequest {
+    /// Set a component's field.
+    SetField {
+        /// The entity.
+        entity: EntityId,
+        /// The component's name.
+        component: String,
+        /// The field's name.
+        field: String,
+        /// Its new value.
+        value: Value,
+    },
+    /// Rename an entity.
+    Rename {
+        /// The entity.
+        entity: EntityId,
+        /// Its new name.
+        name: String,
+    },
+    /// Take a component off an entity.
+    RemoveComponent {
+        /// The entity.
+        entity: EntityId,
+        /// The component's name.
+        component: String,
+    },
+    /// Delete an entity and everything below it.
+    Delete(EntityId),
+    /// Move an entity to where the camera is looking.
+    MoveHere(EntityId),
 }
 
-/// A labelled row in Properties: the name on the left, the field after it.
-pub(crate) fn row<R>(ui: &mut Ui, label: &str, add: impl FnOnce(&mut Ui) -> R) -> R {
-    ui.horizontal(|ui| {
-        ui.add_sized(
-            egui::vec2(78.0, 18.0),
-            egui::Label::new(RichText::new(label).color(crate::theme::TEXT_WEAK)),
-        );
-        add(ui)
-    })
-    .inner
+/// The Properties panel.
+pub(crate) fn properties(
+    ui: &mut Ui,
+    document: &Document,
+    models: &BTreeMap<AssetId, ModelInfo>,
+) -> Vec<PropertyRequest> {
+    let mut requests = Vec::new();
+    let Some((id, entity)) = document
+        .selection
+        .primary()
+        .and_then(|id| document.scene.get(id).map(|e| (id, e)))
+    else {
+        placeholder(ui, "Nothing selected. Pick something in the Scene panel.");
+        return requests;
+    };
+    egui::ScrollArea::vertical()
+        .auto_shrink(false)
+        .show(ui, |ui| {
+            egui::Frame::new()
+                .inner_margin(theme::panel_margin())
+                .show(ui, |ui| {
+                    let mut name = entity.name.clone();
+                    inspector::row(ui, "Name", "What the Scene panel calls it.", |ui| {
+                        if ui.text_edit_singleline(&mut name).changed() {
+                            requests.push(PropertyRequest::Rename { entity: id, name });
+                        }
+                    });
+                    ui.add_space(4.0);
+                    // Transform first, as in every engine; the rest by name.
+                    let mut names: Vec<&String> = entity.components.keys().collect();
+                    names.sort_by_key(|n| (n.as_str() != "Transform", n.as_str()));
+                    for component in names {
+                        let data = &entity.components[component];
+                        ui.separator();
+                        match document.registry.get(component) {
+                            Some(schema) => {
+                                ui.label(RichText::new(component).strong())
+                                    .on_hover_text(&schema.help);
+                                for change in inspector::fields(ui, schema, data, models) {
+                                    requests.push(PropertyRequest::SetField {
+                                        entity: id,
+                                        component: component.clone(),
+                                        field: change.field,
+                                        value: change.value,
+                                    });
+                                }
+                            }
+                            None => {
+                                ui.label(
+                                    RichText::new(format!("Missing component: {component}"))
+                                        .color(theme::WARNING),
+                                )
+                                .on_hover_text(
+                                    "Its script or plugin isn't there. Its values are kept as \
+                                     they are until you remove it.",
+                                );
+                                if ui.button("Remove").clicked() {
+                                    requests.push(PropertyRequest::RemoveComponent {
+                                        entity: id,
+                                        component: component.clone(),
+                                    });
+                                }
+                            }
+                        }
+                    }
+                    ui.separator();
+                    ui.horizontal(|ui| {
+                        if entity.has("Transform")
+                            && ui
+                                .button("Move here")
+                                .on_hover_text(
+                                    "Moves it to where the camera looks (a spotlight to the \
+                                     camera, shining the same way)",
+                                )
+                                .clicked()
+                        {
+                            requests.push(PropertyRequest::MoveHere(id));
+                        }
+                        if ui
+                            .button("Delete")
+                            .on_hover_text("Deletes it and everything belonging to it")
+                            .clicked()
+                        {
+                            requests.push(PropertyRequest::Delete(id));
+                        }
+                    });
+                });
+        });
+    requests
 }

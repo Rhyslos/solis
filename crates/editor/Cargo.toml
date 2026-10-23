@@ -15,6 +15,8 @@ publish.workspace = true
 layer = 2
 
 [dependencies]
+reflect.workspace = true
+scene.workspace = true
 egui.workspace = true
 egui_dock.workspace = true
 glam.workspace = true

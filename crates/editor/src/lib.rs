@@ -8,16 +8,17 @@
 
 pub mod camera;
 pub mod console;
-pub mod environment;
+pub mod document;
 pub mod icons;
+mod inspector;
 pub mod layout;
-pub mod lighting;
 pub mod look;
 pub mod models;
 pub mod panel;
 mod panels;
 mod properties;
 mod scene_panel;
+pub mod scene_view;
 pub mod theme;
 mod top_bar;
 pub mod viewport;
@@ -25,12 +26,12 @@ pub mod workbench;
 
 pub use camera::{Camera, FlyInput};
 pub use console::{LogLevel, LogLine};
+pub use document::{Document, Selection};
 pub use egui_dock::DockState;
-pub use environment::{EnvironmentSettings, SkyKind, ToneMapping};
 pub use layout::Preset;
-pub use lighting::{Lamp, LampFromFile, LampId, LampKind, Selection, SunSettings};
 pub use look::{Look, LookKind};
-pub use models::{ModelId, ModelInfo};
+pub use models::{FileLight, FileLightKind, ModelInfo};
 pub use panel::Panel;
+pub use scene_view::{SceneView, ViewLight};
 pub use viewport::{NoRenderer, Overlays, Tool, Viewport, ViewportRenderer, ViewportView};
 pub use workbench::{AppInfo, Workbench, WorkbenchAction};
