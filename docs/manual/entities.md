@@ -8,7 +8,7 @@ Every area in Solis is built the same way, so once you know this you can underst
 - An **entity** is one thing: the sun, a lamp, an imported model, the sky. On its own it is only a name.
 - **Components** make it something. A **Transform** gives it a place in the world, a **Light** makes it shine, a **Model** draws an imported model, an **Environment** sets the sky and fog.
 
-A lamp is just an entity with a Transform and a Light. A model with a Light added would glow like a lamp too (adding components arrives later in Phase 2). Your game's own code will add components of its own (Phase 4), shown the same way.
+A lamp is just an entity with a Transform and a Light. Give a model a Light (**Add component > Light**) and it shines like a lamp too. Your game's own code will add components of its own (Phase 4), shown the same way.
 
 ## How to use it
 
@@ -18,6 +18,10 @@ A lamp is just an entity with a Transform and a Light. A model with a Light adde
 
 **Add an entity**
 - **Entity > Add entity** adds an empty one (only a Transform) at the point the camera looks at. Entity > Add point light and Add spotlight add [lights](lights.md); importing a model adds an entity for it.
+
+**Add or remove a component**
+- Click **Add component** at the bottom of Properties and pick one: a **Light** turns any entity into a lamp, a **Model** shows a model, and so on. It starts with its usual settings.
+- The **×** beside a component's name takes it off. Game code's own components (from Phase 4) appear in the same list.
 
 **Select several**
 - **Click** one to select just it. **Ctrl + click** adds one to the selection, or takes it out. **Shift + click** selects every row from the one you picked first to this one.

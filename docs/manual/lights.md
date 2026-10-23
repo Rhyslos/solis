@@ -57,7 +57,7 @@ Every light is an [entity](concepts.md#the-area) with a **Light** [component](co
 - **Problem:** lamps far from the camera stop lighting. **Why:** up to 16 lamps light the view at once, the ones nearest the camera.
 - **Problem:** shadows look blurry in a big area. **Why:** one shadow map covers every model, so in a large area each of its pixels covers more ground.
 - **Problem:** I added lamps, closed Solis, and they're gone. **Why:** areas can't be saved until later in Phase 2.
-- **Problem:** I deleted the sun and everything went dark. **Why:** the sun was the only light. **Fix:** add lamps, or add an entity and give it a Light of kind Sun (adding components arrives later in Phase 2; for now, import a model with a sun, or start Solis again).
+- **Problem:** I deleted the sun and everything went dark. **Why:** the sun was the only light. **Fix:** undo (Ctrl + Z), or add an entity and give it a Light (**Add component > Light**) with **Kind** set to Sun.
 
 ## Related
 - [Looks](looks.md): both the standard and stylized looks are lit; the unlit look ignores light.

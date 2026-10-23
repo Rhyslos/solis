@@ -33,6 +33,14 @@ pub(crate) enum PropertyRequest {
         /// Its new name.
         name: String,
     },
+    /// Give an entity a component it doesn't have, with its starting
+    /// values.
+    AddComponent {
+        /// The entity.
+        entity: EntityId,
+        /// The component's name.
+        component: String,
+    },
     /// Take a component off an entity.
     RemoveComponent {
         /// The entity.
@@ -82,8 +90,12 @@ pub(crate) fn properties(
                         ui.separator();
                         match document.registry.get(component) {
                             Some(schema) => {
-                                ui.label(RichText::new(component).strong())
-                                    .on_hover_text(&schema.help);
+                                if component_header(ui, component, &schema.help) {
+                                    requests.push(PropertyRequest::RemoveComponent {
+                                        entity: id,
+                                        component: component.clone(),
+                                    });
+                                }
                                 for change in inspector::fields(ui, schema, data, models) {
                                     requests.push(PropertyRequest::SetField {
                                         entity: id,
@@ -112,6 +124,13 @@ pub(crate) fn properties(
                         }
                     }
                     ui.separator();
+                    if let Some(component) = add_component_menu(ui, document, entity) {
+                        requests.push(PropertyRequest::AddComponent {
+                            entity: id,
+                            component,
+                        });
+                    }
+                    ui.add_space(4.0);
                     ui.horizontal(|ui| {
                         if entity.has("Transform")
                             && ui
@@ -135,4 +154,56 @@ pub(crate) fn properties(
                 });
         });
     requests
+}
+
+/// A component's name, with a × on the right to remove it. Returns
+/// whether × was clicked.
+fn component_header(ui: &mut Ui, name: &str, help: &str) -> bool {
+    ui.horizontal(|ui| {
+        ui.label(RichText::new(name).strong()).on_hover_text(help);
+        ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+            let button = ui
+                .add(egui::Button::new(RichText::new("×").color(theme::TEXT_WEAK)).frame(false))
+                .on_hover_text(format!("Remove {name}"));
+            button.widget_info(|| {
+                egui::WidgetInfo::labeled(egui::WidgetType::Button, true, format!("Remove {name}"))
+            });
+            button.clicked()
+        })
+        .inner
+    })
+    .inner
+}
+
+/// The Add component menu: every registered component the entity doesn't
+/// have yet, by name. Returns the one picked.
+fn add_component_menu(
+    ui: &mut Ui,
+    document: &Document,
+    entity: &area::EntityData,
+) -> Option<String> {
+    let mut picked = None;
+    ui.menu_button("Add component", |ui| {
+        let mut any = false;
+        for schema in document.registry.iter() {
+            if entity.has(&schema.name) {
+                continue;
+            }
+            any = true;
+            if ui
+                .button(&schema.name)
+                .on_hover_text(&schema.help)
+                .clicked()
+            {
+                picked = Some(schema.name.clone());
+                ui.close();
+            }
+        }
+        if !any {
+            ui.label(RichText::new("It has every component there is.").color(theme::TEXT_WEAK));
+        }
+    })
+    .response
+    .on_hover_text("Gives it another component, such as a Light");
+    picked
 }

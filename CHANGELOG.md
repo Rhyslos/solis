@@ -13,6 +13,8 @@ What changed in each version, for people using Solis. Newest first.
 
 ### Added
 
+- **Add component** at the bottom of Properties gives an entity any component (a Light on a model makes it glow like a lamp), and the × beside a component's name takes it off. Game code will register its own components the same way.
+- The Area panel stays fast with thousands of entities: only the rows in view are drawn.
 - Building the area's tree: drag an entity onto another in the Area panel to put it under it (it stays where it is in the world), or onto empty space to make it stand alone. **Ctrl + click** and **Shift + click** select several; **Delete** deletes them, **Ctrl + D** duplicates them, **F2** or a double-click renames, and **F** points the camera at them. All of it can be undone.
 - New entities go to the end of the Area panel's list instead of a random place.
 - Models keep their own parts' placements: a mesh used many times in a file is stored once and drawn as copies, so big kits of repeated pieces load faster and use less memory. Mirrored parts (a negative scale) are drawn the right way out.

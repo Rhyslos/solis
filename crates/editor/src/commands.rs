@@ -93,6 +93,16 @@ impl Workbench {
         }
     }
 
+    /// Makes a component known to the editor, so Properties shows it and
+    /// Add component offers it: how game code's components (Lust, Lua,
+    /// Rust) join in. Refuses a name already taken or a broken schema.
+    pub fn register_component(
+        &mut self,
+        schema: reflect::ComponentSchema,
+    ) -> Result<(), reflect::RegistryError> {
+        self.document.registry.register(schema)
+    }
+
     /// Selects only `id` (as clicking it in the Area panel does); nothing
     /// if it isn't in the area. Not an undo step.
     pub fn select(&mut self, id: EntityId) {
@@ -309,6 +319,23 @@ impl Workbench {
                     "Rename",
                     vec![Edit::Rename { entity, name }],
                     Some(merge),
+                    None,
+                );
+            }
+            PropertyRequest::AddComponent { entity, component } => {
+                let Some(schema) = self.document.registry.get(&component) else {
+                    return;
+                };
+                let data = ComponentData::defaults(schema);
+                let label = format!("Add {component}");
+                self.command(
+                    &label,
+                    vec![Edit::AddComponent {
+                        entity,
+                        component,
+                        data,
+                    }],
+                    None,
                     None,
                 );
             }
