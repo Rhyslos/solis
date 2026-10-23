@@ -2,6 +2,7 @@
 
 - **Status:** Accepted
 - **Date:** 2026-10-23
+- **Followed by:** [0024](0024-game-storage-is-hecs.md), which chose `hecs` for the game's storage.
 - **Wording:** scenes are now called *areas* and prefabs *assemblies* ([decision 0023](0023-areas-and-assemblies.md)).
 
 ## Problem

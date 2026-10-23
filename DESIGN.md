@@ -136,7 +136,7 @@ object Health like Component {
 end
 ```
 
-**Storage underneath:** an area document of component values now; the game's fast storage chosen in Phase 3 with a benchmark ([decision 0019](docs/decisions/0019-scene-document-now-game-storage-later.md)).
+**Storage underneath:** an area document of component values for the editor ([decision 0019](docs/decisions/0019-scene-document-now-game-storage-later.md)), and `hecs` for the running game, built from it when Play is pressed ([decision 0024](docs/decisions/0024-game-storage-is-hecs.md)).
 
 **How Lust and Rust components meet:** every component is a plain Rust struct that can describe its fields to the inspector. The engine's built-in components are written that way. A Lust `object … like Component` compiles to exactly the same kind of struct, so built-in and custom components work the same way everywhere.
 
@@ -329,3 +329,4 @@ Both sides review each other's pull requests.
 - 2026-10-23: [0021](docs/decisions/0021-asset-database-and-models.md): a project folder with `.solmeta` sidecars holding asset and sub-asset IDs, a rebuildable cache, file watching; models become node trees drawn with per-instance transforms.
 - 2026-10-23: [0022](docs/decisions/0022-undo-as-reversible-edits.md): undo and redo as reversible edits to the area document; selection restored by undo but never a step.
 - 2026-10-23: [0023](docs/decisions/0023-areas-and-assemblies.md): "area" instead of "scene" and "assembly" instead of "prefab"; files `.solarea` and `.solassembly`.
+- 2026-10-23: [0024](docs/decisions/0024-game-storage-is-hecs.md): the game's fast storage is `hecs`, in a `world` crate built from the area when Play is pressed; chosen with a benchmark at the scale target (`tools/storage-bench`), where both candidates were far inside the budget.
