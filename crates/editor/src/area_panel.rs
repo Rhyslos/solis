@@ -214,6 +214,9 @@ fn looks(
             });
         return (Icon::Model, accent.colors().light, note);
     }
+    if entity.has("Camera") {
+        return (Icon::Camera, accent.colors().light, "Camera".into());
+    }
     if entity.has("Environment") {
         return (Icon::AreaFile, accent.colors().light, "sky, fog".into());
     }

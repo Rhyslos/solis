@@ -21,6 +21,7 @@ editor = { path = "crates/editor" }
 reflect = { path = "crates/reflect" }
 area = { path = "crates/area" }
 asset_db = { path = "crates/asset_db" }
+world = { path = "crates/world" }
 
 # Outside libraries. Every one must have a licence compatible with MIT,
 # checked by `cargo deny check` (see deny.toml and decision 0007).
@@ -45,6 +46,8 @@ base64 = "0.22"
 percent-encoding = "2.3"
 # The Open file window (Windows; elsewhere through the desktop portal).
 rfd = "0.17"
+# The game's storage while it runs (decision 0024).
+hecs = "0.11"
 # Messages from the libraries (the GPU layer, say), shown in the Console.
 log = "0.4"
 # The local time on console messages.

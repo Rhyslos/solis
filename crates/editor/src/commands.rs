@@ -284,6 +284,32 @@ impl Workbench {
         )
     }
 
+    /// Adds a camera where the editor's camera is, looking the same way,
+    /// and selects it.
+    pub fn add_camera(&mut self) -> EntityId {
+        let n = self.document.area().with::<area::builtin::Camera>().count() + 1;
+        let camera = &self.viewport.camera;
+        // A camera entity looks along its -Z with +Y up.
+        let rotation = glam::Quat::from_mat3(&glam::Mat3::from_cols(
+            camera.right(),
+            camera.up(),
+            -camera.forward(),
+        ))
+        .normalize();
+        self.spawn_selected(
+            EntityData::new(&format!("Camera {n}"))
+                .with(&Transform {
+                    position: camera.position,
+                    rotation,
+                    ..Transform::default()
+                })
+                .with(&area::builtin::Camera {
+                    fov: camera.fov_y.to_degrees(),
+                    ..area::builtin::Camera::default()
+                }),
+        )
+    }
+
     fn count_lights(&self, kind: LightKind) -> usize {
         self.document
             .area()

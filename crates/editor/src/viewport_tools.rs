@@ -103,7 +103,8 @@ const PICK_PATIENCE: u32 = 120;
 /// How far (points) the mouse may move with the button down and still
 /// count as a click rather than a box.
 const CLICK_SLOP: f32 = 4.0;
-/// How close (points) a click must be to a lamp's marker to pick it.
+/// How close (points) a click must be to a lamp's or camera's marker to
+/// pick it.
 const MARKER_REACH: f32 = 10.0;
 
 /// What the left mouse button is doing in the viewport.
@@ -287,13 +288,11 @@ impl Tools {
             PickMode::Replace
         };
         let marker = area
-            .lamps
-            .iter()
-            .filter(|l| !area.locked.contains(&l.entity))
-            .filter_map(|l| {
-                let p = camera.project(l.position, size)?;
+            .markers()
+            .filter_map(|(entity, position)| {
+                let p = camera.project(position, size)?;
                 let d = p.distance(at);
-                (d <= MARKER_REACH).then_some((d, l.entity))
+                (d <= MARKER_REACH).then_some((d, entity))
             })
             .min_by(|a, b| a.0.total_cmp(&b.0));
         if let Some((_, entity)) = marker {
@@ -325,15 +324,13 @@ impl Tools {
     ) {
         let (min, max) = (a.min(b).max(Vec2::ZERO), a.max(b).min(size));
         let markers = area
-            .lamps
-            .iter()
-            .filter(|l| !area.locked.contains(&l.entity))
-            .filter(|l| {
+            .markers()
+            .filter(|(_, position)| {
                 camera
-                    .project(l.position, size)
+                    .project(*position, size)
                     .is_some_and(|p| p.cmpge(min).all() && p.cmple(max).all())
             })
-            .map(|l| l.entity)
+            .map(|(entity, _)| entity)
             .collect();
         let (lo, hi) = ((min * ppp).floor(), (max * ppp).ceil());
         let mode = if ctrl {
@@ -458,6 +455,40 @@ impl Tools {
 }
 
 /// Draws the tools over the viewport image at `rect`.
+/// Draws a marker for each camera: a small wire pyramid pointing the way
+/// it looks, with a notch on its top edge for which way is up.
+pub(crate) fn draw_cameras(ui: &Ui, rect: Rect, cameras: &[(EntityId, Mat4)], camera: &Camera) {
+    let painter = ui.painter_at(rect);
+    let size = Vec2::new(rect.width(), rect.height());
+    let at = |p: Vec2| rect.min + egui::vec2(p.x, p.y);
+    let stroke = Stroke::new(1.2, theme::TEXT_CONSOLE);
+    for (_, world) in cameras {
+        let (_, rotation, position) = world.to_scale_rotation_translation();
+        let place = |x: f32, y: f32, z: f32| position + rotation * Vec3::new(x, y, z);
+        let (w, h, d) = (0.4, 0.25, 0.6);
+        let corners = [
+            place(-w, -h, -d),
+            place(w, -h, -d),
+            place(w, h, -d),
+            place(-w, h, -d),
+        ];
+        let apex = place(0.0, 0.0, 0.0);
+        let notch = place(0.0, h + 0.18, -d);
+        let project = |p: Vec3| camera.project(p, size).map(at);
+        let segment = |a: Vec3, b: Vec3| {
+            if let (Some(p), Some(q)) = (project(a), project(b)) {
+                painter.line_segment([p, q], stroke);
+            }
+        };
+        for i in 0..4 {
+            segment(corners[i], corners[(i + 1) % 4]);
+            segment(apex, corners[i]);
+        }
+        segment(corners[3], notch);
+        segment(notch, corners[2]);
+    }
+}
+
 pub(crate) fn draw(
     ui: &Ui,
     rect: Rect,

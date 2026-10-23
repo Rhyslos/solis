@@ -107,7 +107,7 @@ The working plan for Phase 3 (ROADMAP.md, "Phase 3: The editor"). It records the
 - **Tests:** every command, with good and bad arguments (bad ones give a plain-language error, never a crash); history and completion; a fuzz test of the command reader; Problems for each kind.
 - **Built:** as planned (`console_commands.rs`, `problems.rs`, the app's `logger.rs`), with these differences. Problems finds a Model with no model chosen and entities whose parent is missing (after a merge); "overrides whose target is gone" is left out, as rebuilding a copy already drops those. Long answers (`help`, `get`, `find`, `stats`) come one line each, since a console row is cut short. Every library's warnings and errors reach the Console, but information messages only from Solis's own crates; a message repeated every frame shows once. Problems are looked for again only when the area, the loaded models, the Library or the assemblies change, so a big area costs nothing frame to frame; the tab shows how many there are.
 
-### M5. Play mode ☐
+### M5. Play mode ☑
 
 - **The `world` crate** ([decision 0024](../decisions/0024-game-storage-is-hecs.md)): `World::from_area` builds the game's storage from the area (built-in components as Rust types; anything else as plain values), `step` runs a tick (world matrices from parents; game code joins in Phase 4), and entities are found by their `EntityId`.
 - **Play, Pause and Stop** at the top. Pressing Play:
@@ -119,6 +119,7 @@ The working plan for Phase 3 (ROADMAP.md, "Phase 3: The editor"). It records the
 - **The `Camera` component:** field of view, near and far. The Game panel shows the view from the first camera in the area (or the editor's camera, with a note, if there's none). Cameras get a marker and are added from the Entity menu.
 - **Tests:** world building for every built-in component and unknown ones; Play, edit, Stop leaves the area and history identical (the gate, as a test); pause; blocked saving; the Game view uses the camera.
 - **Manual:** a new "Play mode" page.
+- **Built:** as planned, with these choices. While playing, the world is built again from the area whenever the area changes (each frame of a drag too: the document now has a revision number for this); that's simple and always right while games have no state of their own, and gives way to applying only what changed when game code arrives (Phase 4). The clock runs in fixed ticks of 1/60 s, at most 8 a frame. The Game panel uses the standard look, without the grid, axes and lamp markers (`render::FrameParams::editor_lines`), and is only worked out while it's in front. Pause is a button beside Play. Quitting while playing stops first. Each view now has its own image (`ViewportView::image`), which M6 builds on.
 
 ### M6. Several viewports ☐
 

@@ -22,7 +22,8 @@ struct Image {
 pub struct GpuViewport {
     state: RenderState,
     renderer: render::ViewportRenderer,
-    image: Option<Image>,
+    /// Each view's image (the viewport's, the Game panel's), by number.
+    images: Vec<Option<Image>>,
     /// Imported models, uploaded.
     models: HashMap<AssetId, GpuModel>,
     /// The image thumbnails are drawn into, made the first time.
@@ -36,7 +37,7 @@ impl GpuViewport {
         Self {
             renderer: render::ViewportRenderer::new(&state.device, samples),
             state: state.clone(),
-            image: None,
+            images: Vec::new(),
             models: HashMap::new(),
             thumbnail_target: None,
         }
@@ -80,6 +81,7 @@ impl GpuViewport {
             size_px: [side, side],
             sun: render::Sun::default(),
             environment: to_render_environment(&Environment::default()),
+            editor_lines: true,
         };
         self.renderer.render(
             device,
@@ -167,10 +169,12 @@ impl GpuViewport {
         self.models.clear();
     }
 
-    /// Makes the image `size` pixels, unless it already is.
-    fn prepare_image(&mut self, size: [u32; 2]) {
-        if self
-            .image
+    /// Makes image number `slot` `size` pixels, unless it already is.
+    fn prepare_image(&mut self, slot: usize, size: [u32; 2]) {
+        if self.images.len() <= slot {
+            self.images.resize_with(slot + 1, || None);
+        }
+        if self.images[slot]
             .as_ref()
             .is_some_and(|image| image.requested_size == size)
         {
@@ -179,7 +183,7 @@ impl GpuViewport {
         let device = &self.state.device;
         let target = self.renderer.create_target(device, size);
         let mut egui_renderer = self.state.renderer.write();
-        let texture = match self.image.as_ref() {
+        let texture = match self.images[slot].as_ref() {
             Some(image) => {
                 egui_renderer.update_egui_texture_from_wgpu_texture(
                     device,
@@ -196,7 +200,7 @@ impl GpuViewport {
             ),
         };
         drop(egui_renderer);
-        self.image = Some(Image {
+        self.images[slot] = Some(Image {
             target,
             requested_size: size,
             texture,
@@ -294,11 +298,14 @@ impl ViewportRenderer for GpuViewport {
             size_px: view.size_px,
             sun: to_render_sun(view.sun.as_ref()),
             environment: to_render_environment(&view.environment),
+            editor_lines: view.editor_lines,
         };
         let lights: Vec<render::Light> = view.lamps.iter().map(to_render_light).collect();
-        self.prepare_image(view.size_px);
-        let image = self
-            .image
+        if view.image >= editor::MAX_IMAGES {
+            return Err("too many views".into());
+        }
+        self.prepare_image(view.image, view.size_px);
+        let image = self.images[view.image]
             .as_mut()
             .ok_or("the viewport image could not be made")?;
         let placed: Vec<render::Placement<'_>> = view
@@ -337,7 +344,8 @@ impl ViewportRenderer for GpuViewport {
     }
 
     fn picked(&mut self) -> Option<PickAnswer> {
-        let image = self.image.as_mut()?;
+        // Only the viewport picks.
+        let image = self.images.get_mut(editor::VIEWPORT_IMAGE)?.as_mut()?;
         let result = image.target.poll_pick(&self.state.device)?;
         Some(to_answer(&result))
     }

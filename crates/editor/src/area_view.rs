@@ -3,7 +3,7 @@
 
 use crate::models::ModelInfo;
 use area::Area;
-use area::builtin::{Environment, Light, LightKind, Model};
+use area::builtin::{Camera, Environment, Light, LightKind, Model};
 use glam::Vec3;
 use reflect::AssetId;
 use std::collections::{BTreeMap, HashSet};
@@ -65,6 +65,8 @@ pub struct AreaView {
     pub environment: Environment,
     /// How many triangles the models have together.
     pub triangles: usize,
+    /// The cameras, where they are (for their markers).
+    pub cameras: Vec<(reflect::EntityId, glam::Mat4)>,
 }
 
 impl AreaView {
@@ -95,47 +97,97 @@ impl AreaView {
             if hidden.contains(&id) {
                 continue;
             }
-            let Some(r) = model.asset else { continue };
-            let Some(info) = models.get(&r.asset) else {
-                continue;
-            };
-            let node = match r.part {
-                None => None,
-                // One part: drawn only if the model still has it.
-                Some(part) => match info.node_of(part) {
-                    Some(node) => Some(node),
-                    None => continue,
-                },
-            };
-            if node.is_none() {
-                view.triangles += info.triangles;
-            }
-            let pick = if locked.contains(&id) {
-                0
-            } else {
-                view.pickable.push(id);
-                view.pickable.len() as u32
-            };
-            view.models.push(ViewModel {
-                asset: info.asset,
-                node,
-                transform: area.world_matrix(id),
-                pick,
-            });
+            let pickable = !locked.contains(&id);
+            view.add_model(id, model, area.world_matrix(id), models, pickable);
         }
         for (id, light) in area.with::<Light>() {
             if hidden.contains(&id) {
                 continue;
             }
-            let world = area.world_matrix(id);
-            let placed = place(id, &light, world);
-            if light.kind == LightKind::Sun && view.sun.is_none() {
-                view.sun = Some(placed);
-            } else if light.kind != LightKind::Sun {
-                view.lamps.push(placed);
+            view.add_light(id, &light, area.world_matrix(id));
+        }
+        for (id, _) in area.with::<Camera>() {
+            if !hidden.contains(&id) {
+                view.cameras.push((id, area.world_matrix(id)));
             }
         }
         view
+    }
+
+    /// Every marker that can be clicked in the viewport (lamps and
+    /// cameras, which have no surface to pick), with where it is.
+    pub fn markers(&self) -> impl Iterator<Item = (reflect::EntityId, Vec3)> + '_ {
+        self.lamps
+            .iter()
+            .map(|l| (l.entity, l.position))
+            .chain(
+                self.cameras
+                    .iter()
+                    .map(|(id, m)| (*id, m.transform_point3(Vec3::ZERO))),
+            )
+            .filter(|(id, _)| !self.locked.contains(id))
+    }
+
+    /// What the running game shows of `world`: everything (hidden is only
+    /// for the editor), nothing pickable, no camera markers.
+    pub fn of_world(world: &world::World, models: &BTreeMap<AssetId, ModelInfo>) -> Self {
+        let mut view = Self {
+            environment: world.environment().unwrap_or_default(),
+            ..Self::default()
+        };
+        for (id, model, global) in world.placed::<Model>() {
+            view.add_model(id, model, global, models, false);
+        }
+        for (id, light, global) in world.placed::<Light>() {
+            view.add_light(id, &light, global);
+        }
+        view
+    }
+
+    fn add_model(
+        &mut self,
+        id: reflect::EntityId,
+        model: Model,
+        transform: glam::Mat4,
+        models: &BTreeMap<AssetId, ModelInfo>,
+        pickable: bool,
+    ) {
+        let Some(r) = model.asset else { return };
+        let Some(info) = models.get(&r.asset) else {
+            return;
+        };
+        let node = match r.part {
+            None => None,
+            // One part: drawn only if the model still has it.
+            Some(part) => match info.node_of(part) {
+                Some(node) => Some(node),
+                None => return,
+            },
+        };
+        if node.is_none() {
+            self.triangles += info.triangles;
+        }
+        let pick = if pickable {
+            self.pickable.push(id);
+            self.pickable.len() as u32
+        } else {
+            0
+        };
+        self.models.push(ViewModel {
+            asset: info.asset,
+            node,
+            transform,
+            pick,
+        });
+    }
+
+    fn add_light(&mut self, id: reflect::EntityId, light: &Light, world: glam::Mat4) {
+        let placed = place(id, light, world);
+        if light.kind == LightKind::Sun && self.sun.is_none() {
+            self.sun = Some(placed);
+        } else if light.kind != LightKind::Sun {
+            self.lamps.push(placed);
+        }
     }
 }
 
@@ -235,5 +287,43 @@ mod tests {
         );
         assert_eq!(view.pickable.len(), 1);
         assert_eq!(view.triangles, 12);
+    }
+
+    #[test]
+    fn the_game_sees_everything_and_picks_nothing() {
+        let mut area = area::builtin::starter_area();
+        let asset = AssetId::random();
+        let mut info = crate::test_support::crate_model();
+        info.asset = asset;
+        let models = BTreeMap::from([(asset, info)]);
+        let boat = area.spawn(
+            EntityData::new("Boat")
+                .with(&Transform {
+                    position: Vec3::new(4.0, 0.0, 0.0),
+                    ..Transform::default()
+                })
+                .with(&Model {
+                    asset: Some(reflect::AssetRef { asset, part: None }),
+                }),
+        );
+        area.spawn(EntityData::new("Lens").with(&Camera::default()));
+        let world = world::World::from_area(&area);
+        let game = AreaView::of_world(&world, &models);
+        assert_eq!(game.models.len(), 1);
+        assert_eq!(game.models[0].pick, 0);
+        assert!(game.pickable.is_empty());
+        assert_eq!(
+            game.models[0].transform.transform_point3(Vec3::ZERO),
+            Vec3::new(4.0, 0.0, 0.0)
+        );
+        assert!(game.sun.is_some());
+        assert!(game.cameras.is_empty(), "no markers in the game");
+        // The editor's view of the same area: hidden things left out,
+        // cameras marked.
+        let hidden = HashSet::from([boat]);
+        let editor = AreaView::of_shown(&area, &models, &hidden, &HashSet::new());
+        assert!(editor.models.is_empty());
+        assert_eq!(editor.cameras.len(), 1);
+        assert_eq!(editor.markers().count(), 1);
     }
 }

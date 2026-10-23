@@ -4,6 +4,7 @@
 use crate::console::LogLevel;
 use crate::icons::{self, Icon};
 use crate::layout::Preset;
+use crate::play::PlayState;
 use crate::theme::{self, Accent};
 use crate::workbench::{Workbench, WorkbenchAction};
 use egui::{Align, Color32, Layout, RichText, Ui};
@@ -233,8 +234,11 @@ impl Workbench {
             );
         }
         ui.add_space(4.0);
-        if icon_button(ui, Icon::Stop, 11.0, None, "Stop").clicked() {
-            self.log(LogLevel::Info, "Nothing is running.");
+        // Right to left: Stop, Play with two players, Pause, Play.
+        let state = self.play_state();
+        let stop_fill = (state != PlayState::Editing).then_some(theme::ERROR);
+        if icon_button(ui, Icon::Stop, 11.0, stop_fill, "Stop").clicked() {
+            self.stop();
         }
         if icon_button(ui, Icon::PlayTogether, 15.0, None, "Play with two players").clicked() {
             self.log(
@@ -242,11 +246,22 @@ impl Workbench {
                 "Playing with others arrives with netcode in Phase 8 (ROADMAP.md).",
             );
         }
-        if icon_button(ui, Icon::Play, 13.0, Some(fill), "Play").clicked() {
-            self.log(
-                LogLevel::Info,
-                "Playing the area arrives in Phase 3 (ROADMAP.md).",
+        let pause_fill = (state == PlayState::Paused).then_some(fill);
+        if icon_button(ui, Icon::Pause, 12.0, pause_fill, "Pause").clicked() {
+            self.pause();
+        }
+        let play = icon_button(ui, Icon::Play, 13.0, Some(fill), "Play");
+        if state == PlayState::Playing {
+            // Lit while the game runs.
+            ui.painter().rect_stroke(
+                play.rect,
+                4.0,
+                egui::Stroke::new(2.0, Color32::WHITE),
+                egui::StrokeKind::Inside,
             );
+        }
+        if play.clicked() {
+            self.play();
         }
     }
 }
