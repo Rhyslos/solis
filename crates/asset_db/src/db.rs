@@ -36,7 +36,9 @@ impl AssetKind {
     }
 }
 
-/// A file's size and time of last change, to notice changes cheaply.
+/// A file's size and time of last change, to notice changes cheaply. Two
+/// versions with the same size written within one tick of the file
+/// system's clock look the same; real saves are far enough apart.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Stamp {
     /// Bytes.
@@ -569,6 +571,12 @@ mod tests {
         let (mut db, ..) = open(project);
         let id = db.id_at(&assets.join("crate.glb")).unwrap();
         glb(&assets.join("crate.glb.tmp"), 0.7);
+        // A different size too: Windows can give two quick writes the same
+        // time, and a file the same size and time looks unchanged (a real
+        // save comes long after the last).
+        let mut bytes = std::fs::read(assets.join("crate.glb.tmp")).unwrap();
+        bytes.extend_from_slice(&[0; 4]);
+        std::fs::write(assets.join("crate.glb.tmp"), bytes).unwrap();
         assert!(db.rescan().0.is_empty(), "temporary files are ignored");
         std::fs::rename(assets.join("crate.glb.tmp"), assets.join("crate.glb")).unwrap();
         assert_eq!(db.rescan().0, [Change::Changed(id)]);
