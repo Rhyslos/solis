@@ -136,7 +136,7 @@ object Health like Component {
 end
 ```
 
-**Storage underneath (to decide, ROADMAP.md Phase 2):** `bevy_ecs` on its own, or Solis's own.
+**Storage underneath:** a scene document of component values now; the game's fast storage chosen in Phase 3 with a benchmark ([decision 0019](docs/decisions/0019-scene-document-now-game-storage-later.md)).
 
 **How Lust and Rust components meet:** every component is a plain Rust struct that can describe its fields to the inspector. The engine's built-in components are written that way. A Lust `object … like Component` compiles to exactly the same kind of struct, so built-in and custom components work the same way everywhere.
 
@@ -324,3 +324,7 @@ Both sides review each other's pull requests.
 - 2026-10-22: [0016](docs/decisions/0016-how-lust-joins-solis.md): Lust joins in Phase 4, right after the editor; the engine is described to Lust in generated `solis/*.lst` files with `native` methods, and a game's Lust is built as a library the engine includes. Scale, simulation, and sound and animation become Phases 5–7.
 - 2026-10-22: [0017](docs/decisions/0017-hdr-tone-mapping-sky-and-fog.md): the world drawn in HDR and tone mapped (AgX by default, ACES or none), with exposure; the editor backdrop or a daylight sky that follows the sun; distance fog. The editor's own backdrop and lines are never tone mapped.
 - 2026-10-22: [0018](docs/decisions/0018-checks-for-a-public-repo.md): the repository is public, so checks run on every pull request update and merge, with Windows and Direct3D 12 GPU tests, a weekly security check and Dependabot. Replaces 0001.
+- 2026-10-23: [0019](docs/decisions/0019-scene-document-now-game-storage-later.md): entities and components live in a scene document of values with stable IDs, described by schemas looked up by name; the game's fast storage is chosen in Phase 3 with a benchmark.
+- 2026-10-23: [0020](docs/decisions/0020-scene-files-in-lust-style.md): scenes and prefabs are Lust-style data blocks, one per entity, sorted by random IDs, one line per field; prefab instances are a reference plus overrides.
+- 2026-10-23: [0021](docs/decisions/0021-asset-database-and-models.md): a project folder with `.solmeta` sidecars holding asset and sub-asset IDs, a rebuildable cache, file watching; models become node trees drawn with per-instance transforms.
+- 2026-10-23: [0022](docs/decisions/0022-undo-as-reversible-edits.md): undo and redo as reversible edits to the scene document; selection restored by undo but never a step.
