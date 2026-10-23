@@ -2,7 +2,7 @@
 
 **Layer 0 · Core**
 
-The area document ([decision 0019](../../docs/decisions/0019-scene-document-now-game-storage-later.md)): entities with stable IDs, names, parents and sibling order, and their components as plain values described by schemas (the `reflect` crate). Also the built-in components: `Transform`, `Light`, `Environment` and `Model`.
+The area document ([decision 0019](../../docs/decisions/0019-scene-document-now-game-storage-later.md)): entities with stable IDs, names, parents and sibling order, and their components as plain values described by schemas (the `reflect` crate). Also the built-in components: `Transform`, `Light`, `Environment`, `Model` and `Camera` (what the game looks through: field of view, near and far, with its projection).
 
 ## Purpose
 

@@ -136,6 +136,10 @@ pub enum Icon {
     PlayTogether,
     /// A filled square: Stop.
     Stop,
+    /// Two bars: Pause.
+    Pause,
+    /// A film camera: a Camera entity.
+    Camera,
     /// An "i" in a circle: information.
     Info,
     /// "!" in a triangle: a warning.
@@ -247,6 +251,14 @@ pub fn icon(painter: &Painter, rect: Rect, icon: Icon, color: Color32) {
             }
         }
         Icon::Stop => fill(&[(5.0, 5.0), (19.0, 5.0), (19.0, 19.0), (5.0, 19.0)]),
+        Icon::Pause => {
+            fill(&[(6.0, 5.0), (10.0, 5.0), (10.0, 19.0), (6.0, 19.0)]);
+            fill(&[(14.0, 5.0), (18.0, 5.0), (18.0, 19.0), (14.0, 19.0)]);
+        }
+        Icon::Camera => {
+            outline(&[(3.0, 8.0), (15.0, 8.0), (15.0, 18.0), (3.0, 18.0)]);
+            outline(&[(15.0, 11.0), (21.0, 8.0), (21.0, 18.0), (15.0, 15.0)]);
+        }
         Icon::Info => {
             painter.circle_stroke(v(12.0, 12.0), 9.0 * unit, stroke);
             line(&[(12.0, 11.0), (12.0, 17.0)]);
@@ -355,6 +367,8 @@ mod tests {
             Play,
             PlayTogether,
             Stop,
+            Pause,
+            Camera,
             Info,
             Warning,
             Error,

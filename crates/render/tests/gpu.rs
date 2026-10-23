@@ -127,6 +127,7 @@ fn the_backdrop_shows_sky_above_and_ground_below_in_the_right_colours() {
             size_px: [64, 64],
             sun: Sun::default(),
             environment: Environment::default(),
+            editor_lines: true,
         },
         &[],
         &[],
@@ -153,7 +154,7 @@ fn the_backdrop_shows_sky_above_and_ground_below_in_the_right_colours() {
 }
 
 #[test]
-fn the_ground_axes_show_in_red_and_green() {
+fn the_ground_axes_show_in_red_and_green_unless_editor_lines_are_off() {
     let Some(gpu) = gpu() else { return };
     let renderer = ViewportRenderer::new(&gpu.device, best_sample_count(&gpu.adapter));
     let size = 64;
@@ -161,35 +162,42 @@ fn the_ground_axes_show_in_red_and_green() {
     // Standing on the Y axis, so it runs straight ahead into the middle of
     // the lower half; the X axis crosses in front.
     let eye = Vec3::new(0.0, -10.0, 2.0);
-    renderer.render(
-        &gpu.device,
-        &gpu.queue,
-        &mut target,
-        &FrameParams {
-            view_projection: looking_north(eye),
-            camera_position: eye,
-            focus: Vec3::ZERO,
-            sky_top: srgb(SKY_TOP),
-            sky_horizon: srgb(SKY_HORIZON),
-            ground: srgb(GROUND),
-            shading: Shading::default(),
-            size_px: [64, 64],
-            sun: Sun::default(),
-            environment: Environment::default(),
-        },
-        &[],
-        &[],
-    );
-    let pixels = read_pixels(&gpu.device, &gpu.queue, &target).unwrap();
-    let greenish = (size / 2..size)
-        .map(|y| pixel(&pixels, size, size / 2, y))
-        .any(|[r, g, b]| g > r + 20 && g > b + 20);
-    let reddish = (0..size)
-        .flat_map(|y| (0..size).map(move |x| (x, y)))
-        .map(|(x, y)| pixel(&pixels, size, x, y))
-        .any(|[r, g, b]| r > g + 20 && r > b + 20);
+    let mut colours = |editor_lines| {
+        renderer.render(
+            &gpu.device,
+            &gpu.queue,
+            &mut target,
+            &FrameParams {
+                view_projection: looking_north(eye),
+                camera_position: eye,
+                focus: Vec3::ZERO,
+                sky_top: srgb(SKY_TOP),
+                sky_horizon: srgb(SKY_HORIZON),
+                ground: srgb(GROUND),
+                shading: Shading::default(),
+                size_px: [64, 64],
+                sun: Sun::default(),
+                environment: Environment::default(),
+                editor_lines,
+            },
+            &[],
+            &[],
+        );
+        let pixels = read_pixels(&gpu.device, &gpu.queue, &target).unwrap();
+        let greenish = (size / 2..size)
+            .map(|y| pixel(&pixels, size, size / 2, y))
+            .any(|[r, g, b]| g > r + 20 && g > b + 20);
+        let reddish = (0..size)
+            .flat_map(|y| (0..size).map(move |x| (x, y)))
+            .map(|(x, y)| pixel(&pixels, size, x, y))
+            .any(|[r, g, b]| r > g + 20 && r > b + 20);
+        (greenish, reddish)
+    };
+    let (greenish, reddish) = colours(true);
     assert!(greenish, "no green Y axis down the middle");
     assert!(reddish, "no red X axis");
+    // The game's own view: no grid and no axes.
+    assert_eq!(colours(false), (false, false));
 }
 
 #[test]
@@ -227,6 +235,7 @@ fn scale_check_viewport_frame() {
         size_px: [1920, 1080],
         sun: Sun::default(),
         environment: Environment::default(),
+        editor_lines: true,
     };
     let frames = 60;
     let start = std::time::Instant::now();
@@ -329,6 +338,7 @@ fn render_env(
             size_px: [size, size],
             sun,
             environment,
+            editor_lines: true,
         },
         &[Placement {
             model: &uploaded,
@@ -1224,6 +1234,7 @@ fn two_viewports_keep_their_own_frames() {
         size_px: [32, 32],
         sun: Sun::default(),
         environment: Environment::default(),
+        editor_lines: true,
     };
     let down = Vec3::new(0.0, 0.0, 10.0);
     let away = Vec3::new(0.0, -100.0, 50.0);
@@ -1315,6 +1326,7 @@ fn render_parts(
             size_px: [size, size],
             sun: Sun::default(),
             environment: unmapped(),
+            editor_lines: true,
         },
         &placed,
         &[],
@@ -1588,6 +1600,7 @@ fn the_ground_axes_stay_thin_lines_close_up() {
             size_px: [size, size],
             sun: Sun::default(),
             environment: unmapped(),
+            editor_lines: true,
         },
         &[],
         &[],

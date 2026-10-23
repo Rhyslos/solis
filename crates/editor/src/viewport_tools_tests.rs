@@ -253,3 +253,27 @@ fn the_readout_says_how_far_and_how_much() {
     assert_eq!(grid_text(0.25), "25 cm");
     assert_eq!(grid_text(1.0), "1 m");
 }
+
+#[test]
+fn a_click_on_a_cameras_marker_picks_it_unless_it_is_locked() {
+    let id = EntityId::random();
+    let mut area = AreaView {
+        cameras: vec![(id, glam::Mat4::from_translation(Vec3::new(1.0, 0.0, 0.0)))],
+        ..AreaView::default()
+    };
+    let at = camera().project(Vec3::new(1.0, 0.0, 0.0), SIZE).unwrap();
+    let mut tools = Tools::default();
+    click(&mut tools, at, &area, false);
+    assert_eq!(
+        tools.events,
+        [ViewportEvent::Click {
+            hit: Some(id),
+            mode: PickMode::Replace
+        }]
+    );
+    area.locked.insert(id);
+    let mut tools = Tools::default();
+    click(&mut tools, at, &area, false);
+    assert!(tools.events.is_empty(), "asks the renderer instead");
+    assert!(tools.rect_to_send().is_some());
+}

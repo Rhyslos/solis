@@ -2,11 +2,13 @@
 //! values and back (`reflect::Component`); missing or damaged values take
 //! their defaults, so an older or damaged area still loads.
 
+mod camera;
 mod environment;
 mod light;
 mod model;
 mod transform;
 
+pub use camera::Camera;
 pub use environment::{Environment, Sky, ToneMapping};
 pub use light::{Light, LightKind, aim, sun_rotation};
 pub use model::Model;
@@ -22,6 +24,7 @@ pub fn registry() -> Result<Registry, RegistryError> {
     registry.register_type::<Light>()?;
     registry.register_type::<Environment>()?;
     registry.register_type::<Model>()?;
+    registry.register_type::<Camera>()?;
     Ok(registry)
 }
 
@@ -118,7 +121,10 @@ mod tests {
     fn the_built_in_components_register() {
         let registry = registry().unwrap();
         let names: Vec<&str> = registry.iter().map(|s| s.name.as_str()).collect();
-        assert_eq!(names, ["Environment", "Light", "Model", "Transform"]);
+        assert_eq!(
+            names,
+            ["Camera", "Environment", "Light", "Model", "Transform"]
+        );
     }
 
     fn round_trip<T: Component + PartialEq + std::fmt::Debug>(value: &T) {
@@ -136,6 +142,7 @@ mod tests {
     #[test]
     fn every_built_in_round_trips_through_values() {
         round_trip(&Transform::default());
+        round_trip(&Camera::default());
         round_trip(&Light::sun());
         round_trip(&Light::point());
         round_trip(&Light::spot());

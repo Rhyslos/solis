@@ -17,11 +17,18 @@ pub(crate) struct Picker {
     pub(crate) answer: Option<PickAnswer>,
     /// Every action the workbench returned.
     pub(crate) actions: Vec<crate::workbench::WorkbenchAction>,
+    /// Every view drawn, oldest first.
+    pub(crate) views: Vec<ViewportView>,
     waiting: bool,
 }
 
 impl ViewportRenderer for Picker {
     fn render(&mut self, view: &ViewportView) -> Result<egui::TextureId, String> {
+        // Only the newest few are kept.
+        if self.views.len() > 16 {
+            self.views.remove(0);
+        }
+        self.views.push(view.clone());
         if let Some(rect) = view.pick {
             self.asked.push(rect);
             self.waiting = true;
@@ -120,4 +127,37 @@ pub(crate) fn click(
     h.run();
     h.event(egui::Event::ModifiersChanged(egui::Modifiers::NONE));
     h.run();
+}
+
+/// A lamp-post assembly file: a post with a lamp under it.
+pub(crate) fn lamp_post_file() -> (AssetId, std::sync::Arc<area::text::AreaFile>) {
+    let id = |n| EntityId(reflect::Id::from_raw(n).unwrap());
+    let mut area = area::Area::new();
+    area.insert(
+        id(1),
+        area::EntityData::new("Lamp post").with(&area::builtin::Transform::default()),
+    );
+    let mut lamp = area::EntityData::new("Lamp").with(&area::builtin::Light::point());
+    lamp.parent = Some(id(1));
+    area.insert(id(2), lamp);
+    let file = area::text::AreaFile {
+        kind: area::text::FileKind::Assembly { root: id(1) },
+        area,
+        overrides: Default::default(),
+    };
+    (
+        AssetId(reflect::Id::from_raw(900).unwrap()),
+        std::sync::Arc::new(file),
+    )
+}
+
+/// A workbench with the lamp post known and one copy placed.
+pub(crate) fn with_a_lamp_post() -> (Workbench, AssetId, EntityId, EntityId) {
+    let mut w = Workbench::new(info(), None);
+    let (asset, file) = lamp_post_file();
+    w.set_assembly(asset, file);
+    w.place_assembly(asset);
+    let root = w.selection().unwrap();
+    let lamp = area::assembly::derive(root, &[EntityId(reflect::Id::from_raw(2).unwrap())]);
+    (w, asset, root, lamp)
 }

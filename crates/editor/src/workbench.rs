@@ -155,6 +155,8 @@ pub struct Workbench {
     pub(crate) place_targets: BTreeMap<AssetId, (glam::Vec3, Option<EntityId>)>,
     /// Mistakes found in the area, for the Problems panel.
     pub(crate) problems: crate::problems::Problems,
+    /// The game, while it runs.
+    pub(crate) playing: Option<crate::play::Playing>,
 }
 
 impl Workbench {
@@ -180,6 +182,7 @@ impl Workbench {
             library_state: Default::default(),
             place_targets: BTreeMap::new(),
             problems: Default::default(),
+            playing: None,
             assemblies: BTreeMap::new(),
             outbox: Vec::new(),
             unsaved_prompt: None,
@@ -328,6 +331,11 @@ impl Workbench {
     /// loaded as one undoable step, or, with unsaved changes, the user is
     /// asked which to keep.
     pub fn offer_reload(&mut self, area: area::Area) {
+        if let Some(playing) = &mut self.playing {
+            // The game's copy isn't the file's; offered again after Stop.
+            playing.reload = Some(area);
+            return;
+        }
         if self.document.is_dirty() {
             self.pending_reload = Some(area);
         } else {
@@ -443,6 +451,8 @@ impl Workbench {
         self.editing_keys(ui);
         self.file_keys(ui, &mut actions);
         self.console_key(ui);
+        let seconds = ui.input(|i| i.stable_dt);
+        self.run_game(seconds);
         egui::Panel::top("top_bar")
             .frame(theme::top_bar_frame())
             .exact_size(34.0)
@@ -462,6 +472,15 @@ impl Workbench {
         self.find_problems();
         let menu = crate::menu_items::MenuState::of(self);
         let copied: Vec<String> = self.copied.iter().map(|(name, _)| name.clone()).collect();
+        // Worked out only while the Game panel is in front.
+        let game = match &self.playing {
+            Some(playing) if self.in_front.contains(&crate::panel::Panel::Game) => Some(
+                crate::game_panel::GameScene::of(&playing.world, &self.models, self.play_state()),
+            ),
+            Some(_) => None,
+            None => None,
+        };
+        let playing = self.playing.is_some();
         theme::dock_frame().show(ui, |ui| {
             DockArea::new(&mut self.dock)
                 .style(style)
@@ -481,6 +500,8 @@ impl Workbench {
                         console: &mut self.console,
                         console_requests: &mut console_requests,
                         problems: &self.problems.list,
+                        game: game.as_ref(),
+                        playing,
                         document: &self.document,
                         models: &self.models,
                         area_requests: &mut area_requests,
@@ -520,6 +541,7 @@ impl Workbench {
         }
         self.about(ui);
         self.prompts(ui, &mut actions);
+        self.hold_while_playing(&mut actions);
         actions
     }
 
@@ -712,6 +734,14 @@ impl Workbench {
     /// Asks for `action`, first asking about unsaved changes if it would
     /// lose them (a new or another area, another project, quitting).
     pub(crate) fn request(&mut self, action: WorkbenchAction, actions: &mut Vec<WorkbenchAction>) {
+        if self.playing.is_some() && crate::play::waits_for_stop(&action) {
+            // Said in the Console, and kept back, at the end of the frame.
+            actions.push(action);
+            return;
+        }
+        if self.playing.is_some() && action == WorkbenchAction::Quit {
+            self.stop();
+        }
         let loses_changes = matches!(
             action,
             WorkbenchAction::NewArea
@@ -735,6 +765,9 @@ impl Workbench {
     /// Whether the window may close now. If the area has unsaved changes,
     /// asks first (and the app should cancel this close).
     pub fn close_requested(&mut self) -> bool {
+        if self.playing.is_some() {
+            self.stop();
+        }
         if self.may_close || !self.document.is_dirty() {
             return true;
         }

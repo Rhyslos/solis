@@ -40,9 +40,7 @@ pub struct Problem {
 /// What the problems were found from, to tell when to look again.
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub(crate) struct Fingerprint {
-    state: u64,
-    steps: usize,
-    entities: usize,
+    revision: u64,
     models: usize,
     known: usize,
     assemblies: usize,
@@ -96,9 +94,7 @@ impl Fingerprint {
         assemblies: usize,
     ) -> Self {
         Self {
-            state: document.history().state(),
-            steps: document.history().undo_len(),
-            entities: document.area().len(),
+            revision: document.revision(),
             models,
             known,
             assemblies,

@@ -99,6 +99,21 @@ pub(crate) const COMMANDS: &[CommandInfo] = &[
         help: "Chooses a tool (Q, W, R, S, T).",
     },
     CommandInfo {
+        name: "play",
+        usage: "play",
+        help: "Runs the area as a game (the Play button), or carries on after pause.",
+    },
+    CommandInfo {
+        name: "pause",
+        usage: "pause",
+        help: "Stops the game's clock, or starts it again.",
+    },
+    CommandInfo {
+        name: "stop",
+        usage: "stop",
+        help: "Stops the game: the area goes back to how it was before Play.",
+    },
+    CommandInfo {
         name: "stats",
         usage: "stats",
         help: "Counts what's in the area, and how fast the editor draws.",
@@ -238,6 +253,18 @@ impl Workbench {
             }
             "look" => self.choose_look(args),
             "tool" => self.choose_tool(args),
+            "play" => {
+                self.play();
+                Ok(String::new())
+            }
+            "pause" => {
+                self.pause();
+                Ok(String::new())
+            }
+            "stop" => {
+                self.stop();
+                Ok(String::new())
+            }
             "stats" => Ok(self.stats()),
             _ => Err(format!(
                 "there's no command \"{name}\"; type help to see them all"

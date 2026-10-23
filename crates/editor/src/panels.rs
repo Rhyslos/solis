@@ -34,6 +34,10 @@ pub(crate) struct PanelViewer<'a> {
     pub(crate) console: &'a mut Console,
     pub(crate) console_requests: &'a mut Vec<ConsoleRequest>,
     pub(crate) problems: &'a [crate::problems::Problem],
+    /// What the Game panel shows, while the game runs.
+    pub(crate) game: Option<&'a crate::game_panel::GameScene>,
+    /// Whether the game is running.
+    pub(crate) playing: bool,
     pub(crate) document: &'a Document,
     pub(crate) models: &'a BTreeMap<AssetId, ModelInfo>,
     pub(crate) area_requests: &'a mut Vec<AreaRequest>,
@@ -126,6 +130,9 @@ impl TabViewer for PanelViewer<'_> {
             let full = ui.max_rect();
             let mut view_ui = ui.new_child(egui::UiBuilder::new().max_rect(full));
             self.viewport.show(&mut view_ui, self.renderer, self.accent);
+            if self.playing {
+                playing_border(ui, full, self.accent);
+            }
             ui.advance_cursor_after_rect(full);
             return;
         }
@@ -165,7 +172,21 @@ impl TabViewer for PanelViewer<'_> {
                 );
                 self.library_requests.extend(requests);
             }
-            Panel::Game => placeholder(ui, "Press Play to run the game here (Phase 3)."),
+            Panel::Game => {
+                let full = ui.max_rect();
+                let mut game_ui = ui.new_child(egui::UiBuilder::new().max_rect(full));
+                crate::game_panel::game_panel(
+                    &mut game_ui,
+                    self.game,
+                    self.playing,
+                    &self.viewport.camera,
+                    self.renderer,
+                );
+                if self.playing {
+                    playing_border(ui, full, self.accent);
+                }
+                ui.advance_cursor_after_rect(full);
+            }
             Panel::Console => {
                 if let Some(request) = console(ui, self.console, self.accent) {
                     self.console_requests.push(request);
@@ -180,6 +201,17 @@ impl TabViewer for PanelViewer<'_> {
             Panel::Viewport => {}
         }
     }
+}
+
+/// The border around the viewport and the Game panel while the game
+/// runs, so it's plain that changes made now are undone on Stop.
+fn playing_border(ui: &Ui, rect: egui::Rect, accent: Accent) {
+    ui.painter().rect_stroke(
+        rect,
+        0.0,
+        egui::Stroke::new(2.0, accent.colors().light),
+        egui::StrokeKind::Inside,
+    );
 }
 
 /// The small menu row under a panel's title: "≡ Edit View …".
