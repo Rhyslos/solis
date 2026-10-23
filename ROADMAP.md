@@ -55,7 +55,9 @@ Milestones, one pull request each:
 
 ## Phase 2: The world
 
-- Entity and component storage (ECS style).
+The working plan, with the order milestones are built in, is [docs/plans/phase-2.md](docs/plans/phase-2.md).
+
+- Entities and components, in a scene document ([decision 0019](docs/decisions/0019-scene-document-now-game-storage-later.md)).
 - Transforms and parenting.
 - Components that describe themselves, so the inspector can show any component, built-in or custom.
 - Scenes as text files that merge cleanly in Git: one entity per block, stable IDs, fields in a fixed order ([decision 0006](docs/decisions/0006-git-built-in.md)).
@@ -64,12 +66,13 @@ Milestones, one pull request each:
 - The asset database: stable IDs kept in a small text file beside each asset, so renaming a file doesn't break anything; assets reload when changed on disk.
 - Undo and redo for every edit.
 
-**Decide before starting:** storage (`bevy_ecs` on its own, or Solis's own) and the scene file format.
+**Decided:** a scene document now and the game's fast storage in Phase 3 (0019); Lust-style scene files (0020); the asset database and models as node trees (0021); undo as reversible edits (0022).
 
 **Gate:** save a scene, change it in a text editor, and see it reload. Rename a texture and nothing breaks. Two people change different entities in the same scene on two branches, and Git merges them without a conflict.
 
 ## Phase 3: The editor
 
+- **First:** the game's fast storage, chosen with a benchmark at the scale target (`hecs` or Solis's own), built from the scene document when Play is pressed ([decision 0019](docs/decisions/0019-scene-document-now-game-storage-later.md)).
 - Picking and selection in the viewport, and move, rotate and scale gizmos.
 - The entity list and the inspector.
 - The library: assets and code, with a collapsible panel.

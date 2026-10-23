@@ -28,7 +28,7 @@ Solis is built in phases, one milestone per pull request. Each phase ends with a
 
 **Overall: 12 of 60 milestones** `███░░░░░░░░░░` 20%
 
-**Now:** Phase 1's gate (the project lead tries it by hand); then Phase 2, the world.
+**Now:** Phase 2, the world ([plan](docs/plans/phase-2.md)). Phase 1's gate is still to be tried by hand.
 
 ### Phase 0 · Groundwork — 7 of 7
 
@@ -63,13 +63,13 @@ Solis is built in phases, one milestone per pull request. Each phase ends with a
 <details>
 <summary>Milestones</summary>
 
-- [ ] Entities and components (decide first: the storage)
+- [ ] Entities and components, in a scene document (decision 0019)
+- [ ] Undo and redo for every edit (decision 0022)
 - [ ] Transforms and parenting
 - [ ] Components that describe themselves, so the inspector can show any of them
-- [ ] Scenes saved as text that Git merges cleanly; new projects set up for Git
+- [ ] The asset database: renaming a file breaks nothing; assets reload when changed (decision 0021)
+- [ ] Scenes saved as text that Git merges cleanly; new projects set up for Git (decision 0020)
 - [ ] Prefabs: nested, with per-instance changes
-- [ ] The asset database: renaming a file breaks nothing; assets reload when changed
-- [ ] Undo and redo for every edit
 
 </details>
 
