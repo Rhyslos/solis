@@ -38,8 +38,6 @@ pub(crate) struct Playing {
     /// The assemblies as they were when Play was pressed, to rebuild
     /// copies from on Stop if any changed meanwhile.
     assemblies_before: BTreeMap<AssetId, Arc<AreaFile>>,
-    /// The area's revision the world was last built from.
-    built_from: u64,
     /// The area as its file holds it now, if the file changed on disk
     /// while playing: offered again after Stop.
     pub(crate) reload: Option<area::Area>,
@@ -104,13 +102,13 @@ impl Workbench {
         self.moving = None;
         self.document.close_step();
         let world = world::World::from_area(self.document.area());
+        let _ = self.document.take_changes();
         let cameras = world.placed::<area::builtin::Camera>().len();
         self.playing = Some(Playing {
             world,
             paused: false,
             before: Box::new(self.document.clone()),
             assemblies_before: self.assemblies.clone(),
-            built_from: self.document.revision(),
             reload: None,
         });
         if let Some(found) = self.dock.find_tab(&Panel::Game) {
@@ -175,16 +173,20 @@ impl Workbench {
         }
     }
 
-    /// Moves the game on by `seconds` and builds it again if the area
-    /// changed. Called once a frame.
+    /// Moves the game on by `seconds`, taking in what changed in the
+    /// area: only the entities changed, or, when entities were added,
+    /// deleted or moved, everything. Called once a frame.
     pub(crate) fn run_game(&mut self, seconds: f32) {
-        let revision = self.document.revision();
+        let changes = self.document.take_changes();
         let Some(playing) = &mut self.playing else {
             return;
         };
-        if playing.built_from != revision {
+        if changes.everything {
             playing.world.rebuild(self.document.area());
-            playing.built_from = revision;
+        } else if !changes.entities.is_empty() {
+            playing
+                .world
+                .update(self.document.area(), changes.entities.iter().copied());
         }
         if !playing.paused {
             playing.world.step(f64::from(seconds));

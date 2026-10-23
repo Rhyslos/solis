@@ -22,6 +22,8 @@
 - **Axes:** the three directions in 3D. Solis colours them the same everywhere: **X red, Y green, Z blue**. The red and green lines across the ground are the X and Y axes; they cross at the origin (the point 0, 0, 0).
 - **Metres:** one unit in Solis is one metre. The grid's small squares are 1 metre across.
 - **Grid:** lines on the ground to judge size and distance by. Brighter lines mark every 10 and 100 metres. The grid fades out with distance so it doesn't clutter the horizon.
+- **Flat view (orthographic):** a view from straight above, the front or the side, where things keep their size however far away they are, so edges and heights line up exactly. The usual view, where far things look smaller, is **perspective**. See [Moving around the viewport](navigating-the-viewport.md).
+- **View:** one picture in the viewport, with its own camera. The viewport can show one, two or four at once.
 - **Fly camera:** the way you move around the viewport: you steer the camera like a drone. See [Moving around the viewport](navigating-the-viewport.md).
 ## The area
 

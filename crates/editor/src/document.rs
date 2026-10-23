@@ -92,7 +92,50 @@ pub struct Document {
     /// A number that changes whenever the area does: see
     /// [`Self::revision`].
     revision: u64,
+    /// What changed since last asked: see [`Self::take_changes`].
+    changes: Changes,
 }
+
+/// What changed in the area since last asked.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct Changes {
+    /// Entities whose name or components changed.
+    pub entities: std::collections::BTreeSet<reflect::EntityId>,
+    /// Whether anything more changed: entities added, deleted or moved to
+    /// another parent, an undo or redo, or a whole new area.
+    pub everything: bool,
+}
+
+impl Changes {
+    /// Notes what `edits` change.
+    fn note(&mut self, edits: &[Edit]) {
+        for edit in edits {
+            match edit {
+                Edit::SetField { entity, .. }
+                | Edit::AddComponent { entity, .. }
+                | Edit::RemoveComponent { entity, .. }
+                | Edit::Rename { entity, .. }
+                | Edit::SetOrigin { entity, .. } => {
+                    self.entities.insert(*entity);
+                }
+                _ => self.everything = true,
+            }
+        }
+        // Past a few hundred, building everything again is as quick.
+        if self.entities.len() > MAX_CHANGED_ENTITIES {
+            self.everything = true;
+            self.entities.clear();
+        }
+    }
+
+    /// Whether nothing changed.
+    pub fn is_empty(&self) -> bool {
+        !self.everything && self.entities.is_empty()
+    }
+}
+
+/// The most changed entities [`Changes`] lists; more count as everything.
+const MAX_CHANGED_ENTITIES: usize = 512;
 
 /// Revision numbers, shared by every document, so no two areas (or two
 /// versions of one) ever have the same one.
@@ -122,6 +165,10 @@ impl Document {
             file: None,
             saved: 0,
             revision: next_revision(),
+            changes: Changes {
+                everything: true,
+                ..Changes::default()
+            },
         }
     }
 
@@ -224,6 +271,12 @@ impl Document {
         self.revision
     }
 
+    /// What changed in the area since this was last asked (everything,
+    /// for a new document).
+    pub fn take_changes(&mut self) -> Changes {
+        std::mem::take(&mut self.changes)
+    }
+
     /// Changes the area by `edits`, as one undo step called `label`.
     /// Steps with the same `merge` key in a row become one (a whole drag).
     /// `select` is the selection afterwards, if it changes. On an error
@@ -237,9 +290,13 @@ impl Document {
     ) -> Result<(), EditError> {
         let before = self.selection.clone();
         let after = select.unwrap_or_else(|| before.clone());
+        let mut changes = Changes::default();
+        changes.note(&edits);
         self.history
             .apply(&mut self.area, label, edits, merge, before, after.clone())?;
         self.revision = next_revision();
+        self.changes.entities.extend(changes.entities);
+        self.changes.everything |= changes.everything;
         self.selection = after;
         self.selection.retain_existing(&self.area);
         Ok(())
@@ -250,6 +307,7 @@ impl Document {
     pub fn undo(&mut self) -> Option<Result<String, EditError>> {
         let done = self.history.undo(&mut self.area)?;
         self.revision = next_revision();
+        self.changes.everything = true;
         Some(done.map(|done| {
             self.selection = done.selection;
             self.selection.retain_existing(&self.area);
@@ -262,6 +320,7 @@ impl Document {
     pub fn redo(&mut self) -> Option<Result<String, EditError>> {
         let done = self.history.redo(&mut self.area)?;
         self.revision = next_revision();
+        self.changes.everything = true;
         Some(done.map(|done| {
             self.selection = done.selection;
             self.selection.retain_existing(&self.area);
@@ -278,6 +337,7 @@ impl Document {
     /// back after playing).
     pub(crate) fn touch(&mut self) {
         self.revision = next_revision();
+        self.changes.everything = true;
     }
 
     /// Ends the newest step, so the next edit starts a new one.
@@ -354,5 +414,53 @@ mod tests {
             .is_err()
         );
         assert_eq!(d.history().undo_len(), steps);
+    }
+
+    #[test]
+    fn changes_name_the_entities_touched_or_say_everything() {
+        let mut d = Document::default();
+        assert!(d.take_changes().everything, "a new area is all new");
+        assert!(d.take_changes().is_empty(), "taken once");
+        let sun = d.area().iter().next().unwrap().0;
+        d.edit(
+            "Rename",
+            vec![Edit::Rename {
+                entity: sun,
+                name: "Big sun".into(),
+            }],
+            None,
+            None,
+        )
+        .unwrap();
+        let changes = d.take_changes();
+        assert!(!changes.everything);
+        assert_eq!(changes.entities.into_iter().collect::<Vec<_>>(), [sun]);
+        d.edit(
+            "Add",
+            vec![Edit::Spawn {
+                entities: vec![(EntityId::random(), EntityData::new("Crate"))],
+            }],
+            None,
+            None,
+        )
+        .unwrap();
+        assert!(d.take_changes().everything);
+        d.undo();
+        assert!(d.take_changes().everything);
+        // A failed edit changes nothing.
+        let missing = EntityId::random();
+        assert!(
+            d.edit(
+                "Rename",
+                vec![Edit::Rename {
+                    entity: missing,
+                    name: "x".into()
+                }],
+                None,
+                None
+            )
+            .is_err()
+        );
+        assert!(d.take_changes().is_empty());
     }
 }

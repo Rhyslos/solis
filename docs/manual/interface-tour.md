@@ -16,7 +16,7 @@ When finding your way around, or making the layout suit your screen.
 
 | Panel | Shares a space with | What it's for |
 |---|---|---|
-| Viewport | Game | The 3D world. See [Moving around the viewport](navigating-the-viewport.md). |
+| Viewport | Game | The 3D world, in one, two or four views (flat ones too). See [Moving around the viewport](navigating-the-viewport.md). |
 | Game | Viewport | The running game, through its camera, when you press Play. See [Play mode](play-mode.md). |
 | Area | Layers | Every [entity](entities.md) in the area, as a tree: the sun, the [environment](sky-fog-and-exposure.md) (sky and fog), [lights](lights.md) and [imported models](importing-models.md) (each with a × to delete it), with lights from a model's file indented under it. Click one to see it in Properties. |
 | Layers | Area | The area's layers (Phase 2). |

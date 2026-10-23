@@ -1189,6 +1189,64 @@ fn scale_check_editor_with_2000_entities() {
 }
 
 #[test]
+#[ignore = "scale check: run by tools/scale/scale-check.sh"]
+fn scale_check_editor_with_four_views() {
+    const TARGET_MS: f64 = 4.0;
+    let mut w = crowded(2_000);
+    w.viewport.layout = crate::viewport::ViewLayout::Four;
+    let some = w.document().area().depth_first()[1_000];
+    w.select(some);
+    w.viewport.tool = Tool::Move;
+    let mut h = harness_with(w);
+    h.run();
+    let frames = 100;
+    let start = std::time::Instant::now();
+    for _ in 0..frames {
+        h.step();
+    }
+    let ms = start.elapsed().as_secs_f64() * 1000.0 / f64::from(frames);
+    let verdict = if ms <= TARGET_MS { "ok" } else { "SLOW" };
+    println!(
+        "Scale check: editor frame with four views, 2,000 entities and the gizmo {ms:.2} ms (target {TARGET_MS} ms) {verdict}"
+    );
+    assert!(ms <= TARGET_MS, "the editor takes {ms:.2} ms per frame");
+}
+
+#[test]
+#[ignore = "scale check: run by tools/scale/scale-check.sh"]
+fn scale_check_playing_while_dragging() {
+    // While playing, the game is built again whenever the area changes:
+    // every frame of a drag. Timed with a change each frame.
+    const TARGET_MS: f64 = 4.0;
+    let mut w = crowded(2_000);
+    let some = w.document().area().depth_first()[1_000];
+    w.select(some);
+    w.play();
+    let mut h = harness_with(w);
+    h.run();
+    let frames = 100;
+    let start = std::time::Instant::now();
+    for i in 0..frames {
+        h.state_mut().apply_property(
+            PropertyRequest::SetField {
+                entity: some,
+                component: "Transform".into(),
+                field: "position".into(),
+                value: reflect::Value::vec3(Vec3::new(f32::from(i as u8), 0.0, 0.0)),
+            },
+            77,
+        );
+        h.step();
+    }
+    let ms = start.elapsed().as_secs_f64() * 1000.0 / f64::from(frames);
+    let verdict = if ms <= TARGET_MS { "ok" } else { "SLOW" };
+    println!(
+        "Scale check: editor frame while playing and dragging, 2,000 entities {ms:.2} ms (target {TARGET_MS} ms) {verdict}"
+    );
+    assert!(ms <= TARGET_MS, "the editor takes {ms:.2} ms per frame");
+}
+
+#[test]
 fn a_crowded_area_still_lists_and_inspects() {
     let mut w = crowded(200);
     let some = w.document().area().depth_first()[100];

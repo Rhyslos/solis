@@ -390,9 +390,22 @@ impl Workbench {
         self.viewport.look
     }
 
-    /// The viewport camera, for saving.
+    /// The viewport camera of the view in use.
     pub fn camera(&self) -> Camera {
         self.viewport.camera
+    }
+
+    /// Uses `views` (the layout and every view's camera and look, as
+    /// saved last time), with anything unusable put back.
+    #[must_use]
+    pub fn with_views(mut self, views: &crate::viewport::Views) -> Self {
+        self.viewport.set_views(views);
+        self
+    }
+
+    /// The layout and every view's camera and look, for saving.
+    pub fn views(&self) -> crate::viewport::Views {
+        self.viewport.views()
     }
 
     /// Which viewport overlays are shown, for saving.

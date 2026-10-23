@@ -119,6 +119,7 @@ pub(crate) fn game_panel(
         pick: None,
         image: GAME_IMAGE,
         editor_lines: false,
+        kind: crate::camera::ViewKind::Perspective,
     };
     let painter = ui.painter_at(rect);
     match renderer.render(&view) {

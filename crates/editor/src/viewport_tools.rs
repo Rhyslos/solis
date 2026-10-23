@@ -653,12 +653,21 @@ pub(crate) fn snapping_corner(
     snapping: &mut Snapping,
     accent: Accent,
     camera_speed: u8,
+    upwards: bool,
 ) {
-    ui.with_layout(Layout::bottom_up(Align::Max), |ui| {
+    // In a bottom corner the rows build upwards; in a top one, downwards.
+    let layout = if upwards {
+        Layout::bottom_up(Align::Max)
+    } else {
+        Layout::top_down(Align::Max)
+    };
+    // Each row hugs the edge the corner builds from.
+    let row = Layout::right_to_left(if upwards { Align::Max } else { Align::Min });
+    ui.with_layout(layout, |ui| {
         ui.spacing_mut().item_spacing.y = 3.0;
         // Bottom row, laid out from the right edge, so the boxes go in
         // backwards: Grid, Angle, Scale, Camera.
-        ui.with_layout(Layout::right_to_left(Align::Max), |ui| {
+        ui.with_layout(row, |ui| {
             ui.spacing_mut().item_spacing.x = 3.0;
             theme::overlay_frame()
                 .inner_margin(egui::Margin::symmetric(8, 4))
@@ -706,7 +715,7 @@ pub(crate) fn snapping_corner(
             });
         });
         // The row above: X, Y, Z locks and world or object axes.
-        ui.with_layout(Layout::right_to_left(Align::Max), |ui| {
+        ui.with_layout(row, |ui| {
             theme::overlay_frame().show(ui, |ui| {
                 ui.horizontal(|ui| {
                     ui.spacing_mut().item_spacing.x = 2.0;

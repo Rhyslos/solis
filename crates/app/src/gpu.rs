@@ -82,6 +82,7 @@ impl GpuViewport {
             sun: render::Sun::default(),
             environment: to_render_environment(&Environment::default()),
             editor_lines: true,
+            grid_plane: render::GridPlane::Ground,
         };
         self.renderer.render(
             device,
@@ -299,6 +300,11 @@ impl ViewportRenderer for GpuViewport {
             sun: to_render_sun(view.sun.as_ref()),
             environment: to_render_environment(&view.environment),
             editor_lines: view.editor_lines,
+            grid_plane: match view.kind {
+                editor::ViewKind::Front => render::GridPlane::Front,
+                editor::ViewKind::Right => render::GridPlane::Side,
+                editor::ViewKind::Perspective | editor::ViewKind::Top => render::GridPlane::Ground,
+            },
         };
         let lights: Vec<render::Light> = view.lamps.iter().map(to_render_light).collect();
         if view.image >= editor::MAX_IMAGES {
@@ -343,9 +349,8 @@ impl ViewportRenderer for GpuViewport {
         Ok(image.texture)
     }
 
-    fn picked(&mut self) -> Option<PickAnswer> {
-        // Only the viewport picks.
-        let image = self.images.get_mut(editor::VIEWPORT_IMAGE)?.as_mut()?;
+    fn picked(&mut self, image: usize) -> Option<PickAnswer> {
+        let image = self.images.get_mut(image)?.as_mut()?;
         let result = image.target.poll_pick(&self.state.device)?;
         Some(to_answer(&result))
     }

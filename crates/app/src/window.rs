@@ -32,6 +32,9 @@ const CAMERA_KEY: &str = "viewport_camera";
 const LAST_PROJECT_KEY: &str = "last_project";
 /// Key under which the recent projects are remembered.
 const RECENT_PROJECTS_KEY: &str = "recent_projects";
+/// Key under which the viewport's views (layout, cameras, looks) are
+/// remembered.
+const VIEWS_KEY: &str = "viewport_views";
 /// Key under which the console's earlier commands are remembered.
 const CONSOLE_HISTORY_KEY: &str = "console_history";
 /// Window size on first launch, in logical pixels.
@@ -87,6 +90,7 @@ impl App {
         let snapping: editor::Snapping = storage
             .and_then(|s| eframe::get_value(s, SNAPPING_KEY))
             .unwrap_or_default();
+        let views: Option<editor::Views> = storage.and_then(|s| eframe::get_value(s, VIEWS_KEY));
         let console_history: Vec<String> = storage
             .and_then(|s| eframe::get_value(s, CONSOLE_HISTORY_KEY))
             .unwrap_or_default();
@@ -102,6 +106,10 @@ impl App {
             .with_camera(camera)
             .with_look(look)
             .with_console_history(console_history);
+        // Saved before views existed: the one camera and look above.
+        if let Some(views) = &views {
+            workbench = workbench.with_views(views);
+        }
         workbench.log(
             LogLevel::Info,
             format!("{} {} started.", info.name, info.version),
@@ -876,6 +884,7 @@ impl eframe::App for App {
         eframe::set_value(storage, LOOK_KEY, &self.workbench.look());
         eframe::set_value(storage, LAST_PROJECT_KEY, &self.projects.root());
         eframe::set_value(storage, RECENT_PROJECTS_KEY, &self.projects.recent());
+        eframe::set_value(storage, VIEWS_KEY, &self.workbench.views());
         eframe::set_value(
             storage,
             CONSOLE_HISTORY_KEY,

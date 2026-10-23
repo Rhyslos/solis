@@ -42,7 +42,7 @@ mod workbench_library;
 mod workbench_tools;
 
 pub use area_view::{AreaView, ViewLight, ViewModel};
-pub use camera::{Camera, FlyInput};
+pub use camera::{Camera, FlyInput, ViewKind};
 pub use console::{LogLevel, LogLine};
 pub use document::{Document, Selection};
 pub use egui_dock::DockState;
@@ -54,8 +54,8 @@ pub use panel::Panel;
 pub use play::PlayState;
 pub use transforming::Snapping;
 pub use viewport::{
-    GAME_IMAGE, MAX_IMAGES, NoRenderer, Overlays, Tool, VIEWPORT_IMAGE, Viewport, ViewportRenderer,
-    ViewportView,
+    GAME_IMAGE, MAX_IMAGES, NoRenderer, Overlays, Tool, VIEWPORT_IMAGE, VIEWS, ViewLayout,
+    ViewSettings, Viewport, ViewportRenderer, ViewportView, Views,
 };
 pub use viewport_tools::{Outline, PickAnswer};
 pub use workbench::{AppInfo, Workbench, WorkbenchAction};
