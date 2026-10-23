@@ -29,11 +29,11 @@ impl fmt::Display for IdError {
 impl std::error::Error for IdError {}
 
 impl Id {
-    /// A new random ID from the operating system's random numbers (or, if
-    /// those fail, from the clock and a counter: still unique in practice).
+    /// A new random ID. The standard library's hasher keys come from the
+    /// operating system's random numbers; mixed with the clock and a
+    /// counter, every call gives a fresh, unpredictable number.
     pub fn random() -> Self {
-        let raw = getrandom::u64().unwrap_or_else(|_| fallback_random());
-        Self::from_raw(raw).unwrap_or_else(Self::random)
+        Self::from_raw(random_u64()).unwrap_or_else(Self::random)
     }
 
     /// The ID with this number, or `None` for zero.
@@ -47,18 +47,20 @@ impl Id {
     }
 }
 
-/// Random enough when the system's source fails: the clock mixed with a
-/// counter (splitmix64).
-fn fallback_random() -> u64 {
+/// 64 random bits without a dependency: a hasher seeded by the operating
+/// system (`RandomState`), fed the clock and a counter so no two calls
+/// match.
+fn random_u64() -> u64 {
+    use std::hash::{BuildHasher, Hasher};
     use std::sync::atomic::{AtomicU64, Ordering};
     static COUNTER: AtomicU64 = AtomicU64::new(0);
     let nanos = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
-        .map_or(0, |d| d.as_nanos() as u64);
-    let mut z = nanos ^ COUNTER.fetch_add(0x9E37_79B9_7F4A_7C15, Ordering::Relaxed);
-    z = (z ^ (z >> 30)).wrapping_mul(0xBF58_476D_1CE4_E5B9);
-    z = (z ^ (z >> 27)).wrapping_mul(0x94D0_49BB_1331_11EB);
-    z ^ (z >> 31)
+        .map_or(0, |d| d.as_nanos());
+    let mut hasher = std::collections::hash_map::RandomState::new().build_hasher();
+    hasher.write_u128(nanos);
+    hasher.write_u64(COUNTER.fetch_add(1, Ordering::Relaxed));
+    hasher.finish()
 }
 
 impl fmt::Display for Id {
@@ -189,6 +191,6 @@ mod tests {
     fn random_ids_differ() {
         let ids: std::collections::HashSet<Id> = (0..10_000).map(|_| Id::random()).collect();
         assert_eq!(ids.len(), 10_000);
-        assert_ne!(fallback_random(), fallback_random());
+        assert_ne!(random_u64(), random_u64());
     }
 }

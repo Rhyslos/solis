@@ -23,7 +23,7 @@ Nothing here knows Rust types beyond the [`Component`] trait for typed access, s
 
 ## Depends on
 
-glam (vectors and rotations) and getrandom (random IDs).
+glam (vectors and rotations). Random IDs use only the standard library.
 
 ## Status
 

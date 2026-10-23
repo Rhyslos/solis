@@ -16,7 +16,6 @@ layer = 0
 
 [dependencies]
 glam.workspace = true
-getrandom.workspace = true
 
 [lints]
 workspace = true
