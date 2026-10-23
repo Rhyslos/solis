@@ -198,6 +198,17 @@ impl Document {
         self.history.state() != self.saved
     }
 
+    /// Notes that its file was moved to `file` (renamed or moved in the
+    /// Library), or deleted (`None`): saving goes to the new place, or,
+    /// with no file, asks where and counts as unsaved.
+    pub fn file_moved(&mut self, file: Option<std::path::PathBuf>) {
+        if file.is_none() {
+            // No state of the history ever has this number.
+            self.saved = u64::MAX;
+        }
+        self.file = file;
+    }
+
     /// Notes that it was just saved to `file`.
     pub fn mark_saved(&mut self, file: std::path::PathBuf) {
         self.file = Some(file);

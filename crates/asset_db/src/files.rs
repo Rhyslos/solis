@@ -160,7 +160,14 @@ impl AssetDb {
                 from.display()
             )));
         }
-        if target.exists() {
+        // On Windows (and macOS) names ignore capitals, so a rename that
+        // only changes them finds the file itself "already there".
+        let only_capitals = source != target
+            && matches!(
+                (source.canonicalize(), target.canonicalize()),
+                (Ok(a), Ok(b)) if a == b
+            );
+        if target.exists() && !only_capitals {
             let name = to.file_name().map_or_else(
                 || to.display().to_string(),
                 |n| n.to_string_lossy().into_owned(),
@@ -332,6 +339,17 @@ mod tests {
         db.move_path(Path::new("ship.gltf"), Path::new("boat.gltf"))
             .unwrap();
         assert!(assets.join("boat.gltf").exists());
+        // Changing only capitals works too (on Windows the file used to
+        // count as "already there").
+        db.move_path(Path::new("boat.gltf"), Path::new("Boat.gltf"))
+            .unwrap();
+        let names: Vec<String> = std::fs::read_dir(&assets)
+            .unwrap()
+            .filter_map(Result::ok)
+            .map(|e| e.file_name().to_string_lossy().into_owned())
+            .collect();
+        assert!(names.contains(&"Boat.gltf".to_string()), "{names:?}");
+        assert!(!names.contains(&"boat.gltf".to_string()), "{names:?}");
     }
 
     #[test]

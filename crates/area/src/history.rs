@@ -86,6 +86,10 @@ pub struct History<S> {
     open: bool,
     /// The next step's serial.
     next_serial: u64,
+    /// The serial of the newest step dropped to keep within the limit (0
+    /// if none was): with every step left undone, the area is still past
+    /// it, so it mustn't look like the start.
+    dropped: u64,
 }
 
 impl<S: Clone> Default for History<S> {
@@ -105,6 +109,7 @@ impl<S: Clone> History<S> {
             limit,
             open: false,
             next_serial: 1,
+            dropped: 0,
         }
     }
 
@@ -176,7 +181,7 @@ impl<S: Clone> History<S> {
     /// the one at the last save says whether there are unsaved changes.
     /// 0 is the start (nothing done).
     pub fn state(&self) -> u64 {
-        self.undo.back().map_or(0, |s| s.serial)
+        self.undo.back().map_or(self.dropped, |s| s.serial)
     }
 
     fn push(&mut self, step: Step<S>) {
@@ -185,6 +190,7 @@ impl<S: Clone> History<S> {
         while self.bytes > self.limit && self.undo.len() > 1 {
             if let Some(old) = self.undo.pop_front() {
                 self.bytes -= old.bytes;
+                self.dropped = old.serial;
             }
         }
     }
@@ -436,6 +442,11 @@ mod tests {
         }
         assert!(h.bytes() <= 2_000, "{}", h.bytes());
         assert!(h.undo_len() > 1 && h.undo_len() < 200);
+        // Found by review: with every step left undone, the area still has
+        // the dropped steps' changes, so it isn't back at the start (which
+        // would look "saved" for a file just opened).
+        while h.undo(&mut s).is_some() {}
+        assert_ne!(h.state(), 0);
         // The newest step is always kept, however big.
         let mut tiny = History::<()>::with_limit(1);
         tiny.apply(&mut s, "Big", vec![set(id, 1.0)], None, (), ())

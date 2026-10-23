@@ -34,6 +34,13 @@ impl GpuViewport {
     /// Sets up viewport drawing on the window's GPU device.
     pub fn new(state: &RenderState) -> Self {
         let samples = render::best_sample_count(&state.adapter);
+        // wgpu's own handler stops the program on any GPU mistake; this one
+        // tells the Console instead, so a driver hiccup never loses work.
+        state
+            .device
+            .on_uncaptured_error(std::sync::Arc::new(|error: eframe::wgpu::Error| {
+                log::error!("the graphics card reported a problem: {error}");
+            }));
         Self {
             renderer: render::ViewportRenderer::new(&state.device, samples),
             state: state.clone(),

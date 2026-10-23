@@ -21,6 +21,11 @@ pub const Y_UP_TO_Z_UP: Mat4 = Mat4::from_cols(
     Vec4::new(0.0, 0.0, 0.0, 1.0),
 );
 
+/// The most nodes a model's tree may have. Real models have thousands; a
+/// damaged or hostile file with millions would make every step after
+/// reading it (part IDs, the Area panel, unpacking) crawl.
+pub(crate) const MAX_NODES: usize = 200_000;
+
 /// Every node of the file's main scene (or its first), with where it is
 /// placed in Solis's space. Empty for a file without scenes.
 pub(crate) fn placed_nodes(
@@ -42,8 +47,10 @@ pub(crate) fn placed_nodes(
     let mut steps = 0usize;
     while let Some((node, parent)) = todo.pop() {
         steps += 1;
-        if steps > 1_000_000 {
-            return Err(ImportError::Damaged("its node tree loops".into()));
+        if steps > MAX_NODES {
+            return Err(ImportError::Damaged(format!(
+                "its node tree loops, or has more than {MAX_NODES} nodes"
+            )));
         }
         let local = Mat4::from_cols_array_2d(&node.transform().matrix());
         let world = if local.is_finite() {
@@ -172,8 +179,10 @@ fn scene_nodes(document: &gltf::Document) -> Result<Vec<PlacedNode<'_>>, ImportE
     let mut steps = 0usize;
     while let Some((node, parent)) = todo.pop() {
         steps += 1;
-        if steps > 1_000_000 {
-            return Err(ImportError::Damaged("its node tree loops".into()));
+        if steps > MAX_NODES {
+            return Err(ImportError::Damaged(format!(
+                "its node tree loops, or has more than {MAX_NODES} nodes"
+            )));
         }
         let raw = Mat4::from_cols_array_2d(&node.transform().matrix());
         let local = if raw.is_finite() {

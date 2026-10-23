@@ -100,10 +100,16 @@ impl FrameResources {
         device: &wgpu::Device,
         queue: &wgpu::Queue,
         raw: &[crate::instances::InstanceRaw],
-    ) {
+    ) -> bool {
         let bytes: &[u8] = bytemuck::cast_slice(raw);
         if bytes.is_empty() {
-            return;
+            return true;
+        }
+        // More copies than one buffer can hold would be a GPU error, which
+        // stops the program: they aren't drawn instead.
+        let most = device.limits().max_buffer_size;
+        if bytes.len() as u64 > most {
+            return false;
         }
         let fits = self
             .instances
@@ -112,7 +118,7 @@ impl FrameResources {
         if !fits {
             // Room to grow, so a slowly growing scene isn't re-made every
             // frame.
-            let size = (bytes.len() as u64).next_power_of_two().max(4096);
+            let size = (bytes.len() as u64).next_power_of_two().max(4096).min(most);
             self.instances = Some(device.create_buffer(&wgpu::BufferDescriptor {
                 label: Some("instances"),
                 size,
@@ -123,6 +129,7 @@ impl FrameResources {
         if let Some(buffer) = &self.instances {
             queue.write_buffer(buffer, 0, bytes);
         }
+        true
     }
 }
 
@@ -727,8 +734,15 @@ impl ViewportRenderer {
     ) {
         let (lamps, lamp_count) = LightsUniform::new(lights, params.camera_position);
         let shadow_box = crate::instances::world_bounds(placed);
-        let (raw, batches, batch_models) = crate::instances::gather(placed);
-        target.frame.write_instances(device, queue, &raw);
+        let (raw, mut batches, batch_models) = crate::instances::gather(placed);
+        if !target.frame.write_instances(device, queue, &raw) {
+            log::warn!(
+                "{} model copies are more than the graphics card can draw at once; models \
+                 aren't drawn",
+                raw.len()
+            );
+            batches.clear();
+        }
         let target = &*target;
         let model_of = |b: &crate::instances::Batch| placed[batch_models[b.model]].model;
         let shadows_drawn = params.sun.shadows

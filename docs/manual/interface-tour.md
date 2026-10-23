@@ -32,7 +32,7 @@ When finding your way around, or making the layout suit your screen.
 3. Drag the thin line between two panels to make one bigger.
 4. The ▼ at the left of a panel's tab row folds the panel away; click it again to unfold.
 
-Your layout is remembered next time.
+Your layout is remembered next time. If the saved layout is ever damaged (a crash while saving, a hand edit), Solis starts with the Default one instead.
 
 ## Settings
 | Setting | What it does |

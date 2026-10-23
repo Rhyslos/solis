@@ -350,3 +350,33 @@ fn a_camera_is_listed_with_its_icon_and_added_from_the_entity_menu() {
     assert!(w.document.area().get(id).unwrap().has("Camera"));
     assert!(h.query_all_by_label("Camera 1").next().is_some(), "listed");
 }
+
+#[test]
+fn a_cancelled_save_calls_off_the_quit_so_a_later_close_asks_again() {
+    let (mut w, _) = with_a_crate();
+    assert!(w.document.is_dirty());
+    assert!(!w.close_requested(), "asks first");
+    // "Save" was chosen: the quit may go ahead once the save works...
+    w.may_close = true;
+    assert!(w.close_requested());
+    // ...but the Save window was cancelled.
+    w.quit_cancelled();
+    assert!(!w.close_requested(), "asks again");
+    assert_eq!(w.unsaved_prompt, Some(WorkbenchAction::Quit));
+}
+
+#[test]
+fn a_file_changed_on_disk_is_asked_about_only_after_stop() {
+    let (mut w, _) = with_a_crate();
+    w.pending_reload = Some(area::builtin::starter_area());
+    w.play();
+    let mut h = harness(w);
+    h.run();
+    assert!(
+        h.query_by_label("Load the file").is_none(),
+        "not while playing"
+    );
+    h.state_mut().0.stop();
+    h.run();
+    let _ = h.get_by_label("Load the file");
+}
