@@ -145,7 +145,7 @@ The ROADMAP lists Phase 2's parts; they're built in this order. **Undo comes sec
   - world transforms;
   - kittests for the tree.
 
-### M4. Components that describe themselves ☐
+### M4. Components that describe themselves ☑
 
 - **The full inspector:**
   - Add component (a menu of registered ones) and Remove component.
