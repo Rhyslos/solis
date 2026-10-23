@@ -1195,3 +1195,73 @@ fn a_crowded_area_still_lists_and_inspects() {
     let _ = h.get_by_label("Position");
     assert_eq!(h.state().document().area().len(), 202);
 }
+
+#[test]
+fn the_library_lists_the_project_and_a_double_click_places() {
+    let mut w = Workbench::new(info(), None);
+    let mut h = acting(w);
+    h.run();
+    let _ = h.get_by_label_contains("No project is open");
+    w = Workbench::new(info(), None);
+    w.set_project(Some(crate::library::ProjectInfo {
+        name: "Harbour".into(),
+        root: "/projects/harbour".into(),
+    }));
+    assert_eq!(w.title(), "Test Engine 9.9.9 · Harbour · Untitled area");
+    let id = AssetId(reflect::Id::from_raw(42).unwrap());
+    w.set_library(vec![crate::library::LibraryItem {
+        id,
+        name: "Lighthouse".into(),
+        path: "props/lighthouse.glb".into(),
+    }]);
+    let mut h = acting(w);
+    h.run();
+    h.get_by_label("Place Lighthouse").click();
+    h.run();
+    assert!(h.state().1.contains(&WorkbenchAction::PlaceAsset(id)));
+}
+
+#[test]
+fn the_file_menu_asks_for_projects_and_lists_recent_ones() {
+    let mut w = Workbench::new(info(), None);
+    w.set_recent(vec!["/projects/harbour".into()]);
+    let mut h = acting(w);
+    h.run();
+    h.get_all_by_label("File").next().unwrap().click();
+    h.run();
+    h.get_by_label("New project…").click();
+    h.run();
+    assert!(h.state().1.contains(&WorkbenchAction::NewProject));
+    h.get_all_by_label("File").next().unwrap().click();
+    h.run();
+    h.get_by_label_contains("Recent projects").click();
+    h.run();
+    h.get_by_label("harbour").click();
+    h.run();
+    assert!(
+        h.state()
+            .1
+            .contains(&WorkbenchAction::OpenRecent("/projects/harbour".into()))
+    );
+}
+
+#[test]
+fn opening_another_project_starts_a_new_area_and_reloads_swap_models() {
+    let (mut w, _) = with_a_model();
+    assert!(w.has_model(crate_info().asset));
+    let mut bigger = crate_info();
+    bigger.triangles = 99;
+    w.reload_model(bigger, &["a texture was too big".into()]);
+    assert_eq!(w.models()[&crate_info().asset].triangles, 99);
+    assert!(
+        w.log_lines()
+            .iter()
+            .any(|l| l.text.contains("Reloaded Crate"))
+    );
+    w.set_project(Some(crate::library::ProjectInfo {
+        name: "Other".into(),
+        root: "/other".into(),
+    }));
+    assert!(w.models().is_empty());
+    assert_eq!(w.document().area().len(), 2, "a fresh area");
+}

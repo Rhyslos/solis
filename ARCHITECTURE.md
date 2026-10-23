@@ -8,12 +8,12 @@ Solis is a Rust program split into small, single-purpose crates. **Lower layers 
 | --- | --- | --- | --- |
 | 3 | App | `app` | Opens the window, owns the frame loop, wires the rest together. No feature logic. |
 | 2 | Editor | `editor` | The editor's interface: top bar, dockable panels, theme. Never needed by a game. |
-| 1 | Engine | `render`, `assets` | What games run on. Knows nothing about the editor. `assets` reads model files; `render` draws. |
+| 1 | Engine | `render`, `assets`, `asset_db` | What games run on. Knows nothing about the editor. `assets` reads model files; `render` draws; `asset_db` keeps the project's assets by stable ID. |
 | 0 | Core | `reflect`, `area` | Shared building blocks with no GPU, window or interface. `reflect` holds IDs, values and component schemas; `area` holds the area document and the built-in components. |
 
 Each crate's `README.md` states its purpose and what it **must never** do. Read it before changing the crate.
 
-Planned: `asset_db` (layer 1) later in Phase 2; the game's own fast storage in Phase 3 ([decision 0019](docs/decisions/0019-scene-document-now-game-storage-later.md)); physics, sound and networking crates in later phases. See ROADMAP.md.
+Planned: the game's own fast storage in Phase 3 ([decision 0019](docs/decisions/0019-scene-document-now-game-storage-later.md)); physics, sound and networking crates in later phases. See ROADMAP.md.
 
 ## The area
 
@@ -52,3 +52,8 @@ The HDR image's alpha channel is a mask, not opacity: 1 where the lit world is (
 - **Z is up.** X is red, Y green and Z blue wherever axes are shown.
 - **Units are metres.**
 - **The engine never waits on the GPU or on files in the frame loop;** slow work runs on other threads and reports back with messages.
+
+## Projects and assets
+
+A project is a folder: `project.solis`, `assets/` and the `.solis/` cache. `asset_db::AssetDb` is worked out from `assets/` (the folder is the truth); each asset's `AssetId` lives in a `.solmeta` sidecar beside it, so renaming, moving or switching Git branches breaks nothing. The app (`crates/app/src/project.rs`) holds the database and a watcher; when the watcher reports something, the database rescans and the app reloads changed models in use on worker threads, through the import cache, and swaps them in by ID. A model imported while a project is open is copied into `assets/` first. The editor only sees `ProjectInfo` and the Library's list ([decision 0021](docs/decisions/0021-asset-database-and-models.md)).
+

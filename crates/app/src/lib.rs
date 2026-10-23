@@ -9,6 +9,7 @@ pub mod branding;
 pub mod cli;
 pub mod gpu;
 pub mod import;
+pub mod project;
 pub mod window;
 
 /// The text shown by `--version`: the name and version.

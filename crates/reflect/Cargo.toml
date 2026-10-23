@@ -16,6 +16,10 @@ layer = 0
 
 [dependencies]
 glam.workspace = true
+serde.workspace = true
+
+[dev-dependencies]
+toml.workspace = true
 
 [lints]
 workspace = true

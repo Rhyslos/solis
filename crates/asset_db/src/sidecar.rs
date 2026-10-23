@@ -1,0 +1,413 @@
+//! Sidecars: `<file>.solmeta` beside each asset, holding its ID, its
+//! importer settings and the stable IDs of its parts
+//! ([decision 0021](../../../docs/decisions/0021-asset-database-and-models.md)).
+//! They're small TOML files made to be committed with the asset, so the ID
+//! travels with it through Git and renames.
+
+use crate::project::{read_text_limited, write_atomically};
+use reflect::AssetId;
+use serde::{Deserialize, Serialize};
+use std::path::{Path, PathBuf};
+
+/// The sidecar's extension, added after the asset's own.
+pub const EXTENSION: &str = "solmeta";
+/// The format version this build writes and reads.
+pub const FORMAT: u32 = 1;
+/// The biggest sidecar read (a model with tens of thousands of parts fits).
+pub const MAX_BYTES: u64 = 8 << 20;
+
+/// The sidecar of the asset at `asset`.
+pub fn path_for(asset: &Path) -> PathBuf {
+    let mut path = asset.as_os_str().to_owned();
+    path.push(".");
+    path.push(EXTENSION);
+    PathBuf::from(path)
+}
+
+/// The asset a sidecar at `sidecar` belongs to, if it is one.
+pub fn asset_for(sidecar: &Path) -> Option<PathBuf> {
+    let name = sidecar.file_name()?.to_str()?;
+    let stem = name.strip_suffix(&format!(".{EXTENSION}"))?;
+    (!stem.is_empty()).then(|| sidecar.with_file_name(stem))
+}
+
+/// What kind of part of an asset.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize, Deserialize)]
+#[serde(rename_all = "lowercase")]
+pub enum PartKind {
+    /// A node of a model's tree.
+    Node,
+    /// A mesh.
+    Mesh,
+    /// A material.
+    Material,
+}
+
+/// One part, as the file names it, before it has an ID.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PartKey {
+    /// What kind.
+    pub kind: PartKind,
+    /// Its name with its parents' (nodes: "Ship/Mast/Sail"), or its own.
+    pub path: String,
+    /// Its place among the parts of its kind in the file.
+    pub index: usize,
+}
+
+/// One part's stable ID, and how it was last found.
+#[derive(Debug, Clone, PartialEq, Eq, Serialize, Deserialize)]
+pub struct Part {
+    /// The ID, unique within the asset, never reused.
+    pub id: u32,
+    /// What kind.
+    pub kind: PartKind,
+    /// Its name path when last imported.
+    pub path: String,
+    /// Its place among its kind when last imported.
+    pub index: usize,
+    /// Whether the last import no longer had it. Kept, so references say
+    /// "missing" instead of pointing at something else.
+    #[serde(default, skip_serializing_if = "std::ops::Not::not")]
+    pub missing: bool,
+}
+
+/// What a sidecar holds.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize)]
+pub struct Sidecar {
+    /// The format version.
+    pub format: u32,
+    /// The asset's ID.
+    pub id: AssetId,
+    /// The asset's content hash when last seen (hex), so it can be found
+    /// again after a rename outside Solis.
+    pub hash: String,
+    /// Importer settings (none yet).
+    #[serde(default)]
+    pub import: toml::Table,
+    /// The parts' IDs.
+    #[serde(default, rename = "part")]
+    pub parts: Vec<Part>,
+}
+
+impl Sidecar {
+    /// A new sidecar for content with `hash`, with a fresh ID.
+    pub fn new(hash: u64) -> Self {
+        Self {
+            format: FORMAT,
+            id: AssetId::random(),
+            hash: format!("{hash:016x}"),
+            import: toml::Table::new(),
+            parts: Vec::new(),
+        }
+    }
+
+    /// The content hash it recorded.
+    pub fn content_hash(&self) -> Option<u64> {
+        u64::from_str_radix(&self.hash, 16).ok()
+    }
+
+    /// Reads the sidecar at `path`. Damaged, oversized or newer ones are
+    /// refused with a plain reason.
+    pub fn read(path: &Path) -> Result<Self, String> {
+        let text = read_text_limited(path, MAX_BYTES).map_err(|e| e.to_string())?;
+        Self::parse(&text)
+    }
+
+    /// Reads a sidecar from its text.
+    pub fn parse(text: &str) -> Result<Self, String> {
+        let sidecar: Self = toml::from_str(text).map_err(|e| e.message().to_string())?;
+        if sidecar.format > FORMAT {
+            return Err(format!(
+                "it was written by a newer version (format {})",
+                sidecar.format
+            ));
+        }
+        Ok(sidecar)
+    }
+
+    /// The sidecar as text, with a note for whoever opens it.
+    pub fn to_text(&self) -> String {
+        let body = toml::to_string(self).unwrap_or_default();
+        format!(
+            "# Kept by Solis beside its asset: commit it with the asset, and move or\n# rename them together (or let Solis do it).\n{body}"
+        )
+    }
+
+    /// Writes it to `path`, only if that changes the file.
+    pub fn write(&self, path: &Path) -> std::io::Result<bool> {
+        let text = self.to_text();
+        if std::fs::read_to_string(path).is_ok_and(|old| old == text) {
+            return Ok(false);
+        }
+        write_atomically(path, text.as_bytes())?;
+        Ok(true)
+    }
+
+    /// Gives each of `keys` a part ID: an old part with the same kind and
+    /// name path first; then, among parts sharing a name, the same place in
+    /// order; then the same index; otherwise a new ID. Old parts not found
+    /// are kept, marked missing. Returns each key's ID, in order.
+    pub fn assign_parts(&mut self, keys: &[PartKey]) -> Vec<u32> {
+        let mut taken = vec![false; self.parts.len()];
+        let mut ids: Vec<Option<u32>> = vec![None; keys.len()];
+        // 1. A unique name path on both sides.
+        let unique = |list: &mut dyn Iterator<Item = (PartKind, &str)>, kind, path: &str| {
+            list.filter(|(k, p)| *k == kind && *p == path).count() == 1
+        };
+        for (i, key) in keys.iter().enumerate() {
+            let new_unique = unique(
+                &mut keys.iter().map(|k| (k.kind, k.path.as_str())),
+                key.kind,
+                &key.path,
+            );
+            let old_unique = unique(
+                &mut self.parts.iter().map(|p| (p.kind, p.path.as_str())),
+                key.kind,
+                &key.path,
+            );
+            if new_unique
+                && old_unique
+                && let Some(j) = self
+                    .parts
+                    .iter()
+                    .position(|p| p.kind == key.kind && p.path == key.path)
+            {
+                taken[j] = true;
+                ids[i] = Some(self.parts[j].id);
+            }
+        }
+        // 2. Duplicated names: the nth with this name gets the old nth.
+        for (i, key) in keys.iter().enumerate() {
+            if ids[i].is_some() {
+                continue;
+            }
+            let nth = keys[..i]
+                .iter()
+                .filter(|k| k.kind == key.kind && k.path == key.path)
+                .count();
+            let candidate = self
+                .parts
+                .iter()
+                .enumerate()
+                .filter(|(_, p)| p.kind == key.kind && p.path == key.path)
+                .nth(nth)
+                .map(|(j, _)| j);
+            if let Some(j) = candidate.filter(|&j| !taken[j]) {
+                taken[j] = true;
+                ids[i] = Some(self.parts[j].id);
+            }
+        }
+        // 3. The same index, for renamed parts.
+        for (i, key) in keys.iter().enumerate() {
+            if ids[i].is_some() {
+                continue;
+            }
+            let candidate = self
+                .parts
+                .iter()
+                .enumerate()
+                .position(|(j, p)| !taken[j] && p.kind == key.kind && p.index == key.index);
+            if let Some(j) = candidate {
+                taken[j] = true;
+                ids[i] = Some(self.parts[j].id);
+            }
+        }
+        // 4. New IDs, never reusing an old one.
+        let mut next = self.parts.iter().map(|p| p.id).max().unwrap_or(0) + 1;
+        let ids: Vec<u32> = ids
+            .into_iter()
+            .map(|id| {
+                id.unwrap_or_else(|| {
+                    next += 1;
+                    next - 1
+                })
+            })
+            .collect();
+        // The table now: every part found, then those that went missing.
+        let mut parts: Vec<Part> = keys
+            .iter()
+            .zip(&ids)
+            .map(|(key, &id)| Part {
+                id,
+                kind: key.kind,
+                path: key.path.clone(),
+                index: key.index,
+                missing: false,
+            })
+            .collect();
+        for (j, old) in self.parts.iter().enumerate() {
+            if !taken[j] {
+                parts.push(Part {
+                    missing: true,
+                    ..old.clone()
+                });
+            }
+        }
+        self.parts = parts;
+        ids
+    }
+}
+
+/// The parts of a model, as keys: its nodes by name path, its meshes by
+/// the first node showing them, its materials by name.
+pub fn model_parts(model: &assets::Model) -> Vec<PartKey> {
+    let mut paths: Vec<String> = Vec::with_capacity(model.nodes.len());
+    let mut keys = Vec::new();
+    for (index, node) in model.nodes.iter().enumerate() {
+        let path = match node.parent.and_then(|p| paths.get(p)) {
+            Some(parent) => format!("{parent}/{}", node.name),
+            None => node.name.clone(),
+        };
+        keys.push(PartKey {
+            kind: PartKind::Node,
+            path: path.clone(),
+            index,
+        });
+        paths.push(path);
+    }
+    for index in 0..model.meshes.len() {
+        let owner = model
+            .nodes
+            .iter()
+            .position(|n| n.meshes.contains(&index))
+            .and_then(|n| paths.get(n))
+            .map_or_else(String::new, Clone::clone);
+        keys.push(PartKey {
+            kind: PartKind::Mesh,
+            path: format!("{owner}#mesh"),
+            index,
+        });
+    }
+    for (index, material) in model.materials.iter().enumerate() {
+        keys.push(PartKey {
+            kind: PartKind::Material,
+            path: material.name.clone(),
+            index,
+        });
+    }
+    keys
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn key(kind: PartKind, path: &str, index: usize) -> PartKey {
+        PartKey {
+            kind,
+            path: path.into(),
+            index,
+        }
+    }
+
+    #[test]
+    fn sidecars_round_trip_through_text() {
+        let mut sidecar = Sidecar::new(0xABCD);
+        sidecar.assign_parts(&[key(PartKind::Node, "Ship", 0)]);
+        let text = sidecar.to_text();
+        assert!(text.starts_with("# Kept by Solis"));
+        assert_eq!(Sidecar::parse(&text).unwrap(), sidecar);
+        assert_eq!(sidecar.content_hash(), Some(0xABCD));
+        assert_eq!(
+            path_for(Path::new("a/crate.glb")),
+            Path::new("a/crate.glb.solmeta")
+        );
+        assert_eq!(
+            asset_for(Path::new("a/crate.glb.solmeta")),
+            Some(PathBuf::from("a/crate.glb"))
+        );
+        assert_eq!(asset_for(Path::new("a/.solmeta")), None);
+        assert_eq!(asset_for(Path::new("a/crate.glb")), None);
+    }
+
+    #[test]
+    fn damaged_or_newer_sidecars_are_refused() {
+        for text in [
+            "",
+            "id = 5",
+            "format = 1\nid = \"not an id\"\nhash = \"0\"",
+            "format = 9\nid = \"0000000000001\"\nhash = \"0\"",
+            "format = 1\nid = \"0000000000000\"\nhash = \"0\"",
+        ] {
+            assert!(Sidecar::parse(text).is_err(), "{text}");
+        }
+        assert!(
+            Sidecar::parse("format = 1\nid = \"0000000000001\"\nhash = \"0\"").is_ok(),
+            "parts and settings are optional"
+        );
+    }
+
+    #[test]
+    fn rubbish_never_crashes_the_reader() {
+        // A small fuzz: every prefix and many corruptions of a real one.
+        let mut sidecar = Sidecar::new(7);
+        sidecar.assign_parts(&[
+            key(PartKind::Node, "A", 0),
+            key(PartKind::Material, "Paint", 0),
+        ]);
+        let text = sidecar.to_text();
+        for end in 0..text.len() {
+            if text.is_char_boundary(end) {
+                let _ = Sidecar::parse(&text[..end]);
+            }
+        }
+        let bytes = text.as_bytes();
+        let mut seed = 12345u64;
+        for _ in 0..2000 {
+            seed ^= seed << 13;
+            seed ^= seed >> 7;
+            seed ^= seed << 17;
+            let mut broken = bytes.to_vec();
+            let at = (seed as usize) % broken.len();
+            broken[at] = (seed >> 32) as u8;
+            if let Ok(text) = std::str::from_utf8(&broken) {
+                let _ = Sidecar::parse(text);
+            }
+        }
+    }
+
+    #[test]
+    fn parts_keep_their_ids_through_a_reexport_with_nodes_reordered() {
+        let mut sidecar = Sidecar::new(1);
+        let first = sidecar.assign_parts(&[
+            key(PartKind::Node, "Ship", 0),
+            key(PartKind::Node, "Ship/Mast", 1),
+            key(PartKind::Node, "Ship/Wheel", 2),
+            key(PartKind::Material, "Wood", 0),
+        ]);
+        // Blender exported again: the nodes come out in another order and
+        // the material got a new index.
+        let again = sidecar.assign_parts(&[
+            key(PartKind::Node, "Ship/Wheel", 0),
+            key(PartKind::Node, "Ship", 1),
+            key(PartKind::Node, "Ship/Mast", 2),
+            key(PartKind::Material, "Wood", 3),
+        ]);
+        assert_eq!(again, [first[2], first[0], first[1], first[3]]);
+    }
+
+    #[test]
+    fn duplicate_names_match_in_order_renames_by_index_and_lost_parts_stay() {
+        let mut sidecar = Sidecar::new(1);
+        let first = sidecar.assign_parts(&[
+            key(PartKind::Node, "Crate", 0),
+            key(PartKind::Node, "Crate", 1),
+            key(PartKind::Node, "Barrel", 2),
+            key(PartKind::Node, "Lamp", 3),
+        ]);
+        // The barrel was renamed, the lamp deleted, a rope added.
+        let again = sidecar.assign_parts(&[
+            key(PartKind::Node, "Crate", 0),
+            key(PartKind::Node, "Crate", 1),
+            key(PartKind::Node, "Keg", 2),
+            key(PartKind::Node, "Rope", 4),
+        ]);
+        assert_eq!(&again[..3], &first[..3]);
+        assert!(!first.contains(&again[3]), "a new part gets a new ID");
+        let lamp = sidecar.parts.iter().find(|p| p.id == first[3]).unwrap();
+        assert!(lamp.missing, "kept, marked missing");
+        // It comes back with its old ID.
+        let back = sidecar.assign_parts(&[key(PartKind::Node, "Lamp", 3)]);
+        assert_eq!(back, [first[3]]);
+    }
+}

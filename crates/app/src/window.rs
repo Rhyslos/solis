@@ -3,12 +3,16 @@
 
 use crate::branding;
 use crate::gpu::GpuViewport;
-use crate::import::{Finished, Importer};
+use crate::import::{Finished, FolderFor, Importer};
+use crate::project::Projects;
+use asset_db::Change;
 use editor::{
     AppInfo, Camera, DockState, FileLight, FileLightKind, LogLevel, Look, ModelInfo, NoRenderer,
     Overlays, Panel, Workbench, WorkbenchAction, theme::Accent,
 };
 use eframe::egui;
+use reflect::AssetId;
+use std::collections::HashSet;
 use std::path::{Path, PathBuf};
 
 /// Key under which the panel layout is remembered between sessions.
@@ -21,6 +25,10 @@ const OVERLAYS_KEY: &str = "viewport_overlays";
 const LOOK_KEY: &str = "viewport_look";
 /// Key under which the viewport camera is remembered.
 const CAMERA_KEY: &str = "viewport_camera";
+/// Key under which the project open last is remembered, to open it again.
+const LAST_PROJECT_KEY: &str = "last_project";
+/// Key under which the recent projects are remembered.
+const RECENT_PROJECTS_KEY: &str = "recent_projects";
 /// Window size on first launch, in logical pixels.
 const FIRST_SIZE: [f32; 2] = [1440.0, 900.0];
 /// The smallest the window may get while staying usable.
@@ -35,6 +43,11 @@ struct App {
     no_gpu: NoRenderer,
     /// Reads model files in the background.
     importer: Importer,
+    /// The open project and its assets.
+    projects: Projects,
+    /// Models being read to be placed in the area when they arrive (the
+    /// rest being read are reloads).
+    to_place: HashSet<AssetId>,
     /// The window title last set, to change it only when it changes.
     title: String,
 }
@@ -55,6 +68,11 @@ impl App {
             .unwrap_or_default();
         let overlays: Overlays = storage
             .and_then(|s| eframe::get_value(s, OVERLAYS_KEY))
+            .unwrap_or_default();
+        let last_project: Option<PathBuf> =
+            storage.and_then(|s| eframe::get_value(s, LAST_PROJECT_KEY));
+        let recent: Vec<PathBuf> = storage
+            .and_then(|s| eframe::get_value(s, RECENT_PROJECTS_KEY))
             .unwrap_or_default();
         editor::theme::apply(&cc.egui_ctx, accent);
         let mut workbench = Workbench::new(info.clone(), layout)
@@ -84,19 +102,71 @@ impl App {
             gpu,
             no_gpu,
             importer,
+            projects: Projects::with_recent(recent),
+            to_place: HashSet::new(),
             title: String::new(),
         };
+        app.workbench.set_recent(app.projects.recent().to_vec());
+        if let Some(root) = last_project.filter(|r| r.join(asset_db::PROJECT_FILE).is_file()) {
+            app.open_project(&root, false);
+        }
         for path in imports {
             app.import(&path);
         }
         app
     }
 
+    /// Opens (or, with `create`, makes) the project in `root`.
+    fn open_project(&mut self, root: &Path, create: bool) {
+        match self.projects.open(root, create, self.importer.limits()) {
+            Ok(opened) => {
+                if let Some(gpu) = self.gpu.as_mut() {
+                    gpu.clear_models();
+                }
+                self.to_place.clear();
+                self.workbench.set_project(Some(opened.info));
+                for note in opened.notes {
+                    self.workbench.log(LogLevel::Warning, note);
+                }
+                if !opened.watching {
+                    self.workbench.log(
+                        LogLevel::Warning,
+                        "The assets folder can't be watched here: changes made outside Solis \
+                         show when the project is opened again.",
+                    );
+                }
+                self.workbench.set_library(self.projects.library());
+                self.workbench.set_recent(self.projects.recent().to_vec());
+            }
+            Err(why) => self.workbench.log(
+                LogLevel::Error,
+                format!("Couldn't open {}: {why}.", root.display()),
+            ),
+        }
+    }
+
     /// Starts importing the model at `path`, or explains why it won't.
+    /// With a project open, it's copied into the project's assets first.
     fn import(&mut self, path: &Path) {
         let file = file_name(path);
         if assets::is_model_file(path) {
-            self.importer.start(path);
+            let (id, source) = if self.projects.db().is_some() {
+                match self.projects.bring_in(path) {
+                    Ok(found) => found,
+                    Err(why) => {
+                        self.workbench.log(
+                            LogLevel::Error,
+                            format!("Couldn't copy {file} into the project: {why}."),
+                        );
+                        return;
+                    }
+                }
+            } else {
+                (AssetId::random(), path.to_path_buf())
+            };
+            self.workbench.set_library(self.projects.library());
+            self.to_place.insert(id);
+            self.importer.start(id, &source, self.projects.cache());
             self.workbench
                 .log(LogLevel::Info, format!("Importing {file}…"));
         } else {
@@ -130,18 +200,26 @@ impl App {
             .collect()
     }
 
-    /// Puts finished imports into the viewport, or reports why they failed.
+    /// Puts finished imports into the viewport (placing new ones, swapping
+    /// in reloaded ones), or reports why they failed.
     fn collect_imports(&mut self) {
         for Finished {
             id,
             path,
             result,
             seconds,
+            ..
         } in self.importer.finished()
         {
+            let placing = self.to_place.remove(&id);
             match (result, self.gpu.as_mut()) {
                 (Ok(model), Some(gpu)) => {
                     gpu.add_model(id, &model);
+                    if let Some(db) = self.projects.db() {
+                        // Part IDs for assemblies; a sidecar that can't be
+                        // written only costs them until next time.
+                        let _ = db.update_parts(id, &model);
+                    }
                     let info = ModelInfo {
                         asset: id,
                         name: model.name.clone(),
@@ -149,20 +227,84 @@ impl App {
                         min: model.bounds.min,
                         max: model.bounds.max,
                     };
-                    let lights = Self::file_lights(&model.lamps);
-                    self.workbench
-                        .add_model(info, &model.warnings, seconds, &lights);
+                    if placing {
+                        let lights = Self::file_lights(&model.lamps);
+                        self.workbench
+                            .add_model(info, &model.warnings, seconds, &lights);
+                    } else {
+                        self.workbench.reload_model(info, &model.warnings);
+                    }
                 }
                 (Ok(_), None) => self.workbench.log(
                     LogLevel::Error,
                     format!("Couldn't show {}: there is no 3D view.", file_name(&path)),
                 ),
-                (Err(why), _) => self.workbench.log(
+                (Err(why), _) if placing => self.workbench.log(
                     LogLevel::Error,
                     format!("Couldn't import {}: {why}.", file_name(&path)),
                 ),
+                (Err(why), _) => self.workbench.log(
+                    LogLevel::Error,
+                    format!(
+                        "Couldn't reload {}: {why}. The last version that worked stays.",
+                        file_name(&path)
+                    ),
+                ),
             }
         }
+    }
+
+    /// Acts on what changed in the project's assets folder: models in use
+    /// that changed are read again and swapped in.
+    fn follow_changes(&mut self, changes: Vec<Change>, notes: Vec<String>) {
+        for note in notes {
+            self.workbench.log(LogLevel::Warning, note);
+        }
+        if changes.is_empty() {
+            return;
+        }
+        for change in &changes {
+            let Some(db) = self.projects.db() else { return };
+            match change {
+                Change::Changed(id) if self.workbench.has_model(*id) => {
+                    if let Some(file) = db.file(*id) {
+                        self.importer.start(*id, &file, self.projects.cache());
+                    }
+                }
+                Change::Moved { id, from } => {
+                    if let Some(record) = db.get(*id) {
+                        self.workbench.log(
+                            LogLevel::Info,
+                            format!(
+                                "{} moved to {}; everything using it still finds it.",
+                                from.display(),
+                                record.path.display()
+                            ),
+                        );
+                    }
+                }
+                Change::Removed { path, .. } => self.workbench.log(
+                    LogLevel::Warning,
+                    format!(
+                        "{} is gone from the project's assets. Anything using it keeps the \
+                         last version until Solis restarts.",
+                        path.display()
+                    ),
+                ),
+                _ => {}
+            }
+        }
+        self.workbench.set_library(self.projects.library());
+    }
+
+    /// Places a project asset where the camera looks: it's read (from the
+    /// cache, so quickly) and placed when it arrives.
+    fn place(&mut self, id: AssetId) {
+        let Some(file) = self.projects.db().and_then(|db| db.file(id)) else {
+            return;
+        };
+        self.to_place.insert(id);
+        self.importer.start(id, &file, self.projects.cache());
     }
 }
 
@@ -196,6 +338,11 @@ impl eframe::App for App {
         if let Some(path) = self.importer.chosen() {
             self.import(&path);
         }
+        if let Some((purpose, folder)) = self.importer.chosen_folder() {
+            self.open_project(&folder, purpose == FolderFor::NewProject);
+        }
+        let (changes, notes) = self.projects.poll();
+        self.follow_changes(changes, notes);
         self.collect_imports();
         self.workbench.set_files_hovering(hovering);
         let renderer: &mut dyn editor::ViewportRenderer = match self.gpu.as_mut() {
@@ -206,8 +353,13 @@ impl eframe::App for App {
             match action {
                 WorkbenchAction::Quit => ctx.send_viewport_cmd(egui::ViewportCommand::Close),
                 WorkbenchAction::ImportModel => self.importer.ask(),
+                WorkbenchAction::NewProject => self.importer.ask_folder(FolderFor::NewProject),
+                WorkbenchAction::OpenProject => self.importer.ask_folder(FolderFor::OpenProject),
+                WorkbenchAction::OpenRecent(root) => self.open_project(&root, false),
+                WorkbenchAction::PlaceAsset(id) => self.place(id),
                 WorkbenchAction::AddSampleArea => {
-                    self.importer.start_sample("Sample area");
+                    let id = self.importer.start_sample("Sample area");
+                    self.to_place.insert(id);
                     self.workbench
                         .log(LogLevel::Info, "Adding the sample area…".to_string());
                 }
@@ -228,6 +380,8 @@ impl eframe::App for App {
         eframe::set_value(storage, OVERLAYS_KEY, &self.workbench.overlays());
         eframe::set_value(storage, CAMERA_KEY, &self.workbench.camera());
         eframe::set_value(storage, LOOK_KEY, &self.workbench.look());
+        eframe::set_value(storage, LAST_PROJECT_KEY, &self.projects.root());
+        eframe::set_value(storage, RECENT_PROJECTS_KEY, &self.projects.recent());
     }
 }
 
