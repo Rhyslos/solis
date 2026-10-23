@@ -70,4 +70,10 @@
 
 ## Tools
 
-- **Tool:** what a click in the viewport does: Select, Move, Rotate, Scale or Transform. The tools work once there are things in an area to use them on (Phase 2).
+- **Tool:** what a click in the viewport does: Select, Move, Rotate, Scale or Transform. See [Selecting and moving things](selecting-and-moving.md).
+- **Selection:** the entities you're working on. Selected things are outlined in the accent colour in the viewport and highlighted in the Area panel; Properties shows one of them.
+- **Gizmo:** the coloured arrows, rings and boxes drawn on the selection, which you drag to move, turn or resize it. Each handle works along one axis, in its colour.
+- **Pivot:** the point a selection turns and grows around: the middle of the selected entities.
+- **Snapping:** making moves, turns and sizes jump in steps (to the grid lines, 15° at a time, 10% at a time) so things line up exactly.
+- **Axis lock:** stopping drags from changing one axis, such as Z, so a drag slides along the floor without lifting.
+- **World and object axes:** the world's X, Y and Z are the same everywhere; an object's own axes turn with it. The gizmo can follow either.

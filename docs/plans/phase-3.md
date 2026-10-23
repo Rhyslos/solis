@@ -23,7 +23,7 @@ The working plan for Phase 3 (ROADMAP.md, "Phase 3: The editor"). It records the
 | Snap steps | Moves: the grid step (1 m, 50 cm, 25 cm or 10 cm); turns: 15°; scaling: 10% |
 | Ten times finer | Hold Shift while dragging |
 | Cancel a drag | Esc, or a right click |
-| Lock to one axis while dragging | X, Y or Z |
+| Lock an axis (drags leave it alone; press again to free it) | X, Y or Z, or the buttons in the corner |
 | World or object axes | L |
 | Play, Pause, Stop | The buttons at the top only (no keys) |
 | Jump to the console's command line | The `'` key: on a Norwegian keyboard, the key with ' and * next to Æ |
@@ -32,7 +32,7 @@ The working plan for Phase 3 (ROADMAP.md, "Phase 3: The editor"). It records the
 | Flat views (Top, Front, Right) | Right or middle drag slides the view, the wheel zooms (Unreal's; recommended, as the project lead didn't choose) |
 
 **No clashes:**
-- The tool keys (Q W R S T), F, F2, Delete and the fly keys (W A S D Q E while the right mouse button is held) take no modifiers, like X, Y, Z and L, which only work while a gizmo is being dragged (L also outside a drag).
+- The tool keys (Q W R S T), F, F2, Delete, X, Y, Z, L and the fly keys (W A S D Q E while the right mouse button is held) take no modifiers, so Ctrl+Z (undo) and Ctrl+A stay apart from Z and A.
 - Esc cancels a drag first, and only clears the selection when nothing is being dragged.
 - `'` only jumps to the command line when no text field has the keyboard; inside one it types a `'`.
 - None of these fire while typing in a field.
@@ -54,7 +54,7 @@ The working plan for Phase 3 (ROADMAP.md, "Phase 3: The editor"). It records the
 
 ## Milestones
 
-### M1. Picking and gizmos ☐
+### M1. Picking and gizmos ☑
 
 - **Picking:**
   - `render` draws each placement's number into an ID image (one 32-bit number per pixel, with depth) alongside the frame, only when asked. A click or box asks for a rectangle of it; the answer is read back on a later frame (usually the next), so the frame never waits (rule 10).
@@ -70,6 +70,7 @@ The working plan for Phase 3 (ROADMAP.md, "Phase 3: The editor"). It records the
 - **Snapping:** the bottom-right corner's grid, angle and scale buttons become real (on and off, and the step), saved per computer.
 - **Tests:** the gizmo maths (Aventail's tests, adapted); picking against a GPU image; selection rules with a stand-in renderer; a drag is one undo step and cancel leaves none; snapping steps; Esc and Ctrl+A.
 - **Manual:** a new "Selecting and moving things" page; keyboard shortcuts; concepts (gizmo, snapping, pivot).
+- **Built** ([decision 0025](../decisions/0025-picking-and-gizmos.md)): as planned. The axis locks are switches, as in Aventail, shown as X, Y and Z buttons in the corner (red while locked), rather than only working during a drag. The corner is two rows so it stays clear of the tools. Snapping to other objects' surfaces (Aventail has it) waits; moves snap to the grid.
 
 ### M2. The entity list and the inspector ☐
 

@@ -27,7 +27,7 @@ pub(crate) const POINT_LIGHT_HEIGHT: f32 = 2.0;
 
 /// The edits that change `entity`'s component from `before` (`None` if it
 /// has none yet) to `after`: only the fields that differ.
-fn component_edits<T: Component>(
+pub(crate) fn component_edits<T: Component>(
     entity: EntityId,
     before: Option<&ComponentData>,
     after: &T,
@@ -53,7 +53,7 @@ fn component_edits<T: Component>(
 }
 
 /// A merge key for changes to one thing during one gesture.
-fn merge_key(target: impl Hash, gesture: u64) -> MergeKey {
+pub(crate) fn merge_key(target: impl Hash, gesture: u64) -> MergeKey {
     let mut hasher = DefaultHasher::new();
     target.hash(&mut hasher);
     MergeKey {
@@ -65,7 +65,7 @@ fn merge_key(target: impl Hash, gesture: u64) -> MergeKey {
 impl Workbench {
     /// Changes the area as one undo step, or says in the console why it
     /// couldn't. Returns whether it worked.
-    fn command(
+    pub(crate) fn command(
         &mut self,
         label: &str,
         edits: Vec<Edit>,
