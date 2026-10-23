@@ -20,6 +20,7 @@ render = { path = "crates/render" }
 editor = { path = "crates/editor" }
 reflect = { path = "crates/reflect" }
 area = { path = "crates/area" }
+asset_db = { path = "crates/asset_db" }
 
 # Outside libraries. Every one must have a licence compatible with MIT,
 # checked by `cargo deny check` (see deny.toml and decision 0007).
@@ -50,6 +51,9 @@ chrono = { version = "0.4", default-features = false, features = ["clock", "std"
 egui_kittest = "0.36"
 pollster = "1.0"
 ron = "0.12"
+# Watching the project folder for changed files (decision 0021).
+notify = "8.2"
+notify-debouncer-mini = "0.7"
 
 [workspace.lints.rust]
 # No unsafe code. "deny" rather than "forbid" so that a reviewed exception,

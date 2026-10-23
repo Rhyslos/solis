@@ -128,6 +128,20 @@ macro_rules! typed_id {
                 text.parse().map(Self)
             }
         }
+
+        // Written in files as its 13 characters, as everywhere else.
+        impl serde::Serialize for $name {
+            fn serialize<S: serde::Serializer>(&self, s: S) -> Result<S::Ok, S::Error> {
+                s.collect_str(self)
+            }
+        }
+
+        impl<'de> serde::Deserialize<'de> for $name {
+            fn deserialize<D: serde::Deserializer<'de>>(d: D) -> Result<Self, D::Error> {
+                let text = <std::borrow::Cow<'de, str>>::deserialize(d)?;
+                text.parse().map_err(serde::de::Error::custom)
+            }
+        }
     };
 }
 
@@ -192,5 +206,17 @@ mod tests {
         let ids: std::collections::HashSet<Id> = (0..10_000).map(|_| Id::random()).collect();
         assert_eq!(ids.len(), 10_000);
         assert_ne!(random_u64(), random_u64());
+    }
+
+    #[test]
+    fn ids_are_written_in_files_as_their_text() {
+        let id = AssetId::random();
+        let text = toml::to_string(&std::collections::BTreeMap::from([("id", id)])).unwrap();
+        assert_eq!(text.trim(), format!("id = \"{id}\""));
+        let back: std::collections::BTreeMap<String, AssetId> = toml::from_str(&text).unwrap();
+        assert_eq!(back["id"], id);
+        assert!(
+            toml::from_str::<std::collections::BTreeMap<String, AssetId>>("id = \"0\"").is_err()
+        );
     }
 }

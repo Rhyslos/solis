@@ -42,9 +42,40 @@ impl Workbench {
     /// The File menu.
     fn file_menu(&mut self, ui: &mut Ui, actions: &mut Vec<WorkbenchAction>) {
         ui.menu_button("File", |ui| {
-            for item in ["New area", "Open…", "Save"] {
+            if ui
+                .button("New project…")
+                .on_hover_text("Makes a folder into a project: its assets, settings and areas")
+                .clicked()
+            {
+                actions.push(WorkbenchAction::NewProject);
+                ui.close();
+            }
+            if ui.button("Open project…").clicked() {
+                actions.push(WorkbenchAction::OpenProject);
+                ui.close();
+            }
+            ui.add_enabled_ui(!self.recent.is_empty(), |ui| {
+                ui.menu_button("Recent projects", |ui| {
+                    for path in &self.recent {
+                        let name = path.file_name().map_or_else(
+                            || path.display().to_string(),
+                            |n| n.to_string_lossy().into_owned(),
+                        );
+                        if ui
+                            .button(name)
+                            .on_hover_text(path.display().to_string())
+                            .clicked()
+                        {
+                            actions.push(WorkbenchAction::OpenRecent(path.clone()));
+                            ui.close();
+                        }
+                    }
+                });
+            });
+            ui.separator();
+            for item in ["New area", "Open area…", "Save area"] {
                 ui.add_enabled(false, egui::Button::new(item))
-                    .on_disabled_hover_text("Areas arrive in Phase 2");
+                    .on_disabled_hover_text("Saving areas arrives in the next update");
             }
             ui.separator();
             if ui

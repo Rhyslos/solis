@@ -737,3 +737,22 @@ fn a_mesh_used_by_several_nodes_is_stored_once() {
     assert_eq!(model.placed_meshes().len(), 5);
     assert!(close(model.bounds.center(), Vec3::new(2.0, 0.0, 0.0)));
 }
+
+#[test]
+fn a_gltf_lists_the_files_beside_it_that_it_reads() {
+    let folder = std::env::temp_dir().join(format!("solis-refs-{}", std::process::id()));
+    std::fs::create_dir_all(&folder).unwrap();
+    let mut b = Builder::default();
+    b.add_cube_mesh(1.0, None);
+    b.json_nodes = vec![r#"{"mesh":0}"#.into()];
+    let path = folder.join("crate.gltf");
+    std::fs::write(&path, b.json(Some("crate.bin"))).unwrap();
+    std::fs::write(folder.join("crate.bin"), &b.bin).unwrap();
+    let files = referenced_files(&path, &limits()).unwrap();
+    assert_eq!(files, [folder.join("crate.bin")]);
+    // A .glb holds everything itself.
+    let glb = folder.join("crate.glb");
+    std::fs::write(&glb, b.glb()).unwrap();
+    assert!(referenced_files(&glb, &limits()).unwrap().is_empty());
+    let _ = std::fs::remove_dir_all(&folder);
+}

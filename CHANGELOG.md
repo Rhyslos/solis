@@ -13,6 +13,11 @@ What changed in each version, for people using Solis. Newest first.
 
 ### Added
 
+- Projects: **File > New project…**, **Open project…** and **Recent projects**; the last project opens again on start. A project is a folder with an `assets` folder (watched for changes), a `.solis` cache and Git files set up for games. Imported models are copied into it.
+- The **Library** lists the project's models; double-click one (or click its +) to place it.
+- Renaming or moving a model breaks nothing: each asset's ID lives in a `.solmeta` file beside it, which follows a file renamed in Explorer. Copies get IDs of their own.
+- Models saved again in Blender show the new version straight away; if the new file is broken, the old version stays and the Console says why.
+- Models read before open much faster: an import cache remembers them, even after a rename. Models are read by a small pool of worker threads.
 - **Add component** at the bottom of Properties gives an entity any component (a Light on a model makes it glow like a lamp), and the × beside a component's name takes it off. Game code will register its own components the same way.
 - The Area panel stays fast with thousands of entities: only the rows in view are drawn.
 - Building the area's tree: drag an entity onto another in the Area panel to put it under it (it stays where it is in the world), or onto empty space to make it stand alone. **Ctrl + click** and **Shift + click** select several; **Delete** deletes them, **Ctrl + D** duplicates them, **F2** or a double-click renames, and **F** points the camera at them. All of it can be undone.

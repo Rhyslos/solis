@@ -1,15 +1,18 @@
-//! Importing models without stalling the window: each file is read on a
-//! thread of its own, and the window picks up the finished models between
+//! Importing models without stalling the window: files are read by a
+//! small pool of worker threads (through the project's import cache when a
+//! project is open), and the window picks up the finished models between
 //! frames (CONTRIBUTING.md, rule 10: the frame loop never waits on files).
+//! Also the system's Open windows, which run on threads of their own.
 
+use asset_db::Jobs;
 use reflect::AssetId;
 use std::path::{Path, PathBuf};
-use std::sync::mpsc::{Receiver, Sender, channel};
+use std::sync::mpsc::{Receiver, channel};
 use std::time::Instant;
 
 /// A finished import, good or not.
 pub struct Finished {
-    /// The asset the model was given when the import started.
+    /// The asset the model is for.
     pub id: AssetId,
     /// The file it came from.
     pub path: PathBuf,
@@ -17,16 +20,27 @@ pub struct Finished {
     pub result: Result<assets::Model, assets::ImportError>,
     /// How long reading it took, in seconds.
     pub seconds: f32,
+    /// Whether it came from the import cache.
+    pub from_cache: bool,
+}
+
+/// What a folder is being chosen for.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum FolderFor {
+    /// A new project.
+    NewProject,
+    /// An existing project to open.
+    OpenProject,
 }
 
 /// Starts imports and collects them when they finish.
 pub struct Importer {
-    sender: Sender<Finished>,
-    receiver: Receiver<Finished>,
+    jobs: Jobs<Finished>,
     limits: assets::Limits,
-    running: usize,
     /// The Open window, while it's showing: its choice arrives here.
     dialog: Option<Receiver<Option<PathBuf>>>,
+    /// The folder window, while it's showing.
+    folder_dialog: Option<(FolderFor, Receiver<Option<PathBuf>>)>,
 }
 
 impl Importer {
@@ -34,19 +48,53 @@ impl Importer {
     /// pixels, and whose meshes are split to fit buffers of
     /// `max_buffer_bytes` (what the graphics card can hold).
     pub fn new(max_texture_side: u32, max_buffer_bytes: u64) -> Self {
-        let (sender, receiver) = channel();
         let defaults = assets::Limits::default();
         let per_buffer = usize::try_from(max_buffer_bytes / 32).unwrap_or(usize::MAX);
         Self {
-            sender,
-            receiver,
+            jobs: Jobs::for_this_computer(),
             limits: assets::Limits {
                 max_texture_side: max_texture_side.clamp(1, defaults.max_texture_side),
                 max_mesh_vertices: per_buffer.clamp(1024, defaults.max_vertices),
                 ..defaults
             },
-            running: 0,
             dialog: None,
+            folder_dialog: None,
+        }
+    }
+
+    /// Shows the system's folder window, on a thread of its own; the
+    /// choice comes back from [`Self::chosen_folder`]. Does nothing if one
+    /// is already open.
+    pub fn ask_folder(&mut self, purpose: FolderFor) {
+        if self.folder_dialog.is_some() {
+            return;
+        }
+        let (sender, receiver) = channel();
+        std::thread::spawn(move || {
+            let title = match purpose {
+                FolderFor::NewProject => "Choose a folder for the new project",
+                FolderFor::OpenProject => "Open project",
+            };
+            let _ = sender.send(rfd::FileDialog::new().set_title(title).pick_folder());
+        });
+        self.folder_dialog = Some((purpose, receiver));
+    }
+
+    /// The folder chosen in the folder window, and what for, once it's
+    /// closed with a choice.
+    pub fn chosen_folder(&mut self) -> Option<(FolderFor, PathBuf)> {
+        let (purpose, receiver) = self.folder_dialog.as_ref()?;
+        let purpose = *purpose;
+        match receiver.try_recv() {
+            Ok(choice) => {
+                self.folder_dialog = None;
+                choice.map(|path| (purpose, path))
+            }
+            Err(std::sync::mpsc::TryRecvError::Empty) => None,
+            Err(std::sync::mpsc::TryRecvError::Disconnected) => {
+                self.folder_dialog = None;
+                None
+            }
         }
     }
 
@@ -84,37 +132,41 @@ impl Importer {
         }
     }
 
-    /// Starts importing `path` on a thread of its own.
-    pub fn start(&mut self, path: &Path) -> AssetId {
+    /// Starts reading `path` as the asset `id`, through the import cache
+    /// in `cache` if there is one. A newer read of the same asset makes an
+    /// older one's result be dropped.
+    pub fn start(&mut self, id: AssetId, path: &Path, cache: Option<PathBuf>) {
         let limits = self.limits;
         let path = path.to_path_buf();
         let reading = path.clone();
-        self.spawn(path, move || assets::load(&reading, &limits))
+        self.spawn(id, path, move || {
+            asset_db::cache::load(&reading, cache.as_deref(), &limits)
+        });
     }
 
     /// Starts reading the built-in sample area, as if from a file named
-    /// `name`.
+    /// `name`, and returns the asset it's given.
     pub fn start_sample(&mut self, name: &str) -> AssetId {
         let limits = self.limits;
         let name = name.to_string();
         let path = PathBuf::from(format!("{name}.glb"));
-        self.spawn(path, move || {
+        let id = AssetId::random();
+        self.spawn(id, path, move || {
             assets::load_bytes(&assets::sample::showcase_glb(), None, &name, &limits)
-        })
+                .map(|m| (m, false))
+        });
+        id
     }
 
-    /// Runs `read` on a thread of its own and reports what it gave. If it
-    /// crashes, that's reported as an error too, so the import never
-    /// hangs.
+    /// Runs `read` on a worker and reports what it gave. If it crashes,
+    /// that's reported as an error too, so the import never hangs.
     fn spawn(
         &mut self,
+        id: AssetId,
         path: PathBuf,
-        read: impl FnOnce() -> Result<assets::Model, assets::ImportError> + Send + 'static,
-    ) -> AssetId {
-        let id = AssetId::random();
-        self.running += 1;
-        let sender = self.sender.clone();
-        std::thread::spawn(move || {
+        read: impl FnOnce() -> Result<(assets::Model, bool), assets::ImportError> + Send + 'static,
+    ) {
+        self.jobs.start(id, move || {
             let started = Instant::now();
             let result = std::panic::catch_unwind(std::panic::AssertUnwindSafe(read))
                 .unwrap_or_else(|_| {
@@ -122,27 +174,25 @@ impl Importer {
                         "reading it failed unexpectedly".into(),
                     ))
                 });
-            // The window may have closed meanwhile; then nobody is waiting.
-            let _ = sender.send(Finished {
+            let from_cache = result.as_ref().is_ok_and(|(_, hit)| *hit);
+            Finished {
                 id,
                 path,
-                result,
+                result: result.map(|(model, _)| model),
                 seconds: started.elapsed().as_secs_f32(),
-            });
+                from_cache,
+            }
         });
-        id
     }
 
     /// The imports that have finished since last asked.
     pub fn finished(&mut self) -> Vec<Finished> {
-        let done: Vec<Finished> = self.receiver.try_iter().collect();
-        self.running = self.running.saturating_sub(done.len());
-        done
+        self.jobs.finished().into_iter().map(|(_, f)| f).collect()
     }
 
     /// Whether any import is still being read.
     pub fn busy(&self) -> bool {
-        self.running > 0
+        self.jobs.running() > 0
     }
 
     /// The limits models are read with.
@@ -174,7 +224,8 @@ mod tests {
         let path = folder.join("sample.glb");
         std::fs::write(&path, assets::sample::sample_glb()).unwrap();
         let mut importer = Importer::new(4096, 256 << 20);
-        let id = importer.start(&path);
+        let id = AssetId::random();
+        importer.start(id, &path, None);
         assert!(importer.busy());
         let done = wait(&mut importer);
         assert_eq!(done.len(), 1);
@@ -198,7 +249,7 @@ mod tests {
     #[test]
     fn a_missing_file_reports_back_instead_of_crashing() {
         let mut importer = Importer::new(4096, 256 << 20);
-        importer.start(Path::new("/no/such/model.glb"));
+        importer.start(AssetId::random(), Path::new("/no/such/model.glb"), None);
         let done = wait(&mut importer);
         assert!(matches!(
             done[0].result,
@@ -210,7 +261,9 @@ mod tests {
     fn a_crash_while_reading_reports_back_instead_of_hanging() {
         let mut importer = Importer::new(4096, 256 << 20);
         #[allow(clippy::panic)]
-        importer.spawn(PathBuf::from("crash.glb"), || panic!("a bug in the reader"));
+        importer.spawn(AssetId::random(), PathBuf::from("crash.glb"), || {
+            panic!("a bug in the reader")
+        });
         let done = wait(&mut importer);
         assert!(matches!(
             done[0].result,
@@ -232,14 +285,21 @@ mod tests {
     }
 
     #[test]
-    fn every_import_gets_its_own_number() {
+    fn a_project_import_goes_through_the_cache() {
+        let folder =
+            std::env::temp_dir().join(format!("solis-import-cache-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&folder);
+        std::fs::create_dir_all(&folder).unwrap();
+        let path = folder.join("sample.glb");
+        std::fs::write(&path, assets::sample::sample_glb()).unwrap();
+        let cache = folder.join("cache");
         let mut importer = Importer::new(4096, 256 << 20);
-        let a = importer.start(Path::new("/no/a.glb"));
-        let b = importer.start(Path::new("/no/b.glb"));
-        assert_ne!(a, b);
-        let mut done = Vec::new();
-        while done.len() < 2 {
-            done.extend(wait(&mut importer));
-        }
+        importer.start(AssetId::random(), &path, Some(cache.clone()));
+        assert!(!wait(&mut importer)[0].from_cache);
+        importer.start(AssetId::random(), &path, Some(cache));
+        let again = wait(&mut importer);
+        assert!(again[0].from_cache);
+        assert!(again[0].result.is_ok());
+        let _ = std::fs::remove_dir_all(&folder);
     }
 }
