@@ -18,7 +18,7 @@ Until scenes and entities arrive (Phase 2), an imported model sits in the viewpo
 Then:
 - The model is read in the background, so the editor keeps running while it loads. The Console says **Importing…**, then **Imported** with the model's triangle count and size in metres.
 - The camera moves to show the whole model, and picks a [camera speed](navigating-the-viewport.md) that suits its size.
-- The model appears in the **Scene** panel, with its triangle count. The **×** at the end of its row removes it from the viewport.
+- The model appears in the **Scene** panel as an [entity](entities.md), with its triangle count. The **×** at the end of its row deletes it from the scene. Select it to see its Transform and Model in Properties.
 
 **Exporting from Blender:** File > Export > glTF 2.0, choose **glTF Binary (.glb)**, and keep **+Y Up** ticked (the standard). Solis turns glTF's "Y is up" into its own "Z is up" for you, so the model stands upright.
 
@@ -43,7 +43,7 @@ Then:
 - **Problem:** the model looks flat and grey-blue in the shadows. **Why:** where the sun doesn't reach, only the sky's soft light does. **Fix:** move the sun or add lamps; see [Lights and shadows](lights.md).
 - **Problem:** "it needs a glTF extension Solis doesn't read yet". **Why:** the file was saved with compression (Draco or meshopt, common from Sketchfab or gltfpack). **Fix:** export it again without compression; in Blender, untick **Compression** in the glTF export.
 - **Very large models** are split into pieces the graphics card can hold; you won't see the seams, but the Scene panel's triangle count stays the same.
-- **Lights in the file:** lamps exported from Blender (point lights and spotlights) come in with the model, are listed in the Scene panel, and leave when it is removed; a sun in the file sets the scene's sun. Turn on **Punctual Lights** under Include in Blender's glTF export to export them.
+- **Lights in the file:** lamps exported from Blender (point lights and spotlights) come in with the model as entities under it in the Scene panel, and are deleted with it; a sun in the file sets the scene's sun. Turn on **Punctual Lights** under Include in Blender's glTF export to export them.
 - **Want to see how it should look?** **Help > Add the sample scene** brings in a scene made for checking the [looks](looks.md).
 
 ## Related

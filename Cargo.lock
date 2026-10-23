@@ -200,8 +200,10 @@ dependencies = [
  "assets",
  "editor",
  "eframe",
+ "reflect",
  "render",
  "rfd",
+ "scene",
 ]
 
 [[package]]
@@ -853,7 +855,9 @@ dependencies = [
  "egui_dock",
  "egui_kittest",
  "glam",
+ "reflect",
  "ron",
+ "scene",
  "serde",
 ]
 
@@ -2821,6 +2825,14 @@ dependencies = [
 ]
 
 [[package]]
+name = "reflect"
+version = "0.0.1"
+dependencies = [
+ "getrandom 0.3.4",
+ "glam",
+]
+
+[[package]]
 name = "render"
 version = "0.0.1"
 dependencies = [
@@ -2938,6 +2950,14 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "93fc1dc3aaa9bfed95e02e6eadabb4baf7e3078b0bd1b4d7b6b0b68378900502"
 dependencies = [
  "winapi-util",
+]
+
+[[package]]
+name = "scene"
+version = "0.0.1"
+dependencies = [
+ "glam",
+ "reflect",
 ]
 
 [[package]]
