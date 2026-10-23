@@ -19,12 +19,30 @@ A lamp is just an entity with a Transform and a Light. A model with a Light adde
 **Add an entity**
 - **Entity > Add entity** adds an empty one (only a Transform) at the point the camera looks at. Entity > Add point light and Add spotlight add [lights](lights.md); importing a model adds an entity for it.
 
-**Rename, move or delete**
-- Type in **Name** to rename it.
-- Change **Position** under Transform, or click **Move here** to bring it to where the camera looks.
-- **Delete** removes it and everything under it. In the Area panel, models also have a × that does the same.
+**Select several**
+- **Click** one to select just it. **Ctrl + click** adds one to the selection, or takes it out. **Shift + click** selects every row from the one you picked first to this one.
+- Properties shows the one you picked last.
 
-**Parents and children:** lights brought in with a model sit indented under it in the Area panel. They are its children: they move with it and are deleted with it.
+**Rename, move, copy or delete**
+- Type in **Name**, press **F2**, or **double-click** it in the Area panel to rename it (Enter to keep, Esc to cancel).
+- Change **Position** under Transform, or click **Move here** to bring it to where the camera looks.
+- **Ctrl + D** duplicates the selection, with everything under each one, and selects the copies.
+- **Delete** (the key, or the button in Properties) removes the selection and everything under it. In the Area panel, models also have a × that does the same.
+- **F** points the camera at the selection.
+
+**Parents and children** ([concepts](concepts.md#the-area)): drag an entity in the Area panel onto another to put it under that one; it then moves, turns and is deleted with its parent. Drag it onto the empty space below the list to make it stand alone again. It stays exactly where it is in the world either way: only its numbers change, because a child's Position is measured from its parent. Lights brought in with a model start under it. Dragging one of several selected entities moves them all.
+
+## Shortcuts
+| Action | Shortcut |
+|---|---|
+| Add to or take from the selection | `Ctrl + click` |
+| Select a range | `Shift + click` |
+| Rename | `F2`, or double-click |
+| Duplicate | `Ctrl + D` |
+| Delete | `Delete` |
+| Point the camera at the selection | `F` |
+| Put under another | drag onto it in the Area panel |
+| Make it stand alone | drag onto empty space in the Area panel |
 
 ## Settings
 
@@ -39,6 +57,7 @@ The **Transform** every placed entity has:
 ## Tips and common problems
 - **Problem:** Properties says **Missing component**. **Why:** the area uses a component Solis doesn't know, such as one from game code that isn't there. **Fix:** nothing is lost: its values are kept as they are. Click **Remove** if you don't need it.
 - **Problem:** my entities are gone after closing Solis. **Why:** areas can't be saved yet; that arrives later in Phase 2.
+- **Problem:** I dragged an entity onto another and nothing happened. **Why:** an entity can't go under itself or its own children (that would make a loop). 
 - Every change here can be undone with **Ctrl + Z** ([Undo and redo](undo.md)).
 
 ## Related

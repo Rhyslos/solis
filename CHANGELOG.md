@@ -13,6 +13,9 @@ What changed in each version, for people using Solis. Newest first.
 
 ### Added
 
+- Building the area's tree: drag an entity onto another in the Area panel to put it under it (it stays where it is in the world), or onto empty space to make it stand alone. **Ctrl + click** and **Shift + click** select several; **Delete** deletes them, **Ctrl + D** duplicates them, **F2** or a double-click renames, and **F** points the camera at them. All of it can be undone.
+- New entities go to the end of the Area panel's list instead of a random place.
+- Models keep their own parts' placements: a mesh used many times in a file is stored once and drawn as copies, so big kits of repeated pieces load faster and use less memory. Mirrored parts (a negative scale) are drawn the right way out.
 - Undo and redo for every change to the area: **Ctrl + Z**, and **Ctrl + Y** or **Ctrl + Shift + Z**, or **Edit > Undo** and **Redo**, which name the change. A whole drag is one step, and undo selects what it changed.
 - **Entity > Add entity** adds an empty entity at the point the camera looks at.
 - A component Solis doesn't know (for example from game code that isn't there) is kept untouched and shown as **Missing component**, with **Remove**.

@@ -1,4 +1,5 @@
 use super::*;
+use crate::Y_UP_TO_Z_UP;
 use crate::sample::{Builder, checker_png, sample_glb};
 use glam::Vec3;
 
@@ -51,7 +52,8 @@ fn y_up_models_stand_up_in_solis() {
         "{:?}",
         model.bounds
     );
-    let cube = &model.meshes[0];
+    let placed = model.placed_meshes();
+    let cube = &placed[0];
     let top = cube
         .vertices
         .iter()
@@ -64,7 +66,7 @@ fn y_up_models_stand_up_in_solis() {
 #[test]
 fn normals_stay_length_one() {
     let model = load_bytes(&sample_glb(), None, "Sample", &limits()).unwrap();
-    for v in model.meshes.iter().flat_map(|m| &m.vertices) {
+    for v in model.placed_meshes().iter().flat_map(|m| &m.vertices) {
         assert!((Vec3::from(v.normal).length() - 1.0).abs() < 1e-4);
     }
 }
@@ -149,7 +151,8 @@ fn nodes_place_and_mirror_meshes_correctly() {
     let model = load_bytes(&b.glb(), None, "X", &limits()).unwrap();
     assert!(close(model.bounds.center(), Vec3::new(5.0, 0.0, 0.0)));
     // Faces still point outwards after the mirror.
-    let mesh = &model.meshes[0];
+    let placed = model.placed_meshes();
+    let mesh = &placed[0];
     for t in mesh.indices.chunks_exact(3) {
         let [a, b, c] = [t[0], t[1], t[2]].map(|i| Vec3::from(mesh.vertices[i as usize].position));
         let face = (b - a).cross(c - a).normalize();
@@ -628,7 +631,7 @@ fn mirrored_meshes_without_normals_still_have_outward_normals() {
     let json = b.json(None).replace(r#""NORMAL":1,"#, "");
     let model = load_bytes(&glb_from(&json, &b.bin), None, "X", &limits()).unwrap();
     let centre = Vec3::new(5.0, 0.0, 0.0);
-    for v in &model.meshes[0].vertices {
+    for v in &model.placed_meshes()[0].vertices {
         let n = Vec3::from(v.normal);
         assert!(
             n.dot(Vec3::from(v.position) - centre) > 0.0,
@@ -670,4 +673,67 @@ fn a_file_needing_an_unknown_extension_says_which() {
         err.to_string().contains("KHR_draco_mesh_compression"),
         "{err}"
     );
+}
+
+#[test]
+fn placements_match_baking_gltf_nodes_straight_into_solis() {
+    // A turned, moved, scaled and mirrored child under a moved parent:
+    // C·T·C⁻¹ on the nodes and C on the corners must land every corner
+    // where C·T_parent·T_child would (the Phase 1 bake).
+    let mut b = Builder::default();
+    let mesh = b.add_box_mesh([0.5, 1.0, 1.5], None);
+    b.json_nodes = vec![
+        r#"{"translation":[1,2,3],"rotation":[0,0.3826834,0,0.9238795],"children":[1]}"#.into(),
+        format!(
+            r#"{{"mesh":{mesh},"translation":[-4,0.5,2],"rotation":[0.2588190,0,0,0.9659258],"scale":[-1,2,0.5]}}"#
+        ),
+    ];
+    let json = b.json(None).replace(r#""nodes":[0,1]"#, r#""nodes":[0]"#);
+    let mut bin = b.bin.clone();
+    while bin.len() % 4 != 0 {
+        bin.push(0);
+    }
+    let model = load_bytes(&glb_from(&json, &bin), None, "X", &limits()).unwrap();
+    let parent = glam::Mat4::from_scale_rotation_translation(
+        Vec3::ONE,
+        glam::Quat::from_xyzw(0.0, 0.382_683_4, 0.0, 0.923_879_5),
+        Vec3::new(1.0, 2.0, 3.0),
+    );
+    let child = glam::Mat4::from_scale_rotation_translation(
+        Vec3::new(-1.0, 2.0, 0.5),
+        glam::Quat::from_xyzw(0.258_819, 0.0, 0.0, 0.965_925_8),
+        Vec3::new(-4.0, 0.5, 2.0),
+    );
+    let old_bake = Y_UP_TO_Z_UP * parent * child;
+    let local = &model.meshes[0];
+    let placed = &model.placed_meshes()[0];
+    // The box's corners as stored in the file (glTF's axes).
+    let raw = Y_UP_TO_Z_UP.inverse();
+    for (l, p) in local.vertices.iter().zip(&placed.vertices) {
+        let file_corner = raw.transform_point3(Vec3::from(l.position));
+        let expected = old_bake.transform_point3(file_corner);
+        assert!(
+            (Vec3::from(p.position) - expected).length() < 1e-5,
+            "{expected} vs {:?}",
+            p.position
+        );
+    }
+    assert_eq!(model.nodes.len(), 2);
+    assert_eq!(model.nodes[1].parent, Some(0));
+}
+
+#[test]
+fn a_mesh_used_by_several_nodes_is_stored_once() {
+    let mut b = Builder::default();
+    let mesh = b.add_cube_mesh(0.5, None);
+    b.json_nodes = (0..5)
+        .map(|i| format!(r#"{{"mesh":{mesh},"translation":[{i},0,0],"name":"Crate {i}"}}"#))
+        .collect();
+    let model = load_bytes(&b.glb(), None, "X", &limits()).unwrap();
+    assert_eq!(model.meshes.len(), 1, "stored once");
+    assert_eq!(model.nodes.len(), 5);
+    assert_eq!(model.nodes[3].name, "Crate 3");
+    assert_eq!(model.triangles(), 5 * 12, "drawn five times");
+    assert_eq!(model.placed_meshes().len(), 5);
+    assert!(close(model.bounds.center(), Vec3::new(2.0, 0.0, 0.0)));
 }

@@ -301,6 +301,31 @@ struct MeshIn {
     @location(2) uv: vec2<f32>,
 };
 
+// Where one copy of a mesh is drawn (an instance; InstanceRaw in
+// instances.rs): its placement in the world, and the matrix that turns its
+// normals (the inverse transpose, so stretched shapes still light right).
+struct Instance {
+    @location(3) model_0: vec4<f32>,
+    @location(4) model_1: vec4<f32>,
+    @location(5) model_2: vec4<f32>,
+    @location(6) model_3: vec4<f32>,
+    @location(7) normal_0: vec3<f32>,
+    @location(8) normal_1: vec3<f32>,
+    @location(9) normal_2: vec3<f32>,
+};
+
+fn instance_world(instance: Instance, position: vec3<f32>) -> vec3<f32> {
+    let model = mat4x4<f32>(instance.model_0, instance.model_1, instance.model_2, instance.model_3);
+    return (model * vec4<f32>(position, 1.0)).xyz;
+}
+
+fn instance_normal(instance: Instance, normal: vec3<f32>) -> vec3<f32> {
+    let turn = mat3x3<f32>(instance.normal_0, instance.normal_1, instance.normal_2);
+    let n = turn * normal;
+    let len = length(n);
+    return select(vec3<f32>(0.0, 0.0, 1.0), n / len, len > 1e-12);
+}
+
 struct MeshOut {
     @builtin(position) clip: vec4<f32>,
     @location(0) normal: vec3<f32>,
@@ -309,12 +334,13 @@ struct MeshOut {
 };
 
 @vertex
-fn mesh_vs(in: MeshIn) -> MeshOut {
+fn mesh_vs(in: MeshIn, instance: Instance) -> MeshOut {
+    let world = instance_world(instance, in.position);
     var out: MeshOut;
-    out.clip = frame.view_proj * vec4<f32>(in.position, 1.0);
-    out.normal = in.normal;
+    out.clip = frame.view_proj * vec4<f32>(world, 1.0);
+    out.normal = instance_normal(instance, in.normal);
     out.uv = in.uv;
-    out.world = in.position;
+    out.world = world;
     return out;
 }
 
@@ -545,15 +571,16 @@ struct OutlineOut {
 };
 
 @vertex
-fn outline_vs(in: MeshIn) -> OutlineOut {
-    let clip = frame.view_proj * vec4<f32>(in.position, 1.0);
-    let normal_clip = (frame.view_proj * vec4<f32>(in.normal, 0.0)).xy;
+fn outline_vs(in: MeshIn, instance: Instance) -> OutlineOut {
+    let world = instance_world(instance, in.position);
+    let clip = frame.view_proj * vec4<f32>(world, 1.0);
+    let normal_clip = (frame.view_proj * vec4<f32>(instance_normal(instance, in.normal), 0.0)).xy;
     let len = length(normal_clip);
     let direction = select(vec2<f32>(0.0), normal_clip / len, len > 1e-6);
     let offset = direction * frame.shading.z * 2.0 / max(frame.screen.xy, vec2<f32>(1.0)) * clip.w;
     var out: OutlineOut;
     out.clip = vec4<f32>(clip.xy + offset, clip.zw);
-    out.world = in.position;
+    out.world = world;
     return out;
 }
 
@@ -568,8 +595,8 @@ fn outline_fs(in: OutlineOut) -> @location(0) vec4<f32> {
 
 // The shadow map: each model drawn from the sun's side, depth only.
 @vertex
-fn shadow_vs(in: MeshIn) -> @builtin(position) vec4<f32> {
-    return frame.sun_view_proj * vec4<f32>(in.position, 1.0);
+fn shadow_vs(in: MeshIn, instance: Instance) -> @builtin(position) vec4<f32> {
+    return frame.sun_view_proj * vec4<f32>(instance_world(instance, in.position), 1.0);
 }
 
 // ------------------------------------------------------- last pass ---

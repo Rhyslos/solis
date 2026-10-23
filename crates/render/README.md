@@ -6,7 +6,7 @@ Draws viewports with wgpu into offscreen images: the backdrop (a calm sky with a
 
 ## Purpose
 
-Turn a camera, a few colours and the sun ([`FrameParams`]), plus models and lamps, into a finished image in a `ViewportTarget`, on whatever GPU device it is given. The editor shows that image in its viewport panel; games will draw through the same crate.
+Turn a camera, a few colours and the sun ([`FrameParams`]), plus models placed in the world (`Placement`: a model and where it is) and lamps, into a finished image in a `ViewportTarget`, on whatever GPU device it is given. The editor shows that image in its viewport panel; games will draw through the same crate.
 
 ## Must never
 
@@ -28,4 +28,4 @@ The image is plain 8-bit RGBA; the shaders convert linear colour to sRGB as they
 
 ## Status
 
-Phase 1 complete: backdrop and daylight sky, grid, axes, models in three looks, the sun with shadows, lamps, fog, HDR and tone mapping.
+Phase 1 complete: backdrop and daylight sky, grid, axes, models in three looks, the sun with shadows, lamps, fog, HDR and tone mapping. Phase 2: every mesh copy is an instance in one buffer per frame, each mesh drawn once for all its copies; mirrored copies use pipelines that treat the other side as the front.

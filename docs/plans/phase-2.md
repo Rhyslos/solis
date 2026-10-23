@@ -120,9 +120,9 @@ The ROADMAP lists Phase 2's parts; they're built in this order. **Undo comes sec
   - the memory limit;
   - kittest: change a field, undo, redo.
 
-### M3. Transforms and parenting ☐
+### M3. Transforms and parenting ☑
 
-- **`area`:** parents and sibling order on each entity, cycle checks, and world transforms worked out from the hierarchy (cached, refreshed when something changes).
+- **`area`:** parents and sibling order on each entity, cycle checks, and world transforms worked out from the hierarchy (built: worked out when asked, and the tree in one pass per frame; a cache waits until the scale check in M4 shows it's needed).
 - **`assets`:** a glTF becomes unique meshes in local space plus a node tree (name, parent, translation, rotation, scale, meshes, lamp).
   - Y-up to Z-up moves into the transforms, as C·T·C⁻¹.
   - A mesh used several times is stored once.
@@ -133,7 +133,7 @@ The ROADMAP lists Phase 2's parts; they're built in this order. **Undo comes sec
   - The shadow box uses world bounds.
   - Grouping by mesh is already in place for Phase 5's instancing.
 - **Editor:**
-  - Importing a model makes an entity tree, one entity per node.
+  - Importing a model makes one entity, with its node tree inside it (built: as the project lead asked, one object by default; one entity per node comes with Unpack in M7).
   - The Area panel becomes a tree with the controls above: drag to parent, Ctrl+click and Shift+click, F2, Delete, Ctrl+D.
   - F frames the selection.
   - All of it is undoable.

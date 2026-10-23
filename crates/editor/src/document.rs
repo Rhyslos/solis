@@ -23,6 +23,26 @@ impl Selection {
         self.primary = Some(id);
     }
 
+    /// Adds `id`, making it the one Properties shows, or takes it out if
+    /// it's already selected.
+    pub fn toggle(&mut self, id: EntityId) {
+        if self.entities.remove(&id) {
+            if self.primary == Some(id) {
+                self.primary = self.entities.iter().next().copied();
+            }
+        } else {
+            self.entities.insert(id);
+            self.primary = Some(id);
+        }
+    }
+
+    /// Selects exactly `ids`, showing `primary` in Properties.
+    pub fn select_all(&mut self, ids: impl IntoIterator<Item = EntityId>, primary: EntityId) {
+        self.entities = ids.into_iter().collect();
+        self.entities.insert(primary);
+        self.primary = Some(primary);
+    }
+
     /// Selects nothing.
     pub fn clear(&mut self) {
         self.entities.clear();
