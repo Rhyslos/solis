@@ -157,16 +157,14 @@ pub(crate) fn from_lua(kind: &FieldKind, value: &LuaValue) -> Option<Value> {
 }
 
 /// A Lua value as the editor's, guessing its kind (for an event no Lust
-/// declares, sent from Lua): a whole number is an int, a table with `x`,
-/// `y`, `z` (and `w`) a vector (or rotation), nil an empty entity.
+/// declares, sent from Lua): a number is a float (Lua has one kind of
+/// number, so `2` and `2.5` arrive alike), a table with `x`, `y`, `z`
+/// (and `w`) a vector (or rotation), nil an empty entity.
 pub(crate) fn guessed(value: &LuaValue) -> Option<Value> {
     Some(match value {
         LuaValue::Nil => Value::Entity(None),
         LuaValue::Boolean(b) => Value::Bool(*b),
-        LuaValue::Integer(n) => Value::Int(*n as i64),
-        LuaValue::Number(n) if n.is_finite() && n.fract() == 0.0 && n.abs() < 9.0e15 => {
-            Value::Int(*n as i64)
-        }
+        LuaValue::Integer(n) => Value::Float(*n as f64),
         LuaValue::Number(n) if n.is_finite() => Value::Float(*n),
         LuaValue::String(s) => Value::Text(s.to_str().ok()?.to_string()),
         LuaValue::Table(t) => {

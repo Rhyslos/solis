@@ -119,6 +119,29 @@ fn rebuilding_keeps_the_clock_and_takes_the_new_area() {
 }
 
 #[test]
+fn rebuilding_keeps_where_the_game_put_things_unless_the_area_moved_them() {
+    let mut area = area::builtin::starter_area();
+    let cart = area.spawn(EntityData::new("Cart").with(&at(0.0, 0.0, 0.0)));
+    let crate_id = area.spawn(EntityData::new("Crate").with(&at(5.0, 0.0, 0.0)));
+    let mut world = World::from_area(&area);
+    world.set_transform(cart, at(3.0, 0.0, 0.0));
+    world.set_transform(crate_id, at(7.0, 0.0, 0.0));
+    // Adding an entity builds everything again: the cart stays where the
+    // game put it.
+    area.spawn(EntityData::new("New"));
+    // The crate was moved in the area meanwhile (an undo, say): the
+    // area's place wins.
+    area.get_mut(crate_id).unwrap().set(&at(9.0, 0.0, 0.0));
+    world.rebuild(&area);
+    let x = |w: &World, id| w.global(id).unwrap().w_axis.x;
+    assert_eq!(x(&world, cart), 3.0);
+    assert_eq!(x(&world, crate_id), 9.0);
+    // And again, still.
+    world.rebuild(&area);
+    assert_eq!(x(&world, cart), 3.0);
+}
+
+#[test]
 fn a_damaged_area_with_a_parent_loop_still_builds() {
     let mut area = Area::new();
     let a = EntityId::random();

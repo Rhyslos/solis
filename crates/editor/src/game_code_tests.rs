@@ -508,3 +508,176 @@ fn a_tick_that_takes_too_long_pauses_the_game_and_says_why() {
             .contains("so the game paused")
     );
 }
+
+/// Spinner's Lust, in place of Mover.
+const SPINNER: &str =
+    "component Spinner {\n    has {\n        float turn = 1;\n    }\n}\npass Spinner;\nend\n";
+
+#[test]
+fn code_changed_while_playing_keeps_its_components_after_stop() {
+    let (mut w, _) = with_a_mover();
+    w.play();
+    w.set_program(Some(program(SPINNER)));
+    w.stop();
+    assert!(w.document.registry.get("Spinner").is_some());
+    assert!(w.document.registry.get("Mover").is_none());
+    assert_eq!(w.game_components().collect::<Vec<_>>(), ["Spinner"]);
+}
+
+#[test]
+fn a_component_named_like_a_built_in_one_doesn_t_run() {
+    let mut w = Workbench::new(info(), None);
+    w.set_program(Some(program(
+        "component Light {\n    has {\n        int on = 1;\n    }\n\
+         \x20   method update(float dt) {\n        say(\"lust light ran\");\n    }\n}\n\
+         pass Light;\nend\n",
+    )));
+    assert_eq!(w.code_problems()[0].line, 3, "where it's written");
+    w.play();
+    w.run_game(1.0 / 60.0);
+    assert!(
+        !w.log_lines()
+            .iter()
+            .any(|l| l.text.contains("lust light ran")),
+        "the built-in Light is the sun's; the code's doesn't run"
+    );
+}
+
+#[test]
+fn adding_an_entity_while_playing_keeps_where_the_game_moved_things() {
+    let (mut w, id) = with_a_mover();
+    w.play();
+    for _ in 0..30 {
+        w.run_game(1.0 / 60.0);
+    }
+    let x = x_in_game(&w, id);
+    assert!(x > 2.0, "{x}");
+    w.document
+        .edit(
+            "Add",
+            vec![area::Edit::Spawn {
+                entities: vec![(EntityId::random(), EntityData::new("New"))],
+            }],
+            None,
+            None,
+        )
+        .unwrap();
+    w.run_game(1.0 / 60.0);
+    assert!(x_in_game(&w, id) > x, "carried on from where it was");
+}
+
+/// Lust whose start fails only when the game's world has a Cart.
+const NEEDS_NO_CART: &str = "entity cart = find(\"Cart\");\n\
+    is cart != nothing? then {\n    int zero = 0;\n    int bad = 1 / zero;\n}\n";
+
+#[test]
+fn new_code_the_running_game_can_t_take_leaves_the_last_program_and_registry() {
+    let (mut w, id) = with_a_mover();
+    w.play();
+    w.run_game(1.0 / 60.0);
+    w.set_program(Some(program(&format!("{NEEDS_NO_CART}{SPINNER}"))));
+    assert!(w.document.registry.get("Mover").is_some(), "still known");
+    assert!(w.document.registry.get("Spinner").is_none());
+    assert_eq!(w.code_problems().len(), 1, "{:?}", w.code_problems());
+    let x = x_in_game(&w, id);
+    w.run_game(1.0 / 60.0);
+    assert!(x_in_game(&w, id) > x, "still running the last code");
+}
+
+/// A Rust component that counts its ticks.
+struct Ticker(i64);
+
+impl script::RustComponent for Ticker {
+    fn update(&mut self, _cx: &mut script::Context<'_>, _dt: f64) {
+        self.0 += 1;
+    }
+    fn values(&self) -> reflect::ComponentData {
+        let mut data = reflect::ComponentData::default();
+        data.set("ticks", Value::Int(self.0));
+        data
+    }
+    fn set(&mut self, _data: &reflect::ComponentData) {}
+}
+
+fn ticker() -> script::RustKind {
+    script::RustKind {
+        schema: reflect::ComponentSchema {
+            name: "Ticker".into(),
+            help: String::new(),
+            fields: vec![reflect::FieldInfo::new(
+                "ticks",
+                "Ticks",
+                reflect::FieldKind::Int,
+                Value::Int(0),
+            )],
+        },
+        make: |_| Box::new(Ticker(0)),
+    }
+}
+
+#[test]
+fn rust_components_run_even_when_the_code_s_start_fails_at_play() {
+    let (mut w, id) = with_a_mover();
+    w.set_rust_components(vec![ticker()]);
+    // Accepted while editing (no world), but its start fails at Play.
+    w.set_program(Some(program(&format!("{NEEDS_NO_CART}{MOVER}"))));
+    w.apply_property(
+        PropertyRequest::AddComponent {
+            entity: id,
+            component: "Ticker".into(),
+        },
+        2,
+    );
+    w.play();
+    assert!(
+        w.log_lines()
+            .iter()
+            .any(|l| l.text.contains("stopped while starting")),
+        "said"
+    );
+    w.run_game(1.0 / 60.0);
+    let game = w.playing.as_ref().unwrap().game.as_ref().unwrap();
+    assert_eq!(
+        game.values(id, "Ticker").unwrap().get("ticks"),
+        Some(&Value::Int(1))
+    );
+}
+
+#[test]
+fn a_lust_component_named_like_a_rust_one_says_so_and_the_rust_one_runs() {
+    let mut w = Workbench::new(info(), None);
+    w.set_rust_components(vec![ticker()]);
+    w.set_program(Some(program(
+        "component Ticker {\n    has {\n        int ticks = 0;\n    }\n}\npass Ticker;\nend\n",
+    )));
+    assert_eq!(w.code_problems().len(), 1);
+    assert!(
+        w.code_problems()[0]
+            .message
+            .contains("a component written in Rust"),
+        "{}",
+        w.code_problems()[0]
+    );
+}
+
+#[test]
+fn a_failure_that_doesn_t_stop_its_component_isn_t_said_to() {
+    let area = area::builtin::starter_area();
+    let (id, sun) = area.iter().next().unwrap();
+    let failure = script::Failure {
+        entity: Some(id),
+        component: "Health".into(),
+        at: script::CodeProblem {
+            file: String::new(),
+            line: 0,
+            column: 0,
+            message: "couldn't take the event Hit".into(),
+        },
+        stopped: false,
+    };
+    let text = crate::game_code::failure_text(&area, &failure);
+    assert_eq!(
+        text,
+        format!("Health on {}: couldn't take the event Hit", sun.name)
+    );
+}

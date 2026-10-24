@@ -65,6 +65,9 @@ struct App {
     thumbnails: crate::thumbnails::Thumbnails,
     /// The game's code, checked on a worker.
     game_code: crate::game_code::GameCode,
+    /// The last note on the project's `armour.rs` (changes to it don't
+    /// run until Phase 10), to say it again only when it changes.
+    rust_note: Option<String>,
     /// The program and version, for the files describing the engine.
     made_by: String,
     /// What's in the assets folder, as the Library last showed it.
@@ -145,6 +148,7 @@ impl App {
             to_place: HashSet::new(),
             thumbnails: crate::thumbnails::Thumbnails::default(),
             game_code: crate::game_code::GameCode::default(),
+            rust_note: None,
             made_by: format!("{} {}", info.name, info.version),
             listing: asset_db::Listing::default(),
             area_files: AreaFiles::default(),
@@ -206,9 +210,10 @@ impl App {
                 // (the turret sample's), until Phase 10 builds a game's own.
                 let (rust, note) = crate::sample_game::rust_components(&assets);
                 self.workbench.set_rust_components(rust);
-                if let Some(note) = note {
-                    self.workbench.log(LogLevel::Warning, note);
+                if let Some(note) = &note {
+                    self.workbench.log(LogLevel::Warning, note.clone());
                 }
+                self.rust_note = note;
                 self.game_code.check(assets);
                 self.refresh_library();
                 self.workbench.set_recent(self.projects.recent().to_vec());
@@ -961,6 +966,14 @@ impl eframe::App for App {
             // A code file may have changed: checked again on a worker, and
             // reported only if the code is different.
             if let Some(assets) = self.projects.db().map(|db| db.project().assets()) {
+                // armour.rs changed: say that its changes don't run.
+                let (_, note) = crate::sample_game::rust_components(&assets);
+                if note != self.rust_note
+                    && let Some(note) = &note
+                {
+                    self.workbench.log(LogLevel::Warning, note.clone());
+                }
+                self.rust_note = note;
                 self.game_code.check(assets);
             }
         }

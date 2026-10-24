@@ -142,6 +142,23 @@ fn the_sample_never_replaces_a_file_of_the_person_s() {
 }
 
 #[test]
+fn the_manual_s_things_to_try_are_sound_code() {
+    // docs/manual/first-game.md: "change reload = cooldown; to
+    // reload = cooldown / 5;".
+    let main = FILES[0].1;
+    assert!(main.contains("reload = cooldown;"));
+    let changed = main.replace("reload = cooldown;", "reload = cooldown / 5;");
+    let mut files = script::describe::descriptions("Test 1.0", "solis");
+    files.push(("main.lst".into(), changed));
+    let code = script::Code {
+        files,
+        lua: Vec::new(),
+        notes: Vec::new(),
+    };
+    assert!(matches!(script::compile(&code), Ok(Some(_))));
+}
+
+#[test]
 fn armour_rs_with_windows_line_endings_is_still_the_built_in_one() {
     let assets = std::env::temp_dir()
         .join(format!("solis-sample-crlf-{}", std::process::id()))

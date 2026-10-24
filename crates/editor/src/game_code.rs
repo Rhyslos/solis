@@ -16,88 +16,116 @@ impl Workbench {
     /// Takes in the game's program (the app compiles it on a worker,
     /// starting it there to read its components, and hands it over when
     /// the code has no mistakes; `None` when there's no code). Its
-    /// components replace the last program's in the registry. While
-    /// playing, the new code is swapped into the running game. Nothing
-    /// here runs game code unless the game is playing.
+    /// components replace the last program's in the registry; one whose
+    /// name is taken (by one of the engine's own components, or a Rust
+    /// one) is a problem, and doesn't run. While playing, the running game
+    /// takes the new code first: if it can't (its start fails against the
+    /// game's world), that's a problem, and the last program stays,
+    /// registry and all. Nothing here runs game code unless the game is
+    /// playing.
     pub fn set_program(&mut self, chunk: Option<Arc<script::Compiled>>) {
+        let schemas = chunk.as_ref().map_or(&[][..], |c| c.schemas.as_slice());
+        let left_out: std::collections::BTreeSet<String> = schemas
+            .iter()
+            .filter(|s| {
+                self.document.registry.get(&s.name).is_some()
+                    && !self.game_components.contains(&s.name)
+            })
+            .map(|s| s.name.clone())
+            .collect();
+        let taken: Vec<CodeProblem> = left_out
+            .iter()
+            .map(|name| self.name_taken(chunk.as_deref(), name))
+            .collect();
+        if self.playing.is_some()
+            && let Err(failure) = self.swap_into_game(chunk.as_deref(), &left_out)
+        {
+            let text = format!(
+                "The running game couldn't take the new code, so it keeps the last: {failure}"
+            );
+            self.log(LogLevel::Error, text);
+            self.code_problems.push(failure.at);
+            return;
+        }
         for name in std::mem::take(&mut self.game_components) {
             self.document.registry.remove(&name);
         }
         self.sources += 1;
-        let schemas = chunk.as_ref().map_or(&[][..], |c| c.schemas.as_slice());
         for schema in schemas {
-            match self.document.registry.register(schema.clone()) {
-                Ok(()) => {
-                    self.game_components.insert(schema.name.clone());
-                }
-                Err(why) => self.code_problems.push(CodeProblem {
-                    file: script::code::ENTRY.to_string(),
-                    line: 0,
-                    column: 0,
-                    message: match why {
-                        reflect::RegistryError::Duplicate(name) => format!(
-                            "{name} is the name of one of the engine's own components; \
-                             give the component in your code another name"
-                        ),
-                        other => other.to_string(),
-                    },
-                }),
+            if !left_out.contains(&schema.name)
+                && self.document.registry.register(schema.clone()).is_ok()
+            {
+                self.game_components.insert(schema.name.clone());
             }
         }
+        self.code_problems.extend(taken);
+        self.left_out = left_out;
         self.program = chunk;
-        self.swap_into_game();
     }
 
-    /// Gives the running game (if playing) the current program: running
-    /// components get the new code in place and keep their values, new
-    /// ones start, and the Console says what changed.
-    fn swap_into_game(&mut self) {
+    /// The problem of a component in `chunk` called `name` when the name
+    /// is taken already.
+    fn name_taken(&self, chunk: Option<&script::Compiled>, name: &str) -> CodeProblem {
+        let by = if self.rust_components.iter().any(|k| k.schema.name == name) {
+            "a component written in Rust"
+        } else {
+            "one of the engine's own components"
+        };
+        let (file, line) = chunk
+            .and_then(|c| c.places.get(name).cloned())
+            .unwrap_or_else(|| (script::code::ENTRY.to_string(), 0));
+        CodeProblem {
+            file,
+            line,
+            column: 0,
+            message: format!(
+                "{name} is the name of {by}, so the one in your code doesn't run; give it \
+                 another name"
+            ),
+        }
+    }
+
+    /// Gives the running game (if playing) `chunk`: running components get
+    /// the new code in place and keep their values, new ones start, and
+    /// the Console says what changed. The components called one of
+    /// `left_out` don't run. On a failure nothing changed.
+    fn swap_into_game(
+        &mut self,
+        chunk: Option<&script::Compiled>,
+        left_out: &std::collections::BTreeSet<String>,
+    ) -> Result<(), Failure> {
         let Some(playing) = &mut self.playing else {
-            return;
+            return Ok(());
         };
         if playing.game.is_none() {
-            match new_runtime(&self.rust_components) {
-                Ok(runtime) => playing.game = Some(runtime),
-                Err(failure) => {
-                    let text = failure.to_string();
-                    self.log(LogLevel::Error, text);
-                    return;
-                }
-            }
+            playing.game = Some(new_runtime(&self.rust_components)?);
         }
         let Some(game) = &mut playing.game else {
-            return;
+            return Ok(());
         };
         let time = playing.world.clock().time;
         let mut host = WorldHost::new(&mut playing.world, time);
-        let mut failures = Vec::new();
         let mut lines = Vec::new();
-        match &self.program {
+        match chunk {
             None => {
                 game.unload();
                 lines.push("The game's code is gone, so its components stopped.".to_string());
             }
-            Some(chunk) => match game.swap(chunk, &mut host) {
-                Ok(swapped) => {
-                    lines.push(swap_summary(&swapped));
-                    lines.extend(swapped.notes);
-                }
-                Err(failure) => failures.push(failure),
-            },
+            Some(chunk) => {
+                let swapped = game.swap(chunk, &mut host)?;
+                lines.push(swap_summary(&swapped));
+                lines.extend(swapped.notes);
+            }
         }
-        failures.extend(sync_all(game, self.document.area(), &mut host));
+        game.leave_out(left_out.clone());
+        let failures = sync_all(game, self.document.area(), &mut host);
         let said = std::mem::take(&mut host.said);
         playing.world.settle();
         for line in lines {
             self.log(LogLevel::Info, line);
         }
-        for words in said {
-            self.log(LogLevel::Info, words);
-        }
-        for failure in &failures {
-            let text = failure_text(self.document.area(), failure);
-            self.log(LogLevel::Error, text);
-        }
+        self.tell_game(said, &failures);
+        Ok(())
     }
 
     /// Adds a kind of component written in Rust (a game's own): its
@@ -290,13 +318,15 @@ fn swap_summary(swapped: &script::Swapped) -> String {
     }
 }
 
-/// A failure as the Console says it, naming the entity.
+/// A failure as the Console says it, naming the entity, and whether the
+/// component stopped.
 pub(crate) fn failure_text(area: &Area, failure: &Failure) -> String {
     match failure.entity.and_then(|id| area.get(id)) {
-        Some(entity) => format!(
+        Some(entity) if failure.stopped => format!(
             "{} on {} stopped: {}",
             failure.component, entity.name, failure.at
         ),
+        Some(entity) => format!("{} on {}: {}", failure.component, entity.name, failure.at),
         None => failure.to_string(),
     }
 }

@@ -58,6 +58,17 @@ What changed in each version, for people using Solis. Newest first.
 - Each Lua file now has globals of its own, and Lua's own libraries can't be changed, so one file can't break another or the Lust.
 - The code's start (reading its components) now runs on a worker, never while drawing the editor, and a check that never ends is given up on after a minute with a message.
 - **Help > Make the sample game…** never replaces a file already in the folder; it asks for an empty one.
+- Code changed while playing kept its components after **Stop**: Properties and Add component no longer lose them.
+- A Lust or Lua component named like one of Solis's own (`Light`) or a Rust one is still a problem in Problems, now pointing at where it's written, and it no longer runs anyway.
+- Adding or deleting an entity, or undoing, while playing no longer puts things game code moved back where they started.
+- New code that fails to start against the running game no longer replaces the components in Properties; the game keeps the last code, and Problems says why.
+- `send` in the code's own start, and starting values that call `time()` and the like, no longer stop the code from loading.
+- An event sent from Lua or Rust with the wrong values is now blamed on the sender, not on every component that receives it. Numbers in events no Lust declares arrive as floats.
+- If the code's start fails at **Play**, the Rust components still run.
+- The Console no longer says a component "stopped" when it kept running.
+- Changing `armour.rs` in the turret sample now says at once that its changes don't run yet, not only when the project opens.
+- A Lua field called `me`, `update` or `on_…` is a mistake now, instead of hiding the entity or the method.
+- The manual's "Things to try" for the turret sample changed a starting value, which running components rightly keep; it now changes the code instead.
 - On Windows, the turret sample said its `armour.rs` was changed when it wasn't (the file's line endings differed).
 
 - **Work could be lost when saving before quitting or starting a new area.** On an untitled area, choosing **Save** in the "unsaved changes" question went straight on to quitting (or the new area) while the Save window was still open. Now everything waits for the Save window.

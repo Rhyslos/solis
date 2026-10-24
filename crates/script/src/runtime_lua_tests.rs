@@ -26,6 +26,7 @@ fn code(main: &str, lua: &[(&str, &str)]) -> Compiled {
             .map(|(p, t)| ((*p).to_string(), (*t).to_string()))
             .collect(),
         schemas: Vec::new(),
+        places: Default::default(),
     }
 }
 

@@ -70,6 +70,11 @@ pub struct World {
     /// Whether a transform was set since places were last worked out (see
     /// [`World::settle`]).
     unsettled: bool,
+    /// Entities the game moved ([`World::set_transform`]), with the
+    /// area's Transform for them when it first did: while the area still
+    /// has that one, the game's place is kept, even when the world is
+    /// built again.
+    game_moved: HashMap<EntityId, Transform>,
 }
 
 impl std::fmt::Debug for World {
@@ -110,6 +115,7 @@ impl World {
             order,
             clock: Clock::default(),
             unsettled: false,
+            game_moved: HashMap::new(),
         };
         world.place_everything();
         world
@@ -119,8 +125,24 @@ impl World {
     /// playing), keeping the clock.
     pub fn rebuild(&mut self, area: &Area) {
         let clock = self.clock;
+        // Where the game put things stays, unless the area moved them
+        // since (an edit, an undo).
+        let kept: Vec<(EntityId, Transform, Transform)> = self
+            .game_moved
+            .iter()
+            .filter_map(|(&id, &from)| {
+                let now = area.get(id)?.get::<Transform>().unwrap_or_default();
+                let at = self.get::<Transform>(id)?;
+                (now == from).then_some((id, from, at))
+            })
+            .collect();
         *self = Self::from_area(area);
         self.clock = clock;
+        for (id, from, at) in kept {
+            self.set_transform(id, at);
+            self.game_moved.insert(id, from);
+        }
+        self.settle();
     }
 
     /// Takes in changes to the components and names of entities in `area`
@@ -145,6 +167,9 @@ impl World {
             let kept = (!moved)
                 .then(|| self.ecs.get::<&Transform>(entity).ok().map(|t| *t))
                 .flatten();
+            if moved {
+                self.game_moved.remove(&id);
+            }
             let _ = self.ecs.despawn(entity);
             let fresh = self.ecs.spawn(components_of(id, data).build());
             if let Some(transform) = kept {
@@ -210,8 +235,10 @@ impl World {
         };
         let parent = self.parent_global_at(at);
         if let Ok(mut t) = self.ecs.get::<&mut Transform>(entity) {
+            self.game_moved.entry(id).or_insert(*t);
             *t = transform;
         } else {
+            self.game_moved.entry(id).or_default();
             let _ = self.ecs.insert_one(entity, transform);
         }
         if let Ok(mut g) = self.ecs.get::<&mut Global>(entity) {

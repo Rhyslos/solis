@@ -53,6 +53,9 @@ pub struct Compiled {
     /// Its components (Lust and Lua) as the editor shows them, sorted by
     /// name: read by starting the code on its own, with no world.
     pub schemas: Vec<ComponentSchema>,
+    /// Where each component is written: its file, and line (0 when not
+    /// known), by name.
+    pub places: std::collections::BTreeMap<String, (String, u32)>,
 }
 
 /// A mistake in the game's code: where it is, and what's wrong.
@@ -71,6 +74,7 @@ pub struct CodeProblem {
 impl std::fmt::Display for CodeProblem {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         match (self.line, self.column) {
+            _ if self.file.is_empty() => write!(f, "{}", self.message),
             (0, _) => write!(f, "{}: {}", self.file, self.message),
             (line, 0) => write!(f, "{}, line {line}: {}", self.file, self.message),
             (line, column) => write!(f, "{}, line {line}:{column}: {}", self.file, self.message),
@@ -258,6 +262,7 @@ fn compile_here(code: &Code) -> Result<Option<Compiled>, Vec<CodeProblem>> {
         lust,
         lua: code.lua.clone(),
         schemas: Vec::new(),
+        places: std::collections::BTreeMap::new(),
     };
     // Starting it here reads its components, so the editor needn't on the
     // frame.
@@ -275,7 +280,31 @@ fn compile_here(code: &Code) -> Result<Option<Compiled>, Vec<CodeProblem>> {
         }
     };
     compiled.schemas = runtime.schemas();
+    for schema in &compiled.schemas {
+        let place = match runtime.lua_file(&schema.name) {
+            Some(path) => Some((path.to_string(), 0)),
+            None => lust_place(&code.files, &schema.name),
+        };
+        if let Some(place) = place {
+            compiled.places.insert(schema.name.clone(), place);
+        }
+    }
     Ok(Some(compiled))
+}
+
+/// Where the Lust component `name` is written (`component Name`): the
+/// first file and line saying so.
+fn lust_place(files: &[(String, String)], name: &str) -> Option<(String, u32)> {
+    files.iter().find_map(|(path, text)| {
+        text.lines().enumerate().find_map(|(i, line)| {
+            let rest = line.trim_start().strip_prefix("component")?;
+            let word = rest.trim_start();
+            let named = word.strip_prefix(name)?;
+            let whole = rest.len() > word.len()
+                && !named.starts_with(|c: char| c.is_alphanumeric() || c == '_');
+            whole.then(|| (path.clone(), u32::try_from(i + 1).unwrap_or(0)))
+        })
+    })
 }
 
 /// Code nested deeper than [`MAX_NESTING`], or a statement longer than
