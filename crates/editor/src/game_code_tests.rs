@@ -177,7 +177,7 @@ fn a_change_in_properties_while_playing_reaches_the_running_component() {
         w.run_game(1.0 / 60.0);
     }
     assert!((x_in_game(&w, id) - before).abs() < 1e-5, "stopped moving");
-    let running = w.playing.as_ref().unwrap().game.as_ref().unwrap();
+    let running = w.playing.as_mut().unwrap().game.as_mut().unwrap();
     assert_eq!(
         running.values(id, "Mover").unwrap().get("steps"),
         Some(&Value::Int(6)),
@@ -192,7 +192,7 @@ fn a_change_in_properties_while_playing_reaches_the_running_component() {
         3,
     );
     w.run_game(1.0 / 60.0);
-    let running = w.playing.as_ref().unwrap().game.as_ref().unwrap();
+    let running = w.playing.as_mut().unwrap().game.as_mut().unwrap();
     assert!(running.is_empty());
 }
 
@@ -398,7 +398,7 @@ fn new_code_while_playing_is_swapped_in_and_keeps_where_things_are() {
         "{:?}",
         w.log_lines().last()
     );
-    let running = w.playing.as_ref().unwrap().game.as_ref().unwrap();
+    let running = w.playing.as_mut().unwrap().game.as_mut().unwrap();
     assert_eq!(
         running.values(id, "Mover").unwrap().get("steps"),
         Some(&Value::Int(10)),
@@ -454,7 +454,7 @@ fn a_lua_component_joins_properties_and_play_mode() {
     for _ in 0..3 {
         w.run_game(1.0 / 60.0);
     }
-    let running = w.playing.as_ref().unwrap().game.as_ref().unwrap();
+    let running = w.playing.as_mut().unwrap().game.as_mut().unwrap();
     assert_eq!(
         running.values(id, "Spinner").unwrap().get("turns"),
         Some(&Value::Int(3))
@@ -468,20 +468,29 @@ fn a_tick_that_takes_too_long_pauses_the_game_and_says_why() {
         files: Vec::new(),
         lua: vec![(
             "slow.lua".into(),
-            "local S = component(\"Slow\", {})\n\
-             function S:update(dt)\n\
-               local start = os.clock()\n\
-               while os.clock() - start < 0.09 do end\n\
-             end\n"
-                .into(),
+            // Four slow components on one entity: one core runs them all
+            // (the tick limit is per core).
+            (0..4)
+                .map(|n| {
+                    format!(
+                        "local S{n} = component(\"Slow{n}\", {{}})\n\
+                         function S{n}:update(dt)\n\
+                           local start = os.clock()\n\
+                           while os.clock() - start < 0.09 do end\n\
+                         end\n"
+                    )
+                })
+                .collect(),
         )],
         notes: Vec::new(),
     };
     w.set_program(Some(Arc::new(script::compile(&code).unwrap().unwrap())));
+    let mut data = EntityData::new("Slow");
     for n in 0..4 {
-        let mut data = EntityData::new(&format!("Slow {n}"));
         data.components
-            .insert("Slow".into(), reflect::ComponentData::default());
+            .insert(format!("Slow{n}"), reflect::ComponentData::default());
+    }
+    {
         w.document
             .edit(
                 "Add",
@@ -636,7 +645,7 @@ fn rust_components_run_even_when_the_code_s_start_fails_at_play() {
         "said"
     );
     w.run_game(1.0 / 60.0);
-    let game = w.playing.as_ref().unwrap().game.as_ref().unwrap();
+    let game = w.playing.as_mut().unwrap().game.as_mut().unwrap();
     assert_eq!(
         game.values(id, "Ticker").unwrap().get("ticks"),
         Some(&Value::Int(1))
@@ -760,7 +769,7 @@ fn scale_check_pressing_play_with_2000_lust_components() {
     w.play();
     let ms = start.elapsed().as_secs_f64() * 1000.0;
     assert_eq!(
-        w.playing.as_ref().unwrap().game.as_ref().unwrap().len(),
+        w.playing.as_mut().unwrap().game.as_mut().unwrap().len(),
         2_000
     );
     verdict("pressing Play with 2,000 Lust components", ms, 100.0);

@@ -63,7 +63,7 @@ The working plan for Phase 5 (ROADMAP.md, "Phase 5: Scale"). It records the choi
 - Tests: the same frame on 1 core and on 4 gives the same view and the same picture, pixel for pixel. Scale case: gathering 100,000 copies.
 - **Built.** Preparing to draw at the stress level went from 6.2 ms to 0.7 ms a frame. Gathering 100,000 copies (200,000 mesh copies) went from about 45 ms to about 32 ms on a 2-core machine; most of what's left is making and sending 20 MB a frame, which M4 cuts (only what moved, in a smaller form).
 
-### M3. Game code on every core ☐
+### M3. Game code on every core ☑
 
 [Decision 0033](../decisions/0033-game-code-sees-the-start-of-the-tick.md), chosen by the project lead 2026-10-24: during a tick, game code sees the world as it was when the tick started.
 
@@ -75,6 +75,7 @@ The working plan for Phase 5 (ROADMAP.md, "Phase 5: Scale"). It records the choi
 - Also, cheaper crossings between Lust and the engine (M1's profile): entities kept as numbers where they cross, and the safety timer's cost.
 - Tests: the same game on 1 shard and on 4 gives the same world, the same Console and the same events, bit for bit; a component sees its own move at once but another's only next tick; two components moving one entity: the last in the fixed order wins. The turret sample plays the same.
 - Scale: the stress level's game code, from about 22 ms.
+- **Built.** `script::Game` runs one `Runtime` per core; reads go to a view made at the start of each phase, writes are kept with their place in the order and landed after. On a 2-core machine the stress level's CPU frame went from 29.5 ms to 16.7 ms (game code from about 26 ms to 13.3 ms) and the ceiling from about 7,000 to about 9,500 units; more cores give more. Along the way: the tick limit is per core (the frame waits for the slowest), and stopping components on many entities is one trip per core (a drag of 512 playing entities had become 16 ms; it's 2.9 ms). The cheaper crossings into Lust wait for M7's profile with real ships.
 
 ### M4. Drawing only what's seen ☐
 
