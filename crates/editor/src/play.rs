@@ -70,6 +70,7 @@ pub(crate) fn waits_for_stop(action: &WorkbenchAction) -> bool {
             | WorkbenchAction::OpenProject
             | WorkbenchAction::OpenRecent(_)
             | WorkbenchAction::AddSampleArea
+            | WorkbenchAction::MakeSampleGame
             | WorkbenchAction::CreateAssembly(_)
             | WorkbenchAction::ApplyToAssembly { .. }
     )
@@ -213,6 +214,12 @@ impl Workbench {
         if let Some(area) = playing.reload {
             self.offer_reload(area);
         }
+    }
+
+    /// Moves the running game on by `seconds` (each frame does this; for
+    /// tests and tools that run the game without a window).
+    pub fn play_for(&mut self, seconds: f32) {
+        self.run_game(seconds);
     }
 
     /// Moves the game on by `seconds`, taking in what changed in the

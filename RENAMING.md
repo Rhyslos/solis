@@ -19,6 +19,7 @@ The engine is currently called **Solis**. The name is kept in as few places as p
 8. **Installer and icons** (when they exist).
    - **File extensions** (`project.solis`, `.solarea`, `.solassembly`, `.solmat`, [decision 0015](docs/decisions/0015-file-extensions.md); `.solmeta` sidecars and `.solbin` cache files, [decision 0021](docs/decisions/0021-asset-database-and-models.md); the cache folder `.solis/`, also named in the `.gitignore` new projects get, `crates/asset_db/src/project.rs`): keep them, since existing projects use them, or read both the old and new ones.
    - **The engine's code folder** (`CODE_FOLDER` in `branding.rs`: `assets/solis/world.lst` and the rest, which game code fetches as `"solis/world"`): keep it, or existing games' code stops finding it. The first line of those files names the program from `APP_NAME`, so it follows by itself.
+   - **The turret sample** (`samples/turret/assets/`): its comments name the program (`main.lst`, `armour.rs`), and Solis builds them in, so update them with the rest.
 9. **Docs**: search and replace the name in `README.md`, `DESIGN.md`, `ROADMAP.md`, `CLAUDE.md`, `ARCHITECTURE.md`, `CONTRIBUTING.md` and `docs/manual/`. Add a `CHANGELOG.md` entry about the rename.
 10. **GitHub**: rename the repository in its settings. GitHub redirects the old URL automatically.
 11. **Decision record**: add one to `docs/decisions/` explaining the new name.

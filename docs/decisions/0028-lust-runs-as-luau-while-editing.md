@@ -29,7 +29,7 @@ Since §3.1 was written, Lust has been built to make the two behave the same:
 - a test runs 200 steps of mixed maths both ways and gets the same bits.
 
 What's left is guarded like this:
-- **Comparison tests:** Solis's tests run the same Lust both ways (Luau, and Rust built with `lust::to_rust_library`) and compare the results, for the samples and the ready-made components.
+- **Comparison tests:** Solis's tests run the same Lust both ways (Luau, and Rust built with `lust::to_rust_library`) and compare the results, for the samples and the ready-made components. (Waiting for Phase 10; see decision 0029. Lust's own checks compare the two on every change.)
 - **Maths functions** (sine, square root and the like) come from different libraries in Lua and Rust, and their last digit can differ. This only matters for lockstep multiplayer (Phase 8). If it shows up, Lust provides its own.
 - **Playing the built game** from the editor, which needs Rust installed, comes with building games (Phase 10).
 

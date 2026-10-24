@@ -336,3 +336,4 @@ Both sides review each other's pull requests.
 - 2026-10-24: [0026](docs/decisions/0026-draw-only-when-something-changes.md): the editor draws only when something changes (frames back to back while things move, a frame a second otherwise); the corner says "Idle".
 - 2026-10-24: [0027](docs/decisions/0027-regular-code-reviews.md): at the end of every phase and when asked, three separate reviewers read the new code for stability, efficiency and correctness where parts meet; fixes go in pull requests by kind.
 - 2026-10-24: [0028](docs/decisions/0028-lust-runs-as-luau-while-editing.md): while editing, Lust runs as Luau, swapped into the running game keeping values; built games run Lust compiled to Rust; tests compare the two. Settles §3.1.
+- 2026-10-24: [0029](docs/decisions/0029-the-sample-s-rust-component-is-built-in.md): the turret sample's Rust component is compiled into Solis, offered only in the sample, until Phase 10 builds a game's own Rust.

@@ -31,6 +31,8 @@ pub enum FolderFor {
     NewProject,
     /// An existing project to open.
     OpenProject,
+    /// A folder to make the sample game in.
+    SampleGame,
 }
 
 /// Starts imports and collects them when they finish.
@@ -74,6 +76,7 @@ impl Importer {
             let title = match purpose {
                 FolderFor::NewProject => "Choose a folder for the new project",
                 FolderFor::OpenProject => "Open project",
+                FolderFor::SampleGame => "Choose an empty folder for the sample game",
             };
             let _ = sender.send(rfd::FileDialog::new().set_title(title).pick_folder());
         });

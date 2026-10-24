@@ -202,6 +202,13 @@ impl App {
                 for note in crate::game_code::GameCode::describe(&assets, &self.made_by) {
                     self.workbench.log(LogLevel::Warning, note);
                 }
+                // Rust components built into Solis that this project uses
+                // (the turret sample's), until Phase 10 builds a game's own.
+                let (rust, note) = crate::sample_game::rust_components(&assets);
+                self.workbench.set_rust_components(rust);
+                if let Some(note) = note {
+                    self.workbench.log(LogLevel::Warning, note);
+                }
                 self.game_code.check(assets);
                 self.refresh_library();
                 self.workbench.set_recent(self.projects.recent().to_vec());
@@ -586,6 +593,7 @@ impl App {
                     value,
                 } => self.apply_to_assembly(assembly, &path, &component, &field, value),
                 WorkbenchAction::AddSampleArea => self.add_sample(),
+                WorkbenchAction::MakeSampleGame => self.importer.ask_folder(FolderFor::SampleGame),
                 WorkbenchAction::NewArea => {
                     self.workbench.new_area();
                     self.area_files.forget();
@@ -812,6 +820,31 @@ impl App {
         }
     }
 
+    /// Makes the turret sample in `folder` as a new project, opens it and
+    /// its area, or says why it couldn't.
+    fn make_sample_game(&mut self, folder: &Path) {
+        if let Err(why) = crate::sample_game::make(folder) {
+            self.workbench.log(
+                LogLevel::Error,
+                format!(
+                    "Couldn't make the sample game in {}: {why}.",
+                    folder.display()
+                ),
+            );
+            return;
+        }
+        self.open_project(folder, false);
+        let area = folder
+            .join(asset_db::ASSETS_FOLDER)
+            .join(crate::sample_game::AREA);
+        self.open_area(&area);
+        self.workbench.log(
+            LogLevel::Info,
+            "The sample game is ready. Press Play: the turret shoots at the drone, and the \
+             Console tells the story. Its code is in the Library's Code tab.",
+        );
+    }
+
     /// Adds the sample area. With a project open it becomes a file in the
     /// project's assets, imported like any other, so a saved area that
     /// uses it finds it again; without one it's read straight from memory.
@@ -916,7 +949,10 @@ impl eframe::App for App {
         // until the game stops, so it never replaces the game's copy.
         let editing = self.workbench.play_state() == editor::PlayState::Editing;
         if editing && let Some((purpose, folder)) = self.importer.chosen_folder() {
-            self.open_project(&folder, purpose == FolderFor::NewProject);
+            match purpose {
+                FolderFor::SampleGame => self.make_sample_game(&folder),
+                _ => self.open_project(&folder, purpose == FolderFor::NewProject),
+            }
         }
         let (changes, notes) = self.projects.poll();
         self.follow_changes(changes, notes);
