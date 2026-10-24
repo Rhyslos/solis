@@ -166,6 +166,8 @@ pub struct Workbench {
     /// the models loaded, the Library, the assemblies, the components
     /// known.
     pub(crate) sources: u64,
+    /// Mistakes in the game's code, from the last check.
+    pub(crate) code_problems: Vec<script::CodeProblem>,
     /// The last [`Self::assembly_part`], with the selection, revision and
     /// sources it was worked out for: kept, since it expands the whole
     /// assembly.
@@ -197,6 +199,7 @@ impl Workbench {
             problems: Default::default(),
             playing: None,
             sources: 0,
+            code_problems: Vec::new(),
             assembly_part_kept: std::cell::RefCell::new(None),
             assemblies: BTreeMap::new(),
             outbox: Vec::new(),
@@ -269,9 +272,10 @@ impl Workbench {
             // Nothing of the old project's is used with the new one: its
             // assemblies (a copy of a project shares IDs with it), where
             // things were dropped, a question about its file, the
-            // Library's place in its folders.
+            // Library's place in its folders, its code's mistakes.
             self.assemblies.clear();
             self.place_targets.clear();
+            self.code_problems.clear();
             self.pending_reload = None;
             self.unsaved_prompt = None;
             self.library_state = Default::default();
@@ -599,6 +603,7 @@ impl Workbench {
                         console: &mut self.console,
                         console_requests: &mut console_requests,
                         problems: &self.problems.list,
+                        code_problems: &self.code_problems,
                         game: game.as_ref(),
                         playing,
                         document: &self.document,
@@ -754,6 +759,40 @@ impl Workbench {
                 assemblies: &assemblies,
             },
         );
+    }
+
+    /// Takes in the result of checking the game's code (the app checks it
+    /// on a worker when a project opens and when a code file changes): its
+    /// mistakes go to the Problems panel, and the Console says how it went.
+    /// `notes` are files left out (too big, not text).
+    pub fn set_code_problems(&mut self, problems: Vec<script::CodeProblem>, notes: &[String]) {
+        for note in notes {
+            self.log(LogLevel::Warning, note.clone());
+        }
+        let text = match problems.len() {
+            0 if !self.code_problems.is_empty() => Some((
+                LogLevel::Info,
+                "The game's code has no mistakes now.".to_string(),
+            )),
+            0 => None,
+            1 => Some((
+                LogLevel::Warning,
+                format!("A mistake in the game's code: {}", problems[0]),
+            )),
+            n => Some((
+                LogLevel::Warning,
+                format!("{n} mistakes in the game's code; they're listed in Problems."),
+            )),
+        };
+        if let Some((level, text)) = text {
+            self.log(level, text);
+        }
+        self.code_problems = problems;
+    }
+
+    /// Mistakes in the game's code, from the last check.
+    pub fn code_problems(&self) -> &[script::CodeProblem] {
+        &self.code_problems
     }
 
     /// The problems found in the area, for the app and tests.

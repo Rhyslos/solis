@@ -1,0 +1,23 @@
+[package]
+name = "script"
+description = "Game code: Lust and Lua components, checked and turned into Lua by the Lust compiler, run in Luau while the game plays"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+publish.workspace = true
+
+# Architecture layer, checked by tools/layer-check:
+# a crate may only depend on crates in its own layer or below.
+[package.metadata.architecture]
+layer = 1
+
+[dependencies]
+reflect.workspace = true
+lust.workspace = true
+mlua.workspace = true
+
+[lints]
+workspace = true

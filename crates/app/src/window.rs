@@ -63,6 +63,10 @@ struct App {
     to_place: HashSet<AssetId>,
     /// The Library's thumbnails.
     thumbnails: crate::thumbnails::Thumbnails,
+    /// The game's code, checked on a worker.
+    game_code: crate::game_code::GameCode,
+    /// The program and version, for the files describing the engine.
+    made_by: String,
     /// What's in the assets folder, as the Library last showed it.
     listing: asset_db::Listing,
     /// The open area's file: saving, opening, and changes on disk.
@@ -140,6 +144,8 @@ impl App {
             projects: Projects::with_recent(recent),
             to_place: HashSet::new(),
             thumbnails: crate::thumbnails::Thumbnails::default(),
+            game_code: crate::game_code::GameCode::default(),
+            made_by: format!("{} {}", info.name, info.version),
             listing: asset_db::Listing::default(),
             area_files: AreaFiles::default(),
             queued: VecDeque::new(),
@@ -177,8 +183,10 @@ impl App {
                     gpu.clear_models();
                 }
                 self.thumbnails.clear(self.gpu.as_ref());
+                self.game_code.forget();
                 self.to_place.clear();
                 self.area_files.forget();
+                let assets = opened.info.assets.clone();
                 self.workbench.set_project(Some(opened.info));
                 for note in opened.notes {
                     self.workbench.log(LogLevel::Warning, note);
@@ -190,6 +198,11 @@ impl App {
                          show when the project is opened again.",
                     );
                 }
+                // The engine described to game code, then the code checked.
+                for note in crate::game_code::GameCode::describe(&assets, &self.made_by) {
+                    self.workbench.log(LogLevel::Warning, note);
+                }
+                self.game_code.check(assets);
                 self.refresh_library();
                 self.workbench.set_recent(self.projects.recent().to_vec());
             }
@@ -909,6 +922,15 @@ impl eframe::App for App {
         self.follow_changes(changes, notes);
         if self.projects.take_changed() {
             self.refresh_library();
+            // A code file may have changed: checked again on a worker, and
+            // reported only if the code is different.
+            if let Some(assets) = self.projects.db().map(|db| db.project().assets()) {
+                self.game_code.check(assets);
+            }
+        }
+        if let Some(checked) = self.game_code.poll() {
+            self.workbench
+                .set_code_problems(checked.problems, &checked.notes);
         }
         if self.thumbnails.poll(&ctx, self.gpu.as_mut()) {
             self.show_library();
@@ -990,6 +1012,7 @@ impl eframe::App for App {
         } else if self.importer.waiting()
             || self.thumbnails.waiting()
             || self.projects.waiting()
+            || self.game_code.waiting()
             || self.area_files.is_asking()
         {
             ctx.request_repaint_after(WAITING_FRAME);

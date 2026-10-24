@@ -1,6 +1,7 @@
-//! The Problems panel: mistakes found in the open area, such as a model
-//! whose file is gone or a component no one knows. Each names its entity;
-//! clicking one selects it. Looked for again only when something they
+//! The Problems panel: mistakes found in the game's code (with file, line
+//! and column; clicking one opens the file), and in the open area, such as
+//! a model whose file is gone or a component no one knows (each names its
+//! entity; clicking one selects it). Looked for again only when something they
 //! depend on changed, so a big area costs nothing frame to frame.
 
 use crate::icons::{self, Icon};
@@ -202,34 +203,59 @@ pub(crate) fn find(sources: &Sources) -> Vec<Problem> {
     found
 }
 
-/// The Problems panel: each problem with its icon; clicking one returns
-/// its entity.
-pub(crate) fn problems_panel(ui: &mut Ui, problems: &[Problem]) -> Option<EntityId> {
-    if problems.is_empty() {
-        crate::panels::placeholder(ui, "No problems found in the area.");
+/// What a click in the Problems panel asks for.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) enum ProblemClick {
+    /// Select this entity.
+    Entity(EntityId),
+    /// Open this code file (inside the assets) in the code editor.
+    File(String),
+}
+
+/// The Problems panel: mistakes in the game's code first, then those in
+/// the area, each with its icon. Clicking one asks to open its file or
+/// select its entity.
+pub(crate) fn problems_panel(
+    ui: &mut Ui,
+    code: &[script::CodeProblem],
+    problems: &[Problem],
+) -> Option<ProblemClick> {
+    if problems.is_empty() && code.is_empty() {
+        crate::panels::placeholder(ui, "No problems found in the area or the game's code.");
         return None;
     }
     let mut clicked = None;
     egui::Frame::new()
         .inner_margin(egui::Margin::symmetric(6, 4))
         .show(ui, |ui| {
-            let s = if problems.len() == 1 { "" } else { "s" };
-            ui.label(
-                RichText::new(format!(
-                    "{} problem{s} in the area. Click one to select its entity.",
-                    problems.len()
-                ))
-                .color(theme::TEXT_WEAK),
-            );
+            let count = |n: usize, place: &str, what: &str| {
+                let s = if n == 1 { "" } else { "s" };
+                format!("{n} problem{s} in {place}. Click one to {what}.")
+            };
+            let mut heading = Vec::new();
+            if !code.is_empty() {
+                heading.push(count(code.len(), "the game's code", "open its file"));
+            }
+            if !problems.is_empty() {
+                heading.push(count(problems.len(), "the area", "select its entity"));
+            }
+            ui.label(RichText::new(heading.join(" ")).color(theme::TEXT_WEAK));
             ui.add_space(4.0);
+            let rows = code.len() + problems.len();
             egui::ScrollArea::vertical().auto_shrink(false).show_rows(
                 ui,
                 ROW,
-                problems.len(),
-                |ui, rows| {
-                    for problem in &problems[rows] {
-                        if problem_row(ui, problem).clicked() {
-                            clicked = Some(problem.entity);
+                rows,
+                |ui, range| {
+                    for i in range {
+                        if let Some(mistake) = code.get(i) {
+                            if problem_row(ui, &mistake.to_string()).clicked() {
+                                clicked = Some(ProblemClick::File(mistake.file.clone()));
+                            }
+                        } else if let Some(problem) = problems.get(i - code.len())
+                            && problem_row(ui, &problem.text).clicked()
+                        {
+                            clicked = Some(ProblemClick::Entity(problem.entity));
                         }
                     }
                 },
@@ -241,12 +267,11 @@ pub(crate) fn problems_panel(ui: &mut Ui, problems: &[Problem]) -> Option<Entity
 /// The height of one problem's row.
 const ROW: f32 = 20.0;
 
-fn problem_row(ui: &mut Ui, problem: &Problem) -> egui::Response {
+fn problem_row(ui: &mut Ui, text: &str) -> egui::Response {
     let (rect, response) =
         ui.allocate_exact_size(egui::vec2(ui.available_width(), ROW), egui::Sense::click());
-    let response = response.on_hover_text(&problem.text);
-    response
-        .widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Button, true, &problem.text));
+    let response = response.on_hover_text(text);
+    response.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Button, true, text));
     if response.hovered() {
         ui.painter().rect_filled(rect, 3.0, theme::HOVER);
     }
@@ -264,7 +289,7 @@ fn problem_row(ui: &mut Ui, problem: &Problem) -> egui::Response {
     // reader: its button.
     let left = rect.left() + 4.0 + size + 6.0;
     let mut job = egui::text::LayoutJob::simple_singleline(
-        problem.text.clone(),
+        text.to_string(),
         egui::TextStyle::Body.resolve(ui.style()),
         theme::TEXT,
     );
