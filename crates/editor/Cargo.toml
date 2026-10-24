@@ -15,6 +15,7 @@ publish.workspace = true
 layer = 2
 
 [dependencies]
+rayon.workspace = true
 reflect.workspace = true
 area.workspace = true
 world.workspace = true

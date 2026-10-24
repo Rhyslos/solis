@@ -202,3 +202,22 @@ fn a_small_fleet_plays_and_the_profiler_sees_its_game_code() {
     assert!(cpu[Stage::GameCode as usize] > 0.0, "{cpu:?}");
     assert!(cpu[Stage::World as usize] > 0.0, "{cpu:?}");
 }
+
+#[test]
+#[ignore = "for profiling by hand"]
+fn profile_game_code_by_hand() {
+    // Few enough that a tick stays inside the tick limit under a
+    // profiler's slowness.
+    let mut w = fleet(200);
+    for _ in 0..600 {
+        w.play_for(1.0 / 60.0);
+    }
+    assert!(!w.playing.as_ref().unwrap().paused);
+}
+
+#[test]
+#[ignore = "for profiling by hand"]
+fn profile_editor_frames_by_hand() {
+    let (ms, cpu) = cpu_frame(1_000, 40);
+    println!("{ms:.2} ms: {}", split(cpu));
+}

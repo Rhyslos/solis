@@ -82,54 +82,91 @@ pub struct Placement<'a> {
     pub pick: u32,
 }
 
+/// One mesh copy on its way into the buffer: its batch's key (model, mesh
+/// and whether it's mirrored, packed so it sorts in that order), where it
+/// is, and its pick number.
+struct Entry {
+    key: u64,
+    world: Mat4,
+    pick: u32,
+}
+
 /// Every mesh copy of `placements`, grouped into batches, and for each
 /// batch model number the placement that holds that model. Models are told
 /// apart by address, so the same model placed twice shares its batches.
 pub(crate) fn gather(placements: &[Placement<'_>]) -> (Vec<InstanceRaw>, Vec<Batch>, Vec<usize>) {
+    use rayon::prelude::*;
     // Each distinct model once, in the order first seen, by the placement
     // that first showed it.
     let mut models: Vec<usize> = Vec::new();
     let mut seen: std::collections::HashMap<*const GpuModel, usize> = Default::default();
-    let mut entries: Vec<(usize, usize, bool, Mat4, u32)> = Vec::new();
-    for (i, placement) in placements.iter().enumerate() {
-        if !placement.transform.is_finite() {
-            continue;
-        }
-        let model = *seen
-            .entry(std::ptr::from_ref(placement.model))
-            .or_insert_with(|| {
-                models.push(i);
-                models.len() - 1
-            });
-        let whole;
-        let part;
-        let meshes: &[(usize, Mat4)] = match placement.node {
-            None => {
-                whole = placement.model.placements();
-                whole
-            }
-            Some(node) => {
-                part = placement
-                    .model
-                    .node_meshes(node)
-                    .iter()
-                    .map(|&m| (m, Mat4::IDENTITY))
-                    .collect::<Vec<_>>();
-                &part
-            }
-        };
-        for (mesh, local) in meshes {
-            let world = placement.transform * *local;
-            let mirrored = Mat3::from_mat4(world).determinant() < 0.0;
-            entries.push((model, *mesh, mirrored, world, placement.pick));
-        }
-    }
-    entries.sort_by_key(|&(model, mesh, mirrored, _, _)| (model, mesh, mirrored));
-    let mut raw = Vec::with_capacity(entries.len());
+    let numbers: Vec<Option<usize>> = placements
+        .iter()
+        .enumerate()
+        .map(|(i, placement)| {
+            placement.transform.is_finite().then(|| {
+                *seen
+                    .entry(std::ptr::from_ref(placement.model))
+                    .or_insert_with(|| {
+                        models.push(i);
+                        models.len() - 1
+                    })
+            })
+        })
+        .collect();
+    // Each placement's mesh copies, in jobs, kept in the placements' order.
+    let entries: Vec<Entry> = placements
+        .par_iter()
+        .zip(numbers.par_iter())
+        .flat_map_iter(|(placement, number)| {
+            let meshes = match (number, placement.node) {
+                (None, _) => {
+                    rayon::iter::Either::Left(rayon::iter::Either::Left(std::iter::empty()))
+                }
+                (Some(_), None) => rayon::iter::Either::Left(rayon::iter::Either::Right(
+                    placement.model.placements().iter().copied(),
+                )),
+                (Some(_), Some(node)) => rayon::iter::Either::Right(
+                    placement
+                        .model
+                        .node_meshes(node)
+                        .iter()
+                        .map(|&m| (m, Mat4::IDENTITY)),
+                ),
+            };
+            let model = number.unwrap_or(0);
+            meshes.map(move |(mesh, local)| {
+                let world = placement.transform * local;
+                let mirrored = Mat3::from_mat4(world).determinant() < 0.0;
+                Entry {
+                    key: (model as u64) << 33 | (mesh as u64) << 1 | u64::from(mirrored),
+                    world,
+                    pick: placement.pick,
+                }
+            })
+        })
+        .collect();
+    // Grouped into batches by sorting small numbers, not the copies. The
+    // sort is stable, so copies keep the placements' order within a batch,
+    // whatever the number of cores.
+    let mut order: Vec<u32> = (0..entries.len() as u32).collect();
+    order.par_sort_by_key(|&i| entries[i as usize].key);
+    let raw: Vec<InstanceRaw> = order
+        .par_iter()
+        .map(|&i| {
+            let entry = &entries[i as usize];
+            InstanceRaw::new(entry.world, entry.pick)
+        })
+        .collect();
     let mut batches: Vec<Batch> = Vec::new();
-    for (model, mesh, mirrored, world, pick) in entries {
-        let index = raw.len() as u32;
-        raw.push(InstanceRaw::new(world, pick));
+    for (index, &i) in order.iter().enumerate() {
+        let key = entries[i as usize].key;
+        let (model, mesh, mirrored) = (
+            (key >> 33) as usize,
+            ((key >> 1) & 0xffff_ffff) as usize,
+            key & 1 == 1,
+        );
+        let index = index as u32;
         match batches.last_mut() {
             Some(b) if b.model == model && b.mesh == mesh && b.mirrored == mirrored => {
                 b.instances.end = index + 1;

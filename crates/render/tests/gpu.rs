@@ -1760,3 +1760,133 @@ fn a_frame_says_what_it_drew_and_whether_its_passes_are_timed() {
         assert!(t.total() >= 0.0 && t.total() < 1000.0, "{t:?}");
     }
 }
+
+#[test]
+fn a_frame_is_the_same_on_one_core_or_many() {
+    // Decision 0031: gathering the copies in jobs never changes the
+    // picture.
+    let Some(gpu) = gpu() else {
+        return;
+    };
+    let renderer = ViewportRenderer::new(&gpu.device, best_sample_count(&gpu.adapter));
+    let model = sample();
+    let uploaded = renderer.upload_model(&gpu.device, &gpu.queue, &model);
+    let copies: Vec<Placement<'_>> = (0..400)
+        .map(|i| Placement {
+            model: &uploaded,
+            node: None,
+            transform: Mat4::from_translation(Vec3::new(
+                (i % 20) as f32 * 2.5 - 25.0,
+                (i / 20) as f32 * 2.5 + 4.0,
+                0.0,
+            )),
+            pick: 0,
+        })
+        .collect();
+    let eye = Vec3::new(0.0, -10.0, 8.0);
+    let params = FrameParams {
+        view_projection: looking_north(eye),
+        camera_position: eye,
+        focus: Vec3::ZERO,
+        sky_top: srgb(SKY_TOP),
+        sky_horizon: srgb(SKY_HORIZON),
+        ground: srgb(GROUND),
+        shading: Shading::default(),
+        size_px: [96, 96],
+        sun: Sun::default(),
+        environment: unmapped(),
+        editor_lines: false,
+        grid_plane: GridPlane::Ground,
+    };
+    let draw = |cores: usize| {
+        rayon::ThreadPoolBuilder::new()
+            .num_threads(cores)
+            .build()
+            .unwrap()
+            .install(|| {
+                let mut target = renderer.create_target(&gpu.device, [96, 96]);
+                let stats =
+                    renderer.render(&gpu.device, &gpu.queue, &mut target, &params, &copies, &[]);
+                (
+                    stats,
+                    read_pixels(&gpu.device, &gpu.queue, &target).unwrap(),
+                )
+            })
+    };
+    let (one_stats, one) = draw(1);
+    let (many_stats, many) = draw(4);
+    assert_eq!(one_stats, many_stats);
+    assert!(one == many, "the pictures differ");
+}
+
+#[test]
+#[ignore = "scale check: run by tools/scale/scale-check.sh"]
+fn scale_check_gathering_100000_copies() {
+    // The CPU's side of drawing 100,000 copies: gathering, sorting and
+    // handing them over (not the GPU's drawing, which isn't waited for).
+    const TARGET_MS: f64 = 8.0;
+    let Some(gpu) = gpu() else {
+        println!("Scale check: gathering 100,000 copies skipping: no GPU");
+        return;
+    };
+    let renderer = ViewportRenderer::new(&gpu.device, best_sample_count(&gpu.adapter));
+    let model = sample();
+    let uploaded = renderer.upload_model(&gpu.device, &gpu.queue, &model);
+    let copies: Vec<Placement<'_>> = (0..100_000)
+        .map(|i| Placement {
+            model: &uploaded,
+            node: None,
+            transform: Mat4::from_translation(Vec3::new(
+                (i % 300) as f32 * 3.0,
+                (i / 300) as f32 * 3.0,
+                0.0,
+            )),
+            pick: 0,
+        })
+        .collect();
+    let mut target = renderer.create_target(&gpu.device, [64, 64]);
+    let eye = Vec3::new(0.0, -10.0, 8.0);
+    let params = FrameParams {
+        view_projection: looking_north(eye),
+        camera_position: eye,
+        focus: Vec3::ZERO,
+        sky_top: srgb(SKY_TOP),
+        sky_horizon: srgb(SKY_HORIZON),
+        ground: srgb(GROUND),
+        shading: Shading::default(),
+        size_px: [64, 64],
+        sun: Sun {
+            shadows: false,
+            ..Sun::default()
+        },
+        environment: unmapped(),
+        editor_lines: false,
+        grid_plane: GridPlane::Ground,
+    };
+    renderer.render(&gpu.device, &gpu.queue, &mut target, &params, &copies, &[]);
+    let _ = read_pixels(&gpu.device, &gpu.queue, &target);
+    let frames = 10;
+    let mut spent = std::time::Duration::ZERO;
+    for _ in 0..frames {
+        let start = std::time::Instant::now();
+        renderer.render(&gpu.device, &gpu.queue, &mut target, &params, &copies, &[]);
+        spent += start.elapsed();
+        // The GPU catches up between frames, outside the timing.
+        let _ = read_pixels(&gpu.device, &gpu.queue, &target);
+    }
+    let ms = spent.as_secs_f64() * 1000.0 / f64::from(frames);
+    // Phase 5 builds what this needs (M4 sends only what moved, in a
+    // smaller form); until its end the scale check reports it only.
+    const PHASE_5_DONE: bool = false;
+    let verdict = match (ms <= TARGET_MS, PHASE_5_DONE) {
+        (true, _) => "ok",
+        (false, true) => "SLOW",
+        (false, false) => "not yet (Phase 5 builds it)",
+    };
+    println!(
+        "Scale check: gathering and handing over 100,000 copies {ms:.2} ms a frame (target {TARGET_MS} ms) {verdict}"
+    );
+    if PHASE_5_DONE {
+        assert!(ms <= TARGET_MS, "{ms:.2} ms");
+    }
+}
