@@ -774,3 +774,23 @@ fn a_model_with_too_many_nodes_is_refused_quickly() {
     );
     assert!(started.elapsed().as_secs() < 30);
 }
+
+#[test]
+fn a_model_s_own_lod_kept_beside_it_doesn_t_widen_its_box() {
+    // Modellers often keep Ship_LOD1 beside Ship in the file; it stands in
+    // for Ship, so the box is only Ship's (C8 of the Phase 5 review).
+    let mut b = Builder::default();
+    let full = b.add_sphere_mesh(1.0, None);
+    let simple = b.add_cube_mesh(1.0, None);
+    b.json_nodes = vec![
+        format!(r#"{{"name":"Ship","mesh":{full}}}"#),
+        format!(r#"{{"name":"Ship_LOD1","mesh":{simple},"translation":[10,0,0]}}"#),
+    ];
+    let model = load_bytes(&b.glb(), None, "X", &limits()).unwrap();
+    assert!(
+        close(model.bounds.center(), Vec3::ZERO),
+        "{:?}",
+        model.bounds
+    );
+    assert!(model.bounds.max.x < 1.5, "{:?}", model.bounds);
+}

@@ -326,3 +326,82 @@ fn settling_works_out_only_what_moved_and_finds_follow_renames() {
     });
     assert_eq!(place(&world, under_b), Vec3::new(10.0, 0.0, 0.0));
 }
+
+/// What a world holds, to compare: every entity in order with its name,
+/// place in the world, and the name index.
+type Snapshot = (
+    Vec<Option<(EntityId, String)>>,
+    Vec<Mat4>,
+    Vec<Option<EntityId>>,
+);
+
+/// What two worlds hold, to compare (see [`Snapshot`]).
+fn snapshot(world: &World) -> Snapshot {
+    let mut places = Vec::new();
+    world.globals(&mut places);
+    let names = world
+        .entities()
+        .iter()
+        .flatten()
+        .map(|(_, name)| world.find(name))
+        .collect();
+    (world.entities(), places, names)
+}
+
+#[test]
+fn spawned_subtrees_join_and_leave_as_if_the_world_were_built_again() {
+    let mut area = area::builtin::starter_area();
+    let rock = area.spawn(EntityData::new("Rock").with(&at(1.0, 2.0, 0.0)));
+    let mut world = World::from_area(&area);
+    // A ship with a turret under it, spawned at the end of the tree.
+    let ship = EntityId::random();
+    let turret = EntityId::random();
+    let mut ship_data = EntityData::new("Ship").with(&at(10.0, 0.0, 0.0));
+    ship_data.order = area.order_at_end(None);
+    let mut turret_data = EntityData::new("Turret").with(&at(0.0, 0.0, 2.0));
+    turret_data.parent = Some(ship);
+    let spawned = vec![(ship, ship_data), (turret, turret_data)];
+    area.apply(area::Edit::Spawn {
+        entities: spawned.clone(),
+    })
+    .unwrap();
+    let revision = world.revision();
+    // Children listed before their parent: the world works out the order.
+    let reversed: Vec<_> = spawned.iter().rev().cloned().collect();
+    assert_eq!(world.add_subtree(&reversed), vec![ship, turret]);
+    assert_ne!(world.revision(), revision);
+    assert_eq!(snapshot(&world), snapshot(&World::from_area(&area)));
+    assert_eq!(
+        world.global(turret).unwrap().w_axis.truncate(),
+        Vec3::new(10.0, 0.0, 2.0)
+    );
+    assert_eq!(world.subtree(ship), vec![ship, turret]);
+    // Adding it again changes nothing.
+    assert!(world.add_subtree(&spawned).is_empty());
+    // The rock (before it) and the ship (after it) leave.
+    area.apply(area::Edit::Despawn { root: rock }).unwrap();
+    world.remove_subtrees(&[rock]);
+    assert_eq!(snapshot(&world), snapshot(&World::from_area(&area)));
+    area.apply(area::Edit::Despawn { root: ship }).unwrap();
+    world.remove_subtrees(&[ship, EntityId::random()]);
+    assert_eq!(snapshot(&world), snapshot(&World::from_area(&area)));
+    assert!(world.global(turret).is_none());
+    // Moving the rest still works through the new places.
+    let sun = world.find("Sun").unwrap();
+    assert!(world.set_transform(sun, at(0.0, 0.0, 9.0)));
+}
+
+#[test]
+fn projectiles_fly_on_when_the_world_is_built_again() {
+    let area = area::builtin::starter_area();
+    let mut world = World::from_area(&area);
+    world.projectiles_mut().fire(Shot {
+        from: Vec3::ZERO,
+        direction: Vec3::Y,
+        speed: 10.0,
+        life: 1.0,
+        colour: [1.0; 3],
+    });
+    world.rebuild(&area);
+    assert_eq!(world.projectiles().len(), 1);
+}

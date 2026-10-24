@@ -143,6 +143,10 @@ impl Kept {
 /// and keeps what it changes.
 struct ViewHost {
     view: WorldView,
+    /// Which part of the tick this is (the updates are 0, each round of
+    /// events the next number; starts and syncs have their own), for the
+    /// IDs of what's spawned.
+    phase: u32,
     /// The component running now, and where what it does belongs.
     at: Order,
     /// What it has done so far (its order, counted on).
@@ -153,9 +157,10 @@ struct ViewHost {
 }
 
 impl ViewHost {
-    fn new(view: WorldView) -> Self {
+    fn new(view: WorldView, phase: u32) -> Self {
         Self {
             view,
+            phase,
             at: Order::default(),
             next: 0,
             own: Vec::new(),
@@ -254,7 +259,7 @@ impl Host for ViewHost {
         // Made from where it was asked for in the tick's order and the
         // time, so the same game makes the same entities on any number of
         // cores.
-        let id = spawned_id(&order, self.view.time)?;
+        let id = spawned_id(&order, self.phase, self.view.time)?;
         self.kept
             .changes
             .push((order, Change::Spawn(id, assembly.to_string(), place)));
@@ -280,9 +285,16 @@ impl Host for ViewHost {
     }
 }
 
-/// The entity a spawn at `order`, at game time `time`, makes: a hash of
-/// both (FNV-1a), made odd so it's never zero.
-fn spawned_id(order: &Order, time: f64) -> Option<EntityId> {
+/// The part of a tick (or not) a component's start ran in, for
+/// [`ViewHost::phase`].
+const PHASE_LOAD: u32 = u32::MAX;
+/// A sync (components started or given changes from the editor).
+const PHASE_SYNC: u32 = u32::MAX - 1;
+
+/// The entity a spawn at `order`, in `phase` of the tick, at game time
+/// `time`, makes: a hash of all three (FNV-1a), made odd so it's never
+/// zero.
+fn spawned_id(order: &Order, phase: u32, time: f64) -> Option<EntityId> {
     let mut hash: u64 = 0xcbf2_9ce4_8422_2325;
     let mut eat = |bytes: &[u8]| {
         for &b in bytes {
@@ -293,6 +305,7 @@ fn spawned_id(order: &Order, time: f64) -> Option<EntityId> {
     eat(&order.major.to_le_bytes());
     eat(order.component.as_bytes());
     eat(&order.seq.to_le_bytes());
+    eat(&phase.to_le_bytes());
     eat(&time.to_bits().to_le_bytes());
     reflect::Id::from_raw(hash | 1).map(EntityId)
 }
@@ -311,7 +324,7 @@ enum Job {
     Len,
     StartTick,
     Updates(f64, WorldView),
-    Round(Vec<(u32, Event)>, WorldView),
+    Round(Vec<(u32, Event)>, WorldView, u32),
     FinishTick,
 }
 
@@ -335,12 +348,12 @@ fn work(runtime: &mut Runtime, job: Job) -> Done {
             Done::Nothing
         }
         Job::Load(code, view) => {
-            let mut host = ViewHost::new(view);
+            let mut host = ViewHost::new(view, PHASE_LOAD);
             let loaded = runtime.load(&code, &mut host);
             Done::Loaded(loaded, host.kept)
         }
         Job::Swap(code, view) => {
-            let mut host = ViewHost::new(view);
+            let mut host = ViewHost::new(view, PHASE_LOAD);
             let swapped = runtime.swap(&code, &mut host);
             Done::Swapped(swapped, host.kept)
         }
@@ -353,7 +366,7 @@ fn work(runtime: &mut Runtime, job: Job) -> Done {
             Done::Nothing
         }
         Job::Sync(components, view) => {
-            let mut host = ViewHost::new(view);
+            let mut host = ViewHost::new(view, PHASE_SYNC);
             let failures = runtime.sync_many(
                 components.iter().map(|(e, n, d)| (*e, n.as_str(), d)),
                 &mut host,
@@ -377,12 +390,12 @@ fn work(runtime: &mut Runtime, job: Job) -> Done {
             Done::Nothing
         }
         Job::Updates(dt, view) => {
-            let mut host = ViewHost::new(view);
+            let mut host = ViewHost::new(view, 0);
             let phase = runtime.run_updates(dt, &mut host);
             Done::Phase(phase, host.kept)
         }
-        Job::Round(events, view) => {
-            let mut host = ViewHost::new(view);
+        Job::Round(events, view, round) => {
+            let mut host = ViewHost::new(view, round);
             let phase = runtime.run_round(&events, &mut host);
             Done::Phase(phase, host.kept)
         }
@@ -465,6 +478,8 @@ pub struct Game {
     /// Whether the Console was told game code changed too much at once
     /// (until the code changes).
     told_too_much: bool,
+    /// The code every shard runs, if any: what a failed swap goes back to.
+    running: Option<Arc<Compiled>>,
 }
 
 impl std::fmt::Debug for Game {
@@ -517,6 +532,7 @@ impl Game {
             left_out: BTreeSet::new(),
             told: false,
             told_too_much: false,
+            running: None,
         })
     }
 
@@ -559,14 +575,25 @@ impl Game {
         let view = world.view();
         let answers = self.all(|_| Job::Load(Arc::clone(code), view.clone()));
         let mut first = None;
+        let mut failed = None;
         for answer in answers {
             match answer {
-                Some(Done::Loaded(result, kept)) => {
-                    result?;
+                Some(Done::Loaded(Ok(()), kept)) => {
                     first.get_or_insert(kept);
                 }
-                _ => return Err(gone()),
+                Some(Done::Loaded(Err(failure), _)) => {
+                    failed.get_or_insert(failure);
+                }
+                _ => {
+                    failed.get_or_insert_with(gone);
+                }
             }
+        }
+        // All or none: a shard whose start failed (out of time, say) while
+        // the others' didn't would leave half the game's entities running.
+        if let Some(failure) = failed {
+            self.unload();
+            return Err(failure);
         }
         if let Some(kept) = first {
             land(kept, world);
@@ -586,13 +613,21 @@ impl Game {
         let answers = self.all(|_| Job::Swap(Arc::clone(code), view.clone()));
         let mut merged: Option<Swapped> = None;
         let mut first = None;
+        let mut failed = None;
         for answer in answers {
             let swapped = match answer {
-                Some(Done::Swapped(result, kept)) => {
+                Some(Done::Swapped(Ok(swapped), kept)) => {
                     first.get_or_insert(kept);
-                    result?
+                    swapped
                 }
-                _ => return Err(gone()),
+                Some(Done::Swapped(Err(failure), _)) => {
+                    failed.get_or_insert(failure);
+                    continue;
+                }
+                _ => {
+                    failed.get_or_insert_with(gone);
+                    continue;
+                }
             };
             match &mut merged {
                 None => merged = Some(swapped),
@@ -605,15 +640,32 @@ impl Game {
                 }
             }
         }
+        // All or none: the shards that took the new code go back to the
+        // last, keeping where things are, so every entity runs the same.
+        if let Some(failure) = failed {
+            match self.running.clone() {
+                // What going back asks for is dropped: it's undoing, not
+                // playing.
+                Some(old) => {
+                    let _ = self.all(|_| Job::Swap(Arc::clone(&old), view.clone()));
+                }
+                None => self.unload(),
+            }
+            return Err(failure);
+        }
         if let Some(kept) = first {
             land(kept, world);
         }
         self.took(code);
-        Ok(merged.unwrap_or_default())
+        // The same notes however many shards there are.
+        let mut merged = merged.unwrap_or_default();
+        merged.notes.sort();
+        Ok(merged)
     }
 
     /// Notes the components `code` has.
-    fn took(&mut self, code: &Compiled) {
+    fn took(&mut self, code: &Arc<Compiled>) {
+        self.running = Some(Arc::clone(code));
         self.schemas.clone_from(&code.schemas);
         self.code = code.schemas.iter().map(|s| s.name.clone()).collect();
         self.told = false;
@@ -623,6 +675,7 @@ impl Game {
     /// Stops the game's Lust and Lua (see [`Runtime::unload`]).
     pub fn unload(&mut self) {
         let _ = self.all(|_| Job::Unload);
+        self.running = None;
         self.code.clear();
         self.schemas.clear();
     }
@@ -679,7 +732,11 @@ impl Game {
     ) -> Vec<Failure> {
         let mut shares: Vec<Vec<(EntityId, String, ComponentData)>> =
             (0..self.shards.len()).map(|_| Vec::new()).collect();
+        // Where each was asked for, so failures are told in that order
+        // whichever shard ran them.
+        let mut asked: HashMap<(EntityId, String), usize> = HashMap::new();
         for (entity, name, data) in components {
+            asked.insert((entity, name.to_string()), asked.len());
             shares[self.shard_of(entity)].push((entity, name.to_string(), data.clone()));
         }
         if shares.iter().all(Vec::is_empty) {
@@ -701,6 +758,11 @@ impl Game {
             }
         }
         land(kept, world);
+        failures.sort_by_key(|f| {
+            f.entity
+                .and_then(|e| asked.get(&(e, f.component.clone())).copied())
+                .unwrap_or(usize::MAX)
+        });
         failures
     }
 
@@ -727,6 +789,9 @@ impl Game {
     pub fn tick(&mut self, dt: f64, world: &mut dyn GameWorld) -> Ticked {
         let _ = self.all(|_| Job::StartTick);
         let told = self.told;
+        // Which round of events: spawns in different rounds may share
+        // everything else about where they were asked for.
+        let mut rounds = 0_u32;
         let this = std::cell::RefCell::new(&mut *self);
         let world = std::cell::RefCell::new(world);
         let (failures, broke) = in_rounds(
@@ -742,8 +807,10 @@ impl Game {
                 let mut game = this.borrow_mut();
                 let shares = game.split(events);
                 let mut shares = shares.into_iter();
+                rounds += 1;
+                let round = rounds;
                 game.phase(
-                    |_| Job::Round(shares.next().unwrap_or_default(), view.clone()),
+                    |_| Job::Round(shares.next().unwrap_or_default(), view.clone(), round),
                     &mut **world.borrow_mut(),
                 )
             },

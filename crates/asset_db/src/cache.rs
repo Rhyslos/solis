@@ -22,7 +22,7 @@ use std::path::{Path, PathBuf};
 const MAGIC: &[u8; 8] = b"SOLBIN\0\0";
 /// The layout's version: bump it whenever the layout or the importer's
 /// output changes, and old entries are simply ignored.
-pub const VERSION: u32 = 2;
+pub const VERSION: u32 = 3;
 /// The cache files' extension.
 pub const EXTENSION: &str = "solbin";
 

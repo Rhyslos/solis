@@ -119,6 +119,9 @@ impl Workbench {
         game.leave_out(left_out.clone());
         let failures = sync_all(game, self.document.area(), &mut world);
         let said = std::mem::take(&mut world.said);
+        // What starts spawned lands before the next tick.
+        let edits = std::mem::take(&mut world.edits);
+        playing.pending.extend(edits);
         for line in lines {
             self.log(LogLevel::Info, line);
         }
@@ -186,6 +189,15 @@ pub(crate) struct ViewCache {
     index: Arc<ViewIndex>,
 }
 
+/// Something game code asked to happen to the area: a copy of an
+/// assembly made (as this entity, of the assembly named so, here), or an
+/// entity taken out.
+#[derive(Debug, Clone, PartialEq)]
+pub(crate) enum GameEdit {
+    Spawn(EntityId, String, glam::Vec3),
+    Despawn(EntityId),
+}
+
 /// The game's world as game code reaches it ([decision 0033](../../../docs/decisions/0033-game-code-sees-the-start-of-the-tick.md)):
 /// a copy for each phase of a tick, and where its changes land.
 pub(crate) struct PlayWorld<'a> {
@@ -197,11 +209,9 @@ pub(crate) struct PlayWorld<'a> {
     pub(crate) said: Vec<String>,
     /// How long the last frame took, in seconds.
     pub(crate) frame_time: f64,
-    /// Copies of assemblies game code made: the entity, the assembly's
-    /// name and where, for the editor to add after the tick.
-    pub(crate) spawns: Vec<(EntityId, String, glam::Vec3)>,
-    /// Entities game code took out.
-    pub(crate) despawns: Vec<EntityId>,
+    /// What game code spawned and despawned, in the order asked for, for
+    /// the editor to land after the tick.
+    pub(crate) edits: Vec<GameEdit>,
 }
 
 impl<'a> PlayWorld<'a> {
@@ -212,8 +222,7 @@ impl<'a> PlayWorld<'a> {
             time,
             said: Vec::new(),
             frame_time: 1.0 / 60.0,
-            spawns: Vec::new(),
-            despawns: Vec::new(),
+            edits: Vec::new(),
         }
     }
 }
@@ -239,9 +248,10 @@ impl GameWorld for PlayWorld<'_> {
         for change in changes {
             match *change {
                 Change::Spawn(id, ref assembly, place) => {
-                    self.spawns.push((id, assembly.clone(), place));
+                    self.edits
+                        .push(GameEdit::Spawn(id, assembly.clone(), place));
                 }
-                Change::Despawn(id) => self.despawns.push(id),
+                Change::Despawn(id) => self.edits.push(GameEdit::Despawn(id)),
                 // A transform is measured from the parent.
                 Change::Move(which, place) => {
                     self.world.change_transform(which, |parent, mut t| {

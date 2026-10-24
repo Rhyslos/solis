@@ -308,7 +308,15 @@ pub(crate) fn gather(placements: &[Placement<'_>], cull: Option<&Cull>, before: 
                 if errors.len() < 2 || !p.transform.is_finite() {
                     return 0;
                 }
-                let (centre, radius) = p.model.sphere();
+                // Levels are made for the whole model, so its size counts;
+                // but a placement of one node stands where that node's
+                // meshes are, not where the whole model's middle is.
+                let (mut centre, radius) = p.model.sphere();
+                if let Some(node) = p.node
+                    && let Some(&first) = p.model.node_meshes(node).first()
+                {
+                    centre = p.model.sphere_of(first).0;
+                }
                 let turn = Mat3::from_mat4(p.transform);
                 let scale = turn
                     .x_axis

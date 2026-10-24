@@ -65,9 +65,13 @@ What changed in each version, for people using Solis. Newest first.
 
 ### Fixed
 
+- What game code spawns joins the game at the end of the tick that spawned it, so its components run from the next tick even when a slow frame runs several; spawns and despawns land in the order asked for, new copies go at the end of the Area panel's tree, and spawning no longer rebuilds the whole game world (which also stopped lasers in flight from vanishing). Copies spawned while components start, or while new code is swapped in, are no longer lost (Phase 5 review).
+- Two spawns in different rounds of events in one tick no longer make the same entity.
+- If a game code start fails on some of the computer's cores but not others, or new code fails to swap in on some, every core goes back to the same code, so no entity runs different code from the rest; failures are said in the same order however many cores there are.
+- A model that keeps its own levels of detail (`Ship_LOD1`) beside the full one in the file no longer gets a box that includes them, and a part of a model placed on its own picks its level of detail from where it stands. Models are imported again once to pick this up.
 - Game code that catches the time limit's error in a loop (`pcall` in Lua) is stopped too, instead of freezing Solis (Phase 5 review).
 - Game code calling `moveTo`, `fire` or `spawn` in a runaway loop can no longer fill the computer's memory before the time limit stops it: past 200,000 changes in one go the rest are left out, and the Console says so.
-- Spawning is limited to 10,000 copies a frame and the area's most entities; past that, the Console says so instead of the area growing until memory runs out.
+- Spawning is limited to 10,000 copies a tick and the area's most entities; past that, the Console says so instead of the area growing until memory runs out.
 - A model naming one huge mesh as the level of detail of many parts can't multiply it past the import limits, and models with thousands of parts import their own levels of detail quickly.
 - A project made so that many entity IDs share their low digits no longer slows Play to a crawl.
 - An assembly that can't be read isn't read again every time the Library updates.
