@@ -31,6 +31,8 @@ A lightweight, free alternative to Godot, Unity and Unreal for people getting in
 
 **Empire at War-style battles:** hundreds of units normally, a few thousand at peak (cheap unit spam), and tens of thousands of projectiles and effects on screen, running smoothly.
 
+**Tested at three levels** ([decision 0030](docs/decisions/0030-scale-is-tested-at-three-levels.md)): the **target**, 2,000 moving units and 20,000 projectiles at 60 fps; **stress**, 10,000 units and 100,000 projectiles holding 30 fps without stutter; and a **ceiling** run that keeps adding until 60 fps ends, and reports where. Games will go past the target (two fleets of fighter squads, a horde of 6,000 zombies), so we test past it.
+
 That's the number the renderer, the component system and VFX are designed against. It is not Beyond All Reason's tens of thousands of units.
 
 Game-specific systems (squads, hardpoints, hangars, a campaign map, fleet caps) belong in each game's own Lust code, not the engine.
@@ -337,3 +339,6 @@ Both sides review each other's pull requests.
 - 2026-10-24: [0027](docs/decisions/0027-regular-code-reviews.md): at the end of every phase and when asked, three separate reviewers read the new code for stability, efficiency and correctness where parts meet; fixes go in pull requests by kind.
 - 2026-10-24: [0028](docs/decisions/0028-lust-runs-as-luau-while-editing.md): while editing, Lust runs as Luau, swapped into the running game keeping values; built games run Lust compiled to Rust; tests compare the two. Settles §3.1.
 - 2026-10-24: [0029](docs/decisions/0029-the-sample-s-rust-component-is-built-in.md): the turret sample's Rust component is compiled into Solis, offered only in the sample, until Phase 10 builds a game's own Rust.
+- 2026-10-24: [0030](docs/decisions/0030-scale-is-tested-at-three-levels.md): scale is tested at three levels: target (2,000 units, 20,000 projectiles, 60 fps), stress (10,000 and 100,000, 30 fps without stutter) and a ceiling run that reports where 60 fps ends. Extends §2.
+- 2026-10-24: [0031](docs/decisions/0031-the-job-system-is-rayon.md): the job system is `rayon`; jobs write only their own slice, so a frame is the same on any number of cores.
+- 2026-10-24: [0032](docs/decisions/0032-lods-made-on-import-or-the-model-s-own.md): LODs are made on import with meshoptimizer, or come from the model (`Name_LOD1` …), chosen by size on screen.
