@@ -704,9 +704,9 @@ impl Workbench {
         self.hold_while_playing(&mut actions);
         self.profiler
             .add(crate::profiler::Stage::Draw, renderer.spent);
-        let (components, entities) = match &self.playing {
+        let (components, entities) = match &mut self.playing {
             Some(playing) => (
-                playing.game.as_ref().map_or(0, script::Runtime::len),
+                playing.game.as_mut().map_or(0, script::Game::len),
                 playing.world.len(),
             ),
             None => (0, self.document.area().len()),

@@ -78,6 +78,18 @@ impl Clock {
         result
     }
 
+    /// Starts giving all the game code from now on `limit` together, until
+    /// [`Self::stop`] (a tick in phases, which [`Self::within`] can't
+    /// span).
+    pub(crate) fn start(&self, limit: Duration) {
+        self.all.set(Some((Instant::now() + limit, limit)));
+    }
+
+    /// Ends what [`Self::start`] began.
+    pub(crate) fn stop(&self) {
+        self.all.set(None);
+    }
+
     /// Whether the tick or load running now has used up its time.
     pub(crate) fn over(&self) -> bool {
         self.all

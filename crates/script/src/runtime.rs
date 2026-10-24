@@ -18,6 +18,7 @@
 
 use crate::code::{CodeProblem, Compiled};
 use crate::convert::from_lua;
+use crate::events::{Event, MAX_DELIVERIES};
 use crate::events::{EventKinds, Queue, sender};
 use crate::host::{Host, call_with, with_natives};
 use crate::lua_components::{LuaClass, compile_files, lua_problem, read_classes, swap_classes};
@@ -26,7 +27,7 @@ pub use crate::luau::{LOAD_LIMIT, MEMORY_LIMIT, TICK_LIMIT, TIME_LIMIT};
 use crate::lust_program::{self, LustProgram, changes, located};
 use crate::rust_component::RustKind;
 use crate::syncing::Syncing;
-use crate::ticking::{Instance, RunningMap, Ticking, caught, plain};
+use crate::ticking::{Instance, Phase, RunningMap, Ticking, caught, plain};
 use mlua::{Table, Value as LuaValue};
 use reflect::{ComponentData, ComponentSchema, EntityId};
 use std::cell::{Cell, RefCell};
@@ -325,8 +326,14 @@ impl Runtime {
         let lust_env = self.lust.as_ref().map(|p| &p.env);
         let luau = &self.luau;
         let lent = luau.clock.within(LOAD_LIMIT, || {
-            with_natives(luau, lust_env, host, Some(&self.send), |_| {
+            with_natives(luau, lust_env, host, Some(&self.send), |lent| {
                 for (entity, name, data) in components {
+                    // What a new component's start changes lands in order.
+                    lent.borrow_mut().at(&crate::ticking::Order {
+                        major: entity.0.raw(),
+                        component: name.to_string(),
+                        seq: 0,
+                    });
                     if let Err(failure) = code.sync(running, entity, name, data) {
                         failures.push(failure);
                     }
@@ -387,70 +394,111 @@ impl Runtime {
 
     /// Runs one tick of `dt` seconds: every running component's `update`,
     /// entities in ID order and components in name order, then the events
-    /// they sent. A component that fails stops (until the code changes),
-    /// and its failure is given back; the others carry on. A tick that
-    /// runs past [`TICK_LIMIT`] is cut short, and asks for a pause.
+    /// they sent, in rounds. A component that fails stops (until the code
+    /// changes), and its failure is given back; the others carry on. A
+    /// tick that runs past [`TICK_LIMIT`] is cut short, and asks for a
+    /// pause. What game code changes reaches `host` at once (one runtime
+    /// on one core; [`crate::Game`] runs several, decision 0033).
     pub fn tick(&mut self, dt: f64, host: &mut dyn Host) -> Ticked {
-        let mut ticked = Ticked::default();
+        self.start_tick();
+        let told = self.told.get();
         let ticking = Ticking {
             luau: &self.luau,
             queue: &self.queue,
             chunk: self.lust.as_ref().map(|p| &p.chunk),
             lust: self.lust.as_ref(),
             events: self.lust.as_ref().map(|p| &*p.events),
-            told: &self.told,
+            lua_classes: &self.lua_classes,
+            kinds: self.lust.as_ref().map_or(&self.no_events, |p| &*p.events),
+            unstopped: RefCell::default(),
+        };
+        let running = RefCell::new(&mut self.running);
+        let lust_env = self.lust.as_ref().map(|p| &p.env);
+        // The natives are lent once for the whole tick, all its rounds.
+        let mut outcome = (Vec::new(), None);
+        let lent = with_natives(&self.luau, lust_env, host, Some(&self.send), |lent| {
+            outcome = in_rounds(
+                || Ok(ticking.updates(lent, &mut running.borrow_mut(), dt)),
+                |events| Ok(ticking.round(lent, &mut running.borrow_mut(), events)),
+                told,
+            );
+            Ok(())
+        });
+        let (failures, mut broke) = outcome;
+        if let Err(err) = lent {
+            broke = Some(ticking.located(&err).to_string());
+        }
+        if failures.iter().any(is_flood) {
+            self.told.set(true);
+        }
+        let over = self.finish_tick();
+        Ticked {
+            failures,
+            pause: pause_for(over, broke),
+        }
+    }
+
+    /// Starts a tick in phases: all of its game code shares
+    /// [`TICK_LIMIT`].
+    pub(crate) fn start_tick(&self) {
+        self.luau.clock.start(TICK_LIMIT);
+    }
+
+    /// Ends a tick in phases; whether it ran past its budget (the rest of
+    /// it waited, and events still waiting are dropped).
+    pub(crate) fn finish_tick(&self) -> bool {
+        let over = self.luau.clock.over();
+        self.luau.clock.stop();
+        if over {
+            self.queue.borrow_mut().clear();
+        }
+        over
+    }
+
+    /// The updates of a tick in phases, with the natives lent from `host`.
+    /// `Err`: the natives couldn't be lent (out of memory), why.
+    pub(crate) fn run_updates(&mut self, dt: f64, host: &mut dyn Host) -> Result<Phase, String> {
+        self.phase(host, |ticking, lent, running| {
+            ticking.updates(lent, running, dt)
+        })
+    }
+
+    /// One round of events of a tick in phases.
+    pub(crate) fn run_round(
+        &mut self,
+        events: &[(u32, Event)],
+        host: &mut dyn Host,
+    ) -> Result<Phase, String> {
+        self.phase(host, |ticking, lent, running| {
+            ticking.round(lent, running, events)
+        })
+    }
+
+    /// Runs `run` with the natives lent once.
+    fn phase(
+        &mut self,
+        host: &mut dyn Host,
+        run: impl FnOnce(&Ticking<'_>, &crate::host::Lent<'_, '_>, &mut RunningMap) -> Phase,
+    ) -> Result<Phase, String> {
+        let ticking = Ticking {
+            luau: &self.luau,
+            queue: &self.queue,
+            chunk: self.lust.as_ref().map(|p| &p.chunk),
+            lust: self.lust.as_ref(),
+            events: self.lust.as_ref().map(|p| &*p.events),
             lua_classes: &self.lua_classes,
             kinds: self.lust.as_ref().map_or(&self.no_events, |p| &*p.events),
             unstopped: RefCell::default(),
         };
         let running = &mut self.running;
-        let failures = &mut ticked.failures;
         let lust_env = self.lust.as_ref().map(|p| &p.env);
-        let clock = &self.luau.clock;
-        // The natives are lent once for the whole tick; the time limit
-        // watches each component's update on its own, and the tick's
-        // budget all of them.
-        let (lent, over) = clock.within(TICK_LIMIT, || {
-            let lent = with_natives(&self.luau, lust_env, host, Some(&self.send), |lent| {
-                for ((entity, name), component) in running.iter_mut() {
-                    if clock.over() {
-                        break;
-                    }
-                    if !component.stopped
-                        && let Err(at) = ticking.update(lent, (*entity, name), component, dt)
-                    {
-                        if clock.over() {
-                            break;
-                        }
-                        component.stopped = true;
-                        failures.push(Failure {
-                            entity: Some(*entity),
-                            component: name.clone(),
-                            at,
-                            stopped: true,
-                        });
-                    }
-                }
-                failures.extend(ticking.deliver(lent, running));
-                Ok(())
-            });
-            (lent, clock.over())
-        });
-        ticked.failures.extend(ticking.unstopped.take());
-        if over {
-            self.queue.borrow_mut().clear();
-            ticked.pause = Some(format!(
-                "The game's code took longer than {} ms in one tick, so the game paused (the \
-                 rest of that tick waited). Is something slow, or a loop that never ends?",
-                TICK_LIMIT.as_millis()
-            ));
-        } else if let Err(err) = lent {
-            ticked.pause = Some(format!(
-                "The game's code couldn't run this tick, so the game paused: {}",
-                ticking.located(&err)
-            ));
-        }
-        ticked
+        let mut phase = None;
+        with_natives(&self.luau, lust_env, host, Some(&self.send), |lent| {
+            phase = Some(run(&ticking, lent, running));
+            Ok(())
+        })
+        .map_err(|err| ticking.located(&err).to_string())?;
+        Ok(phase.unwrap_or_default())
     }
 
     /// The Lust and Lua of `code`, loaded in this runtime's Luau but not
@@ -557,6 +605,91 @@ fn swap_lust(
         (None, None) => {}
     }
     Ok(())
+}
+
+/// A tick's updates, then its events in rounds (each round the events the
+/// one before sent, so the first sent is the first delivered), until none
+/// are left. `updates` and `round` give back what was sent and what failed,
+/// in any order: they're put in the tick's order here. Past
+/// [`MAX_DELIVERIES`] events, the rest are dropped with a failure (unless
+/// `told` already). Gives back the failures, in order, and why the tick
+/// couldn't run, if it couldn't.
+pub(crate) fn in_rounds(
+    updates: impl FnOnce() -> Result<Phase, String>,
+    mut round: impl FnMut(&[(u32, Event)]) -> Result<Phase, String>,
+    told: bool,
+) -> (Vec<Failure>, Option<String>) {
+    let mut failures = Vec::new();
+    let take = |phase: Phase, failures: &mut Vec<Failure>| {
+        let mut phase_failures = phase.failures;
+        phase_failures.sort_by(|a, b| a.0.cmp(&b.0));
+        failures.extend(phase_failures.into_iter().map(|(_, f)| f));
+        let mut sent = phase.sent;
+        sent.sort_by(|a, b| a.0.cmp(&b.0));
+        sent.into_iter().map(|(_, e)| e).collect::<Vec<Event>>()
+    };
+    let mut events = match updates() {
+        Ok(phase) => take(phase, &mut failures),
+        Err(why) => return (failures, Some(why)),
+    };
+    let mut delivered = 0;
+    while !events.is_empty() {
+        if delivered + events.len() > MAX_DELIVERIES {
+            let room = MAX_DELIVERIES - delivered;
+            let dropped = events.len() - room;
+            events.truncate(room);
+            if !told {
+                failures.push(flood(dropped));
+            }
+            if events.is_empty() {
+                break;
+            }
+        }
+        delivered += events.len();
+        let numbered: Vec<(u32, Event)> = events
+            .into_iter()
+            .enumerate()
+            .map(|(i, e)| (i as u32, e))
+            .collect();
+        events = match round(&numbered) {
+            Ok(phase) => take(phase, &mut failures),
+            Err(why) => return (failures, Some(why)),
+        };
+    }
+    (failures, None)
+}
+
+/// The failure saying too many events were sent in one tick.
+fn flood(dropped: usize) -> Failure {
+    Failure {
+        entity: None,
+        component: String::new(),
+        at: plain(format!(
+            "more than {MAX_DELIVERIES} events were sent in one tick, so the last {dropped} \
+             were dropped. Do components keep sending events to each other? (This isn't said \
+             again until the code changes.)"
+        )),
+        stopped: false,
+    }
+}
+
+/// Whether `failure` is the one saying too many events were sent.
+pub(crate) fn is_flood(failure: &Failure) -> bool {
+    failure.entity.is_none() && failure.at.message.starts_with("more than ")
+}
+
+/// Why a tick asks for a pause: it ran past its budget, or couldn't run.
+pub(crate) fn pause_for(over: bool, broke: Option<String>) -> Option<String> {
+    if over {
+        Some(format!(
+            "The game's code took longer than {} ms in one tick, so the game paused (the rest \
+             of that tick waited). Is something slow, or a loop that never ends?",
+            TICK_LIMIT.as_millis()
+        ))
+    } else {
+        broke
+            .map(|why| format!("The game's code couldn't run this tick, so the game paused: {why}"))
+    }
 }
 
 #[cfg(test)]

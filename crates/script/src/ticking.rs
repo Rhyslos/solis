@@ -2,7 +2,7 @@
 //! and Rust alike, in one order), then delivering the events they sent.
 
 use crate::code::CodeProblem;
-use crate::events::{Event, EventKinds, MAX_DELIVERIES, Queue, arguments, values_table};
+use crate::events::{Event, EventKinds, Queue, arguments, values_table};
 use crate::host::Lent;
 use crate::lua_components::{LuaClass, lua_problem};
 use crate::luau::Luau;
@@ -11,7 +11,7 @@ use crate::runtime::Failure;
 use crate::rust_component::{Context, RustComponent};
 use mlua::{Function, Table, Value as LuaValue};
 use reflect::{ComponentData, EntityId};
-use std::cell::{Cell, RefCell};
+use std::cell::RefCell;
 use std::collections::BTreeMap;
 
 /// What a running component is.
@@ -68,8 +68,6 @@ pub(crate) struct Ticking<'a> {
     pub(crate) lust: Option<&'a LustProgram>,
     /// The events the Lust declares.
     pub(crate) events: Option<&'a EventKinds>,
-    /// Whether too many events were said already, since the code changed.
-    pub(crate) told: &'a Cell<bool>,
     /// The Lua components' classes, for which file a failure is in.
     pub(crate) lua_classes: &'a BTreeMap<String, LuaClass>,
     /// What every event carries, for Rust components' sends.
@@ -77,6 +75,31 @@ pub(crate) struct Ticking<'a> {
     /// Failures that leave their component running (a Rust component's
     /// refused send), said once per component until the code changes.
     pub(crate) unstopped: RefCell<Vec<Failure>>,
+}
+
+/// Where something game code did belongs in the tick's order: during the
+/// updates, by the entity (its ID) then the component (its name); while
+/// delivering a round of events, by the event's number in the round then
+/// the receiving component; then the order the component did things in.
+/// Things done on any number of cores, put in this order, come out the
+/// same (decision 0033).
+#[derive(Debug, Clone, Default, PartialEq, Eq, PartialOrd, Ord, Hash)]
+pub struct Order {
+    /// The entity's ID (updates), or the event's number (a round).
+    pub major: u64,
+    /// The component's name.
+    pub component: String,
+    /// The order the component did it in.
+    pub seq: u32,
+}
+
+/// What one phase of a tick (the updates, or a round of events) gave back.
+#[derive(Debug, Default)]
+pub(crate) struct Phase {
+    /// The events sent, each with its place in the order.
+    pub(crate) sent: Vec<(Order, Event)>,
+    /// The components that failed.
+    pub(crate) failures: Vec<(Order, Failure)>,
 }
 
 /// An event on its way to the components on its entity, with what they
@@ -181,79 +204,127 @@ impl Ticking<'_> {
         });
     }
 
-    /// Delivers the tick's events, in order, to each running component on
-    /// the entity, in order of their names; events sent meanwhile join the
-    /// end. A failure handling one is reported (once, until the code
-    /// changes), and the component keeps running. Past [`MAX_DELIVERIES`],
-    /// or once the tick has used up its time, the rest are dropped.
-    pub(crate) fn deliver(&self, lent: &Lent<'_, '_>, running: &mut RunningMap) -> Vec<Failure> {
-        let mut failures = Vec::new();
-        let mut delivered = 0;
-        loop {
+    /// Runs every running component's `update`, in order, telling the
+    /// host which one runs (so what it changes is put in order), and gives
+    /// back the events they sent and their failures, each with its place
+    /// in the order. A component that fails stops. Once the budget is
+    /// used up, the rest wait.
+    pub(crate) fn updates(&self, lent: &Lent<'_, '_>, running: &mut RunningMap, dt: f64) -> Phase {
+        let mut phase = Phase::default();
+        for ((entity, name), component) in running.iter_mut() {
             if self.luau.clock.over() {
-                self.queue.borrow_mut().clear();
                 break;
             }
-            let Some(event) = self.queue.borrow_mut().pop() else {
-                break;
+            if component.stopped {
+                continue;
+            }
+            let at = Order {
+                major: entity.0.raw(),
+                component: name.clone(),
+                seq: 0,
             };
-            if delivered >= MAX_DELIVERIES {
-                let dropped = self.queue.borrow().len() + 1;
-                self.queue.borrow_mut().clear();
-                if self.told.replace(true) {
+            lent.borrow_mut().at(&at);
+            let result = self.update(lent, (*entity, name), component, dt);
+            self.collect_sent(&at, &mut phase);
+            if let Err(problem) = result {
+                if self.luau.clock.over() {
                     break;
                 }
-                failures.push(Failure {
-                    entity: None,
-                    component: String::new(),
-                    at: plain(format!(
-                        "more than {MAX_DELIVERIES} events were sent in one tick, so the last \
-                         {dropped} were dropped. Do components keep sending events to each \
-                         other? (This isn't said again until the code changes.)"
-                    )),
-                    stopped: false,
-                });
+                component.stopped = true;
+                phase.failures.push((
+                    at,
+                    Failure {
+                        entity: Some(*entity),
+                        component: name.clone(),
+                        at: problem,
+                        stopped: true,
+                    },
+                ));
+            }
+        }
+        phase
+    }
+
+    /// Delivers one round of `events` (each with its number in the round)
+    /// to each running component on their entity, in order of their names,
+    /// telling the host which one runs; gives back what they sent and
+    /// their failures, in order. A failure handling one is reported once,
+    /// until the code changes, and the component keeps running. Once the
+    /// budget is used up, the rest wait.
+    pub(crate) fn round(
+        &self,
+        lent: &Lent<'_, '_>,
+        running: &mut RunningMap,
+        events: &[(u32, Event)],
+    ) -> Phase {
+        let mut phase = Phase::default();
+        for (number, event) in events {
+            if self.luau.clock.over() {
                 break;
             }
-            delivered += 1;
             let delivery = Delivery {
                 on: format!("on_{}", event.name),
                 values: std::cell::OnceCell::new(),
-                event,
+                event: event.clone(),
             };
-            let from = (delivery.event.to, String::new());
+            let from = (event.to, String::new());
             for ((entity, name), component) in running.range_mut(from..) {
-                if *entity != delivery.event.to {
+                if *entity != event.to {
                     break;
                 }
                 if component.stopped {
                     continue;
                 }
-                if let Err(mut at) = self.handle(lent, (*entity, name), component, &delivery) {
-                    if self.luau.clock.over() {
-                        // The tick ran out of time; that's said once, by
-                        // the runtime.
-                        break;
-                    }
-                    if component.quiet {
-                        continue;
-                    }
-                    component.quiet = true;
-                    at.message = format!(
-                        "couldn't take the event {}: {} (Its later failures with events aren't \
-                         said until the code changes.)",
-                        delivery.event.name, at.message
-                    );
-                    failures.push(Failure {
+                let at = Order {
+                    major: u64::from(*number),
+                    component: name.clone(),
+                    seq: 0,
+                };
+                lent.borrow_mut().at(&at);
+                let result = self.handle(lent, (*entity, name), component, &delivery);
+                self.collect_sent(&at, &mut phase);
+                let Err(mut problem) = result else {
+                    continue;
+                };
+                if self.luau.clock.over() {
+                    // Out of time: said once, for the whole tick.
+                    break;
+                }
+                if component.quiet {
+                    continue;
+                }
+                component.quiet = true;
+                problem.message = format!(
+                    "couldn't take the event {}: {} (Its later failures with events aren't \
+                     said until the code changes.)",
+                    event.name, problem.message
+                );
+                phase.failures.push((
+                    at,
+                    Failure {
                         entity: Some(*entity),
                         component: name.clone(),
-                        at,
+                        at: problem,
                         stopped: false,
-                    });
-                }
+                    },
+                ));
             }
         }
-        failures
+        phase
+    }
+
+    /// Takes what the component at `at` just sent out of the queue, in the
+    /// order it sent it.
+    fn collect_sent(&self, at: &Order, phase: &mut Phase) {
+        for failure in self.unstopped.take() {
+            phase.failures.push((at.clone(), failure));
+        }
+        let mut queue = self.queue.borrow_mut();
+        let mut seq = 0;
+        while let Some(event) = queue.pop() {
+            phase.sent.push((Order { seq, ..at.clone() }, event));
+            seq += 1;
+        }
     }
 
     /// Gives one component an event.

@@ -30,6 +30,14 @@ pub trait Host {
     fn turn_to(&mut self, which: EntityId, facing: Quat);
     /// An entity's name.
     fn name(&self, which: EntityId) -> Option<String>;
+
+    /// The component about to run, and where what it does belongs in the
+    /// tick's order ([decision 0033](../../../docs/decisions/0033-game-code-sees-the-start-of-the-tick.md)).
+    /// A host that keeps changes to land later (game code on several
+    /// cores) uses it; one that makes them at once needn't.
+    fn at(&mut self, order: &crate::ticking::Order) {
+        let _ = order;
+    }
 }
 
 /// A host for when nothing is running (loading code to read its

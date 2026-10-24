@@ -9,7 +9,7 @@
 
 use crate::console::LogLevel;
 use crate::document::Document;
-use crate::game_code::{WorldHost, failure_text, new_runtime, sync_all, sync_entities};
+use crate::game_code::{PlayWorld, ViewCache, failure_text, new_game, sync_all, sync_entities};
 use crate::panel::Panel;
 use crate::workbench::{Workbench, WorkbenchAction};
 use area::text::AreaFile;
@@ -42,8 +42,11 @@ pub(crate) struct Playing {
     /// The area as its file holds it now, if the file changed on disk
     /// while playing: offered again after Stop.
     pub(crate) reload: Option<area::Area>,
-    /// The game's code running, if there is code (and it started).
-    pub(crate) game: Option<script::Runtime>,
+    /// The game's code running, if there is code (and it started), on
+    /// every core (decision 0033).
+    pub(crate) game: Option<script::Game>,
+    /// What game code reads of the world's entities, kept between ticks.
+    pub(crate) view: crate::game_code::ViewCache,
 }
 
 impl std::fmt::Debug for Playing {
@@ -108,7 +111,8 @@ impl Workbench {
         let mut world = world::World::from_area(self.document.area());
         let _ = self.document.take_changes();
         let cameras = world.placed::<area::builtin::Camera>().len();
-        let game = self.start_game(&mut world);
+        let mut view = ViewCache::default();
+        let game = self.start_game(&mut world, &mut view);
         self.playing = Some(Playing {
             world,
             paused: false,
@@ -116,6 +120,7 @@ impl Workbench {
             assemblies_before: self.assemblies.clone(),
             reload: None,
             game,
+            view,
         });
         if let Some(found) = self.dock.find_tab(&Panel::Game) {
             let _ = self.dock.set_active_tab(found);
@@ -136,24 +141,28 @@ impl Workbench {
     /// components (Lust, Lua and Rust) made from the area; `None` with no
     /// code. If the code's start fails (said in the Console), the Rust
     /// components run on their own.
-    fn start_game(&mut self, world: &mut world::World) -> Option<script::Runtime> {
+    fn start_game(
+        &mut self,
+        world: &mut world::World,
+        view: &mut ViewCache,
+    ) -> Option<script::Game> {
         if self.program.is_none() && self.rust_components.is_empty() {
             return None;
         }
-        let mut runtime = match new_runtime(&self.rust_components) {
-            Ok(runtime) => runtime,
+        let mut game = match new_game(&self.rust_components) {
+            Ok(game) => game,
             Err(failure) => {
                 self.tell_game(Vec::new(), &[failure]);
                 return None;
             }
         };
-        runtime.leave_out(self.left_out.clone());
-        let mut host = WorldHost::new(world, 0.0);
+        game.leave_out(self.left_out.clone());
+        let mut host = PlayWorld::new(world, view, 0.0);
         let mut failures = Vec::new();
         // If the code's start fails, the rest of the game (its Rust
         // components) still runs.
         if let Some(chunk) = self.program.clone()
-            && let Err(mut failure) = runtime.load(&chunk, &mut host)
+            && let Err(mut failure) = game.load(&chunk, &mut host)
         {
             failure.at.message = format!(
                 "the game's code stopped while starting, so its Lust and Lua components don't \
@@ -162,11 +171,10 @@ impl Workbench {
             );
             failures.push(failure);
         }
-        failures.extend(sync_all(&mut runtime, self.document.area(), &mut host));
+        failures.extend(sync_all(&mut game, self.document.area(), &mut host));
         let said = std::mem::take(&mut host.said);
-        world.settle();
         self.tell_game(said, &failures);
-        Some(runtime)
+        Some(game)
     }
 
     /// Writes what game code said, and its failures, in the Console.
@@ -265,7 +273,7 @@ impl Workbench {
             && !changes.is_empty()
         {
             let time = playing.world.clock().time;
-            let mut host = WorldHost::new(&mut playing.world, time);
+            let mut host = PlayWorld::new(&mut playing.world, &mut playing.view, time);
             let syncing = std::time::Instant::now();
             if changes.everything {
                 failures.extend(sync_all(game, area, &mut host));
@@ -279,7 +287,6 @@ impl Workbench {
             }
             code += syncing.elapsed();
             said.append(&mut host.said);
-            playing.world.settle();
         }
         let mut pause = None;
         if !playing.paused {
@@ -288,13 +295,12 @@ impl Workbench {
                 let now = playing.world.clock().time;
                 for i in 0..ran {
                     let time = now - world::TICK * (ran - 1 - i) as f64;
-                    let mut host = WorldHost::new(&mut playing.world, time);
+                    let mut host = PlayWorld::new(&mut playing.world, &mut playing.view, time);
                     let ticking = std::time::Instant::now();
                     let ticked = game.tick(world::TICK, &mut host);
                     code += ticking.elapsed();
                     failures.extend(ticked.failures);
                     said.append(&mut host.said);
-                    playing.world.settle();
                     // Too slow: no catching up, which would only be
                     // slower; the game waits for the person instead.
                     if ticked.pause.is_some() {

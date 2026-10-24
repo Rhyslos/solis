@@ -80,9 +80,17 @@ What a field can hold: `bool`, `int`, `float`, `string`, a `state` (shown as a c
 
 **Order:** each tick runs entities in the order of their IDs, and an entity's components in the order of their names, so a game runs the same way every time.
 
+**What game code sees during a tick:** the world as it was when the tick started, plus its own changes. Solis runs game code on every core of your processor at once, so components can't see each other's moves while they happen. Instead:
+
+- `positionOf`, `rotationOf`, `nameOf` and `find` read the world as it was at the start of the tick. A component that moves its own entity sees the new place at once; another component sees it next tick.
+- `moveTo`, `turnTo` and `say` are kept, and happen when every `update` is done, in the order above. If two components move the same entity, the last one in that order wins.
+- Events are delivered after that, a round at a time; each round sees the world as the round before left it.
+
+So a game runs the same way on a computer with 2 cores or 32. Most code never notices: a unit chasing another simply aims at where the other was a sixtieth of a second ago. Code that needs to see a move straight away should move things from one component, or tell the other with an event.
+
 **When something goes wrong while it runs,** such as dividing by zero, that component stops and the Console says which one, on which entity, and where in the Lust: "Divider on Splitter stopped: main.lst, line 8: …". The rest of the game keeps going. A component that runs for more than a tenth of a second without stopping (a loop that never ends) is stopped the same way, so it can't freeze Solis.
 
-**When the whole tick is too slow:** if all the game's code together takes more than a quarter of a second in one tick (many slow components, say), the rest of that tick waits and the game **pauses**, with a message in the Console saying why. None of the components is to blame on its own, so none stops; make the slow ones faster, then press **Pause** or **Play** to carry on. Without this, the game would try to catch up and the editor would hardly respond.
+**When the whole tick is too slow:** if the game's code takes more than a quarter of a second in one tick on any one core (many slow components, say), the rest of that tick waits and the game **pauses**, with a message in the Console saying why. None of the components is to blame on its own, so none stops; make the slow ones faster, then press **Pause** or **Play** to carry on. Without this, the game would try to catch up and the editor would hardly respond.
 
 **What game code says** goes to the Console a line at a time. A very long line is cut short, and past 200 lines in one tick the rest are counted ("Game code said 800 more lines just now"), so a component that talks too much can't drown the Console or fill the computer's memory.
 
@@ -142,7 +150,7 @@ pass Health, Gun;
 end
 ```
 
-- **When they arrive:** after every component's `update` in the tick, in the order they were sent. On the entity, each component with an `on` for it reacts, in the order of the components' names. An event sent while reacting to another (Hit sends Died) arrives later in the same tick.
+- **When they arrive:** after every component's `update` in the tick (and after the moves those made), in the order they were sent (by the sending entity's ID, then component name). On the entity, each component with an `on` for it reacts, in the order of the components' names. An event sent while reacting to another (Hit sends Died) arrives later in the same tick.
 - **An event to `nothing`** goes nowhere, so a gun with no target is harmless.
 - **Lust checks** that every `send` carries what the event says, so a misspelt event or a missing value is a mistake in Problems before anything runs.
 - **Components that keep sending to each other** forever are stopped after 10,000 events in one tick, with a message in the Console (once, until the code changes), so the game can't freeze. At most 10,000 events can wait at once, holding at most 16 MB of text: past that, the `send` itself fails, so the Console points at the component sending too much.
@@ -201,6 +209,7 @@ Other code files can sit in any folder in `assets`. Fetch them by their path fro
 - **Problem:** Problems says something is nested too deeply. **Why:** more than 150 levels of brackets, blocks or operators inside each other (`a + b + c …` counts each `+`) is more than Lust takes. **Fix:** split it up with variables or methods.
 - **Problem:** Problems says the code stopped while starting. **Why:** Solis runs the code's own start (the lines outside components, and each field's starting value) to read its components, before anything plays and with no world: `find` finds nothing then. A start that fails or takes more than a second is a mistake. **Fix:** fix the line Problems points at.
 - **Problem:** the Console says a code file was left out. **Why:** each code file can be at most 1 MB, and all of them together 16 MB. Files that aren't text are left out too. **Fix:** split a huge file into smaller ones.
+- **Problem:** a component reads another entity's place and gets where it was before this tick's move. **Why:** during a tick, game code sees the world as it was when the tick started (see Components, above), so every core sees the same world. **Fix:** usually nothing: it catches up next tick. If it must be at once, do both in one component, or send an event (events see the moves made before them).
 - Commit the `solis` folder with your game, so `lust check` works on other computers too.
 
 ## Related

@@ -1,0 +1,291 @@
+//! Game code on several cores (decision 0033): the same results on one
+//! shard or many, the start-of-tick world, and the order changes land in.
+
+use super::*;
+use crate::code::Code;
+use reflect::Value;
+
+fn id(n: u64) -> EntityId {
+    EntityId(reflect::Id::from_raw(n).unwrap())
+}
+
+/// A small world: named entities at places, standing alone.
+#[derive(Debug, Clone, Default, PartialEq)]
+struct TestWorld {
+    entities: Vec<(EntityId, String, Mat4)>,
+    said: Vec<String>,
+    time: f64,
+}
+
+impl TestWorld {
+    fn with(names: &[&str]) -> Self {
+        Self {
+            entities: names
+                .iter()
+                .enumerate()
+                .map(|(i, name)| {
+                    (
+                        id(i as u64 + 1),
+                        (*name).to_string(),
+                        Mat4::from_translation(Vec3::new(i as f32, 0.0, 0.0)),
+                    )
+                })
+                .collect(),
+            ..Self::default()
+        }
+    }
+
+    fn x(&self, n: u64) -> f32 {
+        self.entities
+            .iter()
+            .find(|(e, _, _)| *e == id(n))
+            .unwrap()
+            .2
+            .w_axis
+            .x
+    }
+}
+
+impl GameWorld for TestWorld {
+    fn view(&mut self) -> WorldView {
+        let entities: Vec<_> = self
+            .entities
+            .iter()
+            .map(|(e, n, _)| Some((*e, n.clone())))
+            .collect();
+        WorldView {
+            time: self.time,
+            index: Arc::new(ViewIndex::new(&entities)),
+            places: Arc::new(self.entities.iter().map(|(_, _, m)| *m).collect()),
+        }
+    }
+
+    fn apply(&mut self, changes: &[Change]) {
+        for change in changes {
+            if let Change::Move(e, place) = change
+                && let Some(entity) = self.entities.iter_mut().find(|(id, _, _)| id == e)
+            {
+                entity.2 = Mat4::from_translation(*place);
+            }
+        }
+    }
+
+    fn say(&mut self, words: &str) {
+        self.said.push(words.to_string());
+    }
+}
+
+fn compiled(main: &str) -> Arc<Compiled> {
+    let mut files = crate::describe::descriptions("Test 1.0", "solis");
+    files.push(("main.lst".into(), main.to_string()));
+    let code = Code {
+        files,
+        lua: Vec::new(),
+        notes: Vec::new(),
+    };
+    match crate::compile(&code) {
+        Ok(Some(c)) => Arc::new(c),
+        Ok(None) => panic!("no code"),
+        Err(problems) => panic!("{}", problems[0]),
+    }
+}
+
+/// Walkers step along x; each tells the next one it moved; a Watcher says
+/// where the first walker is.
+const BUSY: &str = "get \"solis/world\":[say, find, time];\n\
+    get \"solis/entity\":[positionOf, moveTo, nameOf];\n\
+    event Stepped(entity by, float x);\n\
+    component Walker {\n\
+        has {\n\
+            float speed = 1;\n\
+            entity next = nothing;\n\
+            int heard = 0;\n\
+        }\n\
+        method update(float dt) {\n\
+            vec3 at = positionOf(me) + [speed, 0, 0];\n\
+            moveTo(me, at);\n\
+            send Stepped(me, at.x) to next;\n\
+        }\n\
+        on Stepped(entity by, float x) {\n\
+            heard = heard + 1;\n\
+            say(nameOf(me) + \" heard \" + nameOf(by));\n\
+        }\n\
+    }\n\
+    component Watcher {\n\
+        has {\n\
+            int looked = 0;\n\
+        }\n\
+        method update(float dt) {\n\
+            looked = looked + 1;\n\
+            say(\"walker 1 at \" + positionOf(find(\"W1\")).x.text());\n\
+        }\n\
+    }\n\
+    pass Walker, Watcher;\nend\n";
+
+/// A game of `count` walkers and a watcher on `shards` shards, run for
+/// `ticks`; its world, what was said, and the failures.
+fn run_busy(shards: usize, count: u64, ticks: usize) -> (TestWorld, Vec<Failure>, Vec<i64>) {
+    let mut names: Vec<String> = (1..=count).map(|n| format!("W{n}")).collect();
+    names.push("Eye".into());
+    let names: Vec<&str> = names.iter().map(String::as_str).collect();
+    let mut world = TestWorld::with(&names);
+    let mut game = Game::new(shards).unwrap();
+    assert_eq!(game.shards(), shards);
+    let code = compiled(BUSY);
+    game.load(&code, &mut world).unwrap();
+    let mut walkers = Vec::new();
+    for n in 1..=count {
+        let mut data = ComponentData::default();
+        data.set("speed", Value::Float(n as f64 * 0.5));
+        let next = if n < count { Some(id(n + 1)) } else { None };
+        data.set("next", Value::Entity(next));
+        walkers.push((id(n), data));
+    }
+    let mut components: Vec<(EntityId, &str, &ComponentData)> =
+        walkers.iter().map(|(e, d)| (*e, "Walker", d)).collect();
+    let empty = ComponentData::default();
+    components.push((id(count + 1), "Watcher", &empty));
+    assert!(game.sync_many(components, &mut world).is_empty());
+    let mut failures = Vec::new();
+    for t in 0..ticks {
+        world.time = t as f64 / 60.0;
+        failures.extend(game.tick(1.0 / 60.0, &mut world).failures);
+    }
+    let heard = (1..=count)
+        .map(
+            |n| match game.values(id(n), "Walker").unwrap().get("heard") {
+                Some(Value::Int(h)) => *h,
+                _ => -1,
+            },
+        )
+        .collect();
+    (world, failures, heard)
+}
+
+#[test]
+fn the_same_game_on_one_core_or_four_comes_out_the_same() {
+    let one = run_busy(1, 40, 20);
+    let four = run_busy(4, 40, 20);
+    assert!(one.1.is_empty(), "{:?}", one.1);
+    assert_eq!(one.0, four.0, "the same world and Console");
+    assert_eq!(one.2, four.2, "the same events heard");
+    // And it did something: walkers walked, every one after the first
+    // heard each tick, the watcher looked.
+    assert!(one.0.x(1) > 5.0);
+    assert_eq!(one.2[0], 0);
+    assert!(one.2[1..].iter().all(|&h| h == 20));
+    assert!(one.0.said.iter().any(|l| l.starts_with("walker 1 at ")));
+}
+
+#[test]
+fn game_code_sees_the_start_of_the_tick_but_its_own_changes_at_once() {
+    // A Mover moves itself, then reads its own place (the new one); a
+    // Reader, after it in the order, reads the Mover's place (the one at
+    // the start of the tick).
+    const SEEING: &str = "get \"solis/world\":[say, find];\n\
+        get \"solis/entity\":[positionOf, moveTo];\n\
+        component Mover {\n\
+            has {\n\
+                int n = 0;\n\
+            }\n\
+            method update(float dt) {\n\
+                moveTo(me, positionOf(me) + [10, 0, 0]);\n\
+                say(\"mover sees itself at \" + positionOf(me).x.text());\n\
+            }\n\
+        }\n\
+        component Reader {\n\
+            has {\n\
+                int n = 0;\n\
+            }\n\
+            method update(float dt) {\n\
+                say(\"reader sees the mover at \" + positionOf(find(\"M\")).x.text());\n\
+            }\n\
+        }\n\
+        pass Mover, Reader;\nend\n";
+    for shards in [1, 3] {
+        let mut world = TestWorld::with(&["M", "R"]);
+        let mut game = Game::new(shards).unwrap();
+        game.load(&compiled(SEEING), &mut world).unwrap();
+        let empty = ComponentData::default();
+        game.sync_many(
+            [(id(1), "Mover", &empty), (id(2), "Reader", &empty)],
+            &mut world,
+        );
+        game.tick(1.0 / 60.0, &mut world);
+        assert_eq!(
+            world.said,
+            ["mover sees itself at 10.0", "reader sees the mover at 0.0"],
+            "on {shards} shards"
+        );
+        assert_eq!(world.x(1), 10.0, "the move landed");
+        world.said.clear();
+        game.tick(1.0 / 60.0, &mut world);
+        assert_eq!(world.said[1], "reader sees the mover at 10.0");
+    }
+}
+
+#[test]
+fn two_components_moving_one_entity_the_last_in_the_order_wins() {
+    // Both on entity 1: Alpha then Beta by name; Beta's move lands last.
+    const TWO: &str = "get \"solis/entity\":[moveTo];\n\
+        component Alpha {\n\
+            has {\n\
+                int n = 0;\n\
+            }\n\
+            method update(float dt) {\n\
+                moveTo(me, [1, 0, 0]);\n\
+            }\n\
+        }\n\
+        component Beta {\n\
+            has {\n\
+                int n = 0;\n\
+            }\n\
+            method update(float dt) {\n\
+                moveTo(me, [2, 0, 0]);\n\
+            }\n\
+        }\n\
+        pass Alpha, Beta;\nend\n";
+    let mut world = TestWorld::with(&["Box"]);
+    let mut game = Game::new(2).unwrap();
+    game.load(&compiled(TWO), &mut world).unwrap();
+    let empty = ComponentData::default();
+    game.sync_many(
+        [(id(1), "Beta", &empty), (id(1), "Alpha", &empty)],
+        &mut world,
+    );
+    game.tick(1.0 / 60.0, &mut world);
+    assert_eq!(world.x(1), 2.0);
+}
+
+#[test]
+fn swapping_values_and_stopping_reach_every_shard() {
+    let mut world = TestWorld::with(&["W1", "W2", "W3", "Eye"]);
+    let mut game = Game::new(3).unwrap();
+    game.load(&compiled(BUSY), &mut world).unwrap();
+    let empty = ComponentData::default();
+    let all = [
+        (id(1), "Walker", &empty),
+        (id(2), "Walker", &empty),
+        (id(3), "Walker", &empty),
+        (id(4), "Watcher", &empty),
+    ];
+    game.sync_many(all, &mut world);
+    assert_eq!(game.len(), 4);
+    assert!(game.has_component("Walker"));
+    game.tick(1.0 / 60.0, &mut world);
+    // New code: every shard's components keep their values.
+    let faster =
+        compiled(&BUSY.replace("float speed = 1;", "float speed = 1;\n bool fast = true;"));
+    let swapped = game.swap(&faster, &mut world).unwrap();
+    assert_eq!(swapped.changed, ["Walker"]);
+    assert_eq!(
+        game.values(id(4), "Watcher").unwrap().get("looked"),
+        Some(&Value::Int(1))
+    );
+    game.retain_on([(id(2), Vec::new())]);
+    assert_eq!(game.len(), 3);
+    game.retain_only([(id(4), "Watcher".to_string())].into());
+    assert_eq!(game.len(), 1);
+    game.leave_out(["Watcher".to_string()].into());
+    assert!(!game.has_component("Watcher"));
+}

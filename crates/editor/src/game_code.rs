@@ -6,9 +6,9 @@
 use crate::console::LogLevel;
 use crate::workbench::Workbench;
 use area::Area;
-use glam::{Quat, Vec3};
+use glam::Mat4;
 use reflect::EntityId;
-use script::{CodeProblem, Failure, Host, Runtime};
+use script::{Change, CodeProblem, Failure, Game, GameWorld, ViewIndex, WorldView};
 use std::sync::Arc;
 
 impl Workbench {
@@ -37,7 +37,7 @@ impl Workbench {
             .map(|name| self.name_taken(chunk.as_deref(), name))
             .collect();
         if self.playing.is_some()
-            && let Err(failure) = self.swap_into_game(chunk.as_deref(), &left_out)
+            && let Err(failure) = self.swap_into_game(chunk.as_ref(), &left_out)
         {
             let text = format!(
                 "The running game couldn't take the new code, so it keeps the last: {failure}"
@@ -90,20 +90,20 @@ impl Workbench {
     /// `left_out` don't run. On a failure nothing changed.
     fn swap_into_game(
         &mut self,
-        chunk: Option<&script::Compiled>,
+        chunk: Option<&Arc<script::Compiled>>,
         left_out: &std::collections::BTreeSet<String>,
     ) -> Result<(), Failure> {
         let Some(playing) = &mut self.playing else {
             return Ok(());
         };
         if playing.game.is_none() {
-            playing.game = Some(new_runtime(&self.rust_components)?);
+            playing.game = Some(new_game(&self.rust_components)?);
         }
         let Some(game) = &mut playing.game else {
             return Ok(());
         };
         let time = playing.world.clock().time;
-        let mut host = WorldHost::new(&mut playing.world, time);
+        let mut world = PlayWorld::new(&mut playing.world, &mut playing.view, time);
         let mut lines = Vec::new();
         match chunk {
             None => {
@@ -111,15 +111,14 @@ impl Workbench {
                 lines.push("The game's code is gone, so its components stopped.".to_string());
             }
             Some(chunk) => {
-                let swapped = game.swap(chunk, &mut host)?;
+                let swapped = game.swap(chunk, &mut world)?;
                 lines.push(swap_summary(&swapped));
                 lines.extend(swapped.notes);
             }
         }
         game.leave_out(left_out.clone());
-        let failures = sync_all(game, self.document.area(), &mut host);
-        let said = std::mem::take(&mut host.said);
-        playing.world.settle();
+        let failures = sync_all(game, self.document.area(), &mut world);
+        let said = std::mem::take(&mut world.said);
         for line in lines {
             self.log(LogLevel::Info, line);
         }
@@ -164,86 +163,102 @@ impl Workbench {
     }
 }
 
-/// A new runtime with the open project's Rust components.
-pub(crate) fn new_runtime(rust: &[script::RustKind]) -> Result<Runtime, Failure> {
-    let mut runtime = Runtime::new()?;
-    for kind in rust {
-        runtime.add_rust(kind.clone());
-    }
-    Ok(runtime)
+/// How many shards game code runs on: as many as the job system has
+/// workers (decision 0031), so it uses every core but the window's.
+fn cores() -> usize {
+    rayon::current_num_threads().max(1)
 }
 
-/// The game's world, as game code reaches it while a tick runs.
-pub(crate) struct WorldHost<'a> {
-    pub(crate) world: &'a mut world::World,
+/// New game code on every core, with the open project's Rust components.
+pub(crate) fn new_game(rust: &[script::RustKind]) -> Result<Game, Failure> {
+    let mut game = Game::new(cores())?;
+    for kind in rust {
+        game.add_rust(kind.clone());
+    }
+    Ok(game)
+}
+
+/// What game code reads of the world is worked out again only when the
+/// world's entities or names change: the copy of who's who.
+#[derive(Debug, Default)]
+pub(crate) struct ViewCache {
+    revision: Option<u64>,
+    index: Arc<ViewIndex>,
+}
+
+/// The game's world as game code reaches it ([decision 0033](../../../docs/decisions/0033-game-code-sees-the-start-of-the-tick.md)):
+/// a copy for each phase of a tick, and where its changes land.
+pub(crate) struct PlayWorld<'a> {
+    world: &'a mut world::World,
+    cache: &'a mut ViewCache,
     /// The game's time at this tick.
-    pub(crate) time: f64,
+    time: f64,
     /// What game code said, for the Console.
     pub(crate) said: Vec<String>,
 }
 
-impl<'a> WorldHost<'a> {
-    pub(crate) fn new(world: &'a mut world::World, time: f64) -> Self {
+impl<'a> PlayWorld<'a> {
+    pub(crate) fn new(world: &'a mut world::World, cache: &'a mut ViewCache, time: f64) -> Self {
         Self {
             world,
+            cache,
             time,
             said: Vec::new(),
         }
     }
 }
 
-impl Host for WorldHost<'_> {
+impl GameWorld for PlayWorld<'_> {
+    fn view(&mut self) -> WorldView {
+        let revision = self.world.revision();
+        if self.cache.revision != Some(revision) {
+            self.cache.index = Arc::new(ViewIndex::new(&self.world.entities()));
+            self.cache.revision = Some(revision);
+        }
+        let mut places: Vec<Mat4> = Vec::new();
+        self.world.globals(&mut places);
+        WorldView {
+            time: self.time,
+            index: Arc::clone(&self.cache.index),
+            places: Arc::new(places),
+        }
+    }
+
+    fn apply(&mut self, changes: &[Change]) {
+        for change in changes {
+            match *change {
+                // A transform is measured from the parent.
+                Change::Move(which, place) => {
+                    self.world.change_transform(which, |parent, mut t| {
+                        t.position = parent.inverse().transform_point3(place);
+                        t.position.is_finite().then_some(t)
+                    });
+                }
+                Change::Turn(which, facing) => {
+                    self.world.change_transform(which, |parent, mut t| {
+                        let parent = parent.to_scale_rotation_translation().1;
+                        t.rotation = (parent.inverse() * facing).normalize();
+                        t.rotation.is_finite().then_some(t)
+                    });
+                }
+            }
+        }
+        // Those under what moved follow before the next phase reads.
+        self.world.settle();
+    }
+
     fn say(&mut self, words: &str) {
         self.said.push(words.to_string());
-    }
-
-    fn time(&self) -> f64 {
-        self.time
-    }
-
-    fn find(&self, name: &str) -> Option<EntityId> {
-        self.world.find(name)
-    }
-
-    fn position(&self, which: EntityId) -> Option<Vec3> {
-        self.world.global(which).map(|m| m.w_axis.truncate())
-    }
-
-    fn move_to(&mut self, which: EntityId, place: Vec3) {
-        // A transform is measured from the parent.
-        self.world.change_transform(which, |parent, mut t| {
-            t.position = parent.inverse().transform_point3(place);
-            t.position.is_finite().then_some(t)
-        });
-    }
-
-    fn rotation(&self, which: EntityId) -> Option<Quat> {
-        self.world
-            .global(which)
-            .map(|m| m.to_scale_rotation_translation().1.normalize())
-    }
-
-    fn turn_to(&mut self, which: EntityId, facing: Quat) {
-        self.world.change_transform(which, |parent, mut t| {
-            let parent = parent.to_scale_rotation_translation().1;
-            t.rotation = (parent.inverse() * facing).normalize();
-            t.rotation.is_finite().then_some(t)
-        });
-    }
-
-    fn name(&self, which: EntityId) -> Option<String> {
-        self.world.get::<world::Name>(which).map(|n| n.0)
     }
 }
 
 /// Makes the game components of each of `ids` in `area` run (or gives
-/// them their changed fields), and stops those an entity no longer has,
-/// with the natives lent once for all.
+/// them their changed fields), and stops those an entity no longer has.
 pub(crate) fn sync_entities(
-    runtime: &mut Runtime,
+    game: &mut Game,
     area: &Area,
     ids: impl IntoIterator<Item = EntityId> + Clone,
-    host: &mut dyn Host,
+    world: &mut dyn GameWorld,
 ) -> Vec<Failure> {
     let components = ids.clone().into_iter().flat_map(|id| {
         area.get(id).into_iter().flat_map(move |entity| {
@@ -254,21 +269,22 @@ pub(crate) fn sync_entities(
         })
     });
     let wanted: Vec<_> = components
-        .filter(|(_, name, _)| runtime.has_component(name))
+        .filter(|(_, name, _)| game.has_component(name))
         .collect();
-    let failures = runtime.sync_many(wanted, host);
-    for id in ids {
-        match area.get(id) {
-            Some(entity) => runtime.retain_on(id, |name| entity.components.contains_key(name)),
-            None => runtime.retain_on(id, |_| false),
-        }
-    }
+    let failures = game.sync_many(wanted, world);
+    game.retain_on(ids.into_iter().map(|id| {
+        let keep = area
+            .get(id)
+            .map(|e| e.components.keys().cloned().collect())
+            .unwrap_or_default();
+        (id, keep)
+    }));
     failures
 }
 
 /// [`sync_entities`] for every entity in `area`, stopping components of
 /// entities that are gone.
-pub(crate) fn sync_all(runtime: &mut Runtime, area: &Area, host: &mut dyn Host) -> Vec<Failure> {
+pub(crate) fn sync_all(game: &mut Game, area: &Area, world: &mut dyn GameWorld) -> Vec<Failure> {
     let wanted: Vec<_> = area
         .iter()
         .flat_map(|(id, entity)| {
@@ -277,13 +293,14 @@ pub(crate) fn sync_all(runtime: &mut Runtime, area: &Area, host: &mut dyn Host) 
                 .iter()
                 .map(move |(name, data)| (id, name.as_str(), data))
         })
-        .filter(|(_, name, _)| runtime.has_component(name))
+        .filter(|(_, name, _)| game.has_component(name))
         .collect();
-    let failures = runtime.sync_many(wanted, host);
-    runtime.retain(|id, name| {
-        area.get(id)
-            .is_some_and(|e| e.components.contains_key(name))
-    });
+    let kept = wanted
+        .iter()
+        .map(|(id, name, _)| (*id, (*name).to_string()))
+        .collect();
+    let failures = game.sync_many(wanted, world);
+    game.retain_only(kept);
     failures
 }
 
