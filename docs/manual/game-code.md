@@ -73,7 +73,7 @@ end
 1. Save the file. When the code has no mistakes, **Mover** appears in Properties' **Add component** menu.
 2. Select an entity and add **Mover**. Its `has` fields show in Properties with their starting values (`speed` as **Speed**), and are saved in the area like any other component's.
 3. Press **Play**. Every [tick](concepts.md#game-code) (60 times a second), Solis runs each component's `update`, with `dt`, how long a tick is in seconds. `me` is the entity the component is on. The Game panel shows the entity moving.
-4. Change **Speed** in Properties while it plays: the running Mover takes the new speed at once, and keeps everything else it has (here, where it is).
+4. Change **Speed** in Properties while it plays: the running Mover takes the new speed at once, and keeps everything else it has (here, where it is). Properties shows the values the entity started with, not the ones the running game has changed since: a turret that has fired still shows its full ammo there.
 5. Press **Stop**. Everything is back as it was before Play.
 
 What a field can hold: `bool`, `int`, `float`, `string`, a `state` (shown as a choice of its options), `vec3`, `rotation` and `entity` (another entity, or `nothing`).
@@ -156,7 +156,9 @@ function Health:on_Hit(by, damage)
 end
 ```
 
-When the Lust declares the event, its values are checked against what it carries; Lua can also send events no Lust declares.
+When the Lust declares the event, what Lua sends is checked against what it carries: a wrong value means the event isn't sent, and the Console names the Lua component that sent it. Lua can also send events no Lust declares; their numbers arrive as floats (Lua has one kind of number, so `2` and `2.5` arrive alike).
+
+A Lua component's fields can't be called `me` (the entity it's on), `update`, or anything starting with `on_` or `__`: those are its methods, and Lua's own.
 
 **Each Lua file has globals of its own.** A helper a file makes global (`function helper() … end`) is seen by that file only, and no file can change Lua's own libraries (`string`, `table`, `math`) or `solis`, `component` and `vec3`: trying to is a mistake. That way one file can't break another, or the Lust. To share code between Lua files, put it in a component's events, or in Lust.
 
@@ -194,7 +196,8 @@ Other code files can sit in any folder in `assets`. Fetch them by their path fro
 - **Problem:** changes I made to `solis/world.lst` disappeared. **Why:** Solis writes the `solis` files again when the project opens, so they always match the engine. **Fix:** put your own code in your own files.
 - **Problem:** my component isn't in **Add component**. **Why:** the code has a mistake (see Problems), or its Lust file isn't fetched from `main.lst` (directly, or through a file `main.lst` fetches). Lua files are all read, wherever they are in `assets`. **Fix:** fix the mistake, or fetch the file.
 - **Problem:** "solis.moveTo isn't something Solis offers" in Lua. **Why:** the name is misspelt, or the method was used outside `update` or an `on_` function, when the game isn't running. **Fix:** check the name against the table above.
-- **Problem:** a component is called the same as one of Solis's (`Light`), or a Lust and a Lua component share a name. **Why:** two components can't share a name. **Fix:** rename one; Problems says which.
+- **Problem:** a component is called the same as one of Solis's (`Light`) or a Rust one, or a Lust and a Lua component share a name. **Why:** two components can't share a name. The one in your code doesn't run (Solis's own, or the Rust one, does). **Fix:** rename yours; Problems says where it is.
+- **Problem:** I saved new code while playing, and the Console says the running game couldn't take it. **Why:** the code's start failed with the game's world (it ran fine with no world while checking). **Fix:** fix the line it points at; the game keeps the last code meanwhile.
 - **Problem:** Problems says brackets nest too deep, or a statement is too long. **Why:** code nested more than 200 brackets deep, or a statement over 64 KB, needs more room than Solis gives the Lust compiler. **Fix:** split it into smaller pieces, with names of their own.
 - **Problem:** Problems says the code stopped while starting. **Why:** Solis runs the code's own start (the lines outside components, and each field's starting value) to read its components, before anything plays and with no world: `find` finds nothing then. A start that fails or takes more than a second is a mistake. **Fix:** fix the line Problems points at.
 - **Problem:** the Console says a code file was left out. **Why:** each code file can be at most 1 MB, and all of them together 16 MB. Files that aren't text are left out too. **Fix:** split a huge file into smaller ones.

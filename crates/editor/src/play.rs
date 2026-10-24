@@ -133,8 +133,9 @@ impl Workbench {
     }
 
     /// The game's code started on `world`, with every entity's game
-    /// components (Lust and Rust) made from the area; `None` with no code,
-    /// or if its start failed (said in the Console).
+    /// components (Lust, Lua and Rust) made from the area; `None` with no
+    /// code. If the code's start fails (said in the Console), the Rust
+    /// components run on their own.
     fn start_game(&mut self, world: &mut world::World) -> Option<script::Runtime> {
         if self.program.is_none() && self.rust_components.is_empty() {
             return None;
@@ -146,15 +147,22 @@ impl Workbench {
                 return None;
             }
         };
+        runtime.leave_out(self.left_out.clone());
         let mut host = WorldHost::new(world, 0.0);
+        let mut failures = Vec::new();
+        // If the code's start fails, the rest of the game (its Rust
+        // components) still runs.
         if let Some(chunk) = self.program.clone()
-            && let Err(failure) = runtime.load(&chunk, &mut host)
+            && let Err(mut failure) = runtime.load(&chunk, &mut host)
         {
-            let said = host.said;
-            self.tell_game(said, &[failure]);
-            return None;
+            failure.at.message = format!(
+                "the game's code stopped while starting, so its Lust and Lua components don't \
+                 run: {}",
+                failure.at.message
+            );
+            failures.push(failure);
         }
-        let failures = sync_all(&mut runtime, self.document.area(), &mut host);
+        failures.extend(sync_all(&mut runtime, self.document.area(), &mut host));
         let said = std::mem::take(&mut host.said);
         world.settle();
         self.tell_game(said, &failures);
@@ -162,7 +170,7 @@ impl Workbench {
     }
 
     /// Writes what game code said, and its failures, in the Console.
-    fn tell_game(&mut self, said: Vec<String>, failures: &[script::Failure]) {
+    pub(crate) fn tell_game(&mut self, said: Vec<String>, failures: &[script::Failure]) {
         for words in said {
             self.log(LogLevel::Info, words);
         }
@@ -198,7 +206,9 @@ impl Workbench {
         };
         let seconds = playing.world.clock().time;
         self.moving = None;
-        self.document = *playing.before;
+        // The area as it was, but the components known now: code that
+        // changed while playing keeps its components in the registry.
+        self.replace_document(*playing.before);
         self.document.touch();
         let now = std::mem::replace(&mut self.assemblies, playing.assemblies_before);
         self.log(

@@ -163,14 +163,20 @@ pub(crate) fn sender(
                 .min(MAX_VALUES);
             let kinds = Rc::clone(&kinds.borrow());
             let declared = kinds.get(&name);
+            if let Some(declared) = declared
+                && declared.len() != count
+            {
+                return Err(mlua::Error::runtime(wrong_count(&name, declared, count)));
+            }
             let mut read = Vec::with_capacity(count);
             for i in 1..=count {
                 let raw: LuaValue = values.raw_get(i)?;
                 let value = match declared.and_then(|k| k.get(i - 1)) {
-                    Some(kind) => from_lua(kind, &raw),
-                    None => guessed(&raw),
+                    Some(kind) => from_lua(kind, &raw)
+                        .ok_or_else(|| mlua::Error::runtime(wrong_value(&name, i, kind)))?,
+                    None => guessed(&raw).unwrap_or(Value::Entity(None)),
                 };
-                read.push(value.unwrap_or(Value::Entity(None)));
+                read.push(value);
             }
             queue
                 .borrow_mut()
@@ -182,6 +188,53 @@ pub(crate) fn sender(
                 .map_err(mlua::Error::runtime)
         },
     )
+}
+
+/// Whether `values` fit what the Lust declares the event `name` carries
+/// (anything fits an event it doesn't declare), or what's wrong.
+pub(crate) fn fits(kinds: &EventKinds, name: &str, values: &[Value]) -> Result<(), String> {
+    let Some(declared) = kinds.get(name) else {
+        return Ok(());
+    };
+    if declared.len() != values.len() {
+        return Err(wrong_count(name, declared, values.len()));
+    }
+    match declared.iter().zip(values).position(|(k, v)| !k.accepts(v)) {
+        Some(i) => Err(wrong_value(name, i + 1, &declared[i])),
+        None => Ok(()),
+    }
+}
+
+/// What's said when an event is sent with the wrong number of values.
+fn wrong_count(name: &str, declared: &[FieldKind], given: usize) -> String {
+    let kinds: Vec<&str> = declared.iter().map(kind_name).collect();
+    format!(
+        "{name} carries {} value{} ({}), but {given} {} sent",
+        declared.len(),
+        if declared.len() == 1 { "" } else { "s" },
+        kinds.join(", "),
+        if given == 1 { "was" } else { "were" }
+    )
+}
+
+/// What's said when value `i` (from 1) of an event isn't its kind.
+fn wrong_value(name: &str, i: usize, kind: &FieldKind) -> String {
+    format!("{name}'s value {i} should be a {}", kind_name(kind))
+}
+
+/// A kind as Lust writes it.
+fn kind_name(kind: &FieldKind) -> &'static str {
+    match kind {
+        FieldKind::Bool => "bool",
+        FieldKind::Int => "int",
+        FieldKind::Float => "float",
+        FieldKind::Text => "string",
+        FieldKind::Choice(_) => "state",
+        FieldKind::Vec3 | FieldKind::Color => "vec3",
+        FieldKind::Rotation => "rotation",
+        FieldKind::Entity => "entity",
+        FieldKind::Asset => "asset",
+    }
 }
 
 /// An event's values as Lust's `handle` takes them: a list with its count
