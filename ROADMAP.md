@@ -15,7 +15,7 @@ Each phase ends with a **gate**: something the project lead tries by hand before
 | 2. The world | 2–3 | Entities, components, areas and assemblies, saved as text |
 | 3. The editor | 3–4 | Building an area by hand, with play mode |
 | 4. Lust and Lua join | 4–5 | Components written in Lust or Lua, in play mode within 2 seconds |
-| 5. Scale | 5–6 | 2,000 units and 20,000 projectiles at 60 fps |
+| 5. Scale | 5–6 | 2,000 units and 20,000 projectiles at 60 fps; 10,000 and 100,000 still playable; the ceiling measured |
 | 6. Simulation and play | 6–7 | Physics, input, a deterministic simulation |
 | 7. Sound and animation | 7–8 | Sound events and buses; animated characters |
 | 8. Netcode | 8–10 | Two PCs playing together over the internet |
@@ -105,9 +105,12 @@ The phase that proves DESIGN.md §2 early, while changing course is still cheap.
 - GPU instancing, frustum culling and LODs.
 - A job system, so the engine uses every CPU core.
 - Drawing large numbers of small, fast things (projectiles) cheaply.
-- A benchmark area in the repo: **2,000 moving units and 20,000 projectiles.**
+- A benchmark (Help > Make the benchmark…) at three levels ([decision 0030](docs/decisions/0030-scale-is-tested-at-three-levels.md)): **target**, 2,000 moving units and 20,000 projectiles; **stress**, 10,000 and 100,000; and a **ceiling** run that keeps adding until 60 fps ends.
+- A frame profiler.
 
-**Gate:** the benchmark runs at 60 fps on your PC, and the frame profiler shows where the time goes.
+**Decided:** the job system is `rayon` ([decision 0031](docs/decisions/0031-the-job-system-is-rayon.md)); LODs are made on import or come from the model ([decision 0032](docs/decisions/0032-lods-made-on-import-or-the-model-s-own.md)). The working plan: [docs/plans/phase-5.md](docs/plans/phase-5.md).
+
+**Gate:** on your PC, the target level runs at 60 fps and the stress level holds 30 fps without stutter; the ceiling run reports how far Solis goes; and the frame profiler shows where the time goes.
 
 ## Phase 6: Simulation and play
 
