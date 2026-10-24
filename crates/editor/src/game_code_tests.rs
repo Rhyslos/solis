@@ -960,3 +960,158 @@ fn past_the_projectile_limit_the_console_says_so_once() {
         world::MAX_PROJECTILES
     );
 }
+
+/// A workbench knowing a "Drone" assembly (`drones/drone.solasm` in the
+/// Library) whose root carries a Lust `Drone` component, playing `main`.
+fn with_drones(main: &str) -> Workbench {
+    let id = |n| EntityId(reflect::Id::from_raw(n).unwrap());
+    let mut area = area::Area::new();
+    let mut drone = EntityData::new("Drone").with(&Transform::default());
+    drone
+        .components
+        .insert("Drone".into(), reflect::ComponentData::default());
+    area.insert(id(1), drone);
+    let file = area::text::AreaFile {
+        kind: area::text::FileKind::Assembly { root: id(1) },
+        area,
+        overrides: Default::default(),
+    };
+    let asset = reflect::AssetId(reflect::Id::from_raw(901).unwrap());
+    let mut w = Workbench::new(info(), None);
+    w.set_program(Some(program(main)));
+    w.set_assembly(asset, Arc::new(file));
+    w.set_library(vec![crate::library::LibraryItem {
+        id: Some(asset),
+        kind: crate::library::LibraryKind::Assembly,
+        name: "drone".into(),
+        path: "drones/drone.solasm".into(),
+        thumbnail: None,
+    }]);
+    w
+}
+
+/// A hive that spawns three drones on its first tick; each drone climbs
+/// and takes itself out after ten ticks.
+const HIVE: &str = "get \"solis/world\":[spawn, despawn];\n\
+    component Hive {\n\
+        has {\n\
+            int made = 0;\n\
+        }\n\
+        method update(float dt) {\n\
+            is made == 0? then {\n\
+                entity a = spawn(\"drones/drone.solasm\", [0, 0, 1]);\n\
+                entity b = spawn(\"drones/drone\", [2, 0, 1]);\n\
+                entity c = spawn(\"drone\", [4, 0, 1]);\n\
+                entity d = spawn(\"nowhere\", [6, 0, 1]);\n\
+                made = 3;\n\
+            }\n\
+        }\n\
+    }\n\
+    component Drone {\n\
+        has {\n\
+            int age = 0;\n\
+        }\n\
+        method update(float dt) {\n\
+            age = age + 1;\n\
+            moveTo(me, positionOf(me) + [0, 0, 1]);\n\
+            is age >= 10? then {\n\
+                despawn(me);\n\
+            }\n\
+        }\n\
+    }\n\
+    pass Hive, Drone;\nend\n";
+
+#[test]
+fn game_code_spawns_copies_of_assemblies_and_takes_them_out() {
+    let mut w = with_drones(HIVE);
+    let mut hive = EntityData::new("Hive");
+    hive.components
+        .insert("Hive".into(), reflect::ComponentData::default());
+    w.document
+        .edit(
+            "Add",
+            vec![area::Edit::Spawn {
+                entities: vec![(EntityId::random(), hive)],
+            }],
+            None,
+            None,
+        )
+        .unwrap();
+    let steps = w.document.history().undo_len();
+    let before = w.document.area().len();
+    w.play();
+    w.run_game(1.0 / 60.0);
+    // Three made (by path, path without extension, and name); the fourth
+    // name isn't an assembly, and the Console says so.
+    let drones: Vec<EntityId> = w
+        .document
+        .area()
+        .iter()
+        .filter(|(_, e)| e.name == "drone")
+        .map(|(id, _)| id)
+        .collect();
+    assert_eq!(drones.len(), 3);
+    assert_eq!(w.document.history().undo_len(), steps, "not undo steps");
+    assert!(
+        w.log_lines()
+            .iter()
+            .any(|l| l.text.contains("spawned \"nowhere\""))
+    );
+    // Next frames: they're in the game, and their own code runs.
+    for _ in 0..3 {
+        w.run_game(1.0 / 60.0);
+    }
+    let playing = w.playing.as_ref().unwrap();
+    for &drone in &drones {
+        let z = playing.world.global(drone).unwrap().w_axis.z;
+        assert!(z > 2.5, "climbing: {z}");
+    }
+    // Ten ticks on, each took itself out.
+    for _ in 0..10 {
+        w.run_game(1.0 / 60.0);
+    }
+    assert!(drones.iter().all(|&d| w.document.area().get(d).is_none()));
+    assert!(
+        drones
+            .iter()
+            .all(|&d| w.playing.as_ref().unwrap().world.global(d).is_none())
+    );
+    // Stop puts the area back as it was.
+    w.stop();
+    assert_eq!(w.document.area().len(), before);
+}
+
+#[test]
+fn spawned_entities_get_the_same_ids_every_time() {
+    // The same game twice: the drones get the same IDs (made from where
+    // they were spawned in the tick's order).
+    let ids = || {
+        let mut w = with_drones(HIVE);
+        let mut hive = EntityData::new("Hive");
+        hive.components
+            .insert("Hive".into(), reflect::ComponentData::default());
+        let hive_id = EntityId(reflect::Id::from_raw(77).unwrap());
+        w.document
+            .edit(
+                "Add",
+                vec![area::Edit::Spawn {
+                    entities: vec![(hive_id, hive)],
+                }],
+                None,
+                None,
+            )
+            .unwrap();
+        w.play();
+        w.run_game(1.0 / 60.0);
+        let mut ids: Vec<EntityId> = w
+            .document
+            .area()
+            .iter()
+            .filter(|(_, e)| e.name == "drone")
+            .map(|(id, _)| id)
+            .collect();
+        ids.sort();
+        ids
+    };
+    assert_eq!(ids(), ids());
+}

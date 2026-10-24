@@ -220,3 +220,59 @@ mod tests {
         );
     }
 }
+
+/// A hasher for maps keyed by IDs: IDs are random numbers already, so
+/// one multiplication mixes them enough, many times quicker than the
+/// standard hasher (which guards against keys chosen to collide; a
+/// crafted file could at most slow a map, never break it).
+#[derive(Debug, Default, Clone, Copy)]
+pub struct IdHasher(u64);
+
+impl std::hash::Hasher for IdHasher {
+    fn finish(&self) -> u64 {
+        self.0
+    }
+
+    fn write(&mut self, bytes: &[u8]) {
+        for &b in bytes {
+            self.write_u64(u64::from(b));
+        }
+    }
+
+    fn write_u64(&mut self, n: u64) {
+        self.0 = (self.0.rotate_left(5) ^ n).wrapping_mul(0x9E37_79B9_7F4A_7C15);
+    }
+}
+
+/// Builds [`IdHasher`]s, for `HashMap<EntityId, _, IdHashing>`.
+pub type IdHashing = std::hash::BuildHasherDefault<IdHasher>;
+
+/// A map keyed by entity IDs, with [`IdHasher`].
+pub type IdMap<V> = std::collections::HashMap<EntityId, V, IdHashing>;
+
+#[cfg(test)]
+mod hasher_tests {
+    use super::*;
+
+    #[test]
+    fn id_maps_find_what_they_hold_and_spread_the_hashes() {
+        let mut map: IdMap<u32> = IdMap::default();
+        let ids: Vec<EntityId> = (1..=10_000u64)
+            .map(|n| EntityId(Id::from_raw(n).unwrap()))
+            .collect();
+        for (i, id) in ids.iter().enumerate() {
+            map.insert(*id, i as u32);
+        }
+        for (i, id) in ids.iter().enumerate() {
+            assert_eq!(map.get(id), Some(&(i as u32)));
+        }
+        // Even counting numbers (the worst case for a plain identity hash)
+        // land in many different top bits, which the map uses.
+        use std::hash::BuildHasher;
+        let tops: std::collections::HashSet<u64> = ids
+            .iter()
+            .map(|id| IdHashing::default().hash_one(id) >> 57)
+            .collect();
+        assert!(tops.len() > 100, "{}", tops.len());
+    }
+}

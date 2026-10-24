@@ -28,7 +28,7 @@ Solis is built in phases, one milestone per pull request. Each phase ends with a
 
 **Overall: 25 of 60 milestones** `█████░░░░░░░░` 42%
 
-**Now:** Phases 1, 2 and 3 are built and wait for their gates to be tried by hand ([Phase 3 plan](docs/plans/phase-3.md)). Phase 4, game code, is built and reviewed, and waits for its gate too ([Phase 4 plan](docs/plans/phase-4.md)). Phase 5, scale, is next ([Phase 5 plan](docs/plans/phase-5.md)).
+**Now:** Phases 1, 2 and 3 are built and wait for their gates to be tried by hand ([Phase 3 plan](docs/plans/phase-3.md)). Phase 4, game code, is built and reviewed, and waits for its gate too ([Phase 4 plan](docs/plans/phase-4.md)). Phase 5, scale, is built and waits for its review and gate ([Phase 5 plan](docs/plans/phase-5.md)): try **Help > Make the benchmark…**.
 
 ### Phase 0 · Groundwork — 7 of 7
 
@@ -111,9 +111,9 @@ Solis is built in phases, one milestone per pull request. Each phase ends with a
 
 **Gate:** change a Lust component while the game runs and see it within 2 seconds; Rust, Lust and Lua components talk through events.
 
-### Phase 5 · Scale — 6 of 7
+### Phase 5 · Scale — 7 of 7
 
-`███████████░░` 86%
+`█████████████` 100%
 
 <details>
 <summary>Milestones</summary>
@@ -124,7 +124,7 @@ Solis is built in phases, one milestone per pull request. Each phase ends with a
 - [x] Drawing only what's seen: culling, and shadows fitted to the view
 - [x] LODs, made on import or the model's own (decision 0032)
 - [x] Projectiles: hundreds of thousands, drawn in one go
-- [ ] The benchmark (Help > Make the benchmark…): target, stress and ceiling
+- [x] The benchmark (Help > Make the benchmark…): target, stress and ceiling
 
 </details>
 

@@ -13,7 +13,8 @@ use crate::game_code::{PlayWorld, ViewCache, failure_text, new_game, sync_all, s
 use crate::panel::Panel;
 use crate::workbench::{Workbench, WorkbenchAction};
 use area::text::AreaFile;
-use reflect::AssetId;
+use area::{Edit, EntityData};
+use reflect::{AssetId, EntityId};
 use std::collections::BTreeMap;
 use std::sync::Arc;
 
@@ -49,6 +50,8 @@ pub(crate) struct Playing {
     pub(crate) view: crate::game_code::ViewCache,
     /// Whether the Console was told projectiles hit their limit.
     told_too_many: bool,
+    /// Assembly names game code spawned that weren't found, said once.
+    told_unknown: std::collections::HashSet<String>,
 }
 
 impl std::fmt::Debug for Playing {
@@ -76,6 +79,7 @@ pub(crate) fn waits_for_stop(action: &WorkbenchAction) -> bool {
             | WorkbenchAction::OpenRecent(_)
             | WorkbenchAction::AddSampleArea
             | WorkbenchAction::MakeSampleGame
+            | WorkbenchAction::MakeBenchmark
             | WorkbenchAction::CreateAssembly(_)
             | WorkbenchAction::ApplyToAssembly { .. }
     )
@@ -124,6 +128,7 @@ impl Workbench {
             game,
             view,
             told_too_many: false,
+            told_unknown: Default::default(),
         });
         if let Some(found) = self.dock.find_tab(&Panel::Game) {
             let _ = self.dock.set_active_tab(found);
@@ -271,12 +276,15 @@ impl Workbench {
         }
         let mut said = Vec::new();
         let mut failures = Vec::new();
+        let mut spawns = Vec::new();
+        let mut despawns = Vec::new();
         // Changes made in the editor reach the running components.
         if let Some(game) = &mut playing.game
             && !changes.is_empty()
         {
             let time = playing.world.clock().time;
             let mut host = PlayWorld::new(&mut playing.world, &mut playing.view, time);
+            host.frame_time = f64::from(seconds);
             let syncing = std::time::Instant::now();
             if changes.everything {
                 failures.extend(sync_all(game, area, &mut host));
@@ -290,6 +298,8 @@ impl Workbench {
             }
             code += syncing.elapsed();
             said.append(&mut host.said);
+            spawns.append(&mut host.spawns);
+            despawns.append(&mut host.despawns);
         }
         let mut pause = None;
         if !playing.paused {
@@ -304,11 +314,14 @@ impl Workbench {
                 };
                 let time = now - world::TICK * (ran - 1 - i) as f64;
                 let mut host = PlayWorld::new(&mut playing.world, &mut playing.view, time);
+                host.frame_time = f64::from(seconds);
                 let ticking = std::time::Instant::now();
                 let ticked = game.tick(world::TICK, &mut host);
                 code += ticking.elapsed();
                 failures.extend(ticked.failures);
                 said.append(&mut host.said);
+                spawns.append(&mut host.spawns);
+                despawns.append(&mut host.despawns);
                 // Too slow: no catching up, which would only be slower;
                 // the game waits for the person instead.
                 if ticked.pause.is_some() {
@@ -322,6 +335,9 @@ impl Workbench {
         if refused {
             playing.told_too_many = true;
         }
+        // Copies game code made, and entities it took out, join the area
+        // (and so the world, next frame).
+        self.land_spawns(spawns, despawns);
         self.profiler.add(crate::profiler::Stage::GameCode, code);
         self.profiler.add(
             crate::profiler::Stage::World,
@@ -346,6 +362,95 @@ impl Workbench {
                 ),
             );
         }
+    }
+
+    /// Makes the copies of assemblies game code spawned this frame, and
+    /// takes out the entities it despawned: changes to the area that
+    /// aren't undo steps (Stop puts the area back). A name that isn't an
+    /// assembly in the project is said once.
+    fn land_spawns(
+        &mut self,
+        spawns: Vec<(EntityId, String, glam::Vec3)>,
+        despawns: Vec<EntityId>,
+    ) {
+        if spawns.is_empty() && despawns.is_empty() {
+            return;
+        }
+        let mut edits = Vec::new();
+        let mut unknown = Vec::new();
+        for (id, name, place) in spawns {
+            let Some((asset, shown)) = self.assembly_named(&name) else {
+                unknown.push(name);
+                continue;
+            };
+            let data = EntityData::new(&shown).with(&area::builtin::Transform {
+                position: place,
+                ..Default::default()
+            });
+            let lookup = |a| self.assemblies.get(&a).cloned();
+            if let Ok(mut entities) = area::assembly::Expander::new(&lookup).place(asset, id, &data)
+            {
+                // The copy stands where it was spawned, turned and sized as
+                // the assembly made it.
+                if let Some((_, root)) = entities.iter_mut().find(|(e, _)| *e == id) {
+                    let made = root.get::<area::builtin::Transform>().unwrap_or_default();
+                    root.set(&area::builtin::Transform {
+                        position: place,
+                        ..made
+                    });
+                }
+                edits.push(Edit::Spawn { entities });
+            }
+        }
+        let mut gone = std::collections::HashSet::new();
+        for id in despawns {
+            if gone.insert(id) && self.document.area().get(id).is_some() {
+                edits.push(Edit::Despawn { root: id });
+            }
+        }
+        self.document.edit_by_game(edits);
+        unknown.sort();
+        unknown.dedup();
+        for name in unknown {
+            let Some(playing) = &mut self.playing else {
+                break;
+            };
+            if playing.told_unknown.insert(name.clone()) {
+                self.log(
+                    LogLevel::Warning,
+                    format!(
+                        "Game code spawned \"{name}\", but there's no assembly by that name in \
+                         the project's assets, so nothing was made."
+                    ),
+                );
+            }
+        }
+    }
+
+    /// The assembly game code names `name`: by its file in the assets
+    /// (`ships/fighter.solasm`), that without the extension, or just its
+    /// name (`fighter`, when only one has it); its asset and name.
+    fn assembly_named(&self, name: &str) -> Option<(AssetId, String)> {
+        let assemblies = || {
+            self.library
+                .iter()
+                .filter(|i| i.kind == crate::library::LibraryKind::Assembly)
+                .filter_map(|i| i.id.map(|id| (id, i)))
+                .filter(|(id, _)| self.assemblies.contains_key(id))
+        };
+        let wanted = name.trim_start_matches('/');
+        let by_path = assemblies().find(|(_, i)| {
+            i.path.eq_ignore_ascii_case(wanted)
+                || i.path
+                    .rsplit_once('.')
+                    .is_some_and(|(stem, _)| stem.eq_ignore_ascii_case(wanted))
+        });
+        let found = by_path.or_else(|| {
+            let mut named = assemblies().filter(|(_, i)| i.name.eq_ignore_ascii_case(wanted));
+            let first = named.next();
+            first.filter(|_| named.next().is_none())
+        });
+        found.map(|(id, i)| (id, i.name.clone()))
     }
 
     /// Takes out of `actions` what must wait until the game stops, saying

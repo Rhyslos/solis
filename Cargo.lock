@@ -206,6 +206,7 @@ dependencies = [
  "image",
  "log",
  "opener",
+ "pollster 1.0.1",
  "rayon",
  "reflect",
  "render",

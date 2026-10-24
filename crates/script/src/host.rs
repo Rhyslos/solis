@@ -2,7 +2,7 @@
 //! native methods described in `solis/*.lst`, and lending it to Luau as
 //! the `LUST_NATIVES` table for exactly as long as game code runs.
 
-use crate::convert::{entity_of, quat_of, quat_table, vec3_of, vec3_value};
+use crate::convert::{QuatKeys, entity_of, quat_of_with, quat_table_with, vec3_of, vec3_value};
 use crate::luau::{Luau, capped};
 use glam::{Quat, Vec3};
 use mlua::{Table, Value as LuaValue};
@@ -33,6 +33,22 @@ pub trait Host {
     /// Fires a projectile. A host without projectiles ignores it.
     fn fire(&mut self, shot: Shot) {
         let _ = shot;
+    }
+    /// Makes a copy of the assembly named `assembly` (its file in the
+    /// project's assets) at `place`, and gives back its entity, which is
+    /// in the game from the next tick; `None` when it can't be made.
+    fn spawn(&mut self, assembly: &str, place: Vec3) -> Option<EntityId> {
+        let _ = (assembly, place);
+        None
+    }
+    /// Takes an entity (and everything under it) out of the game, at the
+    /// end of the tick.
+    fn despawn(&mut self, which: EntityId) {
+        let _ = which;
+    }
+    /// How long the last frame took, in seconds of real time.
+    fn frame_time(&self) -> f64 {
+        1.0 / 60.0
     }
 
     /// The component about to run, and where what it does belongs in the
@@ -124,6 +140,8 @@ pub(crate) fn with_natives<'h, R>(
     let lua = &luau.lua;
     let host: Lent<'_, 'h> = RefCell::new(host);
     let lines = Cell::new(0usize);
+    // Made once for all the rotations crossing while the natives are lent.
+    let keys = &QuatKeys::new(lua)?;
     let result = lua.scope(|scope| {
         let natives = lua.create_table()?;
         let h = &host;
@@ -173,13 +191,13 @@ pub(crate) fn with_natives<'h, R>(
             "rotationOf",
             scope.create_function(move |lua, which: LuaValue| {
                 let facing = entity_of(&which).and_then(|e| h.borrow().rotation(e));
-                quat_table(lua, facing.unwrap_or(Quat::IDENTITY))
+                quat_table_with(lua, facing.unwrap_or(Quat::IDENTITY), keys)
             })?,
         )?;
         natives.raw_set(
             "turnTo",
             scope.create_function(move |_, (which, facing): (LuaValue, Table)| {
-                if let (Some(e), Some(facing)) = (entity_of(&which), quat_of(&facing)) {
+                if let (Some(e), Some(facing)) = (entity_of(&which), quat_of_with(&facing, keys)) {
                     h.borrow_mut().turn_to(e, facing);
                 }
                 Ok(())
@@ -218,6 +236,28 @@ pub(crate) fn with_natives<'h, R>(
                     Ok(())
                 },
             )?,
+        )?;
+        natives.raw_set(
+            "spawn",
+            scope.create_function(move |_, (assembly, place): (mlua::String, LuaValue)| {
+                let assembly = assembly.to_str()?;
+                Ok(vec3_of(&place)
+                    .and_then(|place| h.borrow_mut().spawn(&assembly, place))
+                    .map(|id| id.to_string()))
+            })?,
+        )?;
+        natives.raw_set(
+            "despawn",
+            scope.create_function(move |_, which: LuaValue| {
+                if let Some(e) = entity_of(&which) {
+                    h.borrow_mut().despawn(e);
+                }
+                Ok(())
+            })?,
+        )?;
+        natives.raw_set(
+            "frameTime",
+            scope.create_function(move |_, ()| Ok(h.borrow().frame_time()))?,
         )?;
         if let Some(send) = send {
             natives.raw_set("send_event", send.clone())?;

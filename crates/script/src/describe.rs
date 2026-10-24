@@ -47,6 +47,24 @@ pub const NATIVES: &[Native] = &[
         about: "Fires a projectile (a laser): from a place, flying a way at a speed in metres a second, for a life in seconds, glowing in a colour (red, green, blue; above 1 glows brighter).",
     },
     Native {
+        file: "world",
+        name: "spawn",
+        lust: "method entity spawn(string file, vec3 place) native;",
+        about: "Makes a copy of an assembly (its file in the assets, such as \"ships/fighter.solasm\", or just its name) at a place; its entity, which is in the game from the next tick, or nothing if there's no such assembly.",
+    },
+    Native {
+        file: "world",
+        name: "despawn",
+        lust: "method despawn(entity which) native;",
+        about: "Takes an entity, and everything under it, out of the game at the end of the tick.",
+    },
+    Native {
+        file: "world",
+        name: "frameTime",
+        lust: "method float frameTime() native;",
+        about: "How long the last frame took, in seconds of real time (1/60 at 60 frames a second).",
+    },
+    Native {
         file: "entity",
         name: "positionOf",
         lust: "method vec3 positionOf(entity which) native;",

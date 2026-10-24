@@ -219,6 +219,35 @@ end
 - Up to 1,000,000 can fly at once. Past that, new shots aren't fired until some run out, and the Console says so once.
 - Like a move, a shot lands after every `update` in the tick is done ([what game code sees](#components)), so it starts flying next tick.
 
+## Making and removing entities
+
+Game code can make copies of [assemblies](assemblies.md) while it plays, and take entities away:
+
+```
+get "solis/world":[spawn, despawn];
+
+component Hangar {
+    has {
+        int made = 0;
+    }
+
+    method update(float dt) {
+        is made < 10? then {
+            entity ship = spawn("ships/fighter.solassembly", [made * 5, 0, 10]);
+            made = made + 1;
+        }
+    }
+}
+
+pass Hangar;
+end
+```
+
+- **Which assembly:** its file in the project's assets (`ships/fighter.solassembly`), that without the extension (`ships/fighter`), or just its name (`fighter`) when only one assembly has it. A name that isn't an assembly makes nothing, and the Console says so once.
+- **When:** like a move, it happens after every `update` in the tick ([what game code sees](#components)). `spawn` gives back the new entity at once, so you can keep it, but it's in the game, with its components running, from the next frame.
+- **Where it shows:** copies game code makes appear in the Area panel while playing, and are gone when you press **Stop**, like everything else changed while playing. They aren't undo steps.
+- `despawn(me)` is how a component takes its own entity away. It ends at the end of the tick.
+
 ## What the engine offers
 
 | In | Method | What it does |
@@ -227,6 +256,9 @@ end
 | `solis/world` | `float time()` | How long the game has been running, in seconds. |
 | `solis/world` | `entity find(string name)` | The first entity with this name, in the Area panel's order, or `nothing`. |
 | `solis/world` | `fire(vec3 from, vec3 direction, float speed, float life, vec3 colour)` | Fires a projectile (see Projectiles, below). |
+| `solis/world` | `entity spawn(string file, vec3 place)` | Makes a copy of an assembly at a place (see Making and removing entities, below). |
+| `solis/world` | `despawn(entity which)` | Takes an entity, and everything under it, out of the game. |
+| `solis/world` | `float frameTime()` | How long the last frame took, in seconds of real time (1/60 at 60 frames a second). |
 | `solis/entity` | `vec3 positionOf(entity which)` | Where an entity is in the world, in metres. |
 | `solis/entity` | `moveTo(entity which, vec3 place)` | Puts an entity at a place in the world. |
 | `solis/entity` | `rotation rotationOf(entity which)` | Which way an entity faces. |
