@@ -9,6 +9,7 @@
 
 use crate::console::LogLevel;
 use crate::document::Document;
+use crate::game_code::{WorldHost, failure_text, sync_all, sync_entity};
 use crate::panel::Panel;
 use crate::workbench::{Workbench, WorkbenchAction};
 use area::text::AreaFile;
@@ -41,6 +42,8 @@ pub(crate) struct Playing {
     /// The area as its file holds it now, if the file changed on disk
     /// while playing: offered again after Stop.
     pub(crate) reload: Option<area::Area>,
+    /// The game's code running, if there is code (and it started).
+    pub(crate) game: Option<script::Runtime>,
 }
 
 impl std::fmt::Debug for Playing {
@@ -101,15 +104,17 @@ impl Workbench {
         // both the editor's history and the game's.
         self.moving = None;
         self.document.close_step();
-        let world = world::World::from_area(self.document.area());
+        let mut world = world::World::from_area(self.document.area());
         let _ = self.document.take_changes();
         let cameras = world.placed::<area::builtin::Camera>().len();
+        let game = self.start_game(&mut world);
         self.playing = Some(Playing {
             world,
             paused: false,
             before: Box::new(self.document.clone()),
             assemblies_before: self.assemblies.clone(),
             reload: None,
+            game,
         });
         if let Some(found) = self.dock.find_tab(&Panel::Game) {
             let _ = self.dock.set_active_tab(found);
@@ -124,6 +129,39 @@ impl Workbench {
             LogLevel::Info,
             format!("Playing. Changes made now are undone when you press Stop.{note}"),
         );
+    }
+
+    /// The game's code started on `world`, with every entity's game
+    /// components made from the area; `None` with no code, or if its
+    /// start failed (said in the Console).
+    fn start_game(&mut self, world: &mut world::World) -> Option<script::Runtime> {
+        let chunk = self.program.clone()?;
+        let mut runtime = script::Runtime::new();
+        let mut host = WorldHost::new(world, 0.0);
+        let mut failures = Vec::new();
+        match runtime.load(&chunk, &mut host) {
+            Ok(()) => failures.extend(sync_all(&mut runtime, self.document.area(), &mut host)),
+            Err(failure) => {
+                let said = host.said;
+                self.tell_game(said, &[failure]);
+                return None;
+            }
+        }
+        let said = std::mem::take(&mut host.said);
+        world.settle();
+        self.tell_game(said, &failures);
+        Some(runtime)
+    }
+
+    /// Writes what game code said, and its failures, in the Console.
+    fn tell_game(&mut self, said: Vec<String>, failures: &[script::Failure]) {
+        for words in said {
+            self.log(LogLevel::Info, words);
+        }
+        for failure in failures {
+            let text = failure_text(self.document.area(), failure);
+            self.log(LogLevel::Error, text);
+        }
     }
 
     /// Pause: stops the game's clock, or starts it again.
@@ -181,15 +219,51 @@ impl Workbench {
         let Some(playing) = &mut self.playing else {
             return;
         };
+        let area = self.document.area();
         if changes.everything {
-            playing.world.rebuild(self.document.area());
+            playing.world.rebuild(area);
         } else if !changes.entities.is_empty() {
-            playing
-                .world
-                .update(self.document.area(), changes.entities.iter().copied());
+            playing.world.update(
+                area,
+                changes
+                    .entities
+                    .iter()
+                    .map(|&id| (id, changes.moved.contains(&id))),
+            );
+        }
+        let mut said = Vec::new();
+        let mut failures = Vec::new();
+        // Changes made in the editor reach the running components.
+        if let Some(game) = &mut playing.game
+            && !changes.is_empty()
+        {
+            let time = playing.world.clock().time;
+            let mut host = WorldHost::new(&mut playing.world, time);
+            if changes.everything {
+                failures.extend(sync_all(game, area, &mut host));
+            } else {
+                for &id in &changes.entities {
+                    failures.extend(sync_entity(game, area, id, &mut host));
+                }
+            }
+            said.append(&mut host.said);
+            playing.world.settle();
         }
         if !playing.paused {
-            playing.world.step(f64::from(seconds));
+            let ran = playing.world.step(f64::from(seconds));
+            if let Some(game) = &mut playing.game {
+                let now = playing.world.clock().time;
+                for i in 0..ran {
+                    let time = now - world::TICK * (ran - 1 - i) as f64;
+                    let mut host = WorldHost::new(&mut playing.world, time);
+                    failures.extend(game.tick(world::TICK, &mut host));
+                    said.append(&mut host.said);
+                    playing.world.settle();
+                }
+            }
+        }
+        if !said.is_empty() || !failures.is_empty() {
+            self.tell_game(said, &failures);
         }
     }
 

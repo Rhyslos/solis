@@ -3,7 +3,7 @@
 > Run the area as a game inside the editor, try things, and press Stop to get everything back exactly as it was.
 
 ## When to use it
-Whenever you want to see the area the way a player will: through the game's camera, with no grid, gizmos or markers. Today a game has no code of its own yet (that arrives in Phase 4), so playing shows the area still, through its camera. The habit is worth learning now: **anything you change while playing is undone when you press Stop**, so you can move things, delete things and experiment freely.
+Whenever you want to see the area the way a player will: through the game's camera, with no grid, gizmos or markers. The game's own [code](game-code.md) runs too: every component written in Lust runs its `update` 60 times a second. The habit is worth learning now: **anything you change while playing is undone when you press Stop**, so you can move things, delete things and experiment freely.
 
 ## How to use it
 

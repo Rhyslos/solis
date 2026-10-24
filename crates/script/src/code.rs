@@ -141,31 +141,64 @@ pub fn check(code: &Code) -> Vec<CodeProblem> {
     if code.is_empty() {
         return Vec::new();
     }
-    if !code.files.iter().any(|(path, _)| path == ENTRY) {
-        return vec![CodeProblem {
-            file: ENTRY.to_string(),
-            line: 0,
-            column: 0,
-            message: format!(
-                "the game's code starts at {ENTRY} in the assets folder, and there isn't one. \
-                 Make it, and fetch the other files from it."
-            ),
-        }];
+    let missing = check_entry(code);
+    if !missing.is_empty() {
+        return missing;
     }
     let files = &code.files;
     match std::panic::catch_unwind(|| lust::check(ENTRY, files)) {
         Ok(Ok(())) => Vec::new(),
         Ok(Err(problems)) => problems.into_iter().map(CodeProblem::from).collect(),
-        Err(_) => vec![CodeProblem {
-            file: ENTRY.to_string(),
-            line: 0,
-            column: 0,
-            message: format!(
-                "the Lust compiler ({}) stopped unexpectedly while checking. This is a bug in \
-                 Lust; please report it with the code that caused it.",
-                lust::VERSION
-            ),
-        }],
+        Err(_) => vec![compiler_stopped()],
+    }
+}
+
+/// The game's Lust checked and turned into Lua for Luau, starting from
+/// [`ENTRY`]: `Ok(None)` when there's no Lust, the Lua when it's sound, or
+/// every mistake found. A crash inside the compiler is a mistake too.
+pub fn compile(code: &Code) -> Result<Option<lust::LuaChunk>, Vec<CodeProblem>> {
+    if code.is_empty() {
+        return Ok(None);
+    }
+    let missing = check_entry(code);
+    if !missing.is_empty() {
+        return Err(missing);
+    }
+    let files = &code.files;
+    match std::panic::catch_unwind(|| lust::to_lua(ENTRY, files)) {
+        Ok(Ok(chunk)) => Ok(Some(chunk)),
+        Ok(Err(problems)) => Err(problems.into_iter().map(CodeProblem::from).collect()),
+        Err(_) => Err(vec![compiler_stopped()]),
+    }
+}
+
+/// The mistake of having Lust but no [`ENTRY`] (none if it's there).
+fn check_entry(code: &Code) -> Vec<CodeProblem> {
+    if code.files.iter().any(|(path, _)| path == ENTRY) {
+        return Vec::new();
+    }
+    vec![CodeProblem {
+        file: ENTRY.to_string(),
+        line: 0,
+        column: 0,
+        message: format!(
+            "the game's code starts at {ENTRY} in the assets folder, and there isn't one. \
+             Make it, and fetch the other files from it."
+        ),
+    }]
+}
+
+/// What's said when the compiler itself crashed.
+fn compiler_stopped() -> CodeProblem {
+    CodeProblem {
+        file: ENTRY.to_string(),
+        line: 0,
+        column: 0,
+        message: format!(
+            "the Lust compiler ({}) stopped unexpectedly. This is a bug in Lust; please \
+             report it with the code that caused it.",
+            lust::VERSION
+        ),
     }
 }
 
@@ -257,6 +290,30 @@ mod tests {
     }
 
     #[test]
+    fn sound_code_compiles_to_lua_and_unsound_code_gives_its_mistakes() {
+        assert!(compile(&Code::default()).unwrap().is_none());
+        let sound = Code {
+            files: vec![("main.lst".into(), "end\n".into())],
+            notes: Vec::new(),
+        };
+        assert!(compile(&sound).unwrap().is_some());
+        let wrong = Code {
+            files: vec![("main.lst".into(), "int x = \"y\";\nend\n".into())],
+            notes: Vec::new(),
+        };
+        assert_eq!(compile(&wrong).unwrap_err()[0].line, 1);
+        let headless = Code {
+            files: vec![("gun.lst".into(), "end\n".into())],
+            notes: Vec::new(),
+        };
+        assert!(
+            compile(&headless).unwrap_err()[0]
+                .message
+                .contains("main.lst")
+        );
+    }
+
+    #[test]
     fn damaged_code_never_crashes_the_checker() {
         // Thousands of randomly damaged programs (CONTRIBUTING rule 9).
         let base = "state Mode = [Single, Burst];\nevent Hit(entity by, float damage);\n\
@@ -288,6 +345,7 @@ mod tests {
                 notes: Vec::new(),
             };
             let _ = check(&code);
+            let _ = compile(&code);
         }
     }
 }

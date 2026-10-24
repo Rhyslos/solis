@@ -47,7 +47,7 @@ The working plan for Phase 4 (ROADMAP.md, "Phase 4: Lust and Lua join"). It reco
 - No `main.lst` but other `.lst` files: one problem saying the game's code starts at `main.lst`.
 - Tests: the description files check cleanly with Lust and fetch into a sample; mistakes come back with file, line and column; limits; a fuzz test of gathering damaged and huge files.
 
-### M2. Lust components ☐
+### M2. Lust components ☑
 
 - Each Lust `component` becomes a component in the registry: its fields and starting values as a `reflect` schema (a state becomes a Choice). So it shows in Properties, in **Add component**, and is saved in area files like the built-in ones.
 - **Play mode runs them:** each entity's Lust components are made (`new`) with the area's values, then run every tick (`update`), entities in ID order and components in name order. The native methods reach the game's world: positions, rotations, names, finding entities, and `say` to the Console.

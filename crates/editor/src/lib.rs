@@ -14,6 +14,7 @@ mod commands_many;
 pub mod console;
 mod console_commands;
 pub mod document;
+mod game_code;
 mod game_panel;
 pub mod gizmo;
 pub mod icons;

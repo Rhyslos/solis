@@ -61,9 +61,9 @@ ron = "0.12"
 notify = "8.2"
 # Game code (decision 0028): the Lust compiler as a library, pinned to a
 # commit of Lust's main branch until its tag exists (then `tag =
-# "v2.0.0-alpha.32"`); without default features it needs only Rust's own
+# "v2.0.0-alpha.33"`); without default features it needs only Rust's own
 # library. Lust and Lua run in Luau.
-lust = { git = "https://github.com/Rhyslos/Lust", rev = "e496119d5b69bfb2e623116fed37593d787e5abb", default-features = false }
+lust = { git = "https://github.com/Rhyslos/Lust", rev = "a1cfe327ffac4b95ee5f9339484b2dd8df9d91be", default-features = false }
 mlua = { version = "0.10", features = ["luau"] }
 notify-debouncer-mini = "0.7"
 # Deleting from the Library moves files to the Recycle Bin, so nothing is

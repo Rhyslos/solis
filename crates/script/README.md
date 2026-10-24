@@ -8,7 +8,7 @@ Game code ([decision 0028](../../docs/decisions/0028-lust-runs-as-luau-while-edi
 
 - **The engine described to Lust** (`describe.rs`, [decision 0016](../../docs/decisions/0016-how-lust-joins-solis.md)): `NATIVES` lists every native method Solis gives game code. `descriptions` turns it into the Lust files a project gets in `assets/solis/` (`world.lst`, `entity.lst`), so they always match the engine.
 - **A project's code** (`code.rs`): `gather` reads every `.lst` file in the assets within limits (1 MB a file, 16 MB and 10,000 files in all, hidden folders skipped). `check` runs Lust's checker from `main.lst` and gives back every mistake as a `CodeProblem` with file, line and column. Both are meant for a worker thread.
-- **Running components** in Luau (Phase 4, M2 onward; see `docs/plans/phase-4.md`).
+- **Running components** (`runtime.rs`): a `Runtime` loads the Lua in Luau with a 64 MB memory limit and a 100 ms limit per call. It reads each component's fields into a `reflect` schema (starting values from a fresh component), makes and syncs running components from the area's values (`sync` sends only fields that changed, so values the game changed are kept), and runs ticks: entities in ID order, components in name order. The native methods reach the game through a `Host`, lent once per tick in a `LUST_NATIVES` table that exists only while game code runs. A component that fails stops alone, and its failure points at the Lust (`Failure`).
 
 ## Must never
 
@@ -18,8 +18,8 @@ Game code ([decision 0028](../../docs/decisions/0028-lust-runs-as-luau-while-edi
 
 ## Depends on
 
-`reflect`; the Lust compiler (`lust`, without its default features, pinned to a commit) and `mlua` with Luau.
+`reflect` and glam; the Lust compiler (`lust`, without its default features, pinned to a commit) and `mlua` with Luau.
 
 ## Status
 
-Phase 4, M1: the description files, gathering and checking.
+Phase 4, M1: the description files, gathering and checking. M2: running Lust components.
