@@ -14,14 +14,10 @@ pub const MAX_TOTAL_BYTES: u64 = 16 << 20;
 pub const MAX_FILES: usize = 10_000;
 /// The game's first file, which Lust starts from.
 pub const ENTRY: &str = "main.lst";
-/// The deepest brackets may nest in game code.
-pub const MAX_NESTING: usize = 200;
-/// The most a statement may hold (not counting text in quotes, or
-/// comments).
-pub const MAX_STATEMENT_BYTES: usize = 64 << 10;
-/// The stack the compiler runs with: it reads nested code by nesting
-/// itself, and the limits above keep it well inside this.
-const COMPILER_STACK: usize = 256 << 20;
+/// The stack the compiler (and the code's start, to read its components)
+/// runs with. Lust keeps its own nesting limit and stack since 2.0.0-alpha.35;
+/// this is room to spare for Luau compiling what Lust made.
+const COMPILER_STACK: usize = 64 << 20;
 
 /// A project's Lust files, read.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
@@ -217,15 +213,11 @@ pub fn check(code: &Code) -> Vec<CodeProblem> {
 /// code, or every mistake found. A crash inside the Lust compiler is a
 /// mistake too.
 ///
-/// Runs on a thread of its own with a large stack (code nested too deep
-/// for it is a mistake found first), so call it from a worker.
+/// Runs on a thread of its own with a large stack, so call it from a
+/// worker. Code nested too deep is a mistake Lust finds.
 pub fn compile(code: &Code) -> Result<Option<Compiled>, Vec<CodeProblem>> {
     if code.is_empty() {
         return Ok(None);
-    }
-    let too_deep = nesting_problems(code);
-    if !too_deep.is_empty() {
-        return Err(too_deep);
     }
     let code = code.clone();
     let worker = std::thread::Builder::new()
@@ -331,94 +323,6 @@ fn lust_place(files: &[(String, String)], name: &str) -> Option<(String, u32)> {
             whole.then(|| (path.clone(), u32::try_from(i + 1).unwrap_or(0)))
         })
     })
-}
-
-/// Code nested deeper than [`MAX_NESTING`], or a statement longer than
-/// [`MAX_STATEMENT_BYTES`], as mistakes (one per file at most): the
-/// compiler would need too much stack for them.
-fn nesting_problems(code: &Code) -> Vec<CodeProblem> {
-    code.files
-        .iter()
-        .filter_map(|(path, text)| {
-            let (line, message) = too_deep(text)?;
-            Some(CodeProblem {
-                file: path.clone(),
-                line,
-                column: 0,
-                message,
-            })
-        })
-        .collect()
-}
-
-/// Where `text` first nests too deep, or has too long a statement, and
-/// what's wrong. Text in quotes and comments (`--`, `//`, `--[[ ]]`)
-/// don't count.
-fn too_deep(text: &str) -> Option<(u32, String)> {
-    let bytes = text.as_bytes();
-    let mut depth = 0usize;
-    let mut statement = 0usize;
-    let mut line = 1u32;
-    let mut i = 0;
-    while i < bytes.len() {
-        let c = bytes[i];
-        let next = bytes.get(i + 1).copied();
-        match c {
-            b'\n' => line += 1,
-            b'"' => {
-                i += 1;
-                while i < bytes.len() && bytes[i] != b'"' {
-                    match bytes[i] {
-                        b'\\' => i += 1,
-                        b'\n' => line += 1,
-                        _ => {}
-                    }
-                    i += 1;
-                }
-            }
-            b'-' if next == Some(b'-') && text[i..].starts_with("--[[") => {
-                let end = text[i..].find("]]").map_or(bytes.len(), |e| i + e + 1);
-                line += text[i..end].matches('\n').count() as u32;
-                i = end;
-            }
-            b'-' | b'/' if next == Some(c) => {
-                while i < bytes.len() && bytes[i] != b'\n' {
-                    i += 1;
-                }
-                continue;
-            }
-            b'(' | b'[' | b'{' => {
-                depth += 1;
-                if depth > MAX_NESTING {
-                    return Some((
-                        line,
-                        format!(
-                            "brackets nest more than {MAX_NESTING} deep here; split the code \
-                             into smaller pieces"
-                        ),
-                    ));
-                }
-            }
-            b')' | b']' | b'}' => depth = depth.saturating_sub(1),
-            _ => {}
-        }
-        if matches!(c, b';' | b'{' | b'}') {
-            statement = 0;
-        } else if !c.is_ascii_whitespace() {
-            statement += 1;
-            if statement > MAX_STATEMENT_BYTES {
-                return Some((
-                    line,
-                    format!(
-                        "this statement is longer than {} KB; split it into smaller ones",
-                        MAX_STATEMENT_BYTES >> 10
-                    ),
-                ));
-            }
-        }
-        i += 1;
-    }
-    None
 }
 
 /// The mistake of having Lust but no [`ENTRY`] (none if it's there).
@@ -617,7 +521,8 @@ mod tests {
     #[test]
     fn code_nested_ever_so_deep_is_a_mistake_never_a_crash() {
         // Each of these overflowed the compiler's stack once, which ends
-        // the whole program (it can't be caught).
+        // the whole program (it can't be caught). Lust's own limit makes
+        // them mistakes.
         let deep = |text: String| Code {
             files: vec![("main.lst".into(), text)],
             lua: Vec::new(),
@@ -645,34 +550,24 @@ mod tests {
         ];
         for text in cases {
             let problems = compile(&deep(text)).unwrap_err();
-            assert!(!problems.is_empty());
+            assert!(
+                problems[0].message.contains("nested too deeply"),
+                "{}",
+                problems[0]
+            );
         }
-        // Just inside the limits: a long sum is a mistake Luau finds
-        // (it's too deep for it), and no crash either.
-        let long = format!(
-            "int y = 1{};\nend\n",
-            " + 1".repeat(MAX_STATEMENT_BYTES / 3 - 10)
-        );
-        assert!(compile(&deep(long)).is_err());
         // Deep, but not too deep, compiles, and the editor loads it on its
         // own thread, with an ordinary stack.
         let inside = format!(
             "int x = {}1{};\nint y = 1{};\nend\n",
-            "(".repeat(MAX_NESTING - 1),
-            ")".repeat(MAX_NESTING - 1),
-            " + 1".repeat(150)
+            "(".repeat(140),
+            ")".repeat(140),
+            " + 1".repeat(140)
         );
         let compiled = compile(&deep(inside)).unwrap().unwrap();
         crate::Runtime::new()
             .unwrap()
             .load(&compiled, &mut crate::NoHost)
             .unwrap();
-        // Text in quotes and comments doesn't count.
-        let quoted = format!(
-            "string s = \"{}\";\n-- {}\nend\n",
-            "(".repeat(1_000),
-            "[".repeat(1_000)
-        );
-        assert!(too_deep(&quoted).is_none());
     }
 }

@@ -68,7 +68,7 @@ function Mover:update(dt)
 end
 ```
 
-`component` takes the name and the fields in order, each as `{ name, kind, starting value }` (a `state` also lists its options: `{ "mode", "state", "Single", { "Single", "Burst" } }`). The fields are `self.speed` and so on, the entity is `self.me`, the engine's methods are under `solis.`, and `vec3(x, y, z)` makes a vector you can add and scale. A Lua component works the same way as a Lust one from here on, and both can be in the same game.
+`component` takes the name and the fields in order, each as `{ name, kind, starting value }` (a `state` also lists its options: `{ "mode", "state", "Single", { "Single", "Burst" } }`). The fields are `self.speed` and so on, the entity is `self.me`, the engine's methods are under `solis.`, and `vec3(x, y, z)` makes a vector (a Luau vector, the same kind of value a Lust `vec3` is) you can add, take away and scale, with `v.x` reading a part. A Lua component works the same way as a Lust one from here on, and both can be in the same game.
 
 1. Save the file. When the code has no mistakes, **Mover** appears in Properties' **Add component** menu.
 2. Select an entity and add **Mover**. Its `has` fields show in Properties with their starting values (`speed` as **Speed**), and are saved in the area like any other component's.
@@ -198,7 +198,7 @@ Other code files can sit in any folder in `assets`. Fetch them by their path fro
 - **Problem:** "solis.moveTo isn't something Solis offers" in Lua. **Why:** the name is misspelt, or the method was used outside `update` or an `on_` function, when the game isn't running. **Fix:** check the name against the table above.
 - **Problem:** a component is called the same as one of Solis's (`Light`) or a Rust one, or a Lust and a Lua component share a name. **Why:** two components can't share a name. The one in your code doesn't run (Solis's own, or the Rust one, does). **Fix:** rename yours; Problems says where it is.
 - **Problem:** I saved new code while playing, and the Console says the running game couldn't take it. **Why:** the code's start failed with the game's world (it ran fine with no world while checking). **Fix:** fix the line it points at; the game keeps the last code meanwhile.
-- **Problem:** Problems says brackets nest too deep, or a statement is too long. **Why:** code nested more than 200 brackets deep, or a statement over 64 KB, needs more room than Solis gives the Lust compiler. **Fix:** split it into smaller pieces, with names of their own.
+- **Problem:** Problems says something is nested too deeply. **Why:** more than 150 levels of brackets, blocks or operators inside each other (`a + b + c …` counts each `+`) is more than Lust takes. **Fix:** split it up with variables or methods.
 - **Problem:** Problems says the code stopped while starting. **Why:** Solis runs the code's own start (the lines outside components, and each field's starting value) to read its components, before anything plays and with no world: `find` finds nothing then. A start that fails or takes more than a second is a mistake. **Fix:** fix the line Problems points at.
 - **Problem:** the Console says a code file was left out. **Why:** each code file can be at most 1 MB, and all of them together 16 MB. Files that aren't text are left out too. **Fix:** split a huge file into smaller ones.
 - Commit the `solis` folder with your game, so `lust check` works on other computers too.
