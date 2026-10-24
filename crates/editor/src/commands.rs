@@ -607,18 +607,42 @@ impl Workbench {
             self.assemblies.insert(id, file);
             return;
         }
+        let name = self.asset_name(id);
         // The copies' changes, worked out against the old contents…
         let collapsed = {
             let lookup = |asset| self.assemblies.get(&asset).cloned();
             Expander::new(&lookup).collapse(self.document.area(), FileKind::Area)
         };
-        self.assemblies.insert(id, file);
-        let Ok(collapsed) = collapsed else { return };
-        // …laid over the new contents.
+        let collapsed = match collapsed {
+            Ok(collapsed) => collapsed,
+            Err(why) => {
+                // The copies can't be told apart from their old contents:
+                // the new file is used from now on, but nothing is
+                // rebuilt, so nothing is lost.
+                self.assemblies.insert(id, file);
+                self.log(
+                    LogLevel::Error,
+                    format!("Couldn't update copies of {name}: {why}."),
+                );
+                return;
+            }
+        };
+        // …laid over the new contents. If they can't be (an assembly it
+        // now places isn't read yet), the old file stays in use, so saving
+        // never writes the copies against contents they weren't built from.
         let rebuilt = {
-            let lookup = |asset| self.assemblies.get(&asset).cloned();
+            let lookup = |asset| {
+                if asset == id {
+                    Some(file.clone())
+                } else {
+                    self.assemblies.get(&asset).cloned()
+                }
+            };
             Expander::new(&lookup).expand(&collapsed)
         };
+        if rebuilt.is_ok() {
+            self.assemblies.insert(id, file);
+        }
         let name = self.asset_name(id);
         match rebuilt {
             Ok(area) if area != *self.document.area() => {
@@ -637,7 +661,10 @@ impl Workbench {
             Ok(_) => {}
             Err(why) => self.log(
                 LogLevel::Error,
-                format!("Couldn't update copies of {name}: {why}."),
+                format!(
+                    "Couldn't update copies of {name}: {why}. They keep the version they \
+                     were made from."
+                ),
             ),
         }
     }

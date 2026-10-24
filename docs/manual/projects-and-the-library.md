@@ -34,7 +34,7 @@ Make a project as soon as you start something you want to keep. Without one, Sol
 **Open things:** double-click an **area** to open it (Solis asks first if yours has unsaved changes). Double-click a picture or any other file to open it in its own program (your picture editor, say).
 
 **Organise files** (right-click a file or folder):
-- **Rename…**: type a new name. The file's ID file goes with it, so nothing using it breaks.
+- **Rename…**: type a new name. The file's ID file goes with it, so nothing using it breaks. Changing only capitals works too. Renaming the open area is fine: Solis saves to the new name.
 - **Move**: drag a file onto a folder in the tree.
 - **New folder** (also in the **Import** menu): makes "New folder" inside the folder shown.
 - **Show in Explorer** opens the folder in your system's file browser.

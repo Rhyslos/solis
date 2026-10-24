@@ -404,7 +404,7 @@ pub fn read_file(text: &str, registry: &Registry) -> Result<AreaFile, ParseError
         area: Area::new(),
         overrides: BTreeMap::new(),
     };
-    let mut lines: BTreeMap<String, (usize, String)> = BTreeMap::new();
+    let mut lines: BTreeMap<Vec<EntityId>, (usize, String)> = BTreeMap::new();
     let mut blocks = 0usize;
     while p.skip_space() {
         let start = p.line;
@@ -426,7 +426,9 @@ pub fn read_file(text: &str, registry: &Registry) -> Result<AreaFile, ParseError
         }
         let block = p.block(registry)?;
         let label = block.name.clone().unwrap_or_default();
-        if let Some((first, name)) = lines.get(&key) {
+        // Compared as IDs, not as text: lower case, O for 0 and L for 1
+        // spell the same ID, and must not hide a second block for it.
+        if let Some((first, name)) = lines.get(&path) {
             return Err(ParseError {
                 line: start,
                 message: format!(
@@ -438,7 +440,7 @@ pub fn read_file(text: &str, registry: &Registry) -> Result<AreaFile, ParseError
         if blocks > MAX_ENTITIES {
             return p.fail(&format!("more than {MAX_ENTITIES} entities"));
         }
-        lines.insert(key.clone(), (start, label));
+        lines.insert(path.clone(), (start, label));
         let fail = |message: &str| {
             Err(ParseError {
                 line: start,
@@ -500,12 +502,13 @@ pub fn read_file(text: &str, registry: &Registry) -> Result<AreaFile, ParseError
     for (root, path) in file.overrides.keys() {
         let placed = file.area.get(*root).is_some_and(|e| e.origin.is_some());
         if !placed {
-            let key = std::iter::once(*root)
-                .chain(path.iter().copied())
+            let ids: Vec<EntityId> = std::iter::once(*root).chain(path.iter().copied()).collect();
+            let key = ids
+                .iter()
                 .map(|id| id.to_string())
                 .collect::<Vec<_>>()
                 .join("/");
-            let line = lines.get(&key).map_or(0, |(l, _)| *l);
+            let line = lines.get(&ids).map_or(0, |(l, _)| *l);
             return Err(ParseError {
                 line,
                 message: format!("{key} changes a part of {root}, which isn't a placed assembly"),
@@ -1014,6 +1017,17 @@ mod tests {
         assert_eq!(back, area, "{text}");
         // And writing it again gives the same text.
         assert_eq!(write(&back, &registry(), &no_paths), text);
+    }
+
+    #[test]
+    fn one_id_spelled_two_ways_is_still_used_twice() {
+        // Found by review: IDs are read ignoring case, with O as 0 and L
+        // as 1, so these name the same entity; the second silently
+        // replaced the first.
+        let text = "area version 1;\n\nentity 2B8D4NE6TV0HC {\n    name = \"A\";\n}\n\n\
+                    entity 2b8d4ne6tvohc {\n    name = \"B\";\n}\n";
+        let err = read(text, &registry()).unwrap_err();
+        assert!(err.message.contains("used twice"), "{}", err.message);
     }
 
     #[test]

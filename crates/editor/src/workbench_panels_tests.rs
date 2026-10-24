@@ -414,3 +414,82 @@ fn the_problems_panel_lists_mistakes_and_a_click_selects_the_entity() {
     assert!(h.state().0.problems().is_empty());
     let _ = h.get_by_label("No problems found in the area.");
 }
+
+#[test]
+fn components_registered_by_game_code_survive_new_areas_and_projects() {
+    // Found by review: each new or opened area started with only the
+    // built-in components.
+    let mut w = Workbench::new(info(), None);
+    let schema = reflect::ComponentSchema {
+        name: "Wobble".into(),
+        help: "Wobbles.".into(),
+        fields: Vec::new(),
+    };
+    w.register_component(schema).unwrap();
+    w.new_area();
+    assert!(w.document.registry.get("Wobble").is_some());
+    w.open_area(area::builtin::starter_area(), "a.solarea".into());
+    assert!(w.document.registry.get("Wobble").is_some());
+    w.set_project(Some(crate::library::ProjectInfo {
+        name: "Harbour".into(),
+        root: "/p".into(),
+        assets: "/p/assets".into(),
+    }));
+    assert!(w.document.registry.get("Wobble").is_some());
+}
+
+#[test]
+fn another_project_starts_without_the_last_ones_assemblies_and_questions() {
+    let (mut w, asset, _, _) = with_a_lamp_post();
+    w.pending_reload = Some(area::builtin::starter_area());
+    w.place_targets.insert(asset, (glam::Vec3::ONE, None));
+    w.set_project(Some(crate::library::ProjectInfo {
+        name: "Copy of Harbour".into(),
+        root: "/copy".into(),
+        assets: "/copy/assets".into(),
+    }));
+    assert!(w.assemblies().is_empty());
+    assert!(w.place_targets.is_empty());
+    assert!(w.pending_reload.is_none());
+}
+
+#[test]
+fn the_open_area_follows_its_file_when_the_library_moves_or_deletes_it() {
+    use std::path::{Path, PathBuf};
+    let mut w = Workbench::new(info(), None);
+    w.open_area(
+        area::builtin::starter_area(),
+        "/p/assets/areas/harbour.solarea".into(),
+    );
+    // Another file: nothing changes.
+    assert_eq!(
+        w.file_moved(
+            Path::new("/p/assets/crate.glb"),
+            Some(Path::new("/p/assets/box.glb"))
+        ),
+        None
+    );
+    // Renamed.
+    let renamed = PathBuf::from("/p/assets/areas/port.solarea");
+    assert_eq!(
+        w.file_moved(Path::new("/p/assets/areas/harbour.solarea"), Some(&renamed)),
+        Some(Some(renamed.clone()))
+    );
+    assert_eq!(w.document.file(), Some(renamed.as_path()));
+    assert!(!w.document.is_dirty(), "the file still holds it");
+    // Its folder moved.
+    assert_eq!(
+        w.file_moved(
+            Path::new("/p/assets/areas"),
+            Some(Path::new("/p/assets/levels"))
+        ),
+        Some(Some(PathBuf::from("/p/assets/levels/port.solarea")))
+    );
+    // Deleted: unsaved, and saving asks where.
+    assert_eq!(
+        w.file_moved(Path::new("/p/assets/levels/port.solarea"), None),
+        Some(None)
+    );
+    assert_eq!(w.document.file(), None);
+    assert!(w.document.is_dirty());
+}

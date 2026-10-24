@@ -756,3 +756,21 @@ fn a_gltf_lists_the_files_beside_it_that_it_reads() {
     assert!(referenced_files(&glb, &limits()).unwrap().is_empty());
     let _ = std::fs::remove_dir_all(&folder);
 }
+
+#[test]
+fn a_model_with_too_many_nodes_is_refused_quickly() {
+    // Found by review: a hostile file with hundreds of thousands of empty
+    // nodes passed every limit, then made part IDs crawl.
+    let mut b = crate::sample::Builder::default();
+    b.add_cube_mesh(1.0, None);
+    b.json_nodes = std::iter::once(r#"{"mesh":0,"name":"Box"}"#.to_string())
+        .chain((0..geometry::MAX_NODES).map(|_| r#"{"name":"n"}"#.to_string()))
+        .collect();
+    let started = std::time::Instant::now();
+    let err = load_bytes(&b.glb(), None, "many", &limits()).unwrap_err();
+    assert!(
+        matches!(&err, ImportError::Damaged(why) if why.contains("200000")),
+        "{err}"
+    );
+    assert!(started.elapsed().as_secs() < 30);
+}

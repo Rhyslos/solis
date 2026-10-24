@@ -1516,6 +1516,59 @@ fn changed_fields_show_in_bold_and_revert_or_apply() {
 }
 
 #[test]
+fn an_assembly_that_now_places_an_unknown_one_keeps_its_old_version() {
+    // A Git pull: the lamp post now holds a copy of a sign, whose file
+    // isn't read yet.
+    let (mut w, asset, root, lamp) = with_a_lamp_post();
+    let before = w.document().area().clone();
+    let sign = AssetId(reflect::Id::from_raw(901).unwrap());
+    let (_, file) = lamp_post_file();
+    let mut file = (*file).clone();
+    let one = EntityId(reflect::Id::from_raw(1).unwrap());
+    let holder = EntityId(reflect::Id::from_raw(3).unwrap());
+    let mut copy = area::EntityData::new("Sign");
+    copy.parent = Some(one);
+    copy.origin = Some(area::Origin {
+        assembly: sign,
+        instance: holder,
+        path: Vec::new(),
+    });
+    file.area.insert(holder, copy);
+    let file = std::sync::Arc::new(file);
+    w.set_assembly(asset, file.clone());
+    assert_eq!(*w.document().area(), before, "nothing changed");
+    assert!(
+        !std::sync::Arc::ptr_eq(&w.assemblies()[&asset], &file),
+        "the version the copies were made from stays in use"
+    );
+    assert_eq!(w.log_lines().last().unwrap().level, LogLevel::Error);
+    // Once the sign is read (first, as the app now does), the update
+    // goes through.
+    let mut sign_area = area::Area::new();
+    sign_area.insert(
+        EntityId(reflect::Id::from_raw(5).unwrap()),
+        area::EntityData::new("Sign board").with(&Transform::default()),
+    );
+    w.set_assembly(
+        sign,
+        std::sync::Arc::new(area::text::AreaFile {
+            kind: area::text::FileKind::Assembly {
+                root: EntityId(reflect::Id::from_raw(5).unwrap()),
+            },
+            area: sign_area,
+            overrides: Default::default(),
+        }),
+    );
+    w.set_assembly(asset, file.clone());
+    assert!(std::sync::Arc::ptr_eq(&w.assemblies()[&asset], &file));
+    assert!(
+        w.document().area().len() > before.len(),
+        "the sign arrived in the copy"
+    );
+    assert!(w.document().area().contains(root) && w.document().area().contains(lamp));
+}
+
+#[test]
 fn a_changed_assembly_updates_its_copies_and_keeps_their_changes() {
     let (mut w, asset, root, lamp) = with_a_lamp_post();
     w.apply_property(

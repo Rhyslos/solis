@@ -247,9 +247,18 @@ impl Workbench {
     /// project.
     pub fn set_project(&mut self, project: Option<ProjectInfo>) {
         if project != self.project {
-            self.document = Document::default();
+            self.replace_document(Document::default());
             self.models.clear();
             self.library.clear();
+            // Nothing of the old project's is used with the new one: its
+            // assemblies (a copy of a project shares IDs with it), where
+            // things were dropped, a question about its file, the
+            // Library's place in its folders.
+            self.assemblies.clear();
+            self.place_targets.clear();
+            self.pending_reload = None;
+            self.unsaved_prompt = None;
+            self.library_state = Default::default();
             if let Some(p) = &project {
                 self.log(LogLevel::Info, format!("Opened the project {}.", p.name));
             }
@@ -310,15 +319,55 @@ impl Workbench {
     /// Starts a new, unsaved area (File > New area). Doesn't ask about
     /// unsaved changes: asking comes before the action.
     pub fn new_area(&mut self) {
-        self.document = Document::default();
+        self.replace_document(Document::default());
         self.pending_reload = None;
     }
 
     /// Shows `area`, read from `file`, in place of the open one.
     pub fn open_area(&mut self, area: area::Area, file: std::path::PathBuf) {
-        self.document = Document::opened(area, file);
+        self.replace_document(Document::opened(area, file));
         self.pending_reload = None;
         self.log(LogLevel::Info, format!("Opened {}.", self.document.name()));
+    }
+
+    /// Uses `document` in place of the open one, keeping the components
+    /// registered so far (game code registers its own once, not once per
+    /// area).
+    fn replace_document(&mut self, mut document: Document) {
+        document.registry = std::mem::take(&mut self.document.registry);
+        self.document = document;
+    }
+
+    /// A file or folder was moved from `from` to `to` (full paths), or
+    /// deleted (`to` is `None`). If it was the open area's file, or a
+    /// folder holding it, the area follows it; returns its new file then
+    /// (`None` inside: it was deleted).
+    pub fn file_moved(
+        &mut self,
+        from: &std::path::Path,
+        to: Option<&std::path::Path>,
+    ) -> Option<Option<std::path::PathBuf>> {
+        let file = self.document.file()?.to_path_buf();
+        let rest = file.strip_prefix(from).ok()?;
+        let moved = to.map(|to| {
+            if rest.as_os_str().is_empty() {
+                to.to_path_buf()
+            } else {
+                to.join(rest)
+            }
+        });
+        self.document.file_moved(moved.clone());
+        match &moved {
+            Some(path) => self.log(
+                LogLevel::Info,
+                format!("The open area is now {}.", path.display()),
+            ),
+            None => self.log(
+                LogLevel::Warning,
+                "The open area's file was deleted; saving asks where to put it.",
+            ),
+        }
+        Some(moved)
     }
 
     /// Notes that the area was saved to `file`.
@@ -748,7 +797,7 @@ impl Workbench {
     /// lose them (a new or another area, another project, quitting).
     pub(crate) fn request(&mut self, action: WorkbenchAction, actions: &mut Vec<WorkbenchAction>) {
         if self.playing.is_some() && crate::play::waits_for_stop(&action) {
-            // Said in the Console, and kept back, at the end of the frame.
+            // Refused, with a word in the Console, at the end of the frame.
             actions.push(action);
             return;
         }
@@ -773,6 +822,12 @@ impl Workbench {
             }
             actions.push(action);
         }
+    }
+
+    /// The app called off a queued quit (the save before it was cancelled
+    /// or failed): a later close asks about unsaved changes again.
+    pub fn quit_cancelled(&mut self) {
+        self.may_close = false;
     }
 
     /// Whether the window may close now. If the area has unsaved changes,
@@ -823,7 +878,8 @@ impl Workbench {
                 actions.push(waiting);
             }
         }
-        if self.pending_reload.is_some() {
+        // Asked after the game stops: loading it now would only be undone.
+        if self.pending_reload.is_some() && self.playing.is_none() {
             let name = self.document.name();
             let mut answer = None;
             egui::Window::new("Changed on disk")

@@ -47,6 +47,23 @@ What changed in each version, for people using Solis. Newest first.
 
 ### Fixed
 
+- **Work could be lost when saving before quitting or starting a new area.** On an untitled area, choosing **Save** in the "unsaved changes" question went straight on to quitting (or the new area) while the Save window was still open. Now everything waits for the Save window.
+- After a save was cancelled or failed while quitting, closing the window later closed it without asking about unsaved changes. Now it asks again.
+- A file chosen in an Open or Save window opened before **Play** is now opened or saved only after **Stop**, so it never replaces or saves the game's copy. The question about a file changed on disk also waits until Stop.
+- A Save name typed without `.solarea`, matching a file that already exists, replaced it without asking. Now it isn't saved, and the Console says how to replace it.
+- An assembly that a Git pull changed to hold a new, not yet loaded assembly could detach its copies, and saving made that permanent. Assemblies are now all read before any is used, and the copies keep the version they were made from until the new one can be read.
+- A damaged saved panel layout could crash Solis every time it started. A layout that can't be drawn is now replaced by the default one.
+- A problem reported by the graphics card no longer closes Solis; it's shown in the Console. Scenes with more model copies than the card can draw at once are skipped with a message instead of crashing.
+- Saving now writes the file to disk before it replaces the old one, so a power cut can't leave an empty file. Two saves of the same file at once no longer mix.
+- A model file with hundreds of thousands of empty nodes, or a very deep node tree, could freeze or crash the editor. Such files are refused, and very deep trees keep short part names.
+- A sidecar using the biggest part number crashed the editor or reused numbers. Part numbers now never repeat, and a sidecar with two parts sharing one is reported as damaged.
+- An area file naming one entity twice with different spellings (lower case, or O for 0) silently lost one of them. Now it's reported.
+- After many changes, undoing everything could make the area look saved when it wasn't.
+- Choosing the open project again from **Recent projects** emptied the viewport. Now nothing happens.
+- Opening another project kept the old project's assemblies, so a copy of a project could save its areas against the wrong assemblies.
+- Components registered by game code were forgotten when a new area was started or another opened.
+- Renaming, moving or deleting the open area in the Library left Solis saving to the old name, making a second file. The open area now follows its file.
+- Renaming a file only by changing capitals (`crate.glb` to `Crate.glb`) was refused on Windows.
 - The last project now opens again when Solis starts (it was saved but never read back).
 - The red and green axes on the ground could show as a large filled wedge on some graphics drivers when the camera was close to them.
 
