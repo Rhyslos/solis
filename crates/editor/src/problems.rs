@@ -24,6 +24,9 @@ pub enum ProblemKind {
     MissingAssembly,
     /// An entity whose parent isn't in the area (perhaps after a merge).
     MissingParent,
+    /// Entities that are each other's parents (a damaged file): they're
+    /// placed differently by the editor and the game until it's fixed.
+    ParentLoop,
 }
 
 /// One mistake, and the entity it's on.
@@ -41,9 +44,7 @@ pub struct Problem {
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub(crate) struct Fingerprint {
     revision: u64,
-    models: usize,
-    known: usize,
-    assemblies: usize,
+    sources: u64,
     file: Option<std::path::PathBuf>,
 }
 
@@ -87,17 +88,12 @@ impl Problems {
 }
 
 impl Fingerprint {
-    pub(crate) fn of(
-        document: &crate::document::Document,
-        models: usize,
-        known: usize,
-        assemblies: usize,
-    ) -> Self {
+    /// What problems in `document` depend on, with `sources` counting
+    /// the changes to what it's checked against.
+    pub(crate) fn of(document: &crate::document::Document, sources: u64) -> Self {
         Self {
             revision: document.revision(),
-            models,
-            known,
-            assemblies,
+            sources,
             file: document.file().map(std::path::Path::to_path_buf),
         }
     }
@@ -107,6 +103,40 @@ impl Fingerprint {
 pub(crate) fn find(sources: &Sources) -> Vec<Problem> {
     let area = sources.area;
     let mut found = Vec::new();
+    // Entities a walk down from the top never reaches are caught in a loop
+    // of parents (the tree order lists them last).
+    let mut reached = std::collections::HashSet::new();
+    let mut todo: Vec<EntityId> = area
+        .iter()
+        .filter(|(_, e)| e.parent.is_none_or(|p| !area.contains(p)))
+        .map(|(id, _)| id)
+        .collect();
+    let mut children: BTreeMap<EntityId, Vec<EntityId>> = BTreeMap::new();
+    for (id, e) in area.iter() {
+        if let Some(p) = e.parent {
+            children.entry(p).or_default().push(id);
+        }
+    }
+    while let Some(id) = todo.pop() {
+        if reached.insert(id)
+            && let Some(kids) = children.get(&id)
+        {
+            todo.extend(kids);
+        }
+    }
+    for (id, entity) in area.iter() {
+        if !reached.contains(&id) {
+            found.push(Problem {
+                kind: ProblemKind::ParentLoop,
+                entity: id,
+                text: format!(
+                    "{} is inside itself: its parents lead back to it. Drag it onto empty \
+                     space in the Area panel to fix it",
+                    entity.name
+                ),
+            });
+        }
+    }
     for (id, entity) in area.iter() {
         let name = &entity.name;
         if let Some(parent) = entity.parent
@@ -405,7 +435,7 @@ mod tests {
             known: &w.known,
             assemblies: &w.assemblies,
         };
-        let print = Fingerprint::of(&document, 0, 0, 0);
+        let print = Fingerprint::of(&document, 0);
         assert_eq!(problems.refresh(print.clone(), &sources), 1, "one new");
         problems.list.clear();
         assert_eq!(
@@ -414,14 +444,56 @@ mod tests {
             "not looked at"
         );
         assert!(problems.list.is_empty());
-        assert_eq!(
-            problems.refresh(Fingerprint::of(&document, 1, 0, 0), &sources),
-            1
-        );
-        assert_eq!(
-            problems.refresh(Fingerprint::of(&document, 2, 0, 0), &sources),
-            0
-        );
+        assert_eq!(problems.refresh(Fingerprint::of(&document, 1), &sources), 1);
+        assert_eq!(problems.refresh(Fingerprint::of(&document, 2), &sources), 0);
         assert_eq!(problems.list.len(), 1, "the same one, not new");
+    }
+
+    #[test]
+    fn entities_that_are_each_others_parents_are_reported() {
+        let mut w = World::new();
+        let (a, b) = (EntityId::random(), EntityId::random());
+        let mut ea = EntityData::new("A");
+        ea.parent = Some(b);
+        let mut eb = EntityData::new("B");
+        eb.parent = Some(a);
+        w.area.insert(a, ea);
+        w.area.insert(b, eb);
+        w.area.spawn(EntityData::new("Fine"));
+        assert_eq!(
+            w.kinds(),
+            [ProblemKind::ParentLoop, ProblemKind::ParentLoop]
+        );
+        assert!(w.find()[0].text.contains("inside itself"));
+    }
+
+    #[test]
+    fn problems_are_looked_for_again_when_what_they_are_checked_against_changes() {
+        // Found by review: counting models, assemblies and Library files
+        // missed one replaced by another (a Git branch switch).
+        let document = crate::document::Document::default();
+        let mut problems = Problems::default();
+        let mut w = World::new();
+        let gone = AssetId::random();
+        w.area.insert(
+            EntityId::random(),
+            EntityData::new("Crate").with(&model(Some(gone))),
+        );
+        fn sources(w: &World) -> Sources<'_> {
+            Sources {
+                area: &w.area,
+                registry: &w.registry,
+                models: &w.models,
+                known: &w.known,
+                assemblies: &w.assemblies,
+            }
+        }
+        problems.refresh(Fingerprint::of(&document, 7), &sources(&w));
+        assert_eq!(problems.list.len(), 1);
+        w.known.insert(gone);
+        // Same document, sources changed: looked at again.
+        assert!(!problems.is_from(&Fingerprint::of(&document, 8)));
+        problems.refresh(Fingerprint::of(&document, 8), &sources(&w));
+        assert!(problems.list.is_empty());
     }
 }

@@ -20,6 +20,7 @@ When something in the area doesn't look right, or the **Problems** tab shows a n
 | *X has a … component that isn't known* | The area was saved by a newer Solis, or names a component from game code that isn't built yet. The component is kept exactly as it was, so saving loses nothing. | Usually nothing: it comes back to life when the code that defines it is there. Remove it if it's left over. |
 | *X is a copy of an assembly that isn't in the project* | The [assembly](assemblies.md)'s file was deleted or not committed. | Put the file back, or [unpack](concepts.md#the-area) the copy to keep it as ordinary entities. |
 | *X's parent isn't in the area* | Usually a Git merge that kept a child but not its parent. | Drag it onto another entity in the Area panel, or onto empty space to make it stand alone. |
+| *X is inside itself* | Usually a Git merge that combined two moves: one put A under B while the other put B under A, so neither is anywhere in the tree. | Drag it onto another entity in the Area panel, or onto empty space to make it stand alone. |
 
 ## Tips and common problems
 - **Problem:** models show as missing for a moment after opening a project. **Why:** Solis is still listing the project's files. **Fix:** nothing; they disappear as soon as the Library is ready.

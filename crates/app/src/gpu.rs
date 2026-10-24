@@ -13,6 +13,8 @@ use std::collections::HashMap;
 /// The viewport's image and the egui texture showing it.
 struct Image {
     target: ViewportTarget,
+    /// A pick the renderer refused, to answer with "nothing".
+    refused: Option<[u32; 4]>,
     /// The size last asked for (the target may be clamped smaller).
     requested_size: [u32; 2],
     texture: egui::TextureId,
@@ -140,7 +142,11 @@ impl GpuViewport {
 
     /// Lets go of a thumbnail made by [`Self::thumbnail`].
     pub fn free_thumbnail(&self, id: egui::TextureId) {
-        self.state.renderer.write().free_texture(&id);
+        // Only thumbnails drawn here; pictures' textures belong to egui,
+        // which lets them go when their handle is dropped.
+        if matches!(id, egui::TextureId::User(_)) {
+            self.state.renderer.write().free_texture(&id);
+        }
     }
 
     /// A line for the console about the GPU in use.
@@ -212,6 +218,7 @@ impl GpuViewport {
             target,
             requested_size: size,
             texture,
+            refused: None,
         });
     }
 }
@@ -344,7 +351,7 @@ impl ViewportRenderer for GpuViewport {
         if let Some(rect) = view.pick {
             // Drawn after the frame, never waited for: the answer is
             // collected by `picked` on a later frame.
-            self.renderer.request_pick(
+            let asked = self.renderer.request_pick(
                 &self.state.device,
                 &self.state.queue,
                 &mut image.target,
@@ -352,12 +359,23 @@ impl ViewportRenderer for GpuViewport {
                 &placed,
                 rect,
             );
+            if !asked {
+                // Refused (nothing to look at there): answered "nothing"
+                // straight away, rather than leaving the editor waiting.
+                image.refused = Some(rect);
+            }
         }
         Ok(image.texture)
     }
 
     fn picked(&mut self, image: usize) -> Option<PickAnswer> {
         let image = self.images.get_mut(image)?.as_mut()?;
+        if let Some(rect) = image.refused.take() {
+            return Some(PickAnswer {
+                rect,
+                ..PickAnswer::default()
+            });
+        }
         let result = image.target.poll_pick(&self.state.device)?;
         Some(to_answer(&result))
     }

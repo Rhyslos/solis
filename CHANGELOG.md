@@ -66,6 +66,17 @@ What changed in each version, for people using Solis. Newest first.
 - Renaming a file only by changing capitals (`crate.glb` to `Crate.glb`) was refused on Windows.
 - The last project now opens again when Solis starts (it was saved but never read back).
 - The red and green axes on the ground could show as a large filled wedge on some graphics drivers when the camera was close to them.
+- Clicking could select the wrong thing after the area changed or a view was resized, because the answer belonged to an older click. Clicking the very last pixel of a view no longer misses.
+- In a Top, Front or Right view, **Add > Camera**, **Add > Spotlight** and **Move here** put the new thing far away, and fog covered the area. They now go where the view looks from, and flat views have no fog.
+- The game view and the editor could light an area with two suns differently. Both now use the first one in the Hierarchy.
+- **F** framed an unpacked model by its whole size, even when only its parts were selected.
+- A thumbnail that was replaced or changed on disk showed the old picture, and its memory wasn't freed. Thumbnails from the last project no longer appear in the next.
+- The Problems panel didn't update after a model was reloaded or another project opened. It now also reports an entity that is (through others) inside itself.
+- A model added to the folder while the area used it, or a changed one, wasn't reloaded in the viewport.
+- **Help > Add the sample area** with a project open added a model the project didn't have, so a saved area that used it said it was missing when opened again. It's now added to the project's assets like an import.
+- Placing a model by double-click after an earlier drop of it failed sent it to the old drop point.
+- A Git checkout or pull while Solis was open could give a model a new ID if Solis looked between Git writing the model and its sidecar. A new file without a sidecar now waits two seconds for one.
+- A model copied (with its sidecar) while Solis was closed could take the original's ID, so areas using the original showed the copy. The original, whose sidecar is older, now keeps it.
 
 - A layout saved before a panel existed keeps its arrangement and gets the new panel beside its usual neighbours, instead of being reset to the default.
 - A full Console no longer slows each new message down.

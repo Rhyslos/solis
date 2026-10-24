@@ -302,7 +302,7 @@ impl Tools {
             });
             return;
         }
-        let px = (at * ppp).floor().max(Vec2::ZERO);
+        let px = pixel_at(at, size, ppp);
         self.ask(
             [px.x as u32, px.y as u32, 1, 1],
             PickPurpose::Click(mode),
@@ -332,7 +332,11 @@ impl Tools {
             })
             .map(|(entity, _)| entity)
             .collect();
-        let (lo, hi) = ((min * ppp).floor(), (max * ppp).ceil());
+        let last = ((size * ppp).round() - Vec2::ONE).max(Vec2::ZERO);
+        let (lo, hi) = (
+            (min * ppp).floor().min(last),
+            (max * ppp).ceil().min(last + Vec2::ONE),
+        );
         let mode = if ctrl {
             PickMode::Add
         } else {
@@ -372,7 +376,7 @@ impl Tools {
                 .filter(|p| p.distance(camera.position) < 1_000.0)
                 .unwrap_or_else(|| camera.focus())
         };
-        let px = (at * ppp).floor().max(Vec2::ZERO);
+        let px = pixel_at(at, size, ppp);
         self.ask(
             [px.x as u32, px.y as u32, 1, 1],
             PickPurpose::Drop { asset, fallback },
@@ -403,6 +407,18 @@ impl Tools {
 
     /// The rectangle to send to the renderer this frame, if a pick is
     /// waiting to be sent; it's marked as sent.
+    /// [`Self::rect_to_send`], with the entities behind this frame's pick
+    /// numbers: a pick asked for while another was in flight is drawn
+    /// frames later, with that frame's numbers, so its list is taken now.
+    pub(crate) fn send_with(&mut self, pickable: &[EntityId]) -> Option<[u32; 4]> {
+        if let Some(pick) = self.pick.as_mut()
+            && pick.waited.is_none()
+        {
+            pick.pickable = pickable.to_vec();
+        }
+        self.rect_to_send()
+    }
+
     pub(crate) fn rect_to_send(&mut self) -> Option<[u32; 4]> {
         let pick = self.pick.as_mut()?;
         if pick.waited.is_some() {
@@ -420,6 +436,9 @@ impl Tools {
         let Some(waited) = pick.waited.as_mut() else {
             return;
         };
+        // An answer to an older question (one given up on) isn't this
+        // one's: it's waited for still.
+        let answer = answer.filter(|a| a.rect == pick.rect);
         let Some(answer) = answer else {
             *waited += 1;
             if *waited > PICK_PATIENCE {
@@ -460,6 +479,15 @@ impl Tools {
 }
 
 /// Draws the tools over the viewport image at `rect`.
+/// The image pixel under `at` (points) in a view `size` points across:
+/// never past the last pixel, which the image may round away at some
+/// display scales (a pick there would ask about nothing, and never be
+/// answered).
+fn pixel_at(at: Vec2, size: Vec2, ppp: f32) -> Vec2 {
+    let last = ((size * ppp).round() - Vec2::ONE).max(Vec2::ZERO);
+    (at * ppp).floor().max(Vec2::ZERO).min(last)
+}
+
 /// Draws a marker for each camera: a small wire pyramid pointing the way
 /// it looks, with a notch on its top edge for which way is up.
 pub(crate) fn draw_cameras(ui: &Ui, rect: Rect, cameras: &[(EntityId, Mat4)], camera: &Camera) {

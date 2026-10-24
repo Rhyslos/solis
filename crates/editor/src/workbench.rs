@@ -157,6 +157,10 @@ pub struct Workbench {
     pub(crate) problems: crate::problems::Problems,
     /// The game, while it runs.
     pub(crate) playing: Option<crate::play::Playing>,
+    /// Goes up whenever what Problems checks the area against changes:
+    /// the models loaded, the Library, the assemblies, the components
+    /// known.
+    pub(crate) sources: u64,
 }
 
 impl Workbench {
@@ -183,6 +187,7 @@ impl Workbench {
             place_targets: BTreeMap::new(),
             problems: Default::default(),
             playing: None,
+            sources: 0,
             assemblies: BTreeMap::new(),
             outbox: Vec::new(),
             unsaved_prompt: None,
@@ -250,6 +255,7 @@ impl Workbench {
             self.replace_document(Document::default());
             self.models.clear();
             self.library.clear();
+            self.sources += 1;
             // Nothing of the old project's is used with the new one: its
             // assemblies (a copy of a project shares IDs with it), where
             // things were dropped, a question about its file, the
@@ -279,6 +285,7 @@ impl Workbench {
     /// The project's files, for the Library.
     pub fn set_library(&mut self, items: Vec<LibraryItem>) {
         self.library = items;
+        self.sources += 1;
     }
 
     /// The project's folders inside its assets, `/` between names, for
@@ -300,6 +307,7 @@ impl Workbench {
     /// didn't change.
     pub fn reload_model(&mut self, info: ModelInfo, warnings: &[String]) {
         let (name, triangles) = (info.name.clone(), info.triangles);
+        self.sources += 1;
         if self.models.insert(info.asset, info).is_none() {
             // First loaded for an opened area: nothing to announce.
             return;
@@ -701,12 +709,7 @@ impl Workbench {
     /// changed.
     pub(crate) fn find_problems(&mut self) {
         use crate::problems::{Fingerprint, Sources};
-        let print = Fingerprint::of(
-            &self.document,
-            self.models.len(),
-            self.library.len(),
-            self.assemblies.len(),
-        );
+        let print = Fingerprint::of(&self.document, self.sources);
         if self.problems.is_from(&print) {
             return;
         }

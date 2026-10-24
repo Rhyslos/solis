@@ -320,10 +320,13 @@ impl App {
                     LogLevel::Error,
                     format!("Couldn't show {}: there is no 3D view.", file_name(&path)),
                 ),
-                (Err(why), _) if placing => self.workbench.log(
-                    LogLevel::Error,
-                    format!("Couldn't import {}: {why}.", file_name(&path)),
-                ),
+                (Err(why), _) if placing => {
+                    self.workbench.placing_failed(id);
+                    self.workbench.log(
+                        LogLevel::Error,
+                        format!("Couldn't import {}: {why}.", file_name(&path)),
+                    );
+                }
                 (Err(why), _) => self.workbench.log(
                     LogLevel::Error,
                     format!(
@@ -358,24 +361,15 @@ impl App {
                     self.load_area_models();
                     continue;
                 }
-                Change::Changed(id)
-                    if db
-                        .get(*id)
-                        .is_some_and(|r| self.thumbnails.get(&r.path).is_some()) =>
-                {
-                    // Its thumbnail is made again, and it's read again if
-                    // it's in use.
+                Change::Changed(id) => {
+                    // Its thumbnail is made again (or tried again, if it
+                    // failed before), and it's read again if it's in use.
                     if let Some(record) = db.get(*id) {
                         self.thumbnails.forget(&record.path, self.gpu.as_ref());
                     }
                     if self.workbench.has_model(*id)
                         && let Some(file) = db.file(*id)
                     {
-                        self.importer.start(*id, &file, self.projects.cache());
-                    }
-                }
-                Change::Changed(id) if self.workbench.has_model(*id) => {
-                    if let Some(file) = db.file(*id) {
                         self.importer.start(*id, &file, self.projects.cache());
                     }
                 }
@@ -402,6 +396,11 @@ impl App {
                 ),
                 _ => {}
             }
+        }
+        // A model the area uses that was missing may be back (from the
+        // Recycle Bin, a Git pull): it's read now, not on the next opening.
+        if changes.iter().any(|c| matches!(c, Change::Added(_))) {
+            self.load_area_models();
         }
         self.refresh_library();
     }
@@ -568,12 +567,7 @@ impl App {
                     field,
                     value,
                 } => self.apply_to_assembly(assembly, &path, &component, &field, value),
-                WorkbenchAction::AddSampleArea => {
-                    let id = self.importer.start_sample("Sample area");
-                    self.to_place.insert(id);
-                    self.workbench
-                        .log(LogLevel::Info, "Adding the sample area…".to_string());
-                }
+                WorkbenchAction::AddSampleArea => self.add_sample(),
                 WorkbenchAction::NewArea => {
                     self.workbench.new_area();
                     self.area_files.forget();
@@ -693,7 +687,8 @@ impl App {
     fn refresh_library(&mut self) {
         self.listing = self.projects.listing();
         if let Some(db) = self.projects.db() {
-            self.thumbnails.want(&self.listing, &db.project().assets());
+            self.thumbnails
+                .want(&self.listing, &db.project().assets(), self.gpu.as_ref());
         }
         self.show_library();
     }
@@ -744,7 +739,8 @@ impl App {
         }
         let text = self.file_text(&file);
         let written = std::fs::create_dir_all(&folder)
-            .and_then(|()| asset_db::write_atomically(&path, text.as_bytes()));
+            .and_then(|()| asset_db::write_atomically(&path, text.as_bytes()))
+            .and_then(|()| self.projects.adopt(&path));
         if let Err(why) = written {
             self.workbench.log(
                 LogLevel::Error,
@@ -798,6 +794,34 @@ impl App {
         }
     }
 
+    /// Adds the sample area. With a project open it becomes a file in the
+    /// project's assets, imported like any other, so a saved area that
+    /// uses it finds it again; without one it's read straight from memory.
+    fn add_sample(&mut self) {
+        const NAME: &str = "Sample area";
+        if let Some(cache) = self.projects.cache() {
+            // Written beside the cache first, then copied in under a name
+            // not yet taken, as a model from elsewhere would be.
+            let staged = cache.join(format!("{NAME}.glb"));
+            let written = std::fs::create_dir_all(&cache).and_then(|()| {
+                asset_db::write_atomically(&staged, &assets::sample::showcase_glb())
+            });
+            match written {
+                Ok(()) => self.import(&staged),
+                Err(why) => self.workbench.log(
+                    LogLevel::Error,
+                    format!("Couldn't add the sample area to the project: {why}."),
+                ),
+            }
+            let _ = std::fs::remove_file(&staged);
+            return;
+        }
+        let id = self.importer.start_sample(NAME);
+        self.to_place.insert(id);
+        self.workbench
+            .log(LogLevel::Info, "Adding the sample area…".to_string());
+    }
+
     /// Places a project asset where the camera looks: a model is read
     /// (from the cache, so quickly) and placed when it arrives; an
     /// assembly is placed at once.
@@ -809,13 +833,16 @@ impl App {
                     self.workbench.place_assembly(id);
                     self.load_area_models();
                 }
-                Err(why) => self
-                    .workbench
-                    .log(LogLevel::Error, format!("Couldn't place it: {why}.")),
+                Err(why) => {
+                    self.workbench.placing_failed(id);
+                    self.workbench
+                        .log(LogLevel::Error, format!("Couldn't place it: {why}."));
+                }
             }
             return;
         }
         let Some(file) = self.projects.db().and_then(|db| db.file(id)) else {
+            self.workbench.placing_failed(id);
             return;
         };
         self.to_place.insert(id);

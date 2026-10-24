@@ -86,9 +86,8 @@ impl AreaView {
     ) -> Self {
         let mut view = Self {
             environment: area
-                .with::<Environment>()
-                .next()
-                .map(|(_, e)| e)
+                .first_in_tree(area.with::<Environment>().map(|(id, _)| id))
+                .and_then(|id| area.get(id)?.get::<Environment>())
                 .unwrap_or_default(),
             ..Self::default()
         };
@@ -100,11 +99,22 @@ impl AreaView {
             let pickable = !locked.contains(&id);
             view.add_model(id, model, area.world_matrix(id), models, pickable);
         }
+        // The sun is the first in tree order, as the game has it.
+        let mut suns = Vec::new();
         for (id, light) in area.with::<Light>() {
             if hidden.contains(&id) {
                 continue;
             }
-            view.add_light(id, &light, area.world_matrix(id));
+            if light.kind == LightKind::Sun {
+                suns.push((id, light));
+            } else {
+                view.add_light(id, &light, area.world_matrix(id));
+            }
+        }
+        if let Some(first) = area.first_in_tree(suns.iter().map(|(id, _)| *id))
+            && let Some((id, light)) = suns.iter().find(|(id, _)| *id == first)
+        {
+            view.add_light(*id, light, area.world_matrix(*id));
         }
         for (id, _) in area.with::<Camera>() {
             if !hidden.contains(&id) {
@@ -325,5 +335,29 @@ mod tests {
         assert!(editor.models.is_empty());
         assert_eq!(editor.cameras.len(), 1);
         assert_eq!(editor.markers().count(), 1);
+    }
+
+    #[test]
+    fn the_editor_and_the_game_light_the_area_with_the_same_sun() {
+        // Two suns (a duplicated one, or one from an assembly): both pick
+        // the first in tree order, whatever their IDs.
+        let mut area = Area::new();
+        let low = reflect::EntityId(reflect::Id::from_raw(1).unwrap());
+        let high = reflect::EntityId(reflect::Id::from_raw(u64::MAX).unwrap());
+        let mut first = EntityData::new("A").with(&Light {
+            strength: 7.0,
+            ..Light::sun()
+        });
+        first.order = "a0".into();
+        let mut second = EntityData::new("B").with(&Light::sun());
+        second.order = "a1".into();
+        area.insert(high, first);
+        area.insert(low, second);
+        assert_eq!(area.depth_first()[0], high);
+        let editor = AreaView::of(&area, &BTreeMap::new());
+        let game = AreaView::of_world(&world::World::from_area(&area), &BTreeMap::new());
+        assert_eq!(editor.sun.unwrap().entity, high);
+        assert_eq!(game.sun.unwrap().entity, high);
+        assert!(editor.lamps.is_empty() && game.lamps.is_empty());
     }
 }

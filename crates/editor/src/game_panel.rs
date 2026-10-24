@@ -96,10 +96,12 @@ pub(crate) fn game_panel(
             let (view, position) = camera_view(global);
             (camera.projection(aspect) * view, position)
         }
-        None => (
-            editor_camera.view_projection(aspect),
-            editor_camera.position,
-        ),
+        // The editor's view, as seen in perspective even from a flat view
+        // (the game has no flat views).
+        None => {
+            let seen = editor_camera.as_kind(crate::camera::ViewKind::Perspective);
+            (seen.view_projection(aspect), seen.position)
+        }
     };
     let view = ViewportView {
         size_px,

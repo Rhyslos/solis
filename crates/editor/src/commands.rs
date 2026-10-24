@@ -106,6 +106,7 @@ impl Workbench {
         &mut self,
         schema: reflect::ComponentSchema,
     ) -> Result<(), reflect::RegistryError> {
+        self.sources += 1;
         self.document.registry.register(schema)
     }
 
@@ -196,6 +197,7 @@ impl Workbench {
         edits.insert(0, Edit::Spawn { entities });
         let label = format!("Import {}", info.name);
         self.models.insert(info.asset, info);
+        self.sources += 1;
         let select = target.map(|_| {
             let mut s = Selection::default();
             s.select_only(id);
@@ -209,10 +211,11 @@ impl Workbench {
     /// shine like `light`, turned by `rotation`.
     fn sun_edits(&self, light: &Light, rotation: Quat) -> Vec<Edit> {
         let area = self.document.area();
-        let sun = area
-            .with::<Light>()
-            .find(|(_, l)| l.kind == LightKind::Sun)
-            .map(|(id, _)| id);
+        let sun = area.first_in_tree(
+            area.with::<Light>()
+                .filter(|(_, l)| l.kind == LightKind::Sun)
+                .map(|(id, _)| id),
+        );
         let transform = |old: Option<Transform>| Transform {
             rotation,
             ..old.unwrap_or_default()
@@ -276,7 +279,7 @@ impl Workbench {
         self.spawn_selected(
             EntityData::new(&format!("Spotlight {n}"))
                 .with(&Transform {
-                    position: camera.position,
+                    position: camera.viewpoint(),
                     rotation: area::builtin::aim(camera.forward()),
                     ..Transform::default()
                 })
@@ -299,7 +302,7 @@ impl Workbench {
         self.spawn_selected(
             EntityData::new(&format!("Camera {n}"))
                 .with(&Transform {
-                    position: camera.position,
+                    position: camera.viewpoint(),
                     rotation,
                     ..Transform::default()
                 })
@@ -605,6 +608,7 @@ impl Workbench {
         let uses = self.document.area().iter().any(|(_, e)| e.origin.is_some());
         if !had || !uses {
             self.assemblies.insert(id, file);
+            self.sources += 1;
             return;
         }
         let name = self.asset_name(id);
@@ -620,6 +624,7 @@ impl Workbench {
                 // the new file is used from now on, but nothing is
                 // rebuilt, so nothing is lost.
                 self.assemblies.insert(id, file);
+                self.sources += 1;
                 self.log(
                     LogLevel::Error,
                     format!("Couldn't update copies of {name}: {why}."),
@@ -642,6 +647,7 @@ impl Workbench {
         };
         if rebuilt.is_ok() {
             self.assemblies.insert(id, file);
+            self.sources += 1;
         }
         let name = self.asset_name(id);
         match rebuilt {
@@ -1032,6 +1038,10 @@ impl Workbench {
                 .get(id)
                 .and_then(|e| e.get::<Model>())
                 .and_then(|m| m.asset)
+                // A part of an unpacked model sits where its node is, and
+                // the whole model's box would be in the wrong place: it's
+                // framed as a point, as its outline is drawn.
+                .filter(|r| r.part.is_none())
                 .and_then(|r| self.models.get(&r.asset));
             match model {
                 Some(info) => {
@@ -1084,7 +1094,7 @@ impl Workbench {
         let mut transform = entity.get::<Transform>().unwrap_or_default();
         match entity.get::<Light>().map(|l| l.kind) {
             Some(LightKind::Spot) => {
-                transform.position = camera.position;
+                transform.position = camera.viewpoint();
                 transform.rotation = area::builtin::aim(camera.forward());
             }
             Some(LightKind::Point) => {

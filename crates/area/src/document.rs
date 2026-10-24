@@ -219,6 +219,18 @@ impl Area {
         out
     }
 
+    /// Which of `ids` comes first in tree order (the Area panel's order):
+    /// how "the first sun" or "the first camera" is chosen everywhere, in
+    /// the editor and the game alike. Cheap for one candidate.
+    pub fn first_in_tree(&self, ids: impl IntoIterator<Item = EntityId>) -> Option<EntityId> {
+        let ids: Vec<EntityId> = ids.into_iter().collect();
+        match ids.as_slice() {
+            [] => None,
+            [one] => Some(*one),
+            _ => self.depth_first().into_iter().find(|id| ids.contains(id)),
+        }
+    }
+
     /// A sibling order that sorts after every child of `parent` now, so a
     /// new entity goes at the end of the list.
     pub fn order_at_end(&self, parent: Option<EntityId>) -> String {

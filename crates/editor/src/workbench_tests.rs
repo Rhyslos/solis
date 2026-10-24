@@ -1712,6 +1712,16 @@ fn a_model_unpacks_into_its_parts() {
     let mut drawn: Vec<_> = view.models.iter().map(|m| (m.asset, m.node)).collect();
     drawn.sort();
     assert_eq!(drawn, [(asset, Some(1)), (asset, Some(2))]);
+    // F on the sail centres on the sail, not on the whole model's box
+    // moved there.
+    w.select(sail);
+    w.frame_selection();
+    let focus = w.camera().focus();
+    let to_sail = (Vec3::new(3.0, 0.0, 0.0) - w.camera().position).normalize();
+    assert!(
+        to_sail.dot(w.camera().forward()) > 0.999,
+        "looks at the sail: {focus}"
+    );
     w.undo();
     assert!(w.document().area().get(model).unwrap().has("Model"));
 }

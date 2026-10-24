@@ -28,6 +28,14 @@ fn lamp(entity: EntityId, position: Vec3) -> ViewLight {
     }
 }
 
+/// `a` as the answer to the pick in flight (with its rectangle).
+fn answer(tools: &Tools, a: PickAnswer) -> Option<PickAnswer> {
+    Some(PickAnswer {
+        rect: tools.pick.as_ref().map_or([0; 4], |p| p.rect),
+        ..a
+    })
+}
+
 fn input(mouse: Vec2) -> ToolInput {
     ToolInput {
         mouse: Some(mouse),
@@ -89,10 +97,13 @@ fn a_click_elsewhere_asks_about_one_pixel_and_reads_the_answer() {
     assert_eq!(tools.rect_to_send(), None, "sent once");
     tools.receive(None);
     assert!(tools.events.is_empty(), "still waiting");
-    tools.receive(Some(PickAnswer {
-        middle: Some(1),
-        ..PickAnswer::default()
-    }));
+    tools.receive(answer(
+        &tools,
+        PickAnswer {
+            middle: Some(1),
+            ..PickAnswer::default()
+        },
+    ));
     assert_eq!(
         tools.events,
         [ViewportEvent::Click {
@@ -109,10 +120,13 @@ fn a_pick_number_that_was_never_handed_out_finds_nothing() {
     let mut tools = Tools::default();
     click(&mut tools, Vec2::new(10.0, 10.0), &area, false);
     tools.rect_to_send();
-    tools.receive(Some(PickAnswer {
-        middle: Some(99),
-        ..PickAnswer::default()
-    }));
+    tools.receive(answer(
+        &tools,
+        PickAnswer {
+            middle: Some(99),
+            ..PickAnswer::default()
+        },
+    ));
     assert_eq!(
         tools.events,
         [ViewportEvent::Click {
@@ -146,7 +160,7 @@ fn a_second_pick_waits_for_the_first() {
     assert!(tools.rect_to_send().is_some());
     click(&mut tools, Vec2::new(20.0, 20.0), &area, false);
     assert_eq!(tools.rect_to_send(), None, "the first is in flight");
-    tools.receive(Some(PickAnswer::default()));
+    tools.receive(answer(&tools, PickAnswer::default()));
     assert_eq!(
         tools.rect_to_send(),
         Some([20, 20, 1, 1]),
@@ -209,10 +223,13 @@ fn a_box_asks_about_its_rectangle_and_adds_lamps_inside_it() {
         [200, 200],
         "in pixels, at 2 pixels a point"
     );
-    tools.receive(Some(PickAnswer {
-        found: vec![1],
-        ..PickAnswer::default()
-    }));
+    tools.receive(answer(
+        &tools,
+        PickAnswer {
+            found: vec![1],
+            ..PickAnswer::default()
+        },
+    ));
     let [ViewportEvent::Box { hits, mode }] = tools.events.as_slice() else {
         panic!("{:?}", tools.events)
     };
@@ -299,4 +316,64 @@ fn a_drop_in_a_flat_view_falls_back_to_the_point_under_the_mouse() {
         panic!("a drop was asked about")
     };
     assert!(fallback.distance(goal) < 1e-3, "{fallback}");
+}
+
+#[test]
+fn an_answer_to_an_older_question_is_not_taken_for_this_one() {
+    let id = EntityId::random();
+    let area = AreaView {
+        pickable: vec![id],
+        ..AreaView::default()
+    };
+    let mut tools = Tools::default();
+    click(&mut tools, Vec2::new(10.0, 10.0), &area, false);
+    tools.rect_to_send();
+    // The GPU answers a question given up on earlier (another place).
+    tools.receive(Some(PickAnswer {
+        rect: [500, 500, 1, 1],
+        middle: Some(1),
+        ..PickAnswer::default()
+    }));
+    assert!(tools.events.is_empty(), "still waiting for its own");
+    tools.receive(answer(&tools, PickAnswer::default()));
+    assert_eq!(tools.events.len(), 1);
+}
+
+#[test]
+fn a_waiting_pick_takes_the_pick_numbers_of_the_frame_it_is_sent_in() {
+    let (old, new) = (EntityId::random(), EntityId::random());
+    let area = AreaView {
+        pickable: vec![old],
+        ..AreaView::default()
+    };
+    let mut tools = Tools::default();
+    click(&mut tools, Vec2::new(10.0, 10.0), &area, false);
+    // Something was added meanwhile: number 1 is another entity now.
+    assert!(tools.send_with(&[new]).is_some());
+    tools.receive(answer(
+        &tools,
+        PickAnswer {
+            middle: Some(1),
+            ..PickAnswer::default()
+        },
+    ));
+    assert_eq!(
+        tools.events,
+        [ViewportEvent::Click {
+            hit: Some(new),
+            mode: PickMode::Replace
+        }]
+    );
+}
+
+#[test]
+fn a_click_on_the_last_pixel_never_asks_past_the_image() {
+    // At 1.25 points a pixel, a 799.6-point-wide view is 1000 pixels: a
+    // click at its very edge must ask about pixel 999, not 1000.
+    let size = Vec2::new(799.6, 600.0);
+    assert_eq!(
+        pixel_at(Vec2::new(799.5, 10.0), size, 1.25),
+        Vec2::new(999.0, 12.0)
+    );
+    assert_eq!(pixel_at(Vec2::new(-3.0, -3.0), size, 1.25), Vec2::ZERO);
 }
