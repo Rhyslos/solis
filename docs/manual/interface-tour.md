@@ -25,6 +25,7 @@ When finding your way around, or making the layout suit your screen.
 | Code | Library | Game code in Lust, Rust or Lua (Phase 4). |
 | Console | Problems | Messages from the editor and the engine, and a command line. See [The Console](console.md). |
 | Problems | Console | Mistakes found in the area, such as a missing model; a number on the tab says how many. See [Problems](problems.md). |
+| Profiler | Console | Where each frame's time goes: game code, the world, drawing, the editor, and the graphics card. See [The Profiler](profiler.md). |
 
 **Rearranging panels ([docking](concepts.md#the-window)):**
 1. Drag a panel by its tab.
@@ -37,7 +38,7 @@ Your layout is remembered next time. If the saved layout is ever damaged (a cras
 ## Settings
 | Setting | What it does |
 |---|---|
-| Window > Layouts | **Default:** Library and Console side by side under the viewport. **Wide screen:** Library in a column on the left. **Small screen:** Library, Code, Console and Problems as tabs in one space. **Reset layout** goes back to Default. |
+| Window > Layouts | **Default:** Library and Console side by side under the viewport. **Wide screen:** Library in a column on the left. **Small screen:** Library, Code, Console, Problems and Profiler as tabs in one space. **Reset layout** goes back to Default. |
 | Window > Accent colour | Petrol blue (the standard), red, green or plum. Remembered next time. |
 | View | Switches the viewport's corner controls on and off (also in the viewport's ≡ menu). |
 

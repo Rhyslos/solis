@@ -1101,6 +1101,7 @@ pub fn run(info: AppInfo, imports: Vec<PathBuf>) -> Result<(), String> {
             .with_inner_size(FIRST_SIZE)
             .with_min_inner_size(MIN_SIZE),
         renderer: eframe::Renderer::Wgpu,
+        wgpu_options: gpu_options(),
         ..Default::default()
     };
     let outcome = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
@@ -1113,6 +1114,24 @@ pub fn run(info: AppInfo, imports: Vec<PathBuf>) -> Result<(), String> {
     match outcome {
         Ok(result) => result.map_err(|err| err.to_string()),
         Err(payload) => Err(explain_panic(payload.as_ref())),
+    }
+}
+
+/// The GPU as egui-wgpu sets it up, but asking for timestamps too when the
+/// card has them, for the Profiler's GPU times.
+fn gpu_options() -> eframe::egui_wgpu::WgpuConfiguration {
+    use eframe::egui_wgpu::{WgpuConfiguration, WgpuSetup, WgpuSetupCreateNew};
+    let mut setup = WgpuSetupCreateNew::without_display_handle();
+    let usual = std::sync::Arc::clone(&setup.device_descriptor);
+    setup.device_descriptor = std::sync::Arc::new(move |adapter| {
+        let mut descriptor = usual(adapter);
+        descriptor.required_features |=
+            adapter.features() & eframe::wgpu::Features::TIMESTAMP_QUERY;
+        descriptor
+    });
+    WgpuConfiguration {
+        wgpu_setup: WgpuSetup::CreateNew(setup),
+        ..WgpuConfiguration::default()
     }
 }
 

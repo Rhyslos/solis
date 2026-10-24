@@ -29,6 +29,7 @@ mod panels;
 pub mod picking;
 pub mod play;
 pub mod problems;
+pub mod profiler;
 mod properties;
 pub mod screen;
 #[cfg(test)]
@@ -55,8 +56,11 @@ pub use panel::Panel;
 pub use play::PlayState;
 pub use transforming::Snapping;
 pub use viewport::{
-    GAME_IMAGE, MAX_IMAGES, NoRenderer, Overlays, Tool, VIEWPORT_IMAGE, VIEWS, ViewLayout,
-    ViewSettings, Viewport, ViewportRenderer, ViewportView, Views,
+    DrawReport, GAME_IMAGE, GpuSplit, MAX_IMAGES, NoRenderer, Overlays, Tool, VIEWPORT_IMAGE,
+    VIEWS, ViewLayout, ViewSettings, Viewport, ViewportRenderer, ViewportView, Views,
 };
 pub use viewport_tools::{Outline, PickAnswer};
 pub use workbench::{AppInfo, Workbench, WorkbenchAction};
+
+#[cfg(test)]
+mod scale_levels_tests;

@@ -74,7 +74,11 @@ impl Preset {
                     VIEWPORT_HEIGHT,
                     vec![Panel::Library, Panel::Code],
                 );
-                tree.split_right(bottom, LIBRARY_WIDTH, vec![Panel::Console, Panel::Problems]);
+                tree.split_right(
+                    bottom,
+                    LIBRARY_WIDTH,
+                    vec![Panel::Console, Panel::Problems, Panel::Profiler],
+                );
             }
             Self::WideScreen => {
                 let [_, view] = tree.split_left(
@@ -82,13 +86,23 @@ impl Preset {
                     LIBRARY_COLUMN_WIDTH,
                     vec![Panel::Library, Panel::Code],
                 );
-                tree.split_below(view, VIEWPORT_HEIGHT, vec![Panel::Console, Panel::Problems]);
+                tree.split_below(
+                    view,
+                    VIEWPORT_HEIGHT,
+                    vec![Panel::Console, Panel::Problems, Panel::Profiler],
+                );
             }
             Self::SmallScreen => {
                 tree.split_below(
                     main_area,
                     VIEWPORT_HEIGHT,
-                    vec![Panel::Library, Panel::Code, Panel::Console, Panel::Problems],
+                    vec![
+                        Panel::Library,
+                        Panel::Code,
+                        Panel::Console,
+                        Panel::Problems,
+                        Panel::Profiler,
+                    ],
                 );
             }
         }
@@ -253,7 +267,7 @@ mod tests {
         );
         assert_eq!(
             tab_group_of(&dock, Panel::Console),
-            [Panel::Console, Panel::Problems]
+            [Panel::Console, Panel::Problems, Panel::Profiler]
         );
         assert_eq!(
             tab_group_of(&dock, Panel::Area),
@@ -267,7 +281,13 @@ mod tests {
         let dock = Preset::SmallScreen.layout();
         assert_eq!(
             tab_group_of(&dock, Panel::Library),
-            [Panel::Library, Panel::Code, Panel::Console, Panel::Problems]
+            [
+                Panel::Library,
+                Panel::Code,
+                Panel::Console,
+                Panel::Problems,
+                Panel::Profiler
+            ]
         );
     }
 
@@ -280,16 +300,17 @@ mod tests {
         );
         assert_eq!(
             tab_group_of(&dock, Panel::Console),
-            [Panel::Console, Panel::Problems]
+            [Panel::Console, Panel::Problems, Panel::Profiler]
         );
         assert_ne!(text(&dock), text(&Preset::Default.layout()));
     }
 
     #[test]
     fn an_old_layout_gets_its_missing_panels_back_and_keeps_the_rest() {
-        // A wide-screen layout saved before Problems and Code existed.
+        // A wide-screen layout saved before Problems, Code and the
+        // Profiler existed.
         let mut old = Preset::WideScreen.layout();
-        for panel in [Panel::Problems, Panel::Code] {
+        for panel in [Panel::Problems, Panel::Code, Panel::Profiler] {
             let path = old.find_tab(&panel).unwrap();
             old.remove_tab(path);
         }
@@ -304,7 +325,7 @@ mod tests {
     #[test]
     fn a_missing_panel_goes_beside_the_viewport_when_its_group_is_gone() {
         let mut old = Preset::Default.layout();
-        for panel in [Panel::Console, Panel::Problems] {
+        for panel in [Panel::Console, Panel::Problems, Panel::Profiler] {
             let path = old.find_tab(&panel).unwrap();
             old.remove_tab(path);
         }

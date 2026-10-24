@@ -15,6 +15,7 @@ mod lighting;
 mod pick;
 mod readback;
 mod renderer;
+mod timing;
 
 pub use environment::{Environment, Fog, Sky, Tonemap};
 pub use frame::{
@@ -33,6 +34,7 @@ pub use renderer::{
     AXIS_X_COLOR, AXIS_Y_COLOR, COLOR_FORMAT, DEPTH_FORMAT, HDR_FORMAT, LineVertex, SHADER_SOURCE,
     ViewportRenderer, ViewportTarget, best_sample_count, ground_axes,
 };
+pub use timing::{FrameStats, GpuTimes};
 
 #[cfg(test)]
 mod shader_tests {

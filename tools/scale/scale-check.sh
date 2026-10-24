@@ -10,8 +10,9 @@
 #   tools/scale/scale-check.sh
 #
 # Today it times the editor's frames (with big areas, several views, play
-# mode and game code), a Lust edit reaching a running game, and one
-# viewport frame at 1920x1080. From Phase 5 (Scale) it grows into the scale target in DESIGN.md §2
+# mode and game code), the scale levels (decision 0030: target, stress and
+# the ceiling, the CPU's share), a Lust edit reaching a running game, and
+# one viewport frame at 1920x1080. From Phase 5 (Scale) it grows into the scale target in DESIGN.md §2
 # (2,000 units and 20,000 projectiles at 60 frames a second). The viewport
 # time depends on the graphics card, so it is reported, not judged.
 set -euo pipefail

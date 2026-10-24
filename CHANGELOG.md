@@ -16,6 +16,7 @@ What changed in each version, for people using Solis. Newest first.
 
 ### Added
 
+- **The Profiler (Phase 5):** a new panel beside the Console shows where each frame's time goes: game code, the game's world, preparing and handing over what to draw, the rest of the editor, and the graphics card's own passes (on cards that can time them), with a graph of the last few seconds and how much was drawn.
 - **A first game (Phase 4):** **Help > Make the sample game…** makes the turret sample as a new project: a Lust turret shoots at a drone whose health (Lust), armour (Rust) and sparks (Lua) react to each other through events. The manual's new page, Your first game, walks through it.
 - **Lua components (Phase 4):** a `.lua` file in the assets makes components with `component("Name", { { "speed", "float", 2 } })`, the way Lua code usually makes classes. They show in Properties, run in play mode with the same engine methods (`solis.moveTo`), send and handle the same events as Lust's (`solis.send`, `on_Hit`), and take new code while the game runs. Mistakes show in Problems with their file and line.
 - **Changing code while the game runs (Phase 4):** saving Lust while playing swaps the new code into the running game in about a third of a second. Every component keeps its values by name; fields whose kind changed, and new fields, start over, and the Console says which. New components start, removed ones stop, and a mistake leaves the last working code running.

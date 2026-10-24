@@ -48,9 +48,14 @@ fn gpu() -> Option<Gpu> {
         pollster::block_on(instance.request_adapter(&wgpu::RequestAdapterOptions::default()))
             .ok()
             .and_then(|adapter| {
+                // Timestamps too, when the card has them, as the editor
+                // asks (for the Profiler).
+                let descriptor = wgpu::DeviceDescriptor {
+                    required_features: adapter.features() & wgpu::Features::TIMESTAMP_QUERY,
+                    ..wgpu::DeviceDescriptor::default()
+                };
                 let (device, queue) =
-                    pollster::block_on(adapter.request_device(&wgpu::DeviceDescriptor::default()))
-                        .ok()?;
+                    pollster::block_on(adapter.request_device(&descriptor)).ok()?;
                 Some(Gpu {
                     adapter,
                     device,
@@ -1685,4 +1690,73 @@ fn the_ground_axes_stay_thin_lines_close_up() {
         green < (size * size / 20) as usize,
         "{green} green pixels: the axis is a line, not a wedge"
     );
+}
+
+#[test]
+fn a_frame_says_what_it_drew_and_whether_its_passes_are_timed() {
+    let Some(gpu) = gpu() else {
+        return;
+    };
+    let renderer = ViewportRenderer::new(&gpu.device, best_sample_count(&gpu.adapter));
+    let mut target = renderer.create_target(&gpu.device, [64, 64]);
+    let model = sample();
+    let uploaded = renderer.upload_model(&gpu.device, &gpu.queue, &model);
+    let eye = Vec3::new(0.0, -6.0, 1.1);
+    let copies: Vec<Placement<'_>> = (0..3)
+        .map(|i| Placement {
+            model: &uploaded,
+            node: None,
+            transform: Mat4::from_translation(Vec3::new(i as f32 * 3.0, 0.0, 0.0)),
+            pick: 0,
+        })
+        .collect();
+    let params = FrameParams {
+        view_projection: looking_north(eye),
+        camera_position: eye,
+        focus: Vec3::ZERO,
+        sky_top: srgb(SKY_TOP),
+        sky_horizon: srgb(SKY_HORIZON),
+        ground: srgb(GROUND),
+        shading: Shading::default(),
+        size_px: [64, 64],
+        sun: Sun::default(),
+        environment: unmapped(),
+        editor_lines: false,
+        grid_plane: GridPlane::Ground,
+    };
+    assert_eq!(target.can_time(), None, "not known before a frame");
+    let one = renderer.render(
+        &gpu.device,
+        &gpu.queue,
+        &mut target,
+        &params,
+        &copies[..1],
+        &[],
+    );
+    assert_eq!(one.triangles, model.triangles() as u64);
+    let stats = renderer.render(&gpu.device, &gpu.queue, &mut target, &params, &copies, &[]);
+    assert_eq!(stats.instances, 3 * one.instances);
+    assert_eq!(stats.triangles, 3 * one.triangles);
+    assert_eq!(stats.batches, one.batches, "copies share their draw calls");
+    let can_time = target.can_time().expect("known after a frame");
+    println!("This card times its passes: {can_time}");
+    assert_eq!(
+        can_time,
+        gpu.device
+            .features()
+            .contains(wgpu::Features::TIMESTAMP_QUERY)
+    );
+    // Times come back a frame or two later, never waited for; on a card
+    // without timestamps, never.
+    let _ = read_pixels(&gpu.device, &gpu.queue, &target);
+    let mut times = None;
+    for _ in 0..10 {
+        renderer.render(&gpu.device, &gpu.queue, &mut target, &params, &copies, &[]);
+        let _ = read_pixels(&gpu.device, &gpu.queue, &target);
+        times = target.gpu_times(&gpu.device);
+    }
+    assert_eq!(times.is_some(), can_time);
+    if let Some(t) = times {
+        assert!(t.total() >= 0.0 && t.total() < 1000.0, "{t:?}");
+    }
 }

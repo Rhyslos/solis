@@ -26,11 +26,13 @@ pub enum Panel {
     Console,
     /// Mistakes found in the game's code and areas.
     Problems,
+    /// Where each frame's time goes (Phase 5).
+    Profiler,
 }
 
 impl Panel {
     /// Every panel, in the order the Window menu lists them.
-    pub const ALL: [Self; 9] = [
+    pub const ALL: [Self; 10] = [
         Self::Viewport,
         Self::Game,
         Self::Area,
@@ -40,6 +42,7 @@ impl Panel {
         Self::Code,
         Self::Console,
         Self::Problems,
+        Self::Profiler,
     ];
 
     /// The name on the panel's tab.
@@ -54,6 +57,7 @@ impl Panel {
             Self::Code => "Code",
             Self::Console => "Console",
             Self::Problems => "Problems",
+            Self::Profiler => "Profiler",
         }
     }
 
@@ -69,6 +73,7 @@ impl Panel {
             Self::Code => Icon::Code,
             Self::Console => Icon::Console,
             Self::Problems => Icon::Problems,
+            Self::Profiler => Icon::Profiler,
         }
     }
 }

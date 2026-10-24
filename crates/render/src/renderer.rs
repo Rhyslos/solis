@@ -13,6 +13,7 @@ use crate::lighting::{
     Light, LightsUniform, MARKER_VERTICES, SHADOW_FORMAT, SHADOW_MAP_SIZE, light_markers,
     sun_view_projection,
 };
+use crate::timing::FrameStats;
 use bytemuck::{Pod, Zeroable};
 use glam::Vec3;
 use wgpu::util::DeviceExt;
@@ -73,6 +74,9 @@ pub struct ViewportTarget {
     /// This viewport's own frame data, lamps, shadow map and lamp
     /// markers, so several viewports never overwrite each other's.
     frame: FrameResources,
+    /// Times the GPU's passes, once the first frame has asked (`None`
+    /// inside: the card can't).
+    timer: Option<Option<crate::timing::GpuTimer>>,
 }
 
 /// The most lamps shown with a marker; more are drawn without one.
@@ -221,6 +225,19 @@ impl FrameResources {
 }
 
 impl ViewportTarget {
+    /// How long the GPU took over this viewport's newest frame whose times
+    /// have come back, a frame or two after it was drawn; `None` before
+    /// any, or on a card without timestamps. Never waits.
+    pub fn gpu_times(&self, device: &wgpu::Device) -> Option<crate::timing::GpuTimes> {
+        self.timer.as_ref()?.as_ref()?.poll(device)
+    }
+
+    /// Whether this card can time its passes (known after the first
+    /// frame).
+    pub fn can_time(&self) -> Option<bool> {
+        self.timer.as_ref().map(Option::is_some)
+    }
+
     /// Size in pixels.
     pub fn size(&self) -> [u32; 2] {
         self.size
@@ -690,6 +707,7 @@ impl ViewportRenderer {
             resolved_view,
             depth_view,
             pick: None,
+            timer: None,
         }
     }
 
@@ -721,8 +739,8 @@ impl ViewportRenderer {
     }
 
     /// Draws one frame into `target`, with the models `placed` lit by the
-    /// sun in `params` and by `lights`, and submits it. Never waits for the
-    /// GPU to finish.
+    /// sun in `params` and by `lights`, and submits it, saying what it
+    /// drew. Never waits for the GPU to finish.
     pub fn render(
         &self,
         device: &wgpu::Device,
@@ -731,7 +749,10 @@ impl ViewportRenderer {
         params: &FrameParams,
         placed: &[Placement<'_>],
         lights: &[Light],
-    ) {
+    ) -> FrameStats {
+        if target.timer.is_none() {
+            target.timer = Some(crate::timing::GpuTimer::new(device, queue));
+        }
         let (lamps, lamp_count) = LightsUniform::new(lights, params.camera_position);
         let shadow_box = crate::instances::world_bounds(placed);
         let (raw, mut batches, batch_models) = crate::instances::gather(placed);
@@ -745,6 +766,18 @@ impl ViewportRenderer {
         }
         let target = &*target;
         let model_of = |b: &crate::instances::Batch| placed[batch_models[b.model]].model;
+        let stats = FrameStats {
+            instances: raw.len() as u32,
+            batches: batches.len() as u32,
+            triangles: batches
+                .iter()
+                .map(|b| {
+                    u64::from(model_of(b).triangles_of(b.mesh))
+                        * u64::from(b.instances.end - b.instances.start)
+                })
+                .sum(),
+        };
+        let timer = target.timer.as_ref().and_then(Option::as_ref);
         let shadows_drawn = params.sun.shadows
             && params.shading.look != crate::frame::Look::Unlit
             && shadow_box.is_some();
@@ -774,6 +807,10 @@ impl ViewportRenderer {
         let mut encoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
             label: Some("viewport frame"),
         });
+        if let Some(timer) = timer {
+            timer.begin(shadows_drawn);
+        }
+        let stamps = |pass| timer.and_then(|t| t.writes(pass));
         if shadows_drawn {
             let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
                 label: Some("sun shadow map"),
@@ -786,7 +823,7 @@ impl ViewportRenderer {
                     }),
                     stencil_ops: None,
                 }),
-                timestamp_writes: None,
+                timestamp_writes: stamps(crate::timing::TimedPass::Shadows),
                 occlusion_query_set: None,
                 multiview_mask: None,
             });
@@ -829,7 +866,7 @@ impl ViewportRenderer {
                     }),
                     stencil_ops: None,
                 }),
-                timestamp_writes: None,
+                timestamp_writes: stamps(crate::timing::TimedPass::Models),
                 occlusion_query_set: None,
                 multiview_mask: None,
             });
@@ -881,7 +918,7 @@ impl ViewportRenderer {
                     },
                 })],
                 depth_stencil_attachment: None,
-                timestamp_writes: None,
+                timestamp_writes: stamps(crate::timing::TimedPass::LastPass),
                 occlusion_query_set: None,
                 multiview_mask: None,
             });
@@ -890,7 +927,14 @@ impl ViewportRenderer {
             pass.set_bind_group(2, &target.post_bind_group, &[]);
             pass.draw(0..3, 0..1);
         }
+        if let Some(timer) = timer {
+            timer.finish(&mut encoder);
+        }
         queue.submit([encoder.finish()]);
+        if let Some(timer) = timer {
+            timer.submitted();
+        }
+        stats
     }
 }
 
