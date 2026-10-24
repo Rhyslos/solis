@@ -163,3 +163,43 @@ fn a_big_area_builds_and_steps() {
         Vec3::new(100.0, 0.0, 0.0)
     );
 }
+
+#[test]
+fn an_update_takes_in_changed_entities_and_keeps_the_rest() {
+    let mut area = Area::new();
+    let boat = area.spawn(EntityData::new("Boat").with(&at(10.0, 0.0, 0.0)));
+    let mut mast = EntityData::new("Mast").with(&at(0.0, 0.0, 5.0));
+    mast.parent = Some(boat);
+    let mast = area.spawn(mast);
+    let mut world = World::from_area(&area);
+    world.step(0.5);
+    let clock = world.clock();
+    // The boat moves and gets a light: its child follows.
+    let mut moved = area.get(boat).unwrap().clone().with(&at(20.0, 0.0, 0.0));
+    moved.set(&Light::point());
+    area.insert(boat, moved);
+    world.update(&area, [boat]);
+    assert_eq!(world.clock(), clock);
+    assert_eq!(world.len(), 2);
+    assert!(world.get::<Light>(boat).is_some());
+    let point = |w: &World, id| w.global(id).unwrap().transform_point3(Vec3::ZERO);
+    assert_eq!(point(&world, mast), Vec3::new(20.0, 0.0, 5.0));
+    assert_eq!(world.placed::<Light>().len(), 1);
+    // A new parent, or an entity the world doesn't have, builds it all
+    // again, and the answer is the same as building from scratch.
+    let mut freed = area.get(mast).unwrap().clone();
+    freed.parent = None;
+    area.insert(mast, freed);
+    let extra = area.spawn(EntityData::new("Crate").with(&at(1.0, 1.0, 1.0)));
+    world.update(&area, [mast, extra]);
+    let fresh = World::from_area(&area);
+    for id in [boat, mast, extra] {
+        assert_eq!(world.global(id), fresh.global(id));
+    }
+    assert_eq!(world.len(), 3);
+    // An entity that's gone does the same.
+    let mut smaller = area.clone();
+    let _ = smaller.remove(extra);
+    world.update(&smaller, [extra]);
+    assert_eq!(world.len(), 2);
+}

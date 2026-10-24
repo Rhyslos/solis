@@ -30,11 +30,76 @@ pub const MAX_STEP: f32 = 0.1;
 /// Furthest ahead the grid's centre is placed, in metres.
 const MAX_FOCUS_DISTANCE: f32 = 1_000.0;
 
+/// What a view shows: the world in perspective, or flat (orthographic)
+/// from one side, where sizes don't shrink with distance, for lining
+/// things up.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum ViewKind {
+    /// In perspective, flown with the right mouse button.
+    #[default]
+    Perspective,
+    /// Flat, looking straight down: X right, Y up the screen.
+    Top,
+    /// Flat, looking north (along +Y): X right, Z up.
+    Front,
+    /// Flat, looking west (along -X) from the right: Y right, Z up.
+    Right,
+}
+
+impl ViewKind {
+    /// Every kind, in the menu's order.
+    pub const ALL: [Self; 4] = [Self::Perspective, Self::Top, Self::Front, Self::Right];
+
+    /// Its name in the viewport's menu.
+    pub fn name(self) -> &'static str {
+        match self {
+            Self::Perspective => "Perspective",
+            Self::Top => "Top",
+            Self::Front => "Front",
+            Self::Right => "Right",
+        }
+    }
+
+    /// Whether it's a flat view.
+    pub fn is_flat(self) -> bool {
+        self != Self::Perspective
+    }
+
+    /// A flat view's forward, right and up.
+    fn axes(self) -> Option<(Vec3, Vec3, Vec3)> {
+        match self {
+            Self::Perspective => None,
+            Self::Top => Some((Vec3::NEG_Z, Vec3::X, Vec3::Y)),
+            Self::Front => Some((Vec3::Y, Vec3::X, Vec3::Z)),
+            Self::Right => Some((Vec3::NEG_X, Vec3::Y, Vec3::Z)),
+        }
+    }
+
+    /// The point of `p` on the plane a flat view looks at (through the
+    /// origin, across its forward); `p` itself in perspective.
+    pub fn onto_plane(self, p: Vec3) -> Vec3 {
+        match self {
+            Self::Perspective => p,
+            Self::Top => Vec3::new(p.x, p.y, 0.0),
+            Self::Front => Vec3::new(p.x, 0.0, p.z),
+            Self::Right => Vec3::new(0.0, p.y, p.z),
+        }
+    }
+}
+
+/// How far in front of and behind its centre a flat view sees, in metres.
+pub const FLAT_DEPTH: f32 = 2_500.0;
+/// The least and most a flat view can show top to bottom, in metres.
+pub const FLAT_HEIGHT_RANGE: std::ops::RangeInclusive<f32> = 0.05..=100_000.0;
+/// How much one wheel notch zooms a flat view (less than 1: in).
+pub const FLAT_ZOOM_PER_NOTCH: f32 = 0.85;
+
 /// The viewport's camera. Z is up.
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
 #[serde(default)]
 pub struct Camera {
-    /// Where the camera is, in metres.
+    /// Where the camera is, in metres; for a flat view, the middle of
+    /// what it shows.
     pub position: Vec3,
     /// Which way it faces across the ground, in radians: 0 looks along +Y,
     /// and the angle grows turning right (towards +X), like a compass.
@@ -45,6 +110,10 @@ pub struct Camera {
     pub fov_y: f32,
     /// The speed step, 1 to 8 (see [`SPEEDS`]).
     pub speed: u8,
+    /// Perspective, or a flat view.
+    pub kind: ViewKind,
+    /// How much a flat view shows, top to bottom, in metres.
+    pub flat_height: f32,
 }
 
 impl Default for Camera {
@@ -56,6 +125,8 @@ impl Default for Camera {
             tilt: 0.0,
             fov_y: 50f32.to_radians(),
             speed: DEFAULT_SPEED,
+            kind: ViewKind::Perspective,
+            flat_height: 20.0,
         };
         camera.look_at(Vec3::new(0.0, 0.0, 1.0));
         camera
@@ -77,8 +148,14 @@ pub struct FlyInput {
     pub speed_notches: i32,
     /// Wheel notches otherwise: up is positive, and moves forward.
     pub dolly_notches: f32,
-    /// Middle-mouse drag, in points (x right, y down).
+    /// Middle-mouse drag (or, in a flat view, right or middle), in points
+    /// (x right, y down).
     pub pan: Vec2,
+    /// Where the mouse is, in points from the view's top-left corner (a
+    /// flat view zooms towards it).
+    pub mouse: Option<Vec2>,
+    /// The viewport's width in points.
+    pub view_width: f32,
     /// Seconds since the last frame.
     pub dt: f32,
     /// The viewport's height in points, so a drag moves the world with the
@@ -119,12 +196,70 @@ impl Camera {
         } else {
             default.fov_y
         };
+        let flat_height = if FLAT_HEIGHT_RANGE.contains(&self.flat_height) {
+            self.flat_height
+        } else {
+            default.flat_height
+        };
         Self {
             position,
             heading,
             tilt,
             fov_y,
             speed: self.speed.clamp(1, SPEEDS.len() as u8),
+            kind: self.kind,
+            flat_height,
+        }
+    }
+
+    /// The same camera made a flat view of `kind` (or perspective again),
+    /// looking at the same place. A flat view starts centred where the
+    /// camera looked, showing about as much as the camera did there.
+    #[must_use]
+    pub fn as_kind(self, kind: ViewKind) -> Self {
+        if kind == self.kind {
+            return self;
+        }
+        let mut camera = self;
+        if kind.is_flat() && !self.kind.is_flat() {
+            let focus = self.focus();
+            let distance = (focus - self.position).length().max(1.0);
+            camera.flat_height = (2.0 * distance * (self.fov_y * 0.5).tan())
+                .clamp(*FLAT_HEIGHT_RANGE.start(), *FLAT_HEIGHT_RANGE.end());
+            camera.position = focus;
+        }
+        if !kind.is_flat() && self.kind.is_flat() {
+            // Back to perspective: from above and in front of the middle.
+            let centre = self.position;
+            camera.position = centre + Vec3::new(0.0, -1.0, 0.6) * self.flat_height;
+            camera.kind = kind;
+            camera.look_at(centre);
+            return camera;
+        }
+        camera.kind = kind;
+        camera
+    }
+
+    /// Where someone looking at the view would stand: the camera itself in
+    /// perspective, and for a flat view a point in front of its middle, as
+    /// far away as the view is tall. Lights are chosen and shaded from
+    /// here, and things added "at the camera" go here.
+    pub fn viewpoint(&self) -> Vec3 {
+        if self.kind.is_flat() {
+            self.position - self.forward() * self.flat_height.max(1.0)
+        } else {
+            self.position
+        }
+    }
+
+    /// Where the view is seen from: the camera itself in perspective, and
+    /// for a flat view a point far behind its middle, so everything near
+    /// it is in front.
+    pub fn eye(&self) -> Vec3 {
+        if self.kind.is_flat() {
+            self.position - self.forward() * FLAT_DEPTH
+        } else {
+            self.position
         }
     }
 
@@ -135,6 +270,9 @@ impl Camera {
 
     /// The direction the camera looks.
     pub fn forward(&self) -> Vec3 {
+        if let Some((forward, _, _)) = self.kind.axes() {
+            return forward;
+        }
         let (sin_h, cos_h) = self.heading.sin_cos();
         let (sin_t, cos_t) = self.tilt.sin_cos();
         Vec3::new(sin_h * cos_t, cos_h * cos_t, sin_t)
@@ -142,18 +280,31 @@ impl Camera {
 
     /// The camera's right, level with the ground.
     pub fn right(&self) -> Vec3 {
+        if let Some((_, right, _)) = self.kind.axes() {
+            return right;
+        }
         let (sin_h, cos_h) = self.heading.sin_cos();
         Vec3::new(cos_h, -sin_h, 0.0)
     }
 
     /// The camera's up, square to forward and right.
     pub fn up(&self) -> Vec3 {
+        if let Some((_, _, up)) = self.kind.axes() {
+            return up;
+        }
         self.right().cross(self.forward())
     }
 
     /// Turns the camera to face `point` (ignored if it is where the camera
     /// is).
     pub fn look_at(&mut self, point: Vec3) {
+        if self.kind.is_flat() {
+            // A flat view always faces the same way: it centres instead.
+            if point.is_finite() {
+                self.position = point;
+            }
+            return;
+        }
         let to = point - self.position;
         if to.length_squared() < 1e-12 || !to.is_finite() {
             return;
@@ -175,6 +326,12 @@ impl Camera {
         // A box so big its size overflows (a damaged model) would make the
         // camera's position meaningless.
         if !center.is_finite() || !radius.is_finite() {
+            return;
+        }
+        if self.kind.is_flat() {
+            self.position = center;
+            self.flat_height =
+                (radius * 2.2).clamp(*FLAT_HEIGHT_RANGE.start(), *FLAT_HEIGHT_RANGE.end());
             return;
         }
         if self.tilt > -0.15 {
@@ -200,6 +357,10 @@ impl Camera {
 
     /// Moves and turns the camera for one frame of input.
     pub fn fly(&mut self, input: &FlyInput) {
+        if self.kind.is_flat() {
+            self.slide_and_zoom(input);
+            return;
+        }
         let dt = if input.dt.is_finite() {
             input.dt.clamp(0.0, MAX_STEP)
         } else {
@@ -244,6 +405,35 @@ impl Camera {
         }
     }
 
+    /// A flat view's movement: a drag (right or middle button) slides the
+    /// view with the mouse, and the wheel zooms towards the mouse, as in
+    /// Unreal's flat views.
+    fn slide_and_zoom(&mut self, input: &FlyInput) {
+        let height = input.view_height;
+        if !(height.is_finite() && height > 0.0) {
+            return;
+        }
+        let metres_per_point = self.flat_height / height;
+        if input.pan.is_finite() && input.pan != Vec2::ZERO {
+            self.position -=
+                (self.right() * input.pan.x - self.up() * input.pan.y) * metres_per_point;
+        }
+        if input.dolly_notches.is_finite() && input.dolly_notches != 0.0 {
+            let factor = FLAT_ZOOM_PER_NOTCH.powf(input.dolly_notches.clamp(-20.0, 20.0));
+            let new_height = (self.flat_height * factor)
+                .clamp(*FLAT_HEIGHT_RANGE.start(), *FLAT_HEIGHT_RANGE.end());
+            // The point under the mouse stays under it.
+            if let Some(mouse) = input.mouse.filter(|m| m.is_finite()) {
+                let from_middle =
+                    Vec2::new(mouse.x - input.view_width * 0.5, height * 0.5 - mouse.y);
+                let under = self.right() * from_middle.x + self.up() * from_middle.y;
+                let shrink = 1.0 - new_height / self.flat_height;
+                self.position += under * metres_per_point * shrink;
+            }
+            self.flat_height = new_height;
+        }
+    }
+
     /// World-to-screen transform for an image `aspect` wide per unit high,
     /// with depth reversed: 1 at near, 0 at far. Floating-point depth has
     /// most of its precision near 0, so reversing it spreads precision
@@ -256,6 +446,20 @@ impl Camera {
         } else {
             1.0
         };
+        if self.kind.is_flat() {
+            // Flat (orthographic), depth reversed the same way.
+            let half_height = self.flat_height * 0.5;
+            let near = 0.0;
+            let far = FLAT_DEPTH * 2.0;
+            let range = far - near;
+            let projection = Mat4::from_cols(
+                Vec4::new(1.0 / (half_height * aspect), 0.0, 0.0, 0.0),
+                Vec4::new(0.0, 1.0 / half_height, 0.0, 0.0),
+                Vec4::new(0.0, 0.0, 1.0 / range, 0.0),
+                Vec4::new(0.0, 0.0, far / range, 1.0),
+            );
+            return projection * self.view_matrix();
+        }
         // Right-handed perspective with depth 1 at near and 0 at far.
         let y_scale = 1.0 / (self.fov_y * 0.5).tan();
         let x_scale = y_scale / aspect;
@@ -273,22 +477,21 @@ impl Camera {
     /// up on screen.
     pub fn view_matrix(&self) -> Mat4 {
         let (forward, right, up) = (self.forward(), self.right(), self.up());
+        let eye = self.eye();
         Mat4::from_cols(
             Vec4::new(right.x, up.x, -forward.x, 0.0),
             Vec4::new(right.y, up.y, -forward.y, 0.0),
             Vec4::new(right.z, up.z, -forward.z, 0.0),
-            Vec4::new(
-                -right.dot(self.position),
-                -up.dot(self.position),
-                forward.dot(self.position),
-                1.0,
-            ),
+            Vec4::new(-right.dot(eye), -up.dot(eye), forward.dot(eye), 1.0),
         )
     }
 
     /// The point on the ground the grid is centred on: where the view meets
     /// the ground, or below the camera when it looks level or up.
     pub fn focus(&self) -> Vec3 {
+        if self.kind.is_flat() {
+            return self.kind.onto_plane(self.position);
+        }
         let forward = self.forward();
         let below = Vec3::new(self.position.x, self.position.y, 0.0);
         if self.position.z <= 0.0 || forward.z > -0.01 {
@@ -648,8 +851,12 @@ mod tests {
             tilt: 50.0,
             fov_y: 0.0,
             speed: 0,
+            kind: ViewKind::Top,
+            flat_height: f32::NAN,
         };
         let fixed = broken.sanitized();
+        assert_eq!(fixed.flat_height, Camera::default().flat_height);
+        assert_eq!(fixed.kind, ViewKind::Top);
         assert!(usable(&fixed));
         assert_eq!(fixed.position, Camera::default().position);
         assert_eq!(fixed.tilt, MAX_TILT);
@@ -737,5 +944,129 @@ mod tests {
         let before = camera;
         camera.frame(Vec3::NAN, Vec3::ONE);
         assert_eq!(camera, before, "a broken box changes nothing");
+    }
+
+    fn flat(kind: ViewKind) -> Camera {
+        Camera {
+            position: Vec3::new(2.0, 3.0, 1.0),
+            kind,
+            flat_height: 10.0,
+            ..Camera::default()
+        }
+    }
+
+    #[test]
+    fn flat_views_look_along_an_axis_and_keep_sizes() {
+        for (kind, forward) in [
+            (ViewKind::Top, Vec3::NEG_Z),
+            (ViewKind::Front, Vec3::Y),
+            (ViewKind::Right, Vec3::NEG_X),
+        ] {
+            let camera = flat(kind);
+            assert_eq!(camera.forward(), forward);
+            assert!(
+                close(camera.right().cross(camera.up()), -forward),
+                "{kind:?}"
+            );
+            // The middle of the view is in the middle of the picture,
+            // near or far.
+            let size = Vec2::new(800.0, 600.0);
+            for depth in [-100.0, 0.0, 400.0] {
+                let p = camera.position + forward * depth;
+                let at = camera.project(p, size).unwrap();
+                assert!((at - size * 0.5).length() < 1e-2, "{kind:?} {depth}");
+            }
+            // One metre is the same size on screen at any depth.
+            let near = camera
+                .project(camera.position + camera.right(), size)
+                .unwrap();
+            let far = camera
+                .project(camera.position + camera.right() + forward * 300.0, size)
+                .unwrap();
+            assert!((near - far).length() < 1e-2);
+            assert!(
+                (near.x - size.x * 0.5 - 60.0).abs() < 1e-2,
+                "10 m in 600 points"
+            );
+            assert!((camera.world_per_pixel(Vec3::ZERO, size) - 10.0 / 600.0).abs() < 1e-6);
+            // Every ray points the same way, starting behind what it sees.
+            let ray = camera.ray_through(Vec2::new(100.0, 50.0), size);
+            assert_eq!(ray.direction, forward);
+            assert!((ray.origin - camera.position).dot(forward) < -1000.0);
+            assert!(camera.view_projection(1.3).is_finite());
+            assert_eq!(camera.focus(), kind.onto_plane(camera.position));
+        }
+    }
+
+    #[test]
+    fn a_flat_view_slides_with_the_mouse_and_zooms_towards_it() {
+        let mut camera = flat(ViewKind::Top);
+        let size = Vec2::new(800.0, 600.0);
+        // Dragging right by 60 points (one metre here): the world follows.
+        let under = camera.ray_through(Vec2::new(400.0, 300.0), size).origin;
+        camera.fly(&FlyInput {
+            pan: Vec2::new(60.0, 0.0),
+            view_height: 600.0,
+            view_width: 800.0,
+            dt: 0.016,
+            ..FlyInput::default()
+        });
+        let moved = camera
+            .project(Vec3::new(under.x, under.y, 0.0), size)
+            .unwrap();
+        assert!((moved.x - 460.0).abs() < 1e-2, "{moved:?}");
+        // Zooming in at a corner keeps the point under the mouse there.
+        let mouse = Vec2::new(700.0, 100.0);
+        let ray = camera.ray_through(mouse, size);
+        let point = Vec3::new(ray.origin.x, ray.origin.y, 0.0);
+        camera.fly(&FlyInput {
+            dolly_notches: 3.0,
+            mouse: Some(mouse),
+            view_height: 600.0,
+            view_width: 800.0,
+            dt: 0.016,
+            ..FlyInput::default()
+        });
+        assert!(camera.flat_height < 10.0);
+        let still = camera.project(point, size).unwrap();
+        assert!((still - mouse).length() < 1e-2, "{still:?}");
+        // Zooming never goes past its limits, and bad input is ignored.
+        for notches in [500.0, -500.0, f32::NAN] {
+            camera.fly(&FlyInput {
+                dolly_notches: notches,
+                view_height: 600.0,
+                ..FlyInput::default()
+            });
+            assert!(FLAT_HEIGHT_RANGE.contains(&camera.flat_height));
+        }
+        let before = camera;
+        camera.fly(&FlyInput {
+            pan: Vec2::new(5.0, 5.0),
+            view_height: 0.0,
+            ..FlyInput::default()
+        });
+        assert_eq!(camera, before);
+    }
+
+    #[test]
+    fn switching_kinds_keeps_looking_at_the_same_place() {
+        let camera = Camera::default();
+        let focus = camera.focus();
+        let top = camera.as_kind(ViewKind::Top);
+        assert_eq!(top.position, focus);
+        assert!(top.flat_height > 1.0);
+        let back = top.as_kind(ViewKind::Perspective);
+        assert!(!back.is_flat());
+        assert!((back.focus() - focus).length() < 0.5, "{:?}", back.focus());
+        assert_eq!(top.as_kind(ViewKind::Front).position, top.position);
+        // Framing a box in a flat view centres it and fits it.
+        let mut front = flat(ViewKind::Front);
+        front.frame(Vec3::new(10.0, 10.0, 0.0), Vec3::new(12.0, 12.0, 2.0));
+        assert_eq!(front.position, Vec3::new(11.0, 11.0, 1.0));
+        assert!(front.flat_height > 2.0 && front.flat_height < 10.0);
+        // look_at centres a flat view rather than turning it.
+        front.look_at(Vec3::ONE);
+        assert_eq!(front.position, Vec3::ONE);
+        assert_eq!(front.forward(), Vec3::Y);
     }
 }

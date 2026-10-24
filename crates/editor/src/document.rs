@@ -3,9 +3,13 @@
 //! The area only ever changes through [`Document::edit`], so every change
 //! can be undone ([decision 0022](../../../docs/decisions/0022-undo-as-reversible-edits.md)).
 
-use area::{Area, Edit, EditError, History, MergeKey};
-use reflect::{EntityId, Registry};
-use std::collections::BTreeSet;
+use area::builtin::Model;
+use area::{Area, Edit, EditError, History, MergeKey, Tree};
+use glam::Mat4;
+use reflect::{Component, EntityId, Registry};
+use std::cell::RefCell;
+use std::collections::{BTreeSet, HashMap};
+use std::sync::Arc;
 
 /// What's selected: a set of entities, and the one Properties shows.
 /// Never saved in files (decision 0022).
@@ -73,6 +77,13 @@ impl Selection {
     }
 }
 
+impl area::Weigh for Selection {
+    fn weight(&self) -> usize {
+        // Each ID, and the set's own bookkeeping per entry.
+        self.entities.len() * (std::mem::size_of::<EntityId>() * 2) + 32
+    }
+}
+
 /// The open area, its components' schemas, the selection and the undo
 /// history.
 #[derive(Debug, Clone)]
@@ -92,7 +103,63 @@ pub struct Document {
     /// A number that changes whenever the area does: see
     /// [`Self::revision`].
     revision: u64,
+    /// What changed since last asked: see [`Self::take_changes`].
+    changes: Changes,
+    /// A number that changes whenever what Problems checks does: see
+    /// [`Self::shape`].
+    shape: u64,
+    /// The area's tree, kept until entities are added, deleted or given
+    /// another parent: see [`Self::tree`].
+    tree: RefCell<Option<Arc<Tree>>>,
+    /// Where every entity is in the world, for one revision: see
+    /// [`Self::world_matrices`].
+    world: RefCell<Option<(u64, Placed)>>,
 }
+
+/// Where every entity is in the world, shared: see
+/// [`Document::world_matrices`].
+pub type Placed = Arc<HashMap<EntityId, Mat4>>;
+
+/// What changed in the area since last asked.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct Changes {
+    /// Entities whose name or components changed.
+    pub entities: std::collections::BTreeSet<reflect::EntityId>,
+    /// Whether anything more changed: entities added, deleted or moved to
+    /// another parent, an undo or redo, or a whole new area.
+    pub everything: bool,
+}
+
+impl Changes {
+    /// Notes what `edits` change.
+    fn note(&mut self, edits: &[Edit]) {
+        for edit in edits {
+            match edit {
+                Edit::SetField { entity, .. }
+                | Edit::AddComponent { entity, .. }
+                | Edit::RemoveComponent { entity, .. }
+                | Edit::Rename { entity, .. }
+                | Edit::SetOrigin { entity, .. } => {
+                    self.entities.insert(*entity);
+                }
+                _ => self.everything = true,
+            }
+        }
+        // Past a few hundred, building everything again is as quick.
+        if self.entities.len() > MAX_CHANGED_ENTITIES {
+            self.everything = true;
+            self.entities.clear();
+        }
+    }
+
+    /// Whether nothing changed.
+    pub fn is_empty(&self) -> bool {
+        !self.everything && self.entities.is_empty()
+    }
+}
+
+/// The most changed entities [`Changes`] lists; more count as everything.
+const MAX_CHANGED_ENTITIES: usize = 512;
 
 /// Revision numbers, shared by every document, so no two areas (or two
 /// versions of one) ever have the same one.
@@ -122,6 +189,13 @@ impl Document {
             file: None,
             saved: 0,
             revision: next_revision(),
+            changes: Changes {
+                everything: true,
+                ..Changes::default()
+            },
+            shape: next_revision(),
+            tree: RefCell::new(None),
+            world: RefCell::new(None),
         }
     }
 
@@ -149,6 +223,17 @@ impl Document {
     /// Whether it changed since it was opened or last saved.
     pub fn is_dirty(&self) -> bool {
         self.history.state() != self.saved
+    }
+
+    /// Notes that its file was moved to `file` (renamed or moved in the
+    /// Library), or deleted (`None`): saving goes to the new place, or,
+    /// with no file, asks where and counts as unsaved.
+    pub fn file_moved(&mut self, file: Option<std::path::PathBuf>) {
+        if file.is_none() {
+            // No state of the history ever has this number.
+            self.saved = u64::MAX;
+        }
+        self.file = file;
     }
 
     /// Notes that it was just saved to `file`.
@@ -224,6 +309,64 @@ impl Document {
         self.revision
     }
 
+    /// A number standing for what the Problems panel checks: it changes
+    /// with every edit except moving, turning and resizing (a Transform's
+    /// fields) and other component values, other than which model a
+    /// Model shows. So a drag doesn't look for problems every frame.
+    pub fn shape(&self) -> u64 {
+        self.shape
+    }
+
+    /// The area's tree: children in order, tree order, the first of some
+    /// entities. Worked out once, and again only after entities are
+    /// added, deleted or given another parent.
+    pub fn tree(&self) -> Arc<Tree> {
+        let mut kept = self.tree.borrow_mut();
+        Arc::clone(kept.get_or_insert_with(|| Arc::new(Tree::of(&self.area))))
+    }
+
+    /// Where every entity is in the world, worked out once per
+    /// [`Self::revision`] (parents first, one multiplication each), for
+    /// everything that draws or measures the area in a frame.
+    pub fn world_matrices(&self) -> Placed {
+        if let Some((revision, world)) = &*self.world.borrow()
+            && *revision == self.revision
+        {
+            return Arc::clone(world);
+        }
+        let world = Arc::new(self.tree().world_matrices(&self.area));
+        *self.world.borrow_mut() = Some((self.revision, Arc::clone(&world)));
+        world
+    }
+
+    /// Where `id` is in the world (identity for an entity not in the
+    /// area), from [`Self::world_matrices`].
+    pub fn world_matrix(&self, id: EntityId) -> Mat4 {
+        self.world_matrices()
+            .get(&id)
+            .copied()
+            .unwrap_or(Mat4::IDENTITY)
+    }
+
+    /// Notes a change to the area: a new revision; a new shape unless
+    /// only component values changed (`values_only`); and the tree worked
+    /// out again unless it's the same (`same_tree`).
+    fn changed(&mut self, values_only: bool, same_tree: bool) {
+        self.revision = next_revision();
+        if !values_only {
+            self.shape = next_revision();
+        }
+        if !same_tree {
+            *self.tree.get_mut() = None;
+        }
+    }
+
+    /// What changed in the area since this was last asked (everything,
+    /// for a new document).
+    pub fn take_changes(&mut self) -> Changes {
+        std::mem::take(&mut self.changes)
+    }
+
     /// Changes the area by `edits`, as one undo step called `label`.
     /// Steps with the same `merge` key in a row become one (a whole drag).
     /// `select` is the selection afterwards, if it changes. On an error
@@ -237,9 +380,23 @@ impl Document {
     ) -> Result<(), EditError> {
         let before = self.selection.clone();
         let after = select.unwrap_or_else(|| before.clone());
+        let mut changes = Changes::default();
+        changes.note(&edits);
+        // Only values, other than which model a Model shows.
+        let values_only = edits
+            .iter()
+            .all(|e| matches!(e, Edit::SetField { component, .. } if component != Model::NAME));
+        let same_tree = !edits.iter().any(|e| {
+            matches!(
+                e,
+                Edit::Spawn { .. } | Edit::Despawn { .. } | Edit::Reparent { .. }
+            )
+        });
         self.history
             .apply(&mut self.area, label, edits, merge, before, after.clone())?;
-        self.revision = next_revision();
+        self.changed(values_only, same_tree);
+        self.changes.entities.extend(changes.entities);
+        self.changes.everything |= changes.everything;
         self.selection = after;
         self.selection.retain_existing(&self.area);
         Ok(())
@@ -249,7 +406,8 @@ impl Document {
     /// with. Returns its label, or `None` if there was nothing to undo.
     pub fn undo(&mut self) -> Option<Result<String, EditError>> {
         let done = self.history.undo(&mut self.area)?;
-        self.revision = next_revision();
+        self.changed(false, false);
+        self.changes.everything = true;
         Some(done.map(|done| {
             self.selection = done.selection;
             self.selection.retain_existing(&self.area);
@@ -261,7 +419,8 @@ impl Document {
     /// with. Returns its label, or `None` if there was nothing to redo.
     pub fn redo(&mut self) -> Option<Result<String, EditError>> {
         let done = self.history.redo(&mut self.area)?;
-        self.revision = next_revision();
+        self.changed(false, false);
+        self.changes.everything = true;
         Some(done.map(|done| {
             self.selection = done.selection;
             self.selection.retain_existing(&self.area);
@@ -277,7 +436,8 @@ impl Document {
     /// Gives the area a new revision number, as if it changed (it was put
     /// back after playing).
     pub(crate) fn touch(&mut self) {
-        self.revision = next_revision();
+        self.changed(false, false);
+        self.changes.everything = true;
     }
 
     /// Ends the newest step, so the next edit starts a new one.
@@ -310,6 +470,63 @@ mod tests {
         d.selection.retain_existing(&area);
         assert_eq!(d.selection.primary(), None);
         assert_eq!(d.selection.iter().count(), 0);
+    }
+
+    #[test]
+    fn the_kept_tree_and_places_follow_every_change() {
+        use area::builtin::Transform;
+        let mut d = Document::default();
+        let id = EntityId::random();
+        d.edit(
+            "Add Box",
+            vec![Edit::Spawn {
+                entities: vec![(id, EntityData::new("Box").with(&Transform::default()))],
+            }],
+            None,
+            None,
+        )
+        .unwrap();
+        let tree = d.tree();
+        assert!(tree.order().contains(&id));
+        assert!(Arc::ptr_eq(&tree, &d.tree()), "kept, not worked out again");
+        let shape = d.shape();
+        // Moving it: the same tree and shape, a new place.
+        d.edit(
+            "Move",
+            vec![Edit::SetField {
+                entity: id,
+                component: "Transform".into(),
+                field: "position".into(),
+                value: Some(reflect::Value::vec3(glam::Vec3::X)),
+            }],
+            None,
+            None,
+        )
+        .unwrap();
+        assert!(Arc::ptr_eq(&tree, &d.tree()));
+        assert_eq!(d.shape(), shape, "Problems needn't look again");
+        assert_eq!(d.world_matrix(id), d.area().world_matrix(id));
+        assert_eq!(d.world_matrix(id).w_axis.x, 1.0);
+        // Renaming changes the shape; deleting changes the tree too.
+        d.edit(
+            "Rename",
+            vec![Edit::Rename {
+                entity: id,
+                name: "Crate".into(),
+            }],
+            None,
+            None,
+        )
+        .unwrap();
+        assert_ne!(d.shape(), shape);
+        d.edit("Delete", vec![Edit::Despawn { root: id }], None, None)
+            .unwrap();
+        assert!(!d.tree().order().contains(&id));
+        assert_eq!(d.world_matrix(id), Mat4::IDENTITY);
+        // Undo brings it back, and the tree follows.
+        d.undo().unwrap().unwrap();
+        assert!(d.tree().order().contains(&id));
+        assert_eq!(d.world_matrix(id).w_axis.x, 1.0);
     }
 
     #[test]
@@ -354,5 +571,53 @@ mod tests {
             .is_err()
         );
         assert_eq!(d.history().undo_len(), steps);
+    }
+
+    #[test]
+    fn changes_name_the_entities_touched_or_say_everything() {
+        let mut d = Document::default();
+        assert!(d.take_changes().everything, "a new area is all new");
+        assert!(d.take_changes().is_empty(), "taken once");
+        let sun = d.area().iter().next().unwrap().0;
+        d.edit(
+            "Rename",
+            vec![Edit::Rename {
+                entity: sun,
+                name: "Big sun".into(),
+            }],
+            None,
+            None,
+        )
+        .unwrap();
+        let changes = d.take_changes();
+        assert!(!changes.everything);
+        assert_eq!(changes.entities.into_iter().collect::<Vec<_>>(), [sun]);
+        d.edit(
+            "Add",
+            vec![Edit::Spawn {
+                entities: vec![(EntityId::random(), EntityData::new("Crate"))],
+            }],
+            None,
+            None,
+        )
+        .unwrap();
+        assert!(d.take_changes().everything);
+        d.undo();
+        assert!(d.take_changes().everything);
+        // A failed edit changes nothing.
+        let missing = EntityId::random();
+        assert!(
+            d.edit(
+                "Rename",
+                vec![Edit::Rename {
+                    entity: missing,
+                    name: "x".into()
+                }],
+                None,
+                None
+            )
+            .is_err()
+        );
+        assert!(d.take_changes().is_empty());
     }
 }

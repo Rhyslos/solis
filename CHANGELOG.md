@@ -13,6 +13,8 @@ What changed in each version, for people using Solis. Newest first.
 
 ### Added
 
+- **Several views:** the viewport's **≡** menu splits it into one view, two side by side, two one above the other, or four. Each view has its own camera and look; click in one to use it (F, adding things and the tool bar follow it), and **Maximise** shows it alone. Remembered on this computer.
+- **Flat views:** each view can be **Perspective**, **Top**, **Front** or **Right**. Flat views show true sizes with the grid in their own plane; drag with the right or middle button to slide them and turn the wheel to zoom towards the pointer. Selecting, gizmos and dropping from the Library work in them.
 - **Play mode:** **Play**, **Pause** and **Stop** at the top run the area as a game in the **Game** panel. Everything still works while playing, and changes show in the game at once; **Stop** puts the area, the undo history and the selection back exactly as they were. Saving and opening wait until Stop. A coloured border, a lit Play and a red Stop show that the game is running. Also `play`, `pause` and `stop` in the Console.
 - **Cameras:** **Entity > Add camera** adds one where you're looking from. The game looks through the first camera in the area; cameras show as small wire pyramids in the viewport, and can be clicked.
 - **Console commands:** press **'** (beside Æ on a Norwegian keyboard) to jump to the Console's new command line. `select`, `find`, `new`, `delete`, `duplicate`, `get` and `set` (any component's setting, on every selected entity at once), `frame`, `undo`, `redo`, `save`, `look`, `tool`, `stats`, `clear` and `help`. Every change is an undo step. **Tab** finishes names, **Up** and **Down** bring back earlier commands (remembered between sessions), and mistakes get a plain answer in red.
@@ -45,8 +47,37 @@ What changed in each version, for people using Solis. Newest first.
 
 ### Fixed
 
+- **Work could be lost when saving before quitting or starting a new area.** On an untitled area, choosing **Save** in the "unsaved changes" question went straight on to quitting (or the new area) while the Save window was still open. Now everything waits for the Save window.
+- After a save was cancelled or failed while quitting, closing the window later closed it without asking about unsaved changes. Now it asks again.
+- A file chosen in an Open or Save window opened before **Play** is now opened or saved only after **Stop**, so it never replaces or saves the game's copy. The question about a file changed on disk also waits until Stop.
+- A Save name typed without `.solarea`, matching a file that already exists, replaced it without asking. Now it isn't saved, and the Console says how to replace it.
+- An assembly that a Git pull changed to hold a new, not yet loaded assembly could detach its copies, and saving made that permanent. Assemblies are now all read before any is used, and the copies keep the version they were made from until the new one can be read.
+- A damaged saved panel layout could crash Solis every time it started. A layout that can't be drawn is now replaced by the default one.
+- A problem reported by the graphics card no longer closes Solis; it's shown in the Console. Scenes with more model copies than the card can draw at once are skipped with a message instead of crashing.
+- Saving now writes the file to disk before it replaces the old one, so a power cut can't leave an empty file. Two saves of the same file at once no longer mix.
+- A model file with hundreds of thousands of empty nodes, or a very deep node tree, could freeze or crash the editor. Such files are refused, and very deep trees keep short part names.
+- A sidecar using the biggest part number crashed the editor or reused numbers. Part numbers now never repeat, and a sidecar with two parts sharing one is reported as damaged.
+- An area file naming one entity twice with different spellings (lower case, or O for 0) silently lost one of them. Now it's reported.
+- After many changes, undoing everything could make the area look saved when it wasn't.
+- Choosing the open project again from **Recent projects** emptied the viewport. Now nothing happens.
+- Opening another project kept the old project's assemblies, so a copy of a project could save its areas against the wrong assemblies.
+- Components registered by game code were forgotten when a new area was started or another opened.
+- Renaming, moving or deleting the open area in the Library left Solis saving to the old name, making a second file. The open area now follows its file.
+- Renaming a file only by changing capitals (`crate.glb` to `Crate.glb`) was refused on Windows.
 - The last project now opens again when Solis starts (it was saved but never read back).
+- A damaged area whose entities are inside each other could freeze the editor when one of them was selected or moved. Now the Problems panel reports them.
 - The red and green axes on the ground could show as a large filled wedge on some graphics drivers when the camera was close to them.
+- Clicking could select the wrong thing after the area changed or a view was resized, because the answer belonged to an older click. Clicking the very last pixel of a view no longer misses.
+- In a Top, Front or Right view, **Add > Camera**, **Add > Spotlight** and **Move here** put the new thing far away, and fog covered the area. They now go where the view looks from, and flat views have no fog.
+- The game view and the editor could light an area with two suns differently. Both now use the first one in the Hierarchy.
+- **F** framed an unpacked model by its whole size, even when only its parts were selected.
+- A thumbnail that was replaced or changed on disk showed the old picture, and its memory wasn't freed. Thumbnails from the last project no longer appear in the next.
+- The Problems panel didn't update after a model was reloaded or another project opened. It now also reports an entity that is (through others) inside itself.
+- A model added to the folder while the area used it, or a changed one, wasn't reloaded in the viewport.
+- **Help > Add the sample area** with a project open added a model the project didn't have, so a saved area that used it said it was missing when opened again. It's now added to the project's assets like an import.
+- Placing a model by double-click after an earlier drop of it failed sent it to the old drop point.
+- A Git checkout or pull while Solis was open could give a model a new ID if Solis looked between Git writing the model and its sidecar. A new file without a sidecar now waits two seconds for one.
+- A model copied (with its sidecar) while Solis was closed could take the original's ID, so areas using the original showed the copy. The original, whose sidecar is older, now keeps it.
 
 - A layout saved before a panel existed keeps its arrangement and gets the new panel beside its usual neighbours, instead of being reset to the default.
 - A full Console no longer slows each new message down.
@@ -61,6 +92,13 @@ What changed in each version, for people using Solis. Newest first.
 - Several viewports no longer share one set of frame data, ready for the game view and split views.
 
 ### Changed
+
+- The editor is faster with big areas. With 2,000 entities, a frame takes about half as long (2.8 ms to 1.4 ms), four views a third as long (3.4 ms to 1.3 ms), and dragging everything at once 4.1 ms instead of 6.5 ms. The area's tree and every entity's place are worked out once and kept until they change, and a long drag of many entities no longer slows down as it goes.
+- The Problems panel no longer looks again on every frame of a drag: moving things can't cause a problem.
+- Play no longer copies the whole undo history; the copy shares it.
+- The undo history's memory limit now counts the selection kept with each step.
+- The import cache in `.solis/` keeps within 4 GB: the models used least lately are deleted when a project opens, and read from their files again if needed.
+- Looking over the assets folder no longer reads every `.gltf` again while it's unchanged.
 
 - Writing game code in Lust now arrives in Phase 4, right after the editor, instead of Phase 7; the editor's panels say so. Playing the area arrives with the editor, in Phase 3.
 - The Console stays fast when full: it lays out only the messages in view (a full Console took about 10 ms a frame, now 0.3 ms). Long messages are cut to one line and show in full when pointed at.

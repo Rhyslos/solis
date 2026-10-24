@@ -27,14 +27,14 @@ Make a project as soon as you start something you want to keep. Without one, Sol
 - Point at a file to see its full path and what you can do with it.
 
 **Place a model or assembly**
-- **Drag it from the Library into the viewport**: it goes on whatever surface is under the mouse when you let go (a table, the floor), or on the ground. It's selected, ready to move.
+- **Drag it from the Library into the viewport**: it goes on whatever surface is under the mouse when you let go (a table, the floor), or on the ground. In a flat Front or Right view, dropped on empty space, it goes exactly where you point, at that height. It's selected, ready to move.
 - **Drag it onto an entity in the Area panel**: it goes under that entity, at its place.
 - Or **double-click** it (or click the **+** on its picture) to place it where the camera looks.
 
 **Open things:** double-click an **area** to open it (Solis asks first if yours has unsaved changes). Double-click a picture or any other file to open it in its own program (your picture editor, say).
 
 **Organise files** (right-click a file or folder):
-- **Rename…**: type a new name. The file's ID file goes with it, so nothing using it breaks.
+- **Rename…**: type a new name. The file's ID file goes with it, so nothing using it breaks. Changing only capitals works too. Renaming the open area is fine: Solis saves to the new name.
 - **Move**: drag a file onto a folder in the tree.
 - **New folder** (also in the **Import** menu): makes "New folder" inside the folder shown.
 - **Show in Explorer** opens the folder in your system's file browser.
@@ -53,11 +53,12 @@ A `.gltf` model reads the files beside it, so it can't be moved to another folde
 | `project.solis` | Marks the folder as a project and holds its name. |
 | `assets/` | Everything you made or brought in. Watched for changes. |
 | `<file>.solmeta` | A small text file beside each asset holding its ID. **Commit it with the asset**, and move or rename them together (Solis copes if you forget, as long as the content didn't change). |
-| `.solis/` | Solis's cache: models it has already read, so they open quickly. Safe to delete; it's rebuilt. Never committed. |
+| `.solis/` | Solis's cache: models it has already read, so they open quickly. It keeps within 4 GB, deleting the models used least lately. Safe to delete; it's rebuilt. Never committed. |
 
 ## Tips and common problems
 - **Problem:** the Console says a sidecar couldn't be read. **Why:** the `.solmeta` file was damaged, perhaps by a bad Git merge. **Fix:** fix it in a text editor, or delete it to give the model a new ID (anything using the old ID will then say the model is missing).
-- **Problem:** the Console says a model "is a copy, so it got a new ID". **Why:** a file was copied together with its `.solmeta`; two files can't share an ID. Nothing is wrong.
+- **Problem:** the Console says a model "is a copy, so it got a new ID". **Why:** a file was copied together with its `.solmeta`; two files can't share an ID. The original (whose `.solmeta` is older) keeps its ID, so nothing using it changes. Nothing is wrong.
+- **Problem:** a model I saved into the assets folder from Blender takes a couple of seconds to show in the Library. **Why:** Solis waits two seconds before giving a new file its ID, because Git writes a file and its `.solmeta` one after the other: a look in between would give the file a new ID and lose the one it has on other computers. **Fix:** nothing; models brought in with **Import model** show at once.
 - **Problem:** I renamed a model in Explorer *and* changed it before Solis was open, and it lost its ID. **Why:** Solis finds a renamed file by its content; with the content changed too, it can't tell. **Fix:** rename and change in separate steps, or rename the `.solmeta` along with it.
 - **Problem:** models placed before opening a project disappeared. **Why:** opening a project starts a new area. **Fix:** Solis asks to save first; [save the area](saving-areas.md) inside the project to keep it.
 - Imported models open much faster the second time: the cache remembers them, even after a rename.

@@ -6,7 +6,9 @@
 
 use crate::document::Area;
 use crate::edit::{Edit, EditError};
-use std::collections::VecDeque;
+use reflect::EntityId;
+use std::collections::{HashMap, HashSet, VecDeque};
+use std::sync::Arc;
 
 /// How much memory history may use by default: 64 MiB.
 pub const DEFAULT_LIMIT_BYTES: usize = 64 << 20;
@@ -19,6 +21,25 @@ pub struct MergeKey {
     pub target: u64,
     /// Which gesture (a press of the mouse, say) is doing it.
     pub gesture: u64,
+}
+
+/// How much memory a selection kept with each step uses, so the history's
+/// limit counts it: a step keeps the selection before and after it.
+pub trait Weigh {
+    /// About how many bytes it uses.
+    fn weight(&self) -> usize;
+}
+
+impl Weigh for () {
+    fn weight(&self) -> usize {
+        0
+    }
+}
+
+impl Weigh for u32 {
+    fn weight(&self) -> usize {
+        4
+    }
 }
 
 /// One undo step.
@@ -41,9 +62,11 @@ pub struct Step<S> {
     serial: u64,
 }
 
-impl<S> Step<S> {
+impl<S: Weigh> Step<S> {
     fn measure(&mut self) {
         self.bytes = self.label.len()
+            + self.before.weight()
+            + self.after.weight()
             + self
                 .undo
                 .iter()
@@ -53,15 +76,41 @@ impl<S> Step<S> {
     }
 
     /// Whether undoing it would change nothing: every edit in it put back
-    /// the value it found (a drag that ended where it started).
+    /// the value it found (a drag that ended where it started). Looked up
+    /// by what each edit changes, so a drag of thousands stays quick.
     fn changes_nothing(&self) -> bool {
-        self.undo.len() == self.redo.len()
-            && self.redo.iter().all(|edit| match edit {
-                Edit::SetField { .. } | Edit::Rename { .. } => {
-                    self.undo.iter().any(|undo| undo == edit)
-                }
-                _ => false,
-            })
+        if self.undo.len() != self.redo.len() {
+            return false;
+        }
+        let mut undone: HashMap<Target<'_>, Vec<&Edit>> = HashMap::with_capacity(self.undo.len());
+        for edit in &self.undo {
+            if let Some(t) = target(edit) {
+                undone.entry(t).or_default().push(edit);
+            }
+        }
+        self.redo.iter().all(|edit| {
+            target(edit)
+                .and_then(|t| undone.get(&t))
+                .is_some_and(|found| found.contains(&edit))
+        })
+    }
+}
+
+/// What a field or name edit changes: the entity, and the component and
+/// field (none for its name).
+type Target<'a> = (EntityId, Option<(&'a str, &'a str)>);
+
+/// What `edit` changes, for a field or name edit (others have none).
+fn target(edit: &Edit) -> Option<Target<'_>> {
+    match edit {
+        Edit::SetField {
+            entity,
+            component,
+            field,
+            ..
+        } => Some((*entity, Some((component.as_str(), field.as_str())))),
+        Edit::Rename { entity, .. } => Some((*entity, None)),
+        _ => None,
     }
 }
 
@@ -77,8 +126,10 @@ pub struct Undone<S> {
 /// The undo and redo stacks.
 #[derive(Debug, Clone)]
 pub struct History<S> {
-    undo: VecDeque<Step<S>>,
-    redo: Vec<Step<S>>,
+    // Steps are shared, so a copy of the history (Play keeps one) costs
+    // next to nothing; one is copied only if it changes afterwards.
+    undo: VecDeque<Arc<Step<S>>>,
+    redo: Vec<Arc<Step<S>>>,
     bytes: usize,
     limit: usize,
     /// Whether the newest step may still take more edits (false after
@@ -86,15 +137,19 @@ pub struct History<S> {
     open: bool,
     /// The next step's serial.
     next_serial: u64,
+    /// The serial of the newest step dropped to keep within the limit (0
+    /// if none was): with every step left undone, the area is still past
+    /// it, so it mustn't look like the start.
+    dropped: u64,
 }
 
-impl<S: Clone> Default for History<S> {
+impl<S: Clone + Weigh> Default for History<S> {
     fn default() -> Self {
         Self::with_limit(DEFAULT_LIMIT_BYTES)
     }
 }
 
-impl<S: Clone> History<S> {
+impl<S: Clone + Weigh> History<S> {
     /// Empty history that keeps about `limit` bytes of steps (always at
     /// least the newest).
     pub fn with_limit(limit: usize) -> Self {
@@ -105,6 +160,7 @@ impl<S: Clone> History<S> {
             limit,
             open: false,
             next_serial: 1,
+            dropped: 0,
         }
     }
 
@@ -129,7 +185,11 @@ impl<S: Clone> History<S> {
         self.redo.clear();
         let merging =
             self.open && merge.is_some() && self.undo.back().is_some_and(|s| s.merge == merge);
-        let newest = if merging { self.undo.pop_back() } else { None };
+        let newest = if merging {
+            self.undo.pop_back().map(Arc::unwrap_or_clone)
+        } else {
+            None
+        };
         if let Some(mut step) = newest {
             self.bytes -= step.bytes;
             step.redo.extend(redo);
@@ -176,15 +236,16 @@ impl<S: Clone> History<S> {
     /// the one at the last save says whether there are unsaved changes.
     /// 0 is the start (nothing done).
     pub fn state(&self) -> u64 {
-        self.undo.back().map_or(0, |s| s.serial)
+        self.undo.back().map_or(self.dropped, |s| s.serial)
     }
 
     fn push(&mut self, step: Step<S>) {
         self.bytes += step.bytes;
-        self.undo.push_back(step);
+        self.undo.push_back(Arc::new(step));
         while self.bytes > self.limit && self.undo.len() > 1 {
             if let Some(old) = self.undo.pop_front() {
                 self.bytes -= old.bytes;
+                self.dropped = old.serial;
             }
         }
     }
@@ -192,7 +253,7 @@ impl<S: Clone> History<S> {
     /// Undoes the newest step, returning its label and the selection it
     /// started with; `None` if there's nothing to undo.
     pub fn undo(&mut self, area: &mut Area) -> Option<Result<Undone<S>, EditError>> {
-        let mut step = self.undo.pop_back()?;
+        let mut step = Arc::unwrap_or_clone(self.undo.pop_back()?);
         self.bytes -= step.bytes;
         self.open = false;
         match area.apply_all(step.undo.clone()) {
@@ -202,7 +263,7 @@ impl<S: Clone> History<S> {
                     label: step.label.clone(),
                     selection: step.before.clone(),
                 };
-                self.redo.push(step);
+                self.redo.push(Arc::new(step));
                 Some(Ok(done))
             }
             Err(why) => Some(Err(why)),
@@ -212,7 +273,7 @@ impl<S: Clone> History<S> {
     /// Redoes the step undone last, returning its label and the selection
     /// it ended with; `None` if there's nothing to redo.
     pub fn redo(&mut self, area: &mut Area) -> Option<Result<Undone<S>, EditError>> {
-        let mut step = self.redo.pop()?;
+        let mut step = Arc::unwrap_or_clone(self.redo.pop()?);
         self.open = false;
         match area.apply_all(step.redo.clone()) {
             Ok(undo) => {
@@ -267,16 +328,6 @@ impl<S: Clone> History<S> {
 /// Merged steps of field changes keep only the first value each field had
 /// and the last it was given, so a long drag stays small.
 fn compact<S>(step: &mut Step<S>) {
-    let target = |edit: &Edit| match edit {
-        Edit::SetField {
-            entity,
-            component,
-            field,
-            ..
-        } => Some((*entity, Some((component.clone(), field.clone())))),
-        Edit::Rename { entity, .. } => Some((*entity, None)),
-        _ => None,
-    };
     if step
         .redo
         .iter()
@@ -286,20 +337,16 @@ fn compact<S>(step: &mut Step<S>) {
         return;
     }
     // Redo: the last edit of each target wins. Undo: the last edit in the
-    // undo list restores the first value, so it wins there too.
-    let keep_last = |edits: &mut Vec<Edit>| {
-        let mut seen = Vec::new();
-        let mut kept: Vec<Edit> = Vec::new();
-        for edit in edits.drain(..).rev() {
-            let t = target(&edit);
-            if !seen.contains(&t) {
-                seen.push(t);
-                kept.push(edit);
-            }
-        }
-        kept.reverse();
-        *edits = kept;
-    };
+    // undo list restores the first value, so it wins there too. Found
+    // from the end with a set, so each frame of a long drag of many
+    // entities costs as much as the edits it has, not their square.
+    fn keep_last(edits: &mut Vec<Edit>) {
+        let mut seen = HashSet::with_capacity(edits.len());
+        let mut keep: Vec<bool> = edits.iter().rev().map(|e| seen.insert(target(e))).collect();
+        keep.reverse();
+        let mut flags = keep.into_iter();
+        edits.retain(|_| flags.next().unwrap_or(true));
+    }
     keep_last(&mut step.redo);
     keep_last(&mut step.undo);
 }
@@ -370,6 +417,31 @@ mod tests {
     }
 
     #[test]
+    fn a_copy_shares_its_steps_but_never_sees_later_changes() {
+        let (mut s, id) = lamp();
+        let mut h = History::<()>::default();
+        h.apply(&mut s, "Drag", vec![set(id, 1100.0)], DRAG, (), ())
+            .unwrap();
+        let (kept_area, kept) = (s.clone(), h.clone());
+        assert!(Arc::ptr_eq(&h.undo[0], &kept.undo[0]), "shared, not copied");
+        // The drag goes on in the original (as while playing): the copy's
+        // step stays as it was, and undoing the copy goes back to the start.
+        h.apply(&mut s, "Drag", vec![set(id, 1200.0)], DRAG, (), ())
+            .unwrap();
+        h.undo(&mut s).unwrap().unwrap();
+        let (mut s2, mut kept) = (kept_area, kept);
+        assert_eq!(strength(&s2, id), 1100.0);
+        kept.undo(&mut s2).unwrap().unwrap();
+        assert_eq!(strength(&s2, id), 1000.0);
+        kept.redo(&mut s2).unwrap().unwrap();
+        assert_eq!(
+            strength(&s2, id),
+            1100.0,
+            "its own step, not the longer drag"
+        );
+    }
+
+    #[test]
     fn a_drag_is_one_step_and_a_drag_back_is_none() {
         let (mut s, id) = lamp();
         let mut h = History::<()>::default();
@@ -436,6 +508,11 @@ mod tests {
         }
         assert!(h.bytes() <= 2_000, "{}", h.bytes());
         assert!(h.undo_len() > 1 && h.undo_len() < 200);
+        // Found by review: with every step left undone, the area still has
+        // the dropped steps' changes, so it isn't back at the start (which
+        // would look "saved" for a file just opened).
+        while h.undo(&mut s).is_some() {}
+        assert_ne!(h.state(), 0);
         // The newest step is always kept, however big.
         let mut tiny = History::<()>::with_limit(1);
         tiny.apply(&mut s, "Big", vec![set(id, 1.0)], None, (), ())

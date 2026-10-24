@@ -9,8 +9,8 @@
 
 use glam::{Mat4, Vec3, Vec4};
 use render::{
-    Environment, Fog, FrameParams, Light, LightKind, Look, Placement, Shading, Sky, Sun, Tonemap,
-    ViewportRenderer, best_sample_count, read_pixels,
+    Environment, Fog, FrameParams, GridPlane, Light, LightKind, Look, Placement, Shading, Sky, Sun,
+    Tonemap, ViewportRenderer, best_sample_count, read_pixels,
 };
 
 /// The editor's backdrop, sRGB 0 to 255 (as in the editor theme).
@@ -128,6 +128,7 @@ fn the_backdrop_shows_sky_above_and_ground_below_in_the_right_colours() {
             sun: Sun::default(),
             environment: Environment::default(),
             editor_lines: true,
+            grid_plane: GridPlane::Ground,
         },
         &[],
         &[],
@@ -179,6 +180,7 @@ fn the_ground_axes_show_in_red_and_green_unless_editor_lines_are_off() {
                 sun: Sun::default(),
                 environment: Environment::default(),
                 editor_lines,
+                grid_plane: GridPlane::Ground,
             },
             &[],
             &[],
@@ -198,6 +200,69 @@ fn the_ground_axes_show_in_red_and_green_unless_editor_lines_are_off() {
     assert!(reddish, "no red X axis");
     // The game's own view: no grid and no axes.
     assert_eq!(colours(false), (false, false));
+}
+
+#[test]
+fn a_front_views_grid_stands_upright() {
+    let Some(gpu) = gpu() else { return };
+    let renderer = ViewportRenderer::new(&gpu.device, best_sample_count(&gpu.adapter));
+    let size = 64;
+    let mut target = renderer.create_target(&gpu.device, [size, size]);
+    // A flat view from the front: 20 m tall, looking north from 100 m
+    // south, depth reversed (1 at the eye, 0 at 200 m).
+    let eye = Vec3::new(0.0, -100.0, 2.0);
+    let view = Mat4::from_cols(
+        Vec4::new(1.0, 0.0, 0.0, 0.0),
+        Vec4::new(0.0, 0.0, -1.0, 0.0),
+        Vec4::new(0.0, 1.0, 0.0, 0.0),
+        Vec4::new(-eye.x, -eye.z, eye.y, 1.0),
+    );
+    let far = 200.0;
+    let flat = Mat4::from_cols(
+        Vec4::new(0.1, 0.0, 0.0, 0.0),
+        Vec4::new(0.0, 0.1, 0.0, 0.0),
+        Vec4::new(0.0, 0.0, 1.0 / far, 0.0),
+        Vec4::new(0.0, 0.0, 1.0, 1.0),
+    );
+    let mut lines = |grid_plane| {
+        renderer.render(
+            &gpu.device,
+            &gpu.queue,
+            &mut target,
+            &FrameParams {
+                view_projection: flat * view,
+                camera_position: eye,
+                focus: Vec3::new(0.0, 0.0, 2.0),
+                sky_top: srgb(SKY_TOP),
+                sky_horizon: srgb(SKY_HORIZON),
+                ground: srgb(GROUND),
+                shading: Shading::default(),
+                size_px: [size, size],
+                sun: Sun::default(),
+                environment: Environment::default(),
+                editor_lines: true,
+                grid_plane,
+            },
+            &[],
+            &[],
+        );
+        let pixels = read_pixels(&gpu.device, &gpu.queue, &target).unwrap();
+        // Grid lines are lighter than the backdrop behind them.
+        let corner = pixel(&pixels, size, 1, 1);
+        (0..size)
+            .flat_map(|y| (0..size).map(move |x| (x, y)))
+            .filter(|&(x, y)| {
+                let p = pixel(&pixels, size, x, y);
+                p.iter().zip(corner).any(|(a, b)| a.abs_diff(b) > 12)
+            })
+            .count()
+    };
+    let upright = lines(GridPlane::Front);
+    let edge_on = lines(GridPlane::Ground);
+    assert!(
+        upright > edge_on + 100,
+        "upright {upright}, edge on {edge_on}"
+    );
 }
 
 #[test]
@@ -236,6 +301,7 @@ fn scale_check_viewport_frame() {
         sun: Sun::default(),
         environment: Environment::default(),
         editor_lines: true,
+        grid_plane: GridPlane::Ground,
     };
     let frames = 60;
     let start = std::time::Instant::now();
@@ -339,6 +405,7 @@ fn render_env(
             sun,
             environment,
             editor_lines: true,
+            grid_plane: GridPlane::Ground,
         },
         &[Placement {
             model: &uploaded,
@@ -1235,6 +1302,7 @@ fn two_viewports_keep_their_own_frames() {
         sun: Sun::default(),
         environment: Environment::default(),
         editor_lines: true,
+        grid_plane: GridPlane::Ground,
     };
     let down = Vec3::new(0.0, 0.0, 10.0);
     let away = Vec3::new(0.0, -100.0, 50.0);
@@ -1327,6 +1395,7 @@ fn render_parts(
             sun: Sun::default(),
             environment: unmapped(),
             editor_lines: true,
+            grid_plane: GridPlane::Ground,
         },
         &placed,
         &[],
@@ -1601,6 +1670,7 @@ fn the_ground_axes_stay_thin_lines_close_up() {
             sun: Sun::default(),
             environment: unmapped(),
             editor_lines: true,
+            grid_plane: GridPlane::Ground,
         },
         &[],
         &[],

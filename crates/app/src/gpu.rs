@@ -13,6 +13,8 @@ use std::collections::HashMap;
 /// The viewport's image and the egui texture showing it.
 struct Image {
     target: ViewportTarget,
+    /// A pick the renderer refused, to answer with "nothing".
+    refused: Option<[u32; 4]>,
     /// The size last asked for (the target may be clamped smaller).
     requested_size: [u32; 2],
     texture: egui::TextureId,
@@ -34,6 +36,13 @@ impl GpuViewport {
     /// Sets up viewport drawing on the window's GPU device.
     pub fn new(state: &RenderState) -> Self {
         let samples = render::best_sample_count(&state.adapter);
+        // wgpu's own handler stops the program on any GPU mistake; this one
+        // tells the Console instead, so a driver hiccup never loses work.
+        state
+            .device
+            .on_uncaptured_error(std::sync::Arc::new(|error: eframe::wgpu::Error| {
+                log::error!("the graphics card reported a problem: {error}");
+            }));
         Self {
             renderer: render::ViewportRenderer::new(&state.device, samples),
             state: state.clone(),
@@ -82,6 +91,7 @@ impl GpuViewport {
             sun: render::Sun::default(),
             environment: to_render_environment(&Environment::default()),
             editor_lines: true,
+            grid_plane: render::GridPlane::Ground,
         };
         self.renderer.render(
             device,
@@ -132,7 +142,11 @@ impl GpuViewport {
 
     /// Lets go of a thumbnail made by [`Self::thumbnail`].
     pub fn free_thumbnail(&self, id: egui::TextureId) {
-        self.state.renderer.write().free_texture(&id);
+        // Only thumbnails drawn here; pictures' textures belong to egui,
+        // which lets them go when their handle is dropped.
+        if matches!(id, egui::TextureId::User(_)) {
+            self.state.renderer.write().free_texture(&id);
+        }
     }
 
     /// A line for the console about the GPU in use.
@@ -204,6 +218,7 @@ impl GpuViewport {
             target,
             requested_size: size,
             texture,
+            refused: None,
         });
     }
 }
@@ -299,6 +314,11 @@ impl ViewportRenderer for GpuViewport {
             sun: to_render_sun(view.sun.as_ref()),
             environment: to_render_environment(&view.environment),
             editor_lines: view.editor_lines,
+            grid_plane: match view.kind {
+                editor::ViewKind::Front => render::GridPlane::Front,
+                editor::ViewKind::Right => render::GridPlane::Side,
+                editor::ViewKind::Perspective | editor::ViewKind::Top => render::GridPlane::Ground,
+            },
         };
         let lights: Vec<render::Light> = view.lamps.iter().map(to_render_light).collect();
         if view.image >= editor::MAX_IMAGES {
@@ -331,7 +351,7 @@ impl ViewportRenderer for GpuViewport {
         if let Some(rect) = view.pick {
             // Drawn after the frame, never waited for: the answer is
             // collected by `picked` on a later frame.
-            self.renderer.request_pick(
+            let asked = self.renderer.request_pick(
                 &self.state.device,
                 &self.state.queue,
                 &mut image.target,
@@ -339,13 +359,23 @@ impl ViewportRenderer for GpuViewport {
                 &placed,
                 rect,
             );
+            if !asked {
+                // Refused (nothing to look at there): answered "nothing"
+                // straight away, rather than leaving the editor waiting.
+                image.refused = Some(rect);
+            }
         }
         Ok(image.texture)
     }
 
-    fn picked(&mut self) -> Option<PickAnswer> {
-        // Only the viewport picks.
-        let image = self.images.get_mut(editor::VIEWPORT_IMAGE)?.as_mut()?;
+    fn picked(&mut self, image: usize) -> Option<PickAnswer> {
+        let image = self.images.get_mut(image)?.as_mut()?;
+        if let Some(rect) = image.refused.take() {
+            return Some(PickAnswer {
+                rect,
+                ..PickAnswer::default()
+            });
+        }
         let result = image.target.poll_pick(&self.state.device)?;
         Some(to_answer(&result))
     }

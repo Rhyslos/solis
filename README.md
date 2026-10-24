@@ -26,9 +26,9 @@ The first build takes a few minutes. `cargo run -p app -- --help` lists the opti
 
 Solis is built in phases, one milestone per pull request. Each phase ends with a **gate** the project lead tries by hand before the next starts. This tracker is updated by the pull request that finishes each milestone; the full plan is in [ROADMAP.md](ROADMAP.md).
 
-**Overall: 24 of 60 milestones** `█████░░░░░░░░` 40%
+**Overall: 25 of 60 milestones** `█████░░░░░░░░` 42%
 
-**Now:** Phase 3, the editor ([plan](docs/plans/phase-3.md)). Phases 1 and 2 are built and wait for their gates to be tried by hand.
+**Now:** Phases 1, 2 and 3 are built and wait for their gates to be tried by hand ([Phase 3 plan](docs/plans/phase-3.md)). Next: Phase 4, game code.
 
 ### Phase 0 · Groundwork — 7 of 7
 
@@ -75,9 +75,9 @@ Solis is built in phases, one milestone per pull request. Each phase ends with a
 
 **Gate:** save an area, edit it in a text editor and see it reload; rename a texture and nothing breaks; Git merges two people's changes to one area.
 
-### Phase 3 · The editor — 5 of 6
+### Phase 3 · The editor — 6 of 6
 
-`███████████░░` 83%
+`█████████████` 100%
 
 <details>
 <summary>Milestones</summary>
@@ -87,7 +87,7 @@ Solis is built in phases, one milestone per pull request. Each phase ends with a
 - [x] The library: assets and code
 - [x] The console: commands as well as messages
 - [x] Play mode, which puts the area back when you stop
-- [ ] Several viewports
+- [x] Several viewports
 
 </details>
 

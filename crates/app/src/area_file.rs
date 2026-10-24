@@ -35,6 +35,9 @@ pub struct AreaFiles {
     /// The open area's file, and how it looked when last read or written.
     watched: Option<(PathBuf, Option<Stamp>)>,
     last_check: Option<Instant>,
+    /// A name chosen in the Save window that would have replaced another
+    /// file once `.solarea` was added, so it wasn't used.
+    refused: Option<PathBuf>,
 }
 
 impl AreaFiles {
@@ -117,15 +120,36 @@ impl AreaFiles {
         self.dialog = Some((purpose, receiver));
     }
 
+    /// Whether an Open or Save window is open.
+    pub fn is_asking(&self) -> bool {
+        self.dialog.is_some()
+    }
+
+    /// The name last refused by [`Self::chosen`], to explain why the save
+    /// didn't happen.
+    pub fn take_refused(&mut self) -> Option<PathBuf> {
+        self.refused.take()
+    }
+
     /// The file chosen in the Open or Save window, and what for, once it's
-    /// closed: `Some((purpose, None))` if it was cancelled.
+    /// closed: `Some((purpose, None))` if it was cancelled. A Save name
+    /// without `.solarea` whose `.solarea` file already exists is refused
+    /// too (the window only asked about replacing the name as typed).
     pub fn chosen(&mut self) -> Option<(Purpose, Option<PathBuf>)> {
         let (purpose, receiver) = self.dialog.as_ref()?;
         let purpose = *purpose;
         match receiver.try_recv() {
             Ok(choice) => {
                 self.dialog = None;
-                Some((purpose, choice.map(|p| with_extension(&p))))
+                let choice = choice.and_then(|chosen| {
+                    let path = with_extension(&chosen);
+                    if purpose == Purpose::Save && path != chosen && path.exists() {
+                        self.refused = Some(path);
+                        return None;
+                    }
+                    Some(path)
+                });
+                Some((purpose, choice))
             }
             Err(std::sync::mpsc::TryRecvError::Empty) => None,
             Err(std::sync::mpsc::TryRecvError::Disconnected) => {
@@ -205,6 +229,43 @@ mod tests {
                 .contains("newer")
         );
         assert!(AreaFiles::read(&dir.join("missing.solarea"), &registry).is_err());
+    }
+
+    /// An Open or Save window that has already been answered with `choice`.
+    fn answered(files: &mut AreaFiles, purpose: Purpose, choice: Option<PathBuf>) {
+        let (sender, receiver) = channel();
+        sender.send(choice).unwrap();
+        files.dialog = Some((purpose, receiver));
+    }
+
+    #[test]
+    fn a_save_name_that_would_replace_another_file_is_refused() {
+        let dir = folder("refuse");
+        std::fs::write(dir.join("harbour.solarea"), "area;").unwrap();
+        let mut files = AreaFiles::default();
+        assert!(!files.is_asking());
+        // Typed without the extension: the window never asked about
+        // replacing harbour.solarea.
+        answered(&mut files, Purpose::Save, Some(dir.join("harbour")));
+        assert!(files.is_asking());
+        assert_eq!(files.chosen(), Some((Purpose::Save, None)));
+        assert!(!files.is_asking());
+        assert_eq!(files.take_refused(), Some(dir.join("harbour.solarea")));
+        assert_eq!(files.take_refused(), None);
+        // Chosen with the extension (the window asked), or a new name: used.
+        answered(&mut files, Purpose::Save, Some(dir.join("harbour.solarea")));
+        assert_eq!(
+            files.chosen(),
+            Some((Purpose::Save, Some(dir.join("harbour.solarea"))))
+        );
+        answered(&mut files, Purpose::Save, Some(dir.join("port")));
+        assert_eq!(
+            files.chosen(),
+            Some((Purpose::Save, Some(dir.join("port.solarea"))))
+        );
+        // Opening never refuses.
+        answered(&mut files, Purpose::Open, Some(dir.join("harbour")));
+        assert!(matches!(files.chosen(), Some((Purpose::Open, Some(_)))));
     }
 
     #[test]

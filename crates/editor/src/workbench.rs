@@ -16,6 +16,7 @@ use crate::library::{LibraryItem, ProjectInfo};
 use crate::models::ModelInfo;
 use crate::panel::Panel;
 use crate::panels::{PanelViewer, drop_hint};
+use crate::properties::AssemblyPart;
 use crate::theme::{self, Accent};
 use crate::viewport::{Overlays, Tool, Viewport, ViewportRenderer};
 use egui::Ui;
@@ -99,6 +100,10 @@ pub enum WorkbenchAction {
     },
 }
 
+/// What [`Workbench::assembly_part`] was worked out for: the selected
+/// entity, the area's revision and the sources' count.
+pub(crate) type PartKey = (Option<reflect::EntityId>, u64, u64);
+
 /// The editor's state, kept between frames.
 pub struct Workbench {
     pub(crate) info: AppInfo,
@@ -157,6 +162,14 @@ pub struct Workbench {
     pub(crate) problems: crate::problems::Problems,
     /// The game, while it runs.
     pub(crate) playing: Option<crate::play::Playing>,
+    /// Goes up whenever what Problems checks the area against changes:
+    /// the models loaded, the Library, the assemblies, the components
+    /// known.
+    pub(crate) sources: u64,
+    /// The last [`Self::assembly_part`], with the selection, revision and
+    /// sources it was worked out for: kept, since it expands the whole
+    /// assembly.
+    pub(crate) assembly_part_kept: std::cell::RefCell<Option<(PartKey, Option<AssemblyPart>)>>,
 }
 
 impl Workbench {
@@ -183,6 +196,8 @@ impl Workbench {
             place_targets: BTreeMap::new(),
             problems: Default::default(),
             playing: None,
+            sources: 0,
+            assembly_part_kept: std::cell::RefCell::new(None),
             assemblies: BTreeMap::new(),
             outbox: Vec::new(),
             unsaved_prompt: None,
@@ -247,9 +262,19 @@ impl Workbench {
     /// project.
     pub fn set_project(&mut self, project: Option<ProjectInfo>) {
         if project != self.project {
-            self.document = Document::default();
+            self.replace_document(Document::default());
             self.models.clear();
             self.library.clear();
+            self.sources += 1;
+            // Nothing of the old project's is used with the new one: its
+            // assemblies (a copy of a project shares IDs with it), where
+            // things were dropped, a question about its file, the
+            // Library's place in its folders.
+            self.assemblies.clear();
+            self.place_targets.clear();
+            self.pending_reload = None;
+            self.unsaved_prompt = None;
+            self.library_state = Default::default();
             if let Some(p) = &project {
                 self.log(LogLevel::Info, format!("Opened the project {}.", p.name));
             }
@@ -270,6 +295,7 @@ impl Workbench {
     /// The project's files, for the Library.
     pub fn set_library(&mut self, items: Vec<LibraryItem>) {
         self.library = items;
+        self.sources += 1;
     }
 
     /// The project's folders inside its assets, `/` between names, for
@@ -291,6 +317,7 @@ impl Workbench {
     /// didn't change.
     pub fn reload_model(&mut self, info: ModelInfo, warnings: &[String]) {
         let (name, triangles) = (info.name.clone(), info.triangles);
+        self.sources += 1;
         if self.models.insert(info.asset, info).is_none() {
             // First loaded for an opened area: nothing to announce.
             return;
@@ -310,15 +337,55 @@ impl Workbench {
     /// Starts a new, unsaved area (File > New area). Doesn't ask about
     /// unsaved changes: asking comes before the action.
     pub fn new_area(&mut self) {
-        self.document = Document::default();
+        self.replace_document(Document::default());
         self.pending_reload = None;
     }
 
     /// Shows `area`, read from `file`, in place of the open one.
     pub fn open_area(&mut self, area: area::Area, file: std::path::PathBuf) {
-        self.document = Document::opened(area, file);
+        self.replace_document(Document::opened(area, file));
         self.pending_reload = None;
         self.log(LogLevel::Info, format!("Opened {}.", self.document.name()));
+    }
+
+    /// Uses `document` in place of the open one, keeping the components
+    /// registered so far (game code registers its own once, not once per
+    /// area).
+    fn replace_document(&mut self, mut document: Document) {
+        document.registry = std::mem::take(&mut self.document.registry);
+        self.document = document;
+    }
+
+    /// A file or folder was moved from `from` to `to` (full paths), or
+    /// deleted (`to` is `None`). If it was the open area's file, or a
+    /// folder holding it, the area follows it; returns its new file then
+    /// (`None` inside: it was deleted).
+    pub fn file_moved(
+        &mut self,
+        from: &std::path::Path,
+        to: Option<&std::path::Path>,
+    ) -> Option<Option<std::path::PathBuf>> {
+        let file = self.document.file()?.to_path_buf();
+        let rest = file.strip_prefix(from).ok()?;
+        let moved = to.map(|to| {
+            if rest.as_os_str().is_empty() {
+                to.to_path_buf()
+            } else {
+                to.join(rest)
+            }
+        });
+        self.document.file_moved(moved.clone());
+        match &moved {
+            Some(path) => self.log(
+                LogLevel::Info,
+                format!("The open area is now {}.", path.display()),
+            ),
+            None => self.log(
+                LogLevel::Warning,
+                "The open area's file was deleted; saving asks where to put it.",
+            ),
+        }
+        Some(moved)
     }
 
     /// Notes that the area was saved to `file`.
@@ -390,9 +457,22 @@ impl Workbench {
         self.viewport.look
     }
 
-    /// The viewport camera, for saving.
+    /// The viewport camera of the view in use.
     pub fn camera(&self) -> Camera {
         self.viewport.camera
+    }
+
+    /// Uses `views` (the layout and every view's camera and look, as
+    /// saved last time), with anything unusable put back.
+    #[must_use]
+    pub fn with_views(mut self, views: &crate::viewport::Views) -> Self {
+        self.viewport.set_views(views);
+        self
+    }
+
+    /// The layout and every view's camera and look, for saving.
+    pub fn views(&self) -> crate::viewport::Views {
+        self.viewport.views()
     }
 
     /// Which viewport overlays are shown, for saving.
@@ -464,9 +544,15 @@ impl Workbench {
         let mut console_requests = Vec::new();
         let part = self.assembly_part();
         let mut requests = Vec::new();
-        let (hidden, locked) = self.area_panel.in_effect(self.document.area());
-        self.viewport.area =
-            AreaView::of_shown(self.document.area(), &self.models, &hidden, &locked);
+        let (hidden, locked) = self.area_panel.in_effect(&self.document);
+        self.viewport.area = AreaView::of_placed(
+            self.document.area(),
+            &self.document.tree(),
+            &self.document.world_matrices(),
+            &self.models,
+            &hidden,
+            &locked,
+        );
         self.viewport.entities = self.document.area().len();
         self.prepare_tools();
         self.find_problems();
@@ -639,12 +725,7 @@ impl Workbench {
     /// changed.
     pub(crate) fn find_problems(&mut self) {
         use crate::problems::{Fingerprint, Sources};
-        let print = Fingerprint::of(
-            &self.document,
-            self.models.len(),
-            self.library.len(),
-            self.assemblies.len(),
-        );
+        let print = Fingerprint::of(&self.document, self.sources);
         if self.problems.is_from(&print) {
             return;
         }
@@ -735,7 +816,7 @@ impl Workbench {
     /// lose them (a new or another area, another project, quitting).
     pub(crate) fn request(&mut self, action: WorkbenchAction, actions: &mut Vec<WorkbenchAction>) {
         if self.playing.is_some() && crate::play::waits_for_stop(&action) {
-            // Said in the Console, and kept back, at the end of the frame.
+            // Refused, with a word in the Console, at the end of the frame.
             actions.push(action);
             return;
         }
@@ -760,6 +841,12 @@ impl Workbench {
             }
             actions.push(action);
         }
+    }
+
+    /// The app called off a queued quit (the save before it was cancelled
+    /// or failed): a later close asks about unsaved changes again.
+    pub fn quit_cancelled(&mut self) {
+        self.may_close = false;
     }
 
     /// Whether the window may close now. If the area has unsaved changes,
@@ -810,7 +897,8 @@ impl Workbench {
                 actions.push(waiting);
             }
         }
-        if self.pending_reload.is_some() {
+        // Asked after the game stops: loading it now would only be undone.
+        if self.pending_reload.is_some() && self.playing.is_none() {
             let name = self.document.name();
             let mut answer = None;
             egui::Window::new("Changed on disk")

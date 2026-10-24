@@ -348,3 +348,47 @@ fn a_scale_square_scales_its_two_axes_equally() {
     assert!(all.contains(&Handle::Plane(2)) && !all.contains(&Handle::ScalePlane(2)));
     assert_eq!(Handle::ScalePlane(1).axis(), Some(1));
 }
+
+#[test]
+fn the_gizmo_works_in_every_flat_view() {
+    use crate::camera::ViewKind;
+    for kind in [ViewKind::Top, ViewKind::Front, ViewKind::Right] {
+        let camera = Camera {
+            position: Vec3::ZERO,
+            kind,
+            flat_height: 400.0,
+            ..Camera::default()
+        };
+        let g = gizmo(GizmoTool::Move);
+        // The free-move square slides in the view's own plane.
+        let start = screen(&camera, Vec3::ZERO);
+        let mut drag = Drag::new(g, Handle::Centre, &camera, SIZE, start);
+        let goal = camera.right() * 30.0 + camera.up() * 20.0;
+        let Change::Translate(moved) = drag.update(screen(&camera, goal), false, NONE_LOCKED)
+        else {
+            panic!("a move")
+        };
+        assert!(moved.abs_diff_eq(goal, 0.5), "{kind:?}: {moved}");
+        // An arrow across the screen moves along its axis only.
+        let axis = if kind == ViewKind::Right { 1 } else { 0 };
+        let tip = WORLD[axis] * 50.0;
+        let mut drag = Drag::new(
+            g,
+            Handle::Axis(axis),
+            &camera,
+            SIZE,
+            screen(&camera, tip * 0.5),
+        );
+        let Change::Translate(along) = drag.update(
+            screen(&camera, tip * 0.5 + WORLD[axis] * 25.0 + camera.up() * 40.0),
+            false,
+            NONE_LOCKED,
+        ) else {
+            panic!("a move")
+        };
+        assert!(
+            along.abs_diff_eq(WORLD[axis] * 25.0, 0.5),
+            "{kind:?}: {along}"
+        );
+    }
+}
