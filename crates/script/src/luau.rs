@@ -40,7 +40,15 @@ pub(crate) struct Clock {
     /// When everything running now (a tick, a load) must end, and how
     /// long it was given.
     all: Cell<Option<(Instant, Duration)>>,
+    /// Interrupts since the clock was last read.
+    since: Cell<u32>,
 }
+
+/// How often the interrupt reads the clock: once in this many. Interrupts
+/// come at every call and every turn of a loop, and reading the clock
+/// costs several times what the interrupt does; a few thousandths of a
+/// millisecond late is still in time.
+const READ_EVERY: u32 = 32;
 
 impl Clock {
     /// Runs one call into game code with the time limit watching it: it
@@ -82,6 +90,12 @@ impl Clock {
         let Some(until) = self.call.get() else {
             return Ok(mlua::VmState::Continue);
         };
+        let since = self.since.get() + 1;
+        if since < READ_EVERY {
+            self.since.set(since);
+            return Ok(mlua::VmState::Continue);
+        }
+        self.since.set(0);
         let now = Instant::now();
         if now <= until {
             return Ok(mlua::VmState::Continue);

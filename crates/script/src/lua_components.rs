@@ -101,16 +101,25 @@ fn lua_problem_whole(file: &str, err: &mlua::Error) -> CodeProblem {
 }
 
 /// The Lua files, compiled, each with globals of its own (not run yet).
+/// `bytecode`, when it has one for every file, is the files already
+/// compiled (on the worker).
 pub(crate) fn compile_files(
     luau: &Luau,
     files: &[(String, String)],
+    bytecode: &[Vec<u8>],
 ) -> Result<Vec<(String, mlua::Function)>, CodeProblem> {
     let mut out = Vec::with_capacity(files.len());
-    for (path, text) in files {
+    let compiled = bytecode.len() == files.len();
+    for (i, (path, text)) in files.iter().enumerate() {
         let problem = |err: mlua::Error| lua_problem(path, &err);
-        let chunk = luau
-            .lua
-            .load(text)
+        let load = if compiled {
+            luau.lua
+                .load(&bytecode[i][..])
+                .set_mode(mlua::ChunkMode::Binary)
+        } else {
+            luau.lua.load(text)
+        };
+        let chunk = load
             .set_name(format!("={path}"))
             .set_environment(luau.env().map_err(problem)?)
             .into_function()

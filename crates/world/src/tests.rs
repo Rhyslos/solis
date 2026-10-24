@@ -284,3 +284,45 @@ fn game_code_moves_an_entity_and_those_under_it_follow_when_settled() {
     assert_eq!(world.get::<Transform>(bare), Some(at(0.0, 5.0, 0.0)));
     assert!(!world.set_transform(EntityId::random(), at(0.0, 0.0, 0.0)));
 }
+
+#[test]
+fn settling_works_out_only_what_moved_and_finds_follow_renames() {
+    let mut area = Area::default();
+    // A comes before B in the tree.
+    let mut first = EntityData::new("A").with(&at(1.0, 0.0, 0.0));
+    first.order = area.order_at_end(None);
+    let a = area.spawn(first);
+    let mut under_a = EntityData::new("Under A").with(&at(0.0, 1.0, 0.0));
+    under_a.parent = Some(a);
+    let under_a = area.spawn(under_a);
+    let mut second = EntityData::new("B").with(&at(5.0, 0.0, 0.0));
+    second.order = area.order_at_end(None);
+    let b = area.spawn(second);
+    let mut under_b = EntityData::new("Under B").with(&at(0.0, 1.0, 0.0));
+    under_b.parent = Some(b);
+    let under_b = area.spawn(under_b);
+    let mut world = World::from_area(&area);
+    // Both parents and one child move; settling gets every place right.
+    world.set_transform(a, at(2.0, 0.0, 0.0));
+    world.set_transform(under_a, at(0.0, 3.0, 0.0));
+    world.set_transform(b, at(6.0, 0.0, 0.0));
+    world.settle();
+    let place = |w: &World, id| w.global(id).unwrap().w_axis.truncate();
+    assert_eq!(place(&world, under_a), Vec3::new(2.0, 3.0, 0.0));
+    assert_eq!(place(&world, under_b), Vec3::new(6.0, 1.0, 0.0));
+    // Two entities share a name: find gives the first in tree order.
+    area.get_mut(b).unwrap().name = "A".into();
+    world.update(&area, [(b, false)]);
+    assert_eq!(world.find("A"), Some(a));
+    assert_eq!(world.find("B"), None);
+    area.get_mut(a).unwrap().name = "Z".into();
+    world.update(&area, [(a, false)]);
+    assert_eq!(world.find("A"), Some(b));
+    assert_eq!(world.find("Z"), Some(a));
+    // Change in place with one lookup: from the parent's place.
+    world.change_transform(under_b, |parent, mut t| {
+        t.position = parent.inverse().transform_point3(Vec3::new(10.0, 0.0, 0.0));
+        Some(t)
+    });
+    assert_eq!(place(&world, under_b), Vec3::new(10.0, 0.0, 0.0));
+}

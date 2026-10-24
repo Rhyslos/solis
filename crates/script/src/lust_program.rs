@@ -26,15 +26,32 @@ pub(crate) struct LustProgram {
     pub(crate) schemas: Vec<ComponentSchema>,
     /// What each declared event carries.
     pub(crate) events: Rc<EventKinds>,
+    /// Each component's methods, looked up once (Lust's classes never
+    /// change while the code runs), by component name.
+    pub(crate) methods: BTreeMap<String, Methods>,
+}
+
+/// A Lust component's `update` and `handle`, if it has them.
+#[derive(Default)]
+pub(crate) struct Methods {
+    pub(crate) update: Option<Function>,
+    pub(crate) handle: Option<Function>,
 }
 
 /// `chunk` compiled in `luau`, with globals of its own (not run yet).
-pub(crate) fn compile(luau: &Luau, chunk: &lust::LuaChunk) -> Result<(Function, Table), Failure> {
+/// `bytecode`, if given, is the chunk already compiled (on the worker).
+pub(crate) fn compile(
+    luau: &Luau,
+    chunk: &lust::LuaChunk,
+    bytecode: Option<&[u8]>,
+) -> Result<(Function, Table), Failure> {
     let failed = |err: mlua::Error| start_failure(chunk, &err);
     let env = luau.env().map_err(failed)?;
-    let function = luau
-        .lua
-        .load(&chunk.code)
+    let load = match bytecode {
+        Some(bytes) => luau.lua.load(bytes).set_mode(mlua::ChunkMode::Binary),
+        None => luau.lua.load(&chunk.code),
+    };
+    let function = load
         .set_name(lust::LuaChunk::NAME)
         .set_environment(env.clone())
         .into_function()
@@ -57,7 +74,7 @@ pub(crate) fn prepare(
         call_with(luau, Some(&env), host, discard, || function.call(())).map_err(failed)?;
     // Reading the components makes one of each, which works out their
     // fields' starting values: game code, so the natives are lent too.
-    let ((fields, schemas), events) = call_with(luau, Some(&env), host, discard, || {
+    let ((fields, schemas, methods), events) = call_with(luau, Some(&env), host, discard, || {
         Ok((read_components(&api)?, read_events(&api)?))
     })
     .map_err(failed)?;
@@ -68,6 +85,7 @@ pub(crate) fn prepare(
         fields,
         schemas,
         events: Rc::new(events),
+        methods,
     })
 }
 
@@ -81,21 +99,39 @@ fn start_failure(chunk: &lust::LuaChunk, err: &mlua::Error) -> Failure {
     }
 }
 
-/// Each component's fields, and its schema for the editor (starting
-/// values from a new one).
-#[allow(clippy::type_complexity)]
-fn read_components(
-    api: &Table,
-) -> mlua::Result<(BTreeMap<String, Vec<Field>>, Vec<ComponentSchema>)> {
+/// What [`read_components`] reads.
+type Components = (
+    BTreeMap<String, Vec<Field>>,
+    Vec<ComponentSchema>,
+    BTreeMap<String, Methods>,
+);
+
+/// Each component's fields, its schema for the editor (starting values
+/// from a new one), and its methods.
+fn read_components(api: &Table) -> mlua::Result<Components> {
     let components: Table = api.get("components")?;
     let new: mlua::Function = api.get("new")?;
     let mut fields = BTreeMap::new();
     let mut schemas = Vec::new();
+    let mut methods = BTreeMap::new();
     for pair in components.pairs::<String, Table>() {
         let (name, class) = pair?;
         let mut mine = Vec::new();
         let mut infos = Vec::new();
         let fresh: Table = new.call((name.as_str(), LuaValue::Nil))?;
+        let method = |key: &str| -> mlua::Result<Option<Function>> {
+            Ok(match fresh.get::<LuaValue>(key)? {
+                LuaValue::Function(f) => Some(f),
+                _ => None,
+            })
+        };
+        methods.insert(
+            name.clone(),
+            Methods {
+                update: method("update")?,
+                handle: method("handle")?,
+            },
+        );
         let schema: Table = class.get("__schema")?;
         for entry in schema.sequence_values::<Table>() {
             let entry = entry?;
@@ -133,7 +169,7 @@ fn read_components(
         fields.insert(name, mine);
     }
     schemas.sort_by(|a, b| a.name.cmp(&b.name));
-    Ok((fields, schemas))
+    Ok((fields, schemas, methods))
 }
 
 /// What changed between the Lust whose table is `old` and `new` (Lust's

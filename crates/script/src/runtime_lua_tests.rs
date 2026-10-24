@@ -27,6 +27,7 @@ fn code(main: &str, lua: &[(&str, &str)]) -> Compiled {
             .collect(),
         schemas: Vec::new(),
         places: Default::default(),
+        bytecode: Default::default(),
     }
 }
 
