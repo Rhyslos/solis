@@ -6,7 +6,7 @@ use area::Area;
 use area::builtin::{Camera, Environment, Light, LightKind, Model};
 use glam::Vec3;
 use reflect::AssetId;
-use std::collections::{BTreeMap, HashSet};
+use std::collections::{BTreeMap, HashMap, HashSet};
 
 /// A light, placed in the world.
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -84,9 +84,26 @@ impl AreaView {
         hidden: &HashSet<reflect::EntityId>,
         locked: &HashSet<reflect::EntityId>,
     ) -> Self {
+        let tree = area::Tree::of(area);
+        let world = tree.world_matrices(area);
+        Self::of_placed(area, &tree, &world, models, hidden, locked)
+    }
+
+    /// [`Self::of_shown`], with the area's `tree` and `world` matrices
+    /// already worked out (the document keeps them), so a frame doesn't
+    /// walk up every entity's parents again.
+    pub fn of_placed(
+        area: &Area,
+        tree: &area::Tree,
+        world: &HashMap<reflect::EntityId, glam::Mat4>,
+        models: &BTreeMap<AssetId, ModelInfo>,
+        hidden: &HashSet<reflect::EntityId>,
+        locked: &HashSet<reflect::EntityId>,
+    ) -> Self {
+        let at = |id| world.get(&id).copied().unwrap_or_default();
         let mut view = Self {
-            environment: area
-                .first_in_tree(area.with::<Environment>().map(|(id, _)| id))
+            environment: tree
+                .first_of(area.with::<Environment>().map(|(id, _)| id))
                 .and_then(|id| area.get(id)?.get::<Environment>())
                 .unwrap_or_default(),
             ..Self::default()
@@ -97,7 +114,7 @@ impl AreaView {
                 continue;
             }
             let pickable = !locked.contains(&id);
-            view.add_model(id, model, area.world_matrix(id), models, pickable);
+            view.add_model(id, model, at(id), models, pickable);
         }
         // The sun is the first in tree order, as the game has it.
         let mut suns = Vec::new();
@@ -108,17 +125,17 @@ impl AreaView {
             if light.kind == LightKind::Sun {
                 suns.push((id, light));
             } else {
-                view.add_light(id, &light, area.world_matrix(id));
+                view.add_light(id, &light, at(id));
             }
         }
-        if let Some(first) = area.first_in_tree(suns.iter().map(|(id, _)| *id))
+        if let Some(first) = tree.first_of(suns.iter().map(|(id, _)| *id))
             && let Some((id, light)) = suns.iter().find(|(id, _)| *id == first)
         {
-            view.add_light(*id, light, area.world_matrix(*id));
+            view.add_light(*id, light, at(*id));
         }
         for (id, _) in area.with::<Camera>() {
             if !hidden.contains(&id) {
-                view.cameras.push((id, area.world_matrix(id)));
+                view.cameras.push((id, at(id)));
             }
         }
         view

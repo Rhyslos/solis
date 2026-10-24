@@ -16,6 +16,7 @@ use crate::library::{LibraryItem, ProjectInfo};
 use crate::models::ModelInfo;
 use crate::panel::Panel;
 use crate::panels::{PanelViewer, drop_hint};
+use crate::properties::AssemblyPart;
 use crate::theme::{self, Accent};
 use crate::viewport::{Overlays, Tool, Viewport, ViewportRenderer};
 use egui::Ui;
@@ -99,6 +100,10 @@ pub enum WorkbenchAction {
     },
 }
 
+/// What [`Workbench::assembly_part`] was worked out for: the selected
+/// entity, the area's revision and the sources' count.
+pub(crate) type PartKey = (Option<reflect::EntityId>, u64, u64);
+
 /// The editor's state, kept between frames.
 pub struct Workbench {
     pub(crate) info: AppInfo,
@@ -161,6 +166,10 @@ pub struct Workbench {
     /// the models loaded, the Library, the assemblies, the components
     /// known.
     pub(crate) sources: u64,
+    /// The last [`Self::assembly_part`], with the selection, revision and
+    /// sources it was worked out for: kept, since it expands the whole
+    /// assembly.
+    pub(crate) assembly_part_kept: std::cell::RefCell<Option<(PartKey, Option<AssemblyPart>)>>,
 }
 
 impl Workbench {
@@ -188,6 +197,7 @@ impl Workbench {
             problems: Default::default(),
             playing: None,
             sources: 0,
+            assembly_part_kept: std::cell::RefCell::new(None),
             assemblies: BTreeMap::new(),
             outbox: Vec::new(),
             unsaved_prompt: None,
@@ -534,9 +544,15 @@ impl Workbench {
         let mut console_requests = Vec::new();
         let part = self.assembly_part();
         let mut requests = Vec::new();
-        let (hidden, locked) = self.area_panel.in_effect(self.document.area());
-        self.viewport.area =
-            AreaView::of_shown(self.document.area(), &self.models, &hidden, &locked);
+        let (hidden, locked) = self.area_panel.in_effect(&self.document);
+        self.viewport.area = AreaView::of_placed(
+            self.document.area(),
+            &self.document.tree(),
+            &self.document.world_matrices(),
+            &self.models,
+            &hidden,
+            &locked,
+        );
         self.viewport.entities = self.document.area().len();
         self.prepare_tools();
         self.find_problems();

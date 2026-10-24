@@ -440,6 +440,22 @@ impl Workbench {
 
     /// What the selected entity's assembly says about it, for Properties.
     pub(crate) fn assembly_part(&self) -> Option<AssemblyPart> {
+        let key = (
+            self.document.selection.primary(),
+            self.document.revision(),
+            self.sources,
+        );
+        if let Some((kept, part)) = &*self.assembly_part_kept.borrow()
+            && *kept == key
+        {
+            return part.clone();
+        }
+        let part = self.work_out_assembly_part();
+        *self.assembly_part_kept.borrow_mut() = Some((key, part.clone()));
+        part
+    }
+
+    fn work_out_assembly_part(&self) -> Option<AssemblyPart> {
         let id = self.document.selection.primary()?;
         let origin = self.document.area().get(id)?.origin.clone()?;
         let lookup = |asset| self.assemblies.get(&asset).cloned();

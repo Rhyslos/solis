@@ -118,13 +118,20 @@ impl Area {
         if !self.entities.contains_key(&id) {
             return Vec::new();
         }
+        // Most deleted entities have nothing under them: one look says so.
+        if !self.entities.values().any(|e| e.parent == Some(id)) {
+            return vec![id];
+        }
+        // The children of every entity at once, rather than a look over
+        // the whole area for each one under `id`.
+        let children = self.hierarchy();
         let mut out = vec![id];
+        let mut seen = std::collections::HashSet::from([id]);
         let mut i = 0;
         while i < out.len() {
-            let children = self.children(Some(out[i]));
             // A damaged area could loop; never visit an entity twice.
-            for child in children {
-                if !out.contains(&child) {
+            for &child in children.get(&Some(out[i])).map_or(&[][..], Vec::as_slice) {
+                if seen.insert(child) {
                     out.push(child);
                 }
             }
@@ -201,33 +208,19 @@ impl Area {
     /// Area panel lists them. Entities caught in a loop of a damaged area
     /// come last, so nothing is ever left out.
     pub fn depth_first(&self) -> Vec<EntityId> {
-        let tree = self.hierarchy();
-        let mut out = Vec::with_capacity(self.entities.len());
-        let mut seen = std::collections::HashSet::new();
-        let mut todo: Vec<EntityId> = tree.get(&None).cloned().unwrap_or_default();
-        todo.reverse();
-        while let Some(id) = todo.pop() {
-            if !seen.insert(id) {
-                continue;
-            }
-            out.push(id);
-            if let Some(kids) = tree.get(&Some(id)) {
-                todo.extend(kids.iter().rev());
-            }
-        }
-        out.extend(self.entities.keys().filter(|id| !seen.contains(id)));
-        out
+        crate::Tree::of(self).order().to_vec()
     }
 
     /// Which of `ids` comes first in tree order (the Area panel's order):
     /// how "the first sun" or "the first camera" is chosen everywhere, in
-    /// the editor and the game alike. Cheap for one candidate.
+    /// the editor and the game alike. Cheap for one candidate; with a
+    /// [`crate::Tree`] kept, [`crate::Tree::first_of`] is cheap for many.
     pub fn first_in_tree(&self, ids: impl IntoIterator<Item = EntityId>) -> Option<EntityId> {
         let ids: Vec<EntityId> = ids.into_iter().collect();
         match ids.as_slice() {
             [] => None,
             [one] => Some(*one),
-            _ => self.depth_first().into_iter().find(|id| ids.contains(id)),
+            _ => crate::Tree::of(self).first_of(ids),
         }
     }
 

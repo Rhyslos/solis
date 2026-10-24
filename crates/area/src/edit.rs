@@ -217,16 +217,18 @@ impl Area {
                 let Some(&(root, _)) = entities.first() else {
                     return Err(EditError::NotATree);
                 };
+                // The IDs seen so far, so a big spawn (a model of a
+                // thousand parts unpacked) is checked in one pass.
+                let mut earlier = std::collections::HashSet::with_capacity(entities.len());
                 for (i, (id, data)) in entities.iter().enumerate() {
-                    if self.contains(*id) || entities[..i].iter().any(|(e, _)| e == id) {
+                    if self.contains(*id) || earlier.contains(id) {
                         return Err(EditError::IdInUse(*id));
                     }
-                    let parent_earlier = data
-                        .parent
-                        .is_some_and(|p| entities[..i].iter().any(|(e, _)| *e == p));
+                    let parent_earlier = data.parent.is_some_and(|p| earlier.contains(&p));
                     if i > 0 && !parent_earlier {
                         return Err(EditError::NotATree);
                     }
+                    earlier.insert(*id);
                 }
                 for (id, data) in entities {
                     self.insert(id, data);
@@ -266,8 +268,20 @@ impl Area {
                     if !self.contains(p) {
                         return Err(EditError::NoEntity(p));
                     }
-                    if self.tree(entity).contains(&p) {
-                        return Err(EditError::Loop(entity));
+                    // A loop if the new parent is the entity or under it:
+                    // a walk up from the parent, which is as long as the
+                    // tree is deep (and stops in a damaged area's loop).
+                    let mut at = Some(p);
+                    let mut steps = 0;
+                    while let Some(current) = at {
+                        if current == entity {
+                            return Err(EditError::Loop(entity));
+                        }
+                        steps += 1;
+                        if steps > self.len() {
+                            break;
+                        }
+                        at = self.get(current).and_then(|e| e.parent);
                     }
                 }
                 let e = self.get_mut(entity).ok_or(EditError::NoEntity(entity))?;

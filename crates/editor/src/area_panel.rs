@@ -34,13 +34,17 @@ pub(crate) struct AreaPanelState {
 impl AreaPanelState {
     /// Every entity hidden or locked, counting those under a hidden or
     /// locked one: (hidden, locked).
-    pub(crate) fn in_effect(&self, area: &area::Area) -> (HashSet<EntityId>, HashSet<EntityId>) {
+    pub(crate) fn in_effect(
+        &self,
+        document: &crate::document::Document,
+    ) -> (HashSet<EntityId>, HashSet<EntityId>) {
         if self.hidden.is_empty() && self.locked.is_empty() {
             return Default::default();
         }
+        let area = document.area();
         let mut hidden = HashSet::new();
         let mut locked = HashSet::new();
-        for id in area.depth_first() {
+        for &id in document.tree().order() {
             let parent = area.get(id).and_then(|e| e.parent);
             if self.hidden.contains(&id) || parent.is_some_and(|p| hidden.contains(&p)) {
                 hidden.insert(id);
@@ -302,17 +306,22 @@ pub(crate) fn area_tree(
     if let Some(id) = state.reveal {
         // Unfold the way to it, so its row is there to scroll to.
         let mut parent = document.area().get(id).and_then(|e| e.parent);
-        while let Some(p) = parent {
+        // A damaged area's loop of parents ends the walk.
+        let mut steps = 0;
+        while let Some(p) = parent
+            && steps <= document.area().len()
+        {
             state.collapsed.remove(&p);
             parent = document.area().get(p).and_then(|e| e.parent);
+            steps += 1;
         }
     }
-    let rows = tree_rows(document.area(), state);
+    let rows = tree_rows(document.area(), &document.tree(), state);
     let scroll_to = state
         .reveal
         .take()
         .and_then(|id| rows.iter().position(|(r, _)| *r == id));
-    let (hidden, locked) = state.in_effect(document.area());
+    let (hidden, locked) = state.in_effect(document);
     egui::Frame::new()
         .inner_margin(egui::Margin::symmetric(6, 4))
         .show(ui, |ui| {
@@ -396,8 +405,11 @@ const NOTE_HEIGHT: f32 = 40.0;
 /// With a search, only names containing it are listed, each with its
 /// parents (folded or not). A loop in a damaged area is cut where it comes
 /// round again; entities caught in one come last.
-fn tree_rows(area: &area::Area, state: &AreaPanelState) -> Vec<(EntityId, usize)> {
-    let tree = area.hierarchy();
+fn tree_rows(
+    area: &area::Area,
+    tree: &area::Tree,
+    state: &AreaPanelState,
+) -> Vec<(EntityId, usize)> {
     let search = state.search.trim().to_lowercase();
     // With a search: the matches and everything above them.
     let wanted: Option<HashSet<EntityId>> = (!search.is_empty()).then(|| {
@@ -418,9 +430,11 @@ fn tree_rows(area: &area::Area, state: &AreaPanelState) -> Vec<(EntityId, usize)
     let mut rows = Vec::with_capacity(area.len());
     let mut seen = HashSet::new();
     let mut todo: Vec<(EntityId, usize)> = tree
-        .get(&None)
-        .map(|top| top.iter().rev().map(|&id| (id, 0)).collect())
-        .unwrap_or_default();
+        .children(None)
+        .iter()
+        .rev()
+        .map(|&id| (id, 0))
+        .collect();
     while let Some((id, depth)) = todo.pop() {
         if !seen.insert(id) {
             continue;
@@ -430,19 +444,21 @@ fn tree_rows(area: &area::Area, state: &AreaPanelState) -> Vec<(EntityId, usize)
         }
         rows.push((id, depth));
         let folded = wanted.is_none() && state.collapsed.contains(&id);
-        if let Some(kids) = tree.get(&Some(id))
-            && !folded
-        {
-            todo.extend(kids.iter().rev().map(|&k| (k, depth + 1)));
+        if !folded {
+            todo.extend(
+                tree.children(Some(id))
+                    .iter()
+                    .rev()
+                    .map(|&k| (k, depth + 1)),
+            );
         }
     }
     if wanted.is_none() {
         // Entities caught in a loop: below nothing reachable, but listed.
-        let reachable: HashSet<EntityId> = area.depth_first().into_iter().collect();
         rows.extend(
             area.iter()
                 .map(|(id, _)| id)
-                .filter(|id| !seen.contains(id) && !reachable.contains(id))
+                .filter(|&id| !seen.contains(&id) && tree.in_loop(id))
                 .map(|id| (id, 0)),
         );
     }
