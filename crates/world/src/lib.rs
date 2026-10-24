@@ -148,6 +148,13 @@ impl World {
         world
     }
 
+    /// A new revision: unique across worlds, so a world built again never
+    /// repeats one.
+    fn bump_revision(&mut self) {
+        static REVISIONS: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(1);
+        self.revision = REVISIONS.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+    }
+
     /// Works out where each subtree ends, and each name's first entity.
     fn index(&mut self) {
         let mut ends: Vec<usize> = (1..=self.order.len()).collect();
@@ -161,9 +168,7 @@ impl World {
             }
         }
         self.ends = ends;
-        // Unique across worlds, so a world built again never repeats one.
-        static REVISIONS: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(1);
-        self.revision = REVISIONS.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+        self.bump_revision();
         self.names.clear();
         for (at, &(entity, _)) in self.order.iter().enumerate() {
             if let Ok(name) = self.ecs.get::<&Name>(entity) {
@@ -187,13 +192,145 @@ impl World {
                 (now == from).then_some((id, from, at))
             })
             .collect();
+        let projectiles = std::mem::take(&mut self.projectiles);
         *self = Self::from_area(area);
         self.clock = clock;
+        self.projectiles = projectiles;
         for (id, from, at) in kept {
             self.set_transform(id, at);
             self.game_moved.insert(id, from);
         }
         self.settle();
+    }
+
+    /// Adds `entities` (a new subtree game code spawned, just added to the
+    /// area at the end of its tree) after everything else, without
+    /// building the rest again: its root is the one whose parent isn't
+    /// among them, standing at the top level. Entities already in the
+    /// world are left out. Returns the IDs added, parents first.
+    pub fn add_subtree(&mut self, entities: &[(EntityId, area::EntityData)]) -> Vec<EntityId> {
+        let ids: std::collections::HashSet<EntityId> = entities.iter().map(|(id, _)| *id).collect();
+        let mut children: HashMap<Option<EntityId>, Vec<(&str, EntityId, &area::EntityData)>> =
+            HashMap::new();
+        for (id, data) in entities {
+            let parent = data.parent.filter(|p| ids.contains(p));
+            children
+                .entry(parent)
+                .or_default()
+                .push((data.order.as_str(), *id, data));
+        }
+        for kids in children.values_mut() {
+            kids.sort_by(|a, b| (a.0, a.1).cmp(&(b.0, b.1)));
+        }
+        // Depth first from the top of the subtree, as the area's tree
+        // order has it.
+        let mut stack: Vec<(EntityId, &area::EntityData)> = children
+            .get(&None)
+            .map(|kids| kids.iter().rev().map(|&(_, id, data)| (id, data)).collect())
+            .unwrap_or_default();
+        let mut added = Vec::new();
+        let mut seen = std::collections::HashSet::new();
+        while let Some((id, data)) = stack.pop() {
+            if !seen.insert(id) || self.by_id.contains_key(&id) {
+                continue;
+            }
+            let at = self.order.len();
+            let parent = data.parent.and_then(|p| self.place.get(&p).copied());
+            let entity = self
+                .ecs
+                .spawn(components_of(id, data).add(Place(at)).build());
+            self.by_id.insert(id, entity);
+            self.place.insert(id, at);
+            self.order.push((entity, parent));
+            self.ends.push(at + 1);
+            // Its parents' runs now reach past it (only parents inside the
+            // subtree: its root stands at the top).
+            let mut up = parent;
+            while let Some(p) = up {
+                if p < self.ends.len() {
+                    self.ends[p] = self.ends[p].max(at + 1);
+                }
+                up = self.order.get(p).and_then(|(_, pp)| *pp);
+            }
+            self.names.entry(data.name.clone()).or_insert(at);
+            let local = data
+                .get::<Transform>()
+                .map_or(Mat4::IDENTITY, |t| t.matrix());
+            let global = self.parent_global_at(at) * local;
+            if let Ok(mut g) = self.ecs.get::<&mut Global>(entity) {
+                g.0 = global;
+            }
+            added.push(id);
+            if let Some(kids) = children.get(&Some(id)) {
+                stack.extend(kids.iter().rev().map(|&(_, kid, data)| (kid, data)));
+            }
+        }
+        if !added.is_empty() {
+            self.bump_revision();
+        }
+        added
+    }
+
+    /// The IDs of `id` and everything under it, parents first (none if
+    /// it isn't in the world).
+    pub fn subtree(&self, id: EntityId) -> Vec<EntityId> {
+        let Some(&at) = self.place.get(&id) else {
+            return Vec::new();
+        };
+        let end = self.ends.get(at).copied().unwrap_or(at + 1);
+        self.order[at..end]
+            .iter()
+            .filter_map(|(entity, _)| self.ecs.get::<&Id>(*entity).ok().map(|i| i.0))
+            .collect()
+    }
+
+    /// Takes each of `ids` and everything under it out of the world (game
+    /// code despawned them), without building the rest again.
+    pub fn remove_subtrees(&mut self, ids: &[EntityId]) {
+        let mut gone = vec![false; self.order.len()];
+        let mut any = false;
+        for id in ids {
+            let Some(&at) = self.place.get(id) else {
+                continue;
+            };
+            let end = self.ends.get(at).copied().unwrap_or(at + 1);
+            for slot in gone.iter_mut().take(end).skip(at) {
+                *slot = true;
+            }
+            any = true;
+        }
+        if !any {
+            return;
+        }
+        // Where each kept entity moves to, and the order without the rest.
+        let mut moved_to = vec![usize::MAX; self.order.len()];
+        let old = std::mem::take(&mut self.order);
+        for (at, (entity, parent)) in old.into_iter().enumerate() {
+            if gone[at] {
+                if let Ok(id) = self.ecs.get::<&Id>(entity).map(|i| i.0) {
+                    self.by_id.remove(&id);
+                    self.place.remove(&id);
+                    self.game_moved.remove(&id);
+                }
+                let _ = self.ecs.despawn(entity);
+                continue;
+            }
+            let now = self.order.len();
+            moved_to[at] = now;
+            // A parent always comes first, so it has moved already.
+            let parent = parent.and_then(|p| moved_to.get(p).copied().filter(|&n| n != usize::MAX));
+            self.order.push((entity, parent));
+            if now != at {
+                if let Ok(id) = self.ecs.get::<&Id>(entity).map(|i| i.0) {
+                    self.place.insert(id, now);
+                }
+                if let Ok(mut place) = self.ecs.get::<&mut Place>(entity) {
+                    place.0 = now;
+                }
+            }
+        }
+        self.unsettled.clear();
+        self.index();
     }
 
     /// Takes in changes to the components and names of entities in `area`

@@ -133,16 +133,6 @@ fn read_model(
     let (materials, textures) = read_materials(document, &buffers, folder, limits, &mut warnings);
     let (meshes, nodes) = geometry::read_meshes(document, &buffers, limits, &mut warnings)?;
     let lamps = crate::lights::read_lamps(&geometry::placed_nodes(document)?, &mut warnings)?;
-    let bounds = Bounds::around(nodes.iter().flat_map(|node| {
-        node.meshes.iter().flat_map(|&m| {
-            meshes[m]
-                .vertices
-                .iter()
-                .map(|v| node.world.transform_point3(glam::Vec3::from(v.position)))
-        })
-    }))
-    .or_else(|| Bounds::around(lamps.iter().map(|l| l.position)))
-    .ok_or(ImportError::Empty)?;
     let mut model = Model {
         name: name.to_string(),
         meshes,
@@ -150,10 +140,26 @@ fn read_model(
         materials,
         textures,
         lamps,
-        bounds,
+        bounds: Bounds {
+            min: glam::Vec3::ZERO,
+            max: glam::Vec3::ZERO,
+        },
         warnings,
     };
     crate::lods::add_lods(&mut model, limits);
+    // The box is measured after the model's own levels of detail are moved
+    // onto what they stand in for: modellers often keep `Ship_LOD1` beside
+    // `Ship` in the file, and it isn't drawn there.
+    model.bounds = Bounds::around(model.nodes.iter().flat_map(|node| {
+        node.meshes.iter().flat_map(|&m| {
+            model.meshes[m]
+                .vertices
+                .iter()
+                .map(|v| node.world.transform_point3(glam::Vec3::from(v.position)))
+        })
+    }))
+    .or_else(|| Bounds::around(model.lamps.iter().map(|l| l.position)))
+    .ok_or(ImportError::Empty)?;
     Ok(model)
 }
 

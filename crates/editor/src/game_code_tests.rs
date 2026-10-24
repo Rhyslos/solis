@@ -1159,7 +1159,7 @@ fn spawning_too_much_in_one_frame_is_refused_and_said_once() {
     w.run_game(1.0 / 60.0);
     assert_eq!(
         w.document.area().len(),
-        before + crate::play::MAX_SPAWNS_PER_FRAME
+        before + crate::play::MAX_SPAWNS_PER_TICK
     );
     let told = w
         .log_lines()
@@ -1167,4 +1167,50 @@ fn spawning_too_much_in_one_frame_is_refused_and_said_once() {
         .filter(|l| l.text.contains("weren't made"))
         .count();
     assert_eq!(told, 1);
+}
+
+#[test]
+fn spawned_entities_join_on_the_next_tick_even_within_one_frame() {
+    // A slow frame runs several ticks; drones spawned on the first run
+    // their own code on every tick after it, without waiting for the
+    // next frame (C3 of the Phase 5 review).
+    let mut w = with_drones(HIVE);
+    let mut hive = EntityData::new("Hive");
+    hive.components
+        .insert("Hive".into(), reflect::ComponentData::default());
+    w.document
+        .edit(
+            "Add",
+            vec![area::Edit::Spawn {
+                entities: vec![(EntityId::random(), hive)],
+            }],
+            None,
+            None,
+        )
+        .unwrap();
+    let last = w.document.area().children(None).last().copied();
+    w.play();
+    w.run_game((5.5 * world::TICK) as f32);
+    let playing = w.playing.as_ref().unwrap();
+    let drones: Vec<EntityId> = w
+        .document
+        .area()
+        .children(None)
+        .into_iter()
+        .filter(|&id| w.document.area().get(id).is_some_and(|e| e.name == "drone"))
+        .collect();
+    assert_eq!(drones.len(), 3);
+    for &drone in &drones {
+        let z = playing.world.global(drone).unwrap().w_axis.z;
+        assert!((z - 5.0).abs() < 1e-4, "four ticks of climbing: {z}");
+    }
+    // They join at the end of the area's tree, in the order spawned.
+    let roots = w.document.area().children(None);
+    let at = roots.iter().position(|&r| Some(r) == last).unwrap();
+    assert_eq!(&roots[at + 1..], &drones[..]);
+    let xs: Vec<f32> = drones
+        .iter()
+        .map(|&d| playing.world.global(d).unwrap().w_axis.x)
+        .collect();
+    assert_eq!(xs, vec![0.0, 2.0, 4.0]);
 }

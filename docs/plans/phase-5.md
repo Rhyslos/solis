@@ -116,4 +116,6 @@ The working plan for Phase 5 (ROADMAP.md, "Phase 5: Scale"). It records the choi
 ### End of the phase
 
 - The review (decision 0027): three reviewers, the fixes in pull requests by kind, the scale check with all three levels.
+- **Stability (built).** Limits on what game code can pile up in one go (200,000 changes, 4 MB of spawn names), the time limit stays expired once hit (a `pcall` loop can't catch it), spawns capped per tick and by the area's most entities, LOD making within the import limits, a mixed hash for entity IDs, an unreadable assembly read once.
+- **Where parts meet (built).** Spawns and despawns land per tick, in order, straight into the world (`World::add_subtree`, `World::remove_subtrees`) instead of building it again next frame, which had also dropped every projectile in flight; spawns from starts and swaps wait in `Playing::pending` instead of being lost; spawned roots go at the end of the tree; spawn IDs include the round of events; load and swap are all-or-none across shards; sync failures and swap notes come out the same on any number of shards; a model's box is measured after its own LODs move; a node's LOD is chosen from where the node stands. Left for later: an unpacked part of a model (`Ship_LOD1` dragged in on its own) draws nothing, as its meshes moved onto `Ship`.
 - The gate, tried by the project lead on their PC.

@@ -417,22 +417,20 @@ impl Document {
 
     /// Changes the area by `edits` made by the running game (copies of
     /// assemblies it spawned, entities it took out), each on its own and
-    /// not as an undo step: Stop puts the area back anyway. Returns how
-    /// many couldn't be made (an entity already there, or gone).
+    /// not as an undo step: Stop puts the area back anyway. They aren't
+    /// [`Self::take_changes`]' changes: the game made them in its world
+    /// too. Returns how many couldn't be made (an entity already there,
+    /// or gone).
     pub fn edit_by_game(&mut self, edits: Vec<Edit>) -> usize {
         let mut failed = 0;
-        let mut changes = Changes::default();
         for edit in edits {
-            let noted = [edit.clone()];
-            match self.area.apply(edit) {
-                Ok(_) => changes.note(&noted),
-                Err(_) => failed += 1,
+            if self.area.apply(edit).is_err() {
+                failed += 1;
             }
         }
+        // The game's world has them already: they aren't changes for it
+        // to take in, only for the editor's own views of the area.
         self.changed(false, false);
-        self.changes.entities.extend(changes.entities);
-        self.changes.moved.extend(changes.moved);
-        self.changes.everything |= changes.everything;
         self.selection.retain_existing(&self.area);
         failed
     }

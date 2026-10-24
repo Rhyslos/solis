@@ -417,7 +417,7 @@ impl GameWorld for SpawnWorld {
 #[test]
 fn a_runaway_loop_can_t_keep_unbounded_changes() {
     let mut world = TestWorld::with(&["A"]);
-    let mut host = ViewHost::new(world.view());
+    let mut host = ViewHost::new(world.view(), 0);
     for _ in 0..MAX_KEPT + 5 {
         host.move_to(id(1), Vec3::ONE);
     }
@@ -433,10 +433,76 @@ fn a_runaway_loop_can_t_keep_unbounded_changes() {
     assert_eq!(host.kept.changes.len(), MAX_KEPT);
     assert_eq!(host.kept.dropped, 8);
     // Long names fill their own budget first.
-    let mut host = ViewHost::new(world.view());
+    let mut host = ViewHost::new(world.view(), 0);
     let name = "x".repeat(1024);
     let made = (0..10_000)
         .filter(|_| host.spawn(&name, Vec3::ZERO).is_some())
         .count();
     assert_eq!(made, MAX_SPAWN_BYTES / 1024);
+}
+
+#[test]
+fn spawns_in_different_rounds_of_events_make_different_entities() {
+    // Each round's only event (number 0 in its round) reaches the same
+    // component, which spawns and sends the next.
+    const ECHO: &str = "get \"solis/world\":[spawn];\n\
+        event Ping(int left);\n\
+        component Echo {\n\
+            has {\n\
+                int started = 0;\n\
+            }\n\
+            method update(float dt) {\n\
+                is started == 0? then {\n\
+                    started = 1;\n\
+                    send Ping(3) to me;\n\
+                }\n\
+            }\n\
+            on Ping(int left) {\n\
+                entity made = spawn(\"drone\", [0, 0, 0]);\n\
+                is left > 0? then {\n\
+                    send Ping(left - 1) to me;\n\
+                }\n\
+            }\n\
+        }\n\
+        pass Echo;\nend\n";
+    let mut world = SpawnWorld(TestWorld::with(&["E"]), Vec::new());
+    let mut game = Game::new(1).unwrap();
+    game.load(&compiled(ECHO), &mut world).unwrap();
+    let empty = ComponentData::default();
+    game.sync_many([(id(1), "Echo", &empty)], &mut world);
+    assert!(game.tick(1.0 / 60.0, &mut world).failures.is_empty());
+    let ids: std::collections::HashSet<_> = world
+        .1
+        .iter()
+        .filter_map(|c| match c {
+            Change::Spawn(id, _, _) => Some(*id),
+            _ => None,
+        })
+        .collect();
+    assert_eq!(ids.len(), 4, "four rounds, four entities");
+}
+
+#[test]
+fn failing_starts_are_told_in_the_order_asked_on_any_number_of_shards() {
+    // C10 of the Phase 5 review: shards finish in their own order, but
+    // the Console hears about failures in the order the entities came.
+    let broken = RustKind {
+        schema: reflect::ComponentSchema {
+            name: "Bad".into(),
+            help: "Never starts.".into(),
+            fields: Vec::new(),
+        },
+        make: |_| panic!("make broke"),
+    };
+    let order: Vec<u64> = vec![9, 2, 7, 4, 11, 1, 6, 3, 10, 5, 8, 12];
+    for shards in [1, 3, 4] {
+        let mut world = TestWorld::with(&["e"; 12]);
+        let mut game = Game::new(shards).unwrap();
+        game.add_rust(broken.clone());
+        let empty = ComponentData::default();
+        let failures = game.sync_many(order.iter().map(|&n| (id(n), "Bad", &empty)), &mut world);
+        let told: Vec<EntityId> = failures.iter().filter_map(|f| f.entity).collect();
+        let wanted: Vec<EntityId> = order.iter().map(|&n| id(n)).collect();
+        assert_eq!(told, wanted, "on {shards} shards");
+    }
 }
