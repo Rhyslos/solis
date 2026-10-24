@@ -1,0 +1,186 @@
+//! The game's code, looked after on a worker (CONTRIBUTING rule 10): the
+//! files describing the engine to Lust written into a project when it
+//! opens, and the project's Lust read and checked whenever something in
+//! its assets changes. Only a check that found different code reports.
+
+use script::{Code, CodeProblem};
+use std::hash::{Hash, Hasher};
+use std::path::{Path, PathBuf};
+use std::sync::mpsc::{Receiver, channel};
+
+/// What a finished check found.
+pub struct Checked {
+    /// The mistakes, in order.
+    pub problems: Vec<CodeProblem>,
+    /// Files left out, and why.
+    pub notes: Vec<String>,
+}
+
+/// One check at a time, and whether another is wanted after it.
+#[derive(Default)]
+pub struct GameCode {
+    running: Option<Receiver<(u64, Code, Vec<CodeProblem>)>>,
+    /// The folder to check again when the running check ends.
+    again: Option<PathBuf>,
+    /// The code the last reported check found, by its hash.
+    last: Option<u64>,
+}
+
+impl GameCode {
+    /// Writes the files describing the engine (`assets/solis/*.lst`) if
+    /// they're missing or different. `made_by` names the program and
+    /// version. Returns notes on any that couldn't be written.
+    pub fn describe(assets: &Path, made_by: &str) -> Vec<String> {
+        let mut notes = Vec::new();
+        for (path, text) in script::describe::descriptions(made_by, crate::branding::CODE_FOLDER) {
+            let file = assets.join(&path);
+            if std::fs::read_to_string(&file).is_ok_and(|old| old == text) {
+                continue;
+            }
+            let written = file
+                .parent()
+                .map_or(Ok(()), std::fs::create_dir_all)
+                .and_then(|()| asset_db::write_atomically(&file, text.as_bytes()));
+            if let Err(why) = written {
+                notes.push(format!(
+                    "Couldn't write {path}, which describes the engine to game code: {why}."
+                ));
+            }
+        }
+        notes
+    }
+
+    /// Reads and checks the code in `assets` on a worker; if a check is
+    /// running, another starts when it ends.
+    pub fn check(&mut self, assets: PathBuf) {
+        if self.running.is_some() {
+            self.again = Some(assets);
+            return;
+        }
+        let (sender, receiver) = channel();
+        let started = std::thread::Builder::new()
+            .name("game code".into())
+            .spawn(move || {
+                let code = script::gather(&assets);
+                let problems = script::check(&code);
+                let _ = sender.send((hash(&code), code, problems));
+            });
+        if started.is_ok() {
+            self.running = Some(receiver);
+        }
+    }
+
+    /// Another project opened: what the last one's checks found is
+    /// forgotten, and one still running is left to finish unheard.
+    pub fn forget(&mut self) {
+        self.running = None;
+        self.again = None;
+        self.last = None;
+    }
+
+    /// Whether a check is running.
+    pub fn waiting(&self) -> bool {
+        self.running.is_some()
+    }
+
+    /// A finished check's findings, if the code changed since the last
+    /// one reported. Never waits.
+    pub fn poll(&mut self) -> Option<Checked> {
+        let receiver = self.running.as_ref()?;
+        let (found, code, problems) = match receiver.try_recv() {
+            Ok(done) => done,
+            Err(std::sync::mpsc::TryRecvError::Empty) => return None,
+            Err(std::sync::mpsc::TryRecvError::Disconnected) => {
+                // The worker stopped without an answer: try again later.
+                self.running = None;
+                return None;
+            }
+        };
+        self.running = None;
+        if let Some(assets) = self.again.take() {
+            self.check(assets);
+        }
+        if self.last == Some(found) {
+            return None;
+        }
+        self.last = Some(found);
+        Some(Checked {
+            problems,
+            notes: code.notes,
+        })
+    }
+}
+
+/// A hash of the files read and those left out, to tell a change.
+fn hash(code: &Code) -> u64 {
+    let mut hasher = std::collections::hash_map::DefaultHasher::new();
+    code.files.hash(&mut hasher);
+    code.notes.hash(&mut hasher);
+    hasher.finish()
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    fn folder(name: &str) -> PathBuf {
+        let path = std::env::temp_dir()
+            .join(format!("solis-game-code-{}", std::process::id()))
+            .join(name);
+        let _ = std::fs::remove_dir_all(&path);
+        std::fs::create_dir_all(&path).unwrap();
+        path
+    }
+
+    fn finished(code: &mut GameCode) -> Option<Checked> {
+        let start = std::time::Instant::now();
+        while code.waiting() && start.elapsed().as_secs() < 30 {
+            if let Some(done) = code.poll() {
+                return Some(done);
+            }
+            std::thread::sleep(std::time::Duration::from_millis(5));
+        }
+        None
+    }
+
+    #[test]
+    fn the_engine_is_described_once_and_the_code_checked_when_it_changes() {
+        let assets = folder("check");
+        assert!(GameCode::describe(&assets, "Test 1.0").is_empty());
+        let written = std::fs::read_to_string(assets.join("solis/world.lst")).unwrap();
+        assert!(written.contains("method say(string words) native;"));
+        let stamp = std::fs::metadata(assets.join("solis/world.lst"))
+            .unwrap()
+            .modified()
+            .unwrap();
+        GameCode::describe(&assets, "Test 1.0");
+        assert_eq!(
+            std::fs::metadata(assets.join("solis/world.lst"))
+                .unwrap()
+                .modified()
+                .unwrap(),
+            stamp,
+            "the same text isn't written again"
+        );
+        let mut code = GameCode::default();
+        std::fs::write(
+            assets.join("main.lst"),
+            "get \"solis/world\":[say];\ncomponent Gun {\n    has {\n        int ammo = \"x\";\n    }\n}\npass Gun;\nend\n",
+        )
+        .unwrap();
+        code.check(assets.clone());
+        let found = finished(&mut code).unwrap();
+        assert_eq!(found.problems.len(), 1, "{:?}", found.problems.first());
+        assert_eq!(found.problems[0].line, 4);
+        // The same code again: nothing new to say.
+        code.check(assets.clone());
+        assert!(finished(&mut code).is_none());
+        std::fs::write(
+            assets.join("main.lst"),
+            "get \"solis/world\":[say];\ncomponent Gun {\n    has {\n        int ammo = 3;\n    }\n}\npass Gun;\nend\n",
+        )
+        .unwrap();
+        code.check(assets);
+        assert!(finished(&mut code).unwrap().problems.is_empty());
+    }
+}

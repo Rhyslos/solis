@@ -8,6 +8,11 @@ pub const APP_NAME: &str = "Solis";
 /// Changing it makes the editor start with fresh settings.
 pub const APP_ID: &str = "solis";
 
+/// The folder in each project's assets holding the files that describe the
+/// engine to game code (`solis/world.lst`), which games fetch by this name.
+/// Changing it breaks existing games' code, like a file extension.
+pub const CODE_FOLDER: &str = "solis";
+
 #[cfg(test)]
 mod tests {
     use super::*;

@@ -18,6 +18,7 @@ layer = 2
 reflect.workspace = true
 area.workspace = true
 world.workspace = true
+script.workspace = true
 egui.workspace = true
 egui_dock.workspace = true
 glam.workspace = true

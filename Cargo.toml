@@ -22,6 +22,7 @@ reflect = { path = "crates/reflect" }
 area = { path = "crates/area" }
 asset_db = { path = "crates/asset_db" }
 world = { path = "crates/world" }
+script = { path = "crates/script" }
 
 # Outside libraries. Every one must have a licence compatible with MIT,
 # checked by `cargo deny check` (see deny.toml and decision 0007).
@@ -58,6 +59,12 @@ pollster = "1.0"
 ron = "0.12"
 # Watching the project folder for changed files (decision 0021).
 notify = "8.2"
+# Game code (decision 0028): the Lust compiler as a library, pinned to a
+# commit of Lust's main branch until its tag exists (then `tag =
+# "v2.0.0-alpha.32"`); without default features it needs only Rust's own
+# library. Lust and Lua run in Luau.
+lust = { git = "https://github.com/Rhyslos/Lust", rev = "e496119d5b69bfb2e623116fed37593d787e5abb", default-features = false }
+mlua = { version = "0.10", features = ["luau"] }
 notify-debouncer-mini = "0.7"
 # Deleting from the Library moves files to the Recycle Bin, so nothing is
 # lost by accident.

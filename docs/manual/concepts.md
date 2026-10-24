@@ -5,7 +5,7 @@
 ## The editor and the engine
 
 - **Engine:** the program a game runs on. It draws the picture, plays the sound, runs the physics and the game's own code. When a game ships, the engine goes with it.
-- **Editor:** the window you build a game in. Games ship without it. In Solis the engine is written in Rust; game code can be written in Lust, Rust or Lua (arriving in a later phase).
+- **Editor:** the window you build a game in. Games ship without it. In Solis the engine is written in Rust; game code can be written in Lust, Rust or Lua; see [Game code](game-code.md).
 
 ## The window
 
@@ -92,3 +92,10 @@
 - **Game:** what players see and do. In the editor it's shown in the **Game** panel, through the game's camera, without the editor's grid and markers.
 - **Camera:** an entity the game looks through. The game uses the first camera in the area. Its **field of view** is how wide it sees.
 - **World:** the game's own copy of the area while it runs, kept in a form a game can run over quickly. It's made when you press Play and thrown away on Stop.
+
+## Game code
+
+- **Game code:** the part of a game written as code: its rules, and what things do on their own. See [Game code](game-code.md).
+- **Lust:** a programming language made for games like Solis's, which reads like plain English. Solis checks it and runs it. Lust can also become Rust, which runs fastest, for the finished game.
+- **Native method:** a method Lust knows the name and values of, but whose work is done by the engine, such as `moveTo`. The engine's are listed in the `solis` folder Solis writes into each project.
+- **Mistake (in code):** something the checker finds before the code runs, such as a misspelt name or text where a number should be. Solis lists each one with its file, line and column (how far along the line).
