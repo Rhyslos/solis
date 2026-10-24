@@ -25,6 +25,7 @@ fn code(main: &str, lua: &[(&str, &str)]) -> Compiled {
             .iter()
             .map(|(p, t)| ((*p).to_string(), (*t).to_string()))
             .collect(),
+        schemas: Vec::new(),
     }
 }
 
@@ -81,7 +82,7 @@ end
 
 #[test]
 fn a_lua_component_has_its_fields_in_order_and_runs_with_the_natives() {
-    let mut runtime = Runtime::new();
+    let mut runtime = Runtime::new().unwrap();
     runtime
         .load(&code("", &[("spin/spinner.lua", SPINNER)]), &mut NoHost)
         .unwrap();
@@ -104,7 +105,7 @@ fn a_lua_component_has_its_fields_in_order_and_runs_with_the_natives() {
     let mut log = Log::default();
     log.at.insert(me, glam::Vec3::ZERO);
     runtime.sync(me, "Spinner", &data, &mut log).unwrap();
-    assert!(runtime.tick(0.5, &mut log).is_empty());
+    assert!(runtime.tick(0.5, &mut log).failures.is_empty());
     assert_eq!(log.at[&me], glam::Vec3::new(2.0, 0.0, 0.0));
     assert_eq!(log.said, ["Cart spins at 2"]);
     let values = runtime.values(me, "Spinner").unwrap();
@@ -146,7 +147,7 @@ function Gun:on_Healed(amount)
     solis.say("lua healed " .. amount)
 end
 "#;
-    let mut runtime = Runtime::new();
+    let mut runtime = Runtime::new().unwrap();
     runtime
         .load(&code(lust, &[("gun.lua", lua)]), &mut NoHost)
         .unwrap();
@@ -157,7 +158,7 @@ end
             .unwrap();
     }
     let mut log = Log::default();
-    let failures = runtime.tick(0.1, &mut log);
+    let failures = runtime.tick(0.1, &mut log).failures;
     assert!(failures.is_empty(), "{failures:?}");
     assert_eq!(log.said, ["lust hp 7.5", "lua healed 1"]);
     assert_eq!(
@@ -170,7 +171,7 @@ end
 fn new_lua_while_running_keeps_values_and_says_what_started_over() {
     let v1 = "local C = component(\"Counter\", { { \"n\", \"int\", 0 }, { \"step\", \"int\", 1 }, { \"tag\", \"string\", \"a\" } })\nfunction C:update(dt) self.n = self.n + self.step end\n";
     let v2 = "local C = component(\"Counter\", { { \"n\", \"int\", 0 }, { \"step\", \"float\", 10 }, { \"loud\", \"bool\", true } })\nfunction C:update(dt) self.n = self.n - 1 end\n";
-    let mut runtime = Runtime::new();
+    let mut runtime = Runtime::new().unwrap();
     runtime
         .load(&code("", &[("c.lua", v1)]), &mut NoHost)
         .unwrap();
@@ -211,7 +212,7 @@ fn new_lua_while_running_keeps_values_and_says_what_started_over() {
 
 #[test]
 fn mistakes_in_lua_say_their_file_and_line() {
-    let mut runtime = Runtime::new();
+    let mut runtime = Runtime::new().unwrap();
     let bad_kind = runtime
         .load(
             &code(
@@ -251,7 +252,7 @@ fn mistakes_in_lua_say_their_file_and_line() {
     runtime
         .sync(id(7), "Broken", &ComponentData::default(), &mut NoHost)
         .unwrap();
-    let failures = runtime.tick(0.1, &mut NoHost);
+    let failures = runtime.tick(0.1, &mut NoHost).failures;
     assert_eq!(failures.len(), 1);
     assert_eq!(
         (failures[0].at.file.as_str(), failures[0].at.line),

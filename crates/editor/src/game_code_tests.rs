@@ -10,6 +10,14 @@ use std::sync::Arc;
 /// The program for a `main.lst` holding `main`, with the engine's
 /// description files.
 fn program(main: &str) -> Arc<script::Compiled> {
+    match compiled(main) {
+        Ok(chunk) => Arc::new(chunk),
+        Err(problems) => panic!("{}", problems[0]),
+    }
+}
+
+/// [`program`], or its mistakes.
+fn compiled(main: &str) -> Result<script::Compiled, Vec<script::CodeProblem>> {
     let mut files = script::describe::descriptions("Test Engine 9.9.9", "solis");
     files.push((
         "main.lst".into(),
@@ -23,11 +31,7 @@ fn program(main: &str) -> Arc<script::Compiled> {
         lua: Vec::new(),
         notes: Vec::new(),
     };
-    match script::compile(&code) {
-        Ok(Some(chunk)) => Arc::new(chunk),
-        Ok(None) => panic!("no code"),
-        Err(problems) => panic!("{}", problems[0]),
-    }
+    script::compile(&code).map(|c| c.expect("there's code"))
 }
 
 const MOVER: &str = "component Mover {\n\
@@ -119,17 +123,12 @@ fn a_component_named_like_a_built_in_one_or_a_failing_start_is_a_problem() {
             .field("on")
             .is_none()
     );
-    let mut w = Workbench::new(info(), None);
-    w.set_program(Some(program("int ways = 0;\nint each = 12 / ways;\nend\n")));
-    assert_eq!(w.code_problems().len(), 1);
-    assert_eq!(w.code_problems()[0].line, 4);
-    assert!(
-        w.log_lines()
-            .last()
-            .unwrap()
-            .text
-            .contains("stopped while starting")
-    );
+    // A start that fails is found while compiling, on the app's worker,
+    // so the editor never runs it on the frame.
+    let problems = compiled("int ways = 0;\nint each = 12 / ways;\nend\n").unwrap_err();
+    assert_eq!(problems.len(), 1);
+    assert_eq!(problems[0].line, 4);
+    assert!(problems[0].message.contains("stopped while starting"));
 }
 
 #[test]
@@ -422,18 +421,6 @@ fn new_code_while_playing_is_swapped_in_and_keeps_where_things_are() {
 }
 
 #[test]
-fn new_code_that_fails_to_start_keeps_the_last_program() {
-    let (mut w, id) = with_a_mover();
-    w.play();
-    w.run_game(1.0 / 60.0);
-    w.set_program(Some(program("int ways = 0;\nint each = 1 / ways;\nend\n")));
-    assert!(w.document.registry.get("Mover").is_some(), "still known");
-    let x = x_in_game(&w, id);
-    w.run_game(1.0 / 60.0);
-    assert!(x_in_game(&w, id) > x, "still running the last code");
-}
-
-#[test]
 fn a_lua_component_joins_properties_and_play_mode() {
     let mut w = Workbench::new(info(), None);
     let code = script::Code {
@@ -471,5 +458,53 @@ fn a_lua_component_joins_properties_and_play_mode() {
     assert_eq!(
         running.values(id, "Spinner").unwrap().get("turns"),
         Some(&Value::Int(3))
+    );
+}
+
+#[test]
+fn a_tick_that_takes_too_long_pauses_the_game_and_says_why() {
+    let mut w = Workbench::new(info(), None);
+    let code = script::Code {
+        files: Vec::new(),
+        lua: vec![(
+            "slow.lua".into(),
+            "local S = component(\"Slow\", {})\n\
+             function S:update(dt)\n\
+               local start = os.clock()\n\
+               while os.clock() - start < 0.09 do end\n\
+             end\n"
+                .into(),
+        )],
+        notes: Vec::new(),
+    };
+    w.set_program(Some(Arc::new(script::compile(&code).unwrap().unwrap())));
+    for n in 0..4 {
+        let mut data = EntityData::new(&format!("Slow {n}"));
+        data.components
+            .insert("Slow".into(), reflect::ComponentData::default());
+        w.document
+            .edit(
+                "Add",
+                vec![area::Edit::Spawn {
+                    entities: vec![(EntityId::random(), data)],
+                }],
+                None,
+                None,
+            )
+            .unwrap();
+    }
+    w.play();
+    // A long frame would catch up with several ticks; the first is too
+    // slow, so the rest don't run.
+    let start = std::time::Instant::now();
+    w.run_game(0.1);
+    assert!(start.elapsed() < std::time::Duration::from_millis(600));
+    assert!(w.playing.as_ref().unwrap().paused);
+    assert!(
+        w.log_lines()
+            .last()
+            .unwrap()
+            .text
+            .contains("so the game paused")
     );
 }

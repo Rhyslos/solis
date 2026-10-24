@@ -13,29 +13,19 @@ use script::{CodeProblem, Failure, Host, Runtime};
 use std::sync::Arc;
 
 impl Workbench {
-    /// Takes in the game's program (the app compiles it on a worker, and
-    /// hands it over when the code has no mistakes; `None` when there's no
-    /// code). Its components replace the last program's in the registry.
-    /// Starting it reads them; a start that fails is a problem, and the
-    /// last program that worked stays. While playing, the new code is
-    /// swapped into the running game.
+    /// Takes in the game's program (the app compiles it on a worker,
+    /// starting it there to read its components, and hands it over when
+    /// the code has no mistakes; `None` when there's no code). Its
+    /// components replace the last program's in the registry. While
+    /// playing, the new code is swapped into the running game. Nothing
+    /// here runs game code unless the game is playing.
     pub fn set_program(&mut self, chunk: Option<Arc<script::Compiled>>) {
-        let mut runtime = Runtime::new();
-        if let Some(chunk) = &chunk
-            && let Err(failure) = runtime.load(chunk, &mut script::NoHost)
-        {
-            self.log(
-                LogLevel::Error,
-                format!("The game's code stopped while starting: {failure}"),
-            );
-            self.code_problems.push(failure.at);
-            return;
-        }
         for name in std::mem::take(&mut self.game_components) {
             self.document.registry.remove(&name);
         }
         self.sources += 1;
-        for schema in runtime.schemas() {
+        let schemas = chunk.as_ref().map_or(&[][..], |c| c.schemas.as_slice());
+        for schema in schemas {
             match self.document.registry.register(schema.clone()) {
                 Ok(()) => {
                     self.game_components.insert(schema.name.clone());
@@ -65,13 +55,19 @@ impl Workbench {
         let Some(playing) = &mut self.playing else {
             return;
         };
-        let game = playing.game.get_or_insert_with(|| {
-            let mut runtime = Runtime::new();
-            for kind in &self.rust_components {
-                runtime.add_rust(kind.clone());
+        if playing.game.is_none() {
+            match new_runtime(&self.rust_components) {
+                Ok(runtime) => playing.game = Some(runtime),
+                Err(failure) => {
+                    let text = failure.to_string();
+                    self.log(LogLevel::Error, text);
+                    return;
+                }
             }
-            runtime
-        });
+        }
+        let Some(game) = &mut playing.game else {
+            return;
+        };
         let time = playing.world.clock().time;
         let mut host = WorldHost::new(&mut playing.world, time);
         let mut failures = Vec::new();
@@ -139,6 +135,15 @@ impl Workbench {
     pub fn game_components(&self) -> impl Iterator<Item = &str> {
         self.game_components.iter().map(String::as_str)
     }
+}
+
+/// A new runtime with the open project's Rust components.
+pub(crate) fn new_runtime(rust: &[script::RustKind]) -> Result<Runtime, Failure> {
+    let mut runtime = Runtime::new()?;
+    for kind in rust {
+        runtime.add_rust(kind.clone());
+    }
+    Ok(runtime)
 }
 
 /// The game's world, as game code reaches it while a tick runs.

@@ -45,8 +45,22 @@ pub const FILES: &[(&str, &str)] = &[
 ];
 
 /// Makes `root` the turret sample: a new project with the sample's files.
-/// Refuses a folder that's already a project.
+/// Refuses a folder that's already a project, or that has a file where
+/// the sample's would go (nothing of the person's is ever replaced).
 pub fn make(root: &Path) -> Result<(), asset_db::ProjectError> {
+    for (path, _) in FILES {
+        let file = root.join(asset_db::ASSETS_FOLDER).join(path);
+        if file.exists() {
+            return Err(asset_db::ProjectError::Io(std::io::Error::new(
+                std::io::ErrorKind::AlreadyExists,
+                format!(
+                    "there's already a file called {}, which the sample would replace; pick an \
+                     empty folder",
+                    file.strip_prefix(root).unwrap_or(&file).display()
+                ),
+            )));
+        }
+    }
     let project = Project::create(root, NAME)?;
     for (path, text) in FILES {
         asset_db::write_atomically(&project.assets().join(path), text.as_bytes())?;
@@ -59,14 +73,21 @@ pub fn make(root: &Path) -> Result<(), asset_db::ProjectError> {
 /// With a note if that file was changed, since changes to it don't run
 /// until Phase 10.
 pub fn rust_components(assets: &Path) -> (Vec<script::RustKind>, Option<String>) {
-    let Ok(text) = std::fs::read_to_string(assets.join("armour.rs")) else {
+    use std::io::Read;
+    let Ok(file) = std::fs::File::open(assets.join("armour.rs")) else {
         return (Vec::new(), None);
     };
     let built_in = FILES
         .iter()
         .find(|(path, _)| *path == "armour.rs")
-        .map(|(_, t)| *t);
-    let note = (Some(text.replace("\r\n", "\n").as_str()) != built_in).then(|| {
+        .map_or("", |(_, t)| *t);
+    // Read no more than could match (it's read on the frame).
+    let mut text = Vec::new();
+    let _ = file
+        .take(built_in.len() as u64 * 2 + 1)
+        .read_to_end(&mut text);
+    let text = String::from_utf8_lossy(&text).replace("\r\n", "\n");
+    let note = (text != built_in).then(|| {
         "armour.rs was changed. Rust changes don't run yet: until Phase 10 builds a game's own \
          Rust, the Armour built into Solis is used."
             .to_string()

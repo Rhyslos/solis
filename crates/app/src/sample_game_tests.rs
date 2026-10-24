@@ -119,3 +119,24 @@ fn the_sample_is_made_as_a_project_and_plays_through_all_three_languages() {
     std::fs::write(assets.join("armour.rs"), "// mine\n").unwrap();
     assert!(rust_components(&assets).1.is_some());
 }
+
+#[test]
+fn the_sample_never_replaces_a_file_of_the_person_s() {
+    let root = std::env::temp_dir()
+        .join(format!("solis-sample-mine-{}", std::process::id()))
+        .join("My game");
+    let _ = std::fs::remove_dir_all(&root);
+    let assets = root.join(asset_db::ASSETS_FOLDER);
+    std::fs::create_dir_all(&assets).unwrap();
+    std::fs::write(assets.join("main.lst"), "-- mine\nend\n").unwrap();
+    let why = make(&root).unwrap_err().to_string();
+    assert!(why.contains("main.lst"), "{why}");
+    assert_eq!(
+        std::fs::read_to_string(assets.join("main.lst")).unwrap(),
+        "-- mine\nend\n"
+    );
+    assert!(
+        !root.join(asset_db::PROJECT_FILE).exists(),
+        "nothing was made"
+    );
+}
