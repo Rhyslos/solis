@@ -240,6 +240,18 @@ impl Camera {
         camera
     }
 
+    /// Where someone looking at the view would stand: the camera itself in
+    /// perspective, and for a flat view a point in front of its middle, as
+    /// far away as the view is tall. Lights are chosen and shaded from
+    /// here, and things added "at the camera" go here.
+    pub fn viewpoint(&self) -> Vec3 {
+        if self.kind.is_flat() {
+            self.position - self.forward() * self.flat_height.max(1.0)
+        } else {
+            self.position
+        }
+    }
+
     /// Where the view is seen from: the camera itself in perspective, and
     /// for a flat view a point far behind its middle, so everything near
     /// it is in front.

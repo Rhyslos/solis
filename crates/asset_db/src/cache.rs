@@ -75,6 +75,11 @@ pub fn load(
         {
             // The name follows the file, which may have been renamed.
             model.name = assets_name(path);
+            // Used now: the last to go when the cache is trimmed.
+            let _ = std::fs::File::options()
+                .write(true)
+                .open(&entry)
+                .and_then(|f| f.set_modified(std::time::SystemTime::now()));
             return Ok((model, true));
         }
     }
@@ -85,6 +90,44 @@ pub fn load(
             .and_then(|()| write_atomically(&entry_path(folder, key), &encode(&model)));
     }
     Ok((model, false))
+}
+
+/// The most the cache keeps on disk. Past it, the entries used least
+/// lately are deleted (they're only made again if needed).
+pub const MAX_BYTES: u64 = 4 << 30;
+
+/// Deletes the cache entries in `folder` used least lately until they
+/// take at most `max_bytes` together. Returns how many bytes were freed.
+/// Only cache files are touched; anything else in the folder is left.
+pub fn trim(folder: &Path, max_bytes: u64) -> u64 {
+    let Ok(listing) = std::fs::read_dir(folder) else {
+        return 0;
+    };
+    let mut entries: Vec<(std::time::SystemTime, u64, PathBuf)> = listing
+        .filter_map(Result::ok)
+        .filter(|e| e.path().extension().is_some_and(|x| x == EXTENSION))
+        .filter_map(|e| {
+            let meta = e.metadata().ok()?;
+            meta.is_file().then(|| {
+                let used = meta.modified().unwrap_or(std::time::UNIX_EPOCH);
+                (used, meta.len(), e.path())
+            })
+        })
+        .collect();
+    let mut total: u64 = entries.iter().map(|(_, size, _)| size).sum();
+    // Oldest first.
+    entries.sort();
+    let mut freed = 0;
+    for (_, size, path) in entries {
+        if total <= max_bytes {
+            break;
+        }
+        if std::fs::remove_file(&path).is_ok() {
+            total -= size;
+            freed += size;
+        }
+    }
+    freed
 }
 
 fn assets_name(path: &Path) -> String {
@@ -549,6 +592,32 @@ mod tests {
         let model = showcase();
         let bytes = encode(&model);
         assert_eq!(decode(&bytes, &Limits::default()).unwrap(), model);
+    }
+
+    #[test]
+    fn trimming_deletes_the_entries_used_least_lately() {
+        let folder = test_folder("cache-trim");
+        std::fs::create_dir_all(&folder).unwrap();
+        let day = std::time::Duration::from_secs(86_400);
+        let now = std::time::SystemTime::now();
+        // Three entries of 100 bytes, used 3, 2 and 1 days ago.
+        for (i, age) in [3u32, 2, 1].into_iter().enumerate() {
+            let path = entry_path(&folder, i as u64);
+            std::fs::write(&path, [0u8; 100]).unwrap();
+            std::fs::File::options()
+                .write(true)
+                .open(&path)
+                .unwrap()
+                .set_modified(now - day * age)
+                .unwrap();
+        }
+        std::fs::write(folder.join("notes.txt"), [0u8; 500]).unwrap();
+        assert_eq!(trim(&folder, 1_000), 0, "within its size");
+        assert_eq!(trim(&folder, 150), 200, "the two oldest go");
+        assert!(entry_path(&folder, 2).exists());
+        assert!(!entry_path(&folder, 0).exists() && !entry_path(&folder, 1).exists());
+        assert!(folder.join("notes.txt").exists(), "only cache files");
+        assert_eq!(trim(&folder.join("missing"), 0), 0);
     }
 
     #[test]

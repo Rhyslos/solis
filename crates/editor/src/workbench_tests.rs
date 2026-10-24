@@ -1247,6 +1247,83 @@ fn scale_check_playing_while_dragging() {
 }
 
 #[test]
+#[ignore = "scale check: run by tools/scale/scale-check.sh"]
+fn scale_check_dragging_everything() {
+    // Ctrl+A and a Move drag: every entity changes every frame, and the
+    // drag stays one undo step however long it lasts.
+    const TARGET_MS: f64 = 8.0;
+    let mut w = crowded(2_000);
+    w.select_all();
+    w.viewport.tool = Tool::Move;
+    let mut h = harness_with(w);
+    h.run();
+    h.state_mut()
+        .viewport
+        .tools
+        .events
+        .push(crate::viewport_tools::ViewportEvent::GizmoStart);
+    let frames = 100;
+    let start = std::time::Instant::now();
+    for i in 0..frames {
+        h.state_mut().viewport.tools.events.push(
+            crate::viewport_tools::ViewportEvent::GizmoChange {
+                change: crate::gizmo::Change::Translate(Vec3::X * i as f32 * 0.1),
+                flip: false,
+            },
+        );
+        h.step();
+    }
+    let ms = start.elapsed().as_secs_f64() * 1000.0 / f64::from(frames);
+    assert_eq!(
+        h.state().document().history().undo_len(),
+        2,
+        "fill and drag"
+    );
+    let verdict = if ms <= TARGET_MS { "ok" } else { "SLOW" };
+    println!(
+        "Scale check: dragging all 2,000 entities {ms:.2} ms a frame (target {TARGET_MS} ms) {verdict}"
+    );
+    assert!(ms <= TARGET_MS, "the editor takes {ms:.2} ms per frame");
+}
+
+#[test]
+#[ignore = "scale check: run by tools/scale/scale-check.sh"]
+fn scale_check_unpacked_model_with_1000_parts() {
+    // A big model unpacked: a thousand parts, each its own entity drawn
+    // from one model, with all of them selected.
+    const TARGET_MS: f64 = 4.0;
+    let (mut w, model) = with_a_model();
+    let mut info = crate_info();
+    info.nodes = (0..1_000)
+        .map(|i| crate::models::NodeInfo {
+            part: i + 1,
+            name: format!("Part {i}"),
+            parent: (i > 0).then(|| (i as usize - 1) / 4),
+            local: glam::Mat4::from_translation(Vec3::X),
+            has_meshes: true,
+        })
+        .collect();
+    w.reload_model(info, &[]);
+    let start = std::time::Instant::now();
+    w.unpack(model);
+    let unpack_ms = start.elapsed().as_secs_f64() * 1000.0;
+    w.select_all();
+    let mut h = harness_with(w);
+    h.run();
+    let frames = 100;
+    let start = std::time::Instant::now();
+    for _ in 0..frames {
+        h.step();
+    }
+    let ms = start.elapsed().as_secs_f64() * 1000.0 / f64::from(frames);
+    let verdict = if ms <= TARGET_MS { "ok" } else { "SLOW" };
+    println!(
+        "Scale check: a 1,000-part model unpacked ({unpack_ms:.0} ms), all selected {ms:.2} ms a frame (target {TARGET_MS} ms) {verdict}"
+    );
+    assert!(ms <= TARGET_MS, "the editor takes {ms:.2} ms per frame");
+}
+
+#[test]
 fn a_crowded_area_still_lists_and_inspects() {
     let mut w = crowded(200);
     let some = w.document().area().depth_first()[100];
@@ -1712,6 +1789,16 @@ fn a_model_unpacks_into_its_parts() {
     let mut drawn: Vec<_> = view.models.iter().map(|m| (m.asset, m.node)).collect();
     drawn.sort();
     assert_eq!(drawn, [(asset, Some(1)), (asset, Some(2))]);
+    // F on the sail centres on the sail, not on the whole model's box
+    // moved there.
+    w.select(sail);
+    w.frame_selection();
+    let focus = w.camera().focus();
+    let to_sail = (Vec3::new(3.0, 0.0, 0.0) - w.camera().position).normalize();
+    assert!(
+        to_sail.dot(w.camera().forward()) > 0.999,
+        "looks at the sail: {focus}"
+    );
     w.undo();
     assert!(w.document().area().get(model).unwrap().has("Model"));
 }

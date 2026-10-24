@@ -294,3 +294,28 @@ fn reading_saved_views_never_panics() {
         }
     }
 }
+
+#[test]
+fn a_flat_view_has_no_fog_and_adds_cameras_above_the_ground() {
+    let mut v = Viewport::default();
+    v.camera = v.camera.as_kind(ViewKind::Top);
+    v.area.environment.fog = true;
+    let view = v.view([800, 600], 1.0);
+    assert!(!view.environment.fog, "fog would hide the whole flat view");
+    // Seen from in front of the view's middle, as far as it's tall, not
+    // from 2.5 km away (fog, lights) nor from the ground (new cameras).
+    let expected = v.camera.position + Vec3::Z * v.camera.flat_height;
+    assert!(view.camera_position.distance(expected) < 1e-3);
+    let mut w = crate::workbench::Workbench::new(info(), None);
+    w.viewport.camera = w.viewport.camera.as_kind(ViewKind::Top);
+    let id = w.add_camera();
+    let at = w
+        .document
+        .area()
+        .get(id)
+        .unwrap()
+        .get::<area::builtin::Transform>()
+        .unwrap()
+        .position;
+    assert!(at.z > 1.0, "{at}");
+}

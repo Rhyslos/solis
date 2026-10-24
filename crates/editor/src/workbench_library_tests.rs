@@ -83,7 +83,13 @@ fn the_code_panel_lists_code() {
 
 #[test]
 fn placing_models_and_opening_areas() {
-    let (w, crate_id, _) = with_a_project();
+    let (mut w, crate_id, rock_id) = with_a_project();
+    // An earlier drop that never arrived (its import failed, say) doesn't
+    // send a later placing to the old drop point.
+    w.place_dropped(rock_id, Vec3::ONE, None);
+    w.placing_failed(rock_id);
+    assert!(w.take_place_target(rock_id).is_none());
+    w.place_dropped(crate_id, Vec3::ONE, None);
     let mut h = harness(w);
     h.run();
     h.get_by_label("Place crate").click();
@@ -95,6 +101,8 @@ fn placing_models_and_opening_areas() {
     assert!(actions.contains(&WorkbenchAction::OpenAreaFile(
         "/projects/harbour/assets/docks.solarea".into()
     )));
+    // The click placed it where the camera looks, not at the old drop.
+    assert!(h.state_mut().0.take_place_target(crate_id).is_none());
 }
 
 #[test]

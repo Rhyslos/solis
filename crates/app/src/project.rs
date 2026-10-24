@@ -62,6 +62,20 @@ impl Projects {
         };
         let watcher = Watcher::new(&project.assets()).ok();
         let (db, _, notes) = AssetDb::open(project, limits);
+        // The cache keeps within its size, on a worker: a model whose entry
+        // goes meanwhile is simply imported again.
+        let cache = db.project().cache();
+        let _ = std::thread::Builder::new()
+            .name("cache trim".into())
+            .spawn(move || {
+                let freed = asset_db::cache::trim(&cache, asset_db::cache::MAX_BYTES);
+                if freed > 0 {
+                    log::info!(
+                        "Freed {} MB of the import cache (models not used lately).",
+                        freed >> 20
+                    );
+                }
+            });
         let info = ProjectInfo {
             name: db.project().name().to_string(),
             root: root.to_path_buf(),
@@ -105,7 +119,14 @@ impl Projects {
     /// the folder isn't looked at.
     pub fn poll(&mut self) -> (Vec<Change>, Vec<String>) {
         let changed = self.watcher.as_ref().is_some_and(Watcher::changed);
-        if !changed {
+        // A new file left waiting for its sidecar is looked at again once
+        // it has settled, even if nothing else happens.
+        let due = self
+            .db
+            .as_ref()
+            .and_then(AssetDb::look_again_at)
+            .is_some_and(|at| std::time::Instant::now() >= at);
+        if !changed && !due {
             return (Vec::new(), Vec::new());
         }
         self.changed = true;
@@ -115,6 +136,12 @@ impl Projects {
     /// Whether anything in the assets folder changed since last asked.
     pub fn take_changed(&mut self) -> bool {
         std::mem::take(&mut self.changed)
+    }
+
+    /// Gives a file Solis just wrote into the assets its sidecar now (see
+    /// [`AssetDb::adopt`]).
+    pub fn adopt(&self, path: &Path) -> std::io::Result<()> {
+        self.db.as_ref().map_or(Ok(()), |db| db.adopt(path))
     }
 
     /// Looks at the whole assets folder again.
@@ -157,7 +184,7 @@ impl Projects {
                 thumbnail: thumbnail(&f.path),
             })
             .collect();
-        items.sort_by_key(|item| item.name.to_lowercase());
+        items.sort_by_cached_key(|item| item.name.to_lowercase());
         let folders = listing.folders.iter().map(|f| slashed(f)).collect();
         (items, folders)
     }
@@ -194,6 +221,8 @@ impl Projects {
         } else {
             db.copy_in(source)?
         };
+        // Made by Solis just now: taken at once, not left to settle.
+        db.adopt(&target)?;
         db.rescan();
         let id = db
             .id_at(&target)

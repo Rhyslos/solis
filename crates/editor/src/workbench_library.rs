@@ -29,7 +29,12 @@ impl Workbench {
             }
         };
         match request {
-            LibraryRequest::Place(id) => actions.push(WorkbenchAction::PlaceAsset(id)),
+            LibraryRequest::Place(id) => {
+                // A double-click places it where the camera looks, even if
+                // an earlier drop of the same asset never arrived.
+                self.place_targets.remove(&id);
+                actions.push(WorkbenchAction::PlaceAsset(id));
+            }
             LibraryRequest::Open(LibraryKind::Area, path) => {
                 self.request(WorkbenchAction::OpenAreaFile(full(&path)), actions);
             }
@@ -54,6 +59,12 @@ impl Workbench {
     pub(crate) fn place_dropped(&mut self, asset: AssetId, at: Vec3, parent: Option<EntityId>) {
         self.place_targets.insert(asset, (at, parent));
         self.outbox.push(WorkbenchAction::PlaceAsset(asset));
+    }
+
+    /// Forgets where `asset` was to go: its import failed, so a later
+    /// placing of it doesn't land at an old drop point.
+    pub fn placing_failed(&mut self, asset: AssetId) {
+        self.place_targets.remove(&asset);
     }
 
     /// Where a model or assembly being placed goes: the point it was

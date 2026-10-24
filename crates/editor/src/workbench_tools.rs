@@ -6,7 +6,7 @@
 use crate::commands::{component_edits, merge_key};
 use crate::gizmo::{Change, Gizmo, GizmoTool};
 use crate::picking::{after_box, after_click};
-use crate::transforming::{Targets, moved, snapped, targets};
+use crate::transforming::{Targets, moved, snapped, targets_placed};
 use crate::viewport::Tool;
 use crate::viewport_tools::{Outline, ViewportEvent};
 use crate::workbench::Workbench;
@@ -24,8 +24,10 @@ impl Workbench {
             Tool::Scale => GizmoTool::Scale,
             Tool::Transform => GizmoTool::All,
         };
-        let t = targets(
+        let world = self.document.world_matrices();
+        let t = targets_placed(
             self.document.area(),
+            &|id| world.get(&id).copied().unwrap_or_default(),
             &self.document.selection,
             self.viewport.snapping.object_axes,
         )?;
@@ -40,14 +42,15 @@ impl Workbench {
     /// box, or a point for anything else.
     fn outlines(&self) -> Vec<Outline> {
         let area = self.document.area();
-        let hidden = self.area_panel.in_effect(area).0;
+        let hidden = self.area_panel.in_effect(&self.document).0;
+        let placed = self.document.world_matrices();
         self.document
             .selection
             .iter()
             .filter(|id| !hidden.contains(id))
             .filter_map(|id| {
                 let entity = area.get(id)?;
-                let world = area.world_matrix(id);
+                let world = placed.get(&id).copied().unwrap_or_default();
                 let whole_model = entity
                     .get::<Model>()
                     .and_then(|m| m.asset)
@@ -76,8 +79,10 @@ impl Workbench {
         for event in std::mem::take(&mut self.viewport.tools.events) {
             match event {
                 ViewportEvent::GizmoStart => {
-                    self.moving = targets(
+                    let world = self.document.world_matrices();
+                    self.moving = targets_placed(
                         self.document.area(),
+                        &|id| world.get(&id).copied().unwrap_or_default(),
                         &self.document.selection,
                         self.viewport.snapping.object_axes,
                     )

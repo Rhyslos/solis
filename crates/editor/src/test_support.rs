@@ -41,7 +41,12 @@ impl ViewportRenderer for Picker {
             return None;
         }
         self.waiting = false;
-        Some(self.answer.clone().unwrap_or_default())
+        // The answer to the question last asked.
+        let rect = self.asked.last().copied().unwrap_or_default();
+        Some(PickAnswer {
+            rect,
+            ..self.answer.clone().unwrap_or_default()
+        })
     }
 }
 

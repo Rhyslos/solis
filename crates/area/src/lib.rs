@@ -12,7 +12,9 @@ mod document;
 mod edit;
 mod history;
 pub mod text;
+mod tree;
 
 pub use document::{Area, EntityData, Origin, order_after};
 pub use edit::{Edit, EditError};
-pub use history::{DEFAULT_LIMIT_BYTES, History, MergeKey, Step, Undone};
+pub use history::{DEFAULT_LIMIT_BYTES, History, MergeKey, Step, Undone, Weigh};
+pub use tree::Tree;

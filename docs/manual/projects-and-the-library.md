@@ -53,11 +53,12 @@ A `.gltf` model reads the files beside it, so it can't be moved to another folde
 | `project.solis` | Marks the folder as a project and holds its name. |
 | `assets/` | Everything you made or brought in. Watched for changes. |
 | `<file>.solmeta` | A small text file beside each asset holding its ID. **Commit it with the asset**, and move or rename them together (Solis copes if you forget, as long as the content didn't change). |
-| `.solis/` | Solis's cache: models it has already read, so they open quickly. Safe to delete; it's rebuilt. Never committed. |
+| `.solis/` | Solis's cache: models it has already read, so they open quickly. It keeps within 4 GB, deleting the models used least lately. Safe to delete; it's rebuilt. Never committed. |
 
 ## Tips and common problems
 - **Problem:** the Console says a sidecar couldn't be read. **Why:** the `.solmeta` file was damaged, perhaps by a bad Git merge. **Fix:** fix it in a text editor, or delete it to give the model a new ID (anything using the old ID will then say the model is missing).
-- **Problem:** the Console says a model "is a copy, so it got a new ID". **Why:** a file was copied together with its `.solmeta`; two files can't share an ID. Nothing is wrong.
+- **Problem:** the Console says a model "is a copy, so it got a new ID". **Why:** a file was copied together with its `.solmeta`; two files can't share an ID. The original (whose `.solmeta` is older) keeps its ID, so nothing using it changes. Nothing is wrong.
+- **Problem:** a model I saved into the assets folder from Blender takes a couple of seconds to show in the Library. **Why:** Solis waits two seconds before giving a new file its ID, because Git writes a file and its `.solmeta` one after the other: a look in between would give the file a new ID and lose the one it has on other computers. **Fix:** nothing; models brought in with **Import model** show at once.
 - **Problem:** I renamed a model in Explorer *and* changed it before Solis was open, and it lost its ID. **Why:** Solis finds a renamed file by its content; with the content changed too, it can't tell. **Fix:** rename and change in separate steps, or rename the `.solmeta` along with it.
 - **Problem:** models placed before opening a project disappeared. **Why:** opening a project starts a new area. **Fix:** Solis asks to save first; [save the area](saving-areas.md) inside the project to keep it.
 - Imported models open much faster the second time: the cache remembers them, even after a rename.

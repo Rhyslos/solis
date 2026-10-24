@@ -476,7 +476,7 @@ impl Viewport {
         ViewportView {
             size_px,
             view_projection: self.camera.view_projection(aspect),
-            camera_position: self.camera.eye(),
+            camera_position: self.camera.viewpoint(),
             focus: self.camera.focus(),
             sky_top: rgb(theme::backdrop::SKY_TOP),
             sky_horizon: rgb(theme::backdrop::HORIZON),
@@ -486,7 +486,16 @@ impl Viewport {
             outline_px: self.look.outline_px(pixels_per_point),
             sun: self.area.sun,
             lamps: self.area.lamps.clone(),
-            environment: self.area.environment,
+            environment: if self.camera.is_flat() {
+                // Fog grows with distance, which a flat view doesn't show:
+                // it would only hide the whole view.
+                area::builtin::Environment {
+                    fog: false,
+                    ..self.area.environment
+                }
+            } else {
+                self.area.environment
+            },
             pick: None,
             image: VIEWPORT_IMAGE + self.active,
             editor_lines: true,
@@ -623,7 +632,7 @@ impl Viewport {
                 .drop_asset(asset, at, &self.camera, &self.area, size, ppp);
         }
         let mut view = self.view(size_px, ppp);
-        view.pick = self.tools.rect_to_send();
+        view.pick = self.tools.send_with(&self.area.pickable);
         let painter = ui.painter_at(rect);
         match renderer.render(&view) {
             Ok(texture) => {

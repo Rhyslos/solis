@@ -16,6 +16,7 @@ use crate::library::{LibraryItem, ProjectInfo};
 use crate::models::ModelInfo;
 use crate::panel::Panel;
 use crate::panels::{PanelViewer, drop_hint};
+use crate::properties::AssemblyPart;
 use crate::theme::{self, Accent};
 use crate::viewport::{Overlays, Tool, Viewport, ViewportRenderer};
 use egui::Ui;
@@ -99,6 +100,10 @@ pub enum WorkbenchAction {
     },
 }
 
+/// What [`Workbench::assembly_part`] was worked out for: the selected
+/// entity, the area's revision and the sources' count.
+pub(crate) type PartKey = (Option<reflect::EntityId>, u64, u64);
+
 /// The editor's state, kept between frames.
 pub struct Workbench {
     pub(crate) info: AppInfo,
@@ -157,6 +162,14 @@ pub struct Workbench {
     pub(crate) problems: crate::problems::Problems,
     /// The game, while it runs.
     pub(crate) playing: Option<crate::play::Playing>,
+    /// Goes up whenever what Problems checks the area against changes:
+    /// the models loaded, the Library, the assemblies, the components
+    /// known.
+    pub(crate) sources: u64,
+    /// The last [`Self::assembly_part`], with the selection, revision and
+    /// sources it was worked out for: kept, since it expands the whole
+    /// assembly.
+    pub(crate) assembly_part_kept: std::cell::RefCell<Option<(PartKey, Option<AssemblyPart>)>>,
 }
 
 impl Workbench {
@@ -183,6 +196,8 @@ impl Workbench {
             place_targets: BTreeMap::new(),
             problems: Default::default(),
             playing: None,
+            sources: 0,
+            assembly_part_kept: std::cell::RefCell::new(None),
             assemblies: BTreeMap::new(),
             outbox: Vec::new(),
             unsaved_prompt: None,
@@ -250,6 +265,7 @@ impl Workbench {
             self.replace_document(Document::default());
             self.models.clear();
             self.library.clear();
+            self.sources += 1;
             // Nothing of the old project's is used with the new one: its
             // assemblies (a copy of a project shares IDs with it), where
             // things were dropped, a question about its file, the
@@ -279,6 +295,7 @@ impl Workbench {
     /// The project's files, for the Library.
     pub fn set_library(&mut self, items: Vec<LibraryItem>) {
         self.library = items;
+        self.sources += 1;
     }
 
     /// The project's folders inside its assets, `/` between names, for
@@ -300,6 +317,7 @@ impl Workbench {
     /// didn't change.
     pub fn reload_model(&mut self, info: ModelInfo, warnings: &[String]) {
         let (name, triangles) = (info.name.clone(), info.triangles);
+        self.sources += 1;
         if self.models.insert(info.asset, info).is_none() {
             // First loaded for an opened area: nothing to announce.
             return;
@@ -526,9 +544,15 @@ impl Workbench {
         let mut console_requests = Vec::new();
         let part = self.assembly_part();
         let mut requests = Vec::new();
-        let (hidden, locked) = self.area_panel.in_effect(self.document.area());
-        self.viewport.area =
-            AreaView::of_shown(self.document.area(), &self.models, &hidden, &locked);
+        let (hidden, locked) = self.area_panel.in_effect(&self.document);
+        self.viewport.area = AreaView::of_placed(
+            self.document.area(),
+            &self.document.tree(),
+            &self.document.world_matrices(),
+            &self.models,
+            &hidden,
+            &locked,
+        );
         self.viewport.entities = self.document.area().len();
         self.prepare_tools();
         self.find_problems();
@@ -701,12 +725,7 @@ impl Workbench {
     /// changed.
     pub(crate) fn find_problems(&mut self) {
         use crate::problems::{Fingerprint, Sources};
-        let print = Fingerprint::of(
-            &self.document,
-            self.models.len(),
-            self.library.len(),
-            self.assemblies.len(),
-        );
+        let print = Fingerprint::of(&self.document, self.sources);
         if self.problems.is_from(&print) {
             return;
         }

@@ -1,7 +1,7 @@
 //! Play mode: the area running as a game, beside the editor.
 //!
 //! Play keeps a copy of the document (the area, its undo history and the
-//! selection) and builds the game's world from the area
+//! selection; the history's steps are shared, so this is cheap) and builds the game's world from the area
 //! ([`world::World`]). While it runs, the editor keeps working: changes
 //! reach the game, which is built again from the area when it changes.
 //! Stop throws the world away and puts the copy back, so everything is
