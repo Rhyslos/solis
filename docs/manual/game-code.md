@@ -10,7 +10,7 @@ Solis games can be written in three languages:
 - **Lua**, if you know it from Roblox or modding;
 - **Rust**, the language Solis itself is written in.
 
-**Right now:** Lust components work: they appear in Properties and run in play mode. Components that talk to each other through events, changes that reach a running game, and Lua and Rust components come with the next updates of Phase 4.
+**Right now:** Lust components work: they appear in Properties, run in play mode, and talk to each other through events. Rust components can join them, but for now only in a Solis built from source. Changes that reach a running game, and Lua components, come with the next updates of Phase 4.
 
 ## How to use it
 1. Open a [project](projects-and-the-library.md). Solis puts a `solis` folder in its `assets`, holding `world.lst` and `entity.lst`. They describe what your code can ask of the engine, such as `say` (write in the Console) or `moveTo` (put an entity somewhere).
@@ -68,6 +68,66 @@ What a field can hold: `bool`, `int`, `float`, `string`, a `state` (shown as a c
 
 **When something goes wrong while it runs,** such as dividing by zero, that component stops and the Console says which one, on which entity, and where in the Lust: "Divider on Splitter stopped: main.lst, line 8: …". The rest of the game keeps going. A component that runs for more than a tenth of a second without stopping (a loop that never ends) is stopped the same way, so it can't freeze Solis.
 
+## Events
+
+Components tell each other things with [events](concepts.md#game-code): a gun tells a target it was hit, the target's health tells its entity it died. An event says what it carries. A component reacts to it with `on`, and anything sends it to an entity with `send`:
+
+```
+get "solis/world":[say];
+
+event Hit(entity by, float damage);
+event Died();
+
+component Health {
+    has {
+        float hp = 10;
+    }
+
+    on Hit(entity by, float damage) {
+        hp = hp - damage;
+        is hp <= 0? then {
+            send Died() to me;
+        }
+    }
+
+    on Died() {
+        say("down!");
+    }
+}
+
+component Gun {
+    has {
+        entity target = nothing;
+    }
+
+    method update(float dt) {
+        send Hit(me, 2.5) to target;
+    }
+}
+
+pass Health, Gun;
+end
+```
+
+- **When they arrive:** after every component's `update` in the tick, in the order they were sent. On the entity, each component with an `on` for it reacts, in the order of the components' names. An event sent while reacting to another (Hit sends Died) arrives later in the same tick.
+- **An event to `nothing`** goes nowhere, so a gun with no target is harmless.
+- **Lust checks** that every `send` carries what the event says, so a misspelt event or a missing value is a mistake in Problems before anything runs.
+- **Components that keep sending to each other** forever are stopped after 10,000 events in one tick, with a message in the Console, so the game can't freeze.
+
+**In Rust**, a component implements `script::RustComponent`, and takes and sends the same events by name. For now it's added to Solis with `Workbench::add_rust_component` in a Solis built from source; how a game's Rust is built in comes with building games, in Phase 10.
+
+```rust
+fn handle(&mut self, cx: &mut Context<'_>, event: &Event) -> bool {
+    if event.name != "Hit" {
+        return false;
+    }
+    self.dents += 1;
+    let me = cx.me();
+    cx.send(Some(me), "Dented", vec![Value::Int(self.dents)]);
+    true
+}
+```
+
 Other code files can sit in any folder in `assets`. Fetch them by their path from `assets`, such as `fetch "weapons/gun":Gun;` for `assets/weapons/gun.lst`. The Library's **Code** tab lists them all.
 
 ## What the engine offers
@@ -96,5 +156,5 @@ Other code files can sit in any folder in `assets`. Fetch them by their path fro
 - [Projects and the Library](projects-and-the-library.md)
 - [Entities and components](entities.md)
 - [Play mode](play-mode.md)
-- Concepts: [game code, Lust, native method, tick](concepts.md#game-code)
+- Concepts: [game code, Lust, native method, tick, event](concepts.md#game-code)
 - The Lust language itself: [Lust's guide](https://github.com/Rhyslos/Lust/blob/main/LUST.md)

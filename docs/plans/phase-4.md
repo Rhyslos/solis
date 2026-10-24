@@ -55,10 +55,10 @@ The working plan for Phase 4 (ROADMAP.md, "Phase 4: Lust and Lua join"). It reco
 - Runtime failures are pointed at the Lust (`chunk.locate`).
 - Tests: a component's fields round-trip between the area and Lua; ticks in order; natives move entities in the world; a failing component stops alone; the time limit stops an endless loop.
 
-### M3. Events between components ☐
+### M3. Events between components ☑
 
 - `send` queues an event; Solis delivers the queue each tick, in order, to each component on the entity in order of their names. Events sent while delivering join the end of the same tick's queue (as agreed with the Lust chat).
-- Rust components can send and handle events through a small trait, so a game's Rust components join in (the gate's three languages). A sample Rust component in the tests stands in for a game's.
+- Rust components can send and handle events through a small trait (`script::RustComponent`), so a game's Rust components join in (the gate's three languages). A sample Rust component in the tests stands in for a game's. **Built:** they're added with `Workbench::add_rust_component`, which needs a Solis built from source until building games (Phase 10). For the gate (M6), the sample's Rust component must reach the project lead's editor: decide then, probably as a sample component compiled into Solis behind a setting.
 - A runaway chain of events (one sending another forever) is cut off after 10,000 deliveries in a tick, with a message.
 - Tests: delivery order; events sent while delivering; a Rust component and a Lust component talking both ways; the cut-off.
 

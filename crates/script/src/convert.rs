@@ -1,0 +1,156 @@
+//! Values between the editor's kinds (`reflect`) and how Lust keeps them
+//! in Luau: numbers, text, `{x, y, z}` vectors, `{x, y, z, w}` rotations
+//! (quaternions), and entities as their 13-letter text.
+
+use glam::{Quat, Vec3};
+use mlua::{Lua, Table, Value as LuaValue};
+use reflect::{EntityId, FieldKind, Value};
+
+/// A Lust field kind as the editor's.
+pub(crate) fn kind_of(name: &str, options: Vec<String>) -> Option<FieldKind> {
+    Some(match name {
+        "bool" => FieldKind::Bool,
+        "int" => FieldKind::Int,
+        "float" => FieldKind::Float,
+        "string" => FieldKind::Text,
+        "state" => FieldKind::Choice(options),
+        "vec3" => FieldKind::Vec3,
+        "rotation" => FieldKind::Rotation,
+        "entity" => FieldKind::Entity,
+        _ => return None,
+    })
+}
+
+/// A value of `kind` when a new component somehow has none.
+pub(crate) fn empty(kind: &FieldKind) -> Value {
+    match kind {
+        FieldKind::Bool => Value::Bool(false),
+        FieldKind::Int => Value::Int(0),
+        FieldKind::Float => Value::Float(0.0),
+        FieldKind::Choice(options) => Value::Text(options.first().cloned().unwrap_or_default()),
+        FieldKind::Vec3 | FieldKind::Color => Value::floats(&[0.0, 0.0, 0.0]),
+        FieldKind::Rotation => Value::floats(&[0.0, 0.0, 0.0, 1.0]),
+        FieldKind::Entity => Value::Entity(None),
+        FieldKind::Asset => Value::Asset(None),
+        FieldKind::Text => Value::Text(String::new()),
+    }
+}
+
+/// `lastShot` as the inspector shows it: "Last shot".
+pub(crate) fn label(name: &str) -> String {
+    let mut out = String::new();
+    for (i, c) in name.chars().enumerate() {
+        if c == '_' {
+            out.push(' ');
+        } else if i == 0 {
+            out.extend(c.to_uppercase());
+        } else if c.is_uppercase() {
+            out.push(' ');
+            out.extend(c.to_lowercase());
+        } else {
+            out.push(c);
+        }
+    }
+    out
+}
+
+/// A Lua number as an `f64`.
+pub(crate) fn number(value: &LuaValue) -> Option<f64> {
+    match value {
+        LuaValue::Integer(n) => Some(*n as f64),
+        LuaValue::Number(n) if n.is_finite() => Some(*n),
+        _ => None,
+    }
+}
+
+/// An entity as Lust hands it over (its 13-letter text, or nil).
+pub(crate) fn entity_of(value: &LuaValue) -> Option<EntityId> {
+    match value {
+        LuaValue::String(text) => text.to_str().ok()?.parse().ok(),
+        _ => None,
+    }
+}
+
+pub(crate) fn vec3_of(table: &Table) -> Option<Vec3> {
+    let n = |k: &str| number(&table.get::<LuaValue>(k).ok()?).map(|v| v as f32);
+    Some(Vec3::new(n("x")?, n("y")?, n("z")?)).filter(|v| v.is_finite())
+}
+
+pub(crate) fn quat_of(table: &Table) -> Option<Quat> {
+    let n = |k: &str| number(&table.get::<LuaValue>(k).ok()?).map(|v| v as f32);
+    let q = Quat::from_xyzw(n("x")?, n("y")?, n("z")?, n("w")?);
+    (q.is_finite() && q.length_squared() > 1e-12).then(|| q.normalize())
+}
+
+pub(crate) fn vec3_table(lua: &Lua, v: Vec3) -> mlua::Result<Table> {
+    let t = lua.create_table()?;
+    t.set("x", v.x)?;
+    t.set("y", v.y)?;
+    t.set("z", v.z)?;
+    Ok(t)
+}
+
+pub(crate) fn quat_table(lua: &Lua, q: Quat) -> mlua::Result<Table> {
+    let t = lua.create_table()?;
+    t.set("x", q.x)?;
+    t.set("y", q.y)?;
+    t.set("z", q.z)?;
+    t.set("w", q.w)?;
+    Ok(t)
+}
+
+/// An editor value as Lust keeps it, if it's the right kind.
+pub(crate) fn to_lua(lua: &Lua, kind: &FieldKind, value: &Value) -> Option<LuaValue> {
+    if !kind.accepts(value) {
+        return None;
+    }
+    Some(match (kind, value) {
+        (FieldKind::Bool, Value::Bool(b)) => LuaValue::Boolean(*b),
+        (FieldKind::Int, Value::Int(n)) => LuaValue::Number(*n as f64),
+        (FieldKind::Float, v) => LuaValue::Number(v.as_f64()?),
+        (FieldKind::Text | FieldKind::Choice(_), Value::Text(t)) => {
+            LuaValue::String(lua.create_string(t).ok()?)
+        }
+        (FieldKind::Vec3, v) => {
+            let [x, y, z] = v.as_floats::<3>()?;
+            LuaValue::Table(vec3_table(lua, Vec3::new(x, y, z)).ok()?)
+        }
+        (FieldKind::Rotation, v) => {
+            let [x, y, z, w] = v.as_floats::<4>()?;
+            LuaValue::Table(quat_table(lua, Quat::from_xyzw(x, y, z, w)).ok()?)
+        }
+        (FieldKind::Entity, Value::Entity(None)) => LuaValue::Nil,
+        (FieldKind::Entity, Value::Entity(Some(id))) => {
+            LuaValue::String(lua.create_string(id.to_string()).ok()?)
+        }
+        _ => return None,
+    })
+}
+
+/// A Lust field's value as the editor's, if it's the right kind.
+pub(crate) fn from_lua(kind: &FieldKind, value: &LuaValue) -> Option<Value> {
+    Some(match (kind, value) {
+        (FieldKind::Bool, LuaValue::Boolean(b)) => Value::Bool(*b),
+        (FieldKind::Int, v) => {
+            let n = number(v)?;
+            (n.fract() == 0.0 && n.abs() < 9.0e15).then_some(Value::Int(n as i64))?
+        }
+        (FieldKind::Float, v) => Value::Float(number(v)?),
+        (FieldKind::Text, LuaValue::String(s)) => Value::Text(s.to_str().ok()?.to_string()),
+        (FieldKind::Choice(options), LuaValue::String(s)) => {
+            let text = s.to_str().ok()?.to_string();
+            options.contains(&text).then_some(Value::Text(text))?
+        }
+        (FieldKind::Vec3, LuaValue::Table(t)) => {
+            let v = vec3_of(t)?;
+            Value::floats(&[v.x, v.y, v.z])
+        }
+        (FieldKind::Rotation, LuaValue::Table(t)) => {
+            let n = |k: &str| number(&t.get::<LuaValue>(k).ok()?).map(|v| v as f32);
+            Value::floats(&[n("x")?, n("y")?, n("z")?, n("w")?])
+        }
+        (FieldKind::Entity, LuaValue::Nil) => Value::Entity(None),
+        (FieldKind::Entity, v) => Value::Entity(Some(entity_of(v)?)),
+        _ => return None,
+    })
+}

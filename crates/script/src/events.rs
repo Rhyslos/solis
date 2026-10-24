@@ -1,0 +1,113 @@
+//! Events between components (LUST.md §21, "Events"): `send` queues an
+//! event for an entity, and Solis delivers the queue after each tick's
+//! updates, in order, to each component on the entity in order of their
+//! names. Events sent while delivering join the end of the same tick's
+//! queue, so a game runs the same way every time. Lust, Rust and (from M5)
+//! Lua components send and handle the same events.
+
+use crate::convert::{from_lua, kind_of, to_lua};
+use mlua::{Lua, Table, Value as LuaValue};
+use reflect::{EntityId, FieldKind, Value};
+use std::cell::RefCell;
+use std::collections::{BTreeMap, VecDeque};
+use std::rc::Rc;
+
+/// The most events delivered in one tick. Past it, the rest of the tick's
+/// queue is dropped with a message: components that keep sending to each
+/// other would otherwise never let the tick end.
+pub const MAX_DELIVERIES: usize = 10_000;
+
+/// The most values one event carries.
+const MAX_VALUES: usize = 64;
+
+/// An event on its way to an entity.
+#[derive(Debug, Clone, PartialEq)]
+pub struct Event {
+    /// The entity it's for.
+    pub to: EntityId,
+    /// Its name, as declared (`Hit`).
+    pub name: String,
+    /// What it carries, in the declared order.
+    pub values: Vec<Value>,
+}
+
+/// The tick's queue, shared by Lust's `send_event` and Rust components.
+pub(crate) type Queue = Rc<RefCell<VecDeque<Event>>>;
+
+/// What each event the Lust declares carries: the kinds of its values,
+/// in order, by event name.
+pub(crate) type EventKinds = BTreeMap<String, Vec<FieldKind>>;
+
+/// Reads the events the program declares (`api.events`).
+pub(crate) fn read_events(api: &Table) -> mlua::Result<EventKinds> {
+    let mut kinds = EventKinds::new();
+    let events: Table = api.get("events")?;
+    for pair in events.pairs::<String, Table>() {
+        let (name, fields) = pair?;
+        let mut list = Vec::new();
+        for entry in fields.sequence_values::<Table>() {
+            let entry = entry?;
+            let kind_name: String = entry.get(3)?;
+            let options: Vec<String> = match entry.get::<LuaValue>(4)? {
+                LuaValue::Table(t) => t.sequence_values::<String>().collect::<Result<_, _>>()?,
+                _ => Vec::new(),
+            };
+            list.push(kind_of(&kind_name, options).unwrap_or(FieldKind::Text));
+        }
+        kinds.insert(name, list);
+    }
+    Ok(kinds)
+}
+
+/// The Lua function Lust's `send` calls: `send_event(to, name, values)`,
+/// queuing the event with its values read by the declared kinds. An
+/// event to `nothing` goes nowhere.
+pub(crate) fn sender(
+    lua: &Lua,
+    queue: &Queue,
+    kinds: Rc<EventKinds>,
+) -> mlua::Result<mlua::Function> {
+    let queue = Rc::clone(queue);
+    lua.create_function(move |_, (to, name, values): (LuaValue, String, Table)| {
+        let Some(to) = crate::convert::entity_of(&to) else {
+            return Ok(());
+        };
+        // An event carries a handful of values; a damaged count can't ask
+        // for a huge list.
+        let count = values
+            .get::<Option<usize>>("n")?
+            .unwrap_or(0)
+            .min(MAX_VALUES);
+        let declared = kinds.get(&name);
+        let mut read = Vec::with_capacity(count);
+        for i in 1..=count {
+            let raw: LuaValue = values.get(i)?;
+            let kind = declared
+                .and_then(|k| k.get(i - 1))
+                .unwrap_or(&FieldKind::Text);
+            read.push(from_lua(kind, &raw).unwrap_or(Value::Entity(None)));
+        }
+        queue.borrow_mut().push_back(Event {
+            to,
+            name,
+            values: read,
+        });
+        Ok(())
+    })
+}
+
+/// An event's values as Lust's `handle` takes them: a list with its count
+/// in `n`, each value as its declared kind. `None` if the values don't fit
+/// what the event declares.
+pub(crate) fn values_table(lua: &Lua, kinds: &[FieldKind], values: &[Value]) -> Option<Table> {
+    if kinds.len() != values.len() {
+        return None;
+    }
+    let list = lua.create_table().ok()?;
+    for (i, (kind, value)) in kinds.iter().zip(values).enumerate() {
+        let converted = to_lua(lua, kind, value)?;
+        list.set(i + 1, converted).ok()?;
+    }
+    list.set("n", values.len()).ok()?;
+    Some(list)
+}
