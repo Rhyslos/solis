@@ -5,7 +5,7 @@
 //! queue, so a game runs the same way every time. Lust, Rust and (from M5)
 //! Lua components send and handle the same events.
 
-use crate::convert::{from_lua, kind_of, to_lua};
+use crate::convert::{from_lua, guessed, guessed_to_lua, kind_of, to_lua};
 use mlua::{Lua, Table, Value as LuaValue};
 use reflect::{EntityId, FieldKind, Value};
 use std::cell::RefCell;
@@ -59,13 +59,15 @@ pub(crate) fn read_events(api: &Table) -> mlua::Result<EventKinds> {
     Ok(kinds)
 }
 
-/// The Lua function Lust's `send` calls: `send_event(to, name, values)`,
-/// queuing the event with its values read by the declared kinds. An
-/// event to `nothing` goes nowhere.
+/// The Lua function Lust's `send` (and Lua's `solis.send`) calls:
+/// `send_event(to, name, values)`, queuing the event with its values read
+/// by the kinds the Lust declares for it (`kinds`, which the runtime
+/// updates when code loads), or by their own kinds for an event no Lust
+/// declares. An event to `nothing` goes nowhere.
 pub(crate) fn sender(
     lua: &Lua,
     queue: &Queue,
-    kinds: Rc<EventKinds>,
+    kinds: Rc<RefCell<Rc<EventKinds>>>,
 ) -> mlua::Result<mlua::Function> {
     let queue = Rc::clone(queue);
     lua.create_function(move |_, (to, name, values): (LuaValue, String, Table)| {
@@ -78,14 +80,16 @@ pub(crate) fn sender(
             .get::<Option<usize>>("n")?
             .unwrap_or(0)
             .min(MAX_VALUES);
+        let kinds = Rc::clone(&kinds.borrow());
         let declared = kinds.get(&name);
         let mut read = Vec::with_capacity(count);
         for i in 1..=count {
             let raw: LuaValue = values.get(i)?;
-            let kind = declared
-                .and_then(|k| k.get(i - 1))
-                .unwrap_or(&FieldKind::Text);
-            read.push(from_lua(kind, &raw).unwrap_or(Value::Entity(None)));
+            let value = match declared.and_then(|k| k.get(i - 1)) {
+                Some(kind) => from_lua(kind, &raw),
+                None => guessed(&raw),
+            };
+            read.push(value.unwrap_or(Value::Entity(None)));
         }
         queue.borrow_mut().push_back(Event {
             to,
@@ -110,4 +114,25 @@ pub(crate) fn values_table(lua: &Lua, kinds: &[FieldKind], values: &[Value]) -> 
     }
     list.set("n", values.len()).ok()?;
     Some(list)
+}
+
+/// An event's values as arguments for a Lua component's `on_` function:
+/// by the kinds the Lust declares for the event, or by their own kinds.
+/// `None` if they don't fit what's declared.
+pub(crate) fn arguments(
+    lua: &Lua,
+    kinds: Option<&[FieldKind]>,
+    values: &[Value],
+) -> Option<mlua::MultiValue> {
+    if kinds.is_some_and(|k| k.len() != values.len()) {
+        return None;
+    }
+    let mut out = Vec::with_capacity(values.len());
+    for (i, value) in values.iter().enumerate() {
+        out.push(match kinds {
+            Some(kinds) => to_lua(lua, &kinds[i], value)?,
+            None => guessed_to_lua(lua, value)?,
+        });
+    }
+    Some(out.into_iter().collect())
 }

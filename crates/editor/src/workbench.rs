@@ -169,7 +169,7 @@ pub struct Workbench {
     /// Mistakes in the game's code, from the last check.
     pub(crate) code_problems: Vec<script::CodeProblem>,
     /// The game's program, from the last code without mistakes.
-    pub(crate) program: Option<std::sync::Arc<script::Chunk>>,
+    pub(crate) program: Option<std::sync::Arc<script::Compiled>>,
     /// The components it put in the registry, by name.
     pub(crate) game_components: std::collections::BTreeSet<String>,
     /// Kinds of component written in Rust, run in play mode.

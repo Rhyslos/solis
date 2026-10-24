@@ -9,7 +9,7 @@ use std::sync::Arc;
 
 /// The program for a `main.lst` holding `main`, with the engine's
 /// description files.
-fn program(main: &str) -> Arc<script::Chunk> {
+fn program(main: &str) -> Arc<script::Compiled> {
     let mut files = script::describe::descriptions("Test Engine 9.9.9", "solis");
     files.push((
         "main.lst".into(),
@@ -20,6 +20,7 @@ fn program(main: &str) -> Arc<script::Chunk> {
     ));
     let code = script::Code {
         files,
+        lua: Vec::new(),
         notes: Vec::new(),
     };
     match script::compile(&code) {
@@ -430,4 +431,45 @@ fn new_code_that_fails_to_start_keeps_the_last_program() {
     let x = x_in_game(&w, id);
     w.run_game(1.0 / 60.0);
     assert!(x_in_game(&w, id) > x, "still running the last code");
+}
+
+#[test]
+fn a_lua_component_joins_properties_and_play_mode() {
+    let mut w = Workbench::new(info(), None);
+    let code = script::Code {
+        files: Vec::new(),
+        lua: vec![(
+            "spinner.lua".into(),
+            "local S = component(\"Spinner\", { { \"turns\", \"int\", 0 } })\n\
+             function S:update(dt) self.turns = self.turns + 1 end\n"
+                .into(),
+        )],
+        notes: Vec::new(),
+    };
+    let compiled = script::compile(&code).unwrap().unwrap();
+    w.set_program(Some(Arc::new(compiled)));
+    assert!(w.document.registry.get("Spinner").is_some());
+    let id = EntityId::random();
+    let mut data = EntityData::new("Top");
+    data.components
+        .insert("Spinner".into(), reflect::ComponentData::default());
+    w.document
+        .edit(
+            "Add",
+            vec![area::Edit::Spawn {
+                entities: vec![(id, data)],
+            }],
+            None,
+            None,
+        )
+        .unwrap();
+    w.play();
+    for _ in 0..3 {
+        w.run_game(1.0 / 60.0);
+    }
+    let running = w.playing.as_ref().unwrap().game.as_ref().unwrap();
+    assert_eq!(
+        running.values(id, "Spinner").unwrap().get("turns"),
+        Some(&Value::Int(3))
+    );
 }

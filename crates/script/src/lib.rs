@@ -7,10 +7,13 @@ mod convert;
 pub mod describe;
 pub mod events;
 pub mod host;
+mod lua_components;
+mod lust_program;
 pub mod runtime;
 pub mod rust_component;
+mod ticking;
 
-pub use code::{Code, CodeProblem, check, compile, gather};
+pub use code::{Code, CodeProblem, Compiled, check, compile, gather};
 pub use events::Event;
 pub use host::{Host, NoHost};
 /// Game code turned into Lua, ready for a [`Runtime`].
