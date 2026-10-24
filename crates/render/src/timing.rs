@@ -43,6 +43,8 @@ pub struct FrameStats {
     /// Mesh copies in view drawn at each level of detail: in full, then
     /// each simpler level.
     pub lods: [u32; 5],
+    /// Projectiles drawn.
+    pub bolts: u32,
 }
 
 /// The passes timed, each a pair of timestamps.

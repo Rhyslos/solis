@@ -827,3 +827,136 @@ fn scale_check_dragging_512_entities_with_running_components() {
         8.0,
     );
 }
+
+#[test]
+fn guns_in_lust_and_lua_fire_projectiles_that_fly_and_end() {
+    // A Lust gun and a Lua gun, each firing one projectile a tick along
+    // +Y at 30 m/s, living a quarter of a second.
+    let mut files = script::describe::descriptions("Test Engine 9.9.9", "solis");
+    files.push((
+        "main.lst".into(),
+        "get \"solis/world\":[fire];\n\
+         get \"solis/entity\":[positionOf];\n\
+         component LustGun {\n\
+             has {\n\
+                 int shots = 0;\n\
+             }\n\
+             method update(float dt) {\n\
+                 fire(positionOf(me), [0, 1, 0], 30, 0.25, [4, 0.2, 0.1]);\n\
+             }\n\
+         }\n\
+         pass LustGun;\nend\n"
+            .into(),
+    ));
+    let code = script::Code {
+        files,
+        lua: vec![(
+            "gun.lua".into(),
+            "local G = component(\"LuaGun\", {})\n\
+             function G:update(dt)\n\
+               solis.fire(solis.positionOf(self.me), vec3(0, 1, 0), 30, 0.25, vec3(0.1, 4, 0.2))\n\
+             end\n"
+                .into(),
+        )],
+        notes: Vec::new(),
+    };
+    let mut w = Workbench::new(info(), None);
+    w.set_program(Some(Arc::new(script::compile(&code).unwrap().unwrap())));
+    let mut data = EntityData::new("Guns");
+    for gun in ["LustGun", "LuaGun"] {
+        data.components
+            .insert(gun.into(), reflect::ComponentData::default());
+    }
+    w.document
+        .edit(
+            "Add",
+            vec![area::Edit::Spawn {
+                entities: vec![(EntityId::random(), data)],
+            }],
+            None,
+            None,
+        )
+        .unwrap();
+    w.play();
+    for _ in 0..6 {
+        w.run_game(1.0 / 60.0);
+    }
+    let playing = w.playing.as_ref().unwrap();
+    let flying = playing.world.projectiles().flying();
+    assert_eq!(flying.len(), 12, "two a tick for six ticks");
+    // The first pair has flown five ticks at 30 m/s; both colours fly.
+    assert!((flying[0].position.y - 2.5).abs() < 1e-3, "{:?}", flying[0]);
+    assert!(flying.iter().any(|p| p.colour[1] > 1.0));
+    assert!(flying.iter().any(|p| p.colour[0] > 1.0));
+    // The Game panel draws them.
+    let scene = crate::game_panel::GameScene::of(
+        &playing.world,
+        &w.models,
+        crate::play::PlayState::Playing,
+    );
+    assert_eq!(scene.bolts.len(), 12);
+    // A quarter of a second on, the first have gone: 15 ticks' worth fly.
+    for _ in 0..30 {
+        w.run_game(1.0 / 60.0);
+    }
+    assert_eq!(w.playing.as_ref().unwrap().world.projectiles().len(), 30);
+    // Stop lets them all go with the world.
+    w.stop();
+    assert!(w.playing.is_none());
+}
+
+#[test]
+fn past_the_projectile_limit_the_console_says_so_once() {
+    let mut w = Workbench::new(info(), None);
+    w.set_program(Some(program(
+        "get \"solis/world\":[fire];\n\
+         component Gun {\n\
+             has {\n\
+                 int shots = 0;\n\
+             }\n\
+             method update(float dt) {\n\
+                 fire([0, 0, 0], [0, 1, 0], 30, 50, [4, 0.2, 0.1]);\n\
+             }\n\
+         }\n\
+         pass Gun;\nend\n",
+    )));
+    let mut data = EntityData::new("Gun");
+    data.components
+        .insert("Gun".into(), reflect::ComponentData::default());
+    w.document
+        .edit(
+            "Add",
+            vec![area::Edit::Spawn {
+                entities: vec![(EntityId::random(), data)],
+            }],
+            None,
+            None,
+        )
+        .unwrap();
+    w.play();
+    // Nearly full already.
+    let projectiles = w.playing.as_mut().unwrap().world.projectiles_mut();
+    for _ in 0..world::MAX_PROJECTILES - 1 {
+        projectiles.fire(world::Shot {
+            from: glam::Vec3::ZERO,
+            direction: glam::Vec3::Y,
+            speed: 1.0,
+            life: 50.0,
+            colour: [1.0; 3],
+        });
+    }
+    for _ in 0..3 {
+        w.run_game(1.0 / 60.0);
+    }
+    let told: Vec<_> = w
+        .log_lines()
+        .iter()
+        .filter(|l| l.text.contains("projectiles were flying at once"))
+        .collect();
+    assert_eq!(told.len(), 1, "said once");
+    assert!(told[0].text.contains("1,000,000"));
+    assert_eq!(
+        w.playing.as_ref().unwrap().world.projectiles().len(),
+        world::MAX_PROJECTILES
+    );
+}

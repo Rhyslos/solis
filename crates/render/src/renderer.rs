@@ -100,6 +100,9 @@ struct FrameResources {
     sent: Vec<crate::instances::InstanceRaw>,
     /// Each placement's level of detail last frame.
     levels: Vec<u8>,
+    /// Every projectile, filled each frame; replaced by a bigger one
+    /// when a frame has more.
+    bolts: Option<wgpu::Buffer>,
 }
 
 /// How many copies are compared and sent together: a run that changed
@@ -107,6 +110,41 @@ struct FrameResources {
 const SENT_TOGETHER: usize = 512;
 
 impl FrameResources {
+    /// Puts `bolts` into the projectile buffer, growing it if needed.
+    /// Returns how many will be drawn (none if too many for one buffer).
+    fn write_bolts(
+        &mut self,
+        device: &wgpu::Device,
+        queue: &wgpu::Queue,
+        bolts: &[crate::projectiles::Bolt],
+    ) -> u32 {
+        let bytes: &[u8] = bytemuck::cast_slice(bolts);
+        let most = device.limits().max_buffer_size;
+        if bytes.is_empty() || bytes.len() as u64 > most {
+            return 0;
+        }
+        if !self
+            .bolts
+            .as_ref()
+            .is_some_and(|b| b.size() >= bytes.len() as u64)
+        {
+            let size = (bytes.len() as u64).next_power_of_two().max(4096).min(most);
+            self.bolts = Some(device.create_buffer(&wgpu::BufferDescriptor {
+                label: Some("projectiles"),
+                size,
+                usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
+                mapped_at_creation: false,
+            }));
+        }
+        match &self.bolts {
+            Some(buffer) => {
+                queue.write_buffer(buffer, 0, bytes);
+                bolts.len() as u32
+            }
+            None => 0,
+        }
+    }
+
     /// Puts `raw` into the instance buffer, growing it if needed, sending
     /// only the runs that differ from what it holds. `None`: too many for
     /// one buffer; otherwise the bytes sent.
@@ -260,6 +298,7 @@ impl FrameResources {
             instances: None,
             sent: Vec::new(),
             levels: Vec::new(),
+            bolts: None,
         }
     }
 }
@@ -545,6 +584,7 @@ pub struct ViewportRenderer {
     post_pipeline: wgpu::RenderPipeline,
     grid_pipeline: wgpu::RenderPipeline,
     line_pipeline: wgpu::RenderPipeline,
+    bolt_pipeline: wgpu::RenderPipeline,
     models: ModelPipelines,
     axes: wgpu::Buffer,
     axis_count: u32,
@@ -656,6 +696,7 @@ impl ViewportRenderer {
             post_pipeline,
             grid_pipeline: pipeline(Kind::Grid),
             line_pipeline: pipeline(Kind::Lines),
+            bolt_pipeline: crate::projectiles::pipeline(device, &layout, &shader, sample_count),
             models: ModelPipelines::new(device, &bind_group_layout, &shader, sample_count),
             frame_layout: bind_group_layout,
             shadow_layout,
@@ -825,6 +866,21 @@ impl ViewportRenderer {
         placed: &[Placement<'_>],
         lights: &[Light],
     ) -> FrameStats {
+        self.render_with_bolts(device, queue, target, params, placed, lights, &[])
+    }
+
+    /// [`Self::render`], with projectiles too: `bolts`, drawn in one go.
+    #[allow(clippy::too_many_arguments)]
+    pub fn render_with_bolts(
+        &self,
+        device: &wgpu::Device,
+        queue: &wgpu::Queue,
+        target: &mut ViewportTarget,
+        params: &FrameParams,
+        placed: &[Placement<'_>],
+        lights: &[Light],
+        bolts: &[crate::projectiles::Bolt],
+    ) -> FrameStats {
         if target.timer.is_none() {
             target.timer = Some(crate::timing::GpuTimer::new(device, queue));
         }
@@ -860,6 +916,7 @@ impl ViewportRenderer {
         target.frame.levels = levels;
         let count = raw.len();
         let sent = target.frame.write_instances(device, queue, raw);
+        let bolt_count = target.frame.write_bolts(device, queue, bolts);
         if sent.is_none() {
             log::warn!(
                 "{count} model copies are more than the graphics card can draw at once; models \
@@ -888,7 +945,8 @@ impl ViewportRenderer {
                     lods[b.lod.min(4)] += b.instances.end - b.instances.start;
                     lods
                 }),
-            sent_bytes: sent.unwrap_or(0),
+            sent_bytes: sent.unwrap_or(0) + u64::from(bolt_count) * 40,
+            bolts: bolt_count,
         };
         let timer = target.timer.as_ref().and_then(Option::as_ref);
         let shadows_drawn = receivers.is_some() && casters.is_some() && sent.is_some();
@@ -1021,6 +1079,11 @@ impl ViewportRenderer {
                 pass.set_vertex_buffer(1, instances.slice(..));
             }
             self.draw_batches(&mut pass, &batches, &model_of, Pass::Blended);
+            if let Some(buffer) = frame.bolts.as_ref().filter(|_| bolt_count > 0) {
+                pass.set_pipeline(&self.bolt_pipeline);
+                pass.set_vertex_buffer(0, buffer.slice(..));
+                pass.draw(0..6, 0..bolt_count);
+            }
         }
         // The last pass: exposure, tone mapping and sRGB, into the
         // finished image.

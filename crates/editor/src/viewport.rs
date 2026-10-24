@@ -141,6 +141,40 @@ pub struct ViewportView {
     pub editor_lines: bool,
     /// Perspective or a flat view (the grid lies in a flat view's plane).
     pub kind: ViewKind,
+    /// Projectiles to draw (the game's).
+    pub bolts: std::sync::Arc<Vec<ViewBolt>>,
+}
+
+/// A projectile to draw: a glowing streak from its head back along its
+/// trail.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct ViewBolt {
+    /// Its head, in metres.
+    pub head: Vec3,
+    /// From its head back to its tail.
+    pub trail: Vec3,
+    /// Its colour, linear RGB (above 1 glows).
+    pub colour: [f32; 3],
+    /// How wide it is, in metres.
+    pub width: f32,
+}
+
+/// How wide a projectile's streak is, in metres.
+pub const BOLT_WIDTH: f32 = 0.12;
+
+impl ViewBolt {
+    /// The streak for `projectile`: as long as it flies in a thirtieth of
+    /// a second (two frames), between 0.3 and 8 m.
+    pub fn of(projectile: &world::Projectile) -> Self {
+        let speed = projectile.velocity.length();
+        let length = (speed / 30.0).clamp(0.3, 8.0);
+        Self {
+            head: projectile.position,
+            trail: -projectile.velocity.normalize_or_zero() * length,
+            colour: projectile.colour,
+            width: BOLT_WIDTH,
+        }
+    }
 }
 
 /// The viewport's first view's image; its other views use the next ones
@@ -191,6 +225,8 @@ pub struct DrawReport {
     /// Model copies in view drawn at each level of detail: in full, then
     /// each simpler level.
     pub lods: [u64; 5],
+    /// Projectiles drawn.
+    pub bolts: u64,
     /// Triangles drawn.
     pub triangles: u64,
     /// Draw calls for models.
@@ -563,6 +599,7 @@ impl Viewport {
             image: VIEWPORT_IMAGE + self.active,
             editor_lines: true,
             kind: self.camera.kind,
+            bolts: std::sync::Arc::default(),
         }
     }
 

@@ -700,3 +700,56 @@ fn post_fs(in: PostOut) -> @location(0) vec4<f32> {
     let shown = mix(hdr.rgb, mapped, clamp(hdr.a, 0.0, 1.0));
     return vec4<f32>(encode(clamp(shown, vec3<f32>(0.0), vec3<f32>(1.0))), 1.0);
 }
+
+// ------------------------------------------------------------ projectiles ---
+
+// One projectile (Bolt in projectiles.rs): a glowing streak from its head
+// back along its trail, turned to face the camera around its own line.
+struct BoltIn {
+    @location(0) head: vec3<f32>,
+    @location(1) trail: vec3<f32>,
+    @location(2) color: vec3<f32>,
+    @location(3) width: f32,
+};
+
+struct BoltOut {
+    @builtin(position) clip: vec4<f32>,
+    @location(0) color: vec3<f32>,
+    // -1 at one edge, 1 at the other.
+    @location(1) across: f32,
+};
+
+@vertex
+fn bolt_vs(@builtin(vertex_index) corner: u32, bolt: BoltIn) -> BoltOut {
+    // Two triangles: how far back along the trail (0 head, 1 tail), and
+    // which side.
+    var along = array<f32, 6>(0.0, 0.0, 1.0, 1.0, 0.0, 1.0);
+    var side = array<f32, 6>(-1.0, 1.0, -1.0, -1.0, 1.0, 1.0);
+    let a = along[corner % 6u];
+    let s = side[corner % 6u];
+    let point = bolt.head + bolt.trail * a;
+    let toward = frame.camera.xyz - point;
+    // Sideways: across the trail as the camera sees it; for a projectile
+    // flying straight at the camera, any way across.
+    var across = cross(bolt.trail, toward);
+    if dot(across, across) < 1e-12 {
+        across = cross(toward, vec3<f32>(0.0, 0.0, 1.0));
+        if dot(across, across) < 1e-12 {
+            across = vec3<f32>(1.0, 0.0, 0.0);
+        }
+    }
+    let world = point + normalize(across) * s * bolt.width * 0.5;
+    var out: BoltOut;
+    out.clip = frame.view_proj * vec4<f32>(world, 1.0);
+    // Brightest at the head, fading towards the tail.
+    out.color = bolt.color * (1.0 - 0.7 * a);
+    out.across = s;
+    return out;
+}
+
+@fragment
+fn bolt_fs(in: BoltOut) -> @location(0) vec4<f32> {
+    // Soft edges; added to what's behind, so crossing streaks glow.
+    let soft = 1.0 - in.across * in.across;
+    return vec4<f32>(in.color * soft, 1.0);
+}

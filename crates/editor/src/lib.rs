@@ -57,7 +57,7 @@ pub use play::PlayState;
 pub use transforming::Snapping;
 pub use viewport::{
     DrawReport, GAME_IMAGE, GpuSplit, MAX_IMAGES, NoRenderer, Overlays, Tool, VIEWPORT_IMAGE,
-    VIEWS, ViewLayout, ViewSettings, Viewport, ViewportRenderer, ViewportView, Views,
+    VIEWS, ViewBolt, ViewLayout, ViewSettings, Viewport, ViewportRenderer, ViewportView, Views,
 };
 pub use viewport_tools::{Outline, PickAnswer};
 pub use workbench::{AppInfo, Workbench, WorkbenchAction};

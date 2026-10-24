@@ -21,6 +21,7 @@ A game feels slow, or you want to know how much more it can take: more units, mo
 | Drawing (CPU) | Handing that to the graphics card. |
 | Editor | Everything else: the panels, the mouse and keys, the interface. |
 | GPU: shadows, models, the last pass | The graphics card's own time: the sun's shadows, the models and sky, then exposure and colour. Measured only on cards that offer it; the Profiler says when yours doesn't. |
+| Projectiles drawn | How many lasers and other projectiles the Game panel drew. Shown when there are some. |
 | Drawn | Model copies in view, copies [casting shadows](concepts.md#light) into it, triangles, draw calls (one per model part, however many copies), and how much was sent to the graphics card. Copies out of view aren't drawn at all ([culling](concepts.md#playing)), and copies that didn't move aren't sent again, so a still scene sends next to nothing. |
 
 The CPU and the GPU work at the same time, each on its own frame, so the slower of the two sets the frame rate, not their sum.
