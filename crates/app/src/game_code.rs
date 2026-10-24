@@ -1,11 +1,13 @@
 //! The game's code, looked after on a worker (CONTRIBUTING rule 10): the
 //! files describing the engine to Lust written into a project when it
 //! opens, and the project's Lust read and checked whenever something in
-//! its assets changes. Only a check that found different code reports.
+//! its assets changes, and turned into Lua for the editor to run. Only a
+//! check that found different code reports.
 
 use script::{Code, CodeProblem};
 use std::hash::{Hash, Hasher};
 use std::path::{Path, PathBuf};
+use std::sync::Arc;
 use std::sync::mpsc::{Receiver, channel};
 
 /// What a finished check found.
@@ -14,12 +16,19 @@ pub struct Checked {
     pub problems: Vec<CodeProblem>,
     /// Files left out, and why.
     pub notes: Vec<String>,
+    /// With no mistakes, the program to run (`None`: there's no code).
+    /// With mistakes, nothing: the last program that worked stays.
+    pub program: Option<Option<Arc<script::Chunk>>>,
 }
+
+/// A worker's answer: the code's hash, what was read, and the program or
+/// its mistakes.
+type Answer = (u64, Code, Result<Option<script::Chunk>, Vec<CodeProblem>>);
 
 /// One check at a time, and whether another is wanted after it.
 #[derive(Default)]
 pub struct GameCode {
-    running: Option<Receiver<(u64, Code, Vec<CodeProblem>)>>,
+    running: Option<Receiver<Answer>>,
     /// The folder to check again when the running check ends.
     again: Option<PathBuf>,
     /// The code the last reported check found, by its hash.
@@ -62,8 +71,8 @@ impl GameCode {
             .name("game code".into())
             .spawn(move || {
                 let code = script::gather(&assets);
-                let problems = script::check(&code);
-                let _ = sender.send((hash(&code), code, problems));
+                let compiled = script::compile(&code);
+                let _ = sender.send((hash(&code), code, compiled));
             });
         if started.is_ok() {
             self.running = Some(receiver);
@@ -87,7 +96,7 @@ impl GameCode {
     /// one reported. Never waits.
     pub fn poll(&mut self) -> Option<Checked> {
         let receiver = self.running.as_ref()?;
-        let (found, code, problems) = match receiver.try_recv() {
+        let (found, code, compiled) = match receiver.try_recv() {
             Ok(done) => done,
             Err(std::sync::mpsc::TryRecvError::Empty) => return None,
             Err(std::sync::mpsc::TryRecvError::Disconnected) => {
@@ -104,9 +113,14 @@ impl GameCode {
             return None;
         }
         self.last = Some(found);
+        let (problems, program) = match compiled {
+            Ok(program) => (Vec::new(), Some(program.map(Arc::new))),
+            Err(problems) => (problems, None),
+        };
         Some(Checked {
             problems,
             notes: code.notes,
+            program,
         })
     }
 }
@@ -172,6 +186,7 @@ mod tests {
         let found = finished(&mut code).unwrap();
         assert_eq!(found.problems.len(), 1, "{:?}", found.problems.first());
         assert_eq!(found.problems[0].line, 4);
+        assert!(found.program.is_none(), "the last program stays");
         // The same code again: nothing new to say.
         code.check(assets.clone());
         assert!(finished(&mut code).is_none());
@@ -181,6 +196,8 @@ mod tests {
         )
         .unwrap();
         code.check(assets);
-        assert!(finished(&mut code).unwrap().problems.is_empty());
+        let sound = finished(&mut code).unwrap();
+        assert!(sound.problems.is_empty());
+        assert!(matches!(sound.program, Some(Some(_))), "a program to run");
     }
 }

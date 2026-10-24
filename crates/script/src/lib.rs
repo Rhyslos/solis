@@ -4,8 +4,12 @@
 
 pub mod code;
 pub mod describe;
+pub mod runtime;
 
-pub use code::{Code, CodeProblem, check, gather};
+pub use code::{Code, CodeProblem, check, compile, gather};
+/// Game code turned into Lua, ready for a [`Runtime`].
+pub use lust::LuaChunk as Chunk;
+pub use runtime::{Failure, Host, NoHost, Runtime};
 
 /// The Lust compiler's version.
 pub const LUST_VERSION: &str = lust::VERSION;

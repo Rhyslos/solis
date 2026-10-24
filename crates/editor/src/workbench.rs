@@ -168,6 +168,10 @@ pub struct Workbench {
     pub(crate) sources: u64,
     /// Mistakes in the game's code, from the last check.
     pub(crate) code_problems: Vec<script::CodeProblem>,
+    /// The game's program, from the last code without mistakes.
+    pub(crate) program: Option<std::sync::Arc<script::Chunk>>,
+    /// The components it put in the registry, by name.
+    pub(crate) game_components: std::collections::BTreeSet<String>,
     /// The last [`Self::assembly_part`], with the selection, revision and
     /// sources it was worked out for: kept, since it expands the whole
     /// assembly.
@@ -200,6 +204,8 @@ impl Workbench {
             playing: None,
             sources: 0,
             code_problems: Vec::new(),
+            program: None,
+            game_components: std::collections::BTreeSet::new(),
             assembly_part_kept: std::cell::RefCell::new(None),
             assemblies: BTreeMap::new(),
             outbox: Vec::new(),
@@ -276,6 +282,7 @@ impl Workbench {
             self.assemblies.clear();
             self.place_targets.clear();
             self.code_problems.clear();
+            self.set_program(None);
             self.pending_reload = None;
             self.unsaved_prompt = None;
             self.library_state = Default::default();

@@ -931,6 +931,9 @@ impl eframe::App for App {
         if let Some(checked) = self.game_code.poll() {
             self.workbench
                 .set_code_problems(checked.problems, &checked.notes);
+            if let Some(program) = checked.program {
+                self.workbench.set_program(program);
+            }
         }
         if self.thumbnails.poll(&ctx, self.gpu.as_mut()) {
             self.show_library();

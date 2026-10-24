@@ -3,7 +3,7 @@
 //! The area only ever changes through [`Document::edit`], so every change
 //! can be undone ([decision 0022](../../../docs/decisions/0022-undo-as-reversible-edits.md)).
 
-use area::builtin::Model;
+use area::builtin::{Model, Transform};
 use area::{Area, Edit, EditError, History, MergeKey, Tree};
 use glam::Mat4;
 use reflect::{Component, EntityId, Registry};
@@ -125,6 +125,9 @@ pub type Placed = Arc<HashMap<EntityId, Mat4>>;
 pub struct Changes {
     /// Entities whose name or components changed.
     pub entities: std::collections::BTreeSet<reflect::EntityId>,
+    /// Of those, the ones whose Transform changed (moved in the editor):
+    /// the others keep where the running game put them.
+    pub moved: std::collections::BTreeSet<reflect::EntityId>,
     /// Whether anything more changed: entities added, deleted or moved to
     /// another parent, an undo or redo, or a whole new area.
     pub everything: bool,
@@ -135,11 +138,19 @@ impl Changes {
     fn note(&mut self, edits: &[Edit]) {
         for edit in edits {
             match edit {
-                Edit::SetField { entity, .. }
-                | Edit::AddComponent { entity, .. }
-                | Edit::RemoveComponent { entity, .. }
-                | Edit::Rename { entity, .. }
-                | Edit::SetOrigin { entity, .. } => {
+                Edit::SetField {
+                    entity, component, ..
+                }
+                | Edit::AddComponent {
+                    entity, component, ..
+                }
+                | Edit::RemoveComponent { entity, component } => {
+                    self.entities.insert(*entity);
+                    if component == Transform::NAME {
+                        self.moved.insert(*entity);
+                    }
+                }
+                Edit::Rename { entity, .. } | Edit::SetOrigin { entity, .. } => {
                     self.entities.insert(*entity);
                 }
                 _ => self.everything = true,
@@ -149,6 +160,7 @@ impl Changes {
         if self.entities.len() > MAX_CHANGED_ENTITIES {
             self.everything = true;
             self.entities.clear();
+            self.moved.clear();
         }
     }
 
@@ -396,6 +408,7 @@ impl Document {
             .apply(&mut self.area, label, edits, merge, before, after.clone())?;
         self.changed(values_only, same_tree);
         self.changes.entities.extend(changes.entities);
+        self.changes.moved.extend(changes.moved);
         self.changes.everything |= changes.everything;
         self.selection = after;
         self.selection.retain_existing(&self.area);
