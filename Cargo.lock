@@ -2056,8 +2056,8 @@ dependencies = [
 
 [[package]]
 name = "lust"
-version = "2.0.0-alpha.33"
-source = "git+https://github.com/Rhyslos/Lust?rev=a1cfe327ffac4b95ee5f9339484b2dd8df9d91be#a1cfe327ffac4b95ee5f9339484b2dd8df9d91be"
+version = "2.0.0-alpha.35"
+source = "git+https://github.com/Rhyslos/Lust?rev=a60cf875569b753e1374d9ea163d9759013018ae#a60cf875569b753e1374d9ea163d9759013018ae"
 
 [[package]]
 name = "memchr"

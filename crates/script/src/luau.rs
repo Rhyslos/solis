@@ -114,8 +114,8 @@ impl Clock {
     }
 }
 
-/// Lua run once in every Luau: `component`; `vec3(x, y, z)`, a vector that
-/// adds, takes away and scales; and `solis`, which reaches the native
+/// Lua run once in every Luau: `component`; `vec3(x, y, z)`, a Luau
+/// vector (they add, take away and scale, as Lust's do); and `solis`, which reaches the native
 /// methods while game code runs. It gives back two functions for Solis
 /// alone: one lends `solis` the natives, the other hands over the
 /// components `component` made.
@@ -134,22 +134,9 @@ function component(name, fields)
   made[#made + 1] = class
   return class
 end
-local Vec3 = {}
-Vec3.__index = Vec3
 function vec3(x, y, z)
-  return setmetatable({ x = x or 0, y = y or 0, z = z or 0 }, Vec3)
+  return vector.create(x or 0, y or 0, z or 0)
 end
-Vec3.__add = function(a, b) return vec3(a.x + b.x, a.y + b.y, a.z + b.z) end
-Vec3.__sub = function(a, b) return vec3(a.x - b.x, a.y - b.y, a.z - b.z) end
-Vec3.__unm = function(a) return vec3(-a.x, -a.y, -a.z) end
-Vec3.__mul = function(a, b)
-  if type(a) == "number" then return vec3(a * b.x, a * b.y, a * b.z) end
-  return vec3(a.x * b, a.y * b, a.z * b)
-end
-Vec3.__div = function(a, b) return vec3(a.x / b, a.y / b, a.z / b) end
-Vec3.__tostring = function(a) return "[" .. a.x .. ", " .. a.y .. ", " .. a.z .. "]" end
-Vec3.__metatable = "vec3"
-table.freeze(Vec3)
 local reach = { __index = function(_, key)
   local f = natives and key ~= "send_event" and natives[key]
   if not f then
@@ -271,7 +258,7 @@ mod tests {
             "table.insert = nil",
             "solis.say = print",
             "getmetatable(solis).__index = nil",
-            "getmetatable(vec3()).__add = nil",
+            "vector.create = nil",
             "setmetatable(_G, {})",
         ] {
             assert!(run(vandal, &one).is_err(), "{vandal} should be refused");
