@@ -19,6 +19,7 @@ name = "solis"
 path = "src/main.rs"
 
 [dependencies]
+rayon.workspace = true
 assets.workspace = true
 asset_db.workspace = true
 editor.workspace = true

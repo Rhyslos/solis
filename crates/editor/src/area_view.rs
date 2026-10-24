@@ -158,13 +158,20 @@ impl AreaView {
     /// What the running game shows of `world`: everything (hidden is only
     /// for the editor), nothing pickable, no camera markers.
     pub fn of_world(world: &world::World, models: &BTreeMap<AssetId, ModelInfo>) -> Self {
+        use rayon::prelude::*;
         let mut view = Self {
             environment: world.environment().unwrap_or_default(),
             ..Self::default()
         };
-        for (id, model, global) in world.placed::<Model>() {
-            view.add_model(id, model, global, models, false);
-        }
+        // Models in jobs (decision 0031), kept in tree order. None of the
+        // game's can be picked, so no numbers are handed out.
+        let placed = world.placed::<Model>();
+        let drawn: Vec<(ViewModel, usize)> = placed
+            .par_iter()
+            .filter_map(|(_, model, global)| view_model(model, *global, models))
+            .collect();
+        view.triangles = drawn.iter().map(|(_, t)| t).sum();
+        view.models = drawn.into_iter().map(|(m, _)| m).collect();
         for (id, light, global) in world.placed::<Light>() {
             view.add_light(id, &light, global);
         }
@@ -179,33 +186,15 @@ impl AreaView {
         models: &BTreeMap<AssetId, ModelInfo>,
         pickable: bool,
     ) {
-        let Some(r) = model.asset else { return };
-        let Some(info) = models.get(&r.asset) else {
+        let Some((mut drawn, triangles)) = view_model(&model, transform, models) else {
             return;
         };
-        let node = match r.part {
-            None => None,
-            // One part: drawn only if the model still has it.
-            Some(part) => match info.node_of(part) {
-                Some(node) => Some(node),
-                None => return,
-            },
-        };
-        if node.is_none() {
-            self.triangles += info.triangles;
-        }
-        let pick = if pickable {
+        self.triangles += triangles;
+        if pickable {
             self.pickable.push(id);
-            self.pickable.len() as u32
-        } else {
-            0
-        };
-        self.models.push(ViewModel {
-            asset: info.asset,
-            node,
-            transform,
-            pick,
-        });
+            drawn.pick = self.pickable.len() as u32;
+        }
+        self.models.push(drawn);
     }
 
     fn add_light(&mut self, id: reflect::EntityId, light: &Light, world: glam::Mat4) {
@@ -216,6 +205,32 @@ impl AreaView {
             self.lamps.push(placed);
         }
     }
+}
+
+/// `model` drawn at `transform` (not pickable), with the triangles it adds
+/// (a part's aren't counted), if its asset is loaded and has the part.
+fn view_model(
+    model: &Model,
+    transform: glam::Mat4,
+    models: &BTreeMap<AssetId, ModelInfo>,
+) -> Option<(ViewModel, usize)> {
+    let r = model.asset?;
+    let info = models.get(&r.asset)?;
+    let node = match r.part {
+        None => None,
+        // One part: drawn only if the model still has it.
+        Some(part) => Some(info.node_of(part)?),
+    };
+    let triangles = if node.is_none() { info.triangles } else { 0 };
+    Some((
+        ViewModel {
+            asset: info.asset,
+            node,
+            transform,
+            pick: 0,
+        },
+        triangles,
+    ))
 }
 
 /// `light` placed by `world`: shining along the entity's -Z.
@@ -314,6 +329,46 @@ mod tests {
         );
         assert_eq!(view.pickable.len(), 1);
         assert_eq!(view.triangles, 12);
+    }
+
+    #[test]
+    fn the_game_s_view_is_the_same_on_one_core_or_many() {
+        // Decision 0031: jobs never change the result.
+        let mut area = Area::new();
+        let asset = AssetId::random();
+        let mut info = crate::test_support::crate_model();
+        info.asset = asset;
+        let models = BTreeMap::from([(asset, info)]);
+        for i in 0..3_000 {
+            let mut data = EntityData::new(&format!("Box {i}")).with(&Transform {
+                position: Vec3::new(i as f32, (i % 7) as f32, 0.0),
+                ..Transform::default()
+            });
+            if i % 5 != 0 {
+                data.set(&Model {
+                    asset: Some(reflect::AssetRef { asset, part: None }),
+                });
+            }
+            data.order = area.order_at_end(None);
+            area.spawn(data);
+        }
+        let world = world::World::from_area(&area);
+        let on = |cores: usize| {
+            rayon::ThreadPoolBuilder::new()
+                .num_threads(cores)
+                .build()
+                .unwrap()
+                .install(|| AreaView::of_world(&world, &models))
+        };
+        let one = on(1);
+        assert_eq!(one.models.len(), 2_400);
+        assert_eq!(one, on(4));
+        // In the area's order: the copies go along x.
+        assert!(
+            one.models
+                .windows(2)
+                .all(|w| w[0].transform.w_axis.x < w[1].transform.w_axis.x)
+        );
     }
 
     #[test]

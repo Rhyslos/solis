@@ -111,15 +111,16 @@ Solis is built in phases, one milestone per pull request. Each phase ends with a
 
 **Gate:** change a Lust component while the game runs and see it within 2 seconds; Rust, Lust and Lua components talk through events.
 
-### Phase 5 · Scale — 1 of 6
+### Phase 5 · Scale — 2 of 7
 
-`██░░░░░░░░░░░` 17%
+`████░░░░░░░░░` 29%
 
 <details>
 <summary>Milestones</summary>
 
 - [x] Measure first: the frame profiler, and scale cases for the three levels ([plan](docs/plans/phase-5.md), decision 0030)
-- [ ] A job system that uses every CPU core (decision 0031)
+- [x] A job system that uses every CPU core (decision 0031)
+- [ ] Game code on every core: it sees the world as it was at the start of the tick (decision 0033)
 - [ ] Drawing only what's seen: culling, and shadows fitted to the view
 - [ ] LODs, made on import or the model's own (decision 0032)
 - [ ] Projectiles: hundreds of thousands, drawn in one go

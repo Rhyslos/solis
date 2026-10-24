@@ -34,6 +34,10 @@ Panels never change the document: Properties returns `PropertyRequest`s and the 
 
 The Profiler panel (`editor::profiler`) times each frame the editor draws: `Workbench::show` starts and ends the frame, `run_game` times game code (syncs and ticks) apart from the world, the views' preparation is timed where `AreaView`s are built, and a wrapper around the `ViewportRenderer` times handing frames to the GPU; the rest is the editor's. The renderer reports what it drew (`render::FrameStats`) and, on cards with `TIMESTAMP_QUERY` (asked for by the app when the card has it), each pass's GPU time (`render::GpuTimes`), read back a frame or two later without waiting. The scale levels (decision 0030) are timed headless from the same Profiler (`editor`'s `scale_levels_tests`): whole editor frames of 1/60 s while a fleet of Lust-driven units plays.
 
+## The job system
+
+Work that can be split runs in jobs on every core (`rayon`, decision 0031), in one pool the app starts with the window (`app::window::start_jobs`: one worker per core, leaving one for the window). Jobs only ever write their own part of the result, and anything put together keeps a fixed order, so a frame is the same on one core or sixteen (tests compare both). Today: the game's view (`AreaView::of_world`) and gathering the GPU's copies (`render::instances::gather`).
+
 ## Colour in the viewport
 
 The world is drawn in linear HDR colour (brighter than white allowed) into a 16-bit floating-point image, with multisampling. A last pass (`post_fs` in `crates/render/src/viewport.wgsl`) applies exposure and tone mapping (AgX, ACES or none) and converts to sRGB into a plain 8-bit RGBA image, which egui shows as it is ([decision 0017](docs/decisions/0017-hdr-tone-mapping-sky-and-fog.md)). The shader converts to sRGB itself, because letting the GPU do it would need a second "view" of the image in another format, which older and software GPUs (OpenGL) can't make, and the editor has to open on those too.
