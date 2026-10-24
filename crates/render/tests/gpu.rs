@@ -839,6 +839,7 @@ fn square(cx: f32, z: f32, half: f32) -> assets::Mesh {
         ],
         indices: vec![0, 1, 2, 0, 2, 3],
         material: None,
+        lods: Vec::new(),
     }
 }
 
@@ -1907,12 +1908,13 @@ fn a_frame_is_the_same_on_one_core_or_many() {
     assert!(one == many, "the pictures differ");
 }
 
-/// The CPU's side of drawing `count` copies of the sample in rows of
+/// The CPU's side of drawing `count` copies of `model` in rows of
 /// `row` 3 m apart, seen from `eye` looking north, with or without the
 /// sun's shadows: gathering, culling, sorting and handing them over (not
 /// the GPU's drawing, which isn't waited for). With `moving`, every copy
 /// moves every frame. The milliseconds a frame, and what the last drew.
 fn gathering_ms(
+    model: &assets::Model,
     count: usize,
     row: usize,
     eye: Vec3,
@@ -1921,8 +1923,7 @@ fn gathering_ms(
 ) -> Option<(f64, render::FrameStats)> {
     let gpu = gpu()?;
     let renderer = ViewportRenderer::new(&gpu.device, best_sample_count(&gpu.adapter));
-    let model = sample();
-    let uploaded = renderer.upload_model(&gpu.device, &gpu.queue, &model);
+    let uploaded = renderer.upload_model(&gpu.device, &gpu.queue, model);
     let place = |i: usize, frame: usize| {
         let nudge = if moving { frame as f32 * 0.01 } else { 0.0 };
         Mat4::from_translation(Vec3::new(
@@ -1999,8 +2000,14 @@ fn gathering_verdict(what: &str, ms: f64, target: f64, judged: bool) {
 fn scale_check_gathering_100000_copies() {
     // A field 900 m wide and 1 km deep, seen from its near edge: about
     // two thirds are in view.
-    let Some((ms, stats)) = gathering_ms(100_000, 300, Vec3::new(0.0, -10.0, 8.0), false, false)
-    else {
+    let Some((ms, stats)) = gathering_ms(
+        &sample(),
+        100_000,
+        300,
+        Vec3::new(0.0, -10.0, 8.0),
+        false,
+        false,
+    ) else {
         println!("Scale check: gathering 100,000 copies skipping: no GPU");
         return;
     };
@@ -2018,7 +2025,14 @@ fn scale_check_gathering_100000_copies() {
 #[test]
 #[ignore = "scale check: run by tools/scale/scale-check.sh"]
 fn scale_check_gathering_100000_copies_all_moving() {
-    let Some((ms, _)) = gathering_ms(100_000, 300, Vec3::new(0.0, -10.0, 8.0), false, true) else {
+    let Some((ms, _)) = gathering_ms(
+        &sample(),
+        100_000,
+        300,
+        Vec3::new(0.0, -10.0, 8.0),
+        false,
+        true,
+    ) else {
         return;
     };
     gathering_verdict(
@@ -2034,8 +2048,14 @@ fn scale_check_gathering_100000_copies_all_moving() {
 fn scale_check_10000_units_a_tenth_in_view() {
     // 10,000 units on a field 300 m square, the camera low beside it,
     // looking along it: about a tenth are in view; shadows on.
-    let Some((ms, stats)) = gathering_ms(10_000, 100, Vec3::new(-215.0, 0.0, 3.0), true, true)
-    else {
+    let Some((ms, stats)) = gathering_ms(
+        &sample(),
+        10_000,
+        100,
+        Vec3::new(-215.0, 0.0, 3.0),
+        true,
+        true,
+    ) else {
         return;
     };
     gathering_verdict(
@@ -2248,4 +2268,161 @@ fn a_frame_that_did_not_change_sends_nothing() {
     copies[420].transform = home;
     renderer.render(&gpu.device, &gpu.queue, &mut target, &params, &copies, &[]);
     assert!(read_pixels(&gpu.device, &gpu.queue, &target).unwrap() == first_pixels);
+}
+
+// ------------------------------------------------------------ LODs ---
+
+/// A bumpy grid 4 m square, `side` squares across, just above the
+/// ground: bumpy enough that its simpler levels show up close.
+fn grid(side: u32) -> assets::Mesh {
+    let mut vertices = Vec::new();
+    for y in 0..=side {
+        for x in 0..=side {
+            let (u, v) = (x as f32 / side as f32, y as f32 / side as f32);
+            vertices.push(assets::Vertex {
+                position: [
+                    u * 4.0 - 2.0,
+                    v * 4.0 - 2.0,
+                    0.3 + 0.2 * (u * 40.0).sin() * (v * 35.0).cos(),
+                ],
+                normal: [0.0, 0.0, 1.0],
+                uv: [u, v],
+            });
+        }
+    }
+    let row = side + 1;
+    let mut indices = Vec::new();
+    for y in 0..side {
+        for x in 0..side {
+            let a = y * row + x;
+            indices.extend_from_slice(&[a, a + 1, a + row + 1, a, a + row + 1, a + row]);
+        }
+    }
+    assets::Mesh {
+        vertices,
+        indices,
+        material: None,
+        lods: Vec::new(),
+    }
+}
+
+/// A model of `meshes`, each shown by a node named as given.
+fn named_model(meshes: Vec<assets::Mesh>, names: &[&str]) -> assets::Model {
+    let mut model = floor(false);
+    model.meshes = meshes;
+    model.nodes = names
+        .iter()
+        .enumerate()
+        .map(|(i, name)| assets::Node {
+            name: (*name).to_string(),
+            parent: None,
+            local: Mat4::IDENTITY,
+            world: Mat4::IDENTITY,
+            meshes: vec![i],
+        })
+        .collect();
+    model.bounds = assets::Bounds {
+        min: Vec3::new(-2.0, -2.0, 0.0),
+        max: Vec3::new(2.0, 2.0, 0.6),
+    };
+    assets::lods::add_lods(&mut model);
+    model
+}
+
+#[test]
+fn a_far_copy_draws_a_simpler_level() {
+    let model = named_model(vec![grid(48)], &["Hill"]);
+    assert_eq!(model.meshes[0].lods.len(), 3, "made on import");
+    let near = Vec3::new(0.0, -2.5, 1.2);
+    let Some((_, close)) = render_scene(
+        &[(&model, Mat4::IDENTITY)],
+        looking_north(near),
+        near,
+        Sun::default(),
+    ) else {
+        return;
+    };
+    assert_eq!(close.lods[0], 1, "close: in full");
+    assert_eq!(close.triangles, 48 * 48 * 2);
+    let far_eye = Vec3::new(0.0, -300.0, 1.2);
+    let (_, far) = render_scene(
+        &[(&model, Mat4::IDENTITY)],
+        looking_north(far_eye),
+        far_eye,
+        Sun::default(),
+    )
+    .unwrap();
+    assert_eq!(far.instances, 1, "still drawn");
+    assert_eq!(far.lods[0], 0, "far: not in full");
+    assert!(
+        far.triangles * 4 < close.triangles,
+        "{} vs {}",
+        far.triangles,
+        close.triangles
+    );
+}
+
+#[test]
+fn a_model_s_own_level_of_detail_is_drawn_far_away() {
+    // Its full version a fine grid; its own LOD1 a single square.
+    let mut plain = floor(false);
+    plain.meshes = vec![square(0.0, 0.3, 2.0)];
+    let model = named_model(
+        vec![grid(32), plain.meshes.remove(0)],
+        &["Hill", "Hill_LOD1"],
+    );
+    assert_eq!(model.meshes[0].lods.len(), 1, "its own, not made ones");
+    let near = Vec3::new(0.0, -1.6, 0.9);
+    let Some((_, close)) = render_scene(
+        &[(&model, Mat4::IDENTITY)],
+        looking_north(near),
+        near,
+        Sun::default(),
+    ) else {
+        return;
+    };
+    assert_eq!(
+        close.triangles,
+        32 * 32 * 2,
+        "close: in full, and the LOD isn't drawn too"
+    );
+    let far_eye = Vec3::new(0.0, -300.0, 1.2);
+    let (_, far) = render_scene(
+        &[(&model, Mat4::IDENTITY)],
+        looking_north(far_eye),
+        far_eye,
+        Sun::default(),
+    )
+    .unwrap();
+    assert_eq!(far.lods[1], 1);
+    assert_eq!(far.triangles, 2, "its own square");
+}
+
+#[test]
+#[ignore = "scale check: run by tools/scale/scale-check.sh"]
+fn scale_check_10000_units_most_far_away() {
+    // 10,000 detailed units (4,608 triangles each) on a field 300 m
+    // square, the camera low at its near edge looking across it: most are
+    // far away and drawn at simpler levels.
+    let unit = named_model(vec![grid(48)], &["Unit"]);
+    let Some((ms, stats)) =
+        gathering_ms(&unit, 10_000, 100, Vec3::new(0.0, -10.0, 4.0), true, true)
+    else {
+        return;
+    };
+    let full = u64::from(stats.lods.iter().sum::<u32>()) * 48 * 48 * 2;
+    gathering_verdict(
+        &format!(
+            "10,000 moving detailed units, most far away: {} triangles drawn instead of {} \
+             (copies at each level {:?})",
+            stats.triangles, full, stats.lods
+        ),
+        ms,
+        8.0,
+        true,
+    );
+    assert!(
+        stats.triangles * 3 < full,
+        "levels of detail cut the triangles"
+    );
 }

@@ -143,7 +143,7 @@ fn read_model(
     }))
     .or_else(|| Bounds::around(lamps.iter().map(|l| l.position)))
     .ok_or(ImportError::Empty)?;
-    Ok(Model {
+    let mut model = Model {
         name: name.to_string(),
         meshes,
         nodes,
@@ -152,7 +152,9 @@ fn read_model(
         lamps,
         bounds,
         warnings,
-    })
+    };
+    crate::lods::add_lods(&mut model);
+    Ok(model)
 }
 
 /// Reads a file, refusing it first if it is bigger than `limit` bytes.

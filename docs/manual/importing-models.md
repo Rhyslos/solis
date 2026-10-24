@@ -33,6 +33,7 @@ Then:
 | See-through parts | Cut-out (leaves, fences) and blended (glass). |
 | Double-sided surfaces | Drawn from both sides when the file says so; otherwise the back of a surface is hidden. |
 | Units | Metres, as glTF uses. The Console shows the model's size, so you can spot one exported 100 times too big. |
+| Levels of detail | Made for each mesh as it's imported, or taken from objects named `_LOD1` and so on. See [Levels of detail](levels-of-detail.md). |
 
 **Limits:** files up to 1 GB, models up to 30 million triangles, and textures up to 16,384 pixels across. Textures bigger than your graphics card holds are scaled down to fit.
 
@@ -48,5 +49,6 @@ Then:
 - **Want to see how it should look?** **Help > Add the sample area** brings in a model made for checking the [looks](looks.md). With a project open, it's added to the project's assets as `Sample area.glb`, like any import, so areas using it open again.
 
 ## Related
+- [Levels of detail](levels-of-detail.md)
 - [Moving around the viewport](navigating-the-viewport.md)
 - [Concepts](concepts.md): models, meshes, triangles, materials, textures, glTF.

@@ -18,6 +18,7 @@ New to game engines? Start with [Concepts](concepts.md).
 - [Play mode: run the area as a game, and Stop puts everything back](play-mode.md)
 - [Projects and the Library: keeping your game's files together](projects-and-the-library.md)
 - [Importing models: glTF files from Blender, Aventail and other programs](importing-models.md)
+- [Levels of detail: simpler models far away](levels-of-detail.md)
 - [Looks: standard, stylized and unlit](looks.md)
 - [Lights and shadows: the sun, point lights and spotlights](lights.md)
 - [Sky, fog and exposure: the world around your models, and how bright the picture is](sky-fog-and-exposure.md)

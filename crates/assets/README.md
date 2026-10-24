@@ -18,8 +18,8 @@ Turn a model file into a `Model`: each mesh once, in its own space, and a tree o
 
 ## Depends on
 
-`gltf` (the file's structure only), `image` (PNG and JPEG), `base64`, `percent-encoding`, glam and bytemuck. No Solis crates.
+`gltf` (the file's structure only), `image` (PNG and JPEG), `base64`, `percent-encoding`, `meshopt` (meshoptimizer: levels of detail), glam and bytemuck. No Solis crates.
 
 ## Status
 
-Phase 1 complete: glTF models with their full materials and lights, read within memory limits (and meshes split to fit the graphics card's buffers). Phase 2: meshes in their own space with a node tree. Animation arrives in Phase 7.
+Phase 1 complete: glTF models with their full materials and lights, read within memory limits (and meshes split to fit the graphics card's buffers). Phase 2: meshes in their own space with a node tree. Phase 5: levels of detail (`lods.rs`, decision 0032): each mesh of an imported model gets up to three simpler versions (`Mesh::lods`, about a half, a quarter and an eighth of the triangles, sharing its corners, with how far each strays), made with meshoptimizer within limits (64 to 4 million triangles; a level must shrink by a fifth or simplifying stops); nodes named `Name_LOD1` … give their meshes to the node `Name` instead (moved into its space), and aren't drawn themselves. Animation arrives in Phase 7.

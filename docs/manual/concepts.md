@@ -53,6 +53,7 @@
 - **glTF:** the standard file format for game models, in two forms: `.glb` (everything in one file) and `.gltf` (a text file, with its data and textures in files beside it).
 - **Mesh:** a model's shape, made of triangles.
 - **Triangle:** the smallest piece of a 3D shape. Graphics cards draw everything as triangles; a game character has a few thousand to tens of thousands.
+- **Level of detail (LOD):** a simpler version of a mesh, with fewer triangles, drawn when a copy is so small on screen that the difference can't be seen. Solis makes them on import, or uses a model's own (named `_LOD1` and so on). See [Levels of detail](levels-of-detail.md).
 - **Material:** how a surface looks: its colour, how shiny, how see-through.
 - **Texture:** an image wrapped around a model, giving it detail (paint, wood grain, panels).
 - **Metallic and roughness:** the two numbers that decide how a surface shines. Metal reflects its surroundings; rough surfaces spread their shine out until it disappears.

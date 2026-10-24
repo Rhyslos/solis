@@ -27,6 +27,29 @@ pub struct Mesh {
     pub indices: Vec<u32>,
     /// Which of the model's materials it uses; `None` for the plain default.
     pub material: Option<usize>,
+    /// Simpler versions, each simpler than the one before, drawn when a
+    /// copy is small on screen (see `lods`).
+    pub lods: Vec<Lod>,
+}
+
+/// A simpler version of a mesh (a level of detail).
+#[derive(Debug, Clone, PartialEq, Default)]
+pub struct Lod {
+    /// Its own corners, or none to use the mesh's (a level made by
+    /// simplifying the mesh shares them).
+    pub vertices: Vec<Vertex>,
+    /// Three indices into the corners per triangle.
+    pub indices: Vec<u32>,
+    /// How far it strays from the full mesh, as a share of the mesh's
+    /// size (0.01 is 1%): it's drawn once that's too small to see.
+    pub error: f32,
+}
+
+impl Lod {
+    /// How many triangles it has.
+    pub fn triangles(&self) -> usize {
+        self.indices.len() / 3
+    }
 }
 
 impl Mesh {
@@ -238,6 +261,27 @@ impl Model {
             .filter(|(m, _)| *m < self.meshes.len())
     }
 
+    /// How many triangles each level of detail draws, counting each
+    /// placement: the full model first, then each simpler level (a mesh
+    /// with fewer levels draws its simplest). Just the full model when no
+    /// mesh has any.
+    pub fn lod_triangles(&self) -> Vec<usize> {
+        let levels = self.meshes.iter().map(|m| m.lods.len()).max().unwrap_or(0);
+        (0..=levels)
+            .map(|level| {
+                self.placements()
+                    .map(|(m, _)| {
+                        let mesh = &self.meshes[m];
+                        match level.min(mesh.lods.len()) {
+                            0 => mesh.triangles(),
+                            l => mesh.lods[l - 1].triangles(),
+                        }
+                    })
+                    .sum()
+            })
+            .collect()
+    }
+
     /// How many triangles are drawn, counting each placement.
     pub fn triangles(&self) -> usize {
         self.placements()
@@ -306,6 +350,7 @@ fn bake(mesh: &Mesh, world: Mat4) -> Mesh {
         vertices,
         indices,
         material: mesh.material,
+        lods: Vec::new(),
     }
 }
 

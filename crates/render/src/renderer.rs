@@ -98,6 +98,8 @@ struct FrameResources {
     /// What the instance buffer holds now, so a frame sends only what
     /// changed.
     sent: Vec<crate::instances::InstanceRaw>,
+    /// Each placement's level of detail last frame.
+    levels: Vec<u8>,
 }
 
 /// How many copies are compared and sent together: a run that changed
@@ -257,6 +259,7 @@ impl FrameResources {
             markers,
             instances: None,
             sent: Vec::new(),
+            levels: Vec::new(),
         }
     }
 }
@@ -806,7 +809,7 @@ impl ViewportRenderer {
                 continue;
             }
             pass.set_pipeline(self.facing(batch.mirrored).for_pass(kind));
-            model.draw(pass, batch.mesh, batch.instances.clone());
+            model.draw(pass, batch.mesh, batch.lod, batch.instances.clone());
         }
     }
 
@@ -843,7 +846,8 @@ impl ViewportRenderer {
         let cull = crate::instances::Cull::new(
             params.view_projection,
             receivers.map(|(min, max)| (min, max, light)),
-        );
+        )
+        .with_detail(params.view_projection, params.size_px[1]);
         let crate::instances::Gathered {
             raw,
             mut batches,
@@ -851,7 +855,9 @@ impl ViewportRenderer {
             seen,
             casting,
             casters,
-        } = crate::instances::gather(placed, Some(&cull));
+            levels,
+        } = crate::instances::gather(placed, Some(&cull), &target.frame.levels);
+        target.frame.levels = levels;
         let count = raw.len();
         let sent = target.frame.write_instances(device, queue, raw);
         if sent.is_none() {
@@ -871,10 +877,17 @@ impl ViewportRenderer {
                 .iter()
                 .filter(|b| b.seen)
                 .map(|b| {
-                    u64::from(model_of(b).triangles_of(b.mesh))
+                    u64::from(model_of(b).triangles_of(b.mesh, b.lod))
                         * u64::from(b.instances.end - b.instances.start)
                 })
                 .sum(),
+            lods: batches
+                .iter()
+                .filter(|b| b.seen)
+                .fold([0; 5], |mut lods, b| {
+                    lods[b.lod.min(4)] += b.instances.end - b.instances.start;
+                    lods
+                }),
             sent_bytes: sent.unwrap_or(0),
         };
         let timer = target.timer.as_ref().and_then(Option::as_ref);
@@ -928,7 +941,12 @@ impl ViewportRenderer {
             if let Some(instances) = &frame.instances {
                 pass.set_vertex_buffer(1, instances.slice(..));
                 for batch in batches.iter().filter(|b| b.casts) {
-                    model_of(batch).draw_depth(&mut pass, batch.mesh, batch.instances.clone());
+                    model_of(batch).draw_depth(
+                        &mut pass,
+                        batch.mesh,
+                        batch.lod,
+                        batch.instances.clone(),
+                    );
                 }
             }
         }
@@ -980,7 +998,12 @@ impl ViewportRenderer {
                 for batch in batches.iter().filter(|b| b.seen) {
                     let facing = self.facing(batch.mirrored);
                     pass.set_pipeline(&facing.outline);
-                    model_of(batch).draw_outline(&mut pass, batch.mesh, batch.instances.clone());
+                    model_of(batch).draw_outline(
+                        &mut pass,
+                        batch.mesh,
+                        batch.lod,
+                        batch.instances.clone(),
+                    );
                 }
             }
             if params.editor_lines {

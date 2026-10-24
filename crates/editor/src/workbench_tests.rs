@@ -448,6 +448,7 @@ fn crate_info() -> ModelInfo {
         asset: AssetId(reflect::Id::from_raw(7).unwrap()),
         name: "Crate".into(),
         triangles: 12,
+        lods: Vec::new(),
         min: Vec3::ZERO,
         max: Vec3::ONE,
         nodes: Vec::new(),
