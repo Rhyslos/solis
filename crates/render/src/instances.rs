@@ -241,6 +241,14 @@ struct Entry {
     radius: f32,
 }
 
+/// One run's copies by their batch's key: each key's copies, in order,
+/// and where each key's list is.
+#[derive(Default)]
+struct Buckets {
+    lists: Vec<(u64, Vec<u32>)>,
+    slots: std::collections::HashMap<u64, usize>,
+}
+
 /// Where a copy's key keeps whether it's seen and casts: in view only,
 /// both, or casting only, in that order.
 const SEEN_ONLY: u64 = 0;
@@ -406,57 +414,73 @@ pub(crate) fn gather(placements: &[Placement<'_>], cull: Option<&Cull>, before: 
             out
         })
         .collect();
-    // Grouped into batches by sorting keys with where each copy is, so
-    // copies keep the placements' order within a batch, whatever the
-    // number of cores.
-    let mut order: Vec<(u64, u32, u32)> = runs
+    // Grouped into batches by key, keeping the placements' order within a
+    // batch whatever the number of cores. A key is a whole batch, and
+    // there are few, so each run's copies are sorted into buckets (no
+    // sort of every copy), and each batch is put together from them.
+    let buckets: Vec<Buckets> = runs
         .par_iter()
-        .enumerate()
-        .flat_map_iter(|(r, run)| {
-            run.iter()
-                .enumerate()
-                .map(move |(i, e)| (e.key, r as u32, i as u32))
+        .map(|run| {
+            let mut by = Buckets::default();
+            // Copies of one placement come together, so the bucket is
+            // usually the last one.
+            let mut last = usize::MAX;
+            for (i, e) in run.iter().enumerate() {
+                if by.lists.get(last).is_none_or(|(key, _)| *key != e.key) {
+                    let lists = &mut by.lists;
+                    last = *by.slots.entry(e.key).or_insert_with(|| {
+                        lists.push((e.key, Vec::new()));
+                        lists.len() - 1
+                    });
+                }
+                by.lists[last].1.push(i as u32);
+            }
+            by
         })
         .collect();
-    order.par_sort_unstable();
-    let entry = |&(_, r, i): &(u64, u32, u32)| &runs[r as usize][i as usize];
-    let raw: Vec<InstanceRaw> = order.par_iter().map(|o| entry(o).raw).collect();
-    let mut batches: Vec<Batch> = Vec::new();
-    let (mut seen, mut casting) = (0, 0);
-    for (index, &(key, _, _)) in order.iter().enumerate() {
-        let class = key >> 62;
-        let (model, mesh, lod, mirrored) = (
-            ((key >> 36) & 0x03ff_ffff) as usize,
-            ((key >> 4) & 0xffff_ffff) as usize,
-            ((key >> 1) & 0b111) as usize,
-            key & 1 == 1,
-        );
-        let (is_seen, casts) = (class != CASTS_ONLY, class != SEEN_ONLY);
-        seen += u32::from(is_seen);
-        casting += u32::from(casts);
-        let index = index as u32;
-        match batches.last_mut() {
-            Some(b)
-                if b.model == model
-                    && b.mesh == mesh
-                    && b.lod == lod
-                    && b.mirrored == mirrored
-                    && b.seen == is_seen
-                    && b.casts == casts =>
-            {
-                b.instances.end = index + 1;
+    let mut keys: Vec<u64> = buckets
+        .iter()
+        .flat_map(|b| b.lists.iter().map(|(key, _)| *key))
+        .collect();
+    keys.par_sort_unstable();
+    keys.dedup();
+    let parts: Vec<Vec<InstanceRaw>> = keys
+        .par_iter()
+        .map(|key| {
+            let mut part = Vec::new();
+            for (run, by) in runs.iter().zip(&buckets) {
+                if let Some(&slot) = by.slots.get(key) {
+                    part.extend(by.lists[slot].1.iter().map(|&i| run[i as usize].raw));
+                }
             }
-            _ => batches.push(Batch {
-                model,
-                mesh,
-                lod,
-                mirrored,
-                seen: is_seen,
-                casts,
-                instances: index..index + 1,
-            }),
+            part
+        })
+        .collect();
+    let mut batches: Vec<Batch> = Vec::with_capacity(keys.len());
+    let (mut seen, mut casting) = (0, 0);
+    let mut start = 0_u32;
+    for (&key, part) in keys.iter().zip(&parts) {
+        let class = key >> 62;
+        let (is_seen, casts) = (class != CASTS_ONLY, class != SEEN_ONLY);
+        let count = part.len() as u32;
+        if is_seen {
+            seen += count;
         }
+        if casts {
+            casting += count;
+        }
+        batches.push(Batch {
+            model: ((key >> 36) & 0x03ff_ffff) as usize,
+            mesh: ((key >> 4) & 0xffff_ffff) as usize,
+            lod: ((key >> 1) & 0b111) as usize,
+            mirrored: key & 1 == 1,
+            seen: is_seen,
+            casts,
+            instances: start..start + count,
+        });
+        start += count;
     }
+    let raw = parts.concat();
     // The box around what casts, for the sun's view to take in.
     let casters = cull.filter(|c| c.shadows.is_some()).and_then(|_| {
         runs.par_iter()

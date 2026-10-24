@@ -66,7 +66,7 @@ impl Syncing<'_> {
                 }
                 None => {
                     let made = caught(|| (kind.make)(data)).map_err(fail)?;
-                    running.insert(key, Running::new(Instance::Rust(made), data));
+                    running.insert(key, Running::new(Instance::Rust(made), name, data));
                 }
             }
             return Ok(());
@@ -117,7 +117,7 @@ impl Syncing<'_> {
             ),
             (None, None) => return Ok(()),
         };
-        running.insert(key, Running::new(instance, data));
+        running.insert(key, Running::new(instance, name, data));
         Ok(())
     }
 

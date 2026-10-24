@@ -30,6 +30,7 @@ render.workspace = true
 eframe.workspace = true
 rfd.workspace = true
 glam.workspace = true
+bytemuck.workspace = true
 opener.workspace = true
 log.workspace = true
 

@@ -27,6 +27,9 @@ pub(crate) enum Instance {
 /// One running component.
 pub(crate) struct Running {
     pub(crate) instance: Instance,
+    /// Its name, shared: each thing it does carries it in its [`Order`],
+    /// and a shared name is copied without a new string each time.
+    pub(crate) name: std::sync::Arc<str>,
     /// The area's values it was last given, to send only what changes.
     pub(crate) seen: ComponentData,
     /// Stopped after a failure, until the code changes.
@@ -42,9 +45,10 @@ pub(crate) type RunningMap = BTreeMap<(EntityId, String), Running>;
 
 impl Running {
     /// A newly made running component.
-    pub(crate) fn new(instance: Instance, data: &ComponentData) -> Self {
+    pub(crate) fn new(instance: Instance, name: &str, data: &ComponentData) -> Self {
         Self {
             instance,
+            name: name.into(),
             seen: data.clone(),
             stopped: false,
             quiet: false,
@@ -87,8 +91,8 @@ pub(crate) struct Ticking<'a> {
 pub struct Order {
     /// The entity's ID (updates), or the event's number (a round).
     pub major: u64,
-    /// The component's name.
-    pub component: String,
+    /// The component's name (shared, so copying an order is cheap).
+    pub component: std::sync::Arc<str>,
     /// The order the component did it in.
     pub seq: u32,
 }
@@ -220,7 +224,7 @@ impl Ticking<'_> {
             }
             let at = Order {
                 major: entity.0.raw(),
-                component: name.clone(),
+                component: component.name.clone(),
                 seq: 0,
             };
             lent.borrow_mut().at(&at);
@@ -277,7 +281,7 @@ impl Ticking<'_> {
                 }
                 let at = Order {
                     major: u64::from(*number),
-                    component: name.clone(),
+                    component: component.name.clone(),
                     seq: 0,
                 };
                 lent.borrow_mut().at(&at);

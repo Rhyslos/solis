@@ -405,3 +405,29 @@ fn projectiles_fly_on_when_the_world_is_built_again() {
     world.rebuild(&area);
     assert_eq!(world.projectiles().len(), 1);
 }
+
+#[test]
+fn the_change_number_moves_only_when_something_seen_changes() {
+    let mut area = Area::new();
+    let a = area.spawn(EntityData::new("A").with(&at(0.0, 0.0, 0.0)));
+    let mut world = World::from_area(&area);
+    let first = world.changes();
+    assert_eq!(world.changes(), first, "nothing happened");
+    // Too short for a tick, and settling nothing: still the same.
+    world.step(TICK * 0.5);
+    world.settle();
+    assert_eq!(world.changes(), first);
+    // A tick, a move, a shot: each a new number.
+    world.step(TICK);
+    let ticked = world.changes();
+    assert_ne!(ticked, first);
+    world.set_transform(a, at(1.0, 0.0, 0.0));
+    let moved = world.changes();
+    assert_ne!(moved, ticked);
+    world.projectiles_mut();
+    assert_ne!(world.changes(), moved);
+    // A world built again never repeats an old number.
+    let before = world.changes();
+    world.rebuild(&area);
+    assert_ne!(world.changes(), before);
+}

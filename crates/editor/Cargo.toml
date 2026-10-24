@@ -23,6 +23,7 @@ script.workspace = true
 egui.workspace = true
 egui_dock.workspace = true
 glam.workspace = true
+bytemuck.workspace = true
 chrono.workspace = true
 serde.workspace = true
 

@@ -182,6 +182,10 @@ pub struct Workbench {
     pub(crate) profiler: crate::profiler::Profiler,
     /// What the viewport's [`AreaView`] was last worked out for.
     editor_view: Option<ViewKey>,
+    /// What the Game panel showed last, and what it was worked out for:
+    /// made again only when the world, the models or the state changed
+    /// (not on a frame without a tick, or while paused).
+    game_scene: Option<(GameKey, crate::game_panel::GameScene)>,
     /// Its components whose names were taken (by the engine's own, or a
     /// Rust one's): they don't run.
     pub(crate) left_out: std::collections::BTreeSet<String>,
@@ -202,6 +206,16 @@ struct ViewKey {
     models: usize,
     hidden: HashSet<reflect::EntityId>,
     locked: HashSet<reflect::EntityId>,
+}
+
+/// What the Game panel's picture depends on: when it's the same, the
+/// picture is too.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct GameKey {
+    world: u64,
+    sources: u64,
+    models: usize,
+    state: crate::play::PlayState,
 }
 
 impl Workbench {
@@ -234,6 +248,7 @@ impl Workbench {
             game_components: std::collections::BTreeSet::new(),
             profiler: crate::profiler::Profiler::default(),
             editor_view: None,
+            game_scene: None,
             left_out: std::collections::BTreeSet::new(),
             rust_components: Vec::new(),
             assembly_part_kept: std::cell::RefCell::new(None),
@@ -628,12 +643,24 @@ impl Workbench {
         let menu = crate::menu_items::MenuState::of(self);
         let copied: Vec<String> = self.copied.iter().map(|(name, _)| name.clone()).collect();
         // Worked out only while the Game panel is in front.
-        let game = match &self.playing {
-            Some(playing) if self.in_front.contains(&crate::panel::Panel::Game) => Some(
-                crate::game_panel::GameScene::of(&playing.world, &self.models, self.play_state()),
-            ),
-            Some(_) => None,
-            None => None,
+        let state = self.play_state();
+        let game = match &mut self.playing {
+            Some(playing) if self.in_front.contains(&crate::panel::Panel::Game) => {
+                let key = GameKey {
+                    world: playing.world.changes(),
+                    sources: self.sources,
+                    models: self.models.len(),
+                    state,
+                };
+                match self.game_scene.take() {
+                    Some((was, scene)) if was == key => Some((key, scene)),
+                    _ => Some((
+                        key,
+                        crate::game_panel::GameScene::of(&playing.world, &self.models, state),
+                    )),
+                }
+            }
+            _ => None,
         };
         self.profiler
             .add(crate::profiler::Stage::Prepare, preparing.elapsed());
@@ -662,7 +689,7 @@ impl Workbench {
                         console_requests: &mut console_requests,
                         problems: &self.problems.list,
                         code_problems: &self.code_problems,
-                        game: game.as_ref(),
+                        game: game.as_ref().map(|(_, scene)| scene),
                         playing,
                         document: &self.document,
                         models: &self.models,
@@ -699,6 +726,8 @@ impl Workbench {
                 other => self.apply_area_request(other),
             }
         }
+        // Kept for the next frame, which may show the same.
+        self.game_scene = game;
         if self.files_hovering {
             drop_hint(ui, self.accent);
         }
