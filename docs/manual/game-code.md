@@ -84,9 +84,11 @@ component Health {
     }
 
     on Hit(entity by, float damage) {
-        hp = hp - damage;
-        is hp <= 0? then {
-            send Died() to me;
+        is hp > 0? then {
+            hp = hp - damage;
+            is hp <= 0? then {
+                send Died() to me;
+            }
         }
     }
 
