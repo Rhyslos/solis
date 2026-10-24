@@ -10,8 +10,8 @@ use crate::frame::{FrameLight, FrameParams, FrameUniforms, GRID_HALF_EXTENT};
 use crate::gpu_model::{GpuModel, ModelPipelines, Pass};
 use crate::instances::Placement;
 use crate::lighting::{
-    Light, LightsUniform, MARKER_VERTICES, SHADOW_FORMAT, SHADOW_MAP_SIZE, light_markers,
-    sun_view_projection,
+    Light, LightsUniform, MARKER_VERTICES, SHADOW_FORMAT, SHADOW_MAP_SIZE, SHADOW_REACH,
+    light_markers, sun_view_fitted,
 };
 use crate::timing::FrameStats;
 use bytemuck::{Pod, Zeroable};
@@ -95,25 +95,36 @@ struct FrameResources {
     /// Every mesh copy's placement, filled each frame; replaced by a
     /// bigger one when a frame has more (decision 0021).
     instances: Option<wgpu::Buffer>,
+    /// What the instance buffer holds now, so a frame sends only what
+    /// changed.
+    sent: Vec<crate::instances::InstanceRaw>,
 }
 
+/// How many copies are compared and sent together: a run that changed
+/// anywhere is sent whole.
+const SENT_TOGETHER: usize = 512;
+
 impl FrameResources {
-    /// Puts `raw` into the instance buffer, growing it if needed.
+    /// Puts `raw` into the instance buffer, growing it if needed, sending
+    /// only the runs that differ from what it holds. `None`: too many for
+    /// one buffer; otherwise the bytes sent.
     fn write_instances(
         &mut self,
         device: &wgpu::Device,
         queue: &wgpu::Queue,
-        raw: &[crate::instances::InstanceRaw],
-    ) -> bool {
-        let bytes: &[u8] = bytemuck::cast_slice(raw);
+        raw: Vec<crate::instances::InstanceRaw>,
+    ) -> Option<u64> {
+        use rayon::prelude::*;
+        let bytes: &[u8] = bytemuck::cast_slice(&raw);
         if bytes.is_empty() {
-            return true;
+            return Some(0);
         }
         // More copies than one buffer can hold would be a GPU error, which
         // stops the program: they aren't drawn instead.
         let most = device.limits().max_buffer_size;
         if bytes.len() as u64 > most {
-            return false;
+            self.sent.clear();
+            return None;
         }
         let fits = self
             .instances
@@ -129,11 +140,36 @@ impl FrameResources {
                 usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
                 mapped_at_creation: false,
             }));
+            self.sent.clear();
         }
-        if let Some(buffer) = &self.instances {
-            queue.write_buffer(buffer, 0, bytes);
+        let Some(buffer) = &self.instances else {
+            return Some(0);
+        };
+        let size = std::mem::size_of::<crate::instances::InstanceRaw>();
+        let held: &[u8] = bytemuck::cast_slice(&self.sent);
+        let run = SENT_TOGETHER * size;
+        let changed: Vec<bool> = bytes
+            .par_chunks(run)
+            .enumerate()
+            .map(|(i, chunk)| held.get(i * run..i * run + chunk.len()) != Some(chunk))
+            .collect();
+        let mut total = 0;
+        let mut i = 0;
+        while i < changed.len() {
+            if !changed[i] {
+                i += 1;
+                continue;
+            }
+            let first = i;
+            while i < changed.len() && changed[i] {
+                i += 1;
+            }
+            let span = first * run..(i * run).min(bytes.len());
+            queue.write_buffer(buffer, span.start as u64, &bytes[span.clone()]);
+            total += span.len() as u64;
         }
-        true
+        self.sent = raw;
+        Some(total)
     }
 }
 
@@ -220,6 +256,7 @@ impl FrameResources {
             shadow_bind_group,
             markers,
             instances: None,
+            sent: Vec::new(),
         }
     }
 }
@@ -263,6 +300,41 @@ impl ViewportTarget {
     pub fn is_picking(&self) -> bool {
         self.pick.as_ref().is_some_and(|p| p.is_waiting())
     }
+}
+
+/// The box around what `view_projection` sees (depth reversed: 1 near, 0
+/// far), up to `reach` from its near side for a perspective view; `None`
+/// for a view that can't be undone.
+pub(crate) fn view_box(view_projection: glam::Mat4, reach: f32) -> Option<(Vec3, Vec3)> {
+    let inverse = view_projection.inverse();
+    if !inverse.is_finite() {
+        return None;
+    }
+    let perspective = view_projection.row(3).truncate().length_squared() > 1e-12;
+    let mut lo = Vec3::splat(f32::MAX);
+    let mut hi = Vec3::splat(f32::MIN);
+    for (x, y) in [(-1.0, -1.0), (1.0, -1.0), (-1.0, 1.0), (1.0, 1.0)] {
+        let near = inverse.project_point3(Vec3::new(x, y, 1.0));
+        let far = inverse.project_point3(Vec3::new(x, y, 0.0));
+        let far = if perspective {
+            let deeper = inverse.project_point3(Vec3::new(x, y, 0.5));
+            near + (deeper - near).try_normalize()? * reach
+        } else {
+            far
+        };
+        if !(near.is_finite() && far.is_finite()) {
+            return None;
+        }
+        lo = lo.min(near).min(far);
+        hi = hi.max(near).max(far);
+    }
+    Some((lo, hi))
+}
+
+/// Where two boxes overlap, if they do.
+pub(crate) fn overlap(a: (Vec3, Vec3), b: (Vec3, Vec3)) -> Option<(Vec3, Vec3)> {
+    let (lo, hi) = (a.0.max(b.0), a.1.min(b.1));
+    (lo.cmple(hi).all()).then_some((lo, hi))
 }
 
 /// A point of a coloured line.
@@ -728,7 +800,7 @@ impl ViewportRenderer {
         model_of: &impl Fn(&crate::instances::Batch) -> &'m GpuModel,
         kind: Pass,
     ) {
-        for batch in batches {
+        for batch in batches.iter().filter(|b| b.seen) {
             let model = model_of(batch);
             if model.pass_of(batch.mesh) != Some(kind) {
                 continue;
@@ -754,44 +826,67 @@ impl ViewportRenderer {
             target.timer = Some(crate::timing::GpuTimer::new(device, queue));
         }
         let (lamps, lamp_count) = LightsUniform::new(lights, params.camera_position);
-        let shadow_box = crate::instances::world_bounds(placed);
-        let (raw, mut batches, batch_models) = crate::instances::gather(placed);
-        let written = target.frame.write_instances(device, queue, &raw);
-        if !written {
+        // Shadows fall in the part of the world in view, up to
+        // SHADOW_REACH away; what can cast into it is drawn into the sun's
+        // shadow map, and only what's in view is drawn.
+        let shadows_wanted = params.sun.shadows && params.shading.look != crate::frame::Look::Unlit;
+        let light = params.sun.direction.try_normalize().unwrap_or(-Vec3::Z);
+        let receivers = shadows_wanted
+            .then(|| crate::instances::world_bounds(placed))
+            .flatten()
+            .and_then(|(min, max)| {
+                // Down to the ground, so shadows reach the grid below
+                // models.
+                let world = (min.min(min.with_z(0.0)), max.max(max.with_z(0.0)));
+                overlap(world, view_box(params.view_projection, SHADOW_REACH)?)
+            });
+        let cull = crate::instances::Cull::new(
+            params.view_projection,
+            receivers.map(|(min, max)| (min, max, light)),
+        );
+        let crate::instances::Gathered {
+            raw,
+            mut batches,
+            models: batch_models,
+            seen,
+            casting,
+            casters,
+        } = crate::instances::gather(placed, Some(&cull));
+        let count = raw.len();
+        let sent = target.frame.write_instances(device, queue, raw);
+        if sent.is_none() {
             log::warn!(
-                "{} model copies are more than the graphics card can draw at once; models \
-                 aren't drawn",
-                raw.len()
+                "{count} model copies are more than the graphics card can draw at once; models \
+                 aren't drawn"
             );
             batches.clear();
         }
         let target = &*target;
         let model_of = |b: &crate::instances::Batch| placed[batch_models[b.model]].model;
         let stats = FrameStats {
-            instances: raw.len() as u32,
+            instances: seen,
+            casting,
             batches: batches.len() as u32,
             triangles: batches
                 .iter()
+                .filter(|b| b.seen)
                 .map(|b| {
                     u64::from(model_of(b).triangles_of(b.mesh))
                         * u64::from(b.instances.end - b.instances.start)
                 })
                 .sum(),
+            sent_bytes: sent.unwrap_or(0),
         };
         let timer = target.timer.as_ref().and_then(Option::as_ref);
-        let shadows_drawn = params.sun.shadows
-            && params.shading.look != crate::frame::Look::Unlit
-            && shadow_box.is_some();
+        let shadows_drawn = receivers.is_some() && casters.is_some() && sent.is_some();
         let mut light = FrameLight {
             lamps: lamp_count,
             shadows_drawn,
             ..FrameLight::default()
         };
-        if let Some((min, max)) = shadow_box.filter(|_| shadows_drawn) {
-            // Down to the ground, so shadows reach the grid below models.
-            let min = min.min(Vec3::new(min.x, min.y, 0.0));
-            let max = max.max(Vec3::new(max.x, max.y, 0.0));
-            (light.sun_view_projection, light.texel) = sun_view_projection(&params.sun, min, max);
+        if let Some(receivers) = receivers.filter(|_| shadows_drawn) {
+            (light.sun_view_projection, light.texel) =
+                sun_view_fitted(&params.sun, receivers, casters);
         }
         let frame = &target.frame;
         queue.write_buffer(
@@ -832,7 +927,7 @@ impl ViewportRenderer {
             pass.set_pipeline(&self.shadow_pipeline);
             if let Some(instances) = &frame.instances {
                 pass.set_vertex_buffer(1, instances.slice(..));
-                for batch in &batches {
+                for batch in batches.iter().filter(|b| b.casts) {
                     model_of(batch).draw_depth(&mut pass, batch.mesh, batch.instances.clone());
                 }
             }
@@ -882,7 +977,7 @@ impl ViewportRenderer {
             self.draw_batches(&mut pass, &batches, &model_of, Pass::Solid);
             self.draw_batches(&mut pass, &batches, &model_of, Pass::SolidDoubleSided);
             if params.shading.outlines() {
-                for batch in &batches {
+                for batch in batches.iter().filter(|b| b.seen) {
                     let facing = self.facing(batch.mirrored);
                     pass.set_pipeline(&facing.outline);
                     model_of(batch).draw_outline(&mut pass, batch.mesh, batch.instances.clone());

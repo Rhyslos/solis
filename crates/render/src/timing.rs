@@ -29,12 +29,17 @@ impl GpuTimes {
 /// What one frame drew.
 #[derive(Debug, Clone, Copy, Default, PartialEq, Eq)]
 pub struct FrameStats {
-    /// Mesh copies drawn.
+    /// Mesh copies drawn: those in view.
     pub instances: u32,
-    /// Draw calls for models.
+    /// Mesh copies drawn into the sun's shadow map: those whose shadow
+    /// can fall in view.
+    pub casting: u32,
+    /// Draw calls for models (shadows' included).
     pub batches: u32,
     /// Triangles drawn (shadows not counted).
     pub triangles: u64,
+    /// Bytes of copies sent to the graphics card: only what changed.
+    pub sent_bytes: u64,
 }
 
 /// The passes timed, each a pair of timestamps.

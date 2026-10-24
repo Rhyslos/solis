@@ -11,7 +11,7 @@
 //! later frame (usually the next). One question is in flight per viewport
 //! at a time.
 
-use crate::instances::{Placement, gather};
+use crate::instances::{Cull, Placement, gather};
 use glam::{Mat4, Vec3, Vec4};
 use std::collections::BTreeSet;
 use std::sync::Arc;
@@ -270,7 +270,13 @@ impl PickImages {
         if rect[2] == 0 || rect[3] == 0 {
             return false;
         }
-        let (raw, batches, models) = gather(placed);
+        // Only what's in view can be under the mouse.
+        let crate::instances::Gathered {
+            raw,
+            batches,
+            models,
+            ..
+        } = gather(placed, Some(&Cull::new(view_projection, None)));
         let bytes: &[u8] = bytemuck::cast_slice(&raw);
         // Too many to pick from at once (see the renderer's own check).
         let most = device.limits().max_buffer_size;

@@ -242,16 +242,27 @@ pub(crate) fn profiler_panel(ui: &mut Ui, profiler: &Profiler) {
     let d = average.drawn;
     ui.label(
         RichText::new(format!(
-            "Drawn: {} model copies, {} triangles, in {} draw calls. {} entities; {} game \
-             components running.",
+            "Drawn: {} model copies in view ({} casting shadows), {} triangles, in {} draw \
+             calls; {} sent to the graphics card. {} entities; {} game components running.",
             thousands(d.instances),
+            thousands(d.casting),
             thousands(d.triangles),
             thousands(d.batches),
+            amount(d.sent_bytes),
             thousands(average.entities as u64),
             thousands(average.components as u64),
         ))
         .color(theme::TEXT_WEAK),
     );
+}
+
+/// A number of bytes as people say it: 512 bytes, 3.4 kB, 12.0 MB.
+fn amount(bytes: u64) -> String {
+    match bytes {
+        0..1_000 => format!("{bytes} bytes"),
+        1_000..1_000_000 => format!("{:.1} kB", bytes as f64 / 1e3),
+        _ => format!("{:.1} MB", bytes as f64 / 1e6),
+    }
 }
 
 /// The frames as stacked bars, newest on the right, with lines at 60
@@ -373,5 +384,8 @@ mod tests {
         assert_eq!(thousands(999), "999");
         assert_eq!(thousands(1_000), "1,000");
         assert_eq!(thousands(12_345_678), "12,345,678");
+        assert_eq!(amount(0), "0 bytes");
+        assert_eq!(amount(3_400), "3.4 kB");
+        assert_eq!(amount(12_000_000), "12.0 MB");
     }
 }

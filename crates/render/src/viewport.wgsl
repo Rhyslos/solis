@@ -327,28 +327,34 @@ struct MeshIn {
 };
 
 // Where one copy of a mesh is drawn (an instance; InstanceRaw in
-// instances.rs): its placement in the world, and the matrix that turns its
-// normals (the inverse transpose, so stretched shapes still light right).
+// instances.rs): the first three rows of its placement in the world.
 struct Instance {
-    @location(3) model_0: vec4<f32>,
-    @location(4) model_1: vec4<f32>,
-    @location(5) model_2: vec4<f32>,
-    @location(6) model_3: vec4<f32>,
-    @location(7) normal_0: vec3<f32>,
-    @location(8) normal_1: vec3<f32>,
-    @location(9) normal_2: vec3<f32>,
+    @location(3) row_0: vec4<f32>,
+    @location(4) row_1: vec4<f32>,
+    @location(5) row_2: vec4<f32>,
 };
 
 fn instance_world(instance: Instance, position: vec3<f32>) -> vec3<f32> {
-    let model = mat4x4<f32>(instance.model_0, instance.model_1, instance.model_2, instance.model_3);
-    return (model * vec4<f32>(position, 1.0)).xyz;
+    let p = vec4<f32>(position, 1.0);
+    return vec3<f32>(dot(instance.row_0, p), dot(instance.row_1, p), dot(instance.row_2, p));
 }
 
+// Turns a normal with the placement: by the inverse transpose of its turn
+// and stretch, so stretched shapes still light right. That's the matrix of
+// cofactors (crossed columns) divided by the determinant; only the
+// determinant's sign matters, since the normal is made length 1 after. A
+// placement squashed flat keeps the normal as it was.
 fn instance_normal(instance: Instance, normal: vec3<f32>) -> vec3<f32> {
-    let turn = mat3x3<f32>(instance.normal_0, instance.normal_1, instance.normal_2);
-    let n = turn * normal;
+    let c0 = vec3<f32>(instance.row_0.x, instance.row_1.x, instance.row_2.x);
+    let c1 = vec3<f32>(instance.row_0.y, instance.row_1.y, instance.row_2.y);
+    let c2 = vec3<f32>(instance.row_0.z, instance.row_1.z, instance.row_2.z);
+    let a = cross(c1, c2);
+    let det = dot(c0, a);
+    let cofactors = mat3x3<f32>(a, cross(c2, c0), cross(c0, c1));
+    let n = cofactors * normal * select(1.0, -1.0, det < 0.0);
     let len = length(n);
-    return select(vec3<f32>(0.0, 0.0, 1.0), n / len, len > 1e-12);
+    let fallback = select(vec3<f32>(0.0, 0.0, 1.0), normalize(normal), length(normal) > 1e-12);
+    return select(fallback, n / len, abs(det) > 1e-12 && len > 1e-12);
 }
 
 struct MeshOut {

@@ -85,13 +85,17 @@ pub struct GpuModel {
     /// The meshes, by their index in the model; `None` for one that can't
     /// be drawn (empty, or too big for the card).
     meshes: Vec<Option<GpuMesh>>,
-    /// Every mesh as drawn: which, and where in the model.
-    placements: Vec<(usize, glam::Mat4)>,
+    /// Every mesh as drawn: which, where in the model, and the ball
+    /// around it there.
+    placements: Vec<Drawn>,
     /// Each node's own meshes, for drawing one part on its own.
     nodes: Vec<Vec<usize>>,
     materials: Vec<GpuMaterial>,
     triangles: usize,
     bounds: (glam::Vec3, glam::Vec3),
+    /// A ball around each mesh, centre and radius, in the mesh's own
+    /// space, for culling.
+    spheres: Vec<(glam::Vec3, f32)>,
 }
 
 impl GpuModel {
@@ -105,8 +109,18 @@ impl GpuModel {
         self.bounds
     }
 
-    /// Every mesh as drawn: which, and where in the model.
-    pub(crate) fn placements(&self) -> &[(usize, glam::Mat4)] {
+    /// A ball around mesh `mesh` in its own space: centre and radius
+    /// (a point for one that isn't there).
+    pub(crate) fn sphere_of(&self, mesh: usize) -> (glam::Vec3, f32) {
+        self.spheres
+            .get(mesh)
+            .copied()
+            .unwrap_or((glam::Vec3::ZERO, 0.0))
+    }
+
+    /// Every mesh as drawn: which, where in the model, and the ball
+    /// around it there.
+    pub(crate) fn placements(&self) -> &[Drawn] {
         &self.placements
     }
 
@@ -444,15 +458,79 @@ impl ModelPipelines {
                 })
             })
             .collect();
+        let spheres: Vec<(glam::Vec3, f32)> = model
+            .meshes
+            .iter()
+            .map(|m| sphere_around(&m.vertices))
+            .collect();
+        let placements = model
+            .placements()
+            .map(|(mesh, local)| Drawn::new(mesh, local, spheres[mesh]))
+            .collect();
         GpuModel {
             meshes,
-            placements: model.placements().collect(),
+            placements,
             nodes: model.nodes.iter().map(|n| n.meshes.clone()).collect(),
             materials,
             triangles: model.triangles(),
             bounds: (model.bounds.min, model.bounds.max),
+            spheres,
         }
     }
+}
+
+/// One mesh as a model draws it, worked out once so each copy of the
+/// model does little: which mesh, where in the model, the ball around it
+/// there, and whether it's mirrored there.
+#[derive(Debug, Clone, Copy)]
+pub(crate) struct Drawn {
+    pub(crate) mesh: usize,
+    pub(crate) local: glam::Mat4,
+    /// Whether `local` is the identity, so a copy's place is its own.
+    pub(crate) at_origin: bool,
+    pub(crate) centre: glam::Vec3,
+    pub(crate) radius: f32,
+    pub(crate) mirrored: bool,
+}
+
+impl Drawn {
+    /// Mesh `mesh` at `local` in its model, its ball `sphere` in its own
+    /// space.
+    pub(crate) fn new(mesh: usize, local: glam::Mat4, sphere: (glam::Vec3, f32)) -> Self {
+        let turn = glam::Mat3::from_mat4(local);
+        let scale = turn
+            .x_axis
+            .length()
+            .max(turn.y_axis.length())
+            .max(turn.z_axis.length());
+        Self {
+            mesh,
+            local,
+            at_origin: local == glam::Mat4::IDENTITY,
+            centre: local.transform_point3(sphere.0),
+            radius: sphere.1 * scale,
+            mirrored: turn.determinant() < 0.0,
+        }
+    }
+}
+
+/// A ball around `vertices`: the middle of their box, and the furthest
+/// one from it. Corners that aren't numbers are left out.
+pub(crate) fn sphere_around(vertices: &[assets::Vertex]) -> (glam::Vec3, f32) {
+    let points = || {
+        vertices
+            .iter()
+            .map(|v| glam::Vec3::from(v.position))
+            .filter(|p| p.is_finite())
+    };
+    let Some((min, max)) = points().fold(None, |acc: Option<(glam::Vec3, glam::Vec3)>, p| {
+        Some(acc.map_or((p, p), |(lo, hi)| (lo.min(p), hi.max(p))))
+    }) else {
+        return (glam::Vec3::ZERO, 0.0);
+    };
+    let centre = (min + max) * 0.5;
+    let radius = points().map(|p| p.distance(centre)).fold(0.0, f32::max);
+    (centre, radius)
 }
 
 /// The corners with each normal replaced by the average of all normals at
@@ -734,6 +812,27 @@ mod tests {
         for v in smoothed {
             assert!((glam::Vec3::from(v.normal) - expected).length() < 1e-5);
         }
+    }
+
+    #[test]
+    fn a_mesh_s_ball_holds_every_corner() {
+        let at = |position: [f32; 3]| assets::Vertex {
+            position,
+            normal: [0.0, 0.0, 1.0],
+            uv: [0.0, 0.0],
+        };
+        let corners = [
+            at([0.0, 0.0, 0.0]),
+            at([2.0, 0.0, 0.0]),
+            at([1.0, 4.0, 0.0]),
+        ];
+        let (centre, radius) = sphere_around(&corners);
+        for c in &corners {
+            assert!(glam::Vec3::from(c.position).distance(centre) <= radius + 1e-5);
+        }
+        assert_eq!(sphere_around(&[]), (glam::Vec3::ZERO, 0.0));
+        let broken = [at([f32::NAN, 0.0, 0.0]), at([1.0, 1.0, 1.0])];
+        assert_eq!(sphere_around(&broken), (glam::Vec3::ONE, 0.0));
     }
 
     #[test]
