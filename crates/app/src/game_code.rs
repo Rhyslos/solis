@@ -201,3 +201,85 @@ mod tests {
         assert!(matches!(sound.program, Some(Some(_))), "a program to run");
     }
 }
+
+#[cfg(test)]
+mod fast_changes {
+    use super::*;
+
+    const MOVER: &str =
+        "component Mover {\n    has {\n        float speed = 1;\n    }\n}\npass Mover;\nend\n";
+    const FASTER: &str = "component Mover {\n    has {\n        float speed = 1;\n        bool fast = true;\n    }\n}\npass Mover;\nend\n";
+
+    #[test]
+    #[ignore = "scale check: run by tools/scale/scale-check.sh"]
+    fn scale_check_a_lust_edit_reaches_the_running_game() {
+        // The gate (ROADMAP Phase 4): saving a Lust file while the game
+        // runs, to the running game having the new code, within 2 s. The
+        // whole path: the folder's watcher, reading and compiling on the
+        // worker, and the editor swapping it in.
+        const TARGET_MS: f64 = 2000.0;
+        let assets = std::env::temp_dir()
+            .join(format!("solis-fast-{}", std::process::id()))
+            .join("assets");
+        let _ = std::fs::remove_dir_all(&assets);
+        std::fs::create_dir_all(&assets).unwrap();
+        GameCode::describe(&assets, "Test 1.0");
+        std::fs::write(assets.join("main.lst"), MOVER).unwrap();
+        let mut code = GameCode::default();
+        code.check(assets.clone());
+        let mut w = editor::Workbench::new(
+            editor::AppInfo {
+                name: "Test".into(),
+                version: "1.0".into(),
+            },
+            None,
+        );
+        let start = std::time::Instant::now();
+        while start.elapsed().as_secs() < 30 {
+            if let Some(checked) = code.poll() {
+                w.set_program(checked.program.flatten());
+                break;
+            }
+            std::thread::sleep(std::time::Duration::from_millis(5));
+        }
+        let mut area = area::builtin::starter_area();
+        let mut cart = area::EntityData::new("Cart");
+        cart.components
+            .insert("Mover".into(), reflect::ComponentData::default());
+        area.spawn(cart);
+        w.open_area(area, "cart.solarea".into());
+        w.play();
+        let watcher = asset_db::Watcher::new(&assets).unwrap();
+        std::thread::sleep(std::time::Duration::from_millis(800));
+        // Anything left over from setting up isn't this edit.
+        let _ = watcher.changed();
+        let saved = std::time::Instant::now();
+        std::fs::write(assets.join("main.lst"), FASTER).unwrap();
+        let mut took = None;
+        while saved.elapsed().as_secs() < 10 {
+            if watcher.changed() {
+                code.check(assets.clone());
+            }
+            if let Some(checked) = code.poll()
+                && let Some(program) = checked.program
+            {
+                w.set_program(program);
+            }
+            if w.log_lines()
+                .iter()
+                .any(|l| l.text.contains("took the new code"))
+            {
+                took = Some(saved.elapsed());
+                break;
+            }
+            // A frame.
+            std::thread::sleep(std::time::Duration::from_millis(16));
+        }
+        let ms = took.expect("the new code arrived").as_secs_f64() * 1000.0;
+        let verdict = if ms <= TARGET_MS { "ok" } else { "SLOW" };
+        println!(
+            "Scale check: a Lust edit saved to running in play mode {ms:.0} ms (target {TARGET_MS} ms) {verdict}"
+        );
+        assert!(ms <= TARGET_MS, "a Lust edit took {ms:.0} ms");
+    }
+}

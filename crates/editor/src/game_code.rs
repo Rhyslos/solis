@@ -16,19 +16,14 @@ impl Workbench {
     /// Takes in the game's program (the app compiles it on a worker, and
     /// hands it over when the code has no mistakes; `None` when there's no
     /// code). Its components replace the last program's in the registry.
-    /// Starting it reads them; a start that fails is a problem, and leaves
-    /// no components.
+    /// Starting it reads them; a start that fails is a problem, and the
+    /// last program that worked stays. While playing, the new code is
+    /// swapped into the running game.
     pub fn set_program(&mut self, chunk: Option<Arc<script::Chunk>>) {
-        for name in std::mem::take(&mut self.game_components) {
-            self.document.registry.remove(&name);
-        }
-        self.sources += 1;
-        self.program = None;
-        let Some(chunk) = chunk else {
-            return;
-        };
         let mut runtime = Runtime::new();
-        if let Err(failure) = runtime.load(&chunk, &mut script::NoHost) {
+        if let Some(chunk) = &chunk
+            && let Err(failure) = runtime.load(chunk, &mut script::NoHost)
+        {
             self.log(
                 LogLevel::Error,
                 format!("The game's code stopped while starting: {failure}"),
@@ -36,6 +31,10 @@ impl Workbench {
             self.code_problems.push(failure.at);
             return;
         }
+        for name in std::mem::take(&mut self.game_components) {
+            self.document.registry.remove(&name);
+        }
+        self.sources += 1;
         for schema in runtime.schemas() {
             match self.document.registry.register(schema.clone()) {
                 Ok(()) => {
@@ -55,7 +54,54 @@ impl Workbench {
                 }),
             }
         }
-        self.program = Some(chunk);
+        self.program = chunk;
+        self.swap_into_game();
+    }
+
+    /// Gives the running game (if playing) the current program: running
+    /// components get the new code in place and keep their values, new
+    /// ones start, and the Console says what changed.
+    fn swap_into_game(&mut self) {
+        let Some(playing) = &mut self.playing else {
+            return;
+        };
+        let game = playing.game.get_or_insert_with(|| {
+            let mut runtime = Runtime::new();
+            for kind in &self.rust_components {
+                runtime.add_rust(kind.clone());
+            }
+            runtime
+        });
+        let time = playing.world.clock().time;
+        let mut host = WorldHost::new(&mut playing.world, time);
+        let mut failures = Vec::new();
+        let mut lines = Vec::new();
+        match &self.program {
+            None => {
+                game.unload();
+                lines.push("The game's code is gone, so its components stopped.".to_string());
+            }
+            Some(chunk) => match game.swap(chunk, &mut host) {
+                Ok(swapped) => {
+                    lines.push(swap_summary(&swapped));
+                    lines.extend(swapped.notes);
+                }
+                Err(failure) => failures.push(failure),
+            },
+        }
+        failures.extend(sync_all(game, self.document.area(), &mut host));
+        let said = std::mem::take(&mut host.said);
+        playing.world.settle();
+        for line in lines {
+            self.log(LogLevel::Info, line);
+        }
+        for words in said {
+            self.log(LogLevel::Info, words);
+        }
+        for failure in &failures {
+            let text = failure_text(self.document.area(), failure);
+            self.log(LogLevel::Error, text);
+        }
     }
 
     /// Adds a kind of component written in Rust (a game's own): its
@@ -196,6 +242,28 @@ pub(crate) fn sync_all(runtime: &mut Runtime, area: &Area, host: &mut dyn Host) 
             .is_some_and(|e| e.components.contains_key(name))
     });
     failures
+}
+
+/// What a swap changed, in one line for the Console.
+fn swap_summary(swapped: &script::Swapped) -> String {
+    let mut parts = Vec::new();
+    for (names, what) in [
+        (&swapped.changed, "changed"),
+        (&swapped.added, "new"),
+        (&swapped.removed, "gone"),
+    ] {
+        if !names.is_empty() {
+            parts.push(format!("{} {what}", names.join(", ")));
+        }
+    }
+    if parts.is_empty() {
+        "The running game took the new code; every component keeps its values.".to_string()
+    } else {
+        format!(
+            "The running game took the new code ({}); components keep their values.",
+            parts.join("; ")
+        )
+    }
 }
 
 /// A failure as the Console says it, naming the entity.
