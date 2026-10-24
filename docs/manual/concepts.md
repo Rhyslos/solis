@@ -100,3 +100,4 @@
 - **Native method:** a method Lust knows the name and values of, but whose work is done by the engine, such as `moveTo`. The engine's are listed in the `solis` folder Solis writes into each project.
 - **Mistake (in code):** something the checker finds before the code runs, such as a misspelt name or text where a number should be. Solis lists each one with its file, line and column (how far along the line).
 - **Tick:** one step of the running game. Solis runs 60 a second, whatever the frame rate, and game code's `update` runs once each tick, so the game behaves the same on a fast or slow computer.
+- **Event:** a message one component sends to an entity, such as "you were hit, for 2.5". Each of that entity's components that cares reacts to it. Events let components work together without knowing about each other, even when they're written in different languages.

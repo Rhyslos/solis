@@ -271,3 +271,97 @@ fn scale_check_playing_with_2000_lust_components() {
     );
     assert!(ms <= TARGET_MS, "a tick takes {ms:.2} ms");
 }
+
+/// A Rust component standing in for a game's: it answers each Ping with a
+/// Rang carrying how many it has heard.
+struct Bell {
+    rung: i64,
+}
+
+impl script::RustComponent for Bell {
+    fn handle(&mut self, cx: &mut script::Context<'_>, event: &script::Event) -> bool {
+        if event.name != "Ping" {
+            return false;
+        }
+        self.rung += 1;
+        let me = cx.me();
+        cx.send(Some(me), "Rang", vec![Value::Int(self.rung)]);
+        true
+    }
+    fn values(&self) -> reflect::ComponentData {
+        let mut data = reflect::ComponentData::default();
+        data.set("rung", Value::Int(self.rung));
+        data
+    }
+    fn set(&mut self, data: &reflect::ComponentData) {
+        if let Some(Value::Int(n)) = data.get("rung") {
+            self.rung = *n;
+        }
+    }
+}
+
+#[test]
+fn a_lust_and_a_rust_component_on_one_entity_talk_through_events() {
+    let mut w = Workbench::new(info(), None);
+    w.add_rust_component(script::RustKind {
+        schema: reflect::ComponentSchema {
+            name: "Bell".into(),
+            help: "Rings.".into(),
+            fields: vec![reflect::FieldInfo::new(
+                "rung",
+                "Rung",
+                reflect::FieldKind::Int,
+                Value::Int(0),
+            )],
+        },
+        make: |_| Box::new(Bell { rung: 0 }),
+    })
+    .unwrap();
+    assert!(w.document.registry.get("Bell").is_some(), "in Properties");
+    w.set_program(Some(program(
+        "event Ping();\n\
+         event Rang(int times);\n\
+         component Ringer {\n\
+             has {\n\
+                 int asked = 0;\n\
+             }\n\
+             method update(float dt) {\n\
+                 is asked < 2? then {\n\
+                     asked = asked + 1;\n\
+                     send Ping() to me;\n\
+                 }\n\
+             }\n\
+             on Rang(int times) {\n\
+                 say(\"the bell rang \" + times.text());\n\
+             }\n\
+         }\n\
+         pass Ringer;\nend\n",
+    )));
+    let id = EntityId::random();
+    let mut data = EntityData::new("Tower");
+    data.components
+        .insert("Ringer".into(), reflect::ComponentData::default());
+    data.components
+        .insert("Bell".into(), reflect::ComponentData::default());
+    w.document
+        .edit(
+            "Add",
+            vec![area::Edit::Spawn {
+                entities: vec![(id, data)],
+            }],
+            None,
+            None,
+        )
+        .unwrap();
+    w.play();
+    for _ in 0..3 {
+        w.run_game(1.0 / 60.0);
+    }
+    let said: Vec<&str> = w
+        .log_lines()
+        .iter()
+        .map(|l| l.text.as_str())
+        .filter(|t| t.starts_with("the bell"))
+        .collect();
+    assert_eq!(said, ["the bell rang 1", "the bell rang 2"]);
+}

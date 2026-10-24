@@ -93,16 +93,16 @@ Solis is built in phases, one milestone per pull request. Each phase ends with a
 
 **Gate:** build a small area from scratch, press Play, stop, and everything is back as it was.
 
-### Phase 4 · Lust and Lua join — 2 of 6
+### Phase 4 · Lust and Lua join — 3 of 6
 
-`████░░░░░░░░░` 33%
+`███████░░░░░░` 50%
 
 <details>
 <summary>Milestones</summary>
 
 - [x] Lust builds into Solis: the engine described to Lust (`solis/*.lst`), a game's Lust checked with mistakes in Problems ([plan](docs/plans/phase-4.md), decisions 0016 and 0028)
 - [x] Lust components, with their fields in the inspector and running in play mode
-- [ ] Vectors and rotations in Lust, and typed events between components
+- [x] Vectors and rotations in Lust, and typed events between components (Lust and Rust)
 - [ ] Fast changes: a Lust edit in play mode within 2 seconds
 - [ ] Lua components
 - [ ] A first game in Lust: a small sample the later phases keep growing

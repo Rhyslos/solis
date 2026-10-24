@@ -172,6 +172,8 @@ pub struct Workbench {
     pub(crate) program: Option<std::sync::Arc<script::Chunk>>,
     /// The components it put in the registry, by name.
     pub(crate) game_components: std::collections::BTreeSet<String>,
+    /// Kinds of component written in Rust, run in play mode.
+    pub(crate) rust_components: Vec<script::RustKind>,
     /// The last [`Self::assembly_part`], with the selection, revision and
     /// sources it was worked out for: kept, since it expands the whole
     /// assembly.
@@ -206,6 +208,7 @@ impl Workbench {
             code_problems: Vec::new(),
             program: None,
             game_components: std::collections::BTreeSet::new(),
+            rust_components: Vec::new(),
             assembly_part_kept: std::cell::RefCell::new(None),
             assemblies: BTreeMap::new(),
             outbox: Vec::new(),
