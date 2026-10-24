@@ -6,7 +6,7 @@ use crate::events::{Event, EventKinds, MAX_DELIVERIES, Queue, arguments, values_
 use crate::host::Lent;
 use crate::lua_components::{LuaClass, lua_problem};
 use crate::luau::Luau;
-use crate::lust_program::located;
+use crate::lust_program::{LustProgram, located};
 use crate::runtime::Failure;
 use crate::rust_component::{Context, RustComponent};
 use mlua::{Function, Table, Value as LuaValue};
@@ -64,6 +64,8 @@ pub(crate) struct Ticking<'a> {
     pub(crate) queue: &'a Queue,
     /// The Lust's chunk, to point at the Lust when it fails.
     pub(crate) chunk: Option<&'a lust::LuaChunk>,
+    /// The Lust, for its components' methods.
+    pub(crate) lust: Option<&'a LustProgram>,
     /// The events the Lust declares.
     pub(crate) events: Option<&'a EventKinds>,
     /// Whether too many events were said already, since the code changed.
@@ -77,7 +79,17 @@ pub(crate) struct Ticking<'a> {
     pub(crate) unstopped: RefCell<Vec<Failure>>,
 }
 
-/// A method of a Lust or Lua component, looked up the usual way (its
+/// An event on its way to the components on its entity, with what they
+/// all share made once.
+pub(crate) struct Delivery {
+    pub(crate) event: Event,
+    /// The name of a Lua component's function for it: `on_Hit`.
+    on: String,
+    /// Its values as Lust takes them (`None`: they don't fit).
+    values: std::cell::OnceCell<Option<Table>>,
+}
+
+/// A method of a Lua component, looked up the usual way (its
 /// class's metatable may be game code's, so under the time limit).
 fn method(table: &Table, name: &str) -> mlua::Result<Option<Function>> {
     Ok(match table.get::<LuaValue>(name)? {
@@ -115,7 +127,20 @@ impl Ticking<'_> {
         dt: f64,
     ) -> Result<(), CodeProblem> {
         match &mut component.instance {
-            Instance::Lust(table) | Instance::Lua(table) => {
+            Instance::Lust(table) => {
+                let Some(update) = self
+                    .lust
+                    .and_then(|p| p.methods.get(name))
+                    .and_then(|m| m.update.as_ref())
+                else {
+                    return Ok(());
+                };
+                self.luau
+                    .clock
+                    .limited(|| update.call::<()>((&*table, dt)))
+                    .map_err(|err| self.located(&err))
+            }
+            Instance::Lua(table) => {
                 let table = table.clone();
                 self.luau
                     .clock
@@ -191,15 +216,20 @@ impl Ticking<'_> {
                 break;
             }
             delivered += 1;
-            let from = (event.to, String::new());
+            let delivery = Delivery {
+                on: format!("on_{}", event.name),
+                values: std::cell::OnceCell::new(),
+                event,
+            };
+            let from = (delivery.event.to, String::new());
             for ((entity, name), component) in running.range_mut(from..) {
-                if *entity != event.to {
+                if *entity != delivery.event.to {
                     break;
                 }
                 if component.stopped {
                     continue;
                 }
-                if let Err(mut at) = self.handle(lent, (*entity, name), component, &event) {
+                if let Err(mut at) = self.handle(lent, (*entity, name), component, &delivery) {
                     if self.luau.clock.over() {
                         // The tick ran out of time; that's said once, by
                         // the runtime.
@@ -212,7 +242,7 @@ impl Ticking<'_> {
                     at.message = format!(
                         "couldn't take the event {}: {} (Its later failures with events aren't \
                          said until the code changes.)",
-                        event.name, at.message
+                        delivery.event.name, at.message
                     );
                     failures.push(Failure {
                         entity: Some(*entity),
@@ -232,8 +262,9 @@ impl Ticking<'_> {
         lent: &Lent<'_, '_>,
         (me, name): (EntityId, &str),
         component: &mut Running,
-        event: &Event,
+        delivery: &Delivery,
     ) -> Result<(), CodeProblem> {
+        let event = &delivery.event;
         let declared = self.events.and_then(|e| e.get(&event.name));
         let wrong = |declared: usize| {
             plain(format!(
@@ -248,18 +279,27 @@ impl Ticking<'_> {
                 let Some(kinds) = declared else {
                     return Ok(());
                 };
-                let lua = &self.luau.lua;
-                let values =
-                    values_table(lua, kinds, &event.values).ok_or_else(|| wrong(kinds.len()))?;
-                let table = table.clone();
-                let name = event.name.as_str();
+                let Some(handle) = self
+                    .lust
+                    .and_then(|p| p.methods.get(name))
+                    .and_then(|m| m.handle.as_ref())
+                else {
+                    return Ok(());
+                };
+                // One list of values for every Lust component the event
+                // reaches.
+                let values = delivery
+                    .values
+                    .get_or_init(|| values_table(&self.luau.lua, kinds, &event.values))
+                    .as_ref()
+                    .ok_or_else(|| wrong(kinds.len()))?;
+                let event_name = event.name.as_str();
                 self.luau
                     .clock
-                    .limited(|| match method(&table, "handle")? {
-                        Some(handle) => handle
-                            .call::<bool>((table.clone(), name, values))
-                            .map(|_| ()),
-                        None => Ok(()),
+                    .limited(|| {
+                        handle
+                            .call::<bool>((&*table, event_name, values))
+                            .map(|_| ())
                     })
                     .map_err(|err| self.located(&err))
             }
@@ -270,7 +310,7 @@ impl Ticking<'_> {
                 let on = self
                     .luau
                     .clock
-                    .limited(|| method(&table, &format!("on_{}", event.name)))
+                    .limited(|| method(&table, &delivery.on))
                     .map_err(|err| lua_problem(file, &err))?;
                 let Some(on) = on else {
                     return Ok(());

@@ -9,7 +9,7 @@
 
 use crate::console::LogLevel;
 use crate::document::Document;
-use crate::game_code::{WorldHost, failure_text, new_runtime, sync_all, sync_entity};
+use crate::game_code::{WorldHost, failure_text, new_runtime, sync_all, sync_entities};
 use crate::panel::Panel;
 use crate::workbench::{Workbench, WorkbenchAction};
 use area::text::AreaFile;
@@ -266,9 +266,12 @@ impl Workbench {
             if changes.everything {
                 failures.extend(sync_all(game, area, &mut host));
             } else {
-                for &id in &changes.entities {
-                    failures.extend(sync_entity(game, area, id, &mut host));
-                }
+                failures.extend(sync_entities(
+                    game,
+                    area,
+                    changes.entities.iter().copied(),
+                    &mut host,
+                ));
             }
             said.append(&mut host.said);
             playing.world.settle();

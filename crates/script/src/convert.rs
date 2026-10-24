@@ -84,7 +84,7 @@ pub(crate) fn quat_of(table: &Table) -> Option<Quat> {
 }
 
 pub(crate) fn vec3_table(lua: &Lua, v: Vec3) -> mlua::Result<Table> {
-    let t = lua.create_table()?;
+    let t = lua.create_table_with_capacity(0, 3)?;
     t.raw_set("x", v.x)?;
     t.raw_set("y", v.y)?;
     t.raw_set("z", v.z)?;
@@ -92,7 +92,7 @@ pub(crate) fn vec3_table(lua: &Lua, v: Vec3) -> mlua::Result<Table> {
 }
 
 pub(crate) fn quat_table(lua: &Lua, q: Quat) -> mlua::Result<Table> {
-    let t = lua.create_table()?;
+    let t = lua.create_table_with_capacity(0, 4)?;
     t.raw_set("x", q.x)?;
     t.raw_set("y", q.y)?;
     t.raw_set("z", q.z)?;

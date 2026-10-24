@@ -67,9 +67,15 @@ pub struct World {
     /// order), with where its parent is in this list.
     order: Vec<(hecs::Entity, Option<usize>)>,
     clock: Clock,
-    /// Whether a transform was set since places were last worked out (see
+    /// Where in `order` each entity's subtree ends (one past its last
+    /// descendant): `order` is depth-first, so a subtree is a run.
+    ends: Vec<usize>,
+    /// Entities with children whose transform was set since places were
+    /// last worked out, by their place in `order` (see
     /// [`World::settle`]).
-    unsettled: bool,
+    unsettled: Vec<usize>,
+    /// Each name's first entity in `order`, for [`World::find`].
+    names: HashMap<String, usize>,
     /// Entities the game moved ([`World::set_transform`]), with the
     /// area's Transform for them when it first did: while the area still
     /// has that one, the game's place is kept, even when the world is
@@ -114,11 +120,35 @@ impl World {
             place,
             order,
             clock: Clock::default(),
-            unsettled: false,
+            ends: Vec::new(),
+            unsettled: Vec::new(),
+            names: HashMap::new(),
             game_moved: HashMap::new(),
         };
+        world.index();
         world.place_everything();
         world
+    }
+
+    /// Works out where each subtree ends, and each name's first entity.
+    fn index(&mut self) {
+        let mut ends: Vec<usize> = (1..=self.order.len()).collect();
+        // Children come after their parents: walking back, each child's
+        // end is known before its parent's is needed.
+        for at in (0..self.order.len()).rev() {
+            if let Some(parent) = self.order[at].1
+                && parent < at
+            {
+                ends[parent] = ends[parent].max(ends[at]);
+            }
+        }
+        self.ends = ends;
+        self.names.clear();
+        for (at, &(entity, _)) in self.order.iter().enumerate() {
+            if let Ok(name) = self.ecs.get::<&Name>(entity) {
+                self.names.entry(name.0.clone()).or_insert(at);
+            }
+        }
     }
 
     /// The world for `area` again (it changed in the editor while
@@ -178,6 +208,8 @@ impl World {
             self.by_id.insert(id, fresh);
             self.order[at].0 = fresh;
         }
+        // A name may have changed.
+        self.index();
         self.place_everything();
     }
 
@@ -200,15 +232,14 @@ impl World {
         if self.clock.carry >= TICK {
             self.clock.carry = 0.0;
         }
-        if ran > 0 {
-            self.place_everything();
-        }
+        // Nothing moves by itself yet: game code moves things, and
+        // `settle` works out what follows.
         ran
     }
 
     /// Works out where every entity is in the world, parents first.
     fn place_everything(&mut self) {
-        self.unsettled = false;
+        self.unsettled.clear();
         let mut globals: Vec<Mat4> = Vec::with_capacity(self.order.len());
         for &(entity, parent) in &self.order {
             let local = self
@@ -230,21 +261,42 @@ impl World {
     /// place in the world follows at once; the places of entities under it
     /// follow at [`Self::settle`]. Returns whether it's in the world.
     pub fn set_transform(&mut self, id: EntityId, transform: Transform) -> bool {
+        self.change_transform(id, |_, _| Some(transform))
+    }
+
+    /// Changes `id`'s transform to what `change` makes of where its parent
+    /// is in the world and its transform now (nothing, for `None`), with
+    /// one lookup. Otherwise as [`Self::set_transform`].
+    pub fn change_transform(
+        &mut self,
+        id: EntityId,
+        change: impl FnOnce(Mat4, Transform) -> Option<Transform>,
+    ) -> bool {
         let (Some(&entity), Some(&at)) = (self.by_id.get(&id), self.place.get(&id)) else {
             return false;
         };
         let parent = self.parent_global_at(at);
+        let now = self
+            .ecs
+            .get::<&Transform>(entity)
+            .map(|t| *t)
+            .unwrap_or_default();
+        let Some(transform) = change(parent, now) else {
+            return true;
+        };
+        self.game_moved.entry(id).or_insert(now);
         if let Ok(mut t) = self.ecs.get::<&mut Transform>(entity) {
-            self.game_moved.entry(id).or_insert(*t);
             *t = transform;
         } else {
-            self.game_moved.entry(id).or_default();
             let _ = self.ecs.insert_one(entity, transform);
         }
         if let Ok(mut g) = self.ecs.get::<&mut Global>(entity) {
             g.0 = parent * transform.matrix();
         }
-        self.unsettled = true;
+        // Only what's under it needs working out again.
+        if self.ends.get(at).is_some_and(|&end| end > at + 1) {
+            self.unsettled.push(at);
+        }
         true
     }
 
@@ -269,17 +321,35 @@ impl World {
     /// Works out every entity's place again if a transform was set since
     /// last time (entities under one that moved follow it).
     pub fn settle(&mut self) {
-        if std::mem::take(&mut self.unsettled) {
-            self.place_everything();
+        let mut moved = std::mem::take(&mut self.unsettled);
+        moved.sort_unstable();
+        let mut done = 0;
+        for at in moved {
+            // Inside a subtree worked out already.
+            if at < done {
+                continue;
+            }
+            let end = self.ends.get(at).copied().unwrap_or(at + 1);
+            for under in at + 1..end {
+                let (entity, _) = self.order[under];
+                let local = self
+                    .ecs
+                    .get::<&Transform>(entity)
+                    .map_or(Mat4::IDENTITY, |t| t.matrix());
+                let global = self.parent_global_at(under) * local;
+                if let Ok(mut g) = self.ecs.get::<&mut Global>(entity) {
+                    g.0 = global;
+                }
+            }
+            done = end;
         }
     }
 
     /// The first entity named `name`, in the area's tree order.
     pub fn find(&self, name: &str) -> Option<EntityId> {
-        self.order.iter().find_map(|&(entity, _)| {
-            let found = self.ecs.get::<&Name>(entity).ok()?.0 == name;
-            found.then(|| self.ecs.get::<&Id>(entity).ok().map(|id| id.0))?
-        })
+        let &at = self.names.get(name)?;
+        let (entity, _) = self.order.get(at)?;
+        self.ecs.get::<&Id>(*entity).ok().map(|id| id.0)
     }
 
     /// The game's clock.

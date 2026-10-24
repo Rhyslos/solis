@@ -681,3 +681,140 @@ fn a_failure_that_doesn_t_stop_its_component_isn_t_said_to() {
         format!("Health on {}: couldn't take the event Hit", sun.name)
     );
 }
+
+/// A workbench with `program`'s Lust and `count` entities ("Cart 0" …)
+/// each carrying its `component`, one metre apart.
+fn crowd_with(main: &str, component: &str, count: usize) -> (Workbench, Vec<EntityId>) {
+    let mut w = Workbench::new(info(), None);
+    w.set_program(Some(program(main)));
+    let mut ids = Vec::with_capacity(count);
+    let spawns: Vec<_> = (0..count)
+        .map(|i| {
+            let mut data = EntityData::new(&format!("Cart {i}")).with(&Transform {
+                position: Vec3::new(0.0, i as f32, 0.0),
+                ..Transform::default()
+            });
+            data.components
+                .insert(component.into(), reflect::ComponentData::default());
+            let id = EntityId::random();
+            ids.push(id);
+            area::Edit::Spawn {
+                entities: vec![(id, data)],
+            }
+        })
+        .collect();
+    w.document.edit("Fill", spawns, None, None).unwrap();
+    (w, ids)
+}
+
+/// Prints a scale check's line and checks its target.
+fn verdict(what: &str, ms: f64, target: f64) {
+    let verdict = if ms <= target { "ok" } else { "SLOW" };
+    println!("Scale check: {what} {ms:.2} ms (target {target} ms) {verdict}");
+    assert!(ms <= target, "{what}: {ms:.2} ms");
+}
+
+/// A component that finds its target by name every tick (the turret and
+/// AI way).
+const SEEKER: &str = "component Seeker {\n\
+        has {\n\
+            int seen = 0;\n\
+        }\n\
+        method update(float dt) {\n\
+            entity target = find(\"Cart 1999\");\n\
+            is target != nothing? then {\n\
+                seen = seen + 1;\n\
+            }\n\
+        }\n\
+    }\n\
+    pass Seeker;\nend\n";
+
+#[test]
+#[ignore = "scale check: run by tools/scale/scale-check.sh"]
+fn scale_check_2000_lust_components_finding_by_name() {
+    // The efficiency review of Phase 4: find was a scan of every entity,
+    // so 2,000 finds a tick took 300 ms.
+    let (mut w, _) = crowd_with(SEEKER, "Seeker", 2_000);
+    w.play();
+    w.run_game(1.0 / 60.0);
+    let frames = 60;
+    let start = std::time::Instant::now();
+    for _ in 0..frames {
+        w.run_game(1.0 / 60.0);
+    }
+    let ms = start.elapsed().as_secs_f64() * 1000.0 / f64::from(frames);
+    verdict(
+        "a play-mode tick of 2,000 Lust components each finding an entity by name",
+        ms,
+        16.0,
+    );
+}
+
+#[test]
+#[ignore = "scale check: run by tools/scale/scale-check.sh"]
+fn scale_check_pressing_play_with_2000_lust_components() {
+    // Play starts every component: the code's start, then each one made
+    // from the area.
+    let (mut w, _) = crowd_with(MOVER, "Mover", 2_000);
+    let start = std::time::Instant::now();
+    w.play();
+    let ms = start.elapsed().as_secs_f64() * 1000.0;
+    assert_eq!(
+        w.playing.as_ref().unwrap().game.as_ref().unwrap().len(),
+        2_000
+    );
+    verdict("pressing Play with 2,000 Lust components", ms, 100.0);
+}
+
+#[test]
+#[ignore = "scale check: run by tools/scale/scale-check.sh"]
+fn scale_check_new_code_into_2000_running_lust_components() {
+    // Saving Lust while playing: the frame that takes the new code in
+    // swaps it into every running component.
+    let (mut w, _) = crowd_with(MOVER, "Mover", 2_000);
+    w.play();
+    w.run_game(1.0 / 60.0);
+    let faster = program(&MOVER.replace("speed * dt", "speed * dt * 2"));
+    let start = std::time::Instant::now();
+    w.set_program(Some(faster));
+    let ms = start.elapsed().as_secs_f64() * 1000.0;
+    assert!(
+        w.log_lines()
+            .iter()
+            .any(|l| l.text.contains("took the new code"))
+    );
+    verdict("new Lust swapped into 2,000 running components", ms, 100.0);
+}
+
+#[test]
+#[ignore = "scale check: run by tools/scale/scale-check.sh"]
+fn scale_check_dragging_512_entities_with_running_components() {
+    // A drag of a big selection while playing: every frame, each dragged
+    // entity's components hear of it. Its components have no update, so
+    // this times the editor's side alone.
+    const TAG: &str = "component Tag {\n    has {\n        int n = 0;\n    }\n}\npass Tag;\nend\n";
+    let (mut w, ids) = crowd_with(TAG, "Tag", 2_000);
+    w.play();
+    w.run_game(1.0 / 60.0);
+    let frames = 60;
+    let start = std::time::Instant::now();
+    for frame in 0..frames {
+        let edits = ids[..512]
+            .iter()
+            .map(|&entity| area::Edit::SetField {
+                entity,
+                component: "Transform".into(),
+                field: "position".into(),
+                value: Some(Value::vec3(Vec3::new(frame as f32, 0.0, 0.0))),
+            })
+            .collect();
+        w.document.edit("Drag", edits, None, None).unwrap();
+        w.run_game(1.0 / 60.0);
+    }
+    let ms = start.elapsed().as_secs_f64() * 1000.0 / f64::from(frames);
+    verdict(
+        "a frame dragging 512 of 2,000 entities whose components play",
+        ms,
+        8.0,
+    );
+}

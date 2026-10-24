@@ -28,11 +28,12 @@ pub struct Checked {
 }
 
 /// A worker's answer: the code's hash, what was read, and the program or
-/// its mistakes.
+/// its mistakes (nothing when the code is what the last reported check
+/// found: it isn't compiled again).
 type Answer = (
     u64,
     Code,
-    Result<Option<script::Compiled>, Vec<CodeProblem>>,
+    Option<Result<Option<script::Compiled>, Vec<CodeProblem>>>,
 );
 
 /// One check at a time, and whether another is wanted after it.
@@ -78,12 +79,16 @@ impl GameCode {
             return;
         }
         let (sender, receiver) = channel();
+        let last = self.last;
         let started = std::thread::Builder::new()
             .name("game code".into())
             .spawn(move || {
                 let code = script::gather(&assets);
-                let compiled = script::compile(&code);
-                let _ = sender.send((hash(&code), code, compiled));
+                let found = hash(&code);
+                // Most changes in the assets aren't code (a model, the
+                // area saved): then there's nothing to compile.
+                let compiled = (last != Some(found)).then(|| script::compile(&code));
+                let _ = sender.send((found, code, compiled));
             });
         if started.is_ok() {
             self.running = Some((receiver, Instant::now()));
@@ -145,9 +150,7 @@ impl GameCode {
         if let Some(assets) = self.again.take() {
             self.check(assets);
         }
-        if self.last == Some(found) {
-            return None;
-        }
+        let compiled = compiled.filter(|_| self.last != Some(found))?;
         self.last = Some(found);
         let (problems, program) = match compiled {
             Ok(program) => (Vec::new(), Some(program.map(Arc::new))),

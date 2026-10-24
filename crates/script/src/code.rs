@@ -56,6 +56,20 @@ pub struct Compiled {
     /// Where each component is written: its file, and line (0 when not
     /// known), by name.
     pub places: std::collections::BTreeMap<String, (String, u32)>,
+    /// The Lust and Lua compiled for Luau on the worker, so loading them
+    /// on the frame is quick (empty: they're compiled when loaded).
+    pub bytecode: Bytecode,
+}
+
+/// Luau's own compiled form of the game's code (see
+/// [`Compiled::bytecode`]). Made only by [`compile`], from code it just
+/// checked: it's never read from a file.
+#[derive(Debug, Clone, Default)]
+pub struct Bytecode {
+    /// The Lust's chunk.
+    pub(crate) lust: Option<Vec<u8>>,
+    /// Each Lua file's, in the order of [`Compiled::lua`].
+    pub(crate) lua: Vec<Vec<u8>>,
 }
 
 /// A mistake in the game's code: where it is, and what's wrong.
@@ -258,11 +272,23 @@ fn compile_here(code: &Code) -> Result<Option<Compiled>, Vec<CodeProblem>> {
     if !problems.is_empty() {
         return Err(problems);
     }
+    let compiler = mlua::Compiler::new();
+    let bytecode = Bytecode {
+        lust: lust
+            .as_ref()
+            .and_then(|chunk: &lust::LuaChunk| compiler.compile(&chunk.code).ok()),
+        lua: code
+            .lua
+            .iter()
+            .map_while(|(_, text)| compiler.compile(text).ok())
+            .collect(),
+    };
     let mut compiled = Compiled {
         lust,
         lua: code.lua.clone(),
         schemas: Vec::new(),
         places: std::collections::BTreeMap::new(),
+        bytecode,
     };
     // Starting it here reads its components, so the editor needn't on the
     // frame.
