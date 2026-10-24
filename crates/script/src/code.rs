@@ -16,18 +16,30 @@ pub const ENTRY: &str = "main.lst";
 /// A project's Lust files, read.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct Code {
-    /// Each file's path inside the assets (with `/` between folders) and
-    /// its text, sorted by path.
+    /// Each Lust file's path inside the assets (with `/` between folders)
+    /// and its text, sorted by path.
     pub files: Vec<(String, String)>,
+    /// Each Lua file's, likewise.
+    pub lua: Vec<(String, String)>,
     /// Files left out, and why, in plain words.
     pub notes: Vec<String>,
 }
 
 impl Code {
-    /// Whether there's any Lust at all.
+    /// Whether there's any game code at all.
     pub fn is_empty(&self) -> bool {
-        self.files.is_empty()
+        self.files.is_empty() && self.lua.is_empty()
     }
+}
+
+/// The game's code, ready to run: the Lust turned into Lua, and the Lua
+/// components' files, checked.
+#[derive(Debug, Clone)]
+pub struct Compiled {
+    /// The Lust, as Lua for Luau, if there's any Lust.
+    pub lust: Option<lust::LuaChunk>,
+    /// The Lua files (path inside the assets, and text), sorted by path.
+    pub lua: Vec<(String, String)>,
 }
 
 /// A mistake in the game's code: where it is, and what's wrong.
@@ -64,8 +76,9 @@ impl From<lust::Problem> for CodeProblem {
     }
 }
 
-/// Reads every `.lst` file under `assets`, skipping hidden folders and
-/// links to folders (which could loop), within the limits above.
+/// Reads every `.lst` and `.lua` file under `assets`, skipping hidden
+/// folders and links to folders (which could loop), within the limits
+/// above (shared by both).
 pub fn gather(assets: &Path) -> Code {
     let mut code = Code::default();
     let mut total = 0u64;
@@ -89,7 +102,7 @@ pub fn gather(assets: &Path) -> Code {
             } else if kind.is_file()
                 && path
                     .extension()
-                    .is_some_and(|e| e.eq_ignore_ascii_case("lst"))
+                    .is_some_and(|e| e.eq_ignore_ascii_case("lst") || e.eq_ignore_ascii_case("lua"))
             {
                 found.push(path);
             }
@@ -98,7 +111,7 @@ pub fn gather(assets: &Path) -> Code {
     found.sort();
     for path in found {
         let inside = slashed(path.strip_prefix(assets).unwrap_or(&path));
-        if code.files.len() >= MAX_FILES {
+        if code.files.len() + code.lua.len() >= MAX_FILES {
             code.notes.push(format!(
                 "Only the first {MAX_FILES} code files are read; {inside} and the rest are left out."
             ));
@@ -123,7 +136,14 @@ pub fn gather(assets: &Path) -> Code {
         match std::fs::read(&path).map(String::from_utf8) {
             Ok(Ok(text)) => {
                 total += size;
-                code.files.push((inside, text));
+                let is_lua = path
+                    .extension()
+                    .is_some_and(|e| e.eq_ignore_ascii_case("lua"));
+                if is_lua {
+                    code.lua.push((inside, text));
+                } else {
+                    code.files.push((inside, text));
+                }
             }
             Ok(Err(_)) => code
                 .notes
@@ -134,41 +154,51 @@ pub fn gather(assets: &Path) -> Code {
     code
 }
 
-/// Checks the game's Lust, starting from [`ENTRY`]: every mistake found,
-/// in order (none when it's sound, or there's no Lust). A crash inside the
-/// compiler is reported as a mistake too, never passed on.
+/// Checks the game's code: every mistake found, in order (none when it's
+/// sound, or there's no code). See [`compile`].
 pub fn check(code: &Code) -> Vec<CodeProblem> {
-    if code.is_empty() {
-        return Vec::new();
-    }
-    let missing = check_entry(code);
-    if !missing.is_empty() {
-        return missing;
-    }
-    let files = &code.files;
-    match std::panic::catch_unwind(|| lust::check(ENTRY, files)) {
-        Ok(Ok(())) => Vec::new(),
-        Ok(Err(problems)) => problems.into_iter().map(CodeProblem::from).collect(),
-        Err(_) => vec![compiler_stopped()],
-    }
+    compile(code).err().unwrap_or_default()
 }
 
-/// The game's Lust checked and turned into Lua for Luau, starting from
-/// [`ENTRY`]: `Ok(None)` when there's no Lust, the Lua when it's sound, or
-/// every mistake found. A crash inside the compiler is a mistake too.
-pub fn compile(code: &Code) -> Result<Option<lust::LuaChunk>, Vec<CodeProblem>> {
+/// The game's code made ready to run: the Lust checked and turned into
+/// Lua for Luau (starting from [`ENTRY`]), and the Lua files checked for
+/// mistakes in how they're written. `Ok(None)` when there's no code;
+/// otherwise the code, or every mistake found. A crash inside the Lust
+/// compiler is a mistake too.
+pub fn compile(code: &Code) -> Result<Option<Compiled>, Vec<CodeProblem>> {
     if code.is_empty() {
         return Ok(None);
     }
-    let missing = check_entry(code);
-    if !missing.is_empty() {
-        return Err(missing);
+    let mut problems = Vec::new();
+    let mut lust = None;
+    if !code.files.is_empty() {
+        let missing = check_entry(code);
+        if missing.is_empty() {
+            let files = &code.files;
+            match std::panic::catch_unwind(|| lust::to_lua(ENTRY, files)) {
+                Ok(Ok(chunk)) => lust = Some(chunk),
+                Ok(Err(found)) => problems.extend(found.into_iter().map(CodeProblem::from)),
+                Err(_) => problems.push(compiler_stopped()),
+            }
+        } else {
+            problems.extend(missing);
+        }
     }
-    let files = &code.files;
-    match std::panic::catch_unwind(|| lust::to_lua(ENTRY, files)) {
-        Ok(Ok(chunk)) => Ok(Some(chunk)),
-        Ok(Err(problems)) => Err(problems.into_iter().map(CodeProblem::from).collect()),
-        Err(_) => Err(vec![compiler_stopped()]),
+    if !code.lua.is_empty() {
+        let lua = mlua::Lua::new();
+        for (path, text) in &code.lua {
+            if let Err(err) = lua.load(text).set_name(format!("={path}")).into_function() {
+                problems.push(crate::lua_components::lua_problem(path, &err));
+            }
+        }
+    }
+    if problems.is_empty() {
+        Ok(Some(Compiled {
+            lust,
+            lua: code.lua.clone(),
+        }))
+    } else {
+        Err(problems)
     }
 }
 
@@ -259,6 +289,7 @@ mod tests {
                         .into(),
                 ),
             ],
+            lua: Vec::new(),
             notes: Vec::new(),
         };
         let problems = check(&code);
@@ -277,6 +308,7 @@ mod tests {
         assert!(check(&Code::default()).is_empty());
         let code = Code {
             files: vec![("gun.lst".into(), "end\n".into())],
+            lua: Vec::new(),
             notes: Vec::new(),
         };
         let problems = check(&code);
@@ -284,6 +316,7 @@ mod tests {
         assert!(problems[0].message.contains("main.lst"));
         let sound = Code {
             files: vec![("main.lst".into(), "end\n".into())],
+            lua: Vec::new(),
             notes: Vec::new(),
         };
         assert!(check(&sound).is_empty());
@@ -294,16 +327,19 @@ mod tests {
         assert!(compile(&Code::default()).unwrap().is_none());
         let sound = Code {
             files: vec![("main.lst".into(), "end\n".into())],
+            lua: Vec::new(),
             notes: Vec::new(),
         };
         assert!(compile(&sound).unwrap().is_some());
         let wrong = Code {
             files: vec![("main.lst".into(), "int x = \"y\";\nend\n".into())],
+            lua: Vec::new(),
             notes: Vec::new(),
         };
         assert_eq!(compile(&wrong).unwrap_err()[0].line, 1);
         let headless = Code {
             files: vec![("gun.lst".into(), "end\n".into())],
+            lua: Vec::new(),
             notes: Vec::new(),
         };
         assert!(
@@ -342,6 +378,7 @@ mod tests {
             let text = String::from_utf8_lossy(&bytes).into_owned();
             let code = Code {
                 files: vec![("main.lst".into(), text)],
+                lua: Vec::new(),
                 notes: Vec::new(),
             };
             let _ = check(&code);

@@ -1,14 +1,18 @@
 //! Swapping new code into a running game.
 
 use super::*;
+use crate::code::Compiled;
 use crate::host::NoHost;
 use reflect::Value;
 
-fn chunk(main: &str) -> lust::LuaChunk {
+fn chunk(main: &str) -> Compiled {
     let mut files = crate::describe::descriptions("Test 1.0", "solis");
     files.push(("main.lst".into(), main.to_string()));
     match lust::to_lua("main.lst", &files) {
-        Ok(chunk) => chunk,
+        Ok(chunk) => Compiled {
+            lust: Some(chunk),
+            lua: Vec::new(),
+        },
         Err(problems) => panic!("{}", problems[0]),
     }
 }

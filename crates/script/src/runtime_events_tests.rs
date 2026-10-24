@@ -1,8 +1,11 @@
 //! Events between Lust and Rust components.
 
 use super::*;
+use crate::events::{Event, MAX_DELIVERIES};
 use crate::host::NoHost;
+use crate::rust_component::{Context, RustComponent};
 use reflect::Value;
+use reflect::{FieldInfo, FieldKind};
 
 /// Says go into a list, so tests can see the order things happened in.
 #[derive(Default)]
@@ -42,7 +45,10 @@ fn loaded(main: &str) -> Runtime {
         format!("get \"solis/world\":[say];\n{main}"),
     ));
     let chunk = match lust::to_lua("main.lst", &files) {
-        Ok(chunk) => chunk,
+        Ok(chunk) => crate::code::Compiled {
+            lust: Some(chunk),
+            lua: Vec::new(),
+        },
         Err(problems) => panic!("{}", problems[0]),
     };
     let mut runtime = Runtime::new();

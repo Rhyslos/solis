@@ -19,7 +19,7 @@ impl Workbench {
     /// Starting it reads them; a start that fails is a problem, and the
     /// last program that worked stays. While playing, the new code is
     /// swapped into the running game.
-    pub fn set_program(&mut self, chunk: Option<Arc<script::Chunk>>) {
+    pub fn set_program(&mut self, chunk: Option<Arc<script::Compiled>>) {
         let mut runtime = Runtime::new();
         if let Some(chunk) = &chunk
             && let Err(failure) = runtime.load(chunk, &mut script::NoHost)
