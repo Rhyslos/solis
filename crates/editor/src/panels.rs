@@ -53,6 +53,8 @@ pub(crate) struct PanelViewer<'a> {
     pub(crate) accent: Accent,
     pub(crate) in_front: &'a HashSet<Panel>,
     pub(crate) shown: &'a mut HashSet<Panel>,
+    /// Where each frame's time goes.
+    pub(crate) profiler: &'a crate::profiler::Profiler,
 }
 
 impl TabViewer for PanelViewer<'_> {
@@ -194,6 +196,11 @@ impl TabViewer for PanelViewer<'_> {
                 if let Some(request) = console(ui, self.console, self.accent) {
                     self.console_requests.push(request);
                 }
+            }
+            Panel::Profiler => {
+                egui::ScrollArea::vertical()
+                    .auto_shrink(false)
+                    .show(ui, |ui| crate::profiler::profiler_panel(ui, self.profiler));
             }
             Panel::Problems => {
                 use crate::problems::ProblemClick;

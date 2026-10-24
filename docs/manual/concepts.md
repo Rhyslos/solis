@@ -92,6 +92,8 @@
 - **Game:** what players see and do. In the editor it's shown in the **Game** panel, through the game's camera, without the editor's grid and markers.
 - **Camera:** an entity the game looks through. The game uses the first camera in the area. Its **field of view** is how wide it sees.
 - **World:** the game's own copy of the area while it runs, kept in a form a game can run over quickly. It's made when you press Play and thrown away on Stop.
+- **Frame:** one picture on screen. Games aim for 60 **frames a second** (fps), which leaves about 16.7 milliseconds (thousandths of a second) for each; 30 fps still feels playable. See [The Profiler](profiler.md).
+- **CPU and GPU:** the computer's processor, which runs game code and the editor, and its graphics card, which draws. They work at the same time; the slower one sets the frame rate.
 
 ## Game code
 

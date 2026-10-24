@@ -47,17 +47,18 @@ The working plan for Phase 5 (ROADMAP.md, "Phase 5: Scale"). It records the choi
 
 ## Milestones
 
-### M1. Measure first: the frame profiler and the levels' scale cases ☐
+### M1. Measure first: the frame profiler and the levels' scale cases ☑
 
 - **The Profiler panel** (in the bottom dock, beside the Console and Problems; no new keys): this frame and the last few seconds as a graph, split into what takes the time: game code, the world, preparing the drawing, and the GPU's own passes (shadows, models, the last pass), using GPU timestamps where the card has them ("not measured on this card" where it hasn't). It names the counts too: units drawn and culled, triangles, projectiles.
 - **Scale cases for the levels,** headless: the CPU's share of a frame (game code, the world, preparing the drawing) for target and stress, and a ceiling search that doubles, then narrows, until a frame takes over 16 ms. Synthetic for now (entities made in Rust); M6 swaps in the benchmark itself.
 - Tests: the profiler's numbers add up to the frame; a missing GPU timer is said, not hidden.
+- **Built.** The first measurement (CPU share, release build, a 2-core cloud machine): the target level takes 4.9 ms a frame (within its 8 ms); stress takes 30.5 ms against 16.7, of which **game code is 22.4 ms** and preparing to draw 6.2; the CPU alone keeps 60 fps up to about **6,000 units**. So game code is the stress level's biggest cost: M2 also tries Luau's native code generation (`luau-jit`) and running Lust components on more than one core, besides spreading the engine's own work.
 
 ### M2. The job system ☐
 
 - `rayon` with one pool for the whole program, sized to the cores, leaving one for the window.
 - First jobs: gathering and sorting instances, placing entities in the world (by subtree), and Rust components' updates where they touch only their own entity.
-- Lust and Lua stay on one core this phase (Luau is single-threaded); built games run Lust as Rust, which can be spread out later.
+- **Game code** (M1 found it's the stress level's biggest cost): try Luau's native code generation (`luau-jit`, which Lust supports), and running Lust components on more than one core (one Luau per core, each with its own share of the entities, events joined in a fixed order). Keep whichever keeps the same results and the most speed.
 - Tests: the same frame on 1 core and on all of them gives the same instances, bit for bit; a panicking job is a failure, not a crash. Scale case: gathering 100,000 instances.
 
 ### M3. Drawing only what's seen ☐

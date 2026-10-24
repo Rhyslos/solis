@@ -30,6 +30,10 @@ Panels never change the document: Properties returns `PropertyRequest`s and the 
 5. **Viewport:** the viewport panel asks a `ViewportRenderer` for an image of its size, with the sun's settings and the lamps. The app's implementation renders it with `render` on the window's own GPU device (first the sun's shadow map, then the view) and hands it to egui as a texture.
 6. **Closing:** eframe saves the window size, the panel layout, the camera, the look and the sun's settings in a per-user folder named after `APP_ID`.
 
+## The Profiler and the scale levels
+
+The Profiler panel (`editor::profiler`) times each frame the editor draws: `Workbench::show` starts and ends the frame, `run_game` times game code (syncs and ticks) apart from the world, the views' preparation is timed where `AreaView`s are built, and a wrapper around the `ViewportRenderer` times handing frames to the GPU; the rest is the editor's. The renderer reports what it drew (`render::FrameStats`) and, on cards with `TIMESTAMP_QUERY` (asked for by the app when the card has it), each pass's GPU time (`render::GpuTimes`), read back a frame or two later without waiting. The scale levels (decision 0030) are timed headless from the same Profiler (`editor`'s `scale_levels_tests`): whole editor frames of 1/60 s while a fleet of Lust-driven units plays.
+
 ## Colour in the viewport
 
 The world is drawn in linear HDR colour (brighter than white allowed) into a 16-bit floating-point image, with multisampling. A last pass (`post_fs` in `crates/render/src/viewport.wgsl`) applies exposure and tone mapping (AgX, ACES or none) and converts to sRGB into a plain 8-bit RGBA image, which egui shows as it is ([decision 0017](docs/decisions/0017-hdr-tone-mapping-sky-and-fog.md)). The shader converts to sRGB itself, because letting the GPU do it would need a second "view" of the image in another format, which older and software GPUs (OpenGL) can't make, and the editor has to open on those too.

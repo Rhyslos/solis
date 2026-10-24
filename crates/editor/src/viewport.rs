@@ -168,6 +168,40 @@ pub trait ViewportRenderer {
         let _ = image;
         None
     }
+
+    /// What the frames drawn since the last call drew, all views
+    /// together, with the GPU's newest times where it can tell them (for
+    /// the Profiler). Never waits.
+    fn take_report(&mut self) -> DrawReport {
+        DrawReport::default()
+    }
+}
+
+/// What a frame drew, for the Profiler.
+#[derive(Debug, Clone, Copy, Default, PartialEq)]
+pub struct DrawReport {
+    /// Model copies drawn.
+    pub instances: u64,
+    /// Triangles drawn.
+    pub triangles: u64,
+    /// Draw calls for models.
+    pub batches: u64,
+    /// The GPU's own times, if measured.
+    pub gpu: Option<GpuSplit>,
+    /// Whether the graphics card can time its passes (`None`: not known
+    /// yet).
+    pub gpu_timing: Option<bool>,
+}
+
+/// The GPU's time for a frame, in milliseconds, by pass.
+#[derive(Debug, Clone, Copy, Default, PartialEq)]
+pub struct GpuSplit {
+    /// The sun's shadow map.
+    pub shadows: f64,
+    /// The sky, models and the rest.
+    pub models: f64,
+    /// Exposure and tone mapping.
+    pub last_pass: f64,
 }
 
 /// A renderer that never draws, with a reason to show instead.

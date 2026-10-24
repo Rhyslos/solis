@@ -239,6 +239,9 @@ impl Workbench {
     /// area: only the entities changed, or, when entities were added,
     /// deleted or moved, everything. Called once a frame.
     pub(crate) fn run_game(&mut self, seconds: f32) {
+        let started = std::time::Instant::now();
+        // Game code's share, timed apart; the rest is the world's.
+        let mut code = std::time::Duration::ZERO;
         let changes = self.document.take_changes();
         let Some(playing) = &mut self.playing else {
             return;
@@ -263,6 +266,7 @@ impl Workbench {
         {
             let time = playing.world.clock().time;
             let mut host = WorldHost::new(&mut playing.world, time);
+            let syncing = std::time::Instant::now();
             if changes.everything {
                 failures.extend(sync_all(game, area, &mut host));
             } else {
@@ -273,6 +277,7 @@ impl Workbench {
                     &mut host,
                 ));
             }
+            code += syncing.elapsed();
             said.append(&mut host.said);
             playing.world.settle();
         }
@@ -284,7 +289,9 @@ impl Workbench {
                 for i in 0..ran {
                     let time = now - world::TICK * (ran - 1 - i) as f64;
                     let mut host = WorldHost::new(&mut playing.world, time);
+                    let ticking = std::time::Instant::now();
                     let ticked = game.tick(world::TICK, &mut host);
+                    code += ticking.elapsed();
                     failures.extend(ticked.failures);
                     said.append(&mut host.said);
                     playing.world.settle();
@@ -298,6 +305,11 @@ impl Workbench {
                 }
             }
         }
+        self.profiler.add(crate::profiler::Stage::GameCode, code);
+        self.profiler.add(
+            crate::profiler::Stage::World,
+            started.elapsed().saturating_sub(code),
+        );
         if !said.is_empty() || !failures.is_empty() {
             self.tell_game(said, &failures);
         }
