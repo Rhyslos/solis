@@ -52,7 +52,15 @@ pub(crate) struct Playing {
     told_too_many: bool,
     /// Assembly names game code spawned that weren't found, said once.
     told_unknown: std::collections::HashSet<String>,
+    /// Whether the Console was told game code spawned too much.
+    told_too_many_spawns: bool,
 }
+
+/// The most copies of assemblies game code may make in one frame; more
+/// aren't made, and the Console says so (a component spawning every tick by
+/// mistake would otherwise grow the area until the computer runs out of
+/// memory).
+pub const MAX_SPAWNS_PER_FRAME: usize = 10_000;
 
 impl std::fmt::Debug for Playing {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -129,6 +137,7 @@ impl Workbench {
             view,
             told_too_many: false,
             told_unknown: Default::default(),
+            told_too_many_spawns: false,
         });
         if let Some(found) = self.dock.find_tab(&Panel::Game) {
             let _ = self.dock.set_active_tab(found);
@@ -378,8 +387,21 @@ impl Workbench {
         }
         let mut edits = Vec::new();
         let mut unknown = Vec::new();
-        for (id, name, place) in spawns {
-            let Some((asset, shown)) = self.assembly_named(&name) else {
+        // Each name looked up once a frame, not once a spawn.
+        let mut named: std::collections::HashMap<String, Option<(AssetId, String)>> =
+            std::collections::HashMap::new();
+        let mut room = area::text::MAX_ENTITIES.saturating_sub(self.document.area().len());
+        let mut refused = 0usize;
+        for (n, (id, name, place)) in spawns.into_iter().enumerate() {
+            if n >= MAX_SPAWNS_PER_FRAME || room == 0 {
+                refused += 1;
+                continue;
+            }
+            let found = named
+                .entry(name.clone())
+                .or_insert_with(|| self.assembly_named(&name))
+                .clone();
+            let Some((asset, shown)) = found else {
                 unknown.push(name);
                 continue;
             };
@@ -399,6 +421,11 @@ impl Workbench {
                         ..made
                     });
                 }
+                if entities.len() > room {
+                    refused += 1;
+                    continue;
+                }
+                room -= entities.len();
                 edits.push(Edit::Spawn { entities });
             }
         }
@@ -411,11 +438,28 @@ impl Workbench {
         self.document.edit_by_game(edits);
         unknown.sort();
         unknown.dedup();
+        if refused > 0
+            && let Some(playing) = &mut self.playing
+            && !playing.told_too_many_spawns
+        {
+            playing.told_too_many_spawns = true;
+            self.log(
+                LogLevel::Warning,
+                format!(
+                    "Game code spawned more than {} copies in one frame, or the area reached \
+                     its most entities ({}), so {refused} weren't made (is something spawning \
+                     every tick?).",
+                    crate::models::grouped(MAX_SPAWNS_PER_FRAME),
+                    crate::models::grouped(area::text::MAX_ENTITIES)
+                ),
+            );
+        }
         for name in unknown {
             let Some(playing) = &mut self.playing else {
                 break;
             };
-            if playing.told_unknown.insert(name.clone()) {
+            // A few names are remembered; past that, nothing more is said.
+            if playing.told_unknown.len() < 100 && playing.told_unknown.insert(name.clone()) {
                 self.log(
                     LogLevel::Warning,
                     format!(

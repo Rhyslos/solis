@@ -1115,3 +1115,56 @@ fn spawned_entities_get_the_same_ids_every_time() {
     };
     assert_eq!(ids(), ids());
 }
+
+#[test]
+fn spawning_too_much_in_one_frame_is_refused_and_said_once() {
+    let mut w = with_drones(
+        "get \"solis/world\":[spawn];\n\
+         component Hive {\n\
+             has {\n\
+                 int made = 0;\n\
+             }\n\
+             method update(float dt) {\n\
+                 is made == 0? then {\n\
+                     loop 10010 {\n\
+                         entity e = spawn(\"drone\", [0, 0, 1]);\n\
+                     }\n\
+                     made = 1;\n\
+                 }\n\
+             }\n\
+         }\n\
+         component Drone {\n\
+             has {\n\
+                 int age = 0;\n\
+             }\n\
+         }\n\
+         pass Hive, Drone;\nend\n",
+    );
+    let mut hive = EntityData::new("Hive");
+    hive.components
+        .insert("Hive".into(), reflect::ComponentData::default());
+    w.document
+        .edit(
+            "Add",
+            vec![area::Edit::Spawn {
+                entities: vec![(EntityId::random(), hive)],
+            }],
+            None,
+            None,
+        )
+        .unwrap();
+    let before = w.document.area().len();
+    w.play();
+    w.run_game(1.0 / 60.0);
+    w.run_game(1.0 / 60.0);
+    assert_eq!(
+        w.document.area().len(),
+        before + crate::play::MAX_SPAWNS_PER_FRAME
+    );
+    let told = w
+        .log_lines()
+        .iter()
+        .filter(|l| l.text.contains("weren't made"))
+        .count();
+    assert_eq!(told, 1);
+}

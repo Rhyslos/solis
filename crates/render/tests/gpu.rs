@@ -2331,7 +2331,7 @@ fn named_model(meshes: Vec<assets::Mesh>, names: &[&str]) -> assets::Model {
         min: Vec3::new(-2.0, -2.0, 0.0),
         max: Vec3::new(2.0, 2.0, 0.6),
     };
-    assets::lods::add_lods(&mut model);
+    assets::lods::add_lods(&mut model, &assets::Limits::default());
     model
 }
 
