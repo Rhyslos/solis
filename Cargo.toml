@@ -29,6 +29,8 @@ script = { path = "crates/script" }
 toml = "1.1"
 serde = { version = "1.0", features = ["derive"] }
 glam = { version = "0.34", features = ["serde", "bytemuck"] }
+# Simplifies meshes into levels of detail (decision 0032).
+meshopt = "0.7"
 # Must match the wgpu version eframe uses (one GPU device is shared).
 wgpu = "30.0"
 bytemuck = { version = "1.25", features = ["derive"] }

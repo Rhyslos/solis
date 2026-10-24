@@ -254,6 +254,28 @@ pub(crate) fn profiler_panel(ui: &mut Ui, profiler: &Profiler) {
         ))
         .color(theme::TEXT_WEAK),
     );
+    if d.lods[1..].iter().any(|&n| n > 0) {
+        ui.label(RichText::new(lod_text(&d.lods)).color(theme::TEXT_WEAK))
+            .on_hover_text(
+                "Far away, simpler versions of models are drawn (levels of detail): level 1 is \
+                 about half the triangles, 2 a quarter, 3 an eighth",
+            );
+    }
+}
+
+/// How many copies were drawn at each level of detail: "Levels of detail:
+/// 1,200 in full, 3,400 at level 1, 50 at level 3".
+fn lod_text(lods: &[u64; 5]) -> String {
+    let parts: Vec<String> = lods
+        .iter()
+        .enumerate()
+        .filter(|&(_, &n)| n > 0)
+        .map(|(level, &n)| match level {
+            0 => format!("{} in full", thousands(n)),
+            _ => format!("{} at level {level}", thousands(n)),
+        })
+        .collect();
+    format!("Levels of detail: {}", parts.join(", "))
 }
 
 /// A number of bytes as people say it: 512 bytes, 3.4 kB, 12.0 MB.
@@ -387,5 +409,9 @@ mod tests {
         assert_eq!(amount(0), "0 bytes");
         assert_eq!(amount(3_400), "3.4 kB");
         assert_eq!(amount(12_000_000), "12.0 MB");
+        assert_eq!(
+            lod_text(&[1_200, 3_400, 0, 50, 0]),
+            "Levels of detail: 1,200 in full, 3,400 at level 1, 50 at level 3"
+        );
     }
 }

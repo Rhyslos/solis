@@ -86,6 +86,7 @@ pub(crate) fn crate_model() -> ModelInfo {
         asset: AssetId::random(),
         name: "Crate".into(),
         triangles: 12,
+        lods: Vec::new(),
         min: Vec3::ZERO,
         max: Vec3::ONE,
         nodes: Vec::new(),

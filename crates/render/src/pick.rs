@@ -276,7 +276,7 @@ impl PickImages {
             batches,
             models,
             ..
-        } = gather(placed, Some(&Cull::new(view_projection, None)));
+        } = gather(placed, Some(&Cull::new(view_projection, None)), &[]);
         let bytes: &[u8] = bytemuck::cast_slice(&raw);
         // Too many to pick from at once (see the renderer's own check).
         let most = device.limits().max_buffer_size;

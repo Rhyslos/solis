@@ -356,6 +356,9 @@ impl ViewportRenderer for GpuViewport {
         self.report.instances += u64::from(stats.instances);
         self.report.casting += u64::from(stats.casting);
         self.report.sent_bytes += stats.sent_bytes;
+        for (total, n) in self.report.lods.iter_mut().zip(stats.lods) {
+            *total += u64::from(n);
+        }
         self.report.batches += u64::from(stats.batches);
         self.report.triangles += stats.triangles;
         if !self.drawn.contains(&view.image) {

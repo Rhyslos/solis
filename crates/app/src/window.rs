@@ -323,6 +323,7 @@ impl App {
                         asset: id,
                         name: model.name.clone(),
                         triangles: model.triangles(),
+                        lods: model.lod_triangles().into_iter().skip(1).collect(),
                         min: model.bounds.min,
                         max: model.bounds.max,
                         nodes: model

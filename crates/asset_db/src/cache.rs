@@ -22,7 +22,7 @@ use std::path::{Path, PathBuf};
 const MAGIC: &[u8; 8] = b"SOLBIN\0\0";
 /// The layout's version: bump it whenever the layout or the importer's
 /// output changes, and old entries are simply ignored.
-pub const VERSION: u32 = 1;
+pub const VERSION: u32 = 2;
 /// The cache files' extension.
 pub const EXTENSION: &str = "solbin";
 
@@ -182,6 +182,19 @@ impl Writer {
         self.len(b.len());
         self.0.extend_from_slice(b);
     }
+    /// Corners, then three indices into them per triangle.
+    fn corners(&mut self, vertices: &[Vertex], indices: &[u32]) {
+        self.len(vertices.len());
+        for v in vertices {
+            self.f32s(&v.position);
+            self.f32s(&v.normal);
+            self.f32s(&v.uv);
+        }
+        self.len(indices.len());
+        for &i in indices {
+            self.u32(i);
+        }
+    }
     fn mat4(&mut self, m: &Mat4) {
         self.f32s(&m.to_cols_array());
     }
@@ -198,17 +211,13 @@ pub fn encode(model: &Model) -> Vec<u8> {
     w.text(&model.name);
     w.len(model.meshes.len());
     for mesh in &model.meshes {
-        w.len(mesh.vertices.len());
-        for v in &mesh.vertices {
-            w.f32s(&v.position);
-            w.f32s(&v.normal);
-            w.f32s(&v.uv);
-        }
-        w.len(mesh.indices.len());
-        for &i in &mesh.indices {
-            w.u32(i);
-        }
+        w.corners(&mesh.vertices, &mesh.indices);
         w.index(mesh.material);
+        w.len(mesh.lods.len());
+        for lod in &mesh.lods {
+            w.corners(&lod.vertices, &lod.indices);
+            w.f32(lod.error);
+        }
     }
     w.len(model.nodes.len());
     for node in &model.nodes {
@@ -377,36 +386,63 @@ pub fn decode(data: &[u8], limits: &Limits) -> Result<Model, Refused> {
     let mut total_vertices = 0usize;
     let mesh_count = r.count(12, limits.max_meshes)?;
     let mut meshes = Vec::with_capacity(mesh_count);
-    for _ in 0..mesh_count {
-        let n = r.count(32, limits.max_vertices)?;
-        total_vertices = total_vertices.saturating_add(n);
-        if total_vertices > limits.max_vertices {
-            return Err(Refused("too many corners"));
-        }
-        let mut vertices = Vec::with_capacity(n);
-        for _ in 0..n {
-            vertices.push(Vertex {
-                position: r.f32s()?,
-                normal: r.f32s()?,
-                uv: r.f32s()?,
-            });
-        }
-        let k = r.count(4, limits.max_triangles.saturating_mul(3))?;
-        let mut indices = Vec::with_capacity(k);
-        for _ in 0..k {
-            let i = r.u32()?;
-            if i as usize >= n {
-                return Err(Refused("a corner that doesn't exist"));
+    // Corners (counted against the limit), then indices into them, or
+    // into `shared` when there are none of their own.
+    let mut corners =
+        |r: &mut Reader<'_>, shared: Option<usize>| -> Result<(Vec<Vertex>, Vec<u32>), Refused> {
+            let n = r.count(32, limits.max_vertices)?;
+            total_vertices = total_vertices.saturating_add(n);
+            if total_vertices > limits.max_vertices {
+                return Err(Refused("too many corners"));
             }
-            indices.push(i);
-        }
-        if k % 3 != 0 {
-            return Err(Refused("half a triangle"));
+            let mut vertices = Vec::with_capacity(n);
+            for _ in 0..n {
+                vertices.push(Vertex {
+                    position: r.f32s()?,
+                    normal: r.f32s()?,
+                    uv: r.f32s()?,
+                });
+            }
+            let reach = match shared {
+                Some(shared) if n == 0 => shared,
+                _ => n,
+            };
+            let k = r.count(4, limits.max_triangles.saturating_mul(3))?;
+            let mut indices = Vec::with_capacity(k);
+            for _ in 0..k {
+                let i = r.u32()?;
+                if i as usize >= reach {
+                    return Err(Refused("a corner that doesn't exist"));
+                }
+                indices.push(i);
+            }
+            if k % 3 != 0 {
+                return Err(Refused("half a triangle"));
+            }
+            Ok((vertices, indices))
+        };
+    for _ in 0..mesh_count {
+        let (vertices, indices) = corners(&mut r, None)?;
+        let material = r.index()?;
+        let lod_count = r.count(12, assets::lods::MAX_LODS)?;
+        let mut lods = Vec::with_capacity(lod_count);
+        for _ in 0..lod_count {
+            let (own, lod_indices) = corners(&mut r, Some(vertices.len()))?;
+            let error = r.f32()?;
+            if !error.is_finite() || error < 0.0 {
+                return Err(Refused("a level of detail's error isn't a number"));
+            }
+            lods.push(assets::Lod {
+                vertices: own,
+                indices: lod_indices,
+                error,
+            });
         }
         meshes.push(Mesh {
             vertices,
             indices,
-            material: r.index()?,
+            material,
+            lods,
         });
     }
     let node_count = r.count(140, limits.max_meshes.max(1 << 20))?;
@@ -587,11 +623,66 @@ mod tests {
         .unwrap()
     }
 
+    /// Gives the first mesh of `model` a level of detail sharing its
+    /// corners, and one with corners of its own.
+    fn with_lods(model: &mut Model) {
+        let mesh = &mut model.meshes[0];
+        let shared = assets::Lod {
+            vertices: Vec::new(),
+            indices: mesh.indices[..mesh.indices.len() / 6 * 3].to_vec(),
+            error: 0.01,
+        };
+        let own = assets::Lod {
+            vertices: mesh.vertices[..3].to_vec(),
+            indices: vec![0, 1, 2],
+            error: 0.05,
+        };
+        mesh.lods = vec![shared, own];
+    }
+
     #[test]
     fn a_model_round_trips_through_the_cache_layout() {
-        let model = showcase();
+        let mut model = showcase();
         let bytes = encode(&model);
         assert_eq!(decode(&bytes, &Limits::default()).unwrap(), model);
+        with_lods(&mut model);
+        let bytes = encode(&model);
+        assert_eq!(decode(&bytes, &Limits::default()).unwrap(), model);
+    }
+
+    #[test]
+    fn levels_of_detail_are_made_once_and_kept_in_the_cache() {
+        let folder = test_folder("cache-lods");
+        std::fs::create_dir_all(&folder).unwrap();
+        let file = folder.join("scene.glb");
+        std::fs::write(&file, assets::sample::showcase_glb()).unwrap();
+        let cache = folder.join("cache");
+        let (made, hit) = load(&file, Some(&cache), &Limits::default()).unwrap();
+        assert!(!hit);
+        assert!(
+            made.meshes.iter().any(|m| !m.lods.is_empty()),
+            "the scene's detailed meshes got levels"
+        );
+        let (kept, hit) = load(&file, Some(&cache), &Limits::default()).unwrap();
+        assert!(hit, "read back, not made again");
+        assert_eq!(kept.meshes, made.meshes);
+        let _ = std::fs::remove_dir_all(&folder);
+    }
+
+    #[test]
+    fn a_level_pointing_past_its_corners_is_refused() {
+        let mut model = showcase();
+        with_lods(&mut model);
+        model.meshes[0].lods[0].indices[0] = model.meshes[0].vertices.len() as u32;
+        assert!(decode(&encode(&model), &Limits::default()).is_err());
+        let mut model = showcase();
+        with_lods(&mut model);
+        model.meshes[0].lods[1].indices[0] = 3;
+        assert!(decode(&encode(&model), &Limits::default()).is_err());
+        let mut model = showcase();
+        with_lods(&mut model);
+        model.meshes[0].lods[1].error = f32::NAN;
+        assert!(decode(&encode(&model), &Limits::default()).is_err());
     }
 
     #[test]
@@ -655,8 +746,11 @@ mod tests {
         // Fuzzing: every prefix, and thousands of single-byte corruptions,
         // of a real entry. Each must be refused or read safely.
         let limits = Limits::default();
-        // The small sample: the same layout, quick enough to try often.
-        let sample = assets::load_bytes(&assets::sample::sample_glb(), None, "S", &limits).unwrap();
+        // The small sample: the same layout, quick enough to try often,
+        // with a level of detail of each kind added.
+        let mut sample =
+            assets::load_bytes(&assets::sample::sample_glb(), None, "S", &limits).unwrap();
+        with_lods(&mut sample);
         let bytes = encode(&sample);
         for end in (0..bytes.len()).step_by(7) {
             assert!(decode(&bytes[..end], &limits).is_err());
@@ -677,6 +771,16 @@ mod tests {
                             .iter()
                             .all(|&i| (i as usize) < mesh.vertices.len())
                     );
+                    assert!(mesh.lods.len() <= assets::lods::MAX_LODS);
+                    for lod in &mesh.lods {
+                        let reach = if lod.vertices.is_empty() {
+                            mesh.vertices.len()
+                        } else {
+                            lod.vertices.len()
+                        };
+                        assert!(lod.indices.iter().all(|&i| (i as usize) < reach));
+                        assert!(lod.error.is_finite() && lod.error >= 0.0);
+                    }
                 }
                 assert!(model.placements().all(|(m, _)| m < model.meshes.len()));
             }

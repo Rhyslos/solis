@@ -55,6 +55,8 @@ pub(crate) struct Batch {
     pub(crate) model: usize,
     /// Which of its meshes.
     pub(crate) mesh: usize,
+    /// Which level of detail (0 for the full mesh).
+    pub(crate) lod: usize,
     /// Whether these copies are mirrored.
     pub(crate) mirrored: bool,
     /// Whether these copies are in the camera's view (drawn).
@@ -91,6 +93,10 @@ pub(crate) struct Cull {
     /// Where the sun's shadows are drawn, and the way its light goes, when
     /// they are: copies whose shadow can fall in that box cast.
     shadows: Option<(Vec3, Vec3, Vec3)>,
+    /// How big things look, for choosing levels of detail: the view's
+    /// last row (a point's distance) and how many pixels a metre is at
+    /// distance 1; `None` to draw everything in full.
+    detail: Option<(Vec4, f32)>,
 }
 
 impl Cull {
@@ -116,7 +122,56 @@ impl Cull {
             (length > 1e-6 && p.is_finite()).then(|| p / length)
         })
         .collect();
-        Self { planes, shadows }
+        Self {
+            planes,
+            shadows,
+            detail: None,
+        }
+    }
+
+    /// The same view, choosing levels of detail for an image
+    /// `height_px` pixels tall.
+    pub(crate) fn with_detail(mut self, view_projection: Mat4, height_px: u32) -> Self {
+        // A view's second row turns metres up the screen into its -1 to 1
+        // across the image (divided by the distance, its last row).
+        let per_metre = view_projection.row(1).truncate().length() * height_px as f32 * 0.5;
+        if per_metre.is_finite() && per_metre > 0.0 {
+            self.detail = Some((view_projection.row(3), per_metre));
+        }
+        self
+    }
+
+    /// The level of detail for a model whose ball is at `centre` with
+    /// `radius`, whose levels stray by `errors` (a share of its size; the
+    /// full model first), when it was at level `before` last frame: the
+    /// simplest whose straying is under [`LOD_PIXELS`] on screen, keeping
+    /// the one before while it's still nearly so, so a copy at the
+    /// boundary doesn't flicker between two.
+    pub(crate) fn level(&self, centre: Vec3, radius: f32, errors: &[f32], before: u8) -> u8 {
+        let Some((distance_row, per_metre)) = self.detail else {
+            return 0;
+        };
+        if errors.len() < 2 {
+            return 0;
+        }
+        let distance = distance_row.dot(centre.extend(1.0));
+        if distance.is_nan() || distance <= 1e-6 {
+            // Behind the camera (only its shadow can show): the simplest.
+            return (errors.len() - 1) as u8;
+        }
+        let size_px = 2.0 * radius * per_metre / distance;
+        let fits = |level: usize, pixels: f32| errors[level] * size_px <= pixels;
+        let before = usize::from(before);
+        let keep = before < errors.len()
+            && fits(before, LOD_PIXELS * LOD_BAND)
+            && !(before + 1 < errors.len() && fits(before + 1, LOD_PIXELS / LOD_BAND));
+        if keep {
+            return before as u8;
+        }
+        (0..errors.len())
+            .rev()
+            .find(|&level| fits(level, LOD_PIXELS))
+            .unwrap_or(0) as u8
     }
 
     /// Whether a ball at `centre` of `radius` is at least partly in view.
@@ -145,6 +200,14 @@ impl Cull {
         segment_meets_box(centre, light * length, min, max)
     }
 }
+
+/// How many pixels a level of detail may stray on screen before a more
+/// detailed one is drawn.
+pub const LOD_PIXELS: f32 = 1.0;
+
+/// How far past [`LOD_PIXELS`] a copy keeps its level from last frame (and
+/// how far under it must be to go simpler), so it doesn't flicker.
+const LOD_BAND: f32 = 1.25;
 
 /// Whether the segment from `start` along `along` meets the box `min`–`max`
 /// (the slab method).
@@ -199,12 +262,16 @@ pub(crate) struct Gathered {
     pub(crate) casting: u32,
     /// The box around the copies that cast, if any do.
     pub(crate) casters: Option<(Vec3, Vec3)>,
+    /// Each placement's level of detail, to pass back next frame.
+    pub(crate) levels: Vec<u8>,
 }
 
 /// Every mesh copy of `placements` that `cull` lets through (all of them,
 /// seen and casting, without one), grouped into batches. Models are told
 /// apart by address, so the same model placed twice shares its batches.
-pub(crate) fn gather(placements: &[Placement<'_>], cull: Option<&Cull>) -> Gathered {
+/// `before` is each placement's level of detail last frame (from the last
+/// [`Gathered::levels`]; anything for a new one).
+pub(crate) fn gather(placements: &[Placement<'_>], cull: Option<&Cull>, before: &[u8]) -> Gathered {
     use rayon::prelude::*;
     // Each distinct model once, in the order first seen, by the placement
     // that first showed it. Copies of one model usually come together, so
@@ -230,9 +297,36 @@ pub(crate) fn gather(placements: &[Placement<'_>], cull: Option<&Cull>) -> Gathe
             n
         })
         .collect();
+    // Each placement's level of detail, from how big it looks.
+    let levels: Vec<u8> = match cull.filter(|c| c.detail.is_some()) {
+        None => vec![0; placements.len()],
+        Some(cull) => placements
+            .par_iter()
+            .enumerate()
+            .map(|(i, p)| {
+                let errors = p.model.lod_errors();
+                if errors.len() < 2 || !p.transform.is_finite() {
+                    return 0;
+                }
+                let (centre, radius) = p.model.sphere();
+                let turn = Mat3::from_mat4(p.transform);
+                let scale = turn
+                    .x_axis
+                    .length()
+                    .max(turn.y_axis.length())
+                    .max(turn.z_axis.length());
+                cull.level(
+                    p.transform.transform_point3(centre),
+                    radius * scale,
+                    errors,
+                    before.get(i).copied().unwrap_or(0),
+                )
+            })
+            .collect(),
+    };
     // Each placement's mesh copies, in jobs of a run of placements each,
     // kept in the placements' order.
-    let copies_of = |placement: &Placement<'_>, number: usize, out: &mut Vec<Entry>| {
+    let copies_of = |placement: &Placement<'_>, number: usize, level: u8, out: &mut Vec<Entry>| {
         // A place that isn't numbers isn't drawn.
         let number = placement.transform.is_finite().then_some(number);
         let meshes = match (number, placement.node) {
@@ -240,13 +334,16 @@ pub(crate) fn gather(placements: &[Placement<'_>], cull: Option<&Cull>) -> Gathe
             (Some(_), None) => rayon::iter::Either::Left(rayon::iter::Either::Right(
                 placement.model.placements().iter().copied(),
             )),
-            (Some(_), Some(node)) => rayon::iter::Either::Right(
-                placement
-                    .model
-                    .node_meshes(node)
-                    .iter()
-                    .map(|&m| Drawn::new(m, Mat4::IDENTITY, placement.model.sphere_of(m))),
-            ),
+            (Some(_), Some(node)) => {
+                rayon::iter::Either::Right(placement.model.node_meshes(node).iter().map(|&m| {
+                    Drawn::new(
+                        m,
+                        Mat4::IDENTITY,
+                        placement.model.sphere_of(m),
+                        placement.model.lods_of(m),
+                    )
+                }))
+            }
         };
         let model = number.unwrap_or(0) as u64;
         let place = placement.transform;
@@ -275,8 +372,13 @@ pub(crate) fn gather(placements: &[Placement<'_>], cull: Option<&Cull>) -> Gathe
                 place * drawn.local
             };
             let mirrored = flipped != drawn.mirrored;
+            let lod = u64::from(level.min(drawn.lods));
             Some(Entry {
-                key: class << 62 | model << 33 | (drawn.mesh as u64) << 1 | u64::from(mirrored),
+                key: class << 62
+                    | (model & 0x03ff_ffff) << 36
+                    | (drawn.mesh as u64 & 0xffff_ffff) << 4
+                    | lod << 1
+                    | u64::from(mirrored),
                 raw: InstanceRaw::new(world, placement.pick),
                 centre,
                 radius,
@@ -287,10 +389,11 @@ pub(crate) fn gather(placements: &[Placement<'_>], cull: Option<&Cull>) -> Gathe
     let runs: Vec<Vec<Entry>> = placements
         .par_chunks(RUN)
         .zip(numbers.par_chunks(RUN))
-        .map(|(placements, numbers)| {
+        .zip(levels.par_chunks(RUN))
+        .map(|((placements, numbers), levels)| {
             let mut out = Vec::with_capacity(placements.len() * 2);
-            for (p, &n) in placements.iter().zip(numbers) {
-                copies_of(p, n, &mut out);
+            for ((p, &n), &level) in placements.iter().zip(numbers).zip(levels) {
+                copies_of(p, n, level, &mut out);
             }
             out
         })
@@ -314,9 +417,10 @@ pub(crate) fn gather(placements: &[Placement<'_>], cull: Option<&Cull>) -> Gathe
     let (mut seen, mut casting) = (0, 0);
     for (index, &(key, _, _)) in order.iter().enumerate() {
         let class = key >> 62;
-        let (model, mesh, mirrored) = (
-            ((key >> 33) & 0x1fff_ffff) as usize,
-            ((key >> 1) & 0xffff_ffff) as usize,
+        let (model, mesh, lod, mirrored) = (
+            ((key >> 36) & 0x03ff_ffff) as usize,
+            ((key >> 4) & 0xffff_ffff) as usize,
+            ((key >> 1) & 0b111) as usize,
             key & 1 == 1,
         );
         let (is_seen, casts) = (class != CASTS_ONLY, class != SEEN_ONLY);
@@ -327,6 +431,7 @@ pub(crate) fn gather(placements: &[Placement<'_>], cull: Option<&Cull>) -> Gathe
             Some(b)
                 if b.model == model
                     && b.mesh == mesh
+                    && b.lod == lod
                     && b.mirrored == mirrored
                     && b.seen == is_seen
                     && b.casts == casts =>
@@ -336,6 +441,7 @@ pub(crate) fn gather(placements: &[Placement<'_>], cull: Option<&Cull>) -> Gathe
             _ => batches.push(Batch {
                 model,
                 mesh,
+                lod,
                 mirrored,
                 seen: is_seen,
                 casts,
@@ -361,6 +467,7 @@ pub(crate) fn gather(placements: &[Placement<'_>], cull: Option<&Cull>) -> Gathe
         seen,
         casting,
         casters,
+        levels,
     }
 }
 
@@ -504,5 +611,52 @@ mod tests {
         assert!(cull.sees(Vec3::ZERO, 1.0));
         let flat = Cull::new(Mat4::ZERO, None);
         assert!(flat.sees(Vec3::ZERO, 1.0));
+    }
+
+    #[test]
+    fn far_copies_take_simpler_levels_and_near_ones_full() {
+        // 1080 pixels tall; a model 2 m across whose levels stray by 0.5%,
+        // 2% and 8% of its size.
+        let cull = Cull::new(camera(), None).with_detail(camera(), 1080);
+        let errors = [0.0, 0.005, 0.02, 0.08];
+        let level = |distance: f32| cull.level(Vec3::new(0.0, distance, 0.0), 1.0, &errors, 0);
+        assert_eq!(level(2.0), 0, "close: in full");
+        let mut last = 0;
+        for d in [5.0, 20.0, 50.0, 200.0, 1000.0, 10_000.0] {
+            let l = level(d);
+            assert!(l >= last, "never more detailed further away");
+            last = l;
+        }
+        assert_eq!(last, 3, "far: the simplest");
+        // Each level is used only when its straying is under a pixel.
+        for d in [5.0_f32, 20.0, 50.0, 200.0] {
+            let l = usize::from(level(d));
+            let size_px = 2.0 * 1080.0 * 0.5 / d;
+            assert!(errors[l] * size_px <= LOD_PIXELS, "{d} m: level {l}");
+        }
+        // Behind the camera: the simplest (only its shadow shows).
+        assert_eq!(cull.level(Vec3::new(0.0, -5.0, 0.0), 1.0, &errors, 0), 3);
+        // Without levels, or without detail, always full.
+        assert_eq!(cull.level(Vec3::new(0.0, 1e4, 0.0), 1.0, &[0.0], 0), 0);
+        let plain = Cull::new(camera(), None);
+        assert_eq!(plain.level(Vec3::new(0.0, 1e4, 0.0), 1.0, &errors, 0), 0);
+    }
+
+    #[test]
+    fn a_copy_at_a_boundary_keeps_its_level_rather_than_flicker() {
+        let cull = Cull::new(camera(), None).with_detail(camera(), 1000);
+        let errors = [0.0, 0.01];
+        // Level 1 strays exactly a pixel at 10 m (2 m across: 100 px).
+        let at = |d: f32, before| cull.level(Vec3::new(0.0, d, 0.0), 1.0, &errors, before);
+        // Near the boundary, each keeps what it had.
+        assert_eq!(at(10.5, 0), 0, "just past it, from full: kept full");
+        assert_eq!(at(10.5, 1), 1, "just past it, from simpler: kept");
+        assert_eq!(at(9.5, 1), 1, "just inside, from simpler: kept");
+        assert_eq!(at(9.5, 0), 0, "just inside, from full: kept");
+        // Well past either way, it changes.
+        assert_eq!(at(13.0, 0), 1, "well past: simpler");
+        assert_eq!(at(7.0, 1), 0, "well inside: full again");
+        // A level from last frame that no longer exists is let go.
+        assert_eq!(at(5.0, 9), 0);
     }
 }
