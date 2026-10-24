@@ -742,6 +742,67 @@ fn dump_renders_to_look_at() {
         }
         std::fs::write(std::path::Path::new(&dir).join(format!("{name}.ppm")), ppm).unwrap();
     }
+    // A field of copies with the sun's shadows, from above at an angle:
+    // shadows fitted to the view (Phase 5, M4).
+    let Some(gpu) = gpu() else {
+        return;
+    };
+    let renderer = ViewportRenderer::new(&gpu.device, best_sample_count(&gpu.adapter));
+    let size = 384;
+    let mut target = renderer.create_target(&gpu.device, [size, size]);
+    let ground = big_floor(200.0);
+    let floor_model = renderer.upload_model(&gpu.device, &gpu.queue, &ground);
+    let model = renderer.upload_model(&gpu.device, &gpu.queue, &sample());
+    let mut placed = vec![Placement {
+        model: &floor_model,
+        node: None,
+        transform: Mat4::IDENTITY,
+        pick: 0,
+    }];
+    for i in 0..400 {
+        placed.push(Placement {
+            model: &model,
+            node: None,
+            transform: Mat4::from_translation(Vec3::new(
+                (i % 20) as f32 * 4.0 - 40.0,
+                (i / 20) as f32 * 4.0,
+                0.0,
+            )),
+            pick: 0,
+        });
+    }
+    let eye = Vec3::new(0.0, -14.0, 9.0);
+    let tilt = Mat4::from_rotation_x(0.45);
+    renderer.render(
+        &gpu.device,
+        &gpu.queue,
+        &mut target,
+        &FrameParams {
+            view_projection: projection() * tilt * projection().inverse() * looking_north(eye),
+            camera_position: eye,
+            focus: Vec3::ZERO,
+            sky_top: srgb(SKY_TOP),
+            sky_horizon: srgb(SKY_HORIZON),
+            ground: srgb(GROUND),
+            shading: Shading::default(),
+            size_px: [size, size],
+            sun: Sun {
+                direction: Vec3::new(0.6, 0.5, -0.7).normalize(),
+                ..Sun::default()
+            },
+            environment: Environment::default(),
+            editor_lines: true,
+            grid_plane: GridPlane::Ground,
+        },
+        &placed,
+        &[],
+    );
+    let pixels = read_pixels(&gpu.device, &gpu.queue, &target).unwrap();
+    let mut ppm = format!("P6 {size} {size} 255\n").into_bytes();
+    for c in pixels.chunks_exact(4) {
+        ppm.extend_from_slice(&c[..3]);
+    }
+    std::fs::write(std::path::Path::new(&dir).join("field.ppm"), ppm).unwrap();
 }
 
 // ------------------------------------------------------------ lights ---
@@ -1706,7 +1767,7 @@ fn a_frame_says_what_it_drew_and_whether_its_passes_are_timed() {
         .map(|i| Placement {
             model: &uploaded,
             node: None,
-            transform: Mat4::from_translation(Vec3::new(i as f32 * 3.0, 0.0, 0.0)),
+            transform: Mat4::from_translation(Vec3::new(0.0, i as f32 * 3.0, 0.0)),
             pick: 0,
         })
         .collect();
@@ -1737,7 +1798,34 @@ fn a_frame_says_what_it_drew_and_whether_its_passes_are_timed() {
     let stats = renderer.render(&gpu.device, &gpu.queue, &mut target, &params, &copies, &[]);
     assert_eq!(stats.instances, 3 * one.instances);
     assert_eq!(stats.triangles, 3 * one.triangles);
-    assert_eq!(stats.batches, one.batches, "copies share their draw calls");
+    // Without shadows (whose copies may split a mesh's draw in two), the
+    // copies share their draw calls.
+    let unshadowed = FrameParams {
+        sun: Sun {
+            shadows: false,
+            ..Sun::default()
+        },
+        ..params
+    };
+    let alone = renderer.render(
+        &gpu.device,
+        &gpu.queue,
+        &mut target,
+        &unshadowed,
+        &copies[..1],
+        &[],
+    );
+    let all = renderer.render(
+        &gpu.device,
+        &gpu.queue,
+        &mut target,
+        &unshadowed,
+        &copies,
+        &[],
+    );
+    assert_eq!(all.batches, alone.batches, "copies share their draw calls");
+    assert_eq!(all.casting, 0);
+    assert!(stats.casting >= stats.instances, "what's seen casts here");
     let can_time = target.can_time().expect("known after a frame");
     println!("This card times its passes: {can_time}");
     assert_eq!(
@@ -1819,33 +1907,39 @@ fn a_frame_is_the_same_on_one_core_or_many() {
     assert!(one == many, "the pictures differ");
 }
 
-#[test]
-#[ignore = "scale check: run by tools/scale/scale-check.sh"]
-fn scale_check_gathering_100000_copies() {
-    // The CPU's side of drawing 100,000 copies: gathering, sorting and
-    // handing them over (not the GPU's drawing, which isn't waited for).
-    const TARGET_MS: f64 = 8.0;
-    let Some(gpu) = gpu() else {
-        println!("Scale check: gathering 100,000 copies skipping: no GPU");
-        return;
-    };
+/// The CPU's side of drawing `count` copies of the sample in rows of
+/// `row` 3 m apart, seen from `eye` looking north, with or without the
+/// sun's shadows: gathering, culling, sorting and handing them over (not
+/// the GPU's drawing, which isn't waited for). With `moving`, every copy
+/// moves every frame. The milliseconds a frame, and what the last drew.
+fn gathering_ms(
+    count: usize,
+    row: usize,
+    eye: Vec3,
+    shadows: bool,
+    moving: bool,
+) -> Option<(f64, render::FrameStats)> {
+    let gpu = gpu()?;
     let renderer = ViewportRenderer::new(&gpu.device, best_sample_count(&gpu.adapter));
     let model = sample();
     let uploaded = renderer.upload_model(&gpu.device, &gpu.queue, &model);
-    let copies: Vec<Placement<'_>> = (0..100_000)
+    let place = |i: usize, frame: usize| {
+        let nudge = if moving { frame as f32 * 0.01 } else { 0.0 };
+        Mat4::from_translation(Vec3::new(
+            (i % row) as f32 * 3.0 - (row as f32 * 1.5) + nudge,
+            (i / row) as f32 * 3.0,
+            0.0,
+        ))
+    };
+    let mut copies: Vec<Placement<'_>> = (0..count)
         .map(|i| Placement {
             model: &uploaded,
             node: None,
-            transform: Mat4::from_translation(Vec3::new(
-                (i % 300) as f32 * 3.0,
-                (i / 300) as f32 * 3.0,
-                0.0,
-            )),
+            transform: place(i, 0),
             pick: 0,
         })
         .collect();
     let mut target = renderer.create_target(&gpu.device, [64, 64]);
-    let eye = Vec3::new(0.0, -10.0, 8.0);
     let params = FrameParams {
         view_projection: looking_north(eye),
         camera_position: eye,
@@ -1856,7 +1950,7 @@ fn scale_check_gathering_100000_copies() {
         shading: Shading::default(),
         size_px: [64, 64],
         sun: Sun {
-            shadows: false,
+            shadows,
             ..Sun::default()
         },
         environment: unmapped(),
@@ -1867,26 +1961,291 @@ fn scale_check_gathering_100000_copies() {
     let _ = read_pixels(&gpu.device, &gpu.queue, &target);
     let frames = 10;
     let mut spent = std::time::Duration::ZERO;
-    for _ in 0..frames {
+    let mut stats = render::FrameStats::default();
+    for frame in 1..=frames {
+        if moving {
+            for (i, copy) in copies.iter_mut().enumerate() {
+                copy.transform = place(i, frame);
+            }
+        }
         let start = std::time::Instant::now();
-        renderer.render(&gpu.device, &gpu.queue, &mut target, &params, &copies, &[]);
+        stats = renderer.render(&gpu.device, &gpu.queue, &mut target, &params, &copies, &[]);
         spent += start.elapsed();
         // The GPU catches up between frames, outside the timing.
         let _ = read_pixels(&gpu.device, &gpu.queue, &target);
     }
-    let ms = spent.as_secs_f64() * 1000.0 / f64::from(frames);
-    // Phase 5 builds what this needs (M4 sends only what moved, in a
-    // smaller form); until its end the scale check reports it only.
-    const PHASE_5_DONE: bool = false;
-    let verdict = match (ms <= TARGET_MS, PHASE_5_DONE) {
+    Some((spent.as_secs_f64() * 1000.0 / frames as f64, stats))
+}
+
+/// Phase 5 builds what the 100,000-copy cases need; until its end the
+/// scale check reports them only.
+const PHASE_5_DONE: bool = false;
+
+#[allow(clippy::print_stdout)]
+fn gathering_verdict(what: &str, ms: f64, target: f64, judged: bool) {
+    let verdict = match (ms <= target, judged) {
         (true, _) => "ok",
         (false, true) => "SLOW",
         (false, false) => "not yet (Phase 5 builds it)",
     };
-    println!(
-        "Scale check: gathering and handing over 100,000 copies {ms:.2} ms a frame (target {TARGET_MS} ms) {verdict}"
-    );
-    if PHASE_5_DONE {
-        assert!(ms <= TARGET_MS, "{ms:.2} ms");
+    println!("Scale check: {what} {ms:.2} ms a frame (target {target} ms) {verdict}");
+    if judged {
+        assert!(ms <= target, "{what}: {ms:.2} ms");
     }
+}
+
+#[test]
+#[ignore = "scale check: run by tools/scale/scale-check.sh"]
+fn scale_check_gathering_100000_copies() {
+    // A field 900 m wide and 1 km deep, seen from its near edge: about
+    // two thirds are in view.
+    let Some((ms, stats)) = gathering_ms(100_000, 300, Vec3::new(0.0, -10.0, 8.0), false, false)
+    else {
+        println!("Scale check: gathering 100,000 copies skipping: no GPU");
+        return;
+    };
+    gathering_verdict(
+        &format!(
+            "gathering and handing over 100,000 copies ({} mesh copies in view)",
+            stats.instances
+        ),
+        ms,
+        8.0,
+        PHASE_5_DONE,
+    );
+}
+
+#[test]
+#[ignore = "scale check: run by tools/scale/scale-check.sh"]
+fn scale_check_gathering_100000_copies_all_moving() {
+    let Some((ms, _)) = gathering_ms(100_000, 300, Vec3::new(0.0, -10.0, 8.0), false, true) else {
+        return;
+    };
+    gathering_verdict(
+        "gathering and handing over 100,000 copies, every one moving",
+        ms,
+        8.0,
+        PHASE_5_DONE,
+    );
+}
+
+#[test]
+#[ignore = "scale check: run by tools/scale/scale-check.sh"]
+fn scale_check_10000_units_a_tenth_in_view() {
+    // 10,000 units on a field 300 m square, the camera low beside it,
+    // looking along it: about a tenth are in view; shadows on.
+    let Some((ms, stats)) = gathering_ms(10_000, 100, Vec3::new(-215.0, 0.0, 3.0), true, true)
+    else {
+        return;
+    };
+    gathering_verdict(
+        &format!(
+            "10,000 moving units, {} of 20,000 mesh copies in view and {} casting shadows",
+            stats.instances, stats.casting
+        ),
+        ms,
+        8.0,
+        true,
+    );
+    assert!(stats.instances < 20_000 / 4, "most aren't drawn: {stats:?}");
+}
+
+// ------------------------------------------------------------ culling ---
+
+/// Renders each (model, place) seen by `view_projection` from `eye`, lit
+/// by `sun`, 128 pixels square; the pixels and what was drawn.
+fn render_scene(
+    scene: &[(&assets::Model, Mat4)],
+    view_projection: Mat4,
+    eye: Vec3,
+    sun: Sun,
+) -> Option<(Vec<u8>, render::FrameStats)> {
+    let gpu = gpu()?;
+    let renderer = ViewportRenderer::new(&gpu.device, best_sample_count(&gpu.adapter));
+    let size = 128;
+    let mut target = renderer.create_target(&gpu.device, [size, size]);
+    let uploaded: Vec<_> = scene
+        .iter()
+        .map(|(model, _)| renderer.upload_model(&gpu.device, &gpu.queue, model))
+        .collect();
+    let placed: Vec<Placement<'_>> = scene
+        .iter()
+        .zip(&uploaded)
+        .map(|((_, transform), model)| Placement {
+            model,
+            node: None,
+            transform: *transform,
+            pick: 0,
+        })
+        .collect();
+    let stats = renderer.render(
+        &gpu.device,
+        &gpu.queue,
+        &mut target,
+        &FrameParams {
+            view_projection,
+            camera_position: eye,
+            focus: Vec3::new(1.0e7, 1.0e7, 0.0),
+            sky_top: srgb(SKY_TOP),
+            sky_horizon: srgb(SKY_HORIZON),
+            ground: srgb(GROUND),
+            shading: Shading::default(),
+            size_px: [size, size],
+            sun,
+            environment: unmapped(),
+            editor_lines: true,
+            grid_plane: GridPlane::Ground,
+        },
+        &placed,
+        &[],
+    );
+    Some((
+        read_pixels(&gpu.device, &gpu.queue, &target).unwrap(),
+        stats,
+    ))
+}
+
+#[test]
+fn copies_out_of_view_are_not_drawn_and_change_nothing() {
+    let eye = Vec3::new(0.0, -6.0, 1.1);
+    let model = sample();
+    let mut scene = vec![(&model, Mat4::IDENTITY)];
+    let Some((_, one)) = render_scene(&scene, looking_north(eye), eye, Sun::default()) else {
+        return;
+    };
+    // A thousand more behind the camera, and far off to the sides.
+    for i in 0..1000 {
+        let x = if i % 2 == 0 { -400.0 } else { 400.0 };
+        scene.push((
+            &model,
+            Mat4::from_translation(Vec3::new(x, -50.0 - i as f32, 0.0)),
+        ));
+    }
+    let (_, all) = render_scene(&scene, looking_north(eye), eye, Sun::default()).unwrap();
+    assert_eq!(
+        all.instances, one.instances,
+        "only the one in view is drawn"
+    );
+    assert_eq!(all.triangles, one.triangles);
+    assert_eq!(
+        all.casting, one.casting,
+        "their shadows can't reach the view"
+    );
+    // The same picture (without shadows, whose map covers more of the
+    // world now, so is a little less sharp).
+    let unshadowed = Sun {
+        shadows: false,
+        ..Sun::default()
+    };
+    let (alone, _) = render_scene(&scene[..1], looking_north(eye), eye, unshadowed).unwrap();
+    let (crowded, _) = render_scene(&scene, looking_north(eye), eye, unshadowed).unwrap();
+    assert!(alone == crowded, "the same picture");
+}
+
+#[test]
+fn a_copy_at_the_edge_of_the_view_is_still_drawn() {
+    // A big square mostly off the left edge of a view looking down from
+    // 10 m: only a sliver shows, and it must.
+    let eye = Vec3::new(0.0, 0.0, 10.0);
+    let mut edge = floor(false);
+    edge.meshes = vec![square(-8.0, 1.0, 3.0)];
+    edge.show_every_mesh();
+    let Some((with, stats)) = render_scene(
+        &[(&edge, Mat4::IDENTITY)],
+        looking_down(eye),
+        eye,
+        Sun::default(),
+    ) else {
+        return;
+    };
+    assert_eq!(stats.instances, 1);
+    let (without, _) = render_scene(&[], looking_down(eye), eye, Sun::default()).unwrap();
+    let size = 128;
+    let column_differs = (0..size).any(|y| pixel(&with, size, 0, y) != pixel(&without, size, 0, y));
+    assert!(column_differs, "the sliver shows at the left edge");
+}
+
+#[test]
+fn a_shadow_from_outside_the_view_falls_into_it() {
+    // Looking down from 10 m (about 5.8 m each way on the ground), the sun
+    // slanting towards +X: a square 6 m up at x = -8, out of view, throws
+    // its shadow onto the floor at x = -2, in view.
+    let eye = Vec3::new(0.0, 0.0, 10.0);
+    let ground = floor(false);
+    let mut roof = floor(false);
+    roof.meshes = vec![square(-8.0, 6.0, 0.8)];
+    roof.show_every_mesh();
+    let scene = [(&ground, Mat4::IDENTITY), (&roof, Mat4::IDENTITY)];
+    let Some((with, stats)) = render_scene(&scene, looking_down(eye), eye, slanted_sun(true))
+    else {
+        return;
+    };
+    assert_eq!(stats.instances, 1, "the roof itself isn't in view");
+    assert_eq!(stats.casting, 2, "but it casts into it");
+    let size = 128;
+    let shadow = ground_pixel(&with, size, -2.0, 0.0);
+    let open = ground_pixel(&with, size, 2.5, 0.0);
+    assert!(
+        brightness(shadow) + 60 < brightness(open),
+        "shadow {shadow:?} not darker than open ground {open:?}"
+    );
+}
+
+#[test]
+fn a_frame_that_did_not_change_sends_nothing() {
+    let Some(gpu) = gpu() else {
+        return;
+    };
+    let renderer = ViewportRenderer::new(&gpu.device, best_sample_count(&gpu.adapter));
+    let mut target = renderer.create_target(&gpu.device, [32, 32]);
+    let model = sample();
+    let uploaded = renderer.upload_model(&gpu.device, &gpu.queue, &model);
+    let eye = Vec3::new(0.0, -10.0, 8.0);
+    let mut copies: Vec<Placement<'_>> = (0..2000)
+        .map(|i| Placement {
+            model: &uploaded,
+            node: None,
+            transform: Mat4::from_translation(Vec3::new(
+                (i % 40) as f32 * 3.0 - 60.0,
+                (i / 40) as f32 * 3.0,
+                0.0,
+            )),
+            pick: 0,
+        })
+        .collect();
+    let params = FrameParams {
+        view_projection: looking_north(eye),
+        camera_position: eye,
+        focus: Vec3::ZERO,
+        sky_top: srgb(SKY_TOP),
+        sky_horizon: srgb(SKY_HORIZON),
+        ground: srgb(GROUND),
+        shading: Shading::default(),
+        size_px: [32, 32],
+        sun: Sun::default(),
+        environment: unmapped(),
+        editor_lines: false,
+        grid_plane: GridPlane::Ground,
+    };
+    let first = renderer.render(&gpu.device, &gpu.queue, &mut target, &params, &copies, &[]);
+    assert!(first.sent_bytes > 0);
+    let first_pixels = read_pixels(&gpu.device, &gpu.queue, &target).unwrap();
+    let again = renderer.render(&gpu.device, &gpu.queue, &mut target, &params, &copies, &[]);
+    assert_eq!(again.sent_bytes, 0, "nothing moved");
+    // One copy in view moves a little, staying in view: one run of copies
+    // is sent for each of its meshes, not all of them. (A copy coming
+    // into view or leaving it moves the ones after it in the buffer, and
+    // those are sent too.)
+    let home = copies[420].transform;
+    copies[420].transform = Mat4::from_translation(Vec3::new(0.5, 30.0, 0.0));
+    let moved = renderer.render(&gpu.device, &gpu.queue, &mut target, &params, &copies, &[]);
+    assert_eq!(moved.instances, first.instances);
+    assert!(
+        moved.sent_bytes > 0 && moved.sent_bytes * 3 < first.sent_bytes,
+        "{moved:?} vs {first:?}"
+    );
+    // And back: the picture is as it was.
+    copies[420].transform = home;
+    renderer.render(&gpu.device, &gpu.queue, &mut target, &params, &copies, &[]);
+    assert!(read_pixels(&gpu.device, &gpu.queue, &target).unwrap() == first_pixels);
 }

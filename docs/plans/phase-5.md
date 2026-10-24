@@ -77,12 +77,13 @@ The working plan for Phase 5 (ROADMAP.md, "Phase 5: Scale"). It records the choi
 - Scale: the stress level's game code, from about 22 ms.
 - **Built.** `script::Game` runs one `Runtime` per core; reads go to a view made at the start of each phase, writes are kept with their place in the order and landed after. On a 2-core machine the stress level's CPU frame went from 29.5 ms to 16.7 ms (game code from about 26 ms to 13.3 ms) and the ceiling from about 7,000 to about 9,500 units; more cores give more. Along the way: the tick limit is per core (the frame waits for the slowest), and stopping components on many entities is one trip per core (a drag of 512 playing entities had become 16 ms; it's 2.9 ms). The cheaper crossings into Lust wait for M7's profile with real ships.
 
-### M4. Drawing only what's seen ☐
+### M4. Drawing only what's seen ☑
 
 - **Culling:** each mesh copy is checked against the camera's view (a sphere around it, then its box), in jobs, and only what's in view is drawn. The sun's shadow map draws only what can cast a shadow into view.
 - **Shadows fitted to the view:** the shadow map covers what the camera sees (near things sharper), not the whole world, so a big world doesn't blur them.
 - **Less to send each frame:** instances that didn't move keep their place in the GPU's buffer; only changes are sent, and each copy is smaller (its place as 3 × 4 numbers; the shader works out the rest), so the gathering scale case reaches its target.
 - Tests: off-screen copies aren't drawn (pixel and count tests); shadows from just outside the view still fall into it; nothing pops at the screen's edges. Scale case: 10,000 units with the camera seeing a tenth of them.
+- **Built.** Copies are culled against the view and the shadows' box, in the gathering jobs; the shadow map covers what's in view up to 200 m (`SHADOW_REACH`) and steps a texel at a time. Each copy went from 104 to 52 bytes (the shader works out the normals' matrix), and only runs of copies that changed are sent. Gathering 100,000 copies went from about 34 ms to about 9 ms on the 2-core machine (Vulkan); a still scene sends nothing after its first frame, but when every copy moves, all of them are still sent (about 10 ms). The rest is memory-bound on this machine; M7's benchmark measures it on real ones before the levels are judged. 10,000 moving units with a tenth in view and shadows on: 1.2 ms. Keeping each copy's place in the GPU's buffer across frames (so a copy entering the view doesn't shift the rest) waited: it needs the world to say what changed, which the review can weigh.
 
 ### M5. LODs ☐
 

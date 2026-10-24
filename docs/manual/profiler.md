@@ -21,13 +21,14 @@ A game feels slow, or you want to know how much more it can take: more units, mo
 | Drawing (CPU) | Handing that to the graphics card. |
 | Editor | Everything else: the panels, the mouse and keys, the interface. |
 | GPU: shadows, models, the last pass | The graphics card's own time: the sun's shadows, the models and sky, then exposure and colour. Measured only on cards that offer it; the Profiler says when yours doesn't. |
-| Drawn | Model copies, triangles and draw calls (one per model part, however many copies). |
+| Drawn | Model copies in view, copies [casting shadows](concepts.md#light) into it, triangles, draw calls (one per model part, however many copies), and how much was sent to the graphics card. Copies out of view aren't drawn at all ([culling](concepts.md#playing)), and copies that didn't move aren't sent again, so a still scene sends next to nothing. |
 
 The CPU and the GPU work at the same time, each on its own frame, so the slower of the two sets the frame rate, not their sum.
 
 ## Tips and common problems
 - **Problem:** Game code is the biggest part. **Why:** many components, or one doing a lot each tick. **Fix:** do less each tick (check things every few ticks, not every one), or move the busiest code to Rust.
 - **Problem:** the GPU's times say they aren't measured. **Why:** your graphics card or its driver doesn't offer timestamps. **Fix:** the CPU's numbers still work; update the graphics driver, which often adds them.
+- **Problem:** Preparing to draw goes up when I turn the camera towards the crowd. **Why:** only what's in view is drawn, so looking at more draws more. **Fix:** nothing to fix; it's the view that counts, not the size of the area.
 - **Problem:** the numbers jump while nothing changes. **Why:** other programs share the computer. **Fix:** read the average in the top line, not single bars.
 
 ## Related
