@@ -91,10 +91,20 @@ pub struct World {
     /// area's Transform for them when it first did: while the area still
     /// has that one, the game's place is kept, even when the world is
     /// built again.
-    game_moved: HashMap<EntityId, Transform>,
+    game_moved: reflect::IdMap<Transform>,
     /// Projectiles in flight: not entities, and kept when the world is
     /// built again.
     projectiles: Projectiles,
+    /// See [`World::changes`]: the last number given, and whether
+    /// anything changed since.
+    stamp: u64,
+    touched: bool,
+}
+
+/// The next of a count shared by every world, so numbers never repeat.
+fn next_number() -> u64 {
+    static NUMBERS: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(1);
+    NUMBERS.fetch_add(1, std::sync::atomic::Ordering::Relaxed)
 }
 
 impl std::fmt::Debug for World {
@@ -140,8 +150,10 @@ impl World {
             unsettled: Vec::new(),
             names: HashMap::new(),
             revision: 0,
-            game_moved: HashMap::new(),
+            game_moved: reflect::IdMap::default(),
             projectiles: Projectiles::default(),
+            stamp: next_number(),
+            touched: false,
         };
         world.index();
         world.place_everything();
@@ -151,8 +163,20 @@ impl World {
     /// A new revision: unique across worlds, so a world built again never
     /// repeats one.
     fn bump_revision(&mut self) {
-        static REVISIONS: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(1);
-        self.revision = REVISIONS.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
+        self.revision = next_number();
+        self.touched = true;
+    }
+
+    /// A number that changes whenever anything that can be seen does:
+    /// where entities are, which there are, the clock or the projectiles
+    /// (never repeating, even in a world built again). What's drawn of
+    /// the world is worked out again only when it changes.
+    pub fn changes(&mut self) -> u64 {
+        if self.touched {
+            self.touched = false;
+            self.stamp = next_number();
+        }
+        self.stamp
     }
 
     /// Works out where each subtree ends, and each name's first entity.
@@ -180,6 +204,7 @@ impl World {
     /// The world for `area` again (it changed in the editor while
     /// playing), keeping the clock.
     pub fn rebuild(&mut self, area: &Area) {
+        self.touched = true;
         let clock = self.clock;
         // Where the game put things stays, unless the area moved them
         // since (an edit, an undo).
@@ -209,6 +234,7 @@ impl World {
     /// among them, standing at the top level. Entities already in the
     /// world are left out. Returns the IDs added, parents first.
     pub fn add_subtree(&mut self, entities: &[(EntityId, area::EntityData)]) -> Vec<EntityId> {
+        self.touched = true;
         let ids: std::collections::HashSet<EntityId> = entities.iter().map(|(id, _)| *id).collect();
         let mut children: HashMap<Option<EntityId>, Vec<(&str, EntityId, &area::EntityData)>> =
             HashMap::new();
@@ -287,6 +313,7 @@ impl World {
     /// Takes each of `ids` and everything under it out of the world (game
     /// code despawned them), without building the rest again.
     pub fn remove_subtrees(&mut self, ids: &[EntityId]) {
+        self.touched = true;
         let mut gone = vec![false; self.order.len()];
         let mut any = false;
         for id in ids {
@@ -340,6 +367,7 @@ impl World {
     /// added, deleted or moved to another parent) builds the whole world
     /// again. Keeps the clock.
     pub fn update(&mut self, area: &Area, changed: impl IntoIterator<Item = (EntityId, bool)>) {
+        self.touched = true;
         for (id, moved) in changed {
             let (Some(data), Some(&entity), Some(&at)) =
                 (area.get(id), self.by_id.get(&id), self.place.get(&id))
@@ -387,6 +415,7 @@ impl World {
             self.clock.ticks += 1;
             self.clock.time += TICK;
             ran += 1;
+            self.touched = true;
         }
         // Behind by more than the most ticks: the rest is dropped.
         if self.clock.carry >= TICK {
@@ -406,6 +435,7 @@ impl World {
     /// ([`Projectiles::tick`]: the editor does it once per tick, before
     /// game code runs).
     pub fn projectiles_mut(&mut self) -> &mut Projectiles {
+        self.touched = true;
         &mut self.projectiles
     }
 
@@ -444,6 +474,7 @@ impl World {
         id: EntityId,
         change: impl FnOnce(Mat4, Transform) -> Option<Transform>,
     ) -> bool {
+        self.touched = true;
         let (Some(&entity), Some(&at)) = (self.by_id.get(&id), self.place.get(&id)) else {
             return false;
         };
@@ -493,6 +524,7 @@ impl World {
     /// Works out every entity's place again if a transform was set since
     /// last time (entities under one that moved follow it).
     pub fn settle(&mut self) {
+        self.touched |= !self.unsettled.is_empty();
         let mut moved = std::mem::take(&mut self.unsettled);
         moved.sort_unstable();
         let mut done = 0;

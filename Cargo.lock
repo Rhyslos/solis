@@ -200,6 +200,7 @@ dependencies = [
  "area",
  "asset_db",
  "assets",
+ "bytemuck",
  "editor",
  "eframe",
  "glam",
@@ -911,6 +912,7 @@ name = "editor"
 version = "0.0.1"
 dependencies = [
  "area",
+ "bytemuck",
  "chrono",
  "egui",
  "egui_dock",
