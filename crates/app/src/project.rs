@@ -133,6 +133,14 @@ impl Projects {
         self.rescan()
     }
 
+    /// Whether a new file is waiting for its sidecar, to be looked at
+    /// again shortly.
+    pub fn waiting(&self) -> bool {
+        self.db
+            .as_ref()
+            .is_some_and(|db| db.look_again_at().is_some())
+    }
+
     /// Whether anything in the assets folder changed since last asked.
     pub fn take_changed(&mut self) -> bool {
         std::mem::take(&mut self.changed)

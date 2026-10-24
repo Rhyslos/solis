@@ -198,6 +198,9 @@ pub struct Viewport {
     menu_open: bool,
     /// The time per frame, smoothed, in seconds.
     frame_time: f32,
+    /// Whether nothing is moving, so frames are only drawn when something
+    /// changes: the corner says "Idle" instead of a frame rate.
+    pub(crate) idle: bool,
     /// How models are shaded.
     pub look: Look,
     /// What the area shows, worked out each frame by the workbench.
@@ -347,6 +350,7 @@ impl Default for Viewport {
             overlays: Overlays::default(),
             menu_open: false,
             frame_time: 1.0 / 60.0,
+            idle: false,
             flying_from: None,
             wheel_carry: 0.0,
             look: Look::default(),
@@ -373,6 +377,9 @@ impl Default for Viewport {
 
 /// How quickly the frame-rate counter follows changes (0 to 1 per frame).
 const FRAME_TIME_SMOOTHING: f32 = 0.05;
+
+/// A gap between frames longer than this means the editor was idle.
+const IDLE_GAP: f32 = 0.25;
 
 impl Viewport {
     /// Swaps view `i`'s own state with the fields in use.
@@ -465,6 +472,19 @@ impl Viewport {
         self.flying_from.is_some()
     }
 
+    /// Whether a view needs the next frame straight away: the camera is
+    /// flying, a click or a drag is going on, or a pick's answer is on its
+    /// way from the graphics card.
+    pub fn needs_frames(&self) -> bool {
+        self.is_flying()
+            || self.tools.pick.is_some()
+            || self.tools.pressing != viewport_tools::Pressing::Nothing
+            || self
+                .panes
+                .iter()
+                .any(|p| p.tools.pick.is_some() || p.flying_from.is_some())
+    }
+
     /// The frame rate shown in the corner.
     pub fn frames_per_second(&self) -> f32 {
         1.0 / self.frame_time.max(1e-4)
@@ -508,7 +528,9 @@ impl Viewport {
     /// one in use (F, adding things and the tool bar follow it).
     pub fn show(&mut self, ui: &mut Ui, renderer: &mut dyn ViewportRenderer, accent: Accent) {
         let dt = ui.input(|i| i.unstable_dt);
-        if dt.is_finite() && dt > 0.0 {
+        // Frames drawn now and then while idle (or the first after) say
+        // nothing about the frame rate.
+        if !self.idle && dt.is_finite() && dt > 0.0 && dt < IDLE_GAP {
             self.frame_time += (dt - self.frame_time) * FRAME_TIME_SMOOTHING;
         }
         let full = ui.max_rect();
@@ -850,11 +872,16 @@ impl Viewport {
     fn stats(&self, ui: &mut Ui, upwards: bool) {
         let s = if self.entities == 1 { "y" } else { "ies" };
         let mut lines = vec![
-            format!(
-                "{:.0} fps · {:.1} ms",
-                self.frames_per_second(),
-                self.frame_time * 1000.0
-            ),
+            if self.idle {
+                // Nothing moves, so nothing is drawn until something does.
+                "Idle".to_string()
+            } else {
+                format!(
+                    "{:.0} fps · {:.1} ms",
+                    self.frames_per_second(),
+                    self.frame_time * 1000.0
+                )
+            },
             format!("{} entit{s}", crate::models::grouped(self.entities)),
         ];
         if self.area.triangles > 0 {

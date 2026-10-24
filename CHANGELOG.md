@@ -6,6 +6,7 @@ What changed in each version, for people using Solis. Newest first.
 
 ### Changed
 
+- The editor draws only when something changes, instead of as fast as it can all the time, so it uses next to no power while you aren't doing anything. The viewport's corner says **Idle** then (decision 0026).
 - What other engines call a *scene* is an **area** in Solis: the Area panel, "Untitled area", and `.solarea` files when saving arrives. Reusable things you place many times (prefabs elsewhere) will be **assemblies**.
 - Everything in an area is now an entity made of components: the sun, the environment, lights and imported models. Properties shows each entity's name and components (Transform first), drawn the same way for every kind of component. The sun's direction is now its **Rotation** under Transform (X tilts it from straight down, Z turns it round) instead of Heading and Height.
 - The sun and the sky, fog and exposure belong to the area now, so they're no longer remembered between sessions on their own; they'll be saved with the area once saving arrives.

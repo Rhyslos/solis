@@ -36,7 +36,7 @@ Whenever you want to look at the world from somewhere else. Solis has one camera
 These are the flat-view controls Unreal Engine uses.
 
 **The corner controls:**
-- **Top right:** frames per second, the time each frame takes, how many entities are in the area, and how many triangles the imported models have.
+- **Top right:** frames per second, the time each frame takes, how many entities are in the area, and how many triangles the imported models have. When nothing moves it says **Idle**: Solis then draws only when something changes, so your computer isn't kept busy (and a laptop stays cool and quiet). Fly the camera or press Play to see the frame rate.
 - **Bottom left:** **≡** chooses the views and which corner controls show. **Perspective ▴** chooses the view's kind (flat views above). The look button (**Standard ▴**) chooses how models are shaded; see [Looks](looks.md). **Show** lists things to hide, arriving in later phases. These menus open upwards.
 - **Bottom centre:** the tools, Select (**Q**), Move (**W**), Rotate (**R**), Scale (**S**) and Transform (**T**). See [Selecting and moving things](selecting-and-moving.md).
 - **Bottom right:** the axis locks (**X**, **Y**, **Z**), **World** or **Object** axes, snapping (**Grid**, **Angle**, **Scale**), and **Camera**, the camera's speed step. See [Selecting and moving things](selecting-and-moving.md).

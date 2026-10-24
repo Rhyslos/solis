@@ -515,6 +515,18 @@ impl Workbench {
         }
     }
 
+    /// Whether the editor needs the next frame straight away: the game is
+    /// running, the camera flies, something is being dragged or a key or
+    /// button is held, or a pick's answer is coming. Otherwise nothing on
+    /// screen moves, and the app draws a frame only when something
+    /// happens ([decision 0026](../../docs/decisions/0026-draw-only-when-something-changes.md)).
+    pub fn wants_frames(&self, ctx: &egui::Context) -> bool {
+        self.playing.as_ref().is_some_and(|p| !p.paused)
+            || self.moving.is_some()
+            || self.viewport.needs_frames()
+            || ctx.input(|i| i.pointer.any_down() || !i.keys_down.is_empty())
+    }
+
     /// Draws the editor filling `ui`, and returns what the app must do.
     pub fn show(
         &mut self,
@@ -522,6 +534,7 @@ impl Workbench {
         renderer: &mut dyn ViewportRenderer,
     ) -> Vec<WorkbenchAction> {
         let mut actions = std::mem::take(&mut self.outbox);
+        self.viewport.idle = !self.wants_frames(ui.ctx());
         if ui.input(|i| i.pointer.any_pressed()) {
             self.gesture += 1;
         }

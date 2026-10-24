@@ -77,6 +77,11 @@ fn job_id(path: &Path) -> AssetId {
 }
 
 impl Thumbnails {
+    /// Whether thumbnails are still to be made or on their way.
+    pub fn waiting(&self) -> bool {
+        !self.queued.is_empty() || self.jobs.running() > 0
+    }
+
     /// The thumbnail of the file at `path` (inside the assets), if made.
     pub fn get(&self, path: &Path) -> Option<egui::TextureId> {
         self.made.get(path).copied()
