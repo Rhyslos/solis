@@ -72,6 +72,9 @@ struct App {
     made_by: String,
     /// What's in the assets folder, as the Library last showed it.
     listing: asset_db::Listing,
+    /// Assemblies that couldn't be read ahead for the Library's listing:
+    /// not tried again until the listing changes.
+    unreadable: HashSet<AssetId>,
     /// The open area's file: saving, opening, and changes on disk.
     area_files: AreaFiles,
     /// Actions waiting for a Save window to close (Save, then quit).
@@ -151,6 +154,7 @@ impl App {
             rust_note: None,
             made_by: format!("{} {}", info.name, info.version),
             listing: asset_db::Listing::default(),
+            unreadable: HashSet::new(),
             area_files: AreaFiles::default(),
             queued: VecDeque::new(),
             title: String::new(),
@@ -719,6 +723,7 @@ impl App {
     /// thumbnails missing.
     fn refresh_library(&mut self) {
         self.listing = self.projects.listing();
+        self.unreadable.clear();
         if let Some(db) = self.projects.db() {
             self.thumbnails
                 .want(&self.listing, &db.project().assets(), self.gpu.as_ref());
@@ -738,12 +743,14 @@ impl App {
             .filter(|item| item.kind == editor::LibraryKind::Assembly)
             .filter_map(|item| item.id)
             .filter(|id| !self.workbench.assemblies().contains_key(id))
+            .filter(|id| !self.unreadable.contains(id))
             .collect();
         self.workbench.set_library(items);
         self.workbench.set_folders(folders);
         for id in assemblies {
             if let Err(why) = self.load_assembly(id, false) {
                 log::debug!("couldn't read an assembly ahead: {why}");
+                self.unreadable.insert(id);
             }
         }
     }

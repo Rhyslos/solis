@@ -65,6 +65,12 @@ What changed in each version, for people using Solis. Newest first.
 
 ### Fixed
 
+- Game code that catches the time limit's error in a loop (`pcall` in Lua) is stopped too, instead of freezing Solis (Phase 5 review).
+- Game code calling `moveTo`, `fire` or `spawn` in a runaway loop can no longer fill the computer's memory before the time limit stops it: past 200,000 changes in one go the rest are left out, and the Console says so.
+- Spawning is limited to 10,000 copies a frame and the area's most entities; past that, the Console says so instead of the area growing until memory runs out.
+- A model naming one huge mesh as the level of detail of many parts can't multiply it past the import limits, and models with thousands of parts import their own levels of detail quickly.
+- A project made so that many entity IDs share their low digits no longer slows Play to a crawl.
+- An assembly that can't be read isn't read again every time the Library updates.
 - **Game code can no longer freeze or crash Solis** (the Phase 4 review): very deeply nested Lust no longer crashes Solis (it's a mistake in Problems: Lust takes at most 150 levels of brackets, blocks or operators inside each other); every place Solis meets game code has a time limit, including reading components and swapping in new code; a tick whose code takes more than a quarter of a second pauses the game and says why, rather than catching up ever more slowly; and what game code says or sends is kept within limits, so it can't fill the computer's memory or the Console. A component whose event reaction keeps failing is said once.
 - Each Lua file now has globals of its own, and Lua's own libraries can't be changed, so one file can't break another or the Lust.
 - The code's start (reading its components) now runs on a worker, never while drawing the editor, and a check that never ends is given up on after a minute with a message.

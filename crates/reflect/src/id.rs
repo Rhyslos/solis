@@ -221,16 +221,21 @@ mod tests {
     }
 }
 
-/// A hasher for maps keyed by IDs: IDs are random numbers already, so
-/// one multiplication mixes them enough, many times quicker than the
-/// standard hasher (which guards against keys chosen to collide; a
-/// crafted file could at most slow a map, never break it).
+/// A hasher for maps keyed by IDs: splitmix64's finishing steps (two
+/// multiplications and three shifts), many times quicker than the
+/// standard hasher. A multiplication alone carries only upwards: maps
+/// choose places by the low bits, and IDs in a file that differ only in
+/// their high bits (anyone can write such a file) would all share one;
+/// the shifts bring every bit down.
 #[derive(Debug, Default, Clone, Copy)]
 pub struct IdHasher(u64);
 
 impl std::hash::Hasher for IdHasher {
     fn finish(&self) -> u64 {
-        self.0
+        let mut z = self.0;
+        z = (z ^ (z >> 30)).wrapping_mul(0xBF58_476D_1CE4_E5B9);
+        z = (z ^ (z >> 27)).wrapping_mul(0x94D0_49BB_1331_11EB);
+        z ^ (z >> 31)
     }
 
     fn write(&mut self, bytes: &[u8]) {
@@ -240,7 +245,7 @@ impl std::hash::Hasher for IdHasher {
     }
 
     fn write_u64(&mut self, n: u64) {
-        self.0 = (self.0.rotate_left(5) ^ n).wrapping_mul(0x9E37_79B9_7F4A_7C15);
+        self.0 = self.0.rotate_left(5) ^ n.wrapping_add(0x9E37_79B9_7F4A_7C15);
     }
 }
 
@@ -274,5 +279,22 @@ mod hasher_tests {
             .map(|id| IdHashing::default().hash_one(id) >> 57)
             .collect();
         assert!(tops.len() > 100, "{}", tops.len());
+    }
+
+    #[test]
+    fn ids_differing_only_high_up_still_spread() {
+        // IDs written to collide in a plain multiply-hash: equal low bits.
+        use std::hash::BuildHasher;
+        let lows: std::collections::HashSet<u64> = (1..=10_000u64)
+            .map(|k| EntityId(Id::from_raw(k << 40).unwrap()))
+            .map(|id| IdHashing::default().hash_one(id) & 0xffff)
+            .collect();
+        assert!(lows.len() > 5_000, "{}", lows.len());
+        let mut map: IdMap<u64> = IdMap::default();
+        let start = std::time::Instant::now();
+        for k in 1..=100_000u64 {
+            map.insert(EntityId(Id::from_raw(k << 40).unwrap()), k);
+        }
+        assert!(start.elapsed() < std::time::Duration::from_millis(500));
     }
 }

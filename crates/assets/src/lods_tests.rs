@@ -189,7 +189,7 @@ fn a_model_s_own_levels_are_used_instead_and_not_drawn_as_parts() {
             node("Turret", vec![2], Mat4::IDENTITY),
         ],
     );
-    add_lods(&mut m);
+    add_lods(&mut m, &crate::model::Limits::default());
     assert!(m.warnings.is_empty(), "{:?}", m.warnings);
     let ship = &m.meshes[0];
     assert_eq!(ship.lods.len(), 1, "its own, not made ones");
@@ -221,7 +221,7 @@ fn a_lonely_or_too_deep_lod_is_said_and_left_alone() {
             node("Ship_LOD9", vec![2], Mat4::IDENTITY),
         ],
     );
-    add_lods(&mut m);
+    add_lods(&mut m, &crate::model::Limits::default());
     assert_eq!(m.warnings.len(), 2, "{:?}", m.warnings);
     assert!(m.warnings[0].contains("no part called Rock"));
     assert!(m.warnings[1].contains("at most 4"));
@@ -244,7 +244,38 @@ fn a_mesh_shown_by_another_node_too_is_kept() {
             node("Spare", vec![1], Mat4::IDENTITY),
         ],
     );
-    add_lods(&mut m);
+    add_lods(&mut m, &crate::model::Limits::default());
     assert_eq!(m.meshes[0].lods.len(), 1);
     assert!(!m.meshes[1].vertices.is_empty());
+}
+
+#[test]
+fn one_mesh_named_the_level_of_many_parts_can_t_multiply_past_the_limits() {
+    // A big mesh (64 x 64 squares) named as level 1 of 50 tiny parts: each
+    // part would get its own copy.
+    let mut meshes = vec![sheet(64, 0.0)];
+    let mut nodes = Vec::new();
+    for i in 0..50 {
+        meshes.push(sheet(1, 0.0));
+        nodes.push(node(&format!("Part{i}"), vec![i + 1], Mat4::IDENTITY));
+        nodes.push(node(&format!("Part{i}_LOD1"), vec![0], Mat4::IDENTITY));
+    }
+    let mut m = model(meshes, nodes);
+    let big = m.meshes[0].vertices.len();
+    let limits = crate::model::Limits {
+        max_vertices: big * 5,
+        ..crate::model::Limits::default()
+    };
+    add_lods(&mut m, &limits);
+    let total: usize = m
+        .meshes
+        .iter()
+        .map(|mesh| mesh.vertices.len() + mesh.lods.iter().map(|l| l.vertices.len()).sum::<usize>())
+        .sum();
+    assert!(total <= limits.max_vertices, "{total} corners");
+    assert!(
+        m.warnings.iter().any(|w| w.contains("left out")),
+        "{:?}",
+        m.warnings
+    );
 }
