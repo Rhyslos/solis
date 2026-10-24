@@ -103,7 +103,7 @@ The working plan for Phase 5 (ROADMAP.md, "Phase 5: Scale"). It records the choi
 - Tests: they move and expire on time; same result on 1 core and many; the cap holds. Scale case: 100,000 projectiles.
 - **Built.** `world::Projectiles` (moved in jobs once per tick, before game code), `fire(from, direction, speed, life, colour)` from Lust, Lua and Rust (a `Change::Fire`, landed in order), and `render_with_bolts`: one instanced draw of glowing streaks, added to the picture, hidden by models. The look is a colour rather than a named look: the two fleets need their own colours, and a streak is what lasers, bolts and tracers share; small meshes (bullets, missiles) can come with Phase 6's physics. The scale levels now fire: each unit keeps ten lasers in flight, so the target level is 2,000 units and 20,000 lasers, the stress level 10,000 and 100,000 (decision 0030). Handing 100,000 to the GPU: 1.2 ms. Stress level CPU frame on the 2-core machine: about 20 to 24 ms, most of it game code (15 to 18 ms; M7 looks at it).
 
-### M7. The benchmark ☐
+### M7. The benchmark ☑
 
 - **Help > Make the benchmark…** makes a project: two fleets of simple ships (made by Solis, nothing proprietary) whose Lust component flies them around and fires lasers, in three areas: `target.solarea`, `stress.solarea` and `ceiling.solarea`.
 - **Spawning from game code** (brought forward from Phase 6, since the ceiling run needs it): `spawn(assembly, place)` and `despawn(entity)` native methods, entities made and removed while the game runs.
@@ -111,6 +111,7 @@ The working plan for Phase 5 (ROADMAP.md, "Phase 5: Scale"). It records the choi
 - The scale check runs the benchmark's own areas headless from now on.
 - Manual: a page on the benchmark and the Profiler; the README's Phase 5 section.
 - Tests: the benchmark's code checks cleanly and plays; spawning and despawning in a tick are safe (events to a removed entity go nowhere).
+- **Built.** `app::benchmark` writes the project (the ship from `assets::sample::ship_glb`, about 2,000 triangles with levels of detail; its sidecar with a fixed ID; the `fighter` assembly; `samples/benchmark/assets/main.lst`; three areas). `spawn(file, place)`, `despawn(entity)` and `frameTime()` ([decision 0035](../decisions/0035-game-code-spawns-into-the-area-while-playing.md)): spawned IDs come from the tick's order, so they're the same on any number of cores. The app reads every assembly in a project so any can be spawned. Projectiles are at least 1.5 pixels wide, so far lasers show. The scale levels now run the benchmark's own `Ship` code, which turns every tick and is twice the work of the old test ship; profiling it found three costs, all fixed: mlua's interrupt wrapper (a fifth of game code: set on Luau directly, [decision 0034](../decisions/0034-a-raw-interrupt-for-the-time-limits.md)), a rotation's keys made as Lua strings on every `turnTo` (a fifth again: made once per tick), and entity IDs hashed with the standard hasher (`reflect::IdMap`). On the 2-core machine the target level went from 8.0 ms to 4.8 ms and the stress level from 35 ms to 24 ms; the levels are judged from now on, the stress level and the 100,000-copy cases on 4 or more cores (the gate's PC), and reported on fewer.
 
 ### End of the phase
 

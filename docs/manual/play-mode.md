@@ -39,6 +39,7 @@ Play, Pause and Stop are buttons only, so a stray key never starts or stops the 
 ## Tips and common problems
 - **Problem:** I changed something while playing and it went back when I pressed Stop. **Why:** that's what Stop is for. **Fix:** make lasting changes after Stop. To keep a value you tried while playing, note it down (or copy the component's values with ⋯ > Copy values, and paste them after Stop).
 - **Problem:** the Game panel shows the editor's view. **Why:** the area has no camera. **Fix:** Entity > Add camera.
+- **Problem:** new entities appear in the Area panel while playing. **Why:** game code made them (`spawn`, see [Game code](game-code.md#making-and-removing-entities)). **Fix:** nothing: they go when you press Stop.
 - **Problem:** the game shows the wrong camera. **Why:** it uses the first one in the Area panel's list. **Fix:** delete the cameras you don't need, or take their Camera component off (the × beside it in Properties).
 - **Problem:** the picture in the Game panel looks different from the viewport. **Why:** the game always uses the standard [look](looks.md); the viewport's look is only for editing. Hidden entities (the eye in the Area panel) show in the game, because hiding is only for the editor.
 

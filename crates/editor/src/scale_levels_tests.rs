@@ -1,6 +1,7 @@
 //! The scale levels (decision 0030), the CPU's share: whole editor
-//! frames while units play, each a model moved by a Lust component that
-//! fires lasers (ten in flight per unit), timed by the Profiler. The GPU's
+//! frames while the benchmark's ships play (its own Lust: each a model
+//! flying a loop and firing lasers, ten in flight per ship), timed by the
+//! Profiler. The GPU's
 //! share is timed on a real graphics card, in the benchmark (Phase 5,
 //! M7).
 //!
@@ -14,40 +15,29 @@ use crate::workbench::Workbench;
 use area::EntityData;
 use area::builtin::Transform;
 use glam::Vec3;
-use reflect::{EntityId, Value};
+use reflect::EntityId;
 use std::sync::Arc;
 
-/// A unit: flies along its heading, turning back at the edge of the
-/// field, and fires a laser ahead every 10 ticks (six a second), each
-/// flying for 1 2/3 seconds: ten in flight per unit, so the levels'
-/// projectiles (decision 0030) come with their units.
-const SHIP: &str = "get \"solis/entity\":[positionOf, moveTo];\n\
-    get \"solis/world\":[fire];\n\
-    component Ship {\n\
-        has {\n\
-            vec3 heading = [1, 0, 0];\n\
-            float speed = 8;\n\
-            int ticks = 0;\n\
-        }\n\
-        method update(float dt) {\n\
-            vec3 at = positionOf(me) + heading * speed * dt;\n\
-            is at.x > 200 || at.x < -200? then {\n\
-                heading = heading * -1;\n\
-            }\n\
-            moveTo(me, at);\n\
-            ticks = ticks + 1;\n\
-            is ticks >= 10? then {\n\
-                ticks = 0;\n\
-                fire(at, heading, 60, 1.66, [4, 0.3, 0.2]);\n\
-            }\n\
-        }\n\
-    }\n\
-    pass Ship;\nend\n";
+/// The benchmark's own game code (Help > Make the benchmark…): each
+/// `Ship` flies a loop and fires a laser six times a second, keeping ten
+/// in flight, so the levels' projectiles (decision 0030) come with their
+/// units.
+const BENCHMARK: &str = include_str!("../../../samples/benchmark/assets/main.lst");
 
-/// A workbench playing `units` ships, each a model, spread over a field.
+/// Where the benchmark places ship number `n` (its Lust's `startOf`).
+fn start_of(n: usize) -> Vec3 {
+    let (team, k) = (n % 2, n / 2);
+    let radius = 20.0 + (k % 40) as f32 * 3.0;
+    let y = (k / 40 % 50) as f32 * 8.0 - 200.0;
+    let z = 12.0 + (k % 3) as f32 * 4.0 + (k / 2000) as f32 * 14.0;
+    let centre = if team == 0 { -120.0 } else { 120.0 };
+    Vec3::new(centre + radius, y, z)
+}
+
+/// A workbench playing `units` of the benchmark's ships, each a model.
 fn fleet(units: usize) -> Workbench {
     let mut files = script::describe::descriptions("Test Engine 9.9.9", "solis");
-    files.push(("main.lst".into(), SHIP.to_string()));
+    files.push(("main.lst".into(), BENCHMARK.to_string()));
     let code = script::Code {
         files,
         lua: Vec::new(),
@@ -63,26 +53,17 @@ fn fleet(units: usize) -> Workbench {
     let asset = model.asset;
     w.models.insert(asset, model);
     w.set_program(Some(Arc::new(program)));
-    let side = (units as f32).sqrt().ceil() as usize;
     let spawns = (0..units)
         .map(|i| {
             let mut data = EntityData::new(&format!("Ship {i}")).with(&Transform {
-                position: Vec3::new(
-                    (i % side) as f32 * 4.0 - 200.0,
-                    (i / side) as f32 * 4.0 - 200.0,
-                    10.0,
-                ),
+                position: start_of(i),
                 ..Transform::default()
             });
             data.set(&area::builtin::Model {
                 asset: Some(reflect::AssetRef { asset, part: None }),
             });
-            let mut ship = reflect::ComponentData::default();
-            // Not all firing on the same tick.
-            ship.set("ticks", Value::Int((i % 10) as i64));
-            let turn = (i as f32 * 0.37).sin();
-            ship.set("heading", Value::floats(&[turn, 1.0 - turn.abs(), 0.0]));
-            data.components.insert("Ship".into(), ship);
+            data.components
+                .insert("Ship".into(), reflect::ComponentData::default());
             area::Edit::Spawn {
                 entities: vec![(EntityId::random(), data)],
             }
@@ -154,16 +135,18 @@ fn split(cpu: [f64; 5]) -> String {
         .join(", ")
 }
 
-/// Whether the levels must already hold. Phase 5's milestones build what
-/// they need; until its end (M7) the scale check reports them only.
-const PHASE_5_DONE: bool = false;
+/// The fewest cores the stress level is judged on: game code runs on
+/// every core (decision 0033), and the gate's PC has many; on fewer, the
+/// level is reported, not judged. The target level is judged on any.
+const STRESS_CORES: usize = 4;
 
-fn level(name: &str, units: usize, budget: f64) {
+fn level(name: &str, units: usize, budget: f64, judged: bool) {
     let (ms, cpu) = cpu_frame(units, 30);
-    let verdict = match (ms <= budget, PHASE_5_DONE) {
-        (true, _) => "ok",
-        (false, true) => "SLOW",
-        (false, false) => "not yet (Phase 5 builds it)",
+    let cores = rayon::current_num_threads();
+    let verdict = match (ms <= budget, judged) {
+        (true, _) => "ok".to_string(),
+        (false, true) => "SLOW".to_string(),
+        (false, false) => format!("reported: judged on {STRESS_CORES}+ cores, this has {cores}"),
     };
     println!(
         "Scale check: the {name} level's CPU frame, {units} units and {} lasers playing \
@@ -171,7 +154,7 @@ fn level(name: &str, units: usize, budget: f64) {
         units * 10,
         split(cpu)
     );
-    if PHASE_5_DONE {
+    if judged {
         assert!(ms <= budget, "{name}: {ms:.2} ms");
     }
 }
@@ -179,13 +162,18 @@ fn level(name: &str, units: usize, budget: f64) {
 #[test]
 #[ignore = "scale check: run by tools/scale/scale-check.sh"]
 fn scale_check_level_target() {
-    level("target", 2_000, 8.0);
+    level("target", 2_000, 8.0, true);
 }
 
 #[test]
 #[ignore = "scale check: run by tools/scale/scale-check.sh"]
 fn scale_check_level_stress() {
-    level("stress", 10_000, 1000.0 / 60.0);
+    level(
+        "stress",
+        10_000,
+        1000.0 / 60.0,
+        rayon::current_num_threads() >= STRESS_CORES,
+    );
 }
 
 #[test]

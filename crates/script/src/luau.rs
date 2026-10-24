@@ -64,7 +64,9 @@ impl Clock {
             until = until.min(all);
         }
         self.call.set(Some(until));
+        let watching = crate::interrupt::Watching::start(self);
         let result = run();
+        drop(watching);
         self.call.set(None);
         result
     }
@@ -97,22 +99,21 @@ impl Clock {
             .is_some_and(|(until, _)| Instant::now() >= until)
     }
 
-    /// The interrupt's verdict: an error once the call's deadline passes.
-    fn check(&self) -> mlua::Result<mlua::VmState> {
-        let Some(until) = self.call.get() else {
-            return Ok(mlua::VmState::Continue);
-        };
+    /// The interrupt's verdict: why the code must stop, once the call's
+    /// deadline passes.
+    pub(crate) fn verdict(&self) -> Option<String> {
+        let until = self.call.get()?;
         let since = self.since.get() + 1;
         if since < READ_EVERY {
             self.since.set(since);
-            return Ok(mlua::VmState::Continue);
+            return None;
         }
         self.since.set(0);
         let now = Instant::now();
         if now <= until {
-            return Ok(mlua::VmState::Continue);
+            return None;
         }
-        Err(mlua::Error::runtime(match self.all.get() {
+        Some(match self.all.get() {
             Some((all, limit)) if now >= all => format!(
                 "the game's code took longer than {} ms all together, so it was stopped",
                 limit.as_millis()
@@ -122,7 +123,7 @@ impl Clock {
                  ends?)",
                 TIME_LIMIT.as_millis()
             ),
-        }))
+        })
     }
 }
 
@@ -189,8 +190,7 @@ impl Luau {
         let lua = Lua::new();
         lua.set_memory_limit(MEMORY_LIMIT)?;
         let clock = Rc::new(Clock::default());
-        let watch = Rc::clone(&clock);
-        lua.set_interrupt(move |_| watch.check());
+        crate::interrupt::watch(&lua)?;
         let globals = lua.globals();
         let (lend, made): (Function, Function) = lua.load(PRELUDE).set_name("=solis").eval()?;
         // The libraries, the prelude's tables and the globals themselves

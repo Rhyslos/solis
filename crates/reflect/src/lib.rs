@@ -12,7 +12,7 @@ mod schema;
 mod value;
 
 pub use component::{Component, ComponentData, Fields};
-pub use id::{AssetId, EntityId, ID_TEXT_LEN, Id, IdError};
+pub use id::{AssetId, EntityId, ID_TEXT_LEN, Id, IdError, IdHasher, IdHashing, IdMap};
 pub use registry::{Registry, RegistryError};
 pub use schema::{ComponentSchema, FieldInfo, FieldKind, Hint};
 pub use value::{AssetRef, Value};

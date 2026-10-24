@@ -214,6 +214,17 @@ impl Workbench {
                 actions.push(WorkbenchAction::MakeSampleGame);
                 ui.close();
             }
+            if ui
+                .button("Make the benchmark…")
+                .on_hover_text(
+                    "Two fleets of ships firing lasers, as a new project in a folder you choose: \
+                     play its areas to see how many this computer keeps at 60 frames a second",
+                )
+                .clicked()
+            {
+                actions.push(WorkbenchAction::MakeBenchmark);
+                ui.close();
+            }
             ui.separator();
             if ui.button(format!("About {}", self.info.name)).clicked() {
                 self.about_open = true;

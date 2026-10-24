@@ -28,7 +28,7 @@ use std::sync::Arc;
 use std::sync::mpsc::{Receiver, Sender, channel};
 
 /// A change game code made to the world, landing when its phase ends.
-#[derive(Debug, Clone, Copy, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum Change {
     /// `moveTo`: put the entity at this place in the world.
     Move(EntityId, Vec3),
@@ -36,6 +36,11 @@ pub enum Change {
     Turn(EntityId, Quat),
     /// `fire`: fire a projectile.
     Fire(crate::host::Shot),
+    /// `spawn`: make a copy of the assembly named here, as this entity,
+    /// at this place.
+    Spawn(EntityId, String, Vec3),
+    /// `despawn`: take this entity (and those under it) out of the game.
+    Despawn(EntityId),
 }
 
 /// The entities of a [`WorldView`]: the same while the world's entities,
@@ -43,7 +48,7 @@ pub enum Change {
 #[derive(Debug, Default)]
 pub struct ViewIndex {
     /// Each entity's number in [`WorldView::places`].
-    slots: HashMap<EntityId, u32>,
+    slots: reflect::IdMap<u32>,
     names: Vec<String>,
     /// Each name's first entity, in the area's tree order.
     first_named: HashMap<String, EntityId>,
@@ -77,6 +82,8 @@ pub struct WorldView {
     pub index: Arc<ViewIndex>,
     /// Where each is in the world (by its number in `index`).
     pub places: Arc<Vec<Mat4>>,
+    /// How long the last frame took, in seconds of real time.
+    pub frame_time: f64,
 }
 
 impl WorldView {
@@ -200,11 +207,52 @@ impl Host for ViewHost {
         self.kept.changes.push((order, Change::Fire(shot)));
     }
 
+    fn spawn(&mut self, assembly: &str, place: Vec3) -> Option<EntityId> {
+        if !place.is_finite() || assembly.is_empty() || assembly.len() > 1024 {
+            return None;
+        }
+        let order = self.order();
+        // Made from where it was asked for in the tick's order and the
+        // time, so the same game makes the same entities on any number of
+        // cores.
+        let id = spawned_id(&order, self.view.time)?;
+        self.kept
+            .changes
+            .push((order, Change::Spawn(id, assembly.to_string(), place)));
+        Some(id)
+    }
+
+    fn despawn(&mut self, which: EntityId) {
+        let order = self.order();
+        self.kept.changes.push((order, Change::Despawn(which)));
+    }
+
+    fn frame_time(&self) -> f64 {
+        self.view.frame_time
+    }
+
     fn at(&mut self, order: &Order) {
         self.at = order.clone();
         self.next = 0;
         self.own.clear();
     }
+}
+
+/// The entity a spawn at `order`, at game time `time`, makes: a hash of
+/// both (FNV-1a), made odd so it's never zero.
+fn spawned_id(order: &Order, time: f64) -> Option<EntityId> {
+    let mut hash: u64 = 0xcbf2_9ce4_8422_2325;
+    let mut eat = |bytes: &[u8]| {
+        for &b in bytes {
+            hash ^= u64::from(b);
+            hash = hash.wrapping_mul(0x0100_0000_01b3);
+        }
+    };
+    eat(&order.major.to_le_bytes());
+    eat(order.component.as_bytes());
+    eat(&order.seq.to_le_bytes());
+    eat(&time.to_bits().to_le_bytes());
+    reflect::Id::from_raw(hash | 1).map(EntityId)
 }
 
 /// What a shard is asked to do.

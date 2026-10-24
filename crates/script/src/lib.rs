@@ -8,6 +8,8 @@ pub mod describe;
 pub mod events;
 pub mod game;
 pub mod host;
+#[allow(unsafe_code)]
+mod interrupt;
 mod lua_components;
 pub mod luau;
 mod lust_program;

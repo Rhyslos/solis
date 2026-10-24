@@ -600,6 +600,7 @@ impl App {
                 } => self.apply_to_assembly(assembly, &path, &component, &field, value),
                 WorkbenchAction::AddSampleArea => self.add_sample(),
                 WorkbenchAction::MakeSampleGame => self.importer.ask_folder(FolderFor::SampleGame),
+                WorkbenchAction::MakeBenchmark => self.importer.ask_folder(FolderFor::Benchmark),
                 WorkbenchAction::NewArea => {
                     self.workbench.new_area();
                     self.area_files.forget();
@@ -729,8 +730,22 @@ impl App {
     fn show_library(&mut self) {
         let thumbnails = &self.thumbnails;
         let (items, folders) = Projects::library(&self.listing, |p| thumbnails.get(p));
+        // Every assembly in the project is known to the editor, so game
+        // code can make copies of any (`spawn`). A broken one shows in
+        // Problems when it's used.
+        let assemblies: Vec<AssetId> = items
+            .iter()
+            .filter(|item| item.kind == editor::LibraryKind::Assembly)
+            .filter_map(|item| item.id)
+            .filter(|id| !self.workbench.assemblies().contains_key(id))
+            .collect();
         self.workbench.set_library(items);
         self.workbench.set_folders(folders);
+        for id in assemblies {
+            if let Err(why) = self.load_assembly(id, false) {
+                log::debug!("couldn't read an assembly ahead: {why}");
+            }
+        }
     }
 
     /// Saves `root` and everything under it as a new assembly in the
@@ -851,6 +866,32 @@ impl App {
         );
     }
 
+    /// Makes the benchmark in `folder` as a new project, opens it and its
+    /// target area, or says why it couldn't.
+    fn make_benchmark(&mut self, folder: &Path) {
+        if let Err(why) = crate::benchmark::make(folder) {
+            self.workbench.log(
+                LogLevel::Error,
+                format!(
+                    "Couldn't make the benchmark in {}: {why}.",
+                    folder.display()
+                ),
+            );
+            return;
+        }
+        self.open_project(folder, false);
+        let area = folder
+            .join(asset_db::ASSETS_FOLDER)
+            .join(crate::benchmark::FIRST_AREA);
+        self.open_area(&area);
+        self.workbench.log(
+            LogLevel::Info,
+            "The benchmark is ready. Press Play and open the Profiler: target.solarea is 2,000 \
+             ships and 20,000 lasers, stress.solarea 10,000 and 100,000, and ceiling.solarea \
+             adds ships until 60 frames a second ends, then says where in the Console.",
+        );
+    }
+
     /// Adds the sample area. With a project open it becomes a file in the
     /// project's assets, imported like any other, so a saved area that
     /// uses it finds it again; without one it's read straight from memory.
@@ -957,6 +998,7 @@ impl eframe::App for App {
         if editing && let Some((purpose, folder)) = self.importer.chosen_folder() {
             match purpose {
                 FolderFor::SampleGame => self.make_sample_game(&folder),
+                FolderFor::Benchmark => self.make_benchmark(&folder),
                 _ => self.open_project(&folder, purpose == FolderFor::NewProject),
             }
         }

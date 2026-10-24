@@ -738,11 +738,19 @@ fn bolt_vs(@builtin(vertex_index) corner: u32, bolt: BoltIn) -> BoltOut {
             across = vec3<f32>(1.0, 0.0, 0.0);
         }
     }
-    let world = point + normalize(across) * s * bolt.width * 0.5;
+    // At least a pixel and a half wide on screen, so far ones still show:
+    // the view's second row turns metres into its -1 to 1 up the image,
+    // divided by the distance (w). Widened ones are dimmed a little, so a
+    // far crowd doesn't wash the picture out.
+    let w = max((frame.view_proj * vec4<f32>(point, 1.0)).w, 1e-4);
+    let row = vec3<f32>(frame.view_proj[0][1], frame.view_proj[1][1], frame.view_proj[2][1]);
+    let pixels_per_metre = length(row) * frame.screen.y * 0.5 / w;
+    let width = max(bolt.width, 1.5 / max(pixels_per_metre, 1e-6));
+    let world = point + normalize(across) * s * width * 0.5;
     var out: BoltOut;
     out.clip = frame.view_proj * vec4<f32>(world, 1.0);
     // Brightest at the head, fading towards the tail.
-    out.color = bolt.color * (1.0 - 0.7 * a);
+    out.color = bolt.color * (1.0 - 0.7 * a) * mix(1.0, bolt.width / width, 0.5);
     out.across = s;
     return out;
 }
