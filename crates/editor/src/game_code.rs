@@ -116,6 +116,25 @@ impl Workbench {
         Ok(())
     }
 
+    /// Replaces the Rust components the open project uses (the app gives
+    /// each project its own): the last ones leave the registry, these
+    /// join it. A name already taken is a problem, and that one is left
+    /// out.
+    pub fn set_rust_components(&mut self, kinds: Vec<script::RustKind>) {
+        for kind in std::mem::take(&mut self.rust_components) {
+            self.document.registry.remove(&kind.schema.name);
+        }
+        self.sources += 1;
+        for kind in kinds {
+            if let Err(why) = self.add_rust_component(kind) {
+                self.log(
+                    LogLevel::Warning,
+                    format!("A Rust component was left out: {why}."),
+                );
+            }
+        }
+    }
+
     /// The components the game's code has, by name.
     pub fn game_components(&self) -> impl Iterator<Item = &str> {
         self.game_components.iter().map(String::as_str)

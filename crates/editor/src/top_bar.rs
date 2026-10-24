@@ -203,6 +203,17 @@ impl Workbench {
                 actions.push(WorkbenchAction::AddSampleArea);
                 ui.close();
             }
+            if ui
+                .button("Make the sample game…")
+                .on_hover_text(
+                    "A small first game, as a new project in a folder you choose: a turret \
+                     shooting at a drone, written in Lust, Lua and Rust that talk through events",
+                )
+                .clicked()
+            {
+                actions.push(WorkbenchAction::MakeSampleGame);
+                ui.close();
+            }
             ui.separator();
             if ui.button(format!("About {}", self.info.name)).clicked() {
                 self.about_open = true;

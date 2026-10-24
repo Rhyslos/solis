@@ -1,0 +1,19 @@
+-- Sparks, the drone's third component, written in Lua: it reacts to the
+-- armour denting (Rust, in armour.rs) and to the drone being destroyed
+-- (Health, in main.lst).
+
+local Sparks = component("Sparks", {
+    { "shown", "int", 0 },
+})
+
+function Sparks:on_Dented(platesLeft)
+    self.shown = self.shown + 1
+    solis.say("Sparks fly from " .. solis.nameOf(self.me) .. ": " .. platesLeft .. " armour plates left.")
+end
+
+function Sparks:on_Destroyed()
+    solis.say(solis.nameOf(self.me) .. " is destroyed!")
+    -- It drops to the ground.
+    local at = solis.positionOf(self.me)
+    solis.moveTo(self.me, vec3(at.x, at.y, 0))
+end

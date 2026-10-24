@@ -28,7 +28,7 @@ Solis is built in phases, one milestone per pull request. Each phase ends with a
 
 **Overall: 25 of 60 milestones** `█████░░░░░░░░` 42%
 
-**Now:** Phases 1, 2 and 3 are built and wait for their gates to be tried by hand ([Phase 3 plan](docs/plans/phase-3.md)). Phase 4, game code, is under way ([Phase 4 plan](docs/plans/phase-4.md)).
+**Now:** Phases 1, 2 and 3 are built and wait for their gates to be tried by hand ([Phase 3 plan](docs/plans/phase-3.md)). Phase 4, game code, is built too ([Phase 4 plan](docs/plans/phase-4.md)); its review and gate are next.
 
 ### Phase 0 · Groundwork — 7 of 7
 
@@ -93,9 +93,9 @@ Solis is built in phases, one milestone per pull request. Each phase ends with a
 
 **Gate:** build a small area from scratch, press Play, stop, and everything is back as it was.
 
-### Phase 4 · Lust and Lua join — 5 of 6
+### Phase 4 · Lust and Lua join — 6 of 6
 
-`███████████░░` 83%
+`█████████████` 100%
 
 <details>
 <summary>Milestones</summary>
@@ -105,7 +105,7 @@ Solis is built in phases, one milestone per pull request. Each phase ends with a
 - [x] Vectors and rotations in Lust, and typed events between components (Lust and Rust)
 - [x] Fast changes: a Lust edit in play mode within 2 seconds (about 0.33 s)
 - [x] Lua components
-- [ ] A first game in Lust: a small sample the later phases keep growing
+- [x] A first game in Lust: the turret sample (Help > Make the sample game), in Lust, Lua and Rust
 
 </details>
 

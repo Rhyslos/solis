@@ -515,6 +515,11 @@ fn help_offers_the_sample_area() {
     h.get_by_label("Add the sample area").click();
     h.run();
     assert!(h.state().1.contains(&WorkbenchAction::AddSampleArea));
+    h.get_by_label("Help").click();
+    h.run();
+    h.get_by_label("Make the sample game…").click();
+    h.run();
+    assert!(h.state().1.contains(&WorkbenchAction::MakeSampleGame));
 }
 
 #[test]

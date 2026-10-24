@@ -75,9 +75,10 @@ The working plan for Phase 4 (ROADMAP.md, "Phase 4: Lust and Lua join"). It reco
 - A Lua edit takes effect at once while playing, swapped the same way.
 - Tests: a Lua component's fields in the registry; a Lua and a Lust component exchanging events.
 
-### M6. A first game in Lust ☐
+### M6. A first game in Lust ☑
 
 - A small sample project: a turret with ammo, cooldown and damage, shooting at targets with health. It's written in Lust, with one Lua and one Rust component talking to it through events. The later phases keep growing it.
 - The first page of the Lust guide for Solis in the manual: writing a component, its fields in Properties, events, and changing code while the game runs. Every example is shown in Lust, Rust and Lua.
-- Comparison tests (decision 0028): the sample's Lust is run both ways, in Luau and as Rust (`lust::to_rust_library`, built in a test), and the results compared tick by tick.
+- Comparison tests (decision 0028): the sample's Lust is run both ways, in Luau and as Rust (`lust::to_rust_library`, built in a test), and the results compared tick by tick. **Postponed to Phase 10** ([decision 0029](../decisions/0029-the-sample-s-rust-component-is-built-in.md)): the generated Rust uses `unsafe` for the local time; asked of the Lust chat to make it safe. Lust's own checks compare the two on every change.
+- **Built:** the sample's Rust component (Armour) is compiled into Solis from `samples/turret/assets/armour.rs`, offered only in that project (decision 0029); **Help > Make the sample game…** writes the project.
 - The phase's code review (decision 0027) and scale check, before the gate.

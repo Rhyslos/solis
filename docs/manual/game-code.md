@@ -153,7 +153,7 @@ end
 
 When the Lust declares the event, its values are checked against what it carries; Lua can also send events no Lust declares.
 
-**In Rust**, a component implements `script::RustComponent`, and takes and sends the same events by name. For now it's added to Solis with `Workbench::add_rust_component` in a Solis built from source; how a game's Rust is built in comes with building games, in Phase 10.
+**In Rust**, a component implements `script::RustComponent`, and takes and sends the same events by name. Solis can't build a game's own Rust until Phase 10; until then, the [turret sample](first-game.md)'s Rust component is built into Solis to show how it works.
 
 ```rust
 fn handle(&mut self, cx: &mut Context<'_>, event: &Event) -> bool {
@@ -192,6 +192,7 @@ Other code files can sit in any folder in `assets`. Fetch them by their path fro
 - Commit the `solis` folder with your game, so `lust check` works on other computers too.
 
 ## Related
+- [Your first game: the turret sample](first-game.md)
 - [Problems](problems.md)
 - [Projects and the Library](projects-and-the-library.md)
 - [Entities and components](entities.md)

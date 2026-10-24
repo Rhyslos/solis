@@ -14,6 +14,7 @@ What changed in each version, for people using Solis. Newest first.
 
 ### Added
 
+- **A first game (Phase 4):** **Help > Make the sample game…** makes the turret sample as a new project: a Lust turret shoots at a drone whose health (Lust), armour (Rust) and sparks (Lua) react to each other through events. The manual's new page, Your first game, walks through it.
 - **Lua components (Phase 4):** a `.lua` file in the assets makes components with `component("Name", { { "speed", "float", 2 } })`, the way Lua code usually makes classes. They show in Properties, run in play mode with the same engine methods (`solis.moveTo`), send and handle the same events as Lust's (`solis.send`, `on_Hit`), and take new code while the game runs. Mistakes show in Problems with their file and line.
 - **Changing code while the game runs (Phase 4):** saving Lust while playing swaps the new code into the running game in about a third of a second. Every component keeps its values by name; fields whose kind changed, and new fields, start over, and the Console says which. New components start, removed ones stop, and a mistake leaves the last working code running.
 - **Events between components (Phase 4):** Lust components send events (`send Hit(me, 2.5) to target;`) and react to them (`on Hit(…)`), delivered after each tick's updates in a fixed order. Components written in Rust take part through `script::RustComponent`, for now in a Solis built from source. Components that keep sending to each other are stopped after 10,000 events in a tick, with a message.
