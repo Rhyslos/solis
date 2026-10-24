@@ -2,6 +2,8 @@
 //! (CONTRIBUTING rule 9), and checked by the Lust compiler. Both are slow
 //! enough to run on a worker, never on the frame.
 
+use reflect::ComponentSchema;
+use std::io::Read;
 use std::path::Path;
 
 /// The most a code file may hold.
@@ -12,6 +14,14 @@ pub const MAX_TOTAL_BYTES: u64 = 16 << 20;
 pub const MAX_FILES: usize = 10_000;
 /// The game's first file, which Lust starts from.
 pub const ENTRY: &str = "main.lst";
+/// The deepest brackets may nest in game code.
+pub const MAX_NESTING: usize = 200;
+/// The most a statement may hold (not counting text in quotes, or
+/// comments).
+pub const MAX_STATEMENT_BYTES: usize = 64 << 10;
+/// The stack the compiler runs with: it reads nested code by nesting
+/// itself, and the limits above keep it well inside this.
+const COMPILER_STACK: usize = 256 << 20;
 
 /// A project's Lust files, read.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
@@ -40,6 +50,9 @@ pub struct Compiled {
     pub lust: Option<lust::LuaChunk>,
     /// The Lua files (path inside the assets, and text), sorted by path.
     pub lua: Vec<(String, String)>,
+    /// Its components (Lust and Lua) as the editor shows them, sorted by
+    /// name: read by starting the code on its own, with no world.
+    pub schemas: Vec<ComponentSchema>,
 }
 
 /// A mistake in the game's code: where it is, and what's wrong.
@@ -133,9 +146,15 @@ pub fn gather(assets: &Path) -> Code {
             ));
             continue;
         }
-        match std::fs::read(&path).map(String::from_utf8) {
-            Ok(Ok(text)) => {
-                total += size;
+        match read_within(&path, MAX_FILE_BYTES.min(MAX_TOTAL_BYTES - total)) {
+            Ok(None) => code.notes.push(format!(
+                "{inside} is left out: it grew past the limits while it was read."
+            )),
+            Ok(Some(Err(_))) => code
+                .notes
+                .push(format!("{inside} is left out: it isn't text.")),
+            Ok(Some(Ok(text))) => {
+                total += text.len() as u64;
                 let is_lua = path
                     .extension()
                     .is_some_and(|e| e.eq_ignore_ascii_case("lua"));
@@ -145,13 +164,26 @@ pub fn gather(assets: &Path) -> Code {
                     code.files.push((inside, text));
                 }
             }
-            Ok(Err(_)) => code
-                .notes
-                .push(format!("{inside} is left out: it isn't text.")),
             Err(e) => code.notes.push(format!("{inside} couldn't be read ({e}).")),
         }
     }
     code
+}
+
+/// A file's text, reading at most `most` bytes: `None` if it holds more
+/// (it may have grown since its size was looked at).
+fn read_within(
+    path: &Path,
+    most: u64,
+) -> std::io::Result<Option<Result<String, std::string::FromUtf8Error>>> {
+    let mut bytes = Vec::new();
+    std::fs::File::open(path)?
+        .take(most + 1)
+        .read_to_end(&mut bytes)?;
+    if bytes.len() as u64 > most {
+        return Ok(None);
+    }
+    Ok(Some(String::from_utf8(bytes)))
 }
 
 /// Checks the game's code: every mistake found, in order (none when it's
@@ -161,14 +193,41 @@ pub fn check(code: &Code) -> Vec<CodeProblem> {
 }
 
 /// The game's code made ready to run: the Lust checked and turned into
-/// Lua for Luau (starting from [`ENTRY`]), and the Lua files checked for
-/// mistakes in how they're written. `Ok(None)` when there's no code;
-/// otherwise the code, or every mistake found. A crash inside the Lust
-/// compiler is a mistake too.
+/// Lua for Luau (starting from [`ENTRY`]), the Lua files checked for
+/// mistakes in how they're written, and the whole started on its own to
+/// read its components. `Ok(None)` when there's no code; otherwise the
+/// code, or every mistake found. A crash inside the Lust compiler is a
+/// mistake too.
+///
+/// Runs on a thread of its own with a large stack (code nested too deep
+/// for it is a mistake found first), so call it from a worker.
 pub fn compile(code: &Code) -> Result<Option<Compiled>, Vec<CodeProblem>> {
     if code.is_empty() {
         return Ok(None);
     }
+    let too_deep = nesting_problems(code);
+    if !too_deep.is_empty() {
+        return Err(too_deep);
+    }
+    let code = code.clone();
+    let worker = std::thread::Builder::new()
+        .name("lust compiler".into())
+        .stack_size(COMPILER_STACK)
+        .spawn(move || compile_here(&code));
+    match worker.map(std::thread::JoinHandle::join) {
+        Ok(Ok(result)) => result,
+        Ok(Err(_)) => Err(vec![compiler_stopped()]),
+        Err(why) => Err(vec![CodeProblem {
+            file: ENTRY.to_string(),
+            line: 0,
+            column: 0,
+            message: format!("the code couldn't be checked: there was no room to start ({why})"),
+        }]),
+    }
+}
+
+/// [`compile`], on this thread.
+fn compile_here(code: &Code) -> Result<Option<Compiled>, Vec<CodeProblem>> {
     let mut problems = Vec::new();
     let mut lust = None;
     if !code.files.is_empty() {
@@ -192,14 +251,119 @@ pub fn compile(code: &Code) -> Result<Option<Compiled>, Vec<CodeProblem>> {
             }
         }
     }
-    if problems.is_empty() {
-        Ok(Some(Compiled {
-            lust,
-            lua: code.lua.clone(),
-        }))
-    } else {
-        Err(problems)
+    if !problems.is_empty() {
+        return Err(problems);
     }
+    let mut compiled = Compiled {
+        lust,
+        lua: code.lua.clone(),
+        schemas: Vec::new(),
+    };
+    // Starting it here reads its components, so the editor needn't on the
+    // frame.
+    let started = crate::Runtime::new().and_then(|mut runtime| {
+        runtime
+            .load(&compiled, &mut crate::NoHost)
+            .map(|()| runtime)
+    });
+    let runtime = match started {
+        Ok(runtime) => runtime,
+        Err(failure) => {
+            let mut at = failure.at;
+            at.message = format!("the code stopped while starting: {}", at.message);
+            return Err(vec![at]);
+        }
+    };
+    compiled.schemas = runtime.schemas();
+    Ok(Some(compiled))
+}
+
+/// Code nested deeper than [`MAX_NESTING`], or a statement longer than
+/// [`MAX_STATEMENT_BYTES`], as mistakes (one per file at most): the
+/// compiler would need too much stack for them.
+fn nesting_problems(code: &Code) -> Vec<CodeProblem> {
+    code.files
+        .iter()
+        .filter_map(|(path, text)| {
+            let (line, message) = too_deep(text)?;
+            Some(CodeProblem {
+                file: path.clone(),
+                line,
+                column: 0,
+                message,
+            })
+        })
+        .collect()
+}
+
+/// Where `text` first nests too deep, or has too long a statement, and
+/// what's wrong. Text in quotes and comments (`--`, `//`, `--[[ ]]`)
+/// don't count.
+fn too_deep(text: &str) -> Option<(u32, String)> {
+    let bytes = text.as_bytes();
+    let mut depth = 0usize;
+    let mut statement = 0usize;
+    let mut line = 1u32;
+    let mut i = 0;
+    while i < bytes.len() {
+        let c = bytes[i];
+        let next = bytes.get(i + 1).copied();
+        match c {
+            b'\n' => line += 1,
+            b'"' => {
+                i += 1;
+                while i < bytes.len() && bytes[i] != b'"' {
+                    match bytes[i] {
+                        b'\\' => i += 1,
+                        b'\n' => line += 1,
+                        _ => {}
+                    }
+                    i += 1;
+                }
+            }
+            b'-' if next == Some(b'-') && text[i..].starts_with("--[[") => {
+                let end = text[i..].find("]]").map_or(bytes.len(), |e| i + e + 1);
+                line += text[i..end].matches('\n').count() as u32;
+                i = end;
+            }
+            b'-' | b'/' if next == Some(c) => {
+                while i < bytes.len() && bytes[i] != b'\n' {
+                    i += 1;
+                }
+                continue;
+            }
+            b'(' | b'[' | b'{' => {
+                depth += 1;
+                if depth > MAX_NESTING {
+                    return Some((
+                        line,
+                        format!(
+                            "brackets nest more than {MAX_NESTING} deep here; split the code \
+                             into smaller pieces"
+                        ),
+                    ));
+                }
+            }
+            b')' | b']' | b'}' => depth = depth.saturating_sub(1),
+            _ => {}
+        }
+        if matches!(c, b';' | b'{' | b'}') {
+            statement = 0;
+        } else if !c.is_ascii_whitespace() {
+            statement += 1;
+            if statement > MAX_STATEMENT_BYTES {
+                return Some((
+                    line,
+                    format!(
+                        "this statement is longer than {} KB; split it into smaller ones",
+                        MAX_STATEMENT_BYTES >> 10
+                    ),
+                ));
+            }
+        }
+        i += 1;
+    }
+    None
 }
 
 /// The mistake of having Lust but no [`ENTRY`] (none if it's there).
@@ -273,6 +437,15 @@ mod tests {
         assert_eq!(paths, ["main.lst", "weapons/gun.lst"]);
         assert_eq!(code.notes.len(), 2, "{:?}", code.notes);
         assert!(gather(&assets.join("missing")).is_empty());
+    }
+
+    #[test]
+    fn a_file_is_read_only_as_far_as_the_limit() {
+        let assets = folder("within");
+        std::fs::write(assets.join("main.lst"), "end\n").unwrap();
+        let text = read_within(&assets.join("main.lst"), 4).unwrap();
+        assert_eq!(text.unwrap().unwrap(), "end\n");
+        assert!(read_within(&assets.join("main.lst"), 3).unwrap().is_none());
     }
 
     #[test]
@@ -384,5 +557,67 @@ mod tests {
             let _ = check(&code);
             let _ = compile(&code);
         }
+    }
+
+    #[test]
+    fn code_nested_ever_so_deep_is_a_mistake_never_a_crash() {
+        // Each of these overflowed the compiler's stack once, which ends
+        // the whole program (it can't be caught).
+        let deep = |text: String| Code {
+            files: vec![("main.lst".into(), text)],
+            lua: Vec::new(),
+            notes: Vec::new(),
+        };
+        let cases = [
+            format!(
+                "int x = {}1{};\nend\n",
+                "(".repeat(100_000),
+                ")".repeat(100_000)
+            ),
+            format!(
+                "int x = 1;\nint y = {}1{};\nend\n",
+                "[".repeat(5_000),
+                "]".repeat(5_000)
+            ),
+            format!("bool x = {}true;\nend\n", "not ".repeat(200_000)),
+            format!("int x = {}1;\nend\n", "- ".repeat(200_000)),
+            format!("int x = 1{};\nend\n", " + 1".repeat(200_000)),
+            format!(
+                "component A {{\n    has {{\n        int x = 1;\n    }}\n    method update(float dt) {{\n{}x = 2;\n{}    }}\n}}\npass A;\nend\n",
+                "is x == 1? then {\n".repeat(5_000),
+                "}\n".repeat(5_000)
+            ),
+        ];
+        for text in cases {
+            let problems = compile(&deep(text)).unwrap_err();
+            assert!(!problems.is_empty());
+        }
+        // Just inside the limits: a long sum is a mistake Luau finds
+        // (it's too deep for it), and no crash either.
+        let long = format!(
+            "int y = 1{};\nend\n",
+            " + 1".repeat(MAX_STATEMENT_BYTES / 3 - 10)
+        );
+        assert!(compile(&deep(long)).is_err());
+        // Deep, but not too deep, compiles, and the editor loads it on its
+        // own thread, with an ordinary stack.
+        let inside = format!(
+            "int x = {}1{};\nint y = 1{};\nend\n",
+            "(".repeat(MAX_NESTING - 1),
+            ")".repeat(MAX_NESTING - 1),
+            " + 1".repeat(150)
+        );
+        let compiled = compile(&deep(inside)).unwrap().unwrap();
+        crate::Runtime::new()
+            .unwrap()
+            .load(&compiled, &mut crate::NoHost)
+            .unwrap();
+        // Text in quotes and comments doesn't count.
+        let quoted = format!(
+            "string s = \"{}\";\n-- {}\nend\n",
+            "(".repeat(1_000),
+            "[".repeat(1_000)
+        );
+        assert!(too_deep(&quoted).is_none());
     }
 }

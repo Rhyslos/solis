@@ -48,10 +48,11 @@ fn loaded(main: &str) -> Runtime {
         Ok(chunk) => crate::code::Compiled {
             lust: Some(chunk),
             lua: Vec::new(),
+            schemas: Vec::new(),
         },
         Err(problems) => panic!("{}", problems[0]),
     };
-    let mut runtime = Runtime::new();
+    let mut runtime = Runtime::new().unwrap();
     runtime.add_rust(armour());
     runtime.load(&chunk, &mut NoHost).unwrap();
     runtime
@@ -156,11 +157,11 @@ fn events_reach_every_component_on_the_entity_in_name_order_lust_and_rust_alike(
     run(&mut runtime, target, "Health");
     run(&mut runtime, target, "Armour");
     let mut log = Log::default();
-    assert!(runtime.tick(0.1, &mut log).is_empty());
+    assert!(runtime.tick(0.1, &mut log).failures.is_empty());
     // After the updates; Armour before Health (by name).
     assert_eq!(log.0, ["bang", "armour has 1 plates", "hp 7.5"]);
     log.0.clear();
-    assert!(runtime.tick(0.1, &mut log).is_empty());
+    assert!(runtime.tick(0.1, &mut log).failures.is_empty());
     // Armour breaks and sends Broken, which joins the end of the same
     // tick's queue: after Health has taken the Hit.
     assert_eq!(
@@ -188,7 +189,7 @@ fn a_failing_rust_component_stops_alone_and_wrong_values_leave_the_handler_runni
         .unwrap();
     run(&mut runtime, target, "Health");
     let mut log = Log::default();
-    let failures = runtime.tick(0.1, &mut log);
+    let failures = runtime.tick(0.1, &mut log).failures;
     assert_eq!(failures.len(), 1);
     assert_eq!(failures[0].component, "Armour");
     assert!(failures[0].at.message.contains("fell apart"));
@@ -198,12 +199,16 @@ fn a_failing_rust_component_stops_alone_and_wrong_values_leave_the_handler_runni
     );
     // A Rust component sending an event with the wrong values: the Lust
     // handler reports it and keeps running.
-    runtime.queue.borrow_mut().push_back(Event {
-        to: target,
-        name: "Hit".into(),
-        values: vec![Value::Text("oops".into())],
-    });
-    let failures = runtime.tick(0.1, &mut log);
+    runtime
+        .queue
+        .borrow_mut()
+        .push(Event {
+            to: target,
+            name: "Hit".into(),
+            values: vec![Value::Text("oops".into())],
+        })
+        .unwrap();
+    let failures = runtime.tick(0.1, &mut log).failures;
     let wrong: Vec<_> = failures
         .iter()
         .filter(|f| f.component == "Health")
@@ -236,7 +241,7 @@ fn components_that_keep_sending_to_each_other_are_cut_off() {
          pass Echo;\nend\n",
     );
     run(&mut runtime, id(3), "Echo");
-    let failures = runtime.tick(0.1, &mut NoHost);
+    let failures = runtime.tick(0.1, &mut NoHost).failures;
     assert_eq!(failures.len(), 1, "{failures:?}");
     assert!(failures[0].at.message.contains("more than 10000 events"));
     assert_eq!(
@@ -244,5 +249,5 @@ fn components_that_keep_sending_to_each_other_are_cut_off() {
         Some(&Value::Int(MAX_DELIVERIES as i64))
     );
     // The next tick starts with an empty queue.
-    assert!(runtime.tick(0.1, &mut NoHost).is_empty());
+    assert!(runtime.tick(0.1, &mut NoHost).failures.is_empty());
 }

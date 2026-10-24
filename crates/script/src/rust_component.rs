@@ -71,13 +71,19 @@ impl<'a> Context<'a> {
 
     /// Sends the event `name` carrying `values` to `to` (nowhere for
     /// `None`). It's delivered after this tick's updates, in order.
-    pub fn send(&mut self, to: Option<EntityId>, name: &str, values: Vec<Value>) {
-        if let Some(to) = to {
-            self.queue.borrow_mut().push_back(Event {
+    /// Returns whether it was sent: not when too many events are waiting
+    /// already ([`crate::events::MAX_WAITING`]).
+    pub fn send(&mut self, to: Option<EntityId>, name: &str, values: Vec<Value>) -> bool {
+        let Some(to) = to else {
+            return false;
+        };
+        self.queue
+            .borrow_mut()
+            .push(Event {
                 to,
                 name: name.to_string(),
                 values,
-            });
-        }
+            })
+            .is_ok()
     }
 }

@@ -6,19 +6,20 @@ use crate::code::CodeProblem;
 use crate::convert::{empty, from_lua, kind_of, label};
 use crate::events::{EventKinds, read_events};
 use crate::host::{Host, call_with};
-use crate::lua_components::Field;
+use crate::lua_components::{Field, MAX_MESSAGE_BYTES};
+use crate::luau::{Luau, capped};
 use crate::runtime::{Failure, Swapped};
-use mlua::{Lua, Table, Value as LuaValue};
+use mlua::{Function, Table, Value as LuaValue};
 use reflect::{ComponentSchema, FieldInfo};
-use std::cell::Cell;
 use std::collections::BTreeMap;
 use std::rc::Rc;
-use std::time::Instant;
 
 /// The loaded Lust.
 pub(crate) struct LustProgram {
     /// The table the chunk gave back: `components`, `new`, `swap`.
     pub(crate) api: Table,
+    /// Its globals, where its natives are lent (`LUST_NATIVES`).
+    pub(crate) env: Table,
     pub(crate) chunk: lust::LuaChunk,
     /// Each component's fields, by component name.
     pub(crate) fields: BTreeMap<String, Vec<Field>>,
@@ -27,34 +28,57 @@ pub(crate) struct LustProgram {
     pub(crate) events: Rc<EventKinds>,
 }
 
-/// Evaluates `chunk` in `lua` (the program's own start runs, with the
-/// natives lent from `host`), and reads its components and events.
+/// `chunk` compiled in `luau`, with globals of its own (not run yet).
+pub(crate) fn compile(luau: &Luau, chunk: &lust::LuaChunk) -> Result<(Function, Table), Failure> {
+    let failed = |err: mlua::Error| start_failure(chunk, &err);
+    let env = luau.env().map_err(failed)?;
+    let function = luau
+        .lua
+        .load(&chunk.code)
+        .set_name(lust::LuaChunk::NAME)
+        .set_environment(env.clone())
+        .into_function()
+        .map_err(failed)?;
+    Ok((function, env))
+}
+
+/// Runs the compiled `chunk` (the program's own start, with the natives
+/// lent from `host`; what it sends goes nowhere, since nothing runs yet),
+/// and reads its components and events.
 pub(crate) fn prepare(
-    lua: &Lua,
-    deadline: &Cell<Option<Instant>>,
+    luau: &Luau,
     host: &mut dyn Host,
     chunk: &lust::LuaChunk,
+    (function, env): (Function, Table),
 ) -> Result<LustProgram, Failure> {
-    let failed = |err: mlua::Error| Failure {
-        entity: None,
-        component: String::new(),
-        at: located(chunk, &err),
-        stopped: true,
-    };
-    // Sends during the program's own start go nowhere: nothing runs yet.
-    let api: Table = call_with(lua, deadline, host, None, || {
-        lua.load(&chunk.code).set_name(lust::LuaChunk::NAME).eval()
+    let failed = |err: mlua::Error| start_failure(chunk, &err);
+    let discard = Some(&luau.discard);
+    let api: Table =
+        call_with(luau, Some(&env), host, discard, || function.call(())).map_err(failed)?;
+    // Reading the components makes one of each, which works out their
+    // fields' starting values: game code, so the natives are lent too.
+    let ((fields, schemas), events) = call_with(luau, Some(&env), host, discard, || {
+        Ok((read_components(&api)?, read_events(&api)?))
     })
     .map_err(failed)?;
-    let (fields, schemas) = read_components(&api).map_err(failed)?;
-    let events = Rc::new(read_events(&api).map_err(failed)?);
     Ok(LustProgram {
         api,
+        env,
         chunk: chunk.clone(),
         fields,
         schemas,
-        events,
+        events: Rc::new(events),
     })
+}
+
+/// A failure while the program started.
+fn start_failure(chunk: &lust::LuaChunk, err: &mlua::Error) -> Failure {
+    Failure {
+        entity: None,
+        component: String::new(),
+        at: located(chunk, err),
+        stopped: true,
+    }
 }
 
 /// Each component's fields, and its schema for the editor (starting
@@ -114,8 +138,14 @@ fn read_components(
 
 /// What changed between the Lust whose table is `old` and `new` (Lust's
 /// `changes`), into `swapped`.
-pub(crate) fn changes(new: &LustProgram, old: Table, swapped: &mut Swapped) -> mlua::Result<()> {
-    let changes: Table = new.api.get::<mlua::Function>("changes")?.call(old)?;
+pub(crate) fn changes(
+    luau: &Luau,
+    new: &LustProgram,
+    old: Table,
+    swapped: &mut Swapped,
+) -> mlua::Result<()> {
+    let compare: Function = new.api.raw_get("changes")?;
+    let changes: Table = luau.clock.limited(|| compare.call(old))?;
     for (what, list) in [
         ("changed", &mut swapped.changed),
         ("removed", &mut swapped.removed),
@@ -136,6 +166,6 @@ pub(crate) fn located(chunk: &lust::LuaChunk, err: &mlua::Error) -> CodeProblem 
         file: at.file,
         line: at.line.unwrap_or(0),
         column: at.column.unwrap_or(0),
-        message: at.message,
+        message: capped(&at.message, MAX_MESSAGE_BYTES),
     }
 }

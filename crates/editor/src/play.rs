@@ -9,7 +9,7 @@
 
 use crate::console::LogLevel;
 use crate::document::Document;
-use crate::game_code::{WorldHost, failure_text, sync_all, sync_entity};
+use crate::game_code::{WorldHost, failure_text, new_runtime, sync_all, sync_entity};
 use crate::panel::Panel;
 use crate::workbench::{Workbench, WorkbenchAction};
 use area::text::AreaFile;
@@ -139,10 +139,13 @@ impl Workbench {
         if self.program.is_none() && self.rust_components.is_empty() {
             return None;
         }
-        let mut runtime = script::Runtime::new();
-        for kind in &self.rust_components {
-            runtime.add_rust(kind.clone());
-        }
+        let mut runtime = match new_runtime(&self.rust_components) {
+            Ok(runtime) => runtime,
+            Err(failure) => {
+                self.tell_game(Vec::new(), &[failure]);
+                return None;
+            }
+        };
         let mut host = WorldHost::new(world, 0.0);
         if let Some(chunk) = self.program.clone()
             && let Err(failure) = runtime.load(&chunk, &mut host)
@@ -260,6 +263,7 @@ impl Workbench {
             said.append(&mut host.said);
             playing.world.settle();
         }
+        let mut pause = None;
         if !playing.paused {
             let ran = playing.world.step(f64::from(seconds));
             if let Some(game) = &mut playing.game {
@@ -267,14 +271,28 @@ impl Workbench {
                 for i in 0..ran {
                     let time = now - world::TICK * (ran - 1 - i) as f64;
                     let mut host = WorldHost::new(&mut playing.world, time);
-                    failures.extend(game.tick(world::TICK, &mut host));
+                    let ticked = game.tick(world::TICK, &mut host);
+                    failures.extend(ticked.failures);
                     said.append(&mut host.said);
                     playing.world.settle();
+                    // Too slow: no catching up, which would only be
+                    // slower; the game waits for the person instead.
+                    if ticked.pause.is_some() {
+                        playing.paused = true;
+                        pause = ticked.pause;
+                        break;
+                    }
                 }
             }
         }
         if !said.is_empty() || !failures.is_empty() {
             self.tell_game(said, &failures);
+        }
+        if let Some(why) = pause {
+            self.log(
+                LogLevel::Warning,
+                format!("{why} Press Pause or Play to carry on."),
+            );
         }
     }
 
