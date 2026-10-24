@@ -17,6 +17,11 @@ use std::collections::{HashSet, VecDeque};
 use std::path::{Path, PathBuf};
 
 /// Key under which the panel layout is remembered between sessions.
+/// How often a frame is drawn while background work is on its way.
+const WAITING_FRAME: std::time::Duration = std::time::Duration::from_millis(100);
+/// How often a frame is drawn while nothing happens, to look for changes
+/// on disk and messages from background work.
+const IDLE_FRAME: std::time::Duration = std::time::Duration::from_secs(1);
 const LAYOUT_KEY: &str = "panel_layout";
 /// Key under which the accent colour is remembered.
 const ACCENT_KEY: &str = "accent";
@@ -976,8 +981,21 @@ impl eframe::App for App {
             ctx.send_viewport_cmd(egui::ViewportCommand::Title(title.clone()));
             self.title = title;
         }
-        // The frame-rate counter and the viewport keep updating.
-        ctx.request_repaint();
+        // Frames back to back only while something moves; ten a second
+        // while background work is on its way; otherwise one a second, for
+        // changes on disk and messages (decision 0026). Input always draws
+        // a frame at once.
+        if self.workbench.wants_frames(&ctx) {
+            ctx.request_repaint();
+        } else if self.importer.waiting()
+            || self.thumbnails.waiting()
+            || self.projects.waiting()
+            || self.area_files.is_asking()
+        {
+            ctx.request_repaint_after(WAITING_FRAME);
+        } else {
+            ctx.request_repaint_after(IDLE_FRAME);
+        }
     }
 
     fn save(&mut self, storage: &mut dyn eframe::Storage) {
