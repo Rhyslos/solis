@@ -58,6 +58,7 @@ What changed in each version, for people using Solis. Newest first.
 - Each Lua file now has globals of its own, and Lua's own libraries can't be changed, so one file can't break another or the Lust.
 - The code's start (reading its components) now runs on a worker, never while drawing the editor, and a check that never ends is given up on after a minute with a message.
 - **Help > Make the sample game…** never replaces a file already in the folder; it asks for an empty one.
+- On Windows, the turret sample said its `armour.rs` was changed when it wasn't (the file's line endings differed).
 
 - **Work could be lost when saving before quitting or starting a new area.** On an untitled area, choosing **Save** in the "unsaved changes" question went straight on to quitting (or the new area) while the Save window was still open. Now everything waits for the Save window.
 - After a save was cancelled or failed while quitting, closing the window later closed it without asking about unsaved changes. Now it asks again.
