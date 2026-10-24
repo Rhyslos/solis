@@ -13,6 +13,7 @@ mod gpu_model;
 mod instances;
 mod lighting;
 mod pick;
+mod projectiles;
 mod readback;
 mod renderer;
 mod timing;
@@ -29,6 +30,7 @@ pub use lighting::{
     sun_view_fitted, sun_view_projection,
 };
 pub use pick::{PICK_SHADER_SOURCE, PickResult};
+pub use projectiles::Bolt;
 pub use readback::read_pixels;
 pub use renderer::{
     AXIS_X_COLOR, AXIS_Y_COLOR, COLOR_FORMAT, DEPTH_FORMAT, HDR_FORMAT, LineVertex, SHADER_SOURCE,
@@ -67,6 +69,8 @@ mod shader_tests {
         assert_eq!(
             names,
             [
+                "bolt_fs",
+                "bolt_vs",
                 "grid_fs",
                 "grid_vs",
                 "line_fs",

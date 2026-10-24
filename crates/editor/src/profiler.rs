@@ -254,6 +254,12 @@ pub(crate) fn profiler_panel(ui: &mut Ui, profiler: &Profiler) {
         ))
         .color(theme::TEXT_WEAK),
     );
+    if d.bolts > 0 {
+        ui.label(
+            RichText::new(format!("Projectiles drawn: {}.", thousands(d.bolts)))
+                .color(theme::TEXT_WEAK),
+        );
+    }
     if d.lods[1..].iter().any(|&n| n > 0) {
         ui.label(RichText::new(lod_text(&d.lods)).color(theme::TEXT_WEAK))
             .on_hover_text(

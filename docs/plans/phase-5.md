@@ -94,13 +94,14 @@ The working plan for Phase 5 (ROADMAP.md, "Phase 5: Scale"). It records the choi
 - Tests: a far copy draws the simpler mesh; a model's own LODs win; LODs are made once and kept; damaged LOD names are ignored, not a crash. Scale case: 10,000 units, most far away.
 - **Built.** `assets::lods` makes up to three levels per mesh with meshoptimizer (sharing the mesh's corners, each with how far it strays) and moves a model's own `_LOD1` … meshes onto their part; the import cache keeps them (layout version 2). The renderer gives each copy the simplest level that strays less than a pixel on screen (`LOD_PIXELS`), keeping last frame's level within a band so it doesn't flicker; per-model errors are worked out on upload. A model's own levels don't say how far they stray, so they switch at set sizes (level 1 at about a quarter of the screen). Scale case: 10,000 detailed units, most far away: 3.5 million triangles drawn instead of 28 million, 1.6 ms of CPU a frame. Only meshes' own LODs are chosen per copy (one level for the whole model), not per part.
 
-### M6. Projectiles ☐
+### M6. Projectiles ☑
 
 - **A projectile pool** in the world: thousands of small, fast things that aren't entities (lasers, bullets, tracers), each with a place, direction, speed, time left and look. Moved in jobs every tick; they expire when their time is up. Hitting things waits for Phase 6's physics.
 - **Drawn in one go:** stretched, glowing quads (lasers) or small meshes, instanced, one draw call per look.
 - **From game code:** a native method `fire(from, direction, speed, life, look)` in `solis/world.lst`, for Lust, Lua (`solis.fire`) and Rust.
 - Capped at 1,000,000 alive, with a message.
 - Tests: they move and expire on time; same result on 1 core and many; the cap holds. Scale case: 100,000 projectiles.
+- **Built.** `world::Projectiles` (moved in jobs once per tick, before game code), `fire(from, direction, speed, life, colour)` from Lust, Lua and Rust (a `Change::Fire`, landed in order), and `render_with_bolts`: one instanced draw of glowing streaks, added to the picture, hidden by models. The look is a colour rather than a named look: the two fleets need their own colours, and a streak is what lasers, bolts and tracers share; small meshes (bullets, missiles) can come with Phase 6's physics. The scale levels now fire: each unit keeps ten lasers in flight, so the target level is 2,000 units and 20,000 lasers, the stress level 10,000 and 100,000 (decision 0030). Handing 100,000 to the GPU: 1.2 ms. Stress level CPU frame on the 2-core machine: about 20 to 24 ms, most of it game code (15 to 18 ms; M7 looks at it).
 
 ### M7. The benchmark ☐
 
