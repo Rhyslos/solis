@@ -157,3 +157,16 @@ fn the_manual_s_things_to_try_are_sound_code() {
     };
     assert!(matches!(script::compile(&code), Ok(Some(_))));
 }
+
+#[test]
+fn armour_rs_with_windows_line_endings_is_still_the_built_in_one() {
+    let assets = std::env::temp_dir()
+        .join(format!("solis-sample-crlf-{}", std::process::id()))
+        .join("assets");
+    let _ = std::fs::remove_dir_all(&assets);
+    std::fs::create_dir_all(&assets).unwrap();
+    let built_in = FILES.iter().find(|(p, _)| *p == "armour.rs").unwrap().1;
+    let windows = built_in.replace("\r\n", "\n").replace('\n', "\r\n");
+    std::fs::write(assets.join("armour.rs"), windows).unwrap();
+    assert!(rust_components(&assets).1.is_none());
+}

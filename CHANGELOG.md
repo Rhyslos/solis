@@ -70,6 +70,7 @@ What changed in each version, for people using Solis. Newest first.
 - Changing `armour.rs` in the turret sample now says at once that its changes don't run yet, not only when the project opens.
 - A Lua field called `me`, `update` or `on_…` is a mistake now, instead of hiding the entity or the method.
 - The manual's "Things to try" for the turret sample changed a starting value, which running components rightly keep; it now changes the code instead.
+- On Windows, the turret sample said its `armour.rs` was changed when it wasn't (the file's line endings differed).
 
 - **Work could be lost when saving before quitting or starting a new area.** On an untitled area, choosing **Save** in the "unsaved changes" question went straight on to quitting (or the new area) while the Save window was still open. Now everything waits for the Save window.
 - After a save was cancelled or failed while quitting, closing the window later closed it without asking about unsaved changes. Now it asks again.

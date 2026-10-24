@@ -77,10 +77,13 @@ pub fn rust_components(assets: &Path) -> (Vec<script::RustKind>, Option<String>)
     let Ok(file) = std::fs::File::open(assets.join("armour.rs")) else {
         return (Vec::new(), None);
     };
+    // Line endings don't count: Git on Windows may give either file
+    // Windows ones.
     let built_in = FILES
         .iter()
         .find(|(path, _)| *path == "armour.rs")
-        .map_or("", |(_, t)| *t);
+        .map_or("", |(_, t)| *t)
+        .replace("\r\n", "\n");
     // Read no more than could match (it's read on the frame).
     let mut text = Vec::new();
     let _ = file
