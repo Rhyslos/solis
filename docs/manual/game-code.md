@@ -10,7 +10,7 @@ Solis games can be written in three languages:
 - **Lua**, if you know it from Roblox or modding;
 - **Rust**, the language Solis itself is written in.
 
-**Right now:** Lust components work: they appear in Properties, run in play mode, and talk to each other through events. Rust components can join them, but for now only in a Solis built from source. Changes that reach a running game, and Lua components, come with the next updates of Phase 4.
+**Right now:** Lust components work: they appear in Properties, run in play mode, and talk to each other through events. Rust components can join them, but for now only in a Solis built from source. Saving code while the game runs swaps it in at once. Lua components come with the next update of Phase 4.
 
 ## How to use it
 1. Open a [project](projects-and-the-library.md). Solis puts a `solis` folder in its `assets`, holding `world.lst` and `entity.lst`. They describe what your code can ask of the engine, such as `say` (write in the Console) or `moveTo` (put an entity somewhere).
@@ -67,6 +67,19 @@ What a field can hold: `bool`, `int`, `float`, `string`, a `state` (shown as a c
 **Order:** each tick runs entities in the order of their IDs, and an entity's components in the order of their names, so a game runs the same way every time.
 
 **When something goes wrong while it runs,** such as dividing by zero, that component stops and the Console says which one, on which entity, and where in the Lust: "Divider on Splitter stopped: main.lst, line 8: …". The rest of the game keeps going. A component that runs for more than a tenth of a second without stopping (a loop that never ends) is stopped the same way, so it can't freeze Solis.
+
+## Changing code while the game runs
+
+Keep the game playing, change your Lust, and save. In about a third of a second the running game has the new code, and nothing starts over:
+
+- **Every running component keeps its values,** field by field, by name: a turret keeps the ammo it has left, a mover stays where it got to. Only `update` and the `on` reactions are new.
+- **A field whose kind changed** (an `int` that's now a `float`), **or a new field,** takes its starting value. The Console says which: "Gun's ammo is float now, not int, so it starts at 10."
+- **A removed field** is dropped; **a removed component** stops.
+- **A component new in the code** starts on every entity that has it.
+- **A component that stopped** after a failure runs again, since its code changed.
+- **A mistake in the new code** leaves the game running the last code that worked, and the mistake shows in Problems. Fix it and save again.
+
+The Console says what changed each time: "The running game took the new code (Gun changed; Radar new); components keep their values."
 
 ## Events
 

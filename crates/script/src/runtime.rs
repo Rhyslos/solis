@@ -56,6 +56,21 @@ impl std::fmt::Display for Failure {
     }
 }
 
+/// What swapping new code into the running game changed (see
+/// [`Runtime::swap`]).
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct Swapped {
+    /// Components whose fields changed: names, kinds or a state's options.
+    pub changed: Vec<String>,
+    /// Components no longer in the code; those running stopped.
+    pub removed: Vec<String>,
+    /// Components new in the code.
+    pub added: Vec<String>,
+    /// What started over, in plain words ("Gun's ammo is float now, not
+    /// int, so it starts at 10.").
+    pub notes: Vec<String>,
+}
+
 /// A field as Lust keeps it: its key in the component's table, and kind.
 #[derive(Debug, Clone, PartialEq)]
 struct Field {
@@ -152,6 +167,88 @@ impl Runtime {
         self.running.clear();
         self.program = None;
         self.queue.borrow_mut().clear();
+        self.program = Some(self.prepare(chunk, host)?);
+        Ok(())
+    }
+
+    /// Swaps new code into the running game (LUST.md §21, `swap`): every
+    /// running Lust component gets the new code in place, keeping each
+    /// field's value by name (a field whose kind changed, or a new one,
+    /// takes its starting value). Components gone from the code stop.
+    /// Stopped components run again, since the code changed. On a
+    /// failure (the new code's start fails) the old code keeps running.
+    /// With nothing loaded, it's a [`Self::load`] that keeps Rust
+    /// components running.
+    pub fn swap(
+        &mut self,
+        chunk: &lust::LuaChunk,
+        host: &mut dyn Host,
+    ) -> Result<Swapped, Failure> {
+        let Some(old) = self.program.as_ref().map(|p| p.api.clone()) else {
+            self.program = Some(self.prepare(chunk, host)?);
+            return Ok(Swapped {
+                added: self.schemas().iter().map(|s| s.name.clone()).collect(),
+                ..Swapped::default()
+            });
+        };
+        let program = self.prepare(chunk, host)?;
+        let failed = |err: mlua::Error| Failure {
+            entity: None,
+            component: String::new(),
+            at: located(chunk, &err),
+            stopped: false,
+        };
+        let mut swapped = Swapped::default();
+        let changes: Table = program
+            .api
+            .get::<mlua::Function>("changes")
+            .and_then(|f| f.call(old))
+            .map_err(failed)?;
+        for (what, list) in [
+            ("changed", &mut swapped.changed),
+            ("removed", &mut swapped.removed),
+            ("added", &mut swapped.added),
+        ] {
+            let names: Table = changes.get(what).map_err(failed)?;
+            *list = names
+                .sequence_values::<String>()
+                .collect::<Result<_, _>>()
+                .map_err(failed)?;
+        }
+        let swap: mlua::Function = program.api.get("swap").map_err(failed)?;
+        let mut gone = Vec::new();
+        for (key, running) in &mut self.running {
+            let Instance::Lust(table) = &running.instance else {
+                continue;
+            };
+            let (now, notes): (LuaValue, Table) = swap.call(table.clone()).map_err(failed)?;
+            for note in notes.sequence_values::<String>() {
+                swapped.notes.push(note.map_err(failed)?);
+            }
+            if now.is_nil() {
+                gone.push(key.clone());
+            }
+            running.stopped = false;
+        }
+        for key in gone {
+            self.running.remove(&key);
+        }
+        self.queue.borrow_mut().clear();
+        self.program = Some(program);
+        Ok(swapped)
+    }
+
+    /// Stops the game's Lust: its components stop and its code goes (the
+    /// code was deleted). Rust components carry on.
+    pub fn unload(&mut self) {
+        self.program = None;
+        self.running
+            .retain(|_, running| matches!(running.instance, Instance::Rust(_)));
+    }
+
+    /// Evaluates `chunk` in this runtime's Luau (its own start runs), and
+    /// reads its components and events.
+    fn prepare(&self, chunk: &lust::LuaChunk, host: &mut dyn Host) -> Result<Program, Failure> {
         let failed = |err: mlua::Error| Failure {
             entity: None,
             component: String::new(),
@@ -169,15 +266,14 @@ impl Runtime {
         let (fields, schemas) = self.read_components(&api).map_err(failed)?;
         let events = Rc::new(read_events(&api).map_err(failed)?);
         let send = sender(&self.lua, &self.queue, Rc::clone(&events)).map_err(failed)?;
-        self.program = Some(Program {
+        Ok(Program {
             api,
             chunk: chunk.clone(),
             fields,
             schemas,
             events,
             send,
-        });
-        Ok(())
+        })
     }
 
     /// The loaded program's components, as the editor shows them, sorted
@@ -619,3 +715,7 @@ mod tests;
 #[cfg(test)]
 #[path = "runtime_events_tests.rs"]
 mod events_tests;
+
+#[cfg(test)]
+#[path = "runtime_swap_tests.rs"]
+mod swap_tests;

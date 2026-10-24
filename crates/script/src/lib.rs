@@ -15,7 +15,7 @@ pub use events::Event;
 pub use host::{Host, NoHost};
 /// Game code turned into Lua, ready for a [`Runtime`].
 pub use lust::LuaChunk as Chunk;
-pub use runtime::{Failure, Runtime};
+pub use runtime::{Failure, Runtime, Swapped};
 pub use rust_component::{Context, RustComponent, RustKind};
 
 /// The Lust compiler's version.

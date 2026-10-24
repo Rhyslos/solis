@@ -62,7 +62,7 @@ The working plan for Phase 4 (ROADMAP.md, "Phase 4: Lust and Lua join"). It reco
 - A runaway chain of events (one sending another forever) is cut off after 10,000 deliveries in a tick, with a message.
 - Tests: delivery order; events sent while delivering; a Rust component and a Lust component talking both ways; the cut-off.
 
-### M4. Fast changes ☐
+### M4. Fast changes ☑
 
 - When a code file changes while playing, the code is checked and turned into Lua on a worker. Then each running component is swapped in place (`swap`), keeping its values by name. Notes on fields that started over go to the Console. Components whose fields changed are shown again in Properties (`changes`).
 - A mistake in the new code leaves the running game on the last code that worked, with the mistakes in Problems.

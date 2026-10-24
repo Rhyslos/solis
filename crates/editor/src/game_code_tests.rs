@@ -365,3 +365,69 @@ fn a_lust_and_a_rust_component_on_one_entity_talk_through_events() {
         .collect();
     assert_eq!(said, ["the bell rang 1", "the bell rang 2"]);
 }
+
+#[test]
+fn new_code_while_playing_is_swapped_in_and_keeps_where_things_are() {
+    let (mut w, id) = with_a_mover();
+    w.play();
+    for _ in 0..10 {
+        w.run_game(1.0 / 60.0);
+    }
+    let before = x_in_game(&w, id);
+    // The Mover now goes the other way, and has a new field.
+    w.set_program(Some(program(
+        "component Mover {\n\
+             has {\n\
+                 float speed = 6;\n\
+                 int steps = 0;\n\
+                 string label = \"mover\";\n\
+                 bool loud = false;\n\
+             }\n\
+             method update(float dt) {\n\
+                 vec3 back = [-1, 0, 0];\n\
+                 moveTo(me, positionOf(me) + back * speed * dt);\n\
+                 steps = steps + 1;\n\
+             }\n\
+         }\n\
+         pass Mover;\nend\n",
+    )));
+    assert!(
+        w.log_lines()
+            .iter()
+            .any(|l| l.text.contains("took the new code (Mover changed)")),
+        "{:?}",
+        w.log_lines().last()
+    );
+    let running = w.playing.as_ref().unwrap().game.as_ref().unwrap();
+    assert_eq!(
+        running.values(id, "Mover").unwrap().get("steps"),
+        Some(&Value::Int(10)),
+        "the steps so far are kept"
+    );
+    assert!(
+        w.document
+            .registry
+            .get("Mover")
+            .unwrap()
+            .field("loud")
+            .is_some()
+    );
+    w.run_game(1.0 / 60.0);
+    assert!(
+        x_in_game(&w, id) < before,
+        "it goes back now, from where it was"
+    );
+    assert!(x_in_game(&w, id) > before - 0.2);
+}
+
+#[test]
+fn new_code_that_fails_to_start_keeps_the_last_program() {
+    let (mut w, id) = with_a_mover();
+    w.play();
+    w.run_game(1.0 / 60.0);
+    w.set_program(Some(program("int ways = 0;\nint each = 1 / ways;\nend\n")));
+    assert!(w.document.registry.get("Mover").is_some(), "still known");
+    let x = x_in_game(&w, id);
+    w.run_game(1.0 / 60.0);
+    assert!(x_in_game(&w, id) > x, "still running the last code");
+}
