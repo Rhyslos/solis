@@ -62,6 +62,20 @@ impl Projects {
         };
         let watcher = Watcher::new(&project.assets()).ok();
         let (db, _, notes) = AssetDb::open(project, limits);
+        // The cache keeps within its size, on a worker: a model whose entry
+        // goes meanwhile is simply imported again.
+        let cache = db.project().cache();
+        let _ = std::thread::Builder::new()
+            .name("cache trim".into())
+            .spawn(move || {
+                let freed = asset_db::cache::trim(&cache, asset_db::cache::MAX_BYTES);
+                if freed > 0 {
+                    log::info!(
+                        "Freed {} MB of the import cache (models not used lately).",
+                        freed >> 20
+                    );
+                }
+            });
         let info = ProjectInfo {
             name: db.project().name().to_string(),
             root: root.to_path_buf(),
@@ -170,7 +184,7 @@ impl Projects {
                 thumbnail: thumbnail(&f.path),
             })
             .collect();
-        items.sort_by_key(|item| item.name.to_lowercase());
+        items.sort_by_cached_key(|item| item.name.to_lowercase());
         let folders = listing.folders.iter().map(|f| slashed(f)).collect();
         (items, folders)
     }

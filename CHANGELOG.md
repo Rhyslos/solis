@@ -65,6 +65,7 @@ What changed in each version, for people using Solis. Newest first.
 - Renaming, moving or deleting the open area in the Library left Solis saving to the old name, making a second file. The open area now follows its file.
 - Renaming a file only by changing capitals (`crate.glb` to `Crate.glb`) was refused on Windows.
 - The last project now opens again when Solis starts (it was saved but never read back).
+- A damaged area whose entities are inside each other could freeze the editor when one of them was selected or moved. Now the Problems panel reports them.
 - The red and green axes on the ground could show as a large filled wedge on some graphics drivers when the camera was close to them.
 - Clicking could select the wrong thing after the area changed or a view was resized, because the answer belonged to an older click. Clicking the very last pixel of a view no longer misses.
 - In a Top, Front or Right view, **Add > Camera**, **Add > Spotlight** and **Move here** put the new thing far away, and fog covered the area. They now go where the view looks from, and flat views have no fog.
@@ -91,6 +92,13 @@ What changed in each version, for people using Solis. Newest first.
 - Several viewports no longer share one set of frame data, ready for the game view and split views.
 
 ### Changed
+
+- The editor is faster with big areas. With 2,000 entities, a frame takes about half as long (2.8 ms to 1.4 ms), four views a third as long (3.4 ms to 1.3 ms), and dragging everything at once 4.1 ms instead of 6.5 ms. The area's tree and every entity's place are worked out once and kept until they change, and a long drag of many entities no longer slows down as it goes.
+- The Problems panel no longer looks again on every frame of a drag: moving things can't cause a problem.
+- Play no longer copies the whole undo history; the copy shares it.
+- The undo history's memory limit now counts the selection kept with each step.
+- The import cache in `.solis/` keeps within 4 GB: the models used least lately are deleted when a project opens, and read from their files again if needed.
+- Looking over the assets folder no longer reads every `.gltf` again while it's unchanged.
 
 - Writing game code in Lust now arrives in Phase 4, right after the editor, instead of Phase 7; the editor's panels say so. Playing the area arrives with the editor, in Phase 3.
 - The Console stays fast when full: it lays out only the messages in view (a full Console took about 10 ms a frame, now 0.3 ms). Long messages are cut to one line and show in full when pointed at.

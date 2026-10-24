@@ -114,7 +114,7 @@ fn picking_something_folded_away_unfolds_the_way_to_it() {
 fn hidden_entities_and_their_children_are_not_drawn_and_locked_ones_not_picked() {
     let (mut w, room, lamp, crate_id) = a_room();
     let view = |w: &Workbench| {
-        let (hidden, locked) = w.area_panel.in_effect(w.document.area());
+        let (hidden, locked) = w.area_panel.in_effect(&w.document);
         AreaView::of_shown(w.document.area(), &w.models, &hidden, &locked)
     };
     assert_eq!(view(&w).lamps.len(), 1);

@@ -40,6 +40,15 @@ pub struct NodeInfo {
 impl ModelInfo {
     /// The index of the node with part number `part`.
     pub fn node_of(&self, part: u32) -> Option<usize> {
+        // Parts are numbered from 1 in node order when first imported, so
+        // the usual answer is found at once; only after a re-export moved
+        // things around is the list searched (this runs for every unpacked
+        // part, every frame).
+        if let Some(guess) = (part as usize).checked_sub(1)
+            && self.nodes.get(guess).is_some_and(|n| n.part == part)
+        {
+            return Some(guess);
+        }
         self.nodes.iter().position(|n| n.part == part)
     }
 }
@@ -150,6 +159,31 @@ mod tests {
             nodes: Vec::new(),
         };
         assert_eq!(info.size_text(), "2.0 × 0.10 × 250 m");
+    }
+
+    #[test]
+    fn parts_are_found_where_they_are_or_anywhere() {
+        let node = |part| NodeInfo {
+            part,
+            name: String::new(),
+            parent: None,
+            local: glam::Mat4::IDENTITY,
+            has_meshes: true,
+        };
+        let info = ModelInfo {
+            asset: AssetId::random(),
+            name: "Ship".into(),
+            triangles: 0,
+            min: Vec3::ZERO,
+            max: Vec3::ONE,
+            // Numbered in order, then one moved by a re-export.
+            nodes: vec![node(1), node(2), node(7), node(0)],
+        };
+        assert_eq!(info.node_of(2), Some(1));
+        assert_eq!(info.node_of(7), Some(2));
+        assert_eq!(info.node_of(0), Some(3));
+        assert_eq!(info.node_of(3), None);
+        assert_eq!(info.node_of(u32::MAX), None);
     }
 
     #[test]

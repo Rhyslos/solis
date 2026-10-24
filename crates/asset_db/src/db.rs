@@ -347,12 +347,25 @@ impl AssetDb {
 
     fn record(&self, id: AssetId, path: PathBuf, kind: AssetKind) -> AssetRecord {
         let file = self.project.assets().join(&path);
-        let mut stamps = vec![(path.clone(), Stamp::of(&file))];
+        let own = Stamp::of(&file);
+        let mut stamps = vec![(path.clone(), own)];
         if file
             .extension()
             .is_some_and(|e| e.eq_ignore_ascii_case("gltf"))
         {
-            for dependency in assets::referenced_files(&file, &self.limits).unwrap_or_default() {
+            // The files it reads only change when it does: while it's the
+            // same, last time's list is used and only their stamps looked
+            // at, so a rescan doesn't read every .gltf again.
+            let known = self
+                .records
+                .get(&id)
+                .filter(|old| old.path == path && old.stamps.first().is_some_and(|s| s.1 == own))
+                .filter(|_| own.is_some())
+                .map(|old| old.stamps[1..].iter().map(|(p, _)| p.clone()).collect());
+            let dependencies = known.unwrap_or_else(|| {
+                assets::referenced_files(&file, &self.limits).unwrap_or_default()
+            });
+            for dependency in dependencies {
                 let stamp = Stamp::of(&dependency);
                 stamps.push((dependency, stamp));
             }

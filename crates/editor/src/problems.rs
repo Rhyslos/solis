@@ -92,7 +92,8 @@ impl Fingerprint {
     /// the changes to what it's checked against.
     pub(crate) fn of(document: &crate::document::Document, sources: u64) -> Self {
         Self {
-            revision: document.revision(),
+            // Not every revision: moving things changes nothing checked.
+            revision: document.shape(),
             sources,
             file: document.file().map(std::path::Path::to_path_buf),
         }
