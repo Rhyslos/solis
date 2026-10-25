@@ -63,7 +63,7 @@ notify = "8.2"
 # commit of Lust's main branch until its tag exists (then `tag =
 # "v2.0.0-alpha.33"`); without default features it needs only Rust's own
 # library. Lust and Lua run in Luau.
-lust = { git = "https://github.com/Rhyslos/Lust", rev = "a1cfe327ffac4b95ee5f9339484b2dd8df9d91be", default-features = false }
+lust = { git = "https://github.com/Rhyslos/Lust", rev = "a60cf875569b753e1374d9ea163d9759013018ae", default-features = false }
 mlua = { version = "0.10", features = ["luau"] }
 notify-debouncer-mini = "0.7"
 # Deleting from the Library moves files to the Recycle Bin, so nothing is

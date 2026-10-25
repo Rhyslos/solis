@@ -1,6 +1,7 @@
 //! Values between the editor's kinds (`reflect`) and how Lust keeps them
-//! in Luau: numbers, text, `{x, y, z}` vectors, `{x, y, z, w}` rotations
-//! (quaternions), and entities as their 13-letter text. Tables are read
+//! in Luau: numbers, text, Luau vectors for `vec3` (a table with `x`, `y`,
+//! `z` is taken too), `{x, y, z, w}` rotations (quaternions), and entities
+//! as their 13-letter text. Tables are read
 //! and written raw, so game code's metatables never run here.
 
 use glam::{Quat, Vec3};
@@ -72,23 +73,29 @@ pub(crate) fn entity_of(value: &LuaValue) -> Option<EntityId> {
     }
 }
 
-pub(crate) fn vec3_of(table: &Table) -> Option<Vec3> {
-    let n = |k: &str| number(&table.raw_get::<LuaValue>(k).ok()?).map(|v| v as f32);
-    Some(Vec3::new(n("x")?, n("y")?, n("z")?)).filter(|v| v.is_finite())
+/// A vec3 as game code gives it: a Luau vector, or a table with `x`, `y`
+/// and `z`.
+pub(crate) fn vec3_of(value: &LuaValue) -> Option<Vec3> {
+    let v = match value {
+        LuaValue::Vector(v) => Vec3::new(v.x(), v.y(), v.z()),
+        LuaValue::Table(table) => {
+            let n = |k: &str| number(&table.raw_get::<LuaValue>(k).ok()?).map(|v| v as f32);
+            Vec3::new(n("x")?, n("y")?, n("z")?)
+        }
+        _ => return None,
+    };
+    v.is_finite().then_some(v)
+}
+
+/// A vec3 as Lust keeps it in Luau: a Luau vector.
+pub(crate) fn vec3_value(v: Vec3) -> LuaValue {
+    LuaValue::Vector(mlua::Vector::new(v.x, v.y, v.z))
 }
 
 pub(crate) fn quat_of(table: &Table) -> Option<Quat> {
     let n = |k: &str| number(&table.raw_get::<LuaValue>(k).ok()?).map(|v| v as f32);
     let q = Quat::from_xyzw(n("x")?, n("y")?, n("z")?, n("w")?);
     (q.is_finite() && q.length_squared() > 1e-12).then(|| q.normalize())
-}
-
-pub(crate) fn vec3_table(lua: &Lua, v: Vec3) -> mlua::Result<Table> {
-    let t = lua.create_table_with_capacity(0, 3)?;
-    t.raw_set("x", v.x)?;
-    t.raw_set("y", v.y)?;
-    t.raw_set("z", v.z)?;
-    Ok(t)
 }
 
 pub(crate) fn quat_table(lua: &Lua, q: Quat) -> mlua::Result<Table> {
@@ -114,7 +121,7 @@ pub(crate) fn to_lua(lua: &Lua, kind: &FieldKind, value: &Value) -> Option<LuaVa
         }
         (FieldKind::Vec3, v) => {
             let [x, y, z] = v.as_floats::<3>()?;
-            LuaValue::Table(vec3_table(lua, Vec3::new(x, y, z)).ok()?)
+            vec3_value(Vec3::new(x, y, z))
         }
         (FieldKind::Rotation, v) => {
             let [x, y, z, w] = v.as_floats::<4>()?;
@@ -142,8 +149,8 @@ pub(crate) fn from_lua(kind: &FieldKind, value: &LuaValue) -> Option<Value> {
             let text = s.to_str().ok()?.to_string();
             options.contains(&text).then_some(Value::Text(text))?
         }
-        (FieldKind::Vec3, LuaValue::Table(t)) => {
-            let v = vec3_of(t)?;
+        (FieldKind::Vec3, v @ (LuaValue::Vector(_) | LuaValue::Table(_))) => {
+            let v = vec3_of(v)?;
             Value::floats(&[v.x, v.y, v.z])
         }
         (FieldKind::Rotation, LuaValue::Table(t)) => {
@@ -167,6 +174,7 @@ pub(crate) fn guessed(value: &LuaValue) -> Option<Value> {
         LuaValue::Integer(n) => Value::Float(*n as f64),
         LuaValue::Number(n) if n.is_finite() => Value::Float(*n),
         LuaValue::String(s) => Value::Text(s.to_str().ok()?.to_string()),
+        LuaValue::Vector(_) => from_lua(&FieldKind::Vec3, value)?,
         LuaValue::Table(t) => {
             let has_w = !matches!(t.raw_get::<LuaValue>("w").ok()?, LuaValue::Nil);
             if has_w {

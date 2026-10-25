@@ -72,6 +72,22 @@ pub(crate) fn prepare(
     let discard = Some(&luau.discard);
     let api: Table =
         call_with(luau, Some(&env), host, discard, || function.call(())).map_err(failed)?;
+    // Solis hands vec3 values over as Luau vectors: the Lust must keep
+    // them so too.
+    let vectors: Option<String> = api.raw_get("vectors").map_err(failed)?;
+    if vectors.as_deref() != Some("luau") {
+        return Err(Failure {
+            entity: None,
+            component: String::new(),
+            at: crate::ticking::plain(format!(
+                "the Lust ({}) keeps vectors as {}, not as Luau vectors. This is a bug in \
+                 Solis or Lust; please report it.",
+                lust::VERSION,
+                vectors.as_deref().unwrap_or("nothing it says")
+            )),
+            stopped: true,
+        });
+    }
     // Reading the components makes one of each, which works out their
     // fields' starting values: game code, so the natives are lent too.
     let ((fields, schemas, methods), events) = call_with(luau, Some(&env), host, discard, || {

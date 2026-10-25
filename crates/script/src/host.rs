@@ -2,7 +2,7 @@
 //! native methods described in `solis/*.lst`, and lending it to Luau as
 //! the `LUST_NATIVES` table for exactly as long as game code runs.
 
-use crate::convert::{entity_of, quat_of, quat_table, vec3_of, vec3_table};
+use crate::convert::{entity_of, quat_of, quat_table, vec3_of, vec3_value};
 use crate::luau::{Luau, capped};
 use glam::{Quat, Vec3};
 use mlua::{Table, Value as LuaValue};
@@ -126,14 +126,14 @@ pub(crate) fn with_natives<'h, R>(
         )?;
         natives.raw_set(
             "positionOf",
-            scope.create_function(move |lua, which: LuaValue| {
+            scope.create_function(move |_, which: LuaValue| {
                 let at = entity_of(&which).and_then(|e| h.borrow().position(e));
-                vec3_table(lua, at.unwrap_or(Vec3::ZERO))
+                Ok(vec3_value(at.unwrap_or(Vec3::ZERO)))
             })?,
         )?;
         natives.raw_set(
             "moveTo",
-            scope.create_function(move |_, (which, place): (LuaValue, Table)| {
+            scope.create_function(move |_, (which, place): (LuaValue, LuaValue)| {
                 if let (Some(e), Some(place)) = (entity_of(&which), vec3_of(&place)) {
                     h.borrow_mut().move_to(e, place);
                 }

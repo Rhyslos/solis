@@ -6,6 +6,7 @@ What changed in each version, for people using Solis. Newest first.
 
 ### Changed
 
+- Game code uses Lust 2.0.0-alpha.35. A `vec3` is now a Luau vector in Lust and Lua alike (Lua's `vec3(x, y, z)` makes one), which is quicker than a table.
 - **Game code runs faster** (the Phase 4 review): a tick of 2,000 Lust components went from about 14 ms to about 8.5 ms; `find` no longer gets slower with every entity in the area (2,000 components finding by name each tick went from about 33 ms to under 2 ms); pressing Play and saving code while playing do less on the frame; and saving a model or area no longer checks the game's code again when the code didn't change.
 - The editor draws only when something changes, instead of as fast as it can all the time, so it uses next to no power while you aren't doing anything. The viewport's corner says **Idle** then (decision 0026).
 - What other engines call a *scene* is an **area** in Solis: the Area panel, "Untitled area", and `.solarea` files when saving arrives. Reusable things you place many times (prefabs elsewhere) will be **assemblies**.
@@ -55,7 +56,7 @@ What changed in each version, for people using Solis. Newest first.
 
 ### Fixed
 
-- **Game code can no longer freeze or crash Solis** (the Phase 4 review): very deeply nested Lust no longer crashes Solis (it's a mistake in Problems, with a limit of 200 brackets deep); every place Solis meets game code has a time limit, including reading components and swapping in new code; a tick whose code takes more than a quarter of a second pauses the game and says why, rather than catching up ever more slowly; and what game code says or sends is kept within limits, so it can't fill the computer's memory or the Console. A component whose event reaction keeps failing is said once.
+- **Game code can no longer freeze or crash Solis** (the Phase 4 review): very deeply nested Lust no longer crashes Solis (it's a mistake in Problems: Lust takes at most 150 levels of brackets, blocks or operators inside each other); every place Solis meets game code has a time limit, including reading components and swapping in new code; a tick whose code takes more than a quarter of a second pauses the game and says why, rather than catching up ever more slowly; and what game code says or sends is kept within limits, so it can't fill the computer's memory or the Console. A component whose event reaction keeps failing is said once.
 - Each Lua file now has globals of its own, and Lua's own libraries can't be changed, so one file can't break another or the Lust.
 - The code's start (reading its components) now runs on a worker, never while drawing the editor, and a check that never ends is given up on after a minute with a message.
 - **Help > Make the sample game…** never replaces a file already in the folder; it asks for an empty one.

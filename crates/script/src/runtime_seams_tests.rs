@@ -216,3 +216,35 @@ fn a_failure_with_no_place_reads_cleanly() {
     let at = crate::ticking::plain("too many".into());
     assert_eq!(at.to_string(), "too many");
 }
+
+#[test]
+fn vec3_values_are_luau_vectors_in_lust_and_lua_alike() {
+    let main = "get \"solis/entity\":[positionOf, moveTo];\n\
+        component Walker {\n    has {\n        vec3 step = [1, 0, 0];\n    }\n\
+        \x20   method update(float dt) {\n        moveTo(me, positionOf(me) + step);\n    }\n}\n\
+        pass Walker;\nend\n";
+    let lua = "local A = component('Aimer', { { 'aim', 'vec3', vec3(0, 0, 1) } })\n\
+               function A:update(dt)\n\
+                 assert(type(self.aim) == 'vector', type(self.aim))\n\
+                 self.aim = self.aim * 2\n\
+               end";
+    let compiled = compiled(main, &[("aim.lua", lua)]).unwrap();
+    let mut runtime = Runtime::new().unwrap();
+    runtime.load(&compiled, &mut NoHost).unwrap();
+    let me = id(2);
+    let mut step = ComponentData::default();
+    step.set("step", Value::floats(&[0.0, 2.0, 0.0]));
+    runtime.sync(me, "Walker", &step, &mut NoHost).unwrap();
+    runtime
+        .sync(me, "Aimer", &ComponentData::default(), &mut NoHost)
+        .unwrap();
+    assert!(runtime.tick(0.1, &mut NoHost).failures.is_empty());
+    assert_eq!(
+        runtime.values(me, "Aimer").unwrap().get("aim"),
+        Some(&Value::floats(&[0.0, 0.0, 2.0]))
+    );
+    assert_eq!(
+        runtime.values(me, "Walker").unwrap().get("step"),
+        Some(&Value::floats(&[0.0, 2.0, 0.0]))
+    );
+}
