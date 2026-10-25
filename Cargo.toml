@@ -24,6 +24,7 @@ asset_db = { path = "crates/asset_db" }
 world = { path = "crates/world" }
 script = { path = "crates/script" }
 physics = { path = "crates/physics" }
+input = { path = "crates/input" }
 
 # Outside libraries. Every one must have a licence compatible with MIT,
 # checked by `cargo deny check` (see deny.toml and decision 0007).
