@@ -6,11 +6,11 @@ The working plan for the hardening milestone between Phase 6 and Phase 7 ([decis
 
 **Gate:** the project lead reads the hardening report (coverage per crate, mutation results, hours fuzzed and what was found, the invariants that hold) and tries the playground once more.
 
-**Starts when:** the project lead has tested the open pull requests (#26 onwards) and they're merged into `main` in order.
+**Order:** at the project lead's request (2026-10-25), H2 to H5 are built first, stacked on the open pull requests, so the code they test has been through the stronger tests. H1 (merging) comes last, once they've tested everything.
 
 ## Milestones
 
-### H1. Merge the stack
+### H1. Merge the stack (last)
 
 - [ ] Merge the open pull requests into `main` in order, oldest first, once tested.
 - [ ] After each merge, retarget the next pull request onto `main`, then let CI pass before the next merge.

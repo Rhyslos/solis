@@ -26,9 +26,9 @@ Two more things make this riskier than it looks:
 
 ## Decision
 
-Chosen by the project lead (2026-10-25: "Stricter testing and more testing is only beneficial!"). **Phase 6 hardening** comes between Phase 6 and Phase 7 (ROADMAP.md). It is built one milestone per pull request like any phase ([plan](../plans/phase-6-hardening.md)), and it starts only after the project lead has tested the open pull requests:
+Chosen by the project lead (2026-10-25: "Stricter testing and more testing is only beneficial!"). **Phase 6 hardening** comes between Phase 6 and Phase 7 (ROADMAP.md). It is built one milestone per pull request like any phase ([plan](../plans/phase-6-hardening.md)). The project lead asked for it to be built straight away, before they test the open pull requests, so that what they test has been through the stronger tests too (2026-10-25: "it would ease my mind knowing future work is way more robust and less error prone"). Steps 2 to 5 are built on top of the stack, and merging comes last:
 
-1. **Merge the stack.** The open pull requests are merged in order once tested, so the work starts from `main`.
+1. **Merge the stack** (last). The open pull requests, these included, are merged in order once tested.
 2. **Whole-game invariant tests** (property tests, with `proptest`). Random games with walking, spawning, pushing, saving, loading, recording and edits during play, checked against rules that must always hold:
    - a saved and loaded game carries on exactly like one that never stopped;
    - a replay matches its recording;

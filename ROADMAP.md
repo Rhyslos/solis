@@ -126,7 +126,7 @@ The phase that proves DESIGN.md §2 early, while changing course is still cheap.
 
 Stronger tests before building on the game loop ([decision 0042](docs/decisions/0042-a-hardening-milestone-before-phase-7.md)). Phase 6's reviews kept finding problems, some caused by earlier fixes, so this milestone makes the tests catch them first. The working plan: [docs/plans/phase-6-hardening.md](docs/plans/phase-6-hardening.md).
 
-- Merge the open pull requests, once tested, so the work starts from `main`.
+- Merge the open pull requests once tested (last: the project lead asked for the tests first).
 - Whole-game invariant tests: random games with saving, loading, replays and edits, checked against rules that must always hold.
 - Fuzzing every reader of a file a project can ship.
 - Measuring the tests: coverage, and mutation testing on the core crates.
