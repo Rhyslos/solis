@@ -356,10 +356,15 @@ fn actions_ui(
         ui.label("New action:");
         ui.add(egui::TextEdit::singleline(&mut window.new_name).desired_width(140.0));
         let name = window.new_name.trim().to_string();
-        let usable = input::valid_action_name(&name) && bindings.get(&name).is_none();
+        let room = bindings.actions.len() < input::MAX_ACTIONS;
+        let usable = room && input::valid_action_name(&name) && bindings.get(&name).is_none();
         if ui
             .add_enabled(usable, egui::Button::new("Add button"))
-            .on_disabled_hover_text("Letters, digits and _, starting with a letter, and not taken")
+            .on_disabled_hover_text(if room {
+                "Letters, digits and _, starting with a letter, and not taken"
+            } else {
+                "A project has at most 256 actions"
+            })
             .clicked()
         {
             bindings.actions.push(Action::button(&name, &[]));
@@ -404,9 +409,11 @@ fn actions_ui(
         .clicked()
     {
         for ready in Bindings::default().actions {
+            let room = bindings.actions.len() < input::MAX_ACTIONS;
             match bindings.actions.iter_mut().find(|a| a.name == ready.name) {
                 Some(mine) => *mine = ready,
-                None => bindings.actions.push(ready),
+                None if room => bindings.actions.push(ready),
+                None => {}
             }
         }
         changed = true;

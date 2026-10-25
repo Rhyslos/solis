@@ -87,23 +87,44 @@ pub fn load_bindings(root: &Path) -> (input::Bindings, Option<String>) {
     }
 }
 
+/// The most backups of a damaged input actions file kept
+/// (`input.solinput.bak`, `.bak2` … `.bak9`).
+const MAX_BINDINGS_BACKUPS: usize = 9;
+
 /// Writes the project's input actions. A file there that can't be read
 /// (a mistake made by hand, so the ready-made actions were used) is kept
-/// first as `input.solinput.bak`, unless one is already kept, so its
-/// actions aren't lost; gives back the backup's name when it made one.
+/// first as `input.solinput.bak` (or `.bak2` and on, up to `.bak9`, never
+/// replacing one: past that the oldest is replaced), so its actions
+/// aren't lost; gives back the backup's name when it made one.
 pub fn save_bindings(root: &Path, text: &str) -> std::io::Result<Option<String>> {
     let path = root.join(input::FILE);
-    let backup = root.join(format!("{}.bak", input::FILE));
+    let damaged = match read_limited(&path, 1 << 20) {
+        Ok(Some(old)) => input::Bindings::read(&old).is_err(),
+        Ok(None) => false,
+        Err(_) => path.exists(),
+    };
     let mut kept = None;
-    if let Ok(Some(old)) = read_limited(&path, 1 << 20)
-        && input::Bindings::read(&old).is_err()
-        && !backup.exists()
-    {
-        write_whole(&backup, &old)?;
-        kept = Some(format!("{}.bak", input::FILE));
-    } else if path.exists() && read_limited(&path, 1 << 20).is_err() && !backup.exists() {
-        std::fs::copy(&path, &backup)?;
-        kept = Some(format!("{}.bak", input::FILE));
+    if damaged {
+        let names: Vec<String> = (1..=MAX_BINDINGS_BACKUPS)
+            .map(|n| match n {
+                1 => format!("{}.bak", input::FILE),
+                n => format!("{}.bak{n}", input::FILE),
+            })
+            .collect();
+        let name = names
+            .iter()
+            .find(|n| !root.join(n).exists())
+            .or_else(|| {
+                names.iter().min_by_key(|n| {
+                    std::fs::metadata(root.join(n))
+                        .and_then(|m| m.modified())
+                        .ok()
+                })
+            })
+            .cloned()
+            .unwrap_or_else(|| names[0].clone());
+        std::fs::copy(&path, root.join(&name))?;
+        kept = Some(name);
     }
     write_whole(&path, text)?;
     Ok(kept)
@@ -249,11 +270,19 @@ mod tests {
             std::fs::read_to_string(root.join(input::FILE)).unwrap(),
             written
         );
-        // A readable file isn't backed up, and a backup is never replaced.
+        // A readable file isn't backed up; a second mistake gets a
+        // backup of its own, the first one kept.
         assert_eq!(save_bindings(&root, &written).unwrap(), None);
         std::fs::write(root.join(input::FILE), "broken again [[").unwrap();
-        assert_eq!(save_bindings(&root, &written).unwrap(), None);
+        assert_eq!(
+            save_bindings(&root, &written).unwrap().as_deref(),
+            Some("input.solinput.bak2")
+        );
         assert_eq!(std::fs::read_to_string(&backup).unwrap(), damaged);
+        assert_eq!(
+            std::fs::read_to_string(root.join("input.solinput.bak2")).unwrap(),
+            "broken again [["
+        );
         let _ = std::fs::remove_dir_all(root);
     }
 

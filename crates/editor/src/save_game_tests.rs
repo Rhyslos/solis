@@ -405,15 +405,26 @@ fn a_save_keeps_bodies_as_places_and_motion_not_rapier_s_insides() {
         &format!("{id} 7fc00000{}", &lines[1][id.len() + 9..]),
         1,
     );
-    let mut sum = reflect::Checksum::new();
-    let body = bad.splitn(7, '\n').nth(6).unwrap();
-    sum.bytes(body.as_bytes());
-    let resummed = bad.replacen(
-        &text.lines().nth(5).unwrap().to_string(),
-        &format!("sum {:016x}", sum.finish()),
+    assert!(Save::read(&resummed(&bad)).is_err(), "NaN refused");
+    // A header changed by hand is damage too, and a clock out of range is
+    // refused even with its sum made again.
+    let seed_line = text.lines().nth(4).unwrap().to_string();
+    assert!(Save::read(&text.replacen(&seed_line, "seed 12345", 1)).is_err());
+    let tick_line = text.lines().nth(2).unwrap().to_string();
+    let far = text.replacen(&tick_line, "tick 18446744073709551615", 1);
+    assert!(Save::read(&resummed(&far)).is_err());
+    assert!(Save::read(&resummed(&text)).is_ok());
+}
+
+/// `text` with its checksum made again (as a hand-made save would be).
+fn resummed(text: &str) -> String {
+    let lines: Vec<&str> = text.splitn(7, '\n').collect();
+    let head = format!("{}\n{}\n{}\n{}\n", lines[1], lines[2], lines[3], lines[4]);
+    text.replacen(
+        lines[5],
+        &format!("sum {:016x}", super::sum_of(&head, lines[6])),
         1,
-    );
-    assert!(Save::read(&resummed).is_err(), "NaN refused");
+    )
 }
 
 #[test]

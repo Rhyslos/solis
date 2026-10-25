@@ -695,3 +695,71 @@ fn many_characters_moved_together_go_exactly_where_one_by_one_would() {
     }
     assert_eq!(together.state().checksum(), alone.state().checksum());
 }
+
+#[test]
+fn numbers_too_big_for_physics_are_refused_or_held_in_range() {
+    // The second review: a rotation whose length overflows passed as
+    // finite and gave bodies NaN places; a collider 1e20 m big made
+    // Rapier's maths fail and emptied physics.
+    let mut physics = with_floor();
+    let (body, collider) = crate_spec();
+    assert!(!physics.add(
+        id(2),
+        (Vec3::ZERO, Quat::from_xyzw(2.0e19, 0.0, 0.0, 0.0)),
+        Vec3::ONE,
+        body,
+        collider,
+    ));
+    assert!(!physics.add(
+        id(3),
+        (Vec3::splat(2.0e9), Quat::IDENTITY),
+        Vec3::ONE,
+        body,
+        collider
+    ));
+    let mut state = physics.state().body_state(id(1)).unwrap();
+    state.velocity = Vec3::splat(1.0e30);
+    assert!(!state.is_sensible());
+    // Huge, but held to a thousand kilometres: physics keeps working.
+    assert!(physics.add(
+        id(4),
+        (Vec3::new(0.0, 0.0, 5.0), Quat::IDENTITY),
+        Vec3::splat(1.0e20),
+        body,
+        collider
+    ));
+    run(&mut physics, 5);
+    assert!(!physics.take_broke());
+    assert!(
+        physics
+            .state()
+            .body_states()
+            .iter()
+            .all(|(_, s)| s.is_sensible())
+    );
+    let _ = physics
+        .state()
+        .cast_ray(Vec3::new(0.0, 0.0, 9.0e8), -Vec3::Z, 1.0e7);
+}
+
+#[test]
+fn a_fixed_or_kinematic_body_built_again_stays_where_its_entity_put_it() {
+    let mut physics = with_floor();
+    assert!(physics.add(
+        id(6),
+        (Vec3::new(1.0, 0.0, 2.0), Quat::IDENTITY),
+        Vec3::ONE,
+        Some(Body {
+            kind: BodyKind::Kinematic,
+            ..Body::default()
+        }),
+        Some(ColliderSpec::default()),
+    ));
+    let mut stale = physics.state().body_state(id(6)).unwrap();
+    stale.position = Vec3::new(9.0, 9.0, 9.0);
+    physics.set_body_state(id(6), stale, true);
+    assert_eq!(
+        physics.state().pose(id(6)).unwrap().0,
+        Vec3::new(1.0, 0.0, 2.0)
+    );
+}
