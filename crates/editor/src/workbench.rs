@@ -43,6 +43,9 @@ pub enum WorkbenchAction {
     ImportModel,
     /// Bring in the built-in sample area (Help > Add the sample area).
     AddSampleArea,
+    /// Make the turret sample game as a new project, in a folder the app
+    /// asks for (Help > Make the sample game).
+    MakeSampleGame,
     /// Make a new project in a folder the user picks (File > New project…).
     NewProject,
     /// Open a project from a folder the user picks (File > Open project…).
@@ -286,6 +289,7 @@ impl Workbench {
             self.place_targets.clear();
             self.code_problems.clear();
             self.set_program(None);
+            self.set_rust_components(Vec::new());
             self.pending_reload = None;
             self.unsaved_prompt = None;
             self.library_state = Default::default();
