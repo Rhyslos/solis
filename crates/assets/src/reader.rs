@@ -55,6 +55,34 @@ pub fn load_bytes(
     reading.unwrap_or_else(|_| Err(ImportError::Damaged("part of it couldn't be read".into())))
 }
 
+/// The other files a model at `path` reads (a `.gltf`'s `.bin` and
+/// images, beside it), so a project can copy them with it and notice when
+/// they change. Files it would refuse to read aren't listed.
+pub fn referenced_files(path: &Path, limits: &Limits) -> Result<Vec<PathBuf>, ImportError> {
+    let bytes = read_limited(path, limits.max_file_bytes)?;
+    let parsed = std::panic::catch_unwind(|| gltf::Gltf::from_slice(&bytes))
+        .map_err(|_| ImportError::Damaged("its structure couldn't be read".into()))?
+        .map_err(|e| ImportError::NotGltf(describe_gltf_error(&e)))?;
+    let folder = path.parent();
+    let buffers = parsed.document.buffers().filter_map(|b| match b.source() {
+        gltf::buffer::Source::Uri(uri) => Some(uri),
+        gltf::buffer::Source::Bin => None,
+    });
+    let images = parsed.document.images().filter_map(|i| match i.source() {
+        gltf::image::Source::Uri { uri, .. } => Some(uri),
+        gltf::image::Source::View { .. } => None,
+    });
+    let mut files = Vec::new();
+    for uri in buffers.chain(images) {
+        if let Address::File(file) = resolve(uri, folder)?
+            && !files.contains(&file)
+        {
+            files.push(file);
+        }
+    }
+    Ok(files)
+}
+
 fn describe_gltf_error(error: &gltf::Error) -> String {
     match error {
         gltf::Error::Io(e) => format!("reading failed ({e})"),

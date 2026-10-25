@@ -68,9 +68,9 @@ impl GpuViewport {
         self.models.insert(id, uploaded);
     }
 
-    /// Frees an imported model.
-    pub fn remove_model(&mut self, id: AssetId) {
-        self.models.remove(&id);
+    /// Frees every model (another project was opened).
+    pub fn clear_models(&mut self) {
+        self.models.clear();
     }
 
     /// Makes the image `size` pixels, unless it already is.

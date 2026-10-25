@@ -91,7 +91,7 @@ changed_pixels() {
 quit() {
     xdotool mousemove 19 16 click 1
     sleep 1
-    xdotool mousemove 40 "${QUIT_Y:-171}" click 1
+    xdotool mousemove 40 "${QUIT_Y:-259}" click 1
     for _ in $(seq 1 15); do
         kill -0 "$PID" 2>/dev/null || break
         sleep 1

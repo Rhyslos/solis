@@ -6,6 +6,7 @@ use crate::area_panel::{AreaRequest, area_tree};
 use crate::console::{Console, console};
 use crate::document::Document;
 use crate::icons::{self, Icon};
+use crate::library::{LibraryItem, ProjectInfo, library};
 use crate::models::ModelInfo;
 use crate::panel::Panel;
 use crate::properties::{PropertyRequest, properties};
@@ -29,6 +30,9 @@ pub(crate) struct PanelViewer<'a> {
     pub(crate) document: &'a Document,
     pub(crate) models: &'a BTreeMap<AssetId, ModelInfo>,
     pub(crate) area_requests: &'a mut Vec<AreaRequest>,
+    pub(crate) project: Option<&'a ProjectInfo>,
+    pub(crate) library: &'a [LibraryItem],
+    pub(crate) place: &'a mut Option<AssetId>,
     pub(crate) requests: &'a mut Vec<PropertyRequest>,
     pub(crate) accent: Accent,
     pub(crate) in_front: &'a HashSet<Panel>,
@@ -121,10 +125,9 @@ impl TabViewer for PanelViewer<'_> {
             }
             Panel::Library => {
                 menu_row(ui, &["Import", "View"]);
-                placeholder(
-                    ui,
-                    "The library arrives with the asset database in Phase 2.",
-                );
+                if let Some(id) = library(ui, self.project, self.library, self.accent) {
+                    *self.place = Some(id);
+                }
             }
             Panel::Game => placeholder(ui, "Press Play to run the game here (Phase 3)."),
             Panel::Code => {

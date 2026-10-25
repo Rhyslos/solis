@@ -18,6 +18,7 @@ Until areas and entities arrive (Phase 2), an imported model sits in the viewpor
 Then:
 - The model is read in the background, so the editor keeps running while it loads. The Console says **Importing…**, then **Imported** with the model's triangle count and size in metres.
 - The camera moves to show the whole model, and picks a [camera speed](navigating-the-viewport.md) that suits its size.
+- With a [project](projects-and-the-library.md) open, the file is first copied into the project's assets folder (with the `.bin` and images a `.gltf` reads), so the project keeps it; it then also appears in the **Library**.
 - The model appears in the **Area** panel as one [entity](entities.md), however many parts the file has (they keep their places inside it; splitting a model into its parts comes with assemblies, later in Phase 2). A mesh used many times in the file is stored once, with its triangle count. The **×** at the end of its row deletes it from the area. Select it to see its Transform and Model in Properties.
 
 **Exporting from Blender:** File > Export > glTF 2.0, choose **glTF Binary (.glb)**, and keep **+Y Up** ticked (the standard). Solis turns glTF's "Y is up" into its own "Z is up" for you, so the model stands upright.

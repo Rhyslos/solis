@@ -8,7 +8,7 @@ When finding your way around, or making the layout suit your screen.
 ## How to use it
 
 **The top bar**, from left to right:
-- **Menus:** File, Edit, View, Entity, Build, Window and Help. **File > Import model…** brings a model in (see [Importing models](importing-models.md)); **Edit > Undo** and **Redo** take back changes (see [Undo and redo](undo.md)); **Help > Add the sample area** brings in a ready-made one. Items that don't work yet are greyed out; point at one to see which phase brings it.
+- **Menus:** File, Edit, View, Entity, Build, Window and Help. **File > New project…**, **Open project…** and **Recent projects** work with [projects](projects-and-the-library.md); **File > Import model…** brings a model in (see [Importing models](importing-models.md)); **Edit > Undo** and **Redo** take back changes (see [Undo and redo](undo.md)); **Help > Add the sample area** brings in a ready-made one. Items that don't work yet are greyed out; point at one to see which phase brings it.
 - **The area tab:** the open area ("Untitled area"). Opening more areas, assemblies and code side by side arrives in Phase 2.
 - **Play**, **Play with two players** and **Stop**, then **Build** and **Build & Play**, on the right. They tell you in the Console which phase brings them.
 
@@ -21,7 +21,7 @@ When finding your way around, or making the layout suit your screen.
 | Area | Layers | Every [entity](entities.md) in the area, as a tree: the sun, the [environment](sky-fog-and-exposure.md) (sky and fog), [lights](lights.md) and [imported models](importing-models.md) (each with a × to delete it), with lights from a model's file indented under it. Click one to see it in Properties. |
 | Layers | Area | The area's layers (Phase 2). |
 | Properties | | The selected entity's name and [components](entities.md), each with its settings, plus **Move here** and **Delete**. |
-| Library | Code | Models, textures, sounds and assemblies (Phase 2). |
+| Library | Code | The open [project](projects-and-the-library.md)'s models (textures, sounds and assemblies later). Double-click one, or click its +, to place it. |
 | Code | Library | Game code in Lust, Rust or Lua (Phase 4). |
 | Console | Problems | Messages from the editor. See [The Console](console.md). |
 | Problems | Console | Mistakes found in code and areas. |

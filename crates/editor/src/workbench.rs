@@ -12,6 +12,7 @@ use crate::console::CONSOLE_LIMIT;
 use crate::console::{Console, LogLevel, LogLine};
 use crate::document::Document;
 use crate::layout::{self, Preset};
+use crate::library::{LibraryItem, ProjectInfo};
 use crate::models::ModelInfo;
 use crate::panel::Panel;
 use crate::panels::{PanelViewer, drop_hint};
@@ -41,6 +42,15 @@ pub enum WorkbenchAction {
     ImportModel,
     /// Bring in the built-in sample area (Help > Add the sample area).
     AddSampleArea,
+    /// Make a new project in a folder the user picks (File > New project…).
+    NewProject,
+    /// Open a project from a folder the user picks (File > Open project…).
+    OpenProject,
+    /// Open the project in this folder (File > Recent projects).
+    OpenRecent(std::path::PathBuf),
+    /// Place the project's asset where the camera looks (a double-click in
+    /// the Library).
+    PlaceAsset(AssetId),
 }
 
 /// The editor's state, kept between frames.
@@ -60,6 +70,12 @@ pub struct Workbench {
     /// The tabs that were in front last frame, to underline them in the
     /// accent colour.
     pub(crate) in_front: HashSet<Panel>,
+    /// The open project, if any.
+    pub(crate) project: Option<ProjectInfo>,
+    /// Projects opened lately, newest first, for File > Recent projects.
+    pub(crate) recent: Vec<std::path::PathBuf>,
+    /// The project's assets, for the Library.
+    pub(crate) library: Vec<LibraryItem>,
     /// Counts presses of the mouse: changes to one field during one press
     /// (a drag) are one undo step.
     pub(crate) gesture: u64,
@@ -81,6 +97,9 @@ impl Workbench {
             about_open: false,
             in_front: HashSet::new(),
             gesture: 0,
+            project: None,
+            recent: Vec::new(),
+            library: Vec::new(),
         }
     }
 
@@ -117,6 +136,58 @@ impl Workbench {
     /// The entity shown in Properties, if any.
     pub fn selection(&self) -> Option<EntityId> {
         self.document.selection.primary()
+    }
+
+    /// Shows `project` as the open one (or none). A different project
+    /// starts a new area, as the old one's models belong to the old
+    /// project.
+    pub fn set_project(&mut self, project: Option<ProjectInfo>) {
+        if project != self.project {
+            self.document = Document::default();
+            self.models.clear();
+            self.library.clear();
+            if let Some(p) = &project {
+                self.log(LogLevel::Info, format!("Opened the project {}.", p.name));
+            }
+        }
+        self.project = project;
+    }
+
+    /// The open project, if any.
+    pub fn project(&self) -> Option<&ProjectInfo> {
+        self.project.as_ref()
+    }
+
+    /// The projects for File > Recent projects, newest first.
+    pub fn set_recent(&mut self, recent: Vec<std::path::PathBuf>) {
+        self.recent = recent;
+    }
+
+    /// The project's assets, for the Library.
+    pub fn set_library(&mut self, items: Vec<LibraryItem>) {
+        self.library = items;
+    }
+
+    /// Whether the model `id` is loaded (placed or reloaded before).
+    pub fn has_model(&self, id: AssetId) -> bool {
+        self.models.contains_key(&id)
+    }
+
+    /// Swaps in a model that changed on disk: everything using it now
+    /// draws the new version. Not an undo step: the area didn't change.
+    pub fn reload_model(&mut self, info: ModelInfo, warnings: &[String]) {
+        self.log(
+            LogLevel::Info,
+            format!(
+                "Reloaded {}: {} triangles.",
+                info.name,
+                crate::models::grouped(info.triangles)
+            ),
+        );
+        for warning in warnings {
+            self.log(LogLevel::Warning, format!("{}: {warning}", info.name));
+        }
+        self.models.insert(info.asset, info);
     }
 
     /// The panel layout, for saving.
@@ -182,7 +253,13 @@ impl Workbench {
 
     /// The window title: the program, its version and the open area.
     pub fn title(&self) -> String {
-        format!("{} {} · Untitled area", self.info.name, self.info.version)
+        match &self.project {
+            Some(project) => format!(
+                "{} {} · {} · Untitled area",
+                self.info.name, self.info.version, project.name
+            ),
+            None => format!("{} {} · Untitled area", self.info.name, self.info.version),
+        }
     }
 
     /// Draws the editor filling `ui`, and returns what the app must do.
@@ -205,6 +282,7 @@ impl Workbench {
         let style = theme::dock_style(ui.style().as_ref(), self.accent);
         let mut shown = HashSet::new();
         let mut area_requests = Vec::new();
+        let mut place = None;
         let mut requests = Vec::new();
         self.viewport.area = AreaView::of(self.document.area(), &self.models);
         self.viewport.entities = self.document.area().len();
@@ -225,6 +303,9 @@ impl Workbench {
                         document: &self.document,
                         models: &self.models,
                         area_requests: &mut area_requests,
+                        project: self.project.as_ref(),
+                        library: &self.library,
+                        place: &mut place,
                         requests: &mut requests,
                         accent: self.accent,
                         in_front: &self.in_front,
@@ -235,6 +316,9 @@ impl Workbench {
         self.in_front = shown;
         for request in requests {
             self.apply_property(request, self.gesture);
+        }
+        if let Some(id) = place {
+            actions.push(WorkbenchAction::PlaceAsset(id));
         }
         for request in area_requests {
             self.apply_area_request(request);

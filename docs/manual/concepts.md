@@ -32,6 +32,15 @@
 - **Parent and child:** an entity can belong to another, like a lamp to the room model it came with. A child moves with its parent, and deleting the parent deletes its children. A child's position is measured from its parent, so moving the parent carries it along.
 - **Instance:** one copy of a mesh drawn somewhere. A mesh used many times (a crate in a hundred places) is stored once and drawn as many instances, which is much faster than storing a hundred crates.
 
+## Projects
+
+- **Project:** a folder holding one game: its assets, settings and areas. See [Projects and the Library](projects-and-the-library.md).
+- **Asset:** a file the game uses: a model now, textures, sounds and code later.
+- **Sidecar:** the small `.solmeta` text file beside each asset holding its ID, so renaming the file breaks nothing. Commit it with the asset.
+- **Library:** the panel listing the project's assets.
+- **Cache:** files Solis makes to work faster (models it has already read). Safe to delete: they're made again.
+- **Hot reload:** a changed file shows in Solis straight away, without restarting.
+
 ## Models
 
 - **Model:** a 3D object made in a modelling program (Blender, Aventail): its shape, and how its surface looks. See [Importing models](importing-models.md).

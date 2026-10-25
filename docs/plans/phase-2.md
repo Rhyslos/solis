@@ -156,7 +156,7 @@ The ROADMAP lists Phase 2's parts; they're built in this order. **Undo comes sec
 - **A scale-check entry:** an area of 2,000 entities listed and inspected within the editor's frame target (rule 18). This needs the Area tree to draw only the rows in view.
 - **Tests:** a made-up component registered at run time shows in the inspector and edits with undo; the scale check.
 
-### M5. The asset database ☐
+### M5. The asset database ☑
 
 - **A project folder:**
   - `project.solis` (TOML: name, format version);
