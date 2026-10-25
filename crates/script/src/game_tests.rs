@@ -16,6 +16,7 @@ struct TestWorld {
     said: Vec<String>,
     time: f64,
     shots: Vec<crate::Shot>,
+    seed: u64,
 }
 
 impl TestWorld {
@@ -59,11 +60,15 @@ impl GameWorld for TestWorld {
             index: Arc::new(ViewIndex::new(&entities)),
             places: Arc::new(self.entities.iter().map(|(_, _, m)| *m).collect()),
             frame_time: 1.0 / 60.0,
+            seed: self.seed,
         }
     }
 
     fn apply(&mut self, changes: &[Change]) {
         for change in changes {
+            if let Change::Seed(seed) = change {
+                self.seed = *seed;
+            }
             if let Change::Move(e, place) = change
                 && let Some(entity) = self.entities.iter_mut().find(|(id, _, _)| id == e)
             {
@@ -520,4 +525,107 @@ fn spawned_entities_share_out_across_shards() {
         counts[game.shard_of(id(2 * n + 1))] += 1;
     }
     assert!(counts.iter().all(|&c| c > 400), "{counts:?}");
+}
+
+/// Lust and Lua dice: each rolls and says what came up, every tick; the
+/// Lust one sets the seed back to 7 on its tenth tick.
+const DICE: &str = "get \"solis/world\":[random, randomInt, randomRange, setSeed, say];\n\
+    component Die {\n\
+        has {\n\
+            int rolls = 0;\n\
+        }\n\
+        method update(float dt) {\n\
+            rolls = rolls + 1;\n\
+            say(\"lust \" + randomInt(1, 6).text() + \" \" + random().text() + \" \" + randomRange(-2, 2).text());\n\
+            is rolls == 10? then {\n\
+                setSeed(7);\n\
+            }\n\
+        }\n\
+    }\n\
+    pass Die;\nend\n";
+
+const LUA_DIE: &str = "local LuaDie = component(\"LuaDie\", {})\n\
+    function LuaDie:update(dt)\n\
+        solis.say(\"lua \" .. math.random(6) .. \" \" .. math.random(10, 12) .. \" \" .. math.random())\n\
+    end\n";
+
+/// What `count` Lust dice and a Lua one say over `ticks` on `shards`
+/// shards, starting from `seed`.
+fn roll(shards: usize, seed: u64, ticks: usize) -> Vec<String> {
+    roll_and_sum(shards, seed, ticks).0
+}
+
+/// As [`roll`], with the game code's checksum after each tick.
+fn roll_and_sum(shards: usize, seed: u64, ticks: usize) -> (Vec<String>, Vec<u64>) {
+    let names: Vec<String> = (1..=9).map(|n| format!("D{n}")).collect();
+    let names: Vec<&str> = names.iter().map(String::as_str).collect();
+    let mut world = TestWorld::with(&names);
+    world.seed = seed;
+    let mut files = crate::describe::descriptions("Test 1.0", "solis");
+    files.push(("main.lst".into(), DICE.to_string()));
+    let code = Code {
+        files,
+        lua: vec![("die.lua".into(), LUA_DIE.to_string())],
+        notes: Vec::new(),
+    };
+    let code = Arc::new(crate::compile(&code).unwrap().unwrap());
+    let mut game = Game::new(shards).unwrap();
+    game.load(&code, &mut world).unwrap();
+    let empty = ComponentData::default();
+    let mut components: Vec<(EntityId, &str, &ComponentData)> =
+        (1..=8).map(|n| (id(n), "Die", &empty)).collect();
+    components.push((id(9), "LuaDie", &empty));
+    assert!(game.sync_many(components, &mut world).is_empty());
+    let mut sums = Vec::new();
+    for t in 0..ticks {
+        world.time = t as f64 / 60.0;
+        let ticked = game.tick(1.0 / 60.0, &mut world);
+        assert!(ticked.failures.is_empty(), "{:?}", ticked.failures);
+        sums.push(game.checksum());
+    }
+    (world.said, sums)
+}
+
+#[test]
+fn random_numbers_follow_the_seed_on_any_number_of_shards() {
+    let one = roll(1, 42, 12);
+    assert_eq!(one.len(), 9 * 12);
+    assert_eq!(roll(3, 42, 12), one, "the same on 3 shards");
+    assert_eq!(roll(4, 42, 12), one, "and on 4");
+    assert_ne!(roll(1, 43, 12), one, "another seed, other numbers");
+    // In range, and not all the same.
+    let dice: Vec<i64> = one
+        .iter()
+        .filter(|l| l.starts_with("lust "))
+        .map(|l| l.split(' ').nth(1).unwrap().parse().unwrap())
+        .collect();
+    assert!(dice.iter().all(|d| (1..=6).contains(d)), "{dice:?}");
+    assert!(dice.iter().any(|&d| d != dice[0]));
+    for line in one.iter().filter(|l| l.starts_with("lua ")) {
+        let parts: Vec<f64> = line.split(' ').skip(1).map(|p| p.parse().unwrap()).collect();
+        assert!((1.0..=6.0).contains(&parts[0]) && parts[0].fract() == 0.0, "{line}");
+        assert!((10.0..=12.0).contains(&parts[1]), "{line}");
+        assert!((0.0..1.0).contains(&parts[2]), "{line}");
+    }
+}
+
+#[test]
+fn set_seed_lands_at_the_end_of_the_tick_and_repeats_the_numbers() {
+    // The dice set the seed to 7 on their tenth tick: from the eleventh,
+    // the numbers are those a game started at 7 rolls at the same time.
+    let reset = roll(2, 42, 12);
+    let from_seven = roll(2, 7, 12);
+    assert_ne!(reset[..9 * 10], from_seven[..9 * 10]);
+    assert_eq!(reset[9 * 10..], from_seven[9 * 10..]);
+}
+
+#[test]
+fn game_code_s_checksum_is_the_same_on_any_number_of_shards() {
+    let (_, one) = roll_and_sum(1, 5, 12);
+    assert_eq!(roll_and_sum(3, 5, 12).1, one);
+    assert_eq!(roll_and_sum(4, 5, 12).1, one);
+    // Each tick changes the dice's counts, so each tick's sum differs.
+    for pair in one.windows(2) {
+        assert_ne!(pair[0], pair[1]);
+    }
 }

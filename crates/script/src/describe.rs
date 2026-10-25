@@ -65,6 +65,30 @@ pub const NATIVES: &[Native] = &[
         about: "How long the last frame took, in seconds of real time (1/60 at 60 frames a second).",
     },
     Native {
+        file: "world",
+        name: "random",
+        lust: "method float random() native;",
+        about: "A random number from 0 up to 1. The same game with the same seed gets the same numbers, on any computer.",
+    },
+    Native {
+        file: "world",
+        name: "randomRange",
+        lust: "method float randomRange(float low, float high) native;",
+        about: "A random number from low up to high.",
+    },
+    Native {
+        file: "world",
+        name: "randomInt",
+        lust: "method int randomInt(int low, int high) native;",
+        about: "A random whole number from low to high, both included (randomInt(1, 6) rolls a die).",
+    },
+    Native {
+        file: "world",
+        name: "setSeed",
+        lust: "method setSeed(int seed) native;",
+        about: "Starts the game's random numbers again from a seed, at the end of the tick: the same seed gives the same numbers again.",
+    },
+    Native {
         file: "entity",
         name: "positionOf",
         lust: "method vec3 positionOf(entity which) native;",

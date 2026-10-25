@@ -5,12 +5,14 @@
 //!
 //! Layer 0 (core). See this crate's README for its purpose and limits.
 
+mod checksum;
 mod component;
 mod id;
 mod registry;
 mod schema;
 mod value;
 
+pub use checksum::Checksum;
 pub use component::{Component, ComponentData, Fields};
 pub use id::{AssetId, EntityId, ID_TEXT_LEN, Id, IdError, IdHasher, IdHashing, IdMap};
 pub use registry::{Registry, RegistryError};

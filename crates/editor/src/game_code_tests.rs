@@ -1286,3 +1286,67 @@ fn the_game_drawn_between_ticks_lags_where_it_is_by_part_of_a_tick() {
     assert!(between > drawn_at(0.0), "ahead of the last tick");
     assert_eq!(drawn_at(1.0), now);
 }
+
+/// A drunkard: staggers a random step each tick.
+const DRUNKARD: &str = "get \"solis/world\":[randomRange];\n\
+    get \"solis/entity\":[moveTo, positionOf];\n\
+    component Drunkard {\n\
+        has {\n\
+            int steps = 0;\n\
+        }\n\
+        method update(float dt) {\n\
+            vec3 step = [randomRange(-1, 1), randomRange(-1, 1), 0];\n\
+            moveTo(me, positionOf(me) + step);\n\
+            steps = steps + 1;\n\
+        }\n\
+    }\n\
+    pass Drunkard;\nend\n";
+
+/// A workbench with a drunkard (entity 5) in its area.
+fn with_a_drunkard() -> Workbench {
+    let mut w = Workbench::new(info(), None);
+    w.set_program(Some(program(DRUNKARD)));
+    let mut data = EntityData::new("Walker").with(&Transform::default());
+    data.components
+        .insert("Drunkard".into(), reflect::ComponentData::default());
+    w.document
+        .edit(
+            "Add",
+            vec![area::Edit::Spawn {
+                entities: vec![(EntityId(reflect::Id::from_raw(5).unwrap()), data)],
+            }],
+            None,
+            None,
+        )
+        .unwrap();
+    w
+}
+
+/// Plays `w` from `seed` (or a new one) for `ticks`, then stops: where
+/// the drunkard got to, and the game's checksums then.
+fn stagger(w: &mut Workbench, seed: Option<u64>, ticks: u64) -> (f32, u64, u64) {
+    let id = EntityId(reflect::Id::from_raw(5).unwrap());
+    w.fixed_seed = seed;
+    w.play();
+    while w.world().unwrap().clock().ticks < ticks {
+        w.run_game((world::TICK * 2.0) as f32);
+    }
+    let x = x_in_game(w, id);
+    let playing = w.playing.as_mut().unwrap();
+    let world = playing.world.checksum();
+    let code = playing.game.as_mut().unwrap().checksum();
+    w.stop();
+    (x, world, code)
+}
+
+#[test]
+fn a_chosen_seed_plays_the_same_twice_and_a_new_one_differently() {
+    let mut w = with_a_drunkard();
+    let first = stagger(&mut w, Some(99), 60);
+    assert_eq!(stagger(&mut w, Some(99), 60), first, "the same, to the bit");
+    let other = stagger(&mut w, Some(100), 60);
+    assert_ne!(other.0, first.0, "another seed");
+    assert_ne!(other.1, first.1);
+    // Each Play has a new seed when none is chosen.
+    assert_ne!(stagger(&mut w, None, 60).0, stagger(&mut w, None, 60).0);
+}

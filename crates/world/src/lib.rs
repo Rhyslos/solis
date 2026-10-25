@@ -118,6 +118,8 @@ pub struct World {
     /// Projectiles in flight: not entities, and kept when the world is
     /// built again.
     projectiles: Projectiles,
+    /// The seed the game's random numbers are made from.
+    seed: u64,
     /// See [`World::changes`]: the last number given, and whether
     /// anything changed since.
     stamp: u64,
@@ -175,6 +177,7 @@ impl World {
             revision: 0,
             game_moved: reflect::IdMap::default(),
             projectiles: Projectiles::default(),
+            seed: 0,
             stamp: next_number(),
             touched: false,
         };
@@ -241,9 +244,11 @@ impl World {
             })
             .collect();
         let projectiles = std::mem::take(&mut self.projectiles);
+        let seed = self.seed;
         *self = Self::from_area(area);
         self.clock = clock;
         self.projectiles = projectiles;
+        self.seed = seed;
         for (id, from, at) in kept {
             self.set_transform(id, at);
             self.game_moved.insert(id, from);
@@ -724,6 +729,65 @@ impl World {
     /// drawing should be between the last tick and the next.
     pub fn progress(&self) -> f32 {
         ((self.clock.carry / TICK) as f32).clamp(0.0, 1.0)
+    }
+
+    /// A checksum of the game's world (Phase 6, determinism): every
+    /// entity in order with its name, place and game components' values,
+    /// the projectiles, the clock and the seed. Two runs of a game that
+    /// agree on it at a tick are in the same state (game code's running
+    /// values are checked apart, by `script::Game::checksum`).
+    pub fn checksum(&self) -> u64 {
+        let mut sum = reflect::Checksum::new();
+        sum.u64(self.clock.ticks);
+        sum.u64(self.seed);
+        sum.u64(self.order.len() as u64);
+        for &(entity, parent) in &self.order {
+            let Ok(e) = self.ecs.entity(entity) else {
+                continue;
+            };
+            if let Some(id) = e.get::<&Id>() {
+                sum.entity(id.0);
+            }
+            sum.u64(parent.map_or(u64::MAX, |p| p as u64));
+            if let Some(name) = e.get::<&Name>() {
+                sum.bytes(name.0.as_bytes());
+            }
+            if let Some(global) = e.get::<&Global>() {
+                for v in global.0.to_cols_array() {
+                    sum.f32(v);
+                }
+            }
+            if let Some(values) = e.get::<&Values>() {
+                for (name, data) in &values.0 {
+                    sum.bytes(name.as_bytes());
+                    sum.data(data);
+                }
+            }
+        }
+        let flying = self.projectiles.flying();
+        sum.u64(flying.len() as u64);
+        for p in flying {
+            for v in p.position.to_array().into_iter().chain(p.velocity.to_array()) {
+                sum.f32(v);
+            }
+            sum.f32(p.left);
+            for v in p.colour {
+                sum.f32(v);
+            }
+        }
+        sum.finish()
+    }
+
+    /// The seed the game's random numbers are made from.
+    pub fn seed(&self) -> u64 {
+        self.seed
+    }
+
+    /// Starts the game's random numbers again from `seed` (Play chooses
+    /// one; game code's `setSeed` changes it).
+    pub fn set_seed(&mut self, seed: u64) {
+        self.seed = seed;
+        self.touched = true;
     }
 
     /// Runs exactly one tick now, whatever time is waiting (Step, while

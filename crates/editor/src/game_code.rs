@@ -241,6 +241,7 @@ impl GameWorld for PlayWorld<'_> {
             index: Arc::clone(&self.cache.index),
             places: Arc::new(places),
             frame_time: self.frame_time,
+            seed: self.world.seed(),
         }
     }
 
@@ -253,6 +254,7 @@ impl GameWorld for PlayWorld<'_> {
                         .push(GameEdit::Spawn(id, assembly.clone(), place));
                 }
                 Change::Despawn(id) => self.edits.push(GameEdit::Despawn(id)),
+                Change::Seed(seed) => self.world.set_seed(seed),
                 Change::Move(which, _) | Change::Turn(which, _) => {
                     // Every move and turn of one entity in a row (one
                     // component's are side by side) in one lookup; the

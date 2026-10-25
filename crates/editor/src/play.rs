@@ -130,6 +130,10 @@ impl Workbench {
         self.moving = None;
         self.document.close_step();
         let mut world = world::World::from_area(self.document.area());
+        // A new seed each Play, unless one was chosen (`seed` in the
+        // Console), so random numbers differ between plays but a play can
+        // be repeated.
+        world.set_seed(self.fixed_seed.unwrap_or_else(fresh_seed));
         let _ = self.document.take_changes();
         let cameras = world.placed::<area::builtin::Camera>().len();
         let mut view = ViewCache::default();
@@ -615,3 +619,17 @@ impl Workbench {
 #[cfg(test)]
 #[path = "play_tests.rs"]
 mod tests;
+
+/// A seed for a new play, from the clock.
+fn fresh_seed() -> u64 {
+    let nanos = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map_or(0, |d| d.as_nanos() as u64);
+    // Mixed (splitmix64's finalizer), and kept to whole numbers Lust and
+    // Lua can hold exactly, so `setSeed` can repeat it.
+    let mut x = nanos;
+    x = (x ^ (x >> 30)).wrapping_mul(0xbf58_476d_1ce4_e5b9);
+    x = (x ^ (x >> 27)).wrapping_mul(0x94d0_49bb_1331_11eb);
+    x ^= x >> 31;
+    x % 1_000_000_000
+}

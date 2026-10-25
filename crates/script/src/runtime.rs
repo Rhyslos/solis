@@ -392,6 +392,25 @@ impl Runtime {
         Some(data)
     }
 
+    /// A checksum of every running component's values, each summed on
+    /// its own (with its entity and name) and added up, so components
+    /// split between runtimes add up the same (see `Game::checksum`).
+    /// A stopped component counts as stopped.
+    pub fn checksum(&self) -> u64 {
+        let mut total = 0_u64;
+        for ((entity, name), running) in &self.running {
+            let mut sum = reflect::Checksum::new();
+            sum.entity(*entity);
+            sum.bytes(name.as_bytes());
+            sum.u64(u64::from(running.stopped));
+            if let Some(data) = self.values(*entity, name) {
+                sum.data(&data);
+            }
+            total = total.wrapping_add(sum.finish());
+        }
+        total
+    }
+
     /// Runs one tick of `dt` seconds: every running component's `update`,
     /// entities in ID order and components in name order, then the events
     /// they sent, in rounds. A component that fails stops (until the code
