@@ -553,7 +553,9 @@ impl Workbench {
             [] => {
                 let running = self.playing.as_ref().map(|p| p.world.seed());
                 Ok(match (running, self.fixed_seed) {
-                    (Some(seed), Some(_)) => format!("The game's seed is {seed}, chosen for every Play."),
+                    (Some(seed), Some(_)) => {
+                        format!("The game's seed is {seed}, chosen for every Play.")
+                    }
                     (Some(seed), None) => format!(
                         "The game's seed is {seed}. Type seed {seed} to start every Play from it."
                     ),

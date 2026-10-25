@@ -524,9 +524,16 @@ fn seed_and_checksum_say_what_they_do() {
     assert!(said(&w).1.contains("press Play first"));
     w.play();
     run(&mut w, "seed");
-    assert_eq!(answer(&w), "The game's seed is 1234, chosen for every Play.");
+    assert_eq!(
+        answer(&w),
+        "The game's seed is 1234, chosen for every Play."
+    );
     run(&mut w, "checksum");
-    assert!(answer(&w).starts_with("At tick 0: world "), "{}", answer(&w));
+    assert!(
+        answer(&w).starts_with("At tick 0: world "),
+        "{}",
+        answer(&w)
+    );
     w.stop();
     run(&mut w, "seed new");
     assert_eq!(w.fixed_seed, None);

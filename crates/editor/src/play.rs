@@ -54,6 +54,8 @@ pub(crate) struct Playing {
     pub(crate) view: crate::game_code::ViewCache,
     /// Whether the Console was told projectiles hit their limit.
     told_too_many: bool,
+    /// Whether the Console was told there were too many physics bodies.
+    told_too_many_bodies: bool,
     /// Assembly names game code spawned that weren't found, said once.
     told_unknown: std::collections::HashSet<String>,
     /// Whether the Console was told game code spawned too much.
@@ -152,6 +154,7 @@ impl Workbench {
             game,
             view,
             told_too_many: false,
+            told_too_many_bodies: false,
             told_unknown: Default::default(),
             told_too_many_spawns: false,
             pending,
@@ -417,6 +420,10 @@ impl Workbench {
         if refused {
             playing.told_too_many = true;
         }
+        let bodies_refused = playing.world.physics_refused() > 0 && !playing.told_too_many_bodies;
+        if bodies_refused {
+            playing.told_too_many_bodies = true;
+        }
         self.profiler.add(crate::profiler::Stage::GameCode, code);
         self.profiler.add(
             crate::profiler::Stage::World,
@@ -438,6 +445,16 @@ impl Workbench {
                     "More than {} projectiles were flying at once, so game code's next shots \
                      weren't fired until some ran out of time.",
                     crate::models::grouped(world::MAX_PROJECTILES)
+                ),
+            );
+        }
+        if bodies_refused {
+            self.log(
+                LogLevel::Warning,
+                format!(
+                    "The game has the most physics bodies it can ({}), so the rest have no physics: \
+                     they don't fall or collide.",
+                    crate::models::grouped(world::physics::MAX_BODIES)
                 ),
             );
         }

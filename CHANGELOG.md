@@ -26,6 +26,8 @@ What changed in each version, for people using Solis. Newest first.
 
 ### Added
 
+- **Physics** (Phase 6): a **RigidBody** makes an entity fall, collide and get pushed, and a **Collider** gives it a shape (box, sphere or capsule); a collider on its own makes a floor or wall. Physics is strict: the same game comes out exactly the same on every computer. Game code pushes bodies (`push`), reads and sets their speed (`velocityOf`, `setVelocity`) and looks along lines (`castRay`, `castRayHit`, `castRayNormal`). A selected collider shows as a green outline. The manual's new page, Physics, explains it all.
+- **Random numbers** (Phase 6): `random()`, `randomRange` and `randomInt` in Lust (and Lua's `math.random`) come from the game's seed, so the same seed plays the same on any computer. `seed` in the Console shows it or fixes it for every Play; `checksum` shows a number for the game's whole state, to check two plays agree.
 - **Step** (Phase 6): while the game is paused, the new Step button beside Pause (or `step` in the Console) runs exactly one tick.
 - **The Profiler (Phase 5):** a new panel beside the Console shows where each frame's time goes: game code, the game's world, preparing and handing over what to draw, the rest of the editor, and the graphics card's own passes (on cards that can time them), with a graph of the last few seconds and how much was drawn.
 - **A first game (Phase 4):** **Help > Make the sample game…** makes the turret sample as a new project: a Lust turret shoots at a drone whose health (Lust), armour (Rust) and sparks (Lua) react to each other through events. The manual's new page, Your first game, walks through it.

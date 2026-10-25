@@ -603,8 +603,15 @@ fn random_numbers_follow_the_seed_on_any_number_of_shards() {
     assert!(dice.iter().all(|d| (1..=6).contains(d)), "{dice:?}");
     assert!(dice.iter().any(|&d| d != dice[0]));
     for line in one.iter().filter(|l| l.starts_with("lua ")) {
-        let parts: Vec<f64> = line.split(' ').skip(1).map(|p| p.parse().unwrap()).collect();
-        assert!((1.0..=6.0).contains(&parts[0]) && parts[0].fract() == 0.0, "{line}");
+        let parts: Vec<f64> = line
+            .split(' ')
+            .skip(1)
+            .map(|p| p.parse().unwrap())
+            .collect();
+        assert!(
+            (1.0..=6.0).contains(&parts[0]) && parts[0].fract() == 0.0,
+            "{line}"
+        );
         assert!((10.0..=12.0).contains(&parts[1]), "{line}");
         assert!((0.0..1.0).contains(&parts[2]), "{line}");
     }

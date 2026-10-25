@@ -46,6 +46,8 @@ pub const FOLDER: Color32 = Color32::from_rgb(0xe8, 0xc3, 0x5a);
 pub const WARNING: Color32 = Color32::from_rgb(0xe8, 0xb3, 0x4a);
 /// Text that reports a failure: a soft red, readable on the panels.
 pub const ERROR: Color32 = Color32::from_rgb(0xf0, 0x7a, 0x72);
+/// A selected entity's collider (Phase 6): what physics bumps into.
+pub const COLLIDER: Color32 = Color32::from_rgb(0x6e, 0xd8, 0x8a);
 /// The panels drawn over the viewport (stats, view buttons, tools), a
 /// little see-through.
 pub const OVERLAY: Color32 = Color32::from_rgba_premultiplied(0x1f, 0x1f, 0x1f, 0xeb);

@@ -108,4 +108,15 @@
 - **Spawn:** game code making an entity while the game runs (a copy of an [assembly](assemblies.md)); **despawn** takes one away. See [Game code](game-code.md#making-and-removing-entities).
 - **Benchmark:** a ready-made test of how much a computer can play at once. Solis's is two fleets of ships firing lasers: see [The benchmark](benchmark.md).
 - **Tick:** one step of the running game. Solis runs 60 a second, whatever the frame rate, and game code's `update` runs once each tick, so the game behaves the same on a fast or slow computer. During a tick, game code sees the world as it was when the tick started (plus its own changes), so it can run on every core at once and still come out the same.
+- **Random number:** a number game code gets by chance, such as a die roll (`randomInt(1, 6)`). Solis makes them from a **seed**: the same seed gives the same numbers in the same order, so a play can be repeated exactly. Each Play has a new seed unless you choose one (`seed` in the [Console](console.md)).
 - **Event:** a message one component sends to an entity, such as "you were hit, for 2.5". Each of that entity's components that cares reacts to it. Events let components work together without knowing about each other, even when they're written in different languages.
+
+## Simulation
+
+- **Physics:** making things move like real objects without writing how: they fall, collide, stack and get pushed. See [Physics](physics.md).
+- **Rigid body:** what makes an entity move by physics. **Dynamic** ones are moved by physics, **kinematic** ones only by game code (pushing dynamic ones aside), and **fixed** ones never move.
+- **Collider:** the shape physics bumps into (a box, sphere or capsule), which can be simpler than what's drawn. A collider on its own makes a floor or wall that never moves.
+- **Impulse (push):** a sudden push, like a kick. The same push moves a light thing more than a heavy one.
+- **Ray:** an invisible line from a point in a direction, asking "what's the first thing along here?". Games use them to see whether a character stands on the ground, or what a gun points at.
+- **Determinism:** a game coming out exactly the same every time it's given the same inputs, on any computer. Solis keeps to it (decimals rounded the same way, everything done in a fixed order), so a recording replays exactly, and players online can keep their games in step by sending only their inputs.
+- **Checksum:** one number made from everything in the game at a moment. Two plays that agree on it at the same tick are in the same state; when they don't, something differs. `checksum` in the [Console](console.md) shows it.

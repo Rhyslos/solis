@@ -41,7 +41,8 @@ pub enum BodyKind {
 pub struct Body {
     /// How it moves.
     pub kind: BodyKind,
-    /// Its mass in kilograms; 0 works it out from its colliders' size.
+    /// Its mass in kilograms; 0 works it out from its collider's size (a
+    /// kilogram for each cubic metre).
     pub mass: f32,
     /// How quickly it slows down moving (0 never, 1 a lot).
     pub linear_damping: f32,
@@ -188,19 +189,13 @@ fn from_rp(v: rp::Vector) -> Vec3 {
 /// A place and facing as Rapier's pose.
 fn pose(position: Vec3, rotation: Quat) -> rp::Pose {
     let r = rotation.normalize();
-    rp::Pose::from_parts(
-        to_rp(position),
-        rp::Rotation::from_xyzw(r.x, r.y, r.z, r.w),
-    )
+    rp::Pose::from_parts(to_rp(position), rp::Rotation::from_xyzw(r.x, r.y, r.z, r.w))
 }
 
 /// Rapier's pose as a place and facing.
 fn from_pose(p: &rp::Pose) -> (Vec3, Quat) {
     let r = p.rotation;
-    (
-        from_rp(p.translation),
-        Quat::from_xyzw(r.x, r.y, r.z, r.w),
-    )
+    (from_rp(p.translation), Quat::from_xyzw(r.x, r.y, r.z, r.w))
 }
 
 /// Whether every number is sensible: Rapier is never given NaN.

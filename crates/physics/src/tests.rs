@@ -37,7 +37,13 @@ fn run(physics: &mut Physics, ticks: usize) {
 fn a_crate_falls_and_lands_on_the_floor() {
     let mut physics = with_floor();
     let (body, collider) = crate_spec();
-    physics.add(id(2), (Vec3::new(0.0, 0.0, 5.0), Quat::IDENTITY), Vec3::ONE, body, collider);
+    physics.add(
+        id(2),
+        (Vec3::new(0.0, 0.0, 5.0), Quat::IDENTITY),
+        Vec3::ONE,
+        body,
+        collider,
+    );
     run(&mut physics, 30);
     let falling = physics.state().pose(id(2)).unwrap().0.z;
     assert!(falling < 5.0, "falling: {falling}");
@@ -47,7 +53,10 @@ fn a_crate_falls_and_lands_on_the_floor() {
     // A 1 m crate on a floor whose top is at 0 rests with its middle at 0.5.
     assert!((rest.z - 0.5).abs() < 0.05, "resting at {rest}");
     // The floor never moved.
-    assert_eq!(physics.state().pose(id(1)).unwrap().0, Vec3::new(0.0, 0.0, -0.5));
+    assert_eq!(
+        physics.state().pose(id(1)).unwrap().0,
+        Vec3::new(0.0, 0.0, -0.5)
+    );
 }
 
 /// A pile of `count` crates dropped in a column, run for `ticks`: the
@@ -87,7 +96,13 @@ fn a_pile_falls_the_same_every_time() {
 fn rays_hit_the_nearest_thing_and_pass_out_of_what_they_start_in() {
     let mut physics = with_floor();
     let (body, collider) = crate_spec();
-    physics.add(id(2), (Vec3::new(0.0, 0.0, 3.0), Quat::IDENTITY), Vec3::ONE, body, collider);
+    physics.add(
+        id(2),
+        (Vec3::new(0.0, 0.0, 3.0), Quat::IDENTITY),
+        Vec3::ONE,
+        body,
+        collider,
+    );
     // Collisions are found by stepping once.
     physics.step(1.0 / 60.0);
     let down = physics
@@ -129,7 +144,13 @@ fn pushes_velocities_and_kinematic_moves() {
         gravity: 0.0,
         ..body.unwrap()
     };
-    physics.add(id(2), (Vec3::ZERO, Quat::IDENTITY), Vec3::ONE, Some(floating), collider);
+    physics.add(
+        id(2),
+        (Vec3::ZERO, Quat::IDENTITY),
+        Vec3::ONE,
+        Some(floating),
+        collider,
+    );
     physics.set_velocity(id(2), Vec3::new(2.0, 0.0, 0.0));
     run(&mut physics, 60);
     let x = physics.state().pose(id(2)).unwrap().0.x;
@@ -161,7 +182,13 @@ fn pushes_velocities_and_kinematic_moves() {
 fn nothing_that_isnt_a_number_gets_in() {
     let mut physics = Physics::new();
     let (body, collider) = crate_spec();
-    assert!(!physics.add(id(2), (Vec3::NAN, Quat::IDENTITY), Vec3::ONE, body, collider));
+    assert!(!physics.add(
+        id(2),
+        (Vec3::NAN, Quat::IDENTITY),
+        Vec3::ONE,
+        body,
+        collider
+    ));
     assert!(!physics.add(
         id(2),
         (Vec3::ZERO, Quat::from_xyzw(0.0, 0.0, 0.0, 0.0)),
@@ -169,7 +196,13 @@ fn nothing_that_isnt_a_number_gets_in() {
         body,
         collider
     ));
-    assert!(!physics.add(id(2), (Vec3::ZERO, Quat::IDENTITY), Vec3::INFINITY, body, collider));
+    assert!(!physics.add(
+        id(2),
+        (Vec3::ZERO, Quat::IDENTITY),
+        Vec3::INFINITY,
+        body,
+        collider
+    ));
     // Wild settings are made sensible, not refused.
     let wild = Body {
         mass: f32::NAN,
@@ -186,7 +219,13 @@ fn nothing_that_isnt_a_number_gets_in() {
         bounciness: 7.0,
         center: Vec3::NAN,
     };
-    assert!(physics.add(id(3), (Vec3::ZERO, Quat::IDENTITY), Vec3::ONE, Some(wild), Some(tiny)));
+    assert!(physics.add(
+        id(3),
+        (Vec3::ZERO, Quat::IDENTITY),
+        Vec3::ONE,
+        Some(wild),
+        Some(tiny)
+    ));
     physics.set_pose(id(3), Vec3::NAN, Quat::IDENTITY);
     physics.set_velocity(id(3), Vec3::INFINITY);
     physics.push(id(3), Vec3::NAN);

@@ -24,6 +24,7 @@ New to game engines? Start with [Concepts](concepts.md).
 - [Sky, fog and exposure: the world around your models, and how bright the picture is](sky-fog-and-exposure.md)
 - [The Console: messages, search and commands](console.md)
 - [Game code: writing your game's rules in Lust, Lua and Rust](game-code.md)
+- [Physics: things that fall, collide and get pushed](physics.md)
 - [Your first game: the turret sample, in all three languages](first-game.md)
 - [Problems: mistakes found in the area and the game's code](problems.md)
 - [The Profiler: where each frame's time goes](profiler.md)

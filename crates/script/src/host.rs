@@ -423,7 +423,11 @@ mod random_tests {
         assert_eq!(random_int(6.0, 1.0, 0.0), 1.0, "either way round");
         assert_eq!(random_int(3.0, 3.0, 0.7), 3.0);
         assert_eq!(random_int(1.5, 2.5, 0.9), 2.0, "whole numbers between");
-        assert_eq!(random_int(1.2, 1.8, 0.5), 2.0, "none between: the low end rounded up");
+        assert_eq!(
+            random_int(1.2, 1.8, 0.5),
+            2.0,
+            "none between: the low end rounded up"
+        );
         assert_eq!(random_int(f64::NAN, 2.0, 0.5), 0.0);
         for i in 0..=100 {
             let x = f64::from(i) / 100.0 * 0.999_999;

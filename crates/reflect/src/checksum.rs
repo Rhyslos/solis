@@ -131,9 +131,15 @@ mod tests {
     fn any_difference_changes_it_and_the_same_never_does() {
         let a = [Value::Int(1), Value::Text("ab".into()), Value::Float(0.5)];
         assert_eq!(of(&a), of(&a.clone()));
-        assert_ne!(of(&a), of(&[Value::Int(1), Value::Text("ab".into()), Value::Float(0.25)]));
+        assert_ne!(
+            of(&a),
+            of(&[Value::Int(1), Value::Text("ab".into()), Value::Float(0.25)])
+        );
         // Order matters, and kinds are told apart.
-        assert_ne!(of(&[Value::Int(1), Value::Int(2)]), of(&[Value::Int(2), Value::Int(1)]));
+        assert_ne!(
+            of(&[Value::Int(1), Value::Int(2)]),
+            of(&[Value::Int(2), Value::Int(1)])
+        );
         assert_ne!(of(&[Value::Int(1)]), of(&[Value::Float(1.0)]));
         assert_ne!(of(&[Value::Bool(false)]), of(&[Value::Int(0)]));
         // Neighbouring texts don't run together.

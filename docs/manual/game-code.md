@@ -216,7 +216,7 @@ end
 
 `fire` takes where it starts, which way it flies (any length), its speed in metres a second, how long it lives in seconds, and its colour as red, green and blue. Above 1 glows brighter: `[4, 0.3, 0.2]` is a hot red laser. In Lua it's `solis.fire(from, direction, speed, life, colour)`, with `vec3(…)` for each.
 
-- It flies in a straight line and disappears when its time is up. It doesn't hit anything yet: that comes with physics (Phase 6).
+- It flies in a straight line and disappears when its time is up. It doesn't hit anything: lasers are kept out of [physics](physics.md) so a million can fly. To see what a shot would hit, look along its line with `castRay`.
 - It's drawn in the **Game** panel as a glowing streak, as long as it flies in two frames. Streaks add their light where they cross.
 - Up to 1,000,000 can fly at once. Past that, new shots aren't fired until some run out, and the Console says so once.
 - Like a move, a shot lands after every `update` in the tick is done ([what game code sees](#components)), so it starts flying next tick.
@@ -251,6 +251,29 @@ end
 - At most 10,000 copies are made in one tick, and an area holds at most a million entities; past that, the Console says so and the rest aren't made.
 - `despawn(me)` is how a component takes its own entity away. It ends at the end of the tick.
 
+## Random numbers
+
+Dice, loot, where an enemy wanders next: `random()` gives a number from 0 up to 1, `randomRange(low, high)` one between two numbers, and `randomInt(low, high)` a whole number, both ends included.
+
+```
+get "solis/world":[randomInt, randomRange, say];
+
+component Die {
+    method update(float dt) {
+        say("rolled " + randomInt(1, 6).text());
+    }
+}
+
+pass Die;
+end
+```
+
+Solis makes them from the game's **seed** ([random numbers](concepts.md#game-code)), so the same seed gives the same numbers, on any computer and any number of cores. Each Play has a new seed; type `seed` in the [Console](console.md) to see it, and `seed 42` to start every Play from 42, so you can watch the same game again. `setSeed(n)` starts the numbers again from `n` at the end of the tick. Lua's own `math.random` and `math.randomseed` follow the same seed.
+
+## Physics
+
+Things that fall, collide and get pushed have a **RigidBody** and a **Collider**: see [Physics](physics.md). Game code pushes them (`push`), reads and sets how fast they move (`velocityOf`, `setVelocity`), and looks along lines (`castRay`, `castRayHit`, `castRayNormal`), all in `solis/physics`.
+
 ## What the engine offers
 
 | In | Method | What it does |
@@ -262,6 +285,16 @@ end
 | `solis/world` | `entity spawn(string file, vec3 place)` | Makes a copy of an assembly at a place (see Making and removing entities, below). |
 | `solis/world` | `despawn(entity which)` | Takes an entity, and everything under it, out of the game. |
 | `solis/world` | `float frameTime()` | How long the last frame took, in seconds of real time (1/60 at 60 frames a second). |
+| `solis/world` | `float random()` | A random number from 0 up to 1 (see Random numbers, above). |
+| `solis/world` | `float randomRange(float low, float high)` | A random number from low up to high. |
+| `solis/world` | `int randomInt(int low, int high)` | A random whole number from low to high, both included. |
+| `solis/world` | `setSeed(int seed)` | Starts the random numbers again from a seed, at the end of the tick. |
+| `solis/physics` | `push(entity which, vec3 impulse)` | Gives a body a push ([Physics](physics.md)). |
+| `solis/physics` | `vec3 velocityOf(entity which)` | How fast and which way a body moves, metres a second. |
+| `solis/physics` | `setVelocity(entity which, vec3 velocity)` | Sets how fast and which way a body moves. |
+| `solis/physics` | `float castRay(vec3 from, vec3 direction, float reach)` | How far along a line the first collider is, or -1. |
+| `solis/physics` | `entity castRayHit(vec3 from, vec3 direction, float reach)` | The entity a line meets first, or nothing. |
+| `solis/physics` | `vec3 castRayNormal(vec3 from, vec3 direction, float reach)` | Which way the surface a line meets faces. |
 | `solis/entity` | `vec3 positionOf(entity which)` | Where an entity is in the world, in metres. |
 | `solis/entity` | `moveTo(entity which, vec3 place)` | Puts an entity at a place in the world. |
 | `solis/entity` | `rotation rotationOf(entity which)` | Which way an entity faces. |
@@ -287,5 +320,6 @@ end
 - [Projects and the Library](projects-and-the-library.md)
 - [Entities and components](entities.md)
 - [Play mode](play-mode.md)
-- Concepts: [game code, Lust, native method, tick, event](concepts.md#game-code)
+- [Physics](physics.md)
+- Concepts: [game code, Lust, native method, tick, event, random number](concepts.md#game-code), [physics](concepts.md#simulation)
 - The Lust language itself: [Lust's guide](https://github.com/Rhyslos/Lust/blob/main/LUST.md)

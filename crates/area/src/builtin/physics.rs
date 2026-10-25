@@ -6,7 +6,9 @@
 
 use super::field;
 use glam::Vec3;
-use reflect::{Component, ComponentData, ComponentSchema, FieldInfo, FieldKind, Fields, Hint, Value};
+use reflect::{
+    Component, ComponentData, ComponentSchema, FieldInfo, FieldKind, Fields, Hint, Value,
+};
 
 /// How a body moves.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
@@ -99,8 +101,8 @@ impl Component for RigidBody {
                         (0.0, 1.0e9),
                         0.1,
                         " kg",
-                        "How heavy it is. 0 works it out from the collider's size, as if it were \
-                         water.",
+                        "How heavy it is. 0 works it out from the collider's size: a kilogram \
+                         for each cubic metre.",
                     ),
                 ),
                 field::float(
@@ -157,8 +159,14 @@ impl Component for RigidBody {
         let mut data = ComponentData::default();
         data.set("kind", Value::Text(self.kind.name().into()));
         data.set("mass", Value::Float(f64::from(self.mass)));
-        data.set("linear_damping", Value::Float(f64::from(self.linear_damping)));
-        data.set("angular_damping", Value::Float(f64::from(self.angular_damping)));
+        data.set(
+            "linear_damping",
+            Value::Float(f64::from(self.linear_damping)),
+        );
+        data.set(
+            "angular_damping",
+            Value::Float(f64::from(self.angular_damping)),
+        );
         data.set("gravity", Value::Float(f64::from(self.gravity)));
         data.set("upright", Value::Bool(self.upright));
         data.set("fast", Value::Bool(self.fast));
@@ -247,7 +255,12 @@ impl Component for Collider {
     fn schema() -> ComponentSchema {
         let d = Self::default();
         let metres = |name: &str, label: &str, default: f32, help: &'static str| {
-            field::float(name, label, default, field::hint((0.001, 1.0e5), 0.01, " m", help))
+            field::float(
+                name,
+                label,
+                default,
+                field::hint((0.001, 1.0e5), 0.01, " m", help),
+            )
         };
         ComponentSchema {
             name: Self::NAME.into(),
@@ -270,8 +283,18 @@ impl Component for Collider {
                     help: "A box's size along X, Y and Z, in metres.",
                     ..Hint::default()
                 }),
-                metres("radius", "Radius", d.radius, "A sphere's or capsule's radius."),
-                metres("height", "Height", d.height, "A capsule's height, end to end."),
+                metres(
+                    "radius",
+                    "Radius",
+                    d.radius,
+                    "A sphere's or capsule's radius.",
+                ),
+                metres(
+                    "height",
+                    "Height",
+                    d.height,
+                    "A capsule's height, end to end.",
+                ),
                 FieldInfo::new("center", "Centre", FieldKind::Vec3, Value::vec3(d.center)).hint(
                     Hint {
                         speed: Some(0.01),

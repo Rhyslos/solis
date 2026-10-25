@@ -838,7 +838,12 @@ impl World {
         let flying = self.projectiles.flying();
         sum.u64(flying.len() as u64);
         for p in flying {
-            for v in p.position.to_array().into_iter().chain(p.velocity.to_array()) {
+            for v in p
+                .position
+                .to_array()
+                .into_iter()
+                .chain(p.velocity.to_array())
+            {
                 sum.f32(v);
             }
             sum.f32(p.left);
@@ -877,7 +882,10 @@ impl World {
             self.physics.remove(id);
             return;
         }
-        let global = self.ecs.get::<&Global>(entity).map_or(Mat4::IDENTITY, |g| g.0);
+        let global = self
+            .ecs
+            .get::<&Global>(entity)
+            .map_or(Mat4::IDENTITY, |g| g.0);
         let (scale, rotation, position) = global.to_scale_rotation_translation();
         let body = body.map(|b| physics::Body {
             kind: match b.kind {

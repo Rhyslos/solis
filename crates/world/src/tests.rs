@@ -546,7 +546,10 @@ fn physics_plays_the_same_every_time_and_counts_in_the_checksum() {
     };
     let first = run();
     assert_eq!(run(), first);
-    assert_ne!(first[0], first[1], "physics moved it, so the checksum moved");
+    assert_ne!(
+        first[0], first[1],
+        "physics moved it, so the checksum moved"
+    );
 }
 
 #[test]

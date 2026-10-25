@@ -377,3 +377,51 @@ fn a_click_on_the_last_pixel_never_asks_past_the_image() {
     );
     assert_eq!(pixel_at(Vec2::new(-3.0, -3.0), size, 1.25), Vec2::ZERO);
 }
+
+#[test]
+fn colliders_are_drawn_as_their_shapes_where_they_are() {
+    use area::builtin::{Collider, ColliderShape};
+    let world = Mat4::from_translation(Vec3::new(10.0, 0.0, 0.0));
+    let boxed = collider_lines(
+        world,
+        &Collider {
+            size: Vec3::new(2.0, 4.0, 6.0),
+            center: Vec3::new(0.0, 0.0, 3.0),
+            ..Collider::default()
+        },
+    );
+    assert_eq!(boxed.len(), 12, "a box's edges");
+    let (min, max) = boxed.iter().flat_map(|(a, b)| [*a, *b]).fold(
+        (Vec3::splat(f32::MAX), Vec3::splat(f32::MIN)),
+        |(lo, hi), p| (lo.min(p), hi.max(p)),
+    );
+    assert_eq!(min, Vec3::new(9.0, -2.0, 0.0));
+    assert_eq!(max, Vec3::new(11.0, 2.0, 6.0));
+    let ball = collider_lines(
+        world,
+        &Collider {
+            shape: ColliderShape::Sphere,
+            radius: 2.0,
+            ..Collider::default()
+        },
+    );
+    assert!(
+        ball.iter()
+            .all(|(a, _)| ((*a - Vec3::new(10.0, 0.0, 0.0)).length() - 2.0).abs() < 1e-4),
+        "every point on the ball"
+    );
+    let capsule = collider_lines(
+        Mat4::IDENTITY,
+        &Collider {
+            shape: ColliderShape::Capsule,
+            radius: 0.5,
+            height: 2.0,
+            ..Collider::default()
+        },
+    );
+    let top = capsule
+        .iter()
+        .flat_map(|(a, b)| [a.z, b.z])
+        .fold(f32::MIN, f32::max);
+    assert!((top - 1.0).abs() < 1e-4, "end to end, 2 m: {top}");
+}

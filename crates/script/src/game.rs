@@ -300,7 +300,9 @@ impl Host for ViewHost {
     fn push(&mut self, which: EntityId, impulse: Vec3) {
         if impulse.is_finite() && self.view.physics.contains(which) && self.kept.room() {
             let order = self.order();
-            self.kept.changes.push((order, Change::Push(which, impulse)));
+            self.kept
+                .changes
+                .push((order, Change::Push(which, impulse)));
         }
     }
 
