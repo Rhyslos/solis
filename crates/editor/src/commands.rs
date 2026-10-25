@@ -106,6 +106,7 @@ impl Workbench {
         &mut self,
         schema: reflect::ComponentSchema,
     ) -> Result<(), reflect::RegistryError> {
+        self.sources += 1;
         self.document.registry.register(schema)
     }
 
@@ -196,6 +197,7 @@ impl Workbench {
         edits.insert(0, Edit::Spawn { entities });
         let label = format!("Import {}", info.name);
         self.models.insert(info.asset, info);
+        self.sources += 1;
         let select = target.map(|_| {
             let mut s = Selection::default();
             s.select_only(id);
@@ -209,10 +211,11 @@ impl Workbench {
     /// shine like `light`, turned by `rotation`.
     fn sun_edits(&self, light: &Light, rotation: Quat) -> Vec<Edit> {
         let area = self.document.area();
-        let sun = area
-            .with::<Light>()
-            .find(|(_, l)| l.kind == LightKind::Sun)
-            .map(|(id, _)| id);
+        let sun = area.first_in_tree(
+            area.with::<Light>()
+                .filter(|(_, l)| l.kind == LightKind::Sun)
+                .map(|(id, _)| id),
+        );
         let transform = |old: Option<Transform>| Transform {
             rotation,
             ..old.unwrap_or_default()
@@ -276,7 +279,7 @@ impl Workbench {
         self.spawn_selected(
             EntityData::new(&format!("Spotlight {n}"))
                 .with(&Transform {
-                    position: camera.position,
+                    position: camera.viewpoint(),
                     rotation: area::builtin::aim(camera.forward()),
                     ..Transform::default()
                 })
@@ -299,7 +302,7 @@ impl Workbench {
         self.spawn_selected(
             EntityData::new(&format!("Camera {n}"))
                 .with(&Transform {
-                    position: camera.position,
+                    position: camera.viewpoint(),
                     rotation,
                     ..Transform::default()
                 })
@@ -437,6 +440,22 @@ impl Workbench {
 
     /// What the selected entity's assembly says about it, for Properties.
     pub(crate) fn assembly_part(&self) -> Option<AssemblyPart> {
+        let key = (
+            self.document.selection.primary(),
+            self.document.revision(),
+            self.sources,
+        );
+        if let Some((kept, part)) = &*self.assembly_part_kept.borrow()
+            && *kept == key
+        {
+            return part.clone();
+        }
+        let part = self.work_out_assembly_part();
+        *self.assembly_part_kept.borrow_mut() = Some((key, part.clone()));
+        part
+    }
+
+    fn work_out_assembly_part(&self) -> Option<AssemblyPart> {
         let id = self.document.selection.primary()?;
         let origin = self.document.area().get(id)?.origin.clone()?;
         let lookup = |asset| self.assemblies.get(&asset).cloned();
@@ -605,20 +624,47 @@ impl Workbench {
         let uses = self.document.area().iter().any(|(_, e)| e.origin.is_some());
         if !had || !uses {
             self.assemblies.insert(id, file);
+            self.sources += 1;
             return;
         }
+        let name = self.asset_name(id);
         // The copies' changes, worked out against the old contents…
         let collapsed = {
             let lookup = |asset| self.assemblies.get(&asset).cloned();
             Expander::new(&lookup).collapse(self.document.area(), FileKind::Area)
         };
-        self.assemblies.insert(id, file);
-        let Ok(collapsed) = collapsed else { return };
-        // …laid over the new contents.
+        let collapsed = match collapsed {
+            Ok(collapsed) => collapsed,
+            Err(why) => {
+                // The copies can't be told apart from their old contents:
+                // the new file is used from now on, but nothing is
+                // rebuilt, so nothing is lost.
+                self.assemblies.insert(id, file);
+                self.sources += 1;
+                self.log(
+                    LogLevel::Error,
+                    format!("Couldn't update copies of {name}: {why}."),
+                );
+                return;
+            }
+        };
+        // …laid over the new contents. If they can't be (an assembly it
+        // now places isn't read yet), the old file stays in use, so saving
+        // never writes the copies against contents they weren't built from.
         let rebuilt = {
-            let lookup = |asset| self.assemblies.get(&asset).cloned();
+            let lookup = |asset| {
+                if asset == id {
+                    Some(file.clone())
+                } else {
+                    self.assemblies.get(&asset).cloned()
+                }
+            };
             Expander::new(&lookup).expand(&collapsed)
         };
+        if rebuilt.is_ok() {
+            self.assemblies.insert(id, file);
+            self.sources += 1;
+        }
         let name = self.asset_name(id);
         match rebuilt {
             Ok(area) if area != *self.document.area() => {
@@ -637,7 +683,10 @@ impl Workbench {
             Ok(_) => {}
             Err(why) => self.log(
                 LogLevel::Error,
-                format!("Couldn't update copies of {name}: {why}."),
+                format!(
+                    "Couldn't update copies of {name}: {why}. They keep the version they \
+                     were made from."
+                ),
             ),
         }
     }
@@ -1005,6 +1054,10 @@ impl Workbench {
                 .get(id)
                 .and_then(|e| e.get::<Model>())
                 .and_then(|m| m.asset)
+                // A part of an unpacked model sits where its node is, and
+                // the whole model's box would be in the wrong place: it's
+                // framed as a point, as its outline is drawn.
+                .filter(|r| r.part.is_none())
                 .and_then(|r| self.models.get(&r.asset));
             match model {
                 Some(info) => {
@@ -1057,7 +1110,7 @@ impl Workbench {
         let mut transform = entity.get::<Transform>().unwrap_or_default();
         match entity.get::<Light>().map(|l| l.kind) {
             Some(LightKind::Spot) => {
-                transform.position = camera.position;
+                transform.position = camera.viewpoint();
                 transform.rotation = area::builtin::aim(camera.forward());
             }
             Some(LightKind::Point) => {

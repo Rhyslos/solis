@@ -25,7 +25,7 @@ pub(crate) struct Picker {
 impl ViewportRenderer for Picker {
     fn render(&mut self, view: &ViewportView) -> Result<egui::TextureId, String> {
         // Only the newest few are kept.
-        if self.views.len() > 16 {
+        if self.views.len() > 64 {
             self.views.remove(0);
         }
         self.views.push(view.clone());
@@ -36,12 +36,17 @@ impl ViewportRenderer for Picker {
         Ok(egui::TextureId::default())
     }
 
-    fn picked(&mut self) -> Option<PickAnswer> {
+    fn picked(&mut self, _image: usize) -> Option<PickAnswer> {
         if !self.waiting {
             return None;
         }
         self.waiting = false;
-        Some(self.answer.clone().unwrap_or_default())
+        // The answer to the question last asked.
+        let rect = self.asked.last().copied().unwrap_or_default();
+        Some(PickAnswer {
+            rect,
+            ..self.answer.clone().unwrap_or_default()
+        })
     }
 }
 

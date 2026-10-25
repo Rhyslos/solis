@@ -38,10 +38,9 @@ fn aspect_of(size: Vec2) -> f32 {
 }
 
 impl Camera {
-    /// Whether the view is flat (orthographic). Perspective only, until
-    /// flat views arrive with several viewports.
+    /// Whether the view is flat (orthographic).
     pub fn is_flat(&self) -> bool {
-        false
+        self.kind.is_flat()
     }
 
     /// The ray from the camera through `point` of a viewport of `size`.
@@ -49,6 +48,18 @@ impl Camera {
         let size = size.max(Vec2::ONE);
         let ndc_x = 2.0 * point.x / size.x - 1.0;
         let ndc_y = 1.0 - 2.0 * point.y / size.y;
+        if self.is_flat() {
+            // Every ray of a flat view points the same way, from the
+            // point of the eye's plane in front of the pixel.
+            let half_height = self.flat_height * 0.5;
+            let half_width = half_height * aspect_of(size);
+            return Ray {
+                origin: self.eye()
+                    + self.right() * (ndc_x * half_width)
+                    + self.up() * (ndc_y * half_height),
+                direction: self.forward(),
+            };
+        }
         let half_height = (self.fov_y * 0.5).tan();
         let half_width = half_height * aspect_of(size);
         let direction = (self.forward()
@@ -77,6 +88,9 @@ impl Camera {
     /// How many metres one point of the screen covers at `at`.
     pub fn world_per_pixel(&self, at: Vec3, size: Vec2) -> f32 {
         let height = size.y.max(1.0);
+        if self.is_flat() {
+            return (self.flat_height / height).max(1e-6);
+        }
         let depth = (at - self.position).dot(self.forward()).max(1e-3);
         let per_pixel = 2.0 * depth * (self.fov_y * 0.5).tan() / height;
         if per_pixel.is_finite() {

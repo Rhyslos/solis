@@ -2999,6 +2999,7 @@ dependencies = [
  "assets",
  "bytemuck",
  "glam",
+ "log",
  "pollster 1.0.1",
  "wgpu",
 ]

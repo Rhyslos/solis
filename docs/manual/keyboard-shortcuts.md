@@ -13,6 +13,9 @@
 | Change camera speed | Hold right mouse + mouse wheel |
 | Move forward or back in steps | Mouse wheel |
 | Slide the view | Hold middle mouse, drag |
+| Slide a flat view (Top, Front, Right) | Hold right or middle mouse, drag |
+| Zoom a flat view | Mouse wheel |
+| Use one of several views | Click in it |
 
 ## Tools (when the right mouse button isn't held)
 

@@ -113,12 +113,29 @@ pub const WORLD_AXES: [Vec3; 3] = [Vec3::X, Vec3::Y, Vec3::Z];
 /// What moving the selection would move, or `None` when nothing selected
 /// has a transform (or it's all locked away).
 pub fn targets(area: &Area, selection: &Selection, object_axes: bool) -> Option<Targets> {
+    targets_placed(area, &|id| area.world_matrix(id), selection, object_axes)
+}
+
+/// [`targets`], with where each entity is in the world from `world` (the
+/// document's matrices, worked out once a frame).
+pub fn targets_placed(
+    area: &Area,
+    world: &dyn Fn(EntityId) -> Mat4,
+    selection: &Selection,
+    object_axes: bool,
+) -> Option<Targets> {
     let selected: Vec<EntityId> = selection.iter().collect();
     let inside_another = |id: EntityId| {
         let mut parent = area.get(id).and_then(|e| e.parent);
+        // A damaged area's loop of parents ends the walk.
+        let mut steps = 0;
         while let Some(p) = parent {
             if selection.contains(p) {
                 return true;
+            }
+            steps += 1;
+            if steps > area.len() {
+                break;
             }
             parent = area.get(p).and_then(|e| e.parent);
         }
@@ -130,9 +147,7 @@ pub fn targets(area: &Area, selection: &Selection, object_axes: bool) -> Option<
         .filter_map(|id| {
             let entity = area.get(id)?;
             let start = entity.get::<Transform>()?;
-            let parent_world = entity
-                .parent
-                .map_or(Mat4::IDENTITY, |p| area.world_matrix(p));
+            let parent_world = entity.parent.map_or(Mat4::IDENTITY, world);
             Some(Target {
                 id,
                 start,

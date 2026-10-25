@@ -129,11 +129,59 @@ pub fn restore(saved: Option<DockState<Panel>>) -> DockState<Panel> {
             add_beside_its_group(&mut dock, panel);
         }
     }
-    if is_complete(&dock) {
+    if is_complete(&dock) && draws(&dock) {
         dock
     } else {
         Preset::Default.layout()
     }
+}
+
+/// Whether `dock` can be drawn. egui_dock trusts a layout's insides (which
+/// window is in focus, which tab is in front, how splits divide) and stops
+/// the program on a damaged one, so a saved layout is drawn once out of
+/// sight before it's used.
+fn draws(dock: &DockState<Panel>) -> bool {
+    struct Blank;
+    impl egui_dock::TabViewer for Blank {
+        type Tab = Panel;
+        fn id(&mut self, tab: &mut Panel) -> egui::Id {
+            egui::Id::new(("trial", *tab))
+        }
+        fn title(&mut self, tab: &mut Panel) -> egui::WidgetText {
+            tab.title().into()
+        }
+        fn ui(&mut self, _ui: &mut egui::Ui, _tab: &mut Panel) {}
+    }
+    let mut copy = dock.clone();
+    let ctx = egui::Context::default();
+    let input = || egui::RawInput {
+        screen_rect: Some(egui::Rect::from_min_size(
+            egui::Pos2::ZERO,
+            egui::vec2(1440.0, 900.0),
+        )),
+        ..egui::RawInput::default()
+    };
+    // Silenced: a damaged layout is expected here, and isn't news. (Not in
+    // tests, where the hook is shared with tests running alongside.)
+    let hook = (!cfg!(test)).then(|| {
+        let hook = std::panic::take_hook();
+        std::panic::set_hook(Box::new(|_| {}));
+        hook
+    });
+    let drawn = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+        for _ in 0..2 {
+            let mut output = ctx.run_ui(input(), |ui| {
+                egui_dock::DockArea::new(&mut copy).show_inside(ui, &mut Blank);
+            });
+            // Nothing is shown, so the fonts' pictures go nowhere.
+            output.textures_delta.clear();
+        }
+    }))
+    .is_ok();
+    if let Some(hook) = hook {
+        std::panic::set_hook(hook);
+    }
+    drawn
 }
 
 /// Adds `panel` to the tab group of a panel it shares a group with in the
@@ -294,6 +342,19 @@ mod tests {
     /// never crashes, and what comes back always has every panel exactly
     /// once.
     #[test]
+    fn a_layout_that_cant_be_drawn_gives_the_default() {
+        // Found by review: a window in focus that doesn't exist made
+        // egui_dock stop the program at every start.
+        let good = ron::to_string(&Preset::Default.layout()).unwrap();
+        assert!(good.contains("focused_surface:None"), "{good}");
+        let bad = good.replace("focused_surface:None", "focused_surface:Some((3))");
+        let parsed: DockState<Panel> = ron::from_str(&bad).unwrap();
+        assert!(!draws(&parsed));
+        assert_eq!(text(&restore(Some(parsed))), good);
+        assert!(draws(&Preset::Default.layout()));
+    }
+
+    #[test]
     fn random_damage_to_a_saved_layout_never_loses_panels() {
         let mut moved = Preset::WideScreen.layout();
         let path = moved.find_tab(&Panel::Console).unwrap();
@@ -329,7 +390,9 @@ mod tests {
             let text = String::from_utf8_lossy(&damaged);
             let parsed = ron::from_str::<DockState<Panel>>(&text).ok();
             read_back += usize::from(parsed.is_some());
-            assert!(is_complete(&restore(parsed)), "{text}");
+            let restored = restore(parsed);
+            assert!(is_complete(&restored), "{text}");
+            assert!(draws(&restored), "{text}");
         }
         // Make sure the test really exercised damaged layouts that still
         // read back, not only ones refused outright.

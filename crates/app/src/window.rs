@@ -32,6 +32,9 @@ const CAMERA_KEY: &str = "viewport_camera";
 const LAST_PROJECT_KEY: &str = "last_project";
 /// Key under which the recent projects are remembered.
 const RECENT_PROJECTS_KEY: &str = "recent_projects";
+/// Key under which the viewport's views (layout, cameras, looks) are
+/// remembered.
+const VIEWS_KEY: &str = "viewport_views";
 /// Key under which the console's earlier commands are remembered.
 const CONSOLE_HISTORY_KEY: &str = "console_history";
 /// Window size on first launch, in logical pixels.
@@ -87,6 +90,7 @@ impl App {
         let snapping: editor::Snapping = storage
             .and_then(|s| eframe::get_value(s, SNAPPING_KEY))
             .unwrap_or_default();
+        let views: Option<editor::Views> = storage.and_then(|s| eframe::get_value(s, VIEWS_KEY));
         let console_history: Vec<String> = storage
             .and_then(|s| eframe::get_value(s, CONSOLE_HISTORY_KEY))
             .unwrap_or_default();
@@ -102,6 +106,10 @@ impl App {
             .with_camera(camera)
             .with_look(look)
             .with_console_history(console_history);
+        // Saved before views existed: the one camera and look above.
+        if let Some(views) = &views {
+            workbench = workbench.with_views(views);
+        }
         workbench.log(
             LogLevel::Info,
             format!("{} {} started.", info.name, info.version),
@@ -145,6 +153,19 @@ impl App {
 
     /// Opens (or, with `create`, makes) the project in `root`.
     fn open_project(&mut self, root: &Path, create: bool) {
+        // Opening the open project again changes nothing: going through
+        // with it would empty the viewport and stop watching the area.
+        if self
+            .projects
+            .root()
+            .is_some_and(|open| same_folder(open, root))
+        {
+            self.workbench.log(
+                LogLevel::Info,
+                format!("{} is already open.", file_name(root)),
+            );
+            return;
+        }
         match self.projects.open(root, create, self.importer.limits()) {
             Ok(opened) => {
                 if let Some(gpu) = self.gpu.as_mut() {
@@ -299,10 +320,13 @@ impl App {
                     LogLevel::Error,
                     format!("Couldn't show {}: there is no 3D view.", file_name(&path)),
                 ),
-                (Err(why), _) if placing => self.workbench.log(
-                    LogLevel::Error,
-                    format!("Couldn't import {}: {why}.", file_name(&path)),
-                ),
+                (Err(why), _) if placing => {
+                    self.workbench.placing_failed(id);
+                    self.workbench.log(
+                        LogLevel::Error,
+                        format!("Couldn't import {}: {why}.", file_name(&path)),
+                    );
+                }
                 (Err(why), _) => self.workbench.log(
                     LogLevel::Error,
                     format!(
@@ -337,24 +361,15 @@ impl App {
                     self.load_area_models();
                     continue;
                 }
-                Change::Changed(id)
-                    if db
-                        .get(*id)
-                        .is_some_and(|r| self.thumbnails.get(&r.path).is_some()) =>
-                {
-                    // Its thumbnail is made again, and it's read again if
-                    // it's in use.
+                Change::Changed(id) => {
+                    // Its thumbnail is made again (or tried again, if it
+                    // failed before), and it's read again if it's in use.
                     if let Some(record) = db.get(*id) {
                         self.thumbnails.forget(&record.path, self.gpu.as_ref());
                     }
                     if self.workbench.has_model(*id)
                         && let Some(file) = db.file(*id)
                     {
-                        self.importer.start(*id, &file, self.projects.cache());
-                    }
-                }
-                Change::Changed(id) if self.workbench.has_model(*id) => {
-                    if let Some(file) = db.file(*id) {
                         self.importer.start(*id, &file, self.projects.cache());
                     }
                 }
@@ -381,6 +396,11 @@ impl App {
                 ),
                 _ => {}
             }
+        }
+        // A model the area uses that was missing may be back (from the
+        // Recycle Bin, a Git pull): it's read now, not on the next opening.
+        if changes.iter().any(|c| matches!(c, Change::Added(_))) {
+            self.load_area_models();
         }
         self.refresh_library();
     }
@@ -425,6 +445,7 @@ impl App {
     fn load_assembly(&mut self, id: AssetId, fresh: bool) -> Result<(), String> {
         let mut todo = vec![id];
         let mut seen = HashSet::new();
+        let mut read = Vec::new();
         while let Some(next) = todo.pop() {
             if !seen.insert(next)
                 || (next != id || !fresh) && self.workbench.assemblies().contains_key(&next)
@@ -443,6 +464,12 @@ impl App {
                     .iter()
                     .filter_map(|(_, e)| e.origin.as_ref().map(|o| o.assembly)),
             );
+            read.push((next, file));
+        }
+        // Every file is read before any is used, and the ones placed
+        // inside others go first: an assembly that now places a new one
+        // (a Git pull) finds it already known when its copies are rebuilt.
+        for (next, file) in read.into_iter().rev() {
             self.workbench.set_assembly(next, std::sync::Arc::new(file));
         }
         Ok(())
@@ -520,7 +547,11 @@ impl App {
     /// Carries out the queued actions in order. A save that needs the Save
     /// window pauses the rest until it closes.
     fn run_queue(&mut self, ctx: &egui::Context) {
-        while let Some(action) = self.queued.pop_front() {
+        // Nothing goes on while an Open or Save window is open: a quit or a
+        // new area waits for the save before it.
+        while !self.area_files.is_asking()
+            && let Some(action) = self.queued.pop_front()
+        {
             match action {
                 WorkbenchAction::Quit => ctx.send_viewport_cmd(egui::ViewportCommand::Close),
                 WorkbenchAction::ImportModel => self.importer.ask(),
@@ -536,12 +567,7 @@ impl App {
                     field,
                     value,
                 } => self.apply_to_assembly(assembly, &path, &component, &field, value),
-                WorkbenchAction::AddSampleArea => {
-                    let id = self.importer.start_sample("Sample area");
-                    self.to_place.insert(id);
-                    self.workbench
-                        .log(LogLevel::Info, "Adding the sample area…".to_string());
-                }
+                WorkbenchAction::AddSampleArea => self.add_sample(),
                 WorkbenchAction::NewArea => {
                     self.workbench.new_area();
                     self.area_files.forget();
@@ -555,21 +581,19 @@ impl App {
                         Some(path) => {
                             if !self.save_to(&path) {
                                 // A failed save never lets a quit through.
-                                self.queued.clear();
+                                self.drop_queue();
                             }
                         }
                         None => {
                             let (folder, name) =
                                 (self.areas_folder(), self.workbench.document().name());
                             self.area_files.ask(Purpose::Save, folder, &name);
-                            return;
                         }
                     }
                 }
                 WorkbenchAction::SaveAreaAs => {
                     let (folder, name) = (self.areas_folder(), self.workbench.document().name());
                     self.area_files.ask(Purpose::Save, folder, &name);
-                    return;
                 }
                 WorkbenchAction::OpenAreaFile(path) => self.open_area(&path),
                 WorkbenchAction::OpenExternally(path) => {
@@ -582,10 +606,13 @@ impl App {
                 }
                 WorkbenchAction::MoveFile { from, to } => {
                     match self.projects.move_path(&from, &to) {
-                        Ok(()) => self.workbench.log(
-                            LogLevel::Info,
-                            format!("Moved {} to {}.", from.display(), to.display()),
-                        ),
+                        Ok(()) => {
+                            self.workbench.log(
+                                LogLevel::Info,
+                                format!("Moved {} to {}.", from.display(), to.display()),
+                            );
+                            self.follow_area_file(&from, Some(&to));
+                        }
                         Err(why) => self.workbench.log(
                             LogLevel::Error,
                             format!("Couldn't move {}: {why}.", from.display()),
@@ -602,14 +629,17 @@ impl App {
                 }
                 WorkbenchAction::DeleteFile(path) => {
                     match self.projects.delete(&path) {
-                        Ok(()) => self.workbench.log(
-                            LogLevel::Info,
-                            format!(
-                                "Moved {} to the Recycle Bin; anything using it keeps the \
-                                 last version until Solis restarts.",
-                                path.display()
-                            ),
-                        ),
+                        Ok(()) => {
+                            self.workbench.log(
+                                LogLevel::Info,
+                                format!(
+                                    "Moved {} to the Recycle Bin; anything using it keeps the \
+                                     last version until Solis restarts.",
+                                    path.display()
+                                ),
+                            );
+                            self.follow_area_file(&path, None);
+                        }
                         Err(why) => self.workbench.log(
                             LogLevel::Error,
                             format!("Couldn't delete {}: {why}.", path.display()),
@@ -619,6 +649,29 @@ impl App {
                 }
             }
         }
+    }
+
+    /// After the Library moved (or deleted) `from` to `to`, both inside the
+    /// assets: if the open area's file went with it, the area and the
+    /// watch on its file follow, so the next save goes to the new place
+    /// instead of making the old file again.
+    fn follow_area_file(&mut self, from: &Path, to: Option<&Path>) {
+        let Some(assets) = self.projects.db().map(|db| db.project().assets()) else {
+            return;
+        };
+        let to = to.map(|to| assets.join(to));
+        match self.workbench.file_moved(&assets.join(from), to.as_deref()) {
+            Some(Some(path)) => self.area_files.watch(&path),
+            Some(None) => self.area_files.forget(),
+            None => {}
+        }
+    }
+
+    /// Drops what waited for a save that failed or was cancelled; a quit
+    /// among it is called off, so a later close asks again.
+    fn drop_queue(&mut self) {
+        self.queued.clear();
+        self.workbench.quit_cancelled();
     }
 
     /// Looks at the assets folder now (after Solis changed it), rather
@@ -634,7 +687,8 @@ impl App {
     fn refresh_library(&mut self) {
         self.listing = self.projects.listing();
         if let Some(db) = self.projects.db() {
-            self.thumbnails.want(&self.listing, &db.project().assets());
+            self.thumbnails
+                .want(&self.listing, &db.project().assets(), self.gpu.as_ref());
         }
         self.show_library();
     }
@@ -685,7 +739,8 @@ impl App {
         }
         let text = self.file_text(&file);
         let written = std::fs::create_dir_all(&folder)
-            .and_then(|()| asset_db::write_atomically(&path, text.as_bytes()));
+            .and_then(|()| asset_db::write_atomically(&path, text.as_bytes()))
+            .and_then(|()| self.projects.adopt(&path));
         if let Err(why) = written {
             self.workbench.log(
                 LogLevel::Error,
@@ -739,6 +794,34 @@ impl App {
         }
     }
 
+    /// Adds the sample area. With a project open it becomes a file in the
+    /// project's assets, imported like any other, so a saved area that
+    /// uses it finds it again; without one it's read straight from memory.
+    fn add_sample(&mut self) {
+        const NAME: &str = "Sample area";
+        if let Some(cache) = self.projects.cache() {
+            // Written beside the cache first, then copied in under a name
+            // not yet taken, as a model from elsewhere would be.
+            let staged = cache.join(format!("{NAME}.glb"));
+            let written = std::fs::create_dir_all(&cache).and_then(|()| {
+                asset_db::write_atomically(&staged, &assets::sample::showcase_glb())
+            });
+            match written {
+                Ok(()) => self.import(&staged),
+                Err(why) => self.workbench.log(
+                    LogLevel::Error,
+                    format!("Couldn't add the sample area to the project: {why}."),
+                ),
+            }
+            let _ = std::fs::remove_file(&staged);
+            return;
+        }
+        let id = self.importer.start_sample(NAME);
+        self.to_place.insert(id);
+        self.workbench
+            .log(LogLevel::Info, "Adding the sample area…".to_string());
+    }
+
     /// Places a project asset where the camera looks: a model is read
     /// (from the cache, so quickly) and placed when it arrives; an
     /// assembly is placed at once.
@@ -750,13 +833,16 @@ impl App {
                     self.workbench.place_assembly(id);
                     self.load_area_models();
                 }
-                Err(why) => self
-                    .workbench
-                    .log(LogLevel::Error, format!("Couldn't place it: {why}.")),
+                Err(why) => {
+                    self.workbench.placing_failed(id);
+                    self.workbench
+                        .log(LogLevel::Error, format!("Couldn't place it: {why}."));
+                }
             }
             return;
         }
         let Some(file) = self.projects.db().and_then(|db| db.file(id)) else {
+            self.workbench.placing_failed(id);
             return;
         };
         self.to_place.insert(id);
@@ -768,6 +854,14 @@ impl App {
 /// none when no project was open).
 fn saved_last_project(storage: &dyn eframe::Storage) -> Option<PathBuf> {
     eframe::get_value::<Option<PathBuf>>(storage, LAST_PROJECT_KEY).flatten()
+}
+
+/// Whether two paths are the same folder (however they're written).
+fn same_folder(a: &Path, b: &Path) -> bool {
+    match (a.canonicalize(), b.canonicalize()) {
+        (Ok(a), Ok(b)) => a == b,
+        _ => a == b,
+    }
 }
 
 /// A file's name, for messages.
@@ -800,7 +894,10 @@ impl eframe::App for App {
         if let Some(path) = self.importer.chosen() {
             self.import(&path);
         }
-        if let Some((purpose, folder)) = self.importer.chosen_folder() {
+        // A project or area chosen in a window opened before Play waits
+        // until the game stops, so it never replaces the game's copy.
+        let editing = self.workbench.play_state() == editor::PlayState::Editing;
+        if editing && let Some((purpose, folder)) = self.importer.chosen_folder() {
             self.open_project(&folder, purpose == FolderFor::NewProject);
         }
         let (changes, notes) = self.projects.poll();
@@ -811,18 +908,34 @@ impl eframe::App for App {
         if self.thumbnails.poll(&ctx, self.gpu.as_mut()) {
             self.show_library();
         }
-        match self.area_files.chosen() {
+        match if editing {
+            self.area_files.chosen()
+        } else {
+            None
+        } {
             Some((Purpose::Open, Some(path))) => self.open_area(&path),
             Some((Purpose::Save, Some(path))) => {
                 if self.save_to(&path) {
                     self.run_queue(&ctx);
                 } else {
-                    self.queued.clear();
+                    self.drop_queue();
                 }
             }
             // Cancelled: whatever waited for the save (a quit) doesn't
             // happen.
-            Some((_, None)) => self.queued.clear(),
+            Some((_, None)) => {
+                if let Some(path) = self.area_files.take_refused() {
+                    self.workbench.log(
+                        LogLevel::Warning,
+                        format!(
+                            "Not saved: {} already exists. Choose Save as again and pick it \
+                             to replace it.",
+                            file_name(&path)
+                        ),
+                    );
+                }
+                self.drop_queue();
+            }
             None => {}
         }
         if let Some(path) = self.area_files.changed_on_disk() {
@@ -876,6 +989,7 @@ impl eframe::App for App {
         eframe::set_value(storage, LOOK_KEY, &self.workbench.look());
         eframe::set_value(storage, LAST_PROJECT_KEY, &self.projects.root());
         eframe::set_value(storage, RECENT_PROJECTS_KEY, &self.projects.recent());
+        eframe::set_value(storage, VIEWS_KEY, &self.workbench.views());
         eframe::set_value(
             storage,
             CONSOLE_HISTORY_KEY,
@@ -929,6 +1043,16 @@ fn explain_panic(payload: &(dyn std::any::Any + Send)) -> String {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn the_same_folder_is_recognised_however_its_written() {
+        let folder = std::env::temp_dir().join(format!("solis-same-{}", std::process::id()));
+        std::fs::create_dir_all(folder.join("assets")).unwrap();
+        assert!(same_folder(&folder, &folder.join("assets").join("..")));
+        assert!(!same_folder(&folder, &folder.join("assets")));
+        assert!(same_folder(Path::new("/no/such"), Path::new("/no/such")));
+        assert!(!same_folder(Path::new("/no/such"), Path::new("/no/other")));
+    }
 
     #[test]
     fn crashes_are_explained_in_plain_words() {

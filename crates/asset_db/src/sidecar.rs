@@ -122,6 +122,10 @@ impl Sidecar {
                 sidecar.format
             ));
         }
+        let mut ids = std::collections::HashSet::new();
+        if let Some(part) = sidecar.parts.iter().find(|p| !ids.insert(p.id)) {
+            return Err(format!("two parts share the ID {}", part.id));
+        }
         Ok(sidecar)
     }
 
@@ -148,51 +152,44 @@ impl Sidecar {
     /// order; then the same index; otherwise a new ID. Old parts not found
     /// are kept, marked missing. Returns each key's ID, in order.
     pub fn assign_parts(&mut self, keys: &[PartKey]) -> Vec<u32> {
+        use std::collections::HashMap;
         let mut taken = vec![false; self.parts.len()];
         let mut ids: Vec<Option<u32>> = vec![None; keys.len()];
+        // Every lookup through a map, so a model with many thousands of
+        // parts is matched in one pass, not one pass per part.
+        let mut old_by_path: HashMap<(PartKind, &str), Vec<usize>> = HashMap::new();
+        let mut old_by_index: HashMap<(PartKind, usize), Vec<usize>> = HashMap::new();
+        for (j, p) in self.parts.iter().enumerate() {
+            old_by_path.entry((p.kind, &p.path)).or_default().push(j);
+            old_by_index.entry((p.kind, p.index)).or_default().push(j);
+        }
+        let mut new_count: HashMap<(PartKind, &str), usize> = HashMap::new();
+        for k in keys {
+            *new_count.entry((k.kind, &k.path)).or_default() += 1;
+        }
         // 1. A unique name path on both sides.
-        let unique = |list: &mut dyn Iterator<Item = (PartKind, &str)>, kind, path: &str| {
-            list.filter(|(k, p)| *k == kind && *p == path).count() == 1
-        };
         for (i, key) in keys.iter().enumerate() {
-            let new_unique = unique(
-                &mut keys.iter().map(|k| (k.kind, k.path.as_str())),
-                key.kind,
-                &key.path,
-            );
-            let old_unique = unique(
-                &mut self.parts.iter().map(|p| (p.kind, p.path.as_str())),
-                key.kind,
-                &key.path,
-            );
-            if new_unique
-                && old_unique
-                && let Some(j) = self
-                    .parts
-                    .iter()
-                    .position(|p| p.kind == key.kind && p.path == key.path)
+            let at = (key.kind, key.path.as_str());
+            if new_count.get(&at) == Some(&1)
+                && let Some([j]) = old_by_path.get(&at).map(Vec::as_slice)
             {
-                taken[j] = true;
-                ids[i] = Some(self.parts[j].id);
+                taken[*j] = true;
+                ids[i] = Some(self.parts[*j].id);
             }
         }
         // 2. Duplicated names: the nth with this name gets the old nth.
+        let mut seen: HashMap<(PartKind, &str), usize> = HashMap::new();
         for (i, key) in keys.iter().enumerate() {
+            let at = (key.kind, key.path.as_str());
+            let nth = seen.entry(at).or_default();
+            let this = *nth;
+            *nth += 1;
             if ids[i].is_some() {
                 continue;
             }
-            let nth = keys[..i]
-                .iter()
-                .filter(|k| k.kind == key.kind && k.path == key.path)
-                .count();
-            let candidate = self
-                .parts
-                .iter()
-                .enumerate()
-                .filter(|(_, p)| p.kind == key.kind && p.path == key.path)
-                .nth(nth)
-                .map(|(j, _)| j);
-            if let Some(j) = candidate.filter(|&j| !taken[j]) {
+            if let Some(&j) = old_by_path.get(&at).and_then(|old| old.get(this))
+                && !taken[j]
+            {
                 taken[j] = true;
                 ids[i] = Some(self.parts[j].id);
             }
@@ -202,26 +199,38 @@ impl Sidecar {
             if ids[i].is_some() {
                 continue;
             }
-            let candidate = self
-                .parts
-                .iter()
-                .enumerate()
-                .position(|(j, p)| !taken[j] && p.kind == key.kind && p.index == key.index);
-            if let Some(j) = candidate {
+            if let Some(&j) = old_by_index
+                .get(&(key.kind, key.index))
+                .and_then(|old| old.iter().find(|&&j| !taken[j]))
+            {
                 taken[j] = true;
                 ids[i] = Some(self.parts[j].id);
             }
         }
-        // 4. New IDs, never reusing an old one.
-        let mut next = self.parts.iter().map(|p| p.id).max().unwrap_or(0) + 1;
+        // 4. New IDs, never reusing an old one (nor running past the
+        // biggest number: a damaged or hand-made sidecar may use it).
+        let mut used: std::collections::HashSet<u32> = self.parts.iter().map(|p| p.id).collect();
+        let mut next = self
+            .parts
+            .iter()
+            .map(|p| p.id)
+            .max()
+            .map_or(Some(0), |m| m.checked_add(1));
+        let mut fresh = || -> u32 {
+            let id = match next {
+                Some(id) => {
+                    next = id.checked_add(1);
+                    id
+                }
+                // Past the end: the first number not yet used.
+                None => (0..=u32::MAX).find(|n| !used.contains(n)).unwrap_or(0),
+            };
+            used.insert(id);
+            id
+        };
         let ids: Vec<u32> = ids
             .into_iter()
-            .map(|id| {
-                id.unwrap_or_else(|| {
-                    next += 1;
-                    next - 1
-                })
-            })
+            .map(|id| id.unwrap_or_else(&mut fresh))
             .collect();
         // The table now: every part found, then those that went missing.
         let mut parts: Vec<Part> = keys
@@ -248,6 +257,26 @@ impl Sidecar {
     }
 }
 
+/// The longest name path kept as it is; a longer one (only a very deep
+/// tree has one) is kept as its last name and a fingerprint of the rest, so
+/// a damaged or hostile model can't make paths that fill the memory.
+const MAX_PATH: usize = 1024;
+
+/// `parent/name`, or a short stand-in when that would be too long.
+fn joined(parent: &str, name: &str) -> String {
+    if parent.len() + name.len() < MAX_PATH {
+        return format!("{parent}/{name}");
+    }
+    // The project's own hash: the same in every version of Solis, as the
+    // path is kept in the sidecar.
+    let mut hash = crate::hash::ContentHash::default();
+    hash.update(parent.as_bytes());
+    hash.update(b"/");
+    hash.update(name.as_bytes());
+    let short: String = name.chars().take(64).collect();
+    format!("…{:016x}/{short}", hash.finish())
+}
+
 /// The parts of a model, as keys: its nodes by name path, its meshes by
 /// the first node showing them, its materials by name.
 pub fn model_parts(model: &assets::Model) -> Vec<PartKey> {
@@ -255,7 +284,7 @@ pub fn model_parts(model: &assets::Model) -> Vec<PartKey> {
     let mut keys = Vec::new();
     for (index, node) in model.nodes.iter().enumerate() {
         let path = match node.parent.and_then(|p| paths.get(p)) {
-            Some(parent) => format!("{parent}/{}", node.name),
+            Some(parent) => joined(parent, &node.name),
             None => node.name.clone(),
         };
         keys.push(PartKey {
@@ -265,11 +294,19 @@ pub fn model_parts(model: &assets::Model) -> Vec<PartKey> {
         });
         paths.push(path);
     }
-    for index in 0..model.meshes.len() {
-        let owner = model
-            .nodes
-            .iter()
-            .position(|n| n.meshes.contains(&index))
+    // Each mesh's first node, found in one pass.
+    let mut owner: Vec<Option<usize>> = vec![None; model.meshes.len()];
+    for (n, node) in model.nodes.iter().enumerate() {
+        for &mesh in &node.meshes {
+            if let Some(slot) = owner.get_mut(mesh)
+                && slot.is_none()
+            {
+                *slot = Some(n);
+            }
+        }
+    }
+    for (index, owner) in owner.into_iter().enumerate() {
+        let owner = owner
             .and_then(|n| paths.get(n))
             .map_or_else(String::new, Clone::clone);
         keys.push(PartKey {
@@ -291,6 +328,69 @@ pub fn model_parts(model: &assets::Model) -> Vec<PartKey> {
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn part_ids_never_run_past_the_biggest_number_or_repeat() {
+        // A hand-edited sidecar already using the biggest ID.
+        let mut sidecar = Sidecar::new(1);
+        sidecar.parts.push(Part {
+            id: u32::MAX,
+            kind: PartKind::Node,
+            path: "Old".into(),
+            index: 0,
+            missing: false,
+        });
+        let ids = sidecar.assign_parts(&[
+            key(PartKind::Node, "Old", 0),
+            key(PartKind::Node, "New", 1),
+            key(PartKind::Node, "Newer", 2),
+        ]);
+        assert_eq!(ids[0], u32::MAX, "kept");
+        let unique: std::collections::HashSet<u32> = ids.iter().copied().collect();
+        assert_eq!(unique.len(), 3, "{ids:?}");
+        // Two parts sharing an ID make the sidecar damaged, not quietly
+        // wrong.
+        let mut text = sidecar.to_text();
+        text = text.replace(&format!("id = {}", ids[1]), &format!("id = {}", ids[2]));
+        assert!(Sidecar::parse(&text).unwrap_err().contains("share the ID"));
+    }
+
+    #[test]
+    fn a_very_deep_tree_keeps_short_stable_paths_and_matches_quickly() {
+        // A hostile model: a chain of 20,000 nodes. Paths stay short (not
+        // 20,000 names each), the same every time, and IDs are found in
+        // one pass.
+        let mut model = assets::load_bytes(
+            &assets::sample::sample_glb(),
+            None,
+            "deep",
+            &assets::Limits::default(),
+        )
+        .unwrap();
+        model.nodes = (0..20_000usize)
+            .map(|i| assets::Node {
+                name: format!("n{i}"),
+                parent: i.checked_sub(1),
+                local: glam::Mat4::IDENTITY,
+                world: glam::Mat4::IDENTITY,
+                meshes: Vec::new(),
+            })
+            .collect();
+        let keys = model_parts(&model);
+        assert!(keys.iter().all(|k| k.path.len() <= MAX_PATH + 100));
+        assert_eq!(model_parts(&model), keys, "the same every time");
+        let nodes: Vec<&str> = keys
+            .iter()
+            .filter(|k| k.kind == PartKind::Node)
+            .map(|k| k.path.as_str())
+            .collect();
+        let unique: std::collections::HashSet<&str> = nodes.iter().copied().collect();
+        assert_eq!(unique.len(), nodes.len(), "every node told apart");
+        let mut sidecar = Sidecar::new(1);
+        let first = sidecar.assign_parts(&keys);
+        let again = sidecar.assign_parts(&keys);
+        assert_eq!(first, again, "a re-import keeps every ID");
+    }
 
     fn key(kind: PartKind, path: &str, index: usize) -> PartKey {
         PartKey {

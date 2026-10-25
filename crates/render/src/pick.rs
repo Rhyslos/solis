@@ -272,6 +272,11 @@ impl PickImages {
         }
         let (raw, batches, models) = gather(placed);
         let bytes: &[u8] = bytemuck::cast_slice(&raw);
+        // Too many to pick from at once (see the renderer's own check).
+        let most = device.limits().max_buffer_size;
+        if bytes.len() as u64 > most {
+            return false;
+        }
         if !bytes.is_empty() {
             let fits = self
                 .instances
@@ -280,7 +285,7 @@ impl PickImages {
             if !fits {
                 self.instances = Some(device.create_buffer(&wgpu::BufferDescriptor {
                     label: Some("picking instances"),
-                    size: (bytes.len() as u64).next_power_of_two().max(4096),
+                    size: (bytes.len() as u64).next_power_of_two().max(4096).min(most),
                     usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
                     mapped_at_creation: false,
                 }));
@@ -410,7 +415,11 @@ impl PickImages {
                 }
             }
         }
-        waiting.buffer.unmap();
+        // Only a buffer that was mapped can be unmapped; anything else is a
+        // GPU error.
+        if state == 1 {
+            waiting.buffer.unmap();
+        }
         picks.resize(count, 0);
         depths.resize(count, 0.0);
         Some(PickResult {

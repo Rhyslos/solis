@@ -17,6 +17,7 @@ layer = 1
 [dependencies]
 assets.workspace = true
 wgpu.workspace = true
+log.workspace = true
 glam.workspace = true
 bytemuck.workspace = true
 

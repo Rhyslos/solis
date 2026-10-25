@@ -173,16 +173,46 @@ impl Project {
     }
 }
 
-/// Writes `bytes` to `path` through a temporary file beside it, so a crash
-/// or full disk never leaves half a file (CONTRIBUTING.md, rule 11).
+/// Writes `bytes` to `path` through a temporary file beside it, so a crash,
+/// a power cut or a full disk never leaves half a file (CONTRIBUTING.md,
+/// rule 11): the temporary file is written to the disk itself before it
+/// takes the real one's place. Each write has a temporary file of its own,
+/// so two writing the same file at once never mix.
 pub fn write_atomically(path: &Path, bytes: &[u8]) -> std::io::Result<()> {
+    use std::io::Write;
+    use std::sync::atomic::{AtomicU64, Ordering};
+    static NEXT: AtomicU64 = AtomicU64::new(0);
     let mut temporary = path.as_os_str().to_owned();
-    temporary.push(".tmp");
+    temporary.push(format!(
+        ".{}-{}.tmp",
+        std::process::id(),
+        NEXT.fetch_add(1, Ordering::Relaxed)
+    ));
     let temporary = PathBuf::from(temporary);
-    std::fs::write(&temporary, bytes)?;
-    std::fs::rename(&temporary, path).inspect_err(|_| {
+    let written = (|| {
+        let mut file = std::fs::File::create(&temporary)?;
+        file.write_all(bytes)?;
+        file.sync_all()?;
+        drop(file);
+        std::fs::rename(&temporary, path)
+    })();
+    if written.is_err() {
         let _ = std::fs::remove_file(&temporary);
-    })
+    }
+    written?;
+    // The new name itself is kept by the folder, which is flushed too
+    // where the system allows (on Windows, renaming takes care of it).
+    #[cfg(unix)]
+    if let Some(folder) = path.parent()
+        && let Ok(folder) = std::fs::File::open(if folder.as_os_str().is_empty() {
+            Path::new(".")
+        } else {
+            folder
+        })
+    {
+        let _ = folder.sync_all();
+    }
+    Ok(())
 }
 
 /// Reads a text file, refusing one bigger than `limit` bytes before
@@ -204,6 +234,34 @@ pub(crate) fn read_text_limited(path: &Path, limit: u64) -> std::io::Result<Stri
 mod tests {
     use super::*;
     use crate::test_folder;
+
+    #[test]
+    fn atomic_writes_replace_the_file_and_leave_nothing_behind() {
+        let folder = test_folder("atomic");
+        std::fs::create_dir_all(&folder).unwrap();
+        let path = folder.join("harbour.solarea");
+        write_atomically(&path, b"first").unwrap();
+        write_atomically(&path, b"second").unwrap();
+        assert_eq!(std::fs::read(&path).unwrap(), b"second");
+        // Many writing the same file at once each use their own temporary
+        // file: one of them wins whole, and no temporary file is left.
+        std::thread::scope(|s| {
+            for i in 0..8 {
+                let path = &path;
+                s.spawn(move || write_atomically(path, format!("writer {i}").as_bytes()));
+            }
+        });
+        let text = std::fs::read_to_string(&path).unwrap();
+        assert!(text.starts_with("writer "), "{text}");
+        let left: Vec<_> = std::fs::read_dir(&folder)
+            .unwrap()
+            .filter_map(Result::ok)
+            .map(|e| e.file_name())
+            .collect();
+        assert_eq!(left, ["harbour.solarea"], "{left:?}");
+        // A write into a folder that isn't there fails, leaving nothing.
+        assert!(write_atomically(&folder.join("gone/x.solarea"), b"x").is_err());
+    }
 
     #[test]
     fn a_new_project_has_its_folders_and_git_files_and_opens_again() {

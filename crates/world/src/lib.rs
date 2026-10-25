@@ -61,6 +61,8 @@ pub struct Clock {
 pub struct World {
     ecs: hecs::World,
     by_id: HashMap<EntityId, hecs::Entity>,
+    /// Where each entity is in `order`.
+    place: HashMap<EntityId, usize>,
     /// Every entity, parents before their children (the area's tree
     /// order), with where its parent is in this list.
     order: Vec<(hecs::Entity, Option<usize>)>,
@@ -89,41 +91,10 @@ impl World {
             let Some(data) = area.get(id) else {
                 continue;
             };
-            let mut builder = hecs::EntityBuilder::new();
-            builder.add(Id(id)).add(Name(data.name.clone()));
-            let mut values = Values::default();
-            for (name, component) in &data.components {
-                match name.as_str() {
-                    Transform::NAME => {
-                        builder.add(Transform::from_data(component));
-                    }
-                    Light::NAME => {
-                        builder.add(Light::from_data(component));
-                    }
-                    Model::NAME => {
-                        builder.add(Model::from_data(component));
-                    }
-                    Environment::NAME => {
-                        builder.add(Environment::from_data(component));
-                    }
-                    Camera::NAME => {
-                        builder.add(Camera::from_data(component).sanitized());
-                    }
-                    _ => {
-                        values.0.insert(name.clone(), component.clone());
-                    }
-                }
-            }
-            if !values.0.is_empty() {
-                builder.add(values);
-            }
+            let mut builder = components_of(id, data);
             // A parent that comes later in the order is part of a loop
             // in a damaged area: the entity is treated as standing alone.
             let parent = data.parent.and_then(|p| place.get(&p).copied());
-            if let Some(p) = data.parent {
-                builder.add(Parent(p));
-            }
-            builder.add(Global(Mat4::IDENTITY));
             let entity = ecs.spawn(builder.build());
             by_id.insert(id, entity);
             place.insert(id, order.len());
@@ -132,6 +103,7 @@ impl World {
         let mut world = Self {
             ecs,
             by_id,
+            place,
             order,
             clock: Clock::default(),
         };
@@ -145,6 +117,31 @@ impl World {
         let clock = self.clock;
         *self = Self::from_area(area);
         self.clock = clock;
+    }
+
+    /// Takes in changes to the components and names of `ids` in `area`
+    /// (as the editor makes them while playing), without building the
+    /// rest again. Anything else (an entity added, deleted or moved to
+    /// another parent) builds the whole world again. Keeps the clock.
+    pub fn update(&mut self, area: &Area, ids: impl IntoIterator<Item = EntityId>) {
+        for id in ids {
+            let (Some(data), Some(&entity), Some(&at)) =
+                (area.get(id), self.by_id.get(&id), self.place.get(&id))
+            else {
+                self.rebuild(area);
+                return;
+            };
+            let parent_now = self.ecs.get::<&Parent>(entity).ok().map(|p| p.0);
+            if parent_now != data.parent {
+                self.rebuild(area);
+                return;
+            }
+            let _ = self.ecs.despawn(entity);
+            let fresh = self.ecs.spawn(components_of(id, data).build());
+            self.by_id.insert(id, fresh);
+            self.order[at].0 = fresh;
+        }
+        self.place_everything();
     }
 
     /// Moves the clock on by `seconds` (ignored if not a sensible number),
@@ -255,6 +252,44 @@ impl World {
             .next()
             .map(|(_, e, _)| e)
     }
+}
+
+/// An entity's components as the world keeps them: built-in ones as
+/// their Rust types, anything else as plain values.
+fn components_of(id: EntityId, data: &area::EntityData) -> hecs::EntityBuilder {
+    let mut builder = hecs::EntityBuilder::new();
+    builder.add(Id(id)).add(Name(data.name.clone()));
+    let mut values = Values::default();
+    for (name, component) in &data.components {
+        match name.as_str() {
+            Transform::NAME => {
+                builder.add(Transform::from_data(component));
+            }
+            Light::NAME => {
+                builder.add(Light::from_data(component));
+            }
+            Model::NAME => {
+                builder.add(Model::from_data(component));
+            }
+            Environment::NAME => {
+                builder.add(Environment::from_data(component));
+            }
+            Camera::NAME => {
+                builder.add(Camera::from_data(component).sanitized());
+            }
+            _ => {
+                values.0.insert(name.clone(), component.clone());
+            }
+        }
+    }
+    if !values.0.is_empty() {
+        builder.add(values);
+    }
+    if let Some(p) = data.parent {
+        builder.add(Parent(p));
+    }
+    builder.add(Global(Mat4::IDENTITY));
+    builder
 }
 
 #[cfg(test)]

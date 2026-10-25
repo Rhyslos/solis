@@ -47,6 +47,21 @@ pub struct FrameParams {
     /// Whether the editor's lines are drawn: the grid, the ground axes and
     /// lamp markers. Off for the game's own view.
     pub editor_lines: bool,
+    /// Which plane the grid lies in: the ground, or the plane a flat
+    /// view looks at.
+    pub grid_plane: GridPlane,
+}
+
+/// The plane the grid lies in.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum GridPlane {
+    /// The ground (X and Y): perspective and the top view.
+    #[default]
+    Ground,
+    /// Upright, facing the front (X and Z).
+    Front,
+    /// Upright, facing the side (Y and Z).
+    Side,
 }
 
 /// The ways models can be shaded.
@@ -187,7 +202,16 @@ impl FrameUniforms {
             camera: params.camera_position.extend(1.0).to_array(),
             focus: [params.focus.x, params.focus.y, params.focus.z, reach],
             grid: [fine, major, super_level, GRID_HALF_EXTENT],
-            grid_strength: [a, b, c, 0.0],
+            grid_strength: [
+                a,
+                b,
+                c,
+                match params.grid_plane {
+                    GridPlane::Ground => 0.0,
+                    GridPlane::Front => 1.0,
+                    GridPlane::Side => 2.0,
+                },
+            ],
             sky_top: sky.top.extend_one(),
             sky_horizon: sky.horizon.extend_one(),
             ground: sky.ground.extend_one(),
@@ -240,6 +264,7 @@ mod tests {
             sun: crate::lighting::Sun::default(),
             environment: crate::environment::Environment::default(),
             editor_lines: true,
+            grid_plane: GridPlane::Ground,
         }
     }
 
@@ -322,6 +347,7 @@ mod light_tests {
             sun: crate::lighting::Sun::default(),
             environment: crate::environment::Environment::default(),
             editor_lines: true,
+            grid_plane: GridPlane::Ground,
         };
         let light = FrameLight {
             sun_view_projection: Mat4::from_scale(Vec3::splat(2.0)),

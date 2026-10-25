@@ -10,7 +10,7 @@
 //! touches the GPU and runs in tests without one.
 
 use crate::area_view::{AreaView, ViewLight, ViewModel};
-use crate::camera::{Camera, FlyInput};
+use crate::camera::{Camera, FlyInput, ViewKind};
 use crate::icons;
 use crate::look::{Look, LookKind};
 use crate::theme::{self, Accent};
@@ -139,12 +139,17 @@ pub struct ViewportView {
     /// Whether the editor's lines are drawn: the grid, the ground axes and
     /// lamp markers. Off in the Game panel.
     pub editor_lines: bool,
+    /// Perspective or a flat view (the grid lies in a flat view's plane).
+    pub kind: ViewKind,
 }
 
-/// The viewport's image.
+/// The viewport's first view's image; its other views use the next ones
+/// (up to [`VIEWS`]).
 pub const VIEWPORT_IMAGE: usize = 0;
+/// How many views the viewport can show at once.
+pub const VIEWS: usize = 4;
 /// The Game panel's image.
-pub const GAME_IMAGE: usize = 1;
+pub const GAME_IMAGE: usize = VIEWS;
 /// How many images a renderer keeps at most.
 pub const MAX_IMAGES: usize = 8;
 
@@ -155,10 +160,12 @@ pub trait ViewportRenderer {
     /// plain-language reason why it could not.
     fn render(&mut self, view: &ViewportView) -> Result<egui::TextureId, String>;
 
-    /// The answer to the last [`ViewportView::pick`], once it has arrived
+    /// The answer to the last [`ViewportView::pick`] for image `image`,
+    /// once it has arrived
     /// (usually the frame after). Never waits. A renderer that can't pick
     /// never answers.
-    fn picked(&mut self) -> Option<PickAnswer> {
+    fn picked(&mut self, image: usize) -> Option<PickAnswer> {
+        let _ = image;
         None
     }
 }
@@ -211,7 +218,126 @@ pub struct Viewport {
     pub(crate) rect: Rect,
     /// Where the corner controls were last frame: clicks there are theirs.
     covered: Vec<Rect>,
+    /// How the viewport is split into views.
+    pub layout: ViewLayout,
+    /// The view shown alone, filling the viewport, if one is.
+    pub maximized: Option<usize>,
+    /// The view in use: its camera, look and tools are the fields above;
+    /// the others wait in `panes`.
+    active: usize,
+    /// Every view's own state; the one in use is a stand-in.
+    panes: Vec<Pane>,
+    /// Where the whole viewport (every view) was drawn last frame.
+    pub(crate) full: Rect,
 }
+
+/// How the viewport is split into views. Saved per computer.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum ViewLayout {
+    /// One view.
+    #[default]
+    One,
+    /// Two views side by side.
+    SideBySide,
+    /// Two views, one above the other.
+    Stacked,
+    /// Four views, two by two.
+    Four,
+}
+
+impl ViewLayout {
+    /// Every layout, in the menu's order.
+    pub const ALL: [Self; 4] = [Self::One, Self::SideBySide, Self::Stacked, Self::Four];
+
+    /// Its name in the menu.
+    pub fn name(self) -> &'static str {
+        match self {
+            Self::One => "One view",
+            Self::SideBySide => "Two side by side",
+            Self::Stacked => "Two, one above the other",
+            Self::Four => "Four views",
+        }
+    }
+
+    /// Each view shown in `rect`, by number, with where it goes. A thin
+    /// gap separates them.
+    pub fn rects(self, rect: Rect) -> Vec<(usize, Rect)> {
+        let gap = 2.0;
+        let (w, h) = (rect.width(), rect.height());
+        let cell = |x0: f32, y0: f32, x1: f32, y1: f32| {
+            Rect::from_min_max(rect.min + vec2(x0, y0), rect.min + vec2(x1, y1))
+        };
+        let (mx, my) = ((w - gap) / 2.0, (h - gap) / 2.0);
+        match self {
+            Self::One => vec![(0, rect)],
+            Self::SideBySide => vec![(0, cell(0.0, 0.0, mx, h)), (1, cell(mx + gap, 0.0, w, h))],
+            Self::Stacked => vec![(0, cell(0.0, 0.0, w, my)), (1, cell(0.0, my + gap, w, h))],
+            Self::Four => vec![
+                (0, cell(0.0, 0.0, mx, my)),
+                (1, cell(mx + gap, 0.0, w, my)),
+                (2, cell(0.0, my + gap, mx, h)),
+                (3, cell(mx + gap, my + gap, w, h)),
+            ],
+        }
+    }
+}
+
+/// One view's own camera, look and state, while another view is in use.
+#[derive(Debug, Clone)]
+struct Pane {
+    camera: Camera,
+    look: Look,
+    tools: Tools,
+    rect: Rect,
+    covered: Vec<Rect>,
+    flying_from: Option<egui::Pos2>,
+    wheel_carry: f32,
+    menu_open: bool,
+}
+
+impl Default for Pane {
+    fn default() -> Self {
+        Self {
+            camera: Camera::default(),
+            look: Look::default(),
+            tools: Tools::default(),
+            rect: Rect::NOTHING,
+            covered: Vec::new(),
+            flying_from: None,
+            wheel_carry: 0.0,
+            menu_open: false,
+        }
+    }
+}
+
+/// One view's camera and look, as saved.
+#[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
+pub struct ViewSettings {
+    /// Its camera (and whether it's a flat view).
+    pub camera: Camera,
+    /// How it shades models.
+    pub look: Look,
+}
+
+/// Every view's settings and the layout, as saved per computer.
+#[derive(Debug, Clone, PartialEq, Serialize, Deserialize, Default)]
+#[serde(default)]
+pub struct Views {
+    /// How the viewport is split.
+    pub layout: ViewLayout,
+    /// Each view's camera and look, first to last.
+    pub views: Vec<ViewSettings>,
+    /// The view shown alone, if one is.
+    pub maximized: Option<usize>,
+}
+
+/// What each view starts as: perspective, then top, front and right.
+const FIRST_KINDS: [ViewKind; VIEWS] = [
+    ViewKind::Perspective,
+    ViewKind::Top,
+    ViewKind::Front,
+    ViewKind::Right,
+];
 
 impl Default for Viewport {
     fn default() -> Self {
@@ -230,6 +356,17 @@ impl Default for Viewport {
             snapping: Snapping::default(),
             rect: Rect::NOTHING,
             covered: Vec::new(),
+            layout: ViewLayout::One,
+            maximized: None,
+            active: 0,
+            full: Rect::NOTHING,
+            panes: FIRST_KINDS
+                .iter()
+                .map(|&kind| Pane {
+                    camera: Camera::default().as_kind(kind),
+                    ..Pane::default()
+                })
+                .collect(),
         }
     }
 }
@@ -238,6 +375,85 @@ impl Default for Viewport {
 const FRAME_TIME_SMOOTHING: f32 = 0.05;
 
 impl Viewport {
+    /// Swaps view `i`'s own state with the fields in use.
+    fn exchange(&mut self, i: usize) {
+        let pane = &mut self.panes[i];
+        std::mem::swap(&mut self.camera, &mut pane.camera);
+        std::mem::swap(&mut self.look, &mut pane.look);
+        std::mem::swap(&mut self.tools, &mut pane.tools);
+        std::mem::swap(&mut self.rect, &mut pane.rect);
+        std::mem::swap(&mut self.covered, &mut pane.covered);
+        std::mem::swap(&mut self.flying_from, &mut pane.flying_from);
+        std::mem::swap(&mut self.wheel_carry, &mut pane.wheel_carry);
+        std::mem::swap(&mut self.menu_open, &mut pane.menu_open);
+    }
+
+    /// Makes view `i` the one in use: its camera, look and tools move
+    /// into the fields the editor reads.
+    fn activate(&mut self, i: usize) {
+        if i == self.active || i >= VIEWS {
+            return;
+        }
+        self.exchange(self.active);
+        self.exchange(i);
+        self.active = i;
+    }
+
+    /// Which view is in use (the last one clicked).
+    pub fn active(&self) -> usize {
+        self.active
+    }
+
+    /// View `i`'s camera and look.
+    pub fn view_settings(&self, i: usize) -> Option<ViewSettings> {
+        if i == self.active {
+            return Some(ViewSettings {
+                camera: self.camera,
+                look: self.look,
+            });
+        }
+        self.panes.get(i).map(|p| ViewSettings {
+            camera: p.camera,
+            look: p.look,
+        })
+    }
+
+    /// The layout and every view's settings, for saving.
+    pub fn views(&self) -> Views {
+        Views {
+            layout: self.layout,
+            views: (0..VIEWS).filter_map(|i| self.view_settings(i)).collect(),
+            maximized: self.maximized,
+        }
+    }
+
+    /// Uses `views` (as saved last time), with anything unusable put
+    /// back. View 0 is in use afterwards.
+    pub fn set_views(&mut self, views: &Views) {
+        self.activate(0);
+        self.layout = views.layout;
+        self.maximized = views.maximized.filter(|&i| i < VIEWS);
+        for (i, saved) in views.views.iter().take(VIEWS).enumerate() {
+            let camera = saved.camera.sanitized();
+            let look = saved.look.sanitized();
+            if i == 0 {
+                self.camera = camera;
+                self.look = look;
+            } else {
+                self.panes[i].camera = camera;
+                self.panes[i].look = look;
+            }
+        }
+    }
+
+    /// The views shown in `rect`, by number, with where each goes.
+    pub fn shown(&self, rect: Rect) -> Vec<(usize, Rect)> {
+        match self.maximized {
+            Some(i) if self.layout != ViewLayout::One => vec![(i, rect)],
+            _ => self.layout.rects(rect),
+        }
+    }
+
     /// Whether the ≡ menu is open.
     pub fn menu_open(&self) -> bool {
         self.menu_open
@@ -260,7 +476,7 @@ impl Viewport {
         ViewportView {
             size_px,
             view_projection: self.camera.view_projection(aspect),
-            camera_position: self.camera.position,
+            camera_position: self.camera.viewpoint(),
             focus: self.camera.focus(),
             sky_top: rgb(theme::backdrop::SKY_TOP),
             sky_horizon: rgb(theme::backdrop::HORIZON),
@@ -270,19 +486,103 @@ impl Viewport {
             outline_px: self.look.outline_px(pixels_per_point),
             sun: self.area.sun,
             lamps: self.area.lamps.clone(),
-            environment: self.area.environment,
+            environment: if self.camera.is_flat() {
+                // Fog grows with distance, which a flat view doesn't show:
+                // it would only hide the whole view.
+                area::builtin::Environment {
+                    fog: false,
+                    ..self.area.environment
+                }
+            } else {
+                self.area.environment
+            },
             pick: None,
-            image: VIEWPORT_IMAGE,
+            image: VIEWPORT_IMAGE + self.active,
             editor_lines: true,
+            kind: self.camera.kind,
         }
     }
 
-    /// Draws the viewport in `ui`, filling it.
+    /// Draws the viewport in `ui`, filling it: each view of the layout,
+    /// with its own camera. A press or the wheel in a view makes it the
+    /// one in use (F, adding things and the tool bar follow it).
     pub fn show(&mut self, ui: &mut Ui, renderer: &mut dyn ViewportRenderer, accent: Accent) {
         let dt = ui.input(|i| i.unstable_dt);
         if dt.is_finite() && dt > 0.0 {
             self.frame_time += (dt - self.frame_time) * FRAME_TIME_SMOOTHING;
         }
+        let full = ui.max_rect();
+        self.full = full;
+        let shown = self.shown(full);
+        // The view to use from now: the one being dragged or flown in, or
+        // else one just pressed or scrolled in.
+        let busy = self.is_flying() || self.tools.pressing != viewport_tools::Pressing::Nothing;
+        let (pointer, poked) = ui.input(|i| {
+            (
+                i.pointer.latest_pos(),
+                i.pointer.any_pressed()
+                    || i.events
+                        .iter()
+                        .any(|e| matches!(e, egui::Event::MouseWheel { .. })),
+            )
+        });
+        let mut next = self.active;
+        if !busy
+            && poked
+            && let Some(p) = pointer
+            && let Some(&(i, _)) = shown.iter().find(|(_, r)| r.contains(p))
+        {
+            next = i;
+        }
+        if !shown.iter().any(|&(i, _)| i == next) {
+            next = shown.first().map_or(0, |&(i, _)| i);
+        }
+        // Each view works with its own state, so a click in one never
+        // reaches another.
+        let gizmo = self.tools.gizmo;
+        let outlines = self.tools.outlines.clone();
+        let mut events = Vec::new();
+        let several = shown.len() > 1;
+        if several {
+            // The gaps between the views.
+            ui.painter().rect_filled(full, 0.0, theme::PANEL);
+        }
+        for &(i, rect) in &shown {
+            self.activate(i);
+            self.tools.gizmo = gizmo;
+            self.tools.outlines = outlines.clone();
+            let mut pane = ui.new_child(
+                UiBuilder::new()
+                    .id_salt(("viewport view", i))
+                    .max_rect(rect),
+            );
+            self.show_view(&mut pane, renderer, accent, dt, i == next, several);
+            events.append(&mut self.tools.events);
+            if several && i == next {
+                ui.painter().rect_stroke(
+                    rect,
+                    0.0,
+                    egui::Stroke::new(1.0, accent.colors().fill),
+                    egui::StrokeKind::Inside,
+                );
+            }
+        }
+        self.activate(next);
+        self.tools.events = events;
+    }
+
+    /// Draws the view in use into `ui`, filling it. `in_use` shows its
+    /// tool bar, snapping and frame rate; `several` adds a button to
+    /// show it alone.
+    fn show_view(
+        &mut self,
+        ui: &mut Ui,
+        renderer: &mut dyn ViewportRenderer,
+        accent: Accent,
+        dt: f32,
+        in_use: bool,
+        several: bool,
+    ) {
         let rect = ui.max_rect();
         self.rect = rect;
         let response = ui.allocate_rect(rect, Sense::click_and_drag());
@@ -296,7 +596,8 @@ impl Viewport {
             (rect.height() * ppp).round().max(1.0) as u32,
         ];
         let size = glam::Vec2::new(rect.width(), rect.height());
-        self.tools.receive(renderer.picked());
+        self.tools
+            .receive(renderer.picked(VIEWPORT_IMAGE + self.active));
         if !self.is_flying() {
             // egui gives the viewport the hover even under a corner button
             // (it's the only thing there that can be dragged), so a press
@@ -331,7 +632,7 @@ impl Viewport {
                 .drop_asset(asset, at, &self.camera, &self.area, size, ppp);
         }
         let mut view = self.view(size_px, ppp);
-        view.pick = self.tools.rect_to_send();
+        view.pick = self.tools.send_with(&self.area.pickable);
         let painter = ui.painter_at(rect);
         match renderer.render(&view) {
             Ok(texture) => {
@@ -400,40 +701,59 @@ impl Viewport {
                     .layout(layout),
             )
         };
+        // With one view, as in the mockup: frame rate top right, tools
+        // bottom centre, snapping bottom right. With several, each view is
+        // too narrow for a full bottom row, so the view in use has its
+        // tools top left, snapping top right and frame rate bottom right.
         let mut covered = Vec::new();
-        if self.overlays.stats {
-            let mut top_right = corner(ui, "stats", Layout::top_down(Align::Max));
-            self.stats(&mut top_right);
-            covered.push(top_right.min_rect());
+        if self.overlays.stats && in_use {
+            let layout = if several {
+                Layout::bottom_up(Align::Max)
+            } else {
+                Layout::top_down(Align::Max)
+            };
+            let mut stats = corner(ui, "stats", layout);
+            self.stats(&mut stats, several);
+            covered.push(stats.min_rect());
         }
         let mut bottom_left = corner(ui, "view", Layout::bottom_up(Align::Min));
-        self.view_controls(&mut bottom_left);
+        self.view_controls(&mut bottom_left, several);
         covered.push(bottom_left.min_rect());
-        if self.overlays.tools {
+        if self.overlays.tools && in_use {
             // A centred layout would stretch the bar, so it gets a rect of
-            // exactly its own width, centred along the bottom.
-            let bar = Rect::from_center_size(
-                egui::pos2(inner.center().x, inner.bottom() - TOOL_BAR_SIZE.y / 2.0),
-                TOOL_BAR_SIZE,
-            );
-            let mut bottom_centre = ui.new_child(
+            // exactly its own width.
+            let bar = if several {
+                Rect::from_min_size(inner.min, TOOL_BAR_SIZE)
+            } else {
+                Rect::from_center_size(
+                    egui::pos2(inner.center().x, inner.bottom() - TOOL_BAR_SIZE.y / 2.0),
+                    TOOL_BAR_SIZE,
+                )
+            };
+            let mut bar_ui = ui.new_child(
                 UiBuilder::new()
                     .id_salt(("viewport corner", "tools"))
                     .max_rect(bar)
                     .layout(Layout::left_to_right(Align::Center)),
             );
-            self.tools(&mut bottom_centre, accent);
-            covered.push(bottom_centre.min_rect());
+            self.tools(&mut bar_ui, accent);
+            covered.push(bar_ui.min_rect());
         }
-        if self.overlays.snapping {
-            let mut bottom_right = corner(ui, "snapping", Layout::bottom_up(Align::Max));
+        if self.overlays.snapping && in_use {
+            let layout = if several {
+                Layout::top_down(Align::Max)
+            } else {
+                Layout::bottom_up(Align::Max)
+            };
+            let mut snapping = corner(ui, "snapping", layout);
             viewport_tools::snapping_corner(
-                &mut bottom_right,
+                &mut snapping,
                 &mut self.snapping,
                 accent,
                 self.camera.speed,
+                !several,
             );
-            covered.push(bottom_right.min_rect());
+            covered.push(snapping.min_rect());
         }
         self.covered = covered;
     }
@@ -450,7 +770,10 @@ impl Viewport {
                 i.pointer.interact_pos(),
             )
         });
-        let starting = self.flying_from.is_none()
+        // Flat views don't fly: the right button slides them instead.
+        let flat = self.camera.is_flat();
+        let starting = !flat
+            && self.flying_from.is_none()
             && !self.tools.dragging()
             && pressed_here
             && response.hovered()
@@ -488,6 +811,9 @@ impl Viewport {
         let mut input = FlyInput {
             dt,
             view_height: response.rect.height(),
+            view_width: response.rect.width(),
+            mouse: pointer
+                .map(|p| glam::Vec2::new(p.x - response.rect.min.x, p.y - response.rect.min.y)),
             ..FlyInput::default()
         };
         if flying {
@@ -509,7 +835,9 @@ impl Viewport {
             input.speed_notches = notches as i32;
         } else {
             input.dolly_notches = notches;
-            if response.dragged_by(PointerButton::Middle) {
+            let slides = response.dragged_by(PointerButton::Middle)
+                || (flat && response.dragged_by(PointerButton::Secondary));
+            if slides {
                 let delta = response.drag_delta();
                 input.pan = glam::Vec2::new(delta.x, delta.y);
             }
@@ -517,59 +845,75 @@ impl Viewport {
         self.camera.fly(&input);
     }
 
-    fn stats(&self, ui: &mut Ui) {
+    /// The frame rate and counts. `upwards` for a corner that builds
+    /// upwards (the lines go in last first, so they still read down).
+    fn stats(&self, ui: &mut Ui, upwards: bool) {
+        let s = if self.entities == 1 { "y" } else { "ies" };
+        let mut lines = vec![
+            format!(
+                "{:.0} fps · {:.1} ms",
+                self.frames_per_second(),
+                self.frame_time * 1000.0
+            ),
+            format!("{} entit{s}", crate::models::grouped(self.entities)),
+        ];
+        if self.area.triangles > 0 {
+            lines.push(format!(
+                "{} triangles",
+                crate::models::grouped(self.area.triangles)
+            ));
+        }
+        let layout = if upwards {
+            lines.reverse();
+            Layout::bottom_up(Align::Max)
+        } else {
+            Layout::top_down(Align::Max)
+        };
         theme::overlay_frame()
             .inner_margin(egui::Margin::symmetric(8, 4))
             .show(ui, |ui| {
-                ui.with_layout(Layout::top_down(Align::Max), |ui| {
-                    ui.label(
-                        RichText::new(format!(
-                            "{:.0} fps · {:.1} ms",
-                            self.frames_per_second(),
-                            self.frame_time * 1000.0
-                        ))
-                        .monospace()
-                        .size(11.0),
-                    );
-                    let s = if self.entities == 1 { "y" } else { "ies" };
-                    ui.label(
-                        RichText::new(format!(
-                            "{} entit{s}",
-                            crate::models::grouped(self.entities)
-                        ))
-                        .monospace()
-                        .size(11.0),
-                    );
-                    if self.area.triangles > 0 {
-                        ui.label(
-                            RichText::new(format!(
-                                "{} triangles",
-                                crate::models::grouped(self.area.triangles)
-                            ))
-                            .monospace()
-                            .size(11.0),
-                        );
+                ui.with_layout(layout, |ui| {
+                    for line in lines {
+                        ui.label(RichText::new(line).monospace().size(11.0));
                     }
                 });
             });
     }
 
-    fn view_controls(&mut self, ui: &mut Ui) {
+    fn view_controls(&mut self, ui: &mut Ui, several: bool) {
         // Bottom-up: the row of buttons first, the ≡ menu above it.
         ui.horizontal(|ui| {
             let menu = ui
                 .add(egui::Button::new("≡").selected(self.menu_open))
-                .on_hover_text("What the viewport shows");
+                .on_hover_text("What the viewport shows, and how many views");
             if menu.clicked() {
                 self.menu_open = !self.menu_open;
             }
-            up_menu(ui, "Perspective ▴", |ui| {
-                let _ = ui.add(egui::Button::new("Perspective").selected(true));
-                for view in ["Top", "Front", "Right"] {
-                    ui.add_enabled(false, egui::Button::new(view))
-                        .on_disabled_hover_text("Flat views arrive in Phase 1");
+            let kind = self.camera.kind;
+            let mut chosen = None;
+            up_menu(ui, format!("{} ▴", kind.name()), |ui| {
+                for each in ViewKind::ALL {
+                    let hint = match each {
+                        ViewKind::Perspective => "As the eye sees: fly with the right mouse button",
+                        ViewKind::Top => {
+                            "Flat, from above: right or middle drag slides, the wheel zooms"
+                        }
+                        ViewKind::Front => "Flat, from the front (looking north)",
+                        ViewKind::Right => "Flat, from the right (looking west)",
+                    };
+                    if ui
+                        .add(egui::Button::new(each.name()).selected(each == kind))
+                        .on_hover_text(hint)
+                        .clicked()
+                    {
+                        chosen = Some(each);
+                        ui.close();
+                    }
                 }
             });
+            if let Some(kind) = chosen {
+                self.camera = self.camera.as_kind(kind);
+            }
             let look = &mut self.look;
             up_menu(ui, format!("{} ▴", look.kind.name()), |ui| {
                 look_menu(ui, look)
@@ -582,18 +926,44 @@ impl Viewport {
                         );
                 }
             });
+            let alone = self.maximized == Some(self.active);
+            if several || alone {
+                let (text, hint) = if alone {
+                    ("All views", "Show every view again")
+                } else {
+                    ("Maximise", "Show this view alone, filling the viewport")
+                };
+                if ui.button(text).on_hover_text(hint).clicked() {
+                    self.maximized = if alone { None } else { Some(self.active) };
+                }
+            }
         });
         if self.menu_open {
             theme::overlay_frame()
                 .inner_margin(egui::Margin::same(8))
                 .show(ui, |ui| {
                     ui.set_min_width(220.0);
-                    ui.label(RichText::new("Show in the viewport").color(theme::TEXT_WEAK));
-                    ui.checkbox(&mut self.overlays.tools, "Tools");
-                    ui.checkbox(&mut self.overlays.snapping, "Grid, angle and camera speed");
-                    ui.checkbox(&mut self.overlays.stats, "Frame rate and entity count");
+                    self.menu(ui);
                 });
         }
+    }
+
+    /// The ≡ menu's contents: the layout of views, and what to show.
+    /// The ≡ menu's contents: the layout of views, and what to show.
+    /// The corner builds upwards, so they're added last first.
+    fn menu(&mut self, ui: &mut Ui) {
+        ui.checkbox(&mut self.overlays.stats, "Frame rate and entity count");
+        ui.checkbox(&mut self.overlays.snapping, "Grid, angle and camera speed");
+        ui.checkbox(&mut self.overlays.tools, "Tools");
+        ui.label(RichText::new("Show in the viewport").color(theme::TEXT_WEAK));
+        ui.add_space(6.0);
+        for layout in ViewLayout::ALL.into_iter().rev() {
+            if ui.radio(self.layout == layout, layout.name()).clicked() {
+                self.layout = layout;
+                self.maximized = None;
+            }
+        }
+        ui.label(RichText::new("Views").color(theme::TEXT_WEAK));
     }
 
     fn tools(&mut self, ui: &mut Ui, accent: Accent) {
@@ -735,6 +1105,10 @@ fn tool_button(ui: &mut Ui, tool: Tool, chosen: bool, accent: Accent) -> egui::R
     });
     response
 }
+
+#[cfg(test)]
+#[path = "views_tests.rs"]
+mod views_tests;
 
 #[cfg(test)]
 mod tests {

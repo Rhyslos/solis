@@ -302,7 +302,7 @@ impl Tools {
             });
             return;
         }
-        let px = (at * ppp).floor().max(Vec2::ZERO);
+        let px = pixel_at(at, size, ppp);
         self.ask(
             [px.x as u32, px.y as u32, 1, 1],
             PickPurpose::Click(mode),
@@ -332,7 +332,11 @@ impl Tools {
             })
             .map(|(entity, _)| entity)
             .collect();
-        let (lo, hi) = ((min * ppp).floor(), (max * ppp).ceil());
+        let last = ((size * ppp).round() - Vec2::ONE).max(Vec2::ZERO);
+        let (lo, hi) = (
+            (min * ppp).floor().min(last),
+            (max * ppp).ceil().min(last + Vec2::ONE),
+        );
         let mode = if ctrl {
             PickMode::Add
         } else {
@@ -362,12 +366,17 @@ impl Tools {
         size: Vec2,
         ppp: f32,
     ) {
-        let fallback = camera
-            .ray_through(at, size)
-            .hit_ground(0.0)
-            .filter(|p| p.distance(camera.position) < 1_000.0)
-            .unwrap_or_else(|| camera.focus());
-        let px = (at * ppp).floor().max(Vec2::ZERO);
+        let ray = camera.ray_through(at, size);
+        let fallback = if camera.is_flat() {
+            // A flat view: the point under the mouse, as deep as the
+            // view's middle (in a front view, at the height pointed at).
+            ray.at((camera.position - ray.origin).dot(ray.direction))
+        } else {
+            ray.hit_ground(0.0)
+                .filter(|p| p.distance(camera.position) < 1_000.0)
+                .unwrap_or_else(|| camera.focus())
+        };
+        let px = pixel_at(at, size, ppp);
         self.ask(
             [px.x as u32, px.y as u32, 1, 1],
             PickPurpose::Drop { asset, fallback },
@@ -398,6 +407,18 @@ impl Tools {
 
     /// The rectangle to send to the renderer this frame, if a pick is
     /// waiting to be sent; it's marked as sent.
+    /// [`Self::rect_to_send`], with the entities behind this frame's pick
+    /// numbers: a pick asked for while another was in flight is drawn
+    /// frames later, with that frame's numbers, so its list is taken now.
+    pub(crate) fn send_with(&mut self, pickable: &[EntityId]) -> Option<[u32; 4]> {
+        if let Some(pick) = self.pick.as_mut()
+            && pick.waited.is_none()
+        {
+            pick.pickable = pickable.to_vec();
+        }
+        self.rect_to_send()
+    }
+
     pub(crate) fn rect_to_send(&mut self) -> Option<[u32; 4]> {
         let pick = self.pick.as_mut()?;
         if pick.waited.is_some() {
@@ -415,6 +436,9 @@ impl Tools {
         let Some(waited) = pick.waited.as_mut() else {
             return;
         };
+        // An answer to an older question (one given up on) isn't this
+        // one's: it's waited for still.
+        let answer = answer.filter(|a| a.rect == pick.rect);
         let Some(answer) = answer else {
             *waited += 1;
             if *waited > PICK_PATIENCE {
@@ -455,6 +479,15 @@ impl Tools {
 }
 
 /// Draws the tools over the viewport image at `rect`.
+/// The image pixel under `at` (points) in a view `size` points across:
+/// never past the last pixel, which the image may round away at some
+/// display scales (a pick there would ask about nothing, and never be
+/// answered).
+fn pixel_at(at: Vec2, size: Vec2, ppp: f32) -> Vec2 {
+    let last = ((size * ppp).round() - Vec2::ONE).max(Vec2::ZERO);
+    (at * ppp).floor().max(Vec2::ZERO).min(last)
+}
+
 /// Draws a marker for each camera: a small wire pyramid pointing the way
 /// it looks, with a notch on its top edge for which way is up.
 pub(crate) fn draw_cameras(ui: &Ui, rect: Rect, cameras: &[(EntityId, Mat4)], camera: &Camera) {
@@ -653,12 +686,21 @@ pub(crate) fn snapping_corner(
     snapping: &mut Snapping,
     accent: Accent,
     camera_speed: u8,
+    upwards: bool,
 ) {
-    ui.with_layout(Layout::bottom_up(Align::Max), |ui| {
+    // In a bottom corner the rows build upwards; in a top one, downwards.
+    let layout = if upwards {
+        Layout::bottom_up(Align::Max)
+    } else {
+        Layout::top_down(Align::Max)
+    };
+    // Each row hugs the edge the corner builds from.
+    let row = Layout::right_to_left(if upwards { Align::Max } else { Align::Min });
+    ui.with_layout(layout, |ui| {
         ui.spacing_mut().item_spacing.y = 3.0;
         // Bottom row, laid out from the right edge, so the boxes go in
         // backwards: Grid, Angle, Scale, Camera.
-        ui.with_layout(Layout::right_to_left(Align::Max), |ui| {
+        ui.with_layout(row, |ui| {
             ui.spacing_mut().item_spacing.x = 3.0;
             theme::overlay_frame()
                 .inner_margin(egui::Margin::symmetric(8, 4))
@@ -706,7 +748,7 @@ pub(crate) fn snapping_corner(
             });
         });
         // The row above: X, Y, Z locks and world or object axes.
-        ui.with_layout(Layout::right_to_left(Align::Max), |ui| {
+        ui.with_layout(row, |ui| {
             theme::overlay_frame().show(ui, |ui| {
                 ui.horizontal(|ui| {
                     ui.spacing_mut().item_spacing.x = 2.0;

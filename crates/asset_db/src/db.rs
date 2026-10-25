@@ -10,7 +10,13 @@ use crate::sidecar::{self, Sidecar};
 use reflect::AssetId;
 use std::collections::{BTreeMap, HashMap};
 use std::path::{Path, PathBuf};
-use std::time::SystemTime;
+use std::time::{Duration, Instant, SystemTime};
+
+/// How long a new file without a sidecar must have been left alone before
+/// it's given one. Git writes a file and its sidecar one after the other
+/// during a checkout or a pull: a look in between would otherwise give the
+/// file a new ID, and the ID it had elsewhere would be lost.
+pub const SETTLE: Duration = Duration::from_secs(2);
 
 /// What kind of asset a file is.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -36,7 +42,9 @@ impl AssetKind {
     }
 }
 
-/// A file's size and time of last change, to notice changes cheaply.
+/// A file's size and time of last change, to notice changes cheaply. Two
+/// versions with the same size written within one tick of the file
+/// system's clock look the same; real saves are far enough apart.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Stamp {
     /// Bytes.
@@ -108,6 +116,12 @@ pub struct AssetDb {
     project: Project,
     records: BTreeMap<AssetId, AssetRecord>,
     limits: assets::Limits,
+    /// When a new file left waiting (see [`SETTLE`]) should be looked at
+    /// again, if one is.
+    waiting: Option<Instant>,
+    /// How long a new file waits ([`SETTLE`]; none in this crate's own
+    /// tests, which write files and look straight away).
+    pub(crate) settle: Duration,
 }
 
 impl AssetDb {
@@ -118,6 +132,8 @@ impl AssetDb {
             project,
             records: BTreeMap::new(),
             limits,
+            waiting: None,
+            settle: if cfg!(test) { Duration::ZERO } else { SETTLE },
         };
         let (changes, notes) = db.rescan();
         (db, changes, notes)
@@ -161,6 +177,7 @@ impl AssetDb {
         let root = self.project.assets();
         let mut notes = Vec::new();
         let (files, sidecars) = walk(&root);
+        self.waiting = None;
         // Orphans: sidecars whose asset isn't there, by recorded hash.
         let orphans: Vec<(PathBuf, Sidecar)> = sidecars
             .iter()
@@ -197,11 +214,15 @@ impl AssetDb {
             by_id.entry(sidecar.id).or_default().push(i);
         }
         for (id, sharing) in by_id {
-            let keeper = sharing
-                .iter()
-                .copied()
-                .find(|&i| self.records.get(&id).is_some_and(|r| r.path == known[i].0))
-                .unwrap_or(sharing[0]);
+            let keeper = if sharing.len() == 1 {
+                sharing[0]
+            } else {
+                sharing
+                    .iter()
+                    .copied()
+                    .find(|&i| self.records.get(&id).is_some_and(|r| r.path == known[i].0))
+                    .unwrap_or_else(|| original(&root, &known, &sharing))
+            };
             let (path, kind, _) = &known[keeper];
             found.insert(id, self.record(id, path.clone(), *kind));
             for &copy in sharing.iter().filter(|&&i| i != keeper) {
@@ -242,6 +263,13 @@ impl AssetDb {
                 .collect();
             let same_content_files = hashes.iter().filter(|h| **h == *hash).count();
             let sidecar_path = sidecar::path_for(file);
+            if matching.is_empty() && !settled(file, self.settle) {
+                // Just written: its sidecar may be on its way (Git writes
+                // them one after the other). Looked at again shortly.
+                let again = Instant::now() + self.settle;
+                self.waiting = Some(self.waiting.map_or(again, |w| w.min(again)));
+                continue;
+            }
             if let ([only], 1) = (matching.as_slice(), same_content_files) {
                 let (orphan_path, orphan) = &orphans[*only];
                 if !found.contains_key(&orphan.id)
@@ -298,14 +326,46 @@ impl AssetDb {
         (changes, notes)
     }
 
+    /// When to look at the folder again without being told to: a new
+    /// file was left waiting for its sidecar ([`SETTLE`]).
+    pub fn look_again_at(&self) -> Option<Instant> {
+        self.waiting
+    }
+
+    /// Gives the file at `path` (inside the assets, just written by Solis)
+    /// a sidecar of its own now, so the next look takes it at once rather
+    /// than waiting for it to settle. A file that has one keeps it.
+    pub fn adopt(&self, path: &Path) -> std::io::Result<()> {
+        let sidecar_path = sidecar::path_for(path);
+        if sidecar_path.exists() {
+            return Ok(());
+        }
+        Sidecar::new(hash_file(path)?)
+            .write(&sidecar_path)
+            .map(|_| ())
+    }
+
     fn record(&self, id: AssetId, path: PathBuf, kind: AssetKind) -> AssetRecord {
         let file = self.project.assets().join(&path);
-        let mut stamps = vec![(path.clone(), Stamp::of(&file))];
+        let own = Stamp::of(&file);
+        let mut stamps = vec![(path.clone(), own)];
         if file
             .extension()
             .is_some_and(|e| e.eq_ignore_ascii_case("gltf"))
         {
-            for dependency in assets::referenced_files(&file, &self.limits).unwrap_or_default() {
+            // The files it reads only change when it does: while it's the
+            // same, last time's list is used and only their stamps looked
+            // at, so a rescan doesn't read every .gltf again.
+            let known = self
+                .records
+                .get(&id)
+                .filter(|old| old.path == path && old.stamps.first().is_some_and(|s| s.1 == own))
+                .filter(|_| own.is_some())
+                .map(|old| old.stamps[1..].iter().map(|(p, _)| p.clone()).collect());
+            let dependencies = known.unwrap_or_else(|| {
+                assets::referenced_files(&file, &self.limits).unwrap_or_default()
+            });
+            for dependency in dependencies {
                 let stamp = Stamp::of(&dependency);
                 stamps.push((dependency, stamp));
             }
@@ -374,6 +434,50 @@ impl AssetDb {
         }
         sidecar.write(&path)?;
         Ok(ids)
+    }
+}
+
+/// Whether the file at `path` has been left alone for `settle`. One whose
+/// time is in the future (copied from a computer whose clock was ahead) or
+/// can't be read counts as settled, so it's never left out.
+fn settled(path: &Path, settle: Duration) -> bool {
+    if settle.is_zero() {
+        return true;
+    }
+    std::fs::metadata(path)
+        .and_then(|m| m.modified())
+        .ok()
+        .and_then(|modified| SystemTime::now().duration_since(modified).ok())
+        .is_none_or(|age| age >= settle)
+}
+
+/// Of files sharing one sidecar ID that the database didn't know (copied
+/// while Solis was closed), the original: the one whose sidecar was made
+/// first, since a copy's is made when it's copied. Where the system can't
+/// say, the shortest name ("crate" before "crate copy"), then by name.
+fn original(root: &Path, known: &[(PathBuf, AssetKind, Sidecar)], sharing: &[usize]) -> usize {
+    let made = |i: usize| {
+        std::fs::metadata(sidecar::path_for(&root.join(&known[i].0)))
+            .and_then(|m| m.created())
+            .ok()
+    };
+    let key = |&i: &usize| {
+        let path = &known[i].0;
+        (made(i), path.as_os_str().len(), path.clone())
+    };
+    // Creation times only decide when every file has one.
+    if sharing.iter().all(|&i| made(i).is_some()) {
+        sharing
+            .iter()
+            .copied()
+            .min_by_key(key)
+            .unwrap_or(sharing[0])
+    } else {
+        sharing
+            .iter()
+            .copied()
+            .min_by_key(|&i| (known[i].0.as_os_str().len(), known[i].0.clone()))
+            .unwrap_or(sharing[0])
     }
 }
 
@@ -533,6 +637,64 @@ mod tests {
     }
 
     #[test]
+    fn a_copy_made_while_solis_was_closed_leaves_the_original_its_id() {
+        let (project, assets) = project("db-copy-closed");
+        glb(&assets.join("crate.glb"), 0.5);
+        let (db, ..) = open(project.clone());
+        let id = db.id_at(&assets.join("crate.glb")).unwrap();
+        drop(db);
+        // Copied, sidecar and all, under a name sorting first, a moment
+        // later (so its sidecar is younger where the system can tell).
+        std::thread::sleep(std::time::Duration::from_millis(20));
+        std::fs::copy(assets.join("crate.glb"), assets.join("a crate.glb")).unwrap();
+        std::fs::copy(
+            assets.join("crate.glb.solmeta"),
+            assets.join("a crate.glb.solmeta"),
+        )
+        .unwrap();
+        let (db, _, notes) = open(project);
+        assert_eq!(
+            db.id_at(&assets.join("crate.glb")),
+            Some(id),
+            "the original keeps it"
+        );
+        assert_ne!(db.id_at(&assets.join("a crate.glb")), Some(id));
+        assert_eq!(notes.len(), 1, "{notes:?}");
+    }
+
+    #[test]
+    fn a_new_file_waits_a_moment_for_its_sidecar() {
+        let (project, assets) = project("db-settle");
+        let (mut db, ..) = open(project);
+        db.settle = SETTLE;
+        // Git writes the model, and its sidecar from the other computer
+        // a moment later: the look in between gives it no ID of its own.
+        glb(&assets.join("crate.glb"), 0.5);
+        let (changes, notes) = db.rescan();
+        assert!(changes.is_empty() && notes.is_empty(), "{changes:?}");
+        assert!(db.look_again_at().is_some(), "it's looked at again later");
+        assert!(!assets.join("crate.glb.solmeta").exists());
+        let theirs = Sidecar::new(hash_file(&assets.join("crate.glb")).unwrap());
+        theirs.write(&assets.join("crate.glb.solmeta")).unwrap();
+        let (changes, _) = db.rescan();
+        assert_eq!(changes, [Change::Added(theirs.id)]);
+        assert_eq!(db.look_again_at(), None);
+        // A file Solis writes itself is taken at once.
+        glb(&assets.join("rock.glb"), 0.5);
+        db.adopt(&assets.join("rock.glb")).unwrap();
+        db.rescan();
+        assert!(db.id_at(&assets.join("rock.glb")).is_some());
+        // One with no sidecar coming gets its own once it has settled.
+        glb(&assets.join("barrel.glb"), 0.5);
+        db.settle = Duration::from_millis(50);
+        db.rescan();
+        assert!(db.id_at(&assets.join("barrel.glb")).is_none());
+        std::thread::sleep(Duration::from_millis(80));
+        db.rescan();
+        assert!(db.id_at(&assets.join("barrel.glb")).is_some());
+    }
+
+    #[test]
     fn edits_moves_and_removals_are_noticed_and_sidecars_kept() {
         let (project, assets) = project("db-changes");
         glb(&assets.join("crate.glb"), 0.5);
@@ -569,6 +731,12 @@ mod tests {
         let (mut db, ..) = open(project);
         let id = db.id_at(&assets.join("crate.glb")).unwrap();
         glb(&assets.join("crate.glb.tmp"), 0.7);
+        // A different size too: Windows can give two quick writes the same
+        // time, and a file the same size and time looks unchanged (a real
+        // save comes long after the last).
+        let mut bytes = std::fs::read(assets.join("crate.glb.tmp")).unwrap();
+        bytes.extend_from_slice(&[0; 4]);
+        std::fs::write(assets.join("crate.glb.tmp"), bytes).unwrap();
         assert!(db.rescan().0.is_empty(), "temporary files are ignored");
         std::fs::rename(assets.join("crate.glb.tmp"), assets.join("crate.glb")).unwrap();
         assert_eq!(db.rescan().0, [Change::Changed(id)]);

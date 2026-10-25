@@ -21,7 +21,9 @@ struct Frame {
     focus: vec4<f32>,
     // Grid spacings: fine, major, super; w = half the grid's width.
     grid: vec4<f32>,
-    // Opacity of each grid level (fine, major, super; w unused).
+    // Opacity of each grid level (fine, major, super); w = the plane the
+    // grid lies in: 0 the ground (X-Y), 1 upright facing the front (X-Z),
+    // 2 upright facing the side (Y-Z).
     grid_strength: vec4<f32>,
     // Backdrop, linear colour: the sky straight up, the sky at the horizon,
     // and the ground just below the horizon.
@@ -174,7 +176,30 @@ struct GridOut {
     @location(0) world: vec2<f32>,
 };
 
-// One large square on the ground, drawn as two triangles. The grid lines
+// The point of the grid's plane at the plane's own coordinates `ab`.
+fn grid_point(ab: vec2<f32>) -> vec3<f32> {
+    let plane = frame.grid_strength.w;
+    if plane < 0.5 {
+        return vec3<f32>(ab, 0.0);
+    } else if plane < 1.5 {
+        return vec3<f32>(ab.x, 0.0, ab.y);
+    }
+    return vec3<f32>(0.0, ab.x, ab.y);
+}
+
+// A world point in the grid plane's own coordinates.
+fn grid_coords(p: vec3<f32>) -> vec2<f32> {
+    let plane = frame.grid_strength.w;
+    if plane < 0.5 {
+        return p.xy;
+    } else if plane < 1.5 {
+        return p.xz;
+    }
+    return p.yz;
+}
+
+// One large square in the grid's plane (the ground, or upright for a flat
+// view from the front or side), drawn as two triangles. The grid lines
 // themselves are worked out per pixel in the fragment shader.
 @vertex
 fn grid_vs(@builtin(vertex_index) index: u32) -> GridOut {
@@ -182,10 +207,10 @@ fn grid_vs(@builtin(vertex_index) index: u32) -> GridOut {
         vec2<f32>(-1.0, -1.0), vec2<f32>(1.0, -1.0), vec2<f32>(1.0, 1.0),
         vec2<f32>(-1.0, -1.0), vec2<f32>(1.0, 1.0), vec2<f32>(-1.0, 1.0),
     );
-    let xy = corners[index] * frame.grid.w;
+    let ab = corners[index] * frame.grid.w;
     var out: GridOut;
-    out.clip = frame.view_proj * vec4<f32>(xy, 0.0, 1.0);
-    out.world = xy;
+    out.clip = frame.view_proj * vec4<f32>(grid_point(ab), 1.0);
+    out.world = ab;
     return out;
 }
 
@@ -212,7 +237,7 @@ fn grid_fs(in: GridOut) -> @location(0) vec4<f32> {
     // A grid around the focus point, fading softly to nothing, so it reads
     // as a work surface rather than an endless floor.
     let reach = frame.focus.w;
-    let distance = length(in.world - frame.focus.xy);
+    let distance = length(in.world - grid_coords(frame.focus.xyz));
     let distance_fade = 1.0 - smoothstep(reach * 0.25, reach, distance);
 
     let strength = frame.grid_strength;
@@ -221,7 +246,7 @@ fn grid_fs(in: GridOut) -> @location(0) vec4<f32> {
     // The sun's shadows fall on the ground too, as a soft darkening, so
     // models sit on the grid instead of floating over it.
     var shade = 0.0;
-    if frame.sun_direction.w > 0.5 && frame.sun_direction.z > 0.0 {
+    if frame.grid_strength.w < 0.5 && frame.sun_direction.w > 0.5 && frame.sun_direction.z > 0.0 {
         let sun = frame.sun_color.rgb;
         let sun_strength = clamp(dot(sun, vec3<f32>(0.2126, 0.7152, 0.0722)) / 2.0, 0.0, 1.0);
         shade = (1.0 - sun_shadow(vec3<f32>(in.world, 0.0), vec3<f32>(0.0, 0.0, 1.0)))
@@ -235,7 +260,7 @@ fn grid_fs(in: GridOut) -> @location(0) vec4<f32> {
     let grid_color = vec3<f32>(0.323, 0.371, 0.456);
     let color = grid_color * (line / alpha);
     // Fog hides the grid with everything else.
-    return vec4<f32>(color, overlay_alpha(color, alpha) * fog_visibility(vec3<f32>(in.world, 0.0)));
+    return vec4<f32>(color, overlay_alpha(color, alpha) * fog_visibility(grid_point(in.world)));
 }
 
 // ------------------------------------------------------------- lines ---
@@ -264,7 +289,7 @@ fn line_vs(in: LineIn) -> LineOut {
 fn line_fs(in: LineOut) -> @location(0) vec4<f32> {
     // Lines on the ground fade with distance like the grid.
     let reach = frame.focus.w;
-    let distance = length(in.world.xy - frame.focus.xy);
+    let distance = length(grid_coords(in.world) - grid_coords(frame.focus.xyz));
     let fade = 1.0 - smoothstep(reach * 0.35, reach, distance);
     return vec4<f32>(in.color.rgb, overlay_alpha(in.color.rgb, in.color.a * fade) * fog_visibility(in.world));
 }

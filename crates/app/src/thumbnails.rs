@@ -7,7 +7,7 @@ use crate::gpu::GpuViewport;
 use asset_db::{FileKind, Jobs, Listing};
 use eframe::egui;
 use reflect::{AssetId, Id};
-use std::collections::{HashMap, HashSet, VecDeque};
+use std::collections::{HashMap, VecDeque};
 use std::hash::{DefaultHasher, Hash, Hasher};
 use std::path::{Path, PathBuf};
 
@@ -32,15 +32,28 @@ struct Wanted {
     kind: FileKind,
 }
 
+/// A file's size and time of last change: a thumbnail is made again when
+/// they change (pictures aren't assets, so nothing else says they did).
+type Stamp = Option<(u64, Option<std::time::SystemTime>)>;
+
+fn stamp(path: &Path) -> Stamp {
+    let meta = std::fs::metadata(path).ok()?;
+    Some((meta.len(), meta.modified().ok()))
+}
+
 /// Every thumbnail made, and those still to make.
 pub struct Thumbnails {
     made: HashMap<PathBuf, egui::TextureId>,
     /// Pictures' textures, kept so egui keeps them.
     pictures: HashMap<PathBuf, egui::TextureHandle>,
     queued: VecDeque<Wanted>,
-    /// Files started or failed, so they aren't tried every frame.
-    tried: HashSet<PathBuf>,
-    jobs: Jobs<(PathBuf, Made)>,
+    /// Files started or failed, so they aren't tried every frame, with
+    /// how they were then.
+    tried: HashMap<PathBuf, Stamp>,
+    /// Goes up when another project opens: thumbnails still being made
+    /// for the last one are thrown away when they arrive.
+    generation: u64,
+    jobs: Jobs<(PathBuf, u64, Made)>,
 }
 
 impl Default for Thumbnails {
@@ -49,7 +62,8 @@ impl Default for Thumbnails {
             made: HashMap::new(),
             pictures: HashMap::new(),
             queued: VecDeque::new(),
-            tried: HashSet::new(),
+            tried: HashMap::new(),
+            generation: 0,
             jobs: Jobs::new(1),
         }
     }
@@ -69,18 +83,23 @@ impl Thumbnails {
     }
 
     /// Queues a thumbnail for every model and picture in `listing` that
-    /// doesn't have one yet.
-    pub fn want(&mut self, listing: &Listing, assets: &Path) {
+    /// doesn't have one yet, or changed since it was made.
+    pub fn want(&mut self, listing: &Listing, assets: &Path, gpu: Option<&GpuViewport>) {
         for file in &listing.files {
-            if !matches!(file.kind, FileKind::Model | FileKind::Texture)
-                || self.tried.contains(&file.path)
-            {
+            if !matches!(file.kind, FileKind::Model | FileKind::Texture) {
                 continue;
             }
-            self.tried.insert(file.path.clone());
+            let full = assets.join(&file.path);
+            let now = stamp(&full);
+            match self.tried.get(&file.path) {
+                Some(then) if *then == now => continue,
+                Some(_) => self.forget(&file.path, gpu),
+                None => {}
+            }
+            self.tried.insert(file.path.clone(), now);
             self.queued.push_back(Wanted {
                 path: file.path.clone(),
-                full: assets.join(&file.path),
+                full,
                 kind: file.kind,
             });
         }
@@ -106,6 +125,7 @@ impl Thumbnails {
         }
         self.tried.clear();
         self.queued.clear();
+        self.generation += 1;
     }
 
     /// Starts the next jobs and takes in finished ones. Returns whether a
@@ -116,14 +136,20 @@ impl Thumbnails {
                 break;
             };
             let path = next.path.clone();
+            let generation = self.generation;
             self.jobs.start(job_id(&next.path), move || {
                 let made = std::panic::catch_unwind(|| make(&next))
                     .unwrap_or_else(|_| Made::Picture(Err("making it failed unexpectedly".into())));
-                (path, made)
+                (path, generation, made)
             });
         }
         let mut new = false;
-        for (_, (path, made)) in self.jobs.finished() {
+        for (_, (path, generation, made)) in self.jobs.finished() {
+            // For a project no longer open: a file of the same name here
+            // mustn't show its picture.
+            if generation != self.generation {
+                continue;
+            }
             let texture = match made {
                 Made::Picture(Ok(image)) => {
                     let handle = ctx.load_texture(
@@ -139,7 +165,14 @@ impl Thumbnails {
                 Made::Picture(Err(_)) | Made::Model(Err(_)) => None,
             };
             if let Some(id) = texture {
-                self.made.insert(path, id);
+                // One made again (it changed meanwhile) replaces the old,
+                // which is let go.
+                if let Some(old) = self.made.insert(path, id)
+                    && old != id
+                    && let Some(gpu) = gpu.as_deref()
+                {
+                    gpu.free_thumbnail(old);
+                }
                 new = true;
             }
         }
@@ -226,12 +259,57 @@ mod tests {
                 },
             ],
         };
-        t.want(&listing, Path::new("/project/assets"));
-        t.want(&listing, Path::new("/project/assets"));
+        t.want(&listing, Path::new("/project/assets"), None);
+        t.want(&listing, Path::new("/project/assets"), None);
         assert_eq!(t.queued.len(), 2);
         t.forget(Path::new("a.glb"), None);
-        t.want(&listing, Path::new("/project/assets"));
+        t.want(&listing, Path::new("/project/assets"), None);
         assert_eq!(t.queued.len(), 3, "made again after it changed");
         assert_ne!(job_id(Path::new("a")), job_id(Path::new("b")));
+    }
+
+    #[test]
+    fn a_changed_picture_is_made_again_and_an_old_projects_never_arrives() {
+        let folder =
+            std::env::temp_dir().join(format!("solis-thumb-change-{}", std::process::id()));
+        std::fs::create_dir_all(&folder).unwrap();
+        let red = image::RgbaImage::from_pixel(8, 8, image::Rgba([200, 30, 30, 255]));
+        red.save(folder.join("b.png")).unwrap();
+        let listing = Listing {
+            folders: Vec::new(),
+            files: vec![asset_db::FileEntry {
+                path: "b.png".into(),
+                kind: FileKind::Texture,
+                id: None,
+            }],
+        };
+        let ctx = egui::Context::default();
+        let mut t = Thumbnails::default();
+        t.want(&listing, &folder, None);
+        let wait = |t: &mut Thumbnails| {
+            for _ in 0..500 {
+                if t.poll(&ctx, None) {
+                    return true;
+                }
+                std::thread::sleep(std::time::Duration::from_millis(10));
+            }
+            false
+        };
+        assert!(wait(&mut t));
+        assert!(t.get(Path::new("b.png")).is_some());
+        t.want(&listing, &folder, None);
+        assert!(t.queued.is_empty(), "unchanged: not made again");
+        // Edited in a paint program (now bigger).
+        image::RgbaImage::from_pixel(32, 32, image::Rgba([0, 0, 255, 255]))
+            .save(folder.join("b.png"))
+            .unwrap();
+        t.want(&listing, &folder, None);
+        assert_eq!(t.queued.len(), 1, "changed: made again");
+        // Another project opens before it's made: it's never shown.
+        let _ = t.poll(&ctx, None); // starts making it
+        t.clear(None);
+        std::thread::sleep(std::time::Duration::from_millis(300));
+        assert!(!t.poll(&ctx, None));
+        assert!(t.get(Path::new("b.png")).is_none());
     }
 }
