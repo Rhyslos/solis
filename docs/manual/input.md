@@ -40,7 +40,7 @@ A connected **gamepad** works whenever the game is playing; it has nothing of th
 
 **Combinations.** A key on its own doesn't count while you hold modifiers that some action binds with it. With Turn on `Alt+ArrowLeft` and Pan on `ArrowLeft`, holding Alt and pressing the left arrow turns, and doesn't pan as well. The up arrow (with no `Alt+ArrowUp` bound) still pans while Alt is held.
 
-Changes are saved straight away in the project's `input.solinput`, a small text file beside `project.solis` that Git can merge.
+Changes are saved straight away, and a game that's playing takes them at once (any rebinding game code did in this play gives way to them). They're kept in the project's `input.solinput`, a small text file beside `project.solis` that Git can merge.
 
 **In game code** (`get "solis/input":[held, pressed, axis];` in Lust; `solis.held("Jump")` in Lua):
 

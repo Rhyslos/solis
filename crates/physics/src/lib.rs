@@ -323,6 +323,14 @@ impl State {
         self.bodies.get(entry.body).map(|b| from_pose(b.position()))
     }
 
+    /// Whether `id`'s body is moved by physics (dynamic).
+    pub fn is_dynamic(&self, id: EntityId) -> bool {
+        self.by_entity
+            .get(&id)
+            .and_then(|e| self.bodies.get(e.body))
+            .is_some_and(rp::RigidBody::is_dynamic)
+    }
+
     /// What `id`'s last character move found (none if it isn't a
     /// character).
     pub fn character(&self, id: EntityId) -> Option<CharacterState> {

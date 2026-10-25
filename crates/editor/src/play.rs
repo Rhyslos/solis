@@ -71,6 +71,8 @@ pub(crate) struct Playing {
     pub(crate) recording: Option<input::Recording>,
     /// At most how big the recording's file is so far.
     pub(crate) recording_bytes: usize,
+    /// Whether the Console has said an edit spoils this recording.
+    pub(crate) told_recording_edited: bool,
     /// The recording this play plays back, and how many of its ticks
     /// have run.
     pub(crate) replay: Option<(input::Recording, usize)>,
@@ -197,6 +199,7 @@ impl Workbench {
             bindings: Arc::new(self.bindings.clone()),
             recording: None,
             recording_bytes: 0,
+            told_recording_edited: false,
             replay: None,
         });
         // Nothing held over from before Play.
@@ -379,6 +382,16 @@ impl Workbench {
         }
         let mut said = Vec::new();
         let mut failures = Vec::new();
+        // An edit isn't in the recording, so its replay won't match from
+        // here: said once.
+        if !changes.is_empty() && playing.recording.is_some() && !playing.told_recording_edited {
+            playing.told_recording_edited = true;
+            said.push(
+                "The area changed while recording: a recording keeps only the input, so its \
+                 replay will stop matching from here."
+                    .to_string(),
+            );
+        }
         // Changes made in the editor reach the running components.
         if let Some(game) = &mut playing.game
             && !changes.is_empty()
@@ -411,6 +424,11 @@ impl Workbench {
         } else {
             playing.world.due(f64::from(seconds))
         };
+        if ran == 0 && playing.paused {
+            // Presses and mouse movement while paused don't wait for the
+            // game to go on (the camera would jump).
+            self.devices.forget_changes();
+        }
         for _ in 0..ran {
             // The clock moves on as the tick begins, so a frame that stops
             // early never counts ticks that didn't run.
@@ -433,13 +451,16 @@ impl Workbench {
             playing.world.projectiles_mut().tick(world::TICK as f32);
             // The tick's input: played back, or sampled from the devices
             // once, so every core sees the same (decision 0037).
+            let sampled = self.devices.sample(&playing.bindings, world::TICK as f32);
             let frame = match &playing.replay {
+                // The devices are still sampled (and the sample dropped),
+                // so nothing pressed during a replay piles up for after it.
                 Some((recording, at)) => recording
                     .ticks
                     .get(*at)
                     .map(|t| t.frame.clone())
                     .unwrap_or_default(),
-                None => self.devices.sample(&playing.bindings, world::TICK as f32),
+                None => sampled,
             };
             let frame = Arc::new(frame);
             let mut slow = None;
@@ -460,12 +481,17 @@ impl Workbench {
                 let edits = std::mem::take(&mut host.edits);
                 playing.pending.extend(edits);
                 saves = std::mem::take(&mut host.saves);
+                let seed = host.seed.take();
                 // Rebinding takes effect from the next tick.
                 let rebinds = std::mem::take(&mut host.rebinds);
                 for (action, input) in rebinds {
                     Arc::make_mut(&mut playing.bindings).rebind(&action, &input);
                 }
                 slow = ticked.pause;
+                // A new seed holds from the next tick.
+                if let Some(seed) = seed {
+                    playing.world.set_seed(seed);
+                }
                 let landing = std::time::Instant::now();
                 failures.extend(self.land_edits(time, seconds));
                 code += landing.elapsed();
@@ -532,7 +558,8 @@ impl Workbench {
                         Some(format!(
                             "The replay stopped matching the recording at tick {n} ({:.2} s in): \
                              the game came out differently from the same input. Something in it \
-                             isn't deterministic, or the area or code changed since recording.",
+                             isn't deterministic (frameTime(), which is real time, is a usual \
+                             one), or the area or code changed since recording.",
                             n as f64 * world::TICK
                         ))
                     } else if ended {

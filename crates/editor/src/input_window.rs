@@ -86,18 +86,28 @@ impl Workbench {
             });
         if let Change::Changed = change {
             match bindings.check() {
-                Ok(()) => {
-                    self.bindings = bindings;
-                    if self.project.is_some() {
-                        self.outbox
-                            .push(WorkbenchAction::SaveBindings(self.bindings.write()));
-                    }
-                }
+                Ok(()) => self.change_bindings(bindings),
                 Err(why) => self.log(LogLevel::Warning, format!("Couldn't change that: {why}.")),
             }
         }
         if open {
             self.input_window = Some(window);
+        }
+    }
+}
+
+impl Workbench {
+    /// The project's input actions changed (the Input actions window):
+    /// kept, saved in the project, and taken by a running game at once
+    /// (game code's own rebinding for this play gives way to them).
+    pub(crate) fn change_bindings(&mut self, bindings: Bindings) {
+        self.bindings = bindings;
+        if let Some(playing) = &mut self.playing {
+            playing.bindings = std::sync::Arc::new(self.bindings.clone());
+        }
+        if self.project.is_some() {
+            self.outbox
+                .push(WorkbenchAction::SaveBindings(self.bindings.write()));
         }
     }
 }

@@ -409,7 +409,14 @@ impl Workbench {
         self.document.replace_by_game(&area);
         let _ = self.document.take_changes();
         let mut view = crate::game_code::ViewCache::default();
-        let (mut game, mut pending) = self.start_game(&mut world, &mut view);
+        // Game code starts on a world of its own, thrown away after: what
+        // starts do (spawn, move, set the seed) already happened in the
+        // saved game, so they mustn't happen again on top of it.
+        let mut scratch = world::World::from_area(&area);
+        let mut scratch_view = crate::game_code::ViewCache::default();
+        let (mut game, _) = self.start_game(&mut scratch, &mut scratch_view);
+        drop(scratch);
+        let mut pending = Vec::new();
         // The running components take their saved values.
         if let Some(game) = &mut game {
             let mut host = crate::game_code::PlayWorld::new(&mut world, &mut view, save.time);

@@ -463,3 +463,20 @@ fn a_tick_s_written_length_is_never_less_than_its_line() {
     let estimated: usize = recording.ticks.iter().map(Tick::written_len).sum();
     assert!(estimated >= lines, "{estimated} < {lines}");
 }
+
+#[test]
+fn forgetting_changes_keeps_what_s_held() {
+    let b = Bindings::default();
+    let mut d = Devices::new();
+    d.set("W", true);
+    d.set("F", true);
+    d.set("F", false);
+    d.mouse_moved(Vec2::new(300.0, 0.0));
+    d.wheel_turned(3.0);
+    d.forget_changes();
+    let f = d.sample(&b, TICK);
+    assert!(f.get("Move").held, "W is still down");
+    assert!(!f.get("Interact").pressed, "the tap is forgotten");
+    assert_eq!(f.get("Look").axis, Vec2::ZERO);
+    assert_eq!(f.get("Zoom").axis, Vec2::ZERO);
+}

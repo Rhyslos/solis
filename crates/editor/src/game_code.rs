@@ -223,6 +223,9 @@ pub(crate) struct PlayWorld<'a> {
     /// Game code's saves and loads (slot, whether it's a load), in order,
     /// for the editor to make after the tick.
     pub(crate) saves: Vec<(String, bool)>,
+    /// A seed game code set (`setSeed`), made at the end of the tick so
+    /// the whole tick draws from one seed.
+    pub(crate) seed: Option<u64>,
 }
 
 impl<'a> PlayWorld<'a> {
@@ -238,6 +241,7 @@ impl<'a> PlayWorld<'a> {
             bindings: Arc::default(),
             rebinds: Vec::new(),
             saves: Vec::new(),
+            seed: None,
         }
     }
 
@@ -245,6 +249,9 @@ impl<'a> PlayWorld<'a> {
     /// an edit): saves, loads and rebinding asked for there aren't made,
     /// so say so in what game code said instead of dropping them quietly.
     pub(crate) fn outside_a_tick(&mut self) {
+        if let Some(seed) = self.seed.take() {
+            self.world.set_seed(seed);
+        }
         if !self.saves.is_empty() || !self.rebinds.is_empty() {
             self.saves.clear();
             self.rebinds.clear();
@@ -287,7 +294,7 @@ impl GameWorld for PlayWorld<'_> {
                         .push(GameEdit::Spawn(id, assembly.clone(), place));
                 }
                 Change::Despawn(id) => self.edits.push(GameEdit::Despawn(id)),
-                Change::Seed(seed) => self.world.set_seed(seed),
+                Change::Seed(seed) => self.seed = Some(seed),
                 Change::Push(which, impulse) => self.world.push(which, impulse),
                 Change::Velocity(which, velocity) => self.world.set_velocity(which, velocity),
                 Change::Character(which, wanted) => self.world.move_character(which, wanted),

@@ -607,3 +607,54 @@ fn ticks_count_on_the_clock_only_as_they_begin() {
     assert_eq!(world.step(TICK * 0.5), 1);
     assert_eq!(world.clock().ticks, 2);
 }
+
+#[test]
+fn a_collider_under_something_that_moves_goes_with_it() {
+    use area::builtin::{BodyKind, RigidBody};
+    // A lift (no physics itself) with a floor under it, and a kinematic
+    // platform under it too.
+    let mut area = Area::new();
+    let lift = area.spawn(EntityData::new("Lift").with(&Transform::default()));
+    let mut floor = EntityData::new("Floor")
+        .with(&Transform::default())
+        .with(&Collider::default());
+    floor.parent = Some(lift);
+    let floor = area.spawn(floor);
+    let mut platform = EntityData::new("Platform")
+        .with(&Transform {
+            position: glam::Vec3::new(3.0, 0.0, 0.0),
+            ..Transform::default()
+        })
+        .with(&RigidBody {
+            kind: BodyKind::Kinematic,
+            ..RigidBody::default()
+        })
+        .with(&Collider::default());
+    platform.parent = Some(lift);
+    let platform = area.spawn(platform);
+    let mut world = World::from_area(&area);
+    // Game code lifts it 5 m.
+    world.set_transform(
+        lift,
+        Transform {
+            position: glam::Vec3::new(0.0, 0.0, 5.0),
+            ..Transform::default()
+        },
+    );
+    world.settle();
+    world.step_physics();
+    let at = |id| world.physics().state().pose(id).unwrap().0;
+    assert!((at(floor).z - 5.0).abs() < 1e-4, "floor at {}", at(floor));
+    assert!((at(platform) - glam::Vec3::new(3.0, 0.0, 5.0)).length() < 1e-4);
+    // An edit in the editor moving the lift does the same.
+    let mut moved = area.get(lift).unwrap().clone();
+    moved.set(&Transform {
+        position: glam::Vec3::new(0.0, 0.0, -2.0),
+        ..Transform::default()
+    });
+    area.insert(lift, moved);
+    world.update(&area, [(lift, true)]);
+    world.step_physics();
+    let at = |id| world.physics().state().pose(id).unwrap().0;
+    assert!((at(floor).z + 2.0).abs() < 1e-4, "floor at {}", at(floor));
+}

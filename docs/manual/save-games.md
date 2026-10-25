@@ -35,6 +35,7 @@ Add the QuickSave and QuickLoad actions in **Edit > Input actions…** and bind 
 - A **slot** is a save's name: letters, digits, `_` and `-` (`quick`, `slot_1`, `before-boss`). Saving to a slot that has a save replaces it.
 - Both happen at the **end of the tick**, after every component's `update`, like moves ([what game code sees](game-code.md#components)). A load replaces the whole game, so nothing else runs in that frame after it.
 - Asking for the same slot again in one tick saves once (a save is the whole game, so a `saveGame` in every unit's `update` would otherwise make thousands at a time). At most four slots are saved or loaded in one tick.
+- Loading doesn't run the game's starts again (the code outside components, and its fields' starting values): what they did already happened in the saved game.
 - `saveGame`, `loadGame` and `rebind` work from `update` and events, not while a component starts (the Console says so if you try).
 - **Physics** is kept as each body's place and motion. Saving starts physics afresh from those, which a loaded game does too, so the loaded game carries on exactly as the saved one does (a stack of crates may settle by a hair as you save).
 

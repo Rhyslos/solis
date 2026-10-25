@@ -298,3 +298,30 @@ fn the_input_actions_window_binds_what_is_pressed_and_saves() {
         "saved"
     );
 }
+
+#[test]
+fn input_actions_changed_while_playing_reach_the_game_and_paused_input_waits_for_nothing() {
+    let mut w = with_a_walker();
+    w.play();
+    tick(&mut w);
+    // Bind Move's up to I in the window's way: the game has it at once.
+    let mut bindings = w.bindings.clone();
+    bindings.get_mut("Move").unwrap().up = vec!["I".into()];
+    w.change_bindings(bindings);
+    w.devices.set("I", true);
+    tick(&mut w);
+    assert!(walker_at(&w).y > 0.05, "I walks now");
+    w.devices.set("I", false);
+    // While paused, a tap of F doesn't wait to be pressed when it goes on.
+    w.pause();
+    w.devices.set("F", true);
+    w.devices.set("F", false);
+    w.run_game(0.1);
+    w.pause();
+    tick(&mut w);
+    assert!(
+        !w.log_lines()
+            .iter()
+            .any(|l| l.text.contains("interact with"))
+    );
+}
