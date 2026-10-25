@@ -659,37 +659,70 @@ impl Physics {
     /// gets there over the next [`Self::step`]. Returns whether `id` is a
     /// character.
     pub fn move_character(&mut self, id: EntityId, wanted: Vec3, dt: f32) -> bool {
-        let Some(entry) = self.state.by_entity.get(&id).cloned() else {
-            return false;
+        self.move_characters(&[(id, wanted)], dt)[0]
+    }
+
+    /// Moves characters, as [`Self::move_character`] does each, in the
+    /// order given: each move is worked out on every core at once (they
+    /// only read physics), then made one after another in that order, so
+    /// the result is the same however many cores there are. A character
+    /// moved twice works its second move out after its first is made.
+    /// Returns, for each, whether it's a character.
+    pub fn move_characters(&mut self, moves: &[(EntityId, Vec3)], dt: f32) -> Vec<bool> {
+        use rayon::prelude::*;
+        let is_character: Vec<bool> = moves
+            .iter()
+            .map(|(id, _)| {
+                self.state
+                    .by_entity
+                    .get(id)
+                    .is_some_and(|e| e.character.is_some() && e.collider.is_some())
+            })
+            .collect();
+        let sensible = |wanted: Vec3| wanted.is_finite() && dt.is_finite() && dt > 0.0;
+        // Only each character's first move can be worked out ahead.
+        let mut seen = std::collections::HashSet::new();
+        let first: Vec<bool> = moves
+            .iter()
+            .zip(&is_character)
+            .map(|((id, wanted), &c)| c && sensible(*wanted) && seen.insert(*id))
+            .collect();
+        let state = &*self.state;
+        let plan = |(&(id, wanted), &first): (&(EntityId, Vec3), &bool)| {
+            first.then(|| plan_one(state, id, wanted, dt))
         };
-        let (Some((spec, last)), Some(collider)) = (entry.character, entry.collider) else {
-            return false;
+        // A few aren't worth sharing out.
+        let mut planned: Vec<Option<Option<Planned>>> = if moves.len() >= 16 {
+            moves.par_iter().zip(first.par_iter()).map(plan).collect()
+        } else {
+            moves.iter().zip(first.iter()).map(plan).collect()
         };
-        if !(wanted.is_finite() && dt.is_finite() && dt > 0.0) {
-            return true;
-        }
-        let wanted = wanted.clamp_length_max(MAX_CHARACTER_MOVE);
-        let state = self.state_mut();
-        let moved = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
-            move_one(state, &entry, collider, spec, last, wanted, dt)
-        }));
-        match moved {
-            Ok(Some(found)) => {
-                if let Some(e) = self.state_mut().by_entity.get_mut(&id) {
-                    e.character = Some((spec, found));
+        for (n, &(id, wanted)) in moves.iter().enumerate() {
+            if !is_character[n] || !sensible(wanted) {
+                continue;
+            }
+            let planned = match planned[n].take() {
+                Some(planned) => planned,
+                None => plan_one(&self.state, id, wanted, dt),
+            };
+            let Some(planned) = planned else {
+                if self.state.by_entity.contains_key(&id) {
+                    // Rapier panicked (a state that doesn't hold
+                    // together): never a crash, as a step that panics.
+                    self.clear();
+                    self.broke = true;
+                    return is_character;
                 }
-                self.characters_moved.push(id);
+                continue;
+            };
+            let spec = planned.spec;
+            let found = apply_one(self.state_mut(), planned, dt);
+            if let Some(e) = self.state_mut().by_entity.get_mut(&id) {
+                e.character = Some((spec, found));
             }
-            Ok(None) => {}
-            Err(_) => {
-                // Never a crash: as a step that panics.
-                self.state = Arc::new(State::default());
-                self.pipeline = rp::PhysicsPipeline::new();
-                self.characters_moved.clear();
-                self.broke = true;
-            }
+            self.characters_moved.push(id);
         }
-        true
+        is_character
     }
 
     /// Takes `id` out of physics, if it's in.
@@ -824,24 +857,10 @@ impl Physics {
     }
 }
 
-/// One character's move (see [`Physics::move_character`]): its body's
-/// next place set, and what it found. `None` if its body or collider is
-/// missing.
-fn move_one(
-    state: &mut State,
-    entry: &Entry,
-    collider: rp::ColliderHandle,
-    spec: CharacterSpec,
-    last: CharacterState,
-    wanted: Vec3,
-    dt: f32,
-) -> Option<CharacterState> {
+/// The controller for a character's settings.
+fn controller(spec: CharacterSpec) -> rapier3d::control::KinematicCharacterController {
     use rapier3d::control::{CharacterAutostep, CharacterLength, KinematicCharacterController};
-    let start = *state.bodies.get(entry.body)?.next_position();
-    let c = state.colliders.get(collider)?;
-    let shape = c.shared_shape().clone();
-    let local = c.position_wrt_parent().copied().unwrap_or_default();
-    let controller = KinematicCharacterController {
+    KinematicCharacterController {
         up: rp::Vector::Z,
         offset: CharacterLength::Absolute(0.01),
         slide: true,
@@ -853,14 +872,42 @@ fn move_one(
         max_slope_climb_angle: spec.slope.to_radians(),
         min_slope_slide_angle: spec.slope.to_radians(),
         // Rapier's own snapping sinks a resting character into the floor
-        // a little each tick, so Solis snaps itself (below).
+        // a little each tick, so Solis snaps itself (see `plan_one`).
         snap_to_ground: None,
         normal_nudge_factor: 1.0e-4,
-    };
-    let filter = rp::QueryFilter::default().exclude_rigid_body(entry.body);
-    let shape_pose = start * local;
-    let mut collisions = Vec::new();
-    let result = {
+    }
+}
+
+/// A character's move worked out (reading physics only, so many can be
+/// worked out at once on every core), waiting to be made.
+struct Planned {
+    entry: Entry,
+    spec: CharacterSpec,
+    shape: rp::SharedShape,
+    start: rp::Pose,
+    translation: rp::Vector,
+    grounded: bool,
+    collisions: Vec<rapier3d::control::CharacterCollision>,
+}
+
+/// Works out a character's move by `wanted` (see
+/// [`Physics::move_character`]) without changing anything: what it
+/// reads (colliders where the last step left them, its own next place)
+/// no other character's move changes. `None` if it isn't a character, or
+/// its body or collider is missing, or Rapier panicked.
+fn plan_one(state: &State, id: EntityId, wanted: Vec3, dt: f32) -> Option<Planned> {
+    let entry = state.by_entity.get(&id)?.clone();
+    let ((spec, last), collider) = (entry.character?, entry.collider?);
+    let wanted = wanted.clamp_length_max(MAX_CHARACTER_MOVE);
+    std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+        let start = *state.bodies.get(entry.body)?.next_position();
+        let c = state.colliders.get(collider)?;
+        let shape = c.shared_shape().clone();
+        let local = c.position_wrt_parent().copied().unwrap_or_default();
+        let controller = controller(spec);
+        let filter = rp::QueryFilter::default().exclude_rigid_body(entry.body);
+        let shape_pose = start * local;
+        let mut collisions = Vec::new();
         let queries = state.broad_phase.as_query_pipeline(
             state.narrow_phase.query_dispatcher(),
             &state.bodies,
@@ -884,9 +931,8 @@ fn move_one(
         let shape_pose = rp::Pose::from_translation(out) * shape_pose;
         let mut result =
             controller.move_shape(dt, &queries, &*shape, &shape_pose, to_rp(wanted), |hit| {
-                collisions.push(hit)
+                collisions.push(hit);
             });
-        result.translation += out;
         // Walking off a step or down a slope: down to the ground, if it's
         // within reach, rather than flying off.
         if last.grounded && !result.grounded && spec.snap > 0.0 && result.translation.z <= 0.0 {
@@ -896,7 +942,7 @@ fn move_one(
                 max_time_of_impact: spec.snap,
                 compute_impact_geometry_on_penetration: true,
             };
-            let at = rp::Pose::from_translation(result.translation - out) * shape_pose;
+            let at = rp::Pose::from_translation(result.translation) * shape_pose;
             if let Some((_, hit)) = queries.cast_shape(&at, -rp::Vector::Z, &*shape, options)
                 && hit.normal1.z.abs() >= spec.slope.to_radians().cos() - 1.0e-3
             {
@@ -904,16 +950,41 @@ fn move_one(
                 result.grounded = true;
             }
         }
-        result
-    };
+        Some(Planned {
+            entry,
+            spec,
+            shape,
+            start,
+            translation: result.translation + out,
+            grounded: result.grounded,
+            collisions,
+        })
+    }))
+    .ok()
+    .flatten()
+}
+
+/// Makes a worked-out move: pushes what it walked into, and sets its
+/// body's next place. What it found.
+fn apply_one(state: &mut State, planned: Planned, dt: f32) -> CharacterState {
+    let Planned {
+        entry,
+        spec,
+        shape,
+        start,
+        translation,
+        grounded,
+        collisions,
+    } = planned;
     if !collisions.is_empty() {
+        let filter = rp::QueryFilter::default().exclude_rigid_body(entry.body);
         let mut queries = state.broad_phase.as_query_pipeline_mut(
             state.narrow_phase.query_dispatcher(),
             &mut state.bodies,
             &mut state.colliders,
             filter,
         );
-        controller.solve_character_collision_impulses(
+        controller(spec).solve_character_collision_impulses(
             dt,
             &mut queries,
             &*shape,
@@ -921,13 +992,11 @@ fn move_one(
             &collisions,
         );
     }
-    let to = rp::Pose::from_parts(start.translation + result.translation, start.rotation);
+    let to = rp::Pose::from_parts(start.translation + translation, start.rotation);
     if let Some(body) = state.bodies.get_mut(entry.body) {
         body.set_next_kinematic_position(to);
     }
-    Some(CharacterState {
-        grounded: result.grounded,
-    })
+    CharacterState { grounded }
 }
 
 /// `value` within `low` to `high`; `low` if it isn't a number.

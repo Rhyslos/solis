@@ -137,6 +137,7 @@ All of these are the game's only while it has the mouse and keys (click the Game
 - **Problem:** the character can't get up a step. **Why:** the step is taller than its **Step height**. **Fix:** raise Step height, or make the step lower.
 - **Problem:** it slides down a ramp it should walk up. **Why:** the ramp is steeper than **Steepest slope**. **Fix:** raise it, or make the ramp gentler.
 - **Problem:** my changes to `solis/kit/character.lst` disappeared. **Why:** Solis writes the `solis/` folder again whenever the project opens, so it always matches this version of Solis. **Fix:** copy the file outside `solis/` (say, `player.lst`), rename the component inside (`component MyController`), and fetch that instead.
+- **Problem:** the game slows down with a big crowd of characters. **Why:** each character's move looks around it for walls, steps and slopes, about 10 to 15 microseconds each. Solis works them out on every core at once, so a few hundred cost little, but thousands add up. **Fix:** for a huge horde, move the far-away ones yourself with `moveTo` and give a CharacterBody only to those near the player.
 - **Problem:** the first-person view spins when I walk. **Why:** both the camera and the controller are turning the character. **Fix:** untick the CharacterController's **facesWhereItWalks**.
 
 ## Related

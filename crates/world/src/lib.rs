@@ -113,6 +113,9 @@ pub struct World {
     names: HashMap<String, usize>,
     /// Goes up whenever the entities, their order or their names change.
     revision: u64,
+    /// The checksum of what only changes with the revision (IDs, parents,
+    /// names), worked out when first asked for after it changes.
+    structure: std::sync::OnceLock<u64>,
     /// Entities the game moved ([`World::set_transform`]), with the
     /// area's Transform for them when it first did: while the area still
     /// has that one, the game's place is kept, even when the world is
@@ -202,6 +205,7 @@ impl World {
             unsettled: Vec::new(),
             names: HashMap::new(),
             revision: 0,
+            structure: std::sync::OnceLock::new(),
             game_moved: reflect::IdMap::default(),
             projectiles: Projectiles::default(),
             seed: 0,
@@ -223,6 +227,7 @@ impl World {
     /// repeats one.
     fn bump_revision(&mut self) {
         self.revision = next_number();
+        self.structure = std::sync::OnceLock::new();
         self.touched = true;
     }
 
@@ -442,7 +447,6 @@ impl World {
         self.touched = true;
         let mut rejoin = Vec::new();
         for (id, moved) in changed {
-            rejoin.push(id);
             let (Some(data), Some(&entity), Some(&at)) =
                 (area.get(id), self.by_id.get(&id), self.place.get(&id))
             else {
@@ -460,6 +464,7 @@ impl World {
             if moved {
                 self.game_moved.remove(&id);
             }
+            let before = self.physics_parts(entity);
             let _ = self.ecs.despawn(entity);
             let fresh = self
                 .ecs
@@ -469,6 +474,11 @@ impl World {
             }
             self.by_id.insert(id, fresh);
             self.order[at].0 = fresh;
+            // Only what physics knows of it changed: its body is built
+            // again (an edit to another component leaves it alone).
+            if self.physics_parts(fresh) != before {
+                rejoin.push(id);
+            }
         }
         // A name may have changed.
         self.index();
@@ -659,6 +669,25 @@ impl World {
         }
     }
 
+    /// What physics knows of an entity: where it's placed and its physics
+    /// components.
+    fn physics_parts(
+        &self,
+        entity: hecs::Entity,
+    ) -> (
+        Option<Transform>,
+        Option<RigidBody>,
+        Option<Collider>,
+        Option<CharacterBody>,
+    ) {
+        (
+            self.ecs.get::<&Transform>(entity).ok().map(|c| *c),
+            self.ecs.get::<&RigidBody>(entity).ok().map(|c| *c),
+            self.ecs.get::<&Collider>(entity).ok().map(|c| *c),
+            self.ecs.get::<&CharacterBody>(entity).ok().map(|c| *c),
+        )
+    }
+
     /// A body under something that moved goes with it at the next
     /// physics step (a lift's floor under the lift): colliders, kinematic
     /// bodies and characters. Dynamic bodies don't: physics moves those.
@@ -839,21 +868,34 @@ impl World {
         // by all of them before the first runs, and the tick's number is
         // known wherever checksums are compared.
         sum.u64(self.seed);
-        sum.u64(self.order.len() as u64);
-        for &(entity, parent) in &self.order {
+        // Which entities, in what tree, with what names: the same while
+        // the revision is, so worked out once for it.
+        sum.u64(*self.structure.get_or_init(|| {
+            let mut structure = reflect::Checksum::new();
+            structure.u64(self.order.len() as u64);
+            for &(entity, parent) in &self.order {
+                if let Ok(id) = self.ecs.get::<&Id>(entity) {
+                    structure.entity(id.0);
+                }
+                structure.u64(parent.map_or(u64::MAX, |p| p as u64));
+                if let Ok(name) = self.ecs.get::<&Name>(entity) {
+                    structure.bytes(name.0.as_bytes());
+                }
+            }
+            structure.finish()
+        }));
+        for &(entity, _) in &self.order {
             let Ok(e) = self.ecs.entity(entity) else {
                 continue;
             };
-            if let Some(id) = e.get::<&Id>() {
-                sum.entity(id.0);
-            }
-            sum.u64(parent.map_or(u64::MAX, |p| p as u64));
-            if let Some(name) = e.get::<&Name>() {
-                sum.bytes(name.0.as_bytes());
-            }
             if let Some(global) = e.get::<&Global>() {
-                for v in global.0.to_cols_array() {
-                    sum.f32(v);
+                // Where it is, turned and scaled: the matrix's top three
+                // rows (the bottom is always 0 0 0 1).
+                let m = global.0;
+                for row in [m.row(0), m.row(1), m.row(2)] {
+                    for v in row.to_array() {
+                        sum.f32(v);
+                    }
                 }
             }
             if let Some(values) = e.get::<&Values>() {
@@ -998,14 +1040,18 @@ impl World {
                 self.physics.set_pose(id, position, rotation);
             }
         }
+        // Pushes and velocities in the order asked, then characters' moves
+        // in the order asked (worked out on every core at once).
+        let mut characters = Vec::new();
         for ask in std::mem::take(&mut self.physics_asked) {
             match ask {
                 PhysicsAsk::Push(id, impulse) => self.physics.push(id, impulse),
                 PhysicsAsk::Velocity(id, velocity) => self.physics.set_velocity(id, velocity),
-                PhysicsAsk::Character(id, wanted) => {
-                    self.physics.move_character(id, wanted, TICK as f32);
-                }
+                PhysicsAsk::Character(id, wanted) => characters.push((id, wanted)),
             }
+        }
+        if !characters.is_empty() {
+            self.physics.move_characters(&characters, TICK as f32);
         }
         self.physics.step(TICK as f32);
         // The entities follow their bodies, without sending it back.

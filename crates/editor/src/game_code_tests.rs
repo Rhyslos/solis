@@ -1473,6 +1473,80 @@ fn game_code_kicks_a_crate_and_physics_slides_it_the_same_every_play() {
     );
 }
 
+/// The average and worst physics tick of `characters` characters walking
+/// in circles on a floor (each tick's moves are asked for as game code
+/// does, then physics steps), over three seconds.
+fn characters_walking(characters: u32) -> (f64, f64) {
+    use area::builtin::{CharacterBody, Collider};
+    let mut area = area::Area::new();
+    area.spawn(
+        EntityData::new("Floor")
+            .with(&Transform {
+                position: Vec3::new(0.0, 0.0, -0.5),
+                ..Transform::default()
+            })
+            .with(&Collider {
+                size: Vec3::new(400.0, 400.0, 1.0),
+                ..Collider::default()
+            }),
+    );
+    let mut ids = Vec::new();
+    let across = (characters as f32).sqrt().ceil() as u32;
+    for n in 0..characters {
+        let (x, y) = ((n % across) as f32 * 3.0, (n / across) as f32 * 3.0);
+        ids.push(
+            area.spawn(
+                EntityData::new("Walker")
+                    .with(&Transform {
+                        position: Vec3::new(x, y, 0.0),
+                        ..Transform::default()
+                    })
+                    .with(&CharacterBody::default()),
+            ),
+        );
+    }
+    let mut world = world::World::from_area(&area);
+    let (mut worst, mut total) = (0.0_f64, 0.0_f64);
+    let ticks = 180;
+    for tick in 0..ticks {
+        let turn = tick as f32 * 0.05;
+        for (n, &id) in ids.iter().enumerate() {
+            let way = Vec3::new((turn + n as f32).cos(), (turn + n as f32).sin(), 0.0);
+            world.move_character(
+                id,
+                way * 4.0 * world::TICK as f32 + Vec3::new(0.0, 0.0, -0.02),
+            );
+        }
+        let started = std::time::Instant::now();
+        world.step_physics();
+        let ms = started.elapsed().as_secs_f64() * 1000.0;
+        worst = worst.max(ms);
+        total += ms;
+    }
+    (total / f64::from(ticks), worst)
+}
+
+#[test]
+#[ignore = "scale check: run by tools/scale/scale-check.sh"]
+fn scale_check_500_characters_walking() {
+    // The Phase 6 review: each character's move is worked out on every
+    // core at once, then made in order. A crowd of walkers, physics only.
+    let (average, worst) = characters_walking(500);
+    println!(
+        "Scale check: 500 characters walking, physics alone: worst tick {worst:.2} ms (reported)"
+    );
+    verdict(
+        "500 characters walking, the average physics tick",
+        average,
+        5.0,
+    );
+    let (average, worst) = characters_walking(2000);
+    println!(
+        "Scale check: 2,000 characters walking, physics alone: {average:.2} ms a tick on average, \
+         worst {worst:.2} ms (reported)"
+    );
+}
+
 #[test]
 #[ignore = "scale check: run by tools/scale/scale-check.sh"]
 fn scale_check_1000_bodies_falling_into_a_pile() {
