@@ -163,15 +163,46 @@ fn read_model(
     Ok(model)
 }
 
-/// Reads a file, refusing it first if it is bigger than `limit` bytes.
+/// Reads a file, refusing it first if it is bigger than `limit` bytes,
+/// and never reading more than that even if it grows meanwhile.
 fn read_limited(path: &Path, limit: u64) -> Result<Vec<u8>, ImportError> {
-    let size = std::fs::metadata(path)
-        .map_err(|e| ImportError::Unreadable(format!("{} ({e})", path.display())))?
-        .len();
+    use std::io::Read;
+    let unreadable =
+        |e: std::io::Error| ImportError::Unreadable(format!("{} ({e})", path.display()));
+    let file = open_file(path)?;
+    let size = file.metadata().map_err(unreadable)?.len();
     if size > limit {
         return Err(ImportError::TooBig { bytes: size, limit });
     }
-    std::fs::read(path).map_err(|e| ImportError::Unreadable(format!("{} ({e})", path.display())))
+    let mut bytes = Vec::with_capacity(size as usize);
+    file.take(limit.saturating_add(1))
+        .read_to_end(&mut bytes)
+        .map_err(unreadable)?;
+    if bytes.len() as u64 > limit {
+        return Err(ImportError::TooBig {
+            bytes: bytes.len() as u64,
+            limit,
+        });
+    }
+    Ok(bytes)
+}
+
+/// Opens an ordinary file: a link to a device or a pipe (which would
+/// never end, or wait for ever) is refused.
+fn open_file(path: &Path) -> Result<std::fs::File, ImportError> {
+    let unreadable =
+        |e: std::io::Error| ImportError::Unreadable(format!("{} ({e})", path.display()));
+    let not_a_file =
+        || ImportError::Unreadable(format!("{} isn't an ordinary file", path.display()));
+    // Checked before opening too: opening a pipe waits for a writer.
+    if !std::fs::metadata(path).map_err(unreadable)?.is_file() {
+        return Err(not_a_file());
+    }
+    let file = std::fs::File::open(path).map_err(unreadable)?;
+    if !file.metadata().map_err(unreadable)?.is_file() {
+        return Err(not_a_file());
+    }
+    Ok(file)
 }
 
 /// Reads at most `length` bytes from the start of a file: a buffer only
@@ -180,7 +211,7 @@ fn read_prefix(path: &Path, length: u64) -> Result<Vec<u8>, ImportError> {
     use std::io::Read;
     let unreadable =
         |e: std::io::Error| ImportError::Unreadable(format!("{} ({e})", path.display()));
-    let file = std::fs::File::open(path).map_err(unreadable)?;
+    let file = open_file(path)?;
     let mut data = Vec::new();
     file.take(length)
         .read_to_end(&mut data)
@@ -219,7 +250,18 @@ fn resolve<'a>(uri: &'a str, folder: Option<&Path>) -> Result<Address<'a>, Impor
         return Ok(Address::Refused(uri));
     };
     let decoded = percent_encoding::percent_decode_str(uri).decode_utf8_lossy();
-    // Only files in the model's folder or below it: never `..` out of it.
+    // Checked again decoded (`a%3Ab` is `a:b`, a hidden stream on Windows).
+    if decoded.contains(':') || decoded.starts_with(['/', '\\']) {
+        return Ok(Address::Refused(uri));
+    }
+    // Only files in the model's folder or below it: never `..` out of it,
+    // and never a device's name (`NUL`, `COM1`), on any system.
+    if decoded
+        .split(['/', '\\'])
+        .any(|part| part == ".." || reserved_on_windows(part))
+    {
+        return Ok(Address::Refused(uri));
+    }
     let relative = Path::new(decoded.as_ref());
     if relative.components().any(|c| {
         !matches!(
@@ -230,6 +272,29 @@ fn resolve<'a>(uri: &'a str, folder: Option<&Path>) -> Result<Address<'a>, Impor
         return Ok(Address::Refused(uri));
     }
     Ok(Address::File(folder.join(relative)))
+}
+
+/// Whether Windows treats `part` of a path specially: a device (`CON`,
+/// `NUL`, `COM1`, `LPT¹`, `CONIN$`, with or without an extension), or a
+/// name ending in a dot or space (which Windows quietly drops).
+pub fn reserved_on_windows(part: &str) -> bool {
+    if part.ends_with(['.', ' ']) && part != "." {
+        return true;
+    }
+    let stem = part
+        .split('.')
+        .next()
+        .unwrap_or("")
+        .trim_end()
+        .to_ascii_uppercase();
+    let stem = stem.as_str();
+    matches!(stem, "CON" | "PRN" | "AUX" | "NUL" | "CONIN$" | "CONOUT$")
+        || ["COM", "LPT"].iter().any(|device| {
+            stem.strip_prefix(device).is_some_and(|n| {
+                matches!(n, "0" | "1" | "2" | "3" | "4" | "5" | "6" | "7" | "8" | "9")
+                    || matches!(n, "¹" | "²" | "³")
+            })
+        })
 }
 
 fn read_buffers(

@@ -536,7 +536,20 @@ fn files_are_never_read_from_outside_the_models_folder() {
     let mesh = b.add_cube_mesh(1.0, None);
     b.json_nodes = vec![format!(r#"{{"mesh":{mesh}}}"#)];
     let folder = std::env::temp_dir();
-    for uri in ["../secret.bin", "parts/../../secret.bin", "..%2Fsecret.bin"] {
+    // The third security audit: checked decoded too (`%3A` is `:`, a
+    // hidden stream on Windows), and devices' names are never read.
+    for uri in [
+        "../secret.bin",
+        "parts/../../secret.bin",
+        "..%2Fsecret.bin",
+        "a%3Ab.bin",
+        "%2Fetc%2Fsecret.bin",
+        "%5C%5Cserver%5Cshare.bin",
+        "NUL",
+        "parts/COM1.bin",
+        "CONIN$",
+        "secret.bin.",
+    ] {
         let err =
             load_bytes(b.json(Some(uri)).as_bytes(), Some(&folder), "X", &limits()).unwrap_err();
         assert!(err.to_string().contains("doesn't fetch"), "{uri}: {err}");
@@ -793,4 +806,31 @@ fn a_model_s_own_lod_kept_beside_it_doesn_t_widen_its_box() {
         model.bounds
     );
     assert!(model.bounds.max.x < 1.5, "{:?}", model.bounds);
+}
+
+#[test]
+fn windows_device_names_are_known() {
+    for name in [
+        "CON", "nul", "Com1.txt", "LPT9", "COM¹", "CONOUT$", "a.", "b ",
+    ] {
+        assert!(crate::reserved_on_windows(name), "{name}");
+    }
+    for name in ["console", "COM", "COM10", "nullify.bin", "brick.png", "."] {
+        assert!(!crate::reserved_on_windows(name), "{name}");
+    }
+}
+
+#[test]
+fn one_node_naming_a_million_children_is_refused_before_listing_them() {
+    // The third security audit: a node's children were listed before the
+    // node limit was checked, so a 19 MB file took 864 MB of memory.
+    let mut b = Builder::default();
+    let mesh = b.add_cube_mesh(0.1, None);
+    let children = vec!["1"; 1_000_000].join(",");
+    b.json_nodes = vec![
+        format!(r#"{{"children":[{children}]}}"#),
+        format!(r#"{{"mesh":{mesh}}}"#),
+    ];
+    let err = load_bytes(&b.glb(), None, "X", &limits()).unwrap_err();
+    assert!(err.to_string().contains("nodes"), "{err}");
 }

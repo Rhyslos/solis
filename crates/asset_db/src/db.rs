@@ -395,8 +395,11 @@ impl AssetDb {
             .extension()
             .map(|e| e.to_string_lossy().into_owned())
             .unwrap_or_default();
+        // Names are looked at without following links: a dangling link
+        // planted under a name isn't free to write through.
+        let taken = |path: &Path| std::fs::symlink_metadata(path).is_ok();
         let mut n = 2;
-        while target.exists() {
+        while taken(&target) {
             target = assets.join(format!("{stem} {n}.{extension}"));
             n += 1;
         }
@@ -406,15 +409,15 @@ impl AssetDb {
             // finds them; one already there is left as it is.
             if let Ok(inside) = dependency.strip_prefix(from_folder) {
                 let to = assets.join(inside);
-                if !to.exists() {
+                if !taken(&to) {
                     if let Some(folder) = to.parent() {
                         std::fs::create_dir_all(folder)?;
                     }
-                    std::fs::copy(&dependency, &to)?;
+                    copy_new(&dependency, &to)?;
                 }
             }
         }
-        std::fs::copy(source, &target)?;
+        copy_new(source, &target)?;
         Ok(target)
     }
 
@@ -523,6 +526,28 @@ fn walk(root: &Path) -> (Vec<PathBuf>, Vec<PathBuf>) {
     files.sort();
     sidecars.sort();
     (files, sidecars)
+}
+
+/// Copies the file `from` to a new file `to`: never into a file or link
+/// already there.
+fn copy_new(from: &Path, to: &Path) -> std::io::Result<()> {
+    let mut source = std::fs::File::open(from)?;
+    if !source.metadata()?.is_file() {
+        return Err(std::io::Error::other(format!(
+            "{} isn't an ordinary file",
+            from.display()
+        )));
+    }
+    let mut target = std::fs::OpenOptions::new()
+        .write(true)
+        .create_new(true)
+        .open(to)?;
+    let copied = std::io::copy(&mut source, &mut target).and_then(|_| target.sync_all());
+    if copied.is_err() {
+        drop(target);
+        let _ = std::fs::remove_file(to);
+    }
+    copied
 }
 
 #[cfg(test)]

@@ -743,7 +743,7 @@ impl App {
                     }
                 }
                 WorkbenchAction::OpenExternally(path) => {
-                    if let Err(why) = opener::open(&path) {
+                    if let Err(why) = open_externally(&path) {
                         self.workbench.log(
                             LogLevel::Error,
                             format!("Couldn't open {}: {why}.", file_name(&path)),
@@ -883,26 +883,19 @@ impl App {
             .area()
             .get(root)
             .map_or_else(|| "Assembly".to_string(), |e| e.name.clone());
-        let safe: String = name
-            .chars()
-            .map(|c| {
-                if c.is_alphanumeric() || " -_()".contains(c) {
-                    c
-                } else {
-                    '_'
-                }
-            })
-            .collect();
+        // A name that works on every system (not a device's, say), from
+        // the entity's name, which an area file can set to anything.
+        let safe = asset_db::file_name_from(&name, "Assembly");
         let folder = db.project().assets().join("assemblies");
         let mut path = folder.join(format!("{safe}.{}", asset_db::ASSEMBLY_EXTENSION));
         let mut n = 2;
-        while path.exists() {
+        while std::fs::symlink_metadata(&path).is_ok() {
             path = folder.join(format!("{safe} {n}.{}", asset_db::ASSEMBLY_EXTENSION));
             n += 1;
         }
         let text = self.file_text(&file);
-        let written = std::fs::create_dir_all(&folder)
-            .and_then(|()| asset_db::write_atomically(&path, text.as_bytes()))
+        let written = asset_db::own_folder(&db.project().assets(), "assemblies")
+            .and_then(|_| asset_db::write_atomically(&path, text.as_bytes()))
             .and_then(|()| self.projects.adopt(&path));
         if let Err(why) = written {
             self.workbench.log(
@@ -1231,7 +1224,7 @@ impl eframe::App for App {
         self.workbench.set_gamepad(self.gamepads.read());
         if let Some((what, Some(path))) = self.recordings.chosen() {
             let limit = match what {
-                crate::play_files::PlayFile::Recording => 64 << 20,
+                crate::play_files::PlayFile::Recording => input::MAX_RECORDING_BYTES as u64,
                 crate::play_files::PlayFile::Save => crate::play_files::MAX_SAVE_BYTES,
             };
             match crate::play_files::read_limited(&path, limit) {
@@ -1369,6 +1362,26 @@ fn explain_panic(payload: &(dyn std::any::Any + Send)) -> String {
     } else {
         message.to_string()
     }
+}
+
+/// Opens a file in the program the computer chooses for it, or shows a
+/// folder. A folder goes straight to Explorer on Windows, so it can never
+/// be taken for a program to run (if it vanished and a file of a similar
+/// name took its place, say).
+fn open_externally(path: &std::path::Path) -> std::io::Result<()> {
+    let meta = std::fs::metadata(path)?;
+    if meta.is_dir() {
+        #[cfg(windows)]
+        {
+            return std::process::Command::new("explorer.exe")
+                .arg(path)
+                .spawn()
+                .map(|_| ());
+        }
+    } else if !meta.is_file() {
+        return Err(std::io::Error::other("it isn't a file or a folder"));
+    }
+    opener::open(path).map_err(std::io::Error::other)
 }
 
 #[cfg(test)]

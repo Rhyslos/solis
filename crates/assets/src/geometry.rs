@@ -42,6 +42,7 @@ pub(crate) fn placed_nodes(
     // stops a damaged file that has one. Kept in reverse, so nodes come
     // out in the file's order.
     let mut placed = Vec::new();
+    too_many(0, 0, scene.nodes().len())?;
     let mut todo: Vec<(gltf::Node<'_>, Mat4)> = scene.nodes().map(|n| (n, Y_UP_TO_Z_UP)).collect();
     todo.reverse();
     let mut steps = 0usize;
@@ -58,11 +59,24 @@ pub(crate) fn placed_nodes(
         } else {
             parent
         };
+        too_many(steps, todo.len(), node.children().len())?;
         let children: Vec<_> = node.children().map(|child| (child, world)).collect();
         todo.extend(children.into_iter().rev());
         placed.push((node, world));
     }
     Ok(placed)
+}
+
+/// Refuses a node tree before listing more nodes than it may have: one
+/// node can name millions of children (the same one again and again) in a
+/// small file, and listing them would take far more memory than the file.
+fn too_many(steps: usize, waiting: usize, children: usize) -> Result<(), ImportError> {
+    if steps.saturating_add(waiting).saturating_add(children) > MAX_NODES {
+        return Err(ImportError::Damaged(format!(
+            "its node tree loops, or has more than {MAX_NODES} nodes"
+        )));
+    }
+    Ok(())
 }
 
 /// Every mesh the file uses, each read once in its own space (Z up), and
@@ -174,6 +188,7 @@ fn scene_nodes(document: &gltf::Document) -> Result<Vec<PlacedNode<'_>>, ImportE
     let to_z_up = |m: Mat4| Y_UP_TO_Z_UP * m * Y_UP_TO_Z_UP.inverse();
     // Walked with a list rather than recursion, as `placed_nodes`.
     let mut out: Vec<PlacedNode<'_>> = Vec::new();
+    too_many(0, 0, scene.nodes().len())?;
     let mut todo: Vec<(gltf::Node<'_>, Option<usize>)> = scene.nodes().map(|n| (n, None)).collect();
     todo.reverse();
     let mut steps = 0usize;
@@ -192,6 +207,7 @@ fn scene_nodes(document: &gltf::Document) -> Result<Vec<PlacedNode<'_>>, ImportE
         };
         let world = parent.map_or(local, |p| out[p].world * local);
         let index = out.len();
+        too_many(steps, todo.len(), node.children().len())?;
         let children: Vec<_> = node.children().map(|c| (c, Some(index))).collect();
         todo.extend(children.into_iter().rev());
         out.push(PlacedNode {

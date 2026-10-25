@@ -82,7 +82,14 @@ fn lua_problem_whole(file: &str, err: &mlua::Error) -> CodeProblem {
     });
     match found {
         Some((path, line, message)) => CodeProblem {
-            file: if path.ends_with(".lua") {
+            // The error's text is game code's to write (`error(msg, 0)`):
+            // only a plain path inside the project is taken from it.
+            file: if path.ends_with(".lua")
+                && !path.contains(':')
+                && path
+                    .split(['/', '\\'])
+                    .all(|part| !part.is_empty() && part != "." && part != "..")
+            {
                 path
             } else {
                 file.to_string()
@@ -355,5 +362,29 @@ mod tests {
             .unwrap_err();
         let problem = lua_problem("bad.lua", &syntax);
         assert_eq!((problem.file.as_str(), problem.line), ("bad.lua", 1));
+    }
+
+    #[test]
+    fn an_error_s_text_can_t_name_a_file_outside_the_project() {
+        // The third security audit: game code writes the error's text, so
+        // it could point a click on the problem at a network share.
+        let lua = Lua::new();
+        for named in [
+            "//attacker.example/share/a.lua",
+            "\\\\attacker\\share\\a.lua",
+            "C:/Windows/a.lua",
+            "../outside.lua",
+            "/etc/a.lua",
+        ] {
+            let err = lua
+                .load(format!(
+                    "error({:?}, 0)",
+                    format!("{named}:1: double-click me")
+                ))
+                .exec()
+                .unwrap_err();
+            let problem = lua_problem("mine.lua", &err);
+            assert_eq!(problem.file, "mine.lua", "{named}");
+        }
     }
 }

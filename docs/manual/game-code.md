@@ -172,6 +172,8 @@ A Lua component's fields can't be called `me` (the entity it's on), `update`, or
 
 **Each Lua file has globals of its own.** A helper a file makes global (`function helper() … end`) is seen by that file only, and no file can change Lua's own libraries (`string`, `table`, `math`) or `solis`, `component` and `vec3`: trying to is a mistake. That way one file can't break another, or the Lust. To share code between Lua files, put it in a component's events, or in Lust.
 
+**What Lua game code can't do.** Game code is sandboxed, so a game you download can't harm your computer: it has no `require`, no files, and no way out of its time and memory limits. `table.move` moves at most a million items at once (a bigger one couldn't be stopped in time), and `collectgarbage` only tells you how much memory is used (`collectgarbage("count")`).
+
 **In Rust**, a component implements `script::RustComponent`, and takes and sends the same events by name. Solis can't build a game's own Rust until Phase 10; until then, the [turret sample](first-game.md)'s Rust component is built into Solis to show how it works.
 
 ```rust

@@ -140,7 +140,7 @@ impl Sidecar {
     /// Writes it to `path`, only if that changes the file.
     pub fn write(&self, path: &Path) -> std::io::Result<bool> {
         let text = self.to_text();
-        if std::fs::read_to_string(path).is_ok_and(|old| old == text) {
+        if read_text_limited(path, MAX_BYTES).is_ok_and(|old| old == text) {
             return Ok(false);
         }
         write_atomically(path, text.as_bytes())?;

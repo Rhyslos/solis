@@ -16,32 +16,49 @@ pub const MAX_SAVE_BYTES: u64 = 256 << 20;
 /// and `-`) in the project's saves folder, replacing one there; gives
 /// back where.
 pub fn save_game(root: &Path, slot: &str, text: &str) -> std::io::Result<PathBuf> {
+    save_game_within(root, slot, text, MAX_SAVES_BYTES)
+}
+
+/// [`save_game`], with the saves folder holding at most `room` bytes.
+fn save_game_within(root: &Path, slot: &str, text: &str, room: u64) -> std::io::Result<PathBuf> {
     if !script::valid_slot(slot) {
         return Err(std::io::Error::other("that isn't a save slot's name"));
     }
-    let folder = root.join(SAVES);
-    std::fs::create_dir_all(&folder)?;
+    let folder = asset_db::own_folder(root, SAVES)?;
     let path = folder.join(format!("{slot}.{SAVE_EXTENSION}"));
-    if !path.exists() {
-        let saves = std::fs::read_dir(&folder)?
-            .filter_map(Result::ok)
-            .filter(|e| {
-                e.path()
-                    .extension()
-                    .is_some_and(|x| x.eq_ignore_ascii_case(SAVE_EXTENSION))
-            })
-            .take(MAX_SAVE_SLOTS)
-            .count();
-        if saves >= MAX_SAVE_SLOTS {
-            return Err(std::io::Error::other(format!(
-                "the saves folder already has {MAX_SAVE_SLOTS} saves; game code can replace \
-                 one, but not add more"
-            )));
+    // The other saves: how many, and how big together.
+    let (mut count, mut bytes) = (0usize, 0u64);
+    for entry in std::fs::read_dir(&folder)?.filter_map(Result::ok) {
+        let other = entry.path();
+        if other == path
+            || !other
+                .extension()
+                .is_some_and(|x| x.eq_ignore_ascii_case(SAVE_EXTENSION))
+        {
+            continue;
         }
+        count += 1;
+        bytes = bytes.saturating_add(entry.metadata().map_or(0, |m| m.len()));
+    }
+    if count >= MAX_SAVE_SLOTS {
+        return Err(std::io::Error::other(format!(
+            "the saves folder already has {MAX_SAVE_SLOTS} saves; game code can replace one, \
+             but not add more"
+        )));
+    }
+    if bytes.saturating_add(text.len() as u64) > room {
+        return Err(std::io::Error::other(format!(
+            "the saves folder would hold more than {} MB; delete some saves to make room",
+            room >> 20
+        )));
     }
     write_whole(&path, text)?;
     Ok(path)
 }
+
+/// The most the saves folder holds, all saves together (game code saving
+/// big games in every slot would otherwise fill the disk).
+pub const MAX_SAVES_BYTES: u64 = 2 << 30;
 
 /// The most save slots a project keeps (game code saving under a new
 /// name every tick would otherwise fill the disk).
@@ -111,19 +128,22 @@ pub fn save_bindings(root: &Path, text: &str) -> std::io::Result<Option<String>>
                 n => format!("{}.bak{n}", input::FILE),
             })
             .collect();
+        // Names are looked at without following links (a dangling link
+        // isn't "free"), and the backup is written as a new file put in
+        // place, never through a link a project planted under its name.
+        let there = |n: &String| std::fs::symlink_metadata(root.join(n)).ok();
         let name = names
             .iter()
-            .find(|n| !root.join(n).exists())
+            .find(|n| there(n).is_none())
             .or_else(|| {
-                names.iter().min_by_key(|n| {
-                    std::fs::metadata(root.join(n))
-                        .and_then(|m| m.modified())
-                        .ok()
-                })
+                names
+                    .iter()
+                    .min_by_key(|n| there(n).and_then(|m| m.modified().ok()))
             })
             .cloned()
             .unwrap_or_else(|| names[0].clone());
-        std::fs::copy(&path, root.join(&name))?;
+        let old = asset_db::read_limited(&path, 1 << 20)?;
+        asset_db::write_atomically(&root.join(&name), &old)?;
         kept = Some(name);
     }
     write_whole(&path, text)?;
@@ -133,8 +153,7 @@ pub fn save_bindings(root: &Path, text: &str) -> std::io::Result<Option<String>>
 /// Saves a recording in the project's recordings folder, named by when it
 /// was made; gives back where.
 pub fn save_recording(root: &Path, text: &str) -> std::io::Result<PathBuf> {
-    let folder = root.join(RECORDINGS);
-    std::fs::create_dir_all(&folder)?;
+    let folder = asset_db::own_folder(root, RECORDINGS)?;
     let secs = std::time::SystemTime::now()
         .duration_since(std::time::UNIX_EPOCH)
         .map_or(0, |d| d.as_secs());
@@ -158,17 +177,17 @@ fn write_whole(path: &Path, text: &str) -> std::io::Result<()> {
 
 /// A file's text, if it's there and within `limit` bytes.
 pub fn read_limited(path: &Path, limit: u64) -> Result<Option<String>, String> {
-    let size = match std::fs::metadata(path) {
-        Ok(m) => m.len(),
+    let bytes = match asset_db::read_limited(path, limit) {
+        Ok(bytes) => bytes,
         Err(e) if e.kind() == std::io::ErrorKind::NotFound => return Ok(None),
+        Err(e) if e.kind() == std::io::ErrorKind::FileTooLarge => {
+            return Err(format!("it's bigger than {} MB", limit >> 20));
+        }
         Err(e) => return Err(e.to_string()),
     };
-    if size > limit {
-        return Err(format!("it's bigger than {} MB", limit >> 20));
-    }
-    std::fs::read_to_string(path)
+    String::from_utf8(bytes)
         .map(Some)
-        .map_err(|e| e.to_string())
+        .map_err(|_| "it isn't text".to_string())
 }
 
 /// What an Open window was asked for.
@@ -313,7 +332,46 @@ mod tests {
         std::os::unix::fs::symlink(&outside, root.join("input.partial")).unwrap();
         save_bindings(&root, &input::Bindings::default().write()).unwrap();
         assert_eq!(std::fs::read_to_string(&outside).unwrap(), "mine");
+        // The third security audit: a damaged file's backup was copied
+        // through a link planted as `input.solinput.bak` (a dangling one
+        // looked free), and through the oldest when all nine were taken.
+        let target = root.with_extension("startup");
+        std::fs::write(root.join(input::FILE), "@echo off\r\ncalc.exe [[").unwrap();
+        std::os::unix::fs::symlink(&target, root.join("input.solinput.bak")).unwrap();
+        let kept = save_bindings(&root, &input::Bindings::default().write()).unwrap();
+        assert!(!target.exists(), "nothing written through the link");
+        assert_eq!(kept.as_deref(), Some("input.solinput.bak2"));
+        for n in 3..=9 {
+            std::os::unix::fs::symlink(&outside, root.join(format!("input.solinput.bak{n}")))
+                .unwrap();
+        }
+        std::fs::write(root.join(input::FILE), "broken [[").unwrap();
+        save_bindings(&root, &input::Bindings::default().write()).unwrap();
+        assert_eq!(std::fs::read_to_string(&outside).unwrap(), "mine");
+        assert!(!target.exists());
+        // Saves and recordings never go into a folder that's a link.
+        let elsewhere = root.with_extension("elsewhere");
+        std::fs::create_dir_all(&elsewhere).unwrap();
+        std::os::unix::fs::symlink(&elsewhere, root.join(SAVES)).unwrap();
+        std::os::unix::fs::symlink(&elsewhere, root.join(RECORDINGS)).unwrap();
+        assert!(save_game(&root, "quick", "x").is_err());
+        assert!(save_recording(&root, "x").is_err());
+        assert!(std::fs::read_dir(&elsewhere).unwrap().next().is_none());
+        let _ = std::fs::remove_dir_all(elsewhere);
         let _ = std::fs::remove_file(outside);
+        let _ = std::fs::remove_dir_all(root);
+    }
+
+    #[test]
+    fn the_saves_folder_holds_at_most_its_room() {
+        // The third security audit: a hundred big saves could fill the disk.
+        let root = scratch("saves-room");
+        let room = 1000;
+        save_game_within(&root, "a", &"x".repeat(600), room).unwrap();
+        assert!(save_game_within(&root, "b", &"x".repeat(500), room).is_err());
+        save_game_within(&root, "b", &"x".repeat(400), room).unwrap();
+        // Replacing a slot counts its new size, not the old one too.
+        save_game_within(&root, "a", &"x".repeat(550), room).unwrap();
         let _ = std::fs::remove_dir_all(root);
     }
 

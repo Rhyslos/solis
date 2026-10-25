@@ -75,19 +75,26 @@ pub fn load(
         {
             // The name follows the file, which may have been renamed.
             model.name = assets_name(path);
-            // Used now: the last to go when the cache is trimmed.
-            let _ = std::fs::File::options()
-                .write(true)
-                .open(&entry)
-                .and_then(|f| f.set_modified(std::time::SystemTime::now()));
+            // Used now: the last to go when the cache is trimmed (only
+            // an entry that's a file of its own, never through a link).
+            if std::fs::symlink_metadata(&entry).is_ok_and(|m| m.is_file()) {
+                let _ = std::fs::File::options()
+                    .write(true)
+                    .open(&entry)
+                    .and_then(|f| f.set_modified(std::time::SystemTime::now()));
+            }
             return Ok((model, true));
         }
     }
     let model = assets::load(path, limits)?;
     if let Some(key) = key {
         // A cache that can't be written only costs time next start.
-        let _ = std::fs::create_dir_all(folder)
-            .and_then(|()| write_atomically(&entry_path(folder, key), &encode(&model)));
+        // Never through a link planted as the cache folder.
+        let made = match (folder.parent(), folder.file_name().and_then(|n| n.to_str())) {
+            (Some(parent), Some(name)) => crate::own_folder(parent, name).map(|_| ()),
+            _ => std::fs::create_dir_all(folder),
+        };
+        let _ = made.and_then(|()| write_atomically(&entry_path(folder, key), &encode(&model)));
     }
     Ok((model, false))
 }
@@ -137,16 +144,9 @@ fn assets_name(path: &Path) -> String {
 
 /// Reads an entry, refusing one bigger than any model the limits allow.
 fn read_entry(path: &Path, limits: &Limits) -> std::io::Result<Vec<u8>> {
-    let size = std::fs::metadata(path)?.len();
     // Decoded textures and mip levels can outgrow the file they came
     // from, so allow a generous multiple.
-    if size > limits.max_file_bytes.saturating_mul(4) {
-        return Err(std::io::Error::new(
-            std::io::ErrorKind::InvalidData,
-            "too big",
-        ));
-    }
-    std::fs::read(path)
+    crate::read_limited(path, limits.max_file_bytes.saturating_mul(4))
 }
 
 // ---------------------------------------------------------------- write ---
@@ -596,7 +596,7 @@ pub fn decode(data: &[u8], limits: &Limits) -> Result<Model, Refused> {
     if !materials_ok || !meshes_ok {
         return Err(Refused("an index that points nowhere"));
     }
-    Ok(Model {
+    let model = Model {
         name,
         meshes,
         nodes,
@@ -605,7 +605,13 @@ pub fn decode(data: &[u8], limits: &Limits) -> Result<Model, Refused> {
         lamps,
         bounds,
         warnings,
-    })
+    };
+    // A project can ship its cache: nothing the importer would never make
+    // (a NaN place, an endless light) gets past it.
+    if !model.is_finite() {
+        return Err(Refused("a number that isn't finite"));
+    }
+    Ok(model)
 }
 
 #[cfg(test)]
@@ -742,6 +748,24 @@ mod tests {
     }
 
     #[test]
+    fn an_entry_with_numbers_the_importer_never_makes_is_refused() {
+        // The third security audit: a project can ship its cache, and the
+        // importer cleans NaN and endless numbers that the reader let in.
+        let limits = Limits::default();
+        let good = assets::load_bytes(&assets::sample::sample_glb(), None, "S", &limits).unwrap();
+        assert!(decode(&encode(&good), &limits).is_ok());
+        let mut nan = good.clone();
+        nan.meshes[0].vertices[0].position[1] = f32::NAN;
+        assert!(decode(&encode(&nan), &limits).is_err());
+        let mut endless = good.clone();
+        endless.nodes[0].world.w_axis.x = f32::INFINITY;
+        assert!(decode(&encode(&endless), &limits).is_err());
+        let mut bounds = good;
+        bounds.bounds.max.z = f32::NAN;
+        assert!(decode(&encode(&bounds), &limits).is_err());
+    }
+
+    #[test]
     fn damaged_entries_never_crash_the_reader() {
         // Fuzzing: every prefix, and thousands of single-byte corruptions,
         // of a real entry. Each must be refused or read safely.
@@ -764,7 +788,9 @@ mod tests {
             let at = (seed as usize) % broken.len();
             broken[at] ^= (seed >> 40) as u8 | 1;
             if let Ok(model) = decode(&broken, &limits) {
-                // Read safely: everything still points somewhere.
+                // Read safely: every number finite, as imported (the third
+                // security audit), and everything still points somewhere.
+                assert!(model.is_finite());
                 for mesh in &model.meshes {
                     assert!(
                         mesh.indices

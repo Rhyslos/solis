@@ -83,6 +83,60 @@ impl std::error::Error for FileError {}
 
 /// `path` only if it's a plain path inside a folder: no `..`, no root,
 /// nothing empty.
+/// Whether `name` can name a file or folder in the project on every
+/// system: not empty or hidden (starting with `.`), at most
+/// [`MAX_NAME_CHARS`] characters, none of Windows' forbidden ones
+/// (`< > : " / | ? *` and backslash), no control or text-direction characters, and
+/// not a device's name (`CON`, `COM1`).
+pub fn valid_file_name(name: &str) -> bool {
+    !name.is_empty()
+        && !name.starts_with('.')
+        && name.chars().count() <= MAX_NAME_CHARS
+        && !name.chars().any(forbidden_in_names)
+        && !assets::reserved_on_windows(name)
+}
+
+/// The most characters a name Solis makes or accepts has.
+pub const MAX_NAME_CHARS: usize = 100;
+
+/// Characters never in a file's name: Windows' forbidden ones, control
+/// characters, and those that turn text around (which can make
+/// a program's name look like a picture's).
+fn forbidden_in_names(c: char) -> bool {
+    "<>:\"/\\|?*".contains(c)
+        || c.is_control()
+        || matches!(c, '\u{200E}' | '\u{200F}' | '\u{202A}'..='\u{202E}' | '\u{2066}'..='\u{2069}')
+}
+
+/// `name` made into a usable file name (see [`valid_file_name`]): other
+/// characters become `_`, it's cut to a usable length, and a device's
+/// name gets `_` added. `fallback` if nothing's left.
+pub fn file_name_from(name: &str, fallback: &str) -> String {
+    let mut safe: String = name
+        .trim()
+        .chars()
+        .map(|c| {
+            if (c.is_alphanumeric() && !forbidden_in_names(c)) || " -_()".contains(c) {
+                c
+            } else {
+                '_'
+            }
+        })
+        .take(64)
+        .collect();
+    safe = safe.trim().trim_start_matches('.').to_string();
+    if safe.is_empty() {
+        safe = fallback.to_string();
+    }
+    if !valid_file_name(&safe) {
+        safe.push('_');
+    }
+    if !valid_file_name(&safe) {
+        safe = fallback.to_string();
+    }
+    safe
+}
+
 fn inside(path: &Path) -> Result<&Path, FileError> {
     let plain = path.components().all(|c| matches!(c, Component::Normal(_)));
     if plain && path.components().next().is_some() {
@@ -153,6 +207,21 @@ impl AssetDb {
     pub fn move_path(&self, from: &Path, to: &Path) -> Result<(), FileError> {
         let root = self.project().assets();
         let (from_rel, to_rel) = (inside(from)?, inside(to)?);
+        // The new name must work on every system (a moved file keeps its
+        // name, which was already allowed).
+        if from.file_name() != to.file_name()
+            && !to
+                .file_name()
+                .and_then(|n| n.to_str())
+                .is_some_and(valid_file_name)
+        {
+            return Err(FileError(format!(
+                "{} can't be a file's name: it needs to be at most {MAX_NAME_CHARS} characters, \
+                 without < > : \" / \\ | ? * or a device's name such as CON",
+                to.file_name()
+                    .map_or_else(String::new, |n| n.to_string_lossy().into_owned())
+            )));
+        }
         let (source, target) = (root.join(from_rel), root.join(to_rel));
         if !source.exists() {
             return Err(FileError(format!(
@@ -250,6 +319,43 @@ impl AssetDb {
 }
 
 #[cfg(test)]
+mod name_tests {
+    use super::*;
+
+    #[test]
+    fn names_that_work_on_every_system() {
+        // The third security audit: names Solis makes or accepts could be
+        // a device's (`COM¹`), hide a stream (`a:b`), or turn text around.
+        for good in ["brick.png", "Lamp post (2)", "drøne", "ship_01"] {
+            assert!(valid_file_name(good), "{good}");
+        }
+        for bad in [
+            "",
+            ".hidden",
+            "a:b",
+            "a/b",
+            "a\\b",
+            "CON",
+            "com1.txt",
+            "COM¹",
+            "trail.",
+            "trail ",
+            "photo\u{202E}gnp.exe",
+            "tab\there",
+            &"x".repeat(101),
+        ] {
+            assert!(!valid_file_name(bad), "{bad:?}");
+        }
+        assert_eq!(file_name_from("Ship: Mk II", "Assembly"), "Ship_ Mk II");
+        assert_eq!(file_name_from("COM¹", "Assembly"), "COM¹_");
+        assert_eq!(file_name_from("CON", "Assembly"), "CON_");
+        assert_eq!(file_name_from("   ", "Assembly"), "Assembly");
+        assert_eq!(file_name_from("a\u{202E}b", "Assembly"), "a_b");
+        assert_eq!(file_name_from(&"y".repeat(500), "A").chars().count(), 64);
+    }
+}
+
+#[cfg(test)]
 mod tests {
     use super::*;
     use crate::project::Project;
@@ -333,6 +439,22 @@ mod tests {
         assert!(refuse("../outside.glb", "a.glb").contains("isn't inside"));
         assert!(refuse("crate.glb", "/etc/a.glb").contains("isn't inside"));
         assert!(refuse("gone.glb", "a.glb").contains("isn't there"));
+        // The third security audit: a rename can't make a device's name,
+        // a hidden stream or text that turns around.
+        for bad in [
+            "CON.glb",
+            "COM¹.glb",
+            "a:b.glb",
+            "rock\u{202E}blg.exe",
+            "trail.",
+        ] {
+            // On Windows `a:b.glb` is a drive's path, refused as outside.
+            let why = refuse("crate.glb", bad);
+            assert!(
+                why.contains("can't be") || why.contains("isn't inside"),
+                "{bad}: {why}"
+            );
+        }
         std::fs::write(assets.join("ship.gltf"), "{}").unwrap();
         assert!(refuse("ship.gltf", "props/ship.gltf").contains("whole folder"));
         // Renaming in place is fine.

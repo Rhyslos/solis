@@ -15,11 +15,13 @@ Know every asset in a project (models, and assemblies: `.solassembly`) by an ID 
 - **The import cache** (`cache.rs`): imported models in `.solis/cache/*.solbin`, keyed by content and import limits, so renaming never imports again. Entries are read as hostile and fuzzed.
 - **Watching** (`watch.rs`): `notify` with a debouncer. Events are only hints to rescan.
 - **Workers** (`jobs.rs`): a small thread pool; an older result for the same asset is dropped.
+- **Safe file handling** (`project.rs`, `files.rs`), used by the whole app: `write_atomically` (a new, uniquely named file renamed into place), `read_limited` (ordinary files only, never past the limit), `own_folder` (makes a folder Solis writes in, refusing links and junctions), and `valid_file_name` / `file_name_from` (names that work on every system: no device names, `:`, or text-direction characters). Imports copy into new files only, and hashing stops at 4 GB.
 
 ## Must never
 
 - Delete a user's file, sidecars included.
-- Trust a sidecar or cache file: both are read within limits, and a damaged one is explained or ignored, never a crash.
+- Trust a sidecar or cache file: both are read within limits, and a damaged one is explained or ignored, never a crash. A cache entry holding a number the importer never makes (NaN, endless) is a miss.
+- Write through a link: every folder Solis writes into goes through `own_folder`, every file through `write_atomically`.
 - Know about the editor or the GPU.
 
 ## Depends on

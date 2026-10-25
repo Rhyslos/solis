@@ -203,11 +203,13 @@ fn make(wanted: &Wanted) -> Made {
 
 /// A picture, shrunk to fit a thumbnail.
 fn picture(path: &Path) -> Result<egui::ColorImage, String> {
-    let size = std::fs::metadata(path).map_err(|e| e.to_string())?.len();
-    if size > MAX_PICTURE_BYTES {
-        return Err("too big for a thumbnail".into());
-    }
-    let bytes = std::fs::read(path).map_err(|e| e.to_string())?;
+    let bytes = asset_db::read_limited(path, MAX_PICTURE_BYTES).map_err(|e| {
+        if e.kind() == std::io::ErrorKind::FileTooLarge {
+            "too big for a thumbnail".to_string()
+        } else {
+            e.to_string()
+        }
+    })?;
     let limits = assets::Limits {
         max_texture_side: SIDE,
         ..assets::Limits::default()

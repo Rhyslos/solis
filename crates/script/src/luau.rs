@@ -175,6 +175,25 @@ math.randomseed = function(seed)
   if not s then error("the seed can only be set while the game runs", 2) end
   s(seed)
 end
+-- table.move is one loop in C that the time limits can't stop: a range
+-- of two billion held the editor for a minute. Bigger ranges than any
+-- game needs are refused.
+local move = table.move
+table.move = function(a1, f, e, t, a2)
+  if type(f) == "number" and type(e) == "number" and e - f > 1000000 then
+    error("table.move can move at most a million items at once", 2)
+  end
+  return move(a1, f, e, t, a2)
+end
+-- Game code may ask how much memory it uses, but not stop the garbage
+-- collector (which would make it run out bit by bit).
+local gc = collectgarbage
+collectgarbage = function(option)
+  if option ~= nil and option ~= "count" then
+    error("collectgarbage can only say how much memory is used (\"count\")", 2)
+  end
+  return gc("count")
+end
 local reach = { __index = function(_, key)
   local f = natives and key ~= "send_event" and natives[key]
   if not f then

@@ -74,19 +74,41 @@ impl ContentHash {
         z ^ (z >> 31)
     }
 
-    /// Adds the bytes of the file at `path`, read in pieces.
+    /// Adds the bytes of the file at `path`, read in pieces. Only an
+    /// ordinary file of at most `MAX_HASHED_BYTES` (4 GB) is read: a link to a
+    /// device or a pipe would never end.
     pub fn update_file(&mut self, path: &Path) -> std::io::Result<()> {
-        let mut file = std::fs::File::open(path)?;
+        let not_a_file = || std::io::Error::other("it isn't an ordinary file");
+        // Checked before opening too: opening a pipe waits for a writer.
+        if !std::fs::metadata(path)?.is_file() {
+            return Err(not_a_file());
+        }
+        let file = std::fs::File::open(path)?;
+        if !file.metadata()?.is_file() {
+            return Err(not_a_file());
+        }
+        let mut file = file.take(MAX_HASHED_BYTES + 1);
         let mut buffer = vec![0u8; 1 << 16];
+        let mut read = 0u64;
         loop {
             let n = file.read(&mut buffer)?;
             if n == 0 {
                 return Ok(());
             }
+            read += n as u64;
+            if read > MAX_HASHED_BYTES {
+                return Err(std::io::Error::new(
+                    std::io::ErrorKind::FileTooLarge,
+                    "it's bigger than any asset Solis reads",
+                ));
+            }
             self.update(&buffer[..n]);
         }
     }
 }
+
+/// The biggest file hashed: bigger than any asset Solis imports.
+pub(crate) const MAX_HASHED_BYTES: u64 = 4 << 30;
 
 /// The hash of one file's bytes.
 pub fn hash_file(path: &Path) -> std::io::Result<u64> {
