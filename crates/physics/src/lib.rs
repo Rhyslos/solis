@@ -710,6 +710,18 @@ impl Physics {
             })
             .collect();
         let sensible = |wanted: Vec3| wanted.is_finite() && dt.is_finite() && dt > 0.0;
+        // Whether anything could carry a character this step: a kinematic
+        // body moving (always awake, so only the awake ones are looked at).
+        // Without one, no character looks under its feet for a platform.
+        let platforms = {
+            let state = &*self.state;
+            state.islands.active_bodies().any(|handle| {
+                state
+                    .bodies
+                    .get(handle)
+                    .is_some_and(|b| b.is_kinematic() && b.next_position() != b.position())
+            })
+        };
         // Only each character's first move can be worked out ahead.
         let mut seen = reflect::IdSet::default();
         let first: Vec<bool> = moves
@@ -719,7 +731,7 @@ impl Physics {
             .collect();
         let state = &*self.state;
         let plan = |(&(id, wanted), &first): (&(EntityId, Vec3), &bool)| {
-            first.then(|| plan_one(state, id, wanted, dt))
+            first.then(|| plan_one(state, id, wanted, dt, platforms))
         };
         // A few aren't worth sharing out.
         let mut planned: Vec<Option<Option<Planned>>> = if moves.len() >= 16 {
@@ -733,7 +745,7 @@ impl Physics {
             }
             let planned = match planned[n].take() {
                 Some(planned) => planned,
-                None => plan_one(&self.state, id, wanted, dt),
+                None => plan_one(&self.state, id, wanted, dt, platforms),
             };
             let Some(planned) = planned else {
                 if self.state.by_entity.contains_key(&id) {
@@ -948,7 +960,13 @@ struct Planned {
 /// reads (colliders where the last step left them, its own next place)
 /// no other character's move changes. `None` if it isn't a character, or
 /// its body or collider is missing, or Rapier panicked.
-fn plan_one(state: &State, id: EntityId, wanted: Vec3, dt: f32) -> Option<Planned> {
+fn plan_one(
+    state: &State,
+    id: EntityId,
+    wanted: Vec3,
+    dt: f32,
+    platforms: bool,
+) -> Option<Planned> {
     let entry = state.by_entity.get(&id)?.clone();
     let ((spec, last), collider) = (entry.character?, entry.collider?);
     let mut wanted = wanted.clamp_length_max(MAX_CHARACTER_MOVE);
@@ -972,7 +990,7 @@ fn plan_one(state: &State, id: EntityId, wanted: Vec3, dt: f32) -> Option<Planne
         // step. (Rapier only carries a character through what its move
         // happens to meet, which a character standing still or walking on
         // the flat doesn't, so Solis does it whatever the move.)
-        if last.grounded {
+        if last.grounded && platforms {
             let feet = start.translation;
             let ray = rp::Ray::new(feet + rp::Vector::Z * 0.05, -rp::Vector::Z);
             let under = queries
