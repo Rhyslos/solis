@@ -7,6 +7,7 @@
 //! See this crate's README for its purpose and limits.
 
 pub mod camera;
+mod commands;
 pub mod console;
 pub mod document;
 pub mod icons;

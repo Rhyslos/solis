@@ -70,7 +70,7 @@ There are no clashes: the tool keys (Q W R S T) and the fly keys (W A S D Q E wh
 
 The ROADMAP lists Phase 2's parts; they're built in this order. **Undo comes second,** so everything after it is undoable from the start, rather than being added at the end.
 
-### M1. Entities and components ☐
+### M1. Entities and components ☑
 
 - **`reflect`:**
   - `Id` (random 64-bit, written as 13 Crockford base-32 characters), with `EntityId` and `AssetId` built on it.
@@ -91,7 +91,7 @@ The ROADMAP lists Phase 2's parts; they're built in this order. **Undo comes sec
   - The Scene panel lists entities.
   - Properties shows each component's fields generated from its schema. This replaces the hand-written forms.
   - The renderer is fed from the document.
-- A new scene has a Sun and an Environment entity. The old per-computer sun and environment settings are read once to seed it.
+- A new scene has a Sun and an Environment entity. (Built: the old per-computer sun and environment settings are no longer read; seeding a scene from them would have kept the old types alive for one release, and the defaults are what most people had.)
 - **Tests:**
   - values and schemas;
   - the registry refuses duplicate names;
@@ -100,7 +100,7 @@ The ROADMAP lists Phase 2's parts; they're built in this order. **Undo comes sec
   - kittests that the Scene panel and Properties show entities;
   - the GPU and smoke tests still pass.
 
-### M2. Undo and redo ☐
+### M2. Undo and redo ☑
 
 - **`scene::Edit`:** `SetField`, `AddComponent`, `RemoveComponent`, `Spawn`, `Despawn` (a whole subtree, saved in full), `Rename` and `Reparent`.
   - `apply` returns the inverse edit.

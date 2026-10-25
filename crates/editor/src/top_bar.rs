@@ -67,9 +67,20 @@ impl Workbench {
     /// The Edit menu.
     fn edit_menu(&mut self, ui: &mut Ui) {
         ui.menu_button("Edit", |ui| {
-            for item in ["Undo", "Redo"] {
-                ui.add_enabled(false, egui::Button::new(item))
-                    .on_disabled_hover_text("Undo arrives with editing in Phase 2");
+            let history = self.document.history();
+            let undo = history.undo_label().map(|l| format!("Undo {l}"));
+            let redo = history.redo_label().map(|l| format!("Redo {l}"));
+            let undo_button =
+                egui::Button::new(undo.as_deref().unwrap_or("Undo")).shortcut_text("Ctrl+Z");
+            if ui.add_enabled(undo.is_some(), undo_button).clicked() {
+                self.undo();
+                ui.close();
+            }
+            let redo_button =
+                egui::Button::new(redo.as_deref().unwrap_or("Redo")).shortcut_text("Ctrl+Y");
+            if ui.add_enabled(redo.is_some(), redo_button).clicked() {
+                self.redo();
+                ui.close();
             }
         });
     }
