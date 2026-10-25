@@ -19,6 +19,7 @@ reflect.workspace = true
 glam.workspace = true
 rapier3d.workspace = true
 serde.workspace = true
+postcard.workspace = true
 
 [lints]
 workspace = true

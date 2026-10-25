@@ -256,3 +256,43 @@ fn past_the_most_bodies_the_rest_are_counted_not_made() {
     assert_eq!(physics.state().len(), MAX_BODIES);
     assert_eq!(physics.refused(), 3);
 }
+
+#[test]
+fn a_snapshot_carries_on_exactly_as_physics_would_have() {
+    let mut physics = with_floor();
+    for n in 0..6 {
+        let (body, collider) = crate_spec();
+        physics.add(
+            id(10 + n),
+            (
+                Vec3::new(0.2 * n as f32, 0.0, 1.0 + 1.2 * n as f32),
+                Quat::from_rotation_z(0.4 * n as f32),
+            ),
+            Vec3::ONE,
+            body,
+            collider,
+        );
+    }
+    run(&mut physics, 40);
+    let saved = physics.snapshot();
+    run(&mut physics, 60);
+    let carried_on = physics.state().checksum();
+    let mut restored = Physics::new();
+    restored.restore(&saved).unwrap();
+    run(&mut restored, 60);
+    assert_eq!(restored.state().checksum(), carried_on, "to the bit");
+    // Damaged bytes are refused, never a crash, and leave it as it was.
+    let before = restored.state().checksum();
+    assert!(restored.restore(&saved[..saved.len() / 2]).is_err());
+    let mut seed = 0x2545_f491_u64;
+    for _ in 0..300 {
+        seed ^= seed << 13;
+        seed ^= seed >> 7;
+        seed ^= seed << 17;
+        let mut bytes = saved.clone();
+        let at = (seed as usize) % bytes.len();
+        bytes[at] ^= (seed >> 40) as u8 | 1;
+        let _ = Physics::new().restore(&bytes);
+    }
+    assert_eq!(restored.state().checksum(), before);
+}

@@ -284,6 +284,15 @@ impl Runtime {
         self.running.len()
     }
 
+    /// Every running component's values, by entity then name (a save
+    /// game, decision 0038).
+    pub fn all_values(&self) -> Vec<(EntityId, String, ComponentData)> {
+        self.running
+            .keys()
+            .filter_map(|(entity, name)| Some((*entity, name.clone(), self.values(*entity, name)?)))
+            .collect()
+    }
+
     /// Whether no components are running.
     pub fn is_empty(&self) -> bool {
         self.running.is_empty()

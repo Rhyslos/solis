@@ -219,6 +219,9 @@ pub(crate) struct PlayWorld<'a> {
     /// Game code's rebinding (action, input), in order, for the editor to
     /// make after the tick.
     pub(crate) rebinds: Vec<(String, String)>,
+    /// Game code's saves and loads (slot, whether it's a load), in order,
+    /// for the editor to make after the tick.
+    pub(crate) saves: Vec<(String, bool)>,
 }
 
 impl<'a> PlayWorld<'a> {
@@ -233,6 +236,7 @@ impl<'a> PlayWorld<'a> {
             input: Arc::default(),
             bindings: Arc::default(),
             rebinds: Vec::new(),
+            saves: Vec::new(),
         }
     }
 }
@@ -273,6 +277,8 @@ impl GameWorld for PlayWorld<'_> {
                 Change::Rebind(ref action, ref input) => {
                     self.rebinds.push((action.clone(), input.clone()));
                 }
+                Change::Save(ref slot) => self.saves.push((slot.clone(), false)),
+                Change::Load(ref slot) => self.saves.push((slot.clone(), true)),
                 Change::Move(which, _) | Change::Turn(which, _) => {
                     // Every move and turn of one entity in a row (one
                     // component's are side by side) in one lookup; the

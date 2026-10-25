@@ -76,6 +76,11 @@ pub trait Host {
     fn set_velocity(&mut self, which: EntityId, velocity: Vec3) {
         let _ = (which, velocity);
     }
+    /// Saves the game in `slot` (or, with `load`, loads the game saved
+    /// there), at the end of the tick (decision 0038).
+    fn save_game(&mut self, slot: &str, load: bool) {
+        let _ = (slot, load);
+    }
     /// An action's state this tick (decision 0037): at rest for a host
     /// without input.
     fn action(&self, name: &str) -> input::ActionState {
@@ -389,6 +394,20 @@ pub(crate) fn with_natives<'h, R>(
             "castRayNormal",
             scope.create_function(move |_, args: (LuaValue, LuaValue, f64)| {
                 Ok(vec3_value(ray(args).map_or(Vec3::ZERO, |hit| hit.normal)))
+            })?,
+        )?;
+        natives.raw_set(
+            "saveGame",
+            scope.create_function(move |_, slot: mlua::String| {
+                h.borrow_mut().save_game(&slot.to_str()?, false);
+                Ok(())
+            })?,
+        )?;
+        natives.raw_set(
+            "loadGame",
+            scope.create_function(move |_, slot: mlua::String| {
+                h.borrow_mut().save_game(&slot.to_str()?, true);
+                Ok(())
             })?,
         )?;
         natives.raw_set(

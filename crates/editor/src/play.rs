@@ -195,7 +195,7 @@ impl Workbench {
     /// components (Lust, Lua and Rust) made from the area; `None` with no
     /// code. If the code's start fails (said in the Console), the Rust
     /// components run on their own.
-    fn start_game(
+    pub(crate) fn start_game(
         &mut self,
         world: &mut world::World,
         view: &mut ViewCache,
@@ -380,17 +380,18 @@ impl Workbench {
         let mut pause = None;
         let ran = if playing.paused {
             // Step: one tick, then paused again.
-            if std::mem::take(&mut playing.step) {
-                playing.world.step_one()
-            } else {
-                0
-            }
+            u64::from(std::mem::take(&mut playing.step))
         } else {
-            playing.world.step(f64::from(seconds))
+            playing.world.due(f64::from(seconds))
         };
-        let now = playing.world.clock().time;
-        for i in 0..ran {
-            let time = now - world::TICK * (ran - 1 - i) as f64;
+        for _ in 0..ran {
+            // The clock moves on as the tick begins, so a frame that stops
+            // early never counts ticks that didn't run.
+            let Some(playing) = &mut self.playing else {
+                break;
+            };
+            playing.world.begin_tick();
+            let time = playing.world.clock().time;
             // What earlier starts spawned joins first; then projectiles
             // fly on, then game code sees where they are and fires more.
             let landing = std::time::Instant::now();
@@ -415,6 +416,7 @@ impl Workbench {
             };
             let frame = Arc::new(frame);
             let mut slow = None;
+            let mut saves = Vec::new();
             if let Some(game) = &mut playing.game {
                 let mut host = PlayWorld::new(&mut playing.world, &mut playing.view, time);
                 host.frame_time = f64::from(seconds);
@@ -430,6 +432,7 @@ impl Workbench {
                 // tick sees it however many ticks this frame runs.
                 let edits = std::mem::take(&mut host.edits);
                 playing.pending.extend(edits);
+                saves = std::mem::take(&mut host.saves);
                 // Rebinding takes effect from the next tick.
                 let rebinds = std::mem::take(&mut host.rebinds);
                 for (action, input) in rebinds {
@@ -447,6 +450,13 @@ impl Workbench {
             };
             let stepping = std::time::Instant::now();
             playing.world.step_physics();
+            if playing.world.take_physics_broke() && slow.is_none() {
+                slow = Some(
+                    "Physics stopped working (a loaded save's physics didn't hold together), so \
+                     the game has no physics now. Stop and play again to start it afresh."
+                        .to_string(),
+                );
+            }
             if slow.is_none() && stepping.elapsed() > PHYSICS_LIMIT {
                 slow = Some(format!(
                     "Physics took {:.0} ms for one tick (more than {} ms), so the game is paused \
@@ -512,6 +522,21 @@ impl Workbench {
             if slow.is_some() {
                 playing.paused = true;
                 pause = slow;
+                break;
+            }
+            // Saves and loads, at the end of the tick, in the order asked
+            // (decision 0038). A load replaces the game, so no more ticks
+            // run before it.
+            let mut loading = false;
+            for (slot, load) in saves {
+                if load {
+                    self.outbox.push(WorkbenchAction::LoadGame(slot));
+                    loading = true;
+                } else {
+                    self.save_game(&slot);
+                }
+            }
+            if loading {
                 break;
             }
         }

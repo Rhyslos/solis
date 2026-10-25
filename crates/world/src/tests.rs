@@ -590,3 +590,20 @@ fn bodies_join_and_leave_with_their_entities_and_keep_their_speed() {
     world.update(&area, [(crate_id, false)]);
     assert!(!world.physics().state().contains(crate_id));
 }
+
+#[test]
+fn ticks_count_on_the_clock_only_as_they_begin() {
+    let mut world = World::from_area(&Area::new());
+    // Three ticks due, but the clock only moves as each begins: a frame
+    // that stops after one (a pause, a load) counts one.
+    assert_eq!(world.due(TICK * 3.5), 3);
+    assert_eq!(world.clock().ticks, 0);
+    world.begin_tick();
+    assert_eq!(world.clock().ticks, 1);
+    assert!((world.clock().time - TICK).abs() < 1e-12);
+    // The half tick still waits.
+    assert!((world.progress() - 0.5).abs() < 1e-4);
+    // `step` does both at once.
+    assert_eq!(world.step(TICK * 0.5), 1);
+    assert_eq!(world.clock().ticks, 2);
+}

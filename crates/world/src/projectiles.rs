@@ -86,6 +86,22 @@ impl Projectiles {
         true
     }
 
+    /// Puts back the projectiles a save game held (decision 0038), in
+    /// their order; those that aren't sensible numbers, or past
+    /// [`MAX_PROJECTILES`], are left out.
+    pub fn restore(&mut self, flying: Vec<Projectile>) {
+        self.flying = flying
+            .into_iter()
+            .filter(|p| {
+                p.position.is_finite()
+                    && p.velocity.is_finite()
+                    && p.left.is_finite()
+                    && p.colour.iter().all(|c| c.is_finite())
+            })
+            .take(MAX_PROJECTILES)
+            .collect();
+    }
+
     /// Moves every projectile on by `dt` seconds, in jobs, and lets go of
     /// those whose time is up. The same on any number of cores.
     pub fn tick(&mut self, dt: f32) {

@@ -21,6 +21,8 @@ pub const GITIGNORE: &str = "\
 /.solis/
 # Exported games.
 /builds/
+# Save games made while playing in the editor (decision 0038).
+/saves/
 ";
 
 /// New projects keep Solis's text files with Unix line endings, so Git
@@ -33,7 +35,9 @@ pub const GITATTRIBUTES: &str = "\
 *.solassembly text eol=lf
 *.solmat text eol=lf
 *.solmeta text eol=lf
-*.lust text eol=lf
+*.solinput text eol=lf
+*.solrec text eol=lf
+*.lst text eol=lf
 *.lua text eol=lf
 # Big files go through Git LFS.
 *.glb filter=lfs diff=lfs merge=lfs -text
@@ -270,8 +274,11 @@ mod tests {
         assert!(root.join("assets").is_dir() && root.join(".solis").is_dir());
         let ignore = std::fs::read_to_string(root.join(".gitignore")).unwrap();
         assert!(ignore.contains("/.solis/"));
+        assert!(ignore.contains("/saves/"));
         let attributes = std::fs::read_to_string(root.join(".gitattributes")).unwrap();
         assert!(attributes.contains("*.solarea text eol=lf"));
+        assert!(attributes.contains("*.lst text eol=lf"), "Lust's files");
+        assert!(attributes.contains("*.solinput text eol=lf"));
         assert!(attributes.contains("*.glb filter=lfs"));
         let opened = Project::open(&root).unwrap();
         assert_eq!(opened, made);

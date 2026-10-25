@@ -270,6 +270,10 @@ end
 
 Solis makes them from the game's **seed** ([random numbers](concepts.md#game-code)), so the same seed gives the same numbers, on any computer and any number of cores. Each Play has a new seed; type `seed` in the [Console](console.md) to see it, and `seed 42` to start every Play from 42, so you can watch the same game again. `setSeed(n)` starts the numbers again from `n` at the end of the tick. Lua's own `math.random` and `math.randomseed` follow the same seed.
 
+## Saving and loading
+
+`saveGame("quick")` saves the whole game and `loadGame("quick")` puts it back exactly as it was: see [Save games](save-games.md).
+
 ## Input
 
 Game code reads the player's controls as named actions, never keys: `axis("Move")`, `pressed("Jump")`, `held("Sprint")`, in `solis/input`. See [Input](input.md), which also covers gamepads, rebinding and recording a play.
@@ -293,6 +297,8 @@ Things that fall, collide and get pushed have a **RigidBody** and a **Collider**
 | `solis/world` | `float randomRange(float low, float high)` | A random number from low up to high. |
 | `solis/world` | `int randomInt(int low, int high)` | A random whole number from low to high, both included. |
 | `solis/world` | `setSeed(int seed)` | Starts the random numbers again from a seed, at the end of the tick. |
+| `solis/world` | `saveGame(string slot)` | Saves the whole game in a slot, at the end of the tick ([Save games](save-games.md)). |
+| `solis/world` | `loadGame(string slot)` | Loads the game saved in a slot, at the end of the tick. |
 | `solis/input` | `bool held(string action)` | Whether an action is held this tick ([Input](input.md)). |
 | `solis/input` | `bool pressed(string action)` | True once, the tick an action went down. |
 | `solis/input` | `bool released(string action)` | True once, the tick it came up. |

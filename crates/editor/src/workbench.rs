@@ -113,6 +113,20 @@ pub enum WorkbenchAction {
     /// Ask which recording to play back (Play > Replay a recording…);
     /// the app reads it and calls [`Workbench::replay`].
     OpenRecording,
+    /// Save this save game (game code's `saveGame`) as the slot's file in the
+    /// project's `saves` folder.
+    SaveGame {
+        /// Its slot: the file's name.
+        slot: String,
+        /// The save's text.
+        text: String,
+    },
+    /// Read the slot's save game from the project's `saves` folder (game
+    /// code's `load`), and hand it to [`Workbench::load_game`].
+    LoadGame(String),
+    /// Ask which save game to load (Play > Load a save…), and hand it to
+    /// [`Workbench::load_game`].
+    OpenSave,
 }
 
 /// What [`Workbench::assembly_part`] was worked out for: the selected

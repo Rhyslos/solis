@@ -180,6 +180,17 @@ impl Workbench {
             }
             ui.separator();
             if ui
+                .button("Load a save…")
+                .on_hover_text(
+                    "Plays from a save game in the project's saves folder, exactly as it was saved",
+                )
+                .clicked()
+            {
+                self.request(WorkbenchAction::OpenSave, actions);
+                ui.close();
+            }
+            ui.separator();
+            if ui
                 .add_enabled(
                     state == PlayState::Editing,
                     egui::Button::new("Play and record inputs"),

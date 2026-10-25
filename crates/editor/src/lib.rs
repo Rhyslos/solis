@@ -33,6 +33,7 @@ mod play_input;
 pub mod problems;
 pub mod profiler;
 mod properties;
+mod save_game;
 pub mod screen;
 #[cfg(test)]
 mod test_support;

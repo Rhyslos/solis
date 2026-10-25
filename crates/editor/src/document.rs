@@ -276,6 +276,22 @@ impl Document {
     }
 
     fn replace_all(&mut self, area: Area, label: &str) -> Result<(), EditError> {
+        let edits = self.replace_edits(&area);
+        let selection = self.selection.clone();
+        self.edit(label, edits, None, Some(selection))
+    }
+
+    /// Replaces the whole area with `area` for the running game (a save
+    /// game loaded), not as an undo step: Stop puts the area back anyway.
+    /// Returns how many edits couldn't be made.
+    pub fn replace_by_game(&mut self, area: &Area) -> usize {
+        let edits = self.replace_edits(area);
+        self.edit_by_game(edits)
+    }
+
+    /// The edits that turn the area into `area`: everything there goes,
+    /// and `area`'s entities come in, tree by tree.
+    fn replace_edits(&self, area: &Area) -> Vec<Edit> {
         let mut edits: Vec<Edit> = Vec::new();
         // Everything there now goes, tree by tree…
         let old = &self.area;
@@ -303,8 +319,7 @@ impl Document {
                 .collect();
             edits.push(Edit::Spawn { entities });
         }
-        let selection = self.selection.clone();
-        self.edit(label, edits, None, Some(selection))
+        edits
     }
 
     /// The area.

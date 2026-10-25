@@ -122,4 +122,5 @@
 - **Action:** something the player does, by name (Move, Jump), which game code asks about instead of keys. Its **bindings** are the keys, mouse buttons and gamepad buttons that set it off; **rebinding** changes them. See [Input](input.md).
 - **Axis:** an action that gives numbers instead of on or off: a stick, or four keys, giving which way and how far.
 - **Recording:** every tick's input from a play, kept so the play can be run again exactly, checking it comes out the same. See [Input](input.md#how-to-use-it).
+- **Save game:** the whole game at a moment, kept in a file: every entity, every component's values, physics, the clock and the random numbers. Loading it carries on exactly as the game would have. See [Save games](save-games.md).
 - **Checksum:** one number made from everything in the game at a moment. Two plays that agree on it at the same tick are in the same state; when they don't, something differs. `checksum` in the [Console](console.md) shows it.
