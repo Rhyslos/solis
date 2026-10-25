@@ -9,8 +9,9 @@
 # Usage:
 #   tools/scale/scale-check.sh
 #
-# Today it times one frame of the editor's interface and one viewport frame
-# at 1920x1080. From Phase 5 (Scale) it grows into the scale target in DESIGN.md §2
+# Today it times the editor's frames (with big areas, several views, play
+# mode and game code), a Lust edit reaching a running game, and one
+# viewport frame at 1920x1080. From Phase 5 (Scale) it grows into the scale target in DESIGN.md §2
 # (2,000 units and 20,000 projectiles at 60 frames a second). The viewport
 # time depends on the graphics card, so it is reported, not judged.
 set -euo pipefail
@@ -24,6 +25,7 @@ run() {
     grep -E "Scale check|SLOW|panicked|skipping" <<<"$out" || true
 }
 run -p editor scale_check
+run -p app scale_check
 run -p render --test gpu scale_check
 if [ "$failed" -ne 0 ]; then
     echo "Something missed its target (marked SLOW above), or a check failed."
