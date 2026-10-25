@@ -8,6 +8,7 @@
 pub mod area_file;
 pub mod branding;
 pub mod cli;
+pub mod game_code;
 pub mod gpu;
 pub mod import;
 pub mod logger;

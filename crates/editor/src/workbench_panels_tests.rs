@@ -412,7 +412,55 @@ fn the_problems_panel_lists_mistakes_and_a_click_selects_the_entity() {
     h.state_mut().0.delete_selection();
     h.run();
     assert!(h.state().0.problems().is_empty());
-    let _ = h.get_by_label("No problems found in the area.");
+    let _ = h.get_by_label("No problems found in the area or the game's code.");
+}
+
+#[test]
+fn mistakes_in_the_game_code_are_listed_first_and_a_click_opens_the_file() {
+    let mut w = Workbench::new(info(), None);
+    w.set_project(Some(crate::library::ProjectInfo {
+        name: "Harbour".into(),
+        root: "/p".into(),
+        assets: "/p/assets".into(),
+    }));
+    let mistake = script::CodeProblem {
+        file: "weapons/gun.lst".into(),
+        line: 12,
+        column: 5,
+        message: "ammo is an int, but this is text.".into(),
+    };
+    w.set_code_problems(
+        vec![mistake.clone()],
+        &["huge.lst is left out.".to_string()],
+    );
+    assert_eq!(w.code_problems(), std::slice::from_ref(&mistake));
+    let mut h = harness(w);
+    h.run();
+    h.get_by_label("Problems").click();
+    h.run();
+    let _ = h.get_by_label_contains("1 problem in the game's code");
+    h.get_by_label("weapons/gun.lst, line 12:5: ammo is an int, but this is text.")
+        .click();
+    h.run();
+    assert!(
+        h.state()
+            .1
+            .actions
+            .contains(&crate::workbench::WorkbenchAction::OpenExternally(
+                "/p/assets/weapons/gun.lst".into()
+            )),
+        "{:?}",
+        h.state().1.actions
+    );
+    // Fixed: the Console says so, and the list empties.
+    h.state_mut().0.set_code_problems(Vec::new(), &[]);
+    h.run();
+    assert!(h.state().0.code_problems().is_empty());
+    let _ = h.get_by_label("No problems found in the area or the game's code.");
+    // Another project starts with none of the last one's.
+    h.state_mut().0.set_code_problems(vec![mistake], &[]);
+    h.state_mut().0.set_project(None);
+    assert!(h.state().0.code_problems().is_empty());
 }
 
 #[test]

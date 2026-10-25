@@ -61,7 +61,9 @@ These should go into Lust's design while its Rust output is being built:
 3. **States that own memory** fit zones (§8) and game modes: when a zone or a battle unloads, its memory is freed in one go. Lust plans arenas with handles for this in Rust, which is also how ECS storage works (§5), so the two may share one design.
 4. **Rust that compiles quickly.** See §3.1.
 
-### 3.1 Iteration speed (to decide)
+### 3.1 Iteration speed (decided: [decision 0028](docs/decisions/0028-lust-runs-as-luau-while-editing.md))
+
+**Decided:** while editing, Lust runs as Luau (option 4 below), swapped in while the game runs and keeping values; built games run Lust compiled to Rust. Tests compare the two. The options as first weighed:
 
 Rust compiles slowly. Godot users are used to pressing Play and seeing a change in a second or two; a Rust build after changing one component can take 10 to 60 seconds. For a beginner-focused engine, this is the biggest open question.
 
@@ -333,3 +335,4 @@ Both sides review each other's pull requests.
 - 2026-10-23: [0025](docs/decisions/0025-picking-and-gizmos.md): picking by an ID image drawn on request and read back without waiting; a copy of an assembly is selected whole first; Aventail's gizmos and controls (Ctrl flips snapping, Shift fine, Esc or right click cancels, X/Y/Z axis locks, L for object axes); a drag is one merged undo step.
 - 2026-10-24: [0026](docs/decisions/0026-draw-only-when-something-changes.md): the editor draws only when something changes (frames back to back while things move, a frame a second otherwise); the corner says "Idle".
 - 2026-10-24: [0027](docs/decisions/0027-regular-code-reviews.md): at the end of every phase and when asked, three separate reviewers read the new code for stability, efficiency and correctness where parts meet; fixes go in pull requests by kind.
+- 2026-10-24: [0028](docs/decisions/0028-lust-runs-as-luau-while-editing.md): while editing, Lust runs as Luau, swapped into the running game keeping values; built games run Lust compiled to Rust; tests compare the two. Settles §3.1.

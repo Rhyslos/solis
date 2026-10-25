@@ -22,5 +22,6 @@ New to game engines? Start with [Concepts](concepts.md).
 - [Lights and shadows: the sun, point lights and spotlights](lights.md)
 - [Sky, fog and exposure: the world around your models, and how bright the picture is](sky-fog-and-exposure.md)
 - [The Console: messages, search and commands](console.md)
-- [Problems: mistakes found in the area](problems.md)
+- [Game code: writing your game's rules in Lust, and how Solis checks them](game-code.md)
+- [Problems: mistakes found in the area and the game's code](problems.md)
 - [Keyboard shortcuts: every key in one place](keyboard-shortcuts.md)

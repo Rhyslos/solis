@@ -85,16 +85,16 @@ The working plan, with the order milestones are built in, is [docs/plans/phase-2
 
 Components in Rust work from Phase 2, since they're the engine's own kind. This phase adds the other two. It comes straight after the editor, because Lust components need the inspector and play mode, and nothing in Phases 5 to 7 has to wait for it ([decision 0016](docs/decisions/0016-how-lust-joins-solis.md)).
 
-**Ready in Lust already:** `native` methods and `lust build --library` (LUST.md §21), tested with a small Rust program standing in for Solis.
+**Ready in Lust already:** `native` methods, `lust build --library`, vectors and rotations, components, events, and the compiler as a library with swaps (LUST.md §21, Lust 2.0.0-alpha.32), tested in Luau by Lust's `engine-test`.
 
-- **Lust builds into Solis:** Solis writes the files that describe the engine to Lust (`solis/entity.lst`, `solis/world.lst` and so on) from its own Rust code; a game's Lust is built as a library the engine includes, and its `native` methods call the engine.
+- **Lust builds into Solis:** Solis writes the files that describe the engine to Lust (`solis/entity.lst`, `solis/world.lst` and so on) from its own Rust code, and checks a game's Lust with the compiler as a library; while editing it runs as Luau, and in built games as Rust, its `native` methods calling the engine.
 - `object … like Component` becomes the same kind of component the engine's own are, with `has` fields in the inspector. Lust's mistakes show in the Problems panel with file and line, never a Rust error.
 - **Engine types and events:** vectors and rotations as real value types in Lust, and typed events between components (`onHit(Entity by, int damage)`).
 - **Fast changes** (DESIGN.md §3.1): the engine prebuilt, only the game's Lust built, and loaded into play mode without restarting.
 - **Lua components** through Luau: the same inspector fields, events and entities, with the game API's Lua face.
 - **A first game in Lust:** a small sample (a turret with ammo, cooldown and damage) that the later phases keep growing, and a first page of the Lust guide for Solis.
 
-**Decide before starting:** how fast changes reach play mode (DESIGN.md §3.1).
+**Decided before starting:** while editing, Lust runs as Luau and is swapped into the running game, keeping values; built games run it as Rust ([decision 0028](docs/decisions/0028-lust-runs-as-luau-while-editing.md)). The working plan is [docs/plans/phase-4.md](docs/plans/phase-4.md).
 
 **Gate:** change a Lust component while the game is running and see the change within **2 seconds**; a Lua component changes instantly. A mistake in Lust shows a friendly message, never a Rust error. One entity can carry a Rust, a Lust and a Lua component that talk to each other through events.
 

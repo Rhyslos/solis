@@ -34,6 +34,8 @@ pub(crate) struct PanelViewer<'a> {
     pub(crate) console: &'a mut Console,
     pub(crate) console_requests: &'a mut Vec<ConsoleRequest>,
     pub(crate) problems: &'a [crate::problems::Problem],
+    /// Mistakes in the game's code.
+    pub(crate) code_problems: &'a [script::CodeProblem],
     /// What the Game panel shows, while the game runs.
     pub(crate) game: Option<&'a crate::game_panel::GameScene>,
     /// Whether the game is running.
@@ -74,9 +76,10 @@ impl TabViewer for PanelViewer<'_> {
                 ..Default::default()
             },
         );
-        if *tab == Panel::Problems && !self.problems.is_empty() {
+        let problems = self.problems.len() + self.code_problems.len();
+        if *tab == Panel::Problems && problems > 0 {
             job.append(
-                &self.problems.len().to_string(),
+                &problems.to_string(),
                 6.0,
                 egui::TextFormat {
                     font_id: egui::FontId::proportional(theme::TEXT_SIZE),
@@ -193,9 +196,20 @@ impl TabViewer for PanelViewer<'_> {
                 }
             }
             Panel::Problems => {
-                if let Some(entity) = crate::problems::problems_panel(ui, self.problems) {
-                    self.area_state.reveal = Some(entity);
-                    self.area_requests.push(AreaRequest::Select(entity));
+                use crate::problems::ProblemClick;
+                match crate::problems::problems_panel(ui, self.code_problems, self.problems) {
+                    Some(ProblemClick::Entity(entity)) => {
+                        self.area_state.reveal = Some(entity);
+                        self.area_requests.push(AreaRequest::Select(entity));
+                    }
+                    Some(ProblemClick::File(file)) => {
+                        self.library_requests
+                            .push(crate::library::LibraryRequest::Open(
+                                crate::library::LibraryKind::Code,
+                                file,
+                            ))
+                    }
+                    None => {}
                 }
             }
             Panel::Viewport => {}
