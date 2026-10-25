@@ -22,6 +22,26 @@ impl Workbench {
             }
             return;
         };
+        // Every path asked about must be a plain path inside the assets
+        // folder: a problem's file comes from an error's text, which game
+        // code writes, so it could name a network share or a drive.
+        let path_of = |request: &LibraryRequest| match request {
+            LibraryRequest::Open(_, path) | LibraryRequest::Show(path) => Some(path.clone()),
+            _ => None,
+        };
+        if let Some(path) = path_of(&request)
+            && !path.is_empty()
+            && !plain_relative(&path)
+        {
+            self.log(
+                LogLevel::Warning,
+                format!(
+                    "Didn't open {}: it isn't a file in the project's assets folder.",
+                    path.chars().take(200).collect::<String>()
+                ),
+            );
+            return;
+        }
         let full = |path: &str| -> PathBuf {
             if path.is_empty() {
                 assets.clone()
@@ -108,6 +128,17 @@ impl Workbench {
     }
 }
 
+/// Whether `path` is a plain path inside a folder: parts separated by `/`
+/// (or a backslash), none empty, `.` or `..`, and no drive (`:`), so joined to a
+/// folder it stays inside it on every system.
+pub(crate) fn plain_relative(path: &str) -> bool {
+    !path.is_empty()
+        && !path.contains(':')
+        && path
+            .split(['/', '\\'])
+            .all(|part| !part.is_empty() && part != "." && part != "..")
+}
+
 #[cfg(test)]
 #[path = "workbench_library_tests.rs"]
 mod tests;
@@ -154,5 +185,37 @@ mod opening_tests {
             opened(LibraryKind::Code, "ai/sparks.lua"),
             PathBuf::from("ai")
         );
+    }
+
+    #[test]
+    fn a_path_outside_the_assets_folder_is_never_opened() {
+        // The third security audit: a problem's file comes from an error's
+        // text, so a click could open a network share in Explorer.
+        let mut w = Workbench::new(info(), None);
+        let assets = std::env::temp_dir().join("solis-library-open");
+        w.project = Some(crate::library::ProjectInfo {
+            name: "Opening".into(),
+            root: assets.clone(),
+            assets,
+        });
+        for path in [
+            "//attacker.example/share/a.lua",
+            "\\\\attacker\\share",
+            "C:/Windows/notepad.exe",
+            "C:notepad.exe",
+            "../outside.lst",
+            "props/../../outside.lst",
+            "/etc/passwd",
+        ] {
+            let mut actions = Vec::new();
+            w.library_request(
+                LibraryRequest::Open(LibraryKind::Code, path.into()),
+                &mut actions,
+            );
+            w.library_request(LibraryRequest::Show(path.into()), &mut actions);
+            assert!(actions.is_empty(), "{path}: {actions:?}");
+        }
+        assert!(plain_relative("props/brick.png"));
+        assert!(plain_relative("a\\b.lst"));
     }
 }

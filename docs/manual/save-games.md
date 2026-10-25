@@ -32,7 +32,7 @@ end
 
 Add the QuickSave and QuickLoad actions in **Edit > Input actions…** and bind them to keys of your choice ([Input](input.md)).
 
-- A **slot** is a save's name: letters, digits, `_` and `-` (`quick`, `slot_1`, `before-boss`), but not a name Windows keeps for a device (`CON`, `NUL`, `PRN`, `AUX`, `COM1`, `LPT1` and so on). Saving to a slot that has a save replaces it. A project keeps at most 100 saves; past that, game code can replace one but not add more.
+- A **slot** is a save's name: letters, digits, `_` and `-` (`quick`, `slot_1`, `before-boss`), but not a name Windows keeps for a device (`CON`, `NUL`, `PRN`, `AUX`, `COM1`, `LPT1` and so on). Saving to a slot that has a save replaces it. A project keeps at most 100 saves, and 2 GB of them together; past that, game code can replace one but not add more (the Console says so).
 - Both happen at the **end of the tick**, after every component's `update`, like moves ([what game code sees](game-code.md#components)). A load replaces the whole game, so nothing else runs in that frame after it.
 - Asking for the same slot again in one tick saves once (a save is the whole game, so a `saveGame` in every unit's `update` would otherwise make thousands at a time). At most four slots are saved or loaded in one tick.
 - Loading doesn't run the game's starts again (the code outside components, and its fields' starting values): what they did already happened in the saved game.
@@ -52,6 +52,7 @@ None of its own. A game chooses its own save and load keys through [input action
 
 ## Tips and common problems
 - **Problem:** the Console says the game wasn't saved because save games are kept in a project. **Why:** saves are files in a project's folder. **Fix:** open or make a project (File > New project…).
+- **Problem:** "the saves folder is a link to somewhere else". **Why:** Solis only writes saves into a real folder in the project, so a project you downloaded can't send them elsewhere on your computer. **Fix:** delete the `saves` link (or move the real folder into the project).
 - **Problem:** "Couldn't load quick: it was saved by the project …". **Why:** a save belongs to the project that made it. **Fix:** load it in that project.
 - **Problem:** "Couldn't load …: it's damaged". **Why:** the file was cut short or changed (a save carries a checksum, so a damaged one is refused rather than half loaded). **Fix:** save again.
 - **Problem:** a value in my component isn't the same after loading. **Why:** a save keeps every field in a component's `has` block, but not other variables the code keeps for itself. **Fix:** put anything that must survive a load in `has`.

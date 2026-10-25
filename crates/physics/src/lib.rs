@@ -290,6 +290,10 @@ fn finite(position: Vec3, rotation: Quat) -> bool {
 /// further, Rapier's numbers stop holding together.
 const MAX_PLACE: f32 = 1.0e9;
 
+/// The fastest game code sets a body moving, metres a second (a tenth of
+/// the farthest place a save keeps a speed up to).
+const MAX_SPEED: f32 = MAX_PLACE / 10.0;
+
 /// The biggest length a shape has (a thousand kilometres): bigger ones
 /// make Rapier's collision maths fail.
 const MAX_SIZE: f32 = 1.0e6;
@@ -807,7 +811,7 @@ impl Physics {
             return;
         };
         if let Some(body) = self.state_mut().bodies.get_mut(handle) {
-            body.set_linvel(to_rp(velocity), true);
+            body.set_linvel(to_rp(velocity.clamp_length_max(MAX_SPEED)), true);
         }
     }
 
@@ -821,7 +825,9 @@ impl Physics {
             return;
         };
         if let Some(body) = self.state_mut().bodies.get_mut(handle) {
-            body.apply_impulse(to_rp(impulse), true);
+            // No faster than MAX_SPEED from one push.
+            let most = MAX_SPEED * body.mass().max(1e-3);
+            body.apply_impulse(to_rp(impulse.clamp_length_max(most)), true);
         }
     }
 

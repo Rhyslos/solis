@@ -736,6 +736,12 @@ impl Workbench {
         let mut added: Vec<EntityId> = Vec::new();
         let mut removed: Vec<EntityId> = Vec::new();
         let mut removed_roots: Vec<EntityId> = Vec::new();
+        // One expander for the tick: each assembly is expanded once, and
+        // its size known before a copy is made, so thousands of spawns of
+        // one too big to fit cost nothing.
+        let assemblies = &self.assemblies;
+        let lookup = |a| assemblies.get(&a).cloned();
+        let mut expander = area::assembly::Expander::new(&lookup);
         for edit in edits {
             match edit {
                 GameEdit::Spawn(id, name, place) => {
@@ -751,11 +757,15 @@ impl Workbench {
                         unknown.push(name);
                         continue;
                     };
+                    let Ok(size) = expander.size_of(asset) else {
+                        continue;
+                    };
+                    if size > room {
+                        refused += 1;
+                        continue;
+                    }
                     let data = EntityData::new(&shown);
-                    let lookup = |a| self.assemblies.get(&a).cloned();
-                    let Ok(mut entities) =
-                        area::assembly::Expander::new(&lookup).place(asset, id, &data)
-                    else {
+                    let Ok(mut entities) = expander.place(asset, id, &data) else {
                         continue;
                     };
                     // The copy stands where it was spawned, turned and sized

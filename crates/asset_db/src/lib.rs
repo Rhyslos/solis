@@ -19,12 +19,15 @@ pub mod sidecar;
 mod watch;
 
 pub use db::{ASSEMBLY_EXTENSION, AssetDb, AssetKind, AssetRecord, Change, SETTLE, Stamp};
-pub use files::{AREA_EXTENSION, FileEntry, FileError, FileKind, Listing};
+pub use files::{
+    AREA_EXTENSION, FileEntry, FileError, FileKind, Listing, MAX_NAME_CHARS, file_name_from,
+    valid_file_name,
+};
 pub use hash::{ContentHash, hash_file};
 pub use jobs::Jobs;
 pub use project::{
     ASSETS_FOLDER, CACHE_FOLDER, FORMAT, GITATTRIBUTES, GITIGNORE, PROJECT_FILE, Project,
-    ProjectError, write_atomically,
+    ProjectError, own_folder, read_limited, write_atomically,
 };
 pub use sidecar::{Part, PartKey, PartKind, Sidecar};
 pub use watch::Watcher;

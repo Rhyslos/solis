@@ -253,6 +253,57 @@ pub struct Model {
 }
 
 impl Model {
+    /// Whether every number in it is finite, as the importer makes them:
+    /// a model read back from elsewhere (the import cache, which a project
+    /// can ship) is checked with this before use.
+    pub fn is_finite(&self) -> bool {
+        let vertex = |v: &Vertex| {
+            v.position
+                .iter()
+                .chain(&v.normal)
+                .chain(&v.uv)
+                .all(|x| x.is_finite())
+        };
+        let meshes = self.meshes.iter().all(|m| {
+            m.vertices.iter().all(vertex)
+                && m.lods
+                    .iter()
+                    .all(|l| l.error.is_finite() && l.vertices.iter().all(vertex))
+        });
+        let nodes = self
+            .nodes
+            .iter()
+            .all(|n| n.local.is_finite() && n.world.is_finite());
+        let materials = self.materials.iter().all(|m| {
+            m.base_color
+                .iter()
+                .chain(&m.emissive)
+                .all(|x| x.is_finite())
+                && [
+                    m.metallic,
+                    m.roughness,
+                    m.normal_scale,
+                    m.occlusion_strength,
+                ]
+                .iter()
+                .all(|x| x.is_finite())
+                && !matches!(m.alpha, AlphaMode::Mask(cut) if !cut.is_finite())
+        });
+        let lamps = self.lamps.iter().all(|l| {
+            l.position.is_finite()
+                && l.direction.is_finite()
+                && l.color.iter().all(|x| x.is_finite())
+                && l.strength.is_finite()
+                && l.range.is_none_or(f32::is_finite)
+        });
+        meshes
+            && nodes
+            && materials
+            && lamps
+            && self.bounds.min.is_finite()
+            && self.bounds.max.is_finite()
+    }
+
     /// Every mesh as drawn: which mesh, and where in the model.
     pub fn placements(&self) -> impl Iterator<Item = (usize, Mat4)> + '_ {
         self.nodes

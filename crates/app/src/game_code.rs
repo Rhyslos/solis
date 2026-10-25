@@ -58,9 +58,13 @@ impl GameCode {
             if same_text(&file, &text) {
                 continue;
             }
-            let written = file
-                .parent()
-                .map_or(Ok(()), std::fs::create_dir_all)
+            // The folders are Solis's own: never written through a link
+            // a project planted in their place.
+            let written = path
+                .rsplit_once('/')
+                .map_or(Ok(()), |(folder, _)| {
+                    asset_db::own_folder(assets, folder).map(|_| ())
+                })
                 .and_then(|()| asset_db::write_atomically(&file, text.as_bytes()));
             if let Err(why) = written {
                 notes.push(format!(

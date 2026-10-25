@@ -352,3 +352,32 @@ fn game_code_can_t_require_files_from_anywhere() {
     assert!(found.ends_with("nil nil"), "{found}");
     let _ = std::fs::remove_dir_all(outside);
 }
+
+#[test]
+fn a_huge_table_move_is_refused_quickly_and_the_collector_can_t_be_stopped() {
+    // The third security audit: table.move is one loop in C that the
+    // time limits can't stop (two billion items held the editor for a
+    // minute), and collectgarbage("stop") starved the game of memory.
+    let probe = "local C = component('Probe', { { 'found', 'string', '' } })\n\
+         function C:update(dt)\n\
+           local ok, err = pcall(table.move, {}, 1, 2147483646, -2147483647, {})\n\
+           local stop = pcall(collectgarbage, 'stop')\n\
+           local moved = table.move({1, 2, 3}, 1, 3, 2, {})\n\
+           self.found = tostring(ok) .. ' ' .. tostring(stop) .. ' ' .. tostring(moved[4])\n\
+             .. ' ' .. type(collectgarbage('count')) .. ' ' .. tostring(err)\n\
+         end";
+    let mut runtime = Runtime::new().unwrap();
+    runtime
+        .load(&code("", &[("probe.lua", probe)]), &mut NoHost)
+        .unwrap();
+    runtime
+        .sync(id(1), "Probe", &ComponentData::default(), &mut NoHost)
+        .unwrap();
+    quickly(|| runtime.tick(0.1, &mut Said::default()));
+    let found = runtime.values(id(1), "Probe").unwrap();
+    let Some(reflect::Value::Text(found)) = found.get("found") else {
+        panic!("{found:?}");
+    };
+    assert!(found.starts_with("false false 3 number"), "{found}");
+    assert!(found.contains("a million"), "{found}");
+}

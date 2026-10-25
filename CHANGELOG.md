@@ -95,6 +95,15 @@ What changed in each version, for people using Solis. Newest first.
 - Physics took places and turns too big for it (a rotation that overflowed, a collider thousands of kilometres big), which gave bodies no place or emptied physics with a message blaming a save: such numbers are refused or held in range, and the message says what happened.
 - Saving put fixed and kinematic bodies back where they were a moment before; they stay where their entities are.
 - **Security** (the Phase 6 security audits):
+  - Clicking a problem in a hostile project could open a network share in Explorer (which hands it your Windows sign-in): game code writes a problem's text, and the file was read from it. Only files in the project open now, from the Problems panel or the Library.
+  - One `table.move` in Lua game code could hold Solis for a minute, past the time limits; it moves at most a million items at once. Game code can no longer stop Lua's memory collector (`collectgarbage` only says how much is used).
+  - The backup of a damaged `input.solinput` was copied through a link a project could plant under its name, writing anywhere on the computer; it's now written as a new file. Saves, recordings, the import cache and the `solis` folder are never written into a folder that's a link.
+  - Spawning thousands of copies of an assembly too big to fit froze the editor (each was made, then refused); its size is checked first. Assemblies placed inside each other many levels deep could take gigabytes of memory on opening; they're refused past a limit.
+  - A model naming one child a million times took gigabytes before its node limit was checked; it's refused first.
+  - Files are read only as far as their limit, and only if they're ordinary files (a link to a device never ended). The import cache refuses numbers the importer never makes.
+  - A model's file address could reach a hidden stream (`%3A`) or a device (`NUL`); names Solis makes or you rename to can't be a device's name, hide a stream, or turn text around. Folders open in Explorer directly.
+  - The saves folder holds at most 2 GB of saves, and game code's speeds and pushes are kept within what a save can hold.
+  - A long run of `!` in Lust took the compiler hours; more than 64 in a row is a mistake now.
   - A `.lua` file starting with certain invisible characters was read as compiled Lua, whose reader isn't built for hostile files: just opening a project holding one could crash Solis, and might have let it run code. Game code is now always read as text.
   - Lua's `require` was left in game code's sandbox, so game code could read and run Lua files anywhere on the computer. It's gone.
   - Double-clicking a file the Library doesn't know opened it with Windows, so a program named `brick.png.exe` (shown as "brick.png") would run. Such files now open their folder instead, and show their whole name; only pictures and Lust files open in their own program.

@@ -236,12 +236,79 @@ pub fn compile(code: &Code) -> Result<Option<Compiled>, Vec<CodeProblem>> {
     }
 }
 
+/// The longest run of `!` (as in `!!!x`) allowed in Lust. The Lust
+/// compiler's nesting limit counts `not` and `-` but not `!`, and a long
+/// run takes it time that grows with the square of its length (a file of
+/// them, hours), so a run longer than any real code has is refused before
+/// compiling.
+pub const MAX_PREFIX_RUN: usize = 64;
+
+/// Problems for runs of `!` longer than [`MAX_PREFIX_RUN`],
+/// outside comments (`--` to the end of the line) and strings.
+fn long_prefix_chains(files: &[(String, String)]) -> Vec<CodeProblem> {
+    let mut problems = Vec::new();
+    for (path, text) in files {
+        let mut run = 0usize;
+        let mut line = 1u32;
+        let mut chars = text.chars().peekable();
+        let mut in_string = false;
+        while let Some(c) = chars.next() {
+            if c == '\n' {
+                line += 1;
+            }
+            if in_string {
+                match c {
+                    '\\' => {
+                        chars.next();
+                    }
+                    '"' | '\n' => in_string = false,
+                    _ => {}
+                }
+                continue;
+            }
+            match c {
+                '"' => {
+                    in_string = true;
+                    run = 0;
+                }
+                '-' if chars.peek() == Some(&'-') => {
+                    // A comment, to the end of the line.
+                    for c in chars.by_ref() {
+                        if c == '\n' {
+                            line += 1;
+                            break;
+                        }
+                    }
+                    run = 0;
+                }
+                '!' => {
+                    run += 1;
+                    if run == MAX_PREFIX_RUN + 1 {
+                        problems.push(CodeProblem {
+                            file: path.clone(),
+                            line,
+                            column: 0,
+                            message: format!(
+                                "more than {MAX_PREFIX_RUN} `!` in a row; write it more simply"
+                            ),
+                        });
+                    }
+                }
+                c if c.is_whitespace() => {}
+                _ => run = 0,
+            }
+        }
+    }
+    problems
+}
+
 /// [`compile`], on this thread.
 fn compile_here(code: &Code) -> Result<Option<Compiled>, Vec<CodeProblem>> {
     let mut problems = Vec::new();
     let mut lust = None;
     if !code.files.is_empty() {
-        let missing = check_entry(code);
+        let mut missing = check_entry(code);
+        missing.extend(long_prefix_chains(&code.files));
         if missing.is_empty() {
             let files = &code.files;
             match std::panic::catch_unwind(|| lust::to_lua(ENTRY, files)) {
@@ -397,6 +464,42 @@ mod tests {
         assert_eq!(paths, ["main.lst", "weapons/gun.lst"]);
         assert_eq!(code.notes.len(), 2, "{:?}", code.notes);
         assert!(gather(&assets.join("missing")).is_empty());
+    }
+
+    #[test]
+    fn a_long_run_of_prefix_operators_is_refused_quickly() {
+        // The third security audit: `!!!!…true` isn't counted by the Lust
+        // compiler's nesting limit and took it minutes.
+        let bangs = "!".repeat(100_000);
+        let main = format!("bool b = {bangs}true;\nend\n");
+        let start = std::time::Instant::now();
+        let problems = compile(&Code {
+            files: vec![("main.lst".into(), main)],
+            lua: Vec::new(),
+            notes: Vec::new(),
+        })
+        .unwrap_err();
+        assert!(start.elapsed() < std::time::Duration::from_secs(2));
+        assert!(problems[0].message.contains("in a row"), "{problems:?}");
+        assert_eq!(
+            (problems[0].file.as_str(), problems[0].line),
+            ("main.lst", 1)
+        );
+        // Comments, strings and ordinary code are fine.
+        let fine = vec![(
+            "main.lst".to_string(),
+            format!(
+                "-- {dashes}\nstring s = \"{bangs}\";\nfloat f = - -1 - 2;\nend\n",
+                dashes = "-".repeat(500),
+                bangs = "!".repeat(500)
+            ),
+        )];
+        assert!(long_prefix_chains(&fine).is_empty());
+        let spaced = vec![(
+            "a.lst".to_string(),
+            "\n\nx = ".to_string() + &"! ".repeat(70) + "1",
+        )];
+        assert_eq!(long_prefix_chains(&spaced)[0].line, 3);
     }
 
     #[test]

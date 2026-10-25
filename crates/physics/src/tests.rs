@@ -229,6 +229,13 @@ fn nothing_that_isnt_a_number_gets_in() {
     physics.set_pose(id(3), Vec3::NAN, Quat::IDENTITY);
     physics.set_velocity(id(3), Vec3::INFINITY);
     physics.push(id(3), Vec3::NAN);
+    // The third security audit: huge but finite speeds and pushes are
+    // kept to what a save keeps, so the game can still be saved.
+    physics.set_velocity(id(3), Vec3::splat(3.0e38));
+    assert!(physics.state().body_state(id(3)).unwrap().is_sensible());
+    physics.set_velocity(id(3), Vec3::ZERO);
+    physics.push(id(3), Vec3::new(-3.0e38, 0.0, 0.0));
+    assert!(physics.state().body_state(id(3)).unwrap().is_sensible());
     run(&mut physics, 10);
     let (p, r) = physics.state().pose(id(3)).unwrap();
     assert!(p.is_finite() && r.is_finite());

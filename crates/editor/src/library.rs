@@ -824,6 +824,8 @@ fn rename_window(ui: &Ui, state: &mut LibraryState, requests: &mut Vec<LibraryRe
                 if ok {
                     let name = name.trim();
                     let folder = path.rsplit_once('/').map_or("", |(f, _)| f);
+                    // The app checks the name fully when it moves the
+                    // file (asset_db::valid_file_name).
                     let bad =
                         name.is_empty() || name.contains(['/', '\\']) || name.starts_with('.');
                     if !bad {

@@ -20,7 +20,7 @@ pub use model::{
     AlphaMode, Bounds, ImportError, Limits, Lod, Material, Mesh, Model, Node, Sampler, Texture,
     Vertex, Wrap,
 };
-pub use reader::{EXTENSIONS, load, load_bytes, referenced_files};
+pub use reader::{EXTENSIONS, load, load_bytes, referenced_files, reserved_on_windows};
 
 /// Whether `path` names a file this crate reads (by its extension).
 pub fn is_model_file(path: &std::path::Path) -> bool {

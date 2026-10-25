@@ -44,15 +44,13 @@ impl AreaFiles {
     /// Reads the area or assembly file at `path`, within the reader's
     /// limits (placed assemblies not yet expanded).
     pub fn read(path: &Path, registry: &reflect::Registry) -> Result<area::text::AreaFile, String> {
-        let size = std::fs::metadata(path).map_err(|e| e.to_string())?.len();
-        if size > area::text::MAX_BYTES as u64 {
-            return Err(format!(
-                "it's {} MB; the most read is {} MB",
-                size >> 20,
-                area::text::MAX_BYTES >> 20
-            ));
-        }
-        let bytes = std::fs::read(path).map_err(|e| e.to_string())?;
+        let bytes = asset_db::read_limited(path, area::text::MAX_BYTES as u64).map_err(|e| {
+            if e.kind() == std::io::ErrorKind::FileTooLarge {
+                format!("it's bigger than {} MB", area::text::MAX_BYTES >> 20)
+            } else {
+                e.to_string()
+            }
+        })?;
         let text = String::from_utf8(bytes).map_err(|_| "it isn't text".to_string())?;
         area::text::read_file(&text, registry).map_err(|e| e.to_string())
     }

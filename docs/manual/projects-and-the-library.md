@@ -34,7 +34,7 @@ Make a project as soon as you start something you want to keep. Without one, Sol
 **Open things:** double-click an **area** to open it (Solis asks first if yours has unsaved changes). Double-click a picture to open it in its own program (your picture editor, say). Any other file, one Solis doesn't know, opens its folder instead of the file itself, and its name is shown in full with its ending: a file called `brick.png.exe` is a program pretending to be a picture, and opening it would run it. Projects you download or are sent can hold anything, so Solis never runs what's in them.
 
 **Organise files** (right-click a file or folder):
-- **Rename…**: type a new name. The file's ID file goes with it, so nothing using it breaks. Changing only capitals works too. Renaming the open area is fine: Solis saves to the new name.
+- **Rename…**: type a new name. The file's ID file goes with it, so nothing using it breaks. Changing only capitals works too. Renaming the open area is fine: Solis saves to the new name. A name must work on every computer: at most 100 characters, none of `< > : " / \ | ? *`, and not a name Windows keeps for a device (`CON`, `NUL`, `COM1` …); the Console says why if it isn't.
 - **Move**: drag a file onto a folder in the tree.
 - **New folder** (also in the **Import** menu): makes "New folder" inside the folder shown.
 - **Show in Explorer** opens the folder in your system's file browser.
@@ -42,7 +42,7 @@ Make a project as soon as you start something you want to keep. Without one, Sol
 
 A `.gltf` model reads the files beside it, so it can't be moved to another folder on its own: move its whole folder instead. Renaming it in place is fine.
 
-**The Code tab** beside the Library lists the project's code files (Lust `.lst`, Lua and Rust), with a search box. Double-click a Lust file to open it in your code editor; a Lua file shows its folder instead (some computers have a program that runs `.lua` files rather than editing them), so open it from there in your editor. Solis checks your Lust whenever you save; see [Game code](game-code.md). The `solis` folder holds files Solis writes, describing the engine to your code.
+**The Code tab** beside the Library lists the project's code files (Lust `.lst`, Lua and Rust), with a search box. Double-click a Lust file to open it in the program Windows has for `.lst` files: make that a text or code editor (right-click a `.lst` file in Explorer > Open with > Choose another app), never a program that runs Lust, since a downloaded project's code should only run inside Solis's sandbox. A Lua file shows its folder instead (some computers have a program that runs `.lua` files rather than editing them), so open it from there in your editor. Solis checks your Lust whenever you save; see [Game code](game-code.md). The `solis` folder holds files Solis writes, describing the engine to your code.
 
 **Change a model:** export it again over the same file in Blender. Everything using it shows the new version a moment later. If the new file is broken, the old version stays, and the Console says why.
 

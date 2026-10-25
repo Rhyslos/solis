@@ -81,7 +81,17 @@ pub struct Expander<'a> {
     lookup: Lookup<'a>,
     expanded: HashMap<AssetId, (Arc<Area>, EntityId)>,
     sizes: HashMap<AssetId, usize>,
+    /// Entities held in `expanded`, all assemblies together, and the
+    /// most it may hold ([`MAX_HELD`]; less in tests).
+    held: usize,
+    most_held: usize,
 }
+
+/// The most entities an [`Expander`] keeps expanded at once, every
+/// assembly together: each expansion is limited on its own, but assemblies
+/// placed inside each other are each kept expanded, so a chain of small
+/// files could otherwise hold many times the limit.
+pub const MAX_HELD: usize = 2 * MAX_ENTITIES;
 
 impl fmt::Debug for Expander<'_> {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
@@ -122,7 +132,15 @@ impl<'a> Expander<'a> {
             lookup,
             expanded: HashMap::new(),
             sizes: HashMap::new(),
+            held: 0,
+            most_held: MAX_HELD,
         }
+    }
+
+    /// How many entities a copy of assembly `id` is, counted without
+    /// making any (a copy can be refused for room before it's made).
+    pub fn size_of(&mut self, id: AssetId) -> Result<usize, AssemblyError> {
+        self.size(id, &mut Vec::new())
     }
 
     /// The file of assembly `id`.
@@ -184,7 +202,11 @@ impl<'a> Expander<'a> {
         if let Some(found) = self.expanded.get(&id) {
             return Ok(found.clone());
         }
-        self.size(id, &mut chain.clone())?;
+        let size = self.size(id, &mut chain.clone())?;
+        self.held = self.held.saturating_add(size);
+        if self.held > self.most_held {
+            return Err(AssemblyError::TooBig);
+        }
         let (file, root) = self.file(id)?;
         chain.push(id);
         let area = self.expand_in(&file, chain)?;
@@ -853,6 +875,47 @@ mod tests {
             Expander::new(&lib).assembly(asset(999)).unwrap_err(),
             AssemblyError::Missing(asset(999))
         );
+    }
+
+    #[test]
+    fn assemblies_inside_each_other_hold_at_most_their_share_expanded() {
+        // The third security audit: each level placed the next once, so
+        // every level's expansion was the size of the whole crowd, each
+        // kept: thirteen tiny files took over 5 GB.
+        let mut files = vec![(asset(500), lamp_post())];
+        for level in 0..6u64 {
+            let mut area = Area::new();
+            area.insert(id(1), EntityData::new("Wrapper"));
+            let mut copy = EntityData::new("Copy");
+            copy.parent = Some(id(1));
+            copy.origin = Some(Origin {
+                assembly: asset(500 + level),
+                instance: id(100),
+                path: Vec::new(),
+            });
+            area.insert(id(100), copy);
+            files.push((
+                asset(501 + level),
+                AreaFile {
+                    kind: FileKind::Assembly { root: id(1) },
+                    area,
+                    overrides: Default::default(),
+                },
+            ));
+        }
+        let lib = library(files);
+        // Each level is a few entities; held together, more than allowed.
+        let mut expander = Expander::new(&lib);
+        let size = expander.size_of(asset(506)).unwrap();
+        expander.most_held = size + 3;
+        assert_eq!(
+            expander.assembly(asset(506)).unwrap_err(),
+            AssemblyError::TooBig
+        );
+        // With room for them all, it expands.
+        let mut expander = Expander::new(&lib);
+        expander.most_held = size * 7;
+        assert_eq!(expander.assembly(asset(506)).unwrap().0.len(), size);
     }
 
     #[test]

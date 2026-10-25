@@ -116,7 +116,8 @@ impl Project {
             return Err(ProjectError::AlreadyAProject(root.to_path_buf()));
         }
         std::fs::create_dir_all(root.join(ASSETS_FOLDER))?;
-        std::fs::create_dir_all(root.join(CACHE_FOLDER))?;
+        // Solis's own folder, where the cache is written: never a link.
+        own_folder(root, CACHE_FOLDER)?;
         for (file, text) in [(".gitignore", GITIGNORE), (".gitattributes", GITATTRIBUTES)] {
             let path = root.join(file);
             if !path.exists() {
@@ -149,7 +150,8 @@ impl Project {
             return Err(ProjectError::TooNew(file.format));
         }
         std::fs::create_dir_all(root.join(ASSETS_FOLDER))?;
-        std::fs::create_dir_all(root.join(CACHE_FOLDER))?;
+        // Solis's own folder, where the cache is written: never a link.
+        own_folder(root, CACHE_FOLDER)?;
         Ok(Self {
             root: root.to_path_buf(),
             name: file.name,
@@ -224,25 +226,139 @@ pub fn write_atomically(path: &Path, bytes: &[u8]) -> std::io::Result<()> {
     Ok(())
 }
 
-/// Reads a text file, refusing one bigger than `limit` bytes before
-/// reading it.
+/// Reads a text file, refusing one bigger than `limit` bytes.
 pub(crate) fn read_text_limited(path: &Path, limit: u64) -> std::io::Result<String> {
-    let size = std::fs::metadata(path)?.len();
-    if size > limit {
-        return Err(std::io::Error::new(
-            std::io::ErrorKind::InvalidData,
-            format!("it's {size} bytes; the most read is {limit}"),
-        ));
-    }
-    let bytes = std::fs::read(path)?;
+    let bytes = read_limited(path, limit)?;
     String::from_utf8(bytes)
         .map_err(|_| std::io::Error::new(std::io::ErrorKind::InvalidData, "it isn't text"))
+}
+
+/// Reads a file of at most `limit` bytes. Only an ordinary file is read
+/// (a link to a device or a pipe, which never ends, is refused), and never
+/// more than `limit` bytes of it, even if it grows while being read.
+pub fn read_limited(path: &Path, limit: u64) -> std::io::Result<Vec<u8>> {
+    use std::io::Read;
+    let not_a_file =
+        || std::io::Error::new(std::io::ErrorKind::InvalidData, "it isn't an ordinary file");
+    let too_big = |size: u64| {
+        std::io::Error::new(
+            std::io::ErrorKind::FileTooLarge,
+            format!("it's {size} bytes; the most read is {limit}"),
+        )
+    };
+    // Checked before opening too: opening a pipe waits for a writer.
+    let before = std::fs::metadata(path)?;
+    if !before.is_file() {
+        return Err(not_a_file());
+    }
+    if before.len() > limit {
+        return Err(too_big(before.len()));
+    }
+    let file = std::fs::File::open(path)?;
+    let meta = file.metadata()?;
+    if !meta.is_file() {
+        return Err(not_a_file());
+    }
+    if meta.len() > limit {
+        return Err(too_big(meta.len()));
+    }
+    let mut bytes = Vec::with_capacity(meta.len() as usize);
+    file.take(limit.saturating_add(1)).read_to_end(&mut bytes)?;
+    if bytes.len() as u64 > limit {
+        return Err(too_big(bytes.len() as u64));
+    }
+    Ok(bytes)
+}
+
+/// Makes the folder `name` (one or more plain parts) inside `root` if it
+/// isn't there, and gives back its path, refusing it if it or a folder on
+/// the way is a link (or a junction): Solis writes in it, and a project
+/// could ship a link that sends those writes anywhere on the computer.
+pub fn own_folder(root: &Path, name: &str) -> std::io::Result<PathBuf> {
+    let mut path = root.to_path_buf();
+    for part in name.split('/') {
+        if part.is_empty() || part == "." || part == ".." || part.contains(['\\', ':']) {
+            return Err(std::io::Error::other(format!(
+                "{name} isn't a plain folder name"
+            )));
+        }
+        path.push(part);
+        match std::fs::symlink_metadata(&path) {
+            Ok(meta) if meta.file_type().is_symlink() => {
+                return Err(std::io::Error::other(format!(
+                    "{} is a link to somewhere else; Solis only writes in a real folder there",
+                    path.display()
+                )));
+            }
+            Ok(meta) if !meta.is_dir() => {
+                return Err(std::io::Error::other(format!(
+                    "{} is a file, not a folder",
+                    path.display()
+                )));
+            }
+            Ok(_) => {}
+            Err(e) if e.kind() == std::io::ErrorKind::NotFound => std::fs::create_dir(&path)?,
+            Err(e) => return Err(e),
+        }
+    }
+    Ok(path)
 }
 
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::test_folder;
+
+    #[test]
+    fn a_limited_read_takes_only_ordinary_files_within_the_limit() {
+        // The third security audit: the size was checked, then the whole
+        // file read, so a link to a device never ended.
+        let folder = test_folder("limited");
+        std::fs::create_dir_all(&folder).unwrap();
+        let path = folder.join("a.txt");
+        std::fs::write(&path, b"twelve bytes").unwrap();
+        assert_eq!(read_limited(&path, 12).unwrap(), b"twelve bytes");
+        let err = read_limited(&path, 11).unwrap_err();
+        assert_eq!(err.kind(), std::io::ErrorKind::FileTooLarge);
+        assert!(read_limited(&folder, 1 << 20).is_err(), "a folder");
+        assert_eq!(
+            read_limited(&folder.join("none"), 10).unwrap_err().kind(),
+            std::io::ErrorKind::NotFound
+        );
+        #[cfg(unix)]
+        {
+            let link = folder.join("zero");
+            std::os::unix::fs::symlink("/dev/zero", &link).unwrap();
+            assert!(read_limited(&link, 1 << 20).is_err(), "a device");
+        }
+        let _ = std::fs::remove_dir_all(&folder);
+    }
+
+    #[test]
+    fn solis_s_own_folders_are_made_and_never_links() {
+        let root = test_folder("own-folder");
+        std::fs::create_dir_all(&root).unwrap();
+        let made = own_folder(&root, "solis/kit").unwrap();
+        assert!(made.is_dir() && made.ends_with("solis/kit"));
+        assert_eq!(own_folder(&root, "solis/kit").unwrap(), made, "again");
+        for bad in ["", "../out", "a//b", "C:/x", "a\\b"] {
+            assert!(own_folder(&root, bad).is_err(), "{bad}");
+        }
+        std::fs::write(root.join("file"), b"").unwrap();
+        assert!(own_folder(&root, "file").is_err());
+        #[cfg(unix)]
+        {
+            let outside = test_folder("own-folder-outside");
+            std::fs::create_dir_all(&outside).unwrap();
+            std::os::unix::fs::symlink(&outside, root.join("saves")).unwrap();
+            assert!(own_folder(&root, "saves").is_err());
+            std::os::unix::fs::symlink(&outside, made.join("deeper")).unwrap();
+            assert!(own_folder(&root, "solis/kit/deeper/x").is_err());
+            assert!(std::fs::read_dir(&outside).unwrap().next().is_none());
+            let _ = std::fs::remove_dir_all(&outside);
+        }
+        let _ = std::fs::remove_dir_all(&root);
+    }
 
     #[test]
     fn atomic_writes_replace_the_file_and_leave_nothing_behind() {
