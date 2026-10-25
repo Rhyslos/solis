@@ -22,6 +22,8 @@ const LAYOUT_KEY: &str = "panel_layout";
 const ACCENT_KEY: &str = "accent";
 /// Key under which the viewport's corner controls are remembered.
 const OVERLAYS_KEY: &str = "viewport_overlays";
+/// Key under which snapping and the axis locks are remembered.
+const SNAPPING_KEY: &str = "viewport_snapping";
 /// Key under which the viewport's look is remembered.
 const LOOK_KEY: &str = "viewport_look";
 /// Key under which the viewport camera is remembered.
@@ -74,6 +76,9 @@ impl App {
         let overlays: Overlays = storage
             .and_then(|s| eframe::get_value(s, OVERLAYS_KEY))
             .unwrap_or_default();
+        let snapping: editor::Snapping = storage
+            .and_then(|s| eframe::get_value(s, SNAPPING_KEY))
+            .unwrap_or_default();
         let last_project: Option<PathBuf> =
             storage.and_then(|s| eframe::get_value(s, LAST_PROJECT_KEY));
         let recent: Vec<PathBuf> = storage
@@ -83,6 +88,7 @@ impl App {
         let mut workbench = Workbench::new(info.clone(), layout)
             .with_accent(accent)
             .with_overlays(overlays)
+            .with_snapping(snapping)
             .with_camera(camera)
             .with_look(look);
         workbench.log(
@@ -733,6 +739,7 @@ impl eframe::App for App {
         eframe::set_value(storage, LAYOUT_KEY, self.workbench.layout());
         eframe::set_value(storage, ACCENT_KEY, &self.workbench.accent());
         eframe::set_value(storage, OVERLAYS_KEY, &self.workbench.overlays());
+        eframe::set_value(storage, SNAPPING_KEY, &self.workbench.snapping());
         eframe::set_value(storage, CAMERA_KEY, &self.workbench.camera());
         eframe::set_value(storage, LOOK_KEY, &self.workbench.look());
         eframe::set_value(storage, LAST_PROJECT_KEY, &self.projects.root());

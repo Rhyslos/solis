@@ -1626,7 +1626,7 @@ fn a_model_unpacks_into_its_parts() {
     assert!(at.abs_diff_eq(Vec3::new(3.0, 0.0, 0.0), 1e-5), "{at}");
     // The viewport draws the parts, not the whole.
     let view = AreaView::of(area, w.models());
-    let mut drawn: Vec<_> = view.models.iter().map(|(a, node, _)| (*a, *node)).collect();
+    let mut drawn: Vec<_> = view.models.iter().map(|m| (m.asset, m.node)).collect();
     drawn.sort();
     assert_eq!(drawn, [(asset, Some(1)), (asset, Some(2))]);
     w.undo();

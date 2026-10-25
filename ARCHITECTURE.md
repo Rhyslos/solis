@@ -53,6 +53,12 @@ The HDR image's alpha channel is a mask, not opacity: 1 where the lit world is (
 - **Units are metres.**
 - **The engine never waits on the GPU or on files in the frame loop;** slow work runs on other threads and reports back with messages.
 
+## Picking and gizmos
+
+Each model the viewport draws carries a pick number (`editor::ViewModel::pick`). A click or a box in the viewport asks the renderer about a rectangle of the image (`ViewportView::pick`); `render` draws the placements once more into a small ID image (each pixel: the placement's number and its depth), inside that rectangle only, and copies it back without waiting (`ViewportRenderer::request_pick`, `ViewportTarget::poll_pick`). The answer reaches the editor a frame or so later (`ViewportRenderer::picked`), which turns numbers back into entities with the list it kept when it asked, and applies the selection rules in `editor::picking`. Lamps are picked by their markers on screen instead.
+
+The gizmo's maths (`editor::gizmo`, from Aventail) turns mouse movement into a change; `editor::transforming` works out each moved entity's new Transform from where it was when the drag began, and the workbench writes it as `SetField` edits merged by the drag's gesture, so a drag is one undo step and a cancelled drag leaves none ([decision 0025](docs/decisions/0025-picking-and-gizmos.md)). The viewport only reports what the mouse did (`ViewportEvent`s); the workbench changes the area.
+
 ## Projects and assets
 
 A project is a folder: `project.solis`, `assets/` and the `.solis/` cache. `asset_db::AssetDb` is worked out from `assets/` (the folder is the truth); each asset's `AssetId` lives in a `.solmeta` sidecar beside it, so renaming, moving or switching Git branches breaks nothing. The app (`crates/app/src/project.rs`) holds the database and a watcher; when the watcher reports something, the database rescans and the app reloads changed models in use on worker threads, through the import cache, and swaps them in by ID. A model imported while a project is open is copied into `assets/` first. The editor only sees `ProjectInfo` and the Library's list ([decision 0021](docs/decisions/0021-asset-database-and-models.md)).

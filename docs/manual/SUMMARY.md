@@ -11,6 +11,7 @@ New to game engines? Start with [Concepts](concepts.md).
 - [Interface tour: the top bar, the panels, and rearranging them](interface-tour.md)
 - [Moving around the viewport: the fly camera, the grid and the corner controls](navigating-the-viewport.md)
 - [Entities and components: what an area is made of](entities.md)
+- [Selecting and moving things: clicking, boxes, and the move, rotate and scale gizmos](selecting-and-moving.md)
 - [Undo and redo: take back any change](undo.md)
 - [Saving areas: files Git can merge](saving-areas.md)
 - [Assemblies: build once, place everywhere](assemblies.md)

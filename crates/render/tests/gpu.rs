@@ -334,6 +334,7 @@ fn render_env(
             model: &uploaded,
             node: None,
             transform: glam::Mat4::IDENTITY,
+            pick: 0,
         }],
         lights,
     );
@@ -1239,6 +1240,7 @@ fn two_viewports_keep_their_own_frames() {
             model: &floor,
             node: None,
             transform: glam::Mat4::IDENTITY,
+            pick: 0,
         }],
         &[],
     );
@@ -1251,6 +1253,7 @@ fn two_viewports_keep_their_own_frames() {
             model: &floor,
             node: None,
             transform: glam::Mat4::IDENTITY,
+            pick: 0,
         }],
         &[],
     );
@@ -1294,6 +1297,7 @@ fn render_parts(
             model: &uploaded,
             node,
             transform,
+            pick: 0,
         })
         .collect();
     renderer.render(
@@ -1434,4 +1438,102 @@ fn one_part_of_a_model_can_be_drawn_on_its_own() {
         render_parts(&model, &[], eye).unwrap(),
         "but the cube is there"
     );
+}
+
+/// Waits for a pick's answer (tests only: the editor never waits).
+#[allow(clippy::panic)]
+fn wait_for_pick(gpu: &Gpu, target: &mut render::ViewportTarget) -> render::PickResult {
+    for _ in 0..100 {
+        let _ = gpu.device.poll(wgpu::PollType::wait_indefinitely());
+        if let Some(result) = target.poll_pick(&gpu.device) {
+            return result;
+        }
+    }
+    panic!("the pick never came back");
+}
+
+#[test]
+fn picking_finds_the_placement_under_a_pixel_and_where_it_is() {
+    let Some(gpu) = gpu() else {
+        return;
+    };
+    let model = sample();
+    let renderer = ViewportRenderer::new(&gpu.device, best_sample_count(&gpu.adapter));
+    let size = 64;
+    let mut target = renderer.create_target(&gpu.device, [size, size]);
+    let uploaded = renderer.upload_model(&gpu.device, &gpu.queue, &model);
+    let eye = Vec3::new(0.0, -14.0, 1.4);
+    let view_projection = looking_north(eye);
+    let placed = [
+        Placement {
+            model: &uploaded,
+            node: None,
+            transform: Mat4::from_translation(Vec3::new(-4.0, 0.0, 0.0)),
+            pick: 7,
+        },
+        Placement {
+            model: &uploaded,
+            node: None,
+            transform: Mat4::from_translation(Vec3::new(4.0, 0.0, 0.0)),
+            pick: 9,
+        },
+    ];
+    assert!(renderer.request_pick(
+        &gpu.device,
+        &gpu.queue,
+        &mut target,
+        view_projection,
+        &placed,
+        [0, 0, size, size],
+    ));
+    assert!(target.is_picking());
+    assert!(
+        !renderer.request_pick(
+            &gpu.device,
+            &gpu.queue,
+            &mut target,
+            view_projection,
+            &placed,
+            [0, 0, 1, 1],
+        ),
+        "one question at a time"
+    );
+    let result = wait_for_pick(&gpu, &mut target);
+    assert!(!target.is_picking());
+    assert_eq!(result.all(), std::collections::BTreeSet::from([7, 9]));
+    // Both copies are found on their own side, with sky between them.
+    let row = 36;
+    let left = (0..32)
+        .filter_map(|x| result.pick_at(x, row))
+        .collect::<Vec<_>>();
+    let right = (32..64)
+        .filter_map(|x| result.pick_at(x, row))
+        .collect::<Vec<_>>();
+    assert!(!left.is_empty() && left.iter().all(|&p| p == 7), "{left:?}");
+    assert!(
+        !right.is_empty() && right.iter().all(|&p| p == 9),
+        "{right:?}"
+    );
+    assert_eq!(result.pick_at(0, 0), None, "sky at the corner");
+    // The point found is on the left copy, in front of the camera.
+    let x = (0..32).find(|&x| result.pick_at(x, row).is_some()).unwrap();
+    let point = result.point_at(x, row).unwrap();
+    assert!(
+        point.x < -1.0 && point.y > eye.y && point.y < 4.0,
+        "{point}"
+    );
+
+    // A small rectangle is drawn alone: only what's inside it is found.
+    assert!(renderer.request_pick(
+        &gpu.device,
+        &gpu.queue,
+        &mut target,
+        view_projection,
+        &placed,
+        [x, row, 1, 1],
+    ));
+    let one = wait_for_pick(&gpu, &mut target);
+    assert_eq!(one.rect, [x, row, 1, 1]);
+    assert_eq!(one.pick_at(x, row), Some(7));
+    assert_eq!(one.all().len(), 1);
 }

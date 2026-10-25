@@ -121,6 +121,9 @@ pub struct Workbench {
     /// Counts presses of the mouse: changes to one field during one press
     /// (a drag) are one undo step.
     pub(crate) gesture: u64,
+    /// While a gizmo is dragged: what moves, as it was when the drag
+    /// began, and the drag's gesture.
+    pub(crate) moving: Option<(crate::transforming::Targets, u64)>,
 }
 
 impl Workbench {
@@ -139,6 +142,7 @@ impl Workbench {
             about_open: false,
             in_front: HashSet::new(),
             gesture: 0,
+            moving: None,
             assemblies: BTreeMap::new(),
             outbox: Vec::new(),
             unsaved_prompt: None,
@@ -162,6 +166,19 @@ impl Workbench {
     pub fn with_overlays(mut self, overlays: Overlays) -> Self {
         self.viewport.overlays = overlays;
         self
+    }
+
+    /// Uses `snapping` (as saved last time), with anything out of range
+    /// put back.
+    #[must_use]
+    pub fn with_snapping(mut self, snapping: crate::Snapping) -> Self {
+        self.viewport.snapping = snapping.sanitized();
+        self
+    }
+
+    /// Snapping, axis locks and world or object axes, for saving.
+    pub fn snapping(&self) -> crate::Snapping {
+        self.viewport.snapping
     }
 
     /// Tells the workbench whether files are being dragged over the window,
@@ -375,6 +392,7 @@ impl Workbench {
             self.gesture += 1;
         }
         self.tool_keys(ui);
+        self.tool_extra_keys(ui);
         self.undo_keys(ui);
         self.editing_keys(ui);
         self.file_keys(ui, &mut actions);
@@ -390,6 +408,7 @@ impl Workbench {
         let mut requests = Vec::new();
         self.viewport.area = AreaView::of(self.document.area(), &self.models);
         self.viewport.entities = self.document.area().len();
+        self.prepare_tools();
         theme::dock_frame().show(ui, |ui| {
             DockArea::new(&mut self.dock)
                 .style(style)
@@ -419,6 +438,7 @@ impl Workbench {
                 );
         });
         self.in_front = shown;
+        self.tool_events();
         for request in requests {
             self.apply_property(request, self.gesture);
         }
