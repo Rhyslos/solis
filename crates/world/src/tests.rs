@@ -753,3 +753,85 @@ fn a_crate_in_a_group_game_code_moves_goes_with_it() {
     let drawn = world.global(crate_id).unwrap().w_axis.x;
     assert!((drawn - 3.0).abs() < 0.01, "drawn at {drawn}");
 }
+
+#[test]
+fn an_entity_turned_is_placed_the_same_built_or_moved() {
+    // The hardening milestone's invariant tests: a world built from an
+    // area placed a turned entity with a -0.0 where moving it there made
+    // 0.0, so a loaded game's checksum didn't match the saved game's.
+    let turned = Transform {
+        position: Vec3::new(0.2, 0.0, 0.01),
+        rotation: glam::Quat::from_xyzw(0.0, 0.0, -0.309_017_1, 0.951_056_54),
+        ..Transform::default()
+    };
+    let id = EntityId::random();
+    let mut area = Area::new();
+    area.insert(id, EntityData::new("Turned").with(&turned));
+    let built = World::from_area(&area);
+    let mut moved = World::from_area(&{
+        let mut a = Area::new();
+        a.insert(id, EntityData::new("Turned").with(&Transform::default()));
+        a
+    });
+    moved.set_transform(id, turned);
+    moved.settle();
+    let bits = |w: &World| w.global(id).unwrap().to_cols_array().map(f32::to_bits);
+    assert_eq!(bits(&built), bits(&moved));
+}
+
+#[test]
+fn what_s_under_a_turned_and_scaled_parent_follows_it_exactly_when_settled() {
+    // The hardening milestone's mutation testing: the settle test only
+    // moved things in straight lines, where adding places instead of
+    // multiplying them gives the same answer.
+    let mut area = Area::default();
+    let ship = area.spawn(EntityData::new("Ship").with(&at(10.0, 0.0, 0.0)));
+    let mut mast = EntityData::new("Mast").with(&at(0.0, 0.0, 2.0));
+    mast.parent = Some(ship);
+    let mast = area.spawn(mast);
+    let mut flag = EntityData::new("Flag").with(&Transform {
+        position: Vec3::new(0.5, 0.0, 1.0),
+        rotation: glam::Quat::from_rotation_y(0.3),
+        scale: Vec3::splat(0.5),
+    });
+    flag.parent = Some(mast);
+    let flag = area.spawn(flag);
+    let mut world = World::from_area(&area);
+    let turned = Transform {
+        position: Vec3::new(1.0, 2.0, 2.0),
+        rotation: glam::Quat::from_rotation_z(0.7),
+        scale: Vec3::new(2.0, 1.0, 1.5),
+    };
+    let before = world.changes();
+    world.set_transform(mast, turned);
+    world.settle();
+    assert_ne!(
+        world.changes(),
+        before,
+        "a settle that moved things is a change"
+    );
+    let expected = world.global(mast).unwrap() * world.get::<Transform>(flag).unwrap().matrix();
+    assert_eq!(world.global(flag).unwrap(), expected);
+    // Built from scratch with the mast there, it's the same.
+    let mut moved = area.clone();
+    moved.get_mut(mast).unwrap().set(&turned);
+    let rebuilt = World::from_area(&moved);
+    assert!(
+        rebuilt
+            .global(flag)
+            .unwrap()
+            .abs_diff_eq(world.global(flag).unwrap(), 1e-5)
+    );
+}
+
+#[test]
+fn a_frame_time_that_isn_t_a_number_never_jams_the_clock() {
+    // The hardening milestone's mutation testing: NaN or a negative time
+    // reaching the carried time would stop every tick after it.
+    let mut world = World::from_area(&Area::default());
+    for bad in [f64::NAN, f64::INFINITY, f64::NEG_INFINITY, -1.0, 0.0] {
+        assert_eq!(world.due(bad), 0, "{bad}");
+    }
+    assert_eq!(world.due(TICK * 1.5), 1);
+    assert_eq!(world.due(TICK * 0.5), 1, "the half tick carried");
+}

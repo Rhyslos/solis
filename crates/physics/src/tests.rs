@@ -112,6 +112,31 @@ fn rays_hit_the_nearest_thing_and_pass_out_of_what_they_start_in() {
     assert_eq!(down.entity, id(2), "the crate before the floor");
     assert!((down.distance - 6.5).abs() < 0.05, "{down:?}");
     assert!(down.normal.z > 0.99);
+    // Where it hit (mutation testing: never checked), and a direction of
+    // any length is the same way.
+    assert!(
+        down.point.abs_diff_eq(Vec3::new(0.0, 0.0, 3.5), 0.05),
+        "{down:?}"
+    );
+    let long = physics
+        .state()
+        .cast_ray(Vec3::new(0.0, 0.0, 10.0), Vec3::new(0.0, 0.0, -7.0), 100.0)
+        .unwrap();
+    assert_eq!(
+        (long.entity, long.distance, long.point),
+        (down.entity, down.distance, down.point)
+    );
+    // Sideways from off to one side: the crate's side, facing it.
+    let side = physics
+        .state()
+        .cast_ray(Vec3::new(-5.0, 0.0, 3.0), Vec3::X, 100.0)
+        .unwrap();
+    assert_eq!(side.entity, id(2));
+    assert!(
+        side.point.abs_diff_eq(Vec3::new(-0.5, 0.0, 3.0), 0.05),
+        "{side:?}"
+    );
+    assert!(side.normal.x < -0.99, "{side:?}");
     // From inside the crate, it's passed through: the floor.
     let inside = physics
         .state()
@@ -776,4 +801,103 @@ fn a_fixed_or_kinematic_body_built_again_stays_where_its_entity_put_it() {
         physics.state().pose(id(6)).unwrap().0,
         Vec3::new(1.0, 0.0, 2.0)
     );
+}
+
+/// A crowd's moves for a property test: (which character, x, y, z) per
+/// move, a tick's worth at a time.
+type Ticks = Vec<Vec<(u8, i8, i8, i8)>>;
+
+/// Plays `ticks` of moves on a level with `crowd` characters at random
+/// places, crates, and a platform that moves or not; moved `together`
+/// (as the world does) or one by one. Returns the state's checksum.
+fn crowd_played(places: &[(i8, i8)], platform: bool, ticks: &Ticks, together: bool) -> u64 {
+    let mut physics = with_floor();
+    for (n, &(x, y)) in places.iter().enumerate() {
+        physics.add_character(
+            id(100 + n as u64),
+            (
+                Vec3::new(f32::from(x) * 0.4, f32::from(y) * 0.4, 0.0),
+                Quat::IDENTITY,
+            ),
+            CharacterSpec::default(),
+        );
+    }
+    for n in 0..3u64 {
+        let (body, collider) = crate_spec();
+        physics.add(
+            id(5 + n),
+            (Vec3::new(n as f32, 1.0, 0.5 + n as f32), Quat::IDENTITY),
+            Vec3::splat(0.5),
+            body,
+            collider,
+        );
+    }
+    physics.add(
+        id(9),
+        (Vec3::new(0.0, 0.0, 0.05), Quat::IDENTITY),
+        Vec3::new(3.0, 3.0, 0.1),
+        Some(Body {
+            kind: BodyKind::Kinematic,
+            ..Body::default()
+        }),
+        Some(ColliderSpec::default()),
+    );
+    for (tick, moves) in ticks.iter().enumerate() {
+        if platform {
+            let x = (tick as f32 * 0.05).sin();
+            physics.set_pose(id(9), Vec3::new(x, 0.0, 0.05), Quat::IDENTITY);
+        }
+        let wanted: Vec<(EntityId, Vec3)> = moves
+            .iter()
+            .map(|&(who, x, y, z)| {
+                (
+                    // Now and then something that isn't a character.
+                    id(100 + u64::from(who) % (places.len() as u64 + 2)),
+                    Vec3::new(f32::from(x), f32::from(y), f32::from(z)) * 0.002,
+                )
+            })
+            .collect();
+        if together {
+            physics.move_characters(&wanted, 1.0 / 60.0);
+        } else {
+            for (who, w) in &wanted {
+                physics.move_character(*who, *w, 1.0 / 60.0);
+            }
+        }
+        physics.step(1.0 / 60.0);
+    }
+    physics.state().checksum()
+}
+
+proptest::proptest! {
+    #![proptest_config(proptest::prelude::ProptestConfig {
+        cases: std::env::var("PROPTEST_CASES")
+            .ok()
+            .and_then(|n| n.parse().ok())
+            .unwrap_or(16),
+        ..proptest::prelude::ProptestConfig::default()
+    })]
+
+    /// Characters moved together (worked out on every core at once) end
+    /// exactly where moving them one by one puts them: any crowd, any
+    /// moves, a character moved twice in a tick, a platform moving or
+    /// not (decision 0042's invariants).
+    #[test]
+    fn a_crowd_moved_together_ends_where_one_by_one_would(
+        places in proptest::collection::vec((-20i8..20, -20i8..20), 1..24),
+        platform in proptest::prelude::any::<bool>(),
+        ticks in proptest::collection::vec(
+            proptest::collection::vec(
+                (proptest::prelude::any::<u8>(), proptest::prelude::any::<i8>(),
+                 proptest::prelude::any::<i8>(), -40i8..40),
+                0..30,
+            ),
+            1..30,
+        ),
+    ) {
+        proptest::prop_assert_eq!(
+            crowd_played(&places, platform, &ticks, true),
+            crowd_played(&places, platform, &ticks, false)
+        );
+    }
 }

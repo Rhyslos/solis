@@ -485,3 +485,123 @@ fn older_files_naming_the_arrows_arrowup_read_as_the_keys_pressed() {
     assert_eq!(b.get("Pan").unwrap().up, ["Up"]);
     assert_eq!(b.get("Pan").unwrap().left, ["Alt+Left"]);
 }
+
+#[test]
+fn the_wheel_down_as_a_button_and_up_never_mix() {
+    // The hardening milestone's mutation testing: only a notch up was
+    // tried as a button.
+    let mut b = Bindings::default();
+    b.actions.push(Action::button("Next", &["Mouse WheelUp"]));
+    b.actions.push(Action::button("Back", &["Mouse WheelDown"]));
+    let mut d = Devices::new();
+    d.wheel_turned(-1.0);
+    let f = d.sample(&b, TICK);
+    assert!(f.get("Back").pressed && f.get("Back").held);
+    assert!(!f.get("Next").pressed && !f.get("Next").held);
+    d.wheel_turned(1.0);
+    let f = d.sample(&b, TICK);
+    assert!(f.get("Next").pressed && !f.get("Back").held);
+    // No turn: neither.
+    let f = d.sample(&b, TICK);
+    assert!(!f.get("Next").held && !f.get("Back").held);
+}
+
+#[test]
+fn a_combination_tapped_between_ticks_counts_only_with_its_modifiers_held() {
+    // Mutation testing: a combination's tap (down and up between two
+    // ticks) wasn't tried. An action is pressed when it starts being held
+    // however that happens (the arrow, then Alt, starts Alt+Left); a tap
+    // too quick to be held at a tick is a press only if the key went
+    // down with the modifiers held.
+    let mut b = Bindings::default();
+    b.actions.push(Action::button("Back", &["Alt+Left"]));
+    let mut d = Devices::new();
+    d.set("Alt", true);
+    let _ = d.sample(&b, TICK);
+    d.set("Left", true);
+    d.set("Left", false);
+    let f = d.sample(&b, TICK);
+    assert!(
+        f.get("Back").pressed && f.get("Back").released,
+        "{:?}",
+        f.get("Back")
+    );
+    assert!(!f.get("Back").held);
+    // The same tap without Alt isn't the combination.
+    let mut d = Devices::new();
+    d.set("Left", true);
+    d.set("Left", false);
+    let f = d.sample(&b, TICK);
+    assert!(!f.get("Back").pressed, "{:?}", f.get("Back"));
+    // The arrow held, then Alt: the action starts being held, a press.
+    let mut d = Devices::new();
+    d.set("Left", true);
+    let _ = d.sample(&b, TICK);
+    d.set("Alt", true);
+    let f = d.sample(&b, TICK);
+    assert!(f.get("Back").pressed && f.get("Back").held);
+}
+
+#[test]
+fn a_tick_s_checksum_tells_held_pressed_and_released_apart() {
+    // Mutation testing: the flags' bits could be mixed up unnoticed, and a
+    // recording would then miss a difference.
+    let sum = |state: ActionState| {
+        let mut frame = Frame::default();
+        frame.actions.insert("Jump".into(), state);
+        let mut sum = reflect::Checksum::new();
+        frame.checksum(&mut sum);
+        sum.finish()
+    };
+    let flags = [
+        (false, false, false),
+        (true, false, false),
+        (false, true, false),
+        (false, false, true),
+        (true, true, false),
+        (true, false, true),
+        (false, true, true),
+        (true, true, true),
+    ];
+    let sums: std::collections::BTreeSet<u64> = flags
+        .iter()
+        .map(|&(held, pressed, released)| {
+            sum(ActionState {
+                held,
+                pressed,
+                released,
+                ..ActionState::default()
+            })
+        })
+        .collect();
+    assert_eq!(sums.len(), flags.len(), "every combination differs");
+    let empty = {
+        let mut s = reflect::Checksum::new();
+        Frame::default().checksum(&mut s);
+        s.finish()
+    };
+    assert!(!sums.contains(&empty));
+}
+
+#[test]
+fn a_recording_holds_an_hour_of_ticks_and_no_more_and_says_which_line_is_wrong() {
+    // Mutation testing: the limit's edge and the line numbers in its
+    // messages weren't checked.
+    let mut text = String::from("solis recording 1\nseed 1\nstart 0\n");
+    for n in 0..recording::MAX_TICKS {
+        text.push_str(&format!("{n} w 0\n"));
+    }
+    assert_eq!(
+        Recording::read(&text).unwrap().ticks.len(),
+        recording::MAX_TICKS
+    );
+    text.push_str(&format!("{} w 0\n", recording::MAX_TICKS));
+    assert_eq!(Recording::read(&text), Err(RecordingError::TooBig));
+    // A wrong tick on the file's fifth line says line 5.
+    let text = "solis recording 1\nseed 1\nstart 0\n0 w 0\n7 w 0\n";
+    assert_eq!(Recording::read(text), Err(RecordingError::Damaged(5)));
+    let text = "solis recording 1\nseed one\nstart 0\n";
+    assert_eq!(Recording::read(text), Err(RecordingError::Damaged(2)));
+    let text = "solis recording 1\nseed 1\nbegin 0\n";
+    assert_eq!(Recording::read(text), Err(RecordingError::Damaged(3)));
+}

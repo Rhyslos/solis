@@ -252,8 +252,9 @@ fn saves_from_elsewhere_or_damaged_are_refused_and_nothing_changes() {
     // Damaged: cut short, a byte changed, a newer version, not a save.
     let mut damaged = vec![
         text[..text.len() / 2].to_string(),
-        text.replacen("solis save 2", "solis save 9", 1),
-        text.replacen("solis save 2", "solis save 1", 1),
+        text.replacen("solis save 3", "solis save 9", 1),
+        text.replacen("solis save 3", "solis save 2", 1),
+        text.replacen("solis save 3", "solis save 1", 1),
         "hello".to_string(),
         String::new(),
     ];
@@ -288,12 +289,12 @@ fn saves_from_elsewhere_or_damaged_are_refused_and_nothing_changes() {
     assert!(Save::read(&"x".repeat(MAX_SAVE_BYTES + 1)).is_err());
     // The third review: this version's header with Windows line endings
     // or a space after it is damaged, not "from a newer Solis".
-    for header in ["solis save 2\r", "solis save 2 "] {
-        let why = Save::read(&text.replacen("solis save 2", header, 1)).unwrap_err();
+    for header in ["solis save 3\r", "solis save 3 "] {
+        let why = Save::read(&text.replacen("solis save 3", header, 1)).unwrap_err();
         assert!(why.contains("damaged"), "{header:?}: {why}");
     }
     assert!(
-        Save::read(&text.replacen("solis save 2", "solis save 9", 1))
+        Save::read(&text.replacen("solis save 3", "solis save 9", 1))
             .unwrap_err()
             .contains("newer")
     );
@@ -469,6 +470,7 @@ fn a_save_keeps_bodies_as_places_and_motion_not_rapier_s_insides() {
     run_to(&mut w, 20);
     let text = w.save_of_game().unwrap().write();
     let physics = text.split("\nphysics ").nth(1).unwrap();
+    let physics = physics.split("\nplaces ").next().unwrap();
     // The floor and the crate: an ID, 13 numbers, asleep, character.
     let lines: Vec<&str> = physics.lines().skip(1).filter(|l| !l.is_empty()).collect();
     assert_eq!(lines.len(), 2, "{physics}");
@@ -660,4 +662,52 @@ fn a_quick_load_keeps_the_game_s_keys_and_keeps_what_was_recorded() {
     // A load from the Play menu gives the editor its keys back.
     w.load_game(&text, "quick.solsave");
     assert!(!w.game_has_input());
+}
+
+/// Writes real files for the fuzzers to start from (decision 0042): a save
+/// game, a recording, input actions and an area, into the folder
+/// `SOLIS_FUZZ_SEEDS` names (`fuzz/seeds`). Run by `fuzz/make-seeds.sh`.
+#[test]
+#[ignore = "writes the fuzzers' seed files; run by fuzz/make-seeds.sh"]
+fn write_fuzz_seeds() {
+    let Ok(dir) = std::env::var("SOLIS_FUZZ_SEEDS") else {
+        return;
+    };
+    let dir = std::path::PathBuf::from(dir);
+    let put = |target: &str, name: &str, text: &str| {
+        let folder = dir.join(target);
+        std::fs::create_dir_all(&folder).unwrap();
+        std::fs::write(folder.join(name), text).unwrap();
+    };
+    let mut w = busy_with_keys();
+    w.play_and_record();
+    w.give_game_input(&egui::Context::default());
+    run_to(&mut w, 20);
+    w.devices.set("F6", true);
+    run_to(&mut w, 22);
+    w.devices.set("F6", false);
+    run_to(&mut w, 40);
+    put("save_game", "busy.solsave", &w.save_text().unwrap());
+    w.stop();
+    let recording = w
+        .outbox
+        .iter()
+        .find_map(|a| match a {
+            WorkbenchAction::SaveRecording(text) => Some(text.clone()),
+            _ => None,
+        })
+        .unwrap();
+    put("recording", "busy.solrec", &recording);
+    put("input_actions", "busy.solinput", &w.bindings().write());
+    put(
+        "input_actions",
+        "default.solinput",
+        &input::Bindings::default().write(),
+    );
+    put(
+        "area_file",
+        "busy.solarea",
+        &area::text::write(w.document.area(), &w.document.registry, &|_| None),
+    );
+    put("game_code", "busy.lst", BUSY);
 }

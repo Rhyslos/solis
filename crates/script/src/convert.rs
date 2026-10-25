@@ -226,3 +226,111 @@ pub(crate) fn guessed_to_lua(lua: &Lua, value: &Value) -> Option<LuaValue> {
     };
     to_lua(lua, &kind, value)
 }
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use proptest::prelude::*;
+
+    /// A field's kind and a value of it, as game code can hold one.
+    fn kind_and_value() -> impl Strategy<Value = (FieldKind, Value)> {
+        let f = || -1.0e6f32..1.0e6;
+        prop_oneof![
+            any::<bool>().prop_map(|b| (FieldKind::Bool, Value::Bool(b))),
+            (-9_000_000_000_000_000i64..9_000_000_000_000_000)
+                .prop_map(|n| (FieldKind::Int, Value::Int(n))),
+            (-1.0e300f64..1.0e300).prop_map(|v| (FieldKind::Float, Value::Float(v))),
+            ".{0,40}".prop_map(|t| (FieldKind::Text, Value::Text(t))),
+            (0usize..3).prop_map(|i| {
+                let options = vec!["Red".to_string(), "Blue".into(), "Green".into()];
+                let t = options[i].clone();
+                (FieldKind::Choice(options), Value::Text(t))
+            }),
+            (f(), f(), f()).prop_map(|(x, y, z)| (FieldKind::Vec3, Value::floats(&[x, y, z]))),
+            (f(), f(), f(), f())
+                .prop_map(|(x, y, z, w)| (FieldKind::Rotation, Value::floats(&[x, y, z, w]))),
+            any::<u64>().prop_map(|n| (
+                FieldKind::Entity,
+                Value::Entity(reflect::Id::from_raw(n).map(EntityId))
+            )),
+        ]
+    }
+
+    proptest! {
+        /// A field's value handed to game code and back is the same value
+        /// (a save keeps game code's values this way, so a difference
+        /// would make a loaded game differ; decision 0042).
+        #[test]
+        fn a_value_crosses_to_game_code_and_back_unchanged((kind, value) in kind_and_value()) {
+            let lua = Lua::new();
+            let there = to_lua(&lua, &kind, &value).expect("its own kind");
+            prop_assert_eq!(from_lua(&kind, &there), Some(value));
+        }
+
+        /// A value sent in an event no Lust declares (from Lua) arrives
+        /// as its own kind: numbers as floats, nothing as no entity.
+        #[test]
+        fn an_undeclared_event_s_value_arrives_as_its_kind((_, value) in kind_and_value()) {
+            let lua = Lua::new();
+            let Some(there) = guessed_to_lua(&lua, &value) else {
+                return Ok(());
+            };
+            let back = guessed(&there);
+            let expected = match &value {
+                Value::Int(n) => Some(Value::Float(*n as f64)),
+                // An entity is text in Lua: it arrives as text.
+                Value::Entity(Some(id)) => Some(Value::Text(id.to_string())),
+                // Text that looks like nothing else stays text.
+                v => Some(v.clone()),
+            };
+            prop_assert_eq!(back, expected);
+        }
+    }
+
+    #[test]
+    fn every_kind_s_empty_value_is_of_its_kind() {
+        let kinds = [
+            FieldKind::Bool,
+            FieldKind::Int,
+            FieldKind::Float,
+            FieldKind::Text,
+            FieldKind::Choice(vec!["A".into()]),
+            FieldKind::Vec3,
+            FieldKind::Color,
+            FieldKind::Rotation,
+            FieldKind::Entity,
+            FieldKind::Asset,
+        ];
+        for kind in kinds {
+            assert!(kind.accepts(&empty(&kind)), "{kind:?}");
+        }
+        assert_eq!(
+            empty(&FieldKind::Rotation),
+            Value::floats(&[0.0, 0.0, 0.0, 1.0])
+        );
+        assert_eq!(
+            empty(&FieldKind::Choice(vec!["A".into()])),
+            Value::Text("A".into())
+        );
+    }
+
+    #[test]
+    fn a_vec3_comes_as_a_vector_or_a_table_and_only_finite() {
+        let lua = Lua::new();
+        let table = lua.create_table().unwrap();
+        table.raw_set("x", 1.0).unwrap();
+        table.raw_set("y", 2).unwrap();
+        table.raw_set("z", -3.5).unwrap();
+        assert_eq!(
+            vec3_of(&LuaValue::Table(table.clone())),
+            Some(Vec3::new(1.0, 2.0, -3.5))
+        );
+        table.raw_set("z", f64::NAN).unwrap();
+        assert_eq!(vec3_of(&LuaValue::Table(table.clone())), None);
+        table.raw_set("z", "three").unwrap();
+        assert_eq!(vec3_of(&LuaValue::Table(table)), None);
+        let v = LuaValue::Vector(mlua::Vector::new(f32::INFINITY, 0.0, 0.0));
+        assert_eq!(vec3_of(&v), None);
+        assert_eq!(vec3_of(&LuaValue::Boolean(true)), None);
+    }
+}

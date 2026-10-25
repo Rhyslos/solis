@@ -144,18 +144,25 @@ impl Project {
             return Err(ProjectError::NotAProject(root.to_path_buf()));
         }
         let text = read_text_limited(&path, 64 * 1024)?;
-        let file: ProjectFile =
-            toml::from_str(&text).map_err(|e| ProjectError::Damaged(e.message().to_string()))?;
-        if file.format > FORMAT {
-            return Err(ProjectError::TooNew(file.format));
-        }
+        let name = Self::read_file(&text)?;
         std::fs::create_dir_all(root.join(ASSETS_FOLDER))?;
         // Solis's own folder, where the cache is written: never a link.
         own_folder(root, CACHE_FOLDER)?;
         Ok(Self {
             root: root.to_path_buf(),
-            name: file.name,
+            name,
         })
+    }
+
+    /// The project's name from `project.solis`'s text, refusing a damaged
+    /// file or one from a newer Solis. (Fuzzed: a project can be anyone's.)
+    pub fn read_file(text: &str) -> Result<String, ProjectError> {
+        let file: ProjectFile =
+            toml::from_str(text).map_err(|e| ProjectError::Damaged(e.message().to_string()))?;
+        if file.format > FORMAT {
+            return Err(ProjectError::TooNew(file.format));
+        }
+        Ok(file.name)
     }
 
     /// Its name.

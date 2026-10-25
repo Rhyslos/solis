@@ -252,6 +252,7 @@ name = "area"
 version = "0.0.1"
 dependencies = [
  "glam 0.34.1",
+ "proptest",
  "reflect",
 ]
 
@@ -850,6 +851,21 @@ dependencies = [
 ]
 
 [[package]]
+name = "core_detect"
+version = "1.0.0"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "7f8f80099a98041a3d1622845c271458a2d73e688351bf3cb999266764b81d48"
+
+[[package]]
+name = "cpufeatures"
+version = "0.3.1"
+source = "registry+https://github.com/rust-lang/crates.io-index"
+checksum = "5ca28b0ae3115b884660db4118d803791fd6756b6e88f39c0f3f7859060d7566"
+dependencies = [
+ "libc",
+]
+
+[[package]]
 name = "crc32fast"
 version = "1.5.2"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -1015,6 +1031,7 @@ dependencies = [
  "glam 0.34.1",
  "input",
  "physics",
+ "proptest",
  "rayon",
  "reflect",
  "ron",
@@ -3235,6 +3252,7 @@ name = "physics"
 version = "0.0.1"
 dependencies = [
  "glam 0.34.1",
+ "proptest",
  "rapier3d",
  "rayon",
  "reflect",
@@ -3890,6 +3908,7 @@ dependencies = [
  "lust",
  "mlua",
  "physics",
+ "proptest",
  "reflect",
 ]
 
