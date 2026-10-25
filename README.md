@@ -28,7 +28,7 @@ Solis is built in phases, one milestone per pull request. Each phase ends with a
 
 **Overall: 25 of 60 milestones** `█████░░░░░░░░` 42%
 
-**Now:** Phases 1, 2 and 3 are built and wait for their gates to be tried by hand ([Phase 3 plan](docs/plans/phase-3.md)). Phase 4, game code, is built and reviewed, and waits for its gate too ([Phase 4 plan](docs/plans/phase-4.md)). Phase 5, scale, is built and reviewed, and waits for its gate ([Phase 5 plan](docs/plans/phase-5.md)): try **Help > Make the benchmark…**.
+**Now:** Phases 1, 2 and 3 are built and wait for their gates to be tried by hand ([Phase 3 plan](docs/plans/phase-3.md)). Phase 4, game code, is built and reviewed, and waits for its gate too ([Phase 4 plan](docs/plans/phase-4.md)). Phase 5, scale, is built and reviewed, and waits for its gate ([Phase 5 plan](docs/plans/phase-5.md)): try **Help > Make the benchmark…**. Phase 6, simulation and play, has begun ([Phase 6 plan](docs/plans/phase-6.md)).
 
 ### Phase 0 · Groundwork — 7 of 7
 
@@ -130,14 +130,14 @@ Solis is built in phases, one milestone per pull request. Each phase ends with a
 
 **Gate:** on your PC, the target runs at 60 fps and stress holds 30 fps without stutter; the ceiling is reported; the profiler shows where the time goes.
 
-### Phase 6 · Simulation and play — 0 of 5
+### Phase 6 · Simulation and play — 1 of 5
 
-`░░░░░░░░░░░░░` 0%
+`███░░░░░░░░░░` 20%
 
 <details>
 <summary>Milestones</summary>
 
-- [ ] A fixed-timestep simulation
+- [x] A fixed-timestep simulation ([plan](docs/plans/phase-6.md))
 - [ ] Determinism: seeded randomness, state checksums, deterministic physics
 - [ ] Input as named actions, with gamepads and rebinding
 - [ ] Save games

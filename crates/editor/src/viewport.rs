@@ -168,10 +168,18 @@ impl ViewBolt {
     /// The streak for `projectile`: as long as it flies in a thirtieth of
     /// a second (two frames), between 0.3 and 8 m.
     pub fn of(projectile: &world::Projectile) -> Self {
+        Self::between(projectile, 1.0)
+    }
+
+    /// As [`Self::of`], drawn `t` of the way (0 to 1) from where it was
+    /// when the last tick started to where it is now, like entities
+    /// drawn between ticks (`world::World::placed_between`).
+    pub fn between(projectile: &world::Projectile, t: f32) -> Self {
         let speed = projectile.velocity.length();
         let length = (speed / 30.0).clamp(0.3, 8.0);
+        let back = (1.0 - t.clamp(0.0, 1.0)) * world::TICK as f32;
         Self {
-            head: projectile.position,
+            head: projectile.position - projectile.velocity * back,
             trail: -projectile.velocity.normalize_or_zero() * length,
             colour: projectile.colour,
             width: BOLT_WIDTH,

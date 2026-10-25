@@ -93,6 +93,7 @@
 - **Game:** what players see and do. In the editor it's shown in the **Game** panel, through the game's camera, without the editor's grid and markers.
 - **Camera:** an entity the game looks through. The game uses the first camera in the area. Its **field of view** is how wide it sees.
 - **World:** the game's own copy of the area while it runs, kept in a form a game can run over quickly. It's made when you press Play and thrown away on Stop.
+- **Drawing between ticks** (interpolation): showing everything part way between where it was at the last tick and where it is now, so a screen faster than the game's 60 ticks a second shows smooth movement. See [Play mode](play-mode.md).
 - **Frame:** one picture on screen. Games aim for 60 **frames a second** (fps), which leaves about 16.7 milliseconds (thousandths of a second) for each; 30 fps still feels playable. See [The Profiler](profiler.md).
 - **CPU and GPU:** the computer's processor, which runs game code and the editor, and its graphics card, which draws. They work at the same time; the slower one sets the frame rate.
 - **Culling:** leaving out what the camera can't see before drawing. Each copy of a model is checked against the view (a ball around it is enough), so a huge area costs only what's in view. Things just out of view are still drawn into the sun's shadow map when their shadow can fall into it.

@@ -140,6 +140,8 @@ pub enum Icon {
     Stop,
     /// Two bars: Pause.
     Pause,
+    /// A triangle against a bar: Step (one tick).
+    Step,
     /// A film camera: a Camera entity.
     Camera,
     /// An "i" in a circle: information.
@@ -263,6 +265,10 @@ pub fn icon(painter: &Painter, rect: Rect, icon: Icon, color: Color32) {
             fill(&[(6.0, 5.0), (10.0, 5.0), (10.0, 19.0), (6.0, 19.0)]);
             fill(&[(14.0, 5.0), (18.0, 5.0), (18.0, 19.0), (14.0, 19.0)]);
         }
+        Icon::Step => {
+            fill(&[(5.0, 5.0), (15.0, 12.0), (5.0, 19.0)]);
+            fill(&[(16.0, 5.0), (19.0, 5.0), (19.0, 19.0), (16.0, 19.0)]);
+        }
         Icon::Camera => {
             outline(&[(3.0, 8.0), (15.0, 8.0), (15.0, 18.0), (3.0, 18.0)]);
             outline(&[(15.0, 11.0), (21.0, 8.0), (21.0, 18.0), (15.0, 15.0)]);
@@ -377,6 +383,7 @@ mod tests {
             PlayTogether,
             Stop,
             Pause,
+            Step,
             Camera,
             Info,
             Warning,

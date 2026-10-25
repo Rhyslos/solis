@@ -109,6 +109,11 @@ pub(crate) const COMMANDS: &[CommandInfo] = &[
         help: "Stops the game's clock, or starts it again.",
     },
     CommandInfo {
+        name: "step",
+        usage: "step",
+        help: "While paused, runs exactly one tick (the Step button).",
+    },
+    CommandInfo {
         name: "stop",
         usage: "stop",
         help: "Stops the game: the area goes back to how it was before Play.",
@@ -259,6 +264,10 @@ impl Workbench {
             }
             "pause" => {
                 self.pause();
+                Ok(String::new())
+            }
+            "step" => {
+                self.step();
                 Ok(String::new())
             }
             "stop" => {

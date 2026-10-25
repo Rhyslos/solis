@@ -1214,3 +1214,75 @@ fn spawned_entities_join_on_the_next_tick_even_within_one_frame() {
         .collect();
     assert_eq!(xs, vec![0.0, 2.0, 4.0]);
 }
+
+#[test]
+fn step_runs_one_tick_while_paused_and_only_then() {
+    let (mut w, id) = with_a_mover();
+    w.play();
+    w.run_game(0.1);
+    w.step();
+    assert!(
+        w.log_lines().last().unwrap().text.contains("Pause first"),
+        "only while paused"
+    );
+    w.pause();
+    let ticks = w.world().unwrap().clock().ticks;
+    let x = x_in_game(&w, id);
+    w.step();
+    w.run_game(0.5);
+    assert_eq!(w.world().unwrap().clock().ticks, ticks + 1, "exactly one");
+    assert!(x_in_game(&w, id) > x, "game code ran in it");
+    w.run_game(0.5);
+    assert_eq!(w.world().unwrap().clock().ticks, ticks + 1, "still paused");
+    assert_eq!(w.play_state(), crate::play::PlayState::Paused);
+}
+
+#[test]
+fn any_frame_rate_gives_the_same_world_at_the_same_tick() {
+    // 30, 60 and 144 frames a second, run to the same tick: the same
+    // place, to the bit (the simulation's step doesn't follow the frames).
+    let at_tick = |fps: f64| {
+        let (mut w, id) = with_a_mover();
+        w.play();
+        while w.world().unwrap().clock().ticks < 120 {
+            let left = 120 - w.world().unwrap().clock().ticks;
+            // The last frame lands on tick 120 exactly.
+            let seconds = (1.0 / fps).min(left as f64 * world::TICK + 1e-9);
+            w.run_game(seconds as f32);
+        }
+        (
+            w.world().unwrap().clock().ticks,
+            x_in_game(&w, id).to_bits(),
+        )
+    };
+    let sixty = at_tick(60.0);
+    assert_eq!(sixty.0, 120);
+    assert_eq!(at_tick(30.0), sixty);
+    assert_eq!(at_tick(144.0), sixty);
+}
+
+#[test]
+fn the_game_drawn_between_ticks_lags_where_it_is_by_part_of_a_tick() {
+    let (mut w, id) = with_a_mover();
+    w.play();
+    // Half a tick past a tick: drawn about half way from the last tick.
+    w.run_game((world::TICK * 3.5) as f32);
+    let world = w.world().unwrap();
+    let t = world.progress();
+    assert!((t - 0.5).abs() < 0.05, "{t}");
+    let now = x_in_game(&w, id);
+    let drawn_at = |t: f32| {
+        world
+            .placed_between::<Transform>(t)
+            .into_iter()
+            .find(|(e, _, _)| *e == id)
+            .unwrap()
+            .2
+            .w_axis
+            .x
+    };
+    let between = drawn_at(t);
+    assert!(between < now, "behind where it is now: {between} {now}");
+    assert!(between > drawn_at(0.0), "ahead of the last tick");
+    assert_eq!(drawn_at(1.0), now);
+}

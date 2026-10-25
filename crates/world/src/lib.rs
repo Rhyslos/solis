@@ -50,6 +50,29 @@ struct Place(usize);
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Global(pub Mat4);
 
+/// Where an entity was in the world when the last tick started (none
+/// until a tick has run since it joined), so drawing can show it part way
+/// between that tick and the next ([`World::placed_between`]).
+#[derive(Debug, Clone, Copy, PartialEq)]
+struct Previous(Option<Mat4>);
+
+/// Part way from `before` to `now` (`t` from 0 to 1), for drawing between
+/// ticks. Each number moves in a straight line: in a sixtieth of a second
+/// things turn too little for that to bend them visibly, and it costs
+/// almost nothing.
+pub fn between(before: Mat4, now: Mat4, t: f32) -> Mat4 {
+    if before == now || t >= 1.0 {
+        return now;
+    }
+    let t = t.max(0.0);
+    Mat4::from_cols(
+        before.x_axis.lerp(now.x_axis, t),
+        before.y_axis.lerp(now.y_axis, t),
+        before.z_axis.lerp(now.z_axis, t),
+        before.w_axis.lerp(now.w_axis, t),
+    )
+}
+
 /// Components with no Rust type of their own (game code's, or unknown
 /// ones), as plain values by name.
 #[derive(Debug, Clone, PartialEq, Default)]
@@ -629,18 +652,27 @@ impl World {
     /// Every entity with a `T`, with it and where it is, in the area's
     /// tree order.
     pub fn placed<T: hecs::Component + Clone>(&self) -> Vec<(EntityId, T, Mat4)> {
+        self.placed_between(1.0)
+    }
+
+    /// As [`Self::placed`], but each where it's drawn a share `t` (from 0
+    /// to 1) of the way from where it was when the last tick started to
+    /// where it is now: so a screen faster than the ticks shows smooth
+    /// movement. [`Self::progress`] says how far the clock is into the
+    /// next tick.
+    pub fn placed_between<T: hecs::Component + Clone>(&self, t: f32) -> Vec<(EntityId, T, Mat4)> {
         // Only the entities that have a `T`, then put in tree order.
         let mut found: Vec<(usize, EntityId, T, Mat4)> = self
             .ecs
-            .query::<(&Place, &Id, &T, Option<&Global>)>()
+            .query::<(&Place, &Id, &T, Option<&Global>, Option<&Previous>)>()
             .iter()
-            .map(|(place, id, value, global)| {
-                (
-                    place.0,
-                    id.0,
-                    value.clone(),
-                    global.map_or(Mat4::IDENTITY, |g| g.0),
-                )
+            .map(|(place, id, value, global, previous)| {
+                let now = global.map_or(Mat4::IDENTITY, |g| g.0);
+                let drawn = match previous.and_then(|p| p.0) {
+                    Some(before) => between(before, now, t),
+                    None => now,
+                };
+                (place.0, id.0, value.clone(), drawn)
             })
             .collect();
         found.sort_unstable_by_key(|f| f.0);
@@ -666,6 +698,41 @@ impl World {
     /// order.
     pub fn camera(&self) -> Option<(EntityId, Camera, Mat4)> {
         self.first::<Camera>()
+    }
+
+    /// As [`Self::camera`], drawn `t` of the way between ticks (see
+    /// [`Self::placed_between`]).
+    pub fn camera_between(&self, t: f32) -> Option<(EntityId, Camera, Mat4)> {
+        let (id, camera, now) = self.first::<Camera>()?;
+        let drawn = self
+            .entity(id)
+            .and_then(|e| self.ecs.get::<&Previous>(e).ok().and_then(|p| p.0))
+            .map_or(now, |before| between(before, now, t));
+        Some((id, camera, drawn))
+    }
+
+    /// Remembers where every entity is, as the start of a tick: what
+    /// drawing between ticks moves from. The editor calls it before each
+    /// tick.
+    pub fn remember(&mut self) {
+        for (global, previous) in self.ecs.query_mut::<(&Global, &mut Previous)>() {
+            previous.0 = Some(global.0);
+        }
+    }
+
+    /// How far the clock is into the next tick, from 0 to 1: how far
+    /// drawing should be between the last tick and the next.
+    pub fn progress(&self) -> f32 {
+        ((self.clock.carry / TICK) as f32).clamp(0.0, 1.0)
+    }
+
+    /// Runs exactly one tick now, whatever time is waiting (Step, while
+    /// paused). Returns 1.
+    pub fn step_one(&mut self) -> u64 {
+        self.clock.ticks += 1;
+        self.clock.time += TICK;
+        self.touched = true;
+        1
     }
 
     /// The sky, fog and exposure: the first environment, if any.
@@ -708,7 +775,7 @@ fn components_of(id: EntityId, data: &area::EntityData) -> hecs::EntityBuilder {
     if let Some(p) = data.parent {
         builder.add(Parent(p));
     }
-    builder.add(Global(Mat4::IDENTITY));
+    builder.add(Global(Mat4::IDENTITY)).add(Previous(None));
     builder
 }
 

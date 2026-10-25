@@ -156,8 +156,10 @@ impl AreaView {
     }
 
     /// What the running game shows of `world`: everything (hidden is only
-    /// for the editor), nothing pickable, no camera markers.
-    pub fn of_world(world: &world::World, models: &BTreeMap<AssetId, ModelInfo>) -> Self {
+    /// for the editor), nothing pickable, no camera markers; each entity
+    /// `t` of the way between the last tick and the next
+    /// (`world::World::placed_between`; 1 for where it is now).
+    pub fn of_world(world: &world::World, models: &BTreeMap<AssetId, ModelInfo>, t: f32) -> Self {
         use rayon::prelude::*;
         let mut view = Self {
             environment: world.environment().unwrap_or_default(),
@@ -165,14 +167,14 @@ impl AreaView {
         };
         // Models in jobs (decision 0031), kept in tree order. None of the
         // game's can be picked, so no numbers are handed out.
-        let placed = world.placed::<Model>();
+        let placed = world.placed_between::<Model>(t);
         let drawn: Vec<(ViewModel, usize)> = placed
             .par_iter()
             .filter_map(|(_, model, global)| view_model(model, *global, models))
             .collect();
         view.triangles = drawn.iter().map(|(_, t)| t).sum();
         view.models = drawn.into_iter().map(|(m, _)| m).collect();
-        for (id, light, global) in world.placed::<Light>() {
+        for (id, light, global) in world.placed_between::<Light>(t) {
             view.add_light(id, &light, global);
         }
         view
@@ -359,7 +361,7 @@ mod tests {
                 .num_threads(cores)
                 .build()
                 .unwrap()
-                .install(|| AreaView::of_world(&world, &models))
+                .install(|| AreaView::of_world(&world, &models, 1.0))
         };
         let one = on(1);
         assert_eq!(one.models.len(), 2_400);
@@ -391,7 +393,7 @@ mod tests {
         );
         area.spawn(EntityData::new("Lens").with(&Camera::default()));
         let world = world::World::from_area(&area);
-        let game = AreaView::of_world(&world, &models);
+        let game = AreaView::of_world(&world, &models, 1.0);
         assert_eq!(game.models.len(), 1);
         assert_eq!(game.models[0].pick, 0);
         assert!(game.pickable.is_empty());
@@ -428,7 +430,7 @@ mod tests {
         area.insert(low, second);
         assert_eq!(area.depth_first()[0], high);
         let editor = AreaView::of(&area, &BTreeMap::new());
-        let game = AreaView::of_world(&world::World::from_area(&area), &BTreeMap::new());
+        let game = AreaView::of_world(&world::World::from_area(&area), &BTreeMap::new(), 1.0);
         assert_eq!(editor.sun.unwrap().entity, high);
         assert_eq!(game.sun.unwrap().entity, high);
         assert!(editor.lamps.is_empty() && game.lamps.is_empty());

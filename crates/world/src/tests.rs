@@ -431,3 +431,47 @@ fn the_change_number_moves_only_when_something_seen_changes() {
     world.rebuild(&area);
     assert_ne!(world.changes(), before);
 }
+
+#[test]
+fn drawing_between_ticks_moves_from_the_last_tick_to_now() {
+    let mut area = Area::new();
+    let a = area.spawn(EntityData::new("A").with(&at(0.0, 0.0, 0.0)));
+    let mut world = World::from_area(&area);
+    let x_at = |world: &World, t: f32| {
+        world
+            .placed_between::<Transform>(t)
+            .into_iter()
+            .find(|(e, _, _)| *e == a)
+            .unwrap()
+            .2
+            .w_axis
+            .x
+    };
+    // No tick yet: drawn where it is.
+    world.set_transform(a, at(4.0, 0.0, 0.0));
+    assert_eq!(x_at(&world, 0.0), 4.0);
+    // A tick starts at 4 and moves it to 8: half way is 6.
+    world.remember();
+    world.set_transform(a, at(8.0, 0.0, 0.0));
+    assert_eq!(x_at(&world, 0.5), 6.0);
+    assert_eq!(x_at(&world, 0.0), 4.0);
+    assert_eq!(x_at(&world, 1.0), 8.0);
+    assert_eq!(x_at(&world, 7.0), 8.0, "never past now");
+    // The clock's progress into the next tick.
+    world.step(TICK * 0.25);
+    assert!((world.progress() - 0.25).abs() < 1e-5);
+    // Step one: a tick now, whatever's waiting.
+    let ticks = world.clock().ticks;
+    assert_eq!(world.step_one(), 1);
+    assert_eq!(world.clock().ticks, ticks + 1);
+    assert!((world.progress() - 0.25).abs() < 1e-5, "what waits is kept");
+}
+
+#[test]
+fn between_leaves_still_things_exactly_where_they_are() {
+    let m = Mat4::from_rotation_z(0.3) * Mat4::from_translation(Vec3::new(1.0, 2.0, 3.0));
+    assert_eq!(between(m, m, 0.37), m);
+    assert_eq!(between(Mat4::IDENTITY, m, 1.0), m);
+    let half = between(Mat4::IDENTITY, Mat4::from_translation(Vec3::X * 2.0), 0.5);
+    assert_eq!(half.w_axis.x, 1.0);
+}
