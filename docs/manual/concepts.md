@@ -75,5 +75,6 @@
 - **Gizmo:** the coloured arrows, rings and boxes drawn on the selection, which you drag to move, turn or resize it. Each handle works along one axis, in its colour.
 - **Pivot:** the point a selection turns and grows around: the middle of the selected entities.
 - **Snapping:** making moves, turns and sizes jump in steps (to the grid lines, 15° at a time, 10% at a time) so things line up exactly.
+- **Hidden and locked:** ways to keep things out of your way while you work: a hidden entity isn't drawn in the editor, and a locked one can't be clicked in the viewport. The game still has them both.
 - **Axis lock:** stopping drags from changing one axis, such as Z, so a drag slides along the floor without lifting.
 - **World and object axes:** the world's X, Y and Z are the same everywhere; an object's own axes turn with it. The gizmo can follow either.

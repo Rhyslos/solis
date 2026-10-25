@@ -276,6 +276,7 @@ impl Tools {
         let marker = area
             .lamps
             .iter()
+            .filter(|l| !area.locked.contains(&l.entity))
             .filter_map(|l| {
                 let p = camera.project(l.position, size)?;
                 let d = p.distance(at);
@@ -313,6 +314,7 @@ impl Tools {
         let markers = area
             .lamps
             .iter()
+            .filter(|l| !area.locked.contains(&l.entity))
             .filter(|l| {
                 camera
                     .project(l.position, size)
