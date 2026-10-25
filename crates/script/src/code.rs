@@ -227,20 +227,30 @@ pub fn compile(code: &Code) -> Result<Option<Compiled>, Vec<CodeProblem>> {
         .spawn(move || {
             let _ = sender.send(compile_here(&code));
         });
-    if let Err(why) = worker {
-        return Err(vec![CodeProblem {
-            file: ENTRY.to_string(),
-            line: 0,
-            column: 0,
-            message: format!("the code couldn't be checked: there was no room to start ({why})"),
-        }]);
-    }
+    let worker = match worker {
+        Ok(worker) => worker,
+        Err(why) => {
+            return Err(vec![CodeProblem {
+                file: ENTRY.to_string(),
+                line: 0,
+                column: 0,
+                message: format!(
+                    "the code couldn't be checked: there was no room to start ({why})"
+                ),
+            }]);
+        }
+    };
     // A compiler that never finishes (a case no guard here knows yet) is
     // given up on, not waited for forever: the code is reported as not
     // checked, so the editor isn't left waiting. Its thread is left to
     // finish on its own.
     match answer.recv_timeout(COMPILE_LIMIT) {
-        Ok(result) => result,
+        // It answered: its thread is ending, and is waited for, so nothing
+        // of it is left behind (found by fuzzing).
+        Ok(result) => {
+            let _ = worker.join();
+            result
+        }
         Err(std::sync::mpsc::RecvTimeoutError::Timeout) => Err(vec![CodeProblem {
             file: ENTRY.to_string(),
             line: 0,
@@ -615,14 +625,23 @@ mod tests {
             "object Ship {}\nobject Ship {}\nend\n",
         ] {
             let problems = check(vec![("main.lst", text)]).unwrap_err();
-            assert!(problems[0].message.contains("already something called"), "{problems:?}");
+            assert!(
+                problems[0].message.contains("already something called"),
+                "{problems:?}"
+            );
         }
         let problems = check(vec![
-            ("main.lst", "fetch \"other\":[Health];\ncomponent Health {}\nend\n"),
+            (
+                "main.lst",
+                "fetch \"other\":[Health];\ncomponent Health {}\nend\n",
+            ),
             ("other.lst", "\n\ncomponent Health {}\nend\n"),
         ])
         .unwrap_err();
-        assert_eq!((problems[0].file.as_str(), problems[0].line), ("other.lst", 3));
+        assert_eq!(
+            (problems[0].file.as_str(), problems[0].line),
+            ("other.lst", 3)
+        );
         // In comments and strings, and other names, it's fine.
         let fine = vec![(
             "main.lst".to_string(),
