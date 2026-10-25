@@ -94,9 +94,6 @@ opener = "0.9"
 # Development only: whole-game invariant tests (decision 0042).
 proptest = { version = "1", default-features = false, features = ["std"] }
 
-# Development only: whole-game invariant tests (decision 0042).
-proptest = { version = "1", default-features = false, features = ["std"] }
-
 [workspace.lints.rust]
 # No unsafe code. "deny" rather than "forbid" so that a reviewed exception,
 # with its own decision record, can allow it on one small module.

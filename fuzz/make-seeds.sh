@@ -18,5 +18,13 @@ done
     > "$seeds/game_code/turret-with-lua.lst"
 cp samples/turret/assets/turret.solarea "$seeds/area_file/"
 printf 'name = "Harbour"\nformat = 1\n' > "$seeds/project_file/harbour.solis"
+# GitHub's answer about a release, a 0x01 byte, then the checksum file
+# (fuzz_targets/update_answer.rs).
+mkdir -p "$seeds/update_answer"
+repo="https://github.com/Rhyslos/solis/releases/download/build-57"
+{ printf '{"tag_name":"build-57","draft":false,"prerelease":false,"assets":['
+  printf '{"name":"solis-setup.exe","browser_download_url":"%s/solis-setup.exe","size":1234},' "$repo"
+  printf '{"name":"solis-setup.exe.sha256","browser_download_url":"%s/solis-setup.exe.sha256","size":82}]}' "$repo"
+  printf '\001%064d  solis-setup.exe\n' 0; } > "$seeds/update_answer/release.json"
 echo "Seeds in $seeds:"
 for d in "$seeds"/*/; do echo "  $(basename "$d"): $(ls "$d" | wc -l) files"; done

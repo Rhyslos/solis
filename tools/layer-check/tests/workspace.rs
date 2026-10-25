@@ -28,7 +28,7 @@ fn every_planned_crate_exists() {
         names,
         [
             "app", "area", "asset_db", "assets", "editor", "input", "physics", "reflect", "render",
-            "script", "world"
+            "script", "updater", "world"
         ]
     );
 }
@@ -50,15 +50,16 @@ fn every_crate_is_registered_in_the_workspace() {
     }
 }
 
+/// The app, and the updater only the app uses (decision 0043).
 #[test]
-fn only_the_app_is_in_the_top_layer() {
+fn only_the_app_and_its_updater_are_in_the_top_layer() {
     let crates = layer_check::load_workspace(workspace_root()).unwrap();
     let top: Vec<&str> = crates
         .iter()
         .filter(|c| c.layer == Some(layer_check::MAX_LAYER))
         .map(|c| c.name.as_str())
         .collect();
-    assert_eq!(top, ["app"]);
+    assert_eq!(top, ["app", "updater"]);
 }
 
 #[test]

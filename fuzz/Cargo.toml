@@ -23,6 +23,7 @@ assets = { path = "../crates/assets" }
 asset_db = { path = "../crates/asset_db" }
 script = { path = "../crates/script" }
 reflect = { path = "../crates/reflect" }
+updater = { path = "../crates/updater" }
 
 # Its own workspace, so the engine's never builds it.
 [workspace]
@@ -93,3 +94,10 @@ test = false
 doc = false
 bench = false
 
+
+[[bin]]
+name = "update_answer"
+path = "fuzz_targets/update_answer.rs"
+test = false
+doc = false
+bench = false
