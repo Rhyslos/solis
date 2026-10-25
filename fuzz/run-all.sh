@@ -1,5 +1,5 @@
 #!/usr/bin/env bash
-# Runs every fuzz target for SECONDS each (default 600), LANES at a time
+# Runs every fuzz target (or those TARGETS names) for SECONDS_EACH each (default 600), LANES at a time
 # (default 2), starting from fuzz/seeds and keeping what each finds in
 # fuzz/corpus/<target>. Crashes land in fuzz/artifacts/<target>.
 # Run from the repository's top folder. Needs cargo-fuzz and a nightly
@@ -8,7 +8,7 @@ set -uo pipefail
 seconds="${SECONDS_EACH:-600}"
 lanes="${LANES:-2}"
 cd fuzz
-targets=$(cargo fuzz list)
+targets="${TARGETS:-$(cargo fuzz list)}"
 cargo fuzz build -O >/dev/null 2>&1 || { echo "build failed"; exit 1; }
 run() {
     local t="$1"
