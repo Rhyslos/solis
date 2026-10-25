@@ -28,7 +28,7 @@ Solis is built in phases, one milestone per pull request. Each phase ends with a
 
 **Overall: 25 of 60 milestones** `█████░░░░░░░░` 42%
 
-**Now:** Phases 1, 2 and 3 are built and wait for their gates to be tried by hand ([Phase 3 plan](docs/plans/phase-3.md)). Phase 4, game code, is built too ([Phase 4 plan](docs/plans/phase-4.md)); its review and gate are next.
+**Now:** Phases 1, 2 and 3 are built and wait for their gates to be tried by hand ([Phase 3 plan](docs/plans/phase-3.md)). Phase 4, game code, is built and reviewed, and waits for its gate too ([Phase 4 plan](docs/plans/phase-4.md)). Phase 5, scale, is next ([Phase 5 plan](docs/plans/phase-5.md)).
 
 ### Phase 0 · Groundwork — 7 of 7
 
@@ -111,21 +111,23 @@ Solis is built in phases, one milestone per pull request. Each phase ends with a
 
 **Gate:** change a Lust component while the game runs and see it within 2 seconds; Rust, Lust and Lua components talk through events.
 
-### Phase 5 · Scale — 0 of 4
+### Phase 5 · Scale — 0 of 6
 
 `░░░░░░░░░░░░░` 0%
 
 <details>
 <summary>Milestones</summary>
 
-- [ ] GPU instancing, frustum culling and LODs
-- [ ] A job system that uses every CPU core
-- [ ] Thousands of projectiles drawn cheaply
-- [ ] The benchmark area: 2,000 moving units and 20,000 projectiles
+- [ ] Measure first: the frame profiler, and scale cases for the three levels ([plan](docs/plans/phase-5.md), decision 0030)
+- [ ] A job system that uses every CPU core (decision 0031)
+- [ ] Drawing only what's seen: culling, and shadows fitted to the view
+- [ ] LODs, made on import or the model's own (decision 0032)
+- [ ] Projectiles: hundreds of thousands, drawn in one go
+- [ ] The benchmark (Help > Make the benchmark…): target, stress and ceiling
 
 </details>
 
-**Gate:** the benchmark runs at 60 fps on your PC.
+**Gate:** on your PC, the target runs at 60 fps and stress holds 30 fps without stutter; the ceiling is reported; the profiler shows where the time goes.
 
 ### Phase 6 · Simulation and play — 0 of 5
 
