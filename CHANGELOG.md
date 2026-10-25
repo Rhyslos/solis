@@ -77,6 +77,14 @@ What changed in each version, for people using Solis. Newest first.
 
 ### Fixed
 
+- **Easier to use** (from a user test of Phase 6):
+  - A setting that points at another entity showed a long ID and couldn't be changed in Properties; it shows the entity's name, and a list (with a search box, and None) picks another.
+  - While playing, Properties showed the values game code's components started with; it shows them as they are now, and says so.
+  - A long Console message was cut off; click it to read it in full and copy it.
+  - Add component lists Solis's own components and the game's in two groups.
+  - The file window's and window library's warnings no longer fill the Console with things you can't act on.
+  - Opening a Lust file says once which program opens it, and how to choose another.
+
 - Closing Solis while playing stopped the game before asking about unsaved changes, so Cancel left it stopped; it asks first now, and the game plays on if you cancel.
 - A project whose name had a line break in it could never load its saves.
 - A save whose first line had a Windows line ending added said it was "made by a newer Solis"; it says it's damaged. A load whose input actions can't be read says so plainly.

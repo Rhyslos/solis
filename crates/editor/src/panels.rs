@@ -53,6 +53,9 @@ pub(crate) struct PanelViewer<'a> {
     pub(crate) library_state: &'a mut LibraryState,
     pub(crate) library_requests: &'a mut Vec<LibraryRequest>,
     pub(crate) part: Option<&'a AssemblyPart>,
+    /// While playing, the selected entity's game code values as they are
+    /// now, by component.
+    pub(crate) running: Option<&'a BTreeMap<String, reflect::ComponentData>>,
     pub(crate) requests: &'a mut Vec<PropertyRequest>,
     pub(crate) accent: Accent,
     pub(crate) in_front: &'a HashSet<Panel>,
@@ -166,7 +169,14 @@ impl TabViewer for PanelViewer<'_> {
                 );
             }
             Panel::Properties => {
-                let requests = properties(ui, self.document, self.part, self.models, self.copied);
+                let requests = properties(
+                    ui,
+                    self.document,
+                    self.part,
+                    self.models,
+                    self.copied,
+                    self.running,
+                );
                 self.requests.extend(requests);
             }
             Panel::Library | Panel::Code => {

@@ -138,6 +138,7 @@ pub(crate) fn fields(
     assembly: Option<&ComponentData>,
     others: &[&ComponentData],
     models: &BTreeMap<AssetId, ModelInfo>,
+    area: &area::Area,
 ) -> Vec<FieldChange> {
     let mut changes = Vec::new();
     for field in &schema.fields {
@@ -149,7 +150,7 @@ pub(crate) fn fields(
         ui.push_id(id, |ui| {
             let (set, revert, apply) =
                 row_marked(ui, &field.label, field.hint.help, changed, |ui| {
-                    let set = field_widget(ui, field, value, models, mixed);
+                    let set = field_widget(ui, field, value, models, area, mixed);
                     if !changed {
                         return (set, false, false);
                     }
@@ -207,6 +208,7 @@ fn field_widget(
     field: &FieldInfo,
     value: &Value,
     models: &BTreeMap<AssetId, ModelInfo>,
+    area: &area::Area,
     mixed: Mixed,
 ) -> Option<(Value, Option<(usize, f64)>)> {
     let whole = |v: Option<Value>| v.map(|v| (v, None));
@@ -316,15 +318,82 @@ fn field_widget(
             ui.label(text);
             None
         }
-        FieldKind::Entity => {
-            let text = match value {
-                Value::Entity(Some(id)) => id.to_string(),
-                _ => "None".to_string(),
-            };
-            ui.label(text);
-            None
-        }
+        FieldKind::Entity => whole(entity_picker(ui, value, area, mixed.whole)),
     }
+}
+
+/// The most entities an entity field's list shows at once: type to find
+/// the rest.
+const MAX_LISTED: usize = 200;
+
+/// An entity field: the entity's name, and a list to pick another (or
+/// None) from, with a box to find one by name in a big area.
+fn entity_picker(ui: &mut Ui, value: &Value, area: &area::Area, mixed: bool) -> Option<Value> {
+    let current = match value {
+        Value::Entity(Some(id)) => Some(*id),
+        _ => None,
+    };
+    let shown = if mixed {
+        "—".to_string()
+    } else {
+        match current {
+            None => "None".to_string(),
+            Some(id) => area
+                .get(id)
+                .map_or_else(|| "Missing entity".to_string(), |e| e.name.clone()),
+        }
+    };
+    let find_id = ui.id().with("find");
+    let mut find: String = ui.data(|d| d.get_temp(find_id)).unwrap_or_default();
+    let mut chosen = None;
+    let combo = egui::ComboBox::from_id_salt("entity")
+        .selected_text(shown)
+        .height(320.0)
+        .show_ui(ui, |ui| {
+            ui.add(
+                egui::TextEdit::singleline(&mut find)
+                    .hint_text("Find by name")
+                    .desired_width(180.0),
+            );
+            if ui
+                .selectable_label(current.is_none() && !mixed, "None")
+                .clicked()
+            {
+                chosen = Some(Value::Entity(None));
+            }
+            let wanted = find.to_lowercase();
+            let mut listed = 0usize;
+            let mut more = false;
+            for (id, entity) in area.iter() {
+                if !wanted.is_empty() && !entity.name.to_lowercase().contains(&wanted) {
+                    continue;
+                }
+                if listed == MAX_LISTED {
+                    more = true;
+                    break;
+                }
+                listed += 1;
+                let picked = current == Some(id) && !mixed;
+                if ui
+                    .selectable_label(picked, &entity.name)
+                    .on_hover_text(id.to_string())
+                    .clicked()
+                {
+                    chosen = Some(Value::Entity(Some(id)));
+                }
+            }
+            if more {
+                ui.label(
+                    RichText::new(format!("Only the first {MAX_LISTED}: type to find others."))
+                        .color(crate::theme::TEXT_WEAK),
+                );
+            }
+        });
+    if let Some(id) = current {
+        combo.response.on_hover_text(id.to_string());
+    }
+    ui.data_mut(|d| d.insert_temp(find_id, find));
+    chosen.filter(|v| mixed || *v != *value)
 }
 
 /// A number field: drags within the hint's range, but never changes a

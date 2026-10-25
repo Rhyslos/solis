@@ -184,6 +184,8 @@ pub struct Workbench {
     pub(crate) area_panel: crate::area_panel::AreaPanelState,
     /// Components' values copied in Properties, to paste.
     pub(crate) copied: Vec<(String, reflect::ComponentData)>,
+    /// Whether the Console has said which program opens Lust files.
+    pub(crate) told_how_lust_opens: bool,
     /// The project's folders, for the Library's tree.
     pub(crate) folders: Vec<String>,
     /// How the Library is shown.
@@ -289,6 +291,7 @@ impl Workbench {
             moving: None,
             area_panel: Default::default(),
             copied: Vec::new(),
+            told_how_lust_opens: false,
             folders: Vec::new(),
             library_state: Default::default(),
             place_targets: BTreeMap::new(),
@@ -733,6 +736,28 @@ impl Workbench {
         };
         self.profiler
             .add(crate::profiler::Stage::Prepare, preparing.elapsed());
+        // While playing, the selected entity's game code values as they
+        // are now, for Properties (in front) to show instead of the
+        // values it started with.
+        let running = match (&mut self.playing, self.document.selection.primary()) {
+            (Some(playing), Some(id))
+                if self.in_front.contains(&crate::panel::Panel::Properties) =>
+            {
+                let names: Vec<String> = self
+                    .document
+                    .area()
+                    .get(id)
+                    .map(|e| e.components.keys().cloned().collect())
+                    .unwrap_or_default();
+                playing.game.as_mut().map(|game| {
+                    names
+                        .into_iter()
+                        .filter_map(|name| game.values(id, &name).map(|v| (name, v)))
+                        .collect::<BTreeMap<String, reflect::ComponentData>>()
+                })
+            }
+            _ => None,
+        };
         let playing = self.playing.is_some();
         let mut game_clicked = false;
         let mut renderer = crate::profiler::Timed {
@@ -772,6 +797,7 @@ impl Workbench {
                         library_state: &mut self.library_state,
                         library_requests: &mut library_requests,
                         part: part.as_ref(),
+                        running: running.as_ref(),
                         requests: &mut requests,
                         accent: self.accent,
                         in_front: &self.in_front,

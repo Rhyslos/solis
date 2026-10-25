@@ -147,6 +147,7 @@ pub(crate) fn properties(
     part: Option<&AssemblyPart>,
     models: &BTreeMap<AssetId, ModelInfo>,
     copied: &[String],
+    running: Option<&BTreeMap<String, reflect::ComponentData>>,
 ) -> Vec<PropertyRequest> {
     let mut requests = Vec::new();
     let Some((id, entity)) = document
@@ -195,6 +196,15 @@ pub(crate) fn properties(
                         if let Some(part) = part {
                             assembly_note(ui, id, part, &mut requests);
                         }
+                        if running.is_some_and(|r| !r.is_empty()) {
+                            ui.label(
+                                RichText::new(
+                                    "Playing: game code's values are shown as they are now. A \
+                                     change here reaches the game; Stop puts every value back.",
+                                )
+                                .color(theme::TEXT_WEAK),
+                            );
+                        }
                     }
                     ui.add_space(4.0);
                     // Transform first, as in every engine; the rest by name.
@@ -212,7 +222,11 @@ pub(crate) fn properties(
                         .collect();
                     names.sort_by_key(|n| (n.as_str() != "Transform", n.as_str()));
                     for component in names {
-                        let data = &entity.components[component];
+                        // While playing, game code's values as they are now.
+                        let data = running
+                            .filter(|_| !many)
+                            .and_then(|r| r.get(component))
+                            .unwrap_or(&entity.components[component]);
                         ui.separator();
                         match document.registry.get(component) {
                             Some(schema) => {
@@ -237,7 +251,15 @@ pub(crate) fn properties(
                                     .filter_map(|d| d.components.get(component))
                                     .collect();
                                 for change in
-                                    inspector::fields(ui, schema, data, assembly, &others, models)
+                                    inspector::fields(
+                                    ui,
+                                    schema,
+                                    data,
+                                    assembly,
+                                    &others,
+                                    models,
+                                    document.area(),
+                                )
                                 {
                                     let (entity, component) = (id, component.clone());
                                     requests.push(match change {
@@ -489,21 +511,38 @@ fn add_component_menu(ui: &mut Ui, document: &Document, selected: &[EntityId]) -
     let mut picked = None;
     ui.menu_button("Add component", |ui| {
         let mut any = false;
-        for schema in document.registry.iter() {
-            let everyone_has = selected
-                .iter()
-                .all(|&e| document.area().get(e).is_none_or(|d| d.has(&schema.name)));
-            if everyone_has {
-                continue;
-            }
-            any = true;
-            if ui
-                .button(&schema.name)
-                .on_hover_text(&schema.help)
-                .clicked()
-            {
-                picked = Some(schema.name.clone());
-                ui.close();
+        // In two groups: Solis's own, then the game's code (the ready-made
+        // kit's and yours), each by name.
+        let builtin = area::builtin::registry().ok();
+        let is_builtin = |name: &str| builtin.as_ref().is_some_and(|r| r.get(name).is_some());
+        for (heading, own) in [("Built in", true), ("Game code", false)] {
+            let mut headed = false;
+            for schema in document.registry.iter() {
+                if is_builtin(&schema.name) != own {
+                    continue;
+                }
+                let everyone_has = selected
+                    .iter()
+                    .all(|&e| document.area().get(e).is_none_or(|d| d.has(&schema.name)));
+                if everyone_has {
+                    continue;
+                }
+                if !headed {
+                    headed = true;
+                    if any {
+                        ui.separator();
+                    }
+                    ui.label(RichText::new(heading).color(theme::TEXT_WEAK).size(11.0));
+                }
+                any = true;
+                if ui
+                    .button(&schema.name)
+                    .on_hover_text(&schema.help)
+                    .clicked()
+                {
+                    picked = Some(schema.name.clone());
+                    ui.close();
+                }
             }
         }
         if !any {

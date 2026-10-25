@@ -96,6 +96,9 @@ pub(crate) struct Console {
     pub(crate) swallow_quote: bool,
     /// The choices Tab found, shown above the command line.
     pub(crate) choices: Vec<String>,
+    /// The message clicked, shown in full under the list until it's
+    /// clicked again (one row is often too short for a whole message).
+    pub(crate) reading: Option<LogLine>,
 }
 
 /// What the command line asks the editor to do.
@@ -269,7 +272,45 @@ pub(crate) fn console(
         .frame(egui::Frame::NONE)
         .show(ui, |ui| command_line(ui, console))
         .inner;
+    // The message clicked, in full, above the command line.
+    if let Some(line) = console.reading.clone() {
+        egui::Panel::bottom("console reading")
+            .resizable(true)
+            .default_size(72.0)
+            .frame(egui::Frame::new().inner_margin(egui::Margin::symmetric(8, 4)))
+            .show(ui, |ui| {
+                ui.horizontal(|ui| {
+                    ui.label(
+                        RichText::new(&line.time)
+                            .monospace()
+                            .color(theme::TEXT_TIME),
+                    );
+                    ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
+                        if ui.small_button("Close").clicked() {
+                            console.reading = None;
+                        }
+                        if ui.small_button("Copy").clicked() {
+                            ui.ctx().copy_text(line.text.clone());
+                        }
+                    });
+                });
+                egui::ScrollArea::vertical()
+                    .auto_shrink(false)
+                    .show(ui, |ui| {
+                        ui.add(
+                            egui::Label::new(
+                                RichText::new(&line.text)
+                                    .monospace()
+                                    .color(line.level.color()),
+                            )
+                            .wrap()
+                            .selectable(true),
+                        );
+                    });
+            });
+    }
     let shown: Vec<&LogLine> = console.shown().collect();
+    let mut clicked = None;
     egui::Frame::new()
         .inner_margin(egui::Margin::symmetric(6, 4))
         .show(ui, |ui| {
@@ -279,10 +320,20 @@ pub(crate) fn console(
                 .stick_to_bottom(true)
                 .show_rows(ui, CONSOLE_ROW, shown.len(), |ui, rows| {
                     for line in &shown[rows] {
-                        console_line(ui, line);
+                        let chosen = console.reading.as_ref() == Some(*line);
+                        if console_line(ui, line, chosen).clicked() {
+                            clicked = Some((*line).clone());
+                        }
                     }
                 });
         });
+    if let Some(line) = clicked {
+        console.reading = if console.reading.as_ref() == Some(&line) {
+            None
+        } else {
+            Some(line)
+        };
+    }
     request
 }
 
@@ -447,11 +498,25 @@ pub(crate) fn level_filter(
 }
 
 /// One console message: the time, the level's icon and the text.
-pub(crate) fn console_line(ui: &mut Ui, line: &LogLine) {
-    let (row, _) = ui.allocate_exact_size(
+/// Clickable (to read it in full), and marked when it's the one being
+/// read.
+fn console_line(ui: &mut Ui, line: &LogLine, chosen: bool) -> egui::Response {
+    let (row, response) = ui.allocate_exact_size(
         egui::vec2(ui.available_width(), CONSOLE_ROW),
-        egui::Sense::hover(),
+        egui::Sense::click(),
     );
+    if chosen || response.hovered() {
+        ui.painter().rect_filled(
+            row,
+            2.0,
+            ui.visuals()
+                .widgets
+                .hovered
+                .weak_bg_fill
+                .gamma_multiply(if chosen { 1.0 } else { 0.5 }),
+        );
+    }
+    let response = response.on_hover_text("Click to read it in full");
     let mut row_ui = ui.new_child(
         egui::UiBuilder::new()
             .max_rect(row)
@@ -474,6 +539,8 @@ pub(crate) fn console_line(ui: &mut Ui, line: &LogLine) {
                 .monospace()
                 .color(line.level.color()),
         )
-        .truncate(),
+        .truncate()
+        .selectable(false),
     );
+    response
 }

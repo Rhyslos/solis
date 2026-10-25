@@ -14,6 +14,11 @@ const OWN: &[&str] = &[
     "app", "editor", "render", "assets", "asset_db", "area", "reflect", "world",
 ];
 
+/// Libraries whose warnings say nothing a game maker can act on (the
+/// file window's library noting which way it opened, the window library
+/// noting keyboard details): only their errors are shown.
+const QUIET: &[&str] = &["rfd", "egui_winit"];
+
 /// How serious a message is, as the Console shows it.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub enum Level {
@@ -79,12 +84,11 @@ struct Logger {
 
 /// Whether a message from `target` at `level` is shown.
 fn wanted(target: &str, level: log::Level) -> bool {
+    let krate = target.split("::").next().unwrap_or(target);
     match level {
-        log::Level::Error | log::Level::Warn => true,
-        log::Level::Info => {
-            let krate = target.split("::").next().unwrap_or(target);
-            OWN.contains(&krate)
-        }
+        log::Level::Error => true,
+        log::Level::Warn => !QUIET.contains(&krate),
+        log::Level::Info => OWN.contains(&krate),
         log::Level::Debug | log::Level::Trace => false,
     }
 }
@@ -176,12 +180,22 @@ mod tests {
             format_args!("picked"),
         ));
         logger.log(&record("render", log::Level::Debug, format_args!("detail")));
+        // The user test: the file window's and window library's warnings
+        // filled the Console with nothing to act on; their errors stay.
+        logger.log(&record(
+            "rfd::backend::xdg_desktop_portal",
+            log::Level::Warn,
+            format_args!("using zenity"),
+        ));
+        logger.log(&record("egui_winit", log::Level::Warn, format_args!("ime")));
+        logger.log(&record("rfd", log::Level::Error, format_args!("no window")));
         assert_eq!(
             messages.take(),
             [
                 (Level::Warning, "wgpu_core: slow".to_string()),
                 (Level::Error, "naga: bad shader".to_string()),
                 (Level::Info, "picked".to_string()),
+                (Level::Error, "rfd: no window".to_string()),
             ]
         );
         assert!(messages.take().is_empty(), "taken once");

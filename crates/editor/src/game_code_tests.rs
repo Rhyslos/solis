@@ -1602,3 +1602,43 @@ fn scale_check_1000_bodies_falling_into_a_pile() {
         8.0,
     );
 }
+
+#[test]
+fn properties_shows_game_code_s_values_as_they_are_while_playing() {
+    // The user test: while playing, Properties showed the values a
+    // component started with, so `steps` stayed 0 however long it ran.
+    let (mut w, id) = with_a_mover();
+    w.select(id);
+    w.play();
+    for _ in 0..30 {
+        w.run_game(1.0 / 60.0);
+    }
+    // Paused, so the frames drawn below don't run it on.
+    w.pause();
+    let steps = w
+        .playing
+        .as_mut()
+        .unwrap()
+        .game
+        .as_mut()
+        .unwrap()
+        .values(id, "Mover")
+        .unwrap()
+        .get("steps")
+        .cloned();
+    let Some(Value::Int(steps)) = steps else {
+        panic!("{steps:?}");
+    };
+    assert!(steps >= 29, "{steps}");
+    use egui_kittest::kittest::Queryable;
+    let mut h = harness(w);
+    h.run();
+    assert!(
+        h.query_by_label_contains("game code's values are shown as they are now")
+            .is_some()
+    );
+    assert!(
+        h.query_all_by_value(&steps.to_string()).next().is_some(),
+        "steps {steps} shown"
+    );
+}
