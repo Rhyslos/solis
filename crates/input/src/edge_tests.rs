@@ -15,7 +15,6 @@ fn many(count: usize, inputs: usize) -> Bindings {
         actions: (0..count)
             .map(|n| Action::button(&format!("A{n}"), &keys))
             .collect(),
-        ..Bindings::default()
     }
 }
 
