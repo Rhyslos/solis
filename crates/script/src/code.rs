@@ -615,14 +615,23 @@ mod tests {
             "object Ship {}\nobject Ship {}\nend\n",
         ] {
             let problems = check(vec![("main.lst", text)]).unwrap_err();
-            assert!(problems[0].message.contains("already something called"), "{problems:?}");
+            assert!(
+                problems[0].message.contains("already something called"),
+                "{problems:?}"
+            );
         }
         let problems = check(vec![
-            ("main.lst", "fetch \"other\":[Health];\ncomponent Health {}\nend\n"),
+            (
+                "main.lst",
+                "fetch \"other\":[Health];\ncomponent Health {}\nend\n",
+            ),
             ("other.lst", "\n\ncomponent Health {}\nend\n"),
         ])
         .unwrap_err();
-        assert_eq!((problems[0].file.as_str(), problems[0].line), ("other.lst", 3));
+        assert_eq!(
+            (problems[0].file.as_str(), problems[0].line),
+            ("other.lst", 3)
+        );
         // In comments and strings, and other names, it's fine.
         let fine = vec![(
             "main.lst".to_string(),
