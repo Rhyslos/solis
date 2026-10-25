@@ -80,11 +80,6 @@ impl Waiting {
         Some(event)
     }
 
-    /// How many events are waiting.
-    pub(crate) fn len(&self) -> usize {
-        self.events.len()
-    }
-
     /// Drops every waiting event.
     pub(crate) fn clear(&mut self) {
         self.events.clear();

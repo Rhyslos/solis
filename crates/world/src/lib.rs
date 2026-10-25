@@ -81,6 +81,8 @@ pub struct World {
     unsettled: Vec<usize>,
     /// Each name's first entity in `order`, for [`World::find`].
     names: HashMap<String, usize>,
+    /// Goes up whenever the entities, their order or their names change.
+    revision: u64,
     /// Entities the game moved ([`World::set_transform`]), with the
     /// area's Transform for them when it first did: while the area still
     /// has that one, the game's place is kept, even when the world is
@@ -129,6 +131,7 @@ impl World {
             ends: Vec::new(),
             unsettled: Vec::new(),
             names: HashMap::new(),
+            revision: 0,
             game_moved: HashMap::new(),
         };
         world.index();
@@ -149,6 +152,9 @@ impl World {
             }
         }
         self.ends = ends;
+        // Unique across worlds, so a world built again never repeats one.
+        static REVISIONS: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(1);
+        self.revision = REVISIONS.fetch_add(1, std::sync::atomic::Ordering::Relaxed);
         self.names.clear();
         for (at, &(entity, _)) in self.order.iter().enumerate() {
             if let Ok(name) = self.ecs.get::<&Name>(entity) {
@@ -350,6 +356,40 @@ impl World {
                 }
             }
             done = end;
+        }
+    }
+
+    /// Changes whenever the entities, their order or their names change
+    /// (not when they move), never repeating, even in a world built again:
+    /// what [`Self::entities`] gives is the same while it is.
+    pub fn revision(&self) -> u64 {
+        self.revision
+    }
+
+    /// Every entity, with its name, in the area's tree order: entity
+    /// number `i` here is number `i` in [`Self::globals`] (`None` only for
+    /// an entity somehow without its ID).
+    pub fn entities(&self) -> Vec<Option<(EntityId, String)>> {
+        self.order
+            .iter()
+            .map(|&(entity, _)| {
+                let e = self.ecs.entity(entity).ok()?;
+                let id = e.get::<&Id>()?.0;
+                let name = e.get::<&Name>().map(|n| n.0.clone()).unwrap_or_default();
+                Some((id, name))
+            })
+            .collect()
+    }
+
+    /// Where every entity is in the world, in the area's tree order (as
+    /// [`Self::entities`]), into `out`.
+    pub fn globals(&self, out: &mut Vec<Mat4>) {
+        out.clear();
+        out.resize(self.order.len(), Mat4::IDENTITY);
+        for (place, global) in self.ecs.query::<(&Place, &Global)>().iter() {
+            if let Some(slot) = out.get_mut(place.0) {
+                *slot = global.0;
+            }
         }
     }
 

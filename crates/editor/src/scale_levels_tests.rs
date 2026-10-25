@@ -102,20 +102,18 @@ fn cpu_frame(units: usize, frames: usize) -> (f64, [f64; 5]) {
     for _ in 0..frames {
         h.step();
     }
+    let running = h
+        .state_mut()
+        .0
+        .playing
+        .as_mut()
+        .unwrap()
+        .game
+        .as_mut()
+        .unwrap()
+        .len();
+    assert_eq!(running, units, "every ship runs");
     let profiler = &h.state().0.profiler;
-    assert_eq!(
-        h.state()
-            .0
-            .playing
-            .as_ref()
-            .unwrap()
-            .game
-            .as_ref()
-            .unwrap()
-            .len(),
-        units,
-        "every ship runs"
-    );
     let average = profiler.average(frames).expect("frames measured");
     (average.cpu_total(), average.cpu)
 }
