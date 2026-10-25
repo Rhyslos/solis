@@ -1,26 +1,29 @@
-//! Running game code: the Lua the Lust compiler made, in Luau
-//! ([decision 0028](../../../docs/decisions/0028-lust-runs-as-luau-while-editing.md)).
+//! Running game code ([decision 0028](../../../docs/decisions/0028-lust-runs-as-luau-while-editing.md)):
+//! the Lua the Lust compiler made, the game's Lua components, and its Rust
+//! components, together.
 //!
-//! A [`Runtime`] loads one program and holds its running components, one
-//! per entity and component name. Each tick runs every component's
-//! `update`, entities in ID order and components in name order (LUST.md
-//! §21), so a game runs the same way every time. The native methods
-//! (`say`, `moveTo`) reach the game through a [`Host`], lent for exactly
-//! one call, so game code never holds on to the world. After the updates,
-//! the tick's events are delivered (see [`crate::events`]). Components
-//! written in Rust ([`RustKind`]) run alongside, in the same order.
+//! A [`Runtime`] loads the game's code into one Luau and holds its running
+//! components, one per entity and component name. Each tick runs every
+//! component's `update`, entities in ID order and components in name
+//! order (LUST.md §21), so a game runs the same way every time, then
+//! delivers the events they sent (see [`crate::events`]). The native
+//! methods (`say`, `moveTo`) reach the game through a [`Host`], lent for
+//! exactly one call or tick, so game code never holds on to the world.
 //!
 //! Game code can't reach files, programs or the network (Luau has no such
 //! libraries), can use at most [`MEMORY_LIMIT`] bytes, and is stopped if
 //! one call runs longer than [`TIME_LIMIT`].
 
-use crate::code::CodeProblem;
-use crate::convert::{empty, from_lua, kind_of, label, to_lua};
-use crate::events::{Event, EventKinds, MAX_DELIVERIES, Queue, read_events, sender, values_table};
-use crate::host::{Host, Lent, call_with, limited, with_natives};
-use crate::rust_component::{Context, RustComponent, RustKind};
+use crate::code::{CodeProblem, Compiled};
+use crate::convert::{from_lua, to_lua};
+use crate::events::{EventKinds, Queue, sender};
+use crate::host::{Host, call_with, with_natives};
+use crate::lua_components::{Field, LuaClass, PRELUDE, make, read_classes, swap_classes};
+use crate::lust_program::{LustProgram, changes, located, prepare};
+use crate::rust_component::RustKind;
+use crate::ticking::{Instance, Running, RunningMap, Ticking};
 use mlua::{Lua, Table, Value as LuaValue};
-use reflect::{ComponentData, ComponentSchema, EntityId, FieldInfo, FieldKind};
+use reflect::{ComponentData, ComponentSchema, EntityId};
 use std::cell::{Cell, RefCell};
 use std::collections::{BTreeMap, VecDeque};
 use std::rc::Rc;
@@ -31,7 +34,7 @@ pub const MEMORY_LIMIT: usize = 64 << 20;
 /// The longest one call into game code may run before it's stopped.
 pub const TIME_LIMIT: Duration = Duration::from_millis(100);
 
-/// A failure while game code ran: which component, and where in the Lust.
+/// A failure while game code ran: which component, and where in the code.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Failure {
     /// The entity whose component failed (none while the program's own
@@ -39,7 +42,7 @@ pub struct Failure {
     pub entity: Option<EntityId>,
     /// The component (empty while the program's own start ran).
     pub component: String,
-    /// Where in the Lust, and why.
+    /// Where in the code, and why.
     pub at: CodeProblem,
     /// Whether the component stopped (a failure handling an event leaves
     /// it running: the sender's values may have been wrong).
@@ -71,59 +74,31 @@ pub struct Swapped {
     pub notes: Vec<String>,
 }
 
-/// A field as Lust keeps it: its key in the component's table, and kind.
-#[derive(Debug, Clone, PartialEq)]
-struct Field {
-    key: String,
-    name: String,
-    kind: FieldKind,
-}
-
-/// What a running component is.
-enum Instance {
-    /// Lust's: its table in Luau.
-    Lust(Table),
-    /// Written in Rust.
-    Rust(Box<dyn RustComponent>),
-}
-
-/// One running component.
-struct Running {
-    instance: Instance,
-    /// The area's values it was last given, to send only what changes.
-    seen: ComponentData,
-    /// Stopped after a failure, until the code changes.
-    stopped: bool,
-}
-
-/// The loaded program.
-struct Program {
-    api: Table,
-    chunk: lust::LuaChunk,
-    fields: BTreeMap<String, Vec<Field>>,
-    schemas: Vec<ComponentSchema>,
-    /// What each declared event carries.
-    events: Rc<EventKinds>,
-    /// `send_event`, which Lust's `send` calls.
-    send: mlua::Function,
-}
-
 /// Game code, loaded and running.
 pub struct Runtime {
     lua: Lua,
-    program: Option<Program>,
-    running: BTreeMap<(EntityId, String), Running>,
+    /// The game's Lust, if it has any.
+    lust: Option<LustProgram>,
+    /// The game's Lua components, by name.
+    lua_classes: BTreeMap<String, LuaClass>,
+    /// The kinds of Rust component the game has, by name.
+    rust: BTreeMap<String, RustKind>,
+    running: RunningMap,
     deadline: Rc<Cell<Option<Instant>>>,
     /// Events on their way this tick.
     queue: Queue,
-    /// The kinds of Rust component the game has, by name.
-    rust: BTreeMap<String, RustKind>,
+    /// What each event the Lust declares carries, for `send_event`.
+    kinds: Rc<RefCell<Rc<EventKinds>>>,
+    /// `send_event`, which Lust's `send` and Lua's `solis.send` call
+    /// (none only if Luau couldn't make it, out of memory at the start).
+    send: Option<mlua::Function>,
 }
 
 impl std::fmt::Debug for Runtime {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
         f.debug_struct("Runtime")
-            .field("loaded", &self.program.is_some())
+            .field("lust", &self.lust.is_some())
+            .field("lua", &self.lua_classes.len())
             .field("running", &self.running.len())
             .finish_non_exhaustive()
     }
@@ -145,13 +120,22 @@ impl Runtime {
             }
             Ok(mlua::VmState::Continue)
         });
+        // Both are Solis's own, tested code: failing here is a bug the
+        // tests catch, and the runtime then simply has no Lua side.
+        let _ = lua.load(PRELUDE).set_name("=solis").exec();
+        let queue: Queue = Rc::new(RefCell::new(VecDeque::new()));
+        let kinds = Rc::new(RefCell::new(Rc::new(EventKinds::new())));
+        let send = sender(&lua, &queue, Rc::clone(&kinds)).ok();
         Self {
             lua,
-            program: None,
+            lust: None,
+            lua_classes: BTreeMap::new(),
+            rust: BTreeMap::new(),
             running: BTreeMap::new(),
             deadline,
-            queue: Rc::new(RefCell::new(VecDeque::new())),
-            rust: BTreeMap::new(),
+            queue,
+            kinds,
+            send,
         }
     }
 
@@ -160,134 +144,110 @@ impl Runtime {
         self.rust.insert(kind.schema.name.clone(), kind);
     }
 
-    /// Loads `chunk` (the Lua the Lust compiler made), running the
-    /// program's own start, and reads its components. Anything running is
-    /// dropped. On a failure nothing is loaded.
-    pub fn load(&mut self, chunk: &lust::LuaChunk, host: &mut dyn Host) -> Result<(), Failure> {
+    /// Loads the game's code: the Lust (its own start runs) and the Lua
+    /// files, reading their components. Anything running is dropped. On a
+    /// failure nothing is loaded.
+    pub fn load(&mut self, code: &Compiled, host: &mut dyn Host) -> Result<(), Failure> {
         self.running.clear();
-        self.program = None;
+        self.lust = None;
+        self.lua_classes.clear();
         self.queue.borrow_mut().clear();
-        self.program = Some(self.prepare(chunk, host)?);
+        let (lust, classes) = self.prepare(code, host)?;
+        self.commit(lust, classes);
         Ok(())
     }
 
     /// Swaps new code into the running game (LUST.md §21, `swap`): every
-    /// running Lust component gets the new code in place, keeping each
-    /// field's value by name (a field whose kind changed, or a new one,
-    /// takes its starting value). Components gone from the code stop.
-    /// Stopped components run again, since the code changed. On a
-    /// failure (the new code's start fails) the old code keeps running.
-    /// With nothing loaded, it's a [`Self::load`] that keeps Rust
-    /// components running.
-    pub fn swap(
-        &mut self,
-        chunk: &lust::LuaChunk,
-        host: &mut dyn Host,
-    ) -> Result<Swapped, Failure> {
-        let Some(old) = self.program.as_ref().map(|p| p.api.clone()) else {
-            self.program = Some(self.prepare(chunk, host)?);
-            return Ok(Swapped {
-                added: self.schemas().iter().map(|s| s.name.clone()).collect(),
-                ..Swapped::default()
-            });
-        };
-        let program = self.prepare(chunk, host)?;
+    /// running Lust and Lua component gets the new code in place, keeping
+    /// each field's value by name (a field whose kind changed, or a new
+    /// one, takes its starting value). Components gone from the code stop.
+    /// Stopped components run again, since the code changed. On a failure
+    /// (the new code's start fails) the old code keeps running. Rust
+    /// components carry on.
+    pub fn swap(&mut self, code: &Compiled, host: &mut dyn Host) -> Result<Swapped, Failure> {
+        let (lust, classes) = self.prepare(code, host)?;
         let failed = |err: mlua::Error| Failure {
             entity: None,
             component: String::new(),
-            at: located(chunk, &err),
+            at: crate::lua_components::lua_problem("", &err),
             stopped: false,
         };
         let mut swapped = Swapped::default();
-        let changes: Table = program
-            .api
-            .get::<mlua::Function>("changes")
-            .and_then(|f| f.call(old))
-            .map_err(failed)?;
-        for (what, list) in [
-            ("changed", &mut swapped.changed),
-            ("removed", &mut swapped.removed),
-            ("added", &mut swapped.added),
-        ] {
-            let names: Table = changes.get(what).map_err(failed)?;
-            *list = names
-                .sequence_values::<String>()
-                .collect::<Result<_, _>>()
-                .map_err(failed)?;
-        }
-        let swap: mlua::Function = program.api.get("swap").map_err(failed)?;
-        let mut gone = Vec::new();
-        for (key, running) in &mut self.running {
-            let Instance::Lust(table) = &running.instance else {
-                continue;
-            };
-            let (now, notes): (LuaValue, Table) = swap.call(table.clone()).map_err(failed)?;
-            for note in notes.sequence_values::<String>() {
-                swapped.notes.push(note.map_err(failed)?);
+        match (&self.lust, &lust) {
+            (Some(old), Some(new)) => {
+                changes(new, old.api.clone(), &mut swapped).map_err(failed)?;
+                let swap: mlua::Function = new.api.get("swap").map_err(failed)?;
+                let mut gone = Vec::new();
+                for (key, running) in &mut self.running {
+                    let Instance::Lust(table) = &running.instance else {
+                        continue;
+                    };
+                    let (now, notes): (LuaValue, Table) =
+                        swap.call(table.clone()).map_err(failed)?;
+                    for note in notes.sequence_values::<String>() {
+                        swapped.notes.push(note.map_err(failed)?);
+                    }
+                    if now.is_nil() {
+                        gone.push(key.clone());
+                    }
+                    running.stopped = false;
+                }
+                for key in gone {
+                    self.running.remove(&key);
+                }
             }
-            if now.is_nil() {
-                gone.push(key.clone());
+            (None, Some(new)) => swapped.added.extend(new.fields.keys().cloned()),
+            (Some(old), None) => {
+                swapped.removed.extend(old.fields.keys().cloned());
+                self.running
+                    .retain(|_, r| !matches!(r.instance, Instance::Lust(_)));
             }
-            running.stopped = false;
+            (None, None) => {}
         }
-        for key in gone {
-            self.running.remove(&key);
-        }
+        swap_classes(
+            &self.lua,
+            &self.lua_classes,
+            &classes,
+            &mut self.running,
+            &mut swapped,
+        )
+        .map_err(failed)?;
         self.queue.borrow_mut().clear();
-        self.program = Some(program);
+        self.commit(lust, classes);
         Ok(swapped)
     }
 
-    /// Stops the game's Lust: its components stop and its code goes (the
-    /// code was deleted). Rust components carry on.
+    /// Stops the game's Lust and Lua: their components stop and their code
+    /// goes (the code was deleted). Rust components carry on.
     pub fn unload(&mut self) {
-        self.program = None;
+        self.lust = None;
+        self.lua_classes.clear();
+        *self.kinds.borrow_mut() = Rc::new(EventKinds::new());
         self.running
             .retain(|_, running| matches!(running.instance, Instance::Rust(_)));
     }
 
-    /// Evaluates `chunk` in this runtime's Luau (its own start runs), and
-    /// reads its components and events.
-    fn prepare(&self, chunk: &lust::LuaChunk, host: &mut dyn Host) -> Result<Program, Failure> {
-        let failed = |err: mlua::Error| Failure {
-            entity: None,
-            component: String::new(),
-            at: located(chunk, &err),
-            stopped: true,
-        };
-        // Sends during the program's own start go nowhere: nothing runs yet.
-        let api: Table = call_with(&self.lua, &self.deadline, host, None, || {
-            self.lua
-                .load(&chunk.code)
-                .set_name(lust::LuaChunk::NAME)
-                .eval()
-        })
-        .map_err(failed)?;
-        let (fields, schemas) = self.read_components(&api).map_err(failed)?;
-        let events = Rc::new(read_events(&api).map_err(failed)?);
-        let send = sender(&self.lua, &self.queue, Rc::clone(&events)).map_err(failed)?;
-        Ok(Program {
-            api,
-            chunk: chunk.clone(),
-            fields,
-            schemas,
-            events,
-            send,
-        })
+    /// The game code's components (Lust and Lua), as the editor shows
+    /// them, sorted by name. Rust components' schemas come with their
+    /// kinds.
+    pub fn schemas(&self) -> Vec<ComponentSchema> {
+        let mut all: Vec<ComponentSchema> = self
+            .lust
+            .iter()
+            .flat_map(|p| p.schemas.iter().cloned())
+            .chain(self.lua_classes.values().map(|c| c.schema.clone()))
+            .collect();
+        all.sort_by(|a, b| a.name.cmp(&b.name));
+        all
     }
 
-    /// The loaded program's components, as the editor shows them, sorted
-    /// by name (none if nothing is loaded).
-    pub fn schemas(&self) -> &[ComponentSchema] {
-        self.program.as_ref().map_or(&[], |p| &p.schemas)
-    }
-
-    /// Whether there's a component called `name` to run: the loaded
-    /// program's, or a Rust one.
+    /// Whether there's a component called `name` to run: the Lust's, a Lua
+    /// one, or a Rust one.
     pub fn has_component(&self, name: &str) -> bool {
         self.rust.contains_key(name)
+            || self.lua_classes.contains_key(name)
             || self
-                .program
+                .lust
                 .as_ref()
                 .is_some_and(|p| p.fields.contains_key(name))
     }
@@ -333,52 +293,56 @@ impl Runtime {
                 None => {
                     let made = (kind.make)(data);
                     self.running
-                        .insert(key, running(Instance::Rust(made), data));
+                        .insert(key, Running::new(Instance::Rust(made), data));
                 }
             }
             return Ok(());
         }
-        let Some(program) = &self.program else {
-            return Ok(());
-        };
-        let Some(fields) = program.fields.get(name) else {
-            return Ok(());
-        };
-        let fail = |err: mlua::Error| Failure {
+        let fail = |at: CodeProblem| Failure {
             entity: Some(entity),
             component: name.to_string(),
-            at: located(&program.chunk, &err),
+            at,
             stopped: true,
         };
+        let lua_class = self.lua_classes.get(name);
+        let lust = self.lust.as_ref();
+        let locate = |err: mlua::Error| match (lua_class, lust) {
+            (None, Some(program)) => located(&program.chunk, &err),
+            _ => crate::lua_components::lua_problem("", &err),
+        };
+        let Some(fields) = lua_class
+            .map(|c| &c.fields)
+            .or_else(|| lust.and_then(|p| p.fields.get(name)))
+        else {
+            return Ok(());
+        };
         if let Some(running) = self.running.get_mut(&key) {
-            if let Instance::Lust(table) = &running.instance {
+            if let Instance::Lust(table) | Instance::Lua(table) = &running.instance {
                 for field in fields {
                     let now = data.get(&field.name);
                     if now != running.seen.get(&field.name)
                         && let Some(value) = now.and_then(|v| to_lua(&self.lua, &field.kind, v))
                     {
-                        table.set(field.key.as_str(), value).map_err(fail)?;
+                        table
+                            .set(field.key.as_str(), value)
+                            .map_err(|e| fail(locate(e)))?;
                     }
                 }
             }
             running.seen = data.clone();
             return Ok(());
         }
-        let new: mlua::Function = program.api.get("new").map_err(fail)?;
-        let table: Table = call_with(&self.lua, &self.deadline, host, Some(&program.send), || {
-            new.call((name, entity.to_string()))
-        })
-        .map_err(fail)?;
-        for field in fields {
-            if let Some(value) = data
-                .get(&field.name)
-                .and_then(|v| to_lua(&self.lua, &field.kind, v))
-            {
-                table.set(field.key.as_str(), value).map_err(fail)?;
+        let instance = match (lua_class, lust) {
+            (Some(class), _) => {
+                Instance::Lua(make(&self.lua, class, entity, data).map_err(|e| fail(locate(e)))?)
             }
-        }
-        self.running
-            .insert(key, running(Instance::Lust(table), data));
+            (None, Some(program)) => Instance::Lust(
+                self.make_lust(program, fields, entity, name, data, host)
+                    .map_err(|e| fail(locate(e)))?,
+            ),
+            (None, None) => return Ok(()),
+        };
+        self.running.insert(key, Running::new(instance, data));
         Ok(())
     }
 
@@ -391,11 +355,11 @@ impl Runtime {
     /// The fields of `entity`'s running component `name`, as they are now.
     pub fn values(&self, entity: EntityId, name: &str) -> Option<ComponentData> {
         let running = self.running.get(&(entity, name.to_string()))?;
-        let table = match &running.instance {
+        let (table, fields) = match &running.instance {
             Instance::Rust(component) => return Some(component.values()),
-            Instance::Lust(table) => table,
+            Instance::Lua(table) => (table, &self.lua_classes.get(name)?.fields),
+            Instance::Lust(table) => (table, self.lust.as_ref()?.fields.get(name)?),
         };
-        let fields = self.program.as_ref()?.fields.get(name)?;
         let mut data = ComponentData::default();
         for field in fields {
             if let Ok(raw) = table.get::<LuaValue>(field.key.as_str())
@@ -413,18 +377,17 @@ impl Runtime {
     /// and its failure is given back; the others carry on.
     pub fn tick(&mut self, dt: f64, host: &mut dyn Host) -> Vec<Failure> {
         let mut failures = Vec::new();
-        let program = self.program.as_ref();
         let ticking = Ticking {
             lua: &self.lua,
             deadline: &self.deadline,
             queue: &self.queue,
-            chunk: program.map(|p| &p.chunk),
-            events: program.map(|p| &*p.events),
+            chunk: self.lust.as_ref().map(|p| &p.chunk),
+            events: self.lust.as_ref().map(|p| &*p.events),
         };
         let running = &mut self.running;
         // The natives are lent once for the whole tick; the time limit
         // watches each component's update on its own.
-        let lent = with_natives(&self.lua, host, program.map(|p| &p.send), |lent| {
+        let lent = with_natives(&self.lua, host, self.send.as_ref(), |lent| {
             for ((entity, name), component) in running.iter_mut() {
                 if !component.stopped
                     && let Err(at) = ticking.update(lent, *entity, component, dt)
@@ -452,259 +415,92 @@ impl Runtime {
         failures
     }
 
-    /// Each component's fields, and its schema for the editor (starting
-    /// values from a new one).
-    #[allow(clippy::type_complexity)]
-    fn read_components(
+    /// The Lust and Lua of `code`, loaded in this runtime's Luau but not
+    /// yet in use, with their component names checked against each other
+    /// and the Rust ones.
+    fn prepare(
         &self,
-        api: &Table,
-    ) -> mlua::Result<(BTreeMap<String, Vec<Field>>, Vec<ComponentSchema>)> {
-        let components: Table = api.get("components")?;
-        let new: mlua::Function = api.get("new")?;
-        let mut fields = BTreeMap::new();
-        let mut schemas = Vec::new();
-        for pair in components.pairs::<String, Table>() {
-            let (name, class) = pair?;
-            let mut mine = Vec::new();
-            let mut infos = Vec::new();
-            let fresh: Table = new.call((name.as_str(), LuaValue::Nil))?;
-            let schema: Table = class.get("__schema")?;
-            for entry in schema.sequence_values::<Table>() {
-                let entry = entry?;
-                let key: String = entry.get(1)?;
-                let field_name: String = entry.get(2)?;
-                let kind_name: String = entry.get(3)?;
-                let options: Vec<String> = match entry.get::<LuaValue>(4)? {
-                    LuaValue::Table(list) => {
-                        list.sequence_values::<String>().collect::<Result<_, _>>()?
-                    }
-                    _ => Vec::new(),
-                };
-                let Some(kind) = kind_of(&kind_name, options) else {
-                    continue;
-                };
-                let default = from_lua(&kind, &fresh.get::<LuaValue>(key.as_str())?)
-                    .unwrap_or_else(|| empty(&kind));
-                infos.push(FieldInfo::new(
-                    &field_name,
-                    &label(&field_name),
-                    kind.clone(),
-                    default,
-                ));
-                mine.push(Field {
-                    key,
-                    name: field_name,
-                    kind,
-                });
-            }
-            schemas.push(ComponentSchema {
-                name: name.clone(),
-                help: format!("{name}, from the game's code."),
-                fields: infos,
-            });
-            fields.insert(name, mine);
-        }
-        schemas.sort_by(|a, b| a.name.cmp(&b.name));
-        Ok((fields, schemas))
-    }
-}
-
-/// A newly made running component.
-fn running(instance: Instance, data: &ComponentData) -> Running {
-    Running {
-        instance,
-        seen: data.clone(),
-        stopped: false,
-    }
-}
-
-/// What a tick needs, apart from the running components.
-struct Ticking<'a> {
-    lua: &'a Lua,
-    deadline: &'a Cell<Option<Instant>>,
-    queue: &'a Queue,
-    chunk: Option<&'a lust::LuaChunk>,
-    events: Option<&'a EventKinds>,
-}
-
-impl Ticking<'_> {
-    /// Where in the game's code `err` came from.
-    fn located(&self, err: &mlua::Error) -> CodeProblem {
-        match self.chunk {
-            Some(chunk) => located(chunk, err),
-            None => CodeProblem {
-                file: String::new(),
-                line: 0,
-                column: 0,
-                message: err.to_string(),
-            },
-        }
-    }
-
-    /// Runs one component's `update`.
-    fn update(
-        &self,
-        lent: &Lent<'_, '_>,
-        me: EntityId,
-        component: &mut Running,
-        dt: f64,
-    ) -> Result<(), CodeProblem> {
-        match &mut component.instance {
-            Instance::Lust(table) => {
-                let update = match table.get::<LuaValue>("update") {
-                    Ok(LuaValue::Function(f)) => f,
-                    _ => return Ok(()),
-                };
-                let table = table.clone();
-                limited(self.deadline, || update.call::<()>((table, dt)))
-                    .map_err(|err| self.located(&err))
-            }
-            Instance::Rust(rust) => {
-                let mut host = lent.borrow_mut();
-                let mut cx = Context::new(me, &mut **host, self.queue);
-                caught(|| rust.update(&mut cx, dt))
-            }
-        }
-    }
-
-    /// Delivers the tick's events, in order, to each running component on
-    /// the entity, in order of their names; events sent meanwhile join the
-    /// end. A failure handling one is reported, and the component keeps
-    /// running. Past [`MAX_DELIVERIES`], the rest are dropped.
-    fn deliver(
-        &self,
-        lent: &Lent<'_, '_>,
-        running: &mut BTreeMap<(EntityId, String), Running>,
-    ) -> Vec<Failure> {
-        let mut failures = Vec::new();
-        let mut delivered = 0;
-        loop {
-            let Some(event) = self.queue.borrow_mut().pop_front() else {
-                break;
+        code: &Compiled,
+        host: &mut dyn Host,
+    ) -> Result<(Option<LustProgram>, BTreeMap<String, LuaClass>), Failure> {
+        let lust = match &code.lust {
+            Some(chunk) => Some(prepare(&self.lua, &self.deadline, host, chunk)?),
+            None => None,
+        };
+        let failed = |at: CodeProblem| Failure {
+            entity: None,
+            component: String::new(),
+            at,
+            stopped: true,
+        };
+        let classes = read_classes(&self.lua, &code.lua, |chunk| {
+            call_with(&self.lua, &self.deadline, host, None, || {
+                chunk.call::<()>(())
+            })
+        })
+        .map_err(failed)?;
+        for name in classes.keys() {
+            let clash = if self.rust.contains_key(name) {
+                Some("a Rust component")
+            } else if lust.as_ref().is_some_and(|p| p.fields.contains_key(name)) {
+                Some("a Lust component")
+            } else {
+                None
             };
-            if delivered >= MAX_DELIVERIES {
-                let dropped = self.queue.borrow().len() + 1;
-                self.queue.borrow_mut().clear();
-                failures.push(Failure {
-                    entity: Some(event.to),
-                    component: String::new(),
-                    at: CodeProblem {
-                        file: String::new(),
-                        line: 0,
-                        column: 0,
-                        message: format!(
-                            "more than {MAX_DELIVERIES} events were sent in one tick, so the last \
-                             {dropped} were dropped. Do components keep sending events to each \
-                             other?"
-                        ),
-                    },
-                    stopped: false,
-                });
-                break;
-            }
-            delivered += 1;
-            let from = (event.to, String::new());
-            for ((entity, name), component) in running.range_mut(from..) {
-                if *entity != event.to {
-                    break;
-                }
-                if component.stopped {
-                    continue;
-                }
-                if let Err(mut at) = self.handle(lent, *entity, component, &event) {
-                    at.message = format!("couldn't take the event {}: {}", event.name, at.message);
-                    failures.push(Failure {
-                        entity: Some(*entity),
-                        component: name.clone(),
-                        at,
-                        stopped: false,
-                    });
-                }
+            if let Some(other) = clash {
+                return Err(failed(CodeProblem {
+                    file: String::new(),
+                    line: 0,
+                    column: 0,
+                    message: format!(
+                        "the Lua component {name} has the same name as {other}; each needs a \
+                         name of its own"
+                    ),
+                }));
             }
         }
-        failures
+        Ok((lust, classes))
     }
 
-    /// Gives one component an event.
-    fn handle(
+    /// Puts prepared code in use.
+    fn commit(&mut self, lust: Option<LustProgram>, classes: BTreeMap<String, LuaClass>) {
+        *self.kinds.borrow_mut() = lust
+            .as_ref()
+            .map_or_else(|| Rc::new(EventKinds::new()), |p| Rc::clone(&p.events));
+        self.lust = lust;
+        self.lua_classes = classes;
+    }
+
+    /// A new Lust component (Lust's `new`, its start values), with the
+    /// area's values where they fit.
+    fn make_lust(
         &self,
-        lent: &Lent<'_, '_>,
-        me: EntityId,
-        component: &mut Running,
-        event: &Event,
-    ) -> Result<(), CodeProblem> {
-        match &mut component.instance {
-            Instance::Lust(table) => {
-                // Only events the Lust declares reach Lust components.
-                let Some(kinds) = self.events.and_then(|e| e.get(&event.name)) else {
-                    return Ok(());
-                };
-                let Some(values) = values_table(self.lua, kinds, &event.values) else {
-                    return Err(CodeProblem {
-                        file: String::new(),
-                        line: 0,
-                        column: 0,
-                        message: format!(
-                            "it carries {} values, not the {} it was declared with, or one of \
-                             the wrong kind",
-                            event.values.len(),
-                            kinds.len()
-                        ),
-                    });
-                };
-                let handle = match table.get::<LuaValue>("handle") {
-                    Ok(LuaValue::Function(f)) => f,
-                    _ => return Ok(()),
-                };
-                let table = table.clone();
-                let name = event.name.as_str();
-                limited(self.deadline, || handle.call::<bool>((table, name, values)))
-                    .map(|_| ())
-                    .map_err(|err| self.located(&err))
-            }
-            Instance::Rust(rust) => {
-                let mut host = lent.borrow_mut();
-                let mut cx = Context::new(me, &mut **host, self.queue);
-                caught(|| {
-                    rust.handle(&mut cx, event);
-                })
+        program: &LustProgram,
+        fields: &[Field],
+        entity: EntityId,
+        name: &str,
+        data: &ComponentData,
+        host: &mut dyn Host,
+    ) -> mlua::Result<Table> {
+        let new: mlua::Function = program.api.get("new")?;
+        let table: Table = call_with(&self.lua, &self.deadline, host, self.send.as_ref(), || {
+            new.call((name, entity.to_string()))
+        })?;
+        for field in fields {
+            if let Some(value) = data
+                .get(&field.name)
+                .and_then(|v| to_lua(&self.lua, &field.kind, v))
+            {
+                table.set(field.key.as_str(), value)?;
             }
         }
+        Ok(table)
     }
-}
-
-/// Runs a Rust component's code, turning a panic into a failure rather
-/// than a crash.
-fn caught(run: impl FnOnce()) -> Result<(), CodeProblem> {
-    std::panic::catch_unwind(std::panic::AssertUnwindSafe(run)).map_err(|why| {
-        let message = why
-            .downcast_ref::<&str>()
-            .map(|s| (*s).to_string())
-            .or_else(|| why.downcast_ref::<String>().cloned())
-            .unwrap_or_else(|| "it stopped unexpectedly".to_string());
-        CodeProblem {
-            file: String::new(),
-            line: 0,
-            column: 0,
-            message,
-        }
-    })
 }
 
 impl Default for Runtime {
     fn default() -> Self {
         Self::new()
-    }
-}
-
-/// Where in the Lust `err` came from.
-fn located(chunk: &lust::LuaChunk, err: &mlua::Error) -> CodeProblem {
-    let at = chunk.locate(&err.to_string());
-    CodeProblem {
-        file: at.file,
-        line: at.line.unwrap_or(0),
-        column: at.column.unwrap_or(0),
-        message: at.message,
     }
 }
 
@@ -719,3 +515,7 @@ mod events_tests;
 #[cfg(test)]
 #[path = "runtime_swap_tests.rs"]
 mod swap_tests;
+
+#[cfg(test)]
+#[path = "runtime_lua_tests.rs"]
+mod lua_tests;

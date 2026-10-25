@@ -69,9 +69,9 @@ The working plan for Phase 4 (ROADMAP.md, "Phase 4: Lust and Lua join"). It reco
 - **Measured:** a Lust edit is running in play mode within 2 seconds (a scale-check entry times saving to running).
 - Tests: a swap keeps values; a removed component stops; a mistake keeps the old code running.
 
-### M5. Lua components ☐
+### M5. Lua components ☑
 
-- `.lua` files describe components with the same face as the Lust chunk: fields with starting values, `update`, event handlers. The same inspector fields, ticks, events and natives, through the same runtime.
+- `.lua` files describe components with the same face as the Lust chunk: fields with starting values, `update`, event handlers. The same inspector fields, ticks, events and natives, through the same runtime. **Built as:** `component("Name", { { "speed", "float", 2 } })` returning a class, methods `Name:update(dt)` and `Name:on_Hit(...)`, natives under `solis.`, events with `solis.send(to, "Hit", ...)`, and `vec3(x, y, z)` for vectors.
 - A Lua edit takes effect at once while playing, swapped the same way.
 - Tests: a Lua component's fields in the registry; a Lua and a Lust component exchanging events.
 

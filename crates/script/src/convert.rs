@@ -154,3 +154,44 @@ pub(crate) fn from_lua(kind: &FieldKind, value: &LuaValue) -> Option<Value> {
         _ => return None,
     })
 }
+
+/// A Lua value as the editor's, guessing its kind (for an event no Lust
+/// declares, sent from Lua): a whole number is an int, a table with `x`,
+/// `y`, `z` (and `w`) a vector (or rotation), nil an empty entity.
+pub(crate) fn guessed(value: &LuaValue) -> Option<Value> {
+    Some(match value {
+        LuaValue::Nil => Value::Entity(None),
+        LuaValue::Boolean(b) => Value::Bool(*b),
+        LuaValue::Integer(n) => Value::Int(*n as i64),
+        LuaValue::Number(n) if n.is_finite() && n.fract() == 0.0 && n.abs() < 9.0e15 => {
+            Value::Int(*n as i64)
+        }
+        LuaValue::Number(n) if n.is_finite() => Value::Float(*n),
+        LuaValue::String(s) => Value::Text(s.to_str().ok()?.to_string()),
+        LuaValue::Table(t) => {
+            let has_w = !matches!(t.get::<LuaValue>("w").ok()?, LuaValue::Nil);
+            if has_w {
+                from_lua(&FieldKind::Rotation, value)?
+            } else {
+                from_lua(&FieldKind::Vec3, value)?
+            }
+        }
+        _ => return None,
+    })
+}
+
+/// An editor value as Lua takes it, by its own kind (for an event no Lust
+/// declares).
+pub(crate) fn guessed_to_lua(lua: &Lua, value: &Value) -> Option<LuaValue> {
+    let kind = match value {
+        Value::Bool(_) => FieldKind::Bool,
+        Value::Int(_) => FieldKind::Int,
+        Value::Float(_) => FieldKind::Float,
+        Value::Text(_) => FieldKind::Text,
+        Value::Entity(_) => FieldKind::Entity,
+        Value::List(items) if items.len() == 4 => FieldKind::Rotation,
+        Value::List(_) => FieldKind::Vec3,
+        Value::Asset(_) => return None,
+    };
+    to_lua(lua, &kind, value)
+}

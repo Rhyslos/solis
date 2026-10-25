@@ -18,12 +18,16 @@ pub struct Checked {
     pub notes: Vec<String>,
     /// With no mistakes, the program to run (`None`: there's no code).
     /// With mistakes, nothing: the last program that worked stays.
-    pub program: Option<Option<Arc<script::Chunk>>>,
+    pub program: Option<Option<Arc<script::Compiled>>>,
 }
 
 /// A worker's answer: the code's hash, what was read, and the program or
 /// its mistakes.
-type Answer = (u64, Code, Result<Option<script::Chunk>, Vec<CodeProblem>>);
+type Answer = (
+    u64,
+    Code,
+    Result<Option<script::Compiled>, Vec<CodeProblem>>,
+);
 
 /// One check at a time, and whether another is wanted after it.
 #[derive(Default)]
@@ -129,6 +133,7 @@ impl GameCode {
 fn hash(code: &Code) -> u64 {
     let mut hasher = std::collections::hash_map::DefaultHasher::new();
     code.files.hash(&mut hasher);
+    code.lua.hash(&mut hasher);
     code.notes.hash(&mut hasher);
     hasher.finish()
 }

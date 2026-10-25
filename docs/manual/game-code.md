@@ -10,7 +10,7 @@ Solis games can be written in three languages:
 - **Lua**, if you know it from Roblox or modding;
 - **Rust**, the language Solis itself is written in.
 
-**Right now:** Lust components work: they appear in Properties, run in play mode, and talk to each other through events. Rust components can join them, but for now only in a Solis built from source. Saving code while the game runs swaps it in at once. Lua components come with the next update of Phase 4.
+**Right now:** Lust and Lua components work: they appear in Properties, run in play mode, talk to each other through events, and take new code while the game runs. Rust components can join them, but for now only in a Solis built from source.
 
 ## How to use it
 1. Open a [project](projects-and-the-library.md). Solis puts a `solis` folder in its `assets`, holding `world.lst` and `entity.lst`. They describe what your code can ask of the engine, such as `say` (write in the Console) or `moveTo` (put an entity somewhere).
@@ -55,6 +55,20 @@ component Mover {
 pass Mover;
 end
 ```
+
+The same component in **Lua**, in any `.lua` file in `assets` (here `mover.lua`):
+
+```lua
+local Mover = component("Mover", {
+    { "speed", "float", 2 },
+})
+
+function Mover:update(dt)
+    solis.moveTo(self.me, solis.positionOf(self.me) + vec3(1, 0, 0) * self.speed * dt)
+end
+```
+
+`component` takes the name and the fields in order, each as `{ name, kind, starting value }` (a `state` also lists its options: `{ "mode", "state", "Single", { "Single", "Burst" } }`). The fields are `self.speed` and so on, the entity is `self.me`, the engine's methods are under `solis.`, and `vec3(x, y, z)` makes a vector you can add and scale. A Lua component works the same way as a Lust one from here on, and both can be in the same game.
 
 1. Save the file. When the code has no mistakes, **Mover** appears in Properties' **Add component** menu.
 2. Select an entity and add **Mover**. Its `has` fields show in Properties with their starting values (`speed` as **Speed**), and are saved in the area like any other component's.
@@ -129,6 +143,16 @@ end
 - **Lust checks** that every `send` carries what the event says, so a misspelt event or a missing value is a mistake in Problems before anything runs.
 - **Components that keep sending to each other** forever are stopped after 10,000 events in one tick, with a message in the Console, so the game can't freeze.
 
+**In Lua**, `solis.send(to, "Hit", by, 2.5)` sends an event, and a function called `on_` and the event's name reacts to it:
+
+```lua
+function Health:on_Hit(by, damage)
+    self.hp = self.hp - damage
+end
+```
+
+When the Lust declares the event, its values are checked against what it carries; Lua can also send events no Lust declares.
+
 **In Rust**, a component implements `script::RustComponent`, and takes and sends the same events by name. For now it's added to Solis with `Workbench::add_rust_component` in a Solis built from source; how a game's Rust is built in comes with building games, in Phase 10.
 
 ```rust
@@ -161,8 +185,9 @@ Other code files can sit in any folder in `assets`. Fetch them by their path fro
 ## Tips and common problems
 - **Problem:** Problems says the game's code starts at `main.lst` and there isn't one. **Why:** there are `.lst` files, but none is called `main.lst` in the `assets` folder itself. **Fix:** make `assets/main.lst`, and fetch your other files from it.
 - **Problem:** changes I made to `solis/world.lst` disappeared. **Why:** Solis writes the `solis` files again when the project opens, so they always match the engine. **Fix:** put your own code in your own files.
-- **Problem:** my component isn't in **Add component**. **Why:** the code has a mistake (see Problems), or the file it's in isn't fetched from `main.lst` (directly, or through a file `main.lst` fetches). **Fix:** fix the mistake, or fetch the file.
-- **Problem:** a component is called the same as one of Solis's (`Light`). **Why:** two components can't share a name. **Fix:** rename yours; Problems says which.
+- **Problem:** my component isn't in **Add component**. **Why:** the code has a mistake (see Problems), or its Lust file isn't fetched from `main.lst` (directly, or through a file `main.lst` fetches). Lua files are all read, wherever they are in `assets`. **Fix:** fix the mistake, or fetch the file.
+- **Problem:** "solis.moveTo isn't something Solis offers" in Lua. **Why:** the name is misspelt, or the method was used outside `update` or an `on_` function, when the game isn't running. **Fix:** check the name against the table above.
+- **Problem:** a component is called the same as one of Solis's (`Light`), or a Lust and a Lua component share a name. **Why:** two components can't share a name. **Fix:** rename one; Problems says which.
 - **Problem:** the Console says a code file was left out. **Why:** each code file can be at most 1 MB, and all of them together 16 MB. Files that aren't text are left out too. **Fix:** split a huge file into smaller ones.
 - Commit the `solis` folder with your game, so `lust check` works on other computers too.
 

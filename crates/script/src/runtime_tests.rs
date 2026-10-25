@@ -1,4 +1,5 @@
 use super::*;
+use crate::code::Compiled;
 use crate::convert::label;
 use crate::host::NoHost;
 use glam::{Quat, Vec3};
@@ -56,11 +57,14 @@ const NATIVES: &str = "get \"solis/world\":[say, time, find];\n\
 
 /// The Lua for a program whose `main.lst` is `main`, with the engine's
 /// description files.
-fn chunk(main: &str) -> lust::LuaChunk {
+fn chunk(main: &str) -> Compiled {
     let mut files = crate::describe::descriptions("Test 1.0", "solis");
     files.push(("main.lst".into(), format!("{NATIVES}{main}")));
     match lust::to_lua("main.lst", &files) {
-        Ok(chunk) => chunk,
+        Ok(chunk) => Compiled {
+            lust: Some(chunk),
+            lua: Vec::new(),
+        },
         Err(problems) => panic!("{}", problems[0]),
     }
 }
