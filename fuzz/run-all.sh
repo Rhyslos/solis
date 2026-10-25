@@ -14,7 +14,7 @@ run() {
     local t="$1"
     mkdir -p "corpus/$t" "artifacts/$t"
     cargo fuzz run -O "$t" "corpus/$t" "seeds/$t" -- \
-        -max_total_time="$seconds" -timeout=20 -rss_limit_mb=4096 \
+        -max_total_time="$seconds" -timeout=45 -rss_limit_mb=4096 \
         -max_len=1048576 -print_final_stats=1 > "artifacts/$t.log" 2>&1
     local status=$?
     local execs

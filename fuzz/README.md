@@ -29,4 +29,6 @@ On a machine that can't download nightly, `RUSTC_BOOTSTRAP=1` lets the pinned st
 
 What each run finds is kept in `fuzz/corpus/<target>` (not committed). A crash is saved in `fuzz/artifacts/<target>/`; replay it with `cargo fuzz run <target> <file>`, then fix it and add a regression test in the crate that reads the file.
 
+Each target only counts a panic that escapes Solis: libraries' panics that Solis catches on purpose, and turns into a refused file, aren't failures. For example, the `gltf` crate (1.4.1) panics on a mesh whose POSITION names an accessor that isn't there.
+
 While fuzzing, Solis is built with `--cfg fuzzing`. The only difference is that a save game's checksum isn't checked, because a fuzzer can't make a matching one, so the rest of the reader gets tried.
