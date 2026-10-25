@@ -15,10 +15,9 @@ struct MeshIn {
 // The same instance buffer the viewport draws with (InstanceRaw in
 // instances.rs); only the placement and its number are read here.
 struct Instance {
-    @location(3) model_0: vec4<f32>,
-    @location(4) model_1: vec4<f32>,
-    @location(5) model_2: vec4<f32>,
-    @location(6) model_3: vec4<f32>,
+    @location(3) row_0: vec4<f32>,
+    @location(4) row_1: vec4<f32>,
+    @location(5) row_2: vec4<f32>,
     @location(10) pick: u32,
 };
 
@@ -29,9 +28,10 @@ struct PickOut {
 
 @vertex
 fn pick_vs(in: MeshIn, instance: Instance) -> PickOut {
-    let model = mat4x4<f32>(instance.model_0, instance.model_1, instance.model_2, instance.model_3);
+    let p = vec4<f32>(in.position, 1.0);
+    let world = vec3<f32>(dot(instance.row_0, p), dot(instance.row_1, p), dot(instance.row_2, p));
     var out: PickOut;
-    out.clip = frame.view_projection * model * vec4<f32>(in.position, 1.0);
+    out.clip = frame.view_projection * vec4<f32>(world, 1.0);
     out.pick = instance.pick;
     return out;
 }

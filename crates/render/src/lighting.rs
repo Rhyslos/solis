@@ -203,6 +203,63 @@ pub fn sun_view_projection(sun: &Sun, min: Vec3, max: Vec3) -> (Mat4, f32) {
     (projection * view, 2.0 * radius / SHADOW_MAP_SIZE as f32)
 }
 
+/// How far from the camera the sun's shadows reach, in metres: further
+/// away, things are lit without shadows, so the shadow map's detail is
+/// spent where the camera is (Phase 5, M4).
+pub const SHADOW_REACH: f32 = 200.0;
+
+/// The sun's view for the shadow map, fitted to what's seen: it covers
+/// `receivers` (the part of the world in view, where shadows fall) side to
+/// side, and its depth takes in `casters` too (what can throw a shadow
+/// there, up towards the sun). Kept steady as the camera moves: its middle
+/// moves a whole texel at a time and its size in steps, so shadows'
+/// edges don't crawl. Also returns the width one shadow-map texel covers,
+/// in metres.
+pub fn sun_view_fitted(
+    sun: &Sun,
+    receivers: (Vec3, Vec3),
+    casters: Option<(Vec3, Vec3)>,
+) -> (Mat4, f32) {
+    let direction = sun.direction.try_normalize().unwrap_or(-Vec3::Z);
+    let view = look_at(Vec3::ZERO, direction, Vec3::Z);
+    let corners = |(min, max): (Vec3, Vec3)| {
+        (0..8).map(move |i| {
+            view.transform_point3(Vec3::new(
+                if i & 1 == 0 { min.x } else { max.x },
+                if i & 2 == 0 { min.y } else { max.y },
+                if i & 4 == 0 { min.z } else { max.z },
+            ))
+        })
+    };
+    let around = |points: &mut dyn Iterator<Item = Vec3>| {
+        points.fold(
+            (Vec3::splat(f32::MAX), Vec3::splat(f32::MIN)),
+            |(lo, hi), p| (lo.min(p), hi.max(p)),
+        )
+    };
+    let (lo, hi) = around(&mut corners(receivers));
+    let (deep_lo, deep_hi) =
+        around(&mut corners(receivers).chain(casters.into_iter().flat_map(corners)));
+    // Side to side: a square, its size rounded up to one of a few steps
+    // (an eighth of the power of two below it).
+    let half = ((hi - lo).truncate().max_element() * 0.5).max(0.5);
+    let step = 2.0_f32.powi(half.log2().floor() as i32) / 8.0;
+    let half = (half / step).ceil() * step;
+    let texel = 2.0 * half / SHADOW_MAP_SIZE as f32;
+    let middle = (((lo + hi) * 0.5).truncate() / texel).round() * texel;
+    // Depth: looking along the light, distance is -z; a metre spare each
+    // way.
+    let (near, far) = (-deep_hi.z - 1.0, -deep_lo.z + 1.0);
+    let range = (far - near).max(1e-3);
+    let projection = Mat4::from_cols(
+        Vec4::new(1.0 / half, 0.0, 0.0, 0.0),
+        Vec4::new(0.0, 1.0 / half, 0.0, 0.0),
+        Vec4::new(0.0, 0.0, -1.0 / range, 0.0),
+        Vec4::new(-middle.x / half, -middle.y / half, -near / range, 1.0),
+    );
+    (projection * view, texel)
+}
+
 /// The most line ends one lamp's marker uses (a cross, and a spotlight's
 /// line).
 pub(crate) const MARKER_VERTICES: usize = 8;
@@ -333,5 +390,69 @@ mod tests {
         };
         assert_eq!(light_markers(&[lamp(Vec3::ONE), spot]).len(), 6 + 8);
         assert!(light_markers(&[lamp(Vec3::NAN)]).is_empty());
+    }
+
+    #[test]
+    fn the_fitted_sun_view_holds_what_is_seen_and_what_casts_into_it() {
+        let sun = Sun {
+            direction: Vec3::new(0.3, 0.2, -1.0),
+            ..Sun::default()
+        };
+        let receivers = (Vec3::new(-10.0, -5.0, 0.0), Vec3::new(30.0, 25.0, 2.0));
+        let tower = (Vec3::new(-40.0, -30.0, 0.0), Vec3::new(-38.0, -28.0, 80.0));
+        let (vp, texel) = sun_view_fitted(&sun, receivers, Some(tower));
+        assert!(vp.is_finite());
+        let inside = |p: Vec3, sideways: bool| {
+            let q = vp.project_point3(p);
+            (0.0..=1.0).contains(&q.z) && (!sideways || (q.x.abs() <= 1.0 && q.y.abs() <= 1.0))
+        };
+        for i in 0..8 {
+            let pick = |a: f32, b: f32, bit| if i & bit == 0 { a } else { b };
+            let (lo, hi) = receivers;
+            let corner = Vec3::new(
+                pick(lo.x, hi.x, 1),
+                pick(lo.y, hi.y, 2),
+                pick(lo.z, hi.z, 4),
+            );
+            assert!(inside(corner, true), "{corner}");
+        }
+        // The tower's top is towards the sun: within the depth.
+        assert!(inside(Vec3::new(-39.0, -29.0, 80.0), false));
+        // Fitted: much sharper than covering a 2 km world would be.
+        assert!(texel < 0.05, "{texel}");
+    }
+
+    #[test]
+    fn the_fitted_sun_view_keeps_still_as_the_view_moves_a_little() {
+        let sun = Sun::default();
+        let at = |x: f32| {
+            sun_view_fitted(
+                &sun,
+                (Vec3::new(x, 0.0, 0.0), Vec3::new(x + 50.0, 50.0, 1.0)),
+                None,
+            )
+        };
+        let (a, texel_a) = at(0.0);
+        let (b, texel_b) = at(0.013);
+        assert_eq!(texel_a, texel_b, "the same size");
+        // A point on the ground lands on the shadow map's texels in step:
+        // the view moved by whole texels, or not at all.
+        let p = Vec3::new(10.0, 10.0, 0.0);
+        let texels = |m: Mat4| m.project_point3(p).truncate() * (SHADOW_MAP_SIZE as f32 / 2.0);
+        let moved = texels(a) - texels(b);
+        assert!(
+            (moved - moved.round()).abs().max_element() < 1e-2,
+            "{moved}"
+        );
+    }
+
+    #[test]
+    fn the_fitted_sun_view_works_straight_down_and_for_a_dot() {
+        let noon = Sun {
+            direction: -Vec3::Z,
+            ..Sun::default()
+        };
+        let (vp, texel) = sun_view_fitted(&noon, (Vec3::ZERO, Vec3::ZERO), None);
+        assert!(vp.is_finite() && texel > 0.0);
     }
 }

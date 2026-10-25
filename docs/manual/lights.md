@@ -55,7 +55,8 @@ Every light is an [entity](concepts.md#the-area) with a **Light** [component](co
 - **Problem:** a lamp seems to have no effect. **Why:** it may be too weak for its distance: light gets four times weaker each time the distance doubles. **Fix:** raise its strength, or move it closer.
 - **Problem:** everything is washed out near a lamp. **Why:** the lamp is very strong for its distance. **Fix:** lower its strength, or the exposure under [Environment](sky-fog-and-exposure.md).
 - **Problem:** lamps far from the camera stop lighting. **Why:** up to 16 lamps light the view at once, the ones nearest the camera.
-- **Problem:** shadows look blurry in a big area. **Why:** one shadow map covers every model, so in a large area each of its pixels covers more ground.
+- **Problem:** things far from the camera have no shadows. **Why:** the sun's shadows reach 200 m from the camera. The shadow map covers only what the view shows within that distance, so its detail goes where you're looking, however big the area. **Fix:** move closer; at that distance, shadows are too small to see anyway.
+- **Problem:** shadows look blurry. **Why:** the shadow map covers everything in view up to 200 m away, so looking out over a wide area spreads its pixels further. **Fix:** look from closer, or from higher up so less ground is in view.
 - **Problem:** I deleted the sun and everything went dark. **Why:** the sun was the only light. **Fix:** undo (Ctrl + Z), or add an entity and give it a Light (**Add component > Light**) with **Kind** set to Sun.
 
 ## Related

@@ -192,7 +192,7 @@ fn a_failing_rust_component_stops_alone_and_wrong_values_leave_the_handler_runni
     run(&mut runtime, target, "Health");
     let mut log = Log::default();
     let failures = runtime.tick(0.1, &mut log).failures;
-    assert_eq!(failures.len(), 1);
+    assert_eq!(failures.len(), 1, "{failures:?}");
     assert_eq!(failures[0].component, "Armour");
     assert!(failures[0].at.message.contains("fell apart"));
     assert!(

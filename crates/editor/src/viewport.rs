@@ -180,8 +180,14 @@ pub trait ViewportRenderer {
 /// What a frame drew, for the Profiler.
 #[derive(Debug, Clone, Copy, Default, PartialEq)]
 pub struct DrawReport {
-    /// Model copies drawn.
+    /// Model copies drawn (those in view).
     pub instances: u64,
+    /// Model copies drawn into the sun's shadow map (those whose shadow
+    /// can fall in view).
+    pub casting: u64,
+    /// Bytes of model copies sent to the graphics card (only what
+    /// changed).
+    pub sent_bytes: u64,
     /// Triangles drawn.
     pub triangles: u64,
     /// Draw calls for models.

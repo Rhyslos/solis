@@ -25,8 +25,8 @@ pub use frame::{
 pub use gpu_model::GpuModel;
 pub use instances::Placement;
 pub use lighting::{
-    Light, LightKind, MAX_LIGHTS, SHADOW_FORMAT, SHADOW_MAP_SIZE, Sun, light_markers,
-    sun_view_projection,
+    Light, LightKind, MAX_LIGHTS, SHADOW_FORMAT, SHADOW_MAP_SIZE, SHADOW_REACH, Sun, light_markers,
+    sun_view_fitted, sun_view_projection,
 };
 pub use pick::{PICK_SHADER_SOURCE, PickResult};
 pub use readback::read_pixels;

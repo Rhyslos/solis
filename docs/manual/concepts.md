@@ -94,6 +94,7 @@
 - **World:** the game's own copy of the area while it runs, kept in a form a game can run over quickly. It's made when you press Play and thrown away on Stop.
 - **Frame:** one picture on screen. Games aim for 60 **frames a second** (fps), which leaves about 16.7 milliseconds (thousandths of a second) for each; 30 fps still feels playable. See [The Profiler](profiler.md).
 - **CPU and GPU:** the computer's processor, which runs game code and the editor, and its graphics card, which draws. They work at the same time; the slower one sets the frame rate.
+- **Culling:** leaving out what the camera can't see before drawing. Each copy of a model is checked against the view (a ball around it is enough), so a huge area costs only what's in view. Things just out of view are still drawn into the sun's shadow map when their shadow can fall into it.
 
 ## Game code
 
