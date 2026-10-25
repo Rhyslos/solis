@@ -111,7 +111,8 @@ impl Devices {
             ActionKind::Button => (down(&action.inputs), Vec2::ZERO),
             ActionKind::Axis => {
                 let keys = Vec2::new(
-                    f32::from(u8::from(down(&action.right))) - f32::from(u8::from(down(&action.left))),
+                    f32::from(u8::from(down(&action.right)))
+                        - f32::from(u8::from(down(&action.left))),
                     f32::from(u8::from(down(&action.up))) - f32::from(u8::from(down(&action.down))),
                 );
                 let mut stick = Vec2::ZERO;

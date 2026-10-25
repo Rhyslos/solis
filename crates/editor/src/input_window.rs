@@ -171,7 +171,13 @@ fn heard(ui: &Ui, window: &mut InputWindow, bindings: &mut Bindings, pad_down: &
 
 /// A row of an action's inputs, each with × to remove, and + to listen
 /// for another. Returns whether one was removed.
-fn chips(ui: &mut Ui, window: &mut InputWindow, action: &mut Action, index: usize, slot: Slot) -> bool {
+fn chips(
+    ui: &mut Ui,
+    window: &mut InputWindow,
+    action: &mut Action,
+    index: usize,
+    slot: Slot,
+) -> bool {
     let mut changed = false;
     ui.horizontal_wrapped(|ui| {
         let list = slot.list(action);
@@ -191,7 +197,9 @@ fn chips(ui: &mut Ui, window: &mut InputWindow, action: &mut Action, index: usiz
             list.remove(n);
             changed = true;
         }
-        let listening = window.listening.is_some_and(|(i, s, _)| i == index && s == slot);
+        let listening = window
+            .listening
+            .is_some_and(|(i, s, _)| i == index && s == slot);
         if listening {
             ui.label(
                 RichText::new("Press a key, mouse button or gamepad button… (Esc cancels)")
@@ -210,7 +218,12 @@ fn chips(ui: &mut Ui, window: &mut InputWindow, action: &mut Action, index: usiz
 
 /// Every action, with its kind and inputs, and adding and removing
 /// actions. Returns whether anything changed.
-fn actions_ui(ui: &mut Ui, window: &mut InputWindow, bindings: &mut Bindings, _pad: &[String]) -> bool {
+fn actions_ui(
+    ui: &mut Ui,
+    window: &mut InputWindow,
+    bindings: &mut Bindings,
+    _pad: &[String],
+) -> bool {
     let mut changed = false;
     ui.label(
         "Game code asks for an action by its name, such as held(\"Jump\"), never for a key, \
@@ -307,8 +320,13 @@ fn actions_ui(ui: &mut Ui, window: &mut InputWindow, bindings: &mut Bindings, _p
             window.new_name.clear();
             changed = true;
         }
-        if ui.add_enabled(usable, egui::Button::new("Add axis")).clicked() {
-            bindings.actions.push(Action::axis(&name, &[], [&[], &[], &[], &[]]));
+        if ui
+            .add_enabled(usable, egui::Button::new("Add axis"))
+            .clicked()
+        {
+            bindings
+                .actions
+                .push(Action::axis(&name, &[], [&[], &[], &[], &[]]));
             window.new_name.clear();
             changed = true;
         }
@@ -316,7 +334,9 @@ fn actions_ui(ui: &mut Ui, window: &mut InputWindow, bindings: &mut Bindings, _p
     ui.add_space(4.0);
     if ui
         .button("Restore the ready-made actions")
-        .on_hover_text("Move, Look, Jump, Sprint and Interact with their usual keys; other actions stay")
+        .on_hover_text(
+            "Move, Look, Jump, Sprint and Interact with their usual keys; other actions stay",
+        )
         .clicked()
     {
         for ready in Bindings::default().actions {

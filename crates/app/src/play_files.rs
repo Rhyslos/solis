@@ -20,7 +20,10 @@ pub fn load_bindings(root: &Path) -> (input::Bindings, Option<String>) {
         Err(why) => {
             return (
                 input::Bindings::default(),
-                Some(format!("Couldn't read {}: {why}; the ready-made actions are used.", input::FILE)),
+                Some(format!(
+                    "Couldn't read {}: {why}; the ready-made actions are used.",
+                    input::FILE
+                )),
             );
         }
     };
@@ -121,7 +124,8 @@ mod tests {
     use super::*;
 
     fn scratch(name: &str) -> PathBuf {
-        let dir = std::env::temp_dir().join(format!("solis-play-files-{name}-{}", std::process::id()));
+        let dir =
+            std::env::temp_dir().join(format!("solis-play-files-{name}-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         std::fs::create_dir_all(&dir).unwrap();
         dir

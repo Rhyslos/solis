@@ -21,7 +21,8 @@ fn the_ready_made_actions_are_the_chosen_controls() {
 #[test]
 fn bindings_round_trip_through_their_file() {
     let mut b = Bindings::default();
-    b.actions.push(Action::button("Fire_2", &["Mouse Left", "Pad RT"]));
+    b.actions
+        .push(Action::button("Fire_2", &["Mouse Left", "Pad RT"]));
     let text = b.write();
     assert!(text.contains("name = \"Jump\""));
     assert_eq!(Bindings::read(&text).unwrap(), b);
@@ -47,7 +48,10 @@ fn wrong_bindings_are_refused_with_why() {
     let many: String = (0..=MAX_ACTIONS)
         .map(|n| format!("[[action]]\nname = \"A{n}\"\n"))
         .collect();
-    assert!(matches!(Bindings::read(&many), Err(BindingsError::Wrong(_))));
+    assert!(matches!(
+        Bindings::read(&many),
+        Err(BindingsError::Wrong(_))
+    ));
     assert_eq!(
         Bindings::read(&"#".repeat(2 << 20)),
         Err(BindingsError::TooBig)
@@ -90,7 +94,10 @@ fn axes_come_from_keys_sticks_and_the_mouse() {
     d.set("D", true);
     let walk = d.sample(&b, TICK).get("Move");
     assert!(walk.held);
-    assert!((walk.axis.length() - 1.0).abs() < 1e-5, "never past 1: {walk:?}");
+    assert!(
+        (walk.axis.length() - 1.0).abs() < 1e-5,
+        "never past 1: {walk:?}"
+    );
     assert!(walk.axis.x > 0.0 && walk.axis.y > 0.0);
     d.set("W", false);
     d.set("D", false);
@@ -110,9 +117,15 @@ fn axes_come_from_keys_sticks_and_the_mouse() {
     d.set_pad(None);
     d.mouse_moved(Vec2::new(10.0, -20.0));
     let look = d.sample(&b, TICK).get("Look");
-    assert!((look.axis - Vec2::new(1.5, 3.0)).length() < 1e-5, "{look:?}");
+    assert!(
+        (look.axis - Vec2::new(1.5, 3.0)).length() < 1e-5,
+        "{look:?}"
+    );
     let after = d.sample(&b, TICK).get("Look");
-    assert!(after.axis == Vec2::ZERO && !after.held && after.released, "movement is used once");
+    assert!(
+        after.axis == Vec2::ZERO && !after.held && after.released,
+        "movement is used once"
+    );
     d.set_pad(Some(Pad {
         right: Vec2::new(1.0, 0.0),
         ..Pad::default()
@@ -145,7 +158,10 @@ fn rebinding_replaces_inputs_of_the_same_kind() {
     assert!(!b.rebind("Interact", "Pad Q"));
     assert!(!b.rebind("Nothing", "E"));
     assert_eq!(b.get("Interact").unwrap().first_input(""), Some("E"));
-    assert_eq!(b.get("Interact").unwrap().first_input("Pad "), Some("Pad Y"));
+    assert_eq!(
+        b.get("Interact").unwrap().first_input("Pad "),
+        Some("Pad Y")
+    );
 }
 
 fn sample_recording() -> Recording {
@@ -202,7 +218,10 @@ fn damaged_recordings_are_refused_never_crashing() {
         "solis recording 1\nseed 1\nstart 0\n0 w 0 has-dash=h\n",
         "solis recording 1\nseed 1\nstart 0\n0 x 0\n",
     ] {
-        assert!(matches!(Recording::read(bad), Err(RecordingError::Damaged(_))), "{bad}");
+        assert!(
+            matches!(Recording::read(bad), Err(RecordingError::Damaged(_))),
+            "{bad}"
+        );
     }
     // Fuzz: every prefix and many single-byte changes of a good file are
     // read or refused, never a crash.
@@ -238,11 +257,11 @@ fn damaged_bindings_never_crash() {
         let mut changed = bytes.to_vec();
         let at = (seed as usize) % changed.len();
         changed[at] = (seed >> 32) as u8;
-        if let Ok(text) = String::from_utf8(changed) {
-            if let Ok(b) = Bindings::read(&text) {
-                // Whatever's read is allowed.
-                b.check().unwrap();
-            }
+        if let Ok(text) = String::from_utf8(changed)
+            && let Ok(b) = Bindings::read(&text)
+        {
+            // Whatever's read is allowed.
+            b.check().unwrap();
         }
     }
 }
@@ -255,7 +274,17 @@ fn names_are_checked() {
     for bad in ["", "2fast", "has space", "dash-ed", &"x".repeat(65)] {
         assert!(!valid_action_name(bad), "{bad}");
     }
-    for good in ["W", "Space", "ArrowUp", "Shift", "Mouse Left", "Mouse Motion", "Pad A", "Pad LeftStick", "["] {
+    for good in [
+        "W",
+        "Space",
+        "ArrowUp",
+        "Shift",
+        "Mouse Left",
+        "Mouse Motion",
+        "Pad A",
+        "Pad LeftStick",
+        "[",
+    ] {
         assert!(valid_input_name(good), "{good}");
     }
     for bad in ["", "Pad Q", "Mouse Up", "has space", &"K".repeat(33)] {

@@ -295,7 +295,9 @@ impl Workbench {
                 ),
             );
             self.outbox
-                .push(crate::workbench::WorkbenchAction::SaveRecording(recording.write()));
+                .push(crate::workbench::WorkbenchAction::SaveRecording(
+                    recording.write(),
+                ));
         }
         // The area as it was, but the components known now: code that
         // changed while playing keeps its components in the registry.

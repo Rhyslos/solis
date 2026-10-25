@@ -163,7 +163,7 @@ fn the_viewport_menu_hides_the_tool_bar() {
 fn play_says_what_it_does() {
     let mut h = harness();
     h.run();
-    h.get_by_label("Play").click();
+    h.query_all_by_label("Play").next().expect("the Play button").click();
     h.run();
     let last = h.state().log_lines().last().map(|l| l.text.clone());
     assert!(
@@ -361,14 +361,16 @@ fn every_panel_has_a_named_tab_and_the_bar_has_its_buttons() {
         let _ = h.get_by_label(panel.title());
     }
     for button in [
-        "Play",
         "Play with two players",
+        "Step one tick",
         "Stop",
         "Build ▾",
         "Build & Play",
     ] {
         let _ = h.get_by_label(button);
     }
+    // The Play menu and the Play button.
+    assert_eq!(h.query_all_by_label("Play").count(), 2);
 }
 
 #[test]

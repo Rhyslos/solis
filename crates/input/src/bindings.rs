@@ -141,7 +141,7 @@ pub struct Bindings {
 /// Why a bindings file couldn't be read.
 #[derive(Debug, Clone, PartialEq)]
 pub enum BindingsError {
-    /// Bigger than [`MAX_FILE_BYTES`].
+    /// Bigger than 1 MB.
     TooBig,
     /// Not TOML, or not the shape of one.
     Damaged(String),
@@ -163,16 +163,16 @@ impl Default for Bindings {
     /// The ready-made actions (decision 0037): Move, Look, Jump, Sprint
     /// and Interact.
     fn default() -> Self {
-        let mut look = Action::axis("Look", &[crate::MOUSE_MOTION, "Pad RightStick"], [&[], &[], &[], &[]]);
+        let mut look = Action::axis(
+            "Look",
+            &[crate::MOUSE_MOTION, "Pad RightStick"],
+            [&[], &[], &[], &[]],
+        );
         look.mouse_speed = default_mouse_speed();
         look.pad_speed = default_pad_speed();
         Self {
             actions: vec![
-                Action::axis(
-                    "Move",
-                    &["Pad LeftStick"],
-                    [&["W"], &["S"], &["A"], &["D"]],
-                ),
+                Action::axis("Move", &["Pad LeftStick"], [&["W"], &["S"], &["A"], &["D"]]),
                 look,
                 Action::button("Jump", &["Space", "Pad A"]),
                 Action::button("Sprint", &["Shift", "Pad LeftStick"]),
@@ -227,7 +227,13 @@ impl Bindings {
                     action.name
                 )));
             }
-            for list in [&action.inputs, &action.up, &action.down, &action.left, &action.right] {
+            for list in [
+                &action.inputs,
+                &action.up,
+                &action.down,
+                &action.left,
+                &action.right,
+            ] {
                 if list.len() > MAX_INPUTS {
                     return Err(BindingsError::Wrong(format!(
                         "{} has more than {MAX_INPUTS} inputs in one list",

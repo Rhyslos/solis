@@ -115,8 +115,7 @@ impl Workbench {
                     button, pressed, ..
                 } => self.devices.set(mouse_name(button), pressed),
                 egui::Event::MouseMoved(delta) => {
-                    self.devices
-                        .mouse_moved(glam::Vec2::new(delta.x, delta.y));
+                    self.devices.mouse_moved(glam::Vec2::new(delta.x, delta.y));
                 }
                 _ => {}
             }
@@ -170,12 +169,18 @@ impl Workbench {
         let recording = match input::Recording::read(text) {
             Ok(r) => r,
             Err(why) => {
-                self.log(LogLevel::Error, format!("Couldn't play back {name}: {why}."));
+                self.log(
+                    LogLevel::Error,
+                    format!("Couldn't play back {name}: {why}."),
+                );
                 return;
             }
         };
         if recording.ticks.is_empty() {
-            self.log(LogLevel::Warning, format!("{name} has no ticks to play back."));
+            self.log(
+                LogLevel::Warning,
+                format!("{name} has no ticks to play back."),
+            );
             return;
         }
         if self.playing.is_some() {

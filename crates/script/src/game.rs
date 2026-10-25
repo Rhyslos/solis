@@ -349,10 +349,7 @@ impl Host for ViewHost {
     }
 
     fn rebind(&mut self, action: &str, input: &str) {
-        if input::valid_action_name(action)
-            && input::valid_input_name(input)
-            && self.kept.room()
-        {
+        if input::valid_action_name(action) && input::valid_input_name(input) && self.kept.room() {
             let order = self.order();
             self.kept
                 .changes

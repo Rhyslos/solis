@@ -19,7 +19,7 @@ Each phase ends with a **gate**: something the project lead tries by hand before
 | 6. Simulation and play | 6–7 | Physics, input, a deterministic simulation |
 | 7. Sound and animation | 7–8 | Sound events and buses; animated characters |
 | 8. Netcode | 8–10 | Two PCs playing together over the internet |
-| 9. Effects and game UI | 9–10 | Solis Eclipse basics; HUDs and menus |
+| 9. Effects and game UI | 9–10 | Solis Eclipse basics; Sungraph UI, game UI drawn in Solis |
 | 10. Scripting, export and Git | 10–11 | The scripting window; games packaged for Windows; working in teams through Git |
 | 11. Solis 0.1 | 11–12 | The flagship space battle, docs, release |
 
@@ -147,9 +147,9 @@ Netcode in layers ([decision 0005](docs/decisions/0005-netcode-in-layers.md)):
 
 - **Solis Eclipse basics:** particles through instancing, flipbooks, trails, and stylized shading for effects.
 - **Post-processing:** bloom and colour grading.
-- **Game UI basics:** text, images, buttons and layout for HUDs and menus. The visual UI editor and Lust's `view { }` come later.
+- **Sungraph UI** ([decision 0039](docs/decisions/0039-game-ui-is-drawn-in-solis.md)), whole: a visual UI editor where game UI is drawn canvas style (lines, shapes, curves, text) instead of built from images; values tied live to game code; every element reachable from code, because a UI file is Lust (`view { }`); styles such as glow, pixelation and stylized outlines over the whole UI. HUDs and menus are made with it.
 
-**Gate:** laser bolts, hits and explosions look good in the stylized look, with a health bar and a pause menu on screen.
+**Gate:** laser bolts, hits and explosions look good in the stylized look; a health bar and a pause menu, drawn in Sungraph UI with their values tied to game code, are on screen.
 
 ## Phase 10: Scripting, export and Git
 
@@ -173,7 +173,7 @@ Netcode in layers ([decision 0005](docs/decisions/0005-netcode-in-layers.md)):
 
 ## Not in 0.1
 
-Open-world streaming and terrain, navigation and AI, the full Solis Eclipse toolkit, the visual UI editor, the shader editor, rollback netcode, advanced animation (IK, root motion), Steam features, Linux and macOS (decision 0012).
+Open-world streaming and terrain, navigation and AI, the full Solis Eclipse toolkit, the shader editor, rollback netcode, advanced animation (IK, root motion), Steam features, Linux and macOS (decision 0012).
 
 ## Who does what
 

@@ -27,7 +27,7 @@ fn every_planned_crate_exists() {
     assert_eq!(
         names,
         [
-            "app", "area", "asset_db", "assets", "editor", "physics", "reflect", "render",
+            "app", "area", "asset_db", "assets", "editor", "input", "physics", "reflect", "render",
             "script", "world"
         ]
     );

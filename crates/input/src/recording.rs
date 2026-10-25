@@ -52,7 +52,7 @@ pub struct Recording {
 /// Why a recording couldn't be read.
 #[derive(Debug, Clone, PartialEq)]
 pub enum RecordingError {
-    /// Bigger than [`MAX_FILE_BYTES`], or longer than [`MAX_TICKS`].
+    /// Bigger than 64 MB, or longer than an hour of ticks.
     TooBig,
     /// Not a recording, or one from a newer Solis.
     NotARecording,
@@ -75,10 +75,7 @@ const HEADER: &str = "solis recording 1";
 impl Recording {
     /// The file's text.
     pub fn write(&self) -> String {
-        let mut text = format!(
-            "{HEADER}\nseed {}\nstart {:016x}\n",
-            self.seed, self.start
-        );
+        let mut text = format!("{HEADER}\nseed {}\nstart {:016x}\n", self.seed, self.start);
         for (n, tick) in self.ticks.iter().enumerate() {
             text.push_str(&format!("{n} w {:016x}", tick.world));
             if let Some(game) = tick.game {
@@ -94,7 +91,11 @@ impl Recording {
                     }
                 }
                 if s.axis != Vec2::ZERO {
-                    text.push_str(&format!(",{:x},{:x}", s.axis.x.to_bits(), s.axis.y.to_bits()));
+                    text.push_str(&format!(
+                        ",{:x},{:x}",
+                        s.axis.x.to_bits(),
+                        s.axis.y.to_bits()
+                    ));
                 }
             }
             text.push('\n');
@@ -118,7 +119,10 @@ impl Recording {
                 .map(str::to_string)
                 .ok_or(RecordingError::Damaged(n + 1))
         };
-        let seed = field("seed")?.trim().parse().map_err(|_| RecordingError::Damaged(2))?;
+        let seed = field("seed")?
+            .trim()
+            .parse()
+            .map_err(|_| RecordingError::Damaged(2))?;
         let start = u64::from_str_radix(field("start")?.trim(), 16)
             .map_err(|_| RecordingError::Damaged(3))?;
         let mut ticks = Vec::new();
@@ -154,7 +158,8 @@ impl Recording {
             }
             for word in rest {
                 let (name, state) = word.split_once('=').ok_or(damaged.clone())?;
-                if !crate::valid_action_name(name) || tick.frame.actions.len() >= crate::MAX_ACTIONS {
+                if !crate::valid_action_name(name) || tick.frame.actions.len() >= crate::MAX_ACTIONS
+                {
                     return Err(damaged);
                 }
                 let mut parts = state.split(',');

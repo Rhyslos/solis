@@ -219,7 +219,10 @@ fn a_recording_plays_back_exactly_and_a_changed_game_is_caught() {
         "{:?}",
         w.log_lines().iter().map(|l| &l.text).collect::<Vec<_>>()
     );
-    assert_eq!(w.fixed_seed, None, "the recorded seed was for that play only");
+    assert_eq!(
+        w.fixed_seed, None,
+        "the recorded seed was for that play only"
+    );
     w.stop();
     w.outbox.clear();
     // The walker's code changed since: the replay says where it stopped
@@ -240,7 +243,13 @@ fn a_recording_plays_back_exactly_and_a_changed_game_is_caught() {
     // A damaged recording is refused with why.
     w.stop();
     w.replay("solis recording 1\nseed x\n", "bad.solrec");
-    assert!(w.log_lines().last().unwrap().text.contains("Couldn't play back bad.solrec"));
+    assert!(
+        w.log_lines()
+            .last()
+            .unwrap()
+            .text
+            .contains("Couldn't play back bad.solrec")
+    );
     assert!(w.playing.is_none());
 }
 
@@ -248,7 +257,44 @@ fn a_recording_plays_back_exactly_and_a_changed_game_is_caught() {
 fn recording_needs_a_project_and_starts_from_play() {
     let mut w = with_a_walker();
     w.play_and_record();
-    assert!(w.log_lines().last().unwrap().text.contains("kept in a project"));
+    assert!(
+        w.log_lines()
+            .last()
+            .unwrap()
+            .text
+            .contains("kept in a project")
+    );
     assert!(w.playing.is_none());
 }
 
+#[test]
+fn the_input_actions_window_binds_what_is_pressed_and_saves() {
+    let mut w = Workbench::new(info(), None);
+    w.project = Some(crate::library::ProjectInfo {
+        name: "Test".into(),
+        root: std::env::temp_dir(),
+        assets: std::env::temp_dir(),
+    });
+    w.open_input_window();
+    let mut h = harness(w);
+    h.run();
+    // Jump's +: listening, as its button starts (Jump is the third
+    // action); the click itself isn't bound, so a frame or two pass.
+    h.state_mut().0.input_window.as_mut().unwrap().listening =
+        Some((2, crate::input_window::Slot::Inputs, 0));
+    h.run();
+    h.run();
+    h.run();
+    h.key_press(egui::Key::K);
+    h.run();
+    let jump = h.state().0.bindings().get("Jump").unwrap().inputs.clone();
+    assert!(jump.contains(&"K".to_string()), "{jump:?}");
+    assert!(
+        h.state()
+            .1
+            .actions
+            .iter()
+            .any(|a| matches!(a, WorkbenchAction::SaveBindings(text) if text.contains("\"K\""))),
+        "saved"
+    );
+}

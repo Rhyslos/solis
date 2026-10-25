@@ -125,7 +125,9 @@ impl Workbench {
                 ui.separator();
                 if ui
                     .button("Input actions…")
-                    .on_hover_text("The game's actions (Move, Jump…) and the keys and buttons for each")
+                    .on_hover_text(
+                        "The game's actions (Move, Jump…) and the keys and buttons for each",
+                    )
                     .clicked()
                 {
                     input = true;
@@ -160,7 +162,10 @@ impl Workbench {
                 ui.close();
             }
             if ui
-                .add_enabled(state == PlayState::Paused, egui::Button::new("Step one tick"))
+                .add_enabled(
+                    state == PlayState::Paused,
+                    egui::Button::new("Step one tick"),
+                )
                 .clicked()
             {
                 self.step();
@@ -175,7 +180,10 @@ impl Workbench {
             }
             ui.separator();
             if ui
-                .add_enabled(state == PlayState::Editing, egui::Button::new("Play and record inputs"))
+                .add_enabled(
+                    state == PlayState::Editing,
+                    egui::Button::new("Play and record inputs"),
+                )
                 .on_hover_text(
                     "Plays, keeping every tick's input; Stop saves it in the project's recordings \
                      folder, to play back exactly",

@@ -20,5 +20,5 @@ DESIGN.md §12's "(to decide)" is settled by this: the visual UI editor and Lust
 
 ## Consequences
 
-- **When** is decided when Phase 9 (effects and game UI) is planned: built then if it fits, or after Solis 0.1 on top of Phase 9's basics. Either way, Phase 9's UI basics are built so the drawn UI can grow from them (shapes drawn by Solis, values tied to code), not as an image-only system to be replaced.
+- **When:** the whole of Sungraph UI is built in Phase 9 (effects and game UI), chosen by the project lead the same day. It replaces Phase 9's "game UI basics", and the visual UI editor leaves the "not in 0.1" list.
 - Other visual editors Solis plans follow the same rule, a graph saved as readable text: state machines (Phase 7), behaviour trees, and shader and material graphs. General visual scripting (a Blueprint-style replacement for code) isn't planned; Lust is the language.
