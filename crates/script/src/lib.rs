@@ -51,3 +51,45 @@ pub fn valid_slot(slot: &str) -> bool {
             .chars()
             .all(|c| c.is_ascii_alphanumeric() || c == '_' || c == '-')
 }
+
+#[cfg(test)]
+mod slot_tests {
+    #[test]
+    fn save_slots_are_plain_names_and_never_a_device() {
+        // The hardening milestone's mutation testing: the slot check was
+        // only tested from the app.
+        for good in [
+            "quick",
+            "slot_1",
+            "before-boss",
+            "Z",
+            &"a".repeat(64),
+            "COM",
+            "COM10",
+            "CONSOLE",
+        ] {
+            assert!(super::valid_slot(good), "{good}");
+        }
+        for bad in [
+            "",
+            &"a".repeat(65),
+            "../up",
+            "a/b",
+            "a\\b",
+            "has space",
+            "dot.ted",
+            "ünïcode",
+            "CON",
+            "con",
+            "Nul",
+            "PRN",
+            "AUX",
+            "COM1",
+            "com9",
+            "LPT1",
+            "lpt0",
+        ] {
+            assert!(!super::valid_slot(bad), "{bad}");
+        }
+    }
+}

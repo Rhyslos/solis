@@ -689,6 +689,111 @@ mod tests {
     }
 
     #[test]
+    fn the_code_limits_hold_exactly_at_their_edges() {
+        // The hardening milestone's mutation testing: the limits on code
+        // files weren't tried at their edges.
+        let assets = folder("edges");
+        std::fs::write(assets.join("main.lst"), "end\n").unwrap();
+        // A file exactly at the limit is read; one byte over isn't.
+        std::fs::write(assets.join("at.lst"), vec![b'-'; MAX_FILE_BYTES as usize]).unwrap();
+        std::fs::write(
+            assets.join("over.lst"),
+            vec![b'-'; MAX_FILE_BYTES as usize + 1],
+        )
+        .unwrap();
+        let code = gather(&assets);
+        let paths: Vec<&str> = code.files.iter().map(|(p, _)| p.as_str()).collect();
+        assert_eq!(paths, ["at.lst", "main.lst"]);
+        assert!(
+            code.notes.iter().any(|n| n.contains("over.lst")),
+            "{:?}",
+            code.notes
+        );
+        // All together: up to the total, exactly; the next is left out.
+        let assets = folder("edges-total");
+        let full = (MAX_TOTAL_BYTES / MAX_FILE_BYTES) as usize;
+        for n in 0..full {
+            std::fs::write(
+                assets.join(format!("f{n:03}.lst")),
+                vec![b'-'; MAX_FILE_BYTES as usize],
+            )
+            .unwrap();
+        }
+        std::fs::write(assets.join("z.lst"), "end\n").unwrap();
+        let code = gather(&assets);
+        assert_eq!(code.files.len(), full, "{:?}", code.notes);
+        assert!(
+            code.notes.iter().any(|n| n.contains("z.lst")),
+            "{:?}",
+            code.notes
+        );
+        let _ = std::fs::remove_dir_all(&assets);
+        // At most so many files: the next is left out, and said.
+        let assets = folder("edges-count");
+        for n in 0..=MAX_FILES {
+            std::fs::write(assets.join(format!("f{n:05}.lst")), "").unwrap();
+        }
+        let code = gather(&assets);
+        assert_eq!(code.files.len(), MAX_FILES);
+        assert!(
+            code.notes[0].contains(&format!("f{MAX_FILES:05}.lst")),
+            "{:?}",
+            code.notes
+        );
+        let _ = std::fs::remove_dir_all(&assets);
+    }
+
+    #[test]
+    fn code_without_main_is_a_mistake_saying_so() {
+        let problems = compile(&Code {
+            files: vec![("other.lst".into(), "end\n".into())],
+            lua: Vec::new(),
+            notes: Vec::new(),
+        })
+        .unwrap_err();
+        assert_eq!(problems[0].file, "main.lst");
+        assert!(
+            problems[0].message.contains("starts at main.lst"),
+            "{problems:?}"
+        );
+    }
+
+    #[test]
+    fn the_guards_read_past_strings_comments_and_escapes() {
+        // Mutation testing: the scanners' handling of escapes, line breaks
+        // in strings and single dashes wasn't tried.
+        let bangs = "!".repeat(70);
+        let one = |text: String| vec![("main.lst".to_string(), text)];
+        // A string with an escaped quote, then a long run after it: found,
+        // on the right line.
+        let found = long_prefix_chains(&one(format!("s = \"a\\\"b\";\nb = {bangs}x;\n")));
+        assert_eq!(found.len(), 1);
+        assert_eq!(found[0].line, 2);
+        // A string left open at the end of its line ends there.
+        let found = long_prefix_chains(&one(format!("s = \"open\n{bangs}x;\n")));
+        assert_eq!(found.len(), 1);
+        assert_eq!(found[0].line, 2);
+        // A single dash is subtraction, not a comment: what follows counts.
+        let found = long_prefix_chains(&one(format!("x = 1 - 2; {bangs}x;\n")));
+        assert_eq!(found.len(), 1);
+        // Spaces between the !s don't hide them; anything else breaks the run.
+        let spaced = "! ".repeat(70);
+        assert_eq!(long_prefix_chains(&one(format!("{spaced}x\n"))).len(), 1);
+        let broken = "!x".repeat(70);
+        assert!(long_prefix_chains(&one(broken)).is_empty());
+        // Declarations: after a string with an escaped quote; across a
+        // line break between the word and its name; not after a comment.
+        let decls = declarations(
+            "s = \"\\\"component Fake\";\ncomponent\n  Real {}\n-- component Gone\nclass Kept {}\n",
+        );
+        let names: Vec<(u32, &str, &str)> =
+            decls.iter().map(|(l, w, n)| (*l, *w, n.as_str())).collect();
+        assert_eq!(names, [(3, "component", "Real"), (5, "class", "Kept")]);
+        // A word that only starts like one isn't a declaration.
+        assert!(declarations("components X {}\nmy_class Y {}\n").is_empty());
+    }
+
+    #[test]
     fn a_file_is_read_only_as_far_as_the_limit() {
         let assets = folder("within");
         std::fs::write(assets.join("main.lst"), "end\n").unwrap();
