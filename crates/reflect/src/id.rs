@@ -255,6 +255,9 @@ pub type IdHashing = std::hash::BuildHasherDefault<IdHasher>;
 /// A map keyed by entity IDs, with [`IdHasher`].
 pub type IdMap<V> = std::collections::HashMap<EntityId, V, IdHashing>;
 
+/// A set of entity IDs, with [`IdHasher`].
+pub type IdSet = std::collections::HashSet<EntityId, IdHashing>;
+
 #[cfg(test)]
 mod hasher_tests {
     use super::*;

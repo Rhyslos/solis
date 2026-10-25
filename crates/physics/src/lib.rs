@@ -710,8 +710,25 @@ impl Physics {
             })
             .collect();
         let sensible = |wanted: Vec3| wanted.is_finite() && dt.is_finite() && dt > 0.0;
+        // Whether anything could carry a character this step: a kinematic
+        // body moving (always awake, so only the awake ones are looked at).
+        // Without one, no character looks under its feet for a platform.
+        let platforms = {
+            let state = &*self.state;
+            state.islands.active_bodies().any(|handle| {
+                let Some(body) = state.bodies.get(handle) else {
+                    return false;
+                };
+                // Characters are kinematic too, and one moved earlier in
+                // the same step mustn't count as a platform.
+                let character = reflect::Id::from_raw(body.user_data as u64)
+                    .and_then(|id| state.by_entity.get(&EntityId(id)))
+                    .is_some_and(|e| e.character.is_some());
+                body.is_kinematic() && !character && body.next_position() != body.position()
+            })
+        };
         // Only each character's first move can be worked out ahead.
-        let mut seen = std::collections::HashSet::new();
+        let mut seen = reflect::IdSet::default();
         let first: Vec<bool> = moves
             .iter()
             .zip(&is_character)
@@ -719,7 +736,7 @@ impl Physics {
             .collect();
         let state = &*self.state;
         let plan = |(&(id, wanted), &first): (&(EntityId, Vec3), &bool)| {
-            first.then(|| plan_one(state, id, wanted, dt))
+            first.then(|| plan_one(state, id, wanted, dt, platforms))
         };
         // A few aren't worth sharing out.
         let mut planned: Vec<Option<Option<Planned>>> = if moves.len() >= 16 {
@@ -733,7 +750,7 @@ impl Physics {
             }
             let planned = match planned[n].take() {
                 Some(planned) => planned,
-                None => plan_one(&self.state, id, wanted, dt),
+                None => plan_one(&self.state, id, wanted, dt, platforms),
             };
             let Some(planned) = planned else {
                 if self.state.by_entity.contains_key(&id) {
@@ -747,6 +764,11 @@ impl Physics {
             };
             let spec = planned.spec;
             let state = self.state_mut();
+            let place = |state: &State| {
+                let entry = state.by_entity.get(&id)?;
+                state.bodies.get(entry.body).map(|b| *b.next_position())
+            };
+            let before = place(state);
             let Ok(found) = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
                 apply_one(state, planned, dt)
             })) else {
@@ -754,10 +776,15 @@ impl Physics {
                 self.broke = true;
                 return is_character;
             };
+            // Only a character that went somewhere has its entity follow
+            // (most of a crowd stands still most of the time).
+            let went = place(&self.state) != before;
             if let Some(e) = self.state_mut().by_entity.get_mut(&id) {
                 e.character = Some((spec, found));
             }
-            self.characters_moved.push(id);
+            if went {
+                self.characters_moved.push(id);
+            }
         }
         is_character
     }
@@ -938,7 +965,13 @@ struct Planned {
 /// reads (colliders where the last step left them, its own next place)
 /// no other character's move changes. `None` if it isn't a character, or
 /// its body or collider is missing, or Rapier panicked.
-fn plan_one(state: &State, id: EntityId, wanted: Vec3, dt: f32) -> Option<Planned> {
+fn plan_one(
+    state: &State,
+    id: EntityId,
+    wanted: Vec3,
+    dt: f32,
+    platforms: bool,
+) -> Option<Planned> {
     let entry = state.by_entity.get(&id)?.clone();
     let ((spec, last), collider) = (entry.character?, entry.collider?);
     let mut wanted = wanted.clamp_length_max(MAX_CHARACTER_MOVE);
@@ -962,7 +995,7 @@ fn plan_one(state: &State, id: EntityId, wanted: Vec3, dt: f32) -> Option<Planne
         // step. (Rapier only carries a character through what its move
         // happens to meet, which a character standing still or walking on
         // the flat doesn't, so Solis does it whatever the move.)
-        if last.grounded {
+        if last.grounded && platforms {
             let feet = start.translation;
             let ray = rp::Ray::new(feet + rp::Vector::Z * 0.05, -rp::Vector::Z);
             let under = queries
@@ -999,10 +1032,17 @@ fn plan_one(state: &State, id: EntityId, wanted: Vec3, dt: f32) -> Option<Planne
             });
         // Walking off a step or down a slope: down to the ground, if it's
         // within reach, rather than flying off.
-        // (Also when Rapier still calls it grounded: it does up to a few
-        // centimetres above the ground, and nothing else would bring it
-        // down.)
-        if last.grounded && spec.snap > 0.0 && result.translation.z <= 0.0 {
+        // (Also when Rapier still calls it grounded, up to a few
+        // centimetres above the ground, if a platform is moving: one going
+        // down would otherwise leave it standing on air.)
+        // Every tick only while a platform moves (riding one needs it); else
+        // only once Rapier no longer calls it grounded, which is cheaper
+        // for a crowd.
+        if last.grounded
+            && (!result.grounded || platforms)
+            && spec.snap > 0.0
+            && result.translation.z <= 0.0
+        {
             let options = rapier3d::parry::query::details::ShapeCastOptions {
                 target_distance: 0.01,
                 stop_at_penetration: true,

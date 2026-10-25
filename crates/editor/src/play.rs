@@ -500,8 +500,11 @@ impl Workbench {
                 playing.pending.extend(edits);
                 saves = std::mem::take(&mut host.saves);
                 let seed = host.seed.take();
-                // Rebinding takes effect from the next tick.
+                // Rebinding takes effect from the next tick. The tick's
+                // own share of the bindings goes first, so they're changed
+                // in place rather than copied.
                 let rebinds = std::mem::take(&mut host.rebinds);
+                drop(host);
                 for (action, input) in rebinds {
                     Arc::make_mut(&mut playing.bindings).rebind(&action, &input);
                 }
