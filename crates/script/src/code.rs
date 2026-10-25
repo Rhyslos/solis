@@ -220,21 +220,44 @@ pub fn compile(code: &Code) -> Result<Option<Compiled>, Vec<CodeProblem>> {
         return Ok(None);
     }
     let code = code.clone();
+    let (sender, answer) = std::sync::mpsc::channel();
     let worker = std::thread::Builder::new()
         .name("lust compiler".into())
         .stack_size(COMPILER_STACK)
-        .spawn(move || compile_here(&code));
-    match worker.map(std::thread::JoinHandle::join) {
-        Ok(Ok(result)) => result,
-        Ok(Err(_)) => Err(vec![compiler_stopped()]),
-        Err(why) => Err(vec![CodeProblem {
+        .spawn(move || {
+            let _ = sender.send(compile_here(&code));
+        });
+    if let Err(why) = worker {
+        return Err(vec![CodeProblem {
             file: ENTRY.to_string(),
             line: 0,
             column: 0,
             message: format!("the code couldn't be checked: there was no room to start ({why})"),
+        }]);
+    }
+    // A compiler that never finishes (a case no guard here knows yet) is
+    // given up on, not waited for forever: the code is reported as not
+    // checked, so the editor isn't left waiting. Its thread is left to
+    // finish on its own.
+    match answer.recv_timeout(COMPILE_LIMIT) {
+        Ok(result) => result,
+        Err(std::sync::mpsc::RecvTimeoutError::Timeout) => Err(vec![CodeProblem {
+            file: ENTRY.to_string(),
+            line: 0,
+            column: 0,
+            message: format!(
+                "checking the code took more than {} seconds, so it was given up on. Something \
+                 in it is more than the checker can handle: undo the last change, or look for \
+                 something unusual (please report it)",
+                COMPILE_LIMIT.as_secs()
+            ),
         }]),
+        Err(std::sync::mpsc::RecvTimeoutError::Disconnected) => Err(vec![compiler_stopped()]),
     }
 }
+
+/// The longest checking the code may take before it's given up on.
+pub const COMPILE_LIMIT: std::time::Duration = std::time::Duration::from_secs(30);
 
 /// The longest run of `!` (as in `!!!x`) allowed in Lust. The Lust
 /// compiler's nesting limit counts `not` and `-` but not `!`, and a long
@@ -302,6 +325,107 @@ fn long_prefix_chains(files: &[(String, String)]) -> Vec<CodeProblem> {
     problems
 }
 
+/// Problems for two components, classes or objects with the same name,
+/// in one file or two. The Lust compiler (rev a60cf87) never finishes
+/// such code, so it's found here first (by the hardening milestone's
+/// fuzzing, decision 0042), with what to do about it. Outside comments and
+/// strings, as [`long_prefix_chains`] reads.
+fn shared_names(files: &[(String, String)]) -> Vec<CodeProblem> {
+    let mut problems = Vec::new();
+    let mut seen: std::collections::HashMap<String, (String, u32)> =
+        std::collections::HashMap::new();
+    for (path, text) in files {
+        for (line, word, name) in declarations(text) {
+            match seen.get(&name) {
+                Some((first, at)) => problems.push(CodeProblem {
+                    file: path.clone(),
+                    line,
+                    column: 0,
+                    message: format!(
+                        "there's already something called {name} ({first}, line {at}); a \
+                         {word} needs a name of its own"
+                    ),
+                }),
+                None => {
+                    seen.insert(name, (path.clone(), line));
+                }
+            }
+        }
+    }
+    problems
+}
+
+/// Each `component`, `class` or `object` declared in `text`: its line,
+/// the word, and its name. Comments (`--` to the end of the line) and
+/// strings are skipped.
+fn declarations(text: &str) -> Vec<(u32, &'static str, String)> {
+    let mut found = Vec::new();
+    let mut line = 1u32;
+    let mut word = String::new();
+    // The declaring word just read, waiting for its name.
+    let mut pending: Option<&'static str> = None;
+    let mut chars = text.chars().peekable();
+    let mut in_string = false;
+    let mut finish = |word: &mut String, pending: &mut Option<&'static str>, line: u32| {
+        if word.is_empty() {
+            return;
+        }
+        if let Some(kind) = pending.take() {
+            found.push((line, kind, word.clone()));
+        } else {
+            *pending = match word.as_str() {
+                "component" => Some("component"),
+                "class" => Some("class"),
+                "object" => Some("object"),
+                _ => None,
+            };
+        }
+        word.clear();
+    };
+    while let Some(c) = chars.next() {
+        if in_string {
+            match c {
+                '\\' => {
+                    chars.next();
+                }
+                '"' => in_string = false,
+                '\n' => {
+                    in_string = false;
+                    line += 1;
+                }
+                _ => {}
+            }
+            continue;
+        }
+        if c.is_alphanumeric() || c == '_' {
+            word.push(c);
+            continue;
+        }
+        finish(&mut word, &mut pending, line);
+        match c {
+            '"' => {
+                in_string = true;
+                pending = None;
+            }
+            '-' if chars.peek() == Some(&'-') => {
+                for c in chars.by_ref() {
+                    if c == '\n' {
+                        line += 1;
+                        break;
+                    }
+                }
+            }
+            '\n' => line += 1,
+            c if c.is_whitespace() => {}
+            // Anything else between the word and a name: not a
+            // declaration (`component:` in a comment-free odd place, say).
+            _ => pending = None,
+        }
+    }
+    finish(&mut word, &mut pending, line);
+    found
+}
+
 /// [`compile`], on this thread.
 fn compile_here(code: &Code) -> Result<Option<Compiled>, Vec<CodeProblem>> {
     let mut problems = Vec::new();
@@ -309,6 +433,7 @@ fn compile_here(code: &Code) -> Result<Option<Compiled>, Vec<CodeProblem>> {
     if !code.files.is_empty() {
         let mut missing = check_entry(code);
         missing.extend(long_prefix_chains(&code.files));
+        missing.extend(shared_names(&code.files));
         if missing.is_empty() {
             let files = &code.files;
             match std::panic::catch_unwind(|| lust::to_lua(ENTRY, files)) {
@@ -464,6 +589,48 @@ mod tests {
         assert_eq!(paths, ["main.lst", "weapons/gun.lst"]);
         assert_eq!(code.notes.len(), 2, "{:?}", code.notes);
         assert!(gather(&assets.join("missing")).is_empty());
+    }
+
+    #[test]
+    fn two_things_with_one_name_are_a_mistake_never_a_hang() {
+        // The hardening milestone's fuzzing: two components (or classes,
+        // or objects) with one name never finished checking.
+        let check = |files: Vec<(&str, &str)>| {
+            let start = std::time::Instant::now();
+            let got = compile(&Code {
+                files: files
+                    .into_iter()
+                    .map(|(p, t)| (p.to_string(), t.to_string()))
+                    .collect(),
+                lua: Vec::new(),
+                notes: Vec::new(),
+            });
+            assert!(start.elapsed() < std::time::Duration::from_secs(5));
+            got
+        };
+        for text in [
+            "component Health {}\ncomponent Health {}\nend\n",
+            "component h{}component h{}",
+            "class Health {}\n\ncomponent Health {}\nend\n",
+            "object Ship {}\nobject Ship {}\nend\n",
+        ] {
+            let problems = check(vec![("main.lst", text)]).unwrap_err();
+            assert!(problems[0].message.contains("already something called"), "{problems:?}");
+        }
+        let problems = check(vec![
+            ("main.lst", "fetch \"other\":[Health];\ncomponent Health {}\nend\n"),
+            ("other.lst", "\n\ncomponent Health {}\nend\n"),
+        ])
+        .unwrap_err();
+        assert_eq!((problems[0].file.as_str(), problems[0].line), ("other.lst", 3));
+        // In comments and strings, and other names, it's fine.
+        let fine = vec![(
+            "main.lst".to_string(),
+            "-- component Health\nstring s = \"component Health\";\ncomponent Health {}\n\
+             component Armour {}\nend\n"
+                .to_string(),
+        )];
+        assert!(shared_names(&fine).is_empty());
     }
 
     #[test]
