@@ -24,6 +24,7 @@ asset_db = { path = "crates/asset_db" }
 world = { path = "crates/world" }
 script = { path = "crates/script" }
 physics = { path = "crates/physics" }
+input = { path = "crates/input" }
 
 # Outside libraries. Every one must have a licence compatible with MIT,
 # checked by `cargo deny check` (see deny.toml and decision 0007).
@@ -55,6 +56,8 @@ hecs = "0.11"
 # Physics, in its strict mode: the same result on every PC (decision
 # 0036). Not `parallel`: its order of work isn't fixed.
 rapier3d = { version = "0.36", features = ["enhanced-determinism", "serde-serialize"] }
+# Gamepads (decision 0037), on Windows.
+gilrs = "0.11"
 # The job system: work spread over every core (decision 0031).
 rayon = "1.12"
 # Messages from the libraries (the GPU layer, say), shown in the Console.

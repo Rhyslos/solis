@@ -48,6 +48,8 @@ pub enum Change {
     Push(EntityId, Vec3),
     /// `setVelocity`: set how fast the entity's body moves.
     Velocity(EntityId, Vec3),
+    /// `rebind`: bind this input to this action, from the next tick.
+    Rebind(String, String),
 }
 
 /// The entities of a [`WorldView`]: the same while the world's entities,
@@ -95,6 +97,10 @@ pub struct WorldView {
     pub seed: u64,
     /// Physics as the phase started (decision 0036), shared, to read.
     pub physics: Arc<physics::State>,
+    /// The input this tick (decision 0037): the same on every core.
+    pub input: Arc<input::Frame>,
+    /// The actions' bindings, to say which input sets one off.
+    pub bindings: Arc<input::Bindings>,
 }
 
 impl WorldView {
@@ -327,6 +333,28 @@ impl Host for ViewHost {
 
     fn cast_ray(&self, from: Vec3, direction: Vec3, reach: f32) -> Option<physics::Hit> {
         self.view.physics.cast_ray(from, direction, reach)
+    }
+
+    fn action(&self, name: &str) -> input::ActionState {
+        self.view.input.get(name)
+    }
+
+    fn binding(&self, action: &str) -> Option<String> {
+        let action = self.view.bindings.get(action)?;
+        action
+            .first_input("")
+            .or_else(|| action.first_input("Mouse "))
+            .or_else(|| action.first_input("Pad "))
+            .map(str::to_string)
+    }
+
+    fn rebind(&mut self, action: &str, input: &str) {
+        if input::valid_action_name(action) && input::valid_input_name(input) && self.kept.room() {
+            let order = self.order();
+            self.kept
+                .changes
+                .push((order, Change::Rebind(action.to_string(), input.to_string())));
+        }
     }
 
     fn set_seed(&mut self, seed: u64) {

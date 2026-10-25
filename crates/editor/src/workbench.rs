@@ -104,6 +104,15 @@ pub enum WorkbenchAction {
         /// Its new value.
         value: reflect::Value,
     },
+    /// Save the project's input actions (`input.solinput`) with this
+    /// text (Edit > Input actions…).
+    SaveBindings(String),
+    /// Save a recording of a play's input (this text) in the project's
+    /// `recordings` folder.
+    SaveRecording(String),
+    /// Ask which recording to play back (Play > Replay a recording…);
+    /// the app reads it and calls [`Workbench::replay`].
+    OpenRecording,
 }
 
 /// What [`Workbench::assembly_part`] was worked out for: the selected
@@ -182,6 +191,24 @@ pub struct Workbench {
     pub(crate) profiler: crate::profiler::Profiler,
     /// What the viewport's [`AreaView`] was last worked out for.
     editor_view: Option<ViewKey>,
+    /// The project's input actions (decision 0037), from its
+    /// `input.solinput` ([`Self::set_bindings`]); the ready-made ones
+    /// without a project.
+    pub(crate) bindings: input::Bindings,
+    /// What the keyboard, mouse and gamepad are doing, while the game has
+    /// them.
+    pub(crate) devices: input::Devices,
+    /// Whether the game has the mouse and keys (the Game panel was
+    /// clicked while playing; Esc gives them back).
+    pub(crate) game_input: bool,
+    /// The game gave the mouse and keys back: the pointer is shown again
+    /// at the next frame.
+    pub(crate) release_pointer: bool,
+    /// The gamepad as the app last read it (also while editing, for
+    /// binding its buttons in the Input actions window).
+    pub(crate) pad_now: Option<input::Pad>,
+    /// Whether the Input actions window is open.
+    pub(crate) input_window: Option<crate::input_window::InputWindow>,
     /// The seed every Play starts the game's random numbers from, if one
     /// was chosen (`seed` in the Console); otherwise each Play has a new
     /// one.
@@ -256,6 +283,12 @@ impl Workbench {
             profiler: crate::profiler::Profiler::default(),
             editor_view: None,
             fixed_seed: None,
+            bindings: input::Bindings::default(),
+            devices: input::Devices::new(),
+            game_input: false,
+            release_pointer: false,
+            pad_now: None,
+            input_window: None,
             game_scene: None,
             left_out: std::collections::BTreeSet::new(),
             rust_components: Vec::new(),
@@ -604,12 +637,17 @@ impl Workbench {
         if ui.input(|i| i.pointer.any_pressed()) {
             self.gesture += 1;
         }
-        self.tool_keys(ui);
-        self.tool_extra_keys(ui);
-        self.undo_keys(ui);
-        self.editing_keys(ui);
-        self.file_keys(ui, &mut actions);
-        self.console_key(ui);
+        // While the game has the mouse and keys, they're the game's: the
+        // editor's own keys are off (decision 0037).
+        self.feed_input(ui.ctx());
+        if !self.game_input {
+            self.tool_keys(ui);
+            self.tool_extra_keys(ui);
+            self.undo_keys(ui);
+            self.editing_keys(ui);
+            self.file_keys(ui, &mut actions);
+            self.console_key(ui);
+        }
         let seconds = ui.input(|i| i.stable_dt);
         self.run_game(seconds);
         egui::Panel::top("top_bar")
@@ -678,6 +716,7 @@ impl Workbench {
         self.profiler
             .add(crate::profiler::Stage::Prepare, preparing.elapsed());
         let playing = self.playing.is_some();
+        let mut game_clicked = false;
         let mut renderer = crate::profiler::Timed {
             inner: renderer,
             spent: std::time::Duration::ZERO,
@@ -704,6 +743,8 @@ impl Workbench {
                         code_problems: &self.code_problems,
                         game: game.as_ref().map(|(_, scene)| scene),
                         playing,
+                        game_input: self.game_input,
+                        game_clicked: &mut game_clicked,
                         document: &self.document,
                         models: &self.models,
                         area_requests: &mut area_requests,
@@ -722,6 +763,9 @@ impl Workbench {
                 );
         });
         self.in_front = shown;
+        if game_clicked {
+            self.give_game_input(ui.ctx());
+        }
         self.tool_events();
         for request in requests {
             self.apply_property(request, self.gesture);
@@ -745,6 +789,7 @@ impl Workbench {
             drop_hint(ui, self.accent);
         }
         self.about(ui);
+        self.input_actions_window(ui.ctx());
         self.prompts(ui, &mut actions);
         self.hold_while_playing(&mut actions);
         self.profiler

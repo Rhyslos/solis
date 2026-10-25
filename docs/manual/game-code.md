@@ -270,6 +270,10 @@ end
 
 Solis makes them from the game's **seed** ([random numbers](concepts.md#game-code)), so the same seed gives the same numbers, on any computer and any number of cores. Each Play has a new seed; type `seed` in the [Console](console.md) to see it, and `seed 42` to start every Play from 42, so you can watch the same game again. `setSeed(n)` starts the numbers again from `n` at the end of the tick. Lua's own `math.random` and `math.randomseed` follow the same seed.
 
+## Input
+
+Game code reads the player's controls as named actions, never keys: `axis("Move")`, `pressed("Jump")`, `held("Sprint")`, in `solis/input`. See [Input](input.md), which also covers gamepads, rebinding and recording a play.
+
 ## Physics
 
 Things that fall, collide and get pushed have a **RigidBody** and a **Collider**: see [Physics](physics.md). Game code pushes them (`push`), reads and sets how fast they move (`velocityOf`, `setVelocity`), and looks along lines (`castRay`, `castRayHit`, `castRayNormal`), all in `solis/physics`.
@@ -289,6 +293,12 @@ Things that fall, collide and get pushed have a **RigidBody** and a **Collider**
 | `solis/world` | `float randomRange(float low, float high)` | A random number from low up to high. |
 | `solis/world` | `int randomInt(int low, int high)` | A random whole number from low to high, both included. |
 | `solis/world` | `setSeed(int seed)` | Starts the random numbers again from a seed, at the end of the tick. |
+| `solis/input` | `bool held(string action)` | Whether an action is held this tick ([Input](input.md)). |
+| `solis/input` | `bool pressed(string action)` | True once, the tick an action went down. |
+| `solis/input` | `bool released(string action)` | True once, the tick it came up. |
+| `solis/input` | `vec3 axis(string action)` | An axis action's x and y. |
+| `solis/input` | `string bindingOf(string action)` | The key that sets an action off, for "Press F". |
+| `solis/input` | `rebind(string action, string input)` | Binds a new input to an action, from the next tick. |
 | `solis/physics` | `push(entity which, vec3 impulse)` | Gives a body a push ([Physics](physics.md)). |
 | `solis/physics` | `vec3 velocityOf(entity which)` | How fast and which way a body moves, metres a second. |
 | `solis/physics` | `setVelocity(entity which, vec3 velocity)` | Sets how fast and which way a body moves. |
@@ -321,5 +331,6 @@ Things that fall, collide and get pushed have a **RigidBody** and a **Collider**
 - [Entities and components](entities.md)
 - [Play mode](play-mode.md)
 - [Physics](physics.md)
+- [Input](input.md)
 - Concepts: [game code, Lust, native method, tick, event, random number](concepts.md#game-code), [physics](concepts.md#simulation)
 - The Lust language itself: [Lust's guide](https://github.com/Rhyslos/Lust/blob/main/LUST.md)

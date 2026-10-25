@@ -212,6 +212,13 @@ pub(crate) struct PlayWorld<'a> {
     /// What game code spawned and despawned, in the order asked for, for
     /// the editor to land after the tick.
     pub(crate) edits: Vec<GameEdit>,
+    /// The tick's input (decision 0037).
+    pub(crate) input: Arc<input::Frame>,
+    /// The input actions' bindings.
+    pub(crate) bindings: Arc<input::Bindings>,
+    /// Game code's rebinding (action, input), in order, for the editor to
+    /// make after the tick.
+    pub(crate) rebinds: Vec<(String, String)>,
 }
 
 impl<'a> PlayWorld<'a> {
@@ -223,6 +230,9 @@ impl<'a> PlayWorld<'a> {
             said: Vec::new(),
             frame_time: 1.0 / 60.0,
             edits: Vec::new(),
+            input: Arc::default(),
+            bindings: Arc::default(),
+            rebinds: Vec::new(),
         }
     }
 }
@@ -243,6 +253,8 @@ impl GameWorld for PlayWorld<'_> {
             frame_time: self.frame_time,
             seed: self.world.seed(),
             physics: Arc::clone(self.world.physics().state()),
+            input: Arc::clone(&self.input),
+            bindings: Arc::clone(&self.bindings),
         }
     }
 
@@ -258,6 +270,9 @@ impl GameWorld for PlayWorld<'_> {
                 Change::Seed(seed) => self.world.set_seed(seed),
                 Change::Push(which, impulse) => self.world.push(which, impulse),
                 Change::Velocity(which, velocity) => self.world.set_velocity(which, velocity),
+                Change::Rebind(ref action, ref input) => {
+                    self.rebinds.push((action.clone(), input.clone()));
+                }
                 Change::Move(which, _) | Change::Turn(which, _) => {
                     // Every move and turn of one entity in a row (one
                     // component's are side by side) in one lookup; the

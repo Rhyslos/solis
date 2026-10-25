@@ -40,6 +40,10 @@ pub(crate) struct PanelViewer<'a> {
     pub(crate) game: Option<&'a crate::game_panel::GameScene>,
     /// Whether the game is running.
     pub(crate) playing: bool,
+    /// Whether the game has the mouse and keys.
+    pub(crate) game_input: bool,
+    /// Set when the Game panel's picture was clicked.
+    pub(crate) game_clicked: &'a mut bool,
     pub(crate) document: &'a Document,
     pub(crate) models: &'a BTreeMap<AssetId, ModelInfo>,
     pub(crate) area_requests: &'a mut Vec<AreaRequest>,
@@ -180,10 +184,11 @@ impl TabViewer for PanelViewer<'_> {
             Panel::Game => {
                 let full = ui.max_rect();
                 let mut game_ui = ui.new_child(egui::UiBuilder::new().max_rect(full));
-                crate::game_panel::game_panel(
+                *self.game_clicked |= crate::game_panel::game_panel(
                     &mut game_ui,
                     self.game,
                     self.playing,
+                    self.game_input,
                     &self.viewport.camera,
                     self.renderer,
                 );

@@ -24,6 +24,7 @@ assets.workspace = true
 asset_db.workspace = true
 editor.workspace = true
 script.workspace = true
+input.workspace = true
 reflect.workspace = true
 area.workspace = true
 render.workspace = true
@@ -33,6 +34,11 @@ glam.workspace = true
 bytemuck.workspace = true
 opener.workspace = true
 log.workspace = true
+
+# Gamepads, on Windows only: the only system Solis is made for (decision
+# 0012), and on Linux gilrs needs system libraries the checks don't.
+[target.'cfg(windows)'.dependencies]
+gilrs.workspace = true
 
 [dev-dependencies]
 image.workspace = true

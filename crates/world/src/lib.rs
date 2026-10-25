@@ -803,12 +803,14 @@ impl World {
 
     /// A checksum of the game's world (Phase 6, determinism): every
     /// entity in order with its name, place and game components' values,
-    /// the projectiles, the clock and the seed. Two runs of a game that
+    /// the projectiles, physics and the seed. Two runs of a game that
     /// agree on it at a tick are in the same state (game code's running
     /// values are checked apart, by `script::Game::checksum`).
     pub fn checksum(&self) -> u64 {
         let mut sum = reflect::Checksum::new();
-        sum.u64(self.clock.ticks);
+        // Not the clock: during a frame of several ticks it has moved on
+        // by all of them before the first runs, and the tick's number is
+        // known wherever checksums are compared.
         sum.u64(self.seed);
         sum.u64(self.order.len() as u64);
         for &(entity, parent) in &self.order {

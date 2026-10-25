@@ -17,6 +17,15 @@
 | Zoom a flat view | Mouse wheel |
 | Use one of several views | Click in it |
 
+## While the game plays
+
+| Action | Shortcut |
+|---|---|
+| Give the game the mouse and keys | Click the Game panel |
+| Give them back to the editor | Esc |
+
+While the game has them, every key is the game's and the editor's shortcuts are off. The game's own controls (W A S D, mouse, Space, Shift, F, and a gamepad, by default) are set in **Edit > Input actions…**: see [Input](input.md).
+
 ## Tools (when the right mouse button isn't held)
 
 | Tool | Key |

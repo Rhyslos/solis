@@ -76,6 +76,10 @@ struct App {
     /// not tried again until the listing changes.
     unreadable: HashSet<AssetId>,
     /// The open area's file: saving, opening, and changes on disk.
+    /// The Open window for a recording of play.
+    recordings: crate::play_files::RecordingDialog,
+    /// Reads the gamepad.
+    gamepads: crate::gamepad::Gamepads,
     area_files: AreaFiles,
     /// Actions waiting for a Save window to close (Save, then quit).
     queued: VecDeque<WorkbenchAction>,
@@ -156,6 +160,8 @@ impl App {
             listing: asset_db::Listing::default(),
             unreadable: HashSet::new(),
             area_files: AreaFiles::default(),
+            recordings: crate::play_files::RecordingDialog::default(),
+            gamepads: crate::gamepad::Gamepads::new(),
             queued: VecDeque::new(),
             title: String::new(),
             messages: crate::logger::install(),
@@ -196,6 +202,12 @@ impl App {
                 self.area_files.forget();
                 let assets = opened.info.assets.clone();
                 self.workbench.set_project(Some(opened.info));
+                // Its input actions (decision 0037).
+                let (bindings, note) = crate::play_files::load_bindings(root);
+                self.workbench.set_bindings(bindings);
+                if let Some(note) = note {
+                    self.workbench.log(LogLevel::Warning, note);
+                }
                 for note in opened.notes {
                     self.workbench.log(LogLevel::Warning, note);
                 }
@@ -633,6 +645,44 @@ impl App {
                     self.area_files.ask(Purpose::Save, folder, &name);
                 }
                 WorkbenchAction::OpenAreaFile(path) => self.open_area(&path),
+                WorkbenchAction::SaveBindings(text) => {
+                    if let Some(root) = self.projects.root().map(Path::to_path_buf)
+                        && let Err(why) = crate::play_files::save_bindings(&root, &text)
+                    {
+                        self.workbench.log(
+                            LogLevel::Error,
+                            format!("Couldn't save the input actions: {why}."),
+                        );
+                    }
+                }
+                WorkbenchAction::SaveRecording(text) => {
+                    match self.projects.root().map(Path::to_path_buf) {
+                        Some(root) => match crate::play_files::save_recording(&root, &text) {
+                            Ok(path) => self.workbench.log(
+                                LogLevel::Info,
+                                format!(
+                                    "Saved the recording as {} (Play > Replay a recording… plays it back).",
+                                    file_name(&path)
+                                ),
+                            ),
+                            Err(why) => self.workbench.log(
+                                LogLevel::Error,
+                                format!("Couldn't save the recording: {why}."),
+                            ),
+                        },
+                        None => self.workbench.log(
+                            LogLevel::Warning,
+                            "The recording wasn't kept: recordings are kept in a project.",
+                        ),
+                    }
+                }
+                WorkbenchAction::OpenRecording => {
+                    let folder = self
+                        .projects
+                        .root()
+                        .map(|r| r.join(crate::play_files::RECORDINGS));
+                    self.recordings.ask(folder);
+                }
                 WorkbenchAction::OpenExternally(path) => {
                     if let Err(why) = opener::open(&path) {
                         self.workbench.log(
@@ -1092,6 +1142,17 @@ impl eframe::App for App {
         }
         self.collect_imports();
         self.show_library_messages();
+        self.workbench.set_gamepad(self.gamepads.read());
+        if let Some(Some(path)) = self.recordings.chosen() {
+            match crate::play_files::read_limited(&path, 64 << 20) {
+                Ok(Some(text)) => self.workbench.replay(&text, &file_name(&path)),
+                Ok(None) => {}
+                Err(why) => self.workbench.log(
+                    LogLevel::Error,
+                    format!("Couldn't read {}: {why}.", file_name(&path)),
+                ),
+            }
+        }
         self.workbench.set_files_hovering(hovering);
         let renderer: &mut dyn editor::ViewportRenderer = match self.gpu.as_mut() {
             Some(gpu) => gpu,

@@ -119,4 +119,7 @@
 - **Impulse (push):** a sudden push, like a kick. The same push moves a light thing more than a heavy one.
 - **Ray:** an invisible line from a point in a direction, asking "what's the first thing along here?". Games use them to see whether a character stands on the ground, or what a gun points at.
 - **Determinism:** a game coming out exactly the same every time it's given the same inputs, on any computer. Solis keeps to it (decimals rounded the same way, everything done in a fixed order), so a recording replays exactly, and players online can keep their games in step by sending only their inputs.
+- **Action:** something the player does, by name (Move, Jump), which game code asks about instead of keys. Its **bindings** are the keys, mouse buttons and gamepad buttons that set it off; **rebinding** changes them. See [Input](input.md).
+- **Axis:** an action that gives numbers instead of on or off: a stick, or four keys, giving which way and how far.
+- **Recording:** every tick's input from a play, kept so the play can be run again exactly, checking it comes out the same. See [Input](input.md#how-to-use-it).
 - **Checksum:** one number made from everything in the game at a moment. Two plays that agree on it at the same tick are in the same state; when they don't, something differs. `checksum` in the [Console](console.md) shows it.

@@ -15,8 +15,8 @@ Wire the engine and the editor together. It owns the window and the GPU device, 
 
 ## Depends on
 
-`editor`, `render`, `assets`, `asset_db`, eframe, rfd (the system's Open window), opener and log.
+`editor`, `render`, `assets`, `asset_db`, `input`, eframe, rfd (the system's Open window), opener, log, and on Windows gilrs (gamepads).
 
 ## Status
 
-Phase 1: the editor with a drawn viewport, a flying camera, and imported models. Phase 2: projects, area files and assemblies. Phase 3: picking, the Library's thumbnails and file actions, and library messages in the Console. Phase 5: the benchmark (`benchmark.rs`, Help > Make the benchmark…): a project of two fleets of ships (the ship model from `assets::sample::ship_glb`, its sidecar with a fixed ID, an assembly, and `samples/benchmark/assets/main.lst`) in three areas; every assembly in a project is read when the Library is listed, so game code can spawn any; the Game panel's projectiles are handed to the renderer (`render_with_bolts`).
+Phase 1: the editor with a drawn viewport, a flying camera, and imported models. Phase 2: projects, area files and assemblies. Phase 3: picking, the Library's thumbnails and file actions, and library messages in the Console. Phase 5: the benchmark (`benchmark.rs`, Help > Make the benchmark…): a project of two fleets of ships (the ship model from `assets::sample::ship_glb`, its sidecar with a fixed ID, an assembly, and `samples/benchmark/assets/main.lst`) in three areas; every assembly in a project is read when the Library is listed, so game code can spawn any; the Game panel's projectiles are handed to the renderer (`render_with_bolts`). Phase 6: the project's input actions read from and saved to `input.solinput` and recordings saved in `recordings/` and opened for replay (`play_files.rs`); the first gamepad read each frame with gilrs on Windows only (`gamepad.rs`; elsewhere none, so the Linux checks need no system libraries).
