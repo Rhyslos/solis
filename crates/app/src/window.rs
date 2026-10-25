@@ -1093,6 +1093,7 @@ impl eframe::App for App {
 
 /// Opens the editor window and runs until it closes.
 pub fn run(info: AppInfo, imports: Vec<PathBuf>) -> Result<(), String> {
+    start_jobs();
     let title = format!("{} {}", info.name, info.version);
     let options = eframe::NativeOptions {
         viewport: egui::ViewportBuilder::default()
@@ -1115,6 +1116,16 @@ pub fn run(info: AppInfo, imports: Vec<PathBuf>) -> Result<(), String> {
         Ok(result) => result.map_err(|err| err.to_string()),
         Err(payload) => Err(explain_panic(payload.as_ref())),
     }
+}
+
+/// The job system's workers (decision 0031): one per core, leaving one for
+/// the window. Started once; a second call (tests) keeps the first.
+pub fn start_jobs() {
+    let cores = std::thread::available_parallelism().map_or(2, std::num::NonZeroUsize::get);
+    let _ = rayon::ThreadPoolBuilder::new()
+        .num_threads(cores.saturating_sub(1).max(1))
+        .thread_name(|i| format!("jobs {i}"))
+        .build_global();
 }
 
 /// The GPU as egui-wgpu sets it up, but asking for timestamps too when the

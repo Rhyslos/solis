@@ -49,6 +49,8 @@ percent-encoding = "2.3"
 rfd = "0.17"
 # The game's storage while it runs (decision 0024).
 hecs = "0.11"
+# The job system: work spread over every core (decision 0031).
+rayon = "1.12"
 # Messages from the libraries (the GPU layer, say), shown in the Console.
 log = "0.4"
 # The local time on console messages.

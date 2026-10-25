@@ -756,7 +756,8 @@ impl ViewportRenderer {
         let (lamps, lamp_count) = LightsUniform::new(lights, params.camera_position);
         let shadow_box = crate::instances::world_bounds(placed);
         let (raw, mut batches, batch_models) = crate::instances::gather(placed);
-        if !target.frame.write_instances(device, queue, &raw) {
+        let written = target.frame.write_instances(device, queue, &raw);
+        if !written {
             log::warn!(
                 "{} model copies are more than the graphics card can draw at once; models \
                  aren't drawn",

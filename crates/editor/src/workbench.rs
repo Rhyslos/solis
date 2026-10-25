@@ -177,6 +177,8 @@ pub struct Workbench {
     pub(crate) game_components: std::collections::BTreeSet<String>,
     /// Where each frame's time goes (the Profiler panel).
     pub(crate) profiler: crate::profiler::Profiler,
+    /// What the viewport's [`AreaView`] was last worked out for.
+    editor_view: Option<ViewKey>,
     /// Its components whose names were taken (by the engine's own, or a
     /// Rust one's): they don't run.
     pub(crate) left_out: std::collections::BTreeSet<String>,
@@ -186,6 +188,17 @@ pub struct Workbench {
     /// sources it was worked out for: kept, since it expands the whole
     /// assembly.
     pub(crate) assembly_part_kept: std::cell::RefCell<Option<(PartKey, Option<AssemblyPart>)>>,
+}
+
+/// What the viewport's view of the area depends on: when it's the same,
+/// the view is too.
+#[derive(Debug, Clone, PartialEq)]
+struct ViewKey {
+    revision: u64,
+    sources: u64,
+    models: usize,
+    hidden: HashSet<reflect::EntityId>,
+    locked: HashSet<reflect::EntityId>,
 }
 
 impl Workbench {
@@ -217,6 +230,7 @@ impl Workbench {
             program: None,
             game_components: std::collections::BTreeSet::new(),
             profiler: crate::profiler::Profiler::default(),
+            editor_view: None,
             left_out: std::collections::BTreeSet::new(),
             rust_components: Vec::new(),
             assembly_part_kept: std::cell::RefCell::new(None),
@@ -585,14 +599,26 @@ impl Workbench {
         let mut requests = Vec::new();
         let preparing = std::time::Instant::now();
         let (hidden, locked) = self.area_panel.in_effect(&self.document);
-        self.viewport.area = AreaView::of_placed(
-            self.document.area(),
-            &self.document.tree(),
-            &self.document.world_matrices(),
-            &self.models,
-            &hidden,
-            &locked,
-        );
+        // Worked out again only when something it shows changed: while
+        // playing, the area usually doesn't.
+        let key = ViewKey {
+            revision: self.document.revision(),
+            sources: self.sources,
+            models: self.models.len(),
+            hidden: hidden.clone(),
+            locked: locked.clone(),
+        };
+        if self.editor_view.as_ref() != Some(&key) {
+            self.viewport.area = AreaView::of_placed(
+                self.document.area(),
+                &self.document.tree(),
+                &self.document.world_matrices(),
+                &self.models,
+                &hidden,
+                &locked,
+            );
+            self.editor_view = Some(key);
+        }
         self.viewport.entities = self.document.area().len();
         self.prepare_tools();
         self.find_problems();

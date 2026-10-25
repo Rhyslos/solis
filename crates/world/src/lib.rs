@@ -37,6 +37,11 @@ pub struct Name(pub String);
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub struct Parent(pub EntityId);
 
+/// Where an entity is in the area's tree order (its place in `order`), so
+/// a query can give entities in that order.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+struct Place(usize);
+
 /// Where an entity is in the world: its transform after its parents'.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Global(pub Mat4);
@@ -109,6 +114,7 @@ impl World {
             // A parent that comes later in the order is part of a loop
             // in a damaged area: the entity is treated as standing alone.
             let parent = data.parent.and_then(|p| place.get(&p).copied());
+            builder.add(Place(order.len()));
             let entity = ecs.spawn(builder.build());
             by_id.insert(id, entity);
             place.insert(id, order.len());
@@ -201,7 +207,9 @@ impl World {
                 self.game_moved.remove(&id);
             }
             let _ = self.ecs.despawn(entity);
-            let fresh = self.ecs.spawn(components_of(id, data).build());
+            let fresh = self
+                .ecs
+                .spawn(components_of(id, data).add(Place(at)).build());
             if let Some(transform) = kept {
                 let _ = self.ecs.insert_one(fresh, transform);
             }
@@ -391,30 +399,48 @@ impl World {
     /// Every entity with a `T`, with it and where it is, in the area's
     /// tree order.
     pub fn placed<T: hecs::Component + Clone>(&self) -> Vec<(EntityId, T, Mat4)> {
-        self.order
+        // Only the entities that have a `T`, then put in tree order.
+        let mut found: Vec<(usize, EntityId, T, Mat4)> = self
+            .ecs
+            .query::<(&Place, &Id, &T, Option<&Global>)>()
             .iter()
-            .filter_map(|&(entity, _)| {
-                let e = self.ecs.entity(entity).ok()?;
-                let id = e.get::<&Id>()?.0;
-                let value = (*e.get::<&T>()?).clone();
-                let global = e.get::<&Global>().map_or(Mat4::IDENTITY, |g| g.0);
-                Some((id, value, global))
+            .map(|(place, id, value, global)| {
+                (
+                    place.0,
+                    id.0,
+                    value.clone(),
+                    global.map_or(Mat4::IDENTITY, |g| g.0),
+                )
             })
+            .collect();
+        found.sort_unstable_by_key(|f| f.0);
+        found
+            .into_iter()
+            .map(|(_, id, value, global)| (id, value, global))
             .collect()
+    }
+
+    /// The first entity with a `T` in the area's tree order, with it and
+    /// where it is.
+    pub fn first<T: hecs::Component + Clone>(&self) -> Option<(EntityId, T, Mat4)> {
+        self.ecs
+            .query::<(&Place, &Id, &T, Option<&Global>)>()
+            .iter()
+            .min_by_key(|(place, ..)| place.0)
+            .map(|(_, id, value, global)| {
+                (id.0, value.clone(), global.map_or(Mat4::IDENTITY, |g| g.0))
+            })
     }
 
     /// The camera the game looks through: the first in the area's tree
     /// order.
     pub fn camera(&self) -> Option<(EntityId, Camera, Mat4)> {
-        self.placed::<Camera>().into_iter().next()
+        self.first::<Camera>()
     }
 
     /// The sky, fog and exposure: the first environment, if any.
     pub fn environment(&self) -> Option<Environment> {
-        self.placed::<Environment>()
-            .into_iter()
-            .next()
-            .map(|(_, e, _)| e)
+        self.first::<Environment>().map(|(_, e, _)| e)
     }
 }
 
