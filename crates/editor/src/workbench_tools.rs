@@ -67,7 +67,11 @@ impl Workbench {
                     },
                     None => Outline::Point(world.w_axis.truncate()),
                 }];
-                if let Some(shape) = entity.get::<area::builtin::Collider>() {
+                if let Some(shape) = entity
+                    .get::<area::builtin::CharacterBody>()
+                    .map(|c| c.collider())
+                    .or_else(|| entity.get::<area::builtin::Collider>())
+                {
                     marks.push(Outline::Collider { world, shape });
                 }
                 marks

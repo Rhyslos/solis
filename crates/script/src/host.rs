@@ -76,6 +76,16 @@ pub trait Host {
     fn set_velocity(&mut self, which: EntityId, velocity: Vec3) {
         let _ = (which, velocity);
     }
+    /// Moves a character (an entity with a `CharacterBody`) by `wanted`
+    /// metres, as far as it can, at the next physics step.
+    fn move_character(&mut self, which: EntityId, wanted: Vec3) {
+        let _ = (which, wanted);
+    }
+    /// Whether a character stood on something after its last move.
+    fn on_ground(&self, which: EntityId) -> bool {
+        let _ = which;
+        false
+    }
     /// Saves the game in `slot` (or, with `load`, loads the game saved
     /// there), at the end of the tick (decision 0038).
     fn save_game(&mut self, slot: &str, load: bool) {
@@ -111,6 +121,19 @@ pub trait Host {
     fn at(&mut self, order: &crate::ticking::Order) {
         let _ = order;
     }
+}
+
+/// The upright rotation that turns +Y (an entity's forward) to point
+/// along `direction`: turned like a compass, then tipped up or down; no
+/// turn for no direction.
+pub fn facing_along(direction: Vec3) -> Quat {
+    let flat = direction.truncate().length();
+    if !direction.is_finite() || direction.length_squared() < 1e-12 {
+        return Quat::IDENTITY;
+    }
+    let compass = (-direction.x).atan2(direction.y);
+    let tip = direction.z.atan2(flat);
+    Quat::from_euler(glam::EulerRot::ZXY, compass, tip, 0.0)
 }
 
 /// A projectile game code fires (`fire`): where from, which way, how fast
@@ -261,6 +284,13 @@ pub(crate) fn with_natives<'h, R>(
             })?,
         )?;
         natives.raw_set(
+            "facingAlong",
+            scope.create_function(move |lua, direction: LuaValue| {
+                let facing = vec3_of(&direction).map_or(Quat::IDENTITY, facing_along);
+                quat_table_with(lua, facing, keys)
+            })?,
+        )?;
+        natives.raw_set(
             "turnTo",
             scope.create_function(move |_, (which, facing): (LuaValue, Table)| {
                 if let (Some(e), Some(facing)) = (entity_of(&which), quat_of_with(&facing, keys)) {
@@ -370,6 +400,21 @@ pub(crate) fn with_natives<'h, R>(
                     h.borrow_mut().set_velocity(e, velocity);
                 }
                 Ok(())
+            })?,
+        )?;
+        natives.raw_set(
+            "moveCharacter",
+            scope.create_function(move |_, (which, wanted): (LuaValue, LuaValue)| {
+                if let (Some(e), Some(wanted)) = (entity_of(&which), vec3_of(&wanted)) {
+                    h.borrow_mut().move_character(e, wanted);
+                }
+                Ok(())
+            })?,
+        )?;
+        natives.raw_set(
+            "onGround",
+            scope.create_function(move |_, which: LuaValue| {
+                Ok(entity_of(&which).is_some_and(|e| h.borrow().on_ground(e)))
             })?,
         )?;
         // A ray's three answers, each its own native (Lust gives back one
@@ -507,6 +552,32 @@ mod random_tests {
             let x = f64::from(i) / 100.0 * 0.999_999;
             let n = random_int(-3.0, 3.0, x);
             assert!((-3.0..=3.0).contains(&n) && n.fract() == 0.0);
+        }
+    }
+}
+
+#[cfg(test)]
+mod facing_tests {
+    use super::*;
+
+    #[test]
+    fn facing_along_turns_forward_to_the_direction() {
+        for d in [
+            Vec3::X,
+            Vec3::NEG_X,
+            Vec3::Y,
+            Vec3::NEG_Y,
+            Vec3::new(1.0, 1.0, 0.0),
+            Vec3::new(-2.0, 1.0, 1.0),
+            Vec3::new(0.3, -0.2, -0.9),
+        ] {
+            let forward = facing_along(d) * Vec3::Y;
+            assert!((forward - d.normalize()).length() < 1e-5, "{d}: {forward}");
+            // Upright: its right side stays level.
+            assert!((facing_along(d) * Vec3::X).z.abs() < 1e-5);
+        }
+        for nonsense in [Vec3::ZERO, Vec3::NAN, Vec3::splat(f32::INFINITY)] {
+            assert_eq!(facing_along(nonsense), Quat::IDENTITY);
         }
     }
 }

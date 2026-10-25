@@ -351,3 +351,164 @@ impl Component for Collider {
         }
     }
 }
+
+/// A character moved by game code (`moveCharacter`): a standing capsule,
+/// feet at the entity's origin, that climbs steps and slopes, slides
+/// along walls, pushes crates and rides moving platforms. It takes the
+/// place of a RigidBody and Collider on the same entity.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct CharacterBody {
+    /// How tall, feet to head, metres.
+    pub height: f32,
+    /// How wide: the capsule's radius, metres.
+    pub radius: f32,
+    /// The tallest step it climbs without jumping, metres.
+    pub step: f32,
+    /// The steepest slope it walks up, degrees.
+    pub slope: f32,
+    /// How far down it keeps to the ground walking down steps and
+    /// slopes (instead of flying off them), metres.
+    pub snap: f32,
+    /// How heavy, kilograms: how hard it pushes what it walks into.
+    pub mass: f32,
+}
+
+impl Default for CharacterBody {
+    fn default() -> Self {
+        Self {
+            height: 1.8,
+            radius: 0.35,
+            step: 0.35,
+            slope: 45.0,
+            snap: 0.3,
+            mass: 80.0,
+        }
+    }
+}
+
+impl CharacterBody {
+    /// Its capsule as a collider: standing on the entity's origin.
+    pub fn collider(&self) -> Collider {
+        let height = sane(self.height, 0.001, 1000.0);
+        let radius = sane(self.radius, 0.001, 1000.0).min(height * 0.5);
+        Collider {
+            shape: ColliderShape::Capsule,
+            radius,
+            height,
+            center: Vec3::new(0.0, 0.0, height * 0.5),
+            friction: 0.0,
+            ..Collider::default()
+        }
+    }
+}
+
+/// `value` within `low` to `high`; `low` if it isn't a number.
+fn sane(value: f32, low: f32, high: f32) -> f32 {
+    if value.is_finite() {
+        value.clamp(low, high)
+    } else {
+        low
+    }
+}
+
+impl Component for CharacterBody {
+    const NAME: &'static str = "CharacterBody";
+
+    fn schema() -> ComponentSchema {
+        let d = Self::default();
+        let metres = |name: &str, label: &str, default: f32, help: &'static str| {
+            field::float(
+                name,
+                label,
+                default,
+                field::hint((0.001, 1000.0), 0.01, " m", help),
+            )
+        };
+        ComponentSchema {
+            name: Self::NAME.into(),
+            help: "A character that game code walks around (moveCharacter): a standing capsule \
+                   with its feet at the entity's origin. It climbs steps and slopes, slides along \
+                   walls, pushes crates and rides moving platforms. Use it instead of a RigidBody \
+                   and Collider."
+                .into(),
+            fields: vec![
+                metres("height", "Height", d.height, "How tall, feet to head."),
+                metres(
+                    "radius",
+                    "Radius",
+                    d.radius,
+                    "How wide: the capsule's radius (half its width).",
+                ),
+                field::float(
+                    "step",
+                    "Step height",
+                    d.step,
+                    field::hint(
+                        (0.0, 1000.0),
+                        0.01,
+                        " m",
+                        "The tallest step it walks up without jumping.",
+                    ),
+                ),
+                field::float(
+                    "slope",
+                    "Steepest slope",
+                    d.slope,
+                    field::hint(
+                        (0.0, 89.0),
+                        0.5,
+                        "°",
+                        "The steepest slope it walks up; steeper ones it slides down.",
+                    ),
+                ),
+                field::float(
+                    "snap",
+                    "Keeps to the ground",
+                    d.snap,
+                    field::hint(
+                        (0.0, 1000.0),
+                        0.01,
+                        " m",
+                        "How far down it stays on the ground walking down steps and slopes, \
+                         instead of flying off them. 0 never.",
+                    ),
+                ),
+                field::float(
+                    "mass",
+                    "Mass",
+                    d.mass,
+                    field::hint(
+                        (0.001, 1.0e6),
+                        0.5,
+                        " kg",
+                        "How heavy it is: how hard it pushes crates it walks into.",
+                    ),
+                ),
+            ],
+        }
+    }
+
+    fn to_data(&self) -> ComponentData {
+        let mut data = ComponentData::default();
+        data.set("height", Value::Float(f64::from(self.height)));
+        data.set("radius", Value::Float(f64::from(self.radius)));
+        data.set("step", Value::Float(f64::from(self.step)));
+        data.set("slope", Value::Float(f64::from(self.slope)));
+        data.set("snap", Value::Float(f64::from(self.snap)));
+        data.set("mass", Value::Float(f64::from(self.mass)));
+        data
+    }
+
+    fn from_data(data: &ComponentData) -> Self {
+        let d = Self::default();
+        let f = Fields(data);
+        Self {
+            height: f.float("height", d.height),
+            radius: f.float("radius", d.radius),
+            step: f.float("step", d.step),
+            slope: f.float("slope", d.slope),
+            snap: f.float("snap", d.snap),
+            mass: f.float("mass", d.mass),
+        }
+    }
+}

@@ -274,6 +274,7 @@ impl GameWorld for PlayWorld<'_> {
                 Change::Seed(seed) => self.world.set_seed(seed),
                 Change::Push(which, impulse) => self.world.push(which, impulse),
                 Change::Velocity(which, velocity) => self.world.set_velocity(which, velocity),
+                Change::Character(which, wanted) => self.world.move_character(which, wanted),
                 Change::Rebind(ref action, ref input) => {
                     self.rebinds.push((action.clone(), input.clone()));
                 }

@@ -13,10 +13,17 @@
 //!   back exactly.
 //!
 //! Inputs are named as text: keys by egui's names (`W`, `Space`,
-//! `ArrowUp`) plus `Shift`, `Ctrl` and `Alt`; `Mouse Left`, `Mouse Right`,
-//! `Mouse Middle`, `Mouse Motion`; and `Pad A` … (see [`PAD_BUTTONS`]),
+//! `ArrowUp`) plus `Shift`, `Ctrl` and `Alt`; a key with modifiers held
+//! (`Alt+ArrowLeft`, `Ctrl+Shift+S`); `Mouse Left`, `Mouse Right`,
+//! `Mouse Middle`, `Mouse Motion`, `Mouse Wheel` (as an axis: notches
+//! turned) and `Mouse WheelUp` / `Mouse WheelDown` (as buttons: a notch
+//! turned that way this tick); and `Pad A` … (see [`PAD_BUTTONS`]),
 //! `Pad LeftStick` and `Pad RightStick` (as axes: the stick; as buttons:
 //! pressing it in).
+//!
+//! A key on its own doesn't count while modifiers are held that some
+//! action binds with it: with `Alt+ArrowLeft` bound, holding Alt and
+//! pressing the left arrow sets off only that, not `ArrowLeft` too.
 
 mod bindings;
 mod devices;
@@ -59,6 +66,50 @@ pub const MOUSE_BUTTONS: [&str; 5] = ["Left", "Right", "Middle", "Back", "Forwar
 /// The movement of the mouse, as an axis's input.
 pub const MOUSE_MOTION: &str = "Mouse Motion";
 
+/// The mouse wheel, as an axis's input: notches turned this tick (up is
+/// +1 each).
+pub const MOUSE_WHEEL: &str = "Mouse Wheel";
+
+/// The modifier keys a key can be bound with, in the order a combination
+/// is written (`Ctrl+Alt+Shift+K`).
+pub const MODIFIERS: [&str; 3] = ["Ctrl", "Alt", "Shift"];
+
+/// Splits a combination (`Alt+ArrowLeft`) into its modifiers and key; a
+/// plain key has no modifiers. `None` if it isn't written right: each
+/// modifier once, in [`MODIFIERS`]' order, then a key that isn't one.
+pub fn split_combination(name: &str) -> Option<(Vec<&'static str>, &str)> {
+    let mut rest = name;
+    let mut mods = Vec::new();
+    for m in MODIFIERS {
+        if let Some(after) = rest.strip_prefix(m).and_then(|r| r.strip_prefix('+'))
+            && !after.is_empty()
+        {
+            mods.push(m);
+            rest = after;
+        }
+    }
+    let starts_with_modifier = |s: &str| {
+        MODIFIERS
+            .iter()
+            .any(|m| s.strip_prefix(m).is_some_and(|r| r.starts_with('+')))
+    };
+    if mods.is_empty() {
+        return (!starts_with_modifier(name)).then_some((mods, name));
+    }
+    let another = MODIFIERS.contains(&rest) || starts_with_modifier(rest);
+    (!another && valid_key_name(rest)).then_some((mods, rest))
+}
+
+/// Whether `name` could be a key's name: letters, digits and a few signs,
+/// at most 32 long.
+fn valid_key_name(name: &str) -> bool {
+    !name.is_empty()
+        && name.len() <= 32
+        && name
+            .chars()
+            .all(|c| c.is_ascii_alphanumeric() || "+-=[]\\;',./`".contains(c))
+}
+
 /// How far a stick must lean before it counts (sticks rarely rest at
 /// exactly zero).
 pub const DEAD_ZONE: f32 = 0.15;
@@ -80,13 +131,10 @@ pub fn valid_input_name(name: &str) -> bool {
         return PAD_BUTTONS.contains(&button);
     }
     if let Some(button) = name.strip_prefix("Mouse ") {
-        return MOUSE_BUTTONS.contains(&button) || button == "Motion";
+        return MOUSE_BUTTONS.contains(&button)
+            || ["Motion", "Wheel", "WheelUp", "WheelDown"].contains(&button);
     }
-    !name.is_empty()
-        && name.len() <= 32
-        && name
-            .chars()
-            .all(|c| c.is_ascii_alphanumeric() || "+-=[]\\;',./`".contains(c))
+    name.len() <= 48 && split_combination(name).is_some() && valid_key_name(name)
 }
 
 #[cfg(test)]

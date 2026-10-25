@@ -10,7 +10,18 @@ const TICK: f32 = 1.0 / 60.0;
 fn the_ready_made_actions_are_the_chosen_controls() {
     let b = Bindings::default();
     let names: Vec<&str> = b.actions.iter().map(|a| a.name.as_str()).collect();
-    assert_eq!(names, ["Move", "Look", "Jump", "Sprint", "Interact"]);
+    assert_eq!(
+        names,
+        [
+            "Move", "Look", "Jump", "Sprint", "Interact", "Pan", "Turn", "Zoom", "Drag"
+        ]
+    );
+    // The cameras' controls (decision 0041).
+    assert_eq!(b.get("Pan").unwrap().left, ["ArrowLeft"]);
+    assert_eq!(b.get("Turn").unwrap().left, ["Alt+ArrowLeft"]);
+    assert_eq!(b.get("Zoom").unwrap().up, ["PageUp", "Pad RT"]);
+    assert!(b.get("Zoom").unwrap().is_motion());
+    assert_eq!(b.get("Drag").unwrap().inputs, ["Mouse Middle"]);
     assert_eq!(b.get("Interact").unwrap().inputs, ["F", "Pad X"]);
     assert_eq!(b.get("Move").unwrap().up, ["W"]);
     assert!(b.get("Look").unwrap().is_motion());
@@ -290,4 +301,116 @@ fn names_are_checked() {
     for bad in ["", "Pad Q", "Mouse Up", "has space", &"K".repeat(33)] {
         assert!(!valid_input_name(bad), "{bad}");
     }
+}
+
+#[test]
+fn combinations_are_named_with_their_modifiers_first() {
+    assert_eq!(
+        split_combination("Alt+ArrowLeft"),
+        Some((vec!["Alt"], "ArrowLeft"))
+    );
+    assert_eq!(
+        split_combination("Ctrl+Shift+S"),
+        Some((vec!["Ctrl", "Shift"], "S"))
+    );
+    assert_eq!(split_combination("W"), Some((vec![], "W")));
+    assert_eq!(split_combination("Alt++"), Some((vec!["Alt"], "+")));
+    for good in [
+        "Alt+ArrowLeft",
+        "Ctrl+Alt+Shift+K",
+        "Shift+F6",
+        "Mouse Wheel",
+        "Mouse WheelUp",
+    ] {
+        assert!(valid_input_name(good), "{good}");
+    }
+    for bad in [
+        "Alt+",
+        "Alt+Ctrl+K",
+        "Ctrl+Ctrl+K",
+        "Alt+Shift",
+        "Shift+Alt+K",
+        "Alt+Mouse Left",
+        "Mouse Wheelie",
+    ] {
+        assert!(!valid_input_name(bad), "{bad}");
+    }
+}
+
+#[test]
+fn a_combination_shadows_its_key_on_its_own() {
+    let b = Bindings::default();
+    let mut d = Devices::new();
+    // The left arrow alone pans.
+    d.set("ArrowLeft", true);
+    let f = d.sample(&b, TICK);
+    assert_eq!(f.get("Pan").axis, Vec2::new(-1.0, 0.0));
+    assert_eq!(f.get("Turn").axis, Vec2::ZERO);
+    // With Alt held it turns, and doesn't pan.
+    d.set("Alt", true);
+    let f = d.sample(&b, TICK);
+    assert_eq!(f.get("Turn").axis, Vec2::new(-1.0, 0.0));
+    assert_eq!(f.get("Pan").axis, Vec2::ZERO);
+    // Alt held, the up arrow (with no Alt+ArrowUp bound) still pans.
+    d.set("ArrowUp", true);
+    let f = d.sample(&b, TICK);
+    assert_eq!(f.get("Pan").axis, Vec2::new(0.0, 1.0));
+    // A combination pressed counts as a press once.
+    let mut b2 = Bindings::default();
+    b2.actions.push(Action::button("Quick", &["Ctrl+S"]));
+    let mut d = Devices::new();
+    d.set("Ctrl", true);
+    let _ = d.sample(&b2, TICK);
+    d.set("S", true);
+    let f = d.sample(&b2, TICK);
+    assert!(f.get("Quick").pressed && f.get("Quick").held);
+    let f = d.sample(&b2, TICK);
+    assert!(!f.get("Quick").pressed && f.get("Quick").held);
+    d.set("Ctrl", false);
+    let f = d.sample(&b2, TICK);
+    assert!(f.get("Quick").released);
+}
+
+#[test]
+fn the_wheel_zooms_by_notches_and_keys_by_their_speed() {
+    let b = Bindings::default();
+    let mut d = Devices::new();
+    d.wheel_turned(2.0);
+    d.wheel_turned(0.5);
+    let f = d.sample(&b, TICK);
+    assert_eq!(f.get("Zoom").axis, Vec2::new(0.0, 2.5));
+    // Gone the next tick.
+    assert_eq!(d.sample(&b, TICK).get("Zoom").axis, Vec2::ZERO);
+    // Page Down held: 8 steps a second, a tick's worth.
+    d.set("PageDown", true);
+    let f = d.sample(&b, TICK);
+    assert!((f.get("Zoom").axis.y + 8.0 * TICK).abs() < 1e-6);
+    // Wheel directions as buttons: a notch is a press for that tick.
+    let mut b2 = Bindings::default();
+    b2.actions.push(Action::button("Next", &["Mouse WheelUp"]));
+    let mut d = Devices::new();
+    d.wheel_turned(1.0);
+    let f = d.sample(&b2, TICK);
+    assert!(f.get("Next").pressed && f.get("Next").held);
+    let f = d.sample(&b2, TICK);
+    assert!(!f.get("Next").held && f.get("Next").released);
+    // Nonsense is ignored.
+    d.wheel_turned(f32::NAN);
+    d.wheel_turned(f32::INFINITY);
+    assert_eq!(d.sample(&b, TICK).get("Zoom").axis, Vec2::ZERO);
+    d.wheel_turned(1.0);
+    d.release_all();
+    assert_eq!(d.sample(&b, TICK).get("Zoom").axis, Vec2::ZERO);
+}
+
+#[test]
+fn an_older_project_gets_the_ready_made_actions_it_is_missing() {
+    let mut b = Bindings {
+        actions: Bindings::default().actions[..5].to_vec(),
+    };
+    b.get_mut("Jump").unwrap().inputs = vec!["E".into()];
+    assert_eq!(b.add_missing(), ["Pan", "Turn", "Zoom", "Drag"]);
+    // Its own changes stay.
+    assert_eq!(b.get("Jump").unwrap().inputs, ["E"]);
+    assert!(b.add_missing().is_empty());
 }

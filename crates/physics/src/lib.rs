@@ -111,6 +111,49 @@ impl Default for ColliderSpec {
     }
 }
 
+/// A character's settings (the `CharacterBody` component's): a standing
+/// capsule, feet at its entity's origin, moved by game code through
+/// [`Physics::move_character`].
+#[derive(Debug, Clone, Copy, PartialEq, serde::Serialize, serde::Deserialize)]
+pub struct CharacterSpec {
+    /// Feet to head, metres.
+    pub height: f32,
+    /// The capsule's radius, metres.
+    pub radius: f32,
+    /// The tallest step climbed without jumping, metres (0 none).
+    pub step: f32,
+    /// The steepest slope walked up, degrees.
+    pub slope: f32,
+    /// How far down it keeps to the ground, metres (0 never).
+    pub snap: f32,
+    /// How heavy, kilograms: how hard it pushes dynamic bodies.
+    pub mass: f32,
+}
+
+impl Default for CharacterSpec {
+    fn default() -> Self {
+        Self {
+            height: 1.8,
+            radius: 0.35,
+            step: 0.35,
+            slope: 45.0,
+            snap: 0.3,
+            mass: 80.0,
+        }
+    }
+}
+
+/// What a character's last move found.
+#[derive(Debug, Clone, Copy, PartialEq, Default, serde::Serialize, serde::Deserialize)]
+pub struct CharacterState {
+    /// Standing on something.
+    pub grounded: bool,
+}
+
+/// The farthest a character moves in one move, metres: a sensible limit
+/// on what game code asks (a kilometre a second at 60 ticks).
+pub const MAX_CHARACTER_MOVE: f32 = 16.0;
+
 /// What a ray hit.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Hit {
@@ -129,6 +172,8 @@ pub struct Hit {
 struct Entry {
     body: rp::RigidBodyHandle,
     collider: Option<rp::ColliderHandle>,
+    /// A character's settings and what its last move found.
+    character: Option<(CharacterSpec, CharacterState)>,
 }
 
 /// Everything physics knows: bodies, colliders and Rapier's own state.
@@ -246,6 +291,12 @@ impl State {
         self.bodies.get(entry.body).map(|b| from_pose(b.position()))
     }
 
+    /// What `id`'s last character move found (none if it isn't a
+    /// character).
+    pub fn character(&self, id: EntityId) -> Option<CharacterState> {
+        self.by_entity.get(&id)?.character.map(|(_, s)| s)
+    }
+
     /// The first collider a ray from `from` heading `direction` meets
     /// within `reach` metres. Colliders the ray starts inside are passed
     /// through (a character casting from its own middle doesn't hit
@@ -297,6 +348,9 @@ impl State {
                 }
                 sum.u64(u64::from(body.is_sleeping()));
             }
+            if let Some((_, c)) = entry.character {
+                sum.u64(u64::from(c.grounded));
+            }
         }
         sum.finish()
     }
@@ -313,6 +367,9 @@ pub struct Physics {
     /// Rapier panicked stepping (a state that doesn't hold together, from
     /// a damaged save): physics was emptied rather than crash Solis.
     broke: bool,
+    /// Characters moved since [`Self::moved`] last said, in the order
+    /// moved.
+    characters_moved: Vec<EntityId>,
 }
 
 impl std::fmt::Debug for Physics {
@@ -331,6 +388,7 @@ impl Clone for Physics {
             pipeline: rp::PhysicsPipeline::new(),
             refused: self.refused,
             broke: self.broke,
+            characters_moved: self.characters_moved.clone(),
         }
     }
 }
@@ -461,8 +519,92 @@ impl Physics {
             Entry {
                 body: handle,
                 collider,
+                character: None,
             },
         );
+        true
+    }
+
+    /// Makes `id` a character (see [`CharacterSpec`]) at `position`
+    /// facing `rotation`: a kinematic body with a standing capsule, its
+    /// feet at `position`. Replaces what it had. Returns whether it was
+    /// made, as [`Self::add`].
+    pub fn add_character(
+        &mut self,
+        id: EntityId,
+        (position, rotation): (Vec3, Quat),
+        spec: CharacterSpec,
+    ) -> bool {
+        let height = sensible(spec.height, 0.001, 1000.0);
+        let radius = sensible(spec.radius, 0.001, 1000.0).min(height * 0.5);
+        let made = self.add(
+            id,
+            (position, rotation),
+            Vec3::ONE,
+            Some(Body {
+                kind: BodyKind::Kinematic,
+                upright: true,
+                ..Body::default()
+            }),
+            Some(ColliderSpec {
+                shape: Shape::Capsule { radius, height },
+                center: Vec3::new(0.0, 0.0, height * 0.5),
+                friction: 0.0,
+                bounciness: 0.0,
+            }),
+        );
+        if made && let Some(entry) = self.state_mut().by_entity.get_mut(&id) {
+            let spec = CharacterSpec {
+                height,
+                radius,
+                step: sensible(spec.step, 0.0, 1000.0),
+                slope: sensible(spec.slope, 0.0, 89.0),
+                snap: sensible(spec.snap, 0.0, 1000.0),
+                mass: sensible(spec.mass, 0.001, 1.0e6),
+            };
+            entry.character = Some((spec, CharacterState::default()));
+        }
+        made
+    }
+
+    /// Moves the character `id` by `wanted` metres (one tick of walking
+    /// and falling), as far as it can: it climbs steps and slopes, slides
+    /// along walls, pushes dynamic bodies in its way, keeps to the ground
+    /// going down, and is carried by a kinematic body it stands on
+    /// (Rapier's friction with it). Its body
+    /// gets there over the next [`Self::step`]. Returns whether `id` is a
+    /// character.
+    pub fn move_character(&mut self, id: EntityId, wanted: Vec3, dt: f32) -> bool {
+        let Some(entry) = self.state.by_entity.get(&id).cloned() else {
+            return false;
+        };
+        let (Some((spec, last)), Some(collider)) = (entry.character, entry.collider) else {
+            return false;
+        };
+        if !(wanted.is_finite() && dt.is_finite() && dt > 0.0) {
+            return true;
+        }
+        let wanted = wanted.clamp_length_max(MAX_CHARACTER_MOVE);
+        let state = self.state_mut();
+        let moved = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+            move_one(state, &entry, collider, spec, last, wanted, dt)
+        }));
+        match moved {
+            Ok(Some(found)) => {
+                if let Some(e) = self.state_mut().by_entity.get_mut(&id) {
+                    e.character = Some((spec, found));
+                }
+                self.characters_moved.push(id);
+            }
+            Ok(None) => {}
+            Err(_) => {
+                // Never a crash: as a step that panics.
+                self.state = Arc::new(State::default());
+                self.pipeline = rp::PhysicsPipeline::new();
+                self.characters_moved.clear();
+                self.broke = true;
+            }
+        }
         true
     }
 
@@ -575,21 +717,133 @@ impl Physics {
         std::mem::take(&mut self.broke)
     }
 
-    /// The bodies physics moves (dynamic ones, awake), in entity order,
-    /// with where each is now: for the world to follow after a step.
-    pub fn moved(&self) -> Vec<(EntityId, Vec3, Quat)> {
+    /// The bodies physics moves (dynamic ones, awake, and characters
+    /// moved since last asked), in entity order, with where each is now:
+    /// for the world to follow after a step.
+    pub fn moved(&mut self) -> Vec<(EntityId, Vec3, Quat)> {
+        let mut characters = std::mem::take(&mut self.characters_moved);
+        characters.sort_unstable();
+        characters.dedup();
         self.state
             .by_entity
             .iter()
             .filter_map(|(id, entry)| {
                 let body = self.state.bodies.get(entry.body)?;
-                (body.is_dynamic() && !body.is_sleeping()).then(|| {
+                let moves = body.is_dynamic() && !body.is_sleeping()
+                    || entry.character.is_some() && characters.binary_search(id).is_ok();
+                moves.then(|| {
                     let (p, r) = from_pose(body.position());
                     (*id, p, r)
                 })
             })
             .collect()
     }
+}
+
+/// One character's move (see [`Physics::move_character`]): its body's
+/// next place set, and what it found. `None` if its body or collider is
+/// missing.
+fn move_one(
+    state: &mut State,
+    entry: &Entry,
+    collider: rp::ColliderHandle,
+    spec: CharacterSpec,
+    last: CharacterState,
+    wanted: Vec3,
+    dt: f32,
+) -> Option<CharacterState> {
+    use rapier3d::control::{CharacterAutostep, CharacterLength, KinematicCharacterController};
+    let start = *state.bodies.get(entry.body)?.next_position();
+    let c = state.colliders.get(collider)?;
+    let shape = c.shared_shape().clone();
+    let local = c.position_wrt_parent().copied().unwrap_or_default();
+    let controller = KinematicCharacterController {
+        up: rp::Vector::Z,
+        offset: CharacterLength::Absolute(0.01),
+        slide: true,
+        autostep: (spec.step > 0.0).then_some(CharacterAutostep {
+            max_height: CharacterLength::Absolute(spec.step),
+            min_width: CharacterLength::Absolute(spec.radius * 0.5),
+            include_dynamic_bodies: false,
+        }),
+        max_slope_climb_angle: spec.slope.to_radians(),
+        min_slope_slide_angle: spec.slope.to_radians(),
+        // Rapier's own snapping sinks a resting character into the floor
+        // a little each tick, so Solis snaps itself (below).
+        snap_to_ground: None,
+        normal_nudge_factor: 1.0e-4,
+    };
+    let filter = rp::QueryFilter::default().exclude_rigid_body(entry.body);
+    let shape_pose = start * local;
+    let mut collisions = Vec::new();
+    let result = {
+        let queries = state.broad_phase.as_query_pipeline(
+            state.narrow_phase.query_dispatcher(),
+            &state.bodies,
+            &state.colliders,
+            filter,
+        );
+        // Inside something (placed with its feet in the floor, or a crate
+        // pushed into it): out first. Rapier only does this for a
+        // character standing still.
+        let mut out = rp::Vector::ZERO;
+        if wanted != Vec3::ZERO
+            && queries
+                .intersect_shape(shape_pose, &*shape)
+                .next()
+                .is_some()
+        {
+            out = controller
+                .move_shape(dt, &queries, &*shape, &shape_pose, rp::Vector::ZERO, |_| {})
+                .translation;
+        }
+        let shape_pose = rp::Pose::from_translation(out) * shape_pose;
+        let mut result =
+            controller.move_shape(dt, &queries, &*shape, &shape_pose, to_rp(wanted), |hit| {
+                collisions.push(hit)
+            });
+        result.translation += out;
+        // Walking off a step or down a slope: down to the ground, if it's
+        // within reach, rather than flying off.
+        if last.grounded && !result.grounded && spec.snap > 0.0 && result.translation.z <= 0.0 {
+            let options = rapier3d::parry::query::details::ShapeCastOptions {
+                target_distance: 0.01,
+                stop_at_penetration: true,
+                max_time_of_impact: spec.snap,
+                compute_impact_geometry_on_penetration: true,
+            };
+            let at = rp::Pose::from_translation(result.translation - out) * shape_pose;
+            if let Some((_, hit)) = queries.cast_shape(&at, -rp::Vector::Z, &*shape, options)
+                && hit.normal1.z.abs() >= spec.slope.to_radians().cos() - 1.0e-3
+            {
+                result.translation -= rp::Vector::Z * hit.time_of_impact;
+                result.grounded = true;
+            }
+        }
+        result
+    };
+    if !collisions.is_empty() {
+        let mut queries = state.broad_phase.as_query_pipeline_mut(
+            state.narrow_phase.query_dispatcher(),
+            &mut state.bodies,
+            &mut state.colliders,
+            filter,
+        );
+        controller.solve_character_collision_impulses(
+            dt,
+            &mut queries,
+            &*shape,
+            spec.mass,
+            &collisions,
+        );
+    }
+    let to = rp::Pose::from_parts(start.translation + result.translation, start.rotation);
+    if let Some(body) = state.bodies.get_mut(entry.body) {
+        body.set_next_kinematic_position(to);
+    }
+    Some(CharacterState {
+        grounded: result.grounded,
+    })
 }
 
 /// `value` within `low` to `high`; `low` if it isn't a number.

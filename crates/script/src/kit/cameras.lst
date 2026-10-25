@@ -1,0 +1,121 @@
+-- Three ready-made cameras. Put one on the entity with the Camera
+-- component. Each reads the ready-made input actions (Edit > Input
+-- actions…), so players can rebind them.
+
+get "solis/entity":[positionOf, moveTo, turnTo];
+get "solis/physics":[velocityOf, castRay];
+get "solis/input":[axis, held];
+
+-- Follows behind a character, turning with Look. A wall between them
+-- pulls the camera in, so it never looks through walls. The wheel (Zoom)
+-- changes the distance only with wheelZooms on.
+component ThirdPersonCamera {
+    has {
+        entity target = nothing;
+        float distance = 4;
+        float height = 1.6;
+        bool wheelZooms = false;
+        float closest = 1.5;
+        float farthest = 10;
+        float lowest = -60;
+        float highest = 70;
+        float yaw = 0;
+        float pitch = -15;
+    }
+
+    method update(float dt) {
+        is target == nothing? then {
+            return;
+        }
+        vec3 look = axis("Look");
+        yaw = yaw - look.x;
+        pitch = Maths:clamp(pitch + look.y, lowest, highest);
+        is wheelZooms? then {
+            distance = distance * Maths:power(0.85, axis("Zoom").y);
+            distance = Maths:clamp(distance, closest, farthest);
+        }
+        -- Where the character will be after this tick, so the camera
+        -- keeps up with it.
+        vec3 pivot = positionOf(target) + velocityOf(target) * dt + [0, 0, height];
+        -- A camera looks along its -Z: tipped up 90 degrees it looks
+        -- along +Y, then pitch and yaw turn it.
+        rotation facing = [90 + pitch, 0, yaw];
+        vec3 behind = facing * [0, 0, 1];
+        float away = distance;
+        float wall = castRay(pivot, behind, distance + 0.3);
+        is wall >= 0? then {
+            away = Maths:max(Maths:min(away, wall - 0.3), 0.2);
+        }
+        moveTo(me, pivot + behind * away);
+        turnTo(me, facing);
+    }
+}
+
+-- Sees from a character's eyes, turning with Look. With turnsBody on,
+-- the character turns with it (set the CharacterController's
+-- facesWhereItWalks off).
+component FirstPersonCamera {
+    has {
+        entity body = nothing;
+        float eyes = 1.65;
+        bool turnsBody = true;
+        float lowest = -85;
+        float highest = 85;
+        float yaw = 0;
+        float pitch = 0;
+    }
+
+    method update(float dt) {
+        is body == nothing? then {
+            return;
+        }
+        vec3 look = axis("Look");
+        yaw = yaw - look.x;
+        pitch = Maths:clamp(pitch + look.y, lowest, highest);
+        moveTo(me, positionOf(body) + velocityOf(body) * dt + [0, 0, eyes]);
+        turnTo(me, [90 + pitch, 0, yaw]);
+        is turnsBody? then {
+            turnTo(body, [0, 0, yaw]);
+        }
+    }
+}
+
+-- Looks down on the map from above, as strategy games do. Pan moves it
+-- (arrow keys, left stick), holding Drag (the middle mouse button) and
+-- moving the mouse drags the map, Turn turns it (Alt + left and right
+-- arrows, right stick), and Zoom goes up and down (wheel, Page Up and
+-- Page Down, triggers).
+component RtsCamera {
+    has {
+        vec3 focus = [0, 0, 0];
+        float height = 30;
+        float lowest = 8;
+        float highest = 120;
+        float tilt = 55;
+        float panSpeed = 20;
+        float turnSpeed = 90;
+        float yaw = 0;
+    }
+
+    method update(float dt) {
+        yaw = yaw - axis("Turn").x * turnSpeed * dt;
+        height = height * Maths:power(0.88, axis("Zoom").y);
+        height = Maths:clamp(height, lowest, highest);
+        -- Higher up, it pans faster, so the map moves the same on screen.
+        float scale = height / 30;
+        rotation heading = [0, 0, yaw];
+        vec3 pan = axis("Pan");
+        focus = focus + heading * [pan.x, pan.y, 0] * panSpeed * scale * dt;
+        is held("Drag")? then {
+            vec3 drag = axis("Look");
+            focus = focus - heading * [drag.x, drag.y, 0] * height * 0.01;
+        }
+        float down = Maths:clamp(tilt, 10, 90) * Maths.pi / 180;
+        vec3 back = heading * [0, 0 - Maths:cos(down) / Maths:sin(down), 0] * height;
+        moveTo(me, focus + back + [0, 0, height]);
+        turnTo(me, [90 - Maths:clamp(tilt, 10, 90), 0, yaw]);
+    }
+}
+
+pass ThirdPersonCamera, FirstPersonCamera, RtsCamera;
+end

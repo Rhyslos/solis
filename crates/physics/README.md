@@ -10,7 +10,8 @@ Wrap Rapier (`rapier3d`, built with `enhanced-determinism`) so the rest of Solis
 
 - `Physics::add` makes an entity's body (`Body`: dynamic, kinematic or fixed; mass, damping, gravity, upright, fast) and collider (`ColliderSpec`: a box, sphere or capsule, scaled with the entity; friction, bounciness). An entity with a collider and no body gets a fixed one. `remove` takes it out.
 - `set_pose` follows game code's moves (a kinematic body moves there over the next step, pushing what's in its way; others jump there); `set_velocity` and `push` (an impulse) change how a body moves.
-- `step` moves physics on by one tick; `moved` lists the dynamic bodies awake, in entity order, for the world to follow.
+- `add_character` makes an entity a character (`CharacterSpec`: a standing capsule, feet at its origin, with step height, steepest slope, how far it keeps to the ground, and mass), a kinematic body. `move_character` moves it by a wanted distance with Rapier's `KinematicCharacterController`: it climbs steps (autostep) and slopes, slides along walls, gets out of anything it starts inside, pushes dynamic bodies (`solve_character_collision_impulses`) and is carried by a kinematic body it stands on. Solis snaps it down to the ground itself (`snap`), because Rapier's snapping sinks a resting character a little each tick. `State::character` says whether it stood on something (`CharacterState`), which is saved and in the checksum. Moves are clamped to `MAX_CHARACTER_MOVE`.
+- `step` moves physics on by one tick; `moved` lists the dynamic bodies awake and the characters moved since last asked, in entity order, for the world to follow.
 - `State` is everything physics knows, shared (`Arc`) with game code while a tick's phases read it on every core: `velocity`, `pose`, `cast_ray` (the first collider a line meets, passing out of those it starts in), and `checksum` (Phase 6's determinism). It's cloneable and serializable: `Physics::snapshot` and `restore` keep it for save games (postcard), exactly, and `restore` refuses bytes that don't hold together. A step that panics (only a tampered save could cause it) empties physics instead of crashing Solis (`take_broke`). and changed only between phases, when no one else holds it, so usually without a copy.
 - Limits: at most `MAX_BODIES` (100,000; more are counted in `refused`). Nothing that isn't a number reaches Rapier: positions, rotations, velocities and pushes that aren't finite are refused, and odd settings (a NaN mass, a negative size) are made sensible.
 
@@ -28,4 +29,4 @@ Everything is kept in entity order (a `BTreeMap`), never a hash map's, so the sa
 
 ## Status
 
-Phase 6, M2: bodies, colliders (box, sphere, capsule), pushes, velocities, rays and checksums. Colliders from a model's own shape, the character mover and snapshots for saves come later in Phase 6.
+Phase 6, M2: bodies, colliders (box, sphere, capsule), pushes, velocities, rays and checksums. M4: snapshots for saves. M5: the character mover. Colliders from a model's own shape are left for later (an issue).

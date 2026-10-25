@@ -2,7 +2,7 @@
 
 **Layer 0 · Core**
 
-The area document ([decision 0019](../../docs/decisions/0019-scene-document-now-game-storage-later.md)): entities with stable IDs, names, parents and sibling order, and their components as plain values described by schemas (the `reflect` crate). Also the built-in components: `Transform`, `Light`, `Environment`, `Model`, `Camera` (what the game looks through: field of view, near and far, with its projection), and from Phase 6 `RigidBody` (dynamic, kinematic or fixed; mass, damping, gravity, upright, fast) and `Collider` (box, sphere or capsule; size, radius, height, centre, friction, bounciness), which the game's world turns into physics.
+The area document ([decision 0019](../../docs/decisions/0019-scene-document-now-game-storage-later.md)): entities with stable IDs, names, parents and sibling order, and their components as plain values described by schemas (the `reflect` crate). Also the built-in components: `Transform`, `Light`, `Environment`, `Model`, `Camera` (what the game looks through: field of view, near and far, with its projection), and from Phase 6 `RigidBody` (dynamic, kinematic or fixed; mass, damping, gravity, upright, fast) `Collider` (box, sphere or capsule; size, radius, height, centre, friction, bounciness) and `CharacterBody` (a standing capsule moved by game code: height, radius, step height, steepest slope, keeps to the ground, mass; `collider` gives its capsule), which the game's world turns into physics.
 
 ## Purpose
 

@@ -317,6 +317,18 @@ impl Workbench {
                 actions.push(WorkbenchAction::MakeBenchmark);
                 ui.close();
             }
+            if ui
+                .button("Make the playground…")
+                .on_hover_text(
+                    "A level to walk around in, as a new project in a folder you choose: a \
+                     character with the third-person camera, steps, ramps, crates to push, a \
+                     moving platform, and quick saves on F6 and F7",
+                )
+                .clicked()
+            {
+                actions.push(WorkbenchAction::MakePlayground);
+                ui.close();
+            }
             ui.separator();
             if ui.button(format!("About {}", self.info.name)).clicked() {
                 self.about_open = true;
