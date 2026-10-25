@@ -146,8 +146,10 @@ pub struct ViewportView {
 }
 
 /// A projectile to draw: a glowing streak from its head back along its
-/// trail.
-#[derive(Debug, Clone, Copy, PartialEq)]
+/// trail. Laid out as the renderer's own (`render::Bolt`), so a frame's
+/// bolts are handed over as they are, without a copy.
+#[repr(C)]
+#[derive(Debug, Clone, Copy, PartialEq, bytemuck::Pod, bytemuck::Zeroable)]
 pub struct ViewBolt {
     /// Its head, in metres.
     pub head: Vec3,

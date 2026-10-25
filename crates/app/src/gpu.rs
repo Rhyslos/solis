@@ -345,16 +345,8 @@ impl ViewportRenderer for GpuViewport {
                 })
             })
             .collect();
-        let bolts: Vec<render::Bolt> = view
-            .bolts
-            .iter()
-            .map(|b| render::Bolt {
-                head: b.head.to_array(),
-                trail: b.trail.to_array(),
-                colour: b.colour,
-                width: b.width,
-            })
-            .collect();
+        // The same layout (checked by a test), so no copy.
+        let bolts: &[render::Bolt] = bytemuck::cast_slice(view.bolts.as_slice());
         let stats = self.renderer.render_with_bolts(
             &self.state.device,
             &self.state.queue,
@@ -362,7 +354,7 @@ impl ViewportRenderer for GpuViewport {
             &params,
             &placed,
             &lights,
-            &bolts,
+            bolts,
         );
         self.report.bolts += u64::from(stats.bolts);
         self.report.instances += u64::from(stats.instances);
@@ -426,5 +418,33 @@ impl ViewportRenderer for GpuViewport {
         }
         report.gpu = gpu;
         report
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    #[test]
+    fn the_editor_s_bolts_are_laid_out_as_the_renderer_s() {
+        // Handed over without a copy: the same fields, in the same order.
+        let bolt = editor::ViewBolt {
+            head: glam::Vec3::new(1.0, 2.0, 3.0),
+            trail: glam::Vec3::new(4.0, 5.0, 6.0),
+            colour: [7.0, 8.0, 9.0],
+            width: 10.0,
+        };
+        let made: &[render::Bolt] = bytemuck::cast_slice(std::slice::from_ref(&bolt));
+        assert_eq!(
+            made[0],
+            render::Bolt {
+                head: [1.0, 2.0, 3.0],
+                trail: [4.0, 5.0, 6.0],
+                colour: [7.0, 8.0, 9.0],
+                width: 10.0,
+            }
+        );
+        assert_eq!(
+            std::mem::size_of::<editor::ViewBolt>(),
+            std::mem::size_of::<render::Bolt>()
+        );
     }
 }

@@ -506,3 +506,18 @@ fn failing_starts_are_told_in_the_order_asked_on_any_number_of_shards() {
         assert_eq!(told, wanted, "on {shards} shards");
     }
 }
+
+#[test]
+fn spawned_entities_share_out_across_shards() {
+    // Spawned IDs are all odd; split by the raw ID, two shards would
+    // leave one idle (E8 of the Phase 5 review).
+    let game = Game::new(2).unwrap();
+    if game.shards() < 2 {
+        return;
+    }
+    let mut counts = [0usize; 2];
+    for n in 0..1000u64 {
+        counts[game.shard_of(id(2 * n + 1))] += 1;
+    }
+    assert!(counts.iter().all(|&c| c > 400), "{counts:?}");
+}

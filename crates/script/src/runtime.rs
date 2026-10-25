@@ -331,7 +331,7 @@ impl Runtime {
                     // What a new component's start changes lands in order.
                     lent.borrow_mut().at(&crate::ticking::Order {
                         major: entity.0.raw(),
-                        component: name.to_string(),
+                        component: name.into(),
                         seq: 0,
                     });
                     if let Err(failure) = code.sync(running, entity, name, data) {

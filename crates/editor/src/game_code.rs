@@ -245,26 +245,59 @@ impl GameWorld for PlayWorld<'_> {
     }
 
     fn apply(&mut self, changes: &[Change]) {
-        for change in changes {
-            match *change {
+        let mut i = 0;
+        while i < changes.len() {
+            match changes[i] {
                 Change::Spawn(id, ref assembly, place) => {
                     self.edits
                         .push(GameEdit::Spawn(id, assembly.clone(), place));
                 }
                 Change::Despawn(id) => self.edits.push(GameEdit::Despawn(id)),
-                // A transform is measured from the parent.
-                Change::Move(which, place) => {
+                Change::Move(which, _) | Change::Turn(which, _) => {
+                    // Every move and turn of one entity in a row (one
+                    // component's are side by side) in one lookup; the
+                    // last of each wins, as one after another would.
+                    let mut place = None;
+                    let mut facing = None;
+                    while let Some(change) = changes.get(i) {
+                        match *change {
+                            Change::Move(w, p) if w == which => place = Some(p),
+                            Change::Turn(w, f) if w == which => facing = Some(f),
+                            _ => break,
+                        }
+                        i += 1;
+                    }
+                    // A transform is measured from the parent; most
+                    // entities stand alone, and need no working out.
                     self.world.change_transform(which, |parent, mut t| {
-                        t.position = parent.inverse().transform_point3(place);
-                        t.position.is_finite().then_some(t)
+                        let alone = parent == glam::Mat4::IDENTITY;
+                        let mut changed = false;
+                        if let Some(place) = place {
+                            let p = if alone {
+                                place
+                            } else {
+                                parent.inverse().transform_point3(place)
+                            };
+                            if p.is_finite() {
+                                t.position = p;
+                                changed = true;
+                            }
+                        }
+                        if let Some(facing) = facing {
+                            let r = if alone {
+                                facing.normalize()
+                            } else {
+                                let parent = parent.to_scale_rotation_translation().1;
+                                (parent.inverse() * facing).normalize()
+                            };
+                            if r.is_finite() {
+                                t.rotation = r;
+                                changed = true;
+                            }
+                        }
+                        changed.then_some(t)
                     });
-                }
-                Change::Turn(which, facing) => {
-                    self.world.change_transform(which, |parent, mut t| {
-                        let parent = parent.to_scale_rotation_translation().1;
-                        t.rotation = (parent.inverse() * facing).normalize();
-                        t.rotation.is_finite().then_some(t)
-                    });
+                    continue;
                 }
                 Change::Fire(shot) => {
                     self.world.projectiles_mut().fire(world::Shot {
@@ -276,6 +309,7 @@ impl GameWorld for PlayWorld<'_> {
                     });
                 }
             }
+            i += 1;
         }
         // Those under what moved follow before the next phase reads.
         self.world.settle();

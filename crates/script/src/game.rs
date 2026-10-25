@@ -322,7 +322,6 @@ enum Job {
     RetainOn(Vec<(EntityId, Vec<String>)>),
     Values(EntityId, String),
     Len,
-    StartTick,
     Updates(f64, WorldView),
     Round(Vec<(u32, Event)>, WorldView, u32),
     FinishTick,
@@ -385,11 +384,9 @@ fn work(runtime: &mut Runtime, job: Job) -> Done {
         }
         Job::Values(entity, name) => Done::Values(runtime.values(entity, &name)),
         Job::Len => Done::Len(runtime.len()),
-        Job::StartTick => {
-            runtime.start_tick();
-            Done::Nothing
-        }
         Job::Updates(dt, view) => {
+            // The tick starts with its updates: one hand-over, not two.
+            runtime.start_tick();
             let mut host = ViewHost::new(view, 0);
             let phase = runtime.run_updates(dt, &mut host);
             Done::Phase(phase, host.kept)
@@ -405,7 +402,7 @@ fn work(runtime: &mut Runtime, job: Job) -> Done {
 
 /// A share of the entities, and the runtime running their components.
 enum Shard {
-    /// On the caller's thread (the only shard).
+    /// On the caller's thread (the first shard).
     Here(Box<Runtime>),
     /// On a thread of its own.
     Away {
@@ -480,6 +477,9 @@ pub struct Game {
     told_too_much: bool,
     /// The code every shard runs, if any: what a failed swap goes back to.
     running: Option<Arc<Compiled>>,
+    /// How many components run, once counted (the Profiler asks every
+    /// frame; only adding, removing or new code changes it).
+    count: Option<usize>,
 }
 
 impl std::fmt::Debug for Game {
@@ -514,16 +514,10 @@ impl Game {
     /// shard's thread can't start, the game runs on fewer.
     pub fn new(cores: usize) -> Result<Self, Failure> {
         let cores = cores.clamp(1, MAX_SHARDS);
-        let shards = if cores == 1 {
-            vec![Shard::Here(Box::new(Runtime::new()?))]
-        } else {
-            let away: Vec<Shard> = (0..cores).filter_map(Shard::away).collect();
-            if away.is_empty() {
-                vec![Shard::Here(Box::new(Runtime::new()?))]
-            } else {
-                away
-            }
-        };
+        // The first shard runs on the caller's thread, which would
+        // otherwise only wait for the others.
+        let mut shards = vec![Shard::Here(Box::new(Runtime::new()?))];
+        shards.extend((1..cores).filter_map(Shard::away));
         Ok(Self {
             shards,
             rust: BTreeSet::new(),
@@ -533,6 +527,7 @@ impl Game {
             told: false,
             told_too_much: false,
             running: None,
+            count: None,
         })
     }
 
@@ -542,18 +537,34 @@ impl Game {
     }
 
     /// Which shard runs `entity`'s components: by its ID, so the same
-    /// whatever else is running.
+    /// whatever else is running. The ID is mixed first: spawned IDs are
+    /// all odd, and on two shards they'd all land on one.
     fn shard_of(&self, entity: EntityId) -> usize {
-        (entity.0.raw() % self.shards.len() as u64) as usize
+        // splitmix64's finalizer: every bit of the ID moves every bit.
+        let mut x = entity.0.raw();
+        x = (x ^ (x >> 30)).wrapping_mul(0xbf58_476d_1ce4_e5b9);
+        x = (x ^ (x >> 27)).wrapping_mul(0x94d0_49bb_1331_11eb);
+        x ^= x >> 31;
+        (x % self.shards.len() as u64) as usize
     }
 
-    /// Gives every shard `job` (made for each), and their answers in
-    /// shard order. The shards work at the same time.
+    /// Gives every shard `job` (made for each by its number, in no set
+    /// order), and their answers in shard order. The shards work at the
+    /// same time.
     fn all(&mut self, mut job: impl FnMut(usize) -> Job) -> Vec<Option<Done>> {
         let mut here: Vec<Option<Done>> = Vec::new();
         here.resize_with(self.shards.len(), || None);
+        // The other threads start first; then the caller does its own
+        // shard meanwhile, instead of waiting idle.
         for (i, shard) in self.shards.iter_mut().enumerate() {
-            shard.ask(job(i), &mut here[i]);
+            if matches!(shard, Shard::Away { .. }) {
+                shard.ask(job(i), &mut here[i]);
+            }
+        }
+        for (i, shard) in self.shards.iter_mut().enumerate() {
+            if matches!(shard, Shard::Here(_)) {
+                shard.ask(job(i), &mut here[i]);
+            }
         }
         self.shards
             .iter_mut()
@@ -573,6 +584,7 @@ impl Game {
     /// shard runs it).
     pub fn load(&mut self, code: &Arc<Compiled>, world: &mut dyn GameWorld) -> Result<(), Failure> {
         let view = world.view();
+        self.count = None;
         let answers = self.all(|_| Job::Load(Arc::clone(code), view.clone()));
         let mut first = None;
         let mut failed = None;
@@ -610,6 +622,7 @@ impl Game {
         world: &mut dyn GameWorld,
     ) -> Result<Swapped, Failure> {
         let view = world.view();
+        self.count = None;
         let answers = self.all(|_| Job::Swap(Arc::clone(code), view.clone()));
         let mut merged: Option<Swapped> = None;
         let mut first = None;
@@ -647,6 +660,7 @@ impl Game {
                 // What going back asks for is dropped: it's undoing, not
                 // playing.
                 Some(old) => {
+                    self.count = None;
                     let _ = self.all(|_| Job::Swap(Arc::clone(&old), view.clone()));
                 }
                 None => self.unload(),
@@ -674,6 +688,7 @@ impl Game {
 
     /// Stops the game's Lust and Lua (see [`Runtime::unload`]).
     pub fn unload(&mut self) {
+        self.count = None;
         let _ = self.all(|_| Job::Unload);
         self.running = None;
         self.code.clear();
@@ -693,18 +708,25 @@ impl Game {
     /// See [`Runtime::leave_out`].
     pub fn leave_out(&mut self, names: BTreeSet<String>) {
         self.left_out.clone_from(&names);
+        self.count = None;
         let _ = self.all(|_| Job::LeaveOut(names.clone()));
     }
 
     /// How many components are running.
     pub fn len(&mut self) -> usize {
-        self.all(|_| Job::Len)
+        if let Some(count) = self.count {
+            return count;
+        }
+        let count = self
+            .all(|_| Job::Len)
             .into_iter()
             .map(|a| match a {
                 Some(Done::Len(n)) => n,
                 _ => 0,
             })
-            .sum()
+            .sum();
+        self.count = Some(count);
+        count
     }
 
     /// Whether no components are running.
@@ -743,6 +765,7 @@ impl Game {
             return Vec::new();
         }
         let view = world.view();
+        self.count = None;
         let answers = self.all(|i| Job::Sync(std::mem::take(&mut shares[i]), view.clone()));
         let mut failures = Vec::new();
         let mut kept = Kept::default();
@@ -769,6 +792,7 @@ impl Game {
     /// Stops every running component not in `wanted`.
     pub fn retain_only(&mut self, wanted: BTreeSet<(EntityId, String)>) {
         let wanted = Arc::new(wanted);
+        self.count = None;
         let _ = self.all(|_| Job::RetainOnly(Arc::clone(&wanted)));
     }
 
@@ -780,6 +804,7 @@ impl Game {
         for (entity, keep) in entities {
             shares[self.shard_of(entity)].push((entity, keep));
         }
+        self.count = None;
         let _ = self.all(|i| Job::RetainOn(std::mem::take(&mut shares[i])));
     }
 
@@ -787,7 +812,6 @@ impl Game {
     /// the updates, then the events in rounds, each phase reading `world`
     /// as the phase before left it.
     pub fn tick(&mut self, dt: f64, world: &mut dyn GameWorld) -> Ticked {
-        let _ = self.all(|_| Job::StartTick);
         let told = self.told;
         // Which round of events: spawns in different rounds may share
         // everything else about where they were asked for.
@@ -805,12 +829,11 @@ impl Game {
             |events| {
                 let view = world.borrow_mut().view();
                 let mut game = this.borrow_mut();
-                let shares = game.split(events);
-                let mut shares = shares.into_iter();
+                let mut shares = game.split(events);
                 rounds += 1;
                 let round = rounds;
                 game.phase(
-                    |_| Job::Round(shares.next().unwrap_or_default(), view.clone(), round),
+                    |i| Job::Round(std::mem::take(&mut shares[i]), view.clone(), round),
                     &mut **world.borrow_mut(),
                 )
             },

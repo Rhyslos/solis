@@ -386,20 +386,14 @@ mod picture_tests {
                 pick: 0,
             })
             .collect();
-        let bolts: Vec<render::Bolt> = world
+        // As the Game panel makes them (the same layout as the renderer's).
+        let made: Vec<editor::ViewBolt> = world
             .projectiles()
             .flying()
             .iter()
-            .map(|p| {
-                let b = editor::ViewBolt::of(p);
-                render::Bolt {
-                    head: b.head.to_array(),
-                    trail: b.trail.to_array(),
-                    colour: b.colour,
-                    width: b.width,
-                }
-            })
+            .map(editor::ViewBolt::of)
             .collect();
+        let bolts: &[render::Bolt] = bytemuck::cast_slice(&made);
         let (_, camera, global) = world.camera().unwrap();
         let (_, rotation, position) = global.to_scale_rotation_translation();
         let view = glam::Mat4::from_rotation_translation(rotation, position).inverse();
@@ -421,7 +415,7 @@ mod picture_tests {
             grid_plane: render::GridPlane::Ground,
         };
         let stats =
-            renderer.render_with_bolts(&device, &queue, &mut target, &params, &placed, &[], &bolts);
+            renderer.render_with_bolts(&device, &queue, &mut target, &params, &placed, &[], bolts);
         let pixels = render::read_pixels(&device, &queue, &target).unwrap();
         let image = image::RgbaImage::from_raw(size[0], size[1], pixels).unwrap();
         image
