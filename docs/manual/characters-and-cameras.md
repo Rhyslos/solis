@@ -118,7 +118,7 @@ In Lua it's `solis.moveCharacter(me, {x, y, z})` and `solis.onGround(me)`.
 
 **RtsCamera** (ready-made): **focus** (the point on the map it looks at), **height**, **lowest** and **highest** (how far it zooms), **tilt** (degrees it looks down), **panSpeed** and **turnSpeed**.
 
-The fields at the bottom of each (`fall`, `yaw`, `pitch`) are where it's up to. They're fields so a [save game](save-games.md) keeps them.
+The fields at the bottom of each (`fall`, `yaw`, `pitch`) are how it's moving right now: how fast it's falling, and which way it's looking. While playing, Properties shows them changing. They're fields so a [save game](save-games.md) keeps them; you don't need to set them.
 
 ## Shortcuts
 | Action | Shortcut |

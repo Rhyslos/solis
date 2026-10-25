@@ -72,6 +72,19 @@ impl Workbench {
                 };
                 if opens {
                     actions.push(WorkbenchAction::OpenExternally(full(&path)));
+                    // Said once a session: which program opens Lust is the
+                    // computer's choice, and it should be an editor.
+                    if kind == LibraryKind::Code && !self.told_how_lust_opens {
+                        self.told_how_lust_opens = true;
+                        self.log(
+                            LogLevel::Info,
+                            format!(
+                                "Opening {path} in the program your computer uses for .lst \
+                                 files. If it's the wrong one, choose a text or code editor in \
+                                 Explorer (right-click the file > Open with)."
+                            ),
+                        );
+                    }
                 } else {
                     let folder = path.rsplit_once('/').map_or("", |(folder, _)| folder);
                     actions.push(WorkbenchAction::OpenExternally(full(folder)));
@@ -216,6 +229,32 @@ mod opening_tests {
             assert!(actions.is_empty(), "{path}: {actions:?}");
         }
         assert!(plain_relative("props/brick.png"));
+    }
+
+    #[test]
+    fn opening_lust_says_once_which_program_opens_it() {
+        // The user test: double-clicking main.lst opened an unexpected
+        // program, with no word on why.
+        let mut w = Workbench::new(info(), None);
+        let assets = std::env::temp_dir().join("solis-library-open");
+        w.project = Some(crate::library::ProjectInfo {
+            name: "Opening".into(),
+            root: assets.clone(),
+            assets,
+        });
+        let mut actions = Vec::new();
+        for _ in 0..3 {
+            w.library_request(
+                LibraryRequest::Open(LibraryKind::Code, "main.lst".into()),
+                &mut actions,
+            );
+        }
+        let told = w
+            .log_lines()
+            .iter()
+            .filter(|l| l.text.contains("Open with"))
+            .count();
+        assert_eq!(told, 1);
         assert!(plain_relative("a\\b.lst"));
     }
 }

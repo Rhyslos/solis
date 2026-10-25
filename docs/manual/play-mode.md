@@ -16,7 +16,7 @@ The game looks through the **first camera** in the Area panel's list. With no ca
 
 **Play, pause and stop** (the buttons at the top right)
 1. Press **Play** (▶). The **Game** panel comes to the front and shows the game. A coloured border goes round the viewport and the Game panel, Play is outlined, and **Stop** turns red: all reminders that you're playing.
-2. Work as usual: the Area panel, Properties, the viewport and its gizmos all still work. Changes show in the game straight away. Switch to the **Viewport** tab beside Game to move things with the gizmos.
+2. Work as usual: the Area panel, Properties, the viewport and its gizmos all still work. Changes show in the game straight away. For game code's components, Properties shows their values as they are right now (a counter counting, a camera's `yaw` turning), and a change you make there reaches the game; Stop puts every value back as it was before Play. Switch to the **Viewport** tab beside Game to move things with the gizmos.
 3. Press **Pause** (❚❚) to stop the game's clock; press Pause or Play to carry on. The Game panel's corner shows *Playing* or *Paused* and how long the game has run.
 4. While paused, press **Step** (▶❙, beside Pause) to run exactly one [tick](concepts.md#game-code): game code runs once, everything moves on by a sixtieth of a second, and the game stays paused. It's the way to watch something that happens too fast to see, one step at a time.
 5. Press **Stop** (■). The game is thrown away and the area comes back exactly as it was when you pressed Play: every entity and setting, the undo history (Ctrl + Z carries on from where you were) and the selection.

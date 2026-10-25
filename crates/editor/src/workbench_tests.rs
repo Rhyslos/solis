@@ -519,6 +519,36 @@ fn the_console_clears_and_searches_from_its_panel() {
 }
 
 #[test]
+fn a_console_message_clicked_is_shown_in_full() {
+    // The user test: long messages were cut off at the panel's edge, with
+    // nothing saying the rest could be read.
+    let long = format!("A long message {}the end", "and more ".repeat(60));
+    let mut w = Workbench::new(info(), None);
+    w.log(LogLevel::Warning, long.clone());
+    let mut h = acting(w);
+    h.run();
+    h.get_by_label(&long).click();
+    h.run();
+    assert_eq!(
+        h.state()
+            .0
+            .console
+            .reading
+            .as_ref()
+            .map(|l| l.text.as_str()),
+        Some(long.as_str())
+    );
+    assert_eq!(
+        h.query_all_by_label(&long).count(),
+        2,
+        "listed, and in full"
+    );
+    h.get_by_label("Close").click();
+    h.run();
+    assert!(h.state().0.console.reading.is_none());
+}
+
+#[test]
 fn help_offers_the_sample_area() {
     let mut h = acting(Workbench::new(info(), None));
     h.run();
@@ -1131,6 +1161,10 @@ fn a_component_registered_at_run_time_is_added_shown_edited_and_undone() {
     h.run();
     h.get_by_label("Add component").click();
     h.run();
+    // Grouped: Solis's own, then the game's (the user test found one long
+    // list hard to read).
+    let _ = h.get_by_label("Built in");
+    let _ = h.get_by_label("Game code");
     h.get_by_label("Health").click();
     h.run();
     assert!(h.state().document().area().get(id).unwrap().has("Health"));
@@ -1842,4 +1876,58 @@ fn a_model_unpacks_into_its_parts() {
     );
     w.undo();
     assert!(w.document().area().get(model).unwrap().has("Model"));
+}
+
+#[test]
+fn an_entity_field_shows_a_name_and_picks_from_the_area() {
+    // The user test: an entity field showed a long ID and couldn't be set
+    // in Properties at all.
+    let mut w = Workbench::new(info(), None);
+    w.register_component(reflect::ComponentSchema {
+        name: "Follow".into(),
+        help: "Follows something.".into(),
+        fields: vec![reflect::FieldInfo::new(
+            "target",
+            "Target",
+            reflect::FieldKind::Entity,
+            reflect::Value::Entity(None),
+        )],
+    })
+    .unwrap();
+    let ship = w.add_entity();
+    w.apply_property(
+        PropertyRequest::Rename {
+            entity: ship,
+            name: "Flagship".into(),
+        },
+        1,
+    );
+    let follower = w.add_entity();
+    w.apply_property(
+        PropertyRequest::AddComponent {
+            entity: follower,
+            component: "Follow".into(),
+        },
+        2,
+    );
+    w.select(follower);
+    let mut h = harness_with(w);
+    h.run();
+    // None, as a word; the list offers the area's entities by name.
+    h.get_by_value("None").click();
+    h.run();
+    // The Area panel lists it too: the list's is the last.
+    h.query_all_by_label("Flagship").last().unwrap().click();
+    h.run();
+    let target = |w: &Workbench| {
+        w.document().area().get(follower).unwrap().components["Follow"]
+            .get("target")
+            .cloned()
+    };
+    assert_eq!(target(h.state()), Some(reflect::Value::Entity(Some(ship))));
+    // Shown by its name now, not its ID.
+    h.run();
+    assert!(h.query_all_by_value("Flagship").next().is_some());
+    assert!(h.query_by_value(&ship.to_string()).is_none());
+    assert!(h.query_by_label(&ship.to_string()).is_none());
 }

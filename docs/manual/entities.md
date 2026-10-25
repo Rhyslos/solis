@@ -20,7 +20,8 @@ A lamp is just an entity with a Transform and a Light. Give a model a Light (**A
 - **Entity > Add entity** adds an empty one (only a Transform) at the point the camera looks at. Entity > Add point light and Add spotlight add [lights](lights.md); importing a model adds an entity for it.
 
 **Add or remove a component**
-- Click **Add component** at the bottom of Properties and pick one: a **Light** turns any entity into a lamp, a **Model** shows a model, and so on. It starts with its usual settings.
+- Click **Add component** at the bottom of Properties and pick one: a **Light** turns any entity into a lamp, a **Model** shows a model, and so on. It starts with its usual settings. The list is in two groups: **Built in** (Solis's own) and **Game code** (the ready-made kit's and your own); point at one to see what it does.
+- A setting that points at another entity (a camera's **target**, say) shows that entity's name. Click it for a list of the area's entities, with a box to find one by name, and **None** to point at nothing.
 - The **×** beside a component's name takes it off. Game code's own components (from Phase 4) appear in the same list.
 
 **Select several**

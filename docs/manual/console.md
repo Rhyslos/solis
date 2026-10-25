@@ -9,7 +9,7 @@
 ## How to use it
 
 **Reading messages**
-1. Each message shows its time, an icon for how serious it is, and the text. A long message is cut short; point at it to read it all.
+1. Each message shows its time, an icon for how serious it is, and the text. A long message is cut short: **click it** to read it in full in a strip below the list (with **Copy**, to paste it somewhere), and click it again or **Close** to put the strip away.
 2. The three buttons at the top count the messages of each kind: information (ⓘ), warnings (⚠) and errors (✕). Click one to hide those messages, and again to show them.
 3. Type in **Search** to show only messages containing that text (capitals don't matter).
 4. **Clear** empties the Console.
