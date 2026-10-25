@@ -431,7 +431,8 @@ fn a_recorded_walk_plays_back_exactly() {
 fn the_manual_s_hopper_is_sound_code_and_hops() {
     // docs/manual/characters-and-cameras.md, "Moving a character from
     // your own code".
-    let page = include_str!("../../../docs/manual/characters-and-cameras.md");
+    // Windows checkouts may give the page Windows line endings.
+    let page = include_str!("../../../docs/manual/characters-and-cameras.md").replace("\r\n", "\n");
     let start = page
         .find("get \"solis/physics\":[moveCharacter, onGround];")
         .unwrap();
