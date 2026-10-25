@@ -182,6 +182,10 @@ pub struct Workbench {
     pub(crate) profiler: crate::profiler::Profiler,
     /// What the viewport's [`AreaView`] was last worked out for.
     editor_view: Option<ViewKey>,
+    /// The seed every Play starts the game's random numbers from, if one
+    /// was chosen (`seed` in the Console); otherwise each Play has a new
+    /// one.
+    pub(crate) fixed_seed: Option<u64>,
     /// What the Game panel showed last, and what it was worked out for:
     /// made again only when the world, the models or the state changed
     /// (not on a frame without a tick, or while paused).
@@ -251,6 +255,7 @@ impl Workbench {
             game_components: std::collections::BTreeSet::new(),
             profiler: crate::profiler::Profiler::default(),
             editor_view: None,
+            fixed_seed: None,
             game_scene: None,
             left_out: std::collections::BTreeSet::new(),
             rust_components: Vec::new(),

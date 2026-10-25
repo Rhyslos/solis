@@ -16,12 +16,13 @@ pub mod projectiles;
 pub use projectiles::{MAX_PROJECTILES, Projectile, Projectiles, Shot};
 
 use area::Area;
-use area::builtin::{Camera, Environment, Light, Model, Transform};
+use area::builtin::{Camera, Collider, Environment, Light, Model, RigidBody, Transform};
 use glam::Mat4;
 use reflect::{Component, ComponentData, EntityId};
 use std::collections::{BTreeMap, HashMap};
 
 pub use hecs;
+pub use physics;
 
 /// How long one tick is, in seconds (60 a second).
 pub const TICK: f64 = 1.0 / 60.0;
@@ -118,10 +119,34 @@ pub struct World {
     /// Projectiles in flight: not entities, and kept when the world is
     /// built again.
     projectiles: Projectiles,
+    /// The seed the game's random numbers are made from.
+    seed: u64,
+    /// Bodies and colliders (decision 0036): every entity with a
+    /// `RigidBody` or a `Collider`.
+    physics: physics::Physics,
+    /// Entities with physics game code moved since the last physics step,
+    /// whose bodies follow them at the next.
+    physics_moved: Vec<EntityId>,
+    /// Pushes and velocities game code asked for, in order, made at the
+    /// next physics step (so nothing changes physics while game code
+    /// reads it on other cores).
+    physics_asked: Vec<PhysicsAsk>,
+    /// Whether the world is following physics (its own moves then aren't
+    /// sent back to physics).
+    following: bool,
     /// See [`World::changes`]: the last number given, and whether
     /// anything changed since.
     stamp: u64,
     touched: bool,
+}
+
+/// A change to physics game code asked for, made at the next step.
+#[derive(Debug, Clone, Copy, PartialEq)]
+enum PhysicsAsk {
+    /// A push (kilograms times metres a second).
+    Push(EntityId, glam::Vec3),
+    /// A new velocity (metres a second).
+    Velocity(EntityId, glam::Vec3),
 }
 
 /// The next of a count shared by every world, so numbers never repeat.
@@ -175,11 +200,25 @@ impl World {
             revision: 0,
             game_moved: reflect::IdMap::default(),
             projectiles: Projectiles::default(),
+            seed: 0,
+            physics: physics::Physics::new(),
+            physics_moved: Vec::new(),
+            physics_asked: Vec::new(),
+            following: false,
             stamp: next_number(),
             touched: false,
         };
         world.index();
         world.place_everything();
+        // Physics after places: bodies start where their entities are.
+        let ids: Vec<EntityId> = world
+            .order
+            .iter()
+            .filter_map(|(e, _)| world.ecs.get::<&Id>(*e).ok().map(|i| i.0))
+            .collect();
+        for id in ids {
+            world.physics_join(id);
+        }
         world
     }
 
@@ -241,14 +280,32 @@ impl World {
             })
             .collect();
         let projectiles = std::mem::take(&mut self.projectiles);
+        let seed = self.seed;
+        // How fast each body was going carries on.
+        let speeds: Vec<(EntityId, glam::Vec3)> = self
+            .physics_ids()
+            .into_iter()
+            .filter_map(|id| Some((id, self.physics.state().velocity(id)?)))
+            .collect();
+        let asked = std::mem::take(&mut self.physics_asked);
         *self = Self::from_area(area);
         self.clock = clock;
         self.projectiles = projectiles;
+        self.seed = seed;
+        self.physics_asked = asked;
         for (id, from, at) in kept {
             self.set_transform(id, at);
             self.game_moved.insert(id, from);
         }
         self.settle();
+        // Bodies where the game had them, at their speeds.
+        let moved = std::mem::take(&mut self.physics_moved);
+        for id in moved {
+            self.physics_join(id);
+        }
+        for (id, speed) in speeds {
+            self.physics.set_velocity(id, speed);
+        }
     }
 
     /// Adds `entities` (a new subtree game code spawned, just added to the
@@ -317,6 +374,9 @@ impl World {
         if !added.is_empty() {
             self.bump_revision();
         }
+        for &id in &added {
+            self.physics_join(id);
+        }
         added
     }
 
@@ -361,6 +421,7 @@ impl World {
                     self.by_id.remove(&id);
                     self.place.remove(&id);
                     self.game_moved.remove(&id);
+                    self.physics.remove(id);
                 }
                 let _ = self.ecs.despawn(entity);
                 continue;
@@ -391,7 +452,9 @@ impl World {
     /// again. Keeps the clock.
     pub fn update(&mut self, area: &Area, changed: impl IntoIterator<Item = (EntityId, bool)>) {
         self.touched = true;
+        let mut rejoin = Vec::new();
         for (id, moved) in changed {
+            rejoin.push(id);
             let (Some(data), Some(&entity), Some(&at)) =
                 (area.get(id), self.by_id.get(&id), self.place.get(&id))
             else {
@@ -422,6 +485,14 @@ impl World {
         // A name may have changed.
         self.index();
         self.place_everything();
+        // Their bodies and colliders as they are now, keeping their speed.
+        for id in rejoin {
+            let speed = self.physics.state().velocity(id);
+            self.physics_join(id);
+            if let Some(speed) = speed {
+                self.physics.set_velocity(id, speed);
+            }
+        }
     }
 
     /// Moves the clock on by `seconds` (ignored if not a sensible number),
@@ -522,6 +593,10 @@ impl World {
         // Only what's under it needs working out again.
         if self.ends.get(at).is_some_and(|&end| end > at + 1) {
             self.unsettled.push(at);
+        }
+        // Its body follows at the next physics step.
+        if !self.following && self.physics.state().contains(id) {
+            self.physics_moved.push(id);
         }
         true
     }
@@ -726,6 +801,200 @@ impl World {
         ((self.clock.carry / TICK) as f32).clamp(0.0, 1.0)
     }
 
+    /// A checksum of the game's world (Phase 6, determinism): every
+    /// entity in order with its name, place and game components' values,
+    /// the projectiles, the clock and the seed. Two runs of a game that
+    /// agree on it at a tick are in the same state (game code's running
+    /// values are checked apart, by `script::Game::checksum`).
+    pub fn checksum(&self) -> u64 {
+        let mut sum = reflect::Checksum::new();
+        sum.u64(self.clock.ticks);
+        sum.u64(self.seed);
+        sum.u64(self.order.len() as u64);
+        for &(entity, parent) in &self.order {
+            let Ok(e) = self.ecs.entity(entity) else {
+                continue;
+            };
+            if let Some(id) = e.get::<&Id>() {
+                sum.entity(id.0);
+            }
+            sum.u64(parent.map_or(u64::MAX, |p| p as u64));
+            if let Some(name) = e.get::<&Name>() {
+                sum.bytes(name.0.as_bytes());
+            }
+            if let Some(global) = e.get::<&Global>() {
+                for v in global.0.to_cols_array() {
+                    sum.f32(v);
+                }
+            }
+            if let Some(values) = e.get::<&Values>() {
+                for (name, data) in &values.0 {
+                    sum.bytes(name.as_bytes());
+                    sum.data(data);
+                }
+            }
+        }
+        sum.u64(self.physics.state().checksum());
+        let flying = self.projectiles.flying();
+        sum.u64(flying.len() as u64);
+        for p in flying {
+            for v in p
+                .position
+                .to_array()
+                .into_iter()
+                .chain(p.velocity.to_array())
+            {
+                sum.f32(v);
+            }
+            sum.f32(p.left);
+            for v in p.colour {
+                sum.f32(v);
+            }
+        }
+        sum.finish()
+    }
+
+    /// The game's physics (decision 0036), to read: game code reads its
+    /// state on every core during a tick.
+    pub fn physics(&self) -> &physics::Physics {
+        &self.physics
+    }
+
+    /// Every entity with a part in physics, in entity order.
+    fn physics_ids(&self) -> Vec<EntityId> {
+        self.order
+            .iter()
+            .filter_map(|(e, _)| self.ecs.get::<&Id>(*e).ok().map(|i| i.0))
+            .filter(|id| self.physics.state().contains(*id))
+            .collect()
+    }
+
+    /// Makes `id`'s part in physics match its components and where it is
+    /// now: a body and collider if it has them, nothing if not.
+    fn physics_join(&mut self, id: EntityId) {
+        let Some(&entity) = self.by_id.get(&id) else {
+            self.physics.remove(id);
+            return;
+        };
+        let body = self.ecs.get::<&RigidBody>(entity).ok().map(|b| *b);
+        let collider = self.ecs.get::<&Collider>(entity).ok().map(|c| *c);
+        if body.is_none() && collider.is_none() {
+            self.physics.remove(id);
+            return;
+        }
+        let global = self
+            .ecs
+            .get::<&Global>(entity)
+            .map_or(Mat4::IDENTITY, |g| g.0);
+        let (scale, rotation, position) = global.to_scale_rotation_translation();
+        let body = body.map(|b| physics::Body {
+            kind: match b.kind {
+                area::builtin::BodyKind::Dynamic => physics::BodyKind::Dynamic,
+                area::builtin::BodyKind::Kinematic => physics::BodyKind::Kinematic,
+                area::builtin::BodyKind::Fixed => physics::BodyKind::Fixed,
+            },
+            mass: b.mass,
+            linear_damping: b.linear_damping,
+            angular_damping: b.angular_damping,
+            gravity: b.gravity,
+            upright: b.upright,
+            fast: b.fast,
+        });
+        let collider = collider.map(|c| physics::ColliderSpec {
+            shape: match c.shape {
+                area::builtin::ColliderShape::Box => physics::Shape::Box(c.size),
+                area::builtin::ColliderShape::Sphere => physics::Shape::Sphere(c.radius),
+                area::builtin::ColliderShape::Capsule => physics::Shape::Capsule {
+                    radius: c.radius,
+                    height: c.height,
+                },
+            },
+            center: c.center,
+            friction: c.friction,
+            bounciness: c.bounciness,
+        });
+        self.physics
+            .add(id, (position, rotation), scale, body, collider);
+        self.touched = true;
+    }
+
+    /// Gives `id`'s body a push (kilograms times metres a second), at the
+    /// next physics step.
+    pub fn push(&mut self, id: EntityId, impulse: glam::Vec3) {
+        self.physics_asked.push(PhysicsAsk::Push(id, impulse));
+    }
+
+    /// Sets how fast `id`'s body moves (metres a second), at the next
+    /// physics step.
+    pub fn set_velocity(&mut self, id: EntityId, velocity: glam::Vec3) {
+        self.physics_asked.push(PhysicsAsk::Velocity(id, velocity));
+    }
+
+    /// Bodies not made because there were already the most
+    /// (`physics::MAX_BODIES`).
+    pub fn physics_refused(&self) -> u64 {
+        self.physics.refused()
+    }
+
+    /// Moves physics on by one tick: bodies follow what game code moved,
+    /// its pushes and velocities are made, physics steps, and the
+    /// entities physics moved follow their bodies (those under them too).
+    /// The editor calls it once per tick, after game code's changes land.
+    pub fn step_physics(&mut self) {
+        if self.physics.state().is_empty() {
+            self.physics_moved.clear();
+            self.physics_asked.clear();
+            return;
+        }
+        self.touched = true;
+        // What game code moved, in the order moved, each once.
+        let mut moved = std::mem::take(&mut self.physics_moved);
+        let mut seen = std::collections::HashSet::new();
+        moved.retain(|id| seen.insert(*id));
+        for id in moved {
+            if let Some(global) = self.global(id) {
+                let (_, rotation, position) = global.to_scale_rotation_translation();
+                self.physics.set_pose(id, position, rotation);
+            }
+        }
+        for ask in std::mem::take(&mut self.physics_asked) {
+            match ask {
+                PhysicsAsk::Push(id, impulse) => self.physics.push(id, impulse),
+                PhysicsAsk::Velocity(id, velocity) => self.physics.set_velocity(id, velocity),
+            }
+        }
+        self.physics.step(TICK as f32);
+        // The entities follow their bodies, without sending it back.
+        self.following = true;
+        for (id, position, rotation) in self.physics.moved() {
+            self.change_transform(id, |parent, mut t| {
+                if parent == Mat4::IDENTITY {
+                    t.position = position;
+                    t.rotation = rotation;
+                } else {
+                    t.position = parent.inverse().transform_point3(position);
+                    let turn = parent.to_scale_rotation_translation().1;
+                    t.rotation = (turn.inverse() * rotation).normalize();
+                }
+                (t.position.is_finite() && t.rotation.is_finite()).then_some(t)
+            });
+        }
+        self.following = false;
+        self.settle();
+    }
+
+    /// The seed the game's random numbers are made from.
+    pub fn seed(&self) -> u64 {
+        self.seed
+    }
+
+    /// Starts the game's random numbers again from `seed` (Play chooses
+    /// one; game code's `setSeed` changes it).
+    pub fn set_seed(&mut self, seed: u64) {
+        self.seed = seed;
+        self.touched = true;
+    }
+
     /// Runs exactly one tick now, whatever time is waiting (Step, while
     /// paused). Returns 1.
     pub fn step_one(&mut self) -> u64 {
@@ -754,6 +1023,12 @@ fn components_of(id: EntityId, data: &area::EntityData) -> hecs::EntityBuilder {
             }
             Light::NAME => {
                 builder.add(Light::from_data(component));
+            }
+            RigidBody::NAME => {
+                builder.add(RigidBody::from_data(component));
+            }
+            Collider::NAME => {
+                builder.add(Collider::from_data(component));
             }
             Model::NAME => {
                 builder.add(Model::from_data(component));

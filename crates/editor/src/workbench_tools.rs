@@ -39,7 +39,8 @@ impl Workbench {
     }
 
     /// What the selection's outline goes around: each selected model's
-    /// box, or a point for anything else.
+    /// box, or a point for anything else; and each selected collider's
+    /// shape.
     fn outlines(&self) -> Vec<Outline> {
         let area = self.document.area();
         let hidden = self.area_panel.in_effect(&self.document).0;
@@ -48,22 +49,28 @@ impl Workbench {
             .selection
             .iter()
             .filter(|id| !hidden.contains(id))
-            .filter_map(|id| {
-                let entity = area.get(id)?;
+            .flat_map(|id| {
+                let Some(entity) = area.get(id) else {
+                    return Vec::new();
+                };
                 let world = placed.get(&id).copied().unwrap_or_default();
                 let whole_model = entity
                     .get::<Model>()
                     .and_then(|m| m.asset)
                     .filter(|r| r.part.is_none())
                     .and_then(|r| self.models.get(&r.asset));
-                Some(match whole_model {
+                let mut marks = vec![match whole_model {
                     Some(info) => Outline::Box {
                         world,
                         min: info.min,
                         max: info.max,
                     },
                     None => Outline::Point(world.w_axis.truncate()),
-                })
+                }];
+                if let Some(shape) = entity.get::<area::builtin::Collider>() {
+                    marks.push(Outline::Collider { world, shape });
+                }
+                marks
             })
             .collect()
     }

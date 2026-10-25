@@ -50,6 +50,37 @@ pub trait Host {
     fn frame_time(&self) -> f64 {
         1.0 / 60.0
     }
+    /// A random number from 0 up to (not including) 1, the same for the
+    /// same seed and the same place in the tick's order. A host without
+    /// randomness gives a half.
+    fn random(&mut self) -> f64 {
+        0.5
+    }
+    /// Starts the game's randomness again from `seed` (at the end of the
+    /// tick, like a move).
+    fn set_seed(&mut self, seed: u64) {
+        let _ = seed;
+    }
+    /// Gives an entity's body a push (kilograms times metres a second),
+    /// made at the next physics step.
+    fn push(&mut self, which: EntityId, impulse: Vec3) {
+        let _ = (which, impulse);
+    }
+    /// How fast an entity's body moves, metres a second (none without a
+    /// body).
+    fn velocity(&self, which: EntityId) -> Option<Vec3> {
+        let _ = which;
+        None
+    }
+    /// Sets how fast an entity's body moves, at the next physics step.
+    fn set_velocity(&mut self, which: EntityId, velocity: Vec3) {
+        let _ = (which, velocity);
+    }
+    /// The first collider a ray meets (see `physics::State::cast_ray`).
+    fn cast_ray(&self, from: Vec3, direction: Vec3, reach: f32) -> Option<physics::Hit> {
+        let _ = (from, direction, reach);
+        None
+    }
 
     /// The component about to run, and where what it does belongs in the
     /// tick's order ([decision 0033](../../../docs/decisions/0033-game-code-sees-the-start-of-the-tick.md)).
@@ -101,6 +132,19 @@ impl Host for NoHost {
     fn name(&self, _which: EntityId) -> Option<String> {
         None
     }
+}
+
+/// A whole number from `low` to `high` (both included, either way round)
+/// for a random `x` from 0 to 1; `low` when they aren't sensible numbers.
+pub(crate) fn random_int(low: f64, high: f64, x: f64) -> f64 {
+    if !(low.is_finite() && high.is_finite()) {
+        return 0.0;
+    }
+    let (low, high) = (low.min(high).ceil(), low.max(high).floor());
+    if high < low {
+        return low;
+    }
+    (low + ((high - low + 1.0) * x).floor()).min(high)
 }
 
 /// The most bytes of one line game code says; the rest is cut.
@@ -259,6 +303,92 @@ pub(crate) fn with_natives<'h, R>(
             "frameTime",
             scope.create_function(move |_, ()| Ok(h.borrow().frame_time()))?,
         )?;
+        natives.raw_set(
+            "random",
+            scope.create_function(move |_, ()| Ok(h.borrow_mut().random()))?,
+        )?;
+        natives.raw_set(
+            "randomRange",
+            scope.create_function(move |_, (low, high): (f64, f64)| {
+                let x = h.borrow_mut().random();
+                Ok(if low.is_finite() && high.is_finite() {
+                    low + (high - low) * x
+                } else {
+                    low
+                })
+            })?,
+        )?;
+        natives.raw_set(
+            "randomInt",
+            scope.create_function(move |_, (low, high): (f64, f64)| {
+                let x = h.borrow_mut().random();
+                Ok(random_int(low, high, x))
+            })?,
+        )?;
+        natives.raw_set(
+            "push",
+            scope.create_function(move |_, (which, impulse): (LuaValue, LuaValue)| {
+                if let (Some(e), Some(impulse)) = (entity_of(&which), vec3_of(&impulse)) {
+                    h.borrow_mut().push(e, impulse);
+                }
+                Ok(())
+            })?,
+        )?;
+        natives.raw_set(
+            "velocityOf",
+            scope.create_function(move |_, which: LuaValue| {
+                let v = entity_of(&which).and_then(|e| h.borrow().velocity(e));
+                Ok(vec3_value(v.unwrap_or(Vec3::ZERO)))
+            })?,
+        )?;
+        natives.raw_set(
+            "setVelocity",
+            scope.create_function(move |_, (which, velocity): (LuaValue, LuaValue)| {
+                if let (Some(e), Some(velocity)) = (entity_of(&which), vec3_of(&velocity)) {
+                    h.borrow_mut().set_velocity(e, velocity);
+                }
+                Ok(())
+            })?,
+        )?;
+        // A ray's three answers, each its own native (Lust gives back one
+        // value).
+        let ray = move |(from, direction, reach): (LuaValue, LuaValue, f64)| {
+            let (from, direction) = (vec3_of(&from)?, vec3_of(&direction)?);
+            h.borrow().cast_ray(from, direction, reach as f32)
+        };
+        natives.raw_set(
+            "castRay",
+            scope.create_function(move |_, args: (LuaValue, LuaValue, f64)| {
+                Ok(ray(args).map_or(-1.0, |hit| f64::from(hit.distance)))
+            })?,
+        )?;
+        natives.raw_set(
+            "castRayHit",
+            scope.create_function(move |_, args: (LuaValue, LuaValue, f64)| {
+                Ok(ray(args).map(|hit| hit.entity.to_string()))
+            })?,
+        )?;
+        natives.raw_set(
+            "castRayNormal",
+            scope.create_function(move |_, args: (LuaValue, LuaValue, f64)| {
+                Ok(vec3_value(ray(args).map_or(Vec3::ZERO, |hit| hit.normal)))
+            })?,
+        )?;
+        natives.raw_set(
+            "setSeed",
+            scope.create_function(move |_, seed: f64| {
+                if seed.is_finite() {
+                    // Whole numbers as they are; others by their bits.
+                    let seed = if seed.fract() == 0.0 && seed.abs() < 9.0e15 {
+                        seed as i64 as u64
+                    } else {
+                        seed.to_bits()
+                    };
+                    h.borrow_mut().set_seed(seed);
+                }
+                Ok(())
+            })?,
+        )?;
         if let Some(send) = send {
             natives.raw_set("send_event", send.clone())?;
         }
@@ -280,4 +410,29 @@ pub(crate) fn with_natives<'h, R>(
         ));
     }
     result
+}
+
+#[cfg(test)]
+mod random_tests {
+    use super::random_int;
+
+    #[test]
+    fn random_whole_numbers_cover_their_range_and_never_leave_it() {
+        assert_eq!(random_int(1.0, 6.0, 0.0), 1.0);
+        assert_eq!(random_int(1.0, 6.0, 0.999_999_9), 6.0);
+        assert_eq!(random_int(6.0, 1.0, 0.0), 1.0, "either way round");
+        assert_eq!(random_int(3.0, 3.0, 0.7), 3.0);
+        assert_eq!(random_int(1.5, 2.5, 0.9), 2.0, "whole numbers between");
+        assert_eq!(
+            random_int(1.2, 1.8, 0.5),
+            2.0,
+            "none between: the low end rounded up"
+        );
+        assert_eq!(random_int(f64::NAN, 2.0, 0.5), 0.0);
+        for i in 0..=100 {
+            let x = f64::from(i) / 100.0 * 0.999_999;
+            let n = random_int(-3.0, 3.0, x);
+            assert!((-3.0..=3.0).contains(&n) && n.fract() == 0.0);
+        }
+    }
 }

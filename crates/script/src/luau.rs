@@ -161,6 +161,20 @@ end
 function vec3(x, y, z)
   return vector.create(x or 0, y or 0, z or 0)
 end
+-- Lua's own random numbers follow the game's seed, like Lust's random(),
+-- so the same game gives the same numbers on any computer.
+math.random = function(m, n)
+  local r = natives and natives.random
+  if not r then error("random numbers can only be had while the game runs", 2) end
+  if m == nil then return r() end
+  if n == nil then m, n = 1, m end
+  return natives.randomInt(m, n)
+end
+math.randomseed = function(seed)
+  local s = natives and natives.setSeed
+  if not s then error("the seed can only be set while the game runs", 2) end
+  s(seed)
+end
 local reach = { __index = function(_, key)
   local f = natives and key ~= "send_event" and natives[key]
   if not f then

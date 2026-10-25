@@ -65,6 +65,66 @@ pub const NATIVES: &[Native] = &[
         about: "How long the last frame took, in seconds of real time (1/60 at 60 frames a second).",
     },
     Native {
+        file: "world",
+        name: "random",
+        lust: "method float random() native;",
+        about: "A random number from 0 up to 1. The same game with the same seed gets the same numbers, on any computer.",
+    },
+    Native {
+        file: "world",
+        name: "randomRange",
+        lust: "method float randomRange(float low, float high) native;",
+        about: "A random number from low up to high.",
+    },
+    Native {
+        file: "world",
+        name: "randomInt",
+        lust: "method int randomInt(int low, int high) native;",
+        about: "A random whole number from low to high, both included (randomInt(1, 6) rolls a die).",
+    },
+    Native {
+        file: "world",
+        name: "setSeed",
+        lust: "method setSeed(int seed) native;",
+        about: "Starts the game's random numbers again from a seed, at the end of the tick: the same seed gives the same numbers again.",
+    },
+    Native {
+        file: "physics",
+        name: "push",
+        lust: "method push(entity which, vec3 impulse) native;",
+        about: "Gives an entity's body a push, at the end of the tick: a heavy body moves less than a light one (the push is in kilograms times metres a second).",
+    },
+    Native {
+        file: "physics",
+        name: "velocityOf",
+        lust: "method vec3 velocityOf(entity which) native;",
+        about: "How fast and which way an entity's body moves, in metres a second (nothing moving without a RigidBody).",
+    },
+    Native {
+        file: "physics",
+        name: "setVelocity",
+        lust: "method setVelocity(entity which, vec3 velocity) native;",
+        about: "Sets how fast and which way an entity's body moves, in metres a second, at the end of the tick.",
+    },
+    Native {
+        file: "physics",
+        name: "castRay",
+        lust: "method float castRay(vec3 from, vec3 direction, float reach) native;",
+        about: "Looks along a line from a place, a direction, up to reach metres: how far away the first collider is, or -1 if there's none. Colliders the line starts inside are passed through.",
+    },
+    Native {
+        file: "physics",
+        name: "castRayHit",
+        lust: "method entity castRayHit(vec3 from, vec3 direction, float reach) native;",
+        about: "Looks along a line like castRay: the entity whose collider it meets first, or nothing.",
+    },
+    Native {
+        file: "physics",
+        name: "castRayNormal",
+        lust: "method vec3 castRayNormal(vec3 from, vec3 direction, float reach) native;",
+        about: "Looks along a line like castRay: which way the surface it meets faces (straight up for a floor), or [0, 0, 0] if it meets nothing.",
+    },
+    Native {
         file: "entity",
         name: "positionOf",
         lust: "method vec3 positionOf(entity which) native;",
@@ -128,12 +188,13 @@ mod tests {
     #[test]
     fn the_descriptions_check_cleanly_and_a_game_can_use_them() {
         let mut files = descriptions("Test Engine 9.9.9", "solis");
-        assert_eq!(files.len(), 2);
+        assert_eq!(files.len(), 3);
         assert!(files[0].1.starts_with("-- Made by Test Engine 9.9.9"));
         files.push((
             "main.lst".into(),
             "get \"solis/world\":[say, time, find];\n\
              get \"solis/entity\":[positionOf, moveTo, rotationOf, turnTo, nameOf];\n\
+             get \"solis/physics\":[push, velocityOf, setVelocity, castRay, castRayHit, castRayNormal];\n\
              component Mover {\n\
                  has {\n\
                      float speed = 2;\n\
@@ -146,6 +207,10 @@ mod tests {
                          say(nameOf(me) + \" has gone far\");\n\
                      }\n\
                      entity other = find(\"Crate\");\n\
+                     push(other, velocityOf(me) + castRayNormal(positionOf(me), step, 10));\n\
+                     is castRay(positionOf(me), step, 10) > 0 && castRayHit(positionOf(me), step, 10) == other? then {\n\
+                         setVelocity(other, step);\n\
+                     }\n\
                  }\n\
              }\n\
              pass Mover;\n\
@@ -165,7 +230,7 @@ mod tests {
         names.dedup();
         assert_eq!(names.len(), NATIVES.len(), "no name twice");
         for native in NATIVES {
-            assert!(["world", "entity"].contains(&native.file));
+            assert!(["world", "entity", "physics"].contains(&native.file));
             assert!(
                 native.lust.contains(&format!(" {}(", native.name)),
                 "{native:?}"

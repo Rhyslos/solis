@@ -41,6 +41,13 @@ pub enum Change {
     Spawn(EntityId, String, Vec3),
     /// `despawn`: take this entity (and those under it) out of the game.
     Despawn(EntityId),
+    /// `setSeed`: start the game's randomness again from this seed.
+    Seed(u64),
+    /// `push`: give the entity's body a push (kilograms times metres a
+    /// second).
+    Push(EntityId, Vec3),
+    /// `setVelocity`: set how fast the entity's body moves.
+    Velocity(EntityId, Vec3),
 }
 
 /// The entities of a [`WorldView`]: the same while the world's entities,
@@ -84,6 +91,10 @@ pub struct WorldView {
     pub places: Arc<Vec<Mat4>>,
     /// How long the last frame took, in seconds of real time.
     pub frame_time: f64,
+    /// The game's seed, which its random numbers are made from.
+    pub seed: u64,
+    /// Physics as the phase started (decision 0036), shared, to read.
+    pub physics: Arc<physics::State>,
 }
 
 impl WorldView {
@@ -278,11 +289,84 @@ impl Host for ViewHost {
         self.view.frame_time
     }
 
+    fn random(&mut self) -> f64 {
+        // Made from the seed and where it was asked for in the tick's
+        // order, not drawn in turn, so it's the same whichever core asks
+        // first (Phase 6 plan, "Determinism rules").
+        let order = self.order();
+        random_from(self.view.seed, &order, self.phase, self.view.time)
+    }
+
+    fn push(&mut self, which: EntityId, impulse: Vec3) {
+        if impulse.is_finite() && self.view.physics.contains(which) && self.kept.room() {
+            let order = self.order();
+            self.kept
+                .changes
+                .push((order, Change::Push(which, impulse)));
+        }
+    }
+
+    fn velocity(&self, which: EntityId) -> Option<Vec3> {
+        // A component sees its own new velocity at once.
+        let own = self.own.iter().rev().find_map(|c| match c {
+            Change::Velocity(e, v) if *e == which => Some(*v),
+            _ => None,
+        });
+        own.or_else(|| self.view.physics.velocity(which))
+    }
+
+    fn set_velocity(&mut self, which: EntityId, velocity: Vec3) {
+        if velocity.is_finite() && self.view.physics.contains(which) && self.kept.room() {
+            let order = self.order();
+            self.kept
+                .changes
+                .push((order, Change::Velocity(which, velocity)));
+            self.own.push(Change::Velocity(which, velocity));
+        }
+    }
+
+    fn cast_ray(&self, from: Vec3, direction: Vec3, reach: f32) -> Option<physics::Hit> {
+        self.view.physics.cast_ray(from, direction, reach)
+    }
+
+    fn set_seed(&mut self, seed: u64) {
+        if self.kept.room() {
+            let order = self.order();
+            self.kept.changes.push((order, Change::Seed(seed)));
+        }
+    }
+
     fn at(&mut self, order: &Order) {
         self.at = order.clone();
         self.next = 0;
         self.own.clear();
     }
+}
+
+/// A random number from 0 up to (not including) 1, made from `seed` and
+/// the place `order` in `phase` of the tick at game time `time`: the same
+/// hash as spawned IDs, with the seed, then mixed (splitmix64's
+/// finalizer) so every bit counts.
+fn random_from(seed: u64, order: &Order, phase: u32, time: f64) -> f64 {
+    let mut hash: u64 = 0xcbf2_9ce4_8422_2325;
+    let mut eat = |bytes: &[u8]| {
+        for &b in bytes {
+            hash ^= u64::from(b);
+            hash = hash.wrapping_mul(0x0100_0000_01b3);
+        }
+    };
+    eat(&seed.to_le_bytes());
+    eat(&order.major.to_le_bytes());
+    eat(order.component.as_bytes());
+    eat(&order.seq.to_le_bytes());
+    eat(&phase.to_le_bytes());
+    eat(&time.to_bits().to_le_bytes());
+    let mut x = hash;
+    x = (x ^ (x >> 30)).wrapping_mul(0xbf58_476d_1ce4_e5b9);
+    x = (x ^ (x >> 27)).wrapping_mul(0x94d0_49bb_1331_11eb);
+    x ^= x >> 31;
+    // The top 53 bits: every value a float can hold evenly.
+    (x >> 11) as f64 * (1.0 / (1_u64 << 53) as f64)
 }
 
 /// The part of a tick (or not) a component's start ran in, for
@@ -322,6 +406,7 @@ enum Job {
     RetainOn(Vec<(EntityId, Vec<String>)>),
     Values(EntityId, String),
     Len,
+    Checksum,
     Updates(f64, WorldView),
     Round(Vec<(u32, Event)>, WorldView, u32),
     FinishTick,
@@ -335,6 +420,7 @@ enum Done {
     Synced(Vec<Failure>, Kept),
     Values(Option<ComponentData>),
     Len(usize),
+    Checksum(u64),
     Phase(Result<Phase, String>, Kept),
     Finished(bool),
 }
@@ -384,6 +470,7 @@ fn work(runtime: &mut Runtime, job: Job) -> Done {
         }
         Job::Values(entity, name) => Done::Values(runtime.values(entity, &name)),
         Job::Len => Done::Len(runtime.len()),
+        Job::Checksum => Done::Checksum(runtime.checksum()),
         Job::Updates(dt, view) => {
             // The tick starts with its updates: one hand-over, not two.
             runtime.start_tick();
@@ -727,6 +814,21 @@ impl Game {
             .sum();
         self.count = Some(count);
         count
+    }
+
+    /// A checksum of every running component's values (Phase 6,
+    /// determinism): the same on any number of shards, as long as the
+    /// game is in the same state. Asks every component, so it's for
+    /// recordings and tests, not every frame.
+    pub fn checksum(&mut self) -> u64 {
+        // Each shard's components are its own, so their sums add up in
+        // any order.
+        self.all(|_| Job::Checksum)
+            .into_iter()
+            .fold(0_u64, |sum, a| match a {
+                Some(Done::Checksum(c)) => sum.wrapping_add(c),
+                _ => sum,
+            })
     }
 
     /// Whether no components are running.

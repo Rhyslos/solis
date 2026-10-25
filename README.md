@@ -130,15 +130,15 @@ Solis is built in phases, one milestone per pull request. Each phase ends with a
 
 **Gate:** on your PC, the target runs at 60 fps and stress holds 30 fps without stutter; the ceiling is reported; the profiler shows where the time goes.
 
-### Phase 6 · Simulation and play — 1 of 5
+### Phase 6 · Simulation and play — 2 of 5
 
-`███░░░░░░░░░░` 20%
+`█████░░░░░░░░` 40%
 
 <details>
 <summary>Milestones</summary>
 
 - [x] A fixed-timestep simulation ([plan](docs/plans/phase-6.md))
-- [ ] Determinism: seeded randomness, state checksums, deterministic physics
+- [x] Determinism: seeded randomness, state checksums, deterministic physics
 - [ ] Input as named actions, with gamepads and rebinding
 - [ ] Save games
 - [ ] Ready-made components in Lust: character and camera controllers

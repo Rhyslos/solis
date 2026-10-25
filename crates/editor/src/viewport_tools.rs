@@ -138,6 +138,74 @@ pub enum Outline {
     },
     /// A point (an entity without a model, such as a lamp).
     Point(Vec3),
+    /// A collider's shape, placed in the world: what physics bumps into.
+    Collider {
+        /// Where the entity is (with its scale, which the shape grows by).
+        world: Mat4,
+        /// Its shape and size.
+        shape: area::builtin::Collider,
+    },
+}
+
+/// The lines that draw `collider` at `world`, as pairs of points in the
+/// world: a box's edges, a sphere's three rings, or a capsule's rings and
+/// sides.
+pub(crate) fn collider_lines(world: Mat4, collider: &area::builtin::Collider) -> Vec<(Vec3, Vec3)> {
+    use area::builtin::ColliderShape;
+    let c = collider.center;
+    let mut lines = Vec::new();
+    let place = |p: Vec3| world.transform_point3(c + p);
+    // A ring of `radius` around `middle`, in the plane of axes `u` and `v`,
+    // from `start` round by `sweep` (radians).
+    let mut ring = |middle: Vec3, u: Vec3, v: Vec3, radius: f32, start: f32, sweep: f32| {
+        const STEPS: usize = 24;
+        let point = |i: usize| {
+            let a = start + sweep * i as f32 / STEPS as f32;
+            middle + (u * a.cos() + v * a.sin()) * radius
+        };
+        for i in 0..STEPS {
+            lines.push((place(point(i)), place(point(i + 1))));
+        }
+    };
+    let tau = std::f32::consts::TAU;
+    let pi = std::f32::consts::PI;
+    match collider.shape {
+        ColliderShape::Box => {
+            let half = collider.size * 0.5;
+            let corner = |i: usize| {
+                Vec3::new(
+                    if i & 1 == 0 { -half.x } else { half.x },
+                    if i & 2 == 0 { -half.y } else { half.y },
+                    if i & 4 == 0 { -half.z } else { half.z },
+                )
+            };
+            for (a, b) in BOX_EDGES {
+                lines.push((place(corner(a)), place(corner(b))));
+            }
+        }
+        ColliderShape::Sphere => {
+            let r = collider.radius;
+            ring(Vec3::ZERO, Vec3::X, Vec3::Y, r, 0.0, tau);
+            ring(Vec3::ZERO, Vec3::X, Vec3::Z, r, 0.0, tau);
+            ring(Vec3::ZERO, Vec3::Y, Vec3::Z, r, 0.0, tau);
+        }
+        ColliderShape::Capsule => {
+            let r = collider.radius;
+            let half = (collider.height * 0.5 - r).max(0.0);
+            let (top, bottom) = (Vec3::Z * half, -Vec3::Z * half);
+            ring(top, Vec3::X, Vec3::Y, r, 0.0, tau);
+            ring(bottom, Vec3::X, Vec3::Y, r, 0.0, tau);
+            // Rounded ends, seen from the front and the side.
+            ring(top, Vec3::X, Vec3::Z, r, 0.0, pi);
+            ring(top, Vec3::Y, Vec3::Z, r, 0.0, pi);
+            ring(bottom, Vec3::X, Vec3::Z, r, pi, pi);
+            ring(bottom, Vec3::Y, Vec3::Z, r, pi, pi);
+            for side in [Vec3::X, -Vec3::X, Vec3::Y, -Vec3::Y] {
+                lines.push((place(top + side * r), place(bottom + side * r)));
+            }
+        }
+    }
+    lines
 }
 
 /// The tools' state, kept between frames by the viewport.
@@ -556,6 +624,14 @@ pub(crate) fn draw(
             Outline::Point(p) => {
                 if let Some(s) = camera.project(p, size) {
                     painter.circle_stroke(at(s), 9.0, outline);
+                }
+            }
+            Outline::Collider { world, shape } => {
+                let stroke = Stroke::new(1.2, theme::COLLIDER);
+                for (a, b) in collider_lines(world, &shape) {
+                    if let (Some(p), Some(q)) = (camera.project(a, size), camera.project(b, size)) {
+                        painter.line_segment([at(p), at(q)], stroke);
+                    }
                 }
             }
         }

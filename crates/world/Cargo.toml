@@ -20,6 +20,7 @@ area.workspace = true
 reflect.workspace = true
 glam.workspace = true
 hecs.workspace = true
+physics.workspace = true
 
 [lints]
 workspace = true

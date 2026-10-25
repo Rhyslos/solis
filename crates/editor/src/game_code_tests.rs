@@ -1286,3 +1286,245 @@ fn the_game_drawn_between_ticks_lags_where_it_is_by_part_of_a_tick() {
     assert!(between > drawn_at(0.0), "ahead of the last tick");
     assert_eq!(drawn_at(1.0), now);
 }
+
+/// A drunkard: staggers a random step each tick.
+const DRUNKARD: &str = "get \"solis/world\":[randomRange];\n\
+    get \"solis/entity\":[moveTo, positionOf];\n\
+    component Drunkard {\n\
+        has {\n\
+            int steps = 0;\n\
+        }\n\
+        method update(float dt) {\n\
+            vec3 step = [randomRange(-1, 1), randomRange(-1, 1), 0];\n\
+            moveTo(me, positionOf(me) + step);\n\
+            steps = steps + 1;\n\
+        }\n\
+    }\n\
+    pass Drunkard;\nend\n";
+
+/// A workbench with a drunkard (entity 5) in its area.
+fn with_a_drunkard() -> Workbench {
+    let mut w = Workbench::new(info(), None);
+    w.set_program(Some(program(DRUNKARD)));
+    let mut data = EntityData::new("Walker").with(&Transform::default());
+    data.components
+        .insert("Drunkard".into(), reflect::ComponentData::default());
+    w.document
+        .edit(
+            "Add",
+            vec![area::Edit::Spawn {
+                entities: vec![(EntityId(reflect::Id::from_raw(5).unwrap()), data)],
+            }],
+            None,
+            None,
+        )
+        .unwrap();
+    w
+}
+
+/// Plays `w` from `seed` (or a new one) for `ticks`, then stops: where
+/// the drunkard got to, and the game's checksums then.
+fn stagger(w: &mut Workbench, seed: Option<u64>, ticks: u64) -> (f32, u64, u64) {
+    let id = EntityId(reflect::Id::from_raw(5).unwrap());
+    w.fixed_seed = seed;
+    w.play();
+    while w.world().unwrap().clock().ticks < ticks {
+        w.run_game((world::TICK * 2.0) as f32);
+    }
+    let x = x_in_game(w, id);
+    let playing = w.playing.as_mut().unwrap();
+    let world = playing.world.checksum();
+    let code = playing.game.as_mut().unwrap().checksum();
+    w.stop();
+    (x, world, code)
+}
+
+#[test]
+fn a_chosen_seed_plays_the_same_twice_and_a_new_one_differently() {
+    let mut w = with_a_drunkard();
+    let first = stagger(&mut w, Some(99), 60);
+    assert_eq!(stagger(&mut w, Some(99), 60), first, "the same, to the bit");
+    let other = stagger(&mut w, Some(100), 60);
+    assert_ne!(other.0, first.0, "another seed");
+    assert_ne!(other.1, first.1);
+    // Each Play has a new seed when none is chosen.
+    assert_ne!(stagger(&mut w, None, 60).0, stagger(&mut w, None, 60).0);
+}
+
+/// A kicker: kicks the crate along X on its first tick, and says how far
+/// below it the crate's top is, by a ray, every 30 ticks.
+const KICKER: &str = "get \"solis/world\":[say, find];\n\
+    get \"solis/entity\":[positionOf];\n\
+    get \"solis/physics\":[push, castRay, castRayHit, velocityOf];\n\
+    component Kicker {\n\
+        has {\n\
+            int ticks = 0;\n\
+        }\n\
+        method update(float dt) {\n\
+            entity box = find(\"Crate\");\n\
+            is ticks == 0? then {\n\
+                push(box, [5, 0, 0]);\n\
+            }\n\
+            ticks = ticks + 1;\n\
+            is ticks % 30 == 0? then {\n\
+                vec3 above = positionOf(box) + [0, 0, 10];\n\
+                is castRayHit(above, [0, 0, -1], 50) == box? then {\n\
+                    say(\"crate \" + castRay(above, [0, 0, -1], 50).text() + \" \" + velocityOf(box).x.text());\n\
+                }\n\
+            }\n\
+        }\n\
+    }\n\
+    pass Kicker;\nend\n";
+
+/// A workbench with a floor, a crate on it and a kicker, playing.
+fn kicked() -> (Workbench, EntityId) {
+    use area::builtin::{Collider, RigidBody};
+    let mut w = Workbench::new(info(), None);
+    w.set_program(Some(program(KICKER)));
+    let raw = |n| EntityId(reflect::Id::from_raw(n).unwrap());
+    let floor = EntityData::new("Floor")
+        .with(&Transform {
+            position: Vec3::new(0.0, 0.0, -0.5),
+            ..Transform::default()
+        })
+        .with(&Collider {
+            size: Vec3::new(40.0, 40.0, 1.0),
+            friction: 0.2,
+            ..Collider::default()
+        });
+    let crate_data = EntityData::new("Crate")
+        .with(&Transform {
+            position: Vec3::new(0.0, 0.0, 0.5),
+            ..Transform::default()
+        })
+        .with(&RigidBody {
+            mass: 1.0,
+            ..RigidBody::default()
+        })
+        .with(&Collider {
+            friction: 0.2,
+            ..Collider::default()
+        });
+    let mut kicker = EntityData::new("Kicker");
+    kicker
+        .components
+        .insert("Kicker".into(), reflect::ComponentData::default());
+    w.document
+        .edit(
+            "Add",
+            vec![
+                area::Edit::Spawn {
+                    entities: vec![(raw(1), floor)],
+                },
+                area::Edit::Spawn {
+                    entities: vec![(raw(2), crate_data)],
+                },
+                area::Edit::Spawn {
+                    entities: vec![(raw(3), kicker)],
+                },
+            ],
+            None,
+            None,
+        )
+        .unwrap();
+    (w, raw(2))
+}
+
+#[test]
+fn game_code_kicks_a_crate_and_physics_slides_it_the_same_every_play() {
+    let (mut w, crate_id) = kicked();
+    let run = |w: &mut Workbench| {
+        w.fixed_seed = Some(1);
+        w.play();
+        while w.world().unwrap().clock().ticks < 120 {
+            w.run_game((world::TICK * 3.0) as f32);
+        }
+        let x = x_in_game(w, crate_id);
+        let sum = w.playing.as_ref().unwrap().world.checksum();
+        let said: Vec<String> = w
+            .log_lines()
+            .iter()
+            .filter(|l| l.text.starts_with("crate "))
+            .map(|l| l.text.clone())
+            .collect();
+        w.stop();
+        (x, sum, said)
+    };
+    let (x, sum, said) = run(&mut w);
+    // 5 kg·m/s on a 1 kg crate: off at 5 m/s, slowing on the floor.
+    assert!(x > 1.0, "slid: {x}");
+    // The ray from above meets the crate's top, 9.5 m below.
+    assert!(!said.is_empty());
+    assert!(said[0].starts_with("crate 9.5"), "{said:?}");
+    // Played again: the same, to the bit.
+    w.console.clear();
+    let again = run(&mut w);
+    assert_eq!((again.0, again.1), (x, sum));
+    // Stop put the crate back.
+    assert_eq!(
+        w.document
+            .area()
+            .get(crate_id)
+            .unwrap()
+            .get::<Transform>()
+            .unwrap()
+            .position,
+        Vec3::new(0.0, 0.0, 0.5)
+    );
+}
+
+#[test]
+#[ignore = "scale check: run by tools/scale/scale-check.sh"]
+fn scale_check_1000_bodies_falling_into_a_pile() {
+    // Phase 6, M2: physics in its strict mode (decision 0036). A thousand
+    // crates dropped in ten columns onto a floor: the worst tick while
+    // they tumble and pile up, physics only.
+    use area::builtin::{Collider, RigidBody};
+    let mut area = area::Area::new();
+    area.spawn(
+        EntityData::new("Floor")
+            .with(&Transform {
+                position: Vec3::new(0.0, 0.0, -0.5),
+                ..Transform::default()
+            })
+            .with(&Collider {
+                size: Vec3::new(200.0, 200.0, 1.0),
+                ..Collider::default()
+            }),
+    );
+    for n in 0..1000 {
+        let (column, level) = (n % 100, n / 100);
+        let x = (column % 10) as f32 * 3.0;
+        let y = (column / 10) as f32 * 3.0;
+        area.spawn(
+            EntityData::new("Crate")
+                .with(&Transform {
+                    position: Vec3::new(x + 0.1 * level as f32, y, 1.0 + 1.3 * level as f32),
+                    rotation: glam::Quat::from_rotation_z(0.2 * level as f32),
+                    ..Transform::default()
+                })
+                .with(&RigidBody::default())
+                .with(&Collider::default()),
+        );
+    }
+    let mut world = world::World::from_area(&area);
+    let mut worst = 0.0_f64;
+    let mut total = 0.0_f64;
+    let ticks = 300;
+    for _ in 0..ticks {
+        let started = std::time::Instant::now();
+        world.step_physics();
+        let ms = started.elapsed().as_secs_f64() * 1000.0;
+        worst = worst.max(ms);
+        total += ms;
+    }
+    println!(
+        "Scale check: 1,000 bodies falling into a pile, physics alone: {:.2} ms a tick on average (reported)",
+        total / f64::from(ticks)
+    );
+    verdict(
+        "1,000 bodies falling into a pile, the worst physics tick",
+        worst,
+        8.0,
+    );
+}

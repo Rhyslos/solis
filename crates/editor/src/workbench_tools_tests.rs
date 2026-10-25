@@ -307,3 +307,27 @@ fn clicking_a_corner_button_never_clicks_the_viewport_behind_it() {
     h.run();
     assert_eq!(h.state().0.selection(), Some(id), "still selected");
 }
+
+#[test]
+fn a_selected_collider_is_outlined_as_its_shape() {
+    let (mut w, id) = with_a_crate();
+    w.apply_property(
+        crate::properties::PropertyRequest::AddComponent {
+            entity: id,
+            component: "Collider".into(),
+        },
+        1,
+    );
+    w.document.selection.select_only(id);
+    w.prepare_tools();
+    assert!(
+        w.viewport
+            .tools
+            .outlines
+            .iter()
+            .any(|o| matches!(o, crate::viewport_tools::Outline::Collider { .. }))
+    );
+    w.document.selection.clear();
+    w.prepare_tools();
+    assert!(w.viewport.tools.outlines.is_empty());
+}

@@ -324,11 +324,11 @@ fn tab_completes_commands_names_and_settings() {
     let done = w.complete("s");
     assert_eq!(
         done.line, "s",
-        "select, set, save, step, stop, stats share only s"
+        "select, set, save, seed, step, stop, stats share only s"
     );
     assert_eq!(
         done.choices,
-        ["select", "set", "save", "step", "stop", "stats"]
+        ["select", "set", "save", "seed", "step", "stop", "stats"]
     );
     assert_eq!(w.complete("st").line, "st");
     assert_eq!(w.complete("sta").line, "stats ");
@@ -509,4 +509,32 @@ fn the_quote_key_is_left_alone_while_typing_elsewhere() {
         !h.ctx
             .memory(|m| m.has_focus(crate::console::command_line_id()))
     );
+}
+
+#[test]
+fn seed_and_checksum_say_what_they_do() {
+    let mut w = Workbench::new(info(), None);
+    run(&mut w, "seed");
+    assert_eq!(answer(&w), "Each Play has a new seed.");
+    run(&mut w, "seed 1234");
+    assert_eq!(w.fixed_seed, Some(1234));
+    run(&mut w, "seed twelve");
+    assert_eq!(said(&w).0, LogLevel::Error);
+    run(&mut w, "checksum");
+    assert!(said(&w).1.contains("press Play first"));
+    w.play();
+    run(&mut w, "seed");
+    assert_eq!(
+        answer(&w),
+        "The game's seed is 1234, chosen for every Play."
+    );
+    run(&mut w, "checksum");
+    assert!(
+        answer(&w).starts_with("At tick 0: world "),
+        "{}",
+        answer(&w)
+    );
+    w.stop();
+    run(&mut w, "seed new");
+    assert_eq!(w.fixed_seed, None);
 }

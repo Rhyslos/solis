@@ -1,0 +1,24 @@
+[package]
+name = "physics"
+description = "The game's physics: Rapier in its strict mode (decision 0036), with bodies and colliders by entity"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+publish.workspace = true
+
+# Architecture layer, checked by tools/layer-check:
+# a crate may only depend on crates in its own layer or below.
+[package.metadata.architecture]
+layer = 1
+
+[dependencies]
+reflect.workspace = true
+glam.workspace = true
+rapier3d.workspace = true
+serde.workspace = true
+
+[lints]
+workspace = true

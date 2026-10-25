@@ -475,3 +475,118 @@ fn between_leaves_still_things_exactly_where_they_are() {
     let half = between(Mat4::IDENTITY, Mat4::from_translation(Vec3::X * 2.0), 0.5);
     assert_eq!(half.w_axis.x, 1.0);
 }
+
+/// An area with a floor (a fixed collider, its top at 0) and a crate
+/// (dynamic, 1 m) above it at `height`.
+fn floor_and_crate(height: f32) -> (Area, EntityId, EntityId) {
+    use area::builtin::{Collider, RigidBody};
+    let mut area = Area::new();
+    let floor = EntityId(reflect::Id::from_raw(101).unwrap());
+    let crate_id = EntityId(reflect::Id::from_raw(102).unwrap());
+    area.insert(
+        floor,
+        EntityData::new("Floor")
+            .with(&at(0.0, 0.0, -0.5))
+            .with(&Collider {
+                size: Vec3::new(20.0, 20.0, 1.0),
+                ..Collider::default()
+            }),
+    );
+    area.insert(
+        crate_id,
+        EntityData::new("Crate")
+            .with(&at(0.0, 0.0, height))
+            .with(&RigidBody::default())
+            .with(&Collider::default()),
+    );
+    (area, floor, crate_id)
+}
+
+fn z_of(world: &World, id: EntityId) -> f32 {
+    world.global(id).unwrap().w_axis.z
+}
+
+#[test]
+fn physics_moves_entities_and_the_world_follows() {
+    let (area, floor, crate_id) = floor_and_crate(4.0);
+    let mut world = World::from_area(&area);
+    assert_eq!(world.physics().state().len(), 2);
+    for _ in 0..30 {
+        world.step_physics();
+    }
+    assert!(z_of(&world, crate_id) < 4.0, "falling");
+    for _ in 0..300 {
+        world.step_physics();
+    }
+    assert!((z_of(&world, crate_id) - 0.5).abs() < 0.05, "landed");
+    assert_eq!(z_of(&world, floor), -0.5, "the floor stays");
+    // What game code moves, its body follows: lifted, it falls again.
+    world.set_transform(crate_id, at(0.0, 0.0, 6.0));
+    world.step_physics();
+    assert!(z_of(&world, crate_id) > 5.5);
+    // Pushes and velocities land at the next step.
+    world.set_velocity(crate_id, Vec3::new(3.0, 0.0, 0.0));
+    assert_eq!(world.physics().state().velocity(crate_id).unwrap().x, 0.0);
+    world.step_physics();
+    assert!(world.physics().state().velocity(crate_id).unwrap().x > 2.5);
+}
+
+#[test]
+fn physics_plays_the_same_every_time_and_counts_in_the_checksum() {
+    let run = || {
+        let (area, _, crate_id) = floor_and_crate(4.0);
+        let mut world = World::from_area(&area);
+        world.push(crate_id, Vec3::new(1.0, 0.5, 0.0));
+        (0..120)
+            .map(|_| {
+                world.step_physics();
+                world.checksum()
+            })
+            .collect::<Vec<u64>>()
+    };
+    let first = run();
+    assert_eq!(run(), first);
+    assert_ne!(
+        first[0], first[1],
+        "physics moved it, so the checksum moved"
+    );
+}
+
+#[test]
+fn bodies_join_and_leave_with_their_entities_and_keep_their_speed() {
+    use area::builtin::{Collider, RigidBody};
+    let (mut area, _, crate_id) = floor_and_crate(4.0);
+    let mut world = World::from_area(&area);
+    for _ in 0..20 {
+        world.step_physics();
+    }
+    let falling = world.physics().state().velocity(crate_id).unwrap().z;
+    assert!(falling < -1.0);
+    // Built again (an edit while playing): where it was, as fast.
+    world.rebuild(&area);
+    assert!((world.physics().state().velocity(crate_id).unwrap().z - falling).abs() < 1e-4);
+    assert!(z_of(&world, crate_id) < 4.0, "where the game had it");
+    // A spawned ball joins physics, and leaves with its entity.
+    let ball = EntityId::random();
+    let added = world.add_subtree(&[(
+        ball,
+        EntityData::new("Ball")
+            .with(&at(3.0, 0.0, 2.0))
+            .with(&RigidBody::default())
+            .with(&Collider {
+                shape: area::builtin::ColliderShape::Sphere,
+                ..Collider::default()
+            }),
+    )]);
+    assert_eq!(added, [ball]);
+    assert!(world.physics().state().contains(ball));
+    world.remove_subtrees(&[ball]);
+    assert!(!world.physics().state().contains(ball));
+    // A changed collider (Properties while playing) takes effect.
+    let mut crate_data = area.get(crate_id).unwrap().clone();
+    crate_data.components.remove(Collider::NAME);
+    crate_data.components.remove(RigidBody::NAME);
+    area.insert(crate_id, crate_data);
+    world.update(&area, [(crate_id, false)]);
+    assert!(!world.physics().state().contains(crate_id));
+}

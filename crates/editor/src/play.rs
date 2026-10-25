@@ -54,6 +54,8 @@ pub(crate) struct Playing {
     pub(crate) view: crate::game_code::ViewCache,
     /// Whether the Console was told projectiles hit their limit.
     told_too_many: bool,
+    /// Whether the Console was told there were too many physics bodies.
+    told_too_many_bodies: bool,
     /// Assembly names game code spawned that weren't found, said once.
     told_unknown: std::collections::HashSet<String>,
     /// Whether the Console was told game code spawned too much.
@@ -62,6 +64,10 @@ pub(crate) struct Playing {
     /// components' starts, which run outside the ticks).
     pub(crate) pending: Vec<GameEdit>,
 }
+
+/// The longest one tick of physics may take before the game pauses and
+/// says why, like game code's tick limit.
+pub const PHYSICS_LIMIT: std::time::Duration = std::time::Duration::from_millis(250);
 
 /// The most copies of assemblies game code may make in one tick; more
 /// aren't made, and the Console says so (a component spawning every tick by
@@ -130,6 +136,10 @@ impl Workbench {
         self.moving = None;
         self.document.close_step();
         let mut world = world::World::from_area(self.document.area());
+        // A new seed each Play, unless one was chosen (`seed` in the
+        // Console), so random numbers differ between plays but a play can
+        // be repeated.
+        world.set_seed(self.fixed_seed.unwrap_or_else(fresh_seed));
         let _ = self.document.take_changes();
         let cameras = world.placed::<area::builtin::Camera>().len();
         let mut view = ViewCache::default();
@@ -144,6 +154,7 @@ impl Workbench {
             game,
             view,
             told_too_many: false,
+            told_too_many_bodies: false,
             told_unknown: Default::default(),
             told_too_many_spawns: false,
             pending,
@@ -359,31 +370,46 @@ impl Workbench {
             // ticks moves from.
             playing.world.remember();
             playing.world.projectiles_mut().tick(world::TICK as f32);
-            let Some(game) = &mut playing.game else {
-                continue;
+            let mut slow = None;
+            if let Some(game) = &mut playing.game {
+                let mut host = PlayWorld::new(&mut playing.world, &mut playing.view, time);
+                host.frame_time = f64::from(seconds);
+                let ticking = std::time::Instant::now();
+                let ticked = game.tick(world::TICK, &mut host);
+                code += ticking.elapsed();
+                failures.extend(ticked.failures);
+                said.append(&mut host.said);
+                // What this tick spawned and despawned joins the world now,
+                // in the order it was asked for (decision 0035), so the next
+                // tick sees it however many ticks this frame runs.
+                let edits = std::mem::take(&mut host.edits);
+                playing.pending.extend(edits);
+                slow = ticked.pause;
+                let landing = std::time::Instant::now();
+                failures.extend(self.land_edits(time, seconds));
+                code += landing.elapsed();
+            }
+            // Physics moves on last, with game code's moves and pushes
+            // (decision 0036).
+            let Some(playing) = &mut self.playing else {
+                break;
             };
-            let mut host = PlayWorld::new(&mut playing.world, &mut playing.view, time);
-            host.frame_time = f64::from(seconds);
-            let ticking = std::time::Instant::now();
-            let ticked = game.tick(world::TICK, &mut host);
-            code += ticking.elapsed();
-            failures.extend(ticked.failures);
-            said.append(&mut host.said);
-            // What this tick spawned and despawned joins the world now,
-            // in the order it was asked for (decision 0035), so the next
-            // tick sees it however many ticks this frame runs.
-            let edits = std::mem::take(&mut host.edits);
-            playing.pending.extend(edits);
-            let landing = std::time::Instant::now();
-            failures.extend(self.land_edits(time, seconds));
-            code += landing.elapsed();
+            let stepping = std::time::Instant::now();
+            playing.world.step_physics();
+            if slow.is_none() && stepping.elapsed() > PHYSICS_LIMIT {
+                slow = Some(format!(
+                    "Physics took {:.0} ms for one tick (more than {} ms), so the game is paused \
+                     rather than falling further behind. Fewer bodies, or simpler colliders, make \
+                     it quicker.",
+                    stepping.elapsed().as_secs_f64() * 1000.0,
+                    PHYSICS_LIMIT.as_millis()
+                ));
+            }
             // Too slow: no catching up, which would only be slower; the
             // game waits for the person instead.
-            if ticked.pause.is_some() {
-                if let Some(playing) = &mut self.playing {
-                    playing.paused = true;
-                }
-                pause = ticked.pause;
+            if slow.is_some() {
+                playing.paused = true;
+                pause = slow;
                 break;
             }
         }
@@ -393,6 +419,10 @@ impl Workbench {
         let refused = playing.world.projectiles().refused() > 0 && !playing.told_too_many;
         if refused {
             playing.told_too_many = true;
+        }
+        let bodies_refused = playing.world.physics_refused() > 0 && !playing.told_too_many_bodies;
+        if bodies_refused {
+            playing.told_too_many_bodies = true;
         }
         self.profiler.add(crate::profiler::Stage::GameCode, code);
         self.profiler.add(
@@ -415,6 +445,16 @@ impl Workbench {
                     "More than {} projectiles were flying at once, so game code's next shots \
                      weren't fired until some ran out of time.",
                     crate::models::grouped(world::MAX_PROJECTILES)
+                ),
+            );
+        }
+        if bodies_refused {
+            self.log(
+                LogLevel::Warning,
+                format!(
+                    "The game has the most physics bodies it can ({}), so the rest have no physics: \
+                     they don't fall or collide.",
+                    crate::models::grouped(world::physics::MAX_BODIES)
                 ),
             );
         }
@@ -615,3 +655,17 @@ impl Workbench {
 #[cfg(test)]
 #[path = "play_tests.rs"]
 mod tests;
+
+/// A seed for a new play, from the clock.
+fn fresh_seed() -> u64 {
+    let nanos = std::time::SystemTime::now()
+        .duration_since(std::time::UNIX_EPOCH)
+        .map_or(0, |d| d.as_nanos() as u64);
+    // Mixed (splitmix64's finalizer), and kept to whole numbers Lust and
+    // Lua can hold exactly, so `setSeed` can repeat it.
+    let mut x = nanos;
+    x = (x ^ (x >> 30)).wrapping_mul(0xbf58_476d_1ce4_e5b9);
+    x = (x ^ (x >> 27)).wrapping_mul(0x94d0_49bb_1331_11eb);
+    x ^= x >> 31;
+    x % 1_000_000_000
+}

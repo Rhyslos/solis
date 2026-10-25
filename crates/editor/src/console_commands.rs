@@ -109,6 +109,16 @@ pub(crate) const COMMANDS: &[CommandInfo] = &[
         help: "Stops the game's clock, or starts it again.",
     },
     CommandInfo {
+        name: "seed",
+        usage: "seed [number | new]",
+        help: "Says the running game's seed (what its random numbers come from); with a number, every Play starts from that seed, so a play can be repeated; `seed new` gives each Play a new one again.",
+    },
+    CommandInfo {
+        name: "checksum",
+        usage: "checksum",
+        help: "While playing, the game's checksums at this tick: one number for the world and one for game code's values. Two plays that agree on them at the same tick are in exactly the same state.",
+    },
+    CommandInfo {
         name: "step",
         usage: "step",
         help: "While paused, runs exactly one tick (the Step button).",
@@ -275,6 +285,8 @@ impl Workbench {
                 Ok(String::new())
             }
             "stats" => Ok(self.stats()),
+            "seed" => self.seed_command(args),
+            "checksum" => self.checksum_command(),
             _ => Err(format!(
                 "there's no command \"{name}\"; type help to see them all"
             )),
@@ -520,6 +532,52 @@ impl Workbench {
             .ok_or("tool select, move, rotate, scale or transform?")?;
         self.viewport.tool = tool;
         Ok(String::new())
+    }
+
+    /// `checksum`: the running game's checksums at this tick.
+    fn checksum_command(&mut self) -> Result<String, String> {
+        let Some(playing) = &mut self.playing else {
+            return Err("nothing is running: press Play first".to_string());
+        };
+        let tick = playing.world.clock().ticks;
+        let world = playing.world.checksum();
+        let code = playing.game.as_mut().map_or(0, script::Game::checksum);
+        Ok(format!(
+            "At tick {tick}: world {world:016x}, game code {code:016x}."
+        ))
+    }
+
+    /// `seed`, `seed 1234` or `seed new`.
+    fn seed_command(&mut self, args: &[String]) -> Result<String, String> {
+        match args {
+            [] => {
+                let running = self.playing.as_ref().map(|p| p.world.seed());
+                Ok(match (running, self.fixed_seed) {
+                    (Some(seed), Some(_)) => {
+                        format!("The game's seed is {seed}, chosen for every Play.")
+                    }
+                    (Some(seed), None) => format!(
+                        "The game's seed is {seed}. Type seed {seed} to start every Play from it."
+                    ),
+                    (None, Some(seed)) => format!("Every Play starts from seed {seed}."),
+                    (None, None) => "Each Play has a new seed.".to_string(),
+                })
+            }
+            [word] if word == "new" => {
+                self.fixed_seed = None;
+                Ok("Each Play has a new seed from now on.".to_string())
+            }
+            [number] => match number.parse::<u64>() {
+                Ok(seed) if seed < 1_000_000_000_000_000 => {
+                    self.fixed_seed = Some(seed);
+                    Ok(format!("Every Play starts from seed {seed} from now on."))
+                }
+                _ => Err(format!(
+                    "\"{number}\" isn't a seed: give a whole number from 0 to 999999999999999, or new"
+                )),
+            },
+            _ => Err("seed takes one number, or new".to_string()),
+        }
     }
 
     fn stats(&self) -> String {
