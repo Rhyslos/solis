@@ -716,10 +716,15 @@ impl Physics {
         let platforms = {
             let state = &*self.state;
             state.islands.active_bodies().any(|handle| {
-                state
-                    .bodies
-                    .get(handle)
-                    .is_some_and(|b| b.is_kinematic() && b.next_position() != b.position())
+                let Some(body) = state.bodies.get(handle) else {
+                    return false;
+                };
+                // Characters are kinematic too, and one moved earlier in
+                // the same step mustn't count as a platform.
+                let character = reflect::Id::from_raw(body.user_data as u64)
+                    .and_then(|id| state.by_entity.get(&EntityId(id)))
+                    .is_some_and(|e| e.character.is_some());
+                body.is_kinematic() && !character && body.next_position() != body.position()
             })
         };
         // Only each character's first move can be worked out ahead.
@@ -1027,10 +1032,17 @@ fn plan_one(
             });
         // Walking off a step or down a slope: down to the ground, if it's
         // within reach, rather than flying off.
-        // (Also when Rapier still calls it grounded: it does up to a few
-        // centimetres above the ground, and nothing else would bring it
-        // down.)
-        if last.grounded && spec.snap > 0.0 && result.translation.z <= 0.0 {
+        // (Also when Rapier still calls it grounded, up to a few
+        // centimetres above the ground, if a platform is moving: one going
+        // down would otherwise leave it standing on air.)
+        // Every tick only while a platform moves (riding one needs it); else
+        // only once Rapier no longer calls it grounded, which is cheaper
+        // for a crowd.
+        if last.grounded
+            && (!result.grounded || platforms)
+            && spec.snap > 0.0
+            && result.translation.z <= 0.0
+        {
             let options = rapier3d::parry::query::details::ShapeCastOptions {
                 target_distance: 0.01,
                 stop_at_penetration: true,
