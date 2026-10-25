@@ -87,7 +87,8 @@ impl Projectiles {
     }
 
     /// Puts back the projectiles a save game held (decision 0038), in
-    /// their order; those that aren't sensible numbers, or past
+    /// their order, within the limits [`Self::fire`] keeps (a save's
+    /// own always are); those that aren't sensible numbers, or past
     /// [`MAX_PROJECTILES`], are left out.
     pub fn restore(&mut self, flying: Vec<Projectile>) {
         self.flying = flying
@@ -97,6 +98,12 @@ impl Projectiles {
                     && p.velocity.is_finite()
                     && p.left.is_finite()
                     && p.colour.iter().all(|c| c.is_finite())
+            })
+            .map(|p| Projectile {
+                velocity: p.velocity.clamp_length_max(MAX_SPEED),
+                left: p.left.min(MAX_LIFE),
+                colour: p.colour.map(|c| c.clamp(0.0, MAX_GLOW)),
+                ..p
             })
             .take(MAX_PROJECTILES)
             .collect();
@@ -240,5 +247,31 @@ mod tests {
         let (one, four) = (run(1), run(4));
         assert!(!one.is_empty());
         assert_eq!(one, four);
+    }
+
+    #[test]
+    fn projectiles_from_a_save_keep_fire_s_limits() {
+        let mut all = Projectiles::default();
+        all.restore(vec![
+            Projectile {
+                position: Vec3::ZERO,
+                velocity: Vec3::new(f32::MAX, 0.0, 0.0),
+                left: 3.0e38,
+                colour: [1.0e30, -5.0, 0.5],
+            },
+            Projectile {
+                position: Vec3::NAN,
+                velocity: Vec3::X,
+                left: 1.0,
+                colour: [1.0; 3],
+            },
+        ]);
+        assert_eq!(all.flying().len(), 1, "the NaN one left out");
+        let p = all.flying()[0];
+        assert!(p.velocity.length() <= MAX_SPEED * 1.0001);
+        assert_eq!(p.left, MAX_LIFE);
+        assert_eq!(p.colour, [MAX_GLOW, 0.0, 0.5]);
+        all.tick(1.0);
+        assert!(all.flying()[0].position.is_finite());
     }
 }

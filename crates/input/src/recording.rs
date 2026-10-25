@@ -23,7 +23,7 @@ use glam::Vec2;
 /// The most ticks a recording holds: an hour at 60 a second.
 pub(crate) const MAX_TICKS: usize = 60 * 60 * 60;
 /// The biggest recording read.
-pub(crate) const MAX_FILE_BYTES: usize = 64 << 20;
+pub const MAX_FILE_BYTES: usize = 64 << 20;
 
 /// One tick of a recording.
 #[derive(Debug, Clone, PartialEq, Default)]
@@ -71,6 +71,23 @@ impl std::fmt::Display for RecordingError {
 }
 
 const HEADER: &str = "solis recording 1";
+
+impl Tick {
+    /// At most how many bytes its line takes in a recording's file (a
+    /// little over, never under), so a recording can stop before it's
+    /// bigger than Solis reads back.
+    pub fn written_len(&self) -> usize {
+        // The tick's number and world sum, the game's sum, then each
+        // action's name, flags and two numbers by their bits.
+        28 + 19
+            + self
+                .frame
+                .actions
+                .keys()
+                .map(|name| name.len() + 23)
+                .sum::<usize>()
+    }
+}
 
 impl Recording {
     /// The file's text.

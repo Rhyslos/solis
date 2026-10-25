@@ -215,14 +215,7 @@ impl World {
         world.index();
         world.place_everything();
         // Physics after places: bodies start where their entities are.
-        let ids: Vec<EntityId> = world
-            .order
-            .iter()
-            .filter_map(|(e, _)| world.ecs.get::<&Id>(*e).ok().map(|i| i.0))
-            .collect();
-        for id in ids {
-            world.physics_join(id);
-        }
+        world.join_all();
         world
     }
 
@@ -285,12 +278,9 @@ impl World {
             .collect();
         let projectiles = std::mem::take(&mut self.projectiles);
         let seed = self.seed;
-        // How fast each body was going carries on.
-        let speeds: Vec<(EntityId, glam::Vec3)> = self
-            .physics_ids()
-            .into_iter()
-            .filter_map(|id| Some((id, self.physics.state().velocity(id)?)))
-            .collect();
+        // How each body was moving carries on: speed, spin, sleep, and a
+        // character's finding.
+        let states = self.physics.state().body_states();
         let asked = std::mem::take(&mut self.physics_asked);
         *self = Self::from_area(area);
         self.clock = clock;
@@ -302,14 +292,8 @@ impl World {
             self.game_moved.insert(id, from);
         }
         self.settle();
-        // Bodies where the game had them, at their speeds.
-        let moved = std::mem::take(&mut self.physics_moved);
-        for id in moved {
-            self.physics_join(id);
-        }
-        for (id, speed) in speeds {
-            self.physics.set_velocity(id, speed);
-        }
+        // Bodies where the game had them, moving as they were.
+        self.rebuild_physics(&states, false);
     }
 
     /// Adds `entities` (a new subtree game code spawned, just added to the
@@ -489,12 +473,12 @@ impl World {
         // A name may have changed.
         self.index();
         self.place_everything();
-        // Their bodies and colliders as they are now, keeping their speed.
+        // Their bodies and colliders as they are now, moving as they were.
         for id in rejoin {
-            let speed = self.physics.state().velocity(id);
+            let state = self.physics.state().body_state(id);
             self.physics_join(id);
-            if let Some(speed) = speed {
-                self.physics.set_velocity(id, speed);
+            if let Some(state) = state {
+                self.physics.set_body_state(id, state, false);
             }
         }
     }
@@ -883,15 +867,6 @@ impl World {
         &self.physics
     }
 
-    /// Every entity with a part in physics, in entity order.
-    fn physics_ids(&self) -> Vec<EntityId> {
-        self.order
-            .iter()
-            .filter_map(|(e, _)| self.ecs.get::<&Id>(*e).ok().map(|i| i.0))
-            .filter(|id| self.physics.state().contains(*id))
-            .collect()
-    }
-
     /// Makes `id`'s part in physics match its components and where it is
     /// now: a body and collider if it has them, nothing if not.
     fn physics_join(&mut self, id: EntityId) {
@@ -1041,15 +1016,40 @@ impl World {
         self.touched = true;
     }
 
-    /// Physics as a save game held it (`physics::Physics::snapshot`):
-    /// exactly as it was. Refused, leaving physics as it is, if it can't
-    /// be read.
-    pub fn restore_physics(&mut self, bytes: &[u8]) -> Result<(), String> {
-        self.physics.restore(bytes)?;
+    /// Every body's place and motion (`physics::BodyState`), in entity
+    /// order: what a save game keeps of physics (decision 0038).
+    pub fn physics_states(&self) -> Vec<(EntityId, physics::BodyState)> {
+        self.physics.state().body_states()
+    }
+
+    /// Builds physics again from scratch, every entity joining in ID
+    /// order, then gives the bodies in `states` their motion, and their
+    /// places too `with_place`. Nothing of Rapier's own (contacts,
+    /// islands) is kept, so a save game, which builds the running game's
+    /// physics again this way as it saves and the loaded game's as it
+    /// loads, carries on exactly alike both ways, and nothing in a file
+    /// can reach Rapier's insides.
+    pub fn rebuild_physics(&mut self, states: &[(EntityId, physics::BodyState)], with_place: bool) {
+        self.join_all();
+        for (id, state) in states {
+            self.physics.set_body_state(*id, *state, with_place);
+        }
+    }
+
+    /// Empties physics and joins every entity again, in ID order.
+    fn join_all(&mut self) {
+        self.physics.clear();
+        let mut ids: Vec<EntityId> = self
+            .order
+            .iter()
+            .filter_map(|(e, _)| self.ecs.get::<&Id>(*e).ok().map(|i| i.0))
+            .collect();
+        ids.sort_unstable();
+        for id in ids {
+            self.physics_join(id);
+        }
         self.physics_moved.clear();
-        self.physics_asked.clear();
         self.touched = true;
-        Ok(())
     }
 
     /// Whether physics broke (Rapier panicked on a damaged save) and was

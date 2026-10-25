@@ -74,6 +74,16 @@ What changed in each version, for people using Solis. Newest first.
 
 ### Fixed
 
+- **Save games can't freeze or crash Solis** (the Phase 6 review): a save kept physics as the physics library's own bytes, which a damaged or hand-changed save could make freeze Solis or close it. A save now keeps each body's place, speed, spin and rest, as text, and physics is built afresh from them; saves are far smaller and survive physics updates. Saves made before this can't be loaded (save again).
+- A `saveGame` in every unit's `update` made a whole save for each one in a tick, freezing Solis: the same slot is now saved once a tick, and at most four slots.
+- A save or load asked for on a tick that paused the game (a slow tick, the end of a replay) was dropped.
+- Saves and recordings bigger than Solis reads back were still written: a save past 256 MB is refused with why, and a recording pauses at 64 MB as well as at an hour.
+- With a mistake in `input.solinput`, one change in Edit > Input actions… wrote the ready-made actions over your own: the file is kept as `input.solinput.bak` first.
+- `rebind` could give an action more inputs than its file allows, which made a save holding them unloadable.
+- Lasers in a hand-changed save could fly forever or faster than `fire` allows.
+- `saveGame`, `loadGame` and `rebind` asked for while a component starts were dropped without a word; the Console now says so. What a spawned component said while starting reaches the Console too.
+- Replay a recording… and Load a save… could stop opening their window if one ended oddly.
+
 - New projects' Git settings now keep Lust files (`.lst`) with the same line endings everywhere, so they merge cleanly; they named `.lust` by mistake. Input actions and recordings are covered too. Projects made before keep their own settings: add `*.lst text eol=lf` to `.gitattributes` by hand.
 - When a frame stopped part way through its ticks (the game paused for being too slow), the game's clock had already counted the ticks that never ran, so game time jumped ahead. The clock now moves on as each tick begins.
 - What game code spawns joins the game at the end of the tick that spawned it, so its components run from the next tick even when a slow frame runs several; spawns and despawns land in the order asked for, new copies go at the end of the Area panel's tree, and spawning no longer rebuilds the whole game world (which also stopped lasers in flight from vanishing). Copies spawned while components start, or while new code is swapped in, are no longer lost (Phase 5 review).

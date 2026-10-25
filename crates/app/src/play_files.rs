@@ -66,9 +66,26 @@ pub fn load_bindings(root: &Path) -> (input::Bindings, Option<String>) {
     }
 }
 
-/// Writes the project's input actions.
-pub fn save_bindings(root: &Path, text: &str) -> std::io::Result<()> {
-    write_whole(&root.join(input::FILE), text)
+/// Writes the project's input actions. A file there that can't be read
+/// (a mistake made by hand, so the ready-made actions were used) is kept
+/// first as `input.solinput.bak`, unless one is already kept, so its
+/// actions aren't lost; gives back the backup's name when it made one.
+pub fn save_bindings(root: &Path, text: &str) -> std::io::Result<Option<String>> {
+    let path = root.join(input::FILE);
+    let backup = root.join(format!("{}.bak", input::FILE));
+    let mut kept = None;
+    if let Ok(Some(old)) = read_limited(&path, 1 << 20)
+        && input::Bindings::read(&old).is_err()
+        && !backup.exists()
+    {
+        write_whole(&backup, &old)?;
+        kept = Some(format!("{}.bak", input::FILE));
+    } else if path.exists() && read_limited(&path, 1 << 20).is_err() && !backup.exists() {
+        std::fs::copy(&path, &backup)?;
+        kept = Some(format!("{}.bak", input::FILE));
+    }
+    write_whole(&path, text)?;
+    Ok(kept)
 }
 
 /// Saves a recording in the project's recordings folder, named by when it
@@ -155,7 +172,13 @@ impl RecordingDialog {
     /// (`None` inside: cancelled).
     pub fn chosen(&mut self) -> Option<(PlayFile, Option<PathBuf>)> {
         let (what, receiver) = self.answer.as_ref()?;
-        let answer = receiver.try_recv().ok()?;
+        let answer = match receiver.try_recv() {
+            Ok(answer) => answer,
+            Err(std::sync::mpsc::TryRecvError::Empty) => return None,
+            // The window's thread ended without answering: as cancelled,
+            // so the next Replay or Load opens one again.
+            Err(std::sync::mpsc::TryRecvError::Disconnected) => None,
+        };
         let what = *what;
         self.answer = None;
         Some((what, answer))
@@ -188,6 +211,28 @@ mod tests {
         assert!(note.unwrap().contains("ready-made"));
         std::fs::write(root.join(input::FILE), vec![b'#'; 2 << 20]).unwrap();
         assert!(load_bindings(&root).1.unwrap().contains("bigger"));
+        let _ = std::fs::remove_dir_all(root);
+    }
+
+    #[test]
+    fn a_damaged_bindings_file_is_kept_before_it_is_written_again() {
+        let root = scratch("bindings-backup");
+        let damaged = "[[action]]\nname = \"MyAction\"\ninputs = [\"Q\"]\ntypo\n";
+        std::fs::write(root.join(input::FILE), damaged).unwrap();
+        let written = input::Bindings::default().write();
+        let kept = save_bindings(&root, &written).unwrap();
+        assert_eq!(kept.as_deref(), Some("input.solinput.bak"));
+        let backup = root.join("input.solinput.bak");
+        assert_eq!(std::fs::read_to_string(&backup).unwrap(), damaged);
+        assert_eq!(
+            std::fs::read_to_string(root.join(input::FILE)).unwrap(),
+            written
+        );
+        // A readable file isn't backed up, and a backup is never replaced.
+        assert_eq!(save_bindings(&root, &written).unwrap(), None);
+        std::fs::write(root.join(input::FILE), "broken again [[").unwrap();
+        assert_eq!(save_bindings(&root, &written).unwrap(), None);
+        assert_eq!(std::fs::read_to_string(&backup).unwrap(), damaged);
         let _ = std::fs::remove_dir_all(root);
     }
 

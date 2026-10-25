@@ -118,6 +118,7 @@ impl Workbench {
         }
         game.leave_out(left_out.clone());
         let failures = sync_all(game, self.document.area(), &mut world);
+        world.outside_a_tick();
         let said = std::mem::take(&mut world.said);
         // What starts spawned lands before the next tick.
         let edits = std::mem::take(&mut world.edits);
@@ -237,6 +238,21 @@ impl<'a> PlayWorld<'a> {
             bindings: Arc::default(),
             rebinds: Vec::new(),
             saves: Vec::new(),
+        }
+    }
+
+    /// For a host lent outside a tick (a component starting, or syncing
+    /// an edit): saves, loads and rebinding asked for there aren't made,
+    /// so say so in what game code said instead of dropping them quietly.
+    pub(crate) fn outside_a_tick(&mut self) {
+        if !self.saves.is_empty() || !self.rebinds.is_empty() {
+            self.saves.clear();
+            self.rebinds.clear();
+            self.said.push(
+                "saveGame, loadGame and rebind work from update and events, not while a \
+                 component starts: they were left out."
+                    .to_string(),
+            );
         }
     }
 }

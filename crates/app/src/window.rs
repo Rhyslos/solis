@@ -647,13 +647,22 @@ impl App {
                 }
                 WorkbenchAction::OpenAreaFile(path) => self.open_area(&path),
                 WorkbenchAction::SaveBindings(text) => {
-                    if let Some(root) = self.projects.root().map(Path::to_path_buf)
-                        && let Err(why) = crate::play_files::save_bindings(&root, &text)
-                    {
-                        self.workbench.log(
-                            LogLevel::Error,
-                            format!("Couldn't save the input actions: {why}."),
-                        );
+                    if let Some(root) = self.projects.root().map(Path::to_path_buf) {
+                        match crate::play_files::save_bindings(&root, &text) {
+                            Ok(Some(backup)) => self.workbench.log(
+                                LogLevel::Warning,
+                                format!(
+                                    "The input actions file had a mistake, so it was kept as \
+                                     {backup} before being written again: your own actions \
+                                     are in it."
+                                ),
+                            ),
+                            Ok(None) => {}
+                            Err(why) => self.workbench.log(
+                                LogLevel::Error,
+                                format!("Couldn't save the input actions: {why}."),
+                            ),
+                        }
                     }
                 }
                 WorkbenchAction::SaveRecording(text) => {

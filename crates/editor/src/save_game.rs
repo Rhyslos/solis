@@ -6,7 +6,7 @@
 //! opened) by a person:
 //!
 //! ```text
-//! solis save 1
+//! solis save 2
 //! project Harbour
 //! tick 1234
 //! time 4060000000000000
@@ -20,9 +20,14 @@
 //! …the input actions, with game code's rebinding (TOML)…
 //! projectiles 2
 //! x y z vx vy vz left r g b (exact bits)
-//! physics 10392
-//! …physics, as bytes in base64…
+//! physics 2
+//! ID x y z qx qy qz qw vx vy vz wx wy wz asleep character (exact bits)
 //! ```
+//!
+//! Physics is kept as each body's place and motion, never Rapier's own
+//! insides: saving builds the running game's physics again from those
+//! (so it carries on exactly as a loaded save will), and loading builds
+//! it from them, so nothing in a file can reach Rapier.
 //!
 //! `sum` is a checksum of everything after it, so a damaged save is
 //! refused, never half loaded.
@@ -31,12 +36,11 @@ use crate::console::LogLevel;
 use crate::workbench::{Workbench, WorkbenchAction};
 use area::Area;
 use area::builtin::Transform;
-use base64::Engine as _;
 use reflect::EntityId;
 use std::sync::Arc;
 
 /// The first line of a save this Solis writes and reads.
-const HEADER: &str = "solis save 1";
+const HEADER: &str = "solis save 2";
 
 /// The biggest save read.
 pub(crate) const MAX_SAVE_BYTES: usize = 256 << 20;
@@ -60,8 +64,8 @@ pub(crate) struct Save {
     pub(crate) bindings: String,
     /// The projectiles in flight.
     pub(crate) projectiles: Vec<world::Projectile>,
-    /// Physics, as bytes.
-    pub(crate) physics: Vec<u8>,
+    /// Each body's place and motion, in entity order.
+    pub(crate) physics: Vec<(EntityId, physics::BodyState)>,
 }
 
 impl Save {
@@ -90,10 +94,31 @@ impl Save {
             })
             .collect();
         section("projectiles", &projectiles);
-        section(
-            "physics",
-            &base64::engine::general_purpose::STANDARD.encode(&self.physics),
-        );
+        let bodies: String = self
+            .physics
+            .iter()
+            .map(|(id, s)| {
+                let numbers = s
+                    .position
+                    .to_array()
+                    .into_iter()
+                    .chain(s.rotation.to_array())
+                    .chain(s.velocity.to_array())
+                    .chain(s.spin.to_array());
+                let words: Vec<String> = numbers.map(|v| format!("{:x}", v.to_bits())).collect();
+                let character = match s.character {
+                    None => "-",
+                    Some(c) if c.grounded => "1",
+                    Some(_) => "0",
+                };
+                format!(
+                    "{id} {} {} {character}\n",
+                    words.join(" "),
+                    u8::from(s.sleeping)
+                )
+            })
+            .collect();
+        section("physics", &bodies);
         let mut sum = reflect::Checksum::new();
         sum.bytes(body.as_bytes());
         format!(
@@ -120,7 +145,13 @@ impl Save {
             Some(line)
         };
         if line() != Some(HEADER) {
-            return Err(if text.starts_with("solis save ") {
+            let version = text
+                .strip_prefix("solis save ")
+                .and_then(|r| r.split('\n').next())
+                .and_then(|v| v.trim().parse::<u32>().ok());
+            return Err(if version.is_some_and(|v| v < 2) {
+                "it was made by an earlier Solis, whose saves this one can't read".to_string()
+            } else if version.is_some() {
                 "it was made by a newer Solis".to_string()
             } else {
                 "it isn't a save game".to_string()
@@ -181,9 +212,49 @@ impl Save {
                 })
             })
             .collect::<Result<Vec<_>, String>>()?;
-        let physics = base64::engine::general_purpose::STANDARD
-            .decode(section("physics")?)
-            .map_err(|_| damaged())?;
+        let physics_text = section("physics")?;
+        if physics_text.lines().count() > physics::MAX_BODIES {
+            return Err(damaged());
+        }
+        let physics = physics_text
+            .lines()
+            .map(|l| {
+                let words: Vec<&str> = l.split(' ').collect();
+                let [id, numbers @ .., asleep, character] = &words[..] else {
+                    return Err(damaged());
+                };
+                let id: reflect::Id = id.parse().map_err(|_| damaged())?;
+                let n: Vec<f32> = numbers
+                    .iter()
+                    .map(|w| u32::from_str_radix(w, 16).map(f32::from_bits))
+                    .collect::<Result<_, _>>()
+                    .map_err(|_| damaged())?;
+                let [x, y, z, qx, qy, qz, qw, vx, vy, vz, wx, wy, wz] = n[..] else {
+                    return Err(damaged());
+                };
+                let state = physics::BodyState {
+                    position: glam::Vec3::new(x, y, z),
+                    rotation: glam::Quat::from_xyzw(qx, qy, qz, qw),
+                    velocity: glam::Vec3::new(vx, vy, vz),
+                    spin: glam::Vec3::new(wx, wy, wz),
+                    sleeping: match *asleep {
+                        "0" => false,
+                        "1" => true,
+                        _ => return Err(damaged()),
+                    },
+                    character: match *character {
+                        "-" => None,
+                        "0" => Some(physics::CharacterState { grounded: false }),
+                        "1" => Some(physics::CharacterState { grounded: true }),
+                        _ => return Err(damaged()),
+                    },
+                };
+                if !state.is_sensible() {
+                    return Err(damaged());
+                }
+                Ok((EntityId(id), state))
+            })
+            .collect::<Result<Vec<_>, String>>()?;
         Ok(Self {
             project,
             ticks,
@@ -208,6 +279,10 @@ impl Workbench {
             .ok_or("save games are kept in a project")?;
         let registry = &self.document.registry;
         let playing = self.playing.as_mut().ok_or("nothing is running")?;
+        // Physics built again from each body's place and motion, as loading
+        // will: from here the running game and a loaded one go on alike.
+        let bodies = playing.world.physics_states();
+        playing.world.rebuild_physics(&bodies, true);
         // The area as it stands, each entity where the game has it.
         let mut area = self.document.area().clone();
         let ids: Vec<EntityId> = area.iter().map(|(id, _)| id).collect();
@@ -239,7 +314,7 @@ impl Workbench {
             values: area::text::write(&values, registry, &|_| None),
             bindings: playing.bindings.write(),
             projectiles: playing.world.projectiles().flying().to_vec(),
-            physics: playing.world.physics().snapshot(),
+            physics: bodies,
         })
     }
 
@@ -248,9 +323,22 @@ impl Workbench {
     pub(crate) fn save_game(&mut self, slot: &str) {
         match self.save_of_game() {
             Ok(save) => {
+                let text = save.write();
+                if text.len() > MAX_SAVE_BYTES {
+                    self.log(
+                        LogLevel::Warning,
+                        format!(
+                            "The game wasn't saved: it would be {} MB, more than the {} MB a save \
+                             can be loaded from.",
+                            text.len() >> 20,
+                            MAX_SAVE_BYTES >> 20
+                        ),
+                    );
+                    return;
+                }
                 self.outbox.push(WorkbenchAction::SaveGame {
                     slot: slot.to_string(),
-                    text: save.write(),
+                    text,
                 });
             }
             Err(why) => self.log(LogLevel::Warning, format!("The game wasn't saved: {why}.")),
@@ -302,12 +390,10 @@ impl Workbench {
                 return;
             }
         };
-        // Physics first: if it can't be read, nothing changes.
+        // Physics built from each body's place and motion, as saving built
+        // the running game's.
         let mut world = world::World::from_area(&area);
-        if let Err(why) = world.restore_physics(&save.physics) {
-            self.log(LogLevel::Error, format!("Couldn't load {name}: {why}."));
-            return;
-        }
+        world.rebuild_physics(&save.physics, true);
         world.set_clock(save.ticks, save.time);
         world.set_seed(save.seed);
         world.projectiles_mut().restore(save.projectiles);

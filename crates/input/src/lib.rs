@@ -33,7 +33,7 @@ mod recording;
 pub use bindings::{Action, ActionKind, Bindings, BindingsError, MAX_ACTIONS, MAX_INPUTS};
 pub use devices::{Devices, Pad};
 pub use frame::{ActionState, Frame};
-pub use recording::{Recording, RecordingError, Tick};
+pub use recording::{MAX_FILE_BYTES as MAX_RECORDING_BYTES, Recording, RecordingError, Tick};
 
 /// The file in a project that holds its input actions, beside
 /// `project.solis`.

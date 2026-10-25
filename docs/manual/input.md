@@ -105,6 +105,8 @@ While the game has them, every key is the game's: the editor's shortcuts are off
 - **Problem:** `pressed("Jump")` is never true. **Why:** the name doesn't match an action exactly (names are case-sensitive), or the action has no inputs. **Fix:** check Edit > Input actions….
 - **Problem:** Esc does nothing in my game. **Why:** in the editor, Esc gives the mouse and keys back, so a game can't use it there. Exported games (Phase 10) can.
 - **Problem:** the Console says the input actions couldn't be read. **Why:** `input.solinput` was changed by hand and has a mistake. **Fix:** the Console says what; fix it, or change any action in the window, which writes it again.
+- **Problem:** the Console says the input actions file had a mistake and was kept as `input.solinput.bak`. **Why:** the file couldn't be read, so the ready-made actions were used; changing anything in the window writes the file again, so Solis kept yours first. **Fix:** copy what you need from the `.bak` file, then delete it.
+- **Problem:** recording paused, saying it reached the most Solis keeps. **Why:** a recording is at most an hour, or 64 MB. **Fix:** Stop saves what was recorded; record shorter plays.
 - **Problem:** a replay stops matching at once. **Why:** the area or the code changed since it was recorded. **Fix:** record again.
 
 ## Related
