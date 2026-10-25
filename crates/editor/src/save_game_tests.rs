@@ -252,8 +252,9 @@ fn saves_from_elsewhere_or_damaged_are_refused_and_nothing_changes() {
     // Damaged: cut short, a byte changed, a newer version, not a save.
     let mut damaged = vec![
         text[..text.len() / 2].to_string(),
-        text.replacen("solis save 2", "solis save 9", 1),
-        text.replacen("solis save 2", "solis save 1", 1),
+        text.replacen("solis save 3", "solis save 9", 1),
+        text.replacen("solis save 3", "solis save 2", 1),
+        text.replacen("solis save 3", "solis save 1", 1),
         "hello".to_string(),
         String::new(),
     ];
@@ -288,12 +289,12 @@ fn saves_from_elsewhere_or_damaged_are_refused_and_nothing_changes() {
     assert!(Save::read(&"x".repeat(MAX_SAVE_BYTES + 1)).is_err());
     // The third review: this version's header with Windows line endings
     // or a space after it is damaged, not "from a newer Solis".
-    for header in ["solis save 2\r", "solis save 2 "] {
-        let why = Save::read(&text.replacen("solis save 2", header, 1)).unwrap_err();
+    for header in ["solis save 3\r", "solis save 3 "] {
+        let why = Save::read(&text.replacen("solis save 3", header, 1)).unwrap_err();
         assert!(why.contains("damaged"), "{header:?}: {why}");
     }
     assert!(
-        Save::read(&text.replacen("solis save 2", "solis save 9", 1))
+        Save::read(&text.replacen("solis save 3", "solis save 9", 1))
             .unwrap_err()
             .contains("newer")
     );
@@ -469,6 +470,7 @@ fn a_save_keeps_bodies_as_places_and_motion_not_rapier_s_insides() {
     run_to(&mut w, 20);
     let text = w.save_of_game().unwrap().write();
     let physics = text.split("\nphysics ").nth(1).unwrap();
+    let physics = physics.split("\nplaces ").next().unwrap();
     // The floor and the crate: an ID, 13 numbers, asleep, character.
     let lines: Vec<&str> = physics.lines().skip(1).filter(|l| !l.is_empty()).collect();
     assert_eq!(lines.len(), 2, "{physics}");

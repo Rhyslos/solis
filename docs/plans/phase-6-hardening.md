@@ -18,7 +18,10 @@ The working plan for the hardening milestone between Phase 6 and Phase 7 ([decis
 
 Done when `main` has everything up to Phase 6's third review round, and CI is green on it.
 
-### H2. Whole-game invariant tests
+### H2. Whole-game invariant tests (built)
+
+**Found and fixed:** a game saved after anything was spawned (or with a copy of an assembly) couldn't be loaded; rotations didn't read back exactly from a save; a world built from an area placed turned entities with a -0 where moving them made 0; and after a load, edits while playing started from the game's place instead of the editor's. Saves are now version 3, keeping the editor's area and the game's places apart. 300 games per rule pass.
+
 
 A `proptest` generator for **game scripts**: a random list of steps run on a small level. The level has a floor, steps, a ramp, a moving platform, crates, a character and components that spawn, despawn and use random numbers. The steps include:
 

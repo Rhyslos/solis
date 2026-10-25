@@ -575,10 +575,17 @@ impl World {
                 .ecs
                 .get::<&Transform>(entity)
                 .map_or(Mat4::IDENTITY, |t| t.matrix());
-            let global = match parent.and_then(|p| globals.get(p)) {
-                Some(parent) => *parent * local,
-                None => local,
-            };
+            // Always times the parent's (the identity for one standing
+            // alone), as everywhere else a place is worked out: skipping it
+            // left a -0.0 where every other way makes 0.0, and a world
+            // built here (a loaded game) didn't match the same world built
+            // move by move (found by the hardening milestone's invariant
+            // tests, decision 0042).
+            let parent = parent
+                .and_then(|p| globals.get(p))
+                .copied()
+                .unwrap_or(Mat4::IDENTITY);
+            let global = parent * local;
             globals.push(global);
             if let Ok(mut g) = self.ecs.get::<&mut Global>(entity) {
                 g.0 = global;

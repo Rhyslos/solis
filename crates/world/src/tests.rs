@@ -753,3 +753,28 @@ fn a_crate_in_a_group_game_code_moves_goes_with_it() {
     let drawn = world.global(crate_id).unwrap().w_axis.x;
     assert!((drawn - 3.0).abs() < 0.01, "drawn at {drawn}");
 }
+
+#[test]
+fn an_entity_turned_is_placed_the_same_built_or_moved() {
+    // The hardening milestone's invariant tests: a world built from an
+    // area placed a turned entity with a -0.0 where moving it there made
+    // 0.0, so a loaded game's checksum didn't match the saved game's.
+    let turned = Transform {
+        position: Vec3::new(0.2, 0.0, 0.01),
+        rotation: glam::Quat::from_xyzw(0.0, 0.0, -0.309_017_1, 0.951_056_54),
+        ..Transform::default()
+    };
+    let id = EntityId::random();
+    let mut area = Area::new();
+    area.insert(id, EntityData::new("Turned").with(&turned));
+    let built = World::from_area(&area);
+    let mut moved = World::from_area(&{
+        let mut a = Area::new();
+        a.insert(id, EntityData::new("Turned").with(&Transform::default()));
+        a
+    });
+    moved.set_transform(id, turned);
+    moved.settle();
+    let bits = |w: &World| w.global(id).unwrap().to_cols_array().map(f32::to_bits);
+    assert_eq!(bits(&built), bits(&moved));
+}

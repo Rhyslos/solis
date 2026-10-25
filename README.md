@@ -155,7 +155,7 @@ Solis is built in phases, one milestone per pull request. Each phase ends with a
 <summary>Milestones</summary>
 
 - [ ] Merge the open pull requests ([plan](docs/plans/phase-6-hardening.md), [decision 0042](docs/decisions/0042-a-hardening-milestone-before-phase-7.md))
-- [ ] Whole-game invariant tests
+- [x] Whole-game invariant tests
 - [ ] Fuzzing every file reader
 - [ ] Measuring the tests: coverage and mutation testing
 - [ ] Checks that stay

@@ -56,7 +56,7 @@ None of its own. A game chooses its own save and load keys through [input action
 - **Problem:** "Couldn't load quick: it was saved by the project …". **Why:** a save belongs to the project that made it. **Fix:** load it in that project.
 - **Problem:** "Couldn't load …: it's damaged". **Why:** the file was cut short or changed (a save carries a checksum, so a damaged one is refused rather than half loaded). **Fix:** save again.
 - **Problem:** a value in my component isn't the same after loading. **Why:** a save keeps every field in a component's `has` block, but not other variables the code keeps for itself. **Fix:** put anything that must survive a load in `has`.
-- **Problem:** "Couldn't load …: it was made by an earlier Solis". **Why:** saves made before the Phase 6 review kept physics in a form this Solis no longer reads. **Fix:** save again.
+- **Problem:** "Couldn't load …: it was made by an earlier Solis". **Why:** saves made before the Phase 6 hardening kept the game in a form this Solis no longer reads (it lost what was on copies of assemblies, and turned things by a hair). **Fix:** save again.
 - **Problem:** "The game wasn't saved: it would be … MB". **Why:** a save can be at most 256 MB to load back, and this game is bigger. **Fix:** fewer entities or physics bodies.
 - **Problem:** loading ended my recording. **Why:** a recording plays back from Play, so it can't carry on across a load. What was recorded up to the load is saved in the `recordings` folder. **Fix:** record again from Play to record past it.
 - **Problem:** replaying a recording didn't change my saves. **Why:** a replay makes the same saves the recorded play did (so it plays out the same), but doesn't write them over your saves.
