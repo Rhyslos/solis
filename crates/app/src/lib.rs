@@ -15,6 +15,7 @@ pub mod gpu;
 pub mod import;
 pub mod logger;
 pub mod play_files;
+pub mod playground;
 pub mod project;
 pub mod sample_game;
 pub mod thumbnails;

@@ -48,6 +48,9 @@ pub enum Change {
     Push(EntityId, Vec3),
     /// `setVelocity`: set how fast the entity's body moves.
     Velocity(EntityId, Vec3),
+    /// `moveCharacter`: move the character this far (metres), as far as
+    /// it can.
+    Character(EntityId, Vec3),
     /// `rebind`: bind this input to this action, from the next tick.
     Rebind(String, String),
     /// `saveGame`: save the game in this slot, at the end of the tick.
@@ -334,6 +337,22 @@ impl Host for ViewHost {
                 .push((order, Change::Velocity(which, velocity)));
             self.own.push(Change::Velocity(which, velocity));
         }
+    }
+
+    fn move_character(&mut self, which: EntityId, wanted: Vec3) {
+        if wanted.is_finite() && self.view.physics.character(which).is_some() && self.kept.room() {
+            let order = self.order();
+            self.kept
+                .changes
+                .push((order, Change::Character(which, wanted)));
+        }
+    }
+
+    fn on_ground(&self, which: EntityId) -> bool {
+        self.view
+            .physics
+            .character(which)
+            .is_some_and(|c| c.grounded)
     }
 
     fn cast_ray(&self, from: Vec3, direction: Vec3, reach: f32) -> Option<physics::Hit> {

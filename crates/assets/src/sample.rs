@@ -106,6 +106,53 @@ pub fn ship_glb() -> Vec<u8> {
     b.glb()
 }
 
+/// The playground's models (Help > Make the playground…): each a 1 m
+/// shape for the playground's entities to scale, by name: `block` (a
+/// grey checker box, for floors, steps and ramps), `crate` (a wooden
+/// orange box), `platform` (a blue box) and `character` (a figure 1.8 m
+/// tall, feet at its origin, with a visor showing which way it faces,
+/// Solis's +Y).
+pub fn playground_glb(which: &str) -> Vec<u8> {
+    let mut b = Builder::default();
+    match which {
+        "character" => {
+            b.json_materials = vec![
+                r#"{"name":"Suit","pbrMetallicRoughness":{"baseColorFactor":[0.9,0.55,0.15,1.0],"metallicFactor":0,"roughnessFactor":0.6}}"#.into(),
+                r#"{"name":"Visor","pbrMetallicRoughness":{"baseColorFactor":[0.05,0.05,0.07,1.0],"metallicFactor":0.2,"roughnessFactor":0.2}}"#.into(),
+            ];
+            let body = b.add_sphere_mesh(1.0, Some(0));
+            let visor = b.add_box_mesh([0.18, 0.06, 0.06], Some(1));
+            // glTF is Y-up with forward along -Z (Solis's +Y).
+            b.json_nodes = vec![
+                format!(
+                    r#"{{"name":"Body","mesh":{body},"translation":[0,0.9,0],"scale":[0.35,0.9,0.35]}}"#
+                ),
+                format!(r#"{{"name":"Visor","mesh":{visor},"translation":[0,1.55,-0.3]}}"#),
+            ];
+        }
+        _ => {
+            let (name, colour, checker) = match which {
+                "crate" => ("Crate", "[0.7,0.42,0.18,1.0]", false),
+                "platform" => ("Platform", "[0.2,0.45,0.85,1.0]", false),
+                _ => ("Block", "[0.75,0.75,0.78,1.0]", true),
+            };
+            let texture = if checker {
+                let image = b.add_image(&checker_png(64, 4));
+                b.json_textures = vec![format!(r#"{{"source":{image},"sampler":0}}"#)];
+                r#","baseColorTexture":{"index":0}"#
+            } else {
+                ""
+            };
+            b.json_materials = vec![format!(
+                r#"{{"name":"{name}","pbrMetallicRoughness":{{"baseColorFactor":{colour},"metallicFactor":0,"roughnessFactor":0.8{texture}}}}}"#
+            )];
+            let mesh = b.add_cube_mesh(0.5, Some(0));
+            b.json_nodes = vec![format!(r#"{{"name":"{name}","mesh":{mesh}}}"#)];
+        }
+    }
+    b.glb()
+}
+
 /// A normal texture of horizontal grooves: `size` pixels square, `count`
 /// grooves down it. Flat parts face straight out (the light blue of normal
 /// textures); each groove's sides lean up and down.
@@ -427,6 +474,31 @@ mod tests {
         assert_eq!(&glb[..4], b"glTF");
         assert_eq!(glb.len() % 4, 0);
         assert!(gltf::Gltf::from_slice(&glb).is_ok());
+    }
+
+    #[test]
+    fn the_playground_models_import_at_their_sizes() {
+        for which in ["block", "crate", "platform", "character"] {
+            let model = crate::load_bytes(
+                &playground_glb(which),
+                None,
+                which,
+                &crate::Limits::default(),
+            )
+            .unwrap();
+            assert!(model.warnings.is_empty(), "{which}: {:?}", model.warnings);
+            let size = model.bounds.max - model.bounds.min;
+            if which == "character" {
+                assert!((size.z - 1.8).abs() < 0.05, "{size}");
+                assert!(model.bounds.min.z.abs() < 0.05, "feet at the origin");
+                assert!(model.bounds.max.y > 0.3, "the visor faces +Y");
+            } else {
+                assert!(
+                    (size - glam::Vec3::ONE).abs().max_element() < 1e-4,
+                    "{which}: {size}"
+                );
+            }
+        }
     }
 
     #[test]

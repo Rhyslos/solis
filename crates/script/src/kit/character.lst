@@ -1,0 +1,77 @@
+-- A character controller: walks with Move, sprints with Sprint, jumps
+-- with Jump, and falls. Put it on an entity with a CharacterBody, which
+-- does the hard part (climbing steps and slopes, sliding along walls,
+-- pushing crates, riding platforms): this only says where to go.
+--
+-- Set camera to the camera that follows it, so "forward" is the way the
+-- camera looks; leave it nothing to walk the way the character faces.
+
+get "solis/entity":[rotationOf, turnTo, facingAlong];
+get "solis/physics":[moveCharacter, onGround];
+get "solis/input":[axis, held, pressed];
+
+component CharacterController {
+    has {
+        entity camera = nothing;
+        float walkSpeed = 4;
+        float sprintSpeed = 7;
+        float jumpHeight = 1.2;
+        float gravity = 20;
+        bool facesWhereItWalks = true;
+        float turnSpeed = 720;
+        float fall = 0;
+    }
+
+    method update(float dt) {
+        -- Which way is forward: the way the camera looks (along its -Z;
+        -- its top, looking straight down), or the character's own.
+        float forward = rotationOf(me):degrees().z;
+        is camera != nothing? then {
+            rotation eye = rotationOf(camera);
+            vec3 ahead = eye * [0, 0, -1];
+            is ahead.x == 0 && ahead.y == 0? then {
+                ahead = eye * [0, 1, 0];
+            }
+            forward = facingAlong([ahead.x, ahead.y, 0]):degrees().z;
+        }
+        rotation heading = [0, 0, forward];
+        vec3 move = axis("Move");
+        vec3 wanted = heading * [move.x, move.y, 0];
+
+        float speed = walkSpeed;
+        is held("Sprint")? then {
+            speed = sprintSpeed;
+        }
+
+        -- Falling, landing and jumping. On the ground it presses down a
+        -- little, so it follows slopes and steps down.
+        is onGround(me)? then {
+            fall = -1;
+            is pressed("Jump")? then {
+                fall = Maths:sqrt(2 * gravity * jumpHeight);
+            }
+        } or {
+            fall = fall - gravity * dt;
+        }
+
+        moveCharacter(me, wanted * speed * dt + [0, 0, fall * dt]);
+
+        -- Turn towards where it walks, at most turnSpeed degrees a second.
+        is facesWhereItWalks && (move.x != 0 || move.y != 0)? then {
+            float now = rotationOf(me):degrees().z;
+            float target = facingAlong(wanted):degrees().z;
+            float turn = target - now;
+            loop (turn > 180) {
+                turn = turn - 360;
+            }
+            loop (turn < -180) {
+                turn = turn + 360;
+            }
+            float most = turnSpeed * dt;
+            turnTo(me, [0, 0, now + Maths:clamp(turn, -most, most)]);
+        }
+    }
+}
+
+pass CharacterController;
+end

@@ -296,3 +296,265 @@ fn a_snapshot_carries_on_exactly_as_physics_would_have() {
     }
     assert_eq!(restored.state().checksum(), before);
 }
+
+/// The character as entity 9, feet at `at`.
+fn character_at(physics: &mut Physics, at: Vec3) {
+    assert!(physics.add_character(id(9), (at, Quat::IDENTITY), CharacterSpec::default()));
+}
+
+/// Walks the character `ticks` ticks at `speed` metres a second (with
+/// gravity's fall, as the ready-made controller does), stepping physics.
+fn walk(physics: &mut Physics, speed: Vec3, ticks: usize) {
+    let dt = 1.0 / 60.0;
+    let mut fall = 0.0f32;
+    for _ in 0..ticks {
+        let grounded = physics.state().character(id(9)).unwrap().grounded;
+        fall = if grounded { -0.5 } else { fall + GRAVITY * dt };
+        physics.move_character(id(9), (speed + Vec3::Z * fall) * dt, dt);
+        physics.step(dt);
+        let _ = physics.moved();
+    }
+}
+
+fn feet(physics: &Physics) -> Vec3 {
+    physics.state().pose(id(9)).unwrap().0
+}
+
+fn fixed_box(physics: &mut Physics, n: u64, at: Vec3, size: Vec3) {
+    assert!(physics.add(
+        id(n),
+        (at, Quat::IDENTITY),
+        Vec3::ONE,
+        None,
+        Some(ColliderSpec {
+            shape: Shape::Box(size),
+            ..ColliderSpec::default()
+        }),
+    ));
+}
+
+#[test]
+fn a_character_falls_lands_and_walks() {
+    let mut physics = with_floor();
+    character_at(&mut physics, Vec3::new(0.0, 0.0, 2.0));
+    walk(&mut physics, Vec3::ZERO, 90);
+    let landed = feet(&physics);
+    assert!(landed.z.abs() < 0.05, "landed at {landed}");
+    assert!(physics.state().character(id(9)).unwrap().grounded);
+    walk(&mut physics, Vec3::new(3.0, 0.0, 0.0), 60);
+    let walked = feet(&physics);
+    assert!((walked.x - 3.0).abs() < 0.1, "walked to {walked}");
+    assert!(walked.z.abs() < 0.05);
+    // Moved characters are reported once, after the step.
+    physics.move_character(id(9), Vec3::X * 0.01, 1.0 / 60.0);
+    physics.step(1.0 / 60.0);
+    assert_eq!(physics.moved().len(), 1);
+    assert!(physics.moved().is_empty());
+}
+
+#[test]
+fn a_character_climbs_a_step_but_not_a_wall() {
+    let mut physics = with_floor();
+    // A 0.25 m step at x = 2, and a 2 m wall at y = 3.
+    fixed_box(
+        &mut physics,
+        2,
+        Vec3::new(4.0, 0.0, 0.125),
+        Vec3::new(4.0, 4.0, 0.25),
+    );
+    fixed_box(
+        &mut physics,
+        3,
+        Vec3::new(0.0, 4.0, 1.0),
+        Vec3::new(1.0, 2.0, 2.0),
+    );
+    character_at(&mut physics, Vec3::new(0.0, 0.0, 0.0));
+    walk(&mut physics, Vec3::ZERO, 10);
+    walk(&mut physics, Vec3::new(3.0, 0.0, 0.0), 60);
+    let up = feet(&physics);
+    assert!(up.x > 2.5, "past the step: {up}");
+    assert!((up.z - 0.25).abs() < 0.06, "on the step: {up}");
+    // Back down, then into the wall: it stops at the wall's face.
+    let mut physics = with_floor();
+    fixed_box(
+        &mut physics,
+        3,
+        Vec3::new(0.0, 4.0, 1.0),
+        Vec3::new(1.0, 2.0, 2.0),
+    );
+    character_at(&mut physics, Vec3::ZERO);
+    walk(&mut physics, Vec3::new(0.0, 4.0, 0.0), 120);
+    let stopped = feet(&physics);
+    // The wall's face is at y = 3; the character is 0.35 m wide.
+    assert!(
+        stopped.y < 3.0 - 0.3 && stopped.y > 2.5,
+        "stopped at {stopped}"
+    );
+}
+
+#[test]
+fn a_character_slides_along_a_wall_it_walks_into_at_an_angle() {
+    let mut physics = with_floor();
+    fixed_box(
+        &mut physics,
+        3,
+        Vec3::new(0.0, 2.0, 1.0),
+        Vec3::new(20.0, 1.0, 2.0),
+    );
+    character_at(&mut physics, Vec3::ZERO);
+    walk(&mut physics, Vec3::new(2.0, 2.0, 0.0), 120);
+    let slid = feet(&physics);
+    assert!(slid.x > 2.5, "slid along: {slid}");
+    assert!(slid.y < 1.5 - 0.3, "not through: {slid}");
+}
+
+#[test]
+fn a_character_rides_a_moving_platform() {
+    let mut physics = with_floor();
+    // A kinematic platform 4 m wide, its top at 1.
+    assert!(physics.add(
+        id(4),
+        (Vec3::new(0.0, 0.0, 0.75), Quat::IDENTITY),
+        Vec3::ONE,
+        Some(Body {
+            kind: BodyKind::Kinematic,
+            ..Body::default()
+        }),
+        Some(ColliderSpec {
+            shape: Shape::Box(Vec3::new(4.0, 4.0, 0.5)),
+            ..ColliderSpec::default()
+        }),
+    ));
+    character_at(&mut physics, Vec3::new(0.0, 0.0, 1.2));
+    walk(&mut physics, Vec3::ZERO, 30);
+    assert!(physics.state().character(id(9)).unwrap().grounded);
+    // The platform slides 2 m along x over two seconds; the character,
+    // standing still, goes with it.
+    let dt = 1.0 / 60.0;
+    for tick in 1..=120 {
+        let x = 2.0 * tick as f32 / 120.0;
+        physics.set_pose(id(4), Vec3::new(x, 0.0, 0.75), Quat::IDENTITY);
+        let grounded = physics.state().character(id(9)).unwrap().grounded;
+        let fall = if grounded { -0.5 } else { -3.0 };
+        physics.move_character(id(9), Vec3::Z * fall * dt, dt);
+        physics.step(dt);
+    }
+    let rode = feet(&physics);
+    // Carried by the platform's speed, which physics knows a tick late.
+    assert!((rode.x - 2.0).abs() < 0.15, "rode to {rode}");
+    assert!((rode.z - 1.0).abs() < 0.06, "on top: {rode}");
+}
+
+#[test]
+fn a_character_pushes_a_crate() {
+    let mut physics = with_floor();
+    let (body, collider) = crate_spec();
+    physics.add(
+        id(5),
+        (Vec3::new(1.5, 0.0, 0.5), Quat::IDENTITY),
+        Vec3::ONE,
+        body,
+        collider,
+    );
+    character_at(&mut physics, Vec3::ZERO);
+    walk(&mut physics, Vec3::ZERO, 10);
+    walk(&mut physics, Vec3::new(2.0, 0.0, 0.0), 120);
+    let crate_at = physics.state().pose(id(5)).unwrap().0;
+    assert!(crate_at.x > 2.0, "pushed to {crate_at}");
+}
+
+#[test]
+fn a_character_moves_the_same_every_run_and_after_a_snapshot() {
+    let course = || {
+        let mut physics = with_floor();
+        fixed_box(
+            &mut physics,
+            2,
+            Vec3::new(4.0, 0.0, 0.125),
+            Vec3::new(4.0, 4.0, 0.25),
+        );
+        let (body, collider) = crate_spec();
+        physics.add(
+            id(5),
+            (Vec3::new(1.0, 1.0, 0.5), Quat::IDENTITY),
+            Vec3::ONE,
+            body,
+            collider,
+        );
+        character_at(&mut physics, Vec3::new(0.0, 0.0, 1.0));
+        physics
+    };
+    let mut a = course();
+    let mut b = course();
+    walk(&mut a, Vec3::new(2.0, 1.0, 0.0), 40);
+    walk(&mut b, Vec3::new(2.0, 1.0, 0.0), 40);
+    assert_eq!(a.state().checksum(), b.state().checksum());
+    let mut c = Physics::new();
+    c.restore(&a.snapshot()).unwrap();
+    walk(&mut a, Vec3::new(1.0, 2.0, 0.0), 60);
+    walk(&mut c, Vec3::new(1.0, 2.0, 0.0), 60);
+    assert_eq!(a.state().checksum(), c.state().checksum());
+}
+
+#[test]
+fn character_moves_that_arent_sensible_are_refused() {
+    let mut physics = with_floor();
+    character_at(&mut physics, Vec3::new(0.0, 0.0, 1.0));
+    // Not a character: nothing happens.
+    assert!(!physics.move_character(id(1), Vec3::X, 1.0 / 60.0));
+    assert!(!physics.move_character(id(77), Vec3::X, 1.0 / 60.0));
+    for bad in [Vec3::NAN, Vec3::splat(f32::INFINITY)] {
+        assert!(physics.move_character(id(9), bad, 1.0 / 60.0));
+    }
+    assert!(physics.move_character(id(9), Vec3::X, f32::NAN));
+    physics.step(1.0 / 60.0);
+    assert_eq!(feet(&physics), Vec3::new(0.0, 0.0, 1.0));
+    // A huge move goes at most MAX_CHARACTER_MOVE.
+    physics.move_character(id(9), Vec3::new(1.0e9, 0.0, 0.0), 1.0 / 60.0);
+    physics.step(1.0 / 60.0);
+    assert!(feet(&physics).x <= MAX_CHARACTER_MOVE + 0.01);
+    // A character's numbers are made sensible.
+    assert!(physics.add_character(
+        id(10),
+        (Vec3::new(5.0, 5.0, 0.0), Quat::IDENTITY),
+        CharacterSpec {
+            height: f32::NAN,
+            radius: -3.0,
+            step: f32::INFINITY,
+            slope: 400.0,
+            snap: f32::NAN,
+            mass: 0.0,
+        },
+    ));
+    physics.move_character(id(10), Vec3::X * 0.1, 1.0 / 60.0);
+    physics.step(1.0 / 60.0);
+}
+
+#[test]
+fn a_character_walks_up_a_gentle_ramp_but_not_a_steep_one() {
+    let climb = |degrees: f32| {
+        let mut physics = with_floor();
+        // A long ramp rising along +x from x = 1.
+        let turn = Quat::from_rotation_y(-degrees.to_radians());
+        let half = 4.0;
+        let middle = Vec3::new(1.0, 0.0, 0.0) + turn * Vec3::new(half, 0.0, -0.05);
+        assert!(physics.add(
+            id(2),
+            (middle, turn),
+            Vec3::ONE,
+            None,
+            Some(ColliderSpec {
+                shape: Shape::Box(Vec3::new(2.0 * half, 4.0, 0.1)),
+                ..ColliderSpec::default()
+            }),
+        ));
+        character_at(&mut physics, Vec3::new(-0.5, 0.0, 0.0));
+        walk(&mut physics, Vec3::ZERO, 10);
+        walk(&mut physics, Vec3::new(2.0, 0.0, 0.0), 120);
+        feet(&physics).z
+    };
+    let gentle = climb(25.0);
+    assert!(gentle > 0.6, "up the gentle ramp to {gentle}");
+    let steep = climb(65.0);
+    assert!(steep < 0.5, "not up the steep one: {steep}");
+}

@@ -13,7 +13,7 @@ pub use camera::Camera;
 pub use environment::{Environment, Sky, ToneMapping};
 pub use light::{Light, LightKind, aim, sun_rotation};
 pub use model::Model;
-pub use physics::{BodyKind, Collider, ColliderShape, RigidBody};
+pub use physics::{BodyKind, CharacterBody, Collider, ColliderShape, RigidBody};
 pub use transform::Transform;
 
 use crate::document::{Area, EntityData};
@@ -29,6 +29,7 @@ pub fn registry() -> Result<Registry, RegistryError> {
     registry.register_type::<Camera>()?;
     registry.register_type::<RigidBody>()?;
     registry.register_type::<Collider>()?;
+    registry.register_type::<CharacterBody>()?;
     Ok(registry)
 }
 
@@ -129,6 +130,7 @@ mod tests {
             names,
             [
                 "Camera",
+                "CharacterBody",
                 "Collider",
                 "Environment",
                 "Light",
@@ -162,6 +164,7 @@ mod tests {
         round_trip(&Model::default());
         round_trip(&RigidBody::default());
         round_trip(&Collider::default());
+        round_trip(&CharacterBody::default());
         round_trip(&RigidBody {
             kind: BodyKind::Kinematic,
             upright: true,

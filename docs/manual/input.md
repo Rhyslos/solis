@@ -1,6 +1,6 @@
 # Input
 
-> Your game's controls as named actions: Move, Look, Jump, Sprint, Interact and any you add, from the keyboard, mouse or a gamepad, and rebindable.
+> Your game's controls as named actions: Move, Look, Jump, Sprint, Interact, the cameras' Pan, Turn, Zoom and Drag, and any you add, from the keyboard, mouse or a gamepad, and rebindable.
 
 ## When to use it
 Whenever the player controls something. Game code never asks "is W down?"; it asks "is the player moving?" (`axis("Move")`) or "did they press Jump?" (`pressed("Jump")`). Which keys and buttons mean Jump is set in one place, the **Input actions** window, so:
@@ -26,13 +26,19 @@ A connected **gamepad** works whenever the game is playing; it has nothing of th
 | Jump | Space | A | held, pressed, released |
 | Sprint | Shift | left stick click | held, pressed, released |
 | Interact | F | X | held, pressed, released |
+| Pan | arrow keys | left stick | which way to move the [RTS camera](characters-and-cameras.md) |
+| Turn | Alt + left and right arrows | right stick | which way to turn the RTS camera |
+| Zoom | mouse wheel, Page Up and Page Down | right and left triggers | how far to zoom this tick, in steps (a wheel notch is one) |
+| Drag | middle mouse button | | held while dragging the map |
 
 **Changing them: Edit > Input actions…**
 1. Each action shows its inputs. Click **×** beside one to unbind it.
-2. Click **+** and press the key, mouse button or gamepad button to bind (Esc cancels).
-3. An **axis** (like Move) has **Up**, **Down**, **Left** and **Right** keys, and whole-axis inputs (a stick, or the mouse's movement). One that turns with the mouse has a **Mouse speed** and a **Stick and key speed**.
+2. Click **+** and press the key, mouse button or gamepad button to bind (Esc cancels). Hold Ctrl, Alt or Shift while pressing a key to bind the **combination**, such as `Alt+ArrowLeft`; turn the mouse wheel to bind a notch up or down.
+3. An **axis** (like Move) has **Up**, **Down**, **Left** and **Right** keys, and whole-axis inputs (a stick, the mouse's movement, or the mouse wheel). One that goes with the mouse or the wheel has a **Mouse speed** and a **Stick and key speed**.
 4. Type a name under the list and choose **Add button** or **Add axis** for a new action (letters, digits and _, starting with a letter: `OpenMap`, `Fire_2`).
-5. **Restore the ready-made actions** puts Move, Look, Jump, Sprint and Interact back as they were, leaving your own.
+5. **Add the ready-made actions it's missing** appears in projects made before the cameras: it adds Pan, Turn, Zoom and Drag and changes nothing else. **Restore the ready-made actions** puts all the ready-made ones back as they were, leaving your own.
+
+**Combinations.** A key on its own doesn't count while you hold modifiers that some action binds with it. With Turn on `Alt+ArrowLeft` and Pan on `ArrowLeft`, holding Alt and pressing the left arrow turns, and doesn't pan as well. The up arrow (with no `Alt+ArrowUp` bound) still pans while Alt is held.
 
 Changes are saved straight away in the project's `input.solinput`, a small text file beside `project.solis` that Git can merge.
 
@@ -82,8 +88,8 @@ A replay that stops matching means the game came out differently from the same i
 ## Settings
 | Setting | What it does |
 |---|---|
-| Mouse speed | For an axis that turns with the mouse: how far a pixel of movement turns. 0.15 (degrees for the ready-made cameras) suits most mice; raise it for a faster turn. |
-| Stick and key speed | How far a stick or key held all the way turns in a second. 180 is half a turn a second. |
+| Mouse speed | For an axis that goes with the mouse: how far a pixel of movement (or a notch of the wheel) goes. For Look, 0.15 degrees suits most mice; raise it for a faster turn. For Zoom it's 1: a notch is one step. |
+| Stick and key speed | How far a stick or key held all the way goes in a second. For Look, 180 is half a turn a second; for Zoom, 8 steps. |
 
 ## Shortcuts
 | Action | Shortcut |
@@ -105,4 +111,5 @@ While the game has them, every key is the game's: the editor's shortcuts are off
 - [Game code](game-code.md)
 - [Play mode](play-mode.md)
 - [Physics](physics.md)
+- [Characters and cameras](characters-and-cameras.md)
 - Concepts: [action, binding, recording](concepts.md#simulation)

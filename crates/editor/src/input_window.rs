@@ -128,8 +128,21 @@ fn heard(ui: &Ui, window: &mut InputWindow, bindings: &mut Bindings, pad_down: &
                 return false;
             }
             egui::Event::Key {
-                key, pressed: true, ..
-            } => found = Some(crate::play_input::key_name(key).to_string()),
+                key,
+                pressed: true,
+                modifiers: held,
+                ..
+            } => found = Some(combination(held, crate::play_input::key_name(key))),
+            egui::Event::MouseWheel { delta, .. } if delta.y != 0.0 => {
+                found = Some(
+                    if delta.y > 0.0 {
+                        "Mouse WheelUp"
+                    } else {
+                        "Mouse WheelDown"
+                    }
+                    .to_string(),
+                );
+            }
             egui::Event::PointerButton {
                 button,
                 pressed: true,
@@ -167,6 +180,24 @@ fn heard(ui: &Ui, window: &mut InputWindow, bindings: &mut Bindings, pad_down: &
     }
     list.push(input);
     true
+}
+
+/// A key's name with the modifiers held (`Alt+ArrowLeft`), as bindings
+/// write a combination.
+fn combination(held: egui::Modifiers, key: &str) -> String {
+    let mut name = String::new();
+    for (on, modifier) in [
+        (held.ctrl, "Ctrl"),
+        (held.alt, "Alt"),
+        (held.shift, "Shift"),
+    ] {
+        if on {
+            name.push_str(modifier);
+            name.push('+');
+        }
+    }
+    name.push_str(key);
+    name
 }
 
 /// A row of an action's inputs, each with × to remove, and + to listen
@@ -271,7 +302,12 @@ fn actions_ui(
                 }
                 ui.horizontal(|ui| {
                     ui.label("Whole axis:");
-                    for whole in [input::MOUSE_MOTION, "Pad LeftStick", "Pad RightStick"] {
+                    for whole in [
+                        input::MOUSE_MOTION,
+                        input::MOUSE_WHEEL,
+                        "Pad LeftStick",
+                        "Pad RightStick",
+                    ] {
                         let mut on = action.inputs.iter().any(|i| i == whole);
                         if ui.checkbox(&mut on, whole).changed() {
                             if on {
@@ -288,12 +324,12 @@ fn actions_ui(
                         ui.label("Mouse speed");
                         changed |= ui
                             .add(egui::DragValue::new(&mut action.mouse_speed).range(0.0..=100.0).speed(0.01))
-                            .on_hover_text("How far a pixel of mouse movement turns (degrees, for the ready-made cameras).")
+                            .on_hover_text("How far a pixel of mouse movement (or a notch of the wheel) goes: degrees for Look, steps for Zoom.")
                             .changed();
                         ui.label("Stick and key speed");
                         changed |= ui
                             .add(egui::DragValue::new(&mut action.pad_speed).range(0.0..=10_000.0).speed(1.0))
-                            .on_hover_text("How far a stick or key held all the way turns in a second.")
+                            .on_hover_text("How far a stick or key held all the way goes in a second.")
                             .changed();
                     });
                 }
@@ -332,10 +368,28 @@ fn actions_ui(
         }
     });
     ui.add_space(4.0);
+    let missing = Bindings::default()
+        .actions
+        .iter()
+        .filter(|a| bindings.get(&a.name).is_none())
+        .count();
+    if missing > 0
+        && ui
+            .button(format!("Add the {missing} ready-made actions it's missing"))
+            .on_hover_text(
+                "Projects made before the cameras lack Pan, Turn, Zoom and Drag: this adds \
+                 them with their usual keys, and changes nothing else",
+            )
+            .clicked()
+    {
+        bindings.add_missing();
+        changed = true;
+    }
     if ui
         .button("Restore the ready-made actions")
         .on_hover_text(
-            "Move, Look, Jump, Sprint and Interact with their usual keys; other actions stay",
+            "Move, Look, Jump, Sprint, Interact, Pan, Turn, Zoom and Drag with their usual \
+             keys; other actions stay",
         )
         .clicked()
     {

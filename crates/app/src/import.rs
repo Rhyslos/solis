@@ -35,6 +35,8 @@ pub enum FolderFor {
     SampleGame,
     /// A folder to make the benchmark in.
     Benchmark,
+    /// A folder to make the playground in.
+    Playground,
 }
 
 /// Starts imports and collects them when they finish.
@@ -80,6 +82,7 @@ impl Importer {
                 FolderFor::OpenProject => "Open project",
                 FolderFor::SampleGame => "Choose an empty folder for the sample game",
                 FolderFor::Benchmark => "Choose an empty folder for the benchmark",
+                FolderFor::Playground => "Choose an empty folder for the playground",
             };
             let _ = sender.send(rfd::FileDialog::new().set_title(title).pick_folder());
         });

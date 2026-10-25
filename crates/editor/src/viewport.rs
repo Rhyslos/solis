@@ -1154,7 +1154,7 @@ fn grab_mode() -> egui::CursorGrab {
 
 /// Points of scrolling that count as one wheel notch, for trackpads and
 /// mice that report points.
-const POINTS_PER_NOTCH: f32 = 50.0;
+pub(crate) const POINTS_PER_NOTCH: f32 = 50.0;
 
 /// Whole wheel notches this frame (up is positive), and the part of a notch
 /// left over, added to `carry` from earlier frames.

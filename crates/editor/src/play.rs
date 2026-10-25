@@ -113,6 +113,7 @@ pub(crate) fn waits_for_stop(action: &WorkbenchAction) -> bool {
             | WorkbenchAction::AddSampleArea
             | WorkbenchAction::MakeSampleGame
             | WorkbenchAction::MakeBenchmark
+            | WorkbenchAction::MakePlayground
             | WorkbenchAction::CreateAssembly(_)
             | WorkbenchAction::ApplyToAssembly { .. }
     )

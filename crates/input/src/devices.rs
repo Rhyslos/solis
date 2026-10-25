@@ -27,6 +27,8 @@ pub struct Devices {
     went_down: BTreeSet<String>,
     /// Mouse movement since the last tick, in pixels (y down).
     motion: Vec2,
+    /// Wheel notches turned since the last tick (up is positive).
+    wheel: f32,
     /// The gamepad, if one is connected.
     pad: Pad,
     /// Which actions were held at the last tick, for presses and
@@ -58,6 +60,14 @@ impl Devices {
         }
     }
 
+    /// The mouse wheel turned `notches` (up is positive; a trackpad gives
+    /// parts of one).
+    pub fn wheel_turned(&mut self, notches: f32) {
+        if notches.is_finite() {
+            self.wheel = (self.wheel + notches).clamp(-1000.0, 1000.0);
+        }
+    }
+
     /// The gamepad is now `pad` (none: disconnected).
     pub fn set_pad(&mut self, pad: Option<Pad>) {
         let pad = pad.unwrap_or_default();
@@ -74,22 +84,59 @@ impl Devices {
     pub fn release_all(&mut self) {
         self.down.clear();
         self.motion = Vec2::ZERO;
+        self.wheel = 0.0;
         self.pad = Pad::default();
     }
 
-    /// Whether `input` is down now.
-    fn is_down(&self, input: &str) -> bool {
+    /// Whether `input` is down now: a combination when its key and all
+    /// its modifiers are, a key on its own when it's down and not
+    /// `shadowed`, a wheel direction when the wheel turned that way.
+    fn is_down(&self, input: &str, shadowed: &BTreeSet<&str>) -> bool {
         if let Some(button) = input.strip_prefix("Pad ") {
             // Triggers count as buttons when pulled; the app's reading of
             // the pad says so.
             return self.pad.buttons.contains(button);
         }
-        self.down.contains(input)
+        match input {
+            "Mouse WheelUp" => return self.wheel > 0.0,
+            "Mouse WheelDown" => return self.wheel < 0.0,
+            _ => {}
+        }
+        match crate::split_combination(input) {
+            Some((mods, key)) if !mods.is_empty() => {
+                self.down.contains(key) && mods.iter().all(|m| self.down.contains(*m))
+            }
+            _ => self.down.contains(input) && !shadowed.contains(input),
+        }
     }
 
-    /// Whether `input` went down since the last tick.
-    fn went_down(&self, input: &str) -> bool {
-        self.went_down.contains(input)
+    /// Whether `input` went down since the last tick (a combination: its
+    /// key, with its modifiers held now).
+    fn went_down(&self, input: &str, shadowed: &BTreeSet<&str>) -> bool {
+        match input {
+            "Mouse WheelUp" => return self.wheel > 0.0,
+            "Mouse WheelDown" => return self.wheel < 0.0,
+            _ => {}
+        }
+        match crate::split_combination(input) {
+            Some((mods, key)) if !mods.is_empty() => {
+                self.went_down.contains(key) && mods.iter().all(|m| self.down.contains(*m))
+            }
+            _ => self.went_down.contains(input) && !shadowed.contains(input),
+        }
+    }
+
+    /// The keys that don't count on their own now: those some binding
+    /// uses with modifiers that are all held.
+    fn shadowed<'a>(&self, bindings: &'a Bindings) -> BTreeSet<&'a str> {
+        bindings
+            .actions
+            .iter()
+            .flat_map(Action::all_inputs)
+            .filter_map(|i| crate::split_combination(i))
+            .filter(|(mods, _)| !mods.is_empty() && mods.iter().all(|m| self.down.contains(*m)))
+            .map(|(_, key)| key)
+            .collect()
     }
 
     /// A stick's position past the dead zone, rescaled so it starts at 0
@@ -104,9 +151,15 @@ impl Devices {
 
     /// One action's state now, given whether it was held at the last
     /// tick, for a tick `dt` seconds long.
-    fn state_of(&self, action: &Action, was_held: bool, dt: f32) -> ActionState {
-        let down = |list: &[String]| list.iter().any(|i| self.is_down(i));
-        let went = action.all_inputs().any(|i| self.went_down(i));
+    fn state_of(
+        &self,
+        action: &Action,
+        was_held: bool,
+        dt: f32,
+        shadowed: &BTreeSet<&str>,
+    ) -> ActionState {
+        let down = |list: &[String]| list.iter().any(|i| self.is_down(i, shadowed));
+        let went = action.all_inputs().any(|i| self.went_down(i, shadowed));
         let (held, axis) = match action.kind {
             ActionKind::Button => (down(&action.inputs), Vec2::ZERO),
             ActionKind::Axis => {
@@ -125,10 +178,20 @@ impl Devices {
                 }
                 let lean = (keys + stick).clamp_length_max(1.0);
                 let axis = if action.is_motion() {
-                    // How far to turn this tick: the mouse's pixels, and
-                    // sticks and keys at their speed for the tick.
-                    let mouse = Vec2::new(self.motion.x, -self.motion.y) * action.mouse_speed;
-                    mouse + lean * action.pad_speed * dt
+                    // How far to go this tick: the mouse's pixels and the
+                    // wheel's notches, and sticks and keys at their speed
+                    // for the tick.
+                    let mut mouse = Vec2::ZERO;
+                    for input in &action.inputs {
+                        match input.as_str() {
+                            crate::MOUSE_MOTION => {
+                                mouse += Vec2::new(self.motion.x, -self.motion.y)
+                            }
+                            crate::MOUSE_WHEEL => mouse.y += self.wheel,
+                            _ => {}
+                        }
+                    }
+                    mouse * action.mouse_speed + lean * action.pad_speed * dt
                 } else {
                     lean
                 };
@@ -150,8 +213,9 @@ impl Devices {
     pub fn sample(&mut self, bindings: &Bindings, dt: f32) -> Frame {
         let mut actions = BTreeMap::new();
         let mut held = BTreeSet::new();
+        let shadowed = self.shadowed(bindings);
         for action in &bindings.actions {
-            let state = self.state_of(action, self.was_held.contains(&action.name), dt);
+            let state = self.state_of(action, self.was_held.contains(&action.name), dt, &shadowed);
             if state.held {
                 held.insert(action.name.clone());
             }
@@ -162,6 +226,7 @@ impl Devices {
         self.was_held = held;
         self.went_down.clear();
         self.motion = Vec2::ZERO;
+        self.wheel = 0.0;
         Frame { actions }
     }
 }

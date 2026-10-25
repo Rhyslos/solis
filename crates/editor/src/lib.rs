@@ -66,4 +66,6 @@ pub use viewport_tools::{Outline, PickAnswer};
 pub use workbench::{AppInfo, Workbench, WorkbenchAction};
 
 #[cfg(test)]
+mod kit_tests;
+#[cfg(test)]
 mod scale_levels_tests;

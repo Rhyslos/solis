@@ -173,6 +173,18 @@ pub const NATIVES: &[Native] = &[
         about: "Looks along a line like castRay: which way the surface it meets faces (straight up for a floor), or [0, 0, 0] if it meets nothing.",
     },
     Native {
+        file: "physics",
+        name: "moveCharacter",
+        lust: "method moveCharacter(entity which, vec3 wanted) native;",
+        about: "Moves a character (an entity with a CharacterBody) this far, in metres, at the end of the tick: it climbs steps and slopes, slides along walls, pushes crates and rides moving platforms, and stops where it can't go. Ask once a tick, with speed times dt.",
+    },
+    Native {
+        file: "physics",
+        name: "onGround",
+        lust: "method bool onGround(entity which) native;",
+        about: "Whether a character stood on something after its last move: for jumping only from the ground, and for falling.",
+    },
+    Native {
         file: "entity",
         name: "positionOf",
         lust: "method vec3 positionOf(entity which) native;",
@@ -198,13 +210,20 @@ pub const NATIVES: &[Native] = &[
     },
     Native {
         file: "entity",
+        name: "facingAlong",
+        lust: "method rotation facingAlong(vec3 direction) native;",
+        about: "The upright rotation that faces along a direction (an entity's forward is +Y): turnTo(me, facingAlong(where - positionOf(me))) turns to face a place.",
+    },
+    Native {
+        file: "entity",
         name: "nameOf",
         lust: "method string nameOf(entity which) native;",
         about: "An entity's name, as the Area panel shows it.",
     },
 ];
 
-/// The description files, as (path inside `assets`, text), with `/`
+/// The description files, and the ready-made components in `kit/`
+/// ([`KIT`]), as (path inside `assets`, text), with `/`
 /// between folders, in `folder` (the program's name in small letters, from
 /// the app's branding: `solis`). `made_by` names the program and version
 /// that wrote them, for their first line.
@@ -226,8 +245,28 @@ pub fn descriptions(made_by: &str, folder: &str) -> Vec<(String, String)> {
             text.push_str(&format!("pass {};\nend\n", names.join(", ")));
             (format!("{folder}/{file}.lst"), text)
         })
+        .chain(KIT.iter().map(|(file, body)| {
+            (
+                format!("{folder}/kit/{file}"),
+                format!(
+                    "-- Made by {made_by}: a ready-made component, to use as it is or to read and\n\
+                     -- copy. It's written again whenever the project opens, so changes made here\n\
+                     -- don't last: to change it, copy the file outside {folder}/ and rename its\n\
+                     -- components. Use it with fetch \"{folder}/kit/{}\":[…];\n\n{body}",
+                    file.trim_end_matches(".lst")
+                ),
+            )
+        }))
         .collect()
 }
+
+/// The ready-made components (Phase 6, M5), written into every project
+/// beside the descriptions: Lust a game uses as it is, or reads and
+/// copies.
+pub const KIT: &[(&str, &str)] = &[
+    ("character.lst", include_str!("kit/character.lst")),
+    ("cameras.lst", include_str!("kit/cameras.lst")),
+];
 
 #[cfg(test)]
 mod tests {
@@ -236,7 +275,7 @@ mod tests {
     #[test]
     fn the_descriptions_check_cleanly_and_a_game_can_use_them() {
         let mut files = descriptions("Test Engine 9.9.9", "solis");
-        assert_eq!(files.len(), 4);
+        assert_eq!(files.len(), 6);
         assert!(files[0].1.starts_with("-- Made by Test Engine 9.9.9"));
         files.push((
             "main.lst".into(),
@@ -267,6 +306,23 @@ mod tests {
                  }\n\
              }\n\
              pass Mover;\n\
+             end\n"
+                .into(),
+        ));
+        if let Err(problems) = lust::check("main.lst", &files) {
+            let text: Vec<String> = problems.iter().map(ToString::to_string).collect();
+            panic!("{}", text.join("\n"));
+        }
+    }
+
+    #[test]
+    fn the_ready_made_components_check_cleanly() {
+        let mut files = descriptions("Test Engine 9.9.9", "solis");
+        assert!(files.iter().any(|(p, _)| p == "solis/kit/character.lst"));
+        files.push((
+            "main.lst".into(),
+            "fetch \"solis/kit/character\":[CharacterController];\n\
+             fetch \"solis/kit/cameras\":[ThirdPersonCamera, FirstPersonCamera, RtsCamera];\n\
              end\n"
                 .into(),
         ));

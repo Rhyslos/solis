@@ -117,6 +117,13 @@ impl Workbench {
                 egui::Event::MouseMoved(delta) => {
                     self.devices.mouse_moved(glam::Vec2::new(delta.x, delta.y));
                 }
+                egui::Event::MouseWheel { unit, delta, .. } => {
+                    self.devices.wheel_turned(match unit {
+                        egui::MouseWheelUnit::Line => delta.y,
+                        egui::MouseWheelUnit::Point => delta.y / crate::viewport::POINTS_PER_NOTCH,
+                        egui::MouseWheelUnit::Page => delta.y * 3.0,
+                    });
+                }
                 _ => {}
             }
         }

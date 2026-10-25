@@ -17,8 +17,8 @@ pub enum ActionKind {
     #[default]
     Button,
     /// Two numbers, across (x) and up (y), each from -1 to 1 for keys and
-    /// sticks (which way to go); with `Mouse Motion`, how far to turn this
-    /// tick (see [`Action::mouse_speed`]).
+    /// sticks (which way to go); with `Mouse Motion` or `Mouse Wheel`, how
+    /// far to go this tick (see [`Action::mouse_speed`]).
     Axis,
 }
 
@@ -47,13 +47,13 @@ pub struct Action {
     /// … right (x +1).
     #[serde(default, skip_serializing_if = "Vec::is_empty")]
     pub right: Vec<String>,
-    /// For an axis with `Mouse Motion`: how far a pixel of mouse movement
-    /// turns, in the game's own units (the ready-made cameras use
-    /// degrees).
+    /// For an axis with `Mouse Motion` or `Mouse Wheel`: how far a pixel
+    /// of mouse movement (or a notch of the wheel) goes, in the game's own
+    /// units (Look's are degrees, Zoom's steps).
     #[serde(default = "default_mouse_speed")]
     pub mouse_speed: f32,
-    /// For an axis with `Mouse Motion`: how far a stick or key held all
-    /// the way turns in a second, in the same units.
+    /// For an axis with `Mouse Motion` or `Mouse Wheel`: how far a stick
+    /// or key held all the way goes in a second, in the same units.
     #[serde(default = "default_pad_speed")]
     pub pad_speed: f32,
 }
@@ -96,10 +96,14 @@ impl Action {
         }
     }
 
-    /// Whether it turns with the mouse: its values are then how far to
-    /// turn this tick, not which way to go.
+    /// Whether it goes with the mouse's movement or wheel: its values are
+    /// then how far to go this tick, not which way.
     pub fn is_motion(&self) -> bool {
-        self.kind == ActionKind::Axis && self.inputs.iter().any(|i| i == crate::MOUSE_MOTION)
+        self.kind == ActionKind::Axis
+            && self
+                .inputs
+                .iter()
+                .any(|i| i == crate::MOUSE_MOTION || i == crate::MOUSE_WHEEL)
     }
 
     /// Every input it has, in any role.
@@ -160,8 +164,9 @@ impl std::fmt::Display for BindingsError {
 }
 
 impl Default for Bindings {
-    /// The ready-made actions (decision 0037): Move, Look, Jump, Sprint
-    /// and Interact.
+    /// The ready-made actions: Move, Look, Jump, Sprint and Interact
+    /// (decision 0037), and the cameras' Pan, Turn, Zoom and Drag
+    /// (decision 0041).
     fn default() -> Self {
         let mut look = Action::axis(
             "Look",
@@ -170,6 +175,13 @@ impl Default for Bindings {
         );
         look.mouse_speed = default_mouse_speed();
         look.pad_speed = default_pad_speed();
+        let mut zoom = Action::axis(
+            "Zoom",
+            &[crate::MOUSE_WHEEL],
+            [&["PageUp", "Pad RT"], &["PageDown", "Pad LT"], &[], &[]],
+        );
+        zoom.mouse_speed = 1.0;
+        zoom.pad_speed = 8.0;
         Self {
             actions: vec![
                 Action::axis("Move", &["Pad LeftStick"], [&["W"], &["S"], &["A"], &["D"]]),
@@ -177,12 +189,43 @@ impl Default for Bindings {
                 Action::button("Jump", &["Space", "Pad A"]),
                 Action::button("Sprint", &["Shift", "Pad LeftStick"]),
                 Action::button("Interact", &["F", "Pad X"]),
+                Action::axis(
+                    "Pan",
+                    &["Pad LeftStick"],
+                    [
+                        &["ArrowUp"],
+                        &["ArrowDown"],
+                        &["ArrowLeft"],
+                        &["ArrowRight"],
+                    ],
+                ),
+                Action::axis(
+                    "Turn",
+                    &["Pad RightStick"],
+                    [&[], &[], &["Alt+ArrowLeft"], &["Alt+ArrowRight"]],
+                ),
+                zoom,
+                Action::button("Drag", &["Mouse Middle"]),
             ],
         }
     }
 }
 
 impl Bindings {
+    /// Adds the ready-made actions (see [`Bindings::default`]) it's
+    /// missing, at the end; returns their names. A project from before
+    /// the cameras gets Pan, Turn, Zoom and Drag this way.
+    pub fn add_missing(&mut self) -> Vec<String> {
+        let mut added = Vec::new();
+        for action in Self::default().actions {
+            if self.get(&action.name).is_none() && self.actions.len() < MAX_ACTIONS {
+                added.push(action.name.clone());
+                self.actions.push(action);
+            }
+        }
+        added
+    }
+
     /// The action called `name`.
     pub fn get(&self, name: &str) -> Option<&Action> {
         self.actions.iter().find(|a| a.name == name)

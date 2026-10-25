@@ -617,6 +617,7 @@ impl App {
                 WorkbenchAction::AddSampleArea => self.add_sample(),
                 WorkbenchAction::MakeSampleGame => self.importer.ask_folder(FolderFor::SampleGame),
                 WorkbenchAction::MakeBenchmark => self.importer.ask_folder(FolderFor::Benchmark),
+                WorkbenchAction::MakePlayground => self.importer.ask_folder(FolderFor::Playground),
                 WorkbenchAction::NewArea => {
                     self.workbench.new_area();
                     self.area_files.forget();
@@ -972,6 +973,32 @@ impl App {
         );
     }
 
+    /// Makes the playground in `folder` as a new project, opens it and
+    /// its area, or says why it couldn't.
+    fn make_playground(&mut self, folder: &Path) {
+        if let Err(why) = crate::playground::make(folder) {
+            self.workbench.log(
+                LogLevel::Error,
+                format!(
+                    "Couldn't make the playground in {}: {why}.",
+                    folder.display()
+                ),
+            );
+            return;
+        }
+        self.open_project(folder, false);
+        let area = folder
+            .join(asset_db::ASSETS_FOLDER)
+            .join(crate::playground::AREA);
+        self.open_area(&area);
+        self.workbench.log(
+            LogLevel::Info,
+            "The playground is ready. Press Play and click the Game panel: W A S D walk, the \
+             mouse looks, Space jumps, Shift sprints, F6 saves and F7 loads. Esc gives the \
+             editor the mouse back.",
+        );
+    }
+
     /// Makes the benchmark in `folder` as a new project, opens it and its
     /// target area, or says why it couldn't.
     fn make_benchmark(&mut self, folder: &Path) {
@@ -1105,6 +1132,7 @@ impl eframe::App for App {
             match purpose {
                 FolderFor::SampleGame => self.make_sample_game(&folder),
                 FolderFor::Benchmark => self.make_benchmark(&folder),
+                FolderFor::Playground => self.make_playground(&folder),
                 _ => self.open_project(&folder, purpose == FolderFor::NewProject),
             }
         }

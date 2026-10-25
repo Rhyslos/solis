@@ -24,7 +24,8 @@ An entity with a collider and nothing else never moves: floors, walls, rocks.
 3. Press **Play**. The crate falls onto the floor and settles. Press **Stop** and it's back where it was.
 
 **Moving things yourself**
-- A **Kinematic** body is moved only by your game code (`moveTo`, `turnTo`), and pushes dynamic things out of its way without being pushed back: lifts, moving platforms, doors, characters.
+- A **Kinematic** body is moved only by your game code (`moveTo`, `turnTo`), and pushes dynamic things out of its way without being pushed back: lifts, moving platforms, doors. A character standing on one is carried along.
+- A player's character is better with a **CharacterBody**, which climbs steps, slides along walls and walks up slopes: see [Characters and cameras](characters-and-cameras.md).
 - A **Fixed** body never moves, like a collider on its own.
 - You can still `moveTo` a dynamic body to put it somewhere new (say, back on its shelf); physics carries on from there.
 
@@ -95,6 +96,8 @@ Like moves, pushes and velocities land when every `update` in the tick is done, 
 
 Shapes grow with the entity's **Scale**.
 
+**CharacterBody** is described in [Characters and cameras](characters-and-cameras.md). It takes the place of a RigidBody and Collider on the same entity, and doesn't grow with Scale.
+
 ## Shortcuts
 Physics adds no keys. In the [Console](console.md), `seed` and `checksum` help check that two plays come out the same.
 
@@ -102,7 +105,7 @@ Physics adds no keys. In the [Console](console.md), `seed` and `checksum` help c
 - **Problem:** my crate falls through the floor. **Why:** the floor has no Collider, or it's smaller than it looks (check the green outline with the floor selected). **Fix:** add a Collider to the floor and size it.
 - **Problem:** something small and fast passes through a thin wall. **Why:** between two ticks it went from one side to the other. **Fix:** tick **Fast** on its RigidBody, or make the wall thicker.
 - **Problem:** a dynamic body doesn't move when I push it. **Why:** it's heavy for the push (a push of 5 moves a 1 kg box at 5 m/s, but a 100 kg one at only 0.05 m/s), it's resting on something with high friction, or it's Kinematic or Fixed. **Fix:** push harder, or make it Dynamic.
-- **Problem:** my character tips over. **Why:** physics turns it when it bumps into things. **Fix:** tick **Stays upright**.
+- **Problem:** my character tips over. **Why:** physics turns it when it bumps into things. **Fix:** give it a **CharacterBody** instead of a RigidBody ([Characters and cameras](characters-and-cameras.md)), or tick **Stays upright**.
 - **Problem:** the Console says the game has the most physics bodies it can. **Why:** at most 100,000 entities take part in physics at once. **Fix:** use fewer bodies; things that never move can share one big collider.
 - **Problem:** the game paused, saying physics took too long. **Why:** one tick of physics took more than a quarter of a second. **Fix:** fewer bodies, or simpler shapes.
 
@@ -110,4 +113,5 @@ Physics adds no keys. In the [Console](console.md), `seed` and `checksum` help c
 - [Game code](game-code.md)
 - [Play mode](play-mode.md)
 - [Entities and components](entities.md)
+- [Characters and cameras](characters-and-cameras.md)
 - Concepts: [physics, rigid body, collider, determinism](concepts.md#simulation)

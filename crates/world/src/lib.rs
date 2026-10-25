@@ -16,7 +16,9 @@ pub mod projectiles;
 pub use projectiles::{MAX_PROJECTILES, Projectile, Projectiles, Shot};
 
 use area::Area;
-use area::builtin::{Camera, Collider, Environment, Light, Model, RigidBody, Transform};
+use area::builtin::{
+    Camera, CharacterBody, Collider, Environment, Light, Model, RigidBody, Transform,
+};
 use glam::Mat4;
 use reflect::{Component, ComponentData, EntityId};
 use std::collections::{BTreeMap, HashMap};
@@ -122,7 +124,7 @@ pub struct World {
     /// The seed the game's random numbers are made from.
     seed: u64,
     /// Bodies and colliders (decision 0036): every entity with a
-    /// `RigidBody` or a `Collider`.
+    /// `RigidBody`, a `Collider` or a `CharacterBody`.
     physics: physics::Physics,
     /// Entities with physics game code moved since the last physics step,
     /// whose bodies follow them at the next.
@@ -147,6 +149,8 @@ enum PhysicsAsk {
     Push(EntityId, glam::Vec3),
     /// A new velocity (metres a second).
     Velocity(EntityId, glam::Vec3),
+    /// A character's move (metres, this tick).
+    Character(EntityId, glam::Vec3),
 }
 
 /// The next of a count shared by every world, so numbers never repeat.
@@ -895,16 +899,30 @@ impl World {
             self.physics.remove(id);
             return;
         };
+        let global = self
+            .ecs
+            .get::<&Global>(entity)
+            .map_or(Mat4::IDENTITY, |g| g.0);
+        if let Ok(c) = self.ecs.get::<&CharacterBody>(entity).map(|c| *c) {
+            let (_, rotation, position) = global.to_scale_rotation_translation();
+            let spec = physics::CharacterSpec {
+                height: c.height,
+                radius: c.radius,
+                step: c.step,
+                slope: c.slope,
+                snap: c.snap,
+                mass: c.mass,
+            };
+            self.physics.add_character(id, (position, rotation), spec);
+            self.touched = true;
+            return;
+        }
         let body = self.ecs.get::<&RigidBody>(entity).ok().map(|b| *b);
         let collider = self.ecs.get::<&Collider>(entity).ok().map(|c| *c);
         if body.is_none() && collider.is_none() {
             self.physics.remove(id);
             return;
         }
-        let global = self
-            .ecs
-            .get::<&Global>(entity)
-            .map_or(Mat4::IDENTITY, |g| g.0);
         let (scale, rotation, position) = global.to_scale_rotation_translation();
         let body = body.map(|b| physics::Body {
             kind: match b.kind {
@@ -949,6 +967,13 @@ impl World {
         self.physics_asked.push(PhysicsAsk::Velocity(id, velocity));
     }
 
+    /// Moves the character `id` (a `CharacterBody`) by `wanted` metres,
+    /// as far as it can, at the next physics step (see
+    /// `physics::Physics::move_character`).
+    pub fn move_character(&mut self, id: EntityId, wanted: glam::Vec3) {
+        self.physics_asked.push(PhysicsAsk::Character(id, wanted));
+    }
+
     /// Bodies not made because there were already the most
     /// (`physics::MAX_BODIES`).
     pub fn physics_refused(&self) -> u64 {
@@ -980,6 +1005,9 @@ impl World {
             match ask {
                 PhysicsAsk::Push(id, impulse) => self.physics.push(id, impulse),
                 PhysicsAsk::Velocity(id, velocity) => self.physics.set_velocity(id, velocity),
+                PhysicsAsk::Character(id, wanted) => {
+                    self.physics.move_character(id, wanted, TICK as f32);
+                }
             }
         }
         self.physics.step(TICK as f32);
@@ -1076,6 +1104,9 @@ fn components_of(id: EntityId, data: &area::EntityData) -> hecs::EntityBuilder {
             }
             Collider::NAME => {
                 builder.add(Collider::from_data(component));
+            }
+            CharacterBody::NAME => {
+                builder.add(CharacterBody::from_data(component));
             }
             Model::NAME => {
                 builder.add(Model::from_data(component));

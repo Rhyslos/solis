@@ -280,7 +280,7 @@ Game code reads the player's controls as named actions, never keys: `axis("Move"
 
 ## Physics
 
-Things that fall, collide and get pushed have a **RigidBody** and a **Collider**: see [Physics](physics.md). Game code pushes them (`push`), reads and sets how fast they move (`velocityOf`, `setVelocity`), and looks along lines (`castRay`, `castRayHit`, `castRayNormal`), all in `solis/physics`.
+Things that fall, collide and get pushed have a **RigidBody** and a **Collider**: see [Physics](physics.md). Game code pushes them (`push`), reads and sets how fast they move (`velocityOf`, `setVelocity`), and looks along lines (`castRay`, `castRayHit`, `castRayNormal`), all in `solis/physics`. Characters with a **CharacterBody** are moved with `moveCharacter` and asked `onGround`: see [Characters and cameras](characters-and-cameras.md), which also has the ready-made character controller and cameras in `solis/kit/`.
 
 ## What the engine offers
 
@@ -311,15 +311,18 @@ Things that fall, collide and get pushed have a **RigidBody** and a **Collider**
 | `solis/physics` | `float castRay(vec3 from, vec3 direction, float reach)` | How far along a line the first collider is, or -1. |
 | `solis/physics` | `entity castRayHit(vec3 from, vec3 direction, float reach)` | The entity a line meets first, or nothing. |
 | `solis/physics` | `vec3 castRayNormal(vec3 from, vec3 direction, float reach)` | Which way the surface a line meets faces. |
+| `solis/physics` | `moveCharacter(entity which, vec3 wanted)` | Moves a character this far, climbing steps, sliding along walls ([Characters and cameras](characters-and-cameras.md)). |
+| `solis/physics` | `bool onGround(entity which)` | Whether a character stood on something after its last move. |
 | `solis/entity` | `vec3 positionOf(entity which)` | Where an entity is in the world, in metres. |
 | `solis/entity` | `moveTo(entity which, vec3 place)` | Puts an entity at a place in the world. |
 | `solis/entity` | `rotation rotationOf(entity which)` | Which way an entity faces. |
 | `solis/entity` | `turnTo(entity which, rotation facing)` | Turns an entity to face this way. |
+| `solis/entity` | `rotation facingAlong(vec3 direction)` | The upright rotation facing along a direction (an entity's forward is +Y): `turnTo(me, facingAlong(target - positionOf(me)))` faces a place. |
 | `solis/entity` | `string nameOf(entity which)` | An entity's name. |
 
 ## Tips and common problems
 - **Problem:** Problems says the game's code starts at `main.lst` and there isn't one. **Why:** there are `.lst` files, but none is called `main.lst` in the `assets` folder itself. **Fix:** make `assets/main.lst`, and fetch your other files from it.
-- **Problem:** changes I made to `solis/world.lst` disappeared. **Why:** Solis writes the `solis` files again when the project opens, so they always match the engine. **Fix:** put your own code in your own files.
+- **Problem:** changes I made to `solis/world.lst` (or `solis/kit/…`) disappeared. **Why:** Solis writes the `solis` files again when the project opens, so they always match the engine. **Fix:** put your own code in your own files; to change a ready-made component, copy its file outside `solis/` and rename the component.
 - **Problem:** my component isn't in **Add component**. **Why:** the code has a mistake (see Problems), or its Lust file isn't fetched from `main.lst` (directly, or through a file `main.lst` fetches). Lua files are all read, wherever they are in `assets`. **Fix:** fix the mistake, or fetch the file.
 - **Problem:** "solis.moveTo isn't something Solis offers" in Lua. **Why:** the name is misspelt, or the method was used outside `update` or an `on_` function, when the game isn't running. **Fix:** check the name against the table above.
 - **Problem:** a component is called the same as one of Solis's (`Light`) or a Rust one, or a Lust and a Lua component share a name. **Why:** two components can't share a name. The one in your code doesn't run (Solis's own, or the Rust one, does). **Fix:** rename yours; Problems says where it is.
