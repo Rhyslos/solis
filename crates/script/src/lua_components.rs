@@ -117,7 +117,7 @@ pub(crate) fn compile_files(
                 .load(&bytecode[i][..])
                 .set_mode(mlua::ChunkMode::Binary)
         } else {
-            luau.lua.load(text)
+            crate::luau::as_text(luau.lua.load(text))
         };
         let chunk = load
             .set_name(format!("={path}"))

@@ -184,10 +184,14 @@ impl Projects {
                     FileKind::Code => LibraryKind::Code,
                     FileKind::Other => LibraryKind::Other,
                 },
-                name: f
-                    .path
-                    .file_stem()
-                    .map_or_else(|| slashed(&f.path), |s| s.to_string_lossy().into_owned()),
+                // Files Solis doesn't know keep their whole name, so
+                // "brick.png.exe" never passes for "brick.png".
+                name: if f.kind == FileKind::Other {
+                    f.path.file_name()
+                } else {
+                    f.path.file_stem()
+                }
+                .map_or_else(|| slashed(&f.path), |s| s.to_string_lossy().into_owned()),
                 path: slashed(&f.path),
                 thumbnail: thumbnail(&f.path),
             })
