@@ -137,7 +137,10 @@ fn a_loaded_game_carries_on_exactly_as_the_saved_one_would_have() {
     let saved_at = sums(&mut w);
     run_to(&mut w, 130);
     let carried_on = sums(&mut w);
-    assert!(!w.world().unwrap().projectiles().is_empty(), "lasers in flight");
+    assert!(
+        !w.world().unwrap().projectiles().is_empty(),
+        "lasers in flight"
+    );
     // Load, in the same play: back to the save, then the same future.
     w.load_game(&text, "quick");
     assert_eq!(w.world().unwrap().clock().ticks, 50);
@@ -147,7 +150,13 @@ fn a_loaded_game_carries_on_exactly_as_the_saved_one_would_have() {
     // Stop goes back to the area as it was before Play.
     w.stop();
     assert_eq!(
-        w.document.area().get(raw(3)).unwrap().get::<Transform>().unwrap().position,
+        w.document
+            .area()
+            .get(raw(3))
+            .unwrap()
+            .get::<Transform>()
+            .unwrap()
+            .position,
         Vec3::ZERO
     );
 }
@@ -210,7 +219,13 @@ fn game_code_saves_and_loads_at_the_end_of_the_tick() {
     // No ticks run past the one that asked to load.
     assert!(w.world().unwrap().clock().ticks <= before + 2);
     w.load_game(&saved.1, &saved.0);
-    assert!(w.log_lines().last().unwrap().text.starts_with("Loaded quick"));
+    assert!(
+        w.log_lines()
+            .last()
+            .unwrap()
+            .text
+            .starts_with("Loaded quick")
+    );
 }
 
 #[test]
@@ -258,7 +273,11 @@ fn saves_from_elsewhere_or_damaged_are_refused_and_nothing_changes() {
         }
         w.load_game(&bad, "bad");
         assert!(
-            w.log_lines().last().unwrap().text.starts_with("Couldn't load bad"),
+            w.log_lines()
+                .last()
+                .unwrap()
+                .text
+                .starts_with("Couldn't load bad"),
             "{}",
             w.log_lines().last().unwrap().text
         );
@@ -273,7 +292,16 @@ fn saving_needs_a_project_and_a_running_game() {
     assert_eq!(w.save_of_game().unwrap_err(), "nothing is running");
     w.project = None;
     w.play();
-    assert_eq!(w.save_of_game().unwrap_err(), "save games are kept in a project");
+    assert_eq!(
+        w.save_of_game().unwrap_err(),
+        "save games are kept in a project"
+    );
     w.save_game("quick");
-    assert!(w.log_lines().last().unwrap().text.contains("kept in a project"));
+    assert!(
+        w.log_lines()
+            .last()
+            .unwrap()
+            .text
+            .contains("kept in a project")
+    );
 }

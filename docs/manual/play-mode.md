@@ -23,7 +23,7 @@ The game looks through the **first camera** in the Area panel's list. With no ca
 
 You can also type `play`, `pause`, `step` and `stop` in the [Console](console.md).
 
-**Playing with the keys, mouse and gamepad:** click the Game panel to give the game the mouse and keys (the pointer disappears, and the editor's own keys are off); press **Esc** to give them back. A gamepad works whenever the game plays. The **Play** menu also records a play's input and plays it back exactly: see [Input](input.md).
+**Playing with the keys, mouse and gamepad:** click the Game panel to give the game the mouse and keys (the pointer disappears, and the editor's own keys are off); press **Esc** to give them back. A gamepad works whenever the game plays. The **Play** menu also records a play's input and plays it back exactly (see [Input](input.md)), and **Load a save…** plays from a [save game](save-games.md).
 
 **Smooth on any screen:** the game itself always runs 60 [ticks](concepts.md#game-code) a second, so it plays the same on every computer. A screen can show more frames than that (120 or 144 a second): between two ticks, the Game panel draws everything part way from where it was at the last tick to where it is now, so movement looks smooth instead of stepping. What you see is up to a sixtieth of a second behind the game, which no one can notice. While paused, it shows exactly where things are.
 

@@ -153,7 +153,10 @@ impl Save {
                 .and_then(|l| l.parse().ok())
                 .ok_or_else(damaged)?;
             let text = after.get(..length).ok_or_else(damaged)?;
-            rest = after.get(length..).and_then(|a| a.strip_prefix('\n')).ok_or_else(damaged)?;
+            rest = after
+                .get(length..)
+                .and_then(|a| a.strip_prefix('\n'))
+                .ok_or_else(damaged)?;
             Ok(text)
         };
         let area = section("area")?.to_string();
@@ -292,7 +295,10 @@ impl Workbench {
         let bindings = match input::Bindings::read(&save.bindings) {
             Ok(b) => b,
             Err(why) => {
-                self.log(LogLevel::Error, format!("Couldn't load {name}: its input {why}."));
+                self.log(
+                    LogLevel::Error,
+                    format!("Couldn't load {name}: its input {why}."),
+                );
                 return;
             }
         };
@@ -320,8 +326,7 @@ impl Workbench {
         let (mut game, mut pending) = self.start_game(&mut world, &mut view);
         // The running components take their saved values.
         if let Some(game) = &mut game {
-            let mut host =
-                crate::game_code::PlayWorld::new(&mut world, &mut view, save.time);
+            let mut host = crate::game_code::PlayWorld::new(&mut world, &mut view, save.time);
             let components: Vec<(EntityId, String, reflect::ComponentData)> = values
                 .iter()
                 .flat_map(|(id, data)| {

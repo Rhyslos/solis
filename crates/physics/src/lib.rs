@@ -372,7 +372,9 @@ impl Physics {
         // Every entity's body and collider are really there.
         let whole = state.by_entity.values().all(|entry| {
             state.bodies.get(entry.body).is_some()
-                && entry.collider.is_none_or(|c| state.colliders.get(c).is_some())
+                && entry
+                    .collider
+                    .is_none_or(|c| state.colliders.get(c).is_some())
         });
         if !whole || state.by_entity.len() > MAX_BODIES {
             return Err("the physics doesn't hold together".to_string());

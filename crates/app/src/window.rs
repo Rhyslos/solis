@@ -689,7 +689,8 @@ impl App {
                         .projects
                         .root()
                         .map(|r| r.join(crate::play_files::SAVES));
-                    self.recordings.ask(crate::play_files::PlayFile::Save, folder);
+                    self.recordings
+                        .ask(crate::play_files::PlayFile::Save, folder);
                 }
                 WorkbenchAction::SaveGame { slot, text } => {
                     match self.projects.root().map(Path::to_path_buf) {
@@ -722,10 +723,9 @@ impl App {
                             LogLevel::Warning,
                             format!("There's no save called {slot} to load."),
                         ),
-                        Some(Err(why)) => self.workbench.log(
-                            LogLevel::Error,
-                            format!("Couldn't load {slot}: {why}."),
-                        ),
+                        Some(Err(why)) => self
+                            .workbench
+                            .log(LogLevel::Error, format!("Couldn't load {slot}: {why}.")),
                         None => self.workbench.log(
                             LogLevel::Warning,
                             "Save games are kept in a project: open one first.",

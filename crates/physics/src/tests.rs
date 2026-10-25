@@ -264,7 +264,10 @@ fn a_snapshot_carries_on_exactly_as_physics_would_have() {
         let (body, collider) = crate_spec();
         physics.add(
             id(10 + n),
-            (Vec3::new(0.2 * n as f32, 0.0, 1.0 + 1.2 * n as f32), Quat::from_rotation_z(0.4 * n as f32)),
+            (
+                Vec3::new(0.2 * n as f32, 0.0, 1.0 + 1.2 * n as f32),
+                Quat::from_rotation_z(0.4 * n as f32),
+            ),
             Vec3::ONE,
             body,
             collider,

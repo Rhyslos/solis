@@ -289,9 +289,7 @@ impl Runtime {
     pub fn all_values(&self) -> Vec<(EntityId, String, ComponentData)> {
         self.running
             .keys()
-            .filter_map(|(entity, name)| {
-                Some((*entity, name.clone(), self.values(*entity, name)?))
-            })
+            .filter_map(|(entity, name)| Some((*entity, name.clone(), self.values(*entity, name)?)))
             .collect()
     }
 

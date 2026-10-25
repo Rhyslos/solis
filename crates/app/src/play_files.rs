@@ -197,7 +197,11 @@ mod tests {
         let path = save_game(&root, "quick", "first").unwrap();
         assert_eq!(path, root.join(SAVES).join("quick.solsave"));
         save_game(&root, "quick", "second").unwrap();
-        assert_eq!(std::fs::read_to_string(&path).unwrap(), "second", "a slot is replaced");
+        assert_eq!(
+            std::fs::read_to_string(&path).unwrap(),
+            "second",
+            "a slot is replaced"
+        );
         for bad in ["../outside", "a/b", "", "has space"] {
             assert!(save_game(&root, bad, "x").is_err(), "{bad}");
             assert!(save_path(&root, bad).is_none());
