@@ -163,7 +163,10 @@ fn the_viewport_menu_hides_the_tool_bar() {
 fn play_says_what_it_does() {
     let mut h = harness();
     h.run();
-    h.query_all_by_label("Play").next().expect("the Play button").click();
+    h.query_all_by_label("Play")
+        .next()
+        .expect("the Play button")
+        .click();
     h.run();
     let last = h.state().log_lines().last().map(|l| l.text.clone());
     assert!(

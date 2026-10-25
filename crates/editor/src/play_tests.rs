@@ -248,7 +248,10 @@ fn the_game_panel_draws_through_the_camera_without_editor_lines() {
     set_position(&mut w, camera, Vec3::new(0.0, -20.0, 3.0), 1);
     let mut h = harness(w);
     h.run();
-    h.query_all_by_label("Play").next().expect("the Play button").click();
+    h.query_all_by_label("Play")
+        .next()
+        .expect("the Play button")
+        .click();
     h.run();
     h.run();
     assert_eq!(h.state().0.play_state(), PlayState::Playing);
@@ -277,7 +280,10 @@ fn without_a_camera_the_game_shows_the_editors_view_with_a_note() {
     let (w, _) = with_a_crate();
     let mut h = harness(w);
     h.run();
-    h.query_all_by_label("Play").next().expect("the Play button").click();
+    h.query_all_by_label("Play")
+        .next()
+        .expect("the Play button")
+        .click();
     h.run();
     h.run();
     let _ = h.get_by_label("No camera in the area: showing the editor's view");
@@ -297,7 +303,10 @@ fn the_buttons_at_the_top_play_pause_and_stop() {
     let (w, crate_id) = with_a_crate();
     let mut h = harness(w);
     h.run();
-    h.query_all_by_label("Play").next().expect("the Play button").click();
+    h.query_all_by_label("Play")
+        .next()
+        .expect("the Play button")
+        .click();
     h.run();
     assert_eq!(h.state().0.play_state(), PlayState::Playing);
     set_position(&mut h.state_mut().0, crate_id, Vec3::ONE, 99);
@@ -310,7 +319,10 @@ fn the_buttons_at_the_top_play_pause_and_stop() {
     assert_eq!(h.state().0.play_state(), PlayState::Editing);
     assert_eq!(position(&h.state().0, crate_id), Vec3::ZERO);
     // Ctrl+S while playing is held back.
-    h.query_all_by_label("Play").next().expect("the Play button").click();
+    h.query_all_by_label("Play")
+        .next()
+        .expect("the Play button")
+        .click();
     h.run();
     h.state_mut().1.actions.clear();
     h.key_press_modifiers(egui::Modifiers::COMMAND, egui::Key::S);
