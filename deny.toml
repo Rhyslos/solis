@@ -45,6 +45,14 @@ confidence-threshold = 0.9
 # Allowed licenses no current dependency uses are fine, not a warning.
 unused-allowed-license = "allow"
 
+# One crate under another permissive licence (a data licence, for a list of
+# web certificates). It's built only for WebAssembly, which Solis never is:
+# on Windows, updates check certificates with Windows' own list (decision
+# 0043).
+exceptions = [
+    { allow = ["CDLA-Permissive-2.0"], crate = "webpki-root-certs" },
+]
+
 [licenses.private]
 # The app's own crates are not published, so they need no license check.
 ignore = true

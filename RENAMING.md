@@ -13,10 +13,11 @@ The engine is currently called **Solis**. The name is kept in as few places as p
 2. **`APP_ID`** in the same file: leave it alone unless you really want to. It decides where settings are stored, so changing it makes the editor start with fresh settings. If you do change it, add a one-time step that copies the old settings folder.
 3. **`crates/app/Cargo.toml`**: the `[[bin]] name` (the program's file name, `solis` or `solis.exe`).
 4. **`.github/workflows/ci.yml`**: the program's path and the window title passed to `window-smoke.sh` in the window test job; they must match the file name and `APP_NAME`.
-5. **`.github/workflows/windows-exe.yml`**: the file copied into the download (`solis.exe`) and the download's name (`solis-windows`).
+5. **`.github/workflows/windows-exe.yml`** and **`installer/setup.iss`**: both read the name, ID, repository and installer's name from `branding.rs` (`APP_NAME`, `APP_ID`, `UPDATE_REPO`, `INSTALLER_NAME`), so they follow by themselves. `INSTALLER_NAME` must stay the ID plus `-setup.exe` (a test checks it). The installer's `AppId` GUID must never change, or Windows sees a new program instead of an update. `AppPublisher` names the project lead.
+   - **Updates** (decision 0043): installed copies look for `INSTALLER_NAME` in the newest release of `UPDATE_REPO`. Renaming the installer or the repository strands copies installed before it: keep publishing the old installer name for a while, or ask people to install again. GitHub redirects a renamed repository's API, so `UPDATE_REPO` keeps working until the old name is taken by someone else.
 6. **`Cargo.toml`** (root): the `repository` URL, if the GitHub repository is renamed.
 7. **`LICENSE`**: only if the copyright line should name the program.
-8. **Installer and icons** (when they exist).
+8. **Icons** (when they exist).
    - **File extensions** (`project.solis`, `.solarea`, `.solassembly`, `.solmat`, [decision 0015](docs/decisions/0015-file-extensions.md); `.solmeta` sidecars and `.solbin` cache files, [decision 0021](docs/decisions/0021-asset-database-and-models.md); the cache folder `.solis/`, also named in the `.gitignore` new projects get, `crates/asset_db/src/project.rs`): keep them, since existing projects use them, or read both the old and new ones.
    - **The engine's code folder** (`CODE_FOLDER` in `branding.rs`: `assets/solis/world.lst` and the rest, which game code fetches as `"solis/world"`): keep it, or existing games' code stops finding it. The first line of those files names the program from `APP_NAME`, so it follows by itself.
    - **The turret sample** (`samples/turret/assets/`): its comments name the program (`main.lst`, `armour.rs`), and Solis builds them in, so update them with the rest.

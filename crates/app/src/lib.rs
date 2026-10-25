@@ -19,18 +19,28 @@ pub mod playground;
 pub mod project;
 pub mod sample_game;
 pub mod thumbnails;
+pub mod updates;
 pub mod window;
 
 /// The text shown by `--version`: the name and version.
 pub fn version_banner() -> String {
-    format!("{} {}", branding::APP_NAME, env!("CARGO_PKG_VERSION"))
+    format!("{} {}", branding::APP_NAME, version())
+}
+
+/// The version, with the build number when GitHub built this copy
+/// (`0.0.1 (build 57)`).
+pub fn version() -> String {
+    match updater::this_build() {
+        Some(build) => format!("{} (build {build})", env!("CARGO_PKG_VERSION")),
+        None => env!("CARGO_PKG_VERSION").to_string(),
+    }
 }
 
 /// The name and version, for the editor.
 pub fn app_info() -> editor::AppInfo {
     editor::AppInfo {
         name: branding::APP_NAME.to_string(),
-        version: env!("CARGO_PKG_VERSION").to_string(),
+        version: version(),
     }
 }
 
@@ -42,7 +52,7 @@ mod tests {
     fn banner_contains_name_and_version() {
         let banner = version_banner();
         assert!(banner.starts_with(branding::APP_NAME));
-        assert!(banner.ends_with(env!("CARGO_PKG_VERSION")));
+        assert!(banner.contains(env!("CARGO_PKG_VERSION")));
     }
 
     #[test]

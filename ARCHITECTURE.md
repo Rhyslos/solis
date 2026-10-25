@@ -6,7 +6,7 @@ Solis is a Rust program split into small, single-purpose crates. **Lower layers 
 
 | Layer | Name | Crates | Rule |
 | --- | --- | --- | --- |
-| 3 | App | `app` | Opens the window, owns the frame loop, wires the rest together. No feature logic. |
+| 3 | App | `app`, `updater` | Opens the window, owns the frame loop, wires the rest together. No feature logic. `updater` finds, downloads and checks new builds on GitHub (decision 0043). |
 | 2 | Editor | `editor` | The editor's interface: top bar, dockable panels, theme. Never needed by a game. |
 | 1 | Engine | `render`, `assets`, `asset_db`, `world`, `script`, `physics`, `input` | What games run on. Knows nothing about the editor. `assets` reads model files; `render` draws; `asset_db` keeps the project's assets by stable ID; `world` holds the running game's entities; `script` runs game code; `physics` wraps Rapier; `input` turns keys and buttons into named actions. |
 | 0 | Core | `reflect`, `area` | Shared building blocks with no GPU, window or interface. `reflect` holds IDs, values and component schemas; `area` holds the area document and the built-in components. |
@@ -43,6 +43,12 @@ Work that can be split runs in jobs on every core (`rayon`, decision 0031), in o
 The world is drawn in linear HDR colour (brighter than white allowed) into a 16-bit floating-point image, with multisampling. A last pass (`post_fs` in `crates/render/src/viewport.wgsl`) applies exposure and tone mapping (AgX, ACES or none) and converts to sRGB into a plain 8-bit RGBA image, which egui shows as it is ([decision 0017](docs/decisions/0017-hdr-tone-mapping-sky-and-fog.md)). The shader converts to sRGB itself, because letting the GPU do it would need a second "view" of the image in another format, which older and software GPUs (OpenGL) can't make, and the editor has to open on those too.
 
 The HDR image's alpha channel is a mask, not opacity: 1 where the lit world is (tone mapped), 0 for the editor's backdrop and the lines over it (shown exactly as the theme has them). Lines and the grid therefore blend their colour only and leave alpha alone, and they pick an opacity that looks the same as blending in sRGB (`overlay_alpha`), as the mockup was drawn.
+
+## Updates
+
+The Windows EXE workflow (`.github/workflows/windows-exe.yml`) builds the program on every merge into main with `BUILD_NUMBER` set to its run number, makes an installer with Inno Setup (`installer/setup.iss`, per user into `%LOCALAPPDATA%\Programs`, leaving `installed.txt` beside the program), writes its SHA-256 beside it, and publishes both as GitHub release `build-<number>`, keeping the newest ten ([decision 0043](docs/decisions/0043-installed-and-updated-from-github.md)). The name, ID, repository and installer's name are read from `branding.rs`.
+
+In the program, `updater::this_build` is the stamped number (none when built any other way). `app::updates` starts `updater::start` when the window opens and every six hours (unless the user turned Help > Update automatically off), on a thread that asks `api.github.com` for the latest release, reads it with limits and only trusts download addresses on the repository's own releases (`updater::release`), and, when it's newer and the copy is installed, downloads the installer over HTTPS (ureq with rustls, checked by the system's certificates), checks its SHA-256 and keeps it in `%LOCALAPPDATA%\<id>\updates`. Each step comes back on a channel and wakes the window. The editor shows it under Help and, when ready, as Restart to update (`editor::updates`). When the window closes, `window::run` starts the installer quietly (`/RELAUNCH=1` after Restart to update, which opens the program again).
 
 ## Checks
 

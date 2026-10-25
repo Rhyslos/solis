@@ -6,7 +6,7 @@ A free, open-source 3D game engine for stylized games, strategy games, online co
 
 ## Running it
 
-**On Windows, without building it yourself:** open the repo's **Actions** tab, click the latest **Windows EXE** run, and download **solis-windows**. Unzip it and run `solis.exe`. A new one is built whenever code is merged; to build one now, choose **Windows EXE** and **Run workflow**.
+**On Windows, without building it yourself:** download `solis-setup.exe` from the newest build on the repo's [Releases](https://github.com/Rhyslos/solis/releases) page and run it. Solis installs for your user (no administrator needed) and updates itself whenever code is merged ([decision 0043](docs/decisions/0043-installed-and-updated-from-github.md); see the manual's [Installing and updating](docs/manual/installing-and-updating.md)). Each build is also in the **Actions** tab's **Windows EXE** runs, as **solis-windows**.
 
 **From the source code:**
 
@@ -39,7 +39,7 @@ Solis is built in phases, one milestone per pull request. Each phase ends with a
 - [x] A window with the GPU drawing a 3D viewport
 - [x] The editor shell: top bar, dockable panels, three layouts, remembered between launches
 - [x] The theme, matching the final mockup
-- [x] A ready-made `solis.exe` built on GitHub (decision 0010)
+- [x] A ready-made `solis.exe` built on GitHub (decision 0010), and an installer that keeps it up to date (decision 0043)
 - [x] The ground rules, changelog check, fuzz tests, scale check and user manual
 
 **Gate:** the editor opens, panels move and remember their places, and the theme feels right. *Passed 2026-10-21.*
