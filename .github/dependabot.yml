@@ -8,6 +8,12 @@ updates:
       interval: weekly
     open-pull-requests-limit: 5
     groups:
+      # egui and the crates built on it only work at the same version, so
+      # they come together, whatever kind of update. egui_dock follows
+      # egui a little later: until it supports a new egui, this pull
+      # request fails and waits.
+      egui:
+        patterns: ["egui", "egui_*", "egui-*", "eframe", "epaint", "emath", "ecolor"]
       rust-dependencies:
         patterns: ["*"]
         update-types: ["minor", "patch"]
