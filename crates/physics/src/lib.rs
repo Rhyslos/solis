@@ -711,7 +711,7 @@ impl Physics {
             .collect();
         let sensible = |wanted: Vec3| wanted.is_finite() && dt.is_finite() && dt > 0.0;
         // Only each character's first move can be worked out ahead.
-        let mut seen = std::collections::HashSet::new();
+        let mut seen = reflect::IdSet::default();
         let first: Vec<bool> = moves
             .iter()
             .zip(&is_character)
@@ -747,6 +747,11 @@ impl Physics {
             };
             let spec = planned.spec;
             let state = self.state_mut();
+            let place = |state: &State| {
+                let entry = state.by_entity.get(&id)?;
+                state.bodies.get(entry.body).map(|b| *b.next_position())
+            };
+            let before = place(state);
             let Ok(found) = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
                 apply_one(state, planned, dt)
             })) else {
@@ -754,10 +759,15 @@ impl Physics {
                 self.broke = true;
                 return is_character;
             };
+            // Only a character that went somewhere has its entity follow
+            // (most of a crowd stands still most of the time).
+            let went = place(&self.state) != before;
             if let Some(e) = self.state_mut().by_entity.get_mut(&id) {
                 e.character = Some((spec, found));
             }
-            self.characters_moved.push(id);
+            if went {
+                self.characters_moved.push(id);
+            }
         }
         is_character
     }

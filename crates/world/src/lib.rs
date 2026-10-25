@@ -822,7 +822,11 @@ impl World {
                 (place.0, id.0, value.clone(), drawn)
             })
             .collect();
-        found.sort_unstable_by_key(|f| f.0);
+        // Usually already in order (entities are made in tree order), so
+        // only sorted when they aren't.
+        if !found.is_sorted_by_key(|f| f.0) {
+            found.sort_unstable_by_key(|f| f.0);
+        }
         found
             .into_iter()
             .map(|(_, id, value, global)| (id, value, global))
@@ -884,40 +888,42 @@ impl World {
         // by all of them before the first runs, and the tick's number is
         // known wherever checksums are compared.
         sum.u64(self.seed);
-        // Which entities, in what tree, with what names: the same while
-        // the revision is, so worked out once for it.
+        // Which entities, in what tree, with what names and component
+        // values: these change only with the area (which starts a new
+        // revision), so they're worked out once for it.
         sum.u64(*self.structure.get_or_init(|| {
             let mut structure = reflect::Checksum::new();
             structure.u64(self.order.len() as u64);
             for &(entity, parent) in &self.order {
-                if let Ok(id) = self.ecs.get::<&Id>(entity) {
+                let Ok(e) = self.ecs.entity(entity) else {
+                    continue;
+                };
+                if let Some(id) = e.get::<&Id>() {
                     structure.entity(id.0);
                 }
                 structure.u64(parent.map_or(u64::MAX, |p| p as u64));
-                if let Ok(name) = self.ecs.get::<&Name>(entity) {
+                if let Some(name) = e.get::<&Name>() {
                     structure.bytes(name.0.as_bytes());
+                }
+                if let Some(values) = e.get::<&Values>() {
+                    for (name, data) in &values.0 {
+                        structure.bytes(name.as_bytes());
+                        structure.data(data);
+                    }
                 }
             }
             structure.finish()
         }));
         for &(entity, _) in &self.order {
-            let Ok(e) = self.ecs.entity(entity) else {
+            let Ok(global) = self.ecs.get::<&Global>(entity) else {
                 continue;
             };
-            if let Some(global) = e.get::<&Global>() {
-                // Where it is, turned and scaled: the matrix's top three
-                // rows (the bottom is always 0 0 0 1).
-                let m = global.0;
-                for row in [m.row(0), m.row(1), m.row(2)] {
-                    for v in row.to_array() {
-                        sum.f32(v);
-                    }
-                }
-            }
-            if let Some(values) = e.get::<&Values>() {
-                for (name, data) in &values.0 {
-                    sum.bytes(name.as_bytes());
-                    sum.data(data);
+            // Where it is, turned and scaled: the matrix's top three rows
+            // (the bottom is always 0 0 0 1).
+            let m = global.0;
+            for row in [m.row(0), m.row(1), m.row(2)] {
+                for v in row.to_array() {
+                    sum.f32(v);
                 }
             }
         }
@@ -1048,7 +1054,7 @@ impl World {
         self.touched = true;
         // What game code moved, in the order moved, each once.
         let mut moved = std::mem::take(&mut self.physics_moved);
-        let mut seen = std::collections::HashSet::new();
+        let mut seen = reflect::IdSet::default();
         moved.retain(|id| seen.insert(*id));
         for id in moved {
             if let Some(global) = self.global(id) {

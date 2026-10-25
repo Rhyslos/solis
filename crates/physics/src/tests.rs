@@ -413,6 +413,13 @@ fn a_character_falls_lands_and_walks() {
     physics.step(1.0 / 60.0);
     assert_eq!(physics.moved().len(), 1);
     assert!(physics.moved().is_empty());
+    // One standing still isn't reported (the third review: an idle crowd
+    // had every entity follow its body each tick).
+    walk(&mut physics, Vec3::ZERO, 10);
+    let _ = physics.moved();
+    physics.move_character(id(9), Vec3::ZERO, 1.0 / 60.0);
+    physics.step(1.0 / 60.0);
+    assert!(physics.moved().is_empty());
 }
 
 #[test]
