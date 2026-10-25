@@ -8,6 +8,14 @@ pub const APP_NAME: &str = "Solis";
 /// Changing it makes the editor start with fresh settings.
 pub const APP_ID: &str = "solis";
 
+/// The GitHub repository whose releases hold each build, as `owner/name`
+/// (updates, decision 0043).
+pub const UPDATE_REPO: &str = "Rhyslos/solis";
+
+/// The installer's file name in each release: the ID and `-setup.exe`.
+/// The Windows EXE workflow names it the same way.
+pub const INSTALLER_NAME: &str = "solis-setup.exe";
+
 /// The folder in each project's assets holding the files that describe the
 /// engine to game code (`solis/world.lst`), which games fetch by this name.
 /// Changing it breaks existing games' code, like a file extension.
@@ -21,6 +29,12 @@ mod tests {
     fn names_are_not_empty() {
         assert!(!APP_NAME.trim().is_empty());
         assert!(!APP_ID.trim().is_empty());
+    }
+
+    #[test]
+    fn the_installer_is_named_after_the_id() {
+        assert_eq!(INSTALLER_NAME, format!("{APP_ID}-setup.exe"));
+        assert_eq!(UPDATE_REPO.matches('/').count(), 1);
     }
 
     #[test]

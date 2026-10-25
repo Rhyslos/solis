@@ -1,11 +1,19 @@
-# Builds solis.exe for Windows, ready to download from the Actions tab.
-# Decision 0010 (docs/decisions/0010-windows-exe-on-merge.md), which
-# loosens decision 0001 for this one build:
+# Builds the program and its installer for Windows on every merge into
+# main, and publishes them as a GitHub release that installed copies update
+# from.
+#
+# Decision 0010 (docs/decisions/0010-windows-exe-on-merge.md) set when it
+# runs; decision 0043 (docs/decisions/0043-installed-and-updated-from-github.md)
+# added the installer and the releases:
 #
 # - runs when code is merged into main (never for documentation alone),
 #   and by hand;
-# - builds only the program: no tests (the pull request already ran them)
-#   and no installer.
+# - builds only the program: no tests (the pull request already ran them);
+# - stamps the program with its build number (this workflow's run number),
+#   which installed copies compare with the newest release's;
+# - makes the installer with Inno Setup (installer/setup.iss);
+# - publishes release `build-<number>` with the installer and its SHA-256,
+#   keeping the newest ten.
 name: Windows EXE
 
 on:
@@ -32,28 +40,103 @@ env:
 
 jobs:
   exe:
-    name: Build solis.exe
+    name: Build and publish the Windows program
     runs-on: windows-latest
     # A stuck build stops here instead of using up hours of the allowance.
-    timeout-minutes: 45
+    timeout-minutes: 60
+    permissions:
+      # Publishing the release.
+      contents: write
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           persist-credentials: false
       - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2
-      - run: cargo build --release --locked -p app
+      # The name, ID and repository come from branding.rs, so renaming the
+      # program changes them here too (RENAMING.md).
+      - name: Read the program's name
+        id: brand
+        shell: bash
+        run: |
+          read_const() { sed -n "s/^pub const $1: &str = \"\(.*\)\";/\1/p" crates/app/src/branding.rs; }
+          version=$(sed -n 's/^version = "\(.*\)"/\1/p' Cargo.toml | head -n1)
+          {
+            echo "name=$(read_const APP_NAME)"
+            echo "id=$(read_const APP_ID)"
+            echo "repo=$(read_const UPDATE_REPO)"
+            echo "installer=$(read_const INSTALLER_NAME)"
+            echo "version=$version"
+            echo "build=${{ github.run_number }}"
+          } >> "$GITHUB_OUTPUT"
+      - name: Build
+        run: cargo build --release --locked -p app
+        env:
+          # Stamped into the program: what it compares updates against.
+          BUILD_NUMBER: ${{ steps.brand.outputs.build }}
       # The program and its licences side by side in one flat folder, so
-      # the downloaded zip opens straight to solis.exe. The file name is
-      # the program's (APP_ID in crates/app/src/branding.rs).
+      # the downloaded zip opens straight to the program.
       - name: Package
         shell: bash
         run: |
           mkdir dist
-          cp target/release/solis.exe LICENSE dist/
+          cp "target/release/${{ steps.brand.outputs.id }}.exe" LICENSE dist/
           cp -r licenses dist/licenses
+      - name: Make the installer
+        shell: pwsh
+        run: |
+          $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
+          if (-not (Test-Path $iscc)) {
+            choco install innosetup --no-progress -y
+          }
+          & $iscc /Qp `
+            "/DAppName=${{ steps.brand.outputs.name }}" `
+            "/DAppId=${{ steps.brand.outputs.id }}" `
+            "/DRepo=${{ steps.brand.outputs.repo }}" `
+            "/DAppVersion=${{ steps.brand.outputs.version }}" `
+            "/DBuild=${{ steps.brand.outputs.build }}" `
+            "/DSource=$PWD\dist" `
+            "/DOutput=$PWD\setup" `
+            installer\setup.iss
+          if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+      - name: Checksum
+        shell: bash
+        working-directory: setup
+        run: sha256sum "${{ steps.brand.outputs.installer }}" > "${{ steps.brand.outputs.installer }}.sha256"
       - uses: actions/upload-artifact@cf430e030ddbb5b0abf93d22962f4752f3646cd9 # v7
         with:
-          name: solis-windows
-          path: dist/
+          name: ${{ steps.brand.outputs.id }}-windows
+          path: |
+            dist/
+            setup/
           if-no-files-found: error
           retention-days: 30
+      # Only main's builds are published: they're what copies update to.
+      - name: Publish the release
+        if: github.ref == 'refs/heads/main'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          TAG: build-${{ steps.brand.outputs.build }}
+          NAME: ${{ steps.brand.outputs.name }}
+          BUILD: ${{ steps.brand.outputs.build }}
+        run: |
+          subject=$(git log -1 --format=%s)
+          printf 'Build %s of %s, from %s:\n\n> %s\n\nInstall it with the setup file below. Installed copies update to it by themselves.\n' \
+            "$BUILD" "$NAME" "$GITHUB_SHA" "$subject" > notes.md
+          if gh release view "$TAG" > /dev/null 2>&1; then
+            gh release upload "$TAG" setup/* --clobber
+          else
+            gh release create "$TAG" setup/* --title "$NAME build $BUILD" \
+              --notes-file notes.md --target "$GITHUB_SHA" --latest
+          fi
+      - name: Keep the newest ten releases
+        if: github.ref == 'refs/heads/main'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          gh release list --limit 200 --json tagName --jq '.[].tagName' \
+            | grep -E '^build-[0-9]+$' | sort -t- -k2 -n -r | tail -n +11 \
+            | while read -r tag; do gh release delete "$tag" --cleanup-tag --yes; done

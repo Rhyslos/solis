@@ -40,6 +40,7 @@ mod test_support;
 pub mod theme;
 mod top_bar;
 pub mod transforming;
+pub mod updates;
 pub mod viewport;
 mod viewport_tools;
 pub mod workbench;
@@ -58,6 +59,7 @@ pub use models::{FileLight, FileLightKind, ModelInfo};
 pub use panel::Panel;
 pub use play::PlayState;
 pub use transforming::Snapping;
+pub use updates::UpdateNotice;
 pub use viewport::{
     DrawReport, GAME_IMAGE, GpuSplit, MAX_IMAGES, NoRenderer, Overlays, Tool, VIEWPORT_IMAGE,
     VIEWS, ViewBolt, ViewLayout, ViewSettings, Viewport, ViewportRenderer, ViewportView, Views,
