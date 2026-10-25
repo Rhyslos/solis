@@ -871,20 +871,24 @@ impl Physics {
     /// moved since last asked), in entity order, with where each is now:
     /// for the world to follow after a step.
     pub fn moved(&mut self) -> Vec<(EntityId, Vec3, Quat)> {
-        let mut characters = std::mem::take(&mut self.characters_moved);
-        characters.sort_unstable();
-        characters.dedup();
-        self.state
-            .by_entity
-            .iter()
-            .filter_map(|(id, entry)| {
-                let body = self.state.bodies.get(entry.body)?;
-                let moves = body.is_dynamic() && !body.is_sleeping()
-                    || entry.character.is_some() && characters.binary_search(id).is_ok();
-                moves.then(|| {
-                    let (p, r) = from_pose(body.position());
-                    (*id, p, r)
-                })
+        let mut ids = std::mem::take(&mut self.characters_moved);
+        // Only the awake bodies Rapier keeps a list of, not every body:
+        // most of a big level rests.
+        let state = &*self.state;
+        ids.extend(state.islands.active_bodies().filter_map(|handle| {
+            let body = state.bodies.get(handle)?;
+            (body.is_dynamic() && !body.is_sleeping())
+                .then(|| reflect::Id::from_raw(body.user_data as u64).map(EntityId))
+                .flatten()
+        }));
+        ids.sort_unstable();
+        ids.dedup();
+        ids.into_iter()
+            .filter_map(|id| {
+                let entry = state.by_entity.get(&id)?;
+                let body = state.bodies.get(entry.body)?;
+                let (p, r) = from_pose(body.position());
+                Some((id, p, r))
             })
             .collect()
     }

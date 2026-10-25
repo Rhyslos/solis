@@ -4,6 +4,7 @@
 
 use super::*;
 use crate::test_support::*;
+use crate::workbench::WorkbenchAction;
 use area::EntityData;
 use area::builtin::{Collider, RigidBody};
 use glam::Vec3;
@@ -297,7 +298,7 @@ fn saving_needs_a_project_and_a_running_game() {
         w.save_of_game().unwrap_err(),
         "save games are kept in a project"
     );
-    w.save_game("quick");
+    assert!(w.save_text().is_none());
     assert!(
         w.log_lines()
             .last()

@@ -43,10 +43,11 @@ component CharacterController {
             speed = sprintSpeed;
         }
 
-        -- Falling, landing and jumping. On the ground it presses down a
-        -- little, so it follows slopes and steps down.
+        -- Falling, landing and jumping. On the ground it doesn't fall:
+        -- the CharacterBody keeps it to the ground going down steps and
+        -- slopes (and pressing down would only cost time).
         is onGround(me)? then {
-            fall = -1;
+            fall = 0;
             is pressed("Jump")? then {
                 fall = Maths:sqrt(2 * gravity * jumpHeight);
             }
