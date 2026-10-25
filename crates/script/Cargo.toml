@@ -22,5 +22,8 @@ glam.workspace = true
 lust.workspace = true
 mlua.workspace = true
 
+[dev-dependencies]
+proptest.workspace = true
+
 [lints]
 workspace = true
