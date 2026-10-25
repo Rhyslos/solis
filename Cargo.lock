@@ -3115,6 +3115,7 @@ version = "0.0.1"
 dependencies = [
  "glam 0.34.1",
  "rapier3d",
+ "rayon",
  "reflect",
 ]
 

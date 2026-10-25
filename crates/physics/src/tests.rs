@@ -647,3 +647,41 @@ fn a_character_walks_up_a_gentle_ramp_but_not_a_steep_one() {
     let steep = climb(65.0);
     assert!(steep < 0.5, "not up the steep one: {steep}");
 }
+
+#[test]
+fn many_characters_moved_together_go_exactly_where_one_by_one_would() {
+    let crowd = || {
+        let mut physics = with_floor();
+        for n in 0..40u64 {
+            let at = Vec3::new((n % 8) as f32 * 1.5, (n / 8) as f32 * 1.5, 0.0);
+            assert!(physics.add_character(id(100 + n), (at, Quat::IDENTITY), CharacterSpec::default()));
+        }
+        let (body, collider) = crate_spec();
+        physics.add(id(5), (Vec3::new(2.0, 2.0, 0.5), Quat::IDENTITY), Vec3::ONE, body, collider);
+        physics
+    };
+    let moves = |tick: u32| -> Vec<(EntityId, Vec3)> {
+        let mut moves: Vec<(EntityId, Vec3)> = (0..40u64)
+            .map(|n| {
+                let a = tick as f32 * 0.1 + n as f32;
+                (id(100 + n), Vec3::new(a.cos(), a.sin(), -0.5) * 0.07)
+            })
+            .collect();
+        // One moved twice in a tick, and one that isn't a character.
+        moves.push((id(103), Vec3::new(0.05, 0.0, 0.0)));
+        moves.push((id(5), Vec3::X));
+        moves
+    };
+    let (mut together, mut alone) = (crowd(), crowd());
+    for tick in 0..60 {
+        let m = moves(tick);
+        let answers = together.move_characters(&m, 1.0 / 60.0);
+        assert!(!answers[answers.len() - 1], "a crate isn't a character");
+        for (who, wanted) in &m {
+            alone.move_character(*who, *wanted, 1.0 / 60.0);
+        }
+        together.step(1.0 / 60.0);
+        alone.step(1.0 / 60.0);
+    }
+    assert_eq!(together.state().checksum(), alone.state().checksum());
+}

@@ -176,8 +176,13 @@ struct ViewHost {
     at: Order,
     /// What it has done so far (its order, counted on).
     next: u32,
-    /// What the running component changed this phase, newest last.
-    own: Vec<Change>,
+    /// Where the running component moved entities this phase, the last
+    /// of each (it sees its own changes at once).
+    own_moves: reflect::IdMap<Vec3>,
+    /// … turned them.
+    own_turns: reflect::IdMap<Quat>,
+    /// … set their velocities.
+    own_velocities: reflect::IdMap<Vec3>,
     kept: Kept,
 }
 
@@ -188,7 +193,9 @@ impl ViewHost {
             phase,
             at: Order::default(),
             next: 0,
-            own: Vec::new(),
+            own_moves: reflect::IdMap::default(),
+            own_turns: reflect::IdMap::default(),
+            own_velocities: reflect::IdMap::default(),
             kept: Kept::default(),
         }
     }
@@ -220,10 +227,7 @@ impl Host for ViewHost {
     }
 
     fn position(&self, which: EntityId) -> Option<Vec3> {
-        let moved = self.own.iter().rev().find_map(|c| match c {
-            Change::Move(e, place) if *e == which => Some(*place),
-            _ => None,
-        });
+        let moved = self.own_moves.get(&which).copied();
         moved.or_else(|| self.view.place(which).map(|m| m.w_axis.truncate()))
     }
 
@@ -231,15 +235,12 @@ impl Host for ViewHost {
         if self.view.index.slots.contains_key(&which) && self.kept.room() {
             let order = self.order();
             self.kept.changes.push((order, Change::Move(which, place)));
-            self.own.push(Change::Move(which, place));
+            self.own_moves.insert(which, place);
         }
     }
 
     fn rotation(&self, which: EntityId) -> Option<Quat> {
-        let turned = self.own.iter().rev().find_map(|c| match c {
-            Change::Turn(e, facing) if *e == which => Some(*facing),
-            _ => None,
-        });
+        let turned = self.own_turns.get(&which).copied();
         turned.or_else(|| {
             self.view
                 .place(which)
@@ -251,7 +252,7 @@ impl Host for ViewHost {
         if self.view.index.slots.contains_key(&which) && self.kept.room() {
             let order = self.order();
             self.kept.changes.push((order, Change::Turn(which, facing)));
-            self.own.push(Change::Turn(which, facing));
+            self.own_turns.insert(which, facing);
         }
     }
 
@@ -322,10 +323,7 @@ impl Host for ViewHost {
 
     fn velocity(&self, which: EntityId) -> Option<Vec3> {
         // A component sees its own new velocity at once.
-        let own = self.own.iter().rev().find_map(|c| match c {
-            Change::Velocity(e, v) if *e == which => Some(*v),
-            _ => None,
-        });
+        let own = self.own_velocities.get(&which).copied();
         own.or_else(|| self.view.physics.velocity(which))
     }
 
@@ -335,7 +333,7 @@ impl Host for ViewHost {
             self.kept
                 .changes
                 .push((order, Change::Velocity(which, velocity)));
-            self.own.push(Change::Velocity(which, velocity));
+            self.own_velocities.insert(which, velocity);
         }
     }
 
@@ -403,7 +401,17 @@ impl Host for ViewHost {
     fn at(&mut self, order: &Order) {
         self.at = order.clone();
         self.next = 0;
-        self.own.clear();
+        // Most components change nothing: clearing an empty map that once
+        // grew would still wipe all its room.
+        if !self.own_moves.is_empty() {
+            self.own_moves.clear();
+        }
+        if !self.own_turns.is_empty() {
+            self.own_turns.clear();
+        }
+        if !self.own_velocities.is_empty() {
+            self.own_velocities.clear();
+        }
     }
 }
 
