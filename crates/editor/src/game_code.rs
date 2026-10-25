@@ -242,6 +242,7 @@ impl GameWorld for PlayWorld<'_> {
             places: Arc::new(places),
             frame_time: self.frame_time,
             seed: self.world.seed(),
+            physics: Arc::clone(self.world.physics().state()),
         }
     }
 
@@ -255,6 +256,8 @@ impl GameWorld for PlayWorld<'_> {
                 }
                 Change::Despawn(id) => self.edits.push(GameEdit::Despawn(id)),
                 Change::Seed(seed) => self.world.set_seed(seed),
+                Change::Push(which, impulse) => self.world.push(which, impulse),
+                Change::Velocity(which, velocity) => self.world.set_velocity(which, velocity),
                 Change::Move(which, _) | Change::Turn(which, _) => {
                     // Every move and turn of one entity in a row (one
                     // component's are side by side) in one lookup; the

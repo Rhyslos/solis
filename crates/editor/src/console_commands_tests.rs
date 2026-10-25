@@ -324,11 +324,11 @@ fn tab_completes_commands_names_and_settings() {
     let done = w.complete("s");
     assert_eq!(
         done.line, "s",
-        "select, set, save, step, stop, stats share only s"
+        "select, set, save, seed, step, stop, stats share only s"
     );
     assert_eq!(
         done.choices,
-        ["select", "set", "save", "step", "stop", "stats"]
+        ["select", "set", "save", "seed", "step", "stop", "stats"]
     );
     assert_eq!(w.complete("st").line, "st");
     assert_eq!(w.complete("sta").line, "stats ");

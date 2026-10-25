@@ -61,6 +61,26 @@ pub trait Host {
     fn set_seed(&mut self, seed: u64) {
         let _ = seed;
     }
+    /// Gives an entity's body a push (kilograms times metres a second),
+    /// made at the next physics step.
+    fn push(&mut self, which: EntityId, impulse: Vec3) {
+        let _ = (which, impulse);
+    }
+    /// How fast an entity's body moves, metres a second (none without a
+    /// body).
+    fn velocity(&self, which: EntityId) -> Option<Vec3> {
+        let _ = which;
+        None
+    }
+    /// Sets how fast an entity's body moves, at the next physics step.
+    fn set_velocity(&mut self, which: EntityId, velocity: Vec3) {
+        let _ = (which, velocity);
+    }
+    /// The first collider a ray meets (see `physics::State::cast_ray`).
+    fn cast_ray(&self, from: Vec3, direction: Vec3, reach: f32) -> Option<physics::Hit> {
+        let _ = (from, direction, reach);
+        None
+    }
 
     /// The component about to run, and where what it does belongs in the
     /// tick's order ([decision 0033](../../../docs/decisions/0033-game-code-sees-the-start-of-the-tick.md)).
@@ -303,6 +323,55 @@ pub(crate) fn with_natives<'h, R>(
             scope.create_function(move |_, (low, high): (f64, f64)| {
                 let x = h.borrow_mut().random();
                 Ok(random_int(low, high, x))
+            })?,
+        )?;
+        natives.raw_set(
+            "push",
+            scope.create_function(move |_, (which, impulse): (LuaValue, LuaValue)| {
+                if let (Some(e), Some(impulse)) = (entity_of(&which), vec3_of(&impulse)) {
+                    h.borrow_mut().push(e, impulse);
+                }
+                Ok(())
+            })?,
+        )?;
+        natives.raw_set(
+            "velocityOf",
+            scope.create_function(move |_, which: LuaValue| {
+                let v = entity_of(&which).and_then(|e| h.borrow().velocity(e));
+                Ok(vec3_value(v.unwrap_or(Vec3::ZERO)))
+            })?,
+        )?;
+        natives.raw_set(
+            "setVelocity",
+            scope.create_function(move |_, (which, velocity): (LuaValue, LuaValue)| {
+                if let (Some(e), Some(velocity)) = (entity_of(&which), vec3_of(&velocity)) {
+                    h.borrow_mut().set_velocity(e, velocity);
+                }
+                Ok(())
+            })?,
+        )?;
+        // A ray's three answers, each its own native (Lust gives back one
+        // value).
+        let ray = move |(from, direction, reach): (LuaValue, LuaValue, f64)| {
+            let (from, direction) = (vec3_of(&from)?, vec3_of(&direction)?);
+            h.borrow().cast_ray(from, direction, reach as f32)
+        };
+        natives.raw_set(
+            "castRay",
+            scope.create_function(move |_, args: (LuaValue, LuaValue, f64)| {
+                Ok(ray(args).map_or(-1.0, |hit| f64::from(hit.distance)))
+            })?,
+        )?;
+        natives.raw_set(
+            "castRayHit",
+            scope.create_function(move |_, args: (LuaValue, LuaValue, f64)| {
+                Ok(ray(args).map(|hit| hit.entity.to_string()))
+            })?,
+        )?;
+        natives.raw_set(
+            "castRayNormal",
+            scope.create_function(move |_, args: (LuaValue, LuaValue, f64)| {
+                Ok(vec3_value(ray(args).map_or(Vec3::ZERO, |hit| hit.normal)))
             })?,
         )?;
         natives.raw_set(

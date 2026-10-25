@@ -63,6 +63,10 @@ pub(crate) struct Playing {
     pub(crate) pending: Vec<GameEdit>,
 }
 
+/// The longest one tick of physics may take before the game pauses and
+/// says why, like game code's tick limit.
+pub const PHYSICS_LIMIT: std::time::Duration = std::time::Duration::from_millis(250);
+
 /// The most copies of assemblies game code may make in one tick; more
 /// aren't made, and the Console says so (a component spawning every tick by
 /// mistake would otherwise grow the area until the computer runs out of
@@ -363,31 +367,46 @@ impl Workbench {
             // ticks moves from.
             playing.world.remember();
             playing.world.projectiles_mut().tick(world::TICK as f32);
-            let Some(game) = &mut playing.game else {
-                continue;
+            let mut slow = None;
+            if let Some(game) = &mut playing.game {
+                let mut host = PlayWorld::new(&mut playing.world, &mut playing.view, time);
+                host.frame_time = f64::from(seconds);
+                let ticking = std::time::Instant::now();
+                let ticked = game.tick(world::TICK, &mut host);
+                code += ticking.elapsed();
+                failures.extend(ticked.failures);
+                said.append(&mut host.said);
+                // What this tick spawned and despawned joins the world now,
+                // in the order it was asked for (decision 0035), so the next
+                // tick sees it however many ticks this frame runs.
+                let edits = std::mem::take(&mut host.edits);
+                playing.pending.extend(edits);
+                slow = ticked.pause;
+                let landing = std::time::Instant::now();
+                failures.extend(self.land_edits(time, seconds));
+                code += landing.elapsed();
+            }
+            // Physics moves on last, with game code's moves and pushes
+            // (decision 0036).
+            let Some(playing) = &mut self.playing else {
+                break;
             };
-            let mut host = PlayWorld::new(&mut playing.world, &mut playing.view, time);
-            host.frame_time = f64::from(seconds);
-            let ticking = std::time::Instant::now();
-            let ticked = game.tick(world::TICK, &mut host);
-            code += ticking.elapsed();
-            failures.extend(ticked.failures);
-            said.append(&mut host.said);
-            // What this tick spawned and despawned joins the world now,
-            // in the order it was asked for (decision 0035), so the next
-            // tick sees it however many ticks this frame runs.
-            let edits = std::mem::take(&mut host.edits);
-            playing.pending.extend(edits);
-            let landing = std::time::Instant::now();
-            failures.extend(self.land_edits(time, seconds));
-            code += landing.elapsed();
+            let stepping = std::time::Instant::now();
+            playing.world.step_physics();
+            if slow.is_none() && stepping.elapsed() > PHYSICS_LIMIT {
+                slow = Some(format!(
+                    "Physics took {:.0} ms for one tick (more than {} ms), so the game is paused \
+                     rather than falling further behind. Fewer bodies, or simpler colliders, make \
+                     it quicker.",
+                    stepping.elapsed().as_secs_f64() * 1000.0,
+                    PHYSICS_LIMIT.as_millis()
+                ));
+            }
             // Too slow: no catching up, which would only be slower; the
             // game waits for the person instead.
-            if ticked.pause.is_some() {
-                if let Some(playing) = &mut self.playing {
-                    playing.paused = true;
-                }
-                pause = ticked.pause;
+            if slow.is_some() {
+                playing.paused = true;
+                pause = slow;
                 break;
             }
         }

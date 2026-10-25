@@ -43,6 +43,11 @@ pub enum Change {
     Despawn(EntityId),
     /// `setSeed`: start the game's randomness again from this seed.
     Seed(u64),
+    /// `push`: give the entity's body a push (kilograms times metres a
+    /// second).
+    Push(EntityId, Vec3),
+    /// `setVelocity`: set how fast the entity's body moves.
+    Velocity(EntityId, Vec3),
 }
 
 /// The entities of a [`WorldView`]: the same while the world's entities,
@@ -88,6 +93,8 @@ pub struct WorldView {
     pub frame_time: f64,
     /// The game's seed, which its random numbers are made from.
     pub seed: u64,
+    /// Physics as the phase started (decision 0036), shared, to read.
+    pub physics: Arc<physics::State>,
 }
 
 impl WorldView {
@@ -288,6 +295,36 @@ impl Host for ViewHost {
         // first (Phase 6 plan, "Determinism rules").
         let order = self.order();
         random_from(self.view.seed, &order, self.phase, self.view.time)
+    }
+
+    fn push(&mut self, which: EntityId, impulse: Vec3) {
+        if impulse.is_finite() && self.view.physics.contains(which) && self.kept.room() {
+            let order = self.order();
+            self.kept.changes.push((order, Change::Push(which, impulse)));
+        }
+    }
+
+    fn velocity(&self, which: EntityId) -> Option<Vec3> {
+        // A component sees its own new velocity at once.
+        let own = self.own.iter().rev().find_map(|c| match c {
+            Change::Velocity(e, v) if *e == which => Some(*v),
+            _ => None,
+        });
+        own.or_else(|| self.view.physics.velocity(which))
+    }
+
+    fn set_velocity(&mut self, which: EntityId, velocity: Vec3) {
+        if velocity.is_finite() && self.view.physics.contains(which) && self.kept.room() {
+            let order = self.order();
+            self.kept
+                .changes
+                .push((order, Change::Velocity(which, velocity)));
+            self.own.push(Change::Velocity(which, velocity));
+        }
+    }
+
+    fn cast_ray(&self, from: Vec3, direction: Vec3, reach: f32) -> Option<physics::Hit> {
+        self.view.physics.cast_ray(from, direction, reach)
     }
 
     fn set_seed(&mut self, seed: u64) {

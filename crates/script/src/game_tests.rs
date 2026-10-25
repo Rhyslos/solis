@@ -61,6 +61,7 @@ impl GameWorld for TestWorld {
             places: Arc::new(self.entities.iter().map(|(_, _, m)| *m).collect()),
             frame_time: 1.0 / 60.0,
             seed: self.seed,
+            physics: Arc::default(),
         }
     }
 

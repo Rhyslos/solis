@@ -23,6 +23,7 @@ area = { path = "crates/area" }
 asset_db = { path = "crates/asset_db" }
 world = { path = "crates/world" }
 script = { path = "crates/script" }
+physics = { path = "crates/physics" }
 
 # Outside libraries. Every one must have a licence compatible with MIT,
 # checked by `cargo deny check` (see deny.toml and decision 0007).
@@ -51,6 +52,9 @@ percent-encoding = "2.3"
 rfd = "0.17"
 # The game's storage while it runs (decision 0024).
 hecs = "0.11"
+# Physics, in its strict mode: the same result on every PC (decision
+# 0036). Not `parallel`: its order of work isn't fixed.
+rapier3d = { version = "0.36", features = ["enhanced-determinism", "serde-serialize"] }
 # The job system: work spread over every core (decision 0031).
 rayon = "1.12"
 # Messages from the libraries (the GPU layer, say), shown in the Console.

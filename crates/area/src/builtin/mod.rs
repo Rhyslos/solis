@@ -6,12 +6,14 @@ mod camera;
 mod environment;
 mod light;
 mod model;
+mod physics;
 mod transform;
 
 pub use camera::Camera;
 pub use environment::{Environment, Sky, ToneMapping};
 pub use light::{Light, LightKind, aim, sun_rotation};
 pub use model::Model;
+pub use physics::{BodyKind, Collider, ColliderShape, RigidBody};
 pub use transform::Transform;
 
 use crate::document::{Area, EntityData};
@@ -25,6 +27,8 @@ pub fn registry() -> Result<Registry, RegistryError> {
     registry.register_type::<Environment>()?;
     registry.register_type::<Model>()?;
     registry.register_type::<Camera>()?;
+    registry.register_type::<RigidBody>()?;
+    registry.register_type::<Collider>()?;
     Ok(registry)
 }
 
@@ -123,7 +127,15 @@ mod tests {
         let names: Vec<&str> = registry.iter().map(|s| s.name.as_str()).collect();
         assert_eq!(
             names,
-            ["Camera", "Environment", "Light", "Model", "Transform"]
+            [
+                "Camera",
+                "Collider",
+                "Environment",
+                "Light",
+                "Model",
+                "RigidBody",
+                "Transform"
+            ]
         );
     }
 
@@ -148,6 +160,17 @@ mod tests {
         round_trip(&Light::spot());
         round_trip(&Environment::default());
         round_trip(&Model::default());
+        round_trip(&RigidBody::default());
+        round_trip(&Collider::default());
+        round_trip(&RigidBody {
+            kind: BodyKind::Kinematic,
+            upright: true,
+            ..RigidBody::default()
+        });
+        round_trip(&Collider {
+            shape: ColliderShape::Capsule,
+            ..Collider::default()
+        });
         let env = Environment {
             sky: Sky::Daylight,
             fog: true,
