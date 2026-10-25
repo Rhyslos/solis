@@ -132,21 +132,25 @@ impl Workbench {
     }
 
     /// The game's code started on `world`, with every entity's game
-    /// components made from the area; `None` with no code, or if its
-    /// start failed (said in the Console).
+    /// components (Lust and Rust) made from the area; `None` with no code,
+    /// or if its start failed (said in the Console).
     fn start_game(&mut self, world: &mut world::World) -> Option<script::Runtime> {
-        let chunk = self.program.clone()?;
-        let mut runtime = script::Runtime::new();
-        let mut host = WorldHost::new(world, 0.0);
-        let mut failures = Vec::new();
-        match runtime.load(&chunk, &mut host) {
-            Ok(()) => failures.extend(sync_all(&mut runtime, self.document.area(), &mut host)),
-            Err(failure) => {
-                let said = host.said;
-                self.tell_game(said, &[failure]);
-                return None;
-            }
+        if self.program.is_none() && self.rust_components.is_empty() {
+            return None;
         }
+        let mut runtime = script::Runtime::new();
+        for kind in &self.rust_components {
+            runtime.add_rust(kind.clone());
+        }
+        let mut host = WorldHost::new(world, 0.0);
+        if let Some(chunk) = self.program.clone()
+            && let Err(failure) = runtime.load(&chunk, &mut host)
+        {
+            let said = host.said;
+            self.tell_game(said, &[failure]);
+            return None;
+        }
+        let failures = sync_all(&mut runtime, self.document.area(), &mut host);
         let said = std::mem::take(&mut host.said);
         world.settle();
         self.tell_game(said, &failures);

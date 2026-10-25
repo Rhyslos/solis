@@ -58,6 +58,18 @@ impl Workbench {
         self.program = Some(chunk);
     }
 
+    /// Adds a kind of component written in Rust (a game's own): its
+    /// schema joins the registry, so Properties shows it, and play mode
+    /// runs it beside the Lust ones, sending and handling the same events.
+    pub fn add_rust_component(
+        &mut self,
+        kind: script::RustKind,
+    ) -> Result<(), reflect::RegistryError> {
+        self.register_component(kind.schema.clone())?;
+        self.rust_components.push(kind);
+        Ok(())
+    }
+
     /// The components the game's code has, by name.
     pub fn game_components(&self) -> impl Iterator<Item = &str> {
         self.game_components.iter().map(String::as_str)
