@@ -67,6 +67,7 @@ fn chunk(main: &str) -> Compiled {
             lua: Vec::new(),
             schemas: Vec::new(),
             places: Default::default(),
+            bytecode: Default::default(),
         },
         Err(problems) => panic!("{}", problems[0]),
     }

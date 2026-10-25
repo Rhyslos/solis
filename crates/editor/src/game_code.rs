@@ -6,7 +6,6 @@
 use crate::console::LogLevel;
 use crate::workbench::Workbench;
 use area::Area;
-use area::builtin::Transform;
 use glam::{Quat, Vec3};
 use reflect::EntityId;
 use script::{CodeProblem, Failure, Host, Runtime};
@@ -191,10 +190,6 @@ impl<'a> WorldHost<'a> {
             said: Vec::new(),
         }
     }
-
-    fn transform(&self, id: EntityId) -> Transform {
-        self.world.get::<Transform>(id).unwrap_or_default()
-    }
 }
 
 impl Host for WorldHost<'_> {
@@ -215,16 +210,11 @@ impl Host for WorldHost<'_> {
     }
 
     fn move_to(&mut self, which: EntityId, place: Vec3) {
-        let mut t = self.transform(which);
         // A transform is measured from the parent.
-        t.position = self
-            .world
-            .parent_global(which)
-            .inverse()
-            .transform_point3(place);
-        if t.position.is_finite() {
-            self.world.set_transform(which, t);
-        }
+        self.world.change_transform(which, |parent, mut t| {
+            t.position = parent.inverse().transform_point3(place);
+            t.position.is_finite().then_some(t)
+        });
     }
 
     fn rotation(&self, which: EntityId) -> Option<Quat> {
@@ -234,16 +224,11 @@ impl Host for WorldHost<'_> {
     }
 
     fn turn_to(&mut self, which: EntityId, facing: Quat) {
-        let mut t = self.transform(which);
-        let parent = self
-            .world
-            .parent_global(which)
-            .to_scale_rotation_translation()
-            .1;
-        t.rotation = (parent.inverse() * facing).normalize();
-        if t.rotation.is_finite() {
-            self.world.set_transform(which, t);
-        }
+        self.world.change_transform(which, |parent, mut t| {
+            let parent = parent.to_scale_rotation_translation().1;
+            t.rotation = (parent.inverse() * facing).normalize();
+            t.rotation.is_finite().then_some(t)
+        });
     }
 
     fn name(&self, which: EntityId) -> Option<String> {
@@ -251,44 +236,50 @@ impl Host for WorldHost<'_> {
     }
 }
 
-/// Makes `id`'s game components in `area` run (or gives them their
-/// changed fields), and stops those it no longer has.
-pub(crate) fn sync_entity(
+/// Makes the game components of each of `ids` in `area` run (or gives
+/// them their changed fields), and stops those an entity no longer has,
+/// with the natives lent once for all.
+pub(crate) fn sync_entities(
     runtime: &mut Runtime,
     area: &Area,
-    id: EntityId,
+    ids: impl IntoIterator<Item = EntityId> + Clone,
     host: &mut dyn Host,
 ) -> Vec<Failure> {
-    let mut failures = Vec::new();
-    match area.get(id) {
-        Some(entity) => {
-            for (name, data) in &entity.components {
-                if runtime.has_component(name)
-                    && let Err(failure) = runtime.sync(id, name, data, host)
-                {
-                    failures.push(failure);
-                }
-            }
-            runtime.retain(|e, name| e != id || entity.components.contains_key(name));
+    let components = ids.clone().into_iter().flat_map(|id| {
+        area.get(id).into_iter().flat_map(move |entity| {
+            entity
+                .components
+                .iter()
+                .map(move |(name, data)| (id, name.as_str(), data))
+        })
+    });
+    let wanted: Vec<_> = components
+        .filter(|(_, name, _)| runtime.has_component(name))
+        .collect();
+    let failures = runtime.sync_many(wanted, host);
+    for id in ids {
+        match area.get(id) {
+            Some(entity) => runtime.retain_on(id, |name| entity.components.contains_key(name)),
+            None => runtime.retain_on(id, |_| false),
         }
-        None => runtime.retain(|e, _| e != id),
     }
     failures
 }
 
-/// [`sync_entity`] for every entity in `area`, stopping components of
+/// [`sync_entities`] for every entity in `area`, stopping components of
 /// entities that are gone.
 pub(crate) fn sync_all(runtime: &mut Runtime, area: &Area, host: &mut dyn Host) -> Vec<Failure> {
-    let mut failures = Vec::new();
-    for (id, entity) in area.iter() {
-        for (name, data) in &entity.components {
-            if runtime.has_component(name)
-                && let Err(failure) = runtime.sync(id, name, data, host)
-            {
-                failures.push(failure);
-            }
-        }
-    }
+    let wanted: Vec<_> = area
+        .iter()
+        .flat_map(|(id, entity)| {
+            entity
+                .components
+                .iter()
+                .map(move |(name, data)| (id, name.as_str(), data))
+        })
+        .filter(|(_, name, _)| runtime.has_component(name))
+        .collect();
+    let failures = runtime.sync_many(wanted, host);
     runtime.retain(|id, name| {
         area.get(id)
             .is_some_and(|e| e.components.contains_key(name))

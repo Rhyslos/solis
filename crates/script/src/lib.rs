@@ -12,9 +12,10 @@ pub mod luau;
 mod lust_program;
 pub mod runtime;
 pub mod rust_component;
+mod syncing;
 mod ticking;
 
-pub use code::{Code, CodeProblem, Compiled, check, compile, gather};
+pub use code::{Bytecode, Code, CodeProblem, Compiled, check, compile, gather};
 pub use events::Event;
 pub use host::{Host, NoHost};
 /// Game code turned into Lua, ready for a [`Runtime`].

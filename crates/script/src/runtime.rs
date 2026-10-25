@@ -17,17 +17,16 @@
 //! [`crate::luau`].
 
 use crate::code::{CodeProblem, Compiled};
-use crate::convert::{from_lua, to_lua};
+use crate::convert::from_lua;
 use crate::events::{EventKinds, Queue, sender};
 use crate::host::{Host, call_with, with_natives};
-use crate::lua_components::{
-    Field, LuaClass, compile_files, lua_problem, make, read_classes, swap_classes,
-};
+use crate::lua_components::{LuaClass, compile_files, lua_problem, read_classes, swap_classes};
 use crate::luau::Luau;
 pub use crate::luau::{LOAD_LIMIT, MEMORY_LIMIT, TICK_LIMIT, TIME_LIMIT};
 use crate::lust_program::{self, LustProgram, changes, located};
 use crate::rust_component::RustKind;
-use crate::ticking::{Instance, Running, RunningMap, Ticking, caught, plain};
+use crate::syncing::Syncing;
+use crate::ticking::{Instance, RunningMap, Ticking, caught, plain};
 use mlua::{Table, Value as LuaValue};
 use reflect::{ComponentData, ComponentSchema, EntityId};
 use std::cell::{Cell, RefCell};
@@ -292,7 +291,7 @@ impl Runtime {
     /// Makes `entity`'s component `name` run, with the area's `data` (a
     /// missing or wrong value keeps the starting one), or gives it the
     /// changed fields if it's running already. Does nothing for a
-    /// component there's no code for.
+    /// component there's no code for. See [`Runtime::sync_many`].
     pub fn sync(
         &mut self,
         entity: EntityId,
@@ -300,97 +299,65 @@ impl Runtime {
         data: &ComponentData,
         host: &mut dyn Host,
     ) -> Result<(), Failure> {
-        let key = (entity, name.to_string());
-        if let Some(kind) = self.rust.get(name) {
-            match self.running.get_mut(&key) {
-                Some(running) => {
-                    let mut changed = ComponentData::default();
-                    for field in &kind.schema.fields {
-                        if let Some(now) = data.get(&field.name)
-                            && running.seen.get(&field.name) != Some(now)
-                        {
-                            changed.set(&field.name, now.clone());
-                        }
-                    }
-                    running.seen = data.clone();
-                    if let Instance::Rust(component) = &mut running.instance
-                        && !running.stopped
-                        && let Err(at) = caught(|| component.set(&changed))
-                    {
-                        running.stopped = true;
-                        return Err(Failure {
-                            entity: Some(entity),
-                            component: name.to_string(),
-                            at,
-                            stopped: true,
-                        });
-                    }
-                }
-                None => {
-                    let made = caught(|| (kind.make)(data)).map_err(|at| Failure {
-                        entity: Some(entity),
-                        component: name.to_string(),
-                        at,
-                        stopped: true,
-                    })?;
-                    self.running
-                        .insert(key, Running::new(Instance::Rust(made), data));
-                }
-            }
-            return Ok(());
+        match self.sync_many([(entity, name, data)], host).pop() {
+            Some(failure) => Err(failure),
+            None => Ok(()),
         }
-        if self.left_out.contains(name) {
-            return Ok(());
-        }
-        let fail = |at: CodeProblem| Failure {
-            entity: Some(entity),
-            component: name.to_string(),
-            at,
-            stopped: true,
+    }
+
+    /// [`Runtime::sync`] for many components at once, with the natives
+    /// lent once and all the game code it runs (new components' starts)
+    /// sharing [`LOAD_LIMIT`]. Gives back the failures.
+    pub fn sync_many<'a>(
+        &mut self,
+        components: impl IntoIterator<Item = (EntityId, &'a str, &'a ComponentData)>,
+        host: &mut dyn Host,
+    ) -> Vec<Failure> {
+        let code = Syncing {
+            luau: &self.luau,
+            lust: self.lust.as_ref(),
+            lua_classes: &self.lua_classes,
+            rust: &self.rust,
+            left_out: &self.left_out,
         };
-        let lua_class = self.lua_classes.get(name);
-        let lust = self.lust.as_ref();
-        let locate = |err: mlua::Error| match (lua_class, lust) {
-            (None, Some(program)) => located(&program.chunk, &err),
-            (class, _) => lua_problem(class.map_or("", |c| &c.path), &err),
-        };
-        let Some(fields) = lua_class
-            .map(|c| &c.fields)
-            .or_else(|| lust.and_then(|p| p.fields.get(name)))
-        else {
-            return Ok(());
-        };
-        if let Some(running) = self.running.get_mut(&key) {
-            if let Instance::Lust(table) | Instance::Lua(table) = &running.instance {
-                for field in fields {
-                    let now = data.get(&field.name);
-                    if now != running.seen.get(&field.name)
-                        && let Some(value) =
-                            now.and_then(|v| to_lua(&self.luau.lua, &field.kind, v))
-                    {
-                        // Raw: the field is the component's own, and its
-                        // metatable is game code's.
-                        table
-                            .raw_set(field.key.as_str(), value)
-                            .map_err(|e| fail(locate(e)))?;
+        let running = &mut self.running;
+        let mut failures = Vec::new();
+        let lust_env = self.lust.as_ref().map(|p| &p.env);
+        let luau = &self.luau;
+        let lent = luau.clock.within(LOAD_LIMIT, || {
+            with_natives(luau, lust_env, host, Some(&self.send), |_| {
+                for (entity, name, data) in components {
+                    if let Err(failure) = code.sync(running, entity, name, data) {
+                        failures.push(failure);
                     }
                 }
-            }
-            running.seen = data.clone();
-            return Ok(());
+                Ok(())
+            })
+        });
+        if let Err(err) = lent {
+            failures.push(Failure {
+                entity: None,
+                component: String::new(),
+                at: lua_problem("", &err),
+                stopped: false,
+            });
         }
-        let instance = match (lua_class, lust) {
-            (Some(class), _) => Instance::Lua(
-                make(&self.luau.lua, class, entity, data).map_err(|e| fail(locate(e)))?,
-            ),
-            (None, Some(program)) => Instance::Lust(
-                self.make_lust(program, fields, entity, name, data, host)
-                    .map_err(|e| fail(locate(e)))?,
-            ),
-            (None, None) => return Ok(()),
-        };
-        self.running.insert(key, Running::new(instance, data));
-        Ok(())
+        failures
+    }
+
+    /// Stops `entity`'s running components that `keep` says no to (gone
+    /// from the entity), or all of them if it's gone.
+    pub fn retain_on(&mut self, entity: EntityId, mut keep: impl FnMut(&str) -> bool) {
+        let gone: Vec<(EntityId, String)> = self
+            .running
+            .range((entity, String::new())..)
+            .take_while(|((e, _), _)| *e == entity)
+            .filter(|((_, name), _)| !keep(name))
+            .map(|(key, _)| key.clone())
+            .collect();
+        for key in gone {
+            self.running.remove(&key);
+        }
     }
 
     /// Stops every running component `keep` says no to (its entity or
@@ -429,6 +396,7 @@ impl Runtime {
             luau: &self.luau,
             queue: &self.queue,
             chunk: self.lust.as_ref().map(|p| &p.chunk),
+            lust: self.lust.as_ref(),
             events: self.lust.as_ref().map(|p| &*p.events),
             told: &self.told,
             lua_classes: &self.lua_classes,
@@ -501,10 +469,13 @@ impl Runtime {
             stopped: true,
         };
         let lust_code = match &code.lust {
-            Some(chunk) => Some((chunk, lust_program::compile(&self.luau, chunk)?)),
+            Some(chunk) => Some((
+                chunk,
+                lust_program::compile(&self.luau, chunk, code.bytecode.lust.as_deref())?,
+            )),
             None => None,
         };
-        let files = compile_files(&self.luau, &code.lua).map_err(failed)?;
+        let files = compile_files(&self.luau, &code.lua, &code.bytecode.lua).map_err(failed)?;
         let luau = &self.luau;
         let (lust, classes) = luau.clock.within(LOAD_LIMIT, || {
             let lust = match lust_code {
@@ -544,36 +515,6 @@ impl Runtime {
         self.lust = lust;
         self.lua_classes = classes;
         self.told.set(false);
-    }
-
-    /// A new Lust component (Lust's `new`, its start values), with the
-    /// area's values where they fit.
-    fn make_lust(
-        &self,
-        program: &LustProgram,
-        fields: &[Field],
-        entity: EntityId,
-        name: &str,
-        data: &ComponentData,
-        host: &mut dyn Host,
-    ) -> mlua::Result<Table> {
-        let new: mlua::Function = program.api.raw_get("new")?;
-        let table: Table = call_with(
-            &self.luau,
-            Some(&program.env),
-            host,
-            Some(&self.send),
-            || new.call((name, entity.to_string())),
-        )?;
-        for field in fields {
-            if let Some(value) = data
-                .get(&field.name)
-                .and_then(|v| to_lua(&self.luau.lua, &field.kind, v))
-            {
-                table.raw_set(field.key.as_str(), value)?;
-            }
-        }
-        Ok(table)
     }
 }
 
@@ -641,3 +582,7 @@ mod hostile_tests;
 #[cfg(test)]
 #[path = "runtime_seams_tests.rs"]
 mod seams_tests;
+
+#[cfg(test)]
+#[path = "runtime_speed_tests.rs"]
+mod speed_tests;
