@@ -92,6 +92,8 @@ unsafe_code = "deny"
 # Every public item must be documented.
 missing_docs = "deny"
 unreachable_pub = "warn"
+# The fuzz targets (fuzz/, decision 0042) build Solis with `--cfg fuzzing`.
+unexpected_cfgs = { level = "warn", check-cfg = ["cfg(fuzzing)"] }
 
 [workspace.lints.clippy]
 # Library code never crashes on purpose. Tests are exempt through clippy.toml.

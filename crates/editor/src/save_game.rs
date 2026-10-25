@@ -195,7 +195,10 @@ impl Save {
         let body = rest;
         let head =
             format!("project {project}\ntick {tick_text}\ntime {time_text}\nseed {seed_text}\n");
-        if sum_of(&head, body) != sum {
+        // A fuzzer can't make a matching checksum, so while fuzzing it's
+        // left unchecked and the rest of the reader is tried (decision
+        // 0042); everywhere else a damaged save is refused here.
+        if sum_of(&head, body) != sum && !cfg!(fuzzing) {
             return Err("it's damaged (its checksum doesn't match)".to_string());
         }
         let ticks: u64 = tick_text.parse().map_err(|_| damaged())?;

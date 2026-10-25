@@ -747,6 +747,49 @@ mod tests {
         assert_eq!(fixed.meshes, model.meshes);
     }
 
+    /// Writes models and import cache entries for the fuzzers to start
+    /// from (decision 0042), into the folder `SOLIS_FUZZ_SEEDS` names. Run
+    /// by `fuzz/make-seeds.sh`.
+    #[test]
+    #[ignore = "writes the fuzzers' seed files; run by fuzz/make-seeds.sh"]
+    fn write_fuzz_seeds() {
+        let Ok(dir) = std::env::var("SOLIS_FUZZ_SEEDS") else {
+            return;
+        };
+        let dir = std::path::PathBuf::from(dir);
+        let limits = Limits::default();
+        for folder in ["model", "import_cache", "sidecar"] {
+            std::fs::create_dir_all(dir.join(folder)).unwrap();
+        }
+        let mut models = vec![("sample".to_string(), assets::sample::sample_glb())];
+        for name in ["block", "crate", "platform", "character"] {
+            models.push((name.to_string(), assets::sample::playground_glb(name)));
+        }
+        for (name, glb) in models {
+            if glb.is_empty() {
+                continue;
+            }
+            std::fs::write(dir.join("model").join(format!("{name}.glb")), &glb).unwrap();
+            if let Ok(mut model) = assets::load_bytes(&glb, None, &name, &limits) {
+                with_lods(&mut model);
+                std::fs::write(
+                    dir.join("import_cache").join(format!("{name}.solbin")),
+                    encode(&model),
+                )
+                .unwrap();
+                let mut hash = crate::ContentHash::default();
+                hash.update(&glb);
+                let mut sidecar = crate::Sidecar::new(hash.finish());
+                let _ = sidecar.assign_parts(&crate::sidecar::model_parts(&model));
+                std::fs::write(
+                    dir.join("sidecar").join(format!("{name}.solmeta")),
+                    sidecar.to_text(),
+                )
+                .unwrap();
+            }
+        }
+    }
+
     #[test]
     fn an_entry_with_numbers_the_importer_never_makes_is_refused() {
         // The third security audit: a project can ship its cache, and the

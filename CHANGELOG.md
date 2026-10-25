@@ -77,6 +77,8 @@ What changed in each version, for people using Solis. Newest first.
 
 ### Fixed
 
+- **Found by fuzzing** (Phase 6 hardening): two components (or classes, or objects) with the same name, an easy slip when copying one, made checking the code never finish, so the editor waited for ever and a core stayed busy. It's now a mistake in Problems, saying where the other one is. And should checking ever take more than 30 seconds, it's given up on with a message, instead of waiting for ever.
+
 - **Easier to use** (from a user test of Phase 6):
   - A setting that points at another entity showed a long ID and couldn't be changed in Properties; it shows the entity's name, and a list (with a search box, and None) picks another.
   - While playing, Properties showed the values game code's components started with; it shows them as they are now, and says so.

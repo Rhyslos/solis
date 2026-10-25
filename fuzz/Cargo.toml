@@ -1,0 +1,95 @@
+# Fuzz targets for every reader of a file a project can ship
+# (decision 0042). Not part of the workspace: they need cargo-fuzz.
+#
+#   cargo fuzz run save_game        (nightly, as CI's weekly job does)
+#
+# See fuzz/README.md.
+[package]
+name = "solis-fuzz"
+version = "0.0.0"
+publish = false
+edition = "2024"
+license = "MIT"
+
+[package.metadata]
+cargo-fuzz = true
+
+[dependencies]
+libfuzzer-sys = "0.4"
+editor = { path = "../crates/editor" }
+input = { path = "../crates/input" }
+area = { path = "../crates/area" }
+assets = { path = "../crates/assets" }
+asset_db = { path = "../crates/asset_db" }
+script = { path = "../crates/script" }
+reflect = { path = "../crates/reflect" }
+
+# Its own workspace, so the engine's never builds it.
+[workspace]
+
+[profile.release]
+debug = 1
+
+[[bin]]
+name = "save_game"
+path = "fuzz_targets/save_game.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "recording"
+path = "fuzz_targets/recording.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "input_actions"
+path = "fuzz_targets/input_actions.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "area_file"
+path = "fuzz_targets/area_file.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "model"
+path = "fuzz_targets/model.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "import_cache"
+path = "fuzz_targets/import_cache.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "sidecar"
+path = "fuzz_targets/sidecar.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "project_file"
+path = "fuzz_targets/project_file.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "game_code"
+path = "fuzz_targets/game_code.rs"
+test = false
+doc = false
+bench = false
+
