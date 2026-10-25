@@ -1,6 +1,7 @@
 //! The editor window: opens it with eframe (winit + wgpu), restores the
 //! settings saved last time, and hands each frame to the workbench.
 
+use crate::area_file::{AreaFiles, Purpose};
 use crate::branding;
 use crate::gpu::GpuViewport;
 use crate::import::{Finished, FolderFor, Importer};
@@ -12,7 +13,7 @@ use editor::{
 };
 use eframe::egui;
 use reflect::AssetId;
-use std::collections::HashSet;
+use std::collections::{HashSet, VecDeque};
 use std::path::{Path, PathBuf};
 
 /// Key under which the panel layout is remembered between sessions.
@@ -48,6 +49,10 @@ struct App {
     /// Models being read to be placed in the area when they arrive (the
     /// rest being read are reloads).
     to_place: HashSet<AssetId>,
+    /// The open area's file: saving, opening, and changes on disk.
+    area_files: AreaFiles,
+    /// Actions waiting for a Save window to close (Save, then quit).
+    queued: VecDeque<WorkbenchAction>,
     /// The window title last set, to change it only when it changes.
     title: String,
 }
@@ -104,6 +109,8 @@ impl App {
             importer,
             projects: Projects::with_recent(recent),
             to_place: HashSet::new(),
+            area_files: AreaFiles::default(),
+            queued: VecDeque::new(),
             title: String::new(),
         };
         app.workbench.set_recent(app.projects.recent().to_vec());
@@ -124,6 +131,7 @@ impl App {
                     gpu.clear_models();
                 }
                 self.to_place.clear();
+                self.area_files.forget();
                 self.workbench.set_project(Some(opened.info));
                 for note in opened.notes {
                     self.workbench.log(LogLevel::Warning, note);
@@ -297,6 +305,132 @@ impl App {
         self.workbench.set_library(self.projects.library());
     }
 
+    /// Starts reading every model the open area uses that isn't loaded
+    /// yet (after opening or reloading an area).
+    fn load_area_models(&mut self) {
+        let Some(db) = self.projects.db() else { return };
+        let wanted: Vec<AssetId> = self
+            .workbench
+            .document()
+            .area()
+            .with::<area::builtin::Model>()
+            .filter_map(|(_, m)| m.asset.map(|r| r.asset))
+            .filter(|id| !self.workbench.has_model(*id))
+            .collect::<HashSet<_>>()
+            .into_iter()
+            .collect();
+        let mut jobs = Vec::new();
+        for id in wanted {
+            if let Some(file) = db.file(id) {
+                jobs.push((id, file));
+            }
+        }
+        for (id, file) in jobs {
+            self.importer.start(id, &file, self.projects.cache());
+        }
+    }
+
+    /// The area as text, with the asset paths for comments.
+    fn area_text(&self) -> String {
+        let document = self.workbench.document();
+        let db = self.projects.db();
+        area::text::write(document.area(), &document.registry, &|id| {
+            db.and_then(|db| db.get(id))
+                .map(|r| r.path.display().to_string().replace('\\', "/"))
+        })
+    }
+
+    /// Saves the area to `path`; whether it worked.
+    fn save_to(&mut self, path: &Path) -> bool {
+        let text = self.area_text();
+        match self.area_files.save(path, &text) {
+            Ok(()) => {
+                self.workbench.mark_saved(path.to_path_buf());
+                true
+            }
+            Err(why) => {
+                self.workbench.log(
+                    LogLevel::Error,
+                    format!("Couldn't save {}: {why}.", file_name(path)),
+                );
+                false
+            }
+        }
+    }
+
+    /// Opens the area file at `path`.
+    fn open_area(&mut self, path: &Path) {
+        match AreaFiles::read(path, &self.workbench.document().registry) {
+            Ok(area) => {
+                self.workbench.open_area(area, path.to_path_buf());
+                self.area_files.watch(path);
+                self.load_area_models();
+            }
+            Err(why) => self.workbench.log(
+                LogLevel::Error,
+                format!("Couldn't open {}: {why}.", file_name(path)),
+            ),
+        }
+    }
+
+    /// The folder Open and Save windows start in: the project's areas, or
+    /// its assets.
+    fn areas_folder(&self) -> Option<PathBuf> {
+        let assets = self.projects.db()?.project().assets();
+        let areas = assets.join("areas");
+        Some(if areas.is_dir() { areas } else { assets })
+    }
+
+    /// Carries out the queued actions in order. A save that needs the Save
+    /// window pauses the rest until it closes.
+    fn run_queue(&mut self, ctx: &egui::Context) {
+        while let Some(action) = self.queued.pop_front() {
+            match action {
+                WorkbenchAction::Quit => ctx.send_viewport_cmd(egui::ViewportCommand::Close),
+                WorkbenchAction::ImportModel => self.importer.ask(),
+                WorkbenchAction::NewProject => self.importer.ask_folder(FolderFor::NewProject),
+                WorkbenchAction::OpenProject => self.importer.ask_folder(FolderFor::OpenProject),
+                WorkbenchAction::OpenRecent(root) => self.open_project(&root, false),
+                WorkbenchAction::PlaceAsset(id) => self.place(id),
+                WorkbenchAction::AddSampleArea => {
+                    let id = self.importer.start_sample("Sample area");
+                    self.to_place.insert(id);
+                    self.workbench
+                        .log(LogLevel::Info, "Adding the sample area…".to_string());
+                }
+                WorkbenchAction::NewArea => {
+                    self.workbench.new_area();
+                    self.area_files.forget();
+                }
+                WorkbenchAction::OpenArea => {
+                    let folder = self.areas_folder();
+                    self.area_files.ask(Purpose::Open, folder, "");
+                }
+                WorkbenchAction::SaveArea => {
+                    match self.workbench.document().file().map(Path::to_path_buf) {
+                        Some(path) => {
+                            if !self.save_to(&path) {
+                                // A failed save never lets a quit through.
+                                self.queued.clear();
+                            }
+                        }
+                        None => {
+                            let (folder, name) =
+                                (self.areas_folder(), self.workbench.document().name());
+                            self.area_files.ask(Purpose::Save, folder, &name);
+                            return;
+                        }
+                    }
+                }
+                WorkbenchAction::SaveAreaAs => {
+                    let (folder, name) = (self.areas_folder(), self.workbench.document().name());
+                    self.area_files.ask(Purpose::Save, folder, &name);
+                    return;
+                }
+            }
+        }
+    }
+
     /// Places a project asset where the camera looks: it's read (from the
     /// cache, so quickly) and placed when it arrives.
     fn place(&mut self, id: AssetId) {
@@ -343,28 +477,47 @@ impl eframe::App for App {
         }
         let (changes, notes) = self.projects.poll();
         self.follow_changes(changes, notes);
+        match self.area_files.chosen() {
+            Some((Purpose::Open, Some(path))) => self.open_area(&path),
+            Some((Purpose::Save, Some(path))) => {
+                if self.save_to(&path) {
+                    self.run_queue(&ctx);
+                } else {
+                    self.queued.clear();
+                }
+            }
+            // Cancelled: whatever waited for the save (a quit) doesn't
+            // happen.
+            Some((_, None)) => self.queued.clear(),
+            None => {}
+        }
+        if let Some(path) = self.area_files.changed_on_disk() {
+            match AreaFiles::read(&path, &self.workbench.document().registry) {
+                Ok(area) => {
+                    self.workbench.offer_reload(area);
+                    self.load_area_models();
+                }
+                Err(why) => self.workbench.log(
+                    LogLevel::Warning,
+                    format!(
+                        "{} changed on disk but can't be read ({why}); keeping what's open.",
+                        file_name(&path)
+                    ),
+                ),
+            }
+        }
+        if ctx.input(|i| i.viewport().close_requested()) && !self.workbench.close_requested() {
+            ctx.send_viewport_cmd(egui::ViewportCommand::CancelClose);
+        }
         self.collect_imports();
         self.workbench.set_files_hovering(hovering);
         let renderer: &mut dyn editor::ViewportRenderer = match self.gpu.as_mut() {
             Some(gpu) => gpu,
             None => &mut self.no_gpu,
         };
-        for action in self.workbench.show(ui, renderer) {
-            match action {
-                WorkbenchAction::Quit => ctx.send_viewport_cmd(egui::ViewportCommand::Close),
-                WorkbenchAction::ImportModel => self.importer.ask(),
-                WorkbenchAction::NewProject => self.importer.ask_folder(FolderFor::NewProject),
-                WorkbenchAction::OpenProject => self.importer.ask_folder(FolderFor::OpenProject),
-                WorkbenchAction::OpenRecent(root) => self.open_project(&root, false),
-                WorkbenchAction::PlaceAsset(id) => self.place(id),
-                WorkbenchAction::AddSampleArea => {
-                    let id = self.importer.start_sample("Sample area");
-                    self.to_place.insert(id);
-                    self.workbench
-                        .log(LogLevel::Info, "Adding the sample area…".to_string());
-                }
-            }
-        }
+        let actions = self.workbench.show(ui, renderer);
+        self.queued.extend(actions);
+        self.run_queue(&ctx);
         let title = self.workbench.title();
         if title != self.title {
             ctx.send_viewport_cmd(egui::ViewportCommand::Title(title.clone()));

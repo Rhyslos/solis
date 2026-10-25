@@ -13,7 +13,7 @@
 3. For fog, tick **Fog**, then set **Half hidden at**: the distance at which half of a thing disappears into the fog.
 4. Adjust **Exposure** and choose the **Tone mapping**.
 
-These settings belong to the area (the Environment is an [entity](concepts.md#the-area) like any other), so they'll be saved with it once saving areas arrives later in Phase 2; until then they start fresh each time. With the daylight sky, try selecting **Sun** and dragging its **Rotation** X from 30° up to 90° and beyond to watch the day turn to sunset and night.
+These settings belong to the area (the Environment is an [entity](concepts.md#the-area) like any other), so they're [saved with it](saving-areas.md); a new area starts with the usual ones. With the daylight sky, try selecting **Sun** and dragging its **Rotation** X from 30° up to 90° and beyond to watch the day turn to sunset and night.
 
 ## Settings
 

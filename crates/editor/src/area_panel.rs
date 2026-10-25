@@ -168,7 +168,7 @@ pub(crate) fn area_tree(
                 "To see a model, use File > Import model, or drop a .gltf or .glb file onto \
                  the window. Entity > Add point light adds a lamp."
             } else {
-                "Areas can't be saved yet: saving arrives later in Phase 2."
+                "Save the area with Ctrl+S; it's a text file Git can merge."
             };
             // Only the rows in view are drawn, so thousands of entities
             // cost no more than a screenful (CONTRIBUTING.md, rule 18).

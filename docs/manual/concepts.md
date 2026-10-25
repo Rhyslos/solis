@@ -25,7 +25,7 @@
 - **Fly camera:** the way you move around the viewport: you steer the camera like a drone. See [Moving around the viewport](navigating-the-viewport.md).
 ## The area
 
-- **Area:** everything in one place of your game (a level, a menu, a room), made of entities. Other engines call this a *scene*. See [Entities and components](entities.md).
+- **Area:** everything in one place of your game (a level, a menu, a room), made of entities. Other engines call this a *scene*. Each area is saved as one `.solarea` text file; see [Saving areas](saving-areas.md). See [Entities and components](entities.md).
 - **Entity:** one thing in an area: a model, a light, the sky. On its own it's only a name; its components make it something.
 - **Component:** one part of what an entity is, with settings. A **Transform** says where it is; a **Light** makes it shine; a **Model** draws an imported model. Mixing components makes different things, the way one Lego brick goes into many builds.
 - **Transform:** an entity's position, rotation and scale.

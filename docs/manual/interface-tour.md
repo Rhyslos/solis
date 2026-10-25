@@ -8,7 +8,7 @@ When finding your way around, or making the layout suit your screen.
 ## How to use it
 
 **The top bar**, from left to right:
-- **Menus:** File, Edit, View, Entity, Build, Window and Help. **File > New project…**, **Open project…** and **Recent projects** work with [projects](projects-and-the-library.md); **File > Import model…** brings a model in (see [Importing models](importing-models.md)); **Edit > Undo** and **Redo** take back changes (see [Undo and redo](undo.md)); **Help > Add the sample area** brings in a ready-made one. Items that don't work yet are greyed out; point at one to see which phase brings it.
+- **Menus:** File, Edit, View, Entity, Build, Window and Help. **File > New project…**, **Open project…** and **Recent projects** work with [projects](projects-and-the-library.md); **New area**, **Open area…**, **Save area** and **Save area as…** with [area files](saving-areas.md); **File > Import model…** brings a model in (see [Importing models](importing-models.md)); **Edit > Undo** and **Redo** take back changes (see [Undo and redo](undo.md)); **Help > Add the sample area** brings in a ready-made one. Items that don't work yet are greyed out; point at one to see which phase brings it.
 - **The area tab:** the open area ("Untitled area"). Opening more areas, assemblies and code side by side arrives in Phase 2.
 - **Play**, **Play with two players** and **Stop**, then **Build** and **Build & Play**, on the right. They tell you in the Console which phase brings them.
 

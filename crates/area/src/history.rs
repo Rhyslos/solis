@@ -36,6 +36,9 @@ pub struct Step<S> {
     /// The selection after it.
     after: S,
     bytes: usize,
+    /// Tells this step's result apart from every other state, for
+    /// [`History::state`].
+    serial: u64,
 }
 
 impl<S> Step<S> {
@@ -81,6 +84,8 @@ pub struct History<S> {
     /// Whether the newest step may still take more edits (false after
     /// undo or redo, so a returned-to step never grows).
     open: bool,
+    /// The next step's serial.
+    next_serial: u64,
 }
 
 impl<S: Clone> Default for History<S> {
@@ -99,6 +104,7 @@ impl<S: Clone> History<S> {
             bytes: 0,
             limit,
             open: false,
+            next_serial: 1,
         }
     }
 
@@ -132,6 +138,8 @@ impl<S: Clone> History<S> {
             step.undo = undo;
             step.after = after;
             compact(&mut step);
+            // A step that grew is a new state.
+            step.serial = self.serial();
             if step.changes_nothing() {
                 // Back where it started: no step at all. The next edit of
                 // the same gesture starts a new one.
@@ -149,12 +157,26 @@ impl<S: Clone> History<S> {
                 before,
                 after,
                 bytes: 0,
+                serial: self.serial(),
             };
             step.measure();
             self.push(step);
         }
         self.open = true;
         Ok(())
+    }
+
+    fn serial(&mut self) -> u64 {
+        self.next_serial += 1;
+        self.next_serial - 1
+    }
+
+    /// A number standing for the area as it is now: it comes back exactly
+    /// when undo or redo return to the same point, so comparing it with
+    /// the one at the last save says whether there are unsaved changes.
+    /// 0 is the start (nothing done).
+    pub fn state(&self) -> u64 {
+        self.undo.back().map_or(0, |s| s.serial)
     }
 
     fn push(&mut self, step: Step<S>) {
@@ -233,9 +255,12 @@ impl<S: Clone> History<S> {
         self.open = false;
     }
 
-    /// Forgets everything (a new area was opened).
+    /// Forgets everything (a new area was opened). Serials keep counting,
+    /// so no old state is mistaken for a new one.
     pub fn clear(&mut self) {
+        let next = self.next_serial;
         *self = Self::with_limit(self.limit);
+        self.next_serial = next;
     }
 }
 
@@ -374,6 +399,31 @@ mod tests {
             .unwrap();
         assert_eq!(h.undo_len(), 2);
         assert_eq!(strength(&s, id), 1400.0);
+    }
+
+    #[test]
+    fn the_state_comes_back_with_undo_and_redo() {
+        let (mut s, id) = lamp();
+        let mut h = History::<()>::default();
+        assert_eq!(h.state(), 0);
+        h.apply(&mut s, "A", vec![set(id, 1.0)], None, (), ())
+            .unwrap();
+        let saved = h.state();
+        h.apply(&mut s, "B", vec![set(id, 2.0)], DRAG, (), ())
+            .unwrap();
+        let after_b = h.state();
+        assert_ne!(after_b, saved);
+        // The drag grows: a new state.
+        h.apply(&mut s, "B", vec![set(id, 3.0)], DRAG, (), ())
+            .unwrap();
+        assert_ne!(h.state(), after_b);
+        let grown = h.state();
+        h.undo(&mut s).unwrap().unwrap();
+        assert_eq!(h.state(), saved, "back at the save");
+        h.redo(&mut s).unwrap().unwrap();
+        assert_eq!(h.state(), grown);
+        h.clear();
+        assert_eq!(h.state(), 0);
     }
 
     #[test]

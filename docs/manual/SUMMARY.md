@@ -12,6 +12,7 @@ New to game engines? Start with [Concepts](concepts.md).
 - [Moving around the viewport: the fly camera, the grid and the corner controls](navigating-the-viewport.md)
 - [Entities and components: what an area is made of](entities.md)
 - [Undo and redo: take back any change](undo.md)
+- [Saving areas: files Git can merge](saving-areas.md)
 - [Projects and the Library: keeping your game's files together](projects-and-the-library.md)
 - [Importing models: glTF files from Blender, Aventail and other programs](importing-models.md)
 - [Looks: standard, stylized and unlit](looks.md)

@@ -1265,3 +1265,126 @@ fn opening_another_project_starts_a_new_area_and_reloads_swap_models() {
     assert!(w.models().is_empty());
     assert_eq!(w.document().area().len(), 2, "a fresh area");
 }
+
+#[test]
+fn the_tab_and_title_show_unsaved_changes_and_saving_clears_them() {
+    let mut w = Workbench::new(info(), None);
+    assert!(!w.document().is_dirty());
+    w.add_point_light();
+    assert!(w.document().is_dirty());
+    assert_eq!(w.title(), "Test Engine 9.9.9 · Untitled area •");
+    w.mark_saved("/levels/harbour.solarea".into());
+    assert_eq!(w.title(), "Test Engine 9.9.9 · harbour");
+    let mut h = harness_with(w);
+    h.run();
+    let _ = h.get_by_label("harbour");
+    // Undo after saving is a change; redo is back at the save.
+    h.state_mut().undo();
+    assert!(h.state().document().is_dirty());
+    h.state_mut().redo();
+    assert!(!h.state().document().is_dirty());
+}
+
+#[test]
+fn ctrl_s_saves_and_ctrl_shift_s_saves_as() {
+    let mut h = acting(Workbench::new(info(), None));
+    h.run();
+    h.key_press_modifiers(egui::Modifiers::COMMAND, egui::Key::S);
+    h.run();
+    h.key_press_modifiers(
+        egui::Modifiers::COMMAND | egui::Modifiers::SHIFT,
+        egui::Key::S,
+    );
+    h.run();
+    h.key_press_modifiers(egui::Modifiers::COMMAND, egui::Key::O);
+    h.run();
+    h.key_press_modifiers(egui::Modifiers::COMMAND, egui::Key::N);
+    h.run();
+    assert_eq!(
+        h.state().1,
+        [
+            WorkbenchAction::SaveArea,
+            WorkbenchAction::SaveAreaAs,
+            WorkbenchAction::OpenArea,
+            WorkbenchAction::NewArea
+        ]
+    );
+}
+
+#[test]
+fn leaving_unsaved_changes_asks_first() {
+    let mut w = Workbench::new(info(), None);
+    w.add_point_light();
+    let mut h = acting(w);
+    h.run();
+    h.key_press_modifiers(egui::Modifiers::COMMAND, egui::Key::N);
+    h.run();
+    assert!(h.state().1.is_empty(), "nothing happens before the answer");
+    h.get_by_label("Cancel").click();
+    h.run();
+    assert!(h.state().1.is_empty());
+    h.key_press_modifiers(egui::Modifiers::COMMAND, egui::Key::N);
+    h.run();
+    h.get_by_label("Save").click();
+    h.run();
+    assert_eq!(
+        h.state().1,
+        [WorkbenchAction::SaveArea, WorkbenchAction::NewArea]
+    );
+    // Closing the window asks too; Don't save lets it close.
+    assert!(!h.state_mut().0.close_requested());
+    h.run();
+    h.get_by_label("Don't save").click();
+    h.run();
+    assert_eq!(h.state().1.last(), Some(&WorkbenchAction::Quit));
+    assert!(h.state_mut().0.close_requested());
+}
+
+#[test]
+fn an_area_changed_on_disk_reloads_as_one_undoable_step() {
+    let mut w = Workbench::new(info(), None);
+    let start = w.document().area().clone();
+    w.open_area(start.clone(), "/levels/harbour.solarea".into());
+    let mut changed = start.clone();
+    changed.spawn(area::EntityData::new("From Git"));
+    w.offer_reload(changed.clone());
+    assert_eq!(w.document().area(), &changed);
+    assert!(!w.document().is_dirty(), "it matches the file");
+    assert_eq!(
+        w.document().history().undo_label(),
+        Some("Reloaded harbour.solarea from disk")
+    );
+    w.undo();
+    assert_eq!(w.document().area(), &start);
+}
+
+#[test]
+fn with_unsaved_changes_a_reload_asks_keep_mine_or_load_the_file() {
+    let mut w = Workbench::new(info(), None);
+    w.open_area(
+        area::builtin::starter_area(),
+        "/levels/harbour.solarea".into(),
+    );
+    let mine = w.add_point_light();
+    let mut theirs = w.document().area().clone();
+    theirs.remove(mine);
+    theirs.spawn(area::EntityData::new("From Git"));
+    w.offer_reload(theirs.clone());
+    assert!(
+        w.document().area().contains(mine),
+        "nothing changes before the answer"
+    );
+    let mut h = acting(w);
+    h.run();
+    h.get_by_label("Keep mine").click();
+    h.run();
+    assert!(h.state().0.document().area().contains(mine));
+    h.state_mut().0.offer_reload(theirs.clone());
+    h.run();
+    h.get_by_label("Load the file").click();
+    h.run();
+    assert_eq!(h.state().0.document().area(), &theirs);
+    // Ctrl+Z brings back what was there.
+    h.state_mut().0.undo();
+    assert!(h.state().0.document().area().contains(mine));
+}

@@ -85,6 +85,10 @@ pub struct Document {
     /// What's selected. Changing it is not an undo step.
     pub selection: Selection,
     history: History<Selection>,
+    /// The file it was opened from or last saved to.
+    file: Option<std::path::PathBuf>,
+    /// The history's state when it was last saved (or opened).
+    saved: u64,
 }
 
 impl Default for Document {
@@ -104,7 +108,78 @@ impl Document {
             registry: area::builtin::registry().unwrap_or_default(),
             selection: Selection::default(),
             history: History::default(),
+            file: None,
+            saved: 0,
         }
+    }
+
+    /// A document for `area`, read from `file`: nothing to save yet.
+    pub fn opened(area: Area, file: std::path::PathBuf) -> Self {
+        Self {
+            file: Some(file),
+            ..Self::new(area)
+        }
+    }
+
+    /// The file it belongs to, if it was opened or saved.
+    pub fn file(&self) -> Option<&std::path::Path> {
+        self.file.as_deref()
+    }
+
+    /// Its name: its file's, without the extension, or "Untitled area".
+    pub fn name(&self) -> String {
+        self.file.as_ref().and_then(|f| f.file_stem()).map_or_else(
+            || "Untitled area".to_string(),
+            |n| n.to_string_lossy().into_owned(),
+        )
+    }
+
+    /// Whether it changed since it was opened or last saved.
+    pub fn is_dirty(&self) -> bool {
+        self.history.state() != self.saved
+    }
+
+    /// Notes that it was just saved to `file`.
+    pub fn mark_saved(&mut self, file: std::path::PathBuf) {
+        self.file = Some(file);
+        self.saved = self.history.state();
+    }
+
+    /// Replaces the whole area with `area` (its file changed on disk), as
+    /// one undo step called `label`; still counts as saved, since it now
+    /// matches the file.
+    pub fn reload(&mut self, area: Area, label: &str) -> Result<(), EditError> {
+        let mut edits: Vec<Edit> = Vec::new();
+        // Everything there now goes, tree by tree…
+        let old = &self.area;
+        let mut gone = std::collections::HashSet::new();
+        for id in old.depth_first() {
+            if gone.contains(&id) {
+                continue;
+            }
+            for inner in old.tree(id) {
+                gone.insert(inner);
+            }
+            edits.push(Edit::Despawn { root: id });
+        }
+        // …and the file's entities come in, tree by tree.
+        let mut placed = std::collections::HashSet::new();
+        for id in area.depth_first() {
+            if placed.contains(&id) {
+                continue;
+            }
+            let entities: Vec<_> = area
+                .tree(id)
+                .into_iter()
+                .filter(|e| placed.insert(*e))
+                .filter_map(|e| area.get(e).map(|data| (e, data.clone())))
+                .collect();
+            edits.push(Edit::Spawn { entities });
+        }
+        let selection = self.selection.clone();
+        self.edit(label, edits, None, Some(selection))?;
+        self.saved = self.history.state();
+        Ok(())
     }
 
     /// The area.
