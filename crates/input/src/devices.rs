@@ -60,6 +60,15 @@ impl Devices {
         }
     }
 
+    /// Forgets what happened since the last tick (presses, mouse
+    /// movement, the wheel), keeping what's held: for while the game
+    /// doesn't run, so it doesn't arrive all at once when it goes on.
+    pub fn forget_changes(&mut self) {
+        self.went_down.clear();
+        self.motion = Vec2::ZERO;
+        self.wheel = 0.0;
+    }
+
     /// The mouse wheel turned `notches` (up is positive; a trackpad gives
     /// parts of one).
     pub fn wheel_turned(&mut self, notches: f32) {

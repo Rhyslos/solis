@@ -415,3 +415,30 @@ fn a_save_keeps_bodies_as_places_and_motion_not_rapier_s_insides() {
     );
     assert!(Save::read(&resummed).is_err(), "NaN refused");
 }
+
+#[test]
+fn loading_doesn_t_run_the_game_s_starts_again_on_top_of_the_save() {
+    // The code's own start moves the crate up and sets the seed: right
+    // at Play, wrong on top of a loaded game.
+    let code = BUSY
+        .replacen(
+            "component Busy {",
+            "moveTo(find(\"Crate\"), [0, 0, 4]);\nsetSeed(99);\ncomponent Busy {",
+            1,
+        )
+        .replacen(
+            "get \"solis/world\":[randomRange, find, fire, saveGame, loadGame];",
+            "get \"solis/world\":[randomRange, find, fire, saveGame, loadGame, setSeed];",
+            1,
+        );
+    let mut w = busy("Harbour");
+    w.set_program(Some(program(&code)));
+    w.play();
+    run_to(&mut w, 60);
+    let text = w.save_of_game().unwrap().write();
+    run_to(&mut w, 120);
+    let carried_on = sums(&mut w);
+    w.load_game(&text, "quick");
+    run_to(&mut w, 120);
+    assert_eq!(sums(&mut w), carried_on, "the same, not moved or reseeded");
+}

@@ -83,6 +83,13 @@ What changed in each version, for people using Solis. Newest first.
 - Lasers in a hand-changed save could fly forever or faster than `fire` allows.
 - `saveGame`, `loadGame` and `rebind` asked for while a component starts were dropped without a word; the Console now says so. What a spawned component said while starting reaches the Console too.
 - Replay a recording… and Load a save… could stop opening their window if one ended oddly.
+- A collider under another entity (a lift's floor) stayed behind when the entity moved, so characters walked on where it used to be. Colliders, kinematic bodies and characters under something that moves now go with it.
+- Loading a save ran the game's starts again on top of it, so anything they moved or the seed they set changed the loaded game.
+- Editing during Play stopped crates spinning, woke resting stacks and made characters forget they were on the ground for a tick; Undo did too.
+- Changes in Edit > Input actions… while playing didn't reach the game until Stop and Play.
+- Presses and mouse movement while paused, or during a replay, arrived all at once when the game went on (the camera jumped).
+- `setSeed` took effect part way through a tick; it now holds from the next tick, as described.
+- Editing the area while recording now says the recording's replay won't match from there, and a replay that stops matching names `frameTime()` as a usual cause.
 
 - New projects' Git settings now keep Lust files (`.lst`) with the same line endings everywhere, so they merge cleanly; they named `.lust` by mistake. Input actions and recordings are covered too. Projects made before keep their own settings: add `*.lst text eol=lf` to `.gitattributes` by hand.
 - When a frame stopped part way through its ticks (the game paused for being too slow), the game's clock had already counted the ticks that never ran, so game time jumped ahead. The clock now moves on as each tick begins.

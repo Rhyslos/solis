@@ -473,12 +473,18 @@ impl World {
         // A name may have changed.
         self.index();
         self.place_everything();
-        // Their bodies and colliders as they are now, moving as they were.
+        // Their bodies and colliders as they are now, moving as they were;
+        // and bodies under them go where they now are.
         for id in rejoin {
             let state = self.physics.state().body_state(id);
             self.physics_join(id);
             if let Some(state) = state {
                 self.physics.set_body_state(id, state, false);
+            }
+            for under in self.subtree(id).into_iter().skip(1) {
+                if let Some(&entity) = self.by_id.get(&under) {
+                    self.follow_parent(entity);
+                }
             }
         }
     }
@@ -647,8 +653,24 @@ impl World {
                 if let Ok(mut g) = self.ecs.get::<&mut Global>(entity) {
                     g.0 = global;
                 }
+                self.follow_parent(entity);
             }
             done = end;
+        }
+    }
+
+    /// A body under something that moved goes with it at the next
+    /// physics step (a lift's floor under the lift): colliders, kinematic
+    /// bodies and characters. Dynamic bodies don't: physics moves those.
+    fn follow_parent(&mut self, entity: hecs::Entity) {
+        if self.following {
+            return;
+        }
+        if let Ok(id) = self.ecs.get::<&Id>(entity).map(|i| i.0)
+            && self.physics.state().contains(id)
+            && !self.physics.state().is_dynamic(id)
+        {
+            self.physics_moved.push(id);
         }
     }
 
