@@ -300,7 +300,16 @@ fn field_widget(
             let text = match value {
                 Value::Asset(Some(r)) => models.get(&r.asset).map_or_else(
                     || format!("Missing asset {}", r.asset),
-                    |m| format!("{} · {} tris", m.name, crate::models::grouped(m.triangles)),
+                    |m| {
+                        let mut text =
+                            format!("{} · {} tris", m.name, crate::models::grouped(m.triangles));
+                        if !m.lods.is_empty() {
+                            let levels: Vec<String> =
+                                m.lods.iter().map(|&t| crate::models::grouped(t)).collect();
+                            text.push_str(&format!(" · far away {}", levels.join(" → ")));
+                        }
+                        text
+                    },
                 ),
                 _ => "None".to_string(),
             };

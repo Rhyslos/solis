@@ -75,6 +75,40 @@ struct GpuMesh {
     indices: wgpu::Buffer,
     index_count: u32,
     material: usize,
+    /// Its simpler levels, each simpler than the one before.
+    lods: Vec<GpuLod>,
+}
+
+/// A mesh's simpler level on the GPU: its own triangles, over the mesh's
+/// corners or its own.
+#[derive(Debug)]
+struct GpuLod {
+    /// Its own corners (and outline corners), or `None` for the mesh's.
+    vertices: Option<(wgpu::Buffer, Option<wgpu::Buffer>)>,
+    indices: wgpu::Buffer,
+    index_count: u32,
+}
+
+/// What to draw for one level of one mesh.
+struct Shape<'a> {
+    vertices: &'a wgpu::Buffer,
+    outline: Option<&'a wgpu::Buffer>,
+    indices: &'a wgpu::Buffer,
+    index_count: u32,
+    material: &'a GpuMaterial,
+}
+
+impl Shape<'_> {
+    fn draw(
+        &self,
+        render_pass: &mut wgpu::RenderPass<'_>,
+        vertices: &wgpu::Buffer,
+        instances: std::ops::Range<u32>,
+    ) {
+        render_pass.set_vertex_buffer(0, vertices.slice(..));
+        render_pass.set_index_buffer(self.indices.slice(..), wgpu::IndexFormat::Uint32);
+        render_pass.draw_indexed(0..self.index_count, 0, instances);
+    }
 }
 
 /// A model uploaded to the GPU, ready to draw with
@@ -96,6 +130,13 @@ pub struct GpuModel {
     /// A ball around each mesh, centre and radius, in the mesh's own
     /// space, for culling.
     spheres: Vec<(glam::Vec3, f32)>,
+    /// For each level of detail (the full model first, at 0), how far it
+    /// strays from the full model at most, as a share of the model's
+    /// size.
+    lod_errors: Vec<f32>,
+    /// The ball around the whole model, centre and radius, for choosing
+    /// its level of detail.
+    sphere: (glam::Vec3, f32),
 }
 
 impl GpuModel {
@@ -129,92 +170,131 @@ impl GpuModel {
         self.nodes.get(node).map_or(&[], Vec::as_slice)
     }
 
-    /// The mesh and its material, if it can be drawn.
-    fn mesh(&self, mesh: usize) -> Option<(&GpuMesh, &GpuMaterial)> {
+    /// Level `lod` of mesh `mesh` (0 for the full mesh, past its last
+    /// for its simplest) and its material, if it can be drawn.
+    fn shape(&self, mesh: usize, lod: usize) -> Option<Shape<'_>> {
         let mesh = self.meshes.get(mesh)?.as_ref()?;
         let material = self.materials.get(mesh.material)?;
-        (mesh.index_count > 0).then_some((mesh, material))
+        let full = Shape {
+            vertices: &mesh.vertices,
+            outline: mesh.outline_vertices.as_ref(),
+            indices: &mesh.indices,
+            index_count: mesh.index_count,
+            material,
+        };
+        let shape = match lod.min(mesh.lods.len()).checked_sub(1) {
+            None => full,
+            Some(i) => {
+                let level = &mesh.lods[i];
+                let (vertices, outline) = match &level.vertices {
+                    Some((own, outline)) => (own, outline.as_ref()),
+                    None => (&mesh.vertices, mesh.outline_vertices.as_ref()),
+                };
+                Shape {
+                    vertices,
+                    outline,
+                    indices: &level.indices,
+                    index_count: level.index_count,
+                    material,
+                }
+            }
+        };
+        (shape.index_count > 0).then_some(shape)
     }
 
-    /// How many triangles a mesh has (0 if it can't be drawn).
-    pub(crate) fn triangles_of(&self, mesh: usize) -> u32 {
-        self.mesh(mesh).map_or(0, |(m, _)| m.index_count / 3)
+    /// How many simpler levels mesh `mesh` has.
+    pub(crate) fn lods_of(&self, mesh: usize) -> usize {
+        self.meshes
+            .get(mesh)
+            .and_then(Option::as_ref)
+            .map_or(0, |m| m.lods.len())
+    }
+
+    /// For each level of detail (the full model at 0), how far it strays
+    /// at most, as a share of the model's size.
+    pub(crate) fn lod_errors(&self) -> &[f32] {
+        &self.lod_errors
+    }
+
+    /// The ball around the whole model: centre and radius.
+    pub(crate) fn sphere(&self) -> (glam::Vec3, f32) {
+        self.sphere
+    }
+
+    /// How many triangles level `lod` of a mesh has (0 if it can't be
+    /// drawn).
+    pub(crate) fn triangles_of(&self, mesh: usize, lod: usize) -> u32 {
+        self.shape(mesh, lod).map_or(0, |s| s.index_count / 3)
     }
 
     /// Which pass a mesh is drawn in.
     pub(crate) fn pass_of(&self, mesh: usize) -> Option<Pass> {
-        self.mesh(mesh).map(|(_, material)| material.pass)
+        self.shape(mesh, 0).map(|s| s.material.pass)
     }
 
-    /// Draws `instances` of a mesh's shape only, for the sun's shadow map
-    /// (blended ones, like glass, cast no shadow).
+    /// Draws `instances` of level `lod` of a mesh's shape only, for the
+    /// sun's shadow map (blended ones, like glass, cast no shadow).
     pub(crate) fn draw_depth(
         &self,
         render_pass: &mut wgpu::RenderPass<'_>,
         mesh: usize,
+        lod: usize,
         instances: std::ops::Range<u32>,
     ) {
-        let Some((mesh, material)) = self.mesh(mesh) else {
+        let Some(shape) = self.shape(mesh, lod) else {
             return;
         };
-        if material.pass == Pass::Blended {
+        if shape.material.pass == Pass::Blended {
             return;
         }
-        render_pass.set_vertex_buffer(0, mesh.vertices.slice(..));
-        render_pass.set_index_buffer(mesh.indices.slice(..), wgpu::IndexFormat::Uint32);
-        render_pass.draw_indexed(0..mesh.index_count, 0, instances);
+        shape.draw(render_pass, shape.vertices, instances);
     }
 
-    /// Draws `instances` of a mesh's shape only, whatever its material
-    /// (glass too), for picking.
+    /// Draws `instances` of a mesh's full shape only, whatever its
+    /// material (glass too), for picking.
     pub(crate) fn draw_shape(
         &self,
         render_pass: &mut wgpu::RenderPass<'_>,
         mesh: usize,
         instances: std::ops::Range<u32>,
     ) {
-        let Some((mesh, _)) = self.mesh(mesh) else {
+        let Some(shape) = self.shape(mesh, 0) else {
             return;
         };
-        render_pass.set_vertex_buffer(0, mesh.vertices.slice(..));
-        render_pass.set_index_buffer(mesh.indices.slice(..), wgpu::IndexFormat::Uint32);
-        render_pass.draw_indexed(0..mesh.index_count, 0, instances);
+        shape.draw(render_pass, shape.vertices, instances);
     }
 
-    /// Draws `instances` of a mesh with its material, with the pipeline
-    /// for its pass already set.
+    /// Draws `instances` of level `lod` of a mesh with its material, with
+    /// the pipeline for its pass already set.
     pub(crate) fn draw(
         &self,
         render_pass: &mut wgpu::RenderPass<'_>,
         mesh: usize,
+        lod: usize,
         instances: std::ops::Range<u32>,
     ) {
-        let Some((mesh, material)) = self.mesh(mesh) else {
+        let Some(shape) = self.shape(mesh, lod) else {
             return;
         };
-        render_pass.set_bind_group(1, &material.bind_group, &[]);
-        render_pass.set_vertex_buffer(0, mesh.vertices.slice(..));
-        render_pass.set_index_buffer(mesh.indices.slice(..), wgpu::IndexFormat::Uint32);
-        render_pass.draw_indexed(0..mesh.index_count, 0, instances);
+        render_pass.set_bind_group(1, &shape.material.bind_group, &[]);
+        shape.draw(render_pass, shape.vertices, instances);
     }
 
-    /// Draws the outline of `instances` of a mesh, if it gets one, with
-    /// the outline pipeline already set.
+    /// Draws the outline of `instances` of level `lod` of a mesh, if it
+    /// gets one, with the outline pipeline already set.
     pub(crate) fn draw_outline(
         &self,
         render_pass: &mut wgpu::RenderPass<'_>,
         mesh: usize,
+        lod: usize,
         instances: std::ops::Range<u32>,
     ) {
-        let Some((mesh, _)) = self.mesh(mesh) else {
+        let Some(shape) = self.shape(mesh, lod) else {
             return;
         };
-        let Some(outline) = &mesh.outline_vertices else {
-            return;
-        };
-        render_pass.set_vertex_buffer(0, outline.slice(..));
-        render_pass.set_index_buffer(mesh.indices.slice(..), wgpu::IndexFormat::Uint32);
-        render_pass.draw_indexed(0..mesh.index_count, 0, instances);
+        if let Some(outline) = shape.outline {
+            shape.draw(render_pass, outline, instances);
+        }
     }
 }
 
@@ -430,6 +510,7 @@ impl ModelPipelines {
             })
             .map(|mesh| {
                 let mesh = mesh?;
+                let max = device.limits().max_buffer_size;
                 let material = mesh
                     .material
                     .filter(|&m| m < default_material)
@@ -455,6 +536,43 @@ impl ModelPipelines {
                     }),
                     index_count: mesh.indices.len() as u32,
                     material,
+                    lods: mesh
+                        .lods
+                        .iter()
+                        .filter(|lod| {
+                            (std::mem::size_of_val(lod.vertices.as_slice()) as u64) <= max
+                                && (std::mem::size_of_val(lod.indices.as_slice()) as u64) <= max
+                                && !lod.indices.is_empty()
+                        })
+                        .map(|lod| GpuLod {
+                            vertices: (!lod.vertices.is_empty()).then(|| {
+                                (
+                                    device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                                        label: Some("level of detail vertices"),
+                                        contents: bytemuck::cast_slice(&lod.vertices),
+                                        usage: wgpu::BufferUsages::VERTEX,
+                                    }),
+                                    outlined.then(|| {
+                                        device.create_buffer_init(
+                                            &wgpu::util::BufferInitDescriptor {
+                                                label: Some("level of detail outline vertices"),
+                                                contents: bytemuck::cast_slice(&outline_vertices(
+                                                    &lod.vertices,
+                                                )),
+                                                usage: wgpu::BufferUsages::VERTEX,
+                                            },
+                                        )
+                                    }),
+                                )
+                            }),
+                            indices: device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                                label: Some("level of detail indices"),
+                                contents: bytemuck::cast_slice(&lod.indices),
+                                usage: wgpu::BufferUsages::INDEX,
+                            }),
+                            index_count: lod.indices.len() as u32,
+                        })
+                        .collect(),
                 })
             })
             .collect();
@@ -465,9 +583,22 @@ impl ModelPipelines {
             .collect();
         let placements = model
             .placements()
-            .map(|(mesh, local)| Drawn::new(mesh, local, spheres[mesh]))
+            .map(|(mesh, local)| {
+                Drawn::new(mesh, local, spheres[mesh], model.meshes[mesh].lods.len())
+            })
             .collect();
+        let lod_errors = model_lod_errors(model);
+        let sphere = {
+            let (min, max) = (model.bounds.min, model.bounds.max);
+            if min.is_finite() && max.is_finite() {
+                ((min + max) * 0.5, (max - min).length() * 0.5)
+            } else {
+                (glam::Vec3::ZERO, 0.0)
+            }
+        };
         GpuModel {
+            lod_errors,
+            sphere,
             meshes,
             placements,
             nodes: model.nodes.iter().map(|n| n.meshes.clone()).collect(),
@@ -477,6 +608,57 @@ impl ModelPipelines {
             spheres,
         }
     }
+}
+
+/// For each level of detail of `model` (the full model at 0), how far it
+/// strays at most, as a share of the model's size: each mesh's error is
+/// a share of its own size (its box's longest side, as meshoptimizer
+/// measures), turned into a share of the model's diagonal. A mesh with
+/// fewer levels draws its simplest at the levels past them.
+pub(crate) fn model_lod_errors(model: &Model) -> Vec<f32> {
+    let levels = model
+        .meshes
+        .iter()
+        .map(|m| m.lods.len())
+        .max()
+        .unwrap_or(0)
+        .min(assets::lods::MAX_LODS);
+    let size = (model.bounds.max - model.bounds.min).length();
+    if !(size.is_finite() && size > 0.0) {
+        return vec![0.0];
+    }
+    let mut errors = vec![0.0_f32; levels + 1];
+    for (mesh, local) in model.placements() {
+        let mesh = &model.meshes[mesh];
+        let Some((min, max)) = mesh.vertices.iter().fold(None, |acc, v| {
+            let p = glam::Vec3::from(v.position);
+            p.is_finite()
+                .then(|| {
+                    acc.map_or((p, p), |(lo, hi): (glam::Vec3, glam::Vec3)| {
+                        (lo.min(p), hi.max(p))
+                    })
+                })
+                .or(acc)
+        }) else {
+            continue;
+        };
+        let turn = glam::Mat3::from_mat4(local);
+        let scale = turn
+            .x_axis
+            .length()
+            .max(turn.y_axis.length())
+            .max(turn.z_axis.length());
+        let own = (max - min).max_element() * scale;
+        for (level, error) in errors.iter_mut().enumerate().skip(1) {
+            if let Some(lod) = mesh.lods.get(level.min(mesh.lods.len()).wrapping_sub(1)) {
+                let share = lod.error * own / size;
+                if share.is_finite() {
+                    *error = error.max(share);
+                }
+            }
+        }
+    }
+    errors
 }
 
 /// One mesh as a model draws it, worked out once so each copy of the
@@ -491,12 +673,19 @@ pub(crate) struct Drawn {
     pub(crate) centre: glam::Vec3,
     pub(crate) radius: f32,
     pub(crate) mirrored: bool,
+    /// How many simpler levels the mesh has.
+    pub(crate) lods: u8,
 }
 
 impl Drawn {
     /// Mesh `mesh` at `local` in its model, its ball `sphere` in its own
     /// space.
-    pub(crate) fn new(mesh: usize, local: glam::Mat4, sphere: (glam::Vec3, f32)) -> Self {
+    pub(crate) fn new(
+        mesh: usize,
+        local: glam::Mat4,
+        sphere: (glam::Vec3, f32),
+        lods: usize,
+    ) -> Self {
         let turn = glam::Mat3::from_mat4(local);
         let scale = turn
             .x_axis
@@ -510,6 +699,7 @@ impl Drawn {
             centre: local.transform_point3(sphere.0),
             radius: sphere.1 * scale,
             mirrored: turn.determinant() < 0.0,
+            lods: lods.min(assets::lods::MAX_LODS) as u8,
         }
     }
 }

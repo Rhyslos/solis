@@ -85,13 +85,14 @@ The working plan for Phase 5 (ROADMAP.md, "Phase 5: Scale"). It records the choi
 - Tests: off-screen copies aren't drawn (pixel and count tests); shadows from just outside the view still fall into it; nothing pops at the screen's edges. Scale case: 10,000 units with the camera seeing a tenth of them.
 - **Built.** Copies are culled against the view and the shadows' box, in the gathering jobs; the shadow map covers what's in view up to 200 m (`SHADOW_REACH`) and steps a texel at a time. Each copy went from 104 to 52 bytes (the shader works out the normals' matrix), and only runs of copies that changed are sent. Gathering 100,000 copies went from about 34 ms to about 9 ms on the 2-core machine (Vulkan); a still scene sends nothing after its first frame, but when every copy moves, all of them are still sent (about 10 ms). The rest is memory-bound on this machine; M7's benchmark measures it on real ones before the levels are judged. 10,000 moving units with a tenth in view and shadows on: 1.2 ms. Keeping each copy's place in the GPU's buffer across frames (so a copy entering the view doesn't shift the rest) waited: it needs the world to say what changed, which the review can weigh.
 
-### M5. LODs ☐
+### M5. LODs ☑
 
 - **Made on import** (decision 0032): for each mesh, two or three simpler versions (about half, a quarter and an eighth of the triangles), kept in the asset cache so it happens once. Within limits; a mesh that can't be simplified well keeps its full version.
 - **A model's own:** meshes named `Name_LOD1`, `Name_LOD2` … in the file are used instead, and not drawn as parts of their own.
 - **Choosing:** by how big the copy is on screen, with a little overlap so a unit at the boundary doesn't flicker between two. Properties shows a model's LODs, and the Profiler how many copies are drawn at each.
 - Manual: a page on LODs (what they are, why, how to make your own in Aventail or Blender).
 - Tests: a far copy draws the simpler mesh; a model's own LODs win; LODs are made once and kept; damaged LOD names are ignored, not a crash. Scale case: 10,000 units, most far away.
+- **Built.** `assets::lods` makes up to three levels per mesh with meshoptimizer (sharing the mesh's corners, each with how far it strays) and moves a model's own `_LOD1` … meshes onto their part; the import cache keeps them (layout version 2). The renderer gives each copy the simplest level that strays less than a pixel on screen (`LOD_PIXELS`), keeping last frame's level within a band so it doesn't flicker; per-model errors are worked out on upload. A model's own levels don't say how far they stray, so they switch at set sizes (level 1 at about a quarter of the screen). Scale case: 10,000 detailed units, most far away: 3.5 million triangles drawn instead of 28 million, 1.6 ms of CPU a frame. Only meshes' own LODs are chosen per copy (one level for the whole model), not per part.
 
 ### M6. Projectiles ☐
 

@@ -13,6 +13,9 @@ pub struct ModelInfo {
     pub name: String,
     /// How many triangles it has.
     pub triangles: usize,
+    /// How many triangles each simpler level of detail draws (none when
+    /// it has none).
+    pub lods: Vec<usize>,
     /// The lowest corner of the box it fits in, in metres.
     pub min: Vec3,
     /// The highest corner.
@@ -154,6 +157,7 @@ mod tests {
             asset: AssetId::random(),
             name: "Crate".into(),
             triangles: 12,
+            lods: Vec::new(),
             min: Vec3::new(-1.0, -0.05, 0.0),
             max: Vec3::new(1.0, 0.05, 250.0),
             nodes: Vec::new(),
@@ -174,6 +178,7 @@ mod tests {
             asset: AssetId::random(),
             name: "Ship".into(),
             triangles: 0,
+            lods: Vec::new(),
             min: Vec3::ZERO,
             max: Vec3::ONE,
             // Numbered in order, then one moved by a re-export.

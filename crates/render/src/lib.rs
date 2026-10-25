@@ -23,7 +23,7 @@ pub use frame::{
     GRID_STRENGTHS, GridPlane, Look, Shading, grid_reach, srgb_to_linear,
 };
 pub use gpu_model::GpuModel;
-pub use instances::Placement;
+pub use instances::{LOD_PIXELS, Placement};
 pub use lighting::{
     Light, LightKind, MAX_LIGHTS, SHADOW_FORMAT, SHADOW_MAP_SIZE, SHADOW_REACH, Sun, light_markers,
     sun_view_fitted, sun_view_projection,

@@ -372,6 +372,7 @@ fn read_primitive(
         vertices,
         indices,
         material: primitive.material().index(),
+        lods: Vec::new(),
     }))
 }
 

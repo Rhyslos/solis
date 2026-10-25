@@ -188,6 +188,9 @@ pub struct DrawReport {
     /// Bytes of model copies sent to the graphics card (only what
     /// changed).
     pub sent_bytes: u64,
+    /// Model copies in view drawn at each level of detail: in full, then
+    /// each simpler level.
+    pub lods: [u64; 5],
     /// Triangles drawn.
     pub triangles: u64,
     /// Draw calls for models.

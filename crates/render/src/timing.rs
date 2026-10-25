@@ -40,6 +40,9 @@ pub struct FrameStats {
     pub triangles: u64,
     /// Bytes of copies sent to the graphics card: only what changed.
     pub sent_bytes: u64,
+    /// Mesh copies in view drawn at each level of detail: in full, then
+    /// each simpler level.
+    pub lods: [u32; 5],
 }
 
 /// The passes timed, each a pair of timestamps.

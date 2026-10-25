@@ -21,6 +21,7 @@ base64.workspace = true
 percent-encoding.workspace = true
 glam.workspace = true
 bytemuck.workspace = true
+meshopt.workspace = true
 
 [lints]
 workspace = true
