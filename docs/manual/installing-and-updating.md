@@ -13,8 +13,9 @@ If you'd rather not install anything, you can still download the program on its 
 1. Open the Solis repository on GitHub and click **Releases** on the right (or go to `github.com/Rhyslos/solis/releases`).
 2. Under the newest release (**Solis build** and a number), download `solis-setup.exe`.
 3. Run it. If Windows says it protected your PC, click **More info**, then **Run anyway**. (Solis isn't signed with a paid certificate yet, so Windows doesn't know the publisher.)
-4. Accept the licence and click **Install**. It doesn't ask for an administrator: Solis goes in your own user folder (`%LOCALAPPDATA%\Programs\Solis`), so only your Windows account gets it.
-5. Leave **Open Solis** ticked and click **Finish**.
+4. Accept the licence.
+5. Choose where to install it, or keep the suggested folder (`%LOCALAPPDATA%\Programs\Solis`, in your own user folder). Any folder your Windows account can write to works, on any drive. It never asks for an administrator, so only your Windows account gets Solis.
+6. Choose whether you want a desktop shortcut, click **Install**, leave **Open Solis** ticked and click **Finish**.
 
 Solis is now in the Start menu, and in Windows' **Settings > Apps** where you can uninstall it. If you ticked the box, there's a desktop shortcut too.
 
@@ -44,6 +45,8 @@ None: updating has no keys.
 - **Problem:** *GitHub asked to wait before checking again*. **Why:** GitHub limits how often one computer may ask (60 times an hour). **Fix:** wait an hour.
 - **Problem:** a download *didn't match its checksum*. **Why:** it was damaged or cut short on the way. **Fix:** it was thrown away; Solis downloads it again next time.
 - **What Solis sends:** only the request itself, naming the program and its version (GitHub asks every program to). Nothing about you or your projects.
+- **Problem:** the installer says it *can't be installed in* the folder you chose. **Why:** your account can't write there without an administrator (Program Files, say), and Solis must be able to replace itself when it updates. **Fix:** choose a folder of your own.
+- **Moving Solis to another folder:** uninstall it (Settings > Apps), then run the setup file again and choose the new folder. Updates always go to the folder you installed in.
 - **Your projects and settings** are kept through every update: they live in your project folders and your user folder, not where Solis is installed.
 
 ## Related

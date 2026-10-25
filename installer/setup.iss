@@ -1,8 +1,9 @@
 ; The Windows installer (decision 0043), built by Inno Setup in the
 ; Windows EXE workflow on every merge into main.
 ;
-; It installs for the current user only (no administrator needed) into
-; %LOCALAPPDATA%\Programs\<name>, adds a Start menu entry and an entry in
+; It installs for the current user only (no administrator needed), into
+; %LOCALAPPDATA%\Programs\<name> unless the user chooses another folder
+; (one they can write to), adds a Start menu entry and an entry in
 ; Settings > Apps for uninstalling, and leaves installed.txt beside the
 ; program so it knows it may update itself.
 ;
@@ -50,7 +51,10 @@ VersionInfoVersion={#AppVersion}.{#Build}
 ; replace itself when it updates.
 PrivilegesRequired=lowest
 DefaultDirName={autopf}\{#AppName}
-DisableDirPage=yes
+; The user may choose the folder. Updates (quiet installs) go to the same
+; one: Inno Setup remembers it by AppId.
+DisableDirPage=no
+UsePreviousAppDir=yes
 DefaultGroupName={#AppName}
 DisableProgramGroupPage=yes
 DisableReadyPage=yes
@@ -96,4 +100,38 @@ Type: files; Name: "{app}\installed.txt"
 function Relaunch: Boolean;
 begin
   Result := WizardSilent and (ExpandConstant('{param:RELAUNCH|0}') = '1');
+end;
+
+{ Whether this user can write in Folder (made if it isn't there yet).
+  Without an administrator, folders such as Program Files are refused, and
+  updates must be able to replace the program later. }
+function CanWriteIn(Folder: String): Boolean;
+var
+  Probe: String;
+  Made: Boolean;
+begin
+  Made := not DirExists(Folder);
+  Result := ForceDirectories(Folder);
+  if Result then
+  begin
+    Probe := AddBackslash(Folder) + '.write-test';
+    Result := SaveStringToFile(Probe, 'test', False);
+    DeleteFile(Probe);
+  end;
+  if Made then
+    RemoveDir(Folder);
+end;
+
+function NextButtonClick(CurPageID: Integer): Boolean;
+begin
+  Result := True;
+  if (CurPageID = wpSelectDir) and not CanWriteIn(WizardDirValue) then
+  begin
+    MsgBox('{#AppName} can''t be installed in' + #13#10 + WizardDirValue + #13#10#13#10 +
+      'Your Windows account can''t write there without an administrator, and ' +
+      '{#AppName} must be able to replace itself when it updates. Choose a ' +
+      'folder of your own, such as one in your Documents or on another drive.',
+      mbError, MB_OK);
+    Result := False;
+  end;
 end;

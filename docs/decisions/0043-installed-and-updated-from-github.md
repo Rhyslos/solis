@@ -30,7 +30,7 @@ The project lead tries each change by downloading a zip from GitHub's Actions ta
 
 **Installer:** option 2, Inno Setup (`installer/setup.iss`).
 
-- It installs for the current user only, into `%LOCALAPPDATA%\Programs\<name>`, so no administrator is needed. The program can also replace itself there.
+- It installs for the current user only, so no administrator is needed, into `%LOCALAPPDATA%\Programs\<name>` or a folder the user chooses (asked for by the project lead). The installer refuses a folder the user can't write to (Program Files, say), since the program must be able to replace itself when it updates. Updates go to the same folder: Inno Setup remembers it.
 - It adds a Start menu entry and an uninstall entry, and offers a desktop shortcut.
 - It leaves `installed.txt` beside the program. Only a copy with that file updates itself, so a copy run from a zip, or built from source, is left alone.
 
