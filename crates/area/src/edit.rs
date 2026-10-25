@@ -1,14 +1,14 @@
-//! Reversible edits to the scene document
+//! Reversible edits to the area document
 //! ([decision 0022](../../../docs/decisions/0022-undo-as-reversible-edits.md)).
 //! Every change the editor makes is one of these. Applying an edit gives
 //! back its inverse, which is how undo works; the same edits will describe
-//! changes in the Git panel and in prefab overrides.
+//! changes in the Git panel and in assembly overrides.
 
-use crate::document::{EntityData, Scene};
+use crate::document::{Area, EntityData};
 use reflect::{ComponentData, EntityId, Value};
 use std::fmt;
 
-/// One reversible change to a scene.
+/// One reversible change to an area.
 #[derive(Debug, Clone, PartialEq)]
 pub enum Edit {
     /// Sets one field of a component, or clears it with `None` (it then
@@ -69,16 +69,16 @@ pub enum Edit {
     },
 }
 
-/// Why an edit couldn't be applied. The scene is left unchanged.
+/// Why an edit couldn't be applied. The area is left unchanged.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum EditError {
-    /// The entity isn't in the scene.
+    /// The entity isn't in the area.
     NoEntity(EntityId),
     /// The entity has no such component.
     NoComponent(EntityId, String),
     /// The entity already has that component.
     HasComponent(EntityId, String),
-    /// An entity with that ID is already in the scene.
+    /// An entity with that ID is already in the area.
     IdInUse(EntityId),
     /// The entities to spawn aren't one tree, parents first.
     NotATree,
@@ -89,7 +89,7 @@ pub enum EditError {
 impl fmt::Display for EditError {
     fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
         match self {
-            Self::NoEntity(id) => write!(f, "entity {id} isn't in the scene"),
+            Self::NoEntity(id) => write!(f, "entity {id} isn't in the area"),
             Self::NoComponent(id, c) => write!(f, "entity {id} has no {c}"),
             Self::HasComponent(id, c) => write!(f, "entity {id} already has a {c}"),
             Self::IdInUse(id) => write!(f, "the ID {id} is already in use"),
@@ -152,9 +152,9 @@ fn entity_bytes(entity: &EntityData) -> usize {
             .sum::<usize>()
 }
 
-impl Scene {
+impl Area {
     /// Applies `edit` and returns the edit that undoes it. On an error the
-    /// scene is unchanged.
+    /// area is unchanged.
     pub fn apply(&mut self, edit: Edit) -> Result<Edit, EditError> {
         match edit {
             Edit::SetField {
@@ -267,7 +267,7 @@ impl Scene {
 
     /// Applies `edits` in order and returns the edits that undo them all
     /// (in the order to apply them). If one fails, those before it are
-    /// undone, so the scene is unchanged.
+    /// undone, so the area is unchanged.
     pub fn apply_all(&mut self, edits: Vec<Edit>) -> Result<Vec<Edit>, EditError> {
         let mut undo = Vec::with_capacity(edits.len());
         for edit in edits {
@@ -292,8 +292,8 @@ mod tests {
     use super::*;
     use crate::builtin::{Light, Transform};
 
-    fn sample() -> (Scene, EntityId, EntityId) {
-        let mut s = Scene::new();
+    fn sample() -> (Area, EntityId, EntityId) {
+        let mut s = Area::new();
         let a = s.spawn(EntityData::new("A").with(&Transform::default()));
         let mut child = EntityData::new("B").with(&Light::point());
         child.parent = Some(a);

@@ -6,6 +6,8 @@
 //! and draws the viewport through a [`ViewportRenderer`] the app provides.
 //! See this crate's README for its purpose and limits.
 
+mod area_panel;
+pub mod area_view;
 pub mod camera;
 mod commands;
 pub mod console;
@@ -18,13 +20,12 @@ pub mod models;
 pub mod panel;
 mod panels;
 mod properties;
-mod scene_panel;
-pub mod scene_view;
 pub mod theme;
 mod top_bar;
 pub mod viewport;
 pub mod workbench;
 
+pub use area_view::{AreaView, ViewLight};
 pub use camera::{Camera, FlyInput};
 pub use console::{LogLevel, LogLine};
 pub use document::{Document, Selection};
@@ -33,6 +34,5 @@ pub use layout::Preset;
 pub use look::{Look, LookKind};
 pub use models::{FileLight, FileLightKind, ModelInfo};
 pub use panel::Panel;
-pub use scene_view::{SceneView, ViewLight};
 pub use viewport::{NoRenderer, Overlays, Tool, Viewport, ViewportRenderer, ViewportView};
 pub use workbench::{AppInfo, Workbench, WorkbenchAction};

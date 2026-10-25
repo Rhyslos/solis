@@ -1,17 +1,17 @@
-//! Commands: everything the editor does to the scene, each turned into
+//! Commands: everything the editor does to the area, each turned into
 //! reversible edits and recorded as one undo step
 //! ([decision 0022](../../../docs/decisions/0022-undo-as-reversible-edits.md)).
-//! Nothing else in the editor changes the scene.
+//! Nothing else in the editor changes the area.
 
 use crate::console::LogLevel;
 use crate::document::Selection;
 use crate::models::{FileLight, FileLightKind, ModelInfo};
 use crate::properties::PropertyRequest;
 use crate::workbench::Workbench;
+use area::builtin::{Light, LightKind, Model, Transform};
+use area::{Edit, EntityData, MergeKey};
 use glam::{Quat, Vec3};
 use reflect::{AssetRef, Component, ComponentData, EntityId};
-use scene::builtin::{Light, LightKind, Model, Transform};
-use scene::{Edit, EntityData, MergeKey};
 use std::hash::{DefaultHasher, Hash, Hasher};
 
 /// How far above the camera's focus point a new point light goes, in
@@ -56,7 +56,7 @@ fn merge_key(target: impl Hash, gesture: u64) -> MergeKey {
 }
 
 impl Workbench {
-    /// Changes the scene as one undo step, or says in the console why it
+    /// Changes the area as one undo step, or says in the console why it
     /// couldn't. Returns whether it worked.
     fn command(
         &mut self,
@@ -92,18 +92,18 @@ impl Workbench {
         }
     }
 
-    /// Selects only `id` (as clicking it in the Scene panel does); nothing
-    /// if it isn't in the scene. Not an undo step.
+    /// Selects only `id` (as clicking it in the Area panel does); nothing
+    /// if it isn't in the area. Not an undo step.
     pub fn select(&mut self, id: EntityId) {
-        if self.document.scene().contains(id) {
+        if self.document.area().contains(id) {
             self.document.selection.select_only(id);
         } else {
             self.document.selection.clear();
         }
     }
 
-    /// Adds an imported model to the scene as an entity (with any lights its
-    /// file carries as entities under it; a sun in the file sets the scene's
+    /// Adds an imported model to the area as an entity (with any lights its
+    /// file carries as entities under it; a sun in the file sets the area's
     /// sun), as one undo step. Frames the camera on it, and says so in the
     /// console with its size and any `warnings` (parts of the file that
     /// were left out).
@@ -148,7 +148,7 @@ impl Workbench {
                     edits.extend(self.sun_edits(&light, rotation));
                     self.log(
                         LogLevel::Info,
-                        "The file's sun now lights the scene; change it under Sun.".to_string(),
+                        "The file's sun now lights the area; change it under Sun.".to_string(),
                     );
                 }
             }
@@ -168,11 +168,11 @@ impl Workbench {
         id
     }
 
-    /// The edits that make the scene's sun (adding one if there's none)
+    /// The edits that make the area's sun (adding one if there's none)
     /// shine like `light`, turned by `rotation`.
     fn sun_edits(&self, light: &Light, rotation: Quat) -> Vec<Edit> {
-        let scene = self.document.scene();
-        let sun = scene
+        let area = self.document.area();
+        let sun = area
             .with::<Light>()
             .find(|(_, l)| l.kind == LightKind::Sun)
             .map(|(id, _)| id);
@@ -186,7 +186,7 @@ impl Workbench {
                 entities: vec![(EntityId::random(), data)],
             }];
         };
-        let Some(entity) = scene.get(id) else {
+        let Some(entity) = area.get(id) else {
             return Vec::new();
         };
         let old = entity.get::<Light>().unwrap_or_else(Light::sun);
@@ -240,7 +240,7 @@ impl Workbench {
             EntityData::new(&format!("Spotlight {n}"))
                 .with(&Transform {
                     position: camera.position,
-                    rotation: scene::builtin::aim(camera.forward()),
+                    rotation: area::builtin::aim(camera.forward()),
                     ..Transform::default()
                 })
                 .with(&Light::spot()),
@@ -249,7 +249,7 @@ impl Workbench {
 
     fn count_lights(&self, kind: LightKind) -> usize {
         self.document
-            .scene()
+            .area()
             .with::<Light>()
             .filter(|(_, l)| l.kind == kind)
             .count()
@@ -320,12 +320,12 @@ impl Workbench {
 
     /// Deletes `id` and everything below it.
     pub fn delete(&mut self, id: EntityId) {
-        let scene = self.document.scene();
-        let Some(entity) = scene.get(id) else {
+        let area = self.document.area();
+        let Some(entity) = area.get(id) else {
             return;
         };
         let label = format!("Delete {}", entity.name);
-        let extra = match scene.tree(id).len() - 1 {
+        let extra = match area.tree(id).len() - 1 {
             0 => String::new(),
             1 => " and 1 entity under it".into(),
             n => format!(" and {n} entities under it"),
@@ -340,14 +340,14 @@ impl Workbench {
     /// else to the point itself.
     pub fn move_here(&mut self, id: EntityId) {
         let camera = self.viewport.camera;
-        let Some(entity) = self.document.scene().get(id) else {
+        let Some(entity) = self.document.area().get(id) else {
             return;
         };
         let mut transform = entity.get::<Transform>().unwrap_or_default();
         match entity.get::<Light>().map(|l| l.kind) {
             Some(LightKind::Spot) => {
                 transform.position = camera.position;
-                transform.rotation = scene::builtin::aim(camera.forward());
+                transform.rotation = area::builtin::aim(camera.forward());
             }
             Some(LightKind::Point) => {
                 transform.position = camera.focus() + Vec3::Z * POINT_LIGHT_HEIGHT;
@@ -359,7 +359,7 @@ impl Workbench {
     }
 }
 
-/// A light from a model's file, as the scene takes it.
+/// A light from a model's file, as the area takes it.
 enum FromFile {
     /// A lamp: an entity to put under the model.
     Lamp(Box<EntityData>),
@@ -371,7 +371,7 @@ enum FromFile {
 /// usable ones.
 fn file_light(i: usize, light: &FileLight) -> FromFile {
     let color = light.color.map(crate::models::linear_to_srgb);
-    let rotation = scene::builtin::aim(light.direction);
+    let rotation = area::builtin::aim(light.direction);
     let strength = if light.strength.is_finite() {
         light.strength.max(0.0)
     } else {

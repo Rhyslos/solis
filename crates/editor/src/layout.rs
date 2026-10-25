@@ -7,10 +7,10 @@ use egui_dock::{DockState, NodeIndex};
 use serde::{Deserialize, Serialize};
 
 /// Share of the window width given to the viewport's side (the right
-/// column with Scene and Properties gets the rest).
+/// column with Area and Properties gets the rest).
 const MAIN_AREA_WIDTH: f32 = 0.77;
-/// Share of the right column given to Scene and Layers.
-const SCENE_HEIGHT: f32 = 0.45;
+/// Share of the right column given to Area and Layers.
+const AREA_HEIGHT: f32 = 0.45;
 /// Share of the main area given to the viewport (the bottom panels get the
 /// rest).
 const VIEWPORT_HEIGHT: f32 = 0.74;
@@ -49,14 +49,14 @@ impl Preset {
     /// ```text
     /// Default                       Wide screen                  Small screen
     /// ┌──────────────────┬──────┐   ┌─────┬────────────┬──────┐   ┌──────────────────┬──────┐
-    /// │ Viewport · Game  │Scene │   │     │  Viewport  │Scene │   │ Viewport · Game  │Scene │
+    /// │ Viewport · Game  │Area │   │     │  Viewport  │Area │   │ Viewport · Game  │Area │
     /// │                  ├──────┤   │Libr-│            ├──────┤   │                  ├──────┤
     /// ├──────────┬───────┤Props │   │ary  ├────────────┤Props │   ├──────────────────┤Props │
     /// │ Library  │Console│      │   │     │  Console   │      │   │ Library · Console│      │
     /// └──────────┴───────┴──────┘   └─────┴────────────┴──────┘   └──────────────────┴──────┘
     /// ```
     ///
-    /// Scene shares its group with Layers, Library with Code and Console
+    /// Area shares its group with Layers, Library with Code and Console
     /// with Problems, as in the mockup.
     pub fn layout(self) -> DockState<Panel> {
         let mut dock = DockState::new(vec![Panel::Viewport, Panel::Game]);
@@ -64,9 +64,9 @@ impl Preset {
         let [main_area, right_column] = tree.split_right(
             NodeIndex::root(),
             MAIN_AREA_WIDTH,
-            vec![Panel::Scene, Panel::Layers],
+            vec![Panel::Area, Panel::Layers],
         );
-        tree.split_below(right_column, SCENE_HEIGHT, vec![Panel::Properties]);
+        tree.split_below(right_column, AREA_HEIGHT, vec![Panel::Properties]);
         match self {
             Self::Default => {
                 let [_, bottom] = tree.split_below(
@@ -208,8 +208,8 @@ mod tests {
             [Panel::Console, Panel::Problems]
         );
         assert_eq!(
-            tab_group_of(&dock, Panel::Scene),
-            [Panel::Scene, Panel::Layers]
+            tab_group_of(&dock, Panel::Area),
+            [Panel::Area, Panel::Layers]
         );
         assert_eq!(beside_viewport(&dock), [Panel::Viewport, Panel::Game]);
     }

@@ -92,7 +92,7 @@ impl Importer {
         self.spawn(path, move || assets::load(&reading, &limits))
     }
 
-    /// Starts reading the built-in sample scene, as if from a file named
+    /// Starts reading the built-in sample area, as if from a file named
     /// `name`.
     pub fn start_sample(&mut self, name: &str) -> AssetId {
         let limits = self.limits;
@@ -185,13 +185,13 @@ mod tests {
     }
 
     #[test]
-    fn the_sample_scene_reads_in_the_background() {
+    fn the_sample_area_reads_in_the_background() {
         let mut importer = Importer::new(4096, 256 << 20);
-        let id = importer.start_sample("Sample scene");
+        let id = importer.start_sample("Sample area");
         let done = wait(&mut importer);
         assert_eq!(done[0].id, id);
         let model = done[0].result.as_ref().unwrap();
-        assert_eq!(model.name, "Sample scene");
+        assert_eq!(model.name, "Sample area");
         assert!(model.meshes.len() > 10);
     }
 

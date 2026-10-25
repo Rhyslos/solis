@@ -1,23 +1,23 @@
-//! The Scene panel: the scene's entities as a tree. Clicking one selects
+//! The Area panel: the area's entities as a tree. Clicking one selects
 //! it and shows it in Properties.
 
 use crate::document::Document;
 use crate::icons::{self, Icon};
 use crate::models::ModelInfo;
 use crate::theme::{self, Accent};
+use area::EntityData;
+use area::builtin::{Light, LightKind, Model};
 use egui::{Align, Color32, Layout, RichText, Ui};
 use reflect::{AssetId, EntityId};
-use scene::EntityData;
-use scene::builtin::{Light, LightKind, Model};
 use std::collections::BTreeMap;
 
 /// How far each level of the tree is indented.
 const INDENT: f32 = 14.0;
 
-/// One row of the Scene panel: an icon, a name, a quiet note on the
+/// One row of the Area panel: an icon, a name, a quiet note on the
 /// right, highlighted when selected, and a × when `remove` names what it
 /// removes. Returns the row's response and whether × was clicked.
-pub(crate) fn scene_row(
+pub(crate) fn area_row(
     ui: &mut Ui,
     (icon, icon_color): (Icon, Color32),
     name: &str,
@@ -51,7 +51,7 @@ pub(crate) fn scene_row(
         if let Some(what) = remove {
             let button = ui
                 .add(egui::Button::new(RichText::new("×").color(theme::TEXT_WEAK)).frame(false))
-                .on_hover_text(format!("Remove {what} from the scene"));
+                .on_hover_text(format!("Remove {what} from the area"));
             button.widget_info(|| {
                 egui::WidgetInfo::labeled(egui::WidgetType::Button, true, format!("Remove {what}"))
             });
@@ -92,29 +92,29 @@ fn looks(
         return (Icon::Model, accent.colors().light, note);
     }
     if entity.has("Environment") {
-        return (Icon::SceneFile, accent.colors().light, "sky, fog".into());
+        return (Icon::AreaFile, accent.colors().light, "sky, fog".into());
     }
-    (Icon::Scene, theme::TEXT_WEAK, String::new())
+    (Icon::Area, theme::TEXT_WEAK, String::new())
 }
 
-/// Something the user asked for in the Scene panel. Like Properties, the
-/// panel never changes the scene or the selection itself.
+/// Something the user asked for in the Area panel. Like Properties, the
+/// panel never changes the area or the selection itself.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-pub(crate) enum SceneRequest {
+pub(crate) enum AreaRequest {
     /// Select only this entity.
     Select(EntityId),
     /// Delete this entity and everything below it.
     Delete(EntityId),
 }
 
-/// The Scene panel: every entity, as a tree. Returns what the user asked
+/// The Area panel: every entity, as a tree. Returns what the user asked
 /// for.
-pub(crate) fn scene_tree(
+pub(crate) fn area_tree(
     ui: &mut Ui,
     document: &Document,
     models: &BTreeMap<AssetId, ModelInfo>,
     accent: Accent,
-) -> Vec<SceneRequest> {
+) -> Vec<AreaRequest> {
     let mut requests = Vec::new();
     egui::ScrollArea::vertical()
         .auto_shrink(false)
@@ -125,7 +125,7 @@ pub(crate) fn scene_tree(
                 ui.spacing_mut().item_spacing.y = 1.0;
                 // Depth-first, parents before children.
                 let mut todo: Vec<(EntityId, usize)> = document
-                    .scene()
+                    .area()
                     .children(None)
                     .into_iter()
                     .rev()
@@ -134,17 +134,17 @@ pub(crate) fn scene_tree(
                 let mut shown = 0;
                 while let Some((id, depth)) = todo.pop() {
                     shown += 1;
-                    if shown > document.scene().len() {
+                    if shown > document.area().len() {
                         break;
                     }
-                    let Some(entity) = document.scene().get(id) else {
+                    let Some(entity) = document.area().get(id) else {
                         continue;
                     };
                     let (icon, color, note) = looks(entity, models, accent);
                     let removable = entity.has("Model").then_some(entity.name.as_str());
                     ui.horizontal(|ui| {
                         ui.add_space(depth as f32 * INDENT);
-                        let (response, remove) = scene_row(
+                        let (response, remove) = area_row(
                             ui,
                             (icon, color),
                             &entity.name,
@@ -154,12 +154,12 @@ pub(crate) fn scene_tree(
                             removable,
                         );
                         if remove {
-                            requests.push(SceneRequest::Delete(id));
+                            requests.push(AreaRequest::Delete(id));
                         } else if response.clicked() {
-                            requests.push(SceneRequest::Select(id));
+                            requests.push(AreaRequest::Select(id));
                         }
                     });
-                    for child in document.scene().children(Some(id)).into_iter().rev() {
+                    for child in document.area().children(Some(id)).into_iter().rev() {
                         todo.push((child, depth + 1));
                     }
                 }
@@ -168,7 +168,7 @@ pub(crate) fn scene_tree(
                     "To see a model, use File > Import model, or drop a .gltf or .glb file onto \
                      the window. Entity > Add point light adds a lamp."
                 } else {
-                    "Scenes can't be saved yet: saving arrives later in Phase 2."
+                    "Areas can't be saved yet: saving arrives later in Phase 2."
                 };
                 ui.label(RichText::new(note).color(theme::TEXT_WEAK).size(11.0));
             });

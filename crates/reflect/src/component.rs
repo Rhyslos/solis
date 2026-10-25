@@ -53,7 +53,7 @@ pub trait Component: Sized {
     fn to_data(&self) -> ComponentData;
 
     /// The component from `data`. Missing or unusable values take their
-    /// defaults, so a damaged or older scene still loads.
+    /// defaults, so a damaged or older area still loads.
     fn from_data(data: &ComponentData) -> Self;
 }
 

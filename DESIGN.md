@@ -88,7 +88,7 @@ The target to decide against: **a change to one component is running in play mod
 ├──────────────────────────────────────────────┤
 │ Editor scripting (LustScript / Lua, Luau)    │
 ├──────────────────────────────────────────────┤
-│ Engine (Rust): components, scenes and zones, │
+│ Engine (Rust): components, areas and zones, │
 │ simulation and netcode, rendering,           │
 │ animation, VFX, sound, game UI, the editor   │
 ├──────────────────────────────────────────────┤
@@ -136,7 +136,7 @@ object Health like Component {
 end
 ```
 
-**Storage underneath:** a scene document of component values now; the game's fast storage chosen in Phase 3 with a benchmark ([decision 0019](docs/decisions/0019-scene-document-now-game-storage-later.md)).
+**Storage underneath:** an area document of component values now; the game's fast storage chosen in Phase 3 with a benchmark ([decision 0019](docs/decisions/0019-scene-document-now-game-storage-later.md)).
 
 **How Lust and Rust components meet:** every component is a plain Rust struct that can describe its fields to the inspector. The engine's built-in components are written that way. A Lust `object … like Component` compiles to exactly the same kind of struct, so built-in and custom components work the same way everywhere.
 
@@ -184,10 +184,10 @@ wgpu, lightweight, built for medium-poly, stylized games.
 
 ## 8. Worlds, zones and streaming
 
-- **Scenes** are text files, made to merge in Git: one entity per block, stable IDs, fields in a fixed order (a selling point: Unity and Godot scenes are notorious for conflicts; [decision 0006](docs/decisions/0006-git-built-in.md)).
-- **File extensions:** `project.solis` for the project, `.solscene` for scenes, `.solprefab` for prefabs and `.solmat` for materials ([decision 0015](docs/decisions/0015-file-extensions.md)).
-- **Prefabs,** nested, with per-instance overrides.
-- **Game state above scenes:** state that outlives a scene (a campaign, a save), with loading a scene and returning as a normal operation.
+- **Areas** are text files, made to merge in Git: one entity per block, stable IDs, fields in a fixed order (a selling point: Unity and Godot scenes are notorious for conflicts; [decision 0006](docs/decisions/0006-git-built-in.md)).
+- **File extensions:** `project.solis` for the project, `.solarea` for areas, `.solassembly` for assemblies and `.solmat` for materials ([decision 0015](docs/decisions/0015-file-extensions.md)).
+- **Assemblies,** nested, with per-instance overrides.
+- **Game state above areas:** state that outlives an area (a campaign, a save), with loading an area and returning as a normal operation.
 - **Zones** stream in and out by distance, each owning its memory (§3).
 - **Large worlds** need a floating origin, so precision holds far from the centre.
 - **Terrain:** heightmaps, texture painting, and scattering of grass, trees and rocks. Needed for open worlds.
@@ -237,11 +237,11 @@ The area to spend extra time on. In order of payoff:
 Settled in [decision 0004](docs/decisions/0004-editor-layout.md): Halberd's panels with Unreal's tabs, and every panel dockable.
 
 - **Top bar, one row:** menus and document tabs on the left (Unreal's tab system), and Play, Build and Build & Play on the right.
-- **Default arrangement:** Scene and Layers above Properties on the right, full height; the viewport in the centre, with the tools as icons at its bottom centre (Select, Move, Rotate, Scale, Transform) and its other overlays in the corners, switchable from its ≡ menu; the library (with Code as a second tab) beside the console (with Problems) underneath. The camera is Fly only.
+- **Default arrangement:** Area and Layers above Properties on the right, full height; the viewport in the centre, with the tools as icons at its bottom centre (Select, Move, Rotate, Scale, Transform) and its other overlays in the corners, switchable from its ≡ menu; the library (with Code as a second tab) beside the console (with Problems) underneath. The camera is Fly only.
 - **Shaped like Aventail:** flat panels with underlined tabs and a small menu row under each title, bordered buttons with small corners, square fields.
 - **Dockable:** drag any panel to an edge, onto another panel to tab them, or out to float it. Saved per computer, with presets in Window → Layouts (Default, Wide screen with the library on the left, Small screen with the library and console as tabs). Built on `egui_dock`.
 - **Theme:** Aventail's dark neutral greys with one solid accent colour from the settings (petrol blue by default; red, green and plum as in Aventail).
-- **Basics:** undo and redo, gizmos, several viewports, and a play mode that resets the scene when you stop.
+- **Basics:** undo and redo, gizmos, several viewports, and a play mode that resets the area when you stop.
 - **The scripting window** (§3).
 - **Debugging:** a frame profiler, debug drawing for physics and navigation, a command console, and stepping through Lust code.
 
@@ -255,7 +255,7 @@ Settled in [decision 0004](docs/decisions/0004-editor-layout.md): Halberd's pane
 - **Physics:** Rapier.
 - **Save games.**
 - **Build and export:** Windows ([decision 0012](docs/decisions/0012-windows-only.md)). Linux and macOS only if that changes.
-- **Git, for teams** ([decision 0006](docs/decisions/0006-git-built-in.md)): project files made to merge, Git LFS for big files, a Git panel with commits, history and locking, and a merge tool that merges scenes entity by entity.
+- **Git, for teams** ([decision 0006](docs/decisions/0006-git-built-in.md)): project files made to merge, Git LFS for big files, a Git panel with commits, history and locking, and a merge tool that merges areas entity by entity.
 
 **Later:**
 - **Navigation and AI:** navmeshes, flowfields (moving many units), behaviour trees or state machines.
@@ -311,7 +311,7 @@ Both sides review each other's pull requests.
 - 2026-10-21: [0003](docs/decisions/0003-games-in-rust-lust-or-lua.md): games can be written in Lust, Rust or Lua. Replaces "LustScript/Lua only for editor scripting, never game code".
 - 2026-10-21: [0004](docs/decisions/0004-editor-layout.md): the editor's layout and theme. Halberd's panels with Unreal's tabs, every panel dockable, dark greys with one accent. Replaces "mid-greys with accent gradients".
 - 2026-10-21: [0005](docs/decisions/0005-netcode-in-layers.md): netcode in layers: transport, sessions, foundations and tools built in; lockstep as an optional model; other models through existing crates. Replaces "deterministic by default" as the netcode pitch.
-- 2026-10-21: [0006](docs/decisions/0006-git-built-in.md): Git built into the editor, with project files made to merge, Git LFS, locking, and a scene merge tool.
+- 2026-10-21: [0006](docs/decisions/0006-git-built-in.md): Git built into the editor, with project files made to merge, Git LFS, locking, and an area merge tool.
 - 2026-10-21: [0007](docs/decisions/0007-mit-licence-and-separate-from-aventail.md): MIT licence; Solis stays separate from Aventail, copying and adapting Aventail's code, which its owner relicenses.
 - 2026-10-21: [0008](docs/decisions/0008-lighting-is-a-project-choice.md): lighting is a choice per project; real-time lights with sky light come first, baked and global illumination later.
 - 2026-10-21: [0009](docs/decisions/0009-fly-camera-controls.md): the viewport camera flies with Unreal's controls (hold right mouse; W A S D, Q and E).
@@ -319,12 +319,13 @@ Both sides review each other's pull requests.
 - 2026-10-21: [0011](docs/decisions/0011-scale-check-at-phase-gates.md): a scale check (`tools/scale/scale-check.sh`) at every phase gate and on request, growing into the §2 target in Phase 5 (Scale, numbered 4 before decision 0016).
 - 2026-10-21: [0012](docs/decisions/0012-windows-only.md): Solis is made for Windows, the editor and exported games; Linux and macOS builds are dropped. CI's checks still run on a Linux machine, the cheapest kind.
 - 2026-10-21: [0013](docs/decisions/0013-looks-for-the-whole-view-first.md): the standard, stylized (cel-shaded, with outlines) and unlit looks, chosen for the whole view until materials become assets in Phase 2.
-- 2026-10-22: [0014](docs/decisions/0014-lights-placed-two-ways.md): lights come two ways until scenes arrive: with a model's glTF file, or added from the Entity menu; strengths in Blender's units (W, W/m²); shadows from the sun only, up to 16 lamps at once.
-- 2026-10-22: [0015](docs/decisions/0015-file-extensions.md): file extensions `project.solis`, `.solscene`, `.solprefab` and `.solmat`; `.sol` is Solidity's.
+- 2026-10-22: [0014](docs/decisions/0014-lights-placed-two-ways.md): lights come two ways until areas arrive: with a model's glTF file, or added from the Entity menu; strengths in Blender's units (W, W/m²); shadows from the sun only, up to 16 lamps at once.
+- 2026-10-22: [0015](docs/decisions/0015-file-extensions.md): file extensions `project.solis`, `.solarea`, `.solassembly` and `.solmat`; `.sol` is Solidity's.
 - 2026-10-22: [0016](docs/decisions/0016-how-lust-joins-solis.md): Lust joins in Phase 4, right after the editor; the engine is described to Lust in generated `solis/*.lst` files with `native` methods, and a game's Lust is built as a library the engine includes. Scale, simulation, and sound and animation become Phases 5–7.
 - 2026-10-22: [0017](docs/decisions/0017-hdr-tone-mapping-sky-and-fog.md): the world drawn in HDR and tone mapped (AgX by default, ACES or none), with exposure; the editor backdrop or a daylight sky that follows the sun; distance fog. The editor's own backdrop and lines are never tone mapped.
 - 2026-10-22: [0018](docs/decisions/0018-checks-for-a-public-repo.md): the repository is public, so checks run on every pull request update and merge, with Windows and Direct3D 12 GPU tests, a weekly security check and Dependabot. Replaces 0001.
-- 2026-10-23: [0019](docs/decisions/0019-scene-document-now-game-storage-later.md): entities and components live in a scene document of values with stable IDs, described by schemas looked up by name; the game's fast storage is chosen in Phase 3 with a benchmark.
-- 2026-10-23: [0020](docs/decisions/0020-scene-files-in-lust-style.md): scenes and prefabs are Lust-style data blocks, one per entity, sorted by random IDs, one line per field; prefab instances are a reference plus overrides.
+- 2026-10-23: [0019](docs/decisions/0019-scene-document-now-game-storage-later.md): entities and components live in an area document of values with stable IDs, described by schemas looked up by name; the game's fast storage is chosen in Phase 3 with a benchmark.
+- 2026-10-23: [0020](docs/decisions/0020-scene-files-in-lust-style.md): areas and assemblies are Lust-style data blocks, one per entity, sorted by random IDs, one line per field; assembly instances are a reference plus overrides.
 - 2026-10-23: [0021](docs/decisions/0021-asset-database-and-models.md): a project folder with `.solmeta` sidecars holding asset and sub-asset IDs, a rebuildable cache, file watching; models become node trees drawn with per-instance transforms.
-- 2026-10-23: [0022](docs/decisions/0022-undo-as-reversible-edits.md): undo and redo as reversible edits to the scene document; selection restored by undo but never a step.
+- 2026-10-23: [0022](docs/decisions/0022-undo-as-reversible-edits.md): undo and redo as reversible edits to the area document; selection restored by undo but never a step.
+- 2026-10-23: [0023](docs/decisions/0023-areas-and-assemblies.md): "area" instead of "scene" and "assembly" instead of "prefab"; files `.solarea` and `.solassembly`.

@@ -9,17 +9,17 @@ Solis is a Rust program split into small, single-purpose crates. **Lower layers 
 | 3 | App | `app` | Opens the window, owns the frame loop, wires the rest together. No feature logic. |
 | 2 | Editor | `editor` | The editor's interface: top bar, dockable panels, theme. Never needed by a game. |
 | 1 | Engine | `render`, `assets` | What games run on. Knows nothing about the editor. `assets` reads model files; `render` draws. |
-| 0 | Core | `reflect`, `scene` | Shared building blocks with no GPU, window or interface. `reflect` holds IDs, values and component schemas; `scene` holds the scene document and the built-in components. |
+| 0 | Core | `reflect`, `area` | Shared building blocks with no GPU, window or interface. `reflect` holds IDs, values and component schemas; `area` holds the area document and the built-in components. |
 
 Each crate's `README.md` states its purpose and what it **must never** do. Read it before changing the crate.
 
 Planned: `asset_db` (layer 1) later in Phase 2; the game's own fast storage in Phase 3 ([decision 0019](docs/decisions/0019-scene-document-now-game-storage-later.md)); physics, sound and networking crates in later phases. See ROADMAP.md.
 
-## The scene
+## The area
 
-The editor edits a **scene document** (`scene::Scene`): entities by stable random ID, each with a name, a parent, an order among its siblings, and components stored as plain values (`reflect::ComponentData`). A component's fields are described by a **schema** looked up by name in a `reflect::Registry`, so Properties draws any component (built-in now, Lust and Lua later) without knowing it, and a component nobody registered is kept untouched and shown as missing ([decision 0019](docs/decisions/0019-scene-document-now-game-storage-later.md)). Built-in components (`Transform`, `Light`, `Model`, `Environment`) are Rust structs that convert to and from their values.
+The editor edits a **area document** (`area::Area`): entities by stable random ID, each with a name, a parent, an order among its siblings, and components stored as plain values (`reflect::ComponentData`). A component's fields are described by a **schema** looked up by name in a `reflect::Registry`, so Properties draws any component (built-in now, Lust and Lua later) without knowing it, and a component nobody registered is kept untouched and shown as missing ([decision 0019](docs/decisions/0019-scene-document-now-game-storage-later.md)). Built-in components (`Transform`, `Light`, `Model`, `Environment`) are Rust structs that convert to and from their values.
 
-Panels never change the document: Properties returns `PropertyRequest`s and the Scene panel `SceneRequest`s, and the workbench turns them into commands. A command is a list of reversible `scene::Edit`s applied through `Document::edit`, the only way the scene changes, which records it as one undo step in `scene::History` ([decision 0022](docs/decisions/0022-undo-as-reversible-edits.md)). A drag is one step: changes carry a merge key of (what's changed, which mouse press), and steps with the same key in a row merge. Each frame the workbench turns the document into a `SceneView` (models to draw, the sun, lamps placed in the world, the environment), which the app maps to the renderer's types.
+Panels never change the document: Properties returns `PropertyRequest`s and the Area panel `AreaRequest`s, and the workbench turns them into commands. A command is a list of reversible `area::Edit`s applied through `Document::edit`, the only way the area changes, which records it as one undo step in `area::History` ([decision 0022](docs/decisions/0022-undo-as-reversible-edits.md)). A drag is one step: changes carry a merge key of (what's changed, which mouse press), and steps with the same key in a row merge. Each frame the workbench turns the document into a `AreaView` (models to draw, the sun, lamps placed in the world, the environment), which the app maps to the renderer's types.
 
 ## How a frame runs
 

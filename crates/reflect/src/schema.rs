@@ -63,13 +63,13 @@ pub struct Hint {
 /// One field of a component.
 #[derive(Debug, Clone, PartialEq)]
 pub struct FieldInfo {
-    /// Its name, as written in scene files: `strength`.
+    /// Its name, as written in area files: `strength`.
     pub name: String,
     /// The name the inspector shows: `Strength`.
     pub label: String,
     /// What it holds.
     pub kind: FieldKind,
-    /// Its value in a new component, and when a scene leaves it out.
+    /// Its value in a new component, and when an area leaves it out.
     pub default: Value,
     /// How the inspector shows it.
     pub hint: Hint,
@@ -98,7 +98,7 @@ impl FieldInfo {
 /// A component's name and fields, in the order they're shown and written.
 #[derive(Debug, Clone, PartialEq)]
 pub struct ComponentSchema {
-    /// Its name, unique among components, as written in scene files:
+    /// Its name, unique among components, as written in area files:
     /// `Light`.
     pub name: String,
     /// What it's for, in plain words.

@@ -1,10 +1,10 @@
 //! Undo and redo: steps of edits, with the selection each step had
 //! ([decision 0022](../../../docs/decisions/0022-undo-as-reversible-edits.md)).
 //!
-//! The selection type is the caller's (`S`): the scene crate doesn't know
+//! The selection type is the caller's (`S`): the area crate doesn't know
 //! what the editor selects, only that undo brings it back.
 
-use crate::document::Scene;
+use crate::document::Area;
 use crate::edit::{Edit, EditError};
 use std::collections::VecDeque;
 
@@ -102,13 +102,13 @@ impl<S: Clone> History<S> {
         }
     }
 
-    /// Applies `edits` to `scene` as one step called `label`. With a
+    /// Applies `edits` to `area` as one step called `label`. With a
     /// `merge` key equal to the newest step's, they join that step
     /// instead. `before` and `after` are the selection either side of it.
     /// On an error nothing changes.
     pub fn apply(
         &mut self,
-        scene: &mut Scene,
+        area: &mut Area,
         label: &str,
         edits: Vec<Edit>,
         merge: Option<MergeKey>,
@@ -119,7 +119,7 @@ impl<S: Clone> History<S> {
             return Ok(());
         }
         let redo = edits.clone();
-        let undo = scene.apply_all(edits)?;
+        let undo = area.apply_all(edits)?;
         self.redo.clear();
         let merging =
             self.open && merge.is_some() && self.undo.back().is_some_and(|s| s.merge == merge);
@@ -169,11 +169,11 @@ impl<S: Clone> History<S> {
 
     /// Undoes the newest step, returning its label and the selection it
     /// started with; `None` if there's nothing to undo.
-    pub fn undo(&mut self, scene: &mut Scene) -> Option<Result<Undone<S>, EditError>> {
+    pub fn undo(&mut self, area: &mut Area) -> Option<Result<Undone<S>, EditError>> {
         let mut step = self.undo.pop_back()?;
         self.bytes -= step.bytes;
         self.open = false;
-        match scene.apply_all(step.undo.clone()) {
+        match area.apply_all(step.undo.clone()) {
             Ok(redo) => {
                 step.redo = redo;
                 let done = Undone {
@@ -189,10 +189,10 @@ impl<S: Clone> History<S> {
 
     /// Redoes the step undone last, returning its label and the selection
     /// it ended with; `None` if there's nothing to redo.
-    pub fn redo(&mut self, scene: &mut Scene) -> Option<Result<Undone<S>, EditError>> {
+    pub fn redo(&mut self, area: &mut Area) -> Option<Result<Undone<S>, EditError>> {
         let mut step = self.redo.pop()?;
         self.open = false;
-        match scene.apply_all(step.redo.clone()) {
+        match area.apply_all(step.redo.clone()) {
             Ok(undo) => {
                 step.undo = undo;
                 let done = Undone {
@@ -233,7 +233,7 @@ impl<S: Clone> History<S> {
         self.open = false;
     }
 
-    /// Forgets everything (a new scene was opened).
+    /// Forgets everything (a new area was opened).
     pub fn clear(&mut self) {
         *self = Self::with_limit(self.limit);
     }
@@ -295,12 +295,12 @@ mod tests {
         }
     }
 
-    fn strength(s: &Scene, id: EntityId) -> f32 {
+    fn strength(s: &Area, id: EntityId) -> f32 {
         s.get(id).unwrap().get::<Light>().unwrap().strength
     }
 
-    fn lamp() -> (Scene, EntityId) {
-        let mut s = Scene::new();
+    fn lamp() -> (Area, EntityId) {
+        let mut s = Area::new();
         let id = s.spawn(EntityData::new("Lamp").with(&Light::point()));
         (s, id)
     }
@@ -428,7 +428,7 @@ mod tests {
     }
 
     /// A random edit, often a bad one, against the entities in `s`.
-    fn random_edit(r: &mut Rng, s: &Scene) -> Edit {
+    fn random_edit(r: &mut Rng, s: &Area) -> Edit {
         let mut ids: Vec<EntityId> = s.iter().map(|(id, _)| id).collect();
         ids.push(EntityId::random());
         let entity = r.pick(&ids);

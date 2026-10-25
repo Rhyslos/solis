@@ -8,8 +8,8 @@ When finding your way around, or making the layout suit your screen.
 ## How to use it
 
 **The top bar**, from left to right:
-- **Menus:** File, Edit, View, Entity, Build, Window and Help. **File > Import model…** brings a model in (see [Importing models](importing-models.md)); **Edit > Undo** and **Redo** take back changes (see [Undo and redo](undo.md)); **Help > Add the sample scene** brings in a ready-made one. Items that don't work yet are greyed out; point at one to see which phase brings it.
-- **The scene tab:** the open scene ("Untitled scene"). Opening more scenes, prefabs and code side by side arrives in Phase 2.
+- **Menus:** File, Edit, View, Entity, Build, Window and Help. **File > Import model…** brings a model in (see [Importing models](importing-models.md)); **Edit > Undo** and **Redo** take back changes (see [Undo and redo](undo.md)); **Help > Add the sample area** brings in a ready-made one. Items that don't work yet are greyed out; point at one to see which phase brings it.
+- **The area tab:** the open area ("Untitled area"). Opening more areas, assemblies and code side by side arrives in Phase 2.
 - **Play**, **Play with two players** and **Stop**, then **Build** and **Build & Play**, on the right. They tell you in the Console which phase brings them.
 
 **The panels:**
@@ -18,13 +18,13 @@ When finding your way around, or making the layout suit your screen.
 |---|---|---|
 | Viewport | Game | The 3D world. See [Moving around the viewport](navigating-the-viewport.md). |
 | Game | Viewport | The running game, when you press Play (Phase 3). |
-| Scene | Layers | Every [entity](entities.md) in the scene, as a tree: the sun, the [environment](sky-fog-and-exposure.md) (sky and fog), [lights](lights.md) and [imported models](importing-models.md) (each with a × to delete it), with lights from a model's file indented under it. Click one to see it in Properties. |
-| Layers | Scene | The scene's layers (Phase 2). |
+| Area | Layers | Every [entity](entities.md) in the area, as a tree: the sun, the [environment](sky-fog-and-exposure.md) (sky and fog), [lights](lights.md) and [imported models](importing-models.md) (each with a × to delete it), with lights from a model's file indented under it. Click one to see it in Properties. |
+| Layers | Area | The area's layers (Phase 2). |
 | Properties | | The selected entity's name and [components](entities.md), each with its settings, plus **Move here** and **Delete**. |
-| Library | Code | Models, textures, sounds and prefabs (Phase 2). |
+| Library | Code | Models, textures, sounds and assemblies (Phase 2). |
 | Code | Library | Game code in Lust, Rust or Lua (Phase 4). |
 | Console | Problems | Messages from the editor. See [The Console](console.md). |
-| Problems | Console | Mistakes found in code and scenes. |
+| Problems | Console | Mistakes found in code and areas. |
 
 **Rearranging panels ([docking](concepts.md#the-window)):**
 1. Drag a panel by its tab.

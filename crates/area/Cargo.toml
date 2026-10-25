@@ -1,6 +1,6 @@
 [package]
-name = "scene"
-description = "The scene document: entities, their components as values, and the built-in components"
+name = "area"
+description = "The area document: entities, their components as values, and the built-in components"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true
