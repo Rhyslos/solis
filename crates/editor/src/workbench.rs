@@ -1079,12 +1079,18 @@ impl Workbench {
     /// Whether the window may close now. If the area has unsaved changes,
     /// asks first (and the app should cancel this close).
     pub fn close_requested(&mut self) -> bool {
-        if self.playing.is_some() {
-            self.stop();
-        }
-        if self.may_close || !self.document.is_dirty() {
+        // While playing, the area that matters is the one from before Play.
+        let dirty = match &self.playing {
+            Some(playing) => playing.before.is_dirty(),
+            None => self.document.is_dirty(),
+        };
+        if self.may_close || !dirty {
+            if self.playing.is_some() {
+                self.stop();
+            }
             return true;
         }
+        // Asked first: Cancel leaves the game running.
         self.unsaved_prompt = Some(WorkbenchAction::Quit);
         false
     }
@@ -1115,6 +1121,11 @@ impl Workbench {
                 });
             if let Some(save) = answer {
                 self.unsaved_prompt = None;
+                // Saving or leaving waits for Stop, which puts the area
+                // back as it was before Play.
+                if self.playing.is_some() {
+                    self.stop();
+                }
                 if save {
                     actions.push(WorkbenchAction::SaveArea);
                 }

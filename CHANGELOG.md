@@ -76,6 +76,11 @@ What changed in each version, for people using Solis. Newest first.
 
 ### Fixed
 
+- Closing Solis while playing stopped the game before asking about unsaved changes, so Cancel left it stopped; it asks first now, and the game plays on if you cancel.
+- A project whose name had a line break in it could never load its saves.
+- A save whose first line had a Windows line ending added said it was "made by a newer Solis"; it says it's damaged. A load whose input actions can't be read says so plainly.
+- A hand-changed save could give entities components they don't have, or list millions of lasers before being refused; it's checked first.
+
 - A character standing on a moving platform was left behind by it (a mistake in the last round of fixes); it rides it again, standing or walking.
 - Replaying a recording in which the game saved stopped matching right after the save; it matches now (and still doesn't write over your saves). A replay that matched says so as news, not as a warning, and one that didn't says from which tick.
 - A quick load from game code (F7 in the playground) gave the mouse and keys back to the editor, so the next key went nowhere; the game keeps them. Loading while recording saves what was recorded so far instead of losing it.

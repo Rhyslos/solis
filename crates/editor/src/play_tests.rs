@@ -162,9 +162,18 @@ fn quitting_while_playing_stops_first() {
     // The crate was placed and not saved, so the question about saving
     // is asked about the area as it was before Play.
     assert!(w.unsaved_prompt.is_some() || actions == [WorkbenchAction::Quit]);
+    // Closing the window with unsaved changes asks first, and the game
+    // plays on meanwhile (Cancel leaves it running); with nothing unsaved,
+    // it stops and closes.
     let (mut w, _) = with_a_crate();
     w.play();
-    w.close_requested();
+    assert!(!w.close_requested());
+    assert_eq!(w.unsaved_prompt, Some(WorkbenchAction::Quit));
+    assert_ne!(w.play_state(), PlayState::Editing, "still playing");
+    let (mut w, _) = with_a_crate();
+    w.document.mark_saved("harbour.solarea".into());
+    w.play();
+    assert!(w.close_requested());
     assert_eq!(w.play_state(), PlayState::Editing);
 }
 
