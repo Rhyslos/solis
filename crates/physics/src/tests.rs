@@ -257,9 +257,32 @@ fn past_the_most_bodies_the_rest_are_counted_not_made() {
     assert_eq!(physics.refused(), 3);
 }
 
-#[test]
-fn a_snapshot_carries_on_exactly_as_physics_would_have() {
-    let mut physics = with_floor();
+/// Builds physics again from `states` as a save game or an edit does:
+/// empty, the same bodies added in entity order by `add_all`, then each
+/// given its state.
+fn rebuilt(
+    physics: &mut Physics,
+    add_all: &dyn Fn(&mut Physics),
+    states: &[(EntityId, BodyState)],
+) {
+    physics.clear();
+    add_all(physics);
+    for (id, state) in states {
+        physics.set_body_state(*id, *state, true);
+    }
+}
+
+fn six_crates(physics: &mut Physics) {
+    assert!(physics.add(
+        id(1),
+        (Vec3::new(0.0, 0.0, -0.5), Quat::IDENTITY),
+        Vec3::ONE,
+        None,
+        Some(ColliderSpec {
+            shape: Shape::Box(Vec3::new(20.0, 20.0, 1.0)),
+            ..ColliderSpec::default()
+        }),
+    ));
     for n in 0..6 {
         let (body, collider) = crate_spec();
         physics.add(
@@ -273,28 +296,61 @@ fn a_snapshot_carries_on_exactly_as_physics_would_have() {
             collider,
         );
     }
+}
+
+#[test]
+fn built_again_from_body_states_it_carries_on_the_same_both_ways() {
+    let mut physics = Physics::new();
+    six_crates(&mut physics);
     run(&mut physics, 40);
-    let saved = physics.snapshot();
-    run(&mut physics, 60);
-    let carried_on = physics.state().checksum();
-    let mut restored = Physics::new();
-    restored.restore(&saved).unwrap();
-    run(&mut restored, 60);
-    assert_eq!(restored.state().checksum(), carried_on, "to the bit");
-    // Damaged bytes are refused, never a crash, and leave it as it was.
-    let before = restored.state().checksum();
-    assert!(restored.restore(&saved[..saved.len() / 2]).is_err());
-    let mut seed = 0x2545_f491_u64;
-    for _ in 0..300 {
-        seed ^= seed << 13;
-        seed ^= seed >> 7;
-        seed ^= seed << 17;
-        let mut bytes = saved.clone();
-        let at = (seed as usize) % bytes.len();
-        bytes[at] ^= (seed >> 40) as u8 | 1;
-        let _ = Physics::new().restore(&bytes);
-    }
-    assert_eq!(restored.state().checksum(), before);
+    // Saving builds the running physics again from its states; loading
+    // builds a new one from the same states: the two carry on alike.
+    let states = physics.state().body_states();
+    assert_eq!(states.len(), 7);
+    let spinning = states.iter().any(|(_, s)| s.spin.length() > 1e-3);
+    assert!(spinning, "the falling crates spin");
+    rebuilt(&mut physics, &six_crates, &states);
+    assert_eq!(physics.state().body_states(), states, "kept exactly");
+    let mut loaded = Physics::new();
+    rebuilt(&mut loaded, &six_crates, &states);
+    run(&mut physics, 120);
+    run(&mut loaded, 120);
+    assert_eq!(
+        loaded.state().checksum(),
+        physics.state().checksum(),
+        "to the bit"
+    );
+    // Asleep stays asleep.
+    run(&mut physics, 600);
+    let resting = physics.state().body_states();
+    assert!(
+        resting
+            .iter()
+            .filter(|(i, _)| *i != id(1))
+            .all(|(_, s)| s.sleeping)
+    );
+    let mut again = Physics::new();
+    rebuilt(&mut again, &six_crates, &resting);
+    assert_eq!(again.state().body_states(), resting);
+}
+
+#[test]
+fn body_states_that_arent_sensible_are_left_out() {
+    let mut physics = Physics::new();
+    six_crates(&mut physics);
+    let before = physics.state().body_states();
+    let mut bad = before[1].1;
+    bad.position = Vec3::NAN;
+    physics.set_body_state(before[1].0, bad, true);
+    bad = before[1].1;
+    bad.rotation = Quat::from_xyzw(0.0, 0.0, 0.0, 0.0);
+    physics.set_body_state(before[1].0, bad, true);
+    bad = before[1].1;
+    bad.spin = Vec3::splat(f32::INFINITY);
+    physics.set_body_state(before[1].0, bad, true);
+    // Not in physics: nothing happens.
+    physics.set_body_state(id(999), before[1].1, true);
+    assert_eq!(physics.state().body_states(), before);
 }
 
 /// The character as entity 9, feet at `at`.
@@ -464,7 +520,7 @@ fn a_character_pushes_a_crate() {
 }
 
 #[test]
-fn a_character_moves_the_same_every_run_and_after_a_snapshot() {
+fn a_character_moves_the_same_every_run_and_after_being_built_again() {
     let course = || {
         let mut physics = with_floor();
         fixed_box(
@@ -489,8 +545,41 @@ fn a_character_moves_the_same_every_run_and_after_a_snapshot() {
     walk(&mut a, Vec3::new(2.0, 1.0, 0.0), 40);
     walk(&mut b, Vec3::new(2.0, 1.0, 0.0), 40);
     assert_eq!(a.state().checksum(), b.state().checksum());
+    let add_all = |physics: &mut Physics| {
+        physics.add(
+            id(1),
+            (Vec3::new(0.0, 0.0, -0.5), Quat::IDENTITY),
+            Vec3::ONE,
+            None,
+            Some(ColliderSpec {
+                shape: Shape::Box(Vec3::new(20.0, 20.0, 1.0)),
+                ..ColliderSpec::default()
+            }),
+        );
+        fixed_box(
+            physics,
+            2,
+            Vec3::new(4.0, 0.0, 0.125),
+            Vec3::new(4.0, 4.0, 0.25),
+        );
+        let (body, collider) = crate_spec();
+        physics.add(
+            id(5),
+            (Vec3::ZERO, Quat::IDENTITY),
+            Vec3::ONE,
+            body,
+            collider,
+        );
+        character_at(physics, Vec3::ZERO);
+    };
+    let states = a.state().body_states();
     let mut c = Physics::new();
-    c.restore(&a.snapshot()).unwrap();
+    rebuilt(&mut c, &add_all, &states);
+    rebuilt(&mut a, &add_all, &states);
+    assert!(
+        c.state().character(id(9)).unwrap().grounded,
+        "kept its finding"
+    );
     walk(&mut a, Vec3::new(1.0, 2.0, 0.0), 60);
     walk(&mut c, Vec3::new(1.0, 2.0, 0.0), 60);
     assert_eq!(a.state().checksum(), c.state().checksum());

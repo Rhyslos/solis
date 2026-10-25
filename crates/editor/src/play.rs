@@ -69,6 +69,8 @@ pub(crate) struct Playing {
     /// What this play records (Play > Play and record inputs), if it
     /// records.
     pub(crate) recording: Option<input::Recording>,
+    /// At most how big the recording's file is so far.
+    pub(crate) recording_bytes: usize,
     /// The recording this play plays back, and how many of its ticks
     /// have run.
     pub(crate) replay: Option<(input::Recording, usize)>,
@@ -80,6 +82,27 @@ pub const RECORDING_TICKS: usize = 60 * 60 * 60;
 /// The longest one tick of physics may take before the game pauses and
 /// says why, like game code's tick limit.
 pub const PHYSICS_LIMIT: std::time::Duration = std::time::Duration::from_millis(250);
+
+/// The most slots game code saves and loads in one tick; more are left
+/// out with a warning (a save is the whole game, so thousands in a tick,
+/// say from every unit's update, would freeze Solis).
+pub const MAX_SAVES_PER_TICK: usize = 4;
+
+/// A tick's saves and loads (slot, whether it's a load) as they're made:
+/// each slot and kind once, where it was last asked for, at most
+/// [`MAX_SAVES_PER_TICK`]; and how many were left out past that.
+pub(crate) fn collapse_saves(saves: Vec<(String, bool)>) -> (Vec<(String, bool)>, usize) {
+    let mut seen = std::collections::HashSet::new();
+    let mut kept: Vec<(String, bool)> = saves
+        .into_iter()
+        .rev()
+        .filter(|s| seen.insert(s.clone()))
+        .collect();
+    kept.reverse();
+    let dropped = kept.len().saturating_sub(MAX_SAVES_PER_TICK);
+    kept.truncate(MAX_SAVES_PER_TICK);
+    (kept, dropped)
+}
 
 /// The most copies of assemblies game code may make in one tick; more
 /// aren't made, and the Console says so (a component spawning every tick by
@@ -173,6 +196,7 @@ impl Workbench {
             pending,
             bindings: Arc::new(self.bindings.clone()),
             recording: None,
+            recording_bytes: 0,
             replay: None,
         });
         // Nothing held over from before Play.
@@ -227,6 +251,7 @@ impl Workbench {
             failures.push(failure);
         }
         failures.extend(sync_all(&mut game, self.document.area(), &mut host));
+        host.outside_a_tick();
         let said = std::mem::take(&mut host.said);
         // What the starts spawned lands before the first tick.
         let pending = std::mem::take(&mut host.edits);
@@ -373,6 +398,7 @@ impl Workbench {
                 ));
             }
             code += syncing.elapsed();
+            host.outside_a_tick();
             said.append(&mut host.said);
             // What their starts spawned lands before the next tick.
             let edits = std::mem::take(&mut host.edits);
@@ -479,12 +505,17 @@ impl Workbench {
                         .then(|| playing.game.as_mut().map_or(0, script::Game::checksum)),
                 };
                 if let Some(recording) = &mut playing.recording {
-                    if recording.ticks.len() < RECORDING_TICKS {
+                    let bytes = playing.recording_bytes + tick.written_len();
+                    // Within what Solis reads back (header and all).
+                    if recording.ticks.len() < RECORDING_TICKS
+                        && bytes + 256 < input::MAX_RECORDING_BYTES
+                    {
+                        playing.recording_bytes = bytes;
                         recording.ticks.push(tick);
                     } else if slow.is_none() {
                         slow = Some(
-                            "The recording reached an hour, the most Solis keeps, so the game \
-                             is paused; Stop saves what was recorded."
+                            "The recording reached the most Solis keeps (an hour, or 64 MB), so \
+                             the game is paused; Stop saves what was recorded."
                                 .to_string(),
                         );
                     }
@@ -519,15 +550,25 @@ impl Workbench {
                 }
             }
             // Too slow: no catching up, which would only be slower; the
-            // game waits for the person instead.
+            // game waits for the person instead (after this tick's saves).
             if slow.is_some() {
                 playing.paused = true;
                 pause = slow;
-                break;
             }
             // Saves and loads, at the end of the tick, in the order asked
-            // (decision 0038). A load replaces the game, so no more ticks
-            // run before it.
+            // (decision 0038); the same slot asked for again in a tick is
+            // done once, as last asked. A load replaces the game, so no
+            // more ticks run before it.
+            let (saves, dropped) = collapse_saves(saves);
+            if dropped > 0 {
+                self.log(
+                    LogLevel::Warning,
+                    format!(
+                        "Game code asked to save or load in more than {MAX_SAVES_PER_TICK} slots \
+                         in one tick; the other {dropped} were left out."
+                    ),
+                );
+            }
             let mut loading = false;
             for (slot, load) in saves {
                 if load {
@@ -537,7 +578,7 @@ impl Workbench {
                     self.save_game(&slot);
                 }
             }
-            if loading {
+            if loading || pause.is_some() {
                 break;
             }
         }
@@ -679,6 +720,7 @@ impl Workbench {
             }
         }
         let mut failures = Vec::new();
+        let mut told = Vec::new();
         if let Some(playing) = &mut self.playing {
             playing.world.remove_subtrees(&removed_roots);
             let gone: std::collections::HashSet<EntityId> = removed.iter().copied().collect();
@@ -689,12 +731,17 @@ impl Workbench {
                     let mut host = PlayWorld::new(&mut playing.world, &mut playing.view, time);
                     host.frame_time = f64::from(seconds);
                     failures = sync_entities(game, self.document.area(), added, &mut host);
+                    host.outside_a_tick();
+                    told = std::mem::take(&mut host.said);
                     // What the new components' starts spawn waits for the
                     // next landing.
                     let more = std::mem::take(&mut host.edits);
                     playing.pending.extend(more);
                 }
             }
+        }
+        for words in told {
+            self.log(LogLevel::Info, words);
         }
         unknown.sort();
         unknown.dedup();

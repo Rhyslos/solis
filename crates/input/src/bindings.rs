@@ -337,6 +337,11 @@ impl Bindings {
         // An axis's direction keys stay (rebinding a direction needs the
         // Input actions window); its whole-axis inputs are what changes.
         action.inputs.retain(|i| kind(i) != k);
+        if action.inputs.len() >= MAX_INPUTS {
+            // Full of other kinds: never past the limit a file is read
+            // within, so a save holding these bindings still loads.
+            return false;
+        }
         action.inputs.push(input.to_string());
         true
     }

@@ -414,3 +414,52 @@ fn an_older_project_gets_the_ready_made_actions_it_is_missing() {
     assert_eq!(b.get("Jump").unwrap().inputs, ["E"]);
     assert!(b.add_missing().is_empty());
 }
+
+#[test]
+fn rebinding_never_grows_an_action_past_the_limit() {
+    let mut b = Bindings::default();
+    let keys: Vec<String> = (0..MAX_INPUTS).map(|n| format!("F{}", n + 1)).collect();
+    b.get_mut("Jump").unwrap().inputs = keys;
+    assert!(
+        !b.rebind("Jump", "Pad A"),
+        "full of keys: no room for a pad button"
+    );
+    assert_eq!(b.get("Jump").unwrap().inputs.len(), MAX_INPUTS);
+    // A key replaces the keys, so there's room.
+    assert!(b.rebind("Jump", "Space"));
+    b.check().unwrap();
+    assert!(Bindings::read(&b.write()).is_ok());
+}
+
+#[test]
+fn a_tick_s_written_length_is_never_less_than_its_line() {
+    let mut recording = Recording::default();
+    for n in 0..50u64 {
+        let mut frame = Frame::default();
+        for k in 0..(n % 7) {
+            frame.actions.insert(
+                format!("Action_{k}_{}", "x".repeat(n as usize % 40)),
+                ActionState {
+                    held: true,
+                    pressed: k % 2 == 0,
+                    released: true,
+                    axis: Vec2::new(-1.234_567, f32::MIN_POSITIVE),
+                },
+            );
+        }
+        recording.ticks.push(Tick {
+            frame,
+            world: u64::MAX,
+            game: Some(u64::MAX - n),
+        });
+    }
+    let header = Recording {
+        ticks: Vec::new(),
+        ..recording.clone()
+    }
+    .write()
+    .len();
+    let lines = recording.write().len() - header;
+    let estimated: usize = recording.ticks.iter().map(Tick::written_len).sum();
+    assert!(estimated >= lines, "{estimated} < {lines}");
+}

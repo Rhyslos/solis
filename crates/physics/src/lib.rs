@@ -114,7 +114,7 @@ impl Default for ColliderSpec {
 /// A character's settings (the `CharacterBody` component's): a standing
 /// capsule, feet at its entity's origin, moved by game code through
 /// [`Physics::move_character`].
-#[derive(Debug, Clone, Copy, PartialEq, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq)]
 pub struct CharacterSpec {
     /// Feet to head, metres.
     pub height: f32,
@@ -144,7 +144,7 @@ impl Default for CharacterSpec {
 }
 
 /// What a character's last move found.
-#[derive(Debug, Clone, Copy, PartialEq, Default, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone, Copy, PartialEq, Default)]
 pub struct CharacterState {
     /// Standing on something.
     pub grounded: bool,
@@ -153,6 +153,32 @@ pub struct CharacterState {
 /// The farthest a character moves in one move, metres: a sensible limit
 /// on what game code asks (a kilometre a second at 60 ticks).
 pub const MAX_CHARACTER_MOVE: f32 = 16.0;
+
+/// Where a body is and how it moves: what a save game keeps of it, and
+/// what's carried over when physics is built again (an edit while
+/// playing), so nothing of Rapier's own comes from a file.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct BodyState {
+    /// Where it is.
+    pub position: Vec3,
+    /// Which way it faces.
+    pub rotation: Quat,
+    /// How fast it moves, metres a second.
+    pub velocity: Vec3,
+    /// How fast it spins, radians a second about each axis.
+    pub spin: Vec3,
+    /// Asleep (resting, not worked on until something wakes it).
+    pub sleeping: bool,
+    /// A character's last move's finding.
+    pub character: Option<CharacterState>,
+}
+
+impl BodyState {
+    /// Whether every number is sensible.
+    pub fn is_sensible(&self) -> bool {
+        finite(self.position, self.rotation) && self.velocity.is_finite() && self.spin.is_finite()
+    }
+}
 
 /// What a ray hit.
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -168,7 +194,7 @@ pub struct Hit {
 }
 
 /// One entity's part in physics.
-#[derive(Debug, Clone, serde::Serialize, serde::Deserialize)]
+#[derive(Debug, Clone)]
 struct Entry {
     body: rp::RigidBodyHandle,
     collider: Option<rp::ColliderHandle>,
@@ -177,9 +203,9 @@ struct Entry {
 }
 
 /// Everything physics knows: bodies, colliders and Rapier's own state.
-/// Shared with game code during a tick's phases (read only), saved with
-/// a game.
-#[derive(Clone, serde::Serialize, serde::Deserialize)]
+/// Shared with game code during a tick's phases (read only). A save game
+/// keeps only each body's [`BodyState`], never Rapier's insides.
+#[derive(Clone)]
 pub struct State {
     params: rp::IntegrationParameters,
     islands: rp::IslandManager,
@@ -233,7 +259,13 @@ fn from_rp(v: rp::Vector) -> Vec3 {
 
 /// A place and facing as Rapier's pose.
 fn pose(position: Vec3, rotation: Quat) -> rp::Pose {
-    let r = rotation.normalize();
+    // Kept exactly when it's already a turn (a body's own, carried over),
+    // so a body built again is where it was to the bit.
+    let r = if (rotation.length_squared() - 1.0).abs() < 1.0e-5 {
+        rotation
+    } else {
+        rotation.normalize()
+    };
     rp::Pose::from_parts(to_rp(position), rp::Rotation::from_xyzw(r.x, r.y, r.z, r.w))
 }
 
@@ -356,6 +388,32 @@ impl State {
     }
 }
 
+impl State {
+    /// Every body's [`BodyState`], in entity order.
+    pub fn body_states(&self) -> Vec<(EntityId, BodyState)> {
+        self.by_entity
+            .keys()
+            .filter_map(|id| Some((*id, self.body_state(*id)?)))
+            .collect()
+    }
+
+    /// `id`'s [`BodyState`], if it's in physics.
+    pub fn body_state(&self, id: EntityId) -> Option<BodyState> {
+        let entry = self.by_entity.get(&id)?;
+        let body = self.bodies.get(entry.body)?;
+        let (position, rotation) = from_pose(body.position());
+        let w = body.angvel();
+        Some(BodyState {
+            position,
+            rotation,
+            velocity: from_rp(body.linvel()),
+            spin: Vec3::new(w.x, w.y, w.z),
+            sleeping: body.is_sleeping(),
+            character: entry.character.map(|(_, c)| c),
+        })
+    }
+}
+
 /// The game's physics: its [`State`], and Rapier's workspace for stepping
 /// it.
 #[derive(Default)]
@@ -415,30 +473,48 @@ impl Physics {
         self.refused
     }
 
-    /// Everything physics knows, as bytes, for a save game (decision
-    /// 0038): restored, physics carries on exactly as it would have.
-    pub fn snapshot(&self) -> Vec<u8> {
-        postcard::to_stdvec(&*self.state).unwrap_or_default()
+    /// Empties physics: no bodies, nothing remembered of Rapier's own
+    /// (contacts, islands), ready to be built again in entity order.
+    pub fn clear(&mut self) {
+        self.state = Arc::new(State::default());
+        self.pipeline = rp::PhysicsPipeline::new();
+        self.characters_moved.clear();
     }
 
-    /// Physics as `bytes` from [`Self::snapshot`] left it; refused (and
-    /// physics left as it was) if they can't be read, or don't hold
-    /// together.
-    pub fn restore(&mut self, bytes: &[u8]) -> Result<(), String> {
-        let state: State =
-            postcard::from_bytes(bytes).map_err(|e| format!("the physics can't be read ({e})"))?;
-        // Every entity's body and collider are really there.
-        let whole = state.by_entity.values().all(|entry| {
-            state.bodies.get(entry.body).is_some()
-                && entry
-                    .collider
-                    .is_none_or(|c| state.colliders.get(c).is_some())
-        });
-        if !whole || state.by_entity.len() > MAX_BODIES {
-            return Err("the physics doesn't hold together".to_string());
+    /// Gives `id`'s body `state`: its place too with `with_place`
+    /// (otherwise it keeps where it is), its speed, spin, sleep and a
+    /// character's finding. Numbers that aren't sensible are left out.
+    pub fn set_body_state(&mut self, id: EntityId, state: BodyState, with_place: bool) {
+        if !state.is_sensible() {
+            return;
         }
-        self.state = Arc::new(state);
-        Ok(())
+        let Some(entry) = self.state.by_entity.get(&id).cloned() else {
+            return;
+        };
+        let s = self.state_mut();
+        if let Some(body) = s.bodies.get_mut(entry.body) {
+            if with_place {
+                let to = pose(state.position, state.rotation);
+                body.set_position(to, false);
+                if body.is_kinematic() {
+                    body.set_next_kinematic_position(to);
+                }
+            }
+            if body.is_dynamic() {
+                body.set_linvel(to_rp(state.velocity), false);
+                body.set_angvel(to_rp(state.spin), false);
+            }
+            if state.sleeping {
+                body.sleep();
+            } else {
+                body.wake_up(true);
+            }
+        }
+        if let (Some(e), Some(found)) = (s.by_entity.get_mut(&id), state.character)
+            && let Some((spec, _)) = e.character
+        {
+            e.character = Some((spec, found));
+        }
     }
 
     /// Makes `id` part of physics, at `position` facing `rotation`,

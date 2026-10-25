@@ -49,7 +49,7 @@ What the same inputs giving the same result needs, everywhere:
 | Crate | Layer | What it gains | Milestone |
 |---|---|---|---|
 | `world` | 1 | The clock's progress through a tick, for drawing between ticks; stepping one tick; a checksum; the physics world | M1, M2 |
-| `physics` (new) | 1 | Rapier wrapped: bodies and colliders from components, stepping, rays, the character mover, snapshots | M2, M5 |
+| `physics` (new) | 1 | Rapier wrapped: bodies and colliders from components, stepping, rays, the character mover, body states for saves | M2, M5 |
 | `script` | 1 | Natives: randomness, physics, input, save and load; the replaced `math.random` | M2–M5 |
 | `area` | 0 | Built-in components: `RigidBody`, `Collider`, `CharacterBody` | M2, M5 |
 | `editor` | 2 | Drawing between ticks; Step; input capture in the Game panel; recording and replaying; the Input actions window; saves | M1–M4 |

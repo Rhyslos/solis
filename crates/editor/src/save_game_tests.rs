@@ -251,7 +251,8 @@ fn saves_from_elsewhere_or_damaged_are_refused_and_nothing_changes() {
     // Damaged: cut short, a byte changed, a newer version, not a save.
     let mut damaged = vec![
         text[..text.len() / 2].to_string(),
-        text.replacen("solis save 1", "solis save 9", 1),
+        text.replacen("solis save 2", "solis save 9", 1),
+        text.replacen("solis save 2", "solis save 1", 1),
         "hello".to_string(),
         String::new(),
     ];
@@ -304,4 +305,113 @@ fn saving_needs_a_project_and_a_running_game() {
             .text
             .contains("kept in a project")
     );
+}
+
+/// Asks the busy entity to save (1) or load (2) on its next tick.
+fn ask(w: &mut Workbench, n: u64, request: i64, change: u64) {
+    w.apply_property(
+        crate::properties::PropertyRequest::SetField {
+            entity: raw(n),
+            component: "Busy".into(),
+            field: "request".into(),
+            value: reflect::Value::Int(request),
+        },
+        change,
+    );
+}
+
+fn saves_asked(w: &Workbench) -> usize {
+    w.outbox
+        .iter()
+        .filter(|a| matches!(a, WorkbenchAction::SaveGame { .. }))
+        .count()
+}
+
+#[test]
+fn many_saves_of_one_slot_in_a_tick_are_made_once() {
+    let mut w = busy("Harbour");
+    // Forty more busy entities, every one asking to save in the same
+    // tick: one save, not forty-one.
+    let mut spawns = Vec::new();
+    for n in 0..40 {
+        let mut more = EntityData::new("More").with(&Transform {
+            position: Vec3::new(n as f32, 5.0, 0.0),
+            ..Transform::default()
+        });
+        let mut data = reflect::ComponentData::default();
+        data.set("request", reflect::Value::Int(1));
+        more.components.insert("Busy".into(), data);
+        spawns.push(area::Edit::Spawn {
+            entities: vec![(raw(100 + n), more)],
+        });
+    }
+    w.document.edit("More", spawns, None, None).unwrap();
+    w.play();
+    run_to(&mut w, 3);
+    assert_eq!(saves_asked(&w), 1);
+    assert_eq!(
+        crate::play::collapse_saves(vec![
+            ("a".into(), false),
+            ("b".into(), true),
+            ("a".into(), false),
+            ("c".into(), false),
+            ("d".into(), false),
+            ("e".into(), false),
+        ]),
+        (
+            vec![
+                ("b".into(), true),
+                ("a".into(), false),
+                ("c".into(), false),
+                ("d".into(), false)
+            ],
+            1
+        )
+    );
+}
+
+#[test]
+fn a_save_asked_for_on_a_tick_that_pauses_is_still_made() {
+    let mut w = busy("Harbour");
+    w.play();
+    run_to(&mut w, 5);
+    // A recording that's full: the next tick pauses the game.
+    let playing = w.playing.as_mut().unwrap();
+    playing.recording = Some(input::Recording::default());
+    playing.recording_bytes = input::MAX_RECORDING_BYTES;
+    ask(&mut w, 3, 1, 950);
+    w.outbox.clear();
+    run_to(&mut w, 6);
+    assert_eq!(w.play_state(), crate::play::PlayState::Paused);
+    assert_eq!(saves_asked(&w), 1, "saved, then paused");
+}
+
+#[test]
+fn a_save_keeps_bodies_as_places_and_motion_not_rapier_s_insides() {
+    let mut w = busy("Harbour");
+    w.play();
+    run_to(&mut w, 20);
+    let text = w.save_of_game().unwrap().write();
+    let physics = text.split("\nphysics ").nth(1).unwrap();
+    // The floor and the crate: an ID, 13 numbers, asleep, character.
+    let lines: Vec<&str> = physics.lines().skip(1).filter(|l| !l.is_empty()).collect();
+    assert_eq!(lines.len(), 2, "{physics}");
+    assert!(lines.iter().all(|l| l.split(' ').count() == 16));
+    assert!(text.len() < 8 << 10, "small: {} bytes", text.len());
+    // A body that isn't a sensible number is a damaged save.
+    let id = lines[1].split(' ').next().unwrap();
+    let bad = text.replacen(
+        lines[1],
+        &format!("{id} 7fc00000{}", &lines[1][id.len() + 9..]),
+        1,
+    );
+    let mut sum = reflect::Checksum::new();
+    let body = bad.splitn(7, '\n').nth(6).unwrap();
+    sum.bytes(body.as_bytes());
+    let resummed = bad.replacen(
+        &text.lines().nth(5).unwrap().to_string(),
+        &format!("sum {:016x}", sum.finish()),
+        1,
+    );
+    assert!(Save::read(&resummed).is_err(), "NaN refused");
 }

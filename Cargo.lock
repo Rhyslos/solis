@@ -265,9 +265,6 @@ name = "arrayvec"
 version = "0.7.8"
 source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "d3fb67a6e08acf24fdeccbac2cb6ac4305825bd1f117462e0e6f2f193345ad56"
-dependencies = [
- "serde",
-]
 
 [[package]]
 name = "as-raw-xcb-connection"
@@ -716,15 +713,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "cobs"
-version = "0.3.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0fa961b519f0b462e3a3b4a34b64d119eeaca1d59af726fe450bbba07a9fc0a1"
-dependencies = [
- "thiserror 2.0.21",
-]
-
-[[package]]
 name = "codespan-reporting"
 version = "0.13.1"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -941,7 +929,6 @@ name = "editor"
 version = "0.0.1"
 dependencies = [
  "area",
- "base64",
  "bytemuck",
  "chrono",
  "egui",
@@ -949,6 +936,7 @@ dependencies = [
  "egui_kittest",
  "glam 0.34.1",
  "input",
+ "physics",
  "rayon",
  "reflect",
  "ron",
@@ -1114,18 +1102,6 @@ dependencies = [
  "bytemuck",
  "serde",
 ]
-
-[[package]]
-name = "embedded-io"
-version = "0.4.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "ef1a6892d9eef45c8fa6b9e0086428a2cca8491aca8f787c534a3d6d0bcb3ced"
-
-[[package]]
-name = "embedded-io"
-version = "0.6.1"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "edd0f118536f44f5ccd48bcb8b111bdc3de888b58c74639dfb034a357d0f206d"
 
 [[package]]
 name = "ena"
@@ -1536,7 +1512,6 @@ checksum = "37bfe73dc8ec21f54d181e5a60554327ec3f1c600c455a75ccbfc65d2106a6c4"
 dependencies = [
  "approx",
  "libm",
- "serde_core",
 ]
 
 [[package]]
@@ -1559,7 +1534,6 @@ dependencies = [
  "glam 0.33.12",
  "nalgebra",
  "num-traits",
- "serde",
  "simba",
 ]
 
@@ -1767,8 +1741,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "ed5909b6e89a2db4456e54cd5f673791d7eca6732202bbf2a9cc504fe2f9b84a"
 dependencies = [
  "foldhash",
- "serde",
- "serde_core",
 ]
 
 [[package]]
@@ -2441,7 +2413,6 @@ dependencies = [
  "num-complex",
  "num-rational",
  "num-traits",
- "serde",
  "simba",
  "typenum",
 ]
@@ -2570,7 +2541,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "73f88a1307638156682bada9d7604135552957b7818057dcef22705b4d509495"
 dependencies = [
  "num-traits",
- "serde",
 ]
 
 [[package]]
@@ -3063,8 +3033,6 @@ dependencies = [
  "num-traits",
  "ordered-float",
  "rstar",
- "serde",
- "serde_arrays",
  "simba",
  "slab",
  "smallvec",
@@ -3146,10 +3114,8 @@ name = "physics"
 version = "0.0.1"
 dependencies = [
  "glam 0.34.1",
- "postcard",
  "rapier3d",
  "reflect",
- "serde",
 ]
 
 [[package]]
@@ -3262,18 +3228,6 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "10ab3eb7f3becc3a1cbc4f2c6f20267996cfc1a6467a873763411b136a122715"
 dependencies = [
  "portable-atomic",
-]
-
-[[package]]
-name = "postcard"
-version = "1.1.3"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "6764c3b5dd454e283a30e6dfe78e9b31096d9e32036b5d1eaac7a6119ccb9a24"
-dependencies = [
- "cobs",
- "embedded-io 0.4.0",
- "embedded-io 0.6.1",
- "serde",
 ]
 
 [[package]]
@@ -3709,15 +3663,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "serde_arrays"
-version = "0.2.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "94a16b99c5ea4fe3daccd14853ad260ec00ea043b2708d1fd1da3106dcd8d9df"
-dependencies = [
- "serde",
-]
-
-[[package]]
 name = "serde_core"
 version = "1.0.229"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -3942,7 +3887,6 @@ dependencies = [
  "hashbrown 0.16.1",
  "num-traits",
  "robust",
- "serde",
  "smallvec",
 ]
 
