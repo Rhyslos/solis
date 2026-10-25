@@ -77,6 +77,11 @@ What changed in each version, for people using Solis. Newest first.
 
 ### Fixed
 
+- **Found by the new whole-game tests** (Phase 6 hardening):
+  - A game saved after game code spawned anything (or with a copy of an assembly in the area) couldn't be loaded, and would have lost what was on each copy's root. Saves keep every entity whole now.
+  - A loaded game slowly went its own way from the saved one: rotations came back a hair different (they were made unit length again on reading), and a turned entity was placed with a -0 where the running game had 0. Both are exact now, so a loaded game carries on exactly as the saved one would have.
+  - After a load, moving something in the editor while playing kept where the game had turned it, where the game that was saved would have put it as the editor had it. Saves now keep the editor's area and the game's places apart, as the running game does. Saves made before this (version 2) can't be loaded: save again.
+
 - **Easier to use** (from a user test of Phase 6):
   - A setting that points at another entity showed a long ID and couldn't be changed in Properties; it shows the entity's name, and a list (with a search box, and None) picks another.
   - While playing, Properties showed the values game code's components started with; it shows them as they are now, and says so.

@@ -106,7 +106,7 @@ impl Fields<'_> {
             .and_then(Value::as_floats::<4>)
             .map(Quat::from_array)
             .filter(|q| q.length_squared() > 1e-12)
-            .map_or(default, Quat::normalize)
+            .map_or(default, keep_unit)
     }
 
     /// Three numbers kept between 0 and 1: a colour.
@@ -134,10 +134,42 @@ impl Fields<'_> {
     }
 }
 
+/// `q` as a rotation: made unit length only when it's noticeably off (a
+/// hand-written one), so a rotation that's already one (physics's, a saved
+/// game's) reads back bit for bit. Normalising every time changed the last
+/// digits, and a loaded game then drifted from the saved one (found by the
+/// hardening milestone's invariant tests, decision 0042).
+fn keep_unit(q: Quat) -> Quat {
+    if (q.length_squared() - 1.0).abs() < 1.0e-5 {
+        q
+    } else {
+        q.normalize()
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
     use crate::schema::{FieldInfo, FieldKind};
+
+    #[test]
+    fn a_rotation_reads_back_bit_for_bit_and_a_hand_written_one_is_made_unit() {
+        // The hardening milestone's invariant tests: a spinning crate's
+        // rotation (never exactly unit length) came back a hair different
+        // from a save, and the loaded game drifted from the saved one.
+        let spun = Quat::from_xyzw(0.074_591_175, -0.389_269_2, 0.001_934_788_7, 0.918_096_84);
+        let mut data = ComponentData::default();
+        data.set("r", Value::quat(spun));
+        assert_eq!(
+            Fields(&data).rotation("r", Quat::IDENTITY).to_array(),
+            spun.to_array()
+        );
+        data.set("r", Value::floats(&[0.0, 0.0, 2.0, 0.0]));
+        let made = Fields(&data).rotation("r", Quat::IDENTITY);
+        assert!((made.length() - 1.0).abs() < 1e-6, "{made}");
+        data.set("r", Value::floats(&[0.0, 0.0, 0.0, 0.0]));
+        assert_eq!(Fields(&data).rotation("r", Quat::IDENTITY), Quat::IDENTITY);
+    }
 
     #[test]
     fn missing_or_wrong_values_fall_back_to_defaults() {

@@ -40,9 +40,9 @@ use reflect::EntityId;
 use std::sync::Arc;
 
 /// The first line of a save this Solis writes and reads.
-const HEADER: &str = "solis save 2";
+const HEADER: &str = "solis save 3";
 /// The version in [`HEADER`].
-const SAVE_VERSION: u32 = 2;
+const SAVE_VERSION: u32 = 3;
 
 /// The biggest save read.
 pub(crate) const MAX_SAVE_BYTES: usize = 256 << 20;
@@ -70,7 +70,9 @@ pub(crate) struct Save {
     pub(crate) time: f64,
     /// The random seed.
     pub(crate) seed: u64,
-    /// The area as it stood.
+    /// The area as the editor had it (copies of assemblies kept as plain
+    /// entities): where the game moved things is in `places`, as the
+    /// running game keeps them apart.
     pub(crate) area: String,
     /// Running components' values.
     pub(crate) values: String,
@@ -80,6 +82,21 @@ pub(crate) struct Save {
     pub(crate) projectiles: Vec<world::Projectile>,
     /// Each body's place and motion, in entity order.
     pub(crate) physics: Vec<(EntityId, physics::BodyState)>,
+    /// Where the game has each entity it moved (its transform), where
+    /// that differs from the area's, in entity order.
+    pub(crate) places: Vec<(EntityId, Transform)>,
+}
+
+/// A transform's ten numbers, exactly, as hex words.
+fn transform_words(t: &Transform) -> String {
+    t.position
+        .to_array()
+        .into_iter()
+        .chain(t.rotation.to_array())
+        .chain(t.scale.to_array())
+        .map(|v| format!("{:x}", v.to_bits()))
+        .collect::<Vec<_>>()
+        .join(" ")
 }
 
 /// The project's name on one line, as a save keeps it (a name with a
@@ -139,6 +156,12 @@ impl Save {
             })
             .collect();
         section("physics", &bodies);
+        let places: String = self
+            .places
+            .iter()
+            .map(|(id, t)| format!("{id} {}\n", transform_words(t)))
+            .collect();
+        section("places", &places);
         let head = format!(
             "project {}\ntick {}\ntime {:x}\nseed {}\n",
             one_line(&self.project),
@@ -293,6 +316,38 @@ impl Save {
                 Ok((EntityId(id), state))
             })
             .collect::<Result<Vec<_>, String>>()?;
+        let places_text = section("places")?;
+        if places_text.lines().count() > area::text::MAX_ENTITIES {
+            return Err(damaged());
+        }
+        let places = places_text
+            .lines()
+            .map(|l| {
+                let (id, rest) = l.split_once(' ').ok_or_else(damaged)?;
+                let id: reflect::Id = id.parse().map_err(|_| damaged())?;
+                let n: Vec<f32> = rest
+                    .split(' ')
+                    .map(|w| u32::from_str_radix(w, 16).map(f32::from_bits))
+                    .collect::<Result<_, _>>()
+                    .map_err(|_| damaged())?;
+                let [x, y, z, qx, qy, qz, qw, sx, sy, sz] = n[..] else {
+                    return Err(damaged());
+                };
+                let t = Transform {
+                    position: glam::Vec3::new(x, y, z),
+                    rotation: glam::Quat::from_xyzw(qx, qy, qz, qw),
+                    scale: glam::Vec3::new(sx, sy, sz),
+                };
+                let sensible = t.position.is_finite()
+                    && t.rotation.is_finite()
+                    && t.scale.is_finite()
+                    && (t.rotation.length_squared() - 1.0).abs() < 1.0e-3;
+                if !sensible {
+                    return Err(damaged());
+                }
+                Ok((EntityId(id), t))
+            })
+            .collect::<Result<Vec<_>, String>>()?;
         Ok(Self {
             project,
             ticks,
@@ -303,6 +358,7 @@ impl Save {
             bindings,
             projectiles,
             physics,
+            places,
         })
     }
 }
@@ -321,12 +377,28 @@ impl Workbench {
         // will: from here the running game and a loaded one go on alike.
         let bodies = playing.world.physics_states();
         playing.world.rebuild_physics(&bodies, true);
-        // The area as it stands, each entity where the game has it.
+        // The area as the editor has it, and apart from it where the
+        // game has moved each entity: the running game keeps the two apart
+        // (an edit while playing starts from the editor's, and a rebuild
+        // keeps the game's), so a loaded game must too, or it goes on
+        // differently from the saved one (found by the hardening
+        // milestone's invariant tests, decision 0042).
         let mut area = self.document.area().clone();
+        let mut places = Vec::new();
         let ids: Vec<EntityId> = area.iter().map(|(id, _)| id).collect();
         for id in ids {
-            if let (Some(t), Some(data)) = (playing.world.get::<Transform>(id), area.get_mut(id)) {
-                data.set(&t);
+            if let Some(data) = area.get_mut(id) {
+                if let Some(t) = playing.world.get::<Transform>(id)
+                    && data.get::<Transform>() != Some(t)
+                {
+                    places.push((id, t));
+                }
+                // Every entity whole: a copy of an assembly (placed, or
+                // spawned by game code) is kept as the entities it is
+                // now, not as "a copy of" (which loses what's on its root,
+                // and can't be read back on its own). Found by the
+                // hardening milestone's invariant tests (decision 0042).
+                data.origin = None;
             }
         }
         // Every running component's values, apart: the area keeps the
@@ -353,6 +425,7 @@ impl Workbench {
             bindings: playing.bindings.write(),
             projectiles: playing.world.projectiles().flying().to_vec(),
             physics: bodies,
+            places,
         })
     }
 
@@ -444,6 +517,12 @@ impl Workbench {
         // Physics built from each body's place and motion, as saving built
         // the running game's.
         let mut world = world::World::from_area_without_physics(&area);
+        // Each entity where the game had it, noted as the game's move, as
+        // in the saved game.
+        for (id, t) in &save.places {
+            world.set_transform(*id, *t);
+        }
+        world.settle();
         world.rebuild_physics(&save.physics, true);
         world.set_clock(save.ticks, save.time);
         world.set_seed(save.seed);
