@@ -225,6 +225,30 @@ fn right_dragging_looks_around() {
 }
 
 #[test]
+fn frames_are_wanted_only_while_something_moves() {
+    let mut h = harness();
+    h.hover_at(IN_VIEW);
+    h.run();
+    let ctx = h.ctx.clone();
+    assert!(!h.state().wants_frames(&ctx), "nothing moves");
+    let _ = h.get_by_label("Idle");
+    // Flying: frames back to back, and the corner shows the frame rate.
+    button(&h, egui::PointerButton::Secondary, true, IN_VIEW);
+    h.run();
+    assert!(h.state().wants_frames(&ctx));
+    h.step();
+    let _ = h.get_by_label_contains("fps");
+    button(&h, egui::PointerButton::Secondary, false, IN_VIEW);
+    h.run();
+    assert!(!h.state().wants_frames(&ctx));
+    // A running game wants frames; a paused one doesn't.
+    h.state_mut().play();
+    assert!(h.state().wants_frames(&ctx));
+    h.state_mut().pause();
+    assert!(!h.state().wants_frames(&ctx));
+}
+
+#[test]
 fn the_wheel_changes_speed_while_flying_and_moves_otherwise() {
     let wheel = |h: &egui_kittest::Harness<'_, Workbench>| {
         h.event(egui::Event::MouseWheel {

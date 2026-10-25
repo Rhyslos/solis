@@ -195,6 +195,12 @@ impl Importer {
         self.jobs.running() > 0
     }
 
+    /// Whether anything is on its way: an import being read, or an Open
+    /// or folder window open (its answer is looked for each frame).
+    pub fn waiting(&self) -> bool {
+        self.busy() || self.dialog.is_some() || self.folder_dialog.is_some()
+    }
+
     /// The limits models are read with.
     pub fn limits(&self) -> assets::Limits {
         self.limits
