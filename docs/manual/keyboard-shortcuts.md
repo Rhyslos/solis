@@ -30,6 +30,21 @@
 |---|---|
 | Undo | Ctrl + Z |
 | Redo | Ctrl + Y, or Ctrl + Shift + Z |
+| Delete the selection | Delete |
+| Duplicate the selection | Ctrl + D |
+| Rename | F2 |
+| Point the camera at the selection | F |
+
+## In the Area panel
+
+| Action | Shortcut |
+|---|---|
+| Select | Click |
+| Add to or take from the selection | Ctrl + click |
+| Select a range | Shift + click |
+| Rename | Double-click |
+| Put under another entity | Drag onto it |
+| Make it stand alone | Drag onto empty space |
 
 These don't work while you're typing in a field: there they undo the typing. See [Undo and redo](undo.md).
 

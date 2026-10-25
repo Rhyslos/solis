@@ -8,6 +8,7 @@
 
 use crate::frame::{FrameLight, FrameParams, FrameUniforms, GRID_HALF_EXTENT};
 use crate::gpu_model::{GpuModel, ModelPipelines, Pass};
+use crate::instances::Placement;
 use crate::lighting::{
     Light, LightsUniform, MARKER_VERTICES, SHADOW_FORMAT, SHADOW_MAP_SIZE, light_markers,
     sun_view_projection,
@@ -85,6 +86,42 @@ struct FrameResources {
     shadow_bind_group: wgpu::BindGroup,
     /// Room for every lamp's marker lines, filled each frame.
     markers: wgpu::Buffer,
+    /// Every mesh copy's placement, filled each frame; replaced by a
+    /// bigger one when a frame has more (decision 0021).
+    instances: Option<wgpu::Buffer>,
+}
+
+impl FrameResources {
+    /// Puts `raw` into the instance buffer, growing it if needed.
+    fn write_instances(
+        &mut self,
+        device: &wgpu::Device,
+        queue: &wgpu::Queue,
+        raw: &[crate::instances::InstanceRaw],
+    ) {
+        let bytes: &[u8] = bytemuck::cast_slice(raw);
+        if bytes.is_empty() {
+            return;
+        }
+        let fits = self
+            .instances
+            .as_ref()
+            .is_some_and(|b| b.size() >= bytes.len() as u64);
+        if !fits {
+            // Room to grow, so a slowly growing scene isn't re-made every
+            // frame.
+            let size = (bytes.len() as u64).next_power_of_two().max(4096);
+            self.instances = Some(device.create_buffer(&wgpu::BufferDescriptor {
+                label: Some("instances"),
+                size,
+                usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
+                mapped_at_creation: false,
+            }));
+        }
+        if let Some(buffer) = &self.instances {
+            queue.write_buffer(buffer, 0, bytes);
+        }
+    }
 }
 
 impl FrameResources {
@@ -169,6 +206,7 @@ impl FrameResources {
             bind_group,
             shadow_bind_group,
             markers,
+            instances: None,
         }
     }
 }
@@ -607,24 +645,51 @@ impl ViewportRenderer {
         }
     }
 
-    /// Draws one frame into `target`, with `models` lit by the sun in
-    /// `params` and by `lights`, and submits it. Never waits for the GPU
-    /// to finish.
+    /// The pipelines for copies wound as made, or mirrored.
+    fn facing(&self, mirrored: bool) -> &crate::gpu_model::Facing {
+        if mirrored {
+            &self.models.mirrored
+        } else {
+            &self.models.normal
+        }
+    }
+
+    /// Draws every batch whose mesh belongs in `kind`.
+    fn draw_batches<'m>(
+        &self,
+        pass: &mut wgpu::RenderPass<'_>,
+        batches: &[crate::instances::Batch],
+        model_of: &impl Fn(&crate::instances::Batch) -> &'m GpuModel,
+        kind: Pass,
+    ) {
+        for batch in batches {
+            let model = model_of(batch);
+            if model.pass_of(batch.mesh) != Some(kind) {
+                continue;
+            }
+            pass.set_pipeline(self.facing(batch.mirrored).for_pass(kind));
+            model.draw(pass, batch.mesh, batch.instances.clone());
+        }
+    }
+
+    /// Draws one frame into `target`, with the models `placed` lit by the
+    /// sun in `params` and by `lights`, and submits it. Never waits for the
+    /// GPU to finish.
     pub fn render(
         &self,
         device: &wgpu::Device,
         queue: &wgpu::Queue,
-        target: &ViewportTarget,
+        target: &mut ViewportTarget,
         params: &FrameParams,
-        models: &[&GpuModel],
+        placed: &[Placement<'_>],
         lights: &[Light],
     ) {
         let (lamps, lamp_count) = LightsUniform::new(lights, params.camera_position);
-        let shadow_box = models
-            .iter()
-            .map(|m| m.bounds())
-            .filter(|(min, max)| min.is_finite() && max.is_finite())
-            .reduce(|(a_min, a_max), (b_min, b_max)| (a_min.min(b_min), a_max.max(b_max)));
+        let shadow_box = crate::instances::world_bounds(placed);
+        let (raw, batches, batch_models) = crate::instances::gather(placed);
+        target.frame.write_instances(device, queue, &raw);
+        let target = &*target;
+        let model_of = |b: &crate::instances::Batch| placed[batch_models[b.model]].model;
         let shadows_drawn = params.sun.shadows
             && params.shading.look != crate::frame::Look::Unlit
             && shadow_box.is_some();
@@ -672,8 +737,11 @@ impl ViewportRenderer {
             });
             pass.set_bind_group(0, &frame.shadow_bind_group, &[]);
             pass.set_pipeline(&self.shadow_pipeline);
-            for model in models {
-                model.draw_depth(&mut pass);
+            if let Some(instances) = &frame.instances {
+                pass.set_vertex_buffer(1, instances.slice(..));
+                for batch in &batches {
+                    model_of(batch).draw_depth(&mut pass, batch.mesh, batch.instances.clone());
+                }
             }
         }
         // With multisampling, drawing goes into the multisampled image,
@@ -713,21 +781,18 @@ impl ViewportRenderer {
             pass.set_bind_group(0, &frame.bind_group, &[]);
             pass.set_pipeline(&self.sky_pipeline);
             pass.draw(0..3, 0..1);
+            if let Some(instances) = &frame.instances {
+                pass.set_vertex_buffer(1, instances.slice(..));
+            }
             // Solid shapes first, so the see-through grid and axes are
             // hidden behind them; blended shapes last, over everything.
-            for (pipeline, kind) in [
-                (&self.models.solid, Pass::Solid),
-                (&self.models.solid_double_sided, Pass::SolidDoubleSided),
-            ] {
-                pass.set_pipeline(pipeline);
-                for model in models {
-                    model.draw(&mut pass, kind);
-                }
-            }
+            self.draw_batches(&mut pass, &batches, &model_of, Pass::Solid);
+            self.draw_batches(&mut pass, &batches, &model_of, Pass::SolidDoubleSided);
             if params.shading.outlines() {
-                pass.set_pipeline(&self.models.outline);
-                for model in models {
-                    model.draw_outlines(&mut pass);
+                for batch in &batches {
+                    let facing = self.facing(batch.mirrored);
+                    pass.set_pipeline(&facing.outline);
+                    model_of(batch).draw_outline(&mut pass, batch.mesh, batch.instances.clone());
                 }
             }
             pass.set_pipeline(&self.grid_pipeline);
@@ -739,10 +804,10 @@ impl ViewportRenderer {
                 pass.set_vertex_buffer(0, frame.markers.slice(..));
                 pass.draw(0..markers.len() as u32, 0..1);
             }
-            pass.set_pipeline(&self.models.blended);
-            for model in models {
-                model.draw(&mut pass, Pass::Blended);
+            if let Some(instances) = &frame.instances {
+                pass.set_vertex_buffer(1, instances.slice(..));
             }
+            self.draw_batches(&mut pass, &batches, &model_of, Pass::Blended);
         }
         // The last pass: exposure, tone mapping and sRGB, into the
         // finished image.

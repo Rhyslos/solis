@@ -10,6 +10,7 @@
 mod environment;
 mod frame;
 mod gpu_model;
+mod instances;
 mod lighting;
 mod readback;
 mod renderer;
@@ -20,6 +21,7 @@ pub use frame::{
     GRID_STRENGTHS, Look, Shading, grid_reach, srgb_to_linear,
 };
 pub use gpu_model::GpuModel;
+pub use instances::Placement;
 pub use lighting::{
     Light, LightKind, MAX_LIGHTS, SHADOW_FORMAT, SHADOW_MAP_SIZE, Sun, light_markers,
     sun_view_projection,

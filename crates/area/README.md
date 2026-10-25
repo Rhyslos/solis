@@ -12,6 +12,7 @@ Be the one place an area lives while it's edited. The editor, saving and loading
 - **Components nobody registered** (a newer version, a script that isn't built) are kept untouched, never dropped.
 - **Edits** (`Edit`) are the only way the editor changes an area: set a field, add or remove a component, spawn, despawn (a whole subtree), rename, reparent. Applying one returns its inverse ([decision 0022](../../docs/decisions/0022-undo-as-reversible-edits.md)); a list that fails part-way is rolled back.
 - **History** (`History`) keeps undo steps of edits, with the selection before and after (of the caller's type). Steps with the same `MergeKey` in a row merge (a whole drag), keeping only each field's first and last value; a merged step that changes nothing disappears. History is limited by memory, not by count.
+- **The tree:** `hierarchy()` and `depth_first()` give every entity's children in one pass; `order_after` and `order_at_end` make sibling orders (short base-36 counters) so new entities go last; `world_matrix` adds up parents' transforms.
 - **A new area** has a Sun and an Environment (the sun, sky and fog live in each area).
 
 ## Must never

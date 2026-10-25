@@ -1,8 +1,9 @@
-//! A model as plain data, ready for the renderer: meshes, materials and
-//! textures, in Solis's own units (metres, Z up).
+//! A model as plain data, ready for the renderer: meshes, a tree of nodes
+//! placing them, materials and textures, in Solis's own units (metres,
+//! Z up).
 
 use bytemuck::{Pod, Zeroable};
-use glam::Vec3;
+use glam::{Mat3, Mat4, Vec3};
 use std::fmt;
 
 /// One corner of a triangle.
@@ -189,13 +190,32 @@ impl Bounds {
     }
 }
 
+/// One node of a model's tree: a named place that can carry meshes, as in
+/// Blender's outliner.
+#[derive(Debug, Clone, PartialEq)]
+pub struct Node {
+    /// Its name in the file, or "Node 3".
+    pub name: String,
+    /// The node it belongs to; parents always come before their children.
+    pub parent: Option<usize>,
+    /// Where it is relative to its parent.
+    pub local: Mat4,
+    /// Where it is in the model: its parents' placements and its own.
+    pub world: Mat4,
+    /// The meshes it shows (indices into [`Model::meshes`]).
+    pub meshes: Vec<usize>,
+}
+
 /// A whole model, read from a file.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Model {
     /// A name to show, such as the file's name without its extension.
     pub name: String,
-    /// The meshes, already placed (the file's node positions applied).
+    /// The meshes, each once, in their own space: nodes place them, and a
+    /// mesh used by several nodes is stored once.
     pub meshes: Vec<Mesh>,
+    /// The nodes, parents first.
+    pub nodes: Vec<Node>,
     /// The materials meshes refer to.
     pub materials: Vec<Material>,
     /// The textures materials refer to.
@@ -210,14 +230,82 @@ pub struct Model {
 }
 
 impl Model {
-    /// How many triangles, in all meshes.
-    pub fn triangles(&self) -> usize {
-        self.meshes.iter().map(Mesh::triangles).sum()
+    /// Every mesh as drawn: which mesh, and where in the model.
+    pub fn placements(&self) -> impl Iterator<Item = (usize, Mat4)> + '_ {
+        self.nodes
+            .iter()
+            .flat_map(|node| node.meshes.iter().map(move |&m| (m, node.world)))
+            .filter(|(m, _)| *m < self.meshes.len())
     }
 
-    /// How many vertices, in all meshes.
+    /// How many triangles are drawn, counting each placement.
+    pub fn triangles(&self) -> usize {
+        self.placements()
+            .map(|(m, _)| self.meshes[m].triangles())
+            .sum()
+    }
+
+    /// How many vertices are drawn, counting each placement.
     pub fn vertices(&self) -> usize {
-        self.meshes.iter().map(|m| m.vertices.len()).sum()
+        self.placements()
+            .map(|(m, _)| self.meshes[m].vertices.len())
+            .sum()
+    }
+
+    /// Makes one node showing every mesh where it is, for a model built by
+    /// hand (in tests and samples).
+    pub fn show_every_mesh(&mut self) {
+        self.nodes = vec![Node {
+            name: self.name.clone(),
+            parent: None,
+            local: Mat4::IDENTITY,
+            world: Mat4::IDENTITY,
+            meshes: (0..self.meshes.len()).collect(),
+        }];
+    }
+
+    /// Every placement baked into a mesh of its own, in the model's space,
+    /// as models were held before node trees: a mirrored placement has
+    /// its triangles turned so their fronts stay outside.
+    pub fn placed_meshes(&self) -> Vec<Mesh> {
+        self.placements()
+            .map(|(m, world)| bake(&self.meshes[m], world))
+            .collect()
+    }
+}
+
+/// `mesh` moved by `world`.
+fn bake(mesh: &Mesh, world: Mat4) -> Mesh {
+    let turn = Mat3::from_mat4(world);
+    let normal_matrix = if turn.determinant().abs() > 1e-12 {
+        turn.inverse().transpose()
+    } else {
+        Mat3::IDENTITY
+    };
+    let vertices = mesh
+        .vertices
+        .iter()
+        .map(|v| Vertex {
+            position: world.transform_point3(Vec3::from(v.position)).to_array(),
+            normal: (normal_matrix * Vec3::from(v.normal))
+                .try_normalize()
+                .unwrap_or(Vec3::Z)
+                .to_array(),
+            uv: v.uv,
+        })
+        .collect();
+    let indices = if turn.determinant() < 0.0 {
+        mesh.indices
+            .chunks_exact(3)
+            .flat_map(|t| [t[0], t[2], t[1]])
+            .collect()
+    } else {
+        mesh.indices.clone()
+    };
+    Mesh {
+        vertices,
+        indices,
+        material: mesh.material,
     }
 }
 

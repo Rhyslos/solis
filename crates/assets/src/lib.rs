@@ -16,7 +16,8 @@ pub mod texture;
 pub use geometry::Y_UP_TO_Z_UP;
 pub use lights::{Lamp, LampKind};
 pub use model::{
-    AlphaMode, Bounds, ImportError, Limits, Material, Mesh, Model, Sampler, Texture, Vertex, Wrap,
+    AlphaMode, Bounds, ImportError, Limits, Material, Mesh, Model, Node, Sampler, Texture, Vertex,
+    Wrap,
 };
 pub use reader::{EXTENSIONS, load, load_bytes};
 

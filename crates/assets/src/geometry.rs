@@ -1,10 +1,15 @@
-//! Turning glTF meshes into Solis's triangles: placing each one where its
-//! node puts it, turning glTF's Y-up into Solis's Z-up, and filling in
-//! anything missing (normals, texture coordinates).
+//! Turning glTF meshes into Solis's triangles and a tree of nodes: each
+//! mesh is read once, in its own space, and nodes say where it's placed
+//! ([decision 0021](../../../docs/decisions/0021-asset-database-and-models.md)).
+//! glTF's Y-up becomes Solis's Z-up: mesh corners turn by `C`, and a node's
+//! placement `T` becomes `C·T·C⁻¹`, so the product puts every corner
+//! exactly where baking `C·T` into it would. Missing normals and texture
+//! coordinates are filled in.
 
-use crate::model::{ImportError, Limits, Mesh, Vertex};
+use crate::model::{ImportError, Limits, Mesh, Node, Vertex};
 use glam::{Mat3, Mat4, Vec3, Vec4};
 use gltf::accessor::{DataType, Dimensions};
+use std::collections::HashMap;
 
 /// glTF's axes to Solis's: glTF's up (+Y) becomes +Z, and glTF's front
 /// (+Z, towards the viewer) becomes -Y. Both are metres, so nothing is
@@ -53,68 +58,144 @@ pub(crate) fn placed_nodes(
     Ok(placed)
 }
 
-/// Every mesh the file shows, placed. A file without scenes shows each
-/// mesh once, unplaced. May be empty (a file of lights only).
+/// Every mesh the file uses, each read once in its own space (Z up), and
+/// the nodes that place them. A file without scenes gets one node per
+/// mesh. Both may be empty (a file of lights only).
 pub(crate) fn read_meshes(
     document: &gltf::Document,
     buffers: &[Vec<u8>],
     limits: &Limits,
     warnings: &mut Vec<String>,
-) -> Result<Vec<Mesh>, ImportError> {
-    let nodes = placed_nodes(document)?;
-    let placed: Vec<(gltf::Mesh<'_>, Mat4)> = if document.scenes().next().is_some() {
-        nodes
-            .into_iter()
-            .filter_map(|(node, world)| node.mesh().map(|m| (m, world)))
-            .collect()
-    } else {
-        document.meshes().map(|m| (m, Y_UP_TO_Z_UP)).collect()
-    };
-
+) -> Result<(Vec<Mesh>, Vec<Node>), ImportError> {
+    let placed = scene_nodes(document)?;
     let mut meshes = Vec::new();
-    let (mut vertices, mut triangles) = (0usize, 0usize);
+    // Each glTF mesh's pieces in `meshes`, read the first time it's used.
+    let mut read: HashMap<usize, Vec<usize>> = HashMap::new();
+    let mut nodes: Vec<Node> = Vec::with_capacity(placed.len());
+    let (mut vertices, mut triangles, mut placements) = (0usize, 0usize, 0usize);
     let too_big = |vertices: usize, triangles: usize| {
         ImportError::TooManyTriangles(format!(
             "more than {} triangles or {} corners; the limits are {} and {}",
             triangles, vertices, limits.max_triangles, limits.max_vertices
         ))
     };
-    for (mesh, world) in placed {
-        for primitive in mesh.primitives() {
-            // Counted from the file's own numbers before anything is read,
-            // so a small file can't ask for millions of corners (a list
-            // with no data is all zeros, of any length).
-            let corners = primitive
-                .get(&gltf::Semantic::Positions)
-                .map_or(0, |a| a.count());
-            let listed = primitive.indices().map_or(corners, |a| a.count());
-            if vertices.saturating_add(corners) > limits.max_vertices
-                || triangles.saturating_add(listed / 3) > limits.max_triangles
-            {
-                return Err(too_big(
-                    vertices.saturating_add(corners),
-                    triangles.saturating_add(listed / 3),
-                ));
+    for PlacedNode {
+        name,
+        parent,
+        local,
+        world,
+        mesh,
+    } in placed
+    {
+        let mut node = Node {
+            name,
+            parent,
+            local,
+            world,
+            meshes: Vec::new(),
+        };
+        if let Some(mesh) = mesh {
+            // Counted per placement from the file's own numbers before
+            // anything is read, so a small file can't ask for millions of
+            // corners, read once or placed many times.
+            for primitive in mesh.primitives() {
+                let corners = primitive
+                    .get(&gltf::Semantic::Positions)
+                    .map_or(0, |a| a.count());
+                let listed = primitive.indices().map_or(corners, |a| a.count());
+                vertices = vertices.saturating_add(corners);
+                triangles = triangles.saturating_add(listed / 3);
+                if vertices > limits.max_vertices || triangles > limits.max_triangles {
+                    return Err(too_big(vertices, triangles));
+                }
             }
-            let Some(read) = read_primitive(&primitive, buffers, world, warnings)? else {
-                continue;
-            };
-            vertices = vertices.saturating_add(read.vertices.len());
-            triangles = triangles.saturating_add(read.triangles());
-            if vertices > limits.max_vertices || triangles > limits.max_triangles {
-                return Err(too_big(vertices, triangles));
+            if let std::collections::hash_map::Entry::Vacant(slot) = read.entry(mesh.index()) {
+                let mut pieces = Vec::new();
+                for primitive in mesh.primitives() {
+                    let Some(local_mesh) = read_primitive(&primitive, buffers, warnings)? else {
+                        continue;
+                    };
+                    for piece in split(local_mesh, limits.max_mesh_vertices) {
+                        pieces.push(meshes.len());
+                        meshes.push(piece);
+                    }
+                }
+                slot.insert(pieces);
             }
-            let pieces = split(read, limits.max_mesh_vertices);
-            if meshes.len() + pieces.len() > limits.max_meshes {
+            node.meshes = read.get(&mesh.index()).cloned().unwrap_or_default();
+            placements += node.meshes.len();
+            if placements > limits.max_meshes {
                 return Err(ImportError::TooManyTriangles(format!(
                     "more than {} meshes, counting each placement",
                     limits.max_meshes
                 )));
             }
-            meshes.extend(pieces);
         }
+        nodes.push(node);
     }
-    Ok(meshes)
+    Ok((meshes, nodes))
+}
+
+/// A node of the file's main scene, in Solis's axes.
+struct PlacedNode<'a> {
+    name: String,
+    parent: Option<usize>,
+    local: Mat4,
+    world: Mat4,
+    mesh: Option<gltf::Mesh<'a>>,
+}
+
+/// The nodes of the file's main scene (or its first), parents before
+/// children, with placements turned into Solis's axes (`C·T·C⁻¹`). A file
+/// without scenes gets a node for each mesh, unplaced.
+fn scene_nodes(document: &gltf::Document) -> Result<Vec<PlacedNode<'_>>, ImportError> {
+    let Some(scene) = document
+        .default_scene()
+        .or_else(|| document.scenes().next())
+    else {
+        return Ok(document
+            .meshes()
+            .map(|mesh| PlacedNode {
+                name: mesh.name().unwrap_or("Mesh").to_string(),
+                parent: None,
+                local: Mat4::IDENTITY,
+                world: Mat4::IDENTITY,
+                mesh: Some(mesh),
+            })
+            .collect());
+    };
+    let to_z_up = |m: Mat4| Y_UP_TO_Z_UP * m * Y_UP_TO_Z_UP.inverse();
+    // Walked with a list rather than recursion, as `placed_nodes`.
+    let mut out: Vec<PlacedNode<'_>> = Vec::new();
+    let mut todo: Vec<(gltf::Node<'_>, Option<usize>)> = scene.nodes().map(|n| (n, None)).collect();
+    todo.reverse();
+    let mut steps = 0usize;
+    while let Some((node, parent)) = todo.pop() {
+        steps += 1;
+        if steps > 1_000_000 {
+            return Err(ImportError::Damaged("its node tree loops".into()));
+        }
+        let raw = Mat4::from_cols_array_2d(&node.transform().matrix());
+        let local = if raw.is_finite() {
+            to_z_up(raw)
+        } else {
+            Mat4::IDENTITY
+        };
+        let world = parent.map_or(local, |p| out[p].world * local);
+        let index = out.len();
+        let children: Vec<_> = node.children().map(|c| (c, Some(index))).collect();
+        todo.extend(children.into_iter().rev());
+        out.push(PlacedNode {
+            name: node
+                .name()
+                .map_or_else(|| format!("Node {}", node.index()), str::to_string),
+            parent,
+            local,
+            world,
+            mesh: node.mesh(),
+        });
+    }
+    Ok(out)
 }
 
 /// `mesh` in pieces of at most `max_vertices` corners each (and as many
@@ -175,9 +256,10 @@ pub(crate) fn split(mesh: Mesh, max_vertices: usize) -> Vec<Mesh> {
 fn read_primitive(
     primitive: &gltf::Primitive<'_>,
     buffers: &[Vec<u8>],
-    world: Mat4,
     warnings: &mut Vec<String>,
 ) -> Result<Option<Mesh>, ImportError> {
+    // Only turned into Solis's axes here; nodes place it.
+    let world = Y_UP_TO_Z_UP;
     use gltf::mesh::Mode;
     let mode = primitive.mode();
     if !matches!(
@@ -246,16 +328,8 @@ fn read_primitive(
     }
     let indices = to_triangle_list(mode, &raw);
 
-    let normal_matrix = {
-        let m = Mat3::from_mat4(world);
-        if m.determinant().abs() > 1e-12 {
-            m.inverse().transpose()
-        } else {
-            // Squashed flat (a zero scale): keep at least the turn from
-            // glTF's axes to Solis's.
-            Mat3::from_mat4(Y_UP_TO_Z_UP)
-        }
-    };
+    // A turn only, so normals turn the same way as positions.
+    let normal_matrix = Mat3::from_mat4(world);
     let positions: Vec<Vec3> = points
         .iter()
         .map(|&p| {
@@ -267,17 +341,6 @@ fn read_primitive(
             }
         })
         .collect();
-    // A mirrored placement turns triangles inside out; flip them back so
-    // their front stays outside.
-    let indices = if Mat3::from_mat4(world).determinant() < 0.0 {
-        indices
-            .chunks_exact(3)
-            .flat_map(|t| [t[0], t[2], t[1]])
-            .collect()
-    } else {
-        indices
-    };
-    // Normals worked out here come after the flip, so they face out too.
     let normals = match normals {
         Some(normals) => normals
             .iter()

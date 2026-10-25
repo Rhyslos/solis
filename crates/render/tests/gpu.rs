@@ -9,7 +9,7 @@
 
 use glam::{Mat4, Vec3, Vec4};
 use render::{
-    Environment, Fog, FrameParams, Light, LightKind, Look, Shading, Sky, Sun, Tonemap,
+    Environment, Fog, FrameParams, Light, LightKind, Look, Placement, Shading, Sky, Sun, Tonemap,
     ViewportRenderer, best_sample_count, read_pixels,
 };
 
@@ -108,12 +108,12 @@ fn the_backdrop_shows_sky_above_and_ground_below_in_the_right_colours() {
     let Some(gpu) = gpu() else { return };
     let renderer = ViewportRenderer::new(&gpu.device, best_sample_count(&gpu.adapter));
     let size = 64;
-    let target = renderer.create_target(&gpu.device, [size, size]);
+    let mut target = renderer.create_target(&gpu.device, [size, size]);
     let eye = Vec3::new(0.0, 0.0, 2.0);
     renderer.render(
         &gpu.device,
         &gpu.queue,
-        &target,
+        &mut target,
         &FrameParams {
             view_projection: looking_north(eye),
             camera_position: eye,
@@ -157,14 +157,14 @@ fn the_ground_axes_show_in_red_and_green() {
     let Some(gpu) = gpu() else { return };
     let renderer = ViewportRenderer::new(&gpu.device, best_sample_count(&gpu.adapter));
     let size = 64;
-    let target = renderer.create_target(&gpu.device, [size, size]);
+    let mut target = renderer.create_target(&gpu.device, [size, size]);
     // Standing on the Y axis, so it runs straight ahead into the middle of
     // the lower half; the X axis crosses in front.
     let eye = Vec3::new(0.0, -10.0, 2.0);
     renderer.render(
         &gpu.device,
         &gpu.queue,
-        &target,
+        &mut target,
         &FrameParams {
             view_projection: looking_north(eye),
             camera_position: eye,
@@ -214,7 +214,7 @@ fn tiny_and_huge_sizes_are_clamped() {
 fn scale_check_viewport_frame() {
     let Some(gpu) = gpu() else { return };
     let renderer = ViewportRenderer::new(&gpu.device, best_sample_count(&gpu.adapter));
-    let target = renderer.create_target(&gpu.device, [1920, 1080]);
+    let mut target = renderer.create_target(&gpu.device, [1920, 1080]);
     let eye = Vec3::new(-16.0, -24.0, 10.0);
     let params = FrameParams {
         view_projection: looking_north(eye),
@@ -231,7 +231,7 @@ fn scale_check_viewport_frame() {
     let frames = 60;
     let start = std::time::Instant::now();
     for _ in 0..frames {
-        renderer.render(&gpu.device, &gpu.queue, &target, &params, &[], &[]);
+        renderer.render(&gpu.device, &gpu.queue, &mut target, &params, &[], &[]);
         gpu.device
             .poll(wgpu::PollType::Wait {
                 submission_index: None,
@@ -311,13 +311,13 @@ fn render_env(
 ) -> Option<(Vec<u8>, u32)> {
     let gpu = gpu()?;
     let renderer = ViewportRenderer::new(&gpu.device, best_sample_count(&gpu.adapter));
-    let target = renderer.create_target(&gpu.device, [size, size]);
+    let mut target = renderer.create_target(&gpu.device, [size, size]);
     let uploaded = renderer.upload_model(&gpu.device, &gpu.queue, model);
     assert_eq!(uploaded.triangles(), model.triangles());
     renderer.render(
         &gpu.device,
         &gpu.queue,
-        &target,
+        &mut target,
         &FrameParams {
             view_projection,
             camera_position: eye,
@@ -330,7 +330,10 @@ fn render_env(
             sun,
             environment,
         },
-        &[&uploaded],
+        &[Placement {
+            model: &uploaded,
+            transform: glam::Mat4::IDENTITY,
+        }],
         lights,
     );
     Some((read_pixels(&gpu.device, &gpu.queue, &target).unwrap(), size))
@@ -701,9 +704,10 @@ fn floor(with_roof: bool) -> assets::Model {
     if with_roof {
         meshes.push(square(0.0, 1.5, 0.5));
     }
-    assets::Model {
+    let mut model = assets::Model {
         name: "Floor".into(),
         meshes,
+        nodes: Vec::new(),
         materials: Vec::new(),
         textures: Vec::new(),
         lamps: Vec::new(),
@@ -712,7 +716,9 @@ fn floor(with_roof: bool) -> assets::Model {
             max: Vec3::new(6.0, 6.0, 1.5),
         },
         warnings: Vec::new(),
-    }
+    };
+    model.show_every_mesh();
+    model
 }
 
 fn brightness(c: [u8; 3]) -> i32 {
@@ -774,6 +780,7 @@ fn the_sun_shadow_falls_on_the_ground_grid_too() {
     let eye = Vec3::new(0.0, 0.0, 10.0);
     let mut floating = floor(true);
     floating.meshes.remove(0);
+    floating.show_every_mesh();
     floating.bounds.min = Vec3::new(-0.5, -0.5, 1.5);
     let render = |shadows| {
         render_lit(
@@ -975,7 +982,9 @@ fn many_lamps_and_odd_values_draw_without_trouble() {
 fn showcase_on_floor() -> assets::Model {
     let mut model = showcase();
     let floor = big_floor(60.0);
+    model.meshes = model.placed_meshes();
     model.meshes.extend(floor.meshes);
+    model.show_every_mesh();
     model.bounds.min = model.bounds.min.min(floor.bounds.min);
     model.bounds.max = model.bounds.max.max(floor.bounds.max);
     model
@@ -985,6 +994,7 @@ fn showcase_on_floor() -> assets::Model {
 fn big_floor(half: f32) -> assets::Model {
     let mut model = floor(false);
     model.meshes = vec![square(0.0, 0.05, half)];
+    model.show_every_mesh();
     model.bounds = assets::Bounds {
         min: Vec3::new(-half, -half, 0.0),
         max: Vec3::new(half, half, 0.05),
@@ -1215,24 +1225,30 @@ fn two_viewports_keep_their_own_frames() {
     };
     let down = Vec3::new(0.0, 0.0, 10.0);
     let away = Vec3::new(0.0, -100.0, 50.0);
-    let a = renderer.create_target(&gpu.device, [32, 32]);
-    let b = renderer.create_target(&gpu.device, [32, 32]);
+    let mut a = renderer.create_target(&gpu.device, [32, 32]);
+    let mut b = renderer.create_target(&gpu.device, [32, 32]);
     // Both drawn before either is read: each must keep its own camera and
     // look.
     renderer.render(
         &gpu.device,
         &gpu.queue,
-        &a,
+        &mut a,
         &params(looking_down(down), down, Look::Unlit),
-        &[&floor],
+        &[Placement {
+            model: &floor,
+            transform: glam::Mat4::IDENTITY,
+        }],
         &[],
     );
     renderer.render(
         &gpu.device,
         &gpu.queue,
-        &b,
+        &mut b,
         &params(looking_north(away), away, Look::Standard),
-        &[&floor],
+        &[Placement {
+            model: &floor,
+            transform: glam::Mat4::IDENTITY,
+        }],
         &[],
     );
     let pa = read_pixels(&gpu.device, &gpu.queue, &a).unwrap();
@@ -1245,5 +1261,126 @@ fn two_viewports_keep_their_own_frames() {
     assert!(
         brightness(pixel(&pb, 32, 16, 2)) < 120,
         "B: sky above the far floor"
+    );
+}
+
+// ------------------------------------------------------------ instances ---
+
+/// Renders `model` once for each of `transforms`, in the standard look,
+/// 64 pixels square, looking north from `eye`.
+fn render_placed(model: &assets::Model, transforms: &[Mat4], eye: Vec3) -> Option<Vec<u8>> {
+    let gpu = gpu()?;
+    let renderer = ViewportRenderer::new(&gpu.device, best_sample_count(&gpu.adapter));
+    let size = 64;
+    let mut target = renderer.create_target(&gpu.device, [size, size]);
+    let uploaded = renderer.upload_model(&gpu.device, &gpu.queue, model);
+    let placed: Vec<Placement<'_>> = transforms
+        .iter()
+        .map(|&transform| Placement {
+            model: &uploaded,
+            transform,
+        })
+        .collect();
+    renderer.render(
+        &gpu.device,
+        &gpu.queue,
+        &mut target,
+        &FrameParams {
+            view_projection: looking_north(eye),
+            camera_position: eye,
+            focus: Vec3::new(1.0e7, 1.0e7, 0.0),
+            sky_top: srgb(SKY_TOP),
+            sky_horizon: srgb(SKY_HORIZON),
+            ground: srgb(GROUND),
+            shading: Shading::default(),
+            size_px: [size, size],
+            sun: Sun::default(),
+            environment: unmapped(),
+        },
+        &placed,
+        &[],
+    );
+    Some(read_pixels(&gpu.device, &gpu.queue, &target).unwrap())
+}
+
+#[test]
+fn a_mirrored_instance_looks_like_the_old_mirrored_bake() {
+    // The sample mirrored left to right: once as an instance with a
+    // negative scale (drawn with the flipped pipelines), once baked into
+    // its corners with the triangles turned, as Phase 1 did.
+    let eye = Vec3::new(1.5, -7.0, 1.4);
+    let mirror = Mat4::from_scale(Vec3::new(-1.0, 1.0, 1.0));
+    let model = sample();
+    let Some(instanced) = render_placed(&model, &[mirror], eye) else {
+        return;
+    };
+    let mut baked = model.clone();
+    baked.meshes = model.placed_meshes();
+    baked.show_every_mesh();
+    let mut baked_mirror = baked.clone();
+    for mesh in &mut baked_mirror.meshes {
+        for v in &mut mesh.vertices {
+            v.position[0] = -v.position[0];
+            v.normal[0] = -v.normal[0];
+        }
+        mesh.indices = mesh
+            .indices
+            .chunks_exact(3)
+            .flat_map(|t| [t[0], t[2], t[1]])
+            .collect();
+    }
+    let reference = render_placed(&baked_mirror, &[Mat4::IDENTITY], eye).unwrap();
+    let differing = instanced
+        .chunks_exact(4)
+        .zip(reference.chunks_exact(4))
+        .filter(|(a, b)| a.iter().zip(*b).any(|(x, y)| x.abs_diff(*y) > 6))
+        .count();
+    assert!(differing < 40, "{differing} pixels differ");
+    // And it isn't just empty: the mirrored cube is drawn (not culled
+    // inside out), so the view differs from the backdrop alone.
+    let empty = render_placed(&model, &[], eye).unwrap();
+    assert_ne!(instanced, empty);
+}
+
+#[test]
+fn one_model_placed_twice_is_drawn_twice() {
+    let eye = Vec3::new(0.0, -14.0, 1.4);
+    let model = sample();
+    let Some(once) = render_placed(&model, &[Mat4::IDENTITY], eye) else {
+        return;
+    };
+    let twice = render_placed(
+        &model,
+        &[
+            Mat4::from_translation(Vec3::new(-4.0, 0.0, 0.0)),
+            Mat4::from_translation(Vec3::new(4.0, 0.0, 0.0)),
+        ],
+        eye,
+    )
+    .unwrap();
+    // Compared picture to picture rather than by colour, because GPUs
+    // (Windows' WARP especially) differ in shading and at edges: the two
+    // copies change the sides of the picture a lot, and leave the middle,
+    // where the single copy stood.
+    let changed_in = |xs: std::ops::Range<u32>| {
+        let mut n = 0;
+        for y in 0..64u32 {
+            for x in xs.clone() {
+                let i = ((y * 64 + x) * 4) as usize;
+                let diff = (0..3)
+                    .map(|c| once[i + c].abs_diff(twice[i + c]))
+                    .max()
+                    .unwrap_or(0);
+                if diff > 30 {
+                    n += 1;
+                }
+            }
+        }
+        n
+    };
+    let (left, middle, right) = (changed_in(0..16), changed_in(26..38), changed_in(48..64));
+    assert!(
+        left > 40 && right > 40 && middle > 40,
+        "the picture changes at both sides and in the middle: {left}, {right} and {middle} pixels"
     );
 }

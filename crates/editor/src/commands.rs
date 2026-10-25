@@ -3,6 +3,7 @@
 //! ([decision 0022](../../../docs/decisions/0022-undo-as-reversible-edits.md)).
 //! Nothing else in the editor changes the area.
 
+use crate::area_panel::AreaRequest;
 use crate::console::LogLevel;
 use crate::document::Selection;
 use crate::models::{FileLight, FileLightKind, ModelInfo};
@@ -136,12 +137,18 @@ impl Workbench {
                     part: None,
                 }),
             });
+        let mut model = model;
+        model.order = self.document.area().order_at_end(None);
         let mut entities = vec![(id, model)];
         let mut edits = Vec::new();
+        let mut order = None;
         for (i, light) in lights.iter().enumerate() {
             match file_light(i, light) {
                 FromFile::Lamp(mut data) => {
                     data.parent = Some(id);
+                    let next = area::order_after(order.as_deref());
+                    data.order.clone_from(&next);
+                    order = Some(next);
                     entities.push((EntityId::random(), *data));
                 }
                 FromFile::Sun(light, rotation) => {
@@ -255,8 +262,9 @@ impl Workbench {
             .count()
     }
 
-    fn spawn_selected(&mut self, data: EntityData) -> EntityId {
+    fn spawn_selected(&mut self, mut data: EntityData) -> EntityId {
         let id = EntityId::random();
+        data.order = self.document.area().order_at_end(data.parent);
         let label = format!("Add {}", data.name);
         let mut selected = Selection::default();
         selected.select_only(id);
@@ -315,6 +323,240 @@ impl Workbench {
             }
             PropertyRequest::Delete(entity) => self.delete(entity),
             PropertyRequest::MoveHere(entity) => self.move_here(entity),
+        }
+    }
+
+    /// Carries out what the user asked for in the Area panel.
+    pub(crate) fn apply_area_request(&mut self, request: AreaRequest) {
+        match request {
+            AreaRequest::Select(id) => self.select(id),
+            AreaRequest::Toggle(id) => self.document.selection.toggle(id),
+            AreaRequest::SelectRange(id) => self.select_range(id),
+            AreaRequest::Delete(id) => self.delete(id),
+            AreaRequest::Reparent { entity, onto } => {
+                // Dragging one of several selected moves them all.
+                let moving = if self.document.selection.contains(entity) {
+                    self.selected_roots()
+                } else {
+                    vec![entity]
+                };
+                self.reparent(&moving, onto);
+            }
+            AreaRequest::Rename { entity, name } => {
+                self.command("Rename", vec![Edit::Rename { entity, name }], None, None);
+            }
+        }
+    }
+
+    /// Selects every entity in the Area panel's order from the one shown
+    /// in Properties to `id` (Shift+click).
+    pub fn select_range(&mut self, id: EntityId) {
+        let Some(anchor) = self.document.selection.primary() else {
+            self.select(id);
+            return;
+        };
+        let order = self.document.area().depth_first();
+        let (Some(a), Some(b)) = (
+            order.iter().position(|&e| e == anchor),
+            order.iter().position(|&e| e == id),
+        ) else {
+            self.select(id);
+            return;
+        };
+        let (from, to) = (a.min(b), a.max(b));
+        self.document
+            .selection
+            .select_all(order[from..=to].iter().copied(), anchor);
+    }
+
+    /// The selected entities that aren't below another selected one: the
+    /// ones to move, copy or delete (their children come with them).
+    pub(crate) fn selected_roots(&self) -> Vec<EntityId> {
+        let area = self.document.area();
+        let selection = &self.document.selection;
+        let order = area.depth_first();
+        order
+            .into_iter()
+            .filter(|&id| selection.contains(id))
+            .filter(|&id| {
+                // No selected entity above it.
+                let mut at = area.get(id).and_then(|e| e.parent);
+                let mut steps = 0;
+                while let Some(p) = at {
+                    if selection.contains(p) || steps > area.len() {
+                        return false;
+                    }
+                    steps += 1;
+                    at = area.get(p).and_then(|e| e.parent);
+                }
+                true
+            })
+            .collect()
+    }
+
+    /// Moves `ids` under `parent` (or to the top level), at the end of its
+    /// children, keeping where each is in the world. Ones that would go
+    /// under themselves are left where they are.
+    pub fn reparent(&mut self, ids: &[EntityId], parent: Option<EntityId>) {
+        let area = self.document.area();
+        let parent_world = parent.map_or(glam::Mat4::IDENTITY, |p| area.world_matrix(p));
+        let inverse = parent_world.inverse();
+        let mut edits = Vec::new();
+        let mut order = area.order_at_end(parent);
+        for &id in ids {
+            let Some(entity) = area.get(id) else { continue };
+            if entity.parent == parent || parent.is_some_and(|p| area.tree(id).contains(&p)) {
+                continue;
+            }
+            edits.push(Edit::Reparent {
+                entity: id,
+                parent,
+                order: order.clone(),
+            });
+            order = area::order_after(Some(&order));
+            if let Some(transform) = entity.get::<Transform>() {
+                let local = inverse * area.world_matrix(id);
+                if local.is_finite() && inverse.is_finite() {
+                    let (scale, rotation, position) = local.to_scale_rotation_translation();
+                    let kept = Transform {
+                        position,
+                        rotation: rotation.normalize(),
+                        scale,
+                    };
+                    if kept != transform {
+                        edits.extend(component_edits(
+                            id,
+                            entity.components.get(Transform::NAME),
+                            &kept,
+                        ));
+                    }
+                }
+            }
+        }
+        if edits.is_empty() {
+            return;
+        }
+        let label = match parent.and_then(|p| area.get(p)) {
+            Some(p) => format!("Move under {}", p.name),
+            None => "Move to the top level".to_string(),
+        };
+        self.command(&label, edits, None, None);
+    }
+
+    /// Copies the selected entities (with everything below them) and
+    /// selects the copies, which sit beside the originals (Ctrl+D).
+    pub fn duplicate_selection(&mut self) {
+        let roots = self.selected_roots();
+        if roots.is_empty() {
+            return;
+        }
+        let area = self.document.area();
+        let mut edits = Vec::new();
+        let mut copies = Vec::new();
+        let mut orders: std::collections::HashMap<Option<EntityId>, String> = Default::default();
+        for root in roots {
+            let ids = area.tree(root);
+            let new_ids: std::collections::HashMap<EntityId, EntityId> =
+                ids.iter().map(|&id| (id, EntityId::random())).collect();
+            let mut entities = Vec::new();
+            for id in &ids {
+                let Some(original) = area.get(*id) else {
+                    continue;
+                };
+                let mut copy = original.clone();
+                if *id == root {
+                    let parent = original.parent;
+                    let order = orders
+                        .entry(parent)
+                        .or_insert_with(|| area.order_at_end(parent));
+                    copy.order.clone_from(order);
+                    *order = area::order_after(Some(order));
+                } else {
+                    copy.parent = original
+                        .parent
+                        .map(|p| new_ids.get(&p).copied().unwrap_or(p));
+                }
+                // References inside the copied tree point at the copies.
+                for data in copy.components.values_mut() {
+                    for value in data.fields.values_mut() {
+                        if let reflect::Value::Entity(Some(target)) = value
+                            && let Some(&moved) = new_ids.get(target)
+                        {
+                            *target = moved;
+                        }
+                    }
+                }
+                entities.push((new_ids[id], copy));
+            }
+            copies.push(new_ids[&root]);
+            edits.push(Edit::Spawn { entities });
+        }
+        let Some(&primary) = copies.last() else {
+            return;
+        };
+        let mut selected = Selection::default();
+        selected.select_all(copies.iter().copied(), primary);
+        let label = if copies.len() == 1 {
+            "Duplicate".to_string()
+        } else {
+            format!("Duplicate {} entities", copies.len())
+        };
+        self.command(&label, edits, None, Some(selected));
+    }
+
+    /// Deletes the selected entities and everything below them, as one step
+    /// (Delete).
+    pub fn delete_selection(&mut self) {
+        let roots = self.selected_roots();
+        match roots.as_slice() {
+            [] => {}
+            [one] => self.delete(*one),
+            many => {
+                let label = format!("Delete {} entities", many.len());
+                let edits = many.iter().map(|&root| Edit::Despawn { root }).collect();
+                if self.command(&label, edits, None, None) {
+                    self.log(LogLevel::Info, format!("{label}."));
+                }
+            }
+        }
+    }
+
+    /// Points the camera at the selected entities, so they fill the view
+    /// (F). Models count with their whole size, other entities as a
+    /// metre-wide box around them.
+    pub fn frame_selection(&mut self) {
+        let area = self.document.area();
+        let mut bounds: Option<(Vec3, Vec3)> = None;
+        let mut add = |lo: Vec3, hi: Vec3| {
+            bounds = Some(bounds.map_or((lo, hi), |(a, b)| (a.min(lo), b.max(hi))));
+        };
+        for id in self.document.selection.iter() {
+            let world = area.world_matrix(id);
+            let model = area
+                .get(id)
+                .and_then(|e| e.get::<Model>())
+                .and_then(|m| m.asset)
+                .and_then(|r| self.models.get(&r.asset));
+            match model {
+                Some(info) => {
+                    for i in 0..8 {
+                        let corner = Vec3::new(
+                            if i & 1 == 0 { info.min.x } else { info.max.x },
+                            if i & 2 == 0 { info.min.y } else { info.max.y },
+                            if i & 4 == 0 { info.min.z } else { info.max.z },
+                        );
+                        let p = world.transform_point3(corner);
+                        add(p, p);
+                    }
+                }
+                None => {
+                    let p = world.transform_point3(Vec3::ZERO);
+                    add(p - Vec3::splat(0.5), p + Vec3::splat(0.5));
+                }
+            }
+        }
+        if let Some((min, max)) = bounds {
+            self.viewport.camera.frame(min, max);
         }
     }
 
@@ -405,7 +647,7 @@ fn file_light(i: usize, light: &FileLight) -> FromFile {
     } else {
         Vec3::ZERO
     };
-    let mut data = EntityData::new(&name)
+    let data = EntityData::new(&name)
         .with(&Transform {
             position,
             rotation,
@@ -423,6 +665,5 @@ fn file_light(i: usize, light: &FileLight) -> FromFile {
             soft_edge,
             ..Light::point()
         });
-    data.order = format!("a{i:04}");
     FromFile::Lamp(Box::new(data))
 }

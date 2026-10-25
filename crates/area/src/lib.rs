@@ -11,6 +11,6 @@ mod document;
 mod edit;
 mod history;
 
-pub use document::{Area, EntityData};
+pub use document::{Area, EntityData, order_after};
 pub use edit::{Edit, EditError};
 pub use history::{DEFAULT_LIMIT_BYTES, History, MergeKey, Step, Undone};
