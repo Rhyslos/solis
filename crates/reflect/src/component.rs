@@ -153,6 +153,45 @@ mod tests {
     use crate::schema::{FieldInfo, FieldKind};
 
     #[test]
+    fn each_reader_takes_its_kind_and_gives_the_default_otherwise() {
+        // The hardening milestone's mutation testing: the readers for
+        // whole numbers, yes/no, vectors, assets and entities weren't each
+        // tried with a value of their kind and one of another.
+        let entity = crate::EntityId(crate::Id::from_raw(7).unwrap());
+        let asset = crate::AssetRef {
+            asset: crate::AssetId(crate::Id::from_raw(9).unwrap()),
+            part: None,
+        };
+        let mut data = ComponentData::default();
+        data.set("n", Value::Int(5));
+        data.set("on", Value::Bool(true));
+        data.set("off", Value::Bool(false));
+        data.set("v", Value::floats(&[1.0, 2.0, 3.0]));
+        data.set("a", Value::Asset(Some(asset)));
+        data.set("e", Value::Entity(Some(entity)));
+        data.set("words", Value::Text("hi".into()));
+        let f = Fields(&data);
+        assert_eq!(f.int("n", -1), 5);
+        assert_eq!(f.int("words", -1), -1);
+        assert!(f.bool("on", false));
+        assert!(!f.bool("off", true));
+        assert!(f.bool("words", true) && !f.bool("words", false));
+        assert_eq!(f.vec3("v", Vec3::ZERO), Vec3::new(1.0, 2.0, 3.0));
+        assert_eq!(f.vec3("words", Vec3::ONE), Vec3::ONE);
+        assert_eq!(f.asset("a"), Some(asset));
+        assert_eq!(f.asset("e"), None);
+        assert_eq!(f.entity("e"), Some(entity));
+        assert_eq!(f.entity("a"), None);
+        // Nearly unit (within 1e-5 of one, squared) is kept; past it, made
+        // unit.
+        data.set("r", Value::floats(&[0.0, 0.0, 0.0, 1.000_004]));
+        let kept = Fields(&data).rotation("r", Quat::IDENTITY);
+        assert_eq!(kept.w, 1.000_004);
+        data.set("r", Value::floats(&[0.0, 0.0, 0.0, 1.01]));
+        assert_eq!(Fields(&data).rotation("r", Quat::IDENTITY), Quat::IDENTITY);
+    }
+
+    #[test]
     fn a_rotation_reads_back_bit_for_bit_and_a_hand_written_one_is_made_unit() {
         // The hardening milestone's invariant tests: a spinning crate's
         // rotation (never exactly unit length) came back a hair different

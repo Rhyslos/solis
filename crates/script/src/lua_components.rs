@@ -224,6 +224,14 @@ fn read_class(path: &str, class: Table) -> Result<LuaClass, CodeProblem> {
                  hold: bool, int, float, string, state, vec3, rotation or entity"
             )));
         };
+        // A state lists its states (found by the hardening milestone's
+        // tests: with none, its starting value wasn't one of its own).
+        if matches!(&kind, FieldKind::Choice(options) if options.is_empty()) {
+            return Err(mistake(format!(
+                "{name}'s field {field} is a state, which needs its states listed after its \
+                 starting one, such as {{ \"{field}\", \"state\", \"Single\", {{ \"Single\", \"Burst\" }} }}"
+            )));
+        }
         let start: LuaValue = entry.raw_get(3).map_err(problem)?;
         let default = match start {
             LuaValue::Nil => empty(&kind),
@@ -362,6 +370,36 @@ mod tests {
             .unwrap_err();
         let problem = lua_problem("bad.lua", &syntax);
         assert_eq!((problem.file.as_str(), problem.line), ("bad.lua", 1));
+    }
+
+    #[test]
+    fn a_state_field_without_its_states_is_a_mistake() {
+        let checked = crate::code::compile(&crate::Code {
+            files: Vec::new(),
+            lua: vec![(
+                "mode.lua".into(),
+                "local M = component(\"Mode\", { { \"mode\", \"state\" } })".into(),
+            )],
+            notes: Vec::new(),
+        });
+        let problems = checked.expect_err("refused");
+        assert!(
+            problems[0].message.contains("needs its states listed"),
+            "{problems:?}"
+        );
+        // With its states, it's fine, starting at the first.
+        let fine = crate::code::compile(&crate::Code {
+            files: Vec::new(),
+            lua: vec![(
+                "mode.lua".into(),
+                "local M = component(\"Mode\", { { \"mode\", \"state\", nil, { \"Single\", \"Burst\" } } })"
+                    .into(),
+            )],
+            notes: Vec::new(),
+        });
+        let compiled = fine.expect("checked").expect("code");
+        let field = &compiled.schemas[0].fields[0];
+        assert_eq!(field.default, reflect::Value::Text("Single".into()));
     }
 
     #[test]

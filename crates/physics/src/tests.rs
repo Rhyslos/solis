@@ -112,6 +112,31 @@ fn rays_hit_the_nearest_thing_and_pass_out_of_what_they_start_in() {
     assert_eq!(down.entity, id(2), "the crate before the floor");
     assert!((down.distance - 6.5).abs() < 0.05, "{down:?}");
     assert!(down.normal.z > 0.99);
+    // Where it hit (mutation testing: never checked), and a direction of
+    // any length is the same way.
+    assert!(
+        down.point.abs_diff_eq(Vec3::new(0.0, 0.0, 3.5), 0.05),
+        "{down:?}"
+    );
+    let long = physics
+        .state()
+        .cast_ray(Vec3::new(0.0, 0.0, 10.0), Vec3::new(0.0, 0.0, -7.0), 100.0)
+        .unwrap();
+    assert_eq!(
+        (long.entity, long.distance, long.point),
+        (down.entity, down.distance, down.point)
+    );
+    // Sideways from off to one side: the crate's side, facing it.
+    let side = physics
+        .state()
+        .cast_ray(Vec3::new(-5.0, 0.0, 3.0), Vec3::X, 100.0)
+        .unwrap();
+    assert_eq!(side.entity, id(2));
+    assert!(
+        side.point.abs_diff_eq(Vec3::new(-0.5, 0.0, 3.0), 0.05),
+        "{side:?}"
+    );
+    assert!(side.normal.x < -0.99, "{side:?}");
     // From inside the crate, it's passed through: the floor.
     let inside = physics
         .state()

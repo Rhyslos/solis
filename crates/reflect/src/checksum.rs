@@ -168,3 +168,43 @@ mod tests {
 
     const FIXED: u64 = 6_965_721_918_133_649_403;
 }
+
+#[cfg(test)]
+mod mutation_tests {
+    use super::*;
+
+    fn sum(feed: impl FnOnce(&mut Checksum)) -> u64 {
+        let mut s = Checksum::new();
+        feed(&mut s);
+        s.finish()
+    }
+
+    #[test]
+    fn every_kind_of_input_counts() {
+        // The hardening milestone's mutation testing: emptying `f32`,
+        // `entity` or `data` went unnoticed here, and a determinism check
+        // would then miss a difference.
+        assert_ne!(sum(|s| s.f32(1.0)), sum(|s| s.f32(1.000_000_1)));
+        assert_ne!(sum(|s| s.f32(0.0)), sum(|s| s.f32(-0.0)));
+        assert_ne!(sum(|s| s.f32(0.5)), sum(|_| {}));
+        let a = EntityId(crate::Id::from_raw(1).unwrap());
+        let b = EntityId(crate::Id::from_raw(2).unwrap());
+        assert_ne!(sum(|s| s.entity(a)), sum(|s| s.entity(b)));
+        assert_ne!(sum(|s| s.entity(a)), sum(|_| {}));
+        let mut one = ComponentData::default();
+        one.set("hp", Value::Float(1.0));
+        let mut two = one.clone();
+        two.set("hp", Value::Float(2.0));
+        let mut renamed = ComponentData::default();
+        renamed.set("ap", Value::Float(1.0));
+        let sums = [
+            sum(|s| s.data(&one)),
+            sum(|s| s.data(&two)),
+            sum(|s| s.data(&renamed)),
+            sum(|s| s.data(&ComponentData::default())),
+            sum(|_| {}),
+        ];
+        let distinct: std::collections::BTreeSet<u64> = sums.iter().copied().collect();
+        assert_eq!(distinct.len(), sums.len(), "{sums:?}");
+    }
+}

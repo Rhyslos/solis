@@ -778,3 +778,60 @@ fn an_entity_turned_is_placed_the_same_built_or_moved() {
     let bits = |w: &World| w.global(id).unwrap().to_cols_array().map(f32::to_bits);
     assert_eq!(bits(&built), bits(&moved));
 }
+
+#[test]
+fn what_s_under_a_turned_and_scaled_parent_follows_it_exactly_when_settled() {
+    // The hardening milestone's mutation testing: the settle test only
+    // moved things in straight lines, where adding places instead of
+    // multiplying them gives the same answer.
+    let mut area = Area::default();
+    let ship = area.spawn(EntityData::new("Ship").with(&at(10.0, 0.0, 0.0)));
+    let mut mast = EntityData::new("Mast").with(&at(0.0, 0.0, 2.0));
+    mast.parent = Some(ship);
+    let mast = area.spawn(mast);
+    let mut flag = EntityData::new("Flag").with(&Transform {
+        position: Vec3::new(0.5, 0.0, 1.0),
+        rotation: glam::Quat::from_rotation_y(0.3),
+        scale: Vec3::splat(0.5),
+    });
+    flag.parent = Some(mast);
+    let flag = area.spawn(flag);
+    let mut world = World::from_area(&area);
+    let turned = Transform {
+        position: Vec3::new(1.0, 2.0, 2.0),
+        rotation: glam::Quat::from_rotation_z(0.7),
+        scale: Vec3::new(2.0, 1.0, 1.5),
+    };
+    let before = world.changes();
+    world.set_transform(mast, turned);
+    world.settle();
+    assert_ne!(
+        world.changes(),
+        before,
+        "a settle that moved things is a change"
+    );
+    let expected = world.global(mast).unwrap() * world.get::<Transform>(flag).unwrap().matrix();
+    assert_eq!(world.global(flag).unwrap(), expected);
+    // Built from scratch with the mast there, it's the same.
+    let mut moved = area.clone();
+    moved.get_mut(mast).unwrap().set(&turned);
+    let rebuilt = World::from_area(&moved);
+    assert!(
+        rebuilt
+            .global(flag)
+            .unwrap()
+            .abs_diff_eq(world.global(flag).unwrap(), 1e-5)
+    );
+}
+
+#[test]
+fn a_frame_time_that_isn_t_a_number_never_jams_the_clock() {
+    // The hardening milestone's mutation testing: NaN or a negative time
+    // reaching the carried time would stop every tick after it.
+    let mut world = World::from_area(&Area::default());
+    for bad in [f64::NAN, f64::INFINITY, f64::NEG_INFINITY, -1.0, 0.0] {
+        assert_eq!(world.due(bad), 0, "{bad}");
+    }
+    assert_eq!(world.due(TICK * 1.5), 1);
+    assert_eq!(world.due(TICK * 0.5), 1, "the half tick carried");
+}
