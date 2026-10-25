@@ -232,7 +232,8 @@ The area to spend extra time on. In order of payoff:
 ## 12. UI
 
 - **The editor** uses egui, like Aventail and Halberd.
-- **Game UI** is its own system: custom UI components written with Lust's `view { }`, and a visual UI editor in the spirit of Unreal's. Lust's plan has its own `view { }` renderer as its biggest item; Solis's game UI renderer could be that renderer, but Solis doesn't wait for it. A Rust UI layer comes first, which `view { }` compiles to later. **(to decide)**
+- **Game UI** is drawn in Solis ([decision 0039](docs/decisions/0039-game-ui-is-drawn-in-solis.md)): a visual UI editor where UI is drawn canvas style (lines, shapes, curves, text) rather than built from imported images, so it's sharp at any size; any value can be tied live to game code; every element is reachable from code, because a UI file is ordinary Lust (`view { }`); and styles such as glow, pixelation and stylized outlines apply to the whole UI. Lust's plan has its own `view { }` renderer as its biggest item; Solis's game UI renderer could be that renderer, but Solis doesn't wait for it. A Rust UI layer comes first, which `view { }` compiles to later. When the editor is built is decided when Phase 9 is planned.
+- **Other visual editors** follow the same rule, a graph saved as readable text: state machines (Phase 7), behaviour trees, and shader and material graphs.
 
 ---
 
@@ -348,3 +349,4 @@ Both sides review each other's pull requests.
 - 2026-10-25: [0036](docs/decisions/0036-physics-is-rapier-strict-on-every-pc.md): physics is Rapier in its strict mode (`enhanced-determinism`), so the same inputs give the same result on every PC; one choice for every game.
 - 2026-10-25: [0037](docs/decisions/0037-input-as-named-actions.md): game code reads named actions (Move, Look, Jump, Sprint, Interact by default: W A S D, mouse, Space, Shift, F; gamepad too), rebindable; clicking the Game panel gives the game the input, Esc gives it back.
 - 2026-10-25: [0038](docs/decisions/0038-save-games-hold-everything.md): a save game holds everything (entities, components' fields, projectiles, physics, the clock, the randomness); game code calls `save` and `load`.
+- 2026-10-25: [0039](docs/decisions/0039-game-ui-is-drawn-in-solis.md): game UI is drawn in Solis, canvas style, in a visual UI editor: no outside images needed, values tied live to code, every element reachable from code (a UI file is Lust), styles such as glow and pixelation; when it's built is decided when Phase 9 is planned. Settles §12.
