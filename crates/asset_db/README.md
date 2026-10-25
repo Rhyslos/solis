@@ -28,4 +28,4 @@ Know every asset in a project (models, and assemblies: `.solassembly`) by an ID 
 
 ## Status
 
-Phase 2, milestone 5: projects, sidecars, the cache, watching and workers. Phase 5: the import cache keeps each mesh's levels of detail (layout version 2), so they're made once. Phase 3: listing every file, and renaming, moving, new folders and deleting from the Library.
+Phase 2, milestone 5: projects, sidecars, the cache, watching and workers. Phase 5: the import cache keeps each mesh's levels of detail (layout version 2), so they're made once; version 3 measures a model's box without its own levels of detail. Phase 3: listing every file, and renaming, moving, new folders and deleting from the Library.

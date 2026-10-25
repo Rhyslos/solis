@@ -14,7 +14,7 @@ The benchmark's ceiling run (Phase 5, M7) adds ships while it plays, so game cod
 
 ## Decision
 
-Option 2. `spawn(file, place)` makes a copy of an assembly (named by its file in the assets, that without the extension, or its name) where asked; `despawn(entity)` takes one out with everything under it. Like a move, they land after the tick's code (decision 0033): the new entity's ID comes back at once, made from where the spawn was in the tick's order and the time, so the same game makes the same IDs on any number of cores; the entity joins the world and its components start on the next frame. The editor adds them to the area with `Document::edit_by_game`, which changes the area without an undo step.
+Option 2. `spawn(file, place)` makes a copy of an assembly (named by its file in the assets, that without the extension, or its name) where asked; `despawn(entity)` takes one out with everything under it. Like a move, they land after the tick's code (decision 0033): the new entity's ID comes back at once, made from where the spawn was in the tick's order and the time, so the same game makes the same IDs on any number of cores; spawns and despawns land at the end of the tick in the order asked for, joining the area (at the end of its tree) and the game's world at once, so the entity's components run from the next tick, even within one frame. The editor adds them to the area with `Document::edit_by_game`, which changes the area without an undo step, and to the world with `World::add_subtree` and `World::remove_subtrees`, without building the world again (the Phase 5 review moved this from the end of the frame).
 
 ## Consequences
 

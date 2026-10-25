@@ -9,7 +9,9 @@
 
 use crate::console::LogLevel;
 use crate::document::Document;
-use crate::game_code::{PlayWorld, ViewCache, failure_text, new_game, sync_all, sync_entities};
+use crate::game_code::{
+    GameEdit, PlayWorld, ViewCache, failure_text, new_game, sync_all, sync_entities,
+};
 use crate::panel::Panel;
 use crate::workbench::{Workbench, WorkbenchAction};
 use area::text::AreaFile;
@@ -54,13 +56,16 @@ pub(crate) struct Playing {
     told_unknown: std::collections::HashSet<String>,
     /// Whether the Console was told game code spawned too much.
     told_too_many_spawns: bool,
+    /// What game code spawned and despawned that hasn't landed yet (from
+    /// components' starts, which run outside the ticks).
+    pub(crate) pending: Vec<GameEdit>,
 }
 
-/// The most copies of assemblies game code may make in one frame; more
+/// The most copies of assemblies game code may make in one tick; more
 /// aren't made, and the Console says so (a component spawning every tick by
 /// mistake would otherwise grow the area until the computer runs out of
 /// memory).
-pub const MAX_SPAWNS_PER_FRAME: usize = 10_000;
+pub const MAX_SPAWNS_PER_TICK: usize = 10_000;
 
 impl std::fmt::Debug for Playing {
     fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
@@ -126,7 +131,7 @@ impl Workbench {
         let _ = self.document.take_changes();
         let cameras = world.placed::<area::builtin::Camera>().len();
         let mut view = ViewCache::default();
-        let game = self.start_game(&mut world, &mut view);
+        let (game, pending) = self.start_game(&mut world, &mut view);
         self.playing = Some(Playing {
             world,
             paused: false,
@@ -138,6 +143,7 @@ impl Workbench {
             told_too_many: false,
             told_unknown: Default::default(),
             told_too_many_spawns: false,
+            pending,
         });
         if let Some(found) = self.dock.find_tab(&Panel::Game) {
             let _ = self.dock.set_active_tab(found);
@@ -162,15 +168,15 @@ impl Workbench {
         &mut self,
         world: &mut world::World,
         view: &mut ViewCache,
-    ) -> Option<script::Game> {
+    ) -> (Option<script::Game>, Vec<GameEdit>) {
         if self.program.is_none() && self.rust_components.is_empty() {
-            return None;
+            return (None, Vec::new());
         }
         let mut game = match new_game(&self.rust_components) {
             Ok(game) => game,
             Err(failure) => {
                 self.tell_game(Vec::new(), &[failure]);
-                return None;
+                return (None, Vec::new());
             }
         };
         game.leave_out(self.left_out.clone());
@@ -190,8 +196,10 @@ impl Workbench {
         }
         failures.extend(sync_all(&mut game, self.document.area(), &mut host));
         let said = std::mem::take(&mut host.said);
+        // What the starts spawned lands before the first tick.
+        let pending = std::mem::take(&mut host.edits);
         self.tell_game(said, &failures);
-        Some(game)
+        (Some(game), pending)
     }
 
     /// Writes what game code said, and its failures, in the Console.
@@ -285,8 +293,6 @@ impl Workbench {
         }
         let mut said = Vec::new();
         let mut failures = Vec::new();
-        let mut spawns = Vec::new();
-        let mut despawns = Vec::new();
         // Changes made in the editor reach the running components.
         if let Some(game) = &mut playing.game
             && !changes.is_empty()
@@ -307,46 +313,63 @@ impl Workbench {
             }
             code += syncing.elapsed();
             said.append(&mut host.said);
-            spawns.append(&mut host.spawns);
-            despawns.append(&mut host.despawns);
+            // What their starts spawned lands before the next tick.
+            let edits = std::mem::take(&mut host.edits);
+            playing.pending.extend(edits);
         }
         let mut pause = None;
-        if !playing.paused {
-            let ran = playing.world.step(f64::from(seconds));
-            let now = playing.world.clock().time;
-            for i in 0..ran {
-                // Projectiles fly on first, then game code sees where
-                // they are and fires more.
-                playing.world.projectiles_mut().tick(world::TICK as f32);
-                let Some(game) = &mut playing.game else {
-                    continue;
-                };
-                let time = now - world::TICK * (ran - 1 - i) as f64;
-                let mut host = PlayWorld::new(&mut playing.world, &mut playing.view, time);
-                host.frame_time = f64::from(seconds);
-                let ticking = std::time::Instant::now();
-                let ticked = game.tick(world::TICK, &mut host);
-                code += ticking.elapsed();
-                failures.extend(ticked.failures);
-                said.append(&mut host.said);
-                spawns.append(&mut host.spawns);
-                despawns.append(&mut host.despawns);
-                // Too slow: no catching up, which would only be slower;
-                // the game waits for the person instead.
-                if ticked.pause.is_some() {
+        let ran = if playing.paused {
+            0
+        } else {
+            playing.world.step(f64::from(seconds))
+        };
+        let now = playing.world.clock().time;
+        for i in 0..ran {
+            let time = now - world::TICK * (ran - 1 - i) as f64;
+            // What earlier starts spawned joins first; then projectiles
+            // fly on, then game code sees where they are and fires more.
+            let landing = std::time::Instant::now();
+            failures.extend(self.land_edits(time, seconds));
+            code += landing.elapsed();
+            let Some(playing) = &mut self.playing else {
+                break;
+            };
+            playing.world.projectiles_mut().tick(world::TICK as f32);
+            let Some(game) = &mut playing.game else {
+                continue;
+            };
+            let mut host = PlayWorld::new(&mut playing.world, &mut playing.view, time);
+            host.frame_time = f64::from(seconds);
+            let ticking = std::time::Instant::now();
+            let ticked = game.tick(world::TICK, &mut host);
+            code += ticking.elapsed();
+            failures.extend(ticked.failures);
+            said.append(&mut host.said);
+            // What this tick spawned and despawned joins the world now,
+            // in the order it was asked for (decision 0035), so the next
+            // tick sees it however many ticks this frame runs.
+            let edits = std::mem::take(&mut host.edits);
+            playing.pending.extend(edits);
+            let landing = std::time::Instant::now();
+            failures.extend(self.land_edits(time, seconds));
+            code += landing.elapsed();
+            // Too slow: no catching up, which would only be slower; the
+            // game waits for the person instead.
+            if ticked.pause.is_some() {
+                if let Some(playing) = &mut self.playing {
                     playing.paused = true;
-                    pause = ticked.pause;
-                    break;
                 }
+                pause = ticked.pause;
+                break;
             }
         }
+        let Some(playing) = &mut self.playing else {
+            return;
+        };
         let refused = playing.world.projectiles().refused() > 0 && !playing.told_too_many;
         if refused {
             playing.told_too_many = true;
         }
-        // Copies game code made, and entities it took out, join the area
-        // (and so the world, next frame).
-        self.land_spawns(spawns, despawns);
         self.profiler.add(crate::profiler::Stage::GameCode, code);
         self.profiler.add(
             crate::profiler::Stage::World,
@@ -373,69 +396,114 @@ impl Workbench {
         }
     }
 
-    /// Makes the copies of assemblies game code spawned this frame, and
-    /// takes out the entities it despawned: changes to the area that
-    /// aren't undo steps (Stop puts the area back). A name that isn't an
-    /// assembly in the project is said once.
-    fn land_spawns(
-        &mut self,
-        spawns: Vec<(EntityId, String, glam::Vec3)>,
-        despawns: Vec<EntityId>,
-    ) {
-        if spawns.is_empty() && despawns.is_empty() {
-            return;
-        }
-        let mut edits = Vec::new();
+    /// Lands what game code spawned and despawned since it was last
+    /// landed (`Playing::pending`), in the order it was asked for: copies
+    /// of assemblies join the area at the end of its tree and the world
+    /// at once, despawned entities leave both, and the running game's
+    /// components start and stop with them. Changes to the area that
+    /// aren't undo steps (Stop puts the area back; decision 0035). A name
+    /// that isn't an assembly in the project is said once. The failures
+    /// of starting the new components come back.
+    fn land_edits(&mut self, time: f64, seconds: f32) -> Vec<script::Failure> {
+        let edits = match &mut self.playing {
+            Some(playing) if !playing.pending.is_empty() => std::mem::take(&mut playing.pending),
+            _ => return Vec::new(),
+        };
         let mut unknown = Vec::new();
-        // Each name looked up once a frame, not once a spawn.
+        // Each name looked up once, not once a spawn.
         let mut named: std::collections::HashMap<String, Option<(AssetId, String)>> =
             std::collections::HashMap::new();
         let mut room = area::text::MAX_ENTITIES.saturating_sub(self.document.area().len());
         let mut refused = 0usize;
-        for (n, (id, name, place)) in spawns.into_iter().enumerate() {
-            if n >= MAX_SPAWNS_PER_FRAME || room == 0 {
-                refused += 1;
-                continue;
-            }
-            let found = named
-                .entry(name.clone())
-                .or_insert_with(|| self.assembly_named(&name))
-                .clone();
-            let Some((asset, shown)) = found else {
-                unknown.push(name);
-                continue;
-            };
-            let data = EntityData::new(&shown).with(&area::builtin::Transform {
-                position: place,
-                ..Default::default()
-            });
-            let lookup = |a| self.assemblies.get(&a).cloned();
-            if let Ok(mut entities) = area::assembly::Expander::new(&lookup).place(asset, id, &data)
-            {
-                // The copy stands where it was spawned, turned and sized as
-                // the assembly made it.
-                if let Some((_, root)) = entities.iter_mut().find(|(e, _)| *e == id) {
-                    let made = root.get::<area::builtin::Transform>().unwrap_or_default();
-                    root.set(&area::builtin::Transform {
-                        position: place,
-                        ..made
-                    });
+        let mut spawned = 0usize;
+        // At the end of the area's tree, one after another.
+        let mut next_order = self.document.area().order_at_end(None);
+        let mut added: Vec<EntityId> = Vec::new();
+        let mut removed: Vec<EntityId> = Vec::new();
+        let mut removed_roots: Vec<EntityId> = Vec::new();
+        for edit in edits {
+            match edit {
+                GameEdit::Spawn(id, name, place) => {
+                    if spawned >= MAX_SPAWNS_PER_TICK || room == 0 {
+                        refused += 1;
+                        continue;
+                    }
+                    let found = named
+                        .entry(name.clone())
+                        .or_insert_with(|| self.assembly_named(&name))
+                        .clone();
+                    let Some((asset, shown)) = found else {
+                        unknown.push(name);
+                        continue;
+                    };
+                    let data = EntityData::new(&shown);
+                    let lookup = |a| self.assemblies.get(&a).cloned();
+                    let Ok(mut entities) =
+                        area::assembly::Expander::new(&lookup).place(asset, id, &data)
+                    else {
+                        continue;
+                    };
+                    // The copy stands where it was spawned, turned and sized
+                    // as the assembly made it, after everything else.
+                    if let Some((_, root)) = entities.iter_mut().find(|(e, _)| *e == id) {
+                        let made = root.get::<area::builtin::Transform>().unwrap_or_default();
+                        root.set(&area::builtin::Transform {
+                            position: place,
+                            ..made
+                        });
+                        root.parent = None;
+                        root.order = next_order.clone();
+                    }
+                    if entities.len() > room {
+                        refused += 1;
+                        continue;
+                    }
+                    let failed = self.document.edit_by_game(vec![Edit::Spawn {
+                        entities: entities.clone(),
+                    }]);
+                    if failed > 0 {
+                        continue;
+                    }
+                    room -= entities.len();
+                    spawned += 1;
+                    next_order = area::order_after(Some(&next_order));
+                    if let Some(playing) = &mut self.playing {
+                        added.extend(playing.world.add_subtree(&entities));
+                    }
                 }
-                if entities.len() > room {
-                    refused += 1;
-                    continue;
+                GameEdit::Despawn(id) => {
+                    if !self.document.area().contains(id) {
+                        continue;
+                    }
+                    let under = match &self.playing {
+                        Some(playing) => playing.world.subtree(id),
+                        None => Vec::new(),
+                    };
+                    if self.document.edit_by_game(vec![Edit::Despawn { root: id }]) == 0 {
+                        removed.extend(under);
+                        removed_roots.push(id);
+                    }
                 }
-                room -= entities.len();
-                edits.push(Edit::Spawn { entities });
             }
         }
-        let mut gone = std::collections::HashSet::new();
-        for id in despawns {
-            if gone.insert(id) && self.document.area().get(id).is_some() {
-                edits.push(Edit::Despawn { root: id });
+        let mut failures = Vec::new();
+        if let Some(playing) = &mut self.playing {
+            playing.world.remove_subtrees(&removed_roots);
+            let gone: std::collections::HashSet<EntityId> = removed.iter().copied().collect();
+            added.retain(|id| !gone.contains(id));
+            if let Some(game) = &mut playing.game {
+                game.retain_on(removed.iter().map(|&id| (id, Vec::new())));
+                if !added.is_empty() {
+                    let mut host = PlayWorld::new(&mut playing.world, &mut playing.view, time);
+                    host.frame_time = f64::from(seconds);
+                    failures = sync_entities(game, self.document.area(), added, &mut host);
+                    // What the new components' starts spawn waits for the
+                    // next landing.
+                    let more = std::mem::take(&mut host.edits);
+                    playing.pending.extend(more);
+                }
             }
         }
-        self.document.edit_by_game(edits);
         unknown.sort();
         unknown.dedup();
         if refused > 0
@@ -446,10 +514,10 @@ impl Workbench {
             self.log(
                 LogLevel::Warning,
                 format!(
-                    "Game code spawned more than {} copies in one frame, or the area reached \
+                    "Game code spawned more than {} copies in one tick, or the area reached \
                      its most entities ({}), so {refused} weren't made (is something spawning \
                      every tick?).",
-                    crate::models::grouped(MAX_SPAWNS_PER_FRAME),
+                    crate::models::grouped(MAX_SPAWNS_PER_TICK),
                     crate::models::grouped(area::text::MAX_ENTITIES)
                 ),
             );
@@ -469,6 +537,7 @@ impl Workbench {
                 );
             }
         }
+        failures
     }
 
     /// The assembly game code names `name`: by its file in the assets
