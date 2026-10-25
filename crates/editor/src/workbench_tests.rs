@@ -2,8 +2,10 @@
 //! with egui_kittest, without a GPU.
 
 use super::*;
+use crate::models::FileLightKind;
 use crate::viewport::NoRenderer;
 use egui_kittest::kittest::Queryable;
+use scene::builtin::Environment;
 
 fn info() -> AppInfo {
     AppInfo {
@@ -76,6 +78,11 @@ fn presets_rearrange_the_panels() {
 
 /// The whole editor in a test window, with no GPU behind the viewport.
 fn harness() -> egui_kittest::Harness<'static, Workbench> {
+    harness_with(Workbench::new(info(), None))
+}
+
+/// [`harness`], showing `workbench`.
+fn harness_with(workbench: Workbench) -> egui_kittest::Harness<'static, Workbench> {
     let mut renderer = NoRenderer {
         reason: "testing".into(),
     };
@@ -90,7 +97,7 @@ fn harness() -> egui_kittest::Harness<'static, Workbench> {
                 }
                 let _ = workbench.show(ui, &mut renderer);
             },
-            Workbench::new(info(), None),
+            workbench,
         )
 }
 
@@ -398,50 +405,58 @@ fn acting(
         )
 }
 
-fn with_a_model() -> Workbench {
+fn crate_info() -> ModelInfo {
+    ModelInfo {
+        asset: AssetId(reflect::Id::from_raw(7).unwrap()),
+        name: "Crate".into(),
+        triangles: 12,
+        min: Vec3::ZERO,
+        max: Vec3::ONE,
+    }
+}
+
+fn with_a_model() -> (Workbench, EntityId) {
     let mut w = Workbench::new(info(), None);
-    w.add_model(
-        ModelInfo {
-            id: ModelId(7),
-            name: "Crate".into(),
-            triangles: 12,
-            min: glam::Vec3::ZERO,
-            max: glam::Vec3::ONE,
-        },
-        &[],
-        0.1,
-    );
-    w
+    let id = w.add_model(crate_info(), &[], 0.1, &[]);
+    (w, id)
 }
 
 #[test]
-fn the_cross_in_the_scene_panel_removes_a_model() {
-    let mut h = acting(with_a_model());
+fn an_imported_model_becomes_an_entity() {
+    let (w, id) = with_a_model();
+    let entity = w.document().scene.get(id).unwrap();
+    assert_eq!(entity.name, "Crate");
+    assert!(entity.has("Transform") && entity.has("Model"));
+    assert_eq!(w.models().len(), 1);
+}
+
+#[test]
+fn the_cross_in_the_scene_panel_deletes_a_model() {
+    let (w, id) = with_a_model();
+    let mut h = acting(w);
     h.run();
     h.get_by_label("Remove Crate").click();
     h.run();
-    assert!(
-        h.state()
-            .1
-            .contains(&WorkbenchAction::RemoveModel(ModelId(7)))
-    );
-    assert!(h.state().0.models().is_empty());
+    assert!(!h.state().0.document().scene.contains(id));
+    // The model stays loaded (an undo can bring it back).
+    assert_eq!(h.state().0.models().len(), 1);
 }
 
 #[test]
-fn remove_in_properties_removes_the_selected_model() {
-    let mut w = with_a_model();
-    w.select(Selection::Model(ModelId(7)));
+fn delete_in_properties_deletes_the_selected_entity() {
+    let (mut w, id) = with_a_model();
+    w.select(id);
     let mut h = acting(w);
     h.run();
-    h.get_by_label("Remove").click();
-    h.run();
+    let _ = h.get_by_label("Position");
     assert!(
-        h.state()
-            .1
-            .contains(&WorkbenchAction::RemoveModel(ModelId(7)))
+        h.query_all_by_label("Model").count() >= 2,
+        "component and field"
     );
-    assert_eq!(h.state().0.selection(), Selection::Nothing);
+    h.get_by_label("Delete").click();
+    h.run();
+    assert!(!h.state().0.document().scene.contains(id));
+    assert_eq!(h.state().0.selection(), None);
 }
 
 #[test]
@@ -470,7 +485,7 @@ fn help_offers_the_sample_scene() {
 }
 
 #[test]
-fn the_entity_menu_adds_lamps_shown_in_scene_and_properties() {
+fn the_entity_menu_adds_lights_shown_in_scene_and_properties() {
     let mut h = harness();
     h.run();
     // The top bar's menu (the Scene panel's menu row also says Entity).
@@ -479,30 +494,49 @@ fn the_entity_menu_adds_lamps_shown_in_scene_and_properties() {
     h.get_by_label("Add point light").click();
     h.run();
     let w = h.state();
-    assert_eq!(w.lamps().len(), 1);
-    let lamp = &w.lamps()[0];
+    let id = w.selection().unwrap();
+    let lamp = w.document().scene.get(id).unwrap();
     assert_eq!(lamp.name, "Point light 1");
-    assert_eq!(w.selection(), Selection::Lamp(lamp.id));
+    assert_eq!(lamp.get::<Light>().unwrap().kind, LightKind::Point);
     assert_eq!(
-        lamp.position,
-        w.camera().focus() + glam::Vec3::Z * Lamp::POINT_HEIGHT
+        lamp.get::<Transform>().unwrap().position,
+        w.camera().focus() + Vec3::Z * POINT_LIGHT_HEIGHT
     );
     // Listed in the Scene panel, its fields in Properties.
     assert!(h.query_all_by_label("Point light 1").next().is_some());
+    let _ = h.get_by_label("Strength");
     let _ = h.get_by_label("Move here");
-    // The top bar's menu (the Scene panel's menu row also says Entity).
     h.get_all_by_label("Entity").next().unwrap().click();
     h.run();
     h.get_by_label("Add spotlight").click();
     h.run();
-    let spot = h.state().lamps()[1].clone();
-    assert_eq!(spot.position, h.state().camera().position);
-    assert!(matches!(spot.kind, crate::lighting::LampKind::Spot { .. }));
+    let spot = h.state().selection().unwrap();
+    let data = h.state().document().scene.get(spot).unwrap();
+    assert_eq!(
+        data.get::<Transform>().unwrap().position,
+        h.state().camera().position
+    );
+    assert_eq!(data.get::<Light>().unwrap().kind, LightKind::Spot);
     // Delete removes it and clears the selection.
     h.get_by_label("Delete").click();
     h.run();
-    assert_eq!(h.state().lamps().len(), 1);
-    assert_eq!(h.state().selection(), Selection::Nothing);
+    assert!(!h.state().document().scene.contains(spot));
+    assert_eq!(h.state().selection(), None);
+}
+
+#[test]
+fn add_entity_adds_an_empty_one_at_the_focus() {
+    let mut w = Workbench::new(info(), None);
+    let before = w.document().scene.len();
+    let id = w.add_entity();
+    assert_eq!(w.document().scene.len(), before + 1);
+    let entity = w.document().scene.get(id).unwrap();
+    assert_eq!(entity.components.len(), 1);
+    assert_eq!(
+        entity.get::<Transform>().unwrap().position,
+        w.camera().focus()
+    );
+    assert_eq!(w.selection(), Some(id));
 }
 
 #[test]
@@ -511,72 +545,160 @@ fn the_sun_is_selected_from_the_scene_panel() {
     h.run();
     h.get_all_by_label("Sun").next().unwrap().click();
     h.run();
-    assert_eq!(h.state().selection(), Selection::Sun);
-    let _ = h.get_by_label("Heading");
+    let id = h.state().selection().unwrap();
+    assert_eq!(h.state().document().scene.get(id).unwrap().name, "Sun");
+    let _ = h.get_by_label("Rotation");
     let _ = h.get_by_label("Shadows");
 }
 
 #[test]
-fn lamps_from_a_model_leave_with_it() {
+fn lights_from_a_file_join_the_model_and_leave_with_it() {
     let mut w = Workbench::new(info(), None);
-    let model = ModelInfo {
-        id: ModelId(4),
-        name: "Room".into(),
-        triangles: 2,
-        min: glam::Vec3::ZERO,
-        max: glam::Vec3::ONE,
-    };
-    w.add_model(model, &[], 0.1);
-    let from_file = LampFromFile {
+    let bulb = FileLight {
         name: "Bulb".into(),
-        cone: None,
-        position: glam::Vec3::ONE,
-        direction: -glam::Vec3::Z,
+        kind: FileLightKind::Point,
+        position: Vec3::ONE,
+        direction: -Vec3::Z,
         color: [1.0; 3],
         strength: 100.0,
         range: None,
     };
-    w.add_model_lamps(ModelId(4), &[from_file.clone(), from_file]);
-    w.add_point_light();
-    assert_eq!(w.lamps().len(), 3);
-    assert_eq!(w.lamps()[0].name, "Bulb");
-    w.select(Selection::Lamp(w.lamps()[0].id));
-    w.remove_model(ModelId(4));
-    assert_eq!(w.lamps().len(), 1, "the hand-placed lamp stays");
-    assert_eq!(w.selection(), Selection::Nothing);
+    let broken = FileLight {
+        name: String::new(),
+        kind: FileLightKind::Spot {
+            inner: 0.2,
+            outer: 0.5,
+        },
+        position: Vec3::NAN,
+        strength: f32::INFINITY,
+        range: Some(f32::NAN),
+        ..bulb.clone()
+    };
+    let model = w.add_model(crate_info(), &[], 0.1, &[bulb, broken]);
+    let hand_placed = w.add_point_light();
+    let scene = &w.document().scene;
+    let children = scene.children(Some(model));
+    assert_eq!(children.len(), 2);
+    assert_eq!(scene.get(children[0]).unwrap().name, "Bulb");
+    // A light with bad numbers is still usable.
+    let second = scene.get(children[1]).unwrap();
+    assert_eq!(second.name, "Light 2");
+    let t = second.get::<Transform>().unwrap();
+    let l = second.get::<Light>().unwrap();
+    assert!(t.position.is_finite());
+    assert!(l.strength.is_finite() && l.range == 0.0);
+    assert_eq!(l.kind, LightKind::Spot);
+    w.select(children[0]);
+    w.delete(model);
+    assert!(
+        w.document().scene.contains(hand_placed),
+        "the hand-placed light stays"
+    );
+    assert!(!w.document().scene.contains(children[0]));
+    assert_eq!(w.selection(), None);
     // Selecting something that isn't there selects nothing.
-    w.select(Selection::Model(ModelId(99)));
-    assert_eq!(w.selection(), Selection::Nothing);
+    w.select(children[0]);
+    assert_eq!(w.selection(), None);
 }
 
 #[test]
 fn a_sun_from_a_file_sets_the_scene_sun() {
-    let mut w = Workbench::new(info(), None).with_sun(SunSettings {
-        shadows: false,
-        ..SunSettings::default()
-    });
-    w.use_sun_from_file("Sun", -glam::Vec3::Z, [1.0, 0.0, 0.0], 7.0);
-    let sun = w.sun();
-    assert!((sun.height - 90.0).abs() < 1e-3);
+    let mut w = Workbench::new(info(), None);
+    let suns = |w: &Workbench| {
+        w.document()
+            .scene
+            .with::<Light>()
+            .filter(|(_, l)| l.kind == LightKind::Sun)
+            .collect::<Vec<_>>()
+    };
+    let sun = FileLight {
+        name: "Sun".into(),
+        kind: FileLightKind::Sun,
+        position: Vec3::ZERO,
+        direction: -Vec3::Z,
+        color: [1.0, 0.0, 0.0],
+        strength: 7.0,
+        range: None,
+    };
+    w.add_model(crate_info(), &[], 0.1, &[sun]);
+    let found = suns(&w);
     assert_eq!(
-        (sun.color, sun.strength, sun.shadows),
-        ([255, 0, 0], 7.0, false)
+        found.len(),
+        1,
+        "the scene's sun is changed, not a second added"
+    );
+    let (id, light) = &found[0];
+    assert_eq!((light.color, light.strength), ([1.0, 0.0, 0.0], 7.0));
+    let view = SceneView::of(&w.document().scene, w.models());
+    let direction = view.sun.unwrap().direction;
+    assert!(direction.abs_diff_eq(-Vec3::Z, 1e-4), "{direction}");
+    assert!(
+        w.document()
+            .scene
+            .get(*id)
+            .unwrap()
+            .get::<Light>()
+            .unwrap()
+            .shadows
     );
 }
 
 #[test]
-fn the_environment_is_edited_in_properties() {
+fn fields_change_through_property_requests() {
+    let mut w = Workbench::new(info(), None);
+    let env = w.document().scene.with::<Environment>().next().unwrap().0;
+    w.apply_property(PropertyRequest::SetField {
+        entity: env,
+        component: "Environment".into(),
+        field: "fog".into(),
+        value: reflect::Value::Bool(true),
+    });
+    w.apply_property(PropertyRequest::Rename {
+        entity: env,
+        name: "World".into(),
+    });
+    let data = w.document().scene.get(env).unwrap();
+    assert!(data.get::<Environment>().unwrap().fog);
+    assert_eq!(data.name, "World");
+    w.apply_property(PropertyRequest::RemoveComponent {
+        entity: env,
+        component: "Environment".into(),
+    });
+    assert!(!w.document().scene.get(env).unwrap().has("Environment"));
+    // Requests about entities that are gone change nothing.
+    w.delete(env);
+    w.apply_property(PropertyRequest::Rename {
+        entity: env,
+        name: "Ghost".into(),
+    });
+    w.apply_property(PropertyRequest::MoveHere(env));
+    assert!(!w.document().scene.contains(env));
+}
+
+#[test]
+fn the_environment_is_shown_in_properties() {
     let mut h = harness();
     h.run();
     h.get_all_by_label("Environment").next().unwrap().click();
     h.run();
-    assert_eq!(h.state().selection(), Selection::Environment);
     let _ = h.get_by_label("Exposure");
-    h.get_by_label("On").click();
+    let _ = h.get_by_label("Tone mapping");
+}
+
+#[test]
+fn a_component_nobody_knows_is_kept_and_can_be_removed() {
+    let mut w = Workbench::new(info(), None);
+    let id = w.add_entity();
+    w.document
+        .scene
+        .get_mut(id)
+        .unwrap()
+        .components
+        .insert("Wobble".into(), reflect::ComponentData::default());
+    let mut h = harness_with(w);
     h.run();
-    assert!(h.state().environment().fog);
-    let _ = h.get_by_label("Half hidden at");
-    let saved = h.state().environment();
-    let restored = Workbench::new(info(), None).with_environment(saved);
-    assert_eq!(restored.environment(), saved);
+    let _ = h.get_by_label("Missing component: Wobble");
+    h.get_by_label("Remove").click();
+    h.run();
+    assert!(!h.state().document().scene.get(id).unwrap().has("Wobble"));
 }

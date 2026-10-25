@@ -10,11 +10,9 @@
 //! touches the GPU and runs in tests without one.
 
 use crate::camera::{Camera, FlyInput};
-use crate::environment::EnvironmentSettings;
 use crate::icons;
-use crate::lighting::{Lamp, SunSettings};
 use crate::look::{Look, LookKind};
-use crate::models::ModelId;
+use crate::scene_view::{SceneView, ViewLight};
 use crate::theme::{self, Accent};
 use egui::{Align, Color32, Layout, Rect, RichText, Sense, Ui, UiBuilder, Vec2, vec2};
 use glam::{Mat4, Vec3};
@@ -116,18 +114,18 @@ pub struct ViewportView {
     pub sky_horizon: [f32; 3],
     /// The ground below the horizon, sRGB 0 to 1.
     pub ground: [f32; 3],
-    /// The imported models to draw.
-    pub models: Vec<ModelId>,
+    /// The models to draw.
+    pub models: Vec<reflect::AssetId>,
     /// How models are shaded.
     pub look: Look,
     /// The stylized look's outline width in pixels; 0 for none.
     pub outline_px: f32,
-    /// The sun.
-    pub sun: SunSettings,
-    /// The lamps.
-    pub lamps: Vec<Lamp>,
+    /// The sun, if the scene has one.
+    pub sun: Option<ViewLight>,
+    /// The other lights.
+    pub lamps: Vec<ViewLight>,
     /// The sky, fog and exposure.
-    pub environment: EnvironmentSettings,
+    pub environment: scene::builtin::Environment,
 }
 
 /// Draws viewport images. The app implements it on the window's GPU; tests
@@ -169,18 +167,12 @@ pub struct Viewport {
     menu_open: bool,
     /// The time per frame, smoothed, in seconds.
     frame_time: f32,
-    /// The imported models drawn in the view.
-    pub models: Vec<ModelId>,
     /// How models are shaded.
     pub look: Look,
-    /// How many triangles they have together, for the corner.
-    pub triangles: usize,
-    /// The sun's settings.
-    pub sun: SunSettings,
-    /// The lamps.
-    pub lamps: Vec<Lamp>,
-    /// The sky, fog and exposure.
-    pub environment: EnvironmentSettings,
+    /// What the scene shows, worked out each frame by the workbench.
+    pub scene: SceneView,
+    /// How many entities the scene has, for the corner.
+    pub entities: usize,
     /// While looking around with the right mouse button: where the mouse
     /// was when it started, to put it back afterwards.
     flying_from: Option<egui::Pos2>,
@@ -199,12 +191,9 @@ impl Default for Viewport {
             frame_time: 1.0 / 60.0,
             flying_from: None,
             wheel_carry: 0.0,
-            models: Vec::new(),
             look: Look::default(),
-            triangles: 0,
-            sun: SunSettings::default(),
-            lamps: Vec::new(),
-            environment: EnvironmentSettings::default(),
+            scene: SceneView::default(),
+            entities: 0,
         }
     }
 }
@@ -240,12 +229,12 @@ impl Viewport {
             sky_top: rgb(theme::backdrop::SKY_TOP),
             sky_horizon: rgb(theme::backdrop::HORIZON),
             ground: rgb(theme::backdrop::GROUND),
-            models: self.models.clone(),
+            models: self.scene.models.clone(),
             look: self.look,
             outline_px: self.look.outline_px(pixels_per_point),
-            sun: self.sun,
-            lamps: self.lamps.clone(),
-            environment: self.environment,
+            sun: self.scene.sun,
+            lamps: self.scene.lamps.clone(),
+            environment: self.scene.environment,
         }
     }
 
@@ -419,12 +408,20 @@ impl Viewport {
                         .monospace()
                         .size(11.0),
                     );
-                    ui.label(RichText::new("0 entities").monospace().size(11.0));
-                    if self.triangles > 0 {
+                    let s = if self.entities == 1 { "y" } else { "ies" };
+                    ui.label(
+                        RichText::new(format!(
+                            "{} entit{s}",
+                            crate::models::grouped(self.entities)
+                        ))
+                        .monospace()
+                        .size(11.0),
+                    );
+                    if self.scene.triangles > 0 {
                         ui.label(
                             RichText::new(format!(
                                 "{} triangles",
-                                crate::models::grouped(self.triangles)
+                                crate::models::grouped(self.scene.triangles)
                             ))
                             .monospace()
                             .size(11.0),

@@ -23,6 +23,14 @@
 - **Metres:** one unit in Solis is one metre. The grid's small squares are 1 metre across.
 - **Grid:** lines on the ground to judge size and distance by. Brighter lines mark every 10 and 100 metres. The grid fades out with distance so it doesn't clutter the horizon.
 - **Fly camera:** the way you move around the viewport: you steer the camera like a drone. See [Moving around the viewport](navigating-the-viewport.md).
+## The scene
+
+- **Scene:** everything in one place of your game (a level, a menu, a room), made of entities. See [Entities and components](entities.md).
+- **Entity:** one thing in a scene: a model, a light, the sky. On its own it's only a name; its components make it something.
+- **Component:** one part of what an entity is, with settings. A **Transform** says where it is; a **Light** makes it shine; a **Model** draws an imported model. Mixing components makes different things, the way one Lego brick goes into many builds.
+- **Transform:** an entity's position, rotation and scale.
+- **Parent and child:** an entity can belong to another, like a lamp to the room model it came with. A child moves with its parent, and deleting the parent deletes its children.
+
 ## Models
 
 - **Model:** a 3D object made in a modelling program (Blender, Aventail): its shape, and how its surface looks. See [Importing models](importing-models.md).

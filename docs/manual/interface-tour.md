@@ -18,9 +18,9 @@ When finding your way around, or making the layout suit your screen.
 |---|---|---|
 | Viewport | Game | The 3D world. See [Moving around the viewport](navigating-the-viewport.md). |
 | Game | Viewport | The running game, when you press Play (Phase 3). |
-| Scene | Layers | Everything in the scene, as a tree (Phase 2). For now it lists the sun, the [environment](sky-fog-and-exposure.md) (sky and fog), [lamps](lights.md) and [imported models](importing-models.md) (each with a × to remove it). Click one to see it in Properties. |
+| Scene | Layers | Every [entity](entities.md) in the scene, as a tree: the sun, the [environment](sky-fog-and-exposure.md) (sky and fog), [lights](lights.md) and [imported models](importing-models.md) (each with a × to delete it), with lights from a model's file indented under it. Click one to see it in Properties. |
 | Layers | Scene | The scene's layers (Phase 2). |
-| Properties | | The settings of whatever is selected in the Scene panel: for now the sun's, the environment's, a lamp's, or a model's size. |
+| Properties | | The selected entity's name and [components](entities.md), each with its settings, plus **Move here** and **Delete**. |
 | Library | Code | Models, textures, sounds and prefabs (Phase 2). |
 | Code | Library | Game code in Lust, Rust or Lua (Phase 4). |
 | Console | Problems | Messages from the editor. See [The Console](console.md). |

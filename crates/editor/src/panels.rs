@@ -3,17 +3,18 @@
 //! shown while files are dragged over the window.
 
 use crate::console::{Console, console};
+use crate::document::Document;
 use crate::icons::{self, Icon};
-use crate::lighting::Selection;
-use crate::models::{ModelId, ModelInfo};
+use crate::models::ModelInfo;
 use crate::panel::Panel;
-use crate::properties::properties;
-use crate::scene_panel::scene_list;
+use crate::properties::{PropertyRequest, properties};
+use crate::scene_panel::scene_tree;
 use crate::theme::{self, Accent};
 use crate::viewport::{Viewport, ViewportRenderer};
 use egui::{Align, Color32, Id, Layout, RichText, Ui, WidgetText};
 use egui_dock::TabViewer;
-use std::collections::HashSet;
+use reflect::{AssetId, EntityId};
+use std::collections::{BTreeMap, HashSet};
 
 /// Where egui_dock starts a tab's text, from the tab's left edge.
 pub(crate) const TAB_TEXT_INSET: f32 = 8.0;
@@ -25,9 +26,10 @@ pub(crate) struct PanelViewer<'a> {
     pub(crate) viewport: &'a mut Viewport,
     pub(crate) renderer: &'a mut dyn ViewportRenderer,
     pub(crate) console: &'a mut Console,
-    pub(crate) models: &'a [ModelInfo],
-    pub(crate) selection: &'a mut Selection,
-    pub(crate) removed: &'a mut Vec<ModelId>,
+    pub(crate) document: &'a mut Document,
+    pub(crate) models: &'a BTreeMap<AssetId, ModelInfo>,
+    pub(crate) removed: &'a mut Vec<EntityId>,
+    pub(crate) requests: &'a mut Vec<PropertyRequest>,
     pub(crate) accent: Accent,
     pub(crate) in_front: &'a HashSet<Panel>,
     pub(crate) shown: &'a mut HashSet<Panel>,
@@ -105,14 +107,8 @@ impl TabViewer for PanelViewer<'_> {
         match tab {
             Panel::Scene => {
                 menu_row(ui, &["Edit", "View", "Entity"]);
-                scene_list(
-                    ui,
-                    &self.viewport.lamps,
-                    self.models,
-                    self.selection,
-                    self.removed,
-                    self.accent,
-                );
+                let removed = scene_tree(ui, self.document, self.models, self.accent);
+                self.removed.extend(removed);
             }
             Panel::Layers => {
                 menu_row(ui, &["Edit", "View"]);
@@ -120,7 +116,8 @@ impl TabViewer for PanelViewer<'_> {
             }
             Panel::Properties => {
                 menu_row(ui, &["Mode", "Edit", "Units"]);
-                properties(ui, self.viewport, self.models, self.selection, self.removed);
+                let requests = properties(ui, self.document, self.models);
+                self.requests.extend(requests);
             }
             Panel::Library => {
                 menu_row(ui, &["Import", "View"]);

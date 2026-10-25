@@ -4,6 +4,17 @@ What changed in each version, for people using Solis. Newest first.
 
 ## Unreleased
 
+### Changed
+
+- Everything in a scene is now an entity made of components: the sun, the environment, lights and imported models. Properties shows each entity's name and components (Transform first), drawn the same way for every kind of component. The sun's direction is now its **Rotation** under Transform (X tilts it from straight down, Z turns it round) instead of Heading and Height.
+- The sun and the sky, fog and exposure belong to the scene now, so they're no longer remembered between sessions on their own; they'll be saved with the scene once saving arrives.
+- Lights brought in with a model are listed under it in the Scene panel, and deleting the model deletes them.
+
+### Added
+
+- **Entity > Add entity** adds an empty entity at the point the camera looks at.
+- A component Solis doesn't know (for example from game code that isn't there) is kept untouched and shown as **Missing component**, with **Remove**.
+
 ### Fixed
 
 - A layout saved before a panel existed keeps its arrangement and gets the new panel beside its usual neighbours, instead of being reset to the default.

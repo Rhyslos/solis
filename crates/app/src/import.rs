@@ -2,15 +2,15 @@
 //! thread of its own, and the window picks up the finished models between
 //! frames (CONTRIBUTING.md, rule 10: the frame loop never waits on files).
 
-use editor::ModelId;
+use reflect::AssetId;
 use std::path::{Path, PathBuf};
 use std::sync::mpsc::{Receiver, Sender, channel};
 use std::time::Instant;
 
 /// A finished import, good or not.
 pub struct Finished {
-    /// The number the model was given when the import started.
-    pub id: ModelId,
+    /// The asset the model was given when the import started.
+    pub id: AssetId,
     /// The file it came from.
     pub path: PathBuf,
     /// The model, or why it couldn't be read.
@@ -23,7 +23,6 @@ pub struct Finished {
 pub struct Importer {
     sender: Sender<Finished>,
     receiver: Receiver<Finished>,
-    next_id: u64,
     limits: assets::Limits,
     running: usize,
     /// The Open window, while it's showing: its choice arrives here.
@@ -41,7 +40,6 @@ impl Importer {
         Self {
             sender,
             receiver,
-            next_id: 1,
             limits: assets::Limits {
                 max_texture_side: max_texture_side.clamp(1, defaults.max_texture_side),
                 max_mesh_vertices: per_buffer.clamp(1024, defaults.max_vertices),
@@ -87,7 +85,7 @@ impl Importer {
     }
 
     /// Starts importing `path` on a thread of its own.
-    pub fn start(&mut self, path: &Path) -> ModelId {
+    pub fn start(&mut self, path: &Path) -> AssetId {
         let limits = self.limits;
         let path = path.to_path_buf();
         let reading = path.clone();
@@ -96,7 +94,7 @@ impl Importer {
 
     /// Starts reading the built-in sample scene, as if from a file named
     /// `name`.
-    pub fn start_sample(&mut self, name: &str) -> ModelId {
+    pub fn start_sample(&mut self, name: &str) -> AssetId {
         let limits = self.limits;
         let name = name.to_string();
         let path = PathBuf::from(format!("{name}.glb"));
@@ -112,9 +110,8 @@ impl Importer {
         &mut self,
         path: PathBuf,
         read: impl FnOnce() -> Result<assets::Model, assets::ImportError> + Send + 'static,
-    ) -> ModelId {
-        let id = ModelId(self.next_id);
-        self.next_id += 1;
+    ) -> AssetId {
+        let id = AssetId::random();
         self.running += 1;
         let sender = self.sender.clone();
         std::thread::spawn(move || {

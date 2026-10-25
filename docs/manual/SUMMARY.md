@@ -10,6 +10,7 @@ New to game engines? Start with [Concepts](concepts.md).
 - [Concepts: the ideas behind a game engine's editor](concepts.md)
 - [Interface tour: the top bar, the panels, and rearranging them](interface-tour.md)
 - [Moving around the viewport: the fly camera, the grid and the corner controls](navigating-the-viewport.md)
+- [Entities and components: what a scene is made of](entities.md)
 - [Importing models: glTF files from Blender, Aventail and other programs](importing-models.md)
 - [Looks: standard, stylized and unlit](looks.md)
 - [Lights and shadows: the sun, point lights and spotlights](lights.md)

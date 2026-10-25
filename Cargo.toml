@@ -18,6 +18,8 @@ publish = false
 assets = { path = "crates/assets" }
 render = { path = "crates/render" }
 editor = { path = "crates/editor" }
+reflect = { path = "crates/reflect" }
+scene = { path = "crates/scene" }
 
 # Outside libraries. Every one must have a licence compatible with MIT,
 # checked by `cargo deny check` (see deny.toml and decision 0007).

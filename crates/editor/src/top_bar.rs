@@ -87,8 +87,14 @@ impl Workbench {
     /// The Entity menu.
     fn entity_menu(&mut self, ui: &mut Ui) {
         ui.menu_button("Entity", |ui| {
-            ui.add_enabled(false, egui::Button::new("Add entity"))
-                .on_disabled_hover_text("Entities arrive in Phase 2");
+            if ui
+                .button("Add entity")
+                .on_hover_text("An empty entity, at the point the camera looks at")
+                .clicked()
+            {
+                self.add_entity();
+                ui.close();
+            }
             ui.separator();
             if ui
                 .button("Add point light")
@@ -108,7 +114,7 @@ impl Workbench {
             }
             ui.separator();
             ui.add_enabled(false, egui::Button::new("Add camera"))
-                .on_disabled_hover_text("Cameras arrive with entities in Phase 2");
+                .on_disabled_hover_text("Cameras arrive with play mode in Phase 3");
         });
     }
 
