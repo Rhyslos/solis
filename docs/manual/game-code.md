@@ -90,6 +90,8 @@ So a game runs the same way on a computer with 2 cores or 32. Most code never no
 
 **When something goes wrong while it runs,** such as dividing by zero, that component stops and the Console says which one, on which entity, and where in the Lust: "Divider on Splitter stopped: main.lst, line 8: …". The rest of the game keeps going. A component that runs for more than a tenth of a second without stopping (a loop that never ends) is stopped the same way, so it can't freeze Solis.
 
+**When code changes too much at once:** a loop that calls `moveTo`, `fire`, `spawn` or `say` hundreds of thousands of times in one tick has the changes past 200,000 left out (for each core), and the Console says so once. It's nearly always a loop that never ends.
+
 **When the whole tick is too slow:** if the game's code takes more than a quarter of a second in one tick on any one core (many slow components, say), the rest of that tick waits and the game **pauses**, with a message in the Console saying why. None of the components is to blame on its own, so none stops; make the slow ones faster, then press **Pause** or **Play** to carry on. Without this, the game would try to catch up and the editor would hardly respond.
 
 **What game code says** goes to the Console a line at a time. A very long line is cut short, and past 200 lines in one tick the rest are counted ("Game code said 800 more lines just now"), so a component that talks too much can't drown the Console or fill the computer's memory.
@@ -246,6 +248,7 @@ end
 - **Which assembly:** its file in the project's assets (`ships/fighter.solassembly`), that without the extension (`ships/fighter`), or just its name (`fighter`) when only one assembly has it. A name that isn't an assembly makes nothing, and the Console says so once.
 - **When:** like a move, it happens after every `update` in the tick ([what game code sees](#components)). `spawn` gives back the new entity at once, so you can keep it, but it's in the game, with its components running, from the next frame.
 - **Where it shows:** copies game code makes appear in the Area panel while playing, and are gone when you press **Stop**, like everything else changed while playing. They aren't undo steps.
+- At most 10,000 copies are made in one frame, and an area holds at most a million entities; past that, the Console says so and the rest aren't made.
 - `despawn(me)` is how a component takes its own entity away. It ends at the end of the tick.
 
 ## What the engine offers

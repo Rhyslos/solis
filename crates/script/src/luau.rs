@@ -42,6 +42,10 @@ pub(crate) struct Clock {
     all: Cell<Option<(Instant, Duration)>>,
     /// Interrupts since the clock was last read.
     since: Cell<u32>,
+    /// Whether the call running now is past its deadline: then every
+    /// interrupt says so, not one in [`READ_EVERY`], so code that catches
+    /// the error (`pcall` in a loop) is stopped at the loop around it too.
+    expired: Cell<bool>,
 }
 
 /// How often the interrupt reads the clock: once in this many. Interrupts
@@ -64,6 +68,7 @@ impl Clock {
             until = until.min(all);
         }
         self.call.set(Some(until));
+        self.expired.set(false);
         let watching = crate::interrupt::Watching::start(self);
         let result = run();
         drop(watching);
@@ -103,16 +108,22 @@ impl Clock {
     /// deadline passes.
     pub(crate) fn verdict(&self) -> Option<String> {
         let until = self.call.get()?;
-        let since = self.since.get() + 1;
-        if since < READ_EVERY {
-            self.since.set(since);
-            return None;
-        }
-        self.since.set(0);
-        let now = Instant::now();
-        if now <= until {
-            return None;
-        }
+        let now = if self.expired.get() {
+            Instant::now()
+        } else {
+            let since = self.since.get() + 1;
+            if since < READ_EVERY {
+                self.since.set(since);
+                return None;
+            }
+            self.since.set(0);
+            let now = Instant::now();
+            if now <= until {
+                return None;
+            }
+            self.expired.set(true);
+            now
+        };
         Some(match self.all.get() {
             Some((all, limit)) if now >= all => format!(
                 "the game's code took longer than {} ms all together, so it was stopped",
@@ -303,6 +314,24 @@ mod tests {
         assert!(err.to_string().contains("all together"), "{err}");
         // Outside any deadline, nothing is stopped by the old one.
         assert!(!luau.clock.over());
+    }
+
+    #[test]
+    fn catching_the_time_limit_s_error_in_a_loop_doesn_t_escape_it() {
+        // Each time the limit's error is caught, the loop around tries
+        // again: once past its time, every interrupt says so, and the loop
+        // itself is stopped.
+        let luau = Luau::new().unwrap();
+        let stubborn = luau
+            .lua
+            .load("while true do pcall(function() while true do end end) end")
+            .set_environment(luau.env().unwrap())
+            .into_function()
+            .unwrap();
+        let start = Instant::now();
+        let err = luau.clock.limited(|| stubborn.call::<()>(())).unwrap_err();
+        assert!(err.to_string().contains("100 ms"), "{err}");
+        assert!(start.elapsed() < Duration::from_secs(2));
     }
 
     #[test]

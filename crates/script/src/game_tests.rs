@@ -413,3 +413,30 @@ impl GameWorld for SpawnWorld {
         self.0.say(words);
     }
 }
+
+#[test]
+fn a_runaway_loop_can_t_keep_unbounded_changes() {
+    let mut world = TestWorld::with(&["A"]);
+    let mut host = ViewHost::new(world.view());
+    for _ in 0..MAX_KEPT + 5 {
+        host.move_to(id(1), Vec3::ONE);
+    }
+    host.fire(crate::Shot {
+        from: Vec3::ZERO,
+        direction: Vec3::Y,
+        speed: 1.0,
+        life: 1.0,
+        colour: [1.0; 3],
+    });
+    assert_eq!(host.spawn("ship", Vec3::ZERO), None);
+    host.say("hello");
+    assert_eq!(host.kept.changes.len(), MAX_KEPT);
+    assert_eq!(host.kept.dropped, 8);
+    // Long names fill their own budget first.
+    let mut host = ViewHost::new(world.view());
+    let name = "x".repeat(1024);
+    let made = (0..10_000)
+        .filter(|_| host.spawn(&name, Vec3::ZERO).is_some())
+        .count();
+    assert_eq!(made, MAX_SPAWN_BYTES / 1024);
+}

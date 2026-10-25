@@ -36,16 +36,60 @@ const MOST_ERROR: f32 = 0.2;
 const MUST_SHRINK_TO: f32 = 0.8;
 
 /// Adds levels of detail to every mesh of `model`: the model's own (named
-/// `_LOD1` …) first, then made ones for meshes without. Warnings for the
-/// model's own LODs that couldn't be used go into `warnings`.
-pub fn add_lods(model: &mut Model) {
+/// `_LOD1` …) first, then made ones for meshes without. Everything they
+/// add counts against `limits`' corners and triangles, as the file's own
+/// meshes do: levels past them are left out (a hostile file naming one
+/// huge mesh as the level of many parts can't multiply it). Warnings for
+/// levels that couldn't be used go into the model's warnings.
+pub fn add_lods(model: &mut Model, limits: &crate::model::Limits) {
+    let mut budget = Budget {
+        vertices: limits
+            .max_vertices
+            .saturating_sub(model.meshes.iter().map(|m| m.vertices.len()).sum::<usize>()),
+        triangles: limits
+            .max_triangles
+            .saturating_sub(model.meshes.iter().map(Mesh::triangles).sum::<usize>()),
+        full: false,
+    };
     let mut warnings = Vec::new();
-    own_lods(model, &mut warnings);
-    model.warnings.extend(warnings);
+    own_lods(model, &mut budget, &mut warnings);
     for mesh in &mut model.meshes {
         if mesh.lods.is_empty() {
-            mesh.lods = simplified(mesh);
+            mesh.lods = simplified(mesh)
+                .into_iter()
+                .take_while(|lod| budget.take(lod))
+                .collect();
         }
+    }
+    if budget.full {
+        warnings.push(
+            "some levels of detail were left out: with them, the model would be past the \
+             most corners or triangles Solis reads"
+                .to_string(),
+        );
+    }
+    model.warnings.extend(warnings);
+}
+
+/// What levels of detail may still add.
+struct Budget {
+    vertices: usize,
+    triangles: usize,
+    /// Whether one was left out.
+    full: bool,
+}
+
+impl Budget {
+    /// Takes `lod`'s corners and triangles, if they fit.
+    fn take(&mut self, lod: &Lod) -> bool {
+        let fits = lod.vertices.len() <= self.vertices && lod.triangles() <= self.triangles;
+        if fits {
+            self.vertices -= lod.vertices.len();
+            self.triangles -= lod.triangles();
+        } else {
+            self.full = true;
+        }
+        fits
     }
 }
 
@@ -82,7 +126,12 @@ pub fn simplified(mesh: &Mesh) -> Vec<Lod> {
             meshopt::SimplifyOptions::None,
             Some(&mut error),
         );
-        if indices.is_empty() || indices.len() as f32 > previous as f32 * MUST_SHRINK_TO {
+        // Not much simpler, or meshoptimizer couldn't say how far it
+        // strays (corners too far apart to measure): stop here.
+        if indices.is_empty()
+            || indices.len() as f32 > previous as f32 * MUST_SHRINK_TO
+            || !error.is_finite()
+        {
             break;
         }
         previous = indices.len();
@@ -120,7 +169,21 @@ fn own_error(level: usize) -> f32 {
 /// Moves the model's own levels (nodes named `Name_LOD1` …) onto the
 /// meshes of the node they belong to, and stops them being drawn as parts
 /// of their own.
-fn own_lods(model: &mut Model, warnings: &mut Vec<String>) {
+fn own_lods(model: &mut Model, budget: &mut Budget, warnings: &mut Vec<String>) {
+    // Each name's first node with meshes (as itself, or as its `_LOD0`),
+    // found once, not searched for each level.
+    let mut owners: std::collections::HashMap<&str, usize> = std::collections::HashMap::new();
+    for (i, n) in model.nodes.iter().enumerate() {
+        if n.meshes.is_empty() {
+            continue;
+        }
+        let base = match lod_name(&n.name) {
+            Some((base, 0)) => base,
+            Some(_) => continue,
+            None => n.name.as_str(),
+        };
+        owners.entry(base).or_insert(i);
+    }
     // Each LOD node, by its base name and level.
     let mut found: Vec<(usize, usize, usize)> = Vec::new();
     for (i, node) in model.nodes.iter().enumerate() {
@@ -130,10 +193,7 @@ fn own_lods(model: &mut Model, warnings: &mut Vec<String>) {
         if level == 0 || node.meshes.is_empty() {
             continue;
         }
-        let owner = model.nodes.iter().position(|n| {
-            !n.meshes.is_empty()
-                && (n.name == base || lod_name(&n.name).is_some_and(|(b, l)| b == base && l == 0))
-        });
+        let owner = owners.get(base).copied();
         match owner {
             Some(owner) if level <= MAX_LODS => found.push((owner, level, i)),
             Some(_) => warnings.push(format!(
@@ -167,12 +227,19 @@ fn own_lods(model: &mut Model, warnings: &mut Vec<String>) {
                 continue;
             }
             let lod = &model.meshes[lod_mesh];
+            // Counted before it's copied: one mesh named as many parts'
+            // level is copied for each.
+            if lod.vertices.len() > budget.vertices || lod.triangles() > budget.triangles {
+                budget.full = true;
+                continue;
+            }
             let vertices = lod.vertices.iter().map(|v| moved(v, into_owner)).collect();
             let lod = Lod {
                 vertices,
                 indices: lod.indices.clone(),
                 error: own_error(level),
             };
+            budget.take(&lod);
             model.meshes[mesh].lods.push(lod);
         }
         used.push(lod_node);
@@ -183,11 +250,15 @@ fn own_lods(model: &mut Model, warnings: &mut Vec<String>) {
     for &node in &used {
         emptied.extend(std::mem::take(&mut model.nodes[node].meshes));
     }
-    emptied.sort_unstable();
-    emptied.dedup();
+    let drawn: std::collections::HashSet<usize> = model
+        .nodes
+        .iter()
+        .flat_map(|n| n.meshes.iter().copied())
+        .collect();
     for mesh in emptied {
-        let still_drawn = model.nodes.iter().any(|n| n.meshes.contains(&mesh));
-        if !still_drawn && let Some(m) = model.meshes.get_mut(mesh) {
+        if !drawn.contains(&mesh)
+            && let Some(m) = model.meshes.get_mut(mesh)
+        {
             *m = Mesh::default();
         }
     }

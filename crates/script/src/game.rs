@@ -110,6 +110,32 @@ pub trait GameWorld {
 struct Kept {
     changes: Vec<(Order, Change)>,
     said: Vec<(Order, String)>,
+    /// Changes and lines left out past [`MAX_KEPT`].
+    dropped: u64,
+    /// Bytes of assembly names kept for spawns.
+    spawn_bytes: usize,
+}
+
+/// The most changes (moves, turns, shots, spawns, lines said) one shard
+/// keeps in one phase of a tick; past it they're left out, and the Console
+/// says so. Kept changes live outside Luau's memory limit, so a runaway
+/// loop calling `moveTo` would otherwise fill the computer's memory before
+/// the time limit stops it.
+pub const MAX_KEPT: usize = 200_000;
+
+/// The most bytes of assembly names one shard keeps for spawns in one
+/// phase.
+pub const MAX_SPAWN_BYTES: usize = 4 << 20;
+
+impl Kept {
+    /// Whether there's room for one more; counts it as left out if not.
+    fn room(&mut self) -> bool {
+        let room = self.changes.len() + self.said.len() < MAX_KEPT;
+        if !room {
+            self.dropped += 1;
+        }
+        room
+    }
 }
 
 /// The host a shard's game code reaches during a phase: it reads the
@@ -149,8 +175,10 @@ impl ViewHost {
 
 impl Host for ViewHost {
     fn say(&mut self, words: &str) {
-        let order = self.order();
-        self.kept.said.push((order, words.to_string()));
+        if self.kept.room() {
+            let order = self.order();
+            self.kept.said.push((order, words.to_string()));
+        }
     }
 
     fn time(&self) -> f64 {
@@ -170,7 +198,7 @@ impl Host for ViewHost {
     }
 
     fn move_to(&mut self, which: EntityId, place: Vec3) {
-        if self.view.index.slots.contains_key(&which) {
+        if self.view.index.slots.contains_key(&which) && self.kept.room() {
             let order = self.order();
             self.kept.changes.push((order, Change::Move(which, place)));
             self.own.push(Change::Move(which, place));
@@ -190,7 +218,7 @@ impl Host for ViewHost {
     }
 
     fn turn_to(&mut self, which: EntityId, facing: Quat) {
-        if self.view.index.slots.contains_key(&which) {
+        if self.view.index.slots.contains_key(&which) && self.kept.room() {
             let order = self.order();
             self.kept.changes.push((order, Change::Turn(which, facing)));
             self.own.push(Change::Turn(which, facing));
@@ -203,6 +231,9 @@ impl Host for ViewHost {
     }
 
     fn fire(&mut self, shot: crate::host::Shot) {
+        if !self.kept.room() {
+            return;
+        }
         let order = self.order();
         self.kept.changes.push((order, Change::Fire(shot)));
     }
@@ -211,6 +242,14 @@ impl Host for ViewHost {
         if !place.is_finite() || assembly.is_empty() || assembly.len() > 1024 {
             return None;
         }
+        if self.kept.spawn_bytes + assembly.len() > MAX_SPAWN_BYTES {
+            self.kept.dropped += 1;
+            return None;
+        }
+        if !self.kept.room() {
+            return None;
+        }
+        self.kept.spawn_bytes += assembly.len();
         let order = self.order();
         // Made from where it was asked for in the tick's order and the
         // time, so the same game makes the same entities on any number of
@@ -223,6 +262,9 @@ impl Host for ViewHost {
     }
 
     fn despawn(&mut self, which: EntityId) {
+        if !self.kept.room() {
+            return;
+        }
         let order = self.order();
         self.kept.changes.push((order, Change::Despawn(which)));
     }
@@ -420,6 +462,9 @@ pub struct Game {
     left_out: BTreeSet<String>,
     /// Whether too many events in a tick was said, since the code changed.
     told: bool,
+    /// Whether the Console was told game code changed too much at once
+    /// (until the code changes).
+    told_too_much: bool,
 }
 
 impl std::fmt::Debug for Game {
@@ -444,12 +489,16 @@ fn gone() -> Failure {
     }
 }
 
+/// The most shards: each is a whole Luau (up to 64 MB) with its own copy
+/// of the game's code, and past this many, more cores add little.
+pub const MAX_SHARDS: usize = 16;
+
 impl Game {
-    /// Game code on `cores` shards (at least one). Fails only if Luau
-    /// can't set itself up (out of memory). If a shard's thread can't
-    /// start, the game runs on fewer.
+    /// Game code on `cores` shards (at least one, at most [`MAX_SHARDS`]).
+    /// Fails only if Luau can't set itself up (out of memory). If a
+    /// shard's thread can't start, the game runs on fewer.
     pub fn new(cores: usize) -> Result<Self, Failure> {
-        let cores = cores.clamp(1, 64);
+        let cores = cores.clamp(1, MAX_SHARDS);
         let shards = if cores == 1 {
             vec![Shard::Here(Box::new(Runtime::new()?))]
         } else {
@@ -467,6 +516,7 @@ impl Game {
             schemas: Vec::new(),
             left_out: BTreeSet::new(),
             told: false,
+            told_too_much: false,
         })
     }
 
@@ -567,6 +617,7 @@ impl Game {
         self.schemas.clone_from(&code.schemas);
         self.code = code.schemas.iter().map(|s| s.name.clone()).collect();
         self.told = false;
+        self.told_too_much = false;
     }
 
     /// Stops the game's Lust and Lua (see [`Runtime::unload`]).
@@ -644,6 +695,7 @@ impl Game {
                     failures.extend(f);
                     kept.changes.extend(k.changes);
                     kept.said.extend(k.said);
+                    kept.dropped += k.dropped;
                 }
                 _ => failures.push(gone()),
             }
@@ -738,10 +790,33 @@ impl Game {
                     phase.failures.extend(p.failures);
                     kept.changes.extend(k.changes);
                     kept.said.extend(k.said);
+                    kept.dropped += k.dropped;
                 }
                 Some(Done::Phase(Err(why), _)) => broke = Some(why),
                 _ => broke = Some(gone().at.message),
             }
+        }
+        if kept.dropped > 0 && !self.told_too_much {
+            self.told_too_much = true;
+            phase.failures.push((
+                Order::default(),
+                Failure {
+                    entity: None,
+                    component: String::new(),
+                    at: crate::code::CodeProblem {
+                        file: String::new(),
+                        line: 0,
+                        column: 0,
+                        message: format!(
+                            "Game code changed things more than {MAX_KEPT} times in one go, so \
+                             {} changes were left out (is something calling moveTo, fire or \
+                             spawn in a loop?)",
+                            kept.dropped
+                        ),
+                    },
+                    stopped: false,
+                },
+            ));
         }
         land(kept, world);
         match broke {

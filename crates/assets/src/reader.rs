@@ -153,7 +153,7 @@ fn read_model(
         bounds,
         warnings,
     };
-    crate::lods::add_lods(&mut model);
+    crate::lods::add_lods(&mut model, limits);
     Ok(model)
 }
 
