@@ -44,6 +44,9 @@ pub struct FrameParams {
     pub sun: crate::lighting::Sun,
     /// The sky, fog, exposure and tone mapping.
     pub environment: crate::environment::Environment,
+    /// Whether the editor's lines are drawn: the grid, the ground axes and
+    /// lamp markers. Off for the game's own view.
+    pub editor_lines: bool,
 }
 
 /// The ways models can be shaded.
@@ -236,6 +239,7 @@ mod tests {
             size_px: [800, 600],
             sun: crate::lighting::Sun::default(),
             environment: crate::environment::Environment::default(),
+            editor_lines: true,
         }
     }
 
@@ -317,6 +321,7 @@ mod light_tests {
             size_px: [1, 1],
             sun: crate::lighting::Sun::default(),
             environment: crate::environment::Environment::default(),
+            editor_lines: true,
         };
         let light = FrameLight {
             sun_view_projection: Mat4::from_scale(Vec3::splat(2.0)),

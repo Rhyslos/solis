@@ -8,12 +8,12 @@ Solis is a Rust program split into small, single-purpose crates. **Lower layers 
 | --- | --- | --- | --- |
 | 3 | App | `app` | Opens the window, owns the frame loop, wires the rest together. No feature logic. |
 | 2 | Editor | `editor` | The editor's interface: top bar, dockable panels, theme. Never needed by a game. |
-| 1 | Engine | `render`, `assets`, `asset_db` | What games run on. Knows nothing about the editor. `assets` reads model files; `render` draws; `asset_db` keeps the project's assets by stable ID. |
+| 1 | Engine | `render`, `assets`, `asset_db`, `world` | What games run on. Knows nothing about the editor. `assets` reads model files; `render` draws; `asset_db` keeps the project's assets by stable ID; `world` holds the running game's entities. |
 | 0 | Core | `reflect`, `area` | Shared building blocks with no GPU, window or interface. `reflect` holds IDs, values and component schemas; `area` holds the area document and the built-in components. |
 
 Each crate's `README.md` states its purpose and what it **must never** do. Read it before changing the crate.
 
-Planned: the game's own fast storage in Phase 3, on `hecs` in a `world` crate ([decision 0024](docs/decisions/0024-game-storage-is-hecs.md)); physics, sound and networking crates in later phases. See ROADMAP.md.
+Planned: physics, sound and networking crates in later phases. See ROADMAP.md.
 
 ## The area
 
@@ -66,6 +66,10 @@ A project is a folder: `project.solis`, `assets/` and the `.solis/` cache. `asse
 ## The console and Problems
 
 The Console's command line (`editor::console`) hands each line to `editor::console_commands`, which splits it into words (quotes keep a name with spaces together) and runs it with the editor's own commands, so `set` and `delete` are undo steps like the menus'. Its history is a setting the app saves. Libraries write through the `log` facade; the app's logger (`crates/app/src/logger.rs`) queues every warning and error, and information from Solis's own crates, and the window moves them into the Console each frame. `editor::problems` checks the area against the registry, the loaded models, the project's assets and the assemblies; it runs again only when one of those changes (a fingerprint of the history's state, counts and the area's file), so it costs nothing on a frame where nothing changed.
+
+## Play mode
+
+Play keeps a copy of the `Document` (area, history, selection) and of the assemblies, and builds a `world::World` from the area: the same entities in `hecs` ([decision 0024](docs/decisions/0024-game-storage-is-hecs.md)). Each frame the workbench steps it, and builds it again when the document's revision number changes (every edit, undo and redo, each frame of a drag included). The Game panel draws an `AreaView` made from the world (`AreaView::of_world`) through the first camera, into its own image (`ViewportView::image`; the app keeps one render target per image) with `editor_lines` off, so no grid, axes or lamp markers. Stop puts the copy back; assemblies changed on disk meanwhile rebuild their copies again, and an area file changed on disk is offered again. Actions that save or replace the area are held back while playing (`play::waits_for_stop`).
 
 ## Area files
 

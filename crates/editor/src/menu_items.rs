@@ -19,6 +19,7 @@ pub(crate) enum MenuCommand {
     AddEntity,
     AddPointLight,
     AddSpotlight,
+    AddCamera,
     CreateAssembly,
     ExpandAll,
     CollapseAll,
@@ -164,8 +165,15 @@ pub(crate) fn entity_items(ui: &mut Ui, state: &MenuState) -> Option<MenuCommand
         p,
     );
     ui.separator();
-    ui.add_enabled(false, egui::Button::new("Add camera"))
-        .on_disabled_hover_text("Cameras arrive with play mode in Phase 3");
+    item(
+        ui,
+        true,
+        "Add camera",
+        "",
+        "A camera where you're looking from: the game looks through the first one in the area",
+        MenuCommand::AddCamera,
+        p,
+    );
     picked
 }
 
@@ -194,6 +202,9 @@ impl Workbench {
             }
             MenuCommand::AddSpotlight => {
                 self.add_spotlight();
+            }
+            MenuCommand::AddCamera => {
+                self.add_camera();
             }
             MenuCommand::CreateAssembly => {
                 if let Some(id) = self.document.selection.primary() {

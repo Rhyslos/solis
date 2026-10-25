@@ -6,6 +6,7 @@ use crate::area_panel::AreaRequest;
 use crate::commands::POINT_LIGHT_HEIGHT;
 use crate::models::{FileLight, FileLightKind};
 use crate::properties::PropertyRequest;
+use crate::test_support::{lamp_post_file, with_a_lamp_post};
 use crate::viewport::NoRenderer;
 use area::Edit;
 use area::builtin::Environment;
@@ -153,15 +154,16 @@ fn the_viewport_menu_hides_the_tool_bar() {
 }
 
 #[test]
-fn play_says_when_it_arrives() {
+fn play_says_what_it_does() {
     let mut h = harness();
     h.run();
     h.get_by_label("Play").click();
     h.run();
     let last = h.state().log_lines().last().map(|l| l.text.clone());
-    assert_eq!(
-        last.as_deref(),
-        Some("Playing the area arrives in Phase 3 (ROADMAP.md).")
+    assert!(
+        last.as_deref()
+            .is_some_and(|l| l.starts_with("Playing. Changes made now are undone")),
+        "{last:?}"
     );
 }
 
@@ -1392,39 +1394,6 @@ fn with_unsaved_changes_a_reload_asks_keep_mine_or_load_the_file() {
     // Ctrl+Z brings back what was there.
     h.state_mut().0.undo();
     assert!(h.state().0.document().area().contains(mine));
-}
-
-/// A lamp-post assembly file: a post with a lamp under it.
-fn lamp_post_file() -> (AssetId, std::sync::Arc<area::text::AreaFile>) {
-    let id = |n| EntityId(reflect::Id::from_raw(n).unwrap());
-    let mut area = area::Area::new();
-    area.insert(
-        id(1),
-        area::EntityData::new("Lamp post").with(&Transform::default()),
-    );
-    let mut lamp = area::EntityData::new("Lamp").with(&Light::point());
-    lamp.parent = Some(id(1));
-    area.insert(id(2), lamp);
-    let file = area::text::AreaFile {
-        kind: area::text::FileKind::Assembly { root: id(1) },
-        area,
-        overrides: Default::default(),
-    };
-    (
-        AssetId(reflect::Id::from_raw(900).unwrap()),
-        std::sync::Arc::new(file),
-    )
-}
-
-/// A workbench with the lamp post known and one copy placed.
-fn with_a_lamp_post() -> (Workbench, AssetId, EntityId, EntityId) {
-    let mut w = Workbench::new(info(), None);
-    let (asset, file) = lamp_post_file();
-    w.set_assembly(asset, file);
-    w.place_assembly(asset);
-    let root = w.selection().unwrap();
-    let lamp = area::assembly::derive(root, &[EntityId(reflect::Id::from_raw(2).unwrap())]);
-    (w, asset, root, lamp)
 }
 
 #[test]

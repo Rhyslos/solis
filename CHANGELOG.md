@@ -13,6 +13,8 @@ What changed in each version, for people using Solis. Newest first.
 
 ### Added
 
+- **Play mode:** **Play**, **Pause** and **Stop** at the top run the area as a game in the **Game** panel. Everything still works while playing, and changes show in the game at once; **Stop** puts the area, the undo history and the selection back exactly as they were. Saving and opening wait until Stop. A coloured border, a lit Play and a red Stop show that the game is running. Also `play`, `pause` and `stop` in the Console.
+- **Cameras:** **Entity > Add camera** adds one where you're looking from. The game looks through the first camera in the area; cameras show as small wire pyramids in the viewport, and can be clicked.
 - **Console commands:** press **'** (beside Æ on a Norwegian keyboard) to jump to the Console's new command line. `select`, `find`, `new`, `delete`, `duplicate`, `get` and `set` (any component's setting, on every selected entity at once), `frame`, `undo`, `redo`, `save`, `look`, `tool`, `stats`, `clear` and `help`. Every change is an undo step. **Tab** finishes names, **Up** and **Down** bring back earlier commands (remembered between sessions), and mistakes get a plain answer in red.
 - Warnings and errors from the libraries Solis uses (the graphics layer, for example) now show in the Console, named after the library.
 - **The Problems panel** lists mistakes in the open area: models or assemblies missing from the project, a Model with no model chosen, components no one knows, and entities whose parent is gone. The tab shows how many; click one to select its entity.

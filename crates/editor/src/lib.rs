@@ -14,6 +14,7 @@ mod commands_many;
 pub mod console;
 mod console_commands;
 pub mod document;
+mod game_panel;
 pub mod gizmo;
 pub mod icons;
 mod inspector;
@@ -25,6 +26,7 @@ pub mod models;
 pub mod panel;
 mod panels;
 pub mod picking;
+pub mod play;
 pub mod problems;
 mod properties;
 pub mod screen;
@@ -49,7 +51,11 @@ pub use library::{LibraryItem, LibraryKind, ProjectInfo};
 pub use look::{Look, LookKind};
 pub use models::{FileLight, FileLightKind, ModelInfo};
 pub use panel::Panel;
+pub use play::PlayState;
 pub use transforming::Snapping;
-pub use viewport::{NoRenderer, Overlays, Tool, Viewport, ViewportRenderer, ViewportView};
+pub use viewport::{
+    GAME_IMAGE, MAX_IMAGES, NoRenderer, Overlays, Tool, VIEWPORT_IMAGE, Viewport, ViewportRenderer,
+    ViewportView,
+};
 pub use viewport_tools::{Outline, PickAnswer};
 pub use workbench::{AppInfo, Workbench, WorkbenchAction};

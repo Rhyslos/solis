@@ -89,6 +89,17 @@ pub struct Document {
     file: Option<std::path::PathBuf>,
     /// The history's state when it was last saved (or opened).
     saved: u64,
+    /// A number that changes whenever the area does: see
+    /// [`Self::revision`].
+    revision: u64,
+}
+
+/// Revision numbers, shared by every document, so no two areas (or two
+/// versions of one) ever have the same one.
+static NEXT_REVISION: std::sync::atomic::AtomicU64 = std::sync::atomic::AtomicU64::new(1);
+
+fn next_revision() -> u64 {
+    NEXT_REVISION.fetch_add(1, std::sync::atomic::Ordering::Relaxed)
 }
 
 impl Default for Document {
@@ -110,6 +121,7 @@ impl Document {
             history: History::default(),
             file: None,
             saved: 0,
+            revision: next_revision(),
         }
     }
 
@@ -203,6 +215,15 @@ impl Document {
         &self.area
     }
 
+    /// A number standing for the area exactly as it is now: it changes
+    /// with every edit, undo and redo (each frame of a drag too, though a
+    /// drag is one undo step), and no other document ever has it. What's
+    /// worked out from the area (the running game, Problems) is worked
+    /// out again when it changes.
+    pub fn revision(&self) -> u64 {
+        self.revision
+    }
+
     /// Changes the area by `edits`, as one undo step called `label`.
     /// Steps with the same `merge` key in a row become one (a whole drag).
     /// `select` is the selection afterwards, if it changes. On an error
@@ -218,6 +239,7 @@ impl Document {
         let after = select.unwrap_or_else(|| before.clone());
         self.history
             .apply(&mut self.area, label, edits, merge, before, after.clone())?;
+        self.revision = next_revision();
         self.selection = after;
         self.selection.retain_existing(&self.area);
         Ok(())
@@ -227,6 +249,7 @@ impl Document {
     /// with. Returns its label, or `None` if there was nothing to undo.
     pub fn undo(&mut self) -> Option<Result<String, EditError>> {
         let done = self.history.undo(&mut self.area)?;
+        self.revision = next_revision();
         Some(done.map(|done| {
             self.selection = done.selection;
             self.selection.retain_existing(&self.area);
@@ -238,6 +261,7 @@ impl Document {
     /// with. Returns its label, or `None` if there was nothing to redo.
     pub fn redo(&mut self) -> Option<Result<String, EditError>> {
         let done = self.history.redo(&mut self.area)?;
+        self.revision = next_revision();
         Some(done.map(|done| {
             self.selection = done.selection;
             self.selection.retain_existing(&self.area);
@@ -248,6 +272,12 @@ impl Document {
     /// The undo and redo steps.
     pub fn history(&self) -> &History<Selection> {
         &self.history
+    }
+
+    /// Gives the area a new revision number, as if it changed (it was put
+    /// back after playing).
+    pub(crate) fn touch(&mut self) {
+        self.revision = next_revision();
     }
 
     /// Ends the newest step, so the next edit starts a new one.

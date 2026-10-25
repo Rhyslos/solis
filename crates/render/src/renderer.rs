@@ -836,14 +836,16 @@ impl ViewportRenderer {
                     model_of(batch).draw_outline(&mut pass, batch.mesh, batch.instances.clone());
                 }
             }
-            pass.set_pipeline(&self.grid_pipeline);
-            pass.draw(0..6, 0..1);
-            pass.set_pipeline(&self.line_pipeline);
-            pass.set_vertex_buffer(0, self.axes.slice(..));
-            pass.draw(0..self.axis_count, 0..1);
-            if !markers.is_empty() {
-                pass.set_vertex_buffer(0, frame.markers.slice(..));
-                pass.draw(0..markers.len() as u32, 0..1);
+            if params.editor_lines {
+                pass.set_pipeline(&self.grid_pipeline);
+                pass.draw(0..6, 0..1);
+                pass.set_pipeline(&self.line_pipeline);
+                pass.set_vertex_buffer(0, self.axes.slice(..));
+                pass.draw(0..self.axis_count, 0..1);
+                if !markers.is_empty() {
+                    pass.set_vertex_buffer(0, frame.markers.slice(..));
+                    pass.draw(0..markers.len() as u32, 0..1);
+                }
             }
             if let Some(instances) = &frame.instances {
                 pass.set_vertex_buffer(1, instances.slice(..));

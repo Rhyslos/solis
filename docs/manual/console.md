@@ -41,6 +41,7 @@ Names never care about capitals. A name with spaces goes in quotes: `select "Poi
 | `save` | Saves the area, like **Ctrl + S**. |
 | `look unlit` | Chooses the viewport's [look](looks.md): standard, stylized or unlit. |
 | `tool rotate` | Chooses a tool: select, move, rotate, scale or transform. |
+| `play`, `pause`, `stop` | Like the buttons at the top: see [Play mode](play-mode.md). |
 | `stats` | Counts the entities, models, lights and triangles, and says how fast the editor is drawing. |
 
 **Values for `set`:**

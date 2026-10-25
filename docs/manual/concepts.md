@@ -83,3 +83,10 @@
 - **Console:** the panel where the editor reports what it's doing, and where you can type commands. See [The Console](console.md).
 - **Command:** a short instruction typed in the Console's command line, such as `select Crate` or `set Transform.position 0 0 2`. Commands do the same things as the menus, so each change can be undone.
 - **Problem:** a mistake in the area that Solis can't fix by itself, such as a model whose file is gone. The Problems panel lists them. See [Problems](problems.md).
+
+## Playing
+
+- **Play mode:** running the area as a game inside the editor. Press Play to start and Stop to finish; everything changed while playing is undone by Stop. See [Play mode](play-mode.md).
+- **Game:** what players see and do. In the editor it's shown in the **Game** panel, through the game's camera, without the editor's grid and markers.
+- **Camera:** an entity the game looks through. The game uses the first camera in the area. Its **field of view** is how wide it sees.
+- **World:** the game's own copy of the area while it runs, kept in a form a game can run over quickly. It's made when you press Play and thrown away on Stop.

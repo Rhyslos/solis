@@ -322,9 +322,13 @@ fn tab_completes_commands_names_and_settings() {
     assert_eq!(done.line, "select ");
     assert!(done.choices.is_empty());
     let done = w.complete("s");
-    assert_eq!(done.line, "s", "select, set, save, stats share only s");
-    assert_eq!(done.choices, ["select", "set", "save", "stats"]);
-    assert_eq!(w.complete("st").line, "stats ");
+    assert_eq!(
+        done.line, "s",
+        "select, set, save, stop, stats share only s"
+    );
+    assert_eq!(done.choices, ["select", "set", "save", "stop", "stats"]);
+    assert_eq!(w.complete("st").line, "st");
+    assert_eq!(w.complete("sta").line, "stats ");
     assert_eq!(w.complete("select po").line, r#"select "Point light 1" "#);
     assert_eq!(w.complete("select cr").line, "select Crate ");
     let done = w.complete("set Light.s");

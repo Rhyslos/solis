@@ -132,7 +132,21 @@ pub struct ViewportView {
     /// out what's under, after drawing this frame: the answer comes from
     /// [`ViewportRenderer::picked`] on a later frame.
     pub pick: Option<[u32; 4]>,
+    /// Which image this is drawn into ([`VIEWPORT_IMAGE`],
+    /// [`GAME_IMAGE`]): each keeps its own, so views never overwrite each
+    /// other's.
+    pub image: usize,
+    /// Whether the editor's lines are drawn: the grid, the ground axes and
+    /// lamp markers. Off in the Game panel.
+    pub editor_lines: bool,
 }
+
+/// The viewport's image.
+pub const VIEWPORT_IMAGE: usize = 0;
+/// The Game panel's image.
+pub const GAME_IMAGE: usize = 1;
+/// How many images a renderer keeps at most.
+pub const MAX_IMAGES: usize = 8;
 
 /// Draws viewport images. The app implements it on the window's GPU; tests
 /// use one that draws nothing.
@@ -258,6 +272,8 @@ impl Viewport {
             lamps: self.area.lamps.clone(),
             environment: self.area.environment,
             pick: None,
+            image: VIEWPORT_IMAGE,
+            editor_lines: true,
         }
     }
 
@@ -341,6 +357,7 @@ impl Viewport {
                 );
             }
         }
+        viewport_tools::draw_cameras(ui, rect, &self.area.cameras, &self.camera);
         viewport_tools::draw(
             ui,
             rect,

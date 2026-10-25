@@ -15,6 +15,7 @@ New to game engines? Start with [Concepts](concepts.md).
 - [Undo and redo: take back any change](undo.md)
 - [Saving areas: files Git can merge](saving-areas.md)
 - [Assemblies: build once, place everywhere](assemblies.md)
+- [Play mode: run the area as a game, and Stop puts everything back](play-mode.md)
 - [Projects and the Library: keeping your game's files together](projects-and-the-library.md)
 - [Importing models: glTF files from Blender, Aventail and other programs](importing-models.md)
 - [Looks: standard, stylized and unlit](looks.md)
