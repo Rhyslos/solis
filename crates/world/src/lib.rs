@@ -139,6 +139,9 @@ pub struct World {
     /// Whether the world is following physics (its own moves then aren't
     /// sent back to physics).
     following: bool,
+    /// Whether what's settling was moved by physics (dynamic bodies under
+    /// it then stay physics' to move).
+    after_physics: bool,
     /// See [`World::changes`]: the last number given, and whether
     /// anything changed since.
     stamp: u64,
@@ -213,6 +216,7 @@ impl World {
             physics_moved: Vec::new(),
             physics_asked: Vec::new(),
             following: false,
+            after_physics: false,
             stamp: next_number(),
             touched: false,
         };
@@ -691,13 +695,17 @@ impl World {
     /// A body under something that moved goes with it at the next
     /// physics step (a lift's floor under the lift): colliders, kinematic
     /// bodies and characters. Dynamic bodies don't: physics moves those.
+    ///
+    /// A dynamic body goes too when game code or an edit moved what it's
+    /// under (a crate in a group that's moved), but not when physics
+    /// moved it (a crate under a tumbling body is physics' to move).
     fn follow_parent(&mut self, entity: hecs::Entity) {
         if self.following {
             return;
         }
         if let Ok(id) = self.ecs.get::<&Id>(entity).map(|i| i.0)
             && self.physics.state().contains(id)
-            && !self.physics.state().is_dynamic(id)
+            && !(self.after_physics && self.physics.state().is_dynamic(id))
         {
             self.physics_moved.push(id);
         }
@@ -1070,7 +1078,9 @@ impl World {
             });
         }
         self.following = false;
+        self.after_physics = true;
         self.settle();
+        self.after_physics = false;
     }
 
     /// Sets the clock to `ticks` run, at game time `time` (a save game

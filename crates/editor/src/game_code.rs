@@ -102,9 +102,17 @@ impl Workbench {
         let Some(game) = &mut playing.game else {
             return Ok(());
         };
+        let mut lines = Vec::new();
+        if playing.recording.is_some() && !playing.told_recording_edited {
+            playing.told_recording_edited = true;
+            lines.push(
+                "The code changed while recording: a recording keeps only the input, so its \
+                 replay will stop matching from here."
+                    .to_string(),
+            );
+        }
         let time = playing.world.clock().time;
         let mut world = PlayWorld::new(&mut playing.world, &mut playing.view, time);
-        let mut lines = Vec::new();
         match chunk {
             None => {
                 game.unload();

@@ -75,6 +75,11 @@ What changed in each version, for people using Solis. Newest first.
 
 ### Fixed
 
+- A crate at rest stayed hanging in the air after an edit during Play lifted it or deleted its floor (a mistake in the last round of fixes); it falls again.
+- A crate in a group that game code or an edit moved was drawn in its new place while its body stayed behind; it goes along now.
+- A save made on a tick whose spawned entities spawned more left the second lot out; they join before the save.
+- A recording kept the seed a game's start had set instead of the one Play chose, so its replay could fail to match; and a replay's `saveGame` wrote over your saves.
+- `setSeed` from `update` already reached the starts of what that tick spawned; it now holds from the next tick, as described. Changing code while recording now says the replay won't match from there.
 - The Input actions window could make more than 256 actions, which Solis then refused to read (with its saves and recordings): it stops at 256.
 - A second mistake in `input.solinput` was overwritten without a backup: each gets its own (`.bak`, `.bak2` … up to `.bak9`).
 - A save's first lines (its clock and seed) weren't covered by its checksum, so a change to them loaded silently; they are now, and a clock out of range is refused.
