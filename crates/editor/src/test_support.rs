@@ -15,6 +15,8 @@ use reflect::{AssetId, EntityId};
 pub(crate) struct Picker {
     pub(crate) asked: Vec<[u32; 4]>,
     pub(crate) answer: Option<PickAnswer>,
+    /// Every action the workbench returned.
+    pub(crate) actions: Vec<crate::workbench::WorkbenchAction>,
     waiting: bool,
 }
 
@@ -44,7 +46,8 @@ pub(crate) fn harness(workbench: Workbench) -> egui_kittest::Harness<'static, St
         .build_ui_state(
             |ui, state: &mut State| {
                 let (workbench, picker) = state;
-                let _ = workbench.show(ui, picker);
+                let actions = workbench.show(ui, picker);
+                picker.actions.extend(actions);
             },
             (Workbench::new(info(), None), Picker::default()),
         )

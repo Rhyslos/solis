@@ -2,8 +2,8 @@
 //! watcher on its assets folder, and the list of recent projects
 //! ([decision 0021](../../../docs/decisions/0021-asset-database-and-models.md)).
 
-use asset_db::{AssetDb, Change, Project, Watcher};
-use editor::{LibraryItem, ProjectInfo};
+use asset_db::{AssetDb, Change, FileKind, Listing, Project, Watcher};
+use editor::{LibraryItem, LibraryKind, ProjectInfo};
 use reflect::AssetId;
 use std::path::{Path, PathBuf};
 
@@ -16,6 +16,9 @@ pub struct Projects {
     db: Option<AssetDb>,
     watcher: Option<Watcher>,
     recent: Vec<PathBuf>,
+    /// Whether the assets folder changed since last asked (any file, not
+    /// only assets: the Library lists them all).
+    changed: bool,
 }
 
 /// What opening a project found.
@@ -62,6 +65,7 @@ impl Projects {
         let info = ProjectInfo {
             name: db.project().name().to_string(),
             root: root.to_path_buf(),
+            assets: db.project().assets(),
         };
         self.recent.retain(|p| p != root);
         self.recent.insert(0, root.to_path_buf());
@@ -104,7 +108,13 @@ impl Projects {
         if !changed {
             return (Vec::new(), Vec::new());
         }
+        self.changed = true;
         self.rescan()
+    }
+
+    /// Whether anything in the assets folder changed since last asked.
+    pub fn take_changed(&mut self) -> bool {
+        std::mem::take(&mut self.changed)
     }
 
     /// Looks at the whole assets folder again.
@@ -114,26 +124,61 @@ impl Projects {
             .map_or_else(|| (Vec::new(), Vec::new()), AssetDb::rescan)
     }
 
-    /// The Library's list: every asset, by name.
-    pub fn library(&self) -> Vec<LibraryItem> {
-        let Some(db) = &self.db else {
-            return Vec::new();
-        };
-        let mut items: Vec<LibraryItem> = db
-            .records()
-            .values()
-            .map(|r| LibraryItem {
-                id: r.id,
-                kind: match r.kind {
-                    asset_db::AssetKind::Model => editor::LibraryKind::Model,
-                    asset_db::AssetKind::Assembly => editor::LibraryKind::Assembly,
+    /// Every file and folder in the assets folder (nothing without a
+    /// project).
+    pub fn listing(&self) -> Listing {
+        self.db.as_ref().map(AssetDb::listing).unwrap_or_default()
+    }
+
+    /// The Library's list: every file, by name, with its thumbnail if
+    /// `thumbnail` has one; and every folder, `/` between names.
+    pub fn library(
+        listing: &Listing,
+        thumbnail: impl Fn(&Path) -> Option<eframe::egui::TextureId>,
+    ) -> (Vec<LibraryItem>, Vec<String>) {
+        let mut items: Vec<LibraryItem> = listing
+            .files
+            .iter()
+            .map(|f| LibraryItem {
+                id: f.id,
+                kind: match f.kind {
+                    FileKind::Model => LibraryKind::Model,
+                    FileKind::Assembly => LibraryKind::Assembly,
+                    FileKind::Area => LibraryKind::Area,
+                    FileKind::Texture => LibraryKind::Texture,
+                    FileKind::Code => LibraryKind::Code,
+                    FileKind::Other => LibraryKind::Other,
                 },
-                name: r.name(),
-                path: r.path.display().to_string(),
+                name: f
+                    .path
+                    .file_stem()
+                    .map_or_else(|| slashed(&f.path), |s| s.to_string_lossy().into_owned()),
+                path: slashed(&f.path),
+                thumbnail: thumbnail(&f.path),
             })
             .collect();
         items.sort_by_key(|item| item.name.to_lowercase());
-        items
+        let folders = listing.folders.iter().map(|f| slashed(f)).collect();
+        (items, folders)
+    }
+
+    /// Renames or moves a file or folder inside the assets, with its
+    /// sidecar.
+    pub fn move_path(&self, from: &Path, to: &Path) -> Result<(), String> {
+        let db = self.db.as_ref().ok_or("no project is open")?;
+        db.move_path(from, to).map_err(|e| e.to_string())
+    }
+
+    /// Makes a new folder inside `parent` (inside the assets).
+    pub fn new_folder(&self, parent: &Path) -> Result<PathBuf, String> {
+        let db = self.db.as_ref().ok_or("no project is open")?;
+        db.new_folder(parent).map_err(|e| e.to_string())
+    }
+
+    /// Moves a file or folder (inside the assets) to the Recycle Bin.
+    pub fn delete(&self, path: &Path) -> Result<(), String> {
+        let db = self.db.as_ref().ok_or("no project is open")?;
+        db.delete_to_trash(path).map_err(|e| e.to_string())
     }
 
     /// Copies a model from elsewhere into the project, and returns its
@@ -155,6 +200,15 @@ impl Projects {
             .ok_or_else(|| std::io::Error::other("its sidecar couldn't be made"))?;
         Ok((id, target))
     }
+}
+
+/// A path inside the assets with `/` between folders, as the Library shows
+/// it on every system.
+fn slashed(path: &Path) -> String {
+    path.components()
+        .map(|c| c.as_os_str().to_string_lossy())
+        .collect::<Vec<_>>()
+        .join("/")
 }
 
 #[cfg(test)]
@@ -206,14 +260,14 @@ mod tests {
             .unwrap();
         let (id, path) = projects.bring_in(&source.join("crate.glb")).unwrap();
         assert!(path.starts_with(root.join("assets")));
-        let library = projects.library();
+        let (library, _) = Projects::library(&projects.listing(), |_| None);
         assert_eq!(library.len(), 1);
-        assert_eq!(library[0].id, id);
+        assert_eq!(library[0].id, Some(id));
         assert_eq!(library[0].name, "crate");
         // A file already in the assets folder isn't copied again.
         let (again, same) = projects.bring_in(&path).unwrap();
         assert_eq!((again, same), (id, path));
-        assert_eq!(projects.library().len(), 1);
+        assert_eq!(Projects::library(&projects.listing(), |_| None).0.len(), 1);
     }
 
     #[test]

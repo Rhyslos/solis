@@ -27,6 +27,11 @@ area.workspace = true
 render.workspace = true
 eframe.workspace = true
 rfd.workspace = true
+glam.workspace = true
+opener.workspace = true
+
+[dev-dependencies]
+image.workspace = true
 
 [lints]
 workspace = true

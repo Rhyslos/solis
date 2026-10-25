@@ -6,7 +6,7 @@ use crate::area_panel::{AreaPanelState, AreaRequest, area_tree};
 use crate::console::{Console, console};
 use crate::document::Document;
 use crate::icons::{self, Icon};
-use crate::library::{LibraryItem, ProjectInfo, library};
+use crate::library::{LibraryItem, LibraryRequest, LibraryState, ProjectInfo, library};
 use crate::menu_items::MenuState;
 use crate::models::ModelInfo;
 use crate::panel::Panel;
@@ -37,7 +37,9 @@ pub(crate) struct PanelViewer<'a> {
     pub(crate) area_requests: &'a mut Vec<AreaRequest>,
     pub(crate) project: Option<&'a ProjectInfo>,
     pub(crate) library: &'a [LibraryItem],
-    pub(crate) place: &'a mut Option<AssetId>,
+    pub(crate) folders: &'a [String],
+    pub(crate) library_state: &'a mut LibraryState,
+    pub(crate) library_requests: &'a mut Vec<LibraryRequest>,
     pub(crate) part: Option<&'a AssemblyPart>,
     pub(crate) requests: &'a mut Vec<PropertyRequest>,
     pub(crate) accent: Accent,
@@ -138,20 +140,19 @@ impl TabViewer for PanelViewer<'_> {
                 let requests = properties(ui, self.document, self.part, self.models, self.copied);
                 self.requests.extend(requests);
             }
-            Panel::Library => {
-                menu_row(ui, &["Import", "View"]);
-                if let Some(id) = library(ui, self.project, self.library, self.accent) {
-                    *self.place = Some(id);
-                }
+            Panel::Library | Panel::Code => {
+                let requests = library(
+                    ui,
+                    self.project,
+                    self.library,
+                    self.folders,
+                    self.library_state,
+                    self.accent,
+                    *tab == Panel::Code,
+                );
+                self.library_requests.extend(requests);
             }
             Panel::Game => placeholder(ui, "Press Play to run the game here (Phase 3)."),
-            Panel::Code => {
-                menu_row(ui, &["File", "Edit", "View"]);
-                placeholder(
-                    ui,
-                    "Writing game code in Lust, Rust or Lua arrives in Phase 4.",
-                );
-            }
             Panel::Console => console(ui, self.console, self.accent),
             Panel::Problems => {
                 placeholder(ui, "No problems. Mistakes in code and areas show here.");
