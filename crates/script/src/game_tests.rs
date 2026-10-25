@@ -15,6 +15,7 @@ struct TestWorld {
     entities: Vec<(EntityId, String, Mat4)>,
     said: Vec<String>,
     time: f64,
+    shots: Vec<crate::Shot>,
 }
 
 impl TestWorld {
@@ -66,6 +67,9 @@ impl GameWorld for TestWorld {
                 && let Some(entity) = self.entities.iter_mut().find(|(id, _, _)| id == e)
             {
                 entity.2 = Mat4::from_translation(*place);
+            }
+            if let Change::Fire(shot) = change {
+                self.shots.push(*shot);
             }
         }
     }
@@ -288,4 +292,51 @@ fn swapping_values_and_stopping_reach_every_shard() {
     assert_eq!(game.len(), 1);
     game.leave_out(["Watcher".to_string()].into());
     assert!(!game.has_component("Watcher"));
+}
+
+#[test]
+fn shots_fired_land_in_order_on_any_number_of_shards() {
+    // Each gun fires towards +Y from where it is, a little faster the
+    // later it is in the list.
+    const GUNS: &str = "get \"solis/world\":[fire];\n\
+        get \"solis/entity\":[positionOf];\n\
+        component Gun {\n\
+            has {\n\
+                float speed = 10;\n\
+            }\n\
+            method update(float dt) {\n\
+                fire(positionOf(me), [0, 1, 0], speed, 2, [4, 0.2, 0.1]);\n\
+            }\n\
+        }\n\
+        pass Gun;\nend\n";
+    let run = |shards| {
+        let names: Vec<String> = (1..=12).map(|n| format!("G{n}")).collect();
+        let names: Vec<&str> = names.iter().map(String::as_str).collect();
+        let mut world = TestWorld::with(&names);
+        let mut game = Game::new(shards).unwrap();
+        game.load(&compiled(GUNS), &mut world).unwrap();
+        let data: Vec<ComponentData> = (1..=12)
+            .map(|n| {
+                let mut d = ComponentData::default();
+                d.set("speed", Value::Float(f64::from(n)));
+                d
+            })
+            .collect();
+        game.sync_many(
+            (1..=12u64).map(|n| (id(n), "Gun", &data[n as usize - 1])),
+            &mut world,
+        );
+        for _ in 0..3 {
+            assert!(game.tick(1.0 / 60.0, &mut world).failures.is_empty());
+        }
+        world.shots
+    };
+    let one = run(1);
+    assert_eq!(one.len(), 36, "every gun, every tick");
+    // In entity order within a tick.
+    assert_eq!(one[0].from, Vec3::ZERO);
+    assert_eq!(one[1].from, Vec3::new(1.0, 0.0, 0.0));
+    assert_eq!(one[0].speed, 1.0);
+    assert_eq!(one[0].colour, [4.0, 0.2, 0.1]);
+    assert_eq!(one, run(4));
 }

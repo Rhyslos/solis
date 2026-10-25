@@ -47,6 +47,8 @@ pub(crate) struct Playing {
     pub(crate) game: Option<script::Game>,
     /// What game code reads of the world's entities, kept between ticks.
     pub(crate) view: crate::game_code::ViewCache,
+    /// Whether the Console was told projectiles hit their limit.
+    told_too_many: bool,
 }
 
 impl std::fmt::Debug for Playing {
@@ -121,6 +123,7 @@ impl Workbench {
             reload: None,
             game,
             view,
+            told_too_many: false,
         });
         if let Some(found) = self.dock.find_tab(&Panel::Game) {
             let _ = self.dock.set_active_tab(found);
@@ -291,25 +294,33 @@ impl Workbench {
         let mut pause = None;
         if !playing.paused {
             let ran = playing.world.step(f64::from(seconds));
-            if let Some(game) = &mut playing.game {
-                let now = playing.world.clock().time;
-                for i in 0..ran {
-                    let time = now - world::TICK * (ran - 1 - i) as f64;
-                    let mut host = PlayWorld::new(&mut playing.world, &mut playing.view, time);
-                    let ticking = std::time::Instant::now();
-                    let ticked = game.tick(world::TICK, &mut host);
-                    code += ticking.elapsed();
-                    failures.extend(ticked.failures);
-                    said.append(&mut host.said);
-                    // Too slow: no catching up, which would only be
-                    // slower; the game waits for the person instead.
-                    if ticked.pause.is_some() {
-                        playing.paused = true;
-                        pause = ticked.pause;
-                        break;
-                    }
+            let now = playing.world.clock().time;
+            for i in 0..ran {
+                // Projectiles fly on first, then game code sees where
+                // they are and fires more.
+                playing.world.projectiles_mut().tick(world::TICK as f32);
+                let Some(game) = &mut playing.game else {
+                    continue;
+                };
+                let time = now - world::TICK * (ran - 1 - i) as f64;
+                let mut host = PlayWorld::new(&mut playing.world, &mut playing.view, time);
+                let ticking = std::time::Instant::now();
+                let ticked = game.tick(world::TICK, &mut host);
+                code += ticking.elapsed();
+                failures.extend(ticked.failures);
+                said.append(&mut host.said);
+                // Too slow: no catching up, which would only be slower;
+                // the game waits for the person instead.
+                if ticked.pause.is_some() {
+                    playing.paused = true;
+                    pause = ticked.pause;
+                    break;
                 }
             }
+        }
+        let refused = playing.world.projectiles().refused() > 0 && !playing.told_too_many;
+        if refused {
+            playing.told_too_many = true;
         }
         self.profiler.add(crate::profiler::Stage::GameCode, code);
         self.profiler.add(
@@ -323,6 +334,16 @@ impl Workbench {
             self.log(
                 LogLevel::Warning,
                 format!("{why} Press Pause or Play to carry on."),
+            );
+        }
+        if refused {
+            self.log(
+                LogLevel::Warning,
+                format!(
+                    "More than {} projectiles were flying at once, so game code's next shots \
+                     weren't fired until some ran out of time.",
+                    crate::models::grouped(world::MAX_PROJECTILES)
+                ),
             );
         }
     }

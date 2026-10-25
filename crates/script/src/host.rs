@@ -30,6 +30,10 @@ pub trait Host {
     fn turn_to(&mut self, which: EntityId, facing: Quat);
     /// An entity's name.
     fn name(&self, which: EntityId) -> Option<String>;
+    /// Fires a projectile. A host without projectiles ignores it.
+    fn fire(&mut self, shot: Shot) {
+        let _ = shot;
+    }
 
     /// The component about to run, and where what it does belongs in the
     /// tick's order ([decision 0033](../../../docs/decisions/0033-game-code-sees-the-start-of-the-tick.md)).
@@ -38,6 +42,23 @@ pub trait Host {
     fn at(&mut self, order: &crate::ticking::Order) {
         let _ = order;
     }
+}
+
+/// A projectile game code fires (`fire`): where from, which way, how fast
+/// (metres a second), how long it lives (seconds), and its colour (linear
+/// RGB; above 1 glows).
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct Shot {
+    /// Where it starts.
+    pub from: Vec3,
+    /// Which way it flies.
+    pub direction: Vec3,
+    /// How fast.
+    pub speed: f32,
+    /// How long it lives.
+    pub life: f32,
+    /// Its colour.
+    pub colour: [f32; 3],
 }
 
 /// A host for when nothing is running (loading code to read its
@@ -171,6 +192,32 @@ pub(crate) fn with_natives<'h, R>(
                     .and_then(|e| h.borrow().name(e))
                     .unwrap_or_default())
             })?,
+        )?;
+        natives.raw_set(
+            "fire",
+            scope.create_function(
+                move |_,
+                      (from, direction, speed, life, colour): (
+                    LuaValue,
+                    LuaValue,
+                    f64,
+                    f64,
+                    LuaValue,
+                )| {
+                    if let (Some(from), Some(direction), Some(colour)) =
+                        (vec3_of(&from), vec3_of(&direction), vec3_of(&colour))
+                    {
+                        h.borrow_mut().fire(Shot {
+                            from,
+                            direction,
+                            speed: speed as f32,
+                            life: life as f32,
+                            colour: colour.to_array(),
+                        });
+                    }
+                    Ok(())
+                },
+            )?,
         )?;
         if let Some(send) = send {
             natives.raw_set("send_event", send.clone())?;

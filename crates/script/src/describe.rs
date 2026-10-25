@@ -41,6 +41,12 @@ pub const NATIVES: &[Native] = &[
         about: "The first entity with this name, in the Area panel's order, or nothing.",
     },
     Native {
+        file: "world",
+        name: "fire",
+        lust: "method fire(vec3 from, vec3 direction, float speed, float life, vec3 colour) native;",
+        about: "Fires a projectile (a laser): from a place, flying a way at a speed in metres a second, for a life in seconds, glowing in a colour (red, green, blue; above 1 glows brighter).",
+    },
+    Native {
         file: "entity",
         name: "positionOf",
         lust: "method vec3 positionOf(entity which) native;",

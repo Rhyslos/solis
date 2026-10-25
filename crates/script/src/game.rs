@@ -34,6 +34,8 @@ pub enum Change {
     Move(EntityId, Vec3),
     /// `turnTo`: turn the entity to face this way in the world.
     Turn(EntityId, Quat),
+    /// `fire`: fire a projectile.
+    Fire(crate::host::Shot),
 }
 
 /// The entities of a [`WorldView`]: the same while the world's entities,
@@ -191,6 +193,11 @@ impl Host for ViewHost {
     fn name(&self, which: EntityId) -> Option<String> {
         let slot = *self.view.index.slots.get(&which)?;
         self.view.index.names.get(slot as usize).cloned()
+    }
+
+    fn fire(&mut self, shot: crate::host::Shot) {
+        let order = self.order();
+        self.kept.changes.push((order, Change::Fire(shot)));
     }
 
     fn at(&mut self, order: &Order) {

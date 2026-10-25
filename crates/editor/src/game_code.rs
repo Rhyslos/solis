@@ -241,6 +241,15 @@ impl GameWorld for PlayWorld<'_> {
                         t.rotation.is_finite().then_some(t)
                     });
                 }
+                Change::Fire(shot) => {
+                    self.world.projectiles_mut().fire(world::Shot {
+                        from: shot.from,
+                        direction: shot.direction,
+                        speed: shot.speed,
+                        life: shot.life,
+                        colour: shot.colour,
+                    });
+                }
             }
         }
         // Those under what moved follow before the next phase reads.

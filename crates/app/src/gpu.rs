@@ -345,14 +345,26 @@ impl ViewportRenderer for GpuViewport {
                 })
             })
             .collect();
-        let stats = self.renderer.render(
+        let bolts: Vec<render::Bolt> = view
+            .bolts
+            .iter()
+            .map(|b| render::Bolt {
+                head: b.head.to_array(),
+                trail: b.trail.to_array(),
+                colour: b.colour,
+                width: b.width,
+            })
+            .collect();
+        let stats = self.renderer.render_with_bolts(
             &self.state.device,
             &self.state.queue,
             &mut image.target,
             &params,
             &placed,
             &lights,
+            &bolts,
         );
+        self.report.bolts += u64::from(stats.bolts);
         self.report.instances += u64::from(stats.instances);
         self.report.casting += u64::from(stats.casting);
         self.report.sent_bytes += stats.sent_bytes;

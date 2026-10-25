@@ -1,7 +1,8 @@
 //! The scale levels (decision 0030), the CPU's share: whole editor
-//! frames while units play, each a model moved by a Lust component, timed
-//! by the Profiler. The GPU's share is timed on a real graphics card, in
-//! the benchmark (Phase 5, M6). Projectiles join in M5.
+//! frames while units play, each a model moved by a Lust component that
+//! fires lasers (ten in flight per unit), timed by the Profiler. The GPU's
+//! share is timed on a real graphics card, in the benchmark (Phase 5,
+//! M7).
 //!
 //! The CPU may use half of a frame at each level, leaving the other half
 //! for the GPU: 8 ms at the target (60 fps), 16.7 ms at stress (30 fps).
@@ -17,12 +18,16 @@ use reflect::{EntityId, Value};
 use std::sync::Arc;
 
 /// A unit: flies along its heading, turning back at the edge of the
-/// field.
+/// field, and fires a laser ahead every 10 ticks (six a second), each
+/// flying for 1 2/3 seconds: ten in flight per unit, so the levels'
+/// projectiles (decision 0030) come with their units.
 const SHIP: &str = "get \"solis/entity\":[positionOf, moveTo];\n\
+    get \"solis/world\":[fire];\n\
     component Ship {\n\
         has {\n\
             vec3 heading = [1, 0, 0];\n\
             float speed = 8;\n\
+            int ticks = 0;\n\
         }\n\
         method update(float dt) {\n\
             vec3 at = positionOf(me) + heading * speed * dt;\n\
@@ -30,6 +35,11 @@ const SHIP: &str = "get \"solis/entity\":[positionOf, moveTo];\n\
                 heading = heading * -1;\n\
             }\n\
             moveTo(me, at);\n\
+            ticks = ticks + 1;\n\
+            is ticks >= 10? then {\n\
+                ticks = 0;\n\
+                fire(at, heading, 60, 1.66, [4, 0.3, 0.2]);\n\
+            }\n\
         }\n\
     }\n\
     pass Ship;\nend\n";
@@ -68,6 +78,8 @@ fn fleet(units: usize) -> Workbench {
                 asset: Some(reflect::AssetRef { asset, part: None }),
             });
             let mut ship = reflect::ComponentData::default();
+            // Not all firing on the same tick.
+            ship.set("ticks", Value::Int((i % 10) as i64));
             let turn = (i as f32 * 0.37).sin();
             ship.set("heading", Value::floats(&[turn, 1.0 - turn.abs(), 0.0]));
             data.components.insert("Ship".into(), ship);
@@ -81,8 +93,8 @@ fn fleet(units: usize) -> Workbench {
     w
 }
 
-/// The CPU's average frame with `units` playing, after a few to settle,
-/// and the stages' share of it.
+/// The CPU's average frame with `units` playing, after enough to settle
+/// (every unit's ten lasers in flight), and the stages' share of it.
 fn cpu_frame(units: usize, frames: usize) -> (f64, [f64; 5]) {
     // Frames of 1/60 s, as at 60 fps: one tick each.
     let mut h = egui_kittest::Harness::builder()
@@ -96,7 +108,8 @@ fn cpu_frame(units: usize, frames: usize) -> (f64, [f64; 5]) {
             },
             (fleet(units), Picker::default()),
         );
-    for _ in 0..3 {
+    // A laser lives 100 ticks: by then each unit has its ten in flight.
+    for _ in 0..100 {
         h.step();
     }
     for _ in 0..frames {
@@ -113,6 +126,19 @@ fn cpu_frame(units: usize, frames: usize) -> (f64, [f64; 5]) {
         .unwrap()
         .len();
     assert_eq!(running, units, "every ship runs");
+    let flying = h
+        .state()
+        .0
+        .playing
+        .as_ref()
+        .unwrap()
+        .world
+        .projectiles()
+        .len();
+    assert!(
+        flying >= units * 9 && flying <= units * 10,
+        "{flying} lasers for {units} ships"
+    );
     let profiler = &h.state().0.profiler;
     let average = profiler.average(frames).expect("frames measured");
     (average.cpu_total(), average.cpu)
@@ -129,7 +155,7 @@ fn split(cpu: [f64; 5]) -> String {
 }
 
 /// Whether the levels must already hold. Phase 5's milestones build what
-/// they need; until its end (M6) the scale check reports them only.
+/// they need; until its end (M7) the scale check reports them only.
 const PHASE_5_DONE: bool = false;
 
 fn level(name: &str, units: usize, budget: f64) {
@@ -140,8 +166,9 @@ fn level(name: &str, units: usize, budget: f64) {
         (false, false) => "not yet (Phase 5 builds it)",
     };
     println!(
-        "Scale check: the {name} level's CPU frame, {units} units playing {ms:.2} ms \
-         (target {budget:.1} ms; {}) {verdict}",
+        "Scale check: the {name} level's CPU frame, {units} units and {} lasers playing \
+         {ms:.2} ms (target {budget:.1} ms; {}) {verdict}",
+        units * 10,
         split(cpu)
     );
     if PHASE_5_DONE {
@@ -189,7 +216,7 @@ fn scale_check_level_ceiling() {
         format!("about {low}")
     };
     println!(
-        "Scale check: the ceiling: the CPU keeps 60 fps up to {shown} units playing (reported)"
+        "Scale check: the ceiling: the CPU keeps 60 fps up to {shown} units (and ten times as many lasers) playing (reported)"
     );
 }
 

@@ -186,6 +186,39 @@ fn handle(&mut self, cx: &mut Context<'_>, event: &Event) -> bool {
 
 Other code files can sit in any folder in `assets`. Fetch them by their path from `assets`, such as `fetch "weapons/gun":Gun;` for `assets/weapons/gun.lst`. The Library's **Code** tab lists them all.
 
+## Projectiles
+
+Lasers, bolts and tracer rounds come in their thousands, so they aren't entities: they're [projectiles](concepts.md#game-code), which Solis moves itself, every tick, on every core.
+
+```
+get "solis/world":[fire];
+get "solis/entity":[positionOf];
+
+component Turret {
+    has {
+        int cooldown = 0;
+    }
+
+    method update(float dt) {
+        cooldown = cooldown - 1;
+        is cooldown <= 0? then {
+            fire(positionOf(me), [0, 1, 0], 60, 2, [4, 0.3, 0.2]);
+            cooldown = 30;
+        }
+    }
+}
+
+pass Turret;
+end
+```
+
+`fire` takes where it starts, which way it flies (any length), its speed in metres a second, how long it lives in seconds, and its colour as red, green and blue. Above 1 glows brighter: `[4, 0.3, 0.2]` is a hot red laser. In Lua it's `solis.fire(from, direction, speed, life, colour)`, with `vec3(…)` for each.
+
+- It flies in a straight line and disappears when its time is up. It doesn't hit anything yet: that comes with physics (Phase 6).
+- It's drawn in the **Game** panel as a glowing streak, as long as it flies in two frames. Streaks add their light where they cross.
+- Up to 1,000,000 can fly at once. Past that, new shots aren't fired until some run out, and the Console says so once.
+- Like a move, a shot lands after every `update` in the tick is done ([what game code sees](#components)), so it starts flying next tick.
+
 ## What the engine offers
 
 | In | Method | What it does |
@@ -193,6 +226,7 @@ Other code files can sit in any folder in `assets`. Fetch them by their path fro
 | `solis/world` | `say(string words)` | Writes words in the Console. |
 | `solis/world` | `float time()` | How long the game has been running, in seconds. |
 | `solis/world` | `entity find(string name)` | The first entity with this name, in the Area panel's order, or `nothing`. |
+| `solis/world` | `fire(vec3 from, vec3 direction, float speed, float life, vec3 colour)` | Fires a projectile (see Projectiles, below). |
 | `solis/entity` | `vec3 positionOf(entity which)` | Where an entity is in the world, in metres. |
 | `solis/entity` | `moveTo(entity which, vec3 place)` | Puts an entity at a place in the world. |
 | `solis/entity` | `rotation rotationOf(entity which)` | Which way an entity faces. |

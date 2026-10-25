@@ -11,6 +11,10 @@
 //!
 //! The world never changes the area: stopping throws it away.
 
+pub mod projectiles;
+
+pub use projectiles::{MAX_PROJECTILES, Projectile, Projectiles, Shot};
+
 use area::Area;
 use area::builtin::{Camera, Environment, Light, Model, Transform};
 use glam::Mat4;
@@ -88,6 +92,9 @@ pub struct World {
     /// has that one, the game's place is kept, even when the world is
     /// built again.
     game_moved: HashMap<EntityId, Transform>,
+    /// Projectiles in flight: not entities, and kept when the world is
+    /// built again.
+    projectiles: Projectiles,
 }
 
 impl std::fmt::Debug for World {
@@ -133,6 +140,7 @@ impl World {
             names: HashMap::new(),
             revision: 0,
             game_moved: HashMap::new(),
+            projectiles: Projectiles::default(),
         };
         world.index();
         world.place_everything();
@@ -249,6 +257,18 @@ impl World {
         // Nothing moves by itself yet: game code moves things, and
         // `settle` works out what follows.
         ran
+    }
+
+    /// The projectiles in flight.
+    pub fn projectiles(&self) -> &Projectiles {
+        &self.projectiles
+    }
+
+    /// The projectiles, to fire more or move them on a tick
+    /// ([`Projectiles::tick`]: the editor does it once per tick, before
+    /// game code runs).
+    pub fn projectiles_mut(&mut self) -> &mut Projectiles {
+        &mut self.projectiles
     }
 
     /// Works out where every entity is in the world, parents first.

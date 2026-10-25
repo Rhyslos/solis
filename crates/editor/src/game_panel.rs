@@ -24,6 +24,8 @@ pub(crate) struct GameScene {
     pub(crate) state: PlayState,
     /// The game's time, in seconds.
     pub(crate) seconds: f64,
+    /// The projectiles in flight.
+    pub(crate) bolts: std::sync::Arc<Vec<crate::viewport::ViewBolt>>,
 }
 
 impl GameScene {
@@ -38,6 +40,15 @@ impl GameScene {
             camera: world.camera().map(|(_, camera, global)| (camera, global)),
             state,
             seconds: world.clock().time,
+            bolts: std::sync::Arc::new({
+                use rayon::prelude::*;
+                world
+                    .projectiles()
+                    .flying()
+                    .par_iter()
+                    .map(crate::viewport::ViewBolt::of)
+                    .collect()
+            }),
         }
     }
 }
@@ -122,6 +133,7 @@ pub(crate) fn game_panel(
         image: GAME_IMAGE,
         editor_lines: false,
         kind: crate::camera::ViewKind::Perspective,
+        bolts: std::sync::Arc::clone(&scene.bolts),
     };
     let painter = ui.painter_at(rect);
     match renderer.render(&view) {
