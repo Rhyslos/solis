@@ -4,14 +4,14 @@
 use crate::code::CodeProblem;
 use crate::events::{Event, EventKinds, MAX_DELIVERIES, Queue, arguments, values_table};
 use crate::host::Lent;
-use crate::lua_components::lua_problem;
+use crate::lua_components::{LuaClass, lua_problem};
 use crate::luau::Luau;
 use crate::lust_program::located;
 use crate::runtime::Failure;
 use crate::rust_component::{Context, RustComponent};
 use mlua::{Function, Table, Value as LuaValue};
 use reflect::{ComponentData, EntityId};
-use std::cell::Cell;
+use std::cell::{Cell, RefCell};
 use std::collections::BTreeMap;
 
 /// What a running component is.
@@ -68,6 +68,13 @@ pub(crate) struct Ticking<'a> {
     pub(crate) events: Option<&'a EventKinds>,
     /// Whether too many events were said already, since the code changed.
     pub(crate) told: &'a Cell<bool>,
+    /// The Lua components' classes, for which file a failure is in.
+    pub(crate) lua_classes: &'a BTreeMap<String, LuaClass>,
+    /// What every event carries, for Rust components' sends.
+    pub(crate) kinds: &'a EventKinds,
+    /// Failures that leave their component running (a Rust component's
+    /// refused send), said once per component until the code changes.
+    pub(crate) unstopped: RefCell<Vec<Failure>>,
 }
 
 /// A method of a Lust or Lua component, looked up the usual way (its
@@ -89,10 +96,12 @@ impl Ticking<'_> {
         }
     }
 
-    /// Where an error from `instance`'s code came from.
-    fn located_in(&self, instance: &Instance, err: &mlua::Error) -> CodeProblem {
+    /// Where an error from the code of the component `name` came from.
+    fn located_in(&self, instance: &Instance, name: &str, err: &mlua::Error) -> CodeProblem {
         match instance {
-            Instance::Lua(_) => lua_problem("", err),
+            Instance::Lua(_) => {
+                lua_problem(self.lua_classes.get(name).map_or("", |c| &c.path), err)
+            }
             _ => self.located(err),
         }
     }
@@ -101,7 +110,7 @@ impl Ticking<'_> {
     pub(crate) fn update(
         &self,
         lent: &Lent<'_, '_>,
-        me: EntityId,
+        (me, name): (EntityId, &str),
         component: &mut Running,
         dt: f64,
     ) -> Result<(), CodeProblem> {
@@ -114,14 +123,37 @@ impl Ticking<'_> {
                         Some(update) => update.call::<()>((table.clone(), dt)),
                         None => Ok(()),
                     })
-                    .map_err(|err| self.located_in(&component.instance, &err))
+                    .map_err(|err| self.located_in(&component.instance, name, &err))
             }
             Instance::Rust(rust) => {
                 let mut host = lent.borrow_mut();
-                let mut cx = Context::new(me, &mut **host, self.queue);
-                caught(|| rust.update(&mut cx, dt))
+                let mut cx = Context::new(me, &mut **host, self.queue, self.kinds);
+                let ran = caught(|| rust.update(&mut cx, dt));
+                let refused = cx.refused.take();
+                self.refused(me, name, &mut component.quiet, refused);
+                ran
             }
         }
+    }
+
+    /// Notes a Rust component's refused send, once until the code
+    /// changes.
+    fn refused(&self, me: EntityId, name: &str, quiet: &mut bool, why: Option<String>) {
+        let Some(why) = why else {
+            return;
+        };
+        if std::mem::replace(quiet, true) {
+            return;
+        }
+        self.unstopped.borrow_mut().push(Failure {
+            entity: Some(me),
+            component: name.to_string(),
+            at: plain(format!(
+                "an event it sent wasn't sent: {why} (Its later mistakes with events aren't \
+                 said until the code changes.)"
+            )),
+            stopped: false,
+        });
     }
 
     /// Delivers the tick's events, in order, to each running component on
@@ -147,7 +179,7 @@ impl Ticking<'_> {
                     break;
                 }
                 failures.push(Failure {
-                    entity: Some(event.to),
+                    entity: None,
                     component: String::new(),
                     at: plain(format!(
                         "more than {MAX_DELIVERIES} events were sent in one tick, so the last \
@@ -167,7 +199,7 @@ impl Ticking<'_> {
                 if component.stopped {
                     continue;
                 }
-                if let Err(mut at) = self.handle(lent, *entity, component, &event) {
+                if let Err(mut at) = self.handle(lent, (*entity, name), component, &event) {
                     if self.luau.clock.over() {
                         // The tick ran out of time; that's said once, by
                         // the runtime.
@@ -198,7 +230,7 @@ impl Ticking<'_> {
     fn handle(
         &self,
         lent: &Lent<'_, '_>,
-        me: EntityId,
+        (me, name): (EntityId, &str),
         component: &mut Running,
         event: &Event,
     ) -> Result<(), CodeProblem> {
@@ -234,11 +266,12 @@ impl Ticking<'_> {
             Instance::Lua(table) => {
                 let lua = &self.luau.lua;
                 let table = table.clone();
+                let file = self.lua_classes.get(name).map_or("", |c| c.path.as_str());
                 let on = self
                     .luau
                     .clock
                     .limited(|| method(&table, &format!("on_{}", event.name)))
-                    .map_err(|err| lua_problem("", &err))?;
+                    .map_err(|err| lua_problem(file, &err))?;
                 let Some(on) = on else {
                     return Ok(());
                 };
@@ -248,14 +281,17 @@ impl Ticking<'_> {
                 self.luau
                     .clock
                     .limited(|| on.call::<()>(args))
-                    .map_err(|err| lua_problem("", &err))
+                    .map_err(|err| lua_problem(file, &err))
             }
             Instance::Rust(rust) => {
                 let mut host = lent.borrow_mut();
-                let mut cx = Context::new(me, &mut **host, self.queue);
-                caught(|| {
+                let mut cx = Context::new(me, &mut **host, self.queue, self.kinds);
+                let ran = caught(|| {
                     rust.handle(&mut cx, event);
-                })
+                });
+                let refused = cx.refused.take();
+                self.refused(me, name, &mut component.quiet, refused);
+                ran
             }
         }
     }

@@ -103,6 +103,11 @@ pub struct Runtime {
     send: mlua::Function,
     /// Whether too many events in a tick was said, since the code changed.
     told: Cell<bool>,
+    /// What events carry when there's no Lust: nothing declared.
+    no_events: EventKinds,
+    /// Names whose Lust or Lua components don't run (the editor refused
+    /// them: the name is taken by one of its own, or a Rust component).
+    left_out: std::collections::BTreeSet<String>,
 }
 
 impl std::fmt::Debug for Runtime {
@@ -139,6 +144,8 @@ impl Runtime {
             kinds,
             send,
             told: Cell::new(false),
+            no_events: EventKinds::new(),
+            left_out: std::collections::BTreeSet::new(),
         })
     }
 
@@ -239,15 +246,37 @@ impl Runtime {
         all
     }
 
-    /// Whether there's a component called `name` to run: the Lust's, a Lua
-    /// one, or a Rust one.
+    /// Whether there's a component called `name` to run: a Rust one, or
+    /// the Lust's or a Lua one not left out.
     pub fn has_component(&self, name: &str) -> bool {
-        self.rust.contains_key(name)
-            || self.lua_classes.contains_key(name)
-            || self
-                .lust
-                .as_ref()
-                .is_some_and(|p| p.fields.contains_key(name))
+        self.rust.contains_key(name) || self.code_component(name)
+    }
+
+    /// Whether the Lust or a Lua file has a component called `name` that
+    /// isn't left out.
+    fn code_component(&self, name: &str) -> bool {
+        !self.left_out.contains(name)
+            && (self.lua_classes.contains_key(name)
+                || self
+                    .lust
+                    .as_ref()
+                    .is_some_and(|p| p.fields.contains_key(name)))
+    }
+
+    /// The Lust and Lua components called one of `names` won't run (the
+    /// editor refused them: the name is one of the engine's own
+    /// components, or a Rust one's). Rust components by those names still
+    /// do. Kept across loads; any running stop.
+    pub fn leave_out(&mut self, names: std::collections::BTreeSet<String>) {
+        self.running.retain(|(_, name), r| {
+            matches!(r.instance, Instance::Rust(_)) || !names.contains(name)
+        });
+        self.left_out = names;
+    }
+
+    /// The file a Lua component is written in.
+    pub fn lua_file(&self, name: &str) -> Option<&str> {
+        self.lua_classes.get(name).map(|c| c.path.as_str())
     }
 
     /// How many components are running.
@@ -310,6 +339,9 @@ impl Runtime {
             }
             return Ok(());
         }
+        if self.left_out.contains(name) {
+            return Ok(());
+        }
         let fail = |at: CodeProblem| Failure {
             entity: Some(entity),
             component: name.to_string(),
@@ -320,7 +352,7 @@ impl Runtime {
         let lust = self.lust.as_ref();
         let locate = |err: mlua::Error| match (lua_class, lust) {
             (None, Some(program)) => located(&program.chunk, &err),
-            _ => lua_problem("", &err),
+            (class, _) => lua_problem(class.map_or("", |c| &c.path), &err),
         };
         let Some(fields) = lua_class
             .map(|c| &c.fields)
@@ -399,6 +431,9 @@ impl Runtime {
             chunk: self.lust.as_ref().map(|p| &p.chunk),
             events: self.lust.as_ref().map(|p| &*p.events),
             told: &self.told,
+            lua_classes: &self.lua_classes,
+            kinds: self.lust.as_ref().map_or(&self.no_events, |p| &*p.events),
+            unstopped: RefCell::default(),
         };
         let running = &mut self.running;
         let failures = &mut ticked.failures;
@@ -414,7 +449,7 @@ impl Runtime {
                         break;
                     }
                     if !component.stopped
-                        && let Err(at) = ticking.update(lent, *entity, component, dt)
+                        && let Err(at) = ticking.update(lent, (*entity, name), component, dt)
                     {
                         if clock.over() {
                             break;
@@ -433,6 +468,7 @@ impl Runtime {
             });
             (lent, clock.over())
         });
+        ticked.failures.extend(ticking.unstopped.take());
         if over {
             self.queue.borrow_mut().clear();
             ticked.pause = Some(format!(
@@ -485,19 +521,16 @@ impl Runtime {
             .map_err(failed)?;
             Ok::<_, Failure>((lust, classes))
         })?;
-        for name in classes.keys() {
-            let clash = if self.rust.contains_key(name) {
-                Some("a Rust component")
-            } else if lust.as_ref().is_some_and(|p| p.fields.contains_key(name)) {
-                Some("a Lust component")
-            } else {
-                None
-            };
-            if let Some(other) = clash {
-                return Err(failed(plain(format!(
-                    "the Lua component {name} has the same name as {other}; each needs a name of \
-                     its own"
-                ))));
+        // A name a Rust component has too is the editor's to refuse (see
+        // `leave_out`): the Rust one runs.
+        for (name, class) in &classes {
+            if lust.as_ref().is_some_and(|p| p.fields.contains_key(name)) {
+                let mut at = plain(format!(
+                    "the Lua component {name} has the same name as a Lust component; each needs \
+                     a name of its own"
+                ));
+                at.file.clone_from(&class.path);
+                return Err(failed(at));
             }
         }
         Ok((lust, classes))
@@ -604,3 +637,7 @@ mod lua_tests;
 #[cfg(test)]
 #[path = "runtime_hostile_tests.rs"]
 mod hostile_tests;
+
+#[cfg(test)]
+#[path = "runtime_seams_tests.rs"]
+mod seams_tests;

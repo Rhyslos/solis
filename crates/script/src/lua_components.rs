@@ -51,6 +51,8 @@ pub(crate) struct LuaClass {
     pub(crate) class: Table,
     pub(crate) fields: Vec<Field>,
     pub(crate) schema: ComponentSchema,
+    /// The file that made it, inside the assets.
+    pub(crate) path: String,
 }
 
 /// A Lua error's place and message, from its text (`spinner.lua:5:
@@ -178,6 +180,16 @@ fn read_class(path: &str, class: Table) -> Result<LuaClass, CodeProblem> {
         let field: String = entry
             .raw_get(1)
             .map_err(|_| mistake(format!("{name}'s field {} has no name first", i + 1)))?;
+        // `me` is the entity, and `update` and `on_…` are its methods: a
+        // field with one of those names would hide them.
+        if field == "me" || field == "update" || field.starts_with("on_") || field.starts_with("__")
+        {
+            return Err(mistake(format!(
+                "{name}'s field can't be called {field}: me is the entity the component is on, \
+                 update and on_ name its methods, and __ names are Lua's own. Call it something \
+                 else"
+            )));
+        }
         let kind_name: String = entry.raw_get(2).map_err(|_| {
             mistake(format!(
                 "{name}'s field {field} has no kind (such as \"float\")"
@@ -225,6 +237,7 @@ fn read_class(path: &str, class: Table) -> Result<LuaClass, CodeProblem> {
             help: format!("{name}, from the game's Lua ({path})."),
             fields: infos,
         },
+        path: path.to_string(),
     })
 }
 

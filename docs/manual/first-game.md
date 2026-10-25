@@ -65,11 +65,11 @@ fn handle(&mut self, cx: &mut Context<'_>, event: &Event) -> bool {
 }
 ```
 
-The events are declared once, in Lust (`event Hit(entity by, float damage);`), so a wrongly-sent event is a mistake in Problems before the game runs, whichever language sends it.
+The events are declared once, in Lust (`event Hit(entity by, float damage);`). Lust checks its own `send`s before the game runs, so a wrongly-sent event in Lust is a mistake in Problems. When Lua or Rust sends one with the wrong values, it isn't sent, and the Console names the component that sent it.
 
 ## Things to try
 - **While it plays,** change the turret's `damage` to `10` in Properties: the drone goes down in two hits.
-- **While it plays,** change the cooldown in `main.lst` from `0.5` to `0.1` and save. The turret fires faster at once, keeping the ammo it has left.
+- **While it plays,** change `reload = cooldown;` in `main.lst` to `reload = cooldown / 5;` and save. The turret fires five times faster at once, keeping the ammo it has left. (Changing a starting value instead, such as `cooldown = 0.5`, doesn't change a turret that's already running: running components keep their values. Set it in Properties for that.)
 - In `sparks.lua`, change what it says and save while it plays: the next dent says the new words.
 - Give the drone more armour: select it and set **Plates** to 10.
 

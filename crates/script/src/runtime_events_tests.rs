@@ -49,6 +49,7 @@ fn loaded(main: &str) -> Runtime {
             lust: Some(chunk),
             lua: Vec::new(),
             schemas: Vec::new(),
+            places: Default::default(),
         },
         Err(problems) => panic!("{}", problems[0]),
     };

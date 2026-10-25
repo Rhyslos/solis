@@ -66,6 +66,7 @@ fn chunk(main: &str) -> Compiled {
             lust: Some(chunk),
             lua: Vec::new(),
             schemas: Vec::new(),
+            places: Default::default(),
         },
         Err(problems) => panic!("{}", problems[0]),
     }

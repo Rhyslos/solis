@@ -175,6 +175,9 @@ pub struct Workbench {
     pub(crate) program: Option<std::sync::Arc<script::Compiled>>,
     /// The components it put in the registry, by name.
     pub(crate) game_components: std::collections::BTreeSet<String>,
+    /// Its components whose names were taken (by the engine's own, or a
+    /// Rust one's): they don't run.
+    pub(crate) left_out: std::collections::BTreeSet<String>,
     /// Kinds of component written in Rust, run in play mode.
     pub(crate) rust_components: Vec<script::RustKind>,
     /// The last [`Self::assembly_part`], with the selection, revision and
@@ -211,6 +214,7 @@ impl Workbench {
             code_problems: Vec::new(),
             program: None,
             game_components: std::collections::BTreeSet::new(),
+            left_out: std::collections::BTreeSet::new(),
             rust_components: Vec::new(),
             assembly_part_kept: std::cell::RefCell::new(None),
             assemblies: BTreeMap::new(),
@@ -369,7 +373,7 @@ impl Workbench {
     /// Uses `document` in place of the open one, keeping the components
     /// registered so far (game code registers its own once, not once per
     /// area).
-    fn replace_document(&mut self, mut document: Document) {
+    pub(crate) fn replace_document(&mut self, mut document: Document) {
         document.registry = std::mem::take(&mut self.document.registry);
         self.document = document;
     }

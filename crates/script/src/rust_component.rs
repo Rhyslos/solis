@@ -3,7 +3,7 @@
 //! name), and send and handle the same events, so the three languages
 //! work together on one entity.
 
-use crate::events::{Event, Queue};
+use crate::events::{Event, EventKinds, Queue, fits};
 use crate::host::Host;
 use reflect::{ComponentData, ComponentSchema, EntityId, Value};
 
@@ -52,11 +52,26 @@ pub struct Context<'a> {
     me: EntityId,
     host: &'a mut dyn Host,
     queue: &'a Queue,
+    /// What the Lust's events carry, to check what's sent.
+    kinds: &'a EventKinds,
+    /// Why the last refused send was refused, for the Console.
+    pub(crate) refused: Option<String>,
 }
 
 impl<'a> Context<'a> {
-    pub(crate) fn new(me: EntityId, host: &'a mut dyn Host, queue: &'a Queue) -> Self {
-        Self { me, host, queue }
+    pub(crate) fn new(
+        me: EntityId,
+        host: &'a mut dyn Host,
+        queue: &'a Queue,
+        kinds: &'a EventKinds,
+    ) -> Self {
+        Self {
+            me,
+            host,
+            queue,
+            kinds,
+            refused: None,
+        }
     }
 
     /// The entity this component is on.
@@ -71,19 +86,27 @@ impl<'a> Context<'a> {
 
     /// Sends the event `name` carrying `values` to `to` (nowhere for
     /// `None`). It's delivered after this tick's updates, in order.
-    /// Returns whether it was sent: not when too many events are waiting
-    /// already ([`crate::events::MAX_WAITING`]).
+    /// Returns whether it was sent: not when the values don't fit what
+    /// the Lust declares the event carries, or too many events are
+    /// waiting already ([`crate::events::MAX_WAITING`]); the Console then
+    /// says why, naming this component.
     pub fn send(&mut self, to: Option<EntityId>, name: &str, values: Vec<Value>) -> bool {
         let Some(to) = to else {
             return false;
         };
-        self.queue
-            .borrow_mut()
-            .push(Event {
+        let sent = fits(self.kinds, name, &values).and_then(|()| {
+            self.queue.borrow_mut().push(Event {
                 to,
                 name: name.to_string(),
                 values,
             })
-            .is_ok()
+        });
+        match sent {
+            Ok(()) => true,
+            Err(why) => {
+                self.refused = Some(why);
+                false
+            }
+        }
     }
 }
