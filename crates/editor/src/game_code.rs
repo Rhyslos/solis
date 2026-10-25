@@ -195,6 +195,13 @@ pub(crate) struct PlayWorld<'a> {
     time: f64,
     /// What game code said, for the Console.
     pub(crate) said: Vec<String>,
+    /// How long the last frame took, in seconds.
+    pub(crate) frame_time: f64,
+    /// Copies of assemblies game code made: the entity, the assembly's
+    /// name and where, for the editor to add after the tick.
+    pub(crate) spawns: Vec<(EntityId, String, glam::Vec3)>,
+    /// Entities game code took out.
+    pub(crate) despawns: Vec<EntityId>,
 }
 
 impl<'a> PlayWorld<'a> {
@@ -204,6 +211,9 @@ impl<'a> PlayWorld<'a> {
             cache,
             time,
             said: Vec::new(),
+            frame_time: 1.0 / 60.0,
+            spawns: Vec::new(),
+            despawns: Vec::new(),
         }
     }
 }
@@ -221,12 +231,17 @@ impl GameWorld for PlayWorld<'_> {
             time: self.time,
             index: Arc::clone(&self.cache.index),
             places: Arc::new(places),
+            frame_time: self.frame_time,
         }
     }
 
     fn apply(&mut self, changes: &[Change]) {
         for change in changes {
             match *change {
+                Change::Spawn(id, ref assembly, place) => {
+                    self.spawns.push((id, assembly.clone(), place));
+                }
+                Change::Despawn(id) => self.despawns.push(id),
                 // A transform is measured from the parent.
                 Change::Move(which, place) => {
                     self.world.change_transform(which, |parent, mut t| {

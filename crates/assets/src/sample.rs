@@ -82,6 +82,30 @@ pub fn showcase_glb() -> Vec<u8> {
     b.glb()
 }
 
+/// The benchmark's ship as a `.glb` file: a fighter about 4.5 m long,
+/// nose along glTF's -Z (Solis's +Y): a smooth grey hull (detailed
+/// enough, about 1,000 triangles, for levels of detail to matter), flat
+/// wings, and a glowing engine at the back.
+pub fn ship_glb() -> Vec<u8> {
+    let mut b = Builder {
+        json_materials: vec![
+        r#"{"name":"Hull","pbrMetallicRoughness":{"baseColorFactor":[0.62,0.65,0.7,1.0],"metallicFactor":0.6,"roughnessFactor":0.35}}"#.into(),
+        r#"{"name":"Wings","pbrMetallicRoughness":{"baseColorFactor":[0.2,0.22,0.26,1.0],"metallicFactor":0.3,"roughnessFactor":0.6}}"#.into(),
+        r#"{"name":"Engine","pbrMetallicRoughness":{"baseColorFactor":[0.1,0.1,0.1,1.0]},"emissiveFactor":[0.4,0.8,1.0]}"#.into(),
+        ],
+        ..Builder::default()
+    };
+    let hull = b.add_sphere_mesh(1.0, Some(0));
+    let wings = b.add_box_mesh([2.2, 0.06, 0.6], Some(1));
+    let engine = b.add_mesh_of(sphere_data(0.35, 12, 6), Some(2));
+    b.json_nodes = vec![
+        format!(r#"{{"name":"Hull","mesh":{hull},"scale":[0.6,0.4,2.2]}}"#),
+        format!(r#"{{"name":"Wings","mesh":{wings},"translation":[0,0,0.6]}}"#),
+        format!(r#"{{"name":"Engine","mesh":{engine},"translation":[0,0,2.15]}}"#),
+    ];
+    b.glb()
+}
+
 /// A normal texture of horizontal grooves: `size` pixels square, `count`
 /// grooves down it. Flat parts face straight out (the light blue of normal
 /// textures); each groove's sides lean up and down.
@@ -214,6 +238,13 @@ impl Builder {
     /// the mesh's index.
     pub fn add_sphere_mesh(&mut self, radius: f32, material: Option<usize>) -> usize {
         let (positions, normals, uvs, indices) = sphere_data(radius, 32, 16);
+        self.add_mesh(&positions, &normals, &uvs, &indices, material)
+    }
+
+    /// Adds a mesh from its corners, normals, texture coordinates and
+    /// triangles, together, and returns its index.
+    fn add_mesh_of(&mut self, data: BoxData, material: Option<usize>) -> usize {
+        let (positions, normals, uvs, indices) = data;
         self.add_mesh(&positions, &normals, &uvs, &indices, material)
     }
 
@@ -401,6 +432,16 @@ mod tests {
     #[test]
     fn the_showcase_is_a_valid_glb() {
         assert!(gltf::Gltf::from_slice(&showcase_glb()).is_ok());
+    }
+
+    #[test]
+    fn the_ship_imports_with_levels_of_detail() {
+        let ship = crate::load_bytes(&ship_glb(), None, "Ship", &crate::Limits::default()).unwrap();
+        assert!(ship.warnings.is_empty(), "{:?}", ship.warnings);
+        let size = ship.bounds.max - ship.bounds.min;
+        assert!(size.y > size.x && size.y > 4.0, "long along +Y: {size}");
+        assert!(ship.triangles() > 1000);
+        assert!(ship.meshes.iter().any(|m| !m.lods.is_empty()));
     }
 
     #[test]

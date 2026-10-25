@@ -1978,16 +1978,22 @@ fn gathering_ms(
     Some((spent.as_secs_f64() * 1000.0 / frames as f64, stats))
 }
 
-/// Phase 5 builds what the 100,000-copy cases need; until its end the
-/// scale check reports them only.
-const PHASE_5_DONE: bool = false;
+/// The 100,000-copy cases are judged on machines with at least this many
+/// cores (gathering runs on every core; the gate's PC has many); on fewer,
+/// they're reported.
+const GATHER_CORES: usize = 4;
+
+/// Whether this machine has [`GATHER_CORES`].
+fn enough_cores() -> bool {
+    std::thread::available_parallelism().map_or(1, std::num::NonZeroUsize::get) >= GATHER_CORES
+}
 
 #[allow(clippy::print_stdout)]
 fn gathering_verdict(what: &str, ms: f64, target: f64, judged: bool) {
     let verdict = match (ms <= target, judged) {
         (true, _) => "ok",
         (false, true) => "SLOW",
-        (false, false) => "not yet (Phase 5 builds it)",
+        (false, false) => "reported: judged on 4+ cores",
     };
     println!("Scale check: {what} {ms:.2} ms a frame (target {target} ms) {verdict}");
     if judged {
@@ -2018,7 +2024,7 @@ fn scale_check_gathering_100000_copies() {
         ),
         ms,
         8.0,
-        PHASE_5_DONE,
+        enough_cores(),
     );
 }
 
@@ -2039,7 +2045,7 @@ fn scale_check_gathering_100000_copies_all_moving() {
         "gathering and handing over 100,000 copies, every one moving",
         ms,
         8.0,
-        PHASE_5_DONE,
+        enough_cores(),
     );
 }
 

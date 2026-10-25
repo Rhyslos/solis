@@ -69,9 +69,9 @@ pub struct Clock {
 /// The running game's entities.
 pub struct World {
     ecs: hecs::World,
-    by_id: HashMap<EntityId, hecs::Entity>,
+    by_id: reflect::IdMap<hecs::Entity>,
     /// Where each entity is in `order`.
-    place: HashMap<EntityId, usize>,
+    place: reflect::IdMap<usize>,
     /// Every entity, parents before their children (the area's tree
     /// order), with where its parent is in this list.
     order: Vec<(hecs::Entity, Option<usize>)>,
@@ -112,8 +112,9 @@ impl World {
     pub fn from_area(area: &Area) -> Self {
         let tree = area.depth_first();
         let mut ecs = hecs::World::new();
-        let mut by_id = HashMap::with_capacity(tree.len());
-        let mut place: HashMap<EntityId, usize> = HashMap::with_capacity(tree.len());
+        let mut by_id = reflect::IdMap::with_capacity_and_hasher(tree.len(), Default::default());
+        let mut place: reflect::IdMap<usize> =
+            reflect::IdMap::with_capacity_and_hasher(tree.len(), Default::default());
         let mut order = Vec::with_capacity(tree.len());
         for id in tree {
             let Some(data) = area.get(id) else {

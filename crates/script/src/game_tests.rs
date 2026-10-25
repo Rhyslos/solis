@@ -58,6 +58,7 @@ impl GameWorld for TestWorld {
             time: self.time,
             index: Arc::new(ViewIndex::new(&entities)),
             places: Arc::new(self.entities.iter().map(|(_, _, m)| *m).collect()),
+            frame_time: 1.0 / 60.0,
         }
     }
 
@@ -339,4 +340,76 @@ fn shots_fired_land_in_order_on_any_number_of_shards() {
     assert_eq!(one[0].speed, 1.0);
     assert_eq!(one[0].colour, [4.0, 0.2, 0.1]);
     assert_eq!(one, run(4));
+}
+
+#[test]
+fn spawns_make_the_same_entities_on_any_number_of_shards() {
+    const HIVES: &str = "get \"solis/world\":[spawn, despawn];\n\
+        component Hive {\n\
+            has {\n\
+                entity last = nothing;\n\
+            }\n\
+            method update(float dt) {\n\
+                last = spawn(\"drone\", [1, 2, 3]);\n\
+                despawn(last);\n\
+            }\n\
+        }\n\
+        pass Hive;\nend\n";
+    let run = |shards| {
+        let names: Vec<String> = (1..=9).map(|n| format!("H{n}")).collect();
+        let names: Vec<&str> = names.iter().map(String::as_str).collect();
+        let mut world = SpawnWorld(TestWorld::with(&names), Vec::new());
+        let mut game = Game::new(shards).unwrap();
+        game.load(&compiled(HIVES), &mut world).unwrap();
+        let empty = ComponentData::default();
+        game.sync_many((1..=9u64).map(|n| (id(n), "Hive", &empty)), &mut world);
+        for t in 0..2 {
+            world.0.time = f64::from(t) / 60.0;
+            assert!(game.tick(1.0 / 60.0, &mut world).failures.is_empty());
+        }
+        world.1
+    };
+    let one = run(1);
+    assert_eq!(
+        one.len(),
+        9 * 2 * 2,
+        "a spawn and a despawn per hive per tick"
+    );
+    match (&one[0], &one[1]) {
+        (Change::Spawn(made, file, place), Change::Despawn(gone)) => {
+            assert_eq!(made, gone, "the entity spawn gave back");
+            assert_eq!(file, "drone");
+            assert_eq!(*place, Vec3::new(1.0, 2.0, 3.0));
+        }
+        other => panic!("{other:?}"),
+    }
+    let ids: std::collections::HashSet<_> = one
+        .iter()
+        .filter_map(|c| match c {
+            Change::Spawn(id, _, _) => Some(*id),
+            _ => None,
+        })
+        .collect();
+    assert_eq!(ids.len(), 18, "every spawn its own entity");
+    assert_eq!(one, run(3));
+}
+
+/// A test world keeping the spawns and despawns game code asks for.
+struct SpawnWorld(TestWorld, Vec<Change>);
+
+impl GameWorld for SpawnWorld {
+    fn view(&mut self) -> WorldView {
+        self.0.view()
+    }
+    fn apply(&mut self, changes: &[Change]) {
+        self.1.extend(
+            changes
+                .iter()
+                .filter(|c| matches!(c, Change::Spawn(..) | Change::Despawn(_)))
+                .cloned(),
+        );
+    }
+    fn say(&mut self, words: &str) {
+        self.0.say(words);
+    }
 }

@@ -415,6 +415,28 @@ impl Document {
         Ok(())
     }
 
+    /// Changes the area by `edits` made by the running game (copies of
+    /// assemblies it spawned, entities it took out), each on its own and
+    /// not as an undo step: Stop puts the area back anyway. Returns how
+    /// many couldn't be made (an entity already there, or gone).
+    pub fn edit_by_game(&mut self, edits: Vec<Edit>) -> usize {
+        let mut failed = 0;
+        let mut changes = Changes::default();
+        for edit in edits {
+            let noted = [edit.clone()];
+            match self.area.apply(edit) {
+                Ok(_) => changes.note(&noted),
+                Err(_) => failed += 1,
+            }
+        }
+        self.changed(false, false);
+        self.changes.entities.extend(changes.entities);
+        self.changes.moved.extend(changes.moved);
+        self.changes.everything |= changes.everything;
+        self.selection.retain_existing(&self.area);
+        failed
+    }
+
     /// Undoes the newest step and brings back the selection it started
     /// with. Returns its label, or `None` if there was nothing to undo.
     pub fn undo(&mut self) -> Option<Result<String, EditError>> {
