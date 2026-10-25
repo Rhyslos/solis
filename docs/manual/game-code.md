@@ -82,6 +82,10 @@ What a field can hold: `bool`, `int`, `float`, `string`, a `state` (shown as a c
 
 **When something goes wrong while it runs,** such as dividing by zero, that component stops and the Console says which one, on which entity, and where in the Lust: "Divider on Splitter stopped: main.lst, line 8: …". The rest of the game keeps going. A component that runs for more than a tenth of a second without stopping (a loop that never ends) is stopped the same way, so it can't freeze Solis.
 
+**When the whole tick is too slow:** if all the game's code together takes more than a quarter of a second in one tick (many slow components, say), the rest of that tick waits and the game **pauses**, with a message in the Console saying why. None of the components is to blame on its own, so none stops; make the slow ones faster, then press **Pause** or **Play** to carry on. Without this, the game would try to catch up and the editor would hardly respond.
+
+**What game code says** goes to the Console a line at a time. A very long line is cut short, and past 200 lines in one tick the rest are counted ("Game code said 800 more lines just now"), so a component that talks too much can't drown the Console or fill the computer's memory.
+
 ## Changing code while the game runs
 
 Keep the game playing, change your Lust, and save. In about a third of a second the running game has the new code, and nothing starts over:
@@ -141,7 +145,8 @@ end
 - **When they arrive:** after every component's `update` in the tick, in the order they were sent. On the entity, each component with an `on` for it reacts, in the order of the components' names. An event sent while reacting to another (Hit sends Died) arrives later in the same tick.
 - **An event to `nothing`** goes nowhere, so a gun with no target is harmless.
 - **Lust checks** that every `send` carries what the event says, so a misspelt event or a missing value is a mistake in Problems before anything runs.
-- **Components that keep sending to each other** forever are stopped after 10,000 events in one tick, with a message in the Console, so the game can't freeze.
+- **Components that keep sending to each other** forever are stopped after 10,000 events in one tick, with a message in the Console (once, until the code changes), so the game can't freeze. At most 10,000 events can wait at once, holding at most 16 MB of text: past that, the `send` itself fails, so the Console points at the component sending too much.
+- **A component whose reaction keeps failing** (an `on` that divides by zero, every time) is said once in the Console; it keeps running, and its later failures with events aren't said again until the code changes.
 
 **In Lua**, `solis.send(to, "Hit", by, 2.5)` sends an event, and a function called `on_` and the event's name reacts to it:
 
@@ -152,6 +157,8 @@ end
 ```
 
 When the Lust declares the event, its values are checked against what it carries; Lua can also send events no Lust declares.
+
+**Each Lua file has globals of its own.** A helper a file makes global (`function helper() … end`) is seen by that file only, and no file can change Lua's own libraries (`string`, `table`, `math`) or `solis`, `component` and `vec3`: trying to is a mistake. That way one file can't break another, or the Lust. To share code between Lua files, put it in a component's events, or in Lust.
 
 **In Rust**, a component implements `script::RustComponent`, and takes and sends the same events by name. Solis can't build a game's own Rust until Phase 10; until then, the [turret sample](first-game.md)'s Rust component is built into Solis to show how it works.
 
@@ -188,6 +195,8 @@ Other code files can sit in any folder in `assets`. Fetch them by their path fro
 - **Problem:** my component isn't in **Add component**. **Why:** the code has a mistake (see Problems), or its Lust file isn't fetched from `main.lst` (directly, or through a file `main.lst` fetches). Lua files are all read, wherever they are in `assets`. **Fix:** fix the mistake, or fetch the file.
 - **Problem:** "solis.moveTo isn't something Solis offers" in Lua. **Why:** the name is misspelt, or the method was used outside `update` or an `on_` function, when the game isn't running. **Fix:** check the name against the table above.
 - **Problem:** a component is called the same as one of Solis's (`Light`), or a Lust and a Lua component share a name. **Why:** two components can't share a name. **Fix:** rename one; Problems says which.
+- **Problem:** Problems says brackets nest too deep, or a statement is too long. **Why:** code nested more than 200 brackets deep, or a statement over 64 KB, needs more room than Solis gives the Lust compiler. **Fix:** split it into smaller pieces, with names of their own.
+- **Problem:** Problems says the code stopped while starting. **Why:** Solis runs the code's own start (the lines outside components, and each field's starting value) to read its components, before anything plays and with no world: `find` finds nothing then. A start that fails or takes more than a second is a mistake. **Fix:** fix the line Problems points at.
 - **Problem:** the Console says a code file was left out. **Why:** each code file can be at most 1 MB, and all of them together 16 MB. Files that aren't text are left out too. **Fix:** split a huge file into smaller ones.
 - Commit the `solis` folder with your game, so `lust check` works on other computers too.
 

@@ -12,6 +12,7 @@ fn chunk(main: &str) -> Compiled {
         Ok(chunk) => Compiled {
             lust: Some(chunk),
             lua: Vec::new(),
+            schemas: Vec::new(),
         },
         Err(problems) => panic!("{}", problems[0]),
     }
@@ -58,7 +59,7 @@ const V2: &str = "component Gun {\n\
     pass Gun, Radar;\nend\n";
 
 fn running_v1() -> Runtime {
-    let mut runtime = Runtime::new();
+    let mut runtime = Runtime::new().unwrap();
     runtime.load(&chunk(V1), &mut NoHost).unwrap();
     runtime
         .sync(id(1), "Gun", &ComponentData::default(), &mut NoHost)
@@ -130,16 +131,19 @@ fn new_code_that_fails_to_start_leaves_the_old_code_running() {
 fn a_stopped_component_runs_again_once_its_code_is_fixed() {
     let broken = "component Divider {\n    has {\n        int ways = 0;\n        int done = 0;\n    }\n    method update(float dt) {\n        done = done + 12 / ways;\n    }\n}\npass Divider;\nend\n";
     let fixed = "component Divider {\n    has {\n        int ways = 0;\n        int done = 0;\n    }\n    method update(float dt) {\n        done = done + 1;\n    }\n}\npass Divider;\nend\n";
-    let mut runtime = Runtime::new();
+    let mut runtime = Runtime::new().unwrap();
     runtime.load(&chunk(broken), &mut NoHost).unwrap();
     runtime
         .sync(id(2), "Divider", &ComponentData::default(), &mut NoHost)
         .unwrap();
-    assert_eq!(runtime.tick(0.1, &mut NoHost).len(), 1);
-    assert!(runtime.tick(0.1, &mut NoHost).is_empty(), "stopped");
+    assert_eq!(runtime.tick(0.1, &mut NoHost).failures.len(), 1);
+    assert!(
+        runtime.tick(0.1, &mut NoHost).failures.is_empty(),
+        "stopped"
+    );
     let swapped = runtime.swap(&chunk(fixed), &mut NoHost).unwrap();
     assert!(swapped.changed.is_empty(), "same fields");
-    assert!(runtime.tick(0.1, &mut NoHost).is_empty());
+    assert!(runtime.tick(0.1, &mut NoHost).failures.is_empty());
     assert_eq!(
         runtime.values(id(2), "Divider").unwrap().get("done"),
         Some(&Value::Int(1)),

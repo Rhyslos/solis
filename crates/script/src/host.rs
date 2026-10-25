@@ -3,11 +3,11 @@
 //! the `LUST_NATIVES` table for exactly as long as game code runs.
 
 use crate::convert::{entity_of, quat_of, quat_table, vec3_of, vec3_table};
+use crate::luau::{Luau, capped};
 use glam::{Quat, Vec3};
-use mlua::{Lua, Table, Value as LuaValue};
+use mlua::{Table, Value as LuaValue};
 use reflect::EntityId;
 use std::cell::{Cell, RefCell};
-use std::time::Instant;
 
 /// What game code can ask of the engine: the bodies of the native methods
 /// described in `solis/*.lst` ([`crate::describe::NATIVES`]). Entities
@@ -58,71 +58,80 @@ impl Host for NoHost {
     }
 }
 
-/// Runs `run` with `LUST_NATIVES` filled from `host` for its length, and
-/// the time limit watching it.
+/// The most bytes of one line game code says; the rest is cut.
+pub const MAX_SAID_BYTES: usize = 2_000;
+/// The most lines game code says while the natives are lent once (a tick,
+/// a load); the rest are counted, not shown.
+pub const MAX_SAID_LINES: usize = 200;
+
+/// Runs `run` with the natives lent from `host` and the time limit
+/// watching it.
 pub(crate) fn call_with<R>(
-    lua: &Lua,
-    deadline: &Cell<Option<Instant>>,
+    luau: &Luau,
+    lust: Option<&Table>,
     host: &mut dyn Host,
     send: Option<&mlua::Function>,
     run: impl FnOnce() -> mlua::Result<R>,
 ) -> mlua::Result<R> {
-    with_natives(lua, host, send, |_| limited(deadline, run))
+    with_natives(luau, lust, host, send, |_| luau.clock.limited(run))
 }
 
 /// The host while game code runs: shared by Lust's natives and, between
 /// Lua calls, Rust components.
 pub(crate) type Lent<'a, 'h> = RefCell<&'a mut (dyn Host + 'h)>;
 
-/// Runs `run` with the time limit watching it.
-pub(crate) fn limited<R>(
-    deadline: &Cell<Option<Instant>>,
-    run: impl FnOnce() -> mlua::Result<R>,
-) -> mlua::Result<R> {
-    deadline.set(Some(Instant::now() + crate::runtime::TIME_LIMIT));
-    let result = run();
-    deadline.set(None);
-    result
-}
-
-/// Runs `run` with `LUST_NATIVES` filled from `host` (and `send` as its
-/// `send_event`) for its length. `run` is given the host too, for Rust
-/// components to borrow between Lua calls.
+/// Runs `run` with the natives filled from `host` (and `send` as their
+/// `send_event`) for its length: as `LUST_NATIVES` in the Lust's globals
+/// `lust`, and for Lua's `solis`. `run` is given the host too, for Rust
+/// components to borrow between Lua calls. Past [`MAX_SAID_LINES`], what
+/// game code says is counted, and the count said at the end.
 pub(crate) fn with_natives<'h, R>(
-    lua: &Lua,
+    luau: &Luau,
+    lust: Option<&Table>,
     host: &mut (dyn Host + 'h),
     send: Option<&mlua::Function>,
     run: impl FnOnce(&Lent<'_, 'h>) -> mlua::Result<R>,
 ) -> mlua::Result<R> {
+    let lua = &luau.lua;
     let host: Lent<'_, 'h> = RefCell::new(host);
-    lua.scope(|scope| {
+    let lines = Cell::new(0usize);
+    let result = lua.scope(|scope| {
         let natives = lua.create_table()?;
         let h = &host;
-        natives.set(
+        let said = &lines;
+        natives.raw_set(
             "say",
-            scope.create_function(move |_, words: String| {
-                h.borrow_mut().say(&words);
+            scope.create_function(move |_, words: mlua::String| {
+                let n = said.get() + 1;
+                said.set(n);
+                if n <= MAX_SAID_LINES {
+                    let words = words.as_bytes();
+                    let text =
+                        String::from_utf8_lossy(&words[..words.len().min(MAX_SAID_BYTES + 4)]);
+                    h.borrow_mut().say(&capped(&text, MAX_SAID_BYTES));
+                }
                 Ok(())
             })?,
         )?;
-        natives.set(
+        natives.raw_set(
             "time",
             scope.create_function(move |_, ()| Ok(h.borrow().time()))?,
         )?;
-        natives.set(
+        natives.raw_set(
             "find",
-            scope.create_function(move |_, name: String| {
+            scope.create_function(move |_, name: mlua::String| {
+                let name = name.to_str()?;
                 Ok(h.borrow().find(&name).map(|id| id.to_string()))
             })?,
         )?;
-        natives.set(
+        natives.raw_set(
             "positionOf",
             scope.create_function(move |lua, which: LuaValue| {
                 let at = entity_of(&which).and_then(|e| h.borrow().position(e));
                 vec3_table(lua, at.unwrap_or(Vec3::ZERO))
             })?,
         )?;
-        natives.set(
+        natives.raw_set(
             "moveTo",
             scope.create_function(move |_, (which, place): (LuaValue, Table)| {
                 if let (Some(e), Some(place)) = (entity_of(&which), vec3_of(&place)) {
@@ -131,14 +140,14 @@ pub(crate) fn with_natives<'h, R>(
                 Ok(())
             })?,
         )?;
-        natives.set(
+        natives.raw_set(
             "rotationOf",
             scope.create_function(move |lua, which: LuaValue| {
                 let facing = entity_of(&which).and_then(|e| h.borrow().rotation(e));
                 quat_table(lua, facing.unwrap_or(Quat::IDENTITY))
             })?,
         )?;
-        natives.set(
+        natives.raw_set(
             "turnTo",
             scope.create_function(move |_, (which, facing): (LuaValue, Table)| {
                 if let (Some(e), Some(facing)) = (entity_of(&which), quat_of(&facing)) {
@@ -147,7 +156,7 @@ pub(crate) fn with_natives<'h, R>(
                 Ok(())
             })?,
         )?;
-        natives.set(
+        natives.raw_set(
             "nameOf",
             scope.create_function(move |_, which: LuaValue| {
                 Ok(entity_of(&which)
@@ -156,11 +165,24 @@ pub(crate) fn with_natives<'h, R>(
             })?,
         )?;
         if let Some(send) = send {
-            natives.set("send_event", send.clone())?;
+            natives.raw_set("send_event", send.clone())?;
         }
-        lua.globals().set("LUST_NATIVES", natives)?;
+        if let Some(lust) = lust {
+            lust.raw_set("LUST_NATIVES", &natives)?;
+        }
+        luau.lend(LuaValue::Table(natives))?;
         let result = run(&host);
-        lua.globals().set("LUST_NATIVES", LuaValue::Nil)?;
+        if let Some(lust) = lust {
+            lust.raw_set("LUST_NATIVES", LuaValue::Nil)?;
+        }
+        luau.lend(LuaValue::Nil)?;
         result
-    })
+    });
+    let more = lines.get().saturating_sub(MAX_SAID_LINES);
+    if more > 0 {
+        host.borrow_mut().say(&format!(
+            "(Game code said {more} more lines just now; only the first {MAX_SAID_LINES} are shown.)"
+        ));
+    }
+    result
 }

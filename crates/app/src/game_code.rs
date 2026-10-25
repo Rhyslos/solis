@@ -6,9 +6,15 @@
 
 use script::{Code, CodeProblem};
 use std::hash::{Hash, Hasher};
+use std::io::Read;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::sync::mpsc::{Receiver, channel};
+use std::time::{Duration, Instant};
+
+/// How long a check may take before Solis stops waiting for it: only a
+/// bug in the compiler could take this long.
+const GIVE_UP: Duration = Duration::from_secs(60);
 
 /// What a finished check found.
 pub struct Checked {
@@ -32,7 +38,8 @@ type Answer = (
 /// One check at a time, and whether another is wanted after it.
 #[derive(Default)]
 pub struct GameCode {
-    running: Option<Receiver<Answer>>,
+    /// The check running, and when it started.
+    running: Option<(Receiver<Answer>, Instant)>,
     /// The folder to check again when the running check ends.
     again: Option<PathBuf>,
     /// The code the last reported check found, by its hash.
@@ -47,7 +54,7 @@ impl GameCode {
         let mut notes = Vec::new();
         for (path, text) in script::describe::descriptions(made_by, crate::branding::CODE_FOLDER) {
             let file = assets.join(&path);
-            if std::fs::read_to_string(&file).is_ok_and(|old| old == text) {
+            if same_text(&file, &text) {
                 continue;
             }
             let written = file
@@ -79,7 +86,7 @@ impl GameCode {
                 let _ = sender.send((hash(&code), code, compiled));
             });
         if started.is_ok() {
-            self.running = Some(receiver);
+            self.running = Some((receiver, Instant::now()));
         }
     }
 
@@ -99,9 +106,34 @@ impl GameCode {
     /// A finished check's findings, if the code changed since the last
     /// one reported. Never waits.
     pub fn poll(&mut self) -> Option<Checked> {
-        let receiver = self.running.as_ref()?;
+        let (receiver, started) = self.running.as_ref()?;
         let (found, code, compiled) = match receiver.try_recv() {
             Ok(done) => done,
+            Err(std::sync::mpsc::TryRecvError::Empty) if started.elapsed() > GIVE_UP => {
+                // Stuck: stop waiting (the worker is left to end on its
+                // own), say so, and let the next change be checked.
+                self.running = None;
+                self.last = None;
+                if let Some(assets) = self.again.take() {
+                    self.check(assets);
+                }
+                return Some(Checked {
+                    problems: vec![CodeProblem {
+                        file: script::code::ENTRY.to_string(),
+                        line: 0,
+                        column: 0,
+                        message: format!(
+                            "checking the game's code took more than {} s, so Solis stopped \
+                             waiting. This is a bug in Lust ({}); please report it with the \
+                             code that caused it. Saving a change checks the code again.",
+                            GIVE_UP.as_secs(),
+                            script::LUST_VERSION
+                        ),
+                    }],
+                    notes: Vec::new(),
+                    program: None,
+                });
+            }
             Err(std::sync::mpsc::TryRecvError::Empty) => return None,
             Err(std::sync::mpsc::TryRecvError::Disconnected) => {
                 // The worker stopped without an answer: try again later.
@@ -127,6 +159,18 @@ impl GameCode {
             program,
         })
     }
+}
+
+/// Whether `file` holds exactly `text`, reading no more than that.
+fn same_text(file: &Path, text: &str) -> bool {
+    let Ok(opened) = std::fs::File::open(file) else {
+        return false;
+    };
+    let mut old = Vec::with_capacity(text.len());
+    opened
+        .take(text.len() as u64 + 1)
+        .read_to_end(&mut old)
+        .is_ok_and(|_| old == text.as_bytes())
 }
 
 /// A hash of the files read and those left out, to tell a change.
@@ -204,6 +248,26 @@ mod tests {
         let sound = finished(&mut code).unwrap();
         assert!(sound.problems.is_empty());
         assert!(matches!(sound.program, Some(Some(_))), "a program to run");
+    }
+}
+
+#[cfg(test)]
+mod stuck {
+    use super::*;
+
+    #[test]
+    fn a_check_that_never_ends_is_given_up_on_and_said() {
+        let mut code = GameCode::default();
+        let (sender, receiver) = channel::<Answer>();
+        let long_ago = Instant::now()
+            .checked_sub(GIVE_UP + Duration::from_secs(1))
+            .unwrap();
+        code.running = Some((receiver, long_ago));
+        let found = code.poll().expect("given up on");
+        assert!(found.problems[0].message.contains("stopped waiting"));
+        assert!(found.program.is_none(), "the last program stays");
+        assert!(!code.waiting(), "the next change is checked");
+        drop(sender);
     }
 }
 

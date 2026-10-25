@@ -54,6 +54,12 @@ What changed in each version, for people using Solis. Newest first.
 
 ### Fixed
 
+- **Game code can no longer freeze or crash Solis** (the Phase 4 review): very deeply nested Lust no longer crashes Solis (it's a mistake in Problems, with a limit of 200 brackets deep); every place Solis meets game code has a time limit, including reading components and swapping in new code; a tick whose code takes more than a quarter of a second pauses the game and says why, rather than catching up ever more slowly; and what game code says or sends is kept within limits, so it can't fill the computer's memory or the Console. A component whose event reaction keeps failing is said once.
+- Each Lua file now has globals of its own, and Lua's own libraries can't be changed, so one file can't break another or the Lust.
+- The code's start (reading its components) now runs on a worker, never while drawing the editor, and a check that never ends is given up on after a minute with a message.
+- **Help > Make the sample game…** never replaces a file already in the folder; it asks for an empty one.
+- On Windows, the turret sample said its `armour.rs` was changed when it wasn't (the file's line endings differed).
+
 - **Work could be lost when saving before quitting or starting a new area.** On an untitled area, choosing **Save** in the "unsaved changes" question went straight on to quitting (or the new area) while the Save window was still open. Now everything waits for the Save window.
 - After a save was cancelled or failed while quitting, closing the window later closed it without asking about unsaved changes. Now it asks again.
 - A file chosen in an Open or Save window opened before **Play** is now opened or saved only after **Stop**, so it never replaces or saves the game's copy. The question about a file changed on disk also waits until Stop.

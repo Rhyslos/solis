@@ -5,6 +5,7 @@ use crate::host::NoHost;
 use glam::{Quat, Vec3};
 use reflect::{FieldKind, Value};
 use std::collections::HashMap;
+use std::time::{Duration, Instant};
 
 /// A small world for game code: entities with names, places and turns,
 /// and everything said.
@@ -64,13 +65,14 @@ fn chunk(main: &str) -> Compiled {
         Ok(chunk) => Compiled {
             lust: Some(chunk),
             lua: Vec::new(),
+            schemas: Vec::new(),
         },
         Err(problems) => panic!("{}", problems[0]),
     }
 }
 
 fn loaded(main: &str) -> Runtime {
-    let mut runtime = Runtime::new();
+    let mut runtime = Runtime::new().unwrap();
     runtime.load(&chunk(main), &mut NoHost).unwrap();
     runtime
 }
@@ -198,7 +200,7 @@ fn ticks_run_in_order_and_natives_reach_the_host() {
             .sync(e, "Mover", &ComponentData::default(), &mut host)
             .unwrap();
     }
-    assert!(runtime.tick(0.5, &mut host).is_empty());
+    assert!(runtime.tick(0.5, &mut host).failures.is_empty());
     assert_eq!(host.places[&a], Vec3::new(1.0, 0.0, 0.0));
     assert_eq!(host.places[&b], Vec3::new(1.0, 5.0, 0.0));
     assert!(host.turns[&a].abs_diff_eq(Quat::from_rotation_z(1.0), 1e-6));
@@ -232,7 +234,7 @@ fn a_failing_component_stops_alone_and_says_where_in_the_lust() {
             .sync(me, name, &ComponentData::default(), &mut NoHost)
             .unwrap();
     }
-    let failures = runtime.tick(0.1, &mut NoHost);
+    let failures = runtime.tick(0.1, &mut NoHost).failures;
     assert_eq!(failures.len(), 1);
     let failure = &failures[0];
     assert_eq!(
@@ -242,7 +244,7 @@ fn a_failing_component_stops_alone_and_says_where_in_the_lust() {
     assert_eq!(failure.at.file, "main.lst");
     assert_eq!(failure.at.line, 8, "{failure}");
     // Stopped: no second report; the counter carries on.
-    assert!(runtime.tick(0.1, &mut NoHost).is_empty());
+    assert!(runtime.tick(0.1, &mut NoHost).failures.is_empty());
     assert_eq!(
         runtime.values(me, "Counter").unwrap().get("ticks"),
         Some(&Value::Int(2))
@@ -268,7 +270,7 @@ fn a_loop_that_never_ends_is_stopped_by_the_time_limit() {
         .sync(id(5), "Spinner", &ComponentData::default(), &mut NoHost)
         .unwrap();
     let start = Instant::now();
-    let failures = runtime.tick(0.1, &mut NoHost);
+    let failures = runtime.tick(0.1, &mut NoHost).failures;
     assert!(start.elapsed() < Duration::from_secs(5));
     assert_eq!(failures.len(), 1);
     assert!(
@@ -280,7 +282,7 @@ fn a_loop_that_never_ends_is_stopped_by_the_time_limit() {
 
 #[test]
 fn a_program_whose_start_fails_or_takes_all_memory_is_refused() {
-    let mut runtime = Runtime::new();
+    let mut runtime = Runtime::new().unwrap();
     let failure = runtime
         .load(
             &chunk("int ways = 0;\nint each = 12 / ways;\nend\n"),
@@ -307,7 +309,7 @@ fn a_program_whose_start_fails_or_takes_all_memory_is_refused() {
     runtime
         .sync(id(6), "Hungry", &ComponentData::default(), &mut NoHost)
         .unwrap();
-    assert_eq!(runtime.tick(0.1, &mut NoHost).len(), 1);
+    assert_eq!(runtime.tick(0.1, &mut NoHost).failures.len(), 1);
     // The runtime still works afterwards.
     runtime.load(&chunk(GUN), &mut NoHost).unwrap();
     assert_eq!(runtime.schemas().len(), 1);

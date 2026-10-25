@@ -23,61 +23,19 @@
 //! same ticks and order, with the same native methods (under `solis.`),
 //! and send (`solis.send(to, "Hit", by, 2.5)`) and handle (`on_Hit`) the
 //! same events.
+//!
+//! Each file has globals of its own (see [`crate::luau`]): a helper made
+//! global in one file isn't seen by another, and none can change the
+//! standard libraries.
 
 use crate::code::CodeProblem;
 use crate::convert::{empty, from_lua, kind_of, label, to_lua};
+use crate::luau::{Luau, capped};
 use crate::runtime::Swapped;
 use crate::ticking::{Instance, RunningMap};
 use mlua::{Lua, Table, Value as LuaValue};
 use reflect::{ComponentData, ComponentSchema, EntityId, FieldInfo, FieldKind};
 use std::collections::BTreeMap;
-
-/// Lua run once in every runtime: `component`; `vec3(x, y, z)`, a vector
-/// that adds, takes away and scales; and `solis`, which reaches the native
-/// methods while game code runs.
-pub(crate) const PRELUDE: &str = r#"
-SOLIS_MADE = {}
-function component(name, fields)
-  if type(name) ~= "string" then
-    error("component needs a name first, such as component(\"Spinner\", { … })", 2)
-  end
-  if type(fields) ~= "table" then
-    error("component " .. name .. " needs its fields as a list after its name", 2)
-  end
-  local class = { __name = name, __fields = fields }
-  class.__index = class
-  SOLIS_MADE[#SOLIS_MADE + 1] = class
-  return class
-end
-local Vec3 = {}
-Vec3.__index = Vec3
-function vec3(x, y, z)
-  return setmetatable({ x = x or 0, y = y or 0, z = z or 0 }, Vec3)
-end
-Vec3.__add = function(a, b) return vec3(a.x + b.x, a.y + b.y, a.z + b.z) end
-Vec3.__sub = function(a, b) return vec3(a.x - b.x, a.y - b.y, a.z - b.z) end
-Vec3.__unm = function(a) return vec3(-a.x, -a.y, -a.z) end
-Vec3.__mul = function(a, b)
-  if type(a) == "number" then return vec3(a * b.x, a * b.y, a * b.z) end
-  return vec3(a.x * b, a.y * b, a.z * b)
-end
-Vec3.__div = function(a, b) return vec3(a.x / b, a.y / b, a.z / b) end
-Vec3.__tostring = function(a) return "[" .. a.x .. ", " .. a.y .. ", " .. a.z .. "]" end
-solis = setmetatable({}, { __index = function(_, key)
-  local natives = rawget(_G, "LUST_NATIVES")
-  local f = natives and key ~= "send_event" and natives[key]
-  if not f then
-    error("solis." .. tostring(key) .. " isn't something Solis offers to game code", 2)
-  end
-  return f
-end })
-function solis.send(to, name, ...)
-  local natives = rawget(_G, "LUST_NATIVES")
-  local send = natives and natives.send_event
-  if not send then error("events can only be sent while the game runs", 2) end
-  send(to, name, table.pack(...))
-end
-"#;
 
 /// A field as a component keeps it: its key in the component's table, and
 /// kind. (Lust's keys can differ from the names; Lua's are the names.)
@@ -98,6 +56,16 @@ pub(crate) struct LuaClass {
 /// A Lua error's place and message, from its text (`spinner.lua:5:
 /// attempt to …`): the file it names, or `file` if it names none.
 pub(crate) fn lua_problem(file: &str, err: &mlua::Error) -> CodeProblem {
+    let mut problem = lua_problem_whole(file, err);
+    problem.message = capped(&problem.message, MAX_MESSAGE_BYTES);
+    problem
+}
+
+/// The most bytes of a mistake's message kept: game code's `error` can
+/// throw any text.
+pub(crate) const MAX_MESSAGE_BYTES: usize = 1_000;
+
+fn lua_problem_whole(file: &str, err: &mlua::Error) -> CodeProblem {
     let text = err.to_string();
     let mut first = text.lines().next().unwrap_or("").trim();
     for prefix in ["runtime error: ", "syntax error: ", "callback error: "] {
@@ -130,27 +98,41 @@ pub(crate) fn lua_problem(file: &str, err: &mlua::Error) -> CodeProblem {
     }
 }
 
-/// The classes the Lua files made, by component name, after running them
-/// (the caller lends the natives and the time limit). The first mistake
-/// found stops it.
-pub(crate) fn read_classes(
-    lua: &Lua,
+/// The Lua files, compiled, each with globals of its own (not run yet).
+pub(crate) fn compile_files(
+    luau: &Luau,
     files: &[(String, String)],
+) -> Result<Vec<(String, mlua::Function)>, CodeProblem> {
+    let mut out = Vec::with_capacity(files.len());
+    for (path, text) in files {
+        let problem = |err: mlua::Error| lua_problem(path, &err);
+        let chunk = luau
+            .lua
+            .load(text)
+            .set_name(format!("={path}"))
+            .set_environment(luau.env().map_err(problem)?)
+            .into_function()
+            .map_err(problem)?;
+        out.push((path.clone(), chunk));
+    }
+    Ok(out)
+}
+
+/// The classes the Lua files made, by component name, after running each
+/// (`run` lends the natives and the time limit). The first mistake found
+/// stops it.
+pub(crate) fn read_classes(
+    luau: &Luau,
+    files: &[(String, mlua::Function)],
     mut run: impl FnMut(&mlua::Function) -> mlua::Result<()>,
 ) -> Result<BTreeMap<String, LuaClass>, CodeProblem> {
     let mut classes = BTreeMap::new();
-    for (path, text) in files {
+    for (path, chunk) in files {
         let problem = |err: mlua::Error| lua_problem(path, &err);
-        lua.globals()
-            .set("SOLIS_MADE", lua.create_table().map_err(problem)?)
-            .map_err(problem)?;
-        let chunk = lua
-            .load(text)
-            .set_name(format!("={path}"))
-            .into_function()
-            .map_err(problem)?;
-        run(&chunk).map_err(problem)?;
-        let made: Table = lua.globals().get("SOLIS_MADE").map_err(problem)?;
+        // Anything made before (by a file that failed) isn't this file's.
+        luau.made().map_err(problem)?;
+        run(chunk).map_err(problem)?;
+        let made = luau.made().map_err(problem)?;
         for class in made.sequence_values::<Table>() {
             let class = class.map_err(problem)?;
             let read = read_class(path, class)?;
@@ -180,8 +162,10 @@ fn read_class(path: &str, class: Table) -> Result<LuaClass, CodeProblem> {
         message,
     };
     let problem = |err: mlua::Error| lua_problem(path, &err);
-    let name: String = class.get("__name").map_err(problem)?;
-    let list: Table = class.get("__fields").map_err(problem)?;
+    // Raw reads: the tables are game code's, and their metatables
+    // mustn't run here.
+    let name: String = class.raw_get("__name").map_err(problem)?;
+    let list: Table = class.raw_get("__fields").map_err(problem)?;
     let mut fields = Vec::new();
     let mut infos = Vec::new();
     for (i, entry) in list.sequence_values::<Table>().enumerate() {
@@ -192,14 +176,14 @@ fn read_class(path: &str, class: Table) -> Result<LuaClass, CodeProblem> {
             ))
         })?;
         let field: String = entry
-            .get(1)
+            .raw_get(1)
             .map_err(|_| mistake(format!("{name}'s field {} has no name first", i + 1)))?;
-        let kind_name: String = entry.get(2).map_err(|_| {
+        let kind_name: String = entry.raw_get(2).map_err(|_| {
             mistake(format!(
                 "{name}'s field {field} has no kind (such as \"float\")"
             ))
         })?;
-        let options: Vec<String> = match entry.get::<LuaValue>(4).map_err(problem)? {
+        let options: Vec<String> = match entry.raw_get::<LuaValue>(4).map_err(problem)? {
             LuaValue::Table(t) => t
                 .sequence_values::<String>()
                 .collect::<Result<_, _>>()
@@ -212,7 +196,7 @@ fn read_class(path: &str, class: Table) -> Result<LuaClass, CodeProblem> {
                  hold: bool, int, float, string, state, vec3, rotation or entity"
             )));
         };
-        let start: LuaValue = entry.get(3).map_err(problem)?;
+        let start: LuaValue = entry.raw_get(3).map_err(problem)?;
         let default = match start {
             LuaValue::Nil => empty(&kind),
             given => from_lua(&kind, &given).ok_or_else(|| {
@@ -253,14 +237,14 @@ pub(crate) fn make(
     data: &ComponentData,
 ) -> mlua::Result<Table> {
     let table = lua.create_table()?;
-    table.set("me", me.to_string())?;
+    table.raw_set("me", me.to_string())?;
     for (field, info) in class.fields.iter().zip(&class.schema.fields) {
         let value = data
             .get(&field.name)
             .and_then(|v| to_lua(lua, &field.kind, v))
             .or_else(|| to_lua(lua, &field.kind, &info.default));
         if let Some(value) = value {
-            table.set(field.key.as_str(), value)?;
+            table.raw_set(field.key.as_str(), value)?;
         }
     }
     table.set_metatable(Some(class.class.clone()));
@@ -305,7 +289,7 @@ pub(crate) fn swap_classes(
                 continue;
             }
             if let Some(value) = to_lua(lua, &field.kind, &info.default) {
-                table.set(field.key.as_str(), value)?;
+                table.raw_set(field.key.as_str(), value)?;
             }
             if kept.is_some() {
                 swapped.notes.push(format!(
@@ -316,11 +300,10 @@ pub(crate) fn swap_classes(
         }
         for field in before {
             if !class.fields.iter().any(|f| f.name == field.name) {
-                table.set(field.key.as_str(), LuaValue::Nil)?;
+                table.raw_set(field.key.as_str(), LuaValue::Nil)?;
             }
         }
         table.set_metatable(Some(class.class.clone()));
-        component.stopped = false;
     }
     for key in gone {
         running.remove(&key);

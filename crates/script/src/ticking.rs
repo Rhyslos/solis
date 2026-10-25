@@ -3,16 +3,16 @@
 
 use crate::code::CodeProblem;
 use crate::events::{Event, EventKinds, MAX_DELIVERIES, Queue, arguments, values_table};
-use crate::host::{Lent, limited};
+use crate::host::Lent;
 use crate::lua_components::lua_problem;
+use crate::luau::Luau;
 use crate::lust_program::located;
 use crate::runtime::Failure;
 use crate::rust_component::{Context, RustComponent};
-use mlua::{Lua, Table, Value as LuaValue};
+use mlua::{Function, Table, Value as LuaValue};
 use reflect::{ComponentData, EntityId};
 use std::cell::Cell;
 use std::collections::BTreeMap;
-use std::time::Instant;
 
 /// What a running component is.
 pub(crate) enum Instance {
@@ -31,6 +31,10 @@ pub(crate) struct Running {
     pub(crate) seen: ComponentData,
     /// Stopped after a failure, until the code changes.
     pub(crate) stopped: bool,
+    /// Its failures handling events go unsaid, after the first, until the
+    /// code changes: one that fails on every event would fill the
+    /// Console.
+    pub(crate) quiet: bool,
 }
 
 /// The running components, by entity and then name: the order they run in.
@@ -43,19 +47,36 @@ impl Running {
             instance,
             seen: data.clone(),
             stopped: false,
+            quiet: false,
         }
+    }
+
+    /// The code changed: it runs again, and its failures are said again.
+    pub(crate) fn fresh(&mut self) {
+        self.stopped = false;
+        self.quiet = false;
     }
 }
 
 /// What a tick needs, apart from the running components.
 pub(crate) struct Ticking<'a> {
-    pub(crate) lua: &'a Lua,
-    pub(crate) deadline: &'a Cell<Option<Instant>>,
+    pub(crate) luau: &'a Luau,
     pub(crate) queue: &'a Queue,
     /// The Lust's chunk, to point at the Lust when it fails.
     pub(crate) chunk: Option<&'a lust::LuaChunk>,
     /// The events the Lust declares.
     pub(crate) events: Option<&'a EventKinds>,
+    /// Whether too many events were said already, since the code changed.
+    pub(crate) told: &'a Cell<bool>,
+}
+
+/// A method of a Lust or Lua component, looked up the usual way (its
+/// class's metatable may be game code's, so under the time limit).
+fn method(table: &Table, name: &str) -> mlua::Result<Option<Function>> {
+    Ok(match table.get::<LuaValue>(name)? {
+        LuaValue::Function(f) => Some(f),
+        _ => None,
+    })
 }
 
 impl Ticking<'_> {
@@ -86,12 +107,13 @@ impl Ticking<'_> {
     ) -> Result<(), CodeProblem> {
         match &mut component.instance {
             Instance::Lust(table) | Instance::Lua(table) => {
-                let update = match table.get::<LuaValue>("update") {
-                    Ok(LuaValue::Function(f)) => f,
-                    _ => return Ok(()),
-                };
                 let table = table.clone();
-                limited(self.deadline, || update.call::<()>((table, dt)))
+                self.luau
+                    .clock
+                    .limited(|| match method(&table, "update")? {
+                        Some(update) => update.call::<()>((table.clone(), dt)),
+                        None => Ok(()),
+                    })
                     .map_err(|err| self.located_in(&component.instance, &err))
             }
             Instance::Rust(rust) => {
@@ -104,25 +126,33 @@ impl Ticking<'_> {
 
     /// Delivers the tick's events, in order, to each running component on
     /// the entity, in order of their names; events sent meanwhile join the
-    /// end. A failure handling one is reported, and the component keeps
-    /// running. Past [`MAX_DELIVERIES`], the rest are dropped.
+    /// end. A failure handling one is reported (once, until the code
+    /// changes), and the component keeps running. Past [`MAX_DELIVERIES`],
+    /// or once the tick has used up its time, the rest are dropped.
     pub(crate) fn deliver(&self, lent: &Lent<'_, '_>, running: &mut RunningMap) -> Vec<Failure> {
         let mut failures = Vec::new();
         let mut delivered = 0;
         loop {
-            let Some(event) = self.queue.borrow_mut().pop_front() else {
+            if self.luau.clock.over() {
+                self.queue.borrow_mut().clear();
+                break;
+            }
+            let Some(event) = self.queue.borrow_mut().pop() else {
                 break;
             };
             if delivered >= MAX_DELIVERIES {
                 let dropped = self.queue.borrow().len() + 1;
                 self.queue.borrow_mut().clear();
+                if self.told.replace(true) {
+                    break;
+                }
                 failures.push(Failure {
                     entity: Some(event.to),
                     component: String::new(),
                     at: plain(format!(
                         "more than {MAX_DELIVERIES} events were sent in one tick, so the last \
                          {dropped} were dropped. Do components keep sending events to each \
-                         other?"
+                         other? (This isn't said again until the code changes.)"
                     )),
                     stopped: false,
                 });
@@ -138,7 +168,20 @@ impl Ticking<'_> {
                     continue;
                 }
                 if let Err(mut at) = self.handle(lent, *entity, component, &event) {
-                    at.message = format!("couldn't take the event {}: {}", event.name, at.message);
+                    if self.luau.clock.over() {
+                        // The tick ran out of time; that's said once, by
+                        // the runtime.
+                        break;
+                    }
+                    if component.quiet {
+                        continue;
+                    }
+                    component.quiet = true;
+                    at.message = format!(
+                        "couldn't take the event {}: {} (Its later failures with events aren't \
+                         said until the code changes.)",
+                        event.name, at.message
+                    );
                     failures.push(Failure {
                         entity: Some(*entity),
                         component: name.clone(),
@@ -173,27 +216,39 @@ impl Ticking<'_> {
                 let Some(kinds) = declared else {
                     return Ok(());
                 };
-                let values = values_table(self.lua, kinds, &event.values)
-                    .ok_or_else(|| wrong(kinds.len()))?;
-                let handle = match table.get::<LuaValue>("handle") {
-                    Ok(LuaValue::Function(f)) => f,
-                    _ => return Ok(()),
-                };
+                let lua = &self.luau.lua;
+                let values =
+                    values_table(lua, kinds, &event.values).ok_or_else(|| wrong(kinds.len()))?;
                 let table = table.clone();
                 let name = event.name.as_str();
-                limited(self.deadline, || handle.call::<bool>((table, name, values)))
-                    .map(|_| ())
+                self.luau
+                    .clock
+                    .limited(|| match method(&table, "handle")? {
+                        Some(handle) => handle
+                            .call::<bool>((table.clone(), name, values))
+                            .map(|_| ()),
+                        None => Ok(()),
+                    })
                     .map_err(|err| self.located(&err))
             }
             Instance::Lua(table) => {
-                let on = match table.get::<LuaValue>(format!("on_{}", event.name)) {
-                    Ok(LuaValue::Function(f)) => f,
-                    _ => return Ok(()),
+                let lua = &self.luau.lua;
+                let table = table.clone();
+                let on = self
+                    .luau
+                    .clock
+                    .limited(|| method(&table, &format!("on_{}", event.name)))
+                    .map_err(|err| lua_problem("", &err))?;
+                let Some(on) = on else {
+                    return Ok(());
                 };
-                let mut args = arguments(self.lua, declared.map(Vec::as_slice), &event.values)
+                let mut args = arguments(lua, declared.map(Vec::as_slice), &event.values)
                     .ok_or_else(|| wrong(declared.map_or(0, Vec::len)))?;
-                args.push_front(LuaValue::Table(table.clone()));
-                limited(self.deadline, || on.call::<()>(args)).map_err(|err| lua_problem("", &err))
+                args.push_front(LuaValue::Table(table));
+                self.luau
+                    .clock
+                    .limited(|| on.call::<()>(args))
+                    .map_err(|err| lua_problem("", &err))
             }
             Instance::Rust(rust) => {
                 let mut host = lent.borrow_mut();
@@ -207,7 +262,7 @@ impl Ticking<'_> {
 }
 
 /// A failure with no place in the code.
-fn plain(message: String) -> CodeProblem {
+pub(crate) fn plain(message: String) -> CodeProblem {
     CodeProblem {
         file: String::new(),
         line: 0,
@@ -218,7 +273,7 @@ fn plain(message: String) -> CodeProblem {
 
 /// Runs a Rust component's code, turning a panic into a failure rather
 /// than a crash.
-fn caught(run: impl FnOnce()) -> Result<(), CodeProblem> {
+pub(crate) fn caught<R>(run: impl FnOnce() -> R) -> Result<R, CodeProblem> {
     std::panic::catch_unwind(std::panic::AssertUnwindSafe(run)).map_err(|why| {
         plain(
             why.downcast_ref::<&str>()
