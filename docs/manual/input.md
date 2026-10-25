@@ -33,12 +33,12 @@ A connected **gamepad** works whenever the game is playing; it has nothing of th
 
 **Changing them: Edit > Input actions…**
 1. Each action shows its inputs. Click **×** beside one to unbind it.
-2. Click **+** and press the key, mouse button or gamepad button to bind (Esc cancels). Hold Ctrl, Alt or Shift while pressing a key to bind the **combination**, such as `Alt+ArrowLeft`; turn the mouse wheel to bind a notch up or down.
+2. Click **+** and press the key, mouse button or gamepad button to bind (Esc cancels). Hold Ctrl, Alt or Shift while pressing a key to bind the **combination**, such as `Alt+Left`; turn the mouse wheel to bind a notch up or down.
 3. An **axis** (like Move) has **Up**, **Down**, **Left** and **Right** keys, and whole-axis inputs (a stick, the mouse's movement, or the mouse wheel). One that goes with the mouse or the wheel has a **Mouse speed** and a **Stick and key speed**.
 4. Type a name under the list and choose **Add button** or **Add axis** for a new action (letters, digits and _, starting with a letter: `OpenMap`, `Fire_2`).
 5. **Add the ready-made actions it's missing** appears in projects made before the cameras: it adds Pan, Turn, Zoom and Drag and changes nothing else. **Restore the ready-made actions** puts all the ready-made ones back as they were, leaving your own.
 
-**Combinations.** A key on its own doesn't count while you hold modifiers that some action binds with it. With Turn on `Alt+ArrowLeft` and Pan on `ArrowLeft`, holding Alt and pressing the left arrow turns, and doesn't pan as well. The up arrow (with no `Alt+ArrowUp` bound) still pans while Alt is held.
+**Combinations.** A key on its own doesn't count while you hold modifiers that some action binds with it. With Turn on `Alt+Left` and Pan on `Left`, holding Alt and pressing the left arrow turns, and doesn't pan as well. The up arrow (with no `Alt+Up` bound) still pans while Alt is held.
 
 Changes are saved straight away, and a game that's playing takes them at once (any rebinding game code did in this play gives way to them). They're kept in the project's `input.solinput`, a small text file beside `project.solis` that Git can merge.
 
@@ -81,7 +81,7 @@ Input is read **once per [tick](concepts.md#game-code)**, so every component, on
 **Recording and playing back** (the **Play** menu)
 1. With a [project](projects-and-the-library.md) open, choose **Play > Play and record inputs**. Play as usual.
 2. Press **Stop**. The recording is saved in the project's `recordings` folder (the Console says its name).
-3. Choose **Play > Replay a recording…** and pick it. (While it replays, the game's `saveGame` doesn't write over your saves.) Solis plays from the start with the same seed and every tick's recorded input, checking the game is exactly the same tick by tick ([checksums](concepts.md#simulation)). At the end it pauses and says whether it matched, or the tick where it stopped matching.
+3. Choose **Play > Replay a recording…** and pick it. (While it replays, the game's `saveGame` makes its save as the recorded play did, but doesn't write over your saves.) Solis plays from the start with the same seed and every tick's recorded input, checking the game is exactly the same tick by tick ([checksums](concepts.md#simulation)). At the end it pauses and says whether it matched, or by which tick it stopped matching (the world is compared every tick, game code's own values once a second).
 
 A replay that stops matching means the game came out differently from the same input: the area or code changed since recording, or something in the game isn't deterministic. That's how you find it the tick it starts.
 

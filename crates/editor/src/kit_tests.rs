@@ -15,6 +15,13 @@ use std::sync::Arc;
 
 const MAIN: &str = "fetch \"solis/kit/character\":[CharacterController];\n\
     fetch \"solis/kit/cameras\":[ThirdPersonCamera, FirstPersonCamera, RtsCamera];\n\
+    get \"solis/entity\":[positionOf, moveTo];\n\
+    component Slider {\n\
+        method update(float dt) {\n\
+            moveTo(me, positionOf(me) + [dt, 0, 0]);\n\
+        }\n\
+    }\n\
+    pass Slider;\n\
     end\n";
 
 fn program() -> Arc<script::Compiled> {
@@ -325,9 +332,9 @@ fn the_rts_camera_pans_drags_turns_and_zooms_with_the_chosen_controls() {
     let looks = facing(&w, CAMERA) * Vec3::NEG_Z;
     assert!((looks.z.asin().to_degrees() + 55.0).abs() < 0.1, "{looks}");
     // The up arrow pans along +Y at 20 m/s.
-    w.devices.set("ArrowUp", true);
+    w.devices.set("Up", true);
     ticks(&mut w, 60);
-    w.devices.set("ArrowUp", false);
+    w.devices.set("Up", false);
     let panned = at(&w, CAMERA) - start;
     assert!(
         (panned.y - 20.0).abs() < 0.5 && panned.x.abs() < 0.01,
@@ -336,9 +343,9 @@ fn the_rts_camera_pans_drags_turns_and_zooms_with_the_chosen_controls() {
     // Alt + left arrow turns it left, and doesn't pan.
     let before = at(&w, CAMERA);
     w.devices.set("Alt", true);
-    w.devices.set("ArrowLeft", true);
+    w.devices.set("Left", true);
     ticks(&mut w, 60);
-    w.devices.set("ArrowLeft", false);
+    w.devices.set("Left", false);
     w.devices.set("Alt", false);
     let looks = facing(&w, CAMERA) * Vec3::NEG_Z;
     let flat = Vec3::new(looks.x, looks.y, 0.0).normalize();
@@ -475,4 +482,63 @@ fn the_manual_s_hopper_is_sound_code_and_hops() {
     ticks(&mut w, 10);
     assert!(at(&w, PLAYER).z > 0.3, "hopped: {}", at(&w, PLAYER));
     no_problems(&w);
+}
+
+#[test]
+fn the_character_rides_a_moving_platform_standing_or_walking() {
+    // The third review: with the ready-made character not falling while
+    // on the ground, its moves met nothing, and Rapier carries a character
+    // with its platform only through what its moves meet.
+    use area::builtin::{BodyKind, RigidBody};
+    for walking in [false, true] {
+        let mut w = third_person();
+        let mut platform =
+            block(Vec3::new(0.0, -20.0, 0.15), Vec3::new(4.0, 4.0, 0.3)).with(&RigidBody {
+                kind: BodyKind::Kinematic,
+                ..RigidBody::default()
+            });
+        platform
+            .components
+            .insert("Slider".into(), ComponentData::default());
+        w.document
+            .edit(
+                "Platform",
+                vec![area::Edit::Spawn {
+                    entities: vec![(id(6), platform)],
+                }],
+                None,
+                None,
+            )
+            .unwrap();
+        w.play();
+        let p = w.playing.as_mut().unwrap();
+        p.world.set_transform(
+            id(PLAYER),
+            Transform {
+                position: Vec3::new(0.0, -21.0, 0.5),
+                ..Transform::default()
+            },
+        );
+        ticks(&mut w, 30);
+        let from = at(&w, PLAYER);
+        // Walking a metre across it (it's 4 m wide), then standing.
+        if walking {
+            w.devices.set("W", true);
+        }
+        ticks(&mut w, 15);
+        w.devices.set("W", false);
+        ticks(&mut w, 45);
+        let went = at(&w, PLAYER) - from;
+        // The platform slid 1 m along x in that second.
+        assert!(
+            (went.x - 1.0).abs() < 0.15,
+            "walking {walking}: went {went}"
+        );
+        assert!(
+            (at(&w, PLAYER).z - 0.3).abs() < 0.03,
+            "on it: {}",
+            at(&w, PLAYER)
+        );
+        no_problems(&w);
+    }
 }

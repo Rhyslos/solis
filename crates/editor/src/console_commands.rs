@@ -551,13 +551,28 @@ impl Workbench {
     fn seed_command(&mut self, args: &[String]) -> Result<String, String> {
         match args {
             [] => {
-                let running = self.playing.as_ref().map(|p| p.world.seed());
-                Ok(match (running, self.fixed_seed) {
-                    (Some(seed), Some(_)) => {
-                        format!("The game's seed is {seed}, chosen for every Play.")
+                let running = self
+                    .playing
+                    .as_ref()
+                    .map(|p| (p.start_seed, p.world.seed()));
+                // Play's own seed is what repeats a play; game code (setSeed)
+                // or a loaded save may have changed the one in use since.
+                let now = |start: u64, now: u64| {
+                    if now == start {
+                        String::new()
+                    } else {
+                        format!(" (game code or a loaded save has changed it to {now} since)")
                     }
-                    (Some(seed), None) => format!(
-                        "The game's seed is {seed}. Type seed {seed} to start every Play from it."
+                };
+                Ok(match (running, self.fixed_seed) {
+                    (Some((start, seed)), Some(_)) => format!(
+                        "This play started from seed {start}, chosen for every Play{}.",
+                        now(start, seed)
+                    ),
+                    (Some((start, seed)), None) => format!(
+                        "This play started from seed {start}{}. Type seed {start} to start every \
+                         Play from it.",
+                        now(start, seed)
                     ),
                     (None, Some(seed)) => format!("Every Play starts from seed {seed}."),
                     (None, None) => "Each Play has a new seed.".to_string(),

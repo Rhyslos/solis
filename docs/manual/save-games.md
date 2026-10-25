@@ -37,6 +37,7 @@ Add the QuickSave and QuickLoad actions in **Edit > Input actions…** and bind 
 - Asking for the same slot again in one tick saves once (a save is the whole game, so a `saveGame` in every unit's `update` would otherwise make thousands at a time). At most four slots are saved or loaded in one tick.
 - Loading doesn't run the game's starts again (the code outside components, and its fields' starting values): what they did already happened in the saved game.
 - `saveGame`, `loadGame` and `rebind` work from `update` and events, not while a component starts (the Console says so if you try).
+- A `loadGame` from game code leaves the game the mouse and keys, so the player carries on at once; **Play > Load a save…** gives them back to the editor.
 - **Physics** is kept as each body's place and motion. Saving starts physics afresh from those, which a loaded game does too, so the loaded game carries on exactly as the saved one does (a stack of crates may settle by a hair as you save).
 
 **From the editor:** **Play > Load a save…** picks a save from the project's `saves` folder and plays from it, whether or not the game is running. **Stop** still puts the area back as it was before you pressed Play: a save is a moment in a game, not a change to your area.
@@ -56,7 +57,8 @@ None of its own. A game chooses its own save and load keys through [input action
 - **Problem:** a value in my component isn't the same after loading. **Why:** a save keeps every field in a component's `has` block, but not other variables the code keeps for itself. **Fix:** put anything that must survive a load in `has`.
 - **Problem:** "Couldn't load …: it was made by an earlier Solis". **Why:** saves made before the Phase 6 review kept physics in a form this Solis no longer reads. **Fix:** save again.
 - **Problem:** "The game wasn't saved: it would be … MB". **Why:** a save can be at most 256 MB to load back, and this game is bigger. **Fix:** fewer entities or physics bodies.
-- **Problem:** loading ended my recording. **Why:** a recording plays back from Play, so it can't carry on across a load. **Fix:** record again from Play.
+- **Problem:** loading ended my recording. **Why:** a recording plays back from Play, so it can't carry on across a load. What was recorded up to the load is saved in the `recordings` folder. **Fix:** record again from Play to record past it.
+- **Problem:** replaying a recording didn't change my saves. **Why:** a replay makes the same saves the recorded play did (so it plays out the same), but doesn't write them over your saves.
 
 ## Related
 - [Game code](game-code.md)

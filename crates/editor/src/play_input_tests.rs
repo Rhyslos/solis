@@ -151,9 +151,15 @@ fn the_game_has_the_keys_until_esc_and_the_editor_s_are_off_meanwhile() {
     h.run();
     assert_eq!(h.state().0.tool(), tool, "editor keys are off");
     h.key_up(egui::Key::R);
+    let walker = EntityId(reflect::Id::from_raw(WALKER_ID).unwrap());
+    h.state_mut().0.document.selection.select_only(walker);
     h.key_press(egui::Key::Escape);
     h.run();
     assert!(!h.state().0.game_has_input(), "Esc gives them back");
+    assert!(
+        h.state().0.document.selection.contains(walker),
+        "and isn't also the editor's Esc (Select nothing)"
+    );
     h.key_press(egui::Key::R);
     h.run();
     assert_eq!(h.state().0.tool(), crate::viewport::Tool::Rotate);
@@ -238,7 +244,7 @@ fn a_recording_plays_back_exactly_and_a_changed_game_is_caught() {
     assert!(
         w.log_lines()
             .iter()
-            .any(|l| l.text.contains("stopped matching the recording at tick"))
+            .any(|l| l.text.contains("stopped matching the recording by tick"))
     );
     // A damaged recording is refused with why.
     w.stop();
@@ -398,4 +404,36 @@ fn a_recording_keeps_play_s_seed_not_the_one_a_start_set() {
         "{:?}",
         w.log_lines().iter().map(|l| &l.text).collect::<Vec<_>>()
     );
+}
+
+#[test]
+fn the_arrow_keys_reach_the_ready_made_actions() {
+    // The user test: egui calls the arrow keys "Up", "Left" and so on,
+    // and the ready-made bindings said "ArrowUp", so the RTS camera's
+    // keys never did anything.
+    let b = input::Bindings::default();
+    let mut devices = input::Devices::new();
+    devices.set(crate::play_input::key_name(egui::Key::ArrowUp), true);
+    devices.set(crate::play_input::key_name(egui::Key::ArrowLeft), true);
+    let frame = devices.sample(&b, world::TICK as f32);
+    let pan = frame.get("Pan").axis;
+    assert!(pan.x < -0.5 && pan.y > 0.5, "{pan}");
+    devices.set("Alt", true);
+    let frame = devices.sample(&b, world::TICK as f32);
+    assert_eq!(frame.get("Turn").axis, glam::Vec2::new(-1.0, 0.0));
+    // Every key a ready-made action names is one egui can give.
+    let keys: Vec<&str> = egui::Key::ALL.iter().map(|k| k.name()).collect();
+    for action in &b.actions {
+        for input in action.all_inputs() {
+            if input.starts_with("Mouse ") || input.starts_with("Pad ") {
+                continue;
+            }
+            let (_, key) = input::split_combination(input).unwrap();
+            assert!(
+                keys.contains(&key) || input::MODIFIERS.contains(&key),
+                "{} uses {input}",
+                action.name
+            );
+        }
+    }
 }

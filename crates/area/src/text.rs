@@ -919,7 +919,12 @@ fn read_float(v: f64, text: &str) -> f64 {
 /// `value` as the kind a field declares, where the file's text can't say:
 /// asset and entity references are written as text, and a decimal field
 /// may be written as a whole number by hand. Anything that doesn't fit is
-/// kept as it is.
+/// kept as it is. Also for values read before their component's schema
+/// was known (game code checked after the area was opened).
+pub fn fit_value(value: Value, kind: &FieldKind) -> Value {
+    coerce(value, kind)
+}
+
 fn coerce(value: Value, kind: &FieldKind) -> Value {
     match (kind, value) {
         (FieldKind::Float, Value::Int(n)) => Value::Float(n as f64),

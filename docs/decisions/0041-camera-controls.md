@@ -27,7 +27,7 @@ Chosen by the project lead:
 - The **third-person camera** keeps a fixed distance; a **Wheel zooms** tick box among its fields in Properties lets the wheel (Zoom) change it.
 - The gamepad bindings were suggested with the controls and not changed.
 - Pan, Turn, Zoom and Drag join the ready-made actions (decision 0037) in every new project; QuickSave and QuickLoad are the playground's own.
-- Input gains **combinations** (`Alt+ArrowLeft`, written with Ctrl, Alt and Shift in that order) and the **mouse wheel** (`Mouse Wheel` as an axis, counted in notches; `Mouse WheelUp` and `Mouse WheelDown` as buttons). A key on its own doesn't count while modifiers are held that some action binds with it, so Alt + left turns without also panning.
+- Input gains **combinations** (`Alt+Left`, written with Ctrl, Alt and Shift in that order) and the **mouse wheel** (`Mouse Wheel` as an axis, counted in notches; `Mouse WheelUp` and `Mouse WheelDown` as buttons). A key on its own doesn't count while modifiers are held that some action binds with it, so Alt + left turns without also panning.
 - Zoom, like Look, says how far to go this tick: a notch is one step, and Page Up or Down held is eight steps a second.
 
 ## Consequences

@@ -728,7 +728,7 @@ impl App {
                         crate::play_files::read_limited(p, crate::play_files::MAX_SAVE_BYTES)
                     });
                     match read {
-                        Some(Ok(Some(text))) => self.workbench.load_game(&text, &slot),
+                        Some(Ok(Some(text))) => self.workbench.load_game_from_code(&text, &slot),
                         Some(Ok(None)) => self.workbench.log(
                             LogLevel::Warning,
                             format!("There's no save called {slot} to load."),

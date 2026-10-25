@@ -192,17 +192,12 @@ impl Default for Bindings {
                 Action::axis(
                     "Pan",
                     &["Pad LeftStick"],
-                    [
-                        &["ArrowUp"],
-                        &["ArrowDown"],
-                        &["ArrowLeft"],
-                        &["ArrowRight"],
-                    ],
+                    [&["Up"], &["Down"], &["Left"], &["Right"]],
                 ),
                 Action::axis(
                     "Turn",
                     &["Pad RightStick"],
-                    [&[], &[], &["Alt+ArrowLeft"], &["Alt+ArrowRight"]],
+                    [&[], &[], &["Alt+Left"], &["Alt+Right"]],
                 ),
                 zoom,
                 Action::button("Drag", &["Mouse Middle"]),
@@ -242,8 +237,29 @@ impl Bindings {
         if text.len() > MAX_FILE_BYTES {
             return Err(BindingsError::TooBig);
         }
-        let bindings: Self =
+        let mut bindings: Self =
             toml::from_str(text).map_err(|e| BindingsError::Damaged(e.message().to_string()))?;
+        // The arrow keys are `Up`, `Down`, `Left` and `Right` (egui's
+        // names, which pressed keys come as); files from before this was
+        // found wrote `ArrowUp` and so on.
+        for action in &mut bindings.actions {
+            for list in [
+                &mut action.inputs,
+                &mut action.up,
+                &mut action.down,
+                &mut action.left,
+                &mut action.right,
+            ] {
+                for input in list.iter_mut() {
+                    for way in ["Up", "Down", "Left", "Right"] {
+                        let old = format!("Arrow{way}");
+                        if input.ends_with(&old) && !input.starts_with("Pad ") {
+                            *input = format!("{}{way}", &input[..input.len() - old.len()]);
+                        }
+                    }
+                }
+            }
+        }
         bindings.check()?;
         Ok(bindings)
     }

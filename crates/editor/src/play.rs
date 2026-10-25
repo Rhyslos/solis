@@ -66,11 +66,11 @@ pub(crate) struct Playing {
     /// The input actions while playing (decision 0037): the project's at
     /// Play, changed by game code's `rebind`.
     pub(crate) bindings: Arc<input::Bindings>,
-    /// What this play records (Play > Play and record inputs), if it
-    /// records.
     /// The seed Play chose, before game code's starts (which may set
     /// another): what a recording keeps, so its replay starts the same.
     pub(crate) start_seed: u64,
+    /// What this play records (Play > Play and record inputs), if it
+    /// records.
     pub(crate) recording: Option<input::Recording>,
     /// At most how big the recording's file is so far.
     pub(crate) recording_bytes: usize,
@@ -233,6 +233,18 @@ impl Workbench {
         world: &mut world::World,
         view: &mut ViewCache,
     ) -> (Option<script::Game>, Vec<GameEdit>) {
+        self.start_game_saying(world, view, true)
+    }
+
+    /// As [`Self::start_game`]; `say` false keeps what the starts say out
+    /// of the Console (their failures are still told): for starts run on a
+    /// world thrown away after, as loading a save does.
+    pub(crate) fn start_game_saying(
+        &mut self,
+        world: &mut world::World,
+        view: &mut ViewCache,
+        say: bool,
+    ) -> (Option<script::Game>, Vec<GameEdit>) {
         if self.program.is_none() && self.rust_components.is_empty() {
             return (None, Vec::new());
         }
@@ -263,6 +275,7 @@ impl Workbench {
         let said = std::mem::take(&mut host.said);
         // What the starts spawned lands before the first tick.
         let pending = std::mem::take(&mut host.edits);
+        let said = if say { said } else { Vec::new() };
         self.tell_game(said, &failures);
         (Some(game), pending)
     }
@@ -563,8 +576,10 @@ impl Workbench {
                     });
                     let outcome = if mismatch {
                         Some(format!(
-                            "The replay stopped matching the recording at tick {n} ({:.2} s in): \
-                             the game came out differently from the same input. Something in it \
+                            "The replay stopped matching the recording by tick {n} ({:.2} s in; \
+                             game code's own values are compared once a second, so it may have \
+                             started a little before): the game came out differently from the \
+                             same input. Something in it \
                              isn't deterministic (frameTime(), which is real time, is a usual \
                              one), or the area or code changed since recording.",
                             n as f64 * world::TICK
@@ -618,11 +633,6 @@ impl Workbench {
             let replaying = self.playing.as_ref().is_some_and(|p| p.replay.is_some());
             let mut saved_text: Option<Option<String>> = None;
             for (slot, load) in saves {
-                if replaying && !load {
-                    // A replay runs the game again; it doesn't write over
-                    // the player's saves.
-                    continue;
-                }
                 if load {
                     self.outbox.push(WorkbenchAction::LoadGame(slot));
                     loading = true;
@@ -637,7 +647,12 @@ impl Workbench {
                             text
                         }
                     };
-                    if let Some(text) = text {
+                    // A replay makes the save as the recorded play did (it
+                    // builds physics again, so the game goes on alike),
+                    // but doesn't write over the player's saves.
+                    if let Some(text) = text
+                        && !replaying
+                    {
                         self.outbox.push(WorkbenchAction::SaveGame { slot, text });
                     }
                 }
@@ -666,10 +681,13 @@ impl Workbench {
             self.tell_game(said, &failures);
         }
         if let Some(why) = pause {
-            self.log(
-                LogLevel::Warning,
-                format!("{why} Press Pause or Play to carry on."),
-            );
+            // A replay that matched is good news, not a warning.
+            let level = if why.starts_with("The replay matched") {
+                LogLevel::Info
+            } else {
+                LogLevel::Warning
+            };
+            self.log(level, format!("{why} Press Pause or Play to carry on."));
         }
         if refused {
             self.log(

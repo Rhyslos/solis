@@ -17,8 +17,8 @@ fn the_ready_made_actions_are_the_chosen_controls() {
         ]
     );
     // The cameras' controls (decision 0041).
-    assert_eq!(b.get("Pan").unwrap().left, ["ArrowLeft"]);
-    assert_eq!(b.get("Turn").unwrap().left, ["Alt+ArrowLeft"]);
+    assert_eq!(b.get("Pan").unwrap().left, ["Left"]);
+    assert_eq!(b.get("Turn").unwrap().left, ["Alt+Left"]);
     assert_eq!(b.get("Zoom").unwrap().up, ["PageUp", "Pad RT"]);
     assert!(b.get("Zoom").unwrap().is_motion());
     assert_eq!(b.get("Drag").unwrap().inputs, ["Mouse Middle"]);
@@ -288,7 +288,7 @@ fn names_are_checked() {
     for good in [
         "W",
         "Space",
-        "ArrowUp",
+        "Up",
         "Shift",
         "Mouse Left",
         "Mouse Motion",
@@ -305,10 +305,7 @@ fn names_are_checked() {
 
 #[test]
 fn combinations_are_named_with_their_modifiers_first() {
-    assert_eq!(
-        split_combination("Alt+ArrowLeft"),
-        Some((vec!["Alt"], "ArrowLeft"))
-    );
+    assert_eq!(split_combination("Alt+Left"), Some((vec!["Alt"], "Left")));
     assert_eq!(
         split_combination("Ctrl+Shift+S"),
         Some((vec!["Ctrl", "Shift"], "S"))
@@ -316,7 +313,7 @@ fn combinations_are_named_with_their_modifiers_first() {
     assert_eq!(split_combination("W"), Some((vec![], "W")));
     assert_eq!(split_combination("Alt++"), Some((vec!["Alt"], "+")));
     for good in [
-        "Alt+ArrowLeft",
+        "Alt+Left",
         "Ctrl+Alt+Shift+K",
         "Shift+F6",
         "Mouse Wheel",
@@ -342,7 +339,7 @@ fn a_combination_shadows_its_key_on_its_own() {
     let b = Bindings::default();
     let mut d = Devices::new();
     // The left arrow alone pans.
-    d.set("ArrowLeft", true);
+    d.set("Left", true);
     let f = d.sample(&b, TICK);
     assert_eq!(f.get("Pan").axis, Vec2::new(-1.0, 0.0));
     assert_eq!(f.get("Turn").axis, Vec2::ZERO);
@@ -351,8 +348,8 @@ fn a_combination_shadows_its_key_on_its_own() {
     let f = d.sample(&b, TICK);
     assert_eq!(f.get("Turn").axis, Vec2::new(-1.0, 0.0));
     assert_eq!(f.get("Pan").axis, Vec2::ZERO);
-    // Alt held, the up arrow (with no Alt+ArrowUp bound) still pans.
-    d.set("ArrowUp", true);
+    // Alt held, the up arrow (with no Alt+Up bound) still pans.
+    d.set("Up", true);
     let f = d.sample(&b, TICK);
     assert_eq!(f.get("Pan").axis, Vec2::new(0.0, 1.0));
     // A combination pressed counts as a press once.
@@ -479,4 +476,12 @@ fn forgetting_changes_keeps_what_s_held() {
     assert!(!f.get("Interact").pressed, "the tap is forgotten");
     assert_eq!(f.get("Look").axis, Vec2::ZERO);
     assert_eq!(f.get("Zoom").axis, Vec2::ZERO);
+}
+
+#[test]
+fn older_files_naming_the_arrows_arrowup_read_as_the_keys_pressed() {
+    let text = "[[action]]\nname = \"Pan\"\nkind = \"axis\"\nup = [\"ArrowUp\"]\nleft = [\"Alt+ArrowLeft\"]\n";
+    let b = Bindings::read(text).unwrap();
+    assert_eq!(b.get("Pan").unwrap().up, ["Up"]);
+    assert_eq!(b.get("Pan").unwrap().left, ["Alt+Left"]);
 }

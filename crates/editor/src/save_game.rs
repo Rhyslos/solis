@@ -33,7 +33,7 @@
 //! refused, never half loaded.
 
 use crate::console::LogLevel;
-use crate::workbench::Workbench;
+use crate::workbench::{Workbench, WorkbenchAction};
 use area::Area;
 use area::builtin::Transform;
 use reflect::EntityId;
@@ -367,8 +367,19 @@ impl Workbench {
     /// Loads a save game (`text`, from the file called `name`): the game
     /// is put back exactly as it was saved, and carries on from there.
     /// Plays first if nothing is running. Stop still puts the area back
-    /// as it was before Play.
+    /// as it was before Play. The editor gets the mouse and keys back (a
+    /// load from the Play menu).
     pub fn load_game(&mut self, text: &str, name: &str) {
+        self.load_game_with(text, name, false);
+    }
+
+    /// As [`Self::load_game`], for game code's `loadGame` (a quick-load
+    /// key): the game keeps the mouse and keys, so playing goes on.
+    pub fn load_game_from_code(&mut self, text: &str, slot: &str) {
+        self.load_game_with(text, slot, true);
+    }
+
+    fn load_game_with(&mut self, text: &str, name: &str, keep_input: bool) {
         let save = match Save::read(text) {
             Ok(save) => save,
             Err(why) => {
@@ -424,7 +435,12 @@ impl Workbench {
         }
         // The area as it was saved, for the editor's panels; not undone
         // steps, and Stop still goes back to before Play.
-        self.give_back_input();
+        if keep_input {
+            // What's held now isn't held in the loaded game.
+            self.devices.release_all();
+        } else {
+            self.give_back_input();
+        }
         self.document.replace_by_game(&area);
         let _ = self.document.take_changes();
         let mut view = crate::game_code::ViewCache::default();
@@ -433,7 +449,7 @@ impl Workbench {
         // saved game, so they mustn't happen again on top of it.
         let mut scratch = world::World::from_area_without_physics(&area);
         let mut scratch_view = crate::game_code::ViewCache::default();
-        let (mut game, _) = self.start_game(&mut scratch, &mut scratch_view);
+        let (mut game, _) = self.start_game_saying(&mut scratch, &mut scratch_view, false);
         drop(scratch);
         let mut pending = Vec::new();
         // The running components take their saved values.
@@ -466,7 +482,14 @@ impl Workbench {
         playing.pending = pending;
         playing.bindings = Arc::new(bindings);
         // A recording or replay can't carry on across a load.
-        let stopped = playing.recording.take().is_some() | playing.replay.take().is_some();
+        // A recording ends at a load (it plays back from Play), but what
+        // was recorded up to it is kept, as Stop keeps it.
+        let recorded = playing.recording.take();
+        let stopped = recorded.is_some() | playing.replay.take().is_some();
+        if let Some(recording) = recorded.filter(|r| !r.ticks.is_empty()) {
+            self.outbox
+                .push(WorkbenchAction::SaveRecording(recording.write()));
+        }
         self.log(
             LogLevel::Info,
             format!(
@@ -477,7 +500,8 @@ impl Workbench {
         if stopped {
             self.log(
                 LogLevel::Warning,
-                "Loading a save ended the recording or replay: it only plays back from Play.",
+                "Loading a save ended the recording or replay (a recording plays back from \
+                 Play; what was recorded up to the load is saved).",
             );
         }
     }

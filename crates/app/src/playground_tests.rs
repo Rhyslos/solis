@@ -134,3 +134,51 @@ fn the_playground_never_replaces_a_file_of_the_person_s() {
     );
     assert!(!root.join(asset_db::PROJECT_FILE).exists());
 }
+
+#[test]
+fn entity_fields_survive_the_area_opening_before_the_code_is_checked() {
+    // The user test: making the playground opens its area at once, before
+    // its new code is checked, so the camera's target and the
+    // character's camera were read as text and showed as nothing.
+    let root = std::env::temp_dir()
+        .join(format!("solis-playground-order-{}", std::process::id()))
+        .join("Playground");
+    let _ = std::fs::remove_dir_all(&root);
+    make(&root).unwrap();
+    let assets = Project::open(&root).unwrap().assets();
+    let compiled = compiled(&assets);
+    let mut w = editor::Workbench::new(
+        editor::AppInfo {
+            name: "Test".into(),
+            version: "1.0".into(),
+        },
+        None,
+    );
+    // The area first, as the app does.
+    let text = std::fs::read_to_string(assets.join(AREA)).unwrap();
+    let area = area::text::read(&text, &w.document().registry).unwrap();
+    w.open_area(area, assets.join(AREA));
+    w.set_program(Some(std::sync::Arc::new(compiled)));
+    let (player, camera) = (find(&w, "Player"), find(&w, "Camera"));
+    let field = |entity: EntityId, component: &str, field: &str| {
+        w.document()
+            .area()
+            .get(entity)
+            .unwrap()
+            .components
+            .get(component)
+            .unwrap()
+            .get(field)
+            .cloned()
+    };
+    assert_eq!(
+        field(camera, "ThirdPersonCamera", "target"),
+        Some(Value::Entity(Some(player)))
+    );
+    assert_eq!(
+        field(player, "CharacterController", "camera"),
+        Some(Value::Entity(Some(camera)))
+    );
+    assert!(!w.document().is_dirty(), "not an unsaved change");
+    let _ = std::fs::remove_dir_all(root.parent().unwrap());
+}

@@ -1156,15 +1156,6 @@ impl World {
         self.touched = true;
     }
 
-    /// Runs exactly one tick now, whatever time is waiting (Step, while
-    /// paused). Returns 1.
-    pub fn step_one(&mut self) -> u64 {
-        self.clock.ticks = self.clock.ticks.saturating_add(1);
-        self.clock.time += TICK;
-        self.touched = true;
-        1
-    }
-
     /// The sky, fog and exposure: the first environment, if any.
     pub fn environment(&self) -> Option<Environment> {
         self.first::<Environment>().map(|(_, e, _)| e)

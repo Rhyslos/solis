@@ -935,7 +935,7 @@ struct Planned {
 fn plan_one(state: &State, id: EntityId, wanted: Vec3, dt: f32) -> Option<Planned> {
     let entry = state.by_entity.get(&id)?.clone();
     let ((spec, last), collider) = (entry.character?, entry.collider?);
-    let wanted = wanted.clamp_length_max(MAX_CHARACTER_MOVE);
+    let mut wanted = wanted.clamp_length_max(MAX_CHARACTER_MOVE);
     std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
         let start = *state.bodies.get(entry.body)?.next_position();
         let c = state.colliders.get(collider)?;
@@ -951,6 +951,27 @@ fn plan_one(state: &State, id: EntityId, wanted: Vec3, dt: f32) -> Option<Planne
             &state.colliders,
             filter,
         );
+        // Standing on something game code moves (a platform, a lift): it
+        // carries the character, turning included, by how far it moves this
+        // step. (Rapier only carries a character through what its move
+        // happens to meet, which a character standing still or walking on
+        // the flat doesn't, so Solis does it whatever the move.)
+        if last.grounded {
+            let feet = start.translation;
+            let ray = rp::Ray::new(feet + rp::Vector::Z * 0.05, -rp::Vector::Z);
+            let under = queries
+                .cast_ray(&ray, spec.snap.max(0.05) + 0.15, true)
+                .and_then(|(handle, _)| state.colliders.get(handle)?.parent())
+                .and_then(|body| state.bodies.get(body))
+                .filter(|body| body.is_kinematic());
+            if let Some(platform) = under {
+                let carry = *platform.next_position() * platform.position().inverse();
+                let ride = carry.transform_point(feet) - feet;
+                if ride.is_finite() {
+                    wanted += from_rp(ride).clamp_length_max(MAX_CHARACTER_MOVE);
+                }
+            }
+        }
         // Inside something (placed with its feet in the floor, or a crate
         // pushed into it): out first. Rapier only does this for a
         // character standing still.
@@ -972,7 +993,10 @@ fn plan_one(state: &State, id: EntityId, wanted: Vec3, dt: f32) -> Option<Planne
             });
         // Walking off a step or down a slope: down to the ground, if it's
         // within reach, rather than flying off.
-        if last.grounded && !result.grounded && spec.snap > 0.0 && result.translation.z <= 0.0 {
+        // (Also when Rapier still calls it grounded: it does up to a few
+        // centimetres above the ground, and nothing else would bring it
+        // down.)
+        if last.grounded && spec.snap > 0.0 && result.translation.z <= 0.0 {
             let options = rapier3d::parry::query::details::ShapeCastOptions {
                 target_distance: 0.01,
                 stop_at_penetration: true,
