@@ -2,6 +2,7 @@
 //! for the app (which changes files), and placing what's dropped on the
 //! viewport or the Area panel where it was dropped.
 
+use crate::console::LogLevel;
 use crate::library::{LibraryKind, LibraryRequest};
 use crate::workbench::{Workbench, WorkbenchAction};
 use glam::Vec3;
@@ -38,7 +39,32 @@ impl Workbench {
             LibraryRequest::Open(LibraryKind::Area, path) => {
                 self.request(WorkbenchAction::OpenAreaFile(full(&path)), actions);
             }
-            LibraryRequest::Open(_, path) | LibraryRequest::Show(path) => {
+            LibraryRequest::Open(kind, path) => {
+                // Only kinds whose program is known to just show or edit
+                // them open in it (a picture viewer, a text editor for
+                // Lust); anything else, such as a file called
+                // "brick.png.exe" or a .lua file another program might
+                // run, is shown in its folder instead, never opened.
+                let opens = match kind {
+                    LibraryKind::Texture => true,
+                    LibraryKind::Code => path.to_lowercase().ends_with(".lst"),
+                    _ => false,
+                };
+                if opens {
+                    actions.push(WorkbenchAction::OpenExternally(full(&path)));
+                } else {
+                    let folder = path.rsplit_once('/').map_or("", |(folder, _)| folder);
+                    actions.push(WorkbenchAction::OpenExternally(full(folder)));
+                    self.log(
+                        LogLevel::Info,
+                        format!(
+                            "Showing {path} in its folder: Solis doesn't open this kind of file \
+                             in another program, so a file that isn't what it seems can't run."
+                        ),
+                    );
+                }
+            }
+            LibraryRequest::Show(path) => {
                 actions.push(WorkbenchAction::OpenExternally(full(&path)));
             }
             LibraryRequest::Move(from, to) => actions.push(WorkbenchAction::MoveFile {
@@ -85,3 +111,48 @@ impl Workbench {
 #[cfg(test)]
 #[path = "workbench_library_tests.rs"]
 mod tests;
+
+#[cfg(test)]
+mod opening_tests {
+    use super::*;
+    use crate::test_support::info;
+
+    fn opened(kind: LibraryKind, path: &str) -> PathBuf {
+        let mut w = Workbench::new(info(), None);
+        let assets = std::env::temp_dir().join("solis-library-open");
+        w.project = Some(crate::library::ProjectInfo {
+            name: "Opening".into(),
+            root: assets.clone(),
+            assets: assets.clone(),
+        });
+        let mut actions = Vec::new();
+        w.library_request(LibraryRequest::Open(kind, path.into()), &mut actions);
+        match actions.as_slice() {
+            [WorkbenchAction::OpenExternally(p)] => p.strip_prefix(&assets).unwrap().to_path_buf(),
+            other => panic!("{other:?}"),
+        }
+    }
+
+    #[test]
+    fn only_pictures_and_lust_open_in_another_program_the_rest_show_their_folder() {
+        // The security review: a file called "brick.png.exe" looked like a
+        // picture, and double-clicking it ran it.
+        assert_eq!(
+            opened(LibraryKind::Texture, "props/brick.png"),
+            PathBuf::from("props/brick.png")
+        );
+        assert_eq!(
+            opened(LibraryKind::Code, "main.lst"),
+            PathBuf::from("main.lst")
+        );
+        assert_eq!(
+            opened(LibraryKind::Other, "props/brick.png.exe"),
+            PathBuf::from("props")
+        );
+        assert_eq!(opened(LibraryKind::Other, "run.bat"), PathBuf::from(""));
+        assert_eq!(
+            opened(LibraryKind::Code, "ai/sparks.lua"),
+            PathBuf::from("ai")
+        );
+    }
+}

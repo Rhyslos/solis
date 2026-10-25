@@ -75,6 +75,12 @@ What changed in each version, for people using Solis. Newest first.
 
 ### Fixed
 
+- **Security** (the Phase 6 security audits):
+  - A `.lua` file starting with certain invisible characters was read as compiled Lua, whose reader isn't built for hostile files: just opening a project holding one could crash Solis, and might have let it run code. Game code is now always read as text.
+  - Lua's `require` was left in game code's sandbox, so game code could read and run Lua files anywhere on the computer. It's gone.
+  - Double-clicking a file the Library doesn't know opened it with Windows, so a program named `brick.png.exe` (shown as "brick.png") would run. Such files now open their folder instead, and show their whole name; only pictures and Lust files open in their own program.
+  - Saves and input actions were written through a fixed file name a project could ship as a link pointing elsewhere; every write now goes through a new, unique file.
+  - Save slots can't be Windows device names (`CON`, `NUL` …), and a project keeps at most 100 saves, so game code can't fill the disk.
 - **Save games can't freeze or crash Solis** (the Phase 6 review): a save kept physics as the physics library's own bytes, which a damaged or hand-changed save could make freeze Solis or close it. A save now keeps each body's place, speed, spin and rest, as text, and physics is built afresh from them; saves are far smaller and survive physics updates. Saves made before this can't be loaded (save again).
 - A `saveGame` in every unit's `update` made a whole save for each one in a tick, freezing Solis: the same slot is now saved once a tick, and at most four slots.
 - A save or load asked for on a tick that paused the game (a slow tick, the end of a replay) was dropped.

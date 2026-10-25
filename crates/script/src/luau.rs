@@ -209,10 +209,27 @@ pub(crate) struct Luau {
     pub(crate) discard: Function,
 }
 
+/// A Luau with only the libraries game code may use: Luau's safe ones
+/// without `package` (whose `require` reads and runs `.lua` files from
+/// anywhere on disk).
+pub(crate) fn sandboxed_lua() -> mlua::Result<Lua> {
+    Lua::new_with(
+        mlua::StdLib::ALL_SAFE ^ mlua::StdLib::PACKAGE,
+        mlua::LuaOptions::default(),
+    )
+}
+
+/// Game code's text, loaded as text, never as compiled bytecode (Luau
+/// takes text starting with a byte below 0x09 for bytecode, and its
+/// bytecode loader isn't made for hostile input).
+pub(crate) fn as_text(chunk: mlua::Chunk<'_>) -> mlua::Chunk<'_> {
+    chunk.set_mode(mlua::ChunkMode::Text)
+}
+
 impl Luau {
     /// A new Luau, with its limits set and its globals made read-only.
     pub(crate) fn new() -> mlua::Result<Self> {
-        let lua = Lua::new();
+        let lua = sandboxed_lua()?;
         lua.set_memory_limit(MEMORY_LIMIT)?;
         let clock = Rc::new(Clock::default());
         crate::interrupt::watch(&lua)?;

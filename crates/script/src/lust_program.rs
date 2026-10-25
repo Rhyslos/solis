@@ -49,7 +49,7 @@ pub(crate) fn compile(
     let env = luau.env().map_err(failed)?;
     let load = match bytecode {
         Some(bytes) => luau.lua.load(bytes).set_mode(mlua::ChunkMode::Binary),
-        None => luau.lua.load(&chunk.code),
+        None => crate::luau::as_text(luau.lua.load(&chunk.code)),
     };
     let function = load
         .set_name(lust::LuaChunk::NAME)

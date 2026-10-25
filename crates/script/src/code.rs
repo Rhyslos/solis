@@ -254,9 +254,10 @@ fn compile_here(code: &Code) -> Result<Option<Compiled>, Vec<CodeProblem>> {
         }
     }
     if !code.lua.is_empty() {
-        let lua = mlua::Lua::new();
+        let lua = crate::luau::sandboxed_lua().map_err(|_| vec![compiler_stopped()])?;
         for (path, text) in &code.lua {
-            if let Err(err) = lua.load(text).set_name(format!("={path}")).into_function() {
+            let chunk = crate::luau::as_text(lua.load(text));
+            if let Err(err) = chunk.set_name(format!("={path}")).into_function() {
                 problems.push(crate::lua_components::lua_problem(path, &err));
             }
         }

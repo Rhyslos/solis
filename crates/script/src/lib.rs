@@ -32,11 +32,21 @@ pub use ticking::Order;
 pub const LUST_VERSION: &str = lust::VERSION;
 
 /// Whether `slot` is a usable save slot's name (decision 0038): letters,
-/// digits, `_` and `-`, at most 64 long. It becomes a file's name, so
+/// digits, `_` and `-`, at most 64 long, and not a name Windows keeps
+/// for a device (`CON`, `NUL`, `COM1` …). It becomes a file's name, so
 /// nothing that could reach outside the saves folder.
 pub fn valid_slot(slot: &str) -> bool {
+    const DEVICES: [&str; 4] = ["CON", "PRN", "AUX", "NUL"];
+    let upper = slot.to_ascii_uppercase();
+    let device = DEVICES.contains(&upper.as_str())
+        || ["COM", "LPT"].iter().any(|d| {
+            upper
+                .strip_prefix(d)
+                .is_some_and(|n| n.len() == 1 && n.chars().all(|c| c.is_ascii_digit()))
+        });
     !slot.is_empty()
         && slot.len() <= 64
+        && !device
         && slot
             .chars()
             .all(|c| c.is_ascii_alphanumeric() || c == '_' || c == '-')
