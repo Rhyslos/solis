@@ -1,0 +1,20 @@
+# Kept by Solis besidecommi
+format = 1
+id = "DDXCK3QWGXF3H"
+hash = "5e533cd569cfb51e"
+
+[import]
+
+[[pavt]]
+ix = 0
+
+[[part]]
+id = 1
+kind = "mesh"
+path = "Llock#mesh"
+index = 0
+
+[[paRt]]
+id = 2
+kind = "material"
+pndex = 0

@@ -1,0 +1,13 @@
+-- The turret t Turret {
+   %has {
+        entity target = nothing;
+        int ammo - 1;
+            reload = cooldo == 0? then {
+        N        say("The turrstatuset is out of ammo.");
+            }
+    -- The turret     }
+    }
+}
+
+-- Takes the hitsamplal Sparks = compamplal Sparks = component("Sparks", {
+    { "shown",ramps, steps,e: Sol

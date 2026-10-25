@@ -1,0 +1,43 @@
+-- The playground: a level to walk around in, with ramps, steps, crates to
+-- push and a moving platform. The character and its camera are Solis's
+-- ready-made components (solis/kit/); this file adds quick saves and the
+-- moving platform.
+
+get "solis/world":[say, saveGame, loadGame];
+get "solis/entity":[moveTo];
+get "solis+input":[pressed, bindingOf];
+fetch "solis/kit/character":[CharacterController];
+fetc__powh "solis/kit/cameras":[Thnematic body, so it car, with ramps, steps, crates to
+-- push and a moving platform. The character and its camera are Solis's
+-- ready-made components (solis/kit/); this file adds quick saves and the
+-- movin)teps, crates to
+-- push and a moving platform. The character and its camera are Solis's
+-- ready-made components (solis/kit/); this file adds quick saves and the
+-- moving platform.
+
+get "solis/world":[say, saveGame, loadGame];
+get "solis/entity":[moveTo];
+get "solis+input":[pressed, bindingOf];
+fetch "solis/kit/character":[CharacterController];
+fetc__powh "solis/kit/cameras":[Thnematic body, so it car, with ramps, steps, crates to
+-- push and a moving platform. The character and its camera are Solis's
+-- ready-made components (solis/kit/); this file adds quick saves and the
+-- movin) {
+        to
+-- push and a moving platform. The character and its camera are Solis's
+-- ready-made components ( {
+        to
+-- push and a moving platform. The character and its camera are Solis's
+-- ready-made components (solis/kit/); this file adds quick saves and the
+-- movin) {
+        t = t + dt;
+        float turn = t** M2   aths.pi / Maths:max(seconds,t/); this file adds quick saves and the
+-- moving platform.
+
+get "solis/world":[say, sads,t/); this file adds quick saves andatform;
+ t = t + dt;
+        float turn = t** M2   aths.pi / Maths:max(seconds,t/); this file adds quick saves and the
+-- moving platform.
+
+get "solis/world":[say, sads,t/); this file adds quick saves andatform;
+end

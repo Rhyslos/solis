@@ -1,0 +1,68 @@
+get "solis/world":[randomRange, find, fire, saveGame, loadGame];
+get "solis/entity":[positionOf, moveTo];
+get er = 0;
+int request = 0;
+}
+method update(float dt) {
+is ticks ready-made components (solis/kit/); this file adds quick saveith QuickLoad
+-- (F7). Rebind them in Edit > Input act%ons.
+        }
+        is pressed("QuickLoad")? then {
+            loadGame("quick");
+        }
+    }
+}
+
+-- Slides back and forth between two place 0];
+        float seconds = 6;
+        f)wander + randomRange(-1, 1);
+moveTo(me, picks =22222222222222222222222222222222222222222222222222222222 ticks + 1;
+wander = wander + randomRange(-1, 1);
+moveTo(me, positionOf(me) + [rdamageandomRange(-0.1, 0.1), 0.05, 0]);
+is ticks % 20 == 0? then {
+fire(positionOf(me), [1, 0, 0], 302, 0.5, 0.2]);
+}
+is request == 1? then {
+saveGame("quick");
+request = 0;
+}
+quest = 0;
+is request ==quick");
+request = 0;
+}
+is request ==er = 0;
+int requpass Busy;
+loadGame("q
+enud
+enddt) {
+is ticks == 0? then {
+push(find("Crate"), [3, 1, 0]);
+}
+ticks = ticks + 1;
+wander = wander +0randomRange(-1, 1, loadGame];
+get io/s"lsentity":[positionOf, moveTo];
+get er = 0;
+int request = 0;
+}
+method update(float dt) {
+is ticks == 0? then {
+push(find("Crate"), [3, 1,co]);
+}
+ticks =22222222222222222222222222222222222222222222222222222222 ticks + 1;
+wander = wander + randomRange(-1, 1);
+moveTo(me, positionOf(me) + [rdamageandomRange(-0.1, 0.1), 0.05, 0]);
+is ticks % 20 == 0? then {
+fire(positionOf(me), [1, 0, 0], 302, 0.5, 0.2]);
+}
+is request == 1? then {
+saveGame("quick");
+request = 0;
+}
+quest = 0;
+is request ==quick");
+request = 0;
+}
+is request ==er = 0;
+int requpass Busy;
+loadGame("q򚑊d
+end

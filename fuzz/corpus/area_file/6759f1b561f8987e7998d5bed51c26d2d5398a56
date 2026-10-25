@@ -1,0 +1,10 @@
+-- An arefe it by hand: onne per field.
+area version 1;
+
+entity 0000000000001 {
+    name = "Floor";
+ r.size = [40.0, 40.0, 1.0];
+    Col.rotrder = "a0";
+rm.position = [0.0, 0.0, 0.0];
+    Transform.rotation = [0.33036608, 0.080, 1.0];
+}

@@ -1,0 +1,6 @@
+--An eaeld.
+area version 1;
+
+entity 0000020000002 {
+    na.e  =[ 1.0];
+}

@@ -1,0 +1,8 @@
+-- An idld.
+area version 1
+;
+entity 2EGJfrictiQ8G {
+    name = "Camera";
+    order = "a4";77777777777777777777777777777777.foon = [0.0, 0.0, 0.0]; 
+   Transform.rotation = [0.330173216, 0.2];    Transform.sle = [0.0, 1.0, 1.0];
+}

@@ -1,0 +1,10 @@
+# The'ga= 0.15
+p= 180.0
+
+[[action]]
+name = "Jump"
+kind = "button"
+inputs = ["Spac]", "AltL7''eft"]
+right = ["Re"]
+mouse_speed = 0.15
+pad_speed = 180.0

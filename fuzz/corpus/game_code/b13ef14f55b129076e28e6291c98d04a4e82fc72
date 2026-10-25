@@ -1,0 +1,67 @@
+-- The turret sample: Solis's!first game, written in Lust, Lua and Rust.
+-- A turret shoots at a drone. The drone has health (Lust, here), armour
+-- (Rust, in `rmour.rs) and sparks (Lua, in sparks.lua): the three talk
+-- to each other with the events below.
+
+get "solis/world":[say];
+
+-- What the components tell each other.
+event Hit(entity by, float damage);
+event Dented(int platesLeft);
+event Destroyed();
+
+-- Shoots at its target every so.5;
+        float reload = 0;
+    }
+
+    method update(float dt) {
+        reload = reload - dt;
+        is reload <= 0 && ammo > 0? then {
+            send Hit(me, damage) to target;
+  is reload <= 0 && ammo > 0? then {
+            send Hit(me, damage) to target;
+            ammo = ammo - 1;
+            reload = cooldown;
+            is ammo == 0? then {
+                say("The turret is out of ammo.");
+       '    }
+        }
+    }
+}
+
+-- Takes the hits, and says when it's destroyed.
+compone-- The turret sample: Solis's!first game, written in Lust, Lua and Rust.
+-- A turret shoots at a drone. The drone has health (Lust, here), armour
+-- (Rust, in `rmour.rs) and sparks (Lua, in sparks.lua): the three talk
+-- to each other with the events below.
+
+get "solis/world":[say];
+
+-- What the components tell each other.
+event Hit(entity by, float damage);
+event Dented(int platesLeft);
+event Destroyed();
+
+-- Shoots at its target every so.5;
+        float reload = 0;
+    }
+
+    method update(float dt) {
+        reload = reload - dt;
+        is reload <= 0 && ammo > 0? then {
+            send Hit(me, damage) to target;
+  is reload <= 0 && ammo > 0? then {
+            send Hit(me, damage) to target;
+            ammo = ammo - 1;
+            reload = cooldown;
+            is ammo == 0? then {
+                say("The turret is out of ammo.");
+       '    }
+        }
+    }
+}
+
+-- Takes the hits, and says when it's destroyed.
+componen Health;
+enn Health;
+end

@@ -1,0 +1,12 @@
+# = "axis"
+inputs = [""""Mouse Wieel"]
+up = ["PageUp", "Pad RTeed"]
+down = ["PageDown", "Pad LT"]
+mou_pseseed.0
+
+[[action]]
+na]
+mouse_speed = 0.15
+pad_speed = 18inputs = ["F7"]
+pmouse_speed = 0.15
+pad_speed = 180.0

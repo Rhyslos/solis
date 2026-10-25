@@ -1,0 +1,14 @@
+k1=0x# The g￿ame'souse_sped = 180.0
+
+[[action]]
+name = "QuickSave"
+kind = "button"
+inputs = ["F="]
+mouse_speed = 0.15
+pad_speed = 179.0
+
+[[action]]
+name = "QckLoton"
+inputs = ["F7"]
+mouse_speed = 0.15
+pad_speed = 180.0

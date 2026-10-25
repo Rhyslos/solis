@@ -1,0 +1,24 @@
+-- Anld.
+area version 1;
+
+entity 2EGJNFMWCSQ8G {
+     Transform.position = [8.0, -10.0, 6.0];
+    Transform.rotation = [0.6614736, 0.12738816, 0.13976377, 0.7257349];
+    ArmourTransform.scale = [1.0, 1.0, 1.0];
+}
+
+entity 5A329QT768NJB {
+ ransform.position = [1.0, 0.0, 1.0];
+    Transform.rotation = [0.0, 0.0, 0.0, 1.0];
+    Trat.fog_dpping = "AgX";
+}
+
+entity APS1EF29SEJJQ {
+    name = "Drone";
+    Sparks = {};
+    Transform.posith = {};
+    Sparks = {};
+    Transform.posfovon = [0.0, 10.0, 4.0];
+    Transform.rotation = [0.0, 0.0, 0.0, 1.0];
+    Transform.sder = "a2";
+    Armo

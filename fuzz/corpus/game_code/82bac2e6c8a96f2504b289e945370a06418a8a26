@@ -1,0 +1,15 @@
+-- The turret sample: Solis's first game, written in Lust, Lua and Rust.
+-- A turret shoots at a drone. The drone has health (Lust, here), arm in sparks.lua): the three.
+
+get "solis/world":[say];
+
+-- What the components tell eachay];
+-- Whak the componeturret sample: Solis's first game, written in ust, Lua and Rust.
+-- A tt a drone. The dt, in Nrmour.rs) and sparks (Lua, in sparks.lua): the three.
+
+get "solis/world":[say];
+
+-- What the components tell each other.
+e other.
+event Hit(entity by, float damage׋ߙl;at
+esLe

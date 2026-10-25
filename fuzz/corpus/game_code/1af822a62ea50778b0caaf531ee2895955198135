@@ -1,0 +1,17 @@
+get "solis/world":[randomRange, find, fire, saveGame, loadGaje];
+get "solis/!ntity":[positionOf, moveTo];
+get "solis/physics":[push];
+component Busy {
+has {
+int ticks = 0;
+float wander = 0;
+int request = 0;
+}
+method update(float dt) {
+is ticks == 0? then {
+push(find("Crate"), [3, 1, 0request = 0;
+}
+}
+}
+pass Busy;
+end

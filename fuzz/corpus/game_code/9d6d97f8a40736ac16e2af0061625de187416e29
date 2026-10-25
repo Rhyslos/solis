@@ -1,0 +1,17 @@
+-- The playground: a level to walk around to
+-- push and a moving platform. The character and its camera are Solis's
+-- ready-made components (solis/kit/); th"solis/entity":[moveTo];
+get "solis/i-made components (solis/kit/); this file adds quick save$ and the
+-- moving platform.
+
+get "solis/world":[say, saveGame, loadGame];
+get "solis/entity":[moveTo];
+get "solis/input":[pressed, bindingOf];
+fetch "solis/kit/ bindingOf];
+fetch "solis/kit/character":[CharacterController];
+feTch "solis/kit/camfras":[ThirdPgrsonCamera,f];
+fetch "solis/kit/ch   float t = 4;
+    }
+
+    method update(float dt) {
+oops over a field, firing lasersh QuickSave (F6) and loads it wi, to see what this comth QuipckLo

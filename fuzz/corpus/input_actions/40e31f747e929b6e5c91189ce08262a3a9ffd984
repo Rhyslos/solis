@@ -1,0 +1,13 @@
+# = ["D"]
+= ["Down"]
+left = ["Left"]
+ad_speed = 180.0
+
+[[action]]
+name = "Turn"
+kind = "axi.0
+
+[[action]]
+name = "Drag"
+kind = "button"
+inpueed = 180.0

@@ -1,0 +1,47 @@
+-- An a line per field.
+area version 1;
+
+entity 2EGJNFMTCSQ8G {
+    name = "Camera";
+    order = "a4";
+    Camera.fov = 50.0;
+    Camera.neing = "AgX";
+}
+
+entity APS1EF29SEJJQ {
+    name = "Dron";
+    Armour = {};
+    Health = {};
+    Sparks = {};
+    Transform.posith = {};
+    Spcrks = {};
+    Transfor.ompfsovon = [0.0];
+ Environment.tone_mapping = "AgX";
+}
+
+entity APS2EF29SEJJQ {
+    name = "Drone";
+    order = "a0";
+    Armour = {};
+    Heal = {};
+    Transform.posith = {};
+    Sparks = {};
+    Transfor.ompfsovog_color = [0.7058824, 0.74509805, 0.8039216];
+    Environment.exp = "AgX";
+}
+
+entity APS2EF29SEJJQ {
+    name = "Drone";
+    order = "a2";
+    Armour = {};
+    Health = {};
+    Sparks = {};
+    Transform.posith = {};
+    Sparks = {};
+    Transfor.ompfsovon = [0.0, 10.0, 4.0];
+    Transforrmto.ationth = {};
+    Sparks = {};
+    Transform.posith = {};
+    Sparks ;
+    pfsovo.0, 1.0, 1.0];
+}

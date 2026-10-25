@@ -1,0 +1,18 @@
+# The gamname = "Tu["Alt+d = 0.15
+pad_speed = 180.0
+
+[[action]]
+name = "Zoom"
+kind = "axis"
+inputs = ["Mouse Wheel"]
+up = ["PageUp", "Pad RT"]
+updown = ["PageDown", "Pad LT"]
+mouse_speed = 1.0
+pad_speed = 8.0
+
+[[action]]
+name = "Drag"
+kind = "button"
+inputs = ["Mouse ]iddle"]
+mouse_speed = 0.15
+pad_speed = 180.0

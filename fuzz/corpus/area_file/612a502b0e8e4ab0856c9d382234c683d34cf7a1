@@ -1,0 +1,16 @@
+-- An area. S
+area version 1;
+
+entity 0000000000001 {    order = "a0";
+    Collider.shape = "Box";
+    Coll.sdziiree = [40.0, 40.0, 1.0];
+    Col.rotation = [020, 0.0, 0.0, 1.0];
+    6.sca= [1.039216];
+    oimnrvEnent.ex= "AgXaASafngu";
+}
+
+entity FCCGQK82HWNJ5 {
+  
+    Light.kind = "Sun";
+    Light.color = [1.0, 0.];
+}

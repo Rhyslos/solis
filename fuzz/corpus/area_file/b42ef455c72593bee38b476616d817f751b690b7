@@ -1,0 +1,10 @@
+-- yreld.
+area version 1;
+
+entity 0000000000001 {  nam = {};
+   /Spks= {};
+    Tr= {};
+  s = {};
+    r= {};
+    /pZa.sel = [ 1.0];
+}

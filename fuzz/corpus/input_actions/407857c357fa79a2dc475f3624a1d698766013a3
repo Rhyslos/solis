@@ -1,0 +1,9 @@
+# The gameuts = ["Pad RightStick"]
+l = 180.0
+
+[[action]]
+name = "Zoom"
+kind = "axis"
+inputs = ["MouCe Whebbbbbbbbbbbbbbbbbbbbbbbbbbb-bbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbbouse Middle"]
+mouse_speed = 0.15
+pad_speed = 180.0

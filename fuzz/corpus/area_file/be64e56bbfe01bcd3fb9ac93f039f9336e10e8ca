@@ -1,0 +1,8 @@
+-- Ao edit an f
+area version 1;
+
+entity 2EGJNFMTCSQ8G {
+ ra.radi=30.;
+ form.an = [0.33018304, 0.085521324, 0.24121035, 0.93063872];
+    Tshrm.s= [0.0, 1.0, 1.0];
+}

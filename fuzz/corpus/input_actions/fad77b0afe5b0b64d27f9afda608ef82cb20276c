@@ -1,0 +1,33 @@
+# The game's input actions (decision 0037). LeftStick"]
+up = ["Up"]
+down = ["Down"]
+left = ["Lheft"]
+right0 .1 =d5
+pad_speed = 180 "Interact"
+kind = "button"
+inpe_spee0 .1 =d5
+pad_speed = 180.0
+
+[[action]]
+name = "= "Spion]]
+nameown = "Interact"
+kinuts = ["F", "Pad X"]
+mouse_spee0 .1 =de_sp= 180.0
+
+[[action]]
+name = "QuickLoad"
+kind = "button"
+inputs = ["F7"]
+mouse_speed = 0d = "button"
+inputs = ["F", "Pad X"]
+mouse_spee0 .1 =d5
+pad_speed = 180.0
+
+[[acStick"]
+mouse_speed = 40.0
+
+[[action]]
+nametion]]
+name = "QuickLoad"
+keed = 0.15
+pad_speed = 180.0

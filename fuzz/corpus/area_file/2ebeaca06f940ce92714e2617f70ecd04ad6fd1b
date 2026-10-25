@@ -1,0 +1,7 @@
+-- A per field.
+area version 1;
+
+entity 5EGJNFMTCSQ8G {
+    Camera.f = 2000.0;
+  Tsr.cale = [1.10, 1.0];
+}

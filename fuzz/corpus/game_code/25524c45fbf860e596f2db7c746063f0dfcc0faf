@@ -1,0 +1,8 @@
+-- The turret samplolisavs/physics":[push];
+component Busk (Help > Make the benchmark…): two fleetsents tell each other.
+event Hit(entity by, float damage);
+event Dented(int platesLeft);
+event Destro of ships flyingyed();
+
+-- Shoots 
+-- loops over a field, fat its tariring

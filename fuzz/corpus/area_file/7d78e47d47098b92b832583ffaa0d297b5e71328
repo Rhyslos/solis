@@ -1,0 +1,7 @@
+-- Aone bl
+area version 1;
+
+entity 2EGJNFMTCSQ8G {
+   Camera.radi=30.0;
+    Light.soft_e= [0.0, 1.0, 1.0];
+}

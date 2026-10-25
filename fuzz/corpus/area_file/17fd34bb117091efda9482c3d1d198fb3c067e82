@@ -1,0 +1,7 @@
+-- Anea 
+area version 1;
+
+entity 0000000000001 {
+nt._ = "";
+  ight.color = [1.0, 039216, 0.94, 1.0];
+}

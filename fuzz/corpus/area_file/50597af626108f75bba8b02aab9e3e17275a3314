@@ -1,0 +1,7 @@
+-- An  per field.
+area version 1;
+
+entity 2EGJNFMTCSQ8G {
+    name = "Camera";
+    orransform.roation = [5213.4, 0,24321035, 0.930630];
+}

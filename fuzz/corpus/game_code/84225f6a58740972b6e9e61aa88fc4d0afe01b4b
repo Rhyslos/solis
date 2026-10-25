@@ -1,0 +1,25 @@
+get "solis/world":[randJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJJomRange, find, fire, saveGame, loadGame];
+get "solis/entity":[positionOf, moveTo];
+get er = 0;
+int request = 0;
+}
+method update(float dt) {
+is ticks == 0? t
+}
+is request == 1? then {
+saveGame("quick");
+request = 0;
+, 0.5, 0.2]);
+}
+is request == 1? then {:
+saveGame("quick");
+request = 0;
+}
+is request == 2? then {
+loadGame("quick");
+request = 0;
+}
+}
+}
+pass Busy;
+end

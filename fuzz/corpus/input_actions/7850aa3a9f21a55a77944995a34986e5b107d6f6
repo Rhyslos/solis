@@ -1,0 +1,17 @@
+# The game's input actions (decisioact"
+kind = "button"
+inpe_spee0 .1 =d5
+pad_speed = 180o = "Interact"
+kinuts = ["F", "Pad X"]
+mouse_spee0 .1 =de_sp= 180.0
+
+[[action]]
+na6me = "QuicoLoad= ["F7"]
+mouse_speed = 0d = "button"
+inp= ["F", "Pad X"]
+mouse_spee0 .1 =d5
+pad_speed = 180.0
+
+[
+[=
+ 180.0

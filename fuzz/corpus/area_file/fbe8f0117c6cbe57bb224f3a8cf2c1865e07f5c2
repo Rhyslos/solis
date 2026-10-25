@@ -1,0 +1,5 @@
+--afeoci.
+area version 1;
+
+entity 0shape0000001 {
+ Collider.shape = [0, 1.0];||||||||}

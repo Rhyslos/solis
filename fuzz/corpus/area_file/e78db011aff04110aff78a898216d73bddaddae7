@@ -1,0 +1,7 @@
+-- Aield.
+area version 1;
+
+entity 2EGJNFMTCSQ8G {
+    nt.son = [0.33018304, 0.02, 0.24321035, 0.31063872];
+    Transform.scale = [00];
+}

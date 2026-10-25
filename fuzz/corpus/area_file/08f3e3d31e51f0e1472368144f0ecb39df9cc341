@@ -1,0 +1,10 @@
+--to edit by hae"per field.
+area version 1;
+
+entity 0000000000001 {
+    name = "Fl?oor";
+    order = "a0";
+      Environment= {};
+    Sparmh = {};anpoline = {};
+    Sp.sZale = [1.0, 1.0, 1.0];
+}

@@ -1,0 +1,8 @@
+-- An arn
+area version 1;
+
+entity 2EGJNFMTCSQ8G { Camera.nea= 0.1;
+    Camera.far = "APS0EF29SEJJronm\nt";
+    order = "a0";
+    Enform.scale = [1.0, 1.0, 1.0];
+}

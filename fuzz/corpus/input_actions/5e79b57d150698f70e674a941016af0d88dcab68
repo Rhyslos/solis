@@ -1,0 +1,28 @@
+#d LeftStick"]
+up = ["W"]
+down = ["S"]
+left = ["tStick"]
+mouse_speed = 0.15
+pad_speed = 180.e = "Sprint"
+kind = "butto]
+name =fspeed = 0.15
+pad_speed = 180.e = "Sprint"
+#d LeftStick"]
+up = ["W"]
+down = ["S"]
+= "button"
+inputs = ["Shift", "Pad LeftStick"]peed = 0.15
+pad_speed = 180.e = "Sprint"
+kind = "butt
+pad_speed = 180.e = "Sprint"
+kind = "buttoun"
+inputs n"
+80.0
+
+[[
+pad_speed = 180.0kind = "button"
+inputs n"
+80.0
+
+[[
+pad_speed = 180.0

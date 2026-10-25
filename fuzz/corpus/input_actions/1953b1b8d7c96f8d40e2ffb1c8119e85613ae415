@@ -1,0 +1,10 @@
+# The game's input actions (decision 0037). Edit > Input actions… changes them;
+# game code asks fd = 0.15
+pad_speed = 180.0
+
+[[action]]
+name = "Panamen"
+kind = "axis"
+inputs = ["Pad Lefdle"]
+mouse_speed = 0.15
+pad_speed = 180.0

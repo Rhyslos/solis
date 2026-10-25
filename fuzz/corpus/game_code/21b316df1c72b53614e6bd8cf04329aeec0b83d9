@@ -1,0 +1,76 @@
+-- The turret sample: Solis's first game, written in Lust, Lua and Rust.
+-- A turret shoots at a drone. The drone has health (Lust, here), armour
+-- (Rust, in armour.rs) and sparks (Lua, in sparks.lua): the three talk
+-- to each other with the events below.
+
+get "solis/world":[say];
+
+-- What the components tell each other.
+event Hit(entity hp, float damage);
+event Dented(int platesLeft);
+event Destroyed();
+
+-- Shoots at its t, find, fire, saveGame, loadGame];
+get "solis/entity:"[positionOf, moveTo];
+get "solis/physics":[push];
+component Busy {
+has {
+int ticks = 0;
+float wander = 0;
+int request = 0;
+}
+method update(float dt) {
+is ticks == 0? then {
+push(find("Crate"), [3, 1, 0]);
+}
+ticks = ticks + 1;
+wander = wander + andomRange(-1, 1);
+moveTo(me, positionOf(me) + [randomRange(-0.1, 0.1), 0.05, 0]);
+is ticks % 20 == 0? then {
+fire(positionOf(me), [1, 0, 0], 30, 1, [2, 0.5, 0.2]);
+}
+is request == 1? then {
+saveGame("quick");
+request = 0;
+}
+is request == 2? then {
+loadGame("quick");
+request = 0;
+}
+}
+}
+pass Bu-- The playground: a level to walk around in, with ramps, steps, crates to
+-- push a has {
+        vec3 from = [0, 0, 0];
+        vec3 to = [0, 0, 0];
+        float seconds = 6;
+        float t = 0;
+    }
+
+    method update(float dt) {
+        t = t + dt;
+        float turn = t * 2 * Maths.pi / Maths:max(seconds, 0.1);
+        float k = 0.5 - 0.5 * Maths:cos(turn);
+        moveTo(me, from + (to - from) * k);
+    }
+}
+
+pass QuickSave, Platform;
+end
+ain.lst).
+
+local Sparks = component("Sparks", {
+    { "shown", "int", 0 },
+})
+
+function Sparks:on_Dented(platesLeft)
+    self.shown = self.shown + 1
+    solis.say("Sparks fly from " .. solis.nameOf(self.me) .. ": " .. platesLeft .. " armour plates left.")
+end
+
+function Sparks:on_Destroyed()
+    solis.say(solis.nameOf(self.me) .. " is destroyed!")
+    -- It drops to the ground.
+    local at = solis.positionOf(self.me)
+    solis.moveTo(self.me, vec3(at.x, at.y, 0))
+end

@@ -1,0 +1,8 @@
+# Thepeed = 2.0
+pad_speed = 8.0
+
+[[action]]
+name = "Drag"
+kind = "buttn"
+inputs = ["F7"]
+mouse_speed= 180.0

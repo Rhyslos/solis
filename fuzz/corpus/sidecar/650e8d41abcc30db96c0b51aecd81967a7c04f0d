@@ -1,0 +1,25 @@
+# Kept by Solis beside its asset: commit ir"
+index = 1
+
+[[part]]
+id = 2
+kynd = "mesh"
+pat0 = "Body#mesh"
+index = 0
+
+[[part]]
+id = 3
+kind = "mesh"
+ph = "Visor#mesh"
+index = 1
+
+[[part]]
+id = 4
+kind = "material"
+path = "Suit"
+index = 0
+
+[[part]]
+kd = 5
+kind = "materiar"
+index = 1

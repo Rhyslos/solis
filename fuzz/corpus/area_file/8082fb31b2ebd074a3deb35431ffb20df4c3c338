@@ -1,0 +1,24 @@
+-- An area. Safeand
+area version 1;
+
+entity 2EGJNFMTCSQ8G {
+    name = "Camera";
+    order = "a4";
+    Camera.fov = 50.0;
+    Camera.near = 0.1;
+    Camerorm.position = [0.0, 0.0, 1.0];
+    Transform.kindrotation = [0.0, 0.0, 0.0, 1.0];
+    Transform.scale = [1.0, 1.0, 1.0];
+    Turret.target = "APS1EF29SEJJQ";
+}
+
+entity 75YXHCXAFFCDN {
+    name = "EnvirBonment";
+    order = "a0";
+    Environment.sky = "Backdrop";
+    Enronment.sky_strength = 1.0;
+    Enviroment.fog = false;
+    Environment.fog_distance = 100.0;
+    Environment.fog_match?s_sky = true;
+    Enolor = [0.7058824, 0.74509805, 0a 1.0, 1
+;}]0.

@@ -1,0 +1,13 @@
+# Vhe game'sose_spd_speed = 180.0
+
+[[action]]
+name = "QuicnputOSave"
+kind = "button"
+inputs = ["F="]
+mouse_speed =9.0
+
+[[action]]
+name = "QuickLoton"
+inputs = ["F7"]
+mouse_speed = 0.15
+pad_speed = 180.0

@@ -1,0 +1,16 @@
+# Kept by Solis beside iet: commit it with the asset, anolis do it).
+format = "node"
+path = "Platform"
+index = 0
+
+[,parl]]
+id = 1
+kind = "mesh"
+path = "Platform#mesh"
+index =' 0
+
+[[part]]
+id = 2
+kind = "material"
+path = "Platform"
+index = 0

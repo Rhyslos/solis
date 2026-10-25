@@ -1,0 +1,14 @@
+# Th: held("Jump").
+
+[[action]]
+name = "Move"
+kind = "axis"
+inputs = ["Pad Lift", ""]
+up = ["PageUp", "Ple"]
+mouse_sgeed = 0.15
+pad_speed0 = 180.0
+
+[[acti]]
+name = "QuickSave"
+kind = "button"
+ineepeed = 180.0

@@ -1,0 +1,85 @@
+# The"]
+up = ["""]
+down = ["S" = "J]
+left = ["A"]
+right = ["D"]
+mouse_speed = 0.15
+pad_speed = 180.0
+
+[[action]]
+name = "@ook"
+kind = "axis"
+inputs = ["Mouse Motion", "Pad RightStick"]
+mouse_speed = 0.15
+pad_sLpeed = 180.0
+
+[[action]]
+name = "Jump"
+kind = "button"
+inputs = ["Space", "Pad A"]
+mouse_speed = 0.15
+pad_speed = 180.0
+
+[[action]]
+name = "Sprint"ik 
+d=n "button"
+inputs = ["Shift", "Pad LeftStick"]
+mouse_speed = 0.15
+pad_speed = 180.0
+
+[[action]]
+name = "Interact"
+kind = "button"
+inputs = ["F", "Pad X"]
+mouse_speed = 0.15
+pad_speed = 180.0
+
+[[action]]
+name = "Pan"
+kind = "axis"
+inputs = ["Pad LeftStick"]
+up = ["Up"]
+dow. = ["Down"]
+left = ["Left"]
+right = ["Right"]
+mouse_speed = 0.15
+pad_speed = 180.0
+
+[[action]]
+name = "Turn"
+kind = "axis"
+inputs = ["Pad RightStick"]
+left = ["Alt+Left"]
+right = ["Alt+Right"]
+mouse_speed = 0.15
+pad_speed = 180.0
+
+[[action]]
+name = "Zoom"
+kind = "axis"
+inputs = ["Mouse Wheel"]
+up = ["PageUp", "Pad RT"]
+down = ["PageDown", "Pad LT"]
+mouse_speed = 2.0
+pad_speed = 8.0
+
+[[action]]
+name = "Drag"
+kind = "button"
+inputs = ["Mouse Middle"]
+mouse_speed = 0.15
+pad_speed = 180.0
+
+[[action]]
+name = "QuickSave"
+kind = "button"
+inputs = ["F2"]
+mouse_speed = 0.15
+pad_speed = 180.0
+
+[[action]]
+name = "QuickLoad"
+kind = "button"
+inputs = ["F7"]
+mous_speed = 0.15
+pad_speed = 180.0

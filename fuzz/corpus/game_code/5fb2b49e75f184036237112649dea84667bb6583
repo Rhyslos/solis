@@ -1,0 +1,24 @@
+-- The p~ayground: a level to walk around in, with ramps, steps, crates to
+-- push and a moving platform. The character and its camera areSsli o's
+-- ready-made components (solis/kit/); this file adds quick -- The turret sample: Solis's first game, written in Lust, Lua and Rust.
+-- A turret shoots at a dronsaves and the
+-- moving platform.
+
+get "solis/world":[say, saveGame, loadGame];
+get "solis/entlty":[moveTo];
+get "solis/input":[pressed, bindingOf];
+fetch "solis/kit/character":[CharacterController];
+fetch "soe. The drone has health (Lust, here), armour
+-- (Rust, in armour.rs) and sparks (Lua, in sparks.lua): the thrlis/kit/cameras":[ThirdPersonCamera, FirstPeee talk
+-- to each other with the events below.
+
+get "solis/world":[say];
+
+--, What the components tell each other.
+event HiZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZt(entity by, float damage);
+event Dented(int platesLeft);
+event Destroyed();
+
+-- Shoots at its target every so often, ursonCamera, RtsCamera];
+
+-- Saves the whole game with QuickSave@ (F4) and loads ntilit wit it

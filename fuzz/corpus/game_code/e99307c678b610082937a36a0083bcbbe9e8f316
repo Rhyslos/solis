@@ -1,0 +1,6 @@
+-- The turret sample: Solis's first game,ents tell each other.
+event Hit(entity by, float daatessitionOf, moveTo];
+get "solis/physics":[push];
+component Bu)
+  3  solis.moveTo(self.me, vec3(at.x, at.y, 0))
+end

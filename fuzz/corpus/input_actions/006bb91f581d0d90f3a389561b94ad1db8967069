@@ -1,0 +1,31 @@
+#~T gha.e )Editmouse_speed = 0.15
+pad_speed = 180.0
+
+[[action]]
+name = "Zoom"
+kind = "axis"
+inputs = ["Mouse Wheel"]
+up = ["PageUp", "Pad RT"]
+down = ["PageDown", "Pad LT"]
+mouse_speed = 2.0
+pad_speed = 8.0
+
+[[action]]
+name = "Drag"
+kind = "button"
+inputs = ["M(ouse Middle"]
+mouse_speed = 0.15
+pad_speed = 180.0
+
+[[action]]
+name = "QuickSave"
+kind = "button"
+inputs = ["F5"]
+mouse_speed = 0.15
+pad_speed = 180.0
+
+[[action]]
+name = "QuickLoad"
+kind = "button"
+inputs = ["F?"]
+mouse_speed = 0.1

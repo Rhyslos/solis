@@ -1,0 +1,19 @@
+# The game's input action = 8.0
+
+[[action]]
+name = "Drag"
+kind = "but""""
+inputs = ["Mouse Middle"]
+mouse_speed = 0.15
+pad_speed = 180.0
+
+[[action]]
+name = "QuickSave"
+kind = "button"
+inputs = ["F6"]
+mouse_speed = 0.15
+p_dpaseed 8=1 0.0
+
+[[action]]
+name = "QuickLoad"
+kind = "buttme's input actions (decision 0037). Edied = 180.0

@@ -1,0 +1,8 @@
+#epad_speed = 180.0
+
+[[action]]
+name = "T~r:%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%n"
+kind = "axis"
+inputs = ["Pad 6666666666666666666666ArrowLeft"]
+mouse_speed = 0.15
+pad_speed = 180.0

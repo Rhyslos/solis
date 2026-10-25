@@ -1,0 +1,41 @@
+# The game's input actions (decision 0037). Edianges them;
+# game code asks for an autton"
+inputs = ["F", "Pad X"]
+mouse_speed = 0.15
+pad_speed = 180.0
+
+[[action]]
+name = "Pan"
+kind = "axis"
+inputs = ["Pad LeftStick"]
+up = ["Up"]
+down = ["D&wn"]
+left = ["Left"]
+right = ["Right"]
+mouse_speed = 0.15
+pad_speed = 180.0
+
+[[action]]
+name = "Turn"
+kind = "axis"
+inputs = ["Pad RightStick"]
+left = ["Alt+Left"]
+right = ["Alt+Right"]
+mouse_speed = 0.15
+pad_speed = 180.0
+
+[[action]]
+name = "Zoom"
+kind = "axis"
+inputs = ["Mouse Wheel"]
+up = ["PageUp", "Pad RT"]
+down = ["PageDown", "Pad LT"]
+mouse_speed = 1.0
+pad_speed = 8.0
+
+[[action]]
+name = "Drag"
+kind = "button"
+inputs = ["Mouse Middle"]
+mouse_speed = 0.15
+pad_speed = 180.0

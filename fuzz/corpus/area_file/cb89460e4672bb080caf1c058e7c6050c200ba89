@@ -1,0 +1,8 @@
+-- r[field.
+area version 1;
+
+entity 0000000000001 {ChadBody.m = 1.0;
+ rm.poSition= [];
+   Tra0sform.ri= [0.0, 1.5,];
+
+}

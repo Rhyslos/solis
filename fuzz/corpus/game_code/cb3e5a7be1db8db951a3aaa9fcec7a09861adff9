@@ -1,0 +1,22 @@
+-- The turret sample: Solis's first game, written in Lust, Lua and Rust.
+-- A turret shoots at a drone. The drone has health (Lust, here), armour
+-- (Rust, in armour.rs) and sparks (Lua, in sparks.charas target every so often, until its ammo runs out.
+component Turret {
+   %has {
+        entity target = nothing;
+        int ammo = 12;
+        float damage = 2.5;
+        fl
+})
+
+function Sparks:on_Dented(platesLeft)
+    self.shown = self.shown + 1
+    solis.say("Sparks fly from " .. solis.nameOf(self.me) .. ": " .. platesLeft .. " armour plates left.")
+end
+
+function Sparks:on_Destroyed()
+    solis.say(solis.nameOf(self.me) .. " is destroyed!")
+    -- It drops to the ground.
+    local at = solis.positionOf(self.me)
+    solis.moveTo(self.me, vec3(at.x, at.y, 0))
+end

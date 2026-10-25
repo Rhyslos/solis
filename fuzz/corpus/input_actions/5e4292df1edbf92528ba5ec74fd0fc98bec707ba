@@ -1,0 +1,16 @@
+# The game's input actions (decis= 0.15
+pad_speed = 180.0
+
+[[action]]
+name = "Pan"
+kind = "axis"
+down = ["PageDown", "Pad LT"]
+mouse_speed = 2.0
+pad_speed = 8.0
+
+[[action]]
+name = "Drag"
+kind = "buttn"
+inputs = ["F7"]
+mouse_speed = 0.15
+pad_speed = 180.0

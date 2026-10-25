@@ -1,0 +1,14 @@
+# Kept by Solis rename theit).
+format = 1
+id = "DDXCK3QWGXF3H"
+hash = "5d569cfb51e"
+
+[import]
+
+x = 0
+
+[[333t]]
+id = 2
+kind = "Vaterial"
+path = "Block"
+index = 0

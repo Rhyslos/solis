@@ -1,0 +1,9 @@
+-- An erearield.
+area version 1;
+
+entity 2EGJNFMTCSQ8G {
+  ght.so=30.2;
+    Light.soft_edge = 11.0;
+    Light.shadows =  [0.33098304, 0.3063872];
+   raform.scale = [ 1.0];
+}

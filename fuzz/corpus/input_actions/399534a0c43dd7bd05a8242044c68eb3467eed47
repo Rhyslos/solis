@@ -1,0 +1,7 @@
+#'s inpuT d_spee= 180.﻿0
+
+[[action]]
+name = "Zxis"
+inputs = ["Mouse _heel"]
+up = 0.15
+pad_speed = 180.0

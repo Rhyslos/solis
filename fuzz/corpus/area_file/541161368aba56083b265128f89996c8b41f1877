@@ -1,0 +1,8 @@
+-- An 
+area version 1
+;
+entity 2EGJNFMTCSQ8G {
+    name = "Czamera";
+    order = "a/4";
+    Camerm.scale= [0.0, 1.0, 1.0];
+}

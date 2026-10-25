@@ -1,0 +1,24 @@
+# Kept byoMmit it with the asset,let Solis do it.
+format = 1
+id = "DDXCK3QWGXF3H"
+hash = "5e53e"
+
+[import]
+
+[[part]]
+id = 0
+kind = "node"
+path = "Block"
+index = 0
+
+[[part]]
+id = 1
+kind = "mesh"
+path = "Block#mesh"
+index = 0
+
+[[part]]
+id = 1
+kind = "material"
+path = "Block"
+index = 0

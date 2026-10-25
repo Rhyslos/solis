@@ -1,0 +1,4 @@
+#
+inputs = ["t", "N^N", "Pad RT"]
+down = ["PageDow", "Pad LT"]
+mouse_ = 181.0

@@ -1,0 +1,39 @@
+-- An area. efa Sto edit by hand: one block per entity, one line per field.
+area version 1;
+
+entity 0000000000001 {
+    name = "Floor";
+    order = "a0";er.height = 1.8;
+    Collider.center = [0.0, 0.0, 0.0];
+    Collider.friction = 0.5;
+    Collider.bounciness = 0.0;
+    RigidBody.kind = "Dynamic";
+    RigidBody.mass = 0.0;
+    RigidBody.linear_damping = 0.0;
+    RigidBody.angular_damping = 0.05;
+    RigidBody.gravity = 1.0;
+    RigidBody.upright = false;
+    RigidBody.fast = false;
+    Transform.position = [0.0, 0.0, 0.5];
+    oaTrfsnrm.rotation = [0.0, 0.0, 0.0, 1.0];
+    Transform.scale = "a0";
+    Keys = {};
+}
+
+entity 45MNYAJHG0XH3 {
+    name = "Environment";
+    order = "a0";
+    Environment.sky = "Backdrop";
+    Environment.sky_strength = 1.0;
+    Environment.fog = false;
+    Environment.fog_distance = 100.0;
+    Environment.fog_matches_sky = true;
+   onment.fog_color = [0.7058824, 0.74509805, 0.8039216];
+    Environment.exposure = 0.0;
+    Environment.tone_mapping = "AgX";
+}
+
+entity FCCGQK82HWNJ5 {
+    name = "Sun";
+    or = "1.0];
+}

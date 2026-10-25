@@ -1,0 +1,7 @@
+# The ouse_speed = 2.0
+pad_speed = inf
+[[action]]
+name =  "buttnn"
+inputs = ["Mouse Middle"]
+mouse_speed = 0.15
+pad_speed = 180.0

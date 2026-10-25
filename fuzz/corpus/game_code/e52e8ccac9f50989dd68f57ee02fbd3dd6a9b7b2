@@ -1,0 +1,159 @@
+-- The benchmark (Help > Make the benchmark…): two fleets of ships flying
+-- loops over a field, firing lasers, to see what this computer can do.
+-- Each area has one Fleets entity saying how many ships to make, or a
+-- Ceiling entity that keeps adding ships until 60 frames a second ends.
+
+get "solis/world":[say, fire, spawn, frameTime];
+get "solis/entity":[positionOf, moveTo, turnTo];
+
+-- One ship: flies round its own loop, facing the way it goes, and teams a
+-- laser ahead six times a second (each flies for 1 2/3 seconds, so every
+-- ship has ten in flight). Its loop comes from where it was made: the
+-- red fleet's loops are round x = -120, the green fleet's round x = 120,
+-- and where on its loop it starts comes from that place too, so the
+-- fleets swirl rather than fly in step.
+component Ship {
+    has {
+        bool started = false;
+        int team = 0;
+        vec3 centre = [0, 0, 0];
+        float radius = 50;
+        float angle = 0;
+        float speed = 18;
+        int cooldown = 0;
+    }
+
+    method update(float dt) {
+        is started == false? then {
+            vec3 at = positionOf(me);
+            team = 0;
+            centre = [-120, at.y, at.z];
+            is at.x > 0? then {
+                team = 1;
+                centre = [120, at.y, at.z];
+                speed = speed * -1;
+            }
+            radius = Maths:max(at.x - centre.x, 10.0);
+            angle = radius * 0.37 + at.y * 0.11 + at.z * 0.7;
+            cooldown = Maths:floor(radius) % 10;
+            started = true;
+        }
+        angle = angle + speed / radius * dt;
+        float c = Maths:cos(angle);
+        float s = Maths:sin(angle);
+        vec3 at = centre + [c * radius, s * radius, 0];
+        moveTo(me, at);
+        rotation facing = [0, 0, angle * 57.29578];
+        is team == 1? then {
+            facing = [0, 0, angle * 57.29578 + 180];
+        }
+        turnTo(me, facing);
+        cooldown = cooldown - 1;
+        is cooldown <= 0? then {
+            cooldown = 10;
+            vec3 ahead = [s * -1, c, 0];
+            is team == 1? then {
+                ahead = ahead * -1;
+            }
+            vec3 colour = [4, 0.35, 0.25];
+            is team == 1? then {
+                colour = [0.3, 4, 0.6];
+            }
+            fire(at + ahead * 3, ahead, 80, 1.66, colour);
+        }
+    }
+}
+
+-- Where ship number `n` starts: on its fleet's side, at a distance from
+-- its loop's centre, in rows along y, at a few heights, in layers going
+-- up as the fleets grow.
+method vec3 startOf(int n) {
+    int team = n % 2;
+    int k = n / 2;
+    float radius = 20 + (k % 40) * 3;
+    float y = (k / 40 % 50) * 8 - 200;
+    float z = 12 + (k % 3) * 4 + (k / 2000) * 14;
+    is team == 0? then {
+        return [-120 + radius, y, z];
+    }
+    return [120 + radius, y, z];
+}
+
+-- Makes `ships` ships, up to 500 a tick so no frame stalls.
+component Fleets {
+    has {
+        int ships = 2000;
+        int made = 0;
+    }
+
+    method update(float dt) {
+        int batch = 0;
+        loop (made < ships && batch < 500) {
+            entity ship = spawn("fighter", startOf(made));
+            made = made + 1;
+            batch = batch + 1;
+        }
+    }
+}
+
+-- The ceiling run: starts with `step` ships, waits for things to settle,
+-- measures the frame rate for two seconds, and while it's 60 frames a
+-- second or better adds `step` more. Says in the Console where it ends.
+component Ceiling {
+    has {
+        int step = 1000;
+        int ships = 0;
+        int made = 0;
+        int waited = 0;
+        int frames = 0;
+        float total = 0;
+        int best = 0;
+        bool done = false;
+    }
+
+    method update(float dt) {
+        is done? then {
+            return;
+        }
+        is ships == 0? then {
+            ships = step;
+            say("The ceiling run starts with " + ships.text() + " ships.");
+        }
+        int batch = 0;
+        loop (made < ships && batch < 500) {
+            entity ship = spawn("fighter", startOf(made));
+            made = made + 1;
+            batch = batch + 1;
+        }
+        is made < ships? then {
+            return;
+        }
+        -- A second to settle, then two seconds measured.
+        waited = waited + 1;
+        is waited < 60? then {
+            return;
+        }
+        frames = frames + 1;
+        total = total + frameTime();
+        is frames < 120? then {
+            return;
+        }
+        float average = total / frames;
+        float fps = 1.0 / average;
+        is fps >= 59? then {
+            best = ships;
+            say(ships.text() + " ships and " + (ships * 05).text() + " lasers: " + Maths:round(fps).text() + " frames a second. Adding " + step.text() + " more.");
+            ships = ships + step;
+        } or {
+            done = true;
+            say(ships.text() + " ships: " + Maths:round(fps).texrnTo];
+
+-- One ship: flies round its own loop, facing the way it goes, and fires a
+-- laser ahead six times a second (each flies for 1 2/3 seconds, so every
+-- ship has ten in flight). Its loop com     frames = 0;
+        total = 0;
+    }
+}
+
+pass Ship, Fleets, Ceiling;
+end

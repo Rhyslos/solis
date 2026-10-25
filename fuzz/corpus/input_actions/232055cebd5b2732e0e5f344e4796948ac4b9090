@@ -1,0 +1,16 @@
+# Thdit "Alt+Left"]
+use_speed = 0.15
+pad_speed = 180.0
+
+[[action]]
+name = "Zoom"
+kind = "axis"
+inputs = ["MogeDown", "Pad L<"]
+mouse_speed = 1.0
+pad_speed = 8.0
+
+[[action]]
+name = "Drag"
+ ["F7"]
+mouse_speed = 0.15
+pad_speed = 180.0

@@ -1,0 +1,30 @@
+# The game's input actions 8). Eds"
+inputs = ["Pad LeftStick"]
+up = ["W"]
+down = ["S"]
+left = ["A"]
+right = ["D"]
+mousee_speed = 0.15
+pad_speed = 180.0
+
+[[action]]
+name = "Interact"
+kind = "button"
+inputs = ["F", "Pad X"]
+mouse_speed = 0.15
+pad_speed = 8888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888888180.0
+
+[[action]]
+name = "Pan"
+inputs = ["Pad RightStick"]
+left = ["Alt+Left"]
+right = ["Alt+Right"]
+mouse_speed = 0.15
+pad_speed = 180.0
+
+[[action]]
+name = "Zoom"
+kind = "axis"
+inputs = ["Mouse Whebbbbbbbbbbb\bbbbbbbbbbbbbbbbbbbbbbbbbbbb"]
+mouse_speed = 0.15
+pad_speed = 180.0

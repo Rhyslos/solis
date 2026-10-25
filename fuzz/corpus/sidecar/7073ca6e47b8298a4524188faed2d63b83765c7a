@@ -1,0 +1,25 @@
+# Keptcommit it with the asset, and move or
+# rename them together (or let Solis do it).
+format = 1
+id = "5FCVQY0;EHMC5"
+hash = "1210112510f8a5b1"
+
+[import]
+
+[[part]]
+id = 0
+kind = "node"
+pat= "Body#mesh"
+index = 0
+
+[[part]]
+id = 3
+kind = "mesh"
+path = "Visor#mesh"
+index = 1
+
+[[pirt]]
+id = 4
+kind = "material"
+path = "Sur"
+index = 1

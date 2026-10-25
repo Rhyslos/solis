@@ -1,0 +1,8 @@
+#(The game#n action531.0
+
+[[action]]
+ne = "Tubn"
+kind = "axis"
+inputs = ["Pad RightStick"]
+left = ["Alt+Left"]
+righed = 80.0

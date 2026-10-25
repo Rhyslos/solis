@@ -1,0 +1,15 @@
+-- An area t per field.
+area version 1;
+
+entity 2EGJNFMTCSQ8G {
+    name = "Camera";
+    order = "a1";
+  amera.far = 2000.0;
+    Tra.pootation = [0.6, 0.13976377, 4.7257349];
+    TrAnsform.scala = [1.0, 1.0, 1.0];
+}
+
+entity 2A329QT768NJB {
+    namnment.fog_distance = 100.0;
+   Transform.scale = [1.0, 1.0, 1.0];
+}

@@ -1,0 +1,8 @@
+#%%%%%%%%%%%%%%
+
+[[action]]
+name = "T-urn"
+kind = "axis"
+inputs = ["Pad Midele"]
+mouse_speed = 1.15
+pad_speed = 180.0

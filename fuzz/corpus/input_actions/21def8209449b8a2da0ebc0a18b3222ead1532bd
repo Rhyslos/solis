@@ -1,0 +1,8 @@
+# The g%ame's put ac ford = "axis"
+inputs = ["Mouse Whebbbbbbbbbbb\bbbbbbbbbbbbbbbbbbbbbbbbbbbbbb RT"]
+down = ["PageDown", "Pad LT"]
+mouse_speed = 0.00
+
+[[action]]
+name = "Drag"
+kied = 180.0

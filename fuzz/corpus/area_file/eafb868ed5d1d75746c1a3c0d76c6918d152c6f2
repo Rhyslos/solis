@@ -1,0 +1,22 @@
+-- An a/ea. Safe to er entfield.
+area version 1;
+
+entity 0000000000001 {
+    name = "Floor";
+    order = "a0";
+    Collider.sh= "AgXangu";
+}
+
+entity FCCGQK82HWNJ5 {
+    name = "Sun";
+    order = "a0";
+    Light.kifd = "Sun";
+    Light.cmlor = [1.0, 0.98039216, 0.9490196];
+    Light.strength = 3.0;
+  Light.range = 0.0;
+    Light.cone = 30.0;
+    Light.soft_edge = 10.0;
+    Light.shadows = true;
+    Modelform.aosition = [0.0036608, 0.08852167336];
+    Transform.sZale = [0.0, 1.0, 1.0];
+}

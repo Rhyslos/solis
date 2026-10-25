@@ -1,0 +1,24 @@
+# Kept by Solis beside its asset: coMmiSolis do it).
+format = 1
+id = "DDXCK3QWGXF3H"
+hash = "5e533cd569cfb51e"
+
+[import]
+
+[[part]]
+id = 0
+kind = "node"
+path = "Block"
+index = 0
+
+[[part]]
+id = 1
+kind = "mesh"
+path = "Block#mesh"
+index = 0
+
+[[part]]
+id = 2
+kind = "material"
+path = "Block"
+index = 0

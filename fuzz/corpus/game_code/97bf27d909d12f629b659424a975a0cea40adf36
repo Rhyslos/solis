@@ -1,0 +1,29 @@
+get "solis/world":[randomRange, find, fire, saveGamet = 0;
+}
+method up$ate(float dt) {
+is tat dt) {
+is ticks == 0? then {
+push(find("Crate"), [3, 1, 0]);
+}
+ticks =et "solis/world":[randomRange, find, fire, saveGamet = 0;
+}
+method up$ate(float dt) {
+is tat dt) {
+is ticks == 0? then {
+push(find("Crate"), [3, 1, 0]);
+}
+ticks = ticks + 1;+ 1;
+wander =wander + randomRange(-1, 1);
+moveTo(me, positionOf(me) + [randomRange( ticks + 1;+ 1;
+wan(find("Crate"), [3, 1, 0]);
+}
+ticks =et "solis/world":[randomRange, find, fire, saveGamet = 0;
+}
+method up$ate(float dt) {
+is tat dt) {
+is ticks == 0? then {
+push(find("Crate") request == 1?);
+request = 0;
+}
+= 0? then {
+      

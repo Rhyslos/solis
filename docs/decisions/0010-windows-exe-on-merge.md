@@ -1,6 +1,6 @@
 # 0010. A Windows EXE is built when code reaches main
 
-- **Status:** Accepted (loosens [0001](0001-builds-on-demand.md) for one build)
+- **Status:** Accepted (loosens [0001](0001-builds-on-demand.md) for one build); [0043](0043-installed-and-updated-from-github.md) adds an installer and a release per build
 - **Date:** 2026-10-21
 
 ## Problem

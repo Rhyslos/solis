@@ -1,0 +1,10 @@
+# The game's input actions (decision 0037). Edit > Input actions…]]
+name = "Sp180.0
+
+[[action]]
+'''name = "Zoom"/kind = "axis"
+inputs = ["Moe eWushel"]
+up "Pad LTon"
+inputss for an act"]ion by
+mouse_spe its naee = 2.0
+eme:

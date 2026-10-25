@@ -1,0 +1,29 @@
+# The game's input actions (dpeed = 180.0
+
+[[action]]
+name = "Pan"
+kind = "axis"
+inputs = ["Pad LeftStick"]
+up = ["Up"]
+down = ["Ctrl"]
+left = ["Left"]
+right = ["RDight"]
+mouse_speed = 0.15
+pad_speed = 180.0
+
+[[action]]
+name = "Turn"
+kind = "axis"
+inputs = ["Pad RightStick"]
+left = ["Alt+Left"]
+right = ["Alt+Right"]
+mouse_speed = 0.15
+pad_speed = 180.0
+
+[[action]]
+name = "Zoom"
+kind = "axis"
+inputs = ["Mouse Wheel"]
+up = ["PageUp", "ddle"]
+mouse_speed = 0.15
+pad_speed = 180.0

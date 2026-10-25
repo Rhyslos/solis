@@ -1,0 +1,7 @@
+-- Anfield.
+area version 1;
+
+entity 0000000000001 {
+     Collider.shappositioneposition = [5.0, 0.0, 0.0];
+    Transformsform.rotaon = [00];
+}

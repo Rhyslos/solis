@@ -1,0 +1,20 @@
+-- The playground: a level to walk around in, with ramps, steps, crates to
+-- push and a moving ps {
+        vec3 from = [0, 0, 0];
+        vec3 to = [0, 0ground: a level to walk around in, with ramps, vteps, crates to
+-- push and a moving ps {
+        vec3 from = [0, 0, 0];
+        vec3 to = [0, 0, 0];
+        float cos(turn);
+        moveTo(me, from + (to - from) * k);
+    }
+}
+
+pass QuickSave, 0];
+        float cos(turn);
+        moveTo(me, from + (to - from) * k);
+    }
+}
+
+pass QuickSave, Platform;
+end_____________________________

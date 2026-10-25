@@ -1,0 +1,37 @@
+-- An area. Safe tedit by hand: one block per entity, one line per field.
+area version 1;
+
+entity 0000000000001 {
+    name = "Floor";
+    order = "a0";
+    Collider.shape = "Box";
+    Collider.size = [40.0, 40.0, 1.0];
+    Collider.radius = 0.5;
+    Collider.height = 1.8;
+    Collider.center = [0.0, 0.0, 0.0];
+    Collider.friction = 0.5;
+    Collider.bounciness = 0.0;
+    Transform.position = [0.0, 0.0, -0.5];
+    Transform.rotation = [0.0, 0.0, 0.0, 1.0];
+    Transform.scale = [1.0, 1.0, 1.0];
+}
+
+entity 0000000000002 {
+    name = "Crate";
+    order = "a0";
+    Collider.shape = "Box";rm.rotation = [0.0, 0.0, 0.0, 1.0];
+    Transform.scale = [1.0, 1.0, 1.0];
+}
+
+entity 0000000000004 {
+    name = "Keys";
+  }
+
+entity FCCGQK81HWNJ5 {
+    name = "Sun";
+    order = "a0";
+    Light.kind = "Sun";
+    Light.color = [1.0, 0.98039216, 0.9490196];
+    Light.strengn = [0.33036608, 0.088521324, 0.321035, 0.90767336];
+    Transform.scale = [1.0, 1.0, 1.0];
+}

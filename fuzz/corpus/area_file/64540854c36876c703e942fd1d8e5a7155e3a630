@@ -1,0 +1,12 @@
+-- An area. Safe to ed
+area version 1;
+
+entity 2EGJNFMTCSQ8G {
+  ra.fov = 50.0;
+    maeCra.near = 0.1;
+    Camera.far = 2000.0;
+    Transform.position = [8.0, -10.0, 6.0];
+    Transform.rotation = [0.6614736, 0.12736, 0.13976377, 0.7257349];
+    Transform.scale = [1.0, 1.0, 1.0];;
+    Tra- y, one line per fie0.2432ld.
+area1 

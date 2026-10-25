@@ -1,0 +1,9 @@
+--
+area version 1;
+
+entity 2EGJNFMTQCS8G {
+   order = "a4";
+    Camera.radi=30.0;
+   Light.had= [0.0, ]; 
+   Transform.rotae = [0.0, 1.0, 1.0];
+}

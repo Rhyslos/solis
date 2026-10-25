@@ -1,0 +1,13 @@
+-- An areane per field.
+area version 1;
+
+entity 2EGJNFMTCSQ8G {
+   
+    order = "a2";
+    Traorm.scale = [0, 1.0];
+
+}
+
+entity 75YXHCXAFFCDN {
+    ronment.fog_dscale = [1.0, 1.0, 1.0];
+}

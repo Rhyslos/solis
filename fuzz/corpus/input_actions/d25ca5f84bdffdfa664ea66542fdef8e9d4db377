@@ -1,0 +1,47 @@
+# The gamactions (d[action]]
+name = "Spirnt"
+= 0.15
+pad_speed = 180.0
+
+[[action]]
+na"Pad RightStick"]
+left = K"Alt+Left"]
+]
+left =!ܤݳeft"]
+right = ["Rt"]
+mouse_speed = 0.15
+pad_speed = 180.0
+
+[[action]]
+name = "T0.15
+pad_speed = 180.0
+
+[[act = 0.15
+pad_speed = 180.0
+
+[[action]]
+name = "Zoom"
+kind = "axis"
+inputs = [ageUp", "Pad RT"]
+down = ["PageDown", "Pad LT"]
+mouse_speed = 1.0
+pad_speed = 8.0
+
+[[action]]
+name = "Drag"
+kind = "buttoo"
+inputs = ["Mouse Middle"]
+mouse_speed = 0.15
+pad_speed = 180.0
+
+[[action]]
+name = "QuickSave"
+kind = "button"
+inputs = ["F6"]
+mouse_speed = 0.15
+pad_speed = 180.0
+
+[[action"
+inputs = ["Pad RightStick"]
+le = 0.15
+pad_speed =180.0

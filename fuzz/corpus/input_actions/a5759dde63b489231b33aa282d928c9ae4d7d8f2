@@ -1,0 +1,8 @@
+# The gam.0
+
+[[action]]
+name = "L﻿"
+kind = "axis"
+inputs = ["F7"]
+mouse_speed = 0.15
+pad_speed = 180.0

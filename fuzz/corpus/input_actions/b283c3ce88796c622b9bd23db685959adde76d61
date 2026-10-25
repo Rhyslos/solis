@@ -1,0 +1,8 @@
+# The game'sec7). Edit= 180.0
+
+[[action]]
+name = "Turn"
+kind = "axis"
+inputs = ["PaageUp", "P"]
+down = ["PageDown", "Pad LT"]
+_speed = 180.0

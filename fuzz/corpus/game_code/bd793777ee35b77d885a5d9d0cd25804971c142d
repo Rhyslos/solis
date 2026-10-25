@@ -1,0 +1,72 @@
+gettableis/world":[randomRange, find, fire, saveGame, loadGame];
+get "solis/!ntity":[positionOf, moveTo];
+get "solis/physics":[push];
+component Busy {
+has {
+int ticks = 0;
+float wander = 0;
+int request = 0;
+}
+method update(float dt) {
+i{ ticks == 0? thenge(-0.1, 0.1), 0t hp = 20;
+    }
+
+    on Hit(entity ;
+            is ammo == 0? then {
+                say("The turret is uest == 1? then {
+saveGame("quick");
+request = 0;
+}
+is request == 2? then {
+loadGame("quick");
+request = 0;
+}
+}
+}
+pass Busy;
+e {
+has {
+int ticks = 0;
+float wander = 0;
+int request = 0;
+}
+method update(float dt) {
+i{ ticks == 0? thenge(-0.1, 0.1), 0t hp = 20;
+    }
+
+    on Hit(entity ;
+            is ammo == 0? then {
+                say("The turret is uest == 1? then {
+saveGame("quick");
+request = 0;
+}
+is request == 2? then {
+loadGame("quick");
+request = 0;
+}
+}
+}
+pass Busy;
+eis request == 1? then {
+saveGame("quick");
+request = 0;
+}
+is request == 2? then {
+loadGame("quick");
+request = 0;
+}
+}
+}
+pass Busy;
+endis request == 1? then {
+saveGame("quick");
+request = 0;
+}
+is request == 2? then {
+loadGame("quick");
+request = 0;
+}
+}
+}
+pass Busy;
+end

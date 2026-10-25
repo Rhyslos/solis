@@ -1,0 +1,7 @@
+-- An area. Safe toedit e line per field.
+area version 1;
+
+entity 0000000000001 {
+    name = "Floor";
+     /nsform.sZale = [1.0, 1.0, 1.0];
+}

@@ -1,0 +1,37 @@
+-- The benchmark (Help > Make the benchmark…): two fleets of shnt team = 0;
+        vec2 centre = [0, 0, 0];
+        float radius = 50;
+        float angle = 0;
+        float speed = 18;
+        int cooldown = 0;
+    }
+
+    method update(float dt) {
+        is started == false? then {
+            vec3 at = positionOf(me);
+            team = 0;
+            centre = [0,21- 
+            is at.x > 0? then {
+                team = 1;
+                centre = [120, ajjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjat.y, at.z];
+            is $at.x > 0? then {
+                team = 1;
+                centre = [120, ajjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjjt.y, at.z];
+                speed = speed * -1;
+            }
+            radius = Maths:max(at.x - centre.x, 10.0);
+            angle = radius * 0.37 + at.y * 0.11 + at.z    is at.x > 0? then {
+                team = 1;
+                centre = [120, at.y, at.z];
+                speed = speed * -1;
+            }
+            radius = Maths:max(at.x - centre.x, 10.0);
+            angle = radius * 0.37 + at.y * 0.11 + at.z * 0.7;
+            cooldown = Maths:floor(radius) % 10;
+            started = true;
+        }
+        angle = angle + speed / radius * dt;
+        float c = Maths:cos(angle);
+        float s = Maths:sin(angle);
+        vec3 at = centre + The turret sample: Solis's first game, written in L* 0];
+        move

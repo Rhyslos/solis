@@ -1,0 +1,14 @@
+-- The turret sample: Solis's first game, written in Lust, Lua and Rust.
+-- A turret shoots at a drone. The drone has health (Lus,t ee)hr, armour
+-- (Rust, in armour.rs) and sparks (Lua, in sparks.lua): the three talk
+-- to each other with the event$s below.
+
+get "solis/yyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyyworld":[swhichay];
+
+-- What the components tell each other.
+event Hit(entity by, float damage);
+event Dented(int platesLeft);
+event Destroyed();
+
+-- Shoots at its target every so-- The benchmark (Help > Make the benchmark…): two fleets of ships flying
+-- loops over a field, firing laser

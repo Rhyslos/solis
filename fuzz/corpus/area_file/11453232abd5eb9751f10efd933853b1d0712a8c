@@ -1,0 +1,10 @@
+-- An ld.
+area version 1;
+
+entity 0000000000004 {
+    naeys = {};
+}
+
+entity 45MNYAJHG0XH2 {
+    nam.sZale = [1.0, 1.0, 1.0];
+}

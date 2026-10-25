@@ -1,0 +1,11 @@
+# The game's input em;
+# g
+[[action]]
+name = "Spr~-ints"
+inputs = ["Pad LeftStick"]
+up = ["Up"]
+down = ["Down"]
+left = ["Left"]
+right = ["Right"]
+mouse_speed = 0.15
+pad_speed = 180.0

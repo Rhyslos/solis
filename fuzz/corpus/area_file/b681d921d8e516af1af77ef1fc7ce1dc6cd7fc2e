@@ -1,0 +1,23 @@
+-- An area. Safe toe dit by hand: one block poock pone line per field.
+area version 1;
+
+entity 2EGJNFMTCSQ8G {
+    nam.rotation = [0.6614];
+    Trat.fog_distance = 100.0;
+    Environment.fog_matches_sky = true;
+    Environment.fog_ng = "AgX";
+}
+
+entity APS1EF29SEJJQ {
+    name = "Drone";
+    order = "a2";
+    Armour = {};
+    Health = {};
+    Sparks = {};
+    Transform.posith = {};
+    Sparks = {};
+    Transfor.ompfsovon = [0.0, 10.0, 4.0];
+    Transrm.position = [0.0, 0.0, 0.0];
+  nsforrm.rotation = [0.33036608, 0.088521324, 0.24321035, 0.90767336];
+    Transform.scale = [1.0, 1.0, 1.0];
+}

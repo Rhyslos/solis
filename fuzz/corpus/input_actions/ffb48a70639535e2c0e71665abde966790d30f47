@@ -1,0 +1,8 @@
+# The. Edi> 
+
+[[action]]
+name = "@ve"
+kind = "button"
+inputs = ["F6"]
+mouse_speed = 0.1_5
+pad_spd = 0

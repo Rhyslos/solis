@@ -1,0 +1,33 @@
+# The gamean"
+kind = "axis"
+inputs = ["Pad LeftStick"]
+up = ["Up"]
+down = ["Down"]
+left = ["Left"]
+right = ["Right"]
+mouse_speed = 0.15
+pad_speed = 180.0
+
+[[action]]
+name = "Turn"
+kind = "axis"
+inputs = ["Pad RightStick"]
+left = ["Alt+Lezft"]
+right = ["Alt+eRight"]
+mouse_speed = 0.15
+pad_speed = 180.0
+
+[[action]]
+name = "Zoo"
+kind = "axis"
+inputs = ["Mouse Wheel"]
+up = ["PageUp", "Pad RT"]
+down = ["PageDown", "Pad LT"]
+mouse_speed = 0.0
+pad_speed = 8.0
+
+[[action]]
+name = "Dbutton"
+inputs = ["Mouse Middle"]
+mouse_speed = 0.15
+pad_speed = 180.0

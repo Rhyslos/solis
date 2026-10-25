@@ -1,0 +1,7 @@
+-- Aone line per field.
+area version 1;
+
+entity 2EGJNFMTCSQ8G {
+      Sprk.postion = [00];
+    Transform.rotation = [0.0, 0.0, 0,0, 0.0, 0,0, 1.0];
+scale    Tr

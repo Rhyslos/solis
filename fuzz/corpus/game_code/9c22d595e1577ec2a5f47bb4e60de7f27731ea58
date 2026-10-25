@@ -1,0 +1,119 @@
+-- The benchmark (Help > Make the benchmark…): two fleets of shnt team = 0;
+        vec3 centre = [0, 0, 0];
+        float radius = 50;
+        float angle = 0;
+        float speed = 18;
+        int cooldown = 0;
+    }
+
+    method update(float dt) {
+        is started == false? then {
+            vec3 at = positionOf(me);
+            team = 0;
+            centre = [-120, at.y, at.z];
+            is at.x > 0? then {
+                team = 1;
+                centre = [120, at.y, at.z];
+          -- The turret sample: Solis's first game, written in Lust, Lua and Rust.
+-- A turret shoots at a drone. The drone has health (Lust, here), armour
+-- (Rust, in armour.rs) and sparks (Lua, in sparks.lua): the three talk
+-- to each other with the events below.
+
+get "solis/world":[say];
+
+turicks - 0;
+f2loat wander = 0;
+int request = 0;
+}
+method update(float dt) {
+is ticks == 0? then {
+push(find("Crate"), [3, 1, 0]);
+}
+ticks = ticks + 1;
+wander = wander + randomRange(-1, 1);
+moveTo(me, po}
+ticks = ticks + 1;
+wander = wander + randomRange(-1, 1);
+moveTo(me, positionOf(me) + [randomRange(-0.1, 0.1), 0.05, 0]);
+is ticks % 20 == 0? then {
+fire(positionOf(me), [1, 0, 0], 30, 1, [2, 0.5, 0.2]);
+}
+is rsitionOf(me) + [randomRange(-0.1, 0.1), 0.05, 0]);
+is ticks % 20 == 0? then {
+fire(positionOf(me), [1, 0, 0], 30, 1, [2, 0.5, 0.2]);
+}
+is request == 1? then {
+saveGame("quick");
+request = 0;
+}
+is request == 2? then {
+loadGame("quick");
+{ "shown", "int", 0 },
+})
+
+function Sparks:on_Dented(platesLeft)
+    self.shown = self.shown + 1
+ ), [1, 0, 0], 30, 1, [2, 0.5, 0.2]);
+}
+is rsitionOf(me) + [randomRange(-0.1, 0.1), 0.05, 0]);
+is ticks % 20 == 0? then {
+fire(positionOf(me), [1, 0, 0], 30, 1, [2, 0.5, 0.2]);
+}
+is request == 1? then {
+saveGame("quick");
+request = 0;
+}
+is request == 2? then {
+loadGame("quick");
+{ "shown", "int", 0 },
+})
+
+function Sparks:on_Dented(platesLeft)
+    self.shown = self.shown + 1
+    solis.say("Sparks fly from " .. solis.nameOf(self.me) .. ": " .. platesLeft .. " armour plates left.")
+end
+
+function Sparks:on_Destroyed()
+    solis.say(solis.nameOf(self.me) .. " is destroyed!")
+    -- It drops to the ground.
+    local at = solis.positionOf(self.me)
+    soli      speed = speed * -1;
+            }
+            radius = Maths:max(at.x - centre.x, 10.0);
+            angle = radius * 0.37 + at.y * 0.11 + at.z * 0.7;
+            cooldown = Maths:floor(radius) % 10;
+            started = true;
+        }
+        angle = angle + speed / radius * dt;
+        float c = Maths:cos(angle);
+        float s = Maths:sin(angle);
+        vec3 at = centre + [c * radius, s * radius, 0];
+        moveTo(me, at);
+        rotation facing = [0, 0, angle * 57.29578];
+        is team == 1? then {
+            facing = [0, 0, angle * 57.29578 + 180];
+        }
+        turnTo(meity ship = spawn("fighter", startOf(made));
+            made = made + 1;
+            batch = batch + 1;
+        }
+    }
+}
+
+-- The ceiling run: starts with `step` ships, waits fos.moveTo(self.me, vec3(r things to settle,
+-- measures the frame rate for two seconds, and while it's 60 frames a
+-- second or better adds `step` more. Sanent Busy {
+has {
+int ticks = 0;
+float wander = 0;
+int request = 0;
+}
+method update(float dt) {
+is ticks == 0? then {
+push(find("Crate"), [3,at.x, at 1, 0]);
+}
+.y, 0))
+ticks = t-- The turret sample: Solis's first game, written in Lust, Lua and Rust.
+-- A turret shoots at a drone. The drone has health (Lust, here), armour
+--end (Rust, in ar
+mour.rs) and sparks (Lua, in sparks.lua): the thr

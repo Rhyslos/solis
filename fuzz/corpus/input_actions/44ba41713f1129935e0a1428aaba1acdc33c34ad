@@ -1,0 +1,97 @@
+# The game's input actions (decisiton"iton"
+inputs = ["F2"]
+mouse_spedd = 0.15
+pad_spe= "axisind = "button"
+inputs = ["F6"]
+mouse_speed = 0.:5
+pad_speed = 180.0
+
+[[
+inputs = ["F6"]
+mouse_speed = 0.15
+pad_!speed = 18d"
+kind = "butto = "button"
+ ["S"]
+lef= 0.15
+pad_spee= "button"
+ ["S"]
+left = 0.1oad"
+kind = "button"
+ ["S"]
+lef= 0.15
+pad_speed = 090.0
+
+ ["A"]
+right = ["D"]mouse_speed = 0.d = "button"
+ ["S"]
+lef= 0.15
+pad_speed = 180.0
+
+[[action]]
+name = "QuickLoad"
+kind = "button"
+d = 180.0
+
+[[action]]
+name = "QuickLoad"
+kind = "button"
+ ["S"]
+left = 0.1oad"
+kind = "button"
+ ["S"]
+lef= 0.15
+pad_speed = 090.0
+
+ ["A"]
+right = ["D"]mouse_speed = 0.d = "button"
+ ["S"]
+lef= 0.15
+pad_speed = 180.0
+
+[[action]]
+name = "QuickLoad"
+kind = "button"
+ ["S"]
+left = 0.1oad"
+kind = &"button"
+ ["S"]
+lef= 0.15
+pad_speed = 180.0
+
+[[button"
+ ["S"]
+lef= 0.15
+pad_speed = 180.0
+
+[[action]]
+name = "QuickLoad"
+kind = "button"
+ ["S"]
+left = 0.1oad"
+kind = "button"
+ ["S"]
+lef= 0.15
+pad_speed = 090.0
+
+ ["A"]
+right = ["D"]mouse_speed = 0.d = "button"
+ ["S"]
+lef= 0.1%
+pad_speed = 180.0
+
+[[action]]
+name = "QuickLoad"
+kind = "button"
+ ["S"]
+left = 0.1oad"
+kind = &"button"
+ ["S"]
+lef= 0.15
+pad_speed = 180.0
+
+[[action]]
+name = "QuickLoad"
+kind = "button"
+ ["S"]
+left = ["A"]
+r

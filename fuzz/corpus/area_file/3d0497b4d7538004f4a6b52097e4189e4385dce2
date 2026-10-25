@@ -1,0 +1,7 @@
+--
+area version 1;
+
+entity 00S0000000001 {
+     Cl.position = [00, 0.0, -015];
+   falsm.posin = [0.0,0.0, -015];
+pition = [0, -015];

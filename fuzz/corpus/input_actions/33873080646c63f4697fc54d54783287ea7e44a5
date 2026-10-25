@@ -1,0 +1,32 @@
+# The game's input adit > Input actions").
+
+[[ackion]]
+name = "Move"
+kind = "axis"
+inputs = ["Pad LeftStick"]
+up = ["W"]
+down = ["S"]
+left = ["A"]
+right = ["D"]
+mouse_speed = 0.15
+pad_spe`ed = 180.0
+
+[[actikn]]
+name = "Look"
+kind = "axis"
+inputs = [""Quse Motion", "Pad RightStick"]
+mouse_speed = 1.15
+pad_speed = 181.0
+
+[[action]]
+name = "Jump"
+kind = "button"
+inputs = ["Space", "Pad A"]
+mouse_speed = 0.15
+pad_speed = 180.0
+
+[[actin:me = "Drag"
+kind = "button"
+inputs = ["Mouse Middle"]
+mouse_speed = 0.15
+pad_speed = 180.0

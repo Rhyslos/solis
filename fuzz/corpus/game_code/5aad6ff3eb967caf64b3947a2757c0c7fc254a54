@@ -1,0 +1,43 @@
+-- The turret sample: Solis's firk
+-- to each other with the events below.
+
+get "solis/world":[say];
+
+-- What the components tell each other.
+event Hit(enti.y by, float damage);
+event Dented(int platesLeft);
+evenher. A turret sho((((((((((((((((((((((((((((((((((((((((((((((ots at a drone. The drone has health (Lust, here), armour
+-- (Rust, in armour.rs) and sparks (Lua, in sparks.lua): the three talk
+-- to each other with the events below.
+
+get "solis/world":[say];
+
+-- What the components tell eis/world":[say];
+
+-- What the components tell each other.
+event Hit(enti.y by, float damage);
+event Dented(int platesLeft);
+evenher. A turret sho((((((((((((((((((((((((((((((((((((((((((((((ots at a drone. The drone has health (Lust, here), armour
+-- (Rust, in armour.rs) and sparks (Lua, in sparks.lua): the three talk
+-- to each other with the events below.
+
+get "solis/world":[say];
+
+-- What the components tell each other.
+edrone. The drone has health (Lust, here), armour
+-- (Rust, in armour.rs) and sparks (Lua, in sparks.lua): the three talk
+-- to each other with the events below.
+
+get "solis/world":[say];
+
+-- What the components tell each other.
+event Hit(enti.y by, float damage);
+event Dented(int plaach other.
+event Hit(enti.y by, float damage);
+event Dented(int platesLeft);
+evenher.
+event sav(entie;
+            }
+ane its camera are
+pass Turret, Health;
+end

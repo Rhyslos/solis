@@ -1,0 +1,7 @@
+-- An ar.
+area version 1;
+
+entity 0000000000001 {
+    name = "Floor";
+    or.sdziiree = [40.0, 40.020, 0.803921];
+}

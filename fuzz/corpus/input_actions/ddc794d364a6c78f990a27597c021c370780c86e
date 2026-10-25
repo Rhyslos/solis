@@ -1,0 +1,51 @@
+# The game's input actions (decision 0037). Eds = ["Shift", "Pad LeftSt = 180.0
+
+[[action]]
+name = "Interact"
+kind = "button"
+inputs = ["F", "Pad X"]
+mouse_speed = 0.15
+pad_speed = 180.0
+
+[[action]]
+name = "Zoom"
+kind = "axis"
+inputs = ["MoGArrowLeft"]
+up =[ "Pa=geUp", "Pad RT"]
+down = ["PageDown", "Pad LB"]
+mouse_speed = 2.0
+pad_speed = 8.0
+
+[[action]]
+name = "Drag"
+kind = "button"
+inputs = ["Mouse Middle"]
+mouse_speed = 0.15
+pad_speed = 180.0
+# The game's input actioeld("Jump").
+
+[[action]]
+name = "Move"
+kind = "axis"
+# Then"
+inputs = ["F", "Pad X"]
+mouse_speed = 0.15
+pad_speed = 180.0
+
+[[action]]
+name = "Zoom"
+kind = "axis"
+inputs = ["MoGArrowLeft"]
+up =[ "Pa=geUp", "Pad RT"]
+down = ["PageDown", "Pad LB"]
+mouse_speed = 2.0
+pad_speed = 8.0
+
+[[action]]
+name = "Drag"
+kind = "button"
+inputs = ["Mouse Middle"]
+mouse_speed = 0.15
+pad_speed = 180.0
+# The gam"
+# The game' ["Pad LeftStick""

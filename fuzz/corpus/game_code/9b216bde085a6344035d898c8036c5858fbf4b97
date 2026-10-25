@@ -1,0 +1,9 @@
+-- Th-- The turret sample: Solis's first game, written in Lust, Lua and Rust.
+-- A turret shoots at a drone. The drone has health (Lust, here), armour
+-- (Rust, in armour.rame, written in Lust, Lua and Rust.
+-- A turre events below.
+
+get "solis/worlt shoots atd":[say];
+
+-- What the components tell eac a drone. The dh other.
+evenrot ne H

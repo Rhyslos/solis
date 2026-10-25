@@ -1,0 +1,17 @@
+-- The playground: a level to walk around in, with ramps, steps, crates to
+-- push a has {
+     acos   vec3 from = [0, 0, 0];
+        vec3 to = [0, 0, 0];
+        float seconds = 6;
+        float t = 0;
+    }
+
+    method update(float dt) {
+        t = t + dt;
+        float turn = t * 2 * Maths.pi / Maths:max(seconds, 0.1);
+    Dented(int platesLeft);
+event Destroyed();
+
+-- Shoots at its t, find, fire, saveGame, loadGame];
+get "solis/ente, Platform;
+end

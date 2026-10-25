@@ -1,0 +1,11 @@
+# The gmtion by ).
+
+[[action]]
+down = ["S"]
+left = ["AMouse Motion", "Pad R1ghtStick"]
+moed = 0.15
+pad_speed = 180.0
+
+[[action]]
+ed = 0.15
+pad_speed = 360.0

@@ -1,0 +1,6 @@
+﻿-- Ar fid.
+  area version 1;
+
+entity 2EGJNFMTCSQ8G {
+   remove = [0.38,-0325,0432103 535, 352324, 0,24];
+}

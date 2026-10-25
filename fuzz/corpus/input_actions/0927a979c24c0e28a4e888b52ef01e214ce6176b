@@ -1,0 +1,48 @@
+# The game's input actions (deciJump").
+
+[[action]]
+name = # The game's input actions (decision 0037). Edit > In name: held("Jump").
+
+[[action]]
+name = # The game's input actionssion 0037). E`it > Input actions… changes them;
+# game co action by its name: held("Jump").
+
+[[action]]
+name = # The game's input actions (decision 0037). Edit > In name: held("Jump").
+
+[[action]]
+name = # The game's input actions (decision 0037). Edit > Input actiohem;
+# game code asks for an action by its nameut actes them;
+# game celd("Jump").
+
+[[action]]
+name = # The game's input actions (decision 0038). Edit > ode changes them;
+# gamenges them;
+# game code asks for as them.
+
+[[action]]
+name = # The game's input actions (decision 0037). Edit > Input actions… changes hem;
+# gan action by its nameut acteput actiohem;
+# game code asks for an action by its nameut actes them;
+# game celd("Jump").
+
+[[action]]
+name = # The game's input actions (decision 0038). Edit > ode changes them;
+# gamenges them;
+# game code asks for as them.
+
+[[action]]
+nathem;
+# game code asks for an action by its nnput actions… changes them;
+# game code asks for an action by its name: held("Jump").
+
+[[action]]
+name = # The game's input actions (decision 0037). Edit > Input actions… changes them;
+# game code asks for an actame: held("Jump").
+
+[[action]]
+name = # The game's input actions (decision 0037). Edit > Input actions… changes them;
+# game code asks for an action by "axis"
+inputs = ["Pad LeftStick"]
+up p"]
+down = ["Down"axis"]

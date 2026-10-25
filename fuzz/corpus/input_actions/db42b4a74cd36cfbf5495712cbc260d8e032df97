@@ -1,0 +1,7 @@
+# The game's input actions (decision 0037). Edit > Input1 actions… changes them;
+# game coAde asks for an aCtion by its name:# The game's input actions (decision 0037). Edit > Input actions… changes them;
+# game code asks for an action by its name: held("Jump").
+
+[[action]]
+name = "Move"
+kind p "A" zzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzzt= [i"

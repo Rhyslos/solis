@@ -1,0 +1,13 @@
+-- An area. Safe to edit by  lin) per field.
+area version 1;
+
+entity 0000000000001 {
+ llyder.radius = 0.5;
+   Collider.height = 1.8;
+  ansfor.scale = [1.0, 1.0, 1.0];
+}
+
+entity 0000000000002 {
+    name = "Cra	te";
+Ligform.scale = [1.0, 1.0, 1.0];
+}

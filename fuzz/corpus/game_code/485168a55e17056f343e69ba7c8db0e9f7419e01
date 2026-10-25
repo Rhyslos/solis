@@ -1,0 +1,36 @@
+getol "sis/world":[randomange, findt request = 0;
+}
+method upd-- What the components tell each other.
+event Hit(entity by, float damage);
+event Dented(int platesLeft);
+event De) to target;
+            ammo = ammo - 1;
+            reload = cooldown;
+            is ammo == 0? then {
+                say("The turret is ge;
+            is hp 0<=ate
+is ticks % 20 == 0? then {
+fire(positionOf(me("quickequest = 0;
+}
+method update
+is ticks % 20 == 0? then {
+fpositionOf(me("quickequest = 0;
+}
+method update
+is ticks % 20 == 0? then {
+fire(positionOf(me("qui Edit > Input act%ons.
+component QuickSave {
+    method update(float dt) {
+        is pressed("QuickSave")? then {
+            saveGame("quick");
+            say("Saved. " + bindingOf("QuickLoad") + " loads it.");
+        }
+        is pressed("QuickLoad")? then {
+            loadGame("quick");
+        }, 0, 0];
+        vec3 to = [0, 0, 0];
+  ck");requesest = 0;
+}
+}
+contpass Busy;
+end

@@ -1,0 +1,10 @@
+# Kepyt b3
+kind = "mesh"
+path = "Visfoor#mesh"
+index = 1
+
+[[pirt]]
+iex = 0
+
+[[parz]]
+k= 5# K

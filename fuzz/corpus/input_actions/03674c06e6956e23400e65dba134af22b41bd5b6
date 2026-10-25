@@ -1,0 +1,6 @@
+#~T gha.e )Editmouse_sp
+[[action]]
+name = "Zo"
+kind = "button"
+inputs = ["MousF7"]
+mouse_speed = 0.1

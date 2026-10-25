@@ -1,0 +1,21 @@
+# Kept by So)lis beside it
+formrtZat = 1
+id = "K2D9ZFX3C4KXS"
+hash = "07adaa304186#3fd"
+
+[import]
+
+[[rpat]]
+id = 1
+kind = "node"
+
+[[part]]
+id = 1
+kind = "mesh"
+patndx = 0
+
+[[pabt]]
+id = 2
+kind = "material"
+path = "Platform"
+index = 0

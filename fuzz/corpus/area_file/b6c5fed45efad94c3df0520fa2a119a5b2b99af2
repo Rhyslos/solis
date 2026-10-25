@@ -1,0 +1,9 @@
+-- k per entity,ld.
+area version 1;
+
+entity 0000000000001 {
+   Collider.shapeog =0;
+    Light.range = 0.0;
+    RigidBody.position = [0.0, 0.0, 00767336];
+    Transform.scale = [1, 1. ,00.1];
+}

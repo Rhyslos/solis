@@ -1,0 +1,11 @@
+-- An area. Snee
+area version 1;
+
+entity 2EGJNFMTCSQ8G {
+
+    Camera.fov =30.0;
+    Light.soft_edge = 11.0;
+    Light.shadows = true;
+    Transform.position = [00, 0.0,21035, 0.93076673];
+    Transform.scale = [5.0, 1.0, 1.0];
+}

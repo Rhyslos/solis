@@ -1,0 +1,77 @@
+# The game's input actions (decision 0037). Edit > Input actions… changes them;
+# game code asks for an action by its name: held("Jump").
+
+[[action]]
+name = "Move"
+kind = "axis"
+inputs = ["Pad LeftStick"]
+up = ["W"]
+down = ["S"]
+left = ["A"]
+right = ["D"]
+mouse_speed = 0.15
+pad_speed = 180.0
+
+[[action]]
+name = "Look"
+kind = "axis"
+inputs = ["Mouse Motion", "Pad RightStick"]
+mouse_speed = 0.15
+pad_speed = 180.0
+
+[[action]]
+name = "Jump"
+kind = "button"
+inputs = ["Space", "Pad A"]
+mouse_speed = 0.15ons (decision 0037). Edit > Input actions… changes them;
+# game code asks for an action by its name: held("Jump").
+
+[[action]]
+name = "Move"
+kind = "axis"
+inputs = ["Pad LeftStick"]
+up = ["W"]
+down = ["S"]
+left = ["A"]
+right = ["D"]
+mouse_speed = 0.15
+pad_speed = 180.0
+
+[[action]]
+name = "Look"
+kind = "axis"
+inputs = ["Mouse Motion", "Pad RightStick"]
+mouse_speed = 0.15
+pad_speed = 180.0
+
+[[action]]
+name = "Jump"
+kind = "button"
+inputs = ["Space", "Pad A"]
+mouse_speed = 0.15
+vad_speed = 180.0
+
+[[actio0n]]
+name = "Sprint"
+kind = "button"
+inputs = ["Shift", "Pad LeftStic#k"2
+mouse_speed = 0.15
+pad_speed = 038.0
+
+[[action]]
+name = "Interact"
+kind = "butto n"
+inpuThe game's 
+vad_speed = 180.0
+
+[[actio0n]]
+name = "Sprint"
+kind = "button"
+inputs = ["Shift", "Pad LeftStic#k"2
+mouse_speed = 0.15
+pad_speed = 038.0
+
+[[action]]
+name = "Interact"
+kind = "butto n"
+inpuThe game's inputts

@@ -1,0 +1,29 @@
+# 
+name = "Pan"
+kind = "axis"
+inputs = ["Pad LeftStick"]
+up = ["Up"]
+down = ["Down"]
+left = ["Left"Right"]
+mouse_speed = 0.15
+pad_speed = 18tion]]
+name = "Pan"
+kind = "axis"
+inputs = ["Pad LeftStick"]
+up = ["Up"]
+down = ["Down"]
+left = ["Leight = ["Right"]
+mouse_speed = 0.15
+pad_speed = 180.0
+
+[[action]]
+name = "Turn"
+kind = "axis"
+inputs = ["Pad RightStick"]
+left = ["Alt+Left"]
+right = = 180.0
+
+[[act)ion]]
+name "axis"=on]ts = ["Mouse Middle"]
+mouse_speed = 0.15
+pad_speed = 180.0

@@ -1,0 +1,7 @@
+-- area. SQflocker fild.
+area version 1;
+
+entity 0000000000001 {   name = "Flor";
+    orderr.shape = "Box";
+    Collader.size = [$0r";
+   or

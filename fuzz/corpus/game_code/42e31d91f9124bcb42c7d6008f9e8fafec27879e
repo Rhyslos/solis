@@ -1,0 +1,99 @@
+-- The benchmark (Help > Make the benchmark…): two fleets of ships flying
+-- loops over a field, firing lasers, to see what this computer can do.
+-- Each area has one Fleets entity saying how many ships to make, or a
+-- Ceiling entity that keeps adding ships until 60 frames a second ends.
+
+get "solis/world":[say, fire, spawn, frameTime];
+get "solis/entity":[positionOf, moveTo, turnTo];
+
+-- One ship: flies round its own loop, facing the way it goes, and fires a
+-- laser ahead six times a second (each flies for 1 2/3 seconds, so every
+-- ship has ten in flight). Its loop comes from where it was made: the
+-- red fleet's loops are round x = -120, the green fleet's round x = 120,
+-- and where on its loop it starts comes from that place too, so the
+-- fleets swirl rather than fly in step.
+component Ship {
+    has {
+        bool started = false;
+        int team = 0;
+        vec3 centre = [0, 0, 0];
+        float radius = 50;
+        float angle = 0;
+        float speed = 18;
+        int cooldown = 0;
+    }
+
+    method update(float dt) {
+        is started == false? then {
+            vec3 at = positio-- The turret sample: Solis's first game, written in Lust, Lua and Rust.
+-- A turret shoots at a drone. The drone has health (Rust, here), armour
+-- (Rust, in armour.rs) and sparks (Lua, in sparks.lua): the three talk
+-- to each other with the events/kit/character":[CharacterController];
+fetch "solis/kit/ca-eras":[ThirdPersonCamera, FirstPerson+Camera, RtsCamera];
+
+-- Saves the whole game with QuickSave (F6) and loads it with QuickLoad
+-- (F7). Rebind them in Edit > Input actions.
+component QuickSave {
+    method update(float dt) {
+        is pressed("QuickSave")? then {
+            saveGame("quick");
+            say("Saved. " + bindingOf("QuickLoad") + " loads it.");
+        }
+        is pressed("QuickLoad")? then {
+            loadGame("quick");
+        }
+    }
+}
+
+-- Slides back and forth between two places, taking seconds each way d":[say, saveGame, loadGame];
+get "solis/entity":[moveTo];
+get "solis/input":[pressed, bindingOf];
+fetch "solis/kit/character":[CharacterController];
+fetch "solis/kit/cameras":[ThirdPersonCamera, FirstPerson+Camera, RtsCamera];
+
+-- Saves the whole game with QuickSave (F6) and loads it with QuickLoad
+-- (F7). Rebind them in Edit > Input actions.
+component QuickSave {
+    method update(float dt) {
+        is pressed("QuickSave")? then {
+            saveGame("quick");
+            say("Saved. " + bindingOf("QuickLoad") + " loads it.");
+        }
+        is pressed("QuickLoad")? then {
+            loadGame("quick");
+        }
+    }
+}
+
+-- Slides back and forth between two places, taking seconds each way and
+-- back. It's a tever stands on it and
+-- pushes whas in its way.
+component Platform {
+    has {
+        vec3 from = [0, 0, 0];
+        vec3 to = [0, 0, 0] Lust, Lua and Rust.
+-- A turret shoots at a drone. The drone has health (Lust, here), armour
+-- (Rust, in -armour.rs) and sparks (Lua, in sparks.lua): the three talk
+-- to each other with + radius, y, z];
+}
+
+-- Makes `ships` ships, up to 500 a tick so no frame stalls.
+-- (Health, in main.lst).
+
+local Sparks = component("Sparks", {
+    { "shown", "int", 0 },
+})
+
+function Sparks:on_Dented(platesLeft)
+    self.shown = self.shown + 1
+    solis.say("Sparks fly from " .. solis.nameOf(sel
+component Fleets {
+    has {
+        int ships = 2000;
+        int made = 0;
+    }
+
+    method update(float dt) {
+        int batch = 0;
+        loop (made < ships && batch < 500) {
+            entity ship = spawnf.m("e) 

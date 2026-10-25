@@ -1,0 +1,22 @@
+#  = 180.0
+
+[[action]]
+name = "Turn"
+kind = "axis"
+inputs = ["Pad RightStick"]
+left = ["Alt+Lezft"]
+right = ["Alt+eRig....ht"]
+mouse_speed = 0.15
+pad_speed = 180.0
+
+[[action]]
+name = "Zoom"
+ykind = "axis"
+inputs = ["Mouse Wheel"]
+up = ["PageUp", ""]
+mouse_speed = 0.0
+pad_speed = 8.0
+
+[[action]]
+name = "Drag"
+kin= 180.0

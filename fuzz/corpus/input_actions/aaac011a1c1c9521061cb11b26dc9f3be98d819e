@@ -1,0 +1,6 @@
+# The game's inpad_speed = 180.0
+
+[[action]]
+namjd = "button"
+inputs = ["Shft(", "wn", "Pad LT"]
+mouse_speed = 2

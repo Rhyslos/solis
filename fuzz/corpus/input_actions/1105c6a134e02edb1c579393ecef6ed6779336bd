@@ -1,0 +1,7 @@
+# Theg
+[[action]]
+name = "Spr~-ints"
+left = ["Left"]
+right = ["Right"]
+mouse_speed = 0.15
+pad_speed = 180.0

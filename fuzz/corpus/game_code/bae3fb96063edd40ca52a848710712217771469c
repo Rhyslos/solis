@@ -1,0 +1,62 @@
+-- The turret sample: Solis's first game, written in Lust, Lua and Rust.
+-- A turret shoots at a drone. The drone has health (Lust, here), armour
+-- (Rust, in armour.rs) and sparks (Lua, in sparks.lua): the three talk
+-- to each other with the events below.
+
+get "solis/world":[say];
+
+-- What the components tell each other.
+event Hit(entity by, float damage);
+event Dented(int platesLeft);
+event Destroyed();
+
+-- Shoots at its target every so often, until its ammo runs out.
+component Turret {
+    has {
+        entity target = nothing;
+        int ammo = 12;
+        float damage = 2.5;
+        float c& ammo > 0? then {
+            send Hit(me, damage) to target;
+            ammo = ammo - 1;
+            reload = cooldown;
+            is ammo == 0? then {
+                say("The turret is out of ammo.");
+            }
+        }
+    }
+}
+
+-- Takes the hits, and says when it's destroyed.
+component Health {
+    has {
+        float hp = 20;
+    }
+
+    on Hit(entity by, float damage) {
+     enum   is hp > 0? then {
+            hp = hp - damage;
+            is hp getander = wander + randomRange(-1, 1);
+moveTo(me, positionOf(me) + [randomRange(-0.1, 0.), 0.05, 0])ge(-1, 1);
+moveTo(me, positionOf  float hp = 20;
+    }
+
+    on Hit(entity by, float damage) {
+        is hp > 0? then {
+            hp = hp - damage;
+            is hp <= 0? then {
+                send Destroyed() to me;
+            }
+        }
+    }
+}
+
+pass Turret, Health;
+end
+-- Sparks, the drone's third component, written in Lua: it reacts to the
+-- armour denting (Rust, in armour.rs) and to the drone being destroyed
+-- (Health, in main.lst).
+
+local Sparks = component("Sparks", {
+<= 0? then {
+               {   "s

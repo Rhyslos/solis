@@ -1,0 +1,6 @@
+--neld.
+area version 1;
+
+entity 0001000000001 {
+ t.ModelEnvironen_mheky = true;
+e  nvirom

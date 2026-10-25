@@ -1,0 +1,44 @@
+# axis"
+inputs = ["Pad LeftStick"]
+up = ["Up"]
+down = ["Down"]
+left = ["Left"]
+right = ["Right"]
+mouse_speed = 0.15
+pad_speed = 180.0
+
+[[action]]
+name = "Turn"
+kind = "axis"
+inputs = ["Up"]
+down = ["Down"]
+left = ["Ctrl"]
+right = ["Right"]
+mouse_speed = 0.15
+pad_speed = 180.0
+
+[[action]]
+name = "Turn"
+kind = "axis"
+inputs = ["Pad RightStick"]
+left = ["Alt+Left"]
+right = ["Alt+Right"]
+mouse_speed = 0.15
+pad_speed = 180.0
+
+[[actn]]
+name = "QuickLoad"
+kind = "button"
+inputs = ["F7"]
+mouse = ["Pad RightStick"]
+left = ["Alt+Left"]
+right = ["Alt+Right"]
+mouse_speed = 0.15
+pad_speed = 180.0
+
+[[actn]]
+name = "QuickLoad"
+kind = "button"
+inputs = ["F7"]
+mouse_speed = 0.15
+pad_speed = 180.0

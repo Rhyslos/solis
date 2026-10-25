@@ -1,0 +1,10 @@
+-- An aea.
+area version 1;
+
+entity 2EGJNFMTCSQ8G{
+    namLight.cone = 30.0;
+    Light.softModel_edge = 1;
+    Trht.softModel_edge = 1;
+    Tranrmanrm.ftModel_edge = 1;
+    Trans.position = [0.0,0.24321035, 0.90, 1.0, 1.0];
+}

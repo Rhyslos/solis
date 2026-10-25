@@ -1,0 +1,8 @@
+--field.
+area version 1;
+
+entity 2EGJNFMTCSQ8G {
+   ra.fov = 50.0;
+    Transform.scala = [1.0, 1.0,];
+  Transform.scale = [1.0, 1.0, 1.0];
+}

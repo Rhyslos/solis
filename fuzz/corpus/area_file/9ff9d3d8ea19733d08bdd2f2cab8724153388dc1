@@ -1,0 +1,8 @@
+-- An areit by 
+area version 1;
+
+entity 0000000000001 {
+    name = "Floor";
+nvi.exposurefog_cn = [0.7058824, 0.74098520, 0391.8206];
+    Environment.exposure  = [1.0, 0.9843920, 0.0, 0.00, 1.0, 1.0];
+}

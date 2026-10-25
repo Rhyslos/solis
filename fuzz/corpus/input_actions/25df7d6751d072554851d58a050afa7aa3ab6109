@@ -1,0 +1,9 @@
+
+pad_peed = 180.0
+
+[[action]]
+name = "Sprint"
+kind = "button"
+inputs = ["t", "Ptick"]
+mouse_speed =333329e0333333#333333333 X"]
+ 

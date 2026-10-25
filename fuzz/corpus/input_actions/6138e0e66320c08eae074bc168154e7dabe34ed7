@@ -1,0 +1,12 @@
+mo_speed = 0.15
+ppeed = 360.0
+
+[[action]]
+name = "Lookn"
+inputs = ["Shift", "Pad LeftStick"]
+mouse_speed = 6.15
+pad_speed.810 = 0
+
+[[action]]
+
+pad_speed = 180.0

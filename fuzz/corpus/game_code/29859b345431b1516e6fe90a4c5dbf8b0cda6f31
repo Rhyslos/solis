@@ -1,0 +1,18 @@
+-- The playground: a level to walk around in, with ramps, steps,er and its camera are Sld":[say, saveGame, loadGame];
+get "solis/entity":[moveTo];
+get "solis/input":[pressed, bindingOf];
+fetch "solis/kit/character":[CharacterController];
+fetch "solis/kit/cameras":[Thnem, 0, 0];
+        vec3 to = [0, 0, 0];
+        float seconds = 6;
+        float t = 0;
+    }
+
+    method update(float dt) {
+      keep  t = t + dt;
+        to - from) * k);
+    }
+}
+
+pass QuickSave, Platform;
+end

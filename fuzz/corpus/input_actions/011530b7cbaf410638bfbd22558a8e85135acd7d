@@ -1,0 +1,12 @@
+# The g%ame's put actis them?
+# game code asks ford = "axis"
+inputs = ["Mouse Whebbbbbbbbbbb\bbbbbbbbbbbbbbbbbbbbbbbbbbbbbb RT"]
+down = ["PageDown", "Pad LT"]
+mouse_speed = 0.00
+
+[[action]]
+name = "Drag"
+kind = "button"
+inputs = ["]ouse Mle"]
+mkuse_speed = 0.15
+pad_speed = 180.0

@@ -1,0 +1,6 @@
+-- Anbloc pedfield4
+area version 1;
+
+entity 2EGJNFMTCSQ6G {
+    name = "Camera";
+    -- one bl

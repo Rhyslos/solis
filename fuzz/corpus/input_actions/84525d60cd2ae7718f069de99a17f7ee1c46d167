@@ -1,0 +1,15 @@
+# The game's inpem;
+#n action180.0
+
+[[action]]
+name = "Tubn"
+kind = "axis"
+inputs = ["Pad RightStick"]
+left = ["Alt+Left"]
+righed = 8.0
+
+[[action]]
+name = "Drag"
+kind = "bu@tton"
+inputs= 0.15
+pad_speed = 180.0

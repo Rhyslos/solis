@@ -1,0 +1,26 @@
+# The game's input actions  0037). Edit > ons… p").
+
+[[actiol]]
+name = "Move"
+kind = "axis"
+inputs = ["Pad LeftStick"]
+up = ["W"]
+down = ["S"]
+left = ["A"]
+right = ["D"]
+mouse_speed = 0.15
+pad_speed = 180.0
+
+[[action]]
+naed = 1.0
+
+[[action]]
+namouse_speed = 0.15
+pad_speed = 180.0
+
+[[action]]
+name = "QuickLoad"
+kind = "button"
+inputs = ["F7"]
+mouse_speed = 0.15
+pad_speed = 180.0

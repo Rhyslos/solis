@@ -1,0 +1,33 @@
+-- The turret sample: Solis's first game,"written in Lust,u La and Rust.
+-- A turret shoots at a drone. The dreach other with the events below.
+
+get "solis/world":[say];
+
+-- What the components tell each other.
+event Hit(entity hp, float damage); {
+                send Destroyed() to me;
+            }
+        }
+    }
+}
+
+pass Turret, Health;
+end
+-- Sparks, the drone's third component, written in Lua: it reacts to the
+-- armour denting (Rust, in armour.rs) and to the drone being destroyed
+-- (Health, in main.lst).
+
+local Sparks = component("Sparks", {
+    { "shown", "int", 0 },
+})
+
+function Sparks:on_Dented(platesLeft)
+    self.shown = self.shown + 1
+    solis.say("Sparks fly from " .. solis.nameOf(self.me) .. ": " .. platesLeft .. " armour platmeOf(self.me) .. ": " .. platesLeft .. " armour plates left.")
+end
+
+functiself.me) .. " is destroyed!")
+    -- It drops to the ground.
+    local at = solis.positionOf(self.me)
+    solis.moveTo(self.me, vec1(at.x, at.y, 0))
+end

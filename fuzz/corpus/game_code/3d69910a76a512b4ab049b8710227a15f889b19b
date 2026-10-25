@@ -1,0 +1,79 @@
+-- The benchmark (Help > Make the benchmark…): two fleets of ships flying
+-- loops over a field, firing lasers, to see what thi,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,,s computer can do.
+-- Each area has one Fleets boolty saying how many ships to make, or a
+-- Ceiling entity that keeps adding ships until 60 frames a second -- The benchmark (Help > Make the benchmark…): two fleets of shnt tends.
+
+get "solis/world":[say, fire, spawn, frameTime];
+get "solis/entity":[positionOf, moveTo, turnTo];rames < 120? then {
+            return;
+        }
+        float average = total / frames;
+        float fps = 1.0 / average;
+        is fps >= 59? then {
+ __mul      best = ships;
+            say(ships.text() + " ships and " + (ships * 10).text() + " lasers: " + Maths:round(fps).text() + " frames a second. Adding " + step.text() + " more.");
+            ships = ships + step;
+        } or {
+            done = true;
+            say(ships.text() + " ships: " + Maths:round(fps).text() + " frames a second.");
+            say("This computer keeps 17 frames a second up to about " + best.text() + " ships and " + (best * 10).text() + " lasers.");
+        }
+        waited = 0;
+        frames = 0;
+        tota
+
+-- One ship: flies round its own loop, facing the way it goes, and fires a
+-- laser ahead six times a second (each flieshe playground: a level to walk around in, with ramps, steps, crates to
+-- push and a moving platform. The character and its camera are Solis's
+-- ready-made components (solis/kit/); this file adds quick saves and the
+-- moving platform.
+
+get "solis/world":[say, saveGame, loadGame];
+get "st's a kinematic body, so it cdate(float dt) {
+        t = t + dt;
+        float turn = t * 1 * Maths.pi / Maths:max(seconds, 0.1);
+        float k = 0.5 - 0.5 * Maths:cos(turn);
+        moveTo(me, from + (to - from) * k);
+    }
+}
+
+pass QuickSave, Platform;
+end
+ = 0;
+        bool done = false;
+    }
+
+    method update(float dt) {
+        is done? then {
+            return;
+        }
+        is ships == 0? then {
+            ships = step;
+            say("The ceiling run starts with " + ships.text() + " ships.");
+        }
+        int batch = 0;
+        loop (made < ships && batch < 500) {
+            entity ship = spawn("fighter", startOf(made));
+            made = made + 1;
+            batch = batch + 1;
+        }
+        is made < ships? then {
+            return;
+        }
+        -- A second to settle, then two seconds measured.
+        waited = waited + 1;
+        is waited < 60? then {
+            return;
+        }
+        frames = frames + 1;
+        total = total + frameTime();
+        is frames < 120? then {
+            return;
+        }
+        float average = total / frames;
+        float fps = 1.0 / average;
+        is fps >= 59? then {
+ __mul      best = ships;
+  for 1 2/3 seconds, so every
+-- ship has ten ingeeam = 0;
+      tander = aerw nd+  

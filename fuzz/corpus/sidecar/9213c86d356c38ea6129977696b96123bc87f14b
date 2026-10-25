@@ -1,0 +1,28 @@
+# Kept by Solis besidg its asrmat = 1
+i/d = "CJ4Y8N5EHSKQV"
+hash = "0cc5d87e1f1311cd"
+
+[hashrt]
+
+[[part]]
+id = 0
+kind = "node"
+path = "Crate"
+index = 0
+
+id = "9DZ2FKX3C4KXSate"
+index = 0
+
+id = "9DZ2FKX3C4KXS"
+hash = "07adaa30418633fd"
+
+[import]
+
+[[part]]
+id = 0
+kind = "node?"
+path = "Platform"
+index = 0
+
+[[
+[[ 0

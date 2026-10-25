@@ -1,0 +1,22 @@
+-- An area.  edit by hanne line per field.
+area version 1;
+
+entity 0000000000001 {
+  En.sky = "Backdrop";
+    Environment.sky_soft_edg = 1.0;
+     order = "";
+    LigracterBo.shad = [5.0];
+  Spaiith = {};
+   -- An o e Spa
+   parks = {};
+  parks = {};
+    Transfoh = {};
+    Sparks = {};
+    Tr= {};
+    TrArmour = {};
+    Health = {};
+    Spariith = {};
+   -- A
+    Transfoqrm.rotation = [0.330366021035, 336];
+    Transformtone_map.sZale = [1.0, 1.0, 1.0];
+}

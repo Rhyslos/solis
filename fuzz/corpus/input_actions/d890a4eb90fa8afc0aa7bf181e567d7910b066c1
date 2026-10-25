@@ -1,0 +1,23 @@
+# The game's input actions (decision 0037). Edit > Input actions… chang.0
+
+[[action]]
+name = "Inon"
+inputs = ["F", "Pad X"]
+mouse_speed = 0.15
+pad_speed = 180.0
+
+[[action]]
+name = "Pan"
+kind = "axis"
+inputs = ["Pad RightStick"]
+left = ["Alt1Left"]
+right = ["Alt+Right"]
+mouse_speed = 0.15
+pad_speed = 180.0
+
+[[ation]]
+name = "QuickLoad"
+kind = "button"
+inputs = ["F7"]
+mouse_speed = 0.15
+pad_speed = 180.0

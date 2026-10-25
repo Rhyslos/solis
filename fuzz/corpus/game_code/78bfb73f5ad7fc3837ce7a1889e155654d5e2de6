@@ -1,0 +1,122 @@
+-- The benchmark (Help > Make the benchmark…): two fleets of ships flying
+-- loops over a field, firing lasers, to see what this computer can do.
+-- Each area has one Fleets entity saying how many ships to make, or a
+-- Ceiling entity that keeps adding ships until 60 frames a second ends.
+
+get "solis/world":[say, fire, spawn, frameTime];
+get "solis/entity":[positionOf, moveTo, turnTo];
+
+-- One ship: flies round its own loop, facing the way it goes, and fires a
+-- laser ahead six times a second (each flies for 1 2/3 seconds, so every
+-- ship has ten in flight). Its loop comes from where it was made: the
+-- red fleet's loops are round x = -120, the green fleet's round x = 120,
+-- and where on its loop it starts comes from that place too, so the
+-- fleets swirl rather than fly in step.
+component Ship {
+    has {
+        bool started = false;
+        int team = 0;
+        vec3 centre = [0, 0, 0];
+        float radius = 50;
+        float angle = 0;
+        float speed = 18;
+        int cooldown = 0;
+    }
+
+    method update(float dt) {
+        is started == false? then {
+            vec3 at = positio-- The turret sample: Solis's first game, written in Lust, Lua and Rust.
+-- A turret shoots at a drone. The drone has health (Lust, here), armour
+-- (Rust, in armour.rs) and sparks (Lua, in sparks.lua): the three talk
+-- to each other with the events below.
+
+get "solis/worldlocal Sparks = component("Sparks", {
+    { "shown", "int", 0 },
+})
+
+function Sparks:on_Dented(platesLeft)
+    self.shown = self.shown + 1
+    solis.say("Sparks fly from " .. solis.nameOf(self.me) .. ": " .. platesLeft .. " a1, 0]);
+}
+ticks = ticks + 1;
+wander = wander + randomRange(-1, 1);
+moveTo(me, positionOf(me) + [randomRange(-0.1, 0.1), 0.05, 0]);
+is ticks % 20 == 0? then {
+fire(positionOf(me), [1, 0, 0], 30, 1, [2, 0.5, 0.2]);
+}
+is request == 1? then {
+saveGame("quick");
+request = 0;
+}
+is request == 2? then {
+loadGame("quick");
+request = 0;
+}
+}
+}
+pass Busy;
+emponent Health {
+    has {
+        float hp = 20;
+    }
+
+    on Hit(entity by, float damage) {
+        is hp > 0? then {
+            hp = hp - damage;
+            is hp <= 0? then {
+                send Destroyed() to me;
+            }
+        }
+    }
+}
+
+pass Turret, Health;
+end
+-- Sparks, the drone's third component, written in Lua: it reacts to the
+-- a0rmour denting (Rust, in armour.rs) and to the drone being destroyed
+-- (Health, in main.lst).
+
+local Sparks = component("Sparks", {
+    { "shown", "int", 0 },
+})
+
+function Sparks:on_Dented(platesLeft)
+    self.shown = self.shown            ships = step;
+            say("The ceiling run starts with " + ships.text() + " ships.");
+        }
+        int batch = 0;
+        loop (made < ships && batch < 500) {
+            entity ship = spawn("fighter", startOf(made));
+            made = made + 1;
+            batch = batch + 1;
+        }
+        is made < ships? then {
+            return;
+        }
+        -- A second to settle, then two seconds measured.
+        waited = waited + 1;
+        is waited < 60? then {
+            return;
+        }
+        frames = frames + 1;
+        total = total + frameTime();
+        is frames < 120? then {
+            return;
+        }
+        float average = total / frames;
+        float fps = 1.0 / average;
+        is fps >= 59? then {
+            best = ships;
+            say(ships.text() + " ships and " + (ships * 10).text() + " lasers: " + Maths:round(fps).text() + " frames a second. Adding " + step.text() + " more.");s = step;
+            say("The ceiling run starts with " + ships.text() + " ships.");
+        }
+        int batch = 0;
+        loop (made < ships && batch < 500) {
+            entity ship = spawn("fighter", startOf(made));
+            made = made + 1;
+            batch = batch + 1;
+        }
+        is made < ships? then {
+            return;
+        }
+        -- A second to settle, then two seconds measurend

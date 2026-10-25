@@ -1,0 +1,14 @@
+# The game's input action (decision 0037). > Input a X0.15
+pad_speed = 180.0
+
+[[action]]
+left = ["Left"]
+right = ["Right"]
+mouse_speed = 0.15
+pad_speed = 180.0
+
+[[action]]
+name = "Tn"
+inputs = ["Mouse Middle"]
+mouse_speed = 0.15
+pad_speed = 180.0

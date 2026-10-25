@@ -7,13 +7,15 @@ The first time, and whenever you want the newest version.
 
 ## How to use it
 
-**Download it (Windows):**
+**Install it (Windows, recommended):** download `solis-setup.exe` from the newest release on the repository's **Releases** page and run it. Solis then updates itself whenever a new build is merged. See [Installing and updating](installing-and-updating.md).
+
+**Or download the program on its own:**
 1. Open the Solis repository on GitHub and go to the **Actions** tab.
 2. Click the newest run of **Windows EXE**.
 3. At the bottom of the page, download **solis-windows**.
-4. Unzip it anywhere and double-click `solis.exe`.
+4. Unzip it anywhere and double-click `dist\solis.exe`. (The `setup` folder beside it holds the installer.)
 
-A new `solis.exe` is built every time code is merged into the main version. To build one straight away, open **Windows EXE** in the Actions tab and press **Run workflow**. Each download stays available for 30 days.
+A copy run this way doesn't update itself. Each download stays available for 30 days.
 
 **Build it yourself:**
 1. Install Rust from [rustup.rs](https://rustup.rs).
@@ -25,7 +27,7 @@ A new `solis.exe` is built every time code is merged into the main version. To b
 Solis remembers your panel layout, accent colour, camera and viewport controls in your user folder, so each start looks like the last.
 
 ## Tips and common problems
-- **Problem:** Windows warns that the program is from an unknown publisher. **Why:** the EXE isn't signed yet (that comes with installers). **Fix:** choose **More info**, then **Run anyway**.
+- **Problem:** Windows warns that the program is from an unknown publisher. **Why:** the program isn't signed with a paid certificate yet. **Fix:** choose **More info**, then **Run anyway**.
 - **Problem:** the viewport says "No 3D view" and a reason. **Why:** Solis couldn't use the graphics card. **Fix:** update your graphics drivers. The rest of the editor still works.
 
 ## Related

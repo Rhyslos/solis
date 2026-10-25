@@ -1,0 +1,9 @@
+#[[action]]
+name = "Interact"
+kind = "button"
+inputs = ["F", "Pad X"]
+mouse_speed = 0.15
+pad_speed = 180.0
+
+[[action]]
+name = 180.0

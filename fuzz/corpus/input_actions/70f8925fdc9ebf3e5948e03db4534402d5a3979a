@@ -1,0 +1,6 @@
+#~T gha.e )E
+[[action]]
+name = "Zo"
+kind = "button"
+inputs = ["MousF7"]
+mouse_speed = 0.1

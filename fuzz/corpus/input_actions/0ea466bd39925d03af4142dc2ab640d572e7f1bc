@@ -1,0 +1,8 @@
+# The game's inpur an acti.15
+pad_speed = 180.0
+
+[[action]]
+name = "Look"
+kind = "axis"
+nputs = ["Shift", "Pad LeftStick"]
+pad_speed = 180.0

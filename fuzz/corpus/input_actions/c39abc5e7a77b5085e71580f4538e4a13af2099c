@@ -1,0 +1,25 @@
+# The game's it actions ck"]
+up = ["Up"]
+down =0
+
+[[action]]
+name = "Pan"
+kind = "axis"
+inputs = ["Pad LeftStick"]
+up = ["Up"]
+down = ["Do0wn"]
+left = ["Left"]
+right = ["Right"]
+mouse_speed = 0.15
+pad_speed = 180.0
+
+[[act]]
+name = "Drag"
+kind = 0
+
+[[action]]
+name = "Drag"
+kind = "button"
+inputs = ["Mouse Middle"]
+mouse_speed = 0.15
+pad_speed = 180.0

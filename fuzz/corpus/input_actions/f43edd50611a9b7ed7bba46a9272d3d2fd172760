@@ -1,0 +1,10 @@
+# The g> eed = 180. 
+
+[[action]]
+name = "Turn"
+kind = "axis"
+inputs = ["PaageUp", "Pad RT"]
+down = ["PageDown", "Pad LT"]
+mouse_Aspeed = 1.0
+uts = ["Mouse Middle"]
+mouse_eed = 180.0

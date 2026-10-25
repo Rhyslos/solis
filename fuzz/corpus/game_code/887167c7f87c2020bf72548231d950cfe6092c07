@@ -1,0 +1,32 @@
+-- The turret sample: Solis's first game, written in Lust, Lua and Rust.
+-- A turret shoots at a drone. The drone has health (Lust, here), armour
+-;
+get "solis/physics":[push];
+component Busy {
+cks + 1;
+wander = w           }
+        }
+    }
+}
+
+pass Turret, Hehas {
+int ticks = 0;
+float wander = 0;
+int request = 0;
+}
+method update(float dt) {
+is ticks == 0? then {
+push(find("Crate"), [3, 1, 0]);
+}
+tic}
+    }
+}
+
+pass Turret, Hehas {
+int ticks = 0;
+float wander = 0;
+int reques    }
+    }
+}
+
+pass Tuend

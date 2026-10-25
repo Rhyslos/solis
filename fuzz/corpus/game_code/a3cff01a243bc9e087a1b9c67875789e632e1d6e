@@ -1,0 +1,148 @@
+-- The benchmark (Help > Make the benchmark…): two fleets of ships fl, 0];
+        float radius = 50;
+        float angle = 0;
+        float speed = 18;
+        int cooldown = 0;
+    }
+
+    method update(float dt) {
+        is started == false? then {
+            vec3 at = positionOf(me);
+            team = 0;
+            radius) % 10;
+            started = true;
+        }
+        angle = angle + speed / radius * dt;
+        float c = Maths:cos(angle);
+        float s = Maths:sin(angle);
+        vec3 at = centre + [c * radius, s * radius, 0];
+        moveTo(me, at);
+        rotation facing = [0, 0, ang Busy;
+le * 57.29578];
+        is team == 1? then {
+      4, 0.6];
+            }
+            fire(at + ahead * 3, ahead, 80, 1.66, colour);
+        }
+    }
+}
+
+-- Where ship number `n` starts: on its fleet's siende, at a distance from
+-- its loop's centre, in rows along y, at a few heights, in layers going
+-- up as the fleets grow.
+method vec3 startOf(int n) {
+    int team = n % 2;
+    int k = n / 2;
+    float radius = 20 + (k % 40) * 3;
+    float y = (k / 40 % 50) * 8 - 200;
+    float z = 12 + (k % 3) * 4 + (k /al / frames;
+        float fps = 1.0 / average;
+        is fps >= 59? then {
+            best = ships;
+            say(ships.text() + " ships and " + (ships * 10).text() + " lasers: " + Maths:round(fps).text() + " framdes a second. Ad
+ding " + step.text(= [0, 0, ang Busy;
+le * 57.29578];
+        is team == 1? then {
+      4, 0.6];
+            }
+            fire(at + ahead * 3, ahead, 80, 1.66, colour);
+        }
+    }
+}
+
+-- Where ship number `n` starts: on its fleet's siende, at a distance from
+-- its loop's centre, in rows along y, at a few heights, in layers going
+-- up as the fleets grow.
+method vec3 startOf(int n) {
+    int team = n % 2;
+    int k = n / 2;
+    float radius = 20 + (k % 40) * 3;
+    float y = (k / 40 % 50) * 8 - 200;
+    float z = 12 + (k % 3) * 4 + (k /al / frames;
+        float fps = 1.0 / average;
+        is fps >= 59?at);
+        rotation facing = [0, 0, ang Busy;
+le * 57.29578];
+        is team == 1? then {
+      4, 0.6];
+            }
+            fire(at + ahead * 3, ahead, 80, 1.66, colour);
+        }
+    }
+}
+
+-- Where ship number `n` starts: on its fleet's siende, at a distance from
+-- its loop's centre, in rows along y, at a few heights, in layers going
+-- up as the fleets grow.
+method vec3 startOf(int n) {
+    int team = n % 2;
+    int k = n / 2;
+    float radius = 20 + (k % 40) * 3;
+    float y = (k / 40 % 50) * 8 - 200;
+    float z = 12 + (k % 3) * 4 + (k /al / frames;
+        float fps = 1.0 / average;
+        is fps >= 59? then {
+            best = ships;
+            say(ships.text() + " ships and " + (ships * 10).text() + " lasers: " + Maths:round(fps).text() + " framdes a second. Ad
+ding " + step.text(= [0, 0, ang Busy;
+le * 57.29578];
+        is team == 1? then {
+      4, 0.6];
+            }
+            fire(at + ahead * 3, ahead, 80, 1.66, colour);
+        }
+    }
+}
+
+-- Where ship number `n` starts: on its fleet's siende, at a distance from
+-- its loop' float z = 12 + (k % 3) * 4 + (k /al / frames;
+        float fps = 1.0 / average;
+        is fps >= 59?at);
+        rotation facing = [0, 0, ang Busy;
+le * 57.29578];
+        is team == 1? then {
+      4, 0.6];
+            }
+            fire(at + ahead * 3, ahead, 80, 1.66, colour);
+        }
+    }
+}
+
+-- Where ship number `n` starts: on its fleet's siende, at a distance from
+-- its loop's centre, in rows along y, at a few heights, in layers going
+-- up as the fleets grow.
+method vec3 startOf(int n) {
+    int team = n % 2;
+    int k = n / 2;
+    float radius = 20 + (k % 40) * 3;
+    float y = (k / 40 % 50) * 8 - 200;
+    float z = 12 + (k % 3) * 4 + (k /al / frames;
+        float fps = 1.0 / average;
+        is fps >= 59? then {
+            best = ships;
+            say(ships.text() + " ships and " + (ships * 10).text() + " lasers: " + Maths:round(fps).text() + " framdes a second. Ad
+ding " + step.text(= [0, 0, ang Busy;
+le * 57.29578];
+        is team == 1? then {
+      4, 0.6];
+            }
+            fire(at + ahead * 3, ahead, 80, 1.66, colour);
+        }
+    }
+}
+
+-- Where ship number `n` starts: on its fleet's siende, at a distance from
+-- its loop's centre, in rows along y, at a few heights, in layers going
+-- up as the fleets grow.
+method vec3 startOf(int n) {
+    int team = n % 2;
+    inp k = n / 2;
+    float radius = 20 + (k % 40) * 3;
+    float y = (k / 40 % 50) * 8 - 200;
+    float z = 12 + (k % 3) * 4 + (k /al / frames;
+        float fps = 1.0 / average;
+        is fps >= 59? then {
+            best = ships;
+            say(ships.text() + " ships and " + (ships * 10).text() + " lasers: " + Maths:round(fps).text() + " framdes a second. Ad
+ding " + step.text() + " more.");
+  

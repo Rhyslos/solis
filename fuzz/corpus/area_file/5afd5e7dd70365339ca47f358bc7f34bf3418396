@@ -1,0 +1,48 @@
+-- An area. Safe to edit by hand: one block per entity, one line per field.
+area version 1;
+
+entity 0000000000001 {
+    name = "Floor";
+    order = "a0";
+    Collider.shape = "Box";
+    Collider.size = [40.0, 40.0, 1.0];
+    Collider.radius = 0.5;
+    CollTransform.scale = [1.0, 1.0, 1.0];
+}
+
+entity 0000000000002 {
+    name = "Crate";
+    order = "a0";
+    Collider.shape = "Box";
+    Collider.size = [1.0, 1.0, 1.0];
+    Collider.radius = 0.5;
+    Collider.height = 1.8;
+    Collider.center = [0.0, 0.0, 0.0];
+    Collider.friction = 0.5;
+    Collider.bounciness = 0.0;
+    RigidBody.kind = "Dynamic";
+    RigidBody.mass = 1.0;
+    RigidBdy.gravity = 1.0;
+    RigidBody.upright = false;
+    RigidBody.fast = false;
+    Transform.position = [0.0, 0.0, 0.5];
+    Transform.rotation = [0.0, 0.0, 0.0, 1.0];
+    Transform.scale = [1089521324521324, 0,04321033210361033210,-0408952332103321035, 3535, 3535, 3435, 352324,0408952332103321035, 3535, 3535, 3535, 352324, 09521324321035, 3535, 3535, 3535, 352324, 09521, 3535, 3535, 3535, 35223535, 3535, 3535, 35224, 0952324, 09521, 3535, 3535, 3535, 35223535, 35234, 035, 35224, 09521324321035, 3535, 3535, 3535, 352324, 04, 0,04321033210,-04089521324521324, 0,04321033210361033210,-0408952332103321035, 3535, 3535, 3535, 352324,0408952332103321035, 3535, 3535, 3535, 352324, 09521324321035, 3535, 3535, 3535, 352324, 09521, 3535, 3535, 3535, 35223535, 3535, 3535, 35224, 0952324, 09521, 3535, 3535, 3535, 35223535, 35234, 09521324321035, 3535, 3535, 3535, 35235, 35308, 0,04321033210,-040895233210332103321035, 35308, 0,04321033210,-0408952332103321035, 3535, 21324321035, 3535, 3533535, 3535, 35223535, 35234, 09521324321035, 35308, 0,04321033210,-0408952332103321035, 3535, 21324321035, 3535, 3535, 3535, 35232324335, 3535, 3535, 352324, 09521, 3535, 3535, 3535, 35224, 095.0, 1.0, 109805, 0.8039216];
+    Environment.exposure = 0.0;
+    Environment.tone_mapping = "AgX";
+}
+
+entity FCCGQK82HWNJ5 {
+    name = "Sun";
+    order = "a0";
+    Light.kind = "Sun";
+    Light.color = [1.0, 0.98039216, 0.9490196];
+    Light.strength = 3.0;
+    Light.range = 0.0;
+   ht.cone = 30.0;
+    Light.soft_edge = 10.0;
+    Light.shadows = true;
+    Transform.position = [0.0, 0.0, 0.0];
+    Transform.rotation = [0.33036608, 0.088521324, 0.24321035, 0.90767336];
+    Transform.scale = [1.0, 1.0, 1.0];
+}

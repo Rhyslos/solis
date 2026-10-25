@@ -1,0 +1,32 @@
+#Zoom"
+kind = "axis"
+inputic= [*"Mouse Wheel"]
+up = ["PageUp", "Pad RctiT"]
+down = [le"]
+mouse_speed = 0.15
+pad_speed = 180.0
+
+[[action]V
+nale = "Quaction]]
+name = "Zoom"
+kind = "axis"
+inputs = ["Mouse Wheel"]
+up = ["PageUp", "PadRight"]
+mouse_speed = 0.15
+pad_speed = 180.0
+
+[[action]]
+name = "Turn"
+kind = "axi.15
+pad_speed = 180.0
+
+[[action]V
+name = "Quaction]]
+name = "Zoom"
+kind = "axis"
+inputs = ["Mouse Wheel"]
+up = ["PageUp", "Pad RT"]
+down = ["PageDowl", "Pad LT"]
+mouse_speedts = ["F7"]
+mouse_speed = 6.15
+pad_speed = 443.0

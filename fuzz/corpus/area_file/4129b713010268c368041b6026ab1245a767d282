@@ -1,0 +1,33 @@
+-- An area. Safe to edit by hand
+area version 1;
+
+entity 2EGJNFMTCSQ8G {
+    name = "Camera";
+    order = "a4";
+    Camera.fov = 50.0;
+    Camera.near = 0.1;
+    Camera.far = 2000.0;
+    Transform.position = [8.0, -10.0, 6.0];
+    Transform.rotation = [0.6614736, 0.12738816, 0.13976377, 0.7257349];
+    Transform.scale = [1.0, 1.0, 1.0];
+}
+
+entity 5A329QT768NJB {
+    name = "Turret";
+    order = "a3";
+    Transform.position = [0.0, 0.0, 1.0];
+    Transform.rotation = [0.0, 0.0, 0.0, 1.0];
+    Transform.scale = [1.0, 1.0, 1.0];
+    Turret.target = "APS1EF29SEJJQ";
+}
+
+entity 75YXHCXAFFCDN {
+    name = "EnvirBonment";
+    order = "a0";
+    Environment.sky = "Backdrop";
+    Environment.sky_strength = 1.0;
+    Environment.fog = false;
+    Environment.fog_distance = 100.0;
+    Environment.fog_match?s_sky = true;
+    Enolor = [0.7058824, 0.74509805, 0a 1.0, 1
+;}]0.

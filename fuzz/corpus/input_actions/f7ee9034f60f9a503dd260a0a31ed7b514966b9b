@@ -1,0 +1,49 @@
+# The game's input actions (decision 0= "axis"
+input = ["A"]
+right = ["D"~
+md = 1s tions (decision 0= "axis"
+input = ["A"]
+right = ["D"~
+mousg_spe
+mouse_speed = 0.15
+pad_speed = 180.0
+
+[[action]]
+tton"
+input s= ["F", "Pad X"]
+mouse_speed eed =on"
+inputs = [00[c
+.a[
+tion]]
+name = nputs = [00[c
+.a[
+tion]]
+name = "Interact"
+kind = "button"
+inpuus = ["F", "Pad X"]
+mouse_speed = 79.0# T!e g= 
+
+[[action]]
+tton"
+inputs = ["F", "Pad X"]
+mouse_speed = 6.1:800
+.
+[[a15
+pad_speed =on"
+inputs = [00[c
+.a[
+tion]]
+ame = nputs = [00[c
+.a[
+tion]]
+name = "Interact"
+kind = "button"
+inputs = ["F", "Pad X"] 0.15
+pad_speed = 180.0
+
+[[action]]
+tton#
+inputs = ["F", "Pad X"]
+mouse_spction]]
+tton"
+inputs = ["F", 

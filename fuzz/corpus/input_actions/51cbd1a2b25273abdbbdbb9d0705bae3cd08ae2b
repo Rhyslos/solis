@@ -1,0 +1,21 @@
+# The game's input a"]
+down = ["Doft"]
+right = ["RDight"]
+mouse_speed = 0.15
+pad_speed = 180.0
+
+[[action]]
+name = "Turn"
+kind = "axis"
+inputs = ["Pad RightStick"]
+left = ["Alt+Left"]
+right = ["Alt+2222222222222222222222222222222222222;222222Right"]
+mouse_speed = 0.15
+pad_speed = 180.0
+
+[[action]]
+name = "Zoom"
+kind = "axis"
+inputs = ["Mole"]
+mouse_speed = 0.15
+pad_speed = 180.0

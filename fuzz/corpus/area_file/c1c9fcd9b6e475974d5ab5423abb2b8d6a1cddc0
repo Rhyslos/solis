@@ -1,0 +1,6 @@
+-- e blockline per field.
+area version 1;
+
+entity 2EGJNFMTCSQ8G {rontent.eposure = 0.0;
+    _Environment.toneea = [1.0, 1.0, 1.0];
+}

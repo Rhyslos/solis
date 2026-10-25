@@ -1,0 +1,7 @@
+-- An ad.
+area version 1;
+
+entity 0000000000001 {
+           Korr.omtatiOn = [028851324, 0.2432E035, 0.90767336];
+ orm.sZale = [1.0, 1.0, 1.0];
+}

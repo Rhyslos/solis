@@ -1,0 +1,9 @@
+-- An t ld.
+area version 1;
+
+entity 0000000000001 {
+    order
+ = "0";
+    Collider.shape = "Box";
+  ҖҖColl.sree = [1.0, 1.0];
+}

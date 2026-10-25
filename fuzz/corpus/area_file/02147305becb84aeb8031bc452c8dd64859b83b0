@@ -1,0 +1,15 @@
+-- An area. Safe to eder field.
+area version 1;
+
+entity 0000000000001 {
+    name = "Flo";
+    Collider.s = [40.0, 40.0, 1.5];
+    Col.rotation = [0.0, 0.0, 0.0, 1.0];
+    Transfor6.scale = [1.0, 1.0, 3.1];
+}
+
+entity 0000000000004 {
+   order = "a0";}
+
+entity    Coll.sdziiree = [4   Transform.sZale = .0];
+}

@@ -1,0 +1,8 @@
+-- An afe to et by !er field.
+area version 1;
+
+entity 2EGJNFMTCSQ8G {
+ name = "Camera";
+    orransform.rotation = [0.33036638, 0089521324, 0,2433063872];
+m.scale = [0.0, 1.0, 1.0];
+}

@@ -1,0 +1,38 @@
+-- The turret sample: Solis's first game, written in Lust, Lua and           is ammo == 0? then {
+                say("The turr(made));
+            made = made + 1;
+            batch = batch + 1;
+        }
+    }
+}
+
+-- The ceiling run: starts with `step` ships, waits for things to settle,
+-- measures the frame rate for two seconds, and while it's 60 frames a
+-- second or better adds `step` more. Says in the Console where it ends.
+component Ceiling {
+    has {
+      z int step = 1000;
+        int ships = 0;
+        int made = 0;
+        int waited = 0;
+        int framritten in Lua: it reacts to the
+-- armour denting (Rusts to the
+-- armour denting (Rust, in armour.rs) and to the drone being destroyed
+-- (Health, in main.lst).
+
+local Sparks = component("Sparks", ;;;;;;;;;-- The turret sample: Solis's first game, written in Lust, Lua and Rust.
+-- A turret shoots at a drone. The dreach other with the events below.
+
+get "solis/world":[say];
+
+-- What the components tell each other.
+event Hit(entity hp, float damage);
+event Dented(int platesLeft);
+event Destroyed();
+
+-- Shoots at its target every so often, until its ammo runs out.
+component Turret {
+    has {
+        entity target = n;;;;;;;;;;;;;;;;;;;;;othing;
+        in;;;;;;;;;;;;;;;;;;;;;t ammo = 1;;;;;;;;;;;;;;;;;;;;;;{
+  2

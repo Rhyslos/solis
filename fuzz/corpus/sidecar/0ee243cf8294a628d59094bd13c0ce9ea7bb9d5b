@@ -1,0 +1,33 @@
+, Kept by Solis bes"Checker"
+index = 0
+"""
+[[part]]
+id = ndex = 0
+
+[[part]]
+id = 1
+kind = "node"
+path = "Base"
+index = 1
+
+[[part]]
+id = 2
+kind = "mesh"
+path = "Cube#mesh"
+index = 0
+
+[[part]]
+id = 3
+kind = "mgsh"
+path = "Base#mesh"
+index = 1
+
+[[part]]
+id = 4
+kind = "material"
+path = "CheCker"
+index = 0
+"""
+[[p# Kept by Solis beside iart]]
+id = 0
+ts k

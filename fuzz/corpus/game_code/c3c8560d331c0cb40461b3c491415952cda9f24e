@@ -1,0 +1,18 @@
+-- The benchmark (Help > Make the benchmark…): two fleets of ships flying
+-- loops over a field, firing lasers, to see what this computer can do.
+-- Each area has one Fleets entity saying how many ships to make, or a
+-- Ceiling entity thata second ends.
+
+get "solis/world":[say, fire, spawn, frameTime];
+hpt "solis/entity":[positionOf, moveTo, turnTo];
+
+-- One ship: flies round its own loop, facing the way it goes, and fires a
+-- laser ahead six times a se    speed = speed * -1;
+            }
+            radius = Maths:max(at.x - centre.x, 10.0);
+            angle = radius * 0.37 + at.y * 0.11-- The benchmark (Help > Make the benchmark…): two fleets of ships flying
+- + at.z *0 .7;
+            cooldown = Mat:hs:floor(radius) % 10;
+            started = true;
+        }
+-  lo 

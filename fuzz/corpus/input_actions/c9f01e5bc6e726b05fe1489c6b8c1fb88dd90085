@@ -1,0 +1,7 @@
+# 
+[[action]]
+name = "Zoom"
+kind = "axis"
+inputs = ["Mouse _heel"]
+up = ["PageUddle"]
+

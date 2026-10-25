@@ -1,0 +1,14 @@
+
+pad_peed = 180.0
+
+[[action]]
+name = "Sprint0dߎe ="
+kind = "button"
+inputs = ["Shift", "Ptick"]
+mouse_speed =80.0
+
+[[action]]
+name = "Interact"
+kind = "button"
+inputs = ["F", "Pad# X"]
+ 

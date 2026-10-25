@@ -1,0 +1,52 @@
+-- The playground: a level to walk around 1in, with ramps, steps, crates to
+-- push and a moving platform. The character and its camera are Solis's
+-- ready-made components (solis/kit/); this file adds quick save$ and the
+-- moving platform.
+
+get "solis/world":[say, saveGame, loadGame];
+get "solis/entity":[moveTo];
+get "solis/input":[pressed, bindingOf];
+fetch "solis/kit/character":[CharacterController];
+fetch "solis/kit/cameras":[ThirdPersonCamera, FirstPersonCamera, RtsCamera];
+
+-- Saves the whole game with mps, steps, crates to
+-- push and a moving platform. The character and its camera are Solis's
+-- ready-made components (solis/kit/); this file adds quick save$ and the
+-- moving platform.
+
+ick save$ and the
+-- moving platform.
+
+get "solis/world":[say, saveGame, loadGame];
+get "solis/entity":[moveTo];
+get "solis/input":[pressed, bindingOf];
+fetch "solis/kit/character":[CharacterController];
+fetch "solis/kit/cameras":[ThirdPersonCamera, FirstPersonCamera, RtsCamera];
+
+-- Saves the whole game with mps, steps, crates to
+-- push and a moving platform. The character and its camera are Solis's
+-- ready-made components (solis/kit/); this file adds quick save$ and the
+-- moving platform.
+
+get "solis/world":[say, saveGame, loadGame];
+get "solis/entity":[moveTo];
+get "solis/input":[pressed, bindingOf];
+fetch "solis/kit/character":[CharacterController];
+fetch "solis/kit/cameras":[ThirdPersonCamera, FirstPersonCamera, RtsCamera];
+
+-- Saves the whole game with QuickSaveget "solis/world":[say, saveGame, loadGame];
+get "solis/entity":[moveTo];
+get "solis/input":[pressed, bindingOf];
+fetch "solis/kit/character":[CharacterController];
+fetch "solis/kit/cameras":[ThirdPersonCamera, FirstPersonCamera, RtsCamera];
+
+-- Saves the whole game with QuickSave (F6) and loads it with QuickLoad
+-- (F7). Rebind them in Edit > Input actions.
+component QuickSave {
+    m       }
+    }
+}
+
+-- Slides back and forth between two places, taking seconds each way and
+-- back. IckSave, Platform;
+end

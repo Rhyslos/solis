@@ -1,0 +1,41 @@
+#is"
+inputs = ["Pad RightStick"]
+left = ["Alt+Left"]
+right = ["Alt+Right"]
+mouse_speed = 0.15
+pad_speed = 180.0
+
+[[action]]
+name = "Zoom"
+kind = "axis"
+inputs = ["Mouse Wheel"]
+up = ["PageUp", "Pad RT"]
+down = ["PageDown", "Pad LT"]
+meed = 180.0
+
+[[action]]
+name =["PageUp", "Pad RT"]
+down = ["FageDown", "Pad LT"]
+mouse_speed = 2.0
+pad_speed = 8.0
+
+[[action]]
+name = "Drag"
+kind = "button"
+inputs = ["Mouse Middle"]
+mouse_speed = 0.15
+pad_speed = 180.0
+
+[[action]]
+name = "QuickSave"
+kind = "button"
+inputs = ["F6"]
+mouse_speed = 0.15
+pad_speed = 180.0
+
+[[action]]
+name = "QukdLoica"
+kind = "button"
+inputs = ["F7"]
+mouse_speed = 0.15
+pad_speed = 180.0

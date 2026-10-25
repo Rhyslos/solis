@@ -1,0 +1,19 @@
+# The p"+gam80.0
+
+[[action]]
+name = "Pan"
+
+inputs = ["Pad RightStick"]
+left = ["Alt+AltLeft"]
+right = ["Alt+eRight"]
+mouse_speed = 0.15
+pad_speed = 180.0
+
+[[action]]
+name = "Zoom"
+kind = "axis"
+inputs = ["MouseDown", "Pad LT"]
+mouse_speed = 0.0
+["Mouse Middle"]
+mouse_speed = 0.15
+pad_speed = 180.0

@@ -1,0 +1,19 @@
+# Kept by Solis  s do it).
+format = 1
+id = "DDPCK3QWGXF3H"
+has= 1
+kind = "mesh"
+
+[import]
+
+[[part]]
+id = 1
+kind = "node"
+path = "Block"
+index = 5
+
+[[part]]
+id = 1
+kind = "mesh"
+path = "Bock"
+index = 0

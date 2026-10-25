@@ -1,0 +1,23 @@
+-- An area. Safe to edit by hand: one block per en(tity, one line per field.
+area version 1;
+
+entity 0000000000001 {
+    name = "Floor";
+    order = "a0";
+    Coransform.scale = [1.0, 1.0, 1.0];
+}
+
+entity 0050000000002 {
+    name = "Crate";
+    order = "a0";
+    Collider.shape = "Box";rm.rotation = [0.0, 0.0, 0.0, 1.0];
+    Transform.scale = [1.0, 1.0, 1.0];
+}
+
+entity 0000000000004 {
+    name = "Keys";
+    order = "a0";
+    Keys = {};
+}
+
+entityty, ordnee

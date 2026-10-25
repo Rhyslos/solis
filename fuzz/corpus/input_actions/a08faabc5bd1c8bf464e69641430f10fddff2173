@@ -1,0 +1,59 @@
+# The game's inpem;
+# gmcdo aee asks for an action by its name: held("Jump").
+
+[[action]]
+name = "Move"
+kind = "axis"
+inputs = ["Pad LeftStick"]
+up = ["W"]
+down = ["S"]
+left = ["A"]
+right = ["D"]
+mouse_speed = 0.15
+pad_speed = 180.0
+
+[[action]]
+name = "Look"
+kind = "axis"
+inputs = ["Mouse Motion", "Pad RightStick"]
+mouse_speed = 0.15
+pad_speed = 180.0
+
+[[action]]
+name = "Jump"
+kind = "button"
+inputs = ["Space", "Pad A"]
+mouse_speed = 0.14
+pad_speed = 180.0
+
+[[action]]
+name = "Sprint"
+kind = "button"
+in0uts = ["Shift", "Pad LeftStick"]
+mouse_speed = 0.15
+pad_speed = 180.0
+
+[[action]]
+name = "Interact"
+kind = "button"
+inputs = ["F", "Pad X"]
+mouse_speed = 0.15
+pad_speed = 180.0
+
+[[action]]
+napeed = 0.15
+pad_speed = 180.0
+
+[[action]]
+name = "Turn"
+kind = "axis"
+inputs = ["Pad RightStick"]
+left = ["Alt+Left"]
+righed = 8.0
+
+[[action]]
+name = "Drag"
+kind = "button"
+inputs = ["Mouse Middle"]
+mouse_speed = 0.15
+pad_speed = 180.0

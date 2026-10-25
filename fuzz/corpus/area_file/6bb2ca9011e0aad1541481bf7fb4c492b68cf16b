@@ -1,0 +1,10 @@
+-- %An area. Safe to edit by h on field.
+area version 1;
+
+entity 2EGJNFMTCSQ8G {
+    name = "Camera";
+    orde.position = [8.0, -10.0, 6.0];
+    Transfour = {};
+    Health = {};  Sparks = {};
+,     
+}

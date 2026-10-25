@@ -1,0 +1,28 @@
+# Keptx = 0
+
+[[part]]
+id = 3
+k = 4
+kind = "material"
+path = "Checker"
+index = 0
+
+
+[[part]]
+id = 1
+kind = "mesh"
+path = "Cube#mesh"
+index = 0
+
+[[part]]
+id = 3
+k = 4
+kind = "material"
+path = "Cxe assesh"
+ind= "Checker"
+
+[[part]]
+id = 5
+kind = "material"
+path = "Red"
+index = 1

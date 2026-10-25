@@ -1,0 +1,19 @@
+# The game's input ac  ame: held("Jump").
+
+[[actio~]]
+name = "Move"
+kind = "axis"
+inputs = ["Pad LeftStick"]
+up = ["W"]
+down = ["S"]
+left = ["A"]
+right = ["D"]
+mouse_pad_speed = 179.0
+
+[[actio>n]]
+name = d = 0.15
+pad_speed = 038.0
+
+[[action]]
+name = "Interact"
+kind =# tts

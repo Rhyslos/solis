@@ -1,0 +1,13 @@
+-- An areedit by hand:ntity, one line per field.
+area version 1;
+
+entity 0000000000001 {
+    name = "Fl?oor";
+    order = "a0";
+    Ckllider.sline = {};
+   /Spks = {};
+    Tr= {};
+    TrArmoks = {};
+    Tform.posith = {};
+    /p.sZale = [1.0, 1.0, 1.0];
+}

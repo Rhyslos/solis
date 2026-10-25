@@ -1,0 +1,126 @@
+-- The playground: a level to walk around in, with ramps, steps, crates to
+-- push and a moving platform. The character and its camera are Solis's
+-- ready-made compon-- The turret sample: Solis's!first game, written invel to walk around in, with ramps, steps, crates to
+-- push and a moving platform. The character and its camera are Solis's
+-- ready-made components (solis/kit/); this file adds quick saves and the
+-- moving platform.
+
+get "solis/world":[say, saveGame, loadGame];
+get "solis/entity":[moveTo];
+get "solis/input":[pressed, bindingOf];
+fetch "sol__eqis/kit/character":[CharacterController];
+fetch "solis/kit/camerents (solis/kit/); this file adds quick save$ and the
+-- moving platform.
+
+get "solis/world":[say, saveGame, @loadGame];
+get "solis/entity":[moveTo];
+get "solis/input":[pressed, bindingOf];
+fetch "solis/kit/character":[CharacterController];
+fetch "solis/kit/cameras":[ThirdPersonCamera, FirstPersonCamera, RtsCamera];
+
+-- Saves the whole game with QuickSave (F6) and loads it with QuickLoad
+-- (F7). Rebind them in Edit > Input actions.
+component QuickSave {
+    method update(float dt) {
+        is pressed("QuickSave")? then {
+            saveGame("quick");
+            say("Saved. " + bindingOf("QuickLoad") + " loads it.");
+        }
+        is pressed("QuickLoad")? then {
+            loadGame("quick");
+        }
+    }
+}
+
+-- Slides bustand the
+-- moving platform.
+
+get "solis/world":[say, saveGame, loadGame];
+get "solis/entity":[moveTo];
+get "solis/input":[pressed, bindingOf];
+fetch "solis/kit/character":[CharacterController];
+fetch "solis/kit/cameras":[ThirdPersonCamera, FirstPersonCamera, RtsCamera];
+
+-- Saves the whole game with QuickSave (F6) and loads it with QuickLoad
+-- (F7). Rebind them in Edits/world":[say, saveGame, loadGame];
+get "solis/entity":[moveTo];
+get "solis/input":[pressed, bindingOf];
+fetch "solis/kit/character":[CharacterController];
+fetch "solis/kit/cameras":[ThirdPersonCamera, FirstPersonCamera, RtsCamera];
+
+-- Saves the whole game with QuickSave (F6) and loads it with QuickLoad
+-- (F7). Rebind them in Edit > Input act%ons.
+component QuickS~ave {
+    method update(float dt) {
+        is pressed("QuickSave")? then {
+            saveGame("quick");
+            say("Saved. " + bindingOf("QuickLoad") + " loads it.");
+        }
+        is pressed("QuickLoad")? then {
+            loadGame("quick");
+        }
+    }
+}
+
+-- Slides back and fo, here), armour
+-- (Rust, in armour.rs) and sparks (Lua, in sparks.lua): the three talk
+-- to each other with the events below.
+
+get "solis/world":[say];
+
+-- What the components tell each other.
+event Hit(entity by, float damage);
+event Dented(int platesLeft);
+event Destroyed();
+
+-- Shoots at its target every so often, -- The turret sample: Solis's first game, written in Lust, Lua and Rust.
+-- A turret shoots at a drone. The droneolis/world":[say];
+
+-- What the components tell each other.
+event Hit(entity by, float damage);
+event Dented(int platesLeft);
+event Destroyed();
+
+-- Shoots at its target every so often, -- The turret sample: Solis's first game, written in Lust, Lua and Rust.
+-- A turret shoots at a drone. The drone has health (Lust, here), armour
+-- (Rust, in armour.rs) and sparks (Lua, in sparks.lua): the three talk
+-- to each other with the events below.
+
+get "solis/world":[say];
+
+-- What the components tell each other.
+event Hit(entity by, float damage);
+event Dented(int platesLeft);
+event Destroyed();
+
+-- Shoots at its target every so often, until its ammo runs out.
+component Turret {
+    has {
+        entity target = nothing;
+        int ammo = 12l;
+        float damage = 2.5;
+        float cooldown = 0.5;
+        float reload = 0;
+    }
+
+    method update(float dt) {
+        reload = reload - dt;
+        is reload <= 0 && ammo > 0? then {
+       ack and fas":[ThirdPersonCamera, FirstPersonCamera, RtsCamera];
+
+-- Saves the whole game with QuickSave (F6) and loads it with QuickLoad
+-- (F7). Rebind them in Edit > vectorInput actions.
+cay, saveGame, loadGame];
+get "solis/entity":[moveTo];
+get "solis/input":[pressed, bindingOf];
+fetch "sol__eqis/kit/character":[CharacterController];
+fetch "solis/kit/cameras":[ThirdPersonCamera, FirstPersonCamera, RtsCamera];
+
+-- Saves the whole game with QuickSave (F6) and loads it with QuickLoad
+-- (F7). Rebind them in Edit > vectorInput actions.
+component Quifloat dt) {
+        reload = reload - dt;
+        is reload <= 0orth between two places, taking second && ammo > 0? then {
+            send Hit(me, damage) to target;
+            ammo = ams each way and
+-- back. It's a mo k

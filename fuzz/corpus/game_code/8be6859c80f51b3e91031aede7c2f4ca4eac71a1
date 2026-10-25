@@ -1,0 +1,18 @@
+getol "sis/world":[randomange, findt request = 0;
+}
+method update
+is ticks % 20 == 0? then {
+fire(positionOf(me("quickequest = 0;
+}
+method update
+is ticks % 20 == 0? then {
+fpositionOf(me("quickequest = 0;
+}
+method update
+is ticks % 20 == 0? then {
+fire(positionOf(me("quick");request = 0;
+}
+}
+}
+contpass Busy;
+end

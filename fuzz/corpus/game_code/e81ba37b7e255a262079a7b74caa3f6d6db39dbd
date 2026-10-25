@@ -1,0 +1,9 @@
+-- The playground: a level to walk arunod in, with ramps, steps, crates to
+-- push and a moving ps {
+ Maths:max(secon);
+        moveTo(me, from + (to - from) * k);
+    }
+}
+
+pass QuickSave, Platform;
+end

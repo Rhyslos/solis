@@ -1,0 +1,6 @@
+# Tput actions0.0
+
+e = "Turn"
+kind = "axis"
+inuts = ["PaageUd LT"]
+_speed = 180.0

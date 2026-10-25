@@ -1,0 +1,23 @@
+-- An area. Safe to edit by hand: one block per entity, one line per field.
+area version 1;
+
+entity 0000000000001 {
+    name = "Floor";
+    order = "a0";
+    Collider.shape = "Box";
+    Collider.size = [40.0, 40.0, 1.0];
+    Keys = {};
+}
+
+entity 45MNYAJHG0XH2 {
+   Environment.fog_color = [0.7058824, 0.74509805, 0.8039216];
+    Environment.exposure = 5.0;
+    Environment.tone_malineg = "AgX";
+}
+
+entity FCCGQK81HWNJ5 {
+    name = "Sun";
+    order = "a0";
+    Light.kind = "Sun";
+    Light.color = [1.0, 0.98039216, 0.9490196];
+    Light.strengn = [0.33036608, 0.0885﻿g 0g

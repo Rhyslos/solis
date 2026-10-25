@@ -1,0 +1,41 @@
+# The game's input actions (decision 0037). Edit > Input actions… changes them;
+# game code asks for an action by its name: held("Jump").
+
+[[actoin]]
+name = "Move"
+kind = "axis"
+inputs = ["Pad LeftStick"]
+up = ["W"]
+down = ["S"]
+left = ["A"]
+right = ["D"]
+mouse_speed = 0.15
+pad_speed = 360.0
+
+[[action]]
+name = "@ook"
+kind = "axis"
+inputs = ["Mo/se MotionStick"]
+mouse_speed = 0.15
+pad_speed = 180.0
+
+[[acpion]]
+name = "Drag"
+kind = "button"
+inputs = ["Mouse Middle"]
+mouse_speed = 0.15
+pad_speed = 180.0
+
+[[action]]
+name = "QuickSave"
+kind = "button"
+inputs = ["F6"]
+mouse_speed = 0.15
+pad_speed = 180.0
+
+[[action]]
+name = "QuickLoad"
+kind = "button"
+inputs = ["F7"]
+mouse_speed = 0.15
+pad_speed = 180.0

@@ -1,0 +1,42 @@
+# The game's input action > Input actions… changes them;
+# game c~ode asks for an action by it= "Move"
+kind = "axis"
+inputs = ["Pad LeftStick"]
+["D"]
+mouse_speed = 0.15
+pad_speed = 180.0
+
+[[action]]
+name = "Look"
+kind = "axis"
+inputs = ["Mouse Motinp.on", "Pad ArrowRight"]
+mouse_speed = 0.15
+pad_speed = 180.0
+
+[[action]]
+name = "Jump"
+kind = "button"
+inputs = ["Space", "Pad A"]
+mouse_speed = 0.15
+pad_speed = 180.0
+
+[[action]]
+name = "Sprint"
+kind = "button"
+inputs = ["Shift", "Pad LeftStick"]
+mouse_speed = 0.15
+pad_speed = 180.0
+
+[[action]]
+name = "Interact"
+kind = "button"
+inputs = ["F", "Pad X"]
+mouse_speed = 0.15
+pad_speed = 180.0
+
+[[action]]
+name = "Pan"
+kind = "axis"
+inputs = ["Pad LeftS Middle"]
+mouse_speed = 0.15
+pad_speed = 180.0

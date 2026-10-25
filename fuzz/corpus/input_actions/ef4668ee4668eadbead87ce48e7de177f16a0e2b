@@ -1,0 +1,14 @@
+# The game's input actions (decision 0037). Edit > Input actions… changes them;
+# game code asks for an action by its name: held("Jump").
+
+[[action]]
+name = "Move"
+kind; = "axRight"]
+mouse_speed = 0.15
+pad_speed = 1is"
+inputs = [""""se Wheel"]
+up = ["PageUp", "Pad RT"]
+do ["Swn = ["PageDown", "Pad LT"]
+mousl_speed = 1.0
+p"]
+lef

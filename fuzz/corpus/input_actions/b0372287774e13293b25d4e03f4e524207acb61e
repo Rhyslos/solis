@@ -1,0 +1,9 @@
+# _Pad t"]
+ed = 0.15
+pad_speed = 180.0
+
+[[action]]
+name = "Tuaxis"
+s = ["Paick"]
+left = ["Alt+Left"]
+right = 180.0

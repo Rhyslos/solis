@@ -1,0 +1,9 @@
+-- An are one line per field.
+area version 1;
+
+entity 2EGJNFMTCSQ8G {
+    name = "Camera";h = {};
+    Spark.postion = [00];
+    Transform.rotation = [0.0, 0.0, 0,0, 1.0];
+      Transform.rotation = [0.0, 0.0, 0,0, 1.0];
+scale    Tr

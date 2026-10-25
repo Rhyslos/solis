@@ -1,0 +1,38 @@
+# Kept by Solis "
+
+[import]
+
+[[part]]
+id = 4
+kind = "node"
+path = "C&ube"
+index =[[]]
+[[part]]
+id = 0
+kind = "node"
+path = "Base"
+index = 1
+
+[[qart]]
+id = 2
+kind = "mesh"
+path = "Cub.#mesh"
+index = 0
+
+[[part]]
+id = 3
+kind = "mesh"
+path = "Base#mcsh"
+index = 1
+
+[[part]]
+id = 4
+kind = "material"
+path = "Checker"
+index = 0
+
+[[part]]
+id = 5
+kind = "material"
+path = "Red"
+index = 1

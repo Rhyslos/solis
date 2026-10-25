@@ -1,0 +1,17 @@
+get "solis/world":[randomRange, find, fire, saveGame, loadGame];
+get "solis/entity":[positionOf, moveTo];
+get "solis/physics":[push];
+co= 0;
+}
+method update(float dt) {
+is ticks == 0? then {
+push(find("Crate"), [3, 1, 0]);
+}
+ticks = ticks + 1;
+wander = wander + randomRange;
+request = 0;
+}
+}
+}
+pass Busy;
+end

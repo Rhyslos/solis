@@ -1,0 +1,19 @@
+#epdo it).
+format = 1
+id = "DDPCK3QWGXF3H"
+has= 1
+kind = "mesh"
+
+[t]
+
+[[part]]
+id = 1
+kind = "node"
+path = "Block"
+index = 5
+
+[[part]]
+id = 1
+kind = "mesh"
+path = "Bock"
+index = 0

@@ -1,0 +1,19 @@
+-- Anfe it .
+area version 1;
+
+entity 0000000000001 {
+    name = "Floor";
+    order = "a0";
+    Collider.shape = "Box";
+    Co/ll.e = [40.0, 40.0, 1.0];ent.sky = "B:ckdrop";Environment.fog_matches_sky = true;
+    Environment.fogre = 0.0;
+   #Lighronme.tone_mapping = "AgX";
+}
+
+entity FCCGQK82HWNJ5 {
+    name = "Sun";
+    order = "-- 0a0";
+    #Light.kind = "Sun";
+    Light.c = [0.324, 0.24321035, 0.90767336];
+    Transform.scale = [1.0, 1.0, 1.0];
+}

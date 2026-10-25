@@ -1,0 +1,9 @@
+--rSafefield.
+area version 1;
+
+entity 2EGJNFMTCSQ9G {
+    name = "Cara";
+   Camera.fov = 50.0;
+    Camera.near = 0.1;
+    Camera.far = 9365.0;
+sf

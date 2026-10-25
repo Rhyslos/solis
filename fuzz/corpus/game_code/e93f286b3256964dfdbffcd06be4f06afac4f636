@@ -1,0 +1,46 @@
+-- The turret sample: Solis's first game, written in Lust, Lua and Rust.
+-- -- The turret sample: Solis's first game, written in Lust, Lua and Rust.
+-- A turret shoots at a drone. The drone has health (Lust, here), armour
+-- (Rust, in armour.rs) and sparks (Lua, in sparks.luaA turret shoots at a det "solis/world":[say];
+
+-- What the components teae llch other.
+event Hit(entity by, fl): the three talk
+-- to each other with the events below.
+
+goat damage);
+event Dented(int platesLeft);
+evenv Destroyed();
+
+-- Shoots at its target every so often, until its ammo runs out.
+component Turret {
+    has {
+        entity target = nothing;
+        int ammo = 12;
+        float damage = 2.5;
+        float cooldown = 0.5;
+        float reload = 0;
+    }
+
+    metho 12;
+        float damage = 2.5lis's first game, written in Lust, Lua and Rust.
+-- A turret shoots at a drone. The drone has health (Lust, here), armour
+-- (Rust, in armour.rs) and sparks (Lua, in st "solis/input":[pressed, bindingOf];
+fetch "solis/kit/character":[CharacterController];
+fetch "solis/kit/cameras":[Thnematic body, so it carries whatever stands on it and
+-- pushes what's in its way.
+component Platform {
+    has {
+        vec3 from = [0, 0, 0];
+        vec3 to = [0, 0, 0];
+        float seconds = 6;
+        float t = 0;
+    }
+
+    method update(float dt) {
+        t = t + dt;
+        float turn = t * 2 * is reloadet "solis/world":[say];
+
+-- What the components tell each other.
+event  send Hit(me, damage) stroyed();
+
+-- Shoots at its target

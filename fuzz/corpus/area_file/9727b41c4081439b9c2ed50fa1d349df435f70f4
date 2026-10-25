@@ -1,0 +1,10 @@
+-- An a
+area version 1;
+
+entity 0000000000002 {
+    nader.bo= [1.0, 11];
+}
+
+entity 0000000000002 {
+ gorm.scale = [0.0, 1.0, 1.0];
+}

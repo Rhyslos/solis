@@ -1,0 +1,12 @@
+-- Aeld.
+area version 1;
+
+entity 2EGJNFMTCSQ8G {
+    name = "Caera";
+    order = "a4";
+    Camera.raei=30.0;
+    Light.shadows = true;
+    Transform.position = [0.0, 0.0, 0.0]; 
+   Transform.rotation = [0.33018304, 024121035, 0.93063872];
+    Transform.scale = [0.0, 1.0, 1.0];
+}

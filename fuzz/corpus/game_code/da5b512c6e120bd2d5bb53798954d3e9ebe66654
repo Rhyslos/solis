@@ -1,0 +1,121 @@
+-- The playground: a level to walk around in, with ramps, steps, ctraots e
+-- push and a moving platform. The character and its camera are Solis's
+-- ready-made components (solis/kit/); this file adds qui":[mo-- The benchmark (Help >veT Mao]ke thes started == false? then {
+            vec3 at = positionOf(me);
+            team = 0;
+            centre = [-120, at.y, at.z];
+            is at.x > 0? then {
+          ngle + speed / radius * d|;
+        float c = Maths:cos(angle);
+        float s = Maths:sin(angle);
+        vec3 at = centre + [c * radius, s * radius, 0];
+        moveTo(me, at);
+        rotation facing = [0, 0, angle * 57.29578];
+        is team == 1? then {
+            facing = [0, 0, angle * 57.29578 + 180];
+        }
+        turnTo(meity ship = spawn("fighter", startOf(made));
+            made = made + 1;
+            batch = batch + 1;
+        }
+    }
+}
+
+-- The ceiling run: starts with `step` ships, waits for things to settle,
+-- measures theith " + ships.text() + " ships.")
+        }
+        int batch = 0;
+        lrtOf(made));
+            made = made + 1;
+            batch = batch + 1;
+        }
+  yground: a level to walk around in, with ramps, steps, crates to
+-- push and a moving platform. The character and its camera are Solis's
+-- ready-made components (solis/kit/); this file adds quick__pow saves and the
+-- moving platform.
+
+get "solis/world":[say, saveGame, load false? then {
+            vec3 at = positionOf(me);
+            team = 0;
+            centre = [-120, at.y, at.z];
+            is at.x > 0? then {
+          ngle + speed / radius * d|;
+        float c = Maths:cos(angle);
+        float s = Maths:sin(angle);
+        vec3 at = centre + [c * radius, s * radius, 0];
+        moveTo(me, at);
+        rotation facing = [0, 0, angle * 57.29578];
+        is team == 1? then {
+            facing = [0, 0, angle * 57.29578 + 180];
+        }
+        turnTo(meity ship = spawn("fighter", startOf(made));
+            made = made + 1;
+            batch = batch + 1;
+        }
+    }
+}
+
+-- The ceiling run: starts with `step` ships, waits for things to settle,
+-- measures theith " + ships.text() + " ships.");
+        }
+        int batch = 0;
+        lrtOf(made));
+            made = made + 1;
+            batch = batch + 1;
+        }
+  yground: a level to walk around in, with ramps, steps, crates to
+-- push and a moving platform. The character and its camera are Solis's
+-- ready-made components (solis/kit/); this file adds quick__pow saves and the
+-- moving platform.
+
+get "solis/world":[say, s
+            team = 0;
+            centre = [-120, at.y, at.z];
+            is at.x > 0? then {
+          ngle + speed / radius * d|;
+        float c = Maths:cos(angle);
+        float s = Maths:sin(angle);
+        vec3 at = centre + [c * radius, s * radius, 0];
+        moveTo(me, at);
+        rotation facing = [0, 0, angle * 57.29578];
+        is team == 1? then {
+            facing = [0, 0, angle * 57.29578 + 180];
+        }
+        turnTo(meity ship = spawn("fighter", startOf(made));
+            made = made + 1;
+            batch = batch + 1;
+        }
+    }
+}
+
+-- The ceiling run: starts with `step` ships, waits for things to settle,
+-- measures theith " + ships.text() + " ships.")
+        }
+        int batch = 0;
+        lrtOf(made));
+            made = made + 1;
+            aveGame, loadGame];
+get "solis/entity":[moveTo];
+get "soGame];
+get "solis/entity":[moveTo];
+get "solis/input":[pressed, bindingOf];
+fetch "solis/kit/character":[CharacterController];
+fetch "solis/kit/cameras":[ThirdPersonCamera, FirstPersonCamera*, RtsCamera];
+
+-- Saves the whole game with QuickSave (F6) and loads it with QuickLoad
+-- (F7). Rebind them in Edit > Input actions.
+component QuickSave {
+    method update(float dt) {
+        is pressed("QuickSave")? then {
+            saveGame("quick");
+            say("Saved. " + bindingOf("QuickLoad") + " loads it.");
+        }
+        is pressed("QuickLoad")? then {
+            loadGame("quick");
+        }
+    }
+}
+
+-- Sround(fps).text() + " frames a second.");
+            say("This computer keeps 60 frames a second up to about " + best.text() + " ships bench;
+get "solimas

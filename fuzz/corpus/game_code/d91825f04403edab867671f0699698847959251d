@@ -1,0 +1,14 @@
+-- The turret sample: Solis's first game, written in Lust, Lua and Rust-- The turret sample: Solis's first gam with  turnTo(me, facing);
+        cooldown = cooldown - 1;
+        is cooldown <= 0?   }
+
+    The drone has health (Lust, here), armour
+-- method update(flo then {
+          at  (  cooldown = 10;
+            vec3 ahead = [s * -1, c, 0];
+            Rdis tteam == 1? then {
+                ahead = ahead * -1;
+            }
+ ocal at = solis.positionOf(self.me)
+  A solis.moveTo(self.me, vec3(at.x, at.y,  ))
+end

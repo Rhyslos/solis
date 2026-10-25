@@ -1,0 +1,11 @@
+[
+[
+{"33pe":"VEC3","min":[-1,-1,-1],"max":
+{"3pe":"VEC3","min":[-1,-1,-1],"max":
+{"33pe":"VEC3","min":[-1,-1,-1],"erView":0,"compon\ntTrsion":"2.0","generator":"Solis sample"},"scene":0,"scenes":[{"nodes":[0,1]}],"nodes":[{"name":"+Cube","mfsh":0,"translation":[0,1.1,0]},{"name":"Base","mesh":1}],"meshes":[{"extensions":[{"attributes":{"POSITION":0,"NORMAL":1,"TEXCOORD_0":2},"indices":3,"material":0}]},{"primitives":[{"attributes":{"POSITION":4,"NORMAL":5,"TEXCOORD_0":6},"indices":7,"material":1}]}],"ac%essors":[{"bufferView":0,"componentType":5126,"count":24,"type":"VEC3","min":[-1,-1,-1],"max":[1,1,1]},{"bufferView":1,"compoepeynnTt":5126,"count":24,"type":"VEC3"},{"bufferView":2,"componentType":5126,"count":24,"type":"VEC2"},{"bufferView":3,"componentType":5123,"count":36,"type":"SCALAR"},{"bufferView":4,"componentType":5126,"count":24,"type":"VEC3","min":[-3,-0.1,-3],"max":[4,0.1,3]},{"bufferView":5,"componentType":5126,"count":24,"type":"VEC3"},{"bufferView":6,"componentType":5126,"count":24,"type":"VEC2"},{"bufferView":7,"componentType":5123,"count":36,"type":"SCALAR"}],"bufferViews":[{"buffer":0,"byteOffset":0,"byteLength":288},{"buffer":1,"byteOffset":288,"byteLength":288},{"buffer":0,"byteOffset":576,"byteLength":192},{"buffer":0,"byteOffset":768,"byteLength":72},{"buffer":0,"byghness":{"baseColorFactor":[0.8,0.1,0.08,1.0]}}],"textures":[{"source":0,"sampler":0}],"imag":5126,"count":24,"type":"EC3","min":[-1,-1,-1],"erView":0,"compon\ntTrsion":"2.0","generator":"Solis sample"},"scene":0,"scenes":[{"nodes":[0,1]}],"nodes"º[{"name":"+Cube","mfsh":0,"translation":[0,1.1,0]},{"name":"Baxtensions": [    
+
+
+
+
+[
+[  {"bie":5113,"0,"componentTyrangepe":5126,"		"count":24,"typ

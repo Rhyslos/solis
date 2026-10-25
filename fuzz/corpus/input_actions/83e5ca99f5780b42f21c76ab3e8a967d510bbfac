@@ -1,0 +1,44 @@
+# Thction]]
+name =w= ove"
+kind = "axis"
+inputs = ["Pad LeftStick"]
+up = ["W"]
+down = ["ts name: held("Jump").
+
+[[action]]
+name = "Move"
+kind = "axis"
+inputs = ["Pad LeftStick"]
+up = ["W"]
+down = ["S"]
+left = [
+pad_speed ;= 180.
+0*[[action]]
+name = "Look"
+kind = "axis# Th]
+mou= ["me = "Look"
+kind = "anputs = ["Pad LeftStick"]
+up = ["W"]
+down = ["S"]
+left = [
+pad_speed ;= 180.
+0*[[action]]
+= "Zoomis"
+]inputs = ["Mo["W"]
+down = ["S"]
+left = [
+pad_speed = 180.0
+*[[actiput]
+name = "Look"
+kind = "anputs = ["Pad LeftStick"]
+up = ["W"]
+down = ["S"]
+left = [
+pad_speed ;= 180.
+0*[[action]]
+= "Zoomis"
+]inputs = ["Mouse Wh[el"]
+up = ["Pagn = ["leftageDown", "Pad,name1.0
+pk"]
+up = ["W"]
+dow

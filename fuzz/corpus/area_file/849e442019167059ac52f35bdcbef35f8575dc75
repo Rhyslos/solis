@@ -1,0 +1,6 @@
+-- Annd: one blofield.
+area version 1;
+
+entity 0000000000001 {
+   lider.friroton = [0.0, 0.0,  1.0];t.fog_distance = 100.0;t.kind = "Sun";form.rotation = [0.36608, 0.088521324, 01.0, 1.0];
+}

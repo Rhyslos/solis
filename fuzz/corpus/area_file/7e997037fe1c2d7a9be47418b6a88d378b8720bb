@@ -1,0 +1,11 @@
+--per field.
+area version 1;
+
+entity 0000000000001 {
+    name = "Floor";
+ ent.fog = false;
+    Environrent.fog__istance = 0.010;
+  ht.cone = 0;
+    t.strengthe = 100;
+    Transfo = "Box";
+    }

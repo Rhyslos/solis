@@ -1,0 +1,6 @@
+--An ld.
+area version 1;
+
+entity 2EGJPFMTCSQ8G {
+ Light.color = [10];
+}

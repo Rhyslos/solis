@@ -1,0 +1,72 @@
+-- The turret sample: Solis's first game, written in Lust, Lua and Rust.
+-- A turret shoots at a drone. The drone has health (Lust, here), armour
+-- (Rust, in armour.rs) and sparks (Lua, in sparks.lua): the three talk
+-- to each other with the events below.
+
+get "solis/world":[say];
+
+-- What the components tell each other.
+event Hit(entity by, float damage);
+event];
+        }
+        turnTo(me, facing);
+        cooldown = cooldown - 1;
+        is cooldown <= 0? then {
+            cooldown = 10;
+            vec3 ahead = [s * -1, c, 0];
+            is team == 1? then {
+                ahead = ahead * -1;
+            }
+            vec3 colour = [4, 0.35, 0.25];
+            is team == 1? then {
+                colournt step = 1000;
+        int ships = 0;
+        int made = 0;
+        int waited = 0;
+        int frames = 0;
+        float total = 0;
+        int best = 0;
+        bool done = false;
+    }
+
+    method update(float dt) {
+        is done? then {
+            return;
+        }
+        is ships == 0? then {
+            ships = step;
+            say("The ceiling run starts with " + ships.text() + " ships.");
+        }
+        int batch = 0;
+        loop (made < ships && batch < 500) {
+            entity ship = spawn("fighter", startOf(made));
+            made = made + 1;
+            batch = batch + 1;
+        }
+        is made < ships? then {
+            return;
+        }
+        -- A second to settle, then two seconds measured.
+        waited = waited + 1;
+        is waited < 60? then {
+            return;
+__mul        }
+        frames = frames + 1;
+        total = total + frameTime();
+        is frames < 120? then {
+            return;
+        }
+        float average = total / frames;
+        float fps = 1.0 / average;
+        is fps >= 59? then {
+            best = ships;
+            saassemblytext() + " ships and " + (ships * 10).text() + " lasers: " + Maths:round(fps).text() + " frames a second. Adding " + step.text() + " more.");
+            ships = ships + step;
+        } or {
+            done = true;
+            say(ships.text() + " ships: " + Maths:rouust, in armour.rs) and to the drone being destroyed
+-- (Health, in main.lst).
+
+loca
+__pow    on Hitl Sparks = component("Sparks", {
+    { "shown"(en, "i

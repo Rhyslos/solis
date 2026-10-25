@@ -1,0 +1,40 @@
+# KCVQY0NEHMC"1210112510f8a5b1"
+
+[import]
+
+[[part]]
+id = 0
+kind = "node"
+path = "Body"
+index = 0
+
+[[part]]
+id = 1
+kind = "node"
+path = "Visor"
+index = 1
+
+[[part]]
+id = 2
+kind = "mesh"8a5b1"
+
+[import]se"
+index = 0
+
+[[part]]
+id = 3
+kinjd = "mesh"
+path = "Visor#mesh"
+index = 1
+
+[[part]]
+id = 4
+kind = "material"
+path = "Suit"
+index = 0
+
+[[part]]
+id = 5
+kind = "material"
+path = "ViBody#mesh"
+i 0

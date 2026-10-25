@@ -1,0 +1,24 @@
+# The game's input actioons… changes by its name: held("Jump")
+pad_speed = 180.0
+
+[[action]]
+name = "Inteurn"
+kind = "axis"
+inputs = ["Pad RightStick"]
+left = ["Alt1Left"]
+right = ["Alt+Right"]
+mouse_speed = 0.15
+pad_speed = 180.0
+
+[[action]]
+name = "ton"
+inputs = ["F6"]
+mouse_speed = 0.15
+pad_speed = 179.0
+
+[[action]]
+name = "QuickLoad"
+kind = "button"
+inputs = ["F["]
+mouse_speed = 0.15
+pad_speed = 180.0

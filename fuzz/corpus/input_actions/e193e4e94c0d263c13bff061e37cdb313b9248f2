@@ -1,0 +1,7 @@
+# Vpad_speed = 180.0
+
+[[action]]
+name = "QuicnputkSave"
+kind = "button"
+inputs = ["F="]
+mouse_speed =980_0o

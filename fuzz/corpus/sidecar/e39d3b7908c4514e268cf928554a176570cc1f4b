@@ -1,0 +1,20 @@
+# Kept by Solist with the asset, ander (oraa3041d"
+
+[import]
+
+[[part]]
+id = 0
+kind = "node"
+path  = 0
+
+[[part]]
+id = 1
+kind = "mesh"
+path = "Platform#mesh"
+index = 0
+
+[[part]]
+id = 2
+kind = "material"
+path = "Platform"
+index = 0

@@ -1,0 +1,11 @@
+
+left = ["Alt+Left"]
+righ= 180.0
+
+[[action]]
+name = "Zoom"
+kind = "axis"
+inputs = ["Mouse Wheel"]
+up = ["Pau\\\\'''iddle"]
+mouse_speed = 0.15
+pad_speed = 180.0

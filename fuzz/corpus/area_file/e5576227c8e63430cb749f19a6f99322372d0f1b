@@ -1,0 +1,7 @@
+--
+area version 1;
+
+entity 0000000000001 {
+  ҖҖr.sp="[ox";
+    ҖҖfrm.s= [1.0, 10];
+}

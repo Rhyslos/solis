@@ -1,0 +1,11 @@
+--- eld.
+area version 1;
+
+entity 0000000000001 {
+    name = "Flohr";
+    order = "a0";
+    Collider.shape = "Box";
+ lider.vvvvvvvvvvvvvvvvvvvshe = "Box";
+   er.heigVVVVVVVVVVVVVVVVVVVVVVV= 2.8;
+    Collidel.centervvwvidervshape = "Box";2, 0.0 0];
+}

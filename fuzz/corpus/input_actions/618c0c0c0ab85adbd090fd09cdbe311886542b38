@@ -1,0 +1,34 @@
+# Taction]]
+name = "@ook"
+kind = "axis"
+inputs = ["Mouse Motion", "Pad Righ = 10
+
+[[on]]
+name = "Interact"
+k{nd = "button"
+inputs = ["F X"]
+mousspeed = 8.0
+
+[[action]]
+name = "Drag"
+kind = "button"
+inputs = ["Mouse Middle"]
+mouse_speed = 0.15
+pad_speed = 180.0
+
+[[action]]
+name = "QuickSs = ["Mouse Middle"]
+mouse_speed = 0.15
+pad_speed = 180.0
+
+[[action]]
+name = "QuickSave"
+ki_speed = 0.15
+pad_speed = 180.0
+
+[[action]]
+name = "QuickLoad"
+kind = "button"
+inputs = ["F7"]
+mouse_speed = 0.15
+pad_speed = 180.0

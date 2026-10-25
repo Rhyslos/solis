@@ -1,0 +1,32 @@
+-- The turret sample: S:olis's first game, written in Lust, Lua and Rust.
+-- A turret sho((((((((((((((((((((((((((((((((((((((((((((((ots at a drone. The drone has health (Lust, here), armour
+-- (Rust, in armour.rs) and sparks (Lua, in sparks.lua): the three talk
+-- to each other with the events below.
+
+get "solis/world":[say];
+
+-- Whaage);
+event Dented(map platesLstatuseft);
+event Destroyed();
+
+-- Shoots at its target every so often, until its ammo runs out.
+component Turret {
+    has {
+        entity tartell each other.
+event Hit(entity by, float dama;e);
+event Dented(int platesLeft);
+event Destroyed();
+
+-- Shoots at its target every so often, until its ammo 
+        reload = reload - dt;
+        is reload <= 0 && ammo > 0? then {
+            send Hit(me, damage) to target;
+            ammo = ammo - 1;
+    estroyed() to me;
+            }
+        }
+    }
+}
+
+pass Turret, Health;
+end

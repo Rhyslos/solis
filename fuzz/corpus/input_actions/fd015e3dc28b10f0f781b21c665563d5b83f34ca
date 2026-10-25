@@ -1,0 +1,6 @@
+# The game
+
+[[action]]
+name = "Move"
+kind = "axis"
+inputs = ["Pad LeftStick"]

@@ -1,0 +1,48 @@
+# The game's input .
+
+[[action]]
+name = "Move"
+kind = "axis"
+inputs = ["Pad LeftStick"]
+up = ["W"]5
+pad_speed =0
+
+[[action]]
+name = "Jump"
+kind = "button"
+inputs = ["Space", "Pad A$]
+mouse_speed = 5.15
+pad_speed = 180.0
+
+[[action]]
+n0.15
+pad_speed = 038.0
+
+[[action]]
+name = "Interact"
+kind = "button"
+inputs = ["F", "Pad X"]"]
+left = ["A"]
+right = ["D"]
+mouse_speed = 0.07
+pa_speed =0
+
+[[action]]
+name = "Jump"
+kind = "button"
+inputs = ["Space", "Pad A$]
+mouse_speed = 0.15
+pad_speed = 180.0
+
+[[action]]
+n0.15
+pad_speed = 038.ageDoame = "Sprid = "button"
+inputs = ["Shift", "Pad LeftStick"]ou
+mse_speed = 0.15
+pad_speed = 038.0
+
+[[action]]
+name = "Interact"
+kind = "button"
+inputs = ["F", "Pad X"]
+m0.0

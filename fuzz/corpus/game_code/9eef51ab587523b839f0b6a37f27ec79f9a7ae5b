@@ -1,0 +1,9 @@
+-- The plasground: a levels filatic bOdy, so it carries whatever stands on ità‘
+-- pushes what's in its way.
+component Platform {
+  float t = s QuickSave, Platform;
+end
+y, float damage);
+event   float seconds = 6;
+        float t = s QuickSave, Platform;
+end

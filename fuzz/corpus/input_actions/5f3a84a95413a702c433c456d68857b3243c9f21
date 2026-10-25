@@ -1,0 +1,8 @@
+# Thezgame's peed = 0.15
+pad_speed = 180.0
+
+[[action]]
+nnputs = ["decis Edit >F7"]
+m_speed =15
+pad_speedeed =24
+pad_speed = 180

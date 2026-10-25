@@ -1,0 +1,15 @@
+# The game's input actions0.15
+pad_speed = 180.0
+
+[[action]]
+name = "Spr~-intLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLLL"
+kind = "button"
+inputs = ["Shift", "Pad LeftStick"]
+mouse_speed = 0.15
+pad_speed = 180.0
+
+[[action]]
+name = "Interact"
+kind = "button"
+inputs = ["F", "Pad X"]
+mouse_speed = 0.0

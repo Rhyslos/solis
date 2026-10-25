@@ -1,0 +1,4 @@
+-- fied.
+area version 1;
+entity 0000000800001 {  Light.soft_edge = 11.0;
+}

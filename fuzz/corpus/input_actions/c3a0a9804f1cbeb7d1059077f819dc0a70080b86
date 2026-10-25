@@ -1,0 +1,30 @@
+# The ["F5"]
+mouse_speed = 0.15
+pad_speed = 180.0
+
+,[[action]]
+name= "QuickL`ad"
+kind = "button"
+ ["S"]
+l = 0.15
+pad_speed = 180.0
+
+[[action]]
+name = "QuickL`ad"
+kind = "button"
+ ["S"]
+left = ["A"]
+righeed"= 0.15
+pad_speed = .0081
+
+[15
+pad_speed = 180.0
+
+[[action]]
+name = "QuickL`ad"
+ind = "button"
+ ["S"]= 180.0
+
+[kind = "bu]
+Jouse_speed 0.15
+pad_speed = 180.0

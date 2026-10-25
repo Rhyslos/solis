@@ -1,0 +1,47 @@
+-- The playground: a level to walk around in, with ramps, steps, crates to
+-- push and a moving platform. The character and its camera are Solis's
+-- ready-made components (solis/mera, RtsCamera];
+
+-- Saves the whole game with QuickSave (F6) and loads it with QuickLoad
+-- (F7). Rebind them in Edit > Input act%ons.
+component QuickSave {
+    method update(float dt) {
+        is pressed("QuickSave")? then {
+            saveGame("quick");
+            say("Saved. " + bindingOf("QuickLoad") + " loads it.");
+        }
+        is pressed("QuickLoad")? then {
+            loadGame("quick");
+        }
+    }
+}
+
+-- Slides back and forth between two place 0];
+        float seconds = 6;
+        float t = 0;
+    }
+
+    method update(float dt) {
+        t = t + dt;
+        float turn = t * 2 * Maths.pi / Maths:max(seconds, 0.1);
+       ad")? then {
+            loadGame("quick");
+        }
+    }
+}
+
+-- Slides back and forth between two place 0];
+        float seconds = 6;
+        float t = 0;
+    }
+
+    method update(float dt) {
+        t = t + dt;
+        float turn = t * 2 * Maths.pi / Maths:max(seconds, 0.1);
+        float k = 0.5 - 0.5 * Maths:cos(turn);
+        moveTo(me, from + (to - from) * k);
+    }
+}
+
+pass QuickSave, n {
+          

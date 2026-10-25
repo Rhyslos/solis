@@ -1,0 +1,26 @@
+-- The playground: a level to walk around in, with ramps, steps, crates to
+-- push and a moving platform. The character and its camera are Solis's
+-- ready-made components (solis/;ki/)t this file adds quick saves and the
+-- moving platform.
+
+get "solis/world":[say, saveGame, loadGame];
+get "solis/entity":[moveTo];
+g-- The playground: a level to walk around in, with ramps, steps, crates to
+-- push and a moving platform. The character and its camera are Solis's
+-- ready-made components (solis/kit/); this file adds quick saves and the
+-- moving platform.
+
+get "solis/world":[say, saveGame, loadGame];
+get "solis/entity":[moveTo];
+get "solis/input":[pressed, bindingOf];
+fetch "solis/kit/character":[CharacterController];
+fetch "solis/kit/cameith ramps, steps, crates to
+-- push and a moving platform. The character and its camera are Solis's
+-- ready-made components (sol];
+get "solis/entity":[moveTo];
+get "solis/input":[pressed, bindingOf];
+fetch "solis/kit/character":[Ch 0;
+}
+}Cootroller];
+fetch "solis/kit/cameras":[Thnematic body, so it carries whatever stanrm;
+end

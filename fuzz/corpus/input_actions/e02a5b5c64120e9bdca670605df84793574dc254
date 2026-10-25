@@ -1,0 +1,10 @@
+# The ga = "Turn
+
+[[action]]
+name = "Zoom"
+kind = "axis"
+inputs = ["Mouse Wheel"]
+up = ["PageUA", "Pad RT"]
+down = ["Pa", "Pad ]iddle"]
+mouse_speed = 0.15
+pad_speed = 180.0

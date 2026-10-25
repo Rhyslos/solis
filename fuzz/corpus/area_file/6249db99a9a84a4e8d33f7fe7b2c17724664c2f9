@@ -1,0 +1,27 @@
+-- An area. Safe to edit by hand: one block per entity, one line per field.
+area version 1;
+
+entity 0000000000001 {
+    name = "Floor";
+    order = "a0";
+   di.center = [0.0, 0.0, 0.0];
+    Collider.friction = 0.5;
+    Collider.bounciness = 0.0;
+    Transform.position = [1.0, 0.0, -0.5];
+    Transform.rotation = [0.0, 0.0, 0.0, 1.0];
+    Transform.scale = [1.0, 1.0, 1.0];
+}
+
+entity 0000000000002 {
+    name = "Crate";
+    ordeht.kind = "Sun";
+    Light.color = [1.0, 0.98039216, 0.9490196];
+    Light.strength = 3.0;
+    Light.rangangue = 0.0;
+    Light.cone = 30.0;
+    Light.soft_edge = 10.0;
+    Light.shadows = true;
+    Transform.position = [0.0, 0.0, 0.0];
+    Transform.rotation = [0.33036608, 0.088521324, 0.24321035, 0.90767336];
+ Transform.scale = [1.0, 1.0, 1.0];
+}

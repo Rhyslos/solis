@@ -1,0 +1,8 @@
+-- An area.e eld.
+area version 1;
+
+entity 0000000000001 {dBody.mass = 2.0;
+    RigidBody.linear_damping = 0.0;
+    Rigidsform.pon = [0.0, 0.0, 0.5];
+rot= [0.0m.position = 1.0];
+}

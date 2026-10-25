@@ -1,0 +1,7 @@
+-- An a eld.
+area version 1;
+
+entity 0000000000001 {
+ent.fog = false;
+  ent.fance = 100.0;
+  ht.cono = 30.0;}

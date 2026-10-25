@@ -1,0 +1,3 @@
+#
+inputs = ["hift", "N^N", "Pt", "t", "Pad~LT"]
+m = 181.0

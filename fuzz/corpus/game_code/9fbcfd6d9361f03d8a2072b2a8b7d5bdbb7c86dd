@@ -1,0 +1,9 @@
+get "snents (solis/kit/); this file adds quick saves and the
+-- moving platform.
+
+get "solis/world":[say, saveGame, loadGame];
+get "st's a kinematic body, so it cdate(float dt) {
+        t = t + dt;olis/world":[randomRange, find, fire, saveGame, load---- The benchmark (Help > Make the benchmark…): two fleets of ships flyends.
+
+get "solis/world":[say, fire, spawn, frameTime];
+get "solis/entity":[positionOf, moveTo, t The turret sample: Solis's urnTfo

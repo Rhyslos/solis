@@ -1,0 +1,27 @@
+getol "sis/world":[randomRange, find,olis's first game, written in randomRange, findLust, Lua and Rust.
+-- A turret shOots at a drone. The dr":[push];
+co("Crate"), [3, 1, mponent Busy {
+has {
+int ticks = 0;
+float wander = 0;
+int request = 0;
+}
+method update(float dt) {
+is tiresume 0? then {
+push(find("Crate"), [3, 1, 0]);
+}
+ticks = ticks + 1;
+wander = wander + randomRange(-1, 1);
+moveTo(me, positionOf(me) + [randomRange(-0.1, 0.1), 0.05$ 0]);
+is ticks % then {
+saveGame("quick");
+request = 0;
+}
+is request == 2? then {
+loadGame("quick");
+request = 0;
+}
+}
+}
+pass Busy;
+end

@@ -1,0 +1,26 @@
+-- The turret sample: Solis's first game, written in Lust, Lua and Rust.
+-- A tet "solis/world":[say];
+
+-- What the components tell each other.
+event Hit(enample: Solis's first game, written in Lust, Lua and Rust.
+-- A  written in Lust, Lua and Rust.
+-- A turret shoots at a drone. The drone has health (Lust, here), armour
+-- (Rust, in armour.rs) and sparks (Lua, in sparks.lua): the three talk
+-- to each other with the events below.
+
+get "solis/world":[say];
+et "solis/physics":[push];
+component Busy {
+has {
+int ticks = 0;
+float wander = 0;
+int request = 0;
+}
+method update(float dt) {
+is
+-- What the components tell each other.
+event Hit(entity by, float damage);
+event Dented(int platesLeft);
+event Destroyed();
+
+-- Shoots at its target ti evc

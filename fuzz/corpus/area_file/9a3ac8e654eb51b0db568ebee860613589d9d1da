@@ -1,0 +1,7 @@
+--fiel.
+area version 1;
+
+entity 0000000000001 {
+   r.shape = "Box";
+      Collider.height = 138;
+ :  Collide

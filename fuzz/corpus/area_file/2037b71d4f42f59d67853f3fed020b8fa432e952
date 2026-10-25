@@ -1,0 +1,9 @@
+-- An area.
+area version 1;
+
+entity 2EGJNFMTCSQ8G{
+    namLight.cone = 30.0;
+    Light.softodel_edge = 1;
+    Transform.position = [0.0,0.24321035, 0.96671];
+    Transform.scale = [1.0, 1.0, 1.0];
+}

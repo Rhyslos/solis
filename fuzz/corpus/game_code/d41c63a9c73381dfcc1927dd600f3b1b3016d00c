@@ -1,0 +1,30 @@
+-- The turret sample: Solis's first game, written in Lust, Lua and Rust.
+-- -- The turret sample: Solis's first game, written in Lust, Lua and Rust.
+-- A turret shoots at a drone. The drone has health (Lust, here), a
+                ahead = ahead * -1;
+            }
+            vec3 colour = [4, 0.35, 0.25];
+            is team == 1? then {
+                colour = [0.3, 4, 0.6];
+            }
+            fire(at + ahead * 3, ahead, 80, 1.66, colour);
+        }
+    }
+}
+
+-- Where ship number `n` starts: on its fleet's side, at a distance from
+-- its loop's centre, in rows along y, at a few heights, in layers going
+-- up as the fleets grow.
+method vec3 start on its fleet's side, at a distance from
+-- its loop's centre, in rows along y, at a few heights, in layers going
+-- up as the fleets grow.
+method vec  t = t + dt;
+        float turn = t * 2 * is reloaOf(int n) {
+   loat dt) {
+        t = t + dt;
+        float turn = t * 2 * is reloadet "solis/world":[say];
+
+-- What the components tell each other.
+event  send Hit(me, damage) stroyed();
+
+-- Shoots at its target

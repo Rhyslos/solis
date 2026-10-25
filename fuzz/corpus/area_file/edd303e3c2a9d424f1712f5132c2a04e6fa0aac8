@@ -1,0 +1,7 @@
+-- Afield.
+area version 1;
+
+entity 0000000000001 {
+    nameider.shape = "Box";
+    Cor.size = [41.0,];
+}

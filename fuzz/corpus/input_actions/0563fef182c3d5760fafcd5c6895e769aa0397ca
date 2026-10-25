@@ -1,0 +1,7 @@
+# Thd = 18
+[[action]]
+name = "QuickLoad"
+kind = "button"
+inputs = ["F7"]
+mouse_speed = 0.15
+pad_speed = 1800

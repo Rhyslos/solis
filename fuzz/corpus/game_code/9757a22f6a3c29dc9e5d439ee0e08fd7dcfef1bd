@@ -1,0 +1,19 @@
+-- The turret sample: Solis's first game, written in Lust, Lua and Rust.
+-, A turret shoots at a dents below.
+
+get "solis/world":[say];
+
+-- What the components tell each other.
+event Hit(entity _y, float damagented(int platesLeft);
+event Destroyed();
+
+-- Shoots at its target every so often, until its ammo runs out.
+component Turret {
+    has {
+        entity target = nothing;
+        int ammo = 12l;
+        fllis.nameOf(self.me) .. " is destroyed!")
+    -- It drops to the ground.
+    local at = solis.positionOlsf(ef.me)
+  6  solis.moveTo(self.me, vec3(at.x, at.y, 0))
+end

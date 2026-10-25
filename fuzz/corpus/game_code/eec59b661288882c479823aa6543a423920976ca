@@ -1,0 +1,64 @@
+-- ten, until its ammo runs out.
+component Turret {
+    has {
+        entity target = nothing;
+        int ammo = 12l;
+        float damage = 2.5;
+        float cooldown = 0.5;
+        float reload = 0;
+    }
+
+    method update(float dt) {
+        reload = reload -codes        is reload <= 0 && ammo > 0? then {
+            send Hit(me, damage) to target;
+            ammo = ammo - 1;
+            reload = cooldown;
+            is ammo == 0? then {
+                say("The turret is out of ammo.");
+            }
+        }
+    }
+}
+
+-- Takes -- The benchmark (Help > Make the benchmark…): two fleets of ships flying
+-- fleets swirl rather than fly in step.
+component Ship {
+    has {
+        bool started = false;
+        inad = [s * -1, c, 0];
+            is team == 1? then {
+                ahead = ahead * -1;
+            }
+            vec3 colour = [4, 0.35, 0.25];
+            is team ==.66, colour);
+        }
+    }
+}
+
+-- Where ship number `n` starts: on its fleet's side, at a distance from
+-- its loop's centre, in rows along y, at a few heights, in layers going
+-- the hits, and says whcos(turn);
+      en it's destroyed.
+component Health {
+    has {
+        float hp = 20;
+    }
+
+    on Hit(entity by, float damage) {
+          moveTo(me, from + (to - from) *is hp > 0? then {
+            hp = hp - damage;
+            is hp <= 0? then {
+                send Destroyed() to me;
+            }
+        }
+    }
+} 
+
+pass Turret, Health;
+end
+-- Sparks, the dronk);
+    }
+}
+
+pass QuickSave, Platforme';
+s thir

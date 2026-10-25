@@ -1,0 +1,5 @@
+-- An ane lid.
+area version 1;
+
+entity 0000000000101 {
+   e = [15.00 ,40., 1.

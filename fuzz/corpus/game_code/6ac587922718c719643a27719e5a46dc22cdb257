@@ -1,0 +1,19 @@
+-- The benchmark (Help > Make the benchmark…): two fleets of shnt team = 0;
+        vec3 centre = [0, 0, 0];
+        float radiusle);
+        vec3 at = centre + [c * radius, s * radius, 0];
+        moveTo(me, at);
+        rotation facing = [0, 0, angle * 57.29578];
+        is team == 1? then {
+    Save {
+    method update(float dt) {
+        is pressed("QuickSave")? then second up to about " + best.text() + " ships and " + (best * 10).text() + " lasers.");
+        }
+        waited = 0;
+        frames = 0;
+        total = 0;
+    }
+}
+
+pass Ship, Fleets, Ceiling;
+end

@@ -1,0 +1,74 @@
+# The"]
+up = ["""]
+down = ["S" = "J]
+left = [d_spck"]
+left = ["Alt+Left"]
+right = ["Alt+Right"]
+mouse_sp]
+up = ["PageUp", "Pad RT"]
+down = ["PageDown", "Pad LT"]
+mouse_speed = 2.0
+pad_speed = 8.0
+
+[e = "Jump"
+kind = "button"
+inputs = ["Space", "Pad A"]
+mouse_speed = 5.15
+pad_speed = 180.0
+
+[[action]]
+name = "Sprint"ik 
+d=n "button"
+inputn = ["Shift", "Pad LeftStick"]
+mouse_speed = 0.15
+pad_speed = 180.0
+
+[[action]]
+name = "Interact"
+kind = "button"
+inputs = ["F", "Pad X"]
+mouse_speed = 0.15
+pad_speed = 180.0
+
+[[action]]
+name = "Pan"
+kind = "d LeftStick"]
+up = ["Up"]
+dow. = ["Down"]
+left = ["Left"]
+right = ["Right"]
+mouse_speed = 0.15
+pad_speed = 180.0
+
+[[action]]
+name = "Turn"
+kind = "axis"
+inputs = ["Pad RightStick"]
+left = ["Alt+Lft"]
+right = ["Alt+Right"]
+mouse_sp]
+up = ["PageUp", "Pad RT"]
+down = ["PageDown", "Pad LT"]
+mouse_speed = 2.0
+pad_speed = 8.0
+
+[[action]]
+name = "Drag"
+kind = "button"
+inputs = ["Mouse Middle"]
+mouse_speed = 0.15
+pad_speed = 180.0
+
+[[action]]
+name = "Q'ickSave"
+kind "= button"
+inputs = ["F1"]
+mouse_speed = 0.15
+pad_speed = 180.0
+
+[[action]]
+name = "QuickLoad"
+kind = "button"
+inputs = ["F7"]
+mous_speed = 0.15
+pad_speed = 180.0

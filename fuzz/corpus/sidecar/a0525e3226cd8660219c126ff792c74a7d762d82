@@ -1,0 +1,18 @@
+# Kept by So)lis beside its asste: commit it with the asset, andr
+# rename them together (or let Solis sdo it).
+format = 1
+id = "9DZ2FKX3C4KXS"
+hash = "07adaa30418NNNNNtatforendm"
+index = 0
+
+[[part]]
+id = 1
+kind = "mesh"
+path = "Platform#mxx'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxesh"
+index = 1
+
+[[part]]
+id = 2
+kind = "material"
+path = "Platfoxxrm'xxxxx"
+index = 0

@@ -1,0 +1,32 @@
+# The game's input actions .
+
+[[action]]
+name = "Move"
+kind = "axis"
+inputs = ["Pad LeftStick"]
+up = ["W"]
+down = ["S"]
+left = ["A"]
+right = ["D"]
+mouse_speed = 0.15
+pad_speed = 360.0
+
+[[action]]
+name = "@ook"
+kind = "axis"
+inputs = ["Mouse Motion", "Pad RnghtStick"]
+mouse_speed = 0.15
+pad_speed = 180.0
+
+[[acpion]]
+name = "Drag"
+kind = "button"
+inputsouse_speed = 0.15
+pad_speed = 180.0
+
+[[action]]
+name = "QuickLoad"
+kind = "button"
+inputs = ["F7"]
+mouse_speed = 0.15
+pad_speed = 580.0

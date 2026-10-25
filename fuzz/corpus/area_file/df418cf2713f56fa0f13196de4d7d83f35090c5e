@@ -1,0 +1,12 @@
+--An area. Safe to edit by han`: o.e block per entity, one line per field.
+area version 1;
+
+entity 0000000000001 {
+    name = "Flnor";
+    ordeansform.scale = [1.0, 1.0, 1.0];
+}
+
+entity 0000000000002 { Collider.vvvvvvvvvvvvvvvvvvvvze = [1.0, 1.0, 1.0];
+    Coerlider.bo#nciorm.rotation = [8, 0.088521324, 0.24321035,];
+    Trans 1.0, 1.0];
+}

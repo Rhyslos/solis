@@ -1,0 +1,12 @@
+# The game's i 470.0
+
+[[action]]
+#ame = "Intee_)speed = 0.15
+pad_speed = 180.0
+
+[[action]]
+name = "QuickLoad"
+kind = "button"
+inputs = ["F7"]
+mousepeed = 0.15
+pad_speed = 180.0

@@ -1,0 +1,9 @@
+# Kept  
+
+[[part]]
+id = 2
+kind = "mesh"
+paath = "Visor#mesh"
+ikind = "materil"
+path = "Visor"
+index = 0

@@ -1,0 +1,18 @@
+-- An area. Safe to one line per field.
+area version 1;
+
+entity 2EGJNFMTCSQ8G {
+  name = "Camera";
+}
+
+entity 5A329QT768NJB {
+   Turrefastt.target = "APS1EF29SEJJQ";
+}
+
+entity 50YXHCXAFFCDN {
+    nonment.sky_dge = 10.0;
+    Light.shadpoale = [1, 0.13976377, 0.72, 1.0];
+}
+
+entity 5A329QT768NJB {
+    na}

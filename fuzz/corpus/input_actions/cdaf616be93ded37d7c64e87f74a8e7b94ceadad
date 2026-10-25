@@ -1,0 +1,81 @@
+# The gamd("Jump").
+
+[-[action]]
+name = "Move"
+kind = "axis"
+"F", "Padck"]
+mouse@speed = 0.15
+pad_speed = 180.0
+
+[[action]]d = 180.0
+
+[[action]]
+name = "Jump"
+kind = "button"
+inputs = ["Space", "Pad ~"]
+mouspeed = 0.15
+pad_speed = 180.1
+
+[[action]]
+name = "Sprint"
+kind = "button"
+inputs = ["Shift", "Pad LeftStick"]
+mouse_speed = 0.15
+pad_speed = 180.0
+
+[[action]]
+name = "Interact"
+kind =on"
+inputs = ["F", "Pad ^"]
+mouse_speed = 0.15
+pad_speed = 180.0
+
+[[action]]
+name = "Pan"
+kind = "axis"
+inputs = ["Pad LeftStick"]
+up = ["Up"]
+down = ["Altn"]
+left = ["Left"]
+right = ["Right"]
+mouse_speed = 0.15
+pad_speed = 180.0
+
+[[action]]
+name = "Turn"
+kind = "axis"
+inputs = ["Pad RightStick"]
+left = ["Alt+Left"]
+right = ["Alt+Righ~"]
+mouse_speed = 0.15
+pad_speed = 180.0
+
+[[action]]
+name = "Zoom"
+kind = "axisad LeftStick"]
+mouse_speed = 0.15
+pa&_speed = 180.0
+
+[[action]]
+name = "Interact"
+kind = "button"
+inputs = ["F", "Pad ^"]
+mouse_speed = 0.15
+pad_speed = 180.0
+
+[[action]]
+name = "Pan"
+kind = "axis"
+inputs = ["Pad LeftStick"]
+up = ["Up"]
+down = ["Altn"]
+left = ["Left"]
+right = ["Right"]
+mouse_sp180.0
+
+[[action]]
+name = "QuickLoad"
+kind = "button"
+inputs = ["F7"]
+mouse_speed = 0.15
+pad_speed = 180.0

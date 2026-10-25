@@ -1,0 +1,6 @@
+
+
+[[action]]
+name = "Move"
+kind = "axis"
+#s input

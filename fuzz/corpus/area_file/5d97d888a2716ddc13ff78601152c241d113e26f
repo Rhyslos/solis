@@ -1,0 +1,7 @@
+-- An area. Safl l per field.
+area version 1;
+
+entity 0000000000001 {
+      Light.range = 0.0;
+    assembly = 0.0;
+    Tr.positionn = [5..0,

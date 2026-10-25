@@ -1,0 +1,7 @@
+-- r [er field.
+area version 1;
+
+entity 0000000000001 {dBody.m = 1.0;
+ rm.poSition= [0.0, 0.0, 0.5];
+   Tra0sform.rotation = [0.0, 1.0];]7
+}

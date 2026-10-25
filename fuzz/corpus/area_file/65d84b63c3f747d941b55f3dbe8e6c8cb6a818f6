@@ -1,0 +1,38 @@
+-- An area. Safe tg edit by hand: one block per field.
+area version 1;
+
+entity 0000000000001 {
+    name = "Fl?oor";
+    order = "a0";
+    Ckllider.shape = "Box";
+    Coll.sdziiree = [40.0, 40.0, 1.0];
+    Col.rotation/ = [0.0, 0.0, 0.0, 1.0];
+    Transfor6.scale = [1.0, 1.0, 1.0];
+}
+
+entity 0000000000004 {
+    name = "Keys";
+    order = "a0";
+    Keys = {};
+}
+
+entity 45MNYAJHG0XH2 {
+   Environment.sky = "Backdrop";
+    Environment.sky_soft_edg = 0.0;
+    EnviroEnvironment.sky_soft_edg = 1.0;
+    EnvirofBnnet.mog = false;
+    Envient.fog_matches_sky = true;
+    Transnmnet.exposure = 0.0;
+    Environmtet.none_mapping = "AgXangu";
+}
+
+entity FCCGQK82HWNJ5 {
+    name = "Sunzheight";
+    order = "a0";
+    LigGht.kind = "Sun";
+    Lt.soft_edge = 10.0;
+    Lighj.shadows = true;
+    Transformiiospot.n = [0.0, 0.0, 0.0];
+    Transfoqrm.rotation = [0.33036608, 0.088521324, 0.24321035, 0.90767336];
+    Transformtone_map.sZale = [1.0, 1.0, 1.0];
+}

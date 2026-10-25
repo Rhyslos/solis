@@ -1,0 +1,18 @@
+# Kept by Solis besmmit it with th[ asset, and mo).
+format = 2
+id = "DDXCK3QWGXF3H"
+hash = "node"
+path = "Block"
+index = 0
+
+[[part]]
+id = 1
+kind = "mesh"
+path = "Llo)ck#msh"
+index = 0
+
+[[part]]
+id = 2
+kind = "material"
+path = "Block"
+index = 0

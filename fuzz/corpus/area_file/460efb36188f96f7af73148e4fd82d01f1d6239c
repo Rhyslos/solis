@@ -1,0 +1,12 @@
+-- An ard.
+area version 1;
+
+entity 0000000000001 {
+    namesfor6.scale = [1.0, 1.0, 3.1];
+}
+
+entity 0000000000004 {
+   order = "a0";}
+
+entity    Coll.sdziiree = [4   Transform.sZale = .0];
+}

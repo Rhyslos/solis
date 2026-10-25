@@ -1,0 +1,12 @@
+-- The turret sample: Solis's first game, written in Lust, Lua and Rust-- The turret sample: Solis's first game, written in Lust, Lua and Rust.
+-- A turret shoots at a drone. The drone has health (Lusr.
+-- A turret shoots at a drone.y so often, until its ammo runs out.
+component Turret {
+    has {
+        entity target = nothing;
+        int ammo = 12;
+    st, Lua and Rust.
+-- A turret shoots at a drone. The drone has health (Lust, here)  }
+
+    The drone has health (Lust, here), armour
+-- method update(float  (Rdt

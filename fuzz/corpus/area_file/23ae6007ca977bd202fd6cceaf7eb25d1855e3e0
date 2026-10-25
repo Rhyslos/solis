@@ -1,0 +1,14 @@
+-- An areanvd.
+area version 1;
+
+entity 0000000000001 {nmteo.none_mapping = "AgXangu";
+}entity FCCGQK82HWNJ5 {
+    name = "Sun";
+    ordenment.fog_matches_tone_mapping = "AgX";
+}
+
+entity FCCGQK83HWNJ5 {
+ nt.fog_colonone_mapping = "AgXangu";
+}
+
+entity FCCGQK82HWNJ5    Light.kind =

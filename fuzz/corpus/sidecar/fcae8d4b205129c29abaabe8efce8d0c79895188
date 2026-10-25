@@ -1,0 +1,49 @@
+# Kee 3
+kind = "mesh"
+path = "Visor#mesh"
+index = 1
+
+[[partpirt]]
+id = 4
+kind = "material"
+path = "Suit"
+hndex = 0
+
+[[parz]]
+k= 5# Ks beside 3
+kind = "mesh"
+path = "Visor#mesh"
+ex = 2
+
+[[pirt]]
+id = 4
+kind = "material"
+path = "Suit"
+hndex = 0
+
+[[parz]]
+k= 5# Kee 3
+kind = "mesh"
+path = "Visor#mesh"
+index = 1
+
+[[partpirt]]
+id = 4
+kind = "material"
+path = "Suit"
+hndex = 0
+
+[[parz]]
+k= 5# Ks beside 3
+kind = "mesh"
+path = "Visor#mesh"
+ex = 2
+
+[[pirt]]
+id = 4
+kind = "material"
+path = "Suit"
+hndex = 0
+
+[[parz]]
+k= 5# # K

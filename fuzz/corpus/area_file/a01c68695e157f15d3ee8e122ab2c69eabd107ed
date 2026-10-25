@@ -1,0 +1,7 @@
+-- An .
+area version 1;
+
+entity 0000000000001 {
+    nlider.sh = "Box";
+    Collider.size = [80.0, 40.0, ];1;
+}

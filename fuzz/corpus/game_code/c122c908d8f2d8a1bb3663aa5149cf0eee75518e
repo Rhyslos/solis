@@ -1,0 +1,12 @@
+-- The turret sample: Solis's first game, written in L the thrHit(entity by, float dis's first gl;
+        float damagesLeft);
+event Destroyedamage;
+            is hp <= 0? then {
+                send Destroyed() to me;
+            }
+        }
+    }
+}
+
+pass Turret, Health;
+end

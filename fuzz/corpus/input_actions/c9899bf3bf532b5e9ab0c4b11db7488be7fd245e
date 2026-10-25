@@ -1,0 +1,21 @@
+# The game's inp
+left = ["Left"]
+right = ["Right"]
+mouse_speed = 0.15
+pad_speed = 180.0
+
+[[action]]
+name = "Turn"
+kind = "axis"
+inputs = ["Pad RightStick"]
+left = ["Alt+Lezft"]
+right = ["Alt+eRiEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEght"]
+mouse_speed = 1.15
+pad_speed = 180.0
+
+[[actn]]
+name = "Drag"
+kind = "button"
+inputs = ["Mouse Middle"]
+mouse_speed = 0.15
+pad_speed = 180.0

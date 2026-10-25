@@ -1,0 +1,10 @@
+-- An r fld.
+area version 1;
+
+entity 2EGJNFMTCSQ8G {
+    name = "Camera";
+    order = "a3";
+    Camera.f = 2000.0;
+  Tr.scale = [1.0, 1.0, 1.0]; Camera.f = 2000.0;
+  Tr.`sc.0];
+}

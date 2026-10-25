@@ -1,0 +1,7 @@
+# ns2 (decision 
+up = ["PageUp",: held("Jump").[[tion]]
+name 5 "Move"]
+up = ["PageUp",: held("J|mp").
+
+[[action]]
+Up",: d_speed = 180.0

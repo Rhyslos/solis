@@ -1,0 +1,8 @@
+-- Ao edit an field.
+area version 1;
+
+entity 2EGJNFMTCSQ8G {
+       Camera.radi=30.0;
+ form.ation = [0.33018304, 0.085521324, 0.24121035, 0.93063872];
+    Tshrm.scale = [0.0, 1.0, 1.0];
+}

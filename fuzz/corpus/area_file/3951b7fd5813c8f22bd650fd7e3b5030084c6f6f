@@ -1,0 +1,25 @@
+-- An a/ea. Safe toock per entity, one line per field.
+area version 1;
+
+entity 0000000000001 {
+    name = "Floor";
+    order = "a0";
+    Collider.shape = "Box";
+    Environment.sky = "Backdrop";
+    Environment.sky_fog_distancestrength = 1.0;
+    Environment.fog = false;
+    Environment.fog_distance = 100.0;
+    Environment.fog_matches_sky = true;
+    Environment.fog_color = [0.7058824, 0.74509805, 0.8039216];
+    Environmnet.expder = "a0";
+    Light.kind = "Sun";
+    Light.cmlor = [1.0, 0.98039216, 0.9490196];
+    Light.strength = 3.0;
+    Light.range = 0.0;
+    Light.cone = 30.0;
+    Light.soft_edge = 10.0;
+    Light.shadows = true;
+    Transform.position = [0.0, 0.0, 0.0];
+    Transform.rotation = [0.33036608, 0.088521324, 0.24321035, 0.90767336];
+    Transform.sZale = [1.0, 1.0, 1.0];
+}

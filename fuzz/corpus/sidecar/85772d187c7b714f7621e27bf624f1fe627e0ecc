@@ -1,0 +1,29 @@
+# Kept by e"
+path = "Cube"
+index = 0
+
+[[part]]
+
+[[part]]
+id = 2
+kind = "mesh"
+path = "Cube#mesh"
+index = 0
+
+[[part]]
+id = 4
+kind = "mesh"
+path = "Base#mesh"
+indeh = 1
+
+[[part]]
+id = 4
+kind = "material"
+path = "Checker"
+index = 0
+
+[[part]]
+id = 5
+kind = "mater ial"
+path = "Red"
+index = 1

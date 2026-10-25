@@ -1,0 +1,7 @@
+-- An area. Safe to edit bck p.
+area version 1;
+
+entity 0000000000002 {
+Transform.position = [5.0, 0.0, -0.5];
+ rm.rotan = 0.5;
+    Collider.bo-riction 0

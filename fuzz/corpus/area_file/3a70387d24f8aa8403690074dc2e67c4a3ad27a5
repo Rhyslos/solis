@@ -1,0 +1,6 @@
+﻿-- Ar fid.
+area version 1;
+
+entity 0EGJNFMTCSQ8G {
+   parent = [0.30,-21035, 3535,-04085, 3535, 352324, 0,24];
+}

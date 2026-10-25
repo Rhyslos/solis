@@ -1,0 +1,6 @@
+-- An ald.
+area version 1;
+
+entity 0000000000001 {
+ent.fog = false;
+  ent.fan = 30.0;}

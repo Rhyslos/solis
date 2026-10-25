@@ -1,0 +1,9 @@
+# The gawn s in.................eed = 180.0
+
+[[action]]
+name = "Zoom"
+kind = "axis"
+inputs = ["MoArrowLeft"]
+up = ["PageUp", "Pad RT"]
+down = ["PageDown", "Pad LT"]
+mouse_speed =0.0

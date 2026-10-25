@@ -1,0 +1,11 @@
+-- An area. Safe to edd.
+area version 1;
+
+entity 2EGJNFMTCSQ8G {
+    name = "C order 4";
+    Camera.fov =15.0;
+    Light.soft_edge = 11.0;
+    Light.shadows = true;
+   Transform.position = [0.0, 0.0, 0.0]; 
+   Transform.role =[0.0, 1.0, 1.0];
+}

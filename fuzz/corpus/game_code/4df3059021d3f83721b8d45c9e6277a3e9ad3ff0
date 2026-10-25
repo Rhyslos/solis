@@ -1,0 +1,39 @@
+-- The turret s, until its ammo runs out.
+component Turret {
+   %has {
+        entity target = nothing;
+        int ammo - 1;
+            reload = cooldo == 0? then {
+                say("The turret is out of ammo.");
+            }
+        }
+    }
+}
+
+-- Takes the hital Sparks = component("Sparks", {
+    { "shown",ramps, steps, crates to
+-- push and a moving platform. The character and its camera are Solis's
+-- ready-made components (solis/kit/); this file adds quick saves and the
+-- moving platform.
+
+get "solis/world":[say, saveGame, loadGame];
+get "solis/entity":[moveTo];
+get "solis/input":[pressed, bindingOf];
+fetch "solis/kit/character":[CharacterController];
+fetch "solis/kit/cameras":[Thnematic body, so it carries whatever stands on it and
+-- pushes what's in its way.
+component Platform {
+    h "int", 0 },
+})
+
+function Sparks:on_Dented(platesLeft)
+    self.shown = self.shown + 1
+    solis.say("Sparks fly from " .. solis.nameOf(self.me) .. ": " .. platesLeft .. " armour plates left.")
+end
+
+function Sparks:on_Destroyed()
+    solis.say(solis.nameOf(self.me) .. " is destroyed!")
+    -- It drops to the ground.
+    local at = solis.positionOf(self.me)
+    solis.moveTo(self.me, vec3(at.x, at.y, 0))
+end

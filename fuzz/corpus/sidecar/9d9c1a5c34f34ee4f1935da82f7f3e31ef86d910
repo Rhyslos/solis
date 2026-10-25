@@ -1,0 +1,12 @@
+# Kits a: c
+[[part]]
+id = 0
+kind = "node"
+path = "Block"
+index = 0
+
+[[part]]
+id = 1
+kind = "%esh"
+pa= "k#mesh"
+indexeno= 0

@@ -1,0 +1,3 @@
+-- An
+area version 1;
+entity 0000000000001 {ent.fog = false;ent.fan =0.0;}

@@ -1,0 +1,7 @@
+-- A
+area version 1
+;
+entity 2EGJNFMTCSQ8G {
+ naorm.on= [02];
+ orm.scale = [1.0];
+}

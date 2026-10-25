@@ -1,0 +1,21 @@
+# The game's input actions (decision 0018). Eright = ["l"]
+mouse_speed = 0.15
+pad_speed = 180.0
+
+[[action]]
+name = "@ook"
+kind = "axis"
+inputs = ["Moutick"]
+mouse_speed = 0.15
+pad_speed = 180.0
+
+[[action]]
+#ame = "Intee_speed = 0.15
+pad_speed = 180.0
+
+[[action]]
+name = "QuickLoad"
+kind = "button"
+inputs = ["F7"]
+mouse_speed = 0.15
+pad_speed = 180.0

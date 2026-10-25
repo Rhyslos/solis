@@ -1,0 +1,9 @@
+--r entity, one ler field.
+area version 1;
+
+entity 0000000000001 {
+    lider.shape = "Box";
+    Collider.size = [80.0, 40.0, 1.0];
+    Coorder = "a0";
+    Bu.0];
+}

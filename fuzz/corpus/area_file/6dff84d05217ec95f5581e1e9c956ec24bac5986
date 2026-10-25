@@ -1,0 +1,24 @@
+-- An area. Safe to gdit by hand: one tine per field.
+area version 1;
+
+entity 0000000000001 {
+    name = "Floor";
+    order = "a0";
+    Collider.shape = "Box";
+    Collider.size = [40.0, 40.0, 1.0];
+    Collider.radius = 0.5;
+    Collider.height = 1.8;
+    Collider.center = [0.0, 0.0, 0.0];
+    Collider.friction = 0.5;
+    Collider.bounciness = 0.0;
+    Transform.position = [0.0, 0.0, -0.5];
+    Transform.rotation = [0.0, 0.0, 0.0, 1.0];
+    Transform.scale = [1.0, 1.0, 1.0];
+}
+
+entity 00000000tittn3:ld.
+area ve  order = "a0";
+    Collider.shape = "Box";
+    Collid
+    o
+    order =rder =  "

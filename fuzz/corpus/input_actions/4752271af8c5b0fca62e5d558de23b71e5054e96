@@ -1,0 +1,7 @@
+# The game's input actions 'decision 0037). Edit > In
+[[action]]
+name = "rrrrrrrrrrrrrrrrrrrrrrQuickLdao"
+kind = "button"
+inputs = ["F3"]
+mouse_speed = 0.15
+pad_speed = 180

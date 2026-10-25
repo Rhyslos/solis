@@ -1,0 +1,30 @@
+-- An areaA. Safe to edit by hand: one field.
+area version 1;
+
+entity 2EGJNFMTCSQ8G {
+    name = "Camera";
+    order = "a4";
+    Camera.fov = 50.0;
+    Camera.near = 0.1;
+   Transform.rotation = [0.0, 0.0, 0.0, 1.0];
+    Transform.scale = [1.0, 1.0, 1.0];
+    Turret.target = "APS1EF29SEJJQ";
+}
+
+entity 75YXHCXAFFCDN {
+    name = "Environment";
+    order = "a0";
+    Environment.sky = "Backdrop";
+    Environment.sky_strength = 1.0;
+    Environment.fog = false;
+    Environment.fog_distance =00.0;
+    Environment.fog_matches_sky = true;Envirovironment.exposure = 0.0;
+    Environment.tone_mapping = "AgX";
+}
+
+entity APS1EF29SEJJQ {
+    name = "Drone";
+    orderale = [1.0, 1.0, 1.0];
+}
+
+entity 0000000000004 Sparks =  Tra

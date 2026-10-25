@@ -1,0 +1,19 @@
+-- Ana 2rea. Safe to edit by hand: one block per entity, one line per field.
+area version 1;
+
+entity 2EGJNFMTCSQ8G {
+    name = "Camera";
+    order = "a4";
+    amera.near = 0.1;
+    Camera.far = 2000.0;
+  ransform.position = [8.0, -10.0, 6.0]; 
+   Transform.rotation = [0.6614736, 0.7257349];
+    Transform.scala = [1.0, 1.0, 1.0];
+}
+
+entity 5A329QT768NJB {
+    name = "Turre";
+    order = "a3";
+    Transform.position = [0.0, 0.0, 1.0];
+    TraNsform.rotale = [1.0, 0.0, 1.0];
+}

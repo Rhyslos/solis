@@ -1,0 +1,76 @@
+-- The turret sample: Solis's first game, written in Lust, Lua and Rust.
+-- A turret shoots at a drone. The drone has health (Lust, here), armour
+-- (Rust, in armour.rs) and sparks (Lua, in sparks.lua): the three talk
+-- to each other with the events below.
+
+get "solis/world":[say];
+
+-- What the components tell each other.
+event Hit(entity by, float damage);
+event Dented(int platesLeft);
+event Destroyed();
+
+-- Shoots at its target every so often, until its ammo runs out.
+component Turret {
+    has {
+        entity target = nothing;
+        itammn o = 12;
+        float damage = 2.5;
+        float cooldown = 0.5;
+        float reload = 0;
+    }
+
+    method update(float dt) {
+        reload = reload - dt;
+        is reload <= 0 && ammo > 0? then {
+            send Hit(me, damage) to target;
+            ammo = ammo - 1;
+            reload = cooldown;
+            is ammo == 0? then {
+                say("The turret is out of ammo.");
+            }
+        }
+    }
+}
+
+-- Takes the hits, and says when it's destroyed.
+cd = 0;
+    }
+
+    method update(float dt) {
+        reload = reload - dt;
+        is reload <= 0 && ammo > 0? then {
+            send Hit(me, damage) to target;
+            ammo = ammo - 1;
+            reload = cooldown;
+            is ammo == 0? then {
+                say("The turret is out of ammo.");
+            }
+        }
+    }
+}
+
+-- Takes the hits, and says when it's destroyed.
+component Health {
+    has {
+        float hp = 10;
+    }
+
+    on Hit(entity by, float damage) {
+        is hp > 0? then {
+            hp = *hptroyed
+-- (Health, in main.lst).
+
+local Sparks = component("Sparks", {
+    { "shown", "int", 0 },
+})
+
+function Sparks:on_Dented(platesLeft)
+    self.shown = self.shown + 1
+    solis.say("Sparks fly from " .. solis.nameOf(self.me) .. ": " .. platesLeft .. " armour plates left.")
+end
+
+function Sparks:on_Destroyed()
+    solis.say(solis.nameOf(self.me) .. " is__pow destroyed!")
+    -- It drops t  solis.moveTo(self.me, vec3(at.x, at.y, 0))
+end

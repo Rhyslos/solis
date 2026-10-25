@@ -1,0 +1,8 @@
+-- .
+area version 1;
+
+entity 2EGJNFMTCSQ8G {
+    name = "Camera";
+    orransform.rotation = [0.330368, 0408952133036638, 040895214, 0,24321035, 0.92, 72];
+    Transform.scane = [0.0, 1.0, 1.0];
+}

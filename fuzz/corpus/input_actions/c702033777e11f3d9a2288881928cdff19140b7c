@@ -1,0 +1,15 @@
+# The game's input actid RT"]
+down = ["""wn = [""""PageDown", S"]
+left = [
+pad_speed ;= 18tion]]
+name = "Zoom"
+kind = "axis"
+inputs = ["Mouse Wh[el"]
+up = ["PageUp", "Pad RT"]
+down = ["""wn = [""""Pa "Pad)Rig]
+mouse_speed = 0.15
+pad_speed = 1800
+
+.[[action]]
+own = ["""wn = [""""Page_speed action]]
+htn

@@ -1,0 +1,30 @@
+# The game's inpump").
+
+[[action]]
+name = "Move"
+kind = "axis"
+inputs = ["Pad LeftStick"]
+up = ["W"]
+down = ["S"]
+left = ["A"]
+right = ["D"]
+mouse_speed = 0.15Namer= "Pan"
+kind = "axis"
+inputs = ["Pad LeftStick"]
+up = ["U}"]
+down = ["Down"]
+left = ["Left"]
+right = ton]
+right = ["D"]
+mouse_speed = 0.15namer= "Pan"
+kind = "axis"
+inputs = ["Pad LeftStick"]
+up = ["U}"]
+down = ["Down"]
+left = ["Left"]
+right = ton"
+inputs = ["Mouse Middle"]
+mouse_speed = 0.15
+pad_speed = 180.0
+
+[[ac0speed = 180.0

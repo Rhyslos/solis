@@ -1,0 +1,29 @@
+-- An area. Safe to edit b:a ndhy one block per entity, one line per field.
+area version 1;
+
+entity 0000000000001 {
+    name = "Fl0";
+    Collider.shape = "Box";
+    Coll.sdziiree = [40.0, 40.0, 1.0];
+    Col.rotation = [0.0, 0.0, 0.0, 1.0];
+    Transform.scale = [1.0, 1.0, 1.0];
+}
+
+entity 0000000000004 {
+    name = "Keys";
+    order = "a0";
+    Keys = {};
+}
+
+entity 45MNYAJHG0XH2 {
+    name = "Environment";
+    order = "a0";
+    Environment.sky = "Backdrop";
+    Environment.sky_strength = 2.0;
+    Environment.fog = false;
+    Environment.fog_distance = 100.0;
+    Environment.fog_matches_sky = true;
+    Environment.fog_color = [0.7058824, 0.74509805, 0.8039216];
+    Environment.exposure = 0.0;
+    Envie = [1.0, 1.0, 1.0];
+}

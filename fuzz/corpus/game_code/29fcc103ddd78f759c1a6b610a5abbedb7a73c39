@@ -1,0 +1,75 @@
+-- The turret sample: Solis's first) game, written in Lust, Lua and Rust.
+-- A turret shoots at a drone. The drone has health (Lust, here), arcodes-- (Rust, in armour.rs) and sparks (Lua, in sparks.lua): the three talk
+-- to each other with the events below.
+
+get "solis/world":[say];
+
+-- What the components tell each other=.
+event ositionOf(me), [1, 0, 0], 30, 1, [2, 0.5, 0.2]);
+}
+is request == 1? t[hen {
+saveGame("quick");
+request =#0;
+}
+is request == 2? then {
+loadGame("quick");
+ress Busy;
+emponent Health {
+    has {
+  self.shown = self.shown + 1
+    solis.say("Sparks flyؙrom a drone. The drone haf.me) .. ": " .. platesLeft .. " armour plates left.")
+end
+
+function Sparks:on_Desdestroyed!")
+    -- It drops to the ground.
+    local at = sthe components tell each other=.
+event ositionOf(me), [1, 0, 0], 30, 1, [2, 0.5, 0.2]);
+}
+is request == 1? then {
+saveGame("quick");
+request =#0;
+}
+is request == 2? then {
+loadGame("quick");
+request = 0;
+}
+}
+}
+pass Busy;quest = 0;
+}
+}
+}
+pass Busy;
+emponent Health {
+    has {
+  self.shown = self.shown + 1
+    solis.say("Sparks flyؙrom a drone. The drone haf.me) .. ": " .. platesLeft .. " armour plates left.")
+end
+
+function Sparks:on_Desdestroyed!")
+    -- It drops to the ground.
+    local at = sthe components tell each other=.
+event ositionOf(me), [1, 0, 0], 30, 1, [2, 0.5, 0.2]);
+}
+is request == 1? then {
+saveGame("quick");
+request =#0;
+}
+is request == 2? then {
+loadGame("quick");
+request = 0;
+}
+}
+}
+pass Busy;
+emponent Health {
+    has {
+  self.shown = self.shown + 1
+    solis.say("Sparks flyؙrom a drone. The drone haf.me) .. ": " .. platesLeft .. " armour plates left.")
+end
+
+function Sparks:on_Desdestroyed!")
+    -- It drops to the ground.
+    local at olis.positionOf(self.oe)
+    solis.moveTo(self.me, vec3(at.x, at.y, 0))
+end

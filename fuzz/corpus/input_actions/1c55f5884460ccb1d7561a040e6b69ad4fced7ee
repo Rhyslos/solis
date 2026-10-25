@@ -1,0 +1,8 @@
+# Th("Jump").
+
+[[action]]
+name =" Move"
+kind = "axis"
+inputs = ["Pad LeftStick"]
+up = ["W"]
+# The gwninpu

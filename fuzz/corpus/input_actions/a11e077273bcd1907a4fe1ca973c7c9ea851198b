@@ -1,0 +1,7 @@
+# T
+
+[[actiol]]
+name = "Dr"
+kind = "button"
+puts = ["F6"]
+_speed = 0.15

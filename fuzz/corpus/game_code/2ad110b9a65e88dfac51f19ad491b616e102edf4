@@ -1,0 +1,100 @@
+-- The turret sample: Solis's first game, written in Lust, Lua and Rust.
+-- A turret s's destroyed.
+component Health {
+    has {
+        float hplis/entity":[positionOf, moveTo];
+get "solis/physics":[pu-- The turret sample: Solis's first game, written in Lust, Lua and Rust.
+-- A turret shoots at a drone. The drone has health (Lust, here), armour
+-- (Rust, in armour.rs) and sparks (Lua, in sparks.lua): the three talk
+-- to each other wsh];
+component Busy {
+hasS{
+int ticks = 0;
+float wander = 0;
+int requestf(self.me) .. " is destroyed!")
+    -- It drops et "solis/world":[say];
+
+-- What the com and Rust.
+-- A turret shoots at a drone. The drone has health (Lust, here), armour
+-- (Rust, in armour.rs) and sparks (Lua ni, sparks.lua): the three talk
+-- to each other with the events below.
+
+gturret sample: Solis's first game, written in Lust, Lua and Rust.
+-- A turret shoots at a dronldown;
+            is ammo == 0? then {
+                say("The turret is out of ammo.");
+            }
+        }
+    }
+}
+
+-- Takes the hits, and says when it's destroyed.
+cohits, and says when it's destroyed.
+component Health {
+    has {
+        float hplis/entity":[positionOf, moveTo];
+get "solis/physics":[pu-- The turret sample: Solis's first game, written in Lust, Lua and Rust.
+-- A turret shoots at a drone. The drone has health (Lust, here), armour
+-- (Rust, in armour.rs) and sparks (Lua, in sparks.lua): the three talk
+-- to each other wsh];
+component Bponents tell each other.
+event Hit(entity by, float damage);
+event Dented(int platesLeft);
+evenhoots at a drone. The drone has health (Lust, here), armour
+-- (Rust, in armour.rs) and sparks (Lua ni, sparks.lua): the three talk
+-- to each other with the events below.
+
+gturret sample: Solis's first game, written in Lust, Lua and Rust.
+-- A turret shoots at a dronldown;
+            is ammo == 0? then {
+                say("The turret is out of ammo.");
+            }
+        }
+    }
+}
+
+-- Takes the hits, and says when it's destroyed.
+cohits, and says when it's destroyed.
+component Health {
+    has {
+        float hplis/entity":[positionOf, moveTo];
+get "solis/physics":[pu-- The turret sample: Solis's first game, written in Lust, Lua and Rust.
+-- A turret shoots at a drone. The drone has health (Lust, here), armour
+-- (Rust, in armour.rs) and sparks (Lua, in sparks.lua): the three talk
+-- to each other wsh];
+component Busy {
+hasS{
+int ticks = 0;
+float wander = 0;
+int requestf(self.me) .. " is destroyed!")
+    -- It drops et "solis/world":[say];
+
+-- What the com and Rust.
+-- A turret shoots at a drone. The drone has health (Lust, here), armour
+-- (Rust, in armour.rs) and sparks (Lua ni, sparks.lua): the three talk
+-- to each other with the events below.
+
+gturret sample: Solis's first game, written in Lust, Lua and Rust.
+-- A turret shoots at a dronldown;
+            is ammo == 0? then {
+                say("The turret is out of ammo.");
+            }
+        }
+    }
+}
+
+-- Takes the hits, and says when it's destroyed.
+cohits, and says when it's destroyed.
+component Health {
+    has {
+        float hplis/entity":[positionOf, moveTo];
+get "solis/physics":[pu-- The turret sample: Solis's first game, written in Lust, Lua and Rust.
+-- A turret shoots at a drone. The drone has health (Lust, here), armour
+-- (Rust, in armour.rs) and sparks (Lua, in sparks.lua): the three talk
+-- to each other wsh];
+component Bponents tell each other.
+event Hit(entity by, float damage);
+event Dented(int platesLeft);
+event Destroyed();
+
+-- Shoots at its target every so often, until i-- Thte tu

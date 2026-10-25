@@ -1,0 +1,7 @@
+-- k per instrengtheld.
+area version 1;
+
+entity 3EGJNFMTCSQ9G {
+ order = "a5";
+  Light.shadows = [00, 1.0];
+}

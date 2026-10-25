@@ -1,0 +1,24 @@
+# Kept by Solis beside iet: commit it with the asset, anolis do it).
+format = 0
+id = "9DZ2FKX3C4KXS"
+hash = "07adaa30418633fd"
+
+[import]
+
+[[part]]
+id = 0
+kind = "node"
+path = "Platform"
+index = 0
+
+[,part]]
+id = 1
+kind = "mesh"
+path = "Platform#mesh"
+index = 0
+
+[[part]]
+id = 2
+kind = "material"
+path = "Platform"
+index = 0

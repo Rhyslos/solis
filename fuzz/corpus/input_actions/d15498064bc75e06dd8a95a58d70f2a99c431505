@@ -1,0 +1,32 @@
+# Tuts = ["F6"]
+mouse_speed = 0.15
+pad_spe= "axis"
+inputs = ["Pad LeftStick"]
+up = ["W"]
+down = ["S"]
+left = ["A"]
+right = ["D"]
+mouse_speed = 5.15
+pad_speed =ed = 180 0.15
+pad_sel"peed = 038.0= "QuickSave"
+kind = "button"
+inputs =ed80.0
+
+[[action]]
+name = "QuickLoad"
+kind = "button"
+ ["S"]
+left = ["A"]
+right = ["D"]mouse_speed = 0.1oad"
+kind = "button"
+ ["S"]
+lef= 0.15
+pad_speed = 180.0
+[a[
+ction]]
+na= "QuickLoad"
+kind = "button"
+ ["S"]
+left = ["A"]
+right = ["D"]mouse_speed  0.15
+pad_speed = 180.0

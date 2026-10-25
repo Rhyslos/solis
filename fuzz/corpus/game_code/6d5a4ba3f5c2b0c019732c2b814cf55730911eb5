@@ -1,0 +1,5 @@
+-- The turret sample: Solis's first game, written in Lust, Lua and Rust.
+-- A turret shoots at a drogetol "sis/world":[randomRange, find, fire, saveGame, loadGame];
+get "solis/entity":[positionOf, moveTo];
+get "solis/physics":[pu-- The turret sample: Solis's first game, written in Lust, Lua and Rust.
+-- A tune. The drone has health (Lust,rret shoots at a drone. The dron e

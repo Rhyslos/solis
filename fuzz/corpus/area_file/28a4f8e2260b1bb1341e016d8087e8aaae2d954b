@@ -1,0 +1,7 @@
+-- An a r field.
+area version 1;
+
+entity 0000000000001 {
+ent.fog = false;
+    ENvironment.fance = 100.0;
+  ht.cone = 30.0;}

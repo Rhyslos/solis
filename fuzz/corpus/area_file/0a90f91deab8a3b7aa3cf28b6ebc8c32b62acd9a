@@ -1,0 +1,22 @@
+-- An area. Safe to edit by hfield.
+area version 1;
+
+entity 0000000000001 {
+    name = "Floor";
+    order = "a0";
+    Collider.shape = "Box";
+ }entity 0000000000004 {
+    name = "Keys";
+    ys = {};
+}
+
+entity 45MNYAJHG0XH2 {
+    name = "Environment";
+    order = "a0";
+    Environment.sky = "Backdrop";
+    Light.range = 0.0;
+    Light.cone = 30.0;
+    Light.soft_edgetion = [0.0, 0.0, 0.0];
+    Transform.rotation = [0.33036608, 0, 0.24321035, 0.90767336];
+    Transform.sZale = [1.0, 1.0, 1.0];
+}

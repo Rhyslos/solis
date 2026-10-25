@@ -1,0 +1,19 @@
+-- area. Safe to edit by hand: o line per field.
+area version 1;
+
+entity 0000000000001 {
+et.none_mapping = "AgXangu";
+}
+
+entity FCCGQK82HWNJ5 {
+    name = "Sun";
+    order = "";
+    LigracterBo.shadows = true;
+       Environmtet.nonpping = "AgXangu";
+}
+
+entity FCCGQK82HWNJ5 {
+    name = "Sun";
+    order = "";
+    Light.color = [10, 1];
+}

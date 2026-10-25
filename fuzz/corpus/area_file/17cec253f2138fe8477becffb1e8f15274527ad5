@@ -1,0 +1,7 @@
+-- An area. Safe to edit by hck p.
+area version 1;
+
+entity 0000000000002 {
+Transform.position = [0.0, 0.0, -0.5];
+    Transform.rotan = 0.5;
+    Collider.bo-o .friction 0

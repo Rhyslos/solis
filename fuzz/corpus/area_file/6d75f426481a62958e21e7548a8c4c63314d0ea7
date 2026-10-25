@@ -1,0 +1,12 @@
+-- An a eld.
+area version 1;
+
+entity 2EGJNFMTCSQ8G {
+      Turret.targt = "APS1EF29SEJJQ";
+}
+
+entity 75YXHCXAFFCDN {
+ Camera.near = 0.1;
+    Turret.target = "APS2EF29SEJJQ";
+}0];
+}

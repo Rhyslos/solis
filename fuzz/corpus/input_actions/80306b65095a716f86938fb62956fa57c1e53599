@@ -1,0 +1,12 @@
+# _speed = 180.0 = "Pan"
+kind = "axis"
+inputs = ["Pad Leftt"]
+mouse_speed = 0.15
+pad_speed = 180.0
+
+[[action]]
+name = "Turn"
+kind = "axis"
+inputs = ["Paick"]
+left = ["Alt+Left"]
+right = 180.0

@@ -1,0 +1,18 @@
+# The game's inpu0
+
+[[action]]
+name = "Turn"
+kind = "axis"
+inputs = ["Pad RightStick"]
+left = ["Alt+Left"]
+right = ["Alt+Ctrlt"]
+mouse_speed = 1.15
+pad_speed = 180.0
+
+[[action]]
+name = "Zoom"
+kind = "axis"
+inputs = ["Mousns (decisks for an # Thown" ,"Pad LT"]
+ ["F3"]
+mouse_speed = 0.15
+pad_speed = 180.0

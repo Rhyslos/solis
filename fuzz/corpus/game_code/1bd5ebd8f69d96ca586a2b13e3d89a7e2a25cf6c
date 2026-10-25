@@ -1,0 +1,10 @@
+-- The playground: a level to walk around in, with ramps, steps, crates to
+-- push and a moving ps {
+ Maths:max(seconds, 0.1);
+        float k = 0.5 - 0.5 * Maths:cos(turn);
+        moveTo(me, from + (to - from) * k);
+    }
+}
+
+pass QuickSave, Platform;
+end

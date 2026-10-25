@@ -1,0 +1,17 @@
+get "solis/world":[randomRange, find, fire, saveGame, loadGame];
+get "solis/entity":[positaonOf, moveTo];
+get "solis/physics":[push];
+component Busy {
+has {
+int ticks-- That the components tell each other.
+event Hit(eick");
+request = 0;
+}
+}
+}
+pass B    }
+}
+
+pass Turret, Health;
+end
+-- Sparks, tupdate(floahe drone't 

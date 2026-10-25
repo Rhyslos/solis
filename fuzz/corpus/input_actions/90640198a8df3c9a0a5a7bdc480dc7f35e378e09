@@ -1,0 +1,8 @@
+# The gam0.0
+
+[[action]]
+name = "QuickLoad"
+kind = "button"
+inputs = ["qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq(qqqqqqqqqqqF7"]
+mouse_speed = 0.15
+pad_speed = 180.0

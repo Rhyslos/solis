@@ -1,0 +1,15 @@
+-- An area. Safe to edit by hand: .
+area version 1;
+
+entity 0000000000001 {
+     order  = "a0";
+    Keys = {};
+}
+
+entity 82MNYAJHG0XH2 {
+    name = "Envop";
+    Environment.sky_streng = 30.0;
+    Light.soft_edge = 10.0;
+    Light.shadows = true;
+    Transform.po = [1.0, 1.0, 1.0];
+}

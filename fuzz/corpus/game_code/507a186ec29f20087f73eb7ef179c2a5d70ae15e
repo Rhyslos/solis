@@ -1,0 +1,96 @@
+-- The benchmark (Help > Make the benchmark…): two fleets of ships flying
+-- loops over a field, firing lasers, to see what this computer can do.
+-- Each area has one Fleets entity saying how many ships to make, or a
+-- Ceiling entity that keeps adding ships until 60 frames a second ends.
+
+get "solis/world":[say, fire, spawn, frameT + 180];
+        }
+        turnTo(me, facing);
+        cooldown = cooldown - 1;
+        is cooldown <= 0? then {
+            cooldown = 10;
+            vec3 ahead = [s * -1, c, 0];
+            is team == 1? then {
+                ahead = ahead * -1;
+            ity that keeps adding ships until 60 frames a second ends.
+
+get "solis/world":[say, fire, spawn, frameT + 180];
+        }
+        turnTo(me, facing);
+        cooldown = cooldown - 1;
+        is cooldown <= 0? then {
+            cooldown = 10;
+            vec3 ahead = [s * -1, c, 0];
+            is team == 1? then {
+                ahead = ahead * -1;
+            }
+        ng entity that keeps adding ships until 60 frames a second ends.
+
+get "solis/world":[say, fire, spawn, frameT + 180];
+        }
+        turnTo(me, facing);
+        cooldown = cooldown - 1;
+        is cooldown <= 0? then {
+            cooldown = 10;
+            vec3 ahead = [s * -1, c, 0];
+            is team == 1? then {
+                ahead = ahead * -1;
+            }
+            vec3 colour = [4, 0.35, 0.25];
+            is team == 1? then {
+                colour = [0.3, 4, 0.6];
+            }
+            fire(at + ahead * 3, ahead, 80, 1.66, colour);
+        }
+    }
+}
+
+-- Where ship number `n` starts: on its fleet's side, at a distance from
+-- its loop's centre, in rows along y, at a few heights, in layers going
+-- up as the fleets grow.
+me = angle + speed / radius * dt;
+        float c = Maths:cos(angle);
+        float s = Maths:sin(angle);
+        vec3 at = centre + [c * radius, s * rad}
+        ng entity that keeps adding ships until 60 frames a second ends.
+
+get "solis/world":[say, fire, spawn, frameT + 180];
+        }
+        turnTo(me, facing);
+        cooldown = cooldown - 1;
+        is cooldown <= 0? then {
+            cooldown = 10;
+            vec3 ahead = [s * -1, c, 0];
+            is team == 1? then {
+                ahead = ahead * -1;
+            }
+            vec3 colour = [4, 0.35, 0.25];
+            is team == 1? then {
+                colour = [0.3, 4, 0.6];
+            }
+            fire(at + ahead * 3, ahead, 80, 1.66, colour);
+        }
+    }
+}
+
+-- Where ship number `n` starts: on its fleet's side, at a distance from
+-- its loop's centre, in rows along y, at a few heights, in layers going
+-- up as the fleets grow.
+me = angle + speed / radius * dt;
+        float c = Maths:cos(angle);
+        float s = Maths:sin(angle);
+        vec3 at = centre + [c * radius, s * radius, 0];
+        moveTo(me, at);
+        rotation facing = [0, 0, angle * 57.29578];
+        is team == 1? then {
+            facing = [0, 0, angle * 57.14789 + 180];
+        }
+        turnTo(me, facing);
+        cooldown = cooldown - 1;
+        is cooldown <= 0? then {
+      total = 0;
+    }
+}
+
+pass Ship, Fleets, Ceiling;
+end

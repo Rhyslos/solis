@@ -1,0 +1,22 @@
+#
+pat= h "Platform#me[[part]]
+id =k 
+din2 ndex = 0
+
+[[part]]
+id =k 
+din2 = "material"
+path = = "node"
+p"
+s  "91
+kind = "mesh"
+pat= h "Platform#mesh"
+index = 0
+
+[[part]]
+id =k 
+din2 ndex = 
+0
+[[part]]
+id ="Platform"
+index = 33

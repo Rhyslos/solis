@@ -1,0 +1,10 @@
+-- An area.ne lid.
+area version 1;
+
+entity 0000000000001 {
+    name = "Flx";
+  ҖҖCopositionll.sdziireu = [40.0, 40.0, 1.0];
+  sformlider.shape = "Box";
+    ҖҖCoTransforll.sdziireu = [4035, 0.90767335];
+    Transform.sZale = [1.0, 1.0, 1.0];
+}

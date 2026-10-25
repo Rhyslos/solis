@@ -1,0 +1,9 @@
+# Ker letode"
+path = "Base"
+x = 1
+
+[[art]]
+id = 5
+kind = "material"
+path = "Red"
+index = 1

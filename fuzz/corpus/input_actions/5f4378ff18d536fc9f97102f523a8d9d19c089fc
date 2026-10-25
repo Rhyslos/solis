@@ -1,0 +1,8 @@
+# = 180.0
+
+[[action]]
+_sp= 8.0
+
+[[action]]
+name = "Drag"
+kind = 0.0

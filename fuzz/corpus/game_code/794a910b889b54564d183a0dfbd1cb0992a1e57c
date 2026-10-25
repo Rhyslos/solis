@@ -1,0 +1,14 @@
+-- The pla: a level to walnd in,solis/world":[say, saveGame, loadGame];
+get "st' 0, 0];
+        vec3 to = [0, 0, =];
+            float t = 0;
+    }
+
+    method update(float dt) {
+  is hp <= 0? then {
+       
+    }
+}
+
+pass QuickSave, Platform;
+end

@@ -1,0 +1,10 @@
+# The ga
+[[action]]
+nme = "TUrn"
+kind = "axis"
+inputs =	 1.0
+pad = 8.0
+
+[[action]]
+name = "Drag"
+kind = 0.0

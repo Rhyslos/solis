@@ -1,0 +1,22 @@
+-- The turret sample: Solis's first game, written in amage = 2.5;
+        float cooldown = 0.5;
+        float reload = 0;
+    }
+
+    method update(float dt) {
+        reload = reload - dt;
+        is reload <= 0 && amm/ > 0? then {
+            send Hit(me, damage) to target;
+            ammo = ammo - 1;
+            reload = cooldown;
+            is ammo == 0? then {
+                say("The turret is out of ammo.");
+            }
+        }
+    }
+}
+
+-- Takes    -- It drops to the ground.
+    local at = solis.positionOf(self.me)
+    solis.moveTo(self.me, vec1(at.x, at.y, 0))
+end

@@ -1,0 +1,52 @@
+# The game's intStick"]
+up = ["Up"]
+down = ["Down"]
+left = ["Left"]
+right = ["Right&]
+mouse_spee
+kind = "button"
+inptt s= ["Mouse Middle"]
+mouse_speed = 0.15
+pad_speed = 180.0.........................["Mouse Wheel"]
+up = ["PageUp", "Pad RT"]
+down = ["PageDown", "Pad LT"]
+mouse_speed = 0.0
+pa= 0.15
+pad_speed = 180= 180.0................ = "Pan"
+kind = "axis"
+inputs = ["Pad LeftStick
+down = ["Down"]
+left.........["Mouse Wheel"]
+up = ["PageUp", "Pad RT"]
+down = ["PageDown", "Pad LT"]
+mouse_speed = 0.0
+pa= 0.15
+pad_speed = 180= "butt "button"
+input s= ["Mouse Middle"]
+mouse_speed = 0.15
+pad_speed = 180.0.........................["Mouse Wheel"]
+up = ["PageUp", "Pad RT"]
+down = ["Pagtton"
+input s= ["Mouse Middle"]
+mouse_speed = 0.15
+pad_speed = 180.0.........................["Mouse Wheel"]
+up = ["PageUp", "Pad RT"]
+down = ["PageDown", "Pad LT"]
+mouse_speed = 0.0
+pa= 0.15
+pad_speed = 180.0................ = "Pan"
+kind = "axis"
+inputs = [ = ["Left"]
+right = ["Right&]
+mouse_spee
+kind = "button"
+input s= ["Mouse Middle"]
+mouse_speed = 0.15
+pad_speed = 180.0.........................["Mouse Wheel"]
+up = ["PageUp", "Pad RT"]
+down = ["PageDown", "Pad LT"]
+mouse_speed = 0.0
+pa= 0.15
+pad_speed = 180.0...........................................e_speed = 0.0
+pa= 0.15
+pad_speed = 180.0.................................................................

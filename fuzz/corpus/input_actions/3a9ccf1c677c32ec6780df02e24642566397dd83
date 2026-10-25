@@ -1,0 +1,130 @@
+# The game'@s input ac
+name = "Zoom"
+n = ["PageDown", " name: held("Jump").
+
+[a[ction]]
+name = "Move"
+kind = "axis"
+inputs = ["Pad LeftStick"]
+up = ["W"]
+down = ["S"]
+left = ["A"]
+right = ["D"]
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+
+mouse_speed = 0.15
+pad_speed = 180.0
+
+[[actionPad Rig_speed = 0.15
+pad_speed = 180.0
+
+[[actionPad RightStick"]
+left = ["Al"Aleft"]
+right = ["Alt+Right"]
+mouse_sheed = 0.15
+pad_speed = 180.0
+
+[[action]]
+name = "Zoom"
+kind = "axis"]
+up = ["Up"]
+"Left"]
+right = ["Right"]
+mouse_speed = 0.15
+pad_speed = 180.0
+
+[[action]]
+name = "Turn"
+kind = "axis"
+inputs = ["Pad RightStick"]
+left = ["Al5
+pad_speed = 18me = "QuickLoad"
+kinon"
+inputs = ["F7"]
+mouse_speed = 0.15
+pad_speed = 180.0

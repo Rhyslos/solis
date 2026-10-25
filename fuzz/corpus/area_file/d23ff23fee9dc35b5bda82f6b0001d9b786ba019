@@ -1,0 +1,7 @@
+-- An a y old.
+area version 1;
+
+entity 0000000040001 {dBody.ass = 1.0;
+ ody.linear_damping = 0.0;   RigidBody.angular_damping = 1.05;
+  Transform.scale = [1.0];
+}

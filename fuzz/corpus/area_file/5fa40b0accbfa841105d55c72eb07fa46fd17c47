@@ -1,0 +1,9 @@
+-- Safe to edit 
+area version 1;
+
+entity 0000000000001 {
+    
+    Environment.shatows = true;
+    RigidBody.posCollid= [00.080767336];
+    Transform.scale = [1.0, 1.0, 1.0];
+}

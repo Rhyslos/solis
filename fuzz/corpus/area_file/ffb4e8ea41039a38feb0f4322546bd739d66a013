@@ -1,0 +1,11 @@
+-- An area. Safe to edit by per enper field.
+area version 1;
+
+entity 0000000000001 {
+    name = "Floor";
+    order = "a0";
+     Transform.rotation = [0.0, 0.0, 0.0, 1.01035, 3535, 3535, 3535, 352325, 09521324321035, 3535,5, 3535,];
+    Transfo= [1.0, 1.0, 1.0];
+}
+
+entity l_m

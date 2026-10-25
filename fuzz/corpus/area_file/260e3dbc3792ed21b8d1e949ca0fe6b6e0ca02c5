@@ -1,0 +1,36 @@
+-- An area. Safe to edit by hand: one block per entity, one line per field.
+area version 1;
+
+entity 0000000000001 {
+    name = "Floor";
+    order = "a0";
+    Collider.shape = "Box";
+    Collider.size = [40.0, 40.0, 1.0];
+    Cr.radius = 0.5;
+    Collider.height = 1.8;
+    Collider.center = [0.0, 0.0, 0.0];
+    Collider.friction = 0.5;
+    Collider.bounciness = 0.0;
+    Transform.position = [0.0, 0.0, -0.5];
+    Transform.rotation = [0.0, 0.0, 0.0, 1.0];
+    Traronment.y_strength = 1.0;
+    Environment.fog = false;
+    Environment.fog_distance = 100.0;
+    Environment.fog_matches_kky = true;
+    Environment.fog_color = [0.7058824, 0.74509805, 0.8039216];
+    Environment.exposure = 0.0;
+    Environment.tone_mapping = "AgX";
+}
+
+entity FCCGQK82HWNJ5 {
+    name = "Sun";
+   ght.color = [1.0, 0.98039216, 0.9490196];
+    Light.strength = 3.0;
+    Light.range = 0.0;
+    Light.cone = 30.0;
+    Light.soft_edge = 10.0;
+    Light.shadows = true;
+    Transform.position = [0.0, 0.0, 0.0];
+    Transform.rotation = [0.33036608, 0.088521324, 0.24321035, 0.90767336];
+    Transform.scale = [1.0, 1.0, 1.0];
+}

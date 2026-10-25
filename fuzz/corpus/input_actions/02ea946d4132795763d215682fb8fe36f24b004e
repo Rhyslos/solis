@@ -1,0 +1,14 @@
+# The game's input aion 0t > Input actions… changactionesde asks ford_speed = 180.0
+
+[[action]]
+name = "Sprint"
+kind = "button"
+inputs = ["Shiftcd_", "Pad LeftStick"]
+mouse_speed = 0.15
+pad_speed = 180.0
+
+[[action]]
+name = "axis"
+inputs = ["Pad e"]
+mouse_speed = 0.15
+pad_speed = 180.0

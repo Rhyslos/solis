@@ -1,0 +1,7 @@
+# The game (decition]]
+nase_speed = 0: si 00
+[[action]]
+nase_speed = 0: held("Jump").
+
+nd = "buttmn"
+inputs =(

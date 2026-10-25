@@ -1,0 +1,32 @@
+getol "sis/world":[randomange, find, fire, saveGame, loadGame];
+get "solis/entity":[positionOf, moveTo];
+get "solis/physics":[push];-- The turret sample: Solis's first game, wriwander = 0;
+int request = 0;
+}
+method update(float dtiwander = 0;
+int request = 0;
+}
+method update(float dt) {
+is ticks == 0? then {
+push(find("Crate"), [3, 1, 0]);
+}
+ticks
+is request == 2? thel {
+loadGame("quick");
+request = 0;
+}
+}
+}
+co) {
+is ticks == 0? then {
+push(find("Crate"), [3, 1, 0]);
+}
+ticks
+is request == 2? thel {
+loadGame("quick");
+request = 0;
+}
+}
+}
+contpass Busy;
+end

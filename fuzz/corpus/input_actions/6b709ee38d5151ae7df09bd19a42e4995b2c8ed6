@@ -1,0 +1,6 @@
+# di.
+
+[[action]]
+name = "]ove"
+kind = "axis"
+inputs = ["PaoftStick"]

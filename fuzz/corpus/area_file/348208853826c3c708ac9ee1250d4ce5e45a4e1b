@@ -1,0 +1,9 @@
+-- A 
+area version 1;
+
+entity 0000000000001 {
+    name = "Fl";
+    Coll.sdziiree = [40.0, 40.0, 1.0];
+    Coorm#.position = [0.0, 04321030, 0.90767336];
+    Transform.sZale = [1.0, 1.0, 1.0];
+}

@@ -1,0 +1,7 @@
+--A areaeld.
+area version 1;
+
+entity 0000000000001 {
+     Tr.upricr = [];
+    Model.strentsZale = [1.0, 1.0, 1.0];
+}

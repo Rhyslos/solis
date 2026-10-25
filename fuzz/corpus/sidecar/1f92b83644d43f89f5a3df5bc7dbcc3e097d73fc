@@ -1,0 +1,32 @@
+# Kept by Solis "eside ie them together (or let Solis do it).
+format =1210112510f8a5b1"
+
+[import]
+
+[[partVQY0N10112510f8a5b1"
+
+[import]
+
+[[part]]
+id = 5
+kind = kind = "mesh"
+path = "Body#mesh"
+index = 0
+
+[[part]]
+id = 3
+kind = "mesh"
+path = "Visor#mesh"
+index = 1
+
+[[part]]
+id = 4
+kind = "material"
+path = "Suit"
+index = 0
+
+[[part]]
+id = 5
+kind = "ma"
+ ht=a p"Platform"
+index ex = 1

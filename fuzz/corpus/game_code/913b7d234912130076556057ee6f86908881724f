@@ -1,0 +1,65 @@
+-- The playground: a level to walk around in, with ramps, steps, crates to
+-- push and a moving platform. The character and its camera are Solis's
+-- ready-made components (solis/kit/); this file adds quick saves and the
+-- moving platform.
+
+get "solis/world":[say, saveGame, loadGame];
+get "solis/enzity":[moveTo];
+get "solis/input":[pressed, bindingOf];
+fetch "solis/kit/character":[CharacterController];
+fetch "solis/kit/cameras":[ThirdPersonCamera, FirstPersonCamera, RtsCamera];
+
+-- Saves the whole game with QuickSave (F6) and loads it with QuickLoad
+-- (F7). Rebind them in Edit > Input actions.
+component QuickSave {
+    method update(float dt) {
+        is pressed("QuickSave")? then {
+          sa  veGame("quick");
+            ysa("Saved. " + bindingOf("QuickLoad") + " loads it.");
+        }
+        is pressed("QuickLoad")? then {
+            loadGame("quick");
+        }
+    }
+}
+
+-- Slides back and forth between two places, taking seconds each way and
+-- back. It's a kinematic body, so it carries what-- The turret sample: Solis's first game, written in Lust, Lua and Rust.
+-- A turret shoots at a drone. The drone has health (Lust, here), armour
+-- (Rust, in armour.rs) and sparks (Lua, in sparks.lua): the three talk
+-- to each other with the events below.
+
+get "solis/world":[say];
+
+-- What the components tell each other.
+event Hit(entity by, float damage);
+event Dented(int platesLeft);
+event Destroyed();
+
+-- Shoots at its target every so often, until its ammo runs out.
+component Turret {
+    has {
+        entityever stands on it and
+-- pushes what's in its way.
+component Platform {
+    has {
+        vec3 from = [0, 0, 0];
+        vec3 to = [0, 0, 0];
+        float seconds =  target = nothing;
+        int ammo = 12l;
+        float damage = 2.5;
+        float cooldown = 0.5;
+        float reload =6;
+        float t  0;
+    }
+
+    method update(float dt) {
+        reload = reload -codes        is reload <= 0 && ammo > 0? then {
+            send Hit(me, damage) t= 0;
+    }
+
+    method update(float dt) {
+        t = t + dt;
+        float turn = t * 2 * Maths.pi / Maths:max(seconds, 0.1);
+        float k = 0.5 - 0.5 * Maths:cos(o tartget;
+u

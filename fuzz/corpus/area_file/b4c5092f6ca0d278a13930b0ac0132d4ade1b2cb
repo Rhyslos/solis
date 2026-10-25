@@ -1,0 +1,7 @@
+-- An a per en
+area version 1;
+
+entity 0000000000001 {
+    name = "Floronmendrop";
+    Environmeonoent.fog_color = [04,0, 1.0];
+}

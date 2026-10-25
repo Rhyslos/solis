@@ -1,0 +1,9 @@
+-- A
+area version 1
+;
+entity 2EGJNFMTCSQ9G {
+ht.ows = true 
+ ;  Transform.position = [0.0, 0., 0.0]; 
+   Transform.rotat/on = [0.330136608, 0.0];
+    Transform.scale = [0.0, 1.0, 1.0];
+}

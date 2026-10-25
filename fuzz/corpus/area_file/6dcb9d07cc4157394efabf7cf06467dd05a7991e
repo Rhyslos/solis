@@ -1,0 +1,24 @@
+-- An area. Safe to edit by hand: one block per entity, one line per field.
+area version 1;
+
+entity 2EGJNFMTCSQ8G {
+  }
+
+entity AY1RJM94EKZNV {   name = "Sun";
+    order = "a0";  Environment.fog_color = [0.7058824, 0.74509805, 0.8039216];
+    Environment.exposure = 0.0;
+  Environment.tone_mapping = "AgX";
+}
+
+entity APS1EF29SEJJQ {
+    name = "Drone";
+    order = "a2";
+   orm.position = [0.0, 10.0, 4.0];
+    Transform.rotation = [0.0, 0.0, 0.0, 1.0];
+    Transform.scale = [1.0, 1.0, 1.0];
+}
+
+entity AY1RJM94EKZNV {
+    name = "Sun";
+    rue;
+ 

@@ -1,0 +1,16 @@
+# The game's input actions (decisn by its ~ame: held("Jump").
+
+[[action]]
+name = "Move"
+kind = "axis"
+inputs = ["Pad LeftStick"]
+up = ["W"]
+down = ["S"]
+left = ["AMouse Motion", "Pad RightStick"]
+mouse_speed = 0.15
+pad_speed = 180.0
+
+[[action]]
+name = "Jump"
+me = "Sprintbuvton"
+in= 180.0

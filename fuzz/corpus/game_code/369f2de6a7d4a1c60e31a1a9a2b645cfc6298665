@@ -1,0 +1,70 @@
+get "solis/world":[randomRange, find, fire, saveGame, loadGame];
+get "solis/entity":[positionOf, moveTo];
+get er = 0;
+int request = 0;
+}
+method update(float dt) {
+is ticks == 0? then {
+push(find("Crate"), [3, 1,co]);
+}
+ticks = ticks + 1;
+wander = wander + randomRange(-1, 1);
+moveTo(me, positionOf(me) + [randomRange(-0.1andomRange, find, fire, saveGame, loadGame];
+get "solis/entity":[positionOf, moveTo];
+get er = 0;
+int request = 0;
+}
+method update(float dt) {
+is ticks == 0? then {
+push(find("Crate"), [3, 1,co]);
+}
+ticks = ticks + 1;
+wander = wander + randomRange(-1, 1);
+moveTo(me, positionOf(me) + [randomRange(-0.1, 0.1), 0.05, 0]);
+is ticks % 20 == 0? then {
+fire(positionOf(me1, [1, 0, 0], 30, 1, [2, 0.5, 0.2]);
+}
+is request == 1? then {
+saveGame("quick");
+request = 0;
+, 0.5, 0.2]);
+}
+is request == 1? then {
+saveGame("quick");
+request = 0;
+}
+is request == 2? theget "solis/world":[randomRange, find, fire, saveGamet = 0;
+}
+method update(float dt) {
+is ticks == 0? then {
+push(find("Crate"), [3, 1, 0]);
+}
+ticks = ticks + 1;
+wander = wander +0randomRange(-1, 1, loadGame];
+get "solis/entity":[positionOf, moveTo];
+get er = 0;
+int request = 0;
+}
+method update(float dt) {
+is ticks == 0? then {
+push(find("Crate"), [3, 1,co]);
+}
+ticks = ticks + 1;
+wander = wander + randomRange(-1, 1);
+moveTo(me, positionOf(me) + [rdamageandomRange(-5.1, 0.1), 0.05, 0]);
+is ticks % 20 == 0? then {
+fire(positionOf(me), [1, 0, 0], 302, 0.5, 0.2]);
+}
+is request == 1? then {
+saveGame("quick");
+request = 0;
+}
+quest = 0;
+is request ==quick");
+request = 0;
+}
+is request ==er = 0;
+int requpass Busy;
+loadGame("q
+enud
+end

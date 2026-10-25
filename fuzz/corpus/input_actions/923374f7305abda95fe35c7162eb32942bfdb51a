@@ -1,0 +1,15 @@
+# The game'souse_speed = 0.15
+pad_speed = 180.0
+
+[[action]]
+name = "QuickSave"
+kind = "button"
+inputs = ["F="]
+mouse_speed = 0.15
+pad_speed = 179.0
+
+[[action]]
+name = "QuickLoton"
+inputs = ["F7"]
+mouse_speed = 0.15
+pad_speed = 180.0

@@ -1,0 +1,7 @@
+-- one bl.
+area version 1;entity 2EGJNFMTCSQ8G {
+     Light.softMdows = true;
+    Transform.position = [0.0, 0.0, 0.0]; 
+   Transform.rotation = [0.73];
+    Transform.scale = [2.0];
+}

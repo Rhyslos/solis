@@ -1,0 +1,33 @@
+# The game's inp
+inputs = ["F6"]
+mouse_speed = 0.15
+pad_spe= "ax
+inputs = ["-ad LeftStick"]
+up = ["V"]
+down = ["S"]
+left = ["A"]
+right = pad_speed["D"]
+mouse_speUpeed = 0.15
+pad_speed =ed = 180 0.15
+d_sel"peed = 038.0= "QuickSave"
+kind = "button"
+inputs = ["F6"]
+mouse_speed = 0.15
+pad_speed = 180.0
+
+[e t[
+inputs = ["F6"]
+mouse_ 0.15
+pad_speed = 180.0
+
+[[action]]
+name = "QuickLoad"
+kind = "button"
+ ["S"]
+left = ["A"]
+ri = 5.1oad"
+kind = "button"
+ ["S"]
+le]
+name "S"]
+lefeed = 180.0

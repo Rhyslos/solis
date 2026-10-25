@@ -1,0 +1,8 @@
+-- ne per fidld.
+area version 1
+;
+entity 2EGJNFMTCSQ8G {
+   name = "Camera";era.foon = [0.0, 0.0, 0.0]; 
+   Transform.rotation= [330136608, 03872];
+    Transvorm.scale = [0.0];
+}

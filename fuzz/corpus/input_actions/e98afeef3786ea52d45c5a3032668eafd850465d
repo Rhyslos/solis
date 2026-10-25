@@ -1,0 +1,6 @@
+# pup a.0
+
+[[action]]
+name = "Turn"
+kind = 5
+pad_speed = 180.0

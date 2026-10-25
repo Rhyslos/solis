@@ -1,0 +1,7 @@
+-- An areald.
+area version 1;
+
+entity 2EGJNFMTCSQ8G {
+    name = "Camera";
+    ordranform.rotation = [0.3324, 02,4321035, 0.93063];
+}

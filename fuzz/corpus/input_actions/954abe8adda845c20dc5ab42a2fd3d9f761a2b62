@@ -1,0 +1,8 @@
+# input actions (dec speed = e80
+
+[[action]]
+name= "Drag"
+kind = "button"
+inputs = ["Mouse Mile"]
+mouse_speed = 0.15
+pad_speed = -80.0

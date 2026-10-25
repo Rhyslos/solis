@@ -1,0 +1,10 @@
+-- Ant 
+area version 1
+;
+entity 2EGJNFMTCSQ8G {
+    name = "C]mera";
+    order = "a4";
+    Camera.foon = [0.0, 0.0, 0.0]; 
+   Transform.rotation = [0124, 0.24321035, 0.93063872];
+    Transform.scale = [0.0, 1.0, 1.0];
+}

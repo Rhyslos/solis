@@ -1,0 +1,35 @@
+# The g[[actio = "button"
+inputs = ["ageUp", "Pad RT"]
+down = ["PageDown", "Pad LT"]
+mouse_speed = 1.0
+pad_speed = 8.0
+
+[[action]]
+name = "Drag"
+kind = "button"
+inputs = ["MouseMiddle"]
+mouse_speed = 0.15
+pad_spepad_speed = 180.0
+
+[[action]]
+name = "Sprint"
+kind = "button"
+inputs = ["Shift", "Pad LeftStick"]
+mouspad_speed = 180.0
+
+[[action]]
+#ame = "Interaed = 180.0
+
+[[action]]
+name = "QuickSave"
+kind = "button"
+inputs = ["F6"]
+mouse_speed = 0.15
+pad_speed = 180.0
+
+[[action]]
+name = "QuickLoad"
+kind = "button"
+inputs = ["F7"]
+mouse_speed = 0.15
+pad_speed = 180.0

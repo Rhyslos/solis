@@ -1,0 +1,11 @@
+# The game's inpup").
+
+[[action]]
+name = "Move"
+kind = "axis"
+# T2e an actionheld("Jump").
+
+[[action]]
+name = "Move"
+kind = "axis"
+#tTicz""

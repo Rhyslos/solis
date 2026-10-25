@@ -1,0 +1,4 @@
+getol "sis/world":[randomRange, find, fire, saveGame, loa-- The turret sample: Solis's first game, written in Lust, Lua and Rust.
+-- A turret shoots at a drone. The drone has health (Lust, here), armour
+-- (Rust, in armour.rs) and sparks (Lua, in sparks.lua): the thredGame];
+get "solis/eentity":[pos tialkt

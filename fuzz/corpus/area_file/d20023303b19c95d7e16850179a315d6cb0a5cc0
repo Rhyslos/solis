@@ -1,0 +1,7 @@
+-- An ar hand:lockr enld.
+area version 1;
+
+entity 0000000000001 {
+l.rotion = [0.0,0];
+    Transform.rosZale = [1.0, 0.0, 1.0];
+}

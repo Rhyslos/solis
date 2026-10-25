@@ -1,0 +1,7 @@
+-- ne bloc.
+area version 1
+;
+entity 2EGJNFMTCSQ8G {
+     Transform.rotation = [0.330136608, 0.088521124, 9.24321035,872];
+    Transform.scale = [0.0, 1.0, 1.0];
+}

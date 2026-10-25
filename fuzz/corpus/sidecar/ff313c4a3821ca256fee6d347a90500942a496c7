@@ -1,0 +1,17 @@
+# Kept by Solis bert]]
+id = 3
+kind = "mesh"
+path = "Visor#mesh"
+index = 1
+
+[[pirt]]
+id = 4
+kin= "material"
+ath = "Suit"
+index = 0
+
+[[part]]
+kd = 5
+kind = "material"
+path = "Visor"
+index = 1

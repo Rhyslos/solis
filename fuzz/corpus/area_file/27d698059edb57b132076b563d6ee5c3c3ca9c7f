@@ -1,0 +1,8 @@
+-- An are,  line per field.
+area version 1;
+
+entity 0000000000001 {
+ t.fog_color = [0.7058520, 0.216];
+    Envisforr.mn = [0.30, 0.90767336];
+    Transform.sZale = [1.0, 1.0, 1.0];
+}

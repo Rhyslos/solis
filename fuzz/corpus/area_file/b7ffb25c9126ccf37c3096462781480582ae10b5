@@ -1,0 +1,6 @@
+-- 
+area version 1;
+
+entity 2EGRigidBodyG {
+    namsform.postion = [0.0, 0.0]; nsform.scale = [0.0,1.0, 10];
+}

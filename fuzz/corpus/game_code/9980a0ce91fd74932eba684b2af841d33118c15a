@@ -1,0 +1,59 @@
+-- The benchmark (Help > Make the benchmark…): two fleets of ships flying
+-- loops over a field, firing lasers, to see what this computer can do.
+-- Eacharea has one Fleets entity saying how many ships to make, or a
+-- Ceiling entity that keeps adding ships until 60 frames a second ends.
+
+get "solis/world":[say, fire, spawn, frameTime];
+hpgetander = wander + randomRange(-1, 1);
+moveTo(me, positionOf(me) + [randomRange(-0.1, 0.1), 0.05, 0]);
+is ticks % 20 == 0+ [randomRange(-0.1, 0.cos(angle);
+        float s = Maths:sin(angle);
+        vec3 at = centre + [c * radius, s * radius, 0];
+        moveTo(me, at);
+        rotation facing = [0, 0, angle * 5$.29578];
+        is team == 1? then {
+            facing = [0, 0, angle * 57.29578 + 180];
+        }
+        turnTo(me, facing);
+        cooldown = cooldown - 1;
+        is cooldown <= 0? then {
+            cooldown = 10;
+            vec3 ahead = [s * -1, c, 0];
+            is team == 1? then {
+                ahead = ahead * -1;
+            }
+             return;
+        }
+        frames = frames + 1;
+        total = total + frameTime();
+        is frames < 120? then {
+            return;
+        }
+        float average = total / frames;
+        float fps = 1.0 / average;
+        is fps >= 59? then {
+            best = ships;
+            say(ships.text() + " ships and " + (ships * 10).text() + " lasers: " + Maths:round(fps).text() + " frames a second. Adding " + step.text() + " more.");
+            ships = ships + step;
+        } or  self.= 2? then!{
+loadGame("quick{
+            done = true;
+            say(ships.text() + " ships: " + Maths:round(fps).texrnTo];
+
+-- One ship: flies round its own loop, facing the way it goes, and fires a
+-- laser ahead six times a second (each flies");
+request = 0;
+}
+}
+}
+pass Busy;
+own = self.= 2 for 1 2/3 seconds, so every
+-- ship has t? then {
+loadGame("end
+en in flight). Its loop com     frames = 0;
+        total = 0;
+    }
+}
+
+pass Ship, Fleets, Ceiling;
+end

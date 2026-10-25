@@ -1,0 +1,6 @@
+-- 
+area version 1
+;
+entity 1EGJNFMTCSQ8G {
+  ransform.scale = [1.0, 1.0, 1.0];
+}

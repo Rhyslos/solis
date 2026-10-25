@@ -1,0 +1,9 @@
+#.15
+#d = 1E666666666#  = 180.0
+
+[[action]]
+name = "Turn"
+kind = "axis"
+inputs = ["Pad RightStick"]
+left = ["Alt+LPageUp", ""]
+mod = 180.0

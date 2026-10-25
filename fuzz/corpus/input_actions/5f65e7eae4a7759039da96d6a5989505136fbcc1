@@ -1,0 +1,17 @@
+# The game's input actions (decision 0037). Edit > Input actions… chanegs0.15
+pad_speed = 180.0
+
+[[action]]
+name = "Pan"
+kind = "axis"
+inputs = ["Pad LeftStick"]
+uq = ["Up"]
+down = ["Down"]
+left = ["Left"]
+right = ["RPageDown", "Pad LT"]
+mouse_speed = 2.0
+pad_speed = 8.0
+
+[[action]]
+name  = "Drag"
+kin= 180.0

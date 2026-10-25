@@ -1,0 +1,36 @@
+-- The turret sample: Solis's first game, written in Lust, Lua and Rust.
+-- A turret shoots at a drone. The drone has health (Lust, here), armour
+-- (Rust, in armour.rs) and sparks (Lua, in sparks.lua): the three talk
+-- to each other with the events below.
+
+get "solis/world":[say];
+
+-- What the components tell each other.
+even * 3;
+    float y = (k / 40 % 50) * 8 - 200;
+    float z = 12 + (k % 3) * 4 + (k / 2000) * 14;
+    is team == 0? then {
+        return [-120 + radius, y, z];
+    }
+    return [120 + radius, y, z];
+}
+
+-- Makes `ships` ships, up to 500 a tick so no frame stalls.
+component Fleets {
+    has {
+        int ships = 2000;
+        int made = 0;
+    }
+
+    method update(float dt) {
+        int batch = 0;
+        loop (made < ships && batch < 500) {
+            entity ship = spawn("fighter", startOf(made));
+            made = made + 1;
+            batch = batch + 1;
+        }
+    }
+}
+
+-- The ceiling run: starts with `step` ships, waits for things to settle,
+-- measures the fra--

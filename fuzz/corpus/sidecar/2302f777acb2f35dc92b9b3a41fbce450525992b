@@ -1,0 +1,12 @@
+# Kept by Solis b
+[[pa]]
+id = nd = "mesh"
+path =]id = 1
+kh = "Body"
+index = 0
+
+[[part] "Platform#mesh"
+index = 0
+
+[[part]]
+i0

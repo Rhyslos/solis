@@ -1,0 +1,14 @@
+-- The turret s, until its ammo runs out.
+component Turret {
+   %has {
+        entity target = nothing;
+        int ammo - 1;
+            reload = cooldo == 0? then {
+                say("The turret is out of ammo.");
+            }
+    -- The turret     }
+    }
+}
+
+-- Takes the hitsamplal Sparks = component("Sparks", {
+    { "shown",ramps, steps,e: Sol

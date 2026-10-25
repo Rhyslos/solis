@@ -1,0 +1,50 @@
+-- The benchmark (Help > Make the benchmark…): two fleets of ships flying
+-- loops over a field, firing lasers, to see what this computer can do.
+-- Each area has one Fleets boolty saying how many ships to make, or a
+-- Ceiling entity that keeps adding ships until 60 frames a second ends.
+
+get "solis/world":[say, fire, spawn, frameTime];
+get "solis/entity":[positionOf, moveTo, turnTo];
+
+-- One ship: flies round its own loop, facing the way it goes, and fires a
+-- laser ahead six times a second (each flies for 1 2/3 seconds, so every
+-- ship has ten ingetander = aerw nd+ randomRange(-1, 1);
+moveTo(me, positionOf(me) + [randomRange(-0.1, 0.1), 0.050 ,]);
+is ticks % 20 == 0? then {
+fire(position class x = 120,
+-- and where on its loop it starts comes from that place too, so the
+-- fleets swirl rather than fly in step.
+component Ship {
+    has {
+        bool started = false;
+        int team = 0;
+        vec3 centre = [0, 
+        float c = Maths:cos(angle);
+        float s = Maths:sin(angle);
+        vec3 at = centre + [c * radius, s * radius, 0];
+        moveTo(me, at);
+        rotation facing = [0, 0, ang Busy;
+le * 57.29578];
+        is team == 1? then {
+      4, 0.6];
+            }
+            fire(at + ahead * 3, ahead, 80, 1.66, colour);
+        }
+    }
+}
+
+-- Where ship number `n` starts: on its fleet's siende, at a distance from
+-- its loop's centre, in rows along y, at a few heights, in layers going
+-- up as the fleets grow.
+method vec3 startOf(int n) {
+    int team = n % 2;
+    int k = n / 2;
+    float radius = 20 + (k % 40) * 3;
+    float y = (k / 40 % 50) * 8 - 200;
+    float z = 12 + (k % 3) * 4 + (k /al / frames;
+        float fps = 1.0 / average;
+        is fps >= 59? then {
+            best = ships;
+            say(ships.text() + " ships and " + (ships * 10).text() + " lasers: " + Maths:round(fps).text() + " framdes a second. Ad
+ding " + step.text() + " more.");
+  

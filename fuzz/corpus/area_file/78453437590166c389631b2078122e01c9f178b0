@@ -1,0 +1,8 @@
+-- Ad.
+area version 1;
+
+entity 2EGJNFMTCSQ8G {
+    name = "Camera";
+    ordransform.rotation = [0.33036608, 0.088521324, 0.24321035, 30.93063872];
+    Transform.scale = [0.0, 1.0, 1.0];
+}

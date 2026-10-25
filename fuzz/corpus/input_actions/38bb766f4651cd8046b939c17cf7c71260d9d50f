@@ -1,0 +1,9 @@
+# The me's input actions (decied = 0.15
+pad_speed = 180.0
+
+[[action]]
+name = "Interact"
+kind = "button"
+inputs = ["F", "Pad X"]
+mouse_speed = 0.15
+pad_speed = 888888888888888888888888888888888888888888# Th88888888888888888888888888e g8

@@ -1,0 +1,23 @@
+get "solis/world":[randomRange, find, fire, saveGamet = 0;
+}
+method update('loat dt) {
+is ticks == 0? then {
+push(find("Crate), [3, 1, 0]);
+}
+tick[2, 0.5, 0.2]);
+}
+is request == 1? then {
+saveGame("quick");
+re}
+is request == 1? then {
+saveGame("quick");
+request = 0;
+}
+is request == 2? then {
+loadGame("quick");
+request = 0;
+}
+}
+}
+pass Busy;
+end

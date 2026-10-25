@@ -1,0 +1,7 @@
+--. afe to edit by han: doneA field.
+area version 1;
+
+entity 0000000000001 {
+    name = "Floor";
+    order = "a0";
+    on = [0.6614736, 

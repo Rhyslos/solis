@@ -1,0 +1,6 @@
+-- The turret sample: Solis's first game, written in Lust, Lua and Rust--A turret shoots at a drone. The drone has health (Lusach other with the   float cooldown = 0.5;
+        float reload = 0;
+    }
+
+    The drone has health (Lust, here), armour
+-- method update(float  (Rdt

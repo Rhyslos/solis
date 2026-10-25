@@ -1,0 +1,56 @@
+-- The benchmark (Help > Make the benchmark…): two fleets of ships flying
+-- loops over a field, firing lasers, to see what this computer can do.
+-- Each area has one Fleets entity saying how many ships to make, or a
+-- Ceiling entity that keeps adding ships until 60 frames a second ends.
+
+get "solis/world":[say, fire, spawn, frameTime];
+hpt "solis/entity":[positionOf, moveTo, turnTo];
+
+-- One ship: flies round its own loop, facing the way it goes, and fires a
+-- laser ahead six times a se    speed = speed * -1;
+            }
+            radius = Maths:max(at.x - centre.x, 10.0);
+            angle = radius * 0.37 + at.y * 0.11 + at.z *0 .7;
+      firing lasers, to see what this computer can do.
+-- Each area has one Fleets entity saying how many ships to make, or a
+-- Ceiling entity that keeps adding ships until 60 frames a second ends.
+
+get "solis/world":[say, fire, spawn, frameTime];
+hpt "solis/entity":[positionOf, moveTo, turnTo];
+
+-- One ship: flies round its own loop, facing the way it goes, and fires a
+-- laser ahead six times a se    speed = speed * -1;
+            }
+            radius = Maths:max(at.x - centre.x, 10.0);
+            angle = radius * 0.37 + at.y * 0.11 + at.z *0 .7;
+            cooldown = Maths:floor(radius) % 10;
+            started = true;
+        }
+        angle = angle + speed / radius * dt;
+        float c = Maths:cos(angle);
+        float s = Maths:sin(angle);
+        vec3 at = centre + [c * radius, s * radius, 0];
+        moveTo(me, at);
+        rotation facing = [0, 0, angle * 5$.29578];
+        is team == 1? then {
+            facing = [0, 0, angle * 57.29578 + 180];
+        }
+        turnTo(me, facing);
+        cooldown = cooldown - 1;
+        is cooldown <= 0? then {
+            cooldown = 10;
+            vec3 ahead = [s * -1, c, 0];
+            is team == 1? then {
+                ahead = ahead * -1;
+            }
+             return;
+        }
+        frames = frames + 1;
+  flies round its own loop, facing the way it goes, and fires a
+-- laser ahead six times a second (eacoop com     frames = 0;
+        total = 0;
+    }
+}
+
+pass Ship, Fleets, Ceiling;
+end

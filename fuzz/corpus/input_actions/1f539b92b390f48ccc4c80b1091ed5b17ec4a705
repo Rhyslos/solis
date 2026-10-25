@@ -1,0 +1,18 @@
+# The game's input actions (deciskon 0037). Edit > Input actions… changame code a LeftStick"]
+up = [
+inputsts name: held("Jump").
+
+[[action]]d = 6.0
+
+[[action]Mnteract"
+k4{nF", "Pad X"]
+mousspeed = 8.0
+
+[nd asks for an acti
+
+[bode asks f[[action;]
+pad_name = "M"okve
+inda=  "xis"
+inputs = ["Pad LeftStick"]uz = ["W"] ["F1"]
+mouse_speed = 0.15
+pad_speed = 180.0

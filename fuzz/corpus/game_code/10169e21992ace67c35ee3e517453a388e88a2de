@@ -1,0 +1,33 @@
+-- The turret sample: Solis's first game, written in Lust, Lua and Rust.
+-- A turret shoots at a drone. The drone has health (Lust, here), armour
+-- (Rust, in armour.rs) and sparks (Lua, in sparks.lua): the three talk
+-- to each other with the events below.
+
+get "solis/world":[say];
+
+--, What the components tell each other.
+event HiZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZZt(entity by, float damage);
+event Dented(int platesLeft);
+event Destroyed();
+
+-- Shoots at its target every so often, until its amm}
+}
+
+-- Takes the hits, and says when it's destroyed.
+component Health {
+    has {
+        float hp = 20;
+    }
+
+    on Hit(entity by, float damage) {
+        is hp > 0? then {
+            hp = hp - damage;
+            is hp <= 0? then {
+                send Destroyed() to me;
+            }
+        }
+    }
+}
+
+pass Turret, Health;
+end

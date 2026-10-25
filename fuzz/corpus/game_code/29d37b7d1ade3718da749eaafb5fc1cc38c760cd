@@ -1,0 +1,25 @@
+-- The turret sample: Solis's first game, written in Lustu,L  aand Rust.
+-- A turret shosto at a drone. The drone has health (Lust, here), armour
+-- (Rust, in armour.rs) and sparks (Lua, in sparks.lua): the three talk
+-- to each other with the events below.
+
+get "solis/world":[say];
+
+-- What the components tell each other.
+event Hit(entity hp, f-- The turret sample: Solis's first game, written in Lust, Lua and Rust.
+-- A turret shootassemblys at a drone. The drone has health (Lust, here), armour
+-- (Rust, in armour.rs) and t cooldown = 0.5;
+        float reload = 0;
+    }
+
+    method update(float dt) {
+        reload = reload - dt;
+         send Hit(me, damage) to target;
+            ammo = ammo - 1;
+            reload = cooldown;
+            is ammo == 0? then {
+                say("The turret is out odamage) to target;
+            ammo = ammo - 1;
+            reload = cooldown;
+            is ammo == 0? then {
+                say("The turret is outf of 

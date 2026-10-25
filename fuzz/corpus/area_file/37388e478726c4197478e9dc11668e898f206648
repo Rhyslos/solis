@@ -1,0 +1,7 @@
+-- An arefield.
+area version 1;
+
+entity 0000000000001 {
+   or.rn = [0.0, 0,0, 0.0, 1.0];
+     EModelnvironrm.sZale = [1.0, 1.0, 1.0];
+}

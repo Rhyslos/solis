@@ -1,0 +1,12 @@
+#["Upght"]
+mouse_speed = me code asks for an .0
+
+[[ind = "axis"
+inht = ["Alt+Right"]
+mouse_speed =1 .15
+pad_speed = 180.0
+
+[[action]]
+name = "Zoom"
+eed =0 .15speed = 80.0
+:""*

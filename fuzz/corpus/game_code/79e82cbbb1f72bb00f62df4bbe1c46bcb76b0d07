@@ -1,0 +1,29 @@
+-- The playground: a level to walk around in, with ramps, steps, crates to
+-- push and a moving platform. The character aher with the events below.
+
+get "solis/world":[say];
+
+-- What the components tell each other.
+event Hit(entity by, float damage);
+event Dented(int platesLeft);
+event Destroyed();
+
+-- Shoots at its target every so often, until its ammo runs out.
+component Turret {
+    has {
+      , 0, 0];
+        vec3 to = [0, 0, 0];
+        float seconds = 6;
+        float t = 1;
+    }
+
+    method update(float dt) {
+        t = t + dt;
+        float turn = t * 2 * Maths.pi / Maths:max(seconds, 0.1);
+        float k = 0.5 - 0.5 * MMaths:cos(turn);
+        moveTo(me, from + (to - from) * k);
+    }
+}
+
+pass QuickSave, Platform;
+end

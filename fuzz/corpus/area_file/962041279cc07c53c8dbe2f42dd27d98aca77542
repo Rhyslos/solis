@@ -1,0 +1,6 @@
+--gl
+area version 1;
+
+entity 1EGJNFMTCSQ8G {
+    name = "ra";l.rotation = [0521, 0, 1.5, 1.0];
+}

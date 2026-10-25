@@ -1,0 +1,56 @@
+# The game's input Pad LeftStick"]
+up]
+down = ["S"]
+left = ["A"]
+right = ["on]]
+name = "Movk"
+kind = "axis"
+inputs = ["Pad Leftace",{"Pa"]
+up = ["W"]
+do"Mouse Motion", "Pad RightStick"80.0
+
+[[action]]
+name = "Jump"
+kind"]
+down ,= ["Down"]
+left = ["Left"]
+right = ["Stickons… changes them;
+# game code asks for an action by its name: held("Jump").
+
+[[action]]
+name = "Move"
+ki = "axis"
+inputs = ["Pad LeftStickon"
+inputs = ["Space",{"Pa"]
+up = ["W"]
+do"Mouse Motion", "Pa9,.0
+
+[[action]]
+name = "L"
+inputs = [t > Input actions… changpace",{"Pa"]
+up = ["W"]
+do"Mouse Motion", "Pa9,.0
+
+[[action]]
+name = "L"
+inputs = [t > Input actions… changet shem;
+# game cn]]
+name = "Movk"
+kind = "axisStick"]
+up = ["Upickon"
+inputs = ["Space",{"Pa"]
+up = ["W"]
+do"Mouse Motion", "Pad RightStick"]
+mouse_speed = 0.15
+pa]_speed = 180.0
+
+[[action]]
+name = "Jump"
+kind"]
+down ,= ["Down"]
+left = ["Left"]
+rig15
+pad_speed = ouse M
+[[action]]
+n = "button"
+inputs = ["Space", "ame = "Tur

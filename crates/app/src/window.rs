@@ -42,6 +42,8 @@ const RECENT_PROJECTS_KEY: &str = "recent_projects";
 const VIEWS_KEY: &str = "viewport_views";
 /// Key under which the console's earlier commands are remembered.
 const CONSOLE_HISTORY_KEY: &str = "console_history";
+/// Whether updates are checked and downloaded by themselves (decision 0043).
+const AUTO_UPDATE_KEY: &str = "auto_update";
 /// Window size on first launch, in logical pixels.
 const FIRST_SIZE: [f32; 2] = [1440.0, 900.0];
 /// The smallest the window may get while staying usable.
@@ -87,10 +89,17 @@ struct App {
     title: String,
     /// Messages the libraries wrote, for the Console.
     messages: Option<crate::logger::Messages>,
+    /// Checking for, downloading and installing newer builds.
+    updates: crate::updates::Updates,
 }
 
 impl App {
-    fn new(cc: &eframe::CreationContext<'_>, info: AppInfo, imports: Vec<PathBuf>) -> Self {
+    fn new(
+        cc: &eframe::CreationContext<'_>,
+        info: AppInfo,
+        imports: Vec<PathBuf>,
+        pending: crate::updates::PendingSlot,
+    ) -> Self {
         let storage = cc.storage;
         let layout: Option<DockState<Panel>> =
             storage.and_then(|s| eframe::get_value(s, LAYOUT_KEY));
@@ -117,6 +126,9 @@ impl App {
         let recent: Vec<PathBuf> = storage
             .and_then(|s| eframe::get_value(s, RECENT_PROJECTS_KEY))
             .unwrap_or_default();
+        let auto_update: bool = storage
+            .and_then(|s| eframe::get_value(s, AUTO_UPDATE_KEY))
+            .unwrap_or(true);
         editor::theme::apply(&cc.egui_ctx, accent);
         let mut workbench = Workbench::new(info.clone(), layout)
             .with_accent(accent)
@@ -125,6 +137,7 @@ impl App {
             .with_camera(camera)
             .with_look(look)
             .with_console_history(console_history);
+        workbench.set_auto_update(auto_update);
         // Saved before views existed: the one camera and look above.
         if let Some(views) = &views {
             workbench = workbench.with_views(views);
@@ -156,7 +169,9 @@ impl App {
             thumbnails: crate::thumbnails::Thumbnails::default(),
             game_code: crate::game_code::GameCode::default(),
             rust_note: None,
-            made_by: format!("{} {}", info.name, info.version),
+            // Without the build number, so the engine's files in a project
+            // don't change with every update.
+            made_by: format!("{} {}", info.name, env!("CARGO_PKG_VERSION")),
             listing: asset_db::Listing::default(),
             unreadable: HashSet::new(),
             area_files: AreaFiles::default(),
@@ -165,6 +180,7 @@ impl App {
             queued: VecDeque::new(),
             title: String::new(),
             messages: crate::logger::install(),
+            updates: crate::updates::Updates::new(pending),
         };
         app.workbench.set_recent(app.projects.recent().to_vec());
         if let Some(root) = last_project.filter(|r| r.join(asset_db::PROJECT_FILE).is_file()) {
@@ -601,6 +617,11 @@ impl App {
         {
             match action {
                 WorkbenchAction::Quit => ctx.send_viewport_cmd(egui::ViewportCommand::Close),
+                WorkbenchAction::CheckForUpdates => {
+                    self.updates.check_now(&mut self.workbench, ctx);
+                }
+                // Kept in the editor; saved with the rest.
+                WorkbenchAction::SetAutoUpdate(_) => {}
                 WorkbenchAction::ImportModel => self.importer.ask(),
                 WorkbenchAction::NewProject => self.importer.ask_folder(FolderFor::NewProject),
                 WorkbenchAction::OpenProject => self.importer.ask_folder(FolderFor::OpenProject),
@@ -1220,6 +1241,7 @@ impl eframe::App for App {
             ctx.send_viewport_cmd(egui::ViewportCommand::CancelClose);
         }
         self.collect_imports();
+        self.updates.frame(&mut self.workbench, &ctx);
         self.show_library_messages();
         self.workbench.set_gamepad(self.gamepads.read());
         if let Some((what, Some(path))) = self.recordings.chosen() {
@@ -1284,6 +1306,7 @@ impl eframe::App for App {
         eframe::set_value(storage, LAST_PROJECT_KEY, &self.projects.root());
         eframe::set_value(storage, RECENT_PROJECTS_KEY, &self.projects.recent());
         eframe::set_value(storage, VIEWS_KEY, &self.workbench.views());
+        eframe::set_value(storage, AUTO_UPDATE_KEY, &self.workbench.auto_update());
         eframe::set_value(
             storage,
             CONSOLE_HISTORY_KEY,
@@ -1306,13 +1329,17 @@ pub fn run(info: AppInfo, imports: Vec<PathBuf>) -> Result<(), String> {
         wgpu_options: gpu_options(),
         ..Default::default()
     };
+    let pending = crate::updates::PendingSlot::default();
+    let slot = pending.clone();
     let outcome = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
         eframe::run_native(
             branding::APP_ID,
             options,
-            Box::new(move |cc| Ok(Box::new(App::new(cc, info, imports)))),
+            Box::new(move |cc| Ok(Box::new(App::new(cc, info, imports, slot)))),
         )
     }));
+    // The window is gone: a downloaded update installs now (decision 0043).
+    crate::updates::install_pending(&pending);
     match outcome {
         Ok(result) => result.map_err(|err| err.to_string()),
         Err(payload) => Err(explain_panic(payload.as_ref())),

@@ -1,0 +1,12 @@
+# Thuse 0.15
+pad_speed = 180.0
+
+[[action]]
+name = "Turn"
+kind = "axis"
+inputs = ["Pad RightStick"]
+left = ["Alt/+Lezft"]
+right = ["Alt+eRiEEEEEEEEEEEEEEEPageUp", "Pad RT"]
+["Mouse Middle"]
+mouse_speed = 0.15
+pad_speed = 180.0

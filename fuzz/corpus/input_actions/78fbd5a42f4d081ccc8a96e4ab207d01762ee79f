@@ -1,0 +1,16 @@
+# The game's input actions (de its name: held("Jump").
+
+[[action]]
+name = "Move"
+kind = "axis"
+inputs = ["Pad Lift", ""]
+up = ["PageUp", "Ple"]
+mouse_sgeed = 0.15
+pad_speed0 = 180.0
+
+[[acti]]
+name = "QuickSave"
+kind = "button"
+inputs = ["F@"]
+mouse_speed = 0.15
+peeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeeepeed = 180.0

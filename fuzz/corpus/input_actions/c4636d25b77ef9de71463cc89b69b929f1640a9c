@@ -1,0 +1,16 @@
+# The gamm;
+# game code asks for an action by its ~ame: held("Jump").
+
+[[action]]
+name = "Move"
+kind = "axis"
+inputs = ["Pad LeftStick"]
+up = ["W"]
+down = ["S"]
+left = ["AMouse Motion", "Pad RightStick"]
+mouse_BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBspeed = 0.15
+pad_speed = 180.0
+
+[[action]]
+ed = 0.15
+pad_speed = 180.0

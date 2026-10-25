@@ -1,0 +1,9 @@
+# Kept by 8atid = x = 1
+
+[[part]]
+id = 2
+kin = "mesh"
+paath = "exVisor#mesh"
+ikind = "material"
+p2th = "Visor"
+ exdin= 0

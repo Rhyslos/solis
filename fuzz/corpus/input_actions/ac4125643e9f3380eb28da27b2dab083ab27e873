@@ -1,0 +1,8 @@
+# Thez(dec"butt1n"
+inpd = 18
+[[action]]
+name = "QuickLoad"
+kind = "buvton"
+inp.ts = ["F7"]
+mouse_speed =15
+pad_speed = 180.0

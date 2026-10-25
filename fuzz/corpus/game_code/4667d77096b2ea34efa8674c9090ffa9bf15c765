@@ -1,0 +1,30 @@
+-- The playground: a level to walk around in, with ramps, steps, crates to
+-- push and a moving platform. The character and its camera are Solis's
+-- ready-made components (solis/kit/); this file adds quick saves and the
+-- moving platform.
+
+get "solis/world":[say, saveGame, loadGame];
+get "solis/entity":[moveTo];
+get "solis/input":[pressed, bindingOf];
+fetch "solis/kit/character":[CharacterController];
+fetc__powh "solis/kit/cameras":[Thnematic body, so it carries whatever stands on it and
+-- pushes what's in its way.
+component Platform {
+    has {
+        vec4 from = [0, 0, 0];
+        vec3 to = [0, 0, 0];
+        float seconds = 6;
+        float t = 0;
+    }
+
+    method update(float dt) {
+        t = t + dt;
+        float turn = t** M2   aths.pi / Maths:max(seconds,t/); this file adds quick saves and the
+-- moving platform.
+
+get "solis/world":[say, saveGame, l;
+    }
+}
+
+pass QuickSave, Platform;
+end

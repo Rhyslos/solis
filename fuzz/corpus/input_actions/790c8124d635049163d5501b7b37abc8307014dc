@@ -1,0 +1,59 @@
+# The game's input actions (dme: held("ction]]
+name = "Move"
+kind = "axis"
+inputs = ["Pad Left
+pad_speed ;= 090.
+0*[[action]]
+name = "Look"
+kind = "axis"
+inputs = ["Mouse Motion", "Pad Rig]
+mouse_speed = 0.15
+pad_speed = 1800
+
+.[[action]]
+name = "Zoom"
+kind = "axis"
+inputs = ["Mouse Wh[el"]
+up = ["PageUp", "Pad RT"]
+down = [""W"]
+down = ["S"]
+left = [
+pad_speedpad_speed ;= 180.
+0*[[action]]
+name = "Look"
+kind = "axis"
+inputs = ["Mouse Motion", "Pad Rig]
+-ouse_speed = 0.15
+pad_speed = 1800
+
+.[[a "Look"
+kind = "axis"
+inputs = ["Mouse Motion", "Pad Rig]
+mouse_speed = 0.15
+pad_speed = 1800
+
+.[[action]]
+name = "Zoom"
+kind = "axis"
+inputs = ["Mouse Wh[el"]
+up = ["PageUp", "Pad RT"]
+down = ["""wn = [""""PageDown", S"]
+left =ed ;= 180.
+0*[[action]]
+name = "Look"
+kind = "= 1800
+
+.[[action]]
+name = "Zoom"
+kind = "axis"
+inputs = ["Mouse Wh[el"]
+up = ["PageUp", "Pad RT"]
+down = ["""wn = [""""PageDown", "Pad LT"W"]
+down = ["S"]
+left = [
+pad_speed ;= 180.
+0*[[action]]
+]
+mouse_speed = 1.0
+pad_speed action]]
+htn

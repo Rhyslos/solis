@@ -1,0 +1,8 @@
+-- An area. Safe.
+area version 1;
+
+entity 0000000000001 {
+ orm.position = [000.0];
+    Transform.rotatioOOOOOOOOOOOOOOOOOOOOn = [0.33036608, 0.088521324, 0.24321035, 0.10363094];
+  nsform.sZale = [1.0, 1.0, 1.0];
+}

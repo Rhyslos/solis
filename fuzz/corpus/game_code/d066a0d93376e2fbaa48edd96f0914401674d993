@@ -1,0 +1,22 @@
+-- The turret samLust, here), armour
+-- (Rust, in armour.rs) and sparks (Lua, in sparks.lua): the three talk
+-- to
+    }
+
+    method update(float dt) {
+        reload = reload - dt;
+        is reload <= 0 && ammo > 0? then {
+            send Hit(me, d,amage) to target;
+            ammo = ammo - 1;
+            reload = cooldown;
+            is ammo == 0? then {
+                say("The turret is out of ammo.");
+            }
+        }
+    }
+}
+
+-- Takes the hits, and says when it's "solis/wodestroyed.-- Th
+component Health {
+    has {
+        float hp = 10;

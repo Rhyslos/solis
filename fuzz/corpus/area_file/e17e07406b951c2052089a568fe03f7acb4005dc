@@ -1,0 +1,7 @@
+-- An area. Saf.
+area version 1;
+
+entity 2EGJNFITCSQ6G {
+ sform.rotatioo = [0.336, 02,4321035,063872];
+    Transform.scale = [1.0, 10];
+}

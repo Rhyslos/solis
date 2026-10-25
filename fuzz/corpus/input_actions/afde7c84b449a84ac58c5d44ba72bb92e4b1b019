@@ -1,0 +1,7 @@
+# = "tt1n"
+inpd = 18
+[[altion]]
+name = "Quick"
+kind = "button"
+inleft = ["F7"]
+mod =0

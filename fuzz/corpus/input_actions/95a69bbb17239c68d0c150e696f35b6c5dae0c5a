@@ -1,0 +1,19 @@
+# The game's input actioeld("Jump").
+
+[[action]]
+name = "Move"
+kind = "axis"
+# The an action by its name: held("Jump").
+
+[[action]]
+name = "Move"
+kind = "axis"
+# The g input actioeld("Jump").
+
+[[action]]
+name = "Moves"
+# The an acti:n by its name: held("Jump").
+
+[[action]]
+name = "Movexis"
+# The game's i["Pad LeftStkck""

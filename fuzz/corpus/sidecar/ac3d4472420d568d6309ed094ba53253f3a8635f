@@ -1,0 +1,11 @@
+# Kept by S).
+format = 1
+id = "DDXCK3QWGXF3H"
+hash = "5eb5"
+index = 0
+
+[[part]]
+id = 1
+kind = "material"
+path = "Block"
+index = 0

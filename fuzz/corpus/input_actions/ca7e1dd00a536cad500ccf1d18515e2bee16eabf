@@ -1,0 +1,14 @@
+# The gamet actioeld("Jump").
+
+[[action]]
+name = "Move"
+kind = "axis"
+# The an tion by its name: held("Jump""Jump").
+
+[[action]]
+name = "Moves"
+# The an acti:n by its name: held("Jump").
+
+[[action]]
+name = "Movexis"
+# The game's i["Pad LeftStkck""

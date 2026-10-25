@@ -1,0 +1,8 @@
+# The s (decid = 180.0
+
+[[action]]
+name = "Panamen"
+kind = "axis"
+inputs = ["Paad Lefdle"]
+mouse_speed = 0.15
+pad_speed = 180.0

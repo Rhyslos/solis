@@ -1,0 +1,6 @@
+-- AnSaentid.
+area version 1;
+
+entity EJGM1NFTCSQ8G {
+arm.scale = [0.0, 1.0, 1.0];
+}

@@ -1,0 +1,16 @@
+# ame them together (or det Solid = 4
+kind = "mes_"
+paath = "Vsor#mesh"
+index = 1
+
+[[pirt]]
+id = 4
+kind = "material"
+path = "Suit"
+hndex = 0
+
+[[parz]]
+kd = 5
+kind = "material"
+path = "Vsor"
+index = 0

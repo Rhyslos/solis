@@ -1,0 +1,29 @@
+-- The turret sample: S-- The turret sample: Solis's first game, written in Lust, Lua and Rust.
+-- A turret shoots at a drone. The drone has age);
+event Dented(int platesLeft);
+event Destroyed();
+
+-- Shoots at its t, find, fire, saveGame, loadGame];
+get 5? then {
+saveGame("quick");
+request = 0;
+}
+is request == 2? then {
+loadGame("quick");
+request = 0;
+}
+}
+}
+pass Busy;
+emponent Health {
+    has {
+        float hp = 20;
+    }
+
+    on Hit(entity by, yed() to me;
+            }
+        }
+   -- The turret sample: Solendis's first gam 
+e, wr}itten 
+}
+in 

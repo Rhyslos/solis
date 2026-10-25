@@ -1,0 +1,38 @@
+# Kept by Solis beside its asset: commit it wih the asset, and move or
+# rename them together (or let Solisid = 0
+kind = "node"
+path = "Body"
+index = 0
+
+[[part]]
+id = 1
+kind = "node"
+path = """sor"
+index = 1
+
+[[part]]
+id = 2ody"
+index = 0
+
+[[part]]
+id = 1
+kind = "node"
+path = "Visoport]se"
+index = 0
+
+[[part]]
+id = 3
+kind = "mesh"
+path = "Visor#mesh"
+#mesh"
+index = rt]]
+id = 4
+kind = "material"
+pSuit"
+index = 0
+
+[[part]]
+id = 5
+kind = "material"
+path = "ViBody#mesh"
+i 0

@@ -1,0 +1,7 @@
+-- An area. Safe toar e field.
+area version 1;
+
+entity 0000000800001 {
+   Light.soft_edge = 10.0;
+    Ligh/rm.position = [0.0];
+}

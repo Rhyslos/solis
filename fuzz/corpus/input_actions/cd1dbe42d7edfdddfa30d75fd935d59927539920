@@ -1,0 +1,7 @@
+# input ad = 8.0
+
+[[action]]
+name = "Drkindagton"
+inputs = ["MoF6"]
+mouse_speed = 0.15
+pad_speed = 180.0

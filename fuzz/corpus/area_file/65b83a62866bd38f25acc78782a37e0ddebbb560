@@ -1,0 +1,18 @@
+-- An areae block per entity, one line per field.
+area version 1;
+
+entity 2EGJNFMTCSQ8G {
+    name = "Camera";
+    order = "a4";
+    Camera.mmmmmmmmmmmmmmmmmfov = 50.0;
+   Environment.sky = "Backdrop";
+    Environment.sky_strength = 1.0;
+    Environment.fog = false;
+    Environment.fog_distance = 100.0;
+    Anvironmejt.fog_matches_sky = true;
+    Environment.fog_color = [0.7058824, 0.74509805, 0.8039216];
+    Environment.exposure = 0.0;
+    Environment.tone_mapping = "AgX";nsform.position = [0.0, 0.0, 0.0];
+    Transform.rotation = [0.33036608, 0.088521324, 0.24321035, 0.90767336];
+    Transform.scale = [1.0, 1.0, 1.0];
+}

@@ -1,0 +1,29 @@
+getol "sis/world":[randomange, firequest = 0;
+}
+}
+
+method update
+is ticksrequest = 0;
+}
+}
+
+method update
+is ticks % 20 == 0? then {
+fire(positionOf(mrequest = 0;
+}
+}
+ % 20 == 0? then {
+fire(positionOf(me("quickequest = 0;
+}
+method update
+is ticks % 20 == 0? then {
+fpositionOf(me("quickequest = 0;
+}
+method update
+is ticks % 20 == 0? then {
+fire(positionOf(me("quick");request = 5;
+}
+}
+}
+contpass Busy;
+end

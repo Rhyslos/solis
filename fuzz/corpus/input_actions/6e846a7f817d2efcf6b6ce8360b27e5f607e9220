@@ -1,0 +1,22 @@
+#, "Pad Righ]
+mouse_speed = 0d =use_speed = 4.15
+pad_speed = 180.0
+
+[[action]]
+name = "Jump"
+kind = "b "Pad X"]
+mouse_sp= 180.0[
+
+[[action]]
+name = "QuickLoad"
+kind = "but"F6"]
+mouse_speed = 0d = "button"
+inputs = ["F", "Pad Xotion""]
+mouse_speed = 0d = "bri0!.1 =d5
+pad_spued;  081=.0
+
+[[action]]
+name = "Pan"e_speed = 0d = "button"
+inputs = ["F", "Pad X"]
+mo, "Pad RightStick"]
+mou#e_speedeed RRRRRRRRRRRRRR= 180.0

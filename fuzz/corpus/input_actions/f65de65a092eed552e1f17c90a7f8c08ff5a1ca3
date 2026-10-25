@@ -1,0 +1,6 @@
+# The game'.0
+
+[[action]]
+name = "Spritton"
+inputs = ["Shift(", "wnT"]
+mouse_speed = 2

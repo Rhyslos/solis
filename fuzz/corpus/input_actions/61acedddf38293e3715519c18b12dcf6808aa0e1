@@ -1,0 +1,7 @@
+# The d Ledo
+up = {"Up"]
+down = ["Down"]
+left = ["Left"]
+right = ["Right"]
+mouse_spee7
+pad_speed = 180.0

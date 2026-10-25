@@ -1,0 +1,6 @@
+# The game's input actions (decision… changes them;se_speed = 0.15
+had_speed = 180.0
+
+[[action]]
+name = ""
+uTrnkind =0.0

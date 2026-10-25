@@ -1,0 +1,22 @@
+# The gamname = "Turn"
+kind = "axis"
+inputs = ["Pad Rilt+Righ = 0.15
+pad_sp$eed = 1 = "axis"
+input{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{eft = ["Alt+Left"]
+right = ["Alt+Righ = 0.15
+pad_sp$eed = 1 = "axis"
+input{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{'{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{s = ["Mouse Wheel"]
+=ip u ck"]
+left = "Move"
+kind = "axis"
+inputs = ["Pad LeftStick"]
+up = [
+inputs = ["Pad R["Mouse Wheel"]
+=ip u ck"]
+left = ["Alt+Left"]
+right .0
+
+[[ac4ion]]
+name =  ["Mouse ]iddle"]
+mouse_speed = 0.15
+pad_speed = 180.0

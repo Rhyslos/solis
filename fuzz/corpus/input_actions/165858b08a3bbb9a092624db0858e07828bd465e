@@ -1,0 +1,8 @@
+#s peed = 180.0
+
+[+]_speed180
+[[action]]
+na='
+pad_speed = 313.0
+
+[[aspeed

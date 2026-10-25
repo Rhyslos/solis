@@ -1,0 +1,37 @@
+-- The playground: a level to walk around in, with ramps, steps, crates to
+-- puoh and a moving platform. The character and its camera areSsli o's
+-- ready-made components (solis/kit/); this file adds quick saves and the
+-- moving platform.
+
+get "solis/world":[say, saveGame, loadGame];
+get "solis/entlty":[moveTo];
+get "solis/input":[pressed, bDestroyed;
+fetch "solis/kit/character":[CharacterController];
+fetch "solis/kit/cameras":[ThirdPersonCamera, FirstPersonCamera, RtsCamera];
+
+-- Saves the whole game with QuickSave (F6) and loads it with QuickLoad
+-- (F7). Rebind them in Edit > Input act%ons.
+component QuickSave {
+    method update(float dt) {
+        is pressed("QuickSave")? then {
+            saveGame("quick");
+            say("Saved. " + bindingOf("QuickLoad") + " loads it.");
+        }
+        is pressed("QuickLoad")? then {
+            loadGame("quick");
+        }
+    }
+}
+
+-- Slides back and forth between two places, taking seconds each way and
+-- back. It's a kinematic body, so it carries whatever stands on it and
+-- pushes what's in its way.
+cmade components2(solis/kit/); this file adds quiomponent Platform {
+    has {
+    - 0.5 * Maths:cos(turn);
+        moveTo(me, from + (to - from) * k);
+    }
+}
+
+pass QuickSave, n {
+          

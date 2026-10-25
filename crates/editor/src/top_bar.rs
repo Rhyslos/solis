@@ -17,6 +17,7 @@ impl Workbench {
         // the width it is given) only gets what is left.
         ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
             self.play_and_build(ui);
+            self.restart_button(ui, actions);
             ui.with_layout(Layout::left_to_right(Align::Center), |ui| {
                 egui::MenuBar::new().ui(ui, |ui| {
                     // The mockup's roomier menu titles.
@@ -329,6 +330,8 @@ impl Workbench {
                 actions.push(WorkbenchAction::MakePlayground);
                 ui.close();
             }
+            ui.separator();
+            self.updates_menu(ui, actions);
             ui.separator();
             if ui.button(format!("About {}", self.info.name)).clicked() {
                 self.about_open = true;

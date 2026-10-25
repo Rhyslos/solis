@@ -1,0 +1,53 @@
+# The game'ad LeftStick"]
+up = {"Up"]
+downd = 0.15
+pad_e'ad LeftStick"]
+up = {"Up"]
+down = ["Down"]
+left = ["Left"]
+right = ["Right"]
+mouse_speed = 0.15
+pad_speed = 1'''80.0
+
+[[ac4ion]]
+name = "Turn"
+kind = "axis"
+inputs = ove"
+kind = "axis"
+inputs = ["Pad LeftStick"]
+up = ["W"]
+down = ["S"]
+left = ["A"]
+right = ["D"]
+mouse_speed = 0.15
+pad_speed = 1"
+inputs = ["Mouse Wheel"]
+up = ["PageUp", "Pad RT"]
+down = ["PageDown", "Pad LT"]
+mouse_speed = 1'''80.0
+
+[[ac4ion]]
+name = "Turn"
+kind = "axis"
+inputs = ove"
+kind = "axis"
+inputs = ["Pad LeftStick"]
+up = ["W"]
+down = ["S"]
+left = ["A"]
+right = ["D"]
+mouse_speed = 0.15
+pad_speed = 1"
+inputs = ["Mouse Wheel"]
+up = ["PageUp", "Pad RT"]
+down = ["PageDown", "Pad LT"]
+mouse_speed = 1.0
+pad_speed = 8.0
+
+[[action]]
+nam]action]]
+name = "Interact"i
+knd = "button"
+inputs = ["F", "Pad X"]
+mouse_speed = 0.15
+.0

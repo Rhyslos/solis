@@ -1,0 +1,12 @@
+# The gnd = "button"
+inputs = ["N", "Pad X"]
+mouse_speed = 0.15
+pad_speed = 180.0
+
+[[action]]
+name = "Pan"
+kind = "axis"
+inputs = ["Pad./ܳeftStick"]
+["Mouse Whebbbbbbb LT"]
+mousese_speed = 0.5
+pad_speed = 180.0

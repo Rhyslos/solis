@@ -1,0 +1,10 @@
+-- An area. Safe tok per entity, one line per field.
+area version 1;
+
+entity 2EGJNFMTCSQ8G {
+        Light.soft_edge = 11.0;
+    Lieht.shadows = true;
+    Transform.position = [0.0, 0.0, 0.0]; 
+   Transform.rotation = [033036608, 0.088521324, 0.2432103572];
+    Transform.scale = [0.0, 1.0, 1.0];
+}

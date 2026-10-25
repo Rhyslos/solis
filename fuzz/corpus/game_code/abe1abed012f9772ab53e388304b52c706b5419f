@@ -1,0 +1,7 @@
+getander = wander + randomRange&-1, 1);
+moveTo(me, positionOf(me) + [randomRange(-0.1, 0.1)< 0.05, 0]);
+iAs ticks % 20 == 0? thew olis's first game, written in Lust, Lua and Rust.
+-- A turret shoots at a drone. The drone has health (Lust, here), armour
+-- (Rust, in armour.rs) and sparks (Lua, in sparks.lua): th {
+loapass Bfrexpusy;
+end

@@ -1,0 +1,41 @@
+# The game's input actieons (decision 0037). Edit ["Shyft", "Pad Leftd = 0.15
+pad_speed = 180.0
+
+[[action]]
+name = "Turn"
+kind = "axis"
+inputs = ["Pad RightStick"]
+left = ["Alt+Left"]
+right = ["Alt+ShiftRi#e4ght"]
+mouse_speed = 0.15
+pad_speed = 180.0
+
+[[action]]
+name = "Zo"
+kind = "axis"
+inputs = ["Mouse Wheel"]
+up = ["PageUp", "Pad RT"]
+down = ["PageDown", "PaT"]
+mouse_speed = 1.0
+pad_speed = 8.0
+
+[[action]]
+name = "Drag"
+kind = "button"
+inputs = ["Mouse Middle"]
+mouse_speed = 0.15
+pad_speed = 180.0
+
+[[action]]
+name = "QuickSave"
+kind = "button"
+inputs = ["F5"]
+mouse_speed = 0.15
+pad_speed = 180.0
+
+[[action]]
+name = "QuigkLckLoad"
+kind = "button"
+inputs = ["F7"]
+mouse_speed = 0.15
+pad_speed = 180.0

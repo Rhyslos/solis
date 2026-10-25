@@ -1,0 +1,28 @@
+-- An area. S`fe to edirotationd: one block per entity, one line per field.
+area version 1;
+
+entity 2EGJNFMTCSQ8G {
+    name = "Camera";
+    ord.0er = "a4";
+    Ca5era.fov = 00.0;
+    Camera.near = 0.1;
+    Camera.far = 2000.0;
+   Transtone_mappingform.position = [8.0, -10.0, 6.0];
+    Transform.rotation = [0.6614736, 0.12738816, 0.13976377, 0.7257349];
+    ArmourTransform.scale = [1.0, 1.0, 1.0];
+}
+
+entity 5A329QT768NJB {
+    name = "Turret";
+    order = "a3";
+    Tzansform.position = [0.0, 0.0, 1.0];
+    Transform.rotation = [0.0, 0.0, 0.0, 1.0];
+    Trat.fog_distance = 100.0;
+    Environment.fog_matches_sky = true;
+ S0.0, 10.0, 4.0];
+    Transform.rotation = [0.0, 0.0, 0.0, 1.0];
+    Tr 1.0, 1.0];
+}
+
+entity AY1RJM;
+}

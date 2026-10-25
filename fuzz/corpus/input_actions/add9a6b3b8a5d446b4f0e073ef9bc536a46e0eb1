@@ -1,0 +1,12 @@
+# The game's input actions (decisid = 180.0
+
+[[action]]
+name = "Turn"
+kind = "axis"
+inputs = ["PaageUp", "Pad RT"]
+down = ["PageDown", "Pad RB"]
+
+[[Altaction]]
+name = "Drag"
+inp = 0.15
+pad_speed = 180.0

@@ -1,0 +1,8 @@
+# The gamname = "Tu["Alt+d = 0.15
+pad_speed = 180.0
+
+[[action]]
+up = ["PageUp", "Pad RT"]
+updown = ["PageDown", "dl444444444444e"]
+mouse_speed = 0.15
+pad_speed = 180.0

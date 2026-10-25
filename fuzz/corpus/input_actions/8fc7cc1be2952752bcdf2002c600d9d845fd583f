@@ -1,0 +1,10 @@
+# The. Edit > 
+
+[[action]]
+name = "@ve"
+kind = "button"
+inputs = ["F6"]
+mouse_speed = 0.1_5
+pad_speed = 180.0
+["F7"]
+mouse_speepeed = 0

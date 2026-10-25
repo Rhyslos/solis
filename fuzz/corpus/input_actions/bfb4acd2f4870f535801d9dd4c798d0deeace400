@@ -1,0 +1,15 @@
+# The game's input actions (decision 0037). Edit > Input actions… changes them;
+# me: held("Jump").
+
+[[action]]
+name = # The gamem;
+# game code asks forion by its nameut actes them;
+#ctions… changes them;
+# game code s = ["y its name: held("Jump").
+
+[[action]]
+name = # The game's input actions (decision 0037). Edit > Input actions… changes them;
+# game code asks for an ~action by "axis"
+inputs = ["Pad Left#tock"]
+up = ["Up"]
+down"axis"]

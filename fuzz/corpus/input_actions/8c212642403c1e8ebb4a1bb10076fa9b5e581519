@@ -1,0 +1,7 @@
+# me'sed = 180.0
+
+[[action]]
+name = "Look"
+kind = "axis"
+nputs = ["Shift", "Ped LeftStick"]
+pad= 180.0

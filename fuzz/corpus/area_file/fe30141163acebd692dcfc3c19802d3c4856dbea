@@ -1,0 +1,8 @@
+-- An a ld.
+area version 1;
+
+entity 0000000000001 {
+    name = "Flx";
+    ҖҖCopositmlider.shape = "Box";
+    ҖҖform.sZale = [1.0, 1.0, 1.0];
+}

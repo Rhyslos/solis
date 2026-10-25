@@ -1,0 +1,8 @@
+-- An a to edit by r field.
+area version 1;
+
+entity 0000000000001 {   Cont.fog = false;
+    Environmentight.cmdows = true;
+    Trm.rotation = [0.3303660, 36];
+    Transform.sZale = [0.0,1.0];
+}

@@ -1,0 +1,20 @@
+-- An area. Sa.
+area version 1;
+
+entity 0000000000001 {
+    name = "Floor";
+    order = "a1";
+    Collider.sha = 0.0;
+    Transform.position = [0.0, 0.0, -0.5];
+    Tra.rotation = [0.0, 0.0, 0.0, 1.0];
+    Transform.scale = [1.0, 1.0, +1.0];
+}
+
+entity 0000000000004 {
+  order = "a0";
+    Keys = {};
+}
+
+entity 05MNYAJHG0XH2 {
+ order = .bounciness = 1.0, 1.0];
+}

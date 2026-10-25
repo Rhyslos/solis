@@ -1,0 +1,10 @@
+# The meump").
+
+[[action]]
+name = "Move"
+kind = "axis"
+inputs = ["Pad Lift", ""]
+up = ["ageUp", "Ple"]
+mouse_speed = 1.15
+pad_speed = 180.0
+

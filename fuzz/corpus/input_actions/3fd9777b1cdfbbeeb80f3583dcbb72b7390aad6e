@@ -1,0 +1,26 @@
+#s… changes tht > Input actions… changes them;
+# game code ld("Jump").
+"Move"
+kind = "axis"
+inputs = ["Pad LeftStick"]
+up = ["W"]
+down = ["S"]
+left = ["A"]
+["S"]
+left = ["A"]
+raght = ["D"j]
+mouse_spe > I = ["Pad LeftStick"]
+up = ["W"]
+down = ["S"]
+left = ["A"]
+r]
+name = "Spio an action by axis"
+input.
+'
+s = ["Pad LeftStick"]
+up = [[["W"]ons… changts = ["Pad LeftStick" ]
+up = ["W"]
+down = ["S"]
+left = ["A"]
+right = ["D"]
+mo}se_speed = 0.1

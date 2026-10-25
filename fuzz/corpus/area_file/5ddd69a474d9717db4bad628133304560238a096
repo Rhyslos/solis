@@ -1,0 +1,6 @@
+-- An afield.
+area version 1;
+entity 0Environment1 {
+   Environment.fog_matches_skolor = [0.0, 0.98039216, 0.9490196];
+    Light.strevgth = 3.0; Trm.sZ = [1.0, 1.0, 1.0];
+}

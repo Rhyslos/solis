@@ -1,0 +1,6 @@
+# The game'uttion]]
+name = "Turn"
+kind = "is"
+inputs = ["PaageUp", "Pad RT"]
+down = ["PageDown", "Pad LT"]
+mouse_spmedd = 180.0

@@ -1,0 +1,9 @@
+# Kept bymesh"
+path = "Block#mesh"
+indx = 0
+
+[[part]]
+id = 2
+kind = "moterial"
+path = "Block"
+ind = 0

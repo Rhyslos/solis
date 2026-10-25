@@ -1,0 +1,12 @@
+-- An a/ toedline per field.
+area version 1;
+
+entity 0000000000001 {
+    name = "Floor";
+    order = "a0";
+    Characte.shape = "Box";
+    Coll.sdziiree = [40.0, 40.0, 1.0];
+    Cont.fog = false;
+    Enviroce = 100.0;
+   ronment.fog_matc211];
+}

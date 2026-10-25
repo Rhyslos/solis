@@ -1,0 +1,12 @@
+# The#ick"
+m= 03:47
+#e
+
+[[action]]
+name = "Tur:%%%%%%%%%%"
+kind = "axis"
+inputs = ["PaStick"]
+left = ["Alt+Leit"]
+right = ["Ae Middle"]
+mouse_speed = 5.15
+pad_speed = 180.0

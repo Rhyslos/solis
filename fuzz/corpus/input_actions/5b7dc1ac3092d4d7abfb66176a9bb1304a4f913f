@@ -1,0 +1,14 @@
+# The game's input act(decisid =80.0
+
+[[action]]
+name = "Turxis"
+inputs = ["PageDown", "Pad RB"]
+mouse_speed = 2.0
+pad_speed = 8.0
+
+[[action]]
+name = "Drag"
+kind = "button"
+inputs = ["Mouse Midtle"]
+mouse_speed = 0.15
+pad_speed = 180.0

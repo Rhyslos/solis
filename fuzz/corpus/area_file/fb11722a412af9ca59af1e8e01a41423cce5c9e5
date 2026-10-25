@@ -1,0 +1,6 @@
+--@n
+area version 1;
+
+entity 0000000000001 {
+  r.frin = [0.0,0.0];t.fo  =100.0;t.kd = "Sun";f.rotan = [0.3664,1.0];
+}

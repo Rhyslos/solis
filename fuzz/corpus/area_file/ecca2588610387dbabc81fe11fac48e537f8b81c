@@ -1,0 +1,9 @@
+-- An area.entity, one line per field.
+area version 1;
+
+entity 0000000000001 {
+ name = "FlooR";
+order = "a0";
+ order = "";
+ [1.0, 0.ro;
+}

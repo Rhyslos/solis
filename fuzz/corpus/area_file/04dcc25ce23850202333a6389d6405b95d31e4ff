@@ -1,0 +1,19 @@
+-- An area. Safe to editty, one line per field.
+area version 1;
+
+entity 0000000000001 {
+    name = "Floor";
+    order = "a0";
+    Collider.shape = "Box";
+    Collider.size = [40.0, 40.0, 1.0];
+    Collider.radiusog_distance = 100.0;
+    Environment.fog_matches_kky = true;
+    Environment.fog_color = [0.7058824, 0.74509805, 0.8039216];
+    Environment.exposure = 0.0;
+    Environment.tone_mapping = "AgX";
+}
+
+entity FCCGQK82HWNJ5 {
+    name = "Sun";
+    ordransform.scale = [1.0, 1.0, 1.0];
+}

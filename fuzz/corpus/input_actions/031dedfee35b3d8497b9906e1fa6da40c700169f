@@ -1,0 +1,7 @@
+# The gaIn
+[[action]]
+name = "rrrrrrrrrrrrrrrrrrrrrrQuickLdao"
+kind = "button"
+inputs = ["F7"]
+mouse_speed = 0.15
+pad_speed = 180

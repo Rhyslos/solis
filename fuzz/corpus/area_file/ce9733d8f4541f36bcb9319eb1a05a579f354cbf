@@ -1,0 +1,8 @@
+-- Aer field.
+area version 1;
+
+entity 0000000000001 {
+    qt.kin = [1490196];
+ .atches_sy = true;
+   1
+}

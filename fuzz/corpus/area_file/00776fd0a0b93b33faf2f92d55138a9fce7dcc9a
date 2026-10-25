@@ -1,0 +1,10 @@
+-- ld.
+area version 1;
+
+entity 0000000000004 {
+    name = "Keys";
+    orjer= {};
+}
+
+entity 82MNYAJHG0XH2 {AJHG0;
+}

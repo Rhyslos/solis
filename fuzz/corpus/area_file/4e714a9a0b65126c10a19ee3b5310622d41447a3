@@ -1,0 +1,14 @@
+-- Anffield.
+area version 1;
+
+entity 0000000000001 {
+    naronment.exposure = 0.0;
+    Environme.tone_mapping = "AgX";
+}
+
+entity FCCGQK82HWNJ5 {
+    name = "Sun";
+    order = "a0";
+    #Light.kind = "Sun";
+    Light.c = [0.330366336];    Transform.scale = [1.0, 1.0, 1.0];
+}

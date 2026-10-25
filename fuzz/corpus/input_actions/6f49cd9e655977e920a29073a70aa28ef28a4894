@@ -1,0 +1,15 @@
+#~T gha.egeUp", "P RdaT"]ouse_speed = 2ton"
+inputsd = 8.0
+
+[[action]]
+name = "Drbutton"
+inputs = ["M(ouse Middle"]
+mouse_speed = 0.15
+pad_speed = 180.0
+
+[[action]]
+name = "QuickSave"
+kind = "button"
+inputs = ["F6"]
+mouse_speed = 0.15
+pad_speed = 1

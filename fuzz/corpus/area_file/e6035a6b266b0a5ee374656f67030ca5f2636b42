@@ -1,0 +1,16 @@
+-- An area. Safe to edit by hand: oity, one line per field.
+area version 1;
+
+entity 2EGJNFMTCSQ8G {
+   
+    order = "a3";
+    Traorm.scale = [0, 1.0];
+
+}
+
+entity 75YXHCXAFFCDN {
+    name = "Environment";
+   Environment.fog_distance = 100.0;
+    Environment.fog_matches_sky = true;
+  rm.scale = [1.0, 1.0, 1.0];
+}

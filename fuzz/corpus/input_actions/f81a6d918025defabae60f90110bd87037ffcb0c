@@ -1,0 +1,8 @@
+# The g
+
+[[action]]
+name = "d"
+kind = "button"
+inputs = ["F7"]
+mouse_speed = 0.15
+pad_speed = 180.0

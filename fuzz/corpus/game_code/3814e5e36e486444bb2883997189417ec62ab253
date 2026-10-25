@@ -1,0 +1,32 @@
+get "solis/world":[randomRange, find, firesumere, saveGame, loadGame];
+get "solis/entity":[positio
+int requesdomRange, find, firesumere, saveGame, loadGame];
+get "solis/entity":[positio
+int request = 0;
+}
+method update(float dt) {
+is ticks == 0? then {
+push(find("Crate")< [3, 1, 0]);
+}
+ticks = ticks +andomRange(-1, 1);
+moveTo(m:[2? then {
+loadGame("quick");
+request = 0;
+}
+}
+}
+pass But = 0;
+}
+method update(float dt) {
+is ticks == 0? then {
+push(find("Crate")< [3, 1, 0]);
+}
+ticks = ticks +andomRange(-1, 1);
+moveTo(m:[2? then {
+loadGame("quick");
+request = 0;
+}
+}
+}
+pass Busy;
+end

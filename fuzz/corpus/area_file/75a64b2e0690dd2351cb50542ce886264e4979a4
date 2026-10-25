@@ -1,0 +1,7 @@
+-- .
+area version 1;
+
+entity 2EGJNFMTCSQ8G {
+  Transform.scale = [];
+  m.scale = [0.0, 1.0, 1.0];
+}

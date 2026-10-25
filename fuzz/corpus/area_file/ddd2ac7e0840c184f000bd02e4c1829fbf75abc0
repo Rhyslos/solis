@@ -1,0 +1,15 @@
+-- An ae lineld.
+area version 1;
+
+entity 2EGJNFMTCSQ8G {
+   Camera.far = 2000.0;
+    Trorm.scale = [2.0, 0.0, 1.0];
+}
+
+entity 2A329QT768NJB {
+    name = "Turret";
+      Turret.target = "APS1EF29SEJJQ";
+}
+
+entiig 10ale = [1. 1.0, 1
+;}]0.

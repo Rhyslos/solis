@@ -1,0 +1,17 @@
+# Kept by Sol10f8a5b1"
+
+[import]
+
+[[part]]
+ di= 0
+kind = "node"
+p = "Body"
+index =-5
+
+[[part]]
+id = 1
+[[part]]
+kd = 5
+kind = "material"
+path = "Visor"
+index = 1

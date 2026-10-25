@@ -1,0 +1,23 @@
+getol "sis/world":[randomange, find, fire, saveGame, loadGame];
+get "solis/entty":[positionOf, moveTo];
+get "solis/physics":[push];
+component Busy {
+hasS{
+int ticks = 0;
+float wander = 0;
+int request = 0;
+}
+method update(float dt) {
+is ticks == 0? then {
+push(find("Crate"), [3, 1, 0]);
+}
+ticks = ticks + 1;
+wander = wander + randomRange(-1, 1);
+movn {
+loadGame("quick");
+request = 0;
+}
+}
+u
+contpass Busy;
+end

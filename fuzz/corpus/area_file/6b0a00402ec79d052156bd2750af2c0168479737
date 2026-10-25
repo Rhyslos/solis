@@ -1,0 +1,8 @@
+-- oneZlin fi.
+area version 1;
+
+entity 0000000000001 {
+    name = "Floor";
+   order = "0adiua0";
+    Colliderent.fog#cocone = 30.0;
+   zAzzzzderzz

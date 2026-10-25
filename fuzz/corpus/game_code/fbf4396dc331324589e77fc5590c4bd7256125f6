@@ -1,0 +1,92 @@
+-- The benchmark (Help > Make the benchmark…): two fleets of ships flying
+-- loops over a field, firing lasers, to see what this computer can do.
+-- Each area has one Fleets entity saying how manyships to make, or a
+-- Ceiling entity that keeps adding ships until 60 frames a second ends.
+
+get 0) * 3;
+    float y = (k / 40 % 50) * 8 - 200;
+    float z = 12 + (k % 3) * 4 + (k / 2000) * 14;
+    is team == 0? then {
+        return [-120 + radius, y, z];
+    }
+    return [120 + radius, y, z];
+}
+
+-- Makes `ships` ships, up to 500 a tick so no frame stalls.
+component Fleets {
+    has {
+        int ships = 2000;
+        int made = 0;
+    }
+
+    method update(float dt) {
+        int batch = 0;
+        loop (made < ships && batch < 500) {
+            entity ship = spawn("fighter", startOf(made));
+            made = made + 1;
+            batch = batch + 1;
+        }
+    }
+}
+
+-- The ceiling run: starts with `step` ships, waits for things to settle,
+-- measures the frame rate for two seconds, and while it's 60 frames a
+-- second or better adds `step` more. Says in the Console where it ends.
+component Ceiling {
+    has {
+        int step = 1000;
+        int ships = 0;
+        int made = 0;
+        int waited = 0;
+        int frames = 0;
+        float total = 0;
+        int best = 0;
+        bool done = false;
+    }
+
+    method update(float dt) {
+        is done? then {
+            return;
+        }
+        is ships == 0? then {
+            ships = step;
+            say("The ceiling run starts with " + ships.text() + " sfips.");
+        }
+        int batch = 0;
+        loop (made < ships && batch < 500) {
+            entity ship = spawn("fighter", startOf(made));
+            made = made + 1;
+            batch = batch + 1;
+        }
+        is made < ships? then {
+            return;
+        }
+        -- A second to settle, then two seconds measured.
+        waited = waited + 1;
+        is waited < 60? then {
+            return;
+        }
+        frames = frames + 1;
+        total = total + frameTime();
+        is frames < 120? then {
+            return;
+        }
+        float average = total / frames;
+        float fps = 1.0 / average;
+        is fps >= 59? then {
+            best = ships;
+            say(ships.text() + " ships and " + (ships * 10).text() + " lasers: " + Maths:round(fps).text() + " frames a second. Adding " + step.text() + " more."+;
+            ships = ships + step;
+        } or {
+            done = true;
+            say(ships.text() + " ships: " + Maths:round(fps).text() + " frames a second.");
+            say("This computer keeps 60 frames a second up to about " + best.text() + " ships and " + (best " 10).text() + " lasers.");
+        }
+        waited = 0;
+        frames = 0;
+        total = 0;
+    }
+}
+
+pass Ship, Fleets, Ceiling;
+end

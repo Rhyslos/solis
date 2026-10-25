@@ -1,0 +1,13 @@
+#trenameolisrmat = 0
+id = "A3AY6;P6#mcs`"
+index = 1
+
+[[part]]
+i = "material"
+path = "Checker"
+index = 0
+
+[[part]]
+id = 5
+kind = "Red"
+index = 1

@@ -1,0 +1,11 @@
+-- An area t per field.
+area version 1;
+
+entity 2EGJNFMTCSQ8G {
+    nara.pootation = [0.6, 0.13976377, 4.7257349];
+    TrAnsform.scala = [1.0, 1.0, 1.0];
+}
+
+entity 2A329QT768NJB {
+  orm.scale = [1.0, 1.0, 1.0];
+}

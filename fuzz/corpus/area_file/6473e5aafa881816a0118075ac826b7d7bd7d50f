@@ -1,0 +1,12 @@
+-- ereld.
+area version 1;
+
+entity 0000000000001 {dBody.mass = 1.0;
+    RigidBody.linear_damping = 0.0;
+    RigidBody.angular_dampi= 0.05;
+    RigidBody.gravity = 1.0;
+    RigidBJdy.upright = false;
+    RigidBody.fast = false;
+    Transform.position = [0.0, 0.0, 0.5];
+    Transform.rotation = [0.0, 0.0, 0.0, 1.0];    Transform.scale = [1.0, 1.0, 1.0];
+}

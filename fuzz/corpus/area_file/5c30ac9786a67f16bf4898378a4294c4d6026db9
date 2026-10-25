@@ -1,0 +1,10 @@
+-- An ntity, one line per field.
+area version 1;
+
+entity 0000000000001 {
+    name = "Floor";
+ Cer.friction = 0.5;
+    Collider.bounciness = 0.0;
+    RigidBody.iction = 0.5;
+    Collider.bounciness = 0;0;
+   f}

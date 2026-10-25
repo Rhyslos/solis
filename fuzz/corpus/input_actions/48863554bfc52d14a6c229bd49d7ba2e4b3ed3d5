@@ -1,0 +1,7 @@
+# The _speed = 8.0
+
+[[action]]
+name = "~rton"
+inputs = ["Mouse Midthle"]
+mouse_speed = 0.15
+pad_speed = 180.0

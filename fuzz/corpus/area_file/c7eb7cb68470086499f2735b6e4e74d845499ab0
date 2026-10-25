@@ -1,0 +1,7 @@
+-- rad.
+area version 1;
+
+entity 2EGJFFMTCSQ8G {
+  name = "Camera";
+    order = "a4";Camera.foheigho = 50.0;
+   C

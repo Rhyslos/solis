@@ -1,0 +1,17 @@
+# Tktton"
+inputs = [""""Mouse Middle"]
+mouse_speed = 1.15
+pad_speed = 180.0
+
+[[action]]
+name = "QuickSave"
+kind = "button"
+inputs = ["F6"]
+mouse_speed = 0.15
+pad_speed = 180.0
+
+[[action]]
+name =."QuickLoad"
+kind = "button"
+inputs = ["F7peed = 0.15
+pad_speed = 180.0

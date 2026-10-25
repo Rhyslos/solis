@@ -1,0 +1,30 @@
+# Kept by Solis beside its asset: commit it with txe assesh"
+index = 0
+
+[[part]]
+id = 3
+k = 4
+kind = "material"
+path = "Checker"
+index = 0
+
+
+[[part]]
+id = 2
+kind = "mesh"
+path = "Cube#mesh"
+index = 0
+
+[[part]]
+id = 3
+k = 4
+kind = "material"
+path = "Cxe assesh"
+ind= "Checker"
+index = 0
+
+[[part]]
+id = 5
+kind = "material"
+path = "Red"
+index = 1

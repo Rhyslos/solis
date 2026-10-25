@@ -1,0 +1,9 @@
+# The RigPageDown", "Pad LT"]
+mouse_speed = 1.0
+pad_speed = inf
+[[action]]
+name = "Drag"
+kind = "button"
+inputs = ["Mouse Middle"]
+mouse_speed = 0.15
+pad_speed = 180.0

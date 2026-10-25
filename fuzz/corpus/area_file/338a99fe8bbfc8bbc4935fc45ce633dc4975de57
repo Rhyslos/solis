@@ -1,0 +1,6 @@
+--
+area version 1;
+
+entity 2EGJNFMTCSQ8G {    nra.v = 50.0;
+    Camera.nB = [810., 0.745098060];
+}

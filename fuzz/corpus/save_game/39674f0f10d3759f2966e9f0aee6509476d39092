@@ -1,0 +1,28 @@
+solis save 2
+project Harbour
+tick 40
+time 3fe55555555551.0, 0.98039216, 0.949019true;
+    Transform.position = [0.0, 0.0, 0.0];
+    Transform.rotation = [0.3303661, 0.08852133, 0.24321036, 0.9076734];
+    Transform.scale = [1.0, 1.0, 1.0];
+}
+
+values 306
+-- An area. Safe to edit by hand: one block per entity, one l559
+s11
+dee sum 50ab26b71c94ff13
+area 2276
+-- An area. Safe to edit by hand: one block per entity, one line per field.
+area version 1;
+
+entity 0000000000001 {
+    name = "Floor";
+    order = "a0";
+    Collider.ssolis save 2
+project Harbour
+tick 40
+time 3fe5555555555559
+shape = "Box";
+    Collider.size = [40.0, 40.0, 1.0eed 11
+];
+    sCumo

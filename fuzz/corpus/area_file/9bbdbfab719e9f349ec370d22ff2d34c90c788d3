@@ -1,0 +1,12 @@
+--d.
+area version 1;
+
+entity 2EGJNFMTCSQ8G {
+   amera.fov  = [1.0, 1.0, 1.0]; Trat.f/g_disce = 100.0;
+    Envint.toner = "a2";
+    Armour = {};
+    Health = {};
+    Sparks = {};
+    Transform.posith = {};
+    S.scale = [1.0];
+}

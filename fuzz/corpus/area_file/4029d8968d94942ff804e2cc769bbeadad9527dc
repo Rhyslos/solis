@@ -1,0 +1,16 @@
+-- An area. Safe to edield.
+area version 1;
+
+entity 2EGJNFMTCSQ8G {
+    name = "Camera";
+    order = "a4";
+    Camera.fov = 50.0;
+    Camera.near = 0.1;
+    Camera.far = 200.0;
+    Transform.position = [8.0, -10.0, 6.0, 1.0, 1.0];
+}
+
+entity 5A329QT768NJB {
+ Transform.position = [0.0, 0.0, 1.0];
+orm.scale = [1.0, 1.0, 1.0];
+}

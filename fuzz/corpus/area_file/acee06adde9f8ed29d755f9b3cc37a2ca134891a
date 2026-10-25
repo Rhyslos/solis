@@ -1,0 +1,8 @@
+-- An sle line per field.
+area version 1;
+
+entity 0000000000001 {
+    Collider.shapunciness = 0.0;
+    Keys = {};
+} hand`: one
+

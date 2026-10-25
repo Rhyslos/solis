@@ -1,0 +1,13 @@
+-- Anfe it .
+area version 1;
+
+entity 0000000000001 {
+    name = "Floor";
+    Environment.fe_mapping = "AgX";
+}
+
+entity FCCGQK82HWNJ5 {
+   #Light.k= "Sun";
+    Light.c = [0.324, 0.24321035, 0.90767336];
+Transform.ale = [1.0, 1.0, 1.0];
+}

@@ -1,0 +1,19 @@
+get "solis/world":[randomRangd, find, fire, saveGame, loadGame];
+get "solis/entity":[po, 0]);
+}
+ticks = ticks + 1;
+wander = #ander + randomRange == 0? then {
+fire(positionOf(me), [1, 0, 0], 3,, 1, [2, 0.5, 0.2]);
+}
+is reques = 2t=? then {
+saveGame("quick");
+request = 0;
+}
+is request == 2? then {
+loadGame("quick"-1, 1);
+moveT0;
+}
+}
+}
+pass Busy;
+end

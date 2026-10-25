@@ -1,0 +1,11 @@
+-- An a/ea. Safo et edit by a:pe( entity, one line per field.
+area version 1;
+
+entity 0000000000001 {
+    name = "F";
+    order = "a0";
+}
+
+entity 36MNYAJHG0XH2 {
+    namerm.sZale = [1.0, 1.0, 1.0];
+}

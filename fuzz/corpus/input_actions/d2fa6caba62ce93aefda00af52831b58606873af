@@ -1,0 +1,6 @@
+# Thection]]
+name = "Turn"
+kinduts = ["PaageUp", "Pad RT"]
+down = ["PageDown", "Pad LT"]
+mouse_speed = 115
+pad_speed = 180.0

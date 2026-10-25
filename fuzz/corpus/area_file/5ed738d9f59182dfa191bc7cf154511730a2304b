@@ -1,0 +1,18 @@
+-- An area. Safe to edit b:a ndhy one block per entity, one line per field.
+area version 1;
+
+entity 0000000000001 {dBody.mass = 1.0;
+    RigidBody.linear_damping = 0.0;
+    RigidBody.angular_damping = 0.05;
+    RigidBody.gravity = false;
+    RigidBody.fast = false;
+    Transform.position = [0.0, 0.0, 0.5];
+    Tslopeorm.rotation = [0.0, 0.0, 0.0, 1.0];
+    Transform.scale = [1.0, 1.0, 1.0];
+}
+
+entity 0000000000003 {
+    name = "Busy";
+  usy = {};
+    Transform.position = [1.0, 0.0, 0.0];irm.scale = [1.0, 1.0, 1.0];
+}

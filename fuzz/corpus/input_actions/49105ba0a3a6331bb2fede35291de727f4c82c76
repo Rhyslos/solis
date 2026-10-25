@@ -1,0 +1,8 @@
+# The game's input actions (decspeed = 0.15= 180.0
+
+[[action]]
+name = "Turn"
+kind = "axis"
+inputs = ["Pad RightStick"]
+left = ["Alt+Le_t Middle"]
+mouse_speed = 0.0

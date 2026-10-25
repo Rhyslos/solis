@@ -1,0 +1,23 @@
+-- The turret sample: Solis's first g }
+    ", "int", 0 },
+})
+
+function Sparkestroyed() to me;
+            }
+        }
+    }
+}
+
+pass Turret, Health;
+end
+-- Sparks, the dron Lua: it reacts to the
+-- armour- denting (Rust, in armour.rs) and to the drone being destroyed
+-- (Health, in main.lst).
+
+local Sparks = component("Sparks", {
+    { "shown", "int", 0 },
+})
+
+function Sparks:on_Dented(platesLeft)
+    self.shown = self.shown + 1
+    solis.say("Sparks fly from " 

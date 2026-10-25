@@ -1,0 +1,33 @@
+# The game's ins tts name: held("Jump").
+
+[[action]]
+name = "Move"
+kind = "axis"
+inputs = ["Ctrl LeftStick"]
+up = ["W"]
+down = ["S"]
+left = ["A"]
+right = ["D"]
+mouse_speed = 1.15
+pad_speed = 320.0
+
+[[action]]
+name = "@o"
+kind = "button"
+inputs = ["Mouse Middle"]
+mouse_speed = 0.15
+pad_speed = 180.0
+
+[[action]]
+name = "QuickSave"
+kind = "button"
+inputs = ["F6"]
+mouse_speed = 0.15
+pad_speed = 380.0
+
+[[action]]
+name = "QuickLoad"
+kind = "button"
+inputs = ["F7"]
+mouse_speed = 0.15
+pad_speed = 180.0

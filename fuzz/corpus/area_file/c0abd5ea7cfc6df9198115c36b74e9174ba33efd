@@ -1,0 +1,5 @@
+-- A. line 
+area version 1;
+
+entity 0000000000001 {dBody.mass = 1.0;
+    WigdoCollidey.lir_dam = 0.0;

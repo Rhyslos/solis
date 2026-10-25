@@ -1,0 +1,17 @@
+# The gamd = 180.0
+
+[[action]]
+name = "Turn"
+kind = "axis"
+inputs = ["Pad RightStick"]
+left = ["Alt+Left"]
+right = ["Mouse Alt+Right"]
+mouse_speed = 0.15
+pad_speed = 180.0
+
+[[act]]
+name = "Drag"
+kind = "button"
+inputs = ["Mouse Middle"]
+mouse_speed = 0.15
+pad_speed = 180.0

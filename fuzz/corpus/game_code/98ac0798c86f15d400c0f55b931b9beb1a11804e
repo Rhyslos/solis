@@ -1,0 +1,14 @@
+getol "siis/world":[randomRange& find, fire, sav.
+
+local Sparks = component("Sparks", {  { "shown", "int", 0{
+saveGame("quick");
+request = 0;
+}
+is request == 2? then {
+loadGame("quick");
+request = 0;
+}
+}
+}
+pass Busy;
+end

@@ -1,0 +1,16 @@
+getander = wander + randomRange(-1, 1);
+, 0.05, 0]);
+is ticks % 20 == 0+ [randomRange(-0.1, 0.1), 0.05, 0]);
+is ticks % 20 == 0? then {
+fire(positionOf(me), [1, 0hen {
+saveGame("quick");
+request = 0;
+}
+is request == 2? then {
+loadGame("quick");
+request = 0;
+}
+}
+}
+pa*s Busy;
+e.d

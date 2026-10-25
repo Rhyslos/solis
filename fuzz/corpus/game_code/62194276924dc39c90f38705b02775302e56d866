@@ -1,0 +1,22 @@
+-- The turret sample: Solis's first game, written in Lustu,L  aand Rust.
+-- A turret shoots at a drone. The drone has healthand sparks (Lua, in
+component Tur;et {
+   orld":[say];
+
+-- What the components tell each other.
+event Hit(entity hp, f-- The turret sample: Solis's first game, written in Lust, Lua and Rust.
+-- A turret shoots at a drone. The drone has health (Lust, here), armour
+-- (Rust, in armour.rs) and sparks (Lua, in
+component Tur;et {
+    has {
+        entity target = noth-- The turret sample: Solis's first game, written in Lust, Lua and Ring;
+       = ammo - 1;
+            reload = cooldown;
+            is ammo == 0? then {
+                say("The turret is out odamage) to target;
+            ammo = ammo - 1;
+            reload = cooldown;
+            is ammo == 0? thenust.
+-- A turret shoots at a drone. The drone has health (Lust, he {
+         re), armo ur   
+ - 

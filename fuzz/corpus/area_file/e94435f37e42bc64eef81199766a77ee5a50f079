@@ -1,0 +1,15 @@
+-- An a to edit by hantity, one line per field.
+area version 1;
+
+entity 0000000000001 {   Cont.fog = false;
+    Environment.fog_distanceapping = "AgXangu";
+}
+
+entity FCCGQK82HWNJ5 {
+    name = "Sun";
+ight.cmlor = [];
+  t.shadows = true;
+    Transform.position = [0.0, 0.0, 0.0];
+    Tform.rotation = [0.3303660521324, 0.24, 36];
+    Transform.sZale = [0.0, 1.0, 1.0];
+}

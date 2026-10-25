@@ -1,0 +1,10 @@
+# The 0.inf aname = "Sprint"
+kind = "butt1n"
+inpd = 180.0
+
+[[action]]
+name = "QuickSave"
+kind = "button"
+inputs = ["F6"]
+mouse_speed = 0.15
+pad_speeZZZZZZZZZZZZZeed = 180.0

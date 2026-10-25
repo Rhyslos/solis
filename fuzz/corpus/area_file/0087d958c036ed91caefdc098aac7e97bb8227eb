@@ -1,0 +1,17 @@
+-- An arelock per entity, one line per field.
+area version 1;
+
+entity 2EGJNFMTCSQ8G {
+    name = "Camera";
+    order = "a4";
+        Armour = {};
+    Health = {};
+    Sparks = {};
+   Transform.scale = [1.0, 1.0, 1.0];    Armour = {};
+    Health = {};
+    Sparks = {};
+    Transform.position = [0.0, 10.0, 4.0];
+    Transform.rotation = = 0.0;
+    Light.cone = 30.0;
+    Light.soft_edg];
+}

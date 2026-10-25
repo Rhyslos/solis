@@ -1,0 +1,16 @@
+# The ganm peed = 180.0
+
+[[action]]
+name = "s"
+inputs = ["Pad RightStick"]
+left = ["Alt+Ctrl"]
+right= ["PageDown", "Pad LT"]
+mouse_speed = 1.0
+pad_speed = 8.0
+
+[[action]]
+name = "Drag"
+kind = "button"
+inputs = ["Mouse Midd|e"]
+mouse_speed = 0.15
+pad_speed = 180.0

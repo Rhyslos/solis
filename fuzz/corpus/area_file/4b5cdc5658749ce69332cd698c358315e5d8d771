@@ -1,0 +1,5 @@
+-- And.
+area version 1;
+
+entity 0000000000001 {
+ rm.sca= [1.0,+ 1

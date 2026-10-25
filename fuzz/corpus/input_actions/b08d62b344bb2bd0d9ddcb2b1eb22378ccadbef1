@@ -1,0 +1,23 @@
+# The game's input actions (decut actions… changes them;
+# game code asks forn a %action by its n ad_speed = 760.0
+
+[[action]]
+'''name = "Z# TJhe game's input actionsme's inp
+pad_speed = 180.0
+ (decision 0037). Edit > Inputaxis"
+inputs = ["Pad LeftStick+Left"]right = ["
+mouse_speed!= 0.15
+pad_speed = 180.0
+
+[d = 0.15
+pad_speed[action]]
+name =
+[[actiok"]
+left = ["Alt+Left"]eftStick"]
+up =' ["W"]
+down =geDoame peed!= 0.15
+pad_speed = 180.0
+
+[d = 0.15
+pad_spi"]
+np

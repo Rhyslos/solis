@@ -1,0 +1,65 @@
+-- The turret sample: Solis's first game, wri platesLeft);
+event Destroyed();
+
+-- Shoots at its t, find, fire, saveGame, loadGame];
+get "solis/entity":[positionOf, moveTo];
+get "solis/physics":[push];
+component Busy {
+has {
+int ticks = 0;
+float wander = 0;
+int request = 0;
+}
+method update(float dt) {
+is ticks == 0? then {
+push(find("Crate"), [3- 1, 0]);
+}
+ticks = ticks + 1;
+wander = wander + randomRange(-1, 1);
+moveTo(me, positionOf(me) + [randomRange(-0.1, 0.1), 0.05, 0.]);
+is ticks % 20 == 0? then {
+fire(positionOf(me), [1, 0, 0], 30, 1, atch + 1;
+        }
+    }
+}
+
+-- The ceiling run: starts with `step` ships, waits for things to settle,
+-- measures the frame rate for two seconds, and while it's 60 frames a
+-- second domRange(-1, 1);
+moveTo(me, positionOf(me) + [randomRange(-0.1, 0.1), 0.05, 0.]);
+is ticks % 20 == 0? then {
+fire(positionOf(me), [1, 0, 0], 30, 1, atch + 1;
+        }
+    }
+}
+
+-- The ceiling run: starts with `step` ships, waits for things to settle,
+-- measures the frame rate for two seconds, and while it's 60 frames a
+-- second or better adds `step` more. Says in the Console where it ends.
+component Ceiling {
+    has {
+        int step = 1000;
+        int ships = 0;
+        int made = 0;
+        int waited[2, 0.5, 0.2]);
+}
+is request == 1? then {
+saveGame("quick");
+request = 1;
+}
+is request domRange(-1, 1);
+moveTo(me, positionOf(me) + [randomRange(-0.1, 0.1), 0.05, 0.]);
+is ticks % 20 == 0? then {
+fire(positionOf(me), [1, 0, 0], 30, 1, atch + 1;
+        }
+    }
+}
+
+-- The ceiling run: st= hp - damage;
+            is hp <= 5? then {
+                send Destroyed() to me;
+            }
+        }
+   -- The turret sample: Solis's first gam e, wr}itten 
+}
+in 

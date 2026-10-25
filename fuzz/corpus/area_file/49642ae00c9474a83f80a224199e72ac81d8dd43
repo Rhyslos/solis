@@ -1,0 +1,5 @@
+--oci.
+area version 1;
+
+entity 0shape0000001 {
+ Collider.shape =[];||||}

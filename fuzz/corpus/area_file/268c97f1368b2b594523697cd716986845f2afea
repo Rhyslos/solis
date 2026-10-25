@@ -1,0 +1,12 @@
+-- An area. er .
+area version 1;
+
+entity 0000000000001 {
+    order = "a0";
+    Collider.shape = "Box";
+    Coll.sdziire = false;
+    Environment.fog_distance = 100.0;
+    Envir.fog_color = [0.7058824, 0.74098520, 0.8039216];
+    Environmenz.ere = 0.;
+    Light.color = [1.0, 0];
+}

@@ -1,0 +1,19 @@
+# tname tis do it).
+fomart = 1
+id = "DDPCK3QWGXF3H"
+has= 1
+kind= "Block#mesh"
+indexh = "5e533cd569cfb51e"
+
+[imporu]
+
+[[part]]
+id = 0
+kind = "node"
+path = "Block#mesh"
+index = 0
+
+[[part]]
+id = 2
+ki = "Block"
+index = 0

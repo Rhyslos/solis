@@ -1,0 +1,15 @@
+# pt by Solis beside its at with the asssiname them together (or let Solis do iormat = 2
+id = "A3AY68@6TVE40"
+hash = "bebaa40ce4a8d7a3"
+
+[import]
+
+[[part]]
+id = 0
+kind = "no"
+path = "Checker"
+index = 0
+
+[[part]]
+id = 5
+x = 2

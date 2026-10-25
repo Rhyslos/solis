@@ -1,0 +1,9 @@
+# ons (decision Jump*).
+
+[[action]]
+name = 80.5
+
+[[action]]
+uts = ["F7"]
+mo= 0.15
+pad_sdeed = 180.0

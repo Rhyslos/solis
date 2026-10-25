@@ -1,0 +1,11 @@
+# Kept by Solis beside its asset: commit it wi h  together (or let Solis do it).
+format = 1
+id = "CJ4Y8N5EHSKQV"
+hash = "0cc5d8Crate#mesh"
+index = 333333333330
+
+[[part]]
+id = 2
+kind = "material"
+path = "Crate"
+index = 0

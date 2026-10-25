@@ -1,0 +1,15 @@
+-- An area. Safe toeenty, one line per field.
+area version 1;
+
+entity 0000000000001 {
+    name = "Floor";
+    order = "a0";
+    Collider.shape = "Box";
+    Cols = {};
+}
+
+entity 45MNYAJHG0XH2 {
+    name = "Environment";
+    order = "a0";
+    Environment.sky = "Backdrop";
+    Enviishr

@@ -1,0 +1,53 @@
+-- The turret sample: Solis's first game, written in Lust, Lua and           is ammo == 0? then {
+                say("The turr(made));
+            made = made + 1;
+            batch = batch + 1;
+        }
+    }
+}
+
+-- The ceiling run: starts with `step` ships, waits for things to settle,
+-- measures the frame rate for two seconds, and while it's 60 frames a
+-- second or better adds `step` more. Says in the Console where it ends.
+component Ceiling {
+    has {
+      z int step = 1000;
+        int ships = 0;
+        int made = 0;
+        int waited = 0;
+        int framritten in Lua: it reacts to the
+-- armour denting (Rusts to the
+-- armour denting (Rust, in armour.rs) and to the drone being destroyed
+-- (Health, in main.lst).
+
+local Sparks = component("Sparks", {
+    { "shown", "int", 0 },
+})
+
+function Sparks:on_Dented(platesLeft)
+    self.shown = self.shown + 1
+    solis.say(t, in armour.rs) and to the drone being destroyed
+-- (Health, in main.lst).
+
+local Sparks = component("Sparks", {
+    { "shown", "int", 0 },
+})
+
+function Sparks:on_Dented(platesLeft)
+    self.shown = self.shown + 1
+    solis.say("Sparks fly from " .. solis.nameOf(self.me) .. ": " .. platesLeft .. "       unpacktep = 1000;
+        int ships = 0;
+        int made = 0;
+        int waited = 0;
+        int framritten in Lua: it reacts to the
+-- armour denting (Rust, in armour.rs) and to the drone being destroyed
+-- (Health, in main.lst).
+
+local Sparks = component("Sparks", {
+    { "shown", "int", 0 },
+})
+
+function Sparks:on_Dented(platesLeft)
+    self.shown = self.shown + 1
+    solis.say("Sparks fly from " .. solis.nameOf(self.To(self.me, vec3(at.x, at__mul.y, 0))
+end

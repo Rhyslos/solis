@@ -1,0 +1,27 @@
+-- The turret sample: Solis's first game, written in L the three talk
+-- to each other with the events below.
+
+gturret sample: Solis's first gl;
+        float damagesLeft);
+event Destroyed();
+
+-- Shoots at its target everyod update(float dt) {
+ t gl;
+        float damagesLeft);
+event Destroyed();
+
+-- Shoots at its target everyod update(floa 20;
+    }
+
+    on Hit(entity by, float damage) {
+        is hp > 0? then {
+            hp = hp - damage;
+            is hp <= 0? then {
+                send Destroyed() to me;
+            }
+        }
+    }
+}
+
+pass Turret, Health;
+end

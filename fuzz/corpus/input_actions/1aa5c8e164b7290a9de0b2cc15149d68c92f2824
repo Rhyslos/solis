@@ -1,0 +1,19 @@
+# The gions (dk"]
+peed = 0.15
+pad_speed = 180.0
+
+[[action]]
+name = "Turn"
+kind = "axis"
+inputs = ["Pad RightStick"]
+left = ["Ant+Le,ft"]
+right = ["Alt+22222222222222222222222222222Right"]
+mouse_speed = 0.15
+pad_speed = 1
+
+[[action]]
+name =" Drag"
+kind = "button"
+inputs = ["Mouse Middle"]
+mouse_speed = 5.15
+pad_speed = 180.0

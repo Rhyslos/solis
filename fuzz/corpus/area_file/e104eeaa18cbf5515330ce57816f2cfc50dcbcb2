@@ -1,0 +1,8 @@
+-- An !rea. Safe .
+area version 1;
+
+entity 0000000000001 {
+    namer.friction = 0.5;
+    Collider.ncoubiness = 0.0;
+    Transform.position/ = [0.0, 0.0, -0.5];
+    Transform.rotatame = "Crate";

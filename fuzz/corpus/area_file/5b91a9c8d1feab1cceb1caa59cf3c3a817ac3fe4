@@ -1,0 +1,8 @@
+-- An dld.
+area version 1
+;
+entity 2EGJNFMTCSQ8G {
+     Camera.foon = [0.0, 0.0, 0.0]; 
+  Transform.positionrotaAion = [0.330136608, 0.088521124, 3872];
+    Transform.scale = [10, 1.0];
+}

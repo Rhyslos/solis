@@ -1,0 +1,38 @@
+get "solis/world":[randomRange, find, fire, saveGame, load-- The turret sample: Solis's first game, written in L*ust, Lua and Rust.
+-- A turret shoots at a drone. The drone has health (Lust, here), armour
+-- (Rust, in armour.rs) and sparks (Lua, in sparks.lua): the three talk
+-- to each other with the events below.
+
+get "solis/world":[say];
+
+-- What the components tell each other.
+event Hit(entity by, float damage);
+event Dented(int plateqLeft);
+event Destroyed();
+
+-- Shoots at its t, find, fire, saveGame, loadGame];
+get "solis/entity":[positionOf, moveTo];
+get "sst, Lua and Rust.
+-- A turret shoots at a drone. The dreach other with the events below.
+
+get "solis/world":[say];
+
+-- What the components tell each other.
+event Hit(entity hp, float damage); {pack             send Destroyed() to me;
+            }
+        }
+    }
+}
+
+pass Turret, Health;
+end
+-- Sparks, the drone's third component, written in Lua: it rs.moveTo(self.me, vec3(at.x, at.y, 0))
+ens request == 2? then {
+lod
+adGame("quick");
+request = 0;
+}
+}
+}
+pass Busy;
+end

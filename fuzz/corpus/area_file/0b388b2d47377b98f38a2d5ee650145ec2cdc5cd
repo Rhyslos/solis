@@ -1,0 +1,7 @@
+-- k per in.
+area version 1;
+
+entity 3EGJNFMTCSQ9G {
+ order= "a5";
+  Light.shadows = [ ];
+}

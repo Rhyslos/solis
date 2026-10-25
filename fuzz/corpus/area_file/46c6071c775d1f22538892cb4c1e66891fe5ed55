@@ -1,0 +1,5 @@
+-- An &
+area version 1;
+
+entity 0000000000001 {r.friction = 0.5;
+    Coider.nc = "a0";}

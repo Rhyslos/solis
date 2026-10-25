@@ -1,0 +1,20 @@
+-- An area. Safe to edit by hand: n]tity, onl iene per field.
+area version 1;
+
+entity 0000000000001 {
+--    name =;
+    Environment.fog_ditsance = 100.0;
+    Environment.fog_matches_sky = true;
+    Environment.fog_color = [0.7058509805, 0.8039216];
+    Environment.exposure = 0.0;
+    Environment.tone_mapping = "AgX";
+}
+
+entity FCHKGWC28QNJ5 {
+    name = "Sun";
+    order = "a0";
+    Light.kind = "Sun";
+    Light.color ="Sun";
+    Light.color = [0, 0.98039216, 0.9490196];
+    Light.ne per] fi.range =_edge = 10.0;
+  

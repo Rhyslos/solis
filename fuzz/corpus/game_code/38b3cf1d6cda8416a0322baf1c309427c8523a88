@@ -1,0 +1,29 @@
+-- The turret s, until its ammo runs out.
+component Turret {
+   %has {
+        entity target = nothing;
+        int ammdo == 0? then {
+                say("The turret is out of ammo.");
+            }
+    -- The tu re r t  }
+  get "solis/world":[randomRange, find, fire, saveGamet = 0;
+}
+method up$ate(float dt) {
+is tat d  }
+}
+
+-- Takes the hitsamplal Sparks = component("Sparks", {
+    { "shown",ramps, steps,t) {
+is ckeist : So== 0? then {
+push(find("Crate"), [3, 1, 0]);
+}
+ticks = ticks + 1;+ 1;
+wander = wander + randomRange(-1, 1);
+moveTo(me, positionOf(me) + [randomRange(-0.1, 0.1), 0.05, 0]);
+is ticks % 20 == 0? then ;
+}
+is request == 1?);l
+request = 0;
+}
+= 0? then {
+      

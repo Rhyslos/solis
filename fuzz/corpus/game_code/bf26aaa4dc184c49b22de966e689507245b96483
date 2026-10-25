@@ -1,0 +1,11 @@
+-- The turr shoots at a drone. The drone has heats at its target ever.
+-- A turret shoots at a drone.y so often, until its ammo runs out.
+component Tur2et {
+nt ammo = 12;
+        float damage = 2.5;
+        float cofldown = 0.5;
+        float reload = 0;
+    }
+
+    The drone has health (Lust, here), armour
+-- method update(float  (Rdt

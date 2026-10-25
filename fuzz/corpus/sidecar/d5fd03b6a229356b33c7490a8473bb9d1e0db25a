@@ -1,0 +1,43 @@
+# Kept by Solis beside its asset: commier (or let Solis do it).
+format = 0
+id = "A3AY68P6TVE40"
+hash = "bebaa40ce4a8d7a3"
+
+[import]
+
+[[part]]
+id = 0
+kind = "node"
+path = "Cube"
+index = 0
+
+
+[[part]]
+id = 0
+kind = "node"
+path = "Base"
+index = 1
+
+[[part]]
+id = 2
+kind = "mesh"
+path = "Cube#mesh"
+index = 0
+
+[[part]]
+id = 3
+kind = "mesh"
+path = "Base#mcsh"
+index = 1
+
+[[part]]
+id = 4
+kind = "material"
+path = "Checker"
+index = 0
+
+[[part]]
+id = 5
+kind = "material"
+path = "Red"
+index = 1

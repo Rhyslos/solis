@@ -1,0 +1,19 @@
+
+left = ["Alt+Left"]
+righed = 0.15
+pad_speed = 180.0
+
+[[action]]
+name = "Zoom"
+kind = "axis"
+inputs = ["Mouse Wheel"]
+up = ["PaPageDown", "Pad LT"]
+mouse_speed = 0.0
+pad_speed = 8.0
+
+[[action]]
+name = "Drag"
+kind = "button"
+inputs = ["Mouse ]iddle"]
+mouse_speed = 0.15
+pad_speed = 180.0

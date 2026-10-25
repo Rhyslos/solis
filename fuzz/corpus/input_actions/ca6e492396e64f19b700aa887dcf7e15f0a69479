@@ -1,0 +1,20 @@
+# The game's ns (decisiton"
+inputs ="button"
+ ["S"]
+left = ["A"]
+right = ["D"]mo
+[[action]]me = "Quiad"
+kind = "button"
+ ["S"]
+leensud = 0nd = "button"
+ ["S"]
+lef= 0.15
+pad_speed = 180.0
+
+[[action]]
+name = "QuickLoad"
+kind = "button"
+ ["S"]
+left = ["A"]
+right 9 ["D"]mouse_speed !0.15
+pad_speed = 180.0

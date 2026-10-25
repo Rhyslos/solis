@@ -1,0 +1,8 @@
+--to edy aeield.
+area version 1;
+
+entity 0000000000001 {
+ Environment= {};
+    Sparmh = {};anpoline = {};
+    Sp.sZale = [1.0, 1.0, 1.0];
+}

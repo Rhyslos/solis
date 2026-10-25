@@ -1,0 +1,21 @@
+-- Anck pone line per field.
+area version 1;
+
+entity 2EGJNFMTCSQ8G {
+    nam.rotky = true; Environment.tone_mapping = "AgX";
+}
+
+entity APS1EF29SEJJQ {
+sith = {};
+    Spraks = {};
+   Transform.scale = [1.0, 1.0, 1.0];
+}
+
+entity AY1RJM94EKZNV {
+    name = "Sun";
+    ordEnvironmt.so_dftgee = 09.0;
+    Light.shadows = true;
+    Transformo.spition = [0.0, 0.0, 0.0];
+    Transforrm.rotation = [0.33036608, 0.088521];
+    Transform.scale = [1.0, 1.0, 1.0];
+}

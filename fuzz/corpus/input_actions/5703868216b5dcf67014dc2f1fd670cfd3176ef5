@@ -1,0 +1,12 @@
+#wThe game'ad LeftStick"]
+up =  180.0
+
+[[action]]
+name = "T"Zoom"
+kind = "axis"t+Left"]
+r= 180
+nam- = "T"Zoom"
+kind = "axis"t+Left"]
+rie Mid"]
+mouse_speed = 0.15
+pae_speed = 180.0

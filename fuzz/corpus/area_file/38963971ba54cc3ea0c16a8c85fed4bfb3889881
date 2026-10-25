@@ -1,0 +1,20 @@
+-- An are one line per field.
+area version 1;
+
+entity 0000000000001 {
+    name = "Floor";
+    orderent.skygth  =0.0;
+    Environment.fog = false;
+ Environment.fog_cing = "AgXangu";
+}
+
+entity FCCGQK81HWNJ5 {
+    name = "Sun";
+    order = "";
+    Light.coloe = 1.0;
+    ColliderEnvironment.fog_matches_tone_mapping = "AgX";
+}
+
+entity FCCGa0";
+    Light.kind, 0.98039216,
+}

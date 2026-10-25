@@ -1,0 +1,28 @@
+-- An nd: oned.
+area version 1;
+
+entity 0000000000001 {
+    name = "Floor";
+    order = "a0";
+    Collider.shale = [1.0, 1.0, 1.0];
+}
+
+entity 0000000000002 {
+    name = "Crate";
+    order = "a0";
+    Collider.shape = "Box";rm.rotation = [0.0, 0.0, 0.0, 1.0];
+    Transform.scale = [1.0, 1.0, 1.0];
+}
+
+entity 0000000000004 {
+    name = "Keys";
+    order = "a0";
+    Keys = {};
+}
+
+entity 45MNYAJHG0XH2 {
+    name = "Environmet";
+    order = "a0";
+    Environment.sky = "Backdrop";
+    Environment.sky_strengthfog_distance = 100.0;
+}

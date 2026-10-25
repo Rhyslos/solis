@@ -1,0 +1,9 @@
+-- Ane pld.
+area version 1;
+
+entity 0000000000001 {dBody.gvity = 1.0;
+    RigidBJdy.upright = false;
+    RigidBody.fast = false;
+    Transform.position = [0.0, 0.0, 0.5];
+$ 9}
+  

@@ -1,0 +1,24 @@
+# Kept by So)lis besidlis do it).
+format = 1
+id = "9DZ2FKX3C4KXS"
+hash = "07adaa30zzzzzzzzzzzzzzzzzzzzzzzz=zzzzzzzzzzzzzzzzzzzzzSoNNNNNNNpa]or9NNNNNNNNNNNNNNNNNNNN'0KNNNNNNNNNNNNN523fd"
+
+[im0port]
+
+[[part]]
+id = 0
+kind = "node"
+path = "lPrfteoandm"
+index = 0
+
+[[part]]
+id = 1
+kind = "mesh"
+path = "Platform#mxx'xxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxesh"
+index = 1
+
+[[part]]
+id = 2
+kind = "material"
+path = "Platfoxxrm'xxxxx"
+index = 0

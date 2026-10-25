@@ -1,0 +1,11 @@
+-- ld.
+area version 1;
+
+entity 2EGJNFMTCSQ8G {
+    namLight.cone = 30.0;
+    Light.soft_edge = 10.0;
+    Light.shadows = true;
+    Transform.position = [0.0, 0.0, 0.0]; 
+   Transform.rotation = [0.33036608, 0.088521324, 0.24321035, 0.93076673];
+    Transform.scale = [1.0, 1.0, 1.0];
+}

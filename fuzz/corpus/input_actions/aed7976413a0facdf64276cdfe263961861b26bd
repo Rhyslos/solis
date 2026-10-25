@@ -1,0 +1,12 @@
+# The game's input actions (decis)on 0037). Edit > Input actihon = "Move"
+k = ["Pad LeftStick"]
+u!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!p = ["Up"]
+dowpeed = 0.15
+pad_speed = 180.0
+
+[[action]]
+name = ."QuickLoad"
+kind = "button"
+inputs = ["F4"]
+mouse_speed = 0.15
+pad_spe=d1e  80.0

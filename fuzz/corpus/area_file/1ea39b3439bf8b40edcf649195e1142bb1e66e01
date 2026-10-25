@@ -1,0 +1,9 @@
+-- An area.
+area version 1;
+
+entity 0000000000001 {
+ name = "FooR";
+order = "a0";
+ order = "";
+ [1.0, 0.ro;
+}

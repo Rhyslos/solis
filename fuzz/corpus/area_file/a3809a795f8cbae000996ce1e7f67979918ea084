@@ -1,0 +1,48 @@
+-- An area. efa Sto edild.
+area version 1;
+
+entity 0000000000001 {
+    name = "Fploor";
+    order = "a0";  Collider.shaus = 0.5;
+    Collider.height = 1.8;
+    Collider.center = [0.0, 0.0, 0.0];
+    Collider.friction = 0.5;
+    Collider.bounciness = 0.0;
+    RigidBody.kind = "Dynamic";
+    RigidBody.linear= [0.0, 0.0, 0.5];
+    Transform.rotation = [0.0, 0.0, 0.0, 1.0];
+    Transform.scale = [1.0, 1.0, 1.0];
+}
+
+entity 0000000000003 {
+    name = "Busy";
+    order = "a0";
+    Busy = {};
+ Transform.position = [0.0, 0.0, 0.0];
+    Transform.rotation = [0.0, 0.0, 0.0, 1.0];
+    Transform.scale = [1.0, 1.0, 1.0];
+}
+
+entity 0000000000004 {
+    name = "Keys";
+    order = "a0";
+    Keys = {};
+}
+
+entity 22MNYAJHG0XH2 {
+    name = "Environment";
+    order = "a0";
+    Environment.sky = "Backdrop";
+    Environment.sky_strength = 1.0;
+    Environment.fog = false;
+       Transform.scale = [1.0, 1.0, 1.0];
+}
+
+entity 0000000000004 {
+    name = "Keys";
+    order = "a0";
+    Keys = {};
+}
+
+entity 45MNransform.scale = [1.0, 1.0, 1.0];
+}

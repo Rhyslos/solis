@@ -1,0 +1,11 @@
+-- An arma. Sper flied.
+area version 1;
+
+entity 0000000000001 {
+       Keys = {};
+}
+
+entity 45MNYAJHG0XH2 {
+    Environment.sky_strength  =1.0;
+ironmesform.rotation = [0.33036608, 0.088521324, 0.24321035, 0.0, 1.0];
+}

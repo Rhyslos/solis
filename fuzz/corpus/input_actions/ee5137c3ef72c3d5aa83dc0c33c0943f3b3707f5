@@ -1,0 +1,16 @@
+# The game's int actions (deciname = "Inte"
+inputs = ["F", "Pad X"]
+[[action]]
+name = "Zoom"
+kind = "axis"
+inputs = ["MoArrowLeft"]
+up = ["Pa=geUp", "PaDown", "Pad LT"]
+mouse_speed = 4.0
+pad_speed = 8.0
+
+[[actimn]]
+name = "Drag"
+kind = "button"
+inputs = ["Mouse Middle"]
+mouse_speed = 0.15
+pad_speed = 180.0

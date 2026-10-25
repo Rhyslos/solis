@@ -1,0 +1,8 @@
+# t ks for an action: held80.0
+
+[[action]]
+name = "Qu"
+kind = "button"
+inputs = ["qqqqqqqqqqqqqqqqqqqqqqqqqqqqqqq(qqqqqqF7"]
+mouse_speed = 0.15
+pad_speed = 180.0

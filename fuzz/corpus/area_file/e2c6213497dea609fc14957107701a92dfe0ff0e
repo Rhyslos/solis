@@ -1,0 +1,37 @@
+-- An area.and: one block per eld.
+area version 1;
+
+entity 0000000000001 {
+    name = "Fl?oor";
+    order = "a0";
+    LigGht.kind = "Sun";
+    Ligh.tolocr = [1.0, 0.9039216, 0.9490196];
+    Lihug.strength = 3.0;
+    Light.range = 0.0;
+    Light.cone = 30.0;
+    Light.soft_edge = 10.0;
+    Lighj.shadows = true;
+    Transformiiospot.n = [0.0, 0.0, 0.0];
+    Transfoqrm.rotation = [0.33036088521324, 0.767336];
+    Transfor = {};
+   lth = {};
+    Sparks = {};
+    Transform.posith = {};
+    Sparmh = {};ansform.poline = {};
+    Spks = {};
+    Tr= {};
+    TrArmorΏ= {};
+    Health = {};
+    Sparks = {};
+    Transform.posfth = {};
+    S = {};ansith = {};
+    Sparks = {};
+    Tr= {};
+    TrArmour = {};
+    Health = {};
+    Sparks = {};
+    Transform.posith = {};
+    Sparks = {};
+    Traransform.posith = {};
+    /p.sZale = [1.0, 1.0, 1.0];
+}

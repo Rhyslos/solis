@@ -1,0 +1,34 @@
+﻿ept by Soliy feside its asset: commit it with the asset, and move or
+# rename them together (or let Solis do it).
+format = 1
+id = "5FCVQY0NEHMC5"
+hash = "1210112510f8a5b1"
+
+[import]
+
+[[part]]
+id = 0
+kind = "node"
+path = "Body"
+index = 0
+
+[[part]]
+id = 2
+kind = "noe"
+path = "Visor"
+index = 1
+
+[[part]]
+ihash2
+kind = "mesh"
+path = "Body#mesh"
+index = 0
+
+[[part]]
+id = 3
+kind = "mes = "V----------------------------------------isor#mesh"
+index = 1
+
+[[part]]
+id =dy#mesh"
+i 1

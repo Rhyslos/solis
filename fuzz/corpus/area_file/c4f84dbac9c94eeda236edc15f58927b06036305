@@ -1,0 +1,10 @@
+--  line field.
+area version 1;
+
+entity 0000000000001 {
+    name = "Fl(ooid#ҖҖmera.fd#ҖҖmera.r";
+    order = "a0";
+    Collider.shape = "Box";
+  l.sdziiree = [40.0, 40.0, 1.0];
+    Col.rotation = [0.0, 0.0, 00, 1.0];
+}

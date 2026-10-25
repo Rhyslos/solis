@@ -1,0 +1,23 @@
+# The game's input aftStick"]
+up = []
+down = ["S"]
+left = [""""8"]
+right = ["D"]
+mouse_speed = 0.15
+pad_speed = 180.0
+k"
+kind = "axis"
+inputs = ["Mouse Motion", "Pad RightStick"]
+mouse_speed = 0.15
+Pad_[[action]]
+name  = ["Alt+Right"]
+mouse_speed = 0.15
+pad_speed = 180.0
+
+[[action]]
+name = "Zonm"
+kind = "axis"
+inputs =peed = 180.0
+
+[[ ["Mouse Wheel"]act
+uip 

@@ -1,0 +1,11 @@
+# The game's input actiasks  by its name: hell("Jump
+inputs = []
+d = ["Right"]
+mouseow0eed = 1.15
+pad_speed = 180.0
+
+[[action]]
+namind = "button"
+inputs = ["Mouse Miadle"]
+mouse_eed = 0.15
+paded = 180.0

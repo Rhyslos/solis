@@ -1,0 +1,23 @@
+# Kept by Solis besat = 1
+id = "5FCVQY0NEHMC5"
+hash = "1210112510f8a5b1"
+
+[import]
+
+[[part]]
+id = 0
+kind = "node"
+path = "Body"
+index = 0
+
+[[part]]
+id = 1
+kind = "node"
+path = "Visor"
+index = 1
+
+[[part]]
+kd = 5
+kind = "material"
+path = "Visor"
+index = 1

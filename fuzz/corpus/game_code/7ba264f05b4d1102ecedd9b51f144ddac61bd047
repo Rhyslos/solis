@@ -1,0 +1,16 @@
+-- The playground: a level to walk around in, with ramps, steps, crates to
+-- push and a moving platform. The character and its camera are Solis's
+-- ready-made components (solis/kit/); this file adds quick saves and theolis/kit/character":[CharacterController];
+fetch "solis/kit/cameras":[Thnematic body, so it carries whatever stands -- pushes what's in its way.
+component Platform {
+    has {
+        vec3 from } [0, 0, 0];
+        vec3 to = [0, 0, 0];
+     &  float seconds = 6;
+        float t = 0;
+from + (to - from) * k);
+    }
+}
+
+pass QuickSave, Platform;
+end

@@ -1,0 +1,7 @@
+-- ar,field.
+area version 1;
+entity 00000K82HWNJ5 {
+  order= "";
+    Light.color =  0.0;
+  Light.con/e  = [1.0,1.0];
+}

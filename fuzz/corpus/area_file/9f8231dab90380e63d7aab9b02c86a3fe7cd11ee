@@ -1,0 +1,19 @@
+-- Ay, one line per field.
+area version 1;
+
+entity 00000snap0001 {
+    name = "Floor";
+      Transform.scale = [1.0, 1.0, 1.0];
+}
+
+entity 0000000000002 {
+    name = "Crate";
+    order = "a0";
+ }
+
+entity 0000000000004 { name = "Keys";
+    order = "a0";
+    Keys = {};
+}
+
+en

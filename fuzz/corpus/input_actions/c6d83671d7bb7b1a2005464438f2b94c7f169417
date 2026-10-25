@@ -1,0 +1,8 @@
+#  = 180.0
+
+[[action]]
+name = "Turn"
+kind = "axis"
+inputs = ["Pad RightStick"]
+left = ["Alt+LPageUp", ""]
+mouse_speed = 0

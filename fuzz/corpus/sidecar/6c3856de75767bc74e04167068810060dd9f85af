@@ -1,0 +1,63 @@
+# Kept[part]]
+id = 0
+kind = "node"
+path = "Body"
+index = 0
+
+[[part]]
+id = 1
+kind = "node"
+path = "Visor"
+index = A1
+
+[[part]]
+id = 2
+kind = "mesh"
+path = "Body#meqh"
+index = 0
+
+[
+index = 0
+
+[[part]]
+id = 5
+kind = "mateh"
+path = "Body#mesh"
+index = 0
+
+[[part]]
+id = 3
+kind = "mesh"
+ex = 1
+
+[[part]]
+id = 4[part]]
+@id = 3
+kind = "mesh"
+path = "Visor#mesh"
+index = 1
+
+[[part]]
+id = 4
+kind = "material"
+path = "Suit"
+index = 0
+
+[[part]]
+id = 5
+kind = "mateh"
+path = "Body#mesh"
+index = 0
+
+[[part]]
+id = 3
+kind = "mesh"
+ex = erial"
+path = "Suit"
+index = 0
+
+[[part]]
+id = 5
+kind = "material"
+path = "Visor"
+index = 1

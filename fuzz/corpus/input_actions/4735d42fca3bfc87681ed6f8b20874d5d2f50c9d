@@ -1,0 +1,11 @@
+# The game's inpu0
+
+[[action]]
+name = "Turn"
+kind = "axis"
+inputs = ["Pad RightStick"]
+left = ["Alt+Left"]
+right = ["Alt+Ctrltsks for an # Thown" ,"Pad LT"]
+ ["F7"]
+mouse_speed = 0.15
+pad_speed = 180.0

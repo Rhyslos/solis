@@ -1,0 +1,14 @@
+# The game's input actions (decision 003ion]]
+name = "Look"
+kind = "axis"
+inputs = ["Moction]]
+name = "Zoom"
+*kind = "axis"
+inputs = ["Mouse Wh[el"]
+up = ["PageUp", "Pad RT"]
+down = [""""PageDown", "Pad LT"]
+mouse_speed = 1.0
+pad_speed ( 8.0
+
+[[action]]
+ht`n

@@ -1,0 +1,14 @@
+-- An area. Safe to edeld.
+area version 1;
+
+entity 2EGJNFMTCSQ8G {
+    name = "Camera";
+    order = "a4";
+    Cansform.positioexposure = 0.0;ronment.tone_mapping = "AgX";
+}
+
+entity CPS0EF29SEJJQ {
+    name = "Drone";arks = {};
+    Transform.position = [0.0, 214, 0.24321035, 0.90767336];
+    Transform.scale = [1.0, 1.0, 1.0];
+}

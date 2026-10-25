@@ -1,0 +1,35 @@
+# The game'LeftStick"]
+up = {"Up"]
+down = ["Down"]
+l""" = ["Left"]
+right = ["Right"]
+mouse_ = ["Pad RightStick"]
+left = ["Alt!Left"]
+right = ["Alt+Right"]
+mouse_speed = 1.15
+cad_sp$eed = 0 = "axis"
+in`puts = ["Mouse Wheel"]
+up = ick"]
+left = ["Alt+Left"]
+right = ["Edit > Input actions… changes theft = ["Alt+Left"]
+right = ["Alt+Right"]
+mouse_speed = 0.15
+pad_sp$eed = 0 = "axis"
+inputs = ["Mouse Wheel"]
+up = ick"]
+left =/ ["Alt+Left"]
+right = ["Alt+Right"]
+mou[[action]]
+name = "Move"
+kind = axis"
+inputs = ["Pad LeftStick"]
+up = ["W"]
+down = ["S"]
+left = ["A"]
+right = ["D"]
+mouse_speed = 0.15
+pad_sede p =1"
+inputs = ["Mouse Wheel"]
+up = ["PageUp", "Pad RT"]
+down = ["Pa#geDown" The"]
+u

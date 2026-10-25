@@ -1,0 +1,13 @@
+#  wi asset, anove or
+# 0
+
+[[part]]
+i = 2
+kind = "material"
+path = ""
+index = 0
+
+[[part]]
+id = 2
+kind = "material"
+qp= 0

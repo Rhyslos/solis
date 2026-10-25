@@ -1,0 +1,8 @@
+# t > 
+
+[[action]]
+name = "@ve"
+kind = "button"
+inputs = ["F6"]
+mouse_speed = 0.15
+pad_speed = 1

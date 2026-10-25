@@ -1,0 +1,8 @@
+# The gme's in
+ts = ["F6"]
+mouse_speed = 0.15
+vad_speed = 180.0
+
+[[action]]
+name ="QuickLoad"
+ZZZZZZZZeed = 986.0

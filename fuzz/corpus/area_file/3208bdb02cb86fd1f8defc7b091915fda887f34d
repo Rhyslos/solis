@@ -1,0 +1,18 @@
+-- An area. Safe to edit by handtity, one line per field.
+area version 1;
+
+entity 0000000000001 {
+    name = "Fl?oor";
+    Environ.sky_soft_edg = 1.0;
+    Envirofnnet.mog = false;
+    LightEnvironment.fog_distgnce = 100.0;
+    Envirrnment.fog_matches_sky = true;
+    Transformto.fog_color = [1.7058824, 0.74509805, 0.839216];
+    Environmnet.exposure = 0.0;
+    Envght.cone = 30.0;
+    Light.soft_edge = 10.0;
+    Lighj.shadows = true;
+    Transformiiospot.n = [0.0, 0.0, 0.0];
+    Transfoqrm.rotation = [0.33036608, 0.088521324, 0.24321035, 0.90767336];
+    Transformtone_map.sZale = [1.0, 1.0, 1.0];
+}

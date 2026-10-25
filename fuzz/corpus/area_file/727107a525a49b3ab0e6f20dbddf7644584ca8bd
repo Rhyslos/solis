@@ -1,0 +1,7 @@
+-- Ae ler field.
+area version 1;
+
+entity 2EGJNFMTCSQ8G {
+    name = "Camera";orm.rotation = [0.33036608, 0.088521124, 0.321035, 0.93063872];
+    Transform.scale = [0.0, 1.00];
+}

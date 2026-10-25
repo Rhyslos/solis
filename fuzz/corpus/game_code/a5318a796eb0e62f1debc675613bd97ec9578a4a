@@ -1,0 +1,10 @@
+-- The turret sample: Solis's fi), armour
+-- method update(flo then {
+          at  (  cooldown = 10;
+            vec3 ahead = [s * -1, c, 0];
+            Rdis tteam == 1? then {
+                ahead = ahead * -1;
+            }
+ ocal at = solis.positionOf(self.me)
+  A solis.moveTo(self.me, vec3(at.x, at.y,  ))
+end

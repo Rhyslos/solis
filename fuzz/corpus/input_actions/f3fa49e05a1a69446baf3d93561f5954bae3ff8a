@@ -1,0 +1,22 @@
+# he game's input. Inpuo actions… changes them;
+# game code asks for "]
+up = ["W"]
+down = ["S"]
+l'''eft = ["A"]
+rifht = ["D"~
+mouse_speed = 515
+pad_sp# The game'ad LeftStick"]
+up = {"Up"]
+down = ["Down"]
+left = ["Left"]
+ri_speed = 0.15
+pad_speed =U 180.0
+
+[[ac4ion]]
+name = "Turn"
+kind = "axis"
+inpduts = ["Pad RightStick"]
+left = = *"Alt+Right"]
+mouse_speed = 0.15
+padsp$eedd = 0 = "axis"
+in=0" 18=

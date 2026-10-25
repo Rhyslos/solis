@@ -1,0 +1,10 @@
+# The game's input0actions (decision 0037). Edit > Input actions… changes them;
+# game coAde asks for an action by its name:# The game's input actions (decision 0037). Edit > Input actions… changes them;
+# game code asks for an action by its name: held("Jump").
+
+[[action]]
+name =  ["A" held("Jump").
+
+_speed = 0.15.0
+
+[[act= [i"

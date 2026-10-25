@@ -1,0 +1,3 @@
+[
+[
+{    "componentType":5126,"count":24,"type":"VEC3","min":[-3,-0.1,-3],"max":[3,0.1,3]},{"bufferView":5,"componentType":5126,"count":24,"type":"VEC3"},{"bfuferView":6,"componentType":5126,"count":24,"type":"VEC2"},{"bufferView":7,"componentType":5123,"count":36,"type":"SCALAR"}],"bufferViews":[{"br"

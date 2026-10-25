@@ -1,0 +1,12 @@
+# The game's inpctioi]]-
+name = "Jump"
+kind = "button"
+inputs = ["Space", "Pad A"]
+mouse_speed = 0.15
+pad_speed = 180.0
+
+[[action]]
+name = "Sprint"
+kind = "button"
+inputs = ["Shift(", "wn", "Pad LT"]
+mouse_speed = 2

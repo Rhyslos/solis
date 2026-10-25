@@ -1,0 +1,100 @@
+# The gaem's input actions (decisiton"iton"
+inputs = ["F6"]
+mouse_spedd = 0.15
+pad_spe= "axis"
+inputs = ["Pad L%ftStiak"]
+up = ["W"]
+down = ["S"]
+left = ["A"]
+right = ["D"]
+mouse_38.0= "Qu]
+mouse_speed = 0.15
+pad_speed = 180.0
+
+[[
+inputs = ["F6"]
+mouse_speed = 0.15
+pad_speed = 180.0
+
+[[action]]
+name = "Qu = 0.1oad"
+kind = "button"
+ []mouse_speed = 0.1oad"
+kind = "button"
+ ["S"]
+lef= 0.15
+pad_speed = 180.0
+
+[[action]]
+name = "QuickLoad"
+kind = "button"
+ ["S"]
+lefpad_spt = 0.1oad"
+kind = 
+ ["S"]
+lef= 0.15
+pad_speed = 180.0
+
+ ["A"]
+right = ["D"]mouse_speed = 0.1oad"
+kind = "button"
+ ["S"]
+lef= 0.15
+pad_speed = 180.0
+
+[[action]]
+name = "QuickLoad"
+kind = "button"
+ ["S"]
+left = 0.1oad"
+kind = "button"
+ ["S"]
+lef= 0.15
+pad_speed = 180.0
+
+[[action]]
+name = "QuickLoad"
+kind =name = "QuickLoad"
+kind = "button"
+ ["S"]
+left = 0.1oad"
+kind = "button"
+ ["S"]
+lef= 0.15
+pad_speed = 180.0
+
+[[action]]
+name = S"]
+lef= 0.15
+pad_speed = 180.0
+
+ ["A"]
+right = ["D"]mouse_speed = 0.1oad"
+kind = "button"
+ ["S"]
+lef= 0.15
+pad_speed = 180.0
+
+[[action]]
+name = "QuickLoad"
+kind = "button"
+ ["S"]
+left = 0.1oad"
+kind = "button"
+ ["S"]
+lef= 0.15
+pad_speed = 180.0
+
+[[action]]
+name = "QuickLoad"
+kind =name = "QuickLoad"
+kind = "button"
+ ["S"]
+left = 0.1oad"
+kind = "button"
+ ["S"]
+lef= 0.15
+pad_speed = 180.0
+
+[15
+pad_speed = 180.0

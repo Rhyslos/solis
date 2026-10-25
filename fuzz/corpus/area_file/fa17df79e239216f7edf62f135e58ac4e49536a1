@@ -1,0 +1,6 @@
+-- A 
+area version 1;
+
+entity 2EGJNFMTCSQ8G{    Camera.fov = 49.0;
+    Camera.near = 0;
+    }

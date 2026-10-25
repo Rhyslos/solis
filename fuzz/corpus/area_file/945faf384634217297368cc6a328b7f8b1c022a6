@@ -1,0 +1,5 @@
+-- An  perield.
+area version 1;
+
+entity b000height001 {sform.ale = [1.0, 1];
+}

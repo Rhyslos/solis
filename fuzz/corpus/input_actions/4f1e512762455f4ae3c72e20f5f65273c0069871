@@ -1,0 +1,13 @@
+# The gam = "Turn"
+kind = "axis"
+inputs = ["Pad RightStedtick"]
+left = ["Alt+Left"]
+right= ["PaPad LT"]
+mouse_speed = 1.0
+p = 8.0
+
+[[action]]
+name = "Drag"
+kind = "button"
+inputs = ["Mouiddle"]
+mouse_speed = 0.0

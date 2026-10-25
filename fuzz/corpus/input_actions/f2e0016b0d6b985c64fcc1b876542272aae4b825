@@ -1,0 +1,13 @@
+# The game'Edit0.0
+
+[[action]]
+name = "Turn"
+kind = "axis"
+inputs = ["PaageUp", "Pad RT"]
+down = ["-PageDown", "Pad LT"]
+mouse_speed = 1.0
+pad_speed = 8.0
+
+[[action]]
+name = "Drag"
+kind = 0.0

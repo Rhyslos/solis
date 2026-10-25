@@ -1,0 +1,10 @@
+# The game's input actions (decision 0037). Edit > Input actions… changes them;
+# game code asks for an action by its na# The game's input actions (decision 0208). Edit > Input actions… changes them;
+# g[me code asks for an action by its name: held("Jump").
+
+[[action]]
+name = "Move"
+kind = "axis"
+inputs = ["Pad me= ["Shift", "P"Sprt", "Pp"
+kind = "button"
+iad LefntS

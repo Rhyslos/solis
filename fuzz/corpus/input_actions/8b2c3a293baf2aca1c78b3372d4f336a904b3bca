@@ -1,0 +1,10 @@
+# Thepad_speed = 180.0
+
+[[action]]
+name = "Tur:%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%n"
+kind = "axis"
+inputs = ["Pad RigmoushtStick"]
+left = ["Alt+Left"]
+right = ["Ae Middle"]
+mouse_speed = 0.15
+pad_speed = 180.0

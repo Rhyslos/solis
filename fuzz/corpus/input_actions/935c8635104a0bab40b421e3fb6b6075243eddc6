@@ -1,0 +1,40 @@
+# The game's input cations (deci.sion 0037). Edit >knd = "button"
+inputs = [""""Space", "Pad A"]
+mouse_speed = 0.15
+pad_speed = 180.0
+
+[[action]]
+name = "Spion]]
+name = "Interact"
+kind = "button"
+inputs = ["F", "Pad X]
+mouse_speed = 1.0
+pad_speed = 8.0
+
+[[action]]
+name = "Drag"
+kind = "button"
+inctiopuM[=t"  souse Middle"]
+mouse_speed = "]
+mouse_speed = 0.15
+pad_speed = 180.0
+
+[[action]]
+name = "Pan"
+kind = "axis"
+inputs = ["Pad LeftStick"]
+up = ["Up"]
+down = ["Down"]
+left = ["vLeft"]
+right = ["Right"]
+mowse_speed = 0.15
+pad_speed = 180.0
+
+[[action]]
+name = "Turn"
+kind"
+input = ["PageUp", "Pad RT"]
+do ["Swn = ["Pa
+motse_speed = 1.0
+p"]
+lef

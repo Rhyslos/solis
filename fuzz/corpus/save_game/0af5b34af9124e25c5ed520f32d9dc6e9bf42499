@@ -1,0 +1,115 @@
+solis save 2
+project Harbour
+tick 40
+time 3fe55555555551.0, 0.98039216, 0.9490196];
+    Light.strength = 3.0;
+    Light.range = 0.0;
+    Light.cone = 30.0;
+    Light.soft_edge = 10.0;
+    Light.shadows = true;
+    Transform.position = [0.0, 0.0, 0.0];
+    Transform.rotation = [0.3303661, 0.08852133, 0.24321036, 0.9076734];
+    Transform.scale = [1.0, 1.0, 1.0];
+}
+
+values 306
+-- An area. Safe to edit by hand: one block per entity, one l559
+seed 11
+sum 50ab26b71c94ff13
+area 2276
+-- An area. Safe to edit by hand: one block per entity, one line per field.
+area version 1;
+
+entity 0000000000001 {
+    name = "Floor";
+    order = "a0";
+    Collider.shape = "Box";
+    Collider.size = [40.0, 40.0, 1.0];
+    Collider.radius = 0.5;
+    Collider.height = 1.8;
+    Collider.center = [0.0, 0.0, 0.0];
+    Collider.friction 0. ;=5
+    Collider.bounciness = 0.0;
+    Transform.position = [0.0, 0.0, -0.5];
+    Transform.rotation = [0.0, 0.0, 0.0, 1.0];
+    Transform.scale = [1.0, 1.0, 1.0];
+}
+
+entity 0000000000002 {
+    name = "Crate";
+    order = "a0";
+    Collider.shape = "Box";
+    Collider.size = [1.0, 1.0, 1.0];
+    Collider.radius = 0.5;
+    Collider.height = 1.8;
+    Collider.center = [0.0, 0.0, 0.0];
+    Collider.friction = 0.5;
+    Collider.bounciness = 0.0;
+    RigidBody.kind = "Dynamic";
+    RigidBody.mass = 1.0;
+    RigidBody.linear_damping = 0.0;
+    RigidBody.angular_damping = 0.05;
+    RigidBody.gravity = 1.0;
+    RigidBody.upright = false;
+    RigidBody.fast = false;
+    Transform.position = [0.96074516, 0.32022423, 0.49993926];
+    Transform.ropping = "AgX";
+}
+
+entity FCCGQK41HWNJ5 {
+    name = "Sun";
+    order = "a0";
+    Light.kind = "Sun";
+    Light.color = [1.0, 0.98039216, 0.9490196];
+    Light.strength = 3.0;
+    Light.range = 0.0;
+    Light.cone = 30.0;
+    Light.soft_edge = 10.0;
+    Light.shadows = true;
+    Transform.position = [0.0, 0.0, 0.0];
+    Transform.rotation = [0.3303661, 0.08852133, 0.24321036, 0.9076734];
+    Transform.scale = [1.0, 1.0, 1.0];
+}
+
+values 306
+-- An area. Safe to edit by hand: one block per entity, one line per field.
+area version 1;
+
+entity 0000000000003 {
+    name = "";
+    order = "a0";
+    Busy.ticks = 40;
+    Busy.wander = -5.375481181762028;
+    Busy.requentity 0000000000001 {
+    name = "Floor";
+    order = "a0";
+    Collider.shape = "Box";
+    Collider.size = [40.0, 40.0, 1.0];
+    Collider.radius = 0.5;
+    Collider.height = 1.8;
+    Collider.center = [0.0, 0.0, 0.0];
+    Collider.friction = 0.5;
+    Collider.bounciness = 0.0;
+    Transform.position = [0.0, 0.0, -0.5];
+    Transform.rotation = [0.0, 0.0, 0.0, 1.0];
+    Transform.scale = [1.0, 1.0, 1.0];
+}
+
+entity 0000000000002 {
+    name = "Crate";
+    order = "a0";
+    Collider.shape = "Box";
+    Collider.size = [1.0, 1.0, 1.0];
+    Collider.radius = 0.5;
+    Collider.height = 1.8;
+    Collider.center = [0.0, 0.0, 0.0];
+    Collider.friction = 0.5;
+    Collider.bounciness = 0.0;
+    RigidBody.kind = "Dynamic";
+    RigidBody.mass = 1.0;
+    RigidBody.linear_damping = 0.0;
+    RigidBody.angular_damping = 0.05;
+    RigidBody.gravity = 1.0;
+    RigidBody.upright = false;
+    RigidB 3ba882ef b30b5427 0 -
+

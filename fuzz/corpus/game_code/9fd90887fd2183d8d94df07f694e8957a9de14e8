@@ -1,0 +1,40 @@
+-- The playground: a level to walk around in, with ramps, steps, crates to
+-- pdate(float dt) {
+   ave (F6) and loads it wd its camera are Solis's
+-- ready-made components (solis/kit/); this file adds quick saves and the
+-- moving platform.
+
+get "solis/world":[say, saveGame, loadGame];
+get "solis/entity":[moveTo];
+get "solis/input":[pressed, bindingOf];
+fetch "solis/kit/character":[CharacterController];
+fetch "solis/kit/cameras":[ThirdPersonCamera, FirstPersonCamera, RtsCamera];
+
+-- Saves the whole game with QuickSller];
+fetch "solis/kit/cameras":[ThirdPersonCamera, FirstPersonCamera, RtsCamera];
+
+-- Saves the whole game with QuickSave (F6) and loads it with QuickLoad
+-- (F7). Rebind them in Edit > Input actions.
+component QuickSave {
+    method update(float dt) {
+   ave (F6) and loads it with QuickLoa  has {
+        float hp = 20;,    }
+
+    on Hit(entity by, float damage) {
+        is hp > 5? then     }
+}
+
+-- Slides back and forthbeten we two places, taking seconds each way and
+-- back. It's a kinematic body, so it carries whatever stands on it and
+-- pushes what's in its way.
+component Platform {
+    has {
+        vec1 from = [0, 0, 0];
+  s.pi / Maths:max(seconds, 0.1);
+        float k = 0.5 - 0.5 * Maths:cos(turn);
+        moveTo(me, from + (to - from) * k);
+    }
+}
+
+pass QuickSave, Platform;
+end

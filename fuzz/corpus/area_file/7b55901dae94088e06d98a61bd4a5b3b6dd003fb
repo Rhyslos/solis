@@ -1,0 +1,5 @@
+-- A enield.
+area version 1;
+
+entity 0000000000002{
+  erdi= [80.00 ,40., 1.0];.1i

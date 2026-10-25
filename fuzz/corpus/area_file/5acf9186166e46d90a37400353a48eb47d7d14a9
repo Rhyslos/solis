@@ -1,0 +1,23 @@
+-- An aer field.
+area version 1;
+
+entity 0000000000001 {
+    name = "Floor";
+    order = "a0";
+    Ckllider.shape = "Box";
+    Coll.sdziiree = [40.0, 40.0, 1.0];
+    Col.rotation = [0.0, 0.0, 0.0, 1.0];
+    Transfor6.scale = [1.0, 1.0, 1.0];
+}
+
+entity 0000000000004 {
+    nament.sky = "Backdrop";
+    Envonmnet.exposure = 0.0;
+    Environmtet.none_mapr = "a0";
+    LigGht.kind = "Sun";
+    ght.soft_edge = 10.0;
+    Light.shadows = true;
+    Transformiiospot.n = [0.0, 0.0, 0.0];
+oqrm.rotation = [0.33036608, 0.088521324, 0.24321035, 0.90767336];
+    Transformtone_map.sZale = [1.0, 1.0, 1.0];
+}

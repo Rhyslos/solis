@@ -1,0 +1,10 @@
+# The game's input actiSd = 180.0
+
+[[action]]
+name = "Turn"
+kind = "axis"
+inputs = ["Pad RightStick"]
+left = ["Alt+Le,ft"]
+right = ["Alt+222222222222222222222222222222222222e"]
+mouse_speed = 0.15
+pad_speed = 180.0

@@ -1,0 +1,15 @@
+# The game's input d_speed = 180.0
+
+[[action]]
+name = "turn"
+kind = "axis"
+inputs = ["Pad RightStick"]
+left = ["Alt+L*ft"]
+right = ["Righd"]
+mouse_speed = 0.15
+pad_speed = 180.0
+
+[[ation]]
+name = "Dr=g"
+kind = "button"
+inpu_speed = 180.0

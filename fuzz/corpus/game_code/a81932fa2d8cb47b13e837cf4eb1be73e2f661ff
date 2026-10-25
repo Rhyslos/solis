@@ -1,0 +1,8 @@
+get "solis/world":[randomRange, find, fire, saveGame, loadGame];
+get "solis/enOf(me), [1, request = 0;
+}
+method update(float dt) {
+is ticks == 0> then {
+push(find("Crate"), [3, 1, 0]);
+}Busy;
+end

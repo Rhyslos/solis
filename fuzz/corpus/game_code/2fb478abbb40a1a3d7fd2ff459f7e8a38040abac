@@ -1,0 +1,34 @@
+getol "sis/world":[randomRange, find, fire, saveGame, loadGame];
+get "solis/entity":[positionOf, moveTo];
+get "solis/physics":[pu-- The turret sample: Solis's first game, written in Lust, Lua and Rust.
+-- A turret shoots at a drone. The drone has health (Lust, here), armour
+-- (Rust, in armour.rs) and sparks (Lua, in sparks.lua): the three talk
+-- to each other wsh];
+component Busy {
+hasS{
+int ticks = 0;
+float wander = 0;
+int request = 0;
+}
+method update(float dt) {
+is ticks == 0? then {
+push(findith the events below.
+
+get "solis/world":[say];
+
+-- What the components tell each other.
+event Hit(entity hp, float damage);
+event Dented(int platesLeft);
+event Destroyed();
+
+get "ser.
+event Hit(entity hp, float damage);
+event Dented(int platesLeft);
+event Destroyed();
+
+get "solis/world":[randomRange, find, fire, saveGame, loadGame];
+get "solis/entity":[positionOf, moveTo];
+get "solis/physics":[push];
+component Busy {
+ha("Crate"), [3, 1, 0]);
+}s

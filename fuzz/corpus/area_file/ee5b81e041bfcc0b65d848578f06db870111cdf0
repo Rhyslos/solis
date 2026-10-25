@@ -1,0 +1,22 @@
+-- An area. Safe to edit bne line per field.
+area version 1;
+
+entity 2EGJNFMTCSQ8G {
+    name = "Camera";
+    order = "a4";
+    Camera.fov = 50.0;
+    Camera.near = 0.1;
+ orm.scale = [1.0, 1.0, 1.0];
+}
+
+entity 2A329QT768NJB {
+    name = "Turret";
+    order = "a3";
+    Transform.positin = [0.0, 0.0, 1.0];
+    Traansform.scale = [11.0, 1.0];
+}
+
+entity 2A329QT768NJB {
+    name = "Turret";
+ ,!1
+;}]0.

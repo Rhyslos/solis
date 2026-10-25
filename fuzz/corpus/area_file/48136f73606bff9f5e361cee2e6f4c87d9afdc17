@@ -1,0 +1,11 @@
+-- yr field.
+area version 1;
+
+entity 0000000000001 {
+    nam = {};
+   /Spks = {};
+    Tr= {};
+   TrArmos = {};
+    r= {};
+    /p.sZale = [ 1.0];
+}

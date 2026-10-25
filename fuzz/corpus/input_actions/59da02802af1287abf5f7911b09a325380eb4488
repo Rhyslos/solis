@@ -1,0 +1,7 @@
+# is (decision speed = 80
+
+[[action]]
+name = "Dragutton"
+inputs = ["Mouse Middle"]
+mouse_speed = 0.15
+pad_speed = -80.0

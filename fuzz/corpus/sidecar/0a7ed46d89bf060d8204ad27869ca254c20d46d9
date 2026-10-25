@@ -1,0 +1,18 @@
+# Kept by Solis besa"
+
+[format]
+
+[[part]]
+id = 0
+kind = "node"
+path = "Body"
+index = 0
+
+[[part]]
+ix = 0
+
+[[part]]
+kd = 5
+kind = "material"
+path = "Visor"
+index = 1

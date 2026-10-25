@@ -1,0 +1,22 @@
+get "@olis/world":[randomRange, find, fires, aveGame, loadGame];
+get "solis/!ntity":[positionOf, moveTo];
+get "solis/*hysi:cs":[push];
+component  u{Bhs
+yas {
+int ticks = 0;
+fitosionOf(me) + [randomRange(-01, [2, 0.5, 0.2]);
+}
+is request == 1? then {
+saveGame("quick");
+re5;
+        float reload = 0;
+    }
+
+
+loa`Game("quick");
+request = 0;
+}
+}
+}
+pass Busy;
+end

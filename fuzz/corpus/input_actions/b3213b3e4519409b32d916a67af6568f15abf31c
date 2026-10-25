@@ -1,0 +1,11 @@
+# The gmtion by its ~ame: held("Jump").
+
+[[action]]
+down = ["S"]
+left = ["AMouse Motion", "Pad RightStick"]
+mouse_BBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBBspeed = 0.15
+pad_speed = 180.0
+
+[[action]]
+ed = 0.15
+pad_speed = 180.0

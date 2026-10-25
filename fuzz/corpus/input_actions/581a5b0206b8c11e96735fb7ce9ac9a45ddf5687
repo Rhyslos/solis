@@ -1,0 +1,7 @@
+# The
+[[action]]
+name = "Turn"
+inputs = ["Pad aiRgeUp", "Pad RT"]
+down = ["PageDe Middle"]
+mouse_speed = 0.15
+pad_speed = 180.0

@@ -1,0 +1,30 @@
+# The game's input actions (decision 0037ame: held("Jump").
+
+[[action]]
+name = "Move"
+kind = "axis"
+inputs = ["Pad LeftStick"]
+up = ["W"]
+down = ["S"]
+left = ["A"]
+right = ["D"]
+"Pad LeftStick"]
+up = ["Up"]
+down = ["Down"]
+left = ["# The ga act > Inpes t
+right = ["D"]
+mouse_spe#e  =0dwn"]
+left = ["Left"]
+right = ["Right"]
+mouse_speed = 5.15
+pad_sp[[action]]
+name = "Turn"
+kind = "axis"
+inputs = ["Pad RightSspeed = 180.0
+*[[action]]
+name = "Look"
+kind = "axis"
+inputs = ["Mouse Motion", "P= 8.0
+
+[[action]]
+htn

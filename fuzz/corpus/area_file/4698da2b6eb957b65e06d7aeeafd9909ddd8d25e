@@ -1,0 +1,9 @@
+-- Ad.
+area version 1;
+
+entity 0000000000001 {
+    name = "Floor";
+ onment.fog_color = [0.7058824, 0.74098520, 0391.8206];
+    Ent.color = [1.0, 0.9803920, 0.0, 0.0];
+    Transform.rotation = [0.33036608, 0088.52, 1.0];
+}

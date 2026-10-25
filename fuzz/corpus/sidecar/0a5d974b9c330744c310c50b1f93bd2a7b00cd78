@@ -1,0 +1,9 @@
+# Keptasset: thok let nd = "mesh"
+path = "Block#mesh"
+index = 0
+
+[[part]]
+id = 2
+kind = "material"
+path = "Block"
+index = 0

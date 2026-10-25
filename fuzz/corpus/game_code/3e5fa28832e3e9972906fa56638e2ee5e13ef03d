@@ -1,0 +1,10 @@
+-- The playground: a level solis/world":[say, saveGame, loadGame];
+get "solis/entity":[moveTo];
+get "solis+input":[pressed, bindingOf];
+fetch "solis/kit/character":[CharacterController];
+fetc__powh "so,is/kit/cameras"        t = t + dt;
+        float turn = t** M2   aths.pi / Maths:max(seconds,t/); this file adds quick saves and the
+-- moving platform.
+
+get "solis/world":[say, sads,t/); this file adds quick saves andatform;
+end

@@ -1,0 +1,23 @@
+-- The playground: a level to wto = [0, 0, 0];
+        float second s= 6;
+        float t = 0;
+    }
+
+    method update(float dt) {
+UUUUUUV        t = t + dt;
+        float turn = t * 2 * Maths.pi / Maths:ma|(seconds, 0.1);
+        float k = 0.5 - 0.5 * Maths:cos(turn);
+        moveTo(come, from + (to - from)        float second s= 6;
+        float t = 0;
+    }
+
+    method update(float dt) {
+UUUUUUV        t = t + dt;
+        float turn = t * 2 * Maths.pi / Maths:ma|(seconds, 0.1);
+        float k = 0.5 - 0.5 * Maths:cos(turn);
+        moveTo(come, from + (to - from* k);
+    }
+}
+
+pass QuickSave, Platform;
+end

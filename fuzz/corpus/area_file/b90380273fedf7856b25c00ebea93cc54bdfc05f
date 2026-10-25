@@ -1,0 +1,7 @@
+-- a.
+area version 1;
+
+entity 0000000000001 {
+     Environment.fog_distance = 0.010;
+  ht.cone = 30.0;Lighform.scale = [0.0, 1.0, 1.0];
+}

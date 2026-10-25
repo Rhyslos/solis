@@ -1,0 +1,16 @@
+# The game's input actions "axis"
+inputs = ["Pad LeftStickon"
+inputs = ["Space",{"Pa"]
+up = ["W"]
+do"Mouse Motion", "Pa8,.0
+
+[[action]]
+name = "Look"
+kind = "axis"
+iputs = [t > In-ut actions〦 changetght = ["on]]
+name = "Movk"
+k ["Pad LeftStickon"
+inputs = ["Space",{"Pa"]
+up = ["W"]
+do"Mouse Motion", "Pand = "button"
+inputs = [" chFang"

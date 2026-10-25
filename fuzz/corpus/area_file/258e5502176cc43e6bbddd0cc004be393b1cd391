@@ -1,0 +1,16 @@
+-- ne block peine per field.
+area version 1;
+
+entity 0000000000001 {
+    nameCoansfor6.scale = [0.0, 1.0, 1.0];
+}
+
+entity 0000000000004 {
+    n.tone_mapping = "AgX";
+}
+
+entity FCCGQK82HWNJ5 {
+    name = "Sun";
+   Light.kind = "Sun";
+    Light.color = [1.0, 0.98039216, 0.9490196];   form.position = [0.0,30361324];
+}

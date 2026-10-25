@@ -1,0 +1,6 @@
+--@nield.
+area version 1;
+
+entity 0000000000001 {
+   lider.frin = [0.0, 0.0];t.fotce = 100.0;t.kd = "Sun";form.rotan = [0.3664,1.0];
+}

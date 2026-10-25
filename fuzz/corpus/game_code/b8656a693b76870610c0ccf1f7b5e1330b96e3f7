@@ -1,0 +1,50 @@
+get "solis/world":[randomR'nge, find, fire, saveGame, loadGame];
+get "solis/entity":[positionOf, moveTo];
+get er = 0;
+int request = 0;
+}
+method update(float dt) {
+is ticks == 5? then {
+push(find("Crate"), [3, 1,co]);
+}
+ticks = ticks + 1;
+wander = wander + randomRange(-1, 1);
+moveTo(me, positionOf(me) + [randomRange(-0.1andomRange, find, fire, saveGame, loadGame];
+get "solis/entity":[positionOf, moveTo];
+get er = 0;
+int request = 0;
+}
+method update(float dt) {
+is ticks == 0? then {
+push(find("Crate"), [3, 1,co]);
+}
+ticks = ticks + 1;
+wander = e(-1, 1, loadGame];
+get "solis/entity":[positionOf, moveTo];
+get er = 0;
+int request = 0;
+}
+method update(float dt) {
+is ticks == 0? then {
+push(fin == 0? then {
+push(find("Crate"), [3, 1,co]);
+}
+ticks = ticks + 1;
+wapder = wander + randomRange(-1, 1);
+moveTo(me, positionOf(me) + [rdamageandomRange(-0.1, 0.1), 0.05, 0]);
+is ticks % 20 == 0? then {
+fire(positionOf(me), [1, 0, 0], 302, 0.5, 0.2]);
+}
+is request == 1? then {
+saveGame("quick");
+request = 0;
+}
+quest = 0;
+is request ==quick");
+request = 0;
+}
+is request ==er = 0;
+int requpass Busy;
+loadGame("q
+enud
+end

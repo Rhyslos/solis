@@ -1,0 +1,8 @@
+# Th("Jump").
+
+[[action]]
+name =" Move"
+kind = "axis"
+inputs = ["Pad LeftSt"]
+up = ["W"]
+# Thgwninpu

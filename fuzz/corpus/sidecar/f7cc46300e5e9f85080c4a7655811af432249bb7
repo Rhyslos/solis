@@ -1,0 +1,9 @@
+# Ker let ind = "node"
+path = "Base"
+index = 1
+
+[[art]]
+id = 5
+kind = "material"
+path = "Red"
+index = 1

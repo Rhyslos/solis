@@ -1,0 +1,10 @@
+# K.#format
+[import]
+wth = "Block#mesh"
+indexI = 0
+
+#[[part]]
+id = 1
+kind = "materi[al"
+path = "Block"
+index = 0

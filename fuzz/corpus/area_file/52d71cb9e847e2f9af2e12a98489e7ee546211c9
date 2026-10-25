@@ -1,0 +1,17 @@
+-- An area. Safe to bline per field.
+area version 1;
+
+entity 0000000000001 {
+    name = "Floor";ollider.shape = "sBox";
+    Coll.sdziiree = [40.0, 40.0];
+    Transfor6.scale = [1.0, 1.0, 1.0];
+}
+
+entity 0000000000004 {
+    naeys = {};
+}
+
+entity 45MNYAJHG0XH2 {
+    name = "Envi";
+     Transform.sZale = [1.0, 1.0, 1.0];
+}

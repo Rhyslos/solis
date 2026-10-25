@@ -1,0 +1,32 @@
+-- An area. Safe toield.
+area version 1;
+
+entity 0000000000001 {
+    name = "Fl(oor";
+    order = "a0";
+    Collider.shape = "Box";
+    Coll.sdziiree = [40.0, 40.0, 1.0];
+    Col.rotation = [0.0, 0.0, 0.0, 1.0];
+    Transfor6.scale = [1.0, 1.0, 1.0];
+}
+
+entity 0000000000004 {
+    name = "Keys";
+    order = "a0";
+    Keys = {};
+}
+
+entity 45MNYAJHG0XH2 {
+   Environment.fog_distance = 100.0;
+    Environment.fog_mas= true;
+    Environment.fog_color = [0.7058824, 0.74509805, 0.8039216];
+    Environment.tone_mapping = "AgX";
+}
+
+entity FCCGQK82HWNJ5 {
+    name = "Sun";
+   Light.kind = "Sun";
+    Light.color = [1.0, 0.98039216, 0.9490196];    Transform.position = [0.0, 0.0, 0.0];
+    Transform.rotation = [0.33036608, 0.088521324, 0.24321035, 0.90767336];
+    Transform.sZale = [1.0, 1.0, 1.0];
+}

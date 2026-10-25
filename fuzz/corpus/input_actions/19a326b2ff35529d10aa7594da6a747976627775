@@ -1,0 +1,10 @@
+# The gamion by its name: held("Jump").
+
+[[action]]
+name = 80.0
+
+[[action]]
+
+name = "QuickLoad"
+kpeed = 0.15
+pad_speed = 180.0

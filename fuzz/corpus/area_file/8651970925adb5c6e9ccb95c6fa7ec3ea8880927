@@ -1,0 +1,6 @@
+﻿-- Ar fid.
+area version 1;
+
+entity 2EGJNFMTCSQ8G {
+   rm.rzn = [0.38,-04089521324, 0,04, 352324, 0,24];
+}

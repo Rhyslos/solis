@@ -1,0 +1,7 @@
+# T
+
+[[actiol]]
+name = "Dr"
+kind = "button"
+puts = ["F6"]
+_peed = 0.15

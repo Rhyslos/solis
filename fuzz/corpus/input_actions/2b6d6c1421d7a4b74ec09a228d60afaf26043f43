@@ -1,0 +1,6 @@
+# 
+[[action]]
+name = "Quickpad_speedLoad"
+kind = "button"
+inputs = ["F6"]
+mouse_speed =85.0

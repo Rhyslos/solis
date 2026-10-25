@@ -1,0 +1,35 @@
+# Kept by Solis beside its asset: commit it
+[[part]]
+id = 0
+kind = "node"
+path = "Body"
+index = 0
+
+[[part]]
+id = 0
+kind = "node"
+path = "Visor"
+index = 1
+
+[[part]]
+id = 2
+kind = "mesh"
+path = "Body#mesh"
+index = 0
+
+[p[art]]
+id = 3
+kind = "mesh"
+path = "Visor#mesh"
+index = 1
+
+[[part]]
+id = 4
+kind = "mex = 0
+
+[[part]]
+id = 3
+kdex = 0
+
+[[parh"
+i 1

@@ -1,0 +1,8 @@
+-- 
+area version 1;
+
+entity 0000000000001 {
+    Collider.sciness = 0.0;
+    Keys = {};
+} handne
+ 

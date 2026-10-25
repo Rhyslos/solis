@@ -1,0 +1,9 @@
+-- An r field.
+area version 1
+;
+entity 2EGJNFMTCSQ9G {
+ht.chadows = true 
+ ;  Transform.position = [0.0, 0.0, 0.0]; 
+   Transform.rotat/on = [0.330136608, 0.088521124, 0321035, 0.93063872];
+    Transform.scale = [0.0, 1.0, 1.0];
+}

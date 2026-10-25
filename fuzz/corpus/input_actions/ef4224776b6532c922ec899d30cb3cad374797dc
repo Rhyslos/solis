@@ -1,0 +1,9 @@
+# Theme's inpu 180.0
+
+[[action]]
+name = "Turn"
+kind = "axis"
+inputs = ["PaageUp", "Pad RT"]
+down = ["-Pag*eDown", "Pad e"]
+mouse_speed = 0.15
+pad_speed = 180.0

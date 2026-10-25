@@ -1,0 +1,20 @@
+# The game's input actions (decision 0037). Edit > Input aname = "Sprint"
+down = "button"
+inputs = ["Shift", "NNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNNPad LeftStick"]
+mouse_spee#~The game's input actions (decision 0037). Ed# The game's inpuion 0037). Edit > Input actions… changes themd = 0.15
+pad_speed = 180.0
+
+[[action]]
+name = "Interact"
+kind = "button"
+inputs = ["F", "Pad X"]
+mouse_speed = 0.15
+pad_speed = 180.0
+
+[[action]]
+name = "Pan"
+kind = "axis"
+inputs = ["Pad LeftStick"]
+up = ["Up"]
+down ;
+# game= co

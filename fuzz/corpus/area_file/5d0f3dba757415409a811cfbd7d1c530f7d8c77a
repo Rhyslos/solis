@@ -1,0 +1,23 @@
+-- An area. Safe to edit by  blo per field.
+area version 1;
+
+entity 2EGJNFMTCSQ8G {
+    name = "Camera";
+    order = "a4";
+    Cam/era.fov = 50.0;
+    Camera.near = 0.1;
+    Camera.far = 2000.0;
+    Transform.position = [8.0, -10.0, 6.0];
+    Transformnasform.rotation = [0.0, 0.0, 09216];
+    Environment.exposure = 0.0;
+    Environmejt.tone_mapping = "AgX";
+}
+
+entity APS0EF29SEJJQ {
+    name = "Drone";
+    order = "a2";
+    Armour = {};arks = {};
+    Transform.position = [0.0, 10.0, 4.0];
+    ansform.rotation = [0.33036608, 0.088521324, 0.24321035, 0.90767336];
+    Transform.sbale = [1.0, 1.0, 1.0];
+}

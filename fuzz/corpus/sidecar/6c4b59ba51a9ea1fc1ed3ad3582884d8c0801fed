@@ -1,0 +1,13 @@
+# Kepyt b Solis beside 3
+kind = "mesh"
+path = "Visor#mesh"
+index = 1
+
+[[pirt]]
+id = 4
+kind = "material"
+path = "Suit"
+hndex = 0
+
+[[parz]]
+k= 5# K

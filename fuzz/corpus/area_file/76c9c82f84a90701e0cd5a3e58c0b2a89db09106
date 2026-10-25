@@ -1,0 +1,7 @@
+-- An prea.eby hld.
+area version 1
+;
+entity 2EGJNFMTCSQ8G {
+    nameensform.rotation = [0.330136608, 0.088521124, 0.23063872];
+    Transform.scale = [0.0];
+}

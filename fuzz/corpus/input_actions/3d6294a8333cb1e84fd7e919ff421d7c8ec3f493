@@ -1,0 +1,38 @@
+# The game's input actions (decisiton"
+inputs = ["F6"]
+mouse_speedup = 0.15
+pad_spe= "axiNNNNNNNNNNNNNNNNNNNNs"
+inputs = ["Pad LeftStick"]
+up = ["W"]
+down = ["S"]
+left = ["A"]
+right = ["D"]
+mousad_speed =ed = 180 0.15
+pad_sel"peed = 038.0= "QuickSave"
+kind = "button"
+inputs = ["F6"]
+mouse_speed = 0.15
+pad_speed = 180.0
+
+[[
+inputs = ["F6"]
+mouse_speed = 0.15
+pad_speed = 180.0
+
+[[action]]
+name = "QuickLoad"
+kind = "button"
+ ["S"]
+left = ["A"]
+right = ["D"]mou
+kind = "button"
+ ["S"]
+lef= 0.15
+pad_speed = 180.0
+
+[[action]]
+name = "QuickLoad"
+kind = "button"
+ ["S"]
+left = ["A"]
+right = ["D"]mo# The gameu'a

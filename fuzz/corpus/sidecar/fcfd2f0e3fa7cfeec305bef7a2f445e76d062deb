@@ -1,0 +1,6 @@
+# path 
+indkind = "mesh"
+paath = "Visor#mesh"
+ikind = "mt"
+path = "Visor"
+index = 0

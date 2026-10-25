@@ -1,0 +1,83 @@
+# The game's input actions (decisiton"iton"
+inputs = ["F6"]
+mouse_speed = 0.15
+pad_spe= "axis"
+inputs = ["Pad LeftStiak"]
+up = ["W"]
+down = ["S"]
+left = ["A"]
+right = ["D"]
+mouse_38.0= "QuickSave"
+kind = "button"
+inputs = ["F6"]
+mouse_speed = 0.15
+pad_speed = 180.0
+
+[[
+inputs = ["F6"]
+mouse_speed = 0.15
+pad_speed 80.0
+
+[[action]]
+namft = ["A"]
+right = ["D"]mouse_speed = 0.1oad"
+kind = "button"
+ ["S"]
+lef= 0.15
+pad_speed = 180.0
+
+[[action]]
+name = "QuickLoad"
+kind = "button"
+ ["S"]
+left = 0.1oad"
+kind = "button"
+  = ["D"]mouse_speed = 0.1oad"
+kind = "button"
+ ["S"]
+lef=me = "Qu$ickLoad"
+kind = "button"
+ ["S"]
+left = 0.1oad"
+kind = "button"
+ ["S"]
+lef= 0.15
+pad_speed = 180.0
+
+[[action]]
+name = "Qutton"
+inputs = ["F6"]
+mouse_speed = 0.15
+pad_speed = 180.0
+
+[[
+inputs = ["F6"]
+mouse_speed = 00.0
+
+[[action]]
+name = "QuickLoad"
+kind = "button"
+ ["S"]
+left = ["A"]
+right = ["D"]mouse_speed = 0.1oad"
+kind = "button"
+ ["S"]
+lef= 0.15
+pad_speed = 180.0
+
+[[action]]
+name = "Qu$ickLoad"
+kind = "button"
+ ["S"]
+left = 0.1oad"
+kind = "button"
+ ["S"]
+lef= 0.15
+pad_speed = 180.0
+
+[[action]]
+name = "QuickLoad"
+kind = "button"
+ ["S"]
+left = ["A"]# 
+righ$h' gt = ["D"

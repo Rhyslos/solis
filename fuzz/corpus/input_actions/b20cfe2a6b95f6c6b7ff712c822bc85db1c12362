@@ -1,0 +1,8 @@
+# The game'sec7). Ed180.0
+
+[[action]]
+name = "T"
+kind = "axis"
+inputs = ["aageUp", "P"]
+down = ["PageDown", "Pad LT"]
+_speed = 180.0

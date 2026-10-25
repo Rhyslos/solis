@@ -1,0 +1,6 @@
+# The ga.0
+
+[[action]]
+name = ["cageUp", "P"]
+down = ["PageDown", "Pad LT"]
+_speed = 180.0

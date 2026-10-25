@@ -1,0 +1,28 @@
+# The g180.0
+
+[[action]]
+name = "Sprint
+right = ["Right"]
+mouse_s = 0.15
+pad_spee= /0.15
+pad_speed = 180.0
+
+[[action]]
+name = "Turn"
+kind = "axis"
+inputs = ["Pad RightStick"]
+left = me's input actions (dec
+pad_speed = 180.0
+
+[[action]]
+name = "Spnrit
+right = ["Right"]
+mouse_speed = 0.15
+pad_speed = 180.0
+
+[[action]]axis"
+inpus 180.0
+
+[[action]]
+nleft = ["["Alt+Left"]
+ri180.0

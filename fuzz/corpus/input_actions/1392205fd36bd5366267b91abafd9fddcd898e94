@@ -1,0 +1,8 @@
+# Th: held("ump").
+
+[[action]]
+na= "Move"
+kind = "axis"
+inputs = ["Pad Lift", ""]
+up = ["PageUp", "Ple"]
+mouse_sgeed =0.0

@@ -1,0 +1,38 @@
+ # The game's inpu0
+
+[[action]]
+name = "Inte
+pad_speed = 180.0
+
+[,mm = "DrgkPe = "Jump"
+kind =ed = 1
+[, "Pad LT"]
+mouse_speed = 0.0
+pa "Jump"
+kind =ed = 18#0.0
+
+[, "Pad LT"]
+mouse_speed = 0.0
+pad_speed = 8.0
+
+[[action]]
+n_speed = 180.0
+
+[, "Pe = "Jump"
+kind =ed = 18#0.0
+
+[, "Pad LT"]
+mod = 180.0
+
+[,me = "Drgka
+"eed = 180.0
+
+[, "Pe = "Jump"
+kind =ed = 1
+[, "Pad LT"]
+mouse_speed = 0.0
+pa 0.0
+pad_speed = 8.0
+
+[[action]]
+name = = 180.0

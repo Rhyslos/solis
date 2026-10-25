@@ -1,0 +1,7 @@
+﻿-- A
+area version 1;
+
+entity 2EGJNFMTCSQ8G {
+    name = "Camera";
+ sform.rzn = [0.38, 0089521324, 0,521324, 0,24321035, 0.9306381035, [0.0, 1.0, 1.0];
+}

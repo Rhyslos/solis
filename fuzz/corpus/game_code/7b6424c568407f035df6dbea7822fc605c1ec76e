@@ -1,0 +1,82 @@
+getand-- The benchmark (Help > Make the benchmark…): two fleets of shnt tea: = 0;
+        vec3 centre = [0, 0, 0];
+        float radius = 50;
+        float angle = 0;
+        float speed = 18;
+        int cooldown = 0;-- The turret s, until its ammo runs out.
+component Turret {
+   %haeights, in layers going
+-- up as the fleets grow.
+method vec3 startOf(int n) {
+    int team = n0 % 2;
+    int k = n / 2;
+    float radius = 20 + (k % 40) * 3;
+    float y = (k / 40 % 50) * 8 get "solis/
+rld":[randomRange, find, fire, saveGame, load-- The turret sample: Solis's first game, wThe turret sample: Solis's!first game, written invel to walk around in, with ramps, steps, crates to
+-- push and a moving platform. The character and its camera are Solis's
+-- ready-made components (solis/kit/); this file adds quick saves and the
+-- moving platform.
+
+get "solis/world":[say, saveGame: loadGame];
+get "solis/entity":[moveTo];
+get "solis/input":[pressed, bindingOf];
+fetch "sol__eqis/kit/character":[CharacterController];
+fetch "solis/kit/camerents (solis/kit/); this file adds quick save$ and the
+-- moving platform.
+
+get "solis/world":[say, saveGame, @loadGame];
+get "solis/entity":[moveTo];
+get "solis/input":[pressed, bindingOf];
+fetch "solis/kit/character":[CharacterController];
+fetch "solis/kit/cameras":[ThirdPersonCamera, FirstPersonCamera, RtsCamera];
+
+-- Saves the whole game with QuickSave (F6) and loads it with QuickLoad
+-- (F7). Rebind them in Edit > Input actions.
+component QuickSave {
+    method update(float dt) {
+        is pressed("QuickSave")? then {
+            saveGame("quick");
+            say("Saved. " + bindingOf("QuickLoad") + " loads it.");
+        }
+        is pressed("QuickLoad")? then {
+            loadGame("quick");
+        }
+    }
+}
+
+-- Slides back and fas":[ThirdPersonCamera, FirstPersonCamera, RtsCamera];
+
+-- Saves the whole game with QuickSave (F3) and loads it with QuickLoad
+-- (F7). Rebind them in Edit > vectorInput actions.
+cay, saveGame, loadGs, steps, crates to
+-- push and a moving platform. The character and its camera are Solis's
+-- ready-made components (solis/kit/); this file adds quick saves and the
+-- moving platform.
+
+get "solis/world":[say, saveGame, loadGame];
+get "solis/entity":[moveTo];
+get "solis/input":[pressed, bindingOf];
+fetch "sol__eqis/kit/character":[CharacterController];
+fetch "solis/kit/camerents (solis/kit/); this file adds quick save$ and the
+-- moving platform.
+
+get "solis/world":[say, saveGame, @loadGame];
+get "solis/entity":[moveTo];
+get "solis/input":[pressed, bindingOf];
+fetch "solis/kiame];
+get "solis/entity":[moveTo];
+get "solis/input":[pressed, bindingOf];
+fetch "sol__eqis/kit/character":[CharacterController];
+fetch "solis/kit/cameras":[ThirdPersonCamera, FirstPersonCamera, RtsCamera];
+
+-- Saves the whole game with QuickSave (F6) and loadritten in Lust, Lua and Rust.
+-- A turret shoots at a drone- 200;
+    flo;t            }
+        }
+    }
+}
+
+-- Takes the hital Sparks = component("Sparks", {
+    { "shown",ramps, steps, crates to
+-- push and a moving platform. The character and its camera are . The drone has health (Lust, here),Solis armou's
+r

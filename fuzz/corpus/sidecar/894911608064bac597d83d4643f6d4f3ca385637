@@ -1,0 +1,14 @@
+# Ke
+format = 1
+id = "DDXCK3QWGXF3H"
+hash = "5e533c1e"
+
+[import]
+wth = "Block#mesh"
+indexI = 0
+
+#[[part]]
+id = 1
+kind = "material"
+path = "Block"
+index = 0

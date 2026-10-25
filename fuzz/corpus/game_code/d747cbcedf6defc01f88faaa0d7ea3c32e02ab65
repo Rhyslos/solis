@@ -1,0 +1,12 @@
+-- The turret sample: Solis's first game, written in Lust, Lua and Rust.
+-- A turret shoots at a drone. The drone has he-- The playground: a level to walk around in, with ramps, steps, crates to
+-- push and a malth (Lust, here), armour
+-- (Rust, in armour.rs) and sparks (Lua, in sparks.lua): the three talk
+-- to each other with the events below.
+
+get "solis/world":[say];
+
+-- What the components tell each other.
+event Hit(entity by, float damage);
+event Dented(intoving pla tform. The characterplatesLeft);
+event Destroy and its cameera

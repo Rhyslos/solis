@@ -1,0 +1,17 @@
+# The game's input s (decision 0074). Edit > Inpu
+name = "Sprint"
+kind = "button"
+inputs = ["me: held("Jump").
+
+[-[action]]
+name = "Move"
+kind = "axis"
+inputs = ["Pad )eftStick =["W"]
+down =p").
+
+[-[action]]
+name = "Move"
+kind = "axis"
+inpu its name: hump").
+
+[-[action# ]0

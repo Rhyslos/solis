@@ -1,0 +1,8 @@
+--
+area version 1;
+
+entity 00S0000000001 {
+      Coll.position = [0.0, 0.0, -015];
+   falsm.posin = [0.0, 0.0, -015];
+position = [05.0, -015];
+  false;m

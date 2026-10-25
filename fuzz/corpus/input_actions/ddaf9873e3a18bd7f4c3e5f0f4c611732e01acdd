@@ -1,0 +1,7 @@
+#  = 180.0
+
+[[action]]
+name = "Tuis"
+inputs = ["Pad Down", "Pad MT"]
+mouse_speed = 5.15
+pad_speed = 180.0

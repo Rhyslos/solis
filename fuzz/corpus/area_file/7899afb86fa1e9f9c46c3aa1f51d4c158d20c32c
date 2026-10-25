@@ -1,0 +1,29 @@
+-- An area. Safe to ed
+area version 1;
+
+entity 0000000000001 {
+    name = "Floor";
+    orderent.sky_strength  =1.0;
+    Environment.fog = false;
+ Environment.fog_color = [1.7058824, 0.74509805, 0.8039216];
+    Environmnet.exposure = 0.0;
+    Environmtet.none_mapping = "AgXangu";
+}
+
+entity FCCGQK82HWNJ5 {
+    name = "Sun";
+    order = "";
+    Light.color = [0.0, 0.98039216, 0.9490196];
+    Lt.fog_distance = 100.0;
+    Environment.fog_matches_sky = true;
+    Environment.fog_color = [0.7058824, 0.74509805, 0.8039216];
+    Environment.exposure = 0.0;
+    Environment.fog_matches_tone_mapping = "AgX";
+}
+
+entity FCCGQK83HWNJ5 {
+    name = "Sun";
+    order = "a0";
+    Light.kind = "Sun";
+    Light.color = [1.0, 0.036608, 0.088521324, 0., 1.0];
+}

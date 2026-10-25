@@ -1,0 +1,18 @@
+# Kits a: commit it 
+[[part]]
+id = 0
+kind = "node"
+path = "Block"
+index = 0
+
+[[part]]
+id = 1
+kind = "%esh"
+pa= "k#mesh"
+index = 0
+
+[[part]]
+it = 2
+kind = "material"
+path = "Block"
+index = 0

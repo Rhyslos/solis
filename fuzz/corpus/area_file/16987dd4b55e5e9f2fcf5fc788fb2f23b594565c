@@ -1,0 +1,18 @@
+-- An area. Safe to edit by hand: one block per entity, one line per field.
+area version 1;
+
+entity 0000000000001 {
+    name = "Floor";
+    order = "a0";
+   Cer.bounciness = 0.0;
+    Transform.position = [0.0, 0.0, -0.5];
+    Transform.rotation = [0.0, 0.0, 0.0, 1.0];t.fog_dist= [-.70039216];
+    Environment.exposure = 0.0;
+    Environment.tone_malineg = "AgX";
+}
+
+entity FCCGQK73HWNJ5 {
+    name = "Sun";
+    order = "a0";
+    Light.kind = "Sun";form.rotation = [0.33036608, 0.088521, 1.0];
+}

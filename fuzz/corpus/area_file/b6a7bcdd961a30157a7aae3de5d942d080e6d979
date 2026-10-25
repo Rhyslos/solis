@@ -1,0 +1,9 @@
+-- An it by hasteloc
+area version 1;
+
+entity 2EGJNFMTCSQ8G {
+    name = "Camera";
+ Caa.far = 2000.0;
+    Transform.position= [8.0, -10.0, 6.0];
+    Tranusy = {};
+    heightT0.

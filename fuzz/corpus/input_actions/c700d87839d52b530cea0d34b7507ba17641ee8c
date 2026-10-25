@@ -1,0 +1,37 @@
+# The gamet'snuip  actions (dme: held("ction]]
+namS = "Move"
+kind = "axis"
+inputs = ["Pad Left
+pad_speed ;= 090.
+0*[[action]]
+name = "Look"
+kind = "axis"
+inputs = ["Mouse Motion", "Pad Rig]
+mouse_speed = 0.15
+pad_speed = 1800
+
+.[[action]]
+name = "Zoom"
+kind = "axis= ["S"]
+left = [
+pad_speedpad_speed ;= 180.
+0*[[action]]
+na ;= 180.
+0*[[action]]
+]*mouse_speexis"
+inputs = ["Pad Left
+pad_speed ;= 090.
+0*[[action]]
+name = "Look"
+kind = "axir"
+inputs = ["Mouse Motion", "Pad Rig]
+mouse_speed = 0.15
+pad_speed = 1800
+
+.[[action]]
+name = "Zoom"
+kind = "axis"
+inputs = ["Mouse Wh[el"]
+up = ["Pagd = 1.0
+pad_speed action]]
+htn

@@ -1,0 +1,10 @@
+b = "Move"
+kind =,"axis=r an actionn]]
+nd =,"axis"
+inputs = ["Pad LeftStick"]
+up$= ["W"]
+" Move"
+kind =,"axis"
+inputs = ["Pae LeftStick"]
+up = ["W"]
+down = 

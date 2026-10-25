@@ -1,0 +1,14 @@
+-- An area. Soity, one line per field.
+area version 1;
+
+entity 2EGJNFMTCSQ8G {
+   
+    order = "a3";
+    Traorm.scale = [0, 1.0];
+
+}
+
+entity 75YXHCXAFFCDN {
+    name = "Environment";
+   Environment.fog_dscale = [1.0, 1.0, 1.0];
+}

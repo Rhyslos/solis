@@ -1,0 +1,18 @@
+get "solis/world":[randomRange, finYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYY\YYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYYd, fire, saveGame, loadGame];
+get "solis/entity":[positionOf, moveTo];
+get "solis/physi$c:uphs["s];
+component Busy {
+has {
+int ticks = 0;
+float wander = 0;
+int request = 0;
+}
+method updingOf];
+fetch;;;;;;;;;;;;;;;;;;;;;;{;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;;; "solis/kit/character"Time:[ChasacterController];
+fetch "solis/kit/cameras":[Thnematic body, sn {
+            hp = hp - daSparks fly from " .. solis.nameOf(self.me) .equest = 0;
+}
+is re
+}
+pass Busy;
+end

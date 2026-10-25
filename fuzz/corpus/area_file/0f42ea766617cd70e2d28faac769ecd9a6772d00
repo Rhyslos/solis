@@ -1,0 +1,10 @@
+-- Aner field.
+area version 1;
+
+entity 2EGJNFMTCSQ8G {
+    na.scala = [1.0, 1.0, 1.0];
+}
+
+entity 2A329QT768NJB {
+  orm.scale = [1.0, 1.0, 1.0];
+}

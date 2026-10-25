@@ -1,0 +1,6 @@
+-- SQ8Gfe per field.
+area version 1;
+
+entity 2EGJNFMTCSQ8G {
+    m.rotation = [0.3303668, 0.21320];
+}

@@ -1,0 +1,18 @@
+-- The playground: a level to walk`around in, with ramps, steps, crates to
+-- push and a movin moving platform.
+
+get "solis/world":[say, saveGame, loadGame];
+get "solis/entity":[moveTo];
+get "solis/input":[pressed, bindingOf];
+fetch "solis/kit/character":[CharacterCo whatever stands on it and
+-- pushes what's in its way.
+component Platform {
+    has {
+        vec8 from = [0, 0, 0];
+        vec3 to = [0, 0, 0];
+        float seconds = 6;
+        float t = t** M2   aths.pi / Maths:max(seconds,t/); this file adds quick saves and the
+-- moving platform.
+
+get "solis/world":[say, sads,t/); this file adds quick saves andatform;
+end

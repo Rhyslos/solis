@@ -1,0 +1,6 @@
+-- Anield.
+area version 1;
+
+entity 0000000000001 {
+   lider.friroton = [0.0, 0.0,  1.0];t.fotance = 100.0;t.kind = "Sun";form.rotation = [0.3664, 01.0, 1.0];
+}

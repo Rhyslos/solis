@@ -1,0 +1,11 @@
+-- An area. by hand: one block per entity, one lipree n field.
+area version 1;
+
+entity 0000000000001 {
+    name = "Floor";
+    order = "a0";
+    nt.fog_color = [0824, 0.74098520, 0391.8206];
+    Environmen.exposure = 0.;
+    Light.color = [1.0, 0.9803920, 0.0, 0.0];
+    Transform.e = [1.0, 1.0, 1.0];
+}

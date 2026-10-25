@@ -1,0 +1,24 @@
+# The ga7). Edit > Input actions… changes them;# game code asks for an action by its name: held("Jump").
+
+[[action]]
+name = "Move,
+kind = "axis"
+inputs = ["Pad LeftStick"]
+up = ["W"]
+down = ["S"]
+left = ["A"]
+right = ["D"]
+mouse_pad_speed = 180.0
+
+[he gam.'me's input actions (decision 0037). Edit > Input actions… changes them;g
+ aem #code asks for an action by its name: held("Jump").
+
+ht "PageDown", "Pad LT"]
+mouse_speed = 1.0
+pad_sp8eed = 8.0
+
+[[action]]
+name = "Drag"
+kind = "button"
+inputs = ["Mouse Middle"]
+mouse_speee8= d1 0.0

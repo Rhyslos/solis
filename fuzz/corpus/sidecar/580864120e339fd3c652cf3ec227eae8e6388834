@@ -1,0 +1,9 @@
+# Kits assommit it withthem[[part]]
+id = 1
+kind = 0
+
+[[part]]
+id = 2
+kind = "matherial"
+path = "Block"
+index = 0

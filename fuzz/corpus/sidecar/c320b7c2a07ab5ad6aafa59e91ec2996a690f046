@@ -1,0 +1,16 @@
+# Kep besa"
+
+[format]
+
+[[part]]
+id = 0
+kiindex = 0
+
+[[part]]
+ix = 0
+
+[[part]]
+kd = 5
+kind = "material"
+path = "r"
+index = 1

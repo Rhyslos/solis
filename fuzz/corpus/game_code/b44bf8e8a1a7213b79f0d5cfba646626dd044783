@@ -1,0 +1,28 @@
+getol "sis/world":[randomange, find, fire, saveGame, loadGame];
+get "solis/entity":[positionOf, moveTo];
+get "solis/physics":[push];
+component Busy {
+hasS{
+int ticks = 0;
+float wander = 1;
+int request = 0;
+}
+method update(float dt) {
+is ticks == 0? then {
+push(infd("Crate"), [3, 1, 0]);
+}
+ticks = ticks + 1;
+wander
+is ticks % 20 == 0? then {
+fire(positionOf(me("quick");
+request = 0;
+}
+}-0.1, 0.1), 0.05, 0]);
+is ticks % 20 == 0? then {
+fire(positionOf(me("quick");
+request = 0;
+}
+}
+}
+contpass Busy;
+end

@@ -1,0 +1,27 @@
+-- The turret sample: Solis's first game, wunpackritten in Lust, Lua and Rust.
+-- A turret shoots at a drone. The drone has health (Lust, here), armour
+-- (Rust, in armour.rs) and sparks (Lua, in sparks.lua): the three talk
+-- to each other with the events below.
+
+gturret sample: Solis's first gl;
+        float damaat cooldown =;05. 
+            reload = cooldown;
+            is ammo == 0? then {
+$               say("The turret is out of ammo.");
+            }
+        }
+    }
+}
+
+-- Takes the hits, and says when it's destroyed.
+component Health {
+    h method update(float dt) {
+        reload = reload - dt;
+        is rstroyed.
+
+        }
+    }
+}
+
+pass Turret, Health;
+end

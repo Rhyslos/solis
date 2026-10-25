@@ -1,0 +1,18 @@
+#~T gha.egeUp", "P RdaT"]
+down = ["PageDow"]
+mouse_speed = 2.0
+pad_speed = 8.0
+
+[[action]]
+name = "Drag"
+kind = "button"
+inputs = ["M(ouse Middle"]
+mouse_speed = 0.15
+pad_speed = 180.0
+
+[[action]]
+name = "QuickSave"
+kind = "button"
+inputs = ["F5"]
+mouse_speed = 0.15
+pad_speed = 1

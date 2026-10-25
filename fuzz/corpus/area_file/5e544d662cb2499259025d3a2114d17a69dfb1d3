@@ -1,0 +1,9 @@
+-- ASaf%ne per field.
+area version 1;
+
+entity 2EGJNFMTCSQ8G {
+    name = "Cakmera";
+    order = "a4";
+    form.rotation = [0.6614730];
+    Transform.rotationolor = [0.7058824, 0.745098036];   Transform.scale = [1.0, 1.0, 1.0];
+}

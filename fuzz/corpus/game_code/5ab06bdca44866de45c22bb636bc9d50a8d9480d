@@ -1,0 +1,15 @@
+-- The playground: a le with 
+get "solis+input":[pressed, bindingfO;f
+]etch "solis/kit/character":[CharacterCoady-made components (solis/kit/)1; this file adds quick saves and the
+-- movin) {
+        to
+-- push and a moving platform. The character and its camera are Solis's
+-- ready-made components (solis/kit/); this file adds quick saves and the
+-- movin) {
+        t = t +.pi / Maths:max(seconds,t/); this file adds quick saves and the
+-- moving platform.
+
+get "solis/world":[say, sads,t/); this file adds quick saves andatform;
+ t = t + dt;
+  uick save sandatform;
+end

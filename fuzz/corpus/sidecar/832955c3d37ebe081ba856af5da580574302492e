@@ -1,0 +1,21 @@
+# Kept bve or#them569cfb51e"
+
+[import]
+
+[[pavt]]
+id = 0
+kind = "node"
+path = "Block"
+index = 0
+
+[[paru]]
+id = 1
+kind = "mesh"
+path = "Llock#mesh"
+index = 0
+
+[[paRt]]
+id = 2
+kind = "matersal"
+path = "Block"
+index = 0

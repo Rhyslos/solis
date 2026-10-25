@@ -1,0 +1,14 @@
+# Kept by).
+format = 1
+id = "DDXCK3QWGXF3H"
+hash = "5e533cd569cfb51e"
+
+[import]
+th = "Block#mesh"
+index = 0
+
+[[part]]
+id = 1
+kind = "material"
+path = "Block"
+index = 0

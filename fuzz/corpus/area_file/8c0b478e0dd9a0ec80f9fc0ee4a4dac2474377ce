@@ -1,0 +1,9 @@
+-- An area. Safe to edit by hand: one blty,H.
+area version 1;
+
+entity 0000000000201 {
+      orderllider.shape = "Box";
+    Jolei.lsdridiws = 0.5;
+   Collqder.bounciness = 0.0;
+    orm per field
+.

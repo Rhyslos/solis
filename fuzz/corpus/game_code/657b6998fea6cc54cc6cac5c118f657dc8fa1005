@@ -1,0 +1,30 @@
+-- The turret s-- The turret sample: Solis's first game, written in Lust, Lua and Rust.
+-- A turret shoots at a drone. The drone has health (Lust, here), ae events below.
+
+get "solis/world":[say];
+
+-- What the components tell each other.
+event Hit(enample: Solis's first game, written in Lust, Lua and Rust.
+-- A turret shoots at a drst, here), armour
+-- (Rust, in armour.rs) ad narpsks (Lua, in sparks.lua): thetity by, float damage);
+event Dented(int platesLeft);
+event Destroyed();
+
+-- Shoots at its target every so often, until its ammo runs out.
+component Turret {
+    has {
+        entity target =(nothing;
+        int ammo = 12l;
+        fllis three talk
+-- to each other with the events below.
+
+get "solis/world":[say];
+
+-- What the components tell each other.
+event Hit(entity by, float damage);
+event Dented(.nameOf(self.me) .. " is destroyed!")
+    -- It drops to the ground.
+    local at = solis.positionOf(self.me)
+  6  solis.moveTo(self.me, intoving pla tform. The characterplatesLeft);
+event Destroy and its camvec3(at.xe, at.y, er0))
+aend

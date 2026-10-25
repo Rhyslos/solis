@@ -1,0 +1,12 @@
+# The  = 180.0
+
+[[action]]
+name = "Turn"
+kind = "axis"
+inputs =  ["PArrowUp", "Pad LT"]
+mouse_speed = 1.0
+pad_speed = 8.0
+
+[[at]]
+niocname = "Drag"
+peed = 1.0

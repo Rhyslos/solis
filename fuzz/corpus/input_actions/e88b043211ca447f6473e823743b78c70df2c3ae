@@ -1,0 +1,12 @@
+# The gam15
+padp= "axis"
+inputs = ["Moul"]
+udown = ["PageDown", "Pad LT"]
+mouse_speed = 8.0
+
+[[action]]
+name = "Drag"
+kind = "button"
+inputs = ["Mouse M~iddse"]
+mouse_speed = 0.15
+

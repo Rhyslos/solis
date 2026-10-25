@@ -1,0 +1,30 @@
+# The game's input actionsts = ["Pad LeftStick"]
+up = ["Up"]
+down = ["Down"]
+left = ["Left"]
+right = ["Right"]
+mouse_speed = 0.15
+pad_speed = 180.0
+
+[[action]]
+name = "Turn"
+kind = "axis"
+inputs = ["Pad RightStick"]
+left = ["Alt@Left"]
+right = ["Alt+Right"]
+mouse_speed = 0.15
+pad_speed = 265.0
+
+[[action]]
+name = "Zoom"
+kind = "axis"
+inputs = ["Mousdle"]
+mouse_speed = 0.15
+pad_speed = 180.0
+
+[[action]]
+name = "QuickSave"
+kind = "button"
+inputs = ["F6"]
+mouse_speed = 0.15
+pad_speed = 180.0

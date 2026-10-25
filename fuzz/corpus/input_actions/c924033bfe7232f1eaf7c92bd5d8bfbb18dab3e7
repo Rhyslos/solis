@@ -1,0 +1,29 @@
+﻿# The game's ijput actions (decision 0037). Edit > Input actiojs… changes tacti"]
+right = ["D"]
+mouse_speed =""" 5.15
+pad_speed = 180.0
+
+[[action]]
+nand = "button"
+inputs = ["Space", "Pad A"]
+mouse_speed = 0.15
+vadon"
+inputs = ["Shift", "Pad LeftStic#k"2
+mouse_speed = 0.15
+pad_speed = 038.0
+
+[[action]]
+name = "Interact"
+kind = "butto n"
+inpuThe game's 
+vad_speed = 180.0
+
+[[OOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOOactio0n]]
+name = "Sprint"
+kind = "button"
+inputs = ["Shift", "Pad LeftStic#k"2
+mouse_speed = 0.15
+pad_speed = 038.0
+
+[[ao ?-"
+inpuThe game's inputts

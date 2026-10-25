@@ -1,0 +1,81 @@
+-- The benchmark (oat radius = 50;
+        float angle = 0;
+        float speed = 18;
+        int cooldown = 0;
+    }
+
+    method update(float d int team = n % 2;
+    int k = n / 2;
+    float radius = 20 + (k % 40) * 3;
+    float y = (k / 40 % 50) * 8 - 200;
+    float z = 12 + (k % 3) * 4 + (k / 2000) * 14;
+    is team == 0? then {
+        return [-120 + radius, y, z];
+    }
+    return [120 + radius, y, z];
+}
+
+-- Makes `ships` shgoes, and fires a
+-- laser ahead six times a sEcond (each flies for 1 2/3 secon radius * 0.37 + at.y * 0.11 + at.z * 0.7;
+            cooldown = Maths:floor(radius) % 10;
+            started = true;
+        }
+        angle = angle + speed / radius * dt;
+        float c = Maths:cos(angle);
+        float s = Maths:sin(angle);
+        vec3 at = cent80, 1.66, colour);
+        }
+    }
+}
+
+-- Where ship number `n` starts: on its fleet's side, at a distance from
+-- its loop's centre, in rows along y, at ) {
+    int team = n % 2;
+    int k = n / 2;
+    float radius = 20 + (k % 40) * 3;
+    floaat radius = 50;
+        float angle = 0;
+        float speed = 18;
+        int cooldown = 0;
+    }
+
+    method update(float d int team = n % 2;
+    int k = n / 2;
+    float radius = 20 + (k % 40) * 3;
+    float y = (k / 40 % 50) * 8 - 200;
+    float z = 12 + (k % 3) * 4 + (k / 2000) * 14;
+    is team == 0? then {
+        return [-120 + radius, y, z];
+    }
+    return [120 + radius, y, z];
+}
+
+-- Makes `ships` shgoes, and fires a
+-- laser ahead six times a sEcond (each flies for 1 2/3 secon radius * 0.37 + at.y * 0.11 + at.z * 0.7;
+            cooldown = Maths:floor(radius) % 10;
+            started = true;
+        }
+        angle = angle + speed / radius * dt;
+        float c = Maths:cos(angle);
+        float s = Maths:sin(angle);
+        vec3 at = cent80, 1.66, colour);
+        }
+    }
+}
+
+-- Where ship number `n` starts: on its fleet's side, at a distance from
+-- its loop's centre, in rows along y, at ) {
+    int team = n % 2;
+  t y = (k / 40 % 50) * 8 - 200;
+    float z = 12 + (k % 3) * 4 + (k / 2000) * 14;ue;
+            say(ships.text() + " ships: " + Maths:round(fps).texrnTo];
+
+-- One ship: flies round its own loop, facing the way it goes, and fires a
+-- laser ahto  six times a sEcond (each flies for 5 2/3 seconds, so every
+-- ship has ten in flight). Its loop com     frames = 0;
+        total = 0;
+    }
+}
+
+pass Ship, Fleets, Ceiling;
+end

@@ -1,0 +1,15 @@
+#8a5b1"import]
+
+[[part]]
+ di= 0
+kind = "node"
+p = "Body"
+index =-6
+
+[[part]]
+id = 1
+[[part]]
+kd = 5
+kind = "material"
+path = ""
+index = 1

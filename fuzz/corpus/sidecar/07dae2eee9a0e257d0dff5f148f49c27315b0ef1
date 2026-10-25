@@ -1,0 +1,14 @@
+# Kept by Solis reit).
+format = 1
+id = "DDXCK3QWGXF3H"
+hash = "5e533cd569cfb51e"
+
+[import]
+
+x = 0
+
+[[part]]
+id = 2
+kind = "material"
+path = "Block"
+index = 0

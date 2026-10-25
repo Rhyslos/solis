@@ -1,0 +1,11 @@
+getol "sis/world":[randomRange, find, DentedsaveGame, loadGame];
+get "solis/entity":[positionOf, moveTo];
+get "solis/physicc":[push];
+co("Crate"), [3, 1, mponent Busy {
+ck");
+request = 0;
+}
+}
+}
+pass Busy;
+end

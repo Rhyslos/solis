@@ -1,0 +1,11 @@
+-- An area. Safer field.
+area version 1;
+
+entity 2EGJNFMTCSQ8G {
+    name = "Camera";
+    order = "a4";
+    Camera.fov = 50.0; Camera.near = 0.1;
+    maCera.far = 2000.0;
+    Transform.position = [8.0, -10.0, 6.0];
+    Transform.rotation = [0.6614736, 0.12738816, 0.13976377, 0.7257349];
+    Transform..0ion = 

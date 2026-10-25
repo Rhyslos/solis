@@ -1,0 +1,7 @@
+-- Aeld.
+area version 1;
+
+entity 2EGJNFMTCSQ8G {
+      Transform.rotation = [0.33018304, 024121035, 0.93063872];
+   Transfrm.sale = [0.0,0, 1.0];
+}

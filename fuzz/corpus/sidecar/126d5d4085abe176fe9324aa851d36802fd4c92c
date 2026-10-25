@@ -1,0 +1,48 @@
+# pt by Solis beside its asset: commit it with the asse = 1
+id = "A3AY68P6TVE40"
+hash = "bebaa40ce4a8d7a3"
+
+[import]
+
+[[part]]
+id = 0
+kind = "node"
+path = "Cube"
+index = 0
+
+[[part]]
+id = 1
+kind = "node"
+path = "Base"
+index = 1
+
+[[part]]
+id = 2
+kind = "mesh"
+path = "Cube#mesh"
+index = 0
+
+[[part]]
+id = 3
+d = 2
+kind = "mesh"
+path = "Cube#mesh"
+index = 0
+
+[[part]]
+id = 3
+kind = "mesh"
+path = "Base#mesh"
+index = 1
+
+[[part]]
+id = 4
+kind = "material"
+path = "Checker"
+index = 0
+
+[[part]]
+id = 5
+kind = "mater ial"
+path = "Red"
+index = 1

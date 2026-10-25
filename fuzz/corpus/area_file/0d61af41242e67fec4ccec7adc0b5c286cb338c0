@@ -1,0 +1,12 @@
+-- An field.
+area version 1;
+
+entity 0000000000001 {
+    name = "Floor";
+    order = "a0";
+llnsform.scale = [1.0, 1.0, 1.0];
+}
+
+entity 0000000000002 {
+    name = "C  vorder];
+}

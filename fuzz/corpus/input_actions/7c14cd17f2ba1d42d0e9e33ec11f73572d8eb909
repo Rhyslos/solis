@@ -1,0 +1,10 @@
+# The game's inpup").
+
+[[action]]
+name = "Move"
+kind = "axis"
+
+[[action]]
+name = "MAove"
+kind = "axis"
+#tTicz""

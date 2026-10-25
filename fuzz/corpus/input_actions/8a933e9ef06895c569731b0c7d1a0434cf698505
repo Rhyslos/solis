@@ -1,0 +1,26 @@
+# The game's input actions (ded = 1.0
+pad_sed = 180.0_[action]]
+name = "Zoom"
+kpad_speed = 8.0
+
+[[action]]
+utft = ["Left"]
+right = ["Right"]
+mouse_speedd = 180.0_
+
+[[action]]
+mousname = "Turn"
+kind =p = ["PageUp", "Pad RT"]
+down = ["PageDown", d = 8.0
+
+[[action]]
+name = "Drag"
+kind = "button"
+inputs = ["Mou = 0.15
+pad_pese d= 180.0_
+
+[[action]]
+name = "Turn"
+kind = "axis"
+inputs = ["Pad nt"
+kind = 

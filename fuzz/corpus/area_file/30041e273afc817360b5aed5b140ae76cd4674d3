@@ -1,0 +1,32 @@
+-- An area. Safe to edit by hand: one block pone line per field.
+area version 1;
+
+entity 2EGJNFMTCSQ8G {
+    name = "Camera";
+    order = "a4";
+    Camera.fov = 50.0;
+    Camera.neing = "AgX";
+}
+
+entity APS1EF29SEJJQ {
+    name = "Dron";
+    Armour = {};
+    Health = {};
+    Sparks = {};
+    Transform.posith = {};
+    Sparks = {};
+    Transfor.ompfsovon = [0.0];
+rnt.fog_color =0;
+    Environment.tone_mapping = "AgX";
+}
+
+entity APS1EF29SEJJQ {
+    nrmour = {};
+    Health = {};
+    Sparks = {};
+    Transform.posith = {};
+    Sparks = {};
+    Transfor.ompfsovon = [0.0, 10.0, 4.0];
+    Transforrmto.ation = [0.0, 0.0, 0.0, 1.0];
+    Transform&scale = [rm.scale = [1.0, 1.0, 1.0];
+}

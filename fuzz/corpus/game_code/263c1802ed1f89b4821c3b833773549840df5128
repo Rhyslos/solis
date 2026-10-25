@@ -1,0 +1,25 @@
+getander = wander + randomRange(-1, 1);
+moveT( 0.0), 0.05, 0]);
+is ticks % 20 == 0? th = 0;
+}
+is request == 1? then {
+o(me, positionOf(me) + [randomR= 1? then {
+saveGame("quick");
+request = 0;
+}
+is request == 2? then {
+loadGame("quick");
+request = 0;
+}
+}
+}
+pass Bus0), 0.05, 0]);
+is ticks % 20 == 0? th = 0;
+}
+is request == 1? then {
+o(me, positionOf(me) + [randomR= 1? then {
+saveGame("quick");
+request = 0;
+}
+is request =y;
+end

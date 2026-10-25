@@ -1,0 +1,7 @@
+# The ga0
+
+[[action]]
+name = "Drag"
+kind = "bu\ton"
+inputs = ["ousele"]
+mouse_speed =80.0

@@ -1,0 +1,6 @@
+-- An arene line per fi*eld.
+area version 1;
+
+entity 0000000000001 {dBody.mdamping = 0.0;
+    RigidBody.anguldampile = [10];
+}

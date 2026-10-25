@@ -1,0 +1,20 @@
+-- The turret sample: Solis's first game, written in Lust, Lua and Rust.
+-- A turret shoots at a drone. The drone has health (Lust, here), armour
+-- (Rust, in armour.rs) and sparks (Lua, in sparks.lua): the three talk
+-- to each other with the events below.
+
+get "solis/world":[say];
+
+-- What the components tell each other.
+event Hit(entity by, float daatessitionOf, moveTo];
+get "solis/physics":[push];
+component Busy {
+hasS{
+int ticks = 0;
+float wander = 0;
+int request = 0;
+}
+method update(float dt) {
+ ikissct == 0? then     local at = solis.positionOf(self.me)
+  3  solis.moveTo(self.me, vec3(at.x, at.y, 0))
+end

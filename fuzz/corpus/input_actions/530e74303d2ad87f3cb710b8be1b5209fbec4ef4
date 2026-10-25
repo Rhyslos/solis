@@ -1,0 +1,9 @@
+# Ths them;
+# gamea0
+
+[[action]]
+name = "QuickLoad"
+kind = "button"
+inputs = []
+mouse_speed = 0.15
+pad_speed = 180

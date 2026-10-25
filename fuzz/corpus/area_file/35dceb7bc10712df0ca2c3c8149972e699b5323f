@@ -1,0 +1,10 @@
+-- An area.linield.
+area version 1;
+
+entity 0000000000001 {
+    name = "Floor";
+    order = "a0";
+nment.fog_matchesradisy = true;
+    Canvironmgnt.tpcadi_sky = true;
+    Environment.fog_color = [0.00000000000145098039216];sky = true;
+ }-

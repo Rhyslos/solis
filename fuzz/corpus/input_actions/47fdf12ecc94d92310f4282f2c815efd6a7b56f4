@@ -1,0 +1,6 @@
+# The game'# input actions37). E.
+
+[[action]]
+name = "Move"
+kind = "axis"
+inputs = ["Pad LeftStick"]

@@ -1,0 +1,6 @@
+[
+[
+{"33pe":"VEC3","min":[-1,-1,-1],"max":
+{"3pe":"VEC3","min":[-1,-1,-1],"max":
+{"33pe":"VEC3","min":[-1,-1,-1],"max":
+{"33pene":0,"scenes":[{"nodes":[0,1]}],"nodes":[{"name":"Cube","mesh":0,"translation":[0,1.1,0]},{"name":"Base","mesh":1}],"meshes":[{"primitives":[{"attributes":{"POSITION":0,"NORMAL":1,"TEXCOORD_0":2},"indices":3,"material":0}]},{"primitives":[{"attributes":{"POSITION":4,"NORMAL":5,"TEXCOORD_0":6},"indices":7,"material":1}]}],"accessors":[{"bufferView":0,"componentType":5126,"count":24,"type":"VEC3","min":[-1,-1,-1],"max":[1,1,1]},{"bufferView":1,"componentType":5125,"count":24,"type":"VEC3"},{"bufferView":2,"co:ÏYÛ	"

@@ -1,0 +1,6 @@
+# The gmtion by ).
+
+[[action]]
+down = ["S"]
+left = ["Mouse Motion", "Pad R Motion", "Pad R1ghtStick"]
+m= 18060.0

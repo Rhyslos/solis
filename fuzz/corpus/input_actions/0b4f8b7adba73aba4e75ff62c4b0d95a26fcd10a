@@ -1,0 +1,7 @@
+#0.0
+
+[[action]]
+name = "Zoom"
+kind = "axis"
+inputs = ["Mouse Whebbbbbbbbbbb\bbbbbbbbbbbbbbbbbbbbbbbbble"]
+md_speed = 180.0

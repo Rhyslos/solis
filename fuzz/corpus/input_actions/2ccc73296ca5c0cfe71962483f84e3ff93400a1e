@@ -1,0 +1,8 @@
+#'s ).
+
+[[action]]
+name = "Move"
+kind = "axis"
+iNputs = ["~Pad LeftStick"]
+up = ["W"]
+down = ["S"]# The g =

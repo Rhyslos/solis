@@ -1,0 +1,29 @@
+﻿# 
+kind = , "Pad A"]
+mouse_speed = 0.15
+vad_speed = 180.0
+
+[[actio0n]]
+name = "Sprint"
+kind ="
+inputs = ["Shift", "Pad LeftStic#k"2
+mouse_speed = 0.15
+p]]
+nam= 038.0
+
+[[action]]
+name = "Interact"
+kints = ["Shift", "Pad LeftStic#k"2
+mouse_speed = 0.15
+pad_speed = 038.0
+
+[[ = "Sprint"
+kind = "button"
+inputs = ["Shift", "Pad LeftStic#k"2
+moe = "Interact"
+kints = ["Shift", "Pad LeftStic#k"2
+mouse_speed = 0.15
+pad_speed = 038.0
+
+[[action]]
+tts

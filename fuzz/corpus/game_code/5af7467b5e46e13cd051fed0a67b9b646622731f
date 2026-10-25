@@ -1,0 +1,8 @@
+getander = wander + randomRange(-1, 1);
+moveTo(me, positionOf(me) + [randomRange(-0.1, 0.), 0.05, 0])ge(-1, 1);
+moveTo(me, positionOf(me) + [randomRange(-0.1, 0.), 0.05, 0]);
+is ticks % 20 == 0+ [randomRange(-0.1, 0enum.1), 0.05, 0]);
+is ticks % 20 == 0? theths:osin(angle);
+        vec3 at = centre + [c * radius, s * radius, 0];
+      s Busy;
+end

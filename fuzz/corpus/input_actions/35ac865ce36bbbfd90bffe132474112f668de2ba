@@ -1,0 +1,8 @@
+# The gspeed = 0.15
+pad_s= 180.0
+
+[[action]]
+name = "Zoom"
+kind = "axis"
+inputs = ["Mouse Whebbbbbbbbbbb\bbbbbbbbbbbbbbbbbbbbbbbbble"]
+md_speed = 180.0

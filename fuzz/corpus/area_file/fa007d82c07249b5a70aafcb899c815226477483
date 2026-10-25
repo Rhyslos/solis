@@ -1,0 +1,8 @@
+-- Anfied.
+area version 1;
+
+entity 0000000000001 {
+    name = "Flo	r";
+    order= "a0";
+ m.scale = [1.0, 1.0, 1.0];
+}

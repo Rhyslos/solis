@@ -1,0 +1,4 @@
+#
+inputs = ["hift", "N^N", "Pad RT"]
+down = ["Pa,geDut", "t", "Pad~LT"]
+m = 181.0

@@ -1,0 +1,10 @@
+ gamep").
+
+[[action]]
+name = "Move"
+kind = "axis"
+inputs = ["Pad Lefck"]
+up = ["W"]
+do
+kind = "butto n"
+inpuThe ge's inputts

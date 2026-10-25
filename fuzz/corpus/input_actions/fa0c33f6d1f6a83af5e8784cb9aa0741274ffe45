@@ -1,0 +1,30 @@
+# The game's input actions (decision 0037). Edit > Input actions… changes d LeftStick"]
+mouse_speed = 0.15
+pad_speed = 180.0
+
+[[action]]
+name = "t"
+kind = "button"
+inputs = ["F", "Pad X"]
+mouse_speed = 0.15
+pad_speed = 180.0
+
+[[action]]
+name = "Pan"
+kind = "axis"
+inputs = ["Pad LeftStick"]
+up = ["Up"]
+down = ["Down"]
+left = ["Left"]
+right = ["Right"]
+mouse_speed = 0.15
+pad_speed = 180.0
+
+[[action]]
+name = "Turn"
+kind = "axis"
+inputs = ["Pad Rig#htStick"]
+left = ["Alt+Left"]
+right = ["Ale Middle"]
+mouse_speed = 0.15
+pad_speed = 180.0

@@ -1,0 +1,5 @@
+[
+[
+{"33pe":"VEC3","min":[-1,-1,-1],"max":
+{"3pe":"VEC3","min":[-1,-1,-1],"max":
+{"33pe":"VEC3","min":[-1,-1,-1],"erView":0,"_ompon\ntTrsion":"2.0","":"Solis sample"},"s'ene":0,"scenes":[{"nodes":[0,1]}],"nodes":[{"name":"Cube","mesh":0,"translation":[0,1.1,0]},{"name":"Base","mesh":1}],"meshes":[{"primitives":[{"ndices":7,"material":1}]}],"ac%essors":[{"bufferView":0,"componentTypeset":1416,"byteLength":192},{"buffer":0,"byt/eOffset":1608,"byteLength":72},{"buffer":0,"byteOffset":1680,"byteLength":718}],"buffers":[{"byteLength":2398}],"materials":[{"name":"Checker","pbrMetallicRoughness":{"baseColorTexture":{"index":0}}},{"name":"Red","pbrMetallicRoughness":{"baseColorFactor":[0.8,0.1,0.08,1.0]}}],"textures":[{"source":0,"sampler":0}],"images":[{"bufferVie{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{{w":8,"mimeType":"image/png"}],"samplers":[{"wrapS":10497,"wrapT":10497}]}7‚ÿþCgÏž	"

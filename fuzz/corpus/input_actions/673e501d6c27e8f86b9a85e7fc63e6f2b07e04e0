@@ -1,0 +1,14 @@
+# The game's input actions (decision 0037). Edit > Input actions… changes them;
+# game code asks for an action by its name: held("Jump").
+
+[[action]]
+name ["Mouse Motion", "Pad RightStick"]
+mouse_Smouse_speed = 0.15
+pad# The game's input actions (decision 0037). Edit > Input actions… changes them;
+# game code asks for_speed = 180.0
+
+[[acs = ["F", "W"]
+do
+speed =k 180.0
+
+[[ac

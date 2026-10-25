@@ -1,0 +1,7 @@
+# Theppad_speed = 8.0
+
+[[action]]
+name = "Drag"
+kind = "buttn"
+inputs = ["F7"]
+mouse_speed= 1

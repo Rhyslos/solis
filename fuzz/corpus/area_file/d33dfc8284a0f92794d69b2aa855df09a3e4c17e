@@ -1,0 +1,6 @@
+-- An aeld.
+area version 1;
+
+entity 2EGJNFMTCSQ8G {
+    rm.rotation = [5555555555553215, 0..0, 1.0];
+}

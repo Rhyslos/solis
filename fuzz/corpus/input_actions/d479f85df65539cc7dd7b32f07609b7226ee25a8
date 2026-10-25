@@ -1,0 +1,9 @@
+# = ["D"]
+= ["Down"]
+left = ["Left"]
+ad_speed = 180.0
+
+[[ction]]
+name = "Drag"
+kind = "button"
+inpueed = 180.0
