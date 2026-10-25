@@ -176,7 +176,8 @@ pub struct BodyState {
 impl BodyState {
     /// Whether every number is sensible.
     pub fn is_sensible(&self) -> bool {
-        finite(self.position, self.rotation) && self.velocity.is_finite() && self.spin.is_finite()
+        let fast = |v: Vec3| v.is_finite() && v.length_squared() < MAX_PLACE * MAX_PLACE;
+        finite(self.position, self.rotation) && fast(self.velocity) && fast(self.spin)
     }
 }
 
@@ -277,13 +278,26 @@ fn from_pose(p: &rp::Pose) -> (Vec3, Quat) {
 
 /// Whether every number is sensible: Rapier is never given NaN.
 fn finite(position: Vec3, rotation: Quat) -> bool {
-    position.is_finite() && rotation.is_finite() && rotation.length_squared() > 1e-12
+    let turn = rotation.length_squared();
+    position.is_finite()
+        && position.length_squared() < MAX_PLACE * MAX_PLACE
+        && rotation.is_finite()
+        && turn.is_finite()
+        && (1e-12..1e12).contains(&turn)
 }
+
+/// The farthest from the middle anything is (a million kilometres):
+/// further, Rapier's numbers stop holding together.
+const MAX_PLACE: f32 = 1.0e9;
+
+/// The biggest length a shape has (a thousand kilometres): bigger ones
+/// make Rapier's collision maths fail.
+const MAX_SIZE: f32 = 1.0e6;
 
 /// A length that's usable: positive and finite, at least a millimetre.
 fn length(value: f32) -> f32 {
     if value.is_finite() {
-        value.abs().max(0.001)
+        value.abs().clamp(0.001, MAX_SIZE)
     } else {
         0.001
     }
@@ -358,7 +372,12 @@ impl State {
             filter,
         );
         let ray = rp::Ray::new(start, to_rp(direction));
-        let (handle, hit) = queries.cast_ray_and_get_normal(&ray, reach.min(1.0e7), true)?;
+        // Rapier's maths failing on something out of range is a miss, never
+        // a crash.
+        let (handle, hit) = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+            queries.cast_ray_and_get_normal(&ray, reach.min(1.0e7), true)
+        }))
+        .ok()??;
         Some(Hit {
             entity: self.entity_of(handle)?,
             distance: hit.time_of_impact,
@@ -500,8 +519,12 @@ impl Physics {
             return;
         };
         let s = self.state_mut();
+        let carried = entry.character.is_some();
         if let Some(body) = s.bodies.get_mut(entry.body) {
-            if with_place {
+            // Fixed and kinematic bodies are where their entities put them
+            // (already, as they joined): only what physics moves takes the
+            // place it was given.
+            if with_place && (body.is_dynamic() || carried) {
                 let to = pose(state.position, state.rotation);
                 body.set_position(to, false);
                 if body.is_kinematic() {
@@ -716,7 +739,14 @@ impl Physics {
                 continue;
             };
             let spec = planned.spec;
-            let found = apply_one(self.state_mut(), planned, dt);
+            let state = self.state_mut();
+            let Ok(found) = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+                apply_one(state, planned, dt)
+            })) else {
+                self.clear();
+                self.broke = true;
+                return is_character;
+            };
             if let Some(e) = self.state_mut().by_entity.get_mut(&id) {
                 e.character = Some((spec, found));
             }

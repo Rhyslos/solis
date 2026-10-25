@@ -505,8 +505,9 @@ impl Workbench {
             playing.world.step_physics();
             if playing.world.take_physics_broke() && slow.is_none() {
                 slow = Some(
-                    "Physics stopped working (a loaded save's physics didn't hold together), so \
-                     the game has no physics now. Stop and play again to start it afresh."
+                    "Physics stopped working: something in it is out of the range physics can \
+                     work with (a collider or body thousands of kilometres big or away), so the \
+                     game has no physics now. Fix its size or place, then Stop and play again."
                         .to_string(),
                 );
             }

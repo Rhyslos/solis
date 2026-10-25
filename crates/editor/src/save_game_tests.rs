@@ -420,7 +420,11 @@ fn a_save_keeps_bodies_as_places_and_motion_not_rapier_s_insides() {
 fn resummed(text: &str) -> String {
     let lines: Vec<&str> = text.splitn(7, '\n').collect();
     let head = format!("{}\n{}\n{}\n{}\n", lines[1], lines[2], lines[3], lines[4]);
-    text.replacen(lines[5], &format!("sum {:016x}", super::sum_of(&head, lines[6])), 1)
+    text.replacen(
+        lines[5],
+        &format!("sum {:016x}", super::sum_of(&head, lines[6])),
+        1,
+    )
 }
 
 #[test]

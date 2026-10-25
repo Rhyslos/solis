@@ -138,10 +138,7 @@ impl Save {
             self.time.to_bits(),
             self.seed,
         );
-        format!(
-            "{HEADER}\n{head}sum {:016x}\n{body}",
-            sum_of(&head, &body)
-        )
+        format!("{HEADER}\n{head}sum {:016x}\n{body}", sum_of(&head, &body))
     }
 
     /// Reads a save, refusing (with why, in plain words) anything that
@@ -183,7 +180,8 @@ impl Save {
         let seed_text = field("seed")?;
         let sum = u64::from_str_radix(&field("sum")?, 16).map_err(|_| damaged())?;
         let body = rest;
-        let head = format!("project {project}\ntick {tick_text}\ntime {time_text}\nseed {seed_text}\n");
+        let head =
+            format!("project {project}\ntick {tick_text}\ntime {time_text}\nseed {seed_text}\n");
         if sum_of(&head, body) != sum {
             return Err("it's damaged (its checksum doesn't match)".to_string());
         }

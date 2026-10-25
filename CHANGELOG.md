@@ -75,6 +75,11 @@ What changed in each version, for people using Solis. Newest first.
 
 ### Fixed
 
+- The Input actions window could make more than 256 actions, which Solis then refused to read (with its saves and recordings): it stops at 256.
+- A second mistake in `input.solinput` was overwritten without a backup: each gets its own (`.bak`, `.bak2` … up to `.bak9`).
+- A save's first lines (its clock and seed) weren't covered by its checksum, so a change to them loaded silently; they are now, and a clock out of range is refused.
+- Physics took places and turns too big for it (a rotation that overflowed, a collider thousands of kilometres big), which gave bodies no place or emptied physics with a message blaming a save: such numbers are refused or held in range, and the message says what happened.
+- Saving put fixed and kinematic bodies back where they were a moment before; they stay where their entities are.
 - **Security** (the Phase 6 security audits):
   - A `.lua` file starting with certain invisible characters was read as compiled Lua, whose reader isn't built for hostile files: just opening a project holding one could crash Solis, and might have let it run code. Game code is now always read as text.
   - Lua's `require` was left in game code's sandbox, so game code could read and run Lua files anywhere on the computer. It's gone.
