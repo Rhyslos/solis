@@ -45,6 +45,18 @@ const HEADER: &str = "solis save 2";
 /// The biggest save read.
 pub(crate) const MAX_SAVE_BYTES: usize = 256 << 20;
 
+/// The most ticks a save's clock is read with (2^53: still counted
+/// exactly, and centuries of play).
+const MAX_SAVED_TICKS: u64 = 1 << 53;
+
+/// A save's checksum: of its header's lines and everything after them.
+fn sum_of(head: &str, body: &str) -> u64 {
+    let mut sum = reflect::Checksum::new();
+    sum.bytes(head.as_bytes());
+    sum.bytes(body.as_bytes());
+    sum.finish()
+}
+
 /// A save game, read.
 #[derive(Debug, Clone, PartialEq)]
 pub(crate) struct Save {
@@ -119,15 +131,16 @@ impl Save {
             })
             .collect();
         section("physics", &bodies);
-        let mut sum = reflect::Checksum::new();
-        sum.bytes(body.as_bytes());
-        format!(
-            "{HEADER}\nproject {}\ntick {}\ntime {:x}\nseed {}\nsum {:016x}\n{body}",
+        let head = format!(
+            "project {}\ntick {}\ntime {:x}\nseed {}\n",
             self.project.replace('\n', " "),
             self.ticks,
             self.time.to_bits(),
             self.seed,
-            sum.finish()
+        );
+        format!(
+            "{HEADER}\n{head}sum {:016x}\n{body}",
+            sum_of(&head, &body)
         )
     }
 
@@ -165,15 +178,21 @@ impl Save {
                 .ok_or_else(damaged)
         };
         let project = field("project")?;
-        let ticks = field("tick")?.parse().map_err(|_| damaged())?;
-        let time = f64::from_bits(u64::from_str_radix(&field("time")?, 16).map_err(|_| damaged())?);
-        let seed = field("seed")?.parse().map_err(|_| damaged())?;
+        let tick_text = field("tick")?;
+        let time_text = field("time")?;
+        let seed_text = field("seed")?;
         let sum = u64::from_str_radix(&field("sum")?, 16).map_err(|_| damaged())?;
         let body = rest;
-        let mut check = reflect::Checksum::new();
-        check.bytes(body.as_bytes());
-        if check.finish() != sum {
+        let head = format!("project {project}\ntick {tick_text}\ntime {time_text}\nseed {seed_text}\n");
+        if sum_of(&head, body) != sum {
             return Err("it's damaged (its checksum doesn't match)".to_string());
+        }
+        let ticks: u64 = tick_text.parse().map_err(|_| damaged())?;
+        let time = f64::from_bits(u64::from_str_radix(&time_text, 16).map_err(|_| damaged())?);
+        let seed = seed_text.parse().map_err(|_| damaged())?;
+        // A sensible clock: at most about 4,700 years of ticks.
+        if ticks > MAX_SAVED_TICKS || !(time.is_finite() && (0.0..1.0e13).contains(&time)) {
+            return Err(damaged());
         }
         let mut rest = body;
         let mut section = |name: &str| -> Result<&str, String> {
