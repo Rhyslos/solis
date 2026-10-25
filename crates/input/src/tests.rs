@@ -605,3 +605,8 @@ fn a_recording_holds_an_hour_of_ticks_and_no_more_and_says_which_line_is_wrong()
     let text = "solis recording 1\nseed 1\nbegin 0\n";
     assert_eq!(Recording::read(text), Err(RecordingError::Damaged(3)));
 }
+
+/// Each limit at its very edge, and the rest the hardening milestone's
+/// mutation testing found untested.
+#[path = "edge_tests.rs"]
+mod edges;
