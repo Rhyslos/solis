@@ -681,7 +681,56 @@ impl App {
                         .projects
                         .root()
                         .map(|r| r.join(crate::play_files::RECORDINGS));
-                    self.recordings.ask(folder);
+                    self.recordings
+                        .ask(crate::play_files::PlayFile::Recording, folder);
+                }
+                WorkbenchAction::OpenSave => {
+                    let folder = self
+                        .projects
+                        .root()
+                        .map(|r| r.join(crate::play_files::SAVES));
+                    self.recordings.ask(crate::play_files::PlayFile::Save, folder);
+                }
+                WorkbenchAction::SaveGame { slot, text } => {
+                    match self.projects.root().map(Path::to_path_buf) {
+                        Some(root) => match crate::play_files::save_game(&root, &slot, &text) {
+                            Ok(_) => self
+                                .workbench
+                                .log(LogLevel::Info, format!("Saved the game as {slot}.")),
+                            Err(why) => self.workbench.log(
+                                LogLevel::Error,
+                                format!("Couldn't save the game as {slot}: {why}."),
+                            ),
+                        },
+                        None => self.workbench.log(
+                            LogLevel::Warning,
+                            "The game wasn't saved: save games are kept in a project.",
+                        ),
+                    }
+                }
+                WorkbenchAction::LoadGame(slot) => {
+                    let path = self
+                        .projects
+                        .root()
+                        .and_then(|root| crate::play_files::save_path(root, &slot));
+                    let read = path.as_ref().map(|p| {
+                        crate::play_files::read_limited(p, crate::play_files::MAX_SAVE_BYTES)
+                    });
+                    match read {
+                        Some(Ok(Some(text))) => self.workbench.load_game(&text, &slot),
+                        Some(Ok(None)) => self.workbench.log(
+                            LogLevel::Warning,
+                            format!("There's no save called {slot} to load."),
+                        ),
+                        Some(Err(why)) => self.workbench.log(
+                            LogLevel::Error,
+                            format!("Couldn't load {slot}: {why}."),
+                        ),
+                        None => self.workbench.log(
+                            LogLevel::Warning,
+                            "Save games are kept in a project: open one first.",
+                        ),
+                    }
                 }
                 WorkbenchAction::OpenExternally(path) => {
                     if let Err(why) = opener::open(&path) {
@@ -1143,9 +1192,20 @@ impl eframe::App for App {
         self.collect_imports();
         self.show_library_messages();
         self.workbench.set_gamepad(self.gamepads.read());
-        if let Some(Some(path)) = self.recordings.chosen() {
-            match crate::play_files::read_limited(&path, 64 << 20) {
-                Ok(Some(text)) => self.workbench.replay(&text, &file_name(&path)),
+        if let Some((what, Some(path))) = self.recordings.chosen() {
+            let limit = match what {
+                crate::play_files::PlayFile::Recording => 64 << 20,
+                crate::play_files::PlayFile::Save => crate::play_files::MAX_SAVE_BYTES,
+            };
+            match crate::play_files::read_limited(&path, limit) {
+                Ok(Some(text)) => match what {
+                    crate::play_files::PlayFile::Recording => {
+                        self.workbench.replay(&text, &file_name(&path));
+                    }
+                    crate::play_files::PlayFile::Save => {
+                        self.workbench.load_game(&text, &file_name(&path));
+                    }
+                },
                 Ok(None) => {}
                 Err(why) => self.workbench.log(
                     LogLevel::Error,

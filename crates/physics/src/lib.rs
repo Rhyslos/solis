@@ -310,6 +310,9 @@ pub struct Physics {
     pipeline: rp::PhysicsPipeline,
     /// Bodies not made because [`MAX_BODIES`] were already there.
     refused: u64,
+    /// Rapier panicked stepping (a state that doesn't hold together, from
+    /// a damaged save): physics was emptied rather than crash Solis.
+    broke: bool,
 }
 
 impl std::fmt::Debug for Physics {
@@ -327,6 +330,7 @@ impl Clone for Physics {
             state: Arc::clone(&self.state),
             pipeline: rp::PhysicsPipeline::new(),
             refused: self.refused,
+            broke: self.broke,
         }
     }
 }
@@ -351,6 +355,30 @@ impl Physics {
     /// Bodies not made because there were already [`MAX_BODIES`].
     pub fn refused(&self) -> u64 {
         self.refused
+    }
+
+    /// Everything physics knows, as bytes, for a save game (decision
+    /// 0038): restored, physics carries on exactly as it would have.
+    pub fn snapshot(&self) -> Vec<u8> {
+        postcard::to_stdvec(&*self.state).unwrap_or_default()
+    }
+
+    /// Physics as `bytes` from [`Self::snapshot`] left it; refused (and
+    /// physics left as it was) if they can't be read, or don't hold
+    /// together.
+    pub fn restore(&mut self, bytes: &[u8]) -> Result<(), String> {
+        let state: State =
+            postcard::from_bytes(bytes).map_err(|e| format!("the physics can't be read ({e})"))?;
+        // Every entity's body and collider are really there.
+        let whole = state.by_entity.values().all(|entry| {
+            state.bodies.get(entry.body).is_some()
+                && entry.collider.is_none_or(|c| state.colliders.get(c).is_some())
+        });
+        if !whole || state.by_entity.len() > MAX_BODIES {
+            return Err("the physics doesn't hold together".to_string());
+        }
+        self.state = Arc::new(state);
+        Ok(())
     }
 
     /// Makes `id` part of physics, at `position` facing `rotation`,
@@ -510,25 +538,39 @@ impl Physics {
         }
         let Self {
             state, pipeline, ..
-        } = self;
+        } = &mut *self;
         let state = Arc::make_mut(state);
         state.params.dt = dt;
         let gravity = rp::Vector::new(0.0, 0.0, GRAVITY);
-        pipeline.step(
-            gravity,
-            &state.params,
-            &mut state.islands,
-            &mut state.broad_phase,
-            &mut state.narrow_phase,
-            &mut state.bodies,
-            &mut state.colliders,
-            &mut state.impulse_joints,
-            &mut state.multibody_joints,
-            &mut state.soft_bodies,
-            &mut state.ccd,
-            &(),
-            &(),
-        );
+        let stepped = std::panic::catch_unwind(std::panic::AssertUnwindSafe(|| {
+            pipeline.step(
+                gravity,
+                &state.params,
+                &mut state.islands,
+                &mut state.broad_phase,
+                &mut state.narrow_phase,
+                &mut state.bodies,
+                &mut state.colliders,
+                &mut state.impulse_joints,
+                &mut state.multibody_joints,
+                &mut state.soft_bodies,
+                &mut state.ccd,
+                &(),
+                &(),
+            );
+        }));
+        if stepped.is_err() {
+            // Never a crash: physics stops, and says so (`take_broke`).
+            self.state = Arc::new(State::default());
+            self.pipeline = rp::PhysicsPipeline::new();
+            self.broke = true;
+        }
+    }
+
+    /// Whether physics broke (Rapier panicked) and was emptied since last
+    /// asked; asking clears it, so it's said once.
+    pub fn take_broke(&mut self) -> bool {
+        std::mem::take(&mut self.broke)
     }
 
     /// The bodies physics moves (dynamic ones, awake), in entity order,

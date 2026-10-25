@@ -38,6 +38,7 @@ The repo is public, so GitHub's machines are free (decision 0018, which replaces
 - Never hard-code the program's name: use `crates/app/src/branding.rs`.
 - Ask the project lead before building a feature that adds keys or mouse actions: offer a recommended choice and alternatives (CONTRIBUTING.md, rule 17).
 - Aventail's code may be copied in and adapted (decision 0007).
+- **One line of work** (the project lead, 2026-10-25): Solis is built one milestone at a time on one main thread, never by several agents building parts in parallel. A helper agent may take one specific, bounded job alongside it (the three end-of-phase reviewers, a search, a check) and hands its result back.
 
 ## Local environment notes
 

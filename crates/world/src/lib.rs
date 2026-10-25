@@ -497,27 +497,44 @@ impl World {
 
     /// Moves the clock on by `seconds` (ignored if not a sensible number),
     /// running as many whole ticks as fit, at most
-    /// [`MAX_TICKS_PER_STEP`]. Returns how many ran.
+    /// [`MAX_TICKS_PER_STEP`]. Returns how many ran. ([`Self::due`] and
+    /// [`Self::begin_tick`] do the same a tick at a time.)
     pub fn step(&mut self, seconds: f64) -> u64 {
+        let due = self.due(seconds);
+        for _ in 0..due {
+            self.begin_tick();
+        }
+        due
+    }
+
+    /// How many whole ticks `seconds` more (ignored if not a sensible
+    /// number) make due, at most [`MAX_TICKS_PER_STEP`]; the rest waits
+    /// for the next frame (or, behind by more than that, is dropped). The
+    /// clock itself moves on as each tick begins ([`Self::begin_tick`]),
+    /// so a frame that stops early (a pause, a load) never counts ticks
+    /// that didn't run.
+    pub fn due(&mut self, seconds: f64) -> u64 {
         if !seconds.is_finite() || seconds <= 0.0 {
             return 0;
         }
         self.clock.carry += seconds;
-        let mut ran = 0;
-        while self.clock.carry >= TICK && ran < MAX_TICKS_PER_STEP {
+        let mut due = 0;
+        while self.clock.carry >= TICK && due < MAX_TICKS_PER_STEP {
             self.clock.carry -= TICK;
-            self.clock.ticks += 1;
-            self.clock.time += TICK;
-            ran += 1;
-            self.touched = true;
+            due += 1;
         }
         // Behind by more than the most ticks: the rest is dropped.
         if self.clock.carry >= TICK {
             self.clock.carry = 0.0;
         }
-        // Nothing moves by itself yet: game code moves things, and
-        // `settle` works out what follows.
-        ran
+        due
+    }
+
+    /// A tick begins: the clock moves on by one.
+    pub fn begin_tick(&mut self) {
+        self.clock.ticks += 1;
+        self.clock.time += TICK;
+        self.touched = true;
     }
 
     /// The projectiles in flight.
@@ -983,6 +1000,34 @@ impl World {
         }
         self.following = false;
         self.settle();
+    }
+
+    /// Sets the clock to `ticks` run, at game time `time` (a save game
+    /// loaded, decision 0038), with nothing waiting for the next tick.
+    pub fn set_clock(&mut self, ticks: u64, time: f64) {
+        self.clock = Clock {
+            ticks,
+            time: if time.is_finite() { time } else { 0.0 },
+            carry: 0.0,
+        };
+        self.touched = true;
+    }
+
+    /// Physics as a save game held it (`physics::Physics::snapshot`):
+    /// exactly as it was. Refused, leaving physics as it is, if it can't
+    /// be read.
+    pub fn restore_physics(&mut self, bytes: &[u8]) -> Result<(), String> {
+        self.physics.restore(bytes)?;
+        self.physics_moved.clear();
+        self.physics_asked.clear();
+        self.touched = true;
+        Ok(())
+    }
+
+    /// Whether physics broke (Rapier panicked on a damaged save) and was
+    /// emptied since last asked.
+    pub fn take_physics_broke(&mut self) -> bool {
+        self.physics.take_broke()
     }
 
     /// The seed the game's random numbers are made from.

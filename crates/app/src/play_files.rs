@@ -5,6 +5,32 @@
 use std::path::{Path, PathBuf};
 use std::sync::mpsc::{Receiver, channel};
 
+/// The folder in a project that keeps save games (decision 0038).
+pub const SAVES: &str = "saves";
+/// A save game's file extension.
+pub const SAVE_EXTENSION: &str = "solsave";
+/// The biggest save game read.
+pub const MAX_SAVE_BYTES: u64 = 256 << 20;
+
+/// Writes a save game as `slot` (already checked: letters, digits, `_`
+/// and `-`) in the project's saves folder, replacing one there; gives
+/// back where.
+pub fn save_game(root: &Path, slot: &str, text: &str) -> std::io::Result<PathBuf> {
+    if !script::valid_slot(slot) {
+        return Err(std::io::Error::other("that isn't a save slot's name"));
+    }
+    let folder = root.join(SAVES);
+    std::fs::create_dir_all(&folder)?;
+    let path = folder.join(format!("{slot}.{SAVE_EXTENSION}"));
+    write_whole(&path, text)?;
+    Ok(path)
+}
+
+/// Where the save game `slot` is kept, if the name is usable.
+pub fn save_path(root: &Path, slot: &str) -> Option<PathBuf> {
+    script::valid_slot(slot).then(|| root.join(SAVES).join(format!("{slot}.{SAVE_EXTENSION}")))
+}
+
 /// The folder in a project that keeps recordings of play.
 pub const RECORDINGS: &str = "recordings";
 /// A recording's file extension.
@@ -86,36 +112,53 @@ pub fn read_limited(path: &Path, limit: u64) -> Result<Option<String>, String> {
         .map_err(|e| e.to_string())
 }
 
-/// The Open window for a recording, on a thread of its own.
+/// What an Open window was asked for.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum PlayFile {
+    /// A recording to replay.
+    Recording,
+    /// A save game to load.
+    Save,
+}
+
+/// The Open window for a recording or a save game, on a thread of its
+/// own.
 #[derive(Default)]
 pub struct RecordingDialog {
-    answer: Option<Receiver<Option<PathBuf>>>,
+    answer: Option<(PlayFile, Receiver<Option<PathBuf>>)>,
 }
 
 impl RecordingDialog {
-    /// Shows the Open window, starting in `folder`.
-    pub fn ask(&mut self, folder: Option<PathBuf>) {
+    /// Shows the Open window for `what`, starting in `folder`.
+    pub fn ask(&mut self, what: PlayFile, folder: Option<PathBuf>) {
         if self.answer.is_some() {
             return;
         }
         let (sender, receiver) = channel();
         std::thread::spawn(move || {
+            let (title, kind, extension) = match what {
+                PlayFile::Recording => ("Replay a recording", "Recording", RECORDING_EXTENSION),
+                PlayFile::Save => ("Load a save", "Save game", SAVE_EXTENSION),
+            };
             let mut window = rfd::FileDialog::new()
-                .set_title("Replay a recording")
-                .add_filter("Recording", &[RECORDING_EXTENSION]);
+                .set_title(title)
+                .add_filter(kind, &[extension]);
             if let Some(folder) = folder {
                 window = window.set_directory(folder);
             }
             let _ = sender.send(window.pick_file());
         });
-        self.answer = Some(receiver);
+        self.answer = Some((what, receiver));
     }
 
-    /// The file chosen, once the window closed (`Some(None)`: cancelled).
-    pub fn chosen(&mut self) -> Option<Option<PathBuf>> {
-        let answer = self.answer.as_ref()?.try_recv().ok()?;
+    /// What was asked for and the file chosen, once the window closed
+    /// (`None` inside: cancelled).
+    pub fn chosen(&mut self) -> Option<(PlayFile, Option<PathBuf>)> {
+        let (what, receiver) = self.answer.as_ref()?;
+        let answer = receiver.try_recv().ok()?;
+        let what = *what;
         self.answer = None;
-        Some(answer)
+        Some((what, answer))
     }
 }
 
@@ -145,6 +188,21 @@ mod tests {
         assert!(note.unwrap().contains("ready-made"));
         std::fs::write(root.join(input::FILE), vec![b'#'; 2 << 20]).unwrap();
         assert!(load_bindings(&root).1.unwrap().contains("bigger"));
+        let _ = std::fs::remove_dir_all(root);
+    }
+
+    #[test]
+    fn saves_go_in_their_folder_by_slot_and_nowhere_else() {
+        let root = scratch("saves");
+        let path = save_game(&root, "quick", "first").unwrap();
+        assert_eq!(path, root.join(SAVES).join("quick.solsave"));
+        save_game(&root, "quick", "second").unwrap();
+        assert_eq!(std::fs::read_to_string(&path).unwrap(), "second", "a slot is replaced");
+        for bad in ["../outside", "a/b", "", "has space"] {
+            assert!(save_game(&root, bad, "x").is_err(), "{bad}");
+            assert!(save_path(&root, bad).is_none());
+        }
+        assert!(!root.join("outside.solsave").exists());
         let _ = std::fs::remove_dir_all(root);
     }
 

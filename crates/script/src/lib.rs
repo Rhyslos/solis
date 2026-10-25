@@ -30,3 +30,14 @@ pub use ticking::Order;
 
 /// The Lust compiler's version.
 pub const LUST_VERSION: &str = lust::VERSION;
+
+/// Whether `slot` is a usable save slot's name (decision 0038): letters,
+/// digits, `_` and `-`, at most 64 long. It becomes a file's name, so
+/// nothing that could reach outside the saves folder.
+pub fn valid_slot(slot: &str) -> bool {
+    !slot.is_empty()
+        && slot.len() <= 64
+        && slot
+            .chars()
+            .all(|c| c.is_ascii_alphanumeric() || c == '_' || c == '-')
+}

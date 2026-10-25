@@ -89,6 +89,18 @@ pub const NATIVES: &[Native] = &[
         about: "Starts the game's random numbers again from a seed, at the end of the tick: the same seed gives the same numbers again.",
     },
     Native {
+        file: "world",
+        name: "saveGame",
+        lust: "method saveGame(string slot) native;",
+        about: "Saves the whole game in a slot (a name such as \"quick\" or \"slot_1\": letters, digits, _ and -), at the end of the tick: every entity, every component's values, the lasers, physics, the clock and the random numbers.",
+    },
+    Native {
+        file: "world",
+        name: "loadGame",
+        lust: "method loadGame(string slot) native;",
+        about: "Loads the game saved in a slot, at the end of the tick: everything is put back exactly as it was when it was saved.",
+    },
+    Native {
         file: "input",
         name: "held",
         lust: "method bool held(string action) native;",

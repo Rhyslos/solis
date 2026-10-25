@@ -21,6 +21,8 @@ pub const GITIGNORE: &str = "\
 /.solis/
 # Exported games.
 /builds/
+# Save games made while playing in the editor (decision 0038).
+/saves/
 ";
 
 /// New projects keep Solis's text files with Unix line endings, so Git

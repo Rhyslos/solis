@@ -50,6 +50,11 @@ pub enum Change {
     Velocity(EntityId, Vec3),
     /// `rebind`: bind this input to this action, from the next tick.
     Rebind(String, String),
+    /// `saveGame`: save the game in this slot, at the end of the tick.
+    Save(String),
+    /// `loadGame`: load the game saved in this slot, at the end of the
+    /// tick.
+    Load(String),
 }
 
 /// The entities of a [`WorldView`]: the same while the world's entities,
@@ -357,6 +362,18 @@ impl Host for ViewHost {
         }
     }
 
+    fn save_game(&mut self, slot: &str, load: bool) {
+        if crate::valid_slot(slot) && self.kept.room() {
+            let order = self.order();
+            let change = if load {
+                Change::Load(slot.to_string())
+            } else {
+                Change::Save(slot.to_string())
+            };
+            self.kept.changes.push((order, change));
+        }
+    }
+
     fn set_seed(&mut self, seed: u64) {
         if self.kept.room() {
             let order = self.order();
@@ -435,6 +452,7 @@ enum Job {
     Values(EntityId, String),
     Len,
     Checksum,
+    AllValues,
     Updates(f64, WorldView),
     Round(Vec<(u32, Event)>, WorldView, u32),
     FinishTick,
@@ -449,6 +467,7 @@ enum Done {
     Values(Option<ComponentData>),
     Len(usize),
     Checksum(u64),
+    AllValues(Vec<(EntityId, String, ComponentData)>),
     Phase(Result<Phase, String>, Kept),
     Finished(bool),
 }
@@ -499,6 +518,7 @@ fn work(runtime: &mut Runtime, job: Job) -> Done {
         Job::Values(entity, name) => Done::Values(runtime.values(entity, &name)),
         Job::Len => Done::Len(runtime.len()),
         Job::Checksum => Done::Checksum(runtime.checksum()),
+        Job::AllValues => Done::AllValues(runtime.all_values()),
         Job::Updates(dt, view) => {
             // The tick starts with its updates: one hand-over, not two.
             runtime.start_tick();
@@ -857,6 +877,21 @@ impl Game {
                 Some(Done::Checksum(c)) => sum.wrapping_add(c),
                 _ => sum,
             })
+    }
+
+    /// Every running component's values (Lust's, Lua's and Rust's), by
+    /// entity then name: what a save game keeps (decision 0038).
+    pub fn all_values(&mut self) -> Vec<(EntityId, String, ComponentData)> {
+        let mut all: Vec<(EntityId, String, ComponentData)> = self
+            .all(|_| Job::AllValues)
+            .into_iter()
+            .flat_map(|a| match a {
+                Some(Done::AllValues(v)) => v,
+                _ => Vec::new(),
+            })
+            .collect();
+        all.sort_by(|a, b| (a.0, &a.1).cmp(&(b.0, &b.1)));
+        all
     }
 
     /// Whether no components are running.
