@@ -654,10 +654,20 @@ fn many_characters_moved_together_go_exactly_where_one_by_one_would() {
         let mut physics = with_floor();
         for n in 0..40u64 {
             let at = Vec3::new((n % 8) as f32 * 1.5, (n / 8) as f32 * 1.5, 0.0);
-            assert!(physics.add_character(id(100 + n), (at, Quat::IDENTITY), CharacterSpec::default()));
+            assert!(physics.add_character(
+                id(100 + n),
+                (at, Quat::IDENTITY),
+                CharacterSpec::default()
+            ));
         }
         let (body, collider) = crate_spec();
-        physics.add(id(5), (Vec3::new(2.0, 2.0, 0.5), Quat::IDENTITY), Vec3::ONE, body, collider);
+        physics.add(
+            id(5),
+            (Vec3::new(2.0, 2.0, 0.5), Quat::IDENTITY),
+            Vec3::ONE,
+            body,
+            collider,
+        );
         physics
     };
     let moves = |tick: u32| -> Vec<(EntityId, Vec3)> {
