@@ -301,7 +301,15 @@ pub fn order_after(last: Option<&str>) -> String {
     }
     digits.reverse();
     let head = char::from(b'a' + (digits.len() - 1) as u8);
-    format!("{head}{}", String::from_utf8_lossy(&digits))
+    let next = format!("{head}{}", String::from_utf8_lossy(&digits));
+    // Always after: a hand-edited order with leading zeros
+    // ("l000000000000") counts small but sorts late (found by the hardening
+    // milestone's mutation testing).
+    if next.as_str() > last {
+        next
+    } else {
+        format!("{last}1")
+    }
 }
 
 #[cfg(test)]
@@ -396,6 +404,16 @@ mod tests {
         assert!(key.len() <= 4, "{key}");
         assert_eq!(order_after(Some("a9")), "aa");
         assert_eq!(order_after(Some("az")), "b10");
+        // The longest order counted (twelve digits), and one past it (a
+        // hand-edited file), still sort after (mutation testing).
+        let longest = format!("l{}", "z".repeat(12));
+        let next = order_after(Some(&longest));
+        assert!(next > longest, "{next}");
+        let past = format!("m{}", "1".repeat(13));
+        assert_eq!(order_after(Some(&past)), format!("{past}1"));
+        // Leading zeros (by hand) count small but sort late: still after.
+        let zeros = format!("l{}", "0".repeat(12));
+        assert!(order_after(Some(&zeros)) > zeros);
         // Hand-edited orders still get one that sorts after them.
         for odd in ["a~", "a0000", "zzz", "B"] {
             assert!(order_after(Some(odd)).as_str() > odd, "{odd}");
@@ -423,5 +441,14 @@ mod tests {
         // A loop still lists everyone.
         s.get_mut(root).unwrap().parent = Some(b);
         assert_eq!(s.depth_first().len(), 4);
+    }
+
+    proptest::proptest! {
+        /// Whatever order is there (made by Solis, or by hand), the next
+        /// one sorts after it: a new entity never jumps the queue.
+        #[test]
+        fn the_next_order_always_sorts_after(last in "[0-9a-z]{0,16}") {
+            proptest::prop_assert!(order_after(Some(&last)) > last);
+        }
     }
 }

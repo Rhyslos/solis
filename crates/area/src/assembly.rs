@@ -919,6 +919,64 @@ mod tests {
     }
 
     #[test]
+    fn a_copy_s_references_to_its_own_parts_point_at_the_copy_s_parts() {
+        // The hardening milestone's mutation testing: emptying `remap`
+        // went unnoticed, so a placed turret would aim with the assembly's
+        // own barrel (or none) instead of its copy's.
+        let mut area = Area::new();
+        let mut turret = EntityData::new("Turret").with(&Transform::default());
+        let mut aim = reflect::ComponentData::default();
+        aim.set("barrel", Value::Entity(Some(id(2))));
+        aim.set(
+            "spares",
+            Value::List(vec![
+                Value::Entity(Some(id(2))),
+                Value::Entity(Some(id(77))),
+            ]),
+        );
+        aim.set("nothing", Value::Entity(None));
+        turret.components.insert("Aim".into(), aim);
+        area.insert(id(1), turret);
+        let mut barrel = EntityData::new("Barrel").with(&Transform::default());
+        barrel.parent = Some(id(1));
+        area.insert(id(2), barrel);
+        let lib = library(vec![(
+            asset(600),
+            AreaFile {
+                kind: FileKind::Assembly { root: id(1) },
+                area,
+                overrides: Default::default(),
+            },
+        )]);
+        let copy = id(500);
+        let placed = Expander::new(&lib)
+            .place(asset(600), copy, &EntityData::new("Turret 2"))
+            .unwrap();
+        let barrel = placed
+            .iter()
+            .find(|(_, e)| e.name == "Barrel")
+            .map(|(id, _)| *id)
+            .unwrap();
+        assert_ne!(barrel, id(2), "the copy's barrel is its own");
+        let aim = &placed
+            .iter()
+            .find(|(e, _)| *e == copy)
+            .unwrap()
+            .1
+            .components["Aim"];
+        assert_eq!(aim.get("barrel"), Some(&Value::Entity(Some(barrel))));
+        assert_eq!(
+            aim.get("spares"),
+            Some(&Value::List(vec![
+                Value::Entity(Some(barrel)),
+                // Not one of its parts: left as it is.
+                Value::Entity(Some(id(77))),
+            ]))
+        );
+        assert_eq!(aim.get("nothing"), Some(&Value::Entity(None)));
+    }
+
+    #[test]
     fn expected_values_come_from_the_assembly() {
         let root = id(50);
         let lib = library(vec![(asset(100), lamp_post()), (asset(200), street())]);
