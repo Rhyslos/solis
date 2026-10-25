@@ -27,7 +27,7 @@ pub(crate) fn area_row(
     remove: Option<&str>,
 ) -> (egui::Response, bool) {
     let (row, response) = ui.allocate_exact_size(
-        egui::vec2(ui.available_width(), 21.0),
+        egui::vec2(ui.available_width(), ROW_HEIGHT),
         egui::Sense::click_and_drag(),
     );
     response.widget_info(|| {
@@ -160,58 +160,84 @@ pub(crate) fn area_tree(
     accent: Accent,
 ) -> Vec<AreaRequest> {
     let mut requests = Vec::new();
-    let area = document.area();
-    let tree = area.hierarchy();
-    egui::ScrollArea::vertical()
-        .auto_shrink(false)
+    let rows = tree_rows(document.area());
+    egui::Frame::new()
+        .inner_margin(egui::Margin::symmetric(6, 4))
         .show(ui, |ui| {
-            egui::Frame::new()
-                .inner_margin(egui::Margin::symmetric(6, 4))
-                .show(ui, |ui| {
-                    ui.spacing_mut().item_spacing.y = 1.0;
-                    // Depth-first, parents before children; a loop in a
-                    // damaged area is cut where it comes round again.
-                    let mut seen = std::collections::HashSet::new();
-                    let mut todo: Vec<(EntityId, usize)> = tree
-                        .get(&None)
-                        .map(|top| top.iter().rev().map(|&id| (id, 0)).collect())
-                        .unwrap_or_default();
-                    while let Some((id, depth)) = todo.pop() {
-                        if !seen.insert(id) {
-                            continue;
-                        }
-                        let Some(entity) = area.get(id) else {
+            let note = if models.is_empty() {
+                "To see a model, use File > Import model, or drop a .gltf or .glb file onto \
+                 the window. Entity > Add point light adds a lamp."
+            } else {
+                "Areas can't be saved yet: saving arrives later in Phase 2."
+            };
+            // Only the rows in view are drawn, so thousands of entities
+            // cost no more than a screenful (CONTRIBUTING.md, rule 18).
+            let out = egui::ScrollArea::vertical()
+                .auto_shrink(false)
+                .max_height((ui.available_height() - NOTE_HEIGHT).max(ROW_HEIGHT))
+                .show_rows(ui, ROW_HEIGHT, rows.len(), |ui, range| {
+                    ui.spacing_mut().item_spacing.y = ROW_GAP;
+                    for &(id, depth) in &rows[range] {
+                        let Some(entity) = document.area().get(id) else {
                             continue;
                         };
                         ui.horizontal(|ui| {
                             ui.add_space(depth as f32 * INDENT);
                             entity_row(ui, document, models, accent, id, entity, &mut requests);
                         });
-                        if let Some(kids) = tree.get(&Some(id)) {
-                            todo.extend(kids.iter().rev().map(|&k| (k, depth + 1)));
-                        }
-                    }
-                    ui.add_space(6.0);
-                    let note = if models.is_empty() {
-                        "To see a model, use File > Import model, or drop a .gltf or .glb \
-                         file onto the window. Entity > Add point light adds a lamp."
-                    } else {
-                        "Areas can't be saved yet: saving arrives later in Phase 2."
-                    };
-                    ui.label(RichText::new(note).color(theme::TEXT_WEAK).size(11.0));
-                    // The rest of the panel: dropping here moves to the top
-                    // level.
-                    let rest = ui.available_size().max(egui::vec2(0.0, 24.0));
-                    let (_, empty) = ui.allocate_exact_size(rest, egui::Sense::hover());
-                    if let Some(dragged) = empty.dnd_release_payload::<EntityId>() {
-                        requests.push(AreaRequest::Reparent {
-                            entity: *dragged,
-                            onto: None,
-                        });
                     }
                 });
+            // Dropping anywhere in the list but on a row moves to the top
+            // level.
+            let empty = ui.interact(
+                out.inner_rect,
+                ui.id().with("area-panel-empty"),
+                egui::Sense::hover(),
+            );
+            if let Some(dragged) = empty.dnd_release_payload::<EntityId>() {
+                requests.push(AreaRequest::Reparent {
+                    entity: *dragged,
+                    onto: None,
+                });
+            }
+            ui.label(RichText::new(note).color(theme::TEXT_WEAK).size(11.0));
         });
     requests
+}
+
+/// Height of one row, and the gap between rows.
+const ROW_HEIGHT: f32 = 21.0;
+const ROW_GAP: f32 = 1.0;
+/// Room kept under the list for its note.
+const NOTE_HEIGHT: f32 = 40.0;
+
+/// Every entity with how deep it sits, in the order the panel lists them:
+/// depth-first, parents before children. A loop in a damaged area is cut
+/// where it comes round again; entities caught in one come last.
+fn tree_rows(area: &area::Area) -> Vec<(EntityId, usize)> {
+    let tree = area.hierarchy();
+    let mut rows = Vec::with_capacity(area.len());
+    let mut seen = std::collections::HashSet::new();
+    let mut todo: Vec<(EntityId, usize)> = tree
+        .get(&None)
+        .map(|top| top.iter().rev().map(|&id| (id, 0)).collect())
+        .unwrap_or_default();
+    while let Some((id, depth)) = todo.pop() {
+        if !seen.insert(id) {
+            continue;
+        }
+        rows.push((id, depth));
+        if let Some(kids) = tree.get(&Some(id)) {
+            todo.extend(kids.iter().rev().map(|&k| (k, depth + 1)));
+        }
+    }
+    rows.extend(
+        area.iter()
+            .map(|(id, _)| id)
+            .filter(|id| !seen.contains(id))
+            .map(|id| (id, 0)),
+    );
+    rows
 }
 
 /// One entity's row: its name (or the box to rename it), and what clicks,

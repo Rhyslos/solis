@@ -523,7 +523,10 @@ fn the_entity_menu_adds_lights_shown_in_area_and_properties() {
         h.state().camera().position
     );
     assert_eq!(data.get::<Light>().unwrap().kind, LightKind::Spot);
-    // Delete removes it and clears the selection.
+    // Delete removes it and clears the selection (scrolled to first:
+    // the spotlight's settings fill the panel).
+    h.get_by_label("Delete").scroll_to_me();
+    h.run();
     h.get_by_label("Delete").click();
     h.run();
     assert!(!h.state().document().area().contains(spot));
@@ -1047,4 +1050,148 @@ fn f_frames_the_selection() {
     let camera = w.camera();
     let to_middle = (Vec3::splat(0.5) - camera.position).normalize();
     assert!(to_middle.dot(camera.forward()) > 0.999, "{camera:?}");
+}
+
+/// A component a game might register at run time.
+fn health_schema() -> reflect::ComponentSchema {
+    reflect::ComponentSchema {
+        name: "Health".into(),
+        help: "How much damage it can take.".into(),
+        fields: vec![
+            reflect::FieldInfo::new(
+                "max_hp",
+                "Max HP",
+                reflect::FieldKind::Float,
+                reflect::Value::Float(100.0),
+            ),
+            reflect::FieldInfo::new(
+                "team",
+                "Team",
+                reflect::FieldKind::Choice(vec!["Red".into(), "Blue".into()]),
+                reflect::Value::Text("Red".into()),
+            ),
+        ],
+    }
+}
+
+#[test]
+fn a_component_registered_at_run_time_is_added_shown_edited_and_undone() {
+    let mut w = Workbench::new(info(), None);
+    w.register_component(health_schema()).unwrap();
+    assert!(
+        w.register_component(health_schema()).is_err(),
+        "a name is taken once"
+    );
+    let id = w.add_entity();
+    let mut h = harness_with(w);
+    h.run();
+    h.get_by_label("Add component").click();
+    h.run();
+    h.get_by_label("Health").click();
+    h.run();
+    assert!(h.state().document().area().get(id).unwrap().has("Health"));
+    // Its fields are drawn from its schema, with no code for it.
+    let _ = h.get_by_label("Max HP");
+    let _ = h.get_by_label("Team");
+    h.state_mut().apply_property(
+        PropertyRequest::SetField {
+            entity: id,
+            component: "Health".into(),
+            field: "max_hp".into(),
+            value: reflect::Value::Float(5000.0),
+        },
+        9,
+    );
+    let hp = |w: &Workbench| {
+        w.document().area().get(id).unwrap().components["Health"]
+            .get("max_hp")
+            .cloned()
+    };
+    assert_eq!(hp(h.state()), Some(reflect::Value::Float(5000.0)));
+    assert_eq!(
+        h.state().document().history().undo_label(),
+        Some("Change Health.max_hp")
+    );
+    h.state_mut().undo();
+    assert_eq!(hp(h.state()), Some(reflect::Value::Float(100.0)));
+    // × takes it off; undo puts it back with its values.
+    h.run();
+    h.get_by_label("Remove Health").click();
+    h.run();
+    assert!(!h.state().document().area().get(id).unwrap().has("Health"));
+    h.state_mut().undo();
+    assert_eq!(hp(h.state()), Some(reflect::Value::Float(100.0)));
+}
+
+/// An area of `count` entities: models, lights and empties, some under
+/// others, as a scale check's worth of a level.
+fn crowded(count: usize) -> Workbench {
+    let mut w = Workbench::new(info(), None);
+    let info = crate_info();
+    let asset = info.asset;
+    w.models.insert(asset, info);
+    let mut entities = Vec::new();
+    let mut parent = None;
+    for i in 0..count {
+        let id = EntityId::random();
+        let mut data = area::EntityData::new(&format!("Thing {i}")).with(&Transform {
+            position: Vec3::new((i % 50) as f32, (i / 50) as f32, 0.0),
+            ..Transform::default()
+        });
+        match i % 3 {
+            0 => {
+                data.set(&area::builtin::Model {
+                    asset: Some(reflect::AssetRef { asset, part: None }),
+                });
+            }
+            1 => data.set(&Light::point()),
+            _ => {}
+        }
+        // Every tenth starts a group the next nine sit under.
+        if i % 10 == 0 {
+            parent = Some(id);
+        } else {
+            data.parent = parent;
+        }
+        data.order = area::order_after(Some(&format!("a{}", i % 10)));
+        entities.push(Edit::Spawn {
+            entities: vec![(id, data)],
+        });
+    }
+    // Spawned parents first: each group's head comes before its members.
+    w.document.edit("Fill", entities, None, None).unwrap();
+    w
+}
+
+#[test]
+#[ignore = "scale check: run by tools/scale/scale-check.sh"]
+fn scale_check_editor_with_2000_entities() {
+    const TARGET_MS: f64 = 4.0;
+    let mut w = crowded(2_000);
+    let some = w.document().area().depth_first()[1_000];
+    w.select(some);
+    let mut h = harness_with(w);
+    h.run();
+    let frames = 100;
+    let start = std::time::Instant::now();
+    for _ in 0..frames {
+        h.step();
+    }
+    let ms = start.elapsed().as_secs_f64() * 1000.0 / f64::from(frames);
+    let verdict = if ms <= TARGET_MS { "ok" } else { "SLOW" };
+    println!(
+        "Scale check: editor frame with 2,000 entities listed and one inspected {ms:.2} ms (target {TARGET_MS} ms) {verdict}"
+    );
+    assert!(ms <= TARGET_MS, "the editor takes {ms:.2} ms per frame");
+}
+
+#[test]
+fn a_crowded_area_still_lists_and_inspects() {
+    let mut w = crowded(200);
+    let some = w.document().area().depth_first()[100];
+    w.select(some);
+    let mut h = harness_with(w);
+    h.run();
+    let _ = h.get_by_label("Position");
+    assert_eq!(h.state().document().area().len(), 202);
 }
