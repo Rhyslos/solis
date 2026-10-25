@@ -122,6 +122,18 @@ The phase that proves DESIGN.md §2 early, while changing course is still cheap.
 
 **Gate:** walk a character around a level with physics, save, quit and load. The same recorded inputs always give exactly the same result.
 
+## Phase 6 hardening
+
+Stronger tests before building on the game loop ([decision 0042](docs/decisions/0042-a-hardening-milestone-before-phase-7.md)). Phase 6's reviews kept finding problems, some caused by earlier fixes, so this milestone makes the tests catch them first. The working plan: [docs/plans/phase-6-hardening.md](docs/plans/phase-6-hardening.md).
+
+- Merge the open pull requests, once tested, so the work starts from `main`.
+- Whole-game invariant tests: random games with saving, loading, replays and edits, checked against rules that must always hold.
+- Fuzzing every reader of a file a project can ship.
+- Measuring the tests: coverage, and mutation testing on the core crates.
+- Checks that stay: in CI, weekly, and in each phase's review.
+
+**Gate:** the project lead reads the hardening report (coverage, mutations caught, hours fuzzed and what was found) and tries the playground once more.
+
 ## Phase 7: Sound and animation
 
 - **Sound** (Kira): sound events with random clips, pitch and volume; buses and ducking; 3D falloff; reverb zones.
