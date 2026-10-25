@@ -213,6 +213,9 @@ struct ViewKey {
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 struct GameKey {
     world: u64,
+    /// How far between ticks it's drawn (its bits): it moves every frame
+    /// while playing.
+    between: u32,
     sources: u64,
     models: usize,
     state: crate::play::PlayState,
@@ -646,8 +649,13 @@ impl Workbench {
         let state = self.play_state();
         let game = match &mut self.playing {
             Some(playing) if self.in_front.contains(&crate::panel::Panel::Game) => {
+                let between = match state {
+                    crate::play::PlayState::Playing => playing.world.progress().to_bits(),
+                    _ => 1.0_f32.to_bits(),
+                };
                 let key = GameKey {
                     world: playing.world.changes(),
+                    between,
                     sources: self.sources,
                     models: self.models.len(),
                     state,

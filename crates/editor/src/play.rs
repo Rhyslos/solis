@@ -37,6 +37,8 @@ pub(crate) struct Playing {
     pub(crate) world: world::World,
     /// Whether its clock is stopped.
     pub(crate) paused: bool,
+    /// Step was pressed: the next frame runs one tick while paused.
+    pub(crate) step: bool,
     /// The document as it was when Play was pressed, put back on Stop.
     before: Box<Document>,
     /// The assemblies as they were when Play was pressed, to rebuild
@@ -135,6 +137,7 @@ impl Workbench {
         self.playing = Some(Playing {
             world,
             paused: false,
+            step: false,
             before: Box::new(self.document.clone()),
             assemblies_before: self.assemblies.clone(),
             reload: None,
@@ -228,6 +231,19 @@ impl Workbench {
         self.log(LogLevel::Info, text);
     }
 
+    /// Step: while paused, runs exactly one tick (game code, projectiles
+    /// and all), then stays paused.
+    pub fn step(&mut self) {
+        match &mut self.playing {
+            Some(playing) if playing.paused => playing.step = true,
+            Some(_) => self.log(
+                LogLevel::Info,
+                "Pause first, then Step runs one tick at a time.",
+            ),
+            None => self.log(LogLevel::Info, "Nothing is running."),
+        }
+    }
+
     /// Stop: throws the game away and puts the area, its undo history
     /// and the selection back as they were when Play was pressed.
     /// Assemblies changed on disk meanwhile update their copies again,
@@ -319,7 +335,12 @@ impl Workbench {
         }
         let mut pause = None;
         let ran = if playing.paused {
-            0
+            // Step: one tick, then paused again.
+            if std::mem::take(&mut playing.step) {
+                playing.world.step_one()
+            } else {
+                0
+            }
         } else {
             playing.world.step(f64::from(seconds))
         };
@@ -334,6 +355,9 @@ impl Workbench {
             let Some(playing) = &mut self.playing else {
                 break;
             };
+            // Where everything is as the tick starts: what drawing between
+            // ticks moves from.
+            playing.world.remember();
             playing.world.projectiles_mut().tick(world::TICK as f32);
             let Some(game) = &mut playing.game else {
                 continue;

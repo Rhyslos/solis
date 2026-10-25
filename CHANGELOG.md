@@ -6,6 +6,7 @@ What changed in each version, for people using Solis. Newest first.
 
 ### Changed
 
+- **Smooth play on fast screens** (Phase 6): the game still runs 60 ticks a second, but the Game panel draws everything part way between ticks, so a 120 or 144 Hz screen shows smooth movement instead of steps.
 - Game code uses Lust 2.0.0-alpha.35. A `vec3` is now a Luau vector in Lust and Lua alike (Lua's `vec3(x, y, z)` makes one), which is quicker than a table.
 - **The benchmark** (Phase 5): **Help > Make the benchmark…** makes a project of two fleets of ships flying loops and firing lasers, in three areas: 2,000 ships and 20,000 lasers, 10,000 and 100,000, and a ceiling run that adds ships until 60 frames a second ends and says in the Console where. The manual's new page, The benchmark, explains it.
 - **Game code makes and removes entities** (Phase 5): `spawn("ships/fighter", place)` makes a copy of an assembly while the game runs, and `despawn(entity)` takes one away; `frameTime()` says how long the last frame took. What game code makes shows in the Area panel while playing, and goes on Stop.
@@ -25,6 +26,7 @@ What changed in each version, for people using Solis. Newest first.
 
 ### Added
 
+- **Step** (Phase 6): while the game is paused, the new Step button beside Pause (or `step` in the Console) runs exactly one tick.
 - **The Profiler (Phase 5):** a new panel beside the Console shows where each frame's time goes: game code, the game's world, preparing and handing over what to draw, the rest of the editor, and the graphics card's own passes (on cards that can time them), with a graph of the last few seconds and how much was drawn.
 - **A first game (Phase 4):** **Help > Make the sample game…** makes the turret sample as a new project: a Lust turret shoots at a drone whose health (Lust), armour (Rust) and sparks (Lua) react to each other through events. The manual's new page, Your first game, walks through it.
 - **Lua components (Phase 4):** a `.lua` file in the assets makes components with `component("Name", { { "speed", "float", 2 } })`, the way Lua code usually makes classes. They show in Properties, run in play mode with the same engine methods (`solis.moveTo`), send and handle the same events as Lust's (`solis.send`, `on_Hit`), and take new code while the game runs. Mistakes show in Problems with their file and line.

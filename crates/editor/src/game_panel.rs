@@ -29,15 +29,23 @@ pub(crate) struct GameScene {
 }
 
 impl GameScene {
-    /// What the running `world` shows.
+    /// What the running `world` shows, `state` being whether it runs.
     pub(crate) fn of(
         world: &world::World,
         models: &BTreeMap<AssetId, ModelInfo>,
         state: PlayState,
     ) -> Self {
+        // Drawn part way between the last tick and the next, so a screen
+        // faster than the ticks shows smooth movement; paused, as it is.
+        let t = match state {
+            PlayState::Playing => world.progress(),
+            _ => 1.0,
+        };
         Self {
-            view: AreaView::of_world(world, models),
-            camera: world.camera().map(|(_, camera, global)| (camera, global)),
+            view: AreaView::of_world(world, models, t),
+            camera: world
+                .camera_between(t)
+                .map(|(_, camera, global)| (camera, global)),
             state,
             seconds: world.clock().time,
             bolts: std::sync::Arc::new({
@@ -46,7 +54,7 @@ impl GameScene {
                     .projectiles()
                     .flying()
                     .par_iter()
-                    .map(crate::viewport::ViewBolt::of)
+                    .map(|p| crate::viewport::ViewBolt::between(p, t))
                     .collect()
             }),
         }

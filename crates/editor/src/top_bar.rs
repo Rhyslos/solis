@@ -256,7 +256,7 @@ impl Workbench {
             );
         }
         ui.add_space(4.0);
-        // Right to left: Stop, Play with two players, Pause, Play.
+        // Right to left: Stop, Play with two players, Step, Pause, Play.
         let state = self.play_state();
         let stop_fill = (state != PlayState::Editing).then_some(theme::ERROR);
         if icon_button(ui, Icon::Stop, 11.0, stop_fill, "Stop").clicked() {
@@ -267,6 +267,13 @@ impl Workbench {
                 LogLevel::Info,
                 "Playing with others arrives with netcode in Phase 8 (ROADMAP.md).",
             );
+        }
+        // Step runs one tick, while paused.
+        let step = ui.add_enabled_ui(state == PlayState::Paused, |ui| {
+            icon_button(ui, Icon::Step, 12.0, None, "Step one tick")
+        });
+        if step.inner.clicked() {
+            self.step();
         }
         let pause_fill = (state == PlayState::Paused).then_some(fill);
         if icon_button(ui, Icon::Pause, 12.0, pause_fill, "Pause").clicked() {
