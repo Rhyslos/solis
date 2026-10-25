@@ -25,4 +25,5 @@ New to game engines? Start with [Concepts](concepts.md).
 - [Game code: writing your game's rules in Lust, Lua and Rust](game-code.md)
 - [Your first game: the turret sample, in all three languages](first-game.md)
 - [Problems: mistakes found in the area and the game's code](problems.md)
+- [The Profiler: where each frame's time goes](profiler.md)
 - [Keyboard shortcuts: every key in one place](keyboard-shortcuts.md)

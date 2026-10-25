@@ -128,6 +128,8 @@ pub enum Icon {
     Console,
     /// A warning sign: the Problems panel.
     Problems,
+    /// Bars of a graph: the Profiler panel.
+    Profiler,
     /// Hills: an area document.
     AreaFile,
     /// A filled triangle: Play.
@@ -221,6 +223,12 @@ pub fn icon(painter: &Painter, rect: Rect, icon: Icon, color: Color32) {
         Icon::Console => {
             line(&[(4.0, 6.0), (10.0, 12.0), (4.0, 18.0)]);
             line(&[(12.0, 18.0), (20.0, 18.0)]);
+        }
+        Icon::Profiler => {
+            line(&[(3.0, 20.0), (21.0, 20.0)]);
+            line(&[(6.0, 17.0), (6.0, 12.0)]);
+            line(&[(11.0, 17.0), (11.0, 5.0)]);
+            line(&[(16.0, 17.0), (16.0, 9.0)]);
         }
         Icon::Problems | Icon::Warning => {
             outline(&[(12.0, 3.0), (22.0, 20.0), (2.0, 20.0)]);
@@ -363,6 +371,7 @@ mod tests {
             Code,
             Console,
             Problems,
+            Profiler,
             AreaFile,
             Play,
             PlayTogether,

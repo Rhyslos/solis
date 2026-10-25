@@ -122,6 +122,11 @@ impl GpuModel {
         (mesh.index_count > 0).then_some((mesh, material))
     }
 
+    /// How many triangles a mesh has (0 if it can't be drawn).
+    pub(crate) fn triangles_of(&self, mesh: usize) -> u32 {
+        self.mesh(mesh).map_or(0, |(m, _)| m.index_count / 3)
+    }
+
     /// Which pass a mesh is drawn in.
     pub(crate) fn pass_of(&self, mesh: usize) -> Option<Pass> {
         self.mesh(mesh).map(|(_, material)| material.pass)

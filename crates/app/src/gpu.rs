@@ -30,6 +30,9 @@ pub struct GpuViewport {
     models: HashMap<AssetId, GpuModel>,
     /// The image thumbnails are drawn into, made the first time.
     thumbnail_target: Option<ViewportTarget>,
+    /// What was drawn since the Profiler last asked, and which images.
+    report: editor::DrawReport,
+    drawn: Vec<usize>,
 }
 
 impl GpuViewport {
@@ -49,6 +52,8 @@ impl GpuViewport {
             images: Vec::new(),
             models: HashMap::new(),
             thumbnail_target: None,
+            report: editor::DrawReport::default(),
+            drawn: Vec::new(),
         }
     }
 
@@ -340,7 +345,7 @@ impl ViewportRenderer for GpuViewport {
                 })
             })
             .collect();
-        self.renderer.render(
+        let stats = self.renderer.render(
             &self.state.device,
             &self.state.queue,
             &mut image.target,
@@ -348,6 +353,12 @@ impl ViewportRenderer for GpuViewport {
             &placed,
             &lights,
         );
+        self.report.instances += u64::from(stats.instances);
+        self.report.batches += u64::from(stats.batches);
+        self.report.triangles += stats.triangles;
+        if !self.drawn.contains(&view.image) {
+            self.drawn.push(view.image);
+        }
         if let Some(rect) = view.pick {
             // Drawn after the frame, never waited for: the answer is
             // collected by `picked` on a later frame.
@@ -378,5 +389,25 @@ impl ViewportRenderer for GpuViewport {
         }
         let result = image.target.poll_pick(&self.state.device)?;
         Some(to_answer(&result))
+    }
+
+    fn take_report(&mut self) -> editor::DrawReport {
+        let mut report = std::mem::take(&mut self.report);
+        // The GPU's newest times for each image drawn, together.
+        let mut gpu: Option<editor::GpuSplit> = None;
+        for &slot in &std::mem::take(&mut self.drawn) {
+            let Some(image) = self.images.get(slot).and_then(Option::as_ref) else {
+                continue;
+            };
+            report.gpu_timing = image.target.can_time().or(report.gpu_timing);
+            if let Some(t) = image.target.gpu_times(&self.state.device) {
+                let sum = gpu.get_or_insert_default();
+                sum.shadows += t.shadows;
+                sum.models += t.models;
+                sum.last_pass += t.last_pass;
+            }
+        }
+        report.gpu = gpu;
+        report
     }
 }

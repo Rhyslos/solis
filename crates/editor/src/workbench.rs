@@ -175,6 +175,8 @@ pub struct Workbench {
     pub(crate) program: Option<std::sync::Arc<script::Compiled>>,
     /// The components it put in the registry, by name.
     pub(crate) game_components: std::collections::BTreeSet<String>,
+    /// Where each frame's time goes (the Profiler panel).
+    pub(crate) profiler: crate::profiler::Profiler,
     /// Its components whose names were taken (by the engine's own, or a
     /// Rust one's): they don't run.
     pub(crate) left_out: std::collections::BTreeSet<String>,
@@ -214,6 +216,7 @@ impl Workbench {
             code_problems: Vec::new(),
             program: None,
             game_components: std::collections::BTreeSet::new(),
+            profiler: crate::profiler::Profiler::default(),
             left_out: std::collections::BTreeSet::new(),
             rust_components: Vec::new(),
             assembly_part_kept: std::cell::RefCell::new(None),
@@ -555,6 +558,7 @@ impl Workbench {
         ui: &mut Ui,
         renderer: &mut dyn ViewportRenderer,
     ) -> Vec<WorkbenchAction> {
+        self.profiler.begin();
         let mut actions = std::mem::take(&mut self.outbox);
         self.viewport.idle = !self.wants_frames(ui.ctx());
         if ui.input(|i| i.pointer.any_pressed()) {
@@ -579,6 +583,7 @@ impl Workbench {
         let mut console_requests = Vec::new();
         let part = self.assembly_part();
         let mut requests = Vec::new();
+        let preparing = std::time::Instant::now();
         let (hidden, locked) = self.area_panel.in_effect(&self.document);
         self.viewport.area = AreaView::of_placed(
             self.document.area(),
@@ -601,7 +606,13 @@ impl Workbench {
             Some(_) => None,
             None => None,
         };
+        self.profiler
+            .add(crate::profiler::Stage::Prepare, preparing.elapsed());
         let playing = self.playing.is_some();
+        let mut renderer = crate::profiler::Timed {
+            inner: renderer,
+            spent: std::time::Duration::ZERO,
+        };
         theme::dock_frame().show(ui, |ui| {
             DockArea::new(&mut self.dock)
                 .style(style)
@@ -617,7 +628,7 @@ impl Workbench {
                         copied: &copied,
                         menu: &menu,
                         viewport: &mut self.viewport,
-                        renderer,
+                        renderer: &mut renderer,
                         console: &mut self.console,
                         console_requests: &mut console_requests,
                         problems: &self.problems.list,
@@ -637,6 +648,7 @@ impl Workbench {
                         accent: self.accent,
                         in_front: &self.in_front,
                         shown: &mut shown,
+                        profiler: &self.profiler,
                     },
                 );
         });
@@ -664,6 +676,17 @@ impl Workbench {
         self.about(ui);
         self.prompts(ui, &mut actions);
         self.hold_while_playing(&mut actions);
+        self.profiler
+            .add(crate::profiler::Stage::Draw, renderer.spent);
+        let (components, entities) = match &self.playing {
+            Some(playing) => (
+                playing.game.as_ref().map_or(0, script::Runtime::len),
+                playing.world.len(),
+            ),
+            None => (0, self.document.area().len()),
+        };
+        let drawn = renderer.inner.take_report();
+        self.profiler.end(drawn, components, entities);
         actions
     }
 

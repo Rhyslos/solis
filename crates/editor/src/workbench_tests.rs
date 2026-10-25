@@ -79,7 +79,13 @@ fn presets_rearrange_the_panels() {
     let group = w.layout()[path.surface][path.node].tabs().unwrap().to_vec();
     assert_eq!(
         group,
-        [Panel::Library, Panel::Code, Panel::Console, Panel::Problems]
+        [
+            Panel::Library,
+            Panel::Code,
+            Panel::Console,
+            Panel::Problems,
+            Panel::Profiler
+        ]
     );
 }
 
