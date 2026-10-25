@@ -61,7 +61,7 @@ component Hopper {
         vec3 move = axis("Move");
         vec3 walk = [move.x, move.y, 0];
         is onGround(me)? then {
-            fall = -1;
+            fall = 0;
             is pressed("Jump")? then {
                 fall = 5;
             }
@@ -76,7 +76,7 @@ pass Hopper;
 end
 ```
 
-Why your own falling? Because how a character falls and jumps is part of how a game feels (floaty or snappy), so it's yours to choose. On the ground it presses down a little (`fall = -1`) so it follows slopes and steps down.
+Why your own falling? Because how a character falls and jumps is part of how a game feels (floaty or snappy), so it's yours to choose. On the ground it stops falling (`fall = 0`): the CharacterBody keeps it to the ground going down steps and slopes (its **Keeps to the ground** setting).
 
 In Lua it's `solis.moveCharacter(me, {x, y, z})` and `solis.onGround(me)`.
 

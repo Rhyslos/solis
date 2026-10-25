@@ -178,6 +178,16 @@ impl World {
     /// The world for `area`: every entity, with its components, and where
     /// each is in the world worked out. The clock starts at zero.
     pub fn from_area(area: &Area) -> Self {
+        let mut world = Self::from_area_without_physics(area);
+        // Physics after places: bodies start where their entities are.
+        world.join_all();
+        world
+    }
+
+    /// As [`Self::from_area`], with physics left empty: for a world whose
+    /// physics is built next anyway ([`Self::rebuild_physics`]: a rebuild,
+    /// a save loaded), or one thrown away, so it isn't built twice.
+    pub fn from_area_without_physics(area: &Area) -> Self {
         let tree = area.depth_first();
         let mut ecs = hecs::World::new();
         let mut by_id = reflect::IdMap::with_capacity_and_hasher(tree.len(), Default::default());
@@ -222,8 +232,6 @@ impl World {
         };
         world.index();
         world.place_everything();
-        // Physics after places: bodies start where their entities are.
-        world.join_all();
         world
     }
 
@@ -291,7 +299,7 @@ impl World {
         // character's finding.
         let states = self.physics.state().body_states();
         let asked = std::mem::take(&mut self.physics_asked);
-        *self = Self::from_area(area);
+        *self = Self::from_area_without_physics(area);
         self.clock = clock;
         self.projectiles = projectiles;
         self.seed = seed;

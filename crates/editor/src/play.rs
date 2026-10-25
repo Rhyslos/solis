@@ -616,6 +616,7 @@ impl Workbench {
             }
             let mut loading = false;
             let replaying = self.playing.as_ref().is_some_and(|p| p.replay.is_some());
+            let mut saved_text: Option<Option<String>> = None;
             for (slot, load) in saves {
                 if replaying && !load {
                     // A replay runs the game again; it doesn't write over
@@ -626,7 +627,19 @@ impl Workbench {
                     self.outbox.push(WorkbenchAction::LoadGame(slot));
                     loading = true;
                 } else {
-                    self.save_game(&slot);
+                    // Every slot saved this tick holds the same moment:
+                    // made once.
+                    let text = match &saved_text {
+                        Some(text) => text.clone(),
+                        None => {
+                            let text = self.save_text();
+                            saved_text = Some(text.clone());
+                            text
+                        }
+                    };
+                    if let Some(text) = text {
+                        self.outbox.push(WorkbenchAction::SaveGame { slot, text });
+                    }
                 }
             }
             if loading || pause.is_some() {

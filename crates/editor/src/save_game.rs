@@ -33,7 +33,7 @@
 //! refused, never half loaded.
 
 use crate::console::LogLevel;
-use crate::workbench::{Workbench, WorkbenchAction};
+use crate::workbench::Workbench;
 use area::Area;
 use area::builtin::Transform;
 use reflect::EntityId;
@@ -335,9 +335,11 @@ impl Workbench {
         })
     }
 
-    /// Saves the running game in `slot` (game code's `saveGame`): the app
-    /// writes it to the project's `saves` folder.
-    pub(crate) fn save_game(&mut self, slot: &str) {
+    /// The running game as a save's text (game code's `saveGame`; the app
+    /// writes it to the project's `saves` folder), or `None` (and why, in
+    /// the Console). A tick's saves share one: physics is built again
+    /// once.
+    pub(crate) fn save_text(&mut self) -> Option<String> {
         match self.save_of_game() {
             Ok(save) => {
                 let text = save.write();
@@ -351,14 +353,14 @@ impl Workbench {
                             MAX_SAVE_BYTES >> 20
                         ),
                     );
-                    return;
+                    return None;
                 }
-                self.outbox.push(WorkbenchAction::SaveGame {
-                    slot: slot.to_string(),
-                    text,
-                });
+                Some(text)
             }
-            Err(why) => self.log(LogLevel::Warning, format!("The game wasn't saved: {why}.")),
+            Err(why) => {
+                self.log(LogLevel::Warning, format!("The game wasn't saved: {why}."));
+                None
+            }
         }
     }
 
@@ -409,7 +411,7 @@ impl Workbench {
         };
         // Physics built from each body's place and motion, as saving built
         // the running game's.
-        let mut world = world::World::from_area(&area);
+        let mut world = world::World::from_area_without_physics(&area);
         world.rebuild_physics(&save.physics, true);
         world.set_clock(save.ticks, save.time);
         world.set_seed(save.seed);
@@ -429,7 +431,7 @@ impl Workbench {
         // Game code starts on a world of its own, thrown away after: what
         // starts do (spawn, move, set the seed) already happened in the
         // saved game, so they mustn't happen again on top of it.
-        let mut scratch = world::World::from_area(&area);
+        let mut scratch = world::World::from_area_without_physics(&area);
         let mut scratch_view = crate::game_code::ViewCache::default();
         let (mut game, _) = self.start_game(&mut scratch, &mut scratch_view);
         drop(scratch);
