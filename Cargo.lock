@@ -3555,6 +3555,7 @@ name = "script"
 version = "0.0.1"
 dependencies = [
  "glam 0.34.1",
+ "input",
  "lust",
  "mlua",
  "physics",

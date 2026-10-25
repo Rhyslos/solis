@@ -89,6 +89,42 @@ pub const NATIVES: &[Native] = &[
         about: "Starts the game's random numbers again from a seed, at the end of the tick: the same seed gives the same numbers again.",
     },
     Native {
+        file: "input",
+        name: "held",
+        lust: "method bool held(string action) native;",
+        about: "Whether an action's input is held down this tick (\"Jump\"; an axis such as \"Move\": not at rest). Actions are set up in Edit > Input actions.",
+    },
+    Native {
+        file: "input",
+        name: "pressed",
+        lust: "method bool pressed(string action) native;",
+        about: "Whether an action's input went down since the last tick: true once per press.",
+    },
+    Native {
+        file: "input",
+        name: "released",
+        lust: "method bool released(string action) native;",
+        about: "Whether an action's input came up since the last tick: true once per release.",
+    },
+    Native {
+        file: "input",
+        name: "axis",
+        lust: "method vec3 axis(string action) native;",
+        about: "An axis action's two numbers as x (across: right is +1) and y (up or forward: +1); z is 0. Move gives which way to go, each from -1 to 1; Look gives how far to turn this tick, in degrees.",
+    },
+    Native {
+        file: "input",
+        name: "bindingOf",
+        lust: "method string bindingOf(string action) native;",
+        about: "The input that sets an action off (a key first, then the mouse, then the gamepad), such as \"F\": for telling the player \"Press F\". Empty if it has none.",
+    },
+    Native {
+        file: "input",
+        name: "rebind",
+        lust: "method rebind(string action, string input) native;",
+        about: "Binds an input (\"E\", \"Mouse Right\", \"Pad Y\") to an action from the next tick, in place of its inputs of the same kind: what a controls menu does. Lasts while the game plays.",
+    },
+    Native {
         file: "physics",
         name: "push",
         lust: "method push(entity which, vec3 impulse) native;",
@@ -188,13 +224,14 @@ mod tests {
     #[test]
     fn the_descriptions_check_cleanly_and_a_game_can_use_them() {
         let mut files = descriptions("Test Engine 9.9.9", "solis");
-        assert_eq!(files.len(), 3);
+        assert_eq!(files.len(), 4);
         assert!(files[0].1.starts_with("-- Made by Test Engine 9.9.9"));
         files.push((
             "main.lst".into(),
             "get \"solis/world\":[say, time, find];\n\
              get \"solis/entity\":[positionOf, moveTo, rotationOf, turnTo, nameOf];\n\
              get \"solis/physics\":[push, velocityOf, setVelocity, castRay, castRayHit, castRayNormal];\n\
+             get \"solis/input\":[held, pressed, released, axis, bindingOf, rebind];\n\
              component Mover {\n\
                  has {\n\
                      float speed = 2;\n\
@@ -207,6 +244,10 @@ mod tests {
                          say(nameOf(me) + \" has gone far\");\n\
                      }\n\
                      entity other = find(\"Crate\");\n\
+                     is held(\"Jump\") && pressed(\"Jump\") || released(\"Jump\")? then {\n\
+                         rebind(\"Jump\", \"Space\");\n\
+                         say(bindingOf(\"Jump\") + axis(\"Move\").x.text());\n\
+                     }\n\
                      push(other, velocityOf(me) + castRayNormal(positionOf(me), step, 10));\n\
                      is castRay(positionOf(me), step, 10) > 0 && castRayHit(positionOf(me), step, 10) == other? then {\n\
                          setVelocity(other, step);\n\
@@ -230,7 +271,7 @@ mod tests {
         names.dedup();
         assert_eq!(names.len(), NATIVES.len(), "no name twice");
         for native in NATIVES {
-            assert!(["world", "entity", "physics"].contains(&native.file));
+            assert!(["world", "entity", "physics", "input"].contains(&native.file));
             assert!(
                 native.lust.contains(&format!(" {}(", native.name)),
                 "{native:?}"

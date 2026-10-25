@@ -76,6 +76,23 @@ pub trait Host {
     fn set_velocity(&mut self, which: EntityId, velocity: Vec3) {
         let _ = (which, velocity);
     }
+    /// An action's state this tick (decision 0037): at rest for a host
+    /// without input.
+    fn action(&self, name: &str) -> input::ActionState {
+        let _ = name;
+        input::ActionState::default()
+    }
+    /// The input that sets an action off (a key first, then the mouse,
+    /// then the pad), for telling a player which to press.
+    fn binding(&self, action: &str) -> Option<String> {
+        let _ = action;
+        None
+    }
+    /// Binds `input` to `action` from the next tick, in place of its
+    /// inputs of the same kind.
+    fn rebind(&mut self, action: &str, input: &str) {
+        let _ = (action, input);
+    }
     /// The first collider a ray meets (see `physics::State::cast_ray`).
     fn cast_ray(&self, from: Vec3, direction: Vec3, reach: f32) -> Option<physics::Hit> {
         let _ = (from, direction, reach);
@@ -372,6 +389,44 @@ pub(crate) fn with_natives<'h, R>(
             "castRayNormal",
             scope.create_function(move |_, args: (LuaValue, LuaValue, f64)| {
                 Ok(vec3_value(ray(args).map_or(Vec3::ZERO, |hit| hit.normal)))
+            })?,
+        )?;
+        natives.raw_set(
+            "held",
+            scope.create_function(move |_, name: mlua::String| {
+                Ok(h.borrow().action(&name.to_str()?).held)
+            })?,
+        )?;
+        natives.raw_set(
+            "pressed",
+            scope.create_function(move |_, name: mlua::String| {
+                Ok(h.borrow().action(&name.to_str()?).pressed)
+            })?,
+        )?;
+        natives.raw_set(
+            "released",
+            scope.create_function(move |_, name: mlua::String| {
+                Ok(h.borrow().action(&name.to_str()?).released)
+            })?,
+        )?;
+        natives.raw_set(
+            "axis",
+            scope.create_function(move |_, name: mlua::String| {
+                let a = h.borrow().action(&name.to_str()?).axis;
+                Ok(vec3_value(Vec3::new(a.x, a.y, 0.0)))
+            })?,
+        )?;
+        natives.raw_set(
+            "bindingOf",
+            scope.create_function(move |_, name: mlua::String| {
+                Ok(h.borrow().binding(&name.to_str()?).unwrap_or_default())
+            })?,
+        )?;
+        natives.raw_set(
+            "rebind",
+            scope.create_function(move |_, (action, input): (mlua::String, mlua::String)| {
+                h.borrow_mut().rebind(&action.to_str()?, &input.to_str()?);
+                Ok(())
             })?,
         )?;
         natives.raw_set(

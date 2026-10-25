@@ -1,4 +1,4 @@
-# 0039. Game UI is drawn in Solis
+# 0039. Game UI is drawn in Solis: Sungraph UI
 
 - **Status:** Accepted
 - **Date:** 2026-10-25
@@ -9,7 +9,7 @@ Most engines build game UI from images: draw a button in another program, export
 
 ## Decision
 
-Chosen by the project lead: **Solis has a visual UI editor where game UI is drawn, canvas style, inside Solis.**
+Chosen by the project lead: **Solis has a visual UI editor where game UI is drawn, canvas style, inside Solis.** The system is called **Sungraph UI** (named by the project lead).
 
 - **Drawn, not imported:** lines, shapes, curves and text, drawn by Solis for whatever screen it's on, so the UI is sharp at any size and needs no outside images (images can still be placed where wanted).
 - **Live values:** any text, size, colour or visibility can be tied to game code (a variable or a method), so a health bar's width or a score's text follows the game by itself, in real time.

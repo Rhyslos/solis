@@ -62,6 +62,8 @@ impl GameWorld for TestWorld {
             frame_time: 1.0 / 60.0,
             seed: self.seed,
             physics: Arc::default(),
+            input: Arc::default(),
+            bindings: Arc::default(),
         }
     }
 
