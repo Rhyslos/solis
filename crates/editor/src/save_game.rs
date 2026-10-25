@@ -41,6 +41,8 @@ use std::sync::Arc;
 
 /// The first line of a save this Solis writes and reads.
 const HEADER: &str = "solis save 2";
+/// The version in [`HEADER`].
+const SAVE_VERSION: u32 = 2;
 
 /// The biggest save read.
 pub(crate) const MAX_SAVE_BYTES: usize = 256 << 20;
@@ -78,6 +80,12 @@ pub(crate) struct Save {
     pub(crate) projectiles: Vec<world::Projectile>,
     /// Each body's place and motion, in entity order.
     pub(crate) physics: Vec<(EntityId, physics::BodyState)>,
+}
+
+/// The project's name on one line, as a save keeps it (a name with a
+/// line break in it would otherwise break the save's lines).
+fn one_line(name: &str) -> String {
+    name.replace(['\n', '\r'], " ")
 }
 
 impl Save {
@@ -133,7 +141,7 @@ impl Save {
         section("physics", &bodies);
         let head = format!(
             "project {}\ntick {}\ntime {:x}\nseed {}\n",
-            self.project.replace('\n', " "),
+            one_line(&self.project),
             self.ticks,
             self.time.to_bits(),
             self.seed,
@@ -154,15 +162,20 @@ impl Save {
             rest = after;
             Some(line)
         };
+        debug_assert_eq!(HEADER, format!("solis save {SAVE_VERSION}"));
         if line() != Some(HEADER) {
             let version = text
                 .strip_prefix("solis save ")
                 .and_then(|r| r.split('\n').next())
                 .and_then(|v| v.trim().parse::<u32>().ok());
-            return Err(if version.is_some_and(|v| v < 2) {
+            return Err(if version.is_some_and(|v| v < SAVE_VERSION) {
                 "it was made by an earlier Solis, whose saves this one can't read".to_string()
-            } else if version.is_some() {
+            } else if version.is_some_and(|v| v > SAVE_VERSION) {
                 "it was made by a newer Solis".to_string()
+            } else if version.is_some() {
+                // This version's header, with something after it (a line
+                // ending changed by an editor, say).
+                damaged()
             } else {
                 "it isn't a save game".to_string()
             });
@@ -210,7 +223,12 @@ impl Save {
         let area = section("area")?.to_string();
         let values = section("values")?.to_string();
         let bindings = section("bindings")?.to_string();
-        let projectiles = section("projectiles")?
+        let projectiles_text = section("projectiles")?;
+        // Counted before any is made: a hand-made save could list far more.
+        if projectiles_text.lines().count() > world::MAX_PROJECTILES {
+            return Err(damaged());
+        }
+        let projectiles = projectiles_text
             .lines()
             .map(|l| {
                 let numbers: Vec<f32> = l
@@ -388,7 +406,7 @@ impl Workbench {
             }
         };
         if let Some(project) = &self.project
-            && project.name != save.project
+            && one_line(&project.name) != save.project
         {
             self.log(
                 LogLevel::Error,
@@ -415,7 +433,7 @@ impl Workbench {
             Err(why) => {
                 self.log(
                     LogLevel::Error,
-                    format!("Couldn't load {name}: its input {why}."),
+                    format!("Couldn't load {name}: its input actions can't be read: {why}."),
                 );
                 return;
             }
@@ -455,11 +473,16 @@ impl Workbench {
         // The running components take their saved values.
         if let Some(game) = &mut game {
             let mut host = crate::game_code::PlayWorld::new(&mut world, &mut view, save.time);
+            // Only values for components the saved area has on that entity
+            // (which are what's running): a hand-made save can't give an
+            // entity a component this way.
             let components: Vec<(EntityId, String, reflect::ComponentData)> = values
                 .iter()
                 .flat_map(|(id, data)| {
+                    let has = area.get(id).map(|e| &e.components);
                     data.components
                         .iter()
+                        .filter(move |(n, _)| has.is_some_and(|c| c.contains_key(*n)))
                         .map(move |(n, d)| (id, n.clone(), d.clone()))
                 })
                 .collect();
@@ -481,7 +504,6 @@ impl Workbench {
         playing.game = game;
         playing.pending = pending;
         playing.bindings = Arc::new(bindings);
-        // A recording or replay can't carry on across a load.
         // A recording ends at a load (it plays back from Play), but what
         // was recorded up to it is kept, as Stop keeps it.
         let recorded = playing.recording.take();

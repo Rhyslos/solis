@@ -286,6 +286,81 @@ fn saves_from_elsewhere_or_damaged_are_refused_and_nothing_changes() {
     }
     assert_eq!(sums(&mut w), now, "nothing changed");
     assert!(Save::read(&"x".repeat(MAX_SAVE_BYTES + 1)).is_err());
+    // The third review: this version's header with Windows line endings
+    // or a space after it is damaged, not "from a newer Solis".
+    for header in ["solis save 2\r", "solis save 2 "] {
+        let why = Save::read(&text.replacen("solis save 2", header, 1)).unwrap_err();
+        assert!(why.contains("damaged"), "{header:?}: {why}");
+    }
+    assert!(
+        Save::read(&text.replacen("solis save 2", "solis save 9", 1))
+            .unwrap_err()
+            .contains("newer")
+    );
+}
+
+#[test]
+fn a_project_name_with_a_line_break_still_loads_its_saves() {
+    // The third review: a name with a line break was written on one line
+    // but compared whole, so its saves never loaded.
+    let mut w = busy("Harbour\nNorth");
+    w.play();
+    run_to(&mut w, 10);
+    let text = w.save_of_game().unwrap().write();
+    w.load_game(&text, "quick");
+    assert!(
+        w.log_lines()
+            .last()
+            .unwrap()
+            .text
+            .starts_with("Loaded quick"),
+        "{}",
+        w.log_lines().last().unwrap().text
+    );
+}
+
+#[test]
+fn a_save_can_t_give_an_entity_a_component_it_doesn_t_have() {
+    // The third review: the values section was given to the game whole,
+    // so a hand-made save could start components the area doesn't have.
+    let mut w = busy("Harbour");
+    w.play();
+    run_to(&mut w, 10);
+    let mut save = w.save_of_game().unwrap();
+    let floor = w
+        .document
+        .area()
+        .iter()
+        .find(|(_, e)| e.name == "Floor")
+        .map(|(id, _)| id)
+        .unwrap();
+    let mut extra = area::Area::new();
+    let mut holder = EntityData::new("");
+    holder
+        .components
+        .insert("Busy".into(), reflect::ComponentData::default());
+    extra.insert(floor, holder);
+    let registry = w.document.registry.clone();
+    let values = area::text::read(&save.values, &registry).unwrap();
+    for (id, data) in values.iter() {
+        extra.insert(id, data.clone());
+    }
+    save.values = area::text::write(&extra, &registry, &|_| None);
+    let text = save.write();
+    w.load_game(&text, "hand-made");
+    assert!(
+        w.log_lines().last().unwrap().text.starts_with("Loaded"),
+        "{}",
+        w.log_lines().last().unwrap().text
+    );
+    let running = w.playing.as_mut().unwrap().game.as_mut().unwrap();
+    assert!(
+        running
+            .all_values()
+            .iter()
+            .all(|(entity, _, _)| *entity != floor),
+        "the floor runs nothing"
+    );
 }
 
 #[test]

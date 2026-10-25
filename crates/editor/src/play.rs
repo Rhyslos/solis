@@ -40,7 +40,7 @@ pub(crate) struct Playing {
     /// Step was pressed: the next frame runs one tick while paused.
     pub(crate) step: bool,
     /// The document as it was when Play was pressed, put back on Stop.
-    before: Box<Document>,
+    pub(crate) before: Box<Document>,
     /// The assemblies as they were when Play was pressed, to rebuild
     /// copies from on Stop if any changed meanwhile.
     assemblies_before: BTreeMap<AssetId, Arc<AreaFile>>,

@@ -125,7 +125,9 @@ pub fn valid_action_name(name: &str) -> bool {
 }
 
 /// Whether `name` is something an input can be: a key's name (letters,
-/// digits and a few signs, at most 32 long), or a mouse or pad input.
+/// digits and a few signs, at most 32 long), with any of `Ctrl+`, `Alt+`
+/// and `Shift+` in front (48 in all, room for all three), or a mouse or
+/// pad input.
 pub fn valid_input_name(name: &str) -> bool {
     if let Some(button) = name.strip_prefix("Pad ") {
         return PAD_BUTTONS.contains(&button);
