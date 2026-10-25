@@ -63,7 +63,19 @@ pub(crate) struct Playing {
     /// What game code spawned and despawned that hasn't landed yet (from
     /// components' starts, which run outside the ticks).
     pub(crate) pending: Vec<GameEdit>,
+    /// The input actions while playing (decision 0037): the project's at
+    /// Play, changed by game code's `rebind`.
+    pub(crate) bindings: Arc<input::Bindings>,
+    /// What this play records (Play > Play and record inputs), if it
+    /// records.
+    pub(crate) recording: Option<input::Recording>,
+    /// The recording this play plays back, and how many of its ticks
+    /// have run.
+    pub(crate) replay: Option<(input::Recording, usize)>,
 }
+
+/// The most ticks one recording keeps: an hour at 60 a second.
+pub const RECORDING_TICKS: usize = 60 * 60 * 60;
 
 /// The longest one tick of physics may take before the game pauses and
 /// says why, like game code's tick limit.
@@ -158,7 +170,12 @@ impl Workbench {
             told_unknown: Default::default(),
             told_too_many_spawns: false,
             pending,
+            bindings: Arc::new(self.bindings.clone()),
+            recording: None,
+            replay: None,
         });
+        // Nothing held over from before Play.
+        self.devices = input::Devices::new();
         if let Some(found) = self.dock.find_tab(&Panel::Game) {
             let _ = self.dock.set_active_tab(found);
         }
@@ -266,6 +283,20 @@ impl Workbench {
         };
         let seconds = playing.world.clock().time;
         self.moving = None;
+        self.give_back_input();
+        if let Some(recording) = playing.recording.filter(|r| !r.ticks.is_empty()) {
+            self.log(
+                LogLevel::Info,
+                format!(
+                    "Recorded {} ticks ({:.1} s) of input; saving it in the project's recordings \
+                     folder.",
+                    recording.ticks.len(),
+                    recording.ticks.len() as f64 * world::TICK
+                ),
+            );
+            self.outbox
+                .push(crate::workbench::WorkbenchAction::SaveRecording(recording.write()));
+        }
         // The area as it was, but the components known now: code that
         // changed while playing keeps its components in the registry.
         self.replace_document(*playing.before);
@@ -370,10 +401,23 @@ impl Workbench {
             // ticks moves from.
             playing.world.remember();
             playing.world.projectiles_mut().tick(world::TICK as f32);
+            // The tick's input: played back, or sampled from the devices
+            // once, so every core sees the same (decision 0037).
+            let frame = match &playing.replay {
+                Some((recording, at)) => recording
+                    .ticks
+                    .get(*at)
+                    .map(|t| t.frame.clone())
+                    .unwrap_or_default(),
+                None => self.devices.sample(&playing.bindings, world::TICK as f32),
+            };
+            let frame = Arc::new(frame);
             let mut slow = None;
             if let Some(game) = &mut playing.game {
                 let mut host = PlayWorld::new(&mut playing.world, &mut playing.view, time);
                 host.frame_time = f64::from(seconds);
+                host.input = Arc::clone(&frame);
+                host.bindings = Arc::clone(&playing.bindings);
                 let ticking = std::time::Instant::now();
                 let ticked = game.tick(world::TICK, &mut host);
                 code += ticking.elapsed();
@@ -384,6 +428,11 @@ impl Workbench {
                 // tick sees it however many ticks this frame runs.
                 let edits = std::mem::take(&mut host.edits);
                 playing.pending.extend(edits);
+                // Rebinding takes effect from the next tick.
+                let rebinds = std::mem::take(&mut host.rebinds);
+                for (action, input) in rebinds {
+                    Arc::make_mut(&mut playing.bindings).rebind(&action, &input);
+                }
                 slow = ticked.pause;
                 let landing = std::time::Instant::now();
                 failures.extend(self.land_edits(time, seconds));
@@ -404,6 +453,57 @@ impl Workbench {
                     stepping.elapsed().as_secs_f64() * 1000.0,
                     PHYSICS_LIMIT.as_millis()
                 ));
+            }
+            // Recording and playing back: the tick's input and checksums.
+            if playing.recording.is_some() || playing.replay.is_some() {
+                let ticks = playing.world.clock().ticks;
+                let tick = input::Tick {
+                    frame: (*frame).clone(),
+                    world: playing.world.checksum(),
+                    // Game code's every second: asking every component
+                    // costs.
+                    game: (ticks % 60 == 0)
+                        .then(|| playing.game.as_mut().map_or(0, script::Game::checksum)),
+                };
+                if let Some(recording) = &mut playing.recording {
+                    if recording.ticks.len() < RECORDING_TICKS {
+                        recording.ticks.push(tick);
+                    } else if slow.is_none() {
+                        slow = Some(
+                            "The recording reached an hour, the most Solis keeps, so the game \
+                             is paused; Stop saves what was recorded."
+                                .to_string(),
+                        );
+                    }
+                } else if let Some((recording, at)) = &mut playing.replay {
+                    let n = *at;
+                    *at += 1;
+                    let ended = *at >= recording.ticks.len();
+                    let count = recording.ticks.len();
+                    let mismatch = recording.ticks.get(n).is_some_and(|expected| {
+                        expected.world != tick.world
+                            || matches!((expected.game, tick.game), (Some(a), Some(b)) if a != b)
+                    });
+                    let outcome = if mismatch {
+                        Some(format!(
+                            "The replay stopped matching the recording at tick {n} ({:.2} s in): \
+                             the game came out differently from the same input. Something in it \
+                             isn't deterministic, or the area or code changed since recording.",
+                            n as f64 * world::TICK
+                        ))
+                    } else if ended {
+                        Some(format!(
+                            "The replay matched the recording on all {count} ticks: the same \
+                             input gave exactly the same game."
+                        ))
+                    } else {
+                        None
+                    };
+                    if outcome.is_some() {
+                        playing.replay = None;
+                        slow = slow.or(outcome);
+                    }
+                }
             }
             // Too slow: no catching up, which would only be slower; the
             // game waits for the person instead.

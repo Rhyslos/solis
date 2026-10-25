@@ -80,30 +80,33 @@ pub(crate) fn camera_view(global: Mat4) -> (Mat4, Vec3) {
 }
 
 /// Draws the Game panel: the game's picture with its state in a corner,
-/// or, when nothing runs, how to start it.
+/// or, when nothing runs, how to start it. Returns whether the picture
+/// was clicked (the game then takes the mouse and keys); `has_input` is
+/// whether it has them.
 pub(crate) fn game_panel(
     ui: &mut Ui,
     scene: Option<&GameScene>,
     playing: bool,
+    has_input: bool,
     editor_camera: &Camera,
     renderer: &mut dyn ViewportRenderer,
-) {
+) -> bool {
     let Some(scene) = scene else {
         if playing {
             // The first frame after Play, before the panel was in front.
             crate::panels::placeholder(ui, "Starting…");
             ui.ctx().request_repaint();
-            return;
+            return false;
         }
         crate::panels::placeholder(
             ui,
             "Press Play (at the top) to run the area here. The game looks through the first \
              camera in the area: Entity > Add camera adds one where you're looking from.",
         );
-        return;
+        return false;
     };
     let rect = ui.max_rect();
-    ui.allocate_rect(rect, egui::Sense::hover());
+    let clicked = ui.allocate_rect(rect, egui::Sense::click()).clicked();
     let ppp = ui.ctx().pixels_per_point();
     let size_px = [
         (rect.width() * ppp).round().max(1.0) as u32,
@@ -172,6 +175,11 @@ pub(crate) fn game_panel(
     if scene.camera.is_none() {
         notes.push("No camera in the area: showing the editor's view".into());
     }
+    notes.push(if has_input {
+        "The game has the mouse and keys · Esc gives them back".into()
+    } else {
+        "Click to give the game the mouse and keys".into()
+    });
     let mut overlay = ui.new_child(
         egui::UiBuilder::new()
             .max_rect(rect.shrink(8.0))
@@ -187,4 +195,5 @@ pub(crate) fn game_panel(
                 ui.label(RichText::new(note).size(12.0).color(theme::TEXT_STRONG));
             });
     }
+    clicked
 }

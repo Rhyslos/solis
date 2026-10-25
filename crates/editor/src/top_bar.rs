@@ -39,6 +39,7 @@ impl Workbench {
         self.edit_menu(ui);
         self.view_menu(ui);
         self.entity_menu(ui);
+        self.play_menu(ui, actions);
         self.build_menu(ui);
         self.window_menu(ui);
         self.help_menu(ui, actions);
@@ -117,13 +118,85 @@ impl Workbench {
     /// The Edit menu.
     fn edit_menu(&mut self, ui: &mut Ui) {
         let state = crate::menu_items::MenuState::of(self);
+        let mut input = false;
         let picked = ui
-            .menu_button("Edit", |ui| crate::menu_items::edit_items(ui, &state))
+            .menu_button("Edit", |ui| {
+                let picked = crate::menu_items::edit_items(ui, &state);
+                ui.separator();
+                if ui
+                    .button("Input actions…")
+                    .on_hover_text("The game's actions (Move, Jump…) and the keys and buttons for each")
+                    .clicked()
+                {
+                    input = true;
+                    ui.close();
+                }
+                picked
+            })
             .inner
             .flatten();
         if let Some(command) = picked {
             self.run(command, ui.ctx());
         }
+        if input {
+            self.open_input_window();
+        }
+    }
+
+    /// The Play menu: the buttons at the top right, and recording a
+    /// play's input to play it back.
+    fn play_menu(&mut self, ui: &mut Ui, actions: &mut Vec<WorkbenchAction>) {
+        let state = self.play_state();
+        ui.menu_button("Play", |ui| {
+            if ui.button("Play").clicked() {
+                self.play();
+                ui.close();
+            }
+            if ui
+                .add_enabled(state != PlayState::Editing, egui::Button::new("Pause"))
+                .clicked()
+            {
+                self.pause();
+                ui.close();
+            }
+            if ui
+                .add_enabled(state == PlayState::Paused, egui::Button::new("Step one tick"))
+                .clicked()
+            {
+                self.step();
+                ui.close();
+            }
+            if ui
+                .add_enabled(state != PlayState::Editing, egui::Button::new("Stop"))
+                .clicked()
+            {
+                self.stop();
+                ui.close();
+            }
+            ui.separator();
+            if ui
+                .add_enabled(state == PlayState::Editing, egui::Button::new("Play and record inputs"))
+                .on_hover_text(
+                    "Plays, keeping every tick's input; Stop saves it in the project's recordings \
+                     folder, to play back exactly",
+                )
+                .clicked()
+            {
+                self.play_and_record();
+                ui.close();
+            }
+            if ui
+                .button("Replay a recording…")
+                .on_hover_text(
+                    "Plays a recording's input back from Play, and says whether the game came out \
+                     exactly the same",
+                )
+                .clicked()
+            {
+                self.request(WorkbenchAction::OpenRecording, actions);
+                ui.close();
+            }
+        });
     }
 
     /// The View menu.
