@@ -454,3 +454,135 @@ fn loading_doesn_t_run_the_game_s_starts_again_on_top_of_the_save() {
     run_to(&mut w, 120);
     assert_eq!(sums(&mut w), carried_on, "the same, not moved or reseeded");
 }
+
+/// The busy game with a quick-save key (F6), a quick-load key (F7), and
+/// a component reading them.
+fn busy_with_keys() -> Workbench {
+    let code = BUSY
+        .replacen(
+            "get \"solis/physics\":[push];",
+            "get \"solis/physics\":[push];\nget \"solis/input\":[pressed];",
+            1,
+        )
+        .replacen(
+            "pass Busy;",
+            "component Keys {\n\
+                method update(float dt) {\n\
+                    is pressed(\"QuickSave\")? then {\n\
+                        saveGame(\"quick\");\n\
+                    }\n\
+                    is pressed(\"QuickLoad\")? then {\n\
+                        loadGame(\"quick\");\n\
+                    }\n\
+                }\n\
+            }\n\
+            pass Busy, Keys;",
+            1,
+        );
+    assert!(code.contains("pass Busy, Keys;"));
+    let mut w = busy("Harbour");
+    w.set_program(Some(program(&code)));
+    let mut bindings = input::Bindings::default();
+    bindings
+        .actions
+        .push(input::Action::button("QuickSave", &["F6"]));
+    bindings
+        .actions
+        .push(input::Action::button("QuickLoad", &["F7"]));
+    w.set_bindings(bindings);
+    let mut keys = EntityData::new("Keys");
+    keys.components
+        .insert("Keys".into(), reflect::ComponentData::default());
+    w.document
+        .edit(
+            "Keys",
+            vec![area::Edit::Spawn {
+                entities: vec![(raw(4), keys)],
+            }],
+            None,
+            None,
+        )
+        .unwrap();
+    w
+}
+
+#[test]
+fn a_recording_with_a_quick_save_in_it_replays_matching() {
+    // The third review: a replay skipped the save, and so the physics
+    // built again with it, and stopped matching right after.
+    let mut w = busy_with_keys();
+    w.project = Some(crate::library::ProjectInfo {
+        name: "Harbour".into(),
+        root: std::env::temp_dir(),
+        assets: std::env::temp_dir(),
+    });
+    w.play_and_record();
+    w.give_game_input(&egui::Context::default());
+    run_to(&mut w, 30);
+    w.devices.set("F6", true);
+    run_to(&mut w, 32);
+    w.devices.set("F6", false);
+    run_to(&mut w, 90);
+    w.stop();
+    let text = w
+        .outbox
+        .iter()
+        .find_map(|a| match a {
+            WorkbenchAction::SaveRecording(text) => Some(text.clone()),
+            _ => None,
+        })
+        .unwrap();
+    assert_eq!(
+        saves_asked(&w),
+        1,
+        "saved while recording: {:?} {:?}",
+        w.log_lines().iter().map(|l| &l.text).collect::<Vec<_>>(),
+        w.outbox.len()
+    );
+    w.outbox.clear();
+    w.replay(&text, "quick.solrec");
+    for _ in 0..200 {
+        if w.play_state() == crate::play::PlayState::Paused {
+            break;
+        }
+        w.run_game((world::TICK * 2.0) as f32);
+    }
+    assert!(
+        w.log_lines()
+            .iter()
+            .any(|l| l.text.contains("matched the recording")),
+        "{:?}",
+        w.log_lines().iter().map(|l| &l.text).collect::<Vec<_>>()
+    );
+    assert_eq!(saves_asked(&w), 0, "a replay doesn't write saves");
+}
+
+#[test]
+fn a_quick_load_keeps_the_game_s_keys_and_keeps_what_was_recorded() {
+    let mut w = busy_with_keys();
+    w.project = Some(crate::library::ProjectInfo {
+        name: "Harbour".into(),
+        root: std::env::temp_dir(),
+        assets: std::env::temp_dir(),
+    });
+    w.play_and_record();
+    w.give_game_input(&egui::Context::default());
+    run_to(&mut w, 20);
+    let text = w.save_text().unwrap();
+    run_to(&mut w, 40);
+    // Game code's loadGame (the app hands it the save's text).
+    w.load_game_from_code(&text, "quick");
+    assert!(w.game_has_input(), "still the game's");
+    let kept = w
+        .outbox
+        .iter()
+        .find_map(|a| match a {
+            WorkbenchAction::SaveRecording(text) => Some(text.clone()),
+            _ => None,
+        })
+        .expect("what was recorded is saved");
+    assert_eq!(input::Recording::read(&kept).unwrap().ticks.len(), 40);
+    // A load from the Play menu gives the editor its keys back.
+    w.load_game(&text, "quick.solsave");
+    assert!(!w.game_has_input());
+}

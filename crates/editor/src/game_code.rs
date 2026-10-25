@@ -60,6 +60,72 @@ impl Workbench {
         self.code_problems.extend(taken);
         self.left_out = left_out;
         self.program = chunk;
+        self.fit_values_to_code();
+    }
+
+    /// Game code's components' values read before their schemas were
+    /// known (the area opened before the code was checked: making the
+    /// playground or the sample game) as the kinds the code says: an
+    /// entity field is still text until then, and would read as nothing.
+    /// In the area (not an undo step) and the assemblies.
+    fn fit_values_to_code(&mut self) {
+        let registry = &self.document.registry;
+        let fits = |data: &area::EntityData| -> Vec<(String, String, reflect::Value)> {
+            let mut fitted = Vec::new();
+            for (name, component) in &data.components {
+                let Some(schema) = registry.get(name) else {
+                    continue;
+                };
+                for field in &schema.fields {
+                    if let Some(value) = component.get(&field.name) {
+                        let fit = area::text::fit_value(value.clone(), &field.kind);
+                        if &fit != value {
+                            fitted.push((name.clone(), field.name.clone(), fit));
+                        }
+                    }
+                }
+            }
+            fitted
+        };
+        let mut edits = Vec::new();
+        for (id, data) in self.document.area().iter() {
+            for (component, field, value) in fits(data) {
+                edits.push(area::Edit::SetField {
+                    entity: id,
+                    component,
+                    field,
+                    value: Some(value),
+                });
+            }
+        }
+        let mut files = Vec::new();
+        for (asset, file) in &self.assemblies {
+            let changes: Vec<_> = file
+                .area
+                .iter()
+                .flat_map(|(id, data)| fits(data).into_iter().map(move |f| (id, f)))
+                .collect();
+            if !changes.is_empty() {
+                files.push((*asset, changes));
+            }
+        }
+        if !edits.is_empty() {
+            self.document.edit_by_game(edits);
+        }
+        for (asset, changes) in files {
+            if let Some(file) = self.assemblies.get_mut(&asset) {
+                let file = std::sync::Arc::make_mut(file);
+                for (id, (component, field, value)) in changes {
+                    if let Some(c) = file
+                        .area
+                        .get_mut(id)
+                        .and_then(|d| d.components.get_mut(&component))
+                    {
+                        c.set(&field, value);
+                    }
+                }
+            }
+        }
     }
 
     /// The problem of a component in `chunk` called `name` when the name

@@ -365,7 +365,7 @@ fn walk(physics: &mut Physics, speed: Vec3, ticks: usize) {
     let mut fall = 0.0f32;
     for _ in 0..ticks {
         let grounded = physics.state().character(id(9)).unwrap().grounded;
-        fall = if grounded { -0.5 } else { fall + GRAVITY * dt };
+        fall = if grounded { 0.0 } else { fall + GRAVITY * dt };
         physics.move_character(id(9), (speed + Vec3::Z * fall) * dt, dt);
         physics.step(dt);
         let _ = physics.moved();
@@ -491,7 +491,7 @@ fn a_character_rides_a_moving_platform() {
         let x = 2.0 * tick as f32 / 120.0;
         physics.set_pose(id(4), Vec3::new(x, 0.0, 0.75), Quat::IDENTITY);
         let grounded = physics.state().character(id(9)).unwrap().grounded;
-        let fall = if grounded { -0.5 } else { -3.0 };
+        let fall = if grounded { 0.0 } else { -3.0 };
         physics.move_character(id(9), Vec3::Z * fall * dt, dt);
         physics.step(dt);
     }

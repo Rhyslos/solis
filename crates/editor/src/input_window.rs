@@ -192,7 +192,7 @@ fn heard(ui: &Ui, window: &mut InputWindow, bindings: &mut Bindings, pad_down: &
     true
 }
 
-/// A key's name with the modifiers held (`Alt+ArrowLeft`), as bindings
+/// A key's name with the modifiers held (`Alt+Left`), as bindings
 /// write a combination.
 fn combination(held: egui::Modifiers, key: &str) -> String {
     let mut name = String::new();

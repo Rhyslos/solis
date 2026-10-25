@@ -460,9 +460,9 @@ fn drawing_between_ticks_moves_from_the_last_tick_to_now() {
     // The clock's progress into the next tick.
     world.step(TICK * 0.25);
     assert!((world.progress() - 0.25).abs() < 1e-5);
-    // Step one: a tick now, whatever's waiting.
+    // Step: a tick now, whatever's waiting.
     let ticks = world.clock().ticks;
-    assert_eq!(world.step_one(), 1);
+    world.begin_tick();
     assert_eq!(world.clock().ticks, ticks + 1);
     assert!((world.progress() - 0.25).abs() < 1e-5, "what waits is kept");
 }

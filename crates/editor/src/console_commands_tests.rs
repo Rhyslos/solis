@@ -526,7 +526,7 @@ fn seed_and_checksum_say_what_they_do() {
     run(&mut w, "seed");
     assert_eq!(
         answer(&w),
-        "The game's seed is 1234, chosen for every Play."
+        "This play started from seed 1234, chosen for every Play."
     );
     run(&mut w, "checksum");
     assert!(

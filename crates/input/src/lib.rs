@@ -13,8 +13,8 @@
 //!   back exactly.
 //!
 //! Inputs are named as text: keys by egui's names (`W`, `Space`,
-//! `ArrowUp`) plus `Shift`, `Ctrl` and `Alt`; a key with modifiers held
-//! (`Alt+ArrowLeft`, `Ctrl+Shift+S`); `Mouse Left`, `Mouse Right`,
+//! `Up`) plus `Shift`, `Ctrl` and `Alt`; a key with modifiers held
+//! (`Alt+Left`, `Ctrl+Shift+S`); `Mouse Left`, `Mouse Right`,
 //! `Mouse Middle`, `Mouse Motion`, `Mouse Wheel` (as an axis: notches
 //! turned) and `Mouse WheelUp` / `Mouse WheelDown` (as buttons: a notch
 //! turned that way this tick); and `Pad A` … (see [`PAD_BUTTONS`]),
@@ -22,8 +22,8 @@
 //! pressing it in).
 //!
 //! A key on its own doesn't count while modifiers are held that some
-//! action binds with it: with `Alt+ArrowLeft` bound, holding Alt and
-//! pressing the left arrow sets off only that, not `ArrowLeft` too.
+//! action binds with it: with `Alt+Left` bound, holding Alt and
+//! pressing the left arrow sets off only that, not `Left` too.
 
 mod bindings;
 mod devices;
@@ -74,7 +74,7 @@ pub const MOUSE_WHEEL: &str = "Mouse Wheel";
 /// is written (`Ctrl+Alt+Shift+K`).
 pub const MODIFIERS: [&str; 3] = ["Ctrl", "Alt", "Shift"];
 
-/// Splits a combination (`Alt+ArrowLeft`) into its modifiers and key; a
+/// Splits a combination (`Alt+Left`) into its modifiers and key; a
 /// plain key has no modifiers. `None` if it isn't written right: each
 /// modifier once, in [`MODIFIERS`]' order, then a key that isn't one.
 pub fn split_combination(name: &str) -> Option<(Vec<&'static str>, &str)> {

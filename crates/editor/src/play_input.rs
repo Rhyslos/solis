@@ -9,7 +9,7 @@ use crate::workbench::Workbench;
 use std::sync::Arc;
 
 /// An egui key's name as bindings use it (egui's own names: `W`,
-/// `Space`, `ArrowUp`).
+/// `Space`, `Up`).
 pub(crate) fn key_name(key: egui::Key) -> &'static str {
     key.name()
 }
@@ -131,6 +131,9 @@ impl Workbench {
         self.devices.set("Ctrl", modifiers.ctrl);
         self.devices.set("Alt", modifiers.alt);
         if give_back {
+            // The Esc that gave the editor its keys back isn't also the
+            // editor's (it would clear the selection).
+            ctx.input_mut(|i| i.consume_key(egui::Modifiers::NONE, egui::Key::Escape));
             self.give_back_input();
             self.log(LogLevel::Info, "The editor has the mouse and keys again.");
         }

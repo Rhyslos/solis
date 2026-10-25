@@ -43,7 +43,7 @@ Names never care about capitals. A name with spaces goes in quotes: `select "Poi
 | `tool rotate` | Chooses a tool: select, move, rotate, scale or transform. |
 | `play`, `pause`, `step`, `stop` | Like the buttons at the top (`step` runs one tick while paused): see [Play mode](play-mode.md). |
 | `stats` | Counts the entities, models, lights and triangles, and says how fast the editor is drawing. |
-| `seed`, `seed 42`, `seed new` | The running game's [seed](concepts.md#game-code) (where its random numbers come from). With a number, every Play starts from that seed, so a play can be repeated; `seed new` gives each Play a new one again. |
+| `seed`, `seed 42`, `seed new` | The [seed](concepts.md#game-code) the running game started with (where its random numbers come from), and the one in use if game code or a load changed it since. With a number, every Play starts from that seed, so a play can be repeated; `seed new` gives each Play a new one again. |
 | `checksum` | While playing, the game's [checksums](concepts.md#simulation) at this tick: two plays that agree at the same tick are in exactly the same state. |
 
 **Values for `set`:**
