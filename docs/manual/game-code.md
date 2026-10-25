@@ -320,6 +320,10 @@ Things that fall, collide and get pushed have a **RigidBody** and a **Collider**
 | `solis/entity` | `rotation facingAlong(vec3 direction)` | The upright rotation facing along a direction (an entity's forward is +Y): `turnTo(me, facingAlong(target - positionOf(me)))` faces a place. |
 | `solis/entity` | `string nameOf(entity which)` | An entity's name. |
 
+## Safe to open
+
+Game code runs inside a **sandbox**: it can reach the game through the engine's methods, and nothing else. It can't read or write files, start programs or reach the network, it has 64 MB of memory, and code that runs too long is stopped. Lua's `require` isn't there either (it would read files from anywhere on the computer). So a project you download or are sent can't harm your computer through its code, and Solis never runs the other files in it (see [Projects and the Library](projects-and-the-library.md)).
+
 ## Tips and common problems
 - **Problem:** Problems says the game's code starts at `main.lst` and there isn't one. **Why:** there are `.lst` files, but none is called `main.lst` in the `assets` folder itself. **Fix:** make `assets/main.lst`, and fetch your other files from it.
 - **Problem:** changes I made to `solis/world.lst` (or `solis/kit/…`) disappeared. **Why:** Solis writes the `solis` files again when the project opens, so they always match the engine. **Fix:** put your own code in your own files; to change a ready-made component, copy its file outside `solis/` and rename the component.

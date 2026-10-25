@@ -194,7 +194,12 @@ pub fn write_atomically(path: &Path, bytes: &[u8]) -> std::io::Result<()> {
     ));
     let temporary = PathBuf::from(temporary);
     let written = (|| {
-        let mut file = std::fs::File::create(&temporary)?;
+        // A new file, never one already there (a link planted under the
+        // same name would send the write elsewhere).
+        let mut file = std::fs::OpenOptions::new()
+            .write(true)
+            .create_new(true)
+            .open(&temporary)?;
         file.write_all(bytes)?;
         file.sync_all()?;
         drop(file);

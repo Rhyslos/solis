@@ -22,9 +22,30 @@ pub fn save_game(root: &Path, slot: &str, text: &str) -> std::io::Result<PathBuf
     let folder = root.join(SAVES);
     std::fs::create_dir_all(&folder)?;
     let path = folder.join(format!("{slot}.{SAVE_EXTENSION}"));
+    if !path.exists() {
+        let saves = std::fs::read_dir(&folder)?
+            .filter_map(Result::ok)
+            .filter(|e| {
+                e.path()
+                    .extension()
+                    .is_some_and(|x| x.eq_ignore_ascii_case(SAVE_EXTENSION))
+            })
+            .take(MAX_SAVE_SLOTS)
+            .count();
+        if saves >= MAX_SAVE_SLOTS {
+            return Err(std::io::Error::other(format!(
+                "the saves folder already has {MAX_SAVE_SLOTS} saves; game code can replace \
+                 one, but not add more"
+            )));
+        }
+    }
     write_whole(&path, text)?;
     Ok(path)
 }
+
+/// The most save slots a project keeps (game code saving under a new
+/// name every tick would otherwise fill the disk).
+pub const MAX_SAVE_SLOTS: usize = 100;
 
 /// Where the save game `slot` is kept, if the name is usable.
 pub fn save_path(root: &Path, slot: &str) -> Option<PathBuf> {
@@ -130,9 +151,9 @@ pub fn save_recording(root: &Path, text: &str) -> std::io::Result<PathBuf> {
 /// Writes `text` through a file beside `path`, then puts it in place, so
 /// a crash never leaves half a file.
 fn write_whole(path: &Path, text: &str) -> std::io::Result<()> {
-    let partial = path.with_extension("partial");
-    std::fs::write(&partial, text)?;
-    std::fs::rename(&partial, path)
+    // A fresh, uniquely named file renamed into place: never through a
+    // file or link already there.
+    asset_db::write_atomically(path, text.as_bytes())
 }
 
 /// A file's text, if it's there and within `limit` bytes.
@@ -266,6 +287,37 @@ mod tests {
     }
 
     #[test]
+    fn a_project_keeps_at_most_its_number_of_saves() {
+        let root = scratch("many-saves");
+        for n in 0..MAX_SAVE_SLOTS {
+            save_game(&root, &format!("slot_{n}"), "x").unwrap();
+        }
+        assert!(save_game(&root, "one_more", "x").is_err(), "no more slots");
+        save_game(&root, "slot_3", "replaced").unwrap();
+        assert_eq!(
+            std::fs::read_to_string(save_path(&root, "slot_3").unwrap()).unwrap(),
+            "replaced"
+        );
+        let _ = std::fs::remove_dir_all(root);
+    }
+
+    #[cfg(unix)]
+    #[test]
+    fn a_link_planted_in_the_project_never_sends_a_write_elsewhere() {
+        // The security review: the bindings and saves were written through
+        // a fixed name ("input.partial") that a project could ship as a
+        // link to a file outside it.
+        let root = scratch("planted-link");
+        let outside = root.with_extension("outside");
+        std::fs::write(&outside, "mine").unwrap();
+        std::os::unix::fs::symlink(&outside, root.join("input.partial")).unwrap();
+        save_bindings(&root, &input::Bindings::default().write()).unwrap();
+        assert_eq!(std::fs::read_to_string(&outside).unwrap(), "mine");
+        let _ = std::fs::remove_file(outside);
+        let _ = std::fs::remove_dir_all(root);
+    }
+
+    #[test]
     fn saves_go_in_their_folder_by_slot_and_nowhere_else() {
         let root = scratch("saves");
         let path = save_game(&root, "quick", "first").unwrap();
@@ -276,7 +328,16 @@ mod tests {
             "second",
             "a slot is replaced"
         );
-        for bad in ["../outside", "a/b", "", "has space"] {
+        for bad in [
+            "../outside",
+            "a/b",
+            "",
+            "has space",
+            "CON",
+            "nul",
+            "Com1",
+            "LPT9",
+        ] {
             assert!(save_game(&root, bad, "x").is_err(), "{bad}");
             assert!(save_path(&root, bad).is_none());
         }

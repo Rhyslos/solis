@@ -294,3 +294,61 @@ fn a_rust_component_that_panics_anywhere_fails_without_a_crash() {
     let failure = runtime.sync(me, "Fragile", &more, &mut NoHost).unwrap_err();
     assert!(failure.at.message.contains("set broke"));
 }
+
+#[test]
+fn a_lua_file_starting_with_a_control_byte_is_text_never_bytecode() {
+    // The security review: Luau takes text whose first byte is below 0x09
+    // for compiled bytecode, whose loader isn't made for hostile files; a
+    // file like this once crashed Solis on opening the project.
+    let hostile = "\x06\x01\x05hello\0\0\0\0\0\0\0\0\0\0";
+    let checked = crate::code::compile(&crate::Code {
+        files: Vec::new(),
+        lua: vec![("a.lua".into(), hostile.into())],
+        notes: Vec::new(),
+    });
+    let problems = checked.expect_err("refused as text");
+    assert!(problems[0].file.contains("a.lua"), "{problems:?}");
+    // And straight into a runtime (no bytecode made on a worker).
+    let mut runtime = Runtime::new().unwrap();
+    assert!(
+        runtime
+            .load(&code("", &[("a.lua", hostile)]), &mut NoHost)
+            .is_err()
+    );
+    // A Lust whose output starts so (it can't, but its text is loaded as
+    // text all the same).
+    let lust = code("end\n", &[]);
+    assert!(Runtime::new().unwrap().load(&lust, &mut NoHost).is_ok());
+}
+
+#[test]
+fn game_code_can_t_require_files_from_anywhere() {
+    // The security review: Luau's package library gave game code
+    // `require`, which reads and runs any .lua file on the computer.
+    let outside = std::env::temp_dir().join(format!("solis-require-{}", std::process::id()));
+    std::fs::create_dir_all(&outside).unwrap();
+    std::fs::write(outside.join("secret.lua"), "return 'TOP-SECRET'").unwrap();
+    let path = outside.join("secret").to_string_lossy().replace('\\', "/");
+    let probe = format!(
+        "local C = component('Probe', {{ {{ 'found', 'string', '' }} }})\n\
+         C.found_now = tostring(require) .. ' ' .. tostring(package)\n\
+         local ok, got = pcall(function() return require('{path}') end)\n\
+         function C:update(dt) self.found = tostring(ok) .. ' ' .. tostring(got) .. ' ' .. C.found_now end"
+    );
+    let mut runtime = Runtime::new().unwrap();
+    runtime
+        .load(&code("", &[("probe.lua", &probe)]), &mut NoHost)
+        .unwrap();
+    runtime
+        .sync(id(1), "Probe", &ComponentData::default(), &mut NoHost)
+        .unwrap();
+    runtime.tick(0.1, &mut Said::default());
+    let found = runtime.values(id(1), "Probe").unwrap();
+    let Some(reflect::Value::Text(found)) = found.get("found") else {
+        panic!("{found:?}");
+    };
+    assert!(!found.contains("TOP-SECRET"), "{found}");
+    assert!(found.starts_with("false"), "{found}");
+    assert!(found.ends_with("nil nil"), "{found}");
+    let _ = std::fs::remove_dir_all(outside);
+}
