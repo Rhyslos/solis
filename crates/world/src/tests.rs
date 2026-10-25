@@ -658,3 +658,98 @@ fn a_collider_under_something_that_moves_goes_with_it() {
     let at = |id| world.physics().state().pose(id).unwrap().0;
     assert!((at(floor).z + 2.0).abs() < 1e-4, "floor at {}", at(floor));
 }
+
+#[test]
+fn a_resting_crate_lifted_or_left_without_a_floor_by_an_edit_falls() {
+    use area::builtin::RigidBody;
+    // The second review: bodies built again kept sleeping, so a crate
+    // lifted while it rested, or whose floor was deleted, hung in the air.
+    let mut area = Area::new();
+    let floor = area.spawn(
+        EntityData::new("Floor")
+            .with(&Transform {
+                position: glam::Vec3::new(0.0, 0.0, -0.5),
+                scale: glam::Vec3::new(20.0, 20.0, 1.0),
+                ..Transform::default()
+            })
+            .with(&Collider::default()),
+    );
+    let crate_id = area.spawn(
+        EntityData::new("Crate")
+            .with(&Transform {
+                position: glam::Vec3::new(0.0, 0.0, 0.5),
+                ..Transform::default()
+            })
+            .with(&RigidBody::default())
+            .with(&Collider::default()),
+    );
+    let mut world = World::from_area(&area);
+    for _ in 0..600 {
+        world.step_physics();
+    }
+    assert!(
+        world
+            .physics()
+            .state()
+            .body_state(crate_id)
+            .unwrap()
+            .sleeping,
+        "at rest"
+    );
+    // Lifted 4 m by an edit: it falls back.
+    let mut lifted = area.get(crate_id).unwrap().clone();
+    lifted.set(&Transform {
+        position: glam::Vec3::new(0.0, 0.0, 4.5),
+        ..Transform::default()
+    });
+    area.insert(crate_id, lifted);
+    world.update(&area, [(crate_id, true)]);
+    for _ in 0..120 {
+        world.step_physics();
+    }
+    let z = world.physics().state().pose(crate_id).unwrap().0.z;
+    assert!((z - 0.5).abs() < 0.05, "fell back to the floor: {z}");
+    for _ in 0..600 {
+        world.step_physics();
+    }
+    // The floor deleted (the world built again): it falls through.
+    area.remove(floor);
+    world.rebuild(&area);
+    for _ in 0..60 {
+        world.step_physics();
+    }
+    let z = world.physics().state().pose(crate_id).unwrap().0.z;
+    assert!(z < -1.0, "fell: {z}");
+}
+
+#[test]
+fn a_crate_in_a_group_game_code_moves_goes_with_it() {
+    use area::builtin::RigidBody;
+    let mut area = Area::new();
+    let group = area.spawn(EntityData::new("Group").with(&Transform::default()));
+    let mut crate_data = EntityData::new("Crate")
+        .with(&Transform::default())
+        .with(&RigidBody {
+            gravity: 0.0,
+            ..RigidBody::default()
+        })
+        .with(&Collider::default());
+    crate_data.parent = Some(group);
+    let crate_id = area.spawn(crate_data);
+    let mut world = World::from_area(&area);
+    world.step_physics();
+    world.set_transform(
+        group,
+        Transform {
+            position: glam::Vec3::new(3.0, 0.0, 0.0),
+            ..Transform::default()
+        },
+    );
+    world.settle();
+    world.step_physics();
+    world.step_physics();
+    let body = world.physics().state().pose(crate_id).unwrap().0;
+    assert!((body.x - 3.0).abs() < 0.01, "body at {body}");
+    let drawn = world.global(crate_id).unwrap().w_axis.x;
+    assert!((drawn - 3.0).abs() < 0.01, "drawn at {drawn}");
+}

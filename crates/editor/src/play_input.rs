@@ -157,7 +157,7 @@ impl Workbench {
         self.play();
         if let Some(playing) = &mut self.playing {
             playing.recording = Some(input::Recording {
-                seed: playing.world.seed(),
+                seed: playing.start_seed,
                 start: playing.world.checksum(),
                 ticks: Vec::new(),
             });

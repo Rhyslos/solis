@@ -325,3 +325,77 @@ fn input_actions_changed_while_playing_reach_the_game_and_paused_input_waits_for
             .any(|l| l.text.contains("interact with"))
     );
 }
+
+#[test]
+fn a_recording_keeps_play_s_seed_not_the_one_a_start_set() {
+    // The second review: a start that set the seed made the recording
+    // keep that one, so a replay drew different numbers from Play's.
+    let code = "get \"solis/world\":[setSeed, randomRange];\n\
+        get \"solis/entity\":[positionOf, moveTo];\n\
+        component Drifter {\n\
+            has {\n\
+                float start = randomRange(0, 10);\n\
+            }\n\
+            method update(float dt) {\n\
+                moveTo(me, positionOf(me) + [randomRange(-1, 1), start * 0.01, 0]);\n\
+            }\n\
+        }\n\
+        setSeed(42);\n\
+        pass Drifter;\nend\n";
+    let mut w = with_a_walker();
+    w.set_program(Some(program(code)));
+    let id = EntityId(reflect::Id::from_raw(WALKER_ID).unwrap());
+    let mut data = w.document.area().get(id).unwrap().clone();
+    data.components.clear();
+    data.set(&Transform::default());
+    data.components
+        .insert("Drifter".into(), reflect::ComponentData::default());
+    w.document
+        .edit(
+            "Drifter",
+            vec![
+                area::Edit::Despawn { root: id },
+                area::Edit::Spawn {
+                    entities: vec![(id, data)],
+                },
+            ],
+            None,
+            None,
+        )
+        .unwrap();
+    w.project = Some(crate::library::ProjectInfo {
+        name: "Seeds".into(),
+        root: std::env::temp_dir(),
+        assets: std::env::temp_dir(),
+    });
+    w.fixed_seed = Some(7);
+    w.play_and_record();
+    for _ in 0..40 {
+        tick(&mut w);
+    }
+    w.stop();
+    let text = w
+        .outbox
+        .iter()
+        .find_map(|a| match a {
+            WorkbenchAction::SaveRecording(text) => Some(text.clone()),
+            _ => None,
+        })
+        .unwrap();
+    assert_eq!(input::Recording::read(&text).unwrap().seed, 7);
+    w.fixed_seed = None;
+    w.replay(&text, "drift.solrec");
+    for _ in 0..200 {
+        if w.play_state() == crate::play::PlayState::Paused {
+            break;
+        }
+        w.run_game((world::TICK * 2.0) as f32);
+    }
+    assert!(
+        w.log_lines()
+            .iter()
+            .any(|l| l.text.contains("matched the recording on all 40 ticks")),
+        "{:?}",
+        w.log_lines().iter().map(|l| &l.text).collect::<Vec<_>>()
+    );
+}

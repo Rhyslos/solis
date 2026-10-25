@@ -535,7 +535,10 @@ impl Physics {
                 body.set_linvel(to_rp(state.velocity), false);
                 body.set_angvel(to_rp(state.spin), false);
             }
-            if state.sleeping {
+            // Asleep only for a save's exact place: a body built again
+            // after an edit (lifted, or its floor taken away) must be free
+            // to fall.
+            if state.sleeping && with_place {
                 body.sleep();
             } else {
                 body.wake_up(true);

@@ -68,6 +68,9 @@ pub(crate) struct Playing {
     pub(crate) bindings: Arc<input::Bindings>,
     /// What this play records (Play > Play and record inputs), if it
     /// records.
+    /// The seed Play chose, before game code's starts (which may set
+    /// another): what a recording keeps, so its replay starts the same.
+    pub(crate) start_seed: u64,
     pub(crate) recording: Option<input::Recording>,
     /// At most how big the recording's file is so far.
     pub(crate) recording_bytes: usize,
@@ -177,7 +180,8 @@ impl Workbench {
         // A new seed each Play, unless one was chosen (`seed` in the
         // Console), so random numbers differ between plays but a play can
         // be repeated.
-        world.set_seed(self.fixed_seed.unwrap_or_else(fresh_seed));
+        let seed = self.fixed_seed.unwrap_or_else(fresh_seed);
+        world.set_seed(seed);
         let _ = self.document.take_changes();
         let cameras = world.placed::<area::builtin::Camera>().len();
         let mut view = ViewCache::default();
@@ -197,6 +201,7 @@ impl Workbench {
             told_too_many_spawns: false,
             pending,
             bindings: Arc::new(self.bindings.clone()),
+            start_seed: seed,
             recording: None,
             recording_bytes: 0,
             told_recording_edited: false,
@@ -488,13 +493,14 @@ impl Workbench {
                     Arc::make_mut(&mut playing.bindings).rebind(&action, &input);
                 }
                 slow = ticked.pause;
-                // A new seed holds from the next tick.
-                if let Some(seed) = seed {
-                    playing.world.set_seed(seed);
-                }
                 let landing = std::time::Instant::now();
                 failures.extend(self.land_edits(time, seconds));
                 code += landing.elapsed();
+                // A new seed holds from the next tick (after the starts of
+                // what this tick spawned, which belong to this one).
+                if let (Some(seed), Some(playing)) = (seed, &mut self.playing) {
+                    playing.world.set_seed(seed);
+                }
             }
             // Physics moves on last, with game code's moves and pushes
             // (decision 0036).
@@ -588,6 +594,17 @@ impl Workbench {
             // done once, as last asked. A load replaces the game, so no
             // more ticks run before it.
             let (saves, dropped) = collapse_saves(saves);
+            // What this tick's spawned components' starts spawned in turn
+            // would join next tick: it joins now, so a save holds it (a
+            // few rounds at most; past that, it's left for the next tick).
+            if saves.iter().any(|(_, load)| !load) {
+                for _ in 0..8 {
+                    if self.playing.as_ref().is_none_or(|p| p.pending.is_empty()) {
+                        break;
+                    }
+                    failures.extend(self.land_edits(time, seconds));
+                }
+            }
             if dropped > 0 {
                 self.log(
                     LogLevel::Warning,
@@ -598,7 +615,13 @@ impl Workbench {
                 );
             }
             let mut loading = false;
+            let replaying = self.playing.as_ref().is_some_and(|p| p.replay.is_some());
             for (slot, load) in saves {
+                if replaying && !load {
+                    // A replay runs the game again; it doesn't write over
+                    // the player's saves.
+                    continue;
+                }
                 if load {
                     self.outbox.push(WorkbenchAction::LoadGame(slot));
                     loading = true;

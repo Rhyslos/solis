@@ -81,7 +81,7 @@ Input is read **once per [tick](concepts.md#game-code)**, so every component, on
 **Recording and playing back** (the **Play** menu)
 1. With a [project](projects-and-the-library.md) open, choose **Play > Play and record inputs**. Play as usual.
 2. Press **Stop**. The recording is saved in the project's `recordings` folder (the Console says its name).
-3. Choose **Play > Replay a recording…** and pick it. Solis plays from the start with the same seed and every tick's recorded input, checking the game is exactly the same tick by tick ([checksums](concepts.md#simulation)). At the end it pauses and says whether it matched, or the tick where it stopped matching.
+3. Choose **Play > Replay a recording…** and pick it. (While it replays, the game's `saveGame` doesn't write over your saves.) Solis plays from the start with the same seed and every tick's recorded input, checking the game is exactly the same tick by tick ([checksums](concepts.md#simulation)). At the end it pauses and says whether it matched, or the tick where it stopped matching.
 
 A replay that stops matching means the game came out differently from the same input: the area or code changed since recording, or something in the game isn't deterministic. That's how you find it the tick it starts.
 
