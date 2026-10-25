@@ -448,7 +448,12 @@ mod tests {
             "rock\u{202E}blg.exe",
             "trail.",
         ] {
-            assert!(refuse("crate.glb", bad).contains("can't be"), "{bad}");
+            // On Windows `a:b.glb` is a drive's path, refused as outside.
+            let why = refuse("crate.glb", bad);
+            assert!(
+                why.contains("can't be") || why.contains("isn't inside"),
+                "{bad}: {why}"
+            );
         }
         std::fs::write(assets.join("ship.gltf"), "{}").unwrap();
         assert!(refuse("ship.gltf", "props/ship.gltf").contains("whole folder"));

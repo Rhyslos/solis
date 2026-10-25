@@ -75,7 +75,7 @@ impl ContentHash {
     }
 
     /// Adds the bytes of the file at `path`, read in pieces. Only an
-    /// ordinary file of at most [`MAX_HASHED_BYTES`] is read: a link to a
+    /// ordinary file of at most `MAX_HASHED_BYTES` (4 GB) is read: a link to a
     /// device or a pipe would never end.
     pub fn update_file(&mut self, path: &Path) -> std::io::Result<()> {
         let not_a_file = || std::io::Error::other("it isn't an ordinary file");
