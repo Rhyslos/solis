@@ -23,8 +23,8 @@ When finding your way around, or making the layout suit your screen.
 | Properties | | The selected entity's name and [components](entities.md), each with its settings, plus **Move here** and **Delete**. |
 | Library | Code | The open [project](projects-and-the-library.md)'s models (textures, sounds and assemblies later). Double-click one, or click its +, to place it. |
 | Code | Library | Game code in Lust, Rust or Lua (Phase 4). |
-| Console | Problems | Messages from the editor. See [The Console](console.md). |
-| Problems | Console | Mistakes found in code and areas. |
+| Console | Problems | Messages from the editor and the engine, and a command line. See [The Console](console.md). |
+| Problems | Console | Mistakes found in the area, such as a missing model; a number on the tab says how many. See [Problems](problems.md). |
 
 **Rearranging panels ([docking](concepts.md#the-window)):**
 1. Drag a panel by its tab.

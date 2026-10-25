@@ -67,6 +67,18 @@ See [Selecting and moving things](selecting-and-moving.md).
 | Put under another entity | Drag onto it |
 | Make it stand alone | Drag onto empty space |
 
+## The Console's command line
+
+| Action | Shortcut |
+|---|---|
+| Jump to the command line | ' (the key next to Æ on a Norwegian keyboard) |
+| Run the command | Enter |
+| Earlier and later commands | Up, Down |
+| Finish a name | Tab |
+| Leave the command line | Esc |
+
+See [The Console](console.md).
+
 These don't work while you're typing in a field: there they undo the typing. See [Undo and redo](undo.md).
 
 ## Related

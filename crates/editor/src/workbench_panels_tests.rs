@@ -388,3 +388,29 @@ fn the_top_bars_edit_menu_has_the_selection_commands() {
     }
     assert!(found >= 2, "in the top bar and the Area panel: {found}");
 }
+
+#[test]
+fn the_problems_panel_lists_mistakes_and_a_click_selects_the_entity() {
+    let mut area = area::builtin::starter_area();
+    let odd = EntityId::random();
+    let mut data = EntityData::new("Odd one");
+    data.components
+        .insert("Wobble".into(), reflect::ComponentData::default());
+    area.insert(odd, data);
+    let mut w = Workbench::new(info(), None);
+    w.open_area(area, "odd.solarea".into());
+    let mut h = harness(w);
+    h.run();
+    assert_eq!(h.state().0.problems().len(), 1);
+    h.get_by_label("Problems").click();
+    h.run();
+    let row = "Odd one has a Wobble component that isn't known; it's kept, but does nothing";
+    h.get_by_label(row).click();
+    h.run();
+    assert_eq!(h.state().0.document.selection.primary(), Some(odd));
+    // Fixed (the entity deleted): the problem goes.
+    h.state_mut().0.delete_selection();
+    h.run();
+    assert!(h.state().0.problems().is_empty());
+    let _ = h.get_by_label("No problems found in the area.");
+}

@@ -80,3 +80,6 @@
 - **Hidden and locked:** ways to keep things out of your way while you work: a hidden entity isn't drawn in the editor, and a locked one can't be clicked in the viewport. The game still has them both.
 - **Axis lock:** stopping drags from changing one axis, such as Z, so a drag slides along the floor without lifting.
 - **World and object axes:** the world's X, Y and Z are the same everywhere; an object's own axes turn with it. The gizmo can follow either.
+- **Console:** the panel where the editor reports what it's doing, and where you can type commands. See [The Console](console.md).
+- **Command:** a short instruction typed in the Console's command line, such as `select Crate` or `set Transform.position 0 0 2`. Commands do the same things as the menus, so each change can be undone.
+- **Problem:** a mistake in the area that Solis can't fix by itself, such as a model whose file is gone. The Problems panel lists them. See [Problems](problems.md).

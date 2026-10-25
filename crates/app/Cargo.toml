@@ -29,6 +29,7 @@ eframe.workspace = true
 rfd.workspace = true
 glam.workspace = true
 opener.workspace = true
+log.workspace = true
 
 [dev-dependencies]
 image.workspace = true
