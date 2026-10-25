@@ -149,6 +149,24 @@ impl Document {
     /// one undo step called `label`; still counts as saved, since it now
     /// matches the file.
     pub fn reload(&mut self, area: Area, label: &str) -> Result<(), EditError> {
+        self.replace_all(area, label)?;
+        self.saved = self.history.state();
+        Ok(())
+    }
+
+    /// Replaces the whole area with `area` (copies rebuilt from a changed
+    /// assembly), as one undo step called `label`. If nothing was unsaved,
+    /// nothing is now: the area's file would be the same.
+    pub fn rebuild(&mut self, area: Area, label: &str) -> Result<(), EditError> {
+        let clean = !self.is_dirty();
+        self.replace_all(area, label)?;
+        if clean {
+            self.saved = self.history.state();
+        }
+        Ok(())
+    }
+
+    fn replace_all(&mut self, area: Area, label: &str) -> Result<(), EditError> {
         let mut edits: Vec<Edit> = Vec::new();
         // Everything there now goes, tree by tree…
         let old = &self.area;
@@ -177,9 +195,7 @@ impl Document {
             edits.push(Edit::Spawn { entities });
         }
         let selection = self.selection.clone();
-        self.edit(label, edits, None, Some(selection))?;
-        self.saved = self.history.state();
-        Ok(())
+        self.edit(label, edits, None, Some(selection))
     }
 
     /// The area.

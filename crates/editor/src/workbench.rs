@@ -34,7 +34,7 @@ pub struct AppInfo {
 }
 
 /// Something the app must do, asked for by the editor.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq)]
 pub enum WorkbenchAction {
     /// Close the window.
     Quit,
@@ -60,6 +60,25 @@ pub enum WorkbenchAction {
     SaveArea,
     /// Ask where to save the area (Ctrl+Shift+S).
     SaveAreaAs,
+    /// Save this entity and everything under it as an assembly in the
+    /// project, then turn it into a copy of it with
+    /// [`Workbench::make_copy`].
+    CreateAssembly(EntityId),
+    /// Change one field of an entity inside an assembly's file (Apply to
+    /// assembly); the app saves it and hands it back with
+    /// [`Workbench::set_assembly`], which updates every copy.
+    ApplyToAssembly {
+        /// The assembly.
+        assembly: AssetId,
+        /// The entity inside it.
+        path: Vec<EntityId>,
+        /// The component's name.
+        component: String,
+        /// The field's name.
+        field: String,
+        /// Its new value.
+        value: reflect::Value,
+    },
 }
 
 /// The editor's state, kept between frames.
@@ -85,6 +104,11 @@ pub struct Workbench {
     pub(crate) recent: Vec<std::path::PathBuf>,
     /// The project's assets, for the Library.
     pub(crate) library: Vec<LibraryItem>,
+    /// The project's assemblies the area uses, as read from their files.
+    pub(crate) assemblies: BTreeMap<AssetId, std::sync::Arc<area::text::AreaFile>>,
+    /// Actions asked for outside [`Self::show`]'s own flow (menus,
+    /// Properties), handed to the app with the next frame's.
+    pub(crate) outbox: Vec<WorkbenchAction>,
     /// What waits for an answer about unsaved changes: Save, Don't save
     /// or Cancel.
     pub(crate) unsaved_prompt: Option<WorkbenchAction>,
@@ -115,6 +139,8 @@ impl Workbench {
             about_open: false,
             in_front: HashSet::new(),
             gesture: 0,
+            assemblies: BTreeMap::new(),
+            outbox: Vec::new(),
             unsaved_prompt: None,
             pending_reload: None,
             may_close: false,
@@ -344,7 +370,7 @@ impl Workbench {
         ui: &mut Ui,
         renderer: &mut dyn ViewportRenderer,
     ) -> Vec<WorkbenchAction> {
-        let mut actions = Vec::new();
+        let mut actions = std::mem::take(&mut self.outbox);
         if ui.input(|i| i.pointer.any_pressed()) {
             self.gesture += 1;
         }
@@ -360,6 +386,7 @@ impl Workbench {
         let mut shown = HashSet::new();
         let mut area_requests = Vec::new();
         let mut place = None;
+        let part = self.assembly_part();
         let mut requests = Vec::new();
         self.viewport.area = AreaView::of(self.document.area(), &self.models);
         self.viewport.entities = self.document.area().len();
@@ -383,6 +410,7 @@ impl Workbench {
                         project: self.project.as_ref(),
                         library: &self.library,
                         place: &mut place,
+                        part: part.as_ref(),
                         requests: &mut requests,
                         accent: self.accent,
                         in_front: &self.in_front,
@@ -394,6 +422,7 @@ impl Workbench {
         for request in requests {
             self.apply_property(request, self.gesture);
         }
+        actions.append(&mut self.outbox);
         if let Some(id) = place {
             actions.push(WorkbenchAction::PlaceAsset(id));
         }

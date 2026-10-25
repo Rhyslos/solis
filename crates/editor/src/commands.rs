@@ -7,13 +7,19 @@ use crate::area_panel::AreaRequest;
 use crate::console::LogLevel;
 use crate::document::Selection;
 use crate::models::{FileLight, FileLightKind, ModelInfo};
+use crate::properties::AssemblyPart;
 use crate::properties::PropertyRequest;
-use crate::workbench::Workbench;
+use crate::workbench::{Workbench, WorkbenchAction};
+use area::assembly::Expander;
 use area::builtin::{Light, LightKind, Model, Transform};
+use area::text::{AreaFile, FileKind};
 use area::{Edit, EntityData, MergeKey};
 use glam::{Quat, Vec3};
+use reflect::AssetId;
 use reflect::{AssetRef, Component, ComponentData, EntityId};
+use std::collections::BTreeMap;
 use std::hash::{DefaultHasher, Hash, Hasher};
+use std::sync::Arc;
 
 /// How far above the camera's focus point a new point light goes, in
 /// metres.
@@ -350,7 +356,339 @@ impl Workbench {
             }
             PropertyRequest::Delete(entity) => self.delete(entity),
             PropertyRequest::MoveHere(entity) => self.move_here(entity),
+            PropertyRequest::RevertField {
+                entity,
+                component,
+                field,
+            } => self.revert_field(entity, &component, &field),
+            PropertyRequest::ApplyField {
+                entity,
+                component,
+                field,
+            } => self.apply_field(entity, &component, &field),
+            PropertyRequest::Unpack(root) => self.unpack(root),
         }
+    }
+
+    /// What the selected entity's assembly says about it, for Properties.
+    pub(crate) fn assembly_part(&self) -> Option<AssemblyPart> {
+        let id = self.document.selection.primary()?;
+        let origin = self.document.area().get(id)?.origin.clone()?;
+        let lookup = |asset| self.assemblies.get(&asset).cloned();
+        let expected = Expander::new(&lookup).expected(self.document.area(), &origin);
+        Some(AssemblyPart {
+            name: self.asset_name(origin.assembly),
+            expected,
+            root: origin.path.is_empty(),
+        })
+    }
+
+    /// An asset's name, from the Library.
+    pub(crate) fn asset_name(&self, id: AssetId) -> String {
+        self.library
+            .iter()
+            .find(|item| item.id == id)
+            .map_or_else(|| "its assembly".to_string(), |item| item.name.clone())
+    }
+
+    /// Puts a field of a placed assembly's entity back to the assembly's
+    /// value.
+    pub fn revert_field(&mut self, entity: EntityId, component: &str, field: &str) {
+        let Some(part) = self.part_of(entity) else {
+            return;
+        };
+        let Some(expected) = part.expected else {
+            return;
+        };
+        let label = format!("Revert {component}.{field}");
+        let edit = match expected.components.get(component) {
+            Some(data) => Edit::SetField {
+                entity,
+                component: component.to_string(),
+                field: field.to_string(),
+                value: data.get(field).cloned(),
+            },
+            None => return,
+        };
+        self.command(&label, vec![edit], None, None);
+    }
+
+    /// Asks the app to make a field's value its assembly's, for every copy.
+    pub fn apply_field(&mut self, entity: EntityId, component: &str, field: &str) {
+        let Some(data) = self.document.area().get(entity) else {
+            return;
+        };
+        let (Some(origin), Some(value)) = (
+            data.origin.clone(),
+            data.components
+                .get(component)
+                .and_then(|c| c.get(field))
+                .cloned(),
+        ) else {
+            return;
+        };
+        self.outbox.push(WorkbenchAction::ApplyToAssembly {
+            assembly: origin.assembly,
+            path: origin.path,
+            component: component.to_string(),
+            field: field.to_string(),
+            value,
+        });
+    }
+
+    fn part_of(&self, entity: EntityId) -> Option<AssemblyPart> {
+        let origin = self.document.area().get(entity)?.origin.clone()?;
+        let lookup = |asset| self.assemblies.get(&asset).cloned();
+        let expected = Expander::new(&lookup).expected(self.document.area(), &origin);
+        Some(AssemblyPart {
+            name: self.asset_name(origin.assembly),
+            expected,
+            root: origin.path.is_empty(),
+        })
+    }
+
+    /// Turns the placed copy at `root` into plain entities that no longer
+    /// follow the assembly; or splits a model at `root` into one entity per
+    /// part of it (the file's nodes), each drawing its own part.
+    pub fn unpack(&mut self, root: EntityId) {
+        let area = self.document.area();
+        let whole_model = area
+            .get(root)
+            .filter(|e| e.origin.is_none())
+            .and_then(|e| e.get::<Model>())
+            .and_then(|m| m.asset)
+            .filter(|r| r.part.is_none());
+        if let Some(model) = whole_model {
+            self.unpack_model(root, model.asset);
+            return;
+        }
+        let edits: Vec<Edit> = area
+            .iter()
+            .filter(|(_, e)| e.origin.as_ref().is_some_and(|o| o.instance == root))
+            .map(|(entity, _)| Edit::SetOrigin {
+                entity,
+                origin: None,
+            })
+            .collect();
+        let Some(name) = area.get(root).map(|e| e.name.clone()) else {
+            return;
+        };
+        if !edits.is_empty() {
+            self.command(&format!("Unpack {name}"), edits, None, None);
+        }
+    }
+
+    /// One entity per part of the model `asset` drawn by `root`, under it,
+    /// placed as in the file; `root` keeps its place and stops drawing the
+    /// whole.
+    fn unpack_model(&mut self, root: EntityId, asset: AssetId) {
+        let Some(info) = self.models.get(&asset) else {
+            return;
+        };
+        if info.nodes.is_empty() {
+            return;
+        }
+        let ids: Vec<EntityId> = info.nodes.iter().map(|_| EntityId::random()).collect();
+        let mut order = None;
+        let mut entities = Vec::new();
+        for (i, node) in info.nodes.iter().enumerate() {
+            let (scale, rotation, position) = node.local.to_scale_rotation_translation();
+            let mut data = EntityData::new(&node.name).with(&Transform {
+                position,
+                rotation: rotation.normalize(),
+                scale,
+            });
+            if node.has_meshes {
+                data.set(&Model {
+                    asset: Some(AssetRef {
+                        asset,
+                        part: Some(node.part),
+                    }),
+                });
+            }
+            data.parent = Some(
+                node.parent
+                    .and_then(|p| ids.get(p).copied())
+                    .unwrap_or(root),
+            );
+            let next = area::order_after(order.as_deref());
+            data.order.clone_from(&next);
+            order = Some(next);
+            entities.push((ids[i], data));
+        }
+        let name = info.name.clone();
+        let mut edits = vec![Edit::RemoveComponent {
+            entity: root,
+            component: Model::NAME.to_string(),
+        }];
+        // Parents come before their children (nodes are stored that way),
+        // each part spawned as its own little tree.
+        for (id, data) in entities {
+            edits.push(Edit::Spawn {
+                entities: vec![(id, data)],
+            });
+        }
+        self.command(&format!("Unpack {name}"), edits, None, None);
+    }
+
+    /// Makes the assembly `id`'s contents known (read from its file),
+    /// rebuilding every copy in the area from it while keeping each
+    /// copy's changes. Not an undo step if nothing was unsaved: the area's
+    /// file is the same.
+    pub fn set_assembly(&mut self, id: AssetId, file: Arc<AreaFile>) {
+        let had = self.assemblies.contains_key(&id);
+        let uses = self.document.area().iter().any(|(_, e)| e.origin.is_some());
+        if !had || !uses {
+            self.assemblies.insert(id, file);
+            return;
+        }
+        // The copies' changes, worked out against the old contents…
+        let collapsed = {
+            let lookup = |asset| self.assemblies.get(&asset).cloned();
+            Expander::new(&lookup).collapse(self.document.area(), FileKind::Area)
+        };
+        self.assemblies.insert(id, file);
+        let Ok(collapsed) = collapsed else { return };
+        // …laid over the new contents.
+        let rebuilt = {
+            let lookup = |asset| self.assemblies.get(&asset).cloned();
+            Expander::new(&lookup).expand(&collapsed)
+        };
+        let name = self.asset_name(id);
+        match rebuilt {
+            Ok(area) if area != *self.document.area() => {
+                if let Err(why) = self
+                    .document
+                    .rebuild(area, &format!("Update copies of {name}"))
+                {
+                    self.log(
+                        LogLevel::Error,
+                        format!("Couldn't update copies of {name}: {why}."),
+                    );
+                } else {
+                    self.log(LogLevel::Info, format!("Updated the copies of {name}."));
+                }
+            }
+            Ok(_) => {}
+            Err(why) => self.log(
+                LogLevel::Error,
+                format!("Couldn't update copies of {name}: {why}."),
+            ),
+        }
+    }
+
+    /// The assembly files known, by ID.
+    pub fn assemblies(&self) -> &BTreeMap<AssetId, Arc<AreaFile>> {
+        &self.assemblies
+    }
+
+    /// `file` (an area as read) with its placed assemblies expanded, from
+    /// the assemblies known.
+    pub fn expand_file(
+        &self,
+        file: &AreaFile,
+    ) -> Result<area::Area, area::assembly::AssemblyError> {
+        let lookup = |asset| self.assemblies.get(&asset).cloned();
+        Expander::new(&lookup).expand(file)
+    }
+
+    /// The open area as a file: placed assemblies as their root plus what
+    /// differs from the assembly.
+    pub fn area_file(&self) -> Result<AreaFile, area::assembly::AssemblyError> {
+        let lookup = |asset| self.assemblies.get(&asset).cloned();
+        Expander::new(&lookup).collapse(self.document.area(), FileKind::Area)
+    }
+
+    /// Places a copy of assembly `id` where the camera looks, selected.
+    pub fn place_assembly(&mut self, id: AssetId) {
+        let root = EntityId::random();
+        let mut placed = EntityData::new(&self.asset_name(id));
+        placed.order = self.document.area().order_at_end(None);
+        let entities = {
+            let lookup = |asset| self.assemblies.get(&asset).cloned();
+            Expander::new(&lookup).place(id, root, &placed)
+        };
+        let mut entities = match entities {
+            Ok(e) => e,
+            Err(why) => {
+                self.log(
+                    LogLevel::Error,
+                    format!("Couldn't place {}: {why}.", placed.name),
+                );
+                return;
+            }
+        };
+        // Where the camera looks: the copy's own placement.
+        let focus = self.viewport.camera.focus();
+        if let Some((_, data)) = entities.iter_mut().find(|(e, _)| *e == root) {
+            let mut transform = data.get::<Transform>().unwrap_or_default();
+            transform.position = focus;
+            data.set(&transform);
+        }
+        let mut selected = Selection::default();
+        selected.select_only(root);
+        let label = format!("Place {}", placed.name);
+        self.command(&label, vec![Edit::Spawn { entities }], None, Some(selected));
+    }
+
+    /// Turns `root` and everything under it into a copy of assembly `id`
+    /// (just made from them), keeping the root's ID, name and place.
+    pub fn make_copy(&mut self, root: EntityId, id: AssetId) {
+        let Some(original) = self.document.area().get(root).cloned() else {
+            return;
+        };
+        let entities = {
+            let lookup = |asset| self.assemblies.get(&asset).cloned();
+            Expander::new(&lookup).place(id, root, &original)
+        };
+        let entities = match entities {
+            Ok(e) => e,
+            Err(why) => {
+                self.log(
+                    LogLevel::Error,
+                    format!("Couldn't make the assembly: {why}."),
+                );
+                return;
+            }
+        };
+        let label = format!("Create assembly {}", self.asset_name(id));
+        let selection = self.document.selection.clone();
+        self.command(
+            &label,
+            vec![Edit::Despawn { root }, Edit::Spawn { entities }],
+            None,
+            Some(selection),
+        );
+    }
+
+    /// `root` and everything under it as an assembly file (for Create
+    /// assembly from selection): the root at the top, nested copies as
+    /// copies.
+    pub fn assembly_file(&self, root: EntityId) -> Option<AreaFile> {
+        let area = self.document.area();
+        let tree = area.tree(root);
+        let inside: std::collections::HashSet<EntityId> = tree.iter().copied().collect();
+        let mut part = area::Area::new();
+        for id in tree {
+            let mut data = area.get(id)?.clone();
+            if id == root {
+                data.parent = None;
+            }
+            // Copies placed inside the tree stay copies; a copy at the root
+            // (and parts whose copy is outside) become the assembly's own.
+            if data
+                .origin
+                .as_ref()
+                .is_some_and(|o| o.instance == root || !inside.contains(&o.instance))
+            {
+                data.origin = None;
+            }
+            part.insert(id, data);
+        }
+        let lookup = |asset| self.assemblies.get(&asset).cloned();
+        Expander::new(&lookup)
+            .collapse(&part, FileKind::Assembly { root })
+            .ok()
     }
 
     /// Carries out what the user asked for in the Area panel.
@@ -483,8 +821,27 @@ impl Workbench {
         let mut orders: std::collections::HashMap<Option<EntityId>, String> = Default::default();
         for root in roots {
             let ids = area.tree(root);
-            let new_ids: std::collections::HashMap<EntityId, EntityId> =
-                ids.iter().map(|&id| (id, EntityId::random())).collect();
+            // Parts of placed assemblies get the IDs a new copy of their
+            // assembly would (so they stay copies); everything else gets a
+            // new random one. Parts whose copy's root stays behind become
+            // plain.
+            let inside: std::collections::HashSet<EntityId> = ids.iter().copied().collect();
+            let part_of = |id: EntityId| {
+                area.get(id)
+                    .and_then(|e| e.origin.as_ref())
+                    .filter(|o| o.instance != id && inside.contains(&o.instance))
+            };
+            let mut new_ids: std::collections::HashMap<EntityId, EntityId> = ids
+                .iter()
+                .filter(|&&id| part_of(id).is_none())
+                .map(|&id| (id, EntityId::random()))
+                .collect();
+            for &id in &ids {
+                if let Some(o) = part_of(id) {
+                    let new_instance = new_ids.get(&o.instance).copied().unwrap_or(o.instance);
+                    new_ids.insert(id, area::assembly::derive(new_instance, &o.path));
+                }
+            }
             let mut entities = Vec::new();
             for id in &ids {
                 let Some(original) = area.get(*id) else {
@@ -503,6 +860,16 @@ impl Workbench {
                         .parent
                         .map(|p| new_ids.get(&p).copied().unwrap_or(p));
                 }
+                // Still part of a copied assembly, or plain if its copy's
+                // root stays behind.
+                copy.origin = original
+                    .origin
+                    .as_ref()
+                    .filter(|o| inside.contains(&o.instance))
+                    .map(|o| area::Origin {
+                        instance: new_ids[&o.instance],
+                        ..o.clone()
+                    });
                 // References inside the copied tree point at the copies.
                 for data in copy.components.values_mut() {
                     for value in data.fields.values_mut() {

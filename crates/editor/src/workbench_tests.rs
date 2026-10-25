@@ -418,6 +418,7 @@ fn crate_info() -> ModelInfo {
         triangles: 12,
         min: Vec3::ZERO,
         max: Vec3::ONE,
+        nodes: Vec::new(),
     }
 }
 
@@ -1211,6 +1212,7 @@ fn the_library_lists_the_project_and_a_double_click_places() {
     let id = AssetId(reflect::Id::from_raw(42).unwrap());
     w.set_library(vec![crate::library::LibraryItem {
         id,
+        kind: crate::library::LibraryKind::Model,
         name: "Lighthouse".into(),
         path: "props/lighthouse.glb".into(),
     }]);
@@ -1387,4 +1389,246 @@ fn with_unsaved_changes_a_reload_asks_keep_mine_or_load_the_file() {
     // Ctrl+Z brings back what was there.
     h.state_mut().0.undo();
     assert!(h.state().0.document().area().contains(mine));
+}
+
+/// A lamp-post assembly file: a post with a lamp under it.
+fn lamp_post_file() -> (AssetId, std::sync::Arc<area::text::AreaFile>) {
+    let id = |n| EntityId(reflect::Id::from_raw(n).unwrap());
+    let mut area = area::Area::new();
+    area.insert(
+        id(1),
+        area::EntityData::new("Lamp post").with(&Transform::default()),
+    );
+    let mut lamp = area::EntityData::new("Lamp").with(&Light::point());
+    lamp.parent = Some(id(1));
+    area.insert(id(2), lamp);
+    let file = area::text::AreaFile {
+        kind: area::text::FileKind::Assembly { root: id(1) },
+        area,
+        overrides: Default::default(),
+    };
+    (
+        AssetId(reflect::Id::from_raw(900).unwrap()),
+        std::sync::Arc::new(file),
+    )
+}
+
+/// A workbench with the lamp post known and one copy placed.
+fn with_a_lamp_post() -> (Workbench, AssetId, EntityId, EntityId) {
+    let mut w = Workbench::new(info(), None);
+    let (asset, file) = lamp_post_file();
+    w.set_assembly(asset, file);
+    w.place_assembly(asset);
+    let root = w.selection().unwrap();
+    let lamp = area::assembly::derive(root, &[EntityId(reflect::Id::from_raw(2).unwrap())]);
+    (w, asset, root, lamp)
+}
+
+#[test]
+fn placing_an_assembly_makes_a_copy_that_saves_as_one_line() {
+    let (w, _, root, lamp) = with_a_lamp_post();
+    let area = w.document().area();
+    assert_eq!(area.get(lamp).unwrap().parent, Some(root));
+    assert_eq!(
+        area.get(root).unwrap().get::<Transform>().unwrap().position,
+        w.camera().focus(),
+        "placed where the camera looks"
+    );
+    let file = w.area_file().unwrap();
+    assert!(!file.area.contains(lamp), "the copy's parts aren't written");
+    // Only the root's new position is a change.
+    assert_eq!(file.overrides.len(), 1);
+    assert_eq!(w.expand_file(&file).unwrap(), *w.document().area());
+}
+
+#[test]
+fn changed_fields_show_in_bold_and_revert_or_apply() {
+    let (mut w, asset, _, lamp) = with_a_lamp_post();
+    w.apply_property(
+        PropertyRequest::SetField {
+            entity: lamp,
+            component: "Light".into(),
+            field: "strength".into(),
+            value: reflect::Value::Float(42.0),
+        },
+        3,
+    );
+    w.select(lamp);
+    let part = w.assembly_part().unwrap();
+    assert!(!part.root);
+    assert_eq!(
+        part.expected.unwrap().get::<Light>().unwrap().strength,
+        1000.0,
+        "the assembly's value"
+    );
+    let mut h = acting(w);
+    h.run();
+    let _ = h.get_by_label_contains("Part of");
+    h.get_by_label("Apply Strength").click();
+    h.run();
+    assert!(h.state().1.iter().any(|a| matches!(
+        a,
+        WorkbenchAction::ApplyToAssembly { assembly, component, .. }
+            if *assembly == asset && component == "Light"
+    )));
+    h.get_by_label("Revert Strength").click();
+    h.run();
+    let light = h
+        .state()
+        .0
+        .document()
+        .area()
+        .get(lamp)
+        .unwrap()
+        .get::<Light>()
+        .unwrap();
+    assert_eq!(light.strength, 1000.0);
+}
+
+#[test]
+fn a_changed_assembly_updates_its_copies_and_keeps_their_changes() {
+    let (mut w, asset, root, lamp) = with_a_lamp_post();
+    w.apply_property(
+        PropertyRequest::SetField {
+            entity: lamp,
+            component: "Light".into(),
+            field: "strength".into(),
+            value: reflect::Value::Float(42.0),
+        },
+        3,
+    );
+    // The assembly's lamp turns orange (another person, a Git pull).
+    let (_, file) = lamp_post_file();
+    let mut file = (*file).clone();
+    let two = EntityId(reflect::Id::from_raw(2).unwrap());
+    assert!(area::assembly::set_in_file(
+        &mut file,
+        &[two],
+        "Light",
+        "color",
+        reflect::Value::floats(&[1.0, 0.5, 0.0])
+    ));
+    w.set_assembly(asset, std::sync::Arc::new(file));
+    let light = w
+        .document()
+        .area()
+        .get(lamp)
+        .unwrap()
+        .get::<Light>()
+        .unwrap();
+    assert_eq!(
+        light.color,
+        [1.0, 0.5, 0.0],
+        "the assembly's change arrives"
+    );
+    assert_eq!(light.strength, 42.0, "the copy's own change stays");
+    assert!(w.document().area().contains(root));
+}
+
+#[test]
+fn unpack_turns_a_copy_into_plain_entities() {
+    let (mut w, _, root, lamp) = with_a_lamp_post();
+    w.unpack(root);
+    let area = w.document().area();
+    assert!(area.get(root).unwrap().origin.is_none());
+    assert!(area.get(lamp).unwrap().origin.is_none());
+    let file = w.area_file().unwrap();
+    assert!(
+        file.overrides.is_empty() && file.area.contains(lamp),
+        "written whole now"
+    );
+    w.undo();
+    assert!(w.document().area().get(lamp).unwrap().origin.is_some());
+}
+
+#[test]
+fn a_duplicated_copy_is_still_a_copy() {
+    let (mut w, _, root, _) = with_a_lamp_post();
+    w.select(root);
+    w.duplicate_selection();
+    let copy = w.selection().unwrap();
+    assert_ne!(copy, root);
+    let file = w.area_file().unwrap();
+    let placed = file.area.iter().filter(|(_, e)| e.origin.is_some()).count();
+    assert_eq!(placed, 2, "two copies of the assembly");
+    assert_eq!(file.area.len(), 4, "with the starter sun and environment");
+}
+
+#[test]
+fn a_selection_becomes_an_assembly_and_a_copy_of_it() {
+    let mut w = Workbench::new(info(), None);
+    let post = w.add_entity();
+    let lamp = w.add_point_light();
+    w.reparent(&[lamp], Some(post));
+    let file = w.assembly_file(post).unwrap();
+    assert_eq!(file.kind, area::text::FileKind::Assembly { root: post });
+    assert_eq!(file.area.len(), 2);
+    let asset = AssetId::random();
+    w.set_assembly(asset, std::sync::Arc::new(file));
+    w.make_copy(post, asset);
+    let area = w.document().area();
+    assert!(
+        area.get(post).unwrap().origin.is_some(),
+        "the root is now a copy"
+    );
+    assert_eq!(area.tree(post).len(), 2);
+    let saved = w.area_file().unwrap();
+    assert_eq!(
+        saved.area.len(),
+        3,
+        "the starter sun, environment and the copy"
+    );
+    assert!(
+        saved.overrides.is_empty(),
+        "a fresh copy matches its assembly exactly"
+    );
+}
+
+#[test]
+fn a_model_unpacks_into_its_parts() {
+    let (mut w, model) = with_a_model();
+    let asset = crate_info().asset;
+    let node = |part, name: &str, parent| crate::models::NodeInfo {
+        part,
+        name: name.into(),
+        parent,
+        local: glam::Mat4::from_translation(Vec3::X),
+        has_meshes: part != 1,
+    };
+    let mut info = crate_info();
+    info.nodes = vec![
+        node(1, "Ship", None),
+        node(2, "Mast", Some(0)),
+        node(3, "Sail", Some(1)),
+    ];
+    w.reload_model(info, &[]);
+    w.unpack(model);
+    let area = w.document().area();
+    assert!(
+        !area.get(model).unwrap().has("Model"),
+        "the whole isn't drawn twice"
+    );
+    let tree = area.tree(model);
+    assert_eq!(tree.len(), 4);
+    let sail = tree
+        .iter()
+        .find(|&&id| area.get(id).unwrap().name == "Sail")
+        .copied()
+        .unwrap();
+    let part = area
+        .get(sail)
+        .unwrap()
+        .get::<area::builtin::Model>()
+        .unwrap();
+    assert_eq!(part.asset.unwrap().part, Some(3));
+    // Each part sits where it did inside the model: three steps of 1 m.
+    let at = area.world_matrix(sail).transform_point3(Vec3::ZERO);
+    assert!(at.abs_diff_eq(Vec3::new(3.0, 0.0, 0.0), 1e-5), "{at}");
+    // The viewport draws the parts, not the whole.
+    let view = AreaView::of(area, w.models());
+    let mut drawn: Vec<_> = view.models.iter().map(|(a, node, _)| (*a, *node)).collect();
+    drawn.sort();
+    assert_eq!(drawn, [(asset, Some(1)), (asset, Some(2))]);
+    w.undo();
+    assert!(w.document().area().get(model).unwrap().has("Model"));
 }

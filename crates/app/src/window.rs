@@ -12,7 +12,7 @@ use editor::{
     Overlays, Panel, Workbench, WorkbenchAction, theme::Accent,
 };
 use eframe::egui;
-use reflect::AssetId;
+use reflect::{AssetId, EntityId};
 use std::collections::{HashSet, VecDeque};
 use std::path::{Path, PathBuf};
 
@@ -223,17 +223,33 @@ impl App {
             match (result, self.gpu.as_mut()) {
                 (Ok(model), Some(gpu)) => {
                     gpu.add_model(id, &model);
-                    if let Some(db) = self.projects.db() {
-                        // Part IDs for assemblies; a sidecar that can't be
-                        // written only costs them until next time.
-                        let _ = db.update_parts(id, &model);
-                    }
+                    // Stable part numbers from the sidecar (nodes come
+                    // first), so unpacked parts survive a re-export; without
+                    // a project, their places in the file.
+                    let parts = self
+                        .projects
+                        .db()
+                        .and_then(|db| db.update_parts(id, &model).ok())
+                        .filter(|p| p.len() >= model.nodes.len())
+                        .unwrap_or_else(|| (1..=model.nodes.len() as u32).collect());
                     let info = ModelInfo {
                         asset: id,
                         name: model.name.clone(),
                         triangles: model.triangles(),
                         min: model.bounds.min,
                         max: model.bounds.max,
+                        nodes: model
+                            .nodes
+                            .iter()
+                            .zip(parts)
+                            .map(|(node, part)| editor::models::NodeInfo {
+                                part,
+                                name: node.name.clone(),
+                                parent: node.parent,
+                                local: node.local,
+                                has_meshes: !node.meshes.is_empty(),
+                            })
+                            .collect(),
                     };
                     if placing {
                         let lights = Self::file_lights(&model.lamps);
@@ -274,6 +290,17 @@ impl App {
         for change in &changes {
             let Some(db) = self.projects.db() else { return };
             match change {
+                Change::Changed(id) if self.workbench.assemblies().contains_key(id) => {
+                    let id = *id;
+                    if let Err(why) = self.load_assembly(id, true) {
+                        self.workbench.log(
+                            LogLevel::Warning,
+                            format!("Couldn't read the changed assembly: {why}; copies stay as they were."),
+                        );
+                    }
+                    self.load_area_models();
+                    continue;
+                }
                 Change::Changed(id) if self.workbench.has_model(*id) => {
                     if let Some(file) = db.file(*id) {
                         self.importer.start(*id, &file, self.projects.cache());
@@ -330,19 +357,71 @@ impl App {
         }
     }
 
-    /// The area as text, with the asset paths for comments.
-    fn area_text(&self) -> String {
-        let document = self.workbench.document();
+    /// `file` as text, with the asset paths for comments.
+    fn file_text(&self, file: &area::text::AreaFile) -> String {
         let db = self.projects.db();
-        area::text::write(document.area(), &document.registry, &|id| {
+        area::text::write_file(file, &self.workbench.document().registry, &|id| {
             db.and_then(|db| db.get(id))
                 .map(|r| r.path.display().to_string().replace('\\', "/"))
         })
     }
 
+    /// Reads assembly `id` (and the assemblies it places) from the project
+    /// and hands them to the editor. Assemblies already known are read
+    /// again only when `fresh`.
+    fn load_assembly(&mut self, id: AssetId, fresh: bool) -> Result<(), String> {
+        let mut todo = vec![id];
+        let mut seen = HashSet::new();
+        while let Some(next) = todo.pop() {
+            if !seen.insert(next)
+                || (next != id || !fresh) && self.workbench.assemblies().contains_key(&next)
+            {
+                continue;
+            }
+            let path = self
+                .projects
+                .db()
+                .and_then(|db| db.file(next))
+                .ok_or_else(|| format!("the assembly {next} isn't in the project"))?;
+            let file = AreaFiles::read(&path, &self.workbench.document().registry)
+                .map_err(|why| format!("{}: {why}", file_name(&path)))?;
+            todo.extend(
+                file.area
+                    .iter()
+                    .filter_map(|(_, e)| e.origin.as_ref().map(|o| o.assembly)),
+            );
+            self.workbench.set_assembly(next, std::sync::Arc::new(file));
+        }
+        Ok(())
+    }
+
+    /// Reads every assembly an area file places.
+    fn load_assemblies_of(&mut self, file: &area::text::AreaFile) {
+        let wanted: HashSet<AssetId> = file
+            .area
+            .iter()
+            .filter_map(|(_, e)| e.origin.as_ref().map(|o| o.assembly))
+            .collect();
+        for id in wanted {
+            if let Err(why) = self.load_assembly(id, false) {
+                self.workbench.log(
+                    LogLevel::Warning,
+                    format!("Couldn't read an assembly: {why}."),
+                );
+            }
+        }
+    }
+
     /// Saves the area to `path`; whether it worked.
     fn save_to(&mut self, path: &Path) -> bool {
-        let text = self.area_text();
+        let text = match self.workbench.area_file() {
+            Ok(file) => self.file_text(&file),
+            Err(why) => {
+                self.workbench
+                    .log(LogLevel::Error, format!("Couldn't save: {why}."));
+                return false;
+            }
+        };
         match self.area_files.save(path, &text) {
             Ok(()) => {
                 self.workbench.mark_saved(path.to_path_buf());
@@ -360,7 +439,11 @@ impl App {
 
     /// Opens the area file at `path`.
     fn open_area(&mut self, path: &Path) {
-        match AreaFiles::read(path, &self.workbench.document().registry) {
+        let read = AreaFiles::read(path, &self.workbench.document().registry).and_then(|file| {
+            self.load_assemblies_of(&file);
+            self.workbench.expand_file(&file).map_err(|e| e.to_string())
+        });
+        match read {
             Ok(area) => {
                 self.workbench.open_area(area, path.to_path_buf());
                 self.area_files.watch(path);
@@ -392,6 +475,14 @@ impl App {
                 WorkbenchAction::OpenProject => self.importer.ask_folder(FolderFor::OpenProject),
                 WorkbenchAction::OpenRecent(root) => self.open_project(&root, false),
                 WorkbenchAction::PlaceAsset(id) => self.place(id),
+                WorkbenchAction::CreateAssembly(root) => self.create_assembly(root),
+                WorkbenchAction::ApplyToAssembly {
+                    assembly,
+                    path,
+                    component,
+                    field,
+                    value,
+                } => self.apply_to_assembly(assembly, &path, &component, &field, value),
                 WorkbenchAction::AddSampleArea => {
                     let id = self.importer.start_sample("Sample area");
                     self.to_place.insert(id);
@@ -431,9 +522,115 @@ impl App {
         }
     }
 
-    /// Places a project asset where the camera looks: it's read (from the
-    /// cache, so quickly) and placed when it arrives.
+    /// Saves `root` and everything under it as a new assembly in the
+    /// project's `assemblies` folder, and turns it into a copy of it.
+    fn create_assembly(&mut self, root: EntityId) {
+        let Some(db) = self.projects.db() else {
+            self.workbench.log(
+                LogLevel::Warning,
+                "Assemblies live in a project: make or open one first (File > New project…).",
+            );
+            return;
+        };
+        let Some(file) = self.workbench.assembly_file(root) else {
+            return;
+        };
+        let name = self
+            .workbench
+            .document()
+            .area()
+            .get(root)
+            .map_or_else(|| "Assembly".to_string(), |e| e.name.clone());
+        let safe: String = name
+            .chars()
+            .map(|c| {
+                if c.is_alphanumeric() || " -_()".contains(c) {
+                    c
+                } else {
+                    '_'
+                }
+            })
+            .collect();
+        let folder = db.project().assets().join("assemblies");
+        let mut path = folder.join(format!("{safe}.{}", asset_db::ASSEMBLY_EXTENSION));
+        let mut n = 2;
+        while path.exists() {
+            path = folder.join(format!("{safe} {n}.{}", asset_db::ASSEMBLY_EXTENSION));
+            n += 1;
+        }
+        let text = self.file_text(&file);
+        let written = std::fs::create_dir_all(&folder)
+            .and_then(|()| asset_db::write_atomically(&path, text.as_bytes()));
+        if let Err(why) = written {
+            self.workbench.log(
+                LogLevel::Error,
+                format!("Couldn't save the assembly: {why}."),
+            );
+            return;
+        }
+        let (changes, notes) = self.projects.rescan();
+        let Some(id) = self.projects.db().and_then(|db| db.id_at(&path)) else {
+            self.follow_changes(changes, notes);
+            return;
+        };
+        self.workbench.set_assembly(id, std::sync::Arc::new(file));
+        self.follow_changes(changes, notes);
+        self.workbench.make_copy(root, id);
+        self.workbench.log(
+            LogLevel::Info,
+            format!("Saved the assembly {}.", file_name(&path)),
+        );
+    }
+
+    /// Sets a field in an assembly's file (Apply to assembly), saves it,
+    /// and updates every copy.
+    fn apply_to_assembly(
+        &mut self,
+        assembly: AssetId,
+        path: &[EntityId],
+        component: &str,
+        field: &str,
+        value: reflect::Value,
+    ) {
+        let (Some(file), Some(on_disk)) = (
+            self.workbench.assemblies().get(&assembly).cloned(),
+            self.projects.db().and_then(|db| db.file(assembly)),
+        ) else {
+            return;
+        };
+        let mut file = (*file).clone();
+        if !area::assembly::set_in_file(&mut file, path, component, field, value) {
+            return;
+        }
+        let text = self.file_text(&file);
+        match asset_db::write_atomically(&on_disk, text.as_bytes()) {
+            Ok(()) => self
+                .workbench
+                .set_assembly(assembly, std::sync::Arc::new(file)),
+            Err(why) => self.workbench.log(
+                LogLevel::Error,
+                format!("Couldn't save {}: {why}.", file_name(&on_disk)),
+            ),
+        }
+    }
+
+    /// Places a project asset where the camera looks: a model is read
+    /// (from the cache, so quickly) and placed when it arrives; an
+    /// assembly is placed at once.
     fn place(&mut self, id: AssetId) {
+        let kind = self.projects.db().and_then(|db| db.get(id)).map(|r| r.kind);
+        if kind == Some(asset_db::AssetKind::Assembly) {
+            match self.load_assembly(id, false) {
+                Ok(()) => {
+                    self.workbench.place_assembly(id);
+                    self.load_area_models();
+                }
+                Err(why) => self
+                    .workbench
+                    .log(LogLevel::Error, format!("Couldn't place it: {why}.")),
+            }
+            return;
+        }
         let Some(file) = self.projects.db().and_then(|db| db.file(id)) else {
             return;
         };
@@ -492,7 +689,12 @@ impl eframe::App for App {
             None => {}
         }
         if let Some(path) = self.area_files.changed_on_disk() {
-            match AreaFiles::read(&path, &self.workbench.document().registry) {
+            let read =
+                AreaFiles::read(&path, &self.workbench.document().registry).and_then(|file| {
+                    self.load_assemblies_of(&file);
+                    self.workbench.expand_file(&file).map_err(|e| e.to_string())
+                });
+            match read {
                 Ok(area) => {
                     self.workbench.offer_reload(area);
                     self.load_area_models();

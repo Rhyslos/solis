@@ -6,12 +6,13 @@
 //!
 //! Layer 0 (core). See this crate's README for its purpose and limits.
 
+pub mod assembly;
 pub mod builtin;
 mod document;
 mod edit;
 mod history;
 pub mod text;
 
-pub use document::{Area, EntityData, order_after};
+pub use document::{Area, EntityData, Origin, order_after};
 pub use edit::{Edit, EditError};
 pub use history::{DEFAULT_LIMIT_BYTES, History, MergeKey, Step, Undone};

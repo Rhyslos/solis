@@ -73,7 +73,10 @@ jobs:
         with:
           persist-credentials: false
       - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2
-      - run: cargo test --workspace --locked --no-fail-fast
+      - run: cargo test --workspace --locked --no-fail-fast 2>&1 | tee test-output.txt; exit ${PIPESTATUS[0]}
+        shell: bash
+      - if: failure()
+        run: tools/ci/failed-tests.sh test-output.txt
       - run: cargo doc --workspace --no-deps --locked
 
   window:
@@ -123,7 +126,12 @@ jobs:
       # Every test, with the GPU tests on Direct3D 12, the graphics path
       # Solis ships on, through Windows' software renderer (WARP). A
       # missing GPU is a failure here, not a skip.
-      - run: cargo test --workspace --locked --no-fail-fast
+      - run: cargo test --workspace --locked --no-fail-fast 2>&1 | tee test-output.txt; exit ${PIPESTATUS[0]}
+        shell: bash
         env:
           REQUIRE_GPU: "1"
           WGPU_BACKEND: dx12
+      # Which tests failed and why, as one annotation on the run.
+      - if: failure()
+        shell: bash
+        run: tools/ci/failed-tests.sh test-output.txt

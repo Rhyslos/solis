@@ -9,7 +9,7 @@ use crate::icons::{self, Icon};
 use crate::library::{LibraryItem, ProjectInfo, library};
 use crate::models::ModelInfo;
 use crate::panel::Panel;
-use crate::properties::{PropertyRequest, properties};
+use crate::properties::{AssemblyPart, PropertyRequest, properties};
 use crate::theme::{self, Accent};
 use crate::viewport::{Viewport, ViewportRenderer};
 use egui::{Align, Color32, Id, Layout, RichText, Ui, WidgetText};
@@ -33,6 +33,7 @@ pub(crate) struct PanelViewer<'a> {
     pub(crate) project: Option<&'a ProjectInfo>,
     pub(crate) library: &'a [LibraryItem],
     pub(crate) place: &'a mut Option<AssetId>,
+    pub(crate) part: Option<&'a AssemblyPart>,
     pub(crate) requests: &'a mut Vec<PropertyRequest>,
     pub(crate) accent: Accent,
     pub(crate) in_front: &'a HashSet<Panel>,
@@ -120,7 +121,7 @@ impl TabViewer for PanelViewer<'_> {
             }
             Panel::Properties => {
                 menu_row(ui, &["Mode", "Edit", "Units"]);
-                let requests = properties(ui, self.document, self.models);
+                let requests = properties(ui, self.document, self.part, self.models);
                 self.requests.extend(requests);
             }
             Panel::Library => {

@@ -198,9 +198,10 @@ impl ViewportRenderer for GpuViewport {
         let placed: Vec<render::Placement<'_>> = view
             .models
             .iter()
-            .filter_map(|(id, transform)| {
+            .filter_map(|(id, node, transform)| {
                 self.models.get(id).map(|model| render::Placement {
                     model,
+                    node: *node,
                     transform: *transform,
                 })
             })

@@ -17,6 +17,31 @@ pub struct ModelInfo {
     pub min: Vec3,
     /// The highest corner.
     pub max: Vec3,
+    /// Its parts (the file's nodes), for Unpack; parents come first.
+    pub nodes: Vec<NodeInfo>,
+}
+
+/// One part of a model: a node of its file.
+#[derive(Debug, Clone, PartialEq)]
+pub struct NodeInfo {
+    /// Its stable part number (from the model's sidecar), so references
+    /// to it survive a re-export.
+    pub part: u32,
+    /// Its name in the file.
+    pub name: String,
+    /// The part it belongs to.
+    pub parent: Option<usize>,
+    /// Where it is relative to its parent.
+    pub local: glam::Mat4,
+    /// Whether it shows meshes (or only holds others).
+    pub has_meshes: bool,
+}
+
+impl ModelInfo {
+    /// The index of the node with part number `part`.
+    pub fn node_of(&self, part: u32) -> Option<usize> {
+        self.nodes.iter().position(|n| n.part == part)
+    }
 }
 
 impl ModelInfo {
@@ -122,6 +147,7 @@ mod tests {
             triangles: 12,
             min: Vec3::new(-1.0, -0.05, 0.0),
             max: Vec3::new(1.0, 0.05, 250.0),
+            nodes: Vec::new(),
         };
         assert_eq!(info.size_text(), "2.0 × 0.10 × 250 m");
     }

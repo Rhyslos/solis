@@ -31,6 +31,7 @@ A lamp is just an entity with a Transform and a Light. Give a model a Light (**A
 - Type in **Name**, press **F2**, or **double-click** it in the Area panel to rename it (Enter to keep, Esc to cancel).
 - Change **Position** under Transform, or click **Move here** to bring it to where the camera looks.
 - **Ctrl + D** duplicates the selection, with everything under each one, and selects the copies.
+- **Unpack** (in Properties, for a model or a placed [assembly](assemblies.md)) splits it into separate entities.
 - **Delete** (the key, or the button in Properties) removes the selection and everything under it. In the Area panel, models also have a × that does the same.
 - **F** points the camera at the selection.
 

@@ -10,13 +10,20 @@ use glam::{EulerRot, Quat};
 use reflect::{AssetId, ComponentData, ComponentSchema, FieldInfo, FieldKind, Value};
 use std::collections::BTreeMap;
 
-/// A field the user changed this frame, and its new value.
+/// What the user did to a field this frame.
 #[derive(Debug, Clone, PartialEq)]
-pub(crate) struct FieldChange {
-    /// The field's name.
-    pub field: String,
-    /// Its new value.
-    pub value: Value,
+pub(crate) enum FieldChange {
+    /// Gave it a new value.
+    Set {
+        /// The field's name.
+        field: String,
+        /// Its new value.
+        value: Value,
+    },
+    /// Put it back to its assembly's value.
+    Revert(String),
+    /// Made its value the assembly's, for every copy.
+    Apply(String),
 }
 
 /// The order rotations are shown in: turning around Z (heading) last, so a
@@ -25,11 +32,27 @@ const EULER: EulerRot = EulerRot::ZXY;
 
 /// A labelled row: the field's name on the left, its widget after it.
 pub(crate) fn row<R>(ui: &mut Ui, label: &str, help: &str, add: impl FnOnce(&mut Ui) -> R) -> R {
+    row_marked(ui, label, help, false, add)
+}
+
+/// A row whose name is bold when `changed` (a placed assembly's copy that
+/// differs from the assembly).
+fn row_marked<R>(
+    ui: &mut Ui,
+    label: &str,
+    help: &str,
+    changed: bool,
+    add: impl FnOnce(&mut Ui) -> R,
+) -> R {
     ui.horizontal(|ui| {
-        let label = ui.add_sized(
-            egui::vec2(96.0, 18.0),
-            egui::Label::new(RichText::new(label).color(crate::theme::TEXT_WEAK)).truncate(),
-        );
+        let text = if changed {
+            RichText::new(label)
+                .strong()
+                .color(crate::theme::TEXT_STRONG)
+        } else {
+            RichText::new(label).color(crate::theme::TEXT_WEAK)
+        };
+        let label = ui.add_sized(egui::vec2(96.0, 18.0), egui::Label::new(text).truncate());
         if !help.is_empty() {
             label.on_hover_text(help);
         }
@@ -38,25 +61,69 @@ pub(crate) fn row<R>(ui: &mut Ui, label: &str, help: &str, add: impl FnOnce(&mut
     .inner
 }
 
-/// Draws every field of `schema` with its value in `data`, and returns the
-/// fields the user changed. Fields `data` doesn't have show their starting
-/// value.
+/// Draws every field of `schema` with its value in `data`, and returns what
+/// the user did. Fields `data` doesn't have show their starting value. With
+/// `assembly` (the component as the entity's assembly has it), fields that
+/// differ are bold, with Revert and Apply buttons.
 pub(crate) fn fields(
     ui: &mut Ui,
     schema: &ComponentSchema,
     data: &ComponentData,
+    assembly: Option<&ComponentData>,
     models: &BTreeMap<AssetId, ModelInfo>,
 ) -> Vec<FieldChange> {
     let mut changes = Vec::new();
     for field in &schema.fields {
         let value = data.get(&field.name).unwrap_or(&field.default);
+        let changed =
+            assembly.is_some_and(|a| a.get(&field.name).unwrap_or(&field.default) != value);
         let id = ui.id().with((&schema.name, &field.name));
         ui.push_id(id, |ui| {
-            if let Some(value) = field_widget(ui, field, value, models) {
-                changes.push(FieldChange {
+            let (set, revert, apply) =
+                row_marked(ui, &field.label, field.hint.help, changed, |ui| {
+                    let set = field_widget(ui, field, value, models);
+                    if !changed {
+                        return (set, false, false);
+                    }
+                    let small = |ui: &mut Ui, text: &str, hover: &str, name: String| {
+                        let button = ui
+                            .add(
+                                egui::Button::new(
+                                    RichText::new(text).color(crate::theme::TEXT_WEAK),
+                                )
+                                .frame(false),
+                            )
+                            .on_hover_text(hover);
+                        button.widget_info(|| {
+                            egui::WidgetInfo::labeled(egui::WidgetType::Button, true, &name)
+                        });
+                        button.clicked()
+                    };
+                    let revert = small(
+                        ui,
+                        "↺",
+                        "Back to the assembly's value",
+                        format!("Revert {}", field.label),
+                    );
+                    let apply = small(
+                        ui,
+                        "↑",
+                        "Make this the assembly's value, for every copy",
+                        format!("Apply {}", field.label),
+                    );
+                    (set, revert, apply)
+                });
+            if let Some(value) = set {
+                changes.push(FieldChange::Set {
                     field: field.name.clone(),
                     value,
                 });
+            }
+            if revert {
+                changes.push(FieldChange::Revert(field.name.clone()));
+            }
+            if apply {
+                changes.push(FieldChange::Apply(field.name.clone()));
             }
         });
     }
@@ -70,8 +137,7 @@ fn field_widget(
     value: &Value,
     models: &BTreeMap<AssetId, ModelInfo>,
 ) -> Option<Value> {
-    let help = field.hint.help;
-    row(ui, &field.label, help, |ui| match &field.kind {
+    match &field.kind {
         FieldKind::Bool => {
             let mut on = matches!(value, Value::Bool(true));
             ui.checkbox(&mut on, "")
@@ -170,7 +236,7 @@ fn field_widget(
             ui.label(text);
             None
         }
-    })
+    }
 }
 
 /// A number field: drags within the hint's range, but never changes a

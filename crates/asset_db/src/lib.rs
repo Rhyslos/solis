@@ -17,7 +17,7 @@ mod project;
 pub mod sidecar;
 mod watch;
 
-pub use db::{AssetDb, AssetKind, AssetRecord, Change, Stamp};
+pub use db::{ASSEMBLY_EXTENSION, AssetDb, AssetKind, AssetRecord, Change, Stamp};
 pub use hash::{ContentHash, hash_file};
 pub use jobs::Jobs;
 pub use project::{

@@ -35,8 +35,9 @@ pub struct ViewLight {
 /// What the viewport draws.
 #[derive(Debug, Clone, PartialEq, Default)]
 pub struct AreaView {
-    /// The models to draw, each where its entity is in the world.
-    pub models: Vec<(AssetId, glam::Mat4)>,
+    /// The models to draw: the model, one of its parts (a node's index)
+    /// or the whole, and where its entity is in the world.
+    pub models: Vec<(AssetId, Option<usize>, glam::Mat4)>,
     /// The sun (the first sun in the area), if there is one.
     pub sun: Option<ViewLight>,
     /// Every other light.
@@ -60,9 +61,22 @@ impl AreaView {
             ..Self::default()
         };
         for (id, model) in area.with::<Model>() {
-            if let Some(info) = model.asset.and_then(|r| models.get(&r.asset)) {
-                view.models.push((info.asset, area.world_matrix(id)));
-                view.triangles += info.triangles;
+            let Some(r) = model.asset else { continue };
+            let Some(info) = models.get(&r.asset) else {
+                continue;
+            };
+            match r.part {
+                None => {
+                    view.models.push((info.asset, None, area.world_matrix(id)));
+                    view.triangles += info.triangles;
+                }
+                // One part: drawn only if the model still has it.
+                Some(part) => {
+                    if let Some(node) = info.node_of(part) {
+                        view.models
+                            .push((info.asset, Some(node), area.world_matrix(id)));
+                    }
+                }
             }
         }
         for (id, light) in area.with::<Light>() {
@@ -158,10 +172,11 @@ mod tests {
                 triangles: 12,
                 min: Vec3::ZERO,
                 max: Vec3::ONE,
+                nodes: Vec::new(),
             },
         );
         let view = AreaView::of(&area, &models);
-        assert_eq!(view.models, [(asset, glam::Mat4::IDENTITY)]);
+        assert_eq!(view.models, [(asset, None, glam::Mat4::IDENTITY)]);
         assert_eq!(view.triangles, 12);
     }
 }
