@@ -30,6 +30,7 @@ chrono.workspace = true
 serde.workspace = true
 
 [dev-dependencies]
+proptest.workspace = true
 egui_kittest.workspace = true
 ron.workspace = true
 

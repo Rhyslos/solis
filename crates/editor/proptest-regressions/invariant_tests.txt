@@ -1,0 +1,11 @@
+# Seeds for failure cases proptest has generated in the past. It is
+# automatically read and these particular cases re-run before any
+# novel cases are generated.
+#
+# It is recommended to check this file in to source control so that
+# everyone who runs the test benefits from these saved cases.
+cc a8658dd3f1effbb3d5660f3fd6d145b6d9ddeefc0325eee0d2631ac24e99d998 # shrinks to before = [], after = [Walk { key: 0, sprint: false, ticks: 1 }]
+cc 69e7c06d27fa8a51b4778ebc2baf9d1dddd1e8c9e5cbb43777588fbb534a4845 # shrinks to steps = [Walk { key: 0, sprint: false, ticks: 1 }]
+cc 5128e3a3011e9f3462f77ad556e26a1682c1037627081174380a8122d5681c4a # shrinks to before = [Spawn, Spawn, Walk { key: 0, sprint: false, ticks: 3 }, Spawn, Walk { key: 0, sprint: false, ticks: 7 }, Spawn], after = [Walk { key: 0, sprint: false, ticks: 1 }]
+cc a46113fa680c84fe864578c4a7739ee7d3752c6dabd5da67d4df1b525381b681 # shrinks to before = [Walk { key: 0, sprint: false, ticks: 14 }, Walk { key: 0, sprint: false, ticks: 19 }], after = [Edit(MoveCrate { n: 28, x: 0, y: 0, z: 0 })]
+cc 371ca20547c9515d6fbf5e8c619c3fb9ffc41b61a6b392c58d27374a82c3a7de # shrinks to before = [Walk { key: 3, sprint: false, ticks: 3 }, Paused { ticks: 1 }, Edit(MoveCrate { n: 0, x: 0, y: 0, z: 0 })], after = [Look { x: 0, y: 0 }]

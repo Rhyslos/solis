@@ -58,7 +58,7 @@ A pull request that breaks one of these is sent back, however good the feature.
 
 7. **No `unsafe` code** without a decision record. The workspace denies it.
 8. **No crashes on bad input.** Library code never uses `unwrap`, `expect` or `panic!` outside tests (enforced by clippy). Return errors that explain the problem in plain words.
-9. **Untrusted files are hostile.** Every reader checks sizes and counts before allocating, and gets a fuzz test: thousands of randomly damaged inputs, none of which may crash it. Saved settings count as files.
+9. **Untrusted files are hostile.** Every reader checks sizes and counts before allocating, and gets a fuzz test: thousands of randomly damaged inputs, none of which may crash it. Saved settings count as files. A reader of anything a project can ship also gets a target in `fuzz/` (decision 0042), fuzzed weekly.
 10. **The frame loop never waits** on the GPU, files or the network; slow work runs on other threads and reports back with messages.
 11. **Never lose work.** Saving writes to a temporary file and swaps it in; edits are undoable.
 
@@ -66,7 +66,7 @@ A pull request that breaks one of these is sent back, however good the feature.
 
 12. **Read before changing:** the crate's README and tests first.
 13. **Change the smallest thing that works.** Refactors get their own pull request.
-14. **Tests move with the code.** Bug fixes add a test that reproduces the bug; features add tests for their behaviour.
+14. **Tests move with the code.** Every bug fix adds a test that fails without the fix: check that it does, by running it before the fix (decision 0042). Features add tests for their behaviour.
 15. **Documentation changes with the code.** See below.
 16. **The program's name lives in `branding.rs`.** Never hard-code it; see `RENAMING.md`.
 
@@ -74,6 +74,7 @@ A pull request that breaks one of these is sent back, however good the feature.
 
 17. **Ask before adding controls.** A feature that adds keys or mouse actions starts with a question to the project lead: a recommended choice (common in game engines, no clashes) and alternatives. If there's no answer, use the recommended choice and say so at the top of the pull request.
 18. **Speed is a feature.** Code on a performance path gets a benchmark or a scale-check entry, and the editor stays under its frame target with everything full (a full console, a big area).
+19. **The game's rules always hold.** A change to the game loop, saving, physics, input or replays keeps the whole-game invariant tests passing (`crates/editor/src/invariant_tests.rs`), and something new the game can do becomes a step they play (decision 0042).
 
 ## Documentation rule
 
@@ -95,6 +96,7 @@ A change is not done until its documentation is.
 ## Testing: two sign-offs per pull request
 
 1. **Code tests** by the author: normal cases, edge cases, failure cases (bad input gives an error, never a crash), a regression test for every bug fixed, round trips for anything that reads and writes a format, fuzz tests for anything that reads files, and benchmarks or scale-check entries for code on a performance path. Run the full suite and report the results in the pull request.
+   At the end of each phase, its review (decision 0027) also measures the tests: coverage per crate (`cargo tarpaulin`) and mutation testing on the core crates (`cargo mutants`), with every surviving mutation given a test or a reason (decision 0042).
 2. **Functional test** by the project lead: the "How to test" list in the pull request, tried in the editor.
 
 Both must pass before merging.
