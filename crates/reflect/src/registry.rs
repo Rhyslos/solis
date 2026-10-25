@@ -92,6 +92,12 @@ impl Registry {
         self.register(T::schema())
     }
 
+    /// Takes out the component called `name` (game code that changed or
+    /// went), giving back its schema if there was one.
+    pub fn remove(&mut self, name: &str) -> Option<Arc<ComponentSchema>> {
+        self.schemas.remove(name)
+    }
+
     /// The schema of the component called `name`.
     pub fn get(&self, name: &str) -> Option<&Arc<ComponentSchema>> {
         self.schemas.get(name)

@@ -99,3 +99,4 @@
 - **Lust:** a programming language made for games like Solis's, which reads like plain English. Solis checks it and runs it. Lust can also become Rust, which runs fastest, for the finished game.
 - **Native method:** a method Lust knows the name and values of, but whose work is done by the engine, such as `moveTo`. The engine's are listed in the `solis` folder Solis writes into each project.
 - **Mistake (in code):** something the checker finds before the code runs, such as a misspelt name or text where a number should be. Solis lists each one with its file, line and column (how far along the line).
+- **Tick:** one step of the running game. Solis runs 60 a second, whatever the frame rate, and game code's `update` runs once each tick, so the game behaves the same on a fast or slow computer.

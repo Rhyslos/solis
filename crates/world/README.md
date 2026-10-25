@@ -12,7 +12,7 @@ Hold the running game's entities in a form a game can run over quickly. The area
 - anything else (game code's components, unknown ones) as plain values, in `Values`;
 - each entity's area ID (`Id`), name (`Name`) and parent (`Parent`), and where it is in the world (`Global`), worked out parents first.
 
-`step` moves the clock on in fixed ticks (1/60 s, at most 8 a call, so a stall skips ahead instead of racing). Entities are found by their area ID (`entity`, `get`, `global`), and `placed` lists every entity with a given component, in the area's tree order. `update` takes in changes to a few entities' components and names (what the editor does while playing, such as each frame of a drag), and `rebuild` builds the world again from a changed area; both keep the clock.
+`step` moves the clock on in fixed ticks (1/60 s, at most 8 a call, so a stall skips ahead instead of racing). Entities are found by their area ID (`entity`, `get`, `global`), and `placed` lists every entity with a given component, in the area's tree order. `update` takes in changes to a few entities' components and names (what the editor does while playing, such as each frame of a drag), keeping where the game put an entity unless its Transform itself changed, and `rebuild` builds the world again from a changed area; both keep the clock. Game code moves and turns entities with `set_transform` (the entity's place follows at once, those under it at `settle`), and finds them by name with `find`.
 
 ## Must never
 
@@ -26,4 +26,4 @@ Hold the running game's entities in a form a game can run over quickly. The area
 
 ## Status
 
-Phase 3: built from an area, stepped, read by ID. Game code joins the ticks in Phase 4.
+Phase 3: built from an area, stepped, read by ID. Phase 4: game code moves entities between ticks.

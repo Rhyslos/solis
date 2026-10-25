@@ -178,7 +178,7 @@ fn an_update_takes_in_changed_entities_and_keeps_the_rest() {
     let mut moved = area.get(boat).unwrap().clone().with(&at(20.0, 0.0, 0.0));
     moved.set(&Light::point());
     area.insert(boat, moved);
-    world.update(&area, [boat]);
+    world.update(&area, [(boat, true)]);
     assert_eq!(world.clock(), clock);
     assert_eq!(world.len(), 2);
     assert!(world.get::<Light>(boat).is_some());
@@ -191,7 +191,7 @@ fn an_update_takes_in_changed_entities_and_keeps_the_rest() {
     freed.parent = None;
     area.insert(mast, freed);
     let extra = area.spawn(EntityData::new("Crate").with(&at(1.0, 1.0, 1.0)));
-    world.update(&area, [mast, extra]);
+    world.update(&area, [(mast, true), (extra, true)]);
     let fresh = World::from_area(&area);
     for id in [boat, mast, extra] {
         assert_eq!(world.global(id), fresh.global(id));
@@ -200,6 +200,64 @@ fn an_update_takes_in_changed_entities_and_keeps_the_rest() {
     // An entity that's gone does the same.
     let mut smaller = area.clone();
     let _ = smaller.remove(extra);
-    world.update(&smaller, [extra]);
+    world.update(&smaller, [(extra, true)]);
     assert_eq!(world.len(), 2);
+}
+
+#[test]
+fn an_update_that_didn_t_move_an_entity_keeps_where_the_game_put_it() {
+    let mut area = Area::new();
+    let cart = area.spawn(EntityData::new("Cart").with(&at(0.0, 0.0, 0.0)));
+    let mut world = World::from_area(&area);
+    world.set_transform(cart, at(5.0, 0.0, 0.0));
+    world.settle();
+    // A light is added in the editor: the cart stays where the game put it.
+    let mut lit = area.get(cart).unwrap().clone();
+    lit.set(&Light::point());
+    area.insert(cart, lit);
+    world.update(&area, [(cart, false)]);
+    assert!(world.get::<Light>(cart).is_some());
+    assert_eq!(world.global(cart).unwrap().w_axis.x, 5.0);
+    // Moved in the editor: the editor's place wins.
+    world.update(&area, [(cart, true)]);
+    assert_eq!(world.global(cart).unwrap().w_axis.x, 0.0);
+}
+
+#[test]
+fn game_code_moves_an_entity_and_those_under_it_follow_when_settled() {
+    let mut area = Area::default();
+    let ship = area.spawn(EntityData::new("Ship").with(&at(10.0, 0.0, 0.0)));
+    let mut mast = EntityData::new("Mast").with(&at(0.0, 0.0, 2.0));
+    mast.parent = Some(ship);
+    let mast = area.spawn(mast);
+    let mut flag = EntityData::new("Flag").with(&at(0.0, 0.0, 1.0));
+    flag.parent = Some(mast);
+    let flag = area.spawn(flag);
+    let bare = area.spawn(EntityData::new("Bare"));
+    let mut world = World::from_area(&area);
+    assert_eq!(world.find("Mast"), Some(mast));
+    assert_eq!(world.find("Nobody"), None);
+    assert_eq!(
+        world.parent_global(mast).w_axis.truncate(),
+        Vec3::new(10.0, 0.0, 0.0)
+    );
+    // The mast moves: its own place follows at once, the flag's on settle.
+    assert!(world.set_transform(mast, at(1.0, 0.0, 2.0)));
+    assert_eq!(
+        world.global(mast).unwrap().w_axis.truncate(),
+        Vec3::new(11.0, 0.0, 2.0)
+    );
+    assert_eq!(
+        world.global(flag).unwrap().w_axis.truncate(),
+        Vec3::new(10.0, 0.0, 3.0)
+    );
+    world.settle();
+    assert_eq!(
+        world.global(flag).unwrap().w_axis.truncate(),
+        Vec3::new(11.0, 0.0, 3.0)
+    );
+    // An entity without a transform gets one.
+    assert!(world.set_transform(bare, at(0.0, 5.0, 0.0)));
+    assert_eq!(world.get::<Transform>(bare), Some(at(0.0, 5.0, 0.0)));
+    assert!(!world.set_transform(EntityId::random(), at(0.0, 0.0, 0.0)));
 }

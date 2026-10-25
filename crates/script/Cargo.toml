@@ -16,6 +16,7 @@ layer = 1
 
 [dependencies]
 reflect.workspace = true
+glam.workspace = true
 lust.workspace = true
 mlua.workspace = true
 
