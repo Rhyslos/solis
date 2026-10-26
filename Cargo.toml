@@ -83,7 +83,7 @@ notify = "8.2"
 # "v2.0.0-alpha.33"`); without default features it needs only Rust's own
 # library. Lust and Lua run in Luau.
 lust = { git = "https://github.com/Rhyslos/Lust", rev = "a60cf875569b753e1374d9ea163d9759013018ae", default-features = false }
-mlua = { version = "0.10", features = ["luau"] }
+mlua = { version = "0.12", features = ["luau"] }
 notify-debouncer-mini = "0.7"
 # Deleting from the Library moves files to the Recycle Bin, so nothing is
 # lost by accident.
