@@ -8,10 +8,10 @@ What the hardening milestone ([decision 0042](../decisions/0042-a-hardening-mile
   - four by the whole-game tests, all in saving and loading;
   - two by fuzzing: one could freeze the code check for good, and one was a leaked thread;
   - two by mutation testing: an ordering mistake in areas, and a game code mistake that was let through.
-- **Mutation testing also found NEWLY_CAUGHT mistakes no test would have noticed, in behaviour that worked**, now tested so they stay that way.
+- **Mutation testing also found more than 180 places, in behaviour that worked, where a mistake would have gone unnoticed by the tests**, now tested so they stay that way.
 - **Fuzzing ran about 12 hours in all**, across ten file readers, about 230 million tries. It found nothing beyond those first two.
 - **The tests cover 86% of the code.** The engine's core crates are between 87% and 98%.
-- **Mutation testing**, which changes the code on purpose and checks a test notices, went from catching about 76% of changes to about RESULT_ALL. What's left is listed below, with why it doesn't matter.
+- **Mutation testing**, which changes the code on purpose and checks a test notices, went from catching about 71% of changes to about 83% across the engine's six core crates. What's left is listed below, with why it doesn't matter.
 - **The new checks stay:**
   - every pull request runs the whole-game tests;
   - a weekly job runs every fuzzer and a much larger whole-game run, and opens an issue if anything fails;
@@ -42,6 +42,8 @@ What the hardening milestone ([decision 0042](../decisions/0042-a-hardening-mile
 
 7. A hand-edited entity order with leading zeros made the next new entity sort before it instead of after. A property test now checks that any order works.
 8. In game code, a state field with no states listed was silently accepted; it's now a mistake in Problems.
+
+**A test that only passed on an idle computer**, found when the mutation runs loaded this machine. Components that keep sending each other events are cut off either by the count of events (10,000 a tick) or, on a busy computer, by the tick's time limit first. Both are right, and both are reported. The test accepted only the first, so it would have failed now and then on a busy CI machine. It accepts either now, and still checks the count exactly when that's the one that stops them.
 
 **Behaviours that worked but nothing tested** (mutation testing showed a mistake there would go unnoticed). Each now has a test that fails if it breaks:
 
@@ -99,9 +101,9 @@ The app is low because most of it opens the window and talks to the graphics car
 | input | 270 | 81% | 92% |
 | world | 245 | 81% | 91% |
 | reflect | 152 | 80% | 91% |
-| area | 584 | 67% | AREA_AFTER |
-| script | 773 | SCRIPT_BEFORE | SCRIPT_AFTER |
-| editor's play files | 340 | — | EDITOR_AFTER |
+| area | 584 | 67% | 81% |
+| script | 773 | 60%¹ | 75% |
+| **All six** | **2,250** | **71%** | **83%** |
 
 **What's still missed, and why it doesn't matter:**
 
@@ -112,7 +114,12 @@ The app is low because most of it opens the window and talks to the graphics car
 - **Text for programmers:** debug printing of internal structures.
 - **Equivalent changes:** `dt > 0` versus `dt >= 0` when `dt = 0` does nothing either way.
 
-LEFT_NOTE
+¹ The run before was cut short after 567 of script's 773 mutations; 60% is of those.
+
+**Where most of what's left is, and why:**
+
+- **The game loop and its link to the world** (`script`'s `game.rs` and `host.rs`, about 100 of script's 186 still missed). The editor's whole-game tests drive these: every game they play goes through them. But mutation testing one crate runs only that crate's own tests, so it can't see the editor's. Their behaviour is tested; it just isn't counted here.
+- **The editor's play files** (`play`, `save_game`, `game_code`, `play_input`; 340 mutations). Each needs the editor's whole test suite after a rebuild: about a minute and a half each on this 2-core machine, so about 8 hours in all. They weren't run here. A manual GitHub workflow running them in parallel on GitHub's machines is the cheap way to get these, and the next step for this report.
 
 ## The checks that stay
 
