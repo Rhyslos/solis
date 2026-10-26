@@ -10,11 +10,11 @@ The working plan for the hardening milestone between Phase 6 and Phase 7 ([decis
 
 ## Milestones
 
-### H1. Merge the stack (last)
+### H1. Merge the stack (done)
 
-- [ ] Merge the open pull requests into `main` in order, oldest first, once tested.
-- [ ] After each merge, retarget the next pull request onto `main`, then let CI pass before the next merge.
-- [ ] Fix anything that only shows up once merged, in its own pull request.
+- [x] Merge the open pull requests into `main` in order, oldest first, once tested.
+- [x] After each merge, retarget the next pull request onto `main`, then let CI pass before the next merge.
+- [x] Fix anything that only shows up once merged, in its own pull request.
 
 Done when `main` has everything up to Phase 6's third review round, and CI is green on it.
 
@@ -45,7 +45,9 @@ Rules checked after every script:
 
 A failure is shrunk to the smallest script and saved as a fixed regression test. In CI the generator runs a fixed number of cases (a budget kept under about two minutes). The weekly job runs many more.
 
-### H3. Fuzzing every reader
+### H3. Fuzzing every reader (done)
+
+**Found and fixed:** two components with the same name made the Lust compiler loop for ever, and the code-check thread leaked after answering. About 230 million tries over about 12 hours found nothing else. See the [report](../reports/hardening-phase-6.md).
 
 One `cargo-fuzz` target per reader of a file a project can ship:
 
@@ -65,13 +67,15 @@ One `cargo-fuzz` target per reader of a file a project can ship:
 - A weekly CI job runs each target for a time box on the nightly compiler and keeps a corpus between runs.
 - Every crash or hang becomes a regression test and a fix.
 
-### H4. Measuring the tests
+### H4. Measuring the tests (done)
+
+The [report](../reports/hardening-phase-6.md) has coverage per crate and mutation results before and after.
 
 - **Coverage** with `cargo-llvm-cov`: a per-crate table in the report. Untested code in the core crates either gets tests or a note saying why not (code that only drives the GPU, say).
 - **Mutation testing** with `cargo-mutants` on `world`, `physics`, `script`, `area`, and `editor`'s `play`, `save_game`, `game_code` and `play_input`. Every surviving mutation either gets a test that catches it or a note on why it can't matter.
 - The report goes in `docs/reports/hardening-phase-6.md`, written for the project lead.
 
-### H5. Checks that stay
+### H5. Checks that stay (done)
 
 - CI runs H2's invariant tests on every pull request, within their budget.
 - A weekly workflow runs fuzzing and the larger invariant run, and opens an issue on a failure.

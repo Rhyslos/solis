@@ -243,7 +243,23 @@ fn components_that_keep_sending_to_each_other_are_cut_off() {
          pass Echo;\nend\n",
     );
     run(&mut runtime, id(3), "Echo");
-    let failures = runtime.tick(0.1, &mut NoHost).failures;
+    let ticked = runtime.tick(0.1, &mut NoHost);
+    // Cut off either way: by the count of events, or (on a busy computer,
+    // where 10,000 deliveries take longer than a tick may) by the tick's
+    // time limit, which pauses the game and says why. The hardening
+    // milestone's mutation runs found this test failing under load when
+    // it accepted only the first.
+    if let Some(why) = &ticked.pause {
+        assert!(ticked.failures.is_empty(), "{:?}", ticked.failures);
+        assert!(!why.is_empty());
+        let heard = runtime.values(id(3), "Echo").unwrap().get("heard").cloned();
+        assert!(
+            matches!(heard, Some(Value::Int(n)) if n > 0 && n <= MAX_DELIVERIES as i64),
+            "{heard:?}"
+        );
+        return;
+    }
+    let failures = ticked.failures;
     assert_eq!(failures.len(), 1, "{failures:?}");
     assert!(failures[0].at.message.contains("more than 10000 events"));
     assert_eq!(
