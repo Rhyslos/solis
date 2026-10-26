@@ -1,26 +1,27 @@
-//! Keeping the program up to date ([decision
-//! 0043](../../../docs/decisions/0043-installed-and-updated-from-github.md)):
-//! checks GitHub on a thread when the window opens and every few hours
-//! (when the user hasn't turned that off), downloads a newer build while
-//! they work, and starts its installer when the window closes.
+//! Keeping the program up to date while it runs ([decision
+//! 0043](../../../docs/decisions/0043-installed-and-updated-from-github.md),
+//! [decision 0045](../../../docs/decisions/0045-a-splash-screen-that-asks-before-updating.md)).
+//! Solis asks GitHub on the splash screen as it starts (`startup.rs`); this
+//! is the rest: Help > Check for updates asks whether to update when
+//! there's a newer build, Update now downloads it while you work, and the
+//! installer runs when the window closes (opening Solis again after
+//! Restart to update). A check the splash couldn't wait for finishes
+//! here, quietly.
 
 use crate::branding;
-use editor::{LogLevel, UpdateNotice, Workbench};
+use editor::{LogLevel, UpdateNotice, UpdateOffer, Workbench};
 use std::path::PathBuf;
 use std::sync::mpsc::Receiver;
 use std::sync::{Arc, Mutex};
-use std::time::{Duration, Instant};
-use updater::Status;
-
-/// How often to look again while the window stays open.
-pub const CHECK_EVERY: Duration = Duration::from_secs(6 * 60 * 60);
+use updater::{Release, Status};
 
 /// An installer to start when the window has closed.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct Pending {
     /// The downloaded, checked installer.
     pub installer: PathBuf,
-    /// Whether to open the program again afterwards (Restart to update).
+    /// Whether to open the program again afterwards (Restart to update,
+    /// or Update now on the splash).
     pub relaunch: bool,
 }
 
@@ -47,41 +48,103 @@ pub fn this_copy() -> updater::Copy {
     }
 }
 
-/// The window's side of updating.
+/// Starts a check, waking the window when it moves on.
+pub fn start_check(ctx: &eframe::egui::Context) -> Receiver<Status> {
+    let ctx = ctx.clone();
+    updater::start(source(), this_copy(), move || ctx.request_repaint())
+}
+
+/// Starts downloading `release`, waking the window when it moves on.
+pub fn start_download(ctx: &eframe::egui::Context, release: Release) -> Receiver<Status> {
+    let ctx = ctx.clone();
+    updater::start_download(source(), release, this_copy().folder, move || {
+        ctx.request_repaint()
+    })
+}
+
+/// The window's side of updating, once the editor is open.
 pub struct Updates {
-    /// The check under way.
-    checking: Option<Receiver<Status>>,
-    /// When the last check started.
-    last_check: Option<Instant>,
+    /// The check or download under way.
+    working: Option<Receiver<Status>>,
     /// Whether the check under way was asked for (Help > Check for
-    /// updates), so its outcome is said in the Console even when nothing
-    /// changed.
+    /// updates): its answer is shown, and a newer build asked about.
     asked: bool,
+    /// The newer build last found, for Update now.
+    offered: Option<Release>,
+    /// The build skipped with Skip this version, if any (saved).
+    skipped: Option<u64>,
+    /// Whether `skipped` changed since it was last written to the
+    /// settings: written at once, so a crash soon after doesn't lose it.
+    skip_unsaved: bool,
     /// What happens when the window closes.
     pending: PendingSlot,
 }
 
 impl Updates {
-    /// Nothing checked yet; a downloaded build goes in `pending`.
-    pub fn new(pending: PendingSlot) -> Self {
+    /// Nothing checked yet; `skipped` as saved; a downloaded build goes in
+    /// `pending`.
+    pub fn new(pending: PendingSlot, skipped: Option<u64>) -> Self {
         Self {
-            checking: None,
-            last_check: None,
+            working: None,
             asked: false,
+            offered: None,
+            skipped,
+            skip_unsaved: false,
             pending,
         }
     }
 
-    /// Called every frame: starts a check when one is due, takes in how
-    /// it's going, and keeps the pending install in step with the editor.
-    pub fn frame(&mut self, workbench: &mut Workbench, ctx: &eframe::egui::Context) {
-        let due = self
-            .last_check
-            .is_none_or(|last| last.elapsed() >= CHECK_EVERY);
-        if workbench.auto_update() && due && self.checking.is_none() && !is_ready(workbench) {
-            self.start(workbench, ctx, false);
+    /// The build skipped with Skip this version, to save.
+    pub fn skipped(&self) -> Option<u64> {
+        self.skipped
+    }
+
+    /// Installs `installer` when the window closes, opening Solis again
+    /// after (Update now on the splash).
+    pub fn install_on_close(&mut self, installer: PathBuf) {
+        if let Ok(mut pending) = self.pending.lock() {
+            *pending = Some(Pending {
+                installer,
+                relaunch: true,
+            });
         }
-        self.take_in(workbench);
+    }
+
+    /// Skips `build` from now on (Skip this version).
+    pub fn skip(&mut self, build: u64) {
+        if self.skipped != Some(build) {
+            self.skipped = Some(build);
+            self.skip_unsaved = true;
+        }
+    }
+
+    /// The skipped build, once, if it changed since this was last asked:
+    /// for saving it straight away.
+    pub fn take_unsaved_skip(&mut self) -> Option<Option<u64>> {
+        std::mem::take(&mut self.skip_unsaved).then_some(self.skipped)
+    }
+
+    /// Carries on with the splash's check, which GitHub was too slow to
+    /// answer before Solis opened: its answer only shows under Help.
+    pub fn adopt(&mut self, check: Receiver<Status>, workbench: &mut Workbench) {
+        self.working = Some(check);
+        self.asked = false;
+        workbench.set_update(UpdateNotice::Checking);
+    }
+
+    /// Called every frame: takes in how the check or download is going,
+    /// and keeps the pending install in step with the editor.
+    pub fn frame(&mut self, workbench: &mut Workbench) {
+        if let Some(receiver) = &self.working {
+            let arrived: Vec<Status> = receiver.try_iter().collect();
+            let ended = arrived.iter().any(Status::is_final);
+            for status in arrived {
+                self.follow(workbench, status);
+            }
+            if ended {
+                self.working = None;
+            }
+        }
         if let Ok(mut pending) = self.pending.lock()
             && let Some(pending) = pending.as_mut()
         {
@@ -91,37 +154,24 @@ impl Updates {
 
     /// Checks now (Help > Check for updates).
     pub fn check_now(&mut self, workbench: &mut Workbench, ctx: &eframe::egui::Context) {
-        if self.checking.is_none() {
-            self.start(workbench, ctx, true);
+        if self.working.is_none() {
+            self.asked = true;
+            self.working = Some(start_check(ctx));
+            workbench.set_update(UpdateNotice::Checking);
         }
     }
 
-    fn start(&mut self, workbench: &mut Workbench, ctx: &eframe::egui::Context, asked: bool) {
-        self.last_check = Some(Instant::now());
-        self.asked = asked;
-        let ctx = ctx.clone();
-        self.checking = Some(updater::start(source(), this_copy(), move || {
-            ctx.request_repaint();
-        }));
-        workbench.set_update(UpdateNotice::Checking);
-    }
-
-    fn take_in(&mut self, workbench: &mut Workbench) {
-        let Some(receiver) = &self.checking else {
-            return;
-        };
-        let arrived: Vec<Status> = receiver.try_iter().collect();
-        let mut ended = false;
-        for status in arrived {
-            ended |= status.is_final();
-            self.follow(workbench, status);
-        }
-        if ended {
-            self.checking = None;
+    /// Downloads the build offered (the update question's Update now).
+    pub fn download(&mut self, workbench: &mut Workbench, ctx: &eframe::egui::Context) {
+        if let Some(release) = self.offered.clone()
+            && self.working.is_none()
+        {
+            workbench.set_update(UpdateNotice::Downloading(release.build));
+            self.working = Some(start_download(ctx, release));
         }
     }
 
-    /// Takes in one step of a check.
+    /// Takes in one step of a check or download.
     fn follow(&mut self, workbench: &mut Workbench, status: Status) {
         let name = branding::APP_NAME;
         let (notice, said) = match status {
@@ -136,6 +186,27 @@ impl Updates {
                     )
                 }),
             ),
+            Status::Available(release) => {
+                let build = release.build;
+                let copy = this_copy();
+                let said = if self.asked {
+                    workbench.offer_update(UpdateOffer {
+                        latest: build,
+                        current: copy.build,
+                        installed: copy.installed,
+                    });
+                    None
+                } else if updater::should_offer(build, self.skipped, false) {
+                    Some((
+                        LogLevel::Info,
+                        format!("Build {build} of {name} is available: Help > Check for updates."),
+                    ))
+                } else {
+                    None
+                };
+                self.offered = Some(release);
+                (UpdateNotice::Available(build), said)
+            }
             Status::Ready { build, installer } => {
                 if let Ok(mut pending) = self.pending.lock() {
                     *pending = Some(Pending {
@@ -154,19 +225,6 @@ impl Updates {
                     )),
                 )
             }
-            Status::NotInstalled(build) => (
-                UpdateNotice::NotInstalled(build),
-                Some((
-                    LogLevel::Info,
-                    format!(
-                        "Build {build} of {name} is out. This copy wasn't installed with the \
-                         installer, so it can't update itself: download {} from {} and run it \
-                         once.",
-                        branding::INSTALLER_NAME,
-                        releases_page()
-                    ),
-                )),
-            ),
             Status::FromSource => (
                 UpdateNotice::FromSource,
                 self.asked.then(|| {
@@ -181,8 +239,6 @@ impl Updates {
                 }),
             ),
             Status::Failed(why) => {
-                // A computer that's offline isn't worth a warning every few
-                // hours; only when asked.
                 let level = if self.asked {
                     LogLevel::Warning
                 } else {
@@ -194,20 +250,11 @@ impl Updates {
                 )
             }
         };
-        // Saying the same again (a check every few hours finding the same
-        // build) is noise.
-        let changed = workbench.update() != &notice;
-        if let Some((level, text)) = said
-            && (changed || self.asked)
-        {
+        if let Some((level, text)) = said {
             workbench.log(level, text);
         }
         workbench.set_update(notice);
     }
-}
-
-fn is_ready(workbench: &Workbench) -> bool {
-    matches!(workbench.update(), UpdateNotice::Ready(_))
 }
 
 /// The page listing every build.
@@ -234,7 +281,20 @@ mod tests {
     }
 
     fn updates() -> Updates {
-        Updates::new(Arc::new(Mutex::new(None)))
+        Updates::new(Arc::new(Mutex::new(None)), None)
+    }
+
+    fn release(build: u64) -> Release {
+        let asset = |name: &str| updater::Asset {
+            name: name.into(),
+            url: format!("https://github.com/x/y/releases/download/build-{build}/{name}"),
+            size: 1,
+        };
+        Release {
+            build,
+            installer: asset("a"),
+            checksum: asset("b"),
+        }
     }
 
     #[test]
@@ -256,51 +316,59 @@ mod tests {
     }
 
     #[test]
-    fn quiet_checks_say_nothing_when_nothing_changed() {
+    fn asking_finds_a_newer_build_and_asks_whether_to_update() {
+        let mut w = workbench();
+        let mut u = updates();
+        u.asked = true;
+        u.follow(&mut w, Status::Available(release(12)));
+        assert_eq!(w.update(), &UpdateNotice::Available(12));
+        assert_eq!(u.offered.as_ref().map(|r| r.build), Some(12));
+        assert!(
+            w.log_lines().is_empty(),
+            "asked in a window, not the Console"
+        );
+    }
+
+    #[test]
+    fn a_late_answer_from_the_splash_only_tells_and_respects_a_skip() {
+        let mut w = workbench();
+        let mut u = updates();
+        u.follow(&mut w, Status::Available(release(12)));
+        assert!(w.log_lines().last().unwrap().text.contains("Build 12"));
+        let mut w = workbench();
+        let mut u = Updates::new(Arc::new(Mutex::new(None)), Some(12));
+        u.follow(&mut w, Status::Available(release(12)));
+        assert!(w.log_lines().is_empty(), "skipped: not even a line");
+        assert_eq!(w.update(), &UpdateNotice::Available(12), "Help still says");
+    }
+
+    #[test]
+    fn quiet_checks_say_little_and_asked_ones_answer() {
         let mut w = workbench();
         let mut u = updates();
         u.follow(&mut w, Status::UpToDate(4));
         u.follow(&mut w, Status::FromSource);
         assert!(w.log_lines().is_empty(), "{:?}", w.log_lines());
-        // Offline: said once, quietly, not every few hours.
         u.follow(&mut w, Status::Failed("offline".into()));
-        u.follow(&mut w, Status::Failed("offline".into()));
-        let lines: Vec<_> = w
-            .log_lines()
-            .iter()
-            .filter(|l| l.text.contains("offline"))
-            .collect();
-        assert_eq!(lines.len(), 1);
-        assert_eq!(lines[0].level, LogLevel::Info);
-    }
-
-    #[test]
-    fn asked_checks_always_answer() {
-        let mut w = workbench();
-        let mut u = updates();
+        assert_eq!(w.log_lines().last().unwrap().level, LogLevel::Info);
         u.asked = true;
         u.follow(&mut w, Status::UpToDate(4));
-        u.follow(&mut w, Status::UpToDate(4));
-        assert_eq!(
-            w.log_lines()
-                .iter()
-                .filter(|l| l.text.contains("up to date"))
-                .count(),
-            2
-        );
+        assert!(w.log_lines().last().unwrap().text.contains("up to date"));
         u.follow(&mut w, Status::Failed("offline".into()));
         assert_eq!(w.log_lines().last().unwrap().level, LogLevel::Warning);
     }
 
     #[test]
-    fn copies_not_installed_are_told_where_the_installer_is() {
-        let mut w = workbench();
+    fn skipping_is_kept_and_saved_once() {
         let mut u = updates();
-        u.follow(&mut w, Status::NotInstalled(12));
-        let line = &w.log_lines().last().unwrap().text;
-        assert!(line.contains(branding::INSTALLER_NAME), "{line}");
-        assert!(line.contains("/releases"), "{line}");
-        assert!(u.pending.lock().unwrap().is_none());
+        assert_eq!(u.skipped(), None);
+        assert_eq!(u.take_unsaved_skip(), None);
+        u.skip(14);
+        assert_eq!(u.skipped(), Some(14));
+        assert_eq!(u.take_unsaved_skip(), Some(Some(14)));
+        assert_eq!(u.take_unsaved_skip(), None, "once");
+        u.skip(14);
+        assert_eq!(u.take_unsaved_skip(), None, "the same again: nothing new");
     }
 
     #[test]

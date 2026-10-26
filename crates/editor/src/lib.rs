@@ -35,6 +35,7 @@ pub mod profiler;
 mod properties;
 mod save_game;
 pub mod screen;
+pub mod splash;
 #[cfg(test)]
 mod test_support;
 pub mod theme;
@@ -58,6 +59,7 @@ pub use look::{Look, LookKind};
 pub use models::{FileLight, FileLightKind, ModelInfo};
 pub use panel::Panel;
 pub use play::PlayState;
+pub use splash::{SplashView, UpdateAnswer, UpdateOffer};
 pub use transforming::Snapping;
 pub use updates::UpdateNotice;
 pub use viewport::{

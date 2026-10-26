@@ -51,13 +51,13 @@ fn checking_can_t_be_asked_twice_at_once() {
 }
 
 #[test]
-fn updating_by_itself_can_be_turned_off() {
+fn checking_when_starting_can_be_turned_off() {
     let mut h = window(Workbench::new(info(), None));
     h.run();
     assert!(h.state().0.auto_update(), "on unless turned off");
     h.get_by_label("Help").click();
     h.run();
-    h.get_by_label("Update automatically").click();
+    h.get_by_label("Check for updates when starting").click();
     h.run();
     assert!(!h.state().0.auto_update());
     assert!(h.state().1.contains(&WorkbenchAction::SetAutoUpdate(false)));
@@ -125,5 +125,37 @@ fn every_notice_reads_as_a_line() {
         UpdateNotice::Failed("offline".into())
             .line()
             .contains("offline")
+    );
+}
+
+#[test]
+fn help_s_check_asks_whether_to_update_and_passes_the_answer_on() {
+    use crate::splash::UpdateOffer;
+    let mut w = Workbench::new(info(), None);
+    let offer = UpdateOffer {
+        latest: 12,
+        current: Some(10),
+        installed: true,
+    };
+    w.offer_update(offer.clone());
+    let mut h = window(w);
+    h.run();
+    h.get_by_label("Update now").click();
+    h.run();
+    assert!(h.state().1.contains(&WorkbenchAction::DownloadUpdate));
+    // Asked again, and skipped: the build to skip goes with the answer.
+    h.state_mut().0.offer_update(offer);
+    h.run();
+    h.get_by_label("Skip this version").click();
+    h.run();
+    h.get_by_label("Open without updating").click();
+    h.run();
+    assert_eq!(
+        h.state().1.last(),
+        Some(&WorkbenchAction::SkipUpdate(Some(12)))
+    );
+    assert!(
+        h.query_by_label("Update available").is_none(),
+        "answered: gone"
     );
 }

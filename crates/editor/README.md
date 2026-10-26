@@ -33,4 +33,4 @@ Tests of the whole editor (drawn with egui_kittest, without a GPU) are in `workb
 
 ## Status
 
-Phase 1 complete: the shell, a flying camera, imported models, looks, lights, sky and fog. Phase 2: entities, undo, projects, area files and assemblies. Phase 3: picking and gizmos in the viewport, the Area panel and Properties for several entities, the Library, console commands and Problems, play mode and the Game panel, several views and flat views. The panels not built yet say what arrives in which phase.
+Phase 1 complete: the shell, a flying camera, imported models, looks, lights, sky and fog. Phase 2: entities, undo, projects, area files and assemblies. Phase 3: picking and gizmos in the viewport, the Area panel and Properties for several entities, the Library, console commands and Problems, play mode and the Game panel, several views and flat views. The panels not built yet say what arrives in which phase. Updates (decisions 0043 and 0045): the Help menu's part about updates and Restart to update (`updates.rs`), and the splash screen and update question (`splash.rs`, which the app also uses while starting).
