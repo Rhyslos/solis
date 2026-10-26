@@ -200,7 +200,7 @@ Solis is built in phases, one milestone per pull request. Each phase ends with a
 - [ ] Ambient occlusion
 - [ ] Shadows near and far: cascades, contact and soft shadows
 - [ ] Many lamps, glowing surfaces and area lights
-- [ ] The light ramp look, for Minecraft-like games
+- [ ] The light ramp look, for blocky games
 - [ ] Volumetric fog and light shafts
 - [ ] Reflection probes
 - [ ] Reflections on the screen and wet surfaces

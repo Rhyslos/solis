@@ -5,7 +5,7 @@
 
 ## Problem
 
-Solis has a scale target (DESIGN.md §2): Empire at War-style battles, 2,000 units and 20,000 projectiles at 60 frames a second. Slowdowns creep in a little at a time, and are cheapest to fix when they are new. Aventail guards against the same thing with its heavy-mesh check (Aventail decision 0033). Solis needs its own guard, from the start.
+Solis has a scale target (DESIGN.md §2): large strategy battles, 2,000 units and 20,000 projectiles at 60 frames a second. Slowdowns creep in a little at a time, and are cheapest to fix when they are new. Aventail guards against the same thing with its heavy-mesh check (Aventail decision 0033). Solis needs its own guard, from the start.
 
 ## Options
 

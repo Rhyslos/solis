@@ -13,7 +13,7 @@ Sections marked **(to decide)** are open. Everything else is the current plan, a
 A lightweight, free alternative to Godot, Unity and Unreal for people getting into game development, aimed at:
 
 - **Stylized games,** with tools for that look out of the box.
-- **Strategy games** in the Empire at War mould (§2).
+- **Strategy games** with large space and ground battles (§2).
 - **Medium-poly online co-op and PvP games,** with good netcode built in.
 - **Big open worlds,** built from zones and LODs.
 
@@ -23,17 +23,17 @@ A lightweight, free alternative to Godot, Unity and Unreal for people getting in
 
 ### Name
 
-**Solis** (Latin for "of the sun"). No 3D engine by that name was found; the nearest are "Solas", a small .NET engine, and an old 2D game called Solis on SourceForge. The VFX system is **Solis Eclipse** (§9): the sun-and-eclipse pun works, and the "Solis" prefix keeps it apart from the Eclipse IDE in searches. **Under review** (2026-10-26): the Eclipse Foundation's ECLIPSE trademark covers software development tools, and an "Eclipse Engine" is being built for *Star Wars: Eclipse*; "Solstice" is recommended instead ([lighting research](docs/reports/lighting-research.md), "Names for the effects suite").
+**Solis** (Latin for "of the sun"). No 3D engine by that name was found; the nearest are "Solas", a small .NET engine, and an old 2D game called Solis on SourceForge. The VFX system is **Solis Eclipse** (§9): the sun-and-eclipse pun works, and the "Solis" prefix keeps it apart from the Eclipse IDE in searches. **Under review** (2026-10-26): "Eclipse" is a registered trademark for software development tools, and another game engine uses the name; "Solstice" is recommended instead ([the Phase 8 plan](docs/plans/phase-8-light.md), choice 2).
 
 ---
 
 ## 2. Scale target
 
-**Empire at War-style battles:** hundreds of units normally, a few thousand at peak (cheap unit spam), and tens of thousands of projectiles and effects on screen, running smoothly.
+**Large strategy battles:** hundreds of units normally, a few thousand at peak (cheap unit spam), and tens of thousands of projectiles and effects on screen, running smoothly.
 
 **Tested at three levels** ([decision 0030](docs/decisions/0030-scale-is-tested-at-three-levels.md)): the **target**, 2,000 moving units and 20,000 projectiles at 60 fps; **stress**, 10,000 units and 100,000 projectiles holding 30 fps without stutter; and a **ceiling** run that keeps adding until 60 fps ends, and reports where. Games will go past the target (two fleets of fighter squads, a horde of 6,000 zombies), so we test past it.
 
-That's the number the renderer, the component system and VFX are designed against. It is not Beyond All Reason's tens of thousands of units.
+That's the number the renderer, the component system and VFX are designed against. It is not the tens of thousands of units of the very largest strategy games.
 
 Game-specific systems (squads, hardpoints, hangars, a campaign map, fleet caps) belong in each game's own Lust code, not the engine.
 
@@ -176,9 +176,9 @@ wgpu, lightweight, built for medium-poly, stylized games.
 - Tonemapping, automatic exposure, bloom, white balance and colour grading (much of a stylized look lives here)
 - **A physical sky** (Hillaire's method) with an artist's tint and fog colour ramp over it, time of day and night (moons, stars, aurora), weather and moods, flat and volumetric clouds, haze over distance, volumetric fog and light shafts
 - **Light with shape:** sky light from the real sky, ambient occlusion, cascaded and contact shadows, hundreds of lamps with a few shadowed, glowing surfaces and area lights, reflection probes and reflections on the screen, and bounced light every way that can be made fast: baked light probes, bounce from the screen, real-time probes traced against a simplified world, and a time-boxed experiment for a better method
-- **The light ramp look** for Minecraft-like games, beside Standard, Stylized and Unlit
+- **The light ramp look** for blocky games, beside Standard, Stylized and Unlit
 - Quality levels (Low, Default, High), so the scale target holds on mid-range cards
-- The project lead's reference games: Firewatch, Skyrim, Cyberpunk 2077, Mad Max and Arma 3, then Minecraft (for identity) and Subnautica (for light from within)
+- The looks aimed for, from the project lead's reference games (kept by the project lead, described in the Phase 8 plan): warm, cosy light; a stylized world of weathers; neon nights; a huge sky gradient; realism; light from living things; and simple, readable light as a game's identity
 
 **Later:**
 - Baked lightmaps, TAA and upscaling, hardware ray tracing once wgpu's is stable
@@ -314,7 +314,7 @@ Both sides review each other's pull requests.
 - 2026-10-20: LustScript/Lua only for editor scripting, never game code.
 - 2026-10-21: Lust compiles to Rust (Lust's decision), so Lust uses the foundation's crates directly, with no C interface.
 - 2026-10-20: Entities and components with typed events; no node tree or signals.
-- 2026-10-20: Scale target: Empire at War-style battles (§2). Game-specific systems stay out of the engine.
+- 2026-10-20: Scale target: large strategy battles (§2). Game-specific systems stay out of the engine.
 - 2026-10-20: [0001](docs/decisions/0001-builds-on-demand.md): builds and checks don't run on every push.
 - 2026-10-21: [0002](docs/decisions/0002-engine-in-rust-games-in-lust.md): the engine is Rust; games are Lust. Replaces "the engine in Lust on a thin Rust foundation". The build order is in [ROADMAP.md](ROADMAP.md).
 - 2026-10-21: [0003](docs/decisions/0003-games-in-rust-lust-or-lua.md): games can be written in Lust, Rust or Lua. Replaces "LustScript/Lua only for editor scripting, never game code".

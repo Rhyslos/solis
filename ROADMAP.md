@@ -153,10 +153,10 @@ Solis's selling point: skies, sunsets and light that feel right, never flat. The
 - **Light from the sky:** ambient light and reflections from the real sky, instead of one flat colour.
 - **The finished picture, part two:** bloom, white balance, colour grading (moved from effects).
 - **Time of day and night:** sun, moons and stars where they really are, the aurora; colour curves and a tint over the sky for stylized games.
-- **Weather and moods:** weather files keyed by time of day, blended, with one overcast control (after Skyrim, Firewatch and Arma 3, the project lead's references).
+- **Weather and moods:** weather files keyed by time of day, blended, with one overcast control (after the project lead's reference looks).
 - **Clouds:** a flat layer, and volumetric clouds at High.
-- **Ambient occlusion,** **cascaded and contact shadows** reaching far, and **hundreds of lamps** with a few shadowed, glowing surfaces that light the world, and area lights.
-- **The light ramp look,** for Minecraft-like games: simple, readable light where dark means dark.
+- **Ambient occlusion,** **cascaded and contact shadows** reaching far, and **hundreds of lamps** with a few shadowed, glowing surfaces that light the world (and glow that wakes in the dark, for plants and creatures), and area lights.
+- **The light ramp look,** for blocky games: simple, readable light where dark means dark.
 - **Volumetric fog and light shafts,** with moving, coloured fog volumes and caustics.
 - **Reflection probes,** and **reflections on the screen with wet surfaces** (for neon streets in the rain).
 - **Bounced light, every way that can be made fast:** baked light probes (decision 0008's second source of indirect light), bounce from the screen, real-time probes traced against a simplified world (no ray-tracing hardware needed), and a time-boxed experiment for a better method, kept only if it wins.

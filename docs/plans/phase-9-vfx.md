@@ -131,7 +131,7 @@ What makes effects match the stylized look (decision 0013) rather than look borr
 
 - **Colour from a gradient over a grey shape** (a "gradient map"), banded into the look's number of bands when the view is Stylized, so fire has flat steps of yellow, orange and red like the models' light.
 - **Eroded edges:** solid shapes that shrink from the edge inwards over their life, with a hard (Stylized) or soft (Standard) edge, and an optional dark rim just inside the edge: the effects' version of the models' outlines.
-- **Lit puffs:** smoke shaded as if each puff were a ball, lit by the sun and sky in the same bands as models, so smoke has a lit side and a shadow side (the Wind Waker and Breath of the Wild look).
+- **Lit puffs:** smoke shaded as if each puff were a ball, lit by the sun and sky in the same bands as models, so smoke has a lit side and a shadow side (the look of cel-shaded adventure games).
 - **Mesh particles** use the models' own shading, outlines included.
 - **Bolts** gain a white-hot core inside their colour, and bloom does the rest.
 
@@ -143,7 +143,7 @@ The last pass grows into a short chain, all in plain drawing passes (no compute,
 world (HDR) → bloom → exposure and tone mapping → colour grading → [pixelation] → UI layer → sRGB
 ```
 
-- **Bloom: the "Call of Duty" method** (Jorge Jimenez, SIGGRAPH 2014; the LearnOpenGL "physically based bloom" article). The HDR image is halved five or six times with a 13-tap filter, then built back up with a small tent filter, each level added to the next, and the result blended gently into the picture (about 4%) with no brightness threshold: bright things spread light, dark things barely change, as with a real lens. The first halving uses a "Karis average" so a single very bright pixel (a far laser 1.5 pixels wide) doesn't flicker. Only the lit world blooms (the alpha mask); the editor's backdrop and lines never do.
+- **Bloom: Jorge Jimenez's method** (SIGGRAPH 2014; the LearnOpenGL "physically based bloom" article). The HDR image is halved five or six times with a 13-tap filter, then built back up with a small tent filter, each level added to the next, and the result blended gently into the picture (about 4%) with no brightness threshold: bright things spread light, dark things barely change, as with a real lens. The first halving uses a "Karis average" so a single very bright pixel (a far laser 1.5 pixels wide) doesn't flicker. Only the lit world blooms (the alpha mask); the editor's backdrop and lines never do.
 - **Stylized bloom:** an option that bands the glow into steps, for the toon look.
 - **Colour grading:** the sliders are turned, on the CPU, into a small 32×32×32 colour table (a 3D texture) whenever they change; an optional LUT image (the 1024×32 strip Unity and Unreal use) is folded into the same table. The last pass looks each pixel up once, after tone mapping. A LUT changes each colour on its own, so blurs and glows can't be graded into one.
 - **Settings** live on the area's Environment component (bloom on, strength, size, stylized; grading sliders and LUT), so each area has its own and they're saved and undone like any field.
@@ -244,7 +244,7 @@ So nothing is built twice, the two plans agree:
 
 ## Sources
 
-- Bloom: Jorge Jimenez, [Next Generation Post Processing in Call of Duty: Advanced Warfare](https://www.iryoku.com/next-generation-post-processing-in-call-of-duty-advanced-warfare/) (SIGGRAPH 2014); LearnOpenGL, [Physically Based Bloom](https://learnopengl.com/Guest-Articles/2022/Phys.-Based-Bloom).
+- Bloom: Jorge Jimenez, [Next Generation Post Processing](https://www.iryoku.com/next-generation-post-processing-in-call-of-duty-advanced-warfare/) (SIGGRAPH 2014); LearnOpenGL, [Physically Based Bloom](https://learnopengl.com/Guest-Articles/2022/Phys.-Based-Bloom).
 - Compute shaders and older cards: wgpu-types 30.0.1, [`DownlevelFlags::COMPUTE_SHADERS`](https://docs.rs/wgpu-types/latest/wgpu_types/struct.DownlevelFlags.html) ("WebGL2, and GLES3.0 devices do not support compute"); the wgpu [boids example](https://wgpu.rs/doc/src/wgpu_examples/boids/mod.rs.html) for the GPU way.
 - How others shape effects: Epic, [Overview of Niagara effects](https://dev.epicgames.com/documentation/en-us/unreal-engine/overview-of-niagara-effects-for-unreal-engine) (systems, emitters, spawn and update stacks, renderers); Unity, [VFX Graph contexts](https://docs.unity3d.com/Packages/com.unity.visualeffectgraph@7.6/manual/Contexts.html) and the [Flipbook Player block](https://docs.unity3d.com/Packages/com.unity.visualeffectgraph@17.5/manual/Block-FlipbookPlayer.html); Godot, [GPUParticles3D](https://docs.godotengine.org/en/4.2/classes/class_gpuparticles3d.html); Niagara's [ribbon renderer](https://dev.epicgames.com/documentation/en-us/unreal-engine/python-api/class/NiagaraRibbonRendererProperties).
 - Bevy Hanabi 0.19.0 ([docs.rs](https://docs.rs/bevy_hanabi), MIT or Apache-2.0): GPU particles with init, update and render stages and an expression graph. Not suggested as a dependency (it needs Bevy and compute shaders); useful as a reference for a later GPU path.
