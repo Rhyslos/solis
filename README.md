@@ -28,9 +28,9 @@ The first build takes a few minutes. `cargo run -p app -- --help` lists the opti
 
 Solis is built in phases, one milestone per pull request. Each phase ends with a **gate** the project lead tries by hand before the next starts. This tracker is updated by the pull request that finishes each milestone; the full plan is in [ROADMAP.md](ROADMAP.md).
 
-**Overall: 25 of 60 milestones** `█████░░░░░░░░` 42%
+**Overall: 42 of 84 milestones** `██████░░░░░░░` 50%
 
-**Now:** Phases 1, 2 and 3 are built and wait for their gates to be tried by hand ([Phase 3 plan](docs/plans/phase-3.md)). Phase 4, game code, is built and reviewed, and waits for its gate too ([Phase 4 plan](docs/plans/phase-4.md)). Phase 5, scale, is built and reviewed, and waits for its gate ([Phase 5 plan](docs/plans/phase-5.md)): try **Help > Make the benchmark…**. Phase 6, simulation and play, is built and reviewed three times, and waits for its gate ([Phase 6 plan](docs/plans/phase-6.md)): try **Help > Make the playground…**. The hardening milestone is done and everything is merged: its gate is reading the [hardening report](docs/reports/hardening-phase-6.md) and trying the playground once more. Solis now installs and updates itself from GitHub's Releases page. Next is Phase 7, sound and animation.
+**Now:** Phases 1, 2 and 3 are built and wait for their gates to be tried by hand ([Phase 3 plan](docs/plans/phase-3.md)). Phase 4, game code, is built and reviewed, and waits for its gate too ([Phase 4 plan](docs/plans/phase-4.md)). Phase 5, scale, is built and reviewed, and waits for its gate ([Phase 5 plan](docs/plans/phase-5.md)): try **Help > Make the benchmark…**. Phase 6, simulation and play, is built and reviewed three times, and waits for its gate ([Phase 6 plan](docs/plans/phase-6.md)): try **Help > Make the playground…**. The hardening milestone is done and everything is merged: its gate is reading the [hardening report](docs/reports/hardening-phase-6.md) and trying the playground once more. Solis now installs and updates itself from GitHub's Releases page. Next is Phase 7, sound and animation. After it, Phase 8 brings light, sky and atmosphere ([plan](docs/plans/phase-8-light.md), proposed in [decision 0046](docs/decisions/0046-light-before-netcode.md)), and netcode moves to Phase 11.
 
 ### Phase 0 · Groundwork — 7 of 7
 
@@ -182,7 +182,68 @@ Solis is built in phases, one milestone per pull request. Each phase ends with a
 
 **Gate:** a character walks and runs with smooth blending, and its footsteps sound right.
 
-### Phase 8 · Netcode — 0 of 5
+### Phase 8 · Light, sky and atmosphere — 0 of 13
+
+`░░░░░░░░░░░░░` 0%
+
+<details>
+<summary>Milestones</summary>
+
+- [ ] Measure first: the light showcase and quality levels ([plan](docs/plans/phase-8-light.md), decision 0046)
+- [ ] Real light and automatic exposure
+- [ ] The physical sky: sunsets, twilight, haze over distance
+- [ ] Light from the sky: ambient light and reflections
+- [ ] The finished picture, part two: bloom, white balance, grading
+- [ ] Time of day and night: sun, moon and stars
+- [ ] Clouds: a flat layer and volumetric clouds
+- [ ] Ambient occlusion
+- [ ] Shadows near and far: cascades, contact and soft shadows
+- [ ] Many lamps, a few with shadows
+- [ ] Volumetric fog and light shafts
+- [ ] Reflection probes
+- [ ] Baked light probes: bounced light
+
+</details>
+
+**Gate:** in the light showcase, noon to night with no jumps; a golden hour that feels like the best game sunsets; no Backrooms indoors; the stylized look as good; the benchmark's target at 60 fps.
+
+### Phase 9 · Effects — 0 of 5
+
+`░░░░░░░░░░░░░` 0%
+
+<details>
+<summary>Milestones</summary>
+
+- [ ] Effects: the file, the particles and game code ([plan](docs/plans/phase-9-vfx.md))
+- [ ] The effect preview tab and its graph
+- [ ] Flipbooks, eroded and mesh particles: the stylized look
+- [ ] Trails and ribbons
+- [ ] The effects kit and the battle
+
+</details>
+
+**Gate:** lasers, hits and explosions look good in the benchmark battle at 60 fps.
+
+### Phase 10 · Game UI — 0 of 7
+
+`░░░░░░░░░░░░░` 0%
+
+<details>
+<summary>Milestones</summary>
+
+- [ ] The drawing layer: shapes and text, sharp at any size ([plan](docs/plans/phase-10-sungraph-ui.md))
+- [ ] Screens in Lust, with values tied to the game
+- [ ] Menus: clicks, focus, gamepads and pausing
+- [ ] The canvas, part 1: selecting, moving and Properties
+- [ ] The canvas, part 2: drawing tools and ties
+- [ ] Styles, and text size for players
+- [ ] The UI sample
+
+</details>
+
+**Gate:** a health bar and a pause menu on screen, drawn and tied to the game in the editor.
+
+### Phase 11 · Netcode — 0 of 5
 
 `░░░░░░░░░░░░░` 0%
 
@@ -199,22 +260,7 @@ Solis is built in phases, one milestone per pull request. Each phase ends with a
 
 **Gate:** two PCs on different networks play the benchmark together without desyncing.
 
-### Phase 9 · Effects and game UI — 0 of 3
-
-`░░░░░░░░░░░░░` 0%
-
-<details>
-<summary>Milestones</summary>
-
-- [ ] Solis Eclipse basics: particles, trails, stylized effects
-- [ ] Post-processing: bloom and colour grading
-- [ ] Game UI basics: HUDs and menus
-
-</details>
-
-**Gate:** lasers, hits and explosions look good, with a health bar and pause menu on screen.
-
-### Phase 10 · Scripting, export and Git — 0 of 4
+### Phase 12 · Scripting, export and Git — 0 of 4
 
 `░░░░░░░░░░░░░` 0%
 
@@ -230,7 +276,7 @@ Solis is built in phases, one milestone per pull request. Each phase ends with a
 
 **Gate:** write a small editor tool; export a game that runs without Solis; two people work on one project through GitHub.
 
-### Phase 11 · Solis 0.1 — 0 of 4
+### Phase 13 · Solis 0.1 — 0 of 4
 
 `░░░░░░░░░░░░░` 0%
 

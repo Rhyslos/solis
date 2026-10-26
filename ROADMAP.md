@@ -2,7 +2,7 @@
 
 The plan from an empty repo to **Solis 0.1**, in phases. The engine is Rust; games are written in Lust, Rust or Lua ([decisions 0002](docs/decisions/0002-engine-in-rust-games-in-lust.md) and [0003](docs/decisions/0003-games-in-rust-lust-or-lua.md)). DESIGN.md says what Solis is; this file says in what order it gets built.
 
-**About a year,** if Solis gets steady attention alongside Lust. Months are a guide, not a promise: the pace is set by decisions, testing on Windows and reviews.
+**About fourteen months,** if Solis gets steady attention alongside Lust (light, sky and atmosphere got a phase of their own on 2026-10-26, [decision 0046](docs/decisions/0046-light-before-netcode.md), proposed). Months are a guide, not a promise: the pace is set by decisions, testing on Windows and reviews.
 
 Each phase ends with a **gate**: something the project lead tries by hand before the next phase starts. Each milestone inside a phase is one pull request.
 
@@ -18,10 +18,12 @@ Each phase ends with a **gate**: something the project lead tries by hand before
 | 5. Scale | 5–6 | 2,000 units and 20,000 projectiles at 60 fps; 10,000 and 100,000 still playable; the ceiling measured |
 | 6. Simulation and play | 6–7 | Physics, input, a deterministic simulation |
 | 7. Sound and animation | 7–8 | Sound events and buses; animated characters |
-| 8. Netcode | 8–10 | Two PCs playing together over the internet |
-| 9. Effects and game UI | 9–10 | Solis Eclipse basics; Sungraph UI, game UI drawn in Solis |
-| 10. Scripting, export and Git | 10–11 | The scripting window; games packaged for Windows; working in teams through Git |
-| 11. Solis 0.1 | 11–12 | The flagship space battle, docs, release |
+| 8. Light, sky and atmosphere | 8–10 | A physical sky, sunsets and night; shadows near and far; many lamps; fog and clouds; bounced light from probes |
+| 9. Effects | 10–11 | The effects suite: particles, trails, flipbooks |
+| 10. Game UI | 11–12 | Sungraph UI: HUDs and menus drawn in Solis |
+| 11. Netcode | 12–13 | Two PCs playing together over the internet |
+| 12. Scripting, export and Git | 13–14 | The scripting window; games packaged for Windows; working in teams through Git |
+| 13. Solis 0.1 | 14 | The flagship space battle, docs, release |
 
 Lust joins in Phase 4, right after the editor, so game logic can be written in Lust from then on ([decision 0016](docs/decisions/0016-how-lust-joins-solis.md)). Phases 0–3 don't need Lust; if it isn't ready by Phase 4, Phase 5 (Scale) goes first.
 
@@ -141,9 +143,40 @@ Stronger tests before building on the game loop ([decision 0042](docs/decisions/
 
 **Gate:** a character walks and runs with smooth blending, footsteps play on the right frames, and a reverb zone changes how they sound.
 
-## Phase 8: Netcode
+## Phase 8: Light, sky and atmosphere
 
-Netcode in layers ([decision 0005](docs/decisions/0005-netcode-in-layers.md)):
+Solis's selling point: skies, sunsets and light that feel right, never flat. The working plan, with the research and the choices to make, is [docs/plans/phase-8-light.md](docs/plans/phase-8-light.md) ([decision 0046](docs/decisions/0046-light-before-netcode.md), proposed).
+
+- **Measure first:** a light showcase project and quality levels (Low, Default, High).
+- **Real light and automatic exposure,** as eyes adjust.
+- **A physical sky** (Hillaire's method): blue by day, orange at sunset, blue at twilight, haze that tints distance; the painted sky kept as a style.
+- **Light from the sky:** ambient light and reflections from the real sky, instead of one flat colour.
+- **The finished picture, part two:** bloom, white balance, colour grading (moved from effects).
+- **Time of day and night:** sun, moon and stars; colour curves for stylized games.
+- **Clouds:** a flat layer, and volumetric clouds at High.
+- **Ambient occlusion,** **cascaded and contact shadows,** and **hundreds of lamps** with a few shadowed.
+- **Volumetric fog and light shafts,** with fog volumes.
+- **Reflection probes** and **baked light probes** (decision 0008's second source of indirect light).
+
+**Decide before starting:** the questions in the plan (names, units, time of day as game state, quality levels, how far bounced light goes).
+
+**Gate:** in the light showcase, the day runs from noon to night with no jumps; the golden hour feels like the project lead's favourite game sunsets; indoors never looks like the Backrooms; the stylized look is as good; the benchmark's target still runs at 60 fps.
+
+## Phase 9: Effects
+
+- **The effects suite:** particles through instancing (on the CPU and the GPU), flipbooks, trails, stylized shading for effects, and a node graph editor. Plan: [docs/plans/phase-9-vfx.md](docs/plans/phase-9-vfx.md). Its bloom and grading moved to Phase 8.
+
+**Gate:** laser bolts, hits and explosions look good in the stylized look, in the benchmark battle, at 60 fps.
+
+## Phase 10: Game UI
+
+- **Sungraph UI** ([decision 0039](docs/decisions/0039-game-ui-is-drawn-in-solis.md)), whole: a visual UI editor where game UI is drawn canvas style (lines, shapes, curves, text) instead of built from images; values tied live to game code; every element reachable from code, because a UI file is Lust (`view { }`); styles such as glow, pixelation and stylized outlines over the whole UI. HUDs and menus are made with it. Plan: [docs/plans/phase-10-sungraph-ui.md](docs/plans/phase-10-sungraph-ui.md).
+
+**Gate:** a health bar and a pause menu on screen, drawn and tied to the game in the editor.
+
+## Phase 11: Netcode
+
+Moved here from Phase 8 ([decision 0046](docs/decisions/0046-light-before-netcode.md)): what it needs (fixed ticks, determinism, checksums, save games) is built, and a CI check keeps two PCs playing the same game until then. Netcode in layers ([decision 0005](docs/decisions/0005-netcode-in-layers.md)):
 
 - **Transport and sessions:** connections, reliable and unreliable messages, encryption, lobbies, and relays or Steam's networking for players behind home routers.
 - **Tools:** a lag and packet-loss simulator, network stats, desync detection with the checksums from Phase 6, and replays.
@@ -155,15 +188,7 @@ Netcode in layers ([decision 0005](docs/decisions/0005-netcode-in-layers.md)):
 
 **Gate:** two PCs on different networks play the benchmark area together without desyncing, with simulated lag.
 
-## Phase 9: Effects and game UI
-
-- **Solis Eclipse basics:** particles through instancing, flipbooks, trails, and stylized shading for effects.
-- **Post-processing:** bloom and colour grading.
-- **Sungraph UI** ([decision 0039](docs/decisions/0039-game-ui-is-drawn-in-solis.md)), whole: a visual UI editor where game UI is drawn canvas style (lines, shapes, curves, text) instead of built from images; values tied live to game code; every element reachable from code, because a UI file is Lust (`view { }`); styles such as glow, pixelation and stylized outlines over the whole UI. HUDs and menus are made with it.
-
-**Gate:** laser bolts, hits and explosions look good in the stylized look; a health bar and a pause menu, drawn in Sungraph UI with their values tied to game code, are on screen.
-
-## Phase 10: Scripting, export and Git
+## Phase 12: Scripting, export and Git
 
 - **The scripting window:** LustScript and Lua through Luau, calling the same commands as the built-in tools, with undo, a sandbox and time limits (the design Aventail plans for its Phase 9).
 - **Build and export:** packaged games for Windows ([decision 0012](docs/decisions/0012-windows-only.md)), and Build-and-Play from the top bar.
@@ -172,7 +197,7 @@ Netcode in layers ([decision 0005](docs/decisions/0005-netcode-in-layers.md)):
 
 **Gate:** write a small editor tool that places objects in a ring; export a game and run it on a PC without Solis installed. Two people on two PCs work on the same project through GitHub for an evening: commit, pull, lock a model, and resolve one real area conflict in the editor.
 
-## Phase 11: Solis 0.1
+## Phase 13: Solis 0.1
 
 - **The flagship sample, written in Lust:** a small space battle. Two capital ships, a carrier launching fighter squadrons, a few hundred lasers in the air, over the network.
 - **Docs:** getting started, a first-game tutorial, and a reference for the engine as Lust sees it (the `solis/` files).

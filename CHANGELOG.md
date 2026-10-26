@@ -12,6 +12,7 @@ What changed in each version, for people using Solis. Newest first.
 
 ### Changed
 
+- **A new phase for light, sky and atmosphere** (proposed, [decision 0046](docs/decisions/0046-light-before-netcode.md)): Phase 8 is now light, sky and atmosphere, effects and game UI are Phases 9 and 10, netcode moves to Phase 11, building games to Phase 12 and the 0.1 release to Phase 13. The editor's notes about what arrives when say the new numbers. The research and the plan are in `docs/reports/lighting-research.md` and `docs/plans/phase-8-light.md`.
 - **Smooth play on fast screens** (Phase 6): the game still runs 60 ticks a second, but the Game panel draws everything part way between ticks, so a 120 or 144 Hz screen shows smooth movement instead of steps.
 - Game code uses Lust 2.0.0-alpha.35. A `vec3` is now a Luau vector in Lust and Lua alike (Lua's `vec3(x, y, z)` makes one), which is quicker than a table.
 - **The benchmark** (Phase 5): **Help > Make the benchmark…** makes a project of two fleets of ships flying loops and firing lasers, in three areas: 2,000 ships and 20,000 lasers, 10,000 and 100,000, and a ceiling run that adds ships until 60 frames a second ends and says in the Console where. The manual's new page, The benchmark, explains it.

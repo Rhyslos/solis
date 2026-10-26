@@ -1,6 +1,6 @@
-# Phase 9 plan, part 1: Effects (Solis Eclipse basics) and post-processing
+# Phase 9 plan: Effects (Solis Eclipse basics)
 
-**Draft for the project lead.** The working plan for the effects half of Phase 9 (ROADMAP.md, "Phase 9: Effects and game UI"): Solis Eclipse basics (particles through instancing, flipbooks, trails, stylized shading for effects) and post-processing (bloom and colour grading). Sungraph UI, the other half, has its own plan; the section "Shared with Sungraph UI" says what the two build once between them. Nothing here is decided until the project lead answers the questions below. Then this becomes `docs/plans/phase-9.md` (with the UI half), and the answers become decisions in `docs/decisions/` and lines in DESIGN.md §17. Update it as milestones are built.
+**Draft for the project lead.** Since [decision 0046](../decisions/0046-light-before-netcode.md) (proposed), effects are Phase 9 on their own; game UI is Phase 10 ([its plan](phase-10-sungraph-ui.md)); and the post chain, bloom and grading (M1 and the grading below) move to light's Phase 8 ([its plan](phase-8-light.md), L5), which also lifts the 16-lamp limit on flash lamps (L10). The suite's name is open there too ("Eclipse" has trademark risk). The rest of this plan is unchanged until Phase 9 starts. The working plan for the effects half of Phase 9 (ROADMAP.md, "Phase 9: Effects and game UI"): Solis Eclipse basics (particles through instancing, flipbooks, trails, stylized shading for effects) and post-processing (bloom and colour grading). Sungraph UI, the other half, has its own plan; the section "Shared with Sungraph UI" says what the two build once between them. Nothing here is decided until the project lead answers the questions below. Then this becomes `docs/plans/phase-9.md` (with the UI half), and the answers become decisions in `docs/decisions/` and lines in DESIGN.md §17. Update it as milestones are built.
 
 **Gate (the effects part):** laser bolts, hits and explosions look good in the stylized look, in the benchmark battle, at the target level's 60 fps.
 
@@ -75,7 +75,7 @@ Projectiles change the game; effects only show it. So:
 - **Effects' randomness is their own:** each effect gets a number made from a frame counter and its place in the frame's order, and its particles draw from that, never from the game's seed. Two PCs in a lockstep game may show slightly different sparks, which is fine; the game's checksum and replays are untouched (a test: the same game with effects on and off gives the same checksums).
 - **The effect numbers game code is given** (from `playEffectOn`) are game state, so they are made from the tick's order like spawned IDs (decision 0035), the same on any number of cores.
 - **Requests land like everything else:** `playEffect` is kept and landed at the end of the phase in order (decision 0033), then passed out of the world into a list for drawing. That list is not in the checksum and not saved.
-- **Effects run on frame time, not ticks:** smooth on a 144 Hz screen, frozen while paused, one tick's worth on Step. A dedicated server (Phase 8) drops the requests and pays nothing.
+- **Effects run on frame time, not ticks:** smooth on a 144 Hz screen, frozen while paused, one tick's worth on Step. A dedicated server (Phase 11) drops the requests and pays nothing.
 
 ## The effect file
 

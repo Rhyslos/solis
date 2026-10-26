@@ -1,6 +1,6 @@
-# Phase 9 plan: Sungraph UI (draft)
+# Phase 10 plan: Sungraph UI (draft)
 
-The working plan for the game-UI half of Phase 9 (ROADMAP.md, "Phase 9: Effects and game UI"; [decision 0039](../decisions/0039-game-ui-is-drawn-in-solis.md)). The other half, Solis Eclipse and post-processing, has its own plan; **Sharing with effects** below says where the two meet so nothing is built twice. Update this file as milestones are built: tick them off here and in the README tracker, and change a milestone's plan if its design changes.
+The working plan for Phase 10, game UI (ROADMAP.md, "Phase 10: Game UI"; it was the game-UI half of Phase 9 until [decision 0046](../decisions/0046-light-before-netcode.md) gave light a phase and effects and UI a phase each; [decision 0039](../decisions/0039-game-ui-is-drawn-in-solis.md)). Effects (Phase 9) have their own plan, and post-processing (bloom, grading) moved to light's Phase 8 plan; **Sharing with effects** below says where the two meet so nothing is built twice. Update this file as milestones are built: tick them off here and in the README tracker, and change a milestone's plan if its design changes.
 
 > **Draft.** Every item under "Choices to make" is a question for the project lead, with a recommended answer. Nothing here is decided until it is answered and written up as a decision.
 
@@ -21,7 +21,7 @@ The rest as recommended: Solis's own drawing (shader shapes, `lyon`, `fdsm` text
 - **You draw it** in a canvas inside Solis: boxes, circles, lines, curves and text, placed on the screen and pinned to its corners or edges so it fits any screen shape. **Or you type it**: the canvas and the code are two ways of looking at the same file, and either one can be used at any time.
 - **Solis draws every line and letter itself**, every frame, at the size of the screen it's on. Nothing is a picture, so nothing goes blurry at 4K, and effects such as glow or a pixel-art look apply to everything at once.
 - **Values are tied to the game.** A tie says "this number follows the player's `Health.hp`". The bar's width is worked out from it, so the bar moves on its own; no game code has to "update the UI".
-- **The UI only looks; it never touches.** It reads the game as the last tick left it. When the player clicks Resume, that click is sent to the game the way a key press is, at the next tick, so recordings, replays and (Phase 8) networked games stay exactly the same on every PC.
+- **The UI only looks; it never touches.** It reads the game as the last tick left it. When the player clicks Resume, that click is sent to the game the way a key press is, at the next tick, so recordings, replays and (Phase 11) networked games stay exactly the same on every PC.
 
 ## Choices to make before any code
 
