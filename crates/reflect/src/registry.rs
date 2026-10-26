@@ -157,4 +157,35 @@ mod tests {
         let err = r.register(wrong).unwrap_err();
         assert!(err.to_string().contains("Wrong.hp"), "{err}");
     }
+
+    // The hardening milestone's mutation testing found these untested.
+
+    #[test]
+    fn a_removed_component_goes_and_can_come_back() {
+        let mut r = Registry::new();
+        r.register(schema("Health")).unwrap();
+        let gone = r.remove("Health").unwrap();
+        assert_eq!(gone.name, "Health");
+        assert!(r.get("Health").is_none());
+        assert!(r.remove("Health").is_none(), "already gone");
+        r.register(schema("Health")).unwrap();
+    }
+
+    #[test]
+    fn fields_are_found_by_their_exact_name() {
+        let health = schema("Health");
+        assert_eq!(health.field("hp").unwrap().label, "HP");
+        assert!(health.field("HP").is_none());
+        assert!(health.field("mp").is_none());
+    }
+
+    #[test]
+    fn a_rotation_is_four_numbers() {
+        let list = |n: usize| Value::List(vec![Value::Float(0.5); n]);
+        assert!(FieldKind::Rotation.accepts(&list(4)));
+        assert!(!FieldKind::Rotation.accepts(&list(3)));
+        assert!(!FieldKind::Rotation.accepts(&Value::Float(1.0)));
+        assert!(FieldKind::Vec3.accepts(&list(3)));
+        assert!(!FieldKind::Vec3.accepts(&list(4)));
+    }
 }

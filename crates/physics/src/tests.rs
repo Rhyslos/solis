@@ -901,3 +901,46 @@ proptest::proptest! {
         );
     }
 }
+
+// The hardening milestone's mutation testing found these untested.
+
+#[test]
+fn the_state_says_who_takes_part_and_who_physics_moves() {
+    assert!(Physics::new().state().is_empty());
+    assert!(!Physics::new().state().contains(id(1)));
+    let mut physics = with_floor();
+    let (body, collider) = crate_spec();
+    physics.add(
+        id(2),
+        (Vec3::new(0.0, 0.0, 3.0), Quat::IDENTITY),
+        Vec3::ONE,
+        body,
+        collider,
+    );
+    let state = physics.state().clone();
+    assert!(!state.is_empty());
+    assert!(state.contains(id(1)) && state.contains(id(2)));
+    assert!(!state.contains(id(3)));
+    assert!(state.is_dynamic(id(2)), "the crate falls");
+    assert!(!state.is_dynamic(id(1)), "the floor is fixed");
+    assert!(!state.is_dynamic(id(3)), "not there");
+    physics.remove(id(2));
+    assert!(!physics.state().contains(id(2)));
+}
+
+#[test]
+fn a_ray_that_can_t_go_anywhere_meets_nothing() {
+    let mut physics = with_floor();
+    physics.step(1.0 / 60.0);
+    let above = Vec3::new(0.0, 0.0, 5.0);
+    let cast =
+        |from: Vec3, direction: Vec3, reach: f32| physics.state().cast_ray(from, direction, reach);
+    assert!(cast(above, -Vec3::Z, 100.0).is_some(), "the floor");
+    assert!(cast(Vec3::new(f32::NAN, 0.0, 5.0), -Vec3::Z, 100.0).is_none());
+    assert!(cast(above, -Vec3::Z, f32::NAN).is_none());
+    assert!(cast(above, -Vec3::Z, f32::INFINITY).is_none());
+    assert!(cast(above, -Vec3::Z, 0.0).is_none());
+    assert!(cast(above, -Vec3::Z, -1.0).is_none());
+    assert!(cast(above, Vec3::ZERO, 100.0).is_none());
+    assert!(cast(above, -Vec3::Z, 4.0).is_none(), "out of reach");
+}
