@@ -81,6 +81,17 @@ jobs:
           mkdir dist
           cp "target/release/${{ steps.brand.outputs.id }}.exe" LICENSE dist/
           cp -r licenses dist/licenses
+          rm dist/licenses/third-party.hbs
+      # The libraries built into the program, with their copyright notices
+      # and licences, as their licences ask of every copy (decision 0044).
+      # From the exact libraries in this build, for Windows.
+      - name: Third-party notices
+        shell: bash
+        run: |
+          cargo install cargo-about@0.9.2 --locked --features cli
+          cargo about generate -c about.toml licenses/third-party.hbs \
+            -m crates/app/Cargo.toml -o dist/THIRD-PARTY-NOTICES.txt
+          test -s dist/THIRD-PARTY-NOTICES.txt
       - name: Make the installer
         shell: pwsh
         run: |
