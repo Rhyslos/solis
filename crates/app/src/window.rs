@@ -1112,7 +1112,7 @@ impl App {
 /// second, copies made only by game code had no model to draw (the
 /// benchmark's stress area showed only its lasers).
 fn models_wanted<'a>(
-    area: &area::Area,
+    area: &'a area::Area,
     assemblies: impl Iterator<Item = &'a area::Area>,
 ) -> HashSet<AssetId> {
     std::iter::once(area)
@@ -1450,7 +1450,8 @@ mod tests {
                 part: None,
             }),
         };
-        let (in_area, in_assembly, nowhere) = (AssetId::random(), AssetId::random(), AssetId::random());
+        let (in_area, in_assembly, nowhere) =
+            (AssetId::random(), AssetId::random(), AssetId::random());
         let mut area = area::Area::new();
         area.spawn(area::EntityData::new("Rock").with(&model(in_area)));
         area.spawn(area::EntityData::new("Empty"));
@@ -1458,7 +1459,10 @@ mod tests {
         fighter.spawn(area::EntityData::new("Fighter").with(&model(in_assembly)));
         let wanted = super::models_wanted(&area, [&fighter].into_iter());
         assert!(wanted.contains(&in_area));
-        assert!(wanted.contains(&in_assembly), "spawned by game code: needed too");
+        assert!(
+            wanted.contains(&in_assembly),
+            "spawned by game code: needed too"
+        );
         assert!(!wanted.contains(&nowhere));
         assert_eq!(wanted.len(), 2);
         // Nothing placed anywhere: nothing wanted.
