@@ -1,4 +1,6 @@
 //! The program's name and identity, in one place.
+//!
+//! (A build made only to try the update question on the splash screen.)
 
 /// The name, shown in the title bar and the About box.
 pub const APP_NAME: &str = "Solis";
@@ -7,6 +9,11 @@ pub const APP_NAME: &str = "Solis";
 ///
 /// Changing it makes the editor start with fresh settings.
 pub const APP_ID: &str = "solis";
+
+/// The logo, 256 pixels square, for the window and taskbar. Its source
+/// is `branding/logo.svg`; the program file's own icon is
+/// `branding/logo.ico`, built in by `build.rs` on Windows.
+pub const LOGO_PNG: &[u8] = include_bytes!("../../../branding/logo-256.png");
 
 /// The GitHub repository whose releases hold each build, as `owner/name`
 /// (updates, decision 0043).
@@ -29,6 +36,14 @@ mod tests {
     fn names_are_not_empty() {
         assert!(!APP_NAME.trim().is_empty());
         assert!(!APP_ID.trim().is_empty());
+    }
+
+    #[test]
+    fn the_logo_is_a_square_picture() {
+        let icon = eframe::icon_data::from_png_bytes(LOGO_PNG).unwrap();
+        assert_eq!((icon.width, icon.height), (256, 256));
+        // Round: the corners are see-through.
+        assert_eq!(icon.rgba[3], 0);
     }
 
     #[test]

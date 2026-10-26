@@ -51,7 +51,7 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           persist-credentials: false
-      - uses: Swatinem/rust-cache@6323deb102c322ba6fcbdcafc7e3dddab59af2b6 # v2
+      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2
       # The name, ID and repository come from branding.rs, so renaming the
       # program changes them here too (RENAMING.md).
       - name: Read the program's name
@@ -81,6 +81,17 @@ jobs:
           mkdir dist
           cp "target/release/${{ steps.brand.outputs.id }}.exe" LICENSE dist/
           cp -r licenses dist/licenses
+          rm dist/licenses/third-party.hbs
+      # The libraries built into the program, with their copyright notices
+      # and licences, as their licences ask of every copy (decision 0044).
+      # From the exact libraries in this build, for Windows.
+      - name: Third-party notices
+        shell: bash
+        run: |
+          cargo install cargo-about@0.9.2 --locked --features cli
+          cargo about generate -c about.toml licenses/third-party.hbs \
+            -m crates/app/Cargo.toml -o dist/THIRD-PARTY-NOTICES.txt
+          test -s dist/THIRD-PARTY-NOTICES.txt
       - name: Make the installer
         shell: pwsh
         run: |

@@ -101,19 +101,54 @@ fn fetch_text(source: &Source, asset: &Asset) -> Result<String, String> {
         .map_err(|e| plain_error(&e))
 }
 
-/// Streams `asset` into `path`, at most its listed size (and never past
-/// the installer limit), and gives the SHA-256 of what arrived.
+/// Streams `asset` into `path`, never past its listed size (nor the
+/// installer limit), and gives the SHA-256 of what arrived.
 fn fetch_file(source: &Source, asset: &Asset, path: &Path) -> Result<[u8; 32], String> {
-    use sha2::Digest;
+    if asset.size > release::MAX_INSTALLER_SIZE {
+        return Err("the installer is too big".into());
+    }
     let mut answer = agent(DOWNLOAD_LIMIT)
         .get(&asset.url)
         .header("User-Agent", &source.user_agent)
         .call()
         .map_err(|e| plain_error(&e))?;
-    let limit = asset.size.min(release::MAX_INSTALLER_SIZE);
-    let mut reader = answer.body_mut().with_config().limit(limit).reader();
+    // One byte past the size: ureq's limit fails a body that reaches it
+    // exactly when asked for more (even at its end), so a limit of the
+    // size itself refused every complete download. `copy_checked` keeps
+    // to the size itself.
+    let mut reader = answer
+        .body_mut()
+        .with_config()
+        .limit(read_limit(asset.size))
+        .reader();
     let mut file =
         std::fs::File::create(path).map_err(|e| format!("couldn't save the download: {e}"))?;
+    let copied = copy_checked(&mut reader, asset.size, &mut file).and_then(|digest| {
+        file.sync_all()
+            .map_err(|e| format!("couldn't save the download: {e}"))?;
+        Ok(digest)
+    });
+    if copied.is_err() {
+        let _ = std::fs::remove_file(path);
+    }
+    copied
+}
+
+/// The limit to give ureq for a body of `size` bytes: one past it,
+/// since ureq fails a body that reaches its limit exactly as soon as it's
+/// asked for more, even at the body's end.
+pub(crate) fn read_limit(size: u64) -> u64 {
+    size.saturating_add(1)
+}
+
+/// Copies `reader` into `out` up to its end, which must come after
+/// exactly `size` bytes, and gives the SHA-256 of what was copied.
+pub(crate) fn copy_checked(
+    reader: &mut dyn Read,
+    size: u64,
+    out: &mut dyn Write,
+) -> Result<[u8; 32], String> {
+    use sha2::Digest;
     let mut hasher = sha2::Sha256::new();
     let mut buffer = vec![0u8; 64 * 1024];
     let mut total = 0u64;
@@ -124,16 +159,16 @@ fn fetch_file(source: &Source, asset: &Asset, path: &Path) -> Result<[u8; 32], S
         if read == 0 {
             break;
         }
+        total += read as u64;
+        if total > size {
+            return Err("the download was bigger than GitHub said it would be".into());
+        }
         let chunk = buffer.get(..read).unwrap_or_default();
         hasher.update(chunk);
-        file.write_all(chunk)
+        out.write_all(chunk)
             .map_err(|e| format!("couldn't save the download: {e}"))?;
-        total += read as u64;
     }
-    file.sync_all()
-        .map_err(|e| format!("couldn't save the download: {e}"))?;
-    if total != asset.size {
-        let _ = std::fs::remove_file(path);
+    if total < size {
         return Err("the download was cut short".into());
     }
     Ok(hasher.finalize().into())

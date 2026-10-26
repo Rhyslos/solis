@@ -42,8 +42,10 @@ const RECENT_PROJECTS_KEY: &str = "recent_projects";
 const VIEWS_KEY: &str = "viewport_views";
 /// Key under which the console's earlier commands are remembered.
 const CONSOLE_HISTORY_KEY: &str = "console_history";
-/// Whether updates are checked and downloaded by themselves (decision 0043).
+/// Whether updates are checked when Solis starts (decisions 0043, 0045).
 const AUTO_UPDATE_KEY: &str = "auto_update";
+/// The build skipped with Skip this version (decision 0045).
+const SKIPPED_BUILD_KEY: &str = "skipped_build";
 /// Window size on first launch, in logical pixels.
 const FIRST_SIZE: [f32; 2] = [1440.0, 900.0];
 /// The smallest the window may get while staying usable.
@@ -91,6 +93,12 @@ struct App {
     messages: Option<crate::logger::Messages>,
     /// Checking for, downloading and installing newer builds.
     updates: crate::updates::Updates,
+    /// Starting up behind the splash screen, until the editor opens.
+    startup: Option<crate::startup::Startup>,
+    /// When the splash appeared.
+    began: std::time::Instant,
+    /// The logo, for the splash.
+    logo: Option<egui::TextureHandle>,
 }
 
 impl App {
@@ -159,6 +167,14 @@ impl App {
             gpu.as_ref()
                 .map_or(256 << 20, GpuViewport::max_buffer_bytes),
         );
+        let skipped: Option<u64> = storage
+            .and_then(|s| eframe::get_value::<Option<u64>>(s, SKIPPED_BUILD_KEY))
+            .flatten();
+        // The splash asks GitHub while it shows, unless checking is off
+        // (decision 0045).
+        let copy = crate::updates::this_copy();
+        let check = auto_update.then(|| crate::updates::start_check(&cc.egui_ctx));
+        let startup = crate::startup::Startup::new(check, skipped, copy.installed, copy.build);
         let mut app = Self {
             workbench,
             gpu,
@@ -180,7 +196,10 @@ impl App {
             queued: VecDeque::new(),
             title: String::new(),
             messages: crate::logger::install(),
-            updates: crate::updates::Updates::new(pending),
+            updates: crate::updates::Updates::new(pending, skipped),
+            startup: Some(startup),
+            began: std::time::Instant::now(),
+            logo: load_logo(&cc.egui_ctx),
         };
         app.workbench.set_recent(app.projects.recent().to_vec());
         if let Some(root) = last_project.filter(|r| r.join(asset_db::PROJECT_FILE).is_file()) {
@@ -472,16 +491,13 @@ impl App {
     /// yet (after opening or reloading an area).
     fn load_area_models(&mut self) {
         let Some(db) = self.projects.db() else { return };
-        let wanted: Vec<AssetId> = self
-            .workbench
-            .document()
-            .area()
-            .with::<area::builtin::Model>()
-            .filter_map(|(_, m)| m.asset.map(|r| r.asset))
-            .filter(|id| !self.workbench.has_model(*id))
-            .collect::<HashSet<_>>()
-            .into_iter()
-            .collect();
+        let wanted: Vec<AssetId> = models_wanted(
+            self.workbench.document().area(),
+            self.workbench.assemblies().values().map(|file| &file.area),
+        )
+        .into_iter()
+        .filter(|id| !self.workbench.has_model(*id))
+        .collect();
         let mut jobs = Vec::new();
         for id in wanted {
             if let Some(file) = db.file(id) {
@@ -617,6 +633,22 @@ impl App {
         {
             match action {
                 WorkbenchAction::Quit => ctx.send_viewport_cmd(egui::ViewportCommand::Close),
+                WorkbenchAction::DownloadUpdate => {
+                    self.updates.download(&mut self.workbench, ctx);
+                }
+                WorkbenchAction::OpenUpdatePage => {
+                    if let Err(why) = opener::open(crate::updates::releases_page()) {
+                        self.workbench.log(
+                            LogLevel::Warning,
+                            format!("Couldn't open the download page: {why}."),
+                        );
+                    }
+                }
+                WorkbenchAction::SkipUpdate(skip) => {
+                    if let Some(build) = skip {
+                        self.updates.skip(build);
+                    }
+                }
                 WorkbenchAction::CheckForUpdates => {
                     self.updates.check_now(&mut self.workbench, ctx);
                 }
@@ -877,11 +909,16 @@ impl App {
             .collect();
         self.workbench.set_library(items);
         self.workbench.set_folders(folders);
+        let read_some = !assemblies.is_empty();
         for id in assemblies {
             if let Err(why) = self.load_assembly(id, false) {
                 log::debug!("couldn't read an assembly ahead: {why}");
                 self.unreadable.insert(id);
             }
+        }
+        // And their models, so what game code makes is drawn.
+        if read_some {
+            self.load_area_models();
         }
     }
 
@@ -1104,6 +1141,104 @@ impl App {
     }
 }
 
+impl App {
+    /// One frame of the splash screen: asks the update question when
+    /// there's a newer build, moves starting on, and opens the editor (or
+    /// closes, to install a new build) when it's done.
+    fn splash(&mut self, ui: &mut egui::Ui) {
+        use crate::startup::Next;
+        let ctx = ui.ctx().clone();
+        let Some(startup) = self.startup.as_mut() else {
+            return;
+        };
+        if let Some(offer) = startup.offer()
+            && let Some(answer) = editor::splash::update_question(
+                &ctx,
+                branding::APP_NAME,
+                &offer,
+                &mut startup.skip_tick,
+                editor::splash::BELOW_THE_SPLASH,
+            )
+        {
+            if answer == editor::UpdateAnswer::OpenDownloadPage
+                && let Err(why) = opener::open(crate::updates::releases_page())
+            {
+                log::warn!("couldn't open the download page: {why}");
+            }
+            startup.answer(answer, |release| {
+                crate::updates::start_download(&ctx, release)
+            });
+        }
+        let doing = startup.doing();
+        // Full while the question waits; sweeping while working.
+        let progress = startup.offer().map(|_| 1.0);
+        match startup.step(self.began.elapsed()) {
+            Next::Wait => {}
+            Next::Open(note) => {
+                if let Some(build) = startup.skipped() {
+                    self.updates.skip(build);
+                }
+                if let Some(check) = startup.take_check() {
+                    self.updates.adopt(check, &mut self.workbench);
+                }
+                if let Some((level, text)) = note {
+                    self.workbench.log(level, text);
+                }
+                self.startup = None;
+                ctx.request_repaint();
+                return;
+            }
+            Next::Install { installer } => {
+                // The window closes, and `run` starts the installer, which
+                // opens the new build.
+                self.updates.install_on_close(installer);
+                ctx.send_viewport_cmd(egui::ViewportCommand::Close);
+            }
+        }
+        editor::splash::show(
+            ui,
+            &editor::SplashView {
+                info: &crate::app_info(),
+                accent: self.workbench.accent(),
+                logo: self.logo.as_ref().map(egui::TextureHandle::id),
+                doing: &doing,
+                progress,
+                time: self.began.elapsed().as_secs_f64(),
+            },
+        );
+        // The bar sweeps, and the minimum time runs out without input.
+        ctx.request_repaint_after(std::time::Duration::from_millis(16));
+    }
+}
+
+/// The logo as a texture, for the splash (none if it can't be read).
+fn load_logo(ctx: &egui::Context) -> Option<egui::TextureHandle> {
+    let icon = eframe::icon_data::from_png_bytes(branding::LOGO_PNG).ok()?;
+    let image = egui::ColorImage::from_rgba_unmultiplied(
+        [icon.width as usize, icon.height as usize],
+        &icon.rgba,
+    );
+    Some(ctx.load_texture("logo", image, egui::TextureOptions::LINEAR))
+}
+
+/// The models the open project needs loaded: those the area uses, and
+/// every model any of the project's assemblies uses, since game code can
+/// make copies of any assembly while playing (`spawn`). Without the
+/// second, copies made only by game code had no model to draw (the
+/// benchmark's stress area showed only its lasers).
+fn models_wanted<'a>(
+    area: &'a area::Area,
+    assemblies: impl Iterator<Item = &'a area::Area>,
+) -> HashSet<AssetId> {
+    std::iter::once(area)
+        .chain(assemblies)
+        .flat_map(|a| {
+            a.with::<area::builtin::Model>()
+                .filter_map(|(_, m)| m.asset.map(|r| r.asset))
+        })
+        .collect()
+}
+
 /// The project open when Solis last closed, as saved (an optional path:
 /// none when no project was open).
 fn saved_last_project(storage: &dyn eframe::Storage) -> Option<PathBuf> {
@@ -1127,8 +1262,20 @@ fn file_name(path: &Path) -> String {
 }
 
 impl eframe::App for App {
-    fn ui(&mut self, ui: &mut egui::Ui, _frame: &mut eframe::Frame) {
+    fn ui(&mut self, ui: &mut egui::Ui, frame: &mut eframe::Frame) {
         let ctx = ui.ctx().clone();
+        // Skip this version is saved at once, not only on closing.
+        if let Some(skipped) = self.updates.take_unsaved_skip()
+            && let Some(storage) = frame.storage_mut()
+        {
+            eframe::set_value(storage, SKIPPED_BUILD_KEY, &skipped);
+            storage.flush();
+        }
+        // The splash screen until starting is done (decision 0045).
+        if self.startup.is_some() {
+            self.splash(ui);
+            return;
+        }
         // Files dropped onto the window, and whether some are being
         // dragged over it right now.
         let (dropped, hovering) = ctx.input(|i| {
@@ -1241,7 +1388,7 @@ impl eframe::App for App {
             ctx.send_viewport_cmd(egui::ViewportCommand::CancelClose);
         }
         self.collect_imports();
-        self.updates.frame(&mut self.workbench, &ctx);
+        self.updates.frame(&mut self.workbench);
         self.show_library_messages();
         self.workbench.set_gamepad(self.gamepads.read());
         if let Some((what, Some(path))) = self.recordings.chosen() {
@@ -1307,6 +1454,7 @@ impl eframe::App for App {
         eframe::set_value(storage, RECENT_PROJECTS_KEY, &self.projects.recent());
         eframe::set_value(storage, VIEWS_KEY, &self.workbench.views());
         eframe::set_value(storage, AUTO_UPDATE_KEY, &self.workbench.auto_update());
+        eframe::set_value(storage, SKIPPED_BUILD_KEY, &self.updates.skipped());
         eframe::set_value(
             storage,
             CONSOLE_HISTORY_KEY,
@@ -1324,7 +1472,8 @@ pub fn run(info: AppInfo, imports: Vec<PathBuf>) -> Result<(), String> {
             .with_title(title)
             .with_app_id(branding::APP_ID)
             .with_inner_size(FIRST_SIZE)
-            .with_min_inner_size(MIN_SIZE),
+            .with_min_inner_size(MIN_SIZE)
+            .with_icon(window_icon()),
         renderer: eframe::Renderer::Wgpu,
         wgpu_options: gpu_options(),
         ..Default::default()
@@ -1344,6 +1493,12 @@ pub fn run(info: AppInfo, imports: Vec<PathBuf>) -> Result<(), String> {
         Ok(result) => result.map_err(|err| err.to_string()),
         Err(payload) => Err(explain_panic(payload.as_ref())),
     }
+}
+
+/// The logo, for the window's corner and the taskbar (empty if it somehow
+/// can't be read: the system's own icon then).
+fn window_icon() -> std::sync::Arc<egui::IconData> {
+    std::sync::Arc::new(eframe::icon_data::from_png_bytes(branding::LOGO_PNG).unwrap_or_default())
 }
 
 /// The job system's workers (decision 0031): one per core, leaving one for
@@ -1413,6 +1568,35 @@ fn open_externally(path: &std::path::Path) -> std::io::Result<()> {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn models_only_game_code_places_are_loaded_too() {
+        use area::builtin::Model;
+        use reflect::AssetRef;
+        let model = |id: AssetId| Model {
+            asset: Some(AssetRef {
+                asset: id,
+                part: None,
+            }),
+        };
+        let (in_area, in_assembly, nowhere) =
+            (AssetId::random(), AssetId::random(), AssetId::random());
+        let mut area = area::Area::new();
+        area.spawn(area::EntityData::new("Rock").with(&model(in_area)));
+        area.spawn(area::EntityData::new("Empty"));
+        let mut fighter = area::Area::new();
+        fighter.spawn(area::EntityData::new("Fighter").with(&model(in_assembly)));
+        let wanted = super::models_wanted(&area, [&fighter].into_iter());
+        assert!(wanted.contains(&in_area));
+        assert!(
+            wanted.contains(&in_assembly),
+            "spawned by game code: needed too"
+        );
+        assert!(!wanted.contains(&nowhere));
+        assert_eq!(wanted.len(), 2);
+        // Nothing placed anywhere: nothing wanted.
+        assert!(super::models_wanted(&area::Area::new(), std::iter::empty()).is_empty());
+    }
+
     use super::*;
 
     #[test]

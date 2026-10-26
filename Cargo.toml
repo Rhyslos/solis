@@ -94,6 +94,8 @@ trash = "5.2"
 # Opening a file in its own program, or a folder in the system's file
 # browser, from the Library.
 opener = "0.9"
+# The program file's icon on Windows (crates/app/build.rs).
+winresource = { version = "0.1", default-features = false }
 # Development only: whole-game invariant tests (decision 0042).
 proptest = { version = "1", default-features = false, features = ["std"] }
 

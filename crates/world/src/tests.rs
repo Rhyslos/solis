@@ -835,3 +835,9 @@ fn a_frame_time_that_isn_t_a_number_never_jams_the_clock() {
     assert_eq!(world.due(TICK * 1.5), 1);
     assert_eq!(world.due(TICK * 0.5), 1, "the half tick carried");
 }
+
+/// What the world offers the editor and save games: tested here as well,
+/// so the world's own tests catch a change to it (mutation testing found
+/// them reached only from the editor's tests).
+#[path = "api_tests.rs"]
+mod api;

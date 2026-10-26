@@ -133,4 +133,5 @@
 - **Build:** one version of the program, made by GitHub each time a change is merged into the main version. Each build has a **build number** that goes up by one or more each time, so a bigger number is newer. Help > About shows yours. See [Installing and updating](installing-and-updating.md).
 - **Release:** a build published on GitHub's Releases page for anyone to download. Solis publishes every build as a release called `build-` and its number.
 - **Installer:** a program that puts another program on your computer properly: in its own folder, in the Start menu, and in Windows' list of apps so you can uninstall it. Solis's is `solis-setup.exe`.
+- **Splash screen:** the picture a program shows while it starts: Solis's logo, name and version, and what it's doing (such as checking for updates).
 - **SHA-256:** a 64-character fingerprint of a file's contents. Change one byte and it's completely different, so comparing fingerprints shows a download arrived whole and unchanged.

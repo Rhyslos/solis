@@ -59,6 +59,8 @@ DefaultGroupName={#AppName}
 DisableProgramGroupPage=yes
 DisableReadyPage=yes
 UninstallDisplayIcon={app}\{#AppExe}
+; The logo on the setup program itself.
+SetupIconFile=..\branding\logo.ico
 OutputDir={#Output}
 OutputBaseFilename={#AppId}-setup
 Compression=lzma2/max
@@ -77,6 +79,8 @@ Name: "desktopicon"; Description: "Put a shortcut on the desktop"; Flags: unchec
 [Files]
 Source: "{#Source}\{#AppExe}"; DestDir: "{app}"; Flags: ignoreversion
 Source: "{#Source}\LICENSE"; DestDir: "{app}"; Flags: ignoreversion
+; The libraries' copyright notices and licences (decision 0044).
+Source: "{#Source}\THIRD-PARTY-NOTICES.txt"; DestDir: "{app}"; Flags: ignoreversion
 Source: "{#Source}\licenses\*"; DestDir: "{app}\licenses"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 [INI]

@@ -302,18 +302,18 @@ fn check(remote: &Fake, copy: &Copy) -> (Vec<Status>, Status) {
 }
 
 #[test]
-fn a_newer_build_is_downloaded_for_an_installed_copy() {
-    let fake = Fake::new(Ok(12));
-    let (steps, last) = check(&fake, &copy(Some(10), true));
-    assert_eq!(steps, vec![Status::Checking, Status::Downloading(12)]);
-    assert_eq!(
-        last,
-        Status::Ready {
-            build: 12,
-            installer: PathBuf::from("updates").join(SETUP)
-        }
-    );
-    assert!(last.is_final());
+fn a_newer_build_is_offered_but_not_downloaded() {
+    for installed in [true, false] {
+        let fake = Fake::new(Ok(12));
+        let (steps, last) = check(&fake, &copy(Some(10), installed));
+        assert_eq!(steps, vec![Status::Checking]);
+        let Status::Available(release) = &last else {
+            panic!("{last:?}");
+        };
+        assert_eq!(release.build, 12);
+        assert!(last.is_final());
+        assert_eq!(fake.downloads.get(), 0, "nothing downloads until asked");
+    }
 }
 
 #[test]
@@ -327,11 +327,22 @@ fn the_same_or_an_older_build_is_up_to_date() {
 }
 
 #[test]
-fn copies_not_installed_are_told_but_not_downloaded() {
+fn asked_to_update_it_downloads_and_says_when_it_s_ready() {
     let fake = Fake::new(Ok(12));
-    let (_, last) = check(&fake, &copy(Some(10), false));
-    assert_eq!(last, Status::NotInstalled(12));
-    assert_eq!(fake.downloads.get(), 0);
+    let release = fake.latest().unwrap();
+    let mut steps = Vec::new();
+    let last = download(&fake, &release, Path::new("updates"), &mut |s| {
+        steps.push(s)
+    });
+    assert_eq!(steps, vec![Status::Downloading(12)]);
+    assert_eq!(
+        last,
+        Status::Ready {
+            build: 12,
+            installer: PathBuf::from("updates").join(SETUP)
+        }
+    );
+    assert_eq!(fake.downloads.get(), 1);
 }
 
 #[test]
@@ -349,8 +360,17 @@ fn failures_are_reported_in_words() {
     assert_eq!(last, Status::Failed("couldn't reach GitHub".into()));
     let mut fake = Fake::new(Ok(2));
     fake.download = Err("didn't match its checksum".into());
-    let (_, last) = check(&fake, &copy(Some(1), true));
+    let release = Fake::new(Ok(2)).latest().unwrap();
+    let last = download(&fake, &release, Path::new("updates"), &mut |_| {});
     assert_eq!(last, Status::Failed("didn't match its checksum".into()));
+}
+
+#[test]
+fn a_skipped_build_isn_t_offered_at_start_but_a_newer_one_is() {
+    assert!(should_offer(12, None, false));
+    assert!(!should_offer(12, Some(12), false), "skipped");
+    assert!(should_offer(13, Some(12), false), "a newer one comes again");
+    assert!(should_offer(12, Some(12), true), "asking always shows it");
 }
 
 /// A thread-safe stand-in, for [`start`].
@@ -366,7 +386,7 @@ impl Remote for Sendable {
 }
 
 #[test]
-fn a_started_check_reports_every_step_and_wakes_the_window() {
+fn a_started_check_and_download_report_every_step_and_wake_the_window() {
     use std::sync::Arc;
     use std::sync::atomic::{AtomicU32, Ordering};
     let wakes = Arc::new(AtomicU32::new(0));
@@ -375,9 +395,15 @@ fn a_started_check_reports_every_step_and_wakes_the_window() {
         counter.fetch_add(1, Ordering::SeqCst);
     });
     let steps: Vec<Status> = receiver.iter().collect();
-    assert_eq!(steps.len(), 3, "{steps:?}");
+    assert_eq!(steps.len(), 2, "{steps:?}");
+    let Some(Status::Available(release)) = steps.last().cloned() else {
+        panic!("{steps:?}");
+    };
+    assert_eq!(wakes.load(Ordering::SeqCst), 2);
+    let receiver = start_download(Sendable(5), release, PathBuf::from("updates"), || {});
+    let steps: Vec<Status> = receiver.iter().collect();
+    assert_eq!(steps.first(), Some(&Status::Downloading(5)));
     assert!(matches!(steps.last(), Some(Status::Ready { build: 5, .. })));
-    assert_eq!(wakes.load(Ordering::SeqCst), 3);
 }
 
 fn temp_folder(name: &str) -> PathBuf {
@@ -433,4 +459,97 @@ fn github_answers() {
         Ok(release) => assert!(release.build > 0),
         Err(why) => assert!(why.contains("no builds to update to yet"), "{why}"),
     }
+}
+
+// --- Downloads ---
+
+/// A reader handing out `data` a few bytes at a time, as a network does.
+struct Trickle<'a>(&'a [u8]);
+
+impl std::io::Read for Trickle<'_> {
+    fn read(&mut self, buf: &mut [u8]) -> std::io::Result<usize> {
+        let n = self.0.len().min(buf.len()).min(7);
+        buf[..n].copy_from_slice(&self.0[..n]);
+        self.0 = &self.0[n..];
+        Ok(n)
+    }
+}
+
+#[test]
+fn a_download_of_exactly_its_size_is_kept_whole() {
+    // The bug a user met (build 74): every complete download failed at its
+    // very end, "the response body is larger than request limit".
+    let data: Vec<u8> = (0..100_000u32).map(|i| (i % 251) as u8).collect();
+    let mut out = Vec::new();
+    let digest =
+        crate::fetch::copy_checked(&mut Trickle(&data), data.len() as u64, &mut out).unwrap();
+    assert_eq!(out, data);
+    assert_eq!(digest, release::sha256(&data));
+}
+
+#[test]
+fn a_download_shorter_or_longer_than_its_size_is_refused() {
+    let data = vec![1u8; 1000];
+    let mut out = Vec::new();
+    let short = crate::fetch::copy_checked(&mut Trickle(&data), 1001, &mut out).unwrap_err();
+    assert!(short.contains("cut short"), "{short}");
+    let mut out = Vec::new();
+    let long = crate::fetch::copy_checked(&mut Trickle(&data), 999, &mut out).unwrap_err();
+    assert!(long.contains("bigger"), "{long}");
+    assert!(out.len() <= 999, "never keeps more than its size");
+    let empty = crate::fetch::copy_checked(&mut Trickle(&[]), 0, &mut Vec::new());
+    assert_eq!(empty, Ok(release::sha256(&[])));
+}
+
+#[test]
+fn ureq_reads_a_body_of_exactly_its_size_through_the_limit_we_give() {
+    use std::io::Read;
+    let data = vec![7u8; 10_818_391 % 100_000];
+    let size = data.len() as u64;
+    // ureq's own behaviour, which build 74's downloads met: a limit of
+    // exactly the size fails at the end of a complete body.
+    let mut body = ureq::Body::builder().data(data.clone());
+    let mut exact = body.with_config().limit(size).reader();
+    let mut out = Vec::new();
+    assert!(
+        exact.read_to_end(&mut out).is_err(),
+        "ureq changed: revisit read_limit"
+    );
+    // The limit Solis gives reads it whole, and copy_checked keeps it.
+    let mut body = ureq::Body::builder().data(data.clone());
+    let mut reader = body
+        .with_config()
+        .limit(crate::fetch::read_limit(size))
+        .reader();
+    let mut out = Vec::new();
+    let digest = crate::fetch::copy_checked(&mut reader, size, &mut out).unwrap();
+    assert_eq!(out, data);
+    assert_eq!(digest, release::sha256(&data));
+    // One byte more than said is still refused.
+    let mut body = ureq::Body::builder().data(vec![7u8; data.len() + 1]);
+    let mut reader = body
+        .with_config()
+        .limit(crate::fetch::read_limit(size))
+        .reader();
+    assert!(crate::fetch::copy_checked(&mut reader, size, &mut Vec::new()).is_err());
+}
+
+/// Downloads the real newest installer and checks it against its
+/// published SHA-256 (needs the internet: `cargo test -p updater --
+/// --ignored`). The test that would have caught build 74's bug. (Behind
+/// some proxies ureq can't follow GitHub's redirect to its download host;
+/// on a normal connection it can.)
+#[test]
+#[ignore = "needs the internet"]
+fn the_newest_installer_downloads_whole_and_matches() {
+    let source = Source {
+        repo: REPO.into(),
+        installer_name: SETUP.into(),
+        user_agent: "solis-updater-test".into(),
+    };
+    let release = source.latest().unwrap();
+    let folder = temp_folder("live-download");
+    let installer = source.download(&release, &folder).unwrap();
+    let bytes = std::fs::read(&installer).unwrap();
+    assert_eq!(bytes.len() as u64, release.installer.size);
 }
