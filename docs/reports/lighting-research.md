@@ -102,6 +102,7 @@ Not legal advice; checked from public trademark copies (US only) and web searche
 - **Ember:** high risk in this field. **EmberGen** (JangaFX) is a leading real-time fire and smoke tool for game effects, and "Solis Ember" next to fire effects invites confusion. Ember.js also holds the EMBER software trademark.
 - **Solstice:** lowest risk. Mersive's SOLSTICE trademark is for meeting-room screen sharing, a different market, and no game engine or effects tool by that name was found. "Solis Solstice" echoes the "of the sun" theme.
 - **Other clear-looking names** (quick checks only): Parhelion (a "sun dog"), Aureole (a ring of light round the sun), Sunspot.
+- **Aura** (suggested by the project lead, checked afterwards): crowded in exactly this field. Ramen VR's Aura is an AI agent that makes Niagara particle effects for Unreal and Unity; Aura 2 is an award-winning volumetric lighting and fog tool for Unity; ASUS's Aura Sync is lighting software. **Aureole** shares its root and was clear.
 - **Names to avoid:** Corona (Chaos Corona renderer), Glimmer (shader packs), Flare, Lumen (Unreal's lighting), Halo.
 
 A trademark professional's search would be needed before relying on any of this. EU, UK and WIPO registers weren't checked.
@@ -177,3 +178,6 @@ A trademark professional's search would be needed before relying on any of this.
 - EmberGen: https://www.cgchannel.com/2023/03/jangafx-releases-embergen-1-0/
 - EMBER (Tilde, Ember.js): https://trademarks.justia.com/owners/tilde-inc-2646260
 - SOLSTICE (Mersive): https://trademarks.justia.com/884/36/solstice-88436079.html
+- Aura by Ramen VR: https://www.tryaura.dev/documentation/vfx-agent
+- Aura 2 for Unity: https://discussions.unity.com/t/best-artistic-tool-unity-awards-2019-aura-2-volumetric-lighting-fog/733761
+- ASUS Aura Sync: https://www.asus.com/campaign/aura/us/index.php

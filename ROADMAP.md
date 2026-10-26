@@ -2,7 +2,7 @@
 
 The plan from an empty repo to **Solis 0.1**, in phases. The engine is Rust; games are written in Lust, Rust or Lua ([decisions 0002](docs/decisions/0002-engine-in-rust-games-in-lust.md) and [0003](docs/decisions/0003-games-in-rust-lust-or-lua.md)). DESIGN.md says what Solis is; this file says in what order it gets built.
 
-**About fourteen months,** if Solis gets steady attention alongside Lust (light, sky and atmosphere got a phase of their own on 2026-10-26, [decision 0046](docs/decisions/0046-light-before-netcode.md), proposed). Months are a guide, not a promise: the pace is set by decisions, testing on Windows and reviews.
+**About sixteen months,** if Solis gets steady attention alongside Lust (light, sky and atmosphere got a phase of their own on 2026-10-26, [decision 0046](docs/decisions/0046-light-before-netcode.md), proposed). Months are a guide, not a promise: the pace is set by decisions, testing on Windows and reviews.
 
 Each phase ends with a **gate**: something the project lead tries by hand before the next phase starts. Each milestone inside a phase is one pull request.
 
@@ -18,12 +18,12 @@ Each phase ends with a **gate**: something the project lead tries by hand before
 | 5. Scale | 5–6 | 2,000 units and 20,000 projectiles at 60 fps; 10,000 and 100,000 still playable; the ceiling measured |
 | 6. Simulation and play | 6–7 | Physics, input, a deterministic simulation |
 | 7. Sound and animation | 7–8 | Sound events and buses; animated characters |
-| 8. Light, sky and atmosphere | 8–10 | A physical sky, sunsets and night; shadows near and far; many lamps; fog and clouds; bounced light from probes |
-| 9. Effects | 10–11 | The effects suite: particles, trails, flipbooks |
-| 10. Game UI | 11–12 | Sungraph UI: HUDs and menus drawn in Solis |
-| 11. Netcode | 12–13 | Two PCs playing together over the internet |
-| 12. Scripting, export and Git | 13–14 | The scripting window; games packaged for Windows; working in teams through Git |
-| 13. Solis 0.1 | 14 | The flagship space battle, docs, release |
+| 8. Light, sky and atmosphere | 8–12 | A physical sky, sunsets and night; shadows near and far; many lamps; fog and clouds; bounced light, baked and real-time |
+| 9. Effects | 12–13 | The effects suite: particles, trails, flipbooks |
+| 10. Game UI | 13–14 | Sungraph UI: HUDs and menus drawn in Solis |
+| 11. Netcode | 14–15 | Two PCs playing together over the internet |
+| 12. Scripting, export and Git | 15–16 | The scripting window; games packaged for Windows; working in teams through Git |
+| 13. Solis 0.1 | 16 | The flagship space battle, docs, release |
 
 Lust joins in Phase 4, right after the editor, so game logic can be written in Lust from then on ([decision 0016](docs/decisions/0016-how-lust-joins-solis.md)). Phases 0–3 don't need Lust; if it isn't ready by Phase 4, Phase 5 (Scale) goes first.
 
@@ -156,9 +156,10 @@ Solis's selling point: skies, sunsets and light that feel right, never flat. The
 - **Clouds:** a flat layer, and volumetric clouds at High.
 - **Ambient occlusion,** **cascaded and contact shadows,** and **hundreds of lamps** with a few shadowed.
 - **Volumetric fog and light shafts,** with fog volumes.
-- **Reflection probes** and **baked light probes** (decision 0008's second source of indirect light).
+- **Reflection probes.**
+- **Bounced light, every way that can be made fast:** baked light probes (decision 0008's second source of indirect light), bounce from the screen, real-time probes traced against a simplified world (no ray-tracing hardware needed), and a time-boxed experiment for a better method, kept only if it wins.
 
-**Decide before starting:** the questions in the plan (names, units, time of day as game state, quality levels, how far bounced light goes).
+**Decide before starting:** the plan's open questions (the effects suite's name, light units, time of day as game state, quality levels, the night sky, the sky's styles). The order, clouds and bounced light are answered.
 
 **Gate:** in the light showcase, the day runs from noon to night with no jumps; the golden hour feels like the project lead's favourite game sunsets; indoors never looks like the Backrooms; the stylized look is as good; the benchmark's target still runs at 60 fps.
 

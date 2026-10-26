@@ -1,6 +1,6 @@
 # 0046. Light, sky and atmosphere get a phase of their own, and netcode moves later
 
-- **Status:** Proposed (waiting for the project lead's answers in [docs/plans/phase-8-light.md](../plans/phase-8-light.md))
+- **Status:** Proposed. The order, clouds and bounced light were answered by the project lead on 2026-10-26; the rest of [the plan's questions](../plans/phase-8-light.md) and the effects suite's name are still open.
 - **Date:** 2026-10-26
 
 ## Problem
@@ -20,7 +20,7 @@ The roadmap had none of this:
 
 ## Decision
 
-Option 2, as proposed. The new order:
+Option 2, chosen by the project lead. The new order:
 
 | Phase | What it covers | Change |
 | --- | --- | --- |
@@ -32,13 +32,13 @@ Option 2, as proposed. The new order:
 | 12 | Scripting, export and Git | was 10 |
 | 13 | Solis 0.1 | was 11 |
 
-Bloom, white balance and colour grading move from the effects plan into Phase 8. Baked light probes, decision 0008's second source of indirect light, come in Phase 8 rather than after 0.1. Real-time bounced light stays after 0.1.
+Bloom, white balance and colour grading move from the effects plan into Phase 8. Bounced light comes in Phase 8 rather than after 0.1, every way that can be made fast (the project lead's answer): baked light probes (decision 0008's second source of indirect light), bounce from the screen, real-time probes traced against a simplified world, and a time-boxed experiment for a better method, each kept only within its cost budget.
 
 The effects suite's name is also open in the same plan: "Eclipse" carries trademark risk, and "Solstice" is recommended. That choice gets its own decision when it is made.
 
 ## Consequences
 
-- **0.1 comes about two months later than the roadmap's months said,** because one phase is added and Phase 9 is split.
+- **0.1 comes about four months later than the roadmap's months said** (about sixteen months in all), because one large phase is added, with real-time bounced light in it, and Phase 9 is split.
 - **Netcode waits safely.** What it needs is built: the fixed tick, seeded randomness, the start-of-tick world, strict physics, state checksums, and save games that hold everything. Effects, UI and now light are designed to stay out of the game's state.
 - **A risk while netcode waits:** nothing checks that two different PCs play the same game. A small CI check (a recorded game played on Linux and Windows, its checksum compared with one in the repository) covers it until Phase 11.
 - Phase plans for effects and UI keep their content. The UI plan's file is renamed for Phase 10.

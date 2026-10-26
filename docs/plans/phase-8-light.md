@@ -7,7 +7,7 @@ The research behind every choice is in [docs/reports/lighting-research.md](../re
 **Gate:** in the light showcase (L1), set a time of day and look. It is judged against screenshots of the project lead's favourite game sunsets. The gate passes when:
 - **The day runs from noon to night and back with no jumps.** The sky, sun colour, shadows, clouds and haze all change together. The brightness adjusts as eyes do. Twilight turns blue. Night looks like night: stars and the moon, and dark without going grey.
 - **The golden hour feels right.** The sun is low and warm, shadows are cool, the clouds are lit from below, the haze glows towards the sun, and far hills fade into the air.
-- **Indoors never looks like the Backrooms.** Inside the showcase's house, sun through a window bounces light around the room, and corners and contacts are soft and darker.
+- **Indoors never looks like the Backrooms.** Inside the showcase's house, sun through a window bounces light around the room, and corners and contacts are soft and darker. At High, a lamp carried into the dark house lights the room with its bounce as it moves.
 - **The stylized look is as good as the standard one.** The cel-shaded look gets the same sky and colours.
 - **The benchmark's target level still runs at 60 fps** at the Default quality level, on the project lead's PC.
 
@@ -25,6 +25,23 @@ The other half is **light that has a shape.** Today the shadow side of everythin
 - shadows stay sharp near the camera and still reach far;
 - hundreds of lamps can shine at once;
 - light bounces around a room (baked light probes).
+
+## Answers (the project lead, 2026-10-26)
+
+- **The order:** as recommended. Sound and animation stay Phase 7; light is Phase 8, effects 9, game UI 10, netcode 11.
+- **Clouds:** as recommended, flat and volumetric.
+- **Bounced light: every way that can be made fast.** Baked probes *and* real-time bounced light in this phase, plus a third or fourth way if one can be built or invented, as long as it performs. So bounced light gets four layers (L13 to L16 below), each with a hard cost budget and a scale case, kept only if it earns its place:
+  1. **Baked light probes:** free at run time, for everything.
+  2. **Bounce from the screen:** one bounce from what's in view, from the ambient occlusion pass (L8).
+  3. **Real-time probes:** bounced light that follows moving lamps and the time of day, traced against a simplified copy of the world, with no ray-tracing hardware.
+  4. **A Solis method, tried in a time-boxed experiment:** radiance cascades combined with the probes, or another idea found while building 1 to 3. It ships only if it beats layer 3 on cost or looks at the scale target.
+- **The effects suite's name:** the project lead suggested **Aura**. It is crowded in exactly this field:
+  - Ramen VR's **Aura** is an AI agent that makes Niagara particle effects for Unreal and Unity;
+  - **Aura 2** is an award-winning volumetric lighting and fog tool for Unity;
+  - ASUS's **Aura Sync** is lighting software.
+
+  Still open. Recommended: **Solstice**, or **Aureole** (from the same root as aura: a ring of light round the sun), which was clear in quick checks.
+- The other choices are still open; until answered, the plan follows the recommendations.
 
 ## Choices to make before any code
 
@@ -77,7 +94,7 @@ Each question has a recommended answer first, then the alternatives, in plain wo
    | Level | What it adds | Cost |
    |---|---|---|
    | **Default** | The physical sky, sky light, ambient occlusion, cascaded and contact shadows, many lamps, flat clouds, bloom and grading | about 4–7 ms |
-   | **High** | Volumetric clouds, volumetric fog and soft shadows | about +3–4 ms |
+   | **High** | Volumetric clouds, volumetric fog, soft shadows, real-time bounced light and bounce from the screen | about +5–7 ms |
    | **Low** | Turns things off for older cards; works on any card Solis opens on | — |
 
    - **Recommended: Low, Default, High, set per project, and changeable by players later** (the settings screen is Sungraph UI's, Phase 10). The editor's viewport has its own setting, so a slow laptop can edit at Low.
@@ -87,7 +104,7 @@ Each question has a recommended answer first, then the alternatives, in plain wo
    - Godot is rewriting its own.
    - Bevy's ray-traced version runs well only on NVIDIA cards.
    - Ray tracing in wgpu is experimental.
-   - **Recommended:**
+   - *Answered: every way that can be made fast (see Answers).* The recommendation was:
      - **Baked light probes in this phase.** Solis bakes them on any card (no ray-tracing hardware), and thousands of moving units pick up bounced light from them almost for free.
      - **Real-time bounced light after 0.1**, on probes traced against a simplified copy of the world (AMD's MIT-licensed method, about 1.7 ms), as a further "Ultra" level.
    - Alternative: real-time bounced light in this phase too (about two more months; the riskiest part of the phase).
@@ -261,6 +278,29 @@ This may be two pull requests.
 - **Saving:** stored next to the area as an asset, and rebaked when asked.
 - This is decision 0008's second source of indirect light.
 
+### L14. Real-time bounced light
+- **Probes around the camera:** grids of probes in nested sizes (cascades), finer near the camera, that follow it, so open worlds work.
+- **Tracing:** each frame a few probes are traced against a **simplified copy of the world**: small blocks of distance fields (how far is the nearest surface), as AMD's MIT-licensed Brixelizer GI does. Where wgpu's hardware ray tracing is available and stable, it is used instead, behind the same probes.
+- **What it gives:** bounced light that follows moving lamps, explosions, opened doors and the time of day.
+- **Units only receive:** the thousands of moving units take light from the probes but aren't traced, which keeps the cost the same at 2,000 units or 10,000.
+- **Budget:** at most about 2–3 ms at 1080p on a mid-range card, at High. AMD reports 1.7 ms on an RX 7600 XT. Above the budget, it doesn't ship at that level.
+- **Blending:** baked probes (L13) are the fallback where the real-time ones haven't settled, and on Default and Low.
+
+### L15. Bounce from the screen, joined up
+- One bounce of light from what's on screen (from L8's pass), laid over the probes for small, sharp detail the probes are too coarse for: the red glow of a wall on the floor beside it.
+- The two are blended so nothing is counted twice.
+
+### L16. An experiment: a Solis method
+- A **time-boxed experiment** (a fixed number of days, decided at its start) to find a better way. The first candidate is **radiance cascades** (Alexander Sannikov's method, used in 2D in Path of Exile 2), joined with L14's probes and distance fields:
+  - it gives soft shadows from every light without noise;
+  - 3D versions are still research: a 2025 study measured 2–26 ms with flicker;
+  - "split radiance cascades" (2026) is new and unproven in an engine.
+- Other ideas found while building L13 to L15 can be tried instead.
+- **Shipped only if it wins:**
+  - it beats L14 on cost or looks, at the scale target;
+  - it has no flicker the gate's viewer can see.
+- Otherwise its findings are written up in `docs/reports/` and it stays out. Either way, the project lead sees the comparison.
+
 ### End of the phase
 - Quality levels tuned.
 - The three reviewers (decision 0027).
@@ -271,7 +311,6 @@ This may be two pull requests.
 ## After 0.1
 
 Kept here so the design leaves room for them:
-- **Real-time bounced light (Ultra),** traced against a simplified world: AMD's Brixelizer GI method, MIT, about 1.7 ms.
 - **Baked lightmaps.**
 - **Reflections on the screen (SSR).**
 - **TAA and AMD's FSR upscaling.**

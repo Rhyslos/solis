@@ -175,16 +175,16 @@ wgpu, lightweight, built for medium-poly, stylized games.
 - **GPU instancing** (essential for §2), frustum culling, LODs
 - Tonemapping, automatic exposure, bloom, white balance and colour grading (much of a stylized look lives here)
 - **A physical sky** (Hillaire's method), time of day and night, flat and volumetric clouds, haze over distance, volumetric fog and light shafts
-- **Light with shape:** sky light from the real sky, ambient occlusion, cascaded and contact shadows, hundreds of lamps with a few shadowed, reflection probes, baked light probes
+- **Light with shape:** sky light from the real sky, ambient occlusion, cascaded and contact shadows, hundreds of lamps with a few shadowed, reflection probes, and bounced light every way that can be made fast: baked light probes, bounce from the screen, real-time probes traced against a simplified world, and a time-boxed experiment for a better method
 - Quality levels (Low, Default, High), so the scale target holds on mid-range cards
 
 **Later:**
-- Real-time bounced light (probes traced against a simplified world), baked lightmaps, screen-space reflections, TAA and upscaling, hardware ray tracing once wgpu's is stable
+- Baked lightmaps, screen-space reflections, TAA and upscaling, hardware ray tracing once wgpu's is stable
 - Occlusion culling
 - A node-based shader editor (stylized games live on custom shaders)
 - Impostors for distant objects
 
-**Lighting approach:** a choice per project ([decision 0008](docs/decisions/0008-lighting-is-a-project-choice.md)). Real-time lights with sky light came first; baked light probes arrive in Phase 8; lightmaps and real-time bounced light are further sources after 0.1.
+**Lighting approach:** a choice per project ([decision 0008](docs/decisions/0008-lighting-is-a-project-choice.md)). Real-time lights with sky light came first; baked and real-time bounced light arrive in Phase 8; lightmaps are a further source after 0.1.
 
 ---
 
@@ -280,7 +280,7 @@ Settled in [decision 0004](docs/decisions/0004-editor-layout.md): Halberd's pane
 
 ## 15. Roadmap
 
-**Solis 0.1 in about fourteen months,** in fourteen phases (0 to 13), each ending with a gate the project lead tries by hand. The full plan is in [ROADMAP.md](ROADMAP.md). In short: groundwork and the editor shell, rendering, the world, the editor, **Lust and Lua join** (Phase 4), scale, simulation, sound and animation, **light, sky and atmosphere**, effects, game UI, netcode, scripting and export, and the 0.1 release.
+**Solis 0.1 in about sixteen months,** in fourteen phases (0 to 13), each ending with a gate the project lead tries by hand. The full plan is in [ROADMAP.md](ROADMAP.md). In short: groundwork and the editor shell, rendering, the world, the editor, **Lust and Lua join** (Phase 4), scale, simulation, sound and animation, **light, sky and atmosphere**, effects, game UI, netcode, scripting and export, and the 0.1 release.
 
 **The flagship sample:** a small space battle. Two capital ships, a carrier launching fighter squadrons, a few hundred lasers in the air, over the network. It tests instancing, components, VFX and lockstep at once.
 
@@ -358,4 +358,4 @@ Both sides review each other's pull requests.
 - 2026-10-25: [0043](docs/decisions/0043-installed-and-updated-from-github.md): Solis is installed with an Inno Setup installer (per user, no administrator), and each merge into main is published as a GitHub release `build-<number>`. Installed copies check GitHub when they open and every six hours, download a newer build while you work, check its SHA-256, and install it when you close (or now, with Restart to update). Asked for by the project lead.
 - 2026-10-26: [0044](docs/decisions/0044-third-party-notices-ship-with-the-program.md): every build writes `THIRD-PARTY-NOTICES.txt` (the libraries built into the program, with their copyright notices and licences) with cargo-about, and it ships in the download and the installer, as those licences ask.
 - 2026-10-26: [0045](docs/decisions/0045-a-splash-screen-that-asks-before-updating.md): Solis starts with a splash screen (Aventail's, with Solis's logo) for at least 0.6 s while it asks GitHub for a newer build; a newer one brings up a question (Update now, Open without updating, Skip this version), and Help > Check for updates when starting turns checking off. Updates no longer download quietly, and the six-hourly checks are gone. Asked for by the project lead.
-- 2026-10-26: [0046](docs/decisions/0046-light-before-netcode.md) (proposed): light, sky and atmosphere get Phase 8, effects and game UI a phase each (9 and 10), and netcode moves to Phase 11; bloom and grading move into Phase 8, and baked light probes arrive there. Waits for the project lead's answers in the Phase 8 plan.
+- 2026-10-26: [0046](docs/decisions/0046-light-before-netcode.md) (proposed): light, sky and atmosphere get Phase 8, effects and game UI a phase each (9 and 10), and netcode moves to Phase 11; bloom and grading move into Phase 8, and bounced light, baked and real-time, arrives there (the order, clouds and bounced light chosen by the project lead; the rest of the Phase 8 plan's questions are open).

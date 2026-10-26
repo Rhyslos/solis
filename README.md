@@ -28,7 +28,7 @@ The first build takes a few minutes. `cargo run -p app -- --help` lists the opti
 
 Solis is built in phases, one milestone per pull request. Each phase ends with a **gate** the project lead tries by hand before the next starts. This tracker is updated by the pull request that finishes each milestone; the full plan is in [ROADMAP.md](ROADMAP.md).
 
-**Overall: 42 of 84 milestones** `██████░░░░░░░` 50%
+**Overall: 42 of 87 milestones** `██████░░░░░░░` 48%
 
 **Now:** Phases 1, 2 and 3 are built and wait for their gates to be tried by hand ([Phase 3 plan](docs/plans/phase-3.md)). Phase 4, game code, is built and reviewed, and waits for its gate too ([Phase 4 plan](docs/plans/phase-4.md)). Phase 5, scale, is built and reviewed, and waits for its gate ([Phase 5 plan](docs/plans/phase-5.md)): try **Help > Make the benchmark…**. Phase 6, simulation and play, is built and reviewed three times, and waits for its gate ([Phase 6 plan](docs/plans/phase-6.md)): try **Help > Make the playground…**. The hardening milestone is done and everything is merged: its gate is reading the [hardening report](docs/reports/hardening-phase-6.md) and trying the playground once more. Solis now installs and updates itself from GitHub's Releases page. Next is Phase 7, sound and animation. After it, Phase 8 brings light, sky and atmosphere ([plan](docs/plans/phase-8-light.md), proposed in [decision 0046](docs/decisions/0046-light-before-netcode.md)), and netcode moves to Phase 11.
 
@@ -182,7 +182,7 @@ Solis is built in phases, one milestone per pull request. Each phase ends with a
 
 **Gate:** a character walks and runs with smooth blending, and its footsteps sound right.
 
-### Phase 8 · Light, sky and atmosphere — 0 of 13
+### Phase 8 · Light, sky and atmosphere — 0 of 16
 
 `░░░░░░░░░░░░░` 0%
 
@@ -202,6 +202,9 @@ Solis is built in phases, one milestone per pull request. Each phase ends with a
 - [ ] Volumetric fog and light shafts
 - [ ] Reflection probes
 - [ ] Baked light probes: bounced light
+- [ ] Real-time bounced light, traced against a simplified world
+- [ ] Bounce from the screen, joined with the probes
+- [ ] An experiment: a Solis method for bounced light, kept only if it wins
 
 </details>
 
