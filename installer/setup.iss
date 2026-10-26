@@ -59,6 +59,8 @@ DefaultGroupName={#AppName}
 DisableProgramGroupPage=yes
 DisableReadyPage=yes
 UninstallDisplayIcon={app}\{#AppExe}
+; The logo on the setup program itself.
+SetupIconFile=..\branding\logo.ico
 OutputDir={#Output}
 OutputBaseFilename={#AppId}-setup
 Compression=lzma2/max

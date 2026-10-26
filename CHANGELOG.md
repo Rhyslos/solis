@@ -29,6 +29,7 @@ What changed in each version, for people using Solis. Newest first.
 
 ### Added
 
+- **Solis has a logo**: a sun-like swirl round a dark centre. It's the program's icon on the desktop, in the Start menu, on the taskbar and in the window's corner, the setup program's icon, and at the top of the README.
 - **The libraries' notices ship with Solis** (decision 0044): `THIRD-PARTY-NOTICES.txt`, beside the program and in the installed folder, lists the open-source libraries built into it with their copyright notices and licence texts, as their licences ask.
 - **Ten accent colours** (Window > Accent colour), each shown with a swatch: Aventail's Blue and Olive join Petrol blue, Red, Marine green (called Green before) and Plum, with four sun colours of Solis's own: Copper, Orange, Amber and Gold. Each is deep enough for white text to read on it. A colour chosen before stays chosen.
 - **Solis installs and updates itself** (decision 0043): download `solis-setup.exe` from the repository's Releases page and run it once (no administrator needed). Every merge into main is published there as a new build, and an installed Solis checks for one when it opens and every six hours, downloads it while you work, checks it arrived whole, and installs it when you close; **Restart to update** in the top bar does it now. **Help > Check for updates** checks at once, and **Help > Update automatically** turns the checking off. The window title and Help > About show the build number. The manual's new page, Installing and updating, explains it.
