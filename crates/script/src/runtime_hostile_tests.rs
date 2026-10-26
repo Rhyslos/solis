@@ -354,6 +354,27 @@ fn game_code_can_t_require_files_from_anywhere() {
 }
 
 #[test]
+fn game_code_can_t_compile_code_into_the_shared_globals() {
+    // mlua 0.12 gives every Luau a loadstring that compiles code into the
+    // shared globals, outside each file's own; game code never had it.
+    let probe = "local C = component('Probe', { { 'found', 'string', '' } })\n\
+                 function C:update(dt) self.found = tostring(loadstring) .. ' ' .. tostring(require) end";
+    let mut runtime = Runtime::new().unwrap();
+    runtime
+        .load(&code("", &[("probe.lua", probe)]), &mut NoHost)
+        .unwrap();
+    runtime
+        .sync(id(1), "Probe", &ComponentData::default(), &mut NoHost)
+        .unwrap();
+    runtime.tick(0.1, &mut Said::default());
+    let found = runtime.values(id(1), "Probe").unwrap();
+    assert_eq!(
+        found.get("found"),
+        Some(&reflect::Value::Text("nil nil".into()))
+    );
+}
+
+#[test]
 fn a_huge_table_move_is_refused_quickly_and_the_collector_can_t_be_stopped() {
     // The third security audit: table.move is one loop in C that the
     // time limits can't stop (two billion items held the editor for a

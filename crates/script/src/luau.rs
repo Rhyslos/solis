@@ -228,21 +228,25 @@ pub(crate) struct Luau {
     pub(crate) discard: Function,
 }
 
-/// A Luau with only the libraries game code may use: Luau's safe ones
-/// without `package` (whose `require` reads and runs `.lua` files from
-/// anywhere on disk).
+/// A Luau with only the libraries game code may use: Luau's safe ones,
+/// without `require` (which reads and runs `.lua` files from anywhere on
+/// disk) or `loadstring` (which compiles code into the shared globals,
+/// outside each file's own). mlua 0.12 gives every Luau both, so they're
+/// taken out here.
 pub(crate) fn sandboxed_lua() -> mlua::Result<Lua> {
-    Lua::new_with(
-        mlua::StdLib::ALL_SAFE ^ mlua::StdLib::PACKAGE,
-        mlua::LuaOptions::default(),
-    )
+    let lua = Lua::new_with(mlua::StdLib::ALL_SAFE, mlua::LuaOptions::default())?;
+    let globals = lua.globals();
+    globals.raw_remove("require")?;
+    globals.raw_remove("loadstring")?;
+    drop(globals);
+    Ok(lua)
 }
 
 /// Game code's text, loaded as text, never as compiled bytecode (Luau
 /// takes text starting with a byte below 0x09 for bytecode, and its
 /// bytecode loader isn't made for hostile input).
-pub(crate) fn as_text(chunk: mlua::Chunk<'_>) -> mlua::Chunk<'_> {
-    chunk.set_mode(mlua::ChunkMode::Text)
+pub(crate) fn as_text(chunk: mlua::chunk::Chunk<'_>) -> mlua::chunk::Chunk<'_> {
+    chunk.set_mode(mlua::chunk::ChunkMode::Text)
 }
 
 impl Luau {
@@ -277,7 +281,7 @@ impl Luau {
     /// them stays there, and reads fall through to the shared ones.
     pub(crate) fn env(&self) -> mlua::Result<Table> {
         let env = self.lua.create_table()?;
-        env.set_metatable(Some(self.through.clone()));
+        env.set_metatable(Some(self.through.clone()))?;
         env.raw_set("_G", &env)?;
         // Lust looks for Luau's vectors with rawget(_G, "vector").
         let vector: LuaValue = self.globals.raw_get("vector")?;

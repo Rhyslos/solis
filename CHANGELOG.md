@@ -4,6 +4,10 @@ What changed in each version, for people using Solis. Newest first.
 
 ## Unreleased
 
+### Fixed
+
+- **Game code runs on mlua 0.12** (the Lua engine's Rust side): it now gives every Luau a `require` that reads files from anywhere and a `loadstring`, and Solis takes both out, so game code is as sandboxed as before. Its Luau source is held at 0.740, as mlua 0.12.2 can't start with 0.744.
+
 ### Changed
 
 - **Smooth play on fast screens** (Phase 6): the game still runs 60 ticks a second, but the Game panel draws everything part way between ticks, so a 120 or 144 Hz screen shows smooth movement instead of steps.

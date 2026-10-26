@@ -2342,9 +2342,9 @@ checksum = "f9f8bd3e56ce4dfc153cf470fffbfa98c7620958b312ca5c3a4b8d5181fd13c6"
 
 [[package]]
 name = "luau0-src"
-version = "0.22.1+luau744"
+version = "0.22.0+luau740"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "abf3cf06d603de6835228ccf5e1afbed6e5c2409aa5d3122c1b2036055a2af15"
+checksum = "4ea012e8a8aaff2f7b6c788fad41a60630003b6a0932bcf045f7d14952c9bd31"
 dependencies = [
  "cc",
 ]
@@ -4267,7 +4267,7 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "32497e9a4c7b38532efcdebeef879707aa9f794296a4f0244f6f69e9bc8574bd"
 dependencies = [
  "fastrand",
- "getrandom 0.4.3",
+ "getrandom 0.3.4",
  "once_cell",
  "rustix 1.1.5",
  "windows-sys 0.61.2",

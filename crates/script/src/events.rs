@@ -140,7 +140,7 @@ pub(crate) fn sender(
 ) -> mlua::Result<mlua::Function> {
     let queue = Rc::clone(queue);
     lua.create_function(
-        move |_, (to, name, values): (LuaValue, mlua::String, Table)| {
+        move |_, (to, name, values): (LuaValue, mlua::LuaString, Table)| {
             let Some(to) = crate::convert::entity_of(&to) else {
                 return Ok(());
             };

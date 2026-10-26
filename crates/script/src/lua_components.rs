@@ -122,7 +122,7 @@ pub(crate) fn compile_files(
         let load = if compiled {
             luau.lua
                 .load(&bytecode[i][..])
-                .set_mode(mlua::ChunkMode::Binary)
+                .set_mode(mlua::chunk::ChunkMode::Binary)
         } else {
             crate::luau::as_text(luau.lua.load(text))
         };
@@ -284,7 +284,7 @@ pub(crate) fn make(
             table.raw_set(field.key.as_str(), value)?;
         }
     }
-    table.set_metatable(Some(class.class.clone()));
+    table.set_metatable(Some(class.class.clone()))?;
     Ok(table)
 }
 
@@ -340,7 +340,7 @@ pub(crate) fn swap_classes(
                 table.raw_set(field.key.as_str(), LuaValue::Nil)?;
             }
         }
-        table.set_metatable(Some(class.class.clone()));
+        table.set_metatable(Some(class.class.clone()))?;
     }
     for key in gone {
         running.remove(&key);

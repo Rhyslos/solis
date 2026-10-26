@@ -467,7 +467,7 @@ fn compile_here(code: &Code) -> Result<Option<Compiled>, Vec<CodeProblem>> {
     if !problems.is_empty() {
         return Err(problems);
     }
-    let compiler = mlua::Compiler::new();
+    let compiler = mlua::chunk::Compiler::new();
     let bytecode = Bytecode {
         lust: lust
             .as_ref()
