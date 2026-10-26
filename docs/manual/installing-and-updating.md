@@ -47,6 +47,7 @@ None: updating has no keys.
 - **What Solis sends:** only the request itself, naming the program and its version (GitHub asks every program to). Nothing about you or your projects.
 - **Problem:** the installer says it *can't be installed in* the folder you chose. **Why:** your account can't write there without an administrator (Program Files, say), and Solis must be able to replace itself when it updates. **Fix:** choose a folder of your own.
 - **Moving Solis to another folder:** uninstall it (Settings > Apps), then run the setup file again and choose the new folder. Updates always go to the folder you installed in.
+- **What's in the installed folder:** the program, its licence (`LICENSE`, MIT), `THIRD-PARTY-NOTICES.txt` (the open-source libraries built into Solis, with their licences) and the fonts' licences in `licenses`.
 - **Your projects and settings** are kept through every update: they live in your project folders and your user folder, not where Solis is installed.
 
 ## Related
