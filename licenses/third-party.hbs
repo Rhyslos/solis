@@ -1,0 +1,21 @@
+Third-party notices
+===================
+
+The program includes the open-source libraries below. Their licences ask
+that their copyright notices and licence texts go with every copy; here
+they are, grouped by licence. Fonts are listed in the licenses folder's
+README.
+
+{{#each overview}}
+- {{{name}}}: {{count}} {{#if (eq count 1)}}library{{else}}libraries{{/if}}
+{{/each}}
+
+{{#each licenses}}
+------------------------------------------------------------------------
+{{{name}}}
+Used by: {{#each used_by}}{{crate.name}} {{crate.version}}{{#unless @last}}, {{/unless}}{{/each}}
+------------------------------------------------------------------------
+
+{{{text}}}
+
+{{/each}}

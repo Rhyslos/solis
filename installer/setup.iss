@@ -77,6 +77,8 @@ Name: "desktopicon"; Description: "Put a shortcut on the desktop"; Flags: unchec
 [Files]
 Source: "{#Source}\{#AppExe}"; DestDir: "{app}"; Flags: ignoreversion
 Source: "{#Source}\LICENSE"; DestDir: "{app}"; Flags: ignoreversion
+; The libraries' copyright notices and licences (decision 0044).
+Source: "{#Source}\THIRD-PARTY-NOTICES.txt"; DestDir: "{app}"; Flags: ignoreversion
 Source: "{#Source}\licenses\*"; DestDir: "{app}\licenses"; Flags: ignoreversion recursesubdirs createallsubdirs
 
 [INI]

@@ -1,0 +1,22 @@
+# Which licences cargo-about accepts when writing the third-party notices
+# (decision 0044, `licenses/third-party.hbs`). The same list as deny.toml's.
+accepted = [
+    "Apache-2.0",
+    "Apache-2.0 WITH LLVM-exception",
+    "MIT",
+    "BSD-2-Clause",
+    "BSD-3-Clause",
+    "ISC",
+    "Zlib",
+    "CC0-1.0",
+    "Unicode-3.0",
+    "BSL-1.0",
+    "OFL-1.1",
+    "Ubuntu-font-1.0",
+    "CDLA-Permissive-2.0",
+]
+# Only what's built into the program for Windows (and Linux, where the
+# checks run); never test-only libraries.
+targets = ["x86_64-pc-windows-msvc"]
+ignore-build-dependencies = true
+ignore-dev-dependencies = true
