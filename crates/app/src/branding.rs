@@ -1,4 +1,6 @@
 //! The program's name and identity, in one place.
+//!
+//! (A build made only to try the update question on the splash screen.)
 
 /// The name, shown in the title bar and the About box.
 pub const APP_NAME: &str = "Solis";
