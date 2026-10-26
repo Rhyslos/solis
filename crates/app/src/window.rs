@@ -472,16 +472,13 @@ impl App {
     /// yet (after opening or reloading an area).
     fn load_area_models(&mut self) {
         let Some(db) = self.projects.db() else { return };
-        let wanted: Vec<AssetId> = self
-            .workbench
-            .document()
-            .area()
-            .with::<area::builtin::Model>()
-            .filter_map(|(_, m)| m.asset.map(|r| r.asset))
-            .filter(|id| !self.workbench.has_model(*id))
-            .collect::<HashSet<_>>()
-            .into_iter()
-            .collect();
+        let wanted: Vec<AssetId> = models_wanted(
+            self.workbench.document().area(),
+            self.workbench.assemblies().values().map(|file| &file.area),
+        )
+        .into_iter()
+        .filter(|id| !self.workbench.has_model(*id))
+        .collect();
         let mut jobs = Vec::new();
         for id in wanted {
             if let Some(file) = db.file(id) {
@@ -877,11 +874,16 @@ impl App {
             .collect();
         self.workbench.set_library(items);
         self.workbench.set_folders(folders);
+        let read_some = !assemblies.is_empty();
         for id in assemblies {
             if let Err(why) = self.load_assembly(id, false) {
                 log::debug!("couldn't read an assembly ahead: {why}");
                 self.unreadable.insert(id);
             }
+        }
+        // And their models, so what game code makes is drawn.
+        if read_some {
+            self.load_area_models();
         }
     }
 
@@ -1102,6 +1104,24 @@ impl App {
         self.to_place.insert(id);
         self.importer.start(id, &file, self.projects.cache());
     }
+}
+
+/// The models the open project needs loaded: those the area uses, and
+/// every model any of the project's assemblies uses, since game code can
+/// make copies of any assembly while playing (`spawn`). Without the
+/// second, copies made only by game code had no model to draw (the
+/// benchmark's stress area showed only its lasers).
+fn models_wanted<'a>(
+    area: &'a area::Area,
+    assemblies: impl Iterator<Item = &'a area::Area>,
+) -> HashSet<AssetId> {
+    std::iter::once(area)
+        .chain(assemblies)
+        .flat_map(|a| {
+            a.with::<area::builtin::Model>()
+                .filter_map(|(_, m)| m.asset.map(|r| r.asset))
+        })
+        .collect()
 }
 
 /// The project open when Solis last closed, as saved (an optional path:
@@ -1420,6 +1440,35 @@ fn open_externally(path: &std::path::Path) -> std::io::Result<()> {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn models_only_game_code_places_are_loaded_too() {
+        use area::builtin::Model;
+        use reflect::AssetRef;
+        let model = |id: AssetId| Model {
+            asset: Some(AssetRef {
+                asset: id,
+                part: None,
+            }),
+        };
+        let (in_area, in_assembly, nowhere) =
+            (AssetId::random(), AssetId::random(), AssetId::random());
+        let mut area = area::Area::new();
+        area.spawn(area::EntityData::new("Rock").with(&model(in_area)));
+        area.spawn(area::EntityData::new("Empty"));
+        let mut fighter = area::Area::new();
+        fighter.spawn(area::EntityData::new("Fighter").with(&model(in_assembly)));
+        let wanted = super::models_wanted(&area, [&fighter].into_iter());
+        assert!(wanted.contains(&in_area));
+        assert!(
+            wanted.contains(&in_assembly),
+            "spawned by game code: needed too"
+        );
+        assert!(!wanted.contains(&nowhere));
+        assert_eq!(wanted.len(), 2);
+        // Nothing placed anywhere: nothing wanted.
+        assert!(super::models_wanted(&area::Area::new(), std::iter::empty()).is_empty());
+    }
+
     use super::*;
 
     #[test]

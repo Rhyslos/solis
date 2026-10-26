@@ -6,6 +6,7 @@ What changed in each version, for people using Solis. Newest first.
 
 ### Fixed
 
+- **Ships game code made weren't always drawn:** the benchmark's stress area showed only its lasers, because nothing loaded the models of copies only game code places. Every model the project's assemblies use is now loaded with the area.
 - **Updates never finished downloading:** every complete download was refused at its very end ("the response body is larger than request limit"), so installed copies couldn't update. Copies installed before this fix can't update themselves past it: run the newest `solis-setup.exe` from the Releases page once, and updates work from then on.
 
 ### Changed
