@@ -434,3 +434,96 @@ fn github_answers() {
         Err(why) => assert!(why.contains("no builds to update to yet"), "{why}"),
     }
 }
+
+// --- Downloads ---
+
+/// A reader handing out `data` a few bytes at a time, as a network does.
+struct Trickle<'a>(&'a [u8]);
+
+impl std::io::Read for Trickle<'_> {
+    fn read(&mut self, buf: &mut [u8]) -> std::io::Result<usize> {
+        let n = self.0.len().min(buf.len()).min(7);
+        buf[..n].copy_from_slice(&self.0[..n]);
+        self.0 = &self.0[n..];
+        Ok(n)
+    }
+}
+
+#[test]
+fn a_download_of_exactly_its_size_is_kept_whole() {
+    // The bug a user met (build 74): every complete download failed at its
+    // very end, "the response body is larger than request limit".
+    let data: Vec<u8> = (0..100_000u32).map(|i| (i % 251) as u8).collect();
+    let mut out = Vec::new();
+    let digest =
+        crate::fetch::copy_checked(&mut Trickle(&data), data.len() as u64, &mut out).unwrap();
+    assert_eq!(out, data);
+    assert_eq!(digest, release::sha256(&data));
+}
+
+#[test]
+fn a_download_shorter_or_longer_than_its_size_is_refused() {
+    let data = vec![1u8; 1000];
+    let mut out = Vec::new();
+    let short = crate::fetch::copy_checked(&mut Trickle(&data), 1001, &mut out).unwrap_err();
+    assert!(short.contains("cut short"), "{short}");
+    let mut out = Vec::new();
+    let long = crate::fetch::copy_checked(&mut Trickle(&data), 999, &mut out).unwrap_err();
+    assert!(long.contains("bigger"), "{long}");
+    assert!(out.len() <= 999, "never keeps more than its size");
+    let empty = crate::fetch::copy_checked(&mut Trickle(&[]), 0, &mut Vec::new());
+    assert_eq!(empty, Ok(release::sha256(&[])));
+}
+
+#[test]
+fn ureq_reads_a_body_of_exactly_its_size_through_the_limit_we_give() {
+    use std::io::Read;
+    let data = vec![7u8; 10_818_391 % 100_000];
+    let size = data.len() as u64;
+    // ureq's own behaviour, which build 74's downloads met: a limit of
+    // exactly the size fails at the end of a complete body.
+    let mut body = ureq::Body::builder().data(data.clone());
+    let mut exact = body.with_config().limit(size).reader();
+    let mut out = Vec::new();
+    assert!(
+        exact.read_to_end(&mut out).is_err(),
+        "ureq changed: revisit read_limit"
+    );
+    // The limit Solis gives reads it whole, and copy_checked keeps it.
+    let mut body = ureq::Body::builder().data(data.clone());
+    let mut reader = body
+        .with_config()
+        .limit(crate::fetch::read_limit(size))
+        .reader();
+    let mut out = Vec::new();
+    let digest = crate::fetch::copy_checked(&mut reader, size, &mut out).unwrap();
+    assert_eq!(out, data);
+    assert_eq!(digest, release::sha256(&data));
+    // One byte more than said is still refused.
+    let mut body = ureq::Body::builder().data(vec![7u8; data.len() + 1]);
+    let mut reader = body
+        .with_config()
+        .limit(crate::fetch::read_limit(size))
+        .reader();
+    assert!(crate::fetch::copy_checked(&mut reader, size, &mut Vec::new()).is_err());
+}
+
+/// Downloads the real newest installer and checks it against its
+/// published SHA-256 (needs the internet: `cargo test -p updater --
+/// --ignored`). The test that would have caught build 74's bug. (Behind
+/// some proxies ureq can't follow GitHub's redirect to its download host;
+/// on a normal connection it can.)
+#[test]
+#[ignore = "needs the internet"]
+fn the_newest_installer_downloads_whole_and_matches() {
+    let source = Source {
+        repo: REPO.into(),
+        installer_name: SETUP.into(),
+        user_agent: "solis-updater-test".into(),
+    };
+    let release = source.latest().unwrap();
+    let folder = temp_folder("live-download");
+    let installer = source.download(&release, &folder).unwrap();
+    let bytes = std::fs::read(&installer).unwrap();
+    assert_eq!(bytes.len() as u64, release.installer.size);
+}

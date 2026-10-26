@@ -4,6 +4,10 @@ What changed in each version, for people using Solis. Newest first.
 
 ## Unreleased
 
+### Fixed
+
+- **Updates never finished downloading:** every complete download was refused at its very end ("the response body is larger than request limit"), so installed copies couldn't update. Copies installed before this fix can't update themselves past it: run the newest `solis-setup.exe` from the Releases page once, and updates work from then on.
+
 ### Changed
 
 - **Smooth play on fast screens** (Phase 6): the game still runs 60 ticks a second, but the Game panel draws everything part way between ticks, so a 120 or 144 Hz screen shows smooth movement instead of steps.
