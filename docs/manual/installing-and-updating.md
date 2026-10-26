@@ -17,7 +17,7 @@ If you'd rather not install anything, you can still download the program on its 
 5. Choose where to install it, or keep the suggested folder (`%LOCALAPPDATA%\Programs\Solis`, in your own user folder). Any folder your Windows account can write to works, on any drive. It never asks for an administrator, so only your Windows account gets Solis.
 6. Choose whether you want a desktop shortcut, click **Install**, leave **Open Solis** ticked and click **Finish**.
 
-Solis is now in the Start menu, and in Windows' **Settings > Apps** where you can uninstall it. If you ticked the box, there's a desktop shortcut too.
+Solis is now in the Start menu (with its logo, a glowing swirl round a dark centre), and in Windows' **Settings > Apps** where you can uninstall it. If you ticked the box, there's a desktop shortcut too.
 
 **How updates work:**
 1. Each time Solis opens, and every six hours while it's open, it asks GitHub whether there's a newer build.

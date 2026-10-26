@@ -1,3 +1,5 @@
+<p align="center"><img src="branding/logo.svg" width="160" alt=""></p>
+
 # Solis
 
 A free, open-source 3D game engine for stylized games, strategy games, online co-op and PvP, and big open worlds. Lightweight and beginner-friendly. The engine is written in Rust, and games in [Lust](https://github.com/Rhyslos/Lust), Rust or Lua.

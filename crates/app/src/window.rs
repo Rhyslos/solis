@@ -1324,7 +1324,8 @@ pub fn run(info: AppInfo, imports: Vec<PathBuf>) -> Result<(), String> {
             .with_title(title)
             .with_app_id(branding::APP_ID)
             .with_inner_size(FIRST_SIZE)
-            .with_min_inner_size(MIN_SIZE),
+            .with_min_inner_size(MIN_SIZE)
+            .with_icon(window_icon()),
         renderer: eframe::Renderer::Wgpu,
         wgpu_options: gpu_options(),
         ..Default::default()
@@ -1344,6 +1345,12 @@ pub fn run(info: AppInfo, imports: Vec<PathBuf>) -> Result<(), String> {
         Ok(result) => result.map_err(|err| err.to_string()),
         Err(payload) => Err(explain_panic(payload.as_ref())),
     }
+}
+
+/// The logo, for the window's corner and the taskbar (empty if it somehow
+/// can't be read: the system's own icon then).
+fn window_icon() -> std::sync::Arc<egui::IconData> {
+    std::sync::Arc::new(eframe::icon_data::from_png_bytes(branding::LOGO_PNG).unwrap_or_default())
 }
 
 /// The job system's workers (decision 0031): one per core, leaving one for

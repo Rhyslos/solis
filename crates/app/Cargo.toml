@@ -41,6 +41,11 @@ updater.workspace = true
 [target.'cfg(windows)'.dependencies]
 gilrs.workspace = true
 
+# The program file's icon (branding/logo.ico), built in on Windows by
+# build.rs.
+[target.'cfg(windows)'.build-dependencies]
+winresource.workspace = true
+
 [dev-dependencies]
 image.workspace = true
 pollster.workspace = true

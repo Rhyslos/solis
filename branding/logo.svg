@@ -1,0 +1,79 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 200 200" width="1024" height="1024" role="img" aria-label="Solis">
+<title>Solis</title>
+<defs>
+<radialGradient id="gGlow" cx="0.5" cy="0.5" r="0.5">
+<stop offset="0" stop-color="#F47A1F" stop-opacity="0.6"/>
+<stop offset="1" stop-color="#F47A1F" stop-opacity="0"/>
+</radialGradient>
+<linearGradient id="gArm" x1="1" y1="1" x2="0" y2="0">
+<stop offset="0" stop-color="#C2410C"/>
+<stop offset="1" stop-color="#FFD36B"/>
+</linearGradient>
+</defs>
+<circle cx="100" cy="100" r="96" fill="#0b0b0d"/>
+<circle cx="100" cy="100" r="94" fill="none" stroke="#FFC247" stroke-opacity="0.2" stroke-width="1.5"/>
+<g fill="#ffffff" fill-opacity="0.55">
+<circle cx="24.6" cy="117.8" r="0.7"/>
+<circle cx="146.9" cy="47.9" r="1.0"/>
+<circle cx="157.5" cy="57.3" r="1.0"/>
+<circle cx="47.4" cy="52.6" r="0.9"/>
+<circle cx="77.2" cy="24.3" r="1.1"/>
+<circle cx="141.2" cy="162.4" r="0.7"/>
+<circle cx="11.6" cy="96.5" r="1.0"/>
+<circle cx="111.8" cy="23.2" r="1.1"/>
+<circle cx="160.9" cy="145.2" r="1.1"/>
+<circle cx="88.1" cy="22.5" r="0.7"/>
+<circle cx="92.2" cy="173.8" r="0.8"/>
+<circle cx="127.0" cy="31.1" r="1.2"/>
+<circle cx="151.6" cy="51.1" r="0.9"/>
+<circle cx="29.6" cy="103.7" r="0.9"/>
+</g>
+<circle cx="100" cy="100" r="84" fill="url(#gGlow)"/>
+<g fill="none" stroke="url(#gArm)" stroke-width="3" stroke-opacity="0.65" stroke-linecap="round">
+<path d="M170 128 C166 74 120 54 92 64" transform="rotate(60 100 100)"/>
+<path d="M170 128 C166 74 120 54 92 64" transform="rotate(180 100 100)"/>
+<path d="M170 128 C166 74 120 54 92 64" transform="rotate(300 100 100)"/>
+</g>
+<g fill="none" stroke="url(#gArm)" stroke-width="20" stroke-opacity="0.22" stroke-linecap="round">
+<path d="M178 112 C172 52 112 36 82 62"/>
+<path d="M178 112 C172 52 112 36 82 62" transform="rotate(120 100 100)"/>
+<path d="M178 112 C172 52 112 36 82 62" transform="rotate(240 100 100)"/>
+</g>
+<g fill="none" stroke="url(#gArm)" stroke-width="9" stroke-linecap="round">
+<path d="M178 112 C172 52 112 36 82 62"/>
+<path d="M178 112 C172 52 112 36 82 62" transform="rotate(120 100 100)"/>
+<path d="M178 112 C172 52 112 36 82 62" transform="rotate(240 100 100)"/>
+</g>
+<g fill="none" stroke="#FFF1C2" stroke-width="2.5" stroke-opacity="0.85" stroke-linecap="round" stroke-dasharray="0 85 80 400">
+<path d="M178 112 C172 52 112 36 82 62"/>
+<path d="M178 112 C172 52 112 36 82 62" transform="rotate(120 100 100)"/>
+<path d="M178 112 C172 52 112 36 82 62" transform="rotate(240 100 100)"/>
+</g>
+<g fill="#FFD36B">
+<circle cx="133.9" cy="56.9" r="2.1"/>
+<circle cx="125.0" cy="41.5" r="1.5"/>
+<circle cx="99.7" cy="60.4" r="1.0"/>
+<circle cx="140.3" cy="58.4" r="1.6"/>
+<circle cx="171.2" cy="97.5" r="2.1"/>
+<circle cx="108.6" cy="55.3" r="1.1"/>
+<circle cx="123.4" cy="42.8" r="2.0"/>
+<circle cx="81.0" cy="159.9" r="2.0"/>
+<circle cx="90.7" cy="174.3" r="1.8"/>
+<circle cx="78.5" cy="173.9" r="2.2"/>
+<circle cx="144.9" cy="123.8" r="1.1"/>
+<circle cx="85.1" cy="163.6" r="1.7"/>
+<circle cx="60.2" cy="169.2" r="1.3"/>
+<circle cx="141.4" cy="134.3" r="1.5"/>
+<circle cx="57.8" cy="109.3" r="0.9"/>
+<circle cx="37.9" cy="109.8" r="1.9"/>
+<circle cx="33.4" cy="74.1" r="1.0"/>
+<circle cx="40.4" cy="46.1" r="1.9"/>
+<circle cx="53.5" cy="119.6" r="1.4"/>
+<circle cx="32.7" cy="87.6" r="1.9"/>
+<circle cx="40.6" cy="113.5" r="2.1"/>
+</g>
+<circle cx="100" cy="100" r="48" fill="none" stroke="#FFC247" stroke-opacity="0.3" stroke-width="5"/>
+<circle cx="100" cy="100" r="41" fill="#000000"/>
+<circle cx="100" cy="100" r="43.5" fill="none" stroke="#FFF1C2" stroke-width="2"/>
+<path d="M61 77.5 A45 45 0 0 1 139 77.5" fill="none" stroke="#FFE7A0" stroke-opacity="0.7" stroke-width="1.5" stroke-linecap="round"/>
+</svg>
