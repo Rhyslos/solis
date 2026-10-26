@@ -48,7 +48,10 @@ pub(crate) fn compile(
     let failed = |err: mlua::Error| start_failure(chunk, &err);
     let env = luau.env().map_err(failed)?;
     let load = match bytecode {
-        Some(bytes) => luau.lua.load(bytes).set_mode(mlua::ChunkMode::Binary),
+        Some(bytes) => luau
+            .lua
+            .load(bytes)
+            .set_mode(mlua::chunk::ChunkMode::Binary),
         None => crate::luau::as_text(luau.lua.load(&chunk.code)),
     };
     let function = load

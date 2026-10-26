@@ -237,7 +237,7 @@ pub(crate) fn with_natives<'h, R>(
         let said = &lines;
         natives.raw_set(
             "say",
-            scope.create_function(move |_, words: mlua::String| {
+            scope.create_function(move |_, words: mlua::LuaString| {
                 let n = said.get() + 1;
                 said.set(n);
                 if n <= MAX_SAID_LINES {
@@ -255,7 +255,7 @@ pub(crate) fn with_natives<'h, R>(
         )?;
         natives.raw_set(
             "find",
-            scope.create_function(move |_, name: mlua::String| {
+            scope.create_function(move |_, name: mlua::LuaString| {
                 let name = name.to_str()?;
                 Ok(h.borrow().find(&name).map(|id| id.to_string()))
             })?,
@@ -335,7 +335,7 @@ pub(crate) fn with_natives<'h, R>(
         )?;
         natives.raw_set(
             "spawn",
-            scope.create_function(move |_, (assembly, place): (mlua::String, LuaValue)| {
+            scope.create_function(move |_, (assembly, place): (mlua::LuaString, LuaValue)| {
                 let assembly = assembly.to_str()?;
                 Ok(vec3_of(&place)
                     .and_then(|place| h.borrow_mut().spawn(&assembly, place))
@@ -443,55 +443,57 @@ pub(crate) fn with_natives<'h, R>(
         )?;
         natives.raw_set(
             "saveGame",
-            scope.create_function(move |_, slot: mlua::String| {
+            scope.create_function(move |_, slot: mlua::LuaString| {
                 h.borrow_mut().save_game(&slot.to_str()?, false);
                 Ok(())
             })?,
         )?;
         natives.raw_set(
             "loadGame",
-            scope.create_function(move |_, slot: mlua::String| {
+            scope.create_function(move |_, slot: mlua::LuaString| {
                 h.borrow_mut().save_game(&slot.to_str()?, true);
                 Ok(())
             })?,
         )?;
         natives.raw_set(
             "held",
-            scope.create_function(move |_, name: mlua::String| {
+            scope.create_function(move |_, name: mlua::LuaString| {
                 Ok(h.borrow().action(&name.to_str()?).held)
             })?,
         )?;
         natives.raw_set(
             "pressed",
-            scope.create_function(move |_, name: mlua::String| {
+            scope.create_function(move |_, name: mlua::LuaString| {
                 Ok(h.borrow().action(&name.to_str()?).pressed)
             })?,
         )?;
         natives.raw_set(
             "released",
-            scope.create_function(move |_, name: mlua::String| {
+            scope.create_function(move |_, name: mlua::LuaString| {
                 Ok(h.borrow().action(&name.to_str()?).released)
             })?,
         )?;
         natives.raw_set(
             "axis",
-            scope.create_function(move |_, name: mlua::String| {
+            scope.create_function(move |_, name: mlua::LuaString| {
                 let a = h.borrow().action(&name.to_str()?).axis;
                 Ok(vec3_value(Vec3::new(a.x, a.y, 0.0)))
             })?,
         )?;
         natives.raw_set(
             "bindingOf",
-            scope.create_function(move |_, name: mlua::String| {
+            scope.create_function(move |_, name: mlua::LuaString| {
                 Ok(h.borrow().binding(&name.to_str()?).unwrap_or_default())
             })?,
         )?;
         natives.raw_set(
             "rebind",
-            scope.create_function(move |_, (action, input): (mlua::String, mlua::String)| {
-                h.borrow_mut().rebind(&action.to_str()?, &input.to_str()?);
-                Ok(())
-            })?,
+            scope.create_function(
+                move |_, (action, input): (mlua::LuaString, mlua::LuaString)| {
+                    h.borrow_mut().rebind(&action.to_str()?, &input.to_str()?);
+                    Ok(())
+                },
+            )?,
         )?;
         natives.raw_set(
             "setSeed",

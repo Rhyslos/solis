@@ -6,6 +6,7 @@ What changed in each version, for people using Solis. Newest first.
 
 ### Fixed
 
+- **Game code runs on mlua 0.12** (the Lua engine's Rust side): it now gives every Luau a `require` that reads files from anywhere and a `loadstring`, and Solis takes both out, so game code is as sandboxed as before. Its Luau source is held at 0.740, as mlua 0.12.2 can't start with 0.744.
 - **Ships game code made weren't always drawn:** the benchmark's stress area showed only its lasers, because nothing loaded the models of copies only game code places. Every model the project's assemblies use is now loaded with the area.
 - **Updates never finished downloading:** every complete download was refused at its very end ("the response body is larger than request limit"), so installed copies couldn't update. Copies installed before this fix can't update themselves past it: run the newest `solis-setup.exe` from the Releases page once, and updates work from then on.
 

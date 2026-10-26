@@ -99,7 +99,7 @@ pub(crate) fn quat_table(lua: &Lua, q: Quat) -> mlua::Result<Table> {
 /// A rotation's four keys as Lua strings, made once for many rotations:
 /// handing mlua a Rust `&str` key makes a Lua string, in a protected
 /// call, every time, which cost a fifth of a tick turning ships.
-pub(crate) struct QuatKeys([mlua::String; 4]);
+pub(crate) struct QuatKeys([mlua::LuaString; 4]);
 
 impl QuatKeys {
     pub(crate) fn new(lua: &Lua) -> mlua::Result<Self> {
@@ -114,7 +114,7 @@ impl QuatKeys {
 
 /// [`quat_of`], with the keys made already.
 pub(crate) fn quat_of_with(table: &Table, keys: &QuatKeys) -> Option<Quat> {
-    let n = |k: &mlua::String| number(&table.raw_get::<LuaValue>(k).ok()?).map(|v| v as f32);
+    let n = |k: &mlua::LuaString| number(&table.raw_get::<LuaValue>(k).ok()?).map(|v| v as f32);
     let [x, y, z, w] = &keys.0;
     let q = Quat::from_xyzw(n(x)?, n(y)?, n(z)?, n(w)?);
     (q.is_finite() && q.length_squared() > 1e-12).then(|| q.normalize())
