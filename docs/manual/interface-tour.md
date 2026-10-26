@@ -39,7 +39,7 @@ Your layout is remembered next time. If the saved layout is ever damaged (a cras
 | Setting | What it does |
 |---|---|
 | Window > Layouts | **Default:** Library and Console side by side under the viewport. **Wide screen:** Library in a column on the left. **Small screen:** Library, Code, Console, Problems and Profiler as tabs in one space. **Reset layout** goes back to Default. |
-| Window > Accent colour | Petrol blue (the standard), red, green or plum. Remembered next time. |
+| Window > Accent colour | Ten colours, each with a swatch: Petrol blue (the standard), Red, Copper, Orange, Amber, Gold, Olive, Marine green, Blue and Plum. All are dark enough that white text on them reads easily. Remembered next time. |
 | View | Switches the viewport's corner controls on and off (also in the viewport's ≡ menu). |
 
 ## Tips and common problems
