@@ -1,6 +1,6 @@
 # 0046. Light, sky and atmosphere get a phase of their own, and netcode moves later
 
-- **Status:** Proposed. The order, clouds and bounced light were answered by the project lead on 2026-10-26; the rest of [the plan's questions](../plans/phase-8-light.md) and the effects suite's name are still open.
+- **Status:** Accepted (the order, clouds and bounced light chosen by the project lead on 2026-10-26; the rest of [the Phase 8 plan's questions](../plans/phase-8-light.md) are answered when the phase starts).
 - **Date:** 2026-10-26
 
 ## Problem
@@ -32,13 +32,15 @@ Option 2, chosen by the project lead. The new order:
 | 12 | Scripting, export and Git | was 10 |
 | 13 | Solis 0.1 | was 11 |
 
+The same day, [decision 0048](0048-materials-and-shaders-before-effects.md) put materials and shaders in as Phase 9, so the phases from effects on moved up by one more (effects 10, game UI 11, netcode 12, scripting, export and Git 13, Solis 0.1 14).
+
 Bloom, white balance and colour grading move from the effects plan into Phase 8. Bounced light comes in Phase 8 rather than after 0.1, every way that can be made fast (the project lead's answer): baked light probes (decision 0008's second source of indirect light), bounce from the screen, real-time probes traced against a simplified world, and a time-boxed experiment for a better method, each kept only within its cost budget.
 
-The effects suite's name is also open in the same plan: "Eclipse" carries trademark risk, and "Solstice" is recommended. That choice gets its own decision when it is made.
+The effects suite's name was settled the same day: Solstice ([decision 0047](0047-the-effects-suite-is-solstice.md)).
 
 ## Consequences
 
 - **0.1 comes about four months later than the roadmap's months said** (about sixteen months in all), because one large phase is added, with real-time bounced light in it, and Phase 9 is split.
 - **Netcode waits safely.** What it needs is built: the fixed tick, seeded randomness, the start-of-tick world, strict physics, state checksums, and save games that hold everything. Effects, UI and now light are designed to stay out of the game's state.
 - **A risk while netcode waits:** nothing checks that two different PCs play the same game. A small CI check (a recorded game played on Linux and Windows, its checksum compared with one in the repository) covers it until Phase 11.
-- Phase plans for effects and UI keep their content. The UI plan's file is renamed for Phase 10.
+- Phase plans for effects and UI keep their content; their files are renamed for their new phase numbers.

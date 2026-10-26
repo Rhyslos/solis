@@ -23,7 +23,7 @@ A lightweight, free alternative to Godot, Unity and Unreal for people getting in
 
 ### Name
 
-**Solis** (Latin for "of the sun"). No 3D engine by that name was found; the nearest are "Solas", a small .NET engine, and an old 2D game called Solis on SourceForge. The VFX system is **Solis Eclipse** (§9): the sun-and-eclipse pun works, and the "Solis" prefix keeps it apart from the Eclipse IDE in searches. **Under review** (2026-10-26): "Eclipse" is a registered trademark for software development tools, and another game engine uses the name; "Solstice" is recommended instead ([the Phase 8 plan](docs/plans/phase-8-light.md), choice 2).
+**Solis** (Latin for "of the sun"). No 3D engine by that name was found; the nearest are "Solas", a small .NET engine, and an old 2D game called Solis on SourceForge. The effects suite is **Solstice** (§9, [decision 0047](docs/decisions/0047-the-effects-suite-is-solstice.md)): the sun theme, and clear of the trademarks and products that ruled out Eclipse, Ember, Aura and Aurora.
 
 ---
 
@@ -166,9 +166,9 @@ No single netcode fits every game, so Solis provides it in layers ([decision 000
 
 ## 7. Rendering
 
-wgpu, lightweight, built for medium-poly, stylized games.
+wgpu, lightweight, built for medium-poly, stylized games. **AMD first, when a choice must be made** ([decision 0049](docs/decisions/0049-amd-first-when-a-choice-must-be-made.md)): solid and fast on every card, tuned best for AMD's.
 
-**Light is Solis's selling point** (the project lead, 2026-10-26; [decision 0046](docs/decisions/0046-light-before-netcode.md), proposed): skies, sunsets and light that feel right, never flat or sterile. Physics underneath (a physical sky with ozone and haze over distance, clouds lit by the sun), art direction on top (white balance, grading, colour by time of day, a painted sky kept as a style). The research is in [docs/reports/lighting-research.md](docs/reports/lighting-research.md) and the plan in [docs/plans/phase-8-light.md](docs/plans/phase-8-light.md).
+**Light is Solis's selling point** (the project lead, 2026-10-26; [decision 0046](docs/decisions/0046-light-before-netcode.md)): skies, sunsets and light that feel right, never flat or sterile. Physics underneath (a physical sky with ozone and haze over distance, clouds lit by the sun), art direction on top (white balance, grading, colour by time of day, a painted sky kept as a style). The research is in [docs/reports/lighting-research.md](docs/reports/lighting-research.md) and the plan in [docs/plans/phase-8-light.md](docs/plans/phase-8-light.md).
 
 **0.1:**
 - Materials, including a stylized and toon option
@@ -177,13 +177,13 @@ wgpu, lightweight, built for medium-poly, stylized games.
 - **A physical sky** (Hillaire's method) with an artist's tint and fog colour ramp over it, time of day and night (moons, stars, aurora), weather and moods, flat and volumetric clouds, haze over distance, volumetric fog and light shafts
 - **Light with shape:** sky light from the real sky, ambient occlusion, cascaded and contact shadows, hundreds of lamps with a few shadowed, glowing surfaces and area lights, reflection probes and reflections on the screen, and bounced light every way that can be made fast: baked light probes, bounce from the screen, real-time probes traced against a simplified world, and a time-boxed experiment for a better method
 - **The light ramp look** for blocky games, beside Standard, Stylized and Unlit
+- **Materials and shaders** (Phase 9, [decision 0048](docs/decisions/0048-materials-and-shaders-before-effects.md)): materials as assets with their own look; inputs that drive any material value (the light around a surface, time, distance, height, wetness, noise, values from game code); a node graph for shaders, saved as text; a code node for experts; stylized building blocks (stylized games live on custom shaders)
 - Quality levels (Low, Default, High), so the scale target holds on mid-range cards
 - The looks aimed for, from the project lead's reference games (kept by the project lead, described in the Phase 8 plan): warm, cosy light; a stylized world of weathers; neon nights; a huge sky gradient; realism; light from living things; and simple, readable light as a game's identity
 
 **Later:**
 - Baked lightmaps, TAA and upscaling, hardware ray tracing once wgpu's is stable
 - Occlusion culling
-- A node-based shader editor (stylized games live on custom shaders)
 - Impostors for distant objects
 
 **Lighting approach:** a choice per project ([decision 0008](docs/decisions/0008-lighting-is-a-project-choice.md)). Real-time lights with sky light came first; baked and real-time bounced light arrive in Phase 8; lightmaps are a further source after 0.1.
@@ -202,11 +202,11 @@ wgpu, lightweight, built for medium-poly, stylized games.
 
 ---
 
-## 9. VFX: Solis Eclipse
+## 9. VFX: Solstice
 
 Gets a lot of attention. Stylized VFX tools out of the box: flipbooks, trails, ribbons, mesh particles, stylized shading, and lots of particles through instancing.
 
-**Open question:** the wishlist mentions reusing Aventail's VFX system (originally named Gauntlet). Aventail's plans don't contain one so far; "Gauntlet" came up as a rejected name for Aventail itself. So Solis Eclipse is probably new design work, built for games first, and Aventail could adopt it later. **(to confirm)**
+**Open question:** the wishlist mentions reusing Aventail's VFX system (originally named Gauntlet). Aventail's plans don't contain one so far; "Gauntlet" came up as a rejected name for Aventail itself. So Solstice is probably new design work, built for games first, and Aventail could adopt it later. **(to confirm)**
 
 ---
 
@@ -236,7 +236,7 @@ The area to spend extra time on. In order of payoff:
 ## 12. UI
 
 - **The editor** uses egui, like Aventail and Halberd.
-- **Game UI** is drawn in Solis, with **Sungraph UI** ([decision 0039](docs/decisions/0039-game-ui-is-drawn-in-solis.md)): a visual UI editor where UI is drawn canvas style (lines, shapes, curves, text) rather than built from imported images, so it's sharp at any size; any value can be tied live to game code; every element is reachable from code, because a UI file is ordinary Lust (`view { }`); and styles such as glow, pixelation and stylized outlines apply to the whole UI. Lust's plan has its own `view { }` renderer as its biggest item; Solis's game UI renderer could be that renderer, but Solis doesn't wait for it. A Rust UI layer comes first, which `view { }` compiles to later. It's built, whole, in Phase 10 (decision 0046, proposed; it was Phase 9).
+- **Game UI** is drawn in Solis, with **Sungraph UI** ([decision 0039](docs/decisions/0039-game-ui-is-drawn-in-solis.md)): a visual UI editor where UI is drawn canvas style (lines, shapes, curves, text) rather than built from imported images, so it's sharp at any size; any value can be tied live to game code; every element is reachable from code, because a UI file is ordinary Lust (`view { }`); and styles such as glow, pixelation and stylized outlines apply to the whole UI. Lust's plan has its own `view { }` renderer as its biggest item; Solis's game UI renderer could be that renderer, but Solis doesn't wait for it. A Rust UI layer comes first, which `view { }` compiles to later. It's built, whole, in Phase 11 (decisions 0046 and 0048; it was Phase 9).
 - **Other visual editors** follow the same rule, a graph saved as readable text: state machines (Phase 7), behaviour trees, and shader and material graphs.
 
 ---
@@ -282,11 +282,11 @@ Settled in [decision 0004](docs/decisions/0004-editor-layout.md): Halberd's pane
 
 ## 15. Roadmap
 
-**Solis 0.1 in about sixteen months,** in fourteen phases (0 to 13), each ending with a gate the project lead tries by hand. The full plan is in [ROADMAP.md](ROADMAP.md). In short: groundwork and the editor shell, rendering, the world, the editor, **Lust and Lua join** (Phase 4), scale, simulation, sound and animation, **light, sky and atmosphere**, effects, game UI, netcode, scripting and export, and the 0.1 release.
+**Solis 0.1 in about eighteen months,** in fifteen phases (0 to 14), each ending with a gate the project lead tries by hand. The full plan is in [ROADMAP.md](ROADMAP.md). In short: groundwork and the editor shell, rendering, the world, the editor, **Lust and Lua join** (Phase 4), scale, simulation, sound and animation, **light, sky and atmosphere**, **materials and shaders**, effects, game UI, netcode, scripting and export, and the 0.1 release.
 
 **The flagship sample:** a small space battle. Two capital ships, a carrier launching fighter squadrons, a few hundred lasers in the air, over the network. It tests instancing, components, VFX and lockstep at once.
 
-**Not in 0.1:** open-world streaming, the full Solis Eclipse toolkit, rollback, advanced animation.
+**Not in 0.1:** open-world streaming, the full Solstice toolkit, rollback, advanced animation.
 
 **Risks:**
 1. **Lust is needed from Phase 4** (decision 0016). Its connection to the engine is built and tested already; if the rest is late, Phase 5 (Scale) goes first.
@@ -360,4 +360,7 @@ Both sides review each other's pull requests.
 - 2026-10-25: [0043](docs/decisions/0043-installed-and-updated-from-github.md): Solis is installed with an Inno Setup installer (per user, no administrator), and each merge into main is published as a GitHub release `build-<number>`. Installed copies check GitHub when they open and every six hours, download a newer build while you work, check its SHA-256, and install it when you close (or now, with Restart to update). Asked for by the project lead.
 - 2026-10-26: [0044](docs/decisions/0044-third-party-notices-ship-with-the-program.md): every build writes `THIRD-PARTY-NOTICES.txt` (the libraries built into the program, with their copyright notices and licences) with cargo-about, and it ships in the download and the installer, as those licences ask.
 - 2026-10-26: [0045](docs/decisions/0045-a-splash-screen-that-asks-before-updating.md): Solis starts with a splash screen (Aventail's, with Solis's logo) for at least 0.6 s while it asks GitHub for a newer build; a newer one brings up a question (Update now, Open without updating, Skip this version), and Help > Check for updates when starting turns checking off. Updates no longer download quietly, and the six-hourly checks are gone. Asked for by the project lead.
-- 2026-10-26: [0046](docs/decisions/0046-light-before-netcode.md) (proposed): light, sky and atmosphere get Phase 8, effects and game UI a phase each (9 and 10), and netcode moves to Phase 11; bloom and grading move into Phase 8, and bounced light, baked and real-time, arrives there (the order, clouds and bounced light chosen by the project lead; the rest of the Phase 8 plan's questions are open).
+- 2026-10-26: [0046](docs/decisions/0046-light-before-netcode.md): light, sky and atmosphere get Phase 8, chosen by the project lead; effects and game UI get a phase each, and netcode moves after them; bloom and grading move into Phase 8, and bounced light, baked and real-time, arrives there.
+- 2026-10-26: [0047](docs/decisions/0047-the-effects-suite-is-solstice.md): the effects suite is called Solstice (Eclipse, Ember, Aura and Aurora were taken in this field).
+- 2026-10-26: [0048](docs/decisions/0048-materials-and-shaders-before-effects.md): materials and shaders get Phase 9, between light and effects, as general tools (any material value driven by the world); effects, game UI, netcode, export and 0.1 become Phases 10 to 14.
+- 2026-10-26: [0049](docs/decisions/0049-amd-first-when-a-choice-must-be-made.md): Solis supports every card and stays fast on all of them, but when a choice must be made between tuning for one maker or another, it tunes for AMD: AMD cards are the reference for gates and the scale check, compute is sized for AMD's waves, AMD's open-source FidelityFX libraries are first in line, and the backend is chosen by measuring.

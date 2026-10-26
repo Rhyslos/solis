@@ -1,6 +1,6 @@
-# Phase 9 plan: Effects (Solis Eclipse basics)
+# Phase 10 plan: Effects (Solstice basics)
 
-**Draft for the project lead.** Since [decision 0046](../decisions/0046-light-before-netcode.md) (proposed), effects are Phase 9 on their own; game UI is Phase 10 ([its plan](phase-10-sungraph-ui.md)); and the post chain, bloom and grading (M1 and the grading below) move to light's Phase 8 ([its plan](phase-8-light.md), L5), which also lifts the 16-lamp limit on flash lamps (L11). The suite's name is open there too ("Eclipse" has trademark risk). The rest of this plan is unchanged until Phase 9 starts. The working plan for the effects half of Phase 9 (ROADMAP.md, "Phase 9: Effects and game UI"): Solis Eclipse basics (particles through instancing, flipbooks, trails, stylized shading for effects) and post-processing (bloom and colour grading). Sungraph UI, the other half, has its own plan; the section "Shared with Sungraph UI" says what the two build once between them. Nothing here is decided until the project lead answers the questions below. Then this becomes `docs/plans/phase-9.md` (with the UI half), and the answers become decisions in `docs/decisions/` and lines in DESIGN.md §17. Update it as milestones are built.
+**Draft for the project lead.** Since [decision 0046](../decisions/0046-light-before-netcode.md), effects are Phase 10 on their own, after materials and shaders in Phase 9 ([decision 0048](../decisions/0048-materials-and-shaders-before-effects.md)); game UI is Phase 11 ([its plan](phase-11-sungraph-ui.md)); the suite is called **Solstice** ([decision 0047](../decisions/0047-the-effects-suite-is-solstice.md)); and the post chain, bloom and grading (M1 and the grading below) move to light's Phase 8 ([its plan](phase-8-light.md), L5), which also lifts the 16-lamp limit on flash lamps (L11). The rest of this plan is unchanged until Phase 9 starts. The working plan for the effects half of Phase 9 (ROADMAP.md, "Phase 9: Effects and game UI"): Solstice basics (particles through instancing, flipbooks, trails, stylized shading for effects) and post-processing (bloom and colour grading). Sungraph UI, the other half, has its own plan; the section "Shared with Sungraph UI" says what the two build once between them. Nothing here is decided until the project lead answers the questions below. Then this becomes `docs/plans/phase-9.md` (with the UI half), and the answers become decisions in `docs/decisions/` and lines in DESIGN.md §17. Update it as milestones are built.
 
 **Gate (the effects part):** laser bolts, hits and explosions look good in the stylized look, in the benchmark battle, at the target level's 60 fps.
 
@@ -8,7 +8,7 @@
 
 Recommended for every choice except three:
 
-- **Particles: both CPU and GPU in Phase 9.** Particles are worked out on the graphics card (compute shaders) where it can, and on the CPU, in jobs, where it can't (older cards, the software driver tests use). One effect file drives both; tests check the two give closely matching pictures. The milestones need a GPU path added (likely its own milestone after M3).
+- **Particles: both CPU and GPU in Phase 10.** Particles are worked out on the graphics card (compute shaders) where it can, and on the CPU, in jobs, where it can't (older cards, the software driver tests use). One effect file drives both; tests check the two give closely matching pictures. The milestones need a GPU path added (likely its own milestone after M3).
 - **Editing: a node graph now** (not a settings list first), saved as text (decision 0039's rule for graphs). M4 becomes the graph editor; it should share its graph widget with the animator's (Phase 7, A5) so both feel the same.
 - **Light from explosions: one short flash lamp per effect**, nearest first, within the 16 lamps (decision 0014).
 
@@ -20,13 +20,13 @@ Each question has a recommended answer and the alternatives, in plain words.
 
 1. **Where particles are worked out: on the processor (CPU) or on the graphics card (GPU)?**
    - **Recommended: on the CPU, in jobs, drawn by the GPU as instances.** This is how projectiles already work (Phase 5, M6: 100,000 handed to the GPU in 1.2 ms). Each frame the job system (`rayon`, decision 0031) moves every particle, then hands the GPU a list of small quads to draw in one go per kind of particle. It works on every graphics card Solis opens on, including old ones and the software driver the tests use (the OpenGL path cannot always run "compute shaders", the GPU programs other engines use for particles: wgpu says GLES 3.0 devices have none). It can be tested without a graphics card, and culling, levels of detail and trails are plain Rust. The target battle needs tens of thousands of particles, which the CPU handles in a millisecond or two.
-   - Alternative: **on the GPU with compute shaders**, as Unreal's Niagara (GPU emitters), Unity's VFX Graph and Bevy's Hanabi do. Millions of particles, but harder to test, no fallback on older cards, and Solis would need two paths. Better as part of the full Solis Eclipse toolkit after 0.1, behind the same effect files.
+   - Alternative: **on the GPU with compute shaders**, as Unreal's Niagara (GPU emitters), Unity's VFX Graph and Bevy's Hanabi do. Millions of particles, but harder to test, no fallback on older cards, and Solis would need two paths. Better as part of the full Solstice toolkit after 0.1, behind the same effect files.
    - Alternative: **both now.** Twice the work in a phase that is already large.
 2. **What happens to effects in a save game?**
    - **Recommended: effects placed on entities come back; one-off bursts don't.** An effect placed on an entity (a ship's engine trail, a burning wreck's smoke, a campfire) is a component, so it is saved with the entity's other fields (decision 0038) and starts again after loading, already running (it "pre-warms", so smoke is already rising). A one-off burst fired from game code (a hit, an explosion) is over in a second or two and is not saved. Particles themselves are never saved: they are decoration, they would make saves much bigger, and the next frame makes new ones that look the same.
    - Alternative: nothing about effects is saved (a loaded ship has lost its engine trail until game code starts it again).
    - Alternative: every particle saved (big saves, nothing gained).
-3. **How are effects edited in Phase 9?**
+3. **How are effects edited in Phase 10?**
    - **Recommended: a list of settings per emitter, in a preview tab; a graph editor later.** Like Niagara's "stack" and Godot's particle settings: each emitter is a list of sections (where particles start, how many, how they move, how they look), each with values, ranges, curves and colour gradients. The effect file is written so a graph editor can come later without changing what's saved (see "The effect file").
    - Alternative: a node graph now (decision 0039's rule, "graphs saved as text"). Much more to build, and the full toolkit is "not in 0.1" (ROADMAP.md).
 4. **The effect file's extension.**
@@ -37,7 +37,7 @@ Each question has a recommended answer and the alternatives, in plain words.
    - Alternatives: `effectAt` / `effectOn` / `endEffect`; or one `effect(...)` with an entity or a place.
 6. **See-through smoke.**
    - **Recommended: glowing (added) particles and stylized "eroded" particles first; soft see-through smoke later.** Added light (sparks, fire, flashes, lasers) can be drawn in any order. Stylized smoke and fire are drawn as solid shapes whose edge eats inwards over their life ("alpha erosion"), which fits the cel-shaded look, hides things behind it properly and needs no sorting. Soft, half-transparent smoke must be sorted back to front every frame, which costs time at the scale target.
-   - Alternative: soft smoke in Phase 9 too, sorted per effect (not per particle) to keep it cheap.
+   - Alternative: soft smoke in Phase 10 too, sorted per effect (not per particle) to keep it cheap.
 7. **Where the pictures come from.**
    - **Recommended: Solis draws the basic particle shapes itself** (soft dot, circle, ring, star, spark, puff, noise), with the same shape functions Sungraph UI draws with, so effects need no outside images, look sharp at any size and carry no licence questions. Flipbooks (an animation painted as a grid of frames in one image) are added from the project's own PNG files.
    - Alternative: ship a set of particle images with Solis (each needs its licence in `licenses/`).
@@ -75,7 +75,7 @@ Projectiles change the game; effects only show it. So:
 - **Effects' randomness is their own:** each effect gets a number made from a frame counter and its place in the frame's order, and its particles draw from that, never from the game's seed. Two PCs in a lockstep game may show slightly different sparks, which is fine; the game's checksum and replays are untouched (a test: the same game with effects on and off gives the same checksums).
 - **The effect numbers game code is given** (from `playEffectOn`) are game state, so they are made from the tick's order like spawned IDs (decision 0035), the same on any number of cores.
 - **Requests land like everything else:** `playEffect` is kept and landed at the end of the phase in order (decision 0033), then passed out of the world into a list for drawing. That list is not in the checksum and not saved.
-- **Effects run on frame time, not ticks:** smooth on a 144 Hz screen, frozen while paused, one tick's worth on Step. A dedicated server (Phase 11) drops the requests and pays nothing.
+- **Effects run on frame time, not ticks:** smooth on a 144 Hz screen, frozen while paused, one tick's worth on Step. A dedicated server (Phase 12) drops the requests and pays nothing.
 
 ## The effect file
 
@@ -239,7 +239,7 @@ So nothing is built twice, the two plans agree:
 1. **The gate needs hits.** Projectiles don't hit anything yet. Hits that game code hears about are game state (deterministic, saved) and belong to the simulation, not to effects. If Phase 6 or 8 hasn't added them, a small milestone before M7 should.
 2. **"Looks good" is taste.** The gate depends on the kit's effects as much as on the code. The preview tab (M4) comes early so the project lead can tune them while M5 to M7 are built.
 3. **Overdraw** on the project lead's card, not the CPU, is the likeliest cost: big explosions close to the camera. The screen-cover cap and levels of detail are there for it; the scale cases measure it at 1080p and 4K.
-4. **Phase 9 is large:** seven milestones here plus Sungraph UI's. If time is short, soft smoke, stylized bloom and frame blending can wait for the full toolkit.
+4. **Phase 10 is large:** seven milestones. If time is short, soft smoke, stylized bloom and frame blending can wait for the full toolkit.
 5. **Two halves, one chain:** if the UI half and this half both reach the post chain, the blur pyramid or the shape functions at once, they'll be written twice. The "Shared" section's order should be agreed before either starts.
 
 ## Sources

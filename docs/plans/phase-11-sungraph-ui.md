@@ -1,6 +1,6 @@
-# Phase 10 plan: Sungraph UI (draft)
+# Phase 11 plan: Sungraph UI (draft)
 
-The working plan for Phase 10, game UI (ROADMAP.md, "Phase 10: Game UI"; it was the game-UI half of Phase 9 until [decision 0046](../decisions/0046-light-before-netcode.md) gave light a phase and effects and UI a phase each; [decision 0039](../decisions/0039-game-ui-is-drawn-in-solis.md)). Effects (Phase 9) have their own plan, and post-processing (bloom, grading) moved to light's Phase 8 plan; **Sharing with effects** below says where the two meet so nothing is built twice. Update this file as milestones are built: tick them off here and in the README tracker, and change a milestone's plan if its design changes.
+The working plan for Phase 11, game UI (ROADMAP.md, "Phase 11: Game UI"; it was the game-UI half of Phase 9 until [decisions 0046](../decisions/0046-light-before-netcode.md) and [0048](../decisions/0048-materials-and-shaders-before-effects.md) gave light, materials, effects and UI a phase each; [decision 0039](../decisions/0039-game-ui-is-drawn-in-solis.md)). Effects (Phase 10, Solstice) have their own plan, and post-processing (bloom, grading) moved to light's Phase 8 plan; **Sharing with effects** below says where the two meet so nothing is built twice. Update this file as milestones are built: tick them off here and in the README tracker, and change a milestone's plan if its design changes.
 
 > **Draft.** Every item under "Choices to make" is a question for the project lead, with a recommended answer. Nothing here is decided until it is answered and written up as a decision.
 
@@ -21,7 +21,7 @@ The rest as recommended: Solis's own drawing (shader shapes, `lyon`, `fdsm` text
 - **You draw it** in a canvas inside Solis: boxes, circles, lines, curves and text, placed on the screen and pinned to its corners or edges so it fits any screen shape. **Or you type it**: the canvas and the code are two ways of looking at the same file, and either one can be used at any time.
 - **Solis draws every line and letter itself**, every frame, at the size of the screen it's on. Nothing is a picture, so nothing goes blurry at 4K, and effects such as glow or a pixel-art look apply to everything at once.
 - **Values are tied to the game.** A tie says "this number follows the player's `Health.hp`". The bar's width is worked out from it, so the bar moves on its own; no game code has to "update the UI".
-- **The UI only looks; it never touches.** It reads the game as the last tick left it. When the player clicks Resume, that click is sent to the game the way a key press is, at the next tick, so recordings, replays and (Phase 11) networked games stay exactly the same on every PC.
+- **The UI only looks; it never touches.** It reads the game as the last tick left it. When the player clicks Resume, that click is sent to the game the way a key press is, at the next tick, so recordings, replays and (Phase 12) networked games stay exactly the same on every PC.
 
 ## Choices to make before any code
 
@@ -102,7 +102,7 @@ What keeps decision 0033 (and Phase 6's determinism) whole:
 - **How the UI changes the game:** a button's block may (1) change the screen's own untied fields (which tab is open: the screen's own memory, as in Lust's windows), (2) `send` an event to an entity, or (3) `press` a named action. (2) and (3) become **UI events in the next tick's input `Frame`**: recorded in recordings, counted in its checksum, and in Phase 8 sent over the network like any input. A replay takes them from the recording, not from the UI, so a replay plays the same with no UI at all.
 - **What isn't game state:** hover, focus, the pointer's place and transitions (a button fading in) live only in the UI and use real time. They never reach the game except through (2) and (3).
 
-## Sharing with effects (Solis Eclipse and post-processing)
+## Sharing with effects (Solstice and post-processing)
 
 The effects plan builds bloom, colour grading and stylized effects in the same phase. To build each thing once:
 
@@ -280,13 +280,13 @@ column [name buttons, anchor center, gap 16,] {
 - **The canvas edits the text, not a copy of it.** Solis's reader keeps where each element and each style word is in the file; a change replaces just those characters, and a new element is written in the canonical shape. Comments, blank lines and hand-written code are never rewritten.
 - **The canonical shape is made to merge** (decision 0020's tests): one element per block; an element with more than three styles writes one style per line, each ending with a comma (hence the trailing comma in M2), so two people changing different properties of the same element change different lines. Names, not positions, find elements, so moving one up the list is a small change.
 - **Drawing order is file order** (later in front, as in Lust's `stack`): reordering moves a block, which Git handles.
-- `.gitattributes` marks `assets/ui/**/*.lst` `text eol=lf`, like areas. The Phase 10 merge tool can learn screens (element by element, by name) later; plain Git is enough for the gate.
+- `.gitattributes` marks `assets/ui/**/*.lst` `text eol=lf`, like areas. The Phase 13 merge tool can learn screens (element by element, by name) later; plain Git is enough for the gate.
 - Saving writes a temporary file and swaps it in (rule 11).
 
 ## Risks
 
 - **Lust changes:** the drawing words, `tied` and `like Screen` are changes to the project lead's language, so their wording waits for answers. M1 doesn't need them, so the work can start before they're settled.
-- **Built games** (Phase 10) run Lust as Rust, whose views today open their own window. Lust's Rust output will need to hand a screen's tree to Solis instead, as its Lua output does. Noted for Phase 10, and designed for now by keeping "a view gives a tree of pieces with values" as the only contract.
+- **Built games** (Phase 13) run Lust as Rust, whose views today open their own window. Lust's Rust output will need to hand a screen's tree to Solis instead, as its Lua output does. Noted for Phase 10, and designed for now by keeping "a view gives a tree of pieces with values" as the only contract.
 - **Editing code with a canvas** is the hardest part. Limiting the canvas to the parts it understands (the "code" badge) keeps it safe; M4 may need splitting in two.
 - **Small text from distance images** can look soft below about 12 pixels. If it does, small sizes are drawn from ordinary letter images (still from the font's outlines, so still sharp).
 - **The effects plan's order:** if bloom lands after M6 is due, M6 builds `render::post` itself and the effects plan reuses it.

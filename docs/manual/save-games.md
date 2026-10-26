@@ -42,7 +42,7 @@ Add the QuickSave and QuickLoad actions in **Edit > Input actions…** and bind 
 
 **From the editor:** **Play > Load a save…** picks a save from the project's `saves` folder and plays from it, whether or not the game is running. **Stop** still puts the area back as it was before you pressed Play: a save is a moment in a game, not a change to your area.
 
-**Where saves live:** in the project's `saves` folder, one `.solsave` file per slot, beside `project.solis`. New projects keep this folder out of Git, since saves are your test plays, not part of the game. Exported games (Phase 12) will keep players' saves in their own saved-games folder.
+**Where saves live:** in the project's `saves` folder, one `.solsave` file per slot, beside `project.solis`. New projects keep this folder out of Git, since saves are your test plays, not part of the game. Exported games (Phase 13) will keep players' saves in their own saved-games folder.
 
 ## Settings
 Save games have no settings: everything is saved.

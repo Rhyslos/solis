@@ -174,7 +174,7 @@ A Lua component's fields can't be called `me` (the entity it's on), `update`, or
 
 **What Lua game code can't do.** Game code is sandboxed, so a game you download can't harm your computer: it has no `require`, no files, and no way out of its time and memory limits. `table.move` moves at most a million items at once (a bigger one couldn't be stopped in time), and `collectgarbage` only tells you how much memory is used (`collectgarbage("count")`).
 
-**In Rust**, a component implements `script::RustComponent`, and takes and sends the same events by name. Solis can't build a game's own Rust until Phase 12; until then, the [turret sample](first-game.md)'s Rust component is built into Solis to show how it works.
+**In Rust**, a component implements `script::RustComponent`, and takes and sends the same events by name. Solis can't build a game's own Rust until Phase 13; until then, the [turret sample](first-game.md)'s Rust component is built into Solis to show how it works.
 
 ```rust
 fn handle(&mut self, cx: &mut Context<'_>, event: &Event) -> bool {

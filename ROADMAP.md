@@ -2,7 +2,7 @@
 
 The plan from an empty repo to **Solis 0.1**, in phases. The engine is Rust; games are written in Lust, Rust or Lua ([decisions 0002](docs/decisions/0002-engine-in-rust-games-in-lust.md) and [0003](docs/decisions/0003-games-in-rust-lust-or-lua.md)). DESIGN.md says what Solis is; this file says in what order it gets built.
 
-**About sixteen months,** if Solis gets steady attention alongside Lust (light, sky and atmosphere got a phase of their own on 2026-10-26, [decision 0046](docs/decisions/0046-light-before-netcode.md), proposed). Months are a guide, not a promise: the pace is set by decisions, testing on Windows and reviews.
+**About eighteen months,** if Solis gets steady attention alongside Lust (light, sky and atmosphere got a phase of their own on 2026-10-26, [decision 0046](docs/decisions/0046-light-before-netcode.md)). Months are a guide, not a promise: the pace is set by decisions, testing on Windows and reviews.
 
 Each phase ends with a **gate**: something the project lead tries by hand before the next phase starts. Each milestone inside a phase is one pull request.
 
@@ -19,11 +19,12 @@ Each phase ends with a **gate**: something the project lead tries by hand before
 | 6. Simulation and play | 6–7 | Physics, input, a deterministic simulation |
 | 7. Sound and animation | 7–8 | Sound events and buses; animated characters |
 | 8. Light, sky and atmosphere | 8–12 | A physical sky, sunsets and night; shadows near and far; many lamps; fog and clouds; bounced light, baked and real-time |
-| 9. Effects | 12–13 | The effects suite: particles, trails, flipbooks |
-| 10. Game UI | 13–14 | Sungraph UI: HUDs and menus drawn in Solis |
-| 11. Netcode | 14–15 | Two PCs playing together over the internet |
-| 12. Scripting, export and Git | 15–16 | The scripting window; games packaged for Windows; working in teams through Git |
-| 13. Solis 0.1 | 16 | The flagship space battle, docs, release |
+| 9. Materials and shaders | 12–13 | Materials as assets, values driven by the world, a node graph for shaders |
+| 10. Effects | 13–14 | Solstice, the effects suite: particles, trails, flipbooks |
+| 11. Game UI | 14–15 | Sungraph UI: HUDs and menus drawn in Solis |
+| 12. Netcode | 15–16 | Two PCs playing together over the internet |
+| 13. Scripting, export and Git | 16–17 | The scripting window; games packaged for Windows; working in teams through Git |
+| 14. Solis 0.1 | 17–18 | The flagship space battle, docs, release |
 
 Lust joins in Phase 4, right after the editor, so game logic can be written in Lust from then on ([decision 0016](docs/decisions/0016-how-lust-joins-solis.md)). Phases 0–3 don't need Lust; if it isn't ready by Phase 4, Phase 5 (Scale) goes first.
 
@@ -145,7 +146,7 @@ Stronger tests before building on the game loop ([decision 0042](docs/decisions/
 
 ## Phase 8: Light, sky and atmosphere
 
-Solis's selling point: skies, sunsets and light that feel right, never flat. The working plan, with the research and the choices to make, is [docs/plans/phase-8-light.md](docs/plans/phase-8-light.md) ([decision 0046](docs/decisions/0046-light-before-netcode.md), proposed).
+Solis's selling point: skies, sunsets and light that feel right, never flat. The working plan, with the research and the choices to make, is [docs/plans/phase-8-light.md](docs/plans/phase-8-light.md) ([decision 0046](docs/decisions/0046-light-before-netcode.md)).
 
 - **Measure first:** a light showcase project and quality levels (Low, Default, High).
 - **Real light and automatic exposure,** as eyes adjust.
@@ -165,21 +166,34 @@ Solis's selling point: skies, sunsets and light that feel right, never flat. The
 
 **Gate:** in the light showcase, the day runs from noon to night with no jumps; the golden hour feels like the project lead's favourite game sunsets; indoors never looks like the Backrooms; the stylized look is as good; the benchmark's target still runs at 60 fps.
 
-## Phase 9: Effects
+## Phase 9: Materials and shaders
 
-- **The effects suite:** particles through instancing (on the CPU and the GPU), flipbooks, trails, stylized shading for effects, and a node graph editor. Plan: [docs/plans/phase-9-vfx.md](docs/plans/phase-9-vfx.md). Its bloom and grading moved to Phase 8.
+Light and effects meet in materials: how a surface takes light, glows, gets wet or sways in the wind. This phase sits between them ([decision 0048](docs/decisions/0048-materials-and-shaders-before-effects.md)). The working plan, with its choices, is [docs/plans/phase-9-materials.md](docs/plans/phase-9-materials.md).
+
+- **Materials as assets** (`.solmat`), each with its own look (standard, stylized, light ramp, unlit), edited in Properties with a live preview.
+- **Inputs that drive any material value:** the light around the surface, time, distance, height, the weather's wetness, noise, and values set by game code. General tools, so one glows as night falls, another fades with distance, another pulses to a game's beat.
+- **A node graph for materials and shaders,** saved as readable text (decision 0039's rule), sharing its graph editor with the animator and the effects.
+- **Code for experts:** a node holding a few lines of shader code, checked before it runs.
+- **Building blocks for stylized looks:** light ramps, rim light, hatching, dithering, outlines per material, wind sway, triplanar mapping.
+- **Per-copy values at scale:** thousands of copies of one material, each with its own colour or glow, still drawn together.
+
+**Gate:** without writing code, make a plant that glows as night falls, stone that darkens and shines when it rains, a toon character with its own outline, and a tree that sways; the benchmark's target still runs at 60 fps.
+
+## Phase 10: Effects
+
+- **Solstice, the effects suite:** particles through instancing (on the CPU and the GPU), flipbooks, trails, stylized shading for effects, and a node graph editor. Plan: [docs/plans/phase-10-effects.md](docs/plans/phase-10-effects.md). Its bloom and grading moved to Phase 8; particles are drawn with Phase 9's materials.
 
 **Gate:** laser bolts, hits and explosions look good in the stylized look, in the benchmark battle, at 60 fps.
 
-## Phase 10: Game UI
+## Phase 11: Game UI
 
-- **Sungraph UI** ([decision 0039](docs/decisions/0039-game-ui-is-drawn-in-solis.md)), whole: a visual UI editor where game UI is drawn canvas style (lines, shapes, curves, text) instead of built from images; values tied live to game code; every element reachable from code, because a UI file is Lust (`view { }`); styles such as glow, pixelation and stylized outlines over the whole UI. HUDs and menus are made with it. Plan: [docs/plans/phase-10-sungraph-ui.md](docs/plans/phase-10-sungraph-ui.md).
+- **Sungraph UI** ([decision 0039](docs/decisions/0039-game-ui-is-drawn-in-solis.md)), whole: a visual UI editor where game UI is drawn canvas style (lines, shapes, curves, text) instead of built from images; values tied live to game code; every element reachable from code, because a UI file is Lust (`view { }`); styles such as glow, pixelation and stylized outlines over the whole UI. HUDs and menus are made with it. Plan: [docs/plans/phase-11-sungraph-ui.md](docs/plans/phase-11-sungraph-ui.md).
 
 **Gate:** a health bar and a pause menu on screen, drawn and tied to the game in the editor.
 
-## Phase 11: Netcode
+## Phase 12: Netcode
 
-Moved here from Phase 8 ([decision 0046](docs/decisions/0046-light-before-netcode.md)): what it needs (fixed ticks, determinism, checksums, save games) is built, and a CI check keeps two PCs playing the same game until then. Netcode in layers ([decision 0005](docs/decisions/0005-netcode-in-layers.md)):
+Moved here from Phase 8 ([decision 0046](docs/decisions/0046-light-before-netcode.md), then [0048](docs/decisions/0048-materials-and-shaders-before-effects.md)): what it needs (fixed ticks, determinism, checksums, save games) is built, and a CI check keeps two PCs playing the same game until then. Netcode in layers ([decision 0005](docs/decisions/0005-netcode-in-layers.md)):
 
 - **Transport and sessions:** connections, reliable and unreliable messages, encryption, lobbies, and relays or Steam's networking for players behind home routers.
 - **Tools:** a lag and packet-loss simulator, network stats, desync detection with the checksums from Phase 6, and replays.
@@ -191,7 +205,7 @@ Moved here from Phase 8 ([decision 0046](docs/decisions/0046-light-before-netcod
 
 **Gate:** two PCs on different networks play the benchmark area together without desyncing, with simulated lag.
 
-## Phase 12: Scripting, export and Git
+## Phase 13: Scripting, export and Git
 
 - **The scripting window:** LustScript and Lua through Luau, calling the same commands as the built-in tools, with undo, a sandbox and time limits (the design Aventail plans for its Phase 9).
 - **Build and export:** packaged games for Windows ([decision 0012](docs/decisions/0012-windows-only.md)), and Build-and-Play from the top bar.
@@ -200,7 +214,7 @@ Moved here from Phase 8 ([decision 0046](docs/decisions/0046-light-before-netcod
 
 **Gate:** write a small editor tool that places objects in a ring; export a game and run it on a PC without Solis installed. Two people on two PCs work on the same project through GitHub for an evening: commit, pull, lock a model, and resolve one real area conflict in the editor.
 
-## Phase 13: Solis 0.1
+## Phase 14: Solis 0.1
 
 - **The flagship sample, written in Lust:** a small space battle. Two capital ships, a carrier launching fighter squadrons, a few hundred lasers in the air, over the network.
 - **Docs:** getting started, a first-game tutorial, and a reference for the engine as Lust sees it (the `solis/` files).
@@ -213,7 +227,7 @@ Moved here from Phase 8 ([decision 0046](docs/decisions/0046-light-before-netcod
 
 ## Not in 0.1
 
-Open-world streaming and terrain, navigation and AI, the full Solis Eclipse toolkit, the shader editor, rollback netcode, advanced animation (IK, root motion), Steam features, Linux and macOS (decision 0012).
+Open-world streaming and terrain, navigation and AI, the full Solstice toolkit, rollback netcode, advanced animation (IK, root motion), Steam features, Linux and macOS (decision 0012).
 
 ## Who does what
 
