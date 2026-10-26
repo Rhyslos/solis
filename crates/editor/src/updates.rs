@@ -1,7 +1,10 @@
 //! What the editor shows about updates ([decision
-//! 0043](../../../docs/decisions/0043-installed-and-updated-from-github.md)):
-//! a part of the Help menu, and a button in the top bar when a new build
-//! is ready. The app does the checking and installing, and tells the
+//! 0043](../../../docs/decisions/0043-installed-and-updated-from-github.md),
+//! [decision 0045](../../../docs/decisions/0045-a-splash-screen-that-asks-before-updating.md)):
+//! a part of the Help menu, the update question when Help > Check for
+//! updates finds a newer build, and a button in the top bar when it's
+//! downloaded. When Solis starts, the app asks on the splash screen
+//! instead. The app does the checking and installing, and tells the
 //! editor how it's going with [`Workbench::set_update`].
 
 use crate::theme;
@@ -18,6 +21,8 @@ pub enum UpdateNotice {
     Checking,
     /// This is the newest build (its number).
     UpToDate(u64),
+    /// A newer build is out and wasn't taken (its number).
+    Available(u64),
     /// A newer build is downloading (its number).
     Downloading(u64),
     /// A newer build is downloaded and checked: it installs when the
@@ -39,6 +44,7 @@ impl UpdateNotice {
             UpdateNotice::NotChecked => "Not checked yet".into(),
             UpdateNotice::Checking => "Checking…".into(),
             UpdateNotice::UpToDate(build) => format!("Up to date (build {build})"),
+            UpdateNotice::Available(build) => format!("Build {build} is available"),
             UpdateNotice::Downloading(build) => format!("Downloading build {build}…"),
             UpdateNotice::Ready(build) => {
                 format!("Build {build} installs when you close")
@@ -58,13 +64,46 @@ impl Workbench {
         self.update = notice;
     }
 
+    /// Asks the update question (Help > Check for updates found a newer
+    /// build); the answer comes back as an action.
+    pub fn offer_update(&mut self, offer: crate::splash::UpdateOffer) {
+        self.offer = Some(offer);
+        self.skip_offer = false;
+    }
+
+    /// The update question, while it's asked.
+    pub(crate) fn update_question(
+        &mut self,
+        ctx: &egui::Context,
+        actions: &mut Vec<WorkbenchAction>,
+    ) {
+        use crate::splash::UpdateAnswer;
+        let Some(offer) = self.offer.clone() else {
+            return;
+        };
+        let name = self.info.name.clone();
+        let Some(answer) =
+            crate::splash::update_question(ctx, &name, &offer, &mut self.skip_offer, 0.0)
+        else {
+            return;
+        };
+        self.offer = None;
+        actions.push(match answer {
+            UpdateAnswer::UpdateNow => WorkbenchAction::DownloadUpdate,
+            UpdateAnswer::OpenDownloadPage => WorkbenchAction::OpenUpdatePage,
+            UpdateAnswer::NotNow { skip } => {
+                WorkbenchAction::SkipUpdate(skip.then_some(offer.latest))
+            }
+        });
+    }
+
     /// How updating is going, as last told.
     pub fn update(&self) -> &UpdateNotice {
         &self.update
     }
 
-    /// Whether the user wants updates checked and downloaded by themselves
-    /// (Help > Update automatically). Saved by the app.
+    /// Whether Solis checks for a newer build when it starts (Help >
+    /// Check for updates when starting). Saved by the app.
     pub fn auto_update(&self) -> bool {
         self.auto_update
     }
@@ -89,8 +128,8 @@ impl Workbench {
         let check = ui
             .add_enabled(!checking, egui::Button::new("Check for updates"))
             .on_hover_text(
-                "Asks GitHub for the newest build. If there is one, it downloads, and installs \
-                 when you close",
+                "Asks GitHub for the newest build now, and asks you whether to update if \
+                 there is one (even one you skipped)",
             );
         if check.clicked() {
             actions.push(WorkbenchAction::CheckForUpdates);
@@ -98,11 +137,12 @@ impl Workbench {
         }
         let mut auto = self.auto_update;
         if ui
-            .checkbox(&mut auto, "Update automatically")
-            .on_hover_text(
-                "Checks for a newer build when you start and every few hours, and downloads it \
-                 while you work. Nothing is installed until you close or restart",
-            )
+            .checkbox(&mut auto, "Check for updates when starting")
+            .on_hover_text(format!(
+                "Asks GitHub for a newer build while {} starts, and asks you whether to \
+                 update. Off: nothing is checked unless you choose Check for updates",
+                self.info.name
+            ))
             .changed()
         {
             self.auto_update = auto;

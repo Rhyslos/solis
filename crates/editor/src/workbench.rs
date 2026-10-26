@@ -133,9 +133,18 @@ pub enum WorkbenchAction {
     OpenSave,
     /// Check GitHub for a newer build now (Help > Check for updates).
     CheckForUpdates,
-    /// Turn checking for updates by itself on or off (Help > Update
-    /// automatically); the app saves it.
+    /// Turn checking for updates when starting on or off (Help > Check for
+    /// updates when starting); the app saves it.
     SetAutoUpdate(bool),
+    /// Download the newer build offered (the update question's Update
+    /// now); it installs on Restart to update or when Solis closes.
+    DownloadUpdate,
+    /// Open the page to download the newer build by hand (the update
+    /// question, for a copy that wasn't installed).
+    OpenUpdatePage,
+    /// The update question was answered Open without updating: skip this
+    /// build from now on when it's given (Skip this version).
+    SkipUpdate(Option<u64>),
 }
 
 /// What [`Workbench::assembly_part`] was worked out for: the selected
@@ -158,8 +167,12 @@ pub struct Workbench {
     pub(crate) about_open: bool,
     /// How updating is going, as the app last said.
     pub(crate) update: crate::updates::UpdateNotice,
-    /// Whether updates are checked and downloaded by themselves.
+    /// Whether updates are checked when Solis starts.
     pub(crate) auto_update: bool,
+    /// The update question, while it's asked (Help > Check for updates).
+    pub(crate) offer: Option<crate::splash::UpdateOffer>,
+    /// Its Skip this version tick.
+    pub(crate) skip_offer: bool,
     /// Whether the window is closing to install an update and open again
     /// (Restart to update), until a close is called off.
     pub(crate) restarting: bool,
@@ -300,6 +313,8 @@ impl Workbench {
             about_open: false,
             update: Default::default(),
             auto_update: true,
+            offer: None,
+            skip_offer: false,
             restarting: false,
             in_front: HashSet::new(),
             gesture: 0,
@@ -850,6 +865,7 @@ impl Workbench {
         self.about(ui);
         self.input_actions_window(ui.ctx());
         self.prompts(ui, &mut actions);
+        self.update_question(ui.ctx(), &mut actions);
         self.hold_while_playing(&mut actions);
         self.profiler
             .add(crate::profiler::Stage::Draw, renderer.spent);

@@ -10,7 +10,7 @@ mod fetch;
 mod install;
 pub mod release;
 
-pub use check::{Copy, Remote, Status, run, start};
+pub use check::{Copy, Remote, Status, download, run, should_offer, start, start_download};
 pub use fetch::{Source, clear_folder};
 pub use install::{
     INSTALLED_MARKER, installer_arguments, is_installed, parse_build, start_installer, this_build,

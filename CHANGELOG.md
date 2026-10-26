@@ -33,6 +33,7 @@ What changed in each version, for people using Solis. Newest first.
 
 ### Added
 
+- **A splash screen** as Solis starts (decision 0045): the logo, name and version for at least 0.6 s while Solis asks GitHub for a newer build. A newer one brings up a question: **Update now** downloads it, installs it and opens it again; **Open without updating** carries on, and **Skip this version** stops asking about that build until a newer one is out. **Help > Check for updates when starting** turns the checking off, and **Help > Check for updates** asks now. Updates no longer download quietly in the background.
 - **Solis has a logo**: a sun-like swirl round a dark centre. It's the program's icon on the desktop, in the Start menu, on the taskbar and in the window's corner, the setup program's icon, and at the top of the README.
 - **The libraries' notices ship with Solis** (decision 0044): `THIRD-PARTY-NOTICES.txt`, beside the program and in the installed folder, lists the open-source libraries built into it with their copyright notices and licence texts, as their licences ask.
 - **Ten accent colours** (Window > Accent colour), each shown with a swatch: Aventail's Blue and Olive join Petrol blue, Red, Marine green (called Green before) and Plum, with four sun colours of Solis's own: Copper, Orange, Amber and Gold. Each is deep enough for white text to read on it. A colour chosen before stays chosen.

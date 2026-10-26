@@ -302,18 +302,18 @@ fn check(remote: &Fake, copy: &Copy) -> (Vec<Status>, Status) {
 }
 
 #[test]
-fn a_newer_build_is_downloaded_for_an_installed_copy() {
-    let fake = Fake::new(Ok(12));
-    let (steps, last) = check(&fake, &copy(Some(10), true));
-    assert_eq!(steps, vec![Status::Checking, Status::Downloading(12)]);
-    assert_eq!(
-        last,
-        Status::Ready {
-            build: 12,
-            installer: PathBuf::from("updates").join(SETUP)
-        }
-    );
-    assert!(last.is_final());
+fn a_newer_build_is_offered_but_not_downloaded() {
+    for installed in [true, false] {
+        let fake = Fake::new(Ok(12));
+        let (steps, last) = check(&fake, &copy(Some(10), installed));
+        assert_eq!(steps, vec![Status::Checking]);
+        let Status::Available(release) = &last else {
+            panic!("{last:?}");
+        };
+        assert_eq!(release.build, 12);
+        assert!(last.is_final());
+        assert_eq!(fake.downloads.get(), 0, "nothing downloads until asked");
+    }
 }
 
 #[test]
@@ -327,11 +327,22 @@ fn the_same_or_an_older_build_is_up_to_date() {
 }
 
 #[test]
-fn copies_not_installed_are_told_but_not_downloaded() {
+fn asked_to_update_it_downloads_and_says_when_it_s_ready() {
     let fake = Fake::new(Ok(12));
-    let (_, last) = check(&fake, &copy(Some(10), false));
-    assert_eq!(last, Status::NotInstalled(12));
-    assert_eq!(fake.downloads.get(), 0);
+    let release = fake.latest().unwrap();
+    let mut steps = Vec::new();
+    let last = download(&fake, &release, Path::new("updates"), &mut |s| {
+        steps.push(s)
+    });
+    assert_eq!(steps, vec![Status::Downloading(12)]);
+    assert_eq!(
+        last,
+        Status::Ready {
+            build: 12,
+            installer: PathBuf::from("updates").join(SETUP)
+        }
+    );
+    assert_eq!(fake.downloads.get(), 1);
 }
 
 #[test]
@@ -349,8 +360,17 @@ fn failures_are_reported_in_words() {
     assert_eq!(last, Status::Failed("couldn't reach GitHub".into()));
     let mut fake = Fake::new(Ok(2));
     fake.download = Err("didn't match its checksum".into());
-    let (_, last) = check(&fake, &copy(Some(1), true));
+    let release = Fake::new(Ok(2)).latest().unwrap();
+    let last = download(&fake, &release, Path::new("updates"), &mut |_| {});
     assert_eq!(last, Status::Failed("didn't match its checksum".into()));
+}
+
+#[test]
+fn a_skipped_build_isn_t_offered_at_start_but_a_newer_one_is() {
+    assert!(should_offer(12, None, false));
+    assert!(!should_offer(12, Some(12), false), "skipped");
+    assert!(should_offer(13, Some(12), false), "a newer one comes again");
+    assert!(should_offer(12, Some(12), true), "asking always shows it");
 }
 
 /// A thread-safe stand-in, for [`start`].
@@ -366,7 +386,7 @@ impl Remote for Sendable {
 }
 
 #[test]
-fn a_started_check_reports_every_step_and_wakes_the_window() {
+fn a_started_check_and_download_report_every_step_and_wake_the_window() {
     use std::sync::Arc;
     use std::sync::atomic::{AtomicU32, Ordering};
     let wakes = Arc::new(AtomicU32::new(0));
@@ -375,9 +395,15 @@ fn a_started_check_reports_every_step_and_wakes_the_window() {
         counter.fetch_add(1, Ordering::SeqCst);
     });
     let steps: Vec<Status> = receiver.iter().collect();
-    assert_eq!(steps.len(), 3, "{steps:?}");
+    assert_eq!(steps.len(), 2, "{steps:?}");
+    let Some(Status::Available(release)) = steps.last().cloned() else {
+        panic!("{steps:?}");
+    };
+    assert_eq!(wakes.load(Ordering::SeqCst), 2);
+    let receiver = start_download(Sendable(5), release, PathBuf::from("updates"), || {});
+    let steps: Vec<Status> = receiver.iter().collect();
+    assert_eq!(steps.first(), Some(&Status::Downloading(5)));
     assert!(matches!(steps.last(), Some(Status::Ready { build: 5, .. })));
-    assert_eq!(wakes.load(Ordering::SeqCst), 3);
 }
 
 fn temp_folder(name: &str) -> PathBuf {

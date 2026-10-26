@@ -1,5 +1,7 @@
-//! One check for updates, on a thread of its own: ask GitHub, decide, and
-//! download when there's something newer.
+//! Checking for updates and downloading one, each on a thread of its own
+//! ([decision 0045](../../../docs/decisions/0045-a-splash-screen-that-asks-before-updating.md)):
+//! a check only asks GitHub and says whether a newer build is out; the
+//! download waits until the person says Update now.
 
 use crate::fetch::{self, Source};
 use crate::release::Release;
@@ -13,6 +15,9 @@ pub enum Status {
     Checking,
     /// This copy is the newest build (its number).
     UpToDate(u64),
+    /// A newer build is out: what GitHub says of it. Nothing is
+    /// downloaded until asked ([`start_download`]).
+    Available(Release),
     /// A newer build is downloading (its number).
     Downloading(u64),
     /// A newer build is downloaded and checked, ready to install.
@@ -22,9 +27,6 @@ pub enum Status {
         /// The installer.
         installer: PathBuf,
     },
-    /// A newer build exists, but this copy wasn't installed with the
-    /// installer, so it isn't downloaded (its number).
-    NotInstalled(u64),
     /// This copy was built from source, so it has no build number to
     /// compare.
     FromSource,
@@ -67,24 +69,31 @@ pub struct Copy {
     pub folder: PathBuf,
 }
 
-/// Runs one check, telling `report` each step; gives the last status.
+/// Runs one check, telling `report` each step; gives the last status:
+/// up to date, a newer build available, built from source, or failed.
+/// Never downloads.
 pub fn run(remote: &dyn Remote, copy: &Copy, report: &mut dyn FnMut(Status)) -> Status {
     let Some(this) = copy.build else {
         return Status::FromSource;
     };
     report(Status::Checking);
-    let release = match remote.latest() {
-        Ok(release) => release,
-        Err(why) => return Status::Failed(why),
-    };
-    if release.build <= this {
-        return Status::UpToDate(this);
+    match remote.latest() {
+        Ok(release) if release.build > this => Status::Available(release),
+        Ok(_) => Status::UpToDate(this),
+        Err(why) => Status::Failed(why),
     }
-    if !copy.installed {
-        return Status::NotInstalled(release.build);
-    }
+}
+
+/// Downloads and checks `release`'s installer into `folder`, telling
+/// `report` each step; gives the last status: ready, or failed.
+pub fn download(
+    remote: &dyn Remote,
+    release: &Release,
+    folder: &Path,
+    report: &mut dyn FnMut(Status),
+) -> Status {
     report(Status::Downloading(release.build));
-    match remote.download(&release, &copy.folder) {
+    match remote.download(release, folder) {
         Ok(installer) => Status::Ready {
             build: release.build,
             installer,
@@ -101,6 +110,28 @@ pub fn start<R: Remote + Send + 'static>(
     copy: Copy,
     wake: impl Fn() + Send + 'static,
 ) -> Receiver<Status> {
+    on_a_thread(wake, move |report| run(&remote, &copy, report))
+}
+
+/// Starts downloading `release` into `folder` on its own thread, the
+/// steps arriving as [`start`]'s do.
+pub fn start_download<R: Remote + Send + 'static>(
+    remote: R,
+    release: Release,
+    folder: PathBuf,
+    wake: impl Fn() + Send + 'static,
+) -> Receiver<Status> {
+    on_a_thread(wake, move |report| {
+        download(&remote, &release, &folder, report)
+    })
+}
+
+/// Runs `work` on a thread, sending each status it reports and the one it
+/// ends with.
+fn on_a_thread(
+    wake: impl Fn() + Send + 'static,
+    work: impl FnOnce(&mut dyn FnMut(Status)) -> Status + Send + 'static,
+) -> Receiver<Status> {
     let (sender, receiver) = mpsc::channel();
     let spawned = std::thread::Builder::new().name("updates".into()).spawn({
         let sender = sender.clone();
@@ -109,12 +140,20 @@ pub fn start<R: Remote + Send + 'static>(
                 let _ = sender.send(status);
                 wake();
             };
-            let last = run(&remote, &copy, &mut report);
+            let last = work(&mut report);
             report(last);
         }
     });
     if let Err(e) = spawned {
-        let _ = sender.send(Status::Failed(format!("couldn't start checking: {e}")));
+        let _ = sender.send(Status::Failed(format!("couldn't start: {e}")));
     }
     receiver
+}
+
+/// Whether to offer `latest` when starting: not when it's the build the
+/// person chose to skip (Skip this version). A newer build than the
+/// skipped one is offered again. Asking (Help > Check for updates)
+/// always offers.
+pub fn should_offer(latest: u64, skipped: Option<u64>, asked: bool) -> bool {
+    asked || skipped != Some(latest)
 }

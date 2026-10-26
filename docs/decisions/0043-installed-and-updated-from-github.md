@@ -1,6 +1,6 @@
 # 0043. Installed on the computer, and updated from GitHub
 
-- **Status:** Accepted (adds to [0010](0010-windows-exe-on-merge.md))
+- **Status:** Accepted (adds to [0010](0010-windows-exe-on-merge.md)); how updates are offered is changed by [0045](0045-a-splash-screen-that-asks-before-updating.md)
 - **Date:** 2026-10-25
 
 ## Problem
