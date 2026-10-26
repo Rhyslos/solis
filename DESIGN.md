@@ -174,12 +174,14 @@ wgpu, lightweight, built for medium-poly, stylized games.
 - Materials, including a stylized and toon option
 - **GPU instancing** (essential for §2), frustum culling, LODs
 - Tonemapping, automatic exposure, bloom, white balance and colour grading (much of a stylized look lives here)
-- **A physical sky** (Hillaire's method), time of day and night, flat and volumetric clouds, haze over distance, volumetric fog and light shafts
-- **Light with shape:** sky light from the real sky, ambient occlusion, cascaded and contact shadows, hundreds of lamps with a few shadowed, reflection probes, and bounced light every way that can be made fast: baked light probes, bounce from the screen, real-time probes traced against a simplified world, and a time-boxed experiment for a better method
+- **A physical sky** (Hillaire's method) with an artist's tint and fog colour ramp over it, time of day and night (moons, stars, aurora), weather and moods, flat and volumetric clouds, haze over distance, volumetric fog and light shafts
+- **Light with shape:** sky light from the real sky, ambient occlusion, cascaded and contact shadows, hundreds of lamps with a few shadowed, glowing surfaces and area lights, reflection probes and reflections on the screen, and bounced light every way that can be made fast: baked light probes, bounce from the screen, real-time probes traced against a simplified world, and a time-boxed experiment for a better method
+- **The light ramp look** for Minecraft-like games, beside Standard, Stylized and Unlit
 - Quality levels (Low, Default, High), so the scale target holds on mid-range cards
+- The project lead's reference games: Firewatch, Skyrim, Cyberpunk 2077, Mad Max and Arma 3, then Minecraft (for identity) and Subnautica (for light from within)
 
 **Later:**
-- Baked lightmaps, screen-space reflections, TAA and upscaling, hardware ray tracing once wgpu's is stable
+- Baked lightmaps, TAA and upscaling, hardware ray tracing once wgpu's is stable
 - Occlusion culling
 - A node-based shader editor (stylized games live on custom shaders)
 - Impostors for distant objects

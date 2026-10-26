@@ -92,7 +92,64 @@ At 1080p on a mid-range card (estimates built from the sources):
 | **High** | Default, plus volumetric clouds, volumetric fog and soft shadows | about **+3–4 ms** |
 | **Ultra** | High, plus reflections on the screen and real-time bounce light | about **+3–6 ms** |
 
+After the project lead's answers, the plan puts reflections on the screen and real-time bounced light into High (about +6–9 ms over Default in all), with no Ultra for now.
+
 A frame at 60 fps is 16.7 ms, and the benchmark's target level already uses part of it. So each part gets quality settings, and the scale check measures them.
+
+## The project lead's reference games
+
+Named on 2026-10-26: Firewatch, Skyrim, Cyberpunk 2077, Mad Max (2015) and Arma 3, in that order, then Minecraft and Subnautica. Two things were checked against their sources: Skyrim's weather records (the Creation Kit wiki) and Firewatch's sky (Campo Santo's blog and the GDC 2015 write-up). The rest is from general knowledge of the games and their engines, found by search but not opened, and is marked *(unchecked)*.
+
+- **Firewatch** (Unity):
+  - **The sky** is built from a three-colour gradient (top, middle, bottom), a sun halo for the haze around the sun, and a separate horizon halo (Campo Santo).
+  - **Colour does the work:** bold colours in distinct layers give depth, fog adds depth and distance, and "the biggest chunk of colour is actually determined by the sky" (GDC 2015 write-up).
+  - **Gradient fog:** a fog colour taken from a painted strip by distance is widely described *(unchecked)*. Solis's fog colour ramp (plan L3) is built in that spirit.
+- **Skyrim** (Creation Engine). A weather record holds:
+  - Ambient, Fog, Horizon, Sky-Lower/Upper, Sun, Sunlight and Stars colours for sunrise, day, sunset and night;
+  - up to 16 cloud layers, each with its own texture and speed;
+  - one ImageSpace (its colour grading);
+  - directional ambient per time slot (a colour, direction and specular per axis);
+  - wind, fog distances, precipitation, thunder and lightning, and an Aurora setting (Creation Kit wiki).
+
+  The Special Edition added volumetric god rays (E3 2016 coverage). Two moons with phases *(unchecked)*.
+- **Cyberpunk 2077** (REDengine 4) *(unchecked)*:
+  - **Without ray tracing:** neon and many lamps, haze lit by them, wet streets with screen-space reflections and a puddle material.
+  - **With ray tracing:** ray-traced reflections, shadows and bounced light.
+  - **RT Overdrive (2023):** path tracing with NVIDIA's denoiser (GDC 2023 and 2024).
+  - **For Solis:** the look survives without ray tracing if there are screen-space reflections, wet surfaces and glowing surfaces that light the haze.
+- **Mad Max (2015)** (Avalanche):
+  - a physically based renderer with time of day and weather;
+  - moving sandstorms with dense dust and lightning *(unchecked)*;
+  - how the sky itself is made wasn't found.
+- **Arma 3** (Real Virtuality 4) *(unchecked)*:
+  - HDR with eye adaptation, and very long views;
+  - sun, moon and stars placed for the date and the map's latitude, with moon phases, so moonless nights are truly dark;
+  - one "overcast" value driving clouds, light and rain;
+  - a 2016 visual upgrade to lighting, tone mapping, sky and clouds (Bohemia's "OPREP – Visual Upgrade").
+- **Minecraft** *(unchecked)*:
+  - **Light levels:** every block holds a sky light and a block light from 0 to 15, falling by one a block.
+  - **Colour:** a small table turns each pair into a colour (warm torches, sky light dimming at night).
+  - **Shading:** smooth lighting darkens corners, and faces are shaded by direction (tops brightest).
+  - **Sky:** the fog turns sunrise-coloured towards the sun, and the sun and moon are square.
+  - **Light has meaning in play** (where monsters spawn).
+  - Bedrock's Vibrant Visuals (2025) added deferred lighting, sun shadows, volumetric fog and better water while keeping the pixel textures. Shader packs (BSL, Complementary) add shadows, volumetric light, coloured light and bloom.
+  - **The identity is simplicity and readability:** dark reads as dark.
+- **Subnautica** (Unity) *(unchecked; only forum threads found)*:
+  - water fog coloured per biome by absorption;
+  - light shafts and moving caustics near the surface;
+  - deep areas lit by glowing plants and creatures and the player's own lights.
+  - **For Solis:** fog volumes with an absorption colour, a caustics projector, and glowing surfaces feeding the bounced light are enough; no special underwater system is needed.
+
+**What the plan gained from them:**
+- weathers and moods (Skyrim, Firewatch, Arma);
+- a tint over the physical sky and a fog colour ramp (Firewatch, Mad Max);
+- glowing surfaces that light the world, area lights and lightning (Cyberpunk, Subnautica, storms);
+- moving fog volumes with a colour, spotlights in fog, caustics (Mad Max, Subnautica);
+- reflections on the screen and wet surfaces, moved up from "after 0.1" (Cyberpunk);
+- real sky positions, several moons, the aurora (Arma, Skyrim);
+- long shadow and haze distances (Arma);
+- lens extras (Cyberpunk, Mad Max);
+- the light ramp look (Minecraft).
 
 ## Names for the effects suite
 
@@ -170,6 +227,16 @@ A trademark professional's search would be needed before relying on any of this.
 - Frostbite stochastic SSR: https://frostbite.com/frostbite/news/stochastic-screen-space-reflections
 - TAA survey (Yang, Liu, Salvi 2020): https://research.nvidia.com/labs/rtr/publication/yang2020survey
 - FSR 3 open source: https://www.gamingonlinux.com/2023/12/amd-fidelityfx-super-resolution-3-fsr3-is-now-open-source/page=1/
+
+**The reference games**
+- Campo Santo on Firewatch's sky: https://blog.camposanto.com/post/112703721804/this-blog-post-is-an-in-detail-explanation-of-a
+- Skyrim weather (Creation Kit wiki): https://ck.uesp.net/wiki/Weather and the file format https://en.uesp.net/wiki/Skyrim_Mod:Mod_File_Format/WTHR
+- Skyrim Special Edition's god rays (E3 2016): https://www.mcvuk.com/development/e3-2016-skyrim-remaster-has-volumetric-god-rays-dynamic-dof-new-shaders-and-more
+- Cyberpunk 2077 RT Overdrive: https://www.nvidia.com/en-au/geforce/news/cyberpunk-2077-ray-tracing-overdrive-update-launches-april-11/
+- Mad Max (2015): https://en.wikipedia.org/wiki/Mad_Max_(2015_video_game)
+- Arma 3's visual upgrade: https://dev.arma3.com/post/oprep-visual-upgrade
+- Minecraft's light: https://minecraft.wiki/w/Light-emitting_blocks; Bedrock deferred lighting: https://learn.microsoft.com/en-us/minecraft/creator/documents/deferredlighting
+- Subnautica's water (forum): https://discussions.unity.com/t/subnautica-water-shaders-and-effects/1637842
 
 **Names**
 - Eclipse Foundation trademarks: https://www.eclipse.org/legal/trademarks/, https://trademarks.justia.com/862/46/eclipse-86246654.html

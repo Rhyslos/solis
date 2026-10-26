@@ -4,12 +4,35 @@
 
 The research behind every choice is in [docs/reports/lighting-research.md](../reports/lighting-research.md), with its sources. Nothing here is decided until the project lead answers the questions below. Then the answers become decisions, and this plan is kept up to date as milestones are built, like the other phase plans.
 
-**Gate:** in the light showcase (L1), set a time of day and look. It is judged against screenshots of the project lead's favourite game sunsets. The gate passes when:
+**Gate:** in the light showcase (L1), set a time of day and look. It is judged against screenshots of the project lead's reference games (below), above all Firewatch for warm, cosy light. The gate passes when:
 - **The day runs from noon to night and back with no jumps.** The sky, sun colour, shadows, clouds and haze all change together. The brightness adjusts as eyes do. Twilight turns blue. Night looks like night: stars and the moon, and dark without going grey.
 - **The golden hour feels right.** The sun is low and warm, shadows are cool, the clouds are lit from below, the haze glows towards the sun, and far hills fade into the air.
 - **Indoors never looks like the Backrooms.** Inside the showcase's house, sun through a window bounces light around the room, and corners and contacts are soft and darker. At High, a lamp carried into the dark house lights the room with its bounce as it moves.
 - **The stylized look is as good as the standard one.** The cel-shaded look gets the same sky and colours.
+- **Each reference has its scene:**
+  - the golden valley with a gradient fog (Firewatch);
+  - a weather change from clear to storm with the aurora at night (Skyrim);
+  - the rain-wet neon street at night (Cyberpunk);
+  - the desert sky and a passing sandstorm (Mad Max);
+  - noon to a moonless night in the real units (Arma 3);
+  - the block cave by torchlight in the light ramp look, where dark still reads as dark (Minecraft).
 - **The benchmark's target level still runs at 60 fps** at the Default quality level, on the project lead's PC.
+
+## The reference games
+
+Named by the project lead on 2026-10-26, the top five in order:
+
+| # | Game | What it is the reference for | Where in this plan |
+| --- | --- | --- | --- |
+| 1 | **Firewatch** | Cosy, warm light: "if we could only choose one reference for cozy warm light, this is the one". A sky built from a three-colour gradient with glows round the sun and the horizon; bold colours in layers, with fog giving depth. | L3 (tint over the sky, the fog colour ramp), L5, L7 (moods) |
+| 2 | **Skyrim** | The overall favourite, for its stylized taste. Weathers that each carry their own sky, fog, light and grading for sunrise, day, sunset and night; stacked cloud layers; light by direction indoors; two moons and the aurora; god rays (Special Edition). | L4, L6, L7, L8, L13 |
+| 3 | **Cyberpunk 2077** | Neon at night: many lights, glowing signs that light the haze, wet streets that reflect them. | L11, L13, L15 |
+| 4 | **Mad Max (2015)** | The sky gradient: a huge desert sky, warm to blue; sandstorms crossing the land. | L3, L7, L13 |
+| 5 | **Arma 3** | Realism: real light units, sun, moon and stars where they would really be, truly dark moonless nights, very long views, one overcast control. | L2, L6, L7, L10 |
+
+Also loved: GTA V, The Witcher 3, Helldivers 2, Hunt: Showdown, Titanfall 2, Valheim, Dishonored (another great stylized one), Vampyr and The Last of Us. **Subnautica** is the reference for how a world is lit from within: water colour by depth, light patterns from waves, glowing reefs in the dark (L11, L13). And most important of all, for a feeling of identity, **Minecraft**: simple, readable light where dark means danger, warm torches and cold nights (L12, the light ramp look).
+
+What's known about how each is made is in [the research](../reports/lighting-research.md), "The project lead's reference games"; some of it couldn't be checked against the developers' own talks, and is marked so.
 
 ## The idea, in plain words
 
@@ -30,9 +53,9 @@ The other half is **light that has a shape.** Today the shadow side of everythin
 
 - **The order:** as recommended. Sound and animation stay Phase 7; light is Phase 8, effects 9, game UI 10, netcode 11.
 - **Clouds:** as recommended, flat and volumetric.
-- **Bounced light: every way that can be made fast.** Baked probes *and* real-time bounced light in this phase, plus a third or fourth way if one can be built or invented, as long as it performs. So bounced light gets four layers (L13 to L16 below), each with a hard cost budget and a scale case, kept only if it earns its place:
+- **Bounced light: every way that can be made fast.** Baked probes *and* real-time bounced light in this phase, plus a third or fourth way if one can be built or invented, as long as it performs. So bounced light gets four layers (L16 to L19 below), each with a hard cost budget and a scale case, kept only if it earns its place:
   1. **Baked light probes:** free at run time, for everything.
-  2. **Bounce from the screen:** one bounce from what's in view, from the ambient occlusion pass (L8).
+  2. **Bounce from the screen:** one bounce from what's in view, from the ambient occlusion pass (L9).
   3. **Real-time probes:** bounced light that follows moving lamps and the time of day, traced against a simplified copy of the world, with no ray-tracing hardware.
   4. **A Solis method, tried in a time-boxed experiment:** radiance cascades combined with the probes, or another idea found while building 1 to 3. It ships only if it beats layer 3 on cost or looks at the scale target.
 - **The effects suite's name:** the project lead suggested **Aura**. It is crowded in exactly this field:
@@ -94,7 +117,7 @@ Each question has a recommended answer first, then the alternatives, in plain wo
    | Level | What it adds | Cost |
    |---|---|---|
    | **Default** | The physical sky, sky light, ambient occlusion, cascaded and contact shadows, many lamps, flat clouds, bloom and grading | about 4–7 ms |
-   | **High** | Volumetric clouds, volumetric fog, soft shadows, real-time bounced light and bounce from the screen | about +5–7 ms |
+   | **High** | Volumetric clouds, volumetric fog, soft shadows, reflections on the screen, real-time bounced light and bounce from the screen | about +6–9 ms |
    | **Low** | Turns things off for older cards; works on any card Solis opens on | — |
 
    - **Recommended: Low, Default, High, set per project, and changeable by players later** (the settings screen is Sungraph UI's, Phase 10). The editor's viewport has its own setting, so a slow laptop can edit at Low.
@@ -162,8 +185,8 @@ From `crates/render` and decisions 0008, 0013, 0014 and 0017:
 
 | Crate | What's added |
 |---|---|
-| `render` | `sky/`: the four sky tables, the sun's colour, haze over distance, stars and moon<br>`light/`: clusters, the shadow atlas, cascades<br>`probes.rs`: light and reflection probes<br>`clouds/`<br>`fog/`: froxels<br>`post.rs`: exposure, bloom, grading, white balance<br>`quality.rs` |
-| `area` | Environment gains the time of day, sky style and curves, clouds, fog, exposure, bloom and grading, and quality.<br>New built-in components: `LightProbeVolume`, `ReflectionProbe`, `FogVolume`. |
+| `render` | `sky/`: the four sky tables, the sun's colour, haze over distance, stars and moon<br>`light/`: clusters, the shadow atlas, cascades<br>`probes.rs`: light and reflection probes<br>`clouds/`<br>`fog/`: froxels<br>`post.rs`: exposure, bloom, grading, white balance, lens extras<br>`weather.rs`: weathers and their blending<br>the light ramp look in the shader<br>`ssr.rs`: reflections on the screen<br>`quality.rs` |
+| `area` | Environment gains the time of day, sky style and curves, clouds, fog, exposure, bloom and grading, and quality.<br>New built-in components: `LightProbeVolume`, `ReflectionProbe`, `FogVolume`, `AreaLight`.<br>A new asset kind: weathers (`.solweather`). |
 | `editor` | Properties for the above<br>the viewport's quality and exposure menu<br>**Bake light** in the Entity menu<br>the light showcase (Help menu) |
 | `world` | Time of day as game state; natives in `solis/sky.lst` |
 
@@ -176,6 +199,9 @@ The order is set so that each milestone is visible on its own, and so that what 
   - an outdoor valley (hills, a lake, trees, made by Solis in code like the benchmark's ship);
   - a small house with a window;
   - a metal ship;
+  - a city street at night, with neon signs and rain-wet ground (for the Cyberpunk reference);
+  - a cave and a hut made of blocks, lit by torches (for the Minecraft reference);
+  - a desert under a wide sky (for the Mad Max reference);
   - and the benchmark's fleets nearby.
 
   It is the place every later milestone is judged in, and the gate's scene.
@@ -200,6 +226,9 @@ Hillaire's method:
 - **The sun's light takes its colour from the sky**, so a low sun is orange and its shadows lengthen.
 - **Haze over distance replaces distance fog.** Settings: how hazy, how far, and Earth-like by default.
 - **Style:** the painted sky stays as a style (choice 9).
+- **Art direction over the physics** (Firewatch, Mad Max):
+  - a **tint over the physical sky**: zenith and horizon colours and a glow round the sun (Firewatch's sky is built from exactly these: a three-colour gradient with a sun halo and a horizon halo);
+  - a **fog colour ramp**: a colour strip read by distance, height and angle to the sun, mixed with (or replacing) the physical haze, so far ridges fade through painted colours, as in Firewatch's layered hills.
 - Seeing the planet from above the air comes later.
 - **Tests:**
   - colours at noon, sunset and twilight against Bruneton's reference;
@@ -211,6 +240,7 @@ Hillaire's method:
   - ambient light from every direction (spherical harmonics), so the side facing up is lit blue by the sky and the side facing down is lit by the ground;
   - blurred reflections of the sky by roughness.
 - This replaces the flat ambient colour, and gives the warm-sun, cool-shadow contrast.
+- **Ambient by direction** as an override (Skyrim's interiors have one: a colour for each side), for rooms with no sky.
 
 ### L5. The finished picture, part two
 From the effects plan's M1 and its grading, moved here.
@@ -218,19 +248,38 @@ From the effects plan's M1 and its grading, moved here.
 - **White balance:** "pick what white becomes", plus temperature and tint.
 - **Grading:** sliders plus an optional look-up table image.
 - **Night:** a Purkinje shift (bluer and less colourful in the dark).
+- **Lens extras,** each off by default: lens flare, film grain, colour fringes at the edges (chromatic aberration) and heat haze (Cyberpunk, Mad Max).
 - **Tone mapping:** AgX stays the default; Tony McMapface is added as a plain base for heavy grading.
 
 ### L6. Time of day and night
-- **Sun and moon:** from latitude, date and hour, with the moon's phases.
+- **Sun and moon:** from latitude, date and hour, where they really would be (as Arma 3 does), with the moon's phases changing how bright moonlight is, so a moonless night is truly dark.
+- **More than one moon,** each with its own phase and colour (Skyrim has two).
 - **Stars and the Milky Way:**
   - stars from the catalogue, turning through the night;
   - Solis's own Milky Way;
   - all dimmed near the horizon by the same air.
+- **The aurora** (Skyrim): curtains of light in the night sky, shown by weather.
 - **Colour curves by the sun's height** (choice 9).
 - **Game code:** `setTimeOfDay`, `setDaySpeed` and `timeOfDay()`.
 - **Manual:** a page on the day and night.
 
-### L7. Clouds
+### L7. Weather and moods
+After Skyrim's weathers, the reference this was checked against: each weather there holds sky, fog, ambient, sun and star colours for sunrise, day, sunset and night, up to 16 cloud layers, and its own colour grading.
+- **A weather file** (`.solweather`) keys, for each time of day:
+  - the sky's tint;
+  - the fog colours;
+  - the sun's and ambient light's strength and colour;
+  - the grade;
+  - an exposure bias;
+  - how cloudy it is.
+- **Blending:** an area's Environment picks a weather, and changes between weathers blend smoothly over a set time.
+- **One overcast control** changes the sky, clouds, shadow softness and light together (Arma 3).
+- **Game code** can change the weather: `setWeather(file, seconds)`.
+- **Moods** (Firewatch's hand-set days): a weather can be held at a moment rather than following the clock.
+- Rain and snow themselves are effects (Phase 9); this milestone gives them their light and sky.
+- **Ready-made weathers:** clear, golden, overcast, storm, desert, night.
+
+### L8. Clouds
 1. **A flat cloud layer** on the sky, with a weather map (how much cloud, what kind) and a cheap light march, lit through the sky's tables.
 2. **Volumetric clouds** (High), as in Horizon Zero Dawn:
    - noise textures (about 8 MB);
@@ -241,63 +290,89 @@ From the effects plan's M1 and its grading, moved here.
 
 This may be two pull requests.
 
-### L8. The depth prepass and ambient occlusion
+### L9. The depth prepass and ambient occlusion
 - Depth and normals drawn first.
 - Ambient occlusion by the visibility bitmask method, at half size with its own small denoiser, plus specular occlusion, so creases don't glow.
 - High adds one bounce of nearby light from the same pass.
 
-### L9. Shadows near and far
+### L10. Shadows near and far
 - **Cascaded sun shadows:** four cascades, snapped to whole texels so they don't crawl.
   - Far cascades are refreshed less often.
   - Small units are left out of far cascades, which keeps 2,000 units cheap.
+  - Shadows and haze reach 10 km or more for big maps (Arma 3's long views), the far cascades refreshed rarely.
 - **Contact shadows** for the sun.
 - **Soft shadows** at High: sharp at the base, softer further away (PCSS).
 
-### L10. Many lamps
+### L11. Many lamps, glowing surfaces and area lights
 - **Clustered lighting:** hundreds of lamps at once, past decision 0014's 16.
 - **Shadows for a budget of lamps:** four to eight, in one atlas, still ones cached.
+- **Glowing surfaces light the world:** a sign's or plant's glow feeds the bounced light and the fog (Cyberpunk's neon, Subnautica's glowing reefs).
+- **Area lights:** rectangle and tube lamps (neon tubes, screens, windows), shaded cheaply with a standard method (LTC).
+- **Lightning:** a short, very bright light from the sky, for storms.
 - This lifts the effects plan's limit on flash lamps, so explosions can light the ships around them.
 
-### L11. Volumetric fog and light shafts
+### L12. The light ramp look (Minecraft)
+Minecraft's light is part of its identity, and it is simple on purpose: what's dark reads as dark, and dark means danger.
+- **A fourth look** beside Standard, Stylized and Unlit. Light reaching a surface is split into **sky light** and **lamp light**, each stepped into levels (16 by default), and the pair is looked up in a **small colour table**: warm torchlight, cold moonlight, a curve set by a brightness slider.
+- **Fixed face shading:**
+  - tops brightest, sides darker, bottoms darkest;
+  - soft darkening where blocks meet (from L9's ambient occlusion).
+- **The fog tints towards the sun** at sunrise and sunset.
+- **A square sun and moon** as a sky option.
+- **The realistic parts switch off:** each of soft shadows, bounced light and haze can be turned off, so a blocky game keeps its readability.
+- **What stays in games:** the light-level spreading that decides where monsters spawn is game logic. Solis gives the look; a voxel game writes its own light levels and hands them to the look as the lamp light.
+
+### L13. Volumetric fog and light shafts
 - **Froxel fog:** fog in a box of cells over the view.
   - Light passes through it, so sun shafts fall through windows and trees.
   - Lamps glow in the mist.
 - **Height fog,** and **fog volumes** (a misty valley, a smoky hall) that add, or carve fog away.
+- Fog volumes have an **absorption colour** and can **move**: a sandstorm crossing the desert (Mad Max), a swamp's mist, the colour of water deepening with depth (Subnautica).
+- **Spotlights light up fog:** a torch's cone shows in the mist.
+- **Caustics:** a moving pattern of light projected onto surfaces (sunlight through water, Subnautica).
 - Reuses frames, with care for fast lights.
 - Low gets cheap screen-space god rays.
 
-### L12. Reflection probes
+### L14. Reflection probes
 - A **Reflection probe** entity with a box, baked in the editor.
 - Reflections move correctly as you walk past (parallax corrected).
 - Blended where boxes overlap.
 
-### L13. Baked light probes
+### L15. Reflections on the screen and wet surfaces
+For the rain-wet neon streets of Cyberpunk; reflection probes can't show moving lights and cars.
+- **Screen-space reflections** at High: drawn at half size, reusing rays between pixels, with probes as the fallback where the screen has nothing to reflect.
+- **Wetness:**
+  - a wetness amount on the Environment (from the weather), darkening and glossing surfaces;
+  - puddles where a mask says.
+- **Budget:** about 1–2 ms. The known artefacts at the screen's edges fade into the probes.
+
+### L16. Baked light probes
 - A **Light probe volume** entity: a box of probes.
 - **Bake light** traces light around the area on the graphics card, with Solis's own compute tracer (no ray tracing hardware), aiming at seconds for the showcase.
 - **What gets the light:** every surface and every moving unit picks up bounced light from the nearest probes.
 - **Saving:** stored next to the area as an asset, and rebaked when asked.
 - This is decision 0008's second source of indirect light.
 
-### L14. Real-time bounced light
+### L17. Real-time bounced light
 - **Probes around the camera:** grids of probes in nested sizes (cascades), finer near the camera, that follow it, so open worlds work.
 - **Tracing:** each frame a few probes are traced against a **simplified copy of the world**: small blocks of distance fields (how far is the nearest surface), as AMD's MIT-licensed Brixelizer GI does. Where wgpu's hardware ray tracing is available and stable, it is used instead, behind the same probes.
 - **What it gives:** bounced light that follows moving lamps, explosions, opened doors and the time of day.
 - **Units only receive:** the thousands of moving units take light from the probes but aren't traced, which keeps the cost the same at 2,000 units or 10,000.
 - **Budget:** at most about 2–3 ms at 1080p on a mid-range card, at High. AMD reports 1.7 ms on an RX 7600 XT. Above the budget, it doesn't ship at that level.
-- **Blending:** baked probes (L13) are the fallback where the real-time ones haven't settled, and on Default and Low.
+- **Blending:** baked probes (L16) are the fallback where the real-time ones haven't settled, and on Default and Low.
 
-### L15. Bounce from the screen, joined up
-- One bounce of light from what's on screen (from L8's pass), laid over the probes for small, sharp detail the probes are too coarse for: the red glow of a wall on the floor beside it.
+### L18. Bounce from the screen, joined up
+- One bounce of light from what's on screen (from L9's pass), laid over the probes for small, sharp detail the probes are too coarse for: the red glow of a wall on the floor beside it.
 - The two are blended so nothing is counted twice.
 
-### L16. An experiment: a Solis method
-- A **time-boxed experiment** (a fixed number of days, decided at its start) to find a better way. The first candidate is **radiance cascades** (Alexander Sannikov's method, used in 2D in Path of Exile 2), joined with L14's probes and distance fields:
+### L19. An experiment: a Solis method
+- A **time-boxed experiment** (a fixed number of days, decided at its start) to find a better way. The first candidate is **radiance cascades** (Alexander Sannikov's method, used in 2D in Path of Exile 2), joined with L17's probes and distance fields:
   - it gives soft shadows from every light without noise;
   - 3D versions are still research: a 2025 study measured 2–26 ms with flicker;
   - "split radiance cascades" (2026) is new and unproven in an engine.
-- Other ideas found while building L13 to L15 can be tried instead.
+- Other ideas found while building L16 to L18 can be tried instead.
 - **Shipped only if it wins:**
-  - it beats L14 on cost or looks, at the scale target;
+  - it beats L17 on cost or looks, at the scale target;
   - it has no flicker the gate's viewer can see.
 - Otherwise its findings are written up in `docs/reports/` and it stays out. Either way, the project lead sees the comparison.
 
@@ -312,7 +387,6 @@ This may be two pull requests.
 
 Kept here so the design leaves room for them:
 - **Baked lightmaps.**
-- **Reflections on the screen (SSR).**
 - **TAA and AMD's FSR upscaling.**
 - **Light shafts in the sky** from mountains and clouds.
 - **The planet seen from space.**
