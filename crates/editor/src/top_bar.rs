@@ -269,10 +269,17 @@ impl Workbench {
             });
             ui.menu_button("Accent colour", |ui| {
                 for accent in Accent::ALL {
-                    if ui
-                        .add(egui::Button::new(accent.name()).selected(self.accent == accent))
-                        .clicked()
-                    {
+                    // A swatch of each, as Aventail's list has.
+                    let chosen = ui
+                        .horizontal(|ui| {
+                            let (swatch, _) = ui
+                                .allocate_exact_size(egui::vec2(16.0, 10.0), egui::Sense::hover());
+                            ui.painter().rect_filled(swatch, 3.0, accent.colors().fill);
+                            ui.add(egui::Button::new(accent.name()).selected(self.accent == accent))
+                                .clicked()
+                        })
+                        .inner;
+                    if chosen {
                         self.accent = accent;
                         theme::set_accent(ui.ctx(), accent);
                         ui.close();

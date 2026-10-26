@@ -89,12 +89,25 @@ pub enum Accent {
     /// Petrol blue, the standard.
     #[default]
     PetrolBlue,
-    /// Red.
+    /// A soft, warm red.
     Red,
-    /// Green.
+    /// A clear, saturated blue.
+    Blue,
+    /// A deep blue-green ("Marine green" in the menu; saved settings call
+    /// it Green).
     Green,
-    /// Plum.
+    /// A dusky purple-pink.
     Plum,
+    /// A natural, slightly yellow green.
+    Olive,
+    /// A deep red-orange, like polished copper.
+    Copper,
+    /// A warm sunset orange.
+    Orange,
+    /// An orange-yellow, like amber.
+    Amber,
+    /// A deep yellow, like old gold.
+    Gold,
 }
 
 /// The shades of one accent.
@@ -109,15 +122,35 @@ pub struct AccentColors {
 
 impl Accent {
     /// Every accent, in menu order.
-    pub const ALL: [Self; 4] = [Self::PetrolBlue, Self::Red, Self::Green, Self::Plum];
+    /// Aventail's accents (Petrol blue is Solis's own shade, and Olive a
+    /// touch darker so white text reads on it), and four sun colours of
+    /// Solis's own; round the colour wheel from red, the standard first.
+    pub const ALL: [Self; 10] = [
+        Self::PetrolBlue,
+        Self::Red,
+        Self::Copper,
+        Self::Orange,
+        Self::Amber,
+        Self::Gold,
+        Self::Olive,
+        Self::Green,
+        Self::Blue,
+        Self::Plum,
+    ];
 
     /// The accent's name, as the menu shows it.
     pub fn name(self) -> &'static str {
         match self {
             Self::PetrolBlue => "Petrol blue",
             Self::Red => "Red",
-            Self::Green => "Green",
+            Self::Blue => "Blue",
+            Self::Green => "Marine green",
             Self::Plum => "Plum",
+            Self::Olive => "Olive",
+            Self::Copper => "Copper",
+            Self::Orange => "Orange",
+            Self::Amber => "Amber",
+            Self::Gold => "Gold",
         }
     }
 
@@ -126,8 +159,18 @@ impl Accent {
         let (fill, light) = match self {
             Self::PetrolBlue => ([0x1f, 0x6a, 0x8f], [0x7c, 0xc4, 0xe4]),
             Self::Red => ([0xc2, 0x43, 0x3d], [0xe5, 0x73, 0x6b]),
+            Self::Blue => ([0x24, 0x68, 0xd8], [0x5a, 0x95, 0xf2]),
             Self::Green => ([0x16, 0x6a, 0x62], [0x3e, 0x9d, 0x93]),
             Self::Plum => ([0x9b, 0x3f, 0x7a], [0xcf, 0x72, 0xab]),
+            // Aventail's is 5d8530: white text on it reads at 4.3 to 1,
+            // just under the 4.5 the tests ask.
+            Self::Olive => ([0x58, 0x7e, 0x2e], [0x90, 0xbd, 0x5a]),
+            // Yellows and oranges deep enough for white text; their light
+            // shades carry the brightness.
+            Self::Copper => ([0xb0, 0x4a, 0x1c], [0xec, 0x8a, 0x5a]),
+            Self::Orange => ([0xb8, 0x56, 0x00], [0xf5, 0x9e, 0x4c]),
+            Self::Amber => ([0x9a, 0x62, 0x00], [0xf2, 0xb6, 0x40]),
+            Self::Gold => ([0x86, 0x6c, 0x00], [0xe6, 0xc8, 0x3c]),
         };
         let rgb = |[r, g, b]: [u8; 3]| Color32::from_rgb(r, g, b);
         AccentColors {
@@ -472,6 +515,40 @@ mod tests {
     fn the_standard_accent_is_petrol_blue() {
         assert_eq!(Accent::default(), Accent::PetrolBlue);
         assert_eq!(Accent::ALL[0], Accent::PetrolBlue);
+    }
+
+    #[test]
+    fn a_saved_accent_still_reads_after_more_were_added() {
+        // Settings saved before Blue and Olive (and before Green was
+        // called Marine green in the menu) keep their choice.
+        for (saved, accent) in [
+            ("PetrolBlue", Accent::PetrolBlue),
+            ("Red", Accent::Red),
+            ("Green", Accent::Green),
+            ("Plum", Accent::Plum),
+        ] {
+            assert_eq!(ron::from_str::<Accent>(saved).ok(), Some(accent), "{saved}");
+        }
+        for accent in Accent::ALL {
+            let text = ron::to_string(&accent).unwrap();
+            assert_eq!(ron::from_str::<Accent>(&text).unwrap(), accent);
+        }
+    }
+
+    #[test]
+    fn the_accents_are_aventail_s() {
+        // Decision 0007: Aventail's look may be copied. These are its
+        // shades; Petrol blue is Solis's own.
+        let fill = |a: Accent| a.colors().fill;
+        assert_eq!(fill(Accent::Blue), Color32::from_rgb(0x24, 0x68, 0xd8));
+        assert_eq!(fill(Accent::Red), Color32::from_rgb(0xc2, 0x43, 0x3d));
+        assert_eq!(fill(Accent::Plum), Color32::from_rgb(0x9b, 0x3f, 0x7a));
+        assert_eq!(Accent::Green.name(), "Marine green");
+        assert_eq!(Accent::ALL.len(), 10);
+        let mut all = Accent::ALL.to_vec();
+        all.sort_unstable_by_key(|a| *a as u8);
+        all.dedup();
+        assert_eq!(all.len(), 10, "each listed once");
     }
 
     #[test]
