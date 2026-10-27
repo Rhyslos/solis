@@ -1,0 +1,28 @@
+[package]
+name = "sound"
+description = "Sound (decision 0056): Kira wrapped, WAV and Ogg read with limits, the sound device and the editor's preview"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+publish.workspace = true
+
+# Architecture layer, checked by tools/layer-check:
+# a crate may only depend on crates in its own layer or below.
+[package.metadata.architecture]
+layer = 1
+
+[dependencies]
+kira.workspace = true
+hound.workspace = true
+lewton.workspace = true
+ogg.workspace = true
+log.workspace = true
+
+[dev-dependencies]
+proptest.workspace = true
+
+[lints]
+workspace = true

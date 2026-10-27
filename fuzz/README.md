@@ -14,6 +14,7 @@ Fuzz targets for every reader of a file a project can ship ([decision 0042](../d
 | `project_file` | `project.solis` |
 | `game_code` | A Lust file and a Lua file (split by a 0x01 byte), checked, loaded and run for a tick |
 | `update_answer` | GitHub's answer about the latest release and the installer's checksum file (split by a 0x01 byte); a release read only ever points at the repository's own downloads |
+| `sound_file` | A WAV or Ogg Vorbis sound file (`sound::read_bytes`); a sound read is within the limits, as long as its overview, and every sample a number between -1 and 1 |
 
 ## Running
 

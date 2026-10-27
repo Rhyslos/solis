@@ -182,7 +182,7 @@ impl Projects {
                     FileKind::Area => LibraryKind::Area,
                     FileKind::Texture => LibraryKind::Texture,
                     FileKind::Code => LibraryKind::Code,
-                    FileKind::Other => LibraryKind::Other,
+                    FileKind::Other | FileKind::Sound => LibraryKind::Other,
                 },
                 // Files Solis doesn't know keep their whole name, so
                 // "brick.png.exe" never passes for "brick.png".

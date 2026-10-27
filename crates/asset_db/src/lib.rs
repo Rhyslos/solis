@@ -18,7 +18,9 @@ mod project;
 pub mod sidecar;
 mod watch;
 
-pub use db::{ASSEMBLY_EXTENSION, AssetDb, AssetKind, AssetRecord, Change, SETTLE, Stamp};
+pub use db::{
+    ASSEMBLY_EXTENSION, AssetDb, AssetKind, AssetRecord, Change, SETTLE, SOUND_EXTENSIONS, Stamp,
+};
 pub use files::{
     AREA_EXTENSION, FileEntry, FileError, FileKind, Listing, MAX_NAME_CHARS, file_name_from,
     valid_file_name,

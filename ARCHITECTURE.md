@@ -8,12 +8,12 @@ Solis is a Rust program split into small, single-purpose crates. **Lower layers 
 | --- | --- | --- | --- |
 | 3 | App | `app`, `updater` | Opens the window, owns the frame loop, wires the rest together. No feature logic. `updater` finds, downloads and checks new builds on GitHub (decision 0043). |
 | 2 | Editor | `editor` | The editor's interface: top bar, dockable panels, theme. Never needed by a game. |
-| 1 | Engine | `render`, `assets`, `asset_db`, `world`, `script`, `physics`, `input` | What games run on. Knows nothing about the editor. `assets` reads model files; `render` draws; `asset_db` keeps the project's assets by stable ID; `world` holds the running game's entities; `script` runs game code; `physics` wraps Rapier; `input` turns keys and buttons into named actions. |
+| 1 | Engine | `render`, `assets`, `asset_db`, `world`, `script`, `physics`, `input`, `sound` | What games run on. Knows nothing about the editor. `assets` reads model files; `render` draws; `asset_db` keeps the project's assets by stable ID; `world` holds the running game's entities; `script` runs game code; `physics` wraps Rapier; `input` turns keys and buttons into named actions; `sound` wraps Kira and reads sound files. |
 | 0 | Core | `reflect`, `area` | Shared building blocks with no GPU, window or interface. `reflect` holds IDs, values and component schemas; `area` holds the area document and the built-in components. |
 
 Each crate's `README.md` states its purpose and what it **must never** do. Read it before changing the crate.
 
-Planned: physics, sound and networking crates in later phases. See ROADMAP.md.
+Planned: a networking crate in a later phase. See ROADMAP.md.
 
 ## The area
 
@@ -80,6 +80,10 @@ The gizmo's maths (`editor::gizmo`, from Aventail) turns mouse movement into a c
 ## Projects and assets
 
 A project is a folder: `project.solis`, `assets/` and the `.solis/` cache. `asset_db::AssetDb` is worked out from `assets/` (the folder is the truth); each asset's `AssetId` lives in a `.solmeta` sidecar beside it, so renaming, moving or switching Git branches breaks nothing. The app (`crates/app/src/project.rs`) holds the database and a watcher; when the watcher reports something, the database rescans and the app reloads changed models in use on worker threads, through the import cache, and swaps them in by ID. A model imported while a project is open (the sample area too) is copied into `assets/` first, and given its sidecar at once (`AssetDb::adopt`). A new file found without a sidecar waits until it has been still for `asset_db::SETTLE` (two seconds; `AssetDb::look_again_at` says when to look), because Git writes a file and its sidecar one after the other and a look in between would give it a new ID. Files sharing one ID (copied with their sidecar) leave it with the one the database knew, or else the one whose sidecar is oldest. The import cache keeps within `asset_db::cache::MAX_BYTES`, trimmed on a worker when a project opens (least recently used first). The editor only sees `ProjectInfo` and the Library's list ([decision 0021](docs/decisions/0021-asset-database-and-models.md)). The Library lists every file (`AssetDb::listing`), and asks the app to rename, move, delete (to the Recycle Bin) or open them through `WorkbenchAction`s; `asset_db` moves a file's sidecar with it. Thumbnails (`crates/app/src/thumbnails.rs`) are made a few at a time: pictures shrunk on a worker, models read on a worker and drawn once on the GPU into a small texture egui shows. A model dropped from the Library is placed where the viewport's picking finds the surface under the mouse (`ViewportEvent::Drop`); the editor remembers the spot until the app has loaded the model.
+
+## Sound
+
+The `sound` crate wraps Kira ([decision 0056](docs/decisions/0056-sound-with-kira.md)), as `physics` wraps Rapier: nothing else sees Kira's types. Kira's own file reader (symphonia, MPL) is off; `sound::read` reads WAV with `hound` and Ogg Vorbis with `lewton` within limits (256 MB, 8–192 kHz, up to 8 channels, more than two mixed to mono, every sample clamped and NaN made silent), and makes an `Overview` (each stretch's lowest and highest sample, at most 2,048 of them) in the same pass for drawing the waveform. A sound longer than ten minutes isn't kept in memory: it's streamed from its file as it plays. `SoundDevice` holds Kira's audio manager (the sound card, a mock device in tests, or none) and previews on an Editor track of its own. The app opens the card on a worker (`crates/app/src/sound.rs`), uses a silent device until then or when there's none, and tries again every 30 seconds. Kira needs `triple_buffer`, which is MPL-2.0, so Solis stands in for it with its own MIT crate in `patches/triple_buffer` (`[patch.crates-io]`; docs/dependencies.md, Patches). On Linux the sound card is reached through ALSA, so the checks install `libasound2-dev`.
 
 ## The console and Problems
 

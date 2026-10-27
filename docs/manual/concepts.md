@@ -128,6 +128,14 @@
 - **Save game:** the whole game at a moment, kept in a file: every entity, every component's values, physics, the clock and the random numbers. Loading it carries on exactly as the game would have. See [Save games](save-games.md).
 - **Checksum:** one number made from everything in the game at a moment. Two plays that agree on it at the same tick are in the same state; when they don't, something differs. `checksum` in the [Console](console.md) shows it.
 
+## Sound
+
+- **Sound card:** the part of a computer that turns sound into what speakers and headsets play. Most computers have one built in; a USB headset brings its own. With none, Solis keeps working and plays nothing.
+- **WAV and Ogg:** the two kinds of sound file Solis reads. WAV keeps every sample as it is (big files, right for short effects from a sound editor); Ogg (Ogg Vorbis) is squeezed to about a tenth of the size with little to hear, right for music and anything long.
+- **Sample rate:** how many times a second a sound is measured, such as 44,100 (CD quality) or 48,000. Higher keeps finer detail, in a bigger file.
+- **Channels:** how many separate sounds a file holds side by side: one (mono) or two (stereo, left and right).
+- **Streaming:** playing a long sound a piece at a time as it's read from its file, instead of reading all of it first, so a long piece of music doesn't fill the memory. Solis streams sounds longer than ten minutes.
+
 ## Getting Solis
 
 - **Build:** one version of the program, made by GitHub each time a change is merged into the main version. Each build has a **build number** that goes up by one or more each time, so a bigger number is newer. Help > About shows yours. See [Installing and updating](installing-and-updating.md).

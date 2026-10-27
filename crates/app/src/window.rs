@@ -60,6 +60,8 @@ struct App {
     no_gpu: NoRenderer,
     /// Reads model files in the background.
     importer: Importer,
+    /// The sound card (silent until it opens, or when there's none).
+    sound: crate::sound::Sound,
     /// The open project and its assets.
     projects: Projects,
     /// Models being read to be placed in the area when they arrive (the
@@ -180,6 +182,7 @@ impl App {
             gpu,
             no_gpu,
             importer,
+            sound: crate::sound::Sound::open(),
             projects: Projects::with_recent(recent),
             to_place: HashSet::new(),
             thumbnails: crate::thumbnails::Thumbnails::default(),
@@ -1132,6 +1135,16 @@ impl App {
             }
             return;
         }
+        if kind == Some(asset_db::AssetKind::Sound) {
+            // A sound has no shape to put in the scene; sound sources come
+            // in a later milestone.
+            self.workbench.placing_failed(id);
+            self.workbench.log(
+                LogLevel::Warning,
+                "A sound can't be placed in the scene yet.".to_owned(),
+            );
+            return;
+        }
         let Some(file) = self.projects.db().and_then(|db| db.file(id)) else {
             self.workbench.placing_failed(id);
             return;
@@ -1388,6 +1401,9 @@ impl eframe::App for App {
             ctx.send_viewport_cmd(egui::ViewportCommand::CancelClose);
         }
         self.collect_imports();
+        if let Some((level, text)) = self.sound.poll(std::time::Instant::now()) {
+            self.workbench.log(level, text);
+        }
         self.updates.frame(&mut self.workbench);
         self.show_library_messages();
         self.workbench.set_gamepad(self.gamepads.read());

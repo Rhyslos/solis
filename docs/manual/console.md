@@ -68,6 +68,7 @@ Names never care about capitals. A name with spaces goes in quotes: `select "Poi
 - **Problem:** pressing **'** types a ' instead of jumping to the command line. **Why:** another text field (a search box, a name) has the keyboard. **Fix:** press Esc or click the viewport first.
 - **Problem:** "nothing is called …". **Why:** no entity has exactly that name. **Fix:** `find` with part of the name lists the real names; Tab finishes them for you.
 - **Problem:** `set` says "nothing selected has a Light". **Why:** `set` only changes entities that have that component; it never adds one. **Fix:** select the right entities, or add the component in [Properties](entities.md) first.
+- **Problem:** "No sound: couldn't open the sound card …". **Why:** Solis found no [sound card](concepts.md#sound) it could use (none plugged in, or another program holding it). **Fix:** nothing is broken, and everything else works. Plug in speakers or a headset: Solis tries again every 30 seconds and says "Sound is on." when it finds one.
 - The Console keeps the newest 2,000 messages. Messages from other libraries that repeat every frame are shown once.
 - Mistakes in the area itself (a missing model, say) are listed in the [Problems](problems.md) panel, beside the Console.
 
