@@ -75,3 +75,28 @@ fn the_engine_never_depends_on_the_editor() {
         );
     }
 }
+
+/// Every outside library is in the dependency register, used only in the
+/// crates it allows, and every row is still used (decision 0052).
+#[test]
+fn every_library_is_in_the_dependency_register() {
+    let root = workspace_root();
+    let manifest = std::fs::read_to_string(root.join("Cargo.toml")).unwrap();
+    let internal = layer_check::internal_crate_names(&manifest).unwrap();
+    let mut uses = Vec::new();
+    for entry in std::fs::read_dir(root.join("crates")).unwrap() {
+        let path = entry.unwrap().path().join("Cargo.toml");
+        if let Ok(text) = std::fs::read_to_string(&path) {
+            uses.extend(layer_check::deps::library_uses(&text, &internal).unwrap());
+        }
+    }
+    let register_text = std::fs::read_to_string(root.join("docs/dependencies.md")).unwrap();
+    let register = layer_check::deps::parse_register(&register_text).unwrap();
+    let problems = layer_check::deps::check(&uses, &register);
+    let report: Vec<String> = problems.iter().map(ToString::to_string).collect();
+    assert!(
+        problems.is_empty(),
+        "the dependency register disagrees with the crates:\n{}",
+        report.join("\n")
+    );
+}

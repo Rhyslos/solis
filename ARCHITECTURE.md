@@ -62,6 +62,8 @@ In the program, `updater::this_build` is the stamped number (none when built any
 - CI (`.github/workflows/ci.yml`) runs all of these on every update to a pull request and on merges into main, on Linux and on Windows (Direct3D 12 through WARP for the GPU tests) ([decision 0018](docs/decisions/0018-checks-for-a-public-repo.md)). `.github/workflows/security.yml` checks for security advisories weekly, and Dependabot opens grouped update pull requests weekly.
 - `.github/workflows/changelog.yml` fails a ready pull request that changes code without a `CHANGELOG.md` entry, unless it is labelled `internal`.
 - `.github/workflows/windows-exe.yml` builds a downloadable `solis.exe` when code is merged into main, and by hand ([decision 0010](docs/decisions/0010-windows-exe-on-merge.md)).
+- `.github/workflows/sources.yml` saves the source of every library whenever `Cargo.lock` changes on main, as a pre-release `sources-<hash>`, keeping five ([decision 0052](docs/decisions/0052-dependency-safeguards.md)).
+- `tools/layer-check` also checks the dependency register (`docs/dependencies.md`): every outside library listed, and used only in the crates its row allows.
 
 ## Conventions
 

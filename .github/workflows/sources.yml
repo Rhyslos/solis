@@ -1,0 +1,94 @@
+# Keeps a copy of every library's source code, so a library deleted from
+# the internet can't stop Solis from building (decision 0052,
+# docs/dependencies.md, "Building from the archive").
+#
+# - runs when Cargo.lock changes on main, and by hand;
+# - `cargo vendor` copies the source of every library in Cargo.lock;
+# - publishes it as release `sources-<hash>`, where <hash> is the first 12
+#   characters of Cargo.lock's SHA-256, skipping it if that one exists;
+# - marks it a PRE-RELEASE and never "latest": installed copies ask GitHub
+#   for the latest release to find updates (decision 0043), which skips
+#   pre-releases, so an archive can never be offered as an update;
+# - keeps the newest five archives.
+name: Source archive
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "Cargo.lock"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: sources
+  cancel-in-progress: false
+
+jobs:
+  archive:
+    name: Archive the libraries' source
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      # Publishing the archive.
+      contents: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - name: Name the archive after Cargo.lock
+        id: lock
+        run: echo "hash=$(sha256sum Cargo.lock | cut -c1-12)" >> "$GITHUB_OUTPUT"
+      - name: Check whether this lock file is archived already
+        id: exists
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          TAG: sources-${{ steps.lock.outputs.hash }}
+        run: |
+          if gh release view "$TAG" > /dev/null 2>&1; then
+            echo "done=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "done=false" >> "$GITHUB_OUTPUT"
+          fi
+      - name: Copy every library's source
+        if: steps.exists.outputs.done == 'false'
+        env:
+          HASH: ${{ steps.lock.outputs.hash }}
+        run: |
+          mkdir -p .cargo-archive
+          cargo vendor --locked vendor > .cargo-archive/config.toml
+          {
+            echo "The source of every library in Solis's Cargo.lock (SHA-256 starting $HASH),"
+            echo "made by cargo vendor from commit $GITHUB_SHA."
+            echo
+            echo "To build without downloading anything, unpack this archive at the root"
+            echo "of the repository and put the following in .cargo/config.toml:"
+            echo
+            cat .cargo-archive/config.toml
+          } > vendor/README-vendor.txt
+          tar -cJf "sources-$HASH.tar.xz" vendor Cargo.lock
+          sha256sum "sources-$HASH.tar.xz" > "sources-$HASH.tar.xz.sha256"
+          ls -lh "sources-$HASH.tar.xz"
+      - name: Publish the archive
+        if: steps.exists.outputs.done == 'false'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          HASH: ${{ steps.lock.outputs.hash }}
+        run: |
+          printf 'The source code of every library Solis used at commit %s (Cargo.lock SHA-256 starting %s).\n\nNot a build of Solis: install Solis from the newest build-N release. See docs/dependencies.md, "Building from the archive".\n' \
+            "$GITHUB_SHA" "$HASH" > notes.md
+          gh release create "sources-$HASH" "sources-$HASH.tar.xz" "sources-$HASH.tar.xz.sha256" \
+            --title "Library sources $HASH" --notes-file notes.md \
+            --target "$GITHUB_SHA" --prerelease --latest=false
+      - name: Keep the newest five archives
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+        run: |
+          gh release list --limit 200 --json tagName,createdAt \
+            --jq 'map(select(.tagName | startswith("sources-"))) | sort_by(.createdAt) | reverse | .[5:] | .[].tagName' \
+            | while read -r tag; do gh release delete "$tag" --cleanup-tag --yes; done
