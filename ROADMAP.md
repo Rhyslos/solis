@@ -2,29 +2,29 @@
 
 The plan from an empty repo to **Solis 0.1**, in phases. The engine is Rust; games are written in Lust, Rust or Lua ([decisions 0002](docs/decisions/0002-engine-in-rust-games-in-lust.md) and [0003](docs/decisions/0003-games-in-rust-lust-or-lua.md)). DESIGN.md says what Solis is; this file says in what order it gets built.
 
-**About eighteen months,** if Solis gets steady attention alongside Lust (light, sky and atmosphere got a phase of their own on 2026-10-26, [decision 0046](docs/decisions/0046-light-before-netcode.md)). Months are a guide, not a promise: the pace is set by decisions, testing on Windows and reviews.
+**The pace is measured, not guessed.** The table shows when each phase was built. Work began on 20 October 2026, and Phases 0 to 6 and the hardening milestone were built in the first week. The months this roadmap first guessed were dropped on 27 October 2026, since they didn't match. A phase is finished when the project lead has tried its gate by hand, so the pace that matters is set by decisions, gates and quality, not by how fast code is written. Light, sky and atmosphere got a phase of their own ([decision 0046](docs/decisions/0046-light-before-netcode.md)), and so did materials and shaders ([decision 0048](docs/decisions/0048-materials-and-shaders-before-effects.md)).
 
 Each phase ends with a **gate**: something the project lead tries by hand before the next phase starts. Each milestone inside a phase is one pull request.
 
 ## At a glance
 
-| Phase | Months | What you get |
+| Phase | Built | What you get |
 | --- | --- | --- |
-| 0. Groundwork | 0–½ | The editor window opens, in Solis's theme |
-| 1. Seeing things | ½–2 | Models, materials, lights and shadows in the viewport |
-| 2. The world | 2–3 | Entities, components, areas and assemblies, saved as text |
-| 3. The editor | 3–4 | Building an area by hand, with play mode |
-| 4. Lust and Lua join | 4–5 | Components written in Lust or Lua, in play mode within 2 seconds |
-| 5. Scale | 5–6 | 2,000 units and 20,000 projectiles at 60 fps; 10,000 and 100,000 still playable; the ceiling measured |
-| 6. Simulation and play | 6–7 | Physics, input, a deterministic simulation |
-| 7. Sound and animation | 7–8 | Sound events and buses; animated characters |
-| 8. Light, sky and atmosphere | 8–12 | A physical sky, sunsets and night; shadows near and far; many lamps; fog and clouds; bounced light, baked and real-time |
-| 9. Materials and shaders | 12–13 | Materials as assets, values driven by the world, a node graph for shaders |
-| 10. Effects | 13–14 | Solstice, the effects suite: particles, trails, flipbooks |
-| 11. Game UI | 14–15 | Sungraph UI: HUDs and menus drawn in Solis |
-| 12. Netcode | 15–16 | Two PCs playing together over the internet |
-| 13. Scripting, export and Git | 16–17 | The scripting window; games packaged for Windows; working in teams through Git |
-| 14. Solis 0.1 | 17–18 | The flagship space battle, docs, release |
+| 0. Groundwork | 21 Oct 2026 (gate passed 21 Oct) | The editor window opens, in Solis's theme |
+| 1. Seeing things | 21–22 Oct 2026; gate to try | Models, materials, lights and shadows in the viewport |
+| 2. The world | 23–25 Oct 2026; gate to try | Entities, components, areas and assemblies, saved as text |
+| 3. The editor | 25 Oct 2026; gate to try | Building an area by hand, with play mode |
+| 4. Lust and Lua join | 25 Oct 2026; gate to try | Components written in Lust or Lua, in play mode within 2 seconds |
+| 5. Scale | 25 Oct 2026; gate to try | 2,000 units and 20,000 projectiles at 60 fps; 10,000 and 100,000 still playable; the ceiling measured |
+| 6. Simulation and play | 25 Oct 2026; gate to try | Physics, input, a deterministic simulation |
+| 7. Sound and animation |  | Sound events and buses; animated characters |
+| 8. Light, sky and atmosphere |  | A physical sky, sunsets and night; shadows near and far; many lamps; fog and clouds; bounced light, baked and real-time |
+| 9. Materials and shaders |  | Materials as assets, values driven by the world, a node graph for shaders |
+| 10. Effects |  | Solstice, the effects suite: particles, trails, flipbooks |
+| 11. Game UI |  | Sungraph UI: HUDs and menus drawn in Solis |
+| 12. Netcode |  | Two PCs playing together over the internet |
+| 13. Scripting, export and Git |  | The scripting window; games packaged for Windows; working in teams through Git |
+| 14. Solis 0.1 |  | The flagship space battle, docs, release |
 
 Lust joins in Phase 4, right after the editor, so game logic can be written in Lust from then on ([decision 0016](docs/decisions/0016-how-lust-joins-solis.md)). Phases 0–3 don't need Lust; if it isn't ready by Phase 4, Phase 5 (Scale) goes first.
 

@@ -290,7 +290,7 @@ Settled in [decision 0004](docs/decisions/0004-editor-layout.md): Halberd's pane
 
 ## 15. Roadmap
 
-**Solis 0.1 in about eighteen months,** in fifteen phases (0 to 14), each ending with a gate the project lead tries by hand. The full plan is in [ROADMAP.md](ROADMAP.md). In short: groundwork and the editor shell, rendering, the world, the editor, **Lust and Lua join** (Phase 4), scale, simulation, sound and animation, **light, sky and atmosphere**, **materials and shaders**, effects, game UI, netcode, scripting and export, and the 0.1 release.
+**Solis 0.1 in fifteen phases (0 to 14),** each ending with a gate the project lead tries by hand. The full plan is in [ROADMAP.md](ROADMAP.md). In short: groundwork and the editor shell, rendering, the world, the editor, **Lust and Lua join** (Phase 4), scale, simulation, sound and animation, **light, sky and atmosphere**, **materials and shaders**, effects, game UI, netcode, scripting and export, and the 0.1 release.
 
 **The flagship sample:** a small space battle. Two capital ships, a carrier launching fighter squadrons, a few hundred lasers in the air, over the network. It tests instancing, components, VFX and lockstep at once.
 
