@@ -11,6 +11,11 @@
 //!
 //! The checks are plain functions over parsed data, so they can be tested
 //! on made-up crates as well as on the real workspace.
+//!
+//! [`deps`] checks the dependency register (`docs/dependencies.md`): every
+//! outside library listed, used only where the register allows it.
+
+pub mod deps;
 
 use std::fmt;
 use std::fs;

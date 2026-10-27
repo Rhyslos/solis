@@ -26,4 +26,4 @@ Libraries stay welcome for what isn't Solis's core: reading file formats, talkin
 
 - Phases start a little later: the study comes first. The light plan (Phase 8) was the first done this way.
 - The effects plan (Phase 10) is rewritten from such a study before Phase 10 starts. It goes deep on spawning, simulating, sorting, culling, drawing and budgeting particles on AMD cards.
-- Fewer dependencies in the core, which also helps against dependency trouble (see the dependency safeguards).
+- Fewer dependencies in the core, which also helps against dependency trouble ([decision 0052](0052-dependency-safeguards.md)).

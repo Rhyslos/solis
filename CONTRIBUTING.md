@@ -51,7 +51,7 @@ A pull request that breaks one of these is sent back, however good the feature.
 2. **Dependencies point down only.** The engine knows nothing of the editor; games ship without it. `tools/layer-check` enforces the layers in `ARCHITECTURE.md`.
 3. **Small units.** As a guide: files under about 500 lines, functions under about 60.
 4. **Narrow public surface.** Expose as little as possible from each crate.
-5. **Reuse before writing.** Check whether a crate already does it.
+5. **Reuse before writing, and register what you reuse.** Check whether a crate already does it. A new outside library needs a row in `docs/dependencies.md` (what it's for, licence, where it's allowed, exit plan; a test checks), and the pull request says why Solis shouldn't write it itself (decision 0052).
 6. **Game-specific systems stay out of the engine.** The engine meets the scale target in DESIGN.md §2; squads, campaigns and the like belong in games.
 
 **Safety**
