@@ -28,9 +28,9 @@ The first build takes a few minutes. `cargo run -p app -- --help` lists the opti
 
 Solis is built in phases, one milestone per pull request. Each phase ends with a **gate** the project lead tries by hand before the next starts. This tracker is updated by the pull request that finishes each milestone; the full plan is in [ROADMAP.md](ROADMAP.md).
 
-**Overall: 42 of 121 milestones** `████░░░░░░░░░` 35%
+**Overall: 42 of 130 milestones** `████░░░░░░░░░` 32%
 
-**Now:** Phases 1, 2 and 3 are built and wait for their gates to be tried by hand ([Phase 3 plan](docs/plans/phase-3.md)). Phase 4, game code, is built and reviewed, and waits for its gate too ([Phase 4 plan](docs/plans/phase-4.md)). Phase 5, scale, is built and reviewed, and waits for its gate ([Phase 5 plan](docs/plans/phase-5.md)): try **Help > Make the benchmark…**. Phase 6, simulation and play, is built and reviewed three times, and waits for its gate ([Phase 6 plan](docs/plans/phase-6.md)): try **Help > Make the playground…**. The hardening milestone is done and everything is merged: its gate is reading the [hardening report](docs/reports/hardening-phase-6.md) and trying the playground once more. Solis now installs and updates itself from GitHub's Releases page. Next is Phase 7, sound and animation. Then compatibility (Phase 8, [plan](docs/plans/compatibility.md)), so updates never lose work, and first-class 2D in two parts (Phases 9 and 10, [plan](docs/plans/2d.md), [decision 0054](docs/decisions/0054-first-class-2d.md)), so the project lead's own 2D game can move to Solis; then a playtest export and game UI, then light, materials and effects ([decisions 0046](docs/decisions/0046-light-before-netcode.md) and [0048](docs/decisions/0048-materials-and-shaders-before-effects.md)).
+**Now:** Phases 1, 2 and 3 are built and wait for their gates to be tried by hand ([Phase 3 plan](docs/plans/phase-3.md)). Phase 4, game code, is built and reviewed, and waits for its gate too ([Phase 4 plan](docs/plans/phase-4.md)). Phase 5, scale, is built and reviewed, and waits for its gate ([Phase 5 plan](docs/plans/phase-5.md)): try **Help > Make the benchmark…**. Phase 6, simulation and play, is built and reviewed three times, and waits for its gate ([Phase 6 plan](docs/plans/phase-6.md)): try **Help > Make the playground…**. The hardening milestone is done and everything is merged: its gate is reading the [hardening report](docs/reports/hardening-phase-6.md) and trying the playground once more. Solis now installs and updates itself from GitHub's Releases page. Next is Phase 7, sound and animation ([sound plan](docs/plans/phase-7-sound.md), [animation plan](docs/plans/phase-7-animation.md), decisions 0056 and 0057). Then compatibility (Phase 8, [plan](docs/plans/compatibility.md)), so updates never lose work, and first-class 2D in two parts (Phases 9 and 10, [plan](docs/plans/2d.md), [decision 0054](docs/decisions/0054-first-class-2d.md)), so the project lead's own 2D game can move to Solis; then a playtest export and game UI, then light, materials and effects ([decisions 0046](docs/decisions/0046-light-before-netcode.md) and [0048](docs/decisions/0048-materials-and-shaders-before-effects.md)).
 
 ### Phase 0 · Groundwork — 7 of 7
 
@@ -166,21 +166,30 @@ Solis is built in phases, one milestone per pull request. Each phase ends with a
 
 **Gate:** read the hardening report (coverage, mutations caught, hours fuzzed and what was found), and try the playground once more.
 
-### Phase 7 · Sound and animation — 0 of 4
+### Phase 7 · Sound and animation — 0 of 13
 
 `░░░░░░░░░░░░░` 0%
 
 <details>
 <summary>Milestones</summary>
 
-- [ ] Sound events, buses and ducking
-- [ ] 3D sound and reverb zones
-- [ ] Skeletal animation from glTF
-- [ ] Animation state machines, blending and events
+- [ ] S1. Sound files and the sound device ([sound plan](docs/plans/phase-7-sound.md), decision 0056)
+- [ ] S2. Sound events as assets
+- [ ] S3. Game code plays sounds, in 3D
+- [ ] A1. Skins and clips from glTF ([animation plan](docs/plans/phase-7-animation.md), decision 0057)
+- [ ] A2. Skinned drawing, playing one clip
+- [ ] A3. Crowds: baked clips and animation LOD
+- [ ] A4. State machines and blending, for 2D and 3D clips
+- [ ] S4. Buses, ducking and the Mixer panel
+- [ ] S5. Loops, voice limits and the scale target
+- [ ] S6. Reverb zones
+- [ ] A5. The animator graph editor (the shared graph editor)
+- [ ] A6. Cues, footsteps and the playground
+- [ ] S7. Sounds from animation events, and the gate's level
 
 </details>
 
-**Gate:** a character walks and runs with smooth blending, and its footsteps sound right.
+**Gate:** a character walks and runs with smooth blending, footsteps play on the right frames, each sounds a little different, the music dips while someone speaks, and walking into a reverb zone makes the steps echo.
 
 ### Phase 8 · Compatibility — 0 of 6
 

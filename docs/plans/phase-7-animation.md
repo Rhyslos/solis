@@ -11,7 +11,15 @@ Recommended for every choice except two:
 - **Blend spaces: 1D and 2D both in Phase 7** (not 2D later). A4 grows to include two-number blend spaces (strafing).
 - **The gate's character: only the project lead's own** (no Solis-made robot in the playground). Automatic tests still need a small skinned model, which Solis makes in code for the tests only (kept out of samples and the playground).
 
-The rest as recommended: live poses near, baked clips far; cues per clip in the model's `.solmeta`; clips from other files matched by bone names; no root motion in Phase 7; animators saved as `.solanim` on an `Animator` component; the graph editor's controls as listed (middle-drag pans, wheel zooms, F frames); the viewport animates only with Preview animation on; the natives as listed, bone positions later; glTF only, FBX later.
+They are [decision 0057](../decisions/0057-animation-near-live-far-baked.md), which also makes the state machine drive 2D sprite frames (decision 0054) and its graph editor the shared one (decision 0050). The rest as recommended: live poses near, baked clips far; cues per clip in the model's `.solmeta`; clips from other files matched by bone names; no root motion in Phase 7; animators saved as `.solanim` on an `Animator` component; the graph editor's controls as listed (middle-drag pans, wheel zooms, F frames); the viewport animates only with Preview animation on; the natives as listed, bone positions later; glTF only, FBX later.
+
+## The order of Phase 7's milestones (sound and animation together)
+
+1. **Sound becomes playable:** S1, S2, S3.
+2. **The animation core:** A1, A2, A3, A4.
+3. **The rest of sound:** S4, S5, S6.
+4. **The animator tab:** A5. It's a new editor window, so it's mocked up for the project lead first.
+5. **Where they meet, and the gate's level:** A6, then S7.
 
 ## Choices to make before any code
 
@@ -157,12 +165,15 @@ New crates beyond these aren't needed: sampling and blending are a few hundred l
   transition 9XM1R4T6HD2QE { from = "Moving"; to = "Jump"; when = ["jump"]; blend = 0.15; }
   transition 2CF7K9P3AW5YN { from = "Jump"; to = "Moving"; when = ["finished"]; blend = 0.2; }
   ```
-- **States** play one clip or a 1D blend space; **transitions** have conditions (a number compared with a value, a switch on or off, a trigger, "finished", "from any state"), all of which must hold, and a crossfade time. A crossfade can be interrupted by a transition out of the state it's going to; at most three states blend at once (the oldest drops out), so the state stays small and saveable.
+- **Clips of any kind** (decision 0054): the state machine works on a *clip* (something with a length, keys or frames, cues, and a way to be sampled). A 3D clip gives bone poses; a 2D clip (from Aseprite, Phase 9) gives a sprite frame. States, transitions, parameters, blend spaces, cues, saving and the editor don't know which. A test-only "frame clip" proves the 2D path now.
+- **States** play one clip, a 1D blend space or a 2D blend space (forwards and sideways, for strafing; decision 0057); **transitions** have conditions (a number compared with a value, a switch on or off, a trigger, "finished", "from any state"), all of which must hold, and a crossfade time. A crossfade can be interrupted by a transition out of the state it's going to; at most three states blend at once (the oldest drops out), so the state stays small and saveable.
 - **In the tick** as above; **natives** as in choice 9, in Lust, Lua (`solis.setAnimNumber`) and Rust; the state in the checksum; **saves** gain an `animation` section (each animator's state, parameters and crossfades, numbers by their exact bits; the format becomes `solis save 2`, still reading 1). A save whose animator file has changed since loads that animator at its entry state, with a note.
 - Tests: transitions fire on the right tick; crossfade weights add to 1; the blend space keeps feet in step; the file round trips and merges (two people adding states on two branches); damaged files refused (fuzz); the same recorded inputs give the same animation states and checksums on 1 core and 4; save, load, the same checksum; hot reload while playing.
 
 ### A5. The animator graph editor ☐
 
+- **Mocked up first:** the animator tab is a new editor window, so its look is mocked up for the project lead to approve before any of it is built (CLAUDE.md).
+- **The shared graph editor** (decision 0050): the canvas, boxes, wires, box search, selection, pan and zoom are built as one reusable piece in the editor, which materials, effects and later graphs use too. The animator is its first user.
 - **An animator tab** in the document tabs (decision 0004): states as boxes, transitions as arrows (two ways between the same states shown side by side), the entry state marked; the controls chosen in choice 7. The parameters listed beside the graph; Properties edits the selected state's clip or blend space, or the transition's conditions and crossfade.
 - **Preview:** a small view of the model playing the animator, with a slider or switch per parameter; while the game is playing, the selected entity's current state and transition are lit.
 - Edits are undoable (decision 0022) and saved to the `.solanim` file like areas (through a temporary file, CONTRIBUTING rule 11).
