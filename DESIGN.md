@@ -13,27 +13,27 @@ Sections marked **(to decide)** are open. Everything else is the current plan, a
 A lightweight, free alternative to Godot, Unity and Unreal for people getting into game development, aimed at:
 
 - **Stylized games,** with tools for that look out of the box.
-- **Strategy games** in the Empire at War mould (§2).
+- **Strategy games** with large space and ground battles (§2).
 - **Medium-poly online co-op and PvP games,** with good netcode built in.
 - **Big open worlds,** built from zones and LODs.
 
-**3D only.** The only 2D is UI. Godot, Unity and many others already do 2D well, and focus is a feature.
+**3D, and first-class 2D** ([decision 0054](docs/decisions/0054-first-class-2d.md), 2026-10-27; it was "3D only"). 2D is built as flat things in the same world, so lighting, effects, materials, sound and netcode serve both, with real 2D tools on top: a pixel-perfect view, sprites from Aseprite, tile maps that change as a game runs, autotiling, a tile painter and 2D physics. Focus is still a feature: one engine and one way of working, not a 2D engine beside a 3D one.
 
 **Who it's for:** people who want to make games without learning a huge engine, and without an engine that takes a cut of their money.
 
 ### Name
 
-**Solis** (Latin for "of the sun"). No 3D engine by that name was found; the nearest are "Solas", a small .NET engine, and an old 2D game called Solis on SourceForge. The VFX system is **Solis Eclipse** (§9): the sun-and-eclipse pun works, and the "Solis" prefix keeps it apart from the Eclipse IDE in searches.
+**Solis** (Latin for "of the sun"). No 3D engine by that name was found; the nearest are "Solas", a small .NET engine, and an old 2D game called Solis on SourceForge. The effects suite is **Solstice** (§9, [decision 0047](docs/decisions/0047-the-effects-suite-is-solstice.md)): the sun theme, and clear of the trademarks and products that ruled out Eclipse, Ember, Aura and Aurora.
 
 ---
 
 ## 2. Scale target
 
-**Empire at War-style battles:** hundreds of units normally, a few thousand at peak (cheap unit spam), and tens of thousands of projectiles and effects on screen, running smoothly.
+**Large strategy battles:** hundreds of units normally, a few thousand at peak (cheap unit spam), and tens of thousands of projectiles and effects on screen, running smoothly.
 
 **Tested at three levels** ([decision 0030](docs/decisions/0030-scale-is-tested-at-three-levels.md)): the **target**, 2,000 moving units and 20,000 projectiles at 60 fps; **stress**, 10,000 units and 100,000 projectiles holding 30 fps without stutter; and a **ceiling** run that keeps adding until 60 fps ends, and reports where. Games will go past the target (two fleets of fighter squads, a horde of 6,000 zombies), so we test past it.
 
-That's the number the renderer, the component system and VFX are designed against. It is not Beyond All Reason's tens of thousands of units.
+That's the number the renderer, the component system and VFX are designed against. It is not the tens of thousands of units of the very largest strategy games.
 
 Game-specific systems (squads, hardpoints, hangars, a campaign map, fleet caps) belong in each game's own Lust code, not the engine.
 
@@ -49,7 +49,7 @@ Game-specific systems (squads, hardpoints, hangars, a campaign map, fleet caps) 
 | **LustQL** (`.lql`) | Stored data in SQLite | **(to design in Lust first)** |
 
 - **Games can be written in Lust, Rust or Lua** ([decision 0003](docs/decisions/0003-games-in-rust-lust-or-lua.md)). Nobody has to learn Lust to make a game. All three see the same game API (components, inspector fields, typed events), and a game can mix them.
-- **Lua is quick to change and slower to run:** no compile step, but slower than compiled code, with a garbage collector. Fine for most gameplay; heavy per-unit work at the scale in §2 is better in Lust or Rust. For deterministic netcode (§6), Lua code has to follow a few rules, such as not relying on the order `pairs` walks a table in.
+- **Lua is quick to change and slower to run:** no compile step, but slower than compiled code, with a garbage collector. Fine for most gameplay; heavy per-unit work at the scale in §2 is better in Lust or Rust. For deterministic netcode (§6), Lua code has to follow a few rules, such as not relying on the order `pairs` walks a table in. How much slower is measured and explained, not guessed ([decision 0055](docs/decisions/0055-lua-speed-measured-and-explained.md)): the manual says which language suits which work, with Solis's own numbers; the profiler points out slow Lua components; and Luau's native code generation is used if it is faster and gives identical game results. Lua isn't translated into Rust: Lust is the typed language that compiles to Rust.
 - **The engine is Rust; games are Lust** ([decision 0002](docs/decisions/0002-engine-in-rust-games-in-lust.md)), the split Godot (C++ and GDScript) and Unity (C++ and C#) use. An engine needs the control Lust deliberately hides; game makers need what Lust is good at.
 - **Lust compiles to Rust** (Lust's own plan, LUST.md), so a Lust component becomes the same kind of Rust struct as the engine's own components, and the engine can't tell them apart. No C interface in between.
 - **Lust joins in Phase 4,** right after the editor ([ROADMAP.md](ROADMAP.md), [decision 0016](docs/decisions/0016-how-lust-joins-solis.md)). Solis describes the engine to Lust in plain Lust files with `native` methods (`solis/entity.lst` and so on, generated from the engine's Rust), and a game's Lust is built as a Rust library the engine includes.
@@ -166,23 +166,27 @@ No single netcode fits every game, so Solis provides it in layers ([decision 000
 
 ## 7. Rendering
 
-wgpu, lightweight, built for medium-poly, stylized games.
+wgpu, lightweight, built for medium-poly, stylized games. **AMD first, when a choice must be made** ([decision 0049](docs/decisions/0049-amd-first-when-a-choice-must-be-made.md)): solid and fast on every card, tuned best for AMD's.
+
+**Light is Solis's selling point** (the project lead, 2026-10-26; [decision 0046](docs/decisions/0046-light-before-netcode.md)): skies, sunsets and light that feel right, never flat or sterile. Physics underneath (a physical sky with ozone and haze over distance, clouds lit by the sun), art direction on top (white balance, grading, colour by time of day, a painted sky kept as a style). The research is in [docs/reports/lighting-research.md](docs/reports/lighting-research.md) and the plan in [docs/plans/light.md](docs/plans/light.md).
 
 **0.1:**
 - Materials, including a stylized and toon option
-- Lights and shadows
-- **GPU instancing** (essential for §2)
-- Frustum culling, LODs
-- Post-processing: tonemapping, bloom, colour grading (much of a stylized look lives here)
-- Sky and fog
+- **GPU instancing** (essential for §2), frustum culling, LODs
+- Tonemapping, automatic exposure, bloom, white balance and colour grading (much of a stylized look lives here)
+- **A physical sky** (Hillaire's method) with an artist's tint and fog colour ramp over it, time of day and night (moons, stars, aurora), weather and moods, flat and volumetric clouds, haze over distance, volumetric fog and light shafts
+- **Light with shape:** sky light from the real sky, ambient occlusion, cascaded and contact shadows, hundreds of lamps with a few shadowed, glowing surfaces and area lights, reflection probes and reflections on the screen, and bounced light every way that can be made fast: baked light probes, bounce from the screen, real-time probes traced against a simplified world, and a time-boxed experiment for a better method
+- **The light ramp look** for blocky games, beside Standard, Stylized and Unlit
+- **Materials and shaders** (Phase 14, [decision 0048](docs/decisions/0048-materials-and-shaders-before-effects.md)): materials as assets with their own look; inputs that drive any material value (the light around a surface, time, distance, height, wetness, noise, values from game code); a node graph for shaders, saved as text; a code node for experts; stylized building blocks (stylized games live on custom shaders)
+- Quality levels (Low, Default, High), so the scale target holds on mid-range cards
+- The looks aimed for, from the project lead's reference games (kept by the project lead, described in the Phase 13 plan): warm, cosy light; a stylized world of weathers; neon nights; a huge sky gradient; realism; light from living things; and simple, readable light as a game's identity
 
 **Later:**
+- Baked lightmaps, TAA and upscaling, hardware ray tracing once wgpu's is stable
 - Occlusion culling
-- Day and night
-- A node-based shader editor (stylized games live on custom shaders)
 - Impostors for distant objects
 
-**Lighting approach:** a choice per project ([decision 0008](docs/decisions/0008-lighting-is-a-project-choice.md)). Real-time lights with sky light come first; baked lightmaps, light probes and real-time global illumination are added later as other sources of indirect light.
+**Lighting approach:** a choice per project ([decision 0008](docs/decisions/0008-lighting-is-a-project-choice.md)). Real-time lights with sky light came first; baked and real-time bounced light arrive in Phase 13; lightmaps are a further source after 0.1.
 
 ---
 
@@ -198,11 +202,18 @@ wgpu, lightweight, built for medium-poly, stylized games.
 
 ---
 
-## 9. VFX: Solis Eclipse
+## 9. VFX: Solstice
 
-Gets a lot of attention. Stylized VFX tools out of the box: flipbooks, trails, ribbons, mesh particles, stylized shading, and lots of particles through instancing.
+Gets a lot of attention: **good enough to be a professional tool in its own right**, while games stay the priority (the project lead, 2026-10-27). Stylized VFX tools out of the box: flipbooks, trails, ribbons, mesh particles, stylized shading, and lots of particles through instancing. It also has:
+- **Easy to learn:** the same graph, inputs and keys as materials (decision 0050).
+- **A pixel mode** for pixel-art games: pixel-shaped particles snapped to the grid, the game's palette, and ready-made wind streaks, fireflies, bubbles and more (decision 0054).
+- **Beginner-friendly:** an extensive library of presets and building blocks with simple settings on top.
+- **Custom code** in Lust, Rust or Lua.
+- **Interactive light:** emission lights the world, the fog and the bounced light, not just a glow.
+- **Baking** to flipbooks, moving-mesh textures and cached playback.
+- **Designed from an in-depth study** before it's built (decision 0051).
 
-**Open question:** the wishlist mentions reusing Aventail's VFX system (originally named Gauntlet). Aventail's plans don't contain one so far; "Gauntlet" came up as a rejected name for Aventail itself. So Solis Eclipse is probably new design work, built for games first, and Aventail could adopt it later. **(to confirm)**
+**Open question:** the wishlist mentions reusing Aventail's VFX system (originally named Gauntlet). Aventail's plans don't contain one so far; "Gauntlet" came up as a rejected name for Aventail itself. So Solstice is probably new design work, built for games first, and Aventail could adopt it later. **(to confirm)**
 
 ---
 
@@ -232,12 +243,14 @@ The area to spend extra time on. In order of payoff:
 ## 12. UI
 
 - **The editor** uses egui, like Aventail and Halberd.
-- **Game UI** is drawn in Solis, with **Sungraph UI** ([decision 0039](docs/decisions/0039-game-ui-is-drawn-in-solis.md)): a visual UI editor where UI is drawn canvas style (lines, shapes, curves, text) rather than built from imported images, so it's sharp at any size; any value can be tied live to game code; every element is reachable from code, because a UI file is ordinary Lust (`view { }`); and styles such as glow, pixelation and stylized outlines apply to the whole UI. Lust's plan has its own `view { }` renderer as its biggest item; Solis's game UI renderer could be that renderer, but Solis doesn't wait for it. A Rust UI layer comes first, which `view { }` compiles to later. It's built, whole, in Phase 9.
+- **Game UI** is drawn in Solis, with **Sungraph UI** ([decision 0039](docs/decisions/0039-game-ui-is-drawn-in-solis.md)): a visual UI editor where UI is drawn canvas style (lines, shapes, curves, text) rather than built from imported images, so it's sharp at any size; any value can be tied live to game code; every element is reachable from code, because a UI file is ordinary Lust (`view { }`); and styles such as glow, pixelation and stylized outlines apply to the whole UI. Lust's plan has its own `view { }` renderer as its biggest item; Solis's game UI renderer could be that renderer, but Solis doesn't wait for it. A Rust UI layer comes first, which `view { }` compiles to later. It's built, whole, in Phase 12, right after 2D and the playtest export (decisions 0046, 0048 and 0054; the first plan had it in Phase 9).
 - **Other visual editors** follow the same rule, a graph saved as readable text: state machines (Phase 7), behaviour trees, and shader and material graphs.
 
 ---
 
 ## 13. The editor
+
+**Uniformity comes first** ([decision 0050](docs/decisions/0050-one-way-to-work-everywhere.md)): every editor in Solis works one way: one graph editor, one Properties layout, one preview tab, one table of shortcuts, the same ideas everywhere. Learn one and you know them all.
 
 Settled in [decision 0004](docs/decisions/0004-editor-layout.md): Halberd's panels with Unreal's tabs, and every panel dockable.
 
@@ -278,11 +291,11 @@ Settled in [decision 0004](docs/decisions/0004-editor-layout.md): Halberd's pane
 
 ## 15. Roadmap
 
-**Solis 0.1 in about a year,** in twelve phases (0 to 11), each ending with a gate the project lead tries by hand. The full plan is in [ROADMAP.md](ROADMAP.md). In short: groundwork and the editor shell, rendering, the world, the editor, **Lust and Lua join** (Phase 4), scale, simulation, sound and animation, netcode, effects and game UI, scripting and export, and the 0.1 release.
+**Solis 0.1 in nineteen phases (0 to 18),** each ending with a gate the project lead tries by hand, with no timeframe. The full plan is in [ROADMAP.md](ROADMAP.md). In short: groundwork and the editor shell, rendering, the world, the editor, **Lust and Lua join** (Phase 4), scale, simulation, sound and animation, **compatibility**, **2D in two parts**, a **playtest export**, game UI, **light, sky and atmosphere**, **materials and shaders**, effects, netcode, scripting, the full export and Git, and the 0.1 release.
 
 **The flagship sample:** a small space battle. Two capital ships, a carrier launching fighter squadrons, a few hundred lasers in the air, over the network. It tests instancing, components, VFX and lockstep at once.
 
-**Not in 0.1:** open-world streaming, the full Solis Eclipse toolkit, rollback, advanced animation.
+**Not in 0.1:** open-world streaming, the full Solstice toolkit, rollback, advanced animation.
 
 **Risks:**
 1. **Lust is needed from Phase 4** (decision 0016). Its connection to the engine is built and tested already; if the rest is late, Phase 5 (Scale) goes first.
@@ -310,7 +323,7 @@ Both sides review each other's pull requests.
 - 2026-10-20: LustScript/Lua only for editor scripting, never game code.
 - 2026-10-21: Lust compiles to Rust (Lust's decision), so Lust uses the foundation's crates directly, with no C interface.
 - 2026-10-20: Entities and components with typed events; no node tree or signals.
-- 2026-10-20: Scale target: Empire at War-style battles (§2). Game-specific systems stay out of the engine.
+- 2026-10-20: Scale target: large strategy battles (§2). Game-specific systems stay out of the engine.
 - 2026-10-20: [0001](docs/decisions/0001-builds-on-demand.md): builds and checks don't run on every push.
 - 2026-10-21: [0002](docs/decisions/0002-engine-in-rust-games-in-lust.md): the engine is Rust; games are Lust. Replaces "the engine in Lust on a thin Rust foundation". The build order is in [ROADMAP.md](ROADMAP.md).
 - 2026-10-21: [0003](docs/decisions/0003-games-in-rust-lust-or-lua.md): games can be written in Lust, Rust or Lua. Replaces "LustScript/Lua only for editor scripting, never game code".
@@ -356,4 +369,13 @@ Both sides review each other's pull requests.
 - 2026-10-25: [0043](docs/decisions/0043-installed-and-updated-from-github.md): Solis is installed with an Inno Setup installer (per user, no administrator), and each merge into main is published as a GitHub release `build-<number>`. Installed copies check GitHub when they open and every six hours, download a newer build while you work, check its SHA-256, and install it when you close (or now, with Restart to update). Asked for by the project lead.
 - 2026-10-26: [0044](docs/decisions/0044-third-party-notices-ship-with-the-program.md): every build writes `THIRD-PARTY-NOTICES.txt` (the libraries built into the program, with their copyright notices and licences) with cargo-about, and it ships in the download and the installer, as those licences ask.
 - 2026-10-26: [0045](docs/decisions/0045-a-splash-screen-that-asks-before-updating.md): Solis starts with a splash screen (Aventail's, with Solis's logo) for at least 0.6 s while it asks GitHub for a newer build; a newer one brings up a question (Update now, Open without updating, Skip this version), and Help > Check for updates when starting turns checking off. Updates no longer download quietly, and the six-hourly checks are gone. Asked for by the project lead.
+- 2026-10-26: [0046](docs/decisions/0046-light-before-netcode.md): light, sky and atmosphere get Phase 8, chosen by the project lead; effects and game UI get a phase each, and netcode moves after them; bloom and grading move into Phase 8, and bounced light, baked and real-time, arrives there.
+- 2026-10-26: [0047](docs/decisions/0047-the-effects-suite-is-solstice.md): the effects suite is called Solstice (Eclipse, Ember, Aura and Aurora were taken in this field).
+- 2026-10-26: [0048](docs/decisions/0048-materials-and-shaders-before-effects.md): materials and shaders get Phase 9, between light and effects, as general tools (any material value driven by the world); effects, game UI, netcode, export and 0.1 become Phases 10 to 14.
+- 2026-10-26: [0049](docs/decisions/0049-amd-first-when-a-choice-must-be-made.md): Solis supports every card and stays fast on all of them, but when a choice must be made between tuning for one maker or another, it tunes for AMD: AMD cards are the reference for gates and the scale check, compute is sized for AMD's waves, AMD's open-source FidelityFX libraries are first in line, and the backend is chosen by measuring.
+- 2026-10-27: [0050](docs/decisions/0050-one-way-to-work-everywhere.md): one way to work everywhere: one graph editor, one Properties layout, one shortcut table (tested), the same inputs, curves and gradients, and the same three languages for custom code, in every editor.
+- 2026-10-27: [0051](docs/decisions/0051-understand-then-build.md): understand, then build: each core system starts with an in-depth study and Solis's own design, measured at the scale target; libraries are for what isn't Solis's core.
 - 2026-10-27: [0052](docs/decisions/0052-dependency-safeguards.md): safeguards against dependency trouble: a register of every library with its exit plan (checked by a test), walls around each library, a source archive whenever Cargo.lock changes, and a reason for every new library.
+- 2026-10-27: [0053](docs/decisions/0053-compatibility-before-2d.md): compatibility comes first (Phase 8): a backup before every upgrade, upgraders for every file format with old examples kept as tests, save games that survive updates, the game-code interface guarded, real projects tested before an update ships, breaking changes labelled.
+- 2026-10-27: [0054](docs/decisions/0054-first-class-2d.md): first-class 2D in two parts (Phases 9 and 10), built as flat things in the same world with real 2D tools on top; Rapier2D; each tileset chooses its own kind; then a playtest export (11) and game UI (12); a pixel mode in the effects suite; 2D bounced light in the light phase. Replaces "3D only".
+- 2026-10-27: [0055](docs/decisions/0055-lua-speed-measured-and-explained.md): Lua's speed is measured and explained, and Luau's native code is used only if faster with identical results; Lua isn't translated into Rust.

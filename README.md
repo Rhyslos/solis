@@ -28,9 +28,9 @@ The first build takes a few minutes. `cargo run -p app -- --help` lists the opti
 
 Solis is built in phases, one milestone per pull request. Each phase ends with a **gate** the project lead tries by hand before the next starts. This tracker is updated by the pull request that finishes each milestone; the full plan is in [ROADMAP.md](ROADMAP.md).
 
-**Overall: 25 of 60 milestones** `█████░░░░░░░░` 42%
+**Overall: 42 of 121 milestones** `████░░░░░░░░░` 35%
 
-**Now:** Phases 1, 2 and 3 are built and wait for their gates to be tried by hand ([Phase 3 plan](docs/plans/phase-3.md)). Phase 4, game code, is built and reviewed, and waits for its gate too ([Phase 4 plan](docs/plans/phase-4.md)). Phase 5, scale, is built and reviewed, and waits for its gate ([Phase 5 plan](docs/plans/phase-5.md)): try **Help > Make the benchmark…**. Phase 6, simulation and play, is built and reviewed three times, and waits for its gate ([Phase 6 plan](docs/plans/phase-6.md)): try **Help > Make the playground…**. The hardening milestone is done and everything is merged: its gate is reading the [hardening report](docs/reports/hardening-phase-6.md) and trying the playground once more. Solis now installs and updates itself from GitHub's Releases page. Next is Phase 7, sound and animation.
+**Now:** Phases 1, 2 and 3 are built and wait for their gates to be tried by hand ([Phase 3 plan](docs/plans/phase-3.md)). Phase 4, game code, is built and reviewed, and waits for its gate too ([Phase 4 plan](docs/plans/phase-4.md)). Phase 5, scale, is built and reviewed, and waits for its gate ([Phase 5 plan](docs/plans/phase-5.md)): try **Help > Make the benchmark…**. Phase 6, simulation and play, is built and reviewed three times, and waits for its gate ([Phase 6 plan](docs/plans/phase-6.md)): try **Help > Make the playground…**. The hardening milestone is done and everything is merged: its gate is reading the [hardening report](docs/reports/hardening-phase-6.md) and trying the playground once more. Solis now installs and updates itself from GitHub's Releases page. Next is Phase 7, sound and animation. Then compatibility (Phase 8, [plan](docs/plans/compatibility.md)), so updates never lose work, and first-class 2D in two parts (Phases 9 and 10, [plan](docs/plans/2d.md), [decision 0054](docs/decisions/0054-first-class-2d.md)), so the project lead's own 2D game can move to Solis; then a playtest export and game UI, then light, materials and effects ([decisions 0046](docs/decisions/0046-light-before-netcode.md) and [0048](docs/decisions/0048-materials-and-shaders-before-effects.md)).
 
 ### Phase 0 · Groundwork — 7 of 7
 
@@ -182,7 +182,166 @@ Solis is built in phases, one milestone per pull request. Each phase ends with a
 
 **Gate:** a character walks and runs with smooth blending, and its footsteps sound right.
 
-### Phase 8 · Netcode — 0 of 5
+### Phase 8 · Compatibility — 0 of 6
+
+`░░░░░░░░░░░░░` 0%
+
+<details>
+<summary>Milestones</summary>
+
+- [ ] Backups and upgraders for every file format ([plan](docs/plans/compatibility.md), decision 0053)
+- [ ] Save games that survive updates
+- [ ] The game-code interface, guarded
+- [ ] Real projects tested before an update ships
+- [ ] Breaking changes, labelled
+- [ ] Lua's speed, measured and explained (decision 0055)
+
+</details>
+
+**Gate:** a project from an older build opens, backed up and upgraded; a save from before an update loads after it.
+
+### Phase 9 · 2D, part 1 — 0 of 9
+
+`░░░░░░░░░░░░░` 0%
+
+<details>
+<summary>Milestones</summary>
+
+- [ ] The pixel-perfect view and the 2D editor ([plan](docs/plans/2d.md), decision 0054)
+- [ ] Sprites from Aseprite
+- [ ] Frame animation
+- [ ] Tile maps that change as you play
+- [ ] Autotiling and tilesets
+- [ ] The tile painter
+- [ ] 2D physics and top-down movement
+- [ ] The 2D camera and feel tools
+- [ ] Lamps and day and night on sprites
+
+</details>
+
+**Gate:** the project lead rebuilds a slice of their own game in Lust: till, plant, water, grow over days, sleep, lamps at night; smooth and crisp.
+
+### Phase 10 · 2D, part 2 — 0 of 6
+
+`░░░░░░░░░░░░░` 0%
+
+<details>
+<summary>Milestones</summary>
+
+- [ ] Levels, entities and the world
+- [ ] Advanced tiling
+- [ ] Pathfinding
+- [ ] Soft shadows and richer 2D light
+- [ ] More movement: grid-step and platformer
+- [ ] Polish, the 2D sample and the manual
+
+</details>
+
+**Gate:** the 2D sample and the extended game slice; every speed budget met; the old tools' known problems, each a passing test.
+
+### Phase 11 · Playtest export — 0 of 3
+
+`░░░░░░░░░░░░░` 0%
+
+<details>
+<summary>Milestones</summary>
+
+- [ ] A game program without the editor
+- [ ] Packing a project, settings and saved games
+- [ ] File > Export for playtesting, and crash logs
+
+</details>
+
+**Gate:** a friend plays an exported build without Solis installed.
+
+### Phase 12 · Game UI — 0 of 7
+
+`░░░░░░░░░░░░░` 0%
+
+<details>
+<summary>Milestones</summary>
+
+- [ ] The drawing layer: shapes and text, sharp at any size ([plan](docs/plans/game-ui.md))
+- [ ] Screens in Lust, with values tied to the game
+- [ ] Menus: clicks, focus, gamepads and pausing
+- [ ] The canvas, part 1: selecting, moving and Properties
+- [ ] The canvas, part 2: drawing tools and ties
+- [ ] Styles, and text size for players
+- [ ] The UI sample
+
+</details>
+
+**Gate:** a health bar and a pause menu on screen, drawn and tied to the game in the editor.
+
+### Phase 13 · Light, sky and atmosphere — 0 of 20
+
+`░░░░░░░░░░░░░` 0%
+
+<details>
+<summary>Milestones</summary>
+
+- [ ] Measure first: the light showcase and quality levels ([plan](docs/plans/light.md), decision 0046)
+- [ ] Real light and automatic exposure
+- [ ] The physical sky: sunsets, twilight, haze over distance
+- [ ] Light from the sky: ambient light and reflections
+- [ ] The finished picture, part two: bloom, white balance, grading
+- [ ] Time of day and night: sun, moons, stars and the aurora
+- [ ] Weather and moods
+- [ ] Clouds: a flat layer and volumetric clouds
+- [ ] Ambient occlusion
+- [ ] Shadows near and far: cascades, contact and soft shadows
+- [ ] Many lamps, glowing surfaces and area lights
+- [ ] The light ramp look, for blocky games
+- [ ] Volumetric fog and light shafts
+- [ ] Reflection probes
+- [ ] Reflections on the screen and wet surfaces
+- [ ] Baked light probes: bounced light
+- [ ] Real-time bounced light, traced against a simplified world
+- [ ] Bounce from the screen, joined with the probes
+- [ ] An experiment: a Solis method for bounced light, kept only if it wins
+- [ ] Light for 2D worlds: 2D bounced light and the sky over 2D
+
+</details>
+
+**Gate:** in the light showcase, noon to night with no jumps; a golden hour that feels like the best game sunsets; no Backrooms indoors; the stylized look as good; the benchmark's target at 60 fps.
+
+### Phase 14 · Materials and shaders — 0 of 6
+
+`░░░░░░░░░░░░░` 0%
+
+<details>
+<summary>Milestones</summary>
+
+- [ ] Materials as assets, each with its own look ([plan](docs/plans/materials.md), decision 0048)
+- [ ] Inputs that drive any material value
+- [ ] The node graph for materials and shaders
+- [ ] Code nodes for experts
+- [ ] Stylized building blocks and wind
+- [ ] Per-copy values at scale, and the material showcase
+
+</details>
+
+**Gate:** without code, a plant that glows as night falls, stone that gets wet in rain, a toon character with its own outline and a swaying tree; the benchmark's target at 60 fps.
+
+### Phase 15 · Effects (Solstice) — 0 of 6
+
+`░░░░░░░░░░░░░` 0%
+
+<details>
+<summary>Milestones</summary>
+
+- [ ] Effects: the file, the particles and game code ([plan](docs/plans/effects.md))
+- [ ] The effect preview tab and its graph
+- [ ] Flipbooks, eroded and mesh particles: the stylized look
+- [ ] Trails and ribbons
+- [ ] The effects kit and the battle
+- [ ] The pixel mode for pixel-art games
+
+</details>
+
+**Gate:** lasers, hits and explosions look good in the benchmark battle at 60 fps.
+
+### Phase 16 · Netcode — 0 of 5
 
 `░░░░░░░░░░░░░` 0%
 
@@ -199,22 +358,7 @@ Solis is built in phases, one milestone per pull request. Each phase ends with a
 
 **Gate:** two PCs on different networks play the benchmark together without desyncing.
 
-### Phase 9 · Effects and game UI — 0 of 3
-
-`░░░░░░░░░░░░░` 0%
-
-<details>
-<summary>Milestones</summary>
-
-- [ ] Solis Eclipse basics: particles, trails, stylized effects
-- [ ] Post-processing: bloom and colour grading
-- [ ] Game UI basics: HUDs and menus
-
-</details>
-
-**Gate:** lasers, hits and explosions look good, with a health bar and pause menu on screen.
-
-### Phase 10 · Scripting, export and Git — 0 of 4
+### Phase 17 · Scripting, full export and Git — 0 of 4
 
 `░░░░░░░░░░░░░` 0%
 
@@ -230,7 +374,7 @@ Solis is built in phases, one milestone per pull request. Each phase ends with a
 
 **Gate:** write a small editor tool; export a game that runs without Solis; two people work on one project through GitHub.
 
-### Phase 11 · Solis 0.1 — 0 of 4
+### Phase 18 · Solis 0.1 — 0 of 4
 
 `░░░░░░░░░░░░░` 0%
 

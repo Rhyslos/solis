@@ -12,6 +12,7 @@ What changed in each version, for people using Solis. Newest first.
 
 ### Changed
 
+- **A new phase order** ([decisions 0046](docs/decisions/0046-light-before-netcode.md), [0048](docs/decisions/0048-materials-and-shaders-before-effects.md), [0053](docs/decisions/0053-compatibility-before-2d.md) and [0054](docs/decisions/0054-first-class-2d.md), chosen by the project lead): after sound and animation come compatibility (Phase 8), first-class 2D in two parts (Phases 9 and 10), a playtest export (11), game UI (12), light, sky and atmosphere (13), materials and shaders (14), effects, now called Solstice (15, [decision 0047](docs/decisions/0047-the-effects-suite-is-solstice.md)), netcode (16), scripting, the full export and Git (17), and the 0.1 release (18). The editor's notes about what arrives when say the new numbers. The plans are in `docs/plans/`.
 - **Smooth play on fast screens** (Phase 6): the game still runs 60 ticks a second, but the Game panel draws everything part way between ticks, so a 120 or 144 Hz screen shows smooth movement instead of steps.
 - Game code uses Lust 2.0.0-alpha.35. A `vec3` is now a Luau vector in Lust and Lua alike (Lua's `vec3(x, y, z)` makes one), which is quicker than a table.
 - **The benchmark** (Phase 5): **Help > Make the benchmark…** makes a project of two fleets of ships flying loops and firing lasers, in three areas: 2,000 ships and 20,000 lasers, 10,000 and 100,000, and a ceiling run that adds ships until 60 frames a second ends and says in the Console where. The manual's new page, The benchmark, explains it.
