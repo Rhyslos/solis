@@ -39,7 +39,7 @@
 ## Projects
 
 - **Project:** a folder holding one game: its assets, settings and areas. See [Projects and the Library](projects-and-the-library.md).
-- **Asset:** a file the game uses: a model now, textures, sounds and code later.
+- **Asset:** a file the game uses: a model, a picture, a sound, an assembly, code.
 - **Sidecar:** the small `.solmeta` text file beside each asset holding its ID, so renaming the file breaks nothing. Commit it with the asset.
 - **Library:** the panel showing the project's files, folder by folder, with thumbnails; drag from it to place things.
 - **Thumbnail:** a small picture of a file, so you can see what a model or picture is without opening it.

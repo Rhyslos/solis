@@ -187,7 +187,7 @@ pub fn read_file(path: &Path) -> Result<Clip, ReadError> {
         return Err(ReadError::TooBig(size));
     }
     let mut decoder = Decoder::new(BufReader::new(file))?;
-    let (frames, overview) = decode_all(&mut decoder, true)?;
+    let (frames, overview) = decode_all(&mut decoder, Keep::OrStream)?;
     let info = decoder.info_with(overview.frames());
     let samples = match frames {
         Some(frames) => Samples::Memory(frames.into()),
@@ -208,7 +208,7 @@ pub fn read_bytes(bytes: &[u8]) -> Result<Clip, ReadError> {
         return Err(ReadError::TooBig(bytes.len() as u64));
     }
     let mut decoder = Decoder::new(Cursor::new(bytes))?;
-    let (frames, overview) = decode_all(&mut decoder, false)?;
+    let (frames, overview) = decode_all(&mut decoder, Keep::OrStop)?;
     let frames = frames.ok_or(ReadError::TooLong)?;
     Ok(Clip {
         info: decoder.info_with(overview.frames()),
@@ -217,14 +217,52 @@ pub fn read_bytes(bytes: &[u8]) -> Result<Clip, ReadError> {
     })
 }
 
-/// Decodes every frame. Keeps them while they fit in memory; past that,
-/// keeps going only to measure, if `may_stream`, or stops.
+/// Measures a sound file without keeping its samples: what it holds and
+/// its overview, for the Library. Playing it later streams it from the
+/// file ([`Clip::streamed`]), so nothing big is held for a sound that's
+/// only listed.
+pub fn measure_file(path: &Path) -> Result<(ClipInfo, Overview), ReadError> {
+    let file = File::open(path)?;
+    let size = file.metadata()?.len();
+    if size > MAX_FILE_BYTES {
+        return Err(ReadError::TooBig(size));
+    }
+    let mut decoder = Decoder::new(BufReader::new(file))?;
+    let (_, overview) = decode_all(&mut decoder, Keep::Nothing)?;
+    Ok((decoder.info_with(overview.frames()), overview))
+}
+
+impl Clip {
+    /// A sound measured with [`measure_file`], to be streamed from `path`
+    /// as it plays (its overview isn't needed to play it).
+    pub fn streamed(path: &Path, info: ClipInfo) -> Self {
+        Self {
+            info,
+            overview: Overview::new(),
+            samples: Samples::Streamed(path.to_path_buf()),
+        }
+    }
+}
+
+/// What [`decode_all`] keeps of the samples.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum Keep {
+    /// Everything while it fits in memory; past that, it goes on only to
+    /// measure, so the sound can be streamed.
+    OrStream,
+    /// Everything while it fits in memory; past that, it stops.
+    OrStop,
+    /// Nothing: it only measures.
+    Nothing,
+}
+
+/// Decodes every frame, keeping what `keep` says.
 fn decode_all<R: Read + Seek>(
     decoder: &mut Decoder<R>,
-    may_stream: bool,
+    keep: Keep,
 ) -> Result<(Option<Vec<Frame>>, Overview), ReadError> {
     let limit = MAX_IN_MEMORY_SECONDS * u64::from(decoder.sample_rate());
-    let mut kept = Some(Vec::new());
+    let mut kept = (keep != Keep::Nothing).then(Vec::new);
     let mut overview = Overview::new();
     let mut chunk = Vec::with_capacity(CHUNK_FRAMES);
     loop {
@@ -236,7 +274,7 @@ fn decode_all<R: Read + Seek>(
         if let Some(frames) = kept.as_mut() {
             if frames.len() as u64 + chunk.len() as u64 > limit {
                 kept = None;
-                if !may_stream {
+                if keep == Keep::OrStop {
                     return Ok((None, overview));
                 }
             } else {
@@ -300,7 +338,7 @@ impl<R: Read + Seek> Decoder<R> {
                 (Inner::Wav(wav, samples), spec.sample_rate, spec.channels)
             }
             Format::Ogg => {
-                check_ogg_comments(&mut reader)?;
+                crate::vorbis_check::check(&mut reader)?;
                 reader.rewind()?;
                 let ogg = lewton::inside_ogg::OggStreamReader::new(reader)
                     .map_err(|e| ReadError::Damaged(e.to_string()))?;
@@ -470,52 +508,4 @@ fn wav_error(e: hound::Error) -> ReadError {
         hound::Error::Unsupported => ReadError::Encoding("in a form WAV readers rarely use".into()),
         other => ReadError::Damaged(other.to_string()),
     }
-}
-
-/// Checks an Ogg Vorbis file's comment header (its second packet: the
-/// title, artist and the like) before `lewton` reads it. `lewton` sets
-/// aside room for as many comments, and as long, as the header claims,
-/// up to billions, before reading any; a damaged or hostile file could
-/// ask for far more memory than there is. Every claimed length must fit
-/// in what's left of the packet.
-pub(crate) fn check_ogg_comments<R: Read + Seek>(reader: &mut R) -> Result<(), ReadError> {
-    let damaged = |why: &str| ReadError::Damaged(why.to_owned());
-    let mut packets = ogg::PacketReader::new(reader);
-    let first = packets
-        .read_packet_expected()
-        .map_err(|e| ReadError::Damaged(e.to_string()))?;
-    let serial = first.stream_serial();
-    let comments = loop {
-        let packet = packets
-            .read_packet_expected()
-            .map_err(|e| ReadError::Damaged(e.to_string()))?;
-        if packet.stream_serial() == serial {
-            break packet;
-        }
-    };
-    let data = comments.data.as_slice();
-    // The packet's kind (3) and "vorbis"; lewton checks these itself.
-    let mut rest = data.get(7..).ok_or_else(|| damaged("its comments are cut off"))?;
-    let mut take = |rest: &mut &[u8]| -> Result<usize, ReadError> {
-        let (len, after) = rest
-            .split_first_chunk::<4>()
-            .ok_or_else(|| damaged("its comments are cut off"))?;
-        *rest = after;
-        Ok(u32::from_le_bytes(*len) as usize)
-    };
-    let vendor = take(&mut rest)?;
-    rest = rest
-        .get(vendor..)
-        .ok_or_else(|| damaged("its comments are longer than the file"))?;
-    let count = take(&mut rest)?;
-    if count > rest.len() / 4 {
-        return Err(damaged("it claims more comments than it holds"));
-    }
-    for _ in 0..count {
-        let len = take(&mut rest)?;
-        rest = rest
-            .get(len..)
-            .ok_or_else(|| damaged("its comments are longer than the file"))?;
-    }
-    Ok(())
 }

@@ -12,9 +12,11 @@
 //! `LibraryRequest`s.
 
 use crate::icons::{self, Icon};
+use crate::sound_view::{self, Preview, SOUND_COLOR, SoundState};
 use crate::theme::{self, Accent};
 use egui::{Align, Color32, Layout, RichText, Ui};
 use reflect::AssetId;
+use std::collections::HashMap;
 use std::path::PathBuf;
 
 /// The open project, as the editor shows it.
@@ -42,6 +44,8 @@ pub enum LibraryKind {
     Texture,
     /// Game code (Lust, Lua or Rust).
     Code,
+    /// A sound file (WAV or Ogg Vorbis).
+    Sound,
     /// Anything else.
     Other,
 }
@@ -55,6 +59,7 @@ impl LibraryKind {
             Self::Area => "Area",
             Self::Texture => "Picture",
             Self::Code => "Code",
+            Self::Sound => "Sound",
             Self::Other => "File",
         }
     }
@@ -67,6 +72,7 @@ impl LibraryKind {
             Self::Area => theme::axis::Y,
             Self::Texture => Color32::from_rgb(0xb4, 0x7c, 0xf0),
             Self::Code => Color32::from_rgb(0xe8, 0x87, 0x5a),
+            Self::Sound => SOUND_COLOR,
             Self::Other => theme::TEXT_WEAK,
         }
     }
@@ -79,6 +85,7 @@ impl LibraryKind {
             Self::Area => Icon::AreaFile,
             Self::Texture => Icon::Viewport,
             Self::Code => Icon::Code,
+            Self::Sound => Icon::Sound,
             Self::Other => Icon::Properties,
         }
     }
@@ -173,6 +180,28 @@ pub(crate) enum LibraryRequest {
     Delete(String),
     /// Import a model from outside the project.
     Import,
+    /// Listen to a sound file.
+    PlaySound(String),
+    /// Stop listening.
+    StopSound,
+}
+
+/// The sound files the app has measured, by path inside the assets, and
+/// the one previewing.
+#[derive(Debug, Clone, Copy)]
+pub(crate) struct Sounds<'a> {
+    pub(crate) states: &'a HashMap<String, SoundState>,
+    pub(crate) preview: Option<&'a Preview>,
+}
+
+impl Sounds<'_> {
+    /// How far through `item` the preview is, if it's playing.
+    fn played(&self, item: &LibraryItem) -> Option<f32> {
+        match self.states.get(&item.path) {
+            Some(SoundState::Read(info)) => sound_view::played(info, &item.path, self.preview),
+            _ => None,
+        }
+    }
 }
 
 /// Tile and row sizes.
@@ -186,11 +215,11 @@ const TREE_WIDTH: f32 = 150.0;
 pub(crate) fn library(
     ui: &mut Ui,
     project: Option<&ProjectInfo>,
-    items: &[LibraryItem],
-    folders: &[String],
+    (items, folders): (&[LibraryItem], &[String]),
     state: &mut LibraryState,
     accent: Accent,
     code: bool,
+    sounds: Sounds<'_>,
 ) -> Vec<LibraryRequest> {
     let mut requests = Vec::new();
     menu_row(ui, state, code, project.is_some(), &mut requests);
@@ -261,9 +290,9 @@ pub(crate) fn library(
         };
         files.label(RichText::new(text).color(theme::TEXT_WEAK));
     } else if state.list || code {
-        list(&mut files, &shown, state, accent, &mut requests);
+        list(&mut files, &shown, state, accent, sounds, &mut requests);
     } else {
-        grid(&mut files, &shown, state, accent, &mut requests);
+        grid(&mut files, &shown, state, accent, sounds, &mut requests);
     }
     ui.advance_cursor_after_rect(body);
     rename_window(ui, state, &mut requests);
@@ -537,6 +566,8 @@ struct Picked<'a> {
     item: &'a LibraryItem,
     response: egui::Response,
     place: bool,
+    /// Play or Stop, from a sound's ▶ or ■.
+    listen: Option<LibraryRequest>,
 }
 
 /// What clicks, double-clicks, drags and right-clicks on an item ask for.
@@ -545,7 +576,9 @@ fn item_actions(picked: Picked<'_>, state: &mut LibraryState, requests: &mut Vec
         item,
         response,
         place,
+        listen,
     } = picked;
+    requests.extend(listen);
     response.dnd_set_drag_payload(LibraryDrag(item.clone()));
     if response.clicked() {
         state.selected = Some(item.path.clone());
@@ -559,6 +592,10 @@ fn item_actions(picked: Picked<'_>, state: &mut LibraryState, requests: &mut Vec
         }
     }
     response.context_menu(|ui| {
+        if item.kind == LibraryKind::Sound && ui.button("Play").clicked() {
+            requests.push(LibraryRequest::PlaySound(item.path.clone()));
+            ui.close();
+        }
         if item.kind.placeable() {
             if ui.button("Place").clicked()
                 && let Some(id) = item.id
@@ -597,6 +634,7 @@ fn hint(item: &LibraryItem) -> String {
             "Drag it into the viewport or onto an entity, or double-click, to place it."
         }
         LibraryKind::Area => "Double-click to open it.",
+        LibraryKind::Sound => "▶ to listen; click it to see it in Properties.",
         _ => "Double-click to open it in its own program.",
     };
     format!("{} · {}\n{what}", item.kind.name(), item.path)
@@ -608,6 +646,7 @@ fn grid(
     items: &[&LibraryItem],
     state: &mut LibraryState,
     accent: Accent,
+    sounds: Sounds<'_>,
     requests: &mut Vec<LibraryRequest>,
 ) {
     let gap = 6.0;
@@ -624,7 +663,7 @@ fn grid(
                 ui.horizontal(|ui| {
                     ui.spacing_mut().item_spacing.x = gap;
                     for item in items.iter().skip(row * per_row).take(per_row) {
-                        let picked = tile(ui, item, state, accent);
+                        let picked = tile(ui, item, state, accent, sounds);
                         item_actions(picked, state, requests);
                     }
                 });
@@ -641,27 +680,38 @@ fn tile<'a>(
     item: &'a LibraryItem,
     state: &LibraryState,
     accent: Accent,
+    sounds: Sounds<'_>,
 ) -> Picked<'a> {
     let (rect, response) = ui.allocate_exact_size(TILE, egui::Sense::click_and_drag());
     let selected = state.selected.as_deref() == Some(item.path.as_str());
     let painter = ui.painter();
     let picture = egui::Rect::from_min_size(rect.min, egui::vec2(TILE.x, PICTURE));
     painter.rect_filled(picture, 3.0, theme::FIELD);
-    match item.thumbnail {
-        Some(texture) => {
-            painter.image(
-                texture,
-                picture.shrink(2.0),
-                egui::Rect::from_min_max(egui::pos2(0.0, 0.0), egui::pos2(1.0, 1.0)),
-                Color32::WHITE,
-            );
-        }
-        None => icons::icon(
+    let waveform = match sounds.states.get(&item.path) {
+        Some(SoundState::Read(info)) if item.kind == LibraryKind::Sound => Some(info),
+        _ => None,
+    };
+    if let Some(info) = waveform {
+        sound_view::draw_waveform(
+            painter,
+            picture.shrink2(egui::vec2(5.0, 10.0)),
+            &info.waveform,
+            sounds.played(item),
+        );
+    } else if let Some(texture) = item.thumbnail {
+        painter.image(
+            texture,
+            picture.shrink(2.0),
+            egui::Rect::from_min_max(egui::pos2(0.0, 0.0), egui::pos2(1.0, 1.0)),
+            Color32::WHITE,
+        );
+    } else {
+        icons::icon(
             painter,
             egui::Rect::from_center_size(picture.center(), egui::vec2(28.0, 28.0)),
             item.kind.icon(),
             item.kind.color(),
-        ),
+        );
     }
     painter.rect_filled(
         egui::Rect::from_min_max(
@@ -703,10 +753,12 @@ fn tile<'a>(
     });
     let response = response.on_hover_text(hint(item));
     let place = item.kind.placeable() && place_button(ui, item, picture);
+    let listen = listen_button(ui, item, picture, &response, sounds);
     Picked {
         item,
         response,
         place,
+        listen,
     }
 }
 
@@ -732,12 +784,64 @@ fn place_button(ui: &mut Ui, item: &LibraryItem, area: egui::Rect) -> bool {
     button.clicked()
 }
 
+/// A sound's ▶ (or ■ while it plays), shown while it's pointed at or
+/// playing; returns what a click asks for.
+fn listen_button(
+    ui: &mut Ui,
+    item: &LibraryItem,
+    area: egui::Rect,
+    response: &egui::Response,
+    sounds: Sounds<'_>,
+) -> Option<LibraryRequest> {
+    if item.kind != LibraryKind::Sound {
+        return None;
+    }
+    let playing = sounds.played(item).is_some();
+    let spot = egui::Rect::from_min_size(
+        egui::pos2(area.right() - 20.0, area.top() + 1.0),
+        egui::vec2(19.0, 19.0),
+    );
+    let pointed = response.hovered() || ui.rect_contains_pointer(spot);
+    if !playing && !pointed {
+        return None;
+    }
+    let button = ui
+        .put(spot, egui::Button::new("").frame(false))
+        .on_hover_text(if playing { "Stop" } else { "Listen" });
+    let shape = if playing { Icon::Stop } else { Icon::Play };
+    icons::icon(
+        ui.painter(),
+        spot.shrink(4.5),
+        shape,
+        if button.hovered() {
+            theme::TEXT_STRONG
+        } else {
+            SOUND_COLOR
+        },
+    );
+    button.widget_info(|| {
+        egui::WidgetInfo::labeled(
+            egui::WidgetType::Button,
+            true,
+            format!("{} {}", if playing { "Stop" } else { "Play" }, item.name),
+        )
+    });
+    button.clicked().then(|| {
+        if playing {
+            LibraryRequest::StopSound
+        } else {
+            LibraryRequest::PlaySound(item.path.clone())
+        }
+    })
+}
+
 /// Items as a list, one row each; only the rows in view are drawn.
 fn list(
     ui: &mut Ui,
     items: &[&LibraryItem],
     state: &mut LibraryState,
     accent: Accent,
+    sounds: Sounds<'_>,
     requests: &mut Vec<LibraryRequest>,
 ) {
     egui::ScrollArea::vertical()
@@ -792,11 +896,13 @@ fn list(
                 let plus_area =
                     egui::Rect::from_min_max(egui::pos2(rect.right() - 22.0, rect.top()), rect.max);
                 let place = item.kind.placeable() && place_button(ui, item, plus_area);
+                let listen = listen_button(ui, item, plus_area, &response, sounds);
                 item_actions(
                     Picked {
                         item,
                         response,
                         place,
+                        listen,
                     },
                     state,
                     requests,

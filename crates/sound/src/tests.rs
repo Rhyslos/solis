@@ -1,7 +1,9 @@
 //! Tests for reading sound files, their overviews and the device.
 
 use crate::read::{MAX_FILE_BYTES, MAX_IN_MEMORY_SECONDS, MAX_SAMPLE_RATE, MIN_SAMPLE_RATE};
-use crate::{Clip, Format, Overview, ReadError, Samples, SoundDevice, read_bytes, read_file};
+use crate::{
+    Clip, Format, Overview, ReadError, Samples, SoundDevice, measure_file, read_bytes, read_file,
+};
 use kira::Frame;
 use proptest::prelude::*;
 use std::io::Cursor;
@@ -316,8 +318,17 @@ fn an_ogg_claiming_billions_of_comments_is_refused() {
     assert!(matches!(err, ReadError::Damaged(_)), "{err}");
 }
 
+/// Found by fuzzing too: a codebook claiming more lookup values than
+/// there's memory for.
 #[test]
-fn the_ogg_test_files_pass_the_comment_check() {
+fn an_ogg_with_a_huge_codebook_is_refused() {
+    let bytes = std::fs::read(data("huge_codebook.ogg")).unwrap();
+    let err = read_bytes(&bytes).unwrap_err();
+    assert!(matches!(err, ReadError::Damaged(_)), "{err}");
+}
+
+#[test]
+fn the_ogg_test_files_pass_the_header_check() {
     for name in [
         "tone_mono_44k.ogg",
         "tone_stereo_48k.ogg",
@@ -325,7 +336,7 @@ fn the_ogg_test_files_pass_the_comment_check() {
         "silence_22k.ogg",
     ] {
         let mut file = std::io::Cursor::new(std::fs::read(data(name)).unwrap());
-        crate::read::check_ogg_comments(&mut file).unwrap_or_else(|e| panic!("{name}: {e}"));
+        crate::vorbis_check::check(&mut file).unwrap_or_else(|e| panic!("{name}: {e}"));
     }
 }
 
@@ -424,6 +435,34 @@ fn a_long_sound_previews_from_its_file() {
     let mut device = SoundDevice::for_tests();
     device.preview(&clip).unwrap();
     assert!(device.previewing());
+}
+
+#[test]
+fn measuring_matches_reading_and_the_measure_plays_streamed() {
+    let dir = test_dir("measure");
+    let short = dir.join("short.wav");
+    std::fs::write(&short, wav_int(44_100, 2, 16, &[500; 2 * 4_410])).unwrap();
+    let (info, overview) = measure_file(&short).unwrap();
+    let clip = read_file(&short).unwrap();
+    assert_eq!(info, clip.info);
+    assert_eq!(overview, clip.overview);
+    // The Library plays what it measured straight from the file.
+    let mut device = SoundDevice::for_tests();
+    device.preview(&Clip::streamed(&short, info)).unwrap();
+    assert!(device.previewing());
+
+    let long = dir.join("long.wav");
+    std::fs::write(&long, too_long_wav()).unwrap();
+    let (info, overview) = measure_file(&long).unwrap();
+    assert_eq!(info.frames, overview.frames());
+    assert!(info.seconds() > MAX_IN_MEMORY_SECONDS as f64);
+
+    std::fs::write(dir.join("bad.wav"), b"RIFF but not really").unwrap();
+    assert!(measure_file(&dir.join("bad.wav")).is_err());
+    assert!(matches!(
+        measure_file(&dir.join("missing.wav")),
+        Err(ReadError::Io(_))
+    ));
 }
 
 #[test]

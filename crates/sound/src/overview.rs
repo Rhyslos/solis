@@ -9,7 +9,7 @@ use kira::Frame;
 pub(crate) const MAX_BUCKETS: usize = 2048;
 
 /// Frames per bucket to start with.
-const FIRST_BUCKET: u64 = 64;
+const FIRST_BUCKET: u64 = 8;
 
 /// The quietest and loudest sample in each stretch of a sound.
 #[derive(Debug, Clone, PartialEq)]

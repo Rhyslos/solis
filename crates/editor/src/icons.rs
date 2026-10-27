@@ -160,6 +160,8 @@ pub enum Icon {
     Hidden,
     /// A padlock: can't be picked in the viewport.
     Lock,
+    /// A speaker with sound waves: a sound file.
+    Sound,
 }
 
 /// Draws `icon` in `rect` with `color`. Shapes are given on a 24-unit
@@ -338,6 +340,26 @@ pub fn icon(painter: &Painter, rect: Rect, icon: Icon, color: Color32) {
             painter.add(Shape::line(shackle, stroke));
             line(&[(7.0, 9.0), (7.0, 11.0)]);
             line(&[(17.0, 9.0), (17.0, 11.0)]);
+        }
+        Icon::Sound => {
+            outline(&[
+                (3.0, 9.0),
+                (7.0, 9.0),
+                (12.0, 4.0),
+                (12.0, 20.0),
+                (7.0, 15.0),
+                (3.0, 15.0),
+            ]);
+            let arc = |radius: f32| -> Vec<Pos2> {
+                (0..=8)
+                    .map(|i| {
+                        let a = -0.8 + 1.6 * i as f32 / 8.0;
+                        v(12.0 + radius * a.cos(), 12.0 + radius * a.sin())
+                    })
+                    .collect()
+            };
+            painter.add(Shape::line(arc(4.5), stroke));
+            painter.add(Shape::line(arc(8.5), stroke));
         }
     }
 }

@@ -26,7 +26,9 @@ impl Workbench {
         // folder: a problem's file comes from an error's text, which game
         // code writes, so it could name a network share or a drive.
         let path_of = |request: &LibraryRequest| match request {
-            LibraryRequest::Open(_, path) | LibraryRequest::Show(path) => Some(path.clone()),
+            LibraryRequest::Open(_, path)
+            | LibraryRequest::Show(path)
+            | LibraryRequest::PlaySound(path) => Some(path.clone()),
             _ => None,
         };
         if let Some(path) = path_of(&request)
@@ -109,7 +111,59 @@ impl Workbench {
             }
             LibraryRequest::Delete(path) => actions.push(WorkbenchAction::DeleteFile(path.into())),
             LibraryRequest::Import => actions.push(WorkbenchAction::ImportModel),
+            LibraryRequest::PlaySound(path) => {
+                actions.push(WorkbenchAction::PlaySound(path.into()));
+            }
+            LibraryRequest::StopSound => actions.push(WorkbenchAction::StopSound),
         }
+    }
+
+    /// Shows a sound file in Properties when one is picked in the Library
+    /// (`before` is what was picked before this frame).
+    pub(crate) fn follow_sound_selection(&mut self, before: &Option<String>) {
+        let picked = &self.library_state.selected;
+        if picked != before
+            && let Some(path) = picked
+            && self
+                .library
+                .iter()
+                .any(|i| &i.path == path && i.kind == LibraryKind::Sound)
+        {
+            self.sound_shown = Some((path.clone(), self.document.selection.clone()));
+        }
+    }
+
+    /// Stops showing a sound file in Properties once the area's selection
+    /// has changed or the file is gone. Called before the panels are
+    /// drawn, so the change shows in the same frame.
+    pub(crate) fn drop_stale_sound(&mut self) {
+        let stale = self.sound_shown.as_ref().is_some_and(|(path, then)| {
+            *then != self.document.selection || !self.library.iter().any(|i| &i.path == path)
+        });
+        if stale {
+            self.sound_shown = None;
+        }
+    }
+
+    /// The sound files as the app has measured them, by path inside the
+    /// assets (`/` between folders).
+    pub fn set_sounds(
+        &mut self,
+        sounds: std::collections::HashMap<String, crate::sound_view::SoundState>,
+    ) {
+        self.sounds = sounds;
+    }
+
+    /// The sound being listened to and how far it has got, or `None` when
+    /// nothing plays. Called by the app every frame.
+    pub fn set_preview(&mut self, preview: Option<crate::sound_view::Preview>) {
+        self.preview = preview;
+    }
+
+    /// Whether a sound is being listened to (the app draws frames for its
+    /// playhead).
+    pub fn previewing(&self) -> bool {
+        self.preview.is_some()
     }
 
     /// Places `asset`, dropped at `at` in the world (under `parent`, if it

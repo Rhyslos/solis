@@ -31,4 +31,4 @@ Kira (`cpal` backend only), hound, lewton, log.
 
 ## Status
 
-Phase 7, S1: reading WAV and Ogg, overviews, the device, and the editor's preview. Sound events (S2), game code's sounds in 3D (S3), buses and the Mixer (S4), loops and voice limits (S5) and reverb zones (S6) follow.
+Phase 7, S1: reading WAV and Ogg (and measuring without keeping the samples, `measure_file`), overviews, Ogg header checks before `lewton` (`vorbis_check.rs`, after fuzzing found two files that made it ask for hundreds of gigabytes), the device, and the editor's preview. Sound events (S2), game code's sounds in 3D (S3), buses and the Mixer (S4), loops and voice limits (S5) and reverb zones (S6) follow.

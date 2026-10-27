@@ -9,7 +9,9 @@ libfuzzer_sys::fuzz_target!(|data: &[u8]| {
         return;
     };
     let info = clip.info;
-    assert!((sound::read::MIN_SAMPLE_RATE..=sound::read::MAX_SAMPLE_RATE).contains(&info.sample_rate));
+    assert!(
+        (sound::read::MIN_SAMPLE_RATE..=sound::read::MAX_SAMPLE_RATE).contains(&info.sample_rate)
+    );
     assert!((1..=sound::read::MAX_CHANNELS).contains(&info.channels));
     assert!(info.frames > 0);
     assert_eq!(clip.overview.frames(), info.frames);
