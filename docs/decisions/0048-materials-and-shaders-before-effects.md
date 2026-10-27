@@ -32,7 +32,7 @@ Option 2, chosen by the project lead. The order becomes:
 | 13 | Scripting, export and Git |
 | 14 | Solis 0.1 |
 
-The phase's working plan is [docs/plans/phase-9-materials.md](../plans/phase-9-materials.md). Its choices are still to be answered.
+The phase's working plan is [docs/plans/materials.md](../plans/materials.md). Its choices are still to be answered.
 
 ## Consequences
 

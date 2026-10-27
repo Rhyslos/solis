@@ -1,6 +1,6 @@
-# Phase 9 plan: Materials and shaders (draft)
+# Phase 14 plan: Materials and shaders (draft)
 
-**Draft for the project lead.** Materials and shaders got a phase of their own on 2026-10-26, between light (Phase 8) and effects (Phase 10, Solstice): [decision 0048](../decisions/0048-materials-and-shaders-before-effects.md). Light and effects meet in materials: how a surface takes light, glows, gets wet or sways in the wind.
+**Draft for the project lead.** Materials and shaders got a phase of their own on 2026-10-26, between light (Phase 13) and effects (Phase 15, Solstice): [decision 0048](../decisions/0048-materials-and-shaders-before-effects.md). Light and effects meet in materials: how a surface takes light, glows, gets wet or sways in the wind.
 
 This draft lists the choices still to make, as questions for the project lead, then a plan for every milestone. Once the questions are answered, the answers become decisions, and this plan is kept up to date as milestones are built.
 
@@ -19,7 +19,7 @@ The benchmark's target level still runs at 60 fps, with its 2,000 ships each tin
 A **material** says what a surface looks like: its colour, how rough or metal it is, whether it glows, how see-through it is. It also says how it takes light: standard, stylized (cel bands), the light ramp, or unlit. Today materials come only from model files, and the look is chosen for the whole view (decision 0013). This phase makes them Solis's own.
 
 Every value in a material can be **plugged into an input** instead of being a fixed number. Inputs are general:
-- the light around the surface (from Phase 8);
+- the light around the surface (from Phase 13);
 - the time;
 - the distance to the camera;
 - the height;
@@ -46,7 +46,7 @@ Each question has a recommended answer first, then the alternatives, in plain wo
      - opacity;
      - an offset for its corners (for wind).
 
-     Solis's shader then lights the surface with everything Phase 8 built: shadows, the sky's light, bounced light and fog. So every custom material still gets the whole lighting for free, in every look. The graph is turned into WGSL (the shader language wgpu uses), checked by wgpu's own checker (naga), and saved in the cache. A change shows in about a second, like game code.
+     Solis's shader then lights the surface with everything Phase 13 built: shadows, the sky's light, bounced light and fog. So every custom material still gets the whole lighting for free, in every look. The graph is turned into WGSL (the shader language wgpu uses), checked by wgpu's own checker (naga), and saved in the cache. A change shows in about a second, like game code.
    - Alternative: also allow fully custom shaders that do their own lighting (more freedom, but they'd miss every lighting improvement and break the quality levels). Possible later as an "unlit, I'll do it myself" output.
 
 3. **Shader code for experts.**
@@ -85,10 +85,10 @@ Each question has a recommended answer first, then the alternatives, in plain wo
 ## Where things stand
 
 - **Materials** are glTF's metal-and-roughness materials from model files, kept in the import cache. `.solmat` is reserved (decision 0015) but unused.
-- **The look** is chosen for the whole view (decision 0013): standard, stylized, unlit, and the light ramp from Phase 8.
+- **The look** is chosen for the whole view (decision 0013): standard, stylized, unlit, and the light ramp from Phase 13.
 - **Instances** carry a 52-byte placement each (Phase 5), drawn in batches per mesh and level of detail.
-- **Phase 8 provides the inputs:** the light reaching each surface, wetness, the time of day, glowing surfaces that light the world.
-- **The graph widget** comes from Phase 7's animator, and Phase 10's effects use it too.
+- **Phase 13 provides the inputs:** the light reaching each surface, wetness, the time of day, glowing surfaces that light the world.
+- **The graph widget** comes from Phase 7's animator, and Phase 15's effects use it too.
 
 ## The rules this phase keeps
 
@@ -158,7 +158,14 @@ Boxes for the looks stylized games are made of:
   - the scale check;
   - the gate.
 
-## What Phase 10 (effects) takes from this
+## For 2D
+
+2D comes before this phase ([decision 0054](../decisions/0054-first-class-2d.md)). Sprites and tiles use these materials too:
+- **sprite inputs:** the frame, the palette row, the light around the sprite;
+- shimmering water, swaying grass and glowing crystals, made in the same graph;
+- **pixel-art materials keep to the pixel grid,** with a light-steps box for banded light.
+
+## What Phase 15 (effects) takes from this
 
 Particles are drawn with these materials. A spark, a puff of smoke or a trail is a material with the particle's own inputs added:
 - age;

@@ -1,6 +1,6 @@
 # Research: light, sky and atmosphere for Solis
 
-**2026-10-26.** The project lead asked for "all the fancy lighting solutions working well", with the sky, lighting and colour as Solis's selling point, and never the flat, sterile "Backrooms" look. This report covers the techniques found, what they cost and which open-source code may be reused. The plan built on it is [docs/plans/phase-8-light.md](../plans/phase-8-light.md). The project lead keeps the reference games and the name checks; they are not repeated here. Numbers come from the sources unless marked as an estimate.
+**2026-10-26.** The project lead asked for "all the fancy lighting solutions working well", with the sky, lighting and colour as Solis's selling point, and never the flat, sterile "Backrooms" look. This report covers the techniques found, what they cost and which open-source code may be reused. The plan built on it is [docs/plans/light.md](../plans/light.md). The project lead keeps the reference games and the name checks; they are not repeated here. Numbers come from the sources unless marked as an estimate.
 
 ## In one paragraph
 

@@ -1,6 +1,6 @@
 # 0046. Light, sky and atmosphere get a phase of their own, and netcode moves later
 
-- **Status:** Accepted (the order, clouds and bounced light chosen by the project lead on 2026-10-26; the rest of [the Phase 8 plan's questions](../plans/phase-8-light.md) are answered when the phase starts).
+- **Status:** Accepted (the order, clouds and bounced light chosen by the project lead on 2026-10-26; the rest of [the Phase 8 plan's questions](../plans/light.md) are answered when the phase starts).
 - **Date:** 2026-10-26
 
 ## Problem

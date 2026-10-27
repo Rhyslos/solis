@@ -246,7 +246,7 @@ impl Workbench {
         ui.menu_button("Build", |ui| {
             for item in ["Build", "Build & Play"] {
                 ui.add_enabled(false, egui::Button::new(item))
-                    .on_disabled_hover_text("Building games arrives in Phase 13");
+                    .on_disabled_hover_text("Exporting games arrives in Phase 11");
             }
         });
     }
@@ -359,14 +359,14 @@ impl Workbench {
         if ui.add(build_and_play).clicked() {
             self.log(
                 LogLevel::Info,
-                "Building games arrives in Phase 13 (ROADMAP.md).",
+                "Exporting games arrives in Phase 11 (ROADMAP.md).",
             );
         }
         let build = egui::Button::new("Build ▾").min_size(egui::vec2(0.0, BAR_BUTTON.y));
         if ui.add(build).clicked() {
             self.log(
                 LogLevel::Info,
-                "Building games arrives in Phase 13 (ROADMAP.md).",
+                "Exporting games arrives in Phase 11 (ROADMAP.md).",
             );
         }
         ui.add_space(4.0);
@@ -379,7 +379,7 @@ impl Workbench {
         if icon_button(ui, Icon::PlayTogether, 15.0, None, "Play with two players").clicked() {
             self.log(
                 LogLevel::Info,
-                "Playing with others arrives with netcode in Phase 12 (ROADMAP.md).",
+                "Playing with others arrives with netcode in Phase 16 (ROADMAP.md).",
             );
         }
         // Step runs one tick, while paused.

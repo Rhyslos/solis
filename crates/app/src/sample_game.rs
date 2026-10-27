@@ -5,7 +5,7 @@
 //!
 //! Its Rust component, Armour, is compiled into Solis from the sample's
 //! own `armour.rs`, so the file the project shows is exactly what runs. It
-//! stands in for a game's Rust until Phase 13 builds that, and is offered
+//! stands in for a game's Rust until Phase 17 builds that, and is offered
 //! only in a project whose assets have `armour.rs` (the sample).
 
 use asset_db::Project;
@@ -71,7 +71,7 @@ pub fn make(root: &Path) -> Result<(), asset_db::ProjectError> {
 /// The Rust components built into Solis that the project in `assets`
 /// uses: Armour, for the turret sample (its assets have `armour.rs`).
 /// With a note if that file was changed, since changes to it don't run
-/// until Phase 13.
+/// until Phase 17.
 pub fn rust_components(assets: &Path) -> (Vec<script::RustKind>, Option<String>) {
     use std::io::Read;
     let Ok(file) = std::fs::File::open(assets.join("armour.rs")) else {
@@ -91,7 +91,7 @@ pub fn rust_components(assets: &Path) -> (Vec<script::RustKind>, Option<String>)
         .read_to_end(&mut text);
     let text = String::from_utf8_lossy(&text).replace("\r\n", "\n");
     let note = (text != built_in).then(|| {
-        "armour.rs was changed. Rust changes don't run yet: until Phase 13 builds a game's own \
+        "armour.rs was changed. Rust changes don't run yet: until Phase 17 builds a game's own \
          Rust, the Armour built into Solis is used."
             .to_string()
     });

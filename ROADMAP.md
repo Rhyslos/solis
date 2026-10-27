@@ -2,7 +2,7 @@
 
 The plan from an empty repo to **Solis 0.1**, in phases. The engine is Rust; games are written in Lust, Rust or Lua ([decisions 0002](docs/decisions/0002-engine-in-rust-games-in-lust.md) and [0003](docs/decisions/0003-games-in-rust-lust-or-lua.md)). DESIGN.md says what Solis is; this file says in what order it gets built.
 
-**No timeframe:** phases are done when they're done (the project lead, 2026-10-27). A phase is finished when the project lead has tried its gate by hand. Light, sky and atmosphere got a phase of their own ([decision 0046](docs/decisions/0046-light-before-netcode.md)), and so did materials and shaders ([decision 0048](docs/decisions/0048-materials-and-shaders-before-effects.md)).
+**No timeframe:** phases are done when they're done (the project lead, 2026-10-27). A phase is finished when the project lead has tried its gate by hand. Light, sky and atmosphere got a phase of their own ([decision 0046](docs/decisions/0046-light-before-netcode.md)), and so did materials and shaders ([decision 0048](docs/decisions/0048-materials-and-shaders-before-effects.md)). Compatibility, first-class 2D, a playtest export and game UI then moved to the front, so the project lead's own 2D game can move to Solis ([decisions 0053](docs/decisions/0053-compatibility-before-2d.md) and [0054](docs/decisions/0054-first-class-2d.md)). Plans for phases not started are named by subject (`docs/plans/light.md`), since the order can still change.
 
 Each phase ends with a **gate**: something the project lead tries by hand before the next phase starts. Each milestone inside a phase is one pull request.
 
@@ -18,13 +18,17 @@ Each phase ends with a **gate**: something the project lead tries by hand before
 | 5. Scale | 2,000 units and 20,000 projectiles at 60 fps; 10,000 and 100,000 still playable; the ceiling measured |
 | 6. Simulation and play | Physics, input, a deterministic simulation |
 | 7. Sound and animation | Sound events and buses; animated characters |
-| 8. Light, sky and atmosphere | A physical sky, sunsets and night; shadows near and far; many lamps; fog and clouds; bounced light, baked and real-time |
-| 9. Materials and shaders | Materials as assets, values driven by the world, a node graph for shaders |
-| 10. Effects | Solstice, the effects suite: particles, trails, flipbooks |
-| 11. Game UI | Sungraph UI: HUDs and menus drawn in Solis |
-| 12. Netcode | Two PCs playing together over the internet |
-| 13. Scripting, export and Git | The scripting window; games packaged for Windows; working in teams through Git |
-| 14. Solis 0.1 | The flagship space battle, docs, release |
+| 8. Compatibility | Updates never lose work: backups before upgrades, old files keep opening, saves survive updates, the game-code interface guarded, real projects tested before an update ships |
+| 9. 2D, part 1 | Pixel-perfect 2D, sprites from Aseprite, frame animation, tile maps that change as you play, autotiling, the tile painter, top-down movement, the 2D camera, lamps on sprites |
+| 10. 2D, part 2 | Levels and the world map, advanced tiling, pathfinding, soft 2D shadows, the platformer and grid-step controllers, parallax and palette tools, the 2D sample |
+| 11. Playtest export | Games packaged for playtesting, without the editor |
+| 12. Game UI | Sungraph UI: HUDs and menus drawn in Solis |
+| 13. Light, sky and atmosphere | A physical sky, sunsets and night; shadows near and far; many lamps; fog and clouds; bounced light, baked and real-time; 2D bounced light |
+| 14. Materials and shaders | Materials as assets, values driven by the world, a node graph for shaders |
+| 15. Effects | Solstice, the effects suite: particles, trails, flipbooks; a pixel mode for pixel art |
+| 16. Netcode | Two PCs playing together over the internet |
+| 17. Scripting, full export and Git | The scripting window; finished games built for Windows, with their own Rust; working in teams through Git |
+| 18. Solis 0.1 | The flagship space battle, docs, release |
 
 Lust joins in Phase 4, right after the editor, so game logic can be written in Lust from then on ([decision 0016](docs/decisions/0016-how-lust-joins-solis.md)). Phases 0–3 don't need Lust; if it isn't ready by Phase 4, Phase 5 (Scale) goes first.
 
@@ -140,13 +144,67 @@ Stronger tests before building on the game loop ([decision 0042](docs/decisions/
 ## Phase 7: Sound and animation
 
 - **Sound** (Kira): sound events with random clips, pitch and volume; buses and ducking; 3D falloff; reverb zones.
-- **Animation:** skeletal animation from glTF, state machines, blending, and animation events.
+- **Animation:** skeletal animation from glTF, state machines, blending, and animation events. The state machine is built to drive 2D sprite frames too (Phase 9), so 2D and 3D share one animation system.
 
 **Gate:** a character walks and runs with smooth blending, footsteps play on the right frames, and a reverb zone changes how they sound.
 
-## Phase 8: Light, sky and atmosphere
+## Phase 8: Compatibility
 
-Solis's selling point: skies, sunsets and light that feel right, never flat. The working plan, with the research and the choices to make, is [docs/plans/phase-8-light.md](docs/plans/phase-8-light.md) ([decision 0046](docs/decisions/0046-light-before-netcode.md)).
+The project lead's game moves to Solis next, so before it does, updates must never lose work or break a game ([decision 0053](docs/decisions/0053-compatibility-before-2d.md)). The working plan is [docs/plans/compatibility.md](docs/plans/compatibility.md). Safety here is automatic: nothing to remember to use.
+
+- **A backup before every upgrade:** before Solis changes any file in a project, it saves a dated copy and checks the upgraded file reads back correctly; if any step fails, nothing changes.
+- **Old files keep opening, forever:** every format (areas, assemblies, the project, settings, input, recordings, and later tile maps) has an upgrader from every older version, and an example file of each old version is kept as a test.
+- **Save games survive updates,** so a game's update never wipes its players' progress.
+- **The game-code interface is guarded:** a test fails if what game code can call changes by accident; a deliberate rename keeps the old name working, warns in Problems and offers to fix the code.
+- **Real projects are tested:** a project (the samples, and the project lead's game if wanted, from a private repository or on their own PC) is opened and played from a recording before an update ships; if it breaks, the update is stopped.
+- **Breaking changes are labelled** in the changelog, and must bring their upgrader.
+
+**Gate:** open a project saved by an older build, see the backup and the upgrade; a save game from before an update loads after it.
+
+## Phase 9: 2D, part 1: a 2D game can move in
+
+First-class 2D ([decision 0054](docs/decisions/0054-first-class-2d.md)), built as flat things in the same world, so lamps, effects, materials and the rest work on 2D too, with real 2D tools on top. The working plan, with the research behind it and the bar every milestone must pass, is [docs/plans/2d.md](docs/plans/2d.md).
+
+- **The pixel-perfect view and the 2D editor:** drawn at the game's own resolution and scaled up crisply, smooth scrolling without shimmer, sharp text and menus.
+- **Sprites from Aseprite:** tags, slices, events, layers and palettes, reloaded on save; atlases packed automatically; 100,000 sprites drawn cheaply.
+- **Frame animation** on the same state machine as 3D.
+- **Tile maps that change as you play:** cells store meaning and their own data (a crop's growth), changes batched per chunk, saved as text that merges in Git.
+- **Autotiling:** each tileset chooses its kind (16-tile, 47-tile, edge sets or custom rules), set up with a wizard.
+- **The tile painter.**
+- **2D physics** (Rapier2D) with tile collision merged into smooth shapes, triggers, and a ready-made top-down controller in Lust.
+- **The 2D camera and feel tools.**
+- **Lamps and day and night on sprites,** crisp on the pixel grid.
+
+**Gate:** the project lead rebuilds a slice of their own game in Lust: walk the farm, till, plant and water, crops grow over days, sleep, lamps at night; smooth, crisp, no jitter.
+
+## Phase 10: 2D, part 2: 2D complete
+
+- **Levels and the world:** entities with typed fields, rooms on a world map, sort points for tall things.
+- **Advanced tiling:** rules for decoration and variety, scatter brushes, patterns and stamps.
+- **Pathfinding** on tile maps: A* and flow fields, updated as the map changes.
+- **Soft shadows** from walls and objects, and optional normal and glow layers.
+- **More movement:** grid-step and platformer controllers, one-way platforms, slopes and moving platforms.
+- **Polish:** parallax, palette swaps and cycling, clean pixel-art rotation, hit-stop and squash, the 2D sample and the manual's 2D section.
+
+**Gate:** the 2D sample and the project lead's extended game slice; every speed budget met; the old tools' known problems, each a passing test.
+
+## Phase 11: Playtest export
+
+- **File > Export for playtesting:** a folder to zip and send, with a game program without the editor and the project's files packed beside it.
+- Lust and Lua run as in Play, so there's no long compile; windowed, fullscreen and resolution settings; saves in the player's saved-games folder; a crash log playtesters can send back.
+- What waits for the full export (Phase 17): building a game's own Rust code, an installer, and Steam.
+
+**Gate:** a friend plays an exported build on their PC without Solis installed.
+
+## Phase 12: Game UI
+
+- **Sungraph UI** ([decision 0039](docs/decisions/0039-game-ui-is-drawn-in-solis.md)), whole: a visual UI editor where game UI is drawn canvas style (lines, shapes, curves, text) instead of built from images; values tied live to game code; every element reachable from code, because a UI file is Lust (`view { }`); styles such as glow, pixelation and stylized outlines over the whole UI. HUDs and menus are made with it. Plan: [docs/plans/game-ui.md](docs/plans/game-ui.md).
+
+**Gate:** a health bar and a pause menu on screen, drawn and tied to the game in the editor.
+
+## Phase 13: Light, sky and atmosphere
+
+Solis's selling point: skies, sunsets and light that feel right, never flat. The working plan, with the research and the choices to make, is [docs/plans/light.md](docs/plans/light.md) ([decision 0046](docs/decisions/0046-light-before-netcode.md)).
 
 - **Measure first:** a light showcase project and quality levels (Low, Default, High).
 - **Real light and automatic exposure,** as eyes adjust.
@@ -166,9 +224,9 @@ Solis's selling point: skies, sunsets and light that feel right, never flat. The
 
 **Gate:** in the light showcase, the day runs from noon to night with no jumps; the golden hour feels like the project lead's favourite game sunsets; indoors never looks like the Backrooms; the stylized look is as good; the benchmark's target still runs at 60 fps.
 
-## Phase 9: Materials and shaders
+## Phase 14: Materials and shaders
 
-Light and effects meet in materials: how a surface takes light, glows, gets wet or sways in the wind. This phase sits between them ([decision 0048](docs/decisions/0048-materials-and-shaders-before-effects.md)). The working plan, with its choices, is [docs/plans/phase-9-materials.md](docs/plans/phase-9-materials.md).
+Light and effects meet in materials: how a surface takes light, glows, gets wet or sways in the wind. This phase sits between them ([decision 0048](docs/decisions/0048-materials-and-shaders-before-effects.md)). The working plan, with its choices, is [docs/plans/materials.md](docs/plans/materials.md).
 
 - **Materials as assets** (`.solmat`), each with its own look (standard, stylized, light ramp, unlit), edited in Properties with a live preview.
 - **Inputs that drive any material value:** the light around the surface, time, distance, height, the weather's wetness, noise, and values set by game code. General tools, so one glows as night falls, another fades with distance, another pulses to a game's beat.
@@ -179,21 +237,16 @@ Light and effects meet in materials: how a surface takes light, glows, gets wet 
 
 **Gate:** without writing code, make a plant that glows as night falls, stone that darkens and shines when it rains, a toon character with its own outline, and a tree that sways; the benchmark's target still runs at 60 fps.
 
-## Phase 10: Effects
+## Phase 15: Effects
 
-- **Solstice, the effects suite:** particles through instancing (on the CPU and the GPU), flipbooks, trails, stylized shading for effects, and a node graph editor. Plan: [docs/plans/phase-10-effects.md](docs/plans/phase-10-effects.md). Its bloom and grading moved to Phase 8; particles are drawn with Phase 9's materials.
+- **Solstice, the effects suite:** particles through instancing (on the CPU and the GPU), flipbooks, trails, stylized shading for effects, and a node graph editor. Plan: [docs/plans/effects.md](docs/plans/effects.md). Its bloom and grading moved to Phase 13; particles are drawn with Phase 14's materials.
+- **A pixel mode for pixel-art games:** pixel-shaped particles (single pixels, pixel lines for wind streaks and rain, pixel circles for bubbles), movement snapped to the pixel grid, colours from the game's palette, flipbooks at pixel-art frame rates, and a ready-made set (wind streaks, fireflies, bubbles, rain, snow, dust, falling leaves, sparkles, smoke puffs); fireflies and sparks can give off real light.
 
-**Gate:** laser bolts, hits and explosions look good in the stylized look, in the benchmark battle, at 60 fps.
+**Gate:** laser bolts, hits and explosions look good in the stylized look, in the benchmark battle, at 60 fps; in a pixel-art game, fireflies light a field at night and wind streaks cross it, all crisp on the pixel grid.
 
-## Phase 11: Game UI
+## Phase 16: Netcode
 
-- **Sungraph UI** ([decision 0039](docs/decisions/0039-game-ui-is-drawn-in-solis.md)), whole: a visual UI editor where game UI is drawn canvas style (lines, shapes, curves, text) instead of built from images; values tied live to game code; every element reachable from code, because a UI file is Lust (`view { }`); styles such as glow, pixelation and stylized outlines over the whole UI. HUDs and menus are made with it. Plan: [docs/plans/phase-11-sungraph-ui.md](docs/plans/phase-11-sungraph-ui.md).
-
-**Gate:** a health bar and a pause menu on screen, drawn and tied to the game in the editor.
-
-## Phase 12: Netcode
-
-Moved here from Phase 8 ([decision 0046](docs/decisions/0046-light-before-netcode.md), then [0048](docs/decisions/0048-materials-and-shaders-before-effects.md)): what it needs (fixed ticks, determinism, checksums, save games) is built, and a CI check keeps two PCs playing the same game until then. Netcode in layers ([decision 0005](docs/decisions/0005-netcode-in-layers.md)):
+Moved here from its first place, Phase 8 ([decisions 0046](docs/decisions/0046-light-before-netcode.md), [0048](docs/decisions/0048-materials-and-shaders-before-effects.md) and [0054](docs/decisions/0054-first-class-2d.md)): what it needs (fixed ticks, determinism, checksums, save games) is built, and a CI check keeps two PCs playing the same game until then. Netcode in layers ([decision 0005](docs/decisions/0005-netcode-in-layers.md)):
 
 - **Transport and sessions:** connections, reliable and unreliable messages, encryption, lobbies, and relays or Steam's networking for players behind home routers.
 - **Tools:** a lag and packet-loss simulator, network stats, desync detection with the checksums from Phase 6, and replays.
@@ -205,16 +258,16 @@ Moved here from Phase 8 ([decision 0046](docs/decisions/0046-light-before-netcod
 
 **Gate:** two PCs on different networks play the benchmark area together without desyncing, with simulated lag.
 
-## Phase 13: Scripting, export and Git
+## Phase 17: Scripting, full export and Git
 
 - **The scripting window:** LustScript and Lua through Luau, calling the same commands as the built-in tools, with undo, a sandbox and time limits (the design Aventail plans for its Phase 9).
-- **Build and export:** packaged games for Windows ([decision 0012](docs/decisions/0012-windows-only.md)), and Build-and-Play from the top bar.
+- **The full export:** finished games for Windows ([decision 0012](docs/decisions/0012-windows-only.md)), with the game's own Rust built in and Lust compiled for speed, an installer, and Build-and-Play from the top bar. It grows from the playtest export (Phase 11).
 - **The Git panel** ([decision 0006](docs/decisions/0006-git-built-in.md)): changes with plain-language area summaries, commit, pull and push, branches, history, Git LFS locking, markers in the library and area tree, and new projects from or published to a repository.
 - **The area merge tool:** merges areas and assemblies entity by entity; when two people changed the same field, asks which to keep.
 
 **Gate:** write a small editor tool that places objects in a ring; export a game and run it on a PC without Solis installed. Two people on two PCs work on the same project through GitHub for an evening: commit, pull, lock a model, and resolve one real area conflict in the editor.
 
-## Phase 14: Solis 0.1
+## Phase 18: Solis 0.1
 
 - **The flagship sample, written in Lust:** a small space battle. Two capital ships, a carrier launching fighter squadrons, a few hundred lasers in the air, over the network.
 - **Docs:** getting started, a first-game tutorial, and a reference for the engine as Lust sees it (the `solis/` files).

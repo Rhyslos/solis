@@ -1,6 +1,8 @@
-# Phase 11 plan: Sungraph UI (draft)
+# Phase 12 plan: Sungraph UI (draft)
 
-The working plan for Phase 11, game UI (ROADMAP.md, "Phase 11: Game UI"; it was the game-UI half of Phase 9 until [decisions 0046](../decisions/0046-light-before-netcode.md) and [0048](../decisions/0048-materials-and-shaders-before-effects.md) gave light, materials, effects and UI a phase each; [decision 0039](../decisions/0039-game-ui-is-drawn-in-solis.md)). Effects (Phase 10, Solstice) have their own plan, and post-processing (bloom, grading) moved to light's Phase 8 plan; **Sharing with effects** below says where the two meet so nothing is built twice. Update this file as milestones are built: tick them off here and in the README tracker, and change a milestone's plan if its design changes.
+The working plan for Phase 12, game UI (ROADMAP.md, "Phase 12: Game UI"; it was the game-UI half of the first plan's Phase 9 until [decisions 0046](../decisions/0046-light-before-netcode.md), [0048](../decisions/0048-materials-and-shaders-before-effects.md) and [0054](../decisions/0054-first-class-2d.md) gave it its own phase, right after 2D and the playtest export; [decision 0039](../decisions/0039-game-ui-is-drawn-in-solis.md)). Effects (Phase 15, Solstice) have their own plan, and post-processing (bloom, grading) moved to light's Phase 13 plan; **Sharing with effects** below says where the two meet so nothing is built twice. Update this file as milestones are built: tick them off here and in the README tracker, and change a milestone's plan if its design changes.
+
+> **2D (decision 0054):** game UI now comes right after 2D and the playtest export, so 2D games get real menus (inventories, shops, dialogue) sooner. Over a pixel-art game, the UI is drawn at full screen sharpness in its own pass, on top of the pixel world scaled up (2D plan, D1), and can use the pixelation style when a game wants pixel menus.
 
 > **Draft.** Every item under "Choices to make" is a question for the project lead, with a recommended answer. Nothing here is decided until it is answered and written up as a decision.
 
@@ -21,7 +23,7 @@ The rest as recommended: Solis's own drawing (shader shapes, `lyon`, `fdsm` text
 - **You draw it** in a canvas inside Solis: boxes, circles, lines, curves and text, placed on the screen and pinned to its corners or edges so it fits any screen shape. **Or you type it**: the canvas and the code are two ways of looking at the same file, and either one can be used at any time.
 - **Solis draws every line and letter itself**, every frame, at the size of the screen it's on. Nothing is a picture, so nothing goes blurry at 4K, and effects such as glow or a pixel-art look apply to everything at once.
 - **Values are tied to the game.** A tie says "this number follows the player's `Health.hp`". The bar's width is worked out from it, so the bar moves on its own; no game code has to "update the UI".
-- **The UI only looks; it never touches.** It reads the game as the last tick left it. When the player clicks Resume, that click is sent to the game the way a key press is, at the next tick, so recordings, replays and (Phase 12) networked games stay exactly the same on every PC.
+- **The UI only looks; it never touches.** It reads the game as the last tick left it. When the player clicks Resume, that click is sent to the game the way a key press is, at the next tick, so recordings, replays and (Phase 16) networked games stay exactly the same on every PC.
 
 ## Choices to make before any code
 
@@ -99,7 +101,7 @@ What keeps decision 0033 (and Phase 6's determinism) whole:
 - **Ties to fields are read by Rust,** straight from the world (`Game::values` for Lust and Lua components, the area values for built-in ones), with no Luau call. The entity is found by name once and found again only when entities are added or removed.
 - **Ties to methods and the screen's own methods** (formatting "15 / 20") run in a **UI Luau of their own**, never in the game's. It holds a copy of the values they read; anything they change in that copy is thrown away. Only reading natives are there (`time`, `positionOf`, `nameOf`, `held`…); `moveTo`, `send`, `spawn`, `fire`, `random`, `saveGame` and the like aren't, and calling one says so in plain words.
 - **The checker helps:** in a `like Screen` assembly, assigning to a `tied` field is a mistake, and `get "solis/entity":[moveTo]` in a screen file is a mistake that says "a screen can't move things; send an event instead".
-- **How the UI changes the game:** a button's block may (1) change the screen's own untied fields (which tab is open: the screen's own memory, as in Lust's windows), (2) `send` an event to an entity, or (3) `press` a named action. (2) and (3) become **UI events in the next tick's input `Frame`**: recorded in recordings, counted in its checksum, and in Phase 8 sent over the network like any input. A replay takes them from the recording, not from the UI, so a replay plays the same with no UI at all.
+- **How the UI changes the game:** a button's block may (1) change the screen's own untied fields (which tab is open: the screen's own memory, as in Lust's windows), (2) `send` an event to an entity, or (3) `press` a named action. (2) and (3) become **UI events in the next tick's input `Frame`**: recorded in recordings, counted in its checksum, and in Phase 13 sent over the network like any input. A replay takes them from the recording, not from the UI, so a replay plays the same with no UI at all.
 - **What isn't game state:** hover, focus, the pointer's place and transitions (a button fading in) live only in the UI and use real time. They never reach the game except through (2) and (3).
 
 ## Sharing with effects (Solstice and post-processing)
@@ -180,7 +182,7 @@ The Rust layer DESIGN.md §12 asks for first, which Lust's `view` is read into l
 - **Ties:** resolved by Rust after each tick (above); methods in the UI Luau.
 - **The `Screen` component** (choice 5) puts a screen in the Game panel; several are drawn in their `order`.
 - In the editor (before the canvas exists), a screen file opens in the Code panel and shows in the Game panel while playing; new code is swapped in while playing, like components (decision 0028).
-- Tests: a tied field follows a component's value tick by tick; a method tie gives the same text on 1 core and 4; a method that tries to change a value changes only the UI's copy; `moveTo` in a screen is a mistake; the view is read again only after a tick or a resize; a tie to a missing entity or field shows the preview value and one message; round trip of the Lust (Luau and, when Phase 10 allows, Rust). **First half of the gate:** a health bar, written by hand, follows the turret sample's drone's `Health.hp`.
+- Tests: a tied field follows a component's value tick by tick; a method tie gives the same text on 1 core and 4; a method that tries to change a value changes only the UI's copy; `moveTo` in a screen is a mistake; the view is read again only after a tick or a resize; a tie to a missing entity or field shows the preview value and one message; round trip of the Lust (Luau and, when Phase 15 allows, Rust). **First half of the gate:** a health bar, written by hand, follows the turret sample's drone's `Health.hp`.
 
 ### M3. Menus: clicks, focus, gamepads and pausing
 
@@ -280,13 +282,13 @@ column [name buttons, anchor center, gap 16,] {
 - **The canvas edits the text, not a copy of it.** Solis's reader keeps where each element and each style word is in the file; a change replaces just those characters, and a new element is written in the canonical shape. Comments, blank lines and hand-written code are never rewritten.
 - **The canonical shape is made to merge** (decision 0020's tests): one element per block; an element with more than three styles writes one style per line, each ending with a comma (hence the trailing comma in M2), so two people changing different properties of the same element change different lines. Names, not positions, find elements, so moving one up the list is a small change.
 - **Drawing order is file order** (later in front, as in Lust's `stack`): reordering moves a block, which Git handles.
-- `.gitattributes` marks `assets/ui/**/*.lst` `text eol=lf`, like areas. The Phase 13 merge tool can learn screens (element by element, by name) later; plain Git is enough for the gate.
+- `.gitattributes` marks `assets/ui/**/*.lst` `text eol=lf`, like areas. The Phase 17 merge tool can learn screens (element by element, by name) later; plain Git is enough for the gate.
 - Saving writes a temporary file and swaps it in (rule 11).
 
 ## Risks
 
 - **Lust changes:** the drawing words, `tied` and `like Screen` are changes to the project lead's language, so their wording waits for answers. M1 doesn't need them, so the work can start before they're settled.
-- **Built games** (Phase 13) run Lust as Rust, whose views today open their own window. Lust's Rust output will need to hand a screen's tree to Solis instead, as its Lua output does. Noted for Phase 10, and designed for now by keeping "a view gives a tree of pieces with values" as the only contract.
+- **Built games** (Phase 17) run Lust as Rust, whose views today open their own window. Lust's Rust output will need to hand a screen's tree to Solis instead, as its Lua output does. Noted for Phase 15, and designed for now by keeping "a view gives a tree of pieces with values" as the only contract.
 - **Editing code with a canvas** is the hardest part. Limiting the canvas to the parts it understands (the "code" badge) keeps it safe; M4 may need splitting in two.
 - **Small text from distance images** can look soft below about 12 pixels. If it does, small sizes are drawn from ordinary letter images (still from the font's outlines, so still sharp).
 - **The effects plan's order:** if bloom lands after M6 is due, M6 builds `render::post` itself and the effects plan reuses it.

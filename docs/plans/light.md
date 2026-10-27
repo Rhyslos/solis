@@ -1,10 +1,12 @@
-# Phase 8 plan: Light, sky and atmosphere (draft)
+# Phase 13 plan: Light, sky and atmosphere (draft)
 
-**Draft for the project lead.** The project lead asked on 2026-10-26 for "all the fancy lighting solutions working well", with sky, lighting and colour as Solis's selling point. The goal is skies and sunsets that give the feeling the best game sunsets do, and never the flat, sterile "Backrooms" look. This phase is new: it comes after sound and animation (Phase 7) and before materials and shaders (Phase 9), effects (now Phase 10), game UI (now Phase 11) and netcode (now Phase 12). See [decision 0046](../decisions/0046-light-before-netcode.md).
+**Draft for the project lead.** The project lead asked on 2026-10-26 for "all the fancy lighting solutions working well", with sky, lighting and colour as Solis's selling point. The goal is skies and sunsets that give the feeling the best game sunsets do, and never the flat, sterile "Backrooms" look. This phase is new: it comes after sound and animation (Phase 7) and before materials and shaders (Phase 14), effects (now Phase 15), game UI (now Phase 12) and netcode (now Phase 16). See [decision 0046](../decisions/0046-light-before-netcode.md).
 
 The research behind every choice is in [docs/reports/lighting-research.md](../reports/lighting-research.md), with its sources. Nothing here is decided until the project lead answers the questions below. Then the answers become decisions, and this plan is kept up to date as milestones are built, like the other phase plans.
 
-**Gate:** in the light showcase (L1), set a time of day and look. It is judged against screenshots of the project lead's reference games (see "The looks we aim for"), above all the warm, cosy one. The gate passes when:
+**Gate:** in the light showcase (L1), set a time of day and look; in the 2D sample, a lantern carried into a dark barn lights it with bounced light, crisp on the pixel grid.
+
+In the light showcase, the 3D part is judged against screenshots of the project lead's reference games (see "The looks we aim for"), above all the warm, cosy one. The gate passes when:
 - **The day runs from noon to night and back with no jumps.** The sky, sun colour, shadows, clouds and haze all change together. The brightness adjusts as eyes do. Twilight turns blue. Night looks like night: stars and the moon, and dark without going grey.
 - **The golden hour feels right.** The sun is low and warm, shadows are cool, the clouds are lit from below, the haze glows towards the sun, and far hills fade into the air.
 - **Indoors never looks like the Backrooms.** Inside the showcase's house, sun through a window bounces light around the room, and corners and contacts are soft and darker. At High, a lamp carried into the dark house lights the room with its bounce as it moves.
@@ -15,7 +17,7 @@ The research behind every choice is in [docs/reports/lighting-research.md](../re
   - the rain-wet neon street at night (neon nights);
   - the desert sky and a passing sandstorm (the sky gradient);
   - noon to a moonless night in real units (realism);
-  - a dark forest pool lit by glowing plants and creatures (light from living things; their glow waking at dusk comes with Phase 9's materials);
+  - a dark forest pool lit by glowing plants and creatures (light from living things; their glow waking at dusk comes with Phase 14's materials);
   - the block cave by torchlight in the light ramp look, where dark still reads as dark (identity).
 - **The benchmark's target level still runs at 60 fps** at the Default quality level, on the project lead's PC.
 
@@ -52,7 +54,7 @@ The other half is **light that has a shape.** Today the shadow side of everythin
 
 ## Answers (the project lead, 2026-10-26)
 
-- **The order:** as recommended, with materials and shaders added after light. Sound and animation stay Phase 7; light is Phase 8, materials and shaders 9, effects 10, game UI 11, netcode 12.
+- **The order:** as recommended, with materials and shaders added after light. Sound and animation stay Phase 7; light is Phase 13, materials and shaders 9, effects 10, game UI 11, netcode 12.
 - **Clouds:** as recommended, flat and volumetric.
 - **Bounced light: every way that can be made fast.** Baked probes *and* real-time bounced light in this phase, plus a third or fourth way if one can be built or invented, as long as it performs. So bounced light gets four layers (L16 to L19 below), each with a hard cost budget and a scale case, kept only if it earns its place:
   1. **Baked light probes:** free at run time, for everything.
@@ -60,7 +62,7 @@ The other half is **light that has a shape.** Today the shadow side of everythin
   3. **Real-time probes:** bounced light that follows moving lamps and the time of day, traced against a simplified copy of the world, with no ray-tracing hardware.
   4. **A Solis method, tried in a time-boxed experiment:** radiance cascades combined with the probes, or another idea found while building 1 to 3. It ships only if it beats layer 3 on cost or looks at the scale target.
 - **The effects suite's name: Solstice**, on its own (not "Solis Solstice"), chosen by the project lead after Aura and Aurora were found to be taken: Aura by game-effects and lighting tools, Aurora by an established game engine (and "the aurora" is also a sky feature in this plan). See [decision 0047](../decisions/0047-the-effects-suite-is-solstice.md).
-- **Materials and shaders get a phase of their own, between this one and effects** ([decision 0048](../decisions/0048-materials-and-shaders-before-effects.md)): light and effects meet in materials. This plan's glowing surfaces, wetness and stylized looks give Phase 9 what it drives; Phase 9 gives the general tools to drive them.
+- **Materials and shaders get a phase of their own, between this one and effects** ([decision 0048](../decisions/0048-materials-and-shaders-before-effects.md)): light and effects meet in materials. This plan's glowing surfaces, wetness and stylized looks give Phase 14 what it drives; Phase 14 gives the general tools to drive them.
 - The other choices are still open; until answered, the plan follows the recommendations.
 
 ## Choices to make before any code
@@ -117,7 +119,7 @@ Each question has a recommended answer first, then the alternatives, in plain wo
    | **High** | Volumetric clouds, volumetric fog, soft shadows, reflections on the screen, real-time bounced light and bounce from the screen | about +6–9 ms |
    | **Low** | Turns things off for older cards; works on any card Solis opens on | — |
 
-   - **Recommended: Low, Default, High, set per project, and changeable by players later** (the settings screen is Sungraph UI's, Phase 11). The editor's viewport has its own setting, so a slow laptop can edit at Low.
+   - **Recommended: Low, Default, High, set per project, and changeable by players later** (the settings screen is Sungraph UI's, Phase 12). The editor's viewport has its own setting, so a slow laptop can edit at Low.
    - Alternative: one fixed look (simpler, but either too slow on old cards or too plain on good ones).
 
 6. **Bounced light (global illumination).** Real-time bounced light is the one part still hard everywhere:
@@ -167,7 +169,7 @@ From `crates/render` and decisions 0008, 0013, 0014 and 0017:
 - **The sky:** a painted gradient that follows the sun. It also gives the shadow side one flat ambient colour and reflects in metal.
 - **Fog:** distance fog only.
 - **Indirect light** is already a separate, swappable source (decision 0008), so probes plug in without rewriting materials.
-- **The effects plan** (Phase 10) already designs the post chain, bloom and grading. They move here (L5), because light needs them first.
+- **The effects plan** (Phase 15) already designs the post chain, bloom and grading. They move here (L5), because light needs them first.
 
 ## The rules this phase keeps
 
@@ -203,7 +205,7 @@ The order is set so that each milestone is visible on its own, and so that what 
   - a city street at night, with neon signs and rain-wet ground;
   - a cave and a hut made of blocks, lit by torches;
   - a desert under a wide sky;
-  - a forest pool with plants and creatures that glow in the dark (with Phase 9's materials; until then, plain glowing surfaces);
+  - a forest pool with plants and creatures that glow in the dark (with Phase 14's materials; until then, plain glowing surfaces);
   - and the benchmark's fleets nearby.
 
   It is the place every later milestone is judged in, and the gate's scene.
@@ -278,7 +280,7 @@ Modelled on the world-of-weathers reference: each weather holds sky, fog, ambien
 - **One overcast control** changes the sky, clouds, shadow softness and light together.
 - **Game code** can change the weather: `setWeather(file, seconds)`.
 - **Moods** (hand-set moments of the day): a weather can be held at a moment rather than following the clock.
-- Rain and snow themselves are effects (Phase 10); this milestone gives them their light and sky.
+- Rain and snow themselves are effects (Phase 15); this milestone gives them their light and sky.
 - **Ready-made weathers:** clear, golden, overcast, storm, desert, night.
 
 ### L8. Clouds
@@ -309,7 +311,7 @@ This may be two pull requests.
 - **Clustered lighting:** hundreds of lamps at once, past decision 0014's 16.
 - **Shadows for a budget of lamps:** four to eight, in one atlas, still ones cached.
 - **Glowing surfaces light the world:** a sign's or plant's glow feeds the bounced light and the fog.
-- **The light around a surface, for materials to read:** each surface can know how much light reaches it (sun, sky and lamps). It's a general input that Phase 9's materials can use in any way: a glow that fades in as night falls, in caves and deep under water, so plants and creatures light up; or a colour that pales in bright sun.
+- **The light around a surface, for materials to read:** each surface can know how much light reaches it (sun, sky and lamps). It's a general input that Phase 14's materials can use in any way: a glow that fades in as night falls, in caves and deep under water, so plants and creatures light up; or a colour that pales in bright sun.
 - **Area lights:** rectangle and tube lamps (neon tubes, screens, windows), shaded cheaply with a standard method (LTC).
 - **Lightning:** a short, very bright light from the sky, for storms.
 - This lifts the effects plan's limit on flash lamps, so explosions can light the ships around them.
@@ -379,6 +381,19 @@ For rain-wet neon streets; reflection probes can't show moving lights and cars.
   - it has no flicker the gate's viewer can see.
 - Otherwise its findings are written up in `docs/reports/` and it stays out. Either way, the project lead sees the comparison.
 
+### L20. Light for 2D worlds
+2D comes before this phase (Phases 9 and 10, [decision 0054](../decisions/0054-first-class-2d.md)), with lamps, day-and-night tint and soft shadows from a distance field. This milestone brings the rest of this phase to 2D:
+- **2D bounced light by radiance cascades:** light glowing around corners and off coloured walls, lanterns lighting a whole room, and glowing things lighting their surroundings.
+  - The method was made for 2D and is practical there: its cost depends on screen size, not on the number of lights, and a published version runs a 512 × 512 scene in under 2 ms on a laptop card.
+  - It marches through the 2D distance field from Phase 10.
+  - It's worked out at the game's own resolution, so it stays on the pixel grid.
+  - Known artefacts, with known fixes: ringing around tiny bright points, leaks, and grid patterns.
+- **The real sky and time of day over 2D worlds:**
+  - the sun's colour and the sky's light tint sprites and tiles;
+  - twilight and night come from the same sky as 3D.
+- **Bloom and grading** at the game's resolution, with palette limiting through the grading table.
+- **Budget:** 2D bounced light within 1.5 ms at 480 × 270 on the reference card.
+
 ### End of the phase
 - Quality levels tuned.
 - The three reviewers (decision 0027).
@@ -398,7 +413,7 @@ Kept here so the design leaves room for them:
 
 ## Netcode waits safely
 
-Netcode moves from Phase 8 to Phase 12. What it needs is already built:
+Netcode moves from its first place, Phase 8, to Phase 16. What it needs is already built:
 - **Determinism:** a fixed tick, seeded randomness, the start-of-tick world (decision 0033), strict physics (decision 0036) and state checksums.
 - **Snapshots:** save games hold everything (decision 0038).
 - **Planned to stay out of the game's state:** effects (the effects plan) and UI (the Sungraph plan); this phase's rule keeps light out too.
@@ -406,8 +421,8 @@ Netcode moves from Phase 8 to Phase 12. What it needs is already built:
 Two risks come with waiting:
 1. **Nobody checks that two different PCs play the same game.** Today's tests compare runs on the same computer. Lua's maths functions, for example, can differ in the last digit between machines (decision 0028).
 
-   **Recommended: a small check now.** A recorded game is played in CI on Linux and Windows, and its final checksum is compared with one saved in the repository. A difference shows up the day it's made, not in Phase 12.
-2. **DESIGN.md §1 promises "good netcode built in"**, and the flagship sample plays over the network, so netcode must still come before 0.1. It does, in Phase 12.
+   **Recommended: a small check now.** A recorded game is played in CI on Linux and Windows, and its final checksum is compared with one saved in the repository. A difference shows up the day it's made, not in Phase 16.
+2. **DESIGN.md §1 promises "good netcode built in"**, and the flagship sample plays over the network, so netcode must still come before 0.1. It does, in Phase 16.
 
 The two-player Play button stays hidden until then (decision 0004).
 
