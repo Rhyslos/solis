@@ -76,6 +76,8 @@ A pull request that breaks one of these is sent back, however good the feature.
 18. **Speed is a feature.** Code on a performance path gets a benchmark or a scale-check entry, and the editor stays under its frame target with everything full (a full console, a big area).
 19. **The game's rules always hold.** A change to the game loop, saving, physics, input or replays keeps the whole-game invariant tests passing (`crates/editor/src/invariant_tests.rs`), and something new the game can do becomes a step they play (decision 0042).
 20. **Describe looks, don't name games.** Plans, decisions, the manual and code never name other games or game studios as references, and don't compare Solis with other companies' products: describe the look or the technique instead ("warm, cosy light", "Jimenez's bloom"). The project lead keeps their own list of reference games. Naming is fine only where it is a technical fact Solis needs: the licence of code it uses, a paper's author, a file format, or a tool it works with (Blender's units).
+21. **One way to work, everywhere** (decision 0050). Every editor uses the shared pieces: one graph editor, one Properties layout, one preview tab, one table of shortcuts (a test checks it), the same inputs, curves and gradients, and the same three languages for custom code. If a new editor needs something the shared pieces lack, add it to them.
+22. **Understand, then build** (decision 0051). A core system starts with a study in `docs/reports/` and Solis's own design, measured at the scale target; libraries are for what isn't Solis's core.
 
 ## Documentation rule
 

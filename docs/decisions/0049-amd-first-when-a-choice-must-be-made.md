@@ -38,6 +38,6 @@ In practice:
 
 ## Consequences
 
-- **An AMD card is needed for gates and the scale check.** If the project lead's PC has one, it is the reference machine. If not, the gates note which card they ran on, and an AMD card is borrowed or bought when a phase's tuning depends on it.
+- **The reference machine is the project lead's PC, with an AMD Radeon RX 7900 XT** (RDNA 3, 20 GB). Gates and the scale check's deciding numbers come from it, and tuning targets RDNA 3 first (its 32-wide and 64-wide waves, its caches), staying sound on older AMD cards.
 - **CI can't test AMD:** GitHub's machines have no AMD graphics. Correctness is still tested everywhere; speed on AMD is measured by hand at each phase's end, as the scale check already is (decision 0011).
 - **The Phase 8 and 9 plans** follow this rule: Brixelizer GI and the FidelityFX pieces are first in line, and wave sizes follow the list above.

@@ -2,7 +2,7 @@
 
 **Draft for the project lead.** Since [decision 0046](../decisions/0046-light-before-netcode.md), effects are Phase 10 on their own, after materials and shaders in Phase 9 ([decision 0048](../decisions/0048-materials-and-shaders-before-effects.md)); game UI is Phase 11 ([its plan](phase-11-sungraph-ui.md)); the suite is called **Solstice** ([decision 0047](../decisions/0047-the-effects-suite-is-solstice.md)); and the post chain, bloom and grading (M1 and the grading below) move to light's Phase 8 ([its plan](phase-8-light.md), L5), which also lifts the 16-lamp limit on flash lamps (L11). The rest of this plan is unchanged until Phase 9 starts. The working plan for the effects half of Phase 9 (ROADMAP.md, "Phase 9: Effects and game UI"): Solstice basics (particles through instancing, flipbooks, trails, stylized shading for effects) and post-processing (bloom and colour grading). Sungraph UI, the other half, has its own plan; the section "Shared with Sungraph UI" says what the two build once between them. Nothing here is decided until the project lead answers the questions below. Then this becomes `docs/plans/phase-9.md` (with the UI half), and the answers become decisions in `docs/decisions/` and lines in DESIGN.md §17. Update it as milestones are built.
 
-**Gate (the effects part):** laser bolts, hits and explosions look good in the stylized look, in the benchmark battle, at the target level's 60 fps.
+**Gate (to be widened in the rewrite):** laser bolts, hits and explosions look good in the stylized look, in the benchmark battle, at the target level's 60 fps; a beginner makes a convincing campfire from presets alone, whose fire lights the scene and its own smoke.
 
 ## Answers (the project lead, 2026-10-25)
 
@@ -13,6 +13,34 @@ Recommended for every choice except three:
 - **Light from explosions: one short flash lamp per effect**, nearest first, within the 16 lamps (decision 0014).
 
 The rest as recommended: placed effects come back on load, bursts and particles don't; glowing and eroded (stylized) particles first, soft sorted smoke later; `.soleffect`; `playEffect`, `playEffectOn`, `stopEffect`; the ready-made kit; effects play in the viewport only while selected or with Preview effects on; Solis draws the basic shapes; bloom on and gentle everywhere; colour grading by sliders plus an optional LUT; no new keys.
+
+## Direction (the project lead, 2026-10-27)
+
+**Solstice should be good enough to be a professional tool in its own right**, while games stay the priority. The project lead "would be happy if Solis became popular for its effects suite alone". That changes this plan, which is to be **rewritten from an in-depth study before Phase 10 starts** ([decision 0051](../decisions/0051-understand-then-build.md)). What the rewrite must deliver:
+
+- **Easy to learn, the same as the rest of Solis** ([decision 0050](../decisions/0050-one-way-to-work-everywhere.md)):
+  - the material graph's boxes plus a few particle ones, in the same graph editor;
+  - the same inputs, curves and gradients as materials;
+  - the same keys;
+  - no second graph language to learn.
+- **Settings and presets for beginners:** an extensive library of ready-made effects and building blocks (fire, smoke, sparks, magic, weather, explosions, trails), each opened as an ordinary graph to learn from and change. Simple settings on top of each (size, colour, intensity, wind), so a beginner makes advanced effects without a degree in simulation.
+- **Custom code in Lust, Rust or Lua,** like game code. The study decides where each runs fast enough:
+  - per-particle work on the graphics card is graphs and shader code boxes;
+  - per-particle work on the processor is Lust or Rust, compiled;
+  - Lua suits per-effect and per-event logic (when to burst, what to spawn on a hit) rather than 100,000 particles a frame.
+- **Light that is interactive, not just glow.** Emitting particles and glowing materials light their surroundings:
+  - real lamps, with many particles gathered into a few lights so the cost stays fixed;
+  - light into the bounced light and the volumetric fog, so fire lights its own smoke;
+  - smoke that is lit and casts soft shadows.
+
+  This builds on Phase 8 (many lamps, fog, bounced light) and Phase 9 (inputs).
+- **Baking:** an effect or a simulation can be baked:
+  - into flipbooks (with normal and glow maps, so baked smoke still takes light);
+  - into textures that move a mesh's corners;
+  - into cached playback.
+
+  Heavy effects then cost little at run time, and baked results can be exported as image sequences for use in other tools.
+- **Fast because it's understood:** the study goes deep on spawning, simulating, sorting, culling, drawing and budgeting particles on the reference card (decision 0049), and the design is measured before it's built.
 
 ## Choices to make before any code
 

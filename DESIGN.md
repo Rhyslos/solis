@@ -204,7 +204,13 @@ wgpu, lightweight, built for medium-poly, stylized games. **AMD first, when a ch
 
 ## 9. VFX: Solstice
 
-Gets a lot of attention. Stylized VFX tools out of the box: flipbooks, trails, ribbons, mesh particles, stylized shading, and lots of particles through instancing.
+Gets a lot of attention: **good enough to be a professional tool in its own right**, while games stay the priority (the project lead, 2026-10-27). Stylized VFX tools out of the box: flipbooks, trails, ribbons, mesh particles, stylized shading, and lots of particles through instancing. It also has:
+- **Easy to learn:** the same graph, inputs and keys as materials (decision 0050).
+- **Beginner-friendly:** an extensive library of presets and building blocks with simple settings on top.
+- **Custom code** in Lust, Rust or Lua.
+- **Interactive light:** emission lights the world, the fog and the bounced light, not just a glow.
+- **Baking** to flipbooks, moving-mesh textures and cached playback.
+- **Designed from an in-depth study** before it's built (decision 0051).
 
 **Open question:** the wishlist mentions reusing Aventail's VFX system (originally named Gauntlet). Aventail's plans don't contain one so far; "Gauntlet" came up as a rejected name for Aventail itself. So Solstice is probably new design work, built for games first, and Aventail could adopt it later. **(to confirm)**
 
@@ -242,6 +248,8 @@ The area to spend extra time on. In order of payoff:
 ---
 
 ## 13. The editor
+
+**Uniformity comes first** ([decision 0050](docs/decisions/0050-one-way-to-work-everywhere.md)): every editor in Solis works one way: one graph editor, one Properties layout, one preview tab, one table of shortcuts, the same ideas everywhere. Learn one and you know them all.
 
 Settled in [decision 0004](docs/decisions/0004-editor-layout.md): Halberd's panels with Unreal's tabs, and every panel dockable.
 
@@ -364,3 +372,5 @@ Both sides review each other's pull requests.
 - 2026-10-26: [0047](docs/decisions/0047-the-effects-suite-is-solstice.md): the effects suite is called Solstice (Eclipse, Ember, Aura and Aurora were taken in this field).
 - 2026-10-26: [0048](docs/decisions/0048-materials-and-shaders-before-effects.md): materials and shaders get Phase 9, between light and effects, as general tools (any material value driven by the world); effects, game UI, netcode, export and 0.1 become Phases 10 to 14.
 - 2026-10-26: [0049](docs/decisions/0049-amd-first-when-a-choice-must-be-made.md): Solis supports every card and stays fast on all of them, but when a choice must be made between tuning for one maker or another, it tunes for AMD: AMD cards are the reference for gates and the scale check, compute is sized for AMD's waves, AMD's open-source FidelityFX libraries are first in line, and the backend is chosen by measuring.
+- 2026-10-27: [0050](docs/decisions/0050-one-way-to-work-everywhere.md): one way to work everywhere: one graph editor, one Properties layout, one shortcut table (tested), the same inputs, curves and gradients, and the same three languages for custom code, in every editor.
+- 2026-10-27: [0051](docs/decisions/0051-understand-then-build.md): understand, then build: each core system starts with an in-depth study and Solis's own design, measured at the scale target; libraries are for what isn't Solis's core.
