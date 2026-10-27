@@ -4,6 +4,8 @@ The working plan for Phase 12, game UI (ROADMAP.md, "Phase 12: Game UI"; it was 
 
 > **2D (decision 0054):** game UI now comes right after 2D and the playtest export, so 2D games get real menus (inventories, shops, dialogue) sooner. Over a pixel-art game, the UI is drawn at full screen sharpness in its own pass, on top of the pixel world scaled up (2D plan, D1), and can use the pixelation style when a game wants pixel menus.
 
+> **Mock-ups first** (the project lead, 2026-10-27): before any of this is built, the screens, the canvas and its tools are mocked up for the project lead to see and approve, whether from the agreed inspiration or the project lead's own design.
+
 > **Draft.** Every item under "Choices to make" is a question for the project lead, with a recommended answer. Nothing here is decided until it is answered and written up as a decision.
 
 **Gate:** a health bar and a pause menu, drawn in Sungraph UI with their values tied to game code, are on screen. Tried by hand: open the UI sample, draw a change to the health bar in the canvas, press Play, watch the bar follow the player's health, press Pause, move through the menu with the keyboard, the mouse and a gamepad, and resume.

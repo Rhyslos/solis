@@ -37,6 +37,7 @@ The repo is public, so GitHub's machines are free (decision 0018, which replaces
 - The pull request's "How to test" list covers what automated tests can't (feel, looks), written for a non-programmer.
 - Never hard-code the program's name: use `crates/app/src/branding.rs`.
 - Ask the project lead before building a feature that adds keys or mouse actions: offer a recommended choice and alternatives (CONTRIBUTING.md, rule 17).
+- **UI is mocked up first** (the project lead, 2026-10-27). Before building any UI (game UI's canvas and screens, a new editor panel, tool or window), make a mock-up for the project lead to see and approve. The main inspiration is Unreal Engine's interface, unless the project lead brings their own design, which must always be mocked up first. Mock-ups are in-chat pictures or a Design artifact, never built code.
 - Aventail's code may be copied in and adapted (decision 0007).
 - **One line of work** (the project lead, 2026-10-25): Solis is built one milestone at a time on one main thread, never by several agents building parts in parallel. A helper agent may take one specific, bounded job alongside it (the three end-of-phase reviewers, a search, a check) and hands its result back.
 
