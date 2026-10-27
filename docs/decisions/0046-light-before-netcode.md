@@ -40,7 +40,7 @@ The effects suite's name was settled the same day: Solstice ([decision 0047](004
 
 ## Consequences
 
-- **0.1 comes about four months later than the roadmap's months said** (about sixteen months in all), because one large phase is added, with real-time bounced light in it, and Phase 9 is split.
+- **0.1 comes later,** because one large phase is added, with real-time bounced light in it, and Phase 9 is split. (The roadmap has no timeframe since 2026-10-27.)
 - **Netcode waits safely.** What it needs is built: the fixed tick, seeded randomness, the start-of-tick world, strict physics, state checksums, and save games that hold everything. Effects, UI and now light are designed to stay out of the game's state.
 - **A risk while netcode waits:** nothing checks that two different PCs play the same game. A small CI check (a recorded game played on Linux and Windows, its checksum compared with one in the repository) covers it until Phase 11.
 - Phase plans for effects and UI keep their content; their files are renamed for their new phase numbers.

@@ -127,7 +127,7 @@ Each question has a recommended answer first, then the alternatives, in plain wo
    - *Answered: every way that can be made fast (see Answers).* The recommendation was:
      - **Baked light probes in this phase.** Solis bakes them on any card (no ray-tracing hardware), and thousands of moving units pick up bounced light from them almost for free.
      - **Real-time bounced light after 0.1**, on probes traced against a simplified copy of the world (an MIT-licensed method measured at about 1.7 ms), as a further "Ultra" level.
-   - Alternative: real-time bounced light in this phase too (about two more months; the riskiest part of the phase).
+   - Alternative: real-time bounced light in this phase too (the riskiest part of the phase).
    - Alternative: also baked lightmaps (the best still pictures, but every model needs a second unwrap; after 0.1).
 
 7. **Clouds.**

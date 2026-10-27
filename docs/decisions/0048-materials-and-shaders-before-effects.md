@@ -36,7 +36,7 @@ The phase's working plan is [docs/plans/phase-9-materials.md](../plans/phase-9-m
 
 ## Consequences
 
-- **0.1 comes about one and a half months later** again: about eighteen months in all, as a guide.
+- **0.1 comes later again,** by one phase. (The roadmap has no timeframe since 2026-10-27.)
 - **One graph editor:** materials, the animator (Phase 7) and effects share it, saved as readable text (decision 0039's rule).
 - **The light plan provides the inputs:** the light reaching each surface, wetness and the looks. This phase lets any material read them.
 - **The shader editor leaves DESIGN.md §7's "later" list.**
