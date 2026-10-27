@@ -219,7 +219,9 @@ Gets a lot of attention: **good enough to be a professional tool in its own righ
 
 ## 10. Animation
 
-- Skeletal animation imported from glTF and FBX
+**Settled for Phase 7** in [decision 0057](docs/decisions/0057-animation-near-live-far-baked.md): live poses near and baked clips far, `.solanim` animators, blend spaces by one and two numbers, cues per clip, glTF only (FBX later), and one state machine for 2D sprite frames and 3D skeletons.
+
+- Skeletal animation imported from glTF (FBX later; Blender converts it)
 - State machines deciding which animation plays
 - Blending between animations, and blend spaces
 - Animation events (a footstep sound on a frame)
@@ -235,6 +237,8 @@ The area to spend extra time on. In order of payoff:
 2. **A mixer with buses** (music, effects, voice, UI) and ducking.
 3. **3D sound:** distance falloff, occlusion behind walls, and reverb zones (tying into §8).
 4. **Adaptive music:** layers and transitions following the game's state.
+
+**Settled for Phase 7** in [decision 0056](docs/decisions/0056-sound-with-kira.md): Kira, WAV and Ogg through permissive readers, `.solsound` events, five buses with Voice ducking Music, reverb by where the listener is, 64 sounds heard at once, and sound that never changes the game.
 
 **Libraries:** Kira (Rust) for playback and mixing; Steam Audio (open source) for 3D sound and occlusion. FMOD and Wwise are proprietary, so they're ruled out.
 
@@ -379,3 +383,5 @@ Both sides review each other's pull requests.
 - 2026-10-27: [0053](docs/decisions/0053-compatibility-before-2d.md): compatibility comes first (Phase 8): a backup before every upgrade, upgraders for every file format with old examples kept as tests, save games that survive updates, the game-code interface guarded, real projects tested before an update ships, breaking changes labelled.
 - 2026-10-27: [0054](docs/decisions/0054-first-class-2d.md): first-class 2D in two parts (Phases 9 and 10), built as flat things in the same world with real 2D tools on top; Rapier2D; each tileset chooses its own kind; then a playtest export (11) and game UI (12); a pixel mode in the effects suite; 2D bounced light in the light phase. Replaces "3D only".
 - 2026-10-27: [0055](docs/decisions/0055-lua-speed-measured-and-explained.md): Lua's speed is measured and explained, and Luau's native code is used only if faster with identical results; Lua isn't translated into Rust.
+- 2026-10-27: [0056](docs/decisions/0056-sound-with-kira.md): sound with Kira in a `sound` crate; WAV and Ogg through hound and lewton; `.solsound` events; buses Master > Music, Effects, Voice, Ambience, UI with Voice ducking Music; reverb by where the listener is; 64 sounds at once; sound never changes the game (answers of 2026-10-25).
+- 2026-10-27: [0057](docs/decisions/0057-animation-near-live-far-baked.md): animation with live poses near and baked clips far; cues per clip in sidecars; blend spaces by one and two numbers; `.solanim` animators; the graph editor's controls, shared by every graph; the project lead's own character for the gate; one state machine for 2D sprite frames and 3D skeletons.

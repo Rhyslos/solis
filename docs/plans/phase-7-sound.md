@@ -6,7 +6,15 @@ The working plan for the sound half of Phase 7 (ROADMAP.md, "Phase 7: Sound and 
 
 ## Answers (the project lead, 2026-10-25)
 
-Every choice below was answered with the recommendation: Kira now and Steam Audio later; WAV and Ogg through permissive readers; one `.solsound` file per event; buses Master > Music, Effects, Voice, Ambience, UI with Voice ducking Music; natives that play and stop and give nothing back, loops through `AudioSource`; reverb by where the listener is; loops come back on load, one-shots don't; 64 sounds at once; no new keys (buttons only). They become decisions when Phase 7 starts.
+Every choice below was answered with the recommendation: Kira now and Steam Audio later; WAV and Ogg through permissive readers; one `.solsound` file per event; buses Master > Music, Effects, Voice, Ambience, UI with Voice ducking Music; natives that play and stop and give nothing back, loops through `AudioSource`; reverb by where the listener is; loops come back on load, one-shots don't; 64 sounds at once; no new keys (buttons only). They are [decision 0056](../decisions/0056-sound-with-kira.md).
+
+## The order of Phase 7's milestones (sound and animation together)
+
+1. **Sound becomes playable:** S1, S2, S3.
+2. **The animation core:** A1, A2, A3, A4.
+3. **The rest of sound:** S4, S5, S6.
+4. **The animator tab:** A5. It's a new editor window, so it's mocked up for the project lead first.
+5. **Where they meet, and the gate's level:** A6, then S7.
 
 ## Choices to make before any code
 
@@ -118,7 +126,7 @@ Sound must be heard and never felt by the simulation (decisions 0033 and 0036), 
 ### S4. Buses, ducking and the Mixer panel
 
 - `mixer.solmix` (question 4), read within limits (fuzz); buses as Kira tracks under Master, ducking rules carried out by Solis (fades on the ducked bus).
-- **The Mixer panel** (Window > Mixer): a fader, mute and solo for each bus, and a level meter while sound plays (the meter asks for frames while it moves, decision 0026). Fader changes are saved to `mixer.solmix`; changes game code makes with `setBusVolume` last for the play.
+- **The Mixer panel** (Window > Mixer), **mocked up for the project lead first** (CLAUDE.md), using the shared sliders and Properties layout (decision 0050): a fader, mute and solo for each bus, and a level meter while sound plays (the meter asks for frames while it moves, decision 0026). Fader changes are saved to `mixer.solmix`; changes game code makes with `setBusVolume` last for the play.
 - The Game panel's mute button.
 - Tests: round trip; a bus's volume and mute reach the sounds on it; Voice ducks Music and Music comes back after the last voice; nested buses multiply.
 
