@@ -58,6 +58,10 @@ pub enum Change {
     /// `loadGame`: load the game saved in this slot, at the end of the
     /// tick.
     Load(String),
+    /// `playSound…`: play the sound event named here, from there.
+    Sound(String, crate::host::SoundAt),
+    /// `stopSoundsOn`: stop the sounds on this entity.
+    StopSounds(EntityId),
 }
 
 /// The entities of a [`WorldView`]: the same while the world's entities,
@@ -139,6 +143,8 @@ struct Kept {
     dropped: u64,
     /// Bytes of assembly names kept for spawns.
     spawn_bytes: usize,
+    /// Sounds asked for.
+    sounds: usize,
 }
 
 /// The most changes (moves, turns, shots, spawns, lines said) one shard
@@ -147,6 +153,13 @@ struct Kept {
 /// loop calling `moveTo` would otherwise fill the computer's memory before
 /// the time limit stops it.
 pub const MAX_KEPT: usize = 200_000;
+
+/// The most sounds game code may ask for in one tick (decision 0056's
+/// limits); past it they're left out.
+pub const MAX_SOUNDS: usize = 256;
+
+/// The longest sound event name read.
+pub const MAX_SOUND_NAME: usize = 256;
 
 /// The most bytes of assembly names one shard keeps for spawns in one
 /// phase.
@@ -376,6 +389,25 @@ impl Host for ViewHost {
             self.kept
                 .changes
                 .push((order, Change::Rebind(action.to_string(), input.to_string())));
+        }
+    }
+
+    fn play_sound(&mut self, event: &str, at: crate::host::SoundAt) {
+        let named =
+            !event.is_empty() && event.len() <= MAX_SOUND_NAME && !event.contains(char::is_control);
+        if named && self.kept.sounds < MAX_SOUNDS && self.kept.room() {
+            self.kept.sounds += 1;
+            let order = self.order();
+            self.kept
+                .changes
+                .push((order, Change::Sound(event.to_string(), at)));
+        }
+    }
+
+    fn stop_sounds_on(&mut self, which: EntityId) {
+        if self.kept.room() {
+            let order = self.order();
+            self.kept.changes.push((order, Change::StopSounds(which)));
         }
     }
 

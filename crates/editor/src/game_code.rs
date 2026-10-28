@@ -178,6 +178,7 @@ impl Workbench {
             );
         }
         let time = playing.world.clock().time;
+        let (tick, seed) = (playing.world.clock().ticks, playing.world.seed());
         let mut world = PlayWorld::new(&mut playing.world, &mut playing.view, time);
         match chunk {
             None => {
@@ -196,7 +197,9 @@ impl Workbench {
         let said = std::mem::take(&mut world.said);
         // What starts spawned lands before the next tick.
         let edits = std::mem::take(&mut world.edits);
+        let sounds = std::mem::take(&mut world.sounds);
         playing.pending.extend(edits);
+        crate::game_sound::gather(&mut self.game_sounds, sounds, tick, seed);
         for line in lines {
             self.log(LogLevel::Info, line);
         }
@@ -297,6 +300,9 @@ pub(crate) struct PlayWorld<'a> {
     /// Game code's saves and loads (slot, whether it's a load), in order,
     /// for the editor to make after the tick.
     pub(crate) saves: Vec<(String, bool)>,
+    /// Game code's sound requests, in order (decision 0056: they only go
+    /// out; nothing comes back).
+    pub(crate) sounds: Vec<crate::game_sound::Request>,
     /// A seed game code set (`setSeed`), made at the end of the tick so
     /// the whole tick draws from one seed.
     pub(crate) seed: Option<u64>,
@@ -315,6 +321,7 @@ impl<'a> PlayWorld<'a> {
             bindings: Arc::default(),
             rebinds: Vec::new(),
             saves: Vec::new(),
+            sounds: Vec::new(),
             seed: None,
         }
     }
@@ -377,6 +384,12 @@ impl GameWorld for PlayWorld<'_> {
                 }
                 Change::Save(ref slot) => self.saves.push((slot.clone(), false)),
                 Change::Load(ref slot) => self.saves.push((slot.clone(), true)),
+                Change::Sound(ref event, at) => self
+                    .sounds
+                    .push(crate::game_sound::Request::Play(event.clone(), at)),
+                Change::StopSounds(which) => {
+                    self.sounds.push(crate::game_sound::Request::StopOn(which));
+                }
                 Change::Move(which, _) | Change::Turn(which, _) => {
                     // Every move and turn of one entity in a row (one
                     // component's are side by side) in one lookup; the

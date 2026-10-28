@@ -20,6 +20,7 @@ reflect.workspace = true
 kira.workspace = true
 hound.workspace = true
 lewton.workspace = true
+mint.workspace = true
 ogg.workspace = true
 log.workspace = true
 

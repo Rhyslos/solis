@@ -58,6 +58,7 @@ Solis is built on other people's libraries, which saves years of work. Each libr
 | `log` | Passes messages to the Console | MIT OR Apache-2.0 | app, render, sound, updater | shared | A few lines of Solis's own logging |
 | `lust` | Lust, the project lead's language (Solis's game code) | MIT | script | walled | Ours: the project lead's own repository, pinned to one commit |
 | `meshopt` | Makes levels of detail (simpler meshes for far away) | MIT OR Apache-2.0 | assets | walled | Write a simplifier (quadric error, a known method), or fork; meshoptimizer underneath is MIT |
+| `mint` | Hands places and turns to Kira (the shared maths types it takes) | MIT | sound | walled | Kira's own; would go with it |
 | `mlua` | Runs Lua and Luau game code, sandboxed | MIT | script | walled | Fork it (MIT), or bind to Luau ourselves (Luau is MIT); only the script crate changes |
 | `notify` | Notices when files change on disk | CC0-1.0 | asset_db | walled | Ask Windows directly (`ReadDirectoryChangesW`), or check files on a timer |
 | `notify-debouncer-mini` | Groups bursts of file changes into one | MIT OR Apache-2.0 | asset_db | walled | Group them ourselves (a short timer) |

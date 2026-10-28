@@ -17,6 +17,7 @@ mod device;
 pub mod event;
 #[cfg(test)]
 mod event_tests;
+pub mod game;
 mod overview;
 pub mod read;
 #[cfg(test)]

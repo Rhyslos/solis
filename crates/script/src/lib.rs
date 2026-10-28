@@ -21,7 +21,7 @@ mod ticking;
 pub use code::{Bytecode, Code, CodeProblem, Compiled, check, compile, gather};
 pub use events::Event;
 pub use game::{Change, Game, GameWorld, ViewIndex, WorldView};
-pub use host::{Host, NoHost, Shot};
+pub use host::{Host, NoHost, Shot, SoundAt};
 /// Game code turned into Lua, ready for a [`Runtime`].
 pub use lust::LuaChunk as Chunk;
 pub use runtime::{Failure, Runtime, Swapped, Ticked};

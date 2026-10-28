@@ -101,6 +101,30 @@ pub const NATIVES: &[Native] = &[
         about: "Loads the game saved in a slot, at the end of the tick: everything is put back exactly as it was when it was saved.",
     },
     Native {
+        file: "sound",
+        name: "playSound",
+        lust: "method playSound(string event) native;",
+        about: "Plays a sound event (its file in assets, without .solsound: \"sfx/footstep\"), the same everywhere: music, the interface. At the end of the tick, as a move lands. Nothing comes back, so sound can never change the game.",
+    },
+    Native {
+        file: "sound",
+        name: "playSoundAt",
+        lust: "method playSoundAt(string event, vec3 place) native;",
+        about: "Plays a sound event at a place in the world: quieter far from the camera, and from its direction.",
+    },
+    Native {
+        file: "sound",
+        name: "playSoundOn",
+        lust: "method playSoundOn(string event, entity on) native;",
+        about: "Plays a sound event on an entity, following it as it moves: an engine, a voice.",
+    },
+    Native {
+        file: "sound",
+        name: "stopSoundsOn",
+        lust: "method stopSoundsOn(entity on) native;",
+        about: "Stops the sounds playing on an entity, with a short fade.",
+    },
+    Native {
         file: "input",
         name: "held",
         lust: "method bool held(string action) native;",
@@ -275,7 +299,7 @@ mod tests {
     #[test]
     fn the_descriptions_check_cleanly_and_a_game_can_use_them() {
         let mut files = descriptions("Test Engine 9.9.9", "solis");
-        assert_eq!(files.len(), 6);
+        assert_eq!(files.len(), 7);
         assert!(files[0].1.starts_with("-- Made by Test Engine 9.9.9"));
         files.push((
             "main.lst".into(),
@@ -283,6 +307,7 @@ mod tests {
              get \"solis/entity\":[positionOf, moveTo, rotationOf, turnTo, nameOf];\n\
              get \"solis/physics\":[push, velocityOf, setVelocity, castRay, castRayHit, castRayNormal];\n\
              get \"solis/input\":[held, pressed, released, axis, bindingOf, rebind];\n\
+             get \"solis/sound\":[playSound, playSoundAt, playSoundOn, stopSoundsOn];\n\
              component Mover {\n\
                  has {\n\
                      float speed = 2;\n\
@@ -339,7 +364,7 @@ mod tests {
         names.dedup();
         assert_eq!(names.len(), NATIVES.len(), "no name twice");
         for native in NATIVES {
-            assert!(["world", "entity", "physics", "input"].contains(&native.file));
+            assert!(["world", "entity", "physics", "input", "sound"].contains(&native.file));
             assert!(
                 native.lust.contains(&format!(" {}(", native.name)),
                 "{native:?}"

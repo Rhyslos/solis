@@ -76,6 +76,9 @@ pub(crate) struct Playing {
     pub(crate) recording_bytes: usize,
     /// Whether the Console has said an edit spoils this recording.
     pub(crate) told_recording_edited: bool,
+    /// Whether the Console has said game code asked for too many sounds
+    /// in a tick (said once a play).
+    pub(crate) told_too_many_sounds: bool,
     /// The recording this play plays back, and how many of its ticks
     /// have run.
     pub(crate) replay: Option<(input::Recording, usize)>,
@@ -205,6 +208,7 @@ impl Workbench {
             recording: None,
             recording_bytes: 0,
             told_recording_edited: false,
+            told_too_many_sounds: false,
             replay: None,
         });
         // Nothing held over from before Play.
@@ -275,6 +279,14 @@ impl Workbench {
         let said = std::mem::take(&mut host.said);
         // What the starts spawned lands before the first tick.
         let pending = std::mem::take(&mut host.edits);
+        let sounds = std::mem::take(&mut host.sounds);
+        drop(host);
+        // Sounds the starts asked for (music, say) play from the start; a
+        // world thrown away after (loading a save) plays none.
+        if say {
+            let (tick, seed) = (world.clock().ticks, world.seed());
+            crate::game_sound::gather(&mut self.game_sounds, sounds, tick, seed);
+        }
         let said = if say { said } else { Vec::new() };
         self.tell_game(said, &failures);
         (Some(game), pending)
@@ -400,6 +412,7 @@ impl Workbench {
         }
         let mut said = Vec::new();
         let mut failures = Vec::new();
+        let mut dropped_sounds = 0usize;
         // An edit isn't in the recording, so its replay won't match from
         // here: said once.
         if !changes.is_empty() && playing.recording.is_some() && !playing.told_recording_edited {
@@ -415,6 +428,7 @@ impl Workbench {
             && !changes.is_empty()
         {
             let time = playing.world.clock().time;
+            let (tick, seed) = (playing.world.clock().ticks, playing.world.seed());
             let mut host = PlayWorld::new(&mut playing.world, &mut playing.view, time);
             host.frame_time = f64::from(seconds);
             let syncing = std::time::Instant::now();
@@ -431,6 +445,10 @@ impl Workbench {
             code += syncing.elapsed();
             host.outside_a_tick();
             said.append(&mut host.said);
+            // Sounds asked for as components start (music, say) play
+            // with the first tick's.
+            let sounds = std::mem::take(&mut host.sounds);
+            dropped_sounds += crate::game_sound::gather(&mut self.game_sounds, sounds, tick, seed);
             // What their starts spawned lands before the next tick.
             let edits = std::mem::take(&mut host.edits);
             playing.pending.extend(edits);
@@ -483,6 +501,7 @@ impl Workbench {
             let frame = Arc::new(frame);
             let mut slow = None;
             let mut saves = Vec::new();
+            let (sound_tick, sound_seed) = (playing.world.clock().ticks, playing.world.seed());
             if let Some(game) = &mut playing.game {
                 let mut host = PlayWorld::new(&mut playing.world, &mut playing.view, time);
                 host.frame_time = f64::from(seconds);
@@ -499,6 +518,13 @@ impl Workbench {
                 let edits = std::mem::take(&mut host.edits);
                 playing.pending.extend(edits);
                 saves = std::mem::take(&mut host.saves);
+                let sounds = std::mem::take(&mut host.sounds);
+                dropped_sounds += crate::game_sound::gather(
+                    &mut self.game_sounds,
+                    sounds,
+                    sound_tick,
+                    sound_seed,
+                );
                 let seed = host.seed.take();
                 // Rebinding takes effect from the next tick. The tick's
                 // own share of the bindings goes first, so they're changed
@@ -692,6 +718,20 @@ impl Workbench {
             };
             self.log(level, format!("{why} Press Pause or Play to carry on."));
         }
+        if dropped_sounds > 0
+            && let Some(playing) = &mut self.playing
+            && !playing.told_too_many_sounds
+        {
+            playing.told_too_many_sounds = true;
+            self.log(
+                LogLevel::Warning,
+                format!(
+                    "Game code asked for more than {} sounds in one tick; the rest were left out \
+                     (said once).",
+                    crate::game_sound::MAX_PER_TICK
+                ),
+            );
+        }
         if refused {
             self.log(
                 LogLevel::Warning,
@@ -823,11 +863,15 @@ impl Workbench {
             if let Some(game) = &mut playing.game {
                 game.retain_on(removed.iter().map(|&id| (id, Vec::new())));
                 if !added.is_empty() {
+                    let (tick, seed) = (playing.world.clock().ticks, playing.world.seed());
                     let mut host = PlayWorld::new(&mut playing.world, &mut playing.view, time);
                     host.frame_time = f64::from(seconds);
                     failures = sync_entities(game, self.document.area(), added, &mut host);
                     host.outside_a_tick();
                     told = std::mem::take(&mut host.said);
+                    // Sounds the new components' starts asked for.
+                    let sounds = std::mem::take(&mut host.sounds);
+                    crate::game_sound::gather(&mut self.game_sounds, sounds, tick, seed);
                     // What the new components' starts spawn waits for the
                     // next landing.
                     let more = std::mem::take(&mut host.edits);

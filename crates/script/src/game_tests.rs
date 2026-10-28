@@ -17,6 +17,7 @@ struct TestWorld {
     time: f64,
     shots: Vec<crate::Shot>,
     seed: u64,
+    sounds: Vec<Change>,
 }
 
 impl TestWorld {
@@ -79,6 +80,9 @@ impl GameWorld for TestWorld {
             }
             if let Change::Fire(shot) = change {
                 self.shots.push(*shot);
+            }
+            if matches!(change, Change::Sound(..) | Change::StopSounds(_)) {
+                self.sounds.push(change.clone());
             }
         }
     }
@@ -638,4 +642,83 @@ fn game_code_s_checksum_is_the_same_on_any_number_of_shards() {
     for pair in one.windows(2) {
         assert_ne!(pair[0], pair[1]);
     }
+}
+
+#[test]
+fn sounds_asked_for_land_in_order_on_any_number_of_shards() {
+    // Each speaker plays at itself, on itself, and everywhere; the last
+    // also stops the first's sounds. A bad place or name is left out.
+    const SPEAKERS: &str = "get \"solis/sound\":[playSound, playSoundAt, playSoundOn, stopSoundsOn];\n\
+        get \"solis/world\":[find];\n\
+        get \"solis/entity\":[positionOf];\n\
+        component Speaker {\n\
+            method update(float dt) {\n\
+                playSoundAt(\"sfx/step\", positionOf(me));\n\
+                playSoundOn(\"engine\", me);\n\
+                playSound(\"music/theme\");\n\
+                playSound(\"\");\n\
+            }\n\
+        }\n\
+        component Hush {\n\
+            method update(float dt) {\n\
+                stopSoundsOn(find(\"S1\"));\n\
+            }\n\
+        }\n\
+        pass Speaker, Hush;\nend\n";
+    let run = |shards| {
+        let mut world = TestWorld::with(&["S1", "S2", "S3", "Q"]);
+        let mut game = Game::new(shards).unwrap();
+        game.load(&compiled(SPEAKERS), &mut world).unwrap();
+        let none = ComponentData::default();
+        game.sync_many(
+            [
+                (id(1), "Speaker", &none),
+                (id(2), "Speaker", &none),
+                (id(3), "Speaker", &none),
+                (id(4), "Hush", &none),
+            ],
+            &mut world,
+        );
+        for _ in 0..2 {
+            assert!(game.tick(1.0 / 60.0, &mut world).failures.is_empty());
+        }
+        world.sounds
+    };
+    let one = run(1);
+    assert_eq!(one.len(), 20, "3 a speaker and 1 stop, each tick: {one:?}");
+    assert_eq!(
+        one[0],
+        Change::Sound("sfx/step".into(), crate::SoundAt::Place(Vec3::ZERO))
+    );
+    assert_eq!(
+        one[1],
+        Change::Sound("engine".into(), crate::SoundAt::On(id(1)))
+    );
+    assert_eq!(
+        one[2],
+        Change::Sound("music/theme".into(), crate::SoundAt::Nowhere)
+    );
+    assert_eq!(
+        one[3],
+        Change::Sound("sfx/step".into(), crate::SoundAt::Place(Vec3::X))
+    );
+    assert_eq!(one[9], Change::StopSounds(id(1)));
+    assert_eq!(one, run(4), "the same on four shards");
+}
+
+#[test]
+fn a_flood_of_sounds_is_capped() {
+    const LOUD: &str = "get \"solis/sound\":[playSound];\n\
+        component Loud {\n\
+            method update(float dt) {\n\
+                loop 1000 { playSound(\"boom\"); }\n\
+            }\n\
+        }\n\
+        pass Loud;\nend\n";
+    let mut world = TestWorld::with(&["L"]);
+    let mut game = Game::new(1).unwrap();
+    game.load(&compiled(LOUD), &mut world).unwrap();
+    game.sync_many([(id(1), "Loud", &ComponentData::default())], &mut world);
+    assert!(game.tick(1.0 / 60.0, &mut world).failures.is_empty());
+    assert_eq!(world.sounds.len(), crate::game::MAX_SOUNDS);
 }

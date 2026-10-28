@@ -13,7 +13,7 @@
 use asset_db::{FileKind, Jobs, Listing};
 use editor::{EventState, Preview, SoundInfo, SoundState};
 use reflect::{AssetId, Id};
-use sound::{ClipInfo, SoundDevice};
+use sound::{Clip, ClipInfo, SoundDevice};
 use std::collections::{HashMap, VecDeque};
 use std::hash::{DefaultHasher, Hash, Hasher};
 use std::path::{Path, PathBuf};
@@ -22,6 +22,12 @@ use std::path::{Path, PathBuf};
 const AT_ONCE: usize = 2;
 /// Columns kept of each waveform: enough for Properties' width.
 const COLUMNS: usize = 512;
+/// Sound files up to this size are decoded into memory, ready for the
+/// game to play at once; bigger ones are streamed from their file.
+const IN_MEMORY_FILE_BYTES: u64 = 32 << 20;
+/// The most decoded sound kept in memory in all (decision 0056's limits);
+/// past it, sounds are streamed.
+pub const MAX_IN_MEMORY_BYTES: usize = 512 << 20;
 
 /// A file's size and time of last change: it's read again when they
 /// change.
@@ -41,7 +47,7 @@ fn job_id(path: &Path) -> AssetId {
 
 /// What a sound file's measuring gave: what the editor shows, and what
 /// playing needs.
-type Measured = Result<(SoundInfo, ClipInfo), String>;
+type Measured = Result<(SoundInfo, Clip), String>;
 
 /// What reading one file gave.
 enum Read {
@@ -56,8 +62,11 @@ enum Read {
 pub struct Sounds {
     /// Sound files by path inside the assets (`/` between folders).
     states: HashMap<String, SoundState>,
-    /// What playing each sound file needs.
-    clips: HashMap<String, ClipInfo>,
+    /// What playing each sound file needs: its samples in memory, or
+    /// where to stream it from.
+    clips: HashMap<String, Clip>,
+    /// Bytes of samples held in memory in all.
+    in_memory: usize,
     /// Sound events by path inside the assets.
     events: HashMap<String, EventState>,
     /// Each sound file's path, by asset ID (events name takes by ID).
@@ -69,6 +78,8 @@ pub struct Sounds {
     /// thrown away.
     generation: u64,
     jobs: Jobs<(String, u64, Read)>,
+    /// The assets folder, as of the last listing.
+    assets: PathBuf,
     /// What's being listened to, by path inside the assets.
     playing: Option<String>,
     /// How long what's playing is, in seconds.
@@ -86,12 +97,14 @@ impl Default for Sounds {
         Self {
             states: HashMap::new(),
             clips: HashMap::new(),
+            in_memory: 0,
             events: HashMap::new(),
             paths: HashMap::new(),
             queued: VecDeque::new(),
             tried: HashMap::new(),
             generation: 0,
             jobs: Jobs::new(1),
+            assets: PathBuf::new(),
             playing: None,
             length: 0.0,
             detail: None,
@@ -131,6 +144,7 @@ impl Sounds {
     /// Queues every sound file and sound event in `listing` not read yet,
     /// or changed since; forgets those no longer there.
     pub fn want(&mut self, listing: &Listing, assets: &Path) {
+        self.assets = assets.to_path_buf();
         let mut present = Vec::new();
         self.paths.clear();
         for file in &listing.files {
@@ -152,13 +166,21 @@ impl Sounds {
             self.tried.insert(path.clone(), now);
             if file.kind == FileKind::Sound {
                 self.states.insert(path.clone(), SoundState::Measuring);
-                self.clips.remove(&path);
+                self.forget_clip(&path);
             }
             self.queued.retain(|(p, _, _)| *p != path);
             self.queued.push_back((path, full, file.kind));
         }
         self.states.retain(|path, _| present.contains(path));
-        self.clips.retain(|path, _| present.contains(path));
+        let gone: Vec<String> = self
+            .clips
+            .keys()
+            .filter(|p| !present.contains(p))
+            .cloned()
+            .collect();
+        for path in gone {
+            self.forget_clip(&path);
+        }
         self.events.retain(|path, _| present.contains(path));
         self.tried.retain(|path, _| present.contains(path));
     }
@@ -169,6 +191,7 @@ impl Sounds {
         self.stop(device);
         self.states.clear();
         self.clips.clear();
+        self.in_memory = 0;
         self.events.clear();
         self.paths.clear();
         self.tried.clear();
@@ -207,7 +230,7 @@ impl Sounds {
                 Read::Sound(measured) => {
                     let state = match measured {
                         Ok((info, clip)) => {
-                            self.clips.insert(path.clone(), clip);
+                            self.keep_clip(&path, clip);
                             SoundState::Read(info)
                         }
                         Err(why) => SoundState::Failed(why),
@@ -265,7 +288,7 @@ impl Sounds {
     fn clip(&self, key: &str) -> Result<ClipInfo, String> {
         self.clips
             .get(key)
-            .copied()
+            .map(|c| c.info)
             .ok_or_else(|| match self.states.get(key) {
                 Some(SoundState::Failed(why)) => format!("Solis couldn't read it: {why}"),
                 Some(_) => "it's still being read; try again in a moment".to_owned(),
@@ -350,6 +373,61 @@ impl Sounds {
     }
 }
 
+impl Sounds {
+    /// Keeps a sound file's clip, in memory while there's room in
+    /// [`MAX_IN_MEMORY_BYTES`], else to stream from its file.
+    fn keep_clip(&mut self, path: &str, clip: Clip) {
+        self.forget_clip(path);
+        let bytes = memory_bytes(&clip);
+        let clip = if bytes > 0 && self.in_memory + bytes > MAX_IN_MEMORY_BYTES {
+            Clip::streamed(&self.assets.join(path), clip.info)
+        } else {
+            self.in_memory += bytes;
+            clip
+        };
+        self.clips.insert(path.to_owned(), clip);
+    }
+
+    fn forget_clip(&mut self, path: &str) {
+        if let Some(old) = self.clips.remove(path) {
+            self.in_memory = self.in_memory.saturating_sub(memory_bytes(&old));
+        }
+    }
+
+    /// The sound event called `name`: its path inside the assets, without
+    /// `.solsound` (as game code names it, `"sfx/footstep"`), or with it.
+    pub fn event_named(&self, name: &str) -> Option<(&str, &sound::SoundEvent)> {
+        let key = if name.ends_with(".solsound") {
+            name.to_owned()
+        } else {
+            format!("{name}.solsound")
+        };
+        let (key, state) = self.events.get_key_value(&key)?;
+        match state {
+            EventState::Read { event, .. } => Some((key.as_str(), event)),
+            EventState::Failed(_) => None,
+        }
+    }
+
+    /// A sound file's clip, by its asset ID: ready to play.
+    pub fn clip_of(&self, take: AssetId) -> Option<&Clip> {
+        self.clips.get(self.paths.get(&take)?)
+    }
+
+    /// Bytes of decoded sound held in memory now.
+    pub fn in_memory(&self) -> usize {
+        self.in_memory
+    }
+}
+
+/// Bytes a clip's samples take in memory (none when streamed).
+fn memory_bytes(clip: &Clip) -> usize {
+    match &clip.samples {
+        sound::Samples::Memory(frames) => std::mem::size_of_val(&**frames),
+        sound::Samples::Streamed(_) => 0,
+    }
+}
+
 /// Reads one sound event file (on a worker).
 fn read_event(path: &Path) -> EventState {
     let bytes = match asset_db::read_limited(path, sound::event::MAX_BYTES as u64) {
@@ -374,9 +452,26 @@ fn read_event(path: &Path) -> EventState {
     }
 }
 
-/// Measures one sound file (on a worker).
+/// Measures one sound file (on a worker): a small one is decoded into
+/// memory at the same time, ready for the game; a big one only measured,
+/// to stream.
 fn measure(path: &Path) -> Measured {
-    let (info, overview) = sound::measure_file(path).map_err(|e| e.to_string())?;
+    let small = std::fs::metadata(path).is_ok_and(|m| m.len() <= IN_MEMORY_FILE_BYTES);
+    let (info, overview, clip) = if small {
+        let clip = sound::read_file(path).map_err(|e| e.to_string())?;
+        let overview = clip.overview.clone();
+        (
+            clip.info,
+            overview,
+            Clip {
+                overview: sound::Overview::new(),
+                ..clip
+            },
+        )
+    } else {
+        let (info, overview) = sound::measure_file(path).map_err(|e| e.to_string())?;
+        (info, overview, Clip::streamed(path, info))
+    };
     Ok((
         SoundInfo {
             seconds: info.seconds(),
@@ -386,7 +481,7 @@ fn measure(path: &Path) -> Measured {
             streamed: info.seconds() > sound::read::MAX_IN_MEMORY_SECONDS as f64,
             waveform: overview.columns(COLUMNS),
         },
-        info,
+        clip,
     ))
 }
 
