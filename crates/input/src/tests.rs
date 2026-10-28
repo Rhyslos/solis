@@ -657,15 +657,27 @@ fn a_recording_names_its_area_and_older_ones_don_t() {
     let r = sample_recording();
     let text = r.write();
     assert!(text.contains("\narea areas/harbour.solarea\n"), "{text}");
-    assert_eq!(Recording::read(&text).unwrap().area.as_deref(), Some("areas/harbour.solarea"));
+    assert_eq!(
+        Recording::read(&text).unwrap().area.as_deref(),
+        Some("areas/harbour.solarea")
+    );
     // Not known: an empty line, read back as none.
-    let none = Recording { area: None, ..r.clone() };
+    let none = Recording {
+        area: None,
+        ..r.clone()
+    };
     assert_eq!(Recording::read(&none.write()).unwrap().area, None);
     let bare = none.write().replacen("\narea \n", "\narea\n", 1);
     assert_eq!(Recording::read(&bare).unwrap().area, None);
     // A line break in a path can't break the file.
-    let odd = Recording { area: Some("a\nb".into()), ..r.clone() };
-    assert_eq!(Recording::read(&odd.write()).unwrap().area.as_deref(), Some("a b"));
+    let odd = Recording {
+        area: Some("a\nb".into()),
+        ..r.clone()
+    };
+    assert_eq!(
+        Recording::read(&odd.write()).unwrap().area.as_deref(),
+        Some("a b")
+    );
     // Version 1 had no area line: it reads, with none.
     let one = text
         .replacen("solis recording 2", "solis recording 1", 1)
@@ -674,7 +686,10 @@ fn a_recording_names_its_area_and_older_ones_don_t() {
     assert_eq!((read.area, read.ticks.len()), (None, r.ticks.len()));
     // Too long, or a control character: damaged.
     let long = text.replacen("areas/harbour.solarea", &"x".repeat(2000), 1);
-    assert!(matches!(Recording::read(&long), Err(RecordingError::Damaged(3))));
+    assert!(matches!(
+        Recording::read(&long),
+        Err(RecordingError::Damaged(3))
+    ));
     let missing = text.replacen("area areas/harbour.solarea\n", "", 1);
     assert!(Recording::read(&missing).is_err());
 }

@@ -12,7 +12,7 @@
 //! The report is plain text; anything that changed is a failure, and the
 //! program exits with a failure code, so a workflow can stop the update.
 
-use crate::play_files::{RECORDINGS, RECORDING_EXTENSION};
+use crate::play_files::{RECORDING_EXTENSION, RECORDINGS};
 use reflect::upgrade::Versioned;
 use std::path::{Path, PathBuf};
 
@@ -110,16 +110,24 @@ fn reader_for(path: &Path) -> Option<(&'static dyn Versioned, Reader)> {
                 .map_err(|e| e.to_string())
         }),
         "solsound" => (&sound::event::FORMAT, |text| {
-            sound::event::read(text).map(drop).map_err(|e| e.to_string())
+            sound::event::read(text)
+                .map(drop)
+                .map_err(|e| e.to_string())
         }),
         "solmix" => (&sound::mixer::FORMAT, |text| {
-            sound::mixer::read(text).map(drop).map_err(|e| e.to_string())
+            sound::mixer::read(text)
+                .map(drop)
+                .map_err(|e| e.to_string())
         }),
         "solinput" => (&input::BINDINGS_FORMAT, |text| {
-            input::Bindings::read(text).map(drop).map_err(|e| e.to_string())
+            input::Bindings::read(text)
+                .map(drop)
+                .map_err(|e| e.to_string())
         }),
         "solrec" => (&input::RECORDING_FORMAT, |text| {
-            input::Recording::read(text).map(drop).map_err(|e| e.to_string())
+            input::Recording::read(text)
+                .map(drop)
+                .map_err(|e| e.to_string())
         }),
         "solmeta" => (&asset_db::SIDECAR_FORMAT, |text| {
             asset_db::Sidecar::parse(text).map(drop)

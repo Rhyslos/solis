@@ -39,7 +39,10 @@ fn an_unchanged_project_checks_out() {
     assert_eq!(report.failed, 0, "{text}");
     assert!(text.contains("files read"), "{text}");
     assert!(text.contains("the game's code checks"), "{text}");
-    assert!(text.contains("plays back the same on all 90 ticks"), "{text}");
+    assert!(
+        text.contains("plays back the same on all 90 ticks"),
+        "{text}"
+    );
     assert!(text.ends_with("nothing changed.\n"), "{text}");
     let _ = std::fs::remove_dir_all(root.parent().unwrap());
 }
@@ -59,7 +62,11 @@ fn a_changed_area_or_a_damaged_file_fails() {
     };
     std::fs::write(&area, moved).unwrap();
     // A damaged sound event, and a recording that names no area.
-    std::fs::write(root.join("assets/broken.solsound"), "sound version 1;\nvolume = \"loud\";").unwrap();
+    std::fs::write(
+        root.join("assets/broken.solsound"),
+        "sound version 1;\nvolume = \"loud\";",
+    )
+    .unwrap();
     std::fs::write(
         root.join(RECORDINGS).join(CHECKS).join("old.solrec"),
         "solis recording 1\nseed 1\nstart 0\n",

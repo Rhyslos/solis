@@ -194,7 +194,9 @@ impl Recording {
             let (n, line) = lines.next().ok_or(RecordingError::Damaged(3))?;
             let path = match line.strip_prefix("area") {
                 Some("") => "",
-                Some(rest) => rest.strip_prefix(' ').ok_or(RecordingError::Damaged(n + 1))?,
+                Some(rest) => rest
+                    .strip_prefix(' ')
+                    .ok_or(RecordingError::Damaged(n + 1))?,
                 None => return Err(RecordingError::Damaged(n + 1)),
             };
             if path.len() > MAX_AREA_PATH || path.contains(char::is_control) {

@@ -93,7 +93,11 @@ mod tests {
             parse(args(&["--check-project", "games/farm"])),
             Ok(Command::CheckProject(PathBuf::from("games/farm")))
         );
-        assert!(parse(args(&["--check-project"])).unwrap_err().contains("folder"));
+        assert!(
+            parse(args(&["--check-project"]))
+                .unwrap_err()
+                .contains("folder")
+        );
         assert!(usage("solis").contains("--check-project <folder>"));
     }
 
