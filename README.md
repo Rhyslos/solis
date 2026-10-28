@@ -166,9 +166,9 @@ Solis is built in phases, one milestone per pull request. Each phase ends with a
 
 **Gate:** read the hardening report (coverage, mutations caught, hours fuzzed and what was found), and try the playground once more.
 
-### Phase 7 · Sound and animation — 1 of 13
+### Phase 7 · Sound and animation — 1 of 14
 
-`█░░░░░░░░░░░░` 8%
+`█░░░░░░░░░░░░░` 7%
 
 <details>
 <summary>Milestones</summary>
@@ -183,6 +183,7 @@ Solis is built in phases, one milestone per pull request. Each phase ends with a
 - [ ] S4. Buses, ducking and the Mixer panel
 - [ ] S5. Loops, voice limits and the scale target
 - [ ] S6. Reverb zones
+- [ ] S8. Listeners and who hears what ([decision 0058](docs/decisions/0058-listeners-and-who-hears-what.md))
 - [ ] A5. The animator graph editor (the shared graph editor)
 - [ ] A6. Cues, footsteps and the playground
 - [ ] S7. Sounds from animation events, and the gate's level
