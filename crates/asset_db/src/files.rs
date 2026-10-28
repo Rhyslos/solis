@@ -26,6 +26,8 @@ pub enum FileKind {
     Sound,
     /// A sound event (`.solsound`).
     SoundEvent,
+    /// An Aseprite file (`.aseprite`, `.ase`): a sprite sheet.
+    SpriteSheet,
     /// Anything else.
     Other,
 }
@@ -38,6 +40,9 @@ impl FileKind {
     pub fn of(path: &Path) -> Self {
         if assets::is_model_file(path) {
             return Self::Model;
+        }
+        if assets::aseprite::is_aseprite_file(path) {
+            return Self::SpriteSheet;
         }
         let ext = path
             .extension()
@@ -502,6 +507,15 @@ mod tests {
     #[test]
     fn kinds_come_from_extensions() {
         assert_eq!(FileKind::of(Path::new("a.GLB")), FileKind::Model);
+        assert_eq!(
+            FileKind::of(Path::new("sprites/farmer.aseprite")),
+            FileKind::SpriteSheet
+        );
+        assert_eq!(FileKind::of(Path::new("Crops.ASE")), FileKind::SpriteSheet);
+        assert_eq!(
+            crate::AssetKind::of(Path::new("farmer.aseprite")),
+            Some(crate::AssetKind::SpriteSheet)
+        );
         assert_eq!(FileKind::of(Path::new("a.solassembly")), FileKind::Assembly);
         assert_eq!(FileKind::of(Path::new("a.JPEG")), FileKind::Texture);
         assert_eq!(FileKind::of(Path::new("a.lua")), FileKind::Code);

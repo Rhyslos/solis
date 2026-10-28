@@ -3,7 +3,7 @@
 
 use crate::models::ModelInfo;
 use area::Area;
-use area::builtin::{Camera, Environment, Light, LightKind, Model};
+use area::builtin::{Camera, Environment, Light, LightKind, Model, Sprite};
 use glam::Vec3;
 use reflect::AssetId;
 use std::collections::{BTreeMap, HashMap, HashSet};
@@ -71,6 +71,8 @@ pub struct AreaView {
     /// game looks through (the first camera of all): the 2D view frames
     /// what each shows.
     pub screens: Vec<(Vec3, bool)>,
+    /// The sprites (Phase 9, D2), with their pick numbers.
+    pub sprites: Vec<crate::sprite_sheets::AreaSprite>,
 }
 
 impl AreaView {
@@ -137,6 +139,23 @@ impl AreaView {
         {
             view.add_light(*id, light, at(*id));
         }
+        for (id, sprite) in area.with::<Sprite>() {
+            if hidden.contains(&id) || sprite.sheet.is_none() {
+                continue;
+            }
+            let pick = if locked.contains(&id) {
+                0
+            } else {
+                view.pickable.push(id);
+                view.pickable.len() as u32
+            };
+            view.sprites.push(crate::sprite_sheets::AreaSprite {
+                entity: id,
+                sprite,
+                transform: at(id),
+                pick,
+            });
+        }
         let first = tree.first_of(area.with::<Camera>().map(|(id, _)| id));
         for (id, camera) in area.with::<Camera>() {
             if !hidden.contains(&id) {
@@ -186,6 +205,17 @@ impl AreaView {
         for (id, light, global) in world.placed_between::<Light>(t) {
             view.add_light(id, &light, global);
         }
+        view.sprites = world
+            .placed_between::<Sprite>(t)
+            .into_iter()
+            .filter(|(_, s, _)| s.sheet.is_some())
+            .map(|(entity, sprite, transform)| crate::sprite_sheets::AreaSprite {
+                entity,
+                sprite,
+                transform,
+                pick: 0,
+            })
+            .collect();
         view
     }
 

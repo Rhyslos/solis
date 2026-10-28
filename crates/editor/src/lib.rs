@@ -43,6 +43,7 @@ mod settings_window;
 mod sound_event_view;
 pub mod sound_view;
 pub mod splash;
+pub mod sprite_sheets;
 #[cfg(test)]
 mod test_support;
 pub mod theme;

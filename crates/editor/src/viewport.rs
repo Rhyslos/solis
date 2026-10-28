@@ -146,6 +146,8 @@ pub struct ViewportView {
     /// The finest grid lines' spacing, in metres: 1 m, or the tile size in
     /// the 2D view.
     pub grid_step: f32,
+    /// The sprites, a run per sheet (Phase 9, D2).
+    pub sprites: std::sync::Arc<Vec<crate::sprite_sheets::SpriteBatch>>,
     /// For a 2D camera (Phase 9, D1): the picture is drawn this small,
     /// with `view_projection` for it, then scaled up to `size_px` by the
     /// pixel stage.
@@ -345,6 +347,8 @@ pub struct Viewport {
     /// The project's 2D settings, for the 2D view (the workbench hands
     /// them over each frame).
     pub(crate) pixels: area::pixels::PixelSettings,
+    /// The project's sprite sheets, to draw sprites with.
+    pub(crate) sheets: std::sync::Arc<crate::sprite_sheets::SpriteSheets>,
 }
 
 /// How the viewport is split into views. Saved per computer.
@@ -478,6 +482,7 @@ impl Default for Viewport {
             active: 0,
             full: Rect::NOTHING,
             pixels: area::pixels::PixelSettings::default(),
+            sheets: std::sync::Arc::default(),
             panes: FIRST_KINDS
                 .iter()
                 .map(|&kind| Pane {
@@ -648,6 +653,13 @@ impl Viewport {
             } else {
                 1.0
             },
+            // Sprites land on whole pixels in the 2D view, as in the game.
+            sprites: std::sync::Arc::new(crate::sprite_sheets::batches(
+                &self.area.sprites,
+                &self.sheets,
+                self.pixels.pixel_size(),
+                (self.camera.kind == ViewKind::TwoD).then(|| self.pixels.pixel_size()),
+            )),
             pixel: None,
         }
     }

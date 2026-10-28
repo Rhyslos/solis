@@ -17,6 +17,7 @@ mod pixel;
 mod projectiles;
 mod readback;
 mod renderer;
+mod sprites;
 mod timing;
 
 pub use environment::{Environment, Fog, Sky, Tonemap};
@@ -38,8 +39,9 @@ pub use projectiles::Bolt;
 pub use readback::{read_pixels, read_texture};
 pub use renderer::{
     AXIS_X_COLOR, AXIS_Y_COLOR, COLOR_FORMAT, DEPTH_FORMAT, HDR_FORMAT, LineVertex, SHADER_SOURCE,
-    ViewportRenderer, ViewportTarget, best_sample_count, ground_axes,
+    Scene, ViewportRenderer, ViewportTarget, best_sample_count, ground_axes,
 };
+pub use sprites::{GpuSheet, SpriteInstance, SpriteRun};
 pub use timing::{FrameStats, GpuTimes};
 
 #[cfg(test)]
@@ -87,7 +89,9 @@ mod shader_tests {
                 "post_vs",
                 "shadow_vs",
                 "sky_fs",
-                "sky_vs"
+                "sky_vs",
+                "sprite_fs",
+                "sprite_vs"
             ]
         );
     }

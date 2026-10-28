@@ -151,6 +151,7 @@ pub(crate) fn game_panel(
     has_input: bool,
     editor_camera: &Camera,
     pixels: area::pixels::PixelSettings,
+    sheets: &crate::sprite_sheets::SpriteSheets,
     renderer: &mut dyn ViewportRenderer,
 ) -> bool {
     let Some(scene) = scene else {
@@ -216,6 +217,13 @@ pub(crate) fn game_panel(
         kind: crate::camera::ViewKind::Perspective,
         bolts: std::sync::Arc::clone(&scene.bolts),
         grid_step: 1.0,
+        // Through a 2D camera, sprites land on whole pixels.
+        sprites: std::sync::Arc::new(crate::sprite_sheets::batches(
+            &scene.view.sprites,
+            sheets,
+            pixels.pixel_size(),
+            pixel.map(|_| pixels.pixel_size()),
+        )),
         pixel,
     };
     let painter = ui.painter_at(rect);

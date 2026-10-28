@@ -235,6 +235,7 @@ impl TabViewer for PanelViewer<'_> {
                     self.game_input,
                     &self.viewport.camera,
                     self.pixels,
+                    &self.viewport.sheets,
                     self.renderer,
                 );
                 if self.playing {

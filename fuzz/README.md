@@ -8,6 +8,7 @@ Fuzz targets for every reader of a file a project can ship ([decision 0042](../d
 | `recording` | A recording of play; read back after writing |
 | `input_actions` | `input.solinput`; read back the same after writing |
 | `area_file` | An area or assembly file, its assemblies expanded (it may place itself) |
+| `aseprite` | An Aseprite file, read within the limits and packed into a sprite sheet whose frames draw back the same |
 | `model` | A glb model, imported within limits; every number finite |
 | `import_cache` | An import cache entry (`.solis/cache/*.solbin`) |
 | `sidecar` | A `.solmeta` sidecar |

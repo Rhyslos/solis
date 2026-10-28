@@ -52,6 +52,7 @@ Solis is built on other people's libraries, which saves years of work. Each libr
 | `gltf` | Reads glTF models | MIT OR Apache-2.0 | assets | walled | Fork it, or read glTF ourselves (the format is a public specification: JSON plus binary) |
 | `hecs` | The game's fast storage for entities | MIT OR Apache-2.0 | world | walled | Solis's own storage: `tools/storage-bench` already has one, measured against `hecs` for decision 0024 |
 | `hound` | Reads WAV sound files | Apache-2.0 | sound | walled | Read WAV ourselves (a simple, public format: a header and the samples) |
+| `flate2` | Unpacks the zlib-packed pictures inside Aseprite files | MIT OR Apache-2.0 | assets | walled | Use `miniz_oxide` directly, or write an inflater |
 | `image` | Reads PNG and JPEG textures | MIT OR Apache-2.0 | assets, app (tests) | walled | Use smaller PNG and JPEG readers, or fork |
 | `kira` | Plays and mixes sound: tracks, effects, sound placed in 3D (decision 0056) | MIT OR Apache-2.0 | sound | walled | Fork it (MIT or Apache-2.0), or mix ourselves on top of `cpal` underneath; only the sound crate changes |
 | `lewton` | Reads Ogg Vorbis sound files | MIT OR Apache-2.0 | sound | walled | Fork it (no release since 2021, so Solis's own fuzz tests vet it), or another permissive Vorbis reader |

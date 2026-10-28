@@ -6,12 +6,14 @@
 //! allocated, and damaged files give a plain-language [`ImportError`],
 //! never a crash. See this crate's README for its purpose and limits.
 
+pub mod aseprite;
 mod geometry;
 pub mod lights;
 pub mod lods;
 pub mod model;
 mod reader;
 pub mod sample;
+pub mod sprite_sheet;
 pub mod texture;
 
 pub use geometry::Y_UP_TO_Z_UP;

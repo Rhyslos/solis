@@ -135,3 +135,10 @@ path = "fuzz_targets/pixels.rs"
 test = false
 doc = false
 bench = false
+
+[[bin]]
+name = "aseprite"
+path = "fuzz_targets/aseprite.rs"
+test = false
+doc = false
+bench = false

@@ -52,6 +52,9 @@ impl Workbench {
             }
         };
         match request {
+            LibraryRequest::Place(id) if self.viewport.sheets.get(id).is_some() => {
+                self.place_sprite(id, None);
+            }
             LibraryRequest::Place(id) => {
                 // A double-click places it where the camera looks, even if
                 // an earlier drop of the same asset never arrived.
@@ -241,8 +244,67 @@ impl Workbench {
     /// was dropped onto an entity): it goes there once the app has loaded
     /// it.
     pub(crate) fn place_dropped(&mut self, asset: AssetId, at: Vec3, parent: Option<EntityId>) {
+        if self.viewport.sheets.get(asset).is_some() {
+            self.place_sprite(asset, Some((at, parent)));
+            return;
+        }
         self.place_targets.insert(asset, (at, parent));
         self.outbox.push(WorkbenchAction::PlaceAsset(asset));
+    }
+
+    /// Places a sprite of sheet `sheet` (Phase 9, D2): at `target` (a point
+    /// in the world, under an entity if it was dropped on one), or where
+    /// the camera looks; on a whole pixel, standing on the sheet's
+    /// "pivot" or "feet" slice if it has one, as drawn (not flipped).
+    /// Selected, as one undo step.
+    pub(crate) fn place_sprite(
+        &mut self,
+        sheet: AssetId,
+        target: Option<(Vec3, Option<EntityId>)>,
+    ) -> Option<EntityId> {
+        let info = self.viewport.sheets.get(sheet)?.clone();
+        let name = self
+            .viewport
+            .sheets
+            .paths
+            .get(&sheet)
+            .map_or_else(|| "Sprite".to_owned(), |p| crate::sprite_sheets::name_of(p));
+        let (at, parent) = match target {
+            Some((at, parent)) => {
+                let area = self.document.area();
+                let parent = parent.filter(|&p| area.contains(p));
+                let local = match parent {
+                    Some(p) => area.world_matrix(p).inverse().transform_point3(at),
+                    None => at,
+                };
+                (local, parent)
+            }
+            None => (self.viewport.camera.focus(), None),
+        };
+        if !at.is_finite() {
+            return None;
+        }
+        let px = self.pixels.pixel_size();
+        let on_pixel = |v: f32| (v / px).round() * px;
+        let pivot = ["pivot", "feet"]
+            .into_iter()
+            .find(|n| info.slice(n).is_some())
+            .unwrap_or_default();
+        let mut data = area::EntityData::new(&name)
+            .with(&area::builtin::Transform {
+                position: Vec3::new(on_pixel(at.x), on_pixel(at.y), at.z),
+                ..area::builtin::Transform::default()
+            })
+            .with(&area::builtin::Sprite {
+                sheet: Some(reflect::AssetRef {
+                    asset: sheet,
+                    part: None,
+                }),
+                pivot: pivot.to_owned(),
+                ..area::builtin::Sprite::default()
+            });
+        data.parent = parent;
+        Some(self.spawn_selected(data))
     }
 
     /// Forgets where `asset` was to go: its import failed, so a later
