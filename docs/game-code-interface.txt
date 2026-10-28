@@ -1,0 +1,172 @@
+# What game code can call
+#
+# Written by a test (crates/script/src/interface.rs). If it fails, the interface
+# changed: if that's meant, run the test with SOLIS_UPDATE_INTERFACE=1 and commit
+# this file, and keep any renamed name working (describe::RENAMED).
+
+## Lust (solis/<file>.lst)
+
+world: method say(string words) native;
+world: method float time() native;
+world: method entity find(string name) native;
+world: method fire(vec3 from, vec3 direction, float speed, float life, vec3 colour) native;
+world: method entity spawn(string file, vec3 place) native;
+world: method despawn(entity which) native;
+world: method float frameTime() native;
+world: method float random() native;
+world: method float randomRange(float low, float high) native;
+world: method int randomInt(int low, int high) native;
+world: method setSeed(int seed) native;
+world: method saveGame(string slot) native;
+world: method loadGame(string slot) native;
+sound: method playSound(string event) native;
+sound: method playSoundAt(string event, vec3 place) native;
+sound: method playSoundOn(string event, entity on) native;
+sound: method stopSoundsOn(entity on) native;
+sound: method setSoundPlaying(entity on, bool playing) native;
+sound: method setBusVolume(string bus, float volume) native;
+input: method bool held(string action) native;
+input: method bool pressed(string action) native;
+input: method bool released(string action) native;
+input: method vec3 axis(string action) native;
+input: method string bindingOf(string action) native;
+input: method rebind(string action, string input) native;
+physics: method push(entity which, vec3 impulse) native;
+physics: method vec3 velocityOf(entity which) native;
+physics: method setVelocity(entity which, vec3 velocity) native;
+physics: method float castRay(vec3 from, vec3 direction, float reach) native;
+physics: method entity castRayHit(vec3 from, vec3 direction, float reach) native;
+physics: method vec3 castRayNormal(vec3 from, vec3 direction, float reach) native;
+physics: method moveCharacter(entity which, vec3 wanted) native;
+physics: method bool onGround(entity which) native;
+entity: method vec3 positionOf(entity which) native;
+entity: method moveTo(entity which, vec3 place) native;
+entity: method rotation rotationOf(entity which) native;
+entity: method turnTo(entity which, rotation facing) native;
+entity: method rotation facingAlong(vec3 direction) native;
+entity: method string nameOf(entity which) native;
+
+## Lua (solis.<name>)
+
+solis.axis
+solis.bindingOf
+solis.castRay
+solis.castRayHit
+solis.castRayNormal
+solis.despawn
+solis.facingAlong
+solis.find
+solis.fire
+solis.frameTime
+solis.held
+solis.loadGame
+solis.moveCharacter
+solis.moveTo
+solis.nameOf
+solis.onGround
+solis.playSound
+solis.playSoundAt
+solis.playSoundOn
+solis.positionOf
+solis.pressed
+solis.push
+solis.random
+solis.randomInt
+solis.randomRange
+solis.rebind
+solis.released
+solis.rotationOf
+solis.saveGame
+solis.say
+solis.send
+solis.setBusVolume
+solis.setSeed
+solis.setSoundPlaying
+solis.setVelocity
+solis.spawn
+solis.stopSoundsOn
+solis.time
+solis.turnTo
+solis.velocityOf
+
+## Rust (crates/script: Host, Context, RustComponent)
+
+Host: fn say(&mut self, words: &str)
+Host: fn time(&self) -> f64
+Host: fn find(&self, name: &str) -> Option<EntityId>
+Host: fn position(&self, which: EntityId) -> Option<Vec3>
+Host: fn move_to(&mut self, which: EntityId, place: Vec3)
+Host: fn rotation(&self, which: EntityId) -> Option<Quat>
+Host: fn turn_to(&mut self, which: EntityId, facing: Quat)
+Host: fn name(&self, which: EntityId) -> Option<String>
+Host: fn fire(&mut self, shot: Shot)
+Host: fn spawn(&mut self, assembly: &str, place: Vec3) -> Option<EntityId>
+Host: fn despawn(&mut self, which: EntityId)
+Host: fn frame_time(&self) -> f64
+Host: fn random(&mut self) -> f64
+Host: fn set_seed(&mut self, seed: u64)
+Host: fn push(&mut self, which: EntityId, impulse: Vec3)
+Host: fn velocity(&self, which: EntityId) -> Option<Vec3>
+Host: fn set_velocity(&mut self, which: EntityId, velocity: Vec3)
+Host: fn move_character(&mut self, which: EntityId, wanted: Vec3)
+Host: fn on_ground(&self, which: EntityId) -> bool
+Host: fn save_game(&mut self, slot: &str, load: bool)
+Host: fn action(&self, name: &str) -> input::ActionState
+Host: fn binding(&self, action: &str) -> Option<String>
+Host: fn rebind(&mut self, action: &str, input: &str)
+Host: fn play_sound(&mut self, event: &str, at: SoundAt)
+Host: fn stop_sounds_on(&mut self, which: EntityId)
+Host: fn set_sound_playing(&mut self, which: EntityId, playing: bool)
+Host: fn set_bus_volume(&mut self, bus: &str, share: f32)
+Host: fn cast_ray(&self, from: Vec3, direction: Vec3, reach: f32) -> Option<physics::Hit>
+Host: fn at(&mut self, order: &crate::ticking::Order)
+RustComponent: fn update(&mut self, _cx: &mut Context<'_>, _dt: f64)
+RustComponent: fn handle(&mut self, _cx: &mut Context<'_>, _event: &Event) -> bool
+RustComponent: fn values(&self) -> ComponentData
+RustComponent: fn set(&mut self, data: &ComponentData)
+Context: pub fn me(&self) -> EntityId
+Context: pub fn host(&mut self) -> &mut dyn Host
+Context: pub fn send(&mut self, to: Option<EntityId>, name: &str, values: Vec<Value>) -> bool
+
+## Old names still working (renamed)
+
+
+## Ready-made components (solis/kit), with their fields
+
+kit/character.lst: component CharacterController
+kit/character.lst: CharacterController.entity camera = nothing
+kit/character.lst: CharacterController.float walkSpeed = 4
+kit/character.lst: CharacterController.float sprintSpeed = 7
+kit/character.lst: CharacterController.float jumpHeight = 1.2
+kit/character.lst: CharacterController.float gravity = 20
+kit/character.lst: CharacterController.bool facesWhereItWalks = true
+kit/character.lst: CharacterController.float turnSpeed = 720
+kit/character.lst: CharacterController.float fall = 0
+kit/cameras.lst: component ThirdPersonCamera
+kit/cameras.lst: ThirdPersonCamera.entity target = nothing
+kit/cameras.lst: ThirdPersonCamera.float distance = 4
+kit/cameras.lst: ThirdPersonCamera.float height = 1.6
+kit/cameras.lst: ThirdPersonCamera.bool wheelZooms = false
+kit/cameras.lst: ThirdPersonCamera.float closest = 1.5
+kit/cameras.lst: ThirdPersonCamera.float farthest = 10
+kit/cameras.lst: ThirdPersonCamera.float lowest = -60
+kit/cameras.lst: ThirdPersonCamera.float highest = 70
+kit/cameras.lst: ThirdPersonCamera.float yaw = 0
+kit/cameras.lst: ThirdPersonCamera.float pitch = -15
+kit/cameras.lst: component FirstPersonCamera
+kit/cameras.lst: FirstPersonCamera.entity body = nothing
+kit/cameras.lst: FirstPersonCamera.float eyes = 1.65
+kit/cameras.lst: FirstPersonCamera.bool turnsBody = true
+kit/cameras.lst: FirstPersonCamera.float lowest = -85
+kit/cameras.lst: FirstPersonCamera.float highest = 85
+kit/cameras.lst: FirstPersonCamera.float yaw = 0
+kit/cameras.lst: FirstPersonCamera.float pitch = 0
+kit/cameras.lst: component RtsCamera
+kit/cameras.lst: RtsCamera.vec3 focus = [0, 0, 0]
+kit/cameras.lst: RtsCamera.float height = 30
+kit/cameras.lst: RtsCamera.float lowest = 8
+kit/cameras.lst: RtsCamera.float highest = 120
+kit/cameras.lst: RtsCamera.float tilt = 55
+kit/cameras.lst: RtsCamera.float panSpeed = 20
+kit/cameras.lst: RtsCamera.float turnSpeed = 90
+kit/cameras.lst: RtsCamera.float yaw = 0

@@ -366,6 +366,8 @@ Things that fall, collide and get pushed have a **RigidBody** and a **Collider**
 | `solis/entity` | `rotation facingAlong(vec3 direction)` | The upright rotation facing along a direction (an entity's forward is +Y): `turnTo(me, facingAlong(target - positionOf(me)))` faces a place. |
 | `solis/entity` | `string nameOf(entity which)` | An entity's name. |
 
+**When an update renames something.** What game code can call doesn't change by accident: Solis's own checks stop any update that changes it without saying so. When a name does change on purpose, the old name keeps working for a few phases, so your game still runs the day you update. Each place your code uses the old name shows in the [Problems](problems.md) panel as a warning, with its file and line, the new name, and when the old one stops working. Change the call to the new name before then.
+
 ## Safe to open
 
 Game code runs inside a **sandbox**: it can reach the game through the engine's methods, and nothing else. It can't read or write files, start programs or reach the network, it has 64 MB of memory, and code that runs too long is stopped. Lua's `require` isn't there either (it would read files from anywhere on the computer). So a project you download or are sent can't harm your computer through its code, and Solis never runs the other files in it (see [Projects and the Library](projects-and-the-library.md)).

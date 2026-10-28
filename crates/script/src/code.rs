@@ -966,3 +966,113 @@ mod tests {
             .unwrap();
     }
 }
+
+/// Each use of a renamed native's old name in the game's code
+/// ([`crate::describe::RENAMED`]): still working, but a warning for the
+/// Problems panel, with the new name and when the old one stops (Phase 8,
+/// C3). Words in comments are left alone.
+pub fn renamed_uses(code: &Code) -> Vec<CodeProblem> {
+    uses_of(crate::describe::RENAMED, code)
+}
+
+/// [`renamed_uses`], for a given list of renamed natives.
+fn uses_of(renamed: &[crate::describe::Renamed], code: &Code) -> Vec<CodeProblem> {
+    let mut found = Vec::new();
+    for (lua, (file, text)) in code
+        .files
+        .iter()
+        .map(|f| (false, f))
+        .chain(code.lua.iter().map(|f| (true, f)))
+    {
+        for (n, line) in text.lines().enumerate() {
+            // Not in a comment (`--` in Lust and Lua alike).
+            let code_part = line.split("--").next().unwrap_or_default();
+            for r in renamed {
+                let (old, new) = if lua {
+                    (format!("solis.{}", r.old), format!("solis.{}", r.new))
+                } else {
+                    (r.old.to_owned(), r.new.to_owned())
+                };
+                let mut from = 0;
+                while let Some(at) = code_part[from..].find(&old) {
+                    let start = from + at;
+                    let end = start + old.len();
+                    from = end;
+                    let word = |c: char| c.is_alphanumeric() || c == '_';
+                    let before = code_part[..start].chars().next_back();
+                    let after = code_part[end..].chars().next();
+                    if before.is_some_and(|c| word(c) || (!lua && c == '.'))
+                        || after.is_some_and(word)
+                    {
+                        continue;
+                    }
+                    found.push(CodeProblem {
+                        file: file.clone(),
+                        line: u32::try_from(n + 1).unwrap_or(u32::MAX),
+                        column: u32::try_from(code_part[..start].chars().count() + 1)
+                            .unwrap_or(u32::MAX),
+                        message: format!(
+                            "{old} is now {new}; the old name stops working in {} (it still \
+                             works until then)",
+                            r.until
+                        ),
+                    });
+                }
+            }
+        }
+    }
+    found
+}
+
+#[cfg(test)]
+mod renamed_tests {
+    use super::*;
+    use crate::describe::Renamed;
+
+    const SPAWN_AT: Renamed = Renamed {
+        file: "world",
+        old: "spawnAt",
+        new: "spawn",
+        until: "Phase 12",
+    };
+
+    #[test]
+    fn each_use_of_an_old_name_is_found_where_it_is() {
+        let code = Code {
+            files: vec![(
+                "main.lst".into(),
+                "get \"solis/world\":[spawnAt, say];\n\
+                 -- spawnAt used to be the name\n\
+                 component A {\n    method update(float dt) {\n        entity e = spawnAt(\"ships/fighter\", [0, 0, 0]); -- spawnAt\n        say(\"respawnAt\");\n        notspawnAt(1);\n    }\n}\n"
+                    .into(),
+            )],
+            lua: vec![(
+                "ships.lua".into(),
+                "local e = solis.spawnAt(\"ships/fighter\", {0, 0, 0})\nlocal f = mysolis.spawnAt\n"
+                    .into(),
+            )],
+            notes: Vec::new(),
+        };
+        let found = uses_of(&[SPAWN_AT], &code);
+        let at: Vec<(&str, u32, u32)> = found
+            .iter()
+            .map(|p| (p.file.as_str(), p.line, p.column))
+            .collect();
+        assert_eq!(
+            at,
+            [
+                ("main.lst", 1, 20),
+                ("main.lst", 5, 20),
+                ("ships.lua", 1, 11)
+            ]
+        );
+        assert!(found[0].message.contains("spawnAt is now spawn"));
+        assert!(found[0].message.contains("Phase 12"));
+        assert!(
+            found[2]
+                .message
+                .contains("solis.spawnAt is now solis.spawn")
+        );
+        assert!(renamed_uses(&code).is_empty(), "nothing is renamed yet");
+    }
+}

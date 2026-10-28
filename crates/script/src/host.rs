@@ -242,6 +242,15 @@ pub(crate) fn call_with<R>(
     with_natives(luau, lust, host, send, |_| luau.clock.limited(run))
 }
 
+/// Lends each renamed native under its old name too: the same function.
+fn lend_old_names(natives: &Table, renamed: &[crate::describe::Renamed]) -> mlua::Result<()> {
+    for r in renamed {
+        let same: LuaValue = natives.raw_get(r.new)?;
+        natives.raw_set(r.old, same)?;
+    }
+    Ok(())
+}
+
 /// The host while game code runs: shared by Lust's natives and, between
 /// Lua calls, Rust components.
 pub(crate) type Lent<'a, 'h> = RefCell<&'a mut (dyn Host + 'h)>;
@@ -594,6 +603,9 @@ pub(crate) fn with_natives<'h, R>(
                 Ok(())
             })?,
         )?;
+        // A native renamed on purpose keeps working under its old name for
+        // a while (Phase 8, C3): the same function, lent twice.
+        lend_old_names(&natives, crate::describe::RENAMED)?;
         if let Some(send) = send {
             natives.raw_set("send_event", send.clone())?;
         }
@@ -665,5 +677,27 @@ mod facing_tests {
         for nonsense in [Vec3::ZERO, Vec3::NAN, Vec3::splat(f32::INFINITY)] {
             assert_eq!(facing_along(nonsense), Quat::IDENTITY);
         }
+    }
+}
+
+#[cfg(test)]
+mod old_name_tests {
+    use super::*;
+
+    #[test]
+    fn an_old_name_is_lent_as_the_same_function() {
+        let lua = mlua::Lua::new();
+        let natives = lua.create_table().unwrap();
+        let f = lua.create_function(|_, ()| Ok(7)).unwrap();
+        natives.raw_set("spawn", f).unwrap();
+        let renamed = [crate::describe::Renamed {
+            file: "world",
+            old: "spawnAt",
+            new: "spawn",
+            until: "Phase 12",
+        }];
+        lend_old_names(&natives, &renamed).unwrap();
+        let old: mlua::Function = natives.raw_get("spawnAt").unwrap();
+        assert_eq!(old.call::<i32>(()).unwrap(), 7);
     }
 }

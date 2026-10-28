@@ -157,7 +157,9 @@ impl GameCode {
         let compiled = compiled.filter(|_| self.last != Some(found))?;
         self.last = Some(found);
         let (problems, program) = match compiled {
-            Ok(program) => (Vec::new(), Some(program.map(Arc::new))),
+            // Code that runs, but calls a native by an old name: warned
+            // about in Problems (Phase 8, C3).
+            Ok(program) => (script::renamed_uses(&code), Some(program.map(Arc::new))),
             Err(problems) => (problems, None),
         };
         Some(Checked {
