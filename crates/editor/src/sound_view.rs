@@ -13,7 +13,7 @@ use crate::theme;
 use egui::{Color32, RichText, Ui};
 
 /// The colour of sounds: their Library stripe and waveform.
-pub const SOUND_COLOR: Color32 = Color32::from_rgb(0x1d, 0x9e, 0x75);
+pub const SOUND_COLOR: Color32 = crate::theme::kind::SOUND;
 
 /// What the app found in a sound file.
 #[derive(Debug, Clone, PartialEq)]

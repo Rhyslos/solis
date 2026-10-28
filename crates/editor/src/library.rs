@@ -67,17 +67,18 @@ impl LibraryKind {
         }
     }
 
-    /// The stripe under its thumbnail, a colour per kind (decision 0004).
+    /// The stripe under its thumbnail, a colour per kind (decision 0004),
+    /// the same as its icon in the Area panel (decision 0060).
     fn color(self) -> Color32 {
         match self {
-            Self::Model => Color32::from_rgb(0x4a, 0x9c, 0xd9),
-            Self::Assembly => theme::FOLDER,
-            Self::Area => theme::axis::Y,
-            Self::Texture => Color32::from_rgb(0xb4, 0x7c, 0xf0),
-            Self::Code => Color32::from_rgb(0xe8, 0x87, 0x5a),
-            Self::Sound => SOUND_COLOR,
-            Self::SoundEvent => crate::sound_event_view::EVENT_COLOR,
-            Self::Other => theme::TEXT_WEAK,
+            Self::Model => theme::kind::MODEL,
+            Self::Assembly => theme::kind::ASSEMBLY,
+            Self::Area => theme::kind::AREA,
+            Self::Texture => theme::kind::PICTURE,
+            Self::Code => theme::kind::CODE,
+            Self::Sound => theme::kind::SOUND,
+            Self::SoundEvent => theme::kind::SOUND_EVENT,
+            Self::Other => theme::kind::OTHER,
         }
     }
 

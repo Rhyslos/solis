@@ -1,8 +1,14 @@
 //! The editor's look ([decision 0004](../../../docs/decisions/0004-editor-layout.md)):
 //! Aventail's dark neutral greys, flat panels split by thin dark lines,
 //! plain-text tabs with the front one underlined, small corners, and one
-//! accent colour chosen in Window → Accent colour (petrol blue unless the
-//! user picks another). Text is Inter.
+//! accent colour chosen in Window → Accent colour (amber unless the user
+//! picks another). Text is Inter.
+//!
+//! The accent marks what's chosen and selected. Colours that mean
+//! something keep their own whatever the accent ([decision 0060](../../../docs/decisions/0060-amber-and-colours-that-mean-something.md)):
+//! Play and Build & Play are blue ([`GO`]), Stop is red while the game
+//! runs, the console's levels have theirs ([`level`]), and things in the
+//! Area panel and the Library share a colour per kind ([`kind`]).
 //!
 //! Text colours are checked for readability by the tests at the bottom
 //! (WCAG contrast 4.5:1 for normal text).
@@ -48,6 +54,53 @@ pub const WARNING: Color32 = Color32::from_rgb(0xe8, 0xb3, 0x4a);
 pub const ERROR: Color32 = Color32::from_rgb(0xf0, 0x7a, 0x72);
 /// A selected entity's collider (Phase 6): what physics bumps into.
 pub const COLLIDER: Color32 = Color32::from_rgb(0x6e, 0xd8, 0x8a);
+/// Play and Build & Play, whatever the accent: petrol blue, white text
+/// reads on it.
+pub const GO: Color32 = Color32::from_rgb(0x1f, 0x6a, 0x8f);
+
+/// The console's levels, whatever the accent: the fill of a level's filter
+/// button while that level is shown. White text reads on each.
+pub mod level {
+    use egui::Color32;
+
+    /// Information: a quiet grey.
+    pub const INFO: Color32 = Color32::from_rgb(0x55, 0x55, 0x55);
+    /// Warnings: a deep amber.
+    pub const WARNING: Color32 = Color32::from_rgb(0x8a, 0x5c, 0x00);
+    /// Errors: a deep red.
+    pub const ERROR: Color32 = Color32::from_rgb(0xb0, 0x3a, 0x34);
+}
+
+/// A colour per kind of thing, shared by the Library (the stripe under a
+/// tile) and the Area panel (an entity's icon), so a model or a sound looks
+/// the same in both.
+pub mod kind {
+    use egui::Color32;
+
+    /// Models.
+    pub const MODEL: Color32 = Color32::from_rgb(0x4a, 0x9c, 0xd9);
+    /// Assemblies (and a placed copy of one).
+    pub const ASSEMBLY: Color32 = super::FOLDER;
+    /// Area files.
+    pub const AREA: Color32 = super::axis::Y;
+    /// Pictures.
+    pub const PICTURE: Color32 = Color32::from_rgb(0xb4, 0x7c, 0xf0);
+    /// Game code.
+    pub const CODE: Color32 = Color32::from_rgb(0xe8, 0x87, 0x5a);
+    /// Sound files.
+    pub const SOUND: Color32 = Color32::from_rgb(0x1d, 0x9e, 0x75);
+    /// Sound events.
+    pub const SOUND_EVENT: Color32 = Color32::from_rgb(0x5d, 0xca, 0xa5);
+    /// The sun (other lamps show their own light's colour).
+    pub const SUN: Color32 = super::WARNING;
+    /// The environment (sky and fog).
+    pub const ENVIRONMENT: Color32 = Color32::from_rgb(0x4f, 0xb3, 0xa9);
+    /// Cameras.
+    pub const CAMERA: Color32 = super::TEXT;
+    /// Anything else.
+    pub const OTHER: Color32 = super::TEXT_WEAK;
+}
+
 /// The panels drawn over the viewport (stats, view buttons, tools), a
 /// little see-through.
 pub const OVERLAY: Color32 = Color32::from_rgba_premultiplied(0x1f, 0x1f, 0x1f, 0xeb);
@@ -81,13 +134,12 @@ pub mod axis {
     pub const Z: Color32 = Color32::from_rgb(0x4a, 0x7c, 0xff);
 }
 
-/// The accent colour: marks the chosen tool, the front tab, the selected
-/// row and the main buttons. Petrol blue unless the user picks another
-/// (Window → Accent colour).
+/// The accent colour: marks the chosen tool, the front tab and the
+/// selected row. Amber unless the user picks another (Window → Accent
+/// colour).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
 pub enum Accent {
-    /// Petrol blue, the standard.
-    #[default]
+    /// Petrol blue, the standard until decision 0060.
     PetrolBlue,
     /// A soft, warm red.
     Red,
@@ -104,7 +156,8 @@ pub enum Accent {
     Copper,
     /// A warm sunset orange.
     Orange,
-    /// An orange-yellow, like amber.
+    /// An orange-yellow, like amber: the standard.
+    #[default]
     Amber,
     /// A deep yellow, like old gold.
     Gold,
@@ -124,16 +177,17 @@ impl Accent {
     /// Every accent, in menu order.
     /// Aventail's accents (Petrol blue is Solis's own shade, and Olive a
     /// touch darker so white text reads on it), and four sun colours of
-    /// Solis's own; round the colour wheel from red, the standard first.
+    /// Solis's own: the standard first, then round the colour wheel from
+    /// red.
     pub const ALL: [Self; 10] = [
-        Self::PetrolBlue,
+        Self::Amber,
         Self::Red,
         Self::Copper,
         Self::Orange,
-        Self::Amber,
         Self::Gold,
         Self::Olive,
         Self::Green,
+        Self::PetrolBlue,
         Self::Blue,
         Self::Plum,
     ];
@@ -470,6 +524,16 @@ mod tests {
                 TEXT_TIME,
                 WARNING,
                 ERROR,
+                kind::MODEL,
+                kind::ASSEMBLY,
+                kind::AREA,
+                kind::PICTURE,
+                kind::CODE,
+                kind::SOUND_EVENT,
+                kind::SUN,
+                kind::ENVIRONMENT,
+                kind::CAMERA,
+                kind::OTHER,
             ] {
                 let ratio = contrast(text, surface);
                 assert!(
@@ -512,9 +576,31 @@ mod tests {
     }
 
     #[test]
-    fn the_standard_accent_is_petrol_blue() {
-        assert_eq!(Accent::default(), Accent::PetrolBlue);
-        assert_eq!(Accent::ALL[0], Accent::PetrolBlue);
+    fn the_standard_accent_is_amber() {
+        assert_eq!(Accent::default(), Accent::Amber);
+        assert_eq!(Accent::ALL[0], Accent::Amber);
+    }
+
+    #[test]
+    fn colours_that_mean_something_keep_theirs() {
+        // Decision 0060: Play is blue, and white text reads on it and on
+        // each console level, whatever the accent.
+        for fill in [GO, level::INFO, level::WARNING, level::ERROR] {
+            let ratio = contrast(Color32::WHITE, fill);
+            assert!(
+                ratio >= READABLE,
+                "white on {fill:?} has contrast {ratio:.2}"
+            );
+        }
+        // None of them is the standard accent, so a warning never looks
+        // like something selected.
+        for fill in [GO, level::INFO, level::ERROR] {
+            assert_ne!(fill, Accent::default().colors().fill);
+        }
+        assert_ne!(level::WARNING, Accent::Amber.colors().fill);
+        // Three levels, three different colours.
+        assert_ne!(level::INFO, level::WARNING);
+        assert_ne!(level::WARNING, level::ERROR);
     }
 
     #[test]
