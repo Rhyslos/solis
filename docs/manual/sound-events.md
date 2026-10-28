@@ -24,6 +24,7 @@
 | Full until, Silent past | For sounds in the world: full volume up to the first distance, silent past the second, in metres. A footstep might be 2 m and 30 m; an explosion 10 m and 300 m. |
 | Fade | How it gets quieter between the two distances. **Realistic** drops quickly at first, as sound does outdoors; **Even** drops steadily; **None** stays full until the far distance. |
 | At once | The most plays of this event heard at the same time; more are skipped. 8 is a good start; a machine gun might want 4. When game code asks for one event many times in one tick (a volley of a hundred shots), up to 3 copies play, a little louder, instead of a hundred. |
+| Heard by | Who hears it: **Everyone**, **Only who caused it** (the listener on the entity that played it), or **Groups** (listeners in one of its groups). See [Listeners and who hears what](listeners.md). |
 | Priority | When more sounds want to play than the project's **Heard at once** (in the [Mixer](mixer.md)), **High** ones are heard first, then the loudest where you are; **Low** ones go first. |
 
 ## Sounds that keep playing

@@ -311,7 +311,7 @@ In Lua they're `solis.playSoundAt("sfx/footstep", solis.positionOf(self.me))` an
 
 **Sound never changes the game.** None of these gives anything back, so code can't ask "is it still playing?": a game plays exactly the same with sound on, off, or with no sound card, and a [recording](concepts.md#simulation) replays the same. Each play picks its take from the game's seed and the tick, so the same game even sounds the same each time. Like a move, a sound lands at the end of the tick.
 
-- The **camera** is what hears: a sound to its right comes from the right. Pausing the game pauses its sounds, Play carries them on, and Stop fades them out. A Step plays that tick's sounds.
+- The **camera** is what hears (or a [Listener](listeners.md)), and the entity whose code plays a sound is who caused it, for a sound event heard by **Only who caused it**: a sound to its right comes from the right. Pausing the game pauses its sounds, Play carries them on, and Stop fades them out. A Step plays that tick's sounds.
 - A sound placed past its event's **Silent past** distance isn't started at all.
 - Up to 256 sounds can be asked for in one tick (more are left out, and the Console says so once), and up to 256 play at once.
 - If the computer stalls for a moment, only the last few ticks' sounds play, so a hitch doesn't play a pile of footsteps at once.

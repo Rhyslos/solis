@@ -60,7 +60,7 @@ pub use camera::{Camera, FlyInput, ViewKind};
 pub use console::{LogLevel, LogLine};
 pub use document::{Document, Selection};
 pub use egui_dock::DockState;
-pub use game_sound::{GameSound, SoundMode};
+pub use game_sound::{GameSound, Hearer, SoundMode};
 pub use library::{LibraryItem, LibraryKind, ProjectInfo};
 pub use look::{Look, LookKind};
 pub use mixer_view::MixerState;

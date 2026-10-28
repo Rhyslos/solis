@@ -14,8 +14,8 @@ use crate::theme;
 use egui::{RichText, Ui};
 use sound::SoundEvent;
 use sound::event::{
-    Fade, MAX_AT_ONCE, MAX_DISTANCE_M, MAX_PITCH_VARIATION_ST, MAX_TAKES, MAX_VOLUME_VARIATION_DB,
-    PITCH_RANGE_ST, Priority, Space, VOLUME_RANGE_DB,
+    Fade, HeardBy, MAX_AT_ONCE, MAX_DISTANCE_M, MAX_GROUP_NAME, MAX_GROUPS, MAX_PITCH_VARIATION_ST,
+    MAX_TAKES, MAX_VOLUME_VARIATION_DB, PITCH_RANGE_ST, Priority, Space, VOLUME_RANGE_DB,
 };
 
 /// A sound event in Properties. Returns what was asked for.
@@ -230,6 +230,54 @@ fn editor(
             ui.selectable_value(&mut event.space, Space::Flat, "Everywhere");
         },
     );
+    inspector::row(
+        ui,
+        "Heard by",
+        "Everyone: every listener. Only who caused it: the listener on the entity that played \
+         it (or on what it's part of): the player's own footsteps in first person, a click in \
+         their menu. Groups: listeners in one of these groups (a Listener lists its groups).",
+        |ui| {
+            egui::ComboBox::from_id_salt(("heard-by", path))
+                .selected_text(event.heard_by.name())
+                .show_ui(ui, |ui| {
+                    for choice in HeardBy::ALL {
+                        ui.selectable_value(&mut event.heard_by, choice, choice.name());
+                    }
+                });
+        },
+    );
+    if event.heard_by == HeardBy::Groups {
+        inspector::row(
+            ui,
+            "Groups",
+            "The groups that hear it, with commas between: \"Team Red, Radio\".",
+            |ui| {
+                let id = ui.id().with(("heard-by-groups", path));
+                let mut text = ui
+                    .data(|d| d.get_temp::<String>(id))
+                    .unwrap_or_else(|| event.groups.join(", "));
+                let field = ui.add(
+                    egui::TextEdit::singleline(&mut text)
+                        .hint_text("Team Red, Radio")
+                        .desired_width(160.0),
+                );
+                if field.changed() {
+                    ui.data_mut(|d| d.insert_temp(id, text.clone()));
+                }
+                if field.lost_focus() {
+                    ui.data_mut(|d| d.remove::<String>(id));
+                    let mut groups: Vec<String> = Vec::new();
+                    for g in text.split(',').map(str::trim).filter(|g| !g.is_empty()) {
+                        let g: String = g.chars().take(MAX_GROUP_NAME).collect();
+                        if !groups.contains(&g) && groups.len() < MAX_GROUPS {
+                            groups.push(g);
+                        }
+                    }
+                    event.groups = groups;
+                }
+            },
+        );
+    }
     let placed = event.space == Space::Placed;
     ui.add_enabled_ui(placed, |ui| {
         inspector::row(
