@@ -2,7 +2,7 @@
 //! sounds on entities, placed in 3D around a listener (the Game panel's
 //! camera), paused with the game and faded out on Stop.
 //!
-//! Each sound plays through its event's bus (S4, [`crate::buses`]): a
+//! Each sound plays through its event's bus (S4, `buses.rs`): a
 //! tree of tracks made from the project's mixer, under the game's track.
 //!
 //! Everything here is told what to do by the app after each tick; nothing
