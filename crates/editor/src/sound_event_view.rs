@@ -227,12 +227,13 @@ fn editor(
     section(ui, "Where it's heard");
     inspector::row(
         ui,
-        "Space",
-        "3D sounds come from a place in the world: quieter far away, from their direction. 2D \
-         sounds are the same everywhere: music, the interface.",
+        "Placement",
+        "In the world: it comes from a place, quieter far away and from its direction (a \
+         footstep, a door), and plays as one channel (mono) so it can come from one side. \
+         Everywhere: the same wherever you are, as recorded (music, the interface).",
         |ui| {
-            ui.selectable_value(&mut event.space, Space::Flat, "2D");
-            ui.selectable_value(&mut event.space, Space::Placed, "3D");
+            ui.selectable_value(&mut event.space, Space::Placed, "In the world");
+            ui.selectable_value(&mut event.space, Space::Flat, "Everywhere");
         },
     );
     let placed = event.space == Space::Placed;
@@ -386,9 +387,17 @@ fn takes(
                         remove = Some(i);
                     }
                     if let Some(SoundState::Read(info)) = state {
+                        let channels = match info.channels {
+                            1 => "mono",
+                            2 => "stereo",
+                            _ => "surround",
+                        };
                         ui.label(
-                            RichText::new(sound_view::length_text(info.seconds))
-                                .color(theme::TEXT_WEAK),
+                            RichText::new(format!(
+                                "{} · {channels}",
+                                sound_view::length_text(info.seconds)
+                            ))
+                            .color(theme::TEXT_WEAK),
                         );
                     }
                 });

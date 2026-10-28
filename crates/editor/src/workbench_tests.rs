@@ -2100,7 +2100,7 @@ fn changing_a_sound_event_saves_it() {
     h.run();
     h.get_by_label("footstep").click();
     h.run();
-    h.get_by_label("2D").click();
+    h.get_by_label("Everywhere").click();
     h.run();
     let saved = h.state().1.iter().find_map(|a| match a {
         WorkbenchAction::SaveSoundEvent { path, event } => Some((path.clone(), event.clone())),

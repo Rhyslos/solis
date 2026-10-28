@@ -1,5 +1,5 @@
 sound version 1;
-space = "2D";
+placement = "Everywhere";
 loop = true;
 bus = "Music";
 priority = "High";

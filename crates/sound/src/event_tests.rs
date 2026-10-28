@@ -82,7 +82,10 @@ fn wrong_kinds_of_value_are_refused_with_their_line() {
     for (body, says) in [
         ("volume = \"loud\";", "volume should be a number"),
         ("loop = 1;", "loop should be true or false"),
-        ("space = \"4D\";", "\"2D\" or \"3D\""),
+        (
+            "placement = \"Nearby\";",
+            "\"In the world\" or \"Everywhere\"",
+        ),
         ("fade = \"Fast\";", "\"Realistic\", \"Even\" or \"None\""),
         ("priority = 3;", "priority should be text"),
         ("at_once = 2.5;", "a whole number"),
