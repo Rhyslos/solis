@@ -54,6 +54,17 @@ pub(crate) struct TestCel {
     pub(crate) text: Option<&'static str>,
 }
 
+/// A tag to write: name, from, to, direction, repeats, user text.
+pub(crate) type TestTag = (&'static str, u16, u16, u8, u16, Option<&'static str>);
+
+/// A slice to write: name, keys (frame, x, y, w, h), pivot (applied to
+/// every key).
+pub(crate) type TestSlice = (
+    &'static str,
+    Vec<(u32, i32, i32, u32, u32)>,
+    Option<[i32; 2]>,
+);
+
 /// A file to write.
 #[derive(Clone)]
 pub(crate) struct TestFile {
@@ -63,14 +74,8 @@ pub(crate) struct TestFile {
     pub(crate) layers: Vec<TestLayer>,
     /// Each frame's duration and cels.
     pub(crate) frames: Vec<(u16, Vec<TestCel>)>,
-    /// Name, from, to, direction, repeats, user text.
-    pub(crate) tags: Vec<(&'static str, u16, u16, u8, u16, Option<&'static str>)>,
-    /// Name, keys (frame, x, y, w, h), pivot (applied to every key).
-    pub(crate) slices: Vec<(
-        &'static str,
-        Vec<(u32, i32, i32, u32, u32)>,
-        Option<[i32; 2]>,
-    )>,
+    pub(crate) tags: Vec<TestTag>,
+    pub(crate) slices: Vec<TestSlice>,
     pub(crate) palette: Vec<[u8; 4]>,
 }
 

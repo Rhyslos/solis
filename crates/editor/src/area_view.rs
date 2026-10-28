@@ -209,12 +209,14 @@ impl AreaView {
             .placed_between::<Sprite>(t)
             .into_iter()
             .filter(|(_, s, _)| s.sheet.is_some())
-            .map(|(entity, sprite, transform)| crate::sprite_sheets::AreaSprite {
-                entity,
-                sprite,
-                transform,
-                pick: 0,
-            })
+            .map(
+                |(entity, sprite, transform)| crate::sprite_sheets::AreaSprite {
+                    entity,
+                    sprite,
+                    transform,
+                    pick: 0,
+                },
+            )
             .collect();
         view
     }

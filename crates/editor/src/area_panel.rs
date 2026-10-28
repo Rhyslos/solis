@@ -216,6 +216,14 @@ fn looks(entity: &EntityData, models: &BTreeMap<AssetId, ModelInfo>) -> (Icon, C
             });
         return (Icon::Model, theme::kind::MODEL, note);
     }
+    if let Some(sprite) = entity.get::<area::builtin::Sprite>() {
+        let note = if sprite.sheet.is_some() {
+            format!("frame {}", sprite.frame)
+        } else {
+            "no sheet".to_owned()
+        };
+        return (Icon::Viewport, theme::kind::SPRITE, note);
+    }
     if entity.has("Camera") {
         return (Icon::Camera, theme::kind::CAMERA, "Camera".into());
     }
@@ -725,6 +733,9 @@ mod tests {
             .insert("Camera".into(), reflect::ComponentData::default());
         assert_eq!(color_of(&camera), theme::kind::CAMERA);
         assert_eq!(color_of(&EntityData::new("Empty")), theme::kind::OTHER);
+        let walker = EntityData::new("Walker").with(&area::builtin::Sprite::default());
+        assert_eq!(color_of(&walker), theme::kind::SPRITE);
+        assert_eq!(looks(&walker, &BTreeMap::new()).2, "no sheet");
     }
 
     #[test]

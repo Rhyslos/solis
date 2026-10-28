@@ -294,7 +294,11 @@ fn with_a_sprite_sheet() -> (Workbench, AssetId) {
     use crate::sprite_sheets::{SheetState, SpriteSheets};
     let (mut w, _, _) = with_a_project();
     let id = AssetId::random();
-    w.set_library(vec![item("walker.aseprite", LibraryKind::SpriteSheet, Some(id))]);
+    w.set_library(vec![item(
+        "walker.aseprite",
+        LibraryKind::SpriteSheet,
+        Some(id),
+    )]);
     let mut sheets = SpriteSheets::default();
     sheets.by_path.insert(
         "walker.aseprite".into(),
@@ -350,7 +354,12 @@ fn a_sprite_sheet_shows_its_frames_in_the_library_and_properties() {
     let (w, _) = with_a_sprite_sheet();
     let mut h = harness(w);
     h.run();
-    assert!(shown(&h, "2 frames"), "the tile's badge");
+    assert_eq!(
+        crate::library::frames_text(2),
+        "2 frames",
+        "the tile's badge"
+    );
+    assert_eq!(crate::library::frames_text(1), "1 frame");
     h.get_by_label("walker").click();
     h.run();
     h.run();
@@ -376,10 +385,20 @@ fn a_sprite_s_sheet_and_pivot_are_picked_from_lists() {
     h.run();
     h.run();
     fn open_combo(h: &egui_kittest::Harness<'_, State>, shows: &str) {
-        h.get_all_by_role(egui::accesskit::Role::ComboBox)
-            .find(|n| n.label().as_deref() == Some(shows))
-            .expect("a list showing it")
-            .click();
+        use egui_kittest::kittest::NodeT;
+        let combos: Vec<_> = h.get_all_by_role(egui::accesskit::Role::ComboBox).collect();
+        let seen: Vec<(Option<String>, Option<String>)> = combos
+            .iter()
+            .map(|n| (n.accesskit_node().label(), n.value()))
+            .collect();
+        let combo = combos.iter().find(|n| {
+            n.accesskit_node().label().as_deref() == Some(shows)
+                || n.value().as_deref() == Some(shows)
+        });
+        assert!(combo.is_some(), "no list showing {shows}: {seen:?}");
+        if let Some(c) = combo {
+            c.click();
+        }
     }
     // The pivot: the sheet's slices, and the bottom middle.
     open_combo(&h, "feet");
@@ -387,7 +406,14 @@ fn a_sprite_s_sheet_and_pivot_are_picked_from_lists() {
     h.get_by_label("Bottom middle").click();
     h.run();
     let sprite = |h: &egui_kittest::Harness<'_, State>| -> area::builtin::Sprite {
-        h.state().0.document.area().get(placed).unwrap().get().unwrap()
+        h.state()
+            .0
+            .document
+            .area()
+            .get(placed)
+            .unwrap()
+            .get()
+            .unwrap()
     };
     assert_eq!(sprite(&h).pivot, "");
     // The sheet: every sheet read, by name, and None.

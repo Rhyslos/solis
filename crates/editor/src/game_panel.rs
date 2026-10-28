@@ -144,6 +144,7 @@ pub(crate) fn pixel_camera(
 /// or, when nothing runs, how to start it. Returns whether the picture
 /// was clicked (the game then takes the mouse and keys); `has_input` is
 /// whether it has them.
+#[allow(clippy::too_many_arguments)]
 pub(crate) fn game_panel(
     ui: &mut Ui,
     scene: Option<&GameScene>,

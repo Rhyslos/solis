@@ -65,7 +65,10 @@ impl Workbench {
                         min: info.min,
                         max: info.max,
                     },
-                    None => Outline::Point(world.w_axis.truncate()),
+                    None => match self.sprite_box(entity) {
+                        Some((min, max)) => Outline::Box { world, min, max },
+                        None => Outline::Point(world.w_axis.truncate()),
+                    },
                 }];
                 if let Some(shape) = entity
                     .get::<area::builtin::CharacterBody>()
@@ -83,6 +86,27 @@ impl Workbench {
                 marks
             })
             .collect()
+    }
+
+    /// A sprite's frame as a flat box in its entity's own space (its
+    /// lowest and highest corners), to outline it when it's selected.
+    fn sprite_box(&self, entity: &area::EntityData) -> Option<(glam::Vec3, glam::Vec3)> {
+        let sprite = entity.get::<area::builtin::Sprite>()?;
+        let sheet = self.viewport.sheets.get(sprite.sheet?.asset)?;
+        let drawn = crate::sprite_sheets::view_sprite(
+            &sprite,
+            sheet,
+            glam::Mat4::IDENTITY,
+            self.pixels.pixel_size(),
+            None,
+        )?;
+        let corner = glam::Vec2::new(drawn.corner[0], drawn.corner[1]);
+        let across = glam::Vec2::from(drawn.axis_x) * drawn.rect[2];
+        let down = glam::Vec2::from(drawn.axis_y) * drawn.rect[3];
+        let far = corner + across + down;
+        let min = corner.min(far);
+        let max = corner.max(far);
+        Some((min.extend(0.0), max.extend(0.0)))
     }
 
     /// Hands the viewport this frame's gizmo and outline.

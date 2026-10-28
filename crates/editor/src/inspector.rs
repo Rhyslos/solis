@@ -151,14 +151,7 @@ pub(crate) fn fields(
         ui.push_id(id, |ui| {
             let (set, revert, apply) =
                 row_marked(ui, &field.label, field.hint.help, changed, |ui| {
-                    let set = field_widget(
-                        ui,
-                        field,
-                        value,
-                        (models, sheets, data),
-                        area,
-                        mixed,
-                    );
+                    let set = field_widget(ui, field, value, (models, sheets, data), area, mixed);
                     if !changed {
                         return (set, false, false);
                     }

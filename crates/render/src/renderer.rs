@@ -842,7 +842,15 @@ impl ViewportRenderer {
         let images = target
             .pick
             .get_or_insert_with(|| crate::pick::PickImages::new(device, &self.pick, size));
-        images.request(device, queue, &self.pick, view_projection, placed, sprites, rect)
+        images.request(
+            device,
+            queue,
+            &self.pick,
+            view_projection,
+            placed,
+            sprites,
+            rect,
+        )
     }
 
     /// Uploads `model` to the GPU, ready to pass to [`Self::render`]. Done

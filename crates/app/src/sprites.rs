@@ -104,7 +104,11 @@ impl Sprites {
     pub fn want(&mut self, listing: &Listing, assets: &Path) {
         let mut present = HashSet::new();
         let mut paths = HashMap::new();
-        for file in listing.files.iter().filter(|f| f.kind == FileKind::SpriteSheet) {
+        for file in listing
+            .files
+            .iter()
+            .filter(|f| f.kind == FileKind::SpriteSheet)
+        {
             let path = crate::project::slashed(&file.path);
             if let Some(id) = file.id {
                 paths.insert(id, path.clone());
@@ -184,8 +188,7 @@ mod tests {
     use super::*;
 
     fn folder(name: &str) -> PathBuf {
-        let dir =
-            std::env::temp_dir().join(format!("solis-sprites-{name}-{}", std::process::id()));
+        let dir = std::env::temp_dir().join(format!("solis-sprites-{name}-{}", std::process::id()));
         let _ = std::fs::remove_dir_all(&dir);
         std::fs::create_dir_all(dir.join("sprites")).unwrap();
         dir

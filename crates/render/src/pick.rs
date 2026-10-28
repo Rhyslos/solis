@@ -391,7 +391,10 @@ impl PickImages {
         }
         if !sprite_runs.is_empty() {
             let fill = |slot: &mut Option<wgpu::Buffer>, bytes: &[u8], label| {
-                if !slot.as_ref().is_some_and(|b| b.size() >= bytes.len() as u64) {
+                if !slot
+                    .as_ref()
+                    .is_some_and(|b| b.size() >= bytes.len() as u64)
+                {
                     *slot = Some(device.create_buffer(&wgpu::BufferDescriptor {
                         label: Some(label),
                         size: (bytes.len() as u64).next_power_of_two().max(4096).min(most),
@@ -404,7 +407,11 @@ impl PickImages {
                 }
             };
             fill(&mut self.sprite_instances, &sprite_bytes, "picking sprites");
-            fill(&mut self.sprite_picks, &pick_bytes, "picking sprite numbers");
+            fill(
+                &mut self.sprite_picks,
+                &pick_bytes,
+                "picking sprite numbers",
+            );
         }
         queue.write_buffer(&self.uniform, 0, bytemuck::bytes_of(&view_projection));
         let mut encoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {

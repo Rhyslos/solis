@@ -93,11 +93,11 @@ impl Problems {
         if self.is_from(&fingerprint) {
             return 0;
         }
-        let before = self.area.len();
+        let before = self.list.len();
         self.area = find(sources);
         self.from = Some(fingerprint);
         self.join();
-        self.area.len().saturating_sub(before)
+        self.list.len().saturating_sub(before)
     }
 
     /// Looks again for sprites between pixels if anything moved
@@ -623,14 +623,28 @@ mod tests {
         let mut w = World::new();
         let (here, gone) = (AssetId::random(), AssetId::random());
         w.known.insert(here);
-        w.area.spawn(EntityData::new("Hero").with(&sprite(Some(here))));
+        w.area
+            .spawn(EntityData::new("Hero").with(&sprite(Some(here))));
         w.area.spawn(EntityData::new("Blank").with(&sprite(None)));
-        w.area.spawn(EntityData::new("Ghost").with(&sprite(Some(gone))));
+        w.area
+            .spawn(EntityData::new("Ghost").with(&sprite(Some(gone))));
         let found = w.find();
         assert_eq!(found.len(), 2);
-        assert!(found.iter().all(|p| p.kind == ProblemKind::MissingSpriteSheet));
-        assert!(found.iter().any(|p| p.text.contains("Blank's Sprite has no")));
-        assert!(found.iter().any(|p| p.text.contains("Ghost's sprite sheet")));
+        assert!(
+            found
+                .iter()
+                .all(|p| p.kind == ProblemKind::MissingSpriteSheet)
+        );
+        assert!(
+            found
+                .iter()
+                .any(|p| p.text.contains("Blank's Sprite has no"))
+        );
+        assert!(
+            found
+                .iter()
+                .any(|p| p.text.contains("Ghost's sprite sheet"))
+        );
     }
 
     #[test]
@@ -657,7 +671,11 @@ mod tests {
         assert_eq!(found.len(), 1);
         assert_eq!(found[0].entity, off);
         assert_eq!(found[0].kind, ProblemKind::SpriteBetweenPixels);
-        assert!(found[0].text.contains("Off rests between pixels (at pixel 16.16"));
+        assert!(
+            found[0]
+                .text
+                .contains("Off rests between pixels (at pixel 16.16")
+        );
         // Through Problems: found once per revision.
         let mut problems = Problems::default();
         problems.refresh_between(1, 16, &area, &sprites);

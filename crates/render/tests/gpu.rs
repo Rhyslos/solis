@@ -3069,7 +3069,15 @@ fn scale_check_100000_sprites() {
     let mut target = renderer.create_target(&gpu.device, [64, 64]);
     let sheet = renderer.upload_sheet(&gpu.device, &gpu.queue, [4, 4], &sheet_pixels());
     let sprites: Vec<render::SpriteInstance> = (0..100_000)
-        .map(|i| sprite_at((i % 60) as f32, (i / 60 % 60) as f32, 0.0, 0, [1.0, 1.0, 1.0, 0.0]))
+        .map(|i| {
+            sprite_at(
+                (i % 60) as f32,
+                (i / 60 % 60) as f32,
+                0.0,
+                0,
+                [1.0, 1.0, 1.0, 0.0],
+            )
+        })
         .collect();
     let runs = [render::SpriteRun {
         sheet: &sheet,

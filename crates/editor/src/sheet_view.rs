@@ -74,10 +74,7 @@ pub(crate) fn sheet_properties(
             return;
         }
         Some(SheetState::Failed(why)) => {
-            ui.label(
-                RichText::new(format!("It couldn't be read: {why}."))
-                    .color(theme::ERROR),
-            );
+            ui.label(RichText::new(format!("It couldn't be read: {why}.")).color(theme::ERROR));
             return;
         }
         Some(SheetState::Read(sheet)) => sheet,
@@ -237,7 +234,8 @@ pub(crate) fn sheet_properties(
                     .color(theme::TEXT_WEAK),
             );
             for c in sheet.palette.iter().take(64) {
-                let (swatch, _) = ui.allocate_exact_size(egui::vec2(8.0, 8.0), egui::Sense::hover());
+                let (swatch, _) =
+                    ui.allocate_exact_size(egui::vec2(8.0, 8.0), egui::Sense::hover());
                 ui.painter()
                     .rect_filled(swatch, 0.0, Color32::from_rgb(c[0], c[1], c[2]));
             }

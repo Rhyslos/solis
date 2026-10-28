@@ -660,8 +660,7 @@ mod tests {
             outline: [0.5, 0.6, 0.7, 0.0],
             foot: [12.0, 13.0],
         };
-        let made: &[render::SpriteInstance] =
-            bytemuck::cast_slice(std::slice::from_ref(&sprite));
+        let made: &[render::SpriteInstance] = bytemuck::cast_slice(std::slice::from_ref(&sprite));
         assert_eq!(
             made[0],
             render::SpriteInstance {
