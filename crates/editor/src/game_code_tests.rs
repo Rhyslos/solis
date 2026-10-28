@@ -1750,14 +1750,24 @@ fn the_same_work_comes_out_the_same_in_each_language() {
         for _ in 0..3 {
             w.run_game(1.0 / 60.0);
         }
-        let values = w.playing.as_mut().unwrap().game.as_mut().unwrap().all_values();
+        let values = w
+            .playing
+            .as_mut()
+            .unwrap()
+            .game
+            .as_mut()
+            .unwrap()
+            .all_values();
         values
             .iter()
             .find(|(_, name, _)| name == "Churn")
             .and_then(|(_, _, data)| data.get("value").cloned())
     };
     let rust = value("Rust");
-    assert!(matches!(rust, Some(Value::Float(v)) if v != 0.0), "{rust:?}");
+    assert!(
+        matches!(rust, Some(Value::Float(v)) if v != 0.0),
+        "{rust:?}"
+    );
     assert_eq!(value("Lust"), rust);
     assert_eq!(value("Lua"), rust);
 }

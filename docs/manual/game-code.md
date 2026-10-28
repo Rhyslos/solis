@@ -10,6 +10,8 @@ Solis games can be written in three languages:
 - **Lua**, if you know it from Roblox or modding;
 - **Rust**, the language Solis itself is written in.
 
+Not sure which? [Which language when](which-language.md) compares them, with numbers.
+
 **Right now:** Lust and Lua components work: they appear in Properties, run in play mode, talk to each other through events, and take new code while the game runs. Rust components can join them, but for now only in a Solis built from source.
 
 ## How to use it
