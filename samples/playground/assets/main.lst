@@ -1,10 +1,12 @@
 -- The playground: a level to walk around in, with ramps, steps, crates to
 -- push and a moving platform. The character and its camera are Solis's
--- ready-made components (solis/kit/); this file adds quick saves and the
--- moving platform.
+-- ready-made components (solis/kit/); this file adds quick saves, the
+-- moving platform and footsteps. The music, the radio and the cave's
+-- drip are AudioSources in the area; the cave's echo is a ReverbZone.
 
 get "solis/world":[say, saveGame, loadGame];
-get "solis/entity":[moveTo];
+get "solis/entity":[moveTo, positionOf];
+get "solis/sound":[playSoundOn];
 get "solis/input":[pressed, bindingOf];
 fetch "solis/kit/character":[CharacterController];
 fetch "solis/kit/cameras":[ThirdPersonCamera, FirstPersonCamera, RtsCamera];
@@ -42,5 +44,33 @@ component Platform {
     }
 }
 
-pass QuickSave, Platform;
+-- A footstep each time the character has gone a stride along the
+-- ground: faster when running, none while standing or in the air (it
+-- only counts ground covered while its height stays put).
+component Footsteps {
+    has {
+        float stride = 0.8;
+        float gone = 0;
+        vec3 was = [0, 0, 0];
+        bool started = false;
+    }
+
+    method update(float dt) {
+        vec3 now = positionOf(me);
+        is started? then {
+            vec3 step = now - was;
+            is Maths:abs(step.z) < 0.02? then {
+                gone = gone + Maths:sqrt(step.x * step.x + step.y * step.y);
+            }
+            is gone >= stride? then {
+                playSoundOn("sfx/footstep", me);
+                gone = 0;
+            }
+        }
+        was = now;
+        started = true;
+    }
+}
+
+pass QuickSave, Platform, Footsteps;
 end

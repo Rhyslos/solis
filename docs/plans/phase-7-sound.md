@@ -157,7 +157,10 @@ Added by [decision 0058](../decisions/0058-listeners-and-who-hears-what.md), bui
 - Properties for both are **mocked up for the project lead first**.
 - Tests: with no Listener the camera hears; two listeners in different groups each hear only their groups' sounds; "only who caused it" reaches only that listener; the same recording plays the same game whoever hears what.
 
-### S7. The gate's level
+### S7. The gate's level ✓
+
+Built (2026-10-28) before S8, while S8's mock-up waited for the project lead. The sounds are made in code (`crates/app/src/playground_sounds.rs`, CC0): four footsteps, music, a radio's wordless chatter and a drip. Footsteps come from ground covered (a stride of 0.8 m), so running steps faster.
+
 
 Built last. (Sounds from animation events moved to Phase 9's frame animation, decision 0059.)
 
