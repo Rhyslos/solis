@@ -393,6 +393,10 @@ impl GameWorld for PlayWorld<'_> {
                 Change::SoundPlaying(which, playing) => {
                     self.world.set_sound_playing(which, playing);
                 }
+                Change::PlayClip(which, ref clip, again) => {
+                    self.world.play_clip(which, clip, again);
+                }
+                Change::StopClip(which) => self.world.stop_clip(which),
                 Change::BusVolume(ref bus, share) => self
                     .sounds
                     .push(crate::game_sound::Request::BusVolume(bus.clone(), share)),

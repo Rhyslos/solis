@@ -71,6 +71,22 @@ pub(crate) struct PanelViewer<'a> {
     pub(crate) shown: &'a mut HashSet<Panel>,
     /// Where each frame's time goes.
     pub(crate) profiler: &'a crate::profiler::Profiler,
+    /// The clips file open in the Clips and Frames tabs, if any (Phase 9,
+    /// D3), and what happened to it this frame.
+    pub(crate) frames: Option<crate::frames_view::FramesUi<'a>>,
+    pub(crate) frames_out: &'a mut FramesOut,
+}
+
+/// What the Clips and Frames tabs did this frame.
+#[derive(Debug, Default)]
+pub(crate) struct FramesOut {
+    /// The file changed: save it.
+    pub(crate) changed: bool,
+    /// A tab was closed: close the file.
+    pub(crate) closed: bool,
+    /// The pointer is over one of the tabs (Ctrl+Z, Delete and Space are
+    /// theirs then).
+    pub(crate) hovered: bool,
 }
 
 impl TabViewer for PanelViewer<'_> {
@@ -94,6 +110,24 @@ impl TabViewer for PanelViewer<'_> {
                 ..Default::default()
             },
         );
+        // The clips file's name, and the clip chosen.
+        let what = self.frames.as_ref().map(|f| match tab {
+            Panel::Clips => crate::sprite_sheets::name_of(&f.editor.path),
+            _ => f.editor.clip.clone(),
+        });
+        if tab.comes_with_a_file()
+            && let Some(what) = what.filter(|w| !w.is_empty())
+        {
+            job.append(
+                &format!("· {what}"),
+                5.0,
+                egui::TextFormat {
+                    font_id: egui::FontId::proportional(theme::TEXT_SIZE),
+                    color: theme::TEXT_WEAK,
+                    ..Default::default()
+                },
+            );
+        }
         let problems = self.problems.len() + self.code_problems.len();
         if *tab == Panel::Problems && problems > 0 {
             job.append(
@@ -180,12 +214,15 @@ impl TabViewer for PanelViewer<'_> {
             Panel::Properties => {
                 if let Some(path) = self.sound_shown {
                     if assets::aseprite::is_aseprite_file(std::path::Path::new(path)) {
-                        crate::sheet_view::sheet_properties(
+                        if crate::sheet_view::sheet_properties(
                             ui,
                             path,
                             self.sounds.sheets.by_path.get(path),
                             self.sounds.sheet_pictures.get(path),
-                        );
+                        ) {
+                            self.library_requests
+                                .push(LibraryRequest::MakeClipsFile(path.to_owned()));
+                        }
                         return;
                     }
                     if self.sounds.events.contains_key(path) || path.ends_with(".solsound") {
@@ -287,8 +324,36 @@ impl TabViewer for PanelViewer<'_> {
                     None => {}
                 }
             }
+            Panel::Clips | Panel::Frames => {
+                if ui.rect_contains_pointer(ui.max_rect()) {
+                    self.frames_out.hovered = true;
+                }
+                let Some(frames) = &mut self.frames else {
+                    placeholder(ui, "No clips file is open.");
+                    return;
+                };
+                let changed = if *tab == Panel::Clips {
+                    egui::ScrollArea::vertical()
+                        .auto_shrink(false)
+                        .show(ui, |ui| crate::frames_view::clips_tab(ui, frames))
+                        .inner
+                } else {
+                    crate::frames_view::frames_tab(ui, frames)
+                };
+                self.frames_out.changed |= changed;
+            }
             Panel::Viewport => {}
         }
+    }
+
+    fn is_closeable(&self, tab: &Panel) -> bool {
+        tab.comes_with_a_file()
+    }
+
+    fn on_close(&mut self, _tab: &mut Panel) -> egui_dock::widgets::tab_viewer::OnCloseResponse {
+        // Either tab closes the file, and the other goes with it.
+        self.frames_out.closed = true;
+        egui_dock::widgets::tab_viewer::OnCloseResponse::Close
     }
 }
 

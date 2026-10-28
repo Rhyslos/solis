@@ -61,6 +61,12 @@ impl Workbench {
                 self.place_targets.remove(&id);
                 actions.push(WorkbenchAction::PlaceAsset(id));
             }
+            LibraryRequest::Open(LibraryKind::SpriteClips, path) => self.open_frames(&path),
+            LibraryRequest::MakeClipsFile(path) => {
+                if let Some(id) = crate::frames_editor::id_of(&self.viewport.sheets, &path) {
+                    self.make_clips_file(&path, id);
+                }
+            }
             LibraryRequest::Open(LibraryKind::Area, path) => {
                 self.request(WorkbenchAction::OpenAreaFile(full(&path)), actions);
             }
@@ -197,7 +203,10 @@ impl Workbench {
     }
 
     /// The project's sprite sheets as the app has read them (Phase 9, D2).
-    pub fn set_sprite_sheets(&mut self, sheets: crate::sprite_sheets::SpriteSheets) {
+    pub fn set_sprite_sheets(&mut self, mut sheets: crate::sprite_sheets::SpriteSheets) {
+        // The clips each sheet and clips file offers, worked out once here
+        // for drawing, Properties and the running game.
+        sheets.work_out_clips();
         self.viewport.sheets = std::sync::Arc::new(sheets);
     }
 

@@ -9,7 +9,7 @@ Solis reads Aseprite's own `.aseprite` files: there's nothing to export. Its [ta
 
 Sprites are drawn with their colours exactly as you painted them: never lit, shaded or tone mapped. (Lamps and day and night on sprites come later in Phase 9.)
 
-For the ground itself, tile maps come next (D4). Playing a tag as an animation comes with D3; until then a sprite shows the one frame you choose.
+For the ground itself, tile maps come next. To make sprites move, see [Animating sprites](sprite-animation.md): a sprite plays its sheet's tags as clips.
 
 ## How to use it
 1. **Save your Aseprite file into the project's assets**, for example `assets/sprites/farmer.aseprite`. It appears in the **Library** with its first frame and how many frames it has. Saving it again in Aseprite updates it in Solis straight away.
@@ -25,7 +25,8 @@ The **Sprite** component, in Properties:
 | Setting | What it does |
 |---|---|
 | Sheet | The sprite sheet (an Aseprite file in the project). Empty draws nothing. |
-| Frame | Which frame it shows, counting from 1 as Aseprite does. A frame past the end shows the first. |
+| Clip, Playing, Speed, Clip time | The clip it plays, and how: see [Animating sprites](sprite-animation.md). |
+| Frame | Which frame it shows when no clip plays, counting from 1 as Aseprite does. A frame past the end shows the first. |
 | Pivot | The slice it stands on, such as *feet*: the slice's pivot point (or its middle, if it has none) sits on the entity's place. Empty: the bottom middle of the frame. |
 | Flip across | Mirrored left to right, round its pivot: one drawing faces both ways. |
 | Flip up | Mirrored top to bottom. |
@@ -39,10 +40,10 @@ What Solis takes from the Aseprite file:
 
 | In Aseprite | In Solis |
 |---|---|
-| Frames and their durations | The frames, and how long each shows (for D3's clips). |
+| Frames and their durations | The frames, and how long each shows in a clip. |
 | Tags | Clips: a run of frames with its direction (forward, reverse, ping-pong) and repeats. |
 | Slices | Pivots (where a sprite stands), and later 9-slices, hitboxes and attach points. |
-| User data on a cel | Events on that frame, such as *footstep* (for D3). |
+| User data on a cel | An event on that frame, such as *footstep*: it plays the sound event of that name and tells game code ([Animating sprites](sprite-animation.md)). |
 | Visible layers | Flattened into one picture, with each layer's and cel's opacity. Hidden layers and reference layers are left out. Blend modes other than Normal are drawn as Normal (Properties notes it). |
 | Palette | Listed in Properties. |
 

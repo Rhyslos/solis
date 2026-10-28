@@ -58,5 +58,7 @@ wav('mono_24bit', 48000, 1, 24)
 wav('stereo_32bit', 48000, 2, 32)
 wav('stereo_float', 44100, 2, 32, fmt=3)
 PY
+mkdir -p "$seeds/frames"
+cp tests/fixtures/frames/v1/walker.solframes "$seeds/frames/"
 echo "Seeds in $seeds:"
 for d in "$seeds"/*/; do echo "  $(basename "$d"): $(ls "$d" | wc -l) files"; done

@@ -519,6 +519,13 @@ impl Workbench {
                 {
                     data.set(&source);
                 }
+                // And a sprite's clip, as far as it had played (Phase 9,
+                // D3).
+                if let Some(sprite) = playing.world.get::<area::builtin::Sprite>(id)
+                    && data.get::<area::builtin::Sprite>().as_ref() != Some(&sprite)
+                {
+                    data.set(&sprite);
+                }
                 // Every entity whole: a copy of an assembly (placed, or
                 // spawned by game code) is kept as the entities it is
                 // now, not as "a copy of" (which loses what's on its root,

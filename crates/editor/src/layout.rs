@@ -65,7 +65,36 @@ pub fn is_complete(dock: &DockState<Panel>) -> bool {
             .filter(|(_, tab)| *tab == panel)
             .count()
             == 1
-    }) && dock.iter_all_tabs().count() == Panel::ALL.len()
+    }) && dock
+        .iter_all_tabs()
+        .filter(|(_, tab)| !tab.comes_with_a_file())
+        .count()
+        == Panel::ALL.len()
+}
+
+/// Opens `panel` (one that comes with a file) in the tab group of
+/// `beside`, in front; already open, it's brought to the front.
+pub fn open_beside(dock: &mut DockState<Panel>, panel: Panel, beside: Panel) {
+    if let Some(path) = dock.find_tab(&panel) {
+        let _ = dock.set_active_tab(path);
+        return;
+    }
+    match dock.find_tab(&beside) {
+        Some(path) => {
+            dock[path.surface][path.node].append_tab(panel);
+            if let Some(path) = dock.find_tab(&panel) {
+                let _ = dock.set_active_tab(path);
+            }
+        }
+        None => dock.push_to_first_leaf(panel),
+    }
+}
+
+/// Closes `panel`, if it's open.
+pub fn close(dock: &mut DockState<Panel>, panel: Panel) {
+    if let Some(path) = dock.find_tab(&panel) {
+        let _ = dock.remove_tab(path);
+    }
 }
 
 /// The saved arrangement, with any panel it lacks (a layout saved before
@@ -76,6 +105,10 @@ pub fn restore(saved: Option<DockState<Panel>>) -> DockState<Panel> {
     let Some(mut dock) = saved else {
         return standard();
     };
+    // Tabs that come with a file aren't kept: no file is open yet.
+    for panel in Panel::OPEN_WITH_A_FILE {
+        close(&mut dock, panel);
+    }
     let twice = Panel::ALL.iter().any(|panel| {
         dock.iter_all_tabs()
             .filter(|(_, tab)| *tab == panel)

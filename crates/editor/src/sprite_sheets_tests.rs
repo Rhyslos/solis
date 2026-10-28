@@ -189,7 +189,7 @@ fn sprites_gather_into_a_run_per_sheet_and_see_through_ones_last_far_to_near() {
             pick: 7,
         },
     ];
-    let runs = batches(&list, &sheets, 1.0, None);
+    let runs = batches(&list, &sheets, 1.0, None, 0.0);
     let cut: Vec<&SpriteBatch> = runs.iter().filter(|r| !r.see_through).collect();
     assert_eq!(cut.len(), 2);
     let of_a = cut.iter().find(|r| r.sheet == a).unwrap();
@@ -253,7 +253,7 @@ fn scale_check_batching_100000_sprites() {
     let frames = 20;
     let start = std::time::Instant::now();
     for _ in 0..frames {
-        let runs = batches(&list, &sheets, px, Some(px));
+        let runs = batches(&list, &sheets, px, Some(px), 0.0);
         assert_eq!(runs.iter().map(|r| r.sprites.len()).sum::<usize>(), 100_000);
     }
     let ms = start.elapsed().as_secs_f64() * 1000.0 / f64::from(frames);

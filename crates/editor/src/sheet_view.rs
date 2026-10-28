@@ -56,13 +56,14 @@ fn shown_frame(ui: &Ui, path: &str) -> egui::Id {
     ui.id().with(("sheet frame", path))
 }
 
-/// Properties for the Aseprite file at `path`.
+/// Properties for the Aseprite file at `path`. Returns whether its clips
+/// file was asked for (Make clips file).
 pub(crate) fn sheet_properties(
     ui: &mut Ui,
     path: &str,
     state: Option<&SheetState>,
     atlas: Option<&egui::TextureHandle>,
-) {
+) -> bool {
     let name = path.rsplit_once('/').map_or(path, |(_, n)| n);
     ui.horizontal(|ui| {
         ui.label(RichText::new("▦").color(theme::kind::SPRITE));
@@ -71,11 +72,11 @@ pub(crate) fn sheet_properties(
     let sheet = match state {
         None | Some(SheetState::Reading) => {
             ui.label(RichText::new("Reading…").color(theme::TEXT_WEAK));
-            return;
+            return false;
         }
         Some(SheetState::Failed(why)) => {
             ui.label(RichText::new(format!("It couldn't be read: {why}.")).color(theme::ERROR));
-            return;
+            return false;
         }
         Some(SheetState::Read(sheet)) => sheet,
     };
@@ -245,6 +246,14 @@ pub(crate) fn sheet_properties(
         ui.label(RichText::new(note).size(11.0).color(theme::WARNING));
     }
     ui.add_space(6.0);
+    let make = ui
+        .button("Edit clips…")
+        .on_hover_text(
+            "Opens its clips file (made beside it if there's none yet): set each clip's speed, \
+             give frames events that play sounds, and make clips of your own",
+        )
+        .clicked();
+    ui.add_space(4.0);
     ui.label(
         RichText::new(
             "Saving it in Aseprite updates it here at once. Drag it into the viewport to place it \
@@ -253,4 +262,5 @@ pub(crate) fn sheet_properties(
         .size(11.0)
         .color(theme::TEXT_WEAK),
     );
+    make
 }

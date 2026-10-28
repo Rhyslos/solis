@@ -50,6 +50,8 @@ pub enum LibraryKind {
     SoundEvent,
     /// An Aseprite file: a sprite sheet (Phase 9, D2).
     SpriteSheet,
+    /// A sprite's clips file (`.solframes`, Phase 9, D3).
+    SpriteClips,
     /// Anything else.
     Other,
 }
@@ -66,6 +68,7 @@ impl LibraryKind {
             Self::Sound => "Sound",
             Self::SoundEvent => "Sound event",
             Self::SpriteSheet => "Sprite sheet",
+            Self::SpriteClips => "Sprite clips",
             Self::Other => "File",
         }
     }
@@ -81,7 +84,7 @@ impl LibraryKind {
             Self::Code => theme::kind::CODE,
             Self::Sound => theme::kind::SOUND,
             Self::SoundEvent => theme::kind::SOUND_EVENT,
-            Self::SpriteSheet => theme::kind::SPRITE,
+            Self::SpriteSheet | Self::SpriteClips => theme::kind::SPRITE,
             Self::Other => theme::kind::OTHER,
         }
     }
@@ -95,14 +98,23 @@ impl LibraryKind {
             Self::Texture => Icon::Viewport,
             Self::Code => Icon::Code,
             Self::Sound | Self::SoundEvent => Icon::Sound,
-            Self::SpriteSheet => Icon::Viewport,
+            Self::SpriteSheet | Self::SpriteClips => Icon::Viewport,
             Self::Other => Icon::Properties,
         }
     }
 
     /// Whether it can be placed in an area (dragged in, double-clicked).
     pub fn placeable(self) -> bool {
-        matches!(self, Self::Model | Self::Assembly | Self::SpriteSheet)
+        matches!(
+            self,
+            Self::Model | Self::Assembly | Self::SpriteSheet | Self::SpriteClips
+        )
+    }
+
+    /// Whether a double-click opens it (in the editor) rather than placing
+    /// it: a sprite's clips file opens its Clips and Frames tabs.
+    pub fn opens_on_double_click(self) -> bool {
+        self == Self::SpriteClips
     }
 }
 
@@ -198,6 +210,9 @@ pub(crate) enum LibraryRequest {
     NewSoundEvent(String),
     /// Save a sound event's settings to its file.
     SaveSoundEvent(String, sound::SoundEvent),
+    /// Make a clips file beside the Aseprite file at this path (or open
+    /// the one there), from its Properties (Phase 9, D3).
+    MakeClipsFile(String),
     /// Add a sound file (by its asset ID) to a sound event's takes.
     AddTake(String, AssetId),
 }
@@ -623,13 +638,19 @@ fn item_actions(picked: Picked<'_>, state: &mut LibraryState, requests: &mut Vec
         requests.push(LibraryRequest::Place(id));
     } else if response.double_clicked() {
         match (item.kind.placeable(), item.id) {
-            (true, Some(id)) => requests.push(LibraryRequest::Place(id)),
+            (true, Some(id)) if !item.kind.opens_on_double_click() => {
+                requests.push(LibraryRequest::Place(id));
+            }
             _ => requests.push(LibraryRequest::Open(item.kind, item.path.clone())),
         }
     }
     response.context_menu(|ui| {
         if item.kind == LibraryKind::Sound && ui.button("Play").clicked() {
             requests.push(LibraryRequest::PlaySound(item.path.clone()));
+            ui.close();
+        }
+        if item.kind.opens_on_double_click() && ui.button("Open").clicked() {
+            requests.push(LibraryRequest::Open(item.kind, item.path.clone()));
             ui.close();
         }
         if item.kind.placeable() {
@@ -663,6 +684,15 @@ fn item_actions(picked: Picked<'_>, state: &mut LibraryState, requests: &mut Vec
     });
 }
 
+/// "1 clip", "6 clips".
+pub(crate) fn clips_text(n: usize) -> String {
+    if n == 1 {
+        "1 clip".into()
+    } else {
+        format!("{n} clips")
+    }
+}
+
 /// "1 frame", "24 frames".
 pub(crate) fn frames_text(n: usize) -> String {
     if n == 1 {
@@ -683,6 +713,10 @@ fn hint(item: &LibraryItem) -> String {
         LibraryKind::SpriteSheet => {
             "Drag it into the viewport, or double-click, to place it as a sprite; click it to \
              see its frames in Properties."
+        }
+        LibraryKind::SpriteClips => {
+            "Double-click to open its clips; drag it into the viewport to place a sprite that \
+             plays them."
         }
         LibraryKind::SoundEvent => {
             "▶ to listen (a different take each time); drop sound files on it to add takes; \
@@ -744,14 +778,25 @@ fn tile<'a>(
         Some(SoundState::Read(info)) if item.kind == LibraryKind::Sound => Some(info),
         _ => None,
     };
-    let sheet = (item.kind == LibraryKind::SpriteSheet)
-        .then(|| {
-            Some((
-                sounds.sheets.at(&item.path)?,
-                sounds.sheet_pictures.get(&item.path)?,
-            ))
-        })
-        .flatten();
+    // A clips file shows its sheet's first frame, and how many clips.
+    let sheet_path = match item.kind {
+        LibraryKind::SpriteSheet => Some(item.path.as_str()),
+        LibraryKind::SpriteClips => item
+            .id
+            .and_then(|id| sounds.sheets.frames_file(id))
+            .and_then(|f| sounds.sheets.paths.get(&f.sheet?))
+            .map(String::as_str),
+        _ => None,
+    };
+    let badge = match item.kind {
+        LibraryKind::SpriteClips => item
+            .id
+            .and_then(|id| sounds.sheets.clips(id))
+            .map(|set| clips_text(set.clips.len())),
+        _ => None,
+    };
+    let sheet = sheet_path
+        .and_then(|path| Some((sounds.sheets.at(path)?, sounds.sheet_pictures.get(path)?)));
     if let Some(info) = waveform {
         sound_view::draw_waveform(
             painter,
@@ -764,7 +809,7 @@ fn tile<'a>(
         painter.text(
             picture.right_top() + egui::vec2(-4.0, 3.0),
             egui::Align2::RIGHT_TOP,
-            frames_text(sheet.frames.len()),
+            badge.unwrap_or_else(|| frames_text(sheet.frames.len())),
             egui::FontId::proportional(10.5),
             theme::TEXT,
         );

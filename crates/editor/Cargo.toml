@@ -19,6 +19,7 @@ rayon.workspace = true
 reflect.workspace = true
 area.workspace = true
 world.workspace = true
+animation.workspace = true
 physics.workspace = true
 script.workspace = true
 input.workspace = true

@@ -134,6 +134,18 @@ pub trait Host {
     fn set_sound_playing(&mut self, which: EntityId, playing: bool) {
         let _ = (which, playing);
     }
+    /// Plays a clip on the entity's Sprite at the end of the tick (Phase
+    /// 9, D3): already playing it (or finished it), it carries on as it
+    /// is; another clip starts from its beginning. With `again`
+    /// (`replayClip`), it starts from its beginning whatever it was doing.
+    fn play_clip(&mut self, which: EntityId, clip: &str, again: bool) {
+        let _ = (which, clip, again);
+    }
+    /// Stops the entity's Sprite where it is in its clip, at the end of
+    /// the tick.
+    fn stop_clip(&mut self, which: EntityId) {
+        let _ = which;
+    }
     /// Sets a bus's volume for the rest of the play, as a share of its
     /// Mixer fader (1 as set, 0 silent), at the end of the tick: an
     /// options menu's sliders.
@@ -523,6 +535,33 @@ pub(crate) fn with_natives<'h, R>(
             scope.create_function(move |_, (which, playing): (LuaValue, bool)| {
                 if let Some(e) = entity_of(&which) {
                     h.borrow_mut().set_sound_playing(e, playing);
+                }
+                Ok(())
+            })?,
+        )?;
+        natives.raw_set(
+            "playClip",
+            scope.create_function(move |_, (which, clip): (LuaValue, mlua::LuaString)| {
+                if let Some(e) = entity_of(&which) {
+                    h.borrow_mut().play_clip(e, &clip.to_str()?, false);
+                }
+                Ok(())
+            })?,
+        )?;
+        natives.raw_set(
+            "replayClip",
+            scope.create_function(move |_, (which, clip): (LuaValue, mlua::LuaString)| {
+                if let Some(e) = entity_of(&which) {
+                    h.borrow_mut().play_clip(e, &clip.to_str()?, true);
+                }
+                Ok(())
+            })?,
+        )?;
+        natives.raw_set(
+            "stopClip",
+            scope.create_function(move |_, which: LuaValue| {
+                if let Some(e) = entity_of(&which) {
+                    h.borrow_mut().stop_clip(e);
                 }
                 Ok(())
             })?,

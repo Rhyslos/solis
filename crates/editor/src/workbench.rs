@@ -12,7 +12,7 @@ use crate::console::CONSOLE_LIMIT;
 use crate::console::{Console, LogLevel, LogLine};
 use crate::document::Document;
 use crate::layout;
-use crate::library::{LibraryItem, ProjectInfo};
+use crate::library::{LibraryItem, LibraryKind, ProjectInfo};
 use crate::models::ModelInfo;
 use crate::panel::Panel;
 use crate::panels::{PanelViewer, drop_hint};
@@ -112,6 +112,14 @@ pub enum WorkbenchAction {
     },
     /// Save the project's buses to its `mixer.solmix` (the Mixer).
     SaveMixer(sound::Mixer),
+    /// Save a sprite's clips file (`.solframes`, inside the project's
+    /// assets), making it if it isn't there yet (Phase 9, D3).
+    SaveFrames {
+        /// The file.
+        path: std::path::PathBuf,
+        /// What to save.
+        text: String,
+    },
     /// Save the project's 2D settings to its `pixels.solpix` (Settings >
     /// 2D).
     SavePixels(area::pixels::PixelSettings),
@@ -257,6 +265,16 @@ pub struct Workbench {
     pub(crate) mixer: crate::mixer_view::MixerState,
     /// The project's 2D settings (Settings > 2D, `pixels.solpix`).
     pub(crate) pixels: area::pixels::PixelSettings,
+    /// The sound event a sprite's clip event plays, by the event's name
+    /// (Phase 9, D3): each sound event by its path without `.solsound`
+    /// ("sfx/footstep"), and by its file's name alone ("footstep") when
+    /// no other sound event has that name.
+    pub(crate) cue_sounds: HashMap<String, String>,
+    /// The clips file open in the Clips and Frames tabs (Phase 9, D3).
+    pub(crate) frames_editor: Option<crate::frames_editor::FramesEditor>,
+    /// Whether the pointer was over the Clips or Frames tab last frame:
+    /// Ctrl+Z, Ctrl+Y and Delete are the file's then.
+    pub(crate) frames_hovered: bool,
     /// Each sprite sheet's atlas as an egui picture, by path, for the
     /// Library and Properties, and which sheet each was made from.
     pub(crate) sheet_pictures: HashMap<String, egui::TextureHandle>,
@@ -383,6 +401,9 @@ impl Workbench {
             sound_shown: None,
             mixer: Default::default(),
             pixels: area::pixels::PixelSettings::default(),
+            cue_sounds: HashMap::new(),
+            frames_editor: None,
+            frames_hovered: false,
             sheet_pictures: HashMap::new(),
             sheet_pictures_from: HashMap::new(),
             place_targets: BTreeMap::new(),
@@ -507,6 +528,7 @@ impl Workbench {
     /// The project's files, for the Library.
     pub fn set_library(&mut self, items: Vec<LibraryItem>) {
         self.library = items;
+        self.cue_sounds = cue_sounds(&self.library);
         self.sources += 1;
     }
 
@@ -729,6 +751,7 @@ impl Workbench {
     /// happens ([decision 0026](../../docs/decisions/0026-draw-only-when-something-changes.md)).
     pub fn wants_frames(&self, ctx: &egui::Context) -> bool {
         self.playing.as_ref().is_some_and(|p| !p.paused)
+            || self.frames_editor.as_ref().is_some_and(|f| f.playing)
             || self.moving.is_some()
             || self.viewport.needs_frames()
             || ctx.input(|i| i.pointer.any_down() || !i.keys_down.is_empty())
@@ -769,6 +792,7 @@ impl Workbench {
             .exact_size(34.0)
             .show(ui, |ui| self.top_bar(ui, &mut actions));
         let style = theme::dock_style(ui.style().as_ref(), self.accent);
+        self.play_frames(ui.input(|i| f64::from(i.stable_dt)));
         let sheets = std::sync::Arc::clone(&self.viewport.sheets);
         let mut shown = HashSet::new();
         let mut area_requests = Vec::new();
@@ -861,11 +885,20 @@ impl Workbench {
             inner: renderer,
             spent: std::time::Duration::ZERO,
         };
+        let mut frames_out = crate::panels::FramesOut::default();
+        let frames = self.frames_editor.as_mut().map(|editor| {
+            crate::workbench_frames::frames_ui(
+                editor,
+                &sheets,
+                &self.sheet_pictures,
+                &self.cue_sounds,
+            )
+        });
         theme::dock_frame().show(ui, |ui| {
             DockArea::new(&mut self.dock)
                 .style(style)
                 .tab_context_menus(false)
-                .show_close_buttons(false)
+                .show_close_buttons(true)
                 .show_add_buttons(false)
                 .show_leaf_close_all_buttons(false)
                 .show_leaf_collapse_buttons(true)
@@ -912,10 +945,13 @@ impl Workbench {
                         in_front: &self.in_front,
                         shown: &mut shown,
                         profiler: &self.profiler,
+                        frames,
+                        frames_out: &mut frames_out,
                     },
                 );
         });
         self.in_front = shown;
+        self.frames_tabs_done(frames_out, &mut actions);
         if game_clicked {
             self.give_game_input(ui.ctx());
         }
@@ -1133,6 +1169,7 @@ impl Workbench {
         if ui.ctx().egui_wants_keyboard_input() {
             return;
         }
+        let frames = self.frames_hovered && self.frames_editor.is_some();
         let (redo, undo) = ui.input_mut(|i| {
             let shift_z = egui::KeyboardShortcut::new(
                 egui::Modifiers::COMMAND | egui::Modifiers::SHIFT,
@@ -1144,7 +1181,10 @@ impl Workbench {
             let redo = i.consume_shortcut(&shift_z) || i.consume_shortcut(&y);
             (redo, i.consume_shortcut(&z))
         });
-        if redo {
+        if frames {
+            // Over the Clips or Frames tab: the clips file's changes.
+            self.frames_undo(redo, undo);
+        } else if redo {
             self.redo();
         } else if undo {
             self.undo();
@@ -1339,7 +1379,8 @@ impl Workbench {
                 plain(i, egui::Key::F),
             )
         });
-        if delete {
+        // Over the Frames tab, Delete takes out frames instead.
+        if delete && !self.frames_hovered {
             self.delete_selection();
         }
         if duplicate {
@@ -1374,6 +1415,31 @@ impl Workbench {
             });
         self.about_open = open;
     }
+}
+
+/// The sound events clip events can play, by name: each by its path
+/// without `.solsound`, and by its file's name alone unless two share it.
+fn cue_sounds(library: &[LibraryItem]) -> HashMap<String, String> {
+    let mut by_name: HashMap<String, String> = HashMap::new();
+    let mut shared = std::collections::HashSet::new();
+    let mut map = HashMap::new();
+    for item in library.iter().filter(|i| i.kind == LibraryKind::SoundEvent) {
+        let path = item
+            .path
+            .strip_suffix(".solsound")
+            .unwrap_or(&item.path)
+            .to_owned();
+        if by_name.insert(item.name.clone(), path.clone()).is_some() {
+            shared.insert(item.name.clone());
+        }
+        map.insert(path.clone(), path);
+    }
+    for (name, path) in by_name {
+        if !shared.contains(&name) {
+            map.entry(name).or_insert(path);
+        }
+    }
+    map
 }
 
 #[cfg(test)]

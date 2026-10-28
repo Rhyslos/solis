@@ -71,3 +71,4 @@ Titles below are shortened; the files have the full reasoning. Decisions 0019 to
 | `0061-settings-window-and-no-layout-presets.md` | Edit → Settings… with pages and a search box; layout presets removed, Reset layout kept | Accepted (changes 0004) |
 | `0062-2d-on-the-ground-drawn-small-scaled-whole.md` | 2D on the ground seen from above, 2D cameras, `pixels.solpix`, the pixel stage and the 2D view | Accepted (builds on 0054) |
 | `0063-sprites-read-from-aseprite-cut-out-front-from-the-foot.md` | Sprites read from `.aseprite` files by our own reader, one atlas per file, cut out with front and behind from the foot, colours as painted | Accepted (builds on 0054 and 0062) |
+| `0064-frame-animation-clips-files-and-tabs.md` | Clips from Aseprite tags and `.solframes` clips files, the Clips and Frames tabs, clip time as game state, events as sounds and `AnimationCue`, Preview animation | Accepted (builds on 0057 and 0063) |

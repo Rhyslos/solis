@@ -14,6 +14,8 @@ mod commands_many;
 pub mod console;
 mod console_commands;
 pub mod document;
+pub mod frames_editor;
+mod frames_view;
 mod game_code;
 mod game_panel;
 pub mod game_sound;
@@ -54,6 +56,7 @@ pub mod updates;
 pub mod viewport;
 mod viewport_tools;
 pub mod workbench;
+mod workbench_frames;
 mod workbench_library;
 mod workbench_tools;
 

@@ -5,6 +5,7 @@ Real files the fuzzers start from, one folder per target in [`../fuzz_targets`](
 | Folder | What it holds |
 | --- | --- |
 | `area_file/` | Area files (`.solarea`), including the turret sample's. |
+| `frames/` | A sprite's clips file (`.solframes`), as the fixture of version 1. |
 | `game_code/` | Each sample's `main.lst`, and the turret's Lust and Lua joined by a 0x01 byte. |
 | `import_cache/` | Import cache entries (`.solbin`) of the sample models. |
 | `input_actions/` | Input action files (`.solinput`), with one of format 1 (no version line). |

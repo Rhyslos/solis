@@ -12,8 +12,10 @@
 //! The world never changes the area: stopping throws it away.
 
 pub mod projectiles;
+pub mod sprites;
 
 pub use projectiles::{MAX_PROJECTILES, Projectile, Projectiles, Shot};
+pub use sprites::{ClipSets, SpriteCue};
 
 use area::Area;
 use area::builtin::{
@@ -147,6 +149,8 @@ pub struct World {
     /// anything changed since.
     stamp: u64,
     touched: bool,
+    /// The clips sprites play (Phase 9, D3), by sheet or clips file.
+    clip_sets: std::sync::Arc<ClipSets>,
 }
 
 /// A change to physics game code asked for, made at the next step.
@@ -230,6 +234,7 @@ impl World {
             after_physics: false,
             stamp: next_number(),
             touched: false,
+            clip_sets: std::sync::Arc::default(),
         };
         world.index();
         world.place_everything();
@@ -296,6 +301,8 @@ impl World {
             .collect();
         let projectiles = std::mem::take(&mut self.projectiles);
         let seed = self.seed;
+        let playbacks = self.playbacks();
+        let clip_sets = std::sync::Arc::clone(&self.clip_sets);
         // How each body was moving carries on: speed, spin, sleep, and a
         // character's finding.
         let states = self.physics.state().body_states();
@@ -304,6 +311,8 @@ impl World {
         self.clock = clock;
         self.projectiles = projectiles;
         self.seed = seed;
+        self.clip_sets = clip_sets;
+        self.keep_playbacks(playbacks);
         self.physics_asked = asked;
         for (id, from, at) in kept {
             self.set_transform(id, at);
@@ -488,6 +497,13 @@ impl World {
                 self.game_moved.remove(&id);
             }
             let before = self.physics_parts(entity);
+            // The game's playback of its Sprite, kept unless the edit
+            // changed the area's.
+            let playback = self
+                .ecs
+                .query_one_mut::<(&Sprite, &sprites::SpriteStart)>(entity)
+                .ok()
+                .map(|(s, start)| (id, start.0.clone(), sprites::Playback::of(s)));
             let _ = self.ecs.despawn(entity);
             let fresh = self
                 .ecs
@@ -497,6 +513,9 @@ impl World {
             }
             self.by_id.insert(id, fresh);
             self.order[at].0 = fresh;
+            if let Some(kept) = playback {
+                self.keep_playbacks(vec![kept]);
+            }
             // Only what physics knows of it changed: its body is built
             // again (an edit to another component leaves it alone).
             if self.physics_parts(fresh) != before {
@@ -1008,6 +1027,13 @@ impl World {
             sum.entity(id);
             sum.u64(u64::from(playing));
         }
+        // Which clip each sprite plays and how far in (Phase 9, D3).
+        for (id, clip, playing, time) in self.sprite_states() {
+            sum.entity(id);
+            sum.bytes(clip.as_bytes());
+            sum.u64(u64::from(playing));
+            sum.u64(u64::from(time));
+        }
         sum.u64(self.physics.state().checksum());
         let flying = self.projectiles.flying();
         sum.u64(flying.len() as u64);
@@ -1291,7 +1317,9 @@ fn components_of(id: EntityId, data: &area::EntityData) -> hecs::EntityBuilder {
                 builder.add(Listener::from_data(component));
             }
             Sprite::NAME => {
-                builder.add(Sprite::from_data(component));
+                let sprite = Sprite::from_data(component);
+                builder.add(sprites::SpriteStart(sprites::Playback::of(&sprite)));
+                builder.add(sprite);
             }
             _ => {
                 values.0.insert(name.clone(), component.clone());

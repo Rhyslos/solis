@@ -22,8 +22,8 @@ Hold the running game's entities in a form a game can run over quickly. The area
 
 ## Depends on
 
-`area`, `reflect`, `physics`, glam and hecs.
+`area`, `animation` (the clips sprites play), `reflect`, `physics`, glam and hecs.
 
 ## Status
 
-Phase 3: built from an area, stepped, read by ID. Phase 4: game code moves entities between ticks. Phase 6: drawing between ticks, physics, the seed and checksums. Phase 7, S5: `audio_sources` lists every `AudioSource` (by ID, from a query, so a world without them costs nothing) and `set_sound_playing` switches one (game code's `setSoundPlaying`); `sounding_audio_sources` copies only those playing with an event named (what the app plays each frame); which are on is in the checksum, read without copying the sources. S6: `ReverbZone`s are kept as components, for `placed_between`. Phase 9, D2: `Sprite` arrives as its Rust type, so `placed_between::<Sprite>` lists the sprites to draw.
+Phase 3: built from an area, stepped, read by ID. Phase 4: game code moves entities between ticks. Phase 6: drawing between ticks, physics, the seed and checksums. Phase 7, S5: `audio_sources` lists every `AudioSource` (by ID, from a query, so a world without them costs nothing) and `set_sound_playing` switches one (game code's `setSoundPlaying`); `sounding_audio_sources` copies only those playing with an event named (what the app plays each frame); which are on is in the checksum, read without copying the sources. S6: `ReverbZone`s are kept as components, for `placed_between`. Phase 9, D2: `Sprite` arrives as its Rust type, so `placed_between::<Sprite>` lists the sprites to draw. Phase 9, D3: sprites play clips (`sprites.rs`): `step_sprites` moves every playing Sprite's clip on by the tick times its speeds, in a fixed order, and hands back the events it passed and the clips that finished (`SpriteCue`); `play_clip` and `stop_clip` are game code's `playClip` and `stopClip`; a Sprite's clip, whether it plays and its time are in the checksum, and kept over an edit that leaves the area's playback alone (`SpriteStart`). The clips come from the editor (`set_clip_sets`).

@@ -36,6 +36,37 @@ pub struct Renamed {
     pub until: &'static str,
 }
 
+/// An event the engine sends to game code (Phase 9, D3): declared in a
+/// description file, brought in with `fetch "solis/<file>":<Name>;`, and
+/// handled with `on <Name>(…)` like a game's own events.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct EngineEvent {
+    /// The file it's declared in, inside `solis/` (without `.lst`).
+    pub file: &'static str,
+    /// Its name.
+    pub name: &'static str,
+    /// Its Lust declaration.
+    pub lust: &'static str,
+    /// When it's sent, in plain words, written above it.
+    pub about: &'static str,
+}
+
+/// Every event the engine sends.
+pub const ENGINE_EVENTS: &[EngineEvent] = &[
+    EngineEvent {
+        file: "animation",
+        name: "AnimationCue",
+        lust: "event AnimationCue(string name);",
+        about: "Sent to an entity when its Sprite's clip reaches a frame with an event (\"footstep\"), before the tick's other events. A sound event of that name also plays by itself.",
+    },
+    EngineEvent {
+        file: "animation",
+        name: "ClipFinished",
+        lust: "event ClipFinished(string clip);",
+        about: "Sent to an entity when its Sprite's clip has played all its times (a clip that plays over and over never finishes).",
+    },
+];
+
 /// Natives renamed on purpose, with their old names kept working for a
 /// while. None yet: the first rename adds a line here.
 pub const RENAMED: &[Renamed] = &[];
@@ -155,6 +186,24 @@ pub const NATIVES: &[Native] = &[
         name: "setBusVolume",
         lust: "method setBusVolume(string bus, float volume) native;",
         about: "Sets a bus's volume (\"Music\", \"Effects\": the Mixer's buses) for the rest of the play, from 0 (silent) to 1 (as set in the Mixer): for an options menu's sliders.",
+    },
+    Native {
+        file: "animation",
+        name: "playClip",
+        lust: "method playClip(entity on, string clip) native;",
+        about: "Plays a clip on an entity's Sprite (\"walk\": one of its sheet's Aseprite tags, or a clip of its clips file), at the end of the tick. Already playing it, or finished it: it carries on as it is, so it's safe to call every tick. Another clip: it starts from its beginning.",
+    },
+    Native {
+        file: "animation",
+        name: "replayClip",
+        lust: "method replayClip(entity on, string clip) native;",
+        about: "Plays a clip on an entity's Sprite from its beginning, whatever it was doing: a swing each time a button is pressed.",
+    },
+    Native {
+        file: "animation",
+        name: "stopClip",
+        lust: "method stopClip(entity on) native;",
+        about: "Stops an entity's Sprite where it is in its clip, at the end of the tick; playClip carries on from there.",
     },
     Native {
         file: "input",
@@ -303,6 +352,10 @@ fn descriptions_with(made_by: &str, folder: &str, renamed: &[Renamed]) -> Vec<(S
                 text.push_str(&format!("-- {}\n{}\n\n", native.about, native.lust));
             }
             let mut names: Vec<&str> = mine.iter().map(|n| n.name).collect();
+            for event in ENGINE_EVENTS.iter().filter(|e| e.file == file) {
+                text.push_str(&format!("-- {}\n{}\n\n", event.about, event.lust));
+                names.push(event.name);
+            }
             // Old names of renamed natives: the same method under its old
             // name, so code using it still checks and runs.
             for renamed in renamed.iter().filter(|r| r.file == file) {
@@ -354,7 +407,7 @@ mod tests {
     #[test]
     fn the_descriptions_check_cleanly_and_a_game_can_use_them() {
         let mut files = descriptions("Test Engine 9.9.9", "solis");
-        assert_eq!(files.len(), 7);
+        assert_eq!(files.len(), 8);
         assert!(files[0].1.starts_with("-- Made by Test Engine 9.9.9"));
         files.push((
             "main.lst".into(),
@@ -363,6 +416,24 @@ mod tests {
              get \"solis/physics\":[push, velocityOf, setVelocity, castRay, castRayHit, castRayNormal];\n\
              get \"solis/input\":[held, pressed, released, axis, bindingOf, rebind];\n\
              get \"solis/sound\":[playSound, playSoundAt, playSoundOn, stopSoundsOn, setSoundPlaying, setBusVolume];\n\
+             get \"solis/animation\":[playClip, replayClip, stopClip];\n\
+             fetch \"solis/animation\":AnimationCue;\n\
+             fetch \"solis/animation\":ClipFinished;\n\
+             component Walker {\n\
+                 has {\n\
+                     int steps = 0;\n\
+                 }\n\
+                 on AnimationCue(string name) {\n\
+                     steps = steps + 1;\n\
+                 }\n\
+                 on ClipFinished(string clip) {\n\
+                     is clip == \"hoe\"? then {\n\
+                         playClip(me, \"idle\");\n\
+                         replayClip(me, \"hoe\");\n\
+                     }\n\
+                     stopClip(me);\n\
+                 }\n\
+             }\n\
              component Mover {\n\
                  has {\n\
                      float speed = 2;\n\
@@ -385,7 +456,7 @@ mod tests {
                      }\n\
                  }\n\
              }\n\
-             pass Mover;\n\
+             pass Mover, Walker;\n\
              end\n"
                 .into(),
         ));
@@ -419,7 +490,10 @@ mod tests {
         names.dedup();
         assert_eq!(names.len(), NATIVES.len(), "no name twice");
         for native in NATIVES {
-            assert!(["world", "entity", "physics", "input", "sound"].contains(&native.file));
+            assert!(
+                ["world", "entity", "physics", "input", "sound", "animation"]
+                    .contains(&native.file)
+            );
             assert!(
                 native.lust.contains(&format!(" {}(", native.name)),
                 "{native:?}"

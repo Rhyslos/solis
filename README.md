@@ -30,7 +30,7 @@ Solis is built in phases, one milestone per pull request. Each phase ends with a
 
 **Overall: 47 of 131 milestones** `████░░░░░░░░░` 32%
 
-**Now:** Phases 1, 2 and 3 are built and wait for their gates to be tried by hand ([Phase 3 plan](docs/plans/phase-3.md)). Phase 4, game code, is built and reviewed, and waits for its gate too ([Phase 4 plan](docs/plans/phase-4.md)). Phase 5, scale, is built and reviewed, and waits for its gate ([Phase 5 plan](docs/plans/phase-5.md)): try **Help > Make the benchmark…**. Phase 6, simulation and play, is built and reviewed three times, and waits for its gate ([Phase 6 plan](docs/plans/phase-6.md)): try **Help > Make the playground…**. The hardening milestone is done and everything is merged: its gate is reading the [hardening report](docs/reports/hardening-phase-6.md) and trying the playground once more. Solis now installs and updates itself from GitHub's Releases page. Phase 7, sound, has begun: sounds can be listened to in the Library (S1), sound events vary each play (S2), game code plays them in the world (S3), the Mixer balances them through buses with ducking (S4), sounds keep playing on entities with only the most important heard (S5), reverb zones make places echo (S6), the playground has the gate's sounds (S7), and listeners decide who hears what (S8). Phase 7 is built and reviewed (correctness, stability and speed fixes all merged), and waits for its gate ([sound plan](docs/plans/phase-7-sound.md), decision 0056). Phase 8, compatibility, is built and reviewed, and waits for its gate ([plan](docs/plans/compatibility.md)): every file format has a version and upgraders, with a backup before an older file is saved again; save games from earlier builds load; what game code can call changes only on purpose; `--check-project` checks a project before an update; breaking changes are labelled; and Lua's speed is measured. Three small pieces of its UI wait for the project lead's yes (Fix in Problems, Record a check, the Profiler's Lua hint). Phase 9, 2D, has begun: a project has 2D settings (Edit > Settings… > 2D), a camera can be 2D, the game is drawn small and scaled up crisply, and the editor has a 2D view in pixels (D1, [decision 0062](docs/decisions/0062-2d-on-the-ground-drawn-small-scaled-whole.md)); sprites come straight from Aseprite files, drawn crisply with front and behind worked out for free (D2). 2D comes first now ([decision 0059](docs/decisions/0059-2d-first.md)): animation's state machine and graph editor arrive with 2D's frame animation, and 3D skeletal animation waits for Phase 16, once 2D is complete. Work stops for a rethink after effects (Phase 15): what comes after is written down as later, not next. Then compatibility (Phase 8, [plan](docs/plans/compatibility.md)), so updates never lose work, and first-class 2D in two parts (Phases 9 and 10, [plan](docs/plans/2d.md), [decision 0054](docs/decisions/0054-first-class-2d.md)), so the project lead's own 2D game can move to Solis; then a playtest export and game UI, then light, materials and effects ([decisions 0046](docs/decisions/0046-light-before-netcode.md) and [0048](docs/decisions/0048-materials-and-shaders-before-effects.md)).
+**Now:** Phases 1, 2 and 3 are built and wait for their gates to be tried by hand ([Phase 3 plan](docs/plans/phase-3.md)). Phase 4, game code, is built and reviewed, and waits for its gate too ([Phase 4 plan](docs/plans/phase-4.md)). Phase 5, scale, is built and reviewed, and waits for its gate ([Phase 5 plan](docs/plans/phase-5.md)): try **Help > Make the benchmark…**. Phase 6, simulation and play, is built and reviewed three times, and waits for its gate ([Phase 6 plan](docs/plans/phase-6.md)): try **Help > Make the playground…**. The hardening milestone is done and everything is merged: its gate is reading the [hardening report](docs/reports/hardening-phase-6.md) and trying the playground once more. Solis now installs and updates itself from GitHub's Releases page. Phase 7, sound, has begun: sounds can be listened to in the Library (S1), sound events vary each play (S2), game code plays them in the world (S3), the Mixer balances them through buses with ducking (S4), sounds keep playing on entities with only the most important heard (S5), reverb zones make places echo (S6), the playground has the gate's sounds (S7), and listeners decide who hears what (S8). Phase 7 is built and reviewed (correctness, stability and speed fixes all merged), and waits for its gate ([sound plan](docs/plans/phase-7-sound.md), decision 0056). Phase 8, compatibility, is built and reviewed, and waits for its gate ([plan](docs/plans/compatibility.md)): every file format has a version and upgraders, with a backup before an older file is saved again; save games from earlier builds load; what game code can call changes only on purpose; `--check-project` checks a project before an update; breaking changes are labelled; and Lua's speed is measured. Three small pieces of its UI wait for the project lead's yes (Fix in Problems, Record a check, the Profiler's Lua hint). Phase 9, 2D, has begun: a project has 2D settings (Edit > Settings… > 2D), a camera can be 2D, the game is drawn small and scaled up crisply, and the editor has a 2D view in pixels (D1, [decision 0062](docs/decisions/0062-2d-on-the-ground-drawn-small-scaled-whole.md)); sprites come straight from Aseprite files, drawn crisply with front and behind worked out for free (D2); and sprites play clips, edited in Clips and Frames tabs, with events that play footsteps and reach game code (D3). 2D comes first now ([decision 0059](docs/decisions/0059-2d-first.md)): animation's state machine and graph editor arrive with 2D's frame animation, and 3D skeletal animation waits for Phase 16, once 2D is complete. Work stops for a rethink after effects (Phase 15): what comes after is written down as later, not next. Then compatibility (Phase 8, [plan](docs/plans/compatibility.md)), so updates never lose work, and first-class 2D in two parts (Phases 9 and 10, [plan](docs/plans/2d.md), [decision 0054](docs/decisions/0054-first-class-2d.md)), so the project lead's own 2D game can move to Solis; then a playtest export and game UI, then light, materials and effects ([decisions 0046](docs/decisions/0046-light-before-netcode.md) and [0048](docs/decisions/0048-materials-and-shaders-before-effects.md)).
 
 ### Phase 0 · Groundwork — 7 of 7
 
@@ -186,34 +186,34 @@ Solis is built in phases, one milestone per pull request. Each phase ends with a
 
 **Gate:** footsteps each sound a little different, the music dips while someone speaks, and walking into a reverb zone makes the steps echo. (Animation moved: frames to Phase 9, skeletons to Phase 16; [decision 0059](docs/decisions/0059-2d-first.md).)
 
-### Phase 8 · Compatibility — 3 of 6
+### Phase 8 · Compatibility — 6 of 6
 
-`███░░░` 50%
+`██████` 100%
 
 <details>
 <summary>Milestones</summary>
 
 - [x] Backups and upgraders for every file format ([plan](docs/plans/compatibility.md), decision 0053)
 - [x] Save games that survive updates
-- [ ] The game-code interface, guarded
-- [ ] Real projects tested before an update ships
+- [x] The game-code interface, guarded
+- [x] Real projects tested before an update ships
 - [x] Breaking changes, labelled
-- [ ] Lua's speed, measured and explained (decision 0055)
+- [x] Lua's speed, measured and explained (decision 0055)
 
 </details>
 
 **Gate:** a project from an older build opens, backed up and upgraded; a save from before an update loads after it.
 
-### Phase 9 · 2D, part 1 — 2 of 11
+### Phase 9 · 2D, part 1 — 3 of 11
 
-`██░░░░░░░░░` 18%
+`███░░░░░░░░` 27%
 
 <details>
 <summary>Milestones</summary>
 
 - [x] The pixel-perfect view and the 2D editor ([plan](docs/plans/2d.md), decisions 0054 and 0062)
 - [x] Sprites from Aseprite
-- [ ] Frame animation
+- [x] Frame animation
 - [ ] The animation state machine, for sprite frames first (from Phase 7's A4)
 - [ ] The animator graph editor, the shared graph editor (from Phase 7's A5; mocked up first)
 - [ ] Tile maps that change as you play

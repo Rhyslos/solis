@@ -68,6 +68,11 @@ pub enum Change {
     /// `setBusVolume`: this bus at this share of its fader (0 to 1) for
     /// the rest of the play.
     BusVolume(String, f32),
+    /// `playClip` (or, with `true`, `replayClip`): play this clip on the
+    /// entity's Sprite (Phase 9, D3).
+    PlayClip(EntityId, String, bool),
+    /// `stopClip`: stop the entity's Sprite where it is.
+    StopClip(EntityId),
 }
 
 /// The entities of a [`WorldView`]: the same while the world's entities,
@@ -166,6 +171,9 @@ pub const MAX_SOUNDS: usize = 256;
 
 /// The longest sound event name read.
 pub const MAX_SOUND_NAME: usize = 256;
+
+/// The longest clip name `playClip` takes.
+pub const MAX_CLIP_NAME: usize = 64;
 
 /// The most bytes of assembly names one shard keeps for spawns in one
 /// phase.
@@ -424,6 +432,23 @@ impl Host for ViewHost {
             self.kept
                 .changes
                 .push((order, Change::SoundPlaying(which, playing)));
+        }
+    }
+
+    fn play_clip(&mut self, which: EntityId, clip: &str, again: bool) {
+        let named = clip.len() <= MAX_CLIP_NAME && !clip.contains(char::is_control);
+        if named && self.kept.room() {
+            let order = self.order();
+            self.kept
+                .changes
+                .push((order, Change::PlayClip(which, clip.to_string(), again)));
+        }
+    }
+
+    fn stop_clip(&mut self, which: EntityId) {
+        if self.kept.room() {
+            let order = self.order();
+            self.kept.changes.push((order, Change::StopClip(which)));
         }
     }
 
@@ -1066,6 +1091,18 @@ impl Game {
     /// the updates, then the events in rounds, each phase reading `world`
     /// as the phase before left it.
     pub fn tick(&mut self, dt: f64, world: &mut dyn GameWorld) -> Ticked {
+        self.tick_with_events(dt, world, Vec::new())
+    }
+
+    /// [`Self::tick`], with events the engine sends this tick (a sprite's
+    /// clip reaching an event, Phase 9, D3) delivered first in the first
+    /// round. They count toward the tick's events like any others.
+    pub fn tick_with_events(
+        &mut self,
+        dt: f64,
+        world: &mut dyn GameWorld,
+        engine: Vec<Event>,
+    ) -> Ticked {
         let told = self.told;
         // Which round of events: spawns in different rounds may share
         // everything else about where they were asked for.
@@ -1091,6 +1128,7 @@ impl Game {
                     &mut **world.borrow_mut(),
                 )
             },
+            engine,
             told,
         );
         let over = self

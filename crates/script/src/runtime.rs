@@ -449,6 +449,7 @@ impl Runtime {
             outcome = in_rounds(
                 || Ok(ticking.updates(lent, &mut running.borrow_mut(), dt)),
                 |events| Ok(ticking.round(lent, &mut running.borrow_mut(), events)),
+                Vec::new(),
                 told,
             );
             Ok(())
@@ -638,7 +639,9 @@ fn swap_lust(
 
 /// A tick's updates, then its events in rounds (each round the events the
 /// one before sent, so the first sent is the first delivered), until none
-/// are left. `updates` and `round` give back what was sent and what failed,
+/// are left. `first`, events the engine sends (a sprite's clip reaching an
+/// event, Phase 9, D3), open the first round, ahead of those the updates
+/// sent: they happened before game code ran. `updates` and `round` give back what was sent and what failed,
 /// in any order: they're put in the tick's order here. Past
 /// [`MAX_DELIVERIES`] events, the rest are dropped with a failure (unless
 /// `told` already). Gives back the failures, in order, and why the tick
@@ -646,6 +649,7 @@ fn swap_lust(
 pub(crate) fn in_rounds(
     updates: impl FnOnce() -> Result<Phase, String>,
     mut round: impl FnMut(&[(u32, Event)]) -> Result<Phase, String>,
+    first: Vec<Event>,
     told: bool,
 ) -> (Vec<Failure>, Option<String>) {
     let mut failures = Vec::new();
@@ -657,10 +661,11 @@ pub(crate) fn in_rounds(
         sent.sort_by(|a, b| a.0.cmp(&b.0));
         sent.into_iter().map(|(_, e)| e).collect::<Vec<Event>>()
     };
-    let mut events = match updates() {
-        Ok(phase) => take(phase, &mut failures),
+    let mut events = first;
+    match updates() {
+        Ok(phase) => events.extend(take(phase, &mut failures)),
         Err(why) => return (failures, Some(why)),
-    };
+    }
     let mut delivered = 0;
     while !events.is_empty() {
         if delivered + events.len() > MAX_DELIVERIES {

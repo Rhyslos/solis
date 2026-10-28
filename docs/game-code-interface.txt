@@ -25,6 +25,9 @@ sound: method playSoundOn(string event, entity on) native;
 sound: method stopSoundsOn(entity on) native;
 sound: method setSoundPlaying(entity on, bool playing) native;
 sound: method setBusVolume(string bus, float volume) native;
+animation: method playClip(entity on, string clip) native;
+animation: method replayClip(entity on, string clip) native;
+animation: method stopClip(entity on) native;
 input: method bool held(string action) native;
 input: method bool pressed(string action) native;
 input: method bool released(string action) native;
@@ -46,6 +49,11 @@ entity: method turnTo(entity which, rotation facing) native;
 entity: method rotation facingAlong(vec3 direction) native;
 entity: method string nameOf(entity which) native;
 
+## Events the engine sends (fetch "solis/<file>":<Name>)
+
+animation: event AnimationCue(string name);
+animation: event ClipFinished(string clip);
+
 ## Lua (solis.<name>)
 
 solis.axis
@@ -64,6 +72,7 @@ solis.moveCharacter
 solis.moveTo
 solis.nameOf
 solis.onGround
+solis.playClip
 solis.playSound
 solis.playSoundAt
 solis.playSoundOn
@@ -75,6 +84,7 @@ solis.randomInt
 solis.randomRange
 solis.rebind
 solis.released
+solis.replayClip
 solis.rotationOf
 solis.saveGame
 solis.say
@@ -84,6 +94,7 @@ solis.setSeed
 solis.setSoundPlaying
 solis.setVelocity
 solis.spawn
+solis.stopClip
 solis.stopSoundsOn
 solis.time
 solis.turnTo
@@ -127,6 +138,8 @@ Host: fn rebind(&mut self, action: &str, input: &str)
 Host: fn play_sound(&mut self, event: &str, at: SoundAt)
 Host: fn stop_sounds_on(&mut self, which: EntityId)
 Host: fn set_sound_playing(&mut self, which: EntityId, playing: bool)
+Host: fn play_clip(&mut self, which: EntityId, clip: &str, again: bool)
+Host: fn stop_clip(&mut self, which: EntityId)
 Host: fn set_bus_volume(&mut self, bus: &str, share: f32)
 Host: fn cast_ray(&self, from: Vec3, direction: Vec3, reach: f32) -> Option<physics::Hit>
 Host: fn at(&mut self, order: &crate::ticking::Order)

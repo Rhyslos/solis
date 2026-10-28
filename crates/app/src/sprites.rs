@@ -3,7 +3,7 @@
 //! in Aseprite shows at once), for the Library, Properties and drawing.
 
 use asset_db::{FileKind, Jobs, Listing};
-use editor::sprite_sheets::{SheetState, SpriteSheets};
+use editor::sprite_sheets::{FramesState, SheetState, SpriteSheets};
 use reflect::{AssetId, Id};
 use std::collections::{HashMap, HashSet, VecDeque};
 use std::hash::{DefaultHasher, Hash, Hasher};
@@ -52,12 +52,36 @@ pub fn read_sheet(path: &Path) -> SheetState {
     }
 }
 
+/// Reads a clips file (`.solframes`).
+pub fn read_frames(path: &Path) -> FramesState {
+    let bytes = match asset_db::read_limited(path, animation::frames_file::MAX_BYTES as u64) {
+        Ok(bytes) => bytes,
+        Err(e) if e.kind() == std::io::ErrorKind::FileTooLarge => {
+            return FramesState::Failed(format!(
+                "it's bigger than {} KB, too big for a clips file",
+                animation::frames_file::MAX_BYTES >> 10
+            ));
+        }
+        Err(e) => return FramesState::Failed(format!("it couldn't be read ({e})")),
+    };
+    let Ok(text) = String::from_utf8(bytes) else {
+        return FramesState::Failed("it isn't text".to_owned());
+    };
+    match animation::frames_file::read(&text) {
+        Ok(read) => FramesState::Read(Arc::new(read.file), read.notes),
+        Err(why) => FramesState::Failed(why.to_string()),
+    }
+}
+
 /// Every sprite sheet read, and those still to read.
 pub struct Sprites {
     sheets: SpriteSheets,
     queued: VecDeque<(String, PathBuf)>,
     /// Files read or failed, with how they were then.
     tried: HashMap<String, Stamp>,
+    /// Clips files read or failed, with how they were then (read at once:
+    /// they're small text).
+    frames_tried: HashMap<String, Stamp>,
     /// Goes up when another project opens: results for the last one are
     /// thrown away.
     generation: u64,
@@ -72,6 +96,7 @@ impl Default for Sprites {
             sheets: SpriteSheets::default(),
             queued: VecDeque::new(),
             tried: HashMap::new(),
+            frames_tried: HashMap::new(),
             generation: 0,
             jobs: Jobs::new(1),
             dirty: false,
@@ -100,10 +125,35 @@ impl Sprites {
     }
 
     /// Queues every Aseprite file in `listing` not read yet, or changed
-    /// since; forgets those no longer there.
+    /// since, and reads every clips file (`.solframes`) not read yet or
+    /// changed since; forgets those no longer there.
     pub fn want(&mut self, listing: &Listing, assets: &Path) {
         let mut present = HashSet::new();
         let mut paths = HashMap::new();
+        let mut frames_present = HashSet::new();
+        for file in listing
+            .files
+            .iter()
+            .filter(|f| f.kind == FileKind::SpriteClips)
+        {
+            let path = crate::project::slashed(&file.path);
+            if let Some(id) = file.id {
+                paths.insert(id, path.clone());
+            }
+            frames_present.insert(path.clone());
+            let full = assets.join(&file.path);
+            let now = stamp(&full);
+            if self.frames_tried.get(&path) == Some(&now) {
+                continue;
+            }
+            self.frames_tried.insert(path.clone(), now);
+            self.sheets.frames.insert(path, read_frames(&full));
+            self.dirty = true;
+        }
+        let before = self.sheets.frames.len();
+        self.sheets.frames.retain(|p, _| frames_present.contains(p));
+        self.frames_tried.retain(|p, _| frames_present.contains(p));
+        self.dirty |= before != self.sheets.frames.len();
         for file in listing
             .files
             .iter()
@@ -143,6 +193,7 @@ impl Sprites {
         self.sheets = SpriteSheets::default();
         self.queued.clear();
         self.tried.clear();
+        self.frames_tried.clear();
         self.generation += 1;
         self.dirty = true;
     }

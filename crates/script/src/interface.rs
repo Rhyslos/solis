@@ -10,7 +10,7 @@
 //! file too, where a reviewer sees it, and a rename must keep the old
 //! name working ([`crate::describe::RENAMED`]).
 
-use crate::describe::{KIT, NATIVES, RENAMED};
+use crate::describe::{ENGINE_EVENTS, KIT, NATIVES, RENAMED};
 
 /// The interface as text, a line per thing a game can call, in a fixed
 /// order, so a change shows as a line added, removed or changed.
@@ -25,6 +25,10 @@ pub fn snapshot() -> String {
     out.push_str("\n## Lust (solis/<file>.lst)\n\n");
     for native in NATIVES {
         out.push_str(&format!("{}: {}\n", native.file, native.lust));
+    }
+    out.push_str("\n## Events the engine sends (fetch \"solis/<file>\":<Name>)\n\n");
+    for event in ENGINE_EVENTS {
+        out.push_str(&format!("{}: {}\n", event.file, event.lust));
     }
     out.push_str("\n## Lua (solis.<name>)\n\n");
     let mut lua = lent_names(include_str!("host.rs"));
