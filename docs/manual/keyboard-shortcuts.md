@@ -80,6 +80,14 @@ These work while the pointer is over the Animator tab; see [Animators](animators
 | Pan, zoom, fit everything | Middle-drag, mouse wheel, F |
 | Undo or redo a change to the animator | Ctrl + Z, Ctrl + Y |
 
+## The Tileset tab (a tileset open)
+
+These work while the pointer is over the Tileset tab; see [Tilesets and autotiling](tilesets.md).
+
+| Action | Shortcut |
+|---|---|
+| Undo or redo a change to the tileset | Ctrl + Z, Ctrl + Y |
+
 ## The Map tab (a tile map selected)
 
 These work while the pointer is over the Map tab; see [Tile maps](tile-maps.md).

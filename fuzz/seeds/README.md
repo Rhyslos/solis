@@ -16,8 +16,9 @@ Real files the fuzzers start from, one folder per target in [`../fuzz_targets`](
 | `sidecar/` | Sidecars (`.solmeta`) of the sample models. |
 | `sound_event/` | A full sound event, an empty one and a looping 2D one. |
 | `sound_file/` | WAV files of each kind the reader takes, and Ogg Vorbis files from `crates/sound/tests/data`. |
+| `tile_art/` | The logo's PNG and the walker's Aseprite file, each after the byte that chooses its reader. |
 | `tile_map/` | A tile map file (`.soltilemap`), as the fixture of version 1. |
-| `tileset/` | A tileset (`.soltileset`), as the fixture of version 1. |
+| `tileset/` | Tilesets (`.soltileset`): the fixtures of version 1 and of version 2 (art, every kind, rules). |
 | `update_answer/` | A release answer and its checksum file, joined by a 0x01 byte. |
 
 They are made by [`../make-seeds.sh`](../make-seeds.sh) from the editor's tests, the sample models and the samples; run it again after a file format changes. What each fuzzing run finds goes in `fuzz/corpus/`, which isn't committed.

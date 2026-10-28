@@ -14,7 +14,7 @@ Example files of every version of every file format Solis has ever released (Pha
 | `pixels/` | The project's 2D settings (`pixels.solpix`) | v1 |
 | `frames/` | A sprite's clips (`.solframes`) | v1 |
 | `animator/` | An animator (`.solanim`) | v1 |
-| `tileset/` | A tileset (`.soltileset`) | v1 |
+| `tileset/` | A tileset (`.soltileset`) | v1, v2 (its art: picture, kinds, pieces, rules) |
 | `tilemap/` | A tile map (`.soltilemap`) | v1 |
 | `input-actions/` | Input actions (`input.solinput`) | v1 (no version line; the arrow keys written `ArrowUp`), v2 |
 | `recording/` | Recordings of a play (`.solrec`) | v1, v2 (names the area it was recorded in) |

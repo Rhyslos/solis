@@ -64,7 +64,16 @@ mkdir -p "$seeds/animator"
 cp tests/fixtures/animator/v1/farmer.solanim "$seeds/animator/"
 mkdir -p "$seeds/tileset"
 cp tests/fixtures/tileset/v1/farm.soltileset "$seeds/tileset/"
+cp tests/fixtures/tileset/v2/farm.soltileset "$seeds/tileset/farm-art.soltileset"
 mkdir -p "$seeds/tile_map"
 cp tests/fixtures/tilemap/v1/farm.soltilemap "$seeds/tile_map/"
+mkdir -p "$seeds/tile_art"
+# The first byte chooses the reader: 0 a PNG, 1 an Aseprite file.
+python3 - "$seeds" <<'PY'
+import sys
+seeds = sys.argv[1]
+open(f"{seeds}/tile_art/walker.aseprite", "wb").write(b"\x01" + open(f"{seeds}/aseprite/walker.aseprite", "rb").read())
+open(f"{seeds}/tile_art/logo.png", "wb").write(b"\x00" + open("branding/logo-256.png", "rb").read())
+PY
 echo "Seeds in $seeds:"
 for d in "$seeds"/*/; do echo "  $(basename "$d"): $(ls "$d" | wc -l) files"; done

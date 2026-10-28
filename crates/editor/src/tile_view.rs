@@ -1,25 +1,43 @@
-//! Tile maps drawn (Phase 9, D4): each layer of a map becomes a picture
-//! with one texel per cell, in its terrain's colour (its meaning; tileset
-//! art comes with D5), drawn as one quad lying on the ground: layers under
-//! sprites first, under everything, and layers over sprites last, over
-//! everything (`render::SpriteLayer`). Pictures are made again only for a
-//! layer that changed ([`TilePictures`]), and the app uploads a picture
-//! only when its key changes.
+//! Tile maps drawn (Phase 9, D4 and D5).
+//!
+//! A map whose tileset has a picture is drawn tile by tile: each visible
+//! 32 × 32 chunk's tiles worked out by autotiling (`tiles::autotile`), kept
+//! until the chunk or one beside it changes, and drawn as sprites from one
+//! atlas per picture (every frame of the picture stacked, and a small
+//! white patch for terrains without art, tinted their colour, and missing
+//! pieces, tinted pink). A 16-tile terrain's pieces sit half a cell off.
+//! Animated pieces show the frame for the time given.
+//!
+//! A map without a picture, or seen from so far that too many chunks are
+//! in view, is drawn as before: each layer one quad whose picture has a
+//! texel per cell in its terrains' colours, made again only when its layer
+//! changes. Layers under sprites are drawn first, under everything, and
+//! layers over sprites last, over everything (`render::SpriteLayer`). The
+//! app uploads a picture only when its key changes.
 
 use crate::sprite_sheets::{SpriteBatch, SpriteSheets, ViewSprite};
-use glam::{Mat4, Vec3};
+use glam::{Mat4, Vec2, Vec3};
 use reflect::{AssetId, EntityId};
 use std::collections::HashMap;
 use std::sync::{Arc, Mutex};
 use tiles::TileMap;
+use tiles::autotile::{Art, Placed};
 
-/// A code with no terrain in the map's tileset: drawn in this, so a
-/// missing terrain shows instead of quietly looking like another.
+/// A code with no terrain in the map's tileset, or a slot with no piece:
+/// drawn in this, so a missing terrain shows instead of quietly looking
+/// like another.
 pub(crate) const MISSING: [u8; 4] = [255, 0, 255, 255];
 
 /// `render::SpriteInstance::UNDER` and `OVER`.
 const UNDER: u32 = 16;
 const OVER: u32 = 32;
+
+/// The most chunks drawn tile by tile in one view: past this (seen from
+/// far away), a map's layers are drawn as their colour pictures.
+pub const MOST_CHUNKS: usize = 256;
+
+/// The white patch at the bottom of a picture's atlas, in texels.
+const WHITE: u32 = 4;
 
 /// A map in an area or the running game, to draw.
 #[derive(Debug, Clone)]
@@ -32,23 +50,33 @@ pub struct ViewTileMap {
     pub map: Arc<TileMap>,
 }
 
-/// One layer's picture: a texel per cell, rows from the top left.
+/// One picture the app uploads: a layer's colours, or a tileset's art.
 #[derive(Debug, Clone, PartialEq)]
 pub struct TilePicture {
-    /// The ID it's drawn under (made from its entity and layer).
+    /// The ID it's drawn under.
     pub id: AssetId,
     /// Changes whenever the picture does: the app uploads it again then.
     pub key: u64,
-    /// Its size in texels (the map's in cells).
+    /// Its size in texels.
     pub size: [u32; 2],
     /// Straight sRGB RGBA, a row at a time.
     pub rgba: Arc<Vec<u8>>,
 }
 
-/// Each layer's picture, kept until its layer or its tileset changes.
+/// One chunk's tiles, as autotiling placed them, with what they were
+/// worked out from.
+type ChunkTiles = (u64, Arc<Vec<Placed>>);
+
+/// Which chunk: a map's entity, a layer's ID, and the chunk's column and
+/// row.
+type ChunkId = (EntityId, reflect::Id, [u32; 2]);
+
+/// Each layer's picture and each chunk's tiles, kept until they change.
 #[derive(Debug, Default)]
 pub struct TilePictures {
     made: Mutex<HashMap<(EntityId, usize), Arc<TilePicture>>>,
+    atlases: Mutex<HashMap<u64, Arc<TilePicture>>>,
+    chunks: Mutex<HashMap<ChunkId, ChunkTiles>>,
 }
 
 /// The pictures kept are a cache, never part of what sheets are.
@@ -86,83 +114,391 @@ pub(crate) fn layer_rgba(map: &TileMap, layer: usize, tileset: Option<&tiles::Ti
     rgba
 }
 
+/// A picture's atlas: every frame stacked top to bottom, then a white
+/// patch [`WHITE`] texels square. Its size and pixels.
+pub(crate) fn atlas_rgba(art: &assets::tile_art::TileArt) -> ([u32; 2], Vec<u8>) {
+    let [w, h] = art.size;
+    let width = w.max(WHITE);
+    let frames = art.frames.len() as u32;
+    let height = h * frames + WHITE;
+    let mut rgba = vec![0u8; (width * height * 4) as usize];
+    for (f, frame) in art.frames.iter().enumerate() {
+        for y in 0..h {
+            let from = (y * w * 4) as usize;
+            let to = (((f as u32 * h + y) * width) * 4) as usize;
+            if let (Some(src), Some(dst)) = (
+                frame.get(from..from + (w * 4) as usize),
+                rgba.get_mut(to..to + (w * 4) as usize),
+            ) {
+                dst.copy_from_slice(src);
+            }
+        }
+    }
+    for y in 0..WHITE {
+        for x in 0..WHITE {
+            let i = (((h * frames + y) * width + x) * 4) as usize;
+            rgba[i..i + 4].copy_from_slice(&[255; 4]);
+        }
+    }
+    ([width, height], rgba)
+}
+
+/// What a map is drawn with: its tileset and, if it has one, its picture.
+struct Look<'a> {
+    set: Option<&'a Arc<tiles::Tileset>>,
+    art: Option<(&'a Arc<assets::tile_art::TileArt>, Arc<TilePicture>)>,
+}
+
+/// A number that changes when any of these chunks (the one asked for and
+/// those beside it, which its edges read) changes.
+fn chunk_key(map: &TileMap, chunk: [u32; 2], layer_cells: usize, set: usize) -> u64 {
+    let mut key = reflect::Checksum::new();
+    for dy in -1i64..=1 {
+        for dx in -1i64..=1 {
+            let (x, y) = (i64::from(chunk[0]) + dx, i64::from(chunk[1]) + dy);
+            key.u64(if x < 0 || y < 0 {
+                0
+            } else {
+                map.chunk_revision([x as u32, y as u32])
+            });
+        }
+    }
+    key.u64(layer_cells as u64);
+    key.u64(set as u64);
+    key.finish()
+}
+
+/// The chunks of a map within `bounds` (world, on the ground), or all of
+/// them.
+fn chunks_in(
+    map: &TileMap,
+    transform: Mat4,
+    cell: [f32; 2],
+    bounds: Option<[Vec2; 2]>,
+) -> Vec<[u32; 2]> {
+    let [across, down] = map.chunks();
+    let (mut x0, mut x1, mut y0, mut y1) = (0, across, 0, down);
+    if let Some([lo, hi]) = bounds {
+        let inverse = transform.inverse();
+        let corners = [
+            Vec3::new(lo.x, lo.y, 0.0),
+            Vec3::new(hi.x, lo.y, 0.0),
+            Vec3::new(lo.x, hi.y, 0.0),
+            Vec3::new(hi.x, hi.y, 0.0),
+        ]
+        .map(|p| inverse.transform_point3(p));
+        let span = tiles::CHUNK as f32;
+        let xs = corners.map(|c| c.x / cell[0] / span);
+        let ys = corners.map(|c| -c.y / cell[1] / span);
+        let fmin = |v: [f32; 4]| v.into_iter().fold(f32::INFINITY, f32::min);
+        let fmax = |v: [f32; 4]| v.into_iter().fold(f32::NEG_INFINITY, f32::max);
+        // A cell's art can reach half a cell past it: a chunk more each way.
+        let clamp = |v: f32, most: u32| (v.max(0.0) as u32).min(most);
+        if !(fmin(xs).is_finite()
+            && fmax(xs).is_finite()
+            && fmin(ys).is_finite()
+            && fmax(ys).is_finite())
+        {
+            return Vec::new();
+        }
+        x0 = clamp(fmin(xs).floor() - 1.0, across);
+        x1 = clamp(fmax(xs).floor() + 2.0, across);
+        y0 = clamp(fmin(ys).floor() - 1.0, down);
+        y1 = clamp(fmax(ys).floor() + 2.0, down);
+    }
+    let mut out = Vec::new();
+    for y in y0..y1 {
+        for x in x0..x1 {
+            out.push([x, y]);
+        }
+    }
+    out
+}
+
 impl TilePictures {
     /// The pictures and the batches that draw `maps`, cells `cell` metres
-    /// across, each map in its tileset's colours, leaving out layers
-    /// `hidden` in the editor (by ID).
+    /// across, leaving out layers `hidden` in the editor (by ID). `ground`
+    /// gives the part of the ground at a height that's in view (none for
+    /// all of it); `ms` is the time animated tiles show.
     pub fn draw(
         &self,
         maps: &[ViewTileMap],
         sheets: &SpriteSheets,
         cell: [f32; 2],
         hidden: &std::collections::HashSet<reflect::Id>,
+        ground: &dyn Fn(f32) -> Option<[Vec2; 2]>,
+        ms: u64,
     ) -> (Vec<Arc<TilePicture>>, Vec<SpriteBatch>) {
-        let mut made = self
-            .made
-            .lock()
-            .unwrap_or_else(std::sync::PoisonError::into_inner);
-        let mut pictures = Vec::new();
+        let mut pictures: Vec<Arc<TilePicture>> = Vec::new();
         let mut under = Vec::new();
         let mut over = Vec::new();
         let mut used = std::collections::HashSet::new();
+        let mut used_atlases = std::collections::HashSet::new();
+        let mut used_chunks = std::collections::HashSet::new();
         for m in maps {
-            let tileset = m.map.tileset.and_then(|t| sheets.tileset(t));
-            let size = m.map.size();
+            let set = m.map.tileset.and_then(|t| sheets.tileset(t));
+            let look = Look {
+                set,
+                art: set.and_then(|s| {
+                    let art = sheets.tile_art(s.picture?)?;
+                    let key = Arc::as_ptr(art) as u64;
+                    used_atlases.insert(key);
+                    let atlas = self.atlas(key, art);
+                    Some((art, atlas))
+                }),
+            };
+            let bounds = ground(m.transform.w_axis.z);
+            let chunks = if look.art.is_some() {
+                chunks_in(&m.map, m.transform, cell, bounds)
+            } else {
+                Vec::new()
+            };
+            let tile_by_tile = look.art.is_some() && chunks.len() <= MOST_CHUNKS;
+            if let (true, Some((_, atlas))) = (tile_by_tile, &look.art)
+                && !pictures.iter().any(|p| p.id == atlas.id)
+            {
+                pictures.push(Arc::clone(atlas));
+            }
             for (i, layer) in m.map.layers().iter().enumerate() {
                 if hidden.contains(&layer.id) {
                     continue;
                 }
-                let mut key = reflect::Checksum::new();
-                key.u64(m.map.layer_cells(i).map_or(0, |c| c.as_ptr() as u64));
-                key.u64(m.map.layer_revision(i));
-                key.u64(tileset.map_or(0, |t| Arc::as_ptr(t) as u64));
-                key.u64(u64::from(size[0]) << 32 | u64::from(size[1]));
-                let key = key.finish();
-                let picture = match made.get(&(m.entity, i)) {
-                    Some(p) if p.key == key => Arc::clone(p),
-                    _ => {
-                        let p = Arc::new(TilePicture {
-                            id: picture_id(m.entity, i),
-                            key,
-                            size,
-                            rgba: Arc::new(layer_rgba(&m.map, i, tileset.map(|t| &**t))),
-                        });
-                        made.insert((m.entity, i), Arc::clone(&p));
-                        p
-                    }
-                };
-                used.insert((m.entity, i));
-                let corner = m.transform.transform_point3(Vec3::ZERO);
-                let across = m.transform.transform_vector3(Vec3::X * cell[0]);
-                let down = m.transform.transform_vector3(-Vec3::Y * cell[1]);
-                let sprite = ViewSprite {
-                    corner: corner.to_array(),
-                    flags: if layer.over { OVER } else { UNDER },
-                    axis_x: [across.x, across.y],
-                    axis_y: [down.x, down.y],
-                    rect: [0.0, 0.0, size[0] as f32, size[1] as f32],
-                    tint: [1.0, 1.0, 1.0, 0.0],
-                    outline: [0.0; 4],
-                    foot: [corner.x, corner.y],
-                };
-                let batch = SpriteBatch {
-                    sheet: picture.id,
-                    see_through: false,
-                    sprites: vec![sprite],
-                    picks: vec![0],
+                let batch = if tile_by_tile {
+                    self.tiles_of(m, i, &look, &chunks, cell, ms, &mut used_chunks)
+                } else {
+                    used.insert((m.entity, i));
+                    let picture = self.layer_picture(m, i, set);
+                    let batch = colour_batch(m, i, &picture, cell);
+                    pictures.push(picture);
+                    batch
                 };
                 if layer.over {
                     over.push(batch);
                 } else {
                     under.push(batch);
                 }
-                pictures.push(picture);
             }
         }
-        made.retain(|k, _| used.contains(k));
+        lock(&self.made).retain(|k, _| used.contains(k));
+        lock(&self.atlases).retain(|k, _| used_atlases.contains(k));
+        lock(&self.chunks).retain(|k, _| used_chunks.contains(k));
         under.extend(over);
+        under.retain(|b| !b.sprites.is_empty());
         (pictures, under)
     }
+
+    /// The atlas of picture `art` (by `key`), made once.
+    fn atlas(&self, key: u64, art: &Arc<assets::tile_art::TileArt>) -> Arc<TilePicture> {
+        let mut atlases = lock(&self.atlases);
+        Arc::clone(atlases.entry(key).or_insert_with(|| {
+            let (size, rgba) = atlas_rgba(art);
+            let mut sum = reflect::Checksum::new();
+            sum.bytes(b"tile art");
+            sum.u64(key);
+            Arc::new(TilePicture {
+                id: AssetId(
+                    reflect::Id::from_raw(sum.finish() | 1).unwrap_or_else(reflect::Id::random),
+                ),
+                key,
+                size,
+                rgba: Arc::new(rgba),
+            })
+        }))
+    }
+
+    /// Layer `i` of `m` as its colour picture, made again only when it
+    /// changes.
+    fn layer_picture(
+        &self,
+        m: &ViewTileMap,
+        i: usize,
+        set: Option<&Arc<tiles::Tileset>>,
+    ) -> Arc<TilePicture> {
+        let size = m.map.size();
+        let mut key = reflect::Checksum::new();
+        key.u64(m.map.layer_cells(i).map_or(0, |c| c.as_ptr() as u64));
+        key.u64(m.map.layer_revision(i));
+        key.u64(set.map_or(0, |t| Arc::as_ptr(t) as u64));
+        key.u64(u64::from(size[0]) << 32 | u64::from(size[1]));
+        let key = key.finish();
+        let mut made = lock(&self.made);
+        match made.get(&(m.entity, i)) {
+            Some(p) if p.key == key => Arc::clone(p),
+            _ => {
+                let p = Arc::new(TilePicture {
+                    id: picture_id(m.entity, i),
+                    key,
+                    size,
+                    rgba: Arc::new(layer_rgba(&m.map, i, set.map(|t| &**t))),
+                });
+                made.insert((m.entity, i), Arc::clone(&p));
+                p
+            }
+        }
+    }
+
+    /// Layer `i` of `m` tile by tile, in `chunks`.
+    #[allow(clippy::too_many_arguments)]
+    fn tiles_of(
+        &self,
+        m: &ViewTileMap,
+        i: usize,
+        look: &Look<'_>,
+        chunks: &[[u32; 2]],
+        cell: [f32; 2],
+        ms: u64,
+        used: &mut std::collections::HashSet<ChunkId>,
+    ) -> SpriteBatch {
+        let (Some(set), Some((art, atlas))) = (look.set, &look.art) else {
+            return SpriteBatch {
+                sheet: AssetId(reflect::Id::random()),
+                see_through: false,
+                sprites: Vec::new(),
+                picks: Vec::new(),
+            };
+        };
+        let layer = &m.map.layers()[i];
+        let cells_ptr = m.map.layer_cells(i).map_or(0, |c| c.as_ptr() as usize);
+        let set_ptr = Arc::as_ptr(set) as usize;
+        let mut placed: Vec<Placed> = Vec::new();
+        {
+            let mut cache = lock(&self.chunks);
+            for &c in chunks {
+                let key = chunk_key(&m.map, c, cells_ptr, set_ptr);
+                let id = (m.entity, layer.id, c);
+                used.insert(id);
+                let tiles = match cache.get(&id) {
+                    Some((k, tiles)) if *k == key => Arc::clone(tiles),
+                    _ => {
+                        let tiles = Arc::new(tiles::autotile::chunk_tiles(&m.map, i, set, c));
+                        cache.insert(id, (key, Arc::clone(&tiles)));
+                        tiles
+                    }
+                };
+                placed.extend(tiles.iter().copied());
+            }
+        }
+        // Later terrains over earlier ones, across chunks.
+        placed.sort_by_key(|p| p.pass);
+        let flags = if layer.over { OVER } else { UNDER };
+        let [tw, th] = set.tile;
+        let frames = art.frames.len() as u32;
+        let white_y = art.size[1] * frames;
+        let across = m.transform.transform_vector3(Vec3::X);
+        let down = m.transform.transform_vector3(-Vec3::Y);
+        let origin = m.transform.transform_point3(Vec3::ZERO);
+        let sprites: Vec<ViewSprite> = placed
+            .iter()
+            .map(|p| {
+                let corner = origin
+                    + across * (p.x as f32 * 0.5 * cell[0])
+                    + down * (p.y as f32 * 0.5 * cell[1]);
+                let (rect, tint, texels) = match p.art {
+                    Art::Piece(index) => {
+                        let piece = &set.pieces[index];
+                        let frame = tiles::autotile::frame_at(piece.animation, ms, &art.durations);
+                        let (col, row) = match piece.animation {
+                            tiles::Animation::Columns { .. } => (frame, 0),
+                            tiles::Animation::Frames => (0, frame.min(frames.saturating_sub(1))),
+                            tiles::Animation::None => (0, 0),
+                        };
+                        (
+                            [
+                                ((piece.at[0] + col) * tw) as f32,
+                                (row * art.size[1] + piece.at[1] * th) as f32,
+                                tw as f32,
+                                th as f32,
+                            ],
+                            [1.0, 1.0, 1.0],
+                            [tw as f32, th as f32],
+                        )
+                    }
+                    Art::Missing => (
+                        [0.0, white_y as f32, WHITE as f32, WHITE as f32],
+                        [1.0, 0.0, 1.0],
+                        [WHITE as f32; 2],
+                    ),
+                    Art::Colour(t) => (
+                        [0.0, white_y as f32, WHITE as f32, WHITE as f32],
+                        crate::sprite_sheets::linear(set.terrains[t].colour),
+                        [WHITE as f32; 2],
+                    ),
+                };
+                let ax = across * (cell[0] / texels[0]);
+                let ay = down * (cell[1] / texels[1]);
+                ViewSprite {
+                    corner: corner.to_array(),
+                    flags,
+                    axis_x: [ax.x, ax.y],
+                    axis_y: [ay.x, ay.y],
+                    rect,
+                    tint: [tint[0], tint[1], tint[2], 0.0],
+                    outline: [0.0; 4],
+                    foot: [corner.x, corner.y],
+                }
+            })
+            .collect();
+        SpriteBatch {
+            sheet: atlas.id,
+            see_through: false,
+            picks: vec![0; sprites.len()],
+            sprites,
+        }
+    }
+}
+
+/// A layer drawn as one quad of its colour picture.
+fn colour_batch(m: &ViewTileMap, i: usize, picture: &TilePicture, cell: [f32; 2]) -> SpriteBatch {
+    let layer = &m.map.layers()[i];
+    let size = m.map.size();
+    let corner = m.transform.transform_point3(Vec3::ZERO);
+    let across = m.transform.transform_vector3(Vec3::X * cell[0]);
+    let down = m.transform.transform_vector3(-Vec3::Y * cell[1]);
+    SpriteBatch {
+        sheet: picture.id,
+        see_through: false,
+        sprites: vec![ViewSprite {
+            corner: corner.to_array(),
+            flags: if layer.over { OVER } else { UNDER },
+            axis_x: [across.x, across.y],
+            axis_y: [down.x, down.y],
+            rect: [0.0, 0.0, size[0] as f32, size[1] as f32],
+            tint: [1.0, 1.0, 1.0, 0.0],
+            outline: [0.0; 4],
+            foot: [corner.x, corner.y],
+        }],
+        picks: vec![0],
+    }
+}
+
+fn lock<T>(m: &Mutex<T>) -> std::sync::MutexGuard<'_, T> {
+    m.lock().unwrap_or_else(std::sync::PoisonError::into_inner)
+}
+
+/// The part of the ground (at height `z`) a view sees, from where the
+/// rays through its corners land (by its `view_projection`); `None` when
+/// a corner looks above the horizon (then everything may be in view).
+pub fn ground_in_view(view_projection: Mat4, z: f32) -> Option<[Vec2; 2]> {
+    let inverse = view_projection.inverse();
+    let mut lo = Vec2::splat(f32::INFINITY);
+    let mut hi = Vec2::splat(f32::NEG_INFINITY);
+    for (x, y) in [(-1.0, -1.0), (1.0, -1.0), (-1.0, 1.0), (1.0, 1.0)] {
+        // Depth is reversed: 1 is near, 0 far (or at infinity).
+        let near = inverse.project_point3(Vec3::new(x, y, 1.0));
+        let far = inverse.project_point3(Vec3::new(x, y, 0.001));
+        let d = far - near;
+        if !(near.is_finite() && far.is_finite()) || d.z.abs() < 1e-9 {
+            return None;
+        }
+        let t = (z - near.z) / d.z;
+        if !(t.is_finite() && t >= 0.0) {
+            return None;
+        }
+        let p = near + d * t;
+        lo = lo.min(p.truncate());
+        hi = hi.max(p.truncate());
+    }
+    Some([lo, hi])
 }
 
 /// The cell of `map` (placed by `transform`, cells `cell` metres across)

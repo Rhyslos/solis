@@ -39,6 +39,9 @@ pub enum AssetKind {
     Tileset,
     /// A tile map (`.soltilemap`; Phase 9, D4).
     TileMap,
+    /// A picture (PNG or JPEG; Phase 9, D5): a tileset's art, given an ID
+    /// so a tileset keeps it when it's moved or renamed.
+    Picture,
 }
 
 /// The extensions of sound files Solis reads (decision 0056). The
@@ -88,6 +91,8 @@ impl AssetKind {
             Some(Self::Tileset)
         } else if ext == TILE_MAP_EXTENSION {
             Some(Self::TileMap)
+        } else if matches!(ext.as_str(), "png" | "jpg" | "jpeg") {
+            Some(Self::Picture)
         } else {
             None
         }

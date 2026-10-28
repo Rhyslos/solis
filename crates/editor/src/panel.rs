@@ -42,6 +42,9 @@ pub enum Panel {
     /// The selected tile map's layers, terrains and values (Phase 9, D4):
     /// beside Properties while a map is selected.
     Map,
+    /// The tileset open (Phase 9, D5): its terrains, picture, slots and
+    /// rules, beside the viewport while a `.soltileset` file is open.
+    Tileset,
 }
 
 impl Panel {
@@ -62,7 +65,13 @@ impl Panel {
 
     /// Panels that come and go with what's open (a clips file), never in
     /// [`Self::ALL`] or the Window menu, and never saved in a layout.
-    pub const OPEN_WITH_A_FILE: [Self; 4] = [Self::Clips, Self::Frames, Self::Animator, Self::Map];
+    pub const OPEN_WITH_A_FILE: [Self; 5] = [
+        Self::Clips,
+        Self::Frames,
+        Self::Animator,
+        Self::Map,
+        Self::Tileset,
+    ];
 
     /// The tabs a clips file opens (and closes) together.
     pub const FRAMES_TABS: [Self; 2] = [Self::Clips, Self::Frames];
@@ -90,6 +99,7 @@ impl Panel {
             Self::Frames => "Frames",
             Self::Animator => "Animator",
             Self::Map => "Map",
+            Self::Tileset => "Tileset",
         }
     }
 
@@ -111,6 +121,7 @@ impl Panel {
             Self::Frames => Icon::Viewport,
             Self::Animator => Icon::Animator,
             Self::Map => Icon::Layers,
+            Self::Tileset => Icon::Layers,
         }
     }
 }

@@ -172,3 +172,10 @@ path = "fuzz_targets/tile_map.rs"
 test = false
 doc = false
 bench = false
+
+[[bin]]
+name = "tile_art"
+path = "fuzz_targets/tile_art.rs"
+test = false
+doc = false
+bench = false

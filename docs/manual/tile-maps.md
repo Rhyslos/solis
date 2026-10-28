@@ -17,7 +17,7 @@ Why values in the map, rather than an entity per plant? A field of a thousand cr
 For a few things that move or think (a scarecrow that turns, a chicken), use [sprites](sprites.md) instead.
 
 ## How to use it
-1. **Make a tileset:** in the Library, open the folder you want it in, then **Import > New tileset**. Solis makes `tileset.soltileset` with grass, tilled and water. Click it in the Library: Properties lists its terrains. Change a terrain's colour, its name, or its **code** (the one character the map file writes for it), take one away with **×**, or add one with **+ Terrain**. The first terrain fills new maps.
+1. **Make a tileset:** in the Library, open the folder you want it in, then **Import > New tileset**. Solis makes `tileset.soltileset` with grass, tilled and water, and opens it in the **Tileset** tab, where terrains get their art (see [Tilesets and autotiling](tilesets.md)). Choose a terrain to change its name, its **code** (the one character the map file writes for it) and its colour in Properties; **+** adds one. Clicking a tileset in the Library shows its terrains in Properties too. The first terrain fills new maps.
 2. **Make a map:** **Import > New tile map**. Solis makes `map.soltilemap`, 64 × 64 cells of the project's first tileset's first terrain. Click it in the Library to change its **Tileset** and its **Size** (in cells) in Properties.
 3. **Place it:** double-click the map in the Library (it goes where the viewport looks), or drag it into the viewport. Its top-left corner lands on a whole tile, and each cell is one tile across (the tile size in [2D settings](2d-pixel-perfect.md)). The **2D** view shows it best.
 4. **The Map tab** opens beside Properties while the map's entity is selected (select it in the Area panel). It shows:
@@ -30,8 +30,10 @@ For a few things that move or think (a scarecrow that turns, a chicken), use [sp
 
 Every change in the Map tab is saved at once. **Ctrl + Z** and **Ctrl + Y** over the tab undo and redo them.
 
-### Painting and art
-Painting cells comes with the **tile painter**, and pictures for terrains (with smooth edges worked out from neighbours) come with **tilesets' art**: the next milestones. Until then a terrain is drawn in its colour, and a map's cells come from its file. The file is plain text you can edit by hand: each chunk of a layer is rows of codes (`.` grass, `t` tilled, a space for nothing).
+### Art and painting
+A terrain is drawn in its colour until its tileset gives it art: then each cell's tile is picked from its neighbours, with smooth edges (see [Tilesets and autotiling](tilesets.md)). Seen from far away, a big map is drawn in its colours again, which is much quicker.
+
+Painting cells comes with the **tile painter**, the next milestone. Until then a map's cells come from its file. The file is plain text you can edit by hand: each chunk of a layer is rows of codes (`.` grass, `t` tilled, a space for nothing).
 
 ### In game code
 Game code can't read or change a map yet. Under Solis's [API guidelines](../game-api-guidelines.md), it will reach each map through a Lust file Solis writes for it, with its terrains, layers and values as names the checker knows, so a misspelt *watered* is caught before the game runs. That arrives with the API milestone, as for [animators](animators.md).
@@ -64,7 +66,7 @@ Value kinds:
 | Undo or redo a change in the Map tab | Ctrl + Z, Ctrl + Y (pointer over the tab) |
 
 ## Tips and common problems
-- **Problem:** cells are bright pink. **Why:** their code isn't one of the tileset's terrains (the terrain was taken away, or its code changed). The Map tab says how many. **Fix:** add a terrain with that code, or change the cells.
+- **Problem:** cells are bright pink. **Why:** their code isn't one of the tileset's terrains (the terrain was taken away, or its code changed), or their terrain's art is missing the tile they need. The Map tab counts unknown codes, and Problems names missing tiles. **Fix:** add a terrain with that code, change the cells, or fill the slot in the Tileset tab.
 - **Problem:** clicking the map in the viewport selects what's behind it, or nothing. **Why:** clicks on a map are kept for the tile painter. **Fix:** select the map in the Area panel.
 - **Problem:** the Map tab is gone. **Why:** it shows only while a map is selected. **Fix:** select the map's entity.
 - **Problem:** numbers don't show on the cells. **Why:** cells are too small to write on, or too many are in view. **Fix:** zoom in.
@@ -72,6 +74,7 @@ Value kinds:
 - Problems lists a Tile Map with no map chosen, or whose file isn't in the project.
 
 ## Related
+- [Tilesets and autotiling](tilesets.md): terrains' art.
 - [Sprites from Aseprite](sprites.md): what stands on a map.
 - [2D: the pixel-perfect view](2d-pixel-perfect.md): the tile size and the 2D view.
 - [Save games](save-games.md): saves keep each map as the game changed it.

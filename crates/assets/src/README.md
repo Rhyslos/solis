@@ -15,6 +15,7 @@ Reads model files (glTF 2.0: `.gltf` or `.glb`) and their PNG and JPEG textures 
 | `aseprite.rs` | Reads Aseprite files (Phase 9, D2) within limits: frames flattened from the visible layers, tags, slices, layers, palette and user data. Tests in `aseprite_tests.rs`, which also writes test files and the fuzz seeds. | `read_aseprite`, `Aseprite`, `AseLimits` |
 | `sprite_sheet.rs` | Turns an Aseprite file into a sprite sheet: frames trimmed, identical ones kept once, packed into one atlas with padded edges; where a sprite stands (`pivot`). | `SpriteSheet`, `build_sheet` |
 | `texture.rs` | Decodes PNG and JPEG images within limits, and works out their mip levels (smaller copies for distant surfaces). | `decode`, `with_mips`, `solid` |
+| `tile_art.rs` | A tileset's picture (Phase 9, D5): a PNG, JPEG or Aseprite file read whole within limits (never scaled; an Aseprite file's every frame and its time); and a picture written as a PNG (templates). Tests in `tile_art_tests.rs`. | `TileArt`, `read_tile_art`, `png_of` |
 | `lights.rs` | Reads the lights a file carries (suns, point lights, spotlights) and converts their strength into the units the editor shows. | `Lamp`, `LampKind` |
 | `sample.rs` | Builds models in code: the textured cube, the showcase scene, and the ships and playground pieces the ready-made projects use. Used by tests and the window test too. | `sample_glb`, `showcase_glb`, `ship_glb`, `playground_glb`, `Builder` |
 

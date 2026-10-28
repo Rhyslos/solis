@@ -15,6 +15,7 @@ mod reader;
 pub mod sample;
 pub mod sprite_sheet;
 pub mod texture;
+pub mod tile_art;
 
 pub use geometry::Y_UP_TO_Z_UP;
 pub use lights::{Lamp, LampKind};

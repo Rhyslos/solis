@@ -62,6 +62,23 @@ pub enum MapFileState {
     Failed(String),
 }
 
+/// What the editor knows of one tileset's picture (Phase 9, D5).
+#[derive(Debug, Clone, PartialEq)]
+pub enum ArtState {
+    /// Read whole, every frame.
+    Read(Arc<assets::tile_art::TileArt>),
+    /// Couldn't be read, and why.
+    Failed(String),
+}
+
+/// Whether `path` is a picture a tileset can take its art from.
+pub fn is_picture(path: &str) -> bool {
+    let lower = path.to_ascii_lowercase();
+    [".png", ".jpg", ".jpeg", ".aseprite", ".ase"]
+        .iter()
+        .any(|e| lower.ends_with(e))
+}
+
 /// The project's sprite sheets, by path inside the assets and by asset ID.
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct SpriteSheets {
@@ -75,8 +92,11 @@ pub struct SpriteSheets {
     pub tilesets: HashMap<String, TilesetState>,
     /// Each tile map file (`.soltilemap`), by path inside the assets.
     pub tile_maps: HashMap<String, MapFileState>,
-    /// Each sheet's, clips file's, animator's, tileset's and map's path,
-    /// by asset ID.
+    /// Each tileset's picture (a PNG, JPEG or Aseprite file), by path
+    /// inside the assets: read whole, for cutting into tiles.
+    pub tile_art: HashMap<String, ArtState>,
+    /// Each sheet's, clips file's, animator's, tileset's, map's and
+    /// picture's path, by asset ID.
     pub paths: HashMap<AssetId, String>,
     /// The clips each sheet and clips file offers, by asset ID: worked out
     /// by [`Self::work_out_clips`] whenever a sheet or clips file changes.
@@ -163,6 +183,14 @@ impl SpriteSheets {
         }
     }
 
+    /// The picture with asset ID `id`, if it's been read as a tileset's.
+    pub fn tile_art(&self, id: AssetId) -> Option<&Arc<assets::tile_art::TileArt>> {
+        match self.tile_art.get(self.paths.get(&id)?)? {
+            ArtState::Read(art) => Some(art),
+            ArtState::Failed(_) => None,
+        }
+    }
+
     /// The tile map file with asset ID `id`, if it's been read.
     pub fn tile_map(&self, id: AssetId) -> Option<&Arc<tiles::TileMap>> {
         self.map_set.get(&id)
@@ -182,6 +210,74 @@ impl SpriteSheets {
                 }
             })
             .map(|(id, path)| (name_of(path), *id))
+            .collect();
+        list.sort();
+        list
+    }
+
+    /// What each tile map file's tileset still needs drawn, by the map
+    /// file's asset ID: the terrains with art but slots without, in plain
+    /// words (Phase 9, D5).
+    pub fn tile_gaps(&self) -> HashMap<AssetId, String> {
+        let mut out = HashMap::new();
+        for (&id, map) in self.map_set.iter() {
+            let Some(tileset) = map.tileset else {
+                continue;
+            };
+            let Some(set) = self.tileset(tileset) else {
+                continue;
+            };
+            let gaps: Vec<String> = set
+                .terrains
+                .iter()
+                .filter(|t| set.has_art(t.id))
+                .filter_map(|t| {
+                    let missing = tiles::autotile::missing_slots(set, t);
+                    (!missing.is_empty()).then(|| {
+                        let slots: Vec<String> = missing.iter().map(u32::to_string).collect();
+                        format!("{} needs slot {}", t.name, slots.join(", "))
+                    })
+                })
+                .collect();
+            if !gaps.is_empty() {
+                let name = self
+                    .paths
+                    .get(&tileset)
+                    .map_or_else(|| "its tileset".to_owned(), |p| name_of(p));
+                out.insert(
+                    id,
+                    format!(
+                        "{name}'s art is missing tiles ({}), drawn pink: open the tileset to add them",
+                        gaps.join("; ")
+                    ),
+                );
+            }
+        }
+        out
+    }
+
+    /// Whether any tileset with a picture read has an animated piece.
+    pub fn tiles_animate(&self) -> bool {
+        self.tilesets.values().any(|t| match t {
+            TilesetState::Read(set, _) => {
+                set.picture.is_some_and(|p| self.tile_art(p).is_some())
+                    && set
+                        .pieces
+                        .iter()
+                        .any(|p| p.animation != tiles::Animation::None)
+            }
+            TilesetState::Failed(_) => false,
+        })
+    }
+
+    /// Every picture a tileset can take its art from (PNG, JPEG or
+    /// Aseprite), by path with its ID, sorted by path.
+    pub fn pictures(&self) -> Vec<(String, AssetId)> {
+        let mut list: Vec<(String, AssetId)> = self
+            .paths
+            .iter()
+            .filter(|(_, path)| is_picture(path))
+            .map(|(id, path)| (path.clone(), *id))
             .collect();
         list.sort();
         list
@@ -331,7 +427,7 @@ pub struct SpriteBatch {
 }
 
 /// sRGB (0 to 1) to linear, as the renderer works.
-fn linear(c: [f32; 3]) -> [f32; 3] {
+pub(crate) fn linear(c: [f32; 3]) -> [f32; 3] {
     c.map(|v| {
         let v = v.clamp(0.0, 1.0);
         if v <= 0.040_45 {
