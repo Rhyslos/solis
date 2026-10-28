@@ -13,8 +13,8 @@
 | Change camera speed | Hold right mouse + mouse wheel |
 | Move forward or back in steps | Mouse wheel |
 | Slide the view | Hold middle mouse, drag |
-| Slide a flat view (Top, Front, Right) | Hold right or middle mouse, drag |
-| Zoom a flat view | Mouse wheel |
+| Slide a flat view (Top, Front, Right, 2D) | Hold right or middle mouse, drag |
+| Zoom a flat view (the 2D view: a whole step a notch) | Mouse wheel |
 | Use one of several views | Click in it |
 
 ## While the game plays

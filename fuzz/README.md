@@ -16,6 +16,7 @@ Fuzz targets for every reader of a file a project can ship ([decision 0042](../d
 | `update_answer` | GitHub's answer about the latest release and the installer's checksum file (split by a 0x01 byte); a release read only ever points at the repository's own downloads |
 | `sound_event` | A sound event file (`.solsound`); an event read is within its limits, writes back to itself, and every pick is one of its takes |
 | `mixer` | The project's buses (`mixer.solmix`); buses read make a sound tree within the limits, write back to themselves, and give levels and ducking that are numbers |
+| `pixels` | The project's 2D settings (`pixels.solpix`); settings read are within the limits and write back to themselves |
 | `sound_file` | A WAV or Ogg Vorbis sound file (`sound::read_bytes`); a sound read is within the limits, as long as its overview, and every sample a number between -1 and 1 |
 
 ## Running

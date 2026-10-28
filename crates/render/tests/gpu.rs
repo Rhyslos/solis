@@ -9,8 +9,9 @@
 
 use glam::{Mat4, Vec3, Vec4};
 use render::{
-    Environment, Fog, FrameParams, GridPlane, Light, LightKind, Look, Placement, Shading, Sky, Sun,
-    Tonemap, ViewportRenderer, best_sample_count, read_pixels,
+    Environment, Fog, FrameParams, GridPlane, Light, LightKind, Look, PixelScaling, Placement,
+    Shading, Sky, Sun, Tonemap, ViewportRenderer, best_sample_count, pixel_layout, read_pixels,
+    read_texture,
 };
 
 /// The editor's backdrop, sRGB 0 to 255 (as in the editor theme).
@@ -134,6 +135,7 @@ fn the_backdrop_shows_sky_above_and_ground_below_in_the_right_colours() {
             environment: Environment::default(),
             editor_lines: true,
             grid_plane: GridPlane::Ground,
+            grid_step: 1.0,
         },
         &[],
         &[],
@@ -186,6 +188,7 @@ fn the_ground_axes_show_in_red_and_green_unless_editor_lines_are_off() {
                 environment: Environment::default(),
                 editor_lines,
                 grid_plane: GridPlane::Ground,
+                grid_step: 1.0,
             },
             &[],
             &[],
@@ -247,6 +250,7 @@ fn a_front_views_grid_stands_upright() {
                 environment: Environment::default(),
                 editor_lines: true,
                 grid_plane,
+                grid_step: 1.0,
             },
             &[],
             &[],
@@ -307,6 +311,7 @@ fn scale_check_viewport_frame() {
         environment: Environment::default(),
         editor_lines: true,
         grid_plane: GridPlane::Ground,
+        grid_step: 1.0,
     };
     let frames = 60;
     let start = std::time::Instant::now();
@@ -411,6 +416,7 @@ fn render_env(
             environment,
             editor_lines: true,
             grid_plane: GridPlane::Ground,
+            grid_step: 1.0,
         },
         &[Placement {
             model: &uploaded,
@@ -793,6 +799,7 @@ fn dump_renders_to_look_at() {
             environment: Environment::default(),
             editor_lines: true,
             grid_plane: GridPlane::Ground,
+            grid_step: 1.0,
         },
         &placed,
         &[],
@@ -1370,6 +1377,7 @@ fn two_viewports_keep_their_own_frames() {
         environment: Environment::default(),
         editor_lines: true,
         grid_plane: GridPlane::Ground,
+        grid_step: 1.0,
     };
     let down = Vec3::new(0.0, 0.0, 10.0);
     let away = Vec3::new(0.0, -100.0, 50.0);
@@ -1463,6 +1471,7 @@ fn render_parts(
             environment: unmapped(),
             editor_lines: true,
             grid_plane: GridPlane::Ground,
+            grid_step: 1.0,
         },
         &placed,
         &[],
@@ -1738,6 +1747,7 @@ fn the_ground_axes_stay_thin_lines_close_up() {
             environment: unmapped(),
             editor_lines: true,
             grid_plane: GridPlane::Ground,
+            grid_step: 1.0,
         },
         &[],
         &[],
@@ -1785,6 +1795,7 @@ fn a_frame_says_what_it_drew_and_whether_its_passes_are_timed() {
         environment: unmapped(),
         editor_lines: false,
         grid_plane: GridPlane::Ground,
+        grid_step: 1.0,
     };
     assert_eq!(target.can_time(), None, "not known before a frame");
     let one = renderer.render(
@@ -1886,6 +1897,7 @@ fn a_frame_is_the_same_on_one_core_or_many() {
         environment: unmapped(),
         editor_lines: false,
         grid_plane: GridPlane::Ground,
+        grid_step: 1.0,
     };
     let draw = |cores: usize| {
         rayon::ThreadPoolBuilder::new()
@@ -1957,6 +1969,7 @@ fn gathering_ms(
         environment: unmapped(),
         editor_lines: false,
         grid_plane: GridPlane::Ground,
+        grid_step: 1.0,
     };
     renderer.render(&gpu.device, &gpu.queue, &mut target, &params, &copies, &[]);
     let _ = read_pixels(&gpu.device, &gpu.queue, &target);
@@ -2121,6 +2134,7 @@ fn render_scene(
             environment: unmapped(),
             editor_lines: true,
             grid_plane: GridPlane::Ground,
+            grid_step: 1.0,
         },
         &placed,
         &[],
@@ -2252,6 +2266,7 @@ fn a_frame_that_did_not_change_sends_nothing() {
         environment: unmapped(),
         editor_lines: false,
         grid_plane: GridPlane::Ground,
+        grid_step: 1.0,
     };
     let first = renderer.render(&gpu.device, &gpu.queue, &mut target, &params, &copies, &[]);
     assert!(first.sent_bytes > 0);
@@ -2459,6 +2474,7 @@ fn projectiles_glow_in_their_colour_and_hide_behind_models() {
         environment: unmapped(),
         editor_lines: false,
         grid_plane: GridPlane::Ground,
+        grid_step: 1.0,
     };
     let streak = render::Bolt {
         head: [1.0, -4.0, 1.0],
@@ -2528,6 +2544,7 @@ fn scale_check_100000_projectiles() {
         environment: unmapped(),
         editor_lines: false,
         grid_plane: GridPlane::Ground,
+        grid_step: 1.0,
     };
     let bolts: Vec<render::Bolt> = (0..100_000)
         .map(|i| render::Bolt {
@@ -2556,4 +2573,227 @@ fn scale_check_100000_projectiles() {
     }
     let ms = spent.as_secs_f64() * 1000.0 / f64::from(frames);
     gathering_verdict("handing over 100,000 projectiles", ms, 2.0, true);
+}
+
+// ------------------------------------------------------------ pixel stage ---
+
+/// A colour for every source pixel of a picture up to 4096 wide and tall,
+/// different for each, so the scaled-up image says which it shows.
+fn source_colour(x: u32, y: u32) -> [u8; 4] {
+    [
+        (x & 255) as u8,
+        (y & 255) as u8,
+        ((x >> 8) | ((y >> 8) << 4)) as u8,
+        255,
+    ]
+}
+
+/// A target holding a `base` picture plus a pixel's margin all round, each
+/// pixel its own colour ([`source_colour`]).
+fn pattern_source(
+    gpu: &Gpu,
+    renderer: &ViewportRenderer,
+    base: [u32; 2],
+) -> render::ViewportTarget {
+    let size = [base[0] + 2, base[1] + 2];
+    let target = renderer.create_target(&gpu.device, size);
+    let mut bytes = Vec::with_capacity((size[0] * size[1] * 4) as usize);
+    for y in 0..size[1] {
+        for x in 0..size[0] {
+            bytes.extend_from_slice(&source_colour(x, y));
+        }
+    }
+    gpu.queue.write_texture(
+        target.color_texture().as_image_copy(),
+        &bytes,
+        wgpu::TexelCopyBufferLayout {
+            offset: 0,
+            bytes_per_row: Some(size[0] * 4),
+            rows_per_image: Some(size[1]),
+        },
+        wgpu::Extent3d {
+            width: size[0],
+            height: size[1],
+            depth_or_array_layers: 1,
+        },
+    );
+    target
+}
+
+/// Scales the pattern up into a `screen` image as `scaling` and `slide`
+/// say, and reads it back with its layout.
+fn staged(
+    gpu: &Gpu,
+    renderer: &ViewportRenderer,
+    source: &render::ViewportTarget,
+    base: [u32; 2],
+    screen: [u32; 2],
+    scaling: PixelScaling,
+    slide: [f32; 2],
+) -> (Vec<u8>, render::PixelLayout) {
+    let image = renderer.create_pixel_image(&gpu.device, screen);
+    let layout = pixel_layout(base, screen, scaling, slide);
+    renderer.draw_pixels(&gpu.device, &gpu.queue, source, &image, &layout);
+    let pixels = read_texture(&gpu.device, &gpu.queue, image.texture(), screen).unwrap();
+    (pixels, layout)
+}
+
+/// Every screen pixel of a whole-steps image is exactly the source pixel
+/// the layout says (black in the bars): checked one by one.
+fn check_whole(pixels: &[u8], layout: &render::PixelLayout) {
+    let [w, h] = layout.screen;
+    let mut wrong = 0;
+    for y in 0..h {
+        for x in 0..w {
+            let at = ((y * w + x) * 4) as usize;
+            let got = [pixels[at], pixels[at + 1], pixels[at + 2], pixels[at + 3]];
+            let want = match layout.source_pixel(x, y) {
+                Some([sx, sy]) => source_colour(sx, sy),
+                None => [0, 0, 0, 255],
+            };
+            if got != want {
+                wrong += 1;
+                assert!(
+                    wrong < 5,
+                    "{:?} at ({x}, {y}): {got:?}, not {want:?}",
+                    layout.screen
+                );
+            }
+        }
+    }
+    assert_eq!(wrong, 0, "{:?}: {wrong} pixels wrong", layout.screen);
+}
+
+#[test]
+fn the_pixel_stage_is_exact_at_every_common_screen_size() {
+    let Some(gpu) = gpu() else { return };
+    let renderer = ViewportRenderer::new(&gpu.device, 1);
+    for base in [[480, 270], [320, 180], [640, 360]] {
+        let source = pattern_source(&gpu, &renderer, base);
+        for screen in [
+            [1280, 720],
+            [1366, 768],
+            [1600, 900],
+            [1920, 1080],
+            [1920, 1200],
+            [2560, 1080],
+            [2560, 1440],
+            [3440, 1440],
+            [3840, 2160],
+        ] {
+            let (pixels, layout) = staged(
+                &gpu,
+                &renderer,
+                &source,
+                base,
+                screen,
+                PixelScaling::WholeSteps,
+                [0.0; 2],
+            );
+            assert!(layout.whole);
+            check_whole(&pixels, &layout);
+        }
+    }
+}
+
+#[test]
+fn a_camera_moving_part_of_a_pixel_a_frame_slides_the_picture_and_never_blurs_it() {
+    let Some(gpu) = gpu() else { return };
+    let renderer = ViewportRenderer::new(&gpu.device, 1);
+    let base = [480, 270];
+    let source = pattern_source(&gpu, &renderer, base);
+    let screen = [1920, 1080];
+    let mut last_x = 0.0;
+    for tenth in -10..=10 {
+        let f = tenth as f32 / 10.0;
+        let (pixels, layout) = staged(
+            &gpu,
+            &renderer,
+            &source,
+            base,
+            screen,
+            PixelScaling::WholeSteps,
+            [f, -f / 2.0],
+        );
+        // Never a blend: every pixel is exactly one source pixel.
+        check_whole(&pixels, &layout);
+        // Steadily along, a screen pixel at a time, never back.
+        assert!(layout.slide[0] >= last_x || tenth == -10);
+        last_x = layout.slide[0];
+    }
+}
+
+#[test]
+fn filling_the_screen_keeps_edges_sharp() {
+    let Some(gpu) = gpu() else { return };
+    let renderer = ViewportRenderer::new(&gpu.device, 1);
+    let base = [480, 270];
+    let source = pattern_source(&gpu, &renderer, base);
+    let screen = [2560, 1440];
+    let (pixels, layout) = staged(
+        &gpu,
+        &renderer,
+        &source,
+        base,
+        screen,
+        PixelScaling::Fill,
+        [0.0; 2],
+    );
+    assert!(!layout.whole && layout.size == screen);
+    // Along a row, each source pixel (5⅓ screen pixels wide) shows as at
+    // least four screen pixels of exactly its colour, with at most one
+    // blended pixel between it and the next.
+    let row = 700;
+    let mut exact = std::collections::BTreeMap::<u32, u32>::new();
+    let mut blended = 0;
+    for x in 0..screen[0] {
+        let at = ((row * screen[0] + x) * 4) as usize;
+        let got = [pixels[at], pixels[at + 1], pixels[at + 2], 255];
+        let sx = (x as f32 + 0.5) / layout.scale + 1.0;
+        let sy = ((row as f32 + 0.5) / layout.scale + 1.0).floor() as u32;
+        if got == source_colour(sx.floor() as u32, sy) {
+            *exact.entry(sx.floor() as u32).or_default() += 1;
+        } else {
+            blended += 1;
+        }
+    }
+    assert!(exact.values().all(|&n| n >= 4), "{exact:?}");
+    assert!(exact.len() >= 479, "{}", exact.len());
+    assert!(blended <= 481, "{blended} blended pixels");
+}
+
+/// Part of the scale check (decision 0011): the pixel stage at 4K, which
+/// the 2D plan budgets at 0.2 ms on the reference card. Reported, not
+/// judged: software drivers are far slower.
+#[test]
+#[ignore = "scale check: run by tools/scale/scale-check.sh"]
+#[allow(clippy::print_stdout)]
+fn scale_check_pixel_stage_at_4k() {
+    let Some(gpu) = gpu() else { return };
+    let renderer = ViewportRenderer::new(&gpu.device, 1);
+    let base = [480, 270];
+    let source = pattern_source(&gpu, &renderer, base);
+    let image = renderer.create_pixel_image(&gpu.device, [3840, 2160]);
+    let frames = 60;
+    let start = std::time::Instant::now();
+    for i in 0..frames {
+        let layout = pixel_layout(
+            base,
+            [3840, 2160],
+            PixelScaling::WholeSteps,
+            [i as f32 / 60.0, 0.0],
+        );
+        renderer.draw_pixels(&gpu.device, &gpu.queue, &source, &image, &layout);
+        gpu.device
+            .poll(wgpu::PollType::Wait {
+                submission_index: None,
+                timeout: None,
+            })
+            .unwrap();
+    }
+    let ms = start.elapsed().as_secs_f64() * 1000.0 / f64::from(frames);
+    println!(
+        "Scale check: pixel stage at 3840x2160 {ms:.2} ms (budget 0.2 ms on the reference card) on {}",
+        gpu.adapter.get_info().name
+    );
 }

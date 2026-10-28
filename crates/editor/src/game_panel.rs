@@ -7,7 +7,7 @@ use crate::look::Look;
 use crate::models::ModelInfo;
 use crate::play::PlayState;
 use crate::theme;
-use crate::viewport::{GAME_IMAGE, ViewportRenderer, ViewportView};
+use crate::viewport::{GAME_IMAGE, PixelView, ViewportRenderer, ViewportView};
 use egui::{Color32, Rect, RichText, Ui};
 use glam::{Mat4, Vec3};
 use reflect::AssetId;
@@ -79,6 +79,67 @@ pub(crate) fn camera_view(global: Mat4) -> (Mat4, Vec3) {
     (view, position)
 }
 
+/// What a 2D camera at `position` (in metres) sees with the project's 2D
+/// `settings`: the view and projection for the small picture (the base
+/// resolution plus a pixel each side, on whole pixels of the world), and
+/// the pixel stage's slide for the bit of a pixel the camera is past
+/// that. `near` and `far` are how far below the camera it sees.
+pub(crate) fn pixel_camera(
+    position: Vec3,
+    settings: area::pixels::PixelSettings,
+    near: f32,
+    far: f32,
+) -> (Mat4, PixelView) {
+    let s = settings.sanitized();
+    let ppu = s.pixels_per_unit as f32;
+    let position = if position.is_finite() {
+        position
+    } else {
+        Vec3::ZERO
+    };
+    // Where the camera is, in whole pixels and the bit beyond.
+    let at = [position.x * ppu, position.y * ppu];
+    let whole = at.map(|v| v.round());
+    let past = [at[0] - whole[0], at[1] - whole[1]];
+    // The picture's pixels line up with the world's: its left and bottom
+    // edges sit on whole pixels, the middle on the camera's whole pixel.
+    let size = [s.base[0] + 2, s.base[1] + 2];
+    let left = whole[0] - (size[0] / 2) as f32;
+    let bottom = whole[1] - (size[1] / 2) as f32;
+    let centre = Vec3::new(
+        (left + size[0] as f32 / 2.0) / ppu,
+        (bottom + size[1] as f32 / 2.0) / ppu,
+        position.z,
+    );
+    let (near, far) = if near.is_finite() && far.is_finite() && far > near {
+        (near, far)
+    } else {
+        (0.1, 2000.0)
+    };
+    let range = far - near;
+    let half = [size[0] as f32 / ppu / 2.0, size[1] as f32 / ppu / 2.0];
+    // Flat, depth reversed (1 at near, 0 at far), as the 3D camera has it.
+    let projection = Mat4::from_cols(
+        glam::Vec4::new(1.0 / half[0], 0.0, 0.0, 0.0),
+        glam::Vec4::new(0.0, 1.0 / half[1], 0.0, 0.0),
+        glam::Vec4::new(0.0, 0.0, 1.0 / range, 0.0),
+        glam::Vec4::new(0.0, 0.0, far / range, 1.0),
+    );
+    // Looking straight down, X right and Y up the picture: the camera's
+    // own axes are the world's, so its view only moves the world.
+    let view = Mat4::from_translation(-centre);
+    (
+        projection * view,
+        PixelView {
+            base: s.base,
+            scaling: s.scaling,
+            // Picture x runs with the world's; picture y runs down, the
+            // world's up.
+            slide: [past[0], -past[1]],
+        },
+    )
+}
+
 /// Draws the Game panel: the game's picture with its state in a corner,
 /// or, when nothing runs, how to start it. Returns whether the picture
 /// was clicked (the game then takes the mouse and keys); `has_input` is
@@ -89,6 +150,7 @@ pub(crate) fn game_panel(
     playing: bool,
     has_input: bool,
     editor_camera: &Camera,
+    pixels: area::pixels::PixelSettings,
     renderer: &mut dyn ViewportRenderer,
 ) -> bool {
     let Some(scene) = scene else {
@@ -113,7 +175,15 @@ pub(crate) fn game_panel(
         (rect.height() * ppp).round().max(1.0) as u32,
     ];
     let aspect = size_px[0] as f32 / size_px[1] as f32;
+    let mut pixel = None;
     let (view_projection, position) = match scene.camera {
+        Some((camera, global)) if camera.view == area::builtin::CameraView::TwoD => {
+            let position = global.w_axis.truncate();
+            let c = camera.sanitized();
+            let (view_projection, view) = pixel_camera(position, pixels, c.near, c.far);
+            pixel = Some(view);
+            (view_projection, position)
+        }
         Some((camera, global)) => {
             let (view, position) = camera_view(global);
             (camera.projection(aspect) * view, position)
@@ -145,6 +215,8 @@ pub(crate) fn game_panel(
         editor_lines: false,
         kind: crate::camera::ViewKind::Perspective,
         bolts: std::sync::Arc::clone(&scene.bolts),
+        grid_step: 1.0,
+        pixel,
     };
     let painter = ui.painter_at(rect);
     match renderer.render(&view) {
@@ -196,4 +268,81 @@ pub(crate) fn game_panel(
             });
     }
     clicked
+}
+
+#[cfg(test)]
+mod pixel_tests {
+    use super::*;
+    use area::pixels::PixelSettings;
+
+    /// Where world point `p` lands in the small picture, in its pixels
+    /// from the top-left (the picture is the base plus a pixel each side).
+    fn in_picture(view_projection: Mat4, settings: PixelSettings, p: Vec3) -> [f32; 2] {
+        let size = [settings.base[0] + 2, settings.base[1] + 2];
+        let clip = view_projection.project_point3(p);
+        [
+            (clip.x + 1.0) / 2.0 * size[0] as f32,
+            (1.0 - clip.y) / 2.0 * size[1] as f32,
+        ]
+    }
+
+    fn whole(v: [f32; 2]) -> bool {
+        v.iter().all(|c| (c - c.round()).abs() < 1e-3)
+    }
+
+    #[test]
+    fn the_world_s_pixels_land_on_the_picture_s_pixels() {
+        for base in [[480, 270], [481, 271], [320, 180]] {
+            let s = PixelSettings {
+                base,
+                ..PixelSettings::default()
+            };
+            for camera in [
+                Vec3::ZERO,
+                Vec3::new(10.0, -3.0, 20.0),
+                Vec3::new(10.03, 7.77, 5.0),
+            ] {
+                let (vp, _) = pixel_camera(camera, s, 0.1, 100.0);
+                // Corners of the world's pixels near the camera are corners
+                // of the picture's.
+                for (dx, dy) in [(0, 0), (3, -2), (-40, 17)] {
+                    let p = Vec3::new(
+                        ((camera.x * 16.0).round() + dx as f32) / 16.0,
+                        ((camera.y * 16.0).round() + dy as f32) / 16.0,
+                        0.0,
+                    );
+                    assert!(whole(in_picture(vp, s, p)), "{base:?} {camera} {dx},{dy}");
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn a_camera_between_pixels_draws_the_same_picture_and_slides_it() {
+        let s = PixelSettings::default();
+        let (still, view) = pixel_camera(Vec3::new(5.0, 5.0, 10.0), s, 0.1, 100.0);
+        assert_eq!(view.slide, [0.0, 0.0]);
+        assert_eq!(view.base, [480, 270]);
+        // A third of a pixel right and a quarter up: the same small picture,
+        // slid right and up.
+        let moved = Vec3::new(5.0 + 0.33 / 16.0, 5.0 + 0.25 / 16.0, 10.0);
+        let (vp, view) = pixel_camera(moved, s, 0.1, 100.0);
+        assert!((vp - still).abs_diff_eq(Mat4::ZERO, 1e-5));
+        assert!((view.slide[0] - 0.33).abs() < 1e-3);
+        assert!((view.slide[1] + 0.25).abs() < 1e-3, "picture y runs down");
+        // The camera's whole pixel is in the middle of the picture.
+        let middle = in_picture(still, s, Vec3::new(5.0, 5.0, 0.0));
+        assert_eq!(middle.map(f32::round), [241.0, 136.0]);
+    }
+
+    #[test]
+    fn it_sees_from_near_to_far_below_the_camera_and_never_breaks() {
+        let s = PixelSettings::default();
+        let (vp, _) = pixel_camera(Vec3::new(0.0, 0.0, 10.0), s, 1.0, 101.0);
+        let depth = |z: f32| vp.project_point3(Vec3::new(0.0, 0.0, z)).z;
+        assert!((depth(9.0) - 1.0).abs() < 1e-5, "near: 1");
+        assert!(depth(-91.0).abs() < 1e-5, "far: 0");
+        let (vp, view) = pixel_camera(Vec3::splat(f32::NAN), s, f32::NAN, -1.0);
+        assert!(vp.is_finite() && view.slide == [0.0, 0.0]);
+    }
 }

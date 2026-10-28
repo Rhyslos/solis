@@ -246,13 +246,22 @@ fn the_oldest_steps_go_past_the_limit_and_none_at_it() {
 #[test]
 fn a_damaged_camera_is_made_sensible() {
     let d = Camera::default();
-    let fix = |fov: f32, near: f32, far: f32| Camera { fov, near, far }.sanitized();
+    let fix = |fov: f32, near: f32, far: f32| {
+        Camera {
+            fov,
+            near,
+            far,
+            ..Camera::default()
+        }
+        .sanitized()
+    };
     assert_eq!(
         fix(60.0, 0.5, 300.0),
         Camera {
             fov: 60.0,
             near: 0.5,
-            far: 300.0
+            far: 300.0,
+            ..Camera::default()
         }
     );
     assert_eq!(fix(f32::NAN, 0.1, 100.0).fov, d.fov);
@@ -273,6 +282,7 @@ fn the_projection_is_reversed_depth_for_the_aspect() {
         fov: 90.0,
         near: 1.0,
         far: 101.0,
+        ..Camera::default()
     };
     let p = camera.projection(2.0);
     // A 90° view: 1 across the height, halved across a twice-wide image.

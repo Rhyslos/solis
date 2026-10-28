@@ -83,6 +83,7 @@ fn the_first_camera_in_tree_order_is_the_one_looked_through() {
         fov: -3.0,
         near: 0.0,
         far: f32::NAN,
+        ..Camera::default()
     }));
     let (_, camera, _) = World::from_area(&area).camera().unwrap();
     assert_eq!(camera, camera.sanitized());

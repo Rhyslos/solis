@@ -11,7 +11,7 @@ use crate::camera::Camera;
 use crate::gizmo::{Change, Drag, Gizmo, Handle, Shape};
 use crate::picking::PickMode;
 use crate::theme::{self, Accent};
-use crate::transforming::{ANGLE_STEPS, GRID_STEPS, Snapping};
+use crate::transforming::{ANGLE_STEPS, GRID_STEPS, PixelSnap, Snapping};
 use egui::{Align, Color32, Layout, Pos2, Rect, RichText, Stroke, Ui};
 use glam::{Mat4, Vec2, Vec3};
 use reflect::EntityId;
@@ -870,6 +870,107 @@ pub(crate) fn snapping_corner(
                     for (i, name) in ["Z", "Y", "X"].into_iter().enumerate() {
                         let axis = 2 - i;
                         lock_button(ui, &mut snapping.locked[axis], name);
+                    }
+                });
+            });
+        });
+    });
+}
+
+/// The 2D view's corner: the tile grid, what moves snap to, the zoom, and
+/// the X and Y locks (Phase 9, D1). `upwards` as for [`snapping_corner`].
+pub(crate) fn pixel_corner(
+    ui: &mut Ui,
+    snapping: &mut Snapping,
+    zoom: &mut f32,
+    pixels: area::pixels::PixelSettings,
+    accent: Accent,
+    upwards: bool,
+) {
+    let layout = if upwards {
+        Layout::bottom_up(Align::Max)
+    } else {
+        Layout::top_down(Align::Max)
+    };
+    let row = Layout::right_to_left(if upwards { Align::Max } else { Align::Min });
+    ui.with_layout(layout, |ui| {
+        ui.spacing_mut().item_spacing.y = 3.0;
+        // Bottom row, from the right edge: Zoom, Snap, Grid.
+        ui.with_layout(row, |ui| {
+            ui.spacing_mut().item_spacing.x = 3.0;
+            theme::overlay_frame().show(ui, |ui| {
+                let percent = |z: f32| format!("{:.0}%", z * 100.0);
+                let button = ui
+                    .add(egui::Button::new(format!("Zoom {} ▴", percent(*zoom))))
+                    .on_hover_text(
+                        "Screen pixels to each of the game's: whole steps keep pixels sharp. \
+                         The wheel steps through them",
+                    );
+                egui::Popup::menu(&button)
+                    .align(egui::RectAlign::TOP_END)
+                    .show(|ui| {
+                        for &step in crate::camera::ZOOM_STEPS.iter().rev() {
+                            if ui
+                                .add(egui::Button::new(percent(step)).selected(*zoom == step))
+                                .clicked()
+                            {
+                                *zoom = step;
+                            }
+                        }
+                    });
+            });
+            theme::overlay_frame().show(ui, |ui| {
+                let on = snapping.pixel_snap != PixelSnap::Off;
+                let text = format!("Snap: {} ▴", snapping.pixel_snap.name());
+                let label = if on {
+                    RichText::new(text).color(Color32::WHITE)
+                } else {
+                    RichText::new(text)
+                };
+                let mut button = egui::Button::new(label).min_size(egui::vec2(0.0, 20.0));
+                if on {
+                    button = button.fill(accent.colors().fill);
+                }
+                let button = ui.add(button).on_hover_text(
+                    "What moves land on: whole pixels (so nothing rests between pixels), whole \
+                     tiles, or anywhere. Hold Ctrl while dragging to flip it",
+                );
+                egui::Popup::menu(&button)
+                    .align(egui::RectAlign::TOP_END)
+                    .show(|ui| {
+                        for mode in PixelSnap::ALL.into_iter().rev() {
+                            let name = mode.name();
+                            let mut text = name[..1].to_uppercase();
+                            text.push_str(&name[1..]);
+                            if ui
+                                .add(egui::Button::new(text).selected(snapping.pixel_snap == mode))
+                                .clicked()
+                            {
+                                snapping.pixel_snap = mode;
+                            }
+                        }
+                    });
+            });
+            theme::overlay_frame()
+                .inner_margin(egui::Margin::symmetric(8, 4))
+                .show(ui, |ui| {
+                    let [w, h] = pixels.tile;
+                    let text = if w == h {
+                        format!("Grid {w} px")
+                    } else {
+                        format!("Grid {w} × {h} px")
+                    };
+                    ui.label(text)
+                        .on_hover_text("The tile size: Edit > Settings… > 2D changes it");
+                });
+        });
+        // The row above: the X and Y locks (2D moves across the ground).
+        ui.with_layout(row, |ui| {
+            theme::overlay_frame().show(ui, |ui| {
+                ui.horizontal(|ui| {
+                    ui.spacing_mut().item_spacing.x = 2.0;
+                    for (i, name) in ["Y", "X"].into_iter().enumerate() {
+                        lock_button(ui, &mut snapping.locked[1 - i], name);
                     }
                 });
             });

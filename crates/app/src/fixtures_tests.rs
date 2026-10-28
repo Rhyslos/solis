@@ -41,6 +41,14 @@ fn every_format() -> Vec<(&'static str, &'static dyn Versioned, Reader)> {
                 Err(format!("notes: {:?}", read.notes))
             }
         }),
+        ("pixels", &area::pixels::FORMAT, |text| {
+            let read = area::pixels::read(text).map_err(|e| e.to_string())?;
+            if read.notes.is_empty() {
+                Ok(())
+            } else {
+                Err(format!("notes: {:?}", read.notes))
+            }
+        }),
         ("input-actions", &input::BINDINGS_FORMAT, |text| {
             input::Bindings::read(text)
                 .map(drop)

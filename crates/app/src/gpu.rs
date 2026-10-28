@@ -20,19 +20,33 @@ struct Image {
     texture: egui::TextureId,
 }
 
+/// A 2D camera's images (Phase 9, D1): the small picture, drawn at the
+/// base resolution plus a pixel each side, and the screen-sized one the
+/// pixel stage scales it up into, which egui shows.
+struct PixelImages {
+    small: ViewportTarget,
+    small_size: [u32; 2],
+    out: render::PixelImage,
+    out_size: [u32; 2],
+    texture: egui::TextureId,
+}
+
 /// Draws the viewport with the same GPU device the window uses.
 pub struct GpuViewport {
     state: RenderState,
     renderer: render::ViewportRenderer,
     /// Each view's image (the viewport's, the Game panel's), by number.
     images: Vec<Option<Image>>,
+    /// Each view's images when it looks through a 2D camera, by number.
+    pixel_images: Vec<Option<PixelImages>>,
     /// Imported models, uploaded.
     models: HashMap<AssetId, GpuModel>,
     /// The image thumbnails are drawn into, made the first time.
     thumbnail_target: Option<ViewportTarget>,
-    /// What was drawn since the Profiler last asked, and which images.
+    /// What was drawn since the Profiler last asked, and which images
+    /// (by number, and whether through a 2D camera).
     report: editor::DrawReport,
-    drawn: Vec<usize>,
+    drawn: Vec<(usize, bool)>,
 }
 
 impl GpuViewport {
@@ -50,6 +64,7 @@ impl GpuViewport {
             renderer: render::ViewportRenderer::new(&state.device, samples),
             state: state.clone(),
             images: Vec::new(),
+            pixel_images: Vec::new(),
             models: HashMap::new(),
             thumbnail_target: None,
             report: editor::DrawReport::default(),
@@ -97,6 +112,7 @@ impl GpuViewport {
             environment: to_render_environment(&Environment::default()),
             editor_lines: true,
             grid_plane: render::GridPlane::Ground,
+            grid_step: 1.0,
         };
         self.renderer.render(
             device,
@@ -228,6 +244,128 @@ impl GpuViewport {
     }
 }
 
+impl GpuViewport {
+    /// Makes view `slot`'s 2D images: a small picture of `small` pixels
+    /// and a screen image of `out` pixels, unless they already are.
+    fn prepare_pixel_images(&mut self, slot: usize, small: [u32; 2], out: [u32; 2]) {
+        if self.pixel_images.len() <= slot {
+            self.pixel_images.resize_with(slot + 1, || None);
+        }
+        let device = &self.state.device;
+        match &mut self.pixel_images[slot] {
+            Some(images) => {
+                if images.small_size != small {
+                    images.small = self.renderer.create_target(device, small);
+                    images.small_size = small;
+                }
+                if images.out_size != out {
+                    images.out = self.renderer.create_pixel_image(device, out);
+                    images.out_size = out;
+                    self.state
+                        .renderer
+                        .write()
+                        .update_egui_texture_from_wgpu_texture(
+                            device,
+                            images.out.display_view(),
+                            wgpu::FilterMode::Nearest,
+                            images.texture,
+                        );
+                }
+            }
+            None => {
+                let out_image = self.renderer.create_pixel_image(device, out);
+                let texture = self.state.renderer.write().register_native_texture(
+                    device,
+                    out_image.display_view(),
+                    wgpu::FilterMode::Nearest,
+                );
+                self.pixel_images[slot] = Some(PixelImages {
+                    small: self.renderer.create_target(device, small),
+                    small_size: small,
+                    out: out_image,
+                    out_size: out,
+                    texture,
+                });
+            }
+        }
+    }
+
+    /// Draws a view through a 2D camera: the world at the base resolution
+    /// plus a pixel each side, then scaled up to the view by the pixel
+    /// stage (Phase 9, D1).
+    fn render_pixels(
+        &mut self,
+        view: &ViewportView,
+        pixel: editor::PixelView,
+        mut params: FrameParams,
+        lights: &[render::Light],
+    ) -> Result<egui::TextureId, String> {
+        let small = [pixel.base[0] + 2, pixel.base[1] + 2];
+        params.size_px = small;
+        self.prepare_pixel_images(view.image, small, view.size_px);
+        let images = self.pixel_images[view.image]
+            .as_mut()
+            .ok_or("the 2D images could not be made")?;
+        let placed: Vec<render::Placement<'_>> = view
+            .models
+            .iter()
+            .filter_map(|m| {
+                self.models.get(&m.asset).map(|model| render::Placement {
+                    model,
+                    node: m.node,
+                    transform: m.transform,
+                    pick: m.pick,
+                })
+            })
+            .collect();
+        let bolts: &[render::Bolt] = bytemuck::cast_slice(view.bolts.as_slice());
+        let stats = self.renderer.render_with_bolts(
+            &self.state.device,
+            &self.state.queue,
+            &mut images.small,
+            &params,
+            &placed,
+            lights,
+            bolts,
+        );
+        let layout = render::pixel_layout(
+            pixel.base,
+            images.out_size,
+            match pixel.scaling {
+                area::pixels::Scaling::WholeSteps => render::PixelScaling::WholeSteps,
+                area::pixels::Scaling::Fill => render::PixelScaling::Fill,
+            },
+            pixel.slide,
+        );
+        self.renderer.draw_pixels(
+            &self.state.device,
+            &self.state.queue,
+            &images.small,
+            &images.out,
+            &layout,
+        );
+        let texture = images.texture;
+        count(&mut self.report, &stats);
+        if !self.drawn.contains(&(view.image, true)) {
+            self.drawn.push((view.image, true));
+        }
+        Ok(texture)
+    }
+}
+
+/// Adds what a frame drew to the Profiler's report.
+fn count(report: &mut editor::DrawReport, stats: &render::FrameStats) {
+    report.bolts += u64::from(stats.bolts);
+    report.instances += u64::from(stats.instances);
+    report.casting += u64::from(stats.casting);
+    report.sent_bytes += stats.sent_bytes;
+    for (total, n) in report.lods.iter_mut().zip(stats.lods) {
+        *total += u64::from(n);
+    }
+    report.batches += u64::from(stats.batches);
+    report.triangles += stats.triangles;
+}
+
 /// The area's sky, fog and exposure as the renderer takes them.
 fn to_render_environment(env: &Environment) -> render::Environment {
     render::Environment {
@@ -322,12 +460,18 @@ impl ViewportRenderer for GpuViewport {
             grid_plane: match view.kind {
                 editor::ViewKind::Front => render::GridPlane::Front,
                 editor::ViewKind::Right => render::GridPlane::Side,
-                editor::ViewKind::Perspective | editor::ViewKind::Top => render::GridPlane::Ground,
+                editor::ViewKind::Perspective | editor::ViewKind::Top | editor::ViewKind::TwoD => {
+                    render::GridPlane::Ground
+                }
             },
+            grid_step: view.grid_step,
         };
         let lights: Vec<render::Light> = view.lamps.iter().map(to_render_light).collect();
         if view.image >= editor::MAX_IMAGES {
             return Err("too many views".into());
+        }
+        if let Some(pixel) = view.pixel {
+            return self.render_pixels(view, pixel, params, &lights);
         }
         self.prepare_image(view.image, view.size_px);
         let image = self.images[view.image]
@@ -356,17 +500,9 @@ impl ViewportRenderer for GpuViewport {
             &lights,
             bolts,
         );
-        self.report.bolts += u64::from(stats.bolts);
-        self.report.instances += u64::from(stats.instances);
-        self.report.casting += u64::from(stats.casting);
-        self.report.sent_bytes += stats.sent_bytes;
-        for (total, n) in self.report.lods.iter_mut().zip(stats.lods) {
-            *total += u64::from(n);
-        }
-        self.report.batches += u64::from(stats.batches);
-        self.report.triangles += stats.triangles;
-        if !self.drawn.contains(&view.image) {
-            self.drawn.push(view.image);
+        count(&mut self.report, &stats);
+        if !self.drawn.contains(&(view.image, false)) {
+            self.drawn.push((view.image, false));
         }
         if let Some(rect) = view.pick {
             // Drawn after the frame, never waited for: the answer is
@@ -404,12 +540,23 @@ impl ViewportRenderer for GpuViewport {
         let mut report = std::mem::take(&mut self.report);
         // The GPU's newest times for each image drawn, together.
         let mut gpu: Option<editor::GpuSplit> = None;
-        for &slot in &std::mem::take(&mut self.drawn) {
-            let Some(image) = self.images.get(slot).and_then(Option::as_ref) else {
+        for &(slot, pixel) in &std::mem::take(&mut self.drawn) {
+            let target = if pixel {
+                self.pixel_images
+                    .get(slot)
+                    .and_then(Option::as_ref)
+                    .map(|p| &p.small)
+            } else {
+                self.images
+                    .get(slot)
+                    .and_then(Option::as_ref)
+                    .map(|i| &i.target)
+            };
+            let Some(target) = target else {
                 continue;
             };
-            report.gpu_timing = image.target.can_time().or(report.gpu_timing);
-            if let Some(t) = image.target.gpu_times(&self.state.device) {
+            report.gpu_timing = target.can_time().or(report.gpu_timing);
+            if let Some(t) = target.gpu_times(&self.state.device) {
                 let sum = gpu.get_or_insert_default();
                 sum.shadows += t.shadows;
                 sum.models += t.models;

@@ -11,6 +11,7 @@ pub mod builtin;
 mod document;
 mod edit;
 mod history;
+pub mod pixels;
 pub mod settings;
 pub mod text;
 mod tree;

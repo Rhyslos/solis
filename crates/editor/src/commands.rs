@@ -21,6 +21,11 @@ use std::collections::BTreeMap;
 use std::hash::{DefaultHasher, Hash, Hasher};
 use std::sync::Arc;
 
+/// How high above the ground a 2D camera added from the 2D view goes, in
+/// metres: it sees everything below it, so things stacked in layers (each
+/// a little higher) are all in view.
+const TWO_D_CAMERA_HEIGHT: f32 = 100.0;
+
 /// How far above the camera's focus point a new point light goes, in
 /// metres.
 pub(crate) const POINT_LIGHT_HEIGHT: f32 = 2.0;
@@ -288,10 +293,30 @@ impl Workbench {
     }
 
     /// Adds a camera where the editor's camera is, looking the same way,
-    /// and selects it.
+    /// and selects it. From the 2D view it's a 2D camera, over the view's
+    /// middle on a whole pixel.
     pub fn add_camera(&mut self) -> EntityId {
         let n = self.document.area().with::<area::builtin::Camera>().count() + 1;
         let camera = &self.viewport.camera;
+        if camera.kind == crate::camera::ViewKind::TwoD {
+            let ppu = self.pixels.pixels_per_unit.max(1) as f32;
+            let on_pixel = |v: f32| (v * ppu).round() / ppu;
+            return self.spawn_selected(
+                EntityData::new(&format!("Camera {n}"))
+                    .with(&Transform {
+                        position: glam::Vec3::new(
+                            on_pixel(camera.position.x),
+                            on_pixel(camera.position.y),
+                            TWO_D_CAMERA_HEIGHT,
+                        ),
+                        ..Transform::default()
+                    })
+                    .with(&area::builtin::Camera {
+                        view: area::builtin::CameraView::TwoD,
+                        ..area::builtin::Camera::default()
+                    }),
+            );
+        }
         // A camera entity looks along its -Z with +Y up.
         let rotation = glam::Quat::from_mat3(&glam::Mat3::from_cols(
             camera.right(),

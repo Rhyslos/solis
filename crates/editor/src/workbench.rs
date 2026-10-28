@@ -112,6 +112,9 @@ pub enum WorkbenchAction {
     },
     /// Save the project's buses to its `mixer.solmix` (the Mixer).
     SaveMixer(sound::Mixer),
+    /// Save the project's 2D settings to its `pixels.solpix` (Settings >
+    /// 2D).
+    SavePixels(area::pixels::PixelSettings),
     /// Change one field of an entity inside an assembly's file (Apply to
     /// assembly); the app saves it and hands it back with
     /// [`Workbench::set_assembly`], which updates every copy.
@@ -252,6 +255,8 @@ pub struct Workbench {
     pub(crate) sound_shown: Option<(String, crate::document::Selection)>,
     /// The project's buses, mute and solo, and the meters (the Mixer).
     pub(crate) mixer: crate::mixer_view::MixerState,
+    /// The project's 2D settings (Settings > 2D, `pixels.solpix`).
+    pub(crate) pixels: area::pixels::PixelSettings,
     /// Where assets being placed go, when they were dropped somewhere:
     /// the point, and the entity they go under.
     pub(crate) place_targets: BTreeMap<AssetId, (glam::Vec3, Option<EntityId>)>,
@@ -373,6 +378,7 @@ impl Workbench {
             preview: None,
             sound_shown: None,
             mixer: Default::default(),
+            pixels: area::pixels::PixelSettings::default(),
             place_targets: BTreeMap::new(),
             problems: Default::default(),
             playing: None,
@@ -870,6 +876,7 @@ impl Workbench {
                         game: game.as_ref().map(|(_, scene)| scene),
                         playing,
                         game_input: self.game_input,
+                        pixels: self.pixels,
                         game_clicked: &mut game_clicked,
                         document: &self.document,
                         models: &self.models,
@@ -930,7 +937,7 @@ impl Workbench {
         }
         self.about(ui);
         self.input_actions_window(ui.ctx());
-        self.settings(ui.ctx());
+        self.settings(ui.ctx(), &mut actions);
         self.prompts(ui, &mut actions);
         self.update_question(ui.ctx(), &mut actions);
         self.hold_while_playing(&mut actions);

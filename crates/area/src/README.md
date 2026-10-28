@@ -12,6 +12,7 @@ The area document (decision 0019): entities with stable IDs, their components as
 | `history.rs` | Undo and redo: steps of edits with the selection each step had; drags merge into one step. | `History`, `Step`, `MergeKey`, `Weigh` |
 | `tree.rs` | The area's tree worked out once: children in order, tree order, where each entity is in the world. | `Tree` |
 | `settings.rs` | Settings files in the same text style: a header, then one `key = value;` line per setting (sound events, later the mixer). | `read_settings`, `write_settings`, `Settings`, `Field` |
+| `pixels.rs` | A project's 2D settings (Phase 9, D1): base resolution, pixels per unit, tile size and scaling, in `pixels.solpix`. Reading is fuzz-tested. | `PixelSettings`, `Scaling`, `read`, `write` |
 | `text.rs` | Areas as text (decision 0020): one block per entity, sorted by ID, one line per field, so Git merges cleanly. Reading is fuzz-tested. | `write`, `read`, `AreaFile`, `ParseError` |
 | `assembly.rs` | Assemblies placed in areas: written as the root plus overrides, expanded into ordinary entities while edited, with IDs derived from the copy's root. | `Expander`, `derive`, `AssemblyError` |
 | `gap_tests.rs` | Tests added where mutation testing found the crate's own tests missed something. | |

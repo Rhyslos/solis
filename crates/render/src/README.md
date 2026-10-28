@@ -14,11 +14,13 @@ Draws viewports on the GPU with wgpu, into offscreen images: the sky, every copy
 | `lighting.rs` | The sun and lamps, the sun's shadow map fitted to what's in view, and the markers drawn where lamps are. | `Sun`, `Light`, `LightKind`, `sun_view_fitted` |
 | `environment.rs` | The sky (the editor's backdrop or a daylight sky), fog, exposure and tone mapping. | `Environment`, `Sky`, `Fog`, `Tonemap` |
 | `projectiles.rs` | Projectiles drawn in one go, each a glowing streak. | `Bolt` |
+| `pixel.rs` | The pixel stage (Phase 9, D1): a 2D game's small picture scaled up to the screen in whole steps or to fill, slid by the camera's bit of a pixel. | `pixel_layout`, `PixelLayout`, `PixelImage`, `PixelScaling` |
 | `pick.rs` | Picking: draws placement numbers and depth into a small image to say what is under the mouse. | `PickResult` |
 | `timing.rs` | How long the GPU takes over each pass, for the Profiler, read back a frame or two later without waiting; and counts of what was drawn. | `GpuTimes`, `FrameStats` |
-| `readback.rs` | Copies a finished image back from the GPU, for tests and screenshots. The only place that waits on the GPU. | `read_pixels` |
+| `readback.rs` | Copies a finished image back from the GPU, for tests and screenshots. The only place that waits on the GPU. | `read_pixels`, `read_texture` |
 | `viewport.wgsl` | The shaders (small programs that run on the GPU): sky, grid, lines, models in each look, lighting and shadows, and the final exposure, tone mapping and sRGB pass (`post_fs`). | `mesh_vs`, `sky_fs`, `grid_fs`, `post_fs` |
 | `pick.wgsl` | The picking shader, kept apart so the viewport shader stays as it is. | |
+| `pixel.wgsl` | The pixel stage's shader: one screen-filling triangle that picks (or, for fill, sharply blends) the small picture's pixels. | `pixel_vs`, `pixel_fs` |
 
 ## How the pieces fit
 

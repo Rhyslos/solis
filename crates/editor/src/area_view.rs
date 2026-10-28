@@ -67,6 +67,10 @@ pub struct AreaView {
     pub triangles: usize,
     /// The cameras, where they are (for their markers).
     pub cameras: Vec<(reflect::EntityId, glam::Mat4)>,
+    /// The 2D cameras, where they are, each with whether it's the one the
+    /// game looks through (the first camera of all): the 2D view frames
+    /// what each shows.
+    pub screens: Vec<(Vec3, bool)>,
 }
 
 impl AreaView {
@@ -133,9 +137,14 @@ impl AreaView {
         {
             view.add_light(*id, light, at(*id));
         }
-        for (id, _) in area.with::<Camera>() {
+        let first = tree.first_of(area.with::<Camera>().map(|(id, _)| id));
+        for (id, camera) in area.with::<Camera>() {
             if !hidden.contains(&id) {
                 view.cameras.push((id, at(id)));
+            }
+            if camera.view == area::builtin::CameraView::TwoD {
+                view.screens
+                    .push((at(id).w_axis.truncate(), Some(id) == first));
             }
         }
         view

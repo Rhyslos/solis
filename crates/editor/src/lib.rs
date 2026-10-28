@@ -73,8 +73,9 @@ pub use splash::{SplashView, UpdateAnswer, UpdateOffer};
 pub use transforming::Snapping;
 pub use updates::UpdateNotice;
 pub use viewport::{
-    DrawReport, GAME_IMAGE, GpuSplit, MAX_IMAGES, NoRenderer, Overlays, Tool, VIEWPORT_IMAGE,
-    VIEWS, ViewBolt, ViewLayout, ViewSettings, Viewport, ViewportRenderer, ViewportView, Views,
+    DrawReport, GAME_IMAGE, GpuSplit, MAX_IMAGES, NoRenderer, Overlays, PixelView, Tool,
+    VIEWPORT_IMAGE, VIEWS, ViewBolt, ViewLayout, ViewSettings, Viewport, ViewportRenderer,
+    ViewportView, Views,
 };
 pub use viewport_tools::{Outline, PickAnswer};
 pub use workbench::{AppInfo, Workbench, WorkbenchAction};

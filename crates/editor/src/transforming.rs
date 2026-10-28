@@ -24,6 +24,32 @@ pub const SCALE_STEP: f32 = 0.1;
 /// can't be undone by scaling back up).
 const MIN_SCALE: f32 = 1e-3;
 
+/// What moves land on in the 2D view (Phase 9, D1).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default, Serialize, Deserialize)]
+pub enum PixelSnap {
+    /// Anywhere.
+    Off,
+    /// Whole pixels of the game, so nothing rests between pixels.
+    #[default]
+    Pixels,
+    /// Whole tiles.
+    Tiles,
+}
+
+impl PixelSnap {
+    /// Every choice, in the menu's order.
+    pub const ALL: [Self; 3] = [Self::Off, Self::Pixels, Self::Tiles];
+
+    /// Its name in the menu.
+    pub fn name(self) -> &'static str {
+        match self {
+            Self::Off => "off",
+            Self::Pixels => "whole pixels",
+            Self::Tiles => "tiles",
+        }
+    }
+}
+
 /// Snapping and axis settings, shown in the viewport's bottom-right
 /// corner and saved per computer.
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
@@ -44,6 +70,8 @@ pub struct Snapping {
     pub object_axes: bool,
     /// Axes that drags leave alone (X, Y, Z).
     pub locked: [bool; 3],
+    /// What moves land on in the 2D view.
+    pub pixel_snap: PixelSnap,
 }
 
 impl Default for Snapping {
@@ -56,6 +84,7 @@ impl Default for Snapping {
             scale: false,
             object_axes: false,
             locked: [false; 3],
+            pixel_snap: PixelSnap::Pixels,
         }
     }
 }
@@ -226,6 +255,54 @@ pub fn snapped(change: Change, targets: &Targets, snapping: &Snapping, flip: boo
             Change::Scale(Vec3::new(snap_scale(f.x), snap_scale(f.y), snap_scale(f.z)))
         }
         other => other,
+    }
+}
+
+/// [`snapped`] for a drag in the 2D view: moves land on the game's whole
+/// pixels or tiles, as `snapping.pixel_snap` says (Ctrl, `flip`, turns
+/// snapping off, or on at whole pixels); turns and scaling snap as
+/// anywhere else. `pixels` gives the pixel and tile sizes.
+pub fn snapped_in_2d(
+    change: Change,
+    targets: &Targets,
+    snapping: &Snapping,
+    pixels: area::pixels::PixelSettings,
+    flip: bool,
+) -> Change {
+    let Change::Translate(v) = change else {
+        return snapped(change, targets, snapping, flip);
+    };
+    let mode = match (snapping.pixel_snap, flip) {
+        (PixelSnap::Off, true) => PixelSnap::Pixels,
+        (_, true) => PixelSnap::Off,
+        (mode, false) => mode,
+    };
+    let step = match mode {
+        PixelSnap::Off => return change,
+        PixelSnap::Pixels => [pixels.pixel_size(); 2],
+        PixelSnap::Tiles => pixels.tile_size(),
+    };
+    if targets.axes == WORLD_AXES {
+        // The pivot lands on the pixel grid, along the axes that move.
+        let to = targets.pivot + v;
+        let mut landed = to;
+        for i in 0..2 {
+            if v[i].abs() > 1e-9 {
+                landed[i] = snap(to[i], step[i]);
+            }
+        }
+        Change::Translate(landed - targets.pivot)
+    } else {
+        Change::Translate(
+            targets
+                .axes
+                .iter()
+                .take(2)
+                .enumerate()
+                .map(|(i, &axis)| axis * snap(v.dot(axis), step[i]))
+                .sum::<Vec3>()
+                + targets.axes[2] * v.dot(targets.axes[2]),
+        )
     }
 }
 

@@ -128,3 +128,10 @@ path = "fuzz_targets/mixer.rs"
 test = false
 doc = false
 bench = false
+
+[[bin]]
+name = "pixels"
+path = "fuzz_targets/pixels.rs"
+test = false
+doc = false
+bench = false

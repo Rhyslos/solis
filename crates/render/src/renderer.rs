@@ -589,6 +589,7 @@ pub struct ViewportRenderer {
     axes: wgpu::Buffer,
     axis_count: u32,
     pick: crate::pick::PickPipeline,
+    pixel: crate::pixel::PixelPipeline,
 }
 
 impl ViewportRenderer {
@@ -705,7 +706,33 @@ impl ViewportRenderer {
             axes,
             axis_count: axis_vertices.len() as u32,
             pick: crate::pick::PickPipeline::new(device),
+            pixel: crate::pixel::PixelPipeline::new(device),
         }
+    }
+
+    /// Makes the screen-sized image a 2D game's small picture is scaled up
+    /// into ([`Self::draw_pixels`]). Sizes are clamped as for
+    /// [`Self::create_target`].
+    pub fn create_pixel_image(
+        &self,
+        device: &wgpu::Device,
+        size: [u32; 2],
+    ) -> crate::pixel::PixelImage {
+        crate::pixel::PixelImage::new(device, size)
+    }
+
+    /// The pixel stage: scales `source` (a 2D game drawn at its base
+    /// resolution plus a pixel each side, by [`Self::render`]) up into
+    /// `image` as `layout` says, and submits it. Never waits for the GPU.
+    pub fn draw_pixels(
+        &self,
+        device: &wgpu::Device,
+        queue: &wgpu::Queue,
+        source: &ViewportTarget,
+        image: &crate::pixel::PixelImage,
+        layout: &crate::pixel::PixelLayout,
+    ) {
+        image.draw(device, queue, &self.pixel, source.display_view(), layout);
     }
 
     /// Asks what is drawn inside `rect` of `target` (x, y, width and
@@ -773,7 +800,8 @@ impl ViewportRenderer {
             COLOR_FORMAT,
             wgpu::TextureUsages::RENDER_ATTACHMENT
                 | wgpu::TextureUsages::TEXTURE_BINDING
-                | wgpu::TextureUsages::COPY_SRC,
+                | wgpu::TextureUsages::COPY_SRC
+                | wgpu::TextureUsages::COPY_DST,
             1,
         );
         let hdr_view = texture(

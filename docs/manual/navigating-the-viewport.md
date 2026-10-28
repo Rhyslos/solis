@@ -35,6 +35,8 @@ Whenever you want to look at the world from somewhere else. Solis has one camera
 
 These are the flat-view controls Unreal Engine uses.
 
+**The 2D view** (the last in the **Perspective ▴** menu): a flat view from above like Top, measured in your game's pixels, for 2D games ([2D](2d-pixel-perfect.md)). It slides the same way, but the wheel zooms in whole steps (100%, 200%, 300%…) and every pixel of the game lands on whole screen pixels, so pixel art looks as it will in the game. The grid is the project's tile size, a dashed frame shows what each 2D camera sees, and the bottom-right corner has the grid, **Snap ▴** (moves land on whole pixels, tiles, or anywhere) and **Zoom ▴**. Moves go across the ground only (X and Y).
+
 **The corner controls:**
 - **Top right:** frames per second, the time each frame takes, how many entities are in the area, and how many triangles the imported models have. When nothing moves it says **Idle**: Solis then draws only when something changes, so your computer isn't kept busy (and a laptop stays cool and quiet). Fly the camera or press Play to see the frame rate.
 - **Bottom left:** **≡** chooses the views and which corner controls show. **Perspective ▴** chooses the view's kind (flat views above). The look button (**Standard ▴**) chooses how models are shaded; see [Looks](looks.md). **Show** lists things to hide, arriving in later phases. These menus open upwards.

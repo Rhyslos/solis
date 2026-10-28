@@ -11,7 +11,19 @@ pub fn read_pixels(
     queue: &wgpu::Queue,
     target: &ViewportTarget,
 ) -> Result<Vec<u8>, String> {
-    let [width, height] = target.size();
+    read_texture(device, queue, target.color_texture(), target.size())
+}
+
+/// Copies an RGBA8 `texture` of `size` pixels back to the CPU as tightly
+/// packed rows (the pixel stage's image, say). Blocks until the GPU is
+/// done: for tests and screenshots.
+pub fn read_texture(
+    device: &wgpu::Device,
+    queue: &wgpu::Queue,
+    texture: &wgpu::Texture,
+    size: [u32; 2],
+) -> Result<Vec<u8>, String> {
+    let [width, height] = size;
     let unpadded = width * 4;
     let align = wgpu::COPY_BYTES_PER_ROW_ALIGNMENT;
     let padded = unpadded.div_ceil(align) * align;
@@ -26,7 +38,7 @@ pub fn read_pixels(
     });
     encoder.copy_texture_to_buffer(
         wgpu::TexelCopyTextureInfo {
-            texture: target.color_texture(),
+            texture,
             mip_level: 0,
             origin: wgpu::Origin3d::ZERO,
             aspect: wgpu::TextureAspect::All,

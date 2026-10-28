@@ -1,0 +1,10 @@
+-- The project's 2D settings. Safe to edit by hand.
+-- base: the size 2D games are drawn at, in pixels, before they're scaled up.
+-- pixels_per_unit: how many pixels make a metre. tile: the tile size, in pixels.
+-- scaling: "whole steps" (crisp, with bars if need be) or "fill".
+pixels version 1;
+
+base = [480, 270];
+pixels_per_unit = 16;
+tile = [16, 16];
+scaling = "whole steps";

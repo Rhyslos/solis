@@ -138,6 +138,15 @@ fn reader_for(path: &Path) -> Option<(&'static dyn Versioned, Reader, u64)> {
             },
             sound::mixer::MAX_BYTES as u64,
         ),
+        "solpix" => (
+            &area::pixels::FORMAT,
+            |text| {
+                area::pixels::read(text)
+                    .map(drop)
+                    .map_err(|e| e.to_string())
+            },
+            area::pixels::MAX_BYTES as u64,
+        ),
         "solinput" => (
             &input::BINDINGS_FORMAT,
             |text| {
