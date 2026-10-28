@@ -70,6 +70,12 @@ pub fn save_read_back(text: &str) -> Result<String, String> {
     Save::read(text).map(|save| save.write())
 }
 
+/// Whether `text` reads as a save (a project's check: read, not written
+/// again, which would hold a 256 MB save twice).
+pub fn save_reads(text: &str) -> Result<(), String> {
+    Save::read(text).map(drop)
+}
+
 /// The most sections a save has (it writes six).
 const MAX_SECTIONS: usize = 16;
 
@@ -81,18 +87,6 @@ pub struct Sections {
     list: Vec<(String, String)>,
     /// What upgrading couldn't carry over, in plain words.
     notes: Vec<String>,
-}
-
-impl Sections {
-    /// The text of the section called `name`; an error when it's missing.
-    fn take(&mut self, name: &str) -> Result<String, String> {
-        let at = self
-            .list
-            .iter()
-            .position(|(n, _)| n == name)
-            .ok_or_else(|| "it's damaged".to_string())?;
-        Ok(self.list.remove(at).1)
-    }
 }
 
 /// Version 1 to 2: version 1 kept physics as Rapier's own bytes, which
@@ -318,10 +312,11 @@ impl Save {
             return Err(damaged());
         }
         // Every section as written, then brought up to date.
-        let mut sections = Sections::default();
+        // Every section as written, borrowed from the text.
+        let mut found: Vec<(&str, &str)> = Vec::new();
         let mut rest = body;
         while !rest.is_empty() {
-            if sections.list.len() >= MAX_SECTIONS {
+            if found.len() >= MAX_SECTIONS {
                 return Err(damaged());
             }
             let (head, after) = rest.split_once('\n').ok_or_else(damaged)?;
@@ -332,19 +327,41 @@ impl Save {
                 .get(length..)
                 .and_then(|a| a.strip_prefix('\n'))
                 .ok_or_else(damaged)?;
-            if sections.list.iter().any(|(n, _)| n == name) {
+            if found.iter().any(|(n, _)| *n == name) {
                 return Err(damaged());
             }
-            sections.list.push((name.to_string(), text.to_string()));
+            found.push((name, text));
         }
-        FORMAT
-            .upgrade(version, &mut sections)
-            .map_err(|e| e.to_string())?;
-        let mut section = |name: &str| sections.take(name);
-        let area = section("area")?;
-        let values = section("values")?;
-        let bindings = section("bindings")?;
-        let projectiles_text = &section("projectiles")?;
+        // An older save's sections are copied and brought up to date; a
+        // current one's are read where they are (a save can be 256 MB).
+        let mut sections = Sections::default();
+        let mut list: Vec<(&str, &str)> = if version == SAVE_VERSION {
+            found
+        } else {
+            sections.list = found
+                .into_iter()
+                .map(|(n, t)| (n.to_string(), t.to_string()))
+                .collect();
+            FORMAT
+                .upgrade(version, &mut sections)
+                .map_err(|e| e.to_string())?;
+            sections
+                .list
+                .iter()
+                .map(|(n, t)| (n.as_str(), t.as_str()))
+                .collect()
+        };
+        let mut section = |name: &str| -> Result<&str, String> {
+            let at = list
+                .iter()
+                .position(|(n, _)| *n == name)
+                .ok_or_else(damaged)?;
+            Ok(list.remove(at).1)
+        };
+        let area = section("area")?.to_string();
+        let values = section("values")?.to_string();
+        let bindings = section("bindings")?.to_string();
+        let projectiles_text = section("projectiles")?;
         // Counted before any is made: a hand-made save could list far more.
         if projectiles_text.lines().count() > world::MAX_PROJECTILES {
             return Err(damaged());
@@ -368,7 +385,7 @@ impl Save {
                 })
             })
             .collect::<Result<Vec<_>, String>>()?;
-        let physics_text = &section("physics")?;
+        let physics_text = section("physics")?;
         if physics_text.lines().count() > physics::MAX_BODIES {
             return Err(damaged());
         }
@@ -411,7 +428,7 @@ impl Save {
                 Ok((EntityId(id), state))
             })
             .collect::<Result<Vec<_>, String>>()?;
-        let places_text = &section("places")?;
+        let places_text = section("places")?;
         if places_text.lines().count() > area::text::MAX_ENTITIES {
             return Err(damaged());
         }
@@ -456,7 +473,7 @@ impl Save {
             places,
             notes: {
                 // A section no version writes: not a save this Solis made.
-                if !sections.list.is_empty() {
+                if !list.is_empty() {
                     return Err(damaged());
                 }
                 std::mem::take(&mut sections.notes)

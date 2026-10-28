@@ -82,6 +82,17 @@ fn save_game_within(
     Ok((path, None))
 }
 
+/// [`save_game_within`], for tests elsewhere in the app (the scale case).
+#[cfg(test)]
+pub(crate) fn save_game_within_for_tests(
+    root: &Path,
+    slot: &str,
+    text: &str,
+    room: u64,
+) -> std::io::Result<(PathBuf, Option<PathBuf>)> {
+    save_game_within(root, slot, text, room)
+}
+
 /// The first line of the file at `path` (at most 64 bytes of it), if it's
 /// an ordinary file.
 fn first_line(path: &Path) -> Option<String> {

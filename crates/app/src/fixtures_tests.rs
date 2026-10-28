@@ -238,3 +238,28 @@ fn input_actions_from_a_newer_solis_are_never_overwritten() {
     );
     let _ = std::fs::remove_dir_all(&root);
 }
+
+#[test]
+#[ignore = "scale check: run by tools/scale/scale-check.sh"]
+fn scale_check_quick_saving_over_a_big_save() {
+    // The Phase 8 review: saving into a slot read the whole save already
+    // there just to see its version. A 64 MB save is replaced by another,
+    // as a quick-save during play does; only its first line is read now.
+    const TARGET_MS: f64 = 1000.0;
+    let root = project("scale-save");
+    let slot = crate::play_files::save_path(&root, "quick").unwrap();
+    std::fs::create_dir_all(slot.parent().unwrap()).unwrap();
+    let big = format!("solis save 3\n{}", "x".repeat(64 << 20));
+    std::fs::write(&slot, &big).unwrap();
+    let start = std::time::Instant::now();
+    let (_, copy) =
+        crate::play_files::save_game_within_for_tests(&root, "quick", &big, 1 << 31).unwrap();
+    let ms = start.elapsed().as_secs_f64() * 1000.0;
+    assert_eq!(copy, None, "a current save isn't copied");
+    let verdict = if ms <= TARGET_MS { "ok" } else { "SLOW" };
+    println!(
+        "Scale check: quick-saving 64 MB over a 64 MB save of this version {ms:.0} ms (target {TARGET_MS} ms) {verdict}"
+    );
+    let _ = std::fs::remove_dir_all(&root);
+    assert!(ms <= TARGET_MS, "{ms:.0} ms");
+}

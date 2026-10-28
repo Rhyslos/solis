@@ -125,7 +125,15 @@ impl Sidecar {
 
     /// Reads a sidecar from its text.
     pub fn parse(text: &str) -> Result<Self, String> {
-        let sidecar: Self = crate::project::read_toml_versioned(text, &SIDECAR_FORMAT)?;
+        // A current sidecar (nearly all of them) is read straight into
+        // its fields; only another version goes through the upgrade path,
+        // as a table (the Phase 8 review: opening a big project read every
+        // sidecar twice over).
+        let current = crate::project::format_key_version(text) == Some(FORMAT);
+        let sidecar: Self = match current {
+            true => toml::from_str(text).map_err(|e| e.message().to_string())?,
+            false => crate::project::read_toml_versioned(text, &SIDECAR_FORMAT)?,
+        };
         let mut ids = std::collections::HashSet::new();
         if let Some(part) = sidecar.parts.iter().find(|p| !ids.insert(p.id)) {
             return Err(format!("two parts share the ID {}", part.id));
