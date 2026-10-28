@@ -4,6 +4,11 @@ What changed in each version, for people using Solis. Newest first.
 
 ## Unreleased
 
+### Breaking
+
+- **Recordings are format 2** (Phase 8, C4): they now say which area they were recorded in. Recordings from earlier builds still play back (with no area, so a project's check can't use them: record those again); recordings made now can't be played back by an earlier build.
+- **Input actions files are format 2** (Phase 8, C1): they start with `version = 2`. Older files are upgraded as they're read and kept in `.solis/backups/` when saved; an earlier build reads the new file as before.
+
 ### Fixed
 
 - **Sound fixes from the Phase 7 review** (correctness): music and other AudioSources placed **Everywhere** no longer start again every frame (the playground's music used up every voice in about four seconds); an event's **Loop** setting now works for sounds game code plays; **At once** holds for game code's sounds; `stopSoundsOn` stops a sound asked for earlier in the same tick, and leaves AudioSources alone; Play again, a replay or a loaded game start the sound afresh, with nothing of the last play left to be heard; AudioSources keep going while paused; an AudioSource given another event plays the new one, at its own speed; and a flood of `playSound` calls no longer drops `setBusVolume` or `stopSoundsOn`.
