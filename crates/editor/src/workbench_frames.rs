@@ -178,6 +178,18 @@ impl Workbench {
         if self.frames_editor.is_some() && (out.closed || one_gone) {
             self.close_frames();
         }
+        self.tileset_hovered = out.tileset_hovered;
+        if out.tileset_changed {
+            self.save_open_tileset();
+        }
+        if let Some(kind) = out.tileset_template {
+            self.save_template(kind);
+        }
+        if self.tileset_editor.is_some()
+            && (out.tileset_closed || self.dock.find_tab(&Panel::Tileset).is_none())
+        {
+            self.close_tileset();
+        }
         self.animator_hovered = out.animator_hovered;
         if out.animator_changed {
             self.save_animator(actions);

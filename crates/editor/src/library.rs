@@ -130,7 +130,7 @@ impl LibraryKind {
     /// it: a sprite's clips file opens its Clips and Frames tabs, an
     /// animator its Animator tab.
     pub fn opens_on_double_click(self) -> bool {
-        matches!(self, Self::SpriteClips | Self::Animator)
+        matches!(self, Self::SpriteClips | Self::Animator | Self::Tileset)
     }
 }
 
@@ -778,7 +778,8 @@ fn hint(item: &LibraryItem) -> String {
              plays them."
         }
         LibraryKind::Tileset => {
-            "Click it to change its terrains in Properties: what a tile map's cells can be."
+            "Double-click to open it in the Tileset tab: its terrains (what a tile map's cells can \
+             be), their art and how it joins up."
         }
         LibraryKind::TileMap => {
             "Drag it into the viewport, or double-click, to place it; click it to change its \

@@ -4,7 +4,7 @@
 
 use asset_db::{FileKind, Jobs, Listing};
 use editor::sprite_sheets::{
-    AnimatorState, FramesState, MapFileState, SheetState, SpriteSheets, TilesetState,
+    AnimatorState, ArtState, FramesState, MapFileState, SheetState, SpriteSheets, TilesetState,
 };
 use reflect::{AssetId, Id};
 use std::collections::{HashMap, HashSet, VecDeque};
@@ -131,6 +131,31 @@ pub fn read_tile_map(path: &Path) -> MapFileState {
     }
 }
 
+/// Reads a tileset's picture (Phase 9, D5): a PNG, JPEG or Aseprite file,
+/// whole.
+pub fn read_art(path: &Path) -> ArtState {
+    let read = std::fs::metadata(path)
+        .map_err(|e| format!("couldn't open it: {e}"))
+        .and_then(|m| {
+            if m.len() > assets::tile_art::MAX_FILE_BYTES as u64 {
+                Err(format!(
+                    "it's {} MB; pictures up to {} MB are read",
+                    m.len() >> 20,
+                    assets::tile_art::MAX_FILE_BYTES >> 20
+                ))
+            } else {
+                std::fs::read(path).map_err(|e| format!("couldn't read it: {e}"))
+            }
+        })
+        .and_then(|bytes| {
+            assets::tile_art::read_tile_art(&bytes, assets::aseprite::is_aseprite_file(path))
+        });
+    match read {
+        Ok(art) => ArtState::Read(Arc::new(art)),
+        Err(why) => ArtState::Failed(why),
+    }
+}
+
 /// Every sprite sheet read, and those still to read.
 pub struct Sprites {
     sheets: SpriteSheets,
@@ -145,6 +170,8 @@ pub struct Sprites {
     animators_tried: HashMap<String, Stamp>,
     /// Tilesets and tile maps read or failed, with how they were then.
     tiles_tried: HashMap<String, Stamp>,
+    /// Tilesets' pictures read or failed, with how they were then.
+    art_tried: HashMap<String, Stamp>,
     /// Goes up when another project opens: results for the last one are
     /// thrown away.
     generation: u64,
@@ -162,6 +189,7 @@ impl Default for Sprites {
             frames_tried: HashMap::new(),
             animators_tried: HashMap::new(),
             tiles_tried: HashMap::new(),
+            art_tried: HashMap::new(),
             generation: 0,
             jobs: Jobs::new(1),
             dirty: false,
@@ -303,6 +331,13 @@ impl Sprites {
             self.queued.retain(|(p, _)| *p != path);
             self.queued.push_back((path, full));
         }
+        // Pictures have IDs too (D5), for tilesets to take art from.
+        for file in listing.files.iter().filter(|f| f.kind == FileKind::Texture) {
+            if let Some(id) = file.id {
+                paths.insert(id, crate::project::slashed(&file.path));
+            }
+        }
+        self.want_art(&paths, assets);
         if paths != self.sheets.paths {
             self.sheets.paths = paths;
             self.dirty = true;
@@ -313,6 +348,34 @@ impl Sprites {
         self.dirty |= before != self.sheets.by_path.len();
     }
 
+    /// Reads every picture a read tileset takes its art from, not read yet
+    /// or changed since; forgets those no tileset uses.
+    fn want_art(&mut self, paths: &HashMap<AssetId, String>, assets: &Path) {
+        let wanted: HashSet<String> = self
+            .sheets
+            .tilesets
+            .values()
+            .filter_map(|t| match t {
+                TilesetState::Read(set, _) => set.picture.and_then(|p| paths.get(&p)).cloned(),
+                TilesetState::Failed(_) => None,
+            })
+            .collect();
+        for path in &wanted {
+            let full = assets.join(path);
+            let now = stamp(&full);
+            if self.art_tried.get(path) == Some(&now) {
+                continue;
+            }
+            self.art_tried.insert(path.clone(), now);
+            self.sheets.tile_art.insert(path.clone(), read_art(&full));
+            self.dirty = true;
+        }
+        let before = self.sheets.tile_art.len();
+        self.sheets.tile_art.retain(|p, _| wanted.contains(p));
+        self.art_tried.retain(|p, _| wanted.contains(p));
+        self.dirty |= before != self.sheets.tile_art.len();
+    }
+
     /// Forgets every sheet (another project was opened).
     pub fn clear(&mut self) {
         self.sheets = SpriteSheets::default();
@@ -321,6 +384,7 @@ impl Sprites {
         self.frames_tried.clear();
         self.animators_tried.clear();
         self.tiles_tried.clear();
+        self.art_tried.clear();
         self.generation += 1;
         self.dirty = true;
     }
@@ -502,6 +566,56 @@ mod tests {
         s.want(&list, &dir);
         settle(&mut s);
         assert!(s.sheets().get(id).is_some());
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn a_tileset_s_picture_is_read_whole_and_again_when_it_changes() {
+        let dir = folder("tile-art");
+        let (set_id, png_id) = (AssetId::random(), AssetId::random());
+        let png = dir.join("sprites/tiles.png");
+        std::fs::write(
+            &png,
+            assets::tile_art::png_of([16, 8], &[9; 16 * 8 * 4]).unwrap(),
+        )
+        .unwrap();
+        let set = tiles::Tileset {
+            picture: Some(png_id),
+            ..tiles::Tileset::default()
+        };
+        std::fs::write(
+            dir.join("sprites/farm.soltileset"),
+            tiles::tileset::write(&set),
+        )
+        .unwrap();
+        let list = listing(&[
+            ("sprites/farm.soltileset", set_id),
+            ("sprites/tiles.png", png_id),
+        ]);
+        let mut s = Sprites::default();
+        s.want(&list, &dir);
+        assert_eq!(
+            s.sheets().paths.get(&png_id).map(String::as_str),
+            Some("sprites/tiles.png")
+        );
+        assert_eq!(s.sheets().tile_art(png_id).unwrap().size, [16, 8]);
+        // Changed: read again; damaged: says why.
+        std::thread::sleep(std::time::Duration::from_millis(20));
+        std::fs::write(&png, b"not a picture any more").unwrap();
+        s.want(&list, &dir);
+        assert!(matches!(
+            s.sheets().tile_art.get("sprites/tiles.png"),
+            Some(ArtState::Failed(why)) if why.contains("PNG")
+        ));
+        // No tileset uses it: forgotten.
+        std::fs::write(
+            dir.join("sprites/farm.soltileset"),
+            tiles::tileset::write(&tiles::Tileset::default()),
+        )
+        .unwrap();
+        std::thread::sleep(std::time::Duration::from_millis(20));
+        s.want(&list, &dir);
+        assert!(s.sheets().tile_art.is_empty());
         let _ = std::fs::remove_dir_all(&dir);
     }
 }

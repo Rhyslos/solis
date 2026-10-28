@@ -66,6 +66,7 @@ impl Workbench {
             }
             LibraryRequest::Open(LibraryKind::SpriteClips, path) => self.open_frames(&path),
             LibraryRequest::Open(LibraryKind::Animator, path) => self.open_animator(&path),
+            LibraryRequest::Open(LibraryKind::Tileset, path) => self.open_tileset(&path),
             LibraryRequest::NewAnimator(folder) => self.new_animator(&folder),
             LibraryRequest::NewTileset(folder) => self.new_tileset(&folder),
             LibraryRequest::NewTileMap(folder) => self.new_tile_map(&folder),
@@ -248,6 +249,7 @@ impl Workbench {
         sheets.work_out_clips();
         self.viewport.sheets = std::sync::Arc::new(sheets);
         self.animator_read_again();
+        self.tileset_read_again();
     }
 
     /// The project's sprite sheets.

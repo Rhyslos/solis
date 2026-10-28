@@ -157,3 +157,27 @@ fn scale_check_10000_cell_changes() {
     );
     assert!(changes <= TARGET_MS, "{changes:.3} ms");
 }
+
+#[test]
+fn a_chunk_s_revision_moves_on_only_when_it_changes() {
+    let mut map = TileMap::new([40, 40], None, Some(b'.'));
+    let first = map.chunk_revision([0, 0]);
+    let other = map.chunk_revision([1, 1]);
+    map.set_code(0, 3, 3, b't').unwrap();
+    assert!(map.chunk_revision([0, 0]) > first);
+    assert_eq!(map.chunk_revision([1, 1]), other);
+    assert_eq!(map.chunk_revision([9, 9]), 0, "past the edge");
+    map.set_code(0, 3, 3, b't').unwrap();
+    let now = map.chunk_revision([0, 0]);
+    map.set_code(0, 3, 3, b't').unwrap();
+    assert_eq!(
+        map.chunk_revision([0, 0]),
+        now,
+        "no change, no new revision"
+    );
+    map.resize([10, 10]);
+    assert!(
+        map.chunk_revision([0, 0]) > now,
+        "a resize changes every chunk"
+    );
+}

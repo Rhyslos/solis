@@ -429,7 +429,7 @@ mod tests {
                 ("crate.glb".into(), FileKind::Model, true),
                 ("main.solarea".into(), FileKind::Area, false),
                 ("notes.txt".into(), FileKind::Other, false),
-                ("props/bark.png".into(), FileKind::Texture, false),
+                ("props/bark.png".into(), FileKind::Texture, true),
                 ("props/rock.glb".into(), FileKind::Model, true),
                 ("turret.lst".into(), FileKind::Code, false),
             ]
@@ -561,6 +561,14 @@ mod tests {
             Some(crate::AssetKind::TileMap)
         );
         assert_eq!(FileKind::of(Path::new("a.JPEG")), FileKind::Texture);
+        // Pictures have IDs (Phase 9, D5): a tileset's art keeps its picture.
+        for p in ["tiles.png", "a.JPEG", "b.jpg"] {
+            assert_eq!(
+                crate::AssetKind::of(Path::new(p)),
+                Some(crate::AssetKind::Picture),
+                "{p}"
+            );
+        }
         assert_eq!(FileKind::of(Path::new("a.lua")), FileKind::Code);
         assert_eq!(FileKind::of(Path::new("a")), FileKind::Other);
     }

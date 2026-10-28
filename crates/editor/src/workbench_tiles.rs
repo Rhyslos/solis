@@ -58,6 +58,7 @@ pub(crate) fn starter_tileset() -> Tileset {
         name: name.into(),
         code,
         colour,
+        kind: tiles::TileKind::Plain,
     };
     Tileset {
         terrains: vec![
@@ -65,6 +66,7 @@ pub(crate) fn starter_tileset() -> Tileset {
             t("tilled", 't', [0.42, 0.29, 0.18]),
             t("water", '~', [0.18, 0.37, 0.56]),
         ],
+        ..Tileset::default()
     }
 }
 
@@ -90,6 +92,10 @@ impl Workbench {
             .tilesets
             .insert(path.clone(), TilesetState::Read(Arc::new(set), Vec::new()));
         self.show_in_library(&path);
+        self.open_tileset(&path);
+        if let Some(editor) = &mut self.tileset_editor {
+            editor.on_disk = false;
+        }
     }
 
     /// Makes a new tile map in `folder`: 64 × 64 cells, the project's

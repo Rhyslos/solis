@@ -350,6 +350,31 @@ impl Projects {
         )
     }
 
+    /// Saves a new picture (a PNG, Phase 9, D5: a tileset template) at
+    /// `path` inside the assets. Never replaces a file already there.
+    pub fn save_picture(&self, path: &Path, bytes: &[u8]) -> Result<(), String> {
+        let db = self.db.as_ref().ok_or("no project is open")?;
+        let png = path
+            .extension()
+            .is_some_and(|e| e.eq_ignore_ascii_case("png"));
+        let plain = path
+            .components()
+            .all(|c| matches!(c, std::path::Component::Normal(_)));
+        if !png || !plain {
+            return Err("it isn't a picture in the assets".to_owned());
+        }
+        let file = db.project().assets().join(path);
+        if file.exists() {
+            return Err("a file is already there".to_owned());
+        }
+        if let Some(folder) = file.parent()
+            && !folder.is_dir()
+        {
+            return Err("its folder isn't there any more".to_owned());
+        }
+        asset_db::write_atomically(&file, bytes).map_err(|e| e.to_string())
+    }
+
     /// Saves a tileset (`.soltileset`, inside the assets, Phase 9, D4),
     /// making it if it isn't there. Gives back where an older one was
     /// kept, if it was.

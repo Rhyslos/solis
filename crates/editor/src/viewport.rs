@@ -361,6 +361,8 @@ pub struct Viewport {
     /// The selected tile map's values laid over it, its hidden layers,
     /// and the cell under the pointer (Phase 9, D4).
     pub(crate) tile_overlay: crate::tile_view::TileOverlay,
+    /// The time animated tiles show, in milliseconds (the editor's clock).
+    pub(crate) tile_ms: u64,
     /// When Preview animation was turned on (its clips play from there).
     preview_since: std::cell::Cell<Option<std::time::Instant>>,
 }
@@ -498,6 +500,7 @@ impl Default for Viewport {
             pixels: area::pixels::PixelSettings::default(),
             sheets: std::sync::Arc::default(),
             tile_overlay: crate::tile_view::TileOverlay::default(),
+            tile_ms: 0,
             preview_since: std::cell::Cell::new(None),
             panes: FIRST_KINDS
                 .iter()
@@ -667,11 +670,14 @@ impl Viewport {
         let ahead = self.preview_seconds();
         let aspect = size_px[0].max(1) as f32 / size_px[1].max(1) as f32;
         let camera = self.seen(size_px);
+        let view_projection = camera.view_projection(aspect);
         let (tile_pictures, tile_batches) = self.sheets.tile_pictures.draw(
             &self.area.view_tile_maps(&self.sheets),
             &self.sheets,
             self.pixels.tile_size(),
             &self.tile_overlay.hidden,
+            &|z| crate::tile_view::ground_in_view(view_projection, z),
+            self.tile_ms,
         );
         ViewportView {
             size_px,
@@ -809,6 +815,12 @@ impl Viewport {
     ) {
         let rect = ui.max_rect();
         self.rect = rect;
+        self.tile_ms = (ui.input(|i| i.time).max(0.0) * 1000.0) as u64;
+        if !self.area.tile_maps.is_empty() && self.sheets.tiles_animate() {
+            // Animated tiles move on by themselves.
+            ui.ctx()
+                .request_repaint_after(std::time::Duration::from_millis(40));
+        }
         let response = ui.allocate_rect(rect, Sense::click_and_drag());
         if response.clicked() {
             self.menu_open = false;

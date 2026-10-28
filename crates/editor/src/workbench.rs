@@ -144,6 +144,14 @@ pub enum WorkbenchAction {
         /// What to save.
         text: String,
     },
+    /// Save a new picture (a PNG inside the project's assets): a tileset
+    /// kind's template to draw over (Phase 9, D5). Never replaces a file.
+    SavePicture {
+        /// The file.
+        path: std::path::PathBuf,
+        /// The PNG's bytes.
+        bytes: Vec<u8>,
+    },
     /// Save the project's 2D settings to its `pixels.solpix` (Settings >
     /// 2D).
     SavePixels(area::pixels::PixelSettings),
@@ -304,6 +312,13 @@ pub struct Workbench {
     /// Whether the pointer was over the Animator tab last frame: Ctrl+Z,
     /// Ctrl+Y, Delete and F are the animator's then.
     pub(crate) animator_hovered: bool,
+    /// The tileset open in the Tileset tab (Phase 9, D5).
+    pub(crate) tileset_editor: Option<crate::tileset_editor::TilesetEditor>,
+    /// Whether the pointer was over the Tileset tab last frame: Ctrl+Z and
+    /// Ctrl+Y are the tileset's then.
+    pub(crate) tileset_hovered: bool,
+    /// The open tileset's picture as a texture.
+    pub(crate) tile_textures: crate::workbench_tileset::TileTextures,
     /// The Map tab's undo steps, the selected map's values shown over it
     /// and its hidden layers (Phase 9, D4).
     pub(crate) map_edits: crate::workbench_tiles::MapEdits,
@@ -441,6 +456,9 @@ impl Workbench {
             frames_hovered: false,
             animator_editor: None,
             animator_hovered: false,
+            tileset_editor: None,
+            tileset_hovered: false,
+            tile_textures: Default::default(),
             map_edits: Default::default(),
             map_hovered: false,
             sheet_pictures: HashMap::new(),
@@ -928,6 +946,7 @@ impl Workbench {
             spent: std::time::Duration::ZERO,
         };
         let mut frames_out = crate::panels::FramesOut::default();
+        self.tileset_texture(ui.ctx());
         let live = self.live_animator();
         let mut map_requests = Vec::new();
         let map_shown = self.map_shown();
@@ -953,6 +972,21 @@ impl Workbench {
                 &sheets,
                 &self.sheet_pictures,
                 &self.cue_sounds,
+            )
+        });
+        let tile_ms = (ui.input(|i| i.time).max(0.0) * 1000.0) as u64;
+        if self.tileset_editor.is_some() && sheets.tiles_animate() {
+            ui.ctx()
+                .request_repaint_after(std::time::Duration::from_millis(40));
+        }
+        let tileset = self.tileset_editor.as_mut().map(|editor| {
+            crate::workbench_tileset::tileset_ui(
+                editor,
+                &sheets,
+                &self.tile_textures,
+                self.pixels.tile,
+                tile_ms,
+                self.accent.colors().fill,
             )
         });
         let animator = self.animator_editor.as_mut().map(|editor| {
@@ -1018,6 +1052,7 @@ impl Workbench {
                         frames,
                         frames_out: &mut frames_out,
                         animator,
+                        tileset,
                         map,
                         map_requests: &mut map_requests,
                     },
@@ -1183,6 +1218,7 @@ impl Workbench {
         }
         let known: HashSet<AssetId> = self.library.iter().filter_map(|i| i.id).collect();
         let assemblies: HashSet<AssetId> = self.assemblies.keys().copied().collect();
+        let tile_gaps = self.viewport.sheets.tile_gaps();
         self.problems.refresh(
             print,
             &Sources {
@@ -1191,6 +1227,7 @@ impl Workbench {
                 models: &self.models,
                 known: &known,
                 assemblies: &assemblies,
+                tile_gaps: &tile_gaps,
             },
         );
     }
@@ -1264,6 +1301,9 @@ impl Workbench {
         } else if animator {
             // Over the Animator tab: the animator's changes.
             self.animator_undo(redo, undo);
+        } else if self.tileset_hovered && self.tileset_editor.is_some() {
+            // Over the Tileset tab: the tileset's changes.
+            self.tileset_undo(redo, undo);
         } else if self.map_hovered && self.map_edits.path.is_some() {
             // Over the Map tab: the map's changes.
             self.map_undo(redo, undo);

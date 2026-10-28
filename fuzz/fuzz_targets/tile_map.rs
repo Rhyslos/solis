@@ -1,6 +1,7 @@
 //! A tile map file (`.soltilemap`, Phase 9, D4): refused or read, and
-//! what's read is within the limits, writes back to itself, and is
-//! changed cell by cell, resized and summed without panicking.
+//! what's read is within the limits, writes back to itself, is autotiled
+//! with the farm fixture's tileset (D5), and is changed cell by cell,
+//! resized and summed without panicking.
 #![no_main]
 libfuzzer_sys::fuzz_target!(|data: &[u8]| {
     solis_fuzz_quiet();
@@ -27,6 +28,13 @@ libfuzzer_sys::fuzz_target!(|data: &[u8]| {
     }
     let again = tiles::map_file::read(&tiles::map_file::write(&map)).expect("what's written reads");
     assert_eq!(again.map, map);
+    // Autotiled with a tileset of every kind, its first chunk.
+    let set = tiles::tileset::read(include_str!("../../tests/fixtures/tileset/v2/farm.soltileset"))
+        .expect("the fixture reads")
+        .tileset;
+    for l in 0..map.layers().len() {
+        let _ = tiles::autotile::chunk_tiles(&map, l, &set, [0, 0]);
+    }
     // Changed, at its corners and past them.
     let sum = map.checksum();
     for (x, y) in [(0, 0), (w - 1, h - 1), (w, 0), (0, h), (u32::MAX, 3)] {

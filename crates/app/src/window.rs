@@ -822,6 +822,14 @@ impl App {
                         ),
                     }
                 }
+                WorkbenchAction::SavePicture { path, bytes } => {
+                    if let Err(why) = self.projects.save_picture(&path, &bytes) {
+                        self.workbench.log(
+                            LogLevel::Error,
+                            format!("Couldn't save {}: {why}.", path.display()),
+                        );
+                    }
+                }
                 WorkbenchAction::SaveTileMap { path, text } => {
                     match self.projects.save_tile_map(&path, &text) {
                         Ok(Some(copy)) => {

@@ -136,6 +136,9 @@ pub struct TileMap {
     revision: u64,
     /// The revision each layer last changed at.
     layer_revisions: Vec<u64>,
+    /// The revision each chunk last changed at (drawing redraws a chunk,
+    /// and those beside it, only when it changes).
+    chunk_revisions: Vec<u64>,
 }
 
 impl Clone for TileMap {
@@ -152,6 +155,7 @@ impl Clone for TileMap {
             sums: std::sync::Mutex::new(self.sums().clone()),
             revision: self.revision,
             layer_revisions: self.layer_revisions.clone(),
+            chunk_revisions: self.chunk_revisions.clone(),
         }
     }
 }
@@ -218,6 +222,7 @@ impl TileMap {
             sums: std::sync::Mutex::new(vec![None; chunks]),
             revision: 0,
             layer_revisions: Vec::new(),
+            chunk_revisions: vec![0; chunks],
         }
     }
 
@@ -282,6 +287,7 @@ impl TileMap {
             self.dirty_list.push(c as u32);
         }
         self.revision += 1;
+        self.chunk_revisions[c] = self.revision;
     }
 
     fn all_dirty(&mut self) {
@@ -294,6 +300,17 @@ impl TileMap {
         self.revision += 1;
         let r = self.revision;
         self.layer_revisions.iter_mut().for_each(|l| *l = r);
+        self.chunk_revisions.iter_mut().for_each(|c| *c = r);
+    }
+
+    /// The revision chunk `chunk` (column and row) last changed at: 0 past
+    /// the map's edge.
+    pub fn chunk_revision(&self, chunk: [u32; 2]) -> u64 {
+        let [across, down] = self.chunks();
+        if chunk[0] >= across || chunk[1] >= down {
+            return 0;
+        }
+        self.chunk_revisions[(chunk[1] * across + chunk[0]) as usize]
     }
 
     /// The chunks changed since last asked, as (x, y) in chunks.
@@ -608,6 +625,7 @@ impl TileMap {
         let chunks = (size[0].div_ceil(CHUNK) * size[1].div_ceil(CHUNK)) as usize;
         self.size = size;
         self.dirty = vec![false; chunks];
+        self.chunk_revisions = vec![0; chunks];
         *self.sums_mut() = vec![None; chunks];
         self.all_dirty();
         true

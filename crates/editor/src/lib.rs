@@ -55,6 +55,8 @@ pub mod sprite_sheets;
 mod test_support;
 pub mod theme;
 pub mod tile_view;
+mod tileset_editor;
+mod tileset_view;
 mod top_bar;
 pub mod transforming;
 pub mod updates;
@@ -65,6 +67,7 @@ mod workbench_animator;
 mod workbench_frames;
 mod workbench_library;
 mod workbench_tiles;
+mod workbench_tileset;
 mod workbench_tools;
 
 pub use area_view::{AreaView, ViewLight, ViewModel};

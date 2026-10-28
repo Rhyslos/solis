@@ -20,6 +20,7 @@ One fuzz target per reader of a file a project can ship (decision 0042). Each ta
 | `sound_event.rs` | A sound event file (`.solsound`): refused or read, always within its limits, written back to itself, and every pick one of its takes. |
 | `sound_file.rs` | A WAV or Ogg Vorbis file: refused or read, always within the limits, every sample between -1 and 1. |
 | `tileset.rs` | A tileset (`.soltileset`): refused or read, within the limits, each terrain's name and code used once, and written back to itself. |
+| `tile_art.rs` | A tileset's picture (the first byte chooses PNG or Aseprite): refused or read whole within the limits, every frame its size, then its grid found and its tiles weighed. |
 | `tile_map.rs` | A tile map file (`.soltilemap`): refused or read, within the limits, written back to itself, then changed cell by cell (inside and past its edges), resized and summed. |
 | `update_answer.rs` | GitHub's answer about the latest release and the installer's checksum file (split by a 0x01 byte): a release read only ever points at the repository's own downloads. |
 

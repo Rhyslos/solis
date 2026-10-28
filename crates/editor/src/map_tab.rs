@@ -90,7 +90,7 @@ fn layer_thumb(ui: &mut Ui, map: &TileMap, layer: usize, set: Option<&Tileset>) 
 }
 
 /// A name field that counts once it's left (or Enter is pressed).
-fn name_field(
+pub(crate) fn name_field(
     ui: &mut Ui,
     salt: impl std::hash::Hash + std::fmt::Debug,
     now: &str,
@@ -501,7 +501,9 @@ pub(crate) fn tileset_properties(
             });
             if x.clicked() {
                 let mut s = changed.clone().unwrap_or_else(|| set.clone());
-                s.terrains.remove(i);
+                let gone = s.terrains.remove(i).id;
+                s.pieces.retain(|p| p.terrain != gone);
+                s.rules.retain(|r| r.terrain != gone);
                 changed = Some(s);
             }
         });
@@ -528,11 +530,12 @@ pub(crate) fn tileset_properties(
             name,
             code,
             colour: [0.5; 3],
+            kind: tiles::TileKind::Plain,
         });
         changed = Some(s);
     }
     ui.label(
-        RichText::new("Its name, the character the map file writes for it, and its colour. The first fills new maps. Art and autotiling are added here with tilesets' art (D5).")
+        RichText::new("Its name, the character the map file writes for it, and its colour. The first fills new maps. Double-click the tileset in the Library to give its terrains art in the Tileset tab.")
             .small()
             .color(theme::TEXT_WEAK),
     );

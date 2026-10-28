@@ -36,6 +36,9 @@ pub enum ProblemKind {
     /// A Tile Map with no map file chosen, or whose file isn't in the
     /// project (Phase 9, D4).
     MissingTileMap,
+    /// A Tile Map whose tileset's art misses tiles some terrain needs
+    /// (Phase 9, D5): drawn pink on the map until they're drawn.
+    MissingTiles,
     /// A sprite resting between pixels by accident: the game draws it on
     /// the nearest one, so it may seem to jump a pixel when it moves.
     SpriteBetweenPixels,
@@ -84,6 +87,9 @@ pub(crate) struct Sources<'a> {
     pub(crate) known: &'a HashSet<AssetId>,
     /// Assemblies read, by asset.
     pub(crate) assemblies: &'a HashSet<AssetId>,
+    /// What each tile map file's tileset still needs drawn, by the map
+    /// file's asset (Phase 9, D5).
+    pub(crate) tile_gaps: &'a std::collections::HashMap<AssetId, String>,
 }
 
 impl Problems {
@@ -312,7 +318,15 @@ pub(crate) fn find(sources: &Sources) -> Vec<Problem> {
                          deleted, or never committed"
                     ),
                 }),
-                Some(_) => {}
+                Some(asset) => {
+                    if let Some(gap) = sources.tile_gaps.get(&asset) {
+                        found.push(Problem {
+                            kind: ProblemKind::MissingTiles,
+                            entity: id,
+                            text: format!("{name}'s map: {gap}"),
+                        });
+                    }
+                }
             }
         }
         // Only the copy's root names its assembly.
@@ -447,6 +461,7 @@ mod tests {
         models: BTreeMap<AssetId, ModelInfo>,
         known: HashSet<AssetId>,
         assemblies: HashSet<AssetId>,
+        tile_gaps: std::collections::HashMap<AssetId, String>,
     }
 
     impl World {
@@ -457,6 +472,7 @@ mod tests {
                 models: BTreeMap::new(),
                 known: HashSet::new(),
                 assemblies: HashSet::new(),
+                tile_gaps: std::collections::HashMap::new(),
             }
         }
 
@@ -467,6 +483,7 @@ mod tests {
                 models: &self.models,
                 known: &self.known,
                 assemblies: &self.assemblies,
+                tile_gaps: &self.tile_gaps,
             })
         }
 
@@ -591,6 +608,7 @@ mod tests {
             models: &w.models,
             known: &w.known,
             assemblies: &w.assemblies,
+            tile_gaps: &w.tile_gaps,
         };
         let print = Fingerprint::of(&document, 0);
         assert_eq!(problems.refresh(print.clone(), &sources), 1, "one new");
@@ -643,6 +661,7 @@ mod tests {
                 models: &w.models,
                 known: &w.known,
                 assemblies: &w.assemblies,
+                tile_gaps: &w.tile_gaps,
             }
         }
         problems.refresh(Fingerprint::of(&document, 7), &sources(&w));

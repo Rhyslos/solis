@@ -35,7 +35,13 @@ impl Workbench {
                         let file = e.path.rsplit_once('/').map_or(e.path.as_str(), |(_, n)| n);
                         (file.to_owned(), self.in_front.contains(&Panel::Animator))
                     });
-                    let area_front = animator.as_ref().is_none_or(|(_, front)| !front);
+                    // So is the tileset open (Phase 9, D5).
+                    let tileset = self.tileset_editor.as_ref().map(|e| {
+                        let file = e.path.rsplit_once('/').map_or(e.path.as_str(), |(_, n)| n);
+                        (file.to_owned(), self.in_front.contains(&Panel::Tileset))
+                    });
+                    let area_front = animator.as_ref().is_none_or(|(_, front)| !front)
+                        && tileset.as_ref().is_none_or(|(_, front)| !front);
                     let (area_clicked, _) = document_tab(
                         ui,
                         bar,
@@ -55,6 +61,15 @@ impl Workbench {
                             self.close_animator();
                         } else if clicked {
                             crate::layout::bring_to_front(&mut self.dock, Panel::Animator);
+                        }
+                    }
+                    if let Some((file, front)) = tileset {
+                        let (clicked, closed) =
+                            document_tab(ui, bar, self.accent, Icon::Layers, &file, front, true);
+                        if closed {
+                            self.close_tileset();
+                        } else if clicked {
+                            crate::layout::bring_to_front(&mut self.dock, Panel::Tileset);
                         }
                     }
                     new_document_button(ui);

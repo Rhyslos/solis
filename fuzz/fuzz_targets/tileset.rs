@@ -1,6 +1,7 @@
-//! A tileset (`.soltileset`, Phase 9, D4): refused or read, and what's
-//! read is within the limits, has each name and code once, and writes
-//! back to itself.
+//! A tileset (`.soltileset`, Phase 9, D4 and D5): refused or read, and
+//! what's read is within the limits, has each name and code once, writes
+//! back to itself, and autotiles a small map of all its terrains without
+//! panicking, every tile it places inside the map's reach.
 #![no_main]
 libfuzzer_sys::fuzz_target!(|data: &[u8]| {
     solis_fuzz_quiet();
@@ -24,6 +25,30 @@ libfuzzer_sys::fuzz_target!(|data: &[u8]| {
     assert_eq!(&again.tileset, set);
     if let Some(code) = set.free_code() {
         assert!(set.by_code(code).is_none() && t::usable_code(code));
+    }
+    for p in &set.pieces {
+        let kind = set.terrain(p.terrain).expect("a piece's terrain is there").kind;
+        assert!(p.slot < tiles::autotile::slot_count(kind));
+    }
+    // A 9 × 7 map of every terrain in turn, and gaps.
+    let mut map = tiles::TileMap::new([9, 7], None, None);
+    for y in 0..7u32 {
+        for x in 0..9u32 {
+            let i = (x * 7 + y * 3) as usize;
+            if let Some(terrain) = set.terrains.get(i % (set.terrains.len() + 1)) {
+                let _ = map.set_code(0, x, y, terrain.code as u8);
+            }
+        }
+    }
+    let placed = tiles::autotile::chunk_tiles(&map, 0, set, [0, 0]);
+    for p in placed {
+        assert!((-1..=18).contains(&p.x) && (-1..=14).contains(&p.y), "{p:?}");
+        if let tiles::autotile::Art::Piece(i) = p.art {
+            assert!(i < set.pieces.len());
+        }
+    }
+    for t in &set.terrains {
+        let _ = tiles::autotile::missing_slots(set, t);
     }
 });
 

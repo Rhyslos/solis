@@ -77,6 +77,8 @@ pub(crate) struct PanelViewer<'a> {
     pub(crate) frames_out: &'a mut FramesOut,
     /// The animator file open in the Animator tab, if any (Phase 9, D3b).
     pub(crate) animator: Option<crate::animator_view::AnimatorUi<'a>>,
+    /// The tileset open in the Tileset tab, if any (Phase 9, D5).
+    pub(crate) tileset: Option<crate::tileset_view::TilesetUi<'a>>,
     /// The selected tile map, for the Map tab (Phase 9, D4).
     pub(crate) map: Option<crate::map_tab::MapUi<'a>>,
     pub(crate) map_requests: &'a mut Vec<crate::map_tab::MapRequest>,
@@ -100,6 +102,14 @@ pub(crate) struct FramesOut {
     pub(crate) animator_hovered: bool,
     /// The pointer is over the Map tab (Ctrl+Z is its).
     pub(crate) map_hovered: bool,
+    /// The tileset changed: save it.
+    pub(crate) tileset_changed: bool,
+    /// The Tileset tab was closed: close the file.
+    pub(crate) tileset_closed: bool,
+    /// The pointer is over the Tileset tab (Ctrl+Z is its).
+    pub(crate) tileset_hovered: bool,
+    /// Save this kind's template.
+    pub(crate) tileset_template: Option<tiles::TileKind>,
 }
 
 impl TabViewer for PanelViewer<'_> {
@@ -126,6 +136,10 @@ impl TabViewer for PanelViewer<'_> {
         // The clips file's name, and the clip chosen.
         let what = if *tab == Panel::Map {
             self.map.as_ref().map(|m| m.name.clone())
+        } else if *tab == Panel::Tileset {
+            self.tileset
+                .as_ref()
+                .map(|t| crate::sprite_sheets::name_of(&t.editor.path))
         } else if *tab == Panel::Animator {
             self.animator
                 .as_ref()
@@ -233,6 +247,22 @@ impl TabViewer for PanelViewer<'_> {
                 );
             }
             Panel::Properties => {
+                if self.in_front.contains(&Panel::Tileset)
+                    && let Some(tileset) = &mut self.tileset
+                {
+                    egui::ScrollArea::vertical()
+                        .id_salt("tileset properties")
+                        .auto_shrink(false)
+                        .show(ui, |ui| {
+                            egui::Frame::new()
+                                .inner_margin(theme::panel_margin())
+                                .show(ui, |ui| {
+                                    self.frames_out.tileset_changed |=
+                                        crate::tileset_view::tileset_properties(ui, tileset);
+                                });
+                        });
+                    return;
+                }
                 if self.in_front.contains(&Panel::Animator)
                     && let Some(animator) = &mut self.animator
                 {
@@ -436,6 +466,20 @@ impl TabViewer for PanelViewer<'_> {
                             });
                     });
             }
+            Panel::Tileset => {
+                if ui.rect_contains_pointer(ui.max_rect()) {
+                    self.frames_out.tileset_hovered = true;
+                }
+                let Some(tileset) = &mut self.tileset else {
+                    placeholder(ui, "No tileset is open.");
+                    return;
+                };
+                let out = crate::tileset_view::tileset_tab(ui, tileset);
+                self.frames_out.tileset_changed |= out.changed;
+                if out.save_template.is_some() {
+                    self.frames_out.tileset_template = out.save_template;
+                }
+            }
             Panel::Animator => {
                 if ui.rect_contains_pointer(ui.max_rect()) {
                     self.frames_out.animator_hovered = true;
@@ -459,6 +503,10 @@ impl TabViewer for PanelViewer<'_> {
     fn on_close(&mut self, tab: &mut Panel) -> egui_dock::widgets::tab_viewer::OnCloseResponse {
         if *tab == Panel::Animator {
             self.frames_out.animator_closed = true;
+            return egui_dock::widgets::tab_viewer::OnCloseResponse::Close;
+        }
+        if *tab == Panel::Tileset {
+            self.frames_out.tileset_closed = true;
             return egui_dock::widgets::tab_viewer::OnCloseResponse::Close;
         }
         // Either tab closes the clips file, and the other goes with it.
