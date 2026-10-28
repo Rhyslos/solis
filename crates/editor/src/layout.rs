@@ -47,7 +47,12 @@ pub fn standard() -> DockState<Panel> {
     tree.split_right(
         bottom,
         LIBRARY_WIDTH,
-        vec![Panel::Console, Panel::Problems, Panel::Profiler],
+        vec![
+            Panel::Console,
+            Panel::Problems,
+            Panel::Profiler,
+            Panel::Mixer,
+        ],
     );
     dock
 }
@@ -219,7 +224,12 @@ mod tests {
         );
         assert_eq!(
             tab_group_of(&dock, Panel::Console),
-            [Panel::Console, Panel::Problems, Panel::Profiler]
+            [
+                Panel::Console,
+                Panel::Problems,
+                Panel::Profiler,
+                Panel::Mixer
+            ]
         );
         assert_eq!(
             tab_group_of(&dock, Panel::Area),
@@ -248,7 +258,12 @@ mod tests {
     #[test]
     fn a_missing_panel_goes_beside_the_viewport_when_its_group_is_gone() {
         let mut old = standard();
-        for panel in [Panel::Console, Panel::Problems, Panel::Profiler] {
+        for panel in [
+            Panel::Console,
+            Panel::Problems,
+            Panel::Profiler,
+            Panel::Mixer,
+        ] {
             let path = old.find_tab(&panel).unwrap();
             old.remove_tab(path);
         }

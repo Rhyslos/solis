@@ -18,9 +18,6 @@ use sound::event::{
     PITCH_RANGE_ST, Priority, Space, VOLUME_RANGE_DB,
 };
 
-/// The buses there are until the Mixer arrives (S4; decision 0056).
-pub(crate) const BUSES: [&str; 6] = ["Master", "Music", "Effects", "Voice", "Ambience", "UI"];
-
 /// A sound event in Properties. Returns what was asked for.
 pub(crate) fn event_properties(
     ui: &mut Ui,
@@ -206,8 +203,8 @@ fn editor(
             egui::ComboBox::from_id_salt(("bus", path))
                 .selected_text(event.bus.clone())
                 .show_ui(ui, |ui| {
-                    for bus in BUSES {
-                        ui.selectable_value(&mut event.bus, bus.to_owned(), bus);
+                    for bus in &sounds.mixer.buses {
+                        ui.selectable_value(&mut event.bus, bus.name.clone(), &bus.name);
                     }
                 });
         },

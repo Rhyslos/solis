@@ -110,6 +110,8 @@ pub enum WorkbenchAction {
         /// What to save.
         event: sound::SoundEvent,
     },
+    /// Save the project's buses to its `mixer.solmix` (the Mixer).
+    SaveMixer(sound::Mixer),
     /// Change one field of an entity inside an assembly's file (Apply to
     /// assembly); the app saves it and hands it back with
     /// [`Workbench::set_assembly`], which updates every copy.
@@ -246,6 +248,8 @@ pub struct Workbench {
     /// area's selection as it was then: picking something else in the
     /// area shows that instead.
     pub(crate) sound_shown: Option<(String, crate::document::Selection)>,
+    /// The project's buses, mute and solo, and the meters (the Mixer).
+    pub(crate) mixer: crate::mixer_view::MixerState,
     /// Where assets being placed go, when they were dropped somewhere:
     /// the point, and the entity they go under.
     pub(crate) place_targets: BTreeMap<AssetId, (glam::Vec3, Option<EntityId>)>,
@@ -362,6 +366,7 @@ impl Workbench {
             sound_events: std::collections::HashMap::new(),
             preview: None,
             sound_shown: None,
+            mixer: Default::default(),
             place_targets: BTreeMap::new(),
             problems: Default::default(),
             playing: None,
@@ -743,6 +748,7 @@ impl Workbench {
         let mut shown = HashSet::new();
         let mut area_requests = Vec::new();
         let mut library_requests = Vec::new();
+        let mut mixer_requests = Vec::new();
         let picked_before = self.library_state.selected.clone();
         self.drop_stale_sound();
         let mut console_requests = Vec::new();
@@ -866,7 +872,10 @@ impl Workbench {
                             states: &self.sounds,
                             events: &self.sound_events,
                             preview: self.preview.as_ref(),
+                            mixer: &self.mixer.mixer,
                         },
+                        mixer: &self.mixer,
+                        mixer_requests: &mut mixer_requests,
                         sound_shown: self.sound_shown.as_ref().map(|(path, _)| path.as_str()),
                         part: part.as_ref(),
                         running: running.as_ref(),
@@ -889,6 +898,9 @@ impl Workbench {
         actions.append(&mut self.outbox);
         for request in library_requests {
             self.library_request(request, &mut actions);
+        }
+        for request in mixer_requests {
+            self.mixer_request(request, &mut actions);
         }
         self.follow_sound_selection(&picked_before);
         for request in console_requests {

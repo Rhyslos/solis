@@ -2,6 +2,9 @@
 //! sounds on entities, placed in 3D around a listener (the Game panel's
 //! camera), paused with the game and faded out on Stop.
 //!
+//! Each sound plays through its event's bus (S4, `buses.rs`): a
+//! tree of tracks made from the project's mixer, under the game's track.
+//!
 //! Everything here is told what to do by the app after each tick; nothing
 //! here reads or changes the game (decision 0056: sound never changes the
 //! game).
@@ -12,12 +15,14 @@
 //! its -Z with +Y up), so the camera's world turn is the listener's.
 //! Nothing is converted, so nothing can be converted wrongly.
 
+use crate::buses::{BusTree, container};
 use crate::device::{FileStream, Manager, Preview, memory_sound};
 use crate::event::{Fade, Pick};
+use crate::mixer::Mixer;
 use crate::read::{Clip, Samples};
 use kira::listener::ListenerHandle;
 use kira::sound::streaming::StreamingSoundData;
-use kira::track::{SpatialTrackBuilder, SpatialTrackDistances, TrackBuilder, TrackHandle};
+use kira::track::{SpatialTrackBuilder, SpatialTrackDistances, TrackHandle};
 use kira::{Decibels, Easing, PlaybackRate, Tween};
 use std::time::Duration;
 
@@ -62,6 +67,8 @@ pub const STALL_TICKS: u64 = 3;
 
 /// One game sound playing: its track (for a placed one) and itself.
 struct Playing {
+    /// The bus it plays through, by its place in the mixer.
+    bus: usize,
     /// The entity it's on, by its ID's number.
     on: Option<u64>,
     /// Its own track, when it's placed (Kira places a track, not a sound).
@@ -71,11 +78,18 @@ struct Playing {
 }
 
 /// The game's tracks on the device: one the game's sounds play under
-/// (paused with the game), one for sounds a Step plays while paused, and
-/// the listener.
+/// (paused with the game), one for sounds a Step plays while paused, each
+/// holding a tree of the mixer's buses, and the listener.
 pub(crate) struct GameTracks {
     track: TrackHandle,
     stepping: TrackHandle,
+    /// The buses under `track`, and under `stepping`.
+    buses: Option<(BusTree, BusTree)>,
+    /// The buses' names and parents the trees were made from, to know when
+    /// they must be made again.
+    shape: Vec<(String, String)>,
+    /// The levels last set, for trees made again.
+    levels: Vec<f32>,
     listener: ListenerHandle,
     playing: Vec<Playing>,
     paused: bool,
@@ -87,37 +101,57 @@ impl GameTracks {
     pub(crate) fn new(manager: &mut Manager) -> Option<Self> {
         let origin = mint::Vector3::from([0.0_f32; 3]);
         let facing = mint::Quaternion::from([0.0_f32, 0.0, 0.0, 1.0]);
-        // Room for every sound playing at once, and a track each when
-        // placed.
-        let roomy = || {
-            TrackBuilder::new()
-                .sound_capacity(MAX_PLAYING)
-                .sub_track_capacity(MAX_PLAYING)
+        let track = container(manager)?;
+        let stepping = container(manager)?;
+        let listener = match manager {
+            Manager::Card(m) => m.add_listener(origin, facing).ok()?,
+            Manager::Test(m) => m.add_listener(origin, facing).ok()?,
         };
-        let (track, stepping, listener) = match manager {
-            Manager::Card(m) => (
-                m.add_sub_track(roomy()).ok()?,
-                m.add_sub_track(roomy()).ok()?,
-                m.add_listener(origin, facing).ok()?,
-            ),
-            Manager::Test(m) => (
-                m.add_sub_track(roomy()).ok()?,
-                m.add_sub_track(roomy()).ok()?,
-                m.add_listener(origin, facing).ok()?,
-            ),
-        };
-        Some(Self {
+        let mut game = Self {
             track,
             stepping,
+            buses: None,
+            shape: Vec::new(),
+            levels: Vec::new(),
             listener,
             playing: Vec::new(),
             paused: false,
-        })
+        };
+        // The standard buses until the project's mixer is set.
+        game.set_mixer(&Mixer::default());
+        Some(game)
     }
 
     fn tidy(&mut self) {
         self.playing
             .retain(|p| p.sound.state() != kira::sound::PlaybackState::Stopped);
+    }
+
+    /// Makes the bus trees again when the mixer's buses changed (names or
+    /// nesting); a change of volume or ducking needs nothing here. Sounds
+    /// playing when the buses change stop, as their tracks go.
+    fn set_mixer(&mut self, mixer: &Mixer) {
+        let shape: Vec<(String, String)> = mixer
+            .buses
+            .iter()
+            .map(|b| (b.name.clone(), b.inside.clone()))
+            .collect();
+        if self.buses.is_some() && shape == self.shape {
+            return;
+        }
+        for playing in &mut self.playing {
+            playing.sound.stop();
+        }
+        self.playing.clear();
+        self.levels.resize(mixer.buses.len(), 0.0);
+        // The old trees go first, so there's room for the new ones.
+        self.buses = None;
+        self.buses = BusTree::new(&mut self.track, mixer, &self.levels).zip(BusTree::new(
+            &mut self.stepping,
+            mixer,
+            &self.levels,
+        ));
+        self.shape = shape;
     }
 }
 
@@ -125,11 +159,13 @@ impl crate::SoundDevice {
     /// Plays one pick of a game's sound event, from `placement`. While
     /// paused (a Step), it plays without waiting for the game to carry on.
     /// Silent devices do nothing.
+    /// `bus` is its bus's place in the mixer (Master when out of range).
     pub fn play_game_sound(
         &mut self,
         clip: &Clip,
         pick: &Pick,
         placement: Placement,
+        bus: usize,
     ) -> Result<(), String> {
         let Some(game) = self.game.as_mut() else {
             return Ok(());
@@ -149,11 +185,16 @@ impl crate::SoundDevice {
         } else {
             1.0
         });
-        let parent = if game.paused {
-            &mut game.stepping
-        } else {
-            &mut game.track
+        let Some((playing_tree, stepping_tree)) = game.buses.as_mut() else {
+            return Err("the buses couldn't be made".to_owned());
         };
+        let tree = if game.paused {
+            stepping_tree
+        } else {
+            playing_tree
+        };
+        let bus = if bus < tree.tracks.len() { bus } else { 0 };
+        let parent = &mut tree.tracks[bus];
         let (on, spot) = match placement {
             Placement::Flat => (None, None),
             Placement::At(spot) => (None, Some(spot)),
@@ -202,7 +243,12 @@ impl crate::SoundDevice {
                 Preview::Stream(handle.map_err(|e| format!("couldn't play it ({e})"))?)
             }
         };
-        game.playing.push(Playing { on, track, sound });
+        game.playing.push(Playing {
+            bus,
+            on,
+            track,
+            sound,
+        });
         Ok(())
     }
 
@@ -296,6 +342,58 @@ impl crate::SoundDevice {
             game.paused = false;
             game.track.resume(Tween::default());
         }
+    }
+
+    /// Uses the project's buses (made again only when their names or
+    /// nesting changed).
+    pub fn set_mixer(&mut self, mixer: &Mixer) {
+        if let Some(game) = self.game.as_mut() {
+            game.set_mixer(mixer);
+        }
+    }
+
+    /// Sets each bus's level now, in decibels, from
+    /// [`crate::mixer::levels`].
+    pub fn set_bus_levels(&mut self, levels: &[f32]) {
+        let Some(game) = self.game.as_mut() else {
+            return;
+        };
+        if game.levels == levels {
+            return;
+        }
+        game.levels = levels.to_vec();
+        if let Some((a, b)) = game.buses.as_mut() {
+            a.set_levels(levels);
+            b.set_levels(levels);
+        }
+    }
+
+    /// Which buses have game sounds playing on them right now, by place
+    /// (for ducking).
+    pub fn busy_buses(&mut self, buses: usize) -> Vec<bool> {
+        let mut busy = vec![false; buses];
+        if let Some(game) = self.game.as_mut() {
+            game.tidy();
+            for playing in &game.playing {
+                if let Some(b) = busy.get_mut(playing.bus) {
+                    *b = true;
+                }
+            }
+        }
+        busy
+    }
+
+    /// Each bus's loudest sample since the last reading, as an amplitude
+    /// (1 is full scale): the Mixer's meters. Empty with no sound card.
+    pub fn take_bus_meters(&mut self) -> Vec<f32> {
+        let Some((a, b)) = self.game.as_ref().and_then(|g| g.buses.as_ref()) else {
+            return Vec::new();
+        };
+        a.take_meters()
+            .into_iter()
+            .zip(b.take_meters())
+            .map(|(x, y)| x.max(y))
+            .collect()
     }
 
     /// How many game sounds are playing (tests, and the Profiler later).

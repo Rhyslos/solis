@@ -19,6 +19,9 @@ pub enum Request {
     Play(String, script::SoundAt),
     /// Stop the sounds on this entity.
     StopOn(EntityId),
+    /// Set this bus to this share of its fader (0 to 1) for the rest of
+    /// the play.
+    BusVolume(String, f32),
 }
 
 /// One request, with where it stands in the game: the app picks the take

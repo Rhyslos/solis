@@ -14,6 +14,7 @@ Read sound files and play them, without ever changing the game.
   - Short sounds (up to 10 minutes) are decoded into memory. Longer ones are measured once and streamed from their file as they play.
   - Damage never crashes: a cut-off WAV keeps its whole frames, samples that aren't numbers become silence, and everything else is a plain error.
 - **Overviews** (`overview.rs`): each sound's loudness over its length, at most 2,048 pairs of lowest and highest sample, made in the same pass as decoding, for drawing waveforms.
+- **Buses** (`mixer.rs`, `buses.rs`): the project's buses in a tree under Master, each a Kira track with a volume control (its fader, game code's share, ducking, mute and solo, worked out by `mixer::levels` and `mixer::Ducker`) and then a meter.
 - **The device** (`device.rs`): Kira's audio manager on the sound card, opened on a worker by the app. With no sound card, a silent device plays nothing and Solis carries on. Tests use Kira's mock device, so CI needs no sound card.
   - **Previews** of sound files play on an **Editor** track of their own, which the game's buses (S4) never touch.
 
@@ -31,4 +32,4 @@ Read sound files and play them, without ever changing the game.
 
 ## Status
 
-Phase 7, S1: reading WAV and Ogg (and measuring without keeping the samples, `measure_file`), overviews, Ogg header checks before `lewton` (`vorbis_check.rs`, after fuzzing found two files that made it ask for hundreds of gigabytes), the device, and the editor's preview. Phase 7, S2: sound events (`event.rs`: reading, writing, limits, and picking a play from sound's own random numbers) and previews varied in volume and pitch (`SoundDevice::preview_varied`). Phase 7, S3: the game's sounds (`game.rs`): one-shots and sounds on entities on Kira spatial tracks around a listener, paused with the game and faded out on Stop. Buses and the Mixer (S4), loops and voice limits (S5) and reverb zones (S6) follow.
+Phase 7, S1: reading WAV and Ogg (and measuring without keeping the samples, `measure_file`), overviews, Ogg header checks before `lewton` (`vorbis_check.rs`, after fuzzing found two files that made it ask for hundreds of gigabytes), the device, and the editor's preview. Phase 7, S2: sound events (`event.rs`: reading, writing, limits, and picking a play from sound's own random numbers) and previews varied in volume and pitch (`SoundDevice::preview_varied`). Phase 7, S3: the game's sounds (`game.rs`): one-shots and sounds on entities on Kira spatial tracks around a listener, paused with the game and faded out on Stop. Phase 7, S4: buses (`mixer.rs`: the project's `mixer.solmix`, levels and ducking; `buses.rs`: a Kira track per bus with a volume control and a meter). Loops and voice limits (S5) and reverb zones (S6) follow.

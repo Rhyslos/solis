@@ -91,6 +91,9 @@ fn names(sounds: &[GameSound]) -> Vec<(u64, u32, String)> {
         .map(|s| match &s.request {
             crate::game_sound::Request::Play(name, _) => (s.tick, s.order, name.clone()),
             crate::game_sound::Request::StopOn(_) => (s.tick, s.order, "stop".into()),
+            crate::game_sound::Request::BusVolume(bus, _) => {
+                (s.tick, s.order, format!("bus {bus}"))
+            }
         })
         .collect()
 }

@@ -1,6 +1,7 @@
 //! The project's files for playing ([decision 0037](../../../docs/decisions/0037-input-as-named-actions.md)):
-//! its input actions (`input.solinput`, beside `project.solis`) and its
-//! recordings of play (`recordings/*.solrec`).
+//! its input actions (`input.solinput`, beside `project.solis`), its
+//! buses (`mixer.solmix`, Phase 7, S4) and its recordings of play
+//! (`recordings/*.solrec`).
 
 use std::path::{Path, PathBuf};
 use std::sync::mpsc::{Receiver, channel};
@@ -104,9 +105,58 @@ pub fn load_bindings(root: &Path) -> (input::Bindings, Option<String>) {
     }
 }
 
-/// The most backups of a damaged input actions file kept
+/// The most backups of a damaged input actions or mixer file kept
 /// (`input.solinput.bak`, `.bak2` … `.bak9`).
 const MAX_BINDINGS_BACKUPS: usize = 9;
+
+/// The project's buses (`mixer.solmix`), or the standard ones when it has
+/// none; with notes for the Console: what was put right, or why the file
+/// couldn't be read (then the standard buses are used until it's saved
+/// again, which keeps the damaged one as a backup).
+pub fn load_mixer(root: &Path) -> (sound::Mixer, Vec<String>) {
+    let file = sound::mixer::FILE_NAME;
+    let limit = sound::mixer::MAX_BYTES as u64;
+    let text = match read_limited(&root.join(file), limit) {
+        Ok(Some(text)) => text,
+        Ok(None) => return (sound::Mixer::default(), Vec::new()),
+        Err(why) => {
+            return (
+                sound::Mixer::default(),
+                vec![format!(
+                    "Couldn't read {file}: {why}; the standard buses are used."
+                )],
+            );
+        }
+    };
+    match sound::mixer::read(&text) {
+        Ok(read) => (
+            read.mixer,
+            read.notes
+                .into_iter()
+                .map(|n| format!("{file}, {n}."))
+                .collect(),
+        ),
+        Err(why) => (
+            sound::Mixer::default(),
+            vec![format!(
+                "{file} {why}, so the standard buses are used until it's fixed (a change in \
+                 the Mixer writes it again, keeping this one as a backup)."
+            )],
+        ),
+    }
+}
+
+/// Writes the project's buses, keeping a damaged file first as a backup
+/// as [`save_bindings`] does; gives back the backup's name when it made
+/// one.
+pub fn save_mixer(root: &Path, mixer: &sound::Mixer) -> std::io::Result<Option<String>> {
+    save_keeping_damaged(
+        root,
+        sound::mixer::FILE_NAME,
+        &sound::mixer::write(mixer),
+        |old| sound::mixer::read(old).is_err(),
+    )
+}
 
 /// Writes the project's input actions. A file there that can't be read
 /// (a mistake made by hand, so the ready-made actions were used) is kept
@@ -114,9 +164,22 @@ const MAX_BINDINGS_BACKUPS: usize = 9;
 /// replacing one: past that the oldest is replaced), so its actions
 /// aren't lost; gives back the backup's name when it made one.
 pub fn save_bindings(root: &Path, text: &str) -> std::io::Result<Option<String>> {
-    let path = root.join(input::FILE);
+    save_keeping_damaged(root, input::FILE, text, |old| {
+        input::Bindings::read(old).is_err()
+    })
+}
+
+/// Writes `text` as `file` in `root`, keeping the file there first as a
+/// backup when `damaged` says it can't be read.
+fn save_keeping_damaged(
+    root: &Path,
+    file: &str,
+    text: &str,
+    damaged: impl Fn(&str) -> bool,
+) -> std::io::Result<Option<String>> {
+    let path = root.join(file);
     let damaged = match read_limited(&path, 1 << 20) {
-        Ok(Some(old)) => input::Bindings::read(&old).is_err(),
+        Ok(Some(old)) => damaged(&old),
         Ok(None) => false,
         Err(_) => path.exists(),
     };
@@ -124,8 +187,8 @@ pub fn save_bindings(root: &Path, text: &str) -> std::io::Result<Option<String>>
     if damaged {
         let names: Vec<String> = (1..=MAX_BINDINGS_BACKUPS)
             .map(|n| match n {
-                1 => format!("{}.bak", input::FILE),
-                n => format!("{}.bak{n}", input::FILE),
+                1 => format!("{file}.bak"),
+                n => format!("{file}.bak{n}"),
             })
             .collect();
         // Names are looked at without following links (a dangling link
@@ -256,6 +319,39 @@ mod tests {
         let _ = std::fs::remove_dir_all(&dir);
         std::fs::create_dir_all(&dir).unwrap();
         dir
+    }
+
+    #[test]
+    fn the_mixer_is_the_project_s_or_the_standard_one_and_a_damaged_one_is_kept() {
+        let root = scratch("mixer");
+        // None yet: the standard buses, nothing to say.
+        assert_eq!(load_mixer(&root), (sound::Mixer::default(), Vec::new()));
+        let mut mine = sound::Mixer::default();
+        mine.add_bus("Effects").unwrap();
+        mine.buses[1].volume_db = -4.0;
+        assert_eq!(save_mixer(&root, &mine).unwrap(), None);
+        assert_eq!(load_mixer(&root), (mine.clone(), Vec::new()));
+        // Out of range by hand: brought in, and said.
+        let file = root.join(sound::mixer::FILE_NAME);
+        let text = std::fs::read_to_string(&file)
+            .unwrap()
+            .replace("-4.0", "-400.0");
+        std::fs::write(&file, text).unwrap();
+        let (read, notes) = load_mixer(&root);
+        assert_eq!(read.buses[1].volume_db, -60.0);
+        assert_eq!(notes.len(), 1, "{notes:?}");
+        // Damaged: the standard buses, why, and kept as a backup when the
+        // Mixer saves again.
+        std::fs::write(&file, "mixer version 1;\nbus1 = 3;\n").unwrap();
+        let (read, notes) = load_mixer(&root);
+        assert_eq!(read, sound::Mixer::default());
+        assert!(notes[0].contains("line 2"), "{notes:?}");
+        assert_eq!(
+            save_mixer(&root, &read).unwrap().as_deref(),
+            Some("mixer.solmix.bak")
+        );
+        assert!(root.join("mixer.solmix.bak").is_file());
+        assert_eq!(load_mixer(&root), (sound::Mixer::default(), Vec::new()));
     }
 
     #[test]

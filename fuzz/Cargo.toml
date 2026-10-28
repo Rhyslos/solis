@@ -121,3 +121,10 @@ path = "fuzz_targets/sound_event.rs"
 test = false
 doc = false
 bench = false
+
+[[bin]]
+name = "mixer"
+path = "fuzz_targets/mixer.rs"
+test = false
+doc = false
+bench = false

@@ -2326,6 +2326,7 @@ dependencies = [
  "kira",
  "lewton",
  "log",
+ "mint",
  "ogg",
  "reflect",
 ]

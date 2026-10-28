@@ -56,6 +56,9 @@ pub(crate) struct PanelViewer<'a> {
     pub(crate) sounds: crate::library::Sounds<'a>,
     /// The sound file Properties shows instead of the selection, if any.
     pub(crate) sound_shown: Option<&'a str>,
+    /// The project's buses, and the bus Properties shows, if any.
+    pub(crate) mixer: &'a crate::mixer_view::MixerState,
+    pub(crate) mixer_requests: &'a mut Vec<crate::mixer_view::MixerRequest>,
     pub(crate) part: Option<&'a AssemblyPart>,
     /// While playing, the selected entity's game code values as they are
     /// now, by component.
@@ -193,6 +196,11 @@ impl TabViewer for PanelViewer<'_> {
                     }
                     return;
                 }
+                if let Some((bus, _)) = self.mixer.shown {
+                    let requests = crate::mixer_view::bus_properties(ui, self.mixer, bus);
+                    self.mixer_requests.extend(requests);
+                    return;
+                }
                 let requests = properties(
                     ui,
                     self.document,
@@ -229,12 +237,20 @@ impl TabViewer for PanelViewer<'_> {
                 if self.playing {
                     playing_border(ui, full, self.accent);
                 }
+                if crate::mixer_view::game_mute_button(ui, full, self.mixer.listening.all_muted) {
+                    self.mixer_requests
+                        .push(crate::mixer_view::MixerRequest::MuteAll);
+                }
                 ui.advance_cursor_after_rect(full);
             }
             Panel::Console => {
                 if let Some(request) = console(ui, self.console) {
                     self.console_requests.push(request);
                 }
+            }
+            Panel::Mixer => {
+                let requests = crate::mixer_view::mixer_panel(ui, self.mixer, self.playing);
+                self.mixer_requests.extend(requests);
             }
             Panel::Profiler => {
                 egui::ScrollArea::vertical()

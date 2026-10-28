@@ -130,6 +130,12 @@ pub trait Host {
     fn stop_sounds_on(&mut self, which: EntityId) {
         let _ = which;
     }
+    /// Sets a bus's volume for the rest of the play, as a share of its
+    /// Mixer fader (1 as set, 0 silent), at the end of the tick: an
+    /// options menu's sliders.
+    fn set_bus_volume(&mut self, bus: &str, share: f32) {
+        let _ = (bus, share);
+    }
     /// The first collider a ray meets (see `physics::State::cast_ray`).
     fn cast_ray(&self, from: Vec3, direction: Vec3, reach: f32) -> Option<physics::Hit> {
         let _ = (from, direction, reach);
@@ -496,6 +502,13 @@ pub(crate) fn with_natives<'h, R>(
                 if let Some(e) = entity_of(&which) {
                     h.borrow_mut().stop_sounds_on(e);
                 }
+                Ok(())
+            })?,
+        )?;
+        natives.raw_set(
+            "setBusVolume",
+            scope.create_function(move |_, (bus, share): (mlua::LuaString, f64)| {
+                h.borrow_mut().set_bus_volume(&bus.to_str()?, share as f32);
                 Ok(())
             })?,
         )?;
