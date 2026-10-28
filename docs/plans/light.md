@@ -1,6 +1,6 @@
 # Phase 13 plan: Light, sky and atmosphere (draft)
 
-**Draft for the project lead.** The project lead asked on 2026-10-26 for "all the fancy lighting solutions working well", with sky, lighting and colour as Solis's selling point. The goal is skies and sunsets that give the feeling the best game sunsets do, and never the flat, sterile "Backrooms" look. This phase is new: it comes after sound and animation (Phase 7) and before materials and shaders (Phase 14), effects (now Phase 15), game UI (now Phase 12) and netcode (now Phase 16). See [decision 0046](../decisions/0046-light-before-netcode.md).
+**Draft for the project lead.** The project lead asked on 2026-10-26 for "all the fancy lighting solutions working well", with sky, lighting and colour as Solis's selling point. The goal is skies and sunsets that give the feeling the best game sunsets do, and never the flat, sterile "Backrooms" look. This phase is new: it comes after sound and animation (Phase 7) and before materials and shaders (Phase 14), effects (now Phase 15), game UI (now Phase 12) and netcode (now Phase 17). See [decision 0046](../decisions/0046-light-before-netcode.md).
 
 The research behind every choice is in [docs/reports/lighting-research.md](../reports/lighting-research.md), with its sources. Nothing here is decided until the project lead answers the questions below. Then the answers become decisions, and this plan is kept up to date as milestones are built, like the other phase plans.
 
@@ -413,7 +413,7 @@ Kept here so the design leaves room for them:
 
 ## Netcode waits safely
 
-Netcode moves from its first place, Phase 8, to Phase 16. What it needs is already built:
+Netcode moves from its first place, Phase 8, to Phase 17. What it needs is already built:
 - **Determinism:** a fixed tick, seeded randomness, the start-of-tick world (decision 0033), strict physics (decision 0036) and state checksums.
 - **Snapshots:** save games hold everything (decision 0038).
 - **Planned to stay out of the game's state:** effects (the effects plan) and UI (the Sungraph plan); this phase's rule keeps light out too.
@@ -421,8 +421,8 @@ Netcode moves from its first place, Phase 8, to Phase 16. What it needs is alrea
 Two risks come with waiting:
 1. **Nobody checks that two different PCs play the same game.** Today's tests compare runs on the same computer. Lua's maths functions, for example, can differ in the last digit between machines (decision 0028).
 
-   **Recommended: a small check now.** A recorded game is played in CI on Linux and Windows, and its final checksum is compared with one saved in the repository. A difference shows up the day it's made, not in Phase 16.
-2. **DESIGN.md §1 promises "good netcode built in"**, and the flagship sample plays over the network, so netcode must still come before 0.1. It does, in Phase 16.
+   **Recommended: a small check now.** A recorded game is played in CI on Linux and Windows, and its final checksum is compared with one saved in the repository. A difference shows up the day it's made, not in Phase 17.
+2. **DESIGN.md §1 promises "good netcode built in"**, and the flagship sample plays over the network, so netcode must still come before 0.1. It does, in Phase 17.
 
 The two-player Play button stays hidden until then (decision 0004).
 

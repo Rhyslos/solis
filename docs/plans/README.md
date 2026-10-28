@@ -10,8 +10,8 @@ Working plans for the phases of [ROADMAP.md](../../ROADMAP.md). A plan records t
 | `phase-5.md` | 5: Scale |
 | `phase-6.md` | 6: Simulation and play |
 | `phase-6-hardening.md` | The hardening milestone between Phases 6 and 7 (decision 0042) |
-| `phase-7-sound.md` | 7: Sound and animation, the sound half |
-| `phase-7-animation.md` | 7: Sound and animation, the animation half |
+| `phase-7-sound.md` | 7: Sound |
+| `phase-7-animation.md` | Animation: the state machine and graph editor in 9 (2D), skeletons in 16 (decision 0059) |
 | `compatibility.md` | 8: Compatibility (draft) |
 | `2d.md` | 9 and 10: First-class 2D (draft) |
 | `game-ui.md` | 12: Game UI (draft) |

@@ -1,20 +1,16 @@
 # Phase 7 plan: Sound (draft)
 
-The working plan for the sound half of Phase 7 (ROADMAP.md, "Phase 7: Sound and animation"; DESIGN.md §11). Animation has its own plan; the two meet at **animation events** (see "Where sound meets animation"). This draft lists the choices still to make, as questions for the project lead, then a plan for every milestone, so a later session can carry on where this one stopped. Once the questions are answered, the answers move into "Choices made before any code" with their decision numbers, and milestones are ticked off here and in the README tracker as they are built.
+The working plan for Phase 7 (ROADMAP.md, "Phase 7: Sound"; DESIGN.md §11). Phase 7 is sound only since [decision 0059](../decisions/0059-2d-first.md); animation's events come with 2D's frame animation (Phase 9). Animation has its own plan; the two meet at **animation events** (see "Where sound meets animation"). This draft lists the choices still to make, as questions for the project lead, then a plan for every milestone, so a later session can carry on where this one stopped. Once the questions are answered, the answers move into "Choices made before any code" with their decision numbers, and milestones are ticked off here and in the README tracker as they are built.
 
-**Gate (the sound part of Phase 7's gate):** a character walks and runs, its **footsteps play on the right frames** (the foot touching the ground, not a beat early or late), each step sounds a little different, the music dips while someone speaks, steps get quieter and move left and right as the camera moves away and around, and **walking into a reverb zone** (a cave, a hall) makes them echo.
+**Gate:** a character walks and runs, its footsteps (played by game code, decision 0059) each sound a little different, the music dips while someone speaks, steps get quieter and move left and right as the camera moves away and around, and **walking into a reverb zone** (a cave, a hall) makes them echo.
 
 ## Answers (the project lead, 2026-10-25)
 
 Every choice below was answered with the recommendation: Kira now and Steam Audio later; WAV and Ogg through permissive readers; one `.solsound` file per event; buses Master > Music, Effects, Voice, Ambience, UI with Voice ducking Music; natives that play and stop and give nothing back, loops through `AudioSource`; reverb by where the listener is; loops come back on load, one-shots don't; 64 sounds at once; no new keys (buttons only). They are [decision 0056](../decisions/0056-sound-with-kira.md).
 
-## The order of Phase 7's milestones (sound and animation together)
+## The order of Phase 7's milestones
 
-1. **Sound becomes playable:** S1, S2, S3.
-2. **The animation core:** A1, A2, A3, A4.
-3. **The rest of sound:** S4, S5, S6.
-4. **The animator tab:** A5. It's a new editor window, so it's mocked up for the project lead first.
-5. **Where they meet, and the gate's level:** A6, then S7.
+S1, S2, S3 (built), then S4, S5, S6, S8, and S7 last. Animation's A1–A6 left this phase (decision 0059): A4, A5 and A6's frame events go to Phase 9's frame animation, the rest to Phase 16.
 
 ## Choices to make before any code
 
@@ -152,13 +148,13 @@ Added by [decision 0058](../decisions/0058-listeners-and-who-hears-what.md), bui
 - Properties for both are **mocked up for the project lead first**.
 - Tests: with no Listener the camera hears; two listeners in different groups each hear only their groups' sounds; "only who caused it" reaches only that listener; the same recording plays the same game whoever hears what.
 
-### S7. Sounds from animation events, and the gate's level
+### S7. The gate's level
 
-Built after the animation plan's events milestone (see below).
+Built last. (Sounds from animation events moved to Phase 9's frame animation, decision 0059.)
 
-- An animation event can name a sound event, so footsteps need no code; it plays at the entity (or the named bone, if the animation plan offers bones' places).
+- Footsteps are played by the playground's game code, from the walk input and a step timer that speeds up when running.
 - **Help > Make the playground…** (Phase 6) gains footsteps, a music loop, a talking radio (Voice ducking Music) and a cave with a reverb zone, using a small set of sounds made for Solis (licensed CC0, listed in `licenses/`).
-- Tests: a walk cycle's footsteps play on the ticks their markers are crossed, at walk and run speed and with blending; the playground plays the same from a recording, sound on or off.
+- Tests: footsteps play at walk and run speed and vary; the playground plays the same from a recording, sound on or off.
 
 ### End of the phase
 
@@ -167,11 +163,11 @@ Built after the animation plan's events milestone (see below).
 
 ## Where sound meets animation
 
-The animation plan owns animation events; sound needs only this from them:
+Built with 2D's frame animation (Phase 9) and 3D animation (Phase 16), decision 0059. The animation plan owns animation events; sound needs only this from them:
 
 - **Events are found in the tick**, by the animation's own clock (game time, not the frame), so they are deterministic and the same on every PC. An event fires on the tick its marker is crossed, so a footstep is at most 1/60 s (17 ms) from the exact frame, below what people notice; if needed, the sound can be started that fraction later within the frame.
 - **When blending** between walk and run, each animation's events fire only while it counts for more than half the blend, so a blend doesn't play two footsteps for one step.
-- **An event can carry a sound event's name** (played with no code, by S7), and is also delivered to game code as a typed event, so a game can choose the sound itself (gravel or metal underfoot).
+- **An event can carry a sound event's name** (played with no code), and is also delivered to game code as a typed event, so a game can choose the sound itself (gravel or metal underfoot).
 
 ## Sources
 

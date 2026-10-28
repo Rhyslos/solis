@@ -115,7 +115,7 @@ fn the_sample_is_made_as_a_project_and_plays_through_all_three_languages() {
     assert_eq!(count("Drone is destroyed!"), 1, "{said:?}");
     let x = w.world().unwrap().global(drone).unwrap().w_axis;
     assert_eq!(x.z, 0.0, "it dropped to the ground");
-    // A changed armour.rs is noted: changes don't run until Phase 17.
+    // A changed armour.rs is noted: changes don't run until Phase 18.
     std::fs::write(assets.join("armour.rs"), "// mine\n").unwrap();
     assert!(rust_components(&assets).1.is_some());
 }

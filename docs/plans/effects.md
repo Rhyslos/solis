@@ -122,7 +122,7 @@ Projectiles change the game; effects only show it. So:
 - **Effects' randomness is their own:** each effect gets a number made from a frame counter and its place in the frame's order, and its particles draw from that, never from the game's seed. Two PCs in a lockstep game may show slightly different sparks, which is fine; the game's checksum and replays are untouched (a test: the same game with effects on and off gives the same checksums).
 - **The effect numbers game code is given** (from `playEffectOn`) are game state, so they are made from the tick's order like spawned IDs (decision 0035), the same on any number of cores.
 - **Requests land like everything else:** `playEffect` is kept and landed at the end of the phase in order (decision 0033), then passed out of the world into a list for drawing. That list is not in the checksum and not saved.
-- **Effects run on frame time, not ticks:** smooth on a 144 Hz screen, frozen while paused, one tick's worth on Step. A dedicated server (Phase 16) drops the requests and pays nothing.
+- **Effects run on frame time, not ticks:** smooth on a 144 Hz screen, frozen while paused, one tick's worth on Step. A dedicated server (Phase 17) drops the requests and pays nothing.
 
 ## The effect file
 
