@@ -35,7 +35,7 @@ const METER_FALL_DB_PER_S: f32 = 24.0;
 /// A strip's width.
 const STRIP_WIDTH: f32 = 62.0;
 /// A fader's height.
-const FADER_HEIGHT: f32 = 96.0;
+const FADER_HEIGHT: f32 = 84.0;
 
 /// The Mixer's state in the editor: the project's buses, mute and solo,
 /// what the meters show, and the bus Properties shows, if any.
@@ -133,19 +133,17 @@ pub(crate) fn mixer_panel(ui: &mut Ui, state: &MixerState, playing: bool) -> Vec
             });
         });
     });
-    egui::ScrollArea::horizontal()
-        .auto_shrink(false)
-        .show(ui, |ui| {
-            ui.horizontal_top(|ui| {
-                ui.spacing_mut().item_spacing.x = 2.0;
-                for i in 0..state.mixer.buses.len() {
-                    strip(ui, state, i, &mut requests);
-                    if i == 0 {
-                        ui.separator();
-                    }
+    egui::ScrollArea::both().auto_shrink(false).show(ui, |ui| {
+        ui.horizontal_top(|ui| {
+            ui.spacing_mut().item_spacing.x = 2.0;
+            for i in 0..state.mixer.buses.len() {
+                strip(ui, state, i, &mut requests);
+                if i == 0 {
+                    ui.separator();
                 }
-            });
+            }
         });
+    });
     requests
 }
 
@@ -205,7 +203,22 @@ fn strip(ui: &mut Ui, state: &MixerState, i: usize, requests: &mut Vec<MixerRequ
                 requests.push(MixerRequest::Select(i));
             }
             ui.horizontal(|ui| {
+                let muted = state.listening.muted.contains(&bus.name);
+                if toggle(ui, "M", muted, MUTE, &format!("Mute {}", bus.name)) {
+                    requests.push(MixerRequest::Mute(i));
+                }
+                if i > 0 {
+                    let soloed = state.listening.soloed.contains(&bus.name);
+                    let hint = format!("Solo {}: hear only it while any bus is soloed", bus.name);
+                    if toggle(ui, "S", soloed, SOLO, &hint) {
+                        requests.push(MixerRequest::Solo(i));
+                    }
+                }
+            });
+            ui.horizontal(|ui| {
                 ui.add_space(8.0);
+                // The fader as tall as the meter beside it.
+                ui.spacing_mut().slider_width = FADER_HEIGHT;
                 meter(ui, state.meters.get(i).copied().unwrap_or(SILENT_DB));
                 let mut volume = bus.volume_db;
                 let fader = ui
@@ -232,20 +245,9 @@ fn strip(ui: &mut Ui, state: &MixerState, i: usize, requests: &mut Vec<MixerRequ
             } else {
                 String::new()
             };
-            ui.label(RichText::new(note).color(theme::WARNING).size(10.5));
-            ui.horizontal(|ui| {
-                let muted = state.listening.muted.contains(&bus.name);
-                if toggle(ui, "M", muted, MUTE, &format!("Mute {}", bus.name)) {
-                    requests.push(MixerRequest::Mute(i));
-                }
-                if i > 0 {
-                    let soloed = state.listening.soloed.contains(&bus.name);
-                    let hint = format!("Solo {}: hear only it while any bus is soloed", bus.name);
-                    if toggle(ui, "S", soloed, SOLO, &hint) {
-                        requests.push(MixerRequest::Solo(i));
-                    }
-                }
-            });
+            if !note.is_empty() {
+                ui.label(RichText::new(note).color(theme::WARNING).size(10.5));
+            }
         });
     });
 }
@@ -740,7 +742,10 @@ mod tests {
         for bus in ["Master", "Music", "Effects", "Voice", "Ambience", "UI"] {
             assert!(h.query_by_label(bus).is_some(), "{bus}");
         }
-        assert!(h.query_by_label("Meters move while the game plays").is_some());
+        assert!(
+            h.query_by_label("Meters move while the game plays")
+                .is_some()
+        );
     }
 
     #[test]
@@ -787,9 +792,11 @@ mod tests {
         let (w, crate_id) = with_a_crate();
         let mut h = harness(w);
         h.run();
-        h.state_mut().0.mixer_request(MixerRequest::Select(2), &mut Vec::new());
+        h.state_mut()
+            .0
+            .mixer_request(MixerRequest::Select(2), &mut Vec::new());
         h.run();
-        assert!(h.query_by_label("Quieter while").is_none() || h.state().0.mixer.shown.is_some());
+        assert!(h.state().0.mixer.shown.is_some());
         h.state_mut().0.document.selection.select_only(crate_id);
         h.run();
         assert!(h.state().0.mixer.shown.is_none());

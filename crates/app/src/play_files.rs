@@ -333,7 +333,9 @@ mod tests {
         assert_eq!(load_mixer(&root), (mine.clone(), Vec::new()));
         // Out of range by hand: brought in, and said.
         let file = root.join(sound::mixer::FILE_NAME);
-        let text = std::fs::read_to_string(&file).unwrap().replace("-4.0", "-400.0");
+        let text = std::fs::read_to_string(&file)
+            .unwrap()
+            .replace("-4.0", "-400.0");
         std::fs::write(&file, text).unwrap();
         let (read, notes) = load_mixer(&root);
         assert_eq!(read.buses[1].volume_db, -60.0);
