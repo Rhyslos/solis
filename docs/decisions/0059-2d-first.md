@@ -22,6 +22,8 @@ Option 2, chosen by the project lead: "only when the 2D part of the engine is co
 - **Phase 9, frame animation** gains the groundwork that was A4, A5 and A6's cues: the animation state machine, the animator graph editor (the shared graph editor of decision 0050, mocked up first) and frame events that can name a sound event. Each is built to drive any clip with frames, events and a length, so 3D reuses it unchanged.
 - **Phase 16: 3D animation** (new): skins and clips from glTF, skinned drawing, crowds with baked clips, blending and blend spaces for skeletons, and cues and footsteps on skeletons. Decision 0057's design for these stands, and its research is kept in the animation plan.
 - Netcode becomes Phase 17, scripting, the full export and Git Phase 18, and the 0.1 release Phase 19.
+- **Phases 16 to 19 are "later", not "next"** (the project lead): kept in the roadmap so they aren't lost, but not built, planned in detail or reordered until Phase 15 is done and the project lead says it's time. Building 2D and effects will turn up blockers nobody can foresee, so planning further now would mean rewriting the plan again and again.
+- **Light (Phase 13) and effects (Phase 15) are built as full engine features**, for 3D as much as 2D, not cut down for the 2D game.
 
 ## Consequences
 

@@ -26,6 +26,7 @@ Each phase ends with a **gate**: something the project lead tries by hand before
 | 13. Light, sky and atmosphere | A physical sky, sunsets and night; shadows near and far; many lamps; fog and clouds; bounced light, baked and real-time; 2D bounced light |
 | 14. Materials and shaders | Materials as assets, values driven by the world, a node graph for shaders |
 | 15. Effects | Solstice, the effects suite: particles, trails, flipbooks; a pixel mode for pixel art |
+| *Later (decision 0059)* | |
 | 16. 3D animation | Animated characters from glTF: skins, blending, crowds, footsteps on the right frames |
 | 17. Netcode | Two PCs playing together over the internet |
 | 18. Scripting, full export and Git | The scripting window; finished games built for Windows, with their own Rust; working in teams through Git |
@@ -245,6 +246,12 @@ Light and effects meet in materials: how a surface takes light, glows, gets wet 
 - **A pixel mode for pixel-art games:** pixel-shaped particles (single pixels, pixel lines for wind streaks and rain, pixel circles for bubbles), movement snapped to the pixel grid, colours from the game's palette, flipbooks at pixel-art frame rates, and a ready-made set (wind streaks, fireflies, bubbles, rain, snow, dust, falling leaves, sparkles, smoke puffs); fireflies and sparks can give off real light.
 
 **Gate:** laser bolts, hits and explosions look good in the stylized look, in the benchmark battle, at 60 fps; in a pixel-art game, fireflies light a field at night and wind streaks cross it, all crisp on the pixel grid.
+
+---
+
+## Later
+
+**Later, not next:** Phases 16 to 19 are written down so nothing is lost, but they aren't built, planned in detail or reordered until Phase 15 is done and the project lead decides it's time ([decision 0059](docs/decisions/0059-2d-first.md)). 2D and effects will turn up things nobody can foresee yet, so expect these to change.
 
 ## Phase 16: 3D animation
 
