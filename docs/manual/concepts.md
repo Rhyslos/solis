@@ -12,7 +12,7 @@
 - **Panel:** one area of the editor with one job, such as the Viewport or the Console. Every panel has a **tab** with its name.
 - **Tab group:** panels that share one space. Click a tab to bring that panel to the front; the front tab is underlined in the accent colour.
 - **Docking:** dragging a panel's tab to a new place. Drop it on the edge of another panel to put them side by side, or in the middle to make them one tab group. See [Interface tour](interface-tour.md).
-- **Layout:** where all the panels are. Solis remembers yours, and has three ready-made ones (Window > Layouts).
+- **Layout:** where all the panels are. Solis remembers yours; **Window > Reset layout** puts them back as they started.
 - **Accent colour:** the one colour the editor uses to mark what's chosen or in front: the front tab's underline, the chosen tool, the selected row. Amber unless you pick another. Colours that mean something keep their own: Play is blue, Stop red, errors red.
 
 ## The 3D view

@@ -68,3 +68,4 @@ Titles below are shortened; the files have the full reasoning. Decisions 0019 to
 | `0058-listeners-and-who-hears-what.md` | A Listener component, and "Heard by" on sound events | Accepted (extends 0056) |
 | `0059-2d-first.md` | 2D first: Phase 7 is sound only, animation's groundwork moves to 2D, 3D animation becomes Phase 16 | Accepted (reorders 0054 and 0057) |
 | `0060-amber-and-colours-that-mean-something.md` | Amber by default; Play, Stop, warnings and kinds keep their own colours | Accepted (changes 0004's standard accent) |
+| `0061-settings-window-and-no-layout-presets.md` | Edit → Settings… with pages and a search box; layout presets removed, Reset layout kept | Accepted (changes 0004) |

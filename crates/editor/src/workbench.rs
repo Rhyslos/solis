@@ -11,7 +11,7 @@ use crate::camera::Camera;
 use crate::console::CONSOLE_LIMIT;
 use crate::console::{Console, LogLevel, LogLine};
 use crate::document::Document;
-use crate::layout::{self, Preset};
+use crate::layout;
 use crate::library::{LibraryItem, ProjectInfo};
 use crate::models::ModelInfo;
 use crate::panel::Panel;
@@ -182,6 +182,8 @@ pub struct Workbench {
     /// Whether files are being dragged over the window.
     pub(crate) files_hovering: bool,
     pub(crate) about_open: bool,
+    /// The Settings window, while it's open (Edit > Settings…).
+    pub(crate) settings_window: Option<crate::settings_window::SettingsWindow>,
     /// How updating is going, as the app last said.
     pub(crate) update: crate::updates::UpdateNotice,
     /// Whether updates are checked when Solis starts.
@@ -342,6 +344,7 @@ impl Workbench {
             models: BTreeMap::new(),
             files_hovering: false,
             about_open: false,
+            settings_window: None,
             update: Default::default(),
             auto_update: true,
             offer: None,
@@ -680,11 +683,6 @@ impl Workbench {
         self.console.push(level, text.into());
     }
 
-    /// Arranges the panels as `preset`.
-    pub fn apply_preset(&mut self, preset: Preset) {
-        self.dock = preset.layout();
-    }
-
     /// The window title: the program, its version and the open area.
     pub fn title(&self) -> String {
         let mut area = self.document.name();
@@ -909,6 +907,7 @@ impl Workbench {
         }
         self.about(ui);
         self.input_actions_window(ui.ctx());
+        self.settings(ui.ctx());
         self.prompts(ui, &mut actions);
         self.update_question(ui.ctx(), &mut actions);
         self.hold_while_playing(&mut actions);

@@ -71,24 +71,6 @@ fn the_console_filters_by_level_and_search() {
     assert_eq!((c.shown().count(), c.count(LogLevel::Error)), (0, 0));
 }
 
-#[test]
-fn presets_rearrange_the_panels() {
-    let mut w = Workbench::new(info(), None);
-    w.apply_preset(Preset::SmallScreen);
-    let path = w.layout().find_tab(&Panel::Console).unwrap();
-    let group = w.layout()[path.surface][path.node].tabs().unwrap().to_vec();
-    assert_eq!(
-        group,
-        [
-            Panel::Library,
-            Panel::Code,
-            Panel::Console,
-            Panel::Problems,
-            Panel::Profiler
-        ]
-    );
-}
-
 /// The whole editor in a test window, with no GPU behind the viewport.
 fn harness() -> egui_kittest::Harness<'static, Workbench> {
     harness_with(Workbench::new(info(), None))

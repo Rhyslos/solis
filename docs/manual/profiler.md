@@ -6,7 +6,7 @@
 A game feels slow, or you want to know how much more it can take: more units, more lights, more code. A **frame** is one picture on screen; at 60 frames a second each one has about 16.7 milliseconds (ms, thousandths of a second). The Profiler shows how those milliseconds are spent, on the **CPU** (the computer's processor, which runs game code and the editor) and the **GPU** (the graphics card, which draws). Fix the biggest part first.
 
 ## How to use it
-1. Click the **Profiler** tab, beside the Console and Problems at the bottom. (If you moved it, look for its tab, or use **Window > Layouts > Reset layout**.)
+1. Click the **Profiler** tab, beside the Console and Problems at the bottom. (If you moved it, look for its tab, or use **Window > Reset layout**.)
 2. Press **Play**, or move around the viewport: the Profiler measures every frame the editor draws. When nothing moves, Solis doesn't draw (the viewport says *Idle*), so nothing new is measured.
 3. Read the top line: how long the CPU takes a frame, and so the most frames a second it allows, averaged over the last second.
 4. The graph shows the last few seconds, a bar per frame, newest on the right. The two lines are 60 and 30 frames a second: bars above a line are frames too slow for it.

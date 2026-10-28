@@ -15,7 +15,8 @@ Draw the editor with egui and egui_dock, keep its state between frames (the pane
 - `panels.rs`: draws each docked panel and the bits panels share.
 - `area_panel.rs`, `properties.rs`, `console.rs`: those panels' contents.
 - `viewport.rs`: the viewport, its views (one, two or four, each with its own camera) and their corner controls.
-- `layout.rs`: the presets, and restoring a saved layout.
+- `layout.rs`: the standard layout (Reset layout), and restoring a saved one.
+- `settings_window.rs`: Edit > Settings…, the editor's settings a page at a time, with a search box (decision 0061).
 
 Tests of the whole editor (drawn with egui_kittest, without a GPU) are in `workbench_tests.rs`. `proptest-regressions/` holds the random cases the invariant tests (`invariant_tests.rs`) once failed on, which proptest runs again first; it is written by proptest, so it has no README. `src/README.md` lists every file in `src/`.
 
