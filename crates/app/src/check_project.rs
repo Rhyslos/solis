@@ -351,11 +351,21 @@ fn play_back(
     )?;
     let mut w = workbench_for(root, db, program, made_by, &area_path)?;
     w.replay(&text, &path.display().to_string());
+    // The area must start as it did when recorded: otherwise the build
+    // isn't what changed.
+    if w.world().is_some_and(|world| world.checksum() != recording.start) {
+        return Err(format!(
+            "its area, {area_path}, isn't as it was when this was recorded (changed since, or \
+             recorded with unsaved changes): record it again"
+        ));
+    }
     let ticks = recording.ticks.len() as u64;
     let mut ran = 0;
+    let mut saved = Saves::default();
     while w.replayed().is_none() && ran < ticks + SPARE_TICKS && w.world().is_some() {
         w.play_for(1.0 / 60.0);
         ran += 1;
+        saved.answer(&mut w, root)?;
     }
     match w.replayed() {
         Some(Ok(ticks)) => Ok(ticks),
@@ -365,6 +375,41 @@ fn play_back(
             tick as f64 / 60.0
         )),
         None => Err("it didn't play back to its end".into()),
+    }
+}
+
+/// Saves game code makes while a check plays a recording back: kept here,
+/// never written into the project; loads read them, or the project's own.
+#[derive(Default)]
+pub(crate) struct Saves(std::collections::HashMap<String, String>);
+
+impl Saves {
+    /// Answers what the editor asked for since last time: saves are kept,
+    /// loads are made from them (or from the project's `saves` folder).
+    pub(crate) fn answer(&mut self, w: &mut editor::Workbench, root: &Path) -> Result<(), String> {
+        for action in w.take_outbox() {
+            match action {
+                editor::WorkbenchAction::SaveGame { slot, text } => {
+                    self.0.insert(slot, text);
+                }
+                editor::WorkbenchAction::LoadGame(slot) => {
+                    let text = match self.0.get(&slot) {
+                        Some(text) => Some(text.clone()),
+                        None => crate::play_files::save_path(root, &slot).and_then(|path| {
+                            crate::play_files::read_limited(&path, crate::play_files::MAX_SAVE_BYTES)
+                                .ok()
+                                .flatten()
+                        }),
+                    };
+                    match text {
+                        Some(text) => w.load_game_from_code(&text, &slot),
+                        None => return Err(format!("it loads the save {slot}, which isn't there")),
+                    }
+                }
+                _ => {}
+            }
+        }
+        Ok(())
     }
 }
 
@@ -407,9 +452,11 @@ pub(crate) fn workbench_for(
             && let Some(id) = item.id
             && let Some(file) = db.file(id)
         {
-            let read = crate::area_file::AreaFiles::read(&file, &w.document().registry)
-                .map_err(|why| format!("the assembly {}: {why}", item.path))?;
-            w.set_assembly(id, std::sync::Arc::new(read));
+            // One the editor can't read is left out, as the editor does (the
+            // Files step reports it); only a game that uses it fails.
+            if let Ok(read) = crate::area_file::AreaFiles::read(&file, &w.document().registry) {
+                w.set_assembly(id, std::sync::Arc::new(read));
+            }
         }
     }
     w.set_library(items);

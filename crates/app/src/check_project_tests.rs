@@ -78,6 +78,7 @@ fn a_changed_area_or_a_damaged_file_fails() {
     assert!(text.contains("FAIL  assets/broken.solsound"), "{text}");
     assert!(text.contains("doesn't say which area"), "{text}");
     assert!(text.contains("walk.solrec"), "{text}");
+    assert!(text.contains("isn't as it was when this was recorded"), "{text}");
     assert!(text.contains("Don't ship it"), "{text}");
     let _ = std::fs::remove_dir_all(root.parent().unwrap());
 }
@@ -142,5 +143,61 @@ fn a_file_bigger_than_its_kind_allows_fails_without_being_read() {
     let report = check(&root, MADE_BY);
     let text = report.text();
     assert!(text.contains("FAIL  assets/huge.glb.solmeta"), "{text}");
+    let _ = std::fs::remove_dir_all(&root);
+}
+
+#[test]
+fn a_recording_that_saves_plays_back_the_same_and_writes_nothing() {
+    // The Phase 8 review: the check didn't answer game code's saves and
+    // loads. A recording ends at a load (it plays back from Play), so only
+    // saves come up while one plays back: they're kept by the check, never
+    // written into the project.
+    const CODE: &str = "get \"solis/world\":[saveGame, loadGame];\n\
+        get \"solis/entity\":[positionOf, moveTo];\n\
+        component Hopper {\n\
+            has { int ticks = 0; }\n\
+            method update(float dt) {\n\
+                ticks = ticks + 1;\n\
+                moveTo(me, positionOf(me) + [0.1, 0, 0]);\n\
+                is ticks == 10? then { saveGame(\"quick\"); }\n\
+                is ticks == 20? then { loadGame(\"quick\"); }\n\
+            }\n\
+        }\n\
+        pass Hopper;\nend\n";
+    let root = std::env::temp_dir().join(format!("solis-check-hop-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&root);
+    asset_db::Project::create(&root, "Hop").unwrap();
+    let assets = root.join("assets");
+    std::fs::write(assets.join("main.lst"), CODE).unwrap();
+    let mut area = area::Area::new();
+    let mut hopper = area::EntityData::new("Hopper").with(&area::builtin::Transform::default());
+    hopper
+        .components
+        .insert("Hopper".into(), reflect::ComponentData::default());
+    area.spawn(hopper);
+    let registry = area::builtin::registry().unwrap();
+    std::fs::write(
+        assets.join("hop.solarea"),
+        area::text::write(&area, &registry, &|_| None),
+    )
+    .unwrap();
+    let project = asset_db::Project::open(&root).unwrap();
+    let mut quiet = Report::default();
+    let program = check_code(&project.assets(), MADE_BY, &mut quiet);
+    assert!(program.is_some(), "{:?}", quiet.lines);
+    let (db, _, _) = asset_db::AssetDb::open(project, assets::Limits::default());
+    let mut w = workbench_for(&root, &db, program, MADE_BY, "hop.solarea").unwrap();
+    w.play_and_record();
+    let mut saved = Saves::default();
+    for _ in 0..15 {
+        w.play_for(1.0 / 60.0);
+        saved.answer(&mut w, &root).unwrap();
+    }
+    let checks = root.join(RECORDINGS).join(CHECKS);
+    std::fs::create_dir_all(&checks).unwrap();
+    std::fs::write(checks.join("hop.solrec"), w.recording_text().unwrap()).unwrap();
+    let report = check(&root, MADE_BY);
+    assert_eq!(report.failed, 0, "{}", report.text());
+    assert!(!root.join("saves").exists(), "the check writes no saves");
     let _ = std::fs::remove_dir_all(&root);
 }

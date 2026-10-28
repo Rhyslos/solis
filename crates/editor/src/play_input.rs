@@ -5,7 +5,7 @@
 //! back (Play > Play and record inputs, Replay a recording…).
 
 use crate::console::LogLevel;
-use crate::workbench::Workbench;
+use crate::workbench::{Workbench, WorkbenchAction};
 use std::sync::Arc;
 
 /// An egui key's name as bindings use it (egui's own names: `W`,
@@ -160,6 +160,15 @@ impl Workbench {
         // The area it's recorded in, inside the project's assets, so the
         // project's check can play it back on its own (Phase 8, C4).
         let area = self.recorded_area();
+        // Played back on its own (a project's check), the area is read as
+        // saved: unsaved changes would make it play back differently.
+        if area.is_some() && self.document.is_dirty() {
+            self.log(
+                LogLevel::Warning,
+                "The area has unsaved changes: save it before recording, or this recording \
+                 won't play back the same in a project's check (which reads the saved area).",
+            );
+        }
         self.play();
         if let Some(playing) = &mut self.playing {
             playing.recording = Some(input::Recording {
@@ -179,7 +188,12 @@ impl Workbench {
     /// folders, when it's saved there (unsaved changes aside).
     fn recorded_area(&self) -> Option<String> {
         let assets = &self.project.as_ref()?.assets;
-        let inside = self.document.file()?.strip_prefix(assets).ok()?;
+        let file = self.document.file()?;
+        // The same folder may be spelt differently (letter case on Windows,
+        // a link): compared as the system resolves them, when it can.
+        let canonical = |p: &std::path::Path| p.canonicalize().unwrap_or_else(|_| p.to_path_buf());
+        let (file, assets) = (canonical(file), canonical(assets));
+        let inside = file.strip_prefix(&assets).ok()?;
         let parts: Vec<String> = inside
             .components()
             .map(|c| match c {
@@ -238,6 +252,12 @@ impl Workbench {
                  same.",
             );
         }
+    }
+
+    /// What the editor asks of the app, taken (for tools that run the game
+    /// without a window, which answer saves and loads themselves).
+    pub fn take_outbox(&mut self) -> Vec<WorkbenchAction> {
+        std::mem::take(&mut self.outbox)
     }
 
     /// The recording being made, as its file's text (for tools and tests

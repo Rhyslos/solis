@@ -28,7 +28,9 @@ use std::fmt::{self, Write as _};
 pub const VERSION: u32 = 1;
 
 /// Areas' and assemblies' version and upgraders (Phase 8, C1): each step
-/// turns a file read at one version into the next, before it's checked.
+/// turns a file read at one version into the next, after its blocks are
+/// read (so a step can rename a field or a component, but the layout
+/// itself, header, IDs and blocks, is read as this build reads it).
 /// Every version ever released keeps an example file in
 /// `tests/fixtures/area/` that the app's tests open.
 pub static FORMAT: reflect::upgrade::Format<AreaFile> = reflect::upgrade::Format {
