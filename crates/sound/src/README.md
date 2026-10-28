@@ -1,0 +1,16 @@
+# sound/src
+
+Sound (decision 0056): the Kira library does the playing and mixing, wrapped here so nothing else sees its types. WAV and Ogg Vorbis files are read here, within limits, never crashing on a damaged file.
+
+**Start reading at** `read.rs`, then `device.rs`.
+
+| File | What it does | Main items |
+| --- | --- | --- |
+| `lib.rs` | Lists the modules and what the crate offers. | |
+| `read.rs` | Reads WAV (through `hound`) and Ogg Vorbis (through `lewton`) within limits. Short sounds are decoded into memory; long ones are measured once and streamed from their file. | `Clip`, `ClipInfo`, `Samples`, `Format`, `ReadError`, `read_file`, `measure_file` |
+| `vorbis_check.rs` | Checks an Ogg Vorbis file's headers before `lewton` reads them, because a damaged header can make it ask for more memory than there is. | |
+| `overview.rs` | A sound's loudness over its length, small enough to keep for every sound: the waveform the Library and Properties draw. | `Overview` |
+| `device.rs` | The sound device on the sound card (or a test device, or none), and the editor's previews on a track of their own. | `SoundDevice` |
+| `tests.rs` | Tests for reading sound files, their overviews and the device, including the damaged files in [`../tests/data`](../tests/README.md). | |
+
+**Read next:** the crate's [README](../README.md).
