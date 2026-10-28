@@ -206,7 +206,7 @@ pub fn read(text: &str) -> Result<ReadFrames, FramesError> {
                 _ => skip(&mut notes, "the sheet should be an asset's ID in quotes"),
             },
             "first" => match &field.value {
-                Value::Text(t) => file.first = name(t),
+                Value::Text(t) => file.first = clean_name(t),
                 _ => skip(&mut notes, "first should be a clip's name in quotes"),
             },
             _ if key.starts_with("tag") || key.starts_with("clip") => {
@@ -246,9 +246,19 @@ pub fn read(text: &str) -> Result<ReadFrames, FramesError> {
     Ok(ReadFrames { file, notes })
 }
 
-/// A name from the file: trimmed, at most [`MAX_NAME`] characters.
-fn name(text: &str) -> String {
-    text.trim().chars().take(MAX_NAME).collect()
+/// A name from the file: without control characters, at most
+/// [`MAX_NAME`] characters, trimmed (after cutting, so it reads back the
+/// same once written; found by fuzzing).
+pub fn clean_name(text: &str) -> String {
+    let kept: String = text
+        .chars()
+        .filter(|c| !c.is_control())
+        .collect::<String>()
+        .trim()
+        .chars()
+        .take(MAX_NAME)
+        .collect();
+    kept.trim_end().to_owned()
 }
 
 /// A speed, brought into range.
@@ -279,7 +289,7 @@ fn frame_number(value: &Value) -> Result<u32, String> {
 /// An event's name ("" for none).
 fn event(value: &Value) -> Result<String, String> {
     match value {
-        Value::Text(t) => Ok(name(t)),
+        Value::Text(t) => Ok(clean_name(t)),
         _ => Err("an event should be a name in quotes".to_owned()),
     }
 }
@@ -293,7 +303,7 @@ fn read_tag(value: &Value, line: usize, notes: &mut Vec<String>) -> Result<TagCh
     let [Value::Text(n), s, Value::List(evs)] = items.as_slice() else {
         return Err(shape.to_owned());
     };
-    let n = name(n);
+    let n = clean_name(n);
     if n.is_empty() {
         return Err("a tag line needs the tag's name".to_owned());
     }
@@ -334,7 +344,7 @@ fn read_clip(value: &Value, line: usize, notes: &mut Vec<String>) -> Result<OwnC
     let [Value::Text(n), s, Value::Text(d), r, Value::List(frames)] = items.as_slice() else {
         return Err(shape.to_owned());
     };
-    let n = name(n);
+    let n = clean_name(n);
     if n.is_empty() {
         return Err("a clip needs a name".to_owned());
     }

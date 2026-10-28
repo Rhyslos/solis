@@ -223,7 +223,7 @@ impl FramesEditor {
     /// Renames the clip made here called `old` to `new` (trimmed), if it's
     /// free. Returns whether it changed.
     pub fn rename(&mut self, clips: &ClipSet, old: &str, new: &str) -> bool {
-        let new: String = new.trim().chars().take(frames_file::MAX_NAME).collect();
+        let new = frames_file::clean_name(new);
         if new.is_empty() || new == old || clips.get(&new).is_some() {
             return false;
         }
@@ -316,7 +316,7 @@ impl FramesEditor {
     /// Aseprite tag it's an event Solis adds to that frame (Aseprite's own
     /// stay).
     pub fn set_event(&mut self, clips: &ClipSet, event: &str) -> bool {
-        let event: String = event.trim().chars().take(frames_file::MAX_NAME).collect();
+        let event = frames_file::clean_name(event);
         let Some(clip) = clips.get(&self.clip) else {
             return false;
         };

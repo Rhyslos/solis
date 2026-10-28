@@ -153,3 +153,16 @@ fn a_clips_file_is_known_by_its_extension() {
     assert!(is_frames_file(std::path::Path::new("WALKER.SOLFRAMES")));
     assert!(!is_frames_file(std::path::Path::new("walker.aseprite")));
 }
+
+#[test]
+fn a_name_cut_short_reads_back_the_same() {
+    // Found by fuzzing: a name whose 64th character was a space wrote
+    // "x " and read back "x".
+    let odd = format!("\u{8}{}{}foot", "a".repeat(62), "\u{b}".repeat(40));
+    let file = read_ok(&format!(
+        "frames version 1;\ntag1 = [\"w\", 1.0, [[3, \"{odd}\"]]];\n"
+    ));
+    let event = &file.tags[0].events[0].1;
+    assert!(!event.chars().any(char::is_control), "{event:?}");
+    assert_eq!(read_ok(&write(&file)), file);
+}
