@@ -40,6 +40,33 @@ fn its_files_read_back() {
             Sidecar::parse(&text).unwrap();
         }
     }
+    // Every sound event reads, and each take is a sound file it writes
+    // (by the ID in that file's sidecar).
+    let files = files();
+    let ids: Vec<reflect::AssetId> = files
+        .iter()
+        .filter(|(p, _)| p.ends_with(".wav.solmeta"))
+        .map(|(_, b)| Sidecar::parse(&String::from_utf8_lossy(b)).unwrap().id)
+        .collect();
+    assert_eq!(ids.len(), 7);
+    let mut events = 0;
+    for (path, bytes) in &files {
+        if path.ends_with(".solsound") {
+            let read = sound::event::read(&String::from_utf8_lossy(bytes)).unwrap();
+            assert!(read.notes.is_empty(), "{path}: {:?}", read.notes);
+            assert!(!read.event.takes.is_empty(), "{path}");
+            assert!(read.event.takes.iter().all(|t| ids.contains(t)), "{path}");
+            assert!(
+                sound::Mixer::default().index_of(&read.event.bus).is_some(),
+                "{path}"
+            );
+            events += 1;
+        }
+        if path.ends_with(".wav") {
+            sound::read_bytes(bytes).unwrap();
+        }
+    }
+    assert_eq!(events, 4);
     let bindings = input::Bindings::read(&bindings().write()).unwrap();
     assert_eq!(bindings.get("QuickSave").unwrap().inputs, ["F6"]);
     assert_eq!(bindings.get("QuickLoad").unwrap().inputs, ["F7"]);
@@ -116,6 +143,22 @@ fn the_playground_is_made_as_a_project_and_plays() {
     // The platform has slid a third of its way in two seconds of six.
     let slid = at(&w, platform);
     assert!(slid.x > 5.0 && slid.x < 13.0, "platform at {slid}");
+    // Its sounds (S7): the music, the radio and the drip keep playing;
+    // the cave echoes; no footsteps while the character stands still.
+    let mut playing: Vec<String> = w
+        .audio_sources()
+        .into_iter()
+        .map(|(_, s, _)| s.event)
+        .collect();
+    playing.sort();
+    assert_eq!(playing, ["music/theme", "sfx/drip", "voice/radio"]);
+    assert_eq!(w.reverb_zones().len(), 1);
+    let steps = w
+        .take_game_sounds()
+        .iter()
+        .filter(|s| matches!(&s.request, editor::game_sound::Request::Play(name, _) if name == "sfx/footstep"))
+        .count();
+    assert_eq!(steps, 0, "standing still");
 }
 
 #[test]
@@ -181,4 +224,62 @@ fn entity_fields_survive_the_area_opening_before_the_code_is_checked() {
     );
     assert!(!w.document().is_dirty(), "not an unsaved change");
     let _ = std::fs::remove_dir_all(root.parent().unwrap());
+}
+
+#[test]
+fn footsteps_follow_ground_covered_and_never_while_still() {
+    let root = std::env::temp_dir()
+        .join(format!("solis-playground-steps-{}", std::process::id()))
+        .join("Playground");
+    let _ = std::fs::remove_dir_all(&root);
+    make(&root).unwrap();
+    let assets = Project::open(&root).unwrap().assets();
+    let mut w = editor::Workbench::new(
+        editor::AppInfo {
+            name: "Test".into(),
+            version: "1.0".into(),
+        },
+        None,
+    );
+    w.set_program(Some(std::sync::Arc::new(compiled(&assets))));
+    // A walker carried 10 m along the ground in 3 s (the platform's
+    // code moves it), and one standing still.
+    let mut area = area::Area::new();
+    let mut walk = ComponentData::default();
+    walk.set("from", Value::vec3(Vec3::ZERO));
+    walk.set("to", Value::vec3(Vec3::new(10.0, 0.0, 0.0)));
+    walk.set("seconds", Value::Float(6.0));
+    let mut walker = EntityData::new("Walker").with(&Transform::default());
+    walker.components.insert("Platform".into(), walk);
+    walker
+        .components
+        .insert("Footsteps".into(), ComponentData::default());
+    let walker = area.spawn(walker);
+    let mut still = EntityData::new("Still").with(&Transform::default());
+    still
+        .components
+        .insert("Footsteps".into(), ComponentData::default());
+    let still = area.spawn(still);
+    w.open_area(area, assets.join("steps.solarea"));
+    w.play();
+    for _ in 0..(60 * 3) {
+        w.play_for(1.0 / 60.0);
+    }
+    let sounds = w.take_game_sounds();
+    let on = |who: EntityId| {
+        sounds
+            .iter()
+            .filter(|s| match &s.request {
+                editor::game_sound::Request::Play(name, script::SoundAt::On(e)) => {
+                    name == "sfx/footstep" && *e == who
+                }
+                _ => false,
+            })
+            .count()
+    };
+    let steps = on(walker);
+    // 10 m at a stride of 0.8 m: about 12 steps (the start is gentle).
+    assert!((10..=13).contains(&steps), "{steps} steps");
+    assert_eq!(on(still), 0, "none while standing");
+    let _ = std::fs::remove_dir_all(&root);
 }
