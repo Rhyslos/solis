@@ -2,6 +2,7 @@
 //! values and back (`reflect::Component`); missing or damaged values take
 //! their defaults, so an older or damaged area still loads.
 
+mod audio_source;
 mod camera;
 mod environment;
 mod light;
@@ -9,6 +10,7 @@ mod model;
 mod physics;
 mod transform;
 
+pub use audio_source::AudioSource;
 pub use camera::Camera;
 pub use environment::{Environment, Sky, ToneMapping};
 pub use light::{Light, LightKind, aim, sun_rotation};
@@ -30,6 +32,7 @@ pub fn registry() -> Result<Registry, RegistryError> {
     registry.register_type::<RigidBody>()?;
     registry.register_type::<Collider>()?;
     registry.register_type::<CharacterBody>()?;
+    registry.register_type::<AudioSource>()?;
     Ok(registry)
 }
 
@@ -129,6 +132,7 @@ mod tests {
         assert_eq!(
             names,
             [
+                "AudioSource",
                 "Camera",
                 "CharacterBody",
                 "Collider",
@@ -157,6 +161,11 @@ mod tests {
     fn every_built_in_round_trips_through_values() {
         round_trip(&Transform::default());
         round_trip(&Camera::default());
+        round_trip(&AudioSource {
+            event: "sfx/engine".into(),
+            playing: false,
+            volume_db: -3.0,
+        });
         round_trip(&Light::sun());
         round_trip(&Light::point());
         round_trip(&Light::spot());

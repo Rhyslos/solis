@@ -14,7 +14,11 @@
 //! bus1 = ["Master", "", 0.0, []];
 //! bus2 = ["Music", "Master", 0.0, [["Voice", -8.0, 0.2, 1.0]]];
 //! bus3 = ["Effects", "Master", 0.0, []];
+//! voices = 64;
 //! ```
+//!
+//! `voices` is how many sounds are heard at once (S5,
+//! [`crate::voices`]): 16 to 256.
 //!
 //! Read as a hostile file: within limits, a value out of range is brought
 //! into range (with a note), and anything that can't make a sensible tree
@@ -107,11 +111,14 @@ impl Bus {
     }
 }
 
-/// The project's buses, Master first, each after the bus it's inside.
+/// The project's buses, Master first, each after the bus it's inside,
+/// and how many sounds are heard at once.
 #[derive(Debug, Clone, PartialEq)]
 pub struct Mixer {
     /// The buses.
     pub buses: Vec<Bus>,
+    /// How many sounds are heard at once (the most important are).
+    pub voices: u32,
 }
 
 impl Default for Mixer {
@@ -129,6 +136,7 @@ impl Default for Mixer {
                 Bus::new("Ambience", MASTER),
                 Bus::new("UI", MASTER),
             ],
+            voices: crate::voices::STANDARD_VOICES,
         }
     }
 }
@@ -311,8 +319,26 @@ pub fn read(text: &str) -> Result<ReadMixer, MixerError> {
     })?;
     let mut notes = Vec::new();
     let mut buses: Vec<(usize, Bus)> = Vec::new();
+    let mut voices = crate::voices::STANDARD_VOICES;
     for field in &file.fields {
         let line = field.line;
+        if field.key == "voices" {
+            let Value::Int(n) = field.value else {
+                return Err(MixerError {
+                    line,
+                    message: "voices should be a whole number".to_owned(),
+                });
+            };
+            let (lo, hi) = crate::voices::VOICES_RANGE;
+            let fitted = n.clamp(i64::from(lo), i64::from(hi));
+            if fitted != n {
+                notes.push(format!(
+                    "line {line}: voices = {n} is outside {lo} to {hi}, so it's {fitted}"
+                ));
+            }
+            voices = u32::try_from(fitted).unwrap_or(crate::voices::STANDARD_VOICES);
+            continue;
+        }
         if !field.key.starts_with("bus") {
             notes.push(format!(
                 "line {line}: \"{}\" isn't a mixer setting, so it's skipped",
@@ -336,7 +362,8 @@ pub fn read(text: &str) -> Result<ReadMixer, MixerError> {
         }
         buses.push((line, bus));
     }
-    let mixer = tidy(buses, &mut notes)?;
+    let mut mixer = tidy(buses, &mut notes)?;
+    mixer.voices = voices;
     Ok(ReadMixer { mixer, notes })
 }
 
@@ -492,6 +519,7 @@ fn tidy(buses: Vec<(usize, Bus)>, notes: &mut Vec<String>) -> Result<Mixer, Mixe
     }
     Ok(Mixer {
         buses: ordered.into_iter().map(|(_, b)| b).collect(),
+        voices: crate::voices::STANDARD_VOICES,
     })
 }
 
@@ -532,7 +560,7 @@ fn within(list: &[(usize, Bus)], inner: usize, outer: usize) -> bool {
 /// Writes the mixer as a `mixer.solmix` file, one line per bus.
 pub fn write(mixer: &Mixer) -> String {
     let f = |v: f32| Value::Float(f64::from(v));
-    let fields: Vec<(String, Value)> = mixer
+    let mut fields: Vec<(String, Value)> = mixer
         .buses
         .iter()
         .enumerate()
@@ -560,6 +588,7 @@ pub fn write(mixer: &Mixer) -> String {
             )
         })
         .collect();
+    fields.push(("voices".to_owned(), Value::Int(i64::from(mixer.voices))));
     let borrowed: Vec<(&str, Value)> = fields
         .iter()
         .map(|(k, v)| (k.as_str(), v.clone()))

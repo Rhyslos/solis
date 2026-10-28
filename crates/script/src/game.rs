@@ -62,6 +62,8 @@ pub enum Change {
     Sound(String, crate::host::SoundAt),
     /// `stopSoundsOn`: stop the sounds on this entity.
     StopSounds(EntityId),
+    /// `setSoundPlaying`: turn this entity's `AudioSource` on or off.
+    SoundPlaying(EntityId, bool),
     /// `setBusVolume`: this bus at this share of its fader (0 to 1) for
     /// the rest of the play.
     BusVolume(String, f32),
@@ -411,6 +413,15 @@ impl Host for ViewHost {
         if self.kept.room() {
             let order = self.order();
             self.kept.changes.push((order, Change::StopSounds(which)));
+        }
+    }
+
+    fn set_sound_playing(&mut self, which: EntityId, playing: bool) {
+        if self.kept.room() {
+            let order = self.order();
+            self.kept
+                .changes
+                .push((order, Change::SoundPlaying(which, playing)));
         }
     }
 

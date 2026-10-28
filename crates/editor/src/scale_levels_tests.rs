@@ -76,7 +76,7 @@ fn fleet(units: usize) -> Workbench {
 
 /// The CPU's average frame with `units` playing, after enough to settle
 /// (every unit's ten lasers in flight), and the stages' share of it.
-fn cpu_frame(units: usize, frames: usize) -> (f64, [f64; 5]) {
+fn cpu_frame(units: usize, frames: usize) -> (f64, [f64; 6]) {
     // Frames of 1/60 s, as at 60 fps: one tick each.
     let mut h = egui_kittest::Harness::builder()
         .with_size(egui::vec2(1440.0, 900.0))
@@ -126,7 +126,7 @@ fn cpu_frame(units: usize, frames: usize) -> (f64, [f64; 5]) {
 }
 
 /// The stages, for the scale check's line.
-fn split(cpu: [f64; 5]) -> String {
+fn split(cpu: [f64; 6]) -> String {
     Stage::ALL
         .iter()
         .zip(cpu)

@@ -128,6 +128,22 @@ pub(crate) fn mixer_panel(ui: &mut Ui, state: &MixerState, playing: bool) -> Vec
                     requests.push(MixerRequest::Select(at));
                 }
             }
+            ui.separator();
+            ui.label(RichText::new("Heard at once").color(theme::TEXT_WEAK))
+                .on_hover_text(
+                    "How many sounds play at once: when more want to, the most important \
+                     are heard (by their event's priority, then the loudest)",
+                );
+            let mut voices = state.mixer.voices;
+            let (lo, hi) = sound::voices::VOICES_RANGE;
+            let field = ui.add(egui::DragValue::new(&mut voices).range(lo..=hi).speed(1));
+            let let_go = field.drag_stopped() || field.lost_focus();
+            if (field.changed() && voices != state.mixer.voices) || let_go {
+                let mut mixer = state.mixer.clone();
+                mixer.voices = voices;
+                let save = let_go || (!field.dragged() && !field.has_focus());
+                requests.push(MixerRequest::Changed { mixer, save });
+            }
             ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                 ui.label(RichText::new(status(state, playing)).color(theme::TEXT_WEAK));
             });
@@ -227,8 +243,21 @@ fn strip(ui: &mut Ui, state: &MixerState, i: usize, requests: &mut Vec<MixerRequ
                             .vertical()
                             .show_value(false),
                     )
-                    .on_hover_text(format!("{}'s volume", bus.name));
-                fader_changed(state, i, volume, &fader, requests);
+                    .on_hover_text(format!(
+                        "{}'s volume (double-click puts it back to 0 dB)",
+                        bus.name
+                    ));
+                // Sliders only sense dragging: clicks too, for the
+                // double-click.
+                let fader = fader.interact(egui::Sense::click());
+                if fader.double_clicked() {
+                    // Back to 0 dB, as in most sound programs.
+                    let mut mixer = state.mixer.clone();
+                    mixer.buses[i].volume_db = 0.0;
+                    requests.push(MixerRequest::Changed { mixer, save: true });
+                } else {
+                    fader_changed(state, i, volume, &fader, requests);
+                }
             });
             let mut volume = bus.volume_db;
             let field = ui.add(

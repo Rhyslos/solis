@@ -711,3 +711,43 @@ fn write_fuzz_seeds() {
     );
     put("game_code", "busy.lst", BUSY);
 }
+
+#[test]
+fn a_sound_turned_off_stays_off_after_a_load() {
+    use area::builtin::AudioSource;
+    let mut w = Workbench::new(info(), None);
+    w.project = Some(crate::library::ProjectInfo {
+        name: "Radio".into(),
+        root: std::path::PathBuf::from("/nowhere"),
+        assets: std::path::PathBuf::from("/nowhere/assets"),
+    });
+    let radio = w.add_entity();
+    let source = AudioSource {
+        event: "radio".into(),
+        ..AudioSource::default()
+    };
+    w.document
+        .edit(
+            "Add a sound",
+            crate::commands::component_edits(radio, None, &source),
+            None,
+            None,
+        )
+        .unwrap();
+    w.play();
+    assert_eq!(w.audio_sources().len(), 1, "on at Play");
+    let before = w.world().unwrap().checksum();
+    w.playing
+        .as_mut()
+        .unwrap()
+        .world
+        .set_sound_playing(radio, false);
+    assert!(w.audio_sources().is_empty(), "turned off");
+    assert_ne!(w.world().unwrap().checksum(), before, "in the checksum");
+    let text = w.save_of_game().unwrap().write();
+    w.stop();
+    w.play();
+    assert_eq!(w.audio_sources().len(), 1, "a new play starts it again");
+    w.load_game(&text, "quick");
+    assert!(w.audio_sources().is_empty(), "the save keeps it off");
+}

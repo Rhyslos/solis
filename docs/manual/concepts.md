@@ -142,6 +142,8 @@
 - **Fader:** a bus's volume control, the slider on its strip in the Mixer.
 - **Meter:** a bar showing how loud a bus is right now: green, then yellow, red near the top.
 - **Ducking:** turning one bus down automatically while another plays: music under speech.
+- **Voice:** one sound playing. A game can have thousands of sounds wanting to play; only so many voices are heard at once, the most important first.
+- **Resting (virtual) sound:** a looping sound that isn't heard right now, so it isn't mixed, but keeps its place in time, so it carries on where it would be when it's heard again.
 - **Mute and solo:** mute silences a bus; solo plays only the soloed buses, to hear one part on its own.
 - **Streaming:** playing a long sound a piece at a time as it's read from its file, instead of reading all of it first, so a long piece of music doesn't fill the memory. Solis streams sounds longer than ten minutes.
 

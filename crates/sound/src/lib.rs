@@ -26,6 +26,7 @@ mod overview;
 pub mod read;
 #[cfg(test)]
 mod tests;
+pub mod voices;
 mod vorbis_check;
 
 pub use device::SoundDevice;

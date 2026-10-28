@@ -1536,6 +1536,8 @@ impl eframe::App for App {
         // What this frame's ticks asked to hear.
         self.game_audio
             .frame(&mut self.workbench, &self.sounds, self.sound.device(), &ctx);
+        self.workbench
+            .set_sound_time(std::time::Duration::from_secs_f64(self.game_audio.spent()));
         self.queued.extend(actions);
         self.run_queue(&ctx);
         let title = self.workbench.title();

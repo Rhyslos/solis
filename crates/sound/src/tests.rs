@@ -500,7 +500,7 @@ fn test_dir(name: &str) -> PathBuf {
 mod game_sounds {
     use super::*;
     use crate::event::{Fade, Pick};
-    use crate::game::{MAX_PLAYING, Placement, Spot, within_reach};
+    use crate::game::{MAX_PLAYING, Placement, Spot, Voice, within_reach};
     use reflect::{AssetId, Id};
 
     fn pick() -> Pick {
@@ -529,16 +529,26 @@ mod game_sounds {
         let mut device = SoundDevice::for_tests();
         let clip = clip();
         device
-            .play_game_sound(&clip, &pick(), Placement::Flat, 2)
+            .play_game_sound(&clip, &pick(), Placement::Flat, Voice::on_bus(2))
             .unwrap();
         device
-            .play_game_sound(&clip, &pick(), Placement::At(spot(5.0)), 2)
+            .play_game_sound(&clip, &pick(), Placement::At(spot(5.0)), Voice::on_bus(2))
             .unwrap();
         device
-            .play_game_sound(&clip, &pick(), Placement::On(7, spot(2.0)), 2)
+            .play_game_sound(
+                &clip,
+                &pick(),
+                Placement::On(7, spot(2.0)),
+                Voice::on_bus(2),
+            )
             .unwrap();
         device
-            .play_game_sound(&clip, &pick(), Placement::On(7, spot(3.0)), 2)
+            .play_game_sound(
+                &clip,
+                &pick(),
+                Placement::On(7, spot(3.0)),
+                Voice::on_bus(2),
+            )
             .unwrap();
         assert_eq!(device.game_sounds_playing(), 4);
         assert_eq!(device.game_sound_entities(), vec![7]);
@@ -549,7 +559,7 @@ mod game_sounds {
         device.pause_game_sounds(true);
         // A Step's sounds play while paused.
         device
-            .play_game_sound(&clip, &pick(), Placement::Flat, 2)
+            .play_game_sound(&clip, &pick(), Placement::Flat, Voice::on_bus(2))
             .unwrap();
         device.pause_game_sounds(false);
         device.stop_game_sounds();
@@ -568,7 +578,7 @@ mod game_sounds {
                 &Clip::streamed(&path, info),
                 &pick(),
                 Placement::At(spot(1.0)),
-                2,
+                Voice::on_bus(2),
             )
             .unwrap();
         assert_eq!(device.game_sounds_playing(), 1);
@@ -580,17 +590,17 @@ mod game_sounds {
         let clip = clip();
         for _ in 0..MAX_PLAYING {
             device
-                .play_game_sound(&clip, &pick(), Placement::Flat, 2)
+                .play_game_sound(&clip, &pick(), Placement::Flat, Voice::on_bus(2))
                 .unwrap();
         }
         assert!(
             device
-                .play_game_sound(&clip, &pick(), Placement::Flat, 2)
+                .play_game_sound(&clip, &pick(), Placement::Flat, Voice::on_bus(2))
                 .is_err()
         );
         let mut silent = SoundDevice::silent();
         silent
-            .play_game_sound(&clip, &pick(), Placement::Flat, 2)
+            .play_game_sound(&clip, &pick(), Placement::Flat, Voice::on_bus(2))
             .unwrap();
         silent.set_listener([0.0; 3], [0.0, 0.0, 0.0, 1.0]);
         silent.stop_game_sounds();
@@ -605,10 +615,10 @@ mod game_sounds {
         device.set_mixer(&mixer);
         // Voice (3) and a bus that isn't there (99, so Master).
         device
-            .play_game_sound(&clip, &pick(), Placement::Flat, 3)
+            .play_game_sound(&clip, &pick(), Placement::Flat, Voice::on_bus(3))
             .unwrap();
         device
-            .play_game_sound(&clip, &pick(), Placement::Flat, 99)
+            .play_game_sound(&clip, &pick(), Placement::Flat, Voice::on_bus(99))
             .unwrap();
         let busy = device.busy_buses(mixer.buses.len());
         assert_eq!(busy, [true, false, false, true, false, false]);
@@ -625,7 +635,7 @@ mod game_sounds {
         assert_eq!(device.game_sounds_playing(), 0);
         assert_eq!(device.take_bus_meters().len(), 7);
         device
-            .play_game_sound(&clip, &pick(), Placement::Flat, 3)
+            .play_game_sound(&clip, &pick(), Placement::Flat, Voice::on_bus(3))
             .unwrap();
         assert!(device.busy_buses(7)[3]);
         let mut silent = SoundDevice::silent();
@@ -633,6 +643,73 @@ mod game_sounds {
         silent.set_bus_levels(&[0.0; 7]);
         assert!(silent.take_bus_meters().is_empty());
         assert_eq!(silent.busy_buses(7), vec![false; 7]);
+    }
+
+    #[test]
+    fn loops_play_on_until_stopped_and_are_counted_apart() {
+        let mut device = SoundDevice::for_tests();
+        let clip = clip();
+        let looped = Voice {
+            bus: 2,
+            event: 9,
+            looping: true,
+            start_s: 0.5,
+            extra_db: 3.0,
+        };
+        device
+            .play_game_sound(&clip, &pick(), Placement::On(4, spot(2.0)), looped)
+            .unwrap();
+        device
+            .play_game_sound(
+                &clip,
+                &pick(),
+                Placement::On(4, spot(2.0)),
+                Voice {
+                    event: 9,
+                    ..Voice::on_bus(2)
+                },
+            )
+            .unwrap();
+        device
+            .play_game_sound(
+                &clip,
+                &pick(),
+                Placement::Flat,
+                Voice {
+                    event: 1,
+                    ..Voice::on_bus(2)
+                },
+            )
+            .unwrap();
+        assert_eq!(device.loops_playing(), vec![4]);
+        assert_eq!(device.one_shots_playing(), 2);
+        assert_eq!(device.game_sounds_of_event(9), 2);
+        // Stopping the loop leaves the entity's one-shot alone.
+        device.stop_loop_on(4);
+        assert!(device.loops_playing().is_empty());
+        assert_eq!(device.game_sounds_of_event(9), 1);
+        // A start past the end, or not a number, is kept in the sound.
+        for start_s in [1e9, f64::NAN, -3.0] {
+            device
+                .play_game_sound(
+                    &clip,
+                    &pick(),
+                    Placement::Flat,
+                    Voice {
+                        start_s,
+                        extra_db: f32::NAN,
+                        ..looped
+                    },
+                )
+                .unwrap();
+        }
+        let mut silent = SoundDevice::silent();
+        assert_eq!(
+            (silent.one_shots_playing(), silent.game_sounds_of_event(9)),
+            (0, 0)
+        );
+        silent.stop_loop_on(4);
+        assert!(silent.loops_playing().is_empty());
     }
 
     #[test]

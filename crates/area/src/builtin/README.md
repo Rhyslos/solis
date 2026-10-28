@@ -10,6 +10,7 @@ The built-in components. Each is a typed Rust struct that turns into values and 
 | `light.rs` | The sun, point lights and spotlights. A light shines along its entity's -Z. | `Light`, `LightKind` |
 | `environment.rs` | The sky, fog, exposure and tone mapping, saved with each area (decision 0017). | `Environment`, `Sky`, `ToneMapping` |
 | `camera.rs` | What the game shows: field of view, near and far, and its projection. Looks along the entity's -Z. | `Camera` |
+| `audio_source.rs` | A sound that keeps playing at the entity: a sound event by name, on or off, and a volume (Phase 7, S5). | `AudioSource` |
 | `physics.rs` | Physics components (decision 0036): a body that moves, a shape to bump into, and a character's standing capsule. Plain values; the game's world turns them into physics. | `RigidBody`, `Collider`, `CharacterBody` |
 
 **Adding a component:** write its struct here, implement `reflect::Component`, and add it to `registry` in `mod.rs`. Properties then draws it without any editor code.

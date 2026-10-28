@@ -393,6 +393,13 @@ impl Workbench {
                 {
                     places.push((id, t));
                 }
+                // A sound game code turned on or off stays so after a
+                // load (Phase 7, S5).
+                if let Some(source) = playing.world.get::<area::builtin::AudioSource>(id)
+                    && data.get::<area::builtin::AudioSource>().as_ref() != Some(&source)
+                {
+                    data.set(&source);
+                }
                 // Every entity whole: a copy of an assembly (placed, or
                 // spawned by game code) is kept as the entities it is
                 // now, not as "a copy of" (which loses what's on its root,

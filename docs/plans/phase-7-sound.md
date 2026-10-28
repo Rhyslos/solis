@@ -129,7 +129,10 @@ Built as mocked up and approved (2026-10-28): the Mixer is a tab beside the Cons
 - The Game panel's mute button.
 - Tests: round trip; a bus's volume and mute reach the sounds on it; Voice ducks Music and Music comes back after the last voice; nested buses multiply.
 
-### S5. Loops, voice limits and the scale target
+### S5. Loops, voice limits and the scale target ✓
+
+Built (2026-10-28). Game code can't set a built-in component's fields, so an `AudioSource` is switched with a native, `setSoundPlaying(entity, playing)`; its state is in the world's checksum and in saves. Heard at once is `voices` in `mixer.solmix`, set at the top of the Mixer. Kira makes and reuses its own voices, so there's no pool of Solis's own. The Profiler's Sound line is the frame before's (the app works sound out after the editor draws).
+
 
 - The `AudioSource` component: an event, playing, volume; it follows its entity, starts at Play and on spawn, stops on despawn.
 - Choosing what's heard (question 8): each tick, the sounds asked for and the loops near enough are ranked and the best 64 play; far loops go virtual; one event asked many times in a tick plays a few copies, louder. A pool of voices made once at Play, so a busy tick makes nothing new.
