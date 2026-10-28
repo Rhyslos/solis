@@ -8,7 +8,7 @@ When finding your way around, or making the layout suit your screen.
 ## How to use it
 
 **The top bar**, from left to right:
-- **Menus:** File, Edit, View, Entity, Play, Build, Window and Help. **Play** has the play buttons, loads [save games](save-games.md), and records a play's input to play back ([Input](input.md)); **Edit > Input actions…** sets the game's controls. **File > New project…**, **Open project…** and **Recent projects** work with [projects](projects-and-the-library.md); **New area**, **Open area…**, **Save area** and **Save area as…** with [area files](saving-areas.md); **File > Import model…** brings a model in (see [Importing models](importing-models.md)); **Edit > Undo** and **Redo** take back changes (see [Undo and redo](undo.md)); **Help > Add the sample area** brings in a ready-made one, and **Help > Make the playground…** makes a project with a level to walk around in ([Characters and cameras](characters-and-cameras.md)). Items that don't work yet are greyed out; point at one to see which phase brings it.
+- **Menus:** File, Edit, View, Entity, Play, Build, Window and Help. **Play** has the play buttons, loads [save games](save-games.md), and records a play's input to play back ([Input](input.md)); **Edit > Input actions…** sets the game's controls and **Edit > Settings…** the editor's own ([Settings](settings.md)). **File > New project…**, **Open project…** and **Recent projects** work with [projects](projects-and-the-library.md); **New area**, **Open area…**, **Save area** and **Save area as…** with [area files](saving-areas.md); **File > Import model…** brings a model in (see [Importing models](importing-models.md)); **Edit > Undo** and **Redo** take back changes (see [Undo and redo](undo.md)); **Help > Add the sample area** brings in a ready-made one, and **Help > Make the playground…** makes a project with a level to walk around in ([Characters and cameras](characters-and-cameras.md)). Items that don't work yet are greyed out; point at one to see which phase brings it.
 - **The area tab:** the open area ("Untitled area"). Opening more areas, assemblies and code side by side arrives in Phase 2.
 - **Play**, **Pause**, **Step**, **Play with two players** and **Stop**, then **Build** and **Build & Play**, on the right. Play, Pause, Step and Stop run the area as a game: see [Play mode](play-mode.md). The others tell you in the Console which phase brings them.
 
@@ -33,17 +33,17 @@ When finding your way around, or making the layout suit your screen.
 3. Drag the thin line between two panels to make one bigger.
 4. The ▼ at the left of a panel's tab row folds the panel away; click it again to unfold.
 
-Your layout is remembered next time. If the saved layout is ever damaged (a crash while saving, a hand edit), Solis starts with the Default one instead.
+Your layout is remembered next time. If the saved layout is ever damaged (a crash while saving, a hand edit), Solis starts with the standard one instead.
 
 ## Settings
 | Setting | What it does |
 |---|---|
-| Window > Layouts | **Default:** Library and Console side by side under the viewport. **Wide screen:** Library in a column on the left. **Small screen:** Library, Code, Console, Problems and Profiler as tabs in one space. **Reset layout** goes back to Default. |
-| Window > Accent colour | The colour that marks what's chosen and selected. Ten colours, each with a swatch: Amber (the standard), Red, Copper, Orange, Gold, Olive, Marine green, Petrol blue, Blue and Plum. All are dark enough that white text on them reads easily. Remembered next time. Colours that mean something keep their own whatever you pick: Play and Build & Play are blue, Stop is red while the game runs, and the Console's information, warnings and errors are grey, amber and red. |
+| Window > Reset layout | Puts every panel back where it started. Also in **Edit > Settings…** ([Settings](settings.md)). There are no other ready-made layouts: drag panels to make your own, and it's remembered. |
+| Edit > Settings… | The editor's own settings, such as its accent colour: see [Settings](settings.md). |
 | View | Switches the viewport's corner controls on and off (also in the viewport's ≡ menu). |
 
 ## Tips and common problems
-- **Problem:** a panel has disappeared. **Why:** it may be folded away, or behind another tab. **Fix:** look for its tab in each tab group, or use Window > Layouts > Reset layout.
+- **Problem:** a panel has disappeared. **Why:** it may be folded away, or behind another tab. **Fix:** look for its tab in each tab group, or use Window > Reset layout.
 
 ## Related
 - [Concepts](concepts.md): panel, tab, docking, layout, accent colour.

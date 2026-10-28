@@ -19,7 +19,7 @@ Tests: files ending `_tests.rs` hold the tests of the file with the same start (
 | `commands.rs`, `commands_many.rs` | Everything the editor does to the area, each turned into reversible edits and recorded as one undo step; `commands_many.rs` covers several entities at once and copy and paste of values. | |
 | `menu_items.rs` | Menu items shared by the top bar and the panels' own menu rows. | `MenuCommand` |
 | `top_bar.rs` | The top bar: menus, document tabs, Play and Build. | |
-| `panel.rs`, `panels.rs`, `layout.rs` | The list of dockable panels, drawing each one's contents, and the layout presets with checks on a saved layout. | `Panel`, `Preset` |
+| `panel.rs`, `panels.rs`, `layout.rs` | The list of dockable panels, drawing each one's contents, and the standard layout with checks on a saved layout. | `Panel`, `layout::standard` |
 | `theme.rs`, `icons.rs` | The editor's look (greys, accent colour, fonts, text contrast checks) and its icons, drawn in code. | `Accent`, `Icon` |
 | `splash.rs`, `updates.rs` | The splash screen while the program starts, and what the editor shows about updates (decisions 0043 and 0045). | `SplashView`, `UpdateNotice` |
 
@@ -38,6 +38,7 @@ Tests: files ending `_tests.rs` hold the tests of the file with the same start (
 | `profiler.rs` | The Profiler panel: where each frame's time goes, on the CPU and the GPU. | `Profiler`, `Stage` |
 | `game_panel.rs` | The Game panel: the running game through the area's first camera. | |
 | `input_window.rs` | Edit > Input actions: the project's actions and what sets each off (decision 0037). | |
+| `settings_window.rs` | Edit > Settings…: the editor's settings, a page at a time, with a search box (decision 0061). | |
 
 ## The viewport
 
