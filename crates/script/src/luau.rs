@@ -143,7 +143,7 @@ impl Clock {
 /// methods while game code runs. It gives back two functions for Solis
 /// alone: one lends `solis` the natives, the other hands over the
 /// components `component` made.
-const PRELUDE: &str = r#"
+pub(crate) const PRELUDE: &str = r#"
 local made = {}
 local natives = nil
 function component(name, fields)

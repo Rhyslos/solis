@@ -130,7 +130,7 @@ impl Recording {
             .area
             .as_deref()
             .unwrap_or_default()
-            .replace(['\n', '\r'], " ");
+            .replace(char::is_control, " ");
         let mut text = format!(
             "{HEADER} {VERSION}\nseed {}\narea {area}\nstart {:016x}\n",
             self.seed, self.start

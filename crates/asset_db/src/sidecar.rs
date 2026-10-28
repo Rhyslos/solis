@@ -151,6 +151,26 @@ impl Sidecar {
         Ok(true)
     }
 
+    /// [`Sidecar::write`] for a sidecar already there, in the project at
+    /// `root`: one in an older format is copied to the backups first
+    /// (Phase 8; the review found sidecars rewritten without a copy).
+    pub fn write_in(&self, root: &Path, path: &Path) -> std::io::Result<bool> {
+        let text = self.to_text();
+        if read_text_limited(path, MAX_BYTES).is_ok_and(|old| old == text) {
+            return Ok(false);
+        }
+        crate::backup::save(root, path, text.as_bytes(), &SIDECAR_FORMAT, |new| {
+            let again = Self::parse(new)?.to_text();
+            if again == new {
+                Ok(())
+            } else {
+                Err("it read back differently".into())
+            }
+        })
+        .map_err(std::io::Error::other)?;
+        Ok(true)
+    }
+
     /// Gives each of `keys` a part ID: an old part with the same kind and
     /// name path first; then, among parts sharing a name, the same place in
     /// order; then the same index; otherwise a new ID. Old parts not found
@@ -513,5 +533,25 @@ mod tests {
         // It comes back with its old ID.
         let back = sidecar.assign_parts(&[key(PartKind::Node, "Lamp", 3)]);
         assert_eq!(back, [first[3]]);
+    }
+
+    #[test]
+    fn a_sidecar_not_in_this_format_is_copied_before_it_s_rewritten() {
+        // Regression (the Phase 8 review): sidecars were rewritten with no
+        // copy when a model was imported again.
+        let root = std::env::temp_dir().join(format!("solis-sidecar-copy-{}", std::process::id()));
+        let _ = std::fs::remove_dir_all(&root);
+        std::fs::create_dir_all(root.join("assets")).unwrap();
+        let path = root.join("assets/crate.glb.solmeta");
+        std::fs::write(&path, "format = 9\nid = \"0000000000001\"\nhash = \"0\"\n").unwrap();
+        assert!(Sidecar::new(1).write_in(&root, &path).unwrap());
+        let copied = crate::backup::folder(&root);
+        assert!(copied.exists(), "kept in the backups");
+        // Current now: written again with no second copy.
+        let mut again = Sidecar::read(&path).unwrap();
+        again.hash = "2".into();
+        assert!(again.write_in(&root, &path).unwrap());
+        assert_eq!(std::fs::read_dir(&copied).unwrap().count(), 1);
+        let _ = std::fs::remove_dir_all(&root);
     }
 }

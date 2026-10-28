@@ -14,9 +14,25 @@
 # Prints why, and exits 1, when one is missing.
 set -euo pipefail
 
-base="$1"
 head="$2"
+# Compared from where the branch started, not main's tip: lines main gained
+# since would otherwise look taken away (the Phase 8 review).
+base="$(git merge-base "$1" "$head")" || {
+    echo "::error::Can't find where $head started from $1."
+    exit 1
+}
 reasons=()
+problems=()
+
+# The example files of a released version are never changed or taken away:
+# they're how a build proves it still opens what that version wrote.
+while IFS= read -r changed; do
+    [ -n "$changed" ] && problems+=("$changed")
+done < <(git diff --name-only --diff-filter=MDR "$base" "$head" -- 'tests/fixtures/*/v*/*')
+if [ ${#problems[@]} -gt 0 ]; then
+    echo "::error::Example files of released versions were changed or removed (CONTRIBUTING.md, rule 23): ${problems[*]}. Add a new version's examples beside them instead."
+    exit 1
+fi
 
 # New format versions: a format whose newest example folder (v<N>) is newer
 # than before. A format's first examples are new, not breaking.

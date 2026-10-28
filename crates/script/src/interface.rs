@@ -33,6 +33,20 @@ pub fn snapshot() -> String {
     for name in lua {
         out.push_str(&format!("solis.{name}\n"));
     }
+    out.push_str("\n## Lua's own names Solis adds or changes (its prelude)\n\n");
+    for line in crate::luau::PRELUDE.lines() {
+        let line = line.trim_end();
+        // Each global it defines or replaces, as written: a change to what
+        // they take shows here.
+        let defines = (line.starts_with("function ") && !line.starts_with("function("))
+            || (!line.starts_with(' ')
+                && !line.starts_with("local ")
+                && !line.starts_with("--")
+                && line.contains(" = function("));
+        if defines {
+            out.push_str(&format!("{line}\n"));
+        }
+    }
     out.push_str("\n## Rust (crates/script: Host, Context, RustComponent)\n\n");
     for (name, source, header) in [
         ("Host", include_str!("host.rs"), "pub trait Host {"),

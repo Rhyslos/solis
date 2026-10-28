@@ -85,8 +85,18 @@ impl AreaFiles {
         if let Some(folder) = path.parent() {
             std::fs::create_dir_all(folder).map_err(|e| e.to_string())?;
         }
-        let copy = match root.filter(|r| path.starts_with(r)) {
-            Some(root) => crate::upgrades::save(root, path, text, &area::text::FORMAT, read_back)?,
+        // The same folder may be spelt differently (letter case on Windows,
+        // a link): compared as the system resolves them, when it can.
+        let canonical = |p: &Path| p.canonicalize().unwrap_or_else(|_| p.to_path_buf());
+        let resolved = match (path.parent(), path.file_name()) {
+            (Some(folder), Some(name)) => canonical(folder).join(name),
+            _ => path.to_path_buf(),
+        };
+        let root = root.map(canonical).filter(|r| resolved.starts_with(r));
+        let copy = match root {
+            Some(root) => {
+                crate::upgrades::save(&root, &resolved, text, &area::text::FORMAT, read_back)?
+            }
             // Outside a project there's nowhere to keep a copy: Git, if
             // any, is its undo.
             None => {

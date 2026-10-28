@@ -17,7 +17,7 @@ Each kind of file Solis saves (areas, assemblies, sound events, the Mixer's buse
    This happens for areas, assemblies, sound events, the input actions and the Mixer, the files you change in the editor, and for [save games](save-games.md): a save made by an older Solis is copied before a new save replaces it in its slot (the `saves` folder isn't in Git, so the copy is the only one). If any step fails, the old file stays exactly as it was and the Console says why. When it works, the Console says where the copy went.
 3. **After that** the file is in the new layout, so later saves don't make more copies. Your project's Git history is the undo for ordinary changes.
 
-A file saved by a **newer** Solis than yours isn't opened at all: the Console says to update. Solis never changes a file it doesn't fully understand.
+A file saved by a **newer** Solis than yours isn't opened at all: the Console says to update. Solis never changes a file it doesn't fully understand: input actions or a Mixer from a newer Solis aren't saved over (the Console says to update), and a save game from a newer Solis is copied to the backups before a new save replaces it in its slot.
 
 ## Settings
 There are none. Old backups are tidied away by themselves:

@@ -64,14 +64,13 @@ fn save_game_within(
             room >> 20
         )));
     }
-    // A save in that slot made by an earlier Solis is kept in the backups
-    // first: the saves folder isn't in Git, so it's the only copy. (A
-    // damaged one or one of this version is simply replaced.)
-    let older = read_limited(&path, crate::play_files::MAX_SAVE_BYTES)
-        .ok()
-        .flatten()
-        .and_then(|old| (editor::SAVE_FORMAT.version_of)(&old))
-        .is_some_and(|v| v < editor::SAVE_FORMAT.current);
+    // A save in that slot made by another Solis, earlier or newer, is
+    // kept in the backups first: the saves folder isn't in Git, so it's
+    // the only copy. Only its first line is read to tell (a save can be
+    // 256 MB); a damaged one or one of this version is simply replaced.
+    let older = first_line(&path)
+        .and_then(|line| (editor::SAVE_FORMAT.version_of)(&line))
+        .is_some_and(|v| v != editor::SAVE_FORMAT.current);
     if older {
         let copy = crate::upgrades::save(root, &path, text, &editor::SAVE_FORMAT, |t| {
             editor::save_read_back(t)
@@ -81,6 +80,23 @@ fn save_game_within(
     }
     write_whole(&path, text)?;
     Ok((path, None))
+}
+
+/// The first line of the file at `path` (at most 64 bytes of it), if it's
+/// an ordinary file.
+fn first_line(path: &Path) -> Option<String> {
+    use std::io::Read;
+    if !std::fs::symlink_metadata(path).ok()?.is_file() {
+        return None;
+    }
+    let mut head = Vec::with_capacity(64);
+    std::fs::File::open(path)
+        .ok()?
+        .take(64)
+        .read_to_end(&mut head)
+        .ok()?;
+    let text = String::from_utf8_lossy(&head);
+    Some(text.split('\n').next().unwrap_or_default().to_owned())
 }
 
 /// The most the saves folder holds, all saves together (game code saving
@@ -227,7 +243,20 @@ fn save_keeping_damaged(
     read_back: impl Fn(&str) -> Result<String, String>,
 ) -> std::io::Result<Option<Kept>> {
     let path = root.join(file);
-    let damaged = match read_limited(&path, 1 << 20) {
+    let old = read_limited(&path, 1 << 20);
+    // Made by a newer Solis: never overwritten as if it were damaged (the
+    // Phase 8 review), since this build can't write what it holds.
+    if let Ok(Some(old)) = &old
+        && let Some(found) = format.version_of(old)
+        && found > format.current()
+    {
+        return Err(std::io::Error::other(format!(
+            "{file} was saved by a newer version (format {found}; this one writes {}). Update \
+             to change it, so nothing in it is lost",
+            format.current()
+        )));
+    }
+    let damaged = match old {
         Ok(Some(old)) => read_back(&old).is_err(),
         Ok(None) => false,
         Err(_) => path.exists(),

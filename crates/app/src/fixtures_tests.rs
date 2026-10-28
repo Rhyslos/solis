@@ -209,3 +209,32 @@ fn an_older_save_in_a_slot_is_kept_before_it_s_replaced() {
     assert_eq!(again, None);
     let _ = std::fs::remove_dir_all(&root);
 }
+
+#[test]
+fn a_newer_save_in_a_slot_is_kept_before_it_s_replaced() {
+    // Regression (the Phase 8 review): a save from a newer Solis (tried,
+    // then gone back from) was overwritten with no copy.
+    let root = project("newer-save");
+    let current = std::fs::read_to_string(fixtures().join("save/v3/harbour.solsave")).unwrap();
+    let newer = current.replacen("solis save 3", "solis save 9", 1);
+    let slot = crate::play_files::save_path(&root, "quick").unwrap();
+    std::fs::create_dir_all(slot.parent().unwrap()).unwrap();
+    std::fs::write(&slot, &newer).unwrap();
+    let (_, copy) = crate::play_files::save_game(&root, "quick", &current).unwrap();
+    assert_eq!(std::fs::read_to_string(copy.expect("kept")).unwrap(), newer);
+    let _ = std::fs::remove_dir_all(&root);
+}
+
+#[test]
+fn input_actions_from_a_newer_solis_are_never_overwritten() {
+    let root = project("newer-input");
+    let newer = "version = 9\n[[action]]\nname = \"Jump\"\n";
+    std::fs::write(root.join(input::FILE), newer).unwrap();
+    let refused = crate::play_files::save_bindings(&root, &input::Bindings::default().write());
+    assert!(refused.unwrap_err().to_string().contains("newer version"));
+    assert_eq!(
+        std::fs::read_to_string(root.join(input::FILE)).unwrap(),
+        newer
+    );
+    let _ = std::fs::remove_dir_all(&root);
+}

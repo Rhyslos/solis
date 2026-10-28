@@ -89,6 +89,16 @@ solis.time
 solis.turnTo
 solis.velocityOf
 
+## Lua's own names Solis adds or changes (its prelude)
+
+function component(name, fields)
+function vec3(x, y, z)
+math.random = function(m, n)
+math.randomseed = function(seed)
+table.move = function(a1, f, e, t, a2)
+collectgarbage = function(option)
+function solis.send(to, name, ...)
+
 ## Rust (crates/script: Host, Context, RustComponent)
 
 Host: fn say(&mut self, words: &str)
