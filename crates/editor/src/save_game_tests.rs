@@ -751,3 +751,112 @@ fn a_sound_turned_off_stays_off_after_a_load() {
     w.load_game(&text, "quick");
     assert!(w.audio_sources().is_empty(), "the save keeps it off");
 }
+
+#[test]
+#[ignore]
+fn zz_make_save_fixtures() {
+    let root = std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../tests/fixtures/save");
+    let mut w = busy("Harbour");
+    w.play();
+    run_to(&mut w, 40);
+    let v3 = w.save_text().unwrap();
+    std::fs::write(root.join("v3/harbour.solsave"), &v3).unwrap();
+    let lines: Vec<&str> = v3.splitn(7, '\n').collect();
+    let head = format!("{}\n{}\n{}\n{}\n", lines[1], lines[2], lines[3], lines[4]);
+    let mut rest = lines[6];
+    let mut sections: Vec<(String, String)> = Vec::new();
+    while !rest.is_empty() {
+        let (h, after) = rest.split_once('\n').unwrap();
+        let (name, len) = h.split_once(' ').unwrap();
+        let len: usize = len.parse().unwrap();
+        sections.push((name.into(), after[..len].into()));
+        rest = &after[len + 1..];
+    }
+    let save = Save::read(&v3).unwrap();
+    let registry = &w.document.registry;
+    let mut area = area::text::read(&save.area, registry).unwrap();
+    for (id, t) in &save.places {
+        if let Some(d) = area.get_mut(*id) {
+            d.set(t);
+        }
+    }
+    let area_text = area::text::write(&area, registry, &|_| None);
+    let get = |n: &str| sections.iter().find(|(s, _)| s == n).unwrap().1.clone();
+    let old_bindings = get("bindings").replace("version = 2\n\n", "");
+    let body = |list: &[(&str, String)]| -> String {
+        list.iter().map(|(n, t)| format!("{n} {}\n{t}\n", t.len())).collect()
+    };
+    let v2_body = body(&[
+        ("area", area_text.clone()),
+        ("values", get("values")),
+        ("bindings", old_bindings.clone()),
+        ("projectiles", get("projectiles")),
+        ("physics", get("physics")),
+    ]);
+    let v2 = format!("solis save 2\n{head}sum {:016x}\n{v2_body}", super::sum_of(&head, &v2_body));
+    std::fs::write(root.join("v2/harbour.solsave"), v2).unwrap();
+    // The first version 2 builds summed only the body.
+    let mut c = reflect::Checksum::new();
+    c.bytes(v2_body.as_bytes());
+    let v2_early = format!("solis save 2\n{head}sum {:016x}\n{v2_body}", c.finish());
+    std::fs::write(root.join("v2/harbour-early-checksum.solsave"), v2_early).unwrap();
+    // Version 1: physics as Rapier's bytes, in base64 (never read now).
+    let v1_body = body(&[
+        ("area", area_text),
+        ("values", get("values")),
+        ("bindings", old_bindings),
+        ("projectiles", get("projectiles")),
+        ("physics", "AAECAwQFBgcICQoLDA0ODxAREhMUFRYXGBkaGxwdHh8=".into()),
+    ]);
+    let mut c = reflect::Checksum::new();
+    c.bytes(v1_body.as_bytes());
+    let v1 = format!("solis save 1\n{head}sum {:016x}\n{v1_body}", c.finish());
+    std::fs::write(root.join("v1/harbour.solsave"), v1).unwrap();
+}
+
+/// The example saves of every version (Phase 8, C2).
+fn save_fixtures() -> std::path::PathBuf {
+    std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../tests/fixtures/save")
+}
+
+#[test]
+fn every_version_of_a_save_loads_and_plays_on() {
+    assert!(super::FORMAT.is_complete());
+    for version in 1..=super::SAVE_VERSION {
+        let dir = save_fixtures().join(format!("v{version}"));
+        let mut files: Vec<_> = std::fs::read_dir(&dir)
+            .unwrap_or_else(|e| panic!("{}: {e}", dir.display()))
+            .flatten()
+            .map(|e| e.path())
+            .collect();
+        files.sort();
+        assert!(!files.is_empty(), "no example of save version {version}");
+        for file in files {
+            let text = std::fs::read_to_string(&file).unwrap();
+            assert_eq!((super::FORMAT.version_of)(&text), Some(version));
+            let save = Save::read(&text).unwrap_or_else(|e| panic!("{}: {e}", file.display()));
+            // Only version 1's physics can't be carried over.
+            assert_eq!(save.notes.len(), usize::from(version == 1), "{}", file.display());
+            let mut w = busy("Harbour");
+            w.play();
+            w.load_game(&text, "the save");
+            assert!(
+                !w.log_lines().iter().any(|e| e.level == LogLevel::Error),
+                "{}: {:?}",
+                file.display(),
+                w.log_lines().last().map(|l| &l.text)
+            );
+            assert_eq!(w.world().unwrap().clock().ticks, 40, "{}", file.display());
+            // It plays on: the counter's values came back and go on.
+            run_to(&mut w, 60);
+            let values = w.playing.as_mut().unwrap().game.as_mut().unwrap().all_values();
+            let ticks = values
+                .iter()
+                .find(|(_, name, _)| name == "Busy")
+                .and_then(|(_, _, data)| data.get("ticks").cloned());
+            assert_eq!(ticks, Some(reflect::Value::Int(60)), "{}", file.display());
+        }
+    }
+    assert!(!save_fixtures().join(format!("v{}", super::SAVE_VERSION + 1)).exists());
+}
+

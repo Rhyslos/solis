@@ -44,6 +44,81 @@ const HEADER: &str = "solis save 3";
 /// The version in [`HEADER`].
 const SAVE_VERSION: u32 = 3;
 
+/// Save games' version and upgraders (Phase 8, C2; decision 0053): a save
+/// made by an earlier Solis loads in a later one, never refused just for
+/// being older. Each step turns one version's sections into the next's,
+/// before they're read; what a step couldn't carry over goes in the
+/// notes, which the Console shows. Every version keeps an example save in
+/// `tests/fixtures/save/`.
+pub static FORMAT: reflect::upgrade::Format<Sections> = reflect::upgrade::Format {
+    name: "save game",
+    current: SAVE_VERSION,
+    version_of: |text| {
+        text.split('\n')
+            .next()?
+            .strip_prefix("solis save ")?
+            .trim()
+            .parse()
+            .ok()
+    },
+    steps: &[physics_as_places_and_motion, places_kept_apart],
+};
+
+/// The most sections a save has (it writes six).
+const MAX_SECTIONS: usize = 16;
+
+/// A save's sections as written (`name length`, then that much text),
+/// before they're read, with notes on what upgrading changed.
+#[derive(Debug, Clone, Default, PartialEq)]
+pub struct Sections {
+    /// Each section's name and text, in order.
+    list: Vec<(String, String)>,
+    /// What upgrading couldn't carry over, in plain words.
+    notes: Vec<String>,
+}
+
+impl Sections {
+    /// The text of the section called `name`; an error when it's missing.
+    fn take(&mut self, name: &str) -> Result<String, String> {
+        let at = self
+            .list
+            .iter()
+            .position(|(n, _)| n == name)
+            .ok_or_else(|| "it's damaged".to_string())?;
+        Ok(self.list.remove(at).1)
+    }
+}
+
+/// Version 1 to 2: version 1 kept physics as Rapier's own bytes, which
+/// Solis no longer reads (a file must never reach Rapier's insides). The
+/// bodies start at rest where the save has them.
+fn physics_as_places_and_motion(sections: &mut Sections) -> Result<(), String> {
+    let physics = sections
+        .list
+        .iter_mut()
+        .find(|(n, _)| n == "physics")
+        .ok_or("it has no physics")?;
+    if !physics.1.is_empty() {
+        sections.notes.push(
+            "it was made by an earlier Solis whose physics can't be carried over, so things \
+             that were moving start at rest where they were"
+                .to_string(),
+        );
+    }
+    physics.1.clear();
+    Ok(())
+}
+
+/// Version 2 to 3: version 2 kept where the game had moved each entity in
+/// the area itself, which loads the same with no places apart.
+fn places_kept_apart(sections: &mut Sections) -> Result<(), String> {
+    if sections.list.iter().any(|(n, _)| n == "places") {
+        return Err("it already has places".into());
+    }
+    sections.list.push(("places".into(), String::new()));
+    Ok(())
+}
+
 /// The biggest save read.
 pub(crate) const MAX_SAVE_BYTES: usize = 256 << 20;
 
@@ -85,6 +160,9 @@ pub(crate) struct Save {
     /// Where the game has each entity it moved (its transform), where
     /// that differs from the area's, in entity order.
     pub(crate) places: Vec<(EntityId, Transform)>,
+    /// What upgrading an older save couldn't carry over, for the Console
+    /// (never written).
+    pub(crate) notes: Vec<String>,
 }
 
 /// A transform's ten numbers, exactly, as hex words.
@@ -186,23 +264,17 @@ impl Save {
             Some(line)
         };
         debug_assert_eq!(HEADER, format!("solis save {SAVE_VERSION}"));
-        if line() != Some(HEADER) {
-            let version = text
-                .strip_prefix("solis save ")
-                .and_then(|r| r.split('\n').next())
-                .and_then(|v| v.trim().parse::<u32>().ok());
-            return Err(if version.is_some_and(|v| v < SAVE_VERSION) {
-                "it was made by an earlier Solis, whose saves this one can't read".to_string()
-            } else if version.is_some_and(|v| v > SAVE_VERSION) {
-                "it was made by a newer Solis".to_string()
-            } else if version.is_some() {
-                // This version's header, with something after it (a line
-                // ending changed by an editor, say).
-                damaged()
-            } else {
-                "it isn't a save game".to_string()
-            });
+        let version = (FORMAT.version_of)(text);
+        let first = line();
+        match version {
+            Some(v) if v > SAVE_VERSION => return Err("it was made by a newer Solis".to_string()),
+            Some(0) | None => return Err("it isn't a save game".to_string()),
+            // The header, with something after it (a line ending changed
+            // by an editor, say).
+            Some(v) if first != Some(format!("solis save {v}").as_str()) => return Err(damaged()),
+            Some(_) => {}
         }
+        let version = version.unwrap_or(SAVE_VERSION);
         let mut field = |name: &str| -> Result<String, String> {
             line()
                 .and_then(|l| l.strip_prefix(name))
@@ -221,7 +293,15 @@ impl Save {
         // A fuzzer can't make a matching checksum, so while fuzzing it's
         // left unchecked and the rest of the reader is tried (decision
         // 0042); everywhere else a damaged save is refused here.
-        if sum_of(&head, body) != sum && !cfg!(fuzzing) {
+        // Saves before version 3 summed only what follows the header
+        // lines, in their first builds.
+        let body_only = || {
+            let mut check = reflect::Checksum::new();
+            check.bytes(body.as_bytes());
+            check.finish()
+        };
+        let matches = sum_of(&head, body) == sum || (version < 3 && body_only() == sum);
+        if !matches && !cfg!(fuzzing) {
             return Err("it's damaged (its checksum doesn't match)".to_string());
         }
         let ticks: u64 = tick_text.parse().map_err(|_| damaged())?;
@@ -231,25 +311,34 @@ impl Save {
         if ticks > MAX_SAVED_TICKS || !(time.is_finite() && (0.0..1.0e13).contains(&time)) {
             return Err(damaged());
         }
+        // Every section as written, then brought up to date.
+        let mut sections = Sections::default();
         let mut rest = body;
-        let mut section = |name: &str| -> Result<&str, String> {
+        while !rest.is_empty() {
+            if sections.list.len() >= MAX_SECTIONS {
+                return Err(damaged());
+            }
             let (head, after) = rest.split_once('\n').ok_or_else(damaged)?;
-            let length: usize = head
-                .strip_prefix(name)
-                .and_then(|l| l.strip_prefix(' '))
-                .and_then(|l| l.parse().ok())
-                .ok_or_else(damaged)?;
+            let (name, length) = head.split_once(' ').ok_or_else(damaged)?;
+            let length: usize = length.parse().map_err(|_| damaged())?;
             let text = after.get(..length).ok_or_else(damaged)?;
             rest = after
                 .get(length..)
                 .and_then(|a| a.strip_prefix('\n'))
                 .ok_or_else(damaged)?;
-            Ok(text)
-        };
-        let area = section("area")?.to_string();
-        let values = section("values")?.to_string();
-        let bindings = section("bindings")?.to_string();
-        let projectiles_text = section("projectiles")?;
+            if sections.list.iter().any(|(n, _)| n == name) {
+                return Err(damaged());
+            }
+            sections.list.push((name.to_string(), text.to_string()));
+        }
+        FORMAT
+            .upgrade(version, &mut sections)
+            .map_err(|e| e.to_string())?;
+        let mut section = |name: &str| sections.take(name);
+        let area = section("area")?;
+        let values = section("values")?;
+        let bindings = section("bindings")?;
+        let projectiles_text = &section("projectiles")?;
         // Counted before any is made: a hand-made save could list far more.
         if projectiles_text.lines().count() > world::MAX_PROJECTILES {
             return Err(damaged());
@@ -273,7 +362,7 @@ impl Save {
                 })
             })
             .collect::<Result<Vec<_>, String>>()?;
-        let physics_text = section("physics")?;
+        let physics_text = &section("physics")?;
         if physics_text.lines().count() > physics::MAX_BODIES {
             return Err(damaged());
         }
@@ -316,7 +405,7 @@ impl Save {
                 Ok((EntityId(id), state))
             })
             .collect::<Result<Vec<_>, String>>()?;
-        let places_text = section("places")?;
+        let places_text = &section("places")?;
         if places_text.lines().count() > area::text::MAX_ENTITIES {
             return Err(damaged());
         }
@@ -359,6 +448,7 @@ impl Save {
             projectiles,
             physics,
             places,
+            notes: std::mem::take(&mut sections.notes),
         })
     }
 }
@@ -433,6 +523,7 @@ impl Workbench {
             projectiles: playing.world.projectiles().flying().to_vec(),
             physics: bodies,
             places,
+            notes: Vec::new(),
         })
     }
 
@@ -521,6 +612,10 @@ impl Workbench {
                 return;
             }
         };
+        // An older save loads, saying what couldn't be carried over.
+        for note in &save.notes {
+            self.log(LogLevel::Warning, format!("Loading {name}: {note}."));
+        }
         // The loaded game sounds afresh: what played before the load fades
         // out, and nothing queued from before it plays after.
         self.plays += 1;
