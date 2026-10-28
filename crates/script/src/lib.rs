@@ -8,6 +8,7 @@ pub mod describe;
 pub mod events;
 pub mod game;
 pub mod host;
+pub mod interface;
 #[allow(unsafe_code)]
 mod interrupt;
 mod lua_components;
@@ -18,7 +19,7 @@ pub mod rust_component;
 mod syncing;
 mod ticking;
 
-pub use code::{Bytecode, Code, CodeProblem, Compiled, check, compile, gather};
+pub use code::{Bytecode, Code, CodeProblem, Compiled, check, compile, gather, renamed_uses};
 pub use events::Event;
 pub use game::{Change, Game, GameWorld, ViewIndex, WorldView};
 pub use host::{Host, NoHost, Shot, SoundAt};

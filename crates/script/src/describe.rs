@@ -20,6 +20,26 @@ pub struct Native {
     pub about: &'static str,
 }
 
+/// A native renamed on purpose, whose old name keeps working until a
+/// later phase (Phase 8, C3; decision 0053): game code calling it still
+/// runs, the Problems panel warns at each use, and the game-code
+/// interface's snapshot lists it.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Renamed {
+    /// The file it's described in, inside `solis/` (without `.lst`).
+    pub file: &'static str,
+    /// The name it had.
+    pub old: &'static str,
+    /// The name it has now (a [`Native`]'s).
+    pub new: &'static str,
+    /// When the old name stops working, in plain words ("Phase 12").
+    pub until: &'static str,
+}
+
+/// Natives renamed on purpose, with their old names kept working for a
+/// while. None yet: the first rename adds a line here.
+pub const RENAMED: &[Renamed] = &[];
+
 /// Every native method Solis gives game code.
 pub const NATIVES: &[Native] = &[
     Native {
@@ -264,6 +284,11 @@ pub const NATIVES: &[Native] = &[
 /// the app's branding: `solis`). `made_by` names the program and version
 /// that wrote them, for their first line.
 pub fn descriptions(made_by: &str, folder: &str) -> Vec<(String, String)> {
+    descriptions_with(made_by, folder, RENAMED)
+}
+
+/// [`descriptions`], with these natives renamed.
+fn descriptions_with(made_by: &str, folder: &str, renamed: &[Renamed]) -> Vec<(String, String)> {
     let mut files: Vec<&str> = NATIVES.iter().map(|n| n.file).collect();
     files.dedup();
     files
@@ -277,7 +302,20 @@ pub fn descriptions(made_by: &str, folder: &str) -> Vec<(String, String)> {
             for native in &mine {
                 text.push_str(&format!("-- {}\n{}\n\n", native.about, native.lust));
             }
-            let names: Vec<&str> = mine.iter().map(|n| n.name).collect();
+            let mut names: Vec<&str> = mine.iter().map(|n| n.name).collect();
+            // Old names of renamed natives: the same method under its old
+            // name, so code using it still checks and runs.
+            for renamed in renamed.iter().filter(|r| r.file == file) {
+                if let Some(native) = NATIVES.iter().find(|n| n.name == renamed.new) {
+                    text.push_str(&format!(
+                        "-- Old name of {} (renamed; it stops working in {}).\n{}\n\n",
+                        renamed.new,
+                        renamed.until,
+                        renamed_lust(native.lust, renamed.new, renamed.old)
+                    ));
+                    names.push(renamed.old);
+                }
+            }
             text.push_str(&format!("pass {};\nend\n", names.join(", ")));
             (format!("{folder}/{file}.lst"), text)
         })
@@ -294,6 +332,11 @@ pub fn descriptions(made_by: &str, folder: &str) -> Vec<(String, String)> {
             )
         }))
         .collect()
+}
+
+/// `lust`, a native's method line, with its name `new` changed to `old`.
+fn renamed_lust(lust: &str, new: &str, old: &str) -> String {
+    lust.replacen(&format!(" {new}("), &format!(" {old}("), 1)
 }
 
 /// The ready-made components (Phase 6, M5), written into every project
@@ -383,5 +426,39 @@ mod tests {
             );
             assert!(native.lust.ends_with("native;"));
         }
+    }
+
+    #[test]
+    fn an_old_name_still_checks_in_lust() {
+        let renamed = [Renamed {
+            file: "world",
+            old: "spawnAt",
+            new: "spawn",
+            until: "Phase 12",
+        }];
+        let mut files = descriptions_with("Test Engine 9.9.9", "solis", &renamed);
+        assert!(
+            files[0]
+                .1
+                .contains("method entity spawnAt(string file, vec3 place) native;")
+        );
+        assert!(files[0].1.contains("stops working in Phase 12"));
+        files.push((
+            "main.lst".into(),
+            "get \"solis/world\":[spawnAt];\n\
+             component A {\n\
+                 method update(float dt) {\n\
+                     entity e = spawnAt(\"ships/fighter\", [0, 0, 0]);\n\
+                 }\n\
+             }\n\
+             pass A;\nend\n"
+                .into(),
+        ));
+        let code = crate::Code {
+            files,
+            lua: Vec::new(),
+            notes: Vec::new(),
+        };
+        assert!(crate::check(&code).is_empty(), "{:?}", crate::check(&code));
     }
 }

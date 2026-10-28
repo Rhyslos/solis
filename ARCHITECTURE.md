@@ -115,6 +115,10 @@ The file on disk isn't touched until it's saved. Saving goes through `asset_db::
 
 `tests/fixtures/<format>/v<N>/` keeps a file of every version of every format ever released; `crates/app/src/fixtures_tests.rs` opens each with the current build, checks its version, and fails if a format's version went up without an example of the old one, or if a step is missing (`Format::is_complete`).
 
+## The game-code interface
+
+What game code can call is guarded (Phase 8, C3; decision 0053). `script::interface::snapshot` lists it as text: every native's Lust (`describe::NATIVES`), the names lent to Lua's `solis` (read from `host.rs`'s `natives.raw_set` calls), the methods of `Host`, `RustComponent` and `Context`, renamed natives, and the ready-made components with their fields. A test compares it with `docs/game-code-interface.txt` and fails, listing the lines, when they differ. A deliberate rename adds a `describe::Renamed` line: the old name is described in `solis/<file>.lst` and lent to Lust and Lua as the same function (`host::lend_old_names`), and `script::renamed_uses` finds each use in the project's Lust and Lua (outside comments) for the Problems panel, as a warning saying the new name and until when.
+
 ## Assemblies
 
 An assembly is a `.solassembly` file (the area format with one root). In an area it's written as the copy's root entity naming the assembly plus overrides (`root/inner` blocks with only what differs); while edited, copies are ordinary entities carrying an `Origin` (assembly, copy root, path inside), with IDs worked out from the copy's root and the path (`area::assembly::derive`), so the same file always expands to the same IDs ([decision 0020](docs/decisions/0020-scene-files-in-lust-style.md)). `area::assembly::Expander` expands on opening and collapses on saving, comparing each copy with its assembly. The editor holds the assembly files (`Workbench::set_assembly`); when one changes, every copy is collapsed against the old contents and expanded against the new, so its changes survive. A placed model is one entity; Unpack splits it into entities that each draw one node (`render::Placement::node`).
