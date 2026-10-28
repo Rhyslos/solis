@@ -866,3 +866,32 @@ fn a_streamed_file_shorter_than_measured_ends_and_a_changed_one_is_refused() {
     assert!(crate::device::FileStream::open(&path, info).is_err());
     let _ = std::fs::remove_dir_all(&dir);
 }
+
+#[test]
+fn echoes_follow_a_bus_only_once_its_change_can_be_heard() {
+    use crate::game::moved_enough;
+    let ni = f32::NEG_INFINITY;
+    // Ducking's small steps wait; a heard step, silence or a new shape don't.
+    assert!(!moved_enough(&[0.0, -3.0], &[0.0, -3.1]));
+    assert!(moved_enough(&[0.0, -3.0], &[0.0, -3.25]));
+    assert!(moved_enough(&[0.0, -3.0], &[0.0, ni]));
+    assert!(moved_enough(&[0.0, ni], &[0.0, -40.0]));
+    assert!(!moved_enough(&[0.0, ni], &[0.0, ni]));
+    assert!(moved_enough(&[0.0], &[0.0, 0.0]));
+    assert!(moved_enough(&[], &[0.0]));
+    // A slow fade still arrives: each step is measured from the last sent.
+    let mut sent = vec![0.0_f32];
+    let mut sends = 0;
+    for frame in 1..=100 {
+        let now = [-0.01 * frame as f32];
+        if moved_enough(&sent, &now) {
+            sent = now.to_vec();
+            sends += 1;
+        }
+    }
+    assert_eq!(sends, 4);
+    assert!((sent[0] - -1.0).abs() < SEND_SLACK);
+}
+
+/// How far behind the sends may be after a fade.
+const SEND_SLACK: f32 = 0.25;

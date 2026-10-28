@@ -399,6 +399,16 @@ impl World {
             .collect()
     }
 
+    /// Whether `inner` is `outer` or somewhere under it, without listing
+    /// the subtree: the world keeps each subtree as one run of its order.
+    pub fn is_inside(&self, inner: EntityId, outer: EntityId) -> bool {
+        let (Some(&i), Some(&o)) = (self.place.get(&inner), self.place.get(&outer)) else {
+            return false;
+        };
+        let end = self.ends.get(o).copied().unwrap_or(o + 1);
+        (o..end).contains(&i)
+    }
+
     /// Takes each of `ids` and everything under it out of the world (game
     /// code despawned them), without building the rest again.
     pub fn remove_subtrees(&mut self, ids: &[EntityId]) {
@@ -562,6 +572,21 @@ impl World {
             .ecs
             .query::<(&Id, &AudioSource)>()
             .iter()
+            .map(|(id, source)| (id.0, source.clone()))
+            .collect();
+        sources.sort_unstable_by_key(|(id, _)| *id);
+        sources
+    }
+
+    /// The [`AudioSource`]s that are playing and name an event, by entity
+    /// in id order: what the app keeps sounding each frame. Only these are
+    /// copied, so a world full of silent sources costs little.
+    pub fn sounding_audio_sources(&self) -> Vec<(EntityId, AudioSource)> {
+        let mut sources: Vec<(EntityId, AudioSource)> = self
+            .ecs
+            .query::<(&Id, &AudioSource)>()
+            .iter()
+            .filter(|(_, source)| source.playing && !source.event.is_empty())
             .map(|(id, source)| (id.0, source.clone()))
             .collect();
         sources.sort_unstable_by_key(|(id, _)| *id);
@@ -971,9 +996,17 @@ impl World {
             }
         }
         // Which sounds game code turned on and off (it's in a save).
-        for (id, source) in self.audio_sources() {
+        // Only the on/off flag counts, so the sources aren't copied.
+        let mut sounds: Vec<(EntityId, bool)> = self
+            .ecs
+            .query::<(&Id, &AudioSource)>()
+            .iter()
+            .map(|(id, source)| (id.0, source.playing))
+            .collect();
+        sounds.sort_unstable_by_key(|(id, _)| *id);
+        for (id, playing) in sounds {
             sum.entity(id);
-            sum.u64(u64::from(source.playing));
+            sum.u64(u64::from(playing));
         }
         sum.u64(self.physics.state().checksum());
         let flying = self.projectiles.flying();
