@@ -195,7 +195,7 @@ fn undo_and_redo_step_through_the_changes() {
     // A new change forgets what could be redone.
     e.undo();
     e.set_repeats(2);
-    assert_eq!(e.can_undo_redo().1, false);
+    assert!(!e.can_undo_redo().1);
     // The file as text reads back as it is.
     let back = frames_file::read(&e.text()).unwrap().file;
     assert_eq!(back, e.file);

@@ -186,19 +186,19 @@ Solis is built in phases, one milestone per pull request. Each phase ends with a
 
 **Gate:** footsteps each sound a little different, the music dips while someone speaks, and walking into a reverb zone makes the steps echo. (Animation moved: frames to Phase 9, skeletons to Phase 16; [decision 0059](docs/decisions/0059-2d-first.md).)
 
-### Phase 8 · Compatibility — 3 of 6
+### Phase 8 · Compatibility — 6 of 6
 
-`███░░░` 50%
+`██████` 100%
 
 <details>
 <summary>Milestones</summary>
 
 - [x] Backups and upgraders for every file format ([plan](docs/plans/compatibility.md), decision 0053)
 - [x] Save games that survive updates
-- [ ] The game-code interface, guarded
-- [ ] Real projects tested before an update ships
+- [x] The game-code interface, guarded
+- [x] Real projects tested before an update ships
 - [x] Breaking changes, labelled
-- [ ] Lua's speed, measured and explained (decision 0055)
+- [x] Lua's speed, measured and explained (decision 0055)
 
 </details>
 
