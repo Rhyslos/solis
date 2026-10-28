@@ -653,8 +653,10 @@ mod game_sounds {
             bus: 2,
             event: 9,
             looping: true,
+            source: true,
             start_s: 0.5,
             extra_db: 3.0,
+            on: None,
         };
         device
             .play_game_sound(&clip, &pick(), Placement::On(4, spot(2.0)), looped)
@@ -710,6 +712,42 @@ mod game_sounds {
         );
         silent.stop_loop_on(4);
         assert!(silent.loops_playing().is_empty());
+    }
+
+    #[test]
+    fn an_event_set_to_loop_is_a_one_shot_that_plays_on() {
+        // Regression (Phase 7 review): a one-shot that loops isn't an
+        // AudioSource's loop, so resting loops never stops it, and
+        // `stopSoundsOn` does — even while the game is paused.
+        let mut device = SoundDevice::for_tests();
+        device.pause_game_sounds(true);
+        let looping_shot = Voice {
+            event: 3,
+            looping: true,
+            on: Some(4),
+            ..Voice::on_bus(0)
+        };
+        device
+            .play_game_sound(&clip(), &pick(), Placement::On(4, spot(1.0)), looping_shot)
+            .unwrap();
+        assert!(device.loops_playing().is_empty());
+        assert_eq!(device.one_shots_playing(), 1);
+        device.stop_loop_on(4);
+        assert_eq!(device.game_sounds_of_event(3), 1);
+        // And an AudioSource's loop on the same entity outlives
+        // `stopSoundsOn`. (The test device never finishes a fade, so the
+        // one-shot's own stop can't be seen here.)
+        let source = Voice {
+            event: 5,
+            looping: true,
+            source: true,
+            ..Voice::on_bus(0)
+        };
+        device
+            .play_game_sound(&clip(), &pick(), Placement::On(4, spot(1.0)), source)
+            .unwrap();
+        device.stop_game_sounds_on(4);
+        assert_eq!(device.loops_playing(), vec![4]);
     }
 
     #[test]

@@ -430,8 +430,9 @@ impl Host for ViewHost {
     fn set_bus_volume(&mut self, bus: &str, share: f32) {
         let named =
             !bus.is_empty() && bus.len() <= MAX_SOUND_NAME && !bus.contains(char::is_control);
-        if named && share.is_finite() && self.kept.sounds < MAX_SOUNDS && self.kept.room() {
-            self.kept.sounds += 1;
+        // Not counted against the tick's sounds: a flood of plays never
+        // drops an options slider (found by the Phase 7 review).
+        if named && share.is_finite() && self.kept.room() {
             let order = self.order();
             self.kept.changes.push((
                 order,

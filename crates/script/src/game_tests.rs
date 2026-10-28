@@ -722,10 +722,11 @@ fn sounds_asked_for_land_in_order_on_any_number_of_shards() {
 
 #[test]
 fn a_flood_of_sounds_is_capped() {
-    const LOUD: &str = "get \"solis/sound\":[playSound];\n\
+    const LOUD: &str = "get \"solis/sound\":[playSound, setBusVolume];\n\
         component Loud {\n\
             method update(float dt) {\n\
                 loop 1000 { playSound(\"boom\"); }\n\
+                setBusVolume(\"Music\", 0.5);\n\
             }\n\
         }\n\
         pass Loud;\nend\n";
@@ -734,7 +735,13 @@ fn a_flood_of_sounds_is_capped() {
     game.load(&compiled(LOUD), &mut world).unwrap();
     game.sync_many([(id(1), "Loud", &ComponentData::default())], &mut world);
     assert!(game.tick(1.0 / 60.0, &mut world).failures.is_empty());
-    assert_eq!(world.sounds.len(), crate::game::MAX_SOUNDS);
+    // The plays are capped; an options slider after them still lands
+    // (regression: the Phase 7 review).
+    assert_eq!(world.sounds.len(), crate::game::MAX_SOUNDS + 1);
+    assert_eq!(
+        world.sounds.last(),
+        Some(&Change::BusVolume("Music".into(), 0.5))
+    );
 }
 
 #[test]

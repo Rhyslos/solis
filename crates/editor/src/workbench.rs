@@ -301,6 +301,9 @@ pub struct Workbench {
     game_scene: Option<(GameKey, crate::game_panel::GameScene)>,
     /// Game code's sound requests since the app last took them.
     pub(crate) game_sounds: Vec<crate::game_sound::GameSound>,
+    /// How many times Play has started a game (the app's sound starts
+    /// afresh with each).
+    pub(crate) plays: u64,
     /// Its components whose names were taken (by the engine's own, or a
     /// Rust one's): they don't run.
     pub(crate) left_out: std::collections::BTreeSet<String>,
@@ -388,6 +391,7 @@ impl Workbench {
             input_window: None,
             game_scene: None,
             game_sounds: Vec::new(),
+            plays: 0,
             left_out: std::collections::BTreeSet::new(),
             rust_components: Vec::new(),
             assembly_part_kept: std::cell::RefCell::new(None),

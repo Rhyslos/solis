@@ -65,27 +65,39 @@ pub enum SoundMode {
     Paused,
 }
 
-/// Adds one tick's `requests` to `out`, numbered in order, keeping at
-/// most [`MAX_PER_TICK`]. Returns how many were left out.
+/// Adds one batch of a tick's `requests` to `out`, numbered in order
+/// after any of the same tick already there (components' starts and the
+/// tick's updates share a tick), keeping at most [`MAX_PER_TICK`] plays a
+/// tick. Stops and volumes are always kept: a flood of plays never drops
+/// an options slider or a stop. Returns how many plays were left out.
 pub(crate) fn gather(
     out: &mut Vec<GameSound>,
     requests: Vec<Request>,
     tick: u64,
     seed: u64,
 ) -> usize {
-    let dropped = requests.len().saturating_sub(MAX_PER_TICK);
-    out.extend(
-        requests
-            .into_iter()
-            .take(MAX_PER_TICK)
-            .enumerate()
-            .map(|(order, request)| GameSound {
-                tick,
-                order: order as u32,
-                seed,
-                request,
-            }),
-    );
+    let same_tick = out.iter().rev().take_while(|s| s.tick == tick);
+    let mut order = same_tick.clone().count() as u32;
+    let mut plays = same_tick
+        .filter(|s| matches!(s.request, Request::Play(..)))
+        .count();
+    let mut dropped = 0;
+    for request in requests {
+        if matches!(request, Request::Play(..)) {
+            if plays >= MAX_PER_TICK {
+                dropped += 1;
+                continue;
+            }
+            plays += 1;
+        }
+        out.push(GameSound {
+            tick,
+            order,
+            seed,
+            request,
+        });
+        order += 1;
+    }
     dropped
 }
 
@@ -99,6 +111,17 @@ impl crate::Workbench {
     /// What the game's sounds should be doing: playing, held while the
     /// game is paused, or faded out when there's no game.
     pub fn game_sound_mode(&self) -> SoundMode {
+        self.game_sound_mode_now()
+    }
+
+    /// Which play this is: a new number each Play (and each replay), so the
+    /// app starts the game's sound afresh even when one play follows
+    /// another at once.
+    pub fn play_number(&self) -> u64 {
+        self.plays
+    }
+
+    fn game_sound_mode_now(&self) -> SoundMode {
         match &self.playing {
             None => SoundMode::Off,
             Some(playing) if playing.paused => SoundMode::Paused,
@@ -234,5 +257,35 @@ mod tests {
             Request::Play("s3".into(), script::SoundAt::Nowhere, None)
         );
         assert_eq!(gather(&mut out, Vec::new(), 8, 42), 0);
+    }
+
+    #[test]
+    fn a_tick_s_batches_number_on_and_stops_are_never_dropped() {
+        // Regression (Phase 7 review): starts and the tick's updates come
+        // as two batches of one tick; their numbers go on, and the cap
+        // counts plays only.
+        let play = |i: usize| Request::Play(format!("s{i}"), script::SoundAt::Nowhere, None);
+        let id = EntityId(reflect::Id::from_raw(3).unwrap());
+        let mut out = Vec::new();
+        gather(&mut out, vec![play(0), Request::StopOn(id)], 5, 1);
+        let mut later: Vec<Request> = (1..=MAX_PER_TICK).map(play).collect();
+        later.push(Request::StopOn(id));
+        later.push(Request::BusVolume("Music".into(), 0.5));
+        assert_eq!(gather(&mut out, later, 5, 1), 1, "one play over the cap");
+        let orders: Vec<u32> = out.iter().map(|s| s.order).collect();
+        assert_eq!(orders, (0..orders.len() as u32).collect::<Vec<_>>());
+        let plays = out
+            .iter()
+            .filter(|s| matches!(s.request, Request::Play(..)))
+            .count();
+        assert_eq!(plays, MAX_PER_TICK);
+        assert_eq!(
+            out.last().map(|s| &s.request),
+            Some(&Request::BusVolume("Music".into(), 0.5))
+        );
+        assert_eq!(out[out.len() - 2].request, Request::StopOn(id));
+        // A new tick starts from 0.
+        gather(&mut out, vec![play(9)], 6, 1);
+        assert_eq!(out.last().map(|s| s.order), Some(0));
     }
 }

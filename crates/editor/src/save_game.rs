@@ -521,6 +521,10 @@ impl Workbench {
                 return;
             }
         };
+        // The loaded game sounds afresh: what played before the load fades
+        // out, and nothing queued from before it plays after.
+        self.plays += 1;
+        self.game_sounds.clear();
         // Physics built from each body's place and motion, as saving built
         // the running game's.
         let mut world = world::World::from_area_without_physics(&area);

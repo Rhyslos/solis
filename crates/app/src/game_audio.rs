@@ -64,6 +64,12 @@ pub struct GameAudio {
     event_numbers: HashMap<String, u64>,
     /// How long the last frame's sound took, in seconds (the Profiler).
     spent: f64,
+    /// The play the sounds belong to (the editor's play number): a new one
+    /// starts the game's sound afresh, even with no Stop seen between.
+    play: Option<u64>,
+    /// Loops whose AudioSource changed its event this frame, to start
+    /// again with the new one.
+    changed_loops: Vec<u64>,
 }
 
 /// One sound that wants to play this frame, worked out: what to play,
@@ -77,6 +83,8 @@ struct Wanted<'a> {
     placement: Placement,
     loudness_db: f32,
     extra_db: f32,
+    /// The entity it belongs to, whether or not it's placed.
+    on: Option<u64>,
 }
 
 impl GameAudio {
@@ -95,17 +103,19 @@ impl GameAudio {
             .map_or(0.0, |then| began.duration_since(then).as_secs_f32());
         self.last_frame = Some(began);
         let mode = workbench.game_sound_mode();
+        // A new play (a replay, Play again, a loaded game) starts afresh,
+        // even when this frame never saw the game stopped.
+        let play = workbench.play_number();
+        if self.play != Some(play) {
+            self.play = Some(play);
+            if self.mode.is_some_and(|m| m != SoundMode::Off) && mode != SoundMode::Off {
+                self.mode = None;
+                self.reset(device);
+            }
+        }
         if self.mode != Some(mode) {
             match mode {
-                SoundMode::Off => {
-                    device.stop_game_sounds();
-                    self.last_take.clear();
-                    self.told_unknown.clear();
-                    self.told_full = false;
-                    self.shares.clear();
-                    self.loops.clear();
-                    self.clock = 0.0;
-                }
+                SoundMode::Off => self.reset(device),
                 SoundMode::Paused => device.pause_game_sounds(true),
                 SoundMode::Playing => device.pause_game_sounds(false),
             }
@@ -132,9 +142,16 @@ impl GameAudio {
         device.set_reverb(&reverbs_heard(&workbench.reverb_zones(), hearing));
         let mut notes = Vec::new();
         let mut plays: Vec<(GameSound, String, script::SoundAt, Option<EntityId>)> = Vec::new();
+        // In the order asked for: a stop also stops what was asked to
+        // play on that entity earlier this frame.
         for request in fresh(requests) {
             match request.request {
-                Request::StopOn(which) => device.stop_game_sounds_on(which.0.raw()),
+                Request::StopOn(which) => {
+                    device.stop_game_sounds_on(which.0.raw());
+                    plays.retain(
+                        |(_, _, at, _)| !matches!(at, script::SoundAt::On(e) if *e == which),
+                    );
+                }
                 Request::BusVolume(ref bus, share) => {
                     self.shares.insert(bus.clone(), share);
                 }
@@ -184,28 +201,43 @@ impl GameAudio {
                 device.stop_loop_on(entity);
             }
         }
+        // An AudioSource given another event starts again with it.
+        for entity in std::mem::take(&mut self.changed_loops) {
+            device.stop_loop_on(entity);
+        }
         let real: HashSet<u64> = device.loops_playing().into_iter().collect();
         for w in wanted.iter().filter(|w| heard.contains(&w.key)) {
             let event_number = self.event_number(w.name);
-            let voice = |looping, start_s| Voice {
+            let voice = |looping, source, start_s| Voice {
                 bus: workbench.mixer().bus_for(&w.event.bus),
                 event: event_number,
                 looping,
+                source,
                 start_s,
                 extra_db: w.extra_db,
+                on: w.on,
             };
             let result = match w.key {
                 Key::Loop(entity) if real.contains(&entity) => continue,
                 Key::Loop(entity) => {
                     let state = self.loops.get(&entity);
+                    // Where it would be: time played, at its pick's speed.
                     let start = state.map_or(0.0, |s| {
-                        loop_position(self.clock - s.started, w.clip.info.seconds())
+                        loop_position(
+                            (self.clock - s.started) * w.pick.speed(),
+                            w.clip.info.seconds(),
+                        )
                     });
-                    device.play_game_sound(w.clip, &w.pick, w.placement, voice(true, start))
+                    device.play_game_sound(w.clip, &w.pick, w.placement, voice(true, true, start))
                 }
-                Key::Shot(_) => {
-                    device.play_game_sound(w.clip, &w.pick, w.placement, voice(false, 0.0))
-                }
+                // An event set to Loop plays on until stopped
+                // (`stopSoundsOn`) or the game stops.
+                Key::Shot(_) => device.play_game_sound(
+                    w.clip,
+                    &w.pick,
+                    w.placement,
+                    voice(w.event.looping, false, 0.0),
+                ),
             };
             match result {
                 Ok(()) => {
@@ -236,6 +268,18 @@ impl GameAudio {
         }
         self.mix(workbench, device, dt, ctx);
         self.spent = began.elapsed().as_secs_f64();
+    }
+
+    /// Everything of a play forgotten, and its sounds faded out.
+    fn reset(&mut self, device: &mut SoundDevice) {
+        device.stop_game_sounds();
+        self.last_take.clear();
+        self.told_unknown.clear();
+        self.told_full = false;
+        self.shares.clear();
+        self.loops.clear();
+        self.changed_loops.clear();
+        self.clock = 0.0;
     }
 
     /// How long the last frame's sound took, in seconds (the Profiler's
@@ -295,7 +339,7 @@ impl GameAudio {
             }
             // The event's own limit, counting what plays and what's
             // starting this frame.
-            let number = self.event_number(name);
+            let number = self.event_number(key);
             let now =
                 device.game_sounds_of_event(number) + this_frame.get(key).copied().unwrap_or(0);
             if now >= event.at_once as usize {
@@ -344,6 +388,10 @@ impl GameAudio {
                 placement,
                 loudness_db,
                 extra_db,
+                on: match at {
+                    script::SoundAt::On(which) => Some(which.0.raw()),
+                    _ => None,
+                },
             });
         }
     }
@@ -385,11 +433,13 @@ impl GameAudio {
                 started: self.clock,
             });
             if state.event != key {
-                // A different event now: it starts from the top.
+                // A different event now: it starts from the top, with the
+                // new event.
                 *state = LoopState {
                     event: key.to_owned(),
                     started: self.clock,
                 };
+                self.changed_loops.push(entity);
             }
             let placement = match event.space {
                 Space::Flat => Placement::Flat,
@@ -416,6 +466,7 @@ impl GameAudio {
                 placement,
                 loudness_db: loudness(&placement, pick.volume_db, hearing),
                 extra_db: 0.0,
+                on: Some(entity),
             });
         }
     }
