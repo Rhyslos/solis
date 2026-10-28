@@ -78,7 +78,10 @@ fn a_changed_area_or_a_damaged_file_fails() {
     assert!(text.contains("FAIL  assets/broken.solsound"), "{text}");
     assert!(text.contains("doesn't say which area"), "{text}");
     assert!(text.contains("walk.solrec"), "{text}");
-    assert!(text.contains("isn't as it was when this was recorded"), "{text}");
+    assert!(
+        text.contains("isn't as it was when this was recorded"),
+        "{text}"
+    );
     assert!(text.contains("Don't ship it"), "{text}");
     let _ = std::fs::remove_dir_all(root.parent().unwrap());
 }

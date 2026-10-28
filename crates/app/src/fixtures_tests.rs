@@ -232,6 +232,9 @@ fn input_actions_from_a_newer_solis_are_never_overwritten() {
     std::fs::write(root.join(input::FILE), newer).unwrap();
     let refused = crate::play_files::save_bindings(&root, &input::Bindings::default().write());
     assert!(refused.unwrap_err().to_string().contains("newer version"));
-    assert_eq!(std::fs::read_to_string(root.join(input::FILE)).unwrap(), newer);
+    assert_eq!(
+        std::fs::read_to_string(root.join(input::FILE)).unwrap(),
+        newer
+    );
     let _ = std::fs::remove_dir_all(&root);
 }

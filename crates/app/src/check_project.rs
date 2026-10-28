@@ -353,7 +353,9 @@ fn play_back(
     w.replay(&text, &path.display().to_string());
     // The area must start as it did when recorded: otherwise the build
     // isn't what changed.
-    if w.world().is_some_and(|world| world.checksum() != recording.start) {
+    if w.world()
+        .is_some_and(|world| world.checksum() != recording.start)
+    {
         return Err(format!(
             "its area, {area_path}, isn't as it was when this was recorded (changed since, or \
              recorded with unsaved changes): record it again"
@@ -396,9 +398,12 @@ impl Saves {
                     let text = match self.0.get(&slot) {
                         Some(text) => Some(text.clone()),
                         None => crate::play_files::save_path(root, &slot).and_then(|path| {
-                            crate::play_files::read_limited(&path, crate::play_files::MAX_SAVE_BYTES)
-                                .ok()
-                                .flatten()
+                            crate::play_files::read_limited(
+                                &path,
+                                crate::play_files::MAX_SAVE_BYTES,
+                            )
+                            .ok()
+                            .flatten()
                         }),
                     };
                     match text {
