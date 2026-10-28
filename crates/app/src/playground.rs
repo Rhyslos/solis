@@ -4,8 +4,16 @@
 //! to push and a moving platform, a character with the ready-made
 //! controller and third-person camera, and quick saves on F6 and F7. It's
 //! the level the Phase 6 gate is tried in.
+//!
+//! Phase 7, S7 (the sound gate's level): footsteps from the character's
+//! game code, a music loop, a radio whose chatter ducks the music, and a
+//! cave with a reverb zone and a drip. The sounds are made in code
+//! (`playground_sounds.rs`).
 
-use area::builtin::{BodyKind, Camera, CharacterBody, Collider, Model, RigidBody, Transform};
+use area::builtin::{
+    AudioSource, BodyKind, Camera, CharacterBody, Collider, Model, ReverbZone, RigidBody,
+    Transform, ZoneShape,
+};
 use area::{Area, EntityData};
 use asset_db::{Project, Sidecar};
 use glam::{Quat, Vec3};
@@ -29,6 +37,94 @@ const MODELS: [(&str, &str); 4] = [
     ("platform", "models/platform.glb"),
     ("character", "models/character.glb"),
 ];
+
+/// Makes a sound file's bytes.
+type MakeSound = fn() -> Vec<u8>;
+
+/// The sound files, as (file in the assets, how it's made).
+const SOUNDS: [(&str, MakeSound); 7] = [
+    ("sounds/footstep_1.wav", || {
+        crate::playground_sounds::footstep(0)
+    }),
+    ("sounds/footstep_2.wav", || {
+        crate::playground_sounds::footstep(1)
+    }),
+    ("sounds/footstep_3.wav", || {
+        crate::playground_sounds::footstep(2)
+    }),
+    ("sounds/footstep_4.wav", || {
+        crate::playground_sounds::footstep(3)
+    }),
+    ("sounds/music.wav", crate::playground_sounds::music),
+    ("sounds/radio.wav", crate::playground_sounds::radio),
+    ("sounds/drip.wav", crate::playground_sounds::drip),
+];
+
+/// A sound file's ID, fixed so the sound events can name it.
+fn sound_id(path: &str) -> AssetId {
+    let n = SOUNDS.iter().position(|(p, _)| *p == path).unwrap_or(0) as u64;
+    AssetId(Id::from_raw(0x5015_9A7E_0002_0001 + n).unwrap_or_else(Id::random))
+}
+
+/// The sound events, as (file in the assets, the event).
+fn sound_events() -> Vec<(&'static str, sound::SoundEvent)> {
+    use sound::event::{Fade, Space};
+    let placed = |takes: Vec<AssetId>, bus: &str, near_m: f32, far_m: f32| sound::SoundEvent {
+        takes,
+        bus: bus.to_owned(),
+        space: Space::Placed,
+        near_m,
+        far_m,
+        fade: Fade::Realistic,
+        ..sound::SoundEvent::default()
+    };
+    vec![
+        (
+            "sfx/footstep.solsound",
+            sound::SoundEvent {
+                volume_db: -4.0,
+                volume_range_db: 2.0,
+                pitch_range_st: 1.0,
+                ..placed(
+                    (1..=4)
+                        .map(|i| sound_id(&format!("sounds/footstep_{i}.wav")))
+                        .collect(),
+                    "Effects",
+                    2.0,
+                    25.0,
+                )
+            },
+        ),
+        (
+            "sfx/drip.solsound",
+            sound::SoundEvent {
+                looping: true,
+                volume_db: -6.0,
+                ..placed(vec![sound_id("sounds/drip.wav")], "Ambience", 2.0, 20.0)
+            },
+        ),
+        (
+            "voice/radio.solsound",
+            sound::SoundEvent {
+                looping: true,
+                priority: sound::event::Priority::High,
+                ..placed(vec![sound_id("sounds/radio.wav")], "Voice", 3.0, 25.0)
+            },
+        ),
+        (
+            "music/theme.solsound",
+            sound::SoundEvent {
+                takes: vec![sound_id("sounds/music.wav")],
+                bus: "Music".to_owned(),
+                space: Space::Flat,
+                looping: true,
+                volume_db: -8.0,
+                priority: sound::event::Priority::High,
+                ..sound::SoundEvent::default()
+            },
+        ),
+    ]
+}
 
 /// A model's ID, fixed so the area made here can name it.
 fn model(name: &str) -> AssetId {
@@ -69,6 +165,21 @@ pub fn files() -> Vec<(String, Vec<u8>)> {
             sidecar.to_text().into_bytes(),
         ));
         files.push((path.to_string(), glb));
+    }
+    for (path, make) in SOUNDS {
+        let bytes = make();
+        let mut hash = asset_db::ContentHash::default();
+        hash.update(&bytes);
+        let mut sidecar = Sidecar::new(hash.finish());
+        sidecar.id = sound_id(path);
+        files.push((
+            format!("{path}.{}", asset_db::sidecar::EXTENSION),
+            sidecar.to_text().into_bytes(),
+        ));
+        files.push((path.to_string(), bytes));
+    }
+    for (path, event) in sound_events() {
+        files.push((path.to_string(), sound::event::write(&event).into_bytes()));
     }
     let registry = area::builtin::registry().ok();
     let empty = reflect::Registry::default();
@@ -224,6 +335,84 @@ pub fn level() -> Area {
     moves.set("to", Value::vec3(to));
     platform.components.insert("Platform".into(), moves);
     add(&mut area, platform);
+    // The cave: a tunnel of blocks with a reverb zone inside, and a drip.
+    let cave = Vec3::new(-20.0, -10.0, 0.0);
+    for (name, offset, size) in [
+        (
+            "Cave wall 1",
+            Vec3::new(-3.0, 0.0, 2.0),
+            Vec3::new(0.5, 12.0, 4.0),
+        ),
+        (
+            "Cave wall 2",
+            Vec3::new(3.0, 0.0, 2.0),
+            Vec3::new(0.5, 12.0, 4.0),
+        ),
+        (
+            "Cave roof",
+            Vec3::new(0.0, 0.0, 4.25),
+            Vec3::new(6.5, 12.0, 0.5),
+        ),
+        (
+            "Cave back",
+            Vec3::new(0.0, -6.0, 2.0),
+            Vec3::new(6.5, 0.5, 4.0),
+        ),
+    ] {
+        add(&mut area, block(name, cave + offset, Quat::IDENTITY, size));
+    }
+    add(
+        &mut area,
+        EntityData::new("Cave echo")
+            .with(&Transform {
+                position: cave + Vec3::new(0.0, 0.0, 2.0),
+                ..Transform::default()
+            })
+            .with(&ReverbZone {
+                shape: ZoneShape::Box,
+                size: Vec3::new(6.0, 12.0, 4.0),
+                soft_edge: 2.0,
+                preset: "Cave".to_owned(),
+                strength: 1.0,
+                radius: 8.0,
+            }),
+    );
+    add(
+        &mut area,
+        EntityData::new("Drip")
+            .with(&Transform {
+                position: cave + Vec3::new(1.5, -3.0, 3.5),
+                ..Transform::default()
+            })
+            .with(&AudioSource {
+                event: "sfx/drip".to_owned(),
+                ..AudioSource::default()
+            }),
+    );
+    // A radio on a crate, chattering on the Voice bus: near it, the
+    // music dips (Voice ducks Music).
+    add(
+        &mut area,
+        shape(
+            "Radio",
+            "crate",
+            Vec3::new(10.0, 9.0, 0.3),
+            Quat::IDENTITY,
+            Vec3::new(0.6, 0.4, 0.6),
+        )
+        .with(&AudioSource {
+            event: "voice/radio".to_owned(),
+            ..AudioSource::default()
+        }),
+    );
+    // The music, heard the same everywhere.
+    add(
+        &mut area,
+        EntityData::new("Music").with(&AudioSource {
+            event: "music/theme".to_owned(),
+            ..AudioSource::default()
+        }),
+    );
     // The character and its camera, each naming the other.
     let player = entity(100);
     let camera = entity(101);
@@ -240,6 +429,9 @@ pub fn level() -> Area {
     character
         .components
         .insert("CharacterController".into(), controller);
+    character
+        .components
+        .insert("Footsteps".into(), ComponentData::default());
     area.insert(player, character);
     let mut eye = EntityData::new("Camera")
         .with(&Transform {

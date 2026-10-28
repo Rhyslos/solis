@@ -17,6 +17,8 @@ For a thing that's pushed around by physics (a ball, a crate) use a [RigidBody](
 
 **Try the playground first.** **Help > Make the playground…** makes a new project with a level to walk around in: steps, a gentle ramp and one too steep to climb, crates to push, a moving platform to ride, and a character with the third-person camera. Press **Play**, click the **Game panel**, and walk with **W A S D**, look with the **mouse**, jump with **Space**, sprint with **Shift**. **F6** saves the game and **F7** loads it. **Esc** gives the editor the mouse back.
 
+It has sounds too ([Sound events](sound-events.md)): footsteps as the character walks (faster when it runs, made by the playground's `Footsteps` code), music, a radio on a crate whose chatter makes the music dip as you come near (the [Mixer](mixer.md)'s Voice ducking Music), and a cave with a drip, where every step echoes (a [reverb zone](reverb-zones.md)). The sounds are Solis's own, free to use for anything.
+
 **A character in your own area**
 1. Add an entity for the character (**Entity > Add empty**, or a model of a person) with its feet where it should stand.
 2. In **Properties**, choose **Add component > CharacterBody**. A green capsule shows its shape when it's selected. Its feet are at the entity's origin.

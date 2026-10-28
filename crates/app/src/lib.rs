@@ -17,6 +17,7 @@ pub mod import;
 pub mod logger;
 pub mod play_files;
 pub mod playground;
+mod playground_sounds;
 pub mod project;
 pub mod sample_game;
 pub mod sound;
