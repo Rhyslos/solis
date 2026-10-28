@@ -220,3 +220,24 @@ fn the_first_listener_hearing_now_hears_or_else_the_camera() {
     assert!(w.same_family(child, on) && w.same_family(on, child));
     assert!(!w.same_family(camera, on));
 }
+
+#[test]
+fn a_new_play_starts_its_sounds_afresh() {
+    // Regression (Phase 7 review): sounds asked for in one play never
+    // wait to be heard in the next, and each play has its own number, so
+    // the app starts the game's sound again even with no frame between.
+    let (mut w, _) = with_a_speaker();
+    let first = w.play_number();
+    w.play();
+    w.run_game(2.0 / 60.0);
+    assert!(!w.take_game_sounds().is_empty());
+    w.run_game(1.0 / 60.0);
+    w.stop();
+    assert!(w.take_game_sounds().is_empty(), "Stop leaves none waiting");
+    w.play();
+    assert!(w.play_number() > first + 1, "a number each play");
+    w.pause();
+    let paused = w.play_number();
+    w.play();
+    assert_eq!(w.play_number(), paused, "carrying on isn't a new play");
+}

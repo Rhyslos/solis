@@ -61,12 +61,21 @@ pub struct Voice {
     /// Its event, as a number the caller chooses (the same for every play
     /// of one event).
     pub event: u64,
-    /// Whether it plays over and over (an `AudioSource`).
+    /// Whether it plays over and over (an `AudioSource`, or an event set
+    /// to Loop).
     pub looping: bool,
+    /// Whether it's an `AudioSource`'s loop: listed by
+    /// [`crate::SoundDevice::loops_playing`] and stopped with
+    /// [`crate::SoundDevice::stop_loop_on`], never by `stopSoundsOn`.
+    pub source: bool,
     /// Where in the sound to start, in seconds.
     pub start_s: f64,
     /// How much louder than its pick, in decibels.
     pub extra_db: f32,
+    /// The entity it belongs to, by its ID's number, even when it's heard
+    /// everywhere (a placed sound's entity comes with its placement): so
+    /// `stopSoundsOn` and an AudioSource's loop find it.
+    pub on: Option<u64>,
 }
 
 impl Voice {
@@ -102,8 +111,9 @@ struct Playing {
     bus: usize,
     /// Its event's number.
     event: u64,
-    /// Whether it's a loop.
-    looping: bool,
+    /// Whether it's an AudioSource's loop (rests and comes back; not
+    /// stopped by `stopSoundsOn`).
+    source: bool,
     /// The entity it's on, by its ID's number.
     on: Option<u64>,
     /// Its own track, when it's placed (Kira places a track, not a sound).
@@ -300,7 +310,10 @@ impl crate::SoundDevice {
         let Some((playing_tree, stepping_tree)) = game.buses.as_mut() else {
             return Err("the buses couldn't be made".to_owned());
         };
-        let tree = if game.paused {
+        // A Step's one-shots play while paused; a loop always goes on the
+        // game's own tree, so it pauses and carries on with the game (found
+        // by the Phase 7 review).
+        let tree = if game.paused && !voice.looping {
             stepping_tree
         } else {
             playing_tree
@@ -312,6 +325,7 @@ impl crate::SoundDevice {
             Placement::At(spot) => (None, Some(spot)),
             Placement::On(entity, spot) => (Some(entity), Some(spot)),
         };
+        let on = on.or(voice.on);
         let mut track = match spot {
             None => None,
             Some(spot) => {
@@ -371,7 +385,7 @@ impl crate::SoundDevice {
         game.playing.push(Playing {
             bus,
             event: voice.event,
-            looping: voice.looping,
+            source: voice.source,
             on,
             track,
             sound,
@@ -425,12 +439,18 @@ impl crate::SoundDevice {
         on
     }
 
-    /// Stops the sounds on an entity, with a short fade.
+    /// Stops the sounds game code played on an entity, with a short fade
+    /// (an event set to Loop too). An AudioSource's loop isn't one of them: it's switched with
+    /// `setSoundPlaying`, and would only start again next frame.
     pub fn stop_game_sounds_on(&mut self, entity: u64) {
         let Some(game) = self.game.as_mut() else {
             return;
         };
-        for playing in game.playing.iter_mut().filter(|p| p.on == Some(entity)) {
+        for playing in game
+            .playing
+            .iter_mut()
+            .filter(|p| p.on == Some(entity) && !p.source)
+        {
             playing.sound.stop_over(STOP_ON_FADE);
         }
     }
@@ -539,7 +559,7 @@ impl crate::SoundDevice {
     pub fn one_shots_playing(&mut self) -> usize {
         self.game.as_mut().map_or(0, |g| {
             g.tidy();
-            g.playing.iter().filter(|p| !p.looping).count()
+            g.playing.iter().filter(|p| !p.source).count()
         })
     }
 
@@ -552,7 +572,7 @@ impl crate::SoundDevice {
         let mut on: Vec<u64> = game
             .playing
             .iter()
-            .filter(|p| p.looping)
+            .filter(|p| p.source)
             .filter_map(|p| p.on)
             .collect();
         on.sort_unstable();
@@ -569,12 +589,11 @@ impl crate::SoundDevice {
         for playing in game
             .playing
             .iter_mut()
-            .filter(|p| p.looping && p.on == Some(entity))
+            .filter(|p| p.source && p.on == Some(entity))
         {
             playing.sound.stop_over(STOP_ON_FADE);
         }
-        game.playing
-            .retain(|p| !(p.looping && p.on == Some(entity)));
+        game.playing.retain(|p| !(p.source && p.on == Some(entity)));
     }
 
     /// Uses the project's buses (made again only when their names or

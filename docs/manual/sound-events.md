@@ -19,7 +19,7 @@
 | Volume | How loud, in decibels (dB): 0 is as recorded, −6 about half as loud, +6 about twice. The second number is how much each play may be louder or quieter: 1 to 3 dB is subtle and natural. |
 | Pitch | How high or low, in semitones (st): 12 is an octave up. The second number is how much each play may differ: 0.5 to 2 st keeps footsteps fresh without sounding odd. |
 | Bus | Which [bus](mixer.md) it plays through (Music, Effects, Voice, Ambience, UI, or one of your own), so its fader, ducking and a game's options turn it up or down with the others. |
-| Loop | Plays again from the start when it ends: an engine hum, a campfire, music. |
+| Loop | Plays again from the start when it ends: an engine hum, a siren, music. Played by game code, it goes on until `stopSoundsOn` stops it or the game stops, so play it on an entity (`playSoundOn`) to be able to stop it. An [AudioSource](#sounds-that-keep-playing) always loops, whatever this says. |
 | Placement | **In the world**: it comes from a place, quieter far away and from its direction (a footstep, a door). It plays as one channel (mono), mixed down from stereo if need be, so it can come from one side. **Everywhere**: heard the same wherever you are, as recorded, in stereo if the file is (music, the interface). Each take in the list says whether its file is mono or stereo. |
 | Full until, Silent past | For sounds in the world: full volume up to the first distance, silent past the second, in metres. A footstep might be 2 m and 30 m; an explosion 10 m and 300 m. |
 | Fade | How it gets quieter between the two distances. **Realistic** drops quickly at first, as sound does outdoors; **Even** drops steadily; **None** stays full until the far distance. |

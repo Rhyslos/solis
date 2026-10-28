@@ -30,7 +30,7 @@ When you want to balance a game's sound as a whole rather than one [sound event]
 | Fade down | How long going quieter takes, in seconds. Short (0.1 to 0.3 s) so the first word is clear. |
 | Fade back | How long coming back takes after the last of those sounds ends. Longer (0.5 to 2 s), so the music doesn't jump back between sentences. |
 
-A bus can have up to 8 ducking rules (**Add a ducking rule**, and **×** to remove one), and a project up to 64 buses. **Remove bus** moves the buses inside it up to its parent.
+A bus can have up to 8 ducking rules (**Add a ducking rule**, and **×** to remove one), and a project up to 64 buses. **Remove bus** moves the buses inside it up to its parent. Adding, removing or moving a bus while the game plays rebuilds the mix: sounds already playing once stop (sounds that keep playing start again at once), so do it while stopped if you're listening closely.
 
 **From game code**, `setBusVolume(bus, volume)` sets a bus for the rest of the play to a share of its fader, from 0 (silent) to 1 (as set in the Mixer): what an options menu's sliders call. See [Game code: Sounds](game-code.md#sounds).
 

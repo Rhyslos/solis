@@ -798,6 +798,178 @@ mod tests {
         let _ = std::fs::remove_dir_all(&dir);
     }
 
+    /// The sounds folder for the review's tests: `hum.wav`, and an event
+    /// file for each of `events`.
+    fn with_events(name: &str, events: &[(&str, sound::SoundEvent)]) -> (PathBuf, Sounds) {
+        let dir = folder(name);
+        std::fs::write(dir.join("sfx/hum.wav"), wav()).unwrap();
+        let mut files = vec!["sfx/hum.wav".to_owned()];
+        for (event_name, event) in events {
+            let file = format!("{event_name}.solsound");
+            std::fs::write(dir.join(&file), sound::event::write(event)).unwrap();
+            files.push(file);
+        }
+        let mut s = Sounds::default();
+        let names: Vec<&str> = files.iter().map(String::as_str).collect();
+        s.want(&listing(&names), &dir);
+        settle(&mut s);
+        (dir, s)
+    }
+
+    fn hum_event() -> sound::SoundEvent {
+        sound::SoundEvent {
+            takes: vec![sound_id("sfx/hum.wav")],
+            ..sound::SoundEvent::default()
+        }
+    }
+
+    /// A workbench playing a camera and one entity running `component`
+    /// from `code`, a game code file.
+    fn coded_world(code: &str, component: &str) -> editor::Workbench {
+        use area::builtin::{Camera, Transform};
+        let mut files = script::describe::descriptions("Test 1.0", "solis");
+        files.push(("main.lst".into(), code.to_owned()));
+        let compiled = match script::compile(&script::Code {
+            files,
+            lua: Vec::new(),
+            notes: Vec::new(),
+        }) {
+            Ok(Some(c)) => std::sync::Arc::new(c),
+            Ok(None) => panic!("no code"),
+            Err(problems) => panic!("{}", problems[0]),
+        };
+        let mut w = editor::Workbench::new(
+            editor::AppInfo {
+                name: "Test".into(),
+                version: "1.0".into(),
+            },
+            None,
+        );
+        w.set_program(Some(compiled));
+        let mut area = area::Area::new();
+        area.spawn(area::EntityData::new("Camera").with(&Camera::default()));
+        let mut speaker = area::EntityData::new("Speaker").with(&Transform {
+            position: glam::Vec3::new(1.0, 0.0, 0.0),
+            ..Transform::default()
+        });
+        speaker
+            .components
+            .insert(component.into(), reflect::ComponentData::default());
+        area.spawn(speaker);
+        w.open_area(area, PathBuf::from("coded.solarea"));
+        w
+    }
+
+    #[test]
+    fn a_flat_audio_source_starts_once_and_keeps_going() {
+        // Regression (Phase 7 review): a flat AudioSource (music) was
+        // started again every frame until the voices ran out.
+        let flat = sound::SoundEvent {
+            space: sound::event::Space::Flat,
+            ..hum_event()
+        };
+        let (dir, s) = with_events("flat", &[("hum", flat)]);
+        let (mut w, ids) = hum_world(1);
+        let mut device = SoundDevice::for_tests();
+        let mut audio = crate::game_audio::GameAudio::default();
+        let ctx = eframe::egui::Context::default();
+        w.play();
+        for _ in 0..10 {
+            w.play_for(1.0 / 60.0);
+            audio.frame(&mut w, &s, &mut device, &ctx);
+        }
+        assert_eq!(device.game_sounds_playing(), 1);
+        assert_eq!(device.loops_playing(), vec![ids[0].0.raw()]);
+        // Paused, it's held, not started again.
+        w.pause();
+        audio.frame(&mut w, &s, &mut device, &ctx);
+        assert_eq!(device.game_sounds_playing(), 1);
+        // Stop and Play with no frame between: a fresh start, still one.
+        w.stop();
+        w.play();
+        w.play_for(1.0 / 60.0);
+        audio.frame(&mut w, &s, &mut device, &ctx);
+        assert_eq!(device.game_sounds_playing(), 1);
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn game_code_s_plays_keep_to_at_once_and_stops() {
+        // Regression (Phase 7 review): "heard at once" counted plays under
+        // another number than they played under, so it never held; and a
+        // stop asked for after a play in the same frame let it through.
+        let two = sound::SoundEvent {
+            at_once: 2,
+            ..hum_event()
+        };
+        let (dir, s) = with_events("at-once", &[("hum", two)]);
+        const KEEP: &str = "get \"solis/sound\":[playSoundOn];\n\
+            component Keep {\n\
+                method update(float dt) { playSoundOn(\"hum\", me); }\n\
+            }\n\
+            pass Keep;\nend\n";
+        let mut w = coded_world(KEEP, "Keep");
+        let mut device = SoundDevice::for_tests();
+        let mut audio = crate::game_audio::GameAudio::default();
+        let ctx = eframe::egui::Context::default();
+        w.play();
+        for _ in 0..6 {
+            w.play_for(1.0 / 60.0);
+            audio.frame(&mut w, &s, &mut device, &ctx);
+        }
+        assert_eq!(device.one_shots_playing(), 2, "two at once");
+        w.stop();
+        audio.frame(&mut w, &s, &mut device, &ctx);
+
+        const UNSAID: &str = "get \"solis/sound\":[playSoundOn, stopSoundsOn];\n\
+            component Unsaid {\n\
+                method update(float dt) {\n\
+                    playSoundOn(\"hum\", me);\n\
+                    stopSoundsOn(me);\n\
+                }\n\
+            }\n\
+            pass Unsaid;\nend\n";
+        let mut w = coded_world(UNSAID, "Unsaid");
+        let mut device = SoundDevice::for_tests();
+        w.play();
+        w.play_for(1.0 / 60.0);
+        audio.frame(&mut w, &s, &mut device, &ctx);
+        assert_eq!(device.one_shots_playing(), 0, "stopped before it began");
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn an_event_set_to_loop_plays_on_from_one_play() {
+        // Regression (Phase 7 review): the event's Loop setting did
+        // nothing. Played once, it goes on, and resting loops leave it be.
+        let drone = sound::SoundEvent {
+            looping: true,
+            ..hum_event()
+        };
+        let (dir, s) = with_events("drone", &[("drone", drone)]);
+        const ONCE: &str = "get \"solis/sound\":[playSoundOn];\n\
+            component Once {\n\
+                has { bool started = false; }\n\
+                method update(float dt) {\n\
+                    is not started? then { playSoundOn(\"drone\", me); }\n\
+                    started = true;\n\
+                }\n\
+            }\n\
+            pass Once;\nend\n";
+        let mut w = coded_world(ONCE, "Once");
+        let mut device = SoundDevice::for_tests();
+        let mut audio = crate::game_audio::GameAudio::default();
+        let ctx = eframe::egui::Context::default();
+        w.play();
+        for _ in 0..5 {
+            w.play_for(1.0 / 60.0);
+            audio.frame(&mut w, &s, &mut device, &ctx);
+        }
+        assert_eq!(device.one_shots_playing(), 1);
+        assert!(device.loops_playing().is_empty(), "not an AudioSource's");
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
     #[test]
     fn an_event_plays_a_different_take_each_press() {
         let dir = folder("event");

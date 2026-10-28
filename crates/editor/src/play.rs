@@ -179,6 +179,10 @@ impl Workbench {
         // both the editor's history and the game's.
         self.moving = None;
         self.document.close_step();
+        // A new play: its sounds start afresh, and nothing of the last
+        // play's waits to be heard in it.
+        self.plays += 1;
+        self.game_sounds.clear();
         let mut world = world::World::from_area(self.document.area());
         // A new seed each Play, unless one was chosen (`seed` in the
         // Console), so random numbers differ between plays but a play can
@@ -341,6 +345,7 @@ impl Workbench {
             return;
         };
         let seconds = playing.world.clock().time;
+        self.game_sounds.clear();
         self.moving = None;
         self.give_back_input();
         if let Some(recording) = playing.recording.filter(|r| !r.ticks.is_empty()) {
