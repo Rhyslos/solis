@@ -678,8 +678,10 @@ mod tests {
         s.want(&listing(&["sfx/hum.wav", "hum.solsound"]), &dir);
         settle(&mut s);
         let (mut w, ids) = hum_world(70);
-        let mut mixer = sound::Mixer::default();
-        mixer.voices = 16;
+        let mut mixer = sound::Mixer {
+            voices: 16,
+            ..sound::Mixer::default()
+        };
         w.set_mixer(mixer.clone());
         let mut device = SoundDevice::for_tests();
         let mut audio = crate::game_audio::GameAudio::default();
