@@ -6,7 +6,7 @@ The project folder and its assets ([decision 0021](../../docs/decisions/0021-ass
 
 ## Purpose
 
-Know every asset in a project (models, and assemblies: `.solassembly`) by an ID that survives renaming, read them quickly, and notice when they change; list every file and folder for the Library, and rename, move and delete them with their sidecars (`files.rs`; deleting goes to the Recycle Bin through `trash`).
+Know every asset in a project (models, assemblies: `.solassembly`, and sounds: `.wav` and `.ogg`, `SOUND_EXTENSIONS`) by an ID that survives renaming, read them quickly, and notice when they change; list every file and folder for the Library, and rename, move and delete them with their sidecars (`files.rs`; deleting goes to the Recycle Bin through `trash`).
 
 - **The project** (`project.rs`): `project.solis` (TOML: name, format), `assets/` with everything the user owns, and `.solis/`, a cache that can be deleted at any time. New projects get a `.gitignore` and a `.gitattributes` (Solis's text files with Unix line endings; models, images and sound through Git LFS).
 - **Sidecars** (`sidecar.rs`): `<file>.solmeta` beside each asset, in TOML: its `AssetId`, its content hash (to find it again after a rename outside Solis), importer settings, and stable part IDs for its nodes, meshes and materials. Parts are matched on re-import by name path, then name and order, then index; lost parts are kept, marked missing. Written only when something changes, through a temporary file.
@@ -30,4 +30,4 @@ Know every asset in a project (models, and assemblies: `.solassembly`) by an ID 
 
 ## Status
 
-New projects' `.gitignore` keeps out `.solis/`, `builds/` and, from Phase 6, `saves/`. Phase 2, milestone 5: projects, sidecars, the cache, watching and workers. Phase 5: the import cache keeps each mesh's levels of detail (layout version 2), so they're made once; version 3 measures a model's box without its own levels of detail. Phase 3: listing every file, and renaming, moving, new folders and deleting from the Library.
+New projects' `.gitignore` keeps out `.solis/`, `builds/` and, from Phase 6, `saves/`. Phase 2, milestone 5: projects, sidecars, the cache, watching and workers. Phase 5: the import cache keeps each mesh's levels of detail (layout version 2), so they're made once; version 3 measures a model's box without its own levels of detail. Phase 3: listing every file, and renaming, moving, new folders and deleting from the Library. Phase 7, S1: the `Sound` asset kind and file kind.

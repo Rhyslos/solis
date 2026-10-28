@@ -18,6 +18,8 @@ pub mod play_files;
 pub mod playground;
 pub mod project;
 pub mod sample_game;
+pub mod sound;
+pub mod sounds;
 pub mod startup;
 pub mod thumbnails;
 pub mod updates;

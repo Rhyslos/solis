@@ -19,6 +19,9 @@ use std::path::{Path, PathBuf};
 /// Key under which the panel layout is remembered between sessions.
 /// How often a frame is drawn while background work is on its way.
 const WAITING_FRAME: std::time::Duration = std::time::Duration::from_millis(100);
+/// How often the window is drawn while a sound plays in the Library, for
+/// its playhead (30 times a second).
+const PREVIEW_FRAME: std::time::Duration = std::time::Duration::from_millis(33);
 /// How often a frame is drawn while nothing happens, to look for changes
 /// on disk and messages from background work.
 const IDLE_FRAME: std::time::Duration = std::time::Duration::from_secs(1);
@@ -60,6 +63,11 @@ struct App {
     no_gpu: NoRenderer,
     /// Reads model files in the background.
     importer: Importer,
+    /// The sound card (silent until it opens, or when there's none).
+    sound: crate::sound::Sound,
+    /// The project's sound files, measured for the Library, and the one
+    /// being listened to.
+    sounds: crate::sounds::Sounds,
     /// The open project and its assets.
     projects: Projects,
     /// Models being read to be placed in the area when they arrive (the
@@ -180,6 +188,8 @@ impl App {
             gpu,
             no_gpu,
             importer,
+            sound: crate::sound::Sound::open(),
+            sounds: crate::sounds::Sounds::default(),
             projects: Projects::with_recent(recent),
             to_place: HashSet::new(),
             thumbnails: crate::thumbnails::Thumbnails::default(),
@@ -232,6 +242,8 @@ impl App {
                     gpu.clear_models();
                 }
                 self.thumbnails.clear(self.gpu.as_ref());
+                self.sounds.clear(self.sound.device());
+                self.workbench.set_sounds(self.sounds.states());
                 self.game_code.forget();
                 self.to_place.clear();
                 self.area_files.forget();
@@ -659,6 +671,8 @@ impl App {
                 WorkbenchAction::OpenProject => self.importer.ask_folder(FolderFor::OpenProject),
                 WorkbenchAction::OpenRecent(root) => self.open_project(&root, false),
                 WorkbenchAction::PlaceAsset(id) => self.place(id),
+                WorkbenchAction::PlaySound(path) => self.play_sound(&path),
+                WorkbenchAction::StopSound => self.sounds.stop(self.sound.device()),
                 WorkbenchAction::CreateAssembly(root) => self.create_assembly(root),
                 WorkbenchAction::ApplyToAssembly {
                     assembly,
@@ -889,6 +903,8 @@ impl App {
         if let Some(db) = self.projects.db() {
             self.thumbnails
                 .want(&self.listing, &db.project().assets(), self.gpu.as_ref());
+            self.sounds.want(&self.listing, &db.project().assets());
+            self.workbench.set_sounds(self.sounds.states());
         }
         self.show_library();
     }
@@ -1113,6 +1129,20 @@ impl App {
             .log(LogLevel::Info, "Adding the sample area…".to_string());
     }
 
+    /// Listens to the sound file at `path` (inside the assets), or says in
+    /// the Console why it can't.
+    fn play_sound(&mut self, path: &std::path::Path) {
+        let Some(assets) = self.projects.db().map(|db| db.project().assets()) else {
+            return;
+        };
+        if let Err(why) = self.sounds.play(path, &assets, self.sound.device()) {
+            self.workbench.log(
+                LogLevel::Warning,
+                format!("Couldn't play {}: {why}.", path.display()),
+            );
+        }
+    }
+
     /// Places a project asset where the camera looks: a model is read
     /// (from the cache, so quickly) and placed when it arrives; an
     /// assembly is placed at once.
@@ -1130,6 +1160,16 @@ impl App {
                         .log(LogLevel::Error, format!("Couldn't place it: {why}."));
                 }
             }
+            return;
+        }
+        if kind == Some(asset_db::AssetKind::Sound) {
+            // A sound has no shape to put in the scene; sound sources come
+            // in a later milestone.
+            self.workbench.placing_failed(id);
+            self.workbench.log(
+                LogLevel::Warning,
+                "A sound can't be placed in the scene yet.".to_owned(),
+            );
             return;
         }
         let Some(file) = self.projects.db().and_then(|db| db.file(id)) else {
@@ -1388,6 +1428,14 @@ impl eframe::App for App {
             ctx.send_viewport_cmd(egui::ViewportCommand::CancelClose);
         }
         self.collect_imports();
+        if let Some((level, text)) = self.sound.poll(std::time::Instant::now()) {
+            self.workbench.log(level, text);
+        }
+        if self.sounds.poll() {
+            self.workbench.set_sounds(self.sounds.states());
+        }
+        let preview = self.sounds.preview(self.sound.device());
+        self.workbench.set_preview(preview);
         self.updates.frame(&mut self.workbench);
         self.show_library_messages();
         self.workbench.set_gamepad(self.gamepads.read());
@@ -1431,8 +1479,13 @@ impl eframe::App for App {
         // a frame at once.
         if self.workbench.wants_frames(&ctx) {
             ctx.request_repaint();
+        } else if self.workbench.previewing() {
+            // The playhead moves smoothly while a sound plays.
+            ctx.request_repaint_after(PREVIEW_FRAME);
         } else if self.importer.waiting()
             || self.thumbnails.waiting()
+            || self.sounds.waiting()
+            || self.sound.is_opening()
             || self.projects.waiting()
             || self.game_code.waiting()
             || self.area_files.is_asking()

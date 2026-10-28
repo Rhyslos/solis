@@ -1931,3 +1931,92 @@ fn an_entity_field_shows_a_name_and_picks_from_the_area() {
     assert!(h.query_by_value(&ship.to_string()).is_none());
     assert!(h.query_by_label(&ship.to_string()).is_none());
 }
+
+#[test]
+fn a_sound_picked_in_the_library_shows_in_properties_and_plays() {
+    let mut w = Workbench::new(info(), None);
+    w.set_project(Some(crate::library::ProjectInfo {
+        name: "Harbour".into(),
+        root: "/projects/harbour".into(),
+        assets: "/projects/harbour/assets".into(),
+    }));
+    let id = w.add_model(crate_info(), &[], 0.1, &[]);
+    w.select(id);
+    w.set_library(vec![crate::library::LibraryItem {
+        id: None,
+        kind: crate::library::LibraryKind::Sound,
+        name: "step".into(),
+        path: "step.wav".into(),
+        thumbnail: None,
+    }]);
+    w.set_sounds(std::collections::HashMap::from([(
+        "step.wav".to_owned(),
+        crate::SoundState::Read(crate::SoundInfo {
+            seconds: 2.0,
+            channels: 2,
+            sample_rate: 44_100,
+            format: "WAV",
+            streamed: false,
+            waveform: vec![(-0.5, 0.5); 64],
+        }),
+    )]));
+    let mut h = acting(w);
+    h.run();
+    assert!(
+        h.query_by_label("Sample rate").is_none(),
+        "the model shows first"
+    );
+    h.get_by_label("step").click();
+    h.run();
+    let _ = h.get_by_label("Sample rate");
+    let _ = h.get_by_label("44,100 Hz");
+    let _ = h.get_by_label("Stereo");
+    let _ = h.get_by_label("From memory");
+    h.get_by_label("Play the sound").click();
+    h.run();
+    assert!(
+        h.state()
+            .1
+            .contains(&WorkbenchAction::PlaySound("step.wav".into()))
+    );
+    // The app says it's playing, half a second in.
+    h.state_mut().0.set_preview(Some(crate::Preview {
+        path: "step.wav".into(),
+        seconds: 0.5,
+    }));
+    h.run();
+    let _ = h.get_by_label("0.50 s / 2.00 s");
+    h.get_by_label("Stop the sound").click();
+    h.run();
+    assert!(h.state().1.contains(&WorkbenchAction::StopSound));
+    // Picking something else in the area (here, nothing) shows that.
+    h.state_mut().0.document.selection.clear();
+    h.run();
+    assert!(h.query_by_label("Sample rate").is_none());
+}
+
+#[test]
+fn a_sound_that_couldnt_be_read_says_why_in_properties() {
+    let mut w = Workbench::new(info(), None);
+    w.set_project(Some(crate::library::ProjectInfo {
+        name: "Harbour".into(),
+        root: "/projects/harbour".into(),
+        assets: "/projects/harbour/assets".into(),
+    }));
+    w.set_library(vec![crate::library::LibraryItem {
+        id: None,
+        kind: crate::library::LibraryKind::Sound,
+        name: "broken".into(),
+        path: "broken.ogg".into(),
+        thumbnail: None,
+    }]);
+    w.set_sounds(std::collections::HashMap::from([(
+        "broken.ogg".to_owned(),
+        crate::SoundState::Failed("it's damaged (its setup is cut off)".into()),
+    )]));
+    let mut h = acting(w);
+    h.run();
+    h.get_by_label("broken").click();
+    h.run();
+    let _ = h.get_by_label_contains("couldn't read it: it's damaged");
+}

@@ -93,6 +93,12 @@ pub enum WorkbenchAction {
     NewFolder(std::path::PathBuf),
     /// Move a file or folder (inside the assets) to the Recycle Bin.
     DeleteFile(std::path::PathBuf),
+    /// Listen to this sound file (inside the project's assets) in the
+    /// Library or Properties; the app plays it and reports how far it has
+    /// got with [`Workbench::set_preview`].
+    PlaySound(std::path::PathBuf),
+    /// Stop listening to the sound playing.
+    StopSound,
     /// Change one field of an entity inside an assembly's file (Apply to
     /// assembly); the app saves it and hands it back with
     /// [`Workbench::set_assembly`], which updates every copy.
@@ -215,6 +221,15 @@ pub struct Workbench {
     pub(crate) folders: Vec<String>,
     /// How the Library is shown.
     pub(crate) library_state: crate::library::LibraryState,
+    /// The project's sound files as the app has measured them, by path
+    /// inside the assets.
+    pub(crate) sounds: std::collections::HashMap<String, crate::sound_view::SoundState>,
+    /// The sound being listened to, and how far it has got.
+    pub(crate) preview: Option<crate::sound_view::Preview>,
+    /// The sound file Properties shows (picked in the Library), with the
+    /// area's selection as it was then: picking something else in the
+    /// area shows that instead.
+    pub(crate) sound_shown: Option<(String, crate::document::Selection)>,
     /// Where assets being placed go, when they were dropped somewhere:
     /// the point, and the entity they go under.
     pub(crate) place_targets: BTreeMap<AssetId, (glam::Vec3, Option<EntityId>)>,
@@ -324,6 +339,9 @@ impl Workbench {
             told_how_lust_opens: false,
             folders: Vec::new(),
             library_state: Default::default(),
+            sounds: std::collections::HashMap::new(),
+            preview: None,
+            sound_shown: None,
             place_targets: BTreeMap::new(),
             problems: Default::default(),
             playing: None,
@@ -709,6 +727,8 @@ impl Workbench {
         let mut shown = HashSet::new();
         let mut area_requests = Vec::new();
         let mut library_requests = Vec::new();
+        let picked_before = self.library_state.selected.clone();
+        self.drop_stale_sound();
         let mut console_requests = Vec::new();
         let part = self.assembly_part();
         let mut requests = Vec::new();
@@ -826,6 +846,11 @@ impl Workbench {
                         folders: &self.folders,
                         library_state: &mut self.library_state,
                         library_requests: &mut library_requests,
+                        sounds: crate::library::Sounds {
+                            states: &self.sounds,
+                            preview: self.preview.as_ref(),
+                        },
+                        sound_shown: self.sound_shown.as_ref().map(|(path, _)| path.as_str()),
                         part: part.as_ref(),
                         running: running.as_ref(),
                         requests: &mut requests,
@@ -848,6 +873,7 @@ impl Workbench {
         for request in library_requests {
             self.library_request(request, &mut actions);
         }
+        self.follow_sound_selection(&picked_before);
         for request in console_requests {
             self.console_request(request, ui.ctx(), &mut actions);
         }

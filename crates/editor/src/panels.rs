@@ -52,6 +52,10 @@ pub(crate) struct PanelViewer<'a> {
     pub(crate) folders: &'a [String],
     pub(crate) library_state: &'a mut LibraryState,
     pub(crate) library_requests: &'a mut Vec<LibraryRequest>,
+    /// The sound files measured, and the one playing.
+    pub(crate) sounds: crate::library::Sounds<'a>,
+    /// The sound file Properties shows instead of the selection, if any.
+    pub(crate) sound_shown: Option<&'a str>,
     pub(crate) part: Option<&'a AssemblyPart>,
     /// While playing, the selected entity's game code values as they are
     /// now, by component.
@@ -169,6 +173,16 @@ impl TabViewer for PanelViewer<'_> {
                 );
             }
             Panel::Properties => {
+                if let Some(path) = self.sound_shown {
+                    let request = crate::sound_view::sound_properties(
+                        ui,
+                        path,
+                        self.sounds.states.get(path),
+                        self.sounds.preview,
+                    );
+                    self.library_requests.extend(request);
+                    return;
+                }
                 let requests = properties(
                     ui,
                     self.document,
@@ -183,11 +197,11 @@ impl TabViewer for PanelViewer<'_> {
                 let requests = library(
                     ui,
                     self.project,
-                    self.library,
-                    self.folders,
+                    (self.library, self.folders),
                     self.library_state,
                     self.accent,
                     *tab == Panel::Code,
+                    self.sounds,
                 );
                 self.library_requests.extend(requests);
             }

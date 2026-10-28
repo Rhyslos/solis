@@ -25,7 +25,13 @@ pub enum AssetKind {
     Model,
     /// An assembly (`.solassembly`): entities to place many times.
     Assembly,
+    /// A sound file (WAV, Ogg Vorbis; decision 0056).
+    Sound,
 }
+
+/// The extensions of sound files Solis reads (decision 0056). The
+/// `sound` crate checks the contents when it reads them.
+pub const SOUND_EXTENSIONS: [&str; 2] = ["wav", "ogg"];
 
 /// The extension of assembly files.
 pub const ASSEMBLY_EXTENSION: &str = "solassembly";
@@ -36,9 +42,14 @@ impl AssetKind {
         if assets::is_model_file(path) {
             return Some(Self::Model);
         }
-        path.extension()
-            .is_some_and(|e| e.eq_ignore_ascii_case(ASSEMBLY_EXTENSION))
-            .then_some(Self::Assembly)
+        let ext = path.extension()?.to_string_lossy().to_lowercase();
+        if ext == ASSEMBLY_EXTENSION {
+            Some(Self::Assembly)
+        } else if SOUND_EXTENSIONS.contains(&ext.as_str()) {
+            Some(Self::Sound)
+        } else {
+            None
+        }
     }
 }
 

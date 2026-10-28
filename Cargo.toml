@@ -1,6 +1,6 @@
 [workspace]
 resolver = "3"
-members = ["crates/*", "tools/layer-check"]
+members = ["crates/*", "tools/layer-check", "patches/triple_buffer"]
 
 [workspace.package]
 version = "0.0.1"
@@ -26,6 +26,7 @@ script = { path = "crates/script" }
 physics = { path = "crates/physics" }
 input = { path = "crates/input" }
 updater = { path = "crates/updater" }
+sound = { path = "crates/sound" }
 
 # Outside libraries. Every one must have a licence compatible with MIT,
 # checked by `cargo deny check` (see deny.toml and decision 0007).
@@ -57,6 +58,16 @@ hecs = "0.11"
 # Physics, in its strict mode: the same result on every PC (decision
 # 0036). Not `parallel`: its order of work isn't fixed.
 rapier3d = { version = "0.36", features = ["enhanced-determinism"] }
+# Sound (decision 0056): Kira for playback and mixing, without its own
+# file readers (symphonia is MPL-2.0); Solis decodes WAV and Ogg itself.
+kira = { version = "0.12.5", default-features = false, features = ["cpal"] }
+# Used by patches/triple_buffer, the permissive stand-in Kira is given.
+crossbeam-utils = "0.8"
+# Reading WAV files.
+hound = "3.5"
+# Reading Ogg Vorbis files.
+lewton = "0.10"
+ogg = "0.8"
 # Compact binary for physics in save games (decision 0038).
 # Gamepads (decision 0037), on Windows.
 gilrs = "0.11"
@@ -128,3 +139,9 @@ codegen-units = 1
 # the editor stays smooth while working on it.
 [profile.dev.package."*"]
 opt-level = 2
+
+# Kira needs `triple_buffer`, which is MPL-2.0. This permissive stand-in,
+# written for Solis from the interface Kira uses, takes its place, so every
+# dependency stays permissive (decision 0056, docs/dependencies.md).
+[patch.crates-io]
+triple_buffer = { path = "patches/triple_buffer" }

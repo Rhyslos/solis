@@ -1,0 +1,20 @@
+[package]
+# Stands in for the `triple_buffer` crate (MPL-2.0), which Kira needs, so
+# every dependency stays permissive (decision 0056; docs/dependencies.md).
+# The root Cargo.toml's [patch.crates-io] points Kira here. Written for
+# Solis from the interface Kira uses; no code is taken from the original.
+name = "triple_buffer"
+version = "9.0.0"
+description = "Hands the newest value from one thread to another without waiting: the part of triple_buffer's interface Kira uses, permissively licensed"
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+publish = false
+
+[dependencies]
+crossbeam-utils.workspace = true
+
+[lints]
+workspace = true

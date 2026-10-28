@@ -182,6 +182,7 @@ impl Projects {
                     FileKind::Area => LibraryKind::Area,
                     FileKind::Texture => LibraryKind::Texture,
                     FileKind::Code => LibraryKind::Code,
+                    FileKind::Sound => LibraryKind::Sound,
                     FileKind::Other => LibraryKind::Other,
                 },
                 // Files Solis doesn't know keep their whole name, so
@@ -245,7 +246,7 @@ impl Projects {
 
 /// A path inside the assets with `/` between folders, as the Library shows
 /// it on every system.
-fn slashed(path: &Path) -> String {
+pub fn slashed(path: &Path) -> String {
     path.components()
         .map(|c| c.as_os_str().to_string_lossy())
         .collect::<Vec<_>>()

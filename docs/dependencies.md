@@ -51,17 +51,21 @@ Solis is built on other people's libraries, which saves years of work. Each libr
 | `glam` | Vectors, rotations and matrices: Solis's maths | MIT OR Apache-2.0 | app, area, asset_db, assets, editor, input, physics, reflect, render, script, world | foundation | Fork it (MIT or Apache-2.0); it's self-contained, so keeping a fork is cheap |
 | `gltf` | Reads glTF models | MIT OR Apache-2.0 | assets | walled | Fork it, or read glTF ourselves (the format is a public specification: JSON plus binary) |
 | `hecs` | The game's fast storage for entities | MIT OR Apache-2.0 | world | walled | Solis's own storage: `tools/storage-bench` already has one, measured against `hecs` for decision 0024 |
+| `hound` | Reads WAV sound files | Apache-2.0 | sound | walled | Read WAV ourselves (a simple, public format: a header and the samples) |
 | `image` | Reads PNG and JPEG textures | MIT OR Apache-2.0 | assets, app (tests) | walled | Use smaller PNG and JPEG readers, or fork |
-| `log` | Passes messages to the Console | MIT OR Apache-2.0 | app, render, updater | shared | A few lines of Solis's own logging |
+| `kira` | Plays and mixes sound: tracks, effects, sound placed in 3D (decision 0056) | MIT OR Apache-2.0 | sound | walled | Fork it (MIT or Apache-2.0), or mix ourselves on top of `cpal` underneath; only the sound crate changes |
+| `lewton` | Reads Ogg Vorbis sound files | MIT OR Apache-2.0 | sound | walled | Fork it (no release since 2021, so Solis's own fuzz tests vet it), or another permissive Vorbis reader |
+| `log` | Passes messages to the Console | MIT OR Apache-2.0 | app, render, sound, updater | shared | A few lines of Solis's own logging |
 | `lust` | Lust, the project lead's language (Solis's game code) | MIT | script | walled | Ours: the project lead's own repository, pinned to one commit |
 | `meshopt` | Makes levels of detail (simpler meshes for far away) | MIT OR Apache-2.0 | assets | walled | Write a simplifier (quadric error, a known method), or fork; meshoptimizer underneath is MIT |
 | `mlua` | Runs Lua and Luau game code, sandboxed | MIT | script | walled | Fork it (MIT), or bind to Luau ourselves (Luau is MIT); only the script crate changes |
 | `notify` | Notices when files change on disk | CC0-1.0 | asset_db | walled | Ask Windows directly (`ReadDirectoryChangesW`), or check files on a timer |
 | `notify-debouncer-mini` | Groups bursts of file changes into one | MIT OR Apache-2.0 | asset_db | walled | Group them ourselves (a short timer) |
+| `ogg` | Reads the Ogg pages a Vorbis file is packed in, so Solis can check its comment header before `lewton` reads it | BSD-3-Clause | sound | walled | Read Ogg pages ourselves (a simple, public format) |
 | `opener` | Opens web pages and folders | MIT OR Apache-2.0 | app | walled | Ask Windows directly (`ShellExecute`) |
 | `percent-encoding` | Decodes `%20`-style names in model files | MIT OR Apache-2.0 | assets | walled | Write it (a few lines) |
 | `pollster` | Waits for the graphics card in tests | Apache-2.0/MIT | app (tests), render (tests) | tests | Write it (about 20 lines) |
-| `proptest` | Tests with thousands of generated cases | MIT OR Apache-2.0 | area (tests), editor (tests), physics (tests), script (tests), updater (tests) | tests | Keep the last version (tests only), or another property-testing library |
+| `proptest` | Tests with thousands of generated cases | MIT OR Apache-2.0 | area (tests), editor (tests), physics (tests), script (tests), sound (tests), updater (tests) | tests | Keep the last version (tests only), or another property-testing library |
 | `rapier3d` | Physics, the same on every PC (decision 0036) | Apache-2.0 | physics | walled | Fork it (Apache-2.0) and maintain it; a physics engine of our own is a large job, and only the physics crate would change |
 | `rayon` | The job system that uses every core (decision 0031) | MIT OR Apache-2.0 | app, editor, physics, render, world | shared | Fork it, or a job system of Solis's own (the uses are simple parallel loops) |
 | `rfd` | Open and Save file windows | MIT | app | walled | Ask Windows directly (its common file dialogs) |
@@ -76,6 +80,16 @@ Solis is built on other people's libraries, which saves years of work. Each libr
 | `winresource` | Puts the logo into `solis.exe` when building | MIT | app (build) | build | Write the small resource file ourselves and run Windows' resource compiler |
 
 Outside the register: the tools in `tools/` and the fuzzing workspace in `fuzz/`, which never ship. Their libraries are still checked by `cargo deny` where they share the workspace.
+
+## Patches: libraries Solis stands in for
+
+When a library Solis needs depends on something whose licence isn't allowed, and the dependency can't be switched off, Solis writes a small permissive stand-in with the same interface, and the root `Cargo.toml`'s `[patch.crates-io]` points the library at it. Each stand-in lives in `patches/`, is written for Solis from the interface alone (no code taken from the original), and has its own tests.
+
+| Stands in for | Needed by | Original licence | What it does | Stand-in uses |
+| --- | --- | --- | --- | --- |
+| `triple_buffer` | `kira` | MPL-2.0 | Hands the newest command to the audio thread without waiting | `crossbeam-utils` (MIT OR Apache-2.0), already in Solis through other libraries |
+
+If the library drops the dependency, or changes what it uses, the patch is removed or updated; `cargo deny check` fails if the original ever comes back.
 
 ## Building from the archive
 

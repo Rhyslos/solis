@@ -8,7 +8,7 @@ Make a project as soon as you start something you want to keep. Without one, Sol
 - models you import are copied into the project's **assets** folder, so the project has everything it needs, on any computer;
 - each [asset](concepts.md#projects) gets an ID that never changes, so renaming or moving a file (in Solis, in Explorer, or through Git) breaks nothing;
 - when you save a model again in Blender or Aventail, Solis notices and shows the new version straight away;
-- the **Library** shows every file, folder by folder, with a thumbnail of each model and picture, ready to drag into the area.
+- the **Library** shows every file, folder by folder, with a thumbnail of each model and picture and the waveform of each sound, ready to drag into the area (or, for a sound, to listen to: see [Sounds](sounds.md)).
 
 ## How to use it
 

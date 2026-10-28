@@ -47,6 +47,7 @@ The same recording gives the same checksums with a real sound card, a test devic
 ## Consequences
 
 - **New dependencies:** `kira`, `hound` and `lewton` join the dependency register (decision 0052), walled into `sound`, with exit plans.
+- **Kira's one copyleft dependency is replaced.** Kira can't build without `triple_buffer` (MPL-2.0), which it uses to hand commands to its audio thread. Found by `cargo deny` in S1, it's replaced by a small permissive stand-in written for Solis (`patches/triple_buffer`, through `[patch.crates-io]`), so every dependency stays permissive as chosen. See docs/dependencies.md, "Patches".
 - **Linux CI needs the ALSA headers** (`libasound2-dev`) for Kira's sound-card layer to build.
 - **New file kinds:** `.solsound` and `.solmix` join RENAMING.md's list of extensions in the milestones that make them.
 - **The Mixer panel is a new editor panel,** so it's mocked up for the project lead before it's built (CLAUDE.md, "UI is mocked up first").

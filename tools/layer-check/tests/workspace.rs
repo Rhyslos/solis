@@ -28,7 +28,7 @@ fn every_planned_crate_exists() {
         names,
         [
             "app", "area", "asset_db", "assets", "editor", "input", "physics", "reflect", "render",
-            "script", "updater", "world"
+            "script", "sound", "updater", "world"
         ]
     );
 }
