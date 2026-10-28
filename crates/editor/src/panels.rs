@@ -232,7 +232,7 @@ impl TabViewer for PanelViewer<'_> {
                 ui.advance_cursor_after_rect(full);
             }
             Panel::Console => {
-                if let Some(request) = console(ui, self.console, self.accent) {
+                if let Some(request) = console(ui, self.console) {
                     self.console_requests.push(request);
                 }
             }

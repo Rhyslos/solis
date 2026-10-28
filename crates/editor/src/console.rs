@@ -3,7 +3,7 @@
 //! (its commands are in `console_commands.rs`).
 
 use crate::icons::{self, Icon};
-use crate::theme::{self, Accent};
+use crate::theme;
 use egui::{Align, Color32, Layout, RichText, Ui};
 use std::collections::HashSet;
 
@@ -226,18 +226,14 @@ impl Console {
 
 /// The console: filters by level, a search box, the messages with their
 /// times, and the command line. Returns what the command line asks for.
-pub(crate) fn console(
-    ui: &mut Ui,
-    console: &mut Console,
-    accent: Accent,
-) -> Option<ConsoleRequest> {
+pub(crate) fn console(ui: &mut Ui, console: &mut Console) -> Option<ConsoleRequest> {
     theme::menu_row_frame().show(ui, |ui| {
         ui.set_min_width(ui.available_width());
         ui.horizontal(|ui| {
             ui.spacing_mut().item_spacing.x = 4.0;
             for level in LogLevel::ALL {
                 let on = !console.hidden.contains(&level);
-                if level_filter(ui, level, console.count(level), on, accent).clicked() {
+                if level_filter(ui, level, console.count(level), on).clicked() {
                     if on {
                         console.hidden.insert(level);
                     } else {
@@ -437,18 +433,18 @@ fn command_line(ui: &mut Ui, console: &mut Console) -> Option<ConsoleRequest> {
 /// The height of one console row, as in the mockup.
 pub(crate) const CONSOLE_ROW: f32 = 18.0;
 
-/// One level's filter button: its icon and count, filled with the accent
-/// while that level is shown.
-pub(crate) fn level_filter(
-    ui: &mut Ui,
-    level: LogLevel,
-    count: usize,
-    on: bool,
-    accent: Accent,
-) -> egui::Response {
+/// One level's filter button: its icon and count, filled with the level's
+/// own colour while that level is shown (decision 0060: grey, amber, red,
+/// whatever the accent).
+pub(crate) fn level_filter(ui: &mut Ui, level: LogLevel, count: usize, on: bool) -> egui::Response {
     let font = egui::TextStyle::Button.resolve(ui.style());
     let (text_color, fill) = if on {
-        (Color32::WHITE, accent.colors().fill)
+        let fill = match level {
+            LogLevel::Info => theme::level::INFO,
+            LogLevel::Warning => theme::level::WARNING,
+            LogLevel::Error => theme::level::ERROR,
+        };
+        (Color32::WHITE, fill)
     } else {
         (theme::TEXT_WEAK, theme::MENU_ROW)
     };

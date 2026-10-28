@@ -21,9 +21,6 @@ use sound::event::{
 /// The buses there are until the Mixer arrives (S4; decision 0056).
 pub(crate) const BUSES: [&str; 6] = ["Master", "Music", "Effects", "Voice", "Ambience", "UI"];
 
-/// The colour of sound events' stripe: a lighter teal than sound files'.
-pub(crate) const EVENT_COLOR: egui::Color32 = egui::Color32::from_rgb(0x5d, 0xca, 0xa5);
-
 /// A sound event in Properties. Returns what was asked for.
 pub(crate) fn event_properties(
     ui: &mut Ui,

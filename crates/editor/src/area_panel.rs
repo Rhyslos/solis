@@ -189,16 +189,14 @@ fn switch(ui: &mut Ui, on: bool, by_parent: bool, icon: Icon, name: &str, hint: 
     response.clicked()
 }
 
-/// An entity's icon and note, from its components.
-fn looks(
-    entity: &EntityData,
-    models: &BTreeMap<AssetId, ModelInfo>,
-    accent: Accent,
-) -> (Icon, Color32, String) {
+/// An entity's icon and note, from its components. The icon's colour is
+/// its kind's, as in the Library (decision 0060): a lamp shows its own
+/// light's colour.
+fn looks(entity: &EntityData, models: &BTreeMap<AssetId, ModelInfo>) -> (Icon, Color32, String) {
     if let Some(light) = entity.get::<Light>() {
         let [r, g, b] = light.color.map(|c| (c * 255.0).round() as u8);
         let color = if light.kind == LightKind::Sun {
-            theme::WARNING
+            theme::kind::SUN
         } else {
             Color32::from_rgb(r, g, b)
         };
@@ -216,15 +214,19 @@ fn looks(
             .map_or_else(String::new, |m| {
                 format!("{} tris", crate::models::grouped(m.triangles))
             });
-        return (Icon::Model, accent.colors().light, note);
+        return (Icon::Model, theme::kind::MODEL, note);
     }
     if entity.has("Camera") {
-        return (Icon::Camera, accent.colors().light, "Camera".into());
+        return (Icon::Camera, theme::kind::CAMERA, "Camera".into());
     }
     if entity.has("Environment") {
-        return (Icon::AreaFile, accent.colors().light, "sky, fog".into());
+        return (Icon::AreaFile, theme::kind::ENVIRONMENT, "sky, fog".into());
     }
-    (Icon::Area, theme::TEXT_WEAK, String::new())
+    // The root of a placed assembly.
+    if entity.origin.as_ref().is_some_and(|o| o.path.is_empty()) {
+        return (Icon::Area, theme::kind::ASSEMBLY, String::new());
+    }
+    (Icon::Area, theme::kind::OTHER, String::new())
 }
 
 /// Something the user asked for in the Area panel. Like Properties, the
@@ -621,7 +623,7 @@ fn entity_row(
         }
         return;
     }
-    let (icon, color, note) = looks(entity, models, accent);
+    let (icon, color, note) = looks(entity, models);
     let removable = entity.has("Model").then_some(entity.name.as_str());
     let toggles = Toggles {
         hidden: state.hidden.contains(&id),
@@ -694,5 +696,60 @@ fn entity_row(
         } else {
             AreaRequest::Select(id)
         });
+    }
+}
+
+#[cfg(test)]
+mod tests {
+    use super::*;
+    use area::Origin;
+
+    fn color_of(entity: &EntityData) -> Color32 {
+        looks(entity, &BTreeMap::new()).1
+    }
+
+    #[test]
+    fn icons_take_their_kind_s_colour_whatever_the_accent() {
+        // Decision 0060: the same colour as the Library's stripe.
+        assert_eq!(
+            color_of(&EntityData::new("Ship").with(&Model::default())),
+            theme::kind::MODEL
+        );
+        assert_eq!(
+            color_of(&EntityData::new("Sun").with(&Light::sun())),
+            theme::kind::SUN
+        );
+        let mut camera = EntityData::new("Camera");
+        camera
+            .components
+            .insert("Camera".into(), reflect::ComponentData::default());
+        assert_eq!(color_of(&camera), theme::kind::CAMERA);
+        assert_eq!(color_of(&EntityData::new("Empty")), theme::kind::OTHER);
+    }
+
+    #[test]
+    fn a_lamp_shows_its_own_light_s_colour() {
+        let mut red = Light::point();
+        red.color = [1.0, 0.0, 0.0];
+        assert_eq!(
+            color_of(&EntityData::new("Lamp").with(&red)),
+            Color32::from_rgb(255, 0, 0)
+        );
+    }
+
+    #[test]
+    fn a_placed_assembly_s_root_is_coloured_as_an_assembly() {
+        let instance = EntityId::random();
+        let mut root = EntityData::new("Fighter");
+        root.origin = Some(Origin {
+            assembly: AssetId::random(),
+            instance,
+            path: Vec::new(),
+        });
+        assert_eq!(color_of(&root), theme::kind::ASSEMBLY);
+        // A plain entity inside it is not the assembly itself.
+        let mut part = root.clone();
+        part.origin.as_mut().unwrap().path = vec![EntityId::random()];
+        assert_eq!(color_of(&part), theme::kind::OTHER);
     }
 }

@@ -18,7 +18,7 @@ When finding your way around, or making the layout suit your screen.
 |---|---|---|
 | Viewport | Game | The 3D world, in one, two or four views (flat ones too). See [Moving around the viewport](navigating-the-viewport.md). |
 | Game | Viewport | The running game, through its camera, when you press Play. See [Play mode](play-mode.md). |
-| Area | Layers | Every [entity](entities.md) in the area, as a tree: the sun, the [environment](sky-fog-and-exposure.md) (sky and fog), [lights](lights.md) and [imported models](importing-models.md) (each with a × to delete it), with lights from a model's file indented under it. Click one to see it in Properties. |
+| Area | Layers | Every [entity](entities.md) in the area, as a tree: the sun, the [environment](sky-fog-and-exposure.md) (sky and fog), [lights](lights.md) and [imported models](importing-models.md) (each with a × to delete it), with lights from a model's file indented under it. Each icon has its kind's colour, the same as in the Library: models blue, a placed assembly yellow, the environment teal, cameras grey, and each lamp its own light's colour. Click one to see it in Properties. |
 | Layers | Area | The area's layers (Phase 2). |
 | Properties | | The selected entity's name and [components](entities.md), each with its settings, plus **Move here** and **Delete**. |
 | Library | Code | The open [project](projects-and-the-library.md)'s files: models, assemblies, pictures and sounds. Double-click a model or assembly, or click its +, to place it. |
@@ -39,7 +39,7 @@ Your layout is remembered next time. If the saved layout is ever damaged (a cras
 | Setting | What it does |
 |---|---|
 | Window > Layouts | **Default:** Library and Console side by side under the viewport. **Wide screen:** Library in a column on the left. **Small screen:** Library, Code, Console, Problems and Profiler as tabs in one space. **Reset layout** goes back to Default. |
-| Window > Accent colour | Ten colours, each with a swatch: Petrol blue (the standard), Red, Copper, Orange, Amber, Gold, Olive, Marine green, Blue and Plum. All are dark enough that white text on them reads easily. Remembered next time. |
+| Window > Accent colour | The colour that marks what's chosen and selected. Ten colours, each with a swatch: Amber (the standard), Red, Copper, Orange, Gold, Olive, Marine green, Petrol blue, Blue and Plum. All are dark enough that white text on them reads easily. Remembered next time. Colours that mean something keep their own whatever you pick: Play and Build & Play are blue, Stop is red while the game runs, and the Console's information, warnings and errors are grey, amber and red. |
 | View | Switches the viewport's corner controls on and off (also in the viewport's ≡ menu). |
 
 ## Tips and common problems

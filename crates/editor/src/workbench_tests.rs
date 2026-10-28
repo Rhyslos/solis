@@ -32,7 +32,7 @@ fn a_new_workbench_uses_the_default_layout() {
     let w = Workbench::new(info(), None);
     assert!(layout::is_complete(w.layout()));
     assert_eq!(w.tool(), Tool::Select);
-    assert_eq!(w.accent(), Accent::PetrolBlue);
+    assert_eq!(w.accent(), Accent::Amber);
 }
 
 #[test]

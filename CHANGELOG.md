@@ -12,6 +12,7 @@ What changed in each version, for people using Solis. Newest first.
 
 ### Changed
 
+- **Amber is the editor's standard colour** ([decision 0060](docs/decisions/0060-amber-and-colours-that-mean-something.md)), and it now marks only what's chosen and selected. Play and Build & Play are always blue, the Console's information, warnings and errors are grey, amber and red, and the Area panel colours things by kind as the Library does (models blue, placed assemblies yellow, the environment teal, cameras grey, lamps their light's colour). An accent you already picked is kept.
 - **2D first** ([decision 0059](docs/decisions/0059-2d-first.md), chosen by the project lead): Phase 7 is now sound only. The animation state machine, the animator graph editor and frame events that play sounds are built with 2D's frame animation (Phase 9), and 3D skeletal animation is a new Phase 16 once 2D is complete. Netcode, scripting and export, and the 0.1 release move to Phases 17, 18 and 19, and the editor's notes say the new numbers. Phases 16 to 19 are marked "later": the plan is built up to effects (Phase 15), then looked at again.
 - **Who hears what** is settled ([decision 0058](docs/decisions/0058-listeners-and-who-hears-what.md)): a Listener component gives a game several sets of ears (the camera hears when there's none), and each sound event will say who hears it: everyone, only who caused it, or named groups. It's a new Phase 7 milestone, S8.
 - Every folder in the source now has a README saying what's in it and how its parts fit, for finding your way around.

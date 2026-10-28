@@ -350,10 +350,12 @@ impl Workbench {
     /// Play, Play with others, Stop, Build and Build & Play, laid out
     /// right to left.
     pub(crate) fn play_and_build(&mut self, ui: &mut Ui) {
+        // Play and Build & Play are blue whatever the accent (decision
+        // 0060); Pause, lit while paused, takes the accent.
         let fill = self.accent.colors().fill;
         ui.spacing_mut().item_spacing.x = 4.0;
         let build_and_play = egui::Button::new(RichText::new("Build & Play").color(Color32::WHITE))
-            .fill(fill)
+            .fill(theme::GO)
             .stroke(egui::Stroke::NONE)
             .min_size(egui::vec2(0.0, BAR_BUTTON.y));
         if ui.add(build_and_play).clicked() {
@@ -393,7 +395,7 @@ impl Workbench {
         if icon_button(ui, Icon::Pause, 12.0, pause_fill, "Pause").clicked() {
             self.pause();
         }
-        let play = icon_button(ui, Icon::Play, 13.0, Some(fill), "Play");
+        let play = icon_button(ui, Icon::Play, 13.0, Some(theme::GO), "Play");
         if state == PlayState::Playing {
             // Lit while the game runs.
             ui.painter().rect_stroke(
