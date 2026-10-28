@@ -215,10 +215,13 @@ fn recordings_round_trip_exactly() {
 fn damaged_recordings_are_refused_never_crashing() {
     let good = sample_recording().write();
     assert_eq!(Recording::read("hello"), Err(RecordingError::NotARecording));
-    assert_eq!(
-        Recording::read("solis recording 2\nseed 1\nstart 0\n"),
-        Err(RecordingError::NotARecording)
-    );
+    // A newer one is refused before it's read on, with why.
+    let newer = Recording::read("solis recording 2\nseed 1\nstart 0\n").unwrap_err();
+    assert!(newer.to_string().contains("newer version"), "{newer}");
+    assert!(matches!(
+        Recording::read("solis recording 0\nseed 1\nstart 0\n"),
+        Err(RecordingError::Upgrade(_))
+    ));
     for bad in [
         "solis recording 1\nseed x\nstart 0\n",
         "solis recording 1\nseed 1\nstart zz\n",
@@ -484,6 +487,43 @@ fn older_files_naming_the_arrows_arrowup_read_as_the_keys_pressed() {
     let b = Bindings::read(text).unwrap();
     assert_eq!(b.get("Pan").unwrap().up, ["Up"]);
     assert_eq!(b.get("Pan").unwrap().left, ["Alt+Left"]);
+}
+
+#[test]
+fn input_actions_carry_their_version_and_older_ones_upgrade() {
+    use crate::BINDINGS_FORMAT;
+    assert!(BINDINGS_FORMAT.is_complete());
+    // Written as version 2; a file with no version line is version 1.
+    let written = Bindings::default().write();
+    assert_eq!((BINDINGS_FORMAT.version_of)(&written), Some(2));
+    assert_eq!(Bindings::read(&written).unwrap(), Bindings::default());
+    assert_eq!(
+        (BINDINGS_FORMAT.version_of)("[[action]]\nname = \"A\"\n"),
+        Some(1)
+    );
+    // Only a version 1 file is renamed: version 2 is read as written.
+    let one = "[[action]]\nname = \"Pan\"\ninputs = [\"ArrowUp\"]\n";
+    let two = format!("version = 2\n{one}");
+    assert_eq!(
+        Bindings::read(one).unwrap().get("Pan").unwrap().inputs,
+        ["Up"]
+    );
+    assert_eq!(
+        Bindings::read(&two).unwrap().get("Pan").unwrap().inputs,
+        ["ArrowUp"]
+    );
+    // Newer, or a version that isn't a whole number: refused, saying why.
+    let newer = Bindings::read("version = 3\n").unwrap_err();
+    assert!(newer.to_string().contains("newer version"), "{newer}");
+    for bad in ["version = \"two\"\n", "version = -1\n", "version = 0\n"] {
+        assert!(Bindings::read(bad).is_err(), "{bad}");
+    }
+    // A damaged list in an old file is left for the reader to refuse.
+    let odd = "[[action]]\nname = \"A\"\ninputs = [1, \"ArrowLeft\"]\n";
+    assert!(matches!(
+        Bindings::read(odd),
+        Err(BindingsError::Damaged(_))
+    ));
 }
 
 #[test]

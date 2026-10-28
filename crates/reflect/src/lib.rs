@@ -10,6 +10,7 @@ mod component;
 mod id;
 mod registry;
 mod schema;
+pub mod upgrade;
 mod value;
 
 pub use checksum::Checksum;

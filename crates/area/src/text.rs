@@ -26,6 +26,17 @@ use std::fmt::{self, Write as _};
 
 /// The layout version this build writes and reads.
 pub const VERSION: u32 = 1;
+
+/// Areas' and assemblies' version and upgraders (Phase 8, C1): each step
+/// turns a file read at one version into the next, before it's checked.
+/// Every version ever released keeps an example file in
+/// `tests/fixtures/area/` that the app's tests open.
+pub static FORMAT: reflect::upgrade::Format<AreaFile> = reflect::upgrade::Format {
+    name: "area",
+    current: VERSION,
+    version_of: |text| reflect::upgrade::header_version(text, &["area", "assembly"]),
+    steps: &[],
+};
 /// The biggest area file read.
 pub const MAX_BYTES: usize = 64 << 20;
 /// The longest line read.
@@ -398,7 +409,7 @@ pub fn read_file(text: &str, registry: &Registry) -> Result<AreaFile, ParseError
         chars: text.char_indices().peekable(),
         line: 1,
     };
-    let kind = p.header()?;
+    let (kind, version) = p.header()?;
     let mut file = AreaFile {
         kind,
         area: Area::new(),
@@ -523,6 +534,12 @@ pub fn read_file(text: &str, registry: &Registry) -> Result<AreaFile, ParseError
             message: format!("the assembly's root {root} isn't in the file"),
         });
     }
+    // An older file is brought up to date (it's refused if an upgrader
+    // can't), so the rest of Solis only ever sees the current version.
+    FORMAT.upgrade(version, &mut file).map_err(|e| ParseError {
+        line: 1,
+        message: e.to_string(),
+    })?;
     Ok(file)
 }
 
@@ -629,7 +646,7 @@ impl Parser<'_> {
 
     /// `area version N;` or `assembly version N root ID;`, refusing newer
     /// versions.
-    fn header(&mut self) -> Result<FileKind, ParseError> {
+    fn header(&mut self) -> Result<(FileKind, u32), ParseError> {
         if !self.skip_space() {
             return self.fail("the file is empty");
         }
@@ -662,7 +679,7 @@ impl Parser<'_> {
             FileKind::Area
         };
         self.expect(';')?;
-        Ok(kind)
+        Ok((kind, version))
     }
 
     /// `{ key = value; … }`

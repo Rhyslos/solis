@@ -44,6 +44,15 @@ impl AreaFiles {
     /// Reads the area or assembly file at `path`, within the reader's
     /// limits (placed assemblies not yet expanded).
     pub fn read(path: &Path, registry: &reflect::Registry) -> Result<area::text::AreaFile, String> {
+        Self::read_noting(path, registry).map(|(file, _)| file)
+    }
+
+    /// [`AreaFiles::read`], with a note for the Console when the file was
+    /// saved by an older version (it's upgraded as it's read).
+    pub fn read_noting(
+        path: &Path,
+        registry: &reflect::Registry,
+    ) -> Result<(area::text::AreaFile, Option<String>), String> {
         let bytes = asset_db::read_limited(path, area::text::MAX_BYTES as u64).map_err(|e| {
             if e.kind() == std::io::ErrorKind::FileTooLarge {
                 format!("it's bigger than {} MB", area::text::MAX_BYTES >> 20)
@@ -52,18 +61,41 @@ impl AreaFiles {
             }
         })?;
         let text = String::from_utf8(bytes).map_err(|_| "it isn't text".to_string())?;
-        area::text::read_file(&text, registry).map_err(|e| e.to_string())
+        let file = area::text::read_file(&text, registry).map_err(|e| e.to_string())?;
+        let name = path
+            .file_name()
+            .map_or_else(String::new, |n| n.to_string_lossy().into_owned());
+        let note = crate::upgrades::older_note(&name, &text, &area::text::FORMAT);
+        Ok((file, note))
     }
 
     /// Writes `text` to `path` through a temporary file and a swap, and
-    /// watches it from now on.
-    pub fn save(&mut self, path: &Path, text: &str) -> std::io::Result<()> {
+    /// watches it from now on. Inside the project at `root`, a file there
+    /// saved by an older version is copied to the backups first, and the
+    /// save goes ahead only when `read_back` (reading the text and writing
+    /// it again) gives the same text (Phase 8, C1). Returns where the copy
+    /// went, if one was made.
+    pub fn save(
+        &mut self,
+        root: Option<&Path>,
+        path: &Path,
+        text: &str,
+        read_back: impl FnOnce(&str) -> Result<String, String>,
+    ) -> Result<Option<PathBuf>, String> {
         if let Some(folder) = path.parent() {
-            std::fs::create_dir_all(folder)?;
+            std::fs::create_dir_all(folder).map_err(|e| e.to_string())?;
         }
-        asset_db::write_atomically(path, text.as_bytes())?;
+        let copy = match root.filter(|r| path.starts_with(r)) {
+            Some(root) => crate::upgrades::save(root, path, text, &area::text::FORMAT, read_back)?,
+            // Outside a project there's nowhere to keep a copy: Git, if
+            // any, is its undo.
+            None => {
+                asset_db::write_atomically(path, text.as_bytes()).map_err(|e| e.to_string())?;
+                None
+            }
+        };
         self.watch(path);
-        Ok(())
+        Ok(copy)
     }
 
     /// Watches `path` (just opened or saved) for changes from now on.
@@ -192,7 +224,9 @@ mod tests {
         let text = area::text::write(&area, &registry, &|_| None);
         let mut files = AreaFiles::default();
         let path = dir.join("areas/harbour.solarea");
-        files.save(&path, &text).unwrap();
+        files
+            .save(None, &path, &text, |t| Ok(t.to_owned()))
+            .unwrap();
         assert_eq!(AreaFiles::read(&path, &registry).unwrap().area, area);
         assert_eq!(
             files.changed_on_disk(),

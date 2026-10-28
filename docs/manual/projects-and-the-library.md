@@ -53,7 +53,7 @@ A `.gltf` model reads the files beside it, so it can't be moved to another folde
 | `project.solis` | Marks the folder as a project and holds its name. |
 | `assets/` | Everything you made or brought in. Watched for changes. |
 | `<file>.solmeta` | A small text file beside each asset holding its ID. **Commit it with the asset**, and move or rename them together (Solis copes if you forget, as long as the content didn't change). |
-| `.solis/` | Solis's cache: models it has already read, so they open quickly. It keeps within 4 GB, deleting the models used least lately. Safe to delete; it's rebuilt. Never committed. |
+| `.solis/` | Solis's own folder. `cache/` holds models it has already read, so they open quickly; it keeps within 4 GB, deleting the models used least lately, and is safe to delete (it's rebuilt). `backups/` holds copies of files saved by an older Solis, kept before they were upgraded ([Backups and upgrades](backups-and-upgrades.md)). Never committed. |
 
 ## Tips and common problems
 - **Problem:** the Console says a sidecar couldn't be read. **Why:** the `.solmeta` file was damaged, perhaps by a bad Git merge. **Fix:** fix it in a text editor, or delete it to give the model a new ID (anything using the old ID will then say the model is missing).

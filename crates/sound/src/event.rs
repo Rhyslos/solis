@@ -45,6 +45,15 @@ pub const EXTENSION: &str = "solsound";
 pub const VERSION: u32 = 1;
 /// The word the file starts with.
 const KIND: &str = "sound";
+/// This file's version and upgraders (Phase 8, C1): each step turns
+/// fields read at one version into the next, before they're applied.
+/// Every version ever released keeps an example file in `tests/fixtures/`.
+pub static FORMAT: reflect::upgrade::Format<settings::Settings> = reflect::upgrade::Format {
+    name: "sound event",
+    current: VERSION,
+    version_of: |text| reflect::upgrade::header_version(text, &[KIND]),
+    steps: &[],
+};
 /// The biggest sound event file read (they're a few hundred bytes).
 pub const MAX_BYTES: usize = 64 << 10;
 /// The most takes in one event.
@@ -260,9 +269,14 @@ pub fn read(text: &str) -> Result<ReadEvent, EventError> {
             ),
         });
     }
-    let file = settings::read_settings(text, KIND, VERSION).map_err(|e| EventError {
+    let mut file = settings::read_settings(text, KIND, VERSION).map_err(|e| EventError {
         line: e.line,
         message: e.message,
+    })?;
+    let version = file.version;
+    FORMAT.upgrade(version, &mut file).map_err(|e| EventError {
+        line: 1,
+        message: e.to_string(),
     })?;
     let mut event = SoundEvent::default();
     let mut notes = Vec::new();

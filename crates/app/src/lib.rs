@@ -9,6 +9,8 @@ pub mod area_file;
 pub mod benchmark;
 pub mod branding;
 pub mod cli;
+#[cfg(test)]
+mod fixtures_tests;
 pub mod game_audio;
 pub mod game_code;
 pub mod gamepad;
@@ -25,6 +27,7 @@ pub mod sounds;
 pub mod startup;
 pub mod thumbnails;
 pub mod updates;
+mod upgrades;
 pub mod window;
 
 /// The text shown by `--version`: the name and version.

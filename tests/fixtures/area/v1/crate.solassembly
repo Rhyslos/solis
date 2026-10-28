@@ -1,0 +1,19 @@
+-- An assembly. Safe to edit by hand: one block per entity, one line per field.
+assembly version 1 root 3QH0Z2V4R9X1M;
+
+entity 3QH0Z2V4R9X1M {
+    name = "Crate";
+    order = "a0";
+    Transform.position = [0.0, 0.0, 0.0];
+    Transform.rotation = [0.0, 0.0, 0.0, 1.0];
+    Transform.scale = [1.0, 1.0, 1.0];
+}
+
+entity 6WJ8T1K5N2D4P {
+    name = "Lid";
+    parent = "3QH0Z2V4R9X1M";
+    order = "a0";
+    Transform.position = [0.0, 0.0, 0.5];
+    Transform.rotation = [0.0, 0.0, 0.0, 1.0];
+    Transform.scale = [1.0, 1.0, 1.0];
+}

@@ -9,6 +9,7 @@
 //! it reads is treated as hostile. See this crate's README for its purpose
 //! and limits.
 
+pub mod backup;
 pub mod cache;
 mod db;
 mod files;
@@ -29,10 +30,10 @@ pub use files::{
 pub use hash::{ContentHash, hash_file};
 pub use jobs::Jobs;
 pub use project::{
-    ASSETS_FOLDER, CACHE_FOLDER, FORMAT, GITATTRIBUTES, GITIGNORE, PROJECT_FILE, Project,
-    ProjectError, own_folder, read_limited, write_atomically,
+    ASSETS_FOLDER, CACHE_FOLDER, FORMAT, GITATTRIBUTES, GITIGNORE, PROJECT_FILE, PROJECT_FORMAT,
+    Project, ProjectError, own_folder, read_limited, write_atomically,
 };
-pub use sidecar::{Part, PartKey, PartKind, Sidecar};
+pub use sidecar::{Part, PartKey, PartKind, SIDECAR_FORMAT, Sidecar};
 pub use watch::Watcher;
 
 /// A fresh, empty folder for one test, in the system's temporary folder.

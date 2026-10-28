@@ -13,6 +13,7 @@ How components describe themselves (decision 0019): stable IDs, plain values, co
 | `component.rs` | A component's values, and typed access to them for components written in Rust. | `ComponentData`, `Component`, `Fields` |
 | `registry.rs` | Every component the program knows, by name. | `Registry`, `RegistryError` |
 | `checksum.rs` | One number summing up a game's state, the same on every computer, so two runs can be compared tick by tick (not for security). | `Checksum` |
+| `upgrade.rs` | The one upgrade path every file format shares (Phase 8, C1): a format's version, how to find it in a file, and its upgraders, run one version at a time; newer files refused. | `Format`, `Step`, `Upgraded`, `UpgradeError`, `Versioned` |
 
 ## How the pieces fit
 
