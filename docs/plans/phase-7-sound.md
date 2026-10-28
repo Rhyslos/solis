@@ -143,6 +143,15 @@ Sound must be heard and never felt by the simulation (decisions 0033 and 0036), 
 - A few reverb buses (up to 4 zones heard at once); each tick the zones around the listener set how much of each everything sends. Overlapping zones: the smaller one wins.
 - Tests: inside, the reverb's level is full; outside, none; across the edge it fades smoothly; the presets read and write round trip.
 
+### S8. Listeners and who hears what
+
+Added by [decision 0058](../decisions/0058-listeners-and-who-hears-what.md), built after S6.
+
+- The `Listener` component: on a camera or character; with none, the game's camera hears. Each listener hears from its own place and facing.
+- **Heard by** on a sound event: Everyone (default), Only who caused it, or Groups (names a Listener belongs to). `.solsound` gains `heard_by`; files without it are heard by everyone.
+- Properties for both are **mocked up for the project lead first**.
+- Tests: with no Listener the camera hears; two listeners in different groups each hear only their groups' sounds; "only who caused it" reaches only that listener; the same recording plays the same game whoever hears what.
+
 ### S7. Sounds from animation events, and the gate's level
 
 Built after the animation plan's events milestone (see below).

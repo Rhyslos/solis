@@ -143,9 +143,9 @@ Stronger tests before building on the game loop ([decision 0042](docs/decisions/
 
 ## Phase 7: Sound and animation
 
-The working plans are [docs/plans/phase-7-sound.md](docs/plans/phase-7-sound.md) and [docs/plans/phase-7-animation.md](docs/plans/phase-7-animation.md) ([decisions 0056](docs/decisions/0056-sound-with-kira.md) and [0057](docs/decisions/0057-animation-near-live-far-baked.md)): thirteen milestones, sound first.
+The working plans are [docs/plans/phase-7-sound.md](docs/plans/phase-7-sound.md) and [docs/plans/phase-7-animation.md](docs/plans/phase-7-animation.md) ([decisions 0056](docs/decisions/0056-sound-with-kira.md) and [0057](docs/decisions/0057-animation-near-live-far-baked.md), and [0058](docs/decisions/0058-listeners-and-who-hears-what.md)): fourteen milestones, sound first.
 
-- **Sound** (Kira): sound events with random clips, pitch and volume; buses and ducking; 3D falloff; reverb zones.
+- **Sound** (Kira): sound events with random clips, pitch and volume; buses and ducking; 3D falloff; reverb zones; listeners, and who hears what.
 - **Animation:** skeletal animation from glTF, state machines, blending, and animation events. The state machine is built to drive 2D sprite frames too (Phase 9), so 2D and 3D share one animation system.
 
 **Gate:** a character walks and runs with smooth blending, footsteps play on the right frames, and a reverb zone changes how they sound.

@@ -65,3 +65,4 @@ Titles below are shortened; the files have the full reasoning. Decisions 0019 to
 | `0055-lua-speed-measured-and-explained.md` | Lua's speed: measured, sped up where it's safe, and explained honestly | Accepted |
 | `0056-sound-with-kira.md` | Sound with the Kira library: WAV and Ogg, sound events, and sound that never changes the game | Accepted |
 | `0057-animation-near-live-far-baked.md` | Animation: live poses near, baked clips far, one state machine for 2D and 3D | Accepted |
+| `0058-listeners-and-who-hears-what.md` | A Listener component, and "Heard by" on sound events | Accepted (extends 0056) |
