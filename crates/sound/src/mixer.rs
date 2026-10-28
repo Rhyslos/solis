@@ -178,16 +178,7 @@ impl Mixer {
 
     /// Whether bus `inner` is `outer` or inside it, however deep.
     pub fn is_within(&self, inner: usize, outer: usize) -> bool {
-        let parents = self.parents();
-        let mut at = Some(inner);
-        for _ in 0..=MAX_DEPTH {
-            match at {
-                Some(i) if i == outer => return true,
-                Some(i) => at = parents.get(i).copied().flatten(),
-                None => return false,
-            }
-        }
-        false
+        within_parents(&self.parents(), inner, outer)
     }
 
     /// A name not yet used, from `stem` ("Bus", "Bus 2", ...).
@@ -273,6 +264,20 @@ impl Mixer {
         }
         depth
     }
+}
+
+/// [`Mixer::is_within`] with the parents already worked out, for loops
+/// that ask about many pairs.
+fn within_parents(parents: &[Option<usize>], inner: usize, outer: usize) -> bool {
+    let mut at = Some(inner);
+    for _ in 0..=MAX_DEPTH {
+        match at {
+            Some(i) if i == outer => return true,
+            Some(i) => at = parents.get(i).copied().flatten(),
+            None => return false,
+        }
+    }
+    false
 }
 
 /// Whether `name` can name a bus.
@@ -639,6 +644,11 @@ pub fn levels(mixer: &Mixer, shares: &[f32], ducked: &[f32], listening: &Listeni
         .iter()
         .filter_map(|n| mixer.index_of(n))
         .collect();
+    let parents = if soloed.is_empty() {
+        Vec::new()
+    } else {
+        mixer.parents()
+    };
     mixer
         .buses
         .iter()
@@ -652,7 +662,7 @@ pub fn levels(mixer: &Mixer, shares: &[f32], ducked: &[f32], listening: &Listeni
             if !soloed.is_empty()
                 && !soloed
                     .iter()
-                    .any(|s| mixer.is_within(i, *s) || mixer.is_within(*s, i))
+                    .any(|s| within_parents(&parents, i, *s) || within_parents(&parents, *s, i))
             {
                 return f32::NEG_INFINITY;
             }
@@ -685,10 +695,11 @@ impl Ducker {
     pub fn step(&mut self, mixer: &Mixer, busy: &[bool], dt: f32) -> &[f32] {
         self.now_db.resize(mixer.buses.len(), 0.0);
         let dt = if dt.is_finite() { dt.max(0.0) } else { 0.0 };
+        let parents = mixer.parents();
         let playing = |outer: usize| {
             busy.iter()
                 .enumerate()
-                .any(|(i, b)| *b && mixer.is_within(i, outer))
+                .any(|(i, b)| *b && within_parents(&parents, i, outer))
         };
         for (i, bus) in mixer.buses.iter().enumerate() {
             // The deepest ducking of the rules whose bus is playing; how

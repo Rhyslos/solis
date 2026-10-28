@@ -135,6 +135,10 @@ pub(crate) struct GameTracks {
     shape: Vec<(String, String)>,
     /// The levels last set, for trees made again.
     levels: Vec<f32>,
+    /// The levels the sends were last worked out from: while ducking moves
+    /// a level a little every frame, the sends follow only once it has
+    /// moved [`SEND_STEP_DB`] (or gone silent, or come back).
+    send_levels: Vec<f32>,
     listener: ListenerHandle,
     playing: Vec<Playing>,
     paused: bool,
@@ -178,6 +182,7 @@ impl GameTracks {
             buses: None,
             shape: Vec::new(),
             levels: Vec::new(),
+            send_levels: Vec::new(),
             listener,
             playing: Vec::new(),
             paused: false,
@@ -199,14 +204,20 @@ impl GameTracks {
     /// nesting); a change of volume or ducking needs nothing here. Sounds
     /// playing when the buses change stop, as their tracks go.
     fn set_mixer(&mut self, mixer: &Mixer) {
+        let same_shape = self.shape.len() == mixer.buses.len()
+            && self
+                .shape
+                .iter()
+                .zip(&mixer.buses)
+                .all(|((name, inside), b)| *name == b.name && *inside == b.inside);
+        if self.buses.is_some() && same_shape {
+            return;
+        }
         let shape: Vec<(String, String)> = mixer
             .buses
             .iter()
             .map(|b| (b.name.clone(), b.inside.clone()))
             .collect();
-        if self.buses.is_some() && shape == self.shape {
-            return;
-        }
         for playing in &mut self.playing {
             playing.sound.stop();
         }
@@ -263,6 +274,21 @@ impl GameTracks {
             }
         }
     }
+}
+
+/// How far a bus's level moves before its echoes follow, in decibels: a
+/// quarter of a decibel can't be heard, and ducking otherwise sets every
+/// sound's sends every frame.
+const SEND_STEP_DB: f32 = 0.25;
+
+/// Whether `now` differs from `then` enough for the sends to follow: a
+/// different number of buses, a bus gone silent or back, or one moved
+/// [`SEND_STEP_DB`] or more.
+pub(crate) fn moved_enough(then: &[f32], now: &[f32]) -> bool {
+    then.len() != now.len()
+        || then.iter().zip(now).any(|(a, b)| {
+            a.is_finite() != b.is_finite() || (a.is_finite() && (a - b).abs() >= SEND_STEP_DB)
+        })
 }
 
 impl crate::SoundDevice {
@@ -618,8 +644,11 @@ impl crate::SoundDevice {
             a.set_levels(levels);
             b.set_levels(levels);
         }
-        // Echoes follow their buses too.
-        game.refresh_sends();
+        // Echoes follow their buses too, once the change can be heard.
+        if moved_enough(&game.send_levels, levels) {
+            game.send_levels = levels.to_vec();
+            game.refresh_sends();
+        }
     }
 
     /// Which buses have game sounds playing on them right now, by place

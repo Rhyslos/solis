@@ -77,6 +77,9 @@ pub struct Sounds {
     /// Goes up when another project opens: results for the last one are
     /// thrown away.
     generation: u64,
+    /// Goes up whenever an event or clip is taken in or let go, so what's
+    /// worked out from them (a loop's pick) knows when to look again.
+    changes: u64,
     jobs: Jobs<(String, u64, Read)>,
     /// The assets folder, as of the last listing.
     assets: PathBuf,
@@ -103,6 +106,7 @@ impl Default for Sounds {
             queued: VecDeque::new(),
             tried: HashMap::new(),
             generation: 0,
+            changes: 0,
             jobs: Jobs::new(1),
             assets: PathBuf::new(),
             playing: None,
@@ -144,8 +148,9 @@ impl Sounds {
     /// Queues every sound file and sound event in `listing` not read yet,
     /// or changed since; forgets those no longer there.
     pub fn want(&mut self, listing: &Listing, assets: &Path) {
+        self.changes += 1;
         self.assets = assets.to_path_buf();
-        let mut present = Vec::new();
+        let mut present = std::collections::HashSet::new();
         self.paths.clear();
         for file in &listing.files {
             if !matches!(file.kind, FileKind::Sound | FileKind::SoundEvent) {
@@ -159,7 +164,7 @@ impl Sounds {
             }
             let full = assets.join(&file.path);
             let now = stamp(&full);
-            present.push(path.clone());
+            present.insert(path.clone());
             if self.tried.get(&path) == Some(&now) {
                 continue;
             }
@@ -175,7 +180,7 @@ impl Sounds {
         let gone: Vec<String> = self
             .clips
             .keys()
-            .filter(|p| !present.contains(p))
+            .filter(|p| !present.contains(*p))
             .cloned()
             .collect();
         for path in gone {
@@ -198,6 +203,7 @@ impl Sounds {
         self.queued.clear();
         self.last_take.clear();
         self.generation += 1;
+        self.changes += 1;
     }
 
     /// Starts the next reads and takes in finished ones. Returns whether
@@ -243,12 +249,16 @@ impl Sounds {
             }
             new = true;
         }
+        if new {
+            self.changes += 1;
+        }
         new
     }
 
     /// Takes in a sound event Solis just saved, so Properties shows it at
     /// once (the file is read again when the watcher sees it).
     pub fn saved_event(&mut self, path: &Path, event: sound::SoundEvent) {
+        self.changes += 1;
         self.events.insert(
             crate::project::slashed(path),
             EventState::Read {
@@ -389,6 +399,7 @@ impl Sounds {
     }
 
     fn forget_clip(&mut self, path: &str) {
+        self.changes += 1;
         if let Some(old) = self.clips.remove(path) {
             self.in_memory = self.in_memory.saturating_sub(memory_bytes(&old));
         }
@@ -409,9 +420,26 @@ impl Sounds {
         }
     }
 
+    /// The sound event in the file `key` (inside the assets, with its
+    /// `.solsound`), as [`Sounds::event_named`] found it: no name worked
+    /// out again.
+    pub fn event_at(&self, key: &str) -> Option<(&str, &sound::SoundEvent)> {
+        let (key, state) = self.events.get_key_value(key)?;
+        match state {
+            EventState::Read { event, .. } => Some((key.as_str(), event)),
+            EventState::Failed(_) => None,
+        }
+    }
+
     /// A sound file's clip, by its asset ID: ready to play.
     pub fn clip_of(&self, take: AssetId) -> Option<&Clip> {
         self.clips.get(self.paths.get(&take)?)
+    }
+
+    /// A count that goes up whenever an event or clip changes: what's
+    /// worked out from them holds while it stays the same.
+    pub fn changes(&self) -> u64 {
+        self.changes
     }
 
     /// Bytes of decoded sound held in memory now.
@@ -998,6 +1026,64 @@ mod tests {
             (1, 1),
             "only the real bus; the unknown name once"
         );
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    #[ignore = "scale check: run by tools/scale/scale-check.sh"]
+    fn scale_check_game_sound_with_2000_audio_sources() {
+        // The Phase 7 review: every frame, every AudioSource was worked out
+        // again from scratch. 2,000 playing loops, 64 heard at once.
+        const TARGET_MS: f64 = 1.0;
+        let (dir, s) = with_events("scale-loops", &[("hum", hum_event())]);
+        let (mut w, _) = hum_world(2_000);
+        w.set_mixer(sound::Mixer::default());
+        let mut device = SoundDevice::for_tests();
+        let mut audio = crate::game_audio::GameAudio::default();
+        let ctx = eframe::egui::Context::default();
+        w.play();
+        w.play_for(1.0 / 60.0);
+        audio.frame(&mut w, &s, &mut device, &ctx);
+        let frames = 60;
+        let start = std::time::Instant::now();
+        for _ in 0..frames {
+            audio.frame(&mut w, &s, &mut device, &ctx);
+        }
+        let ms = start.elapsed().as_secs_f64() * 1000.0 / f64::from(frames);
+        let verdict = if ms <= TARGET_MS { "ok" } else { "SLOW" };
+        println!(
+            "Scale check: the game's sound for a frame with 2,000 AudioSources playing {ms:.3} ms (target {TARGET_MS} ms) {verdict}"
+        );
+        let _ = std::fs::remove_dir_all(&dir);
+        assert!(ms <= TARGET_MS, "{ms:.3} ms");
+    }
+
+    #[test]
+    fn a_loop_picks_again_when_its_event_changes() {
+        // Loops keep their pick from frame to frame; an event saved with
+        // no takes must stop it, and saved back start it again.
+        let (dir, mut s) = with_events("kept-pick", &[("hum", hum_event())]);
+        let (mut w, _) = hum_world(1);
+        let mut device = SoundDevice::for_tests();
+        let mut audio = crate::game_audio::GameAudio::default();
+        let ctx = eframe::egui::Context::default();
+        w.play();
+        w.play_for(1.0 / 60.0);
+        audio.frame(&mut w, &s, &mut device, &ctx);
+        audio.frame(&mut w, &s, &mut device, &ctx);
+        assert_eq!(device.loops_playing().len(), 1);
+        let before = s.changes();
+        let silent = sound::SoundEvent {
+            takes: Vec::new(),
+            ..hum_event()
+        };
+        s.saved_event(Path::new("hum.solsound"), silent);
+        assert!(s.changes() > before);
+        audio.frame(&mut w, &s, &mut device, &ctx);
+        assert!(device.loops_playing().is_empty());
+        s.saved_event(Path::new("hum.solsound"), hum_event());
+        audio.frame(&mut w, &s, &mut device, &ctx);
+        assert_eq!(device.loops_playing().len(), 1);
         let _ = std::fs::remove_dir_all(&dir);
     }
 

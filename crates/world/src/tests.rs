@@ -348,6 +348,23 @@ fn snapshot(world: &World) -> Snapshot {
     (world.entities(), places, names)
 }
 
+/// `is_inside` (one look at the order) says what `subtree` lists, for
+/// every pair of entities.
+fn inside_agrees_with_subtree(world: &World) {
+    let ids: Vec<EntityId> = world
+        .entities()
+        .iter()
+        .flatten()
+        .map(|(id, _)| *id)
+        .collect();
+    for &outer in &ids {
+        let under = world.subtree(outer);
+        for &inner in &ids {
+            assert_eq!(world.is_inside(inner, outer), under.contains(&inner));
+        }
+    }
+}
+
 #[test]
 fn spawned_subtrees_join_and_leave_as_if_the_world_were_built_again() {
     let mut area = area::builtin::starter_area();
@@ -376,12 +393,17 @@ fn spawned_subtrees_join_and_leave_as_if_the_world_were_built_again() {
         Vec3::new(10.0, 0.0, 2.0)
     );
     assert_eq!(world.subtree(ship), vec![ship, turret]);
+    assert!(world.is_inside(turret, ship) && world.is_inside(ship, ship));
+    assert!(!world.is_inside(ship, turret) && !world.is_inside(rock, ship));
+    inside_agrees_with_subtree(&world);
     // Adding it again changes nothing.
     assert!(world.add_subtree(&spawned).is_empty());
     // The rock (before it) and the ship (after it) leave.
     area.apply(area::Edit::Despawn { root: rock }).unwrap();
     world.remove_subtrees(&[rock]);
     assert_eq!(snapshot(&world), snapshot(&World::from_area(&area)));
+    inside_agrees_with_subtree(&world);
+    assert!(!world.is_inside(rock, rock));
     area.apply(area::Edit::Despawn { root: ship }).unwrap();
     world.remove_subtrees(&[ship, EntityId::random()]);
     assert_eq!(snapshot(&world), snapshot(&World::from_area(&area)));

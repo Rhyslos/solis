@@ -178,7 +178,7 @@ impl crate::Workbench {
         let Some(playing) = self.playing.as_ref() else {
             return false;
         };
-        playing.world.subtree(a).contains(&b) || playing.world.subtree(b).contains(&a)
+        playing.world.is_inside(b, a) || playing.world.is_inside(a, b)
     }
 
     /// The game's sounds that keep playing (`AudioSource`s turned on, with
@@ -194,9 +194,8 @@ impl crate::Workbench {
         let t = playing.world.progress();
         playing
             .world
-            .audio_sources()
+            .sounding_audio_sources()
             .into_iter()
-            .filter(|(_, s)| s.playing && !s.event.is_empty())
             .filter_map(|(id, s)| {
                 let place = playing.world.global_between(id, t)?.w_axis.truncate();
                 Some((id, s, place))

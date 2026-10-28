@@ -35,9 +35,22 @@ use std::collections::{HashMap, HashSet};
 /// which event, so one coming back carries on where it would be.
 #[derive(Debug, Clone)]
 struct LoopState {
+    /// The event's file, as the sounds know it.
     event: String,
+    /// The name the AudioSource gives (as written), so the next frame finds
+    /// the event without working its file name out again.
+    named: String,
     started: f64,
+    /// Its pick (before the AudioSource's own volume), and the sounds'
+    /// [`changes`](crate::sounds::Sounds::changes) it was made at: picked
+    /// again only when the event or its files change.
+    pick: Option<(u64, sound::Pick)>,
 }
+
+/// How much louder a loop already playing counts when choosing what's
+/// heard: one at the edge of the voice limit doesn't stop and start every
+/// frame as it and another trade places (the Phase 7 review).
+const KEEP_PLAYING_DB: f32 = 1.0;
 
 /// The most unknown sound event names said once each in a play: past it,
 /// no more are said (game code making up names can't grow the list).
@@ -190,12 +203,18 @@ impl GameAudio {
             &mut wanted,
             &mut notes,
         );
+        let already: HashSet<u64> = device.loops_playing().into_iter().collect();
         let candidates: Vec<Candidate> = wanted
             .iter()
             .map(|w| Candidate {
                 key: w.key,
                 priority: w.event.priority,
-                loudness_db: w.loudness_db,
+                loudness_db: match w.key {
+                    Key::Loop(entity) if already.contains(&entity) => {
+                        w.loudness_db + KEEP_PLAYING_DB
+                    }
+                    _ => w.loudness_db,
+                },
             })
             .collect();
         let voices = workbench.mixer().voices as usize;
@@ -305,8 +324,12 @@ impl GameAudio {
 
     /// A number for an event's name, the same all play.
     fn event_number(&mut self, name: &str) -> u64 {
+        if let Some(&n) = self.event_numbers.get(name) {
+            return n;
+        }
         let next = self.event_numbers.len() as u64 + 1;
-        *self.event_numbers.entry(name.to_owned()).or_insert(next)
+        self.event_numbers.insert(name.to_owned(), next);
+        next
     }
 
     /// This frame's one-shots, worked out: a pile of one event in one tick
@@ -424,7 +447,13 @@ impl GameAudio {
     ) {
         for (id, source, place) in sources {
             let entity = id.0.raw();
-            let Some((key, event)) = sounds.event_named(&source.event) else {
+            // The same event as last frame: found by its file directly.
+            let known = self
+                .loops
+                .get(&entity)
+                .filter(|s| s.named == source.event)
+                .and_then(|s| sounds.event_at(&s.event));
+            let Some((key, event)) = known.or_else(|| sounds.event_named(&source.event)) else {
                 if self.told_unknown.len() < MAX_TOLD
                     && self.told_unknown.insert(source.event.clone())
                 {
@@ -441,23 +470,40 @@ impl GameAudio {
                 continue;
             }
             // The same take each time it comes back: picked from the
-            // entity, never the game's random numbers.
-            let Some((pick, clip)) = pick_of(event, sounds, None, 0, 0, entity) else {
+            // entity, never the game's random numbers; kept from last
+            // frame while nothing changed.
+            let changes = sounds.changes();
+            let kept = self
+                .loops
+                .get(&entity)
+                .filter(|s| s.event == key)
+                .and_then(|s| s.pick)
+                .filter(|(at, _)| *at == changes)
+                .and_then(|(_, pick)| Some((pick, sounds.clip_of(pick.take)?)));
+            let Some((pick, clip)) = kept.or_else(|| pick_of(event, sounds, None, 0, 0, entity))
+            else {
                 continue;
             };
             let state = self.loops.entry(entity).or_insert_with(|| LoopState {
                 event: key.to_owned(),
+                named: source.event.clone(),
                 started: self.clock,
+                pick: None,
             });
             if state.event != key {
                 // A different event now: it starts from the top, with the
                 // new event.
                 *state = LoopState {
                     event: key.to_owned(),
+                    named: source.event.clone(),
                     started: self.clock,
+                    pick: None,
                 };
                 self.changed_loops.push(entity);
+            } else if state.named != source.event {
+                state.named = source.event.clone();
             }
+            state.pick = Some((changes, pick));
             let placement = match event.space {
                 Space::Flat => Placement::Flat,
                 Space::Placed => Placement::On(
@@ -578,16 +624,22 @@ fn pick_of<'a>(
     tick: u64,
     order: u64,
 ) -> Option<(sound::Pick, &'a sound::Clip)> {
-    let playable = sound::SoundEvent {
-        takes: event
-            .takes
-            .iter()
-            .copied()
-            .filter(|t| sounds.clip_of(*t).is_some())
-            .collect(),
-        ..event.clone()
+    // Usually every take can play, and the event is picked from as it is;
+    // only when some can't is a copy made without them.
+    let pick = if event.takes.iter().all(|t| sounds.clip_of(*t).is_some()) {
+        sound::event::pick(event, last, seed, tick, order)?
+    } else {
+        let playable = sound::SoundEvent {
+            takes: event
+                .takes
+                .iter()
+                .copied()
+                .filter(|t| sounds.clip_of(*t).is_some())
+                .collect(),
+            ..event.clone()
+        };
+        sound::event::pick(&playable, last, seed, tick, order)?
     };
-    let pick = sound::event::pick(&playable, last, seed, tick, order)?;
     Some((pick, sounds.clip_of(pick.take)?))
 }
 
