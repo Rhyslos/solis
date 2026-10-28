@@ -16,7 +16,7 @@
 //! pitch = 0.0;
 //! pitch_range = 1.0;
 //! bus = "Effects";
-//! space = "3D";
+//! placement = "In the world";
 //! near = 2.0;
 //! far = 30.0;
 //! fade = "Realistic";
@@ -100,8 +100,8 @@ impl Space {
     /// As written in the file and shown in Properties.
     pub fn name(self) -> &'static str {
         match self {
-            Self::Flat => "2D",
-            Self::Placed => "3D",
+            Self::Flat => "Everywhere",
+            Self::Placed => "In the world",
         }
     }
 }
@@ -311,11 +311,11 @@ fn apply(event: &mut SoundEvent, field: &Field, notes: &mut Vec<String>) -> Resu
             }
             event.bus = name.to_owned();
         }
-        "space" => {
+        "placement" => {
             event.space = match word()? {
-                "2D" | "2d" => Space::Flat,
-                "3D" | "3d" => Space::Placed,
-                _ => return Err(wrong("\"2D\" or \"3D\"")),
+                "Everywhere" => Space::Flat,
+                "In the world" => Space::Placed,
+                _ => return Err(wrong("\"In the world\" or \"Everywhere\"")),
             };
         }
         "near" => event.near_m = number(0.0, MAX_DISTANCE_M, notes)?,
@@ -384,7 +384,7 @@ pub fn write(event: &SoundEvent) -> String {
             ("pitch", f(event.pitch_st)),
             ("pitch_range", f(event.pitch_range_st)),
             ("bus", Value::Text(event.bus.clone())),
-            ("space", Value::Text(event.space.name().to_owned())),
+            ("placement", Value::Text(event.space.name().to_owned())),
             ("near", f(event.near_m)),
             ("far", f(event.far_m)),
             ("fade", Value::Text(event.fade.name().to_owned())),

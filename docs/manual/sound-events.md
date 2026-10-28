@@ -4,7 +4,7 @@
 
 ## When to use it
 - **For anything heard more than once:** footsteps, gunshots, doors, coins. A real footstep never sounds exactly the same twice; playing one recording over and over sounds mechanical very quickly. An event picks a different take each time, and changes its [pitch and volume](concepts.md#sound) a little.
-- **To set how a sound is heard in one place:** how loud, whether it comes from a place in the world (3D) or is the same everywhere (2D), how far it carries, and which [bus](concepts.md#sound) it belongs to. Game code will ask for the event by name (in the next update), so changing the event changes every place that plays it.
+- **To set how a sound is heard in one place:** how loud, whether it comes from a place in the world or is heard the same everywhere, how far it carries, and which [bus](concepts.md#sound) it belongs to. Game code will ask for the event by name (in the next update), so changing the event changes every place that plays it.
 - A single sound you only ever play once, such as one piece of music, still works best as an event with one take: the event holds its settings.
 
 ## How to use it
@@ -20,8 +20,8 @@
 | Pitch | How high or low, in semitones (st): 12 is an octave up. The second number is how much each play may differ: 0.5 to 2 st keeps footsteps fresh without sounding odd. |
 | Bus | Which group it belongs to (Music, Effects, Voice, Ambience, UI), so a game's options can turn each up or down. The Mixer, to set them, comes in a later update. |
 | Loop | Plays again from the start when it ends: an engine hum, a campfire, music. |
-| Space | **3D** sounds come from a place in the world: quieter far away, and from their direction. **2D** sounds are the same everywhere: music, the interface. |
-| Full until, Silent past | For 3D sounds: full volume up to the first distance, silent past the second, in metres. A footstep might be 2 m and 30 m; an explosion 10 m and 300 m. |
+| Placement | **In the world**: it comes from a place, quieter far away and from its direction (a footstep, a door). It plays as one channel (mono), mixed down from stereo if need be, so it can come from one side. **Everywhere**: heard the same wherever you are, as recorded, in stereo if the file is (music, the interface). Each take in the list says whether its file is mono or stereo. |
+| Full until, Silent past | For sounds in the world: full volume up to the first distance, silent past the second, in metres. A footstep might be 2 m and 30 m; an explosion 10 m and 300 m. |
 | Fade | How it gets quieter between the two distances. **Realistic** drops quickly at first, as sound does outdoors; **Even** drops steadily; **None** stays full until the far distance. |
 | At once | The most plays of this event heard at the same time; more are skipped. 8 is a good start; a machine gun might want 4. |
 | Priority | When too many sounds play, **Low** ones are dropped first and **High** ones kept longest. |
