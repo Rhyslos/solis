@@ -33,6 +33,7 @@ New to game engines? Start with [Concepts](concepts.md).
 - [Sky, fog and exposure: the world around your models, and how bright the picture is](sky-fog-and-exposure.md)
 - [The Console: messages, search and commands](console.md)
 - [Game code: writing your game's rules in Lust, Lua and Rust](game-code.md)
+- [Which language when: Lust, Lua or Rust, with measured numbers](which-language.md)
 - [Physics: things that fall, collide and get pushed](physics.md)
 - [Input: the game's controls as named actions, gamepads, rebinding and recordings](input.md)
 - [Characters and cameras: a character that walks and jumps, third-person, first-person and RTS cameras, and the playground](characters-and-cameras.md)

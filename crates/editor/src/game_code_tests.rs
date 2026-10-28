@@ -1642,3 +1642,156 @@ fn properties_shows_game_code_s_values_as_they_are_while_playing() {
         "steps {steps} shown"
     );
 }
+
+/// The same work in each language (Phase 8, C6; decision 0055): every
+/// tick, 40 steps of number work into a field. Rust's stand-in.
+struct Churn {
+    value: f64,
+}
+
+impl script::RustComponent for Churn {
+    fn update(&mut self, _cx: &mut script::Context<'_>, _dt: f64) {
+        let mut v = self.value;
+        for i in 0..40 {
+            v = v * 0.999 + (f64::from(i) * 0.1).sin();
+        }
+        self.value = v;
+    }
+    fn values(&self) -> reflect::ComponentData {
+        let mut data = reflect::ComponentData::default();
+        data.set("value", Value::Float(self.value));
+        data
+    }
+    fn set(&mut self, data: &reflect::ComponentData) {
+        if let Some(Value::Float(v)) = data.get("value") {
+            self.value = *v;
+        }
+    }
+}
+
+const CHURN_LUST: &str = "component Churn {\n\
+        has {\n\
+            float value = 0;\n\
+        }\n\
+        method update(float dt) {\n\
+            float v = value;\n\
+            int i = 0;\n\
+            loop 40 {\n\
+                v = v * 0.999 + Maths:sin(i * 0.1);\n\
+                i = i + 1;\n\
+            }\n\
+            value = v;\n\
+        }\n\
+    }\n\
+    pass Churn;\nend\n";
+
+const CHURN_LUA: &str = "local C = component(\"Churn\", { { \"value\", \"float\", 0 } })\n\
+    function C:update(dt)\n\
+        local v = self.value\n\
+        for i = 0, 39 do\n\
+            v = v * 0.999 + math.sin(i * 0.1)\n\
+        end\n\
+        self.value = v\n\
+    end\n";
+
+/// A workbench playing 2,000 entities with a Churn component in
+/// `language`, and their values after `ticks`.
+fn churning(language: &str) -> Workbench {
+    let mut w = Workbench::new(info(), None);
+    match language {
+        "Lust" => w.set_program(Some(program(CHURN_LUST))),
+        "Lua" => {
+            let code = script::Code {
+                files: Vec::new(),
+                lua: vec![("churn.lua".into(), CHURN_LUA.into())],
+                notes: Vec::new(),
+            };
+            w.set_program(Some(Arc::new(script::compile(&code).unwrap().unwrap())));
+        }
+        _ => w.set_rust_components(vec![script::RustKind {
+            schema: reflect::ComponentSchema {
+                name: "Churn".into(),
+                help: String::new(),
+                fields: vec![reflect::FieldInfo::new(
+                    "value",
+                    "Value",
+                    reflect::FieldKind::Float,
+                    Value::Float(0.0),
+                )],
+            },
+            make: |data| {
+                let mut churn = Churn { value: 0.0 };
+                script::RustComponent::set(&mut churn, data);
+                Box::new(churn)
+            },
+        }]),
+    }
+    let spawns: Vec<_> = (0..2_000)
+        .map(|i| {
+            let mut data = EntityData::new(&format!("Churner {i}")).with(&Transform::default());
+            data.components
+                .insert("Churn".into(), reflect::ComponentData::default());
+            area::Edit::Spawn {
+                entities: vec![(EntityId::random(), data)],
+            }
+        })
+        .collect();
+    w.document.edit("Fill", spawns, None, None).unwrap();
+    w.play();
+    w
+}
+
+#[test]
+fn the_same_work_comes_out_the_same_in_each_language() {
+    // Lust, Lua and Rust doing the same sums agree, to the last bit: the
+    // scale case below compares like with like.
+    let value = |language: &str| {
+        let mut w = churning(language);
+        for _ in 0..3 {
+            w.run_game(1.0 / 60.0);
+        }
+        let values = w
+            .playing
+            .as_mut()
+            .unwrap()
+            .game
+            .as_mut()
+            .unwrap()
+            .all_values();
+        values
+            .iter()
+            .find(|(_, name, _)| name == "Churn")
+            .and_then(|(_, _, data)| data.get("value").cloned())
+    };
+    let rust = value("Rust");
+    assert!(
+        matches!(rust, Some(Value::Float(v)) if v != 0.0),
+        "{rust:?}"
+    );
+    assert_eq!(value("Lust"), rust);
+    assert_eq!(value("Lua"), rust);
+}
+
+#[test]
+#[ignore = "scale check: run by tools/scale/scale-check.sh"]
+fn scale_check_the_same_work_in_rust_lust_and_lua() {
+    // Decision 0055: the same number work on 2,000 entities, a tick at a
+    // time, in each language; the manual's "which language when" page
+    // quotes these.
+    const TARGET_MS: f64 = 16.0;
+    for language in ["Rust", "Lust", "Lua"] {
+        let mut w = churning(language);
+        w.run_game(1.0 / 60.0);
+        let frames = 60;
+        let start = std::time::Instant::now();
+        for _ in 0..frames {
+            w.run_game(1.0 / 60.0);
+        }
+        let ms = start.elapsed().as_secs_f64() * 1000.0 / f64::from(frames);
+        let verdict = if ms <= TARGET_MS { "ok" } else { "SLOW" };
+        println!(
+            "Scale check: a tick of 2,000 {language} components doing 40 steps of number work each {ms:.2} ms (target {TARGET_MS} ms) {verdict}"
+        );
+        assert!(ms <= TARGET_MS, "{language}: a tick takes {ms:.2} ms");
+    }
+}
