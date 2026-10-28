@@ -15,10 +15,10 @@
 
 mod device;
 pub mod event;
-mod overview;
-pub mod read;
 #[cfg(test)]
 mod event_tests;
+mod overview;
+pub mod read;
 #[cfg(test)]
 mod tests;
 mod vorbis_check;

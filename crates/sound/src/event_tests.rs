@@ -49,7 +49,8 @@ fn an_empty_event_takes_the_defaults() {
 
 #[test]
 fn values_out_of_range_are_brought_in_with_a_note() {
-    let text = "sound version 1;\nvolume = 40;\npitch = -99;\nat_once = 0;\nnear = 50;\nfar = 10;\n";
+    let text =
+        "sound version 1;\nvolume = 40;\npitch = -99;\nat_once = 0;\nnear = 50;\nfar = 10;\n";
     let read = read(text).unwrap();
     assert_eq!(read.event.volume_db, VOLUME_RANGE_DB.1);
     assert_eq!(read.event.pitch_st, PITCH_RANGE_ST.0);
@@ -61,11 +62,18 @@ fn values_out_of_range_are_brought_in_with_a_note() {
 
 #[test]
 fn unknown_settings_and_twice_listed_takes_are_noted_not_refused() {
-    let text = format!("sound version 1;\ntakes = [\"{0}\", \"{0}\"];\nreverb = 3;\n", id(1));
+    let text = format!(
+        "sound version 1;\ntakes = [\"{0}\", \"{0}\"];\nreverb = 3;\n",
+        id(1)
+    );
     let read = read(&text).unwrap();
     assert_eq!(read.event.takes, vec![id(1)]);
     assert!(read.notes.iter().any(|n| n.contains("listed twice")));
-    assert!(read.notes.iter().any(|n| n.contains("\"reverb\" isn't a sound event setting")));
+    assert!(
+        read.notes
+            .iter()
+            .any(|n| n.contains("\"reverb\" isn't a sound event setting"))
+    );
 }
 
 #[test]
@@ -87,11 +95,23 @@ fn wrong_kinds_of_value_are_refused_with_their_line() {
         assert_eq!(e.line, 2, "{body}");
         assert!(e.message.contains(says), "{body}: {}", e.message);
     }
-    let many: Vec<String> = (1..=MAX_TAKES as u64 + 1).map(|n| format!("\"{}\"", id(n))).collect();
+    let many: Vec<String> = (1..=MAX_TAKES as u64 + 1)
+        .map(|n| format!("\"{}\"", id(n)))
+        .collect();
     let e = err(&format!("takes = [{}];", many.join(", ")));
     assert!(e.message.contains("up to 32"), "{}", e.message);
-    assert!(read("area version 1;").unwrap_err().message.contains("isn't a sound file"));
-    assert!(read(&" ".repeat(MAX_BYTES + 1)).unwrap_err().message.contains("KB"));
+    assert!(
+        read("area version 1;")
+            .unwrap_err()
+            .message
+            .contains("isn't a sound file")
+    );
+    assert!(
+        read(&" ".repeat(MAX_BYTES + 1))
+            .unwrap_err()
+            .message
+            .contains("KB")
+    );
 }
 
 #[test]
@@ -103,7 +123,10 @@ fn a_pick_is_one_of_the_takes_within_the_ranges() {
         assert!((p.volume_db - event.volume_db).abs() <= event.volume_range_db + 1e-4);
         assert!((p.pitch_st - event.pitch_st).abs() <= event.pitch_range_st + 1e-4);
     }
-    assert!(pick(&SoundEvent::default(), None, 7, 0, 0).is_none(), "no takes");
+    assert!(
+        pick(&SoundEvent::default(), None, 7, 0, 0).is_none(),
+        "no takes"
+    );
 }
 
 #[test]
@@ -122,7 +145,11 @@ fn the_same_take_never_plays_twice_in_a_row_when_there_is_another() {
         takes: vec![id(9)],
         ..SoundEvent::default()
     };
-    assert_eq!(pick(&one, Some(id(9)), 1, 0, 0).unwrap().take, id(9), "one take plays again");
+    assert_eq!(
+        pick(&one, Some(id(9)), 1, 0, 0).unwrap().take,
+        id(9),
+        "one take plays again"
+    );
 }
 
 #[test]

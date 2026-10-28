@@ -52,6 +52,25 @@ pub struct Preview {
     pub path: String,
     /// How far it has played, in seconds.
     pub seconds: f64,
+    /// How long what's playing is, in seconds (for a sound event, the
+    /// take it picked).
+    pub length: f64,
+    /// For a sound event: which take it picked and how it varied it.
+    pub detail: Option<String>,
+}
+
+/// A sound event file as the app has read it.
+#[derive(Debug, Clone, PartialEq)]
+pub enum EventState {
+    /// Read, with notes about what was put right.
+    Read {
+        /// Its settings.
+        event: sound::SoundEvent,
+        /// What was skipped or brought into range.
+        notes: Vec<String>,
+    },
+    /// It couldn't be read: why, in plain words.
+    Failed(String),
 }
 
 /// `seconds` as "4 ms", "0.42 s", "12.5 s" or "3:05".
@@ -88,10 +107,10 @@ pub fn rate_text(rate: u32) -> String {
 }
 
 /// How far through it the preview is (0 to 1), if it's this sound's.
-pub(crate) fn played(info: &SoundInfo, path: &str, preview: Option<&Preview>) -> Option<f32> {
+pub(crate) fn played(path: &str, preview: Option<&Preview>) -> Option<f32> {
     let preview = preview.filter(|p| p.path == path)?;
-    Some(if info.seconds > 0.0 {
-        (preview.seconds / info.seconds).clamp(0.0, 1.0) as f32
+    Some(if preview.length > 0.0 {
+        (preview.seconds / preview.length).clamp(0.0, 1.0) as f32
     } else {
         0.0
     })
@@ -201,7 +220,7 @@ fn details(
     preview: Option<&Preview>,
 ) -> Option<LibraryRequest> {
     let mut request = None;
-    let played = played(info, path, preview);
+    let played = played(path, preview);
     let (rect, _) =
         ui.allocate_exact_size(egui::vec2(ui.available_width(), 64.0), egui::Sense::hover());
     ui.painter().rect_filled(rect, 3.0, theme::FIELD);
@@ -317,37 +336,19 @@ mod tests {
         assert_eq!(rate_text(192_000), "192,000 Hz");
     }
 
-    fn info(seconds: f64) -> SoundInfo {
-        SoundInfo {
-            seconds,
-            channels: 2,
-            sample_rate: 48_000,
-            format: "WAV",
-            streamed: false,
-            waveform: vec![(-0.5, 0.5); 10],
-        }
-    }
-
     #[test]
     fn only_the_sound_previewing_shows_how_far_it_has_played() {
-        let preview = Preview {
+        let preview = |seconds, length| Preview {
             path: "sfx/step.wav".into(),
-            seconds: 0.5,
+            seconds,
+            length,
+            detail: None,
         };
-        assert_eq!(
-            played(&info(2.0), "sfx/step.wav", Some(&preview)),
-            Some(0.25)
-        );
-        assert_eq!(played(&info(2.0), "sfx/other.wav", Some(&preview)), None);
-        assert_eq!(played(&info(2.0), "sfx/step.wav", None), None);
-        assert_eq!(
-            played(&info(0.25), "sfx/step.wav", Some(&preview)),
-            Some(1.0)
-        );
-        assert_eq!(
-            played(&info(0.0), "sfx/step.wav", Some(&preview)),
-            Some(0.0)
-        );
+        assert_eq!(played("sfx/step.wav", Some(&preview(0.5, 2.0))), Some(0.25));
+        assert_eq!(played("sfx/other.wav", Some(&preview(0.5, 2.0))), None);
+        assert_eq!(played("sfx/step.wav", None), None);
+        assert_eq!(played("sfx/step.wav", Some(&preview(0.5, 0.25))), Some(1.0));
+        assert_eq!(played("sfx/step.wav", Some(&preview(0.5, 0.0))), Some(0.0));
     }
 
     #[test]

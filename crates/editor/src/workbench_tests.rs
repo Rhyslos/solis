@@ -1983,6 +1983,8 @@ fn a_sound_picked_in_the_library_shows_in_properties_and_plays() {
     h.state_mut().0.set_preview(Some(crate::Preview {
         path: "step.wav".into(),
         seconds: 0.5,
+        length: 2.0,
+        detail: None,
     }));
     h.run();
     let _ = h.get_by_label("0.50 s / 2.00 s");
@@ -2019,4 +2021,157 @@ fn a_sound_that_couldnt_be_read_says_why_in_properties() {
     h.get_by_label("broken").click();
     h.run();
     let _ = h.get_by_label_contains("couldn't read it: it's damaged");
+}
+
+fn with_a_sound_event() -> (Workbench, AssetId) {
+    let mut w = Workbench::new(info(), None);
+    w.set_project(Some(crate::library::ProjectInfo {
+        name: "Harbour".into(),
+        root: "/projects/harbour".into(),
+        assets: "/projects/harbour/assets".into(),
+    }));
+    let grass = AssetId(reflect::Id::from_raw(77).unwrap());
+    w.set_library(vec![
+        crate::library::LibraryItem {
+            id: None,
+            kind: crate::library::LibraryKind::SoundEvent,
+            name: "footstep".into(),
+            path: "footstep.solsound".into(),
+            thumbnail: None,
+        },
+        crate::library::LibraryItem {
+            id: Some(grass),
+            kind: crate::library::LibraryKind::Sound,
+            name: "step_grass".into(),
+            path: "step_grass.wav".into(),
+            thumbnail: None,
+        },
+    ]);
+    w.set_sound_events(std::collections::HashMap::from([(
+        "footstep.solsound".to_owned(),
+        crate::EventState::Read {
+            event: sound::SoundEvent {
+                takes: vec![grass],
+                ..sound::SoundEvent::default()
+            },
+            notes: vec!["line 9: \"reverb\" isn't a sound event setting, so it's skipped".into()],
+        },
+    )]));
+    (w, grass)
+}
+
+#[test]
+fn a_sound_event_shows_its_takes_and_settings_and_plays() {
+    let (w, _) = with_a_sound_event();
+    let mut h = acting(w);
+    h.run();
+    h.get_by_label("footstep").click();
+    h.run();
+    let _ = h.get_by_label("Takes (1 of up to 32) · drop sound files here");
+    assert_eq!(
+        h.get_all_by_label("step_grass").count(),
+        2,
+        "in the Library and in the takes"
+    );
+    let _ = h.get_by_label_contains("\"reverb\" isn't a sound event setting");
+    let _ = h.get_by_label("Bus");
+    h.get_by_label("Play the sound event").click();
+    h.run();
+    assert!(
+        h.state()
+            .1
+            .contains(&WorkbenchAction::PlaySound("footstep.solsound".into()))
+    );
+    h.state_mut().0.set_preview(Some(crate::Preview {
+        path: "footstep.solsound".into(),
+        seconds: 0.1,
+        length: 0.2,
+        detail: Some("step_grass, +0.4 st, -1.2 dB".into()),
+    }));
+    h.run();
+    let _ = h.get_by_label("Playing step_grass, +0.4 st, -1.2 dB");
+    let _ = h.get_by_label("Stop the sound event");
+}
+
+#[test]
+fn changing_a_sound_event_saves_it() {
+    let (w, grass) = with_a_sound_event();
+    let mut h = acting(w);
+    h.run();
+    h.get_by_label("footstep").click();
+    h.run();
+    h.get_by_label("2D").click();
+    h.run();
+    let saved = h.state().1.iter().find_map(|a| match a {
+        WorkbenchAction::SaveSoundEvent { path, event } => Some((path.clone(), event.clone())),
+        _ => None,
+    });
+    let (path, event) = saved.expect("a save");
+    assert_eq!(path, std::path::PathBuf::from("footstep.solsound"));
+    assert_eq!(event.space, sound::event::Space::Flat);
+    assert_eq!(event.takes, vec![grass], "the rest kept");
+    h.state_mut().1.clear();
+    h.get_by_label("Remove step_grass").click();
+    h.run();
+    assert!(h.state().1.iter().any(|a| matches!(
+        a,
+        WorkbenchAction::SaveSoundEvent { event, .. } if event.takes.is_empty()
+    )));
+}
+
+#[test]
+fn a_take_is_added_once_and_only_to_a_readable_event() {
+    let (mut w, grass) = with_a_sound_event();
+    let other = AssetId(reflect::Id::from_raw(78).unwrap());
+    let mut actions = Vec::new();
+    w.library_request(
+        crate::library::LibraryRequest::AddTake("footstep.solsound".into(), other),
+        &mut actions,
+    );
+    match actions.as_slice() {
+        [WorkbenchAction::SaveSoundEvent { event, .. }] => {
+            assert_eq!(event.takes, vec![grass, other])
+        }
+        other => panic!("{other:?}"),
+    }
+    actions.clear();
+    w.library_request(
+        crate::library::LibraryRequest::AddTake("footstep.solsound".into(), grass),
+        &mut actions,
+    );
+    assert!(actions.is_empty(), "already a take");
+    w.library_request(
+        crate::library::LibraryRequest::AddTake("missing.solsound".into(), grass),
+        &mut actions,
+    );
+    assert!(actions.is_empty());
+    assert!(
+        w.log_lines()
+            .iter()
+            .any(|l| l.text.contains("isn't a sound event Solis could read"))
+    );
+    w.library_request(
+        crate::library::LibraryRequest::SaveSoundEvent(
+            "../outside.solsound".into(),
+            sound::SoundEvent::default(),
+        ),
+        &mut actions,
+    );
+    assert!(actions.is_empty(), "never outside the assets");
+}
+
+#[test]
+fn new_sound_event_is_in_the_import_menu() {
+    let (w, _) = with_a_sound_event();
+    let mut h = acting(w);
+    h.run();
+    h.get_by_label("Import").click();
+    h.run();
+    h.get_by_label("New sound event").click();
+    h.run();
+    assert!(
+        h.state()
+            .1
+            .contains(&WorkbenchAction::NewSoundEvent("".into()))
+    );
 }

@@ -248,10 +248,7 @@ fn apply(event: &mut SoundEvent, field: &Field, notes: &mut Vec<String>) -> Resu
         message: format!("{} should be {what}", field.key),
     };
     let number = |lo: f32, hi: f32, notes: &mut Vec<String>| -> Result<f32, EventError> {
-        let v = field
-            .value
-            .as_f32()
-            .ok_or_else(|| wrong("a number"))?;
+        let v = field.value.as_f32().ok_or_else(|| wrong("a number"))?;
         let fitted = v.clamp(lo, hi);
         if fitted != v {
             notes.push(format!(
@@ -268,7 +265,9 @@ fn apply(event: &mut SoundEvent, field: &Field, notes: &mut Vec<String>) -> Resu
     match field.key.as_str() {
         "takes" => {
             let Value::List(items) = &field.value else {
-                return Err(wrong("a list of sound files' IDs, such as [\"2EGJNFMTCSQ8G\"]"));
+                return Err(wrong(
+                    "a list of sound files' IDs, such as [\"2EGJNFMTCSQ8G\"]",
+                ));
             };
             if items.len() > MAX_TAKES {
                 return Err(EventError {
@@ -286,7 +285,9 @@ fn apply(event: &mut SoundEvent, field: &Field, notes: &mut Vec<String>) -> Resu
                     _ => return Err(wrong("a list of IDs in quotes")),
                 };
                 if event.takes.contains(&id) {
-                    notes.push(format!("line {line}: the take {id} is listed twice; kept once"));
+                    notes.push(format!(
+                        "line {line}: the take {id} is listed twice; kept once"
+                    ));
                 } else {
                     event.takes.push(id);
                 }
@@ -300,8 +301,13 @@ fn apply(event: &mut SoundEvent, field: &Field, notes: &mut Vec<String>) -> Resu
         "pitch_range" => event.pitch_range_st = number(0.0, MAX_PITCH_VARIATION_ST, notes)?,
         "bus" => {
             let name = word()?.trim();
-            if name.is_empty() || name.chars().count() > MAX_BUS_NAME || name.contains(char::is_control) {
-                return Err(wrong(&format!("a bus's name, up to {MAX_BUS_NAME} letters")));
+            if name.is_empty()
+                || name.chars().count() > MAX_BUS_NAME
+                || name.contains(char::is_control)
+            {
+                return Err(wrong(&format!(
+                    "a bus's name, up to {MAX_BUS_NAME} letters"
+                )));
             }
             event.bus = name.to_owned();
         }
@@ -418,13 +424,24 @@ impl Pick {
 /// `tick` and `order` (the request's place in the tick), so the same
 /// game sounds the same every time and sound never touches the game's
 /// random numbers. `None` when the event has no takes.
-pub fn pick(event: &SoundEvent, last: Option<AssetId>, seed: u64, tick: u64, order: u64) -> Option<Pick> {
+pub fn pick(
+    event: &SoundEvent,
+    last: Option<AssetId>,
+    seed: u64,
+    tick: u64,
+    order: u64,
+) -> Option<Pick> {
     if event.takes.is_empty() {
         return None;
     }
     let mut random = Random::new(seed, tick, order);
     let choices: Vec<AssetId> = if event.takes.len() > 1 {
-        event.takes.iter().copied().filter(|t| Some(*t) != last).collect()
+        event
+            .takes
+            .iter()
+            .copied()
+            .filter(|t| Some(*t) != last)
+            .collect()
     } else {
         event.takes.clone()
     };
@@ -433,10 +450,14 @@ pub fn pick(event: &SoundEvent, last: Option<AssetId>, seed: u64, tick: u64, ord
     let vary = |random: &mut Random, middle: f32, range: f32| {
         middle + range * (random.unit() as f32 * 2.0 - 1.0)
     };
-    let volume_db = vary(&mut random, event.volume_db, event.volume_range_db)
-        .clamp(VOLUME_RANGE_DB.0 - MAX_VOLUME_VARIATION_DB, VOLUME_RANGE_DB.1);
-    let pitch_st = vary(&mut random, event.pitch_st, event.pitch_range_st)
-        .clamp(PITCH_RANGE_ST.0 - MAX_PITCH_VARIATION_ST, PITCH_RANGE_ST.1 + MAX_PITCH_VARIATION_ST);
+    let volume_db = vary(&mut random, event.volume_db, event.volume_range_db).clamp(
+        VOLUME_RANGE_DB.0 - MAX_VOLUME_VARIATION_DB,
+        VOLUME_RANGE_DB.1,
+    );
+    let pitch_st = vary(&mut random, event.pitch_st, event.pitch_range_st).clamp(
+        PITCH_RANGE_ST.0 - MAX_PITCH_VARIATION_ST,
+        PITCH_RANGE_ST.1 + MAX_PITCH_VARIATION_ST,
+    );
     Some(Pick {
         take,
         volume_db,

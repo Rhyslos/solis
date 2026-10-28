@@ -17,7 +17,6 @@ use reflect::Value;
 use std::collections::BTreeMap;
 use std::fmt::Write as _;
 
-
 /// The most fields a settings file may hold.
 pub const MAX_SETTINGS_FIELDS: usize = 4096;
 
@@ -166,9 +165,17 @@ mod tests {
     fn mistakes_are_refused_with_their_line() {
         let err = |text: &str| read_settings(text, "sound", 1).unwrap_err();
         assert_eq!(err("").message, "the file is empty");
-        assert!(err("area version 1;").message.contains("isn't a sound file"));
+        assert!(
+            err("area version 1;")
+                .message
+                .contains("isn't a sound file")
+        );
         assert!(err("sound version 2;").message.contains("newer version"));
-        assert!(err("sound version 0;").message.contains("no layout version 0"));
+        assert!(
+            err("sound version 0;")
+                .message
+                .contains("no layout version 0")
+        );
         assert!(err("sound version x;").message.contains("whole number"));
         let twice = err("sound version 1;\na = 1;\na = 2;");
         assert_eq!(twice.line, 3);
@@ -182,7 +189,8 @@ mod tests {
 
     #[test]
     fn comments_and_a_byte_order_mark_are_fine() {
-        let text = "\u{feff}-- hi\nsound version 1; -- the header\n-- a = 1;\nb = [1, 2.5]; -- two\n";
+        let text =
+            "\u{feff}-- hi\nsound version 1; -- the header\n-- a = 1;\nb = [1, 2.5]; -- two\n";
         let read = read_settings(text, "sound", 1).unwrap();
         assert_eq!(read.fields.len(), 1);
         assert_eq!(

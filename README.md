@@ -30,7 +30,7 @@ Solis is built in phases, one milestone per pull request. Each phase ends with a
 
 **Overall: 42 of 130 milestones** `████░░░░░░░░░` 32%
 
-**Now:** Phases 1, 2 and 3 are built and wait for their gates to be tried by hand ([Phase 3 plan](docs/plans/phase-3.md)). Phase 4, game code, is built and reviewed, and waits for its gate too ([Phase 4 plan](docs/plans/phase-4.md)). Phase 5, scale, is built and reviewed, and waits for its gate ([Phase 5 plan](docs/plans/phase-5.md)): try **Help > Make the benchmark…**. Phase 6, simulation and play, is built and reviewed three times, and waits for its gate ([Phase 6 plan](docs/plans/phase-6.md)): try **Help > Make the playground…**. The hardening milestone is done and everything is merged: its gate is reading the [hardening report](docs/reports/hardening-phase-6.md) and trying the playground once more. Solis now installs and updates itself from GitHub's Releases page. Phase 7, sound and animation, has begun: sounds can be listened to in the Library (S1). Next is S2, sound events ([sound plan](docs/plans/phase-7-sound.md), [animation plan](docs/plans/phase-7-animation.md), decisions 0056 and 0057). Then compatibility (Phase 8, [plan](docs/plans/compatibility.md)), so updates never lose work, and first-class 2D in two parts (Phases 9 and 10, [plan](docs/plans/2d.md), [decision 0054](docs/decisions/0054-first-class-2d.md)), so the project lead's own 2D game can move to Solis; then a playtest export and game UI, then light, materials and effects ([decisions 0046](docs/decisions/0046-light-before-netcode.md) and [0048](docs/decisions/0048-materials-and-shaders-before-effects.md)).
+**Now:** Phases 1, 2 and 3 are built and wait for their gates to be tried by hand ([Phase 3 plan](docs/plans/phase-3.md)). Phase 4, game code, is built and reviewed, and waits for its gate too ([Phase 4 plan](docs/plans/phase-4.md)). Phase 5, scale, is built and reviewed, and waits for its gate ([Phase 5 plan](docs/plans/phase-5.md)): try **Help > Make the benchmark…**. Phase 6, simulation and play, is built and reviewed three times, and waits for its gate ([Phase 6 plan](docs/plans/phase-6.md)): try **Help > Make the playground…**. The hardening milestone is done and everything is merged: its gate is reading the [hardening report](docs/reports/hardening-phase-6.md) and trying the playground once more. Solis now installs and updates itself from GitHub's Releases page. Phase 7, sound and animation, has begun: sounds can be listened to in the Library (S1), and sound events vary each play (S2). Next is S3, game code playing sounds in 3D ([sound plan](docs/plans/phase-7-sound.md), [animation plan](docs/plans/phase-7-animation.md), decisions 0056 and 0057). Then compatibility (Phase 8, [plan](docs/plans/compatibility.md)), so updates never lose work, and first-class 2D in two parts (Phases 9 and 10, [plan](docs/plans/2d.md), [decision 0054](docs/decisions/0054-first-class-2d.md)), so the project lead's own 2D game can move to Solis; then a playtest export and game UI, then light, materials and effects ([decisions 0046](docs/decisions/0046-light-before-netcode.md) and [0048](docs/decisions/0048-materials-and-shaders-before-effects.md)).
 
 ### Phase 0 · Groundwork — 7 of 7
 
@@ -166,15 +166,15 @@ Solis is built in phases, one milestone per pull request. Each phase ends with a
 
 **Gate:** read the hardening report (coverage, mutations caught, hours fuzzed and what was found), and try the playground once more.
 
-### Phase 7 · Sound and animation — 1 of 13
+### Phase 7 · Sound and animation — 2 of 13
 
-`█░░░░░░░░░░░░` 8%
+`██░░░░░░░░░░░` 15%
 
 <details>
 <summary>Milestones</summary>
 
 - [x] S1. Sound files and the sound device ([sound plan](docs/plans/phase-7-sound.md), decision 0056)
-- [ ] S2. Sound events as assets
+- [x] S2. Sound events as assets
 - [ ] S3. Game code plays sounds, in 3D
 - [ ] A1. Skins and clips from glTF ([animation plan](docs/plans/phase-7-animation.md), decision 0057)
 - [ ] A2. Skinned drawing, playing one clip

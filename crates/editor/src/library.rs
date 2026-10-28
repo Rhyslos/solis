@@ -12,7 +12,7 @@
 //! `LibraryRequest`s.
 
 use crate::icons::{self, Icon};
-use crate::sound_view::{self, Preview, SOUND_COLOR, SoundState};
+use crate::sound_view::{self, EventState, Preview, SOUND_COLOR, SoundState};
 use crate::theme::{self, Accent};
 use egui::{Align, Color32, Layout, RichText, Ui};
 use reflect::AssetId;
@@ -46,6 +46,8 @@ pub enum LibraryKind {
     Code,
     /// A sound file (WAV or Ogg Vorbis).
     Sound,
+    /// A sound event (`.solsound`): takes and how to vary them.
+    SoundEvent,
     /// Anything else.
     Other,
 }
@@ -60,6 +62,7 @@ impl LibraryKind {
             Self::Texture => "Picture",
             Self::Code => "Code",
             Self::Sound => "Sound",
+            Self::SoundEvent => "Sound event",
             Self::Other => "File",
         }
     }
@@ -73,6 +76,7 @@ impl LibraryKind {
             Self::Texture => Color32::from_rgb(0xb4, 0x7c, 0xf0),
             Self::Code => Color32::from_rgb(0xe8, 0x87, 0x5a),
             Self::Sound => SOUND_COLOR,
+            Self::SoundEvent => crate::sound_event_view::EVENT_COLOR,
             Self::Other => theme::TEXT_WEAK,
         }
     }
@@ -85,7 +89,7 @@ impl LibraryKind {
             Self::Area => Icon::AreaFile,
             Self::Texture => Icon::Viewport,
             Self::Code => Icon::Code,
-            Self::Sound => Icon::Sound,
+            Self::Sound | Self::SoundEvent => Icon::Sound,
             Self::Other => Icon::Properties,
         }
     }
@@ -164,7 +168,7 @@ impl Default for LibraryState {
 
 /// Something asked for in the Library. Paths are inside the assets, with
 /// `/` between folders.
-#[derive(Debug, Clone, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq)]
 pub(crate) enum LibraryRequest {
     /// Place a model or assembly where the camera looks.
     Place(AssetId),
@@ -180,10 +184,16 @@ pub(crate) enum LibraryRequest {
     Delete(String),
     /// Import a model from outside the project.
     Import,
-    /// Listen to a sound file.
+    /// Listen to a sound file or sound event.
     PlaySound(String),
     /// Stop listening.
     StopSound,
+    /// Make a new sound event in this folder.
+    NewSoundEvent(String),
+    /// Save a sound event's settings to its file.
+    SaveSoundEvent(String, sound::SoundEvent),
+    /// Add a sound file (by its asset ID) to a sound event's takes.
+    AddTake(String, AssetId),
 }
 
 /// The sound files the app has measured, by path inside the assets, and
@@ -191,16 +201,14 @@ pub(crate) enum LibraryRequest {
 #[derive(Debug, Clone, Copy)]
 pub(crate) struct Sounds<'a> {
     pub(crate) states: &'a HashMap<String, SoundState>,
+    pub(crate) events: &'a HashMap<String, EventState>,
     pub(crate) preview: Option<&'a Preview>,
 }
 
 impl Sounds<'_> {
     /// How far through `item` the preview is, if it's playing.
     fn played(&self, item: &LibraryItem) -> Option<f32> {
-        match self.states.get(&item.path) {
-            Some(SoundState::Read(info)) => sound_view::played(info, &item.path, self.preview),
-            _ => None,
-        }
+        sound_view::played(&item.path, self.preview)
     }
 }
 
@@ -351,6 +359,17 @@ fn menu_row(
                         .clicked()
                     {
                         requests.push(LibraryRequest::Import);
+                        ui.close();
+                    }
+                    if ui
+                        .add_enabled(open, egui::Button::new("New sound event"))
+                        .on_hover_text(
+                            "A sound event in the folder shown: drop sound files on it for \
+                             takes, and each play picks one",
+                        )
+                        .clicked()
+                    {
+                        requests.push(LibraryRequest::NewSoundEvent(state.folder.clone()));
                         ui.close();
                     }
                     if ui
@@ -579,6 +598,11 @@ fn item_actions(picked: Picked<'_>, state: &mut LibraryState, requests: &mut Vec
         listen,
     } = picked;
     requests.extend(listen);
+    if item.kind == LibraryKind::SoundEvent
+        && let Some(dragged) = response.dnd_release_payload::<LibraryDrag>()
+    {
+        requests.extend(crate::sound_event_view::add_take(&item.path, &dragged.0));
+    }
     response.dnd_set_drag_payload(LibraryDrag(item.clone()));
     if response.clicked() {
         state.selected = Some(item.path.clone());
@@ -635,6 +659,10 @@ fn hint(item: &LibraryItem) -> String {
         }
         LibraryKind::Area => "Double-click to open it.",
         LibraryKind::Sound => "▶ to listen; click it to see it in Properties.",
+        LibraryKind::SoundEvent => {
+            "▶ to listen (a different take each time); drop sound files on it to add takes; \
+             click it to change it in Properties."
+        }
         _ => "Double-click to open it in its own program.",
     };
     format!("{} · {}\n{what}", item.kind.name(), item.path)
@@ -713,6 +741,10 @@ fn tile<'a>(
             item.kind.color(),
         );
     }
+    if item.kind == LibraryKind::SoundEvent {
+        event_badge(ui, item, picture, &response, sounds);
+    }
+    let painter = ui.painter();
     painter.rect_filled(
         egui::Rect::from_min_max(
             egui::pos2(picture.left(), picture.bottom() - 3.0),
@@ -784,6 +816,38 @@ fn place_button(ui: &mut Ui, item: &LibraryItem, area: egui::Rect) -> bool {
     button.clicked()
 }
 
+/// On a sound event's tile: how many takes it has, and a frame while a
+/// sound file is dragged over it (dropping adds it as a take).
+fn event_badge(
+    ui: &Ui,
+    item: &LibraryItem,
+    picture: egui::Rect,
+    response: &egui::Response,
+    sounds: Sounds<'_>,
+) {
+    let painter = ui.painter();
+    if let Some(EventState::Read { event, .. }) = sounds.events.get(&item.path) {
+        painter.text(
+            picture.right_bottom() + egui::vec2(-6.0, -7.0),
+            egui::Align2::RIGHT_BOTTOM,
+            format!("×{}", event.takes.len()),
+            egui::FontId::proportional(11.0),
+            SOUND_COLOR,
+        );
+    }
+    let sound_over = response
+        .dnd_hover_payload::<LibraryDrag>()
+        .is_some_and(|d| d.0.kind == LibraryKind::Sound);
+    if sound_over {
+        painter.rect_stroke(
+            picture,
+            3.0,
+            egui::Stroke::new(1.5, SOUND_COLOR),
+            egui::StrokeKind::Inside,
+        );
+    }
+}
+
 /// A sound's ▶ (or ■ while it plays), shown while it's pointed at or
 /// playing; returns what a click asks for.
 fn listen_button(
@@ -793,7 +857,7 @@ fn listen_button(
     response: &egui::Response,
     sounds: Sounds<'_>,
 ) -> Option<LibraryRequest> {
-    if item.kind != LibraryKind::Sound {
+    if !matches!(item.kind, LibraryKind::Sound | LibraryKind::SoundEvent) {
         return None;
     }
     let playing = sounds.played(item).is_some();

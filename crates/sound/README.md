@@ -27,8 +27,8 @@ Read sound files and play them, without ever changing the game.
 
 ## Depends on
 
-Kira (`cpal` backend only), hound, lewton, log.
+`area` (its settings-file reader, for `.solsound` files) and `reflect` (asset IDs and values), Kira (`cpal` backend only), hound, lewton, ogg, log.
 
 ## Status
 
-Phase 7, S1: reading WAV and Ogg (and measuring without keeping the samples, `measure_file`), overviews, Ogg header checks before `lewton` (`vorbis_check.rs`, after fuzzing found two files that made it ask for hundreds of gigabytes), the device, and the editor's preview. Sound events (S2), game code's sounds in 3D (S3), buses and the Mixer (S4), loops and voice limits (S5) and reverb zones (S6) follow.
+Phase 7, S1: reading WAV and Ogg (and measuring without keeping the samples, `measure_file`), overviews, Ogg header checks before `lewton` (`vorbis_check.rs`, after fuzzing found two files that made it ask for hundreds of gigabytes), the device, and the editor's preview. Phase 7, S2: sound events (`event.rs`: reading, writing, limits, and picking a play from sound's own random numbers) and previews varied in volume and pitch (`SoundDevice::preview_varied`). Game code's sounds in 3D (S3), buses and the Mixer (S4), loops and voice limits (S5) and reverb zones (S6) follow.

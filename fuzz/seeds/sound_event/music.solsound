@@ -1,0 +1,6 @@
+sound version 1;
+space = "2D";
+loop = true;
+bus = "Music";
+priority = "High";
+fade = "None";

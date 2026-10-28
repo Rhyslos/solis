@@ -1,0 +1,16 @@
+-- A sound event. Safe to edit by hand: one line per setting.
+sound version 1;
+
+takes = ["2EGJNFMTCSQ8G", "5A329QT768NJB"];
+volume = -3.0;
+volume_range = 2.0;
+pitch = 0.0;
+pitch_range = 1.0;
+bus = "Effects";
+space = "3D";
+near = 2.0;
+far = 30.0;
+fade = "Realistic";
+at_once = 8;
+priority = "Normal";
+loop = false;

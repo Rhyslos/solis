@@ -154,10 +154,23 @@ impl SoundDevice {
     /// Previews a clip as one play of a sound event would sound: `volume_db`
     /// louder or quieter, and played `speed` times as fast (which raises
     /// or lowers its pitch with it).
-    pub fn preview_varied(&mut self, clip: &Clip, volume_db: f32, speed: f64) -> Result<(), String> {
+    pub fn preview_varied(
+        &mut self,
+        clip: &Clip,
+        volume_db: f32,
+        speed: f64,
+    ) -> Result<(), String> {
         self.stop_preview();
-        let volume = Decibels(if volume_db.is_finite() { volume_db } else { 0.0 });
-        let rate = PlaybackRate(if speed.is_finite() && speed > 0.0 { speed } else { 1.0 });
+        let volume = Decibels(if volume_db.is_finite() {
+            volume_db
+        } else {
+            0.0
+        });
+        let rate = PlaybackRate(if speed.is_finite() && speed > 0.0 {
+            speed
+        } else {
+            1.0
+        });
         let Some(track) = self.editor.as_mut() else {
             return Ok(());
         };

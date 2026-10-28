@@ -244,6 +244,7 @@ impl App {
                 self.thumbnails.clear(self.gpu.as_ref());
                 self.sounds.clear(self.sound.device());
                 self.workbench.set_sounds(self.sounds.states());
+                self.workbench.set_sound_events(self.sounds.events());
                 self.game_code.forget();
                 self.to_place.clear();
                 self.area_files.forget();
@@ -673,6 +674,20 @@ impl App {
                 WorkbenchAction::PlaceAsset(id) => self.place(id),
                 WorkbenchAction::PlaySound(path) => self.play_sound(&path),
                 WorkbenchAction::StopSound => self.sounds.stop(self.sound.device()),
+                WorkbenchAction::NewSoundEvent(folder) => self.new_sound_event(&folder),
+                WorkbenchAction::SaveSoundEvent { path, event } => {
+                    let text = sound::event::write(&event);
+                    match self.projects.save_sound_event(&path, &text) {
+                        Ok(()) => {
+                            self.sounds.saved_event(&path, event);
+                            self.workbench.set_sound_events(self.sounds.events());
+                        }
+                        Err(why) => self.workbench.log(
+                            LogLevel::Error,
+                            format!("Couldn't save {}: {why}.", path.display()),
+                        ),
+                    }
+                }
                 WorkbenchAction::CreateAssembly(root) => self.create_assembly(root),
                 WorkbenchAction::ApplyToAssembly {
                     assembly,
@@ -905,6 +920,7 @@ impl App {
                 .want(&self.listing, &db.project().assets(), self.gpu.as_ref());
             self.sounds.want(&self.listing, &db.project().assets());
             self.workbench.set_sounds(self.sounds.states());
+            self.workbench.set_sound_events(self.sounds.events());
         }
         self.show_library();
     }
@@ -1129,8 +1145,32 @@ impl App {
             .log(LogLevel::Info, "Adding the sample area…".to_string());
     }
 
-    /// Listens to the sound file at `path` (inside the assets), or says in
-    /// the Console why it can't.
+    /// Makes a new sound event in `folder` (inside the assets) and shows it
+    /// in the Library and Properties.
+    fn new_sound_event(&mut self, folder: &std::path::Path) {
+        let text = sound::event::write(&sound::SoundEvent::default());
+        match self.projects.new_sound_event(folder, &text) {
+            Ok(path) => {
+                self.rescan_now();
+                let shown = crate::project::slashed(&path);
+                self.workbench.show_in_library(&shown);
+                self.workbench.log(
+                    LogLevel::Info,
+                    format!(
+                        "Made {shown}. Drag sound files onto it (or into its Takes in \
+                         Properties): each play picks one."
+                    ),
+                );
+            }
+            Err(why) => self.workbench.log(
+                LogLevel::Error,
+                format!("Couldn't make a sound event: {why}."),
+            ),
+        }
+    }
+
+    /// Listens to the sound file or sound event at `path` (inside the
+    /// assets), or says in the Console why it can't.
     fn play_sound(&mut self, path: &std::path::Path) {
         let Some(assets) = self.projects.db().map(|db| db.project().assets()) else {
             return;
@@ -1433,6 +1473,7 @@ impl eframe::App for App {
         }
         if self.sounds.poll() {
             self.workbench.set_sounds(self.sounds.states());
+            self.workbench.set_sound_events(self.sounds.events());
         }
         let preview = self.sounds.preview(self.sound.device());
         self.workbench.set_preview(preview);
