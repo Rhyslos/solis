@@ -111,6 +111,9 @@ impl Workbench {
         egui::Window::new("Settings")
             .open(&mut open)
             .collapsible(false)
+            // Opens in the middle of the window, clear of the menus.
+            .pivot(egui::Align2::CENTER_CENTER)
+            .default_pos(ctx.content_rect().center())
             .default_width(720.0)
             .default_height(420.0)
             .show(ctx, |ui| {
