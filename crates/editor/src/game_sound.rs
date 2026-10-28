@@ -15,8 +15,9 @@ pub const MAX_PER_TICK: usize = 256;
 /// What game code asked for.
 #[derive(Debug, Clone, PartialEq)]
 pub enum Request {
-    /// Play the sound event named here, from there.
-    Play(String, script::SoundAt),
+    /// Play the sound event named here, from there; and the entity whose
+    /// code asked (who caused it), if any.
+    Play(String, script::SoundAt, Option<EntityId>),
     /// Stop the sounds on this entity.
     StopOn(EntityId),
     /// Set this bus to this share of its fader (0 to 1) for the rest of
@@ -167,7 +168,7 @@ mod tests {
     fn a_tick_s_requests_are_numbered_in_order_and_capped() {
         let mut out = Vec::new();
         let many: Vec<Request> = (0..300)
-            .map(|i| Request::Play(format!("s{i}"), script::SoundAt::Nowhere))
+            .map(|i| Request::Play(format!("s{i}"), script::SoundAt::Nowhere, None))
             .collect();
         assert_eq!(gather(&mut out, many, 7, 42), 300 - MAX_PER_TICK);
         assert_eq!(out.len(), MAX_PER_TICK);
@@ -175,7 +176,7 @@ mod tests {
         assert_eq!((out[3].tick, out[3].seed), (7, 42));
         assert_eq!(
             out[3].request,
-            Request::Play("s3".into(), script::SoundAt::Nowhere)
+            Request::Play("s3".into(), script::SoundAt::Nowhere, None)
         );
         assert_eq!(gather(&mut out, Vec::new(), 8, 42), 0);
     }

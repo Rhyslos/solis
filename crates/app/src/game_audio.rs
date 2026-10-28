@@ -136,7 +136,7 @@ impl GameAudio {
                 Request::BusVolume(ref bus, share) => {
                     self.shares.insert(bus.clone(), share);
                 }
-                Request::Play(ref name, at) => {
+                Request::Play(ref name, at, _) => {
                     let name = name.clone();
                     plays.push((request, name, at));
                 }
@@ -543,7 +543,7 @@ mod tests {
             tick,
             order: 0,
             seed: 1,
-            request: Request::Play("step".into(), script::SoundAt::Nowhere),
+            request: Request::Play("step".into(), script::SoundAt::Nowhere, None),
         }
     }
 

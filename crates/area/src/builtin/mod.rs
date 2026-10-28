@@ -6,6 +6,7 @@ mod audio_source;
 mod camera;
 mod environment;
 mod light;
+mod listener;
 mod model;
 mod physics;
 mod reverb_zone;
@@ -15,6 +16,7 @@ pub use audio_source::AudioSource;
 pub use camera::Camera;
 pub use environment::{Environment, Sky, ToneMapping};
 pub use light::{Light, LightKind, aim, sun_rotation};
+pub use listener::Listener;
 pub use model::Model;
 pub use physics::{BodyKind, CharacterBody, Collider, ColliderShape, RigidBody};
 pub use reverb_zone::{ReverbZone, ZoneShape};
@@ -36,6 +38,7 @@ pub fn registry() -> Result<Registry, RegistryError> {
     registry.register_type::<CharacterBody>()?;
     registry.register_type::<AudioSource>()?;
     registry.register_type::<ReverbZone>()?;
+    registry.register_type::<Listener>()?;
     Ok(registry)
 }
 
@@ -141,6 +144,7 @@ mod tests {
                 "Collider",
                 "Environment",
                 "Light",
+                "Listener",
                 "Model",
                 "ReverbZone",
                 "RigidBody",

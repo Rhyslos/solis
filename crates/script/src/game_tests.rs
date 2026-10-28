@@ -694,19 +694,27 @@ fn sounds_asked_for_land_in_order_on_any_number_of_shards() {
     assert_eq!(one.len(), 20, "3 a speaker and 1 stop, each tick: {one:?}");
     assert_eq!(
         one[0],
-        Change::Sound("sfx/step".into(), crate::SoundAt::Place(Vec3::ZERO))
+        Change::Sound(
+            "sfx/step".into(),
+            crate::SoundAt::Place(Vec3::ZERO),
+            Some(id(1))
+        )
     );
     assert_eq!(
         one[1],
-        Change::Sound("engine".into(), crate::SoundAt::On(id(1)))
+        Change::Sound("engine".into(), crate::SoundAt::On(id(1)), Some(id(1)))
     );
     assert_eq!(
         one[2],
-        Change::Sound("music/theme".into(), crate::SoundAt::Nowhere)
+        Change::Sound("music/theme".into(), crate::SoundAt::Nowhere, Some(id(1)))
     );
     assert_eq!(
         one[3],
-        Change::Sound("sfx/step".into(), crate::SoundAt::Place(Vec3::X))
+        Change::Sound(
+            "sfx/step".into(),
+            crate::SoundAt::Place(Vec3::X),
+            Some(id(2))
+        )
     );
     assert_eq!(one[9], Change::StopSounds(id(1)));
     assert_eq!(one, run(4), "the same on four shards");

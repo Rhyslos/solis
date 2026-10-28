@@ -342,6 +342,7 @@ impl Runtime {
                         major: entity.0.raw(),
                         component: name.into(),
                         seq: 0,
+                        entity: entity.0.raw(),
                     });
                     if let Err(failure) = code.sync(running, entity, name, data) {
                         failures.push(failure);

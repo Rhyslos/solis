@@ -89,7 +89,7 @@ fn names(sounds: &[GameSound]) -> Vec<(u64, u32, String)> {
     sounds
         .iter()
         .map(|s| match &s.request {
-            crate::game_sound::Request::Play(name, _) => (s.tick, s.order, name.clone()),
+            crate::game_sound::Request::Play(name, _, _) => (s.tick, s.order, name.clone()),
             crate::game_sound::Request::StopOn(_) => (s.tick, s.order, "stop".into()),
             crate::game_sound::Request::BusVolume(bus, _) => {
                 (s.tick, s.order, format!("bus {bus}"))
@@ -114,7 +114,7 @@ fn a_game_s_sounds_land_after_each_tick_in_order() {
     assert_eq!((ticks[1].1, ticks[1].2.as_str()), (1, "engine"));
     assert!(ticks[2].0 > ticks[0].0, "a later tick");
     match sounds[0].request {
-        crate::game_sound::Request::Play(_, script::SoundAt::Place(p)) => {
+        crate::game_sound::Request::Play(_, script::SoundAt::Place(p), _) => {
             assert_eq!(p, Vec3::ZERO, "where it was as the tick started");
         }
         ref other => panic!("{other:?}"),
