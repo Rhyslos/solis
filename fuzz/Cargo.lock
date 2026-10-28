@@ -461,6 +461,7 @@ dependencies = [
  "reflect",
  "script",
  "serde",
+ "sound",
  "world",
 ]
 
@@ -2320,11 +2321,13 @@ dependencies = [
 name = "sound"
 version = "0.0.1"
 dependencies = [
+ "area",
  "hound",
  "kira",
  "lewton",
  "log",
  "ogg",
+ "reflect",
 ]
 
 [[package]]
