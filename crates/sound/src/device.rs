@@ -27,7 +27,7 @@ use std::time::Duration;
 const STOP_FADE: Duration = Duration::from_millis(30);
 
 /// Which audio manager the device has.
-enum Manager {
+pub(crate) enum Manager {
     /// The sound card.
     Card(Box<AudioManager<CpalBackend>>),
     /// A test device, which plays to nowhere (CI has no sound card).
@@ -35,7 +35,7 @@ enum Manager {
 }
 
 /// A preview that's playing.
-enum Preview {
+pub(crate) enum Preview {
     /// From memory.
     Memory(StaticSoundHandle),
     /// Streamed from its file.
@@ -43,7 +43,7 @@ enum Preview {
 }
 
 impl Preview {
-    fn state(&self) -> PlaybackState {
+    pub(crate) fn state(&self) -> PlaybackState {
         match self {
             Self::Memory(h) => h.state(),
             Self::Stream(h) => h.state(),
@@ -57,9 +57,14 @@ impl Preview {
         }
     }
 
-    fn stop(&mut self) {
+    pub(crate) fn stop(&mut self) {
+        self.stop_over(STOP_FADE);
+    }
+
+    /// Stops it with a fade this long.
+    pub(crate) fn stop_over(&mut self, fade: Duration) {
         let fade = Tween {
-            duration: STOP_FADE,
+            duration: fade,
             ..Tween::default()
         };
         match self {
@@ -77,6 +82,8 @@ pub struct SoundDevice {
     editor: Option<TrackHandle>,
     /// The preview playing, if any.
     preview: Option<Preview>,
+    /// The game's sounds: its tracks, the listener and what's playing.
+    pub(crate) game: Option<crate::game::GameTracks>,
 }
 
 impl std::fmt::Debug for SoundDevice {
@@ -125,6 +132,7 @@ impl SoundDevice {
             manager: None,
             editor: None,
             preview: None,
+            game: None,
         }
     }
 
@@ -133,10 +141,12 @@ impl SoundDevice {
             Manager::Card(m) => m.add_sub_track(TrackBuilder::new()).ok(),
             Manager::Test(m) => m.add_sub_track(TrackBuilder::new()).ok(),
         };
+        let game = crate::game::GameTracks::new(&mut manager);
         Self {
             manager: Some(manager),
             editor,
             preview: None,
+            game,
         }
     }
 
@@ -225,7 +235,7 @@ impl SoundDevice {
 }
 
 /// A clip in memory, as Kira's sound data.
-fn memory_sound(info: ClipInfo, frames: std::sync::Arc<[Frame]>) -> StaticSoundData {
+pub(crate) fn memory_sound(info: ClipInfo, frames: std::sync::Arc<[Frame]>) -> StaticSoundData {
     StaticSoundData {
         sample_rate: info.sample_rate,
         frames,
@@ -235,13 +245,13 @@ fn memory_sound(info: ClipInfo, frames: std::sync::Arc<[Frame]>) -> StaticSoundD
 }
 
 /// A long sound, read from its file as it plays.
-struct FileStream {
+pub(crate) struct FileStream {
     decoder: Decoder<BufReader<File>>,
     info: ClipInfo,
 }
 
 impl FileStream {
-    fn open(path: &Path, info: ClipInfo) -> Result<Self, ReadError> {
+    pub(crate) fn open(path: &Path, info: ClipInfo) -> Result<Self, ReadError> {
         let decoder = Decoder::new(BufReader::new(File::open(path)?))?;
         Ok(Self { decoder, info })
     }

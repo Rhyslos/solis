@@ -869,6 +869,15 @@ impl World {
         Some((id, camera, drawn))
     }
 
+    /// Where the entity is drawn, `t` of the way between ticks (see
+    /// [`Self::placed_between`]): where sounds on it are heard from.
+    pub fn global_between(&self, id: EntityId, t: f32) -> Option<Mat4> {
+        let entity = self.entity(id)?;
+        let now = self.ecs.get::<&Global>(entity).ok()?.0;
+        let before = self.ecs.get::<&Previous>(entity).ok().and_then(|p| p.0);
+        Some(before.map_or(now, |before| between(before, now, t)))
+    }
+
     /// Remembers where every entity is, as the start of a tick: what
     /// drawing between ticks moves from. The editor calls it before each
     /// tick.

@@ -68,6 +68,8 @@ struct App {
     /// The project's sound files, measured for the Library, and the one
     /// being listened to.
     sounds: crate::sounds::Sounds,
+    /// The game's sounds: playing what game code asks for.
+    game_audio: crate::game_audio::GameAudio,
     /// The open project and its assets.
     projects: Projects,
     /// Models being read to be placed in the area when they arrive (the
@@ -190,6 +192,7 @@ impl App {
             importer,
             sound: crate::sound::Sound::open(),
             sounds: crate::sounds::Sounds::default(),
+            game_audio: crate::game_audio::GameAudio::default(),
             projects: Projects::with_recent(recent),
             to_place: HashSet::new(),
             thumbnails: crate::thumbnails::Thumbnails::default(),
@@ -1507,6 +1510,9 @@ impl eframe::App for App {
             None => &mut self.no_gpu,
         };
         let actions = self.workbench.show(ui, renderer);
+        // What this frame's ticks asked to hear.
+        self.game_audio
+            .frame(&mut self.workbench, &self.sounds, self.sound.device());
         self.queued.extend(actions);
         self.run_queue(&ctx);
         let title = self.workbench.title();

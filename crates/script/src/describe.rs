@@ -101,6 +101,30 @@ pub const NATIVES: &[Native] = &[
         about: "Loads the game saved in a slot, at the end of the tick: everything is put back exactly as it was when it was saved.",
     },
     Native {
+        file: "sound",
+        name: "playSound",
+        lust: "method playSound(string event) native;",
+        about: "Plays a sound event (its file in assets, without .solsound: \"sfx/footstep\"), the same everywhere: music, the interface. At the end of the tick, as a move lands. Nothing comes back, so sound can never change the game.",
+    },
+    Native {
+        file: "sound",
+        name: "playSoundAt",
+        lust: "method playSoundAt(string event, vec3 place) native;",
+        about: "Plays a sound event at a place in the world: quieter far from the camera, and from its direction.",
+    },
+    Native {
+        file: "sound",
+        name: "playSoundOn",
+        lust: "method playSoundOn(string event, entity on) native;",
+        about: "Plays a sound event on an entity, following it as it moves: an engine, a voice.",
+    },
+    Native {
+        file: "sound",
+        name: "stopSoundsOn",
+        lust: "method stopSoundsOn(entity on) native;",
+        about: "Stops the sounds playing on an entity, with a short fade.",
+    },
+    Native {
         file: "input",
         name: "held",
         lust: "method bool held(string action) native;",

@@ -6,7 +6,7 @@
 - **To bring sounds into a project:** footsteps, doors, music, birdsong. Solis reads two kinds of [sound file](concepts.md#sound): **WAV**, which keeps every sample as it is (right for short effects straight from a sound editor), and **Ogg Vorbis**, about a tenth of the size (right for music and anything long). Most sound programs save both; if yours makes MP3 or FLAC, save as Ogg instead.
 - **To check a sound before using it:** listen to it, and see how long it is, whether it's mono or stereo, and its [sample rate](concepts.md#sound).
 
-Sounds are played through [sound events](sound-events.md): an event holds one or more sound files (takes) and how to vary them. Playing them in the game itself (from game code, placed in the level, through the mixer) arrives in the next updates of Phase 7.
+Sounds are played through [sound events](sound-events.md): an event holds one or more sound files (takes) and how to vary them. Game code plays them in the game ([Game code: Sounds](game-code.md#sounds)); sounds placed in the level and the mixer arrive in the next updates of Phase 7.
 
 ## How to use it
 1. **Add a sound:** copy a `.wav` or `.ogg` file into the project's assets folder, or a folder inside it, from Explorer. It appears in the **Library** within a moment, with a teal stripe and a picture of its waveform: how loud it is from start to end.

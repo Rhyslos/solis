@@ -276,6 +276,44 @@ Solis makes them from the game's **seed** ([random numbers](concepts.md#game-cod
 
 `saveGame("quick")` saves the whole game and `loadGame("quick")` puts it back exactly as it was: see [Save games](save-games.md).
 
+## Sounds
+
+Game code plays [sound events](sound-events.md) by name: the event's file in `assets`, without `.solsound`, so `assets/sfx/footstep.solsound` is `"sfx/footstep"`.
+
+```
+get "solis/sound":[playSoundAt, playSoundOn, stopSoundsOn];
+get "solis/entity":[positionOf];
+
+component Walker {
+    has {
+        int steps = 0;
+    }
+
+    method update(float dt) {
+        steps = steps + 1;
+        is steps % 30 == 0? then {
+            playSoundAt("sfx/footstep", positionOf(me));
+        }
+    }
+}
+
+pass Walker;
+end
+```
+
+- `playSound(event)` plays it the same everywhere: music, the interface.
+- `playSoundAt(event, place)` plays it at a place in the world: quieter far from the camera, and from its direction (for an event whose Placement is **In the world**).
+- `playSoundOn(event, entity)` plays it on an entity and follows it as it moves: an engine, a voice. `stopSoundsOn(entity)` stops them, with a short fade.
+
+In Lua they're `solis.playSoundAt("sfx/footstep", solis.positionOf(self.me))` and so on. In Rust, through the component's host: `cx.host().play_sound("sfx/footstep", SoundAt::Place(place))`.
+
+**Sound never changes the game.** None of these gives anything back, so code can't ask "is it still playing?": a game plays exactly the same with sound on, off, or with no sound card, and a [recording](concepts.md#simulation) replays the same. Each play picks its take from the game's seed and the tick, so the same game even sounds the same each time. Like a move, a sound lands at the end of the tick.
+
+- The **camera** is what hears: a sound to its right comes from the right. Pausing the game pauses its sounds, Play carries them on, and Stop fades them out. A Step plays that tick's sounds.
+- A sound placed past its event's **Silent past** distance isn't started at all.
+- Up to 256 sounds can be asked for in one tick (more are left out, and the Console says so once), and up to 256 play at once.
+- If the computer stalls for a moment, only the last few ticks' sounds play, so a hitch doesn't play a pile of footsteps at once.
+
 ## Input
 
 Game code reads the player's controls as named actions, never keys: `axis("Move")`, `pressed("Jump")`, `held("Sprint")`, in `solis/input`. See [Input](input.md), which also covers gamepads, rebinding and recording a play.
@@ -301,6 +339,10 @@ Things that fall, collide and get pushed have a **RigidBody** and a **Collider**
 | `solis/world` | `setSeed(int seed)` | Starts the random numbers again from a seed, at the end of the tick. |
 | `solis/world` | `saveGame(string slot)` | Saves the whole game in a slot, at the end of the tick ([Save games](save-games.md)). |
 | `solis/world` | `loadGame(string slot)` | Loads the game saved in a slot, at the end of the tick. |
+| `solis/sound` | `playSound(string event)` | Plays a sound event the same everywhere (see Sounds, above). |
+| `solis/sound` | `playSoundAt(string event, vec3 place)` | Plays a sound event at a place in the world. |
+| `solis/sound` | `playSoundOn(string event, entity on)` | Plays a sound event on an entity, following it. |
+| `solis/sound` | `stopSoundsOn(entity on)` | Stops the sounds on an entity, with a short fade. |
 | `solis/input` | `bool held(string action)` | Whether an action is held this tick ([Input](input.md)). |
 | `solis/input` | `bool pressed(string action)` | True once, the tick an action went down. |
 | `solis/input` | `bool released(string action)` | True once, the tick it came up. |

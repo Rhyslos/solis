@@ -4,7 +4,7 @@
 
 ## When to use it
 - **For anything heard more than once:** footsteps, gunshots, doors, coins. A real footstep never sounds exactly the same twice; playing one recording over and over sounds mechanical very quickly. An event picks a different take each time, and changes its [pitch and volume](concepts.md#sound) a little.
-- **To set how a sound is heard in one place:** how loud, whether it comes from a place in the world (3D) or is the same everywhere (2D), how far it carries, and which [bus](concepts.md#sound) it belongs to. Game code will ask for the event by name (in the next update), so changing the event changes every place that plays it.
+- **To set how a sound is heard in one place:** how loud, whether it comes from a place in the world (3D) or is the same everywhere (2D), how far it carries, and which [bus](concepts.md#sound) it belongs to. Game code plays the event by name ([Game code: Sounds](game-code.md#sounds)), so changing the event changes every place that plays it.
 - A single sound you only ever play once, such as one piece of music, still works best as an event with one take: the event holds its settings.
 
 ## How to use it

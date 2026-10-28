@@ -16,6 +16,9 @@ mod console_commands;
 pub mod document;
 mod game_code;
 mod game_panel;
+pub mod game_sound;
+#[cfg(test)]
+mod game_sound_tests;
 pub mod gizmo;
 pub mod icons;
 mod input_window;
@@ -55,6 +58,7 @@ pub use camera::{Camera, FlyInput, ViewKind};
 pub use console::{LogLevel, LogLine};
 pub use document::{Document, Selection};
 pub use egui_dock::DockState;
+pub use game_sound::{GameSound, SoundMode};
 pub use layout::Preset;
 pub use library::{LibraryItem, LibraryKind, ProjectInfo};
 pub use look::{Look, LookKind};

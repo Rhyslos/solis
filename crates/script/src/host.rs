@@ -9,6 +9,17 @@ use mlua::{Table, Value as LuaValue};
 use reflect::EntityId;
 use std::cell::{Cell, RefCell};
 
+/// Where a sound game code plays is heard from.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum SoundAt {
+    /// Not placed: the same everywhere (a 3D event plays at the listener).
+    Nowhere,
+    /// At a place in the world.
+    Place(Vec3),
+    /// On an entity, following it as it moves.
+    On(EntityId),
+}
+
 /// What game code can ask of the engine: the bodies of the native methods
 /// described in `solis/*.lst` ([`crate::describe::NATIVES`]). Entities
 /// that aren't in the game read as nothing, and changing them does
@@ -107,6 +118,17 @@ pub trait Host {
     /// inputs of the same kind.
     fn rebind(&mut self, action: &str, input: &str) {
         let _ = (action, input);
+    }
+    /// Plays the sound event named `event` (its file in the project's
+    /// assets, without `.solsound`), at the end of the tick. Nothing comes
+    /// back: sound never changes the game (decision 0056).
+    fn play_sound(&mut self, event: &str, at: SoundAt) {
+        let _ = (event, at);
+    }
+    /// Stops the sounds playing on an entity, with a short fade, at the
+    /// end of the tick.
+    fn stop_sounds_on(&mut self, which: EntityId) {
+        let _ = which;
     }
     /// The first collider a ray meets (see `physics::State::cast_ray`).
     fn cast_ray(&self, from: Vec3, direction: Vec3, reach: f32) -> Option<physics::Hit> {
@@ -439,6 +461,42 @@ pub(crate) fn with_natives<'h, R>(
             "castRayNormal",
             scope.create_function(move |_, args: (LuaValue, LuaValue, f64)| {
                 Ok(vec3_value(ray(args).map_or(Vec3::ZERO, |hit| hit.normal)))
+            })?,
+        )?;
+        natives.raw_set(
+            "playSound",
+            scope.create_function(move |_, event: mlua::LuaString| {
+                h.borrow_mut()
+                    .play_sound(&event.to_str()?, SoundAt::Nowhere);
+                Ok(())
+            })?,
+        )?;
+        natives.raw_set(
+            "playSoundAt",
+            scope.create_function(move |_, (event, place): (mlua::LuaString, LuaValue)| {
+                if let Some(place) = vec3_of(&place).filter(|p| p.is_finite()) {
+                    h.borrow_mut()
+                        .play_sound(&event.to_str()?, SoundAt::Place(place));
+                }
+                Ok(())
+            })?,
+        )?;
+        natives.raw_set(
+            "playSoundOn",
+            scope.create_function(move |_, (event, which): (mlua::LuaString, LuaValue)| {
+                if let Some(e) = entity_of(&which) {
+                    h.borrow_mut().play_sound(&event.to_str()?, SoundAt::On(e));
+                }
+                Ok(())
+            })?,
+        )?;
+        natives.raw_set(
+            "stopSoundsOn",
+            scope.create_function(move |_, which: LuaValue| {
+                if let Some(e) = entity_of(&which) {
+                    h.borrow_mut().stop_sounds_on(e);
+                }
+                Ok(())
             })?,
         )?;
         natives.raw_set(

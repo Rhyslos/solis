@@ -494,3 +494,116 @@ fn test_dir(name: &str) -> PathBuf {
     std::fs::create_dir_all(&dir).unwrap();
     dir
 }
+
+// --- The game's sounds ----------------------------------------------
+
+mod game_sounds {
+    use super::*;
+    use crate::event::{Fade, Pick};
+    use crate::game::{MAX_PLAYING, Placement, Spot, within_reach};
+    use reflect::{AssetId, Id};
+
+    fn pick() -> Pick {
+        Pick {
+            take: AssetId(Id::from_raw(1).unwrap()),
+            volume_db: -3.0,
+            pitch_st: 1.0,
+        }
+    }
+
+    fn spot(x: f32) -> Spot {
+        Spot {
+            place: [x, 0.0, 0.0],
+            near_m: 1.0,
+            far_m: 30.0,
+            fade: Fade::Realistic,
+        }
+    }
+
+    fn clip() -> Clip {
+        read_bytes(&wav_int(48_000, 1, 16, &[1_000; 48_000])).unwrap()
+    }
+
+    #[test]
+    fn game_sounds_play_flat_placed_and_on_entities() {
+        let mut device = SoundDevice::for_tests();
+        let clip = clip();
+        device
+            .play_game_sound(&clip, &pick(), Placement::Flat)
+            .unwrap();
+        device
+            .play_game_sound(&clip, &pick(), Placement::At(spot(5.0)))
+            .unwrap();
+        device
+            .play_game_sound(&clip, &pick(), Placement::On(7, spot(2.0)))
+            .unwrap();
+        device
+            .play_game_sound(&clip, &pick(), Placement::On(7, spot(3.0)))
+            .unwrap();
+        assert_eq!(device.game_sounds_playing(), 4);
+        assert_eq!(device.game_sound_entities(), vec![7]);
+        device.set_listener([0.0, 0.0, 0.0], [0.0, 0.0, 0.0, 1.0]);
+        device.set_listener([f32::NAN, 0.0, 0.0], [0.0; 4]);
+        device.move_game_sounds(|e| (e == 7).then_some([1.0, 2.0, 3.0]));
+        device.stop_game_sounds_on(7);
+        device.pause_game_sounds(true);
+        // A Step's sounds play while paused.
+        device
+            .play_game_sound(&clip, &pick(), Placement::Flat)
+            .unwrap();
+        device.pause_game_sounds(false);
+        device.stop_game_sounds();
+        assert_eq!(device.game_sounds_playing(), 0, "Stop clears them");
+    }
+
+    #[test]
+    fn streamed_game_sounds_play_too() {
+        let dir = test_dir("game-stream");
+        let path = dir.join("long.wav");
+        std::fs::write(&path, wav_int(8_000, 1, 16, &[500; 8_000])).unwrap();
+        let (info, _) = crate::measure_file(&path).unwrap();
+        let mut device = SoundDevice::for_tests();
+        device
+            .play_game_sound(
+                &Clip::streamed(&path, info),
+                &pick(),
+                Placement::At(spot(1.0)),
+            )
+            .unwrap();
+        assert_eq!(device.game_sounds_playing(), 1);
+    }
+
+    #[test]
+    fn too_many_at_once_are_refused_and_silent_devices_do_nothing() {
+        let mut device = SoundDevice::for_tests();
+        let clip = clip();
+        for _ in 0..MAX_PLAYING {
+            device
+                .play_game_sound(&clip, &pick(), Placement::Flat)
+                .unwrap();
+        }
+        assert!(
+            device
+                .play_game_sound(&clip, &pick(), Placement::Flat)
+                .is_err()
+        );
+        let mut silent = SoundDevice::silent();
+        silent
+            .play_game_sound(&clip, &pick(), Placement::Flat)
+            .unwrap();
+        silent.set_listener([0.0; 3], [0.0, 0.0, 0.0, 1.0]);
+        silent.stop_game_sounds();
+        assert_eq!(silent.game_sounds_playing(), 0);
+    }
+
+    #[test]
+    fn sounds_out_of_reach_are_not_started() {
+        assert!(within_reach([10.0, 0.0, 0.0], [0.0; 3], 30.0));
+        assert!(!within_reach([40.0, 0.0, 0.0], [0.0; 3], 30.0));
+        assert!(
+            within_reach([0.0, 30.0, 0.0], [0.0; 3], 30.0),
+            "the edge counts"
+        );
+        assert!(!within_reach([f32::NAN, 0.0, 0.0], [0.0; 3], 30.0));
+    }
+}

@@ -9,6 +9,7 @@ pub mod area_file;
 pub mod benchmark;
 pub mod branding;
 pub mod cli;
+pub mod game_audio;
 pub mod game_code;
 pub mod gamepad;
 pub mod gpu;
