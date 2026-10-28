@@ -10,7 +10,7 @@ Real files the fuzzers start from, one folder per target in [`../fuzz_targets`](
 | `input_actions/` | Input action files (`.solinput`), with one of format 1 (no version line). |
 | `model/` | The sample models (`.glb`). |
 | `project_file/` | A small project file. |
-| `recording/` | A recording of play (`.solrec`). |
+| `recording/` | Recordings of play (`.solrec`): a long one, and short ones of formats 1 and 2, so the upgrader is fuzzed too. |
 | `save_game/` | Save games (`.solsave`): the current version and versions 1 and 2, so the upgraders are fuzzed too. |
 | `sidecar/` | Sidecars (`.solmeta`) of the sample models. |
 | `sound_event/` | A full sound event, an empty one and a looping 2D one. |
