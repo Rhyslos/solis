@@ -42,7 +42,7 @@ Solis is built on other people's libraries, which saves years of work. Each libr
 | --- | --- | --- | --- | --- | --- |
 | `base64` | Decodes models' embedded data (glTF `data:` addresses) | MIT OR Apache-2.0 | assets | walled | Write it (about 100 lines, tested against the standard's examples) |
 | `bytemuck` | Turns Solis's structs into bytes for the graphics card, safely | Zlib OR Apache-2.0 OR MIT | app, assets, editor, render | shared | Stay on the last good version (it's small, stable and needs nothing else); or write the few safe casts Solis uses |
-| `chrono` | Times on Console messages | MIT OR Apache-2.0 | editor | walled | Use the standard library's clock and format the time ourselves |
+| `chrono` | Times on Console messages, and the names of backup folders | MIT OR Apache-2.0 | asset_db, editor | walled | Use the standard library's clock and format the time ourselves |
 | `eframe` | Opens the editor's window and runs egui in it | MIT OR Apache-2.0 | app | foundation | Stay on the last good version; then a window of our own (`winit`, already underneath) with egui drawn by Solis's renderer |
 | `egui` | The editor's whole interface | MIT OR Apache-2.0 | editor | foundation | Stay on the last good version, or maintain a fork (MIT); a different interface library would mean rewriting the editor's panels |
 | `egui_dock` | Dockable panels and tabs | MIT | editor | walled | Fork it (MIT, small) and maintain it ourselves, or write docking into the editor |
