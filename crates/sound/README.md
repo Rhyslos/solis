@@ -11,7 +11,7 @@ Read sound files and play them, without ever changing the game.
 - **Reading** (`read.rs`): WAV through `hound` and Ogg Vorbis through `lewton`, with Kira's own reader (`symphonia`, MPL-2.0) switched off.
   - Format by the file's first bytes, not its name.
   - Limits: files up to 256 MB, sample rates 8,000 to 192,000 Hz, up to 8 channels. Mono plays on both sides, stereo as it is, and more channels are mixed down to one.
-  - Short sounds (up to 10 minutes) are decoded into memory. Longer ones are measured once and streamed from their file as they play.
+  - Short sounds (up to 10 minutes, and 128 MB of samples) are decoded into memory. Longer ones are measured once and streamed from their file as they play.
   - Damage never crashes: a cut-off WAV keeps its whole frames, samples that aren't numbers become silence, and everything else is a plain error.
 - **Overviews** (`overview.rs`): each sound's loudness over its length, at most 2,048 pairs of lowest and highest sample, made in the same pass as decoding, for drawing waveforms.
 - **Buses** (`mixer.rs`, `buses.rs`): the project's buses in a tree under Master, each a Kira track with a volume control (its fader, game code's share, ducking, mute and solo, worked out by `mixer::levels` and `mixer::Ducker`) and then a meter.

@@ -28,6 +28,8 @@ fn damaged(why: &str) -> ReadError {
 /// Checks the comment and setup headers of the Vorbis stream in `reader`.
 /// Leaves the reader anywhere: rewind it before reading the file.
 pub(crate) fn check<R: Read + Seek>(reader: &mut R) -> Result<(), ReadError> {
+    one_stream(reader)?;
+    reader.rewind()?;
     let mut packets = ogg::PacketReader::new(reader);
     let mut next = || {
         packets
@@ -44,6 +46,57 @@ pub(crate) fn check<R: Read + Seek>(reader: &mut R) -> Result<(), ReadError> {
     };
     comments(&ours()?.data)?;
     setup(&ours()?.data)
+}
+
+/// The most pages a file is scanned for a second stream (a 256 MB file of
+/// the smallest pages Vorbis writes has far fewer).
+const MAX_PAGES: usize = 4 << 20;
+
+/// Refuses a file holding more than one stream (a chained Ogg, several
+/// sounds one after another). `lewton` reads a later stream's headers when
+/// it meets it, unchecked, and a hostile one asks for more memory than
+/// there is (the Phase 7 review). Only the pages' headers are read: their
+/// contents are skipped.
+fn one_stream<R: Read + Seek>(reader: &mut R) -> Result<(), ReadError> {
+    let mut first_serial = None;
+    for _ in 0..MAX_PAGES {
+        let mut header = [0_u8; 27];
+        let mut got = 0;
+        while got < header.len() {
+            match reader.read(&mut header[got..])? {
+                0 => break,
+                n => got += n,
+            }
+        }
+        if got == 0 {
+            return Ok(());
+        }
+        // A short or broken page: lewton reports it as it reads.
+        if got < header.len() || &header[..4] != b"OggS" {
+            return Ok(());
+        }
+        let first_of_stream = header[5] & 0x02 != 0;
+        let serial = u32::from_le_bytes([header[14], header[15], header[16], header[17]]);
+        match first_serial {
+            None => first_serial = Some(serial),
+            Some(first) if serial != first || first_of_stream => {
+                return Err(damaged(
+                    "it holds more than one sound one after another (a chained Ogg): save it as \
+                     one",
+                ));
+            }
+            Some(_) => {}
+        }
+        let segments = usize::from(header[26]);
+        let mut lacing = [0_u8; 255];
+        // A cut-off last page: lewton reads what's whole before it.
+        if reader.read_exact(&mut lacing[..segments]).is_err() {
+            return Ok(());
+        }
+        let body: i64 = lacing[..segments].iter().map(|&l| i64::from(l)).sum();
+        reader.seek(std::io::SeekFrom::Current(body))?;
+    }
+    Err(damaged("it has more pages than any sound Solis reads"))
 }
 
 /// The comment header: a vendor string, then a count of comments, each a

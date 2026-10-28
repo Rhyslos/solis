@@ -24,7 +24,7 @@ Properties shows these about a sound (they come from the file, so change them in
 | Channels | **Mono** is one sound; **stereo** is two, left and right. A file with more (surround sound) is mixed down to one. |
 | Sample rate | How many times a second the sound was measured. 44,100 Hz and 48,000 Hz are usual; 8,000 Hz to 192,000 Hz are read. |
 | Format | WAV or Ogg Vorbis. |
-| Kept | **From memory** for sounds up to ten minutes long, ready to play at once. Longer ones are **streamed**: played from their file a piece at a time, so a long piece of music doesn't fill the memory. |
+| Kept | **From memory** for sounds up to ten minutes long (at the highest quality, 192 kHz, up to about a minute and a half), ready to play at once. Longer ones are **streamed**: played from their file a piece at a time, so a long piece of music doesn't fill the memory. |
 
 ## Tips and common problems
 - **Problem:** the Console says "No sound: couldn't open the sound card". **Why:** Solis found no [sound card](concepts.md#sound) it could use: none plugged in, or another program holding it. **Fix:** plug in speakers or a headset; Solis tries again every 30 seconds and says "Sound is on." when it finds one. Everything else works meanwhile, and ▶ says there's nothing to play on.
