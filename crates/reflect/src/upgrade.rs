@@ -193,6 +193,27 @@ pub fn header_version(text: &str, kinds: &[&str]) -> Option<u32> {
     words.next()?.parse().ok()
 }
 
+/// The whole-number value of a top-level `key = N` line in TOML text
+/// (before any `[table]`), for a format's `version_of`: `Some(None)` when
+/// the file has no such line, `None` when the value isn't a version. Only
+/// the lines are looked at, so a file cut short still says its version.
+pub fn toml_key_version(text: &str, key: &str) -> Option<Option<u32>> {
+    let text = text.strip_prefix('\u{feff}').unwrap_or(text);
+    for line in text.lines().map(str::trim) {
+        if line.starts_with('[') {
+            break;
+        }
+        let Some((name, value)) = line.split_once('=') else {
+            continue;
+        };
+        if name.trim() == key {
+            let value = value.split('#').next().unwrap_or_default().trim();
+            return value.parse().ok().map(Some);
+        }
+    }
+    Some(None)
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -268,6 +289,26 @@ mod tests {
                 from: 2
             })
         );
+    }
+
+    #[test]
+    fn a_toml_file_s_version_is_found_in_its_lines() {
+        assert_eq!(
+            toml_key_version("# note\nformat = 2\n[x]\n", "format"),
+            Some(Some(2))
+        );
+        assert_eq!(
+            toml_key_version("\u{feff}version = 3 # mine\r\n", "version"),
+            Some(Some(3))
+        );
+        assert_eq!(
+            toml_key_version("[[action]]\nversion = 3\n", "version"),
+            Some(None)
+        );
+        assert_eq!(toml_key_version("name = \"a\"\n", "format"), Some(None));
+        assert_eq!(toml_key_version("format = \"two\"\n", "format"), None);
+        assert_eq!(toml_key_version("format = -1\n", "format"), None);
+        assert_eq!(toml_key_version("formats = 1\n", "format"), Some(None));
     }
 
     #[test]

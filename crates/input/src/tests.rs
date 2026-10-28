@@ -690,6 +690,21 @@ fn a_recording_names_its_area_and_older_ones_don_t() {
         Recording::read(&long),
         Err(RecordingError::Damaged(3))
     ));
+    // A path that could leave the assets on some system: damaged.
+    for odd in [
+        "a\\..\\..\\x.solarea",
+        "C:/x.solarea",
+        "a/../../x.solarea",
+        "./x",
+        "a//b",
+    ] {
+        let bad = text.replacen("areas/harbour.solarea", odd, 1);
+        assert!(
+            matches!(Recording::read(&bad), Err(RecordingError::Damaged(3))),
+            "{odd}"
+        );
+    }
+    assert!(Recording::is_plain_area_path("areas/farm 2/barn.solarea"));
     let missing = text.replacen("area areas/harbour.solarea\n", "", 1);
     assert!(Recording::read(&missing).is_err());
 }

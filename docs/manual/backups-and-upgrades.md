@@ -25,10 +25,11 @@ There are none. Old backups are tidied away by themselves:
 | Rule | What it means |
 |---|---|
 | Older than 90 days | Removed the next time a backup is made. |
-| More than 1 GB in all | The oldest are removed until they fit. |
-| The newest | Always kept, however old or big. |
+| More than 1 GB in all | The oldest are removed until they fit, but never one less than a week old (a save game's backup may be its only copy). |
+| The newest, and the one just made | Always kept, however old or big. |
 
 ## Tips and common problems
+- A file you save from inside `.solis/backups/` (to look at an old one) is saved as it is, with no backup of its own: Solis never tidies away a backup you're working in.
 - **Problem:** you want the old file back. **Why:** an upgrade changed something you didn't expect. **Fix:** copy the file from `.solis/backups/<date and time>/` back over the new one, or use Git to go back. To open it in its old layout, use the Solis build that saved it (the last ten are kept on the Releases page; see [Installing and updating](installing-and-updating.md)).
 - **Problem:** the backups are gone. **Why:** `.solis/` is also Solis's [cache](concepts.md#projects); deleting the whole folder deletes the backups with it. **Fix:** nothing is lost while the project is in Git: its history has every committed version. Deleting `.solis/cache` alone keeps them.
 - **Problem:** the Console says *"this … file was saved by a newer version"*. **Why:** someone saved it with a newer Solis. **Fix:** update Solis (Help > Check for updates).

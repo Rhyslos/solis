@@ -29,11 +29,7 @@ pub static PROJECT_FORMAT: reflect::upgrade::Format<toml::Table> = reflect::upgr
 /// The `format = N` key of a TOML file (the project file, sidecars): a
 /// format's `version_of`.
 pub(crate) fn format_key_version(text: &str) -> Option<u32> {
-    let table: toml::Table = toml::from_str(text).ok()?;
-    table
-        .get("format")?
-        .as_integer()
-        .and_then(|v| u32::try_from(v).ok())
+    reflect::upgrade::toml_key_version(text, "format").flatten()
 }
 
 /// Reads a TOML file whose version is its `format` key: brought up to
