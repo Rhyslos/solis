@@ -3,7 +3,9 @@
 //! moving, new folders and deleting to the Recycle Bin. A file's sidecar
 //! always goes with it, so its ID survives (decision 0021).
 
-use crate::db::{ASSEMBLY_EXTENSION, AssetDb, SOUND_EVENT_EXTENSION, SOUND_EXTENSIONS};
+use crate::db::{
+    ASSEMBLY_EXTENSION, AssetDb, SOUND_EVENT_EXTENSION, SOUND_EXTENSIONS, SPRITE_CLIPS_EXTENSION,
+};
 use crate::sidecar;
 use reflect::AssetId;
 use std::collections::HashSet;
@@ -28,6 +30,8 @@ pub enum FileKind {
     SoundEvent,
     /// An Aseprite file (`.aseprite`, `.ase`): a sprite sheet.
     SpriteSheet,
+    /// A sprite's clips file (`.solframes`).
+    SpriteClips,
     /// Anything else.
     Other,
 }
@@ -55,6 +59,7 @@ impl FileKind {
             "lst" | "lua" | "rs" => Self::Code,
             e if SOUND_EXTENSIONS.contains(&e) => Self::Sound,
             e if e == SOUND_EVENT_EXTENSION => Self::SoundEvent,
+            e if e == SPRITE_CLIPS_EXTENSION => Self::SpriteClips,
             _ => Self::Other,
         }
     }
@@ -517,6 +522,14 @@ mod tests {
             Some(crate::AssetKind::SpriteSheet)
         );
         assert_eq!(FileKind::of(Path::new("a.solassembly")), FileKind::Assembly);
+        assert_eq!(
+            FileKind::of(Path::new("sprites/farmer.solframes")),
+            FileKind::SpriteClips
+        );
+        assert_eq!(
+            crate::AssetKind::of(Path::new("farmer.SOLFRAMES")),
+            Some(crate::AssetKind::SpriteClips)
+        );
         assert_eq!(FileKind::of(Path::new("a.JPEG")), FileKind::Texture);
         assert_eq!(FileKind::of(Path::new("a.lua")), FileKind::Code);
         assert_eq!(FileKind::of(Path::new("a")), FileKind::Other);

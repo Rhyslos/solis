@@ -44,6 +44,7 @@ mod sheet_view;
 mod sound_event_view;
 pub mod sound_view;
 pub mod splash;
+pub mod frames_editor;
 pub mod sprite_sheets;
 #[cfg(test)]
 mod test_support;

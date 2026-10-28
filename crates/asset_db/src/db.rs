@@ -31,6 +31,8 @@ pub enum AssetKind {
     SoundEvent,
     /// An Aseprite file (`.aseprite`, `.ase`; Phase 9, D2): a sprite sheet.
     SpriteSheet,
+    /// A sprite's clips file (`.solframes`; Phase 9, D3).
+    SpriteClips,
 }
 
 /// The extensions of sound files Solis reads (decision 0056). The
@@ -42,6 +44,10 @@ pub const ASSEMBLY_EXTENSION: &str = "solassembly";
 
 /// The extension of sound event files (the `sound` crate reads them).
 pub const SOUND_EVENT_EXTENSION: &str = "solsound";
+
+/// The extension of sprites' clips files (the `animation` crate reads
+/// them).
+pub const SPRITE_CLIPS_EXTENSION: &str = "solframes";
 
 impl AssetKind {
     /// The kind of the file at `path`, by its extension, if Solis reads it.
@@ -59,6 +65,8 @@ impl AssetKind {
             Some(Self::Sound)
         } else if ext == SOUND_EVENT_EXTENSION {
             Some(Self::SoundEvent)
+        } else if ext == SPRITE_CLIPS_EXTENSION {
+            Some(Self::SpriteClips)
         } else {
             None
         }

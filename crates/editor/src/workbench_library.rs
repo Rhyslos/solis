@@ -197,7 +197,10 @@ impl Workbench {
     }
 
     /// The project's sprite sheets as the app has read them (Phase 9, D2).
-    pub fn set_sprite_sheets(&mut self, sheets: crate::sprite_sheets::SpriteSheets) {
+    pub fn set_sprite_sheets(&mut self, mut sheets: crate::sprite_sheets::SpriteSheets) {
+        // The clips each sheet and clips file offers, worked out once here
+        // for drawing, Properties and the running game.
+        sheets.work_out_clips();
         self.viewport.sheets = std::sync::Arc::new(sheets);
     }
 

@@ -25,6 +25,7 @@ script = { path = "../crates/script" }
 reflect = { path = "../crates/reflect" }
 updater = { path = "../crates/updater" }
 sound = { path = "../crates/sound" }
+animation = { path = "../crates/animation" }
 
 # Its own workspace, so the engine's never builds it.
 [workspace]
@@ -139,6 +140,13 @@ bench = false
 [[bin]]
 name = "aseprite"
 path = "fuzz_targets/aseprite.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "frames"
+path = "fuzz_targets/frames.rs"
 test = false
 doc = false
 bench = false

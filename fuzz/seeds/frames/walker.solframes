@@ -1,0 +1,10 @@
+-- A sprite's clips. Safe to edit by hand.
+-- tagN: one of the sheet's Aseprite tags: [name, speed, [[frame, "event"], ...]].
+-- clipN: a clip made here: [name, speed, direction, repeats, [[frame, ms, "event"], ...]].
+-- Frames count from 1, as Aseprite shows them.
+frames version 1;
+
+sheet = "1BWHNR3RV8PYY";
+first = "walk";
+tag1 = ["walk", 1.0, [[3, "footstep"]]];
+clip1 = ["hoe", 1.0, "forward", 1, [[2, 100, ""], [3, 120, "swing"]]];

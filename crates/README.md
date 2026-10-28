@@ -15,6 +15,7 @@ The engine and editor's code, split into small crates (Rust packages), one job e
 | [`physics`](physics/README.md) | 1 Engine | Physics, the same result on every PC. |
 | [`input`](input/README.md) | 1 Engine | Keys and buttons turned into named actions, and recordings of play. |
 | [`sound`](sound/README.md) | 1 Engine | Reads WAV and Ogg Vorbis files and plays sound. |
+| [`animation`](animation/README.md) | 1 Engine | Clips of frames played by time with their events, and sprites' clips files. |
 | [`area`](area/README.md) | 0 Core | The area document the editor edits, its undo, its text files, and the built-in components. |
 | [`reflect`](reflect/README.md) | 0 Core | Stable IDs, plain values, component schemas and the registry. |
 

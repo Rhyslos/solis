@@ -1,8 +1,12 @@
 //! Sprite sheets in the editor (Phase 9, D2): the project's Aseprite
 //! files as the app read them, the sprites an area draws, and how each
 //! becomes what the renderer draws ([`ViewSprite`], laid out as
-//! `render::SpriteInstance`).
+//! `render::SpriteInstance`). With D3, the project's clips files
+//! (`.solframes`) too, and the clips each sheet and clips file offers
+//! ([`SpriteSheets::clip_sets`]), which pick the frame a playing sprite
+//! shows.
 
+use animation::{ClipSet, FramesFile};
 use area::builtin::Sprite;
 use assets::sprite_sheet::SpriteSheet;
 use glam::{Mat4, Vec2};
@@ -21,22 +25,97 @@ pub enum SheetState {
     Failed(String),
 }
 
+/// What the editor knows of one clips file (`.solframes`).
+#[derive(Debug, Clone, PartialEq)]
+pub enum FramesState {
+    /// Read, with what was put right while reading it.
+    Read(Arc<FramesFile>, Vec<String>),
+    /// Couldn't be read, and why.
+    Failed(String),
+}
+
 /// The project's sprite sheets, by path inside the assets and by asset ID.
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct SpriteSheets {
     /// Each Aseprite file, by path inside the assets (`/` between folders).
     pub by_path: HashMap<String, SheetState>,
-    /// Each one's path, by asset ID.
+    /// Each clips file (`.solframes`), by path inside the assets.
+    pub frames: HashMap<String, FramesState>,
+    /// Each sheet's and clips file's path, by asset ID.
     pub paths: HashMap<AssetId, String>,
+    /// The clips each sheet and clips file offers, by asset ID: worked out
+    /// by [`Self::work_out_clips`] whenever a sheet or clips file changes.
+    pub clip_sets: Arc<world::ClipSets>,
 }
 
 impl SpriteSheets {
-    /// The sheet with asset ID `id`, if it's been read.
+    /// The sheet with asset ID `id` (an Aseprite file, or a clips file
+    /// naming one), if it's been read.
     pub fn get(&self, id: AssetId) -> Option<&Arc<SpriteSheet>> {
-        match self.by_path.get(self.paths.get(&id)?)? {
-            SheetState::Read(sheet) => Some(sheet),
-            _ => None,
+        let path = self.paths.get(&id)?;
+        match self.by_path.get(path) {
+            Some(SheetState::Read(sheet)) => Some(sheet),
+            Some(_) => None,
+            None => match self.frames.get(path)? {
+                FramesState::Read(file, _) => match self.by_path.get(self.paths.get(&file.sheet?)?)? {
+                    SheetState::Read(sheet) => Some(sheet),
+                    _ => None,
+                },
+                FramesState::Failed(_) => None,
+            },
         }
+    }
+
+    /// The clips file with asset ID `id`, if it's been read.
+    pub fn frames_file(&self, id: AssetId) -> Option<&Arc<FramesFile>> {
+        match self.frames.get(self.paths.get(&id)?)? {
+            FramesState::Read(file, _) => Some(file),
+            FramesState::Failed(_) => None,
+        }
+    }
+
+    /// The clips of the sheet or clips file `id`.
+    pub fn clips(&self, id: AssetId) -> Option<&Arc<ClipSet>> {
+        self.clip_sets.get(&id)
+    }
+
+    /// Works out every sheet's and clips file's clips again (after one
+    /// was read or changed).
+    pub fn work_out_clips(&mut self) {
+        let mut sets = world::ClipSets::new();
+        for (&id, path) in &self.paths {
+            if let Some(SheetState::Read(sheet)) = self.by_path.get(path) {
+                sets.insert(id, Arc::new(ClipSet::of_sheet(sheet, None)));
+            } else if let Some(FramesState::Read(file, _)) = self.frames.get(path)
+                && let Some(sheet) = file.sheet.and_then(|s| self.get(s))
+            {
+                sets.insert(id, Arc::new(ClipSet::of_sheet(sheet, Some(file))));
+            }
+        }
+        self.clip_sets = Arc::new(sets);
+    }
+
+    /// The frame `sprite` shows (from 0), `ahead` seconds after its own
+    /// time (a preview in the editor; 0 in the game, which moves its time
+    /// on itself): its clip's frame when it has one, otherwise its Frame.
+    pub fn shown_frame(&self, sprite: &Sprite, frames: usize, ahead: f64) -> usize {
+        let clip = sprite
+            .sheet
+            .and_then(|s| self.clip_sets.get(&s.asset))
+            .and_then(|set| set.chosen(&sprite.clip));
+        if let Some(clip) = clip {
+            let ahead = if sprite.playing && ahead > 0.0 {
+                ahead * f64::from(sprite.speed) * f64::from(clip.speed)
+            } else {
+                0.0
+            };
+            if let Some(m) = clip.at(f64::from(sprite.time) + ahead)
+                && (m.frame as usize) < frames
+            {
+                return m.frame as usize;
+            }
+        }
+        sprite.frame_index(frames)
     }
 
     /// The sheet at `path`, if it's been read.
@@ -47,15 +126,18 @@ impl SpriteSheets {
         }
     }
 
-    /// Every sheet that's been read, by name (its file's, without the
-    /// extension) with its ID, sorted by name: what a Sprite's Sheet field
-    /// offers.
+    /// Every sheet and clips file that's been read, by name (its file's,
+    /// without the extension; a clips file's with " (clips)") with its ID,
+    /// sorted by name: what a Sprite's Sheet field offers.
     pub fn listed(&self) -> Vec<(String, AssetId)> {
         let mut list: Vec<(String, AssetId)> = self
             .paths
             .iter()
-            .filter(|(_, path)| matches!(self.by_path.get(*path), Some(SheetState::Read(_))))
-            .map(|(id, path)| (name_of(path), *id))
+            .filter_map(|(id, path)| match (self.by_path.get(path), self.frames.get(path)) {
+                (Some(SheetState::Read(_)), _) => Some((name_of(path), *id)),
+                (_, Some(FramesState::Read(..))) => Some((format!("{} (clips)", name_of(path)), *id)),
+                _ => None,
+            })
             .collect();
         list.sort();
         list
@@ -143,7 +225,19 @@ pub fn view_sprite(
     pixel: f32,
     snap: Option<f32>,
 ) -> Option<ViewSprite> {
-    let index = sprite.frame_index(sheet.frames.len());
+    view_frame(sprite, sheet, sprite.frame_index(sheet.frames.len()), transform, pixel, snap)
+}
+
+/// As [`view_sprite`], showing the sheet's frame `index` (from 0): the one
+/// its clip has reached.
+pub fn view_frame(
+    sprite: &Sprite,
+    sheet: &SpriteSheet,
+    index: usize,
+    transform: Mat4,
+    pixel: f32,
+    snap: Option<f32>,
+) -> Option<ViewSprite> {
     let frame = sheet.frames.get(index)?;
     let [_, _, w, h] = frame.rect;
     if w == 0 || h == 0 || !transform.is_finite() {
@@ -203,12 +297,15 @@ pub fn view_sprite(
 
 /// Every sprite of `sprites` that has a sheet read, as runs of one sheet
 /// each (cut-out ones, then see-through ones, sorted far to near, then
-/// top of the screen to bottom), ready to draw.
+/// top of the screen to bottom), ready to draw. Each shows its clip's
+/// frame, `ahead` seconds after its own time (a preview; 0 to show it as
+/// it is).
 pub fn batches(
     sprites: &[AreaSprite],
     sheets: &SpriteSheets,
     pixel: f32,
     snap: Option<f32>,
+    ahead: f64,
 ) -> Vec<SpriteBatch> {
     let mut cut: HashMap<AssetId, SpriteBatch> = HashMap::new();
     let mut clear: Vec<(AssetId, ViewSprite, u32)> = Vec::new();
@@ -219,7 +316,8 @@ pub fn batches(
         let Some(sheet) = sheets.get(id) else {
             continue;
         };
-        let Some(drawn) = view_sprite(&s.sprite, sheet, s.transform, pixel, snap) else {
+        let frame = sheets.shown_frame(&s.sprite, sheet.frames.len(), ahead);
+        let Some(drawn) = view_frame(&s.sprite, sheet, frame, s.transform, pixel, snap) else {
             continue;
         };
         if s.sprite.see_through {

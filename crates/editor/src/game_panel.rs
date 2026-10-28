@@ -224,6 +224,7 @@ pub(crate) fn game_panel(
             sheets,
             pixels.pixel_size(),
             pixel.map(|_| pixels.pixel_size()),
+            0.0,
         )),
         pixel,
     };

@@ -1,0 +1,26 @@
+[package]
+name = "animation"
+description = "Animation (Phase 9, D3): clips of frames, played by time with their events, and a sprite's clips file (.solframes)"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+publish.workspace = true
+
+# Architecture layer, checked by tools/layer-check:
+# a crate may only depend on crates in its own layer or below.
+[package.metadata.architecture]
+layer = 1
+
+[dependencies]
+area.workspace = true
+assets.workspace = true
+reflect.workspace = true
+
+[dev-dependencies]
+proptest.workspace = true
+
+[lints]
+workspace = true

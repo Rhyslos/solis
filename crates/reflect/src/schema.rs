@@ -76,6 +76,9 @@ pub enum Offer {
     /// The slice names of the sprite sheet in the named asset field of the
     /// same component, for a text field.
     SlicesOf(&'static str),
+    /// The clip names of the sprite sheet or clips file in the named asset
+    /// field of the same component, for a text field (Phase 9, D3).
+    ClipsOf(&'static str),
 }
 
 /// One field of a component.

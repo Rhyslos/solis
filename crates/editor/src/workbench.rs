@@ -12,7 +12,7 @@ use crate::console::CONSOLE_LIMIT;
 use crate::console::{Console, LogLevel, LogLine};
 use crate::document::Document;
 use crate::layout;
-use crate::library::{LibraryItem, ProjectInfo};
+use crate::library::{LibraryItem, LibraryKind, ProjectInfo};
 use crate::models::ModelInfo;
 use crate::panel::Panel;
 use crate::panels::{PanelViewer, drop_hint};
@@ -257,6 +257,11 @@ pub struct Workbench {
     pub(crate) mixer: crate::mixer_view::MixerState,
     /// The project's 2D settings (Settings > 2D, `pixels.solpix`).
     pub(crate) pixels: area::pixels::PixelSettings,
+    /// The sound event a sprite's clip event plays, by the event's name
+    /// (Phase 9, D3): each sound event by its path without `.solsound`
+    /// ("sfx/footstep"), and by its file's name alone ("footstep") when
+    /// no other sound event has that name.
+    pub(crate) cue_sounds: HashMap<String, String>,
     /// Each sprite sheet's atlas as an egui picture, by path, for the
     /// Library and Properties, and which sheet each was made from.
     pub(crate) sheet_pictures: HashMap<String, egui::TextureHandle>,
@@ -383,6 +388,7 @@ impl Workbench {
             sound_shown: None,
             mixer: Default::default(),
             pixels: area::pixels::PixelSettings::default(),
+            cue_sounds: HashMap::new(),
             sheet_pictures: HashMap::new(),
             sheet_pictures_from: HashMap::new(),
             place_targets: BTreeMap::new(),
@@ -507,6 +513,7 @@ impl Workbench {
     /// The project's files, for the Library.
     pub fn set_library(&mut self, items: Vec<LibraryItem>) {
         self.library = items;
+        self.cue_sounds = cue_sounds(&self.library);
         self.sources += 1;
     }
 
@@ -1374,6 +1381,31 @@ impl Workbench {
             });
         self.about_open = open;
     }
+}
+
+/// The sound events clip events can play, by name: each by its path
+/// without `.solsound`, and by its file's name alone unless two share it.
+fn cue_sounds(library: &[LibraryItem]) -> HashMap<String, String> {
+    let mut by_name: HashMap<String, String> = HashMap::new();
+    let mut shared = std::collections::HashSet::new();
+    let mut map = HashMap::new();
+    for item in library.iter().filter(|i| i.kind == LibraryKind::SoundEvent) {
+        let path = item
+            .path
+            .strip_suffix(".solsound")
+            .unwrap_or(&item.path)
+            .to_owned();
+        if by_name.insert(item.name.clone(), path.clone()).is_some() {
+            shared.insert(item.name.clone());
+        }
+        map.insert(path.clone(), path);
+    }
+    for (name, path) in by_name {
+        if !shared.contains(&name) {
+            map.entry(name).or_insert(path);
+        }
+    }
+    map
 }
 
 #[cfg(test)]

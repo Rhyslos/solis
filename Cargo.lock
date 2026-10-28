@@ -216,9 +216,20 @@ dependencies = [
 ]
 
 [[package]]
+name = "animation"
+version = "0.0.1"
+dependencies = [
+ "area",
+ "assets",
+ "proptest",
+ "reflect",
+]
+
+[[package]]
 name = "app"
 version = "0.0.1"
 dependencies = [
+ "animation",
  "area",
  "asset_db",
  "assets",
@@ -1087,6 +1098,7 @@ dependencies = [
 name = "editor"
 version = "0.0.1"
 dependencies = [
+ "animation",
  "area",
  "assets",
  "bytemuck",
@@ -5760,6 +5772,7 @@ checksum = "1ebf944e87a7c253233ad6766e082e3cd714b5d03812acc24c318f549614536e"
 name = "world"
 version = "0.0.1"
 dependencies = [
+ "animation",
  "area",
  "glam 0.34.1",
  "hecs",

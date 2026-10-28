@@ -494,6 +494,13 @@ impl Workbench {
             // ticks moves from.
             playing.world.remember();
             playing.world.projectiles_mut().tick(world::TICK as f32);
+            // Sprites' clips move on (Phase 9, D3): the events they pass
+            // play their sound events and reach game code first this tick.
+            playing
+                .world
+                .set_clip_sets(Arc::clone(&self.viewport.sheets.clip_sets));
+            let cues = playing.world.step_sprites(world::TICK);
+            let (cue_sounds, engine_events) = cues_of(&playing.world, cues, &self.cue_sounds);
             // The tick's input: played back, or sampled from the devices
             // once, so every core sees the same (decision 0037).
             let sampled = self.devices.sample(&playing.bindings, world::TICK as f32);
@@ -511,13 +518,15 @@ impl Workbench {
             let mut slow = None;
             let mut saves = Vec::new();
             let (sound_tick, sound_seed) = (playing.world.clock().ticks, playing.world.seed());
+            dropped_sounds +=
+                crate::game_sound::gather(&mut self.game_sounds, cue_sounds, sound_tick, sound_seed);
             if let Some(game) = &mut playing.game {
                 let mut host = PlayWorld::new(&mut playing.world, &mut playing.view, time);
                 host.frame_time = f64::from(seconds);
                 host.input = Arc::clone(&frame);
                 host.bindings = Arc::clone(&playing.bindings);
                 let ticking = std::time::Instant::now();
-                let ticked = game.tick(world::TICK, &mut host);
+                let ticked = game.tick_with_events(world::TICK, &mut host, engine_events);
                 code += ticking.elapsed();
                 failures.extend(ticked.failures);
                 said.append(&mut host.said);
@@ -976,6 +985,41 @@ impl Workbench {
     }
 }
 
+/// What sprites' clips did in a tick, as sounds to play (a cue named like
+/// a sound event plays it on the entity) and as events for game code
+/// (`AnimationCue`, `ClipFinished`), sent only to entities with game code.
+fn cues_of(
+    world: &world::World,
+    cues: Vec<world::SpriteCue>,
+    sounds: &std::collections::HashMap<String, String>,
+) -> (Vec<crate::game_sound::Request>, Vec<script::Event>) {
+    let mut plays = Vec::new();
+    let mut events = Vec::new();
+    for cue in cues {
+        let (id, name, value) = match cue {
+            world::SpriteCue::Event(id, cue) => {
+                if let Some(event) = sounds.get(&cue) {
+                    plays.push(crate::game_sound::Request::Play(
+                        event.clone(),
+                        script::SoundAt::On(id),
+                        Some(id),
+                    ));
+                }
+                (id, "AnimationCue", cue)
+            }
+            world::SpriteCue::Finished(id, clip) => (id, "ClipFinished", clip),
+        };
+        if world.has_game_components(id) {
+            events.push(script::Event {
+                to: id,
+                name: name.to_owned(),
+                values: vec![reflect::Value::Text(value)],
+            });
+        }
+    }
+    (plays, events)
+}
+
 #[cfg(test)]
 #[path = "play_tests.rs"]
 mod tests;
@@ -993,3 +1037,4 @@ fn fresh_seed() -> u64 {
     x ^= x >> 31;
     x % 1_000_000_000
 }
+

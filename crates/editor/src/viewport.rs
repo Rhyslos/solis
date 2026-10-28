@@ -87,6 +87,10 @@ pub struct Overlays {
     pub snapping: bool,
     /// Frame rate and entity count, top right.
     pub stats: bool,
+    /// Whether sprites play their clips while editing (Phase 9, D3). Off
+    /// by standard, so the editor rests (decision 0026); the game always
+    /// animates.
+    pub preview_animation: bool,
 }
 
 impl Default for Overlays {
@@ -95,6 +99,7 @@ impl Default for Overlays {
             tools: true,
             snapping: true,
             stats: true,
+            preview_animation: false,
         }
     }
 }
@@ -349,6 +354,8 @@ pub struct Viewport {
     pub(crate) pixels: area::pixels::PixelSettings,
     /// The project's sprite sheets, to draw sprites with.
     pub(crate) sheets: std::sync::Arc<crate::sprite_sheets::SpriteSheets>,
+    /// When Preview animation was turned on (its clips play from there).
+    preview_since: std::cell::Cell<Option<std::time::Instant>>,
 }
 
 /// How the viewport is split into views. Saved per computer.
@@ -483,6 +490,7 @@ impl Default for Viewport {
             full: Rect::NOTHING,
             pixels: area::pixels::PixelSettings::default(),
             sheets: std::sync::Arc::default(),
+            preview_since: std::cell::Cell::new(None),
             panes: FIRST_KINDS
                 .iter()
                 .map(|&kind| Pane {
@@ -595,13 +603,40 @@ impl Viewport {
     /// flying, a click or a drag is going on, or a pick's answer is on its
     /// way from the graphics card.
     pub fn needs_frames(&self) -> bool {
-        self.is_flying()
+        self.previewing()
+            || self.is_flying()
             || self.tools.pick.is_some()
             || self.tools.pressing != viewport_tools::Pressing::Nothing
             || self
                 .panes
                 .iter()
                 .any(|p| p.tools.pick.is_some() || p.flying_from.is_some())
+    }
+
+    /// Whether sprites are playing their clips in the viewport: Preview
+    /// animation is on and a sprite has a clip to play.
+    pub fn previewing(&self) -> bool {
+        self.overlays.preview_animation
+            && self.area.sprites.iter().any(|s| {
+                s.sprite.playing
+                    && s.sprite
+                        .sheet
+                        .and_then(|sheet| self.sheets.clips(sheet.asset))
+                        .is_some_and(|set| set.chosen(&s.sprite.clip).is_some())
+            })
+    }
+
+    /// How far sprites' clips have played on since Preview animation was
+    /// turned on, in seconds (0 when it's off).
+    pub fn preview_seconds(&self) -> f64 {
+        if self.overlays.preview_animation {
+            let since = self.preview_since.get().unwrap_or_else(std::time::Instant::now);
+            self.preview_since.set(Some(since));
+            since.elapsed().as_secs_f64()
+        } else {
+            self.preview_since.set(None);
+            0.0
+        }
     }
 
     /// The frame rate shown in the corner.
@@ -618,6 +653,7 @@ impl Viewport {
 
     /// The view for an image of `size_px` physical pixels.
     pub fn view(&self, size_px: [u32; 2], pixels_per_point: f32) -> ViewportView {
+        let ahead = self.preview_seconds();
         let aspect = size_px[0].max(1) as f32 / size_px[1].max(1) as f32;
         let camera = self.seen(size_px);
         ViewportView {
@@ -659,6 +695,7 @@ impl Viewport {
                 &self.sheets,
                 self.pixels.pixel_size(),
                 (self.camera.kind == ViewKind::TwoD).then(|| self.pixels.pixel_size()),
+                ahead,
             )),
             pixel: None,
         }
@@ -1162,6 +1199,13 @@ impl Viewport {
     /// The ≡ menu's contents: the layout of views, and what to show.
     /// The corner builds upwards, so they're added last first.
     fn menu(&mut self, ui: &mut Ui) {
+        ui.checkbox(&mut self.overlays.preview_animation, "Preview animation")
+            .on_hover_text(
+                "Sprites play their clips while you edit. Off: each shows its clip's frame at \
+                 its Clip time, and the editor rests. The game always animates.",
+            );
+        ui.label(RichText::new("While you edit").color(theme::TEXT_WEAK));
+        ui.add_space(6.0);
         ui.checkbox(&mut self.overlays.stats, "Frame rate and entity count");
         ui.checkbox(&mut self.overlays.snapping, "Grid, angle and camera speed");
         ui.checkbox(&mut self.overlays.tools, "Tools");
