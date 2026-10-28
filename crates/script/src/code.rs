@@ -978,6 +978,20 @@ pub fn renamed_uses(code: &Code) -> Vec<CodeProblem> {
 /// [`renamed_uses`], for a given list of renamed natives.
 fn uses_of(renamed: &[crate::describe::Renamed], code: &Code) -> Vec<CodeProblem> {
     let mut found = Vec::new();
+    // Nothing renamed (as now): nothing to look for.
+    if renamed.is_empty() {
+        return found;
+    }
+    // Each name to look for, worked out once: in Lust, and in Lua.
+    let needles: Vec<[(String, String); 2]> = renamed
+        .iter()
+        .map(|r| {
+            [
+                (r.old.to_owned(), r.new.to_owned()),
+                (format!("solis.{}", r.old), format!("solis.{}", r.new)),
+            ]
+        })
+        .collect();
     for (lua, (file, text)) in code
         .files
         .iter()
@@ -987,12 +1001,9 @@ fn uses_of(renamed: &[crate::describe::Renamed], code: &Code) -> Vec<CodeProblem
         for (n, line) in text.lines().enumerate() {
             // Not in a comment (`--` in Lust and Lua alike).
             let code_part = line.split("--").next().unwrap_or_default();
-            for r in renamed {
-                let (old, new) = if lua {
-                    (format!("solis.{}", r.old), format!("solis.{}", r.new))
-                } else {
-                    (r.old.to_owned(), r.new.to_owned())
-                };
+            for (r, names) in renamed.iter().zip(&needles) {
+                let (old, new) = &names[usize::from(lua)];
+                let (old, new) = (old.as_str(), new.as_str());
                 let mut from = 0;
                 while let Some(at) = code_part[from..].find(&old) {
                     let start = from + at;
