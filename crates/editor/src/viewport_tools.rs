@@ -145,6 +145,28 @@ pub enum Outline {
         /// Its shape and size.
         shape: area::builtin::Collider,
     },
+    /// A reverb zone's shape (Phase 7, S6), in sound's colour: where
+    /// sounds echo.
+    Zone {
+        /// Where the entity is (with its scale, which the zone grows by).
+        world: Mat4,
+        /// Its shape and size, as a collider's.
+        shape: area::builtin::Collider,
+    },
+}
+
+/// A reverb zone's shape as a collider's, to draw it the same way.
+pub(crate) fn zone_shape(zone: &area::builtin::ReverbZone) -> area::builtin::Collider {
+    use area::builtin::{ColliderShape, ZoneShape};
+    area::builtin::Collider {
+        shape: match zone.shape {
+            ZoneShape::Box => ColliderShape::Box,
+            ZoneShape::Ball => ColliderShape::Sphere,
+        },
+        size: zone.size,
+        radius: zone.radius,
+        ..area::builtin::Collider::default()
+    }
 }
 
 /// The lines that draw `collider` at `world`, as pairs of points in the
@@ -626,8 +648,13 @@ pub(crate) fn draw(
                     painter.circle_stroke(at(s), 9.0, outline);
                 }
             }
-            Outline::Collider { world, shape } => {
-                let stroke = Stroke::new(1.2, theme::COLLIDER);
+            Outline::Collider { world, shape } | Outline::Zone { world, shape } => {
+                let color = if matches!(mark, Outline::Zone { .. }) {
+                    theme::kind::SOUND_EVENT
+                } else {
+                    theme::COLLIDER
+                };
+                let stroke = Stroke::new(1.2, color);
                 for (a, b) in collider_lines(world, &shape) {
                     if let (Some(p), Some(q)) = (camera.project(a, size), camera.project(b, size)) {
                         painter.line_segment([at(p), at(q)], stroke);

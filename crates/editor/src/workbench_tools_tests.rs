@@ -331,3 +331,31 @@ fn a_selected_collider_is_outlined_as_its_shape() {
     w.prepare_tools();
     assert!(w.viewport.tools.outlines.is_empty());
 }
+
+#[test]
+fn a_selected_reverb_zone_is_outlined_in_sound_s_colour() {
+    let mut w = Workbench::new(info(), None);
+    let id = w.add_entity();
+    w.apply_property(
+        crate::properties::PropertyRequest::AddComponent {
+            entity: id,
+            component: "ReverbZone".into(),
+        },
+        1,
+    );
+    w.document.selection.select_only(id);
+    w.prepare_tools();
+    let zone = w
+        .viewport
+        .tools
+        .outlines
+        .iter()
+        .find_map(|o| match o {
+            crate::viewport_tools::Outline::Zone { shape, .. } => Some(*shape),
+            _ => None,
+        })
+        .expect("outlined");
+    assert_eq!(zone.size, glam::Vec3::new(10.0, 10.0, 4.0));
+    let lines = crate::viewport_tools::collider_lines(glam::Mat4::IDENTITY, &zone);
+    assert_eq!(lines.len(), 12, "a box's edges");
+}

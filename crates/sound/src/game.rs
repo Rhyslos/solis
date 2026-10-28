@@ -15,13 +15,16 @@
 //! its -Z with +Y up), so the camera's world turn is the listener's.
 //! Nothing is converted, so nothing can be converted wrongly.
 
-use crate::buses::{BusTree, container};
+use crate::buses::{BusTree, container, decibels};
 use crate::device::{FileStream, Manager, Preview, memory_sound};
 use crate::event::{Fade, Pick};
 use crate::mixer::Mixer;
 use crate::read::{Clip, Samples};
+use crate::reverb::{MAX_HEARD, Preset};
+use kira::effect::reverb::{ReverbBuilder, ReverbHandle};
 use kira::listener::ListenerHandle;
 use kira::sound::streaming::StreamingSoundData;
+use kira::track::{SendTrackBuilder, SendTrackHandle};
 use kira::track::{SpatialTrackBuilder, SpatialTrackDistances, TrackHandle};
 use kira::{Decibels, Easing, PlaybackRate, Tween};
 use std::time::Duration;
@@ -125,7 +128,17 @@ pub(crate) struct GameTracks {
     listener: ListenerHandle,
     playing: Vec<Playing>,
     paused: bool,
+    /// The reverb sends (S6): one per zone heard at once, each a send
+    /// track with a reverb, which placed sounds send to.
+    reverbs: Vec<(SendTrackHandle, ReverbHandle)>,
+    /// How much each send gets now, in decibels, and its preset.
+    sends: [(f32, Option<Preset>); MAX_HEARD],
+    /// Each bus's parent, by place, to follow a sound's bus up to Master.
+    parents: Vec<Option<usize>>,
 }
+
+/// How long a change of reverb takes, so walking into a zone never clicks.
+const REVERB_TWEEN: Duration = Duration::from_millis(150);
 
 impl GameTracks {
     /// The game's tracks and listener on a new manager, or `None` if Kira
@@ -139,6 +152,16 @@ impl GameTracks {
             Manager::Card(m) => m.add_listener(origin, facing).ok()?,
             Manager::Test(m) => m.add_listener(origin, facing).ok()?,
         };
+        let mut reverbs = Vec::with_capacity(MAX_HEARD);
+        for _ in 0..MAX_HEARD {
+            let mut builder = SendTrackBuilder::new();
+            let reverb = builder.add_effect(ReverbBuilder::new().mix(kira::Mix::WET));
+            let send = match manager {
+                Manager::Card(m) => m.add_send_track(builder).ok()?,
+                Manager::Test(m) => m.add_send_track(builder).ok()?,
+            };
+            reverbs.push((send, reverb));
+        }
         let mut game = Self {
             track,
             stepping,
@@ -148,6 +171,9 @@ impl GameTracks {
             listener,
             playing: Vec::new(),
             paused: false,
+            reverbs,
+            sends: [(f32::NEG_INFINITY, None); MAX_HEARD],
+            parents: Vec::new(),
         };
         // The standard buses until the project's mixer is set.
         game.set_mixer(&Mixer::default());
@@ -184,6 +210,48 @@ impl GameTracks {
             &self.levels,
         ));
         self.shape = shape;
+        self.parents = mixer.parents();
+    }
+
+    /// How much a sound on bus `bus` sends to reverb `slot`, in decibels:
+    /// the reverb's level plus its bus's and every bus above it but
+    /// Master (whose level is the reverbs' own volume). Sends leave a
+    /// sound before its bus, so this is how a bus's fader, ducking, mute
+    /// and solo reach its echoes.
+    fn send_level(&self, bus: usize, slot: usize) -> f32 {
+        let mut level = self.sends[slot].0;
+        let mut at = Some(bus);
+        for _ in 0..=crate::mixer::MAX_DEPTH {
+            match at {
+                Some(0) | None => break,
+                Some(b) => {
+                    level += self.levels.get(b).copied().unwrap_or(0.0);
+                    at = self.parents.get(b).copied().flatten();
+                }
+            }
+        }
+        level
+    }
+
+    /// Sets every placed sound's sends to what they should be now.
+    fn refresh_sends(&mut self) {
+        let tween = Tween {
+            duration: REVERB_TWEEN,
+            ..Tween::default()
+        };
+        let levels: Vec<Vec<f32>> = self
+            .playing
+            .iter()
+            .map(|p| (0..MAX_HEARD).map(|s| self.send_level(p.bus, s)).collect())
+            .collect();
+        let ids: Vec<_> = self.reverbs.iter().map(|(send, _)| send.id()).collect();
+        for (playing, levels) in self.playing.iter_mut().zip(levels) {
+            if let Some(track) = playing.track.as_mut() {
+                for (id, level) in ids.iter().zip(levels) {
+                    let _ = track.set_send(*id, decibels(level), tween);
+                }
+            }
+        }
     }
 }
 
@@ -228,6 +296,7 @@ impl crate::SoundDevice {
         } else {
             1.0
         });
+        let send_levels: Vec<f32> = (0..MAX_HEARD).map(|s| game.send_level(bus, s)).collect();
         let Some((playing_tree, stepping_tree)) = game.buses.as_mut() else {
             return Err("the buses couldn't be made".to_owned());
         };
@@ -248,13 +317,18 @@ impl crate::SoundDevice {
             Some(spot) => {
                 let near = spot.near_m.max(0.0);
                 let far = spot.far_m.max(near + 0.01);
-                let builder = SpatialTrackBuilder::new()
+                let mut builder = SpatialTrackBuilder::new()
                     .distances(SpatialTrackDistances {
                         min_distance: near,
                         max_distance: far,
                     })
                     .attenuation_function(easing(spot.fade))
                     .persist_until_sounds_finish(true);
+                // Placed sounds send to the reverbs, at what the zones
+                // around the listener say now.
+                for (slot, (send, _)) in game.reverbs.iter().enumerate() {
+                    builder = builder.with_send(send.id(), decibels(send_levels[slot]));
+                }
                 let place = mint::Vector3::from(finite(spot.place));
                 Some(
                     parent
@@ -397,6 +471,61 @@ impl crate::SoundDevice {
         }
     }
 
+    /// Sets the reverbs heard now (S6), from [`crate::reverb::mix`]: each
+    /// a preset and how much of it (0 to 1), at most
+    /// [`crate::reverb::MAX_HEARD`]. Every sound placed in the world
+    /// sends that much to each; the rest are silent.
+    pub fn set_reverb(&mut self, heard: &[(Preset, f32)]) {
+        let Some(game) = self.game.as_mut() else {
+            return;
+        };
+        let tween = Tween {
+            duration: REVERB_TWEEN,
+            ..Tween::default()
+        };
+        let mut changed = false;
+        for slot in 0..MAX_HEARD {
+            let (level, preset) = match heard.get(slot) {
+                Some((preset, amount)) if amount.is_finite() && *amount > 0.0 => {
+                    (20.0 * amount.min(1.0).log10(), Some(*preset))
+                }
+                _ => (f32::NEG_INFINITY, game.sends[slot].1),
+            };
+            let (old_level, old_preset) = game.sends[slot];
+            if let Some(p) = preset
+                && old_preset != Some(p)
+            {
+                let (feedback, damping) = p.settings();
+                let reverb = &mut game.reverbs[slot].1;
+                reverb.set_feedback(feedback, tween);
+                reverb.set_damping(damping, tween);
+            }
+            let same = old_level == level;
+            game.sends[slot] = (level, preset);
+            changed |= !same;
+        }
+        if changed {
+            game.refresh_sends();
+        }
+    }
+
+    /// The reverbs' own volume: Master's level, so Master's fader and
+    /// mute reach the echoes too.
+    pub fn set_reverb_volume(&mut self, master_db: f32) {
+        if let Some(game) = self.game.as_mut() {
+            for (send, _) in &mut game.reverbs {
+                send.set_volume(decibels(master_db), Tween::default());
+            }
+        }
+    }
+
+    /// How much each reverb send gets now, in decibels (tests).
+    pub fn reverb_sends(&self) -> Vec<f32> {
+        self.game
+            .as_ref()
+            .map_or_else(Vec::new, |g| g.sends.iter().map(|(l, _)| *l).collect())
+    }
+
     /// How many plays of event `event` (as numbered in [`Voice::event`])
     /// are playing.
     pub fn game_sounds_of_event(&mut self, event: u64) -> usize {
@@ -470,6 +599,8 @@ impl crate::SoundDevice {
             a.set_levels(levels);
             b.set_levels(levels);
         }
+        // Echoes follow their buses too.
+        game.refresh_sends();
     }
 
     /// Which buses have game sounds playing on them right now, by place

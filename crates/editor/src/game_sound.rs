@@ -125,6 +125,22 @@ impl crate::Workbench {
             .collect()
     }
 
+    /// The game's reverb zones, with where each is drawn now (its place,
+    /// turn and scale): the app works out which the listener is in
+    /// (Phase 7, S6). Empty with no game.
+    pub fn reverb_zones(&self) -> Vec<(area::builtin::ReverbZone, glam::Mat4)> {
+        let Some(playing) = self.playing.as_ref() else {
+            return Vec::new();
+        };
+        let t = playing.world.progress();
+        playing
+            .world
+            .placed_between::<area::builtin::ReverbZone>(t)
+            .into_iter()
+            .map(|(_, zone, place)| (zone, place))
+            .collect()
+    }
+
     /// How long the game's sound took last frame, for the Profiler's
     /// Sound line.
     pub fn set_sound_time(&mut self, spent: std::time::Duration) {
