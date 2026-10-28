@@ -18,7 +18,15 @@ fn playground_with_a_check(name: &str) -> PathBuf {
     let program = check_code(&project.assets(), MADE_BY, &mut quiet);
     assert!(program.is_some(), "{:?}", quiet.lines);
     let (db, _, _) = asset_db::AssetDb::open(project, assets::Limits::default());
-    let mut w = workbench_for(&root, &db, program, MADE_BY, crate::playground::AREA).unwrap();
+    let mut w = workbench_for(
+        &root,
+        &db,
+        program,
+        MADE_BY,
+        crate::playground::AREA,
+        &mut None,
+    )
+    .unwrap();
     w.play_and_record();
     for _ in 0..90 {
         w.play_for(1.0 / 60.0);
@@ -107,7 +115,9 @@ fn an_area_outside_the_assets_is_refused() {
         "a\\..\\..\\x.solarea",
         "C:/x.solarea",
     ] {
-        let refused = workbench_for(&root, &db, None, MADE_BY, bad).err().unwrap();
+        let refused = workbench_for(&root, &db, None, MADE_BY, bad, &mut None)
+            .err()
+            .unwrap();
         assert!(refused.contains("isn't in the assets"), "{bad}: {refused}");
     }
     let _ = std::fs::remove_dir_all(&root);
@@ -189,7 +199,7 @@ fn a_recording_that_saves_plays_back_the_same_and_writes_nothing() {
     let program = check_code(&project.assets(), MADE_BY, &mut quiet);
     assert!(program.is_some(), "{:?}", quiet.lines);
     let (db, _, _) = asset_db::AssetDb::open(project, assets::Limits::default());
-    let mut w = workbench_for(&root, &db, program, MADE_BY, "hop.solarea").unwrap();
+    let mut w = workbench_for(&root, &db, program, MADE_BY, "hop.solarea", &mut None).unwrap();
     w.play_and_record();
     let mut saved = Saves::default();
     for _ in 0..15 {

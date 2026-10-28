@@ -1005,7 +1005,7 @@ fn uses_of(renamed: &[crate::describe::Renamed], code: &Code) -> Vec<CodeProblem
                 let (old, new) = &names[usize::from(lua)];
                 let (old, new) = (old.as_str(), new.as_str());
                 let mut from = 0;
-                while let Some(at) = code_part[from..].find(&old) {
+                while let Some(at) = code_part[from..].find(old) {
                     let start = from + at;
                     let end = start + old.len();
                     from = end;

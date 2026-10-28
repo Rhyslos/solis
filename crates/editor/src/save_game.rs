@@ -70,6 +70,12 @@ pub fn save_read_back(text: &str) -> Result<String, String> {
     Save::read(text).map(|save| save.write())
 }
 
+/// Whether `text` reads as a save (a project's check: read, not written
+/// again, which would hold a 256 MB save twice).
+pub fn save_reads(text: &str) -> Result<(), String> {
+    Save::read(text).map(drop)
+}
+
 /// The most sections a save has (it writes six).
 const MAX_SECTIONS: usize = 16;
 
@@ -81,18 +87,6 @@ pub struct Sections {
     list: Vec<(String, String)>,
     /// What upgrading couldn't carry over, in plain words.
     notes: Vec<String>,
-}
-
-impl Sections {
-    /// The text of the section called `name`; an error when it's missing.
-    fn take(&mut self, name: &str) -> Result<String, String> {
-        let at = self
-            .list
-            .iter()
-            .position(|(n, _)| n == name)
-            .ok_or_else(|| "it's damaged".to_string())?;
-        Ok(self.list.remove(at).1)
-    }
 }
 
 /// Version 1 to 2: version 1 kept physics as Rapier's own bytes, which
@@ -358,7 +352,10 @@ impl Save {
                 .collect()
         };
         let mut section = |name: &str| -> Result<&str, String> {
-            let at = list.iter().position(|(n, _)| *n == name).ok_or_else(damaged)?;
+            let at = list
+                .iter()
+                .position(|(n, _)| *n == name)
+                .ok_or_else(damaged)?;
             Ok(list.remove(at).1)
         };
         let area = section("area")?.to_string();

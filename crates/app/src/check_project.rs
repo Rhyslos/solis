@@ -107,8 +107,14 @@ fn reader_for(path: &Path) -> Option<(&'static dyn Versioned, Reader, u64)> {
         "solarea" | "solassembly" => (
             &area::text::FORMAT,
             |text| {
-                let registry = area::builtin::registry().map_err(|e| e.to_string())?;
-                area::text::read_file(text, &registry)
+                // Made once for every area the check reads.
+                static REGISTRY: std::sync::OnceLock<Option<reflect::Registry>> =
+                    std::sync::OnceLock::new();
+                let registry = REGISTRY
+                    .get_or_init(|| area::builtin::registry().ok())
+                    .as_ref()
+                    .ok_or("Solis's own components couldn't be registered")?;
+                area::text::read_file(text, registry)
                     .map(drop)
                     .map_err(|e| e.to_string())
             },
@@ -157,7 +163,7 @@ fn reader_for(path: &Path) -> Option<(&'static dyn Versioned, Reader, u64)> {
         ),
         "solsave" => (
             &editor::SAVE_FORMAT,
-            |text| editor::save_read_back(text).map(drop),
+            |text| editor::save_reads(text),
             crate::play_files::MAX_SAVE_BYTES,
         ),
         "solis" if name == asset_db::PROJECT_FILE => (
@@ -323,9 +329,10 @@ fn check_recordings(
         return;
     }
     let (db, _, _) = asset_db::AssetDb::open(project.clone(), assets::Limits::default());
+    let mut assemblies = None;
     for path in recordings {
         let name = shown(root, &path);
-        match play_back(root, &db, program.clone(), made_by, &path) {
+        match play_back(root, &db, program.clone(), made_by, &path, &mut assemblies) {
             Ok(ticks) => report.ok(format!("{name} plays back the same on all {ticks} ticks")),
             Err(why) => report.fail(format!("{name}: {why}")),
         }
@@ -340,6 +347,7 @@ fn play_back(
     program: Option<std::sync::Arc<script::Compiled>>,
     made_by: &str,
     path: &Path,
+    assemblies: &mut Option<Assemblies>,
 ) -> Result<usize, String> {
     let text = asset_db::read_limited(path, input::MAX_RECORDING_BYTES as u64)
         .map_err(|e| e.to_string())
@@ -349,7 +357,7 @@ fn play_back(
         "it doesn't say which area it was recorded in (it was made before recordings did): \
          record it again",
     )?;
-    let mut w = workbench_for(root, db, program, made_by, &area_path)?;
+    let mut w = workbench_for(root, db, program, made_by, &area_path, assemblies)?;
     w.replay(&text, &path.display().to_string());
     // The area must start as it did when recorded: otherwise the build
     // isn't what changed.
@@ -418,6 +426,9 @@ impl Saves {
     }
 }
 
+/// The project's assemblies, read once for a whole check.
+pub(crate) type Assemblies = Vec<(reflect::AssetId, std::sync::Arc<area::text::AreaFile>)>;
+
 /// A workbench with the project at `root` open as the editor would have
 /// it, headless: its code, input actions, assemblies and Library, and the
 /// area at `area_path` (inside the assets, `/` between folders).
@@ -427,6 +438,7 @@ pub(crate) fn workbench_for(
     program: Option<std::sync::Arc<script::Compiled>>,
     made_by: &str,
     area_path: &str,
+    assemblies: &mut Option<Assemblies>,
 ) -> Result<editor::Workbench, String> {
     let assets = db.project().assets();
     let area_file = assets.join(area_path);
@@ -451,18 +463,23 @@ pub(crate) fn workbench_for(
     w.set_program(program);
     w.set_bindings(crate::play_files::load_bindings(root).0);
     let (items, folders) = crate::project::Projects::library(&db.listing(), |_| None);
-    // Every assembly, so game code can spawn any of them.
-    for item in &items {
-        if item.kind == editor::LibraryKind::Assembly
-            && let Some(id) = item.id
-            && let Some(file) = db.file(id)
-        {
-            // One the editor can't read is left out, as the editor does (the
-            // Files step reports it); only a game that uses it fails.
-            if let Ok(read) = crate::area_file::AreaFiles::read(&file, &w.document().registry) {
-                w.set_assembly(id, std::sync::Arc::new(read));
-            }
-        }
+    // Every assembly, so game code can spawn any of them: read once for
+    // all of a check's recordings (the Phase 8 review).
+    let read = assemblies.get_or_insert_with(|| {
+        items
+            .iter()
+            .filter(|item| item.kind == editor::LibraryKind::Assembly)
+            .filter_map(|item| Some((item.id?, db.file(item.id?)?)))
+            // One the editor can't read is left out, as the editor does
+            // (the Files step reports it); only a game that uses it fails.
+            .filter_map(|(id, file)| {
+                let read = crate::area_file::AreaFiles::read(&file, &w.document().registry).ok()?;
+                Some((id, std::sync::Arc::new(read)))
+            })
+            .collect()
+    });
+    for (id, file) in read.iter() {
+        w.set_assembly(*id, std::sync::Arc::clone(file));
     }
     w.set_library(items);
     w.set_folders(folders);
