@@ -48,6 +48,8 @@ pub enum LibraryKind {
     Sound,
     /// A sound event (`.solsound`): takes and how to vary them.
     SoundEvent,
+    /// An Aseprite file: a sprite sheet (Phase 9, D2).
+    SpriteSheet,
     /// Anything else.
     Other,
 }
@@ -63,6 +65,7 @@ impl LibraryKind {
             Self::Code => "Code",
             Self::Sound => "Sound",
             Self::SoundEvent => "Sound event",
+            Self::SpriteSheet => "Sprite sheet",
             Self::Other => "File",
         }
     }
@@ -78,6 +81,7 @@ impl LibraryKind {
             Self::Code => theme::kind::CODE,
             Self::Sound => theme::kind::SOUND,
             Self::SoundEvent => theme::kind::SOUND_EVENT,
+            Self::SpriteSheet => theme::kind::SPRITE,
             Self::Other => theme::kind::OTHER,
         }
     }
@@ -91,13 +95,14 @@ impl LibraryKind {
             Self::Texture => Icon::Viewport,
             Self::Code => Icon::Code,
             Self::Sound | Self::SoundEvent => Icon::Sound,
+            Self::SpriteSheet => Icon::Viewport,
             Self::Other => Icon::Properties,
         }
     }
 
     /// Whether it can be placed in an area (dragged in, double-clicked).
     pub fn placeable(self) -> bool {
-        matches!(self, Self::Model | Self::Assembly)
+        matches!(self, Self::Model | Self::Assembly | Self::SpriteSheet)
     }
 }
 
@@ -199,13 +204,17 @@ pub(crate) enum LibraryRequest {
 
 /// The sound files the app has measured, by path inside the assets, and
 /// the one previewing.
-#[derive(Debug, Clone, Copy)]
+#[derive(Clone, Copy)]
 pub(crate) struct Sounds<'a> {
     pub(crate) states: &'a HashMap<String, SoundState>,
     pub(crate) events: &'a HashMap<String, EventState>,
     pub(crate) preview: Option<&'a Preview>,
     /// The project's buses, which sound events play through.
     pub(crate) mixer: &'a sound::Mixer,
+    /// The project's sprite sheets (Phase 9, D2), and each one's atlas as
+    /// a picture, by path.
+    pub(crate) sheets: &'a crate::sprite_sheets::SpriteSheets,
+    pub(crate) sheet_pictures: &'a HashMap<String, egui::TextureHandle>,
 }
 
 impl Sounds<'_> {
@@ -654,6 +663,15 @@ fn item_actions(picked: Picked<'_>, state: &mut LibraryState, requests: &mut Vec
     });
 }
 
+/// "1 frame", "24 frames".
+pub(crate) fn frames_text(n: usize) -> String {
+    if n == 1 {
+        "1 frame".into()
+    } else {
+        format!("{n} frames")
+    }
+}
+
 /// The hint shown when pointing at an item.
 fn hint(item: &LibraryItem) -> String {
     let what = match item.kind {
@@ -662,6 +680,10 @@ fn hint(item: &LibraryItem) -> String {
         }
         LibraryKind::Area => "Double-click to open it.",
         LibraryKind::Sound => "▶ to listen; click it to see it in Properties.",
+        LibraryKind::SpriteSheet => {
+            "Drag it into the viewport, or double-click, to place it as a sprite; click it to \
+             see its frames in Properties."
+        }
         LibraryKind::SoundEvent => {
             "▶ to listen (a different take each time); drop sound files on it to add takes; \
              click it to change it in Properties."
@@ -722,12 +744,29 @@ fn tile<'a>(
         Some(SoundState::Read(info)) if item.kind == LibraryKind::Sound => Some(info),
         _ => None,
     };
+    let sheet = (item.kind == LibraryKind::SpriteSheet)
+        .then(|| {
+            Some((
+                sounds.sheets.at(&item.path)?,
+                sounds.sheet_pictures.get(&item.path)?,
+            ))
+        })
+        .flatten();
     if let Some(info) = waveform {
         sound_view::draw_waveform(
             painter,
             picture.shrink2(egui::vec2(5.0, 10.0)),
             &info.waveform,
             sounds.played(item),
+        );
+    } else if let Some((sheet, atlas)) = sheet {
+        crate::sheet_view::draw_frame(painter, picture.shrink(4.0), sheet, atlas, 0);
+        painter.text(
+            picture.right_top() + egui::vec2(-4.0, 3.0),
+            egui::Align2::RIGHT_TOP,
+            frames_text(sheet.frames.len()),
+            egui::FontId::proportional(10.5),
+            theme::TEXT,
         );
     } else if let Some(texture) = item.thumbnail {
         painter.image(

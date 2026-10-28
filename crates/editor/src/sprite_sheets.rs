@@ -269,4 +269,4 @@ pub(crate) fn corner_of(v: &ViewSprite) -> glam::Vec3 {
 
 #[cfg(test)]
 #[path = "sprite_sheets_tests.rs"]
-mod tests;
+pub(crate) mod tests;

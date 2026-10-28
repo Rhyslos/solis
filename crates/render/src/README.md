@@ -15,7 +15,8 @@ Draws viewports on the GPU with wgpu, into offscreen images: the sky, every copy
 | `environment.rs` | The sky (the editor's backdrop or a daylight sky), fog, exposure and tone mapping. | `Environment`, `Sky`, `Fog`, `Tonemap` |
 | `projectiles.rs` | Projectiles drawn in one go, each a glowing streak. | `Bolt` |
 | `pixel.rs` | The pixel stage (Phase 9, D1): a 2D game's small picture scaled up to the screen in whole steps or to fill, slid by the camera's bit of a pixel. | `pixel_layout`, `PixelLayout`, `PixelImage`, `PixelScaling` |
-| `pick.rs` | Picking: draws placement numbers and depth into a small image to say what is under the mouse. | `PickResult` |
+| `sprites.rs` | Sprites (Phase 9, D2): sheets' atlases on the card, and frames drawn as flat quads, many in one call, cut out or see-through, colours exactly as painted. | `SpriteInstance`, `GpuSheet`, `SpriteRun`, `SpritePicks` |
+| `pick.rs` | Picking: draws placement and sprite numbers and depth into a small image (sprites by their own pixels) to say what is under the mouse. | `PickResult` |
 | `timing.rs` | How long the GPU takes over each pass, for the Profiler, read back a frame or two later without waiting; and counts of what was drawn. | `GpuTimes`, `FrameStats` |
 | `readback.rs` | Copies a finished image back from the GPU, for tests and screenshots. The only place that waits on the GPU. | `read_pixels`, `read_texture` |
 | `viewport.wgsl` | The shaders (small programs that run on the GPU): sky, grid, lines, models in each look, lighting and shadows, and the final exposure, tone mapping and sRGB pass (`post_fs`). | `mesh_vs`, `sky_fs`, `grid_fs`, `post_fs` |

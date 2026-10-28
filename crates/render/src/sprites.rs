@@ -57,7 +57,7 @@ impl SpriteInstance {
     }
 }
 
-const ATTRIBUTES: [wgpu::VertexAttribute; 8] = wgpu::vertex_attr_array![
+pub(crate) const ATTRIBUTES: [wgpu::VertexAttribute; 8] = wgpu::vertex_attr_array![
     0 => Float32x3, 1 => Uint32, 2 => Float32x2, 3 => Float32x2,
     4 => Float32x4, 5 => Float32x4, 6 => Float32x4, 7 => Float32x2,
 ];
@@ -242,6 +242,16 @@ impl SpritePipelines {
         });
         GpuSheet { size, bind_group }
     }
+}
+
+/// Sprites of one sheet to pick from, each with its number (what
+/// [`crate::PickResult`] reports where it's under the mouse).
+#[derive(Debug, Clone, Copy)]
+pub struct SpritePicks<'a> {
+    /// The sprites, as drawn.
+    pub run: SpriteRun<'a>,
+    /// Each one's number, in the same order (0: can't be picked).
+    pub picks: &'a [u32],
 }
 
 /// Sprites of one sheet to draw together.

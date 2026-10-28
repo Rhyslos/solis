@@ -5,9 +5,10 @@
 //! steps, decision 0022).
 
 use crate::models::ModelInfo;
+use crate::sprite_sheets::SpriteSheets;
 use egui::{RichText, Ui};
 use glam::{EulerRot, Quat};
-use reflect::{AssetId, ComponentData, ComponentSchema, FieldInfo, FieldKind, Value};
+use reflect::{AssetId, ComponentData, ComponentSchema, FieldInfo, FieldKind, Offer, Value};
 use std::collections::BTreeMap;
 
 /// What the user did to a field this frame.
@@ -137,7 +138,7 @@ pub(crate) fn fields(
     data: &ComponentData,
     assembly: Option<&ComponentData>,
     others: &[&ComponentData],
-    models: &BTreeMap<AssetId, ModelInfo>,
+    (models, sheets): (&BTreeMap<AssetId, ModelInfo>, &SpriteSheets),
     area: &area::Area,
 ) -> Vec<FieldChange> {
     let mut changes = Vec::new();
@@ -150,7 +151,14 @@ pub(crate) fn fields(
         ui.push_id(id, |ui| {
             let (set, revert, apply) =
                 row_marked(ui, &field.label, field.hint.help, changed, |ui| {
-                    let set = field_widget(ui, field, value, models, area, mixed);
+                    let set = field_widget(
+                        ui,
+                        field,
+                        value,
+                        (models, sheets, data),
+                        area,
+                        mixed,
+                    );
                     if !changed {
                         return (set, false, false);
                     }
@@ -207,11 +215,25 @@ fn field_widget(
     ui: &mut Ui,
     field: &FieldInfo,
     value: &Value,
-    models: &BTreeMap<AssetId, ModelInfo>,
+    (models, sheets, data): (&BTreeMap<AssetId, ModelInfo>, &SpriteSheets, &ComponentData),
     area: &area::Area,
     mixed: Mixed,
 ) -> Option<(Value, Option<(usize, f64)>)> {
     let whole = |v: Option<Value>| v.map(|v| (v, None));
+    // What the schema says to offer (Phase 9, D2).
+    match (&field.kind, field.hint.offers) {
+        (FieldKind::Asset, Offer::Assets("sprite sheet")) => {
+            return whole(sheet_picker(ui, value, sheets, mixed.whole));
+        }
+        (FieldKind::Text, Offer::SlicesOf(sheet_field)) => {
+            let sheet = match data.get(sheet_field) {
+                Some(Value::Asset(Some(r))) => sheets.get(r.asset),
+                _ => None,
+            };
+            return whole(slice_picker(ui, value, sheet.map(|s| &**s), mixed.whole));
+        }
+        _ => {}
+    }
     match &field.kind {
         FieldKind::Bool => {
             let mut on = matches!(value, Value::Bool(true));
@@ -320,6 +342,105 @@ fn field_widget(
         }
         FieldKind::Entity => whole(entity_picker(ui, value, area, mixed.whole)),
     }
+}
+
+/// A sprite sheet field: the sheet's name, and the project's sheets (or
+/// None) to pick another from.
+fn sheet_picker(ui: &mut Ui, value: &Value, sheets: &SpriteSheets, mixed: bool) -> Option<Value> {
+    let current = match value {
+        Value::Asset(Some(r)) => Some(r.asset),
+        _ => None,
+    };
+    let listed = sheets.listed();
+    let shown = if mixed {
+        "—".to_owned()
+    } else {
+        match current {
+            None => "None".to_owned(),
+            Some(id) => listed
+                .iter()
+                .find(|(_, i)| *i == id)
+                .map_or_else(|| format!("Missing sheet {id}"), |(n, _)| n.clone()),
+        }
+    };
+    let mut chosen = None;
+    egui::ComboBox::from_id_salt("sheet")
+        .selected_text(shown)
+        .height(320.0)
+        .show_ui(ui, |ui| {
+            if ui
+                .selectable_label(current.is_none() && !mixed, "None")
+                .clicked()
+            {
+                chosen = Some(Value::Asset(None));
+            }
+            for (name, id) in &listed {
+                if ui
+                    .selectable_label(current == Some(*id) && !mixed, name)
+                    .clicked()
+                {
+                    chosen = Some(Value::Asset(Some(reflect::AssetRef {
+                        asset: *id,
+                        part: None,
+                    })));
+                }
+            }
+            if listed.is_empty() {
+                ui.label(
+                    RichText::new("No sprite sheets yet: put an Aseprite file in the project.")
+                        .color(crate::theme::TEXT_WEAK),
+                );
+            }
+        });
+    chosen
+}
+
+/// A slice name field: the sheet's slices (and "bottom middle", for
+/// none) to pick from.
+fn slice_picker(
+    ui: &mut Ui,
+    value: &Value,
+    sheet: Option<&assets::sprite_sheet::SpriteSheet>,
+    mixed: bool,
+) -> Option<Value> {
+    const NONE: &str = "Bottom middle";
+    let current = match value {
+        Value::Text(t) => t.as_str(),
+        _ => "",
+    };
+    let shown = if mixed {
+        "—"
+    } else if current.is_empty() {
+        NONE
+    } else {
+        current
+    };
+    let mut chosen = None;
+    egui::ComboBox::from_id_salt("slice")
+        .selected_text(shown)
+        .show_ui(ui, |ui| {
+            if ui
+                .selectable_label(current.is_empty() && !mixed, NONE)
+                .clicked()
+            {
+                chosen = Some(Value::Text(String::new()));
+            }
+            for slice in sheet.map_or(&[][..], |s| &s.slices) {
+                if ui
+                    .selectable_label(current == slice.name && !mixed, &slice.name)
+                    .clicked()
+                {
+                    chosen = Some(Value::Text(slice.name.clone()));
+                }
+            }
+            if !current.is_empty() && sheet.is_some_and(|s| s.slice(current).is_none()) {
+                ui.label(
+                    RichText::new(format!("\"{current}\" isn't a slice of this sheet"))
+                        .color(crate::theme::WARNING),
+                );
+            }
+        });
+    chosen
 }
 
 /// The most entities an entity field's list shows at once: type to find

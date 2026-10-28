@@ -27,4 +27,4 @@ glam (vectors and rotations). Random IDs use only the standard library.
 
 ## Status
 
-Phase 2, milestone 1. Phase 5: `IdMap`, a map keyed by entity IDs with `IdHasher` (one multiplication: IDs are random already), many times quicker than the standard hasher on the game's hot paths.
+Phase 2, milestone 1. Phase 5: `IdMap`, a map keyed by entity IDs with `IdHasher` (one multiplication: IDs are random already), many times quicker than the standard hasher on the game's hot paths. Phase 9, D2: a field's hint can say what it `offers` (`Offer`): the project's assets of a kind (a Sprite's Sheet) or the slices of the sheet in another field (its Pivot), so Properties shows a list to pick from.

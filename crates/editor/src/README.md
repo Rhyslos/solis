@@ -55,6 +55,8 @@ Tests: files ending `_tests.rs` hold the tests of the file with the same start (
 | `gizmo.rs` | The move, rotate and scale gizmo: its handles, which is under the mouse, and what dragging one does. Tests in [`gizmo/`](gizmo/README.md). | `Gizmo`, `GizmoTool`, `Handle` |
 | `transforming.rs` | Each selected entity's new transform during a gizmo drag, with snapping. | `Targets`, `Snapping` |
 | `screen.rs` | Between the screen and the world: the ray through a point, where a world point appears, how big a pixel is at a depth. | `Ray` |
+| `sheet_view.rs` | A sprite sheet in the Library and Properties (Phase 9, D2): frames drawn crisply, a strip of frames, its tags, slices, layers and palette. | |
+| `sprite_sheets.rs` | Sprite sheets in the editor (Phase 9, D2): the sheets the app read, and the area's sprites turned into what the renderer draws, a run per sheet with pick numbers. Tests in `sprite_sheets_tests.rs`. | `SpriteSheets`, `ViewSprite`, `SpriteBatch`, `batches` |
 
 ## Playing
 

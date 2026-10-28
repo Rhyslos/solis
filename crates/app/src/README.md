@@ -34,6 +34,7 @@ The program's code: the command line, the window and its frame loop, the GPU hoo
 | `playground_sounds.rs` | The playground's sounds, made in code (CC0): footsteps, music, a radio's chatter and a drip, as WAV files, the same every time. | `footstep`, `music`, `radio`, `drip` |
 | `game_audio.rs` | The game's sounds each frame: picks and plays what game code asked for through its bus, around the camera, following entities, held while paused and faded on Stop; ducking, mute, solo and `setBusVolume` as the buses' levels, and the meters back to the Mixer; `AudioSource` loops, and choosing the most important sounds to hear (S5); the reverb zones the camera is in (S6); only what the listener should hear (S8). | `GameAudio` |
 | `sounds.rs` | The project's sound files and sound events in the editor: sounds measured and events read on a worker for the Library and Properties, and listened to through the sound device (an event plays a new pick each press). | `Sounds` |
+| `sprites.rs` | The project's sprite sheets (Phase 9, D2): Aseprite files read and packed on a worker, again whenever one is saved, a failed read keeping the last good one. | `Sprites`, `read_sheet` |
 | `updates.rs` | Keeping the program up to date while it runs: Help > Check for updates, downloading while you work, installing on close (decisions 0043 and 0045). | `Updates`, `Pending` |
 
 ## Ready-made projects (Help menu)
@@ -46,6 +47,6 @@ The program's code: the command line, the window and its frame loop, the GPU hoo
 
 ## How the pieces fit
 
-`main.rs` calls `cli::parse`, then `window::run`, which shows the splash (`startup.rs`) and then the editor. Each frame, `window.rs` asks the editor's `Workbench` to draw itself, passing it a `GpuViewport` (`gpu.rs`) to draw the 3D views, and acts on the actions it returns; anything slow goes to a worker (`import.rs`, `game_code.rs`, `thumbnails.rs`, `sounds.rs`, `updates.rs`) and is picked up between frames.
+`main.rs` calls `cli::parse`, then `window::run`, which shows the splash (`startup.rs`) and then the editor. Each frame, `window.rs` asks the editor's `Workbench` to draw itself, passing it a `GpuViewport` (`gpu.rs`) to draw the 3D views, and acts on the actions it returns; anything slow goes to a worker (`import.rs`, `game_code.rs`, `thumbnails.rs`, `sounds.rs`, `sprites.rs`, `updates.rs`) and is picked up between frames.
 
 **Read next:** the crate's [README](../README.md).

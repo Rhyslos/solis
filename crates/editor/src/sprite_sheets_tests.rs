@@ -4,6 +4,7 @@
 use super::*;
 use assets::aseprite::{AseSlice, SliceKey};
 use assets::sprite_sheet::SheetFrame;
+use glam::Vec3;
 
 /// A 16 × 24 sheet of two frames, each trimmed to an 8 × 20 picture at
 /// (4, 4), with a "feet" slice whose pivot is at (8, 23).
@@ -216,4 +217,49 @@ fn the_sheets_list_what_s_read_by_name() {
     assert!(sheets.get(a).is_some());
     assert!(sheets.at("broken.aseprite").is_none());
     assert_eq!(name_of("a/b/c.aseprite"), "c");
+}
+
+#[test]
+#[ignore = "scale check: run by tools/scale/scale-check.sh"]
+fn scale_check_batching_100000_sprites() {
+    // The plan's budget for a 2D game: 100,000 sprites over four sheets,
+    // a tenth of them see-through, turned into runs each frame they move.
+    const TARGET_MS: f64 = 4.0;
+    let mut sheets = SpriteSheets::default();
+    let ids: Vec<AssetId> = (0..4).map(|_| AssetId::random()).collect();
+    for (n, id) in ids.iter().enumerate() {
+        let path = format!("sheet{n}.aseprite");
+        sheets
+            .by_path
+            .insert(path.clone(), SheetState::Read(Arc::new(test_sheet())));
+        sheets.paths.insert(*id, path);
+    }
+    let list: Vec<AreaSprite> = (0..100_000u32)
+        .map(|i| AreaSprite {
+            entity: EntityId::random(),
+            sprite: Sprite {
+                see_through: i % 10 == 0,
+                ..sprite(ids[i as usize % 4])
+            },
+            transform: Mat4::from_translation(Vec3::new(
+                (i % 300) as f32 * 0.3,
+                (i / 300) as f32 * 0.3,
+                0.0,
+            )),
+            pick: i + 1,
+        })
+        .collect();
+    let px = 1.0 / 16.0;
+    let frames = 20;
+    let start = std::time::Instant::now();
+    for _ in 0..frames {
+        let runs = batches(&list, &sheets, px, Some(px));
+        assert_eq!(runs.iter().map(|r| r.sprites.len()).sum::<usize>(), 100_000);
+    }
+    let ms = start.elapsed().as_secs_f64() * 1000.0 / f64::from(frames);
+    let verdict = if ms <= TARGET_MS { "ok" } else { "SLOW" };
+    println!(
+        "Scale check: batching 100,000 sprites (four sheets, a tenth see-through) {ms:.2} ms (target {TARGET_MS} ms) {verdict}"
+    );
+    assert!(ms <= TARGET_MS, "batching sprites takes {ms:.2} ms");
 }

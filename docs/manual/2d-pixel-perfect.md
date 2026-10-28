@@ -7,7 +7,7 @@ For a 2D game, especially one in pixel art: a farming game, a platformer, a top-
 
 2D in Solis lives in the same world as 3D: flat things lie on the ground, seen from straight above, so lights, the sun, sound, saving and game code all work on them as they do in 3D. A project can mix both, with a 3D camera in one area and a 2D camera in another.
 
-For now you can set a project up for 2D, look at it in pixels, and play it through a 2D camera. Sprites from Aseprite, frame animation and tile maps come next.
+For now you can set a project up for 2D, look at it in pixels, play it through a 2D camera, and place [sprites from Aseprite](sprites.md). Frame animation and tile maps come next.
 
 ## How to use it
 1. **Set the project's 2D settings:** **Edit > Settings…**, then **2D** under *This project*. The standard ones suit most pixel-art games: 480 × 270, 16 pixels to a metre and 16-pixel tiles. They're saved in the project (`pixels.solpix`), so everyone working on it shares them.

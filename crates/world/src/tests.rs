@@ -864,3 +864,27 @@ fn a_frame_time_that_isn_t_a_number_never_jams_the_clock() {
 /// them reached only from the editor's tests).
 #[path = "api_tests.rs"]
 mod api;
+
+#[test]
+fn sprites_arrive_as_rust_types_and_are_drawn_where_they_stand() {
+    let mut area = Area::new();
+    let sprite = Sprite {
+        frame: 3,
+        flip_x: true,
+        pivot: "feet".into(),
+        ..Sprite::default()
+    };
+    let a = area.spawn(
+        EntityData::new("Hero")
+            .with(&at(2.0, 3.0, 0.0))
+            .with(&sprite),
+    );
+    area.spawn(EntityData::new("Rock").with(&at(1.0, 1.0, 0.0)));
+    let world = World::from_area(&area);
+    let drawn = world.placed_between::<Sprite>(1.0);
+    assert_eq!(drawn.len(), 1, "only entities with a Sprite");
+    let (entity, got, place) = &drawn[0];
+    assert_eq!(*entity, a);
+    assert_eq!(*got, sprite);
+    assert_eq!(place.w_axis.truncate(), Vec3::new(2.0, 3.0, 0.0));
+}

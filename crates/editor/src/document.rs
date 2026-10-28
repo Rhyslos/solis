@@ -3,7 +3,7 @@
 //! The area only ever changes through [`Document::edit`], so every change
 //! can be undone ([decision 0022](../../../docs/decisions/0022-undo-as-reversible-edits.md)).
 
-use area::builtin::{Model, Transform};
+use area::builtin::{Model, Sprite, Transform};
 use area::{Area, Edit, EditError, History, MergeKey, Tree};
 use glam::Mat4;
 use reflect::{Component, EntityId, Registry};
@@ -339,7 +339,8 @@ impl Document {
     /// A number standing for what the Problems panel checks: it changes
     /// with every edit except moving, turning and resizing (a Transform's
     /// fields) and other component values, other than which model a
-    /// Model shows. So a drag doesn't look for problems every frame.
+    /// Model shows and a Sprite's fields. So a drag doesn't look for
+    /// problems every frame.
     pub fn shape(&self) -> u64 {
         self.shape
     }
@@ -409,10 +410,12 @@ impl Document {
         let after = select.unwrap_or_else(|| before.clone());
         let mut changes = Changes::default();
         changes.note(&edits);
-        // Only values, other than which model a Model shows.
-        let values_only = edits
-            .iter()
-            .all(|e| matches!(e, Edit::SetField { component, .. } if component != Model::NAME));
+        // Only values, other than which model a Model shows and a
+        // Sprite's fields (its sheet).
+        let values_only = edits.iter().all(|e| {
+            matches!(e, Edit::SetField { component, .. }
+                if component != Model::NAME && component != Sprite::NAME)
+        });
         let same_tree = !edits.iter().any(|e| {
             matches!(
                 e,

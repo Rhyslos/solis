@@ -25,6 +25,7 @@ pub mod project;
 pub mod sample_game;
 pub mod sound;
 pub mod sounds;
+pub mod sprites;
 pub mod startup;
 pub mod thumbnails;
 pub mod updates;

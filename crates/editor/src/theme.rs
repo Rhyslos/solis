@@ -91,6 +91,8 @@ pub mod kind {
     pub const SOUND: Color32 = Color32::from_rgb(0x1d, 0x9e, 0x75);
     /// Sound events.
     pub const SOUND_EVENT: Color32 = Color32::from_rgb(0x5d, 0xca, 0xa5);
+    /// Sprite sheets (Aseprite files).
+    pub const SPRITE: Color32 = Color32::from_rgb(0xd8, 0xb4, 0x4a);
     /// The sun (other lamps show their own light's colour).
     pub const SUN: Color32 = super::WARNING;
     /// The environment (sky and fog).

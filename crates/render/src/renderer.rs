@@ -763,7 +763,7 @@ impl ViewportRenderer {
             shadow_pipeline,
             axes,
             axis_count: axis_vertices.len() as u32,
-            pick: crate::pick::PickPipeline::new(device),
+            pick: crate::pick::PickPipeline::new(device, &sprites.sheet_layout),
             pixel: crate::pixel::PixelPipeline::new(device),
             sprites,
         }
@@ -822,11 +822,27 @@ impl ViewportRenderer {
         placed: &[Placement<'_>],
         rect: [u32; 4],
     ) -> bool {
+        self.request_pick_with_sprites(device, queue, target, view_projection, placed, &[], rect)
+    }
+
+    /// [`Self::request_pick`], with sprites too: each is found by its own
+    /// pixels, so the clear space round a sprite picks what's behind.
+    #[allow(clippy::too_many_arguments)]
+    pub fn request_pick_with_sprites(
+        &self,
+        device: &wgpu::Device,
+        queue: &wgpu::Queue,
+        target: &mut ViewportTarget,
+        view_projection: glam::Mat4,
+        placed: &[Placement<'_>],
+        sprites: &[crate::SpritePicks<'_>],
+        rect: [u32; 4],
+    ) -> bool {
         let size = target.size;
         let images = target
             .pick
             .get_or_insert_with(|| crate::pick::PickImages::new(device, &self.pick, size));
-        images.request(device, queue, &self.pick, view_projection, placed, rect)
+        images.request(device, queue, &self.pick, view_projection, placed, sprites, rect)
     }
 
     /// Uploads `model` to the GPU, ready to pass to [`Self::render`]. Done

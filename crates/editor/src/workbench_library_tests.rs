@@ -287,3 +287,113 @@ fn without_a_project_the_library_says_how_to_make_one() {
     h.run();
     let _ = h.get_by_label_contains("No project is open");
 }
+
+/// A workbench with a project holding one sprite sheet, `walker.aseprite`
+/// (the test sheet: two frames, a "feet" slice), read and shown.
+fn with_a_sprite_sheet() -> (Workbench, AssetId) {
+    use crate::sprite_sheets::{SheetState, SpriteSheets};
+    let (mut w, _, _) = with_a_project();
+    let id = AssetId::random();
+    w.set_library(vec![item("walker.aseprite", LibraryKind::SpriteSheet, Some(id))]);
+    let mut sheets = SpriteSheets::default();
+    sheets.by_path.insert(
+        "walker.aseprite".into(),
+        SheetState::Read(std::sync::Arc::new(
+            crate::sprite_sheets::tests::test_sheet(),
+        )),
+    );
+    sheets.paths.insert(id, "walker.aseprite".into());
+    w.set_sprite_sheets(sheets);
+    (w, id)
+}
+
+#[test]
+fn a_sprite_sheet_dropped_on_the_viewport_becomes_a_sprite_on_a_whole_pixel() {
+    let (w, id) = with_a_sprite_sheet();
+    let mut h = harness(w);
+    h.run();
+    let point = Vec3::new(3.03, 4.0, 0.0);
+    h.state_mut().1.answer = Some(PickAnswer {
+        point: Some(point),
+        ..PickAnswer::default()
+    });
+    drag(&mut h, "walker", IN_VIEW);
+    h.run();
+    // Placed at once: no model to load first.
+    assert!(
+        !h.state()
+            .1
+            .actions
+            .iter()
+            .any(|a| matches!(a, WorkbenchAction::PlaceAsset(_)))
+    );
+    let w = &h.state().0;
+    let placed = w.selection().expect("selected");
+    let entity = w.document.area().get(placed).unwrap();
+    assert_eq!(entity.name, "walker");
+    let t: Transform = entity.get().unwrap();
+    let pixels = t.position * 16.0;
+    assert!((pixels.x - pixels.x.round()).abs() < 1e-4, "{}", t.position);
+    assert!((t.position.x - 3.03).abs() < 1.0 / 16.0);
+    assert_eq!(t.position.y, 4.0);
+    let sprite: area::builtin::Sprite = entity.get().unwrap();
+    assert_eq!(sprite.sheet.map(|r| r.asset), Some(id));
+    assert_eq!(sprite.pivot, "feet", "stands on its feet");
+    assert!(!sprite.flip_x, "as drawn");
+    // One undo step takes it away.
+    h.state_mut().0.undo();
+    assert!(h.state().0.document.area().get(placed).is_none());
+}
+
+#[test]
+fn a_sprite_sheet_shows_its_frames_in_the_library_and_properties() {
+    let (w, _) = with_a_sprite_sheet();
+    let mut h = harness(w);
+    h.run();
+    assert!(shown(&h, "2 frames"), "the tile's badge");
+    h.get_by_label("walker").click();
+    h.run();
+    h.run();
+    for label in ["Frame 1", "Frame 2", "16 × 24 pixels"] {
+        assert!(h.query_by_label(label).is_some(), "{label}");
+    }
+    assert!(
+        h.query_by_label_contains("No tags: in Aseprite").is_some(),
+        "says how to make clips"
+    );
+    assert!(h.query_by_label_contains("Slices: feet (pivot)").is_some());
+    // Clicking a frame in the strip shows it.
+    h.get_by_label("Frame 2").click();
+    h.run();
+    assert!(h.query_by_label_contains("Frame 2 of 2").is_some());
+}
+
+#[test]
+fn a_sprite_s_sheet_and_pivot_are_picked_from_lists() {
+    let (mut w, id) = with_a_sprite_sheet();
+    let placed = w.place_sprite(id, None).expect("placed");
+    let mut h = harness(w);
+    h.run();
+    h.run();
+    fn open_combo(h: &egui_kittest::Harness<'_, State>, shows: &str) {
+        h.get_all_by_role(egui::accesskit::Role::ComboBox)
+            .find(|n| n.label().as_deref() == Some(shows))
+            .expect("a list showing it")
+            .click();
+    }
+    // The pivot: the sheet's slices, and the bottom middle.
+    open_combo(&h, "feet");
+    h.run();
+    h.get_by_label("Bottom middle").click();
+    h.run();
+    let sprite = |h: &egui_kittest::Harness<'_, State>| -> area::builtin::Sprite {
+        h.state().0.document.area().get(placed).unwrap().get().unwrap()
+    };
+    assert_eq!(sprite(&h).pivot, "");
+    // The sheet: every sheet read, by name, and None.
+    open_combo(&h, "walker");
+    h.run();
+    h.get_by_label("None").click();
+    h.run();
+    assert_eq!(sprite(&h).sheet, None);
+}
