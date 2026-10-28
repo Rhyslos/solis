@@ -1,8 +1,9 @@
 # Solis engine API guidelines for Lust
 
-> **The source of truth for every call game code makes into Solis** ([decision 0065](decisions/0065-engine-api-guidelines.md)). Written by the project lead with the Lust chat, 2026-10-28; rule 4 rewritten by the project lead the same day. Every new engine call answers yes to the checklist at the end before it's merged, and the calls Solis had before move over in their own milestone.
-
 Oct 28, 2026 · @Rhy
+
+
+> **The source of truth for every call game code makes into Solis** ([decision 0065](decisions/0065-engine-api-guidelines.md)). Written by the project lead with the Lust chat, 2026-10-28; rule 4 rewritten by the project lead the same day, and the whole guide revised that evening (abilities called bare inside a component, `this`, editor-made parts as fields, rule 13, the animator's generated file). Every new engine call answers yes to the checklist at the end before it's merged, and the calls Solis had before move over in their own milestone.
 
 ## Why these guidelines
 
@@ -10,9 +11,9 @@ Solis's game API today is C written in Lust's spelling. It ignores the three thi
 
 The animation API shows all three problems:
 
-- **Free functions that take `me` first:** `playClip(me, "walk")`, `setAnimSwitch(me, "moving", moving)`. Lust has methods for this: `me:animate(...)`.
+- **Free functions that take `me` first:** `playClip(me, "walk")`, `setAnimSwitch(me, "moving", moving)`. Inside a component, Lust can call the thing's abilities bare: `animate(...)`.
 - **Strings for names the project already knows:** clips, actions, sounds, cues, animator states. A typo like `"wlak"` builds fine and silently does nothing. Lust's whole stance is that a fixed set of choices is a `state`, so a typo is a mistake shown before the game runs.
-- **A second state machine hidden behind strings:** the suggested `setAnimSwitch`, `triggerAnim`, `jumpToAnimState` and `animStateOf(me) == "Use tool"` copy Unity's Animator. That is the API Unity developers complain about most. Lust already has state machines built in, with `check` making sure every option is handled.
+- **A good state machine reached through strings:** the suggested `setAnimSwitch`, `triggerAnim`, `jumpToAnimState` and `animStateOf(me) == "Use tool"` work like Unity's Animator. The state machine itself is right and stays. The strings are the problem: they are what Unity developers complain about most, because a misspelt name builds fine and does nothing.
 - **No shared shape:** readers are `positionOf`, `onGround`, `time`; writers are `moveTo`, `setVelocity`, `push`. One ray takes three calls. Nothing tells a game writer how to guess a name.
 
 The guidelines below give every engine function one predictable shape. A game writer who knows Lust should be able to guess the call before looking it up.
@@ -39,7 +40,7 @@ end
 ```
 fetch "solis/project":[Clip, Action];
 
-me:animate(Clip.Farmer.Walk);           -- a typo is a mistake before the game runs, with "did you mean"
+animate(Clip.Farmer.Walk);              -- a typo is a mistake before the game runs, with "did you mean"
 is Input:pressed(Action.Use)? then { … }
 ```
 
@@ -55,21 +56,23 @@ File names are camelCase and state options are PascalCase, so the editor turns `
 
 ## The guidelines
 
-1. **Act on a thing with its methods.** Anything that acts on one entity is a method on the entity, called with `:`. `me:moveTo(place)`, not `moveTo(me, place)`. `target:push(force)`, not `push(target, force)`.
+1. **Inside a component, the thing's abilities are called bare.** `moveTo(place)`, `velocity()`, `playSound(Sound.Sfx.Hoe)`, as if they were the component's own. On any other thing they're methods, called with `:`: `target:push(force)`, `target:position()`. Never `moveTo(this, place)`. `this` is only for handing over the whole thing: `send Died() to this;`, `send Hit(this, 6) to target;`. A variable may share a name with an ability, so `vec3 velocity = velocity();` is fine.
 2. **Things with no owner are engine objects.** Whole-game tools live on a few named objects, like Lust's own `Maths:sqrt(x)`: `Input`, `World`, `Physics`, `Audio`, `Saves`. Keep the list short and avoid Lust's own names (`Maths`, `Files`, `Time`, `Json`, `Web`, `Random`).
 3. **Fixed choices are states, never strings.** Clips, actions, sounds, cues, assemblies, buses and save slots come from the project file. Strings are only for real text: what a player typed, what the game says, a name shown on screen.
-4. **Anything made in an editor reaches code through a file the editor writes.** An animator's states, switches, numbers and triggers; later a behaviour tree, a material's settings, a UI screen. Each gets a Lust file with a state for its names and a class with one method per thing code can set or ask. A new engine feature plugs in the same way, so the engine keeps growing and game code never names anything with a string. *(Rewritten by the project lead, 2026-10-28.)*
+4. **Anything made in an editor reaches code through a file the editor writes.** An animator's states, switches, numbers and triggers; later a behaviour tree, a material's settings, a UI screen. Each gets a Lust file with a state for its names and a class with one method per thing code can set or ask. A new engine feature plugs in the same way, so the engine keeps growing and game code never names anything with a string.
 5. **Readers are nouns, writers are verbs.**
-   - A value: a noun, no `get` or `Of`: `me:position()`, `me:velocity()`, `World:time()`.
-   - A yes/no: a word that reads as a question after `is`: `is me:grounded()?`, `is Input:held(Action.Sprint)?`.
-   - A change: a verb. Setting a value the reader names uses `set` + that noun: `me:setVelocity(v)` goes with `me:velocity()`. Other changes are plain verbs: `me:push(force)`, `me:moveTo(place)`, `me:despawn()`.
+   - A value: a noun, no `get` or `Of`: `position()`, `velocity()`, `World:time()`.
+   - A yes/no: a word that reads as a question after `is`: `is grounded()?`, `is Input:held(Action.Sprint)?`.
+   - A change: a verb. Setting a value the reader names uses `set` + that noun: `setVelocity(v)` goes with `velocity()`. Other changes are plain verbs: `push(force)`, `moveTo(place)`, `despawn()`.
 6. **One question, one call.** When the engine works out several answers at once, it gives back one thing holding them all. `RayHit hit = Physics:castRay(from, direction, 10);` then `hit.found`, `hit.distance`, `hit.entity`, `hit.normal`. Never three calls for one ray.
-7. **Variants put the difference at the end of the name.** Lust has no optional arguments, so a variant is its own method, named base word first: `animate` / `animateFromStart`, `Audio:play` / `Audio:playAt` / `me:playSound`. Not `replayClip` next to `playClip`.
-8. **Safe to call every frame.** Asking for what is already happening does nothing: `me:animate(Clip.Farmer.Walk)` every tick keeps walking, it does not restart. Restarting is its own method.
+7. **Variants put the difference at the end of the name.** Lust has no optional arguments, so a variant is its own method, named base word first: `animate` / `animateFromStart`, `Audio:play` / `Audio:playAt` / `playSound`. Not `replayClip` next to `playClip`.
+8. **Safe to call every frame.** Asking for what is already happening does nothing: `animate(Clip.Farmer.Walk)` every tick keeps walking, it does not restart. Restarting is its own method.
 9. **Events say what happened, and carry states.** Past tense, PascalCase, sent to the entity it happened to: `on ClipFinished(Clip clip)`, `on CueReached(Cue cue)`, `on Landed(float speed)`. Payloads use the project's states, never a string name.
-10. **The same words in every language.** Lust `me:moveTo(p)`, Lua `me:moveTo(p)`, Rust `me.move_to(p)`. One table in `describe.rs` names each call once; the Rust name is the same words in snake\_case. The `Host` trait uses those names too (today `position` and `positionOf` differ).
+10. **The same words in every language.** Lust `moveTo(p)`, Lua `this:moveTo(p)`, Rust `this.move_to(p)`. One table in `describe.rs` names each call once; the Rust name is the same words in snake\_case. The `Host` trait uses those names too (today `position` and `positionOf` differ).
 11. **Mistakes are loud and point at the line.** A wrong name is caught before the game runs. A dead entity, a missing component, or a clip the entity's animation file doesn't have stops with a message naming the line, never a silent nothing.
 12. **One way to do each job.** When a better call replaces an old one, the old name goes in `RENAMED` with a warning that names the new call, and is removed at the next phase.
+
+13) **Examples are written to be read.** In the manual, the samples and the kit: blank lines between ideas, a one-line comment per group, sums named before they're used (`float speed = velocity:length();`), and every question over several lines. Most people learn by copying, so the examples set how game code looks.
 
 Naming at a glance:
 
@@ -77,19 +80,17 @@ Naming at a glance:
 | --- | --- | --- |
 | Engine object | PascalCase noun | `Input`, `Physics`, `Audio` |
 | Project names | PascalCase state, folders as options | `Clip.Farmer.Walk` |
-| Read a value | noun method | `me:velocity()` |
-| Ask yes/no | adjective or verb that reads after `is` | `is me:grounded()?` |
-| Set a value | `set` + noun | `me:setVelocity(v)` |
-| Do something | verb | `me:push(force)` |
+| Read a value | noun method | `velocity()` |
+| Ask yes/no | adjective or verb that reads after `is` | `is grounded()?` |
+| Set a value | `set` + noun | `setVelocity(v)` |
+| Do something | verb | `push(force)` |
 | Variant | base word + difference | `animateFromStart` |
 | Event | past tense, PascalCase | `ClipFinished` |
 | Several answers | a class with fields | `RayHit` |
 
 ## Animation, before and after
 
-> **Since rule 4 was rewritten (2026-10-28):** an animator made in the editor (`.solanim`) stays, with its states, switches, numbers and triggers. Game code reaches it through the Lust file the editor writes for it: a state of its state names and a class with one method per switch, number and trigger it has, and one asking which state it's in. The rows below that say "(gone)" for the animator's switches and numbers are replaced by that file's methods; the clip calls below still apply to sprites without an animator.
-
-The suggested animator and today's clip calls both become a handful of methods on the entity, with clips as states. The game's own questions decide which clip plays.
+The animation state machine Solis is building stays exactly as planned (decision 0057): states, switches, numbers, triggers, blend spaces and the graph editor. What changes is how code reaches it. The editor writes a Lust file for each animator, so every name in the graph becomes something Lust checks.
 
 The engine's suggestion:
 
@@ -103,58 +104,89 @@ jumpToAnimState(me, "Idle");
 setAnimSpeed(me, 1.5);
 ```
 
-The same farmer under the guidelines:
+What the editor writes from `farmer.solanim`, whenever the graph changes:
 
 ```
-fetch "solis/project":[Clip, Cue, Action, Sound];
-fetch "solis/input":Input;
+-- animators/farmer.lst, written by the editor from farmer.solanim. Never edited by hand.
+state FarmerState = [Idle, Walk, UseTool [Swing, Water]];   -- the graph's states; groups become options inside options
+
+class FarmerAnimator {
+    has { entity owner = nothing; }
+    method setMoving(bool on) { … }           -- a switch
+    method setSpeed(float value) { … }        -- a number; blend spaces read these
+    method setFacing(vec3 direction) { … }    -- a direction
+    method swing() { … }                      -- a trigger is a verb
+    method FarmerState current() { … }        -- which state the graph is in
+    method jumpTo(FarmerState which) { … }
+    method setPlaybackSpeed(float scale) { … }
+}
+pass FarmerState, FarmerAnimator;
+end
+```
+
+The same farmer, using it:
+
+```
+fetch "solis/project":[Action, Cue, Sound];
+fetch "solis/engine":Input;
+fetch "animators/farmer":[FarmerAnimator, FarmerState];
 
 component Farmer {
+    has {
+        FarmerAnimator anim;        -- the farmer's animator, filled in by the engine
+    }
+
     method update(float dt) {
-        vec3 velocity = me:velocity();
-        me:face(velocity);
-        is me:animation() == Clip.Farmer.Swing? then {
-            -- let the swing finish; ClipFinished says when
-        } or is Input:pressed(Action.Use)? then {
-            me:animate(Clip.Farmer.Swing);
-        } or is velocity:length() > 0.1? then {
-            me:animate(Clip.Farmer.Walk);
-            me:setAnimationSpeed(velocity:length() / 2);
-        } or {
-            me:animate(Clip.Farmer.Idle);
+        -- How is the farmer moving right now?
+        vec3 velocity = velocity();
+        float speed = velocity:length();
+
+        -- Tell the farmer's animator.
+        anim:setMoving(speed > 0.1);
+        anim:setSpeed(speed);
+        anim:setFacing(velocity);
+
+        -- The use button swings the hoe.
+        is Input:pressed(Action.Use)? then {
+            anim:swing();
+        }
+
+        -- Stand still while using a tool.
+        is anim:current() == FarmerState.UseTool? then {
+            setVelocity([0, 0, 0]);
         }
     }
 
-    on ClipFinished(Clip clip) {
-        is clip == Clip.Farmer.Swing? then { me:animate(Clip.Farmer.Idle); }
-    }
-
     on CueReached(Cue cue) {
-        is cue == Cue.HoeHits? then { me:playSound(Sound.Sfx.Hoe); }
+        is cue == Cue.HoeHits? then {
+            playSound(Sound.Sfx.Hoe);
+        }
     }
 }
 pass Farmer;
 end
 ```
 
+I checked this shape against Lust alpha 48: a class like `FarmerAnimator`, whose methods call a few general engine calls by number, works today. Rename the `moving` switch in the graph and every `anim:setMoving` becomes a mistake that says so. The `{ … }` bodies are the editor's business; game writers never see them.
+
 Every call, old and new:
 
 | Today or suggested | Under the guidelines | Why |
 | --- | --- | --- |
-| `playClip(me, "walk")` | `me:animate(Clip.Farmer.Walk)` | a method on the thing; the clip is a state |
-| `replayClip(me, "swing")` | `me:animateFromStart(Clip.Farmer.Swing)` | variant: base word, then the difference |
-| `stopClip(me)` | `me:stopAnimation()` | a verb |
+| `setAnimSwitch(me, "moving", m)` | `anim:setMoving(m)` | the switch's name is a method Lust checks |
+| `setAnimNumber(me, "speed", s)` | `anim:setSpeed(s)` | same, for a number |
+| `setAnimDirection(me, "facing", v)` | `anim:setFacing(v)` | same, for a direction |
+| `triggerAnim(me, "swing")` | `anim:swing()` | a trigger is a verb |
+| `animStateOf(me) == "Use tool"` | `anim:current() == FarmerState.UseTool` | a state, so `check` and `==` work |
+| `jumpToAnimState(me, "Idle")` | `anim:jumpTo(FarmerState.Idle)` | takes a state, not a string |
+| `setAnimSpeed(me, 1.5)` | `anim:setPlaybackSpeed(1.5)` | `set` + noun, and can't clash with a `speed` number |
+| `playClip(me, "walk")` | `animate(Clip.Door.Open)` | for things with no animator, like a door |
+| `replayClip(me, "swing")` | `animateFromStart(...)` | variant: base word, then the difference |
+| `stopClip(me)` | `stopAnimation()` | a verb |
 | `on AnimationCue(string name)` | `on CueReached(Cue cue)` | past tense; carries a state |
 | `on ClipFinished(string clip)` | `on ClipFinished(Clip clip)` | carries a state |
-| `setAnimSwitch(me, "moving", moving)` | (gone) a question in the game: `is velocity:length() > 0.1?` | game logic stays in Lust |
-| `triggerAnim(me, "swing")` | `me:animate(Clip.Farmer.Swing)` | a one-shot is a clip marked "plays once" in the editor |
-| `animStateOf(me) == "Use tool"` | `me:animation() == Clip.Farmer.Swing` | a noun reader that gives back a state |
-| `jumpToAnimState(me, "Idle")` | `me:animate(Clip.Farmer.Idle)` | one way to do each job |
-| `setAnimNumber(me, "speed", s)` | (gone) or `me:setAnimationSpeed(s)` | no hidden parameters |
-| `setAnimDirection(me, "facing", v)` | `me:face(v)` | sprites pick the matching direction; 3D turns |
-| `setAnimSpeed(me, 1.5)` | `me:setAnimationSpeed(1.5)` | `set` + the noun |
 
-Blending between clips (how long a walk-to-run takes) is set per clip pair in the editor's animation tab. If a blend that follows a number is needed later (a walk that becomes a run as speed rises), that is one clip marked "blends by a number" in the editor and one call, `me:setBlend(speed)`. It is not a named parameter.
+Two rules keep this tidy. An entity with an animator is driven through it: `animate(...)` on such an entity stops with a message saying to use its animator. And the editor refuses a switch, number or trigger whose name would clash with the class's own methods (`current`, `jumpTo`, `setPlaybackSpeed`), when it's added in the graph.
 
 ## The rest of today's API
 
@@ -164,7 +196,7 @@ Every call game code has today, under the same rules. Each old name goes in `REN
 | --- | --- |
 | `positionOf(e)` / `moveTo(e, p)` | `e:position()` / `e:moveTo(p)` |
 | `rotationOf(e)` / `turnTo(e, r)` | `e:rotation()` / `e:turnTo(r)` |
-| `facingAlong(dir)` | `me:face(dir)` when it's for turning; kept as a plain maths helper otherwise |
+| `facingAlong(dir)` | `face(dir)` when it's for turning; kept as a plain maths helper otherwise |
 | `nameOf(e)` | `e:name()` |
 | `find("name")` | `World:find("name")` (a name typed in the editor is real text) |
 | `spawn("ships/fighter.solasm", p)` / `despawn(e)` | `World:spawn(Assembly.Ships.Fighter, p)` / `e:despawn()` |
@@ -189,15 +221,17 @@ The engine files can stay as they are (`world`, `entity`, `physics`, `input`, `s
 
 ## What Lust needs
 
-Two small Lust changes make all of this possible. I tested the rest against Lust alpha 48 and it already works.
+Four Lust changes make all of this possible. I tested the rest against Lust alpha 48 and it already works.
 
 | Needed | Works today? | Change |
 | --- | --- | --- |
 | Engine objects with native methods (`Input:pressed(...)`) | Yes | none |
 | A native method giving back a class with fields (`RayHit`) | Yes | none |
 | Events carrying a state (`on ClipFinished(Clip clip)`) | Yes | none |
-| A native method taking or giving back a state (`me:animate(Clip.Farmer.Walk)`) | **No**: "a native method takes ints, floats, text…" | Lust lets natives take and give back states. Rust gets the option as a number plus its full name (`"Farmer.Walk"`); Lua gets the option as it already has it. |
-| Methods on `entity` (`me:position()`) | **No**: `entity` has only `==` and `.text()` | An engine file can give `entity` native methods, checked like any other method. The syntax for this is open question 1 below. |
+| A native method taking or giving back a state (`animate(Clip.Farmer.Walk)`) | **No**: "a native method takes ints, floats, text…" | Lust lets natives take and give back states. Rust gets the option as a number plus its full name (`"Farmer.Walk"`); Lua gets the option as it already has it. |
+| Abilities on `entity` (`target:position()`) | **No**: `entity` has only `==` and `.text()` | An engine file can give `entity` native methods, checked like any other method. The syntax is open question 1 below. |
+| Abilities called bare inside a component, and `this` | **No**: today it's `me:position()` | Inside a component, the thing's abilities are called bare; a variable may share a name with one; `this` names the whole thing. `me` keeps working for a while with a message pointing to the new way. |
+| Editor-made parts as fields (`FarmerAnimator anim;`) | **No**: component fields can't hold classes, and every field needs a starting value | A component can list an editor-made part with no starting value; the engine fills it in, and the editor shows it's connected. |
 
 Both changes are inside Lust, so I'd make them in the Lust repo the usual way: one pull request each, with tests and the rulebook. Solis then moves its API over one area at a time, keeping the old names working with a warning.
 
@@ -207,7 +241,7 @@ Before any new engine call goes into Solis, it answers yes to all of these:
 
 - [ ] It acts on one entity, so it's a method on `entity`; or it has no owner, so it's on an engine object.
 - [ ] Every fixed choice it takes or gives back is a project state, not a string.
-- [ ] Anything made in an editor that it touches reaches code through a file the editor writes (rule 4), never a string.
+- [ ] Anything made in an editor reaches code through the file the editor writes, never names in strings.
 - [ ] Its name follows the shapes: noun reader, question-word yes/no, `set` + noun, verb, variant at the end.
 - [ ] Several answers come back as one class.
 - [ ] Calling it every frame is safe.
@@ -223,4 +257,4 @@ Open questions for the project lead:
 3. **`me:walk(wanted)` for character movement**, replacing `moveCharacter`. Or `me:moveCharacter(wanted)` if "walk" feels wrong for flying or swimming.
 4. **Should Solis keep the old names working** for one phase with a warning, or switch straight over? There are few games yet, so a straight switch is cheaper.
 
-**Answers (2026-10-28):** the project lead had no preference on questions 1 and 4, so the recommendations stand: `method vec3 entity:position() native;`, and a straight switch (an old name becomes a mistake that names the new call). Questions 2 and 3 take the recommendations too (`Input`, `World`, `Physics`, `Audio`, `Saves`; `me:walk(wanted)`) unless the project lead says otherwise. The two Lust changes are made in the Lust repository; Solis moves its pinned Lust forward once they land.
+**Answers (2026-10-28):** the project lead had no preference on questions 1 and 4, so the recommendations stand: `method vec3 entity:position() native;`, and a straight switch (an old name becomes a mistake that names the new call). Questions 2 and 3 take the recommendations too (`Input`, `World`, `Physics`, `Audio`, `Saves`; `walk(wanted)` inside a component) unless the project lead says otherwise. The four Lust changes are made in the Lust repository; Solis moves its pinned Lust forward once they land.
