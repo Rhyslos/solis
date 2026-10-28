@@ -1,0 +1,4 @@
+# Example files and fuzz seeds are kept byte for byte: a Windows checkout
+# must not change their line endings (a save carries a checksum).
+tests/fixtures/** -text
+fuzz/seeds/** -text
