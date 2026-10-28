@@ -30,4 +30,4 @@ Know every asset in a project (models, assemblies: `.solassembly`, and sounds: `
 
 ## Status
 
-New projects' `.gitignore` keeps out `.solis/`, `builds/` and, from Phase 6, `saves/`. Phase 2, milestone 5: projects, sidecars, the cache, watching and workers. Phase 5: the import cache keeps each mesh's levels of detail (layout version 2), so they're made once; version 3 measures a model's box without its own levels of detail. Phase 3: listing every file, and renaming, moving, new folders and deleting from the Library. Phase 7, S1: the `Sound` asset kind and file kind.
+New projects' `.gitignore` keeps out `.solis/`, `builds/` and, from Phase 6, `saves/`. Phase 2, milestone 5: projects, sidecars, the cache, watching and workers. Phase 5: the import cache keeps each mesh's levels of detail (layout version 2), so they're made once; version 3 measures a model's box without its own levels of detail. Phase 3: listing every file, and renaming, moving, new folders and deleting from the Library. Phase 7, S1: the `Sound` asset kind and file kind. S2: the `SoundEvent` kind (`.solsound`).

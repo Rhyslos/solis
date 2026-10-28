@@ -20,6 +20,7 @@ New to game engines? Start with [Concepts](concepts.md).
 - [Projects and the Library: keeping your game's files together](projects-and-the-library.md)
 - [Importing models: glTF files from Blender, Aventail and other programs](importing-models.md)
 - [Sounds: WAV and Ogg files, their waveforms, and listening to them](sounds.md)
+- [Sound events: takes that vary, so nothing sounds copied](sound-events.md)
 - [Levels of detail: simpler models far away](levels-of-detail.md)
 - [Looks: standard, stylized and unlit](looks.md)
 - [Lights and shadows: the sun, point lights and spotlights](lights.md)

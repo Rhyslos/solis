@@ -35,6 +35,7 @@ pub mod profiler;
 mod properties;
 mod save_game;
 pub mod screen;
+mod sound_event_view;
 pub mod sound_view;
 pub mod splash;
 #[cfg(test)]
@@ -60,7 +61,7 @@ pub use look::{Look, LookKind};
 pub use models::{FileLight, FileLightKind, ModelInfo};
 pub use panel::Panel;
 pub use play::PlayState;
-pub use sound_view::{Preview, SoundInfo, SoundState};
+pub use sound_view::{EventState, Preview, SoundInfo, SoundState};
 pub use splash::{SplashView, UpdateAnswer, UpdateOffer};
 pub use transforming::Snapping;
 pub use updates::UpdateNotice;

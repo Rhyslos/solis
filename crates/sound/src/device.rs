@@ -17,7 +17,7 @@ use kira::sound::PlaybackState;
 use kira::sound::static_sound::{StaticSoundData, StaticSoundHandle, StaticSoundSettings};
 use kira::sound::streaming::{StreamingSoundData, StreamingSoundHandle};
 use kira::track::{TrackBuilder, TrackHandle};
-use kira::{AudioManager, AudioManagerSettings, Frame, Tween};
+use kira::{AudioManager, AudioManagerSettings, Decibels, Frame, PlaybackRate, Tween};
 use std::fs::File;
 use std::io::BufReader;
 use std::path::Path;
@@ -148,13 +148,37 @@ impl SoundDevice {
     /// Previews a clip on the Editor track, stopping any preview first.
     /// Silent devices do nothing.
     pub fn preview(&mut self, clip: &Clip) -> Result<(), String> {
+        self.preview_varied(clip, 0.0, 1.0)
+    }
+
+    /// Previews a clip as one play of a sound event would sound: `volume_db`
+    /// louder or quieter, and played `speed` times as fast (which raises
+    /// or lowers its pitch with it).
+    pub fn preview_varied(
+        &mut self,
+        clip: &Clip,
+        volume_db: f32,
+        speed: f64,
+    ) -> Result<(), String> {
         self.stop_preview();
+        let volume = Decibels(if volume_db.is_finite() {
+            volume_db
+        } else {
+            0.0
+        });
+        let rate = PlaybackRate(if speed.is_finite() && speed > 0.0 {
+            speed
+        } else {
+            1.0
+        });
         let Some(track) = self.editor.as_mut() else {
             return Ok(());
         };
         let preview = match &clip.samples {
             Samples::Memory(frames) => {
-                let data = memory_sound(clip.info, frames.clone());
+                let data = memory_sound(clip.info, frames.clone())
+                    .volume(volume)
+                    .playback_rate(rate);
                 Preview::Memory(
                     track
                         .play(data)
@@ -163,7 +187,9 @@ impl SoundDevice {
             }
             Samples::Streamed(path) => {
                 let stream = FileStream::open(path, clip.info).map_err(|e| e.to_string())?;
-                let data = StreamingSoundData::from_decoder(stream);
+                let data = StreamingSoundData::from_decoder(stream)
+                    .volume(volume)
+                    .playback_rate(rate);
                 Preview::Stream(
                     track
                         .play(data)

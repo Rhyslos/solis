@@ -13,6 +13,7 @@ Real files the fuzzers start from, one folder per target in [`../fuzz_targets`](
 | `recording/` | A recording of play (`.solrec`). |
 | `save_game/` | A save game (`.solsave`). |
 | `sidecar/` | Sidecars (`.solmeta`) of the sample models. |
+| `sound_event/` | A full sound event, an empty one and a looping 2D one. |
 | `sound_file/` | WAV files of each kind the reader takes, and Ogg Vorbis files from `crates/sound/tests/data`. |
 | `update_answer/` | A release answer and its checksum file, joined by a 0x01 byte. |
 

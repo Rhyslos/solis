@@ -13,6 +13,7 @@ One fuzz target per reader of a file a project can ship (decision 0042). Each ta
 | `recording.rs` | A recording of play: refused or read, then written and read back the same. |
 | `save_game.rs` | A save game loaded into a fresh editor: refused with why, or loaded and played on a few ticks. |
 | `sidecar.rs` | A sidecar (`*.solmeta`): refused or read, then written and read back. |
+| `sound_event.rs` | A sound event file (`.solsound`): refused or read, always within its limits, written back to itself, and every pick one of its takes. |
 | `sound_file.rs` | A WAV or Ogg Vorbis file: refused or read, always within the limits, every sample between -1 and 1. |
 | `update_answer.rs` | GitHub's answer about the latest release and the installer's checksum file (split by a 0x01 byte): a release read only ever points at the repository's own downloads. |
 
