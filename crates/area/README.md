@@ -2,7 +2,7 @@
 
 **Layer 0 · Core**
 
-The area document ([decision 0019](../../docs/decisions/0019-scene-document-now-game-storage-later.md)): entities with stable IDs, names, parents and sibling order, and their components as plain values described by schemas (the `reflect` crate). Also the built-in components: `Transform`, `Light`, `Environment`, `Model`, `Camera` (what the game looks through: field of view, near and far, with its projection), and from Phase 6 `RigidBody` (dynamic, kinematic or fixed; mass, damping, gravity, upright, fast) `Collider` (box, sphere or capsule; size, radius, height, centre, friction, bounciness) and `CharacterBody` (a standing capsule moved by game code: height, radius, step height, steepest slope, keeps to the ground, mass; `collider` gives its capsule), which the game's world turns into physics.
+The area document ([decision 0019](../../docs/decisions/0019-scene-document-now-game-storage-later.md)): entities with stable IDs, names, parents and sibling order, and their components as plain values described by schemas (the `reflect` crate). Also the built-in components: `Transform`, `Light`, `Environment`, `Model`, `Camera` (what the game looks through: its View, perspective or 2D, field of view, near and far, with its projection), and from Phase 6 `RigidBody` (dynamic, kinematic or fixed; mass, damping, gravity, upright, fast) `Collider` (box, sphere or capsule; size, radius, height, centre, friction, bounciness) and `CharacterBody` (a standing capsule moved by game code: height, radius, step height, steepest slope, keeps to the ground, mass; `collider` gives its capsule), which the game's world turns into physics.
 
 ## Purpose
 
@@ -16,6 +16,7 @@ Be the one place an area lives while it's edited. The editor, saving and loading
 - **The tree:** `hierarchy()` and `depth_first()` give every entity's children in one pass; `order_after` and `order_at_end` make sibling orders (short base-36 counters) so new entities go last; `world_matrix` adds up parents' transforms.
 - **Text** (`text.rs`): areas as Lust-style data blocks ([decision 0020](../../docs/decisions/0020-scene-files-in-lust-style.md)): `write` and `read`, one block per entity sorted by ID, numbers as the shortest text that reads back exactly, unknown components kept, a version line, limits checked before keeping anything, every mistake reported with its line. No file access: the app reads and writes the files.
 - **Assemblies** (`assembly.rs`): a placed assembly is its root entity (with an `Origin`) plus overrides in the file, and ordinary entities while edited. `Expander` expands copies (IDs from `derive(copy root, path)`, so the same file gives the same IDs), collapses them back to what differs, counts entities before making any, refuses loops (naming the chain) and nesting past 16. Overrides whose part is gone are kept. `set_in_file` is Apply to assembly.
+- **2D settings** (`pixels.rs`, Phase 9, D1): a project's base resolution, pixels per unit, tile size and scaling, read from and written to `pixels.solpix` (a settings file, format 1), values out of range brought in with a note.
 - **A new area** has a Sun and an Environment (the sun, sky and fog live in each area).
 
 ## Must never

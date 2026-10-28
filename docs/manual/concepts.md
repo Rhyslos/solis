@@ -150,6 +150,17 @@
 - **Mute and solo:** mute silences a bus; solo plays only the soloed buses, to hear one part on its own.
 - **Streaming:** playing a long sound a piece at a time as it's read from its file, instead of reading all of it first, so a long piece of music doesn't fill the memory. Solis streams sounds longer than ten minutes.
 
+## 2D
+
+- **2D in Solis:** flat things lying on the ground, seen from straight above by a camera with no perspective. They're in the same world as 3D, so light, sound, physics, saving and game code work on them too. Height (Z) says what's drawn over what. See [2D: the pixel-perfect view](2d-pixel-perfect.md).
+- **Pixel art:** pictures drawn one pixel at a time, at a small size, meant to be shown scaled up with every pixel kept square and sharp.
+- **Base resolution:** the size a 2D game is drawn at before it's scaled up to the screen, such as 480 × 270. Smaller shows chunkier pixels and less of the world.
+- **Pixels per unit:** how many of the game's pixels make one metre of the world. With 16, a 16-pixel tile is one metre.
+- **Pixel-perfect:** every pixel of the game shown as the same whole number of screen pixels, never blurred or uneven. Solis draws the game at its base resolution and scales it up in **whole steps** (×2, ×3, ×4…).
+- **Whole steps:** scaling by a whole number. When the screen isn't a whole number of times the base resolution, the rest is black **bars**; **Fill** scales a little further instead, smoothing only the edge of each pixel.
+- **2D camera:** a camera whose View is 2D: it looks straight down at the game's base resolution, follows its entity's place, and never turns.
+- **Tile:** one square of a 2D world's grid, usually 16 pixels; tile maps (coming soon) are built from them.
+
 ## Getting Solis
 
 - **Build:** one version of the program, made by GitHub each time a change is merged into the main version. Each build has a **build number** that goes up by one or more each time, so a bigger number is newer. Help > About shows yours. See [Installing and updating](installing-and-updating.md).

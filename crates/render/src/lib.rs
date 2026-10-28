@@ -13,6 +13,7 @@ mod gpu_model;
 mod instances;
 mod lighting;
 mod pick;
+mod pixel;
 mod projectiles;
 mod readback;
 mod renderer;
@@ -30,8 +31,11 @@ pub use lighting::{
     sun_view_fitted, sun_view_projection,
 };
 pub use pick::{PICK_SHADER_SOURCE, PickResult};
+pub use pixel::{
+    MAX_SLIDE, PIXEL_SHADER_SOURCE, PixelImage, PixelLayout, PixelScaling, pixel_layout,
+};
 pub use projectiles::Bolt;
-pub use readback::read_pixels;
+pub use readback::{read_pixels, read_texture};
 pub use renderer::{
     AXIS_X_COLOR, AXIS_Y_COLOR, COLOR_FORMAT, DEPTH_FORMAT, HDR_FORMAT, LineVertex, SHADER_SOURCE,
     ViewportRenderer, ViewportTarget, best_sample_count, ground_axes,

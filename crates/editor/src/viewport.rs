@@ -143,6 +143,27 @@ pub struct ViewportView {
     pub kind: ViewKind,
     /// Projectiles to draw (the game's).
     pub bolts: std::sync::Arc<Vec<ViewBolt>>,
+    /// The finest grid lines' spacing, in metres: 1 m, or the tile size in
+    /// the 2D view.
+    pub grid_step: f32,
+    /// For a 2D camera (Phase 9, D1): the picture is drawn this small,
+    /// with `view_projection` for it, then scaled up to `size_px` by the
+    /// pixel stage.
+    pub pixel: Option<PixelView>,
+}
+
+/// How a 2D game's picture is drawn small and scaled up: the renderer
+/// draws the base resolution plus a pixel each side, then the pixel stage
+/// scales it up ([`render`'s `pixel_layout`]).
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct PixelView {
+    /// The base resolution, in pixels.
+    pub base: [u32; 2],
+    /// How it fills the screen.
+    pub scaling: area::pixels::Scaling,
+    /// The bit of a pixel the camera has moved beyond the whole pixel the
+    /// picture is drawn at, in pixels (x right, y down the picture).
+    pub slide: [f32; 2],
 }
 
 /// A projectile to draw: a glowing streak from its head back along its
@@ -321,6 +342,9 @@ pub struct Viewport {
     panes: Vec<Pane>,
     /// Where the whole viewport (every view) was drawn last frame.
     pub(crate) full: Rect,
+    /// The project's 2D settings, for the 2D view (the workbench hands
+    /// them over each frame).
+    pub(crate) pixels: area::pixels::PixelSettings,
 }
 
 /// How the viewport is split into views. Saved per computer.
@@ -453,6 +477,7 @@ impl Default for Viewport {
             maximized: None,
             active: 0,
             full: Rect::NOTHING,
+            pixels: area::pixels::PixelSettings::default(),
             panes: FIRST_KINDS
                 .iter()
                 .map(|&kind| Pane {
@@ -579,14 +604,22 @@ impl Viewport {
         1.0 / self.frame_time.max(1e-4)
     }
 
+    /// The camera in use as a view of `size_px` physical pixels shows it:
+    /// itself, or for the 2D view, set to show whole pixels
+    /// ([`Camera::seen`]).
+    pub fn seen(&self, size_px: [u32; 2]) -> Camera {
+        self.camera.seen(size_px, self.pixels.pixels_per_unit)
+    }
+
     /// The view for an image of `size_px` physical pixels.
     pub fn view(&self, size_px: [u32; 2], pixels_per_point: f32) -> ViewportView {
         let aspect = size_px[0].max(1) as f32 / size_px[1].max(1) as f32;
+        let camera = self.seen(size_px);
         ViewportView {
             size_px,
-            view_projection: self.camera.view_projection(aspect),
-            camera_position: self.camera.viewpoint(),
-            focus: self.camera.focus(),
+            view_projection: camera.view_projection(aspect),
+            camera_position: camera.viewpoint(),
+            focus: camera.focus(),
             sky_top: rgb(theme::backdrop::SKY_TOP),
             sky_horizon: rgb(theme::backdrop::HORIZON),
             ground: rgb(theme::backdrop::GROUND),
@@ -610,6 +643,12 @@ impl Viewport {
             editor_lines: true,
             kind: self.camera.kind,
             bolts: std::sync::Arc::default(),
+            grid_step: if self.camera.kind == ViewKind::TwoD {
+                self.pixels.tile_size()[0]
+            } else {
+                1.0
+            },
+            pixel: None,
         }
     }
 
@@ -708,6 +747,16 @@ impl Viewport {
             (rect.height() * ppp).round().max(1.0) as u32,
         ];
         let size = glam::Vec2::new(rect.width(), rect.height());
+        // The 2D view shows as much as its zoom says at this size: kept, so
+        // the next frame's drags and zooms start from it.
+        let seen = self.seen(size_px);
+        self.camera.flat_height = seen.flat_height;
+        let two_d = self.camera.kind == ViewKind::TwoD;
+        // The 2D view moves things across the ground only.
+        let mut snapping = self.snapping;
+        if two_d {
+            snapping.locked[2] = true;
+        }
         self.tools
             .receive(renderer.picked(VIEWPORT_IMAGE + self.active));
         if !self.is_flying() {
@@ -731,7 +780,7 @@ impl Viewport {
                 on_viewport: response.hovered() && !on_corner,
             });
             self.tools
-                .interact(input, &self.camera, &self.area, &self.snapping, size, ppp);
+                .interact(input, &seen, &self.area, &snapping, size, ppp);
         }
         let mouse = ui
             .input(|i| i.pointer.latest_pos())
@@ -741,7 +790,7 @@ impl Viewport {
             && dropped.0.kind.placeable()
         {
             self.tools
-                .drop_asset(asset, at, &self.camera, &self.area, size, ppp);
+                .drop_asset(asset, at, &seen, &self.area, size, ppp);
         }
         let mut view = self.view(size_px, ppp);
         view.pick = self.tools.send_with(&self.area.pickable);
@@ -770,15 +819,11 @@ impl Viewport {
                 );
             }
         }
-        viewport_tools::draw_cameras(ui, rect, &self.area.cameras, &self.camera);
-        viewport_tools::draw(
-            ui,
-            rect,
-            &self.tools,
-            &self.camera,
-            self.snapping.locked,
-            accent,
-        );
+        if two_d {
+            draw_screens(ui, rect, &self.area.screens, &seen, self.pixels);
+        }
+        viewport_tools::draw_cameras(ui, rect, &self.area.cameras, &seen);
+        viewport_tools::draw(ui, rect, &self.tools, &seen, snapping.locked, accent);
         if let Some(dragged) = response.dnd_hover_payload::<crate::library::LibraryDrag>()
             && dragged.0.kind.placeable()
             && let Some(at) = ui.input(|i| i.pointer.latest_pos())
@@ -857,15 +902,26 @@ impl Viewport {
             } else {
                 Layout::bottom_up(Align::Max)
             };
-            let mut snapping = corner(ui, "snapping", layout);
-            viewport_tools::snapping_corner(
-                &mut snapping,
-                &mut self.snapping,
-                accent,
-                self.camera.speed,
-                !several,
-            );
-            covered.push(snapping.min_rect());
+            let mut corner_ui = corner(ui, "snapping", layout);
+            if two_d {
+                viewport_tools::pixel_corner(
+                    &mut corner_ui,
+                    &mut self.snapping,
+                    &mut self.camera.zoom,
+                    self.pixels,
+                    accent,
+                    !several,
+                );
+            } else {
+                viewport_tools::snapping_corner(
+                    &mut corner_ui,
+                    &mut self.snapping,
+                    accent,
+                    self.camera.speed,
+                    !several,
+                );
+            }
+            covered.push(corner_ui.min_rect());
         }
         self.covered = covered;
     }
@@ -1017,9 +1073,34 @@ impl Viewport {
                         }
                         ViewKind::Front => "Flat, from the front (looking north)",
                         ViewKind::Right => "Flat, from the right (looking west)",
+                        ViewKind::TwoD => {
+                            "Flat, in pixels: for 2D games. Slides like the other flat views; the \
+                             wheel zooms in whole steps, so pixels stay sharp"
+                        }
+                    };
+                    let label: egui::WidgetText = if each == ViewKind::TwoD {
+                        ui.separator();
+                        let mut job = egui::text::LayoutJob::default();
+                        let style = ui.style().clone();
+                        for text in [
+                            RichText::new(format!("{}  ", each.name())),
+                            RichText::new("flat, in pixels")
+                                .color(theme::TEXT_WEAK)
+                                .size(11.0),
+                        ] {
+                            text.append_to(
+                                &mut job,
+                                &style,
+                                egui::FontSelection::Default,
+                                Align::Center,
+                            );
+                        }
+                        job.into()
+                    } else {
+                        each.name().into()
                     };
                     if ui
-                        .add(egui::Button::new(each.name()).selected(each == kind))
+                        .add(egui::Button::new(label).selected(each == kind))
                         .on_hover_text(hint)
                         .clicked()
                     {
@@ -1273,3 +1354,63 @@ mod tests {
         );
     }
 }
+
+/// The 2D view's frames: what each 2D camera shows of the world at the
+/// project's base resolution, dashed, the game's own labelled "Game
+/// screen".
+fn draw_screens(
+    ui: &Ui,
+    rect: Rect,
+    screens: &[(Vec3, bool)],
+    camera: &Camera,
+    pixels: area::pixels::PixelSettings,
+) {
+    let painter = ui.painter_at(rect);
+    let size = glam::Vec2::new(rect.width(), rect.height());
+    let half =
+        glam::Vec2::new(pixels.base[0] as f32, pixels.base[1] as f32) * pixels.pixel_size() * 0.5;
+    for &(at, game) in screens {
+        let corner = |dx: f32, dy: f32| {
+            camera
+                .project(Vec3::new(at.x + dx, at.y + dy, 0.0), size)
+                .map(|p| rect.min + vec2(p.x, p.y))
+        };
+        let (Some(top_left), Some(bottom_right)) =
+            (corner(-half.x, half.y), corner(half.x, -half.y))
+        else {
+            continue;
+        };
+        let frame = Rect::from_two_pos(top_left, bottom_right);
+        let colour = if game {
+            theme::TEXT_STRONG
+        } else {
+            theme::TEXT_WEAK
+        };
+        let stroke = egui::Stroke::new(1.5, colour);
+        for (a, b) in [
+            (frame.left_top(), frame.right_top()),
+            (frame.right_top(), frame.right_bottom()),
+            (frame.right_bottom(), frame.left_bottom()),
+            (frame.left_bottom(), frame.left_top()),
+        ] {
+            painter.add(egui::Shape::dashed_line(&[a, b], stroke, 8.0, 5.0));
+        }
+        let [w, h] = pixels.base;
+        let label = if game {
+            format!("Game screen, {w} × {h}")
+        } else {
+            format!("2D camera, {w} × {h}")
+        };
+        painter.text(
+            frame.left_top() - vec2(0.0, 4.0),
+            egui::Align2::LEFT_BOTTOM,
+            label,
+            egui::FontId::proportional(12.0),
+            colour,
+        );
+    }
+}
+
+#[cfg(test)]
+#[path = "two_d_tests.rs"]
+mod two_d_tests;

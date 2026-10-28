@@ -50,6 +50,9 @@ pub struct FrameParams {
     /// Which plane the grid lies in: the ground, or the plane a flat
     /// view looks at.
     pub grid_plane: GridPlane,
+    /// The finest grid's spacing, in metres (1 m as a rule; the 2D view's
+    /// tile size); the other two levels are 10 and 100 times it.
+    pub grid_step: f32,
 }
 
 /// The plane the grid lies in.
@@ -194,7 +197,12 @@ impl FrameUniforms {
         let mut post = crate::environment::post_uniform(&params.environment);
         post[2] = if sky.daylight { 1.0 } else { 0.0 };
         let reach = grid_reach(params.camera_position.distance(params.focus));
-        let [fine, major, super_level] = GRID_SPACINGS;
+        let step = if params.grid_step.is_finite() && params.grid_step > 0.0 {
+            params.grid_step.clamp(1e-3, 1e3)
+        } else {
+            GRID_SPACINGS[0]
+        };
+        let [fine, major, super_level] = GRID_SPACINGS.map(|s| s * step);
         let [a, b, c] = GRID_STRENGTHS;
         Self {
             view_projection: params.view_projection.to_cols_array_2d(),
@@ -265,6 +273,7 @@ mod tests {
             environment: crate::environment::Environment::default(),
             editor_lines: true,
             grid_plane: GridPlane::Ground,
+            grid_step: 1.0,
         }
     }
 
@@ -298,6 +307,19 @@ mod tests {
         assert_eq!(u.focus[3], grid_reach(params().camera_position.length()));
         assert_eq!(u.grid, [1.0, 10.0, 100.0, GRID_HALF_EXTENT]);
         assert!(u.sky_top[0] < 0.29, "colours are converted to linear");
+    }
+
+    #[test]
+    fn the_grid_step_spaces_every_level_and_a_silly_one_is_a_metre() {
+        let mut p = params();
+        p.grid_step = 2.0;
+        let u = FrameUniforms::new(&p, &FrameLight::default());
+        assert_eq!(u.grid, [2.0, 20.0, 200.0, GRID_HALF_EXTENT]);
+        for silly in [0.0, -1.0, f32::NAN, f32::INFINITY] {
+            p.grid_step = silly;
+            let u = FrameUniforms::new(&p, &FrameLight::default());
+            assert_eq!(u.grid[0], 1.0, "{silly}");
+        }
     }
 
     #[test]
@@ -348,6 +370,7 @@ mod light_tests {
             environment: crate::environment::Environment::default(),
             editor_lines: true,
             grid_plane: GridPlane::Ground,
+            grid_step: 1.0,
         };
         let light = FrameLight {
             sun_view_projection: Mat4::from_scale(Vec3::splat(2.0)),

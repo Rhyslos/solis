@@ -202,6 +202,60 @@ pub fn load_mixer(root: &Path) -> (sound::Mixer, Vec<String>) {
     }
 }
 
+/// The project's 2D settings (`pixels.solpix`), or the standard ones when
+/// it has none; with notes for the Console, as [`load_mixer`] gives.
+pub fn load_pixels(root: &Path) -> (area::pixels::PixelSettings, Vec<String>) {
+    let file = area::pixels::FILE_NAME;
+    let limit = area::pixels::MAX_BYTES as u64;
+    let text = match read_limited(&root.join(file), limit) {
+        Ok(Some(text)) => text,
+        Ok(None) => return (area::pixels::PixelSettings::default(), Vec::new()),
+        Err(why) => {
+            return (
+                area::pixels::PixelSettings::default(),
+                vec![format!(
+                    "Couldn't read {file}: {why}; the standard 2D settings are used."
+                )],
+            );
+        }
+    };
+    match area::pixels::read(&text) {
+        Ok(read) => (
+            read.settings,
+            crate::upgrades::older_note(file, &text, &area::pixels::FORMAT)
+                .into_iter()
+                .chain(read.notes.into_iter().map(|n| format!("{file}, {n}.")))
+                .collect(),
+        ),
+        Err(why) => (
+            area::pixels::PixelSettings::default(),
+            vec![format!(
+                "{file} {why}, so the standard 2D settings are used until it's fixed (a change \
+                 in Settings > 2D writes it again, keeping this one as a backup)."
+            )],
+        ),
+    }
+}
+
+/// Writes the project's 2D settings, keeping a damaged file first as a
+/// backup and an older one in the backups, as [`save_mixer`] does.
+pub fn save_pixels(
+    root: &Path,
+    settings: &area::pixels::PixelSettings,
+) -> std::io::Result<Option<Kept>> {
+    save_keeping_damaged(
+        root,
+        area::pixels::FILE_NAME,
+        &area::pixels::write(settings),
+        &area::pixels::FORMAT,
+        |text| {
+            area::pixels::read(text)
+                .map(|read| area::pixels::write(&read.settings))
+                .map_err(|e| e.to_string())
+        },
+    )
+}
+
 /// What saving kept of the file that was there.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub enum Kept {
@@ -417,6 +471,49 @@ mod tests {
         let _ = std::fs::remove_dir_all(&dir);
         std::fs::create_dir_all(&dir).unwrap();
         dir
+    }
+
+    #[test]
+    fn the_2d_settings_are_the_project_s_or_the_standard_ones_and_a_damaged_file_is_kept() {
+        use area::pixels::{FILE_NAME, PixelSettings, Scaling};
+        let root = scratch("pixels");
+        assert_eq!(load_pixels(&root), (PixelSettings::default(), Vec::new()));
+        let mine = PixelSettings {
+            base: [320, 180],
+            scaling: Scaling::Fill,
+            ..PixelSettings::default()
+        };
+        assert_eq!(save_pixels(&root, &mine).unwrap(), None);
+        assert_eq!(load_pixels(&root), (mine, Vec::new()));
+        // Out of range by hand: brought in, and said.
+        let file = root.join(FILE_NAME);
+        let text = std::fs::read_to_string(&file)
+            .unwrap()
+            .replace("[320, 180]", "[320, 1]");
+        std::fs::write(&file, text).unwrap();
+        let (read, notes) = load_pixels(&root);
+        assert_eq!(read.base, [320, 16]);
+        assert_eq!(notes.len(), 1, "{notes:?}");
+        assert!(notes[0].starts_with("pixels.solpix, line"), "{notes:?}");
+        // Damaged: the standard settings, why, and kept as a backup when
+        // saved again.
+        std::fs::write(&file, "pixels version 1;\nbase = [480, 270]\n").unwrap();
+        let (read, notes) = load_pixels(&root);
+        assert_eq!(read, PixelSettings::default());
+        assert!(notes[0].contains("standard 2D settings"), "{notes:?}");
+        assert_eq!(
+            kept_as(save_pixels(&root, &read).unwrap()).as_deref(),
+            Some("pixels.solpix.bak")
+        );
+        assert_eq!(load_pixels(&root), (PixelSettings::default(), Vec::new()));
+        // Newer: never written over.
+        std::fs::write(&file, "pixels version 9;\n").unwrap();
+        assert!(load_pixels(&root).1[0].contains("newer"));
+        assert!(save_pixels(&root, &read).is_err());
+        assert_eq!(
+            std::fs::read_to_string(&file).unwrap(),
+            "pixels version 9;\n"
+        );
     }
 
     #[test]

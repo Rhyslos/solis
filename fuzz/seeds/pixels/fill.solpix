@@ -1,0 +1,5 @@
+pixels version 1;
+base = [320, 180];
+pixels_per_unit = 32;
+tile = [32, 16];
+scaling = "fill";

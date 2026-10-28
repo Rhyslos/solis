@@ -9,6 +9,7 @@ One fuzz target per reader of a file a project can ship (decision 0042). Each ta
 | `import_cache.rs` | An import cache entry (`.solis/cache/*.solbin`): refused, or read with every index pointing somewhere. |
 | `input_actions.rs` | A project's input actions (`input.solinput`): refused or read, then written and read back the same. |
 | `model.rs` | A model file (glb or glTF): refused with why, or imported within the limits, its numbers finite. |
+| `pixels.rs` | The project's 2D settings (`pixels.solpix`): refused or read, always within the limits, and written back to themselves. |
 | `project_file.rs` | A project file: refused or read. |
 | `recording.rs` | A recording of play: refused or read, then written and read back the same. |
 | `save_game.rs` | A save game loaded into a fresh editor: refused with why, or loaded and played on a few ticks. |

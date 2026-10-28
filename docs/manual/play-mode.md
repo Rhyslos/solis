@@ -34,7 +34,8 @@ You can also type `play`, `pause`, `step` and `stop` in the [Console](console.md
 ## Settings
 | Setting | What it does |
 |---|---|
-| Camera > Field of view | How wide the camera sees, top to bottom, in degrees. 50° looks like a normal photo; 90° sees much more but stretches the edges. |
+| Camera > View | **Perspective**, as the eye sees, or **2D**: flat, straight down, drawn pixel-perfect at the project's base resolution ([2D](2d-pixel-perfect.md)). |
+| Camera > Field of view | How wide the camera sees, top to bottom, in degrees. 50° looks like a normal photo; 90° sees much more but stretches the edges. A 2D camera doesn't use it. |
 | Camera > Near | The nearest it sees. Raise it if far surfaces flicker. |
 | Camera > Far | The farthest it sees; anything beyond isn't drawn. |
 

@@ -42,6 +42,8 @@ pub(crate) struct PanelViewer<'a> {
     pub(crate) playing: bool,
     /// Whether the game has the mouse and keys.
     pub(crate) game_input: bool,
+    /// The project's 2D settings, for a 2D camera's picture.
+    pub(crate) pixels: area::pixels::PixelSettings,
     /// Set when the Game panel's picture was clicked.
     pub(crate) game_clicked: &'a mut bool,
     pub(crate) document: &'a Document,
@@ -232,6 +234,7 @@ impl TabViewer for PanelViewer<'_> {
                     self.playing,
                     self.game_input,
                     &self.viewport.camera,
+                    self.pixels,
                     self.renderer,
                 );
                 if self.playing {

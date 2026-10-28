@@ -413,6 +413,7 @@ mod picture_tests {
             environment: render::Environment::default(),
             editor_lines: false,
             grid_plane: render::GridPlane::Ground,
+            grid_step: 1.0,
         };
         let stats =
             renderer.render_with_bolts(&device, &queue, &mut target, &params, &placed, &[], bolts);

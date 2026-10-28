@@ -1,0 +1,4 @@
+pixels version 1;
+base = [9999, -4];
+zoom = 3;
+tile = 7;

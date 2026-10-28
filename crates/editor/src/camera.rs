@@ -44,11 +44,21 @@ pub enum ViewKind {
     Front,
     /// Flat, looking west (along -X) from the right: Y right, Z up.
     Right,
+    /// 2D (Phase 9, D1): flat, looking straight down like Top, measured in
+    /// the project's pixels: it zooms in whole steps and draws the
+    /// world's pixels on whole screen pixels.
+    TwoD,
 }
 
 impl ViewKind {
     /// Every kind, in the menu's order.
-    pub const ALL: [Self; 4] = [Self::Perspective, Self::Top, Self::Front, Self::Right];
+    pub const ALL: [Self; 5] = [
+        Self::Perspective,
+        Self::Top,
+        Self::Front,
+        Self::Right,
+        Self::TwoD,
+    ];
 
     /// Its name in the viewport's menu.
     pub fn name(self) -> &'static str {
@@ -57,6 +67,7 @@ impl ViewKind {
             Self::Top => "Top",
             Self::Front => "Front",
             Self::Right => "Right",
+            Self::TwoD => "2D",
         }
     }
 
@@ -69,7 +80,7 @@ impl ViewKind {
     fn axes(self) -> Option<(Vec3, Vec3, Vec3)> {
         match self {
             Self::Perspective => None,
-            Self::Top => Some((Vec3::NEG_Z, Vec3::X, Vec3::Y)),
+            Self::Top | Self::TwoD => Some((Vec3::NEG_Z, Vec3::X, Vec3::Y)),
             Self::Front => Some((Vec3::Y, Vec3::X, Vec3::Z)),
             Self::Right => Some((Vec3::NEG_X, Vec3::Y, Vec3::Z)),
         }
@@ -80,7 +91,7 @@ impl ViewKind {
     pub fn onto_plane(self, p: Vec3) -> Vec3 {
         match self {
             Self::Perspective => p,
-            Self::Top => Vec3::new(p.x, p.y, 0.0),
+            Self::Top | Self::TwoD => Vec3::new(p.x, p.y, 0.0),
             Self::Front => Vec3::new(p.x, 0.0, p.z),
             Self::Right => Vec3::new(0.0, p.y, p.z),
         }
@@ -93,6 +104,13 @@ pub const FLAT_DEPTH: f32 = 2_500.0;
 pub const FLAT_HEIGHT_RANGE: std::ops::RangeInclusive<f32> = 0.05..=100_000.0;
 /// How much one wheel notch zooms a flat view (less than 1: in).
 pub const FLAT_ZOOM_PER_NOTCH: f32 = 0.85;
+/// The 2D view's zoom steps: screen pixels per pixel of the game. Whole
+/// steps keep pixels sharp; the ones below 1 show more of a big map.
+pub const ZOOM_STEPS: [f32; 13] = [
+    0.25, 0.5, 1.0, 2.0, 3.0, 4.0, 5.0, 6.0, 8.0, 10.0, 12.0, 16.0, 24.0,
+];
+/// The 2D view's zoom when it's first chosen.
+pub const FIRST_ZOOM: f32 = 2.0;
 
 /// The viewport's camera. Z is up.
 #[derive(Debug, Clone, Copy, PartialEq, Serialize, Deserialize)]
@@ -114,6 +132,9 @@ pub struct Camera {
     pub kind: ViewKind,
     /// How much a flat view shows, top to bottom, in metres.
     pub flat_height: f32,
+    /// The 2D view's zoom: screen pixels per pixel of the game, one of
+    /// [`ZOOM_STEPS`].
+    pub zoom: f32,
 }
 
 impl Default for Camera {
@@ -127,6 +148,7 @@ impl Default for Camera {
             speed: DEFAULT_SPEED,
             kind: ViewKind::Perspective,
             flat_height: 20.0,
+            zoom: FIRST_ZOOM,
         };
         camera.look_at(Vec3::new(0.0, 0.0, 1.0));
         camera
@@ -209,7 +231,56 @@ impl Camera {
             speed: self.speed.clamp(1, SPEEDS.len() as u8),
             kind: self.kind,
             flat_height,
+            zoom: if ZOOM_STEPS.contains(&self.zoom) {
+                self.zoom
+            } else {
+                default.zoom
+            },
         }
+    }
+
+    /// For the 2D view (otherwise itself): as it's seen in a view of
+    /// `view_px` screen pixels, with `pixels_per_unit` pixels to a metre.
+    /// It shows as much as its zoom says, and its middle sits so the
+    /// world's pixels fall on whole screen pixels, so nothing shimmers or
+    /// blurs. The camera itself keeps its exact place, so a slow drag
+    /// still moves it.
+    #[must_use]
+    pub fn seen(self, view_px: [u32; 2], pixels_per_unit: u32) -> Self {
+        if self.kind != ViewKind::TwoD {
+            return self;
+        }
+        let ppu = pixels_per_unit.max(1) as f32;
+        let zoom = if ZOOM_STEPS.contains(&self.zoom) {
+            self.zoom
+        } else {
+            FIRST_ZOOM
+        };
+        let [w, h] = view_px.map(|v| v.max(1) as f32);
+        // One screen pixel, in metres.
+        let px = 1.0 / (ppu * zoom);
+        let mut camera = self;
+        camera.flat_height = (h * px).clamp(*FLAT_HEIGHT_RANGE.start(), *FLAT_HEIGHT_RANGE.end());
+        // The view's left and bottom edges on whole screen pixels (and so,
+        // zoomed in, the world's pixels on whole screen pixels too).
+        let edge = |middle: f32, across: f32| {
+            let first = middle - across * 0.5 * px;
+            (first / px).round() * px + across * 0.5 * px
+        };
+        if self.position.is_finite() {
+            camera.position.x = edge(self.position.x, w);
+            camera.position.y = edge(self.position.y, h);
+        }
+        camera
+    }
+
+    /// The next zoom step in (`steps` above 0) or out from `zoom`.
+    pub fn zoom_step(zoom: f32, steps: i32) -> f32 {
+        let at = ZOOM_STEPS
+            .iter()
+            .position(|z| *z >= zoom)
+            .unwrap_or(ZOOM_STEPS.len() - 1) as i32;
+        ZOOM_STEPS[(at + steps).clamp(0, ZOOM_STEPS.len() as i32 - 1) as usize]
     }
 
     /// The same camera made a flat view of `kind` (or perspective again),
@@ -419,9 +490,18 @@ impl Camera {
                 (self.right() * input.pan.x - self.up() * input.pan.y) * metres_per_point;
         }
         if input.dolly_notches.is_finite() && input.dolly_notches != 0.0 {
-            let factor = FLAT_ZOOM_PER_NOTCH.powf(input.dolly_notches.clamp(-20.0, 20.0));
-            let new_height = (self.flat_height * factor)
-                .clamp(*FLAT_HEIGHT_RANGE.start(), *FLAT_HEIGHT_RANGE.end());
+            let new_height = if self.kind == ViewKind::TwoD {
+                // Whole zoom steps, one a notch: up zooms in.
+                let notches = input.dolly_notches.clamp(-20.0, 20.0).round() as i32;
+                let zoom = Self::zoom_step(self.zoom, notches);
+                let height = self.flat_height * self.zoom / zoom;
+                self.zoom = zoom;
+                height
+            } else {
+                let factor = FLAT_ZOOM_PER_NOTCH.powf(input.dolly_notches.clamp(-20.0, 20.0));
+                self.flat_height * factor
+            }
+            .clamp(*FLAT_HEIGHT_RANGE.start(), *FLAT_HEIGHT_RANGE.end());
             // The point under the mouse stays under it.
             if let Some(mouse) = input.mouse.filter(|m| m.is_finite()) {
                 let from_middle =
@@ -853,9 +933,11 @@ mod tests {
             speed: 0,
             kind: ViewKind::Top,
             flat_height: f32::NAN,
+            zoom: f32::NAN,
         };
         let fixed = broken.sanitized();
         assert_eq!(fixed.flat_height, Camera::default().flat_height);
+        assert_eq!(fixed.zoom, FIRST_ZOOM);
         assert_eq!(fixed.kind, ViewKind::Top);
         assert!(usable(&fixed));
         assert_eq!(fixed.position, Camera::default().position);

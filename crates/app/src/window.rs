@@ -265,6 +265,12 @@ impl App {
                 for note in notes {
                     self.workbench.log(LogLevel::Warning, note);
                 }
+                // Its 2D settings (Phase 9, D1).
+                let (pixels, notes) = crate::play_files::load_pixels(root);
+                self.workbench.set_pixels(pixels);
+                for note in notes {
+                    self.workbench.log(LogLevel::Warning, note);
+                }
                 for note in opened.notes {
                     self.workbench.log(LogLevel::Warning, note);
                 }
@@ -811,6 +817,30 @@ impl App {
                             Err(why) => self
                                 .workbench
                                 .log(LogLevel::Error, format!("Couldn't save the buses: {why}.")),
+                        }
+                    }
+                }
+                WorkbenchAction::SavePixels(settings) => {
+                    if let Some(root) = self.projects.root().map(Path::to_path_buf) {
+                        match crate::play_files::save_pixels(&root, &settings) {
+                            Ok(Some(crate::play_files::Kept::Older(copy))) => self.workbench.log(
+                                LogLevel::Info,
+                                crate::upgrades::kept_note(&root, area::pixels::FILE_NAME, &copy),
+                            ),
+                            Ok(Some(crate::play_files::Kept::Damaged(backup))) => {
+                                self.workbench.log(
+                                    LogLevel::Warning,
+                                    format!(
+                                        "The 2D settings file had a mistake, so it was kept as \
+                                         {backup} before being written again."
+                                    ),
+                                )
+                            }
+                            Ok(None) => {}
+                            Err(why) => self.workbench.log(
+                                LogLevel::Error,
+                                format!("Couldn't save the 2D settings: {why}."),
+                            ),
                         }
                     }
                 }

@@ -81,6 +81,7 @@ pub const GITATTRIBUTES: &str = "\
 *.solmeta text eol=lf
 *.solinput text eol=lf
 *.solrec text eol=lf
+*.solpix text eol=lf
 *.lst text eol=lf
 *.lua text eol=lf
 # Big files go through Git LFS.

@@ -37,9 +37,9 @@ Tests: files ending `_tests.rs` hold the tests of the file with the same start (
 | `console.rs`, `console_commands.rs` | The Console panel (messages, filters, search) and the commands typed under it. | `LogLine`, `LogLevel` |
 | `problems.rs` | The Problems panel: mistakes in game code and in the open area. | `Problem`, `ProblemKind` |
 | `profiler.rs` | The Profiler panel: where each frame's time goes, on the CPU (game code, the world, preparing, drawing, sound, the editor) and the GPU. | `Profiler`, `Stage` |
-| `game_panel.rs` | The Game panel: the running game through the area's first camera. | |
+| `game_panel.rs` | The Game panel: the running game through the area's first camera; a 2D camera's picture is drawn small and scaled up (`pixel_camera`). | |
 | `input_window.rs` | Edit > Input actions: the project's actions and what sets each off (decision 0037). | |
-| `settings_window.rs` | Edit > Settings…: the editor's settings, a page at a time, with a search box (decision 0061). | |
+| `settings_window.rs` | Edit > Settings…: the editor's settings, a page at a time, with a search box (decision 0061), and the project's 2D settings (decision 0062). | |
 
 ## The viewport
 
@@ -64,6 +64,7 @@ Tests: files ending `_tests.rs` hold the tests of the file with the same start (
 | `game_code.rs` | Game code in the editor: its components in the registry, and the program running against the game's world (decision 0028). | |
 | `play_input.rs` | The game's input in the editor: clicking the Game panel gives the game the mouse and keys; recording and replaying input. | |
 | `save_game.rs` | Save games: the whole running game, so loading carries on exactly (decision 0038). Older saves load through `FORMAT`'s upgraders (Phase 8, C2), saying what couldn't be carried over; a component the game's code no longer has is left out and said. | `Save`, `FORMAT` |
+| `two_d_tests.rs` | The 2D view and Settings > 2D (Phase 9, D1): whole-step zoom, pixels on whole screen pixels, the corner, snapping to pixels or tiles, 2D cameras and their frames. | |
 | `invariant_tests.rs`, `kit_tests.rs`, `scale_levels_tests.rs` | Random games checked against rules that must always hold; the ready-made components played with input; and the scale levels timed (decision 0030). | |
 
 **Read next:** the crate's [README](../README.md), and [ARCHITECTURE.md](../../../ARCHITECTURE.md), "The area".

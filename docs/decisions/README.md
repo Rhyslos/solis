@@ -69,3 +69,4 @@ Titles below are shortened; the files have the full reasoning. Decisions 0019 to
 | `0059-2d-first.md` | 2D first: Phase 7 is sound only, animation's groundwork moves to 2D, 3D animation becomes Phase 16 | Accepted (reorders 0054 and 0057) |
 | `0060-amber-and-colours-that-mean-something.md` | Amber by default; Play, Stop, warnings and kinds keep their own colours | Accepted (changes 0004's standard accent) |
 | `0061-settings-window-and-no-layout-presets.md` | Edit → Settings… with pages and a search box; layout presets removed, Reset layout kept | Accepted (changes 0004) |
+| `0062-2d-on-the-ground-drawn-small-scaled-whole.md` | 2D on the ground seen from above, 2D cameras, `pixels.solpix`, the pixel stage and the 2D view | Accepted (builds on 0054) |

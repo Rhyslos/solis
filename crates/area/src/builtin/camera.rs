@@ -1,9 +1,44 @@
 //! A camera: what the game shows. It looks along the entity's -Z, with
-//! the entity's +Y up, the way lights shine along -Z.
+//! the entity's +Y up, the way lights shine along -Z; or, as a 2D camera
+//! (Phase 9, D1), straight down at the ground, drawn pixel-perfect at the
+//! project's base resolution.
 
 use reflect::{Component, ComponentData, ComponentSchema, Fields, Value};
 
 use super::field;
+
+/// How a camera sees.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Default)]
+pub enum CameraView {
+    /// In perspective, as the eye sees, along the entity's -Z.
+    #[default]
+    Perspective,
+    /// Flat, straight down at the ground (X right, Y up the screen), at
+    /// the project's base resolution, scaled up crisply to the screen. It
+    /// follows its entity's place, but never turns.
+    TwoD,
+}
+
+impl CameraView {
+    /// The names the Camera's View field offers, in order.
+    pub const NAMES: [&'static str; 2] = ["Perspective", "2D"];
+
+    /// Its name.
+    pub fn name(self) -> &'static str {
+        match self {
+            Self::Perspective => Self::NAMES[0],
+            Self::TwoD => Self::NAMES[1],
+        }
+    }
+
+    fn from_name(name: &str) -> Self {
+        if name == Self::NAMES[1] {
+            Self::TwoD
+        } else {
+            Self::Perspective
+        }
+    }
+}
 
 /// A camera at the entity.
 #[derive(Debug, Clone, Copy, PartialEq)]
@@ -14,6 +49,8 @@ pub struct Camera {
     pub near: f32,
     /// The farthest it sees, in metres.
     pub far: f32,
+    /// In perspective, or flat and pixel-perfect (2D).
+    pub view: CameraView,
 }
 
 impl Default for Camera {
@@ -22,6 +59,7 @@ impl Default for Camera {
             fov: 50.0,
             near: 0.1,
             far: 2000.0,
+            view: CameraView::Perspective,
         }
     }
 }
@@ -51,7 +89,12 @@ impl Camera {
         } else {
             (near * 10_000.0).max(d.far)
         };
-        Self { fov, near, far }
+        Self {
+            fov,
+            near,
+            far,
+            view: self.view,
+        }
     }
 
     /// Its projection for an image `aspect` times as wide as it's tall,
@@ -86,6 +129,15 @@ impl Component for Camera {
                    through the first camera in the area."
                 .into(),
             fields: vec![
+                field::choice(
+                    "view",
+                    "View",
+                    &CameraView::NAMES,
+                    d.view.name(),
+                    "Perspective: as the eye sees. 2D: flat, straight down at the ground, drawn \
+                     pixel-perfect at the project's base resolution (Edit > Settings… > 2D); it \
+                     follows the entity but never turns, and Field of view isn't used.",
+                ),
                 field::float(
                     "fov",
                     "Field of view",
@@ -129,6 +181,7 @@ impl Component for Camera {
         data.set("fov", Value::Float(f64::from(self.fov)));
         data.set("near", Value::Float(f64::from(self.near)));
         data.set("far", Value::Float(f64::from(self.far)));
+        data.set("view", Value::Text(self.view.name().to_owned()));
         data
     }
 
@@ -139,6 +192,7 @@ impl Component for Camera {
             fov: f.float("fov", d.fov),
             near: f.float("near", d.near),
             far: f.float("far", d.far),
+            view: f.text("view").map_or(d.view, CameraView::from_name),
         }
     }
 }
@@ -148,19 +202,38 @@ mod tests {
     use super::*;
 
     #[test]
+    fn the_view_round_trips_and_an_unknown_one_is_perspective() {
+        let two_d = Camera {
+            view: CameraView::TwoD,
+            ..Camera::default()
+        };
+        assert_eq!(Camera::from_data(&two_d.to_data()), two_d);
+        // A camera from before 2D has no view: perspective.
+        let mut old = Camera::default().to_data();
+        old.fields.remove("view");
+        assert_eq!(Camera::from_data(&old).view, CameraView::Perspective);
+        let mut odd = Camera::default().to_data();
+        odd.set("view", Value::Text("Isometric".into()));
+        assert_eq!(Camera::from_data(&odd).view, CameraView::Perspective);
+    }
+
+    #[test]
     fn unusable_values_are_put_back_in_range() {
         let wild = Camera {
             fov: f32::NAN,
             near: -1.0,
             far: 0.0,
+            view: CameraView::TwoD,
         }
         .sanitized();
         assert_eq!(wild.fov, 50.0);
+        assert_eq!(wild.view, CameraView::TwoD, "kept");
         assert!(wild.near > 0.0 && wild.far > wild.near);
         let tight = Camera {
             fov: 500.0,
             near: 5.0,
             far: 4.0,
+            ..Camera::default()
         }
         .sanitized();
         assert_eq!(tight.fov, Camera::FOV_RANGE.1);

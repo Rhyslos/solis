@@ -6,7 +6,7 @@
 use crate::commands::{component_edits, merge_key};
 use crate::gizmo::{Change, Gizmo, GizmoTool};
 use crate::picking::{after_box, after_click};
-use crate::transforming::{Targets, moved, snapped, targets_placed};
+use crate::transforming::{Targets, moved, snapped, snapped_in_2d, targets_placed};
 use crate::viewport::Tool;
 use crate::viewport_tools::{Outline, ViewportEvent};
 use crate::workbench::Workbench;
@@ -107,7 +107,12 @@ impl Workbench {
                 }
                 ViewportEvent::GizmoChange { change, flip } => {
                     if let Some((t, gesture)) = self.moving.take() {
-                        let change = snapped(change, &t, &self.viewport.snapping, flip);
+                        let snapping = &self.viewport.snapping;
+                        let change = if self.viewport.camera.kind == crate::camera::ViewKind::TwoD {
+                            snapped_in_2d(change, &t, snapping, self.pixels, flip)
+                        } else {
+                            snapped(change, &t, snapping, flip)
+                        };
                         self.set_transforms(&t, Some(change), gesture);
                         self.moving = Some((t, gesture));
                     }

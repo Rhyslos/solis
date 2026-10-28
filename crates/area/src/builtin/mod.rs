@@ -13,7 +13,7 @@ mod reverb_zone;
 mod transform;
 
 pub use audio_source::AudioSource;
-pub use camera::Camera;
+pub use camera::{Camera, CameraView};
 pub use environment::{Environment, Sky, ToneMapping};
 pub use light::{Light, LightKind, aim, sun_rotation};
 pub use listener::Listener;
