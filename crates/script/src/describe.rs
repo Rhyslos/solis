@@ -299,7 +299,7 @@ mod tests {
     #[test]
     fn the_descriptions_check_cleanly_and_a_game_can_use_them() {
         let mut files = descriptions("Test Engine 9.9.9", "solis");
-        assert_eq!(files.len(), 6);
+        assert_eq!(files.len(), 7);
         assert!(files[0].1.starts_with("-- Made by Test Engine 9.9.9"));
         files.push((
             "main.lst".into(),
@@ -307,6 +307,7 @@ mod tests {
              get \"solis/entity\":[positionOf, moveTo, rotationOf, turnTo, nameOf];\n\
              get \"solis/physics\":[push, velocityOf, setVelocity, castRay, castRayHit, castRayNormal];\n\
              get \"solis/input\":[held, pressed, released, axis, bindingOf, rebind];\n\
+             get \"solis/sound\":[playSound, playSoundAt, playSoundOn, stopSoundsOn];\n\
              component Mover {\n\
                  has {\n\
                      float speed = 2;\n\
@@ -363,7 +364,7 @@ mod tests {
         names.dedup();
         assert_eq!(names.len(), NATIVES.len(), "no name twice");
         for native in NATIVES {
-            assert!(["world", "entity", "physics", "input"].contains(&native.file));
+            assert!(["world", "entity", "physics", "input", "sound"].contains(&native.file));
             assert!(
                 native.lust.contains(&format!(" {}(", native.name)),
                 "{native:?}"
