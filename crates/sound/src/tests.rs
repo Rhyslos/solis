@@ -318,6 +318,22 @@ fn an_ogg_claiming_billions_of_comments_is_refused() {
     assert!(matches!(err, ReadError::Damaged(_)), "{err}");
 }
 
+#[test]
+fn a_chained_ogg_is_refused_before_lewton_reads_its_second_stream() {
+    // Regression (the Phase 7 review): a good sound followed by a hostile
+    // one passed the header check, and lewton then asked for far more
+    // memory than there is when it met the second stream.
+    let bytes = std::fs::read(data("chained_huge_codebook.ogg")).unwrap();
+    let err = read_bytes(&bytes).unwrap_err();
+    assert!(err.to_string().contains("more than one sound"), "{err}");
+    // Each half on its own is as before: the good one reads.
+    let good = std::fs::read(data("tone_mono_44k.ogg")).unwrap();
+    assert!(read_bytes(&good).is_ok());
+    let mut twice = good.clone();
+    twice.extend_from_slice(&good);
+    assert!(read_bytes(&twice).is_err(), "the same stream twice is two streams");
+}
+
 /// Found by fuzzing too: a codebook claiming more lookup values than
 /// there's memory for.
 #[test]
@@ -795,4 +811,52 @@ mod game_sounds {
         );
         assert!(!within_reach([f32::NAN, 0.0, 0.0], [0.0; 3], 30.0));
     }
+}
+
+#[test]
+fn a_streamed_ogg_starts_again_from_the_beginning() {
+    // Regression (the Phase 7 review): Kira always moves a streamed sound
+    // to its start first, and lewton's seek to 0 landed on the headers,
+    // so every streamed Ogg played nothing.
+    let file = std::fs::File::open(data("tone_mono_44k.ogg")).unwrap();
+    let mut decoder = crate::read::Decoder::new(std::io::BufReader::new(file)).unwrap();
+    let mut first = Vec::new();
+    assert!(decoder.next_chunk(&mut first).unwrap());
+    assert_eq!(decoder.seek(0).unwrap(), 0);
+    let mut again = Vec::new();
+    assert!(decoder.next_chunk(&mut again).unwrap());
+    assert_eq!(again, first, "the same sound from the start");
+    // Started again before anything was read, as Kira does.
+    let file = std::fs::File::open(data("tone_mono_44k.ogg")).unwrap();
+    let mut fresh = crate::read::Decoder::new(std::io::BufReader::new(file)).unwrap();
+    fresh.seek(0).unwrap();
+    let mut from_start = Vec::new();
+    assert!(fresh.next_chunk(&mut from_start).unwrap());
+    assert_eq!(from_start, first);
+}
+
+#[test]
+fn a_streamed_file_shorter_than_measured_ends_and_a_changed_one_is_refused() {
+    // Regression (the Phase 7 review): Kira kept asking for the frames the
+    // file was measured with, and a shortened file never ended.
+    use kira::sound::streaming::Decoder as _;
+    let dir = test_dir("stream-shorter");
+    let path = dir.join("long.wav");
+    std::fs::write(&path, wav_int(8_000, 1, 16, &[500; 8_000])).unwrap();
+    let (info, _) = crate::measure_file(&path).unwrap();
+    std::fs::write(&path, wav_int(8_000, 1, 16, &[500; 3_000])).unwrap();
+    let mut stream = crate::device::FileStream::open(&path, info).unwrap();
+    let mut total = 0;
+    for _ in 0..100 {
+        let chunk = stream.decode().unwrap();
+        if chunk.is_empty() {
+            break;
+        }
+        total += chunk.len();
+    }
+    assert_eq!(total, 8_000, "padded with silence to the measured length, then ends");
+    // Another rate since: refused.
+    std::fs::write(&path, wav_int(22_050, 1, 16, &[500; 3_000])).unwrap();
+    assert!(crate::device::FileStream::open(&path, info).is_err());
+    let _ = std::fs::remove_dir_all(&dir);
 }

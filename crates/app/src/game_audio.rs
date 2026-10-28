@@ -39,6 +39,10 @@ struct LoopState {
     started: f64,
 }
 
+/// The most unknown sound event names said once each in a play: past it,
+/// no more are said (game code making up names can't grow the list).
+const MAX_TOLD: usize = 256;
+
 /// The game's sounds between frames.
 #[derive(Debug, Default)]
 pub struct GameAudio {
@@ -153,7 +157,12 @@ impl GameAudio {
                     );
                 }
                 Request::BusVolume(ref bus, share) => {
-                    self.shares.insert(bus.clone(), share);
+                    // Only a bus the project has: game code naming made-up
+                    // buses every tick can't grow this without end (the
+                    // Phase 7 review).
+                    if workbench.mixer().index_of(bus).is_some() {
+                        self.shares.insert(bus.clone(), share);
+                    }
                 }
                 Request::Play(ref name, at, caller) => {
                     let name = name.clone();
@@ -324,7 +333,7 @@ impl GameAudio {
             }
             *n += 1;
             let Some((key, event)) = sounds.event_named(name) else {
-                if self.told_unknown.insert(name.clone()) {
+                if self.told_unknown.len() < MAX_TOLD && self.told_unknown.insert(name.clone()) {
                     notes.push(format!(
                         "Game code played the sound event \"{name}\", but there's none by \
                          that name (or it couldn't be read): a sound event's name is its file \
@@ -410,7 +419,9 @@ impl GameAudio {
         for (id, source, place) in sources {
             let entity = id.0.raw();
             let Some((key, event)) = sounds.event_named(&source.event) else {
-                if self.told_unknown.insert(source.event.clone()) {
+                if self.told_unknown.len() < MAX_TOLD
+                    && self.told_unknown.insert(source.event.clone())
+                {
                     notes.push(format!(
                         "An AudioSource plays the sound event \"{}\", but there's none by that \
                          name (or it couldn't be read). Said once.",

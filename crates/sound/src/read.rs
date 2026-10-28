@@ -24,6 +24,10 @@ pub const MAX_CHANNELS: u16 = 8;
 /// Sounds up to this long (10 minutes) are held in memory; longer ones
 /// are streamed from their file.
 pub const MAX_IN_MEMORY_SECONDS: u64 = 600;
+/// ...and up to this many frames (128 MB of samples): a 192 kHz sound
+/// past about 87 seconds is streamed too, so reading one never holds
+/// gigabytes (the Phase 7 review).
+pub const MAX_IN_MEMORY_FRAMES: u64 = 16 << 20;
 
 /// How many frames are decoded at a time.
 const CHUNK_FRAMES: usize = 4096;
@@ -261,7 +265,8 @@ fn decode_all<R: Read + Seek>(
     decoder: &mut Decoder<R>,
     keep: Keep,
 ) -> Result<(Option<Vec<Frame>>, Overview), ReadError> {
-    let limit = MAX_IN_MEMORY_SECONDS * u64::from(decoder.sample_rate());
+    let limit =
+        (MAX_IN_MEMORY_SECONDS * u64::from(decoder.sample_rate())).min(MAX_IN_MEMORY_FRAMES);
     let mut kept = (keep != Keep::Nothing).then(Vec::new);
     let mut overview = Overview::new();
     let mut chunk = Vec::with_capacity(CHUNK_FRAMES);
@@ -285,6 +290,10 @@ fn decode_all<R: Read + Seek>(
     if overview.frames() == 0 {
         return Err(ReadError::Empty);
     }
+    // Only what it holds: the room grown while reading goes back.
+    if let Some(frames) = kept.as_mut() {
+        frames.shrink_to_fit();
+    }
     Ok((kept, overview))
 }
 
@@ -294,6 +303,9 @@ enum Inner<R: Read + Seek> {
     Wav(hound::WavReader<R>, WavSamples),
     /// Ogg Vorbis, through lewton, with samples decoded but not yet handed out.
     Ogg(Box<lewton::inside_ogg::OggStreamReader<R>>, Vec<i16>),
+    /// Lost while starting again from the beginning (the file changed or
+    /// went): every read from now on says so.
+    Gone(String),
 }
 
 /// How a WAV file's samples are stored.
@@ -432,6 +444,7 @@ impl<R: Read + Seek> Decoder<R> {
                 }
                 Ok(true)
             }
+            Inner::Gone(why) => Err(ReadError::Damaged(why.clone())),
         }
     }
 
@@ -444,12 +457,35 @@ impl<R: Read + Seek> Decoder<R> {
                 wav.seek(to)?;
                 Ok(u64::from(to))
             }
+            // From the start: lewton's own seek lands on the header pages,
+            // whose packets aren't sound, so every streamed Ogg played
+            // nothing (the Phase 7 review). It's opened again instead.
+            Inner::Ogg(..) if index == 0 => {
+                let Inner::Ogg(ogg, _) =
+                    std::mem::replace(&mut self.inner, Inner::Gone("it couldn't start again".into()))
+                else {
+                    return Ok(0);
+                };
+                let mut reader = ogg.into_inner().into_inner();
+                reader.rewind()?;
+                match lewton::inside_ogg::OggStreamReader::new(reader) {
+                    Ok(fresh) => {
+                        self.inner = Inner::Ogg(Box::new(fresh), Vec::new());
+                        Ok(0)
+                    }
+                    Err(e) => {
+                        self.inner = Inner::Gone(e.to_string());
+                        Err(ReadError::Damaged(e.to_string()))
+                    }
+                }
+            }
             Inner::Ogg(ogg, pending) => {
                 pending.clear();
                 ogg.seek_absgp_pg(index)
                     .map_err(|e| ReadError::Damaged(e.to_string()))?;
                 Ok(index)
             }
+            Inner::Gone(why) => Err(ReadError::Damaged(why.clone())),
         }
     }
 }

@@ -248,12 +248,26 @@ pub(crate) fn memory_sound(info: ClipInfo, frames: std::sync::Arc<[Frame]>) -> S
 pub(crate) struct FileStream {
     decoder: Decoder<BufReader<File>>,
     info: ClipInfo,
+    /// The frame it has reached.
+    at: u64,
 }
 
 impl FileStream {
+    /// Opens the file measured as `info`. A file changed since (another
+    /// rate or channels) is refused: Kira would play it as measured.
     pub(crate) fn open(path: &Path, info: ClipInfo) -> Result<Self, ReadError> {
         let decoder = Decoder::new(BufReader::new(File::open(path)?))?;
-        Ok(Self { decoder, info })
+        let now = decoder.info_with(info.frames);
+        if (now.sample_rate, now.channels) != (info.sample_rate, info.channels) {
+            return Err(ReadError::Damaged(
+                "it changed since it was read: look at it in the Library again".into(),
+            ));
+        }
+        Ok(Self {
+            decoder,
+            info,
+            at: 0,
+        })
     }
 }
 
@@ -271,11 +285,20 @@ impl kira::sound::streaming::Decoder for FileStream {
     fn decode(&mut self) -> Result<Vec<Frame>, Self::Error> {
         let mut out = Vec::new();
         self.decoder.next_chunk(&mut out)?;
+        // Shorter than when it was measured (the file changed): silence up
+        // to the measured length, as Kira keeps asking until then and
+        // would never stop (the Phase 7 review).
+        if out.is_empty() && self.at < self.info.frames {
+            let left = (self.info.frames - self.at).min(4096);
+            out.resize(usize::try_from(left).unwrap_or(4096), Frame::ZERO);
+        }
+        self.at += out.len() as u64;
         Ok(out)
     }
 
     fn seek(&mut self, index: usize) -> Result<usize, Self::Error> {
         let at = self.decoder.seek(index as u64)?;
+        self.at = at;
         Ok(usize::try_from(at).unwrap_or(index))
     }
 }
