@@ -38,5 +38,6 @@ Milestone:
 
 ## Checklist
 
+- [ ] Does this change a file format, a save, or what game code can call? Then it brings its upgrader and an example of the new version (`tests/fixtures/`), updates `docs/game-code-interface.txt`, and says so under "Breaking" in CHANGELOG.md (CONTRIBUTING.md, rules 23 and 24).
 - [ ] All CI checks are green
 - [ ] Follows the ground rules in CONTRIBUTING.md
