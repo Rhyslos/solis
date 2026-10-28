@@ -1,8 +1,8 @@
 //! The editor's look ([decision 0004](../../../docs/decisions/0004-editor-layout.md)):
 //! Aventail's dark neutral greys, flat panels split by thin dark lines,
 //! plain-text tabs with the front one underlined, small corners, and one
-//! accent colour chosen in Window → Accent colour (amber unless the user
-//! picks another). Text is Inter.
+//! accent colour chosen in Edit → Settings… (amber unless the user picks
+//! another). Text is Inter.
 //!
 //! The accent marks what's chosen and selected. Colours that mean
 //! something keep their own whatever the accent ([decision 0060](../../../docs/decisions/0060-amber-and-colours-that-mean-something.md)):
@@ -135,8 +135,8 @@ pub mod axis {
 }
 
 /// The accent colour: marks the chosen tool, the front tab and the
-/// selected row. Amber unless the user picks another (Window → Accent
-/// colour).
+/// selected row. Amber unless the user picks another (Edit → Settings…,
+/// Appearance).
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
 pub enum Accent {
     /// Petrol blue, the standard until decision 0060.

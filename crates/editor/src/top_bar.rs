@@ -3,7 +3,6 @@
 
 use crate::console::LogLevel;
 use crate::icons::{self, Icon};
-use crate::layout::Preset;
 use crate::play::PlayState;
 use crate::theme::{self, Accent};
 use crate::workbench::{Workbench, WorkbenchAction};
@@ -120,6 +119,7 @@ impl Workbench {
     fn edit_menu(&mut self, ui: &mut Ui) {
         let state = crate::menu_items::MenuState::of(self);
         let mut input = false;
+        let mut settings = false;
         let picked = ui
             .menu_button("Edit", |ui| {
                 let picked = crate::menu_items::edit_items(ui, &state);
@@ -134,12 +134,26 @@ impl Workbench {
                     input = true;
                     ui.close();
                 }
+                ui.separator();
+                if ui
+                    .button("Settings…")
+                    .on_hover_text(
+                        "The editor's settings: its colour, its layout, and more to come",
+                    )
+                    .clicked()
+                {
+                    settings = true;
+                    ui.close();
+                }
                 picked
             })
             .inner
             .flatten();
         if let Some(command) = picked {
             self.run(command, ui.ctx());
+        }
+        if settings {
+            self.open_settings();
         }
         if input {
             self.open_input_window();
@@ -251,41 +265,19 @@ impl Workbench {
         });
     }
 
-    /// The Window menu.
+    /// The Window menu. Panels dock freely, so there are no layout
+    /// presets; Reset layout is here as well as in Settings, for when the
+    /// layout is too tangled to find your way (decision 0061).
     fn window_menu(&mut self, ui: &mut Ui) {
         ui.menu_button("Window", |ui| {
-            ui.menu_button("Layouts", |ui| {
-                for preset in Preset::ALL {
-                    if ui.button(preset.name()).clicked() {
-                        self.apply_preset(preset);
-                        ui.close();
-                    }
-                }
-                ui.separator();
-                if ui.button("Reset layout").clicked() {
-                    self.apply_preset(Preset::Default);
-                    ui.close();
-                }
-            });
-            ui.menu_button("Accent colour", |ui| {
-                for accent in Accent::ALL {
-                    // A swatch of each, as Aventail's list has.
-                    let chosen = ui
-                        .horizontal(|ui| {
-                            let (swatch, _) = ui
-                                .allocate_exact_size(egui::vec2(16.0, 10.0), egui::Sense::hover());
-                            ui.painter().rect_filled(swatch, 3.0, accent.colors().fill);
-                            ui.add(egui::Button::new(accent.name()).selected(self.accent == accent))
-                                .clicked()
-                        })
-                        .inner;
-                    if chosen {
-                        self.accent = accent;
-                        theme::set_accent(ui.ctx(), accent);
-                        ui.close();
-                    }
-                }
-            });
+            if ui
+                .button("Reset layout")
+                .on_hover_text("Puts every panel back where it started")
+                .clicked()
+            {
+                self.reset_layout();
+                ui.close();
+            }
         });
     }
 
