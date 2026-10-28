@@ -390,6 +390,9 @@ impl GameWorld for PlayWorld<'_> {
                 Change::StopSounds(which) => {
                     self.sounds.push(crate::game_sound::Request::StopOn(which));
                 }
+                Change::SoundPlaying(which, playing) => {
+                    self.world.set_sound_playing(which, playing);
+                }
                 Change::BusVolume(ref bus, share) => self
                     .sounds
                     .push(crate::game_sound::Request::BusVolume(bus.clone(), share)),

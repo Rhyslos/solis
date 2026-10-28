@@ -83,7 +83,10 @@ impl GameWorld for TestWorld {
             }
             if matches!(
                 change,
-                Change::Sound(..) | Change::StopSounds(_) | Change::BusVolume(..)
+                Change::Sound(..)
+                    | Change::StopSounds(_)
+                    | Change::BusVolume(..)
+                    | Change::SoundPlaying(..)
             ) {
                 self.sounds.push(change.clone());
             }
@@ -752,4 +755,23 @@ fn set_bus_volume_lands_within_zero_to_one() {
         ],
         "kept within 0 to 1, and a bus with no name left out"
     );
+}
+
+#[test]
+fn set_sound_playing_lands_for_entities_only() {
+    const RADIO: &str = "get \"solis/sound\":[setSoundPlaying];\n\
+        get \"solis/world\":[find];\n\
+        component Switch {\n\
+            method update(float dt) {\n\
+                setSoundPlaying(find(\"R\"), false);\n\
+                setSoundPlaying(find(\"Nobody\"), true);\n\
+            }\n\
+        }\n\
+        pass Switch;\nend\n";
+    let mut world = TestWorld::with(&["R"]);
+    let mut game = Game::new(1).unwrap();
+    game.load(&compiled(RADIO), &mut world).unwrap();
+    game.sync_many([(id(1), "Switch", &ComponentData::default())], &mut world);
+    assert!(game.tick(1.0 / 60.0, &mut world).failures.is_empty());
+    assert_eq!(world.sounds, [Change::SoundPlaying(id(1), false)]);
 }

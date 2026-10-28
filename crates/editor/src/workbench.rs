@@ -184,6 +184,8 @@ pub struct Workbench {
     /// Whether files are being dragged over the window.
     pub(crate) files_hovering: bool,
     pub(crate) about_open: bool,
+    /// How long the game's sound took last frame (the Profiler's Sound).
+    pub(crate) sound_spent: std::time::Duration,
     /// The Settings window, while it's open (Edit > Settings…).
     pub(crate) settings_window: Option<crate::settings_window::SettingsWindow>,
     /// How updating is going, as the app last said.
@@ -348,6 +350,7 @@ impl Workbench {
             models: BTreeMap::new(),
             files_hovering: false,
             about_open: false,
+            sound_spent: std::time::Duration::ZERO,
             settings_window: None,
             update: Default::default(),
             auto_update: true,
@@ -722,6 +725,10 @@ impl Workbench {
         renderer: &mut dyn ViewportRenderer,
     ) -> Vec<WorkbenchAction> {
         self.profiler.begin();
+        self.profiler.add(
+            crate::profiler::Stage::Sound,
+            std::mem::take(&mut self.sound_spent),
+        );
         let mut actions = std::mem::take(&mut self.outbox);
         self.viewport.idle = !self.wants_frames(ui.ctx());
         if ui.input(|i| i.pointer.any_pressed()) {

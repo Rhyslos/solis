@@ -630,6 +630,86 @@ mod tests {
         job_id(Path::new(path))
     }
 
+    /// A workbench playing an area with a camera at the origin and
+    /// `count` entities a metre apart along X, each with an AudioSource
+    /// playing "hum".
+    fn hum_world(count: usize) -> (editor::Workbench, Vec<reflect::EntityId>) {
+        use area::builtin::{AudioSource, Camera, Transform};
+        let mut w = editor::Workbench::new(
+            editor::AppInfo {
+                name: "Test".into(),
+                version: "1.0".into(),
+            },
+            None,
+        );
+        let mut area = area::Area::new();
+        area.spawn(area::EntityData::new("Camera").with(&Camera::default()));
+        let ids = (1..=count)
+            .map(|i| {
+                area.spawn(
+                    area::EntityData::new(&format!("Hum {i}"))
+                        .with(&Transform {
+                            position: glam::Vec3::new(i as f32, 0.0, 0.0),
+                            ..Transform::default()
+                        })
+                        .with(&AudioSource {
+                            event: "hum".into(),
+                            ..AudioSource::default()
+                        }),
+                )
+            })
+            .collect();
+        w.open_area(area, PathBuf::from("hum.solarea"));
+        (w, ids)
+    }
+
+    #[test]
+    fn audio_sources_loop_and_only_the_nearest_are_heard() {
+        let dir = folder("loops");
+        std::fs::write(dir.join("sfx/hum.wav"), wav()).unwrap();
+        let event = sound::SoundEvent {
+            takes: vec![sound_id("sfx/hum.wav")],
+            near_m: 2.0,
+            far_m: 30.0,
+            ..sound::SoundEvent::default()
+        };
+        std::fs::write(dir.join("hum.solsound"), sound::event::write(&event)).unwrap();
+        let mut s = Sounds::default();
+        s.want(&listing(&["sfx/hum.wav", "hum.solsound"]), &dir);
+        settle(&mut s);
+        let (mut w, ids) = hum_world(70);
+        let mut mixer = sound::Mixer::default();
+        mixer.voices = 16;
+        w.set_mixer(mixer.clone());
+        let mut device = SoundDevice::for_tests();
+        let mut audio = crate::game_audio::GameAudio::default();
+        let ctx = eframe::egui::Context::default();
+        w.play();
+        w.play_for(1.0 / 60.0);
+        audio.frame(&mut w, &s, &mut device, &ctx);
+        // 16 voices: the 16 nearest of the 30 in earshot.
+        let heard = device.loops_playing();
+        let nearest: Vec<u64> = ids[..16].iter().map(|id| id.0.raw()).collect();
+        let mut expected = nearest.clone();
+        expected.sort_unstable();
+        assert_eq!(heard, expected);
+        // More voices: every one in earshot, none past 30 m.
+        mixer.voices = 64;
+        w.set_mixer(mixer);
+        audio.frame(&mut w, &s, &mut device, &ctx);
+        assert_eq!(device.loops_playing().len(), 30);
+        assert!(!device.loops_playing().contains(&ids[40].0.raw()));
+        // The same again next frame: nothing restarts.
+        audio.frame(&mut w, &s, &mut device, &ctx);
+        assert_eq!(device.loops_playing().len(), 30);
+        assert_eq!(device.one_shots_playing(), 0);
+        // Stop: every loop goes.
+        w.stop();
+        audio.frame(&mut w, &s, &mut device, &ctx);
+        assert!(device.loops_playing().is_empty());
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
     #[test]
     fn an_event_plays_a_different_take_each_press() {
         let dir = folder("event");

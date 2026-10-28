@@ -19,6 +19,7 @@ A game feels slow, or you want to know how much more it can take: more units, mo
 | World | The game's [world](concepts.md#playing): stepping its clock, working out where things are, taking in the area's changes. |
 | Preparing to draw | Working out what each view shows: which models where, the lights. |
 | Drawing (CPU) | Handing that to the graphics card. |
+| Sound | The game's sounds: choosing which are heard, placing them, the buses. |
 | Editor | Everything else: the panels, the mouse and keys, the interface. |
 | GPU: shadows, models, the last pass | The graphics card's own time: the sun's shadows, the models and sky, then exposure and colour. Measured only on cards that offer it; the Profiler says when yours doesn't. |
 | Projectiles drawn | How many lasers and other projectiles the Game panel drew. Shown when there are some. |

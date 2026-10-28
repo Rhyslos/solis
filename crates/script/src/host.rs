@@ -130,6 +130,10 @@ pub trait Host {
     fn stop_sounds_on(&mut self, which: EntityId) {
         let _ = which;
     }
+    /// Turns the entity's `AudioSource` on or off, at the end of the tick.
+    fn set_sound_playing(&mut self, which: EntityId, playing: bool) {
+        let _ = (which, playing);
+    }
     /// Sets a bus's volume for the rest of the play, as a share of its
     /// Mixer fader (1 as set, 0 silent), at the end of the tick: an
     /// options menu's sliders.
@@ -501,6 +505,15 @@ pub(crate) fn with_natives<'h, R>(
             scope.create_function(move |_, which: LuaValue| {
                 if let Some(e) = entity_of(&which) {
                     h.borrow_mut().stop_sounds_on(e);
+                }
+                Ok(())
+            })?,
+        )?;
+        natives.raw_set(
+            "setSoundPlaying",
+            scope.create_function(move |_, (which, playing): (LuaValue, bool)| {
+                if let Some(e) = entity_of(&which) {
+                    h.borrow_mut().set_sound_playing(e, playing);
                 }
                 Ok(())
             })?,

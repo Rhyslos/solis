@@ -102,6 +102,35 @@ impl crate::Workbench {
         Some((place, turn.normalize()))
     }
 
+    /// The game's sounds that keep playing (`AudioSource`s turned on, with
+    /// an event named), with where each is drawn now: the app keeps them
+    /// going, and lets the far ones rest (Phase 7, S5). Empty with no
+    /// game.
+    pub fn audio_sources(
+        &self,
+    ) -> Vec<(reflect::EntityId, area::builtin::AudioSource, glam::Vec3)> {
+        let Some(playing) = self.playing.as_ref() else {
+            return Vec::new();
+        };
+        let t = playing.world.progress();
+        playing
+            .world
+            .audio_sources()
+            .into_iter()
+            .filter(|(_, s)| s.playing && !s.event.is_empty())
+            .filter_map(|(id, s)| {
+                let place = playing.world.global_between(id, t)?.w_axis.truncate();
+                Some((id, s, place))
+            })
+            .collect()
+    }
+
+    /// How long the game's sound took last frame, for the Profiler's
+    /// Sound line.
+    pub fn set_sound_time(&mut self, spent: std::time::Duration) {
+        self.sound_spent = spent;
+    }
+
     /// Where an entity of the game is drawn now, between ticks: where
     /// sounds on it are heard from. `None` when it isn't in the game.
     pub fn place_between(&self, id: reflect::EntityId) -> Option<glam::Vec3> {

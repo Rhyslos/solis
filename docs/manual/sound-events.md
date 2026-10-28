@@ -23,8 +23,14 @@
 | Placement | **In the world**: it comes from a place, quieter far away and from its direction (a footstep, a door). It plays as one channel (mono), mixed down from stereo if need be, so it can come from one side. **Everywhere**: heard the same wherever you are, as recorded, in stereo if the file is (music, the interface). Each take in the list says whether its file is mono or stereo. |
 | Full until, Silent past | For sounds in the world: full volume up to the first distance, silent past the second, in metres. A footstep might be 2 m and 30 m; an explosion 10 m and 300 m. |
 | Fade | How it gets quieter between the two distances. **Realistic** drops quickly at first, as sound does outdoors; **Even** drops steadily; **None** stays full until the far distance. |
-| At once | The most plays of this event heard at the same time; more are skipped. 8 is a good start; a machine gun might want 4. |
-| Priority | When too many sounds play, **Low** ones are dropped first and **High** ones kept longest. |
+| At once | The most plays of this event heard at the same time; more are skipped. 8 is a good start; a machine gun might want 4. When game code asks for one event many times in one tick (a volley of a hundred shots), up to 3 copies play, a little louder, instead of a hundred. |
+| Priority | When more sounds want to play than the project's **Heard at once** (in the [Mixer](mixer.md)), **High** ones are heard first, then the loudest where you are; **Low** ones go first. |
+
+## Sounds that keep playing
+
+An engine's hum, a campfire, a radio: add an **AudioSource** to the entity (Properties > Add component > AudioSource), and type the sound event's name in **Sound event**, its file in assets without `.solsound` (`sfx/engine`). It plays over and over while the game runs, following the entity, from Play (or when game code makes the entity) until the entity goes. **Playing** switches it off and on, and game code does the same with `setSoundPlaying` ([Game code: Sounds](game-code.md#sounds)). **Volume** makes it louder or quieter on top of the event's own.
+
+Thousands of them are fine: only the most important are heard at once (the [Mixer](mixer.md)'s **Heard at once**), and the rest rest. A resting one isn't mixed at all, but it keeps its place in the sound: walk up to a campfire that was resting and it carries on where it would have been, not from the start. A save game keeps whether each was on or off.
 
 ## Tips and common problems
 - **Problem:** Play says "it has no takes yet". **Why:** the event has no sound files in it. **Fix:** drag sound files onto it from the Library.

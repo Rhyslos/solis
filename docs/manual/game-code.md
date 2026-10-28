@@ -304,6 +304,7 @@ end
 - `playSound(event)` plays it the same everywhere: music, the interface.
 - `playSoundAt(event, place)` plays it at a place in the world: quieter far from the camera, and from its direction (for an event whose Placement is **In the world**).
 - `playSoundOn(event, entity)` plays it on an entity and follows it as it moves: an engine, a voice. `stopSoundsOn(entity)` stops them, with a short fade.
+- `setSoundPlaying(entity, playing)` turns an entity's [AudioSource](sound-events.md#sounds-that-keep-playing) (a sound that keeps playing: an engine, a campfire) on or off.
 - `setBusVolume(bus, volume)` sets a [bus](mixer.md) ("Music", "Effects") for the rest of the play, from 0 (silent) to 1 (as set in the Mixer): what an options menu's volume sliders call. Stop puts the Mixer's back.
 
 In Lua they're `solis.playSoundAt("sfx/footstep", solis.positionOf(self.me))` and so on. In Rust, through the component's host: `cx.host().play_sound("sfx/footstep", SoundAt::Place(place))`, and `cx.host().set_bus_volume("Music", 0.5)`.

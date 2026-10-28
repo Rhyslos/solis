@@ -17,7 +17,7 @@ pub use projectiles::{MAX_PROJECTILES, Projectile, Projectiles, Shot};
 
 use area::Area;
 use area::builtin::{
-    Camera, CharacterBody, Collider, Environment, Light, Model, RigidBody, Transform,
+    AudioSource, Camera, CharacterBody, Collider, Environment, Light, Model, RigidBody, Transform,
 };
 use glam::Mat4;
 use reflect::{Component, ComponentData, EntityId};
@@ -553,6 +553,32 @@ impl World {
         self.touched = true;
     }
 
+    /// Every entity's [`AudioSource`], by ID (Phase 7, S5). Only the
+    /// entities that have one are looked at, so a big world without
+    /// sounds costs nothing here.
+    pub fn audio_sources(&self) -> Vec<(EntityId, AudioSource)> {
+        let mut sources: Vec<(EntityId, AudioSource)> = self
+            .ecs
+            .query::<(&Id, &AudioSource)>()
+            .iter()
+            .map(|(id, source)| (id.0, source.clone()))
+            .collect();
+        sources.sort_unstable_by_key(|(id, _)| *id);
+        sources
+    }
+
+    /// Turns an entity's [`AudioSource`] on or off (game code's
+    /// `setSoundPlaying`). Nothing happens for an entity without one.
+    pub fn set_sound_playing(&mut self, id: EntityId, playing: bool) {
+        if let Some(&entity) = self.by_id.get(&id)
+            && let Ok(mut source) = self.ecs.get::<&mut AudioSource>(entity)
+            && source.playing != playing
+        {
+            source.playing = playing;
+            self.touched = true;
+        }
+    }
+
     /// The projectiles in flight.
     pub fn projectiles(&self) -> &Projectiles {
         &self.projectiles
@@ -943,6 +969,11 @@ impl World {
                 }
             }
         }
+        // Which sounds game code turned on and off (it's in a save).
+        for (id, source) in self.audio_sources() {
+            sum.entity(id);
+            sum.u64(u64::from(source.playing));
+        }
         sum.u64(self.physics.state().checksum());
         let flying = self.projectiles.flying();
         sum.u64(flying.len() as u64);
@@ -1215,6 +1246,9 @@ fn components_of(id: EntityId, data: &area::EntityData) -> hecs::EntityBuilder {
             }
             Camera::NAME => {
                 builder.add(Camera::from_data(component).sanitized());
+            }
+            AudioSource::NAME => {
+                builder.add(AudioSource::from_data(component));
             }
             _ => {
                 values.0.insert(name.clone(), component.clone());

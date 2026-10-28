@@ -11,6 +11,7 @@ fn the_standard_mixer_round_trips() {
     assert!(back.notes.is_empty(), "{:?}", back.notes);
     // One line per bus, so Git sees a change as one line.
     assert_eq!(text.lines().filter(|l| l.starts_with("bus")).count(), 6);
+    assert!(text.contains("voices = 64;"), "{text}");
     assert!(
         text.contains(r#"bus2 = ["Music", "Master", 0.0, [["Voice", -8.0, 0.2, 1.0]]];"#),
         "{text}"
@@ -287,5 +288,28 @@ fn ducking_ignores_bad_frame_times() {
     assert_eq!(
         d.now_db[1], 0.0,
         "an infinite frame isn't a number of seconds"
+    );
+}
+
+#[test]
+fn voices_are_read_within_range_and_missing_is_standard() {
+    let base = "mixer version 1;\nbus1 = [\"Master\", \"\", 0.0, []];\n";
+    assert_eq!(read(base).unwrap().mixer.voices, 64);
+    let r = read(&format!("{base}voices = 9000;\n")).unwrap();
+    assert_eq!(r.mixer.voices, 256);
+    assert_eq!(r.notes.len(), 1);
+    assert_eq!(
+        read(&format!("{base}voices = 3;\n")).unwrap().mixer.voices,
+        16
+    );
+    assert_eq!(
+        read(&format!("{base}voices = 32;\n")).unwrap().mixer.voices,
+        32
+    );
+    assert_eq!(
+        read(&format!("{base}voices = \"many\";\n"))
+            .unwrap_err()
+            .line,
+        3
     );
 }

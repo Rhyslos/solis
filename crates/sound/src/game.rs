@@ -48,6 +48,34 @@ pub enum Placement {
     On(u64, Spot),
 }
 
+/// How a game sound plays: through which bus, as which event (to count
+/// how many of it play), over and over or once, from where in it, and
+/// how much louder (a pile of copies).
+#[derive(Debug, Clone, Copy, PartialEq, Default)]
+pub struct Voice {
+    /// Its bus's place in the mixer (Master when out of range).
+    pub bus: usize,
+    /// Its event, as a number the caller chooses (the same for every play
+    /// of one event).
+    pub event: u64,
+    /// Whether it plays over and over (an `AudioSource`).
+    pub looping: bool,
+    /// Where in the sound to start, in seconds.
+    pub start_s: f64,
+    /// How much louder than its pick, in decibels.
+    pub extra_db: f32,
+}
+
+impl Voice {
+    /// A one-shot through bus `bus`.
+    pub fn on_bus(bus: usize) -> Self {
+        Self {
+            bus,
+            ..Self::default()
+        }
+    }
+}
+
 /// A placed sound's place and how it fades with distance.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub struct Spot {
@@ -69,6 +97,10 @@ pub const STALL_TICKS: u64 = 3;
 struct Playing {
     /// The bus it plays through, by its place in the mixer.
     bus: usize,
+    /// Its event's number.
+    event: u64,
+    /// Whether it's a loop.
+    looping: bool,
     /// The entity it's on, by its ID's number.
     on: Option<u64>,
     /// Its own track, when it's placed (Kira places a track, not a sound).
@@ -159,14 +191,15 @@ impl crate::SoundDevice {
     /// Plays one pick of a game's sound event, from `placement`. While
     /// paused (a Step), it plays without waiting for the game to carry on.
     /// Silent devices do nothing.
-    /// `bus` is its bus's place in the mixer (Master when out of range).
+    /// `voice` says through which bus, whether it loops, and from where.
     pub fn play_game_sound(
         &mut self,
         clip: &Clip,
         pick: &Pick,
         placement: Placement,
-        bus: usize,
+        voice: Voice,
     ) -> Result<(), String> {
+        let bus = voice.bus;
         let Some(game) = self.game.as_mut() else {
             return Ok(());
         };
@@ -174,11 +207,21 @@ impl crate::SoundDevice {
         if game.playing.len() >= MAX_PLAYING {
             return Err(format!("more than {MAX_PLAYING} game sounds at once"));
         }
+        let extra = if voice.extra_db.is_finite() {
+            voice.extra_db
+        } else {
+            0.0
+        };
         let volume = Decibels(if pick.volume_db.is_finite() {
-            pick.volume_db
+            pick.volume_db + extra
         } else {
             0.0
         });
+        let start = if voice.start_s.is_finite() && voice.start_s > 0.0 {
+            voice.start_s.min(clip.info.seconds().max(0.0))
+        } else {
+            0.0
+        };
         let speed = pick.speed();
         let rate = PlaybackRate(if speed.is_finite() && speed > 0.0 {
             speed
@@ -222,9 +265,13 @@ impl crate::SoundDevice {
         };
         let sound = match &clip.samples {
             Samples::Memory(frames) => {
-                let data = memory_sound(clip.info, frames.clone())
+                let mut data = memory_sound(clip.info, frames.clone())
                     .volume(volume)
-                    .playback_rate(rate);
+                    .playback_rate(rate)
+                    .start_position(start);
+                if voice.looping {
+                    data = data.loop_region(..);
+                }
                 let handle = match track.as_mut() {
                     Some(t) => t.play(data),
                     None => parent.play(data),
@@ -233,9 +280,13 @@ impl crate::SoundDevice {
             }
             Samples::Streamed(path) => {
                 let stream = FileStream::open(path, clip.info).map_err(|e| e.to_string())?;
-                let data = StreamingSoundData::from_decoder(stream)
+                let mut data = StreamingSoundData::from_decoder(stream)
                     .volume(volume)
-                    .playback_rate(rate);
+                    .playback_rate(rate)
+                    .start_position(start);
+                if voice.looping {
+                    data = data.loop_region(..);
+                }
                 let handle = match track.as_mut() {
                     Some(t) => t.play(data),
                     None => parent.play(data),
@@ -245,6 +296,8 @@ impl crate::SoundDevice {
         };
         game.playing.push(Playing {
             bus,
+            event: voice.event,
+            looping: voice.looping,
             on,
             track,
             sound,
@@ -342,6 +395,57 @@ impl crate::SoundDevice {
             game.paused = false;
             game.track.resume(Tween::default());
         }
+    }
+
+    /// How many plays of event `event` (as numbered in [`Voice::event`])
+    /// are playing.
+    pub fn game_sounds_of_event(&mut self, event: u64) -> usize {
+        self.game.as_mut().map_or(0, |g| {
+            g.tidy();
+            g.playing.iter().filter(|p| p.event == event).count()
+        })
+    }
+
+    /// How many one-shots (not loops) are playing.
+    pub fn one_shots_playing(&mut self) -> usize {
+        self.game.as_mut().map_or(0, |g| {
+            g.tidy();
+            g.playing.iter().filter(|p| !p.looping).count()
+        })
+    }
+
+    /// The entities with a loop playing, by their IDs' numbers.
+    pub fn loops_playing(&mut self) -> Vec<u64> {
+        let Some(game) = self.game.as_mut() else {
+            return Vec::new();
+        };
+        game.tidy();
+        let mut on: Vec<u64> = game
+            .playing
+            .iter()
+            .filter(|p| p.looping)
+            .filter_map(|p| p.on)
+            .collect();
+        on.sort_unstable();
+        on.dedup();
+        on
+    }
+
+    /// Stops the loop on an entity (it went, was turned off, or rests out
+    /// of earshot), with a short fade; one-shots on it carry on.
+    pub fn stop_loop_on(&mut self, entity: u64) {
+        let Some(game) = self.game.as_mut() else {
+            return;
+        };
+        for playing in game
+            .playing
+            .iter_mut()
+            .filter(|p| p.looping && p.on == Some(entity))
+        {
+            playing.sound.stop_over(STOP_ON_FADE);
+        }
+        game.playing
+            .retain(|p| !(p.looping && p.on == Some(entity)));
     }
 
     /// Uses the project's buses (made again only when their names or

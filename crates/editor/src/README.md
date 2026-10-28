@@ -30,13 +30,13 @@ Tests: files ending `_tests.rs` hold the tests of the file with the same start (
 | `area_panel.rs` | The Area panel: entities as a tree, with search, folding, hiding and locking. | |
 | `properties.rs`, `inspector.rs` | The Properties panel, and fields drawn from any component's schema, so built-in, Lust and Lua components show the same way. | |
 | `library.rs` | The Library panel: the project's files as thumbnails or a list, with a folder tree and search; drag to place or move. | `LibraryItem`, `ProjectInfo` |
-| `game_sound.rs` | Game code's sound requests on their way out after each tick, with the tick and seed they're picked by; the listener and entities' places between ticks for the app. | `GameSound`, `SoundMode`, `Workbench::take_game_sounds` |
+| `game_sound.rs` | Game code's sound requests on their way out after each tick, with the tick and seed they're picked by; the listener and entities' places between ticks for the app; the `AudioSource`s turned on, with their places (S5). | `GameSound`, `SoundMode`, `Workbench::take_game_sounds`, `Workbench::audio_sources` |
 | `mixer_view.rs` | The Mixer panel (a strip per bus: name, meter, fader, volume, mute and solo), a bus in Properties (inside, volume, ducking rules), and the Game panel's mute button; edits saved once let go. | `MixerState`, `Workbench::set_mixer`, `Workbench::set_bus_meters` |
 | `sound_event_view.rs` | A sound event in Properties: its takes (sound files dropped on the list are added), how each play varies, where it's heard, and Play; saved once the mouse is let go. | `event_properties` |
 | `sound_view.rs` | Sound files in the Library and Properties: waveform, details, Play and Stop. | `SoundInfo`, `SoundState`, `EventState`, `Preview` |
 | `console.rs`, `console_commands.rs` | The Console panel (messages, filters, search) and the commands typed under it. | `LogLine`, `LogLevel` |
 | `problems.rs` | The Problems panel: mistakes in game code and in the open area. | `Problem`, `ProblemKind` |
-| `profiler.rs` | The Profiler panel: where each frame's time goes, on the CPU and the GPU. | `Profiler`, `Stage` |
+| `profiler.rs` | The Profiler panel: where each frame's time goes, on the CPU (game code, the world, preparing, drawing, sound, the editor) and the GPU. | `Profiler`, `Stage` |
 | `game_panel.rs` | The Game panel: the running game through the area's first camera. | |
 | `input_window.rs` | Edit > Input actions: the project's actions and what sets each off (decision 0037). | |
 | `settings_window.rs` | Edit > Settings…: the editor's settings, a page at a time, with a search box (decision 0061). | |

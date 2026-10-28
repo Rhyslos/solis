@@ -13,6 +13,8 @@ libfuzzer_sys::fuzz_target!(|data: &[u8]| {
     };
     let m = &read.mixer;
     assert!(!m.buses.is_empty() && m.buses.len() <= sound::mixer::MAX_BUSES);
+    let (lo, hi) = sound::voices::VOICES_RANGE;
+    assert!((lo..=hi).contains(&m.voices));
     assert_eq!(m.buses[0].name, sound::mixer::MASTER);
     assert!(m.buses[0].inside.is_empty());
     let parents = m.parents();

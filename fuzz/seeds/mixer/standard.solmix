@@ -7,3 +7,4 @@ bus3 = ["Effects", "Master", 0.0, []];
 bus4 = ["Voice", "Master", 0.0, []];
 bus5 = ["Ambience", "Master", 0.0, []];
 bus6 = ["UI", "Master", 0.0, []];
+voices = 64;

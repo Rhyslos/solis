@@ -1,26 +1,43 @@
-//! The game's sounds, played (Phase 7, S3): each frame, the sounds game
-//! code asked for are picked and played, placed around the Game panel's
-//! camera, and the sounds on entities follow them.
+//! The game's sounds, played (Phase 7, S3 to S5): each frame, the sounds
+//! game code asked for and the `AudioSource`s turned on are gathered,
+//! the most important are chosen to be heard (the project's voices, 64
+//! unless the Mixer says otherwise), and they're played around the Game
+//! panel's camera, following their entities.
 //!
-//! Each sound plays through its event's bus (S4): the project's mixer,
-//! with ducking worked out here each frame, mute and solo from the Mixer,
-//! and game code's `setBusVolume` shares for the play; the meters go back
-//! to the Mixer.
+//! - **One-shots** (`playSound…`): one event asked for many times in a
+//!   tick plays a few copies, a little louder; each event's "at once"
+//!   limit holds; one not chosen isn't played.
+//! - **Loops** (`AudioSource`): one not chosen rests (it isn't mixed),
+//!   and comes back where it would have been, by a clock that runs while
+//!   the game plays.
+//! - **Buses** (S4): each sound plays through its event's bus, with
+//!   ducking worked out here each frame, mute and solo from the Mixer, and
+//!   game code's `setBusVolume` shares for the play; the meters go back
+//!   to the Mixer.
 //!
-//! Only what the editor hands out is used: requests and where things are
-//! drawn. Nothing goes back into the game (decision 0056).
+//! Only what the editor hands out is used: requests, the audio sources
+//! and where things are drawn. Nothing goes back into the game (decision
+//! 0056).
 
 use editor::game_sound::Request;
 use editor::{GameSound, LogLevel, SoundMode, Workbench};
 use eframe::egui;
 use reflect::{AssetId, EntityId, Id};
 use sound::SoundDevice;
-use sound::event::Space;
-use sound::game::{Placement, STALL_TICKS, Spot, within_reach};
+use sound::event::{Priority, Space};
+use sound::game::{Placement, STALL_TICKS, Spot, Voice};
+use sound::voices::{Candidate, Key, choose, copies, loop_position, loudness_at};
 use std::collections::{HashMap, HashSet};
 
-/// The game's sounds between frames: what each event played last (so it
-/// isn't played twice running), and what's been said once.
+/// A loop the game has going: when it started (by the sound clock) and
+/// which event, so one coming back carries on where it would be.
+#[derive(Debug, Clone)]
+struct LoopState {
+    event: String,
+    started: f64,
+}
+
+/// The game's sounds between frames.
 #[derive(Debug, Default)]
 pub struct GameAudio {
     /// The mode last frame.
@@ -37,11 +54,32 @@ pub struct GameAudio {
     ducker: sound::mixer::Ducker,
     /// When the last frame was, for ducking's fades.
     last_frame: Option<std::time::Instant>,
+    /// Seconds the game's sound has played this play (not while paused).
+    clock: f64,
+    /// The loops going, by entity (heard or resting).
+    loops: HashMap<u64, LoopState>,
+    /// A number for each event's name, to count its plays on the device.
+    event_numbers: HashMap<String, u64>,
+    /// How long the last frame's sound took, in seconds (the Profiler).
+    spent: f64,
+}
+
+/// One sound that wants to play this frame, worked out: what to play,
+/// from where, how loud it would be, and how it ranks.
+struct Wanted<'a> {
+    key: Key,
+    name: &'a str,
+    event: &'a sound::SoundEvent,
+    clip: &'a sound::Clip,
+    pick: sound::Pick,
+    placement: Placement,
+    loudness_db: f32,
+    extra_db: f32,
 }
 
 impl GameAudio {
-    /// One frame: follows the game's mode, plays what game code asked for,
-    /// and moves the listener and the sounds on entities.
+    /// One frame: follows the game's mode, chooses and plays what's
+    /// heard, and moves the listener and the sounds on entities.
     pub fn frame(
         &mut self,
         workbench: &mut Workbench,
@@ -49,11 +87,11 @@ impl GameAudio {
         device: &mut SoundDevice,
         ctx: &egui::Context,
     ) {
-        let now = std::time::Instant::now();
+        let began = std::time::Instant::now();
         let dt = self
             .last_frame
-            .map_or(0.0, |then| now.duration_since(then).as_secs_f32());
-        self.last_frame = Some(now);
+            .map_or(0.0, |then| began.duration_since(then).as_secs_f32());
+        self.last_frame = Some(began);
         let mode = workbench.game_sound_mode();
         if self.mode != Some(mode) {
             match mode {
@@ -63,6 +101,8 @@ impl GameAudio {
                     self.told_unknown.clear();
                     self.told_full = false;
                     self.shares.clear();
+                    self.loops.clear();
+                    self.clock = 0.0;
                 }
                 SoundMode::Paused => device.pause_game_sounds(true),
                 SoundMode::Playing => device.pause_game_sounds(false),
@@ -73,13 +113,19 @@ impl GameAudio {
         device.set_mixer(workbench.mixer());
         if mode == SoundMode::Off {
             self.mix(workbench, device, dt, ctx);
+            self.spent = began.elapsed().as_secs_f64();
             return;
+        }
+        if mode == SoundMode::Playing {
+            self.clock += f64::from(dt);
         }
         let listener = workbench.listener();
         if let Some((place, turn)) = listener {
             device.set_listener(place.to_array(), turn.to_array());
         }
         let hearing = listener.map_or([0.0; 3], |(p, _)| p.to_array());
+        let mut notes = Vec::new();
+        let mut plays: Vec<(GameSound, String, script::SoundAt)> = Vec::new();
         for request in fresh(requests) {
             match request.request {
                 Request::StopOn(which) => device.stop_game_sounds_on(which.0.raw()),
@@ -87,12 +133,82 @@ impl GameAudio {
                     self.shares.insert(bus.clone(), share);
                 }
                 Request::Play(ref name, at) => {
-                    let notes = self.play(&request, name, at, hearing, workbench, sounds, device);
-                    for note in notes {
-                        workbench.log(LogLevel::Warning, note);
-                    }
+                    let name = name.clone();
+                    plays.push((request, name, at));
                 }
             }
+        }
+        // What wants to be heard: this frame's one-shots and the loops.
+        let mut wanted: Vec<Wanted> = Vec::new();
+        self.shots(
+            &plays,
+            hearing,
+            workbench,
+            sounds,
+            device,
+            &mut wanted,
+            &mut notes,
+        );
+        let sources = workbench.audio_sources();
+        self.loop_candidates(&sources, hearing, sounds, &mut wanted, &mut notes);
+        let candidates: Vec<Candidate> = wanted
+            .iter()
+            .map(|w| Candidate {
+                key: w.key,
+                priority: w.event.priority,
+                loudness_db: w.loudness_db,
+            })
+            .collect();
+        let voices = workbench.mixer().voices as usize;
+        let room = voices.saturating_sub(device.one_shots_playing());
+        let heard: HashSet<Key> = choose(&candidates, room).into_iter().collect();
+        // Loops that went, were turned off or rest stop (resting ones keep
+        // their place by the clock).
+        let going: HashSet<u64> = sources.iter().map(|(id, _, _)| id.0.raw()).collect();
+        self.loops.retain(|entity, _| going.contains(entity));
+        for entity in device.loops_playing() {
+            if !heard.contains(&Key::Loop(entity)) {
+                device.stop_loop_on(entity);
+            }
+        }
+        let real: HashSet<u64> = device.loops_playing().into_iter().collect();
+        for w in wanted.iter().filter(|w| heard.contains(&w.key)) {
+            let event_number = self.event_number(w.name);
+            let voice = |looping, start_s| Voice {
+                bus: workbench.mixer().bus_for(&w.event.bus),
+                event: event_number,
+                looping,
+                start_s,
+                extra_db: w.extra_db,
+            };
+            let result = match w.key {
+                Key::Loop(entity) if real.contains(&entity) => continue,
+                Key::Loop(entity) => {
+                    let state = self.loops.get(&entity);
+                    let start = state.map_or(0.0, |s| {
+                        loop_position(self.clock - s.started, w.clip.info.seconds())
+                    });
+                    device.play_game_sound(w.clip, &w.pick, w.placement, voice(true, start))
+                }
+                Key::Shot(_) => {
+                    device.play_game_sound(w.clip, &w.pick, w.placement, voice(false, 0.0))
+                }
+            };
+            match result {
+                Ok(()) => {
+                    if let Key::Shot(_) = w.key {
+                        self.last_take.insert(w.name.to_owned(), w.pick.take);
+                    }
+                }
+                Err(why) if !self.told_full => {
+                    self.told_full = true;
+                    notes.push(format!("A game sound didn't play: {why}. Said once."));
+                }
+                Err(_) => {}
+            }
+        }
+        for note in notes {
+            workbench.log(LogLevel::Warning, note);
         }
         let on = device.game_sound_entities();
         if !on.is_empty() {
@@ -106,6 +222,180 @@ impl GameAudio {
             device.move_game_sounds(|raw| places.get(&raw).copied());
         }
         self.mix(workbench, device, dt, ctx);
+        self.spent = began.elapsed().as_secs_f64();
+    }
+
+    /// How long the last frame's sound took, in seconds (the Profiler's
+    /// Sound line).
+    pub fn spent(&self) -> f64 {
+        self.spent
+    }
+
+    /// A number for an event's name, the same all play.
+    fn event_number(&mut self, name: &str) -> u64 {
+        let next = self.event_numbers.len() as u64 + 1;
+        *self.event_numbers.entry(name.to_owned()).or_insert(next)
+    }
+
+    /// This frame's one-shots, worked out: a pile of one event in one tick
+    /// becomes a few louder copies, an event's "at once" limit holds, and
+    /// one out of earshot is left out.
+    #[allow(clippy::too_many_arguments)]
+    fn shots<'a>(
+        &mut self,
+        plays: &'a [(GameSound, String, script::SoundAt)],
+        hearing: [f32; 3],
+        workbench: &Workbench,
+        sounds: &'a crate::sounds::Sounds,
+        device: &mut SoundDevice,
+        wanted: &mut Vec<Wanted<'a>>,
+        notes: &mut Vec<String>,
+    ) {
+        // How many times each event was asked for in each tick.
+        let mut asked: HashMap<(u64, &str), usize> = HashMap::new();
+        for (request, name, _) in plays {
+            *asked.entry((request.tick, name.as_str())).or_default() += 1;
+        }
+        let mut started: HashMap<(u64, &str), usize> = HashMap::new();
+        let mut this_frame: HashMap<&str, usize> = HashMap::new();
+        for (i, (request, name, at)) in plays.iter().enumerate() {
+            let group = (request.tick, name.as_str());
+            let (keep, extra_db) = copies(asked[&group]);
+            let n = started.entry(group).or_default();
+            if *n >= keep {
+                continue;
+            }
+            *n += 1;
+            let Some((key, event)) = sounds.event_named(name) else {
+                if self.told_unknown.insert(name.clone()) {
+                    notes.push(format!(
+                        "Game code played the sound event \"{name}\", but there's none by \
+                         that name (or it couldn't be read): a sound event's name is its file \
+                         in assets, without .solsound, such as \"sfx/footstep\". Said once."
+                    ));
+                }
+                continue;
+            };
+            // The event's own limit, counting what plays and what's
+            // starting this frame.
+            let number = self.event_number(name);
+            let now =
+                device.game_sounds_of_event(number) + this_frame.get(key).copied().unwrap_or(0);
+            if now >= event.at_once as usize {
+                continue;
+            }
+            let last = self.last_take.get(key).copied();
+            let Some((pick, clip)) = pick_of(
+                event,
+                sounds,
+                last,
+                request.seed,
+                request.tick,
+                u64::from(request.order),
+            ) else {
+                continue;
+            };
+            let spot = |place: glam::Vec3| Spot {
+                place: place.to_array(),
+                near_m: event.near_m,
+                far_m: event.far_m,
+                fade: event.fade,
+            };
+            let placement = match (event.space, at) {
+                (Space::Flat, _) | (_, script::SoundAt::Nowhere) => Placement::Flat,
+                (Space::Placed, script::SoundAt::Place(place)) => Placement::At(spot(*place)),
+                (Space::Placed, script::SoundAt::On(which)) => {
+                    match workbench.place_between(*which) {
+                        Some(place) => Placement::On(which.0.raw(), spot(place)),
+                        // Not in the game (any more): nothing to play it on.
+                        None => continue,
+                    }
+                }
+            };
+            let loudness_db = loudness(&placement, pick.volume_db + extra_db, hearing);
+            // Too far away to hear: never started (decision 0056).
+            if !loudness_db.is_finite() {
+                continue;
+            }
+            *this_frame.entry(key).or_default() += 1;
+            wanted.push(Wanted {
+                key: Key::Shot(i),
+                name: key,
+                event,
+                clip,
+                pick,
+                placement,
+                loudness_db,
+                extra_db,
+            });
+        }
+    }
+
+    /// The loops turned on, worked out: each keeps its first pick (its
+    /// take and how it's varied), and a new one starts its clock.
+    fn loop_candidates<'a>(
+        &mut self,
+        sources: &[(EntityId, area::builtin::AudioSource, glam::Vec3)],
+        hearing: [f32; 3],
+        sounds: &'a crate::sounds::Sounds,
+        wanted: &mut Vec<Wanted<'a>>,
+        notes: &mut Vec<String>,
+    ) {
+        for (id, source, place) in sources {
+            let entity = id.0.raw();
+            let Some((key, event)) = sounds.event_named(&source.event) else {
+                if self.told_unknown.insert(source.event.clone()) {
+                    notes.push(format!(
+                        "An AudioSource plays the sound event \"{}\", but there's none by that \
+                         name (or it couldn't be read). Said once.",
+                        source.event
+                    ));
+                }
+                continue;
+            };
+            // The same take each time it comes back: picked from the
+            // entity, never the game's random numbers.
+            let Some((pick, clip)) = pick_of(event, sounds, None, 0, 0, entity) else {
+                continue;
+            };
+            let state = self.loops.entry(entity).or_insert_with(|| LoopState {
+                event: key.to_owned(),
+                started: self.clock,
+            });
+            if state.event != key {
+                // A different event now: it starts from the top.
+                *state = LoopState {
+                    event: key.to_owned(),
+                    started: self.clock,
+                };
+            }
+            let placement = match event.space {
+                Space::Flat => Placement::Flat,
+                Space::Placed => Placement::On(
+                    entity,
+                    Spot {
+                        place: place.to_array(),
+                        near_m: event.near_m,
+                        far_m: event.far_m,
+                        fade: event.fade,
+                    },
+                ),
+            };
+            let pick = sound::Pick {
+                volume_db: pick.volume_db + source.volume_db,
+                ..pick
+            };
+            wanted.push(Wanted {
+                key: Key::Loop(entity),
+                name: key,
+                event,
+                clip,
+                pick,
+                placement,
+                loudness_db: loudness(&placement, pick.volume_db, hearing),
+                extra_db: 0.0,
+            });
+        }
     }
 
     /// Ducking, mute, solo and game code's shares as the buses' levels,
@@ -130,98 +420,79 @@ impl GameAudio {
         let peaks = device.take_bus_meters();
         workbench.set_bus_meters(&peaks, &ducked, dt, ctx);
     }
+}
 
-    /// Plays one request; returns anything to say in the Console.
-    #[allow(clippy::too_many_arguments)]
-    fn play(
-        &mut self,
-        request: &GameSound,
-        name: &str,
-        at: script::SoundAt,
-        hearing: [f32; 3],
-        workbench: &Workbench,
-        sounds: &crate::sounds::Sounds,
-        device: &mut SoundDevice,
-    ) -> Vec<String> {
-        let Some((key, event)) = sounds.event_named(name) else {
-            return if self.told_unknown.insert(name.to_owned()) {
-                vec![format!(
-                    "Game code played the sound event \"{name}\", but there's none by that name \
-                     (or it couldn't be read): a sound event's name is its file in assets, \
-                     without .solsound, such as \"sfx/footstep\". Said once."
-                )]
+/// A pick of `event` from takes Solis could read, and its clip.
+fn pick_of<'a>(
+    event: &sound::SoundEvent,
+    sounds: &'a crate::sounds::Sounds,
+    last: Option<AssetId>,
+    seed: u64,
+    tick: u64,
+    order: u64,
+) -> Option<(sound::Pick, &'a sound::Clip)> {
+    let playable = sound::SoundEvent {
+        takes: event
+            .takes
+            .iter()
+            .copied()
+            .filter(|t| sounds.clip_of(*t).is_some())
+            .collect(),
+        ..event.clone()
+    };
+    let pick = sound::event::pick(&playable, last, seed, tick, order)?;
+    Some((pick, sounds.clip_of(pick.take)?))
+}
+
+/// How loud a sound played from `placement` at `volume_db` is at the
+/// listener.
+fn loudness(placement: &Placement, volume_db: f32, hearing: [f32; 3]) -> f32 {
+    let placed = match placement {
+        Placement::Flat => None,
+        Placement::At(s) | Placement::On(_, s) => Some((s.place, s.near_m, s.far_m, s.fade)),
+    };
+    loudness_at(volume_db, placed, hearing)
+}
+
+/// Ranks this many loops and one-shots and chooses `room` of them, as each
+/// frame does (for the scale check): gives back how many were chosen.
+pub fn choose_for_scale(loops: usize, shots: usize, room: usize) -> usize {
+    let candidates: Vec<Candidate> = (0..loops)
+        .map(|i| Candidate {
+            key: Key::Loop(i as u64),
+            priority: Priority::Normal,
+            loudness_db: loudness_at(
+                0.0,
+                Some((
+                    [(i % 100) as f32, 0.0, (i / 100) as f32],
+                    2.0,
+                    60.0,
+                    sound::event::Fade::Realistic,
+                )),
+                [0.0; 3],
+            ),
+        })
+        .chain((0..shots).map(|i| Candidate {
+            key: Key::Shot(i),
+            priority: if i % 10 == 0 {
+                Priority::High
             } else {
-                Vec::new()
-            };
-        };
-        // Only takes that are sound files Solis could read.
-        let playable = sound::SoundEvent {
-            takes: event
-                .takes
-                .iter()
-                .copied()
-                .filter(|t| sounds.clip_of(*t).is_some())
-                .collect(),
-            ..event.clone()
-        };
-        let last = self.last_take.get(key).copied();
-        let Some(pick) = sound::event::pick(
-            &playable,
-            last,
-            request.seed,
-            request.tick,
-            u64::from(request.order),
-        ) else {
-            return Vec::new();
-        };
-        let Some(clip) = sounds.clip_of(pick.take) else {
-            return Vec::new();
-        };
-        let spot = |place: glam::Vec3| Spot {
-            place: place.to_array(),
-            near_m: event.near_m,
-            far_m: event.far_m,
-            fade: event.fade,
-        };
-        let placement = match (event.space, at) {
-            (Space::Flat, _) | (_, script::SoundAt::Nowhere) => Placement::Flat,
-            (Space::Placed, script::SoundAt::Place(place)) => Placement::At(spot(place)),
-            (Space::Placed, script::SoundAt::On(which)) => match workbench.place_between(which) {
-                Some(place) => Placement::On(which.0.raw(), spot(place)),
-                // Not in the game (any more): nothing to play it on.
-                None => return Vec::new(),
+                Priority::Low
             },
-        };
-        // Too far away to hear: never started (decision 0056).
-        if let Placement::At(s) | Placement::On(_, s) = placement
-            && !within_reach(s.place, hearing, s.far_m)
-        {
-            return Vec::new();
-        }
-        let key = key.to_owned();
-        let bus = workbench.mixer().bus_for(&event.bus);
-        match device.play_game_sound(clip, &pick, placement, bus) {
-            Ok(()) => {
-                self.last_take.insert(key, pick.take);
-                Vec::new()
-            }
-            Err(why) if !self.told_full => {
-                self.told_full = true;
-                vec![format!("A game sound didn't play: {why}. Said once.")]
-            }
-            Err(_) => Vec::new(),
-        }
-    }
+            loudness_db: -((i % 50) as f32),
+        }))
+        .collect();
+    choose(&candidates, room).len()
 }
 
 /// The requests worth playing: after a stall (many ticks in one frame),
-/// only the last few ticks' sounds play, not a pile-up; stopping always
-/// counts.
+/// only the last few ticks' sounds play, not a pile-up; stopping and
+/// volumes always count.
 fn fresh(requests: Vec<GameSound>) -> impl Iterator<Item = GameSound> {
     let newest = requests.iter().map(|r| r.tick).max().unwrap_or(0);
     requests
         .into_iter()
-        .filter(move |r| matches!(r.request, Request::StopOn(_)) || r.tick + STALL_TICKS >= newest)
+        .filter(move |r| !matches!(r.request, Request::Play(..)) || r.tick + STALL_TICKS >= newest)
 }
 
 #[cfg(test)]
@@ -243,10 +514,43 @@ mod tests {
             request: Request::StopOn(EntityId(Id::from_raw(5).unwrap())),
             ..play(1)
         };
-        let kept: Vec<u64> = fresh(vec![play(1), play(5), play(9), play(10), stop])
+        let volume = GameSound {
+            request: Request::BusVolume("Music".into(), 0.5),
+            ..play(1)
+        };
+        let kept: Vec<u64> = fresh(vec![play(1), play(5), play(9), play(10), stop, volume])
             .map(|r| r.tick)
             .collect();
-        assert_eq!(kept, vec![9, 10, 1], "the old stop still counts");
+        assert_eq!(kept, vec![9, 10, 1, 1], "old stops and volumes still count");
         assert_eq!(fresh(Vec::new()).count(), 0);
+    }
+
+    #[test]
+    fn choosing_keeps_to_the_room() {
+        assert_eq!(choose_for_scale(2_000, 256, 64), 64);
+        assert_eq!(choose_for_scale(10, 5, 64), 15);
+        assert_eq!(choose_for_scale(0, 0, 64), 0);
+    }
+
+    /// The scale target's sound (decision 0011): 2,000 units with an
+    /// engine loop and 20,000 projectiles each starting a sound in one
+    /// tick (game code keeps 256 of a tick's requests), ranked and chosen
+    /// in under 0.5 ms.
+    #[test]
+    #[ignore = "scale check: run by tools/scale/scale-check.sh"]
+    fn scale_check_choosing_sounds() {
+        let shots = 20_000.min(editor::game_sound::MAX_PER_TICK);
+        let runs = 50;
+        let began = std::time::Instant::now();
+        for _ in 0..runs {
+            assert_eq!(choose_for_scale(2_000, shots, 64), 64);
+        }
+        let each = began.elapsed().as_secs_f64() / f64::from(runs) * 1000.0;
+        let slow = each > 0.5;
+        println!(
+            "Scale check: choosing 64 of 2,000 loops and {shots} sounds: {each:.3} ms (target 0.5 ms){}",
+            if slow { " SLOW" } else { "" }
+        );
+        assert!(!slow);
     }
 }

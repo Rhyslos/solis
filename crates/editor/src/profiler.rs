@@ -21,17 +21,22 @@ pub enum Stage {
     Prepare,
     /// Handing it to the GPU.
     Draw,
+    /// The game's sounds: choosing what's heard, placing it, the buses
+    /// (Phase 7, S5; the frame before, as the app works it out after the
+    /// editor has drawn).
+    Sound,
     /// Everything else the editor does: panels, input, the interface.
     Editor,
 }
 
 impl Stage {
     /// Every stage, in the order the panel shows them.
-    pub const ALL: [Self; 5] = [
+    pub const ALL: [Self; 6] = [
         Self::GameCode,
         Self::World,
         Self::Prepare,
         Self::Draw,
+        Self::Sound,
         Self::Editor,
     ];
 
@@ -42,6 +47,7 @@ impl Stage {
             Self::World => "World",
             Self::Prepare => "Preparing to draw",
             Self::Draw => "Drawing (CPU)",
+            Self::Sound => "Sound",
             Self::Editor => "Editor",
         }
     }
@@ -52,6 +58,7 @@ impl Stage {
             Self::World => Color32::from_rgb(0x5f, 0xa8, 0xd3),
             Self::Prepare => Color32::from_rgb(0x8c, 0xc0, 0x6a),
             Self::Draw => Color32::from_rgb(0xc5, 0x7a, 0xd6),
+            Self::Sound => Color32::from_rgb(0x1d, 0x9e, 0x75),
             Self::Editor => Color32::from_rgb(0x7f, 0x86, 0x91),
         }
     }
@@ -61,7 +68,7 @@ impl Stage {
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct Sample {
     /// Milliseconds per stage, in [`Stage::ALL`]'s order.
-    pub cpu: [f64; 5],
+    pub cpu: [f64; 6],
     /// What was drawn, and the GPU's times if measured.
     pub drawn: DrawReport,
     /// Game components running.
@@ -84,7 +91,7 @@ const KEPT: usize = 240;
 #[derive(Debug, Default)]
 pub struct Profiler {
     started: Option<Instant>,
-    spent: [Duration; 5],
+    spent: [Duration; 6],
     history: VecDeque<Sample>,
 }
 
@@ -92,7 +99,7 @@ impl Profiler {
     /// A frame starts.
     pub fn begin(&mut self) {
         self.started = Some(Instant::now());
-        self.spent = [Duration::ZERO; 5];
+        self.spent = [Duration::ZERO; 6];
     }
 
     /// `stage` took `time` more this frame.
@@ -106,9 +113,11 @@ impl Profiler {
             return;
         };
         let total = started.elapsed();
-        let others: Duration = self.spent[..4].iter().sum();
+        // Sound is worked out outside the editor's frame, so it isn't
+        // taken from the editor's share.
+        let others: Duration = self.spent[..Stage::Sound as usize].iter().sum();
         self.spent[Stage::Editor as usize] = total.saturating_sub(others);
-        let mut cpu = [0.0; 5];
+        let mut cpu = [0.0; 6];
         for (ms, spent) in cpu.iter_mut().zip(self.spent) {
             *ms = spent.as_secs_f64() * 1000.0;
         }
@@ -134,7 +143,7 @@ impl Profiler {
         let newest = self.history.back()?;
         let recent: Vec<&Sample> = self.history.iter().rev().take(count.max(1)).collect();
         let n = recent.len() as f64;
-        let mut cpu = [0.0; 5];
+        let mut cpu = [0.0; 6];
         for sample in &recent {
             for (sum, ms) in cpu.iter_mut().zip(sample.cpu) {
                 *sum += ms / n;
@@ -354,6 +363,25 @@ fn thousands(n: u64) -> String {
 mod tests {
     use super::*;
     use crate::viewport::GpuSplit;
+
+    #[test]
+    fn sound_is_shown_without_being_taken_from_the_editor() {
+        // Sound is worked out after the editor's frame (by the app), so
+        // it isn't part of the time the frame measured.
+        let mut p = Profiler::default();
+        p.begin();
+        p.add(Stage::Sound, Duration::from_millis(4));
+        std::thread::sleep(Duration::from_millis(3));
+        p.end(DrawReport::default(), 0, 0);
+        let sample = p.history().next().unwrap();
+        assert_eq!(sample.cpu[Stage::Sound as usize], 4.0);
+        assert!(
+            sample.cpu[Stage::Editor as usize] >= 2.5,
+            "{:?}",
+            sample.cpu
+        );
+        assert_eq!(Stage::Sound.name(), "Sound");
+    }
 
     #[test]
     fn a_frame_s_stages_add_up_to_the_frame() {
