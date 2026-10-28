@@ -854,9 +854,15 @@ impl App {
                 WorkbenchAction::SaveGame { slot, text } => {
                     match self.projects.root().map(Path::to_path_buf) {
                         Some(root) => match crate::play_files::save_game(&root, &slot, &text) {
-                            Ok(_) => self
-                                .workbench
-                                .log(LogLevel::Info, format!("Saved the game as {slot}.")),
+                            Ok((path, copy)) => {
+                                self.workbench
+                                    .log(LogLevel::Info, format!("Saved the game as {slot}."));
+                                if let Some(copy) = copy {
+                                    let note =
+                                        crate::upgrades::kept_note(&root, &file_name(&path), &copy);
+                                    self.workbench.log(LogLevel::Info, note);
+                                }
+                            }
                             Err(why) => self.workbench.log(
                                 LogLevel::Error,
                                 format!("Couldn't save the game as {slot}: {why}."),

@@ -16,12 +16,23 @@ pub const MAX_SAVE_BYTES: u64 = 256 << 20;
 /// Writes a save game as `slot` (already checked: letters, digits, `_`
 /// and `-`) in the project's saves folder, replacing one there; gives
 /// back where.
-pub fn save_game(root: &Path, slot: &str, text: &str) -> std::io::Result<PathBuf> {
+/// Gives back where it went, and where a copy of an older save in that
+/// slot was kept, if there was one (Phase 8, C2).
+pub fn save_game(
+    root: &Path,
+    slot: &str,
+    text: &str,
+) -> std::io::Result<(PathBuf, Option<PathBuf>)> {
     save_game_within(root, slot, text, MAX_SAVES_BYTES)
 }
 
 /// [`save_game`], with the saves folder holding at most `room` bytes.
-fn save_game_within(root: &Path, slot: &str, text: &str, room: u64) -> std::io::Result<PathBuf> {
+fn save_game_within(
+    root: &Path,
+    slot: &str,
+    text: &str,
+    room: u64,
+) -> std::io::Result<(PathBuf, Option<PathBuf>)> {
     if !script::valid_slot(slot) {
         return Err(std::io::Error::other("that isn't a save slot's name"));
     }
@@ -53,8 +64,23 @@ fn save_game_within(root: &Path, slot: &str, text: &str, room: u64) -> std::io::
             room >> 20
         )));
     }
+    // A save in that slot made by an earlier Solis is kept in the backups
+    // first: the saves folder isn't in Git, so it's the only copy. (A
+    // damaged one or one of this version is simply replaced.)
+    let older = read_limited(&path, crate::play_files::MAX_SAVE_BYTES)
+        .ok()
+        .flatten()
+        .and_then(|old| (editor::SAVE_FORMAT.version_of)(&old))
+        .is_some_and(|v| v < editor::SAVE_FORMAT.current);
+    if older {
+        let copy = crate::upgrades::save(root, &path, text, &editor::SAVE_FORMAT, |t| {
+            editor::save_read_back(t)
+        })
+        .map_err(std::io::Error::other)?;
+        return Ok((path, copy));
+    }
     write_whole(&path, text)?;
-    Ok(path)
+    Ok((path, None))
 }
 
 /// The most the saves folder holds, all saves together (game code saving
@@ -506,7 +532,8 @@ mod tests {
     #[test]
     fn saves_go_in_their_folder_by_slot_and_nowhere_else() {
         let root = scratch("saves");
-        let path = save_game(&root, "quick", "first").unwrap();
+        let (path, copy) = save_game(&root, "quick", "first").unwrap();
+        assert_eq!(copy, None, "nothing older was there");
         assert_eq!(path, root.join(SAVES).join("quick.solsave"));
         save_game(&root, "quick", "second").unwrap();
         assert_eq!(

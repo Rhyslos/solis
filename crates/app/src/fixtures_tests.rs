@@ -190,3 +190,22 @@ fn an_upgrade_that_would_lose_something_leaves_the_old_file() {
     assert!(!asset_db::backup::folder(&root).exists());
     let _ = std::fs::remove_dir_all(&root);
 }
+
+#[test]
+fn an_older_save_in_a_slot_is_kept_before_it_s_replaced() {
+    // The saves folder isn't in Git, so an older save is copied first.
+    let root = project("save");
+    let old = std::fs::read(fixtures().join("save/v2/harbour.solsave")).unwrap();
+    let slot = crate::play_files::save_path(&root, "quick").unwrap();
+    std::fs::create_dir_all(slot.parent().unwrap()).unwrap();
+    std::fs::write(&slot, &old).unwrap();
+    let current = std::fs::read_to_string(fixtures().join("save/v3/harbour.solsave")).unwrap();
+    let (path, copy) = crate::play_files::save_game(&root, "quick", &current).unwrap();
+    let copy = copy.expect("kept");
+    assert_eq!(std::fs::read(&copy).unwrap(), old);
+    assert_eq!(std::fs::read_to_string(&path).unwrap(), current);
+    // Now current: replaced without another copy.
+    let (_, again) = crate::play_files::save_game(&root, "quick", &current).unwrap();
+    assert_eq!(again, None);
+    let _ = std::fs::remove_dir_all(&root);
+}

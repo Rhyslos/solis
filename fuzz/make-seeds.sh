@@ -17,6 +17,10 @@ done
 { cat samples/turret/assets/main.lst; printf '\001'; cat samples/turret/assets/sparks.lua; } \
     > "$seeds/game_code/turret-with-lua.lst"
 cp samples/turret/assets/turret.solarea "$seeds/area_file/"
+# Older versions of saves and input actions, so the upgraders are fuzzed.
+cp tests/fixtures/save/v1/harbour.solsave "$seeds/save_game/v1.solsave"
+cp tests/fixtures/save/v2/harbour.solsave "$seeds/save_game/v2.solsave"
+cp tests/fixtures/input-actions/v1/input.solinput "$seeds/input_actions/v1.solinput"
 printf 'name = "Harbour"\nformat = 1\n' > "$seeds/project_file/harbour.solis"
 # GitHub's answer about a release, a 0x01 byte, then the checksum file
 # (fuzz_targets/update_answer.rs).

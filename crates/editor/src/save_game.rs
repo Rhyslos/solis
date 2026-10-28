@@ -64,6 +64,12 @@ pub static FORMAT: reflect::upgrade::Format<Sections> = reflect::upgrade::Format
     steps: &[physics_as_places_and_motion, places_kept_apart],
 };
 
+/// A save's text read and written again: an older save in a slot is
+/// replaced only by a save that reads back as itself (Phase 8, C2).
+pub fn save_read_back(text: &str) -> Result<String, String> {
+    Save::read(text).map(|save| save.write())
+}
+
 /// The most sections a save has (it writes six).
 const MAX_SECTIONS: usize = 16;
 
@@ -448,7 +454,13 @@ impl Save {
             projectiles,
             physics,
             places,
-            notes: std::mem::take(&mut sections.notes),
+            notes: {
+                // A section no version writes: not a save this Solis made.
+                if !sections.list.is_empty() {
+                    return Err(damaged());
+                }
+                std::mem::take(&mut sections.notes)
+            },
         })
     }
 }
@@ -572,6 +584,7 @@ impl Workbench {
     }
 
     fn load_game_with(&mut self, text: &str, name: &str, keep_input: bool) {
+        let name_shown = name.to_string();
         let save = match Save::read(text) {
             Ok(save) => save,
             Err(why) => {
@@ -674,6 +687,25 @@ impl Workbench {
                         .map(move |(n, d)| (id, n.clone(), d.clone()))
                 })
                 .collect();
+            // Values of components the game's code no longer has (the code
+            // changed since the save): left out, and said once each.
+            let mut gone: Vec<&str> = components
+                .iter()
+                .map(|(_, n, _)| n.as_str())
+                .filter(|n| !game.has_component(n))
+                .collect();
+            gone.sort_unstable();
+            gone.dedup();
+            for name in gone {
+                self.console.push(
+                    LogLevel::Warning,
+                    format!(
+                        "Loading {name_of_save}: the game's code has no component {name} any \
+                         more, so its saved values were left out.",
+                        name_of_save = name_shown
+                    ),
+                );
+            }
             let failures = game.sync_many(
                 components.iter().map(|(e, n, d)| (*e, n.as_str(), d)),
                 &mut host,
