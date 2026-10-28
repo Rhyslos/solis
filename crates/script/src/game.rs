@@ -62,6 +62,9 @@ pub enum Change {
     Sound(String, crate::host::SoundAt),
     /// `stopSoundsOn`: stop the sounds on this entity.
     StopSounds(EntityId),
+    /// `setBusVolume`: this bus at this share of its fader (0 to 1) for
+    /// the rest of the play.
+    BusVolume(String, f32),
 }
 
 /// The entities of a [`WorldView`]: the same while the world's entities,
@@ -408,6 +411,19 @@ impl Host for ViewHost {
         if self.kept.room() {
             let order = self.order();
             self.kept.changes.push((order, Change::StopSounds(which)));
+        }
+    }
+
+    fn set_bus_volume(&mut self, bus: &str, share: f32) {
+        let named =
+            !bus.is_empty() && bus.len() <= MAX_SOUND_NAME && !bus.contains(char::is_control);
+        if named && share.is_finite() && self.kept.sounds < MAX_SOUNDS && self.kept.room() {
+            self.kept.sounds += 1;
+            let order = self.order();
+            self.kept.changes.push((
+                order,
+                Change::BusVolume(bus.to_string(), share.clamp(0.0, 1.0)),
+            ));
         }
     }
 

@@ -119,7 +119,10 @@ Sound must be heard and never felt by the simulation (decisions 0033 and 0036), 
 - Lust, Lua and Rust components all reach the same calls; the manual's game-code pages show all three.
 - Tests: "Sound never changes the game" (above); a sound to the right is louder on the right; far sounds are quiet and beyond the far distance silent; requests land in the same order on 1 core and 4; the limits and a NaN place.
 
-### S4. Buses, ducking and the Mixer panel
+### S4. Buses, ducking and the Mixer panel ✓
+
+Built as mocked up and approved (2026-10-28): the Mixer is a tab beside the Console, a bus shows in Properties, mute and solo aren't saved, and `setBusVolume` takes a share of the fader (0 to 1) for an options menu. Meters are read after each bus's volume (a volume control, then a meter, on its track).
+
 
 - `mixer.solmix` (question 4), read within limits (fuzz); buses as Kira tracks under Master, ducking rules carried out by Solis (fades on the ducked bus).
 - **The Mixer panel** (Window > Mixer), **mocked up for the project lead first** (CLAUDE.md), using the shared sliders and Properties layout (decision 0050): a fader, mute and solo for each bus, and a level meter while sound plays (the meter asks for frames while it moves, decision 0026). Fader changes are saved to `mixer.solmix`; changes game code makes with `setBusVolume` last for the play.

@@ -81,7 +81,10 @@ impl GameWorld for TestWorld {
             if let Change::Fire(shot) = change {
                 self.shots.push(*shot);
             }
-            if matches!(change, Change::Sound(..) | Change::StopSounds(_)) {
+            if matches!(
+                change,
+                Change::Sound(..) | Change::StopSounds(_) | Change::BusVolume(..)
+            ) {
                 self.sounds.push(change.clone());
             }
         }
@@ -721,4 +724,32 @@ fn a_flood_of_sounds_is_capped() {
     game.sync_many([(id(1), "Loud", &ComponentData::default())], &mut world);
     assert!(game.tick(1.0 / 60.0, &mut world).failures.is_empty());
     assert_eq!(world.sounds.len(), crate::game::MAX_SOUNDS);
+}
+
+#[test]
+fn set_bus_volume_lands_within_zero_to_one() {
+    const OPTIONS: &str = "get \"solis/sound\":[setBusVolume];\n\
+        component Options {\n\
+            method update(float dt) {\n\
+                setBusVolume(\"Music\", 0.5);\n\
+                setBusVolume(\"Effects\", 7);\n\
+                setBusVolume(\"UI\", -1);\n\
+                setBusVolume(\"\", 0.5);\n\
+            }\n\
+        }\n\
+        pass Options;\nend\n";
+    let mut world = TestWorld::with(&["O"]);
+    let mut game = Game::new(1).unwrap();
+    game.load(&compiled(OPTIONS), &mut world).unwrap();
+    game.sync_many([(id(1), "Options", &ComponentData::default())], &mut world);
+    assert!(game.tick(1.0 / 60.0, &mut world).failures.is_empty());
+    assert_eq!(
+        world.sounds,
+        [
+            Change::BusVolume("Music".into(), 0.5),
+            Change::BusVolume("Effects".into(), 1.0),
+            Change::BusVolume("UI".into(), 0.0),
+        ],
+        "kept within 0 to 1, and a bus with no name left out"
+    );
 }

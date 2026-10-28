@@ -2,11 +2,17 @@
 //! code asked for are picked and played, placed around the Game panel's
 //! camera, and the sounds on entities follow them.
 //!
+//! Each sound plays through its event's bus (S4): the project's mixer,
+//! with ducking worked out here each frame, mute and solo from the Mixer,
+//! and game code's `setBusVolume` shares for the play; the meters go back
+//! to the Mixer.
+//!
 //! Only what the editor hands out is used: requests and where things are
 //! drawn. Nothing goes back into the game (decision 0056).
 
 use editor::game_sound::Request;
 use editor::{GameSound, LogLevel, SoundMode, Workbench};
+use eframe::egui;
 use reflect::{AssetId, EntityId, Id};
 use sound::SoundDevice;
 use sound::event::Space;
@@ -25,6 +31,12 @@ pub struct GameAudio {
     told_unknown: HashSet<String>,
     /// Whether "too many sounds at once" was said, this play.
     told_full: bool,
+    /// Game code's `setBusVolume` shares, by bus name, this play.
+    shares: HashMap<String, f32>,
+    /// Ducking as it goes.
+    ducker: sound::mixer::Ducker,
+    /// When the last frame was, for ducking's fades.
+    last_frame: Option<std::time::Instant>,
 }
 
 impl GameAudio {
@@ -35,7 +47,13 @@ impl GameAudio {
         workbench: &mut Workbench,
         sounds: &crate::sounds::Sounds,
         device: &mut SoundDevice,
+        ctx: &egui::Context,
     ) {
+        let now = std::time::Instant::now();
+        let dt = self
+            .last_frame
+            .map_or(0.0, |then| now.duration_since(then).as_secs_f32());
+        self.last_frame = Some(now);
         let mode = workbench.game_sound_mode();
         if self.mode != Some(mode) {
             match mode {
@@ -44,6 +62,7 @@ impl GameAudio {
                     self.last_take.clear();
                     self.told_unknown.clear();
                     self.told_full = false;
+                    self.shares.clear();
                 }
                 SoundMode::Paused => device.pause_game_sounds(true),
                 SoundMode::Playing => device.pause_game_sounds(false),
@@ -51,7 +70,9 @@ impl GameAudio {
             self.mode = Some(mode);
         }
         let requests = workbench.take_game_sounds();
+        device.set_mixer(workbench.mixer());
         if mode == SoundMode::Off {
+            self.mix(workbench, device, dt, ctx);
             return;
         }
         let listener = workbench.listener();
@@ -62,6 +83,9 @@ impl GameAudio {
         for request in fresh(requests) {
             match request.request {
                 Request::StopOn(which) => device.stop_game_sounds_on(which.0.raw()),
+                Request::BusVolume(ref bus, share) => {
+                    self.shares.insert(bus.clone(), share);
+                }
                 Request::Play(ref name, at) => {
                     let notes = self.play(&request, name, at, hearing, workbench, sounds, device);
                     for note in notes {
@@ -81,6 +105,30 @@ impl GameAudio {
                 .collect();
             device.move_game_sounds(|raw| places.get(&raw).copied());
         }
+        self.mix(workbench, device, dt, ctx);
+    }
+
+    /// Ducking, mute, solo and game code's shares as the buses' levels,
+    /// and the meters back to the Mixer.
+    fn mix(
+        &mut self,
+        workbench: &mut Workbench,
+        device: &mut SoundDevice,
+        dt: f32,
+        ctx: &egui::Context,
+    ) {
+        let mixer = workbench.mixer();
+        let busy = device.busy_buses(mixer.buses.len());
+        let ducked = self.ducker.step(mixer, &busy, dt).to_vec();
+        let shares: Vec<f32> = mixer
+            .buses
+            .iter()
+            .map(|b| self.shares.get(&b.name).copied().unwrap_or(1.0))
+            .collect();
+        let levels = sound::mixer::levels(mixer, &shares, &ducked, workbench.listening());
+        device.set_bus_levels(&levels);
+        let peaks = device.take_bus_meters();
+        workbench.set_bus_meters(&peaks, &ducked, dt, ctx);
     }
 
     /// Plays one request; returns anything to say in the Console.
@@ -151,7 +199,8 @@ impl GameAudio {
             return Vec::new();
         }
         let key = key.to_owned();
-        match device.play_game_sound(clip, &pick, placement) {
+        let bus = workbench.mixer().bus_for(&event.bus);
+        match device.play_game_sound(clip, &pick, placement, bus) {
             Ok(()) => {
                 self.last_take.insert(key, pick.take);
                 Vec::new()

@@ -125,6 +125,12 @@ pub const NATIVES: &[Native] = &[
         about: "Stops the sounds playing on an entity, with a short fade.",
     },
     Native {
+        file: "sound",
+        name: "setBusVolume",
+        lust: "method setBusVolume(string bus, float volume) native;",
+        about: "Sets a bus's volume (\"Music\", \"Effects\": the Mixer's buses) for the rest of the play, from 0 (silent) to 1 (as set in the Mixer): for an options menu's sliders.",
+    },
+    Native {
         file: "input",
         name: "held",
         lust: "method bool held(string action) native;",
@@ -307,7 +313,7 @@ mod tests {
              get \"solis/entity\":[positionOf, moveTo, rotationOf, turnTo, nameOf];\n\
              get \"solis/physics\":[push, velocityOf, setVelocity, castRay, castRayHit, castRayNormal];\n\
              get \"solis/input\":[held, pressed, released, axis, bindingOf, rebind];\n\
-             get \"solis/sound\":[playSound, playSoundAt, playSoundOn, stopSoundsOn];\n\
+             get \"solis/sound\":[playSound, playSoundAt, playSoundOn, stopSoundsOn, setBusVolume];\n\
              component Mover {\n\
                  has {\n\
                      float speed = 2;\n\

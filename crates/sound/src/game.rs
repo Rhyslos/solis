@@ -18,10 +18,10 @@
 use crate::buses::{BusTree, container};
 use crate::device::{FileStream, Manager, Preview, memory_sound};
 use crate::event::{Fade, Pick};
+use crate::mixer::Mixer;
 use crate::read::{Clip, Samples};
 use kira::listener::ListenerHandle;
 use kira::sound::streaming::StreamingSoundData;
-use crate::mixer::Mixer;
 use kira::track::{SpatialTrackBuilder, SpatialTrackDistances, TrackHandle};
 use kira::{Decibels, Easing, PlaybackRate, Tween};
 use std::time::Duration;
@@ -146,8 +146,11 @@ impl GameTracks {
         self.levels.resize(mixer.buses.len(), 0.0);
         // The old trees go first, so there's room for the new ones.
         self.buses = None;
-        self.buses = BusTree::new(&mut self.track, mixer, &self.levels)
-            .zip(BusTree::new(&mut self.stepping, mixer, &self.levels));
+        self.buses = BusTree::new(&mut self.track, mixer, &self.levels).zip(BusTree::new(
+            &mut self.stepping,
+            mixer,
+            &self.levels,
+        ));
         self.shape = shape;
     }
 }

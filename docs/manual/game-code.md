@@ -304,8 +304,9 @@ end
 - `playSound(event)` plays it the same everywhere: music, the interface.
 - `playSoundAt(event, place)` plays it at a place in the world: quieter far from the camera, and from its direction (for an event whose Placement is **In the world**).
 - `playSoundOn(event, entity)` plays it on an entity and follows it as it moves: an engine, a voice. `stopSoundsOn(entity)` stops them, with a short fade.
+- `setBusVolume(bus, volume)` sets a [bus](mixer.md) ("Music", "Effects") for the rest of the play, from 0 (silent) to 1 (as set in the Mixer): what an options menu's volume sliders call. Stop puts the Mixer's back.
 
-In Lua they're `solis.playSoundAt("sfx/footstep", solis.positionOf(self.me))` and so on. In Rust, through the component's host: `cx.host().play_sound("sfx/footstep", SoundAt::Place(place))`.
+In Lua they're `solis.playSoundAt("sfx/footstep", solis.positionOf(self.me))` and so on. In Rust, through the component's host: `cx.host().play_sound("sfx/footstep", SoundAt::Place(place))`, and `cx.host().set_bus_volume("Music", 0.5)`.
 
 **Sound never changes the game.** None of these gives anything back, so code can't ask "is it still playing?": a game plays exactly the same with sound on, off, or with no sound card, and a [recording](concepts.md#simulation) replays the same. Each play picks its take from the game's seed and the tick, so the same game even sounds the same each time. Like a move, a sound lands at the end of the tick.
 

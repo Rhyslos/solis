@@ -145,8 +145,12 @@ fn decibels(level: f32) -> Decibels {
 /// A new container track for a tree on `manager`.
 pub(crate) fn container(manager: &mut Manager) -> Option<TrackHandle> {
     match manager {
-        Manager::Card(m) => m.add_sub_track(TrackBuilder::new().sub_track_capacity(4)).ok(),
-        Manager::Test(m) => m.add_sub_track(TrackBuilder::new().sub_track_capacity(4)).ok(),
+        Manager::Card(m) => m
+            .add_sub_track(TrackBuilder::new().sub_track_capacity(4))
+            .ok(),
+        Manager::Test(m) => m
+            .add_sub_track(TrackBuilder::new().sub_track_capacity(4))
+            .ok(),
     }
 }
 

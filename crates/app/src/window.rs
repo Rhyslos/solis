@@ -259,6 +259,12 @@ impl App {
                 if let Some(note) = note {
                     self.workbench.log(LogLevel::Warning, note);
                 }
+                // Its buses (Phase 7, S4).
+                let (mixer, notes) = crate::play_files::load_mixer(root);
+                self.workbench.set_mixer(mixer);
+                for note in notes {
+                    self.workbench.log(LogLevel::Warning, note);
+                }
                 for note in opened.notes {
                     self.workbench.log(LogLevel::Warning, note);
                 }
@@ -747,6 +753,23 @@ impl App {
                                 LogLevel::Error,
                                 format!("Couldn't save the input actions: {why}."),
                             ),
+                        }
+                    }
+                }
+                WorkbenchAction::SaveMixer(mixer) => {
+                    if let Some(root) = self.projects.root().map(Path::to_path_buf) {
+                        match crate::play_files::save_mixer(&root, &mixer) {
+                            Ok(Some(backup)) => self.workbench.log(
+                                LogLevel::Warning,
+                                format!(
+                                    "The mixer file had a mistake, so it was kept as {backup} \
+                                     before being written again."
+                                ),
+                            ),
+                            Ok(None) => {}
+                            Err(why) => self
+                                .workbench
+                                .log(LogLevel::Error, format!("Couldn't save the buses: {why}.")),
                         }
                     }
                 }
@@ -1512,7 +1535,7 @@ impl eframe::App for App {
         let actions = self.workbench.show(ui, renderer);
         // What this frame's ticks asked to hear.
         self.game_audio
-            .frame(&mut self.workbench, &self.sounds, self.sound.device());
+            .frame(&mut self.workbench, &self.sounds, self.sound.device(), &ctx);
         self.queued.extend(actions);
         self.run_queue(&ctx);
         let title = self.workbench.title();

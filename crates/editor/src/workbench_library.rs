@@ -141,6 +141,7 @@ impl Workbench {
             })
         {
             self.sound_shown = Some((path.clone(), self.document.selection.clone()));
+            self.mixer.shown = None;
         }
     }
 
@@ -206,6 +207,12 @@ impl Workbench {
         });
         if stale {
             self.sound_shown = None;
+        }
+        let bus_stale = self.mixer.shown.as_ref().is_some_and(|(at, then)| {
+            *then != self.document.selection || *at >= self.mixer.mixer.buses.len()
+        });
+        if bus_stale {
+            self.mixer.shown = None;
         }
     }
 

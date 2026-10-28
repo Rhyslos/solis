@@ -27,9 +27,9 @@ The program's code: the command line, the window and its frame loop, the GPU hoo
 | `import.rs` | Imports models on a small pool of workers (through the import cache when a project is open), so the window never waits; also the system's Open windows. | `Importer`, `Finished`, `FolderFor` |
 | `thumbnails.rs` | The Library's thumbnails: pictures shrunk on a worker, models drawn once on the GPU. | `Thumbnails` |
 | `game_code.rs` | The project's game code on a worker: writes the files describing the engine to Lust, and reads, checks and turns the project's Lust into Lua whenever its assets change. | `GameCode`, `Checked` |
-| `play_files.rs` | Files for playing: the input actions (`input.solinput`), recordings of play (`recordings/*.solrec`) and save games, each read within limits. | `PlayFile`, `RecordingDialog`, `save_game` |
+| `play_files.rs` | Files for playing: the input actions (`input.solinput`), the buses (`mixer.solmix`; a damaged one kept as a backup when saved again), recordings of play (`recordings/*.solrec`) and save games, each read within limits. | `PlayFile`, `RecordingDialog`, `save_game` |
 | `sound.rs` | Opens the sound card on a worker, using a silent device until it is open or when there is none. | `Sound`, `Opener` |
-| `game_audio.rs` | The game's sounds each frame: picks and plays what game code asked for, around the camera, following entities, held while paused and faded on Stop. | `GameAudio` |
+| `game_audio.rs` | The game's sounds each frame: picks and plays what game code asked for through its bus, around the camera, following entities, held while paused and faded on Stop; ducking, mute, solo and `setBusVolume` as the buses' levels, and the meters back to the Mixer. | `GameAudio` |
 | `sounds.rs` | The project's sound files and sound events in the editor: sounds measured and events read on a worker for the Library and Properties, and listened to through the sound device (an event plays a new pick each press). | `Sounds` |
 | `updates.rs` | Keeping the program up to date while it runs: Help > Check for updates, downloading while you work, installing on close (decisions 0043 and 0045). | `Updates`, `Pending` |
 

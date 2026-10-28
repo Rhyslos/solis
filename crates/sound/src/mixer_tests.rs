@@ -11,14 +11,20 @@ fn the_standard_mixer_round_trips() {
     assert!(back.notes.is_empty(), "{:?}", back.notes);
     // One line per bus, so Git sees a change as one line.
     assert_eq!(text.lines().filter(|l| l.starts_with("bus")).count(), 6);
-    assert!(text.contains(r#"bus2 = ["Music", "Master", 0.0, [["Voice", -8.0, 0.2, 1.0]]];"#), "{text}");
+    assert!(
+        text.contains(r#"bus2 = ["Music", "Master", 0.0, [["Voice", -8.0, 0.2, 1.0]]];"#),
+        "{text}"
+    );
 }
 
 #[test]
 fn the_standard_buses_are_masters_five_with_voice_ducking_music() {
     let m = Mixer::default();
     let names: Vec<&str> = m.buses.iter().map(|b| b.name.as_str()).collect();
-    assert_eq!(names, ["Master", "Music", "Effects", "Voice", "Ambience", "UI"]);
+    assert_eq!(
+        names,
+        ["Master", "Music", "Effects", "Voice", "Ambience", "UI"]
+    );
     assert!(m.buses[1..].iter().all(|b| b.inside == MASTER));
     assert_eq!(m.buses[1].ducking[0].while_bus, "Voice");
     assert_eq!(m.buses[1].ducking[0].by_db, -8.0);
@@ -32,7 +38,10 @@ fn values_out_of_range_are_brought_in_with_notes() {
     assert_eq!(r.mixer.buses[0].volume_db, VOLUME_RANGE_DB.1);
     assert_eq!(r.mixer.buses[1].volume_db, VOLUME_RANGE_DB.0);
     let rule = &r.mixer.buses[1].ducking[0];
-    assert_eq!((rule.by_db, rule.down_s, rule.back_s), (0.0, 0.0, MAX_FADE_S));
+    assert_eq!(
+        (rule.by_db, rule.down_s, rule.back_s),
+        (0.0, 0.0, MAX_FADE_S)
+    );
     assert!(r.notes.len() >= 4, "{:?}", r.notes);
 }
 
@@ -86,7 +95,10 @@ fn deep_nesting_is_capped() {
     let mut inside = "Master".to_owned();
     for i in 0..12 {
         let name = format!("B{i}");
-        text.push_str(&format!("bus{} = [\"{name}\", \"{inside}\", 0.0, []];\n", i + 2));
+        text.push_str(&format!(
+            "bus{} = [\"{name}\", \"{inside}\", 0.0, []];\n",
+            i + 2
+        ));
         inside = name;
     }
     let r = read(&text).unwrap();
@@ -101,8 +113,14 @@ fn malformed_lines_are_refused_with_their_line() {
         ("mixer version 1;\nbus1 = 3;\n", 2),
         ("mixer version 1;\nbus1 = [\"Master\", \"\", 0.0];\n", 2),
         ("mixer version 1;\n\nbus1 = [\"\", \"\", 0.0, []];\n", 3),
-        ("mixer version 1;\nbus1 = [\"Master\", \"\", \"loud\", []];\n", 2),
-        ("mixer version 1;\nbus1 = [\"Master\", \"\", 0.0, [3]];\n", 2),
+        (
+            "mixer version 1;\nbus1 = [\"Master\", \"\", \"loud\", []];\n",
+            2,
+        ),
+        (
+            "mixer version 1;\nbus1 = [\"Master\", \"\", 0.0, [3]];\n",
+            2,
+        ),
     ] {
         let e = read(text).unwrap_err();
         assert_eq!(e.line, line, "{text}: {e}");
@@ -157,15 +175,28 @@ fn an_unknown_bus_plays_through_master() {
 fn levels_follow_faders_overrides_ducking_mute_and_solo() {
     let mut m = Mixer::default();
     m.buses[1].volume_db = -4.0;
-    let none = vec![None; m.buses.len()];
+    let none = vec![1.0; m.buses.len()];
     let flat = vec![0.0; m.buses.len()];
     let quiet = Listening::default();
     let l = levels(&m, &none, &flat, &quiet);
     assert_eq!(l[1], -4.0);
-    // Game code's setBusVolume replaces the fader while playing.
-    let mut over = none.clone();
-    over[1] = Some(-10.0);
-    assert_eq!(levels(&m, &over, &flat, &quiet)[1], -10.0);
+    // Game code's setBusVolume: a share of the fader (half is about -6 dB).
+    let mut half = none.clone();
+    half[1] = 0.5;
+    assert!((levels(&m, &half, &flat, &quiet)[1] - (-4.0 - 6.0206)).abs() < 0.01);
+    half[1] = 0.0;
+    assert_eq!(levels(&m, &half, &flat, &quiet)[1], f32::NEG_INFINITY);
+    half[1] = f32::NAN;
+    assert_eq!(
+        levels(&m, &half, &flat, &quiet)[1],
+        -4.0,
+        "not a number counts as 1"
+    );
+    assert_eq!(
+        levels(&m, &[], &flat, &quiet)[1],
+        -4.0,
+        "missing counts as 1"
+    );
     // Ducking adds on.
     let mut ducked = flat.clone();
     ducked[1] = -8.0;
@@ -202,18 +233,31 @@ fn voice_ducks_music_and_music_comes_back_after_the_last_voice() {
     for _ in 0..6 {
         d.step(&m, &busy, 1.0 / 60.0);
     }
-    assert!(d.now_db[1] < 0.0 && d.now_db[1] > -8.0, "on the way: {}", d.now_db[1]);
+    assert!(
+        d.now_db[1] < 0.0 && d.now_db[1] > -8.0,
+        "on the way: {}",
+        d.now_db[1]
+    );
     for _ in 0..12 {
         d.step(&m, &busy, 1.0 / 60.0);
     }
     assert_eq!(d.now_db[1], -8.0, "all the way down after 0.2 s");
-    assert!(d.now_db.iter().enumerate().all(|(i, v)| i == 1 || *v == 0.0));
+    assert!(
+        d.now_db
+            .iter()
+            .enumerate()
+            .all(|(i, v)| i == 1 || *v == 0.0)
+    );
     // Voice stops: 1 s back.
     busy[3] = false;
     for _ in 0..30 {
         d.step(&m, &busy, 1.0 / 60.0);
     }
-    assert!(d.now_db[1] > -8.0 && d.now_db[1] < 0.0, "half way back: {}", d.now_db[1]);
+    assert!(
+        d.now_db[1] > -8.0 && d.now_db[1] < 0.0,
+        "half way back: {}",
+        d.now_db[1]
+    );
     for _ in 0..40 {
         d.step(&m, &busy, 1.0 / 60.0);
     }
@@ -240,5 +284,8 @@ fn ducking_ignores_bad_frame_times() {
     d.step(&m, &busy, -1.0);
     assert_eq!(d.now_db[1], 0.0);
     d.step(&m, &busy, f32::INFINITY);
-    assert_eq!(d.now_db[1], 0.0, "an infinite frame isn't a number of seconds");
+    assert_eq!(
+        d.now_db[1], 0.0,
+        "an infinite frame isn't a number of seconds"
+    );
 }

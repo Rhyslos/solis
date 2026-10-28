@@ -1,0 +1,9 @@
+-- The project's buses. Safe to edit by hand: one line per bus.
+mixer version 1;
+
+bus1 = ["Master", "", 0.0, []];
+bus2 = ["Music", "Master", 0.0, [["Voice", -8.0, 0.2, 1.0]]];
+bus3 = ["Effects", "Master", 0.0, []];
+bus4 = ["Voice", "Master", 0.0, []];
+bus5 = ["Ambience", "Master", 0.0, []];
+bus6 = ["UI", "Master", 0.0, []];

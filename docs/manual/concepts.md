@@ -138,7 +138,11 @@
 - **Take:** one recording of a sound, as in a recording studio. A footstep event might hold five takes of a foot on gravel.
 - **Decibel (dB):** how loudness is measured. Every 6 dB is about twice (or half) as loud, and 0 dB means as recorded.
 - **Semitone (st):** one step on a piano keyboard. 12 semitones is an octave: twice the pitch. Playing a sound faster raises its pitch.
-- **Bus:** a group of sounds turned up or down together, like a channel on a mixing desk: music, effects, voices, ambience and the interface each have one.
+- **Bus:** a group of sounds turned up or down together, like a channel on a mixing desk: music, effects, voices, ambience and the interface each have one. Buses sit inside other buses, all inside Master. See [The Mixer](mixer.md).
+- **Fader:** a bus's volume control, the slider on its strip in the Mixer.
+- **Meter:** a bar showing how loud a bus is right now: green, then yellow, red near the top.
+- **Ducking:** turning one bus down automatically while another plays: music under speech.
+- **Mute and solo:** mute silences a bus; solo plays only the soloed buses, to hear one part on its own.
 - **Streaming:** playing a long sound a piece at a time as it's read from its file, instead of reading all of it first, so a long piece of music doesn't fill the memory. Solis streams sounds longer than ten minutes.
 
 ## Getting Solis

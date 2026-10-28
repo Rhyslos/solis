@@ -31,6 +31,7 @@ Tests: files ending `_tests.rs` hold the tests of the file with the same start (
 | `properties.rs`, `inspector.rs` | The Properties panel, and fields drawn from any component's schema, so built-in, Lust and Lua components show the same way. | |
 | `library.rs` | The Library panel: the project's files as thumbnails or a list, with a folder tree and search; drag to place or move. | `LibraryItem`, `ProjectInfo` |
 | `game_sound.rs` | Game code's sound requests on their way out after each tick, with the tick and seed they're picked by; the listener and entities' places between ticks for the app. | `GameSound`, `SoundMode`, `Workbench::take_game_sounds` |
+| `mixer_view.rs` | The Mixer panel (a strip per bus: name, meter, fader, volume, mute and solo), a bus in Properties (inside, volume, ducking rules), and the Game panel's mute button; edits saved once let go. | `MixerState`, `Workbench::set_mixer`, `Workbench::set_bus_meters` |
 | `sound_event_view.rs` | A sound event in Properties: its takes (sound files dropped on the list are added), how each play varies, where it's heard, and Play; saved once the mouse is let go. | `event_properties` |
 | `sound_view.rs` | Sound files in the Library and Properties: waveform, details, Play and Stop. | `SoundInfo`, `SoundState`, `EventState`, `Preview` |
 | `console.rs`, `console_commands.rs` | The Console panel (messages, filters, search) and the commands typed under it. | `LogLine`, `LogLevel` |

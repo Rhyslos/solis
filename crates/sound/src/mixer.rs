@@ -225,8 +225,7 @@ impl Mixer {
     /// rules). Refused (`false`) for an empty, too long or taken name.
     pub fn rename_bus(&mut self, at: usize, to: &str) -> bool {
         let to = to.trim();
-        if !good_name(to) || self.index_of(to).is_some_and(|i| i != at) || at >= self.buses.len()
-        {
+        if !good_name(to) || self.index_of(to).is_some_and(|i| i != at) || at >= self.buses.len() {
             return false;
         }
         let from = std::mem::replace(&mut self.buses[at].name, to.to_owned());
@@ -561,7 +560,10 @@ pub fn write(mixer: &Mixer) -> String {
             )
         })
         .collect();
-    let borrowed: Vec<(&str, Value)> = fields.iter().map(|(k, v)| (k.as_str(), v.clone())).collect();
+    let borrowed: Vec<(&str, Value)> = fields
+        .iter()
+        .map(|(k, v)| (k.as_str(), v.clone()))
+        .collect();
     settings::write_settings(
         KIND,
         VERSION,
@@ -584,15 +586,11 @@ pub struct Listening {
     pub all_muted: bool,
 }
 
-/// What each bus's volume should be now, in decibels: its fader (or game
-/// code's `setBusVolume` while playing, from `overrides`), its ducking
-/// from `ducked`, and mute and solo. Silent is [`f32::NEG_INFINITY`].
-pub fn levels(
-    mixer: &Mixer,
-    overrides: &[Option<f32>],
-    ducked: &[f32],
-    listening: &Listening,
-) -> Vec<f32> {
+/// What each bus's volume should be now, in decibels: its fader, times
+/// game code's `setBusVolume` share while playing (`shares`, 1 as set, 0
+/// silent; missing is 1), its ducking from `ducked`, and mute and solo.
+/// Silent is [`f32::NEG_INFINITY`].
+pub fn levels(mixer: &Mixer, shares: &[f32], ducked: &[f32], listening: &Listening) -> Vec<f32> {
     let soloed: Vec<usize> = listening
         .soloed
         .iter()
@@ -615,8 +613,16 @@ pub fn levels(
             {
                 return f32::NEG_INFINITY;
             }
-            let fader = overrides.get(i).copied().flatten().unwrap_or(bus.volume_db);
-            fader + ducked.get(i).copied().unwrap_or(0.0)
+            let share = shares.get(i).copied().unwrap_or(1.0);
+            let share = if share.is_finite() {
+                share.clamp(0.0, 1.0)
+            } else {
+                1.0
+            };
+            if share == 0.0 {
+                return f32::NEG_INFINITY;
+            }
+            bus.volume_db + 20.0 * share.log10() + ducked.get(i).copied().unwrap_or(0.0)
         })
         .collect()
 }

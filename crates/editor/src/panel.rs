@@ -28,11 +28,13 @@ pub enum Panel {
     Problems,
     /// Where each frame's time goes (Phase 5).
     Profiler,
+    /// The project's buses: a fader, meter, mute and solo each (Phase 7).
+    Mixer,
 }
 
 impl Panel {
     /// Every panel, in the order the Window menu lists them.
-    pub const ALL: [Self; 10] = [
+    pub const ALL: [Self; 11] = [
         Self::Viewport,
         Self::Game,
         Self::Area,
@@ -43,6 +45,7 @@ impl Panel {
         Self::Console,
         Self::Problems,
         Self::Profiler,
+        Self::Mixer,
     ];
 
     /// The name on the panel's tab.
@@ -58,6 +61,7 @@ impl Panel {
             Self::Console => "Console",
             Self::Problems => "Problems",
             Self::Profiler => "Profiler",
+            Self::Mixer => "Mixer",
         }
     }
 
@@ -74,6 +78,7 @@ impl Panel {
             Self::Console => Icon::Console,
             Self::Problems => Icon::Problems,
             Self::Profiler => Icon::Profiler,
+            Self::Mixer => Icon::Sound,
         }
     }
 }

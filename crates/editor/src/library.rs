@@ -204,6 +204,8 @@ pub(crate) struct Sounds<'a> {
     pub(crate) states: &'a HashMap<String, SoundState>,
     pub(crate) events: &'a HashMap<String, EventState>,
     pub(crate) preview: Option<&'a Preview>,
+    /// The project's buses, which sound events play through.
+    pub(crate) mixer: &'a sound::Mixer,
 }
 
 impl Sounds<'_> {

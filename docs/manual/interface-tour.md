@@ -26,6 +26,7 @@ When finding your way around, or making the layout suit your screen.
 | Console | Problems | Messages from the editor and the engine, and a command line. See [The Console](console.md). |
 | Problems | Console | Mistakes found in the area, such as a missing model; a number on the tab says how many. See [Problems](problems.md). |
 | Profiler | Console | Where each frame's time goes: game code, the world, drawing, the editor, and the graphics card. See [The Profiler](profiler.md). |
+| Mixer | Console | The project's buses: a fader, meter, mute and solo each, and ducking. See [The Mixer](mixer.md). |
 
 **Rearranging panels ([docking](concepts.md#the-window)):**
 1. Drag a panel by its tab.
