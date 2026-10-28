@@ -17,4 +17,4 @@ Example files of every version of every file format Solis has ever released (Pha
 | `sidecar/` | Sidecars beside assets (`.solmeta`) | v1 |
 | `save/` | Save games (`.solsave`), opened by `crates/editor/src/save_game_tests.rs`, which loads each and plays on | v1 (physics as Rapier's bytes, never read now), v2 (the game's places in the area; one with the first builds' checksum of the body only), v3 |
 
-Each `v<N>/` folder holds files as that version wrote them. `fixtures/` and its folders are data, so they have no README of their own.
+Each `v<N>/` folder holds files as that version wrote them, byte for byte: the repository's `.gitattributes` stops Git changing their line endings on Windows (a save carries a checksum). `fixtures/` and its folders are data, so they have no README of their own.
