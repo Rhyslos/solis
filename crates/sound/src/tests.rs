@@ -331,7 +331,10 @@ fn a_chained_ogg_is_refused_before_lewton_reads_its_second_stream() {
     assert!(read_bytes(&good).is_ok());
     let mut twice = good.clone();
     twice.extend_from_slice(&good);
-    assert!(read_bytes(&twice).is_err(), "the same stream twice is two streams");
+    assert!(
+        read_bytes(&twice).is_err(),
+        "the same stream twice is two streams"
+    );
 }
 
 /// Found by fuzzing too: a codebook claiming more lookup values than
@@ -854,7 +857,10 @@ fn a_streamed_file_shorter_than_measured_ends_and_a_changed_one_is_refused() {
         }
         total += chunk.len();
     }
-    assert_eq!(total, 8_000, "padded with silence to the measured length, then ends");
+    assert_eq!(
+        total, 8_000,
+        "padded with silence to the measured length, then ends"
+    );
     // Another rate since: refused.
     std::fs::write(&path, wav_int(22_050, 1, 16, &[500; 3_000])).unwrap();
     assert!(crate::device::FileStream::open(&path, info).is_err());

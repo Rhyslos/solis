@@ -461,9 +461,10 @@ impl<R: Read + Seek> Decoder<R> {
             // whose packets aren't sound, so every streamed Ogg played
             // nothing (the Phase 7 review). It's opened again instead.
             Inner::Ogg(..) if index == 0 => {
-                let Inner::Ogg(ogg, _) =
-                    std::mem::replace(&mut self.inner, Inner::Gone("it couldn't start again".into()))
-                else {
+                let Inner::Ogg(ogg, _) = std::mem::replace(
+                    &mut self.inner,
+                    Inner::Gone("it couldn't start again".into()),
+                ) else {
                     return Ok(0);
                 };
                 let mut reader = ogg.into_inner().into_inner();

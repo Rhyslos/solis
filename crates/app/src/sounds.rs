@@ -971,6 +971,37 @@ mod tests {
     }
 
     #[test]
+    fn made_up_buses_and_events_don_t_pile_up() {
+        // Regression (the Phase 7 review): game code naming buses or sound
+        // events that aren't there grew two lists without end.
+        let (dir, s) = with_events("made-up", &[("hum", hum_event())]);
+        const MADE_UP: &str = "get \"solis/sound\":[playSound, setBusVolume];\n\
+            component Noisy {\n\
+                method update(float dt) {\n\
+                    setBusVolume(\"Nope\", 0.5);\n\
+                    setBusVolume(\"Music\", 0.5);\n\
+                    playSound(\"nothing\");\n\
+                }\n\
+            }\n\
+            pass Noisy;\nend\n";
+        let mut w = coded_world(MADE_UP, "Noisy");
+        let mut device = SoundDevice::for_tests();
+        let mut audio = crate::game_audio::GameAudio::default();
+        let ctx = eframe::egui::Context::default();
+        w.play();
+        for _ in 0..5 {
+            w.play_for(1.0 / 60.0);
+            audio.frame(&mut w, &s, &mut device, &ctx);
+        }
+        assert_eq!(
+            audio.held(),
+            (1, 1),
+            "only the real bus; the unknown name once"
+        );
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
     fn an_event_plays_a_different_take_each_press() {
         let dir = folder("event");
         std::fs::write(dir.join("sfx/a.wav"), wav()).unwrap();

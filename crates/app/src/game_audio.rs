@@ -292,6 +292,12 @@ impl GameAudio {
     }
 
     /// How long the last frame's sound took, in seconds (the Profiler's
+    /// How many bus shares and unknown names it holds (tests).
+    #[cfg(test)]
+    pub(crate) fn held(&self) -> (usize, usize) {
+        (self.shares.len(), self.told_unknown.len())
+    }
+
     /// Sound line).
     pub fn spent(&self) -> f64 {
         self.spent
