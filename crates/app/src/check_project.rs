@@ -98,48 +98,77 @@ pub fn check(root: &Path, made_by: &str) -> Report {
 /// says why it couldn't be).
 type Reader = fn(&str) -> Result<(), String>;
 
-/// The reader for `path`, by its name.
-fn reader_for(path: &Path) -> Option<(&'static dyn Versioned, Reader)> {
+/// The reader for `path`, by its name, and the most of it read (the
+/// editor's own limit for that kind of file).
+fn reader_for(path: &Path) -> Option<(&'static dyn Versioned, Reader, u64)> {
     let name = path.file_name()?.to_str()?.to_ascii_lowercase();
     let extension = name.rsplit_once('.').map_or("", |(_, e)| e);
     Some(match extension {
-        "solarea" | "solassembly" => (&area::text::FORMAT, |text| {
-            let registry = area::builtin::registry().map_err(|e| e.to_string())?;
-            area::text::read_file(text, &registry)
-                .map(drop)
-                .map_err(|e| e.to_string())
-        }),
-        "solsound" => (&sound::event::FORMAT, |text| {
-            sound::event::read(text)
-                .map(drop)
-                .map_err(|e| e.to_string())
-        }),
-        "solmix" => (&sound::mixer::FORMAT, |text| {
-            sound::mixer::read(text)
-                .map(drop)
-                .map_err(|e| e.to_string())
-        }),
-        "solinput" => (&input::BINDINGS_FORMAT, |text| {
-            input::Bindings::read(text)
-                .map(drop)
-                .map_err(|e| e.to_string())
-        }),
-        "solrec" => (&input::RECORDING_FORMAT, |text| {
-            input::Recording::read(text)
-                .map(drop)
-                .map_err(|e| e.to_string())
-        }),
-        "solmeta" => (&asset_db::SIDECAR_FORMAT, |text| {
-            asset_db::Sidecar::parse(text).map(drop)
-        }),
-        "solsave" => (&editor::SAVE_FORMAT, |text| {
-            editor::save_read_back(text).map(drop)
-        }),
-        "solis" if name == asset_db::PROJECT_FILE => (&asset_db::PROJECT_FORMAT, |text| {
-            asset_db::Project::read_file(text)
-                .map(drop)
-                .map_err(|e| e.to_string())
-        }),
+        "solarea" | "solassembly" => (
+            &area::text::FORMAT,
+            |text| {
+                let registry = area::builtin::registry().map_err(|e| e.to_string())?;
+                area::text::read_file(text, &registry)
+                    .map(drop)
+                    .map_err(|e| e.to_string())
+            },
+            area::text::MAX_BYTES as u64,
+        ),
+        "solsound" => (
+            &sound::event::FORMAT,
+            |text| {
+                sound::event::read(text)
+                    .map(drop)
+                    .map_err(|e| e.to_string())
+            },
+            sound::event::MAX_BYTES as u64,
+        ),
+        "solmix" => (
+            &sound::mixer::FORMAT,
+            |text| {
+                sound::mixer::read(text)
+                    .map(drop)
+                    .map_err(|e| e.to_string())
+            },
+            sound::mixer::MAX_BYTES as u64,
+        ),
+        "solinput" => (
+            &input::BINDINGS_FORMAT,
+            |text| {
+                input::Bindings::read(text)
+                    .map(drop)
+                    .map_err(|e| e.to_string())
+            },
+            1 << 20,
+        ),
+        "solrec" => (
+            &input::RECORDING_FORMAT,
+            |text| {
+                input::Recording::read(text)
+                    .map(drop)
+                    .map_err(|e| e.to_string())
+            },
+            input::MAX_RECORDING_BYTES as u64,
+        ),
+        "solmeta" => (
+            &asset_db::SIDECAR_FORMAT,
+            |text| asset_db::Sidecar::parse(text).map(drop),
+            asset_db::sidecar::MAX_BYTES,
+        ),
+        "solsave" => (
+            &editor::SAVE_FORMAT,
+            |text| editor::save_read_back(text).map(drop),
+            crate::play_files::MAX_SAVE_BYTES,
+        ),
+        "solis" if name == asset_db::PROJECT_FILE => (
+            &asset_db::PROJECT_FORMAT,
+            |text| {
+                asset_db::Project::read_file(text)
+                    .map(drop)
+                    .map_err(|e| e.to_string())
+            },
+            64 << 10,
+        ),
         _ => return None,
     })
 }
@@ -179,10 +208,9 @@ fn check_files(root: &Path, report: &mut Report) {
     files.sort();
     let (mut read, mut older) = (0, 0);
     for path in &files {
-        let Some((format, reader)) = reader_for(path) else {
+        let Some((format, reader, limit)) = reader_for(path) else {
             continue;
         };
-        let limit = 256 << 20;
         let text = match asset_db::read_limited(path, limit) {
             Ok(bytes) => match String::from_utf8(bytes) {
                 Ok(text) => text,
@@ -278,8 +306,10 @@ fn check_recordings(
         .flatten()
         .flatten()
         .map(|e| e.path())
+        // Ordinary files only: a link could bring a recording in from
+        // outside the project.
         .filter(|p| {
-            p.is_file()
+            std::fs::symlink_metadata(p).is_ok_and(|m| m.is_file())
                 && p.extension()
                     .is_some_and(|e| e.eq_ignore_ascii_case(RECORDING_EXTENSION))
         })
@@ -350,7 +380,7 @@ pub(crate) fn workbench_for(
 ) -> Result<editor::Workbench, String> {
     let assets = db.project().assets();
     let area_file = assets.join(area_path);
-    if area_path.split('/').any(|p| p == ".." || p.is_empty()) || !area_file.starts_with(&assets) {
+    if !input::Recording::is_plain_area_path(area_path) || !area_file.starts_with(&assets) {
         return Err(format!("its area, {area_path}, isn't in the assets"));
     }
     let mut w = editor::Workbench::new(

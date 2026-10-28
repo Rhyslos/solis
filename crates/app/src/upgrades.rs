@@ -106,7 +106,7 @@ pub(crate) mod tests {
             None
         );
         assert_eq!(
-            older_note("x", "not toml [[", &input::BINDINGS_FORMAT),
+            older_note("x", "version = \"two\"\n", &input::BINDINGS_FORMAT),
             None
         );
     }

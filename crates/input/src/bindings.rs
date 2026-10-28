@@ -20,11 +20,9 @@ pub(crate) const VERSION: u32 = 2;
 pub static FORMAT: reflect::upgrade::Format<toml::Table> = reflect::upgrade::Format {
     name: "input actions",
     current: VERSION,
-    version_of: |text| {
-        toml::from_str::<toml::Table>(text)
-            .ok()
-            .and_then(|t| version_in(&t))
-    },
+    // Found from its lines, so the start of a file is enough; a file with
+    // no version line is version 1.
+    version_of: |text| reflect::upgrade::toml_key_version(text, "version").map(|v| v.unwrap_or(1)),
     steps: &[arrows_are_up_down_left_right],
 };
 

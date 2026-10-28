@@ -96,7 +96,13 @@ fn an_area_outside_the_assets_is_refused() {
     asset_db::Project::create(&root, "Out").unwrap();
     let project = asset_db::Project::open(&root).unwrap();
     let (db, _, _) = asset_db::AssetDb::open(project, assets::Limits::default());
-    for bad in ["../project.solis", "a//b.solarea", ""] {
+    for bad in [
+        "../project.solis",
+        "a//b.solarea",
+        "",
+        "a\\..\\..\\x.solarea",
+        "C:/x.solarea",
+    ] {
         let refused = workbench_for(&root, &db, None, MADE_BY, bad).err().unwrap();
         assert!(refused.contains("isn't in the assets"), "{bad}: {refused}");
     }
@@ -122,4 +128,19 @@ fn the_samples_check_out() {
         assert_eq!(report.failed, 0, "{name}:\n{}", report.text());
         let _ = std::fs::remove_dir_all(&root);
     }
+}
+
+#[test]
+fn a_file_bigger_than_its_kind_allows_fails_without_being_read() {
+    // Regression (the Phase 8 review): each kind of file is read within the
+    // editor's own limit, so a planted huge sidecar can't use up memory.
+    let root = std::env::temp_dir().join(format!("solis-check-big-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&root);
+    asset_db::Project::create(&root, "Big").unwrap();
+    let big = vec![b'#'; asset_db::sidecar::MAX_BYTES as usize + 1];
+    std::fs::write(root.join("assets/huge.glb.solmeta"), big).unwrap();
+    let report = check(&root, MADE_BY);
+    let text = report.text();
+    assert!(text.contains("FAIL  assets/huge.glb.solmeta"), "{text}");
+    let _ = std::fs::remove_dir_all(&root);
 }

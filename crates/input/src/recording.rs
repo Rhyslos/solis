@@ -199,7 +199,9 @@ impl Recording {
                     .ok_or(RecordingError::Damaged(n + 1))?,
                 None => return Err(RecordingError::Damaged(n + 1)),
             };
-            if path.len() > MAX_AREA_PATH || path.contains(char::is_control) {
+            if path.len() > MAX_AREA_PATH
+                || (!path.trim().is_empty() && !Self::is_plain_area_path(path.trim()))
+            {
                 return Err(RecordingError::Damaged(n + 1));
             }
             (!path.trim().is_empty()).then(|| path.trim().to_string())
@@ -292,6 +294,19 @@ impl Recording {
             .upgrade(version, &mut recording)
             .map_err(|e| RecordingError::Upgrade(e.to_string()))?;
         Ok(recording)
+    }
+
+    /// Whether `path` is a plain path inside a project's assets: names
+    /// joined by `/`, none of them empty, `.` or `..`, and no backslash,
+    /// colon or control character (so it can't name anything outside the
+    /// assets on any system).
+    pub fn is_plain_area_path(path: &str) -> bool {
+        !path.is_empty()
+            && !path.contains(['\\', ':'])
+            && !path.contains(char::is_control)
+            && path
+                .split('/')
+                .all(|p| !p.is_empty() && p != "." && p != "..")
     }
 
     /// The first tick (from 0) where `other`'s checksums differ from

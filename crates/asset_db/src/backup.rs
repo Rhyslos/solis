@@ -15,7 +15,7 @@
 //! why. A file already in the current format is simply saved: Git is its
 //! undo. Old backups are trimmed by age and total size, never the newest.
 
-use crate::project::{CACHE_FOLDER, own_folder, write_atomically};
+use crate::project::{CACHE_FOLDER, own_folder, read_limited, write_atomically};
 use reflect::upgrade::Versioned;
 use std::fmt;
 use std::path::{Path, PathBuf};
@@ -29,6 +29,16 @@ pub const KEEP_DAYS: i64 = 90;
 pub const MAX_TOTAL_BYTES: u64 = 1 << 30;
 /// How a backup's folder is named: sortable, and allowed on Windows.
 const STAMP: &str = "%Y-%m-%d %H-%M-%S";
+/// The length of a [`STAMP`]: a folder may add " 2", " 3" after it.
+const STAMP_LEN: usize = 19;
+/// Backups younger than this many days are never taken away to make room,
+/// however big (a save game's backup may be its only copy).
+pub const KEEP_FRESH_DAYS: i64 = 7;
+/// How much of a file is read to find its version: the header line, or a
+/// TOML file's top-level keys.
+const HEAD_BYTES: usize = 64 << 10;
+/// The biggest file copied to the backups (the biggest any format reads).
+pub const MAX_BACKUP_BYTES: u64 = 256 << 20;
 
 /// Where a project's backups are.
 pub fn folder(root: &Path) -> PathBuf {
@@ -86,22 +96,17 @@ pub fn save(
     format: &dyn Versioned,
     check: impl FnOnce(&str) -> Result<(), String>,
 ) -> Result<Option<PathBuf>, SaveError> {
-    let old = match std::fs::read(path) {
-        Ok(old) => old,
+    // Only the start is read to see whether it's current: the whole file
+    // is read only when it's going to be copied.
+    let head = match read_head(path) {
+        Ok(head) => head,
         Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
             write_atomically(path, bytes)?;
             return Ok(None);
         }
         Err(e) => return Err(e.into()),
     };
-    let current = std::str::from_utf8(&old)
-        .ok()
-        .and_then(|text| format.version_of(text))
-        == Some(format.current());
-    if current {
-        write_atomically(path, bytes)?;
-        return Ok(None);
-    }
+    let current = format.version_of(utf8_prefix(&head)) == Some(format.current());
     let relative = path
         .strip_prefix(root)
         .ok()
@@ -109,16 +114,25 @@ pub fn save(
             r.components()
                 .all(|c| matches!(c, std::path::Component::Normal(_)))
         })
-        .ok_or_else(|| SaveError::Outside(path.to_path_buf()))?
-        .to_path_buf();
+        .map(Path::to_path_buf);
+    // A file inside Solis's own folder (a backup opened to restore it) is
+    // never backed up, so a trim can't take away what was just saved.
+    let in_own = relative
+        .as_ref()
+        .is_some_and(|r| r.starts_with(CACHE_FOLDER));
+    if current || in_own {
+        write_atomically(path, bytes)?;
+        return Ok(None);
+    }
+    let relative = relative.ok_or_else(|| SaveError::Outside(path.to_path_buf()))?;
+    let old = read_limited(path, MAX_BACKUP_BYTES)?;
     // 1. The new file reads back as what's being saved.
     let text = std::str::from_utf8(bytes).map_err(|_| SaveError::Check("it isn't text".into()))?;
     check(text).map_err(SaveError::Check)?;
     // 2. The old file is copied, and the copy checked.
     // Solis's own folders, never links planted to send the copy elsewhere.
     own_folder(root, &format!("{CACHE_FOLDER}/{BACKUPS_FOLDER}"))?;
-    let stamp = chrono::Local::now().format(STAMP).to_string();
-    let copy = folder(root).join(stamp).join(&relative);
+    let (stamp_folder, copy) = free_copy(root, &relative, &old);
     if let Some(parent) = copy.parent() {
         std::fs::create_dir_all(parent)?;
     }
@@ -126,28 +140,92 @@ pub fn save(
     if !copy.exists() {
         write_atomically(&copy, &old)?;
     }
-    if std::fs::read(&copy)? != old {
+    if read_limited(&copy, MAX_BACKUP_BYTES)? != old {
         return Err(SaveError::ReadBack(copy));
     }
     // 3. The new file is swapped in, and checked on disk.
     write_atomically(path, bytes)?;
-    if std::fs::read(path)? != bytes {
+    if read_limited(path, MAX_BACKUP_BYTES.max(bytes.len() as u64))? != bytes {
         let _ = write_atomically(path, &old);
         return Err(SaveError::ReadBack(path.to_path_buf()));
     }
-    let _ = trim(root, chrono::Local::now().naive_local());
+    let _ = trim_keeping(
+        root,
+        chrono::Local::now().naive_local(),
+        MAX_TOTAL_BYTES,
+        &stamp_folder,
+    );
     Ok(Some(copy))
+}
+
+/// The start of the file at `path` (up to [`HEAD_BYTES`]), if it's an
+/// ordinary file.
+fn read_head(path: &Path) -> std::io::Result<Vec<u8>> {
+    use std::io::Read;
+    if !std::fs::metadata(path)?.is_file() {
+        return Err(std::io::Error::new(
+            std::io::ErrorKind::InvalidData,
+            "it isn't an ordinary file",
+        ));
+    }
+    let mut head = Vec::with_capacity(HEAD_BYTES);
+    std::fs::File::open(path)?
+        .take(HEAD_BYTES as u64)
+        .read_to_end(&mut head)?;
+    Ok(head)
+}
+
+/// The part of `bytes` that's whole UTF-8 text (a read cut short may end
+/// part-way through a letter).
+fn utf8_prefix(bytes: &[u8]) -> &str {
+    match std::str::from_utf8(bytes) {
+        Ok(text) => text,
+        Err(e) => std::str::from_utf8(&bytes[..e.valid_up_to()]).unwrap_or_default(),
+    }
+}
+
+/// The backup folder for now, and where `relative` is copied in it: the
+/// date and time, or with " 2", " 3" after it when a different file is
+/// already there under that name (clocks put back an hour).
+fn free_copy(root: &Path, relative: &Path, old: &[u8]) -> (PathBuf, PathBuf) {
+    let stamp = chrono::Local::now().format(STAMP).to_string();
+    for n in 1..100 {
+        let name = if n == 1 {
+            stamp.clone()
+        } else {
+            format!("{stamp} {n}")
+        };
+        let stamp_folder = folder(root).join(name);
+        let copy = stamp_folder.join(relative);
+        let free = match std::fs::read(&copy) {
+            Err(_) => true,
+            Ok(there) => there == old,
+        };
+        if free {
+            return (stamp_folder, copy);
+        }
+    }
+    let stamp_folder = folder(root).join(format!("{stamp} {}", std::process::id()));
+    let copy = stamp_folder.join(relative);
+    (stamp_folder, copy)
 }
 
 /// Takes away backups older than [`KEEP_DAYS`] at `now`, then the oldest
 /// while they come to more than [`MAX_TOTAL_BYTES`]; never the newest,
 /// and never a folder not named as a backup. Returns how many went.
 pub fn trim(root: &Path, now: chrono::NaiveDateTime) -> std::io::Result<usize> {
-    trim_to(root, now, MAX_TOTAL_BYTES)
+    trim_keeping(root, now, MAX_TOTAL_BYTES, Path::new(""))
 }
 
-/// [`trim`], keeping to `max_bytes` in all.
-fn trim_to(root: &Path, now: chrono::NaiveDateTime, max_bytes: u64) -> std::io::Result<usize> {
+/// [`trim`], keeping to `max_bytes` in all, and never taking away `keep`
+/// (the backup just made). Backups younger than [`KEEP_FRESH_DAYS`] are
+/// never taken away for size.
+fn trim_keeping(
+    root: &Path,
+    now: chrono::NaiveDateTime,
+    max_bytes: u64,
+    keep: &Path,
+) -> std::io::Result<usize> {
     let folder = folder(root);
     let mut backups: Vec<(chrono::NaiveDateTime, PathBuf, u64)> = Vec::new();
     let entries = match std::fs::read_dir(&folder) {
@@ -166,10 +244,15 @@ fn trim_to(root: &Path, now: chrono::NaiveDateTime, max_bytes: u64) -> std::io::
         let name = entry.file_name();
         let Some(when) = name
             .to_str()
+            .filter(|n| n.len() == STAMP_LEN || n.as_bytes().get(STAMP_LEN) == Some(&b' '))
+            .and_then(|n| n.get(..STAMP_LEN))
             .and_then(|n| chrono::NaiveDateTime::parse_from_str(n, STAMP).ok())
         else {
             continue;
         };
+        if entry.path() == keep {
+            continue;
+        }
         backups.push((when, entry.path(), size_of(&entry.path())));
     }
     backups.sort_by_key(|(when, _, _)| *when);
@@ -178,8 +261,10 @@ fn trim_to(root: &Path, now: chrono::NaiveDateTime, max_bytes: u64) -> std::io::
     let mut total: u64 = backups.iter().map(|(_, _, size)| size).sum();
     let mut gone = 0;
     for (when, path, size) in backups {
-        let old = (now - when).num_days() > KEEP_DAYS;
-        if old || total > max_bytes {
+        let age = (now - when).num_days();
+        let old = age > KEEP_DAYS;
+        let too_big = total > max_bytes && age >= KEEP_FRESH_DAYS;
+        if old || too_big {
             std::fs::remove_dir_all(&path)?;
             total -= size;
             gone += 1;
@@ -376,7 +461,10 @@ mod tests {
             std::fs::create_dir_all(&dir).unwrap();
             std::fs::write(dir.join("a.note"), vec![b'x'; 100]).unwrap();
         }
-        assert_eq!(trim_to(&root, at("2026-10-28 05-00-00"), 150).unwrap(), 2);
+        assert_eq!(
+            trim_keeping(&root, at("2026-10-28 05-00-00"), 150, Path::new("")).unwrap(),
+            2
+        );
         assert!(folder(&root).join("2026-10-21 10-00-00").exists());
         assert!(folder(&root).join("2026-10-22 10-00-00").exists());
         // No backups at all: nothing to do.
@@ -384,5 +472,66 @@ mod tests {
         assert_eq!(trim(&empty, at("2030-01-01 00-00-00")).unwrap(), 0);
         let _ = std::fs::remove_dir_all(&root);
         let _ = std::fs::remove_dir_all(&empty);
+    }
+
+    #[test]
+    fn a_file_inside_solis_own_folder_is_saved_without_a_backup() {
+        // Regression (the Phase 8 review): restoring a backup by opening and
+        // saving it inside .solis/backups must not trim it away.
+        let root = project("own");
+        let inside = folder(&root).join("2020-01-01 10-00-00/assets/a.note");
+        std::fs::create_dir_all(inside.parent().unwrap()).unwrap();
+        std::fs::write(&inside, "note version 1;").unwrap();
+        assert_eq!(
+            save(&root, &inside, b"note version 2;", &NOTE, |_| Ok(())).unwrap(),
+            None
+        );
+        assert_eq!(std::fs::read_to_string(&inside).unwrap(), "note version 2;");
+        let _ = std::fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn the_backup_just_made_and_fresh_ones_are_never_trimmed_for_size() {
+        let root = project("fresh");
+        let at = |s: &str| chrono::NaiveDateTime::parse_from_str(s, STAMP).unwrap();
+        // A folder dated in the future (another computer's clock) would be
+        // "the newest"; the backup just made still stays.
+        for name in [
+            "2099-01-01 00-00-00",
+            "2026-10-27 10-00-00",
+            "2026-10-28 04-00-00",
+        ] {
+            let dir = folder(&root).join(name);
+            std::fs::create_dir_all(&dir).unwrap();
+            std::fs::write(dir.join("big.note"), vec![b'x'; 100]).unwrap();
+        }
+        let just_made = folder(&root).join("2026-10-28 04-00-00");
+        let gone = trim_keeping(&root, at("2026-10-28 05-00-00"), 10, &just_made).unwrap();
+        assert_eq!(gone, 0, "all younger than a week");
+        assert!(just_made.exists());
+        // A week on, the older ones go for size; the one just made doesn't.
+        let gone = trim_keeping(&root, at("2026-11-10 05-00-00"), 10, &just_made).unwrap();
+        assert_eq!(gone, 1);
+        assert!(just_made.exists() && folder(&root).join("2099-01-01 00-00-00").exists());
+        let _ = std::fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn a_backup_folder_name_used_again_gets_a_number() {
+        // Clocks put back an hour: the same date and time comes round with
+        // a different file under that name.
+        let root = project("again");
+        let relative = Path::new("assets/a.note");
+        let (first, copy) = free_copy(&root, relative, b"one");
+        std::fs::create_dir_all(copy.parent().unwrap()).unwrap();
+        std::fs::write(&copy, "one").unwrap();
+        let (same, _) = free_copy(&root, relative, b"one");
+        assert_eq!(same, first, "the same file: the same copy");
+        let (other, _) = free_copy(&root, relative, b"two");
+        assert_ne!(other, first);
+        assert!(other.to_string_lossy().ends_with(" 2"), "{other:?}");
+        // The trim still reads it as a backup.
+        assert_eq!(utf8_prefix(&[b'a', 0xe2, 0x82]), "a");
+        let _ = std::fs::remove_dir_all(&root);
     }
 }
