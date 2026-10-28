@@ -62,6 +62,8 @@ impl Workbench {
                 actions.push(WorkbenchAction::PlaceAsset(id));
             }
             LibraryRequest::Open(LibraryKind::SpriteClips, path) => self.open_frames(&path),
+            LibraryRequest::Open(LibraryKind::Animator, path) => self.open_animator(&path),
+            LibraryRequest::NewAnimator(folder) => self.new_animator(&folder),
             LibraryRequest::MakeClipsFile(path) => {
                 if let Some(id) = crate::frames_editor::id_of(&self.viewport.sheets, &path) {
                     self.make_clips_file(&path, id);
@@ -208,6 +210,7 @@ impl Workbench {
         // for drawing, Properties and the running game.
         sheets.work_out_clips();
         self.viewport.sheets = std::sync::Arc::new(sheets);
+        self.animator_read_again();
     }
 
     /// The project's sprite sheets.

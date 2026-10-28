@@ -47,6 +47,56 @@ pub struct Settings {
 /// limits, refusing a newer layout than `newest`, a key used twice, or
 /// anything malformed, always with its line.
 pub fn read_settings(text: &str, kind: &str, newest: u32) -> Result<Settings, ParseError> {
+    let read = read_block_settings(text, kind, newest)?;
+    if let Some(block) = read.blocks.first() {
+        return Err(ParseError {
+            line: block.line,
+            message: format!("{} should be followed by '='", block.word),
+        });
+    }
+    Ok(Settings {
+        version: read.version,
+        fields: read.fields,
+    })
+}
+
+/// A block of a settings file: `word name { key = value; … }` (an
+/// animator's states: `state 3KD8V0Q2MX7TA { name = "Walk"; … }`).
+#[derive(Debug, Clone, PartialEq)]
+pub struct Block {
+    /// The line it starts on (from 1).
+    pub line: usize,
+    /// What it is (`state`).
+    pub word: String,
+    /// Its name or ID.
+    pub name: String,
+    /// Its fields, in the order written.
+    pub fields: Vec<Field>,
+}
+
+/// A settings file with blocks as read: its layout version, the fields
+/// outside blocks, and its blocks, each in the order written.
+#[derive(Debug, Clone, PartialEq, Default)]
+pub struct BlockSettings {
+    /// The layout version it was written with.
+    pub version: u32,
+    /// The `key = value;` lines outside blocks.
+    pub fields: Vec<Field>,
+    /// The blocks.
+    pub blocks: Vec<Block>,
+}
+
+/// Reads a settings file that may hold blocks as well as fields (an
+/// animator, `.solanim`), as hostile as [`read_settings`]: within limits
+/// ([`MAX_SETTINGS_FIELDS`] fields and blocks in all), refusing a newer
+/// layout, a key used twice in one place, or anything malformed, always
+/// with its line. Two blocks may share a word and name: what that means
+/// is the reader's to say.
+pub fn read_block_settings(
+    text: &str,
+    kind: &str,
+    newest: u32,
+) -> Result<BlockSettings, ParseError> {
     if text.len() > MAX_BYTES {
         return Err(ParseError {
             line: 0,
@@ -92,26 +142,99 @@ pub fn read_settings(text: &str, kind: &str, newest: u32) -> Result<Settings, Pa
         return p.fail("there is no layout version 0");
     }
     p.expect(';')?;
-    let mut fields: Vec<Field> = Vec::new();
+    let mut out = BlockSettings {
+        version,
+        ..BlockSettings::default()
+    };
     let mut seen: BTreeMap<String, usize> = BTreeMap::new();
+    let mut count = 0usize;
     while p.skip_space() {
         let line = p.line;
         let key = p.word()?;
-        if let Some(first) = seen.get(&key) {
-            return p.fail(&format!("{key} is set twice (first on line {first})"));
-        }
-        seen.insert(key.clone(), line);
-        if fields.len() == MAX_SETTINGS_FIELDS {
+        count += 1;
+        if count > MAX_SETTINGS_FIELDS {
             return p.fail(&format!("more than {MAX_SETTINGS_FIELDS} settings"));
         }
         p.skip_space();
-        p.expect('=')?;
-        let value = p.value(0)?;
-        p.skip_space();
-        p.expect(';')?;
-        fields.push(Field { line, key, value });
+        if p.peek() == Some('=') {
+            if let Some(first) = seen.get(&key) {
+                return p.fail(&format!("{key} is set twice (first on line {first})"));
+            }
+            seen.insert(key.clone(), line);
+            out.fields.push(field_rest(&mut p, line, key)?);
+            continue;
+        }
+        let name = p.word()?;
+        p.expect('{')?;
+        let mut fields: Vec<Field> = Vec::new();
+        let mut inner: BTreeMap<String, usize> = BTreeMap::new();
+        loop {
+            if !p.skip_space() {
+                return p.fail(&format!("the {key} {name} block isn't closed with '}}'"));
+            }
+            if p.peek() == Some('}') {
+                p.expect('}')?;
+                break;
+            }
+            let at = p.line;
+            let inner_key = p.word()?;
+            if let Some(first) = inner.get(&inner_key) {
+                return p.fail(&format!(
+                    "{inner_key} is set twice in {key} {name} (first on line {first})"
+                ));
+            }
+            inner.insert(inner_key.clone(), at);
+            if fields.len() == MAX_SETTINGS_FIELDS {
+                return p.fail(&format!(
+                    "more than {MAX_SETTINGS_FIELDS} settings in a block"
+                ));
+            }
+            p.skip_space();
+            fields.push(field_rest(&mut p, at, inner_key)?);
+        }
+        out.blocks.push(Block {
+            line,
+            word: key,
+            name,
+            fields,
+        });
     }
-    Ok(Settings { version, fields })
+    Ok(out)
+}
+
+/// The rest of a `key = value;` line, after its key.
+fn field_rest(p: &mut Parser<'_>, line: usize, key: String) -> Result<Field, ParseError> {
+    p.expect('=')?;
+    let value = p.value(0)?;
+    p.skip_space();
+    p.expect(';')?;
+    Ok(Field { line, key, value })
+}
+
+/// A block to write: its word, its name or ID, and its fields in order.
+pub type BlockOut<'a> = (&'a str, String, Vec<(&'a str, Value)>);
+
+/// Writes a settings file with blocks that [`read_block_settings`] reads
+/// back: the fields as [`write_settings`] does, then each block, its
+/// fields indented a line each, with a blank line between blocks.
+pub fn write_block_settings(
+    kind: &str,
+    version: u32,
+    comment: &str,
+    fields: &[(&str, Value)],
+    blocks: &[BlockOut<'_>],
+) -> String {
+    let mut out = write_settings(kind, version, comment, fields);
+    for (word, name, fields) in blocks {
+        let _ = writeln!(out, "\n{word} {name} {{");
+        for (key, value) in fields {
+            let _ = write!(out, "    {key} = ");
+            write_value(&mut out, value);
+            out.push_str(";\n");
+        }
+        out.push_str("}\n");
+    }
+    out
 }
 
 /// Writes a settings file that [`read_settings`] reads back: `comment` as
@@ -185,6 +308,52 @@ mod tests {
         assert!(err("sound version 1;\nv = 1").message.contains("';'"));
         let long = format!("sound version 1;\nv = \"{}\";", "x".repeat(MAX_LINE + 1));
         assert_eq!(err(&long).line, 2);
+    }
+
+    #[test]
+    fn blocks_round_trip_beside_fields() {
+        let blocks: Vec<BlockOut<'_>> = vec![
+            (
+                "state",
+                "3KD8V0Q2MX7TA".into(),
+                vec![
+                    ("name", Value::Text("Walk".into())),
+                    ("speed", Value::Float(1.5)),
+                ],
+            ),
+            ("state", "7PQ2B5N8WK1ZC".into(), Vec::new()),
+        ];
+        let text = write_block_settings(
+            "animator",
+            1,
+            "An animator.",
+            &[("entry", Value::Text("3KD8V0Q2MX7TA".into()))],
+            &blocks,
+        );
+        assert!(text.contains("state 3KD8V0Q2MX7TA {\n    name = \"Walk\";\n"));
+        let read = read_block_settings(&text, "animator", 1).unwrap();
+        assert_eq!(read.fields.len(), 1);
+        assert_eq!(read.blocks.len(), 2);
+        assert_eq!(read.blocks[0].word, "state");
+        assert_eq!(read.blocks[0].name, "3KD8V0Q2MX7TA");
+        assert_eq!(read.blocks[0].fields[1].value, Value::Float(1.5));
+        assert_eq!(read.blocks[0].line, 6);
+        assert!(read.blocks[1].fields.is_empty());
+    }
+
+    #[test]
+    fn block_mistakes_are_refused_with_their_line() {
+        let err = |text: &str| read_block_settings(text, "animator", 1).unwrap_err();
+        let open = err("animator version 1;\nstate A {\n name = 1;\n");
+        assert!(open.message.contains("isn't closed"), "{}", open.message);
+        let twice = err("animator version 1;\nstate A {\n a = 1;\n a = 2;\n}");
+        assert_eq!(twice.line, 4);
+        assert!(twice.message.contains("twice in state A"));
+        assert_eq!(err("animator version 1;\nstate A b = 1;").line, 2);
+        assert_eq!(err("animator version 1;\nstate { }").line, 2);
+        // A plain settings file has no blocks.
+        let blocky = read_settings("sound version 1;\nstate A { }", "sound", 1).unwrap_err();
+        assert!(blocky.message.contains("followed by '='"));
     }
 
     #[test]

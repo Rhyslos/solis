@@ -1,0 +1,191 @@
+solis save 4
+project Harbour
+tick 40
+time 3fe5555555555559
+seed 11
+sum ed91908f360a5d70
+area 2139
+-- An area. Safe to edit by hand: one block per entity, one line per field.
+area version 1;
+
+entity 0000000000001 {
+    name = "Floor";
+    order = "a0";
+    Collider.shape = "Box";
+    Collider.size = [40.0, 40.0, 1.0];
+    Collider.radius = 0.5;
+    Collider.height = 1.8;
+    Collider.center = [0.0, 0.0, 0.0];
+    Collider.friction = 0.5;
+    Collider.bounciness = 0.0;
+    Transform.position = [0.0, 0.0, -0.5];
+    Transform.rotation = [0.0, 0.0, 0.0, 1.0];
+    Transform.scale = [1.0, 1.0, 1.0];
+}
+
+entity 0000000000002 {
+    name = "Crate";
+    order = "a0";
+    Collider.shape = "Box";
+    Collider.size = [1.0, 1.0, 1.0];
+    Collider.radius = 0.5;
+    Collider.height = 1.8;
+    Collider.center = [0.0, 0.0, 0.0];
+    Collider.friction = 0.5;
+    Collider.bounciness = 0.0;
+    RigidBody.kind = "Dynamic";
+    RigidBody.mass = 1.0;
+    RigidBody.linear_damping = 0.0;
+    RigidBody.angular_damping = 0.05;
+    RigidBody.gravity = 1.0;
+    RigidBody.upright = false;
+    RigidBody.fast = false;
+    Transform.position = [0.0, 0.0, 0.5];
+    Transform.rotation = [0.0, 0.0, 0.0, 1.0];
+    Transform.scale = [1.0, 1.0, 1.0];
+}
+
+entity 0000000000003 {
+    name = "Busy";
+    order = "a0";
+    Busy = {};
+    Transform.position = [0.0, 0.0, 0.0];
+    Transform.rotation = [0.0, 0.0, 0.0, 1.0];
+    Transform.scale = [1.0, 1.0, 1.0];
+}
+
+entity 46BRP7300CMGX {
+    name = "Environment";
+    order = "a0";
+    Environment.sky = "Backdrop";
+    Environment.sky_strength = 1.0;
+    Environment.fog = false;
+    Environment.fog_distance = 100.0;
+    Environment.fog_matches_sky = true;
+    Environment.fog_color = [0.7058824, 0.74509805, 0.8039216];
+    Environment.exposure = 0.0;
+    Environment.tone_mapping = "AgX";
+}
+
+entity 51JZ8BK4DSX6B {
+    name = "Sun";
+    order = "a0";
+    Light.kind = "Sun";
+    Light.color = [1.0, 0.98039216, 0.9490196];
+    Light.strength = 3.0;
+    Light.range = 0.0;
+    Light.cone = 30.0;
+    Light.soft_edge = 10.0;
+    Light.shadows = true;
+    Transform.position = [0.0, 0.0, 0.0];
+    Transform.rotation = [0.33036608, 0.088521324, 0.24321035, 0.90767336];
+    Transform.scale = [1.0, 1.0, 1.0];
+}
+
+values 232
+-- An area. Safe to edit by hand: one block per entity, one line per field.
+area version 1;
+
+entity 0000000000003 {
+    name = "";
+    order = "a0";
+    Busy.ticks = 40;
+    Busy.wander = -5.375481181762028;
+    Busy.request = 0;
+}
+
+bindings 1332
+# The game's input actions (decision 0037). Edit > Input actions… changes them;
+# game code asks for an action by its name: held("Jump").
+
+version = 2
+
+[[action]]
+name = "Move"
+kind = "axis"
+inputs = ["Pad LeftStick"]
+up = ["W"]
+down = ["S"]
+left = ["A"]
+right = ["D"]
+mouse_speed = 0.15
+pad_speed = 180.0
+
+[[action]]
+name = "Look"
+kind = "axis"
+inputs = ["Mouse Motion", "Pad RightStick"]
+mouse_speed = 0.15
+pad_speed = 180.0
+
+[[action]]
+name = "Jump"
+kind = "button"
+inputs = ["Space", "Pad A"]
+mouse_speed = 0.15
+pad_speed = 180.0
+
+[[action]]
+name = "Sprint"
+kind = "button"
+inputs = ["Shift", "Pad LeftStick"]
+mouse_speed = 0.15
+pad_speed = 180.0
+
+[[action]]
+name = "Interact"
+kind = "button"
+inputs = ["F", "Pad X"]
+mouse_speed = 0.15
+pad_speed = 180.0
+
+[[action]]
+name = "Pan"
+kind = "axis"
+inputs = ["Pad LeftStick"]
+up = ["Up"]
+down = ["Down"]
+left = ["Left"]
+right = ["Right"]
+mouse_speed = 0.15
+pad_speed = 180.0
+
+[[action]]
+name = "Turn"
+kind = "axis"
+inputs = ["Pad RightStick"]
+left = ["Alt+Left"]
+right = ["Alt+Right"]
+mouse_speed = 0.15
+pad_speed = 180.0
+
+[[action]]
+name = "Zoom"
+kind = "axis"
+inputs = ["Mouse Wheel"]
+up = ["PageUp", "Pad RT"]
+down = ["PageDown", "Pad LT"]
+mouse_speed = 1.0
+pad_speed = 8.0
+
+[[action]]
+name = "Drag"
+kind = "button"
+inputs = ["Mouse Middle"]
+mouse_speed = 0.15
+pad_speed = 180.0
+
+projectiles 138
+411ff103 3f800001 0 41f00000 0 0 3f2aaab0 40000000 3f000000 3e4ccccd
+3ded6bda 3ffffff9 0 41f00000 0 0 3f800000 40000000 3f000000 3e4ccccd
+
+physics 193
+0000000000001 0 0 bf000000 0 0 0 3f800000 0 0 0 0 0 0 0 -
+0000000000002 3f75edf7 3ea3f12f 3efff807 b61c0630 3823d8c1 30c0825b 3f800000 3b28a48a 3a4c1bd4 394134c0 bacbf3ec 3ba88390 b13b2c33 0 -
+
+places 180
+0000000000002 3f75edf7 3ea3f12f 3efff807 b61c0630 3823d8c1 30c0825b 3f800000 3f800000 3f800000 3f800000
+0000000000003 3ded6bda 3ffffff9 0 0 0 0 3f800000 3f800000 3f800000 3f800000
+
+animators 0
+

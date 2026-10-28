@@ -499,6 +499,12 @@ impl Workbench {
             playing
                 .world
                 .set_clip_sets(Arc::clone(&self.viewport.sheets.clip_sets));
+            // Animators first (D3b): each takes the transition the
+            // parameters set last tick call for, and sets its sprite's clip.
+            playing
+                .world
+                .set_animators(Arc::clone(&self.viewport.sheets.animator_set));
+            playing.world.step_animators();
             let cues = playing.world.step_sprites(world::TICK);
             let (cue_sounds, engine_events) = cues_of(&playing.world, cues, &self.cue_sounds);
             // The tick's input: played back, or sampled from the devices

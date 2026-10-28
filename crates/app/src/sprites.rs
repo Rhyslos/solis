@@ -3,7 +3,7 @@
 //! in Aseprite shows at once), for the Library, Properties and drawing.
 
 use asset_db::{FileKind, Jobs, Listing};
-use editor::sprite_sheets::{FramesState, SheetState, SpriteSheets};
+use editor::sprite_sheets::{AnimatorState, FramesState, SheetState, SpriteSheets};
 use reflect::{AssetId, Id};
 use std::collections::{HashMap, HashSet, VecDeque};
 use std::hash::{DefaultHasher, Hash, Hasher};
@@ -73,6 +73,27 @@ pub fn read_frames(path: &Path) -> FramesState {
     }
 }
 
+/// Reads an animator file (`.solanim`, Phase 9, D3b).
+pub fn read_animator(path: &Path) -> AnimatorState {
+    let bytes = match asset_db::read_limited(path, animation::animator_file::MAX_BYTES as u64) {
+        Ok(bytes) => bytes,
+        Err(e) if e.kind() == std::io::ErrorKind::FileTooLarge => {
+            return AnimatorState::Failed(format!(
+                "it's bigger than {} KB, too big for an animator",
+                animation::animator_file::MAX_BYTES >> 10
+            ));
+        }
+        Err(e) => return AnimatorState::Failed(format!("it couldn't be read ({e})")),
+    };
+    let Ok(text) = String::from_utf8(bytes) else {
+        return AnimatorState::Failed("it isn't text".to_owned());
+    };
+    match animation::animator_file::read(&text) {
+        Ok(read) => AnimatorState::Read(Arc::new(read.file), read.notes),
+        Err(why) => AnimatorState::Failed(why.to_string()),
+    }
+}
+
 /// Every sprite sheet read, and those still to read.
 pub struct Sprites {
     sheets: SpriteSheets,
@@ -82,6 +103,9 @@ pub struct Sprites {
     /// Clips files read or failed, with how they were then (read at once:
     /// they're small text).
     frames_tried: HashMap<String, Stamp>,
+    /// Animator files read or failed, with how they were then (read at
+    /// once: small text too).
+    animators_tried: HashMap<String, Stamp>,
     /// Goes up when another project opens: results for the last one are
     /// thrown away.
     generation: u64,
@@ -97,6 +121,7 @@ impl Default for Sprites {
             queued: VecDeque::new(),
             tried: HashMap::new(),
             frames_tried: HashMap::new(),
+            animators_tried: HashMap::new(),
             generation: 0,
             jobs: Jobs::new(1),
             dirty: false,
@@ -154,6 +179,33 @@ impl Sprites {
         self.sheets.frames.retain(|p, _| frames_present.contains(p));
         self.frames_tried.retain(|p, _| frames_present.contains(p));
         self.dirty |= before != self.sheets.frames.len();
+        let mut animators_present = HashSet::new();
+        for file in listing
+            .files
+            .iter()
+            .filter(|f| f.kind == FileKind::Animator)
+        {
+            let path = crate::project::slashed(&file.path);
+            if let Some(id) = file.id {
+                paths.insert(id, path.clone());
+            }
+            animators_present.insert(path.clone());
+            let full = assets.join(&file.path);
+            let now = stamp(&full);
+            if self.animators_tried.get(&path) == Some(&now) {
+                continue;
+            }
+            self.animators_tried.insert(path.clone(), now);
+            self.sheets.animators.insert(path, read_animator(&full));
+            self.dirty = true;
+        }
+        let before = self.sheets.animators.len();
+        self.sheets
+            .animators
+            .retain(|p, _| animators_present.contains(p));
+        self.animators_tried
+            .retain(|p, _| animators_present.contains(p));
+        self.dirty |= before != self.sheets.animators.len();
         for file in listing
             .files
             .iter()
@@ -194,6 +246,7 @@ impl Sprites {
         self.queued.clear();
         self.tried.clear();
         self.frames_tried.clear();
+        self.animators_tried.clear();
         self.generation += 1;
         self.dirty = true;
     }

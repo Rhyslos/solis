@@ -11,16 +11,18 @@
 //!
 //! The world never changes the area: stopping throws it away.
 
+pub mod animators;
 pub mod projectiles;
 pub mod sprites;
 
+pub use animators::Animators;
 pub use projectiles::{MAX_PROJECTILES, Projectile, Projectiles, Shot};
 pub use sprites::{ClipSets, SpriteCue};
 
 use area::Area;
 use area::builtin::{
-    AudioSource, Camera, CharacterBody, Collider, Environment, Light, Listener, Model, ReverbZone,
-    RigidBody, Sprite, Transform,
+    Animator, AudioSource, Camera, CharacterBody, Collider, Environment, Light, Listener, Model,
+    ReverbZone, RigidBody, Sprite, Transform,
 };
 use glam::Mat4;
 use reflect::{Component, ComponentData, EntityId};
@@ -151,6 +153,11 @@ pub struct World {
     touched: bool,
     /// The clips sprites play (Phase 9, D3), by sheet or clips file.
     clip_sets: std::sync::Arc<ClipSets>,
+    /// The animators entities run (Phase 9, D3b), by animator file.
+    animators: std::sync::Arc<Animators>,
+    /// Parameter values a loaded save gave entities whose animators
+    /// haven't started running yet.
+    saved_values: HashMap<EntityId, Vec<(String, animation::ParamValue)>>,
 }
 
 /// A change to physics game code asked for, made at the next step.
@@ -235,6 +242,8 @@ impl World {
             stamp: next_number(),
             touched: false,
             clip_sets: std::sync::Arc::default(),
+            animators: std::sync::Arc::default(),
+            saved_values: HashMap::new(),
         };
         world.index();
         world.place_everything();
@@ -303,6 +312,9 @@ impl World {
         let seed = self.seed;
         let playbacks = self.playbacks();
         let clip_sets = std::sync::Arc::clone(&self.clip_sets);
+        let animators = std::sync::Arc::clone(&self.animators);
+        let runs = self.runs();
+        let saved_values = std::mem::take(&mut self.saved_values);
         // How each body was moving carries on: speed, spin, sleep, and a
         // character's finding.
         let states = self.physics.state().body_states();
@@ -312,7 +324,10 @@ impl World {
         self.projectiles = projectiles;
         self.seed = seed;
         self.clip_sets = clip_sets;
+        self.animators = animators;
+        self.saved_values = saved_values;
         self.keep_playbacks(playbacks);
+        self.keep_runs(runs);
         self.physics_asked = asked;
         for (id, from, at) in kept {
             self.set_transform(id, at);
@@ -504,6 +519,12 @@ impl World {
                 .query_one_mut::<(&Sprite, &sprites::SpriteStart)>(entity)
                 .ok()
                 .map(|(s, start)| (id, start.0.clone(), sprites::Playback::of(s)));
+            // And its animator's run.
+            let run = self
+                .ecs
+                .remove_one::<animators::Running>(entity)
+                .ok()
+                .map(|r| (id, r));
             let _ = self.ecs.despawn(entity);
             let fresh = self
                 .ecs
@@ -516,6 +537,7 @@ impl World {
             if let Some(kept) = playback {
                 self.keep_playbacks(vec![kept]);
             }
+            self.keep_runs(run.into_iter().collect());
             // Only what physics knows of it changed: its body is built
             // again (an edit to another component leaves it alone).
             if self.physics_parts(fresh) != before {
@@ -1034,6 +1056,14 @@ impl World {
             sum.u64(u64::from(playing));
             sum.u64(u64::from(time));
         }
+        // Which state each animator is in, and its parameters (D3b).
+        for (id, state, values) in self.animator_states() {
+            sum.entity(id);
+            sum.bytes(state.as_bytes());
+            for v in values {
+                sum.bytes(v.as_bytes());
+            }
+        }
         sum.u64(self.physics.state().checksum());
         let flying = self.projectiles.flying();
         sum.u64(flying.len() as u64);
@@ -1320,6 +1350,9 @@ fn components_of(id: EntityId, data: &area::EntityData) -> hecs::EntityBuilder {
                 let sprite = Sprite::from_data(component);
                 builder.add(sprites::SpriteStart(sprites::Playback::of(&sprite)));
                 builder.add(sprite);
+            }
+            Animator::NAME => {
+                builder.add(Animator::from_data(component));
             }
             _ => {
                 values.0.insert(name.clone(), component.clone());

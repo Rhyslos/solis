@@ -1,0 +1,81 @@
+-- An animator. Written by Solis; safe to edit by hand.
+-- Parameters are set by game code; each state plays a clip (or a clip per
+-- direction, the nearest to its direction parameter); a transition is taken
+-- once all its conditions hold, earlier ones first.
+animator version 1;
+
+sheet = "000000000002D";
+entry = "0000000000001";
+any_place = [120.0, 300.0];
+
+parameter 000000000000A {
+    name = "facing";
+    kind = "direction";
+    start = "down";
+}
+
+parameter 000000000000B {
+    name = "moving";
+    kind = "switch";
+    start = false;
+}
+
+parameter 000000000000C {
+    name = "speed";
+    kind = "number";
+    start = 1.0;
+}
+
+parameter 000000000000D {
+    name = "swing";
+    kind = "trigger";
+}
+
+state 0000000000001 {
+    name = "Idle";
+    place = [120.0, 80.0];
+    by = "facing";
+    clips = [["up", "idle_up"], ["right", "idle_right"], ["down", "idle_down"], ["left", "idle_left"]];
+    speed = 1.0;
+}
+
+state 0000000000002 {
+    name = "Walk";
+    place = [400.0, 80.0];
+    by = "facing";
+    clips = [["up", "walk_up"], ["right", "walk_right"], ["down", "walk_down"], ["left", "walk_left"]];
+    speed = 1.0;
+    speed_by = "speed";
+}
+
+state 0000000000003 {
+    name = "Use tool";
+    place = [400.0, 80.0];
+    by = "facing";
+    clips = [["up", "hoe_up"], ["right", "hoe_right"], ["down", "hoe_down"], ["left", "hoe_left"]];
+    speed = 1.0;
+}
+
+transition 000000000000M {
+    from = "0000000000001";
+    to = "0000000000002";
+    when = ["moving"];
+}
+
+transition 000000000000N {
+    from = "0000000000002";
+    to = "0000000000001";
+    when = ["not moving"];
+}
+
+transition 000000000000P {
+    from = "any";
+    to = "0000000000003";
+    when = ["swing"];
+}
+
+transition 000000000000Q {
+    from = "0000000000003";
+    to = "0000000000002";
+    when = ["finished"];
+}

@@ -790,6 +790,22 @@ impl App {
                         ),
                     }
                 }
+                WorkbenchAction::SaveAnimator { path, text } => {
+                    match self.projects.save_animator(&path, &text) {
+                        Ok(Some(copy)) => {
+                            if let Some(root) = self.projects.root() {
+                                let note =
+                                    crate::upgrades::kept_note(root, &file_name(&path), &copy);
+                                self.workbench.log(LogLevel::Info, note);
+                            }
+                        }
+                        Ok(None) => {}
+                        Err(why) => self.workbench.log(
+                            LogLevel::Error,
+                            format!("Couldn't save {}: {why}.", path.display()),
+                        ),
+                    }
+                }
                 WorkbenchAction::CreateAssembly(root) => self.create_assembly(root),
                 WorkbenchAction::ApplyToAssembly {
                     assembly,

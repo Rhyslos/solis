@@ -3,6 +3,7 @@
 
 use crate::console::LogLevel;
 use crate::icons::{self, Icon};
+use crate::panel::Panel;
 use crate::play::PlayState;
 use crate::theme::{self, Accent};
 use crate::workbench::{Workbench, WorkbenchAction};
@@ -28,7 +29,35 @@ impl Workbench {
                     if self.document.is_dirty() {
                         name.push_str(" •");
                     }
-                    document_tabs(ui, bar, self.accent, &name);
+                    // The animator open is a document too (Phase 9, D3b):
+                    // its tab is in front while the Animator panel is.
+                    let animator = self.animator_editor.as_ref().map(|e| {
+                        let file = e.path.rsplit_once('/').map_or(e.path.as_str(), |(_, n)| n);
+                        (file.to_owned(), self.in_front.contains(&Panel::Animator))
+                    });
+                    let area_front = animator.as_ref().is_none_or(|(_, front)| !front);
+                    let (area_clicked, _) = document_tab(
+                        ui,
+                        bar,
+                        self.accent,
+                        Icon::AreaFile,
+                        &name,
+                        area_front,
+                        false,
+                    );
+                    if area_clicked && !area_front {
+                        crate::layout::bring_to_front(&mut self.dock, Panel::Viewport);
+                    }
+                    if let Some((file, front)) = animator {
+                        let (clicked, closed) =
+                            document_tab(ui, bar, self.accent, Icon::Animator, &file, front, true);
+                        if closed {
+                            self.close_animator();
+                        } else if clicked {
+                            crate::layout::bring_to_front(&mut self.dock, Panel::Animator);
+                        }
+                    }
+                    new_document_button(ui);
                 });
             });
         });
@@ -440,15 +469,28 @@ pub(crate) fn icon_button(
     response
 }
 
-/// The open documents as tabs, as in the mockup: the front one on a
-/// lighter strip with the accent underline, its icon, its name and ×.
-/// For now there is only the one area at a time. A dot after the name
-/// means unsaved changes.
-pub(crate) fn document_tabs(ui: &mut Ui, bar: egui::Rect, accent: Accent, name: &str) {
+/// One open document's tab, as in the mockup: the front one on a lighter
+/// strip with the accent underline, its icon, its name and ×. A dot after
+/// the name means unsaved changes. Gives back whether the tab was clicked,
+/// and whether its × was (only when `closes`).
+pub(crate) fn document_tab(
+    ui: &mut Ui,
+    bar: egui::Rect,
+    accent: Accent,
+    icon: Icon,
+    name: &str,
+    front: bool,
+    closes: bool,
+) -> (bool, bool) {
     let font = egui::TextStyle::Button.resolve(ui.style());
+    let strong = if front {
+        theme::TEXT_STRONG
+    } else {
+        theme::TEXT_WEAK
+    };
     let text = ui
         .painter()
-        .layout_no_wrap(name.to_string(), font.clone(), theme::TEXT_STRONG);
+        .layout_no_wrap(name.to_string(), font.clone(), strong);
     let close = ui
         .painter()
         .layout_no_wrap("×".to_string(), font, theme::TEXT_WEAK);
@@ -461,14 +503,17 @@ pub(crate) fn document_tabs(ui: &mut Ui, bar: egui::Rect, accent: Accent, name: 
     // The tab reaches from the top of the bar to its bottom edge, as in the
     // mockup.
     let rect = egui::Rect::from_x_y_ranges(row.x_range(), bar.y_range());
-    response.widget_info(|| egui::WidgetInfo::selected(egui::WidgetType::Button, true, true, name));
+    response
+        .widget_info(|| egui::WidgetInfo::selected(egui::WidgetType::Button, true, front, name));
     let painter = ui.painter();
-    painter.rect_filled(rect, 0.0, theme::MENU_ROW);
-    painter.hline(
-        rect.x_range(),
-        rect.bottom() - 1.0,
-        egui::Stroke::new(2.0, accent.colors().fill),
-    );
+    if front {
+        painter.rect_filled(rect, 0.0, theme::MENU_ROW);
+        painter.hline(
+            rect.x_range(),
+            rect.bottom() - 1.0,
+            egui::Stroke::new(2.0, accent.colors().fill),
+        );
+    }
     let mut x = rect.left() + pad;
     icons::icon(
         painter,
@@ -476,22 +521,47 @@ pub(crate) fn document_tabs(ui: &mut Ui, bar: egui::Rect, accent: Accent, name: 
             egui::pos2(x, rect.center().y - icon_size / 2.0),
             egui::vec2(icon_size, icon_size),
         ),
-        Icon::AreaFile,
-        accent.colors().light,
+        icon,
+        if front {
+            accent.colors().light
+        } else {
+            theme::TEXT_WEAK
+        },
     );
     x += icon_size + gap;
     let text_width = text.size().x;
     painter.galley(
         egui::pos2(x, rect.center().y - text.size().y / 2.0),
         text,
-        theme::TEXT_STRONG,
+        strong,
     );
     x += text_width + gap;
+    let close_rect = egui::Rect::from_min_size(
+        egui::pos2(x - 3.0, rect.center().y - close.size().y / 2.0 - 2.0),
+        close.size() + egui::vec2(6.0, 4.0),
+    );
     painter.galley(
         egui::pos2(x, rect.center().y - close.size().y / 2.0),
         close,
         theme::TEXT_WEAK,
     );
+    let mut closed = false;
+    if closes {
+        let r = ui.interact(
+            close_rect,
+            ui.id().with(("close document", name)),
+            egui::Sense::click(),
+        );
+        r.widget_info(|| {
+            egui::WidgetInfo::labeled(egui::WidgetType::Button, true, format!("Close {name}"))
+        });
+        closed = r.clicked();
+    }
+    (response.clicked() && !closed, closed)
+}
+
+/// The + after the document tabs (more kinds of document arrive later).
+fn new_document_button(ui: &mut Ui) {
     let new_tab = ui.add_enabled(
         false,
         egui::Button::new(RichText::new("+").color(theme::TEXT_WEAK))

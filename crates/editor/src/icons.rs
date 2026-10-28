@@ -162,6 +162,8 @@ pub enum Icon {
     Lock,
     /// A speaker with sound waves: a sound file.
     Sound,
+    /// A diamond: an animator (Phase 9, D3b).
+    Animator,
 }
 
 /// Draws `icon` in `rect` with `color`. Shapes are given on a 24-unit
@@ -246,6 +248,7 @@ pub fn icon(painter: &Painter, rect: Rect, icon: Icon, color: Color32) {
             (15.0, 9.0),
             (21.0, 20.0),
         ]),
+        Icon::Animator => outline(&[(12.0, 3.0), (21.0, 12.0), (12.0, 21.0), (3.0, 12.0)]),
         Icon::Play => fill(&[(7.0, 4.0), (20.0, 12.0), (7.0, 20.0)]),
         Icon::PlayTogether => {
             let thin = Stroke::new((1.6 * unit).max(1.0), color);

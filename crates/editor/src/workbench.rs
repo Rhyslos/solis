@@ -120,6 +120,14 @@ pub enum WorkbenchAction {
         /// What to save.
         text: String,
     },
+    /// Save an animator file (`.solanim`, inside the project's assets),
+    /// making it if it isn't there yet (Phase 9, D3b).
+    SaveAnimator {
+        /// The file.
+        path: std::path::PathBuf,
+        /// What to save.
+        text: String,
+    },
     /// Save the project's 2D settings to its `pixels.solpix` (Settings >
     /// 2D).
     SavePixels(area::pixels::PixelSettings),
@@ -275,6 +283,11 @@ pub struct Workbench {
     /// Whether the pointer was over the Clips or Frames tab last frame:
     /// Ctrl+Z, Ctrl+Y and Delete are the file's then.
     pub(crate) frames_hovered: bool,
+    /// The animator file open in the Animator tab (Phase 9, D3b).
+    pub(crate) animator_editor: Option<crate::animator_editor::AnimatorEditor>,
+    /// Whether the pointer was over the Animator tab last frame: Ctrl+Z,
+    /// Ctrl+Y, Delete and F are the animator's then.
+    pub(crate) animator_hovered: bool,
     /// Each sprite sheet's atlas as an egui picture, by path, for the
     /// Library and Properties, and which sheet each was made from.
     pub(crate) sheet_pictures: HashMap<String, egui::TextureHandle>,
@@ -404,6 +417,8 @@ impl Workbench {
             cue_sounds: HashMap::new(),
             frames_editor: None,
             frames_hovered: false,
+            animator_editor: None,
+            animator_hovered: false,
             sheet_pictures: HashMap::new(),
             sheet_pictures_from: HashMap::new(),
             place_targets: BTreeMap::new(),
@@ -793,6 +808,7 @@ impl Workbench {
             .show(ui, |ui| self.top_bar(ui, &mut actions));
         let style = theme::dock_style(ui.style().as_ref(), self.accent);
         self.play_frames(ui.input(|i| f64::from(i.stable_dt)));
+        self.play_animator(ui.input(|i| f64::from(i.stable_dt)));
         let sheets = std::sync::Arc::clone(&self.viewport.sheets);
         let mut shown = HashSet::new();
         let mut area_requests = Vec::new();
@@ -886,12 +902,22 @@ impl Workbench {
             spent: std::time::Duration::ZERO,
         };
         let mut frames_out = crate::panels::FramesOut::default();
+        let live = self.live_animator();
         let frames = self.frames_editor.as_mut().map(|editor| {
             crate::workbench_frames::frames_ui(
                 editor,
                 &sheets,
                 &self.sheet_pictures,
                 &self.cue_sounds,
+            )
+        });
+        let animator = self.animator_editor.as_mut().map(|editor| {
+            crate::workbench_animator::animator_ui(
+                editor,
+                &sheets,
+                &self.sheet_pictures,
+                live,
+                self.accent.colors().fill,
             )
         });
         theme::dock_frame().show(ui, |ui| {
@@ -947,6 +973,7 @@ impl Workbench {
                         profiler: &self.profiler,
                         frames,
                         frames_out: &mut frames_out,
+                        animator,
                     },
                 );
         });
@@ -1181,9 +1208,13 @@ impl Workbench {
             let redo = i.consume_shortcut(&shift_z) || i.consume_shortcut(&y);
             (redo, i.consume_shortcut(&z))
         });
+        let animator = self.animator_hovered && self.animator_editor.is_some();
         if frames {
             // Over the Clips or Frames tab: the clips file's changes.
             self.frames_undo(redo, undo);
+        } else if animator {
+            // Over the Animator tab: the animator's changes.
+            self.animator_undo(redo, undo);
         } else if redo {
             self.redo();
         } else if undo {
@@ -1380,7 +1411,7 @@ impl Workbench {
             )
         });
         // Over the Frames tab, Delete takes out frames instead.
-        if delete && !self.frames_hovered {
+        if delete && !self.frames_hovered && !self.animator_hovered {
             self.delete_selection();
         }
         if duplicate {
@@ -1392,7 +1423,7 @@ impl Workbench {
         {
             crate::area_panel::begin_rename(ui.ctx(), id, &entity.name);
         }
-        if frame {
+        if frame && !self.animator_hovered {
             self.frame_selection();
         }
     }

@@ -134,7 +134,7 @@ impl Workbench {
     pub(crate) fn close_frames(&mut self) {
         self.frames_editor = None;
         self.frames_hovered = false;
-        for panel in Panel::OPEN_WITH_A_FILE {
+        for panel in Panel::FRAMES_TABS {
             layout::close(&mut self.dock, panel);
         }
     }
@@ -172,11 +172,20 @@ impl Workbench {
             self.save_frames(actions);
         }
         // A tab closed in the dock: the other goes too.
-        let one_gone = Panel::OPEN_WITH_A_FILE
+        let one_gone = Panel::FRAMES_TABS
             .iter()
             .any(|p| self.dock.find_tab(p).is_none());
         if self.frames_editor.is_some() && (out.closed || one_gone) {
             self.close_frames();
+        }
+        self.animator_hovered = out.animator_hovered;
+        if out.animator_changed {
+            self.save_animator(actions);
+        }
+        if self.animator_editor.is_some()
+            && (out.animator_closed || self.dock.find_tab(&Panel::Animator).is_none())
+        {
+            self.close_animator();
         }
     }
 

@@ -75,6 +75,8 @@ pub(crate) struct PanelViewer<'a> {
     /// D3), and what happened to it this frame.
     pub(crate) frames: Option<crate::frames_view::FramesUi<'a>>,
     pub(crate) frames_out: &'a mut FramesOut,
+    /// The animator file open in the Animator tab, if any (Phase 9, D3b).
+    pub(crate) animator: Option<crate::animator_view::AnimatorUi<'a>>,
 }
 
 /// What the Clips and Frames tabs did this frame.
@@ -87,6 +89,12 @@ pub(crate) struct FramesOut {
     /// The pointer is over one of the tabs (Ctrl+Z, Delete and Space are
     /// theirs then).
     pub(crate) hovered: bool,
+    /// The animator file changed: save it.
+    pub(crate) animator_changed: bool,
+    /// The Animator tab was closed: close the file.
+    pub(crate) animator_closed: bool,
+    /// The pointer is over the Animator tab (Ctrl+Z and Delete are its).
+    pub(crate) animator_hovered: bool,
 }
 
 impl TabViewer for PanelViewer<'_> {
@@ -111,10 +119,16 @@ impl TabViewer for PanelViewer<'_> {
             },
         );
         // The clips file's name, and the clip chosen.
-        let what = self.frames.as_ref().map(|f| match tab {
-            Panel::Clips => crate::sprite_sheets::name_of(&f.editor.path),
-            _ => f.editor.clip.clone(),
-        });
+        let what = if *tab == Panel::Animator {
+            self.animator
+                .as_ref()
+                .map(|a| crate::sprite_sheets::name_of(&a.editor.path))
+        } else {
+            self.frames.as_ref().map(|f| match tab {
+                Panel::Clips => crate::sprite_sheets::name_of(&f.editor.path),
+                _ => f.editor.clip.clone(),
+            })
+        };
         if tab.comes_with_a_file()
             && let Some(what) = what.filter(|w| !w.is_empty())
         {
@@ -212,6 +226,22 @@ impl TabViewer for PanelViewer<'_> {
                 );
             }
             Panel::Properties => {
+                if self.in_front.contains(&Panel::Animator)
+                    && let Some(animator) = &mut self.animator
+                {
+                    egui::ScrollArea::vertical()
+                        .id_salt("animator properties")
+                        .auto_shrink(false)
+                        .show(ui, |ui| {
+                            egui::Frame::new()
+                                .inner_margin(theme::panel_margin())
+                                .show(ui, |ui| {
+                                    self.frames_out.animator_changed |=
+                                        crate::animator_view::animator_properties(ui, animator);
+                                });
+                        });
+                    return;
+                }
                 if let Some(path) = self.sound_shown {
                     if assets::aseprite::is_aseprite_file(std::path::Path::new(path)) {
                         if crate::sheet_view::sheet_properties(
@@ -342,6 +372,17 @@ impl TabViewer for PanelViewer<'_> {
                 };
                 self.frames_out.changed |= changed;
             }
+            Panel::Animator => {
+                if ui.rect_contains_pointer(ui.max_rect()) {
+                    self.frames_out.animator_hovered = true;
+                }
+                let Some(animator) = &mut self.animator else {
+                    placeholder(ui, "No animator is open.");
+                    return;
+                };
+                self.frames_out.animator_changed |=
+                    crate::animator_view::animator_tab(ui, animator);
+            }
             Panel::Viewport => {}
         }
     }
@@ -350,8 +391,12 @@ impl TabViewer for PanelViewer<'_> {
         tab.comes_with_a_file()
     }
 
-    fn on_close(&mut self, _tab: &mut Panel) -> egui_dock::widgets::tab_viewer::OnCloseResponse {
-        // Either tab closes the file, and the other goes with it.
+    fn on_close(&mut self, tab: &mut Panel) -> egui_dock::widgets::tab_viewer::OnCloseResponse {
+        if *tab == Panel::Animator {
+            self.frames_out.animator_closed = true;
+            return egui_dock::widgets::tab_viewer::OnCloseResponse::Close;
+        }
+        // Either tab closes the clips file, and the other goes with it.
         self.frames_out.closed = true;
         egui_dock::widgets::tab_viewer::OnCloseResponse::Close
     }

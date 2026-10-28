@@ -33,6 +33,8 @@ pub enum AssetKind {
     SpriteSheet,
     /// A sprite's clips file (`.solframes`; Phase 9, D3).
     SpriteClips,
+    /// An animator (`.solanim`; Phase 9, D3b): states choosing the clip.
+    Animator,
 }
 
 /// The extensions of sound files Solis reads (decision 0056). The
@@ -48,6 +50,9 @@ pub const SOUND_EVENT_EXTENSION: &str = "solsound";
 /// The extension of sprites' clips files (the `animation` crate reads
 /// them).
 pub const SPRITE_CLIPS_EXTENSION: &str = "solframes";
+
+/// The extension of animator files (the `animation` crate reads them).
+pub const ANIMATOR_EXTENSION: &str = "solanim";
 
 impl AssetKind {
     /// The kind of the file at `path`, by its extension, if Solis reads it.
@@ -67,6 +72,8 @@ impl AssetKind {
             Some(Self::SoundEvent)
         } else if ext == SPRITE_CLIPS_EXTENSION {
             Some(Self::SpriteClips)
+        } else if ext == ANIMATOR_EXTENSION {
+            Some(Self::Animator)
         } else {
             None
         }

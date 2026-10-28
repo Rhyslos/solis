@@ -6,7 +6,7 @@
 //! opened) by a person:
 //!
 //! ```text
-//! solis save 2
+//! solis save 4
 //! project Harbour
 //! tick 1234
 //! time 4060000000000000
@@ -22,6 +22,10 @@
 //! x y z vx vy vz left r g b (exact bits)
 //! physics 2
 //! ID x y z qx qy qz qw vx vy vz wx wy wz asleep character (exact bits)
+//! places 1
+//! ID x y z qx qy qz qw sx sy sz (exact bits)
+//! animators 1
+//! ID moving=s1 speed=n3fc00000 facing=d0,3f800000 (exact bits)
 //! ```
 //!
 //! Physics is kept as each body's place and motion, never Rapier's own
@@ -40,9 +44,9 @@ use reflect::EntityId;
 use std::sync::Arc;
 
 /// The first line of a save this Solis writes and reads.
-const HEADER: &str = "solis save 3";
+const HEADER: &str = "solis save 4";
 /// The version in [`HEADER`].
-const SAVE_VERSION: u32 = 3;
+const SAVE_VERSION: u32 = 4;
 
 /// Save games' version and upgraders (Phase 8, C2; decision 0053): a save
 /// made by an earlier Solis loads in a later one, never refused just for
@@ -61,7 +65,11 @@ pub static FORMAT: reflect::upgrade::Format<Sections> = reflect::upgrade::Format
             .parse()
             .ok()
     },
-    steps: &[physics_as_places_and_motion, places_kept_apart],
+    steps: &[
+        physics_as_places_and_motion,
+        places_kept_apart,
+        animators_kept,
+    ],
 };
 
 /// A save's text read and written again: an older save in a slot is
@@ -119,6 +127,16 @@ fn places_kept_apart(sections: &mut Sections) -> Result<(), String> {
     Ok(())
 }
 
+/// Version 3 to 4: version 3 had no animators (Phase 9, D3b), so its
+/// animators start with every parameter at its start.
+fn animators_kept(sections: &mut Sections) -> Result<(), String> {
+    if sections.list.iter().any(|(n, _)| n == "animators") {
+        return Err("it already has animators".into());
+    }
+    sections.list.push(("animators".into(), String::new()));
+    Ok(())
+}
+
 /// The biggest save read.
 pub(crate) const MAX_SAVE_BYTES: usize = 256 << 20;
 
@@ -160,6 +178,9 @@ pub(crate) struct Save {
     /// Where the game has each entity it moved (its transform), where
     /// that differs from the area's, in entity order.
     pub(crate) places: Vec<(EntityId, Transform)>,
+    /// Each animator's parameters, by name, in entity order (its state is
+    /// its Animator's, in the area).
+    pub(crate) animators: Vec<(EntityId, Vec<(String, animation::ParamValue)>)>,
     /// What upgrading an older save couldn't carry over, for the Console
     /// (never written).
     pub(crate) notes: Vec<String>,
@@ -240,6 +261,18 @@ impl Save {
             .map(|(id, t)| format!("{id} {}\n", transform_words(t)))
             .collect();
         section("places", &places);
+        let animators: String = self
+            .animators
+            .iter()
+            .map(|(id, values)| {
+                let words: String = values
+                    .iter()
+                    .map(|(name, v)| format!(" {name}={}", world::animators::value_words(*v)))
+                    .collect();
+                format!("{id}{words}\n")
+            })
+            .collect();
+        section("animators", &animators);
         let head = format!(
             "project {}\ntick {}\ntime {:x}\nseed {}\n",
             one_line(&self.project),
@@ -460,6 +493,33 @@ impl Save {
                 Ok((EntityId(id), t))
             })
             .collect::<Result<Vec<_>, String>>()?;
+        let animators_text = section("animators")?;
+        if animators_text.lines().count() > area::text::MAX_ENTITIES {
+            return Err(damaged());
+        }
+        let animators = animators_text
+            .lines()
+            .map(|l| {
+                let mut words = l.split(' ');
+                let id: reflect::Id = words
+                    .next()
+                    .and_then(|w| w.parse().ok())
+                    .ok_or_else(damaged)?;
+                let values = words
+                    .map(|w| {
+                        let (name, value) = w.split_once('=').ok_or_else(damaged)?;
+                        let name = animation::animator_file::parameter_name(name)
+                            .map_err(|_| damaged())?;
+                        let value = world::animators::value_of_words(value).ok_or_else(damaged)?;
+                        Ok((name, value))
+                    })
+                    .collect::<Result<Vec<_>, String>>()?;
+                if values.len() > animation::animator_file::MAX_PARAMETERS {
+                    return Err(damaged());
+                }
+                Ok((EntityId(id), values))
+            })
+            .collect::<Result<Vec<_>, String>>()?;
         Ok(Self {
             project,
             ticks,
@@ -471,6 +531,7 @@ impl Save {
             projectiles,
             physics,
             places,
+            animators,
             notes: {
                 // A section no version writes: not a save this Solis made.
                 if !list.is_empty() {
@@ -526,6 +587,13 @@ impl Workbench {
                 {
                     data.set(&sprite);
                 }
+                // And its animator's state (D3b); its parameters are in
+                // their own section.
+                if let Some(animator) = playing.world.get::<area::builtin::Animator>(id)
+                    && data.get::<area::builtin::Animator>().as_ref() != Some(&animator)
+                {
+                    data.set(&animator);
+                }
                 // Every entity whole: a copy of an assembly (placed, or
                 // spawned by game code) is kept as the entities it is
                 // now, not as "a copy of" (which loses what's on its root,
@@ -559,6 +627,7 @@ impl Workbench {
             projectiles: playing.world.projectiles().flying().to_vec(),
             physics: bodies,
             places,
+            animators: playing.world.animator_values(),
             notes: Vec::new(),
         })
     }
@@ -670,6 +739,7 @@ impl Workbench {
         world.set_clock(save.ticks, save.time);
         world.set_seed(save.seed);
         world.projectiles_mut().restore(save.projectiles);
+        world.restore_animator_values(save.animators);
         if self.playing.is_none() {
             self.play();
         }

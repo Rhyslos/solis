@@ -1,6 +1,6 @@
 # Save games
 
-> Save the whole game and load it back exactly as it was: every entity, every component's values, the lasers in flight, physics, the clock and the random numbers.
+> Save the whole game and load it back exactly as it was: every entity, every component's values, the lasers in flight, physics, sprites' clips and animators' states, the clock and the random numbers.
 
 ## When to use it
 Whenever a player should be able to stop and carry on later: a quick-save key, a save point, a checkpoint before a boss. Solis saves **everything** for you, so you don't write any code to list what to keep, and nothing gets forgotten. A loaded game carries on *exactly* as the saved one would have: the same crate falls the same way, the same random numbers come up.

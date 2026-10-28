@@ -7,7 +7,7 @@ For anything in a 2D game that moves frame by frame: a farmer walking, a hoe swi
 
 The quickest way is Aseprite's own: **tag** runs of frames there (*walk*, *idle*, *hoe*) and every tag is a clip in Solis, with Aseprite's frame times. To change a clip's speed, give frames events (a footstep on the frame a foot lands), or make clips Aseprite doesn't have, Solis keeps a small **clips file** (`.solframes`) beside the Aseprite file. A sprite can play either.
 
-Choosing clips by what's happening (walking when moving, idle when not) is game code for now; the state machine that does it for you comes next.
+To choose clips by what's happening (walking when moving, idle when not, facing the right way), use an [animator](animators.md).
 
 ## How to use it
 1. **Tag your frames in Aseprite** and save. In Solis, click the file in the Library: Properties lists its tags.

@@ -144,6 +144,8 @@ New crates beyond these aren't needed: sampling and blending are a few hundred l
 
 ### A4. State machines and blending ☐
 
+> **Built for sprites in Phase 9, D3b** ([decision 0066](../decisions/0066-animator-state-machine.md)): the `.solanim` file, the `Animator` component, states playing a clip or a clip per facing direction, transitions with conditions, the step in the tick, checksum and saves (`solis save 4`). Blend spaces and crossfades wait for 3D (Phase 16), where poses can blend; game code's calls follow the API guidelines (decision 0065) instead of choice 9's names.
+
 - **The `.solanim` file** (decision 0039: a graph saved as readable text), Lust-style blocks like areas (decision 0020), one per parameter, state and transition, with stable random IDs so two people's changes merge, and each state's place in the graph:
 
   ```
@@ -173,6 +175,8 @@ New crates beyond these aren't needed: sampling and blending are a few hundred l
 - Tests: transitions fire on the right tick; crossfade weights add to 1; the blend space keeps feet in step; the file round trips and merges (two people adding states on two branches); damaged files refused (fuzz); the same recorded inputs give the same animation states and checksums on 1 core and 4; save, load, the same checksum; hot reload while playing.
 
 ### A5. The animator graph editor ☐
+
+> **Built in Phase 9, D3b:** the shared graph editor (`editor::graph_canvas`) and the Animator tab, as mocked up and approved. The 3D preview of a model waits for Phase 16.
 
 - **Mocked up first:** the animator tab is a new editor window, so its look is mocked up for the project lead to approve before any of it is built (CLAUDE.md).
 - **The shared graph editor** (decision 0050): the canvas, boxes, wires, box search, selection, pan and zoom are built as one reusable piece in the editor, which materials, effects and later graphs use too. The animator is its first user.

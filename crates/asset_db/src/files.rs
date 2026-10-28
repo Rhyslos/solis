@@ -4,7 +4,8 @@
 //! always goes with it, so its ID survives (decision 0021).
 
 use crate::db::{
-    ASSEMBLY_EXTENSION, AssetDb, SOUND_EVENT_EXTENSION, SOUND_EXTENSIONS, SPRITE_CLIPS_EXTENSION,
+    ANIMATOR_EXTENSION, ASSEMBLY_EXTENSION, AssetDb, SOUND_EVENT_EXTENSION, SOUND_EXTENSIONS,
+    SPRITE_CLIPS_EXTENSION,
 };
 use crate::sidecar;
 use reflect::AssetId;
@@ -32,6 +33,8 @@ pub enum FileKind {
     SpriteSheet,
     /// A sprite's clips file (`.solframes`).
     SpriteClips,
+    /// An animator (`.solanim`).
+    Animator,
     /// Anything else.
     Other,
 }
@@ -60,6 +63,7 @@ impl FileKind {
             e if SOUND_EXTENSIONS.contains(&e) => Self::Sound,
             e if e == SOUND_EVENT_EXTENSION => Self::SoundEvent,
             e if e == SPRITE_CLIPS_EXTENSION => Self::SpriteClips,
+            e if e == ANIMATOR_EXTENSION => Self::Animator,
             _ => Self::Other,
         }
     }
@@ -529,6 +533,14 @@ mod tests {
         assert_eq!(
             crate::AssetKind::of(Path::new("farmer.SOLFRAMES")),
             Some(crate::AssetKind::SpriteClips)
+        );
+        assert_eq!(
+            FileKind::of(Path::new("sprites/farmer.solanim")),
+            FileKind::Animator
+        );
+        assert_eq!(
+            crate::AssetKind::of(Path::new("farmer.SOLANIM")),
+            Some(crate::AssetKind::Animator)
         );
         assert_eq!(FileKind::of(Path::new("a.JPEG")), FileKind::Texture);
         assert_eq!(FileKind::of(Path::new("a.lua")), FileKind::Code);

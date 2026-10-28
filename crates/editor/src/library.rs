@@ -52,6 +52,8 @@ pub enum LibraryKind {
     SpriteSheet,
     /// A sprite's clips file (`.solframes`, Phase 9, D3).
     SpriteClips,
+    /// An animator (`.solanim`, Phase 9, D3b).
+    Animator,
     /// Anything else.
     Other,
 }
@@ -69,6 +71,7 @@ impl LibraryKind {
             Self::SoundEvent => "Sound event",
             Self::SpriteSheet => "Sprite sheet",
             Self::SpriteClips => "Sprite clips",
+            Self::Animator => "Animator",
             Self::Other => "File",
         }
     }
@@ -84,7 +87,7 @@ impl LibraryKind {
             Self::Code => theme::kind::CODE,
             Self::Sound => theme::kind::SOUND,
             Self::SoundEvent => theme::kind::SOUND_EVENT,
-            Self::SpriteSheet | Self::SpriteClips => theme::kind::SPRITE,
+            Self::SpriteSheet | Self::SpriteClips | Self::Animator => theme::kind::SPRITE,
             Self::Other => theme::kind::OTHER,
         }
     }
@@ -99,6 +102,7 @@ impl LibraryKind {
             Self::Code => Icon::Code,
             Self::Sound | Self::SoundEvent => Icon::Sound,
             Self::SpriteSheet | Self::SpriteClips => Icon::Viewport,
+            Self::Animator => Icon::Animator,
             Self::Other => Icon::Properties,
         }
     }
@@ -112,9 +116,10 @@ impl LibraryKind {
     }
 
     /// Whether a double-click opens it (in the editor) rather than placing
-    /// it: a sprite's clips file opens its Clips and Frames tabs.
+    /// it: a sprite's clips file opens its Clips and Frames tabs, an
+    /// animator its Animator tab.
     pub fn opens_on_double_click(self) -> bool {
-        self == Self::SpriteClips
+        matches!(self, Self::SpriteClips | Self::Animator)
     }
 }
 
@@ -210,6 +215,8 @@ pub(crate) enum LibraryRequest {
     NewSoundEvent(String),
     /// Save a sound event's settings to its file.
     SaveSoundEvent(String, sound::SoundEvent),
+    /// Make a new animator in this folder (Phase 9, D3b).
+    NewAnimator(String),
     /// Make a clips file beside the Aseprite file at this path (or open
     /// the one there), from its Properties (Phase 9, D3).
     MakeClipsFile(String),
@@ -397,6 +404,17 @@ fn menu_row(
                         .clicked()
                     {
                         requests.push(LibraryRequest::NewSoundEvent(state.folder.clone()));
+                        ui.close();
+                    }
+                    if ui
+                        .add_enabled(open, egui::Button::new("New animator"))
+                        .on_hover_text(
+                            "An animator in the folder shown: states that choose which clip a \
+                             sprite plays, opened in the Animator tab",
+                        )
+                        .clicked()
+                    {
+                        requests.push(LibraryRequest::NewAnimator(state.folder.clone()));
                         ui.close();
                     }
                     if ui
@@ -717,6 +735,10 @@ fn hint(item: &LibraryItem) -> String {
         LibraryKind::SpriteClips => {
             "Double-click to open its clips; drag it into the viewport to place a sprite that \
              plays them."
+        }
+        LibraryKind::Animator => {
+            "Double-click to open it in the Animator tab: its states, and how it moves between \
+             them."
         }
         LibraryKind::SoundEvent => {
             "▶ to listen (a different take each time); drop sound files on it to add takes; \

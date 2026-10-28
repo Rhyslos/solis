@@ -83,6 +83,7 @@ pub const GITATTRIBUTES: &str = "\
 *.solrec text eol=lf
 *.solpix text eol=lf
 *.solframes text eol=lf
+*.solanim text eol=lf
 *.lst text eol=lf
 *.lua text eol=lf
 # Big files go through Git LFS.
@@ -454,6 +455,7 @@ mod tests {
         assert!(attributes.contains("*.solarea text eol=lf"));
         assert!(attributes.contains("*.lst text eol=lf"), "Lust's files");
         assert!(attributes.contains("*.solinput text eol=lf"));
+        assert!(attributes.contains("*.solanim text eol=lf"), "animators");
         assert!(attributes.contains("*.glb filter=lfs"));
         let opened = Project::open(&root).unwrap();
         assert_eq!(opened, made);
