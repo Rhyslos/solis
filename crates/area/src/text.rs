@@ -314,7 +314,7 @@ fn decimal(text: String, v: f64) -> String {
     }
 }
 
-fn write_value(out: &mut String, value: &Value) {
+pub(crate) fn write_value(out: &mut String, value: &Value) {
     match value {
         Value::Bool(b) => out.push_str(if *b { "true" } else { "false" }),
         Value::Int(n) => {
@@ -541,13 +541,13 @@ struct Block {
     components: BTreeMap<String, ComponentData>,
 }
 
-struct Parser<'a> {
-    chars: std::iter::Peekable<std::str::CharIndices<'a>>,
-    line: usize,
+pub(crate) struct Parser<'a> {
+    pub(crate) chars: std::iter::Peekable<std::str::CharIndices<'a>>,
+    pub(crate) line: usize,
 }
 
 impl Parser<'_> {
-    fn fail<T>(&self, message: &str) -> Result<T, ParseError> {
+    pub(crate) fn fail<T>(&self, message: &str) -> Result<T, ParseError> {
         Err(ParseError {
             line: self.line,
             message: message.to_string(),
@@ -567,7 +567,7 @@ impl Parser<'_> {
     }
 
     /// Skips spaces, line ends and `--` comments; whether anything is left.
-    fn skip_space(&mut self) -> bool {
+    pub(crate) fn skip_space(&mut self) -> bool {
         loop {
             match self.peek() {
                 Some(c) if c.is_whitespace() => {
@@ -588,7 +588,7 @@ impl Parser<'_> {
         }
     }
 
-    fn expect(&mut self, wanted: char) -> Result<(), ParseError> {
+    pub(crate) fn expect(&mut self, wanted: char) -> Result<(), ParseError> {
         self.skip_space();
         match self.next() {
             Some(c) if c == wanted => Ok(()),
@@ -598,7 +598,7 @@ impl Parser<'_> {
     }
 
     /// A run of letters, digits and `_ . / #`.
-    fn word(&mut self) -> Result<String, ParseError> {
+    pub(crate) fn word(&mut self) -> Result<String, ParseError> {
         self.skip_space();
         let mut out = String::new();
         while let Some(c) = self.peek() {
@@ -618,7 +618,7 @@ impl Parser<'_> {
         Ok(out)
     }
 
-    fn keyword(&mut self, wanted: &str) -> Result<(), ParseError> {
+    pub(crate) fn keyword(&mut self, wanted: &str) -> Result<(), ParseError> {
         let word = self.word()?;
         if word == wanted {
             Ok(())
@@ -791,7 +791,7 @@ impl Parser<'_> {
         Ok(())
     }
 
-    fn value(&mut self, depth: usize) -> Result<Value, ParseError> {
+    pub(crate) fn value(&mut self, depth: usize) -> Result<Value, ParseError> {
         if depth > MAX_DEPTH {
             return self.fail("lists nested too deeply");
         }
@@ -1249,3 +1249,4 @@ mod tests {
         }
     }
 }
+

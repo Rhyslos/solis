@@ -14,12 +14,16 @@
 //! state.
 
 mod device;
+pub mod event;
 mod overview;
 pub mod read;
+#[cfg(test)]
+mod event_tests;
 #[cfg(test)]
 mod tests;
 mod vorbis_check;
 
 pub use device::SoundDevice;
+pub use event::{Pick, SoundEvent};
 pub use overview::Overview;
 pub use read::{Clip, ClipInfo, Format, ReadError, Samples, measure_file, read_bytes, read_file};

@@ -19,7 +19,7 @@ pub mod sidecar;
 mod watch;
 
 pub use db::{
-    ASSEMBLY_EXTENSION, AssetDb, AssetKind, AssetRecord, Change, SETTLE, SOUND_EXTENSIONS, Stamp,
+    ASSEMBLY_EXTENSION, AssetDb, AssetKind, AssetRecord, Change, SETTLE, SOUND_EVENT_EXTENSION, SOUND_EXTENSIONS, Stamp,
 };
 pub use files::{
     AREA_EXTENSION, FileEntry, FileError, FileKind, Listing, MAX_NAME_CHARS, file_name_from,

@@ -3,7 +3,7 @@
 //! moving, new folders and deleting to the Recycle Bin. A file's sidecar
 //! always goes with it, so its ID survives (decision 0021).
 
-use crate::db::{ASSEMBLY_EXTENSION, AssetDb, SOUND_EXTENSIONS};
+use crate::db::{ASSEMBLY_EXTENSION, AssetDb, SOUND_EVENT_EXTENSION, SOUND_EXTENSIONS};
 use crate::sidecar;
 use reflect::AssetId;
 use std::collections::HashSet;
@@ -24,6 +24,8 @@ pub enum FileKind {
     Code,
     /// A sound file (WAV, Ogg Vorbis).
     Sound,
+    /// A sound event (`.solsound`).
+    SoundEvent,
     /// Anything else.
     Other,
 }
@@ -47,6 +49,7 @@ impl FileKind {
             "png" | "jpg" | "jpeg" => Self::Texture,
             "lst" | "lua" | "rs" => Self::Code,
             e if SOUND_EXTENSIONS.contains(&e) => Self::Sound,
+            e if e == SOUND_EVENT_EXTENSION => Self::SoundEvent,
             _ => Self::Other,
         }
     }
