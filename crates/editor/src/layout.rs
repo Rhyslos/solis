@@ -90,6 +90,32 @@ pub fn open_beside(dock: &mut DockState<Panel>, panel: Panel, beside: Panel) {
     }
 }
 
+/// Opens `panel` (one that comes with a file) first in the tab group of
+/// `beside`, in front, as a document opens; already open, it's brought to
+/// the front.
+pub fn open_first_beside(dock: &mut DockState<Panel>, panel: Panel, beside: Panel) {
+    if let Some(path) = dock.find_tab(&panel) {
+        let _ = dock.set_active_tab(path);
+        return;
+    }
+    match dock.find_tab(&beside) {
+        Some(path) => {
+            dock[path.surface][path.node].insert_tab(egui_dock::TabIndex(0), panel);
+            if let Some(path) = dock.find_tab(&panel) {
+                let _ = dock.set_active_tab(path);
+            }
+        }
+        None => dock.push_to_first_leaf(panel),
+    }
+}
+
+/// Brings `panel` to the front of its tab group, if it's open.
+pub fn bring_to_front(dock: &mut DockState<Panel>, panel: Panel) {
+    if let Some(path) = dock.find_tab(&panel) {
+        let _ = dock.set_active_tab(path);
+    }
+}
+
 /// Closes `panel`, if it's open.
 pub fn close(dock: &mut DockState<Panel>, panel: Panel) {
     if let Some(path) = dock.find_tab(&panel) {

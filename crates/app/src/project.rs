@@ -186,6 +186,7 @@ impl Projects {
                     FileKind::SoundEvent => LibraryKind::SoundEvent,
                     FileKind::SpriteSheet => LibraryKind::SpriteSheet,
                     FileKind::SpriteClips => LibraryKind::SpriteClips,
+                    FileKind::Animator => LibraryKind::Animator,
                     FileKind::Other => LibraryKind::Other,
                 },
                 // Files Solis doesn't know keep their whole name, so
@@ -306,6 +307,42 @@ impl Projects {
             |text| {
                 animation::frames_file::read(text)
                     .map(|read| animation::frames_file::write(&read.file))
+                    .map_err(|e| e.to_string())
+            },
+        )
+    }
+
+    /// Saves an animator file (`.solanim`, inside the assets, Phase 9, D3b),
+    /// making it if it isn't there. Gives back where an older one was
+    /// kept, if it was.
+    pub fn save_animator(&self, path: &Path, text: &str) -> Result<Option<PathBuf>, String> {
+        let db = self.db.as_ref().ok_or("no project is open")?;
+        let is_animator = animation::animator_file::is_animator_file(path);
+        let plain = path
+            .components()
+            .all(|c| matches!(c, std::path::Component::Normal(_)));
+        if !is_animator || !plain {
+            return Err("it isn't an animator file in the assets".to_owned());
+        }
+        let file = db.project().assets().join(path);
+        if !file.is_file() {
+            if let Some(folder) = file.parent()
+                && !folder.is_dir()
+            {
+                return Err("its folder isn't there any more".to_owned());
+            }
+            return asset_db::write_atomically(&file, text.as_bytes())
+                .map(|()| None)
+                .map_err(|e| e.to_string());
+        }
+        crate::upgrades::save(
+            db.project().root(),
+            &file,
+            text,
+            &animation::animator_file::FORMAT,
+            |text| {
+                animation::animator_file::read(text)
+                    .map(|read| animation::animator_file::write(&read.file))
                     .map_err(|e| e.to_string())
             },
         )

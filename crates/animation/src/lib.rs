@@ -13,14 +13,25 @@
 //!   the sheet's frames.
 //! - [`clip_set`]: a sheet's tags and its clips file put together into the
 //!   clips a sprite can play ([`ClipSet`]).
+//! - [`animator_file`]: an animator (`.solanim`, D3b): a state machine of
+//!   parameters, states (each playing a clip, or a clip per facing
+//!   direction) and transitions with conditions.
+//! - [`animator`]: an animator made ready to run, and one entity's place
+//!   in it, stepped once a tick.
 //!
-//! The state machine (the next milestone) plays these clips; 3D
-//! skeletons' clips (Phase 16) will use the same time and event rules.
+//! 3D skeletons' clips (Phase 16) will use the same time and event rules
+//! and the same state machine.
 
+pub mod animator;
+pub mod animator_file;
 pub mod clip;
 pub mod clip_set;
 pub mod frames_file;
 
+pub use animator::{Animator, ParamValue, Run, SetError};
+pub use animator_file::{
+    AnimatorFile, Condition, Facing, Parameter, ParameterKind, Plays, State, Transition,
+};
 pub use clip::{Clip, ClipFrame, Direction, Moment};
 pub use clip_set::ClipSet;
 pub use frames_file::{FramesFile, OwnClip, TagChange};

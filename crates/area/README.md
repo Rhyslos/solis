@@ -18,6 +18,7 @@ Be the one place an area lives while it's edited. The editor, saving and loading
 - **Assemblies** (`assembly.rs`): a placed assembly is its root entity (with an `Origin`) plus overrides in the file, and ordinary entities while edited. `Expander` expands copies (IDs from `derive(copy root, path)`, so the same file gives the same IDs), collapses them back to what differs, counts entities before making any, refuses loops (naming the chain) and nesting past 16. Overrides whose part is gone are kept. `set_in_file` is Apply to assembly.
 - **2D settings** (`pixels.rs`, Phase 9, D1): a project's base resolution, pixels per unit, tile size and scaling, read from and written to `pixels.solpix` (a settings file, format 1), values out of range brought in with a note.
 - **Sprites** (`builtin/sprite.rs`, Phase 9, D2): the `Sprite` component, one frame of a sprite sheet lying on the ground at the entity, standing on its pivot slice, with flip, tint, flash, outline and see-through; from D3, the clip it plays (Clip, Playing, Speed, Clip time).
+- **Animators** (`builtin/animator.rs`, Phase 9, D3b): the `Animator` component: an animator file (`.solanim`) that chooses the Sprite's clip, the state it starts in (and, while playing, is in), and a speed.
 - **A new area** has a Sun and an Environment (the sun, sky and fog live in each area).
 
 ## Must never
@@ -32,4 +33,4 @@ Be the one place an area lives while it's edited. The editor, saving and loading
 
 ## Status
 
-Phase 2 complete: the document, the built-in components, edits and undo history, the tree, and the text format. Phase 7, S2: settings files (`settings.rs`) in the same text style, for sound events and later the mixer.
+Phase 2 complete: the document, the built-in components, edits and undo history, the tree, and the text format. Phase 7, S2: settings files (`settings.rs`) in the same text style, for sound events and later the mixer. Phase 9, D3b: settings files with blocks (`word ID { key = value; … }`) as well as fields, for animators.

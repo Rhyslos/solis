@@ -36,6 +36,9 @@ pub enum Panel {
     /// The chosen clip's frames along a time ruler (Phase 9, D3): at the
     /// bottom while a `.solframes` file is open.
     Frames,
+    /// The animator file open (Phase 9, D3b): its graph of states and
+    /// transitions, beside the viewport while a `.solanim` file is open.
+    Animator,
 }
 
 impl Panel {
@@ -56,7 +59,10 @@ impl Panel {
 
     /// Panels that come and go with what's open (a clips file), never in
     /// [`Self::ALL`] or the Window menu, and never saved in a layout.
-    pub const OPEN_WITH_A_FILE: [Self; 2] = [Self::Clips, Self::Frames];
+    pub const OPEN_WITH_A_FILE: [Self; 3] = [Self::Clips, Self::Frames, Self::Animator];
+
+    /// The tabs a clips file opens (and closes) together.
+    pub const FRAMES_TABS: [Self; 2] = [Self::Clips, Self::Frames];
 
     /// Whether it comes and goes with what's open (and can be closed).
     pub fn comes_with_a_file(self) -> bool {
@@ -79,6 +85,7 @@ impl Panel {
             Self::Mixer => "Mixer",
             Self::Clips => "Clips",
             Self::Frames => "Frames",
+            Self::Animator => "Animator",
         }
     }
 
@@ -98,6 +105,7 @@ impl Panel {
             Self::Mixer => Icon::Sound,
             Self::Clips => Icon::Layers,
             Self::Frames => Icon::Viewport,
+            Self::Animator => Icon::Animator,
         }
     }
 }

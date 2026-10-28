@@ -252,9 +252,9 @@ fn saves_from_elsewhere_or_damaged_are_refused_and_nothing_changes() {
     // Damaged: cut short, a byte changed, a newer version, not a save.
     let mut damaged = vec![
         text[..text.len() / 2].to_string(),
-        text.replacen("solis save 3", "solis save 9", 1),
-        text.replacen("solis save 3", "solis save 2", 1),
-        text.replacen("solis save 3", "solis save 1", 1),
+        text.replacen("solis save 4", "solis save 9", 1),
+        text.replacen("solis save 4", "solis save 2", 1),
+        text.replacen("solis save 4", "solis save 1", 1),
         "hello".to_string(),
         String::new(),
     ];
@@ -289,12 +289,12 @@ fn saves_from_elsewhere_or_damaged_are_refused_and_nothing_changes() {
     assert!(Save::read(&"x".repeat(MAX_SAVE_BYTES + 1)).is_err());
     // The third review: this version's header with Windows line endings
     // or a space after it is damaged, not "from a newer Solis".
-    for header in ["solis save 3\r", "solis save 3 "] {
-        let why = Save::read(&text.replacen("solis save 3", header, 1)).unwrap_err();
+    for header in ["solis save 4\r", "solis save 4 "] {
+        let why = Save::read(&text.replacen("solis save 4", header, 1)).unwrap_err();
         assert!(why.contains("damaged"), "{header:?}: {why}");
     }
     assert!(
-        Save::read(&text.replacen("solis save 3", "solis save 9", 1))
+        Save::read(&text.replacen("solis save 4", "solis save 9", 1))
             .unwrap_err()
             .contains("newer")
     );
@@ -850,4 +850,134 @@ fn sections_a_save_never_has_are_refused() {
     let without = v1[..cut].replacen(lines[5], &format!("sum {:016x}", c.finish()), 1);
     let refused = Save::read(&without).unwrap_err();
     assert!(refused.contains("physics"), "{refused}");
+}
+
+/// `busy`, with an animator (Idle and Walk, moving to go between them;
+/// a speed number) on a farmer (Phase 9, D3b).
+fn busy_with_an_animator() -> (Workbench, EntityId) {
+    use animation::{AnimatorFile, Condition, Parameter, ParameterKind, Plays, State, Transition};
+    let mut w = busy("Harbour");
+    let anim = reflect::AssetId(reflect::Id::from_raw(4242).unwrap());
+    let rid = |n| reflect::Id::from_raw(n).unwrap();
+    let state = |n, name: &str| State {
+        id: rid(n),
+        name: name.into(),
+        place: [0.0, 0.0],
+        plays: Plays::Clip(String::new()),
+        speed: 1.0,
+        speed_by: String::new(),
+    };
+    let file = AnimatorFile {
+        parameters: vec![
+            Parameter {
+                id: rid(10),
+                name: "moving".into(),
+                kind: ParameterKind::Switch(false),
+            },
+            Parameter {
+                id: rid(11),
+                name: "speed".into(),
+                kind: ParameterKind::Number(0.0),
+            },
+        ],
+        states: vec![state(1, "Idle"), state(2, "Walk")],
+        transitions: vec![
+            Transition {
+                id: rid(20),
+                from: Some(rid(1)),
+                to: rid(2),
+                when: vec![Condition::Is("moving".into())],
+            },
+            Transition {
+                id: rid(21),
+                from: Some(rid(2)),
+                to: rid(1),
+                when: vec![Condition::Below("speed".into(), 0.5)],
+            },
+        ],
+        ..AnimatorFile::default()
+    };
+    let mut sheets = crate::sprite_sheets::SpriteSheets::default();
+    sheets.animators.insert(
+        "farmer.solanim".into(),
+        crate::sprite_sheets::AnimatorState::Read(Arc::new(file), Vec::new()),
+    );
+    sheets.paths.insert(anim, "farmer.solanim".into());
+    w.set_sprite_sheets(sheets);
+    let farmer = w.spawn_selected(EntityData::new("Farmer").with(&Transform::default()).with(
+        &area::builtin::Animator {
+            animator: Some(reflect::AssetRef {
+                asset: anim,
+                part: None,
+            }),
+            ..area::builtin::Animator::default()
+        },
+    ));
+    (w, farmer)
+}
+
+#[test]
+fn an_animator_s_state_and_values_survive_a_save() {
+    let (mut w, farmer) = busy_with_an_animator();
+    w.play();
+    run_to(&mut w, 5);
+    let world = &mut w.playing.as_mut().unwrap().world;
+    world
+        .set_animator_value(farmer, "moving", animation::ParamValue::Switch(true))
+        .unwrap();
+    world
+        .set_animator_value(farmer, "speed", animation::ParamValue::Number(2.5))
+        .unwrap();
+    run_to(&mut w, 8);
+    assert_eq!(w.world().unwrap().animator_of(farmer).unwrap().0, "Walk");
+    let text = w.save_text().expect("saved");
+    assert!(text.starts_with("solis save 4\n"));
+    assert!(text.contains("animators "), "{text}");
+    assert!(text.contains("moving=s1 speed=n40200000"), "{text}");
+    let saved = sums(&mut w);
+    let (mut loaded, _) = busy_with_an_animator();
+    loaded.play();
+    loaded.load_game(&text, "the save");
+    assert!(
+        !loaded
+            .log_lines()
+            .iter()
+            .any(|e| e.level == LogLevel::Error),
+        "{:?}",
+        loaded.log_lines().last().map(|l| &l.text)
+    );
+    assert_eq!(sums(&mut loaded), saved, "as saved, before a tick");
+    for t in 9..30 {
+        run_to(&mut w, t);
+        run_to(&mut loaded, t);
+        assert_eq!(sums(&mut loaded), sums(&mut w), "tick {t}");
+    }
+    assert_eq!(
+        loaded.world().unwrap().animator_of(farmer).unwrap().1[1],
+        ("speed".to_owned(), animation::ParamValue::Number(2.5))
+    );
+}
+
+#[test]
+fn a_damaged_animators_section_is_refused() {
+    let (mut w, _) = busy_with_an_animator();
+    w.play();
+    run_to(&mut w, 3);
+    let text = w.save_text().unwrap();
+    let at = text.find("animators ").unwrap();
+    let body = &text[at..];
+    let line = body.lines().nth(1).unwrap().to_owned();
+    for bad in [
+        line.replacen("moving=s0", "moving=s7", 1),
+        line.replacen("moving=s0", "two words=s0", 1),
+        line.replacen("moving=s0", "moving", 1),
+        format!("NOTANID{}", &line[13..]),
+    ] {
+        let damaged = resummed(&text.replacen(&line, &bad, 1).replacen(
+            &format!("animators {}", line.len() + 1),
+            &format!("animators {}", bad.len() + 1),
+            1,
+        ));
+        assert!(Save::read(&damaged).is_err(), "{bad}");
+    }
 }

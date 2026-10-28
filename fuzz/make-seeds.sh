@@ -60,5 +60,7 @@ wav('stereo_float', 44100, 2, 32, fmt=3)
 PY
 mkdir -p "$seeds/frames"
 cp tests/fixtures/frames/v1/walker.solframes "$seeds/frames/"
+mkdir -p "$seeds/animator"
+cp tests/fixtures/animator/v1/farmer.solanim "$seeds/animator/"
 echo "Seeds in $seeds:"
 for d in "$seeds"/*/; do echo "  $(basename "$d"): $(ls "$d" | wc -l) files"; done

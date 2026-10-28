@@ -1,6 +1,6 @@
 [package]
 name = "animation"
-description = "Animation (Phase 9, D3): clips of frames, played by time with their events, and a sprite's clips file (.solframes)"
+description = "Animation (Phase 9, D3): clips of frames played by time with their events, a sprite's clips file (.solframes), and animators (.solanim): state machines choosing the clip"
 version.workspace = true
 edition.workspace = true
 rust-version.workspace = true

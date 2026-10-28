@@ -2,6 +2,7 @@
 //! values and back (`reflect::Component`); missing or damaged values take
 //! their defaults, so an older or damaged area still loads.
 
+mod animator;
 mod audio_source;
 mod camera;
 mod environment;
@@ -13,6 +14,7 @@ mod reverb_zone;
 mod sprite;
 mod transform;
 
+pub use animator::Animator;
 pub use audio_source::AudioSource;
 pub use camera::{Camera, CameraView};
 pub use environment::{Environment, Sky, ToneMapping};
@@ -42,6 +44,7 @@ pub fn registry() -> Result<Registry, RegistryError> {
     registry.register_type::<ReverbZone>()?;
     registry.register_type::<Sprite>()?;
     registry.register_type::<Listener>()?;
+    registry.register_type::<Animator>()?;
     Ok(registry)
 }
 
@@ -142,6 +145,7 @@ mod tests {
         assert_eq!(
             names,
             [
+                "Animator",
                 "AudioSource",
                 "Camera",
                 "CharacterBody",
@@ -174,6 +178,12 @@ mod tests {
     fn every_built_in_round_trips_through_values() {
         round_trip(&Transform::default());
         round_trip(&Camera::default());
+        round_trip(&Animator::default());
+        round_trip(&Animator {
+            animator: None,
+            state: "Walk".into(),
+            speed: 2.5,
+        });
         round_trip(&AudioSource {
             event: "sfx/engine".into(),
             playing: false,

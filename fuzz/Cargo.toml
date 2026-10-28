@@ -150,3 +150,10 @@ path = "fuzz_targets/frames.rs"
 test = false
 doc = false
 bench = false
+
+[[bin]]
+name = "animator"
+path = "fuzz_targets/animator.rs"
+test = false
+doc = false
+bench = false

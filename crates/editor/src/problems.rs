@@ -30,6 +30,9 @@ pub enum ProblemKind {
     ParentLoop,
     /// A Sprite with no sheet chosen, or whose sheet isn't in the project.
     MissingSpriteSheet,
+    /// An Animator with no animator file chosen, or whose file isn't in
+    /// the project (Phase 9, D3b).
+    MissingAnimator,
     /// A sprite resting between pixels by accident: the game draws it on
     /// the nearest one, so it may seem to jump a pixel when it moves.
     SpriteBetweenPixels,
@@ -266,7 +269,26 @@ pub(crate) fn find(sources: &Sources) -> Vec<Problem> {
                     kind: ProblemKind::MissingSpriteSheet,
                     entity: id,
                     text: format!(
-                        "{name}'s sprite sheet ({asset}) isn't in the project: its file was                          deleted, or never committed"
+                        "{name}'s sprite sheet ({asset}) isn't in the project: its file was \
+                         deleted, or never committed"
+                    ),
+                }),
+                Some(_) => {}
+            }
+        }
+        if let Some(animator) = entity.get::<area::builtin::Animator>() {
+            match animator.animator.map(|r| r.asset) {
+                None => found.push(Problem {
+                    kind: ProblemKind::MissingAnimator,
+                    entity: id,
+                    text: format!("{name}'s Animator has no animator file chosen"),
+                }),
+                Some(asset) if !sources.known.contains(&asset) => found.push(Problem {
+                    kind: ProblemKind::MissingAnimator,
+                    entity: id,
+                    text: format!(
+                        "{name}'s animator ({asset}) isn't in the project: its file was \
+                         deleted, or never committed"
                     ),
                 }),
                 Some(_) => {}
@@ -616,6 +638,31 @@ mod tests {
             sheet: sheet.map(|asset| reflect::AssetRef { asset, part: None }),
             ..area::builtin::Sprite::default()
         }
+    }
+
+    #[test]
+    fn animators_without_a_file_in_the_project_are_found() {
+        let mut w = World::new();
+        let (here, gone) = (AssetId::random(), AssetId::random());
+        w.known.insert(here);
+        let animator = |file: Option<AssetId>| area::builtin::Animator {
+            animator: file.map(|asset| reflect::AssetRef { asset, part: None }),
+            ..area::builtin::Animator::default()
+        };
+        w.area
+            .spawn(EntityData::new("Farmer").with(&animator(Some(here))));
+        w.area.spawn(EntityData::new("Blank").with(&animator(None)));
+        w.area
+            .spawn(EntityData::new("Ghost").with(&animator(Some(gone))));
+        let found = w.find();
+        assert_eq!(found.len(), 2);
+        assert!(found.iter().all(|p| p.kind == ProblemKind::MissingAnimator));
+        assert!(
+            found
+                .iter()
+                .any(|p| p.text.contains("Blank's Animator has no"))
+        );
+        assert!(found.iter().any(|p| p.text.contains("Ghost's animator (")));
     }
 
     #[test]

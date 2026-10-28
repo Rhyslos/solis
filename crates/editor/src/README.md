@@ -14,6 +14,7 @@ Tests: files ending `_tests.rs` hold the tests of the file with the same start (
 | --- | --- | --- |
 | `lib.rs` | Lists the modules and what the crate offers. | |
 | `workbench.rs` | The whole editor window: its state between frames, and `show`, which draws a frame and returns the actions. | `Workbench`, `WorkbenchAction`, `AppInfo` |
+| `workbench_animator.rs` | The workbench's side of the Animator tab (Phase 9, D3b): opening an animator file (or making a new one), closing, the preview, saving each change and running it at once, undo, the selected entity's state while playing, and a file changed on disk. Tests in `workbench_animator_tests.rs`. | |
 | `workbench_frames.rs` | The workbench's side of the Clips and Frames tabs: opening a clips file into them (or making one beside a sheet), closing, playing, saving each change, undo. Tests in `workbench_frames_tests.rs`. | |
 | `workbench_library.rs`, `workbench_tools.rs` | The workbench's side of the Library (file actions, placing what's dropped) and of the viewport's tools (gizmo, outline, their keys). | |
 | `document.rs` | The open area as the editor holds it: the area, the component registry, the selection and undo history. It only changes through `Document::edit`. | `Document`, `Selection` |
@@ -56,6 +57,9 @@ Tests: files ending `_tests.rs` hold the tests of the file with the same start (
 | `gizmo.rs` | The move, rotate and scale gizmo: its handles, which is under the mouse, and what dragging one does. Tests in [`gizmo/`](gizmo/README.md). | `Gizmo`, `GizmoTool`, `Handle` |
 | `transforming.rs` | Each selected entity's new transform during a gizmo drag, with snapping. | `Targets`, `Snapping` |
 | `screen.rs` | Between the screen and the world: the ray through a point, where a world point appears, how big a pixel is at a depth. | `Ray` |
+| `animator_editor.rs` | An animator file open for editing (Phase 9, D3b): states, transitions, conditions and parameters changed, each one undo step, with the file kept whole; picking; the preview. Tests in `animator_editor_tests.rs`. | `AnimatorEditor`, `Picked` |
+| `animator_view.rs` | The Animator tab (parameters, preview and graph) and its Properties (a state, a transition, or the file) drawn. Tests in `animator_view_tests.rs`. | `animator_tab`, `animator_properties` |
+| `graph_canvas.rs` | The shared graph editor (decision 0050): boxes and arrows on a canvas that pans and zooms, with the controls of decision 0057; reports what was done, so its user makes the change. Tests in `graph_canvas_tests.rs`. | `graph_canvas`, `GraphCanvas`, `GraphBox`, `GraphWire`, `GraphEvent` |
 | `frames_editor.rs` | A sprite's clips file open for editing (Phase 9, D3): clips made, copied, renamed, sped up; frames added, timed, given events, moved and taken out; picking; playing; undo. Tests in `frames_editor_tests.rs`. | `FramesEditor` |
 | `frames_view.rs` | The Clips tab (the clips and their settings) and the Frames tab (the chosen clip's frames along a time ruler, events below) drawn. | `clips_tab`, `frames_tab` |
 | `sheet_view.rs` | A sprite sheet in the Library and Properties (Phase 9, D2): frames drawn crisply, a strip of frames, its tags, slices, layers and palette. | |

@@ -573,7 +573,7 @@ impl Parser<'_> {
         })
     }
 
-    fn peek(&mut self) -> Option<char> {
+    pub(crate) fn peek(&mut self) -> Option<char> {
         self.chars.peek().map(|&(_, c)| c)
     }
 

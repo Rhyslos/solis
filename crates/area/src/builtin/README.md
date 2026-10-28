@@ -14,6 +14,7 @@ The built-in components. Each is a typed Rust struct that turns into values and 
 | `reverb_zone.rs` | A place where sounds echo: a box or a ball with a soft edge, a preset and a strength (Phase 7, S6). | `ReverbZone`, `ZoneShape` |
 | `listener.rs` | Where the game hears from: Hears now and the groups it's in (Phase 7, S8). | `Listener` |
 | `physics.rs` | Physics components (decision 0036): a body that moves, a shape to bump into, and a character's standing capsule. Plain values; the game's world turns them into physics. | `RigidBody`, `Collider`, `CharacterBody` |
+| `animator.rs` | An animator (Phase 9, D3b): the animator file that chooses the Sprite's clip, the state it starts in, and a speed. | `Animator` |
 | `sprite.rs` | A sprite (Phase 9, D2): one frame of a sprite sheet lying on the ground at the entity, standing on its pivot slice, with flip, tint, flash, outline and see-through. | `Sprite` |
 
 **Adding a component:** write its struct here, implement `reflect::Component`, and add it to `registry` in `mod.rs`. Properties then draws it without any editor code.

@@ -6,6 +6,8 @@
 //! and draws the viewport through a [`ViewportRenderer`] the app provides.
 //! See this crate's README for its purpose and limits.
 
+pub mod animator_editor;
+mod animator_view;
 mod area_panel;
 pub mod area_view;
 pub mod camera;
@@ -22,6 +24,7 @@ pub mod game_sound;
 #[cfg(test)]
 mod game_sound_tests;
 pub mod gizmo;
+mod graph_canvas;
 pub mod icons;
 mod input_window;
 mod inspector;
@@ -56,6 +59,7 @@ pub mod updates;
 pub mod viewport;
 mod viewport_tools;
 pub mod workbench;
+mod workbench_animator;
 mod workbench_frames;
 mod workbench_library;
 mod workbench_tools;

@@ -65,6 +65,21 @@ These work while the pointer is over the Clips or Frames tab; see [Animating spr
 | Play or stop the clip | Space |
 | Undo or redo a change to the clips file | Ctrl + Z, Ctrl + Y |
 
+## The Animator tab (an animator open)
+
+These work while the pointer is over the Animator tab; see [Animators](animators.md). Every graph in Solis will work the same way.
+
+| Action | Shortcut |
+|---|---|
+| Pick a state or an arrow; add to what's picked | Click; Ctrl + click or Shift + click |
+| Pick states with a box | Drag on empty space |
+| Move picked states | Drag one of them |
+| Join two states | Drag from a state's edge to another |
+| Menus (Add state, Make transition, Start here, Delete) | Right-click |
+| Take away what's picked | Delete |
+| Pan, zoom, fit everything | Middle-drag, mouse wheel, F |
+| Undo or redo a change to the animator | Ctrl + Z, Ctrl + Y |
+
 ## Editing
 
 | Action | Shortcut |

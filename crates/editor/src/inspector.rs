@@ -225,6 +225,16 @@ fn field_widget(
             };
             return whole(slice_picker(ui, value, sheet.map(|s| &**s), mixed.whole));
         }
+        (FieldKind::Asset, Offer::Assets("animator")) => {
+            return whole(animator_picker(ui, value, sheets, mixed.whole));
+        }
+        (FieldKind::Text, Offer::StatesOf(animator_field)) => {
+            let file = match data.get(animator_field) {
+                Some(Value::Asset(Some(r))) => sheets.animator_file(r.asset),
+                _ => None,
+            };
+            return whole(state_picker(ui, value, file.map(|f| &**f), mixed.whole));
+        }
         (FieldKind::Text, Offer::ClipsOf(sheet_field)) => {
             let clips = match data.get(sheet_field) {
                 Some(Value::Asset(Some(r))) => sheets.clips(r.asset),
@@ -389,6 +399,112 @@ fn sheet_picker(ui: &mut Ui, value: &Value, sheets: &SpriteSheets, mixed: bool) 
                 ui.label(
                     RichText::new("No sprite sheets yet: put an Aseprite file in the project.")
                         .color(crate::theme::TEXT_WEAK),
+                );
+            }
+        });
+    chosen
+}
+
+/// An animator field: the project's animator files to pick from.
+fn animator_picker(
+    ui: &mut Ui,
+    value: &Value,
+    sheets: &SpriteSheets,
+    mixed: bool,
+) -> Option<Value> {
+    let current = match value {
+        Value::Asset(Some(r)) => Some(r.asset),
+        _ => None,
+    };
+    let listed = sheets.listed_animators();
+    let shown = if mixed {
+        "—".to_owned()
+    } else {
+        match current {
+            None => "None".to_owned(),
+            Some(id) => listed
+                .iter()
+                .find(|(_, i)| *i == id)
+                .map_or_else(|| format!("Missing animator {id}"), |(n, _)| n.clone()),
+        }
+    };
+    let mut chosen = None;
+    egui::ComboBox::from_id_salt("animator")
+        .selected_text(shown)
+        .show_ui(ui, |ui| {
+            if ui
+                .selectable_label(current.is_none() && !mixed, "None")
+                .clicked()
+            {
+                chosen = Some(Value::Asset(None));
+            }
+            for (name, id) in &listed {
+                if ui
+                    .selectable_label(current == Some(*id) && !mixed, name)
+                    .clicked()
+                {
+                    chosen = Some(Value::Asset(Some(reflect::AssetRef {
+                        asset: *id,
+                        part: None,
+                    })));
+                }
+            }
+            if listed.is_empty() {
+                ui.label(
+                    RichText::new("No animators yet: Library > Import > New animator.")
+                        .color(crate::theme::TEXT_WEAK),
+                );
+            }
+        });
+    chosen
+}
+
+/// A state name field: the animator's states (and its start, for none).
+fn state_picker(
+    ui: &mut Ui,
+    value: &Value,
+    file: Option<&animation::AnimatorFile>,
+    mixed: bool,
+) -> Option<Value> {
+    let current = match value {
+        Value::Text(t) => t.as_str(),
+        _ => "",
+    };
+    let none = match file.and_then(animation::AnimatorFile::entry_state) {
+        Some(s) => format!("Its start ({})", s.name),
+        None => "Its start".to_owned(),
+    };
+    let shown = if mixed {
+        "—".to_owned()
+    } else if current.is_empty() {
+        none.clone()
+    } else {
+        current.to_owned()
+    };
+    let mut chosen = None;
+    egui::ComboBox::from_id_salt("animator state")
+        .selected_text(shown)
+        .show_ui(ui, |ui| {
+            if ui
+                .selectable_label(current.is_empty() && !mixed, none)
+                .clicked()
+            {
+                chosen = Some(Value::Text(String::new()));
+            }
+            for state in file.map_or(&[][..], |f| &f.states) {
+                if ui
+                    .selectable_label(current == state.name && !mixed, &state.name)
+                    .clicked()
+                {
+                    chosen = Some(Value::Text(state.name.clone()));
+                }
+            }
+            if !current.is_empty()
+                && file.is_some_and(|f| !f.states.iter().any(|s| s.name == current))
+            {
+                ui.label(
+                    RichText::new(format!("\"{current}\" isn't one of its states"))
+                        .color(crate::theme::WARNING),
                 );
             }
         });

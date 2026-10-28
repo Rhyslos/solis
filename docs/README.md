@@ -4,6 +4,7 @@ Everything written about the engine that isn't code: why things are the way they
 
 | File or folder | What it holds |
 | --- | --- |
+| `game-api-guidelines.md` | The project lead's guidelines for every call game code makes into Solis (decision 0065), with the checklist each new call answers. The source of truth for game code's API. |
 | `game-code-interface.txt` | Everything game code can call (Lust's natives, Lua's `solis`, the Rust traits, the ready-made components and their fields), written by a test in `crates/script/src/interface.rs`. A change to what games call fails that test until this file is updated in the same pull request, where a reviewer sees it (Phase 8, C3). |
 | `dependencies.md` | The register of every outside library: what it's for, its licence, and the safeguards against dependency trouble (decision 0052), including "Patches", the stand-ins in [`patches/`](../patches/README.md). A test in `tools/layer-check` checks the register matches the crates. |
 | [`decisions/`](decisions/README.md) | One file per major choice, numbered in order. Check here before changing anything a decision covers. |

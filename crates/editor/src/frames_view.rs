@@ -64,7 +64,7 @@ fn about(clip: &animation::Clip) -> String {
 
 /// A number field whose change counts once it's let go (or typed and
 /// left), so a drag is one undo step. Returns the value then.
-fn settled_drag(
+pub(crate) fn settled_drag(
     ui: &mut Ui,
     salt: &str,
     value: f64,

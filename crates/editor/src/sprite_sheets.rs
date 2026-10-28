@@ -4,7 +4,8 @@
 //! `render::SpriteInstance`). With D3, the project's clips files
 //! (`.solframes`) too, and the clips each sheet and clips file offers
 //! ([`SpriteSheets::clip_sets`]), which pick the frame a playing sprite
-//! shows.
+//! shows. With D3b, the project's animators (`.solanim`) too, ready to run
+//! ([`SpriteSheets::animator_set`]).
 
 use animation::{ClipSet, FramesFile};
 use area::builtin::Sprite;
@@ -34,6 +35,15 @@ pub enum FramesState {
     Failed(String),
 }
 
+/// What the editor knows of one animator file (`.solanim`).
+#[derive(Debug, Clone, PartialEq)]
+pub enum AnimatorState {
+    /// Read, with what was put right while reading it.
+    Read(Arc<animation::AnimatorFile>, Vec<String>),
+    /// Couldn't be read, and why.
+    Failed(String),
+}
+
 /// The project's sprite sheets, by path inside the assets and by asset ID.
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct SpriteSheets {
@@ -41,11 +51,16 @@ pub struct SpriteSheets {
     pub by_path: HashMap<String, SheetState>,
     /// Each clips file (`.solframes`), by path inside the assets.
     pub frames: HashMap<String, FramesState>,
-    /// Each sheet's and clips file's path, by asset ID.
+    /// Each animator file (`.solanim`), by path inside the assets.
+    pub animators: HashMap<String, AnimatorState>,
+    /// Each sheet's, clips file's and animator file's path, by asset ID.
     pub paths: HashMap<AssetId, String>,
     /// The clips each sheet and clips file offers, by asset ID: worked out
     /// by [`Self::work_out_clips`] whenever a sheet or clips file changes.
     pub clip_sets: Arc<world::ClipSets>,
+    /// Each animator file ready to run, by asset ID: worked out by
+    /// [`Self::work_out_clips`] too.
+    pub animator_set: Arc<world::Animators>,
 }
 
 impl SpriteSheets {
@@ -95,6 +110,40 @@ impl SpriteSheets {
             }
         }
         self.clip_sets = Arc::new(sets);
+        self.work_out_animators();
+    }
+
+    /// Makes every animator file ready to run again (after one was read or
+    /// changed).
+    pub fn work_out_animators(&mut self) {
+        let mut set = world::Animators::new();
+        for (&id, path) in &self.paths {
+            if let Some(AnimatorState::Read(file, _)) = self.animators.get(path) {
+                set.insert(id, Arc::new(animation::Animator::new(file)));
+            }
+        }
+        self.animator_set = Arc::new(set);
+    }
+
+    /// The animator file with asset ID `id`, if it's been read.
+    pub fn animator_file(&self, id: AssetId) -> Option<&Arc<animation::AnimatorFile>> {
+        match self.animators.get(self.paths.get(&id)?)? {
+            AnimatorState::Read(file, _) => Some(file),
+            AnimatorState::Failed(_) => None,
+        }
+    }
+
+    /// Every animator file that's been read, by name with its ID, sorted
+    /// by name: what an Animator's field offers.
+    pub fn listed_animators(&self) -> Vec<(String, AssetId)> {
+        let mut list: Vec<(String, AssetId)> = self
+            .paths
+            .iter()
+            .filter(|(_, path)| matches!(self.animators.get(*path), Some(AnimatorState::Read(..))))
+            .map(|(id, path)| (name_of(path), *id))
+            .collect();
+        list.sort();
+        list
     }
 
     /// The frame `sprite` shows (from 0), `ahead` seconds after its own
