@@ -10,6 +10,8 @@
 //! - **Loops** (`AudioSource`): one not chosen rests (it isn't mixed),
 //!   and comes back where it would have been, by a clock that runs while
 //!   the game plays.
+//! - **Reverb zones** (S6): the zones the camera is in decide how much of
+//!   each zone's echo every sound placed in the world gets.
 //! - **Buses** (S4): each sound plays through its event's bus, with
 //!   ducking worked out here each frame, mute and solo from the Mixer, and
 //!   game code's `setBusVolume` shares for the play; the meters go back
@@ -112,6 +114,7 @@ impl GameAudio {
         let requests = workbench.take_game_sounds();
         device.set_mixer(workbench.mixer());
         if mode == SoundMode::Off {
+            device.set_reverb(&[]);
             self.mix(workbench, device, dt, ctx);
             self.spent = began.elapsed().as_secs_f64();
             return;
@@ -124,6 +127,7 @@ impl GameAudio {
             device.set_listener(place.to_array(), turn.to_array());
         }
         let hearing = listener.map_or([0.0; 3], |(p, _)| p.to_array());
+        device.set_reverb(&reverbs_heard(&workbench.reverb_zones(), hearing));
         let mut notes = Vec::new();
         let mut plays: Vec<(GameSound, String, script::SoundAt)> = Vec::new();
         for request in fresh(requests) {
@@ -417,9 +421,44 @@ impl GameAudio {
             .collect();
         let levels = sound::mixer::levels(mixer, &shares, &ducked, workbench.listening());
         device.set_bus_levels(&levels);
+        device.set_reverb_volume(levels.first().copied().unwrap_or(0.0));
         let peaks = device.take_bus_meters();
         workbench.set_bus_meters(&peaks, &ducked, dt, ctx);
     }
+}
+
+/// The reverbs heard from `hearing` among `zones` (each with where it's
+/// drawn now): each zone's preset and how much of it.
+fn reverbs_heard(
+    zones: &[(area::builtin::ReverbZone, glam::Mat4)],
+    hearing: [f32; 3],
+) -> Vec<(sound::reverb::Preset, f32)> {
+    use sound::reverb::{Preset, Shape, ZoneHere};
+    let here: Vec<ZoneHere> = zones
+        .iter()
+        .map(|(zone, place)| {
+            // The listener in the zone's own space, so a turned or
+            // scaled zone is measured as it's drawn.
+            let listener = place
+                .inverse()
+                .transform_point3(glam::Vec3::from_array(hearing))
+                .to_array();
+            ZoneHere {
+                shape: match zone.shape {
+                    area::builtin::ZoneShape::Box => Shape::Box(zone.size.to_array()),
+                    area::builtin::ZoneShape::Ball => Shape::Ball(zone.radius),
+                },
+                soft_m: zone.soft_edge,
+                preset: Preset::named(&zone.preset).unwrap_or_default(),
+                strength: zone.strength,
+                listener,
+            }
+        })
+        .collect();
+    sound::reverb::mix(&here)
+        .into_iter()
+        .map(|(i, amount)| (here[i].preset, amount))
+        .collect()
 }
 
 /// A pick of `event` from takes Solis could read, and its clip.
@@ -552,5 +591,54 @@ mod tests {
             if slow { " SLOW" } else { "" }
         );
         assert!(!slow);
+    }
+}
+
+#[cfg(test)]
+mod reverb_tests {
+    use super::*;
+    use area::builtin::{ReverbZone, ZoneShape};
+    use glam::{Mat4, Quat, Vec3};
+    use sound::reverb::Preset;
+
+    #[test]
+    fn the_camera_inside_a_zone_hears_its_echo() {
+        let cave = ReverbZone {
+            shape: ZoneShape::Ball,
+            radius: 10.0,
+            soft_edge: 2.0,
+            preset: "Cave".into(),
+            ..ReverbZone::default()
+        };
+        let at = Mat4::from_translation(Vec3::new(100.0, 0.0, 0.0));
+        let zones = [(cave.clone(), at)];
+        assert_eq!(
+            reverbs_heard(&zones, [100.0, 0.0, 0.0]),
+            [(Preset::Cave, 1.0)]
+        );
+        assert!(reverbs_heard(&zones, [0.0; 3]).is_empty(), "far outside");
+        let edge = reverbs_heard(&zones, [109.0, 0.0, 0.0]);
+        assert!((edge[0].1 - 0.5).abs() < 1e-4, "half way across the edge");
+        // A turned, scaled box: measured as it's drawn.
+        let tunnel = ReverbZone {
+            size: Vec3::new(4.0, 40.0, 4.0),
+            soft_edge: 0.0,
+            preset: "Sewer".into(),
+            ..ReverbZone::default()
+        };
+        let turned = Mat4::from_scale_rotation_translation(
+            Vec3::splat(2.0),
+            Quat::from_rotation_z(std::f32::consts::FRAC_PI_2),
+            Vec3::ZERO,
+        );
+        let zones = [(tunnel, turned)];
+        assert_eq!(
+            reverbs_heard(&zones, [30.0, 0.0, 0.0]),
+            [(Preset::Sewer, 1.0)]
+        );
+        assert!(reverbs_heard(&zones, [0.0, 10.0, 0.0]).is_empty());
+        // A zone scaled to nothing hears nothing, without trouble.
+        let flat = [(cave, Mat4::from_scale(Vec3::ZERO))];
+        assert!(reverbs_heard(&flat, [0.0; 3]).is_empty());
     }
 }

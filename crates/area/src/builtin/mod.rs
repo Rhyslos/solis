@@ -8,6 +8,7 @@ mod environment;
 mod light;
 mod model;
 mod physics;
+mod reverb_zone;
 mod transform;
 
 pub use audio_source::AudioSource;
@@ -16,6 +17,7 @@ pub use environment::{Environment, Sky, ToneMapping};
 pub use light::{Light, LightKind, aim, sun_rotation};
 pub use model::Model;
 pub use physics::{BodyKind, CharacterBody, Collider, ColliderShape, RigidBody};
+pub use reverb_zone::{ReverbZone, ZoneShape};
 pub use transform::Transform;
 
 use crate::document::{Area, EntityData};
@@ -33,6 +35,7 @@ pub fn registry() -> Result<Registry, RegistryError> {
     registry.register_type::<Collider>()?;
     registry.register_type::<CharacterBody>()?;
     registry.register_type::<AudioSource>()?;
+    registry.register_type::<ReverbZone>()?;
     Ok(registry)
 }
 
@@ -139,6 +142,7 @@ mod tests {
                 "Environment",
                 "Light",
                 "Model",
+                "ReverbZone",
                 "RigidBody",
                 "Transform"
             ]

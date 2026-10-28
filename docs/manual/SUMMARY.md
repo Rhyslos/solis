@@ -23,6 +23,7 @@ New to game engines? Start with [Concepts](concepts.md).
 - [Sounds: WAV and Ogg files, their waveforms, and listening to them](sounds.md)
 - [Sound events: takes that vary, so nothing sounds copied](sound-events.md)
 - [The Mixer: buses, ducking, mute and solo](mixer.md)
+- [Reverb zones: places where sounds echo](reverb-zones.md)
 - [Levels of detail: simpler models far away](levels-of-detail.md)
 - [Looks: standard, stylized and unlit](looks.md)
 - [Lights and shadows: the sun, point lights and spotlights](lights.md)

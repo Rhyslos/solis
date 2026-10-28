@@ -74,6 +74,12 @@ impl Workbench {
                 {
                     marks.push(Outline::Collider { world, shape });
                 }
+                if let Some(zone) = entity.get::<area::builtin::ReverbZone>() {
+                    marks.push(Outline::Zone {
+                        world,
+                        shape: crate::viewport_tools::zone_shape(&zone),
+                    });
+                }
                 marks
             })
             .collect()

@@ -134,7 +134,7 @@ impl BusTree {
 
 /// A level in decibels as Kira's, with anything not a number, or quieter
 /// than Kira's silence, silent.
-fn decibels(level: f32) -> Decibels {
+pub(crate) fn decibels(level: f32) -> Decibels {
     if level.is_finite() && level > Decibels::SILENCE.0 {
         Decibels(level.min(24.0))
     } else {

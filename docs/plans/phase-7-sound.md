@@ -139,7 +139,10 @@ Built (2026-10-28). Game code can't set a built-in component's fields, so an `Au
 - Scale: 2,000 units each with an engine loop and 20,000 projectiles each starting a sound once, in the scale check (decision 0011): choosing and placing must stay under 0.5 ms a tick, and a new Profiler line, **Sound**, shows it.
 - Tests: the right 64 are chosen; a virtual loop comes back at the right point; despawned entities' sounds stop; save and load bring loops back (question 7).
 
-### S6. Reverb zones
+### S6. Reverb zones ✓
+
+Built (2026-10-28): four reverb sends, each zone heard taking one (smallest first, so the smaller wins). Only sounds placed in the world send to them; a sound's send is scaled by its bus and the buses above it (sends leave a sound before its bus in Kira), and the sends' own volume is Master's, so faders, ducking, mute and solo reach the echoes.
+
 
 - The `ReverbZone` component (question 6): box or ball, soft edge, preset, strength; drawn as an outline when selected, like colliders.
 - A few reverb buses (up to 4 zones heard at once); each tick the zones around the listener set how much of each everything sends. Overlapping zones: the smaller one wins.

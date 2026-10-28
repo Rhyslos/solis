@@ -713,6 +713,41 @@ mod game_sounds {
     }
 
     #[test]
+    fn reverb_sends_follow_the_zones_and_the_buses() {
+        use crate::reverb::Preset;
+        let mut device = SoundDevice::for_tests();
+        let clip = clip();
+        assert_eq!(
+            device.reverb_sends(),
+            vec![f32::NEG_INFINITY; 4],
+            "none at first"
+        );
+        device
+            .play_game_sound(&clip, &pick(), Placement::At(spot(3.0)), Voice::on_bus(2))
+            .unwrap();
+        device.set_reverb(&[(Preset::Cave, 1.0), (Preset::Hall, 0.5)]);
+        let sends = device.reverb_sends();
+        assert_eq!(sends[0], 0.0);
+        assert!((sends[1] - (-6.02)).abs() < 0.01);
+        assert_eq!(sends[2], f32::NEG_INFINITY);
+        // Placed sounds started now send too; levels and mute reach them.
+        device
+            .play_game_sound(&clip, &pick(), Placement::At(spot(3.0)), Voice::on_bus(2))
+            .unwrap();
+        device.set_bus_levels(&[0.0, 0.0, f32::NEG_INFINITY, 0.0, 0.0, 0.0]);
+        device.set_reverb_volume(-6.0);
+        // Out of every zone: silent again.
+        device.set_reverb(&[]);
+        assert_eq!(device.reverb_sends(), vec![f32::NEG_INFINITY; 4]);
+        device.set_reverb(&[(Preset::Outdoors, f32::NAN), (Preset::Sewer, -1.0)]);
+        assert_eq!(device.reverb_sends(), vec![f32::NEG_INFINITY; 4]);
+        let mut silent = SoundDevice::silent();
+        silent.set_reverb(&[(Preset::Hall, 1.0)]);
+        silent.set_reverb_volume(0.0);
+        assert!(silent.reverb_sends().is_empty());
+    }
+
+    #[test]
     fn sounds_out_of_reach_are_not_started() {
         assert!(within_reach([10.0, 0.0, 0.0], [0.0; 3], 30.0));
         assert!(!within_reach([40.0, 0.0, 0.0], [0.0; 3], 30.0));

@@ -50,7 +50,7 @@ Tests: files ending `_tests.rs` hold the tests of the file with the same start (
 | `camera.rs` | The viewport camera and how it flies; `Camera::fly` does the maths so tests can fly it without a window (decision 0009). | `Camera`, `FlyInput`, `ViewKind` |
 | `look.rs` | How models are shaded: standard, stylized or unlit. | `Look`, `LookKind` |
 | `models.rs` | What the editor knows about imported models and the lights their files bring. | `ModelInfo`, `NodeInfo`, `FileLight` |
-| `viewport_tools.rs` | Picking with a click or a box, dragging the gizmo, and what's drawn over the image for them (decision 0025). | `PickAnswer`, `Outline` |
+| `viewport_tools.rs` | Picking with a click or a box, dragging the gizmo, and what's drawn over the image for them (decision 0025): the selection's outline, colliders, and reverb zones in sound's colour. | `PickAnswer`, `Outline` |
 | `picking.rs` | What a click or a box selects. | `PickMode`, `after_click`, `after_box` |
 | `gizmo.rs` | The move, rotate and scale gizmo: its handles, which is under the mouse, and what dragging one does. Tests in [`gizmo/`](gizmo/README.md). | `Gizmo`, `GizmoTool`, `Handle` |
 | `transforming.rs` | Each selected entity's new transform during a gizmo drag, with snapping. | `Targets`, `Snapping` |

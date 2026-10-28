@@ -26,4 +26,4 @@ Hold the running game's entities in a form a game can run over quickly. The area
 
 ## Status
 
-Phase 3: built from an area, stepped, read by ID. Phase 4: game code moves entities between ticks. Phase 6: drawing between ticks, physics, the seed and checksums. Phase 7, S5: `audio_sources` lists every `AudioSource` (by ID, from a query, so a world without them costs nothing) and `set_sound_playing` switches one (game code's `setSoundPlaying`); which are on is in the checksum.
+Phase 3: built from an area, stepped, read by ID. Phase 4: game code moves entities between ticks. Phase 6: drawing between ticks, physics, the seed and checksums. Phase 7, S5: `audio_sources` lists every `AudioSource` (by ID, from a query, so a world without them costs nothing) and `set_sound_playing` switches one (game code's `setSoundPlaying`); which are on is in the checksum. S6: `ReverbZone`s are kept as components, for `placed_between`.

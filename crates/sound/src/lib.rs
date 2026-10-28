@@ -24,6 +24,7 @@ pub mod mixer;
 mod mixer_tests;
 mod overview;
 pub mod read;
+pub mod reverb;
 #[cfg(test)]
 mod tests;
 pub mod voices;
