@@ -15,6 +15,54 @@ pub const CACHE_FOLDER: &str = ".solis";
 /// The project file's format version this build writes and reads.
 pub const FORMAT: u32 = 1;
 
+/// The project file's version and upgraders (Phase 8, C1): each step
+/// turns the file's table at one version into the next, before it's
+/// read. Every version ever released keeps an example file in
+/// `tests/fixtures/project/`.
+pub static PROJECT_FORMAT: reflect::upgrade::Format<toml::Table> = reflect::upgrade::Format {
+    name: "project",
+    current: FORMAT,
+    version_of: format_key_version,
+    steps: &[],
+};
+
+/// The `format = N` key of a TOML file (the project file, sidecars): a
+/// format's `version_of`.
+pub(crate) fn format_key_version(text: &str) -> Option<u32> {
+    let table: toml::Table = toml::from_str(text).ok()?;
+    table
+        .get("format")?
+        .as_integer()
+        .and_then(|v| u32::try_from(v).ok())
+}
+
+/// Reads a TOML file whose version is its `format` key: brought up to
+/// date as a table by `format`'s upgraders, then read as `T`. A newer file
+/// is refused with why, and never read on.
+pub(crate) fn read_toml_versioned<T: serde::de::DeserializeOwned>(
+    text: &str,
+    format: &reflect::upgrade::Format<toml::Table>,
+) -> Result<T, String> {
+    let mut table: toml::Table = toml::from_str(text).map_err(|e| e.message().to_string())?;
+    let version = match table.get("format") {
+        Some(v) => v
+            .as_integer()
+            .and_then(|v| u32::try_from(v).ok())
+            .ok_or("its format isn't a whole number")?,
+        None => return Err("it has no format version".into()),
+    };
+    format
+        .upgrade(version, &mut table)
+        .map_err(|e| e.to_string())?;
+    table.insert(
+        "format".into(),
+        toml::Value::Integer(i64::from(format.current)),
+    );
+    table
+        .try_into()
+        .map_err(|e: toml::de::Error| e.message().to_string())
+}
+
 /// New projects ignore the cache and builds in Git.
 pub const GITIGNORE: &str = "\
 # Solis's cache: rebuilt whenever it's missing. Never commit it.
@@ -157,11 +205,12 @@ impl Project {
     /// The project's name from `project.solis`'s text, refusing a damaged
     /// file or one from a newer Solis. (Fuzzed: a project can be anyone's.)
     pub fn read_file(text: &str) -> Result<String, ProjectError> {
-        let file: ProjectFile =
-            toml::from_str(text).map_err(|e| ProjectError::Damaged(e.message().to_string()))?;
-        if file.format > FORMAT {
-            return Err(ProjectError::TooNew(file.format));
+        // Newer: refused with the plain reason the editor shows.
+        if let Some(found) = format_key_version(text).filter(|v| *v > FORMAT) {
+            return Err(ProjectError::TooNew(found));
         }
+        let file: ProjectFile =
+            read_toml_versioned(text, &PROJECT_FORMAT).map_err(ProjectError::Damaged)?;
         Ok(file.name)
     }
 

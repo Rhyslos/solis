@@ -39,6 +39,15 @@ pub const FILE_NAME: &str = "mixer.solmix";
 pub const VERSION: u32 = 1;
 /// The word the file starts with.
 const KIND: &str = "mixer";
+/// This file's version and upgraders (Phase 8, C1): each step turns
+/// fields read at one version into the next, before they're applied.
+/// Every version ever released keeps an example file in `tests/fixtures/`.
+pub static FORMAT: reflect::upgrade::Format<settings::Settings> = reflect::upgrade::Format {
+    name: "mixer",
+    current: VERSION,
+    version_of: |text| reflect::upgrade::header_version(text, &[KIND]),
+    steps: &[],
+};
 /// The biggest mixer file read.
 pub const MAX_BYTES: usize = 256 << 10;
 /// The most buses in a project.
@@ -313,9 +322,14 @@ pub fn read(text: &str) -> Result<ReadMixer, MixerError> {
             ),
         });
     }
-    let file = settings::read_settings(text, KIND, VERSION).map_err(|e| MixerError {
+    let mut file = settings::read_settings(text, KIND, VERSION).map_err(|e| MixerError {
         line: e.line,
         message: e.message,
+    })?;
+    let version = file.version;
+    FORMAT.upgrade(version, &mut file).map_err(|e| MixerError {
+        line: 1,
+        message: e.to_string(),
     })?;
     let mut notes = Vec::new();
     let mut buses: Vec<(usize, Bus)> = Vec::new();

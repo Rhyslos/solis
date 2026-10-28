@@ -46,6 +46,7 @@
 - **Recycle Bin:** where deleted files wait until you empty it; deleting in the Library sends files there, so nothing is lost by accident.
 - **Cache:** files Solis makes to work faster (models it has already read). Safe to delete: they're made again.
 - **Hot reload:** a changed file shows in Solis straight away, without restarting.
+- **Format version:** a number at the top of each file Solis saves, saying how it's laid out. When an update changes the layout, the number goes up and the update brings an **upgrader**, so older files keep opening. Before Solis saves an older file in the new layout, it keeps a copy in `.solis/backups/`. See [Backups and upgrades](backups-and-upgrades.md).
 
 ## Models
 

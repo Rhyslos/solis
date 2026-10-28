@@ -603,8 +603,25 @@ impl App {
                 return false;
             }
         };
-        match self.area_files.save(path, &text) {
-            Ok(()) => {
+        let root = self.projects.root().map(Path::to_path_buf);
+        let registry = &self.workbench.document().registry;
+        let db = self.projects.db();
+        let read_back = |text: &str| {
+            let file = area::text::read_file(text, registry).map_err(|e| e.to_string())?;
+            Ok(area::text::write_file(&file, registry, &|id| {
+                db.and_then(|db| db.get(id))
+                    .map(|r| r.path.display().to_string().replace('\\', "/"))
+            }))
+        };
+        match self
+            .area_files
+            .save(root.as_deref(), path, &text, read_back)
+        {
+            Ok(copy) => {
+                if let (Some(copy), Some(root)) = (copy, &root) {
+                    let note = crate::upgrades::kept_note(root, &file_name(path), &copy);
+                    self.workbench.log(LogLevel::Info, note);
+                }
                 self.workbench.mark_saved(path.to_path_buf());
                 true
             }
@@ -620,13 +637,20 @@ impl App {
 
     /// Opens the area file at `path`.
     fn open_area(&mut self, path: &Path) {
-        let read = AreaFiles::read(path, &self.workbench.document().registry).and_then(|file| {
-            self.load_assemblies_of(&file);
-            self.workbench.expand_file(&file).map_err(|e| e.to_string())
-        });
+        let mut older = None;
+        let read = AreaFiles::read_noting(path, &self.workbench.document().registry).and_then(
+            |(file, note)| {
+                older = note;
+                self.load_assemblies_of(&file);
+                self.workbench.expand_file(&file).map_err(|e| e.to_string())
+            },
+        );
         match read {
             Ok(area) => {
                 self.workbench.open_area(area, path.to_path_buf());
+                if let Some(note) = older {
+                    self.workbench.log(LogLevel::Info, note);
+                }
                 self.area_files.watch(path);
                 self.load_area_models();
             }
@@ -687,7 +711,12 @@ impl App {
                 WorkbenchAction::SaveSoundEvent { path, event } => {
                     let text = sound::event::write(&event);
                     match self.projects.save_sound_event(&path, &text) {
-                        Ok(()) => {
+                        Ok(copy) => {
+                            if let (Some(copy), Some(root)) = (copy, self.projects.root()) {
+                                let note =
+                                    crate::upgrades::kept_note(root, &file_name(&path), &copy);
+                                self.workbench.log(LogLevel::Info, note);
+                            }
                             self.sounds.saved_event(&path, event);
                             self.workbench.set_sound_events(self.sounds.events());
                         }
@@ -740,14 +769,20 @@ impl App {
                 WorkbenchAction::SaveBindings(text) => {
                     if let Some(root) = self.projects.root().map(Path::to_path_buf) {
                         match crate::play_files::save_bindings(&root, &text) {
-                            Ok(Some(backup)) => self.workbench.log(
-                                LogLevel::Warning,
-                                format!(
-                                    "The input actions file had a mistake, so it was kept as \
+                            Ok(Some(crate::play_files::Kept::Older(copy))) => self.workbench.log(
+                                LogLevel::Info,
+                                crate::upgrades::kept_note(&root, input::FILE, &copy),
+                            ),
+                            Ok(Some(crate::play_files::Kept::Damaged(backup))) => {
+                                self.workbench.log(
+                                    LogLevel::Warning,
+                                    format!(
+                                        "The input actions file had a mistake, so it was kept as \
                                      {backup} before being written again: your own actions \
                                      are in it."
-                                ),
-                            ),
+                                    ),
+                                )
+                            }
                             Ok(None) => {}
                             Err(why) => self.workbench.log(
                                 LogLevel::Error,
@@ -759,13 +794,19 @@ impl App {
                 WorkbenchAction::SaveMixer(mixer) => {
                     if let Some(root) = self.projects.root().map(Path::to_path_buf) {
                         match crate::play_files::save_mixer(&root, &mixer) {
-                            Ok(Some(backup)) => self.workbench.log(
-                                LogLevel::Warning,
-                                format!(
-                                    "The mixer file had a mistake, so it was kept as {backup} \
-                                     before being written again."
-                                ),
+                            Ok(Some(crate::play_files::Kept::Older(copy))) => self.workbench.log(
+                                LogLevel::Info,
+                                crate::upgrades::kept_note(&root, sound::mixer::FILE_NAME, &copy),
                             ),
+                            Ok(Some(crate::play_files::Kept::Damaged(backup))) => {
+                                self.workbench.log(
+                                    LogLevel::Warning,
+                                    format!(
+                                        "The mixer file had a mistake, so it was kept as {backup} \
+                                     before being written again."
+                                    ),
+                                )
+                            }
                             Ok(None) => {}
                             Err(why) => self
                                 .workbench
@@ -1055,10 +1096,30 @@ impl App {
             return;
         }
         let text = self.file_text(&file);
-        match asset_db::write_atomically(&on_disk, text.as_bytes()) {
-            Ok(()) => self
-                .workbench
-                .set_assembly(assembly, std::sync::Arc::new(file)),
+        let root = self.projects.root().map(Path::to_path_buf);
+        let registry = &self.workbench.document().registry;
+        let read_back = |text: &str| {
+            let file = area::text::read_file(text, registry).map_err(|e| e.to_string())?;
+            Ok(self.file_text(&file))
+        };
+        // An older assembly is copied to the backups first (Phase 8, C1).
+        let saved = match &root {
+            Some(root) => {
+                crate::upgrades::save(root, &on_disk, &text, &area::text::FORMAT, read_back)
+            }
+            None => asset_db::write_atomically(&on_disk, text.as_bytes())
+                .map(|()| None)
+                .map_err(|e| e.to_string()),
+        };
+        match saved {
+            Ok(copy) => {
+                if let (Some(copy), Some(root)) = (copy, &root) {
+                    let note = crate::upgrades::kept_note(root, &file_name(&on_disk), &copy);
+                    self.workbench.log(LogLevel::Info, note);
+                }
+                self.workbench
+                    .set_assembly(assembly, std::sync::Arc::new(file));
+            }
             Err(why) => self.workbench.log(
                 LogLevel::Error,
                 format!("Couldn't save {}: {why}.", file_name(&on_disk)),

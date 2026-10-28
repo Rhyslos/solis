@@ -13,6 +13,16 @@ use std::path::{Path, PathBuf};
 pub const EXTENSION: &str = "solmeta";
 /// The format version this build writes and reads.
 pub const FORMAT: u32 = 1;
+
+/// Sidecars' version and upgraders (Phase 8, C1): each step turns a
+/// sidecar's table at one version into the next, before it's read. Every
+/// version ever released keeps an example file in `tests/fixtures/sidecar/`.
+pub static SIDECAR_FORMAT: reflect::upgrade::Format<toml::Table> = reflect::upgrade::Format {
+    name: "sidecar",
+    current: FORMAT,
+    version_of: crate::project::format_key_version,
+    steps: &[],
+};
 /// The biggest sidecar read (a model with tens of thousands of parts fits).
 pub const MAX_BYTES: u64 = 8 << 20;
 
@@ -115,13 +125,7 @@ impl Sidecar {
 
     /// Reads a sidecar from its text.
     pub fn parse(text: &str) -> Result<Self, String> {
-        let sidecar: Self = toml::from_str(text).map_err(|e| e.message().to_string())?;
-        if sidecar.format > FORMAT {
-            return Err(format!(
-                "it was written by a newer version (format {})",
-                sidecar.format
-            ));
-        }
+        let sidecar: Self = crate::project::read_toml_versioned(text, &SIDECAR_FORMAT)?;
         let mut ids = std::collections::HashSet::new();
         if let Some(part) = sidecar.parts.iter().find(|p| !ids.insert(p.id)) {
             return Err(format!("two parts share the ID {}", part.id));

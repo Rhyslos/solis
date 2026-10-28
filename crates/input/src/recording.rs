@@ -58,6 +58,8 @@ pub enum RecordingError {
     NotARecording,
     /// Damaged at this line (from 1).
     Damaged(usize),
+    /// Newer than this build reads, or an older one it couldn't upgrade.
+    Upgrade(String),
 }
 
 impl std::fmt::Display for RecordingError {
@@ -66,11 +68,28 @@ impl std::fmt::Display for RecordingError {
             Self::TooBig => write!(f, "it's longer than Solis plays back (an hour, or 64 MB)"),
             Self::NotARecording => write!(f, "it isn't a recording this Solis can read"),
             Self::Damaged(line) => write!(f, "it's damaged at line {line}"),
+            Self::Upgrade(why) => f.write_str(why),
         }
     }
 }
 
-const HEADER: &str = "solis recording 1";
+/// The format version this build writes.
+pub(crate) const VERSION: u32 = 1;
+/// The first line, before the version.
+const HEADER: &str = "solis recording";
+
+/// Recordings' version and upgraders (Phase 8, C1): each step turns a
+/// recording read at one version into the next. Every version ever
+/// released keeps an example file in `tests/fixtures/recording/`.
+pub static FORMAT: reflect::upgrade::Format<Recording> = reflect::upgrade::Format {
+    name: "recording",
+    current: VERSION,
+    version_of: |text| {
+        let line = text.lines().next()?.trim();
+        line.strip_prefix(HEADER)?.trim().parse().ok()
+    },
+    steps: &[],
+};
 
 impl Tick {
     /// At most how many bytes its line takes in a recording's file (a
@@ -92,7 +111,10 @@ impl Tick {
 impl Recording {
     /// The file's text.
     pub fn write(&self) -> String {
-        let mut text = format!("{HEADER}\nseed {}\nstart {:016x}\n", self.seed, self.start);
+        let mut text = format!(
+            "{HEADER} {VERSION}\nseed {}\nstart {:016x}\n",
+            self.seed, self.start
+        );
         for (n, tick) in self.ticks.iter().enumerate() {
             text.push_str(&format!("{n} w {:016x}", tick.world));
             if let Some(game) = tick.game {
@@ -125,10 +147,16 @@ impl Recording {
         if text.len() > MAX_FILE_BYTES {
             return Err(RecordingError::TooBig);
         }
-        let mut lines = text.lines().enumerate();
-        if lines.next().map(|(_, l)| l.trim()) != Some(HEADER) {
-            return Err(RecordingError::NotARecording);
+        let version = (FORMAT.version_of)(text).ok_or(RecordingError::NotARecording)?;
+        // A newer one is refused before reading on: its layout may not
+        // parse. (Upgrading a blank recording only checks the version.)
+        if version > VERSION
+            && let Err(e) = FORMAT.upgrade(version, &mut Self::default())
+        {
+            return Err(RecordingError::Upgrade(e.to_string()));
         }
+        let mut lines = text.lines().enumerate();
+        lines.next();
         let mut field = |name: &str| -> Result<String, RecordingError> {
             let (n, line) = lines.next().ok_or(RecordingError::Damaged(2))?;
             line.strip_prefix(name)
@@ -209,7 +237,11 @@ impl Recording {
             }
             ticks.push(tick);
         }
-        Ok(Self { seed, start, ticks })
+        let mut recording = Self { seed, start, ticks };
+        FORMAT
+            .upgrade(version, &mut recording)
+            .map_err(|e| RecordingError::Upgrade(e.to_string()))?;
+        Ok(recording)
     }
 
     /// The first tick (from 0) where `other`'s checksums differ from

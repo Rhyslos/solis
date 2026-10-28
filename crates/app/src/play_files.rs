@@ -93,7 +93,10 @@ pub fn load_bindings(root: &Path) -> (input::Bindings, Option<String>) {
         }
     };
     match input::Bindings::read(&text) {
-        Ok(bindings) => (bindings, None),
+        Ok(bindings) => (
+            bindings,
+            crate::upgrades::older_note(input::FILE, &text, &input::BINDINGS_FORMAT),
+        ),
         Err(why) => (
             input::Bindings::default(),
             Some(format!(
@@ -131,9 +134,9 @@ pub fn load_mixer(root: &Path) -> (sound::Mixer, Vec<String>) {
     match sound::mixer::read(&text) {
         Ok(read) => (
             read.mixer,
-            read.notes
+            crate::upgrades::older_note(file, &text, &sound::mixer::FORMAT)
                 .into_iter()
-                .map(|n| format!("{file}, {n}."))
+                .chain(read.notes.into_iter().map(|n| format!("{file}, {n}.")))
                 .collect(),
         ),
         Err(why) => (
@@ -146,15 +149,30 @@ pub fn load_mixer(root: &Path) -> (sound::Mixer, Vec<String>) {
     }
 }
 
+/// What saving kept of the file that was there.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub enum Kept {
+    /// It couldn't be read, so it was kept beside it under this name.
+    Damaged(String),
+    /// It was in an older format, so a copy is in the backups, here
+    /// (Phase 8, C1).
+    Older(PathBuf),
+}
+
 /// Writes the project's buses, keeping a damaged file first as a backup
-/// as [`save_bindings`] does; gives back the backup's name when it made
-/// one.
-pub fn save_mixer(root: &Path, mixer: &sound::Mixer) -> std::io::Result<Option<String>> {
+/// as [`save_bindings`] does, and an older one in the backups; says what
+/// it kept.
+pub fn save_mixer(root: &Path, mixer: &sound::Mixer) -> std::io::Result<Option<Kept>> {
     save_keeping_damaged(
         root,
         sound::mixer::FILE_NAME,
         &sound::mixer::write(mixer),
-        |old| sound::mixer::read(old).is_err(),
+        &sound::mixer::FORMAT,
+        |text| {
+            sound::mixer::read(text)
+                .map(|read| sound::mixer::write(&read.mixer))
+                .map_err(|e| e.to_string())
+        },
     )
 }
 
@@ -162,55 +180,61 @@ pub fn save_mixer(root: &Path, mixer: &sound::Mixer) -> std::io::Result<Option<S
 /// (a mistake made by hand, so the ready-made actions were used) is kept
 /// first as `input.solinput.bak` (or `.bak2` and on, up to `.bak9`, never
 /// replacing one: past that the oldest is replaced), so its actions
-/// aren't lost; gives back the backup's name when it made one.
-pub fn save_bindings(root: &Path, text: &str) -> std::io::Result<Option<String>> {
-    save_keeping_damaged(root, input::FILE, text, |old| {
-        input::Bindings::read(old).is_err()
+/// aren't lost; one in an older format is copied to the backups first.
+/// Says what it kept.
+pub fn save_bindings(root: &Path, text: &str) -> std::io::Result<Option<Kept>> {
+    save_keeping_damaged(root, input::FILE, text, &input::BINDINGS_FORMAT, |text| {
+        input::Bindings::read(text)
+            .map(|b| b.write())
+            .map_err(|e| e.to_string())
     })
 }
 
 /// Writes `text` as `file` in `root`, keeping the file there first as a
-/// backup when `damaged` says it can't be read.
+/// backup beside it when it can't be read (`read_back` fails on it), or
+/// in the backups when it's readable but in an older format.
 fn save_keeping_damaged(
     root: &Path,
     file: &str,
     text: &str,
-    damaged: impl Fn(&str) -> bool,
-) -> std::io::Result<Option<String>> {
+    format: &dyn reflect::upgrade::Versioned,
+    read_back: impl Fn(&str) -> Result<String, String>,
+) -> std::io::Result<Option<Kept>> {
     let path = root.join(file);
     let damaged = match read_limited(&path, 1 << 20) {
-        Ok(Some(old)) => damaged(&old),
+        Ok(Some(old)) => read_back(&old).is_err(),
         Ok(None) => false,
         Err(_) => path.exists(),
     };
-    let mut kept = None;
-    if damaged {
-        let names: Vec<String> = (1..=MAX_BINDINGS_BACKUPS)
-            .map(|n| match n {
-                1 => format!("{file}.bak"),
-                n => format!("{file}.bak{n}"),
-            })
-            .collect();
-        // Names are looked at without following links (a dangling link
-        // isn't "free"), and the backup is written as a new file put in
-        // place, never through a link a project planted under its name.
-        let there = |n: &String| std::fs::symlink_metadata(root.join(n)).ok();
-        let name = names
-            .iter()
-            .find(|n| there(n).is_none())
-            .or_else(|| {
-                names
-                    .iter()
-                    .min_by_key(|n| there(n).and_then(|m| m.modified().ok()))
-            })
-            .cloned()
-            .unwrap_or_else(|| names[0].clone());
-        let old = asset_db::read_limited(&path, 1 << 20)?;
-        asset_db::write_atomically(&root.join(&name), &old)?;
-        kept = Some(name);
+    if !damaged {
+        return crate::upgrades::save(root, &path, text, format, &read_back)
+            .map(|copy| copy.map(Kept::Older))
+            .map_err(std::io::Error::other);
     }
+    let names: Vec<String> = (1..=MAX_BINDINGS_BACKUPS)
+        .map(|n| match n {
+            1 => format!("{file}.bak"),
+            n => format!("{file}.bak{n}"),
+        })
+        .collect();
+    // Names are looked at without following links (a dangling link
+    // isn't "free"), and the backup is written as a new file put in
+    // place, never through a link a project planted under its name.
+    let there = |n: &String| std::fs::symlink_metadata(root.join(n)).ok();
+    let name = names
+        .iter()
+        .find(|n| there(n).is_none())
+        .or_else(|| {
+            names
+                .iter()
+                .min_by_key(|n| there(n).and_then(|m| m.modified().ok()))
+        })
+        .cloned()
+        .unwrap_or_else(|| names[0].clone());
+    let old = asset_db::read_limited(&path, 1 << 20)?;
+    asset_db::write_atomically(&root.join(&name), &old)?;
     write_whole(&path, text)?;
-    Ok(kept)
+    Ok(Some(Kept::Damaged(name)))
 }
 
 /// Saves a recording in the project's recordings folder, named by when it
@@ -313,6 +337,14 @@ impl RecordingDialog {
 mod tests {
     use super::*;
 
+    /// The name a damaged file was kept under, if it was.
+    fn kept_as(kept: Option<Kept>) -> Option<String> {
+        match kept {
+            Some(Kept::Damaged(name)) => Some(name),
+            _ => None,
+        }
+    }
+
     fn scratch(name: &str) -> PathBuf {
         let dir =
             std::env::temp_dir().join(format!("solis-play-files-{name}-{}", std::process::id()));
@@ -347,7 +379,7 @@ mod tests {
         assert_eq!(read, sound::Mixer::default());
         assert!(notes[0].contains("line 2"), "{notes:?}");
         assert_eq!(
-            save_mixer(&root, &read).unwrap().as_deref(),
+            kept_as(save_mixer(&root, &read).unwrap()).as_deref(),
             Some("mixer.solmix.bak")
         );
         assert!(root.join("mixer.solmix.bak").is_file());
@@ -378,7 +410,7 @@ mod tests {
         std::fs::write(root.join(input::FILE), damaged).unwrap();
         let written = input::Bindings::default().write();
         let kept = save_bindings(&root, &written).unwrap();
-        assert_eq!(kept.as_deref(), Some("input.solinput.bak"));
+        assert_eq!(kept_as(kept).as_deref(), Some("input.solinput.bak"));
         let backup = root.join("input.solinput.bak");
         assert_eq!(std::fs::read_to_string(&backup).unwrap(), damaged);
         assert_eq!(
@@ -390,7 +422,7 @@ mod tests {
         assert_eq!(save_bindings(&root, &written).unwrap(), None);
         std::fs::write(root.join(input::FILE), "broken again [[").unwrap();
         assert_eq!(
-            save_bindings(&root, &written).unwrap().as_deref(),
+            kept_as(save_bindings(&root, &written).unwrap()).as_deref(),
             Some("input.solinput.bak2")
         );
         assert_eq!(std::fs::read_to_string(&backup).unwrap(), damaged);
@@ -436,7 +468,7 @@ mod tests {
         std::os::unix::fs::symlink(&target, root.join("input.solinput.bak")).unwrap();
         let kept = save_bindings(&root, &input::Bindings::default().write()).unwrap();
         assert!(!target.exists(), "nothing written through the link");
-        assert_eq!(kept.as_deref(), Some("input.solinput.bak2"));
+        assert_eq!(kept_as(kept).as_deref(), Some("input.solinput.bak2"));
         for n in 3..=9 {
             std::os::unix::fs::symlink(&outside, root.join(format!("input.solinput.bak{n}")))
                 .unwrap();

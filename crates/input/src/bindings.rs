@@ -8,6 +8,61 @@ pub const MAX_ACTIONS: usize = 256;
 pub const MAX_INPUTS: usize = 16;
 /// The biggest bindings file read.
 pub(crate) const MAX_FILE_BYTES: usize = 1 << 20;
+/// The format version this build writes. Version 1 had no `version`
+/// line and wrote the arrow keys `ArrowUp` and so on; version 2 names
+/// them `Up`, as pressed keys come.
+pub(crate) const VERSION: u32 = 2;
+
+/// Input actions' version and upgraders (Phase 8, C1): each step turns
+/// actions read at one version into the next, before they're checked.
+/// Every version ever released keeps an example file in
+/// `tests/fixtures/input-actions/`.
+pub static FORMAT: reflect::upgrade::Format<toml::Table> = reflect::upgrade::Format {
+    name: "input actions",
+    current: VERSION,
+    version_of: |text| {
+        toml::from_str::<toml::Table>(text)
+            .ok()
+            .and_then(|t| version_in(&t))
+    },
+    steps: &[arrows_are_up_down_left_right],
+};
+
+/// The `version` a file's table says, or 1 when it has none (version 1
+/// had no `version` line); `None` when it isn't a whole number.
+fn version_in(table: &toml::Table) -> Option<u32> {
+    match table.get("version") {
+        None => Some(1),
+        Some(v) => v.as_integer().and_then(|v| u32::try_from(v).ok()),
+    }
+}
+
+/// Version 1 to 2: the arrow keys are `Up`, `Down`, `Left` and `Right`
+/// (egui's names, which pressed keys come as), not `ArrowUp` and so on.
+fn arrows_are_up_down_left_right(table: &mut toml::Table) -> Result<(), String> {
+    let Some(toml::Value::Array(actions)) = table.get_mut("action") else {
+        return Ok(());
+    };
+    for action in actions.iter_mut().filter_map(toml::Value::as_table_mut) {
+        for list in ["inputs", "up", "down", "left", "right"] {
+            let Some(toml::Value::Array(inputs)) = action.get_mut(list) else {
+                continue;
+            };
+            for input in inputs.iter_mut() {
+                let toml::Value::String(input) = input else {
+                    continue;
+                };
+                for way in ["Up", "Down", "Left", "Right"] {
+                    let old = format!("Arrow{way}");
+                    if input.ends_with(&old) && !input.starts_with("Pad ") {
+                        *input = format!("{}{way}", &input[..input.len() - old.len()]);
+                    }
+                }
+            }
+        }
+    }
+    Ok(())
+}
 
 /// What an action gives game code.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default, Serialize, Deserialize)]
@@ -237,29 +292,19 @@ impl Bindings {
         if text.len() > MAX_FILE_BYTES {
             return Err(BindingsError::TooBig);
         }
-        let mut bindings: Self =
+        let mut table: toml::Table =
             toml::from_str(text).map_err(|e| BindingsError::Damaged(e.message().to_string()))?;
-        // The arrow keys are `Up`, `Down`, `Left` and `Right` (egui's
-        // names, which pressed keys come as); files from before this was
-        // found wrote `ArrowUp` and so on.
-        for action in &mut bindings.actions {
-            for list in [
-                &mut action.inputs,
-                &mut action.up,
-                &mut action.down,
-                &mut action.left,
-                &mut action.right,
-            ] {
-                for input in list.iter_mut() {
-                    for way in ["Up", "Down", "Left", "Right"] {
-                        let old = format!("Arrow{way}");
-                        if input.ends_with(&old) && !input.starts_with("Pad ") {
-                            *input = format!("{}{way}", &input[..input.len() - old.len()]);
-                        }
-                    }
-                }
-            }
-        }
+        let version = version_in(&table)
+            .ok_or_else(|| BindingsError::Damaged("its version isn't a whole number".into()))?;
+        // Brought up to date before it's read as actions: a newer file is
+        // refused here, with why, and an older one is upgraded in memory.
+        FORMAT
+            .upgrade(version, &mut table)
+            .map_err(|e| BindingsError::Wrong(e.to_string()))?;
+        table.remove("version");
+        let bindings: Self = table
+            .try_into()
+            .map_err(|e: toml::de::Error| BindingsError::Damaged(e.message().to_string()))?;
         bindings.check()?;
         Ok(bindings)
     }
@@ -325,7 +370,8 @@ impl Bindings {
         let body = toml::to_string(self).unwrap_or_default();
         format!(
             "# The game's input actions (decision 0037). Edit > Input actions… changes them;\n\
-             # game code asks for an action by its name: held(\"Jump\").\n\n{body}"
+             # game code asks for an action by its name: held(\"Jump\").\n\n\
+             version = {VERSION}\n\n{body}"
         )
     }
 

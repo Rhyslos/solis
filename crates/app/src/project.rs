@@ -247,7 +247,7 @@ impl Projects {
 
     /// Saves a sound event's file (inside the assets). Only `.solsound`
     /// files are written, so a bad path can't overwrite anything else.
-    pub fn save_sound_event(&self, path: &Path, text: &str) -> Result<(), String> {
+    pub fn save_sound_event(&self, path: &Path, text: &str) -> Result<Option<PathBuf>, String> {
         let db = self.db.as_ref().ok_or("no project is open")?;
         let is_event = path
             .extension()
@@ -259,7 +259,18 @@ impl Projects {
         if !file.is_file() {
             return Err("the file isn't there any more".to_owned());
         }
-        asset_db::write_atomically(&file, text.as_bytes()).map_err(|e| e.to_string())
+        // An older event is copied to the backups first (Phase 8, C1).
+        crate::upgrades::save(
+            db.project().root(),
+            &file,
+            text,
+            &sound::event::FORMAT,
+            |text| {
+                sound::event::read(text)
+                    .map(|read| sound::event::write(&read.event))
+                    .map_err(|e| e.to_string())
+            },
+        )
     }
 
     /// Moves a file or folder (inside the assets) to the Recycle Bin.
