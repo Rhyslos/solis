@@ -1,5 +1,5 @@
 //! Components written in Lua (decision 0003), for people who know Lua
-//! from Roblox, Garry's Mod or modding. Each `.lua` file in the assets
+//! from other games' scripting or modding. Each `.lua` file in the assets
 //! makes components with `component`, the way Lua code usually makes
 //! classes:
 //!
