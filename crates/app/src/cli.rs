@@ -13,6 +13,9 @@ pub enum Command {
     Version,
     /// Print how to use the program and exit.
     Help,
+    /// Check the project in this folder without opening the editor, and
+    /// exit (Phase 8, C4).
+    CheckProject(PathBuf),
 }
 
 /// Reads the arguments after the program's name. Anything unknown is
@@ -25,6 +28,15 @@ pub fn parse(args: impl IntoIterator<Item = OsString>) -> Result<Command, String
         match arg.to_str() {
             Some("--version" | "-V") => version = true,
             Some("--help" | "-h") => return Ok(Command::Help),
+            Some("--check-project") => match args.next() {
+                Some(folder) => return Ok(Command::CheckProject(PathBuf::from(folder))),
+                None => {
+                    return Err(
+                        "--check-project needs a project's folder after it. Try --help."
+                            .to_string(),
+                    );
+                }
+            },
             Some("--import") => match args.next() {
                 Some(file) => imports.push(PathBuf::from(file)),
                 None => return Err("--import needs a file after it. Try --help.".to_string()),
@@ -47,10 +59,15 @@ pub fn parse(args: impl IntoIterator<Item = OsString>) -> Result<Command, String
 /// How to use the program, for `--help`.
 pub fn usage(program: &str) -> String {
     format!(
-        "Usage: {program} [--import <file>]... [--version | --help]\n\n\
+        "Usage: {program} [--import <file>]... [--version | --help]\n       \
+         {program} --check-project <folder>\n\n\
          Opens the {name} editor.\n\n\
          Options:\n  \
          --import <file>  Import a glTF model (.gltf or .glb) as the editor opens\n  \
+         --check-project <folder>\n                   \
+         Check a project without opening the editor: read every file, check\n                   \
+         the game's code and play back recordings/checks/; the report is\n                   \
+         printed and kept in .solis/check-report.txt. Exits 1 if anything failed\n  \
          -V, --version    Print the version and exit\n  \
          -h, --help       Print this help and exit\n",
         name = crate::branding::APP_NAME
@@ -68,6 +85,16 @@ mod tests {
     #[test]
     fn nothing_opens_the_editor() {
         assert_eq!(parse(args(&[])), Ok(Command::Run(Vec::new())));
+    }
+
+    #[test]
+    fn check_project_takes_a_folder() {
+        assert_eq!(
+            parse(args(&["--check-project", "games/farm"])),
+            Ok(Command::CheckProject(PathBuf::from("games/farm")))
+        );
+        assert!(parse(args(&["--check-project"])).unwrap_err().contains("folder"));
+        assert!(usage("solis").contains("--check-project <folder>"));
     }
 
     #[test]

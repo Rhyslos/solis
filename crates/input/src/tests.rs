@@ -192,6 +192,7 @@ fn sample_recording() -> Recording {
         seed: 42,
         start: 0xdead_beef,
         ticks,
+        area: Some("areas/harbour.solarea".into()),
     }
 }
 
@@ -199,7 +200,7 @@ fn sample_recording() -> Recording {
 fn recordings_round_trip_exactly() {
     let r = sample_recording();
     let text = r.write();
-    assert!(text.starts_with("solis recording 1\nseed 42\n"));
+    assert!(text.starts_with("solis recording 2\nseed 42\narea areas/harbour.solarea\n"));
     assert_eq!(Recording::read(&text).unwrap(), r);
     // Playing back the same: no difference; a changed checksum is found.
     assert_eq!(r.first_difference(&r.ticks), None);
@@ -216,7 +217,7 @@ fn damaged_recordings_are_refused_never_crashing() {
     let good = sample_recording().write();
     assert_eq!(Recording::read("hello"), Err(RecordingError::NotARecording));
     // A newer one is refused before it's read on, with why.
-    let newer = Recording::read("solis recording 2\nseed 1\nstart 0\n").unwrap_err();
+    let newer = Recording::read("solis recording 3\nseed 1\nstart 0\n").unwrap_err();
     assert!(newer.to_string().contains("newer version"), "{newer}");
     assert!(matches!(
         Recording::read("solis recording 0\nseed 1\nstart 0\n"),
@@ -650,3 +651,30 @@ fn a_recording_holds_an_hour_of_ticks_and_no_more_and_says_which_line_is_wrong()
 /// mutation testing found untested.
 #[path = "edge_tests.rs"]
 mod edges;
+
+#[test]
+fn a_recording_names_its_area_and_older_ones_don_t() {
+    let r = sample_recording();
+    let text = r.write();
+    assert!(text.contains("\narea areas/harbour.solarea\n"), "{text}");
+    assert_eq!(Recording::read(&text).unwrap().area.as_deref(), Some("areas/harbour.solarea"));
+    // Not known: an empty line, read back as none.
+    let none = Recording { area: None, ..r.clone() };
+    assert_eq!(Recording::read(&none.write()).unwrap().area, None);
+    let bare = none.write().replacen("\narea \n", "\narea\n", 1);
+    assert_eq!(Recording::read(&bare).unwrap().area, None);
+    // A line break in a path can't break the file.
+    let odd = Recording { area: Some("a\nb".into()), ..r.clone() };
+    assert_eq!(Recording::read(&odd.write()).unwrap().area.as_deref(), Some("a b"));
+    // Version 1 had no area line: it reads, with none.
+    let one = text
+        .replacen("solis recording 2", "solis recording 1", 1)
+        .replacen("area areas/harbour.solarea\n", "", 1);
+    let read = Recording::read(&one).unwrap();
+    assert_eq!((read.area, read.ticks.len()), (None, r.ticks.len()));
+    // Too long, or a control character: damaged.
+    let long = text.replacen("areas/harbour.solarea", &"x".repeat(2000), 1);
+    assert!(matches!(Recording::read(&long), Err(RecordingError::Damaged(3))));
+    let missing = text.replacen("area areas/harbour.solarea\n", "", 1);
+    assert!(Recording::read(&missing).is_err());
+}

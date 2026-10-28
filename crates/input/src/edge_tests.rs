@@ -104,6 +104,7 @@ fn a_tick_held_pressed_and_released_at_once_round_trips() {
         },
     );
     let recording = Recording {
+        area: None,
         seed: 1,
         start: 2,
         ticks: vec![Tick {

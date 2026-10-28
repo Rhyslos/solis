@@ -176,6 +176,7 @@ fn record(w: &mut Workbench, ticks: u64) -> String {
     w.play();
     let playing = w.playing.as_mut().unwrap();
     playing.recording = Some(input::Recording {
+        area: None,
         seed: playing.world.seed(),
         start: playing.world.checksum(),
         ticks: Vec::new(),
