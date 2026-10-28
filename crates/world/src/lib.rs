@@ -14,10 +14,12 @@
 pub mod animators;
 pub mod projectiles;
 pub mod sprites;
+pub mod tile_maps;
 
 pub use animators::Animators;
 pub use projectiles::{MAX_PROJECTILES, Projectile, Projectiles, Shot};
 pub use sprites::{ClipSets, SpriteCue};
+pub use tile_maps::MapFiles;
 
 use area::Area;
 use area::builtin::{
@@ -158,6 +160,10 @@ pub struct World {
     /// Parameter values a loaded save gave entities whose animators
     /// haven't started running yet.
     saved_values: HashMap<EntityId, Vec<(String, animation::ParamValue)>>,
+    /// The project's tile map files (Phase 9, D4), by asset ID.
+    map_files: std::sync::Arc<MapFiles>,
+    /// Maps a loaded save gave entities whose maps haven't started yet.
+    saved_maps: HashMap<EntityId, tiles::TileMap>,
 }
 
 /// A change to physics game code asked for, made at the next step.
@@ -244,6 +250,8 @@ impl World {
             clip_sets: std::sync::Arc::default(),
             animators: std::sync::Arc::default(),
             saved_values: HashMap::new(),
+            map_files: std::sync::Arc::default(),
+            saved_maps: HashMap::new(),
         };
         world.index();
         world.place_everything();
@@ -315,6 +323,9 @@ impl World {
         let animators = std::sync::Arc::clone(&self.animators);
         let runs = self.runs();
         let saved_values = std::mem::take(&mut self.saved_values);
+        let map_files = std::sync::Arc::clone(&self.map_files);
+        let maps = self.map_states();
+        let saved_maps = std::mem::take(&mut self.saved_maps);
         // How each body was moving carries on: speed, spin, sleep, and a
         // character's finding.
         let states = self.physics.state().body_states();
@@ -326,8 +337,11 @@ impl World {
         self.clip_sets = clip_sets;
         self.animators = animators;
         self.saved_values = saved_values;
+        self.map_files = map_files;
+        self.saved_maps = saved_maps;
         self.keep_playbacks(playbacks);
         self.keep_runs(runs);
+        self.keep_maps(maps);
         self.physics_asked = asked;
         for (id, from, at) in kept {
             self.set_transform(id, at);
@@ -525,6 +539,11 @@ impl World {
                 .remove_one::<animators::Running>(entity)
                 .ok()
                 .map(|r| (id, r));
+            let map = self
+                .ecs
+                .remove_one::<tile_maps::MapState>(entity)
+                .ok()
+                .map(|m| (id, m));
             let _ = self.ecs.despawn(entity);
             let fresh = self
                 .ecs
@@ -538,6 +557,7 @@ impl World {
                 self.keep_playbacks(vec![kept]);
             }
             self.keep_runs(run.into_iter().collect());
+            self.keep_maps(map.into_iter().collect());
             // Only what physics knows of it changed: its body is built
             // again (an edit to another component leaves it alone).
             if self.physics_parts(fresh) != before {
@@ -1064,6 +1084,11 @@ impl World {
                 sum.bytes(v.as_bytes());
             }
         }
+        // Every tile map's cells and values (D4).
+        for (id, map) in self.map_sums() {
+            sum.entity(id);
+            sum.u64(map);
+        }
         sum.u64(self.physics.state().checksum());
         let flying = self.projectiles.flying();
         sum.u64(flying.len() as u64);
@@ -1353,6 +1378,9 @@ fn components_of(id: EntityId, data: &area::EntityData) -> hecs::EntityBuilder {
             }
             Animator::NAME => {
                 builder.add(Animator::from_data(component));
+            }
+            area::builtin::TileMap::NAME => {
+                builder.add(area::builtin::TileMap::from_data(component));
             }
             _ => {
                 values.0.insert(name.clone(), component.clone());

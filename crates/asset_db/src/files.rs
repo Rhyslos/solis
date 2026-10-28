@@ -5,7 +5,7 @@
 
 use crate::db::{
     ANIMATOR_EXTENSION, ASSEMBLY_EXTENSION, AssetDb, SOUND_EVENT_EXTENSION, SOUND_EXTENSIONS,
-    SPRITE_CLIPS_EXTENSION,
+    SPRITE_CLIPS_EXTENSION, TILE_MAP_EXTENSION, TILESET_EXTENSION,
 };
 use crate::sidecar;
 use reflect::AssetId;
@@ -35,6 +35,10 @@ pub enum FileKind {
     SpriteClips,
     /// An animator (`.solanim`).
     Animator,
+    /// A tileset (`.soltileset`).
+    Tileset,
+    /// A tile map (`.soltilemap`).
+    TileMap,
     /// Anything else.
     Other,
 }
@@ -64,6 +68,8 @@ impl FileKind {
             e if e == SOUND_EVENT_EXTENSION => Self::SoundEvent,
             e if e == SPRITE_CLIPS_EXTENSION => Self::SpriteClips,
             e if e == ANIMATOR_EXTENSION => Self::Animator,
+            e if e == TILESET_EXTENSION => Self::Tileset,
+            e if e == TILE_MAP_EXTENSION => Self::TileMap,
             _ => Self::Other,
         }
     }
@@ -541,6 +547,18 @@ mod tests {
         assert_eq!(
             crate::AssetKind::of(Path::new("farmer.SOLANIM")),
             Some(crate::AssetKind::Animator)
+        );
+        assert_eq!(
+            FileKind::of(Path::new("farm.soltileset")),
+            FileKind::Tileset
+        );
+        assert_eq!(
+            FileKind::of(Path::new("maps/farm.SOLTILEMAP")),
+            FileKind::TileMap
+        );
+        assert_eq!(
+            crate::AssetKind::of(Path::new("farm.soltilemap")),
+            Some(crate::AssetKind::TileMap)
         );
         assert_eq!(FileKind::of(Path::new("a.JPEG")), FileKind::Texture);
         assert_eq!(FileKind::of(Path::new("a.lua")), FileKind::Code);

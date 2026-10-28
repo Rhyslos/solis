@@ -33,6 +33,9 @@ pub enum ProblemKind {
     /// An Animator with no animator file chosen, or whose file isn't in
     /// the project (Phase 9, D3b).
     MissingAnimator,
+    /// A Tile Map with no map file chosen, or whose file isn't in the
+    /// project (Phase 9, D4).
+    MissingTileMap,
     /// A sprite resting between pixels by accident: the game draws it on
     /// the nearest one, so it may seem to jump a pixel when it moves.
     SpriteBetweenPixels,
@@ -288,6 +291,24 @@ pub(crate) fn find(sources: &Sources) -> Vec<Problem> {
                     entity: id,
                     text: format!(
                         "{name}'s animator ({asset}) isn't in the project: its file was \
+                         deleted, or never committed"
+                    ),
+                }),
+                Some(_) => {}
+            }
+        }
+        if let Some(tile_map) = entity.get::<area::builtin::TileMap>() {
+            match tile_map.map.map(|r| r.asset) {
+                None => found.push(Problem {
+                    kind: ProblemKind::MissingTileMap,
+                    entity: id,
+                    text: format!("{name}'s Tile Map has no map file chosen"),
+                }),
+                Some(asset) if !sources.known.contains(&asset) => found.push(Problem {
+                    kind: ProblemKind::MissingTileMap,
+                    entity: id,
+                    text: format!(
+                        "{name}'s tile map ({asset}) isn't in the project: its file was \
                          deleted, or never committed"
                     ),
                 }),
@@ -663,6 +684,28 @@ mod tests {
                 .any(|p| p.text.contains("Blank's Animator has no"))
         );
         assert!(found.iter().any(|p| p.text.contains("Ghost's animator (")));
+    }
+
+    #[test]
+    fn tile_maps_without_a_file_in_the_project_are_found() {
+        let mut w = World::new();
+        let here = AssetId::random();
+        w.known.insert(here);
+        let map = |file: Option<AssetId>| area::builtin::TileMap {
+            map: file.map(|asset| reflect::AssetRef { asset, part: None }),
+        };
+        w.area.spawn(EntityData::new("Farm").with(&map(Some(here))));
+        w.area.spawn(EntityData::new("Blank").with(&map(None)));
+        w.area
+            .spawn(EntityData::new("Ghost").with(&map(Some(AssetId::random()))));
+        let found = w.find();
+        assert_eq!(found.len(), 2);
+        assert!(found.iter().all(|p| p.kind == ProblemKind::MissingTileMap));
+        assert!(
+            found
+                .iter()
+                .any(|p| p.text.contains("Blank's Tile Map has no"))
+        );
     }
 
     #[test]

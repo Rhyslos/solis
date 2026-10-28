@@ -16,6 +16,7 @@ The engine and editor's code, split into small crates (Rust packages), one job e
 | [`input`](input/README.md) | 1 Engine | Keys and buttons turned into named actions, and recordings of play. |
 | [`sound`](sound/README.md) | 1 Engine | Reads WAV and Ogg Vorbis files and plays sound. |
 | [`animation`](animation/README.md) | 1 Engine | Clips of frames played by time with their events, and sprites' clips files. |
+| [`tiles`](tiles/README.md) | 1 Engine | Tilesets' terrains and tile maps: layers of terrain codes and values per cell, in chunks, and their files. |
 | [`area`](area/README.md) | 0 Core | The area document the editor edits, its undo, its text files, and the built-in components. |
 | [`reflect`](reflect/README.md) | 0 Core | Stable IDs, plain values, component schemas and the registry. |
 

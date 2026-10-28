@@ -50,11 +50,45 @@ impl SpriteInstance {
     pub const OUTLINE: u32 = 4;
     /// Blended, sorted back to front.
     pub const SEE_THROUGH: u32 = 8;
+    /// A tile map's layer under everything (Phase 9, D4): drawn first,
+    /// blended, writing no depth, so whatever stands on it is drawn over
+    /// it.
+    pub const UNDER: u32 = 16;
+    /// A tile map's layer over everything (roofs, treetops): drawn last,
+    /// blended, over whatever is there.
+    pub const OVER: u32 = 32;
 
     /// Whether it's drawn blended.
     pub fn see_through(&self) -> bool {
         self.flags & Self::SEE_THROUGH != 0
     }
+
+    /// Which pass draws it: under everything, with the rest (cut out or
+    /// blended), or over everything.
+    pub fn layer(&self) -> SpriteLayer {
+        if self.flags & Self::UNDER != 0 {
+            SpriteLayer::Under
+        } else if self.flags & Self::OVER != 0 {
+            SpriteLayer::Over
+        } else if self.see_through() {
+            SpriteLayer::SeeThrough
+        } else {
+            SpriteLayer::CutOut
+        }
+    }
+}
+
+/// When a run of sprites is drawn in the frame.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum SpriteLayer {
+    /// First, under everything (a tile map's ground).
+    Under,
+    /// With the solids, writing depth.
+    CutOut,
+    /// After the solids, blended, back to front.
+    SeeThrough,
+    /// Last, over everything (a tile map's roofs).
+    Over,
 }
 
 pub(crate) const ATTRIBUTES: [wgpu::VertexAttribute; 8] = wgpu::vertex_attr_array![
@@ -86,6 +120,8 @@ pub(crate) struct SpritePipelines {
     pub(crate) sheet_layout: wgpu::BindGroupLayout,
     pub(crate) cut_out: wgpu::RenderPipeline,
     pub(crate) blended: wgpu::RenderPipeline,
+    /// Blended with no depth at all: tile layers under and over.
+    pub(crate) flat: wgpu::RenderPipeline,
 }
 
 impl SpritePipelines {
@@ -113,7 +149,7 @@ impl SpritePipelines {
             bind_group_layouts: &[Some(frame_layout), None, None, Some(&sheet_layout)],
             immediate_size: 0,
         });
-        let make = |blended: bool| {
+        let make = |blended: bool, flat: bool| {
             let buffers = [Some(wgpu::VertexBufferLayout {
                 array_stride: std::mem::size_of::<SpriteInstance>() as wgpu::BufferAddress,
                 step_mode: wgpu::VertexStepMode::Instance,
@@ -134,7 +170,9 @@ impl SpritePipelines {
                 },
             });
             device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-                label: Some(if blended {
+                label: Some(if flat {
+                    "tile layer pipeline"
+                } else if blended {
                     "see-through sprite pipeline"
                 } else {
                     "sprite pipeline"
@@ -153,8 +191,13 @@ impl SpritePipelines {
                 depth_stencil: Some(wgpu::DepthStencilState {
                     format: crate::renderer::DEPTH_FORMAT,
                     depth_write_enabled: Some(!blended),
-                    // Depth is reversed: nearer is greater.
-                    depth_compare: Some(wgpu::CompareFunction::GreaterEqual),
+                    // Depth is reversed: nearer is greater. A tile layer
+                    // under or over everything ignores depth.
+                    depth_compare: Some(if flat {
+                        wgpu::CompareFunction::Always
+                    } else {
+                        wgpu::CompareFunction::GreaterEqual
+                    }),
                     stencil: wgpu::StencilState::default(),
                     bias: wgpu::DepthBiasState::default(),
                 }),
@@ -177,8 +220,9 @@ impl SpritePipelines {
             })
         };
         Self {
-            cut_out: make(false),
-            blended: make(true),
+            cut_out: make(false, false),
+            blended: make(true, false),
+            flat: make(true, true),
             sheet_layout,
         }
     }

@@ -499,6 +499,12 @@ impl Workbench {
             playing
                 .world
                 .set_clip_sets(Arc::clone(&self.viewport.sheets.clip_sets));
+            // Tile maps (D4): the project's files, and a map for each new
+            // TileMap (one game code spawned, say).
+            playing
+                .world
+                .set_tile_maps(Arc::clone(&self.viewport.sheets.map_set));
+            playing.world.start_maps();
             // Animators first (D3b): each takes the transition the
             // parameters set last tick call for, and sets its sprite's clip.
             playing

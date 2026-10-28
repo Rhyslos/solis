@@ -1,0 +1,29 @@
+-- A tileset. Written by Solis; safe to edit by hand.
+-- Each terrain is something a tile map's cell can be: its name, the one character
+-- a map file writes for it, and its colour. The first fills a new map.
+tileset version 1;
+
+
+terrain 0000000000001 {
+    name = "grass";
+    code = ".";
+    colour = [0.31, 0.48, 0.23];
+}
+
+terrain 0000000000002 {
+    name = "tilled";
+    code = "t";
+    colour = [0.42, 0.29, 0.18];
+}
+
+terrain 0000000000003 {
+    name = "water";
+    code = "~";
+    colour = [0.18, 0.37, 0.56];
+}
+
+terrain 0000000000004 {
+    name = "fence";
+    code = "#";
+    colour = [0.54, 0.48, 0.35];
+}

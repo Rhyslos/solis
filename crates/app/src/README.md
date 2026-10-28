@@ -14,7 +14,7 @@ The program's code: the command line, the window and its frame loop, the GPU hoo
 | `cli.rs` | Reads the command line: `--version`, `--help`, or open the editor (with `--import <file>`). | `Command`, `parse`, `usage` |
 | `startup.rs` | Starting up behind the splash screen, which asks for a newer build first (decision 0045). Tests in `startup_tests.rs`. | `Startup`, `Next` |
 | `window.rs` | The editor window: opens it with eframe, restores saved settings, hands each frame to the workbench, carries out its actions, and starts the job pool. | `run`, `start_jobs` |
-| `gpu.rs` | Connects the `render` crate to the window's GPU device and to egui: one image for the viewport, one for the Game panel. | `GpuViewport` |
+| `gpu.rs` | Connects the `render` crate to the window's GPU device and to egui: one image for the viewport, one for the Game panel; sprite sheets and tile map layers' pictures uploaded. | `GpuViewport` |
 | `logger.rs` | Passes what libraries write through the `log` facade to the Console: every library's warnings and errors, information only from the program's own crates. | `Messages`, `Level`, `install` |
 | `gamepad.rs` | Reads the first gamepad each frame on Windows and hands it to the editor as `input::Pad` (decision 0037). | `Gamepads` |
 
@@ -34,7 +34,7 @@ The program's code: the command line, the window and its frame loop, the GPU hoo
 | `playground_sounds.rs` | The playground's sounds, made in code (CC0): footsteps, music, a radio's chatter and a drip, as WAV files, the same every time. | `footstep`, `music`, `radio`, `drip` |
 | `game_audio.rs` | The game's sounds each frame: picks and plays what game code asked for through its bus, around the camera, following entities, held while paused and faded on Stop; ducking, mute, solo and `setBusVolume` as the buses' levels, and the meters back to the Mixer; `AudioSource` loops, and choosing the most important sounds to hear (S5); the reverb zones the camera is in (S6); only what the listener should hear (S8). | `GameAudio` |
 | `sounds.rs` | The project's sound files and sound events in the editor: sounds measured and events read on a worker for the Library and Properties, and listened to through the sound device (an event plays a new pick each press). | `Sounds` |
-| `sprites.rs` | The project's sprite sheets (Phase 9, D2): Aseprite files read and packed on a worker, again whenever one is saved, a failed read keeping the last good one. | `Sprites`, `read_sheet` |
+| `sprites.rs` | The project's sprite sheets (Phase 9, D2): Aseprite files read and packed on a worker, again whenever one is saved, a failed read keeping the last good one; clips files, animators, tilesets and tile maps read beside them. | `Sprites`, `read_sheet`, `read_tileset`, `read_tile_map` |
 | `updates.rs` | Keeping the program up to date while it runs: Help > Check for updates, downloading while you work, installing on close (decisions 0043 and 0045). | `Updates`, `Pending` |
 
 ## Ready-made projects (Help menu)

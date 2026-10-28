@@ -28,6 +28,7 @@ run() {
 run -p editor scale_check
 run -p app scale_check
 run -p world scale_check
+run -p tiles scale_check
 run -p render --test gpu scale_check
 if [ "$failed" -ne 0 ]; then
     echo "Something missed its target (marked SLOW above), or a check failed."

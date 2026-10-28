@@ -187,6 +187,8 @@ impl Projects {
                     FileKind::SpriteSheet => LibraryKind::SpriteSheet,
                     FileKind::SpriteClips => LibraryKind::SpriteClips,
                     FileKind::Animator => LibraryKind::Animator,
+                    FileKind::Tileset => LibraryKind::Tileset,
+                    FileKind::TileMap => LibraryKind::TileMap,
                     FileKind::Other => LibraryKind::Other,
                 },
                 // Files Solis doesn't know keep their whole name, so
@@ -343,6 +345,78 @@ impl Projects {
             |text| {
                 animation::animator_file::read(text)
                     .map(|read| animation::animator_file::write(&read.file))
+                    .map_err(|e| e.to_string())
+            },
+        )
+    }
+
+    /// Saves a tileset (`.soltileset`, inside the assets, Phase 9, D4),
+    /// making it if it isn't there. Gives back where an older one was
+    /// kept, if it was.
+    pub fn save_tileset(&self, path: &Path, text: &str) -> Result<Option<PathBuf>, String> {
+        let db = self.db.as_ref().ok_or("no project is open")?;
+        let is_animator = tiles::tileset::is_tileset_file(path);
+        let plain = path
+            .components()
+            .all(|c| matches!(c, std::path::Component::Normal(_)));
+        if !is_animator || !plain {
+            return Err("it isn't a tileset in the assets".to_owned());
+        }
+        let file = db.project().assets().join(path);
+        if !file.is_file() {
+            if let Some(folder) = file.parent()
+                && !folder.is_dir()
+            {
+                return Err("its folder isn't there any more".to_owned());
+            }
+            return asset_db::write_atomically(&file, text.as_bytes())
+                .map(|()| None)
+                .map_err(|e| e.to_string());
+        }
+        crate::upgrades::save(
+            db.project().root(),
+            &file,
+            text,
+            &tiles::tileset::FORMAT,
+            |text| {
+                tiles::tileset::read(text)
+                    .map(|read| tiles::tileset::write(&read.tileset))
+                    .map_err(|e| e.to_string())
+            },
+        )
+    }
+
+    /// Saves a tile map file (`.soltilemap`, inside the assets, Phase 9, D4),
+    /// making it if it isn't there. Gives back where an older one was
+    /// kept, if it was.
+    pub fn save_tile_map(&self, path: &Path, text: &str) -> Result<Option<PathBuf>, String> {
+        let db = self.db.as_ref().ok_or("no project is open")?;
+        let is_animator = tiles::map_file::is_map_file(path);
+        let plain = path
+            .components()
+            .all(|c| matches!(c, std::path::Component::Normal(_)));
+        if !is_animator || !plain {
+            return Err("it isn't a tile map in the assets".to_owned());
+        }
+        let file = db.project().assets().join(path);
+        if !file.is_file() {
+            if let Some(folder) = file.parent()
+                && !folder.is_dir()
+            {
+                return Err("its folder isn't there any more".to_owned());
+            }
+            return asset_db::write_atomically(&file, text.as_bytes())
+                .map(|()| None)
+                .map_err(|e| e.to_string());
+        }
+        crate::upgrades::save(
+            db.project().root(),
+            &file,
+            text,
+            &tiles::map_file::FORMAT,
+            |text| {
+                tiles::map_file::read(text)
+                    .map(|read| tiles::map_file::write(&read.map))
                     .map_err(|e| e.to_string())
             },
         )

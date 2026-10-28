@@ -55,6 +55,9 @@ impl Workbench {
             LibraryRequest::Place(id) if self.viewport.sheets.get(id).is_some() => {
                 self.place_sprite(id, None);
             }
+            LibraryRequest::Place(id) if self.viewport.sheets.tile_map(id).is_some() => {
+                self.place_tile_map(id, None);
+            }
             LibraryRequest::Place(id) => {
                 // A double-click places it where the camera looks, even if
                 // an earlier drop of the same asset never arrived.
@@ -64,6 +67,36 @@ impl Workbench {
             LibraryRequest::Open(LibraryKind::SpriteClips, path) => self.open_frames(&path),
             LibraryRequest::Open(LibraryKind::Animator, path) => self.open_animator(&path),
             LibraryRequest::NewAnimator(folder) => self.new_animator(&folder),
+            LibraryRequest::NewTileset(folder) => self.new_tileset(&folder),
+            LibraryRequest::NewTileMap(folder) => self.new_tile_map(&folder),
+            LibraryRequest::SaveTileset(path, set) => self.save_tileset(&path, set),
+            LibraryRequest::ShapeTileMap(path, tileset, size) => {
+                let fill = tileset
+                    .and_then(|t| self.viewport.sheets.tileset(t))
+                    .and_then(|t| t.terrains.first())
+                    .map(|t| t.code as u8);
+                self.change_map(&path, |map| {
+                    let mut changed = map.tileset != tileset;
+                    map.tileset = tileset;
+                    // A map with no ground yet takes its first tileset's
+                    // first terrain.
+                    if changed
+                        && let Some(code) = fill
+                        && map
+                            .layer_cells(0)
+                            .is_some_and(|c| c.iter().all(|&v| v == 0))
+                    {
+                        let [w, h] = map.size();
+                        for y in 0..h {
+                            for x in 0..w {
+                                let _ = map.set_code(0, x, y, code);
+                            }
+                        }
+                    }
+                    changed |= map.resize(size);
+                    changed
+                });
+            }
             LibraryRequest::MakeClipsFile(path) => {
                 if let Some(id) = crate::frames_editor::id_of(&self.viewport.sheets, &path) {
                     self.make_clips_file(&path, id);
@@ -151,7 +184,11 @@ impl Workbench {
                 &i.path == path
                     && matches!(
                         i.kind,
-                        LibraryKind::Sound | LibraryKind::SoundEvent | LibraryKind::SpriteSheet
+                        LibraryKind::Sound
+                            | LibraryKind::SoundEvent
+                            | LibraryKind::SpriteSheet
+                            | LibraryKind::Tileset
+                            | LibraryKind::TileMap
                     )
             })
         {
@@ -300,6 +337,10 @@ impl Workbench {
     pub(crate) fn place_dropped(&mut self, asset: AssetId, at: Vec3, parent: Option<EntityId>) {
         if self.viewport.sheets.get(asset).is_some() {
             self.place_sprite(asset, Some((at, parent)));
+            return;
+        }
+        if self.viewport.sheets.tile_map(asset).is_some() {
+            self.place_tile_map(asset, Some((at, parent)));
             return;
         }
         self.place_targets.insert(asset, (at, parent));

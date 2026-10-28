@@ -31,6 +31,7 @@ mod inspector;
 pub mod layout;
 pub mod library;
 pub mod look;
+mod map_tab;
 mod menu_items;
 pub mod mixer_view;
 pub mod models;
@@ -53,6 +54,7 @@ pub mod sprite_sheets;
 #[cfg(test)]
 mod test_support;
 pub mod theme;
+pub mod tile_view;
 mod top_bar;
 pub mod transforming;
 pub mod updates;
@@ -62,6 +64,7 @@ pub mod workbench;
 mod workbench_animator;
 mod workbench_frames;
 mod workbench_library;
+mod workbench_tiles;
 mod workbench_tools;
 
 pub use area_view::{AreaView, ViewLight, ViewModel};

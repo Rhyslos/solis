@@ -845,7 +845,9 @@ fn sprite_texel(p: vec2<f32>, rect: vec4<f32>, flags: u32) -> vec4<f32> {
 fn sprite_fs(in: SpriteOut) -> @location(0) vec4<f32> {
     let p = floor(in.local);
     let texel = sprite_texel(p, in.rect, in.flags);
-    let see_through = (in.flags & 8u) != 0u;
+    // See-through sprites, and tile layers (16 under, 32 over), blend
+    // with their own alpha.
+    let see_through = (in.flags & (8u | 16u | 32u)) != 0u;
     // Pixel art is cut out: a pixel is drawn or it isn't, so it writes
     // depth and needs no sorting. See-through sprites blend instead.
     if texel.a < 0.5 && !see_through || texel.a <= 0.0 {

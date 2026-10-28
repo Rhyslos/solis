@@ -73,6 +73,61 @@ pub struct AreaView {
     pub screens: Vec<(Vec3, bool)>,
     /// The sprites (Phase 9, D2), with their pick numbers.
     pub sprites: Vec<crate::sprite_sheets::AreaSprite>,
+    /// The tile maps (Phase 9, D4): each one's file (in the editor) or its
+    /// map as the game has it, and where it is.
+    pub tile_maps: Vec<AreaTileMap>,
+}
+
+/// A tile map an area or the running game draws.
+#[derive(Debug, Clone)]
+pub struct AreaTileMap {
+    /// Its entity.
+    pub entity: reflect::EntityId,
+    /// Where it is: its top-left corner at the entity.
+    pub transform: glam::Mat4,
+    /// Its file (in the editor), whose map is drawn.
+    pub file: Option<AssetId>,
+    /// Its map as the game has it (while playing).
+    pub game: Option<std::sync::Arc<tiles::TileMap>>,
+}
+
+/// The same map in the same place: the game's map by its copy (never
+/// cell by cell, which would be slow for a big map).
+impl PartialEq for AreaTileMap {
+    fn eq(&self, other: &Self) -> bool {
+        self.entity == other.entity
+            && self.transform == other.transform
+            && self.file == other.file
+            && match (&self.game, &other.game) {
+                (Some(a), Some(b)) => std::sync::Arc::ptr_eq(a, b),
+                (None, None) => true,
+                _ => false,
+            }
+    }
+}
+
+impl AreaView {
+    /// The maps to draw, their files' read from `sheets`.
+    pub fn view_tile_maps(
+        &self,
+        sheets: &crate::sprite_sheets::SpriteSheets,
+    ) -> Vec<crate::tile_view::ViewTileMap> {
+        self.tile_maps
+            .iter()
+            .filter_map(|m| {
+                let map = match (&m.game, m.file) {
+                    (Some(game), _) => std::sync::Arc::clone(game),
+                    (None, Some(file)) => std::sync::Arc::clone(sheets.tile_map(file)?),
+                    (None, None) => return None,
+                };
+                Some(crate::tile_view::ViewTileMap {
+                    entity: m.entity,
+                    transform: m.transform,
+                    map,
+                })
+            })
+            .collect()
+    }
 }
 
 impl AreaView {
@@ -156,6 +211,17 @@ impl AreaView {
                 pick,
             });
         }
+        for (id, tile_map) in area.with::<area::builtin::TileMap>() {
+            if hidden.contains(&id) {
+                continue;
+            }
+            view.tile_maps.push(AreaTileMap {
+                entity: id,
+                transform: at(id),
+                file: tile_map.map.map(|m| m.asset),
+                game: None,
+            });
+        }
         let first = tree.first_of(area.with::<Camera>().map(|(id, _)| id));
         for (id, camera) in area.with::<Camera>() {
             if !hidden.contains(&id) {
@@ -217,6 +283,18 @@ impl AreaView {
                     pick: 0,
                 },
             )
+            .collect();
+        view.tile_maps = world
+            .placed_between::<area::builtin::TileMap>(t)
+            .into_iter()
+            .filter_map(|(entity, component, transform)| {
+                Some(AreaTileMap {
+                    entity,
+                    transform,
+                    file: component.map.map(|m| m.asset),
+                    game: Some(std::sync::Arc::new(world.tile_map(entity)?)),
+                })
+            })
             .collect();
         view
     }

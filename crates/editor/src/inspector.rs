@@ -226,7 +226,28 @@ fn field_widget(
             return whole(slice_picker(ui, value, sheet.map(|s| &**s), mixed.whole));
         }
         (FieldKind::Asset, Offer::Assets("animator")) => {
-            return whole(animator_picker(ui, value, sheets, mixed.whole));
+            return whole(asset_picker(
+                ui,
+                value,
+                &sheets.listed_animators(),
+                mixed.whole,
+                (
+                    "animator",
+                    "No animators yet: Library > Import > New animator.",
+                ),
+            ));
+        }
+        (FieldKind::Asset, Offer::Assets("tile map")) => {
+            return whole(asset_picker(
+                ui,
+                value,
+                &sheets.listed_tiles(true),
+                mixed.whole,
+                (
+                    "tile map",
+                    "No tile maps yet: Library > Import > New tile map.",
+                ),
+            ));
         }
         (FieldKind::Text, Offer::StatesOf(animator_field)) => {
             let file = match data.get(animator_field) {
@@ -405,18 +426,19 @@ fn sheet_picker(ui: &mut Ui, value: &Value, sheets: &SpriteSheets, mixed: bool) 
     chosen
 }
 
-/// An animator field: the project's animator files to pick from.
-fn animator_picker(
+/// An asset field offering the files `listed` (animators, tile maps),
+/// with `none` said when there are none (`what` names them).
+fn asset_picker(
     ui: &mut Ui,
     value: &Value,
-    sheets: &SpriteSheets,
+    listed: &[(String, AssetId)],
     mixed: bool,
+    (what, none): (&str, &str),
 ) -> Option<Value> {
     let current = match value {
         Value::Asset(Some(r)) => Some(r.asset),
         _ => None,
     };
-    let listed = sheets.listed_animators();
     let shown = if mixed {
         "—".to_owned()
     } else {
@@ -425,11 +447,11 @@ fn animator_picker(
             Some(id) => listed
                 .iter()
                 .find(|(_, i)| *i == id)
-                .map_or_else(|| format!("Missing animator {id}"), |(n, _)| n.clone()),
+                .map_or_else(|| format!("Missing {what} {id}"), |(n, _)| n.clone()),
         }
     };
     let mut chosen = None;
-    egui::ComboBox::from_id_salt("animator")
+    egui::ComboBox::from_id_salt(what)
         .selected_text(shown)
         .show_ui(ui, |ui| {
             if ui
@@ -438,7 +460,7 @@ fn animator_picker(
             {
                 chosen = Some(Value::Asset(None));
             }
-            for (name, id) in &listed {
+            for (name, id) in listed {
                 if ui
                     .selectable_label(current == Some(*id) && !mixed, name)
                     .clicked()
@@ -450,10 +472,7 @@ fn animator_picker(
                 }
             }
             if listed.is_empty() {
-                ui.label(
-                    RichText::new("No animators yet: Library > Import > New animator.")
-                        .color(crate::theme::TEXT_WEAK),
-                );
+                ui.label(RichText::new(none).color(crate::theme::TEXT_WEAK));
             }
         });
     chosen

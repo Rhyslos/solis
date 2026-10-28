@@ -41,7 +41,7 @@ pub use renderer::{
     AXIS_X_COLOR, AXIS_Y_COLOR, COLOR_FORMAT, DEPTH_FORMAT, HDR_FORMAT, LineVertex, SHADER_SOURCE,
     Scene, ViewportRenderer, ViewportTarget, best_sample_count, ground_axes,
 };
-pub use sprites::{GpuSheet, SpriteInstance, SpritePicks, SpriteRun};
+pub use sprites::{GpuSheet, SpriteInstance, SpriteLayer, SpritePicks, SpriteRun};
 pub use timing::{FrameStats, GpuTimes};
 
 #[cfg(test)]

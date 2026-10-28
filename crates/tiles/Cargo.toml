@@ -1,0 +1,25 @@
+[package]
+name = "tiles"
+description = "Tile maps (Phase 9, D4): tilesets' terrains (.soltileset), tile map files (.soltilemap) in chunks, and maps that change as the game plays"
+version.workspace = true
+edition.workspace = true
+rust-version.workspace = true
+license.workspace = true
+repository.workspace = true
+authors.workspace = true
+publish.workspace = true
+
+# Architecture layer, checked by tools/layer-check:
+# a crate may only depend on crates in its own layer or below.
+[package.metadata.architecture]
+layer = 1
+
+[dependencies]
+area.workspace = true
+reflect.workspace = true
+
+[dev-dependencies]
+proptest.workspace = true
+
+[lints]
+workspace = true

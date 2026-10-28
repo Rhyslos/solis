@@ -159,7 +159,7 @@
 - **Pixel-perfect:** every pixel of the game shown as the same whole number of screen pixels, never blurred or uneven. Solis draws the game at its base resolution and scales it up in **whole steps** (×2, ×3, ×4…).
 - **Whole steps:** scaling by a whole number. When the screen isn't a whole number of times the base resolution, the rest is black **bars**; **Fill** scales a little further instead, smoothing only the edge of each pixel.
 - **2D camera:** a camera whose View is 2D: it looks straight down at the game's base resolution, follows its entity's place, and never turns.
-- **Tile:** one square of a 2D world's grid, usually 16 pixels; tile maps (coming soon) are built from them.
+- **Tile:** one square of a 2D world's grid, usually 16 pixels; [tile maps](tile-maps.md) are built from them.
 - **Sprite:** a flat picture in a 2D world, such as a character or a crop: one frame of a sprite sheet, lying on the ground at its entity. See [Sprites from Aseprite](sprites.md).
 - **Sprite sheet:** a picture holding a sprite's frames, from one Aseprite file. Solis reads `.aseprite` files as they are; nothing needs exporting.
 - **Frame:** one picture of a sprite sheet. Showing frames one after another animates it.
@@ -175,6 +175,12 @@
 - **Parameter:** a value an animator's transitions look at: a number, a switch (on or off), a trigger (fired for one tick) or a direction (which way it faces).
 - **Graph editor:** the canvas of boxes and arrows the Animator tab draws on; materials and effects will use the same one, with the same controls.
 - **Frame event:** a name on a frame of a clip (*footstep*). When the clip reaches the frame, a sound event of that name plays and game code hears `AnimationCue`.
+- **Tile map:** a grid of cells laid out in a 2D world, saved as a `.soltilemap` file and placed by an entity's **Tile Map** component. Each cell holds a terrain on each layer, and values. See [Tile maps](tile-maps.md).
+- **Tileset:** a `.soltileset` file listing the terrains a tile map's cells can be. Every map that uses it draws its terrains the same way.
+- **Terrain:** what a cell is (*grass*, *tilled*, *water*), with a name, a colour and the one character a map file writes for it (its **code**, such as `.` for grass).
+- **Layer (tile map):** one of a map's stacked grids, such as Ground, Decoration and Above. A layer is drawn **under** sprites (the ground they walk on) or **over** them (roofs they walk behind).
+- **Cell value:** something every cell of a map has besides its terrain: a **number** (growth), a **switch** (watered) or a **choice** (crop: wheat or corn). The game changes them as it plays, and saves keep them.
+- **Chunk:** a 32 × 32 block of a map's cells. A map is saved and checked chunk by chunk, so a change to one cell touches only its chunk.
 
 ## Getting Solis
 

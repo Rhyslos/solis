@@ -44,6 +44,24 @@ pub enum AnimatorState {
     Failed(String),
 }
 
+/// What the editor knows of one tileset (`.soltileset`, Phase 9, D4).
+#[derive(Debug, Clone, PartialEq)]
+pub enum TilesetState {
+    /// Read, with what was put right while reading it.
+    Read(Arc<tiles::Tileset>, Vec<String>),
+    /// Couldn't be read, and why.
+    Failed(String),
+}
+
+/// What the editor knows of one tile map file (`.soltilemap`, D4).
+#[derive(Debug, Clone, PartialEq)]
+pub enum MapFileState {
+    /// Read, with what was put right while reading it.
+    Read(Arc<tiles::TileMap>, Vec<String>),
+    /// Couldn't be read, and why.
+    Failed(String),
+}
+
 /// The project's sprite sheets, by path inside the assets and by asset ID.
 #[derive(Debug, Clone, Default, PartialEq)]
 pub struct SpriteSheets {
@@ -53,7 +71,12 @@ pub struct SpriteSheets {
     pub frames: HashMap<String, FramesState>,
     /// Each animator file (`.solanim`), by path inside the assets.
     pub animators: HashMap<String, AnimatorState>,
-    /// Each sheet's, clips file's and animator file's path, by asset ID.
+    /// Each tileset (`.soltileset`), by path inside the assets.
+    pub tilesets: HashMap<String, TilesetState>,
+    /// Each tile map file (`.soltilemap`), by path inside the assets.
+    pub tile_maps: HashMap<String, MapFileState>,
+    /// Each sheet's, clips file's, animator's, tileset's and map's path,
+    /// by asset ID.
     pub paths: HashMap<AssetId, String>,
     /// The clips each sheet and clips file offers, by asset ID: worked out
     /// by [`Self::work_out_clips`] whenever a sheet or clips file changes.
@@ -61,6 +84,12 @@ pub struct SpriteSheets {
     /// Each animator file ready to run, by asset ID: worked out by
     /// [`Self::work_out_clips`] too.
     pub animator_set: Arc<world::Animators>,
+    /// Each tile map file read, by asset ID, for the running game: worked
+    /// out by [`Self::work_out_clips`] too.
+    pub map_set: Arc<world::MapFiles>,
+    /// Tile maps' layers as pictures, kept from frame to frame (shared by
+    /// every copy of these sheets).
+    pub tile_pictures: Arc<crate::tile_view::TilePictures>,
 }
 
 impl SpriteSheets {
@@ -111,6 +140,51 @@ impl SpriteSheets {
         }
         self.clip_sets = Arc::new(sets);
         self.work_out_animators();
+        self.work_out_maps();
+    }
+
+    /// Lists every tile map file read by asset ID again (after one was
+    /// read or changed).
+    pub fn work_out_maps(&mut self) {
+        let mut set = world::MapFiles::new();
+        for (&id, path) in &self.paths {
+            if let Some(MapFileState::Read(map, _)) = self.tile_maps.get(path) {
+                set.insert(id, Arc::clone(map));
+            }
+        }
+        self.map_set = Arc::new(set);
+    }
+
+    /// The tileset with asset ID `id`, if it's been read.
+    pub fn tileset(&self, id: AssetId) -> Option<&Arc<tiles::Tileset>> {
+        match self.tilesets.get(self.paths.get(&id)?)? {
+            TilesetState::Read(set, _) => Some(set),
+            TilesetState::Failed(_) => None,
+        }
+    }
+
+    /// The tile map file with asset ID `id`, if it's been read.
+    pub fn tile_map(&self, id: AssetId) -> Option<&Arc<tiles::TileMap>> {
+        self.map_set.get(&id)
+    }
+
+    /// Every tileset (or, with `maps`, every tile map file) read, by name
+    /// with its ID, sorted by name.
+    pub fn listed_tiles(&self, maps: bool) -> Vec<(String, AssetId)> {
+        let mut list: Vec<(String, AssetId)> = self
+            .paths
+            .iter()
+            .filter(|(_, path)| {
+                if maps {
+                    matches!(self.tile_maps.get(*path), Some(MapFileState::Read(..)))
+                } else {
+                    matches!(self.tilesets.get(*path), Some(TilesetState::Read(..)))
+                }
+            })
+            .map(|(id, path)| (name_of(path), *id))
+            .collect();
+        list.sort();
+        list
     }
 
     /// Makes every animator file ready to run again (after one was read or

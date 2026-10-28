@@ -6,7 +6,7 @@
 //! opened) by a person:
 //!
 //! ```text
-//! solis save 4
+//! solis save 5
 //! project Harbour
 //! tick 1234
 //! time 4060000000000000
@@ -26,6 +26,9 @@
 //! ID x y z qx qy qz qw sx sy sz (exact bits)
 //! animators 1
 //! ID moving=s1 speed=n3fc00000 facing=d0,3f800000 (exact bits)
+//! tilemaps 1234
+//! ID 1220
+//! …the map as the game has changed it (a tile map file)…
 //! ```
 //!
 //! Physics is kept as each body's place and motion, never Rapier's own
@@ -44,9 +47,9 @@ use reflect::EntityId;
 use std::sync::Arc;
 
 /// The first line of a save this Solis writes and reads.
-const HEADER: &str = "solis save 4";
+const HEADER: &str = "solis save 5";
 /// The version in [`HEADER`].
-const SAVE_VERSION: u32 = 4;
+const SAVE_VERSION: u32 = 5;
 
 /// Save games' version and upgraders (Phase 8, C2; decision 0053): a save
 /// made by an earlier Solis loads in a later one, never refused just for
@@ -69,6 +72,7 @@ pub static FORMAT: reflect::upgrade::Format<Sections> = reflect::upgrade::Format
         physics_as_places_and_motion,
         places_kept_apart,
         animators_kept,
+        tile_maps_kept,
     ],
 };
 
@@ -137,6 +141,16 @@ fn animators_kept(sections: &mut Sections) -> Result<(), String> {
     Ok(())
 }
 
+/// Version 4 to 5: version 4 had no tile maps (Phase 9, D4), so its maps
+/// start from their files.
+fn tile_maps_kept(sections: &mut Sections) -> Result<(), String> {
+    if sections.list.iter().any(|(n, _)| n == "tilemaps") {
+        return Err("it already has tile maps".into());
+    }
+    sections.list.push(("tilemaps".into(), String::new()));
+    Ok(())
+}
+
 /// The biggest save read.
 pub(crate) const MAX_SAVE_BYTES: usize = 256 << 20;
 
@@ -181,6 +195,8 @@ pub(crate) struct Save {
     /// Each animator's parameters, by name, in entity order (its state is
     /// its Animator's, in the area).
     pub(crate) animators: Vec<(EntityId, Vec<(String, animation::ParamValue)>)>,
+    /// Each tile map as the game has changed it, in entity order.
+    pub(crate) tile_maps: Vec<(EntityId, tiles::TileMap)>,
     /// What upgrading an older save couldn't carry over, for the Console
     /// (never written).
     pub(crate) notes: Vec<String>,
@@ -273,6 +289,15 @@ impl Save {
             })
             .collect();
         section("animators", &animators);
+        let maps: String = self
+            .tile_maps
+            .iter()
+            .map(|(id, map)| {
+                let text = tiles::map_file::write(map);
+                format!("{id} {}\n{text}\n", text.len())
+            })
+            .collect();
+        section("tilemaps", &maps);
         let head = format!(
             "project {}\ntick {}\ntime {:x}\nseed {}\n",
             one_line(&self.project),
@@ -520,6 +545,27 @@ impl Save {
                 Ok((EntityId(id), values))
             })
             .collect::<Result<Vec<_>, String>>()?;
+        let mut maps_text = section("tilemaps")?;
+        let mut tile_maps = Vec::new();
+        while !maps_text.is_empty() {
+            if tile_maps.len() >= area::text::MAX_ENTITIES {
+                return Err(damaged());
+            }
+            let (head, after) = maps_text.split_once('\n').ok_or_else(damaged)?;
+            let (id, length) = head.split_once(' ').ok_or_else(damaged)?;
+            let id: reflect::Id = id.parse().map_err(|_| damaged())?;
+            let length: usize = length.parse().map_err(|_| damaged())?;
+            let text = after.get(..length).ok_or_else(damaged)?;
+            maps_text = after
+                .get(length..)
+                .and_then(|a| a.strip_prefix('\n'))
+                .ok_or_else(damaged)?;
+            let read = tiles::map_file::read(text).map_err(|_| damaged())?;
+            if !read.notes.is_empty() {
+                return Err(damaged());
+            }
+            tile_maps.push((EntityId(id), read.map));
+        }
         Ok(Self {
             project,
             ticks,
@@ -532,6 +578,7 @@ impl Save {
             physics,
             places,
             animators,
+            tile_maps,
             notes: {
                 // A section no version writes: not a save this Solis made.
                 if !list.is_empty() {
@@ -628,6 +675,7 @@ impl Workbench {
             physics: bodies,
             places,
             animators: playing.world.animator_values(),
+            tile_maps: playing.world.tile_maps(),
             notes: Vec::new(),
         })
     }
@@ -740,6 +788,7 @@ impl Workbench {
         world.set_seed(save.seed);
         world.projectiles_mut().restore(save.projectiles);
         world.restore_animator_values(save.animators);
+        world.restore_tile_maps(save.tile_maps);
         if self.playing.is_none() {
             self.play();
         }

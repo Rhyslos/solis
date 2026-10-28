@@ -128,6 +128,22 @@ pub enum WorkbenchAction {
         /// What to save.
         text: String,
     },
+    /// Save a tileset (`.soltileset`, inside the project's assets), making
+    /// it if it isn't there yet (Phase 9, D4).
+    SaveTileset {
+        /// The file.
+        path: std::path::PathBuf,
+        /// What to save.
+        text: String,
+    },
+    /// Save a tile map file (`.soltilemap`, inside the project's assets),
+    /// making it if it isn't there yet (Phase 9, D4).
+    SaveTileMap {
+        /// The file.
+        path: std::path::PathBuf,
+        /// What to save.
+        text: String,
+    },
     /// Save the project's 2D settings to its `pixels.solpix` (Settings >
     /// 2D).
     SavePixels(area::pixels::PixelSettings),
@@ -288,6 +304,12 @@ pub struct Workbench {
     /// Whether the pointer was over the Animator tab last frame: Ctrl+Z,
     /// Ctrl+Y, Delete and F are the animator's then.
     pub(crate) animator_hovered: bool,
+    /// The Map tab's undo steps, the selected map's values shown over it
+    /// and its hidden layers (Phase 9, D4).
+    pub(crate) map_edits: crate::workbench_tiles::MapEdits,
+    /// Whether the pointer was over the Map tab last frame (Ctrl+Z and
+    /// Ctrl+Y are the map's then).
+    pub(crate) map_hovered: bool,
     /// Each sprite sheet's atlas as an egui picture, by path, for the
     /// Library and Properties, and which sheet each was made from.
     pub(crate) sheet_pictures: HashMap<String, egui::TextureHandle>,
@@ -419,6 +441,8 @@ impl Workbench {
             frames_hovered: false,
             animator_editor: None,
             animator_hovered: false,
+            map_edits: Default::default(),
+            map_hovered: false,
             sheet_pictures: HashMap::new(),
             sheet_pictures_from: HashMap::new(),
             place_targets: BTreeMap::new(),
@@ -842,6 +866,8 @@ impl Workbench {
             self.editor_view = Some(key);
         }
         self.viewport.entities = self.document.area().len();
+        self.follow_map_selection();
+        self.set_tile_overlay();
         self.prepare_tools();
         self.find_problems();
         let menu = crate::menu_items::MenuState::of(self);
@@ -903,6 +929,24 @@ impl Workbench {
         };
         let mut frames_out = crate::panels::FramesOut::default();
         let live = self.live_animator();
+        let mut map_requests = Vec::new();
+        let map_shown = self.map_shown();
+        let map_name = self
+            .map_edits
+            .path
+            .as_deref()
+            .map(crate::sprite_sheets::name_of)
+            .unwrap_or_default();
+        let map = map_shown
+            .as_ref()
+            .map(|(map, tileset)| crate::map_tab::MapUi {
+                name: map_name.clone(),
+                map,
+                tileset: tileset.as_deref(),
+                hovered: self.viewport.tile_overlay.hovered,
+                hidden: &self.map_edits.hidden,
+                playing,
+            });
         let frames = self.frames_editor.as_mut().map(|editor| {
             crate::workbench_frames::frames_ui(
                 editor,
@@ -974,11 +1018,16 @@ impl Workbench {
                         frames,
                         frames_out: &mut frames_out,
                         animator,
+                        map,
+                        map_requests: &mut map_requests,
                     },
                 );
         });
         self.in_front = shown;
+        self.map_hovered = frames_out.map_hovered;
         self.frames_tabs_done(frames_out, &mut actions);
+        self.map_requests_done(map_requests);
+        self.tile_overlay_done();
         if game_clicked {
             self.give_game_input(ui.ctx());
         }
@@ -1215,6 +1264,9 @@ impl Workbench {
         } else if animator {
             // Over the Animator tab: the animator's changes.
             self.animator_undo(redo, undo);
+        } else if self.map_hovered && self.map_edits.path.is_some() {
+            // Over the Map tab: the map's changes.
+            self.map_undo(redo, undo);
         } else if redo {
             self.redo();
         } else if undo {
