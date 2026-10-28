@@ -27,6 +27,8 @@ pub enum AssetKind {
     Assembly,
     /// A sound file (WAV, Ogg Vorbis; decision 0056).
     Sound,
+    /// A sound event (`.solsound`): takes and how to vary them.
+    SoundEvent,
 }
 
 /// The extensions of sound files Solis reads (decision 0056). The
@@ -35,6 +37,9 @@ pub const SOUND_EXTENSIONS: [&str; 2] = ["wav", "ogg"];
 
 /// The extension of assembly files.
 pub const ASSEMBLY_EXTENSION: &str = "solassembly";
+
+/// The extension of sound event files (the `sound` crate reads them).
+pub const SOUND_EVENT_EXTENSION: &str = "solsound";
 
 impl AssetKind {
     /// The kind of the file at `path`, by its extension, if Solis reads it.
@@ -47,6 +52,8 @@ impl AssetKind {
             Some(Self::Assembly)
         } else if SOUND_EXTENSIONS.contains(&ext.as_str()) {
             Some(Self::Sound)
+        } else if ext == SOUND_EVENT_EXTENSION {
+            Some(Self::SoundEvent)
         } else {
             None
         }

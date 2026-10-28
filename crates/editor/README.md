@@ -29,7 +29,7 @@ Tests of the whole editor (drawn with egui_kittest, without a GPU) are in `workb
 
 ## Depends on
 
-`reflect` and `area` (the document it edits), `world` (the running game), egui, egui_dock, glam, serde and chrono. Never `render` or `asset_db`: the app connects those.
+`reflect` and `area` (the document it edits), `world` (the running game), `sound` (sound events' settings), egui, egui_dock, glam, serde and chrono. Never `render` or `asset_db`: the app connects those.
 
 ## Status
 

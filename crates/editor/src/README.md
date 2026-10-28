@@ -30,7 +30,8 @@ Tests: files ending `_tests.rs` hold the tests of the file with the same start (
 | `area_panel.rs` | The Area panel: entities as a tree, with search, folding, hiding and locking. | |
 | `properties.rs`, `inspector.rs` | The Properties panel, and fields drawn from any component's schema, so built-in, Lust and Lua components show the same way. | |
 | `library.rs` | The Library panel: the project's files as thumbnails or a list, with a folder tree and search; drag to place or move. | `LibraryItem`, `ProjectInfo` |
-| `sound_view.rs` | Sound files in the Library and Properties: waveform, details, Play and Stop. | `SoundInfo`, `Preview` |
+| `sound_event_view.rs` | A sound event in Properties: its takes (sound files dropped on the list are added), how each play varies, where it's heard, and Play; saved once the mouse is let go. | `event_properties` |
+| `sound_view.rs` | Sound files in the Library and Properties: waveform, details, Play and Stop. | `SoundInfo`, `SoundState`, `EventState`, `Preview` |
 | `console.rs`, `console_commands.rs` | The Console panel (messages, filters, search) and the commands typed under it. | `LogLine`, `LogLevel` |
 | `problems.rs` | The Problems panel: mistakes in game code and in the open area. | `Problem`, `ProblemKind` |
 | `profiler.rs` | The Profiler panel: where each frame's time goes, on the CPU and the GPU. | `Profiler`, `Stage` |

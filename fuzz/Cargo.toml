@@ -114,3 +114,10 @@ path = "fuzz_targets/sound_file.rs"
 test = false
 doc = false
 bench = false
+
+[[bin]]
+name = "sound_event"
+path = "fuzz_targets/sound_event.rs"
+test = false
+doc = false
+bench = false

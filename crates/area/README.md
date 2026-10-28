@@ -30,4 +30,4 @@ Be the one place an area lives while it's edited. The editor, saving and loading
 
 ## Status
 
-Phase 2 complete: the document, the built-in components, edits and undo history, the tree, and the text format.
+Phase 2 complete: the document, the built-in components, edits and undo history, the tree, and the text format. Phase 7, S2: settings files (`settings.rs`) in the same text style, for sound events and later the mixer.

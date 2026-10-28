@@ -22,6 +22,7 @@ world.workspace = true
 physics.workspace = true
 script.workspace = true
 input.workspace = true
+sound.workspace = true
 egui.workspace = true
 egui_dock.workspace = true
 glam.workspace = true

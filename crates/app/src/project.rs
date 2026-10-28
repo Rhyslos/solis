@@ -183,6 +183,7 @@ impl Projects {
                     FileKind::Texture => LibraryKind::Texture,
                     FileKind::Code => LibraryKind::Code,
                     FileKind::Sound => LibraryKind::Sound,
+                    FileKind::SoundEvent => LibraryKind::SoundEvent,
                     FileKind::Other => LibraryKind::Other,
                 },
                 // Files Solis doesn't know keep their whole name, so
@@ -213,6 +214,52 @@ impl Projects {
     pub fn new_folder(&self, parent: &Path) -> Result<PathBuf, String> {
         let db = self.db.as_ref().ok_or("no project is open")?;
         db.new_folder(parent).map_err(|e| e.to_string())
+    }
+
+    /// Makes a new sound event in `folder` (inside the assets) holding
+    /// `text`, named "New sound event" (with a number if that's taken), and
+    /// gives it its ID at once. Returns where it is, inside the assets.
+    pub fn new_sound_event(&mut self, folder: &Path, text: &str) -> Result<PathBuf, String> {
+        let db = self.db.as_mut().ok_or("no project is open")?;
+        let assets = db.project().assets();
+        let dir = assets.join(folder);
+        if !dir.is_dir() {
+            return Err(format!("{} isn't a folder in the assets", folder.display()));
+        }
+        let ext = asset_db::SOUND_EVENT_EXTENSION;
+        let name = (1..1000)
+            .map(|n| {
+                if n == 1 {
+                    format!("New sound event.{ext}")
+                } else {
+                    format!("New sound event {n}.{ext}")
+                }
+            })
+            .find(|name| !dir.join(name).exists())
+            .ok_or("there are already 999 new sound events in that folder")?;
+        let file = dir.join(&name);
+        asset_db::write_atomically(&file, text.as_bytes()).map_err(|e| e.to_string())?;
+        // Made by Solis just now: taken at once, not left to settle.
+        db.adopt(&file).map_err(|e| e.to_string())?;
+        db.rescan();
+        Ok(folder.join(name))
+    }
+
+    /// Saves a sound event's file (inside the assets). Only `.solsound`
+    /// files are written, so a bad path can't overwrite anything else.
+    pub fn save_sound_event(&self, path: &Path, text: &str) -> Result<(), String> {
+        let db = self.db.as_ref().ok_or("no project is open")?;
+        let is_event = path
+            .extension()
+            .is_some_and(|e| e.eq_ignore_ascii_case(asset_db::SOUND_EVENT_EXTENSION));
+        if !is_event || path.is_absolute() {
+            return Err("it isn't a sound event file in the assets".to_owned());
+        }
+        let file = db.project().assets().join(path);
+        if !file.is_file() {
+            return Err("the file isn't there any more".to_owned());
+        }
+        asset_db::write_atomically(&file, text.as_bytes()).map_err(|e| e.to_string())
     }
 
     /// Moves a file or folder (inside the assets) to the Recycle Bin.
@@ -316,5 +363,51 @@ mod tests {
     fn the_recent_list_is_kept_short() {
         let many: Vec<PathBuf> = (0..20).map(|i| PathBuf::from(format!("/p{i}"))).collect();
         assert_eq!(Projects::with_recent(many).recent().len(), MAX_RECENT);
+    }
+
+    #[test]
+    fn sound_events_are_made_with_free_names_and_saved_only_as_events() {
+        let root = folder("sound-events");
+        let _ = std::fs::remove_dir_all(&root);
+        std::fs::create_dir_all(&root).unwrap();
+        let mut projects = Projects::default();
+        projects
+            .open(&root, true, assets::Limits::default())
+            .unwrap();
+        let first = projects
+            .new_sound_event(Path::new(""), "sound version 1;\n")
+            .unwrap();
+        let second = projects
+            .new_sound_event(Path::new(""), "sound version 1;\n")
+            .unwrap();
+        assert_eq!(first, PathBuf::from("New sound event.solsound"));
+        assert_eq!(second, PathBuf::from("New sound event 2.solsound"));
+        let listing = projects.listing();
+        let made = listing.files.iter().find(|f| f.path == first).unwrap();
+        assert_eq!(made.kind, FileKind::SoundEvent);
+        assert!(made.id.is_some(), "an ID at once, not after settling");
+        assert!(projects.new_sound_event(Path::new("nowhere"), "x").is_err());
+
+        projects
+            .save_sound_event(&first, "sound version 1;\nloop = true;\n")
+            .unwrap();
+        let text = std::fs::read_to_string(root.join("assets").join(&first)).unwrap();
+        assert!(text.contains("loop = true"));
+        std::fs::write(root.join("assets/notes.txt"), "mine").unwrap();
+        assert!(
+            projects
+                .save_sound_event(Path::new("notes.txt"), "x")
+                .is_err()
+        );
+        assert!(
+            projects
+                .save_sound_event(Path::new("gone.solsound"), "x")
+                .is_err()
+        );
+        assert_eq!(
+            std::fs::read_to_string(root.join("assets/notes.txt")).unwrap(),
+            "mine"
+        );
+        let _ = std::fs::remove_dir_all(&root);
     }
 }

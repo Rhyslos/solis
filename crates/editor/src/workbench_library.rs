@@ -115,6 +115,18 @@ impl Workbench {
                 actions.push(WorkbenchAction::PlaySound(path.into()));
             }
             LibraryRequest::StopSound => actions.push(WorkbenchAction::StopSound),
+            LibraryRequest::NewSoundEvent(folder) => {
+                actions.push(WorkbenchAction::NewSoundEvent(folder.into()));
+            }
+            LibraryRequest::SaveSoundEvent(path, event) => {
+                if plain_relative(&path) {
+                    actions.push(WorkbenchAction::SaveSoundEvent {
+                        path: path.into(),
+                        event,
+                    });
+                }
+            }
+            LibraryRequest::AddTake(path, take) => self.add_take(&path, take, actions),
         }
     }
 
@@ -124,13 +136,65 @@ impl Workbench {
         let picked = &self.library_state.selected;
         if picked != before
             && let Some(path) = picked
-            && self
-                .library
-                .iter()
-                .any(|i| &i.path == path && i.kind == LibraryKind::Sound)
+            && self.library.iter().any(|i| {
+                &i.path == path && matches!(i.kind, LibraryKind::Sound | LibraryKind::SoundEvent)
+            })
         {
             self.sound_shown = Some((path.clone(), self.document.selection.clone()));
         }
+    }
+
+    /// Adds `take` to the sound event at `path`, unless it's already there
+    /// or the event is full (said in the Console).
+    fn add_take(&mut self, path: &str, take: AssetId, actions: &mut Vec<WorkbenchAction>) {
+        let Some(crate::sound_view::EventState::Read { event, .. }) = self.sound_events.get(path)
+        else {
+            self.log(
+                LogLevel::Warning,
+                format!("Couldn't add the take: {path} isn't a sound event Solis could read."),
+            );
+            return;
+        };
+        if event.takes.contains(&take) {
+            return;
+        }
+        if event.takes.len() >= sound::event::MAX_TAKES {
+            self.log(
+                LogLevel::Warning,
+                format!(
+                    "{path} already has {} takes, the most a sound event holds.",
+                    sound::event::MAX_TAKES
+                ),
+            );
+            return;
+        }
+        let mut event = event.clone();
+        event.takes.push(take);
+        if plain_relative(path) {
+            actions.push(WorkbenchAction::SaveSoundEvent {
+                path: path.into(),
+                event,
+            });
+        }
+    }
+
+    /// Picks the file at `path` (inside the assets) in the Library, opens
+    /// its folder there, and shows it in Properties if it's a sound or
+    /// sound event (the app calls this after making a new sound event).
+    pub fn show_in_library(&mut self, path: &str) {
+        self.library_state.folder = path.rsplit_once('/').map_or("", |(f, _)| f).to_owned();
+        self.library_state.search.clear();
+        self.library_state.selected = Some(path.to_owned());
+        self.sound_shown = Some((path.to_owned(), self.document.selection.clone()));
+    }
+
+    /// The sound events as the app has read them, by path inside the
+    /// assets (`/` between folders).
+    pub fn set_sound_events(
+        &mut self,
+        events: std::collections::HashMap<String, crate::sound_view::EventState>,
+    ) {
+        self.sound_events = events;
     }
 
     /// Stops showing a sound file in Properties once the area's selection

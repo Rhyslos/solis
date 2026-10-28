@@ -10,7 +10,9 @@ Sound (decision 0056): the Kira library does the playing and mixing, wrapped her
 | `read.rs` | Reads WAV (through `hound`) and Ogg Vorbis (through `lewton`) within limits. Short sounds are decoded into memory; long ones are measured once and streamed from their file. | `Clip`, `ClipInfo`, `Samples`, `Format`, `ReadError`, `read_file`, `measure_file` |
 | `vorbis_check.rs` | Checks an Ogg Vorbis file's headers before `lewton` reads them, because a damaged header can make it ask for more memory than there is. | |
 | `overview.rs` | A sound's loudness over its length, small enough to keep for every sound: the waveform the Library and Properties draw. | `Overview` |
-| `device.rs` | The sound device on the sound card (or a test device, or none), and the editor's previews on a track of their own. | `SoundDevice` |
+| `device.rs` | The sound device on the sound card (or a test device, or none), and the editor's previews on a track of their own, varied in volume and pitch for sound events. | `SoundDevice` |
+| `event.rs` | Sound events (`.solsound`): reading and writing them within limits, and picking each play (a take, its volume and pitch) from sound's own random numbers. | `SoundEvent`, `Pick`, `read`, `write`, `pick` |
+| `event_tests.rs` | Tests for sound events: round trips, mistakes refused with their line, and picks within their ranges, never the same take twice running. | |
 | `tests.rs` | Tests for reading sound files, their overviews and the device, including the damaged files in [`../tests/data`](../tests/README.md). | |
 
 **Read next:** the crate's [README](../README.md).

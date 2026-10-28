@@ -174,13 +174,23 @@ impl TabViewer for PanelViewer<'_> {
             }
             Panel::Properties => {
                 if let Some(path) = self.sound_shown {
-                    let request = crate::sound_view::sound_properties(
-                        ui,
-                        path,
-                        self.sounds.states.get(path),
-                        self.sounds.preview,
-                    );
-                    self.library_requests.extend(request);
+                    if self.sounds.events.contains_key(path) || path.ends_with(".solsound") {
+                        let requests = crate::sound_event_view::event_properties(
+                            ui,
+                            path,
+                            self.sounds,
+                            self.library,
+                        );
+                        self.library_requests.extend(requests);
+                    } else {
+                        let request = crate::sound_view::sound_properties(
+                            ui,
+                            path,
+                            self.sounds.states.get(path),
+                            self.sounds.preview,
+                        );
+                        self.library_requests.extend(request);
+                    }
                     return;
                 }
                 let requests = properties(

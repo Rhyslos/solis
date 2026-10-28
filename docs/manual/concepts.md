@@ -134,6 +134,11 @@
 - **WAV and Ogg:** the two kinds of sound file Solis reads. WAV keeps every sample as it is (big files, right for short effects from a sound editor); Ogg (Ogg Vorbis) is squeezed to about a tenth of the size with little to hear, right for music and anything long.
 - **Sample rate:** how many times a second a sound is measured, such as 44,100 (CD quality) or 48,000. Higher keeps finer detail, in a bigger file.
 - **Channels:** how many separate sounds a file holds side by side: one (mono) or two (stereo, left and right).
+- **Sound event:** what a game plays, such as "footstep": a few recordings and how to vary them each time. See [Sound events](sound-events.md).
+- **Take:** one recording of a sound, as in a recording studio. A footstep event might hold five takes of a foot on gravel.
+- **Decibel (dB):** how loudness is measured. Every 6 dB is about twice (or half) as loud, and 0 dB means as recorded.
+- **Semitone (st):** one step on a piano keyboard. 12 semitones is an octave: twice the pitch. Playing a sound faster raises its pitch.
+- **Bus:** a group of sounds turned up or down together, like a channel on a mixing desk: music, effects, voices, ambience and the interface each have one.
 - **Streaming:** playing a long sound a piece at a time as it's read from its file, instead of reading all of it first, so a long piece of music doesn't fill the memory. Solis streams sounds longer than ten minutes.
 
 ## Getting Solis

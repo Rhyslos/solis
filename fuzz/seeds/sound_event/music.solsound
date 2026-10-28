@@ -1,0 +1,6 @@
+sound version 1;
+placement = "Everywhere";
+loop = true;
+bus = "Music";
+priority = "High";
+fade = "None";

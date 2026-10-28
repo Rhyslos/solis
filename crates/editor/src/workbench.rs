@@ -99,6 +99,17 @@ pub enum WorkbenchAction {
     PlaySound(std::path::PathBuf),
     /// Stop listening to the sound playing.
     StopSound,
+    /// Make a new sound event in this folder (inside the project's
+    /// assets), and show it with [`Workbench::show_in_library`].
+    NewSoundEvent(std::path::PathBuf),
+    /// Save a sound event's settings to its `.solsound` file (inside the
+    /// project's assets).
+    SaveSoundEvent {
+        /// The file.
+        path: std::path::PathBuf,
+        /// What to save.
+        event: sound::SoundEvent,
+    },
     /// Change one field of an entity inside an assembly's file (Apply to
     /// assembly); the app saves it and hands it back with
     /// [`Workbench::set_assembly`], which updates every copy.
@@ -224,6 +235,9 @@ pub struct Workbench {
     /// The project's sound files as the app has measured them, by path
     /// inside the assets.
     pub(crate) sounds: std::collections::HashMap<String, crate::sound_view::SoundState>,
+    /// The project's sound events as the app has read them, by path
+    /// inside the assets.
+    pub(crate) sound_events: std::collections::HashMap<String, crate::sound_view::EventState>,
     /// The sound being listened to, and how far it has got.
     pub(crate) preview: Option<crate::sound_view::Preview>,
     /// The sound file Properties shows (picked in the Library), with the
@@ -340,6 +354,7 @@ impl Workbench {
             folders: Vec::new(),
             library_state: Default::default(),
             sounds: std::collections::HashMap::new(),
+            sound_events: std::collections::HashMap::new(),
             preview: None,
             sound_shown: None,
             place_targets: BTreeMap::new(),
@@ -848,6 +863,7 @@ impl Workbench {
                         library_requests: &mut library_requests,
                         sounds: crate::library::Sounds {
                             states: &self.sounds,
+                            events: &self.sound_events,
                             preview: self.preview.as_ref(),
                         },
                         sound_shown: self.sound_shown.as_ref().map(|(path, _)| path.as_str()),
