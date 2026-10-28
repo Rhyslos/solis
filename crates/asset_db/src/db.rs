@@ -453,7 +453,7 @@ impl AssetDb {
         if let Ok(hash) = hash_file(&file) {
             sidecar.hash = format!("{hash:016x}");
         }
-        sidecar.write(&path)?;
+        sidecar.write_in(self.project.root(), &path)?;
         Ok(ids)
     }
 }
