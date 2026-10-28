@@ -383,7 +383,7 @@ fn play_with_others_says_when_it_arrives() {
     h.get_by_label("Play with two players").click();
     h.run();
     let last = h.state().log_lines().last().map(|l| l.text.clone());
-    assert!(last.is_some_and(|t| t.contains("Phase 16")));
+    assert!(last.is_some_and(|t| t.contains("Phase 17")));
 }
 
 /// Part of the scale check (`tools/scale/scale-check.sh`, decision

@@ -25,7 +25,7 @@ The rest as recommended: Solis's own drawing (shader shapes, `lyon`, `fdsm` text
 - **You draw it** in a canvas inside Solis: boxes, circles, lines, curves and text, placed on the screen and pinned to its corners or edges so it fits any screen shape. **Or you type it**: the canvas and the code are two ways of looking at the same file, and either one can be used at any time.
 - **Solis draws every line and letter itself**, every frame, at the size of the screen it's on. Nothing is a picture, so nothing goes blurry at 4K, and effects such as glow or a pixel-art look apply to everything at once.
 - **Values are tied to the game.** A tie says "this number follows the player's `Health.hp`". The bar's width is worked out from it, so the bar moves on its own; no game code has to "update the UI".
-- **The UI only looks; it never touches.** It reads the game as the last tick left it. When the player clicks Resume, that click is sent to the game the way a key press is, at the next tick, so recordings, replays and (Phase 16) networked games stay exactly the same on every PC.
+- **The UI only looks; it never touches.** It reads the game as the last tick left it. When the player clicks Resume, that click is sent to the game the way a key press is, at the next tick, so recordings, replays and (Phase 17) networked games stay exactly the same on every PC.
 
 ## Choices to make before any code
 
@@ -284,13 +284,13 @@ column [name buttons, anchor center, gap 16,] {
 - **The canvas edits the text, not a copy of it.** Solis's reader keeps where each element and each style word is in the file; a change replaces just those characters, and a new element is written in the canonical shape. Comments, blank lines and hand-written code are never rewritten.
 - **The canonical shape is made to merge** (decision 0020's tests): one element per block; an element with more than three styles writes one style per line, each ending with a comma (hence the trailing comma in M2), so two people changing different properties of the same element change different lines. Names, not positions, find elements, so moving one up the list is a small change.
 - **Drawing order is file order** (later in front, as in Lust's `stack`): reordering moves a block, which Git handles.
-- `.gitattributes` marks `assets/ui/**/*.lst` `text eol=lf`, like areas. The Phase 17 merge tool can learn screens (element by element, by name) later; plain Git is enough for the gate.
+- `.gitattributes` marks `assets/ui/**/*.lst` `text eol=lf`, like areas. The Phase 18 merge tool can learn screens (element by element, by name) later; plain Git is enough for the gate.
 - Saving writes a temporary file and swaps it in (rule 11).
 
 ## Risks
 
 - **Lust changes:** the drawing words, `tied` and `like Screen` are changes to the project lead's language, so their wording waits for answers. M1 doesn't need them, so the work can start before they're settled.
-- **Built games** (Phase 17) run Lust as Rust, whose views today open their own window. Lust's Rust output will need to hand a screen's tree to Solis instead, as its Lua output does. Noted for Phase 15, and designed for now by keeping "a view gives a tree of pieces with values" as the only contract.
+- **Built games** (Phase 18) run Lust as Rust, whose views today open their own window. Lust's Rust output will need to hand a screen's tree to Solis instead, as its Lua output does. Noted for Phase 15, and designed for now by keeping "a view gives a tree of pieces with values" as the only contract.
 - **Editing code with a canvas** is the hardest part. Limiting the canvas to the parts it understands (the "code" badge) keeps it safe; M4 may need splitting in two.
 - **Small text from distance images** can look soft below about 12 pixels. If it does, small sizes are drawn from ordinary letter images (still from the font's outlines, so still sharp).
 - **The effects plan's order:** if bloom lands after M6 is due, M6 builds `render::post` itself and the effects plan reuses it.

@@ -17,18 +17,20 @@ Each phase ends with a **gate**: something the project lead tries by hand before
 | 4. Lust and Lua join | Components written in Lust or Lua, in play mode within 2 seconds |
 | 5. Scale | 2,000 units and 20,000 projectiles at 60 fps; 10,000 and 100,000 still playable; the ceiling measured |
 | 6. Simulation and play | Physics, input, a deterministic simulation |
-| 7. Sound and animation | Sound events and buses; animated characters |
+| 7. Sound | Sound events, buses and ducking, sounds in the world, reverb zones, listeners |
 | 8. Compatibility | Updates never lose work: backups before upgrades, old files keep opening, saves survive updates, the game-code interface guarded, real projects tested before an update ships |
-| 9. 2D, part 1 | Pixel-perfect 2D, sprites from Aseprite, frame animation, tile maps that change as you play, autotiling, the tile painter, top-down movement, the 2D camera, lamps on sprites |
+| 9. 2D, part 1 | Pixel-perfect 2D, sprites from Aseprite, frame animation with the animation state machine and graph editor, tile maps that change as you play, autotiling, the tile painter, top-down movement, the 2D camera, lamps on sprites |
 | 10. 2D, part 2 | Levels and the world map, advanced tiling, pathfinding, soft 2D shadows, the platformer and grid-step controllers, parallax and palette tools, the 2D sample |
 | 11. Playtest export | Games packaged for playtesting, without the editor |
 | 12. Game UI | Sungraph UI: HUDs and menus drawn in Solis |
 | 13. Light, sky and atmosphere | A physical sky, sunsets and night; shadows near and far; many lamps; fog and clouds; bounced light, baked and real-time; 2D bounced light |
 | 14. Materials and shaders | Materials as assets, values driven by the world, a node graph for shaders |
 | 15. Effects | Solstice, the effects suite: particles, trails, flipbooks; a pixel mode for pixel art |
-| 16. Netcode | Two PCs playing together over the internet |
-| 17. Scripting, full export and Git | The scripting window; finished games built for Windows, with their own Rust; working in teams through Git |
-| 18. Solis 0.1 | The flagship space battle, docs, release |
+| *Later (decision 0059)* | |
+| 16. 3D animation | Animated characters from glTF: skins, blending, crowds, footsteps on the right frames |
+| 17. Netcode | Two PCs playing together over the internet |
+| 18. Scripting, full export and Git | The scripting window; finished games built for Windows, with their own Rust; working in teams through Git |
+| 19. Solis 0.1 | The flagship space battle, docs, release |
 
 Lust joins in Phase 4, right after the editor, so game logic can be written in Lust from then on ([decision 0016](docs/decisions/0016-how-lust-joins-solis.md)). Phases 0–3 don't need Lust; if it isn't ready by Phase 4, Phase 5 (Scale) goes first.
 
@@ -141,14 +143,13 @@ Stronger tests before building on the game loop ([decision 0042](docs/decisions/
 
 **Gate:** the project lead reads the hardening report (coverage, mutations caught, hours fuzzed and what was found) and tries the playground once more.
 
-## Phase 7: Sound and animation
+## Phase 7: Sound
 
-The working plans are [docs/plans/phase-7-sound.md](docs/plans/phase-7-sound.md) and [docs/plans/phase-7-animation.md](docs/plans/phase-7-animation.md) ([decisions 0056](docs/decisions/0056-sound-with-kira.md) and [0057](docs/decisions/0057-animation-near-live-far-baked.md), and [0058](docs/decisions/0058-listeners-and-who-hears-what.md)): fourteen milestones, sound first.
+The working plan is [docs/plans/phase-7-sound.md](docs/plans/phase-7-sound.md) ([decisions 0056](docs/decisions/0056-sound-with-kira.md) and [0058](docs/decisions/0058-listeners-and-who-hears-what.md)). Animation left this phase ([decision 0059](docs/decisions/0059-2d-first.md)): frame animation and the state machine come with 2D (Phase 9), and 3D skeletal animation has its own phase once 2D is complete (Phase 16).
 
-- **Sound** (Kira): sound events with random clips, pitch and volume; buses and ducking; 3D falloff; reverb zones; listeners, and who hears what.
-- **Animation:** skeletal animation from glTF, state machines, blending, and animation events. The state machine is built to drive 2D sprite frames too (Phase 9), so 2D and 3D share one animation system.
+- **Sound** (Kira): sound events with random takes, pitch and volume; buses and ducking; sounds placed in the world; reverb zones; listeners, and who hears what.
 
-**Gate:** a character walks and runs with smooth blending, footsteps play on the right frames, and a reverb zone changes how they sound.
+**Gate:** footsteps each sound a little different, the music dips while someone speaks, and walking into a reverb zone makes the steps echo.
 
 ## Phase 8: Compatibility
 
@@ -169,7 +170,7 @@ First-class 2D ([decision 0054](docs/decisions/0054-first-class-2d.md)), built a
 
 - **The pixel-perfect view and the 2D editor:** drawn at the game's own resolution and scaled up crisply, smooth scrolling without shimmer, sharp text and menus.
 - **Sprites from Aseprite:** tags, slices, events, layers and palettes, reloaded on save; atlases packed automatically; 100,000 sprites drawn cheaply.
-- **Frame animation** on the same state machine as 3D.
+- **Frame animation,** with the animation state machine and the animator graph editor built here, for sprite frames first, and made so 3D skeletons use the same ones later (Phase 16). Frame events can play sound events (footsteps with no code).
 - **Tile maps that change as you play:** cells store meaning and their own data (a crop's growth), changes batched per chunk, saved as text that merges in Git.
 - **Autotiling:** each tileset chooses its kind (16-tile, 47-tile, edge sets or custom rules), set up with a wizard.
 - **The tile painter.**
@@ -194,7 +195,7 @@ First-class 2D ([decision 0054](docs/decisions/0054-first-class-2d.md)), built a
 
 - **File > Export for playtesting:** a folder to zip and send, with a game program without the editor and the project's files packed beside it.
 - Lust and Lua run as in Play, so there's no long compile; windowed, fullscreen and resolution settings; saves in the player's saved-games folder; a crash log playtesters can send back.
-- What waits for the full export (Phase 17): building a game's own Rust code, an installer, and Steam.
+- What waits for the full export (Phase 18): building a game's own Rust code, an installer, and Steam.
 
 **Gate:** a friend plays an exported build on their PC without Solis installed.
 
@@ -246,7 +247,23 @@ Light and effects meet in materials: how a surface takes light, glows, gets wet 
 
 **Gate:** laser bolts, hits and explosions look good in the stylized look, in the benchmark battle, at 60 fps; in a pixel-art game, fireflies light a field at night and wind streaks cross it, all crisp on the pixel grid.
 
-## Phase 16: Netcode
+---
+
+## Later
+
+**Later, not next:** Phases 16 to 19 are written down so nothing is lost, but they aren't built, planned in detail or reordered until Phase 15 is done and the project lead decides it's time ([decision 0059](docs/decisions/0059-2d-first.md)). 2D and effects will turn up things nobody can foresee yet, so expect these to change.
+
+## Phase 16: 3D animation
+
+Moved here from Phase 7 ([decision 0059](docs/decisions/0059-2d-first.md)): Solis is 2D-ready first, so the project lead's game can be built in full, then the 3D parts follow. The working plan is [docs/plans/phase-7-animation.md](docs/plans/phase-7-animation.md) (decision 0057), whose research for skins and clips is already done.
+
+- **Skeletal animation from glTF:** skins and clips, read safely; skinned drawing; crowds with baked clips and animation levels of detail.
+- **Blending for skeletons:** crossfades and blend spaces, on the state machine 2D brought (Phase 9).
+- **Cues on 3D clips:** footsteps on the right frames, in the playground.
+
+**Gate:** a character walks and runs with smooth blending, and its footsteps play on the right frames.
+
+## Phase 17: Netcode
 
 Moved here from its first place, Phase 8 ([decisions 0046](docs/decisions/0046-light-before-netcode.md), [0048](docs/decisions/0048-materials-and-shaders-before-effects.md) and [0054](docs/decisions/0054-first-class-2d.md)): what it needs (fixed ticks, determinism, checksums, save games) is built, and a CI check keeps two PCs playing the same game until then. Netcode in layers ([decision 0005](docs/decisions/0005-netcode-in-layers.md)):
 
@@ -260,7 +277,7 @@ Moved here from its first place, Phase 8 ([decisions 0046](docs/decisions/0046-l
 
 **Gate:** two PCs on different networks play the benchmark area together without desyncing, with simulated lag.
 
-## Phase 17: Scripting, full export and Git
+## Phase 18: Scripting, full export and Git
 
 - **The scripting window:** LustScript and Lua through Luau, calling the same commands as the built-in tools, with undo, a sandbox and time limits (the design Aventail plans for its Phase 9).
 - **The full export:** finished games for Windows ([decision 0012](docs/decisions/0012-windows-only.md)), with the game's own Rust built in and Lust compiled for speed, an installer, and Build-and-Play from the top bar. It grows from the playtest export (Phase 11).
@@ -269,7 +286,7 @@ Moved here from its first place, Phase 8 ([decisions 0046](docs/decisions/0046-l
 
 **Gate:** write a small editor tool that places objects in a ring; export a game and run it on a PC without Solis installed. Two people on two PCs work on the same project through GitHub for an evening: commit, pull, lock a model, and resolve one real area conflict in the editor.
 
-## Phase 18: Solis 0.1
+## Phase 19: Solis 0.1
 
 - **The flagship sample, written in Lust:** a small space battle. Two capital ships, a carrier launching fighter squadrons, a few hundred lasers in the air, over the network.
 - **Docs:** getting started, a first-game tutorial, and a reference for the engine as Lust sees it (the `solis/` files).

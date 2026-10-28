@@ -28,9 +28,9 @@ The first build takes a few minutes. `cargo run -p app -- --help` lists the opti
 
 Solis is built in phases, one milestone per pull request. Each phase ends with a **gate** the project lead tries by hand before the next starts. This tracker is updated by the pull request that finishes each milestone; the full plan is in [ROADMAP.md](ROADMAP.md).
 
-**Overall: 42 of 130 milestones** `████░░░░░░░░░` 32%
+**Overall: 42 of 131 milestones** `████░░░░░░░░░` 32%
 
-**Now:** Phases 1, 2 and 3 are built and wait for their gates to be tried by hand ([Phase 3 plan](docs/plans/phase-3.md)). Phase 4, game code, is built and reviewed, and waits for its gate too ([Phase 4 plan](docs/plans/phase-4.md)). Phase 5, scale, is built and reviewed, and waits for its gate ([Phase 5 plan](docs/plans/phase-5.md)): try **Help > Make the benchmark…**. Phase 6, simulation and play, is built and reviewed three times, and waits for its gate ([Phase 6 plan](docs/plans/phase-6.md)): try **Help > Make the playground…**. The hardening milestone is done and everything is merged: its gate is reading the [hardening report](docs/reports/hardening-phase-6.md) and trying the playground once more. Solis now installs and updates itself from GitHub's Releases page. Phase 7, sound and animation, has begun: sounds can be listened to in the Library (S1), sound events vary each play (S2), and game code plays them in 3D (S3). Next is A1, skins and clips from glTF ([sound plan](docs/plans/phase-7-sound.md), [animation plan](docs/plans/phase-7-animation.md), decisions 0056 and 0057). Then compatibility (Phase 8, [plan](docs/plans/compatibility.md)), so updates never lose work, and first-class 2D in two parts (Phases 9 and 10, [plan](docs/plans/2d.md), [decision 0054](docs/decisions/0054-first-class-2d.md)), so the project lead's own 2D game can move to Solis; then a playtest export and game UI, then light, materials and effects ([decisions 0046](docs/decisions/0046-light-before-netcode.md) and [0048](docs/decisions/0048-materials-and-shaders-before-effects.md)).
+**Now:** Phases 1, 2 and 3 are built and wait for their gates to be tried by hand ([Phase 3 plan](docs/plans/phase-3.md)). Phase 4, game code, is built and reviewed, and waits for its gate too ([Phase 4 plan](docs/plans/phase-4.md)). Phase 5, scale, is built and reviewed, and waits for its gate ([Phase 5 plan](docs/plans/phase-5.md)): try **Help > Make the benchmark…**. Phase 6, simulation and play, is built and reviewed three times, and waits for its gate ([Phase 6 plan](docs/plans/phase-6.md)): try **Help > Make the playground…**. The hardening milestone is done and everything is merged: its gate is reading the [hardening report](docs/reports/hardening-phase-6.md) and trying the playground once more. Solis now installs and updates itself from GitHub's Releases page. Phase 7, sound, has begun: sounds can be listened to in the Library (S1), sound events vary each play (S2), and game code plays them in the world (S3). Next is S4, buses and ducking ([sound plan](docs/plans/phase-7-sound.md), decision 0056). 2D comes first now ([decision 0059](docs/decisions/0059-2d-first.md)): animation's state machine and graph editor arrive with 2D's frame animation, and 3D skeletal animation waits for Phase 16, once 2D is complete. Work stops for a rethink after effects (Phase 15): what comes after is written down as later, not next. Then compatibility (Phase 8, [plan](docs/plans/compatibility.md)), so updates never lose work, and first-class 2D in two parts (Phases 9 and 10, [plan](docs/plans/2d.md), [decision 0054](docs/decisions/0054-first-class-2d.md)), so the project lead's own 2D game can move to Solis; then a playtest export and game UI, then light, materials and effects ([decisions 0046](docs/decisions/0046-light-before-netcode.md) and [0048](docs/decisions/0048-materials-and-shaders-before-effects.md)).
 
 ### Phase 0 · Groundwork — 7 of 7
 
@@ -166,9 +166,9 @@ Solis is built in phases, one milestone per pull request. Each phase ends with a
 
 **Gate:** read the hardening report (coverage, mutations caught, hours fuzzed and what was found), and try the playground once more.
 
-### Phase 7 · Sound and animation — 3 of 14
+### Phase 7 · Sound — 3 of 8
 
-`███░░░░░░░░░░░` 21%
+`███░░░░░` 38%
 
 <details>
 <summary>Milestones</summary>
@@ -176,21 +176,15 @@ Solis is built in phases, one milestone per pull request. Each phase ends with a
 - [x] S1. Sound files and the sound device ([sound plan](docs/plans/phase-7-sound.md), decision 0056)
 - [x] S2. Sound events as assets
 - [x] S3. Game code plays sounds, in 3D
-- [ ] A1. Skins and clips from glTF ([animation plan](docs/plans/phase-7-animation.md), decision 0057)
-- [ ] A2. Skinned drawing, playing one clip
-- [ ] A3. Crowds: baked clips and animation LOD
-- [ ] A4. State machines and blending, for 2D and 3D clips
 - [ ] S4. Buses, ducking and the Mixer panel
 - [ ] S5. Loops, voice limits and the scale target
 - [ ] S6. Reverb zones
 - [ ] S8. Listeners and who hears what ([decision 0058](docs/decisions/0058-listeners-and-who-hears-what.md))
-- [ ] A5. The animator graph editor (the shared graph editor)
-- [ ] A6. Cues, footsteps and the playground
-- [ ] S7. Sounds from animation events, and the gate's level
+- [ ] S7. The gate's level: footsteps, music, a radio and a cave in the playground
 
 </details>
 
-**Gate:** a character walks and runs with smooth blending, footsteps play on the right frames, each sounds a little different, the music dips while someone speaks, and walking into a reverb zone makes the steps echo.
+**Gate:** footsteps each sound a little different, the music dips while someone speaks, and walking into a reverb zone makes the steps echo. (Animation moved: frames to Phase 9, skeletons to Phase 16; [decision 0059](docs/decisions/0059-2d-first.md).)
 
 ### Phase 8 · Compatibility — 0 of 6
 
@@ -210,9 +204,9 @@ Solis is built in phases, one milestone per pull request. Each phase ends with a
 
 **Gate:** a project from an older build opens, backed up and upgraded; a save from before an update loads after it.
 
-### Phase 9 · 2D, part 1 — 0 of 9
+### Phase 9 · 2D, part 1 — 0 of 11
 
-`░░░░░░░░░░░░░` 0%
+`░░░░░░░░░░░` 0%
 
 <details>
 <summary>Milestones</summary>
@@ -220,6 +214,8 @@ Solis is built in phases, one milestone per pull request. Each phase ends with a
 - [ ] The pixel-perfect view and the 2D editor ([plan](docs/plans/2d.md), decision 0054)
 - [ ] Sprites from Aseprite
 - [ ] Frame animation
+- [ ] The animation state machine, for sprite frames first (from Phase 7's A4)
+- [ ] The animator graph editor, the shared graph editor (from Phase 7's A5; mocked up first)
 - [ ] Tile maps that change as you play
 - [ ] Autotiling and tilesets
 - [ ] The tile painter
@@ -351,7 +347,28 @@ Solis is built in phases, one milestone per pull request. Each phase ends with a
 
 **Gate:** lasers, hits and explosions look good in the benchmark battle at 60 fps.
 
-### Phase 16 · Netcode — 0 of 5
+### Later
+
+**Later, not next:** Phases 16 to 19 are written down so nothing is lost, but they aren't built, planned in detail or reordered until Phase 15 is done and the project lead decides it's time ([decision 0059](docs/decisions/0059-2d-first.md)). 2D and effects will turn up things nobody can foresee yet, so expect these to change.
+
+### Phase 16 · 3D animation — 0 of 5
+
+`░░░░░` 0%
+
+<details>
+<summary>Milestones</summary>
+
+- [ ] Skins and clips from glTF ([animation plan](docs/plans/phase-7-animation.md), decisions 0057 and 0059)
+- [ ] Skinned drawing, playing one clip
+- [ ] Crowds: baked clips and animation LOD
+- [ ] Blending and blend spaces for skeletons
+- [ ] Cues, footsteps and the playground
+
+</details>
+
+**Gate:** a character walks and runs with smooth blending, and its footsteps play on the right frames.
+
+### Phase 17 · Netcode — 0 of 5
 
 `░░░░░░░░░░░░░` 0%
 
@@ -368,7 +385,7 @@ Solis is built in phases, one milestone per pull request. Each phase ends with a
 
 **Gate:** two PCs on different networks play the benchmark together without desyncing.
 
-### Phase 17 · Scripting, full export and Git — 0 of 4
+### Phase 18 · Scripting, full export and Git — 0 of 4
 
 `░░░░░░░░░░░░░` 0%
 
@@ -384,7 +401,7 @@ Solis is built in phases, one milestone per pull request. Each phase ends with a
 
 **Gate:** write a small editor tool; export a game that runs without Solis; two people work on one project through GitHub.
 
-### Phase 18 · Solis 0.1 — 0 of 4
+### Phase 19 · Solis 0.1 — 0 of 4
 
 `░░░░░░░░░░░░░` 0%
 

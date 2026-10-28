@@ -379,7 +379,7 @@ impl Workbench {
         if icon_button(ui, Icon::PlayTogether, 15.0, None, "Play with two players").clicked() {
             self.log(
                 LogLevel::Info,
-                "Playing with others arrives with netcode in Phase 16 (ROADMAP.md).",
+                "Playing with others arrives with netcode in Phase 17 (ROADMAP.md).",
             );
         }
         // Step runs one tick, while paused.

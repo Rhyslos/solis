@@ -1,4 +1,6 @@
-# Phase 7 plan: Animation (draft)
+# Animation plan (draft)
+
+> **Moved by [decision 0059](../decisions/0059-2d-first.md):** this is no longer part of Phase 7. A4 (the state machine), A5 (the animator graph editor) and A6's cues as events on frames are built with 2D's frame animation in Phase 9, for sprite frames first. A1, A2, A3, blending for skeletons and cues on skeletons are Phase 16, 3D animation, once 2D is complete. The plan below is kept as written for both; read "Phase 7" as the phase each part now belongs to.
 
 The working plan for the animation half of Phase 7 (ROADMAP.md, "Phase 7: Sound and animation"; DESIGN.md §10). Sound has its own plan; this one says only what animation needs from it (a way to play a named sound event). It lists the choices to make before any code and a plan for every milestone, so a later session can carry on where this one stopped. Update it as milestones are built: tick them off here and in the README tracker, and change a milestone's plan if its design changes.
 
