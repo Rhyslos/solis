@@ -40,9 +40,11 @@ mod properties;
 mod save_game;
 pub mod screen;
 mod settings_window;
+mod sheet_view;
 mod sound_event_view;
 pub mod sound_view;
 pub mod splash;
+pub mod sprite_sheets;
 #[cfg(test)]
 mod test_support;
 pub mod theme;

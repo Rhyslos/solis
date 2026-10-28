@@ -22,6 +22,7 @@ percent-encoding.workspace = true
 glam.workspace = true
 bytemuck.workspace = true
 meshopt.workspace = true
+flate2.workspace = true
 
 [lints]
 workspace = true

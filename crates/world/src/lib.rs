@@ -18,7 +18,7 @@ pub use projectiles::{MAX_PROJECTILES, Projectile, Projectiles, Shot};
 use area::Area;
 use area::builtin::{
     AudioSource, Camera, CharacterBody, Collider, Environment, Light, Listener, Model, ReverbZone,
-    RigidBody, Transform,
+    RigidBody, Sprite, Transform,
 };
 use glam::Mat4;
 use reflect::{Component, ComponentData, EntityId};
@@ -1289,6 +1289,9 @@ fn components_of(id: EntityId, data: &area::EntityData) -> hecs::EntityBuilder {
             }
             Listener::NAME => {
                 builder.add(Listener::from_data(component));
+            }
+            Sprite::NAME => {
+                builder.add(Sprite::from_data(component));
             }
             _ => {
                 values.0.insert(name.clone(), component.clone());

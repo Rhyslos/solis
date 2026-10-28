@@ -41,6 +41,8 @@ pub struct GpuViewport {
     pixel_images: Vec<Option<PixelImages>>,
     /// Imported models, uploaded.
     models: HashMap<AssetId, GpuModel>,
+    /// Sprite sheets' atlases, uploaded (Phase 9, D2).
+    sheets: HashMap<AssetId, render::GpuSheet>,
     /// The image thumbnails are drawn into, made the first time.
     thumbnail_target: Option<ViewportTarget>,
     /// What was drawn since the Profiler last asked, and which images
@@ -66,6 +68,7 @@ impl GpuViewport {
             images: Vec::new(),
             pixel_images: Vec::new(),
             models: HashMap::new(),
+            sheets: HashMap::new(),
             thumbnail_target: None,
             report: editor::DrawReport::default(),
             drawn: Vec::new(),
@@ -204,6 +207,23 @@ impl GpuViewport {
         self.models.clear();
     }
 
+    /// Uploads a sprite sheet's atlas, to draw sprites of `id` from (again
+    /// when it changes).
+    pub fn add_sheet(&mut self, id: AssetId, sheet: &assets::sprite_sheet::SpriteSheet) {
+        let uploaded = self.renderer.upload_sheet(
+            &self.state.device,
+            &self.state.queue,
+            sheet.atlas_size,
+            &sheet.atlas,
+        );
+        self.sheets.insert(id, uploaded);
+    }
+
+    /// Frees every sprite sheet (another project was opened).
+    pub fn clear_sheets(&mut self) {
+        self.sheets.clear();
+    }
+
     /// Makes image number `slot` `size` pixels, unless it already is.
     fn prepare_image(&mut self, slot: usize, size: [u32; 2]) {
         if self.images.len() <= slot {
@@ -319,14 +339,19 @@ impl GpuViewport {
             })
             .collect();
         let bolts: &[render::Bolt] = bytemuck::cast_slice(view.bolts.as_slice());
-        let stats = self.renderer.render_with_bolts(
+        let picks = sprite_runs(&self.sheets, &view.sprites);
+        let runs: Vec<render::SpriteRun> = picks.iter().map(|p| p.run).collect();
+        let stats = self.renderer.render_scene(
             &self.state.device,
             &self.state.queue,
             &mut images.small,
             &params,
-            &placed,
-            lights,
-            bolts,
+            &render::Scene {
+                placed: &placed,
+                lights,
+                bolts,
+                sprites: &runs,
+            },
         );
         let layout = render::pixel_layout(
             pixel.base,
@@ -351,6 +376,27 @@ impl GpuViewport {
         }
         Ok(texture)
     }
+}
+
+/// A view's sprites as the renderer takes them: a run per batch whose
+/// sheet is uploaded, with each sprite's pick number. The same layout
+/// (checked by a test), so no copy.
+fn sprite_runs<'a>(
+    sheets: &'a HashMap<AssetId, render::GpuSheet>,
+    batches: &'a [editor::sprite_sheets::SpriteBatch],
+) -> Vec<render::SpritePicks<'a>> {
+    batches
+        .iter()
+        .filter_map(|b| {
+            Some(render::SpritePicks {
+                run: render::SpriteRun {
+                    sheet: sheets.get(&b.sheet)?,
+                    instances: bytemuck::cast_slice(b.sprites.as_slice()),
+                },
+                picks: &b.picks,
+            })
+        })
+        .collect()
 }
 
 /// Adds what a frame drew to the Profiler's report.
@@ -491,14 +537,19 @@ impl ViewportRenderer for GpuViewport {
             .collect();
         // The same layout (checked by a test), so no copy.
         let bolts: &[render::Bolt] = bytemuck::cast_slice(view.bolts.as_slice());
-        let stats = self.renderer.render_with_bolts(
+        let picks = sprite_runs(&self.sheets, &view.sprites);
+        let runs: Vec<render::SpriteRun> = picks.iter().map(|p| p.run).collect();
+        let stats = self.renderer.render_scene(
             &self.state.device,
             &self.state.queue,
             &mut image.target,
             &params,
-            &placed,
-            &lights,
-            bolts,
+            &render::Scene {
+                placed: &placed,
+                lights: &lights,
+                bolts,
+                sprites: &runs,
+            },
         );
         count(&mut self.report, &stats);
         if !self.drawn.contains(&(view.image, false)) {
@@ -507,12 +558,13 @@ impl ViewportRenderer for GpuViewport {
         if let Some(rect) = view.pick {
             // Drawn after the frame, never waited for: the answer is
             // collected by `picked` on a later frame.
-            let asked = self.renderer.request_pick(
+            let asked = self.renderer.request_pick_with_sprites(
                 &self.state.device,
                 &self.state.queue,
                 &mut image.target,
                 view.view_projection,
                 &placed,
+                &picks,
                 rect,
             );
             if !asked {
@@ -592,6 +644,39 @@ mod tests {
         assert_eq!(
             std::mem::size_of::<editor::ViewBolt>(),
             std::mem::size_of::<render::Bolt>()
+        );
+    }
+
+    #[test]
+    fn a_view_sprite_is_laid_out_as_the_renderer_s_sprite() {
+        // Handed over without a copy: the same fields, in the same order.
+        let sprite = editor::sprite_sheets::ViewSprite {
+            corner: [1.0, 2.0, 3.0],
+            flags: 5,
+            axis_x: [4.0, 5.0],
+            axis_y: [6.0, 7.0],
+            rect: [8.0, 9.0, 10.0, 11.0],
+            tint: [0.1, 0.2, 0.3, 0.4],
+            outline: [0.5, 0.6, 0.7, 0.0],
+            foot: [12.0, 13.0],
+        };
+        let made: &[render::SpriteInstance] = bytemuck::cast_slice(std::slice::from_ref(&sprite));
+        assert_eq!(
+            made[0],
+            render::SpriteInstance {
+                corner: [1.0, 2.0, 3.0],
+                flags: 5,
+                axis_x: [4.0, 5.0],
+                axis_y: [6.0, 7.0],
+                rect: [8.0, 9.0, 10.0, 11.0],
+                tint: [0.1, 0.2, 0.3, 0.4],
+                outline: [0.5, 0.6, 0.7, 0.0],
+                foot: [12.0, 13.0],
+            }
+        );
+        assert_eq!(
+            std::mem::size_of::<editor::sprite_sheets::ViewSprite>(),
+            std::mem::size_of::<render::SpriteInstance>()
         );
     }
 }

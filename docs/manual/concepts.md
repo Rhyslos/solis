@@ -160,6 +160,13 @@
 - **Whole steps:** scaling by a whole number. When the screen isn't a whole number of times the base resolution, the rest is black **bars**; **Fill** scales a little further instead, smoothing only the edge of each pixel.
 - **2D camera:** a camera whose View is 2D: it looks straight down at the game's base resolution, follows its entity's place, and never turns.
 - **Tile:** one square of a 2D world's grid, usually 16 pixels; tile maps (coming soon) are built from them.
+- **Sprite:** a flat picture in a 2D world, such as a character or a crop: one frame of a sprite sheet, lying on the ground at its entity. See [Sprites from Aseprite](sprites.md).
+- **Sprite sheet:** a picture holding a sprite's frames, from one Aseprite file. Solis reads `.aseprite` files as they are; nothing needs exporting.
+- **Frame:** one picture of a sprite sheet. Showing frames one after another animates it.
+- **Tag:** in Aseprite, a named run of frames (*walk*, *swing*) with a direction (forward, reverse, ping-pong) and repeats: a clip to play.
+- **Slice:** in Aseprite, a named rectangle on the picture (*feet*, *hand*), used for where a sprite stands, where a held tool goes, or what can be hit.
+- **Pivot:** the point a sprite stands on: it sits on its entity's place, so the sprite turns and flips round it. Usually between the feet.
+- **Atlas:** one big picture with many frames packed into it, so the graphics card draws a sheet's sprites all at once instead of one at a time.
 
 ## Getting Solis
 

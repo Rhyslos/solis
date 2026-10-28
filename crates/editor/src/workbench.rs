@@ -22,7 +22,7 @@ use crate::viewport::{Overlays, Tool, Viewport, ViewportRenderer};
 use egui::Ui;
 use egui_dock::{DockArea, DockState};
 use reflect::{AssetId, EntityId};
-use std::collections::{BTreeMap, HashSet};
+use std::collections::{BTreeMap, HashMap, HashSet};
 
 /// Facts about the program, shown in the window title and the About box.
 /// The app passes these in, so this crate never names the program itself.
@@ -257,6 +257,10 @@ pub struct Workbench {
     pub(crate) mixer: crate::mixer_view::MixerState,
     /// The project's 2D settings (Settings > 2D, `pixels.solpix`).
     pub(crate) pixels: area::pixels::PixelSettings,
+    /// Each sprite sheet's atlas as an egui picture, by path, for the
+    /// Library and Properties, and which sheet each was made from.
+    pub(crate) sheet_pictures: HashMap<String, egui::TextureHandle>,
+    pub(crate) sheet_pictures_from: HashMap<String, usize>,
     /// Where assets being placed go, when they were dropped somewhere:
     /// the point, and the entity they go under.
     pub(crate) place_targets: BTreeMap<AssetId, (glam::Vec3, Option<EntityId>)>,
@@ -379,6 +383,8 @@ impl Workbench {
             sound_shown: None,
             mixer: Default::default(),
             pixels: area::pixels::PixelSettings::default(),
+            sheet_pictures: HashMap::new(),
+            sheet_pictures_from: HashMap::new(),
             place_targets: BTreeMap::new(),
             problems: Default::default(),
             playing: None,
@@ -740,6 +746,7 @@ impl Workbench {
             std::mem::take(&mut self.sound_spent),
         );
         let mut actions = std::mem::take(&mut self.outbox);
+        self.refresh_sheet_pictures(ui.ctx());
         self.viewport.idle = !self.wants_frames(ui.ctx());
         if ui.input(|i| i.pointer.any_pressed()) {
             self.gesture += 1;
@@ -762,6 +769,7 @@ impl Workbench {
             .exact_size(34.0)
             .show(ui, |ui| self.top_bar(ui, &mut actions));
         let style = theme::dock_style(ui.style().as_ref(), self.accent);
+        let sheets = std::sync::Arc::clone(&self.viewport.sheets);
         let mut shown = HashSet::new();
         let mut area_requests = Vec::new();
         let mut library_requests = Vec::new();
@@ -891,6 +899,8 @@ impl Workbench {
                             events: &self.sound_events,
                             preview: self.preview.as_ref(),
                             mixer: &self.mixer.mixer,
+                            sheets: &sheets,
+                            sheet_pictures: &self.sheet_pictures,
                         },
                         mixer: &self.mixer,
                         mixer_requests: &mut mixer_requests,
@@ -1050,6 +1060,12 @@ impl Workbench {
     pub(crate) fn find_problems(&mut self) {
         use crate::problems::{Fingerprint, Sources};
         let print = Fingerprint::of(&self.document, self.sources);
+        self.problems.refresh_between(
+            self.document.revision(),
+            self.pixels.pixels_per_unit,
+            self.document.area(),
+            &self.viewport.area.sprites,
+        );
         if self.problems.is_from(&print) {
             return;
         }

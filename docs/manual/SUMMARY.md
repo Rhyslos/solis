@@ -37,6 +37,7 @@ New to game engines? Start with [Concepts](concepts.md).
 - [Physics: things that fall, collide and get pushed](physics.md)
 - [Input: the game's controls as named actions, gamepads, rebinding and recordings](input.md)
 - [2D: the pixel-perfect view, a project's 2D settings, and 2D cameras](2d-pixel-perfect.md)
+- [Sprites from Aseprite: sprite sheets, placing sprites, pivots, front and behind](sprites.md)
 - [Characters and cameras: a character that walks and jumps, third-person, first-person and RTS cameras, and the playground](characters-and-cameras.md)
 - [Save games: save everything, and load it back exactly](save-games.md)
 - [Your first game: the turret sample, in all three languages](first-game.md)

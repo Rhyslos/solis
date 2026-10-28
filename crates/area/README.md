@@ -17,6 +17,7 @@ Be the one place an area lives while it's edited. The editor, saving and loading
 - **Text** (`text.rs`): areas as Lust-style data blocks ([decision 0020](../../docs/decisions/0020-scene-files-in-lust-style.md)): `write` and `read`, one block per entity sorted by ID, numbers as the shortest text that reads back exactly, unknown components kept, a version line, limits checked before keeping anything, every mistake reported with its line. No file access: the app reads and writes the files.
 - **Assemblies** (`assembly.rs`): a placed assembly is its root entity (with an `Origin`) plus overrides in the file, and ordinary entities while edited. `Expander` expands copies (IDs from `derive(copy root, path)`, so the same file gives the same IDs), collapses them back to what differs, counts entities before making any, refuses loops (naming the chain) and nesting past 16. Overrides whose part is gone are kept. `set_in_file` is Apply to assembly.
 - **2D settings** (`pixels.rs`, Phase 9, D1): a project's base resolution, pixels per unit, tile size and scaling, read from and written to `pixels.solpix` (a settings file, format 1), values out of range brought in with a note.
+- **Sprites** (`builtin/sprite.rs`, Phase 9, D2): the `Sprite` component, one frame of a sprite sheet lying on the ground at the entity, standing on its pivot slice, with flip, tint, flash, outline and see-through.
 - **A new area** has a Sun and an Environment (the sun, sky and fog live in each area).
 
 ## Must never

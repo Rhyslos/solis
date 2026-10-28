@@ -346,7 +346,7 @@ impl Workbench {
             .count()
     }
 
-    fn spawn_selected(&mut self, mut data: EntityData) -> EntityId {
+    pub(crate) fn spawn_selected(&mut self, mut data: EntityData) -> EntityId {
         let id = EntityId::random();
         data.order = self.document.area().order_at_end(data.parent);
         let label = format!("Add {}", data.name);

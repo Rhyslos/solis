@@ -359,3 +359,39 @@ fn a_selected_reverb_zone_is_outlined_in_sound_s_colour() {
     let lines = crate::viewport_tools::collider_lines(glam::Mat4::IDENTITY, &zone);
     assert_eq!(lines.len(), 12, "a box's edges");
 }
+
+#[test]
+fn a_selected_sprite_is_outlined_round_its_picture() {
+    use crate::sprite_sheets::{SheetState, SpriteSheets};
+    let mut w = Workbench::new(info(), None);
+    let sheet = reflect::AssetId::random();
+    let mut sheets = SpriteSheets::default();
+    sheets.by_path.insert(
+        "walker.aseprite".into(),
+        SheetState::Read(std::sync::Arc::new(
+            crate::sprite_sheets::tests::test_sheet(),
+        )),
+    );
+    sheets.paths.insert(sheet, "walker.aseprite".into());
+    w.set_sprite_sheets(sheets);
+    let id = w.place_sprite(sheet, None).expect("placed");
+    w.prepare_tools();
+    // The test sheet's picture is 8 × 20 pixels, standing on its feet
+    // (8, 23): 4 pixels either side, from 1 below to 19 above, a
+    // sixteenth of a metre each.
+    let outline = w.viewport.tools.outlines.iter().find_map(|o| match o {
+        crate::viewport_tools::Outline::Box { min, max, .. } => Some((*min, *max)),
+        _ => None,
+    });
+    let (min, max) = outline.expect("a box round the sprite");
+    let px = 1.0 / 16.0;
+    assert!(
+        (min - Vec3::new(-4.0 * px, -px, 0.0)).length() < 1e-5,
+        "{min}"
+    );
+    assert!(
+        (max - Vec3::new(4.0 * px, 19.0 * px, 0.0)).length() < 1e-5,
+        "{max}"
+    );
+    assert_eq!(w.selection(), Some(id));
+}

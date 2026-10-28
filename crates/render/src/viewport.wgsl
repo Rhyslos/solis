@@ -761,3 +761,111 @@ fn bolt_fs(in: BoltOut) -> @location(0) vec4<f32> {
     let soft = 1.0 - in.across * in.across;
     return vec4<f32>(in.color * soft, 1.0);
 }
+
+// ------------------------------------------------------------- sprites ---
+
+// How much nearer a sprite at the bottom of the view is drawn than one at
+// the top, in depth (sprites.rs).
+const FOOT_DEPTH: f32 = 0.00005;
+
+// A sprite sheet's atlas (sprites.rs): straight sRGB colour with alpha.
+@group(3) @binding(0) var sheet_image: texture_2d<f32>;
+
+// One sprite (SpriteInstance in sprites.rs).
+struct SpriteIn {
+    // Where its frame's top-left corner is in the world.
+    @location(0) corner: vec3<f32>,
+    // 1 flip across, 2 flip up, 4 outline, 8 see-through.
+    @location(1) flags: u32,
+    // One pixel to the right, and one pixel down the picture, in the world.
+    @location(2) axis_x: vec2<f32>,
+    @location(3) axis_y: vec2<f32>,
+    // Its frame's place in the atlas: x, y, width, height, in texels.
+    @location(4) rect: vec4<f32>,
+    // Linear tint (rgb); a = how white it flashes.
+    @location(5) tint: vec4<f32>,
+    // The outline's linear colour (rgb).
+    @location(6) outline: vec4<f32>,
+    // Where it stands (its pivot), in the world (x, y).
+    @location(7) foot: vec2<f32>,
+};
+
+struct SpriteOut {
+    @builtin(position) clip: vec4<f32>,
+    // Where in the frame, in its pixels (an outline adds one round it).
+    @location(0) local: vec2<f32>,
+    @location(1) @interpolate(flat) rect: vec4<f32>,
+    @location(2) @interpolate(flat) flags: u32,
+    @location(3) @interpolate(flat) tint: vec4<f32>,
+    @location(4) @interpolate(flat) outline: vec3<f32>,
+};
+
+@vertex
+fn sprite_vs(@builtin(vertex_index) index: u32, s: SpriteIn) -> SpriteOut {
+    var corners = array<vec2<f32>, 6>(
+        vec2<f32>(0.0, 0.0), vec2<f32>(1.0, 0.0), vec2<f32>(0.0, 1.0),
+        vec2<f32>(0.0, 1.0), vec2<f32>(1.0, 0.0), vec2<f32>(1.0, 1.0),
+    );
+    // An outline needs a pixel more all round.
+    let margin = select(0.0, 1.0, (s.flags & 4u) != 0u);
+    let local = corners[index] * (s.rect.zw + 2.0 * margin) - vec2<f32>(margin, margin);
+    let world = s.corner + vec3<f32>(s.axis_x * local.x + s.axis_y * local.y, 0.0);
+    var out: SpriteOut;
+    out.clip = frame.view_proj * vec4<f32>(world, 1.0);
+    // Front and behind for free: the lower on screen it stands, the
+    // nearer it's drawn, by a hair (less than a metre of height across
+    // the whole view, so layers a metre apart stay in order).
+    let foot = frame.view_proj * vec4<f32>(s.foot, s.corner.z, 1.0);
+    out.clip.z = out.clip.z - FOOT_DEPTH * (foot.y / foot.w) * out.clip.w;
+    out.local = local;
+    out.rect = s.rect;
+    out.flags = s.flags;
+    out.tint = s.tint;
+    out.outline = s.outline.rgb;
+    return out;
+}
+
+// The frame's pixel at `p` (its own pixels, flipped as asked); see-through
+// outside the frame.
+fn sprite_texel(p: vec2<f32>, rect: vec4<f32>, flags: u32) -> vec4<f32> {
+    if p.x < 0.0 || p.y < 0.0 || p.x >= rect.z || p.y >= rect.w {
+        return vec4<f32>(0.0);
+    }
+    var q = p;
+    if (flags & 1u) != 0u {
+        q.x = rect.z - 1.0 - p.x;
+    }
+    if (flags & 2u) != 0u {
+        q.y = rect.w - 1.0 - p.y;
+    }
+    return textureLoad(sheet_image, vec2<i32>(rect.xy + q), 0);
+}
+
+@fragment
+fn sprite_fs(in: SpriteOut) -> @location(0) vec4<f32> {
+    let p = floor(in.local);
+    let texel = sprite_texel(p, in.rect, in.flags);
+    let see_through = (in.flags & 8u) != 0u;
+    // Pixel art is cut out: a pixel is drawn or it isn't, so it writes
+    // depth and needs no sorting. See-through sprites blend instead.
+    if texel.a < 0.5 && !see_through || texel.a <= 0.0 {
+        if (in.flags & 4u) != 0u {
+            let near = max(
+                max(sprite_texel(p + vec2<f32>(1.0, 0.0), in.rect, in.flags).a,
+                    sprite_texel(p - vec2<f32>(1.0, 0.0), in.rect, in.flags).a),
+                max(sprite_texel(p + vec2<f32>(0.0, 1.0), in.rect, in.flags).a,
+                    sprite_texel(p - vec2<f32>(0.0, 1.0), in.rect, in.flags).a));
+            if near >= 0.5 {
+                return vec4<f32>(in.outline, select(0.0, 1.0, see_through));
+            }
+        }
+        discard;
+    }
+    var colour = decode(texel.rgb) * in.tint.rgb;
+    colour = mix(colour, vec3<f32>(1.0), clamp(in.tint.a, 0.0, 1.0));
+    // Alpha 0: the last pass shows it as drawn, never tone mapped, so pixel
+    // art keeps its exact colours (see the top of this file). See-through
+    // sprites carry their own alpha, which only blends: the picture's
+    // alpha below is kept.
+    return vec4<f32>(colour, select(0.0, texel.a, see_through));
+}

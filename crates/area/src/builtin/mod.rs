@@ -10,6 +10,7 @@ mod listener;
 mod model;
 mod physics;
 mod reverb_zone;
+mod sprite;
 mod transform;
 
 pub use audio_source::AudioSource;
@@ -20,6 +21,7 @@ pub use listener::Listener;
 pub use model::Model;
 pub use physics::{BodyKind, CharacterBody, Collider, ColliderShape, RigidBody};
 pub use reverb_zone::{ReverbZone, ZoneShape};
+pub use sprite::Sprite;
 pub use transform::Transform;
 
 use crate::document::{Area, EntityData};
@@ -38,6 +40,7 @@ pub fn registry() -> Result<Registry, RegistryError> {
     registry.register_type::<CharacterBody>()?;
     registry.register_type::<AudioSource>()?;
     registry.register_type::<ReverbZone>()?;
+    registry.register_type::<Sprite>()?;
     registry.register_type::<Listener>()?;
     Ok(registry)
 }
@@ -121,6 +124,7 @@ pub(crate) mod field {
             speed: Some(speed),
             unit,
             help,
+            ..Hint::default()
         }
     }
 }
@@ -148,6 +152,7 @@ mod tests {
                 "Model",
                 "ReverbZone",
                 "RigidBody",
+                "Sprite",
                 "Transform"
             ]
         );

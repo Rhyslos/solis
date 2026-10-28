@@ -184,6 +184,7 @@ impl Projects {
                     FileKind::Code => LibraryKind::Code,
                     FileKind::Sound => LibraryKind::Sound,
                     FileKind::SoundEvent => LibraryKind::SoundEvent,
+                    FileKind::SpriteSheet => LibraryKind::SpriteSheet,
                     FileKind::Other => LibraryKind::Other,
                 },
                 // Files Solis doesn't know keep their whole name, so

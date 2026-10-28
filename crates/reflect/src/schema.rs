@@ -58,6 +58,24 @@ pub struct Hint {
     pub unit: &'static str,
     /// What the field does, in plain words, shown when pointed at.
     pub help: &'static str,
+    /// What the inspector offers to pick from, beyond typing.
+    pub offers: Offer,
+}
+
+/// What the inspector offers to pick a field's value from (Phase 9, D2).
+/// The inspector knows no component by name: a schema says what to offer
+/// here.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum Offer {
+    /// Nothing beyond the field's own widget.
+    #[default]
+    Nothing,
+    /// The project's assets of this kind ("sprite sheet", "model"), for
+    /// an asset field.
+    Assets(&'static str),
+    /// The slice names of the sprite sheet in the named asset field of the
+    /// same component, for a text field.
+    SlicesOf(&'static str),
 }
 
 /// One field of a component.

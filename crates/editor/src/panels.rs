@@ -179,6 +179,15 @@ impl TabViewer for PanelViewer<'_> {
             }
             Panel::Properties => {
                 if let Some(path) = self.sound_shown {
+                    if assets::aseprite::is_aseprite_file(std::path::Path::new(path)) {
+                        crate::sheet_view::sheet_properties(
+                            ui,
+                            path,
+                            self.sounds.sheets.by_path.get(path),
+                            self.sounds.sheet_pictures.get(path),
+                        );
+                        return;
+                    }
                     if self.sounds.events.contains_key(path) || path.ends_with(".solsound") {
                         let requests = crate::sound_event_view::event_properties(
                             ui,
@@ -207,7 +216,7 @@ impl TabViewer for PanelViewer<'_> {
                     ui,
                     self.document,
                     self.part,
-                    self.models,
+                    (self.models, self.sounds.sheets),
                     self.copied,
                     self.running,
                 );
@@ -235,6 +244,7 @@ impl TabViewer for PanelViewer<'_> {
                     self.game_input,
                     &self.viewport.camera,
                     self.pixels,
+                    &self.viewport.sheets,
                     self.renderer,
                 );
                 if self.playing {

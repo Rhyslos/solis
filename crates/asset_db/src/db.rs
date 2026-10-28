@@ -29,6 +29,8 @@ pub enum AssetKind {
     Sound,
     /// A sound event (`.solsound`): takes and how to vary them.
     SoundEvent,
+    /// An Aseprite file (`.aseprite`, `.ase`; Phase 9, D2): a sprite sheet.
+    SpriteSheet,
 }
 
 /// The extensions of sound files Solis reads (decision 0056). The
@@ -46,6 +48,9 @@ impl AssetKind {
     pub fn of(path: &Path) -> Option<Self> {
         if assets::is_model_file(path) {
             return Some(Self::Model);
+        }
+        if assets::aseprite::is_aseprite_file(path) {
+            return Some(Self::SpriteSheet);
         }
         let ext = path.extension()?.to_string_lossy().to_lowercase();
         if ext == ASSEMBLY_EXTENSION {

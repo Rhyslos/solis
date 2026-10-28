@@ -91,11 +91,15 @@ impl PickResult {
 #[derive(Debug)]
 pub(crate) struct PickPipeline {
     pipeline: wgpu::RenderPipeline,
+    /// Sprites, picked by their own pixels (Phase 9, D2).
+    sprites: wgpu::RenderPipeline,
     layout: wgpu::BindGroupLayout,
 }
 
 impl PickPipeline {
-    pub(crate) fn new(device: &wgpu::Device) -> Self {
+    /// `sheet_layout` is the sprite sheets' (sprites.rs), so a sheet
+    /// uploaded once is picked from as it's drawn.
+    pub(crate) fn new(device: &wgpu::Device, sheet_layout: &wgpu::BindGroupLayout) -> Self {
         let shader = device.create_shader_module(wgpu::ShaderModuleDescriptor {
             label: Some("picking shader"),
             source: wgpu::ShaderSource::Wgsl(PICK_SHADER_SOURCE.into()),
@@ -159,7 +163,67 @@ impl PickPipeline {
             multiview_mask: None,
             cache: None,
         });
-        Self { pipeline, layout }
+        let sprite_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
+            label: Some("sprite picking pipeline layout"),
+            bind_group_layouts: &[Some(&layout), Some(sheet_layout)],
+            immediate_size: 0,
+        });
+        let pick_attribute = [wgpu::VertexAttribute {
+            format: wgpu::VertexFormat::Uint32,
+            offset: 0,
+            shader_location: 8,
+        }];
+        let sprites = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+            label: Some("sprite picking pipeline"),
+            layout: Some(&sprite_layout),
+            vertex: wgpu::VertexState {
+                module: &shader,
+                entry_point: Some("sprite_pick_vs"),
+                compilation_options: wgpu::PipelineCompilationOptions::default(),
+                buffers: &[
+                    Some(wgpu::VertexBufferLayout {
+                        array_stride: std::mem::size_of::<crate::SpriteInstance>()
+                            as wgpu::BufferAddress,
+                        step_mode: wgpu::VertexStepMode::Instance,
+                        attributes: &crate::sprites::ATTRIBUTES,
+                    }),
+                    Some(wgpu::VertexBufferLayout {
+                        array_stride: 4,
+                        step_mode: wgpu::VertexStepMode::Instance,
+                        attributes: &pick_attribute,
+                    }),
+                ],
+            },
+            primitive: wgpu::PrimitiveState {
+                cull_mode: None,
+                ..Default::default()
+            },
+            depth_stencil: Some(wgpu::DepthStencilState {
+                format: PICK_DEPTH_FORMAT,
+                depth_write_enabled: Some(true),
+                depth_compare: Some(wgpu::CompareFunction::GreaterEqual),
+                stencil: wgpu::StencilState::default(),
+                bias: wgpu::DepthBiasState::default(),
+            }),
+            multisample: wgpu::MultisampleState::default(),
+            fragment: Some(wgpu::FragmentState {
+                module: &shader,
+                entry_point: Some("sprite_pick_fs"),
+                compilation_options: wgpu::PipelineCompilationOptions::default(),
+                targets: &[Some(wgpu::ColorTargetState {
+                    format: PICK_FORMAT,
+                    blend: None,
+                    write_mask: wgpu::ColorWrites::ALL,
+                })],
+            }),
+            multiview_mask: None,
+            cache: None,
+        });
+        Self {
+            pipeline,
+            sprites,
+            layout,
+        }
     }
 }
 
@@ -173,6 +237,9 @@ pub(crate) struct PickImages {
     uniform: wgpu::Buffer,
     bind_group: wgpu::BindGroup,
     instances: Option<wgpu::Buffer>,
+    /// Sprites to pick from, and their numbers.
+    sprite_instances: Option<wgpu::Buffer>,
+    sprite_picks: Option<wgpu::Buffer>,
     waiting: Option<Waiting>,
 }
 
@@ -240,6 +307,8 @@ impl PickImages {
             uniform,
             bind_group,
             instances: None,
+            sprite_instances: None,
+            sprite_picks: None,
             waiting: None,
         }
     }
@@ -249,8 +318,10 @@ impl PickImages {
         self.waiting.is_some()
     }
 
-    /// Draws `placed` inside `rect` and starts copying it back. The
-    /// rectangle is clamped to the image; an empty one asks nothing.
+    /// Draws `placed` and `sprites` inside `rect` and starts copying it
+    /// back. The rectangle is clamped to the image; an empty one asks
+    /// nothing.
+    #[allow(clippy::too_many_arguments)]
     pub(crate) fn request(
         &mut self,
         device: &wgpu::Device,
@@ -258,6 +329,7 @@ impl PickImages {
         pipeline: &PickPipeline,
         view_projection: Mat4,
         placed: &[Placement<'_>],
+        sprites: &[crate::SpritePicks<'_>],
         rect: [u32; 4],
     ) -> bool {
         if self.waiting.is_some() {
@@ -300,6 +372,47 @@ impl PickImages {
                 queue.write_buffer(buffer, 0, bytes);
             }
         }
+        // Sprites: every run's sprites and numbers, one after another.
+        let mut sprite_bytes: Vec<u8> = Vec::new();
+        let mut pick_bytes: Vec<u8> = Vec::new();
+        let mut sprite_runs = Vec::new();
+        for s in sprites {
+            let n = s.run.instances.len().min(s.picks.len());
+            if n == 0 {
+                continue;
+            }
+            let first = (sprite_bytes.len() / std::mem::size_of::<crate::SpriteInstance>()) as u32;
+            sprite_bytes.extend_from_slice(bytemuck::cast_slice(&s.run.instances[..n]));
+            pick_bytes.extend_from_slice(bytemuck::cast_slice(&s.picks[..n]));
+            sprite_runs.push((s.run.sheet, first..first + n as u32));
+        }
+        if sprite_bytes.len() as u64 > most {
+            sprite_runs.clear();
+        }
+        if !sprite_runs.is_empty() {
+            let fill = |slot: &mut Option<wgpu::Buffer>, bytes: &[u8], label| {
+                if !slot
+                    .as_ref()
+                    .is_some_and(|b| b.size() >= bytes.len() as u64)
+                {
+                    *slot = Some(device.create_buffer(&wgpu::BufferDescriptor {
+                        label: Some(label),
+                        size: (bytes.len() as u64).next_power_of_two().max(4096).min(most),
+                        usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
+                        mapped_at_creation: false,
+                    }));
+                }
+                if let Some(buffer) = slot {
+                    queue.write_buffer(buffer, 0, bytes);
+                }
+            };
+            fill(&mut self.sprite_instances, &sprite_bytes, "picking sprites");
+            fill(
+                &mut self.sprite_picks,
+                &pick_bytes,
+                "picking sprite numbers",
+            );
+        }
         queue.write_buffer(&self.uniform, 0, bytemuck::bytes_of(&view_projection));
         let mut encoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
             label: Some("picking"),
@@ -336,6 +449,18 @@ impl PickImages {
                 for batch in &batches {
                     let model = placed[models[batch.model]].model;
                     model.draw_shape(&mut pass, batch.mesh, batch.instances.clone());
+                }
+            }
+            if let (Some(instances), Some(picks)) = (&self.sprite_instances, &self.sprite_picks)
+                && !sprite_runs.is_empty()
+            {
+                pass.set_pipeline(&pipeline.sprites);
+                pass.set_bind_group(0, &self.bind_group, &[]);
+                pass.set_vertex_buffer(0, instances.slice(..));
+                pass.set_vertex_buffer(1, picks.slice(..));
+                for (sheet, range) in sprite_runs {
+                    pass.set_bind_group(1, sheet.bind_group(), &[]);
+                    pass.draw(0..6, range);
                 }
             }
         }

@@ -68,6 +68,8 @@ struct App {
     /// The project's sound files, measured for the Library, and the one
     /// being listened to.
     sounds: crate::sounds::Sounds,
+    /// The project's sprite sheets (Phase 9, D2).
+    sprites: crate::sprites::Sprites,
     /// The game's sounds: playing what game code asks for.
     game_audio: crate::game_audio::GameAudio,
     /// The open project and its assets.
@@ -192,6 +194,7 @@ impl App {
             importer,
             sound: crate::sound::Sound::open(),
             sounds: crate::sounds::Sounds::default(),
+            sprites: crate::sprites::Sprites::default(),
             game_audio: crate::game_audio::GameAudio::default(),
             projects: Projects::with_recent(recent),
             to_place: HashSet::new(),
@@ -248,6 +251,10 @@ impl App {
                 self.sounds.clear(self.sound.device());
                 self.workbench.set_sounds(self.sounds.states());
                 self.workbench.set_sound_events(self.sounds.events());
+                self.sprites.clear();
+                if let Some(gpu) = self.gpu.as_mut() {
+                    gpu.clear_sheets();
+                }
                 self.game_code.forget();
                 self.to_place.clear();
                 self.area_files.forget();
@@ -513,6 +520,41 @@ impl App {
             self.load_area_models();
         }
         self.refresh_library();
+    }
+
+    /// Takes in sprite sheets just read (Phase 9, D2): each is uploaded to
+    /// the graphics card, the editor is told, and a failed one is said in
+    /// the Console.
+    fn follow_sprites(&mut self) {
+        let (read, changed) = self.sprites.poll();
+        if !changed {
+            return;
+        }
+        let sheets = self.sprites.sheets();
+        for path in &read {
+            match sheets.by_path.get(path) {
+                Some(editor::sprite_sheets::SheetState::Read(sheet)) => {
+                    let id = sheets
+                        .paths
+                        .iter()
+                        .find(|(_, p)| *p == path)
+                        .map(|(id, _)| *id);
+                    if let (Some(gpu), Some(id)) = (self.gpu.as_mut(), id) {
+                        gpu.add_sheet(id, sheet);
+                    }
+                    for note in &sheet.notes {
+                        self.workbench
+                            .log(LogLevel::Info, format!("{path}: {note}."));
+                    }
+                }
+                Some(editor::sprite_sheets::SheetState::Failed(why)) => self.workbench.log(
+                    LogLevel::Warning,
+                    format!("Couldn't read the sprite sheet {path}: {why}."),
+                ),
+                _ => {}
+            }
+        }
+        self.workbench.set_sprite_sheets(sheets.clone());
     }
 
     /// Starts reading every model the open area uses that isn't loaded
@@ -1024,6 +1066,7 @@ impl App {
             self.sounds.want(&self.listing, &db.project().assets());
             self.workbench.set_sounds(self.sounds.states());
             self.workbench.set_sound_events(self.sounds.events());
+            self.sprites.want(&self.listing, &db.project().assets());
         }
         self.show_library();
     }
@@ -1598,6 +1641,7 @@ impl eframe::App for App {
             self.workbench.set_sounds(self.sounds.states());
             self.workbench.set_sound_events(self.sounds.events());
         }
+        self.follow_sprites();
         let preview = self.sounds.preview(self.sound.device());
         self.workbench.set_preview(preview);
         self.updates.frame(&mut self.workbench);
@@ -1654,6 +1698,7 @@ impl eframe::App for App {
         } else if self.importer.waiting()
             || self.thumbnails.waiting()
             || self.sounds.waiting()
+            || self.sprites.waiting()
             || self.sound.is_opening()
             || self.projects.waiting()
             || self.game_code.waiting()

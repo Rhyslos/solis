@@ -45,6 +45,8 @@ pub struct FrameStats {
     pub lods: [u32; 5],
     /// Projectiles drawn.
     pub bolts: u32,
+    /// Sprites drawn.
+    pub sprites: u32,
 }
 
 /// The passes timed, each a pair of timestamps.

@@ -52,6 +52,9 @@ impl Workbench {
             }
         };
         match request {
+            LibraryRequest::Place(id) if self.viewport.sheets.get(id).is_some() => {
+                self.place_sprite(id, None);
+            }
             LibraryRequest::Place(id) => {
                 // A double-click places it where the camera looks, even if
                 // an earlier drop of the same asset never arrived.
@@ -137,7 +140,11 @@ impl Workbench {
         if picked != before
             && let Some(path) = picked
             && self.library.iter().any(|i| {
-                &i.path == path && matches!(i.kind, LibraryKind::Sound | LibraryKind::SoundEvent)
+                &i.path == path
+                    && matches!(
+                        i.kind,
+                        LibraryKind::Sound | LibraryKind::SoundEvent | LibraryKind::SpriteSheet
+                    )
             })
         {
             self.sound_shown = Some((path.clone(), self.document.selection.clone()));
@@ -187,6 +194,44 @@ impl Workbench {
         self.library_state.search.clear();
         self.library_state.selected = Some(path.to_owned());
         self.sound_shown = Some((path.to_owned(), self.document.selection.clone()));
+    }
+
+    /// The project's sprite sheets as the app has read them (Phase 9, D2).
+    pub fn set_sprite_sheets(&mut self, sheets: crate::sprite_sheets::SpriteSheets) {
+        self.viewport.sheets = std::sync::Arc::new(sheets);
+    }
+
+    /// The project's sprite sheets.
+    pub fn sprite_sheets(&self) -> &crate::sprite_sheets::SpriteSheets {
+        &self.viewport.sheets
+    }
+
+    /// Makes an egui picture of each sprite sheet's atlas that lacks one
+    /// (or whose sheet changed), and lets go of those whose file is gone.
+    pub(crate) fn refresh_sheet_pictures(&mut self, ctx: &egui::Context) {
+        let sheets = std::sync::Arc::clone(&self.viewport.sheets);
+        self.sheet_pictures
+            .retain(|path, _| sheets.at(path).is_some());
+        self.sheet_pictures_from
+            .retain(|path, _| sheets.at(path).is_some());
+        for (path, state) in &sheets.by_path {
+            let crate::sprite_sheets::SheetState::Read(sheet) = state else {
+                continue;
+            };
+            let from = std::sync::Arc::as_ptr(sheet) as usize;
+            if self.sheet_pictures_from.get(path) == Some(&from) {
+                continue;
+            }
+            let [w, h] = sheet.atlas_size.map(|v| v as usize);
+            let image = egui::ColorImage::from_rgba_unmultiplied([w, h], &sheet.atlas);
+            let texture = ctx.load_texture(
+                format!("sheet {path}"),
+                image,
+                egui::TextureOptions::NEAREST,
+            );
+            self.sheet_pictures.insert(path.clone(), texture);
+            self.sheet_pictures_from.insert(path.clone(), from);
+        }
     }
 
     /// The sound events as the app has read them, by path inside the
@@ -241,8 +286,67 @@ impl Workbench {
     /// was dropped onto an entity): it goes there once the app has loaded
     /// it.
     pub(crate) fn place_dropped(&mut self, asset: AssetId, at: Vec3, parent: Option<EntityId>) {
+        if self.viewport.sheets.get(asset).is_some() {
+            self.place_sprite(asset, Some((at, parent)));
+            return;
+        }
         self.place_targets.insert(asset, (at, parent));
         self.outbox.push(WorkbenchAction::PlaceAsset(asset));
+    }
+
+    /// Places a sprite of sheet `sheet` (Phase 9, D2): at `target` (a point
+    /// in the world, under an entity if it was dropped on one), or where
+    /// the camera looks; on a whole pixel, standing on the sheet's
+    /// "pivot" or "feet" slice if it has one, as drawn (not flipped).
+    /// Selected, as one undo step.
+    pub(crate) fn place_sprite(
+        &mut self,
+        sheet: AssetId,
+        target: Option<(Vec3, Option<EntityId>)>,
+    ) -> Option<EntityId> {
+        let info = self.viewport.sheets.get(sheet)?.clone();
+        let name = self
+            .viewport
+            .sheets
+            .paths
+            .get(&sheet)
+            .map_or_else(|| "Sprite".to_owned(), |p| crate::sprite_sheets::name_of(p));
+        let (at, parent) = match target {
+            Some((at, parent)) => {
+                let area = self.document.area();
+                let parent = parent.filter(|&p| area.contains(p));
+                let local = match parent {
+                    Some(p) => area.world_matrix(p).inverse().transform_point3(at),
+                    None => at,
+                };
+                (local, parent)
+            }
+            None => (self.viewport.camera.focus(), None),
+        };
+        if !at.is_finite() {
+            return None;
+        }
+        let px = self.pixels.pixel_size();
+        let on_pixel = |v: f32| (v / px).round() * px;
+        let pivot = ["pivot", "feet"]
+            .into_iter()
+            .find(|n| info.slice(n).is_some())
+            .unwrap_or_default();
+        let mut data = area::EntityData::new(&name)
+            .with(&area::builtin::Transform {
+                position: Vec3::new(on_pixel(at.x), on_pixel(at.y), at.z),
+                ..area::builtin::Transform::default()
+            })
+            .with(&area::builtin::Sprite {
+                sheet: Some(reflect::AssetRef {
+                    asset: sheet,
+                    part: None,
+                }),
+                pivot: pivot.to_owned(),
+                ..area::builtin::Sprite::default()
+            });
+        data.parent = parent;
+        Some(self.spawn_selected(data))
     }
 
     /// Forgets where `asset` was to go: its import failed, so a later

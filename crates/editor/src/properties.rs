@@ -145,7 +145,10 @@ pub(crate) fn properties(
     ui: &mut Ui,
     document: &Document,
     part: Option<&AssemblyPart>,
-    models: &BTreeMap<AssetId, ModelInfo>,
+    (models, sheets): (
+        &BTreeMap<AssetId, ModelInfo>,
+        &crate::sprite_sheets::SpriteSheets,
+    ),
     copied: &[String],
     running: Option<&BTreeMap<String, reflect::ComponentData>>,
 ) -> Vec<PropertyRequest> {
@@ -257,7 +260,7 @@ pub(crate) fn properties(
                                     data,
                                     assembly,
                                     &others,
-                                    models,
+                                    (models, sheets),
                                     document.area(),
                                 )
                                 {

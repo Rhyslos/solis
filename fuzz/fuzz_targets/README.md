@@ -5,6 +5,7 @@ One fuzz target per reader of a file a project can ship (decision 0042). Each ta
 | File | What it reads |
 | --- | --- |
 | `area_file.rs` | An area or assembly file: refused or read, its assemblies expanded, written and read back. |
+| `aseprite.rs` | An Aseprite file (`.aseprite`): refused or read within the limits, every frame the canvas's size, tags within the frames, then packed into a sheet whose frames draw back the same. |
 | `game_code.rs` | One Lust file and one Lua file (split by a 0x01 byte): checked, then loaded and run for a tick within the time limits. |
 | `import_cache.rs` | An import cache entry (`.solis/cache/*.solbin`): refused, or read with every index pointing somewhere. |
 | `input_actions.rs` | A project's input actions (`input.solinput`): refused or read, then written and read back the same. |

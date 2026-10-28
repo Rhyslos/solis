@@ -103,6 +103,9 @@ struct FrameResources {
     /// Every projectile, filled each frame; replaced by a bigger one
     /// when a frame has more.
     bolts: Option<wgpu::Buffer>,
+    /// Every sprite, filled each frame; replaced by a bigger one when a
+    /// frame has more.
+    sprites: Option<wgpu::Buffer>,
 }
 
 /// How many copies are compared and sent together: a run that changed
@@ -110,6 +113,44 @@ struct FrameResources {
 const SENT_TOGETHER: usize = 512;
 
 impl FrameResources {
+    /// Puts every run's sprites into the sprite buffer, one after another,
+    /// growing it if needed. Returns where each run's start in it (none if
+    /// too many for one buffer).
+    fn write_sprites(
+        &mut self,
+        device: &wgpu::Device,
+        queue: &wgpu::Queue,
+        runs: &[crate::sprites::SpriteRun<'_>],
+    ) -> Option<Vec<u32>> {
+        let size = std::mem::size_of::<crate::sprites::SpriteInstance>() as u64;
+        let total: u64 = runs.iter().map(|r| r.instances.len() as u64).sum();
+        let bytes = total * size;
+        let most = device.limits().max_buffer_size;
+        if total == 0 || bytes > most || total > u64::from(u32::MAX) {
+            return (total == 0).then(Vec::new);
+        }
+        if !self.sprites.as_ref().is_some_and(|b| b.size() >= bytes) {
+            let size = bytes.next_power_of_two().max(4096).min(most);
+            self.sprites = Some(device.create_buffer(&wgpu::BufferDescriptor {
+                label: Some("sprites"),
+                size,
+                usage: wgpu::BufferUsages::VERTEX | wgpu::BufferUsages::COPY_DST,
+                mapped_at_creation: false,
+            }));
+        }
+        let buffer = self.sprites.as_ref()?;
+        let mut starts = Vec::with_capacity(runs.len());
+        let mut at = 0u64;
+        for run in runs {
+            starts.push(at as u32);
+            if !run.instances.is_empty() {
+                queue.write_buffer(buffer, at * size, bytemuck::cast_slice(run.instances));
+            }
+            at += run.instances.len() as u64;
+        }
+        Some(starts)
+    }
+
     /// Puts `bolts` into the projectile buffer, growing it if needed.
     /// Returns how many will be drawn (none if too many for one buffer).
     fn write_bolts(
@@ -299,6 +340,7 @@ impl FrameResources {
             sent: Vec::new(),
             levels: Vec::new(),
             bolts: None,
+            sprites: None,
         }
     }
 }
@@ -590,6 +632,20 @@ pub struct ViewportRenderer {
     axis_count: u32,
     pick: crate::pick::PickPipeline,
     pixel: crate::pixel::PixelPipeline,
+    sprites: crate::sprites::SpritePipelines,
+}
+
+/// Everything one frame draws.
+#[derive(Debug, Clone, Copy, Default)]
+pub struct Scene<'a> {
+    /// The models, where they are.
+    pub placed: &'a [Placement<'a>],
+    /// The lamps.
+    pub lights: &'a [Light],
+    /// Projectiles, drawn in one go.
+    pub bolts: &'a [crate::projectiles::Bolt],
+    /// Sprites, a run per sheet (Phase 9, D2).
+    pub sprites: &'a [crate::sprites::SpriteRun<'a>],
 }
 
 impl ViewportRenderer {
@@ -690,6 +746,8 @@ impl ViewportRenderer {
             contents: bytemuck::cast_slice(&axis_vertices),
             usage: wgpu::BufferUsages::VERTEX,
         });
+        let sprites =
+            crate::sprites::SpritePipelines::new(device, &bind_group_layout, &shader, sample_count);
         Self {
             sample_count,
             sky_pipeline: pipeline(Kind::Sky),
@@ -705,9 +763,23 @@ impl ViewportRenderer {
             shadow_pipeline,
             axes,
             axis_count: axis_vertices.len() as u32,
-            pick: crate::pick::PickPipeline::new(device),
+            pick: crate::pick::PickPipeline::new(device, &sprites.sheet_layout),
             pixel: crate::pixel::PixelPipeline::new(device),
+            sprites,
         }
+    }
+
+    /// Uploads a sprite sheet's atlas (`size` texels, straight RGBA rows,
+    /// as `assets::sprite_sheet` packs it), ready to draw sprites from.
+    /// Done once per sheet (and again when it changes).
+    pub fn upload_sheet(
+        &self,
+        device: &wgpu::Device,
+        queue: &wgpu::Queue,
+        size: [u32; 2],
+        rgba: &[u8],
+    ) -> crate::sprites::GpuSheet {
+        self.sprites.upload(device, queue, size, rgba)
     }
 
     /// Makes the screen-sized image a 2D game's small picture is scaled up
@@ -750,11 +822,35 @@ impl ViewportRenderer {
         placed: &[Placement<'_>],
         rect: [u32; 4],
     ) -> bool {
+        self.request_pick_with_sprites(device, queue, target, view_projection, placed, &[], rect)
+    }
+
+    /// [`Self::request_pick`], with sprites too: each is found by its own
+    /// pixels, so the clear space round a sprite picks what's behind.
+    #[allow(clippy::too_many_arguments)]
+    pub fn request_pick_with_sprites(
+        &self,
+        device: &wgpu::Device,
+        queue: &wgpu::Queue,
+        target: &mut ViewportTarget,
+        view_projection: glam::Mat4,
+        placed: &[Placement<'_>],
+        sprites: &[crate::SpritePicks<'_>],
+        rect: [u32; 4],
+    ) -> bool {
         let size = target.size;
         let images = target
             .pick
             .get_or_insert_with(|| crate::pick::PickImages::new(device, &self.pick, size));
-        images.request(device, queue, &self.pick, view_projection, placed, rect)
+        images.request(
+            device,
+            queue,
+            &self.pick,
+            view_projection,
+            placed,
+            sprites,
+            rect,
+        )
     }
 
     /// Uploads `model` to the GPU, ready to pass to [`Self::render`]. Done
@@ -909,6 +1005,36 @@ impl ViewportRenderer {
         lights: &[Light],
         bolts: &[crate::projectiles::Bolt],
     ) -> FrameStats {
+        self.render_scene(
+            device,
+            queue,
+            target,
+            params,
+            &Scene {
+                placed,
+                lights,
+                bolts,
+                sprites: &[],
+            },
+        )
+    }
+
+    /// Draws one frame of `scene` into `target`, and submits it, saying
+    /// what it drew. Never waits for the GPU to finish.
+    pub fn render_scene(
+        &self,
+        device: &wgpu::Device,
+        queue: &wgpu::Queue,
+        target: &mut ViewportTarget,
+        params: &FrameParams,
+        scene: &Scene<'_>,
+    ) -> FrameStats {
+        let Scene {
+            placed,
+            lights,
+            bolts,
+            sprites,
+        } = *scene;
         if target.timer.is_none() {
             target.timer = Some(crate::timing::GpuTimer::new(device, queue));
         }
@@ -945,6 +1071,12 @@ impl ViewportRenderer {
         let count = raw.len();
         let sent = target.frame.write_instances(device, queue, raw);
         let bolt_count = target.frame.write_bolts(device, queue, bolts);
+        let sprite_starts = target.frame.write_sprites(device, queue, sprites);
+        if sprite_starts.is_none() {
+            log::warn!(
+                "more sprites than the graphics card can draw at once; sprites aren't drawn"
+            );
+        }
         if sent.is_none() {
             log::warn!(
                 "{count} model copies are more than the graphics card can draw at once; models \
@@ -973,8 +1105,15 @@ impl ViewportRenderer {
                     lods[b.lod.min(4)] += b.instances.end - b.instances.start;
                     lods
                 }),
-            sent_bytes: sent.unwrap_or(0) + u64::from(bolt_count) * 40,
+            sent_bytes: sent.unwrap_or(0)
+                + u64::from(bolt_count) * 40
+                + sprites
+                    .iter()
+                    .map(|r| r.instances.len() as u64)
+                    .sum::<u64>()
+                    * 88,
             bolts: bolt_count,
+            sprites: sprites.iter().map(|r| r.instances.len() as u32).sum(),
         };
         let timer = target.timer.as_ref().and_then(Option::as_ref);
         let shadows_drawn = receivers.is_some() && casters.is_some() && sent.is_some();
@@ -1092,6 +1231,33 @@ impl ViewportRenderer {
                     );
                 }
             }
+            // Cut-out sprites write depth like solids, so the grid hides
+            // behind them too.
+            let draw_sprites = |pass: &mut wgpu::RenderPass<'_>, blended: bool| {
+                let (Some(buffer), Some(starts)) = (frame.sprites.as_ref(), sprite_starts.as_ref())
+                else {
+                    return;
+                };
+                pass.set_pipeline(if blended {
+                    &self.sprites.blended
+                } else {
+                    &self.sprites.cut_out
+                });
+                pass.set_vertex_buffer(0, buffer.slice(..));
+                for (run, &start) in sprites.iter().zip(starts) {
+                    // A run is drawn whole by one pipeline or the other,
+                    // by its first sprite (the caller keeps runs apart).
+                    let Some(first) = run.instances.first() else {
+                        continue;
+                    };
+                    if first.see_through() != blended {
+                        continue;
+                    }
+                    pass.set_bind_group(3, run.sheet.bind_group(), &[]);
+                    pass.draw(0..6, start..start + run.instances.len() as u32);
+                }
+            };
+            draw_sprites(&mut pass, false);
             if params.editor_lines {
                 pass.set_pipeline(&self.grid_pipeline);
                 pass.draw(0..6, 0..1);
@@ -1112,6 +1278,7 @@ impl ViewportRenderer {
                 pass.set_vertex_buffer(0, buffer.slice(..));
                 pass.draw(0..6, 0..bolt_count);
             }
+            draw_sprites(&mut pass, true);
         }
         // The last pass: exposure, tone mapping and sRGB, into the
         // finished image.

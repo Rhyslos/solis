@@ -28,6 +28,11 @@ pub enum ProblemKind {
     /// Entities that are each other's parents (a damaged file): they're
     /// placed differently by the editor and the game until it's fixed.
     ParentLoop,
+    /// A Sprite with no sheet chosen, or whose sheet isn't in the project.
+    MissingSpriteSheet,
+    /// A sprite resting between pixels by accident: the game draws it on
+    /// the nearest one, so it may seem to jump a pixel when it moves.
+    SpriteBetweenPixels,
 }
 
 /// One mistake, and the entity it's on.
@@ -52,8 +57,15 @@ pub(crate) struct Fingerprint {
 /// The problems last found, and what they were found from.
 #[derive(Debug, Clone, Default)]
 pub(crate) struct Problems {
+    /// Every problem: those in the area, then sprites between pixels.
     pub(crate) list: Vec<Problem>,
+    /// Those in the area, found again only when its shape changes.
+    area: Vec<Problem>,
     from: Option<Fingerprint>,
+    /// Sprites between pixels: looked for again whenever anything moves,
+    /// which is cheap (only sprites are looked at).
+    between: Vec<Problem>,
+    between_from: Option<(u64, u32)>,
 }
 
 /// What problems are found in.
@@ -82,10 +94,69 @@ impl Problems {
             return 0;
         }
         let before = self.list.len();
-        self.list = find(sources);
+        self.area = find(sources);
         self.from = Some(fingerprint);
+        self.join();
         self.list.len().saturating_sub(before)
     }
+
+    /// Looks again for sprites between pixels if anything moved
+    /// (`revision`) or the pixel size (`pixels_per_unit`) changed.
+    pub(crate) fn refresh_between(
+        &mut self,
+        revision: u64,
+        pixels_per_unit: u32,
+        area: &Area,
+        sprites: &[crate::sprite_sheets::AreaSprite],
+    ) {
+        let key = (revision, pixels_per_unit);
+        if self.between_from == Some(key) {
+            return;
+        }
+        self.between = between_pixels(area, sprites, pixels_per_unit);
+        self.between_from = Some(key);
+        self.join();
+    }
+
+    fn join(&mut self) {
+        self.list = self.area.iter().chain(&self.between).cloned().collect();
+    }
+}
+
+/// Sprites in `sprites` resting between pixels (of `pixels_per_unit` a
+/// metre) by accident. Turned sprites are left out: they can't sit on the
+/// pixel grid.
+pub(crate) fn between_pixels(
+    area: &Area,
+    sprites: &[crate::sprite_sheets::AreaSprite],
+    pixels_per_unit: u32,
+) -> Vec<Problem> {
+    let ppu = pixels_per_unit.max(1) as f32;
+    let off = |v: f32| {
+        let p = v * ppu;
+        (p - p.round()).abs() > 1e-3
+    };
+    let mut found: Vec<Problem> = sprites
+        .iter()
+        .filter(|s| {
+            let m = s.transform;
+            let turned = m.x_axis.y.abs() > 1e-6 || m.y_axis.x.abs() > 1e-6;
+            !turned && (off(m.w_axis.x) || off(m.w_axis.y))
+        })
+        .map(|s| {
+            let name = area.get(s.entity).map_or("A sprite", |e| e.name.as_str());
+            let [x, y] = [s.transform.w_axis.x * ppu, s.transform.w_axis.y * ppu];
+            Problem {
+                kind: ProblemKind::SpriteBetweenPixels,
+                entity: s.entity,
+                text: format!(
+                    "{name} rests between pixels (at pixel {x:.2}, {y:.2}): the game draws it                      on the nearest one, so it may seem to jump when it moves. Move it with                      snapping to pixels on to fix it"
+                ),
+            }
+        })
+        .collect();
+    found.sort_by_key(|p| p.entity);
+    found
 }
 
 impl Fingerprint {
@@ -181,6 +252,23 @@ pub(crate) fn find(sources: &Sources) -> Vec<Problem> {
                         ),
                     });
                 }
+                Some(_) => {}
+            }
+        }
+        if let Some(sprite) = entity.get::<area::builtin::Sprite>() {
+            match sprite.sheet.map(|r| r.asset) {
+                None => found.push(Problem {
+                    kind: ProblemKind::MissingSpriteSheet,
+                    entity: id,
+                    text: format!("{name}'s Sprite has no sprite sheet chosen"),
+                }),
+                Some(asset) if !sources.known.contains(&asset) => found.push(Problem {
+                    kind: ProblemKind::MissingSpriteSheet,
+                    entity: id,
+                    text: format!(
+                        "{name}'s sprite sheet ({asset}) isn't in the project: its file was                          deleted, or never committed"
+                    ),
+                }),
                 Some(_) => {}
             }
         }
@@ -521,5 +609,85 @@ mod tests {
         assert!(!problems.is_from(&Fingerprint::of(&document, 8)));
         problems.refresh(Fingerprint::of(&document, 8), &sources(&w));
         assert!(problems.list.is_empty());
+    }
+
+    fn sprite(sheet: Option<AssetId>) -> area::builtin::Sprite {
+        area::builtin::Sprite {
+            sheet: sheet.map(|asset| reflect::AssetRef { asset, part: None }),
+            ..area::builtin::Sprite::default()
+        }
+    }
+
+    #[test]
+    fn sprites_without_a_sheet_in_the_project_are_found() {
+        let mut w = World::new();
+        let (here, gone) = (AssetId::random(), AssetId::random());
+        w.known.insert(here);
+        w.area
+            .spawn(EntityData::new("Hero").with(&sprite(Some(here))));
+        w.area.spawn(EntityData::new("Blank").with(&sprite(None)));
+        w.area
+            .spawn(EntityData::new("Ghost").with(&sprite(Some(gone))));
+        let found = w.find();
+        assert_eq!(found.len(), 2);
+        assert!(
+            found
+                .iter()
+                .all(|p| p.kind == ProblemKind::MissingSpriteSheet)
+        );
+        assert!(
+            found
+                .iter()
+                .any(|p| p.text.contains("Blank's Sprite has no"))
+        );
+        assert!(
+            found
+                .iter()
+                .any(|p| p.text.contains("Ghost's sprite sheet"))
+        );
+    }
+
+    #[test]
+    fn a_sprite_between_pixels_is_found_unless_turned_and_found_again_after_a_move() {
+        use crate::sprite_sheets::AreaSprite;
+        use glam::{Mat4, Vec3};
+        let mut area = Area::default();
+        let on = area.spawn(EntityData::new("On"));
+        let off = area.spawn(EntityData::new("Off"));
+        let turned = area.spawn(EntityData::new("Turned"));
+        let at = |entity, x: f32, y: f32, turn: f32| AreaSprite {
+            entity,
+            sprite: sprite(None),
+            transform: Mat4::from_translation(Vec3::new(x, y, 0.0)) * Mat4::from_rotation_z(turn),
+            pick: 0,
+        };
+        // 16 pixels a metre: 2.5 m is pixel 40; 1.01 m is pixel 16.16.
+        let mut sprites = vec![
+            at(on, 2.5, -3.0625, 0.0),
+            at(off, 1.01, 0.0, 0.0),
+            at(turned, 1.01, 0.0, 0.4),
+        ];
+        let found = between_pixels(&area, &sprites, 16);
+        assert_eq!(found.len(), 1);
+        assert_eq!(found[0].entity, off);
+        assert_eq!(found[0].kind, ProblemKind::SpriteBetweenPixels);
+        assert!(
+            found[0]
+                .text
+                .contains("Off rests between pixels (at pixel 16.16")
+        );
+        // Through Problems: found once per revision.
+        let mut problems = Problems::default();
+        problems.refresh_between(1, 16, &area, &sprites);
+        assert_eq!(problems.list.len(), 1);
+        sprites[1] = at(off, 1.0, 0.0, 0.0);
+        problems.refresh_between(1, 16, &area, &sprites);
+        assert_eq!(problems.list.len(), 1, "the same revision: not looked at");
+        problems.refresh_between(2, 16, &area, &sprites);
+        assert!(problems.list.is_empty(), "moved onto a pixel");
+        // Bigger pixels: 1.0 m is still whole at 1 a metre; 2.5 isn't.
+        problems.refresh_between(2, 1, &area, &sprites);
+        assert_eq!(problems.list.len(), 1);
+        assert_eq!(problems.list[0].entity, on);
     }
 }
