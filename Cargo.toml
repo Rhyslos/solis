@@ -28,6 +28,7 @@ input = { path = "crates/input" }
 updater = { path = "crates/updater" }
 sound = { path = "crates/sound" }
 animation = { path = "crates/animation" }
+tiles = { path = "crates/tiles" }
 
 # Outside libraries. Every one must have a licence compatible with MIT,
 # checked by `cargo deny check` (see deny.toml and decision 0007).

@@ -97,6 +97,17 @@ pub fn read_block_settings(
     kind: &str,
     newest: u32,
 ) -> Result<BlockSettings, ParseError> {
+    read_block_settings_within(text, kind, newest, MAX_SETTINGS_FIELDS)
+}
+
+/// As [`read_block_settings`], with room for up to `most` fields and
+/// blocks together (a tile map's chunks are many).
+pub fn read_block_settings_within(
+    text: &str,
+    kind: &str,
+    newest: u32,
+    most: usize,
+) -> Result<BlockSettings, ParseError> {
     if text.len() > MAX_BYTES {
         return Err(ParseError {
             line: 0,
@@ -152,8 +163,8 @@ pub fn read_block_settings(
         let line = p.line;
         let key = p.word()?;
         count += 1;
-        if count > MAX_SETTINGS_FIELDS {
-            return p.fail(&format!("more than {MAX_SETTINGS_FIELDS} settings"));
+        if count > most {
+            return p.fail(&format!("more than {most} settings"));
         }
         p.skip_space();
         if p.peek() == Some('=') {

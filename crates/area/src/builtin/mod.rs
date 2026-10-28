@@ -12,6 +12,7 @@ mod model;
 mod physics;
 mod reverb_zone;
 mod sprite;
+mod tile_map;
 mod transform;
 
 pub use animator::Animator;
@@ -24,6 +25,7 @@ pub use model::Model;
 pub use physics::{BodyKind, CharacterBody, Collider, ColliderShape, RigidBody};
 pub use reverb_zone::{ReverbZone, ZoneShape};
 pub use sprite::Sprite;
+pub use tile_map::TileMap;
 pub use transform::Transform;
 
 use crate::document::{Area, EntityData};
@@ -45,6 +47,7 @@ pub fn registry() -> Result<Registry, RegistryError> {
     registry.register_type::<Sprite>()?;
     registry.register_type::<Listener>()?;
     registry.register_type::<Animator>()?;
+    registry.register_type::<TileMap>()?;
     Ok(registry)
 }
 
@@ -157,6 +160,7 @@ mod tests {
                 "ReverbZone",
                 "RigidBody",
                 "Sprite",
+                "TileMap",
                 "Transform"
             ]
         );
@@ -179,6 +183,7 @@ mod tests {
         round_trip(&Transform::default());
         round_trip(&Camera::default());
         round_trip(&Animator::default());
+        round_trip(&TileMap::default());
         round_trip(&Animator {
             animator: None,
             state: "Walk".into(),

@@ -475,6 +475,7 @@ dependencies = [
  "script",
  "serde",
  "sound",
+ "tiles",
  "world",
 ]
 
@@ -2328,6 +2329,7 @@ dependencies = [
  "reflect",
  "script",
  "sound",
+ "tiles",
  "updater",
 ]
 
@@ -2454,6 +2456,14 @@ dependencies = [
  "proc-macro2",
  "quote",
  "syn 3.0.9",
+]
+
+[[package]]
+name = "tiles"
+version = "0.0.1"
+dependencies = [
+ "area",
+ "reflect",
 ]
 
 [[package]]
@@ -2992,6 +3002,7 @@ dependencies = [
  "physics",
  "rayon",
  "reflect",
+ "tiles",
 ]
 
 [[package]]

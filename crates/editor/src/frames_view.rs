@@ -72,14 +72,40 @@ pub(crate) fn settled_drag(
     speed: f64,
     suffix: &str,
 ) -> Option<f64> {
+    settled(ui, salt, value, range, speed, suffix, None)
+}
+
+/// [`settled_drag`] for a whole number (a count of cells): never shown
+/// with a decimal point.
+pub(crate) fn settled_whole_drag(
+    ui: &mut Ui,
+    salt: &str,
+    value: f64,
+    range: std::ops::RangeInclusive<f64>,
+    speed: f64,
+) -> Option<f64> {
+    settled(ui, salt, value, range, speed, "", Some(0)).map(f64::round)
+}
+
+fn settled(
+    ui: &mut Ui,
+    salt: &str,
+    value: f64,
+    range: std::ops::RangeInclusive<f64>,
+    speed: f64,
+    suffix: &str,
+    decimals: Option<usize>,
+) -> Option<f64> {
     let id = ui.id().with(("settled", salt));
     let mut shown: f64 = ui.data(|d| d.get_temp(id)).unwrap_or(value);
-    let response = ui.add(
-        egui::DragValue::new(&mut shown)
-            .range(range)
-            .speed(speed)
-            .suffix(suffix),
-    );
+    let mut drag = egui::DragValue::new(&mut shown)
+        .range(range)
+        .speed(speed)
+        .suffix(suffix);
+    if let Some(d) = decimals {
+        drag = drag.fixed_decimals(d);
+    }
+    let response = ui.add(drag);
     if response.dragged() || response.has_focus() {
         ui.data_mut(|d| d.insert_temp(id, shown));
         None

@@ -18,6 +18,7 @@ layer = 1
 rayon.workspace = true
 area.workspace = true
 animation.workspace = true
+tiles.workspace = true
 reflect.workspace = true
 glam.workspace = true
 hecs.workspace = true

@@ -1212,6 +1212,39 @@ impl ViewportRenderer {
             pass.set_bind_group(0, &frame.bind_group, &[]);
             pass.set_pipeline(&self.sky_pipeline);
             pass.draw(0..3, 0..1);
+            use crate::sprites::SpriteLayer;
+            let draw_sprites = |pass: &mut wgpu::RenderPass<'_>, layer: SpriteLayer| {
+                let (Some(buffer), Some(starts)) = (frame.sprites.as_ref(), sprite_starts.as_ref())
+                else {
+                    return;
+                };
+                if !sprites
+                    .iter()
+                    .any(|r| r.instances.first().is_some_and(|f| f.layer() == layer))
+                {
+                    return;
+                }
+                pass.set_pipeline(match layer {
+                    SpriteLayer::CutOut => &self.sprites.cut_out,
+                    SpriteLayer::SeeThrough => &self.sprites.blended,
+                    SpriteLayer::Under | SpriteLayer::Over => &self.sprites.flat,
+                });
+                pass.set_vertex_buffer(0, buffer.slice(..));
+                for (run, &start) in sprites.iter().zip(starts) {
+                    // A run is drawn whole by one pipeline, by its first
+                    // sprite (the caller keeps runs apart).
+                    let Some(first) = run.instances.first() else {
+                        continue;
+                    };
+                    if first.layer() != layer {
+                        continue;
+                    }
+                    pass.set_bind_group(3, run.sheet.bind_group(), &[]);
+                    pass.draw(0..6, start..start + run.instances.len() as u32);
+                }
+            };
+            // A tile map's ground first, under everything (Phase 9, D4).
+            draw_sprites(&mut pass, SpriteLayer::Under);
             if let Some(instances) = &frame.instances {
                 pass.set_vertex_buffer(1, instances.slice(..));
             }
@@ -1233,31 +1266,7 @@ impl ViewportRenderer {
             }
             // Cut-out sprites write depth like solids, so the grid hides
             // behind them too.
-            let draw_sprites = |pass: &mut wgpu::RenderPass<'_>, blended: bool| {
-                let (Some(buffer), Some(starts)) = (frame.sprites.as_ref(), sprite_starts.as_ref())
-                else {
-                    return;
-                };
-                pass.set_pipeline(if blended {
-                    &self.sprites.blended
-                } else {
-                    &self.sprites.cut_out
-                });
-                pass.set_vertex_buffer(0, buffer.slice(..));
-                for (run, &start) in sprites.iter().zip(starts) {
-                    // A run is drawn whole by one pipeline or the other,
-                    // by its first sprite (the caller keeps runs apart).
-                    let Some(first) = run.instances.first() else {
-                        continue;
-                    };
-                    if first.see_through() != blended {
-                        continue;
-                    }
-                    pass.set_bind_group(3, run.sheet.bind_group(), &[]);
-                    pass.draw(0..6, start..start + run.instances.len() as u32);
-                }
-            };
-            draw_sprites(&mut pass, false);
+            draw_sprites(&mut pass, SpriteLayer::CutOut);
             if params.editor_lines {
                 pass.set_pipeline(&self.grid_pipeline);
                 pass.draw(0..6, 0..1);
@@ -1278,7 +1287,8 @@ impl ViewportRenderer {
                 pass.set_vertex_buffer(0, buffer.slice(..));
                 pass.draw(0..6, 0..bolt_count);
             }
-            draw_sprites(&mut pass, true);
+            draw_sprites(&mut pass, SpriteLayer::SeeThrough);
+            draw_sprites(&mut pass, SpriteLayer::Over);
         }
         // The last pass: exposure, tone mapping and sRGB, into the
         // finished image.

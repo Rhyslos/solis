@@ -43,6 +43,9 @@ pub struct GpuViewport {
     models: HashMap<AssetId, GpuModel>,
     /// Sprite sheets' atlases, uploaded (Phase 9, D2).
     sheets: HashMap<AssetId, render::GpuSheet>,
+    /// Each tile map layer's picture uploaded (into `sheets`), by its key
+    /// then (Phase 9, D4).
+    tile_keys: HashMap<AssetId, u64>,
     /// The image thumbnails are drawn into, made the first time.
     thumbnail_target: Option<ViewportTarget>,
     /// What was drawn since the Profiler last asked, and which images
@@ -69,6 +72,7 @@ impl GpuViewport {
             pixel_images: Vec::new(),
             models: HashMap::new(),
             sheets: HashMap::new(),
+            tile_keys: HashMap::new(),
             thumbnail_target: None,
             report: editor::DrawReport::default(),
             drawn: Vec::new(),
@@ -222,6 +226,22 @@ impl GpuViewport {
     /// Frees every sprite sheet (another project was opened).
     pub fn clear_sheets(&mut self) {
         self.sheets.clear();
+        self.tile_keys.clear();
+    }
+
+    /// Uploads each tile map layer's picture that's new or changed since
+    /// (Phase 9, D4), to draw like a sheet.
+    fn upload_tiles(&mut self, pictures: &[std::sync::Arc<editor::tile_view::TilePicture>]) {
+        for p in pictures {
+            if self.tile_keys.get(&p.id) == Some(&p.key) {
+                continue;
+            }
+            let uploaded =
+                self.renderer
+                    .upload_sheet(&self.state.device, &self.state.queue, p.size, &p.rgba);
+            self.sheets.insert(p.id, uploaded);
+            self.tile_keys.insert(p.id, p.key);
+        }
     }
 
     /// Makes image number `slot` `size` pixels, unless it already is.
@@ -399,6 +419,22 @@ fn sprite_runs<'a>(
         .collect()
 }
 
+/// The runs a click can pick: sprites, not tile map layers (which lie
+/// under or over everything, and have no pick numbers).
+fn pickable<'a>(runs: &[render::SpritePicks<'a>]) -> Vec<render::SpritePicks<'a>> {
+    runs.iter()
+        .filter(|r| {
+            r.run.instances.first().is_some_and(|i| {
+                matches!(
+                    i.layer(),
+                    render::SpriteLayer::CutOut | render::SpriteLayer::SeeThrough
+                )
+            })
+        })
+        .copied()
+        .collect()
+}
+
 /// Adds what a frame drew to the Profiler's report.
 fn count(report: &mut editor::DrawReport, stats: &render::FrameStats) {
     report.bolts += u64::from(stats.bolts);
@@ -483,6 +519,8 @@ fn to_answer(result: &render::PickResult) -> PickAnswer {
 
 impl ViewportRenderer for GpuViewport {
     fn render(&mut self, view: &ViewportView) -> Result<egui::TextureId, String> {
+        // Tile maps' layers new or changed since (Phase 9, D4).
+        self.upload_tiles(&view.tile_pictures);
         let params = FrameParams {
             view_projection: view.view_projection,
             camera_position: view.camera_position,
@@ -564,7 +602,7 @@ impl ViewportRenderer for GpuViewport {
                 &mut image.target,
                 view.view_projection,
                 &placed,
-                &picks,
+                &pickable(&picks),
                 rect,
             );
             if !asked {

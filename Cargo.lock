@@ -249,6 +249,7 @@ dependencies = [
  "rfd",
  "script",
  "sound",
+ "tiles",
  "updater",
  "winresource",
 ]
@@ -1116,6 +1117,7 @@ dependencies = [
  "script",
  "serde",
  "sound",
+ "tiles",
  "world",
 ]
 
@@ -4597,6 +4599,15 @@ dependencies = [
 ]
 
 [[package]]
+name = "tiles"
+version = "0.0.1"
+dependencies = [
+ "area",
+ "proptest",
+ "reflect",
+]
+
+[[package]]
 name = "tiny-skia"
 version = "0.11.4"
 source = "registry+https://github.com/rust-lang/crates.io-index"
@@ -5779,6 +5790,7 @@ dependencies = [
  "physics",
  "rayon",
  "reflect",
+ "tiles",
 ]
 
 [[package]]

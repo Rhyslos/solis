@@ -3,7 +3,9 @@
 //! in Aseprite shows at once), for the Library, Properties and drawing.
 
 use asset_db::{FileKind, Jobs, Listing};
-use editor::sprite_sheets::{AnimatorState, FramesState, SheetState, SpriteSheets};
+use editor::sprite_sheets::{
+    AnimatorState, FramesState, MapFileState, SheetState, SpriteSheets, TilesetState,
+};
 use reflect::{AssetId, Id};
 use std::collections::{HashMap, HashSet, VecDeque};
 use std::hash::{DefaultHasher, Hash, Hasher};
@@ -94,6 +96,41 @@ pub fn read_animator(path: &Path) -> AnimatorState {
     }
 }
 
+/// A small text file's text, read within `max` bytes, or why not.
+fn text_within(path: &Path, max: usize, what: &str) -> Result<String, String> {
+    let bytes = match asset_db::read_limited(path, max as u64) {
+        Ok(bytes) => bytes,
+        Err(e) if e.kind() == std::io::ErrorKind::FileTooLarge => {
+            return Err(format!(
+                "it's bigger than {} KB, too big for {what}",
+                max >> 10
+            ));
+        }
+        Err(e) => return Err(format!("it couldn't be read ({e})")),
+    };
+    String::from_utf8(bytes).map_err(|_| "it isn't text".to_owned())
+}
+
+/// Reads a tileset (`.soltileset`, Phase 9, D4).
+pub fn read_tileset(path: &Path) -> TilesetState {
+    match text_within(path, tiles::tileset::MAX_BYTES, "a tileset")
+        .and_then(|t| tiles::tileset::read(&t).map_err(|e| e.to_string()))
+    {
+        Ok(read) => TilesetState::Read(Arc::new(read.tileset), read.notes),
+        Err(why) => TilesetState::Failed(why),
+    }
+}
+
+/// Reads a tile map file (`.soltilemap`, Phase 9, D4).
+pub fn read_tile_map(path: &Path) -> MapFileState {
+    match text_within(path, tiles::map_file::MAX_BYTES, "a tile map")
+        .and_then(|t| tiles::map_file::read(&t).map_err(|e| e.to_string()))
+    {
+        Ok(read) => MapFileState::Read(Arc::new(read.map), read.notes),
+        Err(why) => MapFileState::Failed(why),
+    }
+}
+
 /// Every sprite sheet read, and those still to read.
 pub struct Sprites {
     sheets: SpriteSheets,
@@ -106,6 +143,8 @@ pub struct Sprites {
     /// Animator files read or failed, with how they were then (read at
     /// once: small text too).
     animators_tried: HashMap<String, Stamp>,
+    /// Tilesets and tile maps read or failed, with how they were then.
+    tiles_tried: HashMap<String, Stamp>,
     /// Goes up when another project opens: results for the last one are
     /// thrown away.
     generation: u64,
@@ -122,6 +161,7 @@ impl Default for Sprites {
             tried: HashMap::new(),
             frames_tried: HashMap::new(),
             animators_tried: HashMap::new(),
+            tiles_tried: HashMap::new(),
             generation: 0,
             jobs: Jobs::new(1),
             dirty: false,
@@ -206,6 +246,39 @@ impl Sprites {
         self.animators_tried
             .retain(|p, _| animators_present.contains(p));
         self.dirty |= before != self.sheets.animators.len();
+        let mut tiles_present = HashSet::new();
+        for file in listing
+            .files
+            .iter()
+            .filter(|f| matches!(f.kind, FileKind::Tileset | FileKind::TileMap))
+        {
+            let path = crate::project::slashed(&file.path);
+            if let Some(id) = file.id {
+                paths.insert(id, path.clone());
+            }
+            tiles_present.insert(path.clone());
+            let full = assets.join(&file.path);
+            let now = stamp(&full);
+            if self.tiles_tried.get(&path) == Some(&now) {
+                continue;
+            }
+            self.tiles_tried.insert(path.clone(), now);
+            if file.kind == FileKind::Tileset {
+                self.sheets.tilesets.insert(path, read_tileset(&full));
+            } else {
+                self.sheets.tile_maps.insert(path, read_tile_map(&full));
+            }
+            self.dirty = true;
+        }
+        let before = self.sheets.tilesets.len() + self.sheets.tile_maps.len();
+        self.sheets
+            .tilesets
+            .retain(|p, _| tiles_present.contains(p));
+        self.sheets
+            .tile_maps
+            .retain(|p, _| tiles_present.contains(p));
+        self.tiles_tried.retain(|p, _| tiles_present.contains(p));
+        self.dirty |= before != self.sheets.tilesets.len() + self.sheets.tile_maps.len();
         for file in listing
             .files
             .iter()
@@ -247,6 +320,7 @@ impl Sprites {
         self.tried.clear();
         self.frames_tried.clear();
         self.animators_tried.clear();
+        self.tiles_tried.clear();
         self.generation += 1;
         self.dirty = true;
     }

@@ -35,6 +35,10 @@ pub enum AssetKind {
     SpriteClips,
     /// An animator (`.solanim`; Phase 9, D3b): states choosing the clip.
     Animator,
+    /// A tileset (`.soltileset`; Phase 9, D4): the terrains a cell can be.
+    Tileset,
+    /// A tile map (`.soltilemap`; Phase 9, D4).
+    TileMap,
 }
 
 /// The extensions of sound files Solis reads (decision 0056). The
@@ -53,6 +57,12 @@ pub const SPRITE_CLIPS_EXTENSION: &str = "solframes";
 
 /// The extension of animator files (the `animation` crate reads them).
 pub const ANIMATOR_EXTENSION: &str = "solanim";
+
+/// The extension of tilesets (the `tiles` crate reads them).
+pub const TILESET_EXTENSION: &str = "soltileset";
+
+/// The extension of tile maps (the `tiles` crate reads them).
+pub const TILE_MAP_EXTENSION: &str = "soltilemap";
 
 impl AssetKind {
     /// The kind of the file at `path`, by its extension, if Solis reads it.
@@ -74,6 +84,10 @@ impl AssetKind {
             Some(Self::SpriteClips)
         } else if ext == ANIMATOR_EXTENSION {
             Some(Self::Animator)
+        } else if ext == TILESET_EXTENSION {
+            Some(Self::Tileset)
+        } else if ext == TILE_MAP_EXTENSION {
+            Some(Self::TileMap)
         } else {
             None
         }

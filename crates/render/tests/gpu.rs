@@ -2847,21 +2847,25 @@ fn sprite_at(x: f32, y: f32, z: f32, flags: u32, tint: [f32; 4]) -> render::Spri
 /// Draws `sprites` of the test sheet over the backdrop, one sample a
 /// pixel, and reads the 64 × 64 picture back.
 fn render_sprites(sprites: &[render::SpriteInstance]) -> Option<Vec<u8>> {
+    let (cut, blended): (Vec<_>, Vec<_>) = sprites.iter().partition(|s| !s.see_through());
+    render_runs(&[cut, blended])
+}
+
+/// Draws each of `groups` of sprites as a run of its own (a run is drawn
+/// by its first sprite's pipeline), and reads the picture back.
+fn render_runs(groups: &[Vec<render::SpriteInstance>]) -> Option<Vec<u8>> {
+    let sprites: Vec<&render::SpriteInstance> = groups.iter().flatten().collect();
     let gpu = gpu()?;
     let renderer = ViewportRenderer::new(&gpu.device, 1);
     let mut target = renderer.create_target(&gpu.device, [64, 64]);
     let sheet = renderer.upload_sheet(&gpu.device, &gpu.queue, [4, 4], &sheet_pixels());
-    let (cut, blended): (Vec<_>, Vec<_>) = sprites.iter().partition(|s| !s.see_through());
-    let runs = [
-        render::SpriteRun {
+    let runs: Vec<render::SpriteRun> = groups
+        .iter()
+        .map(|instances| render::SpriteRun {
             sheet: &sheet,
-            instances: &cut,
-        },
-        render::SpriteRun {
-            sheet: &sheet,
-            instances: &blended,
-        },
-    ];
+            instances,
+        })
+        .collect();
     let params = FrameParams {
         view_projection: flat_down(),
         camera_position: Vec3::new(32.0, 32.0, 50.0),
@@ -3005,6 +3009,48 @@ fn the_nearer_sprite_is_in_front_and_see_through_ones_blend() {
             .zip(sheet_colour(0, 0))
             .all(|(a, b)| a.abs_diff(b) <= 2)
     );
+}
+
+#[test]
+fn tile_layers_lie_under_and_over_every_sprite() {
+    let white = [1.0, 1.0, 1.0, 0.0];
+    let red = [1.0, 0.0, 0.0, 0.0];
+    let blue = [0.0, 0.0, 1.0, 0.0];
+    // A tile layer under (red), a sprite (white), a layer over (blue),
+    // each nearer the camera than the last, given in any order: under
+    // stays under and over stays over, whatever their height.
+    let mut under = sprite_at(8.0, 8.0, 5.0, render::SpriteInstance::UNDER, red);
+    under.axis_x = [4.0, 0.0];
+    under.axis_y = [0.0, -4.0];
+    let mut over = sprite_at(40.0, 40.0, -5.0, render::SpriteInstance::OVER, blue);
+    over.axis_x = [2.0, 0.0];
+    over.axis_y = [0.0, -2.0];
+    for order in [false, true] {
+        let mut sprites = [
+            under,
+            sprite_at(10.0, 10.0, 0.0, 0, white),
+            over,
+            sprite_at(41.0, 41.0, 0.0, 0, white),
+        ];
+        if order {
+            sprites.reverse();
+        }
+        let runs: Vec<Vec<render::SpriteInstance>> = sprites.iter().map(|s| vec![*s]).collect();
+        let Some(pixels) = render_runs(&runs) else {
+            return;
+        };
+        // The under layer shows where nothing stands on it...
+        let p = pixel(&pixels, 64, 15, 15);
+        assert!(p[0] > 0 && p[1] == 0 && p[2] == 0, "under shows: {p:?}");
+        // ...and the sprite stands on it.
+        assert!(
+            pixel(&pixels, 64, 10, 10)[1] > 0,
+            "the sprite is over the under layer"
+        );
+        // The over layer covers the sprite.
+        let p = pixel(&pixels, 64, 41, 41);
+        assert!(p[0] == 0 && p[1] == 0 && p[2] > 0, "over covers: {p:?}");
+    }
 }
 
 /// Whether `c` lies between `a` and `b` in every channel, give or take.

@@ -26,6 +26,7 @@ reflect = { path = "../crates/reflect" }
 updater = { path = "../crates/updater" }
 sound = { path = "../crates/sound" }
 animation = { path = "../crates/animation" }
+tiles = { path = "../crates/tiles" }
 
 # Its own workspace, so the engine's never builds it.
 [workspace]
@@ -154,6 +155,20 @@ bench = false
 [[bin]]
 name = "animator"
 path = "fuzz_targets/animator.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "tileset"
+path = "fuzz_targets/tileset.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "tile_map"
+path = "fuzz_targets/tile_map.rs"
 test = false
 doc = false
 bench = false

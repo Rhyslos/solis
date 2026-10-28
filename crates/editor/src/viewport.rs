@@ -153,6 +153,10 @@ pub struct ViewportView {
     pub grid_step: f32,
     /// The sprites, a run per sheet (Phase 9, D2).
     pub sprites: std::sync::Arc<Vec<crate::sprite_sheets::SpriteBatch>>,
+    /// Tile maps' layers as pictures (Phase 9, D4), drawn by the batches
+    /// in `sprites` that name them: the renderer uploads one again when
+    /// its key changes.
+    pub tile_pictures: std::sync::Arc<Vec<std::sync::Arc<crate::tile_view::TilePicture>>>,
     /// For a 2D camera (Phase 9, D1): the picture is drawn this small,
     /// with `view_projection` for it, then scaled up to `size_px` by the
     /// pixel stage.
@@ -354,6 +358,9 @@ pub struct Viewport {
     pub(crate) pixels: area::pixels::PixelSettings,
     /// The project's sprite sheets, to draw sprites with.
     pub(crate) sheets: std::sync::Arc<crate::sprite_sheets::SpriteSheets>,
+    /// The selected tile map's values laid over it, its hidden layers,
+    /// and the cell under the pointer (Phase 9, D4).
+    pub(crate) tile_overlay: crate::tile_view::TileOverlay,
     /// When Preview animation was turned on (its clips play from there).
     preview_since: std::cell::Cell<Option<std::time::Instant>>,
 }
@@ -490,6 +497,7 @@ impl Default for Viewport {
             full: Rect::NOTHING,
             pixels: area::pixels::PixelSettings::default(),
             sheets: std::sync::Arc::default(),
+            tile_overlay: crate::tile_view::TileOverlay::default(),
             preview_since: std::cell::Cell::new(None),
             panes: FIRST_KINDS
                 .iter()
@@ -659,6 +667,12 @@ impl Viewport {
         let ahead = self.preview_seconds();
         let aspect = size_px[0].max(1) as f32 / size_px[1].max(1) as f32;
         let camera = self.seen(size_px);
+        let (tile_pictures, tile_batches) = self.sheets.tile_pictures.draw(
+            &self.area.view_tile_maps(&self.sheets),
+            &self.sheets,
+            self.pixels.tile_size(),
+            &self.tile_overlay.hidden,
+        );
         ViewportView {
             size_px,
             view_projection: camera.view_projection(aspect),
@@ -692,14 +706,21 @@ impl Viewport {
             } else {
                 1.0
             },
-            // Sprites land on whole pixels in the 2D view, as in the game.
-            sprites: std::sync::Arc::new(crate::sprite_sheets::batches(
-                &self.area.sprites,
-                &self.sheets,
-                self.pixels.pixel_size(),
-                (self.camera.kind == ViewKind::TwoD).then(|| self.pixels.pixel_size()),
-                ahead,
-            )),
+            // Sprites land on whole pixels in the 2D view, as in the game;
+            // tile maps' layers under and over them.
+            sprites: std::sync::Arc::new(
+                tile_batches
+                    .into_iter()
+                    .chain(crate::sprite_sheets::batches(
+                        &self.area.sprites,
+                        &self.sheets,
+                        self.pixels.pixel_size(),
+                        (self.camera.kind == ViewKind::TwoD).then(|| self.pixels.pixel_size()),
+                        ahead,
+                    ))
+                    .collect(),
+            ),
+            tile_pictures: std::sync::Arc::new(tile_pictures),
             pixel: None,
         }
     }
@@ -815,9 +836,12 @@ impl Viewport {
             // egui gives the viewport the hover even under a corner button
             // (it's the only thing there that can be dragged), so a press
             // on the corner controls is left out by hand.
-            let on_corner = ui
-                .input(|i| i.pointer.latest_pos())
-                .is_some_and(|p| self.covered.iter().any(|r| r.contains(p)));
+            let on_corner = ui.input(|i| i.pointer.latest_pos()).is_some_and(|p| {
+                self.covered.iter().any(|r| r.contains(p))
+                    // A menu open over the view (its own layer) takes
+                    // the press too.
+                    || ui.ctx().layer_id_at(p).is_some_and(|l| l != ui.layer_id())
+            });
             let input = ui.input(|i| ToolInput {
                 mouse: i
                     .pointer
@@ -875,6 +899,15 @@ impl Viewport {
             draw_screens(ui, rect, &self.area.screens, &seen, self.pixels);
         }
         viewport_tools::draw_cameras(ui, rect, &self.area.cameras, &seen);
+        let tile_bar = crate::tile_view::draw_overlay(
+            ui,
+            rect,
+            &seen,
+            &mut self.tile_overlay,
+            self.pixels.tile_size(),
+            mouse.filter(|_| response.hovered()),
+            accent,
+        );
         viewport_tools::draw(ui, rect, &self.tools, &seen, snapping.locked, accent);
         if let Some(dragged) = response.dnd_hover_payload::<crate::library::LibraryDrag>()
             && dragged.0.kind.placeable()
@@ -914,7 +947,7 @@ impl Viewport {
         // bottom centre, snapping bottom right. With several, each view is
         // too narrow for a full bottom row, so the view in use has its
         // tools top left, snapping top right and frame rate bottom right.
-        let mut covered = Vec::new();
+        let mut covered: Vec<Rect> = tile_bar.into_iter().collect();
         if self.overlays.stats && in_use {
             let layout = if several {
                 Layout::bottom_up(Align::Max)

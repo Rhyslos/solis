@@ -24,6 +24,7 @@ assets.workspace = true
 asset_db.workspace = true
 editor.workspace = true
 animation.workspace = true
+tiles.workspace = true
 script.workspace = true
 input.workspace = true
 reflect.workspace = true

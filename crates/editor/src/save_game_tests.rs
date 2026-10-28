@@ -252,9 +252,9 @@ fn saves_from_elsewhere_or_damaged_are_refused_and_nothing_changes() {
     // Damaged: cut short, a byte changed, a newer version, not a save.
     let mut damaged = vec![
         text[..text.len() / 2].to_string(),
-        text.replacen("solis save 4", "solis save 9", 1),
-        text.replacen("solis save 4", "solis save 2", 1),
-        text.replacen("solis save 4", "solis save 1", 1),
+        text.replacen("solis save 5", "solis save 9", 1),
+        text.replacen("solis save 5", "solis save 2", 1),
+        text.replacen("solis save 5", "solis save 1", 1),
         "hello".to_string(),
         String::new(),
     ];
@@ -289,12 +289,12 @@ fn saves_from_elsewhere_or_damaged_are_refused_and_nothing_changes() {
     assert!(Save::read(&"x".repeat(MAX_SAVE_BYTES + 1)).is_err());
     // The third review: this version's header with Windows line endings
     // or a space after it is damaged, not "from a newer Solis".
-    for header in ["solis save 4\r", "solis save 4 "] {
-        let why = Save::read(&text.replacen("solis save 4", header, 1)).unwrap_err();
+    for header in ["solis save 5\r", "solis save 5 "] {
+        let why = Save::read(&text.replacen("solis save 5", header, 1)).unwrap_err();
         assert!(why.contains("damaged"), "{header:?}: {why}");
     }
     assert!(
-        Save::read(&text.replacen("solis save 4", "solis save 9", 1))
+        Save::read(&text.replacen("solis save 5", "solis save 9", 1))
             .unwrap_err()
             .contains("newer")
     );
@@ -931,7 +931,7 @@ fn an_animator_s_state_and_values_survive_a_save() {
     run_to(&mut w, 8);
     assert_eq!(w.world().unwrap().animator_of(farmer).unwrap().0, "Walk");
     let text = w.save_text().expect("saved");
-    assert!(text.starts_with("solis save 4\n"));
+    assert!(text.starts_with("solis save 5\n"));
     assert!(text.contains("animators "), "{text}");
     assert!(text.contains("moving=s1 speed=n40200000"), "{text}");
     let saved = sums(&mut w);
@@ -979,5 +979,74 @@ fn a_damaged_animators_section_is_refused() {
             1,
         ));
         assert!(Save::read(&damaged).is_err(), "{bad}");
+    }
+}
+
+/// `busy`, with a tile map (Phase 9, D4): a field of grass with a
+/// growth number and a watered switch.
+fn busy_with_a_map() -> (Workbench, EntityId) {
+    let mut w = busy("Harbour");
+    let map_id = reflect::AssetId(reflect::Id::from_raw(4343).unwrap());
+    let mut map = tiles::TileMap::new([40, 36], None, Some(b'.'));
+    map.add_value("growth", tiles::ValueKind::Number).unwrap();
+    map.add_value("watered", tiles::ValueKind::Switch).unwrap();
+    let mut sheets = crate::sprite_sheets::SpriteSheets::default();
+    sheets.tile_maps.insert(
+        "field.soltilemap".into(),
+        crate::sprite_sheets::MapFileState::Read(Arc::new(map), Vec::new()),
+    );
+    sheets.paths.insert(map_id, "field.soltilemap".into());
+    w.set_sprite_sheets(sheets);
+    let field = w.spawn_selected(EntityData::new("Field").with(&Transform::default()).with(
+        &area::builtin::TileMap {
+            map: Some(reflect::AssetRef {
+                asset: map_id,
+                part: None,
+            }),
+        },
+    ));
+    (w, field)
+}
+
+#[test]
+fn a_tile_map_the_game_changed_survives_a_save() {
+    let (mut w, field) = busy_with_a_map();
+    w.play();
+    run_to(&mut w, 5);
+    let world = &mut w.playing.as_mut().unwrap().world;
+    world.set_tile(field, 0, [3, 4], b't').unwrap();
+    world
+        .set_cell_value(field, 0, [3, 4], tiles::CellValue::Number(2))
+        .unwrap();
+    world
+        .set_cell_value(field, 1, [39, 35], tiles::CellValue::Switch(true))
+        .unwrap();
+    run_to(&mut w, 8);
+    let text = w.save_text().expect("saved");
+    assert!(
+        text.contains("tilemaps ") && !text.contains("tilemaps 0\n"),
+        "{text}"
+    );
+    let saved = sums(&mut w);
+    let (mut loaded, _) = busy_with_a_map();
+    loaded.play();
+    loaded.load_game(&text, "the save");
+    assert!(
+        !loaded
+            .log_lines()
+            .iter()
+            .any(|e| e.level == LogLevel::Error),
+        "{:?}",
+        loaded.log_lines().last().map(|l| &l.text)
+    );
+    assert_eq!(sums(&mut loaded), saved, "as saved, before a tick");
+    let map = loaded.world().unwrap().tile_map(field).unwrap();
+    assert_eq!(map.code(0, 3, 4), Some(b't'));
+    assert_eq!(map.value(0, 3, 4), Some(tiles::CellValue::Number(2)));
+    assert_eq!(map.value(1, 39, 35), Some(tiles::CellValue::Switch(true)));
+    for t in 9..20 {
+        run_to(&mut w, t);
+        run_to(&mut loaded, t);
+        assert_eq!(sums(&mut loaded), sums(&mut w), "tick {t}");
     }
 }

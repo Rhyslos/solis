@@ -21,7 +21,8 @@ mod watch;
 
 pub use db::{
     ANIMATOR_EXTENSION, ASSEMBLY_EXTENSION, AssetDb, AssetKind, AssetRecord, Change, SETTLE,
-    SOUND_EVENT_EXTENSION, SOUND_EXTENSIONS, SPRITE_CLIPS_EXTENSION, Stamp,
+    SOUND_EVENT_EXTENSION, SOUND_EXTENSIONS, SPRITE_CLIPS_EXTENSION, Stamp, TILE_MAP_EXTENSION,
+    TILESET_EXTENSION,
 };
 pub use files::{
     AREA_EXTENSION, FileEntry, FileError, FileKind, Listing, MAX_NAME_CHARS, file_name_from,

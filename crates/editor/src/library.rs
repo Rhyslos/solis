@@ -54,6 +54,10 @@ pub enum LibraryKind {
     SpriteClips,
     /// An animator (`.solanim`, Phase 9, D3b).
     Animator,
+    /// A tileset (`.soltileset`, Phase 9, D4): the terrains a cell can be.
+    Tileset,
+    /// A tile map (`.soltilemap`, Phase 9, D4).
+    TileMap,
     /// Anything else.
     Other,
 }
@@ -72,6 +76,8 @@ impl LibraryKind {
             Self::SpriteSheet => "Sprite sheet",
             Self::SpriteClips => "Sprite clips",
             Self::Animator => "Animator",
+            Self::Tileset => "Tileset",
+            Self::TileMap => "Tile map",
             Self::Other => "File",
         }
     }
@@ -87,7 +93,11 @@ impl LibraryKind {
             Self::Code => theme::kind::CODE,
             Self::Sound => theme::kind::SOUND,
             Self::SoundEvent => theme::kind::SOUND_EVENT,
-            Self::SpriteSheet | Self::SpriteClips | Self::Animator => theme::kind::SPRITE,
+            Self::SpriteSheet
+            | Self::SpriteClips
+            | Self::Animator
+            | Self::Tileset
+            | Self::TileMap => theme::kind::SPRITE,
             Self::Other => theme::kind::OTHER,
         }
     }
@@ -103,6 +113,7 @@ impl LibraryKind {
             Self::Sound | Self::SoundEvent => Icon::Sound,
             Self::SpriteSheet | Self::SpriteClips => Icon::Viewport,
             Self::Animator => Icon::Animator,
+            Self::Tileset | Self::TileMap => Icon::Layers,
             Self::Other => Icon::Properties,
         }
     }
@@ -111,7 +122,7 @@ impl LibraryKind {
     pub fn placeable(self) -> bool {
         matches!(
             self,
-            Self::Model | Self::Assembly | Self::SpriteSheet | Self::SpriteClips
+            Self::Model | Self::Assembly | Self::SpriteSheet | Self::SpriteClips | Self::TileMap
         )
     }
 
@@ -217,6 +228,15 @@ pub(crate) enum LibraryRequest {
     SaveSoundEvent(String, sound::SoundEvent),
     /// Make a new animator in this folder (Phase 9, D3b).
     NewAnimator(String),
+    /// Make a new tileset in this folder (Phase 9, D4).
+    NewTileset(String),
+    /// Make a new tile map in this folder (Phase 9, D4).
+    NewTileMap(String),
+    /// Save a tileset changed in Properties (path, the tileset).
+    SaveTileset(String, tiles::Tileset),
+    /// Change a tile map file's tileset or size in Properties (path,
+    /// tileset, size).
+    ShapeTileMap(String, Option<AssetId>, [u32; 2]),
     /// Make a clips file beside the Aseprite file at this path (or open
     /// the one there), from its Properties (Phase 9, D3).
     MakeClipsFile(String),
@@ -415,6 +435,27 @@ fn menu_row(
                         .clicked()
                     {
                         requests.push(LibraryRequest::NewAnimator(state.folder.clone()));
+                        ui.close();
+                    }
+                    if ui
+                        .add_enabled(open, egui::Button::new("New tileset"))
+                        .on_hover_text(
+                            "A tileset in the folder shown: the terrains a tile map's cells can be",
+                        )
+                        .clicked()
+                    {
+                        requests.push(LibraryRequest::NewTileset(state.folder.clone()));
+                        ui.close();
+                    }
+                    if ui
+                        .add_enabled(open, egui::Button::new("New tile map"))
+                        .on_hover_text(
+                            "A tile map in the folder shown, filled with its tileset's first \
+                             terrain; drag it into the viewport to place it",
+                        )
+                        .clicked()
+                    {
+                        requests.push(LibraryRequest::NewTileMap(state.folder.clone()));
                         ui.close();
                     }
                     if ui
@@ -735,6 +776,13 @@ fn hint(item: &LibraryItem) -> String {
         LibraryKind::SpriteClips => {
             "Double-click to open its clips; drag it into the viewport to place a sprite that \
              plays them."
+        }
+        LibraryKind::Tileset => {
+            "Click it to change its terrains in Properties: what a tile map's cells can be."
+        }
+        LibraryKind::TileMap => {
+            "Drag it into the viewport, or double-click, to place it; click it to change its \
+             tileset and size in Properties."
         }
         LibraryKind::Animator => {
             "Double-click to open it in the Animator tab: its states, and how it moves between \

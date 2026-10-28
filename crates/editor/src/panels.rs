@@ -77,6 +77,9 @@ pub(crate) struct PanelViewer<'a> {
     pub(crate) frames_out: &'a mut FramesOut,
     /// The animator file open in the Animator tab, if any (Phase 9, D3b).
     pub(crate) animator: Option<crate::animator_view::AnimatorUi<'a>>,
+    /// The selected tile map, for the Map tab (Phase 9, D4).
+    pub(crate) map: Option<crate::map_tab::MapUi<'a>>,
+    pub(crate) map_requests: &'a mut Vec<crate::map_tab::MapRequest>,
 }
 
 /// What the Clips and Frames tabs did this frame.
@@ -95,6 +98,8 @@ pub(crate) struct FramesOut {
     pub(crate) animator_closed: bool,
     /// The pointer is over the Animator tab (Ctrl+Z and Delete are its).
     pub(crate) animator_hovered: bool,
+    /// The pointer is over the Map tab (Ctrl+Z is its).
+    pub(crate) map_hovered: bool,
 }
 
 impl TabViewer for PanelViewer<'_> {
@@ -119,7 +124,9 @@ impl TabViewer for PanelViewer<'_> {
             },
         );
         // The clips file's name, and the clip chosen.
-        let what = if *tab == Panel::Animator {
+        let what = if *tab == Panel::Map {
+            self.map.as_ref().map(|m| m.name.clone())
+        } else if *tab == Panel::Animator {
             self.animator
                 .as_ref()
                 .map(|a| crate::sprite_sheets::name_of(&a.editor.path))
@@ -243,6 +250,43 @@ impl TabViewer for PanelViewer<'_> {
                     return;
                 }
                 if let Some(path) = self.sound_shown {
+                    let sheets = self.sounds.sheets;
+                    if let Some(crate::sprite_sheets::TilesetState::Read(set, notes)) =
+                        sheets.tilesets.get(path)
+                    {
+                        egui::Frame::new()
+                            .inner_margin(theme::panel_margin())
+                            .show(ui, |ui| {
+                                if let Some(changed) =
+                                    crate::map_tab::tileset_properties(ui, path, set, notes)
+                                {
+                                    self.library_requests.push(LibraryRequest::SaveTileset(
+                                        path.to_owned(),
+                                        changed,
+                                    ));
+                                }
+                            });
+                        return;
+                    }
+                    if let Some(crate::sprite_sheets::MapFileState::Read(map, notes)) =
+                        sheets.tile_maps.get(path)
+                    {
+                        let tilesets = sheets.listed_tiles(false);
+                        egui::Frame::new()
+                            .inner_margin(theme::panel_margin())
+                            .show(ui, |ui| {
+                                if let Some((tileset, size)) = crate::map_tab::map_file_properties(
+                                    ui, path, map, &tilesets, notes,
+                                ) {
+                                    self.library_requests.push(LibraryRequest::ShapeTileMap(
+                                        path.to_owned(),
+                                        tileset,
+                                        size,
+                                    ));
+                                }
+                            });
+                        return;
+                    }
                     if assets::aseprite::is_aseprite_file(std::path::Path::new(path)) {
                         if crate::sheet_view::sheet_properties(
                             ui,
@@ -372,6 +416,26 @@ impl TabViewer for PanelViewer<'_> {
                 };
                 self.frames_out.changed |= changed;
             }
+            Panel::Map => {
+                if ui.rect_contains_pointer(ui.max_rect()) {
+                    self.frames_out.map_hovered = true;
+                }
+                let Some(map) = &self.map else {
+                    placeholder(ui, "Select an entity with a Tile Map to see its map here.");
+                    return;
+                };
+                egui::ScrollArea::vertical()
+                    .id_salt("map tab")
+                    .auto_shrink(false)
+                    .show(ui, |ui| {
+                        egui::Frame::new()
+                            .inner_margin(theme::panel_margin())
+                            .show(ui, |ui| {
+                                let asked = crate::map_tab::map_tab(ui, map);
+                                self.map_requests.extend(asked);
+                            });
+                    });
+            }
             Panel::Animator => {
                 if ui.rect_contains_pointer(ui.max_rect()) {
                     self.frames_out.animator_hovered = true;
@@ -388,7 +452,8 @@ impl TabViewer for PanelViewer<'_> {
     }
 
     fn is_closeable(&self, tab: &Panel) -> bool {
-        tab.comes_with_a_file()
+        // The Map tab comes and goes with the selection, not a file.
+        tab.comes_with_a_file() && *tab != Panel::Map
     }
 
     fn on_close(&mut self, tab: &mut Panel) -> egui_dock::widgets::tab_viewer::OnCloseResponse {
