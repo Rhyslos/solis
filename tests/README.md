@@ -15,5 +15,6 @@ Example files of every version of every file format Solis has ever released (Pha
 | `recording/` | Recordings of a play (`.solrec`) | v1 |
 | `project/` | The project file (`project.solis`) | v1 |
 | `sidecar/` | Sidecars beside assets (`.solmeta`) | v1 |
+| `save/` | Save games (`.solsave`), opened by `crates/editor/src/save_game_tests.rs`, which loads each and plays on | v1 (physics as Rapier's bytes, never read now), v2 (the game's places in the area; one with the first builds' checksum of the body only), v3 |
 
 Each `v<N>/` folder holds files as that version wrote them. `fixtures/` and its folders are data, so they have no README of their own.

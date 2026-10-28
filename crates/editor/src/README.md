@@ -63,7 +63,7 @@ Tests: files ending `_tests.rs` hold the tests of the file with the same start (
 | `play.rs` | Play mode: the area running as a game beside the editor, built from a copy of the document. | `PlayState` |
 | `game_code.rs` | Game code in the editor: its components in the registry, and the program running against the game's world (decision 0028). | |
 | `play_input.rs` | The game's input in the editor: clicking the Game panel gives the game the mouse and keys; recording and replaying input. | |
-| `save_game.rs` | Save games: the whole running game, so loading carries on exactly (decision 0038). | |
+| `save_game.rs` | Save games: the whole running game, so loading carries on exactly (decision 0038). Older saves load through `FORMAT`'s upgraders (Phase 8, C2), saying what couldn't be carried over; a component the game's code no longer has is left out and said. | `Save`, `FORMAT` |
 | `invariant_tests.rs`, `kit_tests.rs`, `scale_levels_tests.rs` | Random games checked against rules that must always hold; the ready-made components played with input; and the scale levels timed (decision 0030). | |
 
 **Read next:** the crate's [README](../README.md), and [ARCHITECTURE.md](../../../ARCHITECTURE.md), "The area".

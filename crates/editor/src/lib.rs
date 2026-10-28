@@ -67,6 +67,7 @@ pub use mixer_view::MixerState;
 pub use models::{FileLight, FileLightKind, ModelInfo};
 pub use panel::Panel;
 pub use play::PlayState;
+pub use save_game::{FORMAT as SAVE_FORMAT, save_read_back};
 pub use sound_view::{EventState, Preview, SoundInfo, SoundState};
 pub use splash::{SplashView, UpdateAnswer, UpdateOffer};
 pub use transforming::Snapping;

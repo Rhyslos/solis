@@ -751,3 +751,103 @@ fn a_sound_turned_off_stays_off_after_a_load() {
     w.load_game(&text, "quick");
     assert!(w.audio_sources().is_empty(), "the save keeps it off");
 }
+
+/// The example saves of every version (Phase 8, C2).
+fn save_fixtures() -> std::path::PathBuf {
+    std::path::Path::new(env!("CARGO_MANIFEST_DIR")).join("../../tests/fixtures/save")
+}
+
+#[test]
+fn every_version_of_a_save_loads_and_plays_on() {
+    assert!(super::FORMAT.is_complete());
+    for version in 1..=super::SAVE_VERSION {
+        let dir = save_fixtures().join(format!("v{version}"));
+        let mut files: Vec<_> = std::fs::read_dir(&dir)
+            .unwrap_or_else(|e| panic!("{}: {e}", dir.display()))
+            .flatten()
+            .map(|e| e.path())
+            .collect();
+        files.sort();
+        assert!(!files.is_empty(), "no example of save version {version}");
+        for file in files {
+            let text = std::fs::read_to_string(&file).unwrap();
+            assert_eq!((super::FORMAT.version_of)(&text), Some(version));
+            let save = Save::read(&text).unwrap_or_else(|e| panic!("{}: {e}", file.display()));
+            // Only version 1's physics can't be carried over.
+            assert_eq!(
+                save.notes.len(),
+                usize::from(version == 1),
+                "{}",
+                file.display()
+            );
+            let mut w = busy("Harbour");
+            w.play();
+            w.load_game(&text, "the save");
+            assert!(
+                !w.log_lines().iter().any(|e| e.level == LogLevel::Error),
+                "{}: {:?}",
+                file.display(),
+                w.log_lines().last().map(|l| &l.text)
+            );
+            assert_eq!(w.world().unwrap().clock().ticks, 40, "{}", file.display());
+            // It plays on: the counter's values came back and go on.
+            run_to(&mut w, 60);
+            let values = w
+                .playing
+                .as_mut()
+                .unwrap()
+                .game
+                .as_mut()
+                .unwrap()
+                .all_values();
+            let ticks = values
+                .iter()
+                .find(|(_, name, _)| name == "Busy")
+                .and_then(|(_, _, data)| data.get("ticks").cloned());
+            assert_eq!(ticks, Some(reflect::Value::Int(60)), "{}", file.display());
+        }
+    }
+    assert!(
+        !save_fixtures()
+            .join(format!("v{}", super::SAVE_VERSION + 1))
+            .exists()
+    );
+}
+
+#[test]
+fn a_save_whose_component_the_game_no_longer_has_still_loads() {
+    // The game's code changed since the save: its component is gone. The
+    // save loads, and the Console says what was left out.
+    let text = std::fs::read_to_string(save_fixtures().join("v3/harbour.solsave")).unwrap();
+    let mut w = busy("Harbour");
+    w.set_program(Some(program(
+        "component Other {\n method update(float dt) { }\n}\npass Other;\nend\n",
+    )));
+    w.play();
+    w.load_game(&text, "the save");
+    assert_eq!(w.world().unwrap().clock().ticks, 40);
+    let said: Vec<&str> = w.log_lines().iter().map(|l| l.text.as_str()).collect();
+    assert!(said.iter().any(|t| t.contains("Busy")), "{said:?}");
+    run_to(&mut w, 50);
+}
+
+#[test]
+fn sections_a_save_never_has_are_refused() {
+    let text = std::fs::read_to_string(save_fixtures().join("v3/harbour.solsave")).unwrap();
+    for bad in [
+        format!("{text}extra 0\n\n"),
+        format!("{text}places 0\n\n"),
+        text.replacen("solis save 3", "solis save 0", 1),
+    ] {
+        assert!(Save::read(&resummed(&bad)).is_err());
+    }
+    // Version 1 without its physics: refused, not half-upgraded.
+    let v1 = std::fs::read_to_string(save_fixtures().join("v1/harbour.solsave")).unwrap();
+    let cut = v1.find("physics ").unwrap();
+    let mut c = reflect::Checksum::new();
+    let lines: Vec<&str> = v1[..cut].splitn(7, '\n').collect();
+    c.bytes(lines[6].as_bytes());
+    let without = v1[..cut].replacen(lines[5], &format!("sum {:016x}", c.finish()), 1);
+    let refused = Save::read(&without).unwrap_err();
+    assert!(refused.contains("physics"), "{refused}");
+}
