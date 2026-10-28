@@ -89,7 +89,7 @@ fn names(sounds: &[GameSound]) -> Vec<(u64, u32, String)> {
     sounds
         .iter()
         .map(|s| match &s.request {
-            crate::game_sound::Request::Play(name, _) => (s.tick, s.order, name.clone()),
+            crate::game_sound::Request::Play(name, _, _) => (s.tick, s.order, name.clone()),
             crate::game_sound::Request::StopOn(_) => (s.tick, s.order, "stop".into()),
             crate::game_sound::Request::BusVolume(bus, _) => {
                 (s.tick, s.order, format!("bus {bus}"))
@@ -114,7 +114,7 @@ fn a_game_s_sounds_land_after_each_tick_in_order() {
     assert_eq!((ticks[1].1, ticks[1].2.as_str()), (1, "engine"));
     assert!(ticks[2].0 > ticks[0].0, "a later tick");
     match sounds[0].request {
-        crate::game_sound::Request::Play(_, script::SoundAt::Place(p)) => {
+        crate::game_sound::Request::Play(_, script::SoundAt::Place(p), _) => {
             assert_eq!(p, Vec3::ZERO, "where it was as the tick started");
         }
         ref other => panic!("{other:?}"),
@@ -168,4 +168,55 @@ fn the_listener_turns_with_the_camera() {
     let camera = w.world().unwrap().camera().unwrap().2;
     let right = camera.x_axis.truncate().normalize();
     assert!((turn * Vec3::X - right).length() < 1e-4);
+}
+
+#[test]
+fn the_first_listener_hearing_now_hears_or_else_the_camera() {
+    use area::builtin::{Camera, Listener};
+    let mut w = Workbench::new(info(), None);
+    let camera = w.add_entity();
+    let off = w.add_entity();
+    let on = w.add_entity();
+    let child = w.add_entity();
+    let add = |w: &mut Workbench, id, edits| {
+        w.document.edit("Add", edits, None, None).unwrap();
+        let _ = id;
+    };
+    add(
+        &mut w,
+        camera,
+        crate::commands::component_edits(camera, None, &Camera::default()),
+    );
+    let quiet = Listener {
+        hears_now: false,
+        groups: "Team Blue".into(),
+    };
+    add(
+        &mut w,
+        off,
+        crate::commands::component_edits(off, None, &quiet),
+    );
+    w.play();
+    // No listener hearing now: the camera, in no group.
+    let h = w.hearer().unwrap();
+    assert_eq!((h.entity, h.groups.len()), (camera, 0));
+    w.stop();
+    let red = Listener {
+        hears_now: true,
+        groups: "Team Red, Radio".into(),
+    };
+    add(&mut w, on, crate::commands::component_edits(on, None, &red));
+    w.apply_area_request(crate::area_panel::AreaRequest::Reparent {
+        entity: child,
+        onto: Some(on),
+    });
+    w.play();
+    let h = w.hearer().unwrap();
+    assert_eq!(h.entity, on);
+    assert_eq!(h.groups, ["Team Red", "Radio"]);
+    assert!(w.listener().is_some());
+    // Family: itself, what's inside it, and what it's inside.
+    assert!(w.same_family(on, on));
+    assert!(w.same_family(child, on) && w.same_family(on, child));
+    assert!(!w.same_family(camera, on));
 }

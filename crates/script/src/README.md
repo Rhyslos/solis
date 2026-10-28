@@ -23,7 +23,7 @@ Game code (decision 0028): a project's Lust, checked and turned into Lua by the 
 | `interrupt.rs` | The watchman inside Luau that stops code running past its time limit, set cheaply (decision 0034). | |
 | `runtime.rs` | One Luau holding the game's running components, one per entity and component name; swapping in new code while the game runs. | `Runtime`, `Failure`, `Ticked`, `Swapped` |
 | `syncing.rs` | Making running components from the area's values, and passing on what changed. | |
-| `ticking.rs` | One tick: every component's `update` in one order, then delivering events. | `Order` |
+| `ticking.rs` | One tick: every component's `update` in one order, then delivering events. An `Order` also says which entity's code is running (who caused a sound). | `Order` |
 | `events.rs` | Events between components: queued by `send`, delivered after the tick's updates in a fixed order, so a game runs the same way every time. | `Event` |
 | `host.rs` | What game code can ask of the engine: the `Host` that answers the native methods, lent to Luau only while game code runs. | `Host`, `NoHost`, `Shot` |
 | `convert.rs` | Values between the editor's kinds (`reflect`) and how Lust keeps them in Luau. | |

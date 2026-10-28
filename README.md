@@ -28,9 +28,9 @@ The first build takes a few minutes. `cargo run -p app -- --help` lists the opti
 
 Solis is built in phases, one milestone per pull request. Each phase ends with a **gate** the project lead tries by hand before the next starts. This tracker is updated by the pull request that finishes each milestone; the full plan is in [ROADMAP.md](ROADMAP.md).
 
-**Overall: 46 of 131 milestones** `████░░░░░░░░░` 32%
+**Overall: 47 of 131 milestones** `████░░░░░░░░░` 32%
 
-**Now:** Phases 1, 2 and 3 are built and wait for their gates to be tried by hand ([Phase 3 plan](docs/plans/phase-3.md)). Phase 4, game code, is built and reviewed, and waits for its gate too ([Phase 4 plan](docs/plans/phase-4.md)). Phase 5, scale, is built and reviewed, and waits for its gate ([Phase 5 plan](docs/plans/phase-5.md)): try **Help > Make the benchmark…**. Phase 6, simulation and play, is built and reviewed three times, and waits for its gate ([Phase 6 plan](docs/plans/phase-6.md)): try **Help > Make the playground…**. The hardening milestone is done and everything is merged: its gate is reading the [hardening report](docs/reports/hardening-phase-6.md) and trying the playground once more. Solis now installs and updates itself from GitHub's Releases page. Phase 7, sound, has begun: sounds can be listened to in the Library (S1), sound events vary each play (S2), game code plays them in the world (S3), the Mixer balances them through buses with ducking (S4), sounds keep playing on entities with only the most important heard (S5), reverb zones make places echo (S6), and the playground has the gate's sounds (S7). Next is S8, listeners and who hears what, then the phase's review and its gate ([sound plan](docs/plans/phase-7-sound.md), decision 0056). 2D comes first now ([decision 0059](docs/decisions/0059-2d-first.md)): animation's state machine and graph editor arrive with 2D's frame animation, and 3D skeletal animation waits for Phase 16, once 2D is complete. Work stops for a rethink after effects (Phase 15): what comes after is written down as later, not next. Then compatibility (Phase 8, [plan](docs/plans/compatibility.md)), so updates never lose work, and first-class 2D in two parts (Phases 9 and 10, [plan](docs/plans/2d.md), [decision 0054](docs/decisions/0054-first-class-2d.md)), so the project lead's own 2D game can move to Solis; then a playtest export and game UI, then light, materials and effects ([decisions 0046](docs/decisions/0046-light-before-netcode.md) and [0048](docs/decisions/0048-materials-and-shaders-before-effects.md)).
+**Now:** Phases 1, 2 and 3 are built and wait for their gates to be tried by hand ([Phase 3 plan](docs/plans/phase-3.md)). Phase 4, game code, is built and reviewed, and waits for its gate too ([Phase 4 plan](docs/plans/phase-4.md)). Phase 5, scale, is built and reviewed, and waits for its gate ([Phase 5 plan](docs/plans/phase-5.md)): try **Help > Make the benchmark…**. Phase 6, simulation and play, is built and reviewed three times, and waits for its gate ([Phase 6 plan](docs/plans/phase-6.md)): try **Help > Make the playground…**. The hardening milestone is done and everything is merged: its gate is reading the [hardening report](docs/reports/hardening-phase-6.md) and trying the playground once more. Solis now installs and updates itself from GitHub's Releases page. Phase 7, sound, has begun: sounds can be listened to in the Library (S1), sound events vary each play (S2), game code plays them in the world (S3), the Mixer balances them through buses with ducking (S4), sounds keep playing on entities with only the most important heard (S5), reverb zones make places echo (S6), the playground has the gate's sounds (S7), and listeners decide who hears what (S8). Phase 7 is built; next is its review (three reviewers, decision 0027) and its gate ([sound plan](docs/plans/phase-7-sound.md), decision 0056). 2D comes first now ([decision 0059](docs/decisions/0059-2d-first.md)): animation's state machine and graph editor arrive with 2D's frame animation, and 3D skeletal animation waits for Phase 16, once 2D is complete. Work stops for a rethink after effects (Phase 15): what comes after is written down as later, not next. Then compatibility (Phase 8, [plan](docs/plans/compatibility.md)), so updates never lose work, and first-class 2D in two parts (Phases 9 and 10, [plan](docs/plans/2d.md), [decision 0054](docs/decisions/0054-first-class-2d.md)), so the project lead's own 2D game can move to Solis; then a playtest export and game UI, then light, materials and effects ([decisions 0046](docs/decisions/0046-light-before-netcode.md) and [0048](docs/decisions/0048-materials-and-shaders-before-effects.md)).
 
 ### Phase 0 · Groundwork — 7 of 7
 
@@ -166,9 +166,9 @@ Solis is built in phases, one milestone per pull request. Each phase ends with a
 
 **Gate:** read the hardening report (coverage, mutations caught, hours fuzzed and what was found), and try the playground once more.
 
-### Phase 7 · Sound — 7 of 8
+### Phase 7 · Sound — 8 of 8
 
-`███████░` 88%
+`████████` 100%
 
 <details>
 <summary>Milestones</summary>
@@ -179,7 +179,7 @@ Solis is built in phases, one milestone per pull request. Each phase ends with a
 - [x] S4. Buses, ducking and the Mixer panel
 - [x] S5. Loops, voice limits and the scale target
 - [x] S6. Reverb zones
-- [ ] S8. Listeners and who hears what ([decision 0058](docs/decisions/0058-listeners-and-who-hears-what.md))
+- [x] S8. Listeners and who hears what ([decision 0058](docs/decisions/0058-listeners-and-who-hears-what.md))
 - [x] S7. The gate's level: footsteps, music, a radio and a cave in the playground
 
 </details>

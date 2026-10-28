@@ -15,8 +15,9 @@ pub const MAX_PER_TICK: usize = 256;
 /// What game code asked for.
 #[derive(Debug, Clone, PartialEq)]
 pub enum Request {
-    /// Play the sound event named here, from there.
-    Play(String, script::SoundAt),
+    /// Play the sound event named here, from there; and the entity whose
+    /// code asked (who caused it), if any.
+    Play(String, script::SoundAt, Option<EntityId>),
     /// Stop the sounds on this entity.
     StopOn(EntityId),
     /// Set this bus to this share of its fader (0 to 1) for the rest of
@@ -37,6 +38,20 @@ pub struct GameSound {
     pub seed: u64,
     /// What was asked for.
     pub request: Request,
+}
+
+/// Who hears the game: a listener (or the camera), its groups, and where
+/// it is now.
+#[derive(Debug, Clone, PartialEq)]
+pub struct Hearer {
+    /// The entity it's on.
+    pub entity: EntityId,
+    /// The groups it's in (none for the camera hearing on its own).
+    pub groups: Vec<String>,
+    /// Where it is, between ticks.
+    pub place: glam::Vec3,
+    /// Which way it's turned.
+    pub turn: glam::Quat,
 }
 
 /// What the game's sounds should be doing.
@@ -91,15 +106,56 @@ impl crate::Workbench {
         }
     }
 
-    /// Where the game hears from: its camera (the first Camera entity),
-    /// where it's drawn between ticks, as a place and a turn. `None` when
-    /// there's no game or no camera.
+    /// Where the game hears from, where it's drawn between ticks, as a
+    /// place and a turn: its listener, or with none its camera. `None`
+    /// when there's no game, or neither.
     pub fn listener(&self) -> Option<(glam::Vec3, glam::Quat)> {
+        self.hearer().map(|h| (h.place, h.turn))
+    }
+
+    /// Who hears the game (Phase 7, S8; decision 0058): the first
+    /// `Listener` with Hears now on, or with none the first camera (in no
+    /// group), where it's drawn between ticks. `None` when there's no game,
+    /// or neither.
+    pub fn hearer(&self) -> Option<Hearer> {
         let playing = self.playing.as_ref()?;
         let t = playing.world.progress();
-        let (_, _, global) = playing.world.camera_between(t)?;
+        let listener = playing
+            .world
+            .placed_between::<area::builtin::Listener>(t)
+            .into_iter()
+            .find(|(_, l, _)| l.hears_now);
+        let (entity, groups, global) = match listener {
+            Some((id, l, global)) => (
+                id,
+                l.group_names().into_iter().map(str::to_owned).collect(),
+                global,
+            ),
+            None => {
+                let (id, _, global) = playing.world.camera_between(t)?;
+                (id, Vec::new(), global)
+            }
+        };
         let (_, turn, place) = global.to_scale_rotation_translation();
-        Some((place, turn.normalize()))
+        Some(Hearer {
+            entity,
+            groups,
+            place,
+            turn: turn.normalize(),
+        })
+    }
+
+    /// Whether `a` and `b` are one entity, or one is inside the other (a
+    /// character and its camera, a gun on a character): "who caused it"
+    /// for a sound heard only by who caused it.
+    pub fn same_family(&self, a: EntityId, b: EntityId) -> bool {
+        if a == b {
+            return true;
+        }
+        let Some(playing) = self.playing.as_ref() else {
+            return false;
+        };
+        playing.world.subtree(a).contains(&b) || playing.world.subtree(b).contains(&a)
     }
 
     /// The game's sounds that keep playing (`AudioSource`s turned on, with
@@ -167,7 +223,7 @@ mod tests {
     fn a_tick_s_requests_are_numbered_in_order_and_capped() {
         let mut out = Vec::new();
         let many: Vec<Request> = (0..300)
-            .map(|i| Request::Play(format!("s{i}"), script::SoundAt::Nowhere))
+            .map(|i| Request::Play(format!("s{i}"), script::SoundAt::Nowhere, None))
             .collect();
         assert_eq!(gather(&mut out, many, 7, 42), 300 - MAX_PER_TICK);
         assert_eq!(out.len(), MAX_PER_TICK);
@@ -175,7 +231,7 @@ mod tests {
         assert_eq!((out[3].tick, out[3].seed), (7, 42));
         assert_eq!(
             out[3].request,
-            Request::Play("s3".into(), script::SoundAt::Nowhere)
+            Request::Play("s3".into(), script::SoundAt::Nowhere, None)
         );
         assert_eq!(gather(&mut out, Vec::new(), 8, 42), 0);
     }

@@ -384,9 +384,9 @@ impl GameWorld for PlayWorld<'_> {
                 }
                 Change::Save(ref slot) => self.saves.push((slot.clone(), false)),
                 Change::Load(ref slot) => self.saves.push((slot.clone(), true)),
-                Change::Sound(ref event, at) => self
+                Change::Sound(ref event, at, caller) => self
                     .sounds
-                    .push(crate::game_sound::Request::Play(event.clone(), at)),
+                    .push(crate::game_sound::Request::Play(event.clone(), at, caller)),
                 Change::StopSounds(which) => {
                     self.sounds.push(crate::game_sound::Request::StopOn(which));
                 }

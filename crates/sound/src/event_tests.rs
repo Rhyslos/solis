@@ -24,6 +24,8 @@ fn footstep() -> SoundEvent {
         at_once: 8,
         priority: Priority::High,
         looping: true,
+        heard_by: HeardBy::Caller,
+        groups: Vec::new(),
     }
 }
 
@@ -194,4 +196,48 @@ proptest! {
         prop_assert_eq!(&again.event, &first);
         prop_assert!(again.notes.is_empty());
     }
+}
+
+#[test]
+fn heard_by_round_trips_and_older_files_are_heard_by_everyone() {
+    use crate::event::{HeardBy, MAX_GROUPS, read, write};
+    let event = SoundEvent {
+        heard_by: HeardBy::Groups,
+        groups: vec!["Team Red".into(), "Radio".into()],
+        ..SoundEvent::default()
+    };
+    let text = write(&event);
+    assert!(text.contains("heard_by = \"Groups\";"), "{text}");
+    assert_eq!(read(&text).unwrap().event, event);
+    let caller = SoundEvent {
+        heard_by: HeardBy::Caller,
+        ..SoundEvent::default()
+    };
+    assert_eq!(read(&write(&caller)).unwrap().event, caller);
+    // S2's files have neither: everyone hears them.
+    let old = read("sound version 1;\nvolume = -3.0;\n").unwrap().event;
+    assert_eq!((old.heard_by, old.groups.len()), (HeardBy::Everyone, 0));
+    // Wrong ones are refused with their line.
+    for bad in [
+        "heard_by = \"Nobody\";",
+        "heard_by = 3;",
+        "heard_by_groups = \"Red\";",
+        "heard_by_groups = [3];",
+        "heard_by_groups = [\"\"];",
+        "heard_by_groups = [\"Red, Blue\"];",
+    ] {
+        let e = read(&format!("sound version 1;\n{bad}\n")).unwrap_err();
+        assert_eq!(e.line, 2, "{bad}: {e}");
+    }
+    let many: Vec<String> = (0..=MAX_GROUPS).map(|i| format!("\"g{i}\"")).collect();
+    assert!(
+        read(&format!(
+            "sound version 1;\nheard_by_groups = [{}];\n",
+            many.join(", ")
+        ))
+        .is_err()
+    );
+    // A group listed twice is kept once.
+    let twice = read("sound version 1;\nheard_by_groups = [\"A\", \" A \"];\n").unwrap();
+    assert_eq!(twice.event.groups, ["A"]);
 }

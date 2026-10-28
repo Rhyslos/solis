@@ -95,6 +95,10 @@ pub struct Order {
     pub component: std::sync::Arc<str>,
     /// The order the component did it in.
     pub seq: u32,
+    /// The entity whose component is running, by its ID's number (0 for
+    /// none): who caused what it does (a sound's "Only who caused it",
+    /// Phase 7, S8). Never decides the order: `major` and `seq` do.
+    pub entity: u64,
 }
 
 /// What one phase of a tick (the updates, or a round of events) gave back.
@@ -226,6 +230,7 @@ impl Ticking<'_> {
                 major: entity.0.raw(),
                 component: component.name.clone(),
                 seq: 0,
+                entity: entity.0.raw(),
             };
             lent.borrow_mut().at(&at);
             let result = self.update(lent, (*entity, name), component, dt);
@@ -283,6 +288,7 @@ impl Ticking<'_> {
                     major: u64::from(*number),
                     component: component.name.clone(),
                     seq: 0,
+                    entity: entity.0.raw(),
                 };
                 lent.borrow_mut().at(&at);
                 let result = self.handle(lent, (*entity, name), component, &delivery);

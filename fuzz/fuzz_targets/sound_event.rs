@@ -14,6 +14,8 @@ libfuzzer_sys::fuzz_target!(|data: &[u8]| {
     assert!(e.volume_db.is_finite() && e.pitch_st.is_finite());
     assert!(e.near_m <= e.far_m && e.far_m <= sound::event::MAX_DISTANCE_M);
     assert!((1..=sound::event::MAX_AT_ONCE).contains(&e.at_once));
+    assert!(e.groups.len() <= sound::event::MAX_GROUPS);
+    assert!(e.groups.iter().all(|g| !g.is_empty() && !g.contains(',')));
     let again = sound::event::read(&sound::event::write(e)).expect("what's written reads");
     assert_eq!(&again.event, e);
     for tick in 0..4 {

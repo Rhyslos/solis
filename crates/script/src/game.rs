@@ -58,8 +58,9 @@ pub enum Change {
     /// `loadGame`: load the game saved in this slot, at the end of the
     /// tick.
     Load(String),
-    /// `playSound…`: play the sound event named here, from there.
-    Sound(String, crate::host::SoundAt),
+    /// `playSound…`: play the sound event named here, from there; and
+    /// the entity whose code asked (who caused it, for "Heard by").
+    Sound(String, crate::host::SoundAt, Option<EntityId>),
     /// `stopSoundsOn`: stop the sounds on this entity.
     StopSounds(EntityId),
     /// `setSoundPlaying`: turn this entity's `AudioSource` on or off.
@@ -403,9 +404,10 @@ impl Host for ViewHost {
         if named && self.kept.sounds < MAX_SOUNDS && self.kept.room() {
             self.kept.sounds += 1;
             let order = self.order();
+            let caller = reflect::Id::from_raw(order.entity).map(EntityId);
             self.kept
                 .changes
-                .push((order, Change::Sound(event.to_string(), at)));
+                .push((order, Change::Sound(event.to_string(), at, caller)));
         }
     }
 

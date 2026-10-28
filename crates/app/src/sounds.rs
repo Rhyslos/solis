@@ -713,6 +713,92 @@ mod tests {
     }
 
     #[test]
+    fn only_what_the_listener_should_hear_is_heard() {
+        use area::builtin::{AudioSource, Camera, Listener, Transform};
+        use sound::event::HeardBy;
+        let dir = folder("heard");
+        std::fs::write(dir.join("sfx/hum.wav"), wav()).unwrap();
+        let event = |heard_by, groups: &[&str]| sound::SoundEvent {
+            takes: vec![sound_id("sfx/hum.wav")],
+            heard_by,
+            groups: groups.iter().map(|g| (*g).to_owned()).collect(),
+            ..sound::SoundEvent::default()
+        };
+        for (name, e) in [
+            ("radio", event(HeardBy::Groups, &["Radio"])),
+            ("blue", event(HeardBy::Groups, &["Team Blue"])),
+            ("mine", event(HeardBy::Caller, &[])),
+            ("all", event(HeardBy::Everyone, &[])),
+        ] {
+            std::fs::write(
+                dir.join(format!("{name}.solsound")),
+                sound::event::write(&e),
+            )
+            .unwrap();
+        }
+        let mut s = Sounds::default();
+        s.want(
+            &listing(&[
+                "sfx/hum.wav",
+                "radio.solsound",
+                "blue.solsound",
+                "mine.solsound",
+                "all.solsound",
+            ]),
+            &dir,
+        );
+        settle(&mut s);
+        let mut w = editor::Workbench::new(
+            editor::AppInfo {
+                name: "Test".into(),
+                version: "1.0".into(),
+            },
+            None,
+        );
+        let mut area = area::Area::new();
+        let player = area.spawn(
+            area::EntityData::new("Player")
+                .with(&Camera::default())
+                .with(&Listener {
+                    hears_now: true,
+                    groups: "Team Red, Radio".into(),
+                }),
+        );
+        let source =
+            |area: &mut area::Area, name: &str, event: &str, parent: Option<reflect::EntityId>| {
+                let mut data = area::EntityData::new(name)
+                    .with(&Transform {
+                        position: glam::Vec3::new(1.0, 0.0, 0.0),
+                        ..Transform::default()
+                    })
+                    .with(&AudioSource {
+                        event: event.into(),
+                        ..AudioSource::default()
+                    });
+                data.parent = parent;
+                area.spawn(data).0.raw()
+            };
+        let radio = source(&mut area, "Radio", "radio", None);
+        let blue = source(&mut area, "Blue radio", "blue", None);
+        let mine = source(&mut area, "My steps", "mine", Some(player));
+        let theirs = source(&mut area, "Their steps", "mine", None);
+        let all = source(&mut area, "Birds", "all", None);
+        w.open_area(area, PathBuf::from("heard.solarea"));
+        let mut device = SoundDevice::for_tests();
+        let mut audio = crate::game_audio::GameAudio::default();
+        let ctx = eframe::egui::Context::default();
+        w.play();
+        w.play_for(1.0 / 60.0);
+        audio.frame(&mut w, &s, &mut device, &ctx);
+        let mut expected = vec![radio, mine, all];
+        expected.sort_unstable();
+        assert_eq!(device.loops_playing(), expected);
+        assert!(!device.loops_playing().contains(&blue));
+        assert!(!device.loops_playing().contains(&theirs));
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
     fn an_event_plays_a_different_take_each_press() {
         let dir = folder("event");
         std::fs::write(dir.join("sfx/a.wav"), wav()).unwrap();

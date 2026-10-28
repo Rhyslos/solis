@@ -12,6 +12,7 @@ The built-in components. Each is a typed Rust struct that turns into values and 
 | `camera.rs` | What the game shows: field of view, near and far, and its projection. Looks along the entity's -Z. | `Camera` |
 | `audio_source.rs` | A sound that keeps playing at the entity: a sound event by name, on or off, and a volume (Phase 7, S5). | `AudioSource` |
 | `reverb_zone.rs` | A place where sounds echo: a box or a ball with a soft edge, a preset and a strength (Phase 7, S6). | `ReverbZone`, `ZoneShape` |
+| `listener.rs` | Where the game hears from: Hears now and the groups it's in (Phase 7, S8). | `Listener` |
 | `physics.rs` | Physics components (decision 0036): a body that moves, a shape to bump into, and a character's standing capsule. Plain values; the game's world turns them into physics. | `RigidBody`, `Collider`, `CharacterBody` |
 
 **Adding a component:** write its struct here, implement `reflect::Component`, and add it to `registry` in `mod.rs`. Properties then draws it without any editor code.

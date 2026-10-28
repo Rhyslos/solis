@@ -23,6 +23,8 @@
 //! at_once = 8;
 //! priority = "Normal";
 //! loop = false;
+//! heard_by = "Everyone";
+//! heard_by_groups = [];
 //! ```
 //!
 //! Read as a hostile file: within limits, a value out of range is brought
@@ -61,6 +63,37 @@ pub const MAX_DISTANCE_M: f32 = 100_000.0;
 pub const MAX_AT_ONCE: u32 = 64;
 /// The longest bus name kept.
 const MAX_BUS_NAME: usize = 64;
+/// The most groups an event is heard by.
+pub const MAX_GROUPS: usize = 16;
+/// The longest group name.
+pub const MAX_GROUP_NAME: usize = 64;
+
+/// Who hears an event (Phase 7, S8; decision 0058).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum HeardBy {
+    /// Every listener.
+    #[default]
+    Everyone,
+    /// Only the listener on the entity that played it (or on what it's
+    /// part of): the player's own footsteps, a click in their menu.
+    Caller,
+    /// Only listeners in one of the event's groups.
+    Groups,
+}
+
+impl HeardBy {
+    /// Every choice, in the order Properties lists them.
+    pub const ALL: [Self; 3] = [Self::Everyone, Self::Caller, Self::Groups];
+
+    /// As written in the file and shown in Properties.
+    pub fn name(self) -> &'static str {
+        match self {
+            Self::Everyone => "Everyone",
+            Self::Caller => "Only who caused it",
+            Self::Groups => "Groups",
+        }
+    }
+}
 
 /// Whether an event is placed in the world.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
@@ -157,6 +190,10 @@ pub struct SoundEvent {
     pub priority: Priority,
     /// Whether it plays again from the start when it ends.
     pub looping: bool,
+    /// Who hears it.
+    pub heard_by: HeardBy,
+    /// The groups that hear it, when it's heard by Groups.
+    pub groups: Vec<String>,
 }
 
 impl Default for SoundEvent {
@@ -175,6 +212,8 @@ impl Default for SoundEvent {
             at_once: 8,
             priority: Priority::Normal,
             looping: false,
+            heard_by: HeardBy::Everyone,
+            groups: Vec::new(),
         }
     }
 }
@@ -355,6 +394,48 @@ fn apply(event: &mut SoundEvent, field: &Field, notes: &mut Vec<String>) -> Resu
                 _ => return Err(wrong("true or false")),
             };
         }
+        "heard_by" => {
+            let name = word()?;
+            event.heard_by = HeardBy::ALL
+                .into_iter()
+                .find(|h| h.name() == name)
+                .ok_or_else(|| wrong("\"Everyone\", \"Only who caused it\" or \"Groups\""))?;
+        }
+        "heard_by_groups" => {
+            let Value::List(items) = &field.value else {
+                return Err(wrong(
+                    "a list of group names in quotes, such as [\"Team Red\"]",
+                ));
+            };
+            if items.len() > MAX_GROUPS {
+                return Err(EventError {
+                    line,
+                    message: format!(
+                        "{} groups; an event is heard by up to {MAX_GROUPS}",
+                        items.len()
+                    ),
+                });
+            }
+            event.groups.clear();
+            for item in items {
+                let Value::Text(name) = item else {
+                    return Err(wrong("a list of group names in quotes"));
+                };
+                let name = name.trim();
+                if name.is_empty()
+                    || name.chars().count() > MAX_GROUP_NAME
+                    || name.contains(char::is_control)
+                    || name.contains(',')
+                {
+                    return Err(wrong(&format!(
+                        "a list of group names, each up to {MAX_GROUP_NAME} letters, without commas"
+                    )));
+                }
+                if !event.groups.iter().any(|g| g == name) {
+                    event.groups.push(name.to_owned());
+                }
+            }
+        }
         other => notes.push(format!(
             "line {line}: \"{other}\" isn't a sound event setting, so it's skipped"
         )),
@@ -391,6 +472,17 @@ pub fn write(event: &SoundEvent) -> String {
             ("at_once", Value::Int(i64::from(event.at_once))),
             ("priority", Value::Text(event.priority.name().to_owned())),
             ("loop", Value::Bool(event.looping)),
+            ("heard_by", Value::Text(event.heard_by.name().to_owned())),
+            (
+                "heard_by_groups",
+                Value::List(
+                    event
+                        .groups
+                        .iter()
+                        .map(|g| Value::Text(g.clone()))
+                        .collect(),
+                ),
+            ),
         ],
     )
 }

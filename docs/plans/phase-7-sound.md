@@ -148,7 +148,10 @@ Built (2026-10-28): four reverb sends, each zone heard taking one (smallest firs
 - A few reverb buses (up to 4 zones heard at once); each tick the zones around the listener set how much of each everything sends. Overlapping zones: the smaller one wins.
 - Tests: inside, the reverb's level is full; outside, none; across the edge it fades smoothly; the presets read and write round trip.
 
-### S8. Listeners and who hears what
+### S8. Listeners and who hears what ✓
+
+Built (2026-10-28) from the mock-up the project lead took as a starting point. One computer hears through the first Listener with Hears now on (or the camera). Who caused a sound is the entity whose code played it (`Order::entity` in game code's tick), or an AudioSource's own entity; "Only who caused it" counts the listener's entity, what's inside it and what it's inside.
+
 
 Added by [decision 0058](../decisions/0058-listeners-and-who-hears-what.md), built after S6.
 

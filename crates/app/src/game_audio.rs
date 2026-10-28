@@ -122,23 +122,25 @@ impl GameAudio {
         if mode == SoundMode::Playing {
             self.clock += f64::from(dt);
         }
-        let listener = workbench.listener();
-        if let Some((place, turn)) = listener {
-            device.set_listener(place.to_array(), turn.to_array());
+        // Who hears (S8): the first Listener with Hears now on, or the
+        // camera.
+        let hearer = workbench.hearer();
+        if let Some(h) = &hearer {
+            device.set_listener(h.place.to_array(), h.turn.to_array());
         }
-        let hearing = listener.map_or([0.0; 3], |(p, _)| p.to_array());
+        let hearing = hearer.as_ref().map_or([0.0; 3], |h| h.place.to_array());
         device.set_reverb(&reverbs_heard(&workbench.reverb_zones(), hearing));
         let mut notes = Vec::new();
-        let mut plays: Vec<(GameSound, String, script::SoundAt)> = Vec::new();
+        let mut plays: Vec<(GameSound, String, script::SoundAt, Option<EntityId>)> = Vec::new();
         for request in fresh(requests) {
             match request.request {
                 Request::StopOn(which) => device.stop_game_sounds_on(which.0.raw()),
                 Request::BusVolume(ref bus, share) => {
                     self.shares.insert(bus.clone(), share);
                 }
-                Request::Play(ref name, at) => {
+                Request::Play(ref name, at, caller) => {
                     let name = name.clone();
-                    plays.push((request, name, at));
+                    plays.push((request, name, at, caller));
                 }
             }
         }
@@ -146,7 +148,7 @@ impl GameAudio {
         let mut wanted: Vec<Wanted> = Vec::new();
         self.shots(
             &plays,
-            hearing,
+            (hearing, hearer.as_ref()),
             workbench,
             sounds,
             device,
@@ -154,7 +156,14 @@ impl GameAudio {
             &mut notes,
         );
         let sources = workbench.audio_sources();
-        self.loop_candidates(&sources, hearing, sounds, &mut wanted, &mut notes);
+        self.loop_candidates(
+            &sources,
+            (hearing, hearer.as_ref()),
+            workbench,
+            sounds,
+            &mut wanted,
+            &mut notes,
+        );
         let candidates: Vec<Candidate> = wanted
             .iter()
             .map(|w| Candidate {
@@ -247,8 +256,8 @@ impl GameAudio {
     #[allow(clippy::too_many_arguments)]
     fn shots<'a>(
         &mut self,
-        plays: &'a [(GameSound, String, script::SoundAt)],
-        hearing: [f32; 3],
+        plays: &'a [(GameSound, String, script::SoundAt, Option<EntityId>)],
+        (hearing, hearer): ([f32; 3], Option<&editor::Hearer>),
         workbench: &Workbench,
         sounds: &'a crate::sounds::Sounds,
         device: &mut SoundDevice,
@@ -257,12 +266,12 @@ impl GameAudio {
     ) {
         // How many times each event was asked for in each tick.
         let mut asked: HashMap<(u64, &str), usize> = HashMap::new();
-        for (request, name, _) in plays {
+        for (request, name, _, _) in plays {
             *asked.entry((request.tick, name.as_str())).or_default() += 1;
         }
         let mut started: HashMap<(u64, &str), usize> = HashMap::new();
         let mut this_frame: HashMap<&str, usize> = HashMap::new();
-        for (i, (request, name, at)) in plays.iter().enumerate() {
+        for (i, (request, name, at, caller)) in plays.iter().enumerate() {
             let group = (request.tick, name.as_str());
             let (keep, extra_db) = copies(asked[&group]);
             let n = started.entry(group).or_default();
@@ -280,6 +289,10 @@ impl GameAudio {
                 }
                 continue;
             };
+            // Not for this listener: never started.
+            if !heard_by(event, *caller, hearer, workbench) {
+                continue;
+            }
             // The event's own limit, counting what plays and what's
             // starting this frame.
             let number = self.event_number(name);
@@ -340,7 +353,8 @@ impl GameAudio {
     fn loop_candidates<'a>(
         &mut self,
         sources: &[(EntityId, area::builtin::AudioSource, glam::Vec3)],
-        hearing: [f32; 3],
+        (hearing, hearer): ([f32; 3], Option<&editor::Hearer>),
+        workbench: &Workbench,
         sounds: &'a crate::sounds::Sounds,
         wanted: &mut Vec<Wanted<'a>>,
         notes: &mut Vec<String>,
@@ -357,6 +371,10 @@ impl GameAudio {
                 }
                 continue;
             };
+            // Its entity is who causes it.
+            if !heard_by(event, Some(*id), hearer, workbench) {
+                continue;
+            }
             // The same take each time it comes back: picked from the
             // entity, never the game's random numbers.
             let Some((pick, clip)) = pick_of(event, sounds, None, 0, 0, entity) else {
@@ -461,6 +479,28 @@ fn reverbs_heard(
         .collect()
 }
 
+/// Whether `hearer` hears `event` played by `caller` (decision 0058):
+/// everyone hears Everyone's; Only who caused it reaches the listener on
+/// the entity that played it, or on what it's part of (or what's part of
+/// it); Groups reach a listener in one of the event's groups. With no one
+/// hearing, nothing is heard.
+fn heard_by(
+    event: &sound::SoundEvent,
+    caller: Option<EntityId>,
+    hearer: Option<&editor::Hearer>,
+    workbench: &Workbench,
+) -> bool {
+    use sound::event::HeardBy;
+    let Some(hearer) = hearer else {
+        return event.heard_by == HeardBy::Everyone;
+    };
+    match event.heard_by {
+        HeardBy::Everyone => true,
+        HeardBy::Caller => caller.is_some_and(|c| workbench.same_family(c, hearer.entity)),
+        HeardBy::Groups => event.groups.iter().any(|g| hearer.groups.contains(g)),
+    }
+}
+
 /// A pick of `event` from takes Solis could read, and its clip.
 fn pick_of<'a>(
     event: &sound::SoundEvent,
@@ -543,7 +583,7 @@ mod tests {
             tick,
             order: 0,
             seed: 1,
-            request: Request::Play("step".into(), script::SoundAt::Nowhere),
+            request: Request::Play("step".into(), script::SoundAt::Nowhere, None),
         }
     }
 
