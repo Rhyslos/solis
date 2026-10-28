@@ -20,6 +20,7 @@ New to game engines? Start with [Concepts](concepts.md).
 - [Play mode: run the area as a game, and Stop puts everything back](play-mode.md)
 - [Projects and the Library: keeping your game's files together](projects-and-the-library.md)
 - [Backups and upgrades: older files keep opening, and a copy is kept before they change](backups-and-upgrades.md)
+- [Checking a project before updating: does this build still play my game the same?](checking-a-project.md)
 - [Importing models: glTF files from Blender, Aventail and other programs](importing-models.md)
 - [Sounds: WAV and Ogg files, their waveforms, and listening to them](sounds.md)
 - [Sound events: takes that vary, so nothing sounds copied](sound-events.md)

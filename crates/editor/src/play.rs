@@ -82,6 +82,9 @@ pub(crate) struct Playing {
     /// The recording this play plays back, and how many of its ticks
     /// have run.
     pub(crate) replay: Option<(input::Recording, usize)>,
+    /// How the last playback ended: matched on every tick (their count),
+    /// or stopped matching by this tick (Phase 8, C4: a project's check).
+    pub(crate) replayed: Option<Result<usize, usize>>,
 }
 
 /// The most ticks one recording keeps: an hour at 60 a second.
@@ -214,6 +217,7 @@ impl Workbench {
             told_recording_edited: false,
             told_too_many_sounds: false,
             replay: None,
+            replayed: None,
         });
         // Nothing held over from before Play.
         self.devices = input::Devices::new();
@@ -627,6 +631,7 @@ impl Workbench {
                         None
                     };
                     if outcome.is_some() {
+                        playing.replayed = Some(if mismatch { Err(n) } else { Ok(count) });
                         playing.replay = None;
                         slow = slow.or(outcome);
                     }

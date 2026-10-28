@@ -47,7 +47,14 @@ pub struct Recording {
     pub start: u64,
     /// Each tick, from the first.
     pub ticks: Vec<Tick>,
+    /// The area it was recorded in: its file inside the project's assets,
+    /// with `/` between folders (format 2 on; `None` when not known), so
+    /// a project's check can play it back on its own (Phase 8, C4).
+    pub area: Option<String>,
 }
+
+/// The longest area path a recording keeps.
+const MAX_AREA_PATH: usize = 1024;
 
 /// Why a recording couldn't be read.
 #[derive(Debug, Clone, PartialEq)]
@@ -74,7 +81,7 @@ impl std::fmt::Display for RecordingError {
 }
 
 /// The format version this build writes.
-pub(crate) const VERSION: u32 = 1;
+pub(crate) const VERSION: u32 = 2;
 /// The first line, before the version.
 const HEADER: &str = "solis recording";
 
@@ -88,8 +95,14 @@ pub static FORMAT: reflect::upgrade::Format<Recording> = reflect::upgrade::Forma
         let line = text.lines().next()?.trim();
         line.strip_prefix(HEADER)?.trim().parse().ok()
     },
-    steps: &[],
+    steps: &[the_area_isn_t_known],
 };
+
+/// Version 1 to 2: version 1 didn't say which area it was recorded in.
+fn the_area_isn_t_known(recording: &mut Recording) -> Result<(), String> {
+    recording.area = None;
+    Ok(())
+}
 
 impl Tick {
     /// At most how many bytes its line takes in a recording's file (a
@@ -111,8 +124,15 @@ impl Tick {
 impl Recording {
     /// The file's text.
     pub fn write(&self) -> String {
+        // An area path on one line, as written (a line break would
+        // break the file's lines).
+        let area = self
+            .area
+            .as_deref()
+            .unwrap_or_default()
+            .replace(['\n', '\r'], " ");
         let mut text = format!(
-            "{HEADER} {VERSION}\nseed {}\nstart {:016x}\n",
+            "{HEADER} {VERSION}\nseed {}\narea {area}\nstart {:016x}\n",
             self.seed, self.start
         );
         for (n, tick) in self.ticks.iter().enumerate() {
@@ -168,6 +188,31 @@ impl Recording {
             .trim()
             .parse()
             .map_err(|_| RecordingError::Damaged(2))?;
+        // Format 2 on: the area it was recorded in (its line may be just
+        // `area` when it isn't known).
+        let area = if version >= 2 {
+            let (n, line) = lines.next().ok_or(RecordingError::Damaged(3))?;
+            let path = match line.strip_prefix("area") {
+                Some("") => "",
+                Some(rest) => rest
+                    .strip_prefix(' ')
+                    .ok_or(RecordingError::Damaged(n + 1))?,
+                None => return Err(RecordingError::Damaged(n + 1)),
+            };
+            if path.len() > MAX_AREA_PATH || path.contains(char::is_control) {
+                return Err(RecordingError::Damaged(n + 1));
+            }
+            (!path.trim().is_empty()).then(|| path.trim().to_string())
+        } else {
+            None
+        };
+        let mut field = |name: &str| -> Result<String, RecordingError> {
+            let (n, line) = lines.next().ok_or(RecordingError::Damaged(4))?;
+            line.strip_prefix(name)
+                .and_then(|rest| rest.strip_prefix(' '))
+                .map(str::to_string)
+                .ok_or(RecordingError::Damaged(n + 1))
+        };
         let start = u64::from_str_radix(field("start")?.trim(), 16)
             .map_err(|_| RecordingError::Damaged(3))?;
         let mut ticks = Vec::new();
@@ -237,7 +282,12 @@ impl Recording {
             }
             ticks.push(tick);
         }
-        let mut recording = Self { seed, start, ticks };
+        let mut recording = Self {
+            seed,
+            start,
+            ticks,
+            area,
+        };
         FORMAT
             .upgrade(version, &mut recording)
             .map_err(|e| RecordingError::Upgrade(e.to_string()))?;

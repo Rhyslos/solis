@@ -34,6 +34,21 @@ fn main() -> ExitCode {
     match cli::parse(args) {
         Ok(Command::Version) => exit_with(say(&format!("{}\n", app::version_banner()), false)),
         Ok(Command::Help) => exit_with(say(&cli::usage(&program), false)),
+        Ok(Command::CheckProject(folder)) => {
+            let report = app::check_project::check(&folder, &app::version_banner());
+            let text = report.text();
+            say(&text, false);
+            // Kept in the project too: a Windows build has no console to
+            // print to.
+            let _ = asset_db::own_folder(&folder, asset_db::CACHE_FOLDER).and_then(|own| {
+                asset_db::write_atomically(&own.join("check-report.txt"), text.as_bytes())
+            });
+            if report.failed == 0 {
+                ExitCode::SUCCESS
+            } else {
+                ExitCode::FAILURE
+            }
+        }
         Ok(Command::Run(imports)) => match app::window::run(app::app_info(), imports) {
             Ok(()) => ExitCode::SUCCESS,
             Err(reason) => {

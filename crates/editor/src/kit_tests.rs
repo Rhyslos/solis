@@ -394,6 +394,7 @@ fn a_recorded_walk_plays_back_exactly() {
     w.play();
     let playing = w.playing.as_mut().unwrap();
     playing.recording = Some(input::Recording {
+        area: None,
         seed: playing.world.seed(),
         start: playing.world.checksum(),
         ticks: Vec::new(),

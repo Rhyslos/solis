@@ -8,6 +8,7 @@
 pub mod area_file;
 pub mod benchmark;
 pub mod branding;
+pub mod check_project;
 pub mod cli;
 #[cfg(test)]
 mod fixtures_tests;

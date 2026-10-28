@@ -157,18 +157,37 @@ impl Workbench {
             );
             return;
         }
+        // The area it's recorded in, inside the project's assets, so the
+        // project's check can play it back on its own (Phase 8, C4).
+        let area = self.recorded_area();
         self.play();
         if let Some(playing) = &mut self.playing {
             playing.recording = Some(input::Recording {
                 seed: playing.start_seed,
                 start: playing.world.checksum(),
                 ticks: Vec::new(),
+                area,
             });
             self.log(
                 LogLevel::Info,
                 "Recording the game's input from now; Stop saves it.",
             );
         }
+    }
+
+    /// The open area's file inside the project's assets, with `/` between
+    /// folders, when it's saved there (unsaved changes aside).
+    fn recorded_area(&self) -> Option<String> {
+        let assets = &self.project.as_ref()?.assets;
+        let inside = self.document.file()?.strip_prefix(assets).ok()?;
+        let parts: Vec<String> = inside
+            .components()
+            .map(|c| match c {
+                std::path::Component::Normal(part) => part.to_str().map(str::to_owned),
+                _ => None,
+            })
+            .collect::<Option<_>>()?;
+        Some(parts.join("/"))
     }
 
     /// Plays a recording back (Play > Replay a recording…, the app hands
@@ -219,6 +238,20 @@ impl Workbench {
                  same.",
             );
         }
+    }
+
+    /// The recording being made, as its file's text (for tools and tests
+    /// that run the game without a window; Stop saves it as usual).
+    pub fn recording_text(&self) -> Option<String> {
+        let recording = self.playing.as_ref()?.recording.as_ref()?;
+        Some(recording.write())
+    }
+
+    /// How the last playback in this play ended: `Ok` with the ticks when
+    /// it matched the recording on every one, `Err` with the tick it
+    /// stopped matching by; `None` while it plays or with none.
+    pub fn replayed(&self) -> Option<Result<usize, usize>> {
+        self.playing.as_ref()?.replayed
     }
 
     /// The bindings a running game uses now (with game code's rebinding).

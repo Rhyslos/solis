@@ -21,6 +21,8 @@ cp samples/turret/assets/turret.solarea "$seeds/area_file/"
 cp tests/fixtures/save/v1/harbour.solsave "$seeds/save_game/v1.solsave"
 cp tests/fixtures/save/v2/harbour.solsave "$seeds/save_game/v2.solsave"
 cp tests/fixtures/input-actions/v1/input.solinput "$seeds/input_actions/v1.solinput"
+cp tests/fixtures/recording/v1/play.solrec "$seeds/recording/v1.solrec"
+cp tests/fixtures/recording/v2/play.solrec "$seeds/recording/v2.solrec"
 printf 'name = "Harbour"\nformat = 1\n' > "$seeds/project_file/harbour.solis"
 # GitHub's answer about a release, a 0x01 byte, then the checksum file
 # (fuzz_targets/update_answer.rs).
