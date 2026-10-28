@@ -66,10 +66,11 @@ pub(crate) mod tests {
 
     /// Every file format a project holds, for the notes and the tests that
     /// open the example files of every version (`tests/fixtures/`).
-    pub(crate) fn formats() -> [&'static dyn Versioned; 8] {
+    pub(crate) fn formats() -> [&'static dyn Versioned; 9] {
         [
             &area::text::FORMAT,
             &area::pixels::FORMAT,
+            &animation::frames_file::FORMAT,
             &sound::event::FORMAT,
             &sound::mixer::FORMAT,
             &input::BINDINGS_FORMAT,
@@ -88,6 +89,7 @@ pub(crate) mod tests {
         assert!(sound::event::FORMAT.is_complete());
         assert!(sound::mixer::FORMAT.is_complete());
         assert!(area::pixels::FORMAT.is_complete());
+        assert!(animation::frames_file::FORMAT.is_complete());
         assert!(input::BINDINGS_FORMAT.is_complete());
         assert!(input::RECORDING_FORMAT.is_complete());
         assert!(asset_db::PROJECT_FORMAT.is_complete());

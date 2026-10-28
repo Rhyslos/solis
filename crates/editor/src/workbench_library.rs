@@ -61,6 +61,12 @@ impl Workbench {
                 self.place_targets.remove(&id);
                 actions.push(WorkbenchAction::PlaceAsset(id));
             }
+            LibraryRequest::Open(LibraryKind::SpriteClips, path) => self.open_frames(&path),
+            LibraryRequest::MakeClipsFile(path) => {
+                if let Some(id) = crate::frames_editor::id_of(&self.viewport.sheets, &path) {
+                    self.make_clips_file(&path, id);
+                }
+            }
             LibraryRequest::Open(LibraryKind::Area, path) => {
                 self.request(WorkbenchAction::OpenAreaFile(full(&path)), actions);
             }

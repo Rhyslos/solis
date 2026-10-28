@@ -275,6 +275,42 @@ impl Projects {
         )
     }
 
+    /// Saves a sprite's clips file (`.solframes`, inside the assets),
+    /// making it if it isn't there. Gives back where an older one was
+    /// kept, if it was.
+    pub fn save_frames(&self, path: &Path, text: &str) -> Result<Option<PathBuf>, String> {
+        let db = self.db.as_ref().ok_or("no project is open")?;
+        let is_frames = animation::frames_file::is_frames_file(path);
+        let plain = path
+            .components()
+            .all(|c| matches!(c, std::path::Component::Normal(_)));
+        if !is_frames || !plain {
+            return Err("it isn't a clips file in the assets".to_owned());
+        }
+        let file = db.project().assets().join(path);
+        if !file.is_file() {
+            if let Some(folder) = file.parent()
+                && !folder.is_dir()
+            {
+                return Err("its folder isn't there any more".to_owned());
+            }
+            return asset_db::write_atomically(&file, text.as_bytes())
+                .map(|()| None)
+                .map_err(|e| e.to_string());
+        }
+        crate::upgrades::save(
+            db.project().root(),
+            &file,
+            text,
+            &animation::frames_file::FORMAT,
+            |text| {
+                animation::frames_file::read(text)
+                    .map(|read| animation::frames_file::write(&read.file))
+                    .map_err(|e| e.to_string())
+            },
+        )
+    }
+
     /// Moves a file or folder (inside the assets) to the Recycle Bin.
     pub fn delete(&self, path: &Path) -> Result<(), String> {
         let db = self.db.as_ref().ok_or("no project is open")?;

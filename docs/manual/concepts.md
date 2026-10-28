@@ -167,6 +167,9 @@
 - **Slice:** in Aseprite, a named rectangle on the picture (*feet*, *hand*), used for where a sprite stands, where a held tool goes, or what can be hit.
 - **Pivot:** the point a sprite stands on: it sits on its entity's place, so the sprite turns and flips round it. Usually between the feet.
 - **Atlas:** one big picture with many frames packed into it, so the graphics card draws a sheet's sprites all at once instead of one at a time.
+- **Clip:** a run of a sprite sheet's frames played as an animation (*walk*, *hoe*), each frame shown for its own time, forward, backward or ping-pong (there and back), over and over or a number of times. Aseprite's tags are clips; you can make more in Solis. See [Animating sprites](sprite-animation.md).
+- **Clips file:** a `.solframes` file beside an Aseprite file, holding what Solis adds to its clips (speed, events) and clips made in Solis. Open it to edit its clips in the **Clips** and **Frames** tabs.
+- **Frame event:** a name on a frame of a clip (*footstep*). When the clip reaches the frame, a sound event of that name plays and game code hears `AnimationCue`.
 
 ## Getting Solis
 

@@ -53,6 +53,18 @@ While the game has them, every key is the game's and the editor's shortcuts are 
 
 See [Selecting and moving things](selecting-and-moving.md).
 
+## The Frames tab (a clips file open)
+
+These work while the pointer is over the Clips or Frames tab; see [Animating sprites](sprite-animation.md).
+
+| Action | Shortcut |
+|---|---|
+| Pick a frame; several | Click; Ctrl + click, or Shift + click for a run |
+| Move picked frames (clips made here) | Drag them |
+| Take picked frames out (clips made here) | Delete |
+| Play or stop the clip | Space |
+| Undo or redo a change to the clips file | Ctrl + Z, Ctrl + Y |
+
 ## Editing
 
 | Action | Shortcut |

@@ -210,6 +210,9 @@ pub(crate) enum LibraryRequest {
     NewSoundEvent(String),
     /// Save a sound event's settings to its file.
     SaveSoundEvent(String, sound::SoundEvent),
+    /// Make a clips file beside the Aseprite file at this path (or open
+    /// the one there), from its Properties (Phase 9, D3).
+    MakeClipsFile(String),
     /// Add a sound file (by its asset ID) to a sound event's takes.
     AddTake(String, AssetId),
 }

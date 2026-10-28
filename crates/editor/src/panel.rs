@@ -30,6 +30,12 @@ pub enum Panel {
     Profiler,
     /// The project's buses: a fader, meter, mute and solo each (Phase 7).
     Mixer,
+    /// The clips of the clips file open (Phase 9, D3): beside Properties
+    /// while a `.solframes` file is open, and gone when it's closed.
+    Clips,
+    /// The chosen clip's frames along a time ruler (Phase 9, D3): at the
+    /// bottom while a `.solframes` file is open.
+    Frames,
 }
 
 impl Panel {
@@ -48,6 +54,15 @@ impl Panel {
         Self::Mixer,
     ];
 
+    /// Panels that come and go with what's open (a clips file), never in
+    /// [`Self::ALL`] or the Window menu, and never saved in a layout.
+    pub const OPEN_WITH_A_FILE: [Self; 2] = [Self::Clips, Self::Frames];
+
+    /// Whether it comes and goes with what's open (and can be closed).
+    pub fn comes_with_a_file(self) -> bool {
+        Self::OPEN_WITH_A_FILE.contains(&self)
+    }
+
     /// The name on the panel's tab.
     pub fn title(self) -> &'static str {
         match self {
@@ -62,6 +77,8 @@ impl Panel {
             Self::Problems => "Problems",
             Self::Profiler => "Profiler",
             Self::Mixer => "Mixer",
+            Self::Clips => "Clips",
+            Self::Frames => "Frames",
         }
     }
 
@@ -79,6 +96,8 @@ impl Panel {
             Self::Problems => Icon::Problems,
             Self::Profiler => Icon::Profiler,
             Self::Mixer => Icon::Sound,
+            Self::Clips => Icon::Layers,
+            Self::Frames => Icon::Viewport,
         }
     }
 }

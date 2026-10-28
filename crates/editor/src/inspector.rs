@@ -225,6 +225,13 @@ fn field_widget(
             };
             return whole(slice_picker(ui, value, sheet.map(|s| &**s), mixed.whole));
         }
+        (FieldKind::Text, Offer::ClipsOf(sheet_field)) => {
+            let clips = match data.get(sheet_field) {
+                Some(Value::Asset(Some(r))) => sheets.clips(r.asset),
+                _ => None,
+            };
+            return whole(clip_picker(ui, value, clips.map(|c| &**c), mixed.whole));
+        }
         _ => {}
     }
     match &field.kind {
@@ -429,6 +436,66 @@ fn slice_picker(
             if !current.is_empty() && sheet.is_some_and(|s| s.slice(current).is_none()) {
                 ui.label(
                     RichText::new(format!("\"{current}\" isn't a slice of this sheet"))
+                        .color(crate::theme::WARNING),
+                );
+            }
+        });
+    chosen
+}
+
+/// A clip name field (Phase 9, D3): the sheet's or clips file's clips to
+/// pick from, and its first clip (or the still Frame) for none.
+fn clip_picker(
+    ui: &mut Ui,
+    value: &Value,
+    clips: Option<&animation::ClipSet>,
+    mixed: bool,
+) -> Option<Value> {
+    let current = match value {
+        Value::Text(t) => t.as_str(),
+        _ => "",
+    };
+    let first = clips
+        .and_then(|c| c.first.and_then(|i| c.clips.get(i)))
+        .map(|c| c.name.as_str());
+    let none = match first {
+        Some(name) => format!("First ({name})"),
+        None => "None (the Frame)".to_owned(),
+    };
+    let shown = if mixed {
+        "—".to_owned()
+    } else if current.is_empty() {
+        none.clone()
+    } else {
+        current.to_owned()
+    };
+    let mut chosen = None;
+    egui::ComboBox::from_id_salt("clip")
+        .selected_text(shown)
+        .show_ui(ui, |ui| {
+            if ui
+                .selectable_label(current.is_empty() && !mixed, none)
+                .clicked()
+            {
+                chosen = Some(Value::Text(String::new()));
+            }
+            for clip in clips.map_or(&[][..], |c| &c.clips) {
+                if ui
+                    .selectable_label(current == clip.name && !mixed, &clip.name)
+                    .clicked()
+                {
+                    chosen = Some(Value::Text(clip.name.clone()));
+                }
+            }
+            if clips.is_some_and(|c| c.clips.is_empty()) {
+                ui.label(
+                    RichText::new("No clips: tag runs of frames in Aseprite.")
+                        .color(crate::theme::TEXT_WEAK),
+                );
+            }
+            if !current.is_empty() && clips.is_some_and(|c| c.get(current).is_none()) {
+                ui.label(
+                    RichText::new(format!("\"{current}\" isn't one of its clips"))
                         .color(crate::theme::WARNING),
                 );
             }

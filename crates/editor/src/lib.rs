@@ -45,6 +45,7 @@ mod sound_event_view;
 pub mod sound_view;
 pub mod splash;
 pub mod frames_editor;
+mod frames_view;
 pub mod sprite_sheets;
 #[cfg(test)]
 mod test_support;
@@ -55,6 +56,7 @@ pub mod updates;
 pub mod viewport;
 mod viewport_tools;
 pub mod workbench;
+mod workbench_frames;
 mod workbench_library;
 mod workbench_tools;
 
