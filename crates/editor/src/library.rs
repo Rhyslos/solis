@@ -795,12 +795,8 @@ fn tile<'a>(
             .map(|set| clips_text(set.clips.len())),
         _ => None,
     };
-    let sheet = sheet_path.and_then(|path| {
-        Some((
-            sounds.sheets.at(path)?,
-            sounds.sheet_pictures.get(path)?,
-        ))
-    });
+    let sheet = sheet_path
+        .and_then(|path| Some((sounds.sheets.at(path)?, sounds.sheet_pictures.get(path)?)));
     if let Some(info) = waveform {
         sound_view::draw_waveform(
             painter,

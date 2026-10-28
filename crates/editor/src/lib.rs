@@ -14,6 +14,8 @@ mod commands_many;
 pub mod console;
 mod console_commands;
 pub mod document;
+pub mod frames_editor;
+mod frames_view;
 mod game_code;
 mod game_panel;
 pub mod game_sound;
@@ -44,8 +46,6 @@ mod sheet_view;
 mod sound_event_view;
 pub mod sound_view;
 pub mod splash;
-pub mod frames_editor;
-mod frames_view;
 pub mod sprite_sheets;
 #[cfg(test)]
 mod test_support;

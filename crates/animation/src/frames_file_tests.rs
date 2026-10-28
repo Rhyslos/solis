@@ -37,16 +37,24 @@ fn sample() -> FramesFile {
 fn a_clips_file_round_trips() {
     let text = write(&sample());
     assert!(text.contains("frames version 1;"), "{text}");
-    assert!(text.contains("tag1 = [\"walk\", 1.5, [[3, \"footstep\"]]];"), "{text}");
     assert!(
-        text.contains("clip1 = [\"hoe\", 1.0, \"ping-pong\", 1, [[5, 100, \"\"], [6, 120, \"swing\"]]];"),
+        text.contains("tag1 = [\"walk\", 1.5, [[3, \"footstep\"]]];"),
+        "{text}"
+    );
+    assert!(
+        text.contains(
+            "clip1 = [\"hoe\", 1.0, \"ping-pong\", 1, [[5, 100, \"\"], [6, 120, \"swing\"]]];"
+        ),
         "{text}"
     );
     let read = read(&text).unwrap();
     assert!(read.notes.is_empty(), "{:?}", read.notes);
     assert_eq!(read.file, sample());
     // An empty file round trips too.
-    assert_eq!(read_ok(&write(&FramesFile::default())), FramesFile::default());
+    assert_eq!(
+        read_ok(&write(&FramesFile::default())),
+        FramesFile::default()
+    );
 }
 
 fn read_ok(text: &str) -> FramesFile {
@@ -99,7 +107,12 @@ fn lines_it_can_t_use_are_skipped_with_a_note() {
 #[test]
 fn files_it_can_t_read_are_refused_with_their_line() {
     assert!(read("").is_err());
-    assert!(read("area version 1;").unwrap_err().message.contains("frames"));
+    assert!(
+        read("area version 1;")
+            .unwrap_err()
+            .message
+            .contains("frames")
+    );
     let newer = read("frames version 2;").unwrap_err();
     assert!(newer.message.contains("newer"));
     assert_eq!(newer.line, 1);
@@ -118,7 +131,9 @@ fn limits_are_kept() {
     let r = read(&text).unwrap();
     assert_eq!(r.file.clips.len(), MAX_CLIPS);
     assert!(r.notes.iter().any(|n| n.contains("more than")));
-    let frames: Vec<String> = (0..MAX_FRAMES + 2).map(|_| "[1, 10, \"\"]".to_owned()).collect();
+    let frames: Vec<String> = (0..MAX_FRAMES + 2)
+        .map(|_| "[1, 10, \"\"]".to_owned())
+        .collect();
     let r = read(&format!(
         "frames version 1;\nclip1 = [\"long\", 1.0, \"forward\", 0, [{}]];\n",
         frames.join(", ")

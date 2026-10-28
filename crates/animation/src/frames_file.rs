@@ -326,7 +326,8 @@ fn read_tag(value: &Value, line: usize, notes: &mut Vec<String>) -> Result<TagCh
 
 /// A `clipN` line: [name, speed, direction, repeats, frames].
 fn read_clip(value: &Value, line: usize, notes: &mut Vec<String>) -> Result<OwnClip, String> {
-    let shape = "a clip line should be [name, speed, direction, repeats, [[frame, ms, \"event\"], …]]";
+    let shape =
+        "a clip line should be [name, speed, direction, repeats, [[frame, ms, \"event\"], …]]";
     let Value::List(items) = value else {
         return Err(shape.to_owned());
     };
@@ -339,9 +340,7 @@ fn read_clip(value: &Value, line: usize, notes: &mut Vec<String>) -> Result<OwnC
     }
     let speed = speed(s, line, notes)?;
     let direction = direction_of(d).ok_or_else(|| {
-        format!(
-            "\"{d}\" isn't a direction (forward, reverse, ping-pong or ping-pong reversed)"
-        )
+        format!("\"{d}\" isn't a direction (forward, reverse, ping-pong or ping-pong reversed)")
     })?;
     let Value::Int(r) = r else {
         return Err("repeats should be a whole number (0 for over and over)".to_owned());
@@ -438,7 +437,10 @@ pub fn write(file: &FramesFile) -> String {
             ]),
         ));
     }
-    let borrowed: Vec<(&str, Value)> = fields.iter().map(|(k, v)| (k.as_str(), v.clone())).collect();
+    let borrowed: Vec<(&str, Value)> = fields
+        .iter()
+        .map(|(k, v)| (k.as_str(), v.clone()))
+        .collect();
     settings::write_settings(
         KIND,
         VERSION,

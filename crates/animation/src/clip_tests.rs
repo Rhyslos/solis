@@ -49,7 +49,9 @@ fn each_direction_shows_its_frames_in_order() {
     );
     assert_eq!(walk(Direction::PingPong, 0).pass_seconds(), 0.6);
     assert_eq!(
-        walk(Direction::PingPong, 0).pass_order().collect::<Vec<_>>(),
+        walk(Direction::PingPong, 0)
+            .pass_order()
+            .collect::<Vec<_>>(),
         [0, 1, 2, 3, 2, 1]
     );
 }

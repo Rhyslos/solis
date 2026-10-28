@@ -75,9 +75,11 @@ impl World {
 
     /// Plays `clip` on `id`'s Sprite (game code's `playClip`): already
     /// playing it, it carries on; stopped part way, it carries on from
-    /// there; another clip, or one that has finished, starts from its
-    /// beginning. Nothing happens for an entity without a Sprite.
-    pub fn play_clip(&mut self, id: EntityId, clip: &str) {
+    /// there; finished, it stays on its last frame (so calling it every
+    /// tick is safe); another clip starts from its beginning. With
+    /// `again` (`replayClip`), it starts from its beginning whatever it
+    /// was doing. Nothing happens for an entity without a Sprite.
+    pub fn play_clip(&mut self, id: EntityId, clip: &str, again: bool) {
         let Some(&entity) = self.by_id.get(&id) else {
             return;
         };
@@ -92,10 +94,10 @@ impl World {
                 .and_then(|set| set.chosen(clip))
                 .and_then(animation::Clip::length_seconds)
                 .is_some_and(|length| f64::from(sprite.time) >= length);
-        if same && sprite.playing && !finished {
+        if same && !again && (sprite.playing || finished) {
             return;
         }
-        if !same || finished {
+        if !same || again {
             sprite.clip = clip.to_owned();
             sprite.time = 0.0;
         }

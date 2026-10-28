@@ -4,8 +4,8 @@
 
 use super::*;
 use crate::TICK;
-use area::Area;
 use animation::{Clip, ClipFrame, Direction};
+use area::Area;
 use area::EntityData;
 use area::builtin::Transform;
 use reflect::AssetRef;
@@ -111,7 +111,10 @@ fn speed_a_still_sprite_and_one_without_clips_are_respected() {
     for _ in 0..6 {
         world.step_sprites(TICK);
     }
-    assert!((time_of(&world, ids[0]) - 0.2).abs() < 1e-4, "twice as fast");
+    assert!(
+        (time_of(&world, ids[0]) - 0.2).abs() < 1e-4,
+        "twice as fast"
+    );
     assert_eq!(time_of(&world, ids[1]), 0.0);
     assert_eq!(time_of(&world, ids[2]), 0.0);
     assert_eq!(time_of(&world, ids[3]), 0.0, "a clip it hasn't got");
@@ -137,8 +140,11 @@ fn a_clip_played_once_finishes_says_so_and_holds_its_last_frame() {
     let s = world.get::<Sprite>(ids[0]).unwrap();
     assert!(!s.playing);
     assert!((s.time - 0.2).abs() < 1e-6);
-    // playClip on a finished clip starts it again.
-    world.play_clip(ids[0], "swing");
+    // playClip on a finished clip leaves it finished (safe every tick);
+    // replayClip starts it again.
+    world.play_clip(ids[0], "swing", false);
+    assert!(!world.get::<Sprite>(ids[0]).unwrap().playing);
+    world.play_clip(ids[0], "swing", true);
     assert_eq!(time_of(&world, ids[0]), 0.0);
     assert!(world.get::<Sprite>(ids[0]).unwrap().playing);
 }
@@ -153,18 +159,22 @@ fn play_clip_carries_on_the_same_clip_and_starts_another() {
     }
     let walked = time_of(&world, ids[0]);
     assert!(walked > 0.1);
-    world.play_clip(ids[0], "");
+    world.play_clip(ids[0], "", false);
     assert_eq!(time_of(&world, ids[0]), walked, "already playing it");
     world.stop_clip(ids[0]);
     world.step_sprites(TICK);
     assert_eq!(time_of(&world, ids[0]), walked, "stopped");
-    world.play_clip(ids[0], "");
-    assert_eq!(time_of(&world, ids[0]), walked, "carries on from where it stopped");
-    world.play_clip(ids[0], "swing");
+    world.play_clip(ids[0], "", false);
+    assert_eq!(
+        time_of(&world, ids[0]),
+        walked,
+        "carries on from where it stopped"
+    );
+    world.play_clip(ids[0], "swing", false);
     let s = world.get::<Sprite>(ids[0]).unwrap();
     assert_eq!((s.clip.as_str(), s.time), ("swing", 0.0));
     // Entities without a Sprite, or unknown: nothing.
-    world.play_clip(EntityId::random(), "walk");
+    world.play_clip(EntityId::random(), "walk", false);
     world.stop_clip(EntityId::random());
 }
 

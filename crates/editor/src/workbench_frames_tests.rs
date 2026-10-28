@@ -83,7 +83,11 @@ fn opening_a_clips_file_brings_its_tabs_and_closing_takes_them_away() {
         &mut actions,
     );
     assert!(w.frames_editor.is_some());
-    assert_eq!(w.frames_editor.as_ref().unwrap().clip, "wave", "the clip played first");
+    assert_eq!(
+        w.frames_editor.as_ref().unwrap().clip,
+        "wave",
+        "the clip played first"
+    );
     let beside = |w: &Workbench, panel, other| {
         let path = w.dock.find_tab(&panel).expect("open");
         w.dock[path.surface][path.node]
@@ -93,12 +97,18 @@ fn opening_a_clips_file_brings_its_tabs_and_closing_takes_them_away() {
     };
     assert!(beside(&w, Panel::Clips, Panel::Properties));
     assert!(beside(&w, Panel::Frames, Panel::Library));
-    assert!(layout::is_complete(&w.dock), "they don't count as missing panels");
+    assert!(
+        layout::is_complete(&w.dock),
+        "they don't count as missing panels"
+    );
     let mut h = harness(w);
     h.run();
     h.run();
     assert!(h.query_by_label("wave").is_some(), "the Clips tab lists it");
-    assert!(h.query_by_label("Frame 1 of wave").is_some(), "the Frames tab shows it");
+    assert!(
+        h.query_by_label("Frame 1 of wave").is_some(),
+        "the Frames tab shows it"
+    );
     // A saved layout never keeps them.
     let restored = layout::restore(Some(h.state().0.dock.clone()));
     assert!(restored.find_tab(&Panel::Clips).is_none());
@@ -134,7 +144,13 @@ fn a_change_is_saved_shown_on_sprites_at_once_and_undone_over_the_tabs() {
     let undone = saved(&w.outbox);
     assert!(undone.last().unwrap().contains("clip1 = [\"wave\", 1.0"));
     assert_eq!(
-        w.viewport.sheets.clips(clips).unwrap().get("wave").unwrap().speed,
+        w.viewport
+            .sheets
+            .clips(clips)
+            .unwrap()
+            .get("wave")
+            .unwrap()
+            .speed,
         1.0
     );
 }
@@ -152,7 +168,10 @@ fn a_sheet_s_properties_make_its_clips_file() {
     sheets.paths.insert(crops, "crops.aseprite".into());
     w.set_sprite_sheets(sheets);
     let mut actions = Vec::new();
-    w.library_request(LibraryRequest::MakeClipsFile("crops.aseprite".into()), &mut actions);
+    w.library_request(
+        LibraryRequest::MakeClipsFile("crops.aseprite".into()),
+        &mut actions,
+    );
     let made = saved(&w.outbox);
     assert_eq!(made.len(), 1);
     assert!(made[0].contains(&format!("sheet = \"{crops}\"")));
@@ -163,7 +182,10 @@ fn a_sheet_s_properties_make_its_clips_file() {
     );
     // One that's there already is just opened.
     w.outbox.clear();
-    w.library_request(LibraryRequest::MakeClipsFile("walker.aseprite".into()), &mut actions);
+    w.library_request(
+        LibraryRequest::MakeClipsFile("walker.aseprite".into()),
+        &mut actions,
+    );
     assert!(saved(&w.outbox).is_empty());
     assert_eq!(w.frames_editor.as_ref().unwrap().path, "walker.solframes");
     let _ = sheet;

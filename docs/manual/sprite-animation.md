@@ -30,7 +30,7 @@ Every change is saved at once and shows at once on every sprite playing the file
 Bring in what you need from `solis/animation` at the top of a file:
 
 ```lust
-get "solis/animation":[playClip, stopClip];
+get "solis/animation":[playClip, replayClip, stopClip];
 fetch "solis/animation":AnimationCue;
 fetch "solis/animation":ClipFinished;
 
@@ -53,9 +53,10 @@ pass Farmer;
 end
 ```
 
-- `playClip(entity, "walk")` plays a clip. If it's already playing that clip it carries on, so it's safe to call every tick; another clip, or one that has finished, starts from its beginning.
+- `playClip(entity, "walk")` plays a clip. If it's already playing that clip, or has finished it, it carries on as it is, so it's safe to call every tick; another clip starts from its beginning.
+- `replayClip(entity, "hoe")` plays a clip from its beginning, whatever it was doing: a swing each time a button is pressed.
 - `stopClip(entity)` stops it where it is; `playClip` with the same clip carries on from there.
-- In Lua: `solis.playClip(entity, "walk")` and `solis.stopClip(entity)`; a function called `on_AnimationCue(name)` or `on_ClipFinished(clip)` reacts to the events, as with any event. In Rust: `cx.host().play_clip(entity, "walk")` and `stop_clip`, and the events arrive in `handle` named `AnimationCue` and `ClipFinished`.
+- In Lua: `solis.playClip(entity, "walk")`, `solis.replayClip(entity, "hoe")` and `solis.stopClip(entity)`; a function called `on_AnimationCue(name)` or `on_ClipFinished(clip)` reacts to the events, as with any event. In Rust: `cx.host().play_clip(entity, "walk", false)` (`true` to replay it) and `stop_clip`, and the events arrive in `handle` named `AnimationCue` and `ClipFinished`.
 
 A clip's place is part of the game: the same inputs give the same frames every time, and a saved game comes back on the same frame.
 

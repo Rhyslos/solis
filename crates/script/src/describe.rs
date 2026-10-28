@@ -191,7 +191,13 @@ pub const NATIVES: &[Native] = &[
         file: "animation",
         name: "playClip",
         lust: "method playClip(entity on, string clip) native;",
-        about: "Plays a clip on an entity's Sprite (\"walk\": one of its sheet's Aseprite tags, or a clip of its clips file), at the end of the tick. Already playing it: it carries on. Another clip, or one that has finished: it starts from its beginning.",
+        about: "Plays a clip on an entity's Sprite (\"walk\": one of its sheet's Aseprite tags, or a clip of its clips file), at the end of the tick. Already playing it, or finished it: it carries on as it is, so it's safe to call every tick. Another clip: it starts from its beginning.",
+    },
+    Native {
+        file: "animation",
+        name: "replayClip",
+        lust: "method replayClip(entity on, string clip) native;",
+        about: "Plays a clip on an entity's Sprite from its beginning, whatever it was doing: a swing each time a button is pressed.",
     },
     Native {
         file: "animation",
@@ -410,7 +416,7 @@ mod tests {
              get \"solis/physics\":[push, velocityOf, setVelocity, castRay, castRayHit, castRayNormal];\n\
              get \"solis/input\":[held, pressed, released, axis, bindingOf, rebind];\n\
              get \"solis/sound\":[playSound, playSoundAt, playSoundOn, stopSoundsOn, setSoundPlaying, setBusVolume];\n\
-             get \"solis/animation\":[playClip, stopClip];\n\
+             get \"solis/animation\":[playClip, replayClip, stopClip];\n\
              fetch \"solis/animation\":AnimationCue;\n\
              fetch \"solis/animation\":ClipFinished;\n\
              component Walker {\n\
@@ -423,6 +429,7 @@ mod tests {
                  on ClipFinished(string clip) {\n\
                      is clip == \"hoe\"? then {\n\
                          playClip(me, \"idle\");\n\
+                         replayClip(me, \"hoe\");\n\
                      }\n\
                      stopClip(me);\n\
                  }\n\
@@ -529,4 +536,3 @@ mod tests {
         assert!(crate::check(&code).is_empty(), "{:?}", crate::check(&code));
     }
 }
-

@@ -347,7 +347,8 @@ Things that fall, collide and get pushed have a **RigidBody** and a **Collider**
 | `solis/sound` | `playSoundAt(string event, vec3 place)` | Plays a sound event at a place in the world. |
 | `solis/sound` | `playSoundOn(string event, entity on)` | Plays a sound event on an entity, following it. |
 | `solis/sound` | `stopSoundsOn(entity on)` | Stops the sounds on an entity, with a short fade. |
-| `solis/animation` | `playClip(entity on, string clip)` | Plays a clip on an entity's Sprite; already playing it, it carries on ([Animating sprites](sprite-animation.md)). |
+| `solis/animation` | `playClip(entity on, string clip)` | Plays a clip on an entity's Sprite; already playing or finished it, it carries on as it is ([Animating sprites](sprite-animation.md)). |
+| `solis/animation` | `replayClip(entity on, string clip)` | Plays a clip from its beginning, whatever it was doing. |
 | `solis/animation` | `stopClip(entity on)` | Stops an entity's Sprite where it is in its clip. |
 | `solis/animation` | event `AnimationCue(string name)` | Sent when a sprite's clip reaches a frame with an event (bring it in with `fetch "solis/animation":AnimationCue;`). |
 | `solis/animation` | event `ClipFinished(string clip)` | Sent when a sprite's clip has played all its times. |

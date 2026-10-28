@@ -39,14 +39,13 @@ impl ClipSet {
                 .map(|i| {
                     let f = &sheet.frames[i as usize];
                     let mut events = f.events.clone();
+                    // Solis's events after Aseprite's, each once.
                     if let Some(change) = change {
-                        events.extend(
-                            change
-                                .events
-                                .iter()
-                                .filter(|(at, _)| *at == i)
-                                .map(|(_, e)| e.clone()),
-                        );
+                        for (_, e) in change.events.iter().filter(|(at, _)| *at == i) {
+                            if !events.contains(e) {
+                                events.push(e.clone());
+                            }
+                        }
                     }
                     ClipFrame {
                         frame: i,

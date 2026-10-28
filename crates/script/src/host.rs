@@ -135,10 +135,11 @@ pub trait Host {
         let _ = (which, playing);
     }
     /// Plays a clip on the entity's Sprite at the end of the tick (Phase
-    /// 9, D3): already playing it, it carries on; otherwise it starts from
-    /// the beginning.
-    fn play_clip(&mut self, which: EntityId, clip: &str) {
-        let _ = (which, clip);
+    /// 9, D3): already playing it (or finished it), it carries on as it
+    /// is; another clip starts from its beginning. With `again`
+    /// (`replayClip`), it starts from its beginning whatever it was doing.
+    fn play_clip(&mut self, which: EntityId, clip: &str, again: bool) {
+        let _ = (which, clip, again);
     }
     /// Stops the entity's Sprite where it is in its clip, at the end of
     /// the tick.
@@ -542,7 +543,16 @@ pub(crate) fn with_natives<'h, R>(
             "playClip",
             scope.create_function(move |_, (which, clip): (LuaValue, mlua::LuaString)| {
                 if let Some(e) = entity_of(&which) {
-                    h.borrow_mut().play_clip(e, &clip.to_str()?);
+                    h.borrow_mut().play_clip(e, &clip.to_str()?, false);
+                }
+                Ok(())
+            })?,
+        )?;
+        natives.raw_set(
+            "replayClip",
+            scope.create_function(move |_, (which, clip): (LuaValue, mlua::LuaString)| {
+                if let Some(e) = entity_of(&which) {
+                    h.borrow_mut().play_clip(e, &clip.to_str()?, true);
                 }
                 Ok(())
             })?,

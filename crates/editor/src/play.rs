@@ -518,8 +518,12 @@ impl Workbench {
             let mut slow = None;
             let mut saves = Vec::new();
             let (sound_tick, sound_seed) = (playing.world.clock().ticks, playing.world.seed());
-            dropped_sounds +=
-                crate::game_sound::gather(&mut self.game_sounds, cue_sounds, sound_tick, sound_seed);
+            dropped_sounds += crate::game_sound::gather(
+                &mut self.game_sounds,
+                cue_sounds,
+                sound_tick,
+                sound_seed,
+            );
             if let Some(game) = &mut playing.game {
                 let mut host = PlayWorld::new(&mut playing.world, &mut playing.view, time);
                 host.frame_time = f64::from(seconds);
@@ -1037,4 +1041,3 @@ fn fresh_seed() -> u64 {
     x ^= x >> 31;
     x % 1_000_000_000
 }
-

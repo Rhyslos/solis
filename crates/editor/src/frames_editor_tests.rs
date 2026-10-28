@@ -119,10 +119,13 @@ fn frames_of_a_clip_made_here_are_added_timed_moved_and_taken_out() {
     let clips = e.clips(&sheet);
     e.new_clip(&clips, Vec::new());
     assert!(e.add_frames(&sheet, &[0, 1, 2, 99]));
-    let frames = |e: &FramesEditor| -> Vec<u32> {
-        e.file.clips[0].frames.iter().map(|f| f.frame).collect()
-    };
-    assert_eq!(frames(&e), [0, 1, 2], "a frame the sheet hasn't is left out");
+    let frames =
+        |e: &FramesEditor| -> Vec<u32> { e.file.clips[0].frames.iter().map(|f| f.frame).collect() };
+    assert_eq!(
+        frames(&e),
+        [0, 1, 2],
+        "a frame the sheet hasn't is left out"
+    );
     assert_eq!(e.file.clips[0].frames[1].ms, 110, "Aseprite's time");
     assert_eq!(e.selected, [0, 1, 2]);
     // Added after the last picked frame.
@@ -146,7 +149,10 @@ fn frames_of_a_clip_made_here_are_added_timed_moved_and_taken_out() {
     let clips = e.clips(&sheet);
     assert!(e.set_event(&clips, "swing"));
     let c = &e.file.clips[0];
-    assert_eq!((c.frames[0].ms, c.frames[3].ms, c.frames[1].ms), (250, 250, 110));
+    assert_eq!(
+        (c.frames[0].ms, c.frames[3].ms, c.frames[1].ms),
+        (250, 250, 110)
+    );
     assert_eq!(c.frames[3].events, ["swing"]);
     assert!(e.set_ms(0), "made 1 ms");
     assert_eq!(e.file.clips[0].frames[0].ms, 1);

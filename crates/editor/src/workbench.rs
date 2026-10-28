@@ -886,10 +886,14 @@ impl Workbench {
             spent: std::time::Duration::ZERO,
         };
         let mut frames_out = crate::panels::FramesOut::default();
-        let frames = self
-            .frames_editor
-            .as_mut()
-            .map(|editor| crate::workbench_frames::frames_ui(editor, &sheets, &self.sheet_pictures, &self.cue_sounds));
+        let frames = self.frames_editor.as_mut().map(|editor| {
+            crate::workbench_frames::frames_ui(
+                editor,
+                &sheets,
+                &self.sheet_pictures,
+                &self.cue_sounds,
+            )
+        });
         theme::dock_frame().show(ui, |ui| {
             DockArea::new(&mut self.dock)
                 .style(style)

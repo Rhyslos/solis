@@ -241,3 +241,129 @@ fn a_new_play_starts_its_sounds_afresh() {
     w.play();
     assert_eq!(w.play_number(), paused, "carrying on isn't a new play");
 }
+
+const WALKER: &str = "get \"solis/world\":[say];\n\
+    get \"solis/animation\":[playClip];\n\
+    fetch \"solis/animation\":AnimationCue;\n\
+    fetch \"solis/animation\":ClipFinished;\n\
+    component Walker {\n\
+        method update(float dt) {\n\
+            playClip(me, \"walk\");\n\
+        }\n\
+        on AnimationCue(string name) {\n\
+            say(\"cue \" + name);\n\
+        }\n\
+        on ClipFinished(string clip) {\n\
+            say(\"done \" + clip);\n\
+        }\n\
+    }\n\
+    pass Walker;\nend\n";
+
+#[test]
+fn a_sprite_s_clip_plays_its_footstep_and_tells_game_code() {
+    use crate::library::{LibraryItem, LibraryKind};
+    use crate::sprite_sheets::{FramesState, SheetState, SpriteSheets};
+    let mut w = Workbench::new(info(), None);
+    w.set_program(Some(program(WALKER)));
+    // The test sheet (two frames), and a clips file whose "walk" plays
+    // them once, 50 ms each, a footstep on the second.
+    let (sheet, clips) = (reflect::AssetId::random(), reflect::AssetId::random());
+    let file = animation::FramesFile {
+        sheet: Some(sheet),
+        first: String::new(),
+        tags: Vec::new(),
+        clips: vec![animation::OwnClip {
+            name: "walk".into(),
+            speed: 1.0,
+            direction: animation::Direction::Forward,
+            repeats: 1,
+            frames: vec![
+                animation::ClipFrame {
+                    frame: 0,
+                    ms: 50,
+                    events: Vec::new(),
+                },
+                animation::ClipFrame {
+                    frame: 1,
+                    ms: 50,
+                    events: vec!["footstep".into()],
+                },
+            ],
+        }],
+    };
+    let mut sheets = SpriteSheets::default();
+    sheets.by_path.insert(
+        "walker.aseprite".into(),
+        SheetState::Read(Arc::new(crate::sprite_sheets::tests::test_sheet())),
+    );
+    sheets.frames.insert(
+        "walker.solframes".into(),
+        FramesState::Read(Arc::new(file), Vec::new()),
+    );
+    sheets.paths.insert(sheet, "walker.aseprite".into());
+    sheets.paths.insert(clips, "walker.solframes".into());
+    w.set_sprite_sheets(sheets);
+    // A sound event called footstep, in a folder.
+    w.set_library(vec![LibraryItem {
+        id: None,
+        kind: LibraryKind::SoundEvent,
+        name: "footstep".into(),
+        path: "sfx/footstep.solsound".into(),
+        thumbnail: None,
+    }]);
+    let walker = EntityId(reflect::Id::from_raw(21).unwrap());
+    let sprite = area::builtin::Sprite {
+        sheet: Some(reflect::AssetRef {
+            asset: clips,
+            part: None,
+        }),
+        ..area::builtin::Sprite::default()
+    };
+    w.document
+        .edit(
+            "Add",
+            vec![area::Edit::Spawn {
+                entities: vec![(
+                    walker,
+                    EntityData::new("Walker")
+                        .with(&Transform::default())
+                        .with(&sprite),
+                )],
+            }],
+            None,
+            None,
+        )
+        .unwrap();
+    w.apply_property(
+        PropertyRequest::AddComponent {
+            entity: walker,
+            component: "Walker".into(),
+        },
+        1,
+    );
+    w.play();
+    for _ in 0..12 {
+        w.run_game(1.0 / 60.0);
+    }
+    let said: Vec<String> = w.console.lines().iter().map(|l| l.text.clone()).collect();
+    assert_eq!(
+        said.iter().filter(|l| l.contains("cue footstep")).count(),
+        1,
+        "{said:?}"
+    );
+    assert!(said.iter().any(|l| l.contains("done walk")), "{said:?}");
+    let sounds = names(&w.take_game_sounds());
+    assert_eq!(
+        sounds
+            .iter()
+            .filter(|(_, _, n)| n == "sfx/footstep")
+            .count(),
+        1,
+        "{sounds:?}"
+    );
+    // Finished: it holds its last frame, though playClip is called every
+    // tick (replayClip would start it again).
+    let s: area::builtin::Sprite = w.world().unwrap().get(walker).unwrap();
+    assert_eq!(s.clip, "walk");
+    assert!(!s.playing);
+}

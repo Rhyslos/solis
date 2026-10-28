@@ -57,10 +57,12 @@ impl SpriteSheets {
             Some(SheetState::Read(sheet)) => Some(sheet),
             Some(_) => None,
             None => match self.frames.get(path)? {
-                FramesState::Read(file, _) => match self.by_path.get(self.paths.get(&file.sheet?)?)? {
-                    SheetState::Read(sheet) => Some(sheet),
-                    _ => None,
-                },
+                FramesState::Read(file, _) => {
+                    match self.by_path.get(self.paths.get(&file.sheet?)?)? {
+                        SheetState::Read(sheet) => Some(sheet),
+                        _ => None,
+                    }
+                }
                 FramesState::Failed(_) => None,
             },
         }
@@ -133,11 +135,15 @@ impl SpriteSheets {
         let mut list: Vec<(String, AssetId)> = self
             .paths
             .iter()
-            .filter_map(|(id, path)| match (self.by_path.get(path), self.frames.get(path)) {
-                (Some(SheetState::Read(_)), _) => Some((name_of(path), *id)),
-                (_, Some(FramesState::Read(..))) => Some((format!("{} (clips)", name_of(path)), *id)),
-                _ => None,
-            })
+            .filter_map(
+                |(id, path)| match (self.by_path.get(path), self.frames.get(path)) {
+                    (Some(SheetState::Read(_)), _) => Some((name_of(path), *id)),
+                    (_, Some(FramesState::Read(..))) => {
+                        Some((format!("{} (clips)", name_of(path)), *id))
+                    }
+                    _ => None,
+                },
+            )
             .collect();
         list.sort();
         list
@@ -225,7 +231,14 @@ pub fn view_sprite(
     pixel: f32,
     snap: Option<f32>,
 ) -> Option<ViewSprite> {
-    view_frame(sprite, sheet, sprite.frame_index(sheet.frames.len()), transform, pixel, snap)
+    view_frame(
+        sprite,
+        sheet,
+        sprite.frame_index(sheet.frames.len()),
+        transform,
+        pixel,
+        snap,
+    )
 }
 
 /// As [`view_sprite`], showing the sheet's frame `index` (from 0): the one

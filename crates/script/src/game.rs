@@ -68,8 +68,9 @@ pub enum Change {
     /// `setBusVolume`: this bus at this share of its fader (0 to 1) for
     /// the rest of the play.
     BusVolume(String, f32),
-    /// `playClip`: play this clip on the entity's Sprite (Phase 9, D3).
-    PlayClip(EntityId, String),
+    /// `playClip` (or, with `true`, `replayClip`): play this clip on the
+    /// entity's Sprite (Phase 9, D3).
+    PlayClip(EntityId, String, bool),
     /// `stopClip`: stop the entity's Sprite where it is.
     StopClip(EntityId),
 }
@@ -434,13 +435,13 @@ impl Host for ViewHost {
         }
     }
 
-    fn play_clip(&mut self, which: EntityId, clip: &str) {
+    fn play_clip(&mut self, which: EntityId, clip: &str, again: bool) {
         let named = clip.len() <= MAX_CLIP_NAME && !clip.contains(char::is_control);
         if named && self.kept.room() {
             let order = self.order();
             self.kept
                 .changes
-                .push((order, Change::PlayClip(which, clip.to_string())));
+                .push((order, Change::PlayClip(which, clip.to_string(), again)));
         }
     }
 

@@ -95,7 +95,11 @@ impl Clip {
             frames,
             direction,
             repeats,
-            speed: if speed.is_finite() { speed.max(0.0) } else { 1.0 },
+            speed: if speed.is_finite() {
+                speed.max(0.0)
+            } else {
+                1.0
+            },
             from_aseprite,
             steps,
             pass_ms: at,

@@ -68,7 +68,7 @@ fn a_clips_file_adds_speed_events_its_own_clips_and_the_first() {
         tags: vec![TagChange {
             name: "walk".into(),
             speed: 2.0,
-            events: vec![(0, "dust".into()), (2, "puff".into())],
+            events: vec![(0, "dust".into()), (2, "puff".into()), (2, "step".into())],
         }],
         clips: vec![OwnClip {
             name: "hoe".into(),
@@ -93,7 +93,11 @@ fn a_clips_file_adds_speed_events_its_own_clips_and_the_first() {
     let walk = set.get("walk").unwrap();
     assert_eq!(walk.speed, 2.0);
     assert_eq!(walk.frames[0].events, ["dust"]);
-    assert_eq!(walk.frames[2].events, ["step", "puff"], "Aseprite's, then Solis's");
+    assert_eq!(
+        walk.frames[2].events,
+        ["step", "puff"],
+        "Aseprite's, then Solis's, each once"
+    );
     let hoe = set.chosen("").unwrap();
     assert_eq!(hoe.name, "hoe");
     assert!(!hoe.from_aseprite);

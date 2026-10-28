@@ -105,14 +105,14 @@ pub(crate) fn clips_tab(ui: &mut Ui, f: &mut FramesUi<'_>) -> bool {
     let chosen = clips.get(&f.editor.clip).cloned();
     ui.horizontal(|ui| {
         if ui
-            .button("＋ Clip")
+            .button("+ Clip")
             .on_hover_text("A new clip of your own, made from the sheet's frames in Frames")
             .clicked()
         {
             changed |= f.editor.new_clip(&clips, Vec::new());
         }
         if ui
-            .add_enabled(chosen.is_some(), egui::Button::new("⧉ Copy"))
+            .add_enabled(chosen.is_some(), egui::Button::new("Copy"))
             .on_hover_text("A copy of this clip to change here (an Aseprite tag's frames stay Aseprite's)")
             .clicked()
         {
@@ -121,7 +121,7 @@ pub(crate) fn clips_tab(ui: &mut Ui, f: &mut FramesUi<'_>) -> bool {
         let own = chosen.as_ref().is_some_and(|c| !c.from_aseprite);
         let tag_changed = f.editor.file.tags.iter().any(|t| t.name == f.editor.clip);
         if ui
-            .add_enabled(own || tag_changed, egui::Button::new("🗑"))
+            .add_enabled(own || tag_changed, egui::Button::new("Delete"))
             .on_hover_text(if own {
                 "Delete this clip"
             } else {
@@ -153,7 +153,7 @@ pub(crate) fn clips_tab(ui: &mut Ui, f: &mut FramesUi<'_>) -> bool {
             if clips.clips.is_empty() {
                 ui.label(
                     RichText::new(
-                        "No clips yet: tag runs of frames in Aseprite, or make one here with ＋ Clip.",
+                        "No clips yet: tag runs of frames in Aseprite, or make one here with + Clip.",
                     )
                     .color(theme::TEXT_WEAK),
                 );
@@ -214,10 +214,8 @@ fn clip_row(
         }
         return changed;
     }
-    let (rect, response) = ui.allocate_exact_size(
-        egui::vec2(ui.available_width(), 22.0),
-        egui::Sense::click(),
-    );
+    let (rect, response) =
+        ui.allocate_exact_size(egui::vec2(ui.available_width(), 22.0), egui::Sense::click());
     let chosen = editor.clip == clip.name;
     let painter = ui.painter();
     if chosen {
@@ -231,7 +229,7 @@ fn clip_row(
         painter.text(
             egui::pos2(rect.left() + 6.0, y),
             egui::Align2::LEFT_CENTER,
-            "★",
+            "*",
             egui::FontId::proportional(theme::TEXT_SIZE),
             theme::kind::SPRITE,
         );
@@ -434,28 +432,35 @@ fn toggle_play(editor: &mut FramesEditor, clip: &animation::Clip) {
 
 /// The Frames tab's tool bar: playing, adding and taking out frames, the
 /// picked frames' time and event, and zoom.
-fn toolbar(
-    ui: &mut Ui,
-    f: &mut FramesUi<'_>,
-    sheet: &SpriteSheet,
-    clip: &animation::Clip,
-) -> bool {
+fn toolbar(ui: &mut Ui, f: &mut FramesUi<'_>, sheet: &SpriteSheet, clip: &animation::Clip) -> bool {
     let mut changed = false;
     let own = !clip.from_aseprite;
     ui.horizontal_wrapped(|ui| {
-        if ui.button("⏮").on_hover_text("Back to the start").clicked() {
+        if ui
+            .button("Start")
+            .on_hover_text("Back to the start")
+            .clicked()
+        {
             f.editor.time = 0.0;
         }
-        if ui.button("■").on_hover_text("Stop, back at the start").clicked() {
+        if ui
+            .button("■ Stop")
+            .on_hover_text("Stop, back at the start")
+            .clicked()
+        {
             f.editor.playing = false;
             f.editor.time = 0.0;
         }
-        let play = egui::Button::new(if f.editor.playing { "❚❚" } else { "▶" })
-            .fill(if f.editor.playing {
-                theme::FIELD
-            } else {
-                theme::GO
-            });
+        let play = egui::Button::new(if f.editor.playing {
+            "Pause"
+        } else {
+            "▶ Play"
+        })
+        .fill(if f.editor.playing {
+            theme::FIELD
+        } else {
+            theme::GO
+        });
         if ui
             .add(play)
             .on_hover_text("Play or pause (Space)")
@@ -463,11 +468,15 @@ fn toolbar(
         {
             toggle_play(f.editor, clip);
         }
-        if ui.button("⏭").on_hover_text("To the last frame").clicked() {
+        if ui
+            .button("End")
+            .on_hover_text("To the last frame")
+            .clicked()
+        {
             f.editor.playing = false;
-            f.editor.time = clip.length_seconds().unwrap_or_else(|| {
-                (clip.pass_seconds() - 0.001).max(0.0)
-            });
+            f.editor.time = clip
+                .length_seconds()
+                .unwrap_or_else(|| (clip.pass_seconds() - 0.001).max(0.0));
         }
         let now = clip.at(f.editor.time);
         ui.label(
@@ -481,49 +490,51 @@ fn toolbar(
         );
         ui.separator();
         ui.add_enabled_ui(own, |ui| {
-            let add = ui.menu_button("＋ Add frames ▾", |ui| {
+            let add = ui.menu_button("+ Add frames ▾", |ui| {
                 ui.label(
                     RichText::new("Click the sheet's frames to add them after the picked one:")
                         .color(theme::TEXT_WEAK),
                 );
-                egui::ScrollArea::vertical().max_height(260.0).show(ui, |ui| {
-                    ui.horizontal_wrapped(|ui| {
-                        ui.set_max_width(360.0);
-                        for n in 0..sheet.frames.len() {
-                            let (rect, response) = ui.allocate_exact_size(
-                                egui::vec2(40.0, 48.0),
-                                egui::Sense::click(),
-                            );
-                            ui.painter().rect_filled(rect, 2.0, theme::FIELD);
-                            if let Some(atlas) = f.atlas {
-                                crate::sheet_view::draw_frame(
-                                    ui.painter(),
-                                    rect.shrink(3.0),
-                                    sheet,
-                                    atlas,
-                                    n,
+                egui::ScrollArea::vertical()
+                    .max_height(260.0)
+                    .show(ui, |ui| {
+                        ui.horizontal_wrapped(|ui| {
+                            ui.set_max_width(360.0);
+                            for n in 0..sheet.frames.len() {
+                                let (rect, response) = ui.allocate_exact_size(
+                                    egui::vec2(40.0, 48.0),
+                                    egui::Sense::click(),
                                 );
+                                ui.painter().rect_filled(rect, 2.0, theme::FIELD);
+                                if let Some(atlas) = f.atlas {
+                                    crate::sheet_view::draw_frame(
+                                        ui.painter(),
+                                        rect.shrink(3.0),
+                                        sheet,
+                                        atlas,
+                                        n,
+                                    );
+                                }
+                                ui.painter().text(
+                                    rect.left_top() + egui::vec2(3.0, 1.0),
+                                    egui::Align2::LEFT_TOP,
+                                    (n + 1).to_string(),
+                                    egui::FontId::proportional(10.0),
+                                    theme::TEXT_WEAK,
+                                );
+                                response.widget_info(|| {
+                                    egui::WidgetInfo::labeled(
+                                        egui::WidgetType::Button,
+                                        true,
+                                        format!("Add frame {}", n + 1),
+                                    )
+                                });
+                                if response.clicked() {
+                                    changed |= f.editor.add_frames(sheet, &[n as u32]);
+                                }
                             }
-                            ui.painter().text(
-                                rect.left_top() + egui::vec2(3.0, 1.0),
-                                egui::Align2::LEFT_TOP,
-                                (n + 1).to_string(),
-                                egui::FontId::proportional(10.0),
-                                theme::TEXT_WEAK,
-                            );
-                            response.widget_info(|| {
-                                egui::WidgetInfo::labeled(
-                                    egui::WidgetType::Button,
-                                    true,
-                                    format!("Add frame {}", n + 1),
-                                )
-                            });
-                            if response.clicked() {
-                                changed |= f.editor.add_frames(sheet, &[n as u32]);
-                            }
-                        }
+                        });
                     });
-                });
                 if ui.button("Add them all").clicked() {
                     let all: Vec<u32> = (0..sheet.frames.len() as u32).collect();
                     changed |= f.editor.add_frames(sheet, &all);
@@ -533,7 +544,7 @@ fn toolbar(
             add.response
                 .on_disabled_hover_text("An Aseprite tag's frames are changed in Aseprite");
             if ui
-                .add_enabled(!f.editor.selected.is_empty(), egui::Button::new("🗑"))
+                .add_enabled(!f.editor.selected.is_empty(), egui::Button::new("Delete"))
                 .on_hover_text("Take the picked frames out of the clip (Delete)")
                 .clicked()
             {
@@ -572,7 +583,7 @@ fn toolbar(
         }
         ui.separator();
         ui.label(RichText::new("Zoom").color(theme::TEXT_WEAK));
-        if ui.button("−").clicked() {
+        if ui.button("-").clicked() {
             f.editor.zoom = (f.editor.zoom / 1.5).max(ZOOM_RANGE.0);
         }
         if ui.button("+").clicked() {
@@ -628,7 +639,7 @@ fn event_field(
     if response.lost_focus() && typed.trim() != solis_event {
         changed |= f.editor.set_event(clips, &typed);
     }
-    ui.menu_button("◆ ▾", |ui| {
+    ui.menu_button("Sound events ▾", |ui| {
         ui.label(RichText::new("Sound events").color(theme::TEXT_WEAK));
         for name in &f.sounds {
             if ui.button(name).clicked() {
@@ -656,7 +667,11 @@ fn event_field(
         ui.label(
             RichText::new(format!(
                 "and {} (Aseprite)",
-                fixed.iter().map(|e| e.as_str()).collect::<Vec<_>>().join(", ")
+                fixed
+                    .iter()
+                    .map(|e| e.as_str())
+                    .collect::<Vec<_>>()
+                    .join(", ")
             ))
             .color(theme::TEXT_WEAK),
         );
@@ -672,7 +687,10 @@ fn ruler(ui: &mut Ui, f: &mut FramesUi<'_>, sheet: &SpriteSheet, clip: &animatio
     let width_of = |ms: u32| (ms as f32 / 1000.0 * zoom).clamp(TILE_WIDTH.0, TILE_WIDTH.1);
     // One pass, as played: the frames, then those a ping-pong plays back.
     let order: Vec<usize> = clip.pass_order().collect();
-    let total: f32 = order.iter().map(|&i| width_of(clip.frames[i].ms) + 4.0).sum();
+    let total: f32 = order
+        .iter()
+        .map(|&i| width_of(clip.frames[i].ms) + 4.0)
+        .sum();
     let height = 18.0 + TILE_HEIGHT + 8.0 + 24.0;
     let (area, _) = ui.allocate_exact_size(
         egui::vec2(total.max(ui.available_width()), height),
@@ -794,7 +812,11 @@ fn ruler(ui: &mut Ui, f: &mut FramesUi<'_>, sheet: &SpriteSheet, clip: &animatio
             if dragging && response.contains_pointer() {
                 let pointer = ui.input(|inp| inp.pointer.hover_pos()).unwrap_or_default();
                 let before = pointer.x < rect.center().x;
-                let line_x = if before { rect.left() - 2.0 } else { rect.right() + 2.0 };
+                let line_x = if before {
+                    rect.left() - 2.0
+                } else {
+                    rect.right() + 2.0
+                };
                 painter.vline(
                     line_x,
                     rect.y_range(),
@@ -836,7 +858,7 @@ fn ruler(ui: &mut Ui, f: &mut FramesUi<'_>, sheet: &SpriteSheet, clip: &animatio
         painter.text(
             egui::pos2(tx + 2.0, lane.center().y),
             egui::Align2::LEFT_CENTER,
-            format!("◆ {}", events.join(", ")),
+            format!("■ {}", events.join(", ")),
             egui::FontId::proportional(11.0),
             EVENT.gamma_multiply(fade),
         );

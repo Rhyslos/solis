@@ -630,7 +630,10 @@ impl Viewport {
     /// turned on, in seconds (0 when it's off).
     pub fn preview_seconds(&self) -> f64 {
         if self.overlays.preview_animation {
-            let since = self.preview_since.get().unwrap_or_else(std::time::Instant::now);
+            let since = self
+                .preview_since
+                .get()
+                .unwrap_or_else(std::time::Instant::now);
             self.preview_since.set(Some(since));
             since.elapsed().as_secs_f64()
         } else {
