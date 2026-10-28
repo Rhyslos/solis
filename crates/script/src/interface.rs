@@ -164,7 +164,10 @@ mod tests {
             std::fs::write(kept(), &now).unwrap();
             return;
         }
-        let was = std::fs::read_to_string(kept()).unwrap_or_default();
+        // A Windows checkout may have turned its line endings into CRLF.
+        let was = std::fs::read_to_string(kept())
+            .unwrap_or_default()
+            .replace("\r\n", "\n");
         if was != now {
             // Lines listed a different number of times show in neither.
             let gone: Vec<&str> = was
