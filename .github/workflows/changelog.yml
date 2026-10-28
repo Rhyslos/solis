@@ -1,5 +1,6 @@
 # Checks that a pull request changing code also adds a CHANGELOG.md entry,
-# unless it is labelled "internal" (users wouldn't notice the change).
+# unless it is labelled "internal" (users wouldn't notice the change), and
+# that a breaking one says so under "### Breaking" (tools/ci/breaking-check.sh).
 # A separate, tiny workflow (no Rust build, a few seconds on Linux), so that
 # adding or removing the label re-checks without re-running everything
 # else. Runs only on pull requests ready for review (decision 0001).
@@ -47,3 +48,11 @@ jobs:
             fi
           fi
           echo "Changelog check passed."
+      - name: Require a Breaking entry for a breaking change
+        # A new version of a file format, or something taken away from what
+        # game code can call (Phase 8, C5; decision 0053). Even when
+        # labelled internal: games notice these.
+        env:
+          BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        run: tools/ci/breaking-check.sh "$BASE_SHA" "$HEAD_SHA"
