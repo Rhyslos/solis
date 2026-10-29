@@ -41,8 +41,8 @@ meshopt = "0.7"
 wgpu = "30.0"
 bytemuck = { version = "1.25", features = ["derive"] }
 # The window and frame loop (winit + wgpu underneath).
-eframe = { version = "0.36", features = ["persistence"] }
-egui = "0.36"
+eframe = { version = "0.37", features = ["persistence"] }
+egui = "0.37"
 # Dockable panels (decision 0004).
 egui_dock = { version = "0.21", features = ["serde"] }
 # Reading glTF models: the JSON and binary layout only. Buffers and
@@ -89,7 +89,7 @@ ureq = { version = "3.5", default-features = false, features = ["rustls-no-provi
 sha2 = "0.11"
 serde_json = "1.0"
 # Development only.
-egui_kittest = "0.36"
+egui_kittest = "0.37"
 pollster = "1.0"
 ron = "0.12"
 # Watching the project folder for changed files (decision 0021).
