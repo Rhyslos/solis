@@ -254,10 +254,31 @@ pub fn chunk_tiles(map: &TileMap, layer: usize, set: &Tileset, chunk: [u32; 2]) 
             .then(|| cells[y as usize * w as usize + x as usize])
     };
     let mut duals = false;
+    // Cells painted with an exact tile (D6): drawn over everything else
+    // of the layer, as they are; their cell's own art isn't drawn.
+    let exact_pass = 1 + set.terrains.len() as u16;
+    let mut exact = [false; (CHUNK * CHUNK) as usize];
+    let local = |x: u32, y: u32| ((y - y0) * CHUNK + (x - x0)) as usize;
+    for y in y0..y1 {
+        for (x, piece) in map.exact_in_row(layer, y, x0..x1) {
+            exact[local(x, y)] = true;
+            let art = set
+                .pieces
+                .iter()
+                .position(|p| p.id == piece)
+                .map_or(Art::Missing, Art::Piece);
+            out.push(Placed {
+                pass: exact_pass,
+                x: 2 * x as i32,
+                y: 2 * y as i32,
+                art,
+            });
+        }
+    }
     for y in y0..y1 {
         for x in x0..x1 {
             let code = cells[y as usize * w as usize + x as usize];
-            if code == 0 {
+            if code == 0 || exact[local(x, y)] {
                 continue;
             }
             let (px, py) = (2 * x as i32, 2 * y as i32);

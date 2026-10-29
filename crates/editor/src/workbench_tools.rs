@@ -216,7 +216,7 @@ impl Workbench {
                 plain(i, egui::Key::L),
             )
         });
-        if escape && !self.viewport.tools.cancel() {
+        if escape && !self.paint_escape() && !self.viewport.tools.cancel() {
             self.document.selection.clear();
         }
         if all {

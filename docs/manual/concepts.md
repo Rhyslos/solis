@@ -182,6 +182,8 @@
 - **Cell value:** something every cell of a map has besides its terrain: a **number** (growth), a **switch** (watered) or a **choice** (crop: wheat or corn). The game changes them as it plays, and saves keep them.
 - **Chunk:** a 32 × 32 block of a map's cells. A map is saved and checked chunk by chunk, so a change to one cell touches only its chunk.
 - **Autotiling:** picking each cell's tile of art from its neighbours, so edges and corners come out right without choosing tiles by hand. See [Tilesets and autotiling](tilesets.md).
+- **Copy (stamp):** cells of a map copied with the tile painter's eyedropper, to paint with: flipped, turned, and repeated like a pattern. See [Painting tiles](painting-tiles.md).
+- **Exact tile:** a cell that shows one tile of its tileset as it is, chosen by hand, instead of the one autotiling would pick. Art only: the game reads the cell's terrain. See [Painting tiles](painting-tiles.md#exact-tiles).
 - **Kind (terrain):** how a terrain's tiles are picked: plain (one tile), 16-tile, 47-tile, edges (fences, roads) or its own rules.
 - **Slot:** one situation a terrain's art has a tile for, such as "tilled to the north and east only". Each kind has its own slots; a slot with no tile shows pink.
 - **Dual grid:** drawing art half a cell off the cells, so each tile sits where four cells meet and is chosen by which of them are the terrain. 16-tile terrains use it: 15 drawings cover every edge and corner.

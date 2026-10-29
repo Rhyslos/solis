@@ -220,6 +220,7 @@ impl TilePictures {
     /// across, leaving out layers `hidden` in the editor (by ID). `ground`
     /// gives the part of the ground at a height that's in view (none for
     /// all of it); `ms` is the time animated tiles show.
+    #[allow(clippy::too_many_arguments)]
     pub fn draw(
         &self,
         maps: &[ViewTileMap],
@@ -228,6 +229,7 @@ impl TilePictures {
         hidden: &std::collections::HashSet<reflect::Id>,
         ground: &dyn Fn(f32) -> Option<[Vec2; 2]>,
         ms: u64,
+        meaning: Option<EntityId>,
     ) -> (Vec<Arc<TilePicture>>, Vec<SpriteBatch>) {
         let mut pictures: Vec<Arc<TilePicture>> = Vec::new();
         let mut under = Vec::new();
@@ -239,7 +241,8 @@ impl TilePictures {
             let set = m.map.tileset.and_then(|t| sheets.tileset(t));
             let look = Look {
                 set,
-                art: set.and_then(|s| {
+                // Its meaning shown (D6): each terrain in its colour.
+                art: set.filter(|_| meaning != Some(m.entity)).and_then(|s| {
                     let art = sheets.tile_art(s.picture?)?;
                     let key = Arc::as_ptr(art) as u64;
                     used_atlases.insert(key);
@@ -511,6 +514,17 @@ pub fn cell_at(map: &TileMap, transform: Mat4, cell: [f32; 2], point: Vec3) -> O
         .then_some([x as u32, y as u32])
 }
 
+/// The cell of a map placed by `transform` (cells `cell` metres across)
+/// at `point` on the ground, as whole column and row, even past the
+/// map's edges (a rectangle painted from outside the map).
+pub fn cell_off_map(transform: Mat4, cell: [f32; 2], point: Vec3) -> Option<[i64; 2]> {
+    let local = transform.inverse().transform_point3(point);
+    let (x, y) = ((local.x / cell[0]).floor(), (-local.y / cell[1]).floor());
+    let far = 1.0e6;
+    (x.is_finite() && y.is_finite() && x.abs() < far && y.abs() < far)
+        .then_some([x as i64, y as i64])
+}
+
 /// The world place of a cell's corners: top left and bottom right.
 pub fn cell_corners(transform: Mat4, cell: [f32; 2], at: [u32; 2]) -> [Vec3; 2] {
     let corner =
@@ -540,7 +554,24 @@ pub struct TileOverlay {
     pub asked: Vec<(String, bool)>,
     /// The chunks switch pressed this frame.
     pub chunks_asked: bool,
+    /// The tile painter's settings (D6).
+    pub paint: crate::tile_paint::PaintSettings,
+    /// The cell under the pointer, even off the map's edge (painting a
+    /// rectangle that starts outside), found while drawing.
+    pub pointer: Option<[i64; 2]>,
+    /// The mouse this frame, while painting.
+    pub input: crate::tile_paint::PaintInput,
+    /// The cells a drag will paint (or copy), as rectangles of cells
+    /// (top-left and bottom-right, inclusive), drawn over the map.
+    pub preview: Vec<[[i64; 2]; 2]>,
+    /// The preview empties cells (drawn in red).
+    pub preview_erase: bool,
+    /// A stamp button pressed this frame: a turn, or `None` to drop it.
+    pub turn_asked: Option<Option<crate::tile_paint::Turn>>,
 }
+
+/// The most preview rectangles drawn (a long line's cells).
+const MOST_PREVIEWED: usize = 4096;
 
 /// The cells shown most: past this many in view, values aren't written.
 const MOST_LABELLED: u64 = 4000;
@@ -561,9 +592,6 @@ pub(crate) fn draw_overlay(
     mouse: Option<glam::Vec2>,
     accent: crate::theme::Accent,
 ) -> Option<egui::Rect> {
-    overlay.hovered = None;
-    overlay.asked.clear();
-    overlay.chunks_asked = false;
     let m = overlay.map.clone()?;
     let size = glam::Vec2::new(rect.width(), rect.height());
     let to_screen = |p: Vec3| {
@@ -577,6 +605,7 @@ pub(crate) fn draw_overlay(
         && let Some(ground) = camera.ray_through(at, size).hit_ground(z)
     {
         overlay.hovered = cell_at(&m.map, m.transform, cell, ground);
+        overlay.pointer = cell_off_map(m.transform, cell, ground);
     }
     let [w, h] = m.map.size();
     // The cells in view, from where the view's corners land on the map.
@@ -689,7 +718,60 @@ pub(crate) fn draw_overlay(
             }
         }
     }
+    // What a drag will paint, or the brush under the pointer.
+    let cells_rect = |[a, b]: [[i64; 2]; 2]| -> Option<egui::Rect> {
+        let corner = |x: i64, y: i64| {
+            to_screen(m.transform.transform_point3(Vec3::new(
+                x as f32 * cell[0],
+                -(y as f32) * cell[1],
+                0.0,
+            )))
+        };
+        Some(egui::Rect::from_two_pos(
+            corner(a[0], a[1])?,
+            corner(b[0] + 1, b[1] + 1)?,
+        ))
+    };
+    let paint = &overlay.paint;
+    let colour = if overlay.preview_erase {
+        egui::Color32::from_rgb(0xe0, 0x50, 0x50)
+    } else {
+        accent.colors().fill
+    };
+    if paint.painting() {
+        let mut rects = overlay.preview.clone();
+        if rects.is_empty()
+            && let Some(p) = overlay.pointer
+        {
+            // The brush: the stamp held, round the pointer, or one cell.
+            let (size, handle) = match &paint.stamp {
+                Some(s) if paint.tool != Some(crate::tile_paint::PaintTool::Eyedropper) => {
+                    (s.size, s.handle())
+                }
+                _ => ([1, 1], [0, 0]),
+            };
+            let a = [p[0] - handle[0], p[1] - handle[1]];
+            rects.push([
+                a,
+                [a[0] + i64::from(size[0]) - 1, a[1] + i64::from(size[1]) - 1],
+            ]);
+        }
+        for r in rects
+            .iter()
+            .take(MOST_PREVIEWED)
+            .filter_map(|&r| cells_rect(r))
+        {
+            painter.rect_filled(r, 0.0, colour.gamma_multiply(0.25));
+            painter.rect_stroke(
+                r,
+                0.0,
+                egui::Stroke::new(1.5, colour),
+                egui::StrokeKind::Inside,
+            );
+        }
+    }
     if let Some(at) = overlay.hovered
+        && !paint.painting()
         && let Some(r) = screen_cell(at)
     {
         painter.rect_stroke(

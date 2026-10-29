@@ -51,7 +51,7 @@ pub(crate) fn farm() -> TileMap {
 fn a_map_round_trips() {
     let map = farm();
     let text = write(&map);
-    assert!(text.contains("tilemap version 1;"));
+    assert!(text.contains("tilemap version 2;"));
     assert!(text.contains("size = [40, 36];"));
     assert!(text.contains(&format!("cells {}.1.0 {{", id(1))));
     assert!(
@@ -90,12 +90,79 @@ fn one_changed_cell_is_one_changed_line() {
 }
 
 #[test]
-fn the_fixture_reads_without_notes() {
+fn version_1_reads_with_every_cell_autotiled() {
     let text = include_str!("../../../tests/fixtures/tilemap/v1/farm.soltilemap");
     let read = read(text).unwrap();
     assert!(read.notes.is_empty(), "{:?}", read.notes);
     assert_eq!(read.map.size(), [40, 36]);
-    assert_eq!(write(&read.map), text);
+    assert_eq!(read.map.exact_tiles(0).count(), 0);
+    // Written again, it's version 2 with the same cells.
+    let again = write(&read.map);
+    assert!(again.contains("tilemap version 2;"));
+    assert_eq!(super::read(&again).unwrap().map, read.map);
+}
+
+#[test]
+fn the_fixture_reads_without_notes() {
+    let text = include_str!("../../../tests/fixtures/tilemap/v2/farm.soltilemap");
+    let read = read(text).unwrap();
+    assert!(read.notes.is_empty(), "{:?}", read.notes);
+    assert_eq!(read.map.size(), [40, 36]);
+    let piece = |s: &str| s.parse::<Id>().unwrap();
+    assert_eq!(read.map.exact(0, 0, 0), Some(piece("0000000000035")));
+    assert_eq!(read.map.exact(0, 33, 2), Some(piece("0000000000036")));
+    assert_eq!(read.map.exact_tiles(0).count(), 2);
+    assert_eq!(write(&read.map), text, "written as Solis writes it");
+}
+
+#[test]
+fn exact_tiles_round_trip_and_go_with_their_cell() {
+    let mut map = TileMap::new([70, 40], None, Some(b'.'));
+    map.set_exact(0, 69, 39, Some(id(7))).unwrap();
+    map.set_exact(0, 3, 4, Some(id(8))).unwrap();
+    let text = write(&map);
+    assert!(text.contains("exact "), "{text}");
+    assert_eq!(read(&text).unwrap().map, map);
+    // Painted over, the cell is autotiled again; an empty cell holds none.
+    map.set_code(0, 3, 4, b't').unwrap();
+    assert_eq!(map.exact(0, 3, 4), None);
+    map.set_code(0, 5, 5, 0).unwrap();
+    assert_eq!(
+        map.set_exact(0, 5, 5, Some(id(9))),
+        Err(crate::map::MapError::NotUsable)
+    );
+    // Removing a layer, or shrinking the map, takes its exact tiles along.
+    map.resize([40, 40]);
+    assert_eq!(map.exact_tiles(0).count(), 0);
+}
+
+#[test]
+fn exact_tiles_it_can_t_use_are_skipped_with_a_note() {
+    let g = id(1).to_string();
+    let text = format!(
+        "tilemap version 2;\nsize = [40, 36];\n\
+         layer {g} {{ name = \"Ground\"; }}\n\
+         cells {g}.0.0 {{ rows = [\"..\"]; }}\n\
+         exact {g}.0.0 {{ cells = [[0, 0, \"{}\"], [5, 5, \"{}\"]]; }}\n\
+         exact {g}.0.1 {{ cells = [[0, 40, \"{}\"]]; }}\n\
+         exact {g}.1.0 {{ cells = [[0, 0, \"nope\"]]; }}\n\
+         exact {g}.9.9 {{ cells = []; }}\n\
+         exact {g}.1.1 {{ rows = 3; }}\n",
+        id(5),
+        id(6),
+        id(7)
+    );
+    let read = read(&text).unwrap();
+    let notes = read.notes.join("\n");
+    // The one on a painted cell is kept; on an empty cell, skipped quietly.
+    assert_eq!(read.map.exact(0, 0, 0), Some(id(5)));
+    assert_eq!(read.map.exact_tiles(0).count(), 1);
+    for line in [6, 7, 8, 9] {
+        assert!(
+            notes.contains(&format!("line {line}:")),
+            "line {line}: {notes}"
+        );
+    }
 }
 
 #[test]
@@ -160,7 +227,7 @@ fn a_damaged_or_too_big_file_is_refused_with_its_line() {
             .contains("isn't a tilemap file")
     );
     assert!(
-        read("tilemap version 2;")
+        read("tilemap version 3;")
             .unwrap_err()
             .message
             .contains("newer")
@@ -185,6 +252,7 @@ proptest! {
         w in 1u32..80, h in 1u32..80,
         cells in proptest::collection::vec((0u32..80, 0u32..80, 0usize..3, 33u8..127), 0..200),
         numbers in proptest::collection::vec((0u32..80, 0u32..80, -1000i32..1000), 0..50),
+        exact in proptest::collection::vec((0u32..80, 0u32..80, 0usize..3, 1u64..1000), 0..50),
     ) {
         let mut map = TileMap::new([w, h], None, None);
         map.add_value("n", ValueKind::Number).unwrap();
@@ -196,10 +264,14 @@ proptest! {
         for (x, y, n) in numbers {
             let _ = map.set_value(0, x % w, y % h, CellValue::Number(n));
         }
+        for (x, y, l, p) in exact {
+            let _ = map.set_exact(l, x % w, y % h, Some(id(p)));
+        }
         let text = write(&map);
         let back = read(&text).unwrap();
         prop_assert!(back.notes.is_empty(), "{:?}", back.notes);
         prop_assert_eq!(write(&back.map), text);
+        prop_assert_eq!(back.map, map);
     }
 }
 

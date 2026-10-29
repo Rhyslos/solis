@@ -363,6 +363,11 @@ pub struct Viewport {
     pub(crate) tile_overlay: crate::tile_view::TileOverlay,
     /// The time animated tiles show, in milliseconds (the editor's clock).
     pub(crate) tile_ms: u64,
+    /// The tool bar's width last frame, with the painting tools.
+    paint_bar_width: f32,
+    /// The snapping corner's width last frame, which the tool bar keeps
+    /// clear of.
+    snapping_width: f32,
     /// When Preview animation was turned on (its clips play from there).
     preview_since: std::cell::Cell<Option<std::time::Instant>>,
 }
@@ -501,6 +506,8 @@ impl Default for Viewport {
             sheets: std::sync::Arc::default(),
             tile_overlay: crate::tile_view::TileOverlay::default(),
             tile_ms: 0,
+            paint_bar_width: 0.0,
+            snapping_width: 0.0,
             preview_since: std::cell::Cell::new(None),
             panes: FIRST_KINDS
                 .iter()
@@ -678,6 +685,11 @@ impl Viewport {
             &self.tile_overlay.hidden,
             &|z| crate::tile_view::ground_in_view(view_projection, z),
             self.tile_ms,
+            self.tile_overlay
+                .map
+                .as_ref()
+                .filter(|_| self.tile_overlay.paint.meaning)
+                .map(|m| m.entity),
         );
         ViewportView {
             size_px,
@@ -756,6 +768,15 @@ impl Viewport {
                         .any(|e| matches!(e, egui::Event::MouseWheel { .. })),
             )
         });
+        // The selected map's pointer and asks are found anew each frame,
+        // by the view the pointer is in.
+        let overlay = &mut self.tile_overlay;
+        overlay.hovered = None;
+        overlay.pointer = None;
+        overlay.asked.clear();
+        overlay.chunks_asked = false;
+        overlay.turn_asked = None;
+        overlay.input = crate::tile_paint::PaintInput::default();
         let mut next = self.active;
         if !busy
             && poked
@@ -825,7 +846,10 @@ impl Viewport {
         if response.clicked() {
             self.menu_open = false;
         }
-        self.navigate(ui, &response, dt);
+        // While painting a tile map (D6), the left and right buttons
+        // paint and empty: the middle button and the wheel still move.
+        let painting = in_use && self.tile_overlay.paint.painting();
+        self.navigate(ui, &response, dt, painting);
         let ppp = ui.ctx().pixels_per_point();
         let size_px = [
             (rect.width() * ppp).round().max(1.0) as u32,
@@ -844,7 +868,28 @@ impl Viewport {
         }
         self.tools
             .receive(renderer.picked(VIEWPORT_IMAGE + self.active));
-        if !self.is_flying() {
+        if painting {
+            let on_corner = ui.input(|i| i.pointer.latest_pos()).is_some_and(|p| {
+                self.covered.iter().any(|r| r.contains(p))
+                    || ui.ctx().layer_id_at(p).is_some_and(|l| l != ui.layer_id())
+            });
+            self.tile_overlay.input = ui.input(|i| {
+                use crate::tile_paint::Button;
+                crate::tile_paint::PaintInput {
+                    on_view: response.hovered() && !on_corner,
+                    left: Button {
+                        pressed: i.pointer.primary_pressed(),
+                        down: i.pointer.primary_down(),
+                    },
+                    right: Button {
+                        pressed: i.pointer.secondary_pressed(),
+                        down: i.pointer.secondary_down(),
+                    },
+                    ctrl: i.modifiers.command,
+                    alt: i.modifiers.alt,
+                }
+            });
+        } else if !self.is_flying() {
             // egui gives the viewport the hover even under a corner button
             // (it's the only thing there that can be dragged), so a press
             // on the corner controls is left out by hand.
@@ -975,14 +1020,25 @@ impl Viewport {
         covered.push(bottom_left.min_rect());
         if self.overlays.tools && in_use {
             // A centred layout would stretch the bar, so it gets a rect of
-            // exactly its own width.
-            let bar = if several {
-                Rect::from_min_size(inner.min, TOOL_BAR_SIZE)
+            // exactly its own width: the transform tools', or with a map
+            // selected the width the bar took last frame (it has the
+            // painting tools too).
+            let size = if self.tile_overlay.paint.allowed {
+                vec2(self.paint_bar_width.max(TOOL_BAR_SIZE.x), TOOL_BAR_SIZE.y)
             } else {
-                Rect::from_center_size(
-                    egui::pos2(inner.center().x, inner.bottom() - TOOL_BAR_SIZE.y / 2.0),
-                    TOOL_BAR_SIZE,
-                )
+                TOOL_BAR_SIZE
+            };
+            let bar = if several {
+                Rect::from_min_size(inner.min, size)
+            } else {
+                // Centred, but moved left of the snapping corner (as
+                // wide as last frame) when the painting tools make it
+                // wide, never over the view controls.
+                let half = size.x / 2.0;
+                let right = inner.right() - self.snapping_width - 8.0;
+                let left = bottom_left.min_rect().right() + 8.0;
+                let x = inner.center().x.min(right - half).max(left + half);
+                Rect::from_center_size(egui::pos2(x, inner.bottom() - size.y / 2.0), size)
             };
             let mut bar_ui = ui.new_child(
                 UiBuilder::new()
@@ -991,6 +1047,9 @@ impl Viewport {
                     .layout(Layout::left_to_right(Align::Center)),
             );
             self.tools(&mut bar_ui, accent);
+            if self.tile_overlay.paint.allowed {
+                self.paint_bar_width = bar_ui.min_rect().width();
+            }
             covered.push(bar_ui.min_rect());
         }
         if self.overlays.snapping && in_use {
@@ -1018,14 +1077,31 @@ impl Viewport {
                     !several,
                 );
             }
+            self.snapping_width = corner_ui.min_rect().width();
             covered.push(corner_ui.min_rect());
+        }
+        if in_use
+            && self.tile_overlay.paint.painting()
+            && let Some(stamp) = &self.tile_overlay.paint.stamp
+        {
+            // The copy held: its buttons above the snapping corner.
+            let above = covered
+                .last()
+                .map_or(0.0, |r| inner.bottom() - r.top() + 6.0);
+            let mut stamp_ui = corner(ui, "stamp", Layout::bottom_up(Align::Max));
+            stamp_ui.add_space(above);
+            let asked = crate::tile_paint::stamp_bar(&mut stamp_ui, stamp);
+            if asked.is_some() {
+                self.tile_overlay.turn_asked = asked;
+            }
+            covered.push(stamp_ui.min_rect());
         }
         self.covered = covered;
     }
 
     /// Flies the camera from this frame's mouse and keys
     /// ([decision 0009](../../../docs/decisions/0009-fly-camera-controls.md)).
-    fn navigate(&mut self, ui: &Ui, response: &egui::Response, dt: f32) {
+    fn navigate(&mut self, ui: &Ui, response: &egui::Response, dt: f32, painting: bool) {
         use egui::{Key, PointerButton, ViewportCommand};
         let ctx = ui.ctx();
         let (pressed_here, held, pointer) = ui.input(|i| {
@@ -1038,6 +1114,7 @@ impl Viewport {
         // Flat views don't fly: the right button slides them instead.
         let flat = self.camera.is_flat();
         let starting = !flat
+            && !painting
             && self.flying_from.is_none()
             && !self.tools.dragging()
             && pressed_here
@@ -1101,7 +1178,7 @@ impl Viewport {
         } else {
             input.dolly_notches = notches;
             let slides = response.dragged_by(PointerButton::Middle)
-                || (flat && response.dragged_by(PointerButton::Secondary));
+                || (flat && !painting && response.dragged_by(PointerButton::Secondary));
             if slides {
                 let delta = response.drag_delta();
                 input.pan = glam::Vec2::new(delta.x, delta.y);
@@ -1272,10 +1349,18 @@ impl Viewport {
         theme::overlay_frame().show(ui, |ui| {
             ui.horizontal(|ui| {
                 ui.spacing_mut().item_spacing.x = TOOL_GAP;
+                let paint = &mut self.tile_overlay.paint;
+                let painting = paint.painting();
                 for tool in Tool::ALL {
-                    if tool_button(ui, tool, self.tool == tool, accent).clicked() {
+                    if tool_button(ui, tool, !painting && self.tool == tool, accent).clicked() {
                         self.tool = tool;
+                        paint.tool = None;
                     }
+                }
+                if paint.allowed
+                    && let Some(tool) = crate::tile_paint::paint_bar(ui, paint, accent)
+                {
+                    paint.tool = Some(tool);
                 }
             });
         });

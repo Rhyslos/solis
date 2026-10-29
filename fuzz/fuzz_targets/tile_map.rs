@@ -1,6 +1,7 @@
 //! A tile map file (`.soltilemap`, Phase 9, D4): refused or read, and
 //! what's read is within the limits, writes back to itself, is autotiled
-//! with the farm fixture's tileset (D5), and is changed cell by cell,
+//! with the farm fixture's tileset (D5), is painted with the painter's
+//! shapes and a stamp, exact tiles too (D6), and is changed cell by cell,
 //! resized and summed without panicking.
 #![no_main]
 libfuzzer_sys::fuzz_target!(|data: &[u8]| {
@@ -34,6 +35,25 @@ libfuzzer_sys::fuzz_target!(|data: &[u8]| {
         .tileset;
     for l in 0..map.layers().len() {
         let _ = tiles::autotile::chunk_tiles(&map, l, &set, [0, 0]);
+    }
+    // Painted (D6): a fill from its corner, a stamp of its corner flipped
+    // and turned, put down past its edges, and an exact tile.
+    if !map.layers().is_empty() {
+        let reached = tiles::paint::flood_fill(&map, 0, [0, 0]);
+        assert!(reached.len() <= w as usize * h as usize);
+        if let Some(mut stamp) = tiles::paint::Stamp::copy(&map, 0, [-2, -2], [3, 2]) {
+            stamp.flip_x();
+            stamp.rotate();
+            stamp.flip_y();
+            let cells: Vec<_> = stamp.placed([i64::from(w), 1], [w, h]).collect();
+            for ([x, y], c) in cells {
+                let _ = map.set_code(0, x, y, c.code);
+                let _ = map.set_exact(0, x, y, c.exact);
+            }
+        }
+        let _ = tiles::paint::line_cells([0, 0], [i64::from(w), i64::from(h)]);
+        let _ = map.set_exact(0, w - 1, h - 1, reflect::Id::from_raw(5));
+        let _ = tiles::autotile::chunk_tiles(&map, 0, &set, [(w - 1) / tiles::CHUNK, (h - 1) / tiles::CHUNK]);
     }
     // Changed, at its corners and past them.
     let sum = map.checksum();

@@ -100,7 +100,14 @@ fn grid(set: &Tileset, p: &Picture<'_>) -> [u32; 2] {
 }
 
 /// Draws piece `index` of `set` in `rect`, at the time `ms`.
-fn paint_piece(ui: &Ui, rect: Rect, set: &Tileset, p: &Picture<'_>, index: usize, ms: u64) {
+pub(crate) fn paint_piece(
+    ui: &Ui,
+    rect: Rect,
+    set: &Tileset,
+    p: &Picture<'_>,
+    index: usize,
+    ms: u64,
+) {
     let piece = &set.pieces[index];
     let frame = autotile::frame_at(piece.animation, ms, p.durations);
     let (row, col) = match piece.animation {

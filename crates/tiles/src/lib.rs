@@ -12,11 +12,16 @@
 //!   neighbours (16-tile on the dual grid, 47-tile, edges, rules), variations
 //!   picked by weight, the same every time; templates, grid and kind guesses.
 //! - [`map_file`]: a map saved as readable text (`.soltilemap`), in chunks,
-//!   so a Git diff shows exactly the cells that changed.
+//!   so a Git diff shows exactly the cells that changed, and the exact
+//!   tiles painted (D6).
+//! - [`paint`]: what the tile painter's tools touch (D6): a line's and a
+//!   rectangle's cells, a fill's reach, and stamps copied, flipped and
+//!   turned.
 
 pub mod autotile;
 pub mod map;
 pub mod map_file;
+pub mod paint;
 pub mod tileset;
 
 pub use map::{CHUNK, CellValue, Layer, MapError, TileMap, ValueDef, ValueKind};

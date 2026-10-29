@@ -836,6 +836,7 @@ impl Workbench {
         self.feed_input(ui.ctx());
         if !self.game_input {
             self.tool_keys(ui);
+            self.paint_keys(ui);
             self.tool_extra_keys(ui);
             self.undo_keys(ui);
             self.editing_keys(ui);
@@ -950,6 +951,7 @@ impl Workbench {
         let live = self.live_animator();
         let mut map_requests = Vec::new();
         let map_shown = self.map_shown();
+        let map_ms = (ui.input(|i| i.time).max(0.0) * 1000.0) as u64;
         let map_name = self
             .map_edits
             .path
@@ -965,6 +967,36 @@ impl Workbench {
                 hovered: self.viewport.tile_overlay.hovered,
                 hidden: &self.map_edits.hidden,
                 playing,
+                paint: crate::map_tab::PaintShown {
+                    code: self.viewport.tile_overlay.paint.code,
+                    exact: self.viewport.tile_overlay.paint.exact,
+                    piece: self.viewport.tile_overlay.paint.piece,
+                    stamp: self
+                        .viewport
+                        .tile_overlay
+                        .paint
+                        .stamp
+                        .as_ref()
+                        .map(|s| s.size),
+                    picture: tileset
+                        .as_ref()
+                        .and_then(|t| t.picture)
+                        .and_then(|p| sheets.tile_art(p))
+                        .and_then(|art| {
+                            let (texture, atlas) = self
+                                .tile_textures
+                                .get(&(std::sync::Arc::as_ptr(art) as u64))?;
+                            Some(crate::tileset_view::Picture {
+                                texture,
+                                atlas: *atlas,
+                                size: art.size,
+                                durations: &art.durations,
+                                art,
+                            })
+                        }),
+                    ms: map_ms,
+                    accent: self.accent.colors().fill,
+                },
             });
         let frames = self.frames_editor.as_mut().map(|editor| {
             crate::workbench_frames::frames_ui(
@@ -1063,6 +1095,7 @@ impl Workbench {
         self.frames_tabs_done(frames_out, &mut actions);
         self.map_requests_done(map_requests);
         self.tile_overlay_done();
+        self.paint_frame();
         if game_clicked {
             self.give_game_input(ui.ctx());
         }
@@ -1125,6 +1158,7 @@ impl Workbench {
         });
         if let Some(tool) = pressed {
             self.viewport.tool = tool;
+            self.viewport.tile_overlay.paint.tool = None;
         }
     }
 
@@ -1304,8 +1338,10 @@ impl Workbench {
         } else if self.tileset_hovered && self.tileset_editor.is_some() {
             // Over the Tileset tab: the tileset's changes.
             self.tileset_undo(redo, undo);
-        } else if self.map_hovered && self.map_edits.path.is_some() {
-            // Over the Map tab: the map's changes.
+        } else if (self.map_hovered || self.viewport.tile_overlay.paint.painting())
+            && self.map_edits.path.is_some()
+        {
+            // Over the Map tab, or painting: the map's changes.
             self.map_undo(redo, undo);
         } else if redo {
             self.redo();

@@ -35,6 +35,20 @@ pub(crate) struct MapEdits {
     pub(crate) chunks: bool,
     /// Layers hidden in the editor, by ID (never saved).
     pub(crate) hidden: std::collections::HashSet<reflect::Id>,
+    /// The tile painter's stroke under way (D6).
+    pub(crate) stroke: Option<crate::workbench_paint::Stroke>,
+}
+
+impl MapEdits {
+    /// Keeps `map` as it was before a change to the file at `path`, as an
+    /// undo step (redo steps are let go).
+    pub(crate) fn push_undo(&mut self, path: String, map: TileMap) {
+        self.undo.push((path, map));
+        if self.undo.len() > MAX_UNDO {
+            self.undo.remove(0);
+        }
+        self.redo.clear();
+    }
 }
 
 /// A free path for a new file named `stem` in `folder`.
@@ -213,13 +227,7 @@ impl Workbench {
         if !change(&mut map) || map == *before {
             return false;
         }
-        self.map_edits
-            .undo
-            .push((path.to_owned(), (*before).clone()));
-        if self.map_edits.undo.len() > MAX_UNDO {
-            self.map_edits.undo.remove(0);
-        }
-        self.map_edits.redo.clear();
+        self.map_edits.push_undo(path.to_owned(), (*before).clone());
         self.save_tile_map(path, map);
         true
     }
@@ -303,6 +311,7 @@ impl Workbench {
         overlay.chunks = self.map_edits.chunks;
         overlay.map = None;
         overlay.values.clear();
+        overlay.paint.allowed = false;
         let Some((id, path)) = selected else {
             return;
         };
@@ -329,6 +338,11 @@ impl Workbench {
             .iter()
             .filter_map(|n| map.value_named(n))
             .collect();
+        // Painting is for the map file, not the game's copy of it.
+        let paint = &mut overlay.paint;
+        paint.allowed = self.playing.is_none() && !map.layers().is_empty();
+        paint.layers = map.layers().iter().map(|l| l.name.clone()).collect();
+        paint.layer = paint.layer.min(paint.layers.len().saturating_sub(1));
         overlay.map = Some(crate::tile_view::ViewTileMap {
             entity: id,
             transform,
@@ -361,7 +375,19 @@ impl Workbench {
             return;
         };
         for request in requests {
+            let paint = &mut self.viewport.tile_overlay.paint;
             match request {
+                MapRequest::PaintWith(code) => {
+                    paint.code = Some(code);
+                    paint.stamp = None;
+                    if !paint.painting() {
+                        paint.tool = Some(crate::tile_paint::PaintTool::Brush);
+                    }
+                }
+                MapRequest::PaintPiece(piece) => {
+                    paint.piece = Some(piece);
+                    paint.exact = true;
+                }
                 MapRequest::ToggleHidden(id) => {
                     if !self.map_edits.hidden.remove(&id) {
                         self.map_edits.hidden.insert(id);
@@ -420,4 +446,4 @@ impl Workbench {
 
 #[cfg(test)]
 #[path = "workbench_tiles_tests.rs"]
-mod tests;
+pub(crate) mod tests;

@@ -5,6 +5,10 @@
 //! how many cells use each; its cell values; and the cell under the
 //! pointer in the viewport, every layer and value. Changes go back as
 //! [`MapRequest`]s; the workbench makes each one undo step.
+//!
+//! The terrain swatches are the tile painter's palette (D6): click one to
+//! paint with it; with Exact on, the terrain's tiles show beneath to
+//! choose the one placed.
 
 use crate::theme;
 use egui::{Color32, RichText, Ui, vec2};
@@ -25,6 +29,26 @@ pub(crate) struct MapUi<'a> {
     pub(crate) hidden: &'a HashSet<reflect::Id>,
     /// Whether the game is running (the cell shown follows it).
     pub(crate) playing: bool,
+    /// What the tile painter paints with.
+    pub(crate) paint: PaintShown<'a>,
+}
+
+/// The tile painter's palette as the tab shows it (D6).
+pub(crate) struct PaintShown<'a> {
+    /// The terrain painted, by code.
+    pub(crate) code: Option<u8>,
+    /// Exact tiles are placed: the terrain's tiles are shown to choose.
+    pub(crate) exact: bool,
+    /// The exact tile chosen.
+    pub(crate) piece: Option<reflect::Id>,
+    /// A copy is held: it's painted instead of a terrain.
+    pub(crate) stamp: Option<[u32; 2]>,
+    /// The tileset's picture, to show its tiles.
+    pub(crate) picture: Option<crate::tileset_view::Picture<'a>>,
+    /// The time animated tiles show.
+    pub(crate) ms: u64,
+    /// The accent colour, round the swatch painted with.
+    pub(crate) accent: Color32,
 }
 
 /// A change asked for in the tab.
@@ -48,6 +72,10 @@ pub(crate) enum MapRequest {
     RenameValue(usize, String),
     /// Change this value's kind (or a choice's options).
     SetValueKind(usize, ValueKind),
+    /// Paint with this terrain (by code).
+    PaintWith(u8),
+    /// Place this piece as an exact tile.
+    PaintPiece(reflect::Id),
 }
 
 /// A terrain's colour, or the missing colour.
@@ -216,11 +244,12 @@ pub(crate) fn map_tab(ui: &mut Ui, m: &MapUi<'_>) -> Vec<MapRequest> {
             });
     }
     ui.add_space(8.0);
-    // Terrains, with how many cells use each (every layer together).
+    // Terrains, with how many cells use each (every layer together): the
+    // painter's palette.
     ui.horizontal(|ui| {
         ui.label(RichText::new("Terrains").color(theme::TEXT_WEAK));
         ui.label(
-            RichText::new("(cells using each)")
+            RichText::new("(click one to paint with it; the outlined one is painted)")
                 .small()
                 .color(theme::TEXT_WEAK),
         );
@@ -243,12 +272,35 @@ pub(crate) fn map_tab(ui: &mut Ui, m: &MapUi<'_>) -> Vec<MapRequest> {
                 for t in &set.terrains {
                     ui.vertical(|ui| {
                         let (rect, r) =
-                            ui.allocate_exact_size(vec2(50.0, 50.0), egui::Sense::hover());
-                        ui.painter().rect_filled(
-                            rect,
-                            3.0,
-                            terrain_colour(Some(set), t.code as u8),
-                        );
+                            ui.allocate_exact_size(vec2(50.0, 50.0), egui::Sense::click());
+                        let code = t.code as u8;
+                        ui.painter()
+                            .rect_filled(rect, 3.0, terrain_colour(Some(set), code));
+                        let painted = m.paint.stamp.is_none()
+                            && m.paint
+                                .code
+                                .filter(|&c| set.by_code(char::from(c)).is_some())
+                                .or_else(|| set.terrains.first().map(|t| t.code as u8))
+                                == Some(code);
+                        if painted {
+                            ui.painter().rect_stroke(
+                                rect.expand(2.0),
+                                4.0,
+                                egui::Stroke::new(2.0, m.paint.accent),
+                                egui::StrokeKind::Outside,
+                            );
+                        }
+                        r.widget_info(|| {
+                            egui::WidgetInfo::selected(
+                                egui::WidgetType::Button,
+                                true,
+                                painted,
+                                format!("Paint with {}", t.name),
+                            )
+                        });
+                        if r.clicked() {
+                            asked.push(MapRequest::PaintWith(code));
+                        }
                         ui.painter().text(
                             rect.min + vec2(4.0, 3.0),
                             egui::Align2::LEFT_TOP,
@@ -257,13 +309,24 @@ pub(crate) fn map_tab(ui: &mut Ui, m: &MapUi<'_>) -> Vec<MapRequest> {
                             Color32::from_white_alpha(190),
                         );
                         r.on_hover_text(format!(
-                            "{}: written \"{}\" in the map file",
+                            "{}: written \"{}\" in the map file. Click to paint with it.",
                             t.name, t.code
                         ));
                         ui.label(RichText::new(format!("{} {}", t.name, t.code)).small());
                     });
                 }
             });
+            if let Some([w, h]) = m.paint.stamp {
+                ui.label(
+                    RichText::new(format!(
+                        "Painting with a copy of {w} × {h} cells: X and Y flip it, Z turns it, Esc puts it away."
+                    ))
+                    .small()
+                    .color(theme::TEXT_WEAK),
+                );
+            } else if m.paint.exact {
+                exact_tiles(ui, set, m, &mut asked);
+            }
             let missing: usize = (1..256)
                 .filter(|&c| set.by_code(char::from(c as u8)).is_none())
                 .map(|c| counts[c])
@@ -424,12 +487,80 @@ pub(crate) fn map_tab(ui: &mut Ui, m: &MapUi<'_>) -> Vec<MapRequest> {
         RichText::new(if m.playing {
             "While playing, the map is the game's: watch a cell change as the game changes it."
         } else {
-            "Changes save at once; Ctrl+Z over this tab undoes them. Painting cells comes with the tile painter."
+            "Changes save at once; Ctrl+Z over this tab (or while painting) undoes them. Paint with the brush, rectangle, line, fill and eyedropper at the bottom of the viewport (B, U, N, G, I)."
         })
         .small()
         .color(theme::TEXT_WEAK),
     );
     asked
+}
+
+/// The painted terrain's tiles, to choose the one an exact tile shows.
+fn exact_tiles(ui: &mut Ui, set: &Tileset, m: &MapUi<'_>, asked: &mut Vec<MapRequest>) {
+    let Some(code) = m
+        .paint
+        .code
+        .filter(|&c| set.by_code(char::from(c)).is_some())
+        .or_else(|| set.terrains.first().map(|t| t.code as u8))
+    else {
+        return;
+    };
+    let Some(terrain) = set.by_code(char::from(code)) else {
+        return;
+    };
+    let chosen = crate::tile_paint::exact_piece(set, code, m.paint.piece);
+    ui.label(
+        RichText::new(format!(
+            "Exact tiles of {}: click one to place it as it is",
+            terrain.name
+        ))
+        .small()
+        .color(theme::TEXT_WEAK),
+    );
+    let pieces: Vec<usize> = (0..set.pieces.len())
+        .filter(|&i| set.pieces[i].terrain == terrain.id)
+        .collect();
+    if pieces.is_empty() {
+        ui.label(
+            RichText::new("It has no art yet: give it tiles in the Tileset tab (double-click the tileset in the Library).")
+                .small()
+                .color(theme::WARNING),
+        );
+        return;
+    }
+    ui.horizontal_wrapped(|ui| {
+        ui.spacing_mut().item_spacing = vec2(3.0, 3.0);
+        for i in pieces {
+            let piece = &set.pieces[i];
+            let (rect, r) = ui.allocate_exact_size(vec2(28.0, 28.0), egui::Sense::click());
+            match &m.paint.picture {
+                Some(p) => crate::tileset_view::paint_piece(ui, rect, set, p, i, m.paint.ms),
+                None => {
+                    ui.painter()
+                        .rect_filled(rect, 2.0, terrain_colour(Some(set), code));
+                }
+            }
+            let on = chosen == Some(piece.id);
+            if on {
+                ui.painter().rect_stroke(
+                    rect.expand(1.0),
+                    2.0,
+                    egui::Stroke::new(2.0, m.paint.accent),
+                    egui::StrokeKind::Outside,
+                );
+            }
+            let name = format!(
+                "Tile at column {}, row {} (slot {})",
+                piece.at[0] + 1,
+                piece.at[1] + 1,
+                piece.slot
+            );
+            r.widget_info(|| egui::WidgetInfo::selected(egui::WidgetType::Button, true, on, &name));
+            if r.on_hover_text(&name).clicked() {
+                asked.push(MapRequest::PaintPiece(piece.id));
+            }
+        }
+    });
 }
 
 /// A tileset's Properties (clicked in the Library): its terrains, each

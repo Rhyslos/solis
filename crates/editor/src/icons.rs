@@ -25,6 +25,60 @@ pub fn tool_icon(painter: &Painter, rect: Rect, tool: Tool, color: Color32) {
     }
 }
 
+/// Draws a tile painting tool's icon (Phase 9, D6) in `rect` with
+/// `color`.
+pub fn paint_icon(
+    painter: &Painter,
+    rect: Rect,
+    tool: crate::tile_paint::PaintTool,
+    color: Color32,
+) {
+    use crate::tile_paint::PaintTool;
+    let side = rect.width().min(rect.height());
+    let square = Rect::from_center_size(rect.center(), vec2(side, side));
+    let at = |x: f32, y: f32| pos2(square.left() + x * side, square.top() + y * side);
+    let stroke = Stroke::new((side / 11.0).max(1.2), color);
+    match tool {
+        PaintTool::Brush => {
+            // A pencil, point down to the left.
+            let body = vec![at(0.2, 0.68), at(0.68, 0.2), at(0.82, 0.34), at(0.34, 0.82)];
+            painter.add(Shape::closed_line(body, stroke));
+            painter.add(Shape::line(
+                vec![at(0.2, 0.68), at(0.12, 0.9), at(0.34, 0.82)],
+                stroke,
+            ));
+        }
+        PaintTool::Rectangle => {
+            painter.rect_stroke(
+                Rect::from_min_max(at(0.15, 0.25), at(0.85, 0.75)),
+                1.0,
+                stroke,
+                egui::StrokeKind::Middle,
+            );
+        }
+        PaintTool::Line => {
+            painter.line_segment([at(0.15, 0.85), at(0.85, 0.15)], stroke);
+        }
+        PaintTool::Fill => {
+            // A tipped bucket, and a drop.
+            let bucket = vec![
+                at(0.18, 0.45),
+                at(0.48, 0.15),
+                at(0.78, 0.45),
+                at(0.48, 0.75),
+            ];
+            painter.add(Shape::closed_line(bucket, stroke));
+            painter.circle_filled(at(0.82, 0.72), side * 0.08, color);
+        }
+        PaintTool::Eyedropper => {
+            // A pipette, its bulb top right.
+            painter.line_segment([at(0.15, 0.85), at(0.62, 0.38)], stroke);
+            painter.circle_filled(at(0.72, 0.28), side * 0.16, color);
+            painter.line_segment([at(0.5, 0.36), at(0.64, 0.5)], stroke);
+        }
+    }
+}
+
 /// A mouse pointer.
 fn select(painter: &Painter, at: &dyn Fn(f32, f32) -> Pos2, stroke: Stroke) {
     let outline = vec![
