@@ -71,7 +71,7 @@ crossbeam-utils = "0.8"
 hound = "3.5"
 # Reading Ogg Vorbis files.
 lewton = "0.10"
-ogg = "0.8"
+ogg = "0.9"
 mint = "0.5"
 # Compact binary for physics in save games (decision 0038).
 # Gamepads (decision 0037), on Windows.
