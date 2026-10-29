@@ -164,30 +164,37 @@ impl Workbench {
         }
     }
 
-    /// Makes (once) the texture of the open tileset's picture.
+    /// Makes (once) the textures of the open tileset's picture and of the
+    /// selected map's tileset's (the Map tab shows its tiles, D6), and
+    /// lets others go.
     pub(crate) fn tileset_texture(&mut self, ctx: &egui::Context) {
-        let Some(editor) = &self.tileset_editor else {
-            self.tile_textures.clear();
-            return;
-        };
-        let Some(art) = editor
-            .file
-            .picture
-            .and_then(|p| self.viewport.sheets.tile_art(p))
-            .cloned()
-        else {
-            return;
-        };
-        let key = Arc::as_ptr(&art) as u64;
-        if self.tile_textures.contains_key(&key) {
-            return;
+        let sheets = &self.viewport.sheets;
+        let open = self.tileset_editor.as_ref().and_then(|e| e.file.picture);
+        let mapped = self
+            .selected_map_path()
+            .and_then(|(_, path)| self.map_file(&path))
+            .and_then(|m| m.tileset)
+            .and_then(|t| sheets.tileset(t))
+            .and_then(|t| t.picture);
+        let arts: Vec<Arc<assets::tile_art::TileArt>> = [open, mapped]
+            .into_iter()
+            .flatten()
+            .filter_map(|p| sheets.tile_art(p).cloned())
+            .collect();
+        let keys: Vec<u64> = arts.iter().map(|a| Arc::as_ptr(a) as u64).collect();
+        self.tile_textures.retain(|k, _| keys.contains(k));
+        for (art, key) in arts.iter().zip(keys) {
+            if self.tile_textures.contains_key(&key) {
+                continue;
+            }
+            let (size, rgba) = crate::tile_view::atlas_rgba(art);
+            let image = egui::ColorImage::from_rgba_unmultiplied(
+                [size[0] as usize, size[1] as usize],
+                &rgba,
+            );
+            let texture = ctx.load_texture("tileset picture", image, egui::TextureOptions::NEAREST);
+            self.tile_textures.insert(key, (texture, size));
         }
-        let (size, rgba) = crate::tile_view::atlas_rgba(&art);
-        let image =
-            egui::ColorImage::from_rgba_unmultiplied([size[0] as usize, size[1] as usize], &rgba);
-        let texture = ctx.load_texture("tileset picture", image, egui::TextureOptions::NEAREST);
-        self.tile_textures.clear();
-        self.tile_textures.insert(key, (texture, size));
     }
 
     /// Saves `kind`'s template at the open tileset's tile size, as a PNG

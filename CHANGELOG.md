@@ -6,6 +6,7 @@ What changed in each version, for people using Solis. Newest first.
 
 ### Breaking
 
+- **Tile maps are format 2** (Phase 9, D6): they now list the cells painted with an exact tile, in `exact` blocks. Maps from earlier builds still open (every cell autotiled) and are kept in `.solis/backups/` when saved; one saved now can't be opened by an earlier build.
 - **Tilesets are format 2** (Phase 9, D5): they now hold their art (a picture, each terrain's kind, which tile fills each slot, rules). Tilesets from earlier builds still open (their terrains plain, with no art) and are kept in `.solis/backups/` when saved; one saved now can't be opened by an earlier build. The characters `? = ! _ *` can't be terrain codes any more, since rules use them.
 - **Save games are format 5** (Phase 9, D3b and D4): they keep each animator's parameters, and each tile map as the game has changed it, in sections of their own. Saves from earlier builds still load (their animators start with every parameter at its start, and their tile maps from their files); a save made now can't be loaded by an earlier build.
 - **Recordings are format 2** (Phase 8, C4): they now say which area they were recorded in. Recordings from earlier builds still play back (with no area, so a project's check can't use them: record those again); recordings made now can't be played back by an earlier build.
@@ -57,6 +58,7 @@ What changed in each version, for people using Solis. Newest first.
 
 ### Added
 
+- **The tile painter** (Phase 9, D6; [decision 0069](docs/decisions/0069-the-tile-painter.md)). Select a tile map and its painting tools join the tool bar at the bottom of the viewport: **Brush (B)**, **Rectangle (U)**, **Line (N)**, **Fill (G)** and **Eyedropper (I)**, then **Exact**, **Art or Meaning** and the layer painted. Click a terrain's swatch in the Map tab to paint with it. Left-drag paints, right-drag empties, Alt + click picks the terrain under the pointer. The fill keeps to one field. The eyedropper copies cells to paint with, repeated like a pattern; X, Y and Z flip and turn the copy. Ctrl (or Exact) places one tile as it is, without autotiling. Tab shows the map's meaning, each terrain in its colour. Each stroke is one undo step (Ctrl + Z while painting), saved when you let go; a frame of painting on a 1,000 × 1,000 map takes about 1 ms. See [Painting tiles](docs/manual/painting-tiles.md).
 - **Tile art and autotiling** (Phase 9, D5; [decision 0068](docs/decisions/0068-tile-art-and-autotiling.md)). Double-click a tileset to open the **Tileset** tab. Choose a picture (a PNG or an Aseprite file of tiles in a grid; its grid is found for you), give each terrain a kind, and say which tile fills each of its slots. Click a tile and then a slot, or drag it there, or use **Mark up from the template** for a picture drawn over a template from **Save … template**. Maps then pick each cell's art from its neighbours, so edges come out smooth:
   - **16-tile (dual grid):** the fewest drawings;
   - **47-tile:** the most polished corners;

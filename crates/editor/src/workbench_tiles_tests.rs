@@ -19,7 +19,7 @@ fn farm_set() -> Tileset {
 
 /// A 40 × 36 map of grass with a tilled patch and crop, growth and
 /// watered values.
-fn farm_map(tileset: AssetId) -> TileMap {
+pub(crate) fn farm_map(tileset: AssetId) -> TileMap {
     let mut map = TileMap::new([40, 36], Some(tileset), Some(b'.'));
     for y in 4..8 {
         for x in 4..10 {
@@ -41,7 +41,7 @@ fn farm_map(tileset: AssetId) -> TileMap {
 
 /// A workbench with a project holding `farm.soltileset` and
 /// `farm.soltilemap`; the map's and tileset's asset IDs.
-fn with_map() -> (Workbench, AssetId, AssetId) {
+pub(crate) fn with_map() -> (Workbench, AssetId, AssetId) {
     let mut w = Workbench::new(info(), None);
     w.set_project(Some(ProjectInfo {
         name: "Farm".into(),
@@ -75,7 +75,7 @@ fn with_map() -> (Workbench, AssetId, AssetId) {
     (w, map, set)
 }
 
-fn saved_maps(actions: &[WorkbenchAction]) -> Vec<(String, String)> {
+pub(crate) fn saved_maps(actions: &[WorkbenchAction]) -> Vec<(String, String)> {
     actions
         .iter()
         .filter_map(|a| match a {
@@ -87,7 +87,7 @@ fn saved_maps(actions: &[WorkbenchAction]) -> Vec<(String, String)> {
         .collect()
 }
 
-fn the_map(w: &Workbench) -> Arc<TileMap> {
+pub(crate) fn the_map(w: &Workbench) -> Arc<TileMap> {
     w.map_file("farm.soltilemap").unwrap()
 }
 

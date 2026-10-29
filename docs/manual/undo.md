@@ -17,6 +17,8 @@ Undo also selects what the change was about, so you can see what came back.
 - Typing a name is one step until you click somewhere else.
 - An import is one step, with the lights that came with the model.
 
+**Tabs with their own undo:** the Clips and Frames tabs, the Animator, the Tileset tab and the Map tab each keep their own steps: Ctrl + Z with the pointer over the tab undoes there. While a [tile painting tool](painting-tiles.md) is in use, Ctrl + Z undoes the last stroke (each stroke, from pressing the button to letting go, is one step).
+
 **What isn't undone:** selecting things, moving the camera, and the editor's own settings (panels, look, accent colour). They aren't part of the area.
 
 ## Shortcuts

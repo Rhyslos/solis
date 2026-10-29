@@ -59,7 +59,15 @@ fn layers_under_come_first_and_over_last_hidden_ones_left_out() {
         map: Arc::clone(&map),
     }];
     let pictures = TilePictures::default();
-    let (pics, batches) = pictures.draw(&maps, &sheets, [1.0, 1.0], &HashSet::new(), &|_| None, 0);
+    let (pics, batches) = pictures.draw(
+        &maps,
+        &sheets,
+        [1.0, 1.0],
+        &HashSet::new(),
+        &|_| None,
+        0,
+        None,
+    );
     assert_eq!(pics.len(), 3);
     assert_eq!(batches.len(), 3);
     let flags: Vec<u32> = batches.iter().map(|b| b.sprites[0].flags).collect();
@@ -77,7 +85,7 @@ fn layers_under_come_first_and_over_last_hidden_ones_left_out() {
     assert_eq!(s.rect, [0.0, 0.0, 4.0, 4.0]);
     // Hidden in the editor: not drawn.
     let hidden = HashSet::from([map.layers()[0].id]);
-    let (pics, batches) = pictures.draw(&maps, &sheets, [1.0, 1.0], &hidden, &|_| None, 0);
+    let (pics, batches) = pictures.draw(&maps, &sheets, [1.0, 1.0], &hidden, &|_| None, 0, None);
     assert_eq!((pics.len(), batches.len()), (2, 2));
 }
 
@@ -101,6 +109,7 @@ fn a_picture_is_made_again_only_when_its_layer_changes() {
         &HashSet::new(),
         &|_| None,
         0,
+        None,
     );
     let (again, _) = pictures.draw(
         &view(&map),
@@ -109,6 +118,7 @@ fn a_picture_is_made_again_only_when_its_layer_changes() {
         &HashSet::new(),
         &|_| None,
         0,
+        None,
     );
     for (a, b) in first.iter().zip(&again) {
         assert!(Arc::ptr_eq(a, b), "kept");
@@ -121,6 +131,7 @@ fn a_picture_is_made_again_only_when_its_layer_changes() {
         &HashSet::new(),
         &|_| None,
         0,
+        None,
     );
     assert!(Arc::ptr_eq(&first[0], &changed[0]), "Ground unchanged");
     assert!(
@@ -130,7 +141,15 @@ fn a_picture_is_made_again_only_when_its_layer_changes() {
     assert_ne!(first[1].key, changed[1].key, "so it's uploaded again");
     assert_eq!(first[1].id, changed[1].id, "under the same ID");
     // A map gone: its pictures are let go.
-    let _ = pictures.draw(&[], &sheets, [1.0, 1.0], &HashSet::new(), &|_| None, 0);
+    let _ = pictures.draw(
+        &[],
+        &sheets,
+        [1.0, 1.0],
+        &HashSet::new(),
+        &|_| None,
+        0,
+        None,
+    );
     assert!(pictures.made.lock().unwrap().is_empty());
 }
 
@@ -298,7 +317,15 @@ fn with_art_a_map_is_drawn_tile_by_tile_and_its_tiles_animate() {
         map,
     }];
     let pictures = TilePictures::default();
-    let (pics, batches) = pictures.draw(&maps, &sheets, [1.0, 1.0], &HashSet::new(), &|_| None, 0);
+    let (pics, batches) = pictures.draw(
+        &maps,
+        &sheets,
+        [1.0, 1.0],
+        &HashSet::new(),
+        &|_| None,
+        0,
+        None,
+    );
     assert_eq!(pics.len(), 1, "one atlas, no layer pictures");
     assert_eq!(batches.len(), 1, "the empty layers draw nothing");
     let sprites = &batches[0].sprites;
@@ -310,7 +337,15 @@ fn with_art_a_map_is_drawn_tile_by_tile_and_its_tiles_animate() {
         "a texel a quarter of a cell"
     );
     // 150 ms later: the second column.
-    let (_, batches) = pictures.draw(&maps, &sheets, [1.0, 1.0], &HashSet::new(), &|_| None, 150);
+    let (_, batches) = pictures.draw(
+        &maps,
+        &sheets,
+        [1.0, 1.0],
+        &HashSet::new(),
+        &|_| None,
+        150,
+        None,
+    );
     assert_eq!(batches[0].sprites[0].rect, [4.0, 0.0, 4.0, 4.0]);
 }
 
@@ -327,12 +362,20 @@ fn only_chunks_in_view_are_drawn_and_far_away_maps_are_coloured() {
     // A view of the map's first few cells: the chunk there and those
     // beside it.
     let near = |_| Some([Vec2::new(0.0, -10.0), Vec2::new(10.0, 0.0)]);
-    let (_, batches) = pictures.draw(&maps, &sheets, [1.0, 1.0], &HashSet::new(), &near, 0);
+    let (_, batches) = pictures.draw(&maps, &sheets, [1.0, 1.0], &HashSet::new(), &near, 0, None);
     let drawn: usize = batches.iter().map(|b| b.sprites.len()).sum();
     assert_eq!(drawn, 4 * 1024, "2 × 2 chunks");
     // Above the horizon (everything may show): 361 chunks is too many to
     // draw tile by tile, so each layer is one coloured quad.
-    let (pics, batches) = pictures.draw(&maps, &sheets, [1.0, 1.0], &HashSet::new(), &|_| None, 0);
+    let (pics, batches) = pictures.draw(
+        &maps,
+        &sheets,
+        [1.0, 1.0],
+        &HashSet::new(),
+        &|_| None,
+        0,
+        None,
+    );
     assert!(pics.iter().all(|p| p.size == [600, 600]));
     assert_eq!(batches.iter().map(|b| b.sprites.len()).sum::<usize>(), 3);
 }
@@ -349,8 +392,15 @@ fn missing_tiles_are_pink_and_terrains_without_art_their_colour() {
         transform: Mat4::IDENTITY,
         map: Arc::new(map),
     }];
-    let (_, batches) =
-        TilePictures::default().draw(&maps, &sheets, [1.0, 1.0], &HashSet::new(), &|_| None, 0);
+    let (_, batches) = TilePictures::default().draw(
+        &maps,
+        &sheets,
+        [1.0, 1.0],
+        &HashSet::new(),
+        &|_| None,
+        0,
+        None,
+    );
     let all: Vec<&ViewSprite> = batches.iter().flat_map(|b| &b.sprites).collect();
     let white = |s: &&&ViewSprite| s.rect[1] == 8.0;
     assert_eq!(

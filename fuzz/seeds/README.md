@@ -17,7 +17,7 @@ Real files the fuzzers start from, one folder per target in [`../fuzz_targets`](
 | `sound_event/` | A full sound event, an empty one and a looping 2D one. |
 | `sound_file/` | WAV files of each kind the reader takes, and Ogg Vorbis files from `crates/sound/tests/data`. |
 | `tile_art/` | The logo's PNG and the walker's Aseprite file, each after the byte that chooses its reader. |
-| `tile_map/` | A tile map file (`.soltilemap`), as the fixture of version 1. |
+| `tile_map/` | Tile map files (`.soltilemap`), as the fixtures of version 1 and of version 2 (with exact tiles). |
 | `tileset/` | Tilesets (`.soltileset`): the fixtures of version 1 and of version 2 (art, every kind, rules). |
 | `update_answer/` | A release answer and its checksum file, joined by a 0x01 byte. |
 

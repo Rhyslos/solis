@@ -121,6 +121,41 @@ fn a_16_tile_terrain_sits_where_four_cells_meet() {
 }
 
 #[test]
+fn an_exact_tile_shows_its_piece_over_the_rest_of_the_layer() {
+    let set = farm_art();
+    let mut map = map_of(&["...", ".t.", "..."]);
+    let fence = set.pieces[set.pieces.len() - 1].id;
+    map.set_exact(0, 0, 0, Some(fence)).unwrap();
+    map.set_exact(0, 2, 2, Some(id(999))).unwrap();
+    let tiles = chunk_tiles(&map, 0, &set, [0, 0]);
+    let top = 1 + set.terrains.len() as u16;
+    let exact: Vec<&Placed> = tiles.iter().filter(|p| p.pass == top).collect();
+    assert_eq!(exact.len(), 2);
+    assert_eq!(at(&tiles, 0, 0), [Art::Piece(set.pieces.len() - 1)]);
+    // A piece the tileset hasn't any more is missing; the cell's own art
+    // isn't drawn under either.
+    assert_eq!(at(&tiles, 4, 4), [Art::Missing]);
+    assert_eq!(tiles.iter().filter(|p| p.pass == 0).count(), 6);
+    // The tilled cell's neighbours still count it: four corners round it.
+    assert_eq!(tiles.iter().filter(|p| p.pass == 2).count(), 4);
+    // Another chunk's exact tiles stay out of this one.
+    let mut big = TileMap::new([64, 32], None, Some(b'.'));
+    big.set_exact(0, 40, 3, Some(fence)).unwrap();
+    assert!(
+        !chunk_tiles(&big, 0, &set, [0, 0])
+            .iter()
+            .any(|p| p.pass == top)
+    );
+    assert_eq!(
+        chunk_tiles(&big, 0, &set, [1, 0])
+            .iter()
+            .filter(|p| p.pass == top)
+            .count(),
+        1
+    );
+}
+
+#[test]
 fn a_16_tile_terrain_s_corners_belong_to_one_chunk_each() {
     let set = farm_art();
     let map = TileMap::new([40, 40], None, Some(b't'));

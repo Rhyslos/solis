@@ -204,6 +204,7 @@ pub(crate) fn game_panel(
         &std::collections::HashSet::new(),
         &|z| crate::tile_view::ground_in_view(view_projection, z),
         (scene.seconds.max(0.0) * 1000.0) as u64,
+        None,
     );
     let view = ViewportView {
         size_px,

@@ -41,6 +41,18 @@ fn tab(
     hovered: Option<[u32; 2]>,
     hidden: HashSet<Id>,
 ) -> Harness<'static, TabState> {
+    tab_painting(map, tileset, hovered, hidden, None, false)
+}
+
+/// The tab, painting with `code` (exact tiles with `exact`).
+fn tab_painting(
+    map: TileMap,
+    tileset: Option<Tileset>,
+    hovered: Option<[u32; 2]>,
+    hidden: HashSet<Id>,
+    code: Option<u8>,
+    exact: bool,
+) -> Harness<'static, TabState> {
     Harness::builder()
         .with_size(vec2(360.0, 720.0))
         .build_ui_state(
@@ -52,6 +64,15 @@ fn tab(
                     hovered,
                     hidden: &s.2,
                     playing: false,
+                    paint: PaintShown {
+                        code,
+                        exact,
+                        piece: None,
+                        stamp: None,
+                        picture: None,
+                        ms: 0,
+                        accent: Color32::GOLD,
+                    },
                 };
                 let asked = map_tab(ui, &shown);
                 s.3.extend(asked);
@@ -210,4 +231,54 @@ fn a_map_file_s_properties_choose_its_tileset() {
     h.get_by_label("town").click();
     h.run();
     assert_eq!(h.state().1, Some((Some(b), [10, 8])));
+}
+
+#[test]
+fn a_swatch_clicked_is_painted_with_and_exact_shows_its_tiles() {
+    let mut set = set();
+    let tilled = set.by_name("tilled").unwrap().id;
+    for slot in [0, 15] {
+        set.pieces.push(tiles::Piece {
+            id: Id::random(),
+            terrain: tilled,
+            slot,
+            at: [slot % 4, slot / 4],
+            weight: 1.0,
+            animation: tiles::Animation::None,
+        });
+    }
+    set.terrains[1].kind = tiles::TileKind::Dual16;
+    let mut h = tab_painting(
+        map(),
+        Some(set.clone()),
+        None,
+        HashSet::new(),
+        Some(b't'),
+        true,
+    );
+    h.run();
+    // The first terrain isn't the one painted; tilled is, outlined.
+    h.get_by_label("Paint with grass").click();
+    h.run();
+    assert_eq!(h.state().3, [MapRequest::PaintWith(b'.')]);
+    // Its two tiles, the middle of a patch (slot 15) chosen at first.
+    assert!(
+        h.query_by_label("Tile at column 1, row 1 (slot 0)")
+            .is_some()
+    );
+    let full = h.get_by_label("Tile at column 4, row 4 (slot 15)");
+    assert_eq!(
+        full.accesskit_node().toggled(),
+        Some(egui::accesskit::Toggled::True)
+    );
+    h.get_by_label("Tile at column 1, row 1 (slot 0)").click();
+    h.run();
+    assert!(matches!(
+        h.state().3.last(),
+        Some(MapRequest::PaintPiece(_))
+    ));
+    // A terrain without art says how to give it some.
+    let mut h = tab_painting(map(), Some(set), None, HashSet::new(), Some(b'~'), true);
+    h.run();
+    assert!(h.query_by_label_contains("It has no art yet").is_some());
 }

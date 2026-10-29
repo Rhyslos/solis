@@ -96,6 +96,24 @@ These work while the pointer is over the Map tab; see [Tile maps](tile-maps.md).
 |---|---|
 | Undo or redo a change to the map | Ctrl + Z, Ctrl + Y |
 
+## Painting tiles (a tile map selected)
+
+These work in the viewport while a tile map's entity is selected; see [Painting tiles](painting-tiles.md).
+
+| Action | Shortcut |
+|---|---|
+| Brush, Rectangle, Line, Fill, Eyedropper | B, U, N, G, I |
+| Back to a transform tool | Q, W, R, S, T |
+| Paint | Left-drag (a click for the fill) |
+| Empty cells | Right-drag |
+| Paint with the terrain under the pointer | Alt + click |
+| Place exact tiles for one stroke | Hold Ctrl while painting |
+| Flip a copy left and right, top and bottom; turn it a quarter | X, Y, Z (holding a copy) |
+| Give up a stroke; put the copy away; leave the painting tool | Esc |
+| Show the map's art or its meaning | Tab |
+| Undo or redo a stroke | Ctrl + Z, Ctrl + Y |
+| Slide the view | Middle-drag |
+
 ## Editing
 
 | Action | Shortcut |

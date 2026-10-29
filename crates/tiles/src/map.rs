@@ -124,6 +124,10 @@ pub struct TileMap {
     layers: Vec<Layer>,
     /// Each layer's cells: a terrain's code (ASCII), 0 for empty.
     cells: Vec<Arc<Vec<u8>>>,
+    /// Each layer's exact tiles (D6): cells that show one piece of their
+    /// tileset as it is, not the one autotiling would pick, by cell index.
+    /// Art only: not in the checksum.
+    exact: Vec<Arc<std::collections::BTreeMap<u32, Id>>>,
     values: Vec<ValueDef>,
     columns: Vec<Arc<Column>>,
     /// Which chunks changed since last taken (drawing).
@@ -148,6 +152,7 @@ impl Clone for TileMap {
             size: self.size,
             layers: self.layers.clone(),
             cells: self.cells.clone(),
+            exact: self.exact.clone(),
             values: self.values.clone(),
             columns: self.columns.clone(),
             dirty: self.dirty.clone(),
@@ -168,6 +173,7 @@ impl PartialEq for TileMap {
             && self.size == other.size
             && self.layers == other.layers
             && self.cells == other.cells
+            && self.exact == other.exact
             && self.values == other.values
             && self.columns == other.columns
     }
@@ -215,6 +221,7 @@ impl TileMap {
             size,
             layers: Vec::new(),
             cells: Vec::new(),
+            exact: Vec::new(),
             values: Vec::new(),
             columns: Vec::new(),
             dirty: vec![false; chunks],
@@ -345,6 +352,80 @@ impl TileMap {
             return Ok(false);
         }
         Arc::make_mut(cells)[i] = code;
+        // Painted over: autotiled again.
+        if self.exact[layer].contains_key(&(i as u32)) {
+            Arc::make_mut(&mut self.exact[layer]).remove(&(i as u32));
+        }
+        self.touch(x, y);
+        self.layer_revisions[layer] = self.revision;
+        Ok(true)
+    }
+
+    /// The piece a cell of a layer shows as it is (an exact tile), if it
+    /// has one.
+    pub fn exact(&self, layer: usize, x: u32, y: u32) -> Option<Id> {
+        let i = self.index(x, y)?;
+        self.exact.get(layer)?.get(&(i as u32)).copied()
+    }
+
+    /// Every exact tile of a layer: cell index and piece.
+    pub fn exact_tiles(&self, layer: usize) -> impl Iterator<Item = (u32, Id)> + '_ {
+        self.exact
+            .get(layer)
+            .into_iter()
+            .flat_map(|m| m.iter().map(|(&i, &p)| (i, p)))
+    }
+
+    /// A layer's exact tiles on row `y` within columns `xs`: column and
+    /// piece. Quick however many the map has.
+    pub fn exact_in_row(
+        &self,
+        layer: usize,
+        y: u32,
+        xs: std::ops::Range<u32>,
+    ) -> impl Iterator<Item = (u32, Id)> + '_ {
+        let w = self.size[0];
+        let range = (y < self.size[1] && xs.start < xs.end.min(w))
+            .then(|| y * w + xs.start..y * w + xs.end.min(w));
+        self.exact
+            .get(layer)
+            .zip(range)
+            .into_iter()
+            .flat_map(move |(m, r)| m.range(r).map(move |(&i, &p)| (i % w, p)))
+    }
+
+    /// Whether any layer has an exact tile.
+    pub fn has_exact(&self) -> bool {
+        self.exact.iter().any(|m| !m.is_empty())
+    }
+
+    /// Makes a cell of a layer show `piece` as it is (an exact tile), or
+    /// go back to autotiling (`None`). An empty cell can't hold one.
+    /// Whether it changed.
+    pub fn set_exact(
+        &mut self,
+        layer: usize,
+        x: u32,
+        y: u32,
+        piece: Option<Id>,
+    ) -> Result<bool, MapError> {
+        let i = self.index(x, y).ok_or(MapError::Outside)? as u32;
+        let cells = self.cells.get(layer).ok_or(MapError::NoSuch)?;
+        if piece.is_some() && cells[i as usize] == 0 {
+            return Err(MapError::NotUsable);
+        }
+        if self.exact[layer].get(&i).copied() == piece {
+            return Ok(false);
+        }
+        let exact = Arc::make_mut(&mut self.exact[layer]);
+        match piece {
+            Some(p) => {
+                exact.insert(i, p);
+            }
+            None => {
+                exact.remove(&i);
+            }
+        }
         self.touch(x, y);
         self.layer_revisions[layer] = self.revision;
         Ok(true)
@@ -434,6 +515,7 @@ impl TileMap {
             over,
         });
         self.cells.push(Arc::new(vec![0; self.cell_count()]));
+        self.exact.push(Arc::default());
         self.layer_revisions.push(0);
         self.all_dirty();
         Ok(self.layers.len() - 1)
@@ -446,6 +528,7 @@ impl TileMap {
         }
         self.layers.remove(layer);
         self.cells.remove(layer);
+        self.exact.remove(layer);
         self.layer_revisions.remove(layer);
         self.all_dirty();
         true
@@ -466,6 +549,7 @@ impl TileMap {
         }
         self.layers.swap(layer, other);
         self.cells.swap(layer, other);
+        self.exact.swap(layer, other);
         self.all_dirty();
         true
     }
@@ -589,6 +673,13 @@ impl TileMap {
                 }
             }
             *cells = Arc::new(fresh);
+        }
+        for exact in &mut self.exact {
+            let kept = exact
+                .iter()
+                .filter_map(|(&i, &piece)| keep(i as usize).map(|j| (j as u32, piece)))
+                .collect();
+            *exact = Arc::new(kept);
         }
         for column in &mut self.columns {
             let fresh = match &**column {

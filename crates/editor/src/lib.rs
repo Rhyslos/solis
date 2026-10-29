@@ -54,6 +54,7 @@ pub mod sprite_sheets;
 #[cfg(test)]
 mod test_support;
 pub mod theme;
+pub mod tile_paint;
 pub mod tile_view;
 mod tileset_editor;
 mod tileset_view;
@@ -66,6 +67,7 @@ pub mod workbench;
 mod workbench_animator;
 mod workbench_frames;
 mod workbench_library;
+mod workbench_paint;
 mod workbench_tiles;
 mod workbench_tileset;
 mod workbench_tools;

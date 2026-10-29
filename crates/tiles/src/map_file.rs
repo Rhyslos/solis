@@ -17,10 +17,13 @@
 //!
 //! cells 3KD8V0Q2MX7TA.0.0 { rows = ["....tttt", "....tttt"]; }
 //! values 0.0 { crop = [[4, 0, "wheat"]]; growth = [[4, 0, 2]]; watered = [[4, 0]]; }
+//! exact 3KD8V0Q2MX7TA.0.0 { cells = [[4, 1, "5GQ1D9W7XK2PB"]]; }
 //! ```
 //!
 //! A chunk with every cell empty, or every value at its start, is left
-//! out. The art isn't stored: it's worked out from the terrains. Read as a
+//! out. The art isn't stored: it's worked out from the terrains, except
+//! for exact tiles (version 2, D6): cells painted to show one piece of the
+//! tileset as it is, each [x, y, piece's ID] within the chunk. Read as a
 //! hostile file: within limits, a part it can't use skipped with a note;
 //! a code the tileset hasn't is kept (Problems says so).
 
@@ -33,7 +36,7 @@ use reflect::{AssetId, Id, Value};
 use std::fmt;
 
 /// The layout version this build writes and reads.
-pub const VERSION: u32 = 1;
+pub const VERSION: u32 = 2;
 const KIND: &str = "tilemap";
 /// The file's extension.
 pub const EXTENSION: &str = "soltilemap";
@@ -50,8 +53,14 @@ pub static FORMAT: reflect::upgrade::Format<settings::BlockSettings> = reflect::
     name: "tile map",
     current: VERSION,
     version_of: |text| reflect::upgrade::header_version(text, &[KIND]),
-    steps: &[],
+    steps: &[exact_came_later],
 };
+
+/// Version 1 to 2: nothing to change. Version 1 had no exact tiles; every
+/// cell is autotiled, which is what a cell without one is.
+fn exact_came_later(_: &mut settings::BlockSettings) -> Result<(), String> {
+    Ok(())
+}
 
 /// Why a map file couldn't be read.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -105,6 +114,26 @@ fn chunk_at(map: &TileMap, text: &str) -> Result<[u32; 2], String> {
         (Ok(x), Ok(y)) if x < across && y < down => Ok([x, y]),
         _ => Err(format!("\"{text}\" isn't a chunk of this map")),
     }
+}
+
+/// The blocks of a map file, in the order they're read (a layer before
+/// its cells, the cells before their exact tiles).
+const WORDS: [&str; 5] = ["layer", "value", "cells", "exact", "values"];
+
+/// A layer's chunk, `ID.x.y`: the layer's index and the chunk.
+fn layer_chunk(map: &TileMap, name: &str) -> Result<(usize, [u32; 2]), String> {
+    let (layer_id, chunk) = name
+        .split_once('.')
+        .ok_or_else(|| format!("\"{name}\" isn't a layer's chunk (ID.x.y)"))?;
+    let layer_id: Id = layer_id
+        .parse()
+        .map_err(|_| format!("\"{layer_id}\" isn't an ID"))?;
+    let layer = map
+        .layers()
+        .iter()
+        .position(|l| l.id == layer_id)
+        .ok_or("its layer isn't one of the map's")?;
+    Ok((layer, chunk_at(map, chunk)?))
 }
 
 /// Reads a map file.
@@ -167,13 +196,14 @@ pub fn read(text: &str) -> Result<ReadMap, MapFileError> {
         }
     }
     let mut map = TileMap::bare(size, tileset);
-    for word in ["layer", "value", "cells", "values"] {
+    for word in WORDS {
         for block in read.blocks.iter().filter(|b| b.word == word) {
             let line = block.line;
             let result = match word {
                 "layer" => layer(&mut map, &block.name, &block.fields),
                 "value" => value(&mut map, &block.name, &block.fields),
                 "cells" => cells(&mut map, &block.name, &block.fields),
+                "exact" => exact(&mut map, &block.name, &block.fields),
                 _ => values(&mut map, &block.name, &block.fields, &mut notes, line),
             };
             if let Err(why) = result {
@@ -184,7 +214,7 @@ pub fn read(text: &str) -> Result<ReadMap, MapFileError> {
         }
     }
     for block in &read.blocks {
-        if !matches!(block.word.as_str(), "layer" | "value" | "cells" | "values") {
+        if !WORDS.contains(&block.word.as_str()) {
             notes.push(format!(
                 "line {}: \"{}\" isn't a part of a tile map, so it's skipped",
                 block.line, block.word
@@ -270,18 +300,7 @@ fn value(map: &mut TileMap, id: &str, fields: &[Field]) -> Result<(), String> {
 }
 
 fn cells(map: &mut TileMap, name: &str, fields: &[Field]) -> Result<(), String> {
-    let (layer_id, chunk) = name
-        .split_once('.')
-        .ok_or_else(|| format!("\"{name}\" isn't a layer's chunk (ID.x.y)"))?;
-    let layer_id: Id = layer_id
-        .parse()
-        .map_err(|_| format!("\"{layer_id}\" isn't an ID"))?;
-    let layer = map
-        .layers()
-        .iter()
-        .position(|l| l.id == layer_id)
-        .ok_or("its layer isn't one of the map's")?;
-    let [cx, cy] = chunk_at(map, chunk)?;
+    let (layer, [cx, cy]) = layer_chunk(map, name)?;
     let Some(Value::List(rows)) = get(fields, "rows") else {
         return Err("it needs its rows: rows = [\"…\", …]".to_owned());
     };
@@ -311,6 +330,36 @@ fn cells(map: &mut TileMap, name: &str, fields: &[Field]) -> Result<(), String> 
             };
             let _ = map.set_code(layer, x, y, code);
         }
+    }
+    Ok(())
+}
+
+/// A chunk's exact tiles. One on an empty cell (or past the map's edge)
+/// is skipped: there's nothing for it to show over.
+fn exact(map: &mut TileMap, name: &str, fields: &[Field]) -> Result<(), String> {
+    let (layer, [cx, cy]) = layer_chunk(map, name)?;
+    let Some(Value::List(items)) = get(fields, "cells") else {
+        return Err("it needs its cells: cells = [[x, y, \"piece\"], …]".to_owned());
+    };
+    if items.len() > (CHUNK * CHUNK) as usize {
+        return Err(format!("more than {} cells", CHUNK * CHUNK));
+    }
+    for item in items {
+        let (x, y, piece) = match item {
+            Value::List(parts) => match parts.as_slice() {
+                [Value::Int(x), Value::Int(y), Value::Text(p)]
+                    if (0..i64::from(CHUNK)).contains(x) && (0..i64::from(CHUNK)).contains(y) =>
+                {
+                    (*x as u32, *y as u32, p)
+                }
+                _ => return Err("a cell should be [x, y, \"piece\"] within the chunk".to_owned()),
+            },
+            _ => return Err("a cell should be [x, y, \"piece\"] within the chunk".to_owned()),
+        };
+        let piece: Id = piece
+            .parse()
+            .map_err(|_| format!("\"{piece}\" isn't a piece's ID"))?;
+        let _ = map.set_exact(layer, cx * CHUNK + x, cy * CHUNK + y, Some(piece));
     }
     Ok(())
 }
@@ -456,6 +505,28 @@ pub fn write(map: &TileMap) -> String {
             }
         }
     }
+    for (li, l) in map.layers().iter().enumerate() {
+        let mut by_chunk: std::collections::BTreeMap<(u32, u32), Vec<Value>> =
+            std::collections::BTreeMap::new();
+        for (i, piece) in map.exact_tiles(li) {
+            let (x, y) = (i % w, i / w);
+            by_chunk
+                .entry((y / CHUNK, x / CHUNK))
+                .or_default()
+                .push(Value::List(vec![
+                    Value::Int(i64::from(x % CHUNK)),
+                    Value::Int(i64::from(y % CHUNK)),
+                    Value::Text(piece.to_string()),
+                ]));
+        }
+        for ((cy, cx), cells) in by_chunk {
+            blocks.push((
+                "exact",
+                format!("{}.{cx}.{cy}", l.id),
+                vec![("cells", Value::List(cells))],
+            ));
+        }
+    }
     for cy in 0..down {
         for cx in 0..across {
             let mut f: Vec<(&str, Value)> = Vec::new();
@@ -495,7 +566,8 @@ pub fn write(map: &TileMap) -> String {
         "A tile map. Written by Solis; safe to edit by hand.\n\
          Cells are in chunks of 32 by 32: each layer's rows of terrain codes (a space\n\
          for an empty cell), and the values of cells that aren't at their start,\n\
-         each [x, y, value] within the chunk.",
+         each [x, y, value] within the chunk. Exact tiles are cells that show one\n\
+         piece of the tileset as it is, each [x, y, piece] within the chunk.",
         &fields,
         &blocks,
     )
