@@ -16,7 +16,7 @@ Not sure which? [Which language when](which-language.md) compares them, with num
 
 ## How to use it
 1. Open a [project](projects-and-the-library.md). Solis puts a `solis` folder in its `assets`, holding `world.lst` and `entity.lst`. They describe what your code can ask of the engine, such as `say` (write in the Console) or `moveTo` (put an entity somewhere).
-2. Make a file called `main.lst` in the `assets` folder, in any text editor. Your game's code starts there: Lust reads `main.lst` first, and every other code file is fetched from it, or from a file it fetches.
+2. Right-click in the Library and choose **New > Lust code file**. The first one is `main.lst`, at the top of the `assets` folder: your game's code starts there. Lust reads `main.lst` first, and every other code file is fetched from it, or from a file it fetches. The file opens in your code editor for Lust (Ledger), with a component to start from. You can also make the file by hand in any text editor.
 3. Use what the engine offers with Lust's `get`:
 
    ```

@@ -9,7 +9,75 @@ use glam::Vec3;
 use reflect::{AssetId, EntityId};
 use std::path::PathBuf;
 
+/// The Lust a new code file starts with (E1): one component, named
+/// `name`, with a field and an empty `update`, and how to use it. The
+/// game's first file (`main.lst`) says that's where code starts.
+pub(crate) fn starter_code(name: &str, path: &str) -> String {
+    let fetch = path.strip_suffix(".lst").unwrap_or(path);
+    let intro = if path == crate::workbench_library::MAIN {
+        "-- main.lst: where your game's code starts. Other code files are fetched from\n\
+         -- here, such as: fetch \"crops/wheat\":Wheat;\n"
+            .to_owned()
+    } else {
+        format!(
+            "-- {path}: a component. To use it, fetch it from main.lst:\n\
+             --     fetch \"{fetch}\":{name};\n"
+        )
+    };
+    format!(
+        "{intro}--\n\
+         -- Save, and {name} shows in Properties' Add component menu. Its fields\n\
+         -- show there too, and update runs every tick while the game plays.\n\
+         \n\
+         component {name} {{\n\
+         \x20   has {{\n\
+         \x20       float speed = 1;\n\
+         \x20   }}\n\
+         \n\
+         \x20   method update(float dt) {{\n\
+         \x20   }}\n\
+         }}\n\
+         \n\
+         pass {name};\n\
+         end\n"
+    )
+}
+
+/// The file Lust starts from.
+pub(crate) const MAIN: &str = "main.lst";
+
 impl Workbench {
+    /// A new code file's path and text (E1): `main.lst` at the top of the
+    /// assets if the project has none (game code starts there), otherwise
+    /// a free `component.lst` in `folder`.
+    pub(crate) fn new_code_file(&self, folder: &str) -> (String, String) {
+        let taken = |p: &str| {
+            self.library
+                .iter()
+                .any(|i| i.path.eq_ignore_ascii_case(p))
+        };
+        if !taken(MAIN) {
+            return (MAIN.to_owned(), starter_code("Game", MAIN));
+        }
+        let base = if folder.is_empty() {
+            String::new()
+        } else {
+            format!("{folder}/")
+        };
+        let (path, name) = (1..)
+            .map(|n| {
+                if n == 1 {
+                    (format!("{base}component.lst"), "Component".to_owned())
+                } else {
+                    (format!("{base}component{n}.lst"), format!("Component{n}"))
+                }
+            })
+            .find(|(p, _)| !taken(p))
+            .unwrap_or_default();
+        let text = starter_code(&name, &path);
+        (path, text)
+    }
+
     /// Carries out something asked for in the Library.
     pub(crate) fn library_request(
         &mut self,
@@ -102,6 +170,28 @@ impl Workbench {
                 if let Some(id) = crate::frames_editor::id_of(&self.viewport.sheets, &path) {
                     self.make_clips_file(&path, id);
                 }
+            }
+            LibraryRequest::NewCodeFile(folder) => {
+                let (path, text) = self.new_code_file(&folder);
+                actions.push(WorkbenchAction::NewTextFile {
+                    path: path.clone().into(),
+                    text,
+                });
+                self.show_in_library(&path);
+                self.library_request(LibraryRequest::Open(LibraryKind::Code, path), actions);
+            }
+            LibraryRequest::NewArea(folder) => {
+                let path = crate::workbench_tiles::free_path(&folder, "area", "solarea", |p| {
+                    self.library.iter().any(|i| i.path == p)
+                });
+                let fresh = crate::document::Document::default();
+                let text = area::text::write(fresh.area(), &self.document.registry, &|_| None);
+                actions.push(WorkbenchAction::NewTextFile {
+                    path: path.clone().into(),
+                    text,
+                });
+                self.show_in_library(&path);
+                self.library_request(LibraryRequest::Open(LibraryKind::Area, path), actions);
             }
             LibraryRequest::Open(LibraryKind::Area, path) => {
                 self.request(WorkbenchAction::OpenAreaFile(full(&path)), actions);

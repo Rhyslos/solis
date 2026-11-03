@@ -33,10 +33,18 @@ Make a project as soon as you start something you want to keep. Without one, Sol
 
 **Open things:** double-click an **area** to open it (Solis asks first if yours has unsaved changes). Double-click a picture to open it in its own program (your picture editor, say). Any other file, one Solis doesn't know, opens its folder instead of the file itself, and its name is shown in full with its ending: a file called `brick.png.exe` is a program pretending to be a picture, and opening it would run it. Projects you download or are sent can hold anything, so Solis never runs what's in them.
 
+**Make new things:** right-click anywhere in the Library (empty space, a folder or a file) and choose **New**, or use the **+ New** button above it. Everything is made in the folder shown (or the one you right-clicked):
+- **Lust code file**: your game's code. The first one is `main.lst`, at the top of the assets, because game code starts there; later ones are `component.lst`, ready to fetch from `main.lst`. Each starts with a component and opens in the program your computer uses for `.lst` files (Ledger, once it's installed). See [Game code](game-code.md).
+- **Folder**: "New folder".
+- **Area**: an empty level, saved there and opened (Solis asks first if yours has unsaved changes). See [Saving areas](saving-areas.md).
+- **Tile map**, **Tileset**, **Animator** and **Sound event**: see [Tile maps](tile-maps.md), [Tilesets and autotiling](tilesets.md), [Animators](animators.md) and [Sound events](sound-events.md).
+
+**Import** above the Library brings in a model, like **File > Import model…**.
+
 **Organise files** (right-click a file or folder):
 - **Rename…**: type a new name. The file's ID file goes with it, so nothing using it breaks. Changing only capitals works too. Renaming the open area is fine: Solis saves to the new name. A name must work on every computer: at most 100 characters, none of `< > : " / \ | ? *`, and not a name Windows keeps for a device (`CON`, `NUL`, `COM1` …); the Console says why if it isn't.
 - **Move**: drag a file onto a folder in the tree.
-- **New folder** (also in the **Import** menu): makes "New folder" inside the folder shown.
+- **New**: makes something new in that folder (see below).
 - **Show in Explorer** opens the folder in your system's file browser.
 - **Delete** moves the file (or folder) to the **Recycle Bin**, with its ID file, so you can get it back. Anything in the area still using it keeps showing it until Solis restarts.
 

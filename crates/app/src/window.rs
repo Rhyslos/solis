@@ -27,7 +27,14 @@ const PREVIEW_FRAME: std::time::Duration = std::time::Duration::from_millis(33);
 const IDLE_FRAME: std::time::Duration = std::time::Duration::from_secs(1);
 const LAYOUT_KEY: &str = "panel_layout";
 /// Key under which the accent colour is remembered.
-const ACCENT_KEY: &str = "accent";
+/// The accent chosen, saved since blue became the standard (decision
+/// 0070).
+const ACCENT_KEY: &str = "accent2";
+/// The accent as saved before: amber there was the standard of its day,
+/// so it reads as the new standard, blue; any other was chosen and stays.
+const OLD_ACCENT_KEY: &str = "accent";
+/// Whether the start page comes up when no project opens (E1).
+const START_PAGE_KEY: &str = "start_page";
 /// Key under which the viewport's corner controls are remembered.
 const OVERLAYS_KEY: &str = "viewport_overlays";
 /// Key under which snapping and the axis locks are remembered.
@@ -124,8 +131,14 @@ impl App {
         let layout: Option<DockState<Panel>> =
             storage.and_then(|s| eframe::get_value(s, LAYOUT_KEY));
         let accent: Accent = storage
-            .and_then(|s| eframe::get_value(s, ACCENT_KEY))
+            .and_then(|s| {
+                eframe::get_value(s, ACCENT_KEY)
+                    .or_else(|| eframe::get_value(s, OLD_ACCENT_KEY).map(accent_from_before))
+            })
             .unwrap_or_default();
+        let start_page: bool = storage
+            .and_then(|s| eframe::get_value(s, START_PAGE_KEY))
+            .unwrap_or(true);
         let camera: Camera = storage
             .and_then(|s| eframe::get_value(s, CAMERA_KEY))
             .unwrap_or_default();
@@ -218,9 +231,14 @@ impl App {
             logo: load_logo(&cc.egui_ctx),
         };
         app.workbench.set_recent(app.projects.recent().to_vec());
+        app.workbench.set_manual_url(format!(
+            "https://github.com/{}/tree/main/docs/manual",
+            branding::UPDATE_REPO
+        ));
         if let Some(root) = last_project.filter(|r| r.join(asset_db::PROJECT_FILE).is_file()) {
             app.open_project(&root, false);
         }
+        app.workbench.launch_start_page(start_page);
         for path in imports {
             app.import(&path);
         }
@@ -828,6 +846,18 @@ impl App {
                             LogLevel::Error,
                             format!("Couldn't save {}: {why}.", path.display()),
                         );
+                    }
+                }
+                WorkbenchAction::NewTextFile { path, text } => {
+                    match self.projects.save_new_text(&path, &text) {
+                        Ok(()) => self.workbench.log(
+                            LogLevel::Info,
+                            format!("Made {}.", path.display()),
+                        ),
+                        Err(why) => self.workbench.log(
+                            LogLevel::Error,
+                            format!("Couldn't make {}: {why}.", path.display()),
+                        ),
                     }
                 }
                 WorkbenchAction::SaveTileMap { path, text } => {
@@ -1529,6 +1559,16 @@ impl App {
     }
 }
 
+/// An accent saved before blue became the standard (decision 0070): amber,
+/// the standard then, becomes blue; any other was chosen and stays.
+fn accent_from_before(saved: Accent) -> Accent {
+    if saved == Accent::Amber {
+        Accent::default()
+    } else {
+        saved
+    }
+}
+
 /// The logo as a texture, for the splash (none if it can't be read).
 fn load_logo(ctx: &egui::Context) -> Option<egui::TextureHandle> {
     let icon = eframe::icon_data::from_png_bytes(branding::LOGO_PNG).ok()?;
@@ -1785,6 +1825,11 @@ impl eframe::App for App {
     fn save(&mut self, storage: &mut dyn eframe::Storage) {
         eframe::set_value(storage, LAYOUT_KEY, self.workbench.layout());
         eframe::set_value(storage, ACCENT_KEY, &self.workbench.accent());
+        eframe::set_value(
+            storage,
+            START_PAGE_KEY,
+            &self.workbench.start_page_at_launch(),
+        );
         eframe::set_value(storage, OVERLAYS_KEY, &self.workbench.overlays());
         eframe::set_value(storage, SNAPPING_KEY, &self.workbench.snapping());
         eframe::set_value(storage, CAMERA_KEY, &self.workbench.camera());
@@ -1907,6 +1952,19 @@ fn open_externally(path: &std::path::Path) -> std::io::Result<()> {
 
 #[cfg(test)]
 mod tests {
+    #[test]
+    fn an_accent_saved_before_blue_was_the_standard_carries_over() {
+        // Decision 0070: amber was the standard nobody chose, so it turns
+        // blue; a colour someone picked stays theirs.
+        use editor::theme::Accent;
+        assert_eq!(super::accent_from_before(Accent::Amber), Accent::Blue);
+        assert_eq!(super::accent_from_before(Accent::Plum), Accent::Plum);
+        assert_eq!(
+            super::accent_from_before(Accent::PetrolBlue),
+            Accent::PetrolBlue
+        );
+    }
+
     #[test]
     fn models_only_game_code_places_are_loaded_too() {
         use area::builtin::Model;

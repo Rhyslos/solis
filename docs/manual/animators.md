@@ -14,7 +14,7 @@ Why a picture rather than code? Because animation rules get tangled fast ("swing
 For one-off sprites (a door, a crop swaying) a plain clip on the Sprite is simpler: no animator needed.
 
 ## How to use it
-1. **Make one:** in the Library, open the folder you want it in, then **Import > New animator**. Solis makes `animator.solanim` with one state, *Idle*, and opens it. (Rename the file in the Library, as any other.)
+1. **Make one:** in the Library, open the folder you want it in, then **New > Animator** (right-click in the Library, or **+ New**). Solis makes `animator.solanim` with one state, *Idle*, and opens it. (Rename the file in the Library, as any other.)
 2. **The Animator tab** opens first beside the Viewport, and the file shows as a second tab in the top bar (click it, or the area's tab, to switch). On the left are the parameters and a preview; on the right, the graph.
 3. **Choose its clips:** click empty space in the graph. Properties shows the animator: pick **Clips from**, the sprite sheet (or clips file) whose clips its states play.
 4. **Add states:** right-click empty space > **Add state**. Click a state to change it in Properties:

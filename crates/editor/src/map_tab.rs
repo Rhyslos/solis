@@ -710,7 +710,7 @@ pub(crate) fn map_file_properties(
                     }
                 }
                 if tilesets.is_empty() {
-                    ui.label("No tilesets yet: Library > Import > New tileset.");
+                    ui.label("No tilesets yet: right-click in the Library > New > Tileset.");
                 }
             });
     });

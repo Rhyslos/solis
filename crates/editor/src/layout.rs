@@ -8,7 +8,7 @@ use egui_dock::{DockState, NodeIndex};
 /// Share of the window width given to the viewport's side (the right
 /// column with Area and Properties gets the rest).
 const MAIN_AREA_WIDTH: f32 = 0.77;
-/// Share of the right column given to Area and Layers.
+/// Share of the right column given to Area.
 const AREA_HEIGHT: f32 = 0.45;
 /// Share of the main area given to the viewport (the bottom panels get the
 /// rest).
@@ -28,7 +28,7 @@ const LIBRARY_WIDTH: f32 = 0.6;
 /// └──────────┴───────┴──────┘
 /// ```
 ///
-/// Area shares its group with Layers, Library with Code and Console
+/// Area has its group to itself, Library shares with Code and Console
 /// with Problems and the Profiler, as in the mockup.
 pub fn standard() -> DockState<Panel> {
     let mut dock = DockState::new(vec![Panel::Viewport, Panel::Game]);
@@ -36,7 +36,7 @@ pub fn standard() -> DockState<Panel> {
     let [main_area, right_column] = tree.split_right(
         NodeIndex::root(),
         MAIN_AREA_WIDTH,
-        vec![Panel::Area, Panel::Layers],
+        vec![Panel::Area],
     );
     tree.split_below(right_column, AREA_HEIGHT, vec![Panel::Properties]);
     let [_, bottom] = tree.split_below(
@@ -132,7 +132,7 @@ pub fn restore(saved: Option<DockState<Panel>>) -> DockState<Panel> {
         return standard();
     };
     // Tabs that come with a file aren't kept: no file is open yet.
-    for panel in Panel::OPEN_WITH_A_FILE {
+    for panel in Panel::OPEN_WITH_A_FILE.into_iter().chain(Panel::NOT_BUILT) {
         close(&mut dock, panel);
     }
     let twice = Panel::ALL.iter().any(|panel| {
@@ -292,7 +292,7 @@ mod tests {
         );
         assert_eq!(
             tab_group_of(&dock, Panel::Area),
-            [Panel::Area, Panel::Layers]
+            [Panel::Area]
         );
         assert_eq!(beside_viewport(&dock), [Panel::Viewport, Panel::Game]);
     }
