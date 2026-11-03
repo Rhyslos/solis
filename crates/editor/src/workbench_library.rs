@@ -51,11 +51,7 @@ impl Workbench {
     /// assets if the project has none (game code starts there), otherwise
     /// a free `component.lst` in `folder`.
     pub(crate) fn new_code_file(&self, folder: &str) -> (String, String) {
-        let taken = |p: &str| {
-            self.library
-                .iter()
-                .any(|i| i.path.eq_ignore_ascii_case(p))
-        };
+        let taken = |p: &str| self.library.iter().any(|i| i.path.eq_ignore_ascii_case(p));
         if !taken(MAIN) {
             return (MAIN.to_owned(), starter_code("Game", MAIN));
         }

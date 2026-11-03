@@ -332,7 +332,11 @@ pub(crate) fn library(
     if !code {
         // Right-clicking where there's no file: what can be made here.
         // Files and folders drawn over it have their own menus.
-        let space = ui.interact(files_rect, ui.id().with("empty space"), egui::Sense::click());
+        let space = ui.interact(
+            files_rect,
+            ui.id().with("empty space"),
+            egui::Sense::click(),
+        );
         space.context_menu(|ui| {
             ui.menu_button("New", |ui| new_items(ui, &state.folder, &mut requests));
             ui.separator();
@@ -396,8 +400,16 @@ fn new_items(ui: &mut Ui, folder: &str, requests: &mut Vec<LibraryRequest>) {
             "A Lust file with a component to start from, opened in your editor for Lust",
             LibraryRequest::NewCodeFile,
         ),
-        ("Folder", "A new folder inside this one", LibraryRequest::NewFolder),
-        ("Area", "An empty area (a level), saved here and opened", LibraryRequest::NewArea),
+        (
+            "Folder",
+            "A new folder inside this one",
+            LibraryRequest::NewFolder,
+        ),
+        (
+            "Area",
+            "An empty area (a level), saved here and opened",
+            LibraryRequest::NewArea,
+        ),
         (
             "Tile map",
             "A grid of terrains, filled with its tileset's first; drag it into the viewport",

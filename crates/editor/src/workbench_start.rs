@@ -27,6 +27,10 @@ impl Default for StartPage {
     }
 }
 
+/// How wide the start page is, and each example's card.
+const WIDTH: f32 = 690.0;
+const CARD: f32 = 200.0;
+
 /// An example project, made in a folder the user picks.
 struct Example {
     name: &'static str,
@@ -88,14 +92,16 @@ impl Workbench {
         let modal = egui::Modal::new(egui::Id::new("start page"))
             .backdrop_color(egui::Color32::from_black_alpha(220))
             .show(ui.ctx(), |ui| {
-                ui.set_width(720.0);
+                ui.set_min_width(WIDTH);
+                ui.set_max_width(WIDTH);
                 ui.horizontal(|ui| {
                     ui.label(
                         RichText::new(format!("Welcome to {}", self.info.name))
                             .size(24.0)
                             .strong(),
                     );
-                    ui.with_layout(egui::Layout::right_to_left(egui::Align::Min), |ui| {
+                    ui.add_space((ui.available_width() - 24.0).max(0.0));
+                    {
                         let x = ui
                             .add(egui::Button::new("×").frame(false))
                             .on_hover_text("Close, and carry on without a project (Esc)");
@@ -107,7 +113,7 @@ impl Workbench {
                             )
                         });
                         close |= x.clicked();
-                    });
+                    }
                 });
                 ui.label(
                     RichText::new("Make a project to start, or open one you've made.")
@@ -174,14 +180,19 @@ impl Workbench {
                             .corner_radius(6.0)
                             .inner_margin(10.0)
                             .show(ui, |ui| {
-                                ui.set_width(200.0);
-                                ui.set_height(64.0);
-                                ui.label(RichText::new(example.name).strong());
-                                ui.label(
-                                    RichText::new(example.about)
-                                        .small()
-                                        .color(theme::TEXT_WEAK),
-                                );
+                                ui.vertical(|ui| {
+                                    ui.set_width(CARD);
+                                    ui.set_height(64.0);
+                                    ui.label(RichText::new(example.name).strong());
+                                    ui.add(
+                                        egui::Label::new(
+                                            RichText::new(example.about)
+                                                .small()
+                                                .color(theme::TEXT_WEAK),
+                                        )
+                                        .wrap(),
+                                    );
+                                });
                             })
                             .response
                             .interact(egui::Sense::click())
@@ -210,9 +221,7 @@ impl Workbench {
                 }
                 ui.add_space(10.0);
                 ui.horizontal(|ui| {
-                    if !self.manual_url.is_empty()
-                        && ui.link("Open the manual ↗").clicked()
-                    {
+                    if !self.manual_url.is_empty() && ui.link("Open the manual ↗").clicked() {
                         ui.ctx()
                             .open_url(egui::OpenUrl::new_tab(self.manual_url.clone()));
                     }

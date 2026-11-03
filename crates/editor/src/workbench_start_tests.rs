@@ -179,7 +179,10 @@ fn right_clicking_the_library_offers_new_everywhere() {
     ] {
         assert!(h.query_by_label(label).is_some(), "{label}");
     }
-    assert!(h.query_all_by_label("Area").count() >= 2, "the tab and the item");
+    assert!(
+        h.query_all_by_label("Area").count() >= 2,
+        "the tab and the item"
+    );
     h.get_by_label("Tile map").click();
     h.run();
     assert!(
@@ -195,7 +198,13 @@ fn right_clicking_the_library_offers_new_everywhere() {
 fn what_isn_t_built_isn_t_shown() {
     let mut h = harness(Workbench::new(info(), None));
     h.run();
-    for label in ["Build", "Build & Play", "Play with two players", "Layers", "Wireframe"] {
+    for label in [
+        "Build",
+        "Build & Play",
+        "Play with two players",
+        "Layers",
+        "Wireframe",
+    ] {
         assert!(h.query_by_label(label).is_none(), "{label}");
     }
     // A layout saved with the Layers tab loses it.

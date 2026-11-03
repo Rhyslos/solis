@@ -33,11 +33,8 @@ const LIBRARY_WIDTH: f32 = 0.6;
 pub fn standard() -> DockState<Panel> {
     let mut dock = DockState::new(vec![Panel::Viewport, Panel::Game]);
     let tree = dock.main_surface_mut();
-    let [main_area, right_column] = tree.split_right(
-        NodeIndex::root(),
-        MAIN_AREA_WIDTH,
-        vec![Panel::Area],
-    );
+    let [main_area, right_column] =
+        tree.split_right(NodeIndex::root(), MAIN_AREA_WIDTH, vec![Panel::Area]);
     tree.split_below(right_column, AREA_HEIGHT, vec![Panel::Properties]);
     let [_, bottom] = tree.split_below(
         main_area,
@@ -290,10 +287,7 @@ mod tests {
                 Panel::Mixer
             ]
         );
-        assert_eq!(
-            tab_group_of(&dock, Panel::Area),
-            [Panel::Area]
-        );
+        assert_eq!(tab_group_of(&dock, Panel::Area), [Panel::Area]);
         assert_eq!(beside_viewport(&dock), [Panel::Viewport, Panel::Game]);
     }
 

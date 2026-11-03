@@ -850,10 +850,9 @@ impl App {
                 }
                 WorkbenchAction::NewTextFile { path, text } => {
                     match self.projects.save_new_text(&path, &text) {
-                        Ok(()) => self.workbench.log(
-                            LogLevel::Info,
-                            format!("Made {}.", path.display()),
-                        ),
+                        Ok(()) => self
+                            .workbench
+                            .log(LogLevel::Info, format!("Made {}.", path.display())),
                         Err(why) => self.workbench.log(
                             LogLevel::Error,
                             format!("Couldn't make {}: {why}.", path.display()),

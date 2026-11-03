@@ -546,4 +546,3 @@ pub(crate) fn document_tab(
     }
     (response.clicked() && !closed, closed)
 }
-

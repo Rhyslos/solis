@@ -52,7 +52,12 @@ impl MapEdits {
 }
 
 /// A free path for a new file named `stem` in `folder`.
-pub(crate) fn free_path(folder: &str, stem: &str, ext: &str, taken: impl Fn(&str) -> bool) -> String {
+pub(crate) fn free_path(
+    folder: &str,
+    stem: &str,
+    ext: &str,
+    taken: impl Fn(&str) -> bool,
+) -> String {
     let base = if folder.is_empty() {
         String::new()
     } else {

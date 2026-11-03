@@ -379,9 +379,9 @@ impl Projects {
     /// (`.lst`) or an area (`.solarea`). Never replaces a file.
     pub fn save_new_text(&self, path: &Path, text: &str) -> Result<(), String> {
         let db = self.db.as_ref().ok_or("no project is open")?;
-        let allowed = path.extension().is_some_and(|e| {
-            e.eq_ignore_ascii_case("lst") || e.eq_ignore_ascii_case("solarea")
-        });
+        let allowed = path
+            .extension()
+            .is_some_and(|e| e.eq_ignore_ascii_case("lst") || e.eq_ignore_ascii_case("solarea"));
         let plain = path
             .components()
             .all(|c| matches!(c, std::path::Component::Normal(_)));
@@ -594,9 +594,7 @@ mod tests {
             ("tool.exe", "isn't"),
             ("gone/x.lst", "folder"),
         ] {
-            let err = projects
-                .save_new_text(Path::new(path), "x")
-                .unwrap_err();
+            let err = projects.save_new_text(Path::new(path), "x").unwrap_err();
             assert!(err.contains(why), "{path}: {err}");
         }
         assert_eq!(
