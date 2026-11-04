@@ -62,6 +62,9 @@ launch() {
     # Let the first frames draw (software rendering is slow).
     sleep 6
     xdotool windowfocus --sync "$WINDOW_ID" 2>/dev/null || true
+    # With no project, the start page comes up first (E1): Esc closes it.
+    xdotool key --window "$WINDOW_ID" Escape 2>/dev/null || true
+    sleep 1
 }
 
 shot() {
@@ -91,7 +94,7 @@ changed_pixels() {
 quit() {
     xdotool mousemove 19 16 click 1
     sleep 1
-    xdotool mousemove 40 "${QUIT_Y:-285}" click 1
+    xdotool mousemove 40 "${QUIT_Y:-311}" click 1
     sleep 2
     # With unsaved changes (an imported model), Solis asks first: answer
     # Don't save, in the middle of the window.
