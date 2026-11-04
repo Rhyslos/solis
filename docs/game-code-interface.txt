@@ -165,6 +165,15 @@ kit/character.lst: CharacterController.float gravity = 20
 kit/character.lst: CharacterController.bool facesWhereItWalks = true
 kit/character.lst: CharacterController.float turnSpeed = 720
 kit/character.lst: CharacterController.float fall = 0
+kit/topdown.lst: component TopDownController
+kit/topdown.lst: TopDownController.float speed = 4
+kit/topdown.lst: TopDownController.float acceleration = 40
+kit/topdown.lst: TopDownController.float deceleration = 60
+kit/topdown.lst: TopDownController.int directions = 8
+kit/topdown.lst: TopDownController.bool usesInput = true
+kit/topdown.lst: TopDownController.vec3 wanted = [0, 0, 0]
+kit/topdown.lst: TopDownController.vec3 velocity = [0, 0, 0]
+kit/topdown.lst: TopDownController.vec3 facing = [0, -1, 0]
 kit/cameras.lst: component ThirdPersonCamera
 kit/cameras.lst: ThirdPersonCamera.entity target = nothing
 kit/cameras.lst: ThirdPersonCamera.float distance = 4
