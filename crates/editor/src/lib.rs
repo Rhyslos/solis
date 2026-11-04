@@ -103,4 +103,6 @@ mod invariant_tests;
 #[cfg(test)]
 mod kit_tests;
 #[cfg(test)]
+mod kit_topdown_tests;
+#[cfg(test)]
 mod scale_levels_tests;

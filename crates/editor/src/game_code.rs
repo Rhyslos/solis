@@ -361,6 +361,7 @@ impl GameWorld for PlayWorld<'_> {
             frame_time: self.frame_time,
             seed: self.world.seed(),
             physics: Arc::clone(self.world.physics().state()),
+            flat: Arc::clone(self.world.flat().state()),
             input: Arc::clone(&self.input),
             bindings: Arc::clone(&self.bindings),
         }

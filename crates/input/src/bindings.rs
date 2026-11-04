@@ -217,9 +217,9 @@ impl std::fmt::Display for BindingsError {
 }
 
 impl Default for Bindings {
-    /// The ready-made actions: Move, Look, Jump, Sprint and Interact
-    /// (decision 0037), and the cameras' Pan, Turn, Zoom and Drag
-    /// (decision 0041).
+    /// The ready-made actions: Move (WASD and the arrow keys, decision
+    /// 0071), Look, Jump, Sprint and Interact (decision 0037), and the
+    /// cameras' Pan, Turn, Zoom and Drag (decision 0041).
     fn default() -> Self {
         let mut look = Action::axis(
             "Look",
@@ -237,7 +237,14 @@ impl Default for Bindings {
         zoom.pad_speed = 8.0;
         Self {
             actions: vec![
-                Action::axis("Move", &["Pad LeftStick"], [&["W"], &["S"], &["A"], &["D"]]),
+                // WASD and the arrow keys both walk (decision 0071), as in
+                // most top-down games; the arrows also pan the RTS camera,
+                // as the stick already does both.
+                Action::axis(
+                    "Move",
+                    &["Pad LeftStick"],
+                    [&["W", "Up"], &["S", "Down"], &["A", "Left"], &["D", "Right"]],
+                ),
                 look,
                 Action::button("Jump", &["Space", "Pad A"]),
                 Action::button("Sprint", &["Shift", "Pad LeftStick"]),

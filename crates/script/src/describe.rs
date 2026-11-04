@@ -397,6 +397,7 @@ fn renamed_lust(lust: &str, new: &str, old: &str) -> String {
 /// copies.
 pub const KIT: &[(&str, &str)] = &[
     ("character.lst", include_str!("kit/character.lst")),
+    ("topdown.lst", include_str!("kit/topdown.lst")),
     ("cameras.lst", include_str!("kit/cameras.lst")),
 ];
 

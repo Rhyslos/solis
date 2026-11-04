@@ -11,6 +11,7 @@ fn set() -> Tileset {
         code,
         colour: [0.5; 3],
         kind,
+        solid: false,
     };
     let piece = |n: u64, terrain: u64, slot| Piece {
         id: Id::from_raw(n).unwrap(),
