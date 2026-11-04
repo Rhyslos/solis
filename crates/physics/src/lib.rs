@@ -10,6 +10,8 @@
 //! it. Everything is kept in entity order, never a hash map's, so the
 //! same changes always make the same handles.
 
+pub mod flat;
+
 use glam::{Quat, Vec3};
 use rapier3d::prelude as rp;
 use reflect::EntityId;

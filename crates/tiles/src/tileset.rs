@@ -23,6 +23,12 @@
 //!     kind = "16-tile";
 //! }
 //!
+//! terrain 8F2K0Q7M1T3WX {
+//!     name = "fence";
+//!     code = "#";
+//!     solid = true;
+//! }
+//!
 //! piece 2H7W1Q0R3S4T5 {
 //!     terrain = "5RT0M2C8K1V4D";
 //!     slot = 15;
@@ -162,6 +168,11 @@ pub struct Terrain {
     pub colour: [f32; 3],
     /// How its art is chosen.
     pub kind: TileKind,
+    /// Solid: nothing with a body passes into its cells (fences, water,
+    /// walls). Each map's solid cells become walls, merged into a few
+    /// rectangles (decision 0071). Which terrains are solid is the game's
+    /// choice, not the engine's.
+    pub solid: bool,
 }
 
 /// One of the picture's tiles filling a slot of a terrain.
@@ -483,7 +494,7 @@ pub fn read(text: &str) -> Result<ReadTileset, TilesetError> {
         }
         unknown(
             &block.fields,
-            &["name", "code", "colour", "kind"],
+            &["name", "code", "colour", "kind", "solid"],
             "terrain",
             &mut notes,
         );
@@ -750,12 +761,18 @@ fn terrain(set: &Tileset, id: &str, fields: &[Field]) -> Result<Terrain, String>
         })?,
         Some(_) => return Err("its kind should be a word in quotes".to_owned()),
     };
+    let solid = match get(fields, "solid") {
+        None => false,
+        Some(Value::Bool(b)) => *b,
+        Some(_) => return Err("solid should be true or false".to_owned()),
+    };
     Ok(Terrain {
         id,
         name,
         code,
         colour,
         kind,
+        solid,
     })
 }
 
@@ -772,6 +789,9 @@ pub fn write(tileset: &Tileset) -> String {
             ];
             if t.kind != TileKind::Plain {
                 fields.push(("kind", Value::Text(t.kind.word().to_owned())));
+            }
+            if t.solid {
+                fields.push(("solid", Value::Bool(true)));
             }
             ("terrain", t.id.to_string(), fields)
         })
@@ -834,7 +854,8 @@ pub fn write(tileset: &Tileset) -> String {
         VERSION,
         "A tileset. Written by Solis; safe to edit by hand.\n\
          Each terrain is something a tile map's cell can be: its name, the one character\n\
-         a map file writes for it, its colour, and how its art is chosen (its kind).\n\
+         a map file writes for it, its colour, how its art is chosen (its kind), and\n\
+         whether it's solid (nothing with a body passes into it).\n\
          Each piece is a tile of the picture filling one of a terrain's slots; each rule\n\
          a pattern of the cells around one, for a terrain of its own rules.",
         &fields,

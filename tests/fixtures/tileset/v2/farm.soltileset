@@ -1,6 +1,7 @@
 -- A tileset. Written by Solis; safe to edit by hand.
 -- Each terrain is something a tile map's cell can be: its name, the one character
--- a map file writes for it, its colour, and how its art is chosen (its kind).
+-- a map file writes for it, its colour, how its art is chosen (its kind), and
+-- whether it's solid (nothing with a body passes into it).
 -- Each piece is a tile of the picture filling one of a terrain's slots; each rule
 -- a pattern of the cells around one, for a terrain of its own rules.
 tileset version 2;
@@ -26,6 +27,7 @@ terrain 0000000000003 {
     code = "~";
     colour = [0.18, 0.37, 0.56];
     kind = "47-tile";
+    solid = true;
 }
 
 terrain 0000000000004 {
@@ -33,6 +35,7 @@ terrain 0000000000004 {
     code = "#";
     colour = [0.54, 0.48, 0.35];
     kind = "edges";
+    solid = true;
 }
 
 terrain 0000000000005 {
@@ -40,6 +43,7 @@ terrain 0000000000005 {
     code = "r";
     colour = [0.5, 0.5, 0.5];
     kind = "rules";
+    solid = true;
 }
 
 piece 0000000000035 {
