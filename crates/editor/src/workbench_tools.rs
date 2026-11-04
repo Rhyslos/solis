@@ -77,6 +77,23 @@ impl Workbench {
                 {
                     marks.push(Outline::Collider { world, shape });
                 }
+                // A 2D collider (decision 0071), from pixels to metres: a
+                // flat box, or a circle (drawn as a ball, a ring seen from
+                // above).
+                if let Some(flat) = entity.get::<area::builtin::Collider2D>() {
+                    let px = self.pixels.pixel_size();
+                    let shape = area::builtin::Collider {
+                        shape: match flat.shape {
+                            area::builtin::Shape2D::Circle => area::builtin::ColliderShape::Sphere,
+                            area::builtin::Shape2D::Box => area::builtin::ColliderShape::Box,
+                        },
+                        size: glam::Vec3::new(flat.width * px, flat.height * px, 0.0),
+                        radius: flat.radius * px,
+                        center: glam::Vec3::new(flat.across * px, flat.up * px, 0.0),
+                        ..area::builtin::Collider::default()
+                    };
+                    marks.push(Outline::Collider { world, shape });
+                }
                 if let Some(zone) = entity.get::<area::builtin::ReverbZone>() {
                     marks.push(Outline::Zone {
                         world,

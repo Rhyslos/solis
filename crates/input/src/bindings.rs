@@ -243,7 +243,12 @@ impl Default for Bindings {
                 Action::axis(
                     "Move",
                     &["Pad LeftStick"],
-                    [&["W", "Up"], &["S", "Down"], &["A", "Left"], &["D", "Right"]],
+                    [
+                        &["W", "Up"],
+                        &["S", "Down"],
+                        &["A", "Left"],
+                        &["D", "Right"],
+                    ],
                 ),
                 look,
                 Action::button("Jump", &["Space", "Pad A"]),

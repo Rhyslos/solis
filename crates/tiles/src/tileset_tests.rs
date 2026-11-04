@@ -316,5 +316,9 @@ fn solid_is_read_only_as_true_or_false() {
         .map(|t| (t.name.as_str(), t.solid))
         .collect();
     assert_eq!(solid, [("water", true), ("grass", false)], "odd is skipped");
-    assert!(read.notes.iter().any(|n| n.contains("true or false")), "{:?}", read.notes);
+    assert!(
+        read.notes.iter().any(|n| n.contains("true or false")),
+        "{:?}",
+        read.notes
+    );
 }

@@ -73,10 +73,20 @@ impl Component for Collider2D {
     fn schema() -> ComponentSchema {
         let d = Self::default();
         let pixels = |name: &str, label: &str, default: f32, help: &'static str| {
-            field::float(name, label, default, field::hint((0.1, 4096.0), 0.5, " px", help))
+            field::float(
+                name,
+                label,
+                default,
+                field::hint((0.1, 4096.0), 0.5, " px", help),
+            )
         };
         let offset = |name: &str, label: &str, default: f32, help: &'static str| {
-            field::float(name, label, default, field::hint((-4096.0, 4096.0), 0.5, " px", help))
+            field::float(
+                name,
+                label,
+                default,
+                field::hint((-4096.0, 4096.0), 0.5, " px", help),
+            )
         };
         ComponentSchema {
             name: Self::NAME.into(),

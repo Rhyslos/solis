@@ -766,8 +766,7 @@ impl World {
             self.unsettled.push(at);
         }
         // Its body follows at the next physics step.
-        if !self.following
-            && (self.physics.state().contains(id) || self.flat.state().contains(id))
+        if !self.following && (self.physics.state().contains(id) || self.flat.state().contains(id))
         {
             self.physics_moved.push(id);
         }
@@ -1219,7 +1218,8 @@ impl World {
         // A 2D character (a `Collider2D` ticked Character) walks on the
         // ground: its move's X and Y.
         if self.flat.state().is_character(id) {
-            self.physics_asked.push(PhysicsAsk::Flat(id, wanted.truncate()));
+            self.physics_asked
+                .push(PhysicsAsk::Flat(id, wanted.truncate()));
         } else {
             self.physics_asked.push(PhysicsAsk::Character(id, wanted));
         }

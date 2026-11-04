@@ -43,7 +43,10 @@ fn a_character_walks_freely_and_stops_a_skin_short_of_a_wall() {
     assert!((at.x - 0.5).abs() < 1e-5, "free: {at}");
     let at = walk(&mut flat, Vec2::new(0.1, 0.0), 40);
     let gap = 2.0 - (at.x + 0.25);
-    assert!(gap > 0.0 && gap <= SKIN * 1.5, "stopped at the wall: gap {gap}");
+    assert!(
+        gap > 0.0 && gap <= SKIN * 1.5,
+        "stopped at the wall: gap {gap}"
+    );
     assert_eq!(flat.moved(), vec![(id(1), at)]);
     assert!(flat.moved().is_empty(), "said once");
 }
@@ -87,7 +90,10 @@ fn walking_along_a_thousand_seams_never_bumps() {
             last.x,
             at.x - last.x
         );
-        assert!(at.y >= 0.25 && at.y < 0.25 + 2.0 * SKIN, "stayed on top: {at}");
+        assert!(
+            at.y >= 0.25 && at.y < 0.25 + 2.0 * SKIN,
+            "stayed on top: {at}"
+        );
         last = at;
     }
     assert!(last.x > 990.0, "{last}");
@@ -143,7 +149,11 @@ fn characters_bump_into_each_other_and_solid_things() {
 #[test]
 fn walls_are_replaced_chunk_by_chunk_and_taken_away() {
     let mut flat = world(Vec2::ZERO, &[rect(1.0, -1.0, 2.0, 1.0)]);
-    flat.set_walls(id(9), [1, 0], &[rect(5.0, -1.0, 6.0, 1.0), rect(7.0, -1.0, 8.0, 1.0)]);
+    flat.set_walls(
+        id(9),
+        [1, 0],
+        &[rect(5.0, -1.0, 6.0, 1.0), rect(7.0, -1.0, 8.0, 1.0)],
+    );
     assert_eq!(flat.state().wall_count(), 3);
     // The first chunk's wall is painted away: the way is open.
     flat.set_walls(id(9), [0, 0], &[]);
@@ -156,7 +166,11 @@ fn walls_are_replaced_chunk_by_chunk_and_taken_away() {
     assert_eq!(flat.state().wall_count(), 1);
     assert_eq!(flat.maps_with_walls(), vec![id(8)]);
     // Rectangles that aren't sensible aren't made.
-    flat.set_walls(id(7), [0, 0], &[rect(1.0, 1.0, 1.0, 2.0), rect(f32::NAN, 0.0, 1.0, 1.0)]);
+    flat.set_walls(
+        id(7),
+        [0, 0],
+        &[rect(1.0, 1.0, 1.0, 2.0), rect(f32::NAN, 0.0, 1.0, 1.0)],
+    );
     assert_eq!(flat.state().wall_count(), 1);
 }
 
@@ -167,7 +181,10 @@ fn moved_by_hand_it_goes_there_without_sliding() {
     assert_eq!(flat.state().place(id(1)), Some(Vec2::new(5.0, 0.0)));
     assert!(flat.moved().is_empty(), "not physics' move");
     let at = walk(&mut flat, Vec2::new(-0.1, 0.0), 40);
-    assert!(at.x > 2.0 + 0.25, "and walls still stop it from there: {at}");
+    assert!(
+        at.x > 2.0 + 0.25,
+        "and walls still stop it from there: {at}"
+    );
     flat.set_place(id(1), Vec2::new(f32::INFINITY, 0.0));
     assert_eq!(flat.state().place(id(1)), Some(at), "not a number: ignored");
 }
@@ -190,14 +207,21 @@ fn nothing_that_isn_t_a_number_gets_in() {
         },
         true,
     );
-    assert_eq!(flat.state().place(id(3)), Some(Vec2::ZERO), "sizes made sensible");
+    assert_eq!(
+        flat.state().place(id(3)),
+        Some(Vec2::ZERO),
+        "sizes made sensible"
+    );
     flat.move_characters(&[(id(42), Vec2::ONE)]);
 }
 
 #[test]
 fn the_same_moves_give_the_same_places_and_checksum() {
     let run = || {
-        let mut flat = world(Vec2::ZERO, &[rect(2.0, -2.0, 3.0, 2.0), rect(-1.0, 3.0, 4.0, 4.0)]);
+        let mut flat = world(
+            Vec2::ZERO,
+            &[rect(2.0, -2.0, 3.0, 2.0), rect(-1.0, 3.0, 4.0, 4.0)],
+        );
         flat.add(id(2), Vec2::new(0.0, -1.5), circle(0.3), true);
         for i in 0..300 {
             let a = i as f32 * 0.07;
@@ -206,7 +230,11 @@ fn the_same_moves_give_the_same_places_and_checksum() {
                 (id(2), Vec2::new(-a.sin(), a.cos()) * 0.05),
             ]);
         }
-        (flat.state().place(id(1)), flat.state().place(id(2)), flat.state().checksum())
+        (
+            flat.state().place(id(1)),
+            flat.state().place(id(2)),
+            flat.state().checksum(),
+        )
     };
     assert_eq!(run(), run());
     let empty = Flat::new();

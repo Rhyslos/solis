@@ -33,6 +33,8 @@ pub(crate) struct MapEdits {
     pub(crate) shown_values: Vec<String>,
     /// Whether the viewport outlines the map's chunks.
     pub(crate) chunks: bool,
+    /// Whether the viewport shows what's solid (decision 0071).
+    pub(crate) walls: bool,
     /// Layers hidden in the editor, by ID (never saved).
     pub(crate) hidden: std::collections::HashSet<reflect::Id>,
     /// The tile painter's stroke under way (D6).
@@ -315,6 +317,8 @@ impl Workbench {
         let overlay = &mut self.viewport.tile_overlay;
         overlay.hidden.clone_from(&self.map_edits.hidden);
         overlay.chunks = self.map_edits.chunks;
+        overlay.walls = self.map_edits.walls;
+        overlay.solid = None;
         overlay.map = None;
         overlay.values.clear();
         overlay.paint.allowed = false;
@@ -349,11 +353,46 @@ impl Workbench {
         paint.allowed = self.playing.is_none() && !map.layers().is_empty();
         paint.layers = map.layers().iter().map(|l| l.name.clone()).collect();
         paint.layer = paint.layer.min(paint.layers.len().saturating_sub(1));
+        // Which terrains are solid, from the map's tileset (none solid:
+        // nothing to show).
+        let solid = map
+            .tileset
+            .and_then(|t| self.viewport.sheets.tileset(t))
+            .map(|set| tiles::walls::solid_codes(set))
+            .filter(|s| s.iter().any(|on| *on));
+        let overlay = &mut self.viewport.tile_overlay;
+        overlay.solid = solid;
         overlay.map = Some(crate::tile_view::ViewTileMap {
             entity: id,
             transform,
             map,
         });
+    }
+
+    /// Makes the terrain written `code` in the tileset of the map file at
+    /// `map_path` solid or not, and saves the tileset (decision 0071).
+    pub(crate) fn set_terrain_solid(&mut self, map_path: &str, code: u8, solid: bool) {
+        let sheets = &self.viewport.sheets;
+        let Some(set_id) = self.map_file(map_path).and_then(|m| m.tileset) else {
+            return;
+        };
+        let (Some(path), Some(set)) = (sheets.paths.get(&set_id), sheets.tileset(set_id)) else {
+            return;
+        };
+        let mut set = (**set).clone();
+        let Some(t) = set
+            .terrains
+            .iter_mut()
+            .find(|t| t.code as u32 == u32::from(code))
+        else {
+            return;
+        };
+        if t.solid == solid {
+            return;
+        }
+        t.solid = solid;
+        let path = path.clone();
+        self.save_tileset(&path, set);
     }
 
     /// Takes in what the menu over the viewport asked for this frame.
@@ -367,6 +406,9 @@ impl Workbench {
         }
         if std::mem::take(&mut overlay.chunks_asked) {
             self.map_edits.chunks = !self.map_edits.chunks;
+        }
+        if std::mem::take(&mut overlay.walls_asked) {
+            self.map_edits.walls = !self.map_edits.walls;
         }
         self.map_edits.hovered = overlay
             .hovered
@@ -390,6 +432,7 @@ impl Workbench {
                         paint.tool = Some(crate::tile_paint::PaintTool::Brush);
                     }
                 }
+                MapRequest::SetSolid(code, solid) => self.set_terrain_solid(&path, code, solid),
                 MapRequest::PaintPiece(piece) => {
                     paint.piece = Some(piece);
                     paint.exact = true;

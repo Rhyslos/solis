@@ -25,6 +25,7 @@ An entity with a collider and nothing else never moves: floors, walls, rocks.
 
 **Moving things yourself**
 - A **Kinematic** body is moved only by your game code (`moveTo`, `turnTo`), and pushes dynamic things out of its way without being pushed back: lifts, moving platforms, doors. A character standing on one is carried along.
+- For 2D games, use a **Collider2D** instead, with solid terrains for walls: see [Walls and walking in 2D](walls-and-walking.md).
 - A player's character is better with a **CharacterBody**, which climbs steps, slides along walls and walks up slopes: see [Characters and cameras](characters-and-cameras.md).
 - A **Fixed** body never moves, like a collider on its own.
 - You can still `moveTo` a dynamic body to put it somewhere new (say, back on its shelf); physics carries on from there.

@@ -158,8 +158,8 @@ impl World {
         for y in 0..chunks[1] {
             for x in 0..chunks[0] {
                 let i = (y * chunks[0] + x) as usize;
-                let fresh = same_frame
-                    && old.is_some_and(|o| o.revisions.get(i) == revisions.get(i));
+                let fresh =
+                    same_frame && old.is_some_and(|o| o.revisions.get(i) == revisions.get(i));
                 if !fresh {
                     changed.push([x, y]);
                 }

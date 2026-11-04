@@ -369,8 +369,8 @@ impl Host for ViewHost {
     fn move_character(&mut self, which: EntityId, wanted: Vec3) {
         // A 3D character (CharacterBody), or a 2D one (a Collider2D ticked
         // Character), which walks on the ground: the world tells them apart.
-        let character = self.view.physics.character(which).is_some()
-            || self.view.flat.is_character(which);
+        let character =
+            self.view.physics.character(which).is_some() || self.view.flat.is_character(which);
         if wanted.is_finite() && character && self.kept.room() {
             let order = self.order();
             self.kept

@@ -58,9 +58,24 @@ fn a_fence_and_a_pond_become_three_rectangles_not_seventy_cells() {
     assert_eq!(
         walls,
         [
-            Rect { x: 0, y: 0, w: 30, h: 1 },
-            Rect { x: 0, y: 1, w: 1, h: 19 },
-            Rect { x: 12, y: 10, w: 6, h: 4 },
+            Rect {
+                x: 0,
+                y: 0,
+                w: 30,
+                h: 1
+            },
+            Rect {
+                x: 0,
+                y: 1,
+                w: 1,
+                h: 19
+            },
+            Rect {
+                x: 12,
+                y: 10,
+                w: 6,
+                h: 4
+            },
         ]
     );
     // Nothing solid, nothing made.
@@ -76,19 +91,41 @@ fn walls_stay_inside_their_chunk() {
     assert_eq!(
         walls,
         [
-            Rect { x: 0, y: 0, w: 32, h: 3 },
-            Rect { x: 32, y: 0, w: 32, h: 3 },
-            Rect { x: 64, y: 0, w: 6, h: 3 },
+            Rect {
+                x: 0,
+                y: 0,
+                w: 32,
+                h: 3
+            },
+            Rect {
+                x: 32,
+                y: 0,
+                w: 32,
+                h: 3
+            },
+            Rect {
+                x: 64,
+                y: 0,
+                w: 6,
+                h: 3
+            },
         ]
     );
-    assert!(chunk_walls(&map, &solid(b"#"), [3, 0]).is_empty(), "off the map");
+    assert!(
+        chunk_walls(&map, &solid(b"#"), [3, 0]).is_empty(),
+        "off the map"
+    );
     assert!(chunk_walls(&map, &solid(b"#"), [u32::MAX, u32::MAX]).is_empty());
 }
 
 #[test]
 fn a_tileset_says_which_codes_are_solid() {
     let mut set = Tileset::default();
-    for (name, code, solid) in [("grass", '.', false), ("water", '~', true), ("fence", '#', true)] {
+    for (name, code, solid) in [
+        ("grass", '.', false),
+        ("water", '~', true),
+        ("fence", '#', true),
+    ] {
         set.terrains.push(Terrain {
             id: reflect::Id::random(),
             name: name.into(),

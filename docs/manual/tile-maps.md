@@ -52,6 +52,12 @@ A map file's Properties:
 | Tileset | The terrains its cells can be. Giving a map with an empty ground its first tileset fills the ground with that tileset's first terrain. |
 | Size | Its width and height in cells, up to 4,096 each. Making it smaller takes away the cells past its new edges. |
 
+A terrain's settings (right-click its swatch in the Map tab):
+
+| Setting | What it does |
+|---|---|
+| Solid | Nothing with a 2D collider walks into its cells: fences, water, walls. A small wall mark shows on its swatch, and the viewport's **Walls** switch shows the walls it makes. See [Walls and walking in 2D](walls-and-walking.md). |
+
 Value kinds:
 
 | Kind | Holds | Starts at |

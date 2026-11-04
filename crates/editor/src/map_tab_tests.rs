@@ -282,3 +282,19 @@ fn a_swatch_clicked_is_painted_with_and_exact_shows_its_tiles() {
     h.run();
     assert!(h.query_by_label_contains("It has no art yet").is_some());
 }
+
+#[test]
+fn right_clicking_a_terrain_offers_solid_and_a_solid_one_is_marked() {
+    let mut s = set();
+    s.terrains[2].solid = true;
+    let mut h = tab(map(), Some(s), None, HashSet::new());
+    h.run();
+    let water = h.get_by_label("Paint with water");
+    water.click_secondary();
+    h.run();
+    let solid = h.get_by_label("Solid");
+    assert_eq!(solid.toggled(), Some(egui::accesskit::Toggled::True));
+    solid.click();
+    h.run();
+    assert_eq!(h.state().3, [MapRequest::SetSolid(b'~', false)]);
+}

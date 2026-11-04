@@ -68,7 +68,12 @@ fn farm(fields: &[(&str, Value)]) -> Workbench {
         entities: vec![(id(n), data)],
     };
     w.document
-        .edit("Add", vec![spawn(FARMER, farmer), spawn(FENCE, fence)], None, None)
+        .edit(
+            "Add",
+            vec![spawn(FARMER, farmer), spawn(FENCE, fence)],
+            None,
+            None,
+        )
         .unwrap();
     w.fixed_seed = Some(3);
     w
@@ -82,7 +87,12 @@ fn ticks(w: &mut Workbench, n: u64) {
 }
 
 fn at(w: &Workbench) -> Vec3 {
-    w.world().unwrap().global(id(FARMER)).unwrap().w_axis.truncate()
+    w.world()
+        .unwrap()
+        .global(id(FARMER))
+        .unwrap()
+        .w_axis
+        .truncate()
 }
 
 fn walk(w: &mut Workbench, keys: &[&str], n: u64) -> Vec3 {
@@ -126,7 +136,10 @@ fn four_directions_drop_diagonals() {
     w.play();
     ticks(&mut w, 5);
     let went = walk(&mut w, &["W", "D"], 30);
-    assert!(went.x.abs() < 1e-4 || went.y.abs() < 1e-4, "one way only: {went}");
+    assert!(
+        went.x.abs() < 1e-4 || went.y.abs() < 1e-4,
+        "one way only: {went}"
+    );
     assert!(went.length() > 1.7, "as fast as straight: {went}");
 }
 

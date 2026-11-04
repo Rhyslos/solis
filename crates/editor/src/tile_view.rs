@@ -554,6 +554,13 @@ pub struct TileOverlay {
     pub asked: Vec<(String, bool)>,
     /// The chunks switch pressed this frame.
     pub chunks_asked: bool,
+    /// Whether what's solid is shown: the walls 2D physics makes of the
+    /// map's solid cells (decision 0071).
+    pub walls: bool,
+    /// The walls switch pressed this frame.
+    pub walls_asked: bool,
+    /// Which codes the map's tileset makes solid.
+    pub solid: Option<tiles::walls::Solid>,
     /// The tile painter's settings (D6).
     pub paint: crate::tile_paint::PaintSettings,
     /// The cell under the pointer, even off the map's edge (painting a
@@ -578,7 +585,7 @@ const MOST_LABELLED: u64 = 4000;
 
 /// Draws the selected map's overlay over the view in `rect` (seen by
 /// `camera`): its values on its cells (a switch as a blue tint, a number
-/// or a choice as text), its chunks, and an outline round the cell under
+/// or a choice as text), its walls (what's solid), its chunks, and an outline round the cell under
 /// `mouse` (from the view's top left), which it notes; and the menu that
 /// chooses what's shown, at the top of the view, whose place it gives
 /// back (a press there is the menu's, never the view's).
@@ -695,6 +702,37 @@ pub(crate) fn draw_overlay(
             }
         }
     }
+    if overlay.walls
+        && let Some(solid) = &overlay.solid
+    {
+        // What blocks: the walls 2D physics makes, each rectangle as it
+        // merges the solid cells, in the collider colour.
+        let wall = |x: u32, y: u32| {
+            to_screen(m.transform.transform_point3(Vec3::new(
+                x as f32 * cell[0],
+                -(y as f32) * cell[1],
+                0.0,
+            )))
+        };
+        let [across, down] = m.map.chunks();
+        let green = crate::theme::COLLIDER;
+        for cy in 0..down {
+            for cx in 0..across {
+                for r in tiles::walls::chunk_walls(&m.map, solid, [cx, cy]) {
+                    if let (Some(a), Some(b)) = (wall(r.x, r.y), wall(r.x + r.w, r.y + r.h)) {
+                        let r = egui::Rect::from_two_pos(a, b);
+                        painter.rect_filled(r, 0.0, green.gamma_multiply(0.18));
+                        painter.rect_stroke(
+                            r,
+                            0.0,
+                            egui::Stroke::new(1.5, green),
+                            egui::StrokeKind::Inside,
+                        );
+                    }
+                }
+            }
+        }
+    }
     if overlay.chunks {
         let line = egui::Stroke::new(2.0, accent.colors().fill.gamma_multiply(0.85));
         let [across, down] = m.map.chunks();
@@ -796,7 +834,7 @@ pub(crate) fn draw_overlay(
     let mut bar = ui.new_child(
         egui::UiBuilder::new().max_rect(egui::Rect::from_center_size(
             egui::pos2(rect.center().x, rect.top() + 18.0),
-            egui::vec2(rect.width().min(420.0), 24.0),
+            egui::vec2(rect.width().min(480.0), 24.0),
         )),
     );
     bar.horizontal(|ui| {
@@ -817,6 +855,17 @@ pub(crate) fn draw_overlay(
             .clicked()
         {
             overlay.chunks_asked = true;
+        }
+        let walls = ui.add(egui::Button::new("Walls").selected(overlay.walls));
+        let tip = if overlay.solid.is_some() {
+            "Show what's solid: the walls 2D physics makes of the map's solid cells, merged \
+             into a few rectangles"
+        } else {
+            "Show what's solid. Nothing is yet: right-click a terrain in the Map tab and tick \
+             Solid"
+        };
+        if walls.on_hover_text(tip).clicked() {
+            overlay.walls_asked = true;
         }
     });
     Some(bar.min_rect())

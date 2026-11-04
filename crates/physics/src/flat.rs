@@ -66,7 +66,13 @@ pub struct FlatCollider {
 impl FlatCollider {
     /// Rapier's shape for it; sizes that aren't sensible are made so.
     fn rapier(&self) -> rp::SharedShape {
-        let size = |v: f32| if v.is_finite() { v.clamp(0.001, 1000.0) } else { 0.5 };
+        let size = |v: f32| {
+            if v.is_finite() {
+                v.clamp(0.001, 1000.0)
+            } else {
+                0.5
+            }
+        };
         match self.shape {
             FlatShape::Circle(r) => rp::SharedShape::ball(size(r)),
             FlatShape::Box(s) => rp::SharedShape::cuboid(size(s.x) * 0.5, size(s.y) * 0.5),
@@ -204,8 +210,7 @@ impl FlatState {
             sum.u64(u64::from(entry.character));
         }
         sum.u64(self.wall_count() as u64);
-        sum
-            .finish()
+        sum.finish()
     }
 
     /// Where the collider `skip`, at `start`, ends moving by `wanted`:
@@ -414,9 +419,13 @@ impl Flat {
         }
         let state = self.state_mut();
         for h in state.walls.remove(&(map, chunk)).unwrap_or_default() {
-            state
-                .colliders
-                .remove(h, &mut state.islands, &mut state.bodies, &mut state.soft_bodies, false);
+            state.colliders.remove(
+                h,
+                &mut state.islands,
+                &mut state.bodies,
+                &mut state.soft_bodies,
+                false,
+            );
         }
         let made: Vec<rp::ColliderHandle> = rects
             .iter()

@@ -5,7 +5,7 @@
 
 use super::*;
 use crate::{MapFiles, TICK};
-use area::builtin::{Transform, TileMap as TileMapComponent};
+use area::builtin::{TileMap as TileMapComponent, Transform};
 use area::{Area, EntityData};
 use reflect::AssetRef;
 use tiles::TileMap;
@@ -68,7 +68,11 @@ fn a_farmer_walks_to_the_fence_stops_and_keeps_its_layer() {
     assert!(at.x < 10.0 - 0.25 && at.x > 10.0 - 0.25 - 0.02, "{at}");
     assert_eq!(at.y, -5.5, "walking straight right");
     assert_eq!(at.z, 0.2, "the layer is kept; Z of a move is ignored");
-    assert_eq!(world.flat().state().wall_count(), 1, "the fence is one wall");
+    assert_eq!(
+        world.flat().state().wall_count(),
+        1,
+        "the fence is one wall"
+    );
 }
 
 #[test]
@@ -115,7 +119,10 @@ fn a_solid_box_blocks_and_pixels_are_metres_by_the_project_s_settings() {
     assert!(world.flat().state().contains(bin));
     assert!(!world.flat().state().is_character(bin), "solid and still");
     let at = walk(&mut world, farmer, Vec3::new(0.1, 0.0, 0.0), 40);
-    assert!(at.x < 4.0 - 0.25 && at.x > 4.0 - 0.27, "stopped at the bin: {at}");
+    assert!(
+        at.x < 4.0 - 0.25 && at.x > 4.0 - 0.27,
+        "stopped at the bin: {at}"
+    );
     // At 32 px a metre everything halves: the bin runs 4.5 to 5.5 and the
     // farmer's circle is an eighth of a metre.
     let mut pixels = area::pixels::PixelSettings::default();
@@ -134,7 +141,10 @@ fn moved_by_hand_it_walks_on_from_there() {
         Some(t)
     });
     let at = walk(&mut world, farmer, Vec3::new(-0.1, 0.0, 0.0), 80);
-    assert!(at.x > 11.0 && at.x < 11.0 + 0.25 + 0.02, "the fence's other side: {at}");
+    assert!(
+        at.x > 11.0 && at.x < 11.0 + 0.25 + 0.02,
+        "the fence's other side: {at}"
+    );
 }
 
 #[test]

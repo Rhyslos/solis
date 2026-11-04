@@ -172,7 +172,7 @@ The engine audit of 3 November ([decision 0070](docs/decisions/0070-usable-first
 2. **One project file, the rest as Lust:** what the editor makes is written as Lust data files.
 3. **The API milestone:** game code changes tiles and their values, drives animators and plays clips (four Lust changes, approved 3 November).
 4. **Game-wide objects:** Lust's `object` (a clock, money, the inventory), ticked by Solis and kept in saves.
-5. **2D physics and top-down movement:** tile collision, 8 directions for the player, 4 for NPCs.
+5. **2D physics and top-down movement:** tile collision, 8 directions for the player, 4 for NPCs. *Built ahead of 2 to 4, which wait on Lust's changes ([decision 0071](docs/decisions/0071-2d-physics-and-top-down-movement.md)); triggers move to the API milestone.*
 6. **The 2D camera** that follows the player.
 7. **Game UI and the UI editor:** menus, HUD, inventory, dialogue, a pause menu with key rebinding (Phase 12, brought forward).
 8. **Day and night, and lamps** on sprites.
