@@ -1290,14 +1290,6 @@ impl Viewport {
             up_menu(ui, format!("{} ▴", look.kind.name()), |ui| {
                 look_menu(ui, look)
             });
-            up_menu(ui, "Show ▴", |ui| {
-                for thing in ["Grid", "Axes", "Lights", "Cameras", "Colliders"] {
-                    ui.add_enabled(false, egui::Checkbox::new(&mut true, thing))
-                        .on_disabled_hover_text(
-                            "Choosing what to show arrives as there is more to show",
-                        );
-                }
-            });
             let alone = self.maximized == Some(self.active);
             if several || alone {
                 let (text, hint) = if alone {
@@ -1389,8 +1381,6 @@ fn look_menu(ui: &mut Ui, look: &mut Look) {
             look.kind = kind;
         }
     }
-    ui.add_enabled(false, egui::Button::new("Wireframe"))
-        .on_disabled_hover_text("Wireframe arrives with the editor's tools in Phase 3");
     ui.separator();
     let stylized = look.kind == LookKind::Stylized;
     ui.add_enabled_ui(stylized, |ui| {

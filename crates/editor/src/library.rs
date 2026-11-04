@@ -214,6 +214,11 @@ pub(crate) enum LibraryRequest {
     Move(String, String),
     /// Make a new folder inside this one.
     NewFolder(String),
+    /// Make a new Lust code file in this folder, and open it in the
+    /// computer's editor for Lust (E1).
+    NewCodeFile(String),
+    /// Make a new, empty area in this folder, saved, and open it (E1).
+    NewArea(String),
     /// Move a file or folder to the Recycle Bin.
     Delete(String),
     /// Import a model from outside the project.
@@ -324,6 +329,27 @@ pub(crate) fn library(
             egui::Stroke::new(1.0, theme::LINE),
         );
     }
+    if !code {
+        // Right-clicking where there's no file: what can be made here.
+        // Files and folders drawn over it have their own menus.
+        let space = ui.interact(
+            files_rect,
+            ui.id().with("empty space"),
+            egui::Sense::click(),
+        );
+        space.context_menu(|ui| {
+            ui.menu_button("New", |ui| new_items(ui, &state.folder, &mut requests));
+            ui.separator();
+            if ui.button("Import model…").clicked() {
+                requests.push(LibraryRequest::Import);
+                ui.close();
+            }
+            if ui.button("Show in Explorer").clicked() {
+                requests.push(LibraryRequest::Show(state.folder.clone()));
+                ui.close();
+            }
+        });
+    }
     let mut files = ui.new_child(
         egui::UiBuilder::new()
             .max_rect(files_rect.shrink2(egui::vec2(6.0, 2.0)))
@@ -337,14 +363,14 @@ pub(crate) fn library(
             "Nothing has that name.".to_string()
         } else if code {
             format!(
-                "{} has no code yet. Lust, Lua and Rust files in its assets folder show here; \
-                 writing game code in Solis arrives in Phase 4.",
+                "{} has no code yet. Lust, Lua and Rust files in its assets folder show here: \
+                 right-click in the Library and choose New > Lust code file to start one.",
                 project.name
             )
         } else if items.is_empty() {
             format!(
-                "{} has no files yet. Import a model (File > Import model…), drop one onto the \
-                 window, or put files in its assets folder.",
+                "{} has no files yet. Right-click here to make a map, a tileset or a code file, \
+                 drop files onto the window, or put them in its assets folder.",
                 project.name
             )
         } else {
@@ -359,6 +385,61 @@ pub(crate) fn library(
     ui.advance_cursor_after_rect(body);
     rename_window(ui, state, &mut requests);
     requests
+}
+
+/// One thing the New menu makes: its name, what it is, and the request.
+type NewItem = (&'static str, &'static str, fn(String) -> LibraryRequest);
+
+/// What can be made in `folder` (E1): the "+ New" menu, and New in every
+/// right-click menu of the Library.
+fn new_items(ui: &mut Ui, folder: &str, requests: &mut Vec<LibraryRequest>) {
+    let folder = folder.to_string();
+    let items: [NewItem; 7] = [
+        (
+            "Lust code file",
+            "A Lust file with a component to start from, opened in your editor for Lust",
+            LibraryRequest::NewCodeFile,
+        ),
+        (
+            "Folder",
+            "A new folder inside this one",
+            LibraryRequest::NewFolder,
+        ),
+        (
+            "Area",
+            "An empty area (a level), saved here and opened",
+            LibraryRequest::NewArea,
+        ),
+        (
+            "Tile map",
+            "A grid of terrains, filled with its tileset's first; drag it into the viewport",
+            LibraryRequest::NewTileMap,
+        ),
+        (
+            "Tileset",
+            "The terrains a tile map's cells can be, and their art",
+            LibraryRequest::NewTileset,
+        ),
+        (
+            "Animator",
+            "States that choose which clip a sprite plays",
+            LibraryRequest::NewAnimator,
+        ),
+        (
+            "Sound event",
+            "Takes of a sound, one picked each time it plays",
+            LibraryRequest::NewSoundEvent,
+        ),
+    ];
+    for (i, (name, hint, request)) in items.into_iter().enumerate() {
+        if i == 2 {
+            ui.separator();
+        }
+        if ui.button(name).on_hover_text(hint).clicked() {
+            requests.push(request(folder.clone()));
+            ui.close();
+        }
+    }
 }
 
 /// A quiet note in the panel.
@@ -406,6 +487,12 @@ fn menu_row(
             ui.spacing_mut().item_spacing.x = 8.0;
             ui.label("≡");
             if !code {
+                ui.add_enabled_ui(open, |ui| {
+                    ui.menu_button("+ New", |ui| new_items(ui, &state.folder, requests))
+                        .response
+                        .on_hover_text("Make something new in the folder shown (or right-click)")
+                        .on_disabled_hover_text("Open or make a project first (File)");
+                });
                 ui.menu_button("Import", |ui| {
                     if ui
                         .button("Import model…")
@@ -413,57 +500,6 @@ fn menu_row(
                         .clicked()
                     {
                         requests.push(LibraryRequest::Import);
-                        ui.close();
-                    }
-                    if ui
-                        .add_enabled(open, egui::Button::new("New sound event"))
-                        .on_hover_text(
-                            "A sound event in the folder shown: drop sound files on it for \
-                             takes, and each play picks one",
-                        )
-                        .clicked()
-                    {
-                        requests.push(LibraryRequest::NewSoundEvent(state.folder.clone()));
-                        ui.close();
-                    }
-                    if ui
-                        .add_enabled(open, egui::Button::new("New animator"))
-                        .on_hover_text(
-                            "An animator in the folder shown: states that choose which clip a \
-                             sprite plays, opened in the Animator tab",
-                        )
-                        .clicked()
-                    {
-                        requests.push(LibraryRequest::NewAnimator(state.folder.clone()));
-                        ui.close();
-                    }
-                    if ui
-                        .add_enabled(open, egui::Button::new("New tileset"))
-                        .on_hover_text(
-                            "A tileset in the folder shown: the terrains a tile map's cells can be",
-                        )
-                        .clicked()
-                    {
-                        requests.push(LibraryRequest::NewTileset(state.folder.clone()));
-                        ui.close();
-                    }
-                    if ui
-                        .add_enabled(open, egui::Button::new("New tile map"))
-                        .on_hover_text(
-                            "A tile map in the folder shown, filled with its tileset's first \
-                             terrain; drag it into the viewport to place it",
-                        )
-                        .clicked()
-                    {
-                        requests.push(LibraryRequest::NewTileMap(state.folder.clone()));
-                        ui.close();
-                    }
-                    if ui
-                        .add_enabled(open, egui::Button::new("New folder"))
-                        .on_hover_text("A new folder inside the one shown")
-                        .clicked()
-                    {
-                        requests.push(LibraryRequest::NewFolder(state.folder.clone()));
                         ui.close();
                     }
                 });
@@ -609,10 +645,8 @@ fn folder_menu(
     state: &mut LibraryState,
     requests: &mut Vec<LibraryRequest>,
 ) {
-    if ui.button("New folder").clicked() {
-        requests.push(LibraryRequest::NewFolder(folder.to_string()));
-        ui.close();
-    }
+    ui.menu_button("New", |ui| new_items(ui, folder, requests));
+    ui.separator();
     if ui.button("Show in Explorer").clicked() {
         requests.push(LibraryRequest::Show(folder.to_string()));
         ui.close();
@@ -704,6 +738,8 @@ fn item_actions(picked: Picked<'_>, state: &mut LibraryState, requests: &mut Vec
         }
     }
     response.context_menu(|ui| {
+        ui.menu_button("New", |ui| new_items(ui, item.folder(), requests));
+        ui.separator();
         if item.kind == LibraryKind::Sound && ui.button("Play").clicked() {
             requests.push(LibraryRequest::PlaySound(item.path.clone()));
             ui.close();

@@ -91,6 +91,14 @@ pub enum WorkbenchAction {
     },
     /// Make a new folder inside this one (inside the assets).
     NewFolder(std::path::PathBuf),
+    /// Make a new text file inside the assets: a Lust code file or an area
+    /// (E1). Never replaces a file.
+    NewTextFile {
+        /// The file, inside the assets.
+        path: std::path::PathBuf,
+        /// What it holds.
+        text: String,
+    },
     /// Move a file or folder (inside the assets) to the Recycle Bin.
     DeleteFile(std::path::PathBuf),
     /// Listen to this sound file (inside the project's assets) in the
@@ -227,6 +235,10 @@ pub struct Workbench {
     /// Whether files are being dragged over the window.
     pub(crate) files_hovering: bool,
     pub(crate) about_open: bool,
+    /// The start page (E1).
+    pub(crate) start: crate::workbench_start::StartPage,
+    /// Where the manual is, for the start page.
+    pub(crate) manual_url: String,
     /// How long the game's sound took last frame (the Profiler's Sound).
     pub(crate) sound_spent: std::time::Duration,
     /// The Settings window, while it's open (Edit > Settings…).
@@ -430,6 +442,8 @@ impl Workbench {
             models: BTreeMap::new(),
             files_hovering: false,
             about_open: false,
+            start: Default::default(),
+            manual_url: String::new(),
             sound_spent: std::time::Duration::ZERO,
             settings_window: None,
             update: Default::default(),
@@ -548,6 +562,10 @@ impl Workbench {
     /// starts a new area, as the old one's models belong to the old
     /// project.
     pub fn set_project(&mut self, project: Option<ProjectInfo>) {
+        if project.is_some() {
+            // A project is open: the start page has done its job.
+            self.start.open = false;
+        }
         if project != self.project {
             self.replace_document(Document::default());
             self.models.clear();
@@ -1126,6 +1144,7 @@ impl Workbench {
             drop_hint(ui, self.accent);
         }
         self.about(ui);
+        self.start_page(ui, &mut actions);
         self.input_actions_window(ui.ctx());
         self.settings(ui.ctx(), &mut actions);
         self.prompts(ui, &mut actions);

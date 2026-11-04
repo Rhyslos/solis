@@ -164,6 +164,22 @@ The project lead's game moves to Solis next, so before it does, updates must nev
 
 **Gate:** open a project saved by an older build, see the backup and the upgrade; a save game from before an update loads after it.
 
+## Usable first (decision 0070)
+
+The engine audit of 3 November ([decision 0070](docs/decisions/0070-usable-first.md)) put a new order ahead of the rest: everything needed to make a Stardew Valley-like farming game in Lust, with the editor's everyday basics first. It takes over Phase 9's last three milestones; Phase 10 and everything after follow it. One milestone per pull request, as always.
+
+1. **Editor basics (E1):** blue, nothing shown that isn't built, New in the Library (right-click anywhere, or **+ New**), a start page.
+2. **One project file, the rest as Lust:** what the editor makes is written as Lust data files.
+3. **The API milestone:** game code changes tiles and their values, drives animators and plays clips (four Lust changes, approved 3 November).
+4. **Game-wide objects:** Lust's `object` (a clock, money, the inventory), ticked by Solis and kept in saves.
+5. **2D physics and top-down movement:** tile collision, 8 directions for the player, 4 for NPCs.
+6. **The 2D camera** that follows the player.
+7. **Game UI and the UI editor:** menus, HUD, inventory, dialogue, a pause menu with key rebinding (Phase 12, brought forward).
+8. **Day and night, and lamps** on sprites.
+9. **The playtest export** (Phase 11, brought forward).
+
+**Gate:** the project lead starts their farming game in Solis, in Lust: walk the farm, till, plant and water, crops grow over days, a menu and an inventory, saving, and a build a friend can play.
+
 ## Phase 9: 2D, part 1: a 2D game can move in
 
 First-class 2D ([decision 0054](docs/decisions/0054-first-class-2d.md)), built as flat things in the same world, so lamps, effects, materials and the rest work on 2D too, with real 2D tools on top. The working plan, with the research behind it and the bar every milestone must pass, is [docs/plans/2d.md](docs/plans/2d.md).
@@ -174,9 +190,9 @@ First-class 2D ([decision 0054](docs/decisions/0054-first-class-2d.md)), built a
 - **Tile maps that change as you play:** cells store meaning and their own data (a crop's growth), changes batched per chunk, saved as text that merges in Git.
 - **Autotiling:** each tileset chooses its kind (16-tile, 47-tile, edge sets or custom rules), set up with a wizard.
 - **The tile painter.**
-- **2D physics** (Rapier2D) with tile collision merged into smooth shapes, triggers, and a ready-made top-down controller in Lust.
-- **The 2D camera and feel tools.**
-- **Lamps and day and night on sprites,** crisp on the pixel grid.
+- **2D physics** (Rapier2D) with tile collision merged into smooth shapes, triggers, and a ready-made top-down controller in Lust. *Moved to "Usable first".*
+- **The 2D camera and feel tools.** *Moved to "Usable first".*
+- **Lamps and day and night on sprites,** crisp on the pixel grid. *Moved to "Usable first".*
 
 **Gate:** the project lead rebuilds a slice of their own game in Lust: walk the farm, till, plant and water, crops grow over days, sleep, lamps at night; smooth, crisp, no jitter.
 

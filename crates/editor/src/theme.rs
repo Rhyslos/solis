@@ -145,7 +145,8 @@ pub enum Accent {
     PetrolBlue,
     /// A soft, warm red.
     Red,
-    /// A clear, saturated blue.
+    /// A clear, saturated blue: the standard (decision 0070).
+    #[default]
     Blue,
     /// A deep blue-green ("Marine green" in the menu; saved settings call
     /// it Green).
@@ -158,8 +159,8 @@ pub enum Accent {
     Copper,
     /// A warm sunset orange.
     Orange,
-    /// An orange-yellow, like amber: the standard.
-    #[default]
+    /// An orange-yellow, like amber: the standard from decision 0060 to
+    /// 0070.
     Amber,
     /// A deep yellow, like old gold.
     Gold,
@@ -182,7 +183,7 @@ impl Accent {
     /// Solis's own: the standard first, then round the colour wheel from
     /// red.
     pub const ALL: [Self; 10] = [
-        Self::Amber,
+        Self::Blue,
         Self::Red,
         Self::Copper,
         Self::Orange,
@@ -190,7 +191,7 @@ impl Accent {
         Self::Olive,
         Self::Green,
         Self::PetrolBlue,
-        Self::Blue,
+        Self::Amber,
         Self::Plum,
     ];
 
@@ -578,9 +579,10 @@ mod tests {
     }
 
     #[test]
-    fn the_standard_accent_is_amber() {
-        assert_eq!(Accent::default(), Accent::Amber);
-        assert_eq!(Accent::ALL[0], Accent::Amber);
+    fn the_standard_accent_is_blue() {
+        // Decision 0070 (the project lead, 2026-11-01).
+        assert_eq!(Accent::default(), Accent::Blue);
+        assert_eq!(Accent::ALL[0], Accent::Blue);
     }
 
     #[test]

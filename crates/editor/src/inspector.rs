@@ -233,7 +233,7 @@ fn field_widget(
                 mixed.whole,
                 (
                     "animator",
-                    "No animators yet: Library > Import > New animator.",
+                    "No animators yet: right-click in the Library > New > Animator.",
                 ),
             ));
         }
@@ -245,7 +245,7 @@ fn field_widget(
                 mixed.whole,
                 (
                     "tile map",
-                    "No tile maps yet: Library > Import > New tile map.",
+                    "No tile maps yet: right-click in the Library > New > Tile map.",
                 ),
             ));
         }

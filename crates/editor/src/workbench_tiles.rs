@@ -52,7 +52,12 @@ impl MapEdits {
 }
 
 /// A free path for a new file named `stem` in `folder`.
-fn free_path(folder: &str, stem: &str, ext: &str, taken: impl Fn(&str) -> bool) -> String {
+pub(crate) fn free_path(
+    folder: &str,
+    stem: &str,
+    ext: &str,
+    taken: impl Fn(&str) -> bool,
+) -> String {
     let base = if folder.is_empty() {
         String::new()
     } else {
@@ -135,7 +140,7 @@ impl Workbench {
             self.log(
                 LogLevel::Info,
                 format!(
-                    "{path} has no tileset yet: make one (Library > Import > New tileset) and \
+                    "{path} has no tileset yet: make one (right-click in the Library > New > Tileset) and \
                      choose it in the map's Properties."
                 ),
             );

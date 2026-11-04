@@ -1,13 +1,12 @@
 //! The top bar: the menus, the open documents as tabs, and Play and Build
 //! ([decision 0004](../../../docs/decisions/0004-editor-layout.md)).
 
-use crate::console::LogLevel;
 use crate::icons::{self, Icon};
 use crate::panel::Panel;
 use crate::play::PlayState;
 use crate::theme::{self, Accent};
 use crate::workbench::{Workbench, WorkbenchAction};
-use egui::{Align, Color32, Layout, RichText, Ui};
+use egui::{Align, Color32, Layout, Ui};
 
 impl Workbench {
     pub(crate) fn top_bar(&mut self, ui: &mut Ui, actions: &mut Vec<WorkbenchAction>) {
@@ -72,7 +71,6 @@ impl Workbench {
                             crate::layout::bring_to_front(&mut self.dock, Panel::Tileset);
                         }
                     }
-                    new_document_button(ui);
                 });
             });
         });
@@ -84,7 +82,6 @@ impl Workbench {
         self.view_menu(ui);
         self.entity_menu(ui);
         self.play_menu(ui, actions);
-        self.build_menu(ui);
         self.window_menu(ui);
         self.help_menu(ui, actions);
     }
@@ -102,6 +99,14 @@ impl Workbench {
             }
             if ui.button("Open project…").clicked() {
                 self.request(WorkbenchAction::OpenProject, actions);
+                ui.close();
+            }
+            if ui
+                .button("Start page")
+                .on_hover_text("New and recent projects, the examples, and where to begin")
+                .clicked()
+            {
+                self.open_start_page();
                 ui.close();
             }
             let mut pending = Vec::new();
@@ -299,16 +304,6 @@ impl Workbench {
         }
     }
 
-    /// The Build menu.
-    fn build_menu(&mut self, ui: &mut Ui) {
-        ui.menu_button("Build", |ui| {
-            for item in ["Build", "Build & Play"] {
-                ui.add_enabled(false, egui::Button::new(item))
-                    .on_disabled_hover_text("Exporting games arrives in Phase 11");
-            }
-        });
-    }
-
     /// The Window menu. Panels dock freely, so there are no layout
     /// presets; Reset layout is here as well as in Settings, for when the
     /// layout is too tangled to find your way (decision 0061).
@@ -383,42 +378,19 @@ impl Workbench {
         });
     }
 
-    /// Play, Play with others, Stop, Build and Build & Play, laid out
-    /// right to left.
+    /// Play, Pause, Step and Stop, laid out right to left.
     pub(crate) fn play_and_build(&mut self, ui: &mut Ui) {
-        // Play and Build & Play are blue whatever the accent (decision
-        // 0060); Pause, lit while paused, takes the accent.
+        // Play is blue whatever the accent (decision 0060); Pause, lit
+        // while paused, takes the accent.
         let fill = self.accent.colors().fill;
         ui.spacing_mut().item_spacing.x = 4.0;
-        let build_and_play = egui::Button::new(RichText::new("Build & Play").color(Color32::WHITE))
-            .fill(theme::GO)
-            .stroke(egui::Stroke::NONE)
-            .min_size(egui::vec2(0.0, BAR_BUTTON.y));
-        if ui.add(build_and_play).clicked() {
-            self.log(
-                LogLevel::Info,
-                "Exporting games arrives in Phase 11 (ROADMAP.md).",
-            );
-        }
-        let build = egui::Button::new("Build ▾").min_size(egui::vec2(0.0, BAR_BUTTON.y));
-        if ui.add(build).clicked() {
-            self.log(
-                LogLevel::Info,
-                "Exporting games arrives in Phase 11 (ROADMAP.md).",
-            );
-        }
-        ui.add_space(4.0);
-        // Right to left: Stop, Play with two players, Step, Pause, Play.
+        // Right to left: Stop, Step, Pause, Play. Build, Build & Play and
+        // Play with two players come back when they're built (decision
+        // 0070: nothing that isn't built is shown).
         let state = self.play_state();
         let stop_fill = (state != PlayState::Editing).then_some(theme::ERROR);
         if icon_button(ui, Icon::Stop, 11.0, stop_fill, "Stop").clicked() {
             self.stop();
-        }
-        if icon_button(ui, Icon::PlayTogether, 15.0, None, "Play with two players").clicked() {
-            self.log(
-                LogLevel::Info,
-                "Playing with others arrives with netcode in Phase 17 (ROADMAP.md).",
-            );
         }
         // Step runs one tick, while paused.
         let step = ui.add_enabled_ui(state == PlayState::Paused, |ui| {
@@ -573,15 +545,4 @@ pub(crate) fn document_tab(
         closed = r.clicked();
     }
     (response.clicked() && !closed, closed)
-}
-
-/// The + after the document tabs (more kinds of document arrive later).
-fn new_document_button(ui: &mut Ui) {
-    let new_tab = ui.add_enabled(
-        false,
-        egui::Button::new(RichText::new("+").color(theme::TEXT_WEAK))
-            .frame(false)
-            .min_size(egui::vec2(28.0, 0.0)),
-    );
-    new_tab.on_disabled_hover_text("Opening more areas, assemblies and code arrives in Phase 2");
 }

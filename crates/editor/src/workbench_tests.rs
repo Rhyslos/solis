@@ -32,7 +32,7 @@ fn a_new_workbench_uses_the_default_layout() {
     let w = Workbench::new(info(), None);
     assert!(layout::is_complete(w.layout()));
     assert_eq!(w.tool(), Tool::Select);
-    assert_eq!(w.accent(), Accent::Amber);
+    assert_eq!(w.accent(), Accent::Blue);
 }
 
 #[test]
@@ -345,32 +345,13 @@ fn every_panel_has_a_named_tab_and_the_bar_has_its_buttons() {
     for panel in Panel::ALL {
         let _ = h.get_by_label(panel.title());
     }
-    for button in [
-        "Play with two players",
-        "Step one tick",
-        "Stop",
-        "Build ▾",
-        "Build & Play",
-    ] {
+    for button in ["Step one tick", "Stop"] {
         let _ = h.get_by_label(button);
     }
     // The Play menu and the Play button.
     assert_eq!(h.query_all_by_label("Play").count(), 2);
 }
 
-#[test]
-fn play_with_others_says_when_it_arrives() {
-    let mut h = harness();
-    h.run();
-    h.get_by_label("Play with two players").click();
-    h.run();
-    let last = h.state().log_lines().last().map(|l| l.text.clone());
-    assert!(last.is_some_and(|t| t.contains("Phase 17")));
-}
-
-/// Part of the scale check (`tools/scale/scale-check.sh`, decision
-/// 0011): how long the editor takes to lay out and draw one frame of
-/// its interface, with a full console. Not run with the normal tests.
 #[test]
 #[ignore = "scale check: run by tools/scale/scale-check.sh"]
 #[allow(clippy::print_stdout)]
@@ -2143,13 +2124,13 @@ fn a_take_is_added_once_and_only_to_a_readable_event() {
 }
 
 #[test]
-fn new_sound_event_is_in_the_import_menu() {
+fn new_sound_event_is_in_the_new_menu() {
     let (w, _) = with_a_sound_event();
     let mut h = acting(w);
     h.run();
-    h.get_by_label("Import").click();
+    h.get_by_label("+ New").click();
     h.run();
-    h.get_by_label("New sound event").click();
+    h.get_by_label("Sound event").click();
     h.run();
     assert!(
         h.state()

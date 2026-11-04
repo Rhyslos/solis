@@ -14,7 +14,8 @@ pub enum Panel {
     /// renamed call it "Scene".
     #[serde(alias = "Scene")]
     Area,
-    /// The area's layers.
+    /// The area's layers: not built yet, so never shown (decision 0070).
+    /// Kept so layouts saved with it still read.
     Layers,
     /// The selected entity's components.
     Properties,
@@ -49,11 +50,10 @@ pub enum Panel {
 
 impl Panel {
     /// Every panel, in the order the Window menu lists them.
-    pub const ALL: [Self; 11] = [
+    pub const ALL: [Self; 10] = [
         Self::Viewport,
         Self::Game,
         Self::Area,
-        Self::Layers,
         Self::Properties,
         Self::Library,
         Self::Code,
@@ -72,6 +72,10 @@ impl Panel {
         Self::Map,
         Self::Tileset,
     ];
+
+    /// Panels taken out until what they show is built (decision 0070): a
+    /// saved layout that has one loses it.
+    pub const NOT_BUILT: [Self; 1] = [Self::Layers];
 
     /// The tabs a clips file opens (and closes) together.
     pub const FRAMES_TABS: [Self; 2] = [Self::Clips, Self::Frames];

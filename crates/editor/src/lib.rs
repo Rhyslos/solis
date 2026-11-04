@@ -68,6 +68,7 @@ mod workbench_animator;
 mod workbench_frames;
 mod workbench_library;
 mod workbench_paint;
+mod workbench_start;
 mod workbench_tiles;
 mod workbench_tileset;
 mod workbench_tools;

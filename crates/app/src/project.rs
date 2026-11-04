@@ -375,6 +375,31 @@ impl Projects {
         asset_db::write_atomically(&file, bytes).map_err(|e| e.to_string())
     }
 
+    /// Makes a new text file inside the assets (E1): a Lust code file
+    /// (`.lst`) or an area (`.solarea`). Never replaces a file.
+    pub fn save_new_text(&self, path: &Path, text: &str) -> Result<(), String> {
+        let db = self.db.as_ref().ok_or("no project is open")?;
+        let allowed = path
+            .extension()
+            .is_some_and(|e| e.eq_ignore_ascii_case("lst") || e.eq_ignore_ascii_case("solarea"));
+        let plain = path
+            .components()
+            .all(|c| matches!(c, std::path::Component::Normal(_)));
+        if !allowed || !plain {
+            return Err("it isn't a code file or an area in the assets".to_owned());
+        }
+        let file = db.project().assets().join(path);
+        if file.exists() {
+            return Err("a file is already there".to_owned());
+        }
+        if let Some(folder) = file.parent()
+            && !folder.is_dir()
+        {
+            return Err("its folder isn't there any more".to_owned());
+        }
+        asset_db::write_atomically(&file, text.as_bytes()).map_err(|e| e.to_string())
+    }
+
     /// Saves a tileset (`.soltileset`, inside the assets, Phase 9, D4),
     /// making it if it isn't there. Gives back where an older one was
     /// kept, if it was.
@@ -542,6 +567,40 @@ mod tests {
         let (again, same) = projects.bring_in(&path).unwrap();
         assert_eq!((again, same), (id, path));
         assert_eq!(Projects::library(&projects.listing(), |_| None).0.len(), 1);
+    }
+
+    #[test]
+    fn new_code_files_and_areas_are_made_but_never_replace_or_stray() {
+        let root = folder("new-text");
+        std::fs::create_dir_all(&root).unwrap();
+        let mut projects = Projects::default();
+        projects
+            .open(&root, true, assets::Limits::default())
+            .unwrap();
+        projects
+            .save_new_text(Path::new("main.lst"), "end\n")
+            .unwrap();
+        assert_eq!(
+            std::fs::read_to_string(root.join("assets/main.lst")).unwrap(),
+            "end\n"
+        );
+        projects
+            .save_new_text(Path::new("level.solarea"), "area version 3;\n")
+            .unwrap();
+        // Never over a file, never outside the assets, only code and areas.
+        for (path, why) in [
+            ("main.lst", "already"),
+            ("../escape.lst", "isn't"),
+            ("tool.exe", "isn't"),
+            ("gone/x.lst", "folder"),
+        ] {
+            let err = projects.save_new_text(Path::new(path), "x").unwrap_err();
+            assert!(err.contains(why), "{path}: {err}");
+        }
+        assert_eq!(
+            std::fs::read_to_string(root.join("assets/main.lst")).unwrap(),
+            "end\n"
+        );
     }
 
     #[test]
