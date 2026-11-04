@@ -40,7 +40,7 @@ Add a TopDownController, untick **Uses input**, set **Directions** to 4 if you l
 get "solis/physics":[moveCharacter];
 component Wanderer {
     method update(float dt) {
-        moveCharacter(me, [1.5 * dt, 0, 0]);
+        moveCharacter(this, [1.5 * dt, 0, 0]);
     }
 }
 ```

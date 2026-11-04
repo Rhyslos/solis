@@ -396,6 +396,9 @@ pub struct Workbench {
     /// Its components whose names were taken (by the engine's own, or a
     /// Rust one's): they don't run.
     pub(crate) left_out: std::collections::BTreeSet<String>,
+    /// The Lust compiler's notes on the game code last checked (older ways of writing that
+    /// still work), told in the Console once each time they change.
+    pub(crate) told_code_notes: Vec<String>,
     /// Kinds of component written in Rust, run in play mode.
     pub(crate) rust_components: Vec<script::RustKind>,
     /// The last [`Self::assembly_part`], with the selection, revision and
@@ -497,6 +500,7 @@ impl Workbench {
             game_sounds: Vec::new(),
             plays: 0,
             left_out: std::collections::BTreeSet::new(),
+            told_code_notes: Vec::new(),
             rust_components: Vec::new(),
             assembly_part_kept: std::cell::RefCell::new(None),
             assemblies: BTreeMap::new(),

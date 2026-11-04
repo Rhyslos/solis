@@ -56,9 +56,9 @@ component Walker {
     method update(float dt) {
         vec3 way = axis("Move");
         vec3 step = [way.x, way.y, 0];
-        moveTo(me, positionOf(me) + step * speed * dt);
+        moveTo(this, positionOf(this) + step * speed * dt);
         is pressed("Jump")? then {
-            moveTo(me, positionOf(me) + [0, 0, 1]);
+            moveTo(this, positionOf(this) + [0, 0, 1]);
         }
     }
 }

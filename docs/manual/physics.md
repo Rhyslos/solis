@@ -49,8 +49,8 @@ component Kicker {
             kicked = 1;
         }
         // Is anything below me, within 2 metres?
-        is castRay(positionOf(me), [0, 0, -1], 2) >= 0? then {
-            say(nameOf(castRayHit(positionOf(me), [0, 0, -1], 2)) + " is below me");
+        is castRay(positionOf(this), [0, 0, -1], 2) >= 0? then {
+            say(nameOf(castRayHit(positionOf(this), [0, 0, -1], 2)) + " is below me");
         }
     }
 }

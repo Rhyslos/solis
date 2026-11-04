@@ -46,8 +46,8 @@ component ThirdPersonCamera {
         is wall >= 0? then {
             away = Maths:max(Maths:min(away, wall - 0.3), 0.2);
         }
-        moveTo(me, pivot + behind * away);
-        turnTo(me, facing);
+        moveTo(this, pivot + behind * away);
+        turnTo(this, facing);
     }
 }
 
@@ -72,8 +72,8 @@ component FirstPersonCamera {
         vec3 look = axis("Look");
         yaw = yaw - look.x;
         pitch = Maths:clamp(pitch + look.y, lowest, highest);
-        moveTo(me, positionOf(body) + velocityOf(body) * dt + [0, 0, eyes]);
-        turnTo(me, [90 + pitch, 0, yaw]);
+        moveTo(this, positionOf(body) + velocityOf(body) * dt + [0, 0, eyes]);
+        turnTo(this, [90 + pitch, 0, yaw]);
         is turnsBody? then {
             turnTo(body, [0, 0, yaw]);
         }
@@ -112,8 +112,8 @@ component RtsCamera {
         }
         float down = Maths:clamp(tilt, 10, 90) * Maths.pi / 180;
         vec3 back = heading * [0, 0 - Maths:cos(down) / Maths:sin(down), 0] * height;
-        moveTo(me, focus + back + [0, 0, height]);
-        turnTo(me, [90 - Maths:clamp(tilt, 10, 90), 0, yaw]);
+        moveTo(this, focus + back + [0, 0, height]);
+        turnTo(this, [90 - Maths:clamp(tilt, 10, 90), 0, yaw]);
     }
 }
 

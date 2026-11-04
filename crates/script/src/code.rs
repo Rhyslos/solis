@@ -446,7 +446,12 @@ fn compile_here(code: &Code) -> Result<Option<Compiled>, Vec<CodeProblem>> {
         missing.extend(shared_names(&code.files));
         if missing.is_empty() {
             let files = &code.files;
-            match std::panic::catch_unwind(|| lust::to_lua(ENTRY, files)) {
+            // The engine's own folder (solis/): Lust's host folder, whose files give entity
+            // its methods and come with every program.
+            let engine = lust::Engine {
+                folders: crate::describe::engine_folders(files),
+            };
+            match std::panic::catch_unwind(|| lust::to_lua_with(&engine, ENTRY, files)) {
                 Ok(Ok(chunk)) => lust = Some(chunk),
                 Ok(Err(found)) => problems.extend(found.into_iter().map(CodeProblem::from)),
                 Err(_) => problems.push(compiler_stopped()),

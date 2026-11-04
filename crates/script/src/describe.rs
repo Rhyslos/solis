@@ -345,7 +345,7 @@ fn descriptions_with(made_by: &str, folder: &str, renamed: &[Renamed]) -> Vec<(S
         .map(|file| {
             let mine: Vec<&Native> = NATIVES.iter().filter(|n| n.file == file).collect();
             let mut text = format!(
-                "-- Made by {made_by}: what game code can ask of the engine. It's written again\n\
+                "-- Made by {made_by}{ENGINE_FILE} It's written again\n\
                  -- whenever the project opens, so changes made here don't last.\n\n"
             );
             for native in &mine {
@@ -385,6 +385,29 @@ fn descriptions_with(made_by: &str, folder: &str, renamed: &[Renamed]) -> Vec<(S
             )
         }))
         .collect()
+}
+
+/// What the first line of each file describing the engine says after who made it: how the
+/// compiler knows the engine's own folder (Lust's host folder, decision 0072), without the
+/// program's name written into the code.
+pub const ENGINE_FILE: &str = ": what game code can ask of the engine.";
+
+/// The engine's own folders among `files`: the top folder of each file describing the engine
+/// (its first line says so, [`ENGINE_FILE`]). Lust lets only their files give `entity`
+/// methods, and makes them part of every program.
+pub fn engine_folders(files: &[(String, String)]) -> Vec<String> {
+    let mut folders: Vec<String> = files
+        .iter()
+        .filter(|(_, text)| {
+            text.lines()
+                .next()
+                .is_some_and(|l| l.starts_with("-- Made by ") && l.contains(ENGINE_FILE))
+        })
+        .filter_map(|(path, _)| path.split_once('/').map(|(top, _)| top.to_string()))
+        .collect();
+    folders.sort();
+    folders.dedup();
+    folders
 }
 
 /// `lust`, a native's method line, with its name `new` changed to `old`.
@@ -461,10 +484,33 @@ mod tests {
              end\n"
                 .into(),
         ));
-        if let Err(problems) = lust::check("main.lst", &files) {
+        let engine = lust::Engine {
+            folders: engine_folders(&files),
+        };
+        assert_eq!(engine.folders, ["solis"]);
+        if let Err(problems) = lust::check_with(&engine, "main.lst", &files) {
             let text: Vec<String> = problems.iter().map(ToString::to_string).collect();
             panic!("{}", text.join("\n"));
         }
+    }
+
+    #[test]
+    fn the_engines_folder_is_found_from_its_files_first_lines() {
+        let mut files = descriptions("Test Engine 9.9.9", "engine");
+        assert_eq!(engine_folders(&files), ["engine"]);
+        // A game's own files, a top-level one with the line, and one where it isn't first:
+        // none of them makes a folder the engine's.
+        files.push(("game/a.lst".into(), "end\n".into()));
+        files.push((
+            "loose.lst".into(),
+            format!("-- Made by me{ENGINE_FILE}\nend\n"),
+        ));
+        files.push((
+            "other/b.lst".into(),
+            format!("end\n-- Made by me{ENGINE_FILE}\n"),
+        ));
+        assert_eq!(engine_folders(&files), ["engine"]);
+        assert!(engine_folders(&[]).is_empty());
     }
 
     #[test]
@@ -478,7 +524,11 @@ mod tests {
              end\n"
                 .into(),
         ));
-        if let Err(problems) = lust::check("main.lst", &files) {
+        let engine = lust::Engine {
+            folders: engine_folders(&files),
+        };
+        assert_eq!(engine.folders, ["solis"]);
+        if let Err(problems) = lust::check_with(&engine, "main.lst", &files) {
             let text: Vec<String> = problems.iter().map(ToString::to_string).collect();
             panic!("{}", text.join("\n"));
         }
