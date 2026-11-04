@@ -59,6 +59,17 @@ impl Workbench {
         }
         self.code_problems.extend(taken);
         self.left_out = left_out;
+        let notes: Vec<String> = chunk
+            .as_ref()
+            .and_then(|c| c.lust.as_ref())
+            .map(|lust| lust.notes.iter().map(ToString::to_string).collect())
+            .unwrap_or_default();
+        if notes != self.told_code_notes {
+            for note in &notes {
+                self.log(LogLevel::Warning, note.clone());
+            }
+            self.told_code_notes = notes;
+        }
         self.program = chunk;
         self.fit_values_to_code();
     }

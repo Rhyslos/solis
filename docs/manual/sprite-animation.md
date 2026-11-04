@@ -45,7 +45,7 @@ component Farmer {
     }
     on ClipFinished(string clip) {
         is clip == "hoe"? then {
-            playClip(me, "idle");
+            playClip(this, "idle");
         }
     }
 }

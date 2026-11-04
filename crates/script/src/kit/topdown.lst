@@ -74,7 +74,7 @@ component TopDownController {
             facing = [want.x, want.y, 0] * (1 / Maths:max(length, 0.0001));
         }
 
-        moveCharacter(me, velocity * dt);
+        moveCharacter(this, velocity * dt);
     }
 }
 

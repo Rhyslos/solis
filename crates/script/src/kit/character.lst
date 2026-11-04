@@ -25,7 +25,7 @@ component CharacterController {
     method update(float dt) {
         -- Which way is forward: the way the camera looks (along its -Z;
         -- its top, looking straight down), or the character's own.
-        float forward = rotationOf(me):degrees().z;
+        float forward = rotationOf(this):degrees().z;
         is camera != nothing? then {
             rotation eye = rotationOf(camera);
             vec3 ahead = eye * [0, 0, -1];
@@ -46,7 +46,7 @@ component CharacterController {
         -- Falling, landing and jumping. On the ground it doesn't fall:
         -- the CharacterBody keeps it to the ground going down steps and
         -- slopes (and pressing down would only cost time).
-        is onGround(me)? then {
+        is onGround(this)? then {
             fall = 0;
             is pressed("Jump")? then {
                 fall = Maths:sqrt(2 * gravity * jumpHeight);
@@ -55,11 +55,11 @@ component CharacterController {
             fall = fall - gravity * dt;
         }
 
-        moveCharacter(me, wanted * speed * dt + [0, 0, fall * dt]);
+        moveCharacter(this, wanted * speed * dt + [0, 0, fall * dt]);
 
         -- Turn towards where it walks, at most turnSpeed degrees a second.
         is facesWhereItWalks && (move.x != 0 || move.y != 0)? then {
-            float now = rotationOf(me):degrees().z;
+            float now = rotationOf(this):degrees().z;
             float target = facingAlong(wanted):degrees().z;
             float turn = target - now;
             loop (turn > 180) {
@@ -69,7 +69,7 @@ component CharacterController {
                 turn = turn + 360;
             }
             float most = turnSpeed * dt;
-            turnTo(me, [0, 0, now + Maths:clamp(turn, -most, most)]);
+            turnTo(this, [0, 0, now + Maths:clamp(turn, -most, most)]);
         }
     }
 }

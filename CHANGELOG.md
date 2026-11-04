@@ -27,6 +27,9 @@ What changed in each version, for people using Solis. Newest first.
 
 ### Changed
 
+- **Game code is checked by Lust alpha 59** (was alpha 35; [decision 0072](docs/decisions/0072-lust-alpha-59-and-the-engine-folder.md)). Lust code can now use `check` blocks, `print(a, b)`, values in text (`"hp: {hp}"`), `+=` and friends, sized numbers (`int8` to `uint32`), `lock`, and counting loops. A `{` straight before a name in text now shows that value (`"{lives}"`): write `\{` to keep the brace. `this` is the entity a component is on; `me` still works, with a note in the Console saying to write `this`. The kit, samples and manual use `this`.
+- **The Lust compiler's notes show in the Console** as warnings: things that aren't mistakes but are worth changing.
+
 - **The arrow keys walk** ([decision 0071](docs/decisions/0071-2d-physics-and-top-down-movement.md)): the ready-made Move action is now WASD, the arrow keys and a controller's left stick (the arrows still pan the RTS camera too). Projects with their own input actions file keep theirs: add the arrows to Move in **Edit > Input actions…**.
 - **Usable first** ([decision 0070](docs/decisions/0070-usable-first.md)): after an audit with the project lead, a new build order around making a farming game in Lust: the editor's basics, then everything the editor makes as Lust, game code reaching tiles and animators, game-wide objects, 2D movement, the camera, game UI with a UI editor, day and night, and the playtest export (ROADMAP.md, "Usable first").
 - **Blue is the editor's standard colour** again ([decision 0070](docs/decisions/0070-usable-first.md)). If you never picked a colour while amber was the standard, you get blue; a colour you picked stays (Edit > Settings… > Appearance).

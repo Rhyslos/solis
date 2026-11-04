@@ -33,7 +33,7 @@ Not sure which? [Which language when](which-language.md) compares them, with num
    end
    ```
 
-4. Save. Solis checks the code within a moment. Mistakes appear in the [Problems](problems.md) panel, such as "main.lst, line 6:15: speed is a float, but this is text". The Console says how many there are.
+4. Save. Solis checks the code within a moment. Mistakes appear in the [Problems](problems.md) panel, such as "main.lst, line 6:15: speed is a float, but this is text". The Console says how many there are. **Notes** go to the Console too, as warnings: things that aren't mistakes, so the code still runs, but worth changing (writing `me` where Lust now says `this`). Each is said once, until the notes change.
 5. Click a mistake to open its file in your code editor, fix it and save. It disappears from Problems by itself.
 
 ## Components
@@ -50,7 +50,7 @@ component Mover {
 
     method update(float dt) {
         vec3 ahead = [1, 0, 0];
-        moveTo(me, positionOf(me) + ahead * speed * dt);
+        moveTo(this, positionOf(this) + ahead * speed * dt);
     }
 }
 
@@ -74,7 +74,7 @@ end
 
 1. Save the file. When the code has no mistakes, **Mover** appears in Properties' **Add component** menu.
 2. Select an entity and add **Mover**. Its `has` fields show in Properties with their starting values (`speed` as **Speed**), and are saved in the area like any other component's.
-3. Press **Play**. Every [tick](concepts.md#game-code) (60 times a second), Solis runs each component's `update`, with `dt`, how long a tick is in seconds. `me` is the entity the component is on. The Game panel shows the entity moving.
+3. Press **Play**. Every [tick](concepts.md#game-code) (60 times a second), Solis runs each component's `update`, with `dt`, how long a tick is in seconds. `this` is the entity the component is on (older code says `me`, which still works: the Console shows a note saying to write `this`). The Game panel shows the entity moving.
 4. Change **Speed** in Properties while it plays: the running Mover takes the new speed at once, and keeps everything else it has (here, where it is). Properties shows the values the entity started with, not the ones the running game has changed since: a turret that has fired still shows its full ammo there.
 5. Press **Stop**. Everything is back as it was before Play.
 
@@ -130,7 +130,7 @@ component Health {
         is hp > 0? then {
             hp = hp - damage;
             is hp <= 0? then {
-                send Died() to me;
+                send Died() to this;
             }
         }
     }
@@ -146,7 +146,7 @@ component Gun {
     }
 
     method update(float dt) {
-        send Hit(me, 2.5) to target;
+        send Hit(this, 2.5) to target;
     }
 }
 
@@ -208,7 +208,7 @@ component Turret {
     method update(float dt) {
         cooldown = cooldown - 1;
         is cooldown <= 0? then {
-            fire(positionOf(me), [0, 1, 0], 60, 2, [4, 0.3, 0.2]);
+            fire(positionOf(this), [0, 1, 0], 60, 2, [4, 0.3, 0.2]);
             cooldown = 30;
         }
     }
@@ -253,7 +253,7 @@ end
 - **When:** like a move, it happens after every `update` in the tick ([what game code sees](#components)). `spawn` gives back the new entity at once, so you can keep it. It joins the game at the end of the tick, after the tick's moves: its components start then and run from the next tick, even when a slow frame runs several ticks at once. A `despawn` lands at the same moment, in the order they were asked for, so spawning something and taking it out in one tick leaves nothing behind. New copies go at the end of the area's tree, in the order they were spawned.
 - **Where it shows:** copies game code makes appear in the Area panel while playing, and are gone when you press **Stop**, like everything else changed while playing. They aren't undo steps.
 - At most 10,000 copies are made in one tick, and an area holds at most a million entities; past that, the Console says so and the rest aren't made.
-- `despawn(me)` is how a component takes its own entity away. It ends at the end of the tick.
+- `despawn(this)` is how a component takes its own entity away. It ends at the end of the tick.
 
 ## Random numbers
 
@@ -294,7 +294,7 @@ component Walker {
     method update(float dt) {
         steps = steps + 1;
         is steps % 30 == 0? then {
-            playSoundAt("sfx/footstep", positionOf(me));
+            playSoundAt("sfx/footstep", positionOf(this));
         }
     }
 }
@@ -370,7 +370,7 @@ Things that fall, collide and get pushed have a **RigidBody** and a **Collider**
 | `solis/entity` | `moveTo(entity which, vec3 place)` | Puts an entity at a place in the world. |
 | `solis/entity` | `rotation rotationOf(entity which)` | Which way an entity faces. |
 | `solis/entity` | `turnTo(entity which, rotation facing)` | Turns an entity to face this way. |
-| `solis/entity` | `rotation facingAlong(vec3 direction)` | The upright rotation facing along a direction (an entity's forward is +Y): `turnTo(me, facingAlong(target - positionOf(me)))` faces a place. |
+| `solis/entity` | `rotation facingAlong(vec3 direction)` | The upright rotation facing along a direction (an entity's forward is +Y): `turnTo(this, facingAlong(target - positionOf(this)))` faces a place. |
 | `solis/entity` | `string nameOf(entity which)` | An entity's name. |
 
 **When an update renames something.** What game code can call doesn't change by accident: Solis's own checks stop any update that changes it without saying so. When a name does change on purpose, the old name keeps working for a few phases, so your game still runs the day you update. Each place your code uses the old name shows in the [Problems](problems.md) panel as a warning, with its file and line, the new name, and when the old one stops working. Change the call to the new name before then.

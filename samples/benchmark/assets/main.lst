@@ -25,7 +25,7 @@ component Ship {
 
     method update(float dt) {
         is started == false? then {
-            vec3 at = positionOf(me);
+            vec3 at = positionOf(this);
             team = 0;
             centre = [-120, at.y, at.z];
             is at.x > 0? then {
@@ -42,12 +42,12 @@ component Ship {
         float c = Maths:cos(angle);
         float s = Maths:sin(angle);
         vec3 at = centre + [c * radius, s * radius, 0];
-        moveTo(me, at);
+        moveTo(this, at);
         rotation facing = [0, 0, angle * 57.29578];
         is team == 1? then {
             facing = [0, 0, angle * 57.29578 + 180];
         }
-        turnTo(me, facing);
+        turnTo(this, facing);
         cooldown = cooldown - 1;
         is cooldown <= 0? then {
             cooldown = 10;

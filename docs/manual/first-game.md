@@ -12,7 +12,7 @@ Right after reading [Game code](game-code.md), or instead of it if you learn bes
 
 ## What's in it
 
-**The turret** (Lust, in `main.lst`) has a target (the drone, set in Properties), ammo, damage and a cooldown. Each tick, `update` counts the cooldown down. When it reaches zero, it fires: `send Hit(me, damage) to target;`.
+**The turret** (Lust, in `main.lst`) has a target (the drone, set in Properties), ammo, damage and a cooldown. Each tick, `update` counts the cooldown down. When it reaches zero, it fires: `send Hit(this, damage) to target;`.
 
 ```
 component Turret {
@@ -27,7 +27,7 @@ component Turret {
     method update(float dt) {
         reload = reload - dt;
         is reload <= 0 && ammo > 0? then {
-            send Hit(me, damage) to target;
+            send Hit(this, damage) to target;
             ammo = ammo - 1;
             reload = cooldown;
         }

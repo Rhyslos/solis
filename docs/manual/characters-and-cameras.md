@@ -62,7 +62,7 @@ component Hopper {
     method update(float dt) {
         vec3 move = axis("Move");
         vec3 walk = [move.x, move.y, 0];
-        is onGround(me)? then {
+        is onGround(this)? then {
             fall = 0;
             is pressed("Jump")? then {
                 fall = 5;
@@ -70,7 +70,7 @@ component Hopper {
         } or {
             fall = fall - 20 * dt;
         }
-        moveCharacter(me, walk * 4 * dt + [0, 0, fall * dt]);
+        moveCharacter(this, walk * 4 * dt + [0, 0, fall * dt]);
     }
 }
 
