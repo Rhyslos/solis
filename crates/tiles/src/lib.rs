@@ -17,12 +17,15 @@
 //! - [`paint`]: what the tile painter's tools touch (D6): a line's and a
 //!   rectangle's cells, a fill's reach, and stamps copied, flipped and
 //!   turned.
+//! - [`walls`]: a map's solid cells merged into a few rectangles, chunk by
+//!   chunk, for 2D physics (decision 0071).
 
 pub mod autotile;
 pub mod map;
 pub mod map_file;
 pub mod paint;
 pub mod tileset;
+pub mod walls;
 
 pub use map::{CHUNK, CellValue, Layer, MapError, TileMap, ValueDef, ValueKind};
 pub use tileset::{Animation, Cond, Piece, Rule, Terrain, TileKind, Tileset};

@@ -19,6 +19,7 @@ Be the one place an area lives while it's edited. The editor, saving and loading
 - **2D settings** (`pixels.rs`, Phase 9, D1): a project's base resolution, pixels per unit, tile size and scaling, read from and written to `pixels.solpix` (a settings file, format 1), values out of range brought in with a note.
 - **Sprites** (`builtin/sprite.rs`, Phase 9, D2): the `Sprite` component, one frame of a sprite sheet lying on the ground at the entity, standing on its pivot slice, with flip, tint, flash, outline and see-through; from D3, the clip it plays (Clip, Playing, Speed, Clip time).
 - **Animators** (`builtin/animator.rs`, Phase 9, D3b): the `Animator` component: an animator file (`.solanim`) that chooses the Sprite's clip, the state it starts in (and, while playing, is in), and a speed.
+- **2D colliders** (`builtin/collider_2d.rs`, decision 0071): the `Collider2D` component, a shape on the ground for 2D physics, in pixels: a circle or a box, offset across and up, solid and still or a character game code walks.
 - **Tile maps** (`builtin/tile_map.rs`, Phase 9, D4): the `TileMap` component: a tile map file (`.soltilemap`) placed with its top-left corner at the entity. `settings::read_block_settings_within` reads a block settings file with a cap on its blocks, for files as big as a map.
 - **A new area** has a Sun and an Environment (the sun, sky and fog live in each area).
 

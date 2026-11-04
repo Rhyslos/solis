@@ -397,6 +397,7 @@ fn renamed_lust(lust: &str, new: &str, old: &str) -> String {
 /// copies.
 pub const KIT: &[(&str, &str)] = &[
     ("character.lst", include_str!("kit/character.lst")),
+    ("topdown.lst", include_str!("kit/topdown.lst")),
     ("cameras.lst", include_str!("kit/cameras.lst")),
 ];
 
@@ -407,7 +408,7 @@ mod tests {
     #[test]
     fn the_descriptions_check_cleanly_and_a_game_can_use_them() {
         let mut files = descriptions("Test Engine 9.9.9", "solis");
-        assert_eq!(files.len(), 8);
+        assert_eq!(files.len(), 9);
         assert!(files[0].1.starts_with("-- Made by Test Engine 9.9.9"));
         files.push((
             "main.lst".into(),

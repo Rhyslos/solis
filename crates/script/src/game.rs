@@ -120,6 +120,8 @@ pub struct WorldView {
     pub seed: u64,
     /// Physics as the phase started (decision 0036), shared, to read.
     pub physics: Arc<physics::State>,
+    /// 2D physics as the phase started (decision 0071), shared, to read.
+    pub flat: Arc<physics::flat::FlatState>,
     /// The input this tick (decision 0037): the same on every core.
     pub input: Arc<input::Frame>,
     /// The actions' bindings, to say which input sets one off.
@@ -365,7 +367,11 @@ impl Host for ViewHost {
     }
 
     fn move_character(&mut self, which: EntityId, wanted: Vec3) {
-        if wanted.is_finite() && self.view.physics.character(which).is_some() && self.kept.room() {
+        // A 3D character (CharacterBody), or a 2D one (a Collider2D ticked
+        // Character), which walks on the ground: the world tells them apart.
+        let character =
+            self.view.physics.character(which).is_some() || self.view.flat.is_character(which);
+        if wanted.is_finite() && character && self.kept.room() {
             let order = self.order();
             self.kept
                 .changes

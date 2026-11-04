@@ -18,6 +18,7 @@ layer = 1
 reflect.workspace = true
 glam.workspace = true
 rapier3d.workspace = true
+rapier2d.workspace = true
 rayon.workspace = true
 
 [dev-dependencies]

@@ -775,6 +775,7 @@ impl Viewport {
         overlay.pointer = None;
         overlay.asked.clear();
         overlay.chunks_asked = false;
+        overlay.walls_asked = false;
         overlay.turn_asked = None;
         overlay.input = crate::tile_paint::PaintInput::default();
         let mut next = self.active;

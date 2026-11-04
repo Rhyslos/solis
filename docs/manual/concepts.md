@@ -189,6 +189,10 @@
 - **Dual grid:** drawing art half a cell off the cells, so each tile sits where four cells meet and is chosen by which of them are the terrain. 16-tile terrains use it: 15 drawings cover every edge and corner.
 - **Variation:** another tile for the same slot, picked by weight so a field doesn't look repeated. Each cell always gets the same one.
 - **Template:** a picture with every slot of a kind laid out at your tile size, to draw your tiles over.
+- **Solid (terrain):** a terrain nothing with a 2D collider can walk into, such as a fence or water. Your game chooses which terrains are solid, in the Map tab. See [Walls and walking in 2D](walls-and-walking.md).
+- **Walls (2D):** what 2D physics makes of a map's solid cells: neighbouring cells merged into a few rectangles, so sliding along a fence never catches on the seams between tiles. The viewport's **Walls** switch shows them.
+- **Collider2D:** a built-in component giving an entity a shape on the ground for 2D physics, in pixels: a circle or a box. Solid and still, or a **character** that game code walks and that slides along what's in its way.
+- **Top-down movement:** walking across a map seen from above, in 8 directions (with diagonals) or 4. The kit's **TopDownController** does it, never faster diagonally than straight.
 
 ## Getting Solis
 

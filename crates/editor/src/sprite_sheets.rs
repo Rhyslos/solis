@@ -175,6 +175,19 @@ impl SpriteSheets {
         self.map_set = Arc::new(set);
     }
 
+    /// Which terrains of each tileset read are solid, by asset ID, for the
+    /// running game's walls (decision 0071). Worked out as asked: tilesets
+    /// are few and small.
+    pub fn solid_sets(&self) -> world::SolidSets {
+        self.paths
+            .iter()
+            .filter_map(|(&id, path)| match self.tilesets.get(path)? {
+                TilesetState::Read(set, _) => Some((id, tiles::walls::solid_codes(set))),
+                TilesetState::Failed(_) => None,
+            })
+            .collect()
+    }
+
     /// The tileset with asset ID `id`, if it's been read.
     pub fn tileset(&self, id: AssetId) -> Option<&Arc<tiles::Tileset>> {
         match self.tilesets.get(self.paths.get(&id)?)? {

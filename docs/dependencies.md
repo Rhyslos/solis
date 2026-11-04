@@ -69,6 +69,7 @@ Solis is built on other people's libraries, which saves years of work. Each libr
 | `pollster` | Waits for the graphics card in tests | Apache-2.0/MIT | app (tests), render (tests) | tests | Write it (about 20 lines) |
 | `proptest` | Tests with thousands of generated cases | MIT OR Apache-2.0 | animation (tests), area (tests), tiles (tests), editor (tests), physics (tests), script (tests), sound (tests), updater (tests) | tests | Keep the last version (tests only), or another property-testing library |
 | `rapier3d` | Physics, the same on every PC (decision 0036) | Apache-2.0 | physics | walled | Fork it (Apache-2.0) and maintain it; a physics engine of our own is a large job, and only the physics crate would change |
+| `rapier2d` | 2D physics, the same on every PC (decision 0071) | Apache-2.0 | physics | walled | As `rapier3d`: fork it and maintain it; only `physics::flat` would change |
 | `rayon` | The job system that uses every core (decision 0031) | MIT OR Apache-2.0 | app, editor, physics, render, world | shared | Fork it, or a job system of Solis's own (the uses are simple parallel loops) |
 | `rfd` | Open and Save file windows | MIT | app | walled | Ask Windows directly (its common file dialogs) |
 | `ron` | Reads a test file format in tests | MIT OR Apache-2.0 | editor (tests) | tests | Drop it from the tests |

@@ -76,6 +76,9 @@ pub(crate) enum MapRequest {
     PaintWith(u8),
     /// Place this piece as an exact tile.
     PaintPiece(reflect::Id),
+    /// Make this terrain (by code) solid, or not: saved in its tileset
+    /// (decision 0071).
+    SetSolid(u8, bool),
 }
 
 /// A terrain's colour, or the missing colour.
@@ -90,6 +93,36 @@ fn terrain_colour(set: Option<&Tileset>, code: u8) -> Color32 {
             Color32::from_rgb(r, g, b)
         }
     }
+}
+
+/// The wall mark on a solid terrain's swatch: a small box in the
+/// collider colour in its top-right corner (decision 0071).
+fn solid_mark(ui: &Ui, swatch: egui::Rect) {
+    let mark = egui::Rect::from_min_size(swatch.right_top() + vec2(-17.0, 3.0), vec2(14.0, 14.0));
+    let p = ui.painter();
+    p.rect_filled(mark, 2.0, Color32::from_black_alpha(200));
+    p.rect_stroke(
+        mark,
+        2.0,
+        egui::Stroke::new(1.0, theme::COLLIDER),
+        egui::StrokeKind::Inside,
+    );
+    // Bricks: two rows, the lower one offset.
+    let line = egui::Stroke::new(1.0, theme::COLLIDER);
+    let (l, r, t, b) = (
+        mark.left() + 3.0,
+        mark.right() - 3.0,
+        mark.top() + 3.0,
+        mark.bottom() - 3.0,
+    );
+    let mid = (t + b) * 0.5;
+    p.line_segment([egui::pos2(l, mid), egui::pos2(r, mid)], line);
+    p.line_segment(
+        [egui::pos2((l + r) * 0.5, t), egui::pos2((l + r) * 0.5, mid)],
+        line,
+    );
+    p.line_segment([egui::pos2(l + 2.0, mid), egui::pos2(l + 2.0, b)], line);
+    p.line_segment([egui::pos2(r - 2.0, mid), egui::pos2(r - 2.0, b)], line);
 }
 
 /// A small picture of a layer: a grid of samples of its cells.
@@ -308,9 +341,32 @@ pub(crate) fn map_tab(ui: &mut Ui, m: &MapUi<'_>) -> Vec<MapRequest> {
                             egui::FontId::proportional(10.0),
                             Color32::from_white_alpha(190),
                         );
+                        if t.solid {
+                            solid_mark(ui, rect);
+                        }
+                        // Right-click: the terrain's settings.
+                        r.context_menu(|ui| {
+                            ui.label(RichText::new(&t.name).strong());
+                            let mut solid = t.solid;
+                            if ui
+                                .checkbox(&mut solid, "Solid")
+                                .on_hover_text(
+                                    "Nothing with a 2D collider passes into its cells: players, \
+                                     NPCs and anything else that moves. Saved in the tileset, so \
+                                     every map using it agrees.",
+                                )
+                                .changed()
+                            {
+                                asked.push(MapRequest::SetSolid(code, solid));
+                                ui.close();
+                            }
+                        });
                         r.on_hover_text(format!(
-                            "{}: written \"{}\" in the map file. Click to paint with it.",
-                            t.name, t.code
+                            "{}: written \"{}\" in the map file{}. Click to paint with it; \
+                             right-click for its settings.",
+                            t.name,
+                            t.code,
+                            if t.solid { ", solid" } else { "" }
                         ));
                         ui.label(RichText::new(format!("{} {}", t.name, t.code)).small());
                     });
@@ -662,6 +718,7 @@ pub(crate) fn tileset_properties(
             code,
             colour: [0.5; 3],
             kind: tiles::TileKind::Plain,
+            solid: false,
         });
         changed = Some(s);
     }

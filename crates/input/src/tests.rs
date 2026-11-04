@@ -18,12 +18,14 @@ fn the_ready_made_actions_are_the_chosen_controls() {
     );
     // The cameras' controls (decision 0041).
     assert_eq!(b.get("Pan").unwrap().left, ["Left"]);
+    // WASD and the arrows both walk (decision 0071).
+    assert_eq!(b.get("Move").unwrap().up, ["W", "Up"]);
+    assert_eq!(b.get("Move").unwrap().right, ["D", "Right"]);
     assert_eq!(b.get("Turn").unwrap().left, ["Alt+Left"]);
     assert_eq!(b.get("Zoom").unwrap().up, ["PageUp", "Pad RT"]);
     assert!(b.get("Zoom").unwrap().is_motion());
     assert_eq!(b.get("Drag").unwrap().inputs, ["Mouse Middle"]);
     assert_eq!(b.get("Interact").unwrap().inputs, ["F", "Pad X"]);
-    assert_eq!(b.get("Move").unwrap().up, ["W"]);
     assert!(b.get("Look").unwrap().is_motion());
     assert!(!b.get("Move").unwrap().is_motion());
     b.check().unwrap();

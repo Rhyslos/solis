@@ -12,6 +12,7 @@ Tile maps (Phase 9, D4 to D6; decisions [0067](../../docs/decisions/0067-tile-ma
 - **Tile maps** (`map.rs`): a size (each side 1 to 4,096), a tileset's asset ID, layers (each a byte per cell, the terrain's code or 0 for empty, drawn under or over sprites) and values (number, switch or choice, each a column with a cell's value in it). Layers and columns are `Arc`'d, so a copy (an undo step, the running game's) shares them until changed. A change marks its 32 × 32 chunk (`take_dirty` for whoever redraws), and `checksum` works out only dirty chunks again. `cells_where` finds every cell whose value holds ("every watered crop"); `counts` says how many cells use each code.
 - **Exact tiles** (`map.rs`, D6): per layer, the cells painted to show one piece as it is (`set_exact`), kept by cell index; art only, so not in the checksum. A cell's code changing clears its exact tile.
 - **Painting** (`paint.rs`, D6): what the editor's tile painter touches, apart from the editor: a line's cells (Bresenham, no gaps), a rectangle clipped to the map, a fill's reach (cells joined by their sides with the same terrain), and a `Stamp` copied from an area, flipped, turned and put down.
+- **Walls** (`walls.rs`, decision 0071): a tileset's solid terrains (`solid_codes`) and a map chunk's solid cells (on any layer) merged into rectangles by a greedy sweep (`chunk_walls`), never leaving their chunk, in a fixed order; 2D physics makes its walls from them, and the editor's Walls switch draws them. A terrain's `solid` is written `solid = true;` only when on (tileset format 3; format 2 reads with nothing solid).
 - **Tile map files** (`map_file.rs`): `.soltilemap`, a settings file: the tileset and size, a block per layer and value, a block per layer's chunk of rows of codes (a space for empty), and a block per chunk of only the values not at their start (`[x, y, value]`). Version 2 (D6) adds a block per layer's chunk of its exact tiles (`[x, y, "piece"]`); version 1 reads with none. A Git diff shows exactly the changed cells. Read as a hostile file within limits (64 MB, 300,000 blocks, 16 layers, 32 values, 64 options); fuzzed (`fuzz/fuzz_targets/tile_map.rs`).
 
 ## Must never
@@ -26,4 +27,4 @@ Tile maps (Phase 9, D4 to D6; decisions [0067](../../docs/decisions/0067-tile-ma
 
 ## Status
 
-Phase 9, D4: tilesets with colours, maps with layers and values, their files. D5: tilesets' art and autotiling. D6: exact tiles, the painter's shapes and stamps (the painter itself is the editor's).
+Phase 9, D4: tilesets with colours, maps with layers and values, their files. D5: tilesets' art and autotiling. D6: exact tiles, the painter's shapes and stamps (the painter itself is the editor's). Usable first, 2D movement: solid terrains and walls.

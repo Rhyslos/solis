@@ -14,6 +14,7 @@ pub(crate) fn farm() -> Tileset {
         code,
         colour,
         kind: TileKind::Plain,
+        solid: false,
     };
     Tileset {
         terrains: vec![
@@ -36,12 +37,16 @@ pub(crate) fn farm_art() -> Tileset {
     set.terrains[1].kind = TileKind::Dual16;
     set.terrains[2].kind = TileKind::Blob47;
     set.terrains[3].kind = TileKind::Edges;
+    // Water and fence are solid (decision 0071).
+    set.terrains[2].solid = true;
+    set.terrains[3].solid = true;
     set.terrains.push(Terrain {
         id: id(5),
         name: "rocks".into(),
         code: 'r',
         colour: [0.5, 0.5, 0.5],
         kind: TileKind::Rules,
+        solid: true,
     });
     let mut n = 100;
     let mut piece = |terrain: u64, slot: u32, at: [u32; 2], weight: f32, animation| {
@@ -106,7 +111,7 @@ pub(crate) fn farm_art() -> Tileset {
 fn a_tileset_round_trips_and_finds_its_terrains() {
     let set = farm();
     let text = write(&set);
-    assert!(text.contains("tileset version 2;"));
+    assert!(text.contains("tileset version 3;"));
     assert!(!text.contains("picture ="), "no art, no picture line");
     assert!(text.contains("code = \"~\";"));
     let back = read(&text).unwrap();
@@ -128,6 +133,7 @@ fn art_pieces_and_rules_round_trip() {
         "{text}"
     );
     assert!(text.contains("weight = 3.0;"), "{text}");
+    assert_eq!(text.matches("solid = true;").count(), 3, "{text}");
     let back = read(&text).unwrap();
     assert!(back.notes.is_empty(), "{:?}", back.notes);
     assert_eq!(back.tileset, set);
@@ -149,11 +155,23 @@ fn version_1_reads_as_plain_terrains_with_no_art() {
 
 #[test]
 fn the_fixture_reads_without_notes() {
-    let text = include_str!("../../../tests/fixtures/tileset/v2/farm.soltileset");
+    let text = include_str!("../../../tests/fixtures/tileset/v3/farm.soltileset");
     let read = read(text).unwrap();
     assert!(read.notes.is_empty(), "{:?}", read.notes);
     assert_eq!(read.tileset, farm_art());
     assert_eq!(write(&read.tileset), text, "written as Solis writes it");
+}
+
+#[test]
+fn version_2_reads_with_nothing_solid() {
+    let text = include_str!("../../../tests/fixtures/tileset/v2/farm.soltileset");
+    let read = read(text).unwrap();
+    assert!(read.notes.is_empty(), "{:?}", read.notes);
+    let mut want = farm_art();
+    for t in &mut want.terrains {
+        t.solid = false;
+    }
+    assert_eq!(read.tileset, want);
 }
 
 #[test]
@@ -294,4 +312,25 @@ fn what_can_t_be_used_is_skipped_with_a_note() {
     assert!(super::read(&many).unwrap().tileset.terrains.len() <= MAX_TERRAINS);
     assert!(super::read("tilemap version 1;").is_err());
     assert!(super::read(&"-".repeat(MAX_BYTES + 1)).is_err());
+}
+
+#[test]
+fn solid_is_read_only_as_true_or_false() {
+    let text = "tileset version 2;\n\
+         terrain 0000000000001 { name = \"water\"; code = \"~\"; solid = true; }\n\
+         terrain 0000000000002 { name = \"odd\"; code = \"o\"; solid = 3; }\n\
+         terrain 0000000000003 { name = \"grass\"; code = \".\"; }\n";
+    let read = read(text).unwrap();
+    let solid: Vec<(&str, bool)> = read
+        .tileset
+        .terrains
+        .iter()
+        .map(|t| (t.name.as_str(), t.solid))
+        .collect();
+    assert_eq!(solid, [("water", true), ("grass", false)], "odd is skipped");
+    assert!(
+        read.notes.iter().any(|n| n.contains("true or false")),
+        "{:?}",
+        read.notes
+    );
 }

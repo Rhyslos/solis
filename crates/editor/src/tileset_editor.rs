@@ -218,6 +218,7 @@ impl TilesetEditor {
                 code,
                 colour: [0.5; 3],
                 kind: TileKind::Plain,
+                solid: false,
             });
         })
     }

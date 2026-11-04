@@ -349,3 +349,46 @@ fn while_playing_the_tab_shows_the_game_s_map() {
     let overlay = w.viewport.tile_overlay.map.as_ref().unwrap();
     assert_eq!(overlay.map.value(1, 5, 5), Some(CellValue::Number(9)));
 }
+
+#[test]
+fn a_terrain_made_solid_is_saved_in_its_tileset_and_its_walls_shown() {
+    let (mut w, map, set) = with_map();
+    w.place_tile_map(map, None).unwrap();
+    w.follow_map_selection();
+    // Water (`~`) made solid from the Map tab's right-click.
+    w.map_requests_done(vec![crate::map_tab::MapRequest::SetSolid(b'~', true)]);
+    let saved = w.viewport.sheets.tileset(set).unwrap();
+    assert!(saved.by_code('~').unwrap().solid);
+    assert!(!saved.by_code('.').unwrap().solid, "grass isn't");
+    let text = w
+        .outbox
+        .iter()
+        .find_map(|a| match a {
+            WorkbenchAction::SaveTileset { text, .. } => Some(text.clone()),
+            _ => None,
+        })
+        .expect("saved");
+    assert!(text.contains("solid = true;"), "{text}");
+    // Asking again changes nothing.
+    let before = w.outbox.len();
+    w.map_requests_done(vec![crate::map_tab::MapRequest::SetSolid(b'~', true)]);
+    assert_eq!(w.outbox.len(), before);
+    // The viewport's Walls switch shows them: the tileset's solid codes.
+    w.set_tile_overlay();
+    assert!(!w.viewport.tile_overlay.walls);
+    assert!(w.viewport.tile_overlay.solid.unwrap()[b'~' as usize]);
+    w.viewport.tile_overlay.walls_asked = true;
+    w.tile_overlay_done();
+    assert!(w.map_edits.walls);
+    w.set_tile_overlay();
+    assert!(w.viewport.tile_overlay.walls);
+    let mut h = harness(w);
+    h.run();
+    h.run();
+    assert!(h.query_by_label("Walls").is_some());
+    // Nothing solid: nothing to show.
+    let w = &mut h.state_mut().0;
+    w.map_requests_done(vec![crate::map_tab::MapRequest::SetSolid(b'~', false)]);
+    w.set_tile_overlay();
+    assert!(w.viewport.tile_overlay.solid.is_none());
+}

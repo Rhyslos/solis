@@ -21,7 +21,7 @@ A connected **gamepad** works whenever the game is playing; it has nothing of th
 
 | Action | Keyboard and mouse | Gamepad | What game code gets |
 |---|---|---|---|
-| Move | W A S D | left stick | which way to go: x across (right +1), y forward (+1) |
+| Move | W A S D, or the arrow keys | left stick | which way to go: x across (right +1), y forward (+1) |
 | Look | mouse | right stick | how far to turn this tick, in degrees |
 | Jump | Space | A | held, pressed, released |
 | Sprint | Shift | left stick click | held, pressed, released |
