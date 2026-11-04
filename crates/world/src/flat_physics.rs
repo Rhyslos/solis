@@ -15,6 +15,10 @@ use std::collections::HashMap;
 use std::sync::Arc;
 use tiles::walls::{Rect, Solid};
 
+/// One chunk's walls: the chunk, and each rectangle's lowest and highest
+/// corner in metres.
+type ChunkWalls = ([u32; 2], Vec<(Vec2, Vec2)>);
+
 /// Which terrains of each tileset are solid, by the tileset's asset ID.
 pub type SolidSets = HashMap<AssetId, Solid>;
 
@@ -168,7 +172,7 @@ impl World {
         if changed.is_empty() {
             return;
         }
-        let built: Vec<([u32; 2], Vec<(Vec2, Vec2)>)> = changed
+        let built: Vec<ChunkWalls> = changed
             .iter()
             .map(|&chunk| {
                 let rects = tiles::walls::chunk_walls(map, &solid, chunk)

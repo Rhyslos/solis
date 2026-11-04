@@ -111,7 +111,7 @@ pub(crate) fn farm_art() -> Tileset {
 fn a_tileset_round_trips_and_finds_its_terrains() {
     let set = farm();
     let text = write(&set);
-    assert!(text.contains("tileset version 2;"));
+    assert!(text.contains("tileset version 3;"));
     assert!(!text.contains("picture ="), "no art, no picture line");
     assert!(text.contains("code = \"~\";"));
     let back = read(&text).unwrap();
@@ -155,11 +155,23 @@ fn version_1_reads_as_plain_terrains_with_no_art() {
 
 #[test]
 fn the_fixture_reads_without_notes() {
-    let text = include_str!("../../../tests/fixtures/tileset/v2/farm.soltileset");
+    let text = include_str!("../../../tests/fixtures/tileset/v3/farm.soltileset");
     let read = read(text).unwrap();
     assert!(read.notes.is_empty(), "{:?}", read.notes);
     assert_eq!(read.tileset, farm_art());
     assert_eq!(write(&read.tileset), text, "written as Solis writes it");
+}
+
+#[test]
+fn version_2_reads_with_nothing_solid() {
+    let text = include_str!("../../../tests/fixtures/tileset/v2/farm.soltileset");
+    let read = read(text).unwrap();
+    assert!(read.notes.is_empty(), "{:?}", read.notes);
+    let mut want = farm_art();
+    for t in &mut want.terrains {
+        t.solid = false;
+    }
+    assert_eq!(read.tileset, want);
 }
 
 #[test]

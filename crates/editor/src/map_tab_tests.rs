@@ -293,7 +293,10 @@ fn right_clicking_a_terrain_offers_solid_and_a_solid_one_is_marked() {
     water.click_secondary();
     h.run();
     let solid = h.get_by_label("Solid");
-    assert_eq!(solid.toggled(), Some(egui::accesskit::Toggled::True));
+    assert_eq!(
+        solid.accesskit_node().toggled(),
+        Some(egui::accesskit::Toggled::True)
+    );
     solid.click();
     h.run();
     assert_eq!(h.state().3, [MapRequest::SetSolid(b'~', false)]);

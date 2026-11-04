@@ -125,9 +125,10 @@ fn a_solid_box_blocks_and_pixels_are_metres_by_the_project_s_settings() {
     );
     // At 32 px a metre everything halves: the bin runs 4.5 to 5.5 and the
     // farmer's circle is an eighth of a metre.
-    let mut pixels = area::pixels::PixelSettings::default();
-    pixels.pixels_per_unit = 32;
-    world.set_pixels(pixels);
+    world.set_pixels(area::pixels::PixelSettings {
+        pixels_per_unit: 32,
+        ..area::pixels::PixelSettings::default()
+    });
     assert_eq!(world.pixels().pixels_per_unit, 32);
     let at = walk(&mut world, farmer, Vec3::new(0.1, 0.0, 0.0), 40);
     assert!(at.x < 4.5 - 0.125 && at.x > 4.5 - 0.145, "{at}");

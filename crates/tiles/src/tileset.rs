@@ -11,7 +11,7 @@
 //!
 //! ```text
 //! -- A tileset. Written by Solis; safe to edit by hand.
-//! tileset version 2;
+//! tileset version 3;
 //!
 //! picture = "6QK3C0F1M8E2Z";
 //! tile = [16, 16];
@@ -44,8 +44,9 @@ use reflect::{AssetId, Id, Value};
 use std::fmt;
 
 /// The layout version this build writes and reads: 2 added the picture,
-/// kinds, pieces and rules (D5).
-pub const VERSION: u32 = 2;
+/// kinds, pieces and rules (D5); 3 added whether a terrain is solid
+/// (decision 0071).
+pub const VERSION: u32 = 3;
 const KIND: &str = "tileset";
 /// The file's extension.
 pub const EXTENSION: &str = "soltileset";
@@ -79,8 +80,14 @@ pub static FORMAT: reflect::upgrade::Format<settings::BlockSettings> = reflect::
     name: "tileset",
     current: VERSION,
     version_of: |text| reflect::upgrade::header_version(text, &[KIND]),
-    steps: &[art_came_later],
+    steps: &[art_came_later, solid_came_later],
 };
+
+/// Version 2 to 3: nothing to change. Version 2 had no solid terrains;
+/// a terrain without `solid` isn't.
+fn solid_came_later(_: &mut settings::BlockSettings) -> Result<(), String> {
+    Ok(())
+}
 
 /// Version 1 to 2: nothing to change. Version 1 had no art; every terrain
 /// is plain, which is what a terrain without a kind reads as.

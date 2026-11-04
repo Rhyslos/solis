@@ -6,6 +6,7 @@ What changed in each version, for people using Solis. Newest first.
 
 ### Breaking
 
+- **Tilesets are format 3** ([decision 0071](docs/decisions/0071-2d-physics-and-top-down-movement.md)): a terrain can be solid (`solid = true;`). Tilesets from earlier builds still open (nothing solid) and are kept in `.solis/backups/` when saved; an earlier build won't open a format 3 tileset.
 - **Tile maps are format 2** (Phase 9, D6): they now list the cells painted with an exact tile, in `exact` blocks. Maps from earlier builds still open (every cell autotiled) and are kept in `.solis/backups/` when saved; one saved now can't be opened by an earlier build.
 - **Tilesets are format 2** (Phase 9, D5): they now hold their art (a picture, each terrain's kind, which tile fills each slot, rules). Tilesets from earlier builds still open (their terrains plain, with no art) and are kept in `.solis/backups/` when saved; one saved now can't be opened by an earlier build. The characters `? = ! _ *` can't be terrain codes any more, since rules use them.
 - **Save games are format 5** (Phase 9, D3b and D4): they keep each animator's parameters, and each tile map as the game has changed it, in sections of their own. Saves from earlier builds still load (their animators start with every parameter at its start, and their tile maps from their files); a save made now can't be loaded by an earlier build.
