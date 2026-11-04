@@ -505,6 +505,12 @@ impl Workbench {
                 .world
                 .set_tile_maps(Arc::clone(&self.viewport.sheets.map_set));
             playing.world.start_maps();
+            // 2D physics (decision 0071): pixels to metres, and which
+            // terrains are solid, as they are now.
+            playing.world.set_pixels(self.viewport.pixels);
+            playing
+                .world
+                .set_solid_sets(Arc::new(self.viewport.sheets.solid_sets()));
             // Animators first (D3b): each takes the transition the
             // parameters set last tick call for, and sets its sprite's clip.
             playing

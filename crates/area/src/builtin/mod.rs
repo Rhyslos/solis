@@ -9,6 +9,7 @@ mod environment;
 mod light;
 mod listener;
 mod model;
+mod collider_2d;
 mod physics;
 mod reverb_zone;
 mod sprite;
@@ -22,6 +23,7 @@ pub use environment::{Environment, Sky, ToneMapping};
 pub use light::{Light, LightKind, aim, sun_rotation};
 pub use listener::Listener;
 pub use model::Model;
+pub use collider_2d::{Collider2D, Shape2D};
 pub use physics::{BodyKind, CharacterBody, Collider, ColliderShape, RigidBody};
 pub use reverb_zone::{ReverbZone, ZoneShape};
 pub use sprite::Sprite;
@@ -42,6 +44,7 @@ pub fn registry() -> Result<Registry, RegistryError> {
     registry.register_type::<RigidBody>()?;
     registry.register_type::<Collider>()?;
     registry.register_type::<CharacterBody>()?;
+    registry.register_type::<Collider2D>()?;
     registry.register_type::<AudioSource>()?;
     registry.register_type::<ReverbZone>()?;
     registry.register_type::<Sprite>()?;
@@ -153,6 +156,7 @@ mod tests {
                 "Camera",
                 "CharacterBody",
                 "Collider",
+                "Collider2D",
                 "Environment",
                 "Light",
                 "Listener",
@@ -202,6 +206,15 @@ mod tests {
         round_trip(&RigidBody::default());
         round_trip(&Collider::default());
         round_trip(&CharacterBody::default());
+        round_trip(&Collider2D::default());
+        round_trip(&Collider2D {
+            shape: Shape2D::Box,
+            width: 12.0,
+            height: 6.0,
+            up: 3.0,
+            character: true,
+            ..Collider2D::default()
+        });
         round_trip(&RigidBody {
             kind: BodyKind::Kinematic,
             upright: true,

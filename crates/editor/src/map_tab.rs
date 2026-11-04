@@ -662,6 +662,7 @@ pub(crate) fn tileset_properties(
             code,
             colour: [0.5; 3],
             kind: tiles::TileKind::Plain,
+            solid: false,
         });
         changed = Some(s);
     }

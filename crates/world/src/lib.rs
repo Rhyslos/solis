@@ -12,11 +12,13 @@
 //! The world never changes the area: stopping throws it away.
 
 pub mod animators;
+pub mod flat_physics;
 pub mod projectiles;
 pub mod sprites;
 pub mod tile_maps;
 
 pub use animators::Animators;
+pub use flat_physics::SolidSets;
 pub use projectiles::{MAX_PROJECTILES, Projectile, Projectiles, Shot};
 pub use sprites::{ClipSets, SpriteCue};
 pub use tile_maps::MapFiles;
@@ -164,6 +166,16 @@ pub struct World {
     map_files: std::sync::Arc<MapFiles>,
     /// Maps a loaded save gave entities whose maps haven't started yet.
     saved_maps: HashMap<EntityId, tiles::TileMap>,
+    /// 2D physics (decision 0071): every entity with a `Collider2D`, and
+    /// each tile map's walls.
+    flat: physics::flat::Flat,
+    /// The project's 2D settings: `Collider2D`'s pixels and tile maps'
+    /// cell size.
+    pixels: area::pixels::PixelSettings,
+    /// Which terrains of each tileset are solid.
+    solid_sets: std::sync::Arc<SolidSets>,
+    /// What each map's walls were last built from.
+    walls_built: HashMap<EntityId, flat_physics::WallsBuilt>,
 }
 
 /// A change to physics game code asked for, made at the next step.
@@ -175,6 +187,8 @@ enum PhysicsAsk {
     Velocity(EntityId, glam::Vec3),
     /// A character's move (metres, this tick).
     Character(EntityId, glam::Vec3),
+    /// A 2D character's move on the ground (metres, this tick).
+    Flat(EntityId, glam::Vec2),
 }
 
 /// The next of a count shared by every world, so numbers never repeat.
@@ -252,6 +266,10 @@ impl World {
             saved_values: HashMap::new(),
             map_files: std::sync::Arc::default(),
             saved_maps: HashMap::new(),
+            flat: physics::flat::Flat::new(),
+            pixels: area::pixels::PixelSettings::default(),
+            solid_sets: std::sync::Arc::default(),
+            walls_built: HashMap::new(),
         };
         world.index();
         world.place_everything();
@@ -748,7 +766,9 @@ impl World {
             self.unsettled.push(at);
         }
         // Its body follows at the next physics step.
-        if !self.following && self.physics.state().contains(id) {
+        if !self.following
+            && (self.physics.state().contains(id) || self.flat.state().contains(id))
+        {
             self.physics_moved.push(id);
         }
         true
@@ -832,7 +852,7 @@ impl World {
             return;
         }
         if let Ok(id) = self.ecs.get::<&Id>(entity).map(|i| i.0)
-            && self.physics.state().contains(id)
+            && (self.physics.state().contains(id) || self.flat.state().contains(id))
             && !(self.after_physics && self.physics.state().is_dynamic(id))
         {
             self.physics_moved.push(id);
@@ -1090,6 +1110,7 @@ impl World {
             sum.u64(map);
         }
         sum.u64(self.physics.state().checksum());
+        sum.u64(self.flat.state().checksum());
         let flying = self.projectiles.flying();
         sum.u64(flying.len() as u64);
         for p in flying {
@@ -1118,6 +1139,7 @@ impl World {
     /// Makes `id`'s part in physics match its components and where it is
     /// now: a body and collider if it has them, nothing if not.
     fn physics_join(&mut self, id: EntityId) {
+        self.flat_join(id);
         let Some(&entity) = self.by_id.get(&id) else {
             self.physics.remove(id);
             return;
@@ -1194,7 +1216,13 @@ impl World {
     /// as far as it can, at the next physics step (see
     /// `physics::Physics::move_character`).
     pub fn move_character(&mut self, id: EntityId, wanted: glam::Vec3) {
-        self.physics_asked.push(PhysicsAsk::Character(id, wanted));
+        // A 2D character (a `Collider2D` ticked Character) walks on the
+        // ground: its move's X and Y.
+        if self.flat.state().is_character(id) {
+            self.physics_asked.push(PhysicsAsk::Flat(id, wanted.truncate()));
+        } else {
+            self.physics_asked.push(PhysicsAsk::Character(id, wanted));
+        }
     }
 
     /// Bodies not made because there were already the most
@@ -1208,16 +1236,25 @@ impl World {
     /// entities physics moved follow their bodies (those under them too).
     /// The editor calls it once per tick, after game code's changes land.
     pub fn step_physics(&mut self) {
-        if self.physics.state().is_empty() {
-            self.physics_moved.clear();
-            self.physics_asked.clear();
-            return;
-        }
-        self.touched = true;
         // What game code moved, in the order moved, each once.
         let mut moved = std::mem::take(&mut self.physics_moved);
         let mut seen = reflect::IdSet::default();
         moved.retain(|id| seen.insert(*id));
+        // 2D physics first (decision 0071): its own world beside 3D's.
+        let walks: Vec<(EntityId, glam::Vec2)> = self
+            .physics_asked
+            .iter()
+            .filter_map(|ask| match ask {
+                PhysicsAsk::Flat(id, wanted) => Some((*id, *wanted)),
+                _ => None,
+            })
+            .collect();
+        self.step_flat(&moved, &walks);
+        if self.physics.state().is_empty() {
+            self.physics_asked.clear();
+            return;
+        }
+        self.touched = true;
         for id in moved {
             if let Some(global) = self.global(id) {
                 let (_, rotation, position) = global.to_scale_rotation_translation();
@@ -1232,6 +1269,7 @@ impl World {
                 PhysicsAsk::Push(id, impulse) => self.physics.push(id, impulse),
                 PhysicsAsk::Velocity(id, velocity) => self.physics.set_velocity(id, velocity),
                 PhysicsAsk::Character(id, wanted) => characters.push((id, wanted)),
+                PhysicsAsk::Flat(..) => {}
             }
         }
         if !characters.is_empty() {
@@ -1293,6 +1331,8 @@ impl World {
     /// Empties physics and joins every entity again, in ID order.
     fn join_all(&mut self) {
         self.physics.clear();
+        self.flat.clear();
+        self.walls_built.clear();
         let mut ids: Vec<EntityId> = self
             .order
             .iter()
@@ -1349,6 +1389,9 @@ fn components_of(id: EntityId, data: &area::EntityData) -> hecs::EntityBuilder {
             }
             Collider::NAME => {
                 builder.add(Collider::from_data(component));
+            }
+            area::builtin::Collider2D::NAME => {
+                builder.add(area::builtin::Collider2D::from_data(component));
             }
             CharacterBody::NAME => {
                 builder.add(CharacterBody::from_data(component));

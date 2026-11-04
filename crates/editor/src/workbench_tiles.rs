@@ -78,6 +78,7 @@ pub(crate) fn starter_tileset() -> Tileset {
         code,
         colour,
         kind: tiles::TileKind::Plain,
+        solid: false,
     };
     Tileset {
         terrains: vec![
