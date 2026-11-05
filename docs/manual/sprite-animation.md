@@ -18,7 +18,7 @@ To choose clips by what's happening (walking when moving, idle when not, facing 
 4. **Watch it:** press **▶** (or **Space** over the Frames tab). **⏮** goes back to the start, **■** stops, **⏭** goes to the last frame. **−** and **+** zoom the ruler.
 5. **Give a frame an event:** click the frame, then type a name in **event**, or pick a sound event from **◆ ▾**. When the clip reaches that frame:
    - a sound event of the same name (`footstep`, or its path, `sfx/footstep`) plays on the sprite by itself, with no code;
-   - game code on the entity hears `AnimationCue`, with the event's name.
+   - game code on the entity hears `CueReached`, with the event as one of the project's names (`Cue.Footstep`).
    Events typed in Aseprite (a cel's user data) work the same way.
 6. **Make a clip of your own:** **＋ Clip** makes an empty one; **⧉ Copy** copies the chosen clip (a tag's copy can then be changed here). In the Frames tab, **＋ Add frames ▾** shows the sheet's frames: click one to add it after the picked frame. Double-click a clip of your own to rename it.
 7. **Change frames of your own clips:** click a frame to pick it (Ctrl+click or Shift+click for several), then set its **time**, drag it to a new place, or press **Delete** to take it out.
@@ -27,36 +27,40 @@ To choose clips by what's happening (walking when moving, idle when not, facing 
 Every change is saved at once and shows at once on every sprite playing the file. **Ctrl+Z** and **Ctrl+Y** over either tab undo and redo changes to the file.
 
 ### In game code
-Bring in what you need from `solis/animation` at the top of a file:
+Clips and their events are names Lust checks. Solis writes them into `solis/project.lst` whenever the sheets change: each clip as `state Clip`, under its sheet's path (`sprites/farmer.aseprite`'s walk is `Clip.Sprites.Farmer.Walk`), and each frame event as `state Cue` (`Cue.Footstep`). A misspelt clip is a mistake before the game runs. Bring in the names and the events at the top of a file:
 
 ```lust
-get "solis/animation":[playClip, replayClip, stopClip];
-fetch "solis/animation":AnimationCue;
-fetch "solis/animation":ClipFinished;
+fetch "solis/project":[Clip, Cue];
+fetch "solis/animation":[CueReached, ClipFinished];
 
 component Farmer {
     has {
         int steps = 0;
     }
-    on AnimationCue(string name) {
-        is name == "footstep"? then {
+
+    -- Count the footsteps as they land.
+    on CueReached(Cue cue) {
+        is cue == Cue.Footstep? then {
             steps = steps + 1;
         }
     }
-    on ClipFinished(string clip) {
-        is clip == "hoe"? then {
-            playClip(this, "idle");
+
+    -- Back to standing once the hoe swing is done.
+    on ClipFinished(Clip clip) {
+        is clip == Clip.Sprites.Farmer.Hoe? then {
+            animate(Clip.Sprites.Farmer.Idle);
         }
     }
 }
+
 pass Farmer;
 end
 ```
 
-- `playClip(entity, "walk")` plays a clip. If it's already playing that clip, or has finished it, it carries on as it is, so it's safe to call every tick; another clip starts from its beginning.
-- `replayClip(entity, "hoe")` plays a clip from its beginning, whatever it was doing: a swing each time a button is pressed.
-- `stopClip(entity)` stops it where it is; `playClip` with the same clip carries on from there.
-- In Lua: `solis.playClip(entity, "walk")`, `solis.replayClip(entity, "hoe")` and `solis.stopClip(entity)`; a function called `on_AnimationCue(name)` or `on_ClipFinished(clip)` reacts to the events, as with any event. In Rust: `cx.host().play_clip(entity, "walk", false)` (`true` to replay it) and `stop_clip`, and the events arrive in `handle` named `AnimationCue` and `ClipFinished`.
+- `animate(Clip.Sprites.Farmer.Walk)` plays a clip on the component's entity (`target:animate(…)` on another). If it's already playing that clip, or has finished it, it carries on as it is, so it's safe to call every tick; another clip starts from its beginning.
+- `animateFromStart(Clip.Sprites.Farmer.Hoe)` plays a clip from its beginning, whatever it was doing: a swing each time a button is pressed.
+- `stopAnimation()` stops it where it is; `animate` with the same clip carries on from there.
+- In Lua: `solis.entity.animate(e, "Sprites.Farmer.Walk")`, `solis.entity.animateFromStart(e, …)` and `solis.entity.stopAnimation(e)`; a function called `on_CueReached(cue)` or `on_ClipFinished(clip)` reacts to the events, with the names as text. In Rust: `cx.host().play_clip(entity, "walk", false)` (`true` to start it again) and `stop_clip`, and the events arrive in `handle` named `CueReached` and `ClipFinished`.
 
 A clip's place is part of the game: the same inputs give the same frames every time, and a saved game comes back on the same frame.
 
@@ -67,7 +71,7 @@ The Sprite component's clip settings:
 |---|---|
 | Sheet | An Aseprite file (its tags are its clips) or a clips file (`.solframes`). |
 | Clip | The clip it plays. Empty: the clips file's clip marked **Plays first**, or with none, the still **Frame**. |
-| Playing | Whether the clip moves on while the game runs. Game code's `playClip` and `stopClip` turn it on and off. |
+| Playing | Whether the clip moves on while the game runs. Game code's `animate` and `stopAnimation` turn it on and off. |
 | Speed | 1 as drawn, 2 twice as fast, 0 stopped. Multiplies the clip's own speed. |
 | Clip time | How far into the clip it is, in seconds. Give a crowd of copies different times so they don't all step in step. |
 | Frame | The frame shown when no clip plays. |

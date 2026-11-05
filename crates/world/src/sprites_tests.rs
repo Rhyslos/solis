@@ -140,13 +140,21 @@ fn a_clip_played_once_finishes_says_so_and_holds_its_last_frame() {
     let s = world.get::<Sprite>(ids[0]).unwrap();
     assert!(!s.playing);
     assert!((s.time - 0.2).abs() < 1e-6);
-    // playClip on a finished clip leaves it finished (safe every tick);
-    // replayClip starts it again.
+    // animate on a finished clip leaves it finished (safe every tick);
+    // animateFromStart starts it again.
     world.play_clip(ids[0], "swing", false);
     assert!(!world.get::<Sprite>(ids[0]).unwrap().playing);
     world.play_clip(ids[0], "swing", true);
     assert_eq!(time_of(&world, ids[0]), 0.0);
     assert!(world.get::<Sprite>(ids[0]).unwrap().playing);
+    // Game code names it as an option (Clip.….Swing): the sheet's own name
+    // is kept, found ignoring capitals.
+    world.play_clip(ids[0], "Swing", true);
+    assert_eq!(world.get::<Sprite>(ids[0]).unwrap().clip, "swing");
+    assert_eq!(
+        world.sprite_sheet(ids[0]),
+        world.get::<Sprite>(ids[0]).unwrap().sheet.map(|s| s.asset)
+    );
 }
 
 #[test]

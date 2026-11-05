@@ -47,6 +47,9 @@ pub struct GameCode {
     last: Option<u64>,
     /// The notes [`GameCode::describe_again`] last gave.
     told: Vec<String>,
+    /// The sprites' clips (`sheet/clip` paths) and cues, for the project
+    /// file, as the editor last read them.
+    animation: (Vec<String>, Vec<String>),
 }
 
 /// The project's files with extension `ext` (assemblies, sound events),
@@ -106,6 +109,17 @@ impl GameCode {
     /// `assets`) as states, so call this again when they change;
     /// the notes then also say which names game code can't use.
     pub fn describe(assets: &Path, made_by: &str) -> Vec<String> {
+        Self::describe_with(assets, made_by, &[], &[])
+    }
+
+    /// [`GameCode::describe`], with the sprites' clips (`sheet/clip`
+    /// paths) and cues.
+    pub fn describe_with(
+        assets: &Path,
+        made_by: &str,
+        clips: &[String],
+        cues: &[String],
+    ) -> Vec<String> {
         let root = assets.parent();
         let names = script::project_names::Names {
             assemblies: asset_paths(assets, asset_db::ASSEMBLY_EXTENSION),
@@ -118,6 +132,8 @@ impl GameCode {
                 .into_iter()
                 .map(|b| b.name)
                 .collect(),
+            clips: clips.to_vec(),
+            cues: cues.to_vec(),
             actions: assets
                 .parent()
                 .map_or_else(input::Bindings::default, |root| {
@@ -154,7 +170,7 @@ impl GameCode {
 
     /// [`GameCode::describe`]'s notes, kept to say only when they change.
     pub fn describe_again(&mut self, assets: &Path, made_by: &str) -> Vec<String> {
-        let notes = Self::describe(assets, made_by);
+        let notes = Self::describe_with(assets, made_by, &self.animation.0, &self.animation.1);
         if notes == self.told {
             return Vec::new();
         }
@@ -164,8 +180,17 @@ impl GameCode {
 
     /// [`GameCode::describe`] for a project just opened: every note said.
     pub fn describe_opened(&mut self, assets: &Path, made_by: &str) -> Vec<String> {
+        self.animation = (Vec::new(), Vec::new());
         self.told = Self::describe(assets, made_by);
         self.told.clone()
+    }
+
+    /// Takes the sprites' clips and cues as the editor has read them;
+    /// whether they changed (then describe again and check the code).
+    pub fn set_animation(&mut self, clips: Vec<String>, cues: Vec<String>) -> bool {
+        let changed = self.animation != (clips.clone(), cues.clone());
+        self.animation = (clips, cues);
+        changed
     }
 
     /// Reads and checks the code in `assets` on a worker; if a check is

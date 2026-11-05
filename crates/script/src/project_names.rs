@@ -43,6 +43,12 @@ pub struct Names {
     pub sounds: Vec<String>,
     /// Its Mixer's buses' names (`Music`).
     pub buses: Vec<String>,
+    /// Its sprites' clips, as paths: the sheet's path in the assets
+    /// without its extension, then the clip's name
+    /// (`sprites/farmer/walk`).
+    pub clips: Vec<String>,
+    /// The names of its clips' events (cues: `footstep`).
+    pub cues: Vec<String>,
 }
 
 impl Names {
@@ -58,6 +64,8 @@ impl Names {
                 .collect(),
             sounds: Vec::new(),
             buses: STANDARD_BUSES.iter().map(|b| (*b).to_string()).collect(),
+            clips: Vec::new(),
+            cues: Vec::new(),
         }
     }
 }
@@ -75,6 +83,14 @@ impl Names {
     #[must_use]
     pub fn and_sounds(mut self, sounds: &[&str]) -> Self {
         self.sounds.extend(sounds.iter().map(|a| (*a).to_string()));
+        self
+    }
+
+    /// These names with these clips (`sheet/clip` paths) and cues.
+    #[must_use]
+    pub fn and_clips(mut self, clips: &[&str], cues: &[&str]) -> Self {
+        self.clips.extend(clips.iter().map(|a| (*a).to_string()));
+        self.cues.extend(cues.iter().map(|a| (*a).to_string()));
         self
     }
 
@@ -103,6 +119,8 @@ pub fn project_file(made_by: &str, names: &Names) -> (String, Vec<String>) {
     let action = names_text("Action", &names.actions, "input action", true, &mut notes);
     let sound = state_text("Sound", &names.sounds, "sound event", &mut notes);
     let bus = names_text("Bus", &names.buses, "bus", false, &mut notes);
+    let clip = state_text("Clip", &names.clips, "sprite clip", &mut notes);
+    let cue = names_text("Cue", &names.cues, "clip event", false, &mut notes);
     let text = format!(
         "-- Made by {made_by}: the project's names, for game code. It's written again\n\
          -- whenever the project's files change, so changes made here don't last.\n\n\
@@ -116,6 +134,10 @@ pub fn project_file(made_by: &str, names: &Names) -> (String, Vec<String>) {
          {sound}\n\n\
          -- The Mixer's buses: Audio:setVolume(Bus.Music, 0.5).\n\
          {bus}\n\n\
+         -- The sprites' clips, by their sheets: animate(Clip.Sprites.Farmer.Walk).\n\
+         {clip}\n\n\
+         -- The clips' events: on CueReached(Cue cue) {{ is cue == Cue.Footstep? … }}.\n\
+         {cue}\n\n\
          pass {};\n\
          end\n",
         crate::describe::PROJECT_STATES.join(", ")
@@ -265,6 +287,14 @@ fn option_name(part: &str) -> Option<String> {
 /// Lust's own objects, which no option may be called.
 const LUST_OBJECTS: &[&str] = &["Maths", "Files", "Time", "Json", "Web", "Random"];
 
+/// A path (`sprites/farmer/walk`) or a name (`footstep`) as the option
+/// the project file names it by (`Sprites.Farmer.Walk`, `Footstep`), for
+/// the engine's events; `None` when it can't be one.
+pub fn option_of(path: &str) -> Option<String> {
+    let parts: Option<Vec<String>> = path.split('/').map(option_name).collect();
+    parts.map(|p| p.join("."))
+}
+
 /// A state's full option name from a native (`"Ships.Fighter"`) as the
 /// path it stands for, to find the file by: each part's first letter made
 /// small again (`"ships/fighter"`), as files are mostly named; the Library
@@ -328,7 +358,8 @@ mod tests {
             text.contains("state Bus = [Master, Music, Effects, Voice, Ambience, Ui];"),
             "{text}"
         );
-        assert!(text.ends_with("pass Assembly, Action, Sound, Bus;\nend\n"));
+        assert!(text.ends_with("pass Assembly, Action, Sound, Bus, Clip, Cue;\nend\n"));
+        assert!(text.contains("state Clip = [None];"));
         assert!(text.contains("state Sound = [None];"));
     }
 
@@ -343,7 +374,8 @@ mod tests {
             text.contains("state Assembly = [Crate, Crops [Wheat], Ships [Fighter, Freighter]];"),
             "{text}"
         );
-        assert!(text.ends_with("pass Assembly, Action, Sound, Bus;\nend\n"));
+        assert!(text.ends_with("pass Assembly, Action, Sound, Bus, Clip, Cue;\nend\n"));
+        assert!(text.contains("state Clip = [None];"));
         assert!(text.contains("state Sound = [None];"));
     }
 
@@ -397,6 +429,12 @@ mod tests {
         assert_eq!(path_of("Crate").as_deref(), Some("crate"));
         assert_eq!(path_of("BigShip").as_deref(), Some("bigShip"));
         assert_eq!(path_of(NO_OPTION), None);
+        assert_eq!(
+            option_of("sprites/farmer/walk").as_deref(),
+            Some("Sprites.Farmer.Walk")
+        );
+        assert_eq!(option_of("UI").as_deref(), Some("Ui"));
+        assert_eq!(option_of("big-ship"), None);
     }
 
     #[test]

@@ -518,7 +518,12 @@ impl Workbench {
                 .set_animators(Arc::clone(&self.viewport.sheets.animator_set));
             playing.world.step_animators();
             let cues = playing.world.step_sprites(world::TICK);
-            let (cue_sounds, engine_events) = cues_of(&playing.world, cues, &self.cue_sounds);
+            let (cue_sounds, engine_events) = cues_of(
+                &playing.world,
+                cues,
+                &self.cue_sounds,
+                &self.viewport.sheets.paths,
+            );
             // The tick's input: played back, or sampled from the devices
             // once, so every core sees the same (decision 0037).
             let sampled = self.devices.sample(&playing.bindings, world::TICK as f32);
@@ -1009,11 +1014,15 @@ impl Workbench {
 
 /// What sprites' clips did in a tick, as sounds to play (a cue named like
 /// a sound event plays it on the entity) and as events for game code
-/// (`AnimationCue`, `ClipFinished`), sent only to entities with game code.
+/// (`CueReached`, `ClipFinished`), sent only to entities with game code.
+/// They carry the project file's names (decision 0077): `Cue.Footstep`,
+/// and the clip by its sheet's path in `paths` (`Clip.Sprites.Farmer.Walk`);
+/// one that has no such name isn't sent.
 fn cues_of(
     world: &world::World,
     cues: Vec<world::SpriteCue>,
     sounds: &std::collections::HashMap<String, String>,
+    paths: &std::collections::HashMap<reflect::AssetId, String>,
 ) -> (Vec<crate::game_sound::Request>, Vec<script::Event>) {
     let mut plays = Vec::new();
     let mut events = Vec::new();
@@ -1027,11 +1036,22 @@ fn cues_of(
                         Some(id),
                     ));
                 }
-                (id, "AnimationCue", cue)
+                (id, "CueReached", script::project_names::option_of(&cue))
             }
-            world::SpriteCue::Finished(id, clip) => (id, "ClipFinished", clip),
+            world::SpriteCue::Finished(id, clip) => {
+                let sheet = world.sprite_sheet(id).and_then(|s| paths.get(&s));
+                let option = sheet.and_then(|path| {
+                    let stem = path
+                        .rsplit_once('.')
+                        .map_or(path.as_str(), |(stem, _)| stem);
+                    script::project_names::option_of(&format!("{stem}/{clip}"))
+                });
+                (id, "ClipFinished", option)
+            }
         };
-        if world.has_game_components(id) {
+        if let Some(value) = value
+            && world.has_game_components(id)
+        {
             events.push(script::Event {
                 to: id,
                 name: name.to_owned(),

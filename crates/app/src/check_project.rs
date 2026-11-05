@@ -88,7 +88,7 @@ pub fn check(root: &Path, made_by: &str) -> Report {
     report.heading("Files");
     check_files(root, &mut report);
     report.heading("Game code");
-    let program = check_code(&project.assets(), made_by, &mut report);
+    let program = check_code(&project, made_by, &mut report);
     report.heading("Recordings");
     check_recordings(root, &project, program, made_by, &mut report);
     report
@@ -271,11 +271,15 @@ fn check_files(root: &Path, report: &mut Report) {
 /// Checks the game's code, as the editor would on opening. The program,
 /// when it has code and that code has no mistakes.
 fn check_code(
-    assets: &Path,
+    project: &asset_db::Project,
     made_by: &str,
     report: &mut Report,
 ) -> Option<std::sync::Arc<script::Compiled>> {
-    for note in crate::game_code::GameCode::describe(assets, made_by) {
+    let assets = &project.assets();
+    // The sprites' clips and cues are names game code uses: read the
+    // sheets first, as the editor does.
+    let (clips, cues) = sprite_clip_names(project);
+    for note in crate::game_code::GameCode::describe_with(assets, made_by, &clips, &cues) {
         report.note(note);
     }
     let code = script::gather(assets);
@@ -305,6 +309,25 @@ fn check_code(
             None
         }
     }
+}
+
+/// The project's sprites' clips (`sheet/clip` paths) and cues, read as the
+/// editor reads them, waiting for the sheets (at most a minute).
+fn sprite_clip_names(project: &asset_db::Project) -> (Vec<String>, Vec<String>) {
+    let (db, _, _) = asset_db::AssetDb::open(project.clone(), assets::Limits::default());
+    let mut sprites = crate::sprites::Sprites::default();
+    sprites.want(&db.listing(), &project.assets());
+    let start = std::time::Instant::now();
+    loop {
+        sprites.poll();
+        if !sprites.waiting() || start.elapsed().as_secs() >= 60 {
+            break;
+        }
+        std::thread::sleep(std::time::Duration::from_millis(5));
+    }
+    let mut sheets = sprites.sheets().clone();
+    sheets.work_out_clips();
+    sheets.clip_names()
 }
 
 /// Plays back each recording in `recordings/checks/`.

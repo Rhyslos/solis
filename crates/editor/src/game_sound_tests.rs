@@ -32,6 +32,7 @@ fn program(main: &str) -> Arc<script::Compiled> {
         "Test Engine 9.9.9",
         "solis",
         &script::project_names::Names::with_assemblies(&["drones/drone", "nowhere"])
+            .and_clips(&["walker/walk"], &["footstep"])
             .and_sounds(&["engine", "sfx/step"]),
     );
     files.push(("main.lst".into(), main.to_string()));
@@ -247,19 +248,22 @@ fn a_new_play_starts_its_sounds_afresh() {
     assert_eq!(w.play_number(), paused, "carrying on isn't a new play");
 }
 
-const WALKER: &str = "fetch \"solis/world\":World;\n\n\
-    get \"solis/animation\":[playClip];\n\
-    fetch \"solis/animation\":AnimationCue;\n\
-    fetch \"solis/animation\":ClipFinished;\n\
+const WALKER: &str = "fetch \"solis/world\":World;\n\
+    fetch \"solis/project\":[Clip, Cue];\n\
+    fetch \"solis/animation\":[CueReached, ClipFinished];\n\
     component Walker {\n\
         method update(float dt) {\n\
-            playClip(me, \"walk\");\n\
+            animate(Clip.Walker.Walk);\n\
         }\n\
-        on AnimationCue(string name) {\n\
-            World:say(\"cue \" + name);\n\
+        on CueReached(Cue cue) {\n\
+            is cue == Cue.Footstep? then {\n\
+                World:say(\"cue footstep\");\n\
+            }\n\
         }\n\
-        on ClipFinished(string clip) {\n\
-            World:say(\"done \" + clip);\n\
+        on ClipFinished(Clip clip) {\n\
+            is clip == Clip.Walker.Walk? then {\n\
+                World:say(\"done walk\");\n\
+            }\n\
         }\n\
     }\n\
     pass Walker;\nend\n";
@@ -308,6 +312,14 @@ fn a_sprite_s_clip_plays_its_footstep_and_tells_game_code() {
     sheets.paths.insert(sheet, "walker.aseprite".into());
     sheets.paths.insert(clips, "walker.solframes".into());
     w.set_sprite_sheets(sheets);
+    // Game code's names for them: the clips file's clip, and its cue.
+    assert_eq!(
+        w.sprite_sheets().clip_names(),
+        (
+            vec!["walker/walk".to_string()],
+            vec!["footstep".to_string()]
+        )
+    );
     // A sound event called footstep, in a folder.
     w.set_library(vec![LibraryItem {
         id: None,
@@ -366,8 +378,8 @@ fn a_sprite_s_clip_plays_its_footstep_and_tells_game_code() {
         1,
         "{sounds:?}"
     );
-    // Finished: it holds its last frame, though playClip is called every
-    // tick (replayClip would start it again).
+    // Finished: it holds its last frame, though animate is called every
+    // tick (animateFromStart would start it again).
     let s: area::builtin::Sprite = w.world().unwrap().get(walker).unwrap();
     assert_eq!(s.clip, "walk");
     assert!(!s.playing);

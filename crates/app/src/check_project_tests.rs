@@ -15,7 +15,7 @@ fn playground_with_a_check(name: &str) -> PathBuf {
     crate::playground::make(&root).unwrap();
     let project = asset_db::Project::open(&root).unwrap();
     let mut quiet = Report::default();
-    let program = check_code(&project.assets(), MADE_BY, &mut quiet);
+    let program = check_code(&project, MADE_BY, &mut quiet);
     assert!(program.is_some(), "{:?}", quiet.lines);
     let (db, _, _) = asset_db::AssetDb::open(project, assets::Limits::default());
     let mut w = workbench_for(
@@ -196,7 +196,7 @@ fn a_recording_that_saves_plays_back_the_same_and_writes_nothing() {
     .unwrap();
     let project = asset_db::Project::open(&root).unwrap();
     let mut quiet = Report::default();
-    let program = check_code(&project.assets(), MADE_BY, &mut quiet);
+    let program = check_code(&project, MADE_BY, &mut quiet);
     assert!(program.is_some(), "{:?}", quiet.lines);
     let (db, _, _) = asset_db::AssetDb::open(project, assets::Limits::default());
     let mut w = workbench_for(&root, &db, program, MADE_BY, "hop.solarea", &mut None).unwrap();

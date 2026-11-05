@@ -139,7 +139,7 @@ pub trait Host {
     /// Plays a clip on the entity's Sprite at the end of the tick (Phase
     /// 9, D3): already playing it (or finished it), it carries on as it
     /// is; another clip starts from its beginning. With `again`
-    /// (`replayClip`), it starts from its beginning whatever it was doing.
+    /// (`animateFromStart`), it starts from its beginning whatever it was doing.
     fn play_clip(&mut self, which: EntityId, clip: &str, again: bool) {
         let _ = (which, clip, again);
     }
@@ -568,25 +568,39 @@ pub(crate) fn with_natives<'h, R>(
             })?,
         )?;
         natives.raw_set(
-            "playClip",
+            "entity_animate",
             scope.create_function(move |_, (which, clip): (LuaValue, mlua::LuaString)| {
-                if let Some(e) = entity_of(&which) {
-                    h.borrow_mut().play_clip(e, &clip.to_str()?, false);
+                // Clip.Sprites.Farmer.Walk comes as "Sprites.Farmer.Walk": the
+                // clip is the last part (found on the Sprite's sheet ignoring
+                // capitals).
+                let clip = clip.to_str()?;
+                let name = clip.rsplit('.').next().unwrap_or_default();
+                if let Some(e) = entity_of(&which)
+                    && *clip != *crate::project_names::NO_OPTION
+                {
+                    h.borrow_mut().play_clip(e, name, false);
                 }
                 Ok(())
             })?,
         )?;
         natives.raw_set(
-            "replayClip",
+            "entity_animateFromStart",
             scope.create_function(move |_, (which, clip): (LuaValue, mlua::LuaString)| {
-                if let Some(e) = entity_of(&which) {
-                    h.borrow_mut().play_clip(e, &clip.to_str()?, true);
+                // Clip.Sprites.Farmer.Walk comes as "Sprites.Farmer.Walk": the
+                // clip is the last part (found on the Sprite's sheet ignoring
+                // capitals).
+                let clip = clip.to_str()?;
+                let name = clip.rsplit('.').next().unwrap_or_default();
+                if let Some(e) = entity_of(&which)
+                    && *clip != *crate::project_names::NO_OPTION
+                {
+                    h.borrow_mut().play_clip(e, name, true);
                 }
                 Ok(())
             })?,
         )?;
         natives.raw_set(
-            "stopClip",
+            "entity_stopAnimation",
             scope.create_function(move |_, which: LuaValue| {
                 if let Some(e) = entity_of(&which) {
                     h.borrow_mut().stop_clip(e);

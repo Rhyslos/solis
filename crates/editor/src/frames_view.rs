@@ -683,7 +683,7 @@ fn event_field(
         }
     })
     .response
-    .on_hover_text("Pick a sound event: the frame plays it, and game code hears AnimationCue");
+    .on_hover_text("Pick a sound event: the frame plays it, and game code hears CueReached");
     let fixed: Vec<&String> = if own {
         Vec::new()
     } else {
