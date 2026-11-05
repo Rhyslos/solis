@@ -1,4 +1,4 @@
-# Phase 12 plan: Sungraph UI (draft)
+# Phase 12 plan: Sungraph UI (being built: usable first, step 7)
 
 The working plan for Phase 12, game UI (ROADMAP.md, "Phase 12: Game UI"; it was the game-UI half of the first plan's Phase 9 until [decisions 0046](../decisions/0046-light-before-netcode.md), [0048](../decisions/0048-materials-and-shaders-before-effects.md) and [0054](../decisions/0054-first-class-2d.md) gave it its own phase, right after 2D and the playtest export; [decision 0039](../decisions/0039-game-ui-is-drawn-in-solis.md)). Effects (Phase 15, Solstice) have their own plan, and post-processing (bloom, grading) moved to light's Phase 13 plan; **Sharing with effects** below says where the two meet so nothing is built twice. Update this file as milestones are built: tick them off here and in the README tracker, and change a milestone's plan if its design changes.
 
@@ -167,6 +167,8 @@ Crate candidates (all allowed by `deny.toml`; versions as of 2026-10-25):
 ## Milestones
 
 ### M1. The drawing layer: shapes and text, sharp at any size
+
+> **Usable first (decision 0083):** M1 is split. **M1a, built:** the `ui` crate (screens as element trees; anchors at nine points or stretched; the scale rules *grow with the screen*, *keep its size* and *whole steps* for pixel art, chosen per screen; layout into shapes; the preview sizes), boxes with rounded corners, ellipses, lines and bars drawn by `render`'s UI shader over the finished picture, and the Console's `ui test`. **M1b, next:** text (fonts, letters as distance images, layout). Rows, columns, curves, pictures and rotation come with the milestones that need them. **Pictures cut from sprite sheets** (Godot's AtlasTexture, mock-up `ui5`) are a milestone of their own before the canvas uses pictures.
 
 The Rust layer DESIGN.md §12 asks for first, which Lust's `view` is read into later.
 

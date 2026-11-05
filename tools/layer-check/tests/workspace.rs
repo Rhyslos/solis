@@ -40,6 +40,7 @@ fn every_planned_crate_exists() {
             "script",
             "sound",
             "tiles",
+            "ui",
             "updater",
             "world"
         ]

@@ -38,6 +38,8 @@ pub(crate) struct PanelViewer<'a> {
     pub(crate) code_problems: &'a [script::CodeProblem],
     /// What the Game panel shows, while the game runs.
     pub(crate) game: Option<&'a crate::game_panel::GameScene>,
+    /// A test screen shown over the game (`ui test`).
+    pub(crate) ui_test: Option<std::sync::Arc<ui::Screen>>,
     /// Whether the game is running.
     pub(crate) playing: bool,
     /// Whether the game has the mouse and keys.
@@ -387,6 +389,7 @@ impl TabViewer for PanelViewer<'_> {
                     self.pixels,
                     &self.viewport.sheets,
                     self.renderer,
+                    self.ui_test.clone(),
                 );
                 if self.playing {
                     playing_border(ui, full, self.accent);

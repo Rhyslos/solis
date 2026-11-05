@@ -154,6 +154,7 @@ pub(crate) fn game_panel(
     pixels: area::pixels::PixelSettings,
     sheets: &crate::sprite_sheets::SpriteSheets,
     renderer: &mut dyn ViewportRenderer,
+    screen: Option<std::sync::Arc<ui::Screen>>,
 ) -> bool {
     let Some(scene) = scene else {
         if playing {
@@ -243,6 +244,7 @@ pub(crate) fn game_panel(
         ),
         tile_pictures: std::sync::Arc::new(tile_pictures),
         pixel,
+        ui: screen,
     };
     let painter = ui.painter_at(rect);
     match renderer.render(&view) {
