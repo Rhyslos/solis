@@ -515,34 +515,42 @@ pub(crate) fn with_natives<'h, R>(
                 )?,
             )?;
         natives.raw_set(
-            "playSound",
-            scope.create_function(move |_, event: mlua::LuaString| {
-                h.borrow_mut()
-                    .play_sound(&event.to_str()?, SoundAt::Nowhere);
-                Ok(())
-            })?,
-        )?;
-        natives.raw_set(
-            "playSoundAt",
-            scope.create_function(move |_, (event, place): (mlua::LuaString, LuaValue)| {
-                if let Some(place) = vec3_of(&place).filter(|p| p.is_finite()) {
-                    h.borrow_mut()
-                        .play_sound(&event.to_str()?, SoundAt::Place(place));
+            "Audio_play",
+            scope.create_function(move |_, (_audio, event): (LuaValue, mlua::LuaString)| {
+                // Sound.Sfx.Footstep comes as "Sfx.Footstep": the event
+                // in sfx/footstep.solsound (found ignoring capitals).
+                if let Some(event) = crate::project_names::path_of(&event.to_str()?) {
+                    h.borrow_mut().play_sound(&event, SoundAt::Nowhere);
                 }
                 Ok(())
             })?,
         )?;
         natives.raw_set(
-            "playSoundOn",
-            scope.create_function(move |_, (event, which): (mlua::LuaString, LuaValue)| {
-                if let Some(e) = entity_of(&which) {
-                    h.borrow_mut().play_sound(&event.to_str()?, SoundAt::On(e));
+            "Audio_playAt",
+            scope.create_function(
+                move |_, (_audio, event, place): (LuaValue, mlua::LuaString, LuaValue)| {
+                    let event = crate::project_names::path_of(&event.to_str()?);
+                    if let (Some(event), Some(place)) =
+                        (event, vec3_of(&place).filter(|p| p.is_finite()))
+                    {
+                        h.borrow_mut().play_sound(&event, SoundAt::Place(place));
+                    }
+                    Ok(())
+                },
+            )?,
+        )?;
+        natives.raw_set(
+            "entity_playSound",
+            scope.create_function(move |_, (which, event): (LuaValue, mlua::LuaString)| {
+                let event = crate::project_names::path_of(&event.to_str()?);
+                if let (Some(e), Some(event)) = (entity_of(&which), event) {
+                    h.borrow_mut().play_sound(&event, SoundAt::On(e));
                 }
                 Ok(())
             })?,
         )?;
         natives.raw_set(
-            "stopSoundsOn",
+            "entity_stopSounds",
             scope.create_function(move |_, which: LuaValue| {
                 if let Some(e) = entity_of(&which) {
                     h.borrow_mut().stop_sounds_on(e);
@@ -551,7 +559,7 @@ pub(crate) fn with_natives<'h, R>(
             })?,
         )?;
         natives.raw_set(
-            "setSoundPlaying",
+            "entity_setSoundPlaying",
             scope.create_function(move |_, (which, playing): (LuaValue, bool)| {
                 if let Some(e) = entity_of(&which) {
                     h.borrow_mut().set_sound_playing(e, playing);
@@ -587,11 +595,17 @@ pub(crate) fn with_natives<'h, R>(
             })?,
         )?;
         natives.raw_set(
-            "setBusVolume",
-            scope.create_function(move |_, (bus, share): (mlua::LuaString, f64)| {
-                h.borrow_mut().set_bus_volume(&bus.to_str()?, share as f32);
-                Ok(())
-            })?,
+            "Audio_setVolume",
+            scope.create_function(
+                move |_, (_audio, bus, share): (LuaValue, mlua::LuaString, f64)| {
+                    // Bus.None, a project with no buses, sets nothing.
+                    let bus = bus.to_str()?;
+                    if *bus != *crate::project_names::NO_OPTION {
+                        h.borrow_mut().set_bus_volume(&bus, share as f32);
+                    }
+                    Ok(())
+                },
+            )?,
         )?;
         natives.raw_set(
             "Saves_saveTo",

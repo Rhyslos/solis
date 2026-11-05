@@ -413,7 +413,13 @@ impl Sounds {
         } else {
             format!("{name}.solsound")
         };
-        let (key, state) = self.events.get_key_value(&key)?;
+        // Exactly, or ignoring capitals: game code's Sound.Sfx.Footstep
+        // asks for Sfx/Footstep (decision 0076).
+        let (key, state) = self.events.get_key_value(&key).or_else(|| {
+            self.events
+                .iter()
+                .find(|(k, _)| k.eq_ignore_ascii_case(&key))
+        })?;
         match state {
             EventState::Read { event, .. } => Some((key.as_str(), event)),
             EventState::Failed(_) => None,
@@ -855,7 +861,12 @@ mod tests {
     /// from `code`, a game code file.
     fn coded_world(code: &str, component: &str) -> editor::Workbench {
         use area::builtin::{Camera, Transform};
-        let mut files = script::describe::descriptions("Test 1.0", "solis");
+        // Names stale from the project's files, as after one is deleted:
+        // Nothing and Nope aren't there any more.
+        let names = script::project_names::Names::with_assemblies(&[])
+            .and_sounds(&["hum", "drone", "nothing"])
+            .and_buses(&["Nope"]);
+        let (mut files, _) = script::describe::descriptions_for("Test 1.0", "solis", &names);
         files.push(("main.lst".into(), code.to_owned()));
         let compiled = match script::compile(&script::Code {
             files,
@@ -931,9 +942,9 @@ mod tests {
             ..hum_event()
         };
         let (dir, s) = with_events("at-once", &[("hum", two)]);
-        const KEEP: &str = "get \"solis/sound\":[playSoundOn];\n\
+        const KEEP: &str = "fetch \"solis/project\":Sound;\n\n\
             component Keep {\n\
-                method update(float dt) { playSoundOn(\"hum\", me); }\n\
+                method update(float dt) { playSound(Sound.Hum); }\n\
             }\n\
             pass Keep;\nend\n";
         let mut w = coded_world(KEEP, "Keep");
@@ -949,11 +960,11 @@ mod tests {
         w.stop();
         audio.frame(&mut w, &s, &mut device, &ctx);
 
-        const UNSAID: &str = "get \"solis/sound\":[playSoundOn, stopSoundsOn];\n\
+        const UNSAID: &str = "fetch \"solis/project\":Sound;\n\n\
             component Unsaid {\n\
                 method update(float dt) {\n\
-                    playSoundOn(\"hum\", me);\n\
-                    stopSoundsOn(me);\n\
+                    playSound(Sound.Hum);\n\
+                    stopSounds();\n\
                 }\n\
             }\n\
             pass Unsaid;\nend\n";
@@ -975,11 +986,11 @@ mod tests {
             ..hum_event()
         };
         let (dir, s) = with_events("drone", &[("drone", drone)]);
-        const ONCE: &str = "get \"solis/sound\":[playSoundOn];\n\
+        const ONCE: &str = "fetch \"solis/project\":Sound;\n\n\
             component Once {\n\
                 has { bool started = false; }\n\
                 method update(float dt) {\n\
-                    is not started? then { playSoundOn(\"drone\", me); }\n\
+                    is not started? then { playSound(Sound.Drone); }\n\
                     started = true;\n\
                 }\n\
             }\n\
@@ -1003,12 +1014,12 @@ mod tests {
         // Regression (the Phase 7 review): game code naming buses or sound
         // events that aren't there grew two lists without end.
         let (dir, s) = with_events("made-up", &[("hum", hum_event())]);
-        const MADE_UP: &str = "get \"solis/sound\":[playSound, setBusVolume];\n\
+        const MADE_UP: &str = "fetch \"solis/project\":[Sound, Bus];\nfetch \"solis/sound\":Audio;\n\n\
             component Noisy {\n\
                 method update(float dt) {\n\
-                    setBusVolume(\"Nope\", 0.5);\n\
-                    setBusVolume(\"Music\", 0.5);\n\
-                    playSound(\"nothing\");\n\
+                    Audio:setVolume(Bus.Nope, 0.5);\n\
+                    Audio:setVolume(Bus.Music, 0.5);\n\
+                    Audio:play(Sound.Nothing);\n\
                 }\n\
             }\n\
             pass Noisy;\nend\n";

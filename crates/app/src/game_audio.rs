@@ -173,8 +173,17 @@ impl GameAudio {
                     // Only a bus the project has: game code naming made-up
                     // buses every tick can't grow this without end (the
                     // Phase 7 review).
-                    if workbench.mixer().index_of(bus).is_some() {
-                        self.shares.insert(bus.clone(), share);
+                    // Found ignoring capitals: game code's Bus.Ui is the UI
+                    // bus (decision 0076).
+                    let mixer = workbench.mixer();
+                    let named = mixer.index_of(bus).or_else(|| {
+                        mixer
+                            .buses
+                            .iter()
+                            .position(|b| b.name.eq_ignore_ascii_case(bus))
+                    });
+                    if let Some(i) = named {
+                        self.shares.insert(mixer.buses[i].name.clone(), share);
                     }
                 }
                 Request::Play(ref name, at, caller) => {

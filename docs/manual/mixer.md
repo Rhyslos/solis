@@ -32,7 +32,7 @@ When you want to balance a game's sound as a whole rather than one [sound event]
 
 A bus can have up to 8 ducking rules (**Add a ducking rule**, and **×** to remove one), and a project up to 64 buses. **Remove bus** moves the buses inside it up to its parent. Adding, removing or moving a bus while the game plays rebuilds the mix: sounds already playing once stop (sounds that keep playing start again at once), so do it while stopped if you're listening closely.
 
-**From game code**, `setBusVolume(bus, volume)` sets a bus for the rest of the play to a share of its fader, from 0 (silent) to 1 (as set in the Mixer): what an options menu's sliders call. See [Game code: Sounds](game-code.md#sounds).
+**From game code**, `Audio:setVolume(Bus.Music, volume)` sets a bus for the rest of the play to a share of its fader, from 0 (silent) to 1 (as set in the Mixer): what an options menu's sliders call. See [Game code: Sounds](game-code.md#sounds).
 
 ## Tips and common problems
 - **Problem:** a sound event isn't affected by its bus's fader. **Why:** its **Bus** names a bus that isn't there any more (renamed or removed), so it plays through Master. **Fix:** pick the bus again in the event's Properties.
@@ -43,5 +43,5 @@ A bus can have up to 8 ducking rules (**Add a ducking rule**, and **×** to remo
 
 ## Related
 - [Sound events](sound-events.md): each event's Bus.
-- [Game code: Sounds](game-code.md#sounds): `setBusVolume`.
+- [Game code: Sounds](game-code.md#sounds): `Audio:setVolume`.
 - [Concepts](concepts.md#sound): bus, ducking, decibel.

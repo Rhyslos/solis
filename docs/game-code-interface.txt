@@ -19,12 +19,12 @@ world: object World: method int randomInt(int low, int high) native;
 world: object World: method setSeed(int seed) native;
 world: object Saves: method saveTo(string slot) native;
 world: object Saves: method loadFrom(string slot) native;
-sound: method playSound(string event) native;
-sound: method playSoundAt(string event, vec3 place) native;
-sound: method playSoundOn(string event, entity on) native;
-sound: method stopSoundsOn(entity on) native;
-sound: method setSoundPlaying(entity on, bool playing) native;
-sound: method setBusVolume(string bus, float volume) native;
+sound: object Audio: method play(Sound event) native;
+sound: object Audio: method playAt(Sound event, vec3 place) native;
+sound: method entity:playSound(Sound event) native;
+sound: method entity:stopSounds() native;
+sound: method entity:setSoundPlaying(bool playing) native;
+sound: object Audio: method setVolume(Bus bus, float volume) native;
 animation: method playClip(entity on, string clip) native;
 animation: method replayClip(entity on, string clip) native;
 animation: method stopClip(entity on) native;
@@ -55,6 +55,9 @@ animation: event ClipFinished(string clip);
 
 ## Lua (solis.<name>)
 
+solis.Audio:play
+solis.Audio:playAt
+solis.Audio:setVolume
 solis.Input:axis
 solis.Input:binding
 solis.Input:held
@@ -79,24 +82,21 @@ solis.entity.face
 solis.entity.grounded
 solis.entity.moveTo
 solis.entity.name
+solis.entity.playSound
 solis.entity.position
 solis.entity.push
 solis.entity.rotation
+solis.entity.setSoundPlaying
 solis.entity.setVelocity
+solis.entity.stopSounds
 solis.entity.turnTo
 solis.entity.velocity
 solis.entity.walk
 solis.facingAlong
 solis.playClip
-solis.playSound
-solis.playSoundAt
-solis.playSoundOn
 solis.replayClip
 solis.send
-solis.setBusVolume
-solis.setSoundPlaying
 solis.stopClip
-solis.stopSoundsOn
 
 ## Lua's own names Solis adds or changes (its prelude)
 

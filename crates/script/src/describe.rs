@@ -282,6 +282,31 @@ pub const MOVED: &[Moved] = &[
         lust: "Physics:castRay(from, direction, reach).normal",
         lua: "solis.Physics:castRay(from, direction, reach).normal",
     },
+    Moved {
+        old: "playSound",
+        lust: "Audio:play(Sound.Sfx.Footstep) for sfx/footstep, with fetch \"solis/sound\":Audio; and fetch \"solis/project\":Sound;",
+        lua: "solis.Audio:play(\"Sfx.Footstep\")",
+    },
+    Moved {
+        old: "playSoundAt",
+        lust: "Audio:playAt(Sound.Sfx.Footstep, place)",
+        lua: "solis.Audio:playAt(\"Sfx.Footstep\", place)",
+    },
+    Moved {
+        old: "playSoundOn",
+        lust: "target:playSound(Sound.Sfx.Footstep) (inside a component, playSound(…) for its own entity)",
+        lua: "solis.entity.playSound(target, \"Sfx.Footstep\")",
+    },
+    Moved {
+        old: "stopSoundsOn",
+        lust: "target:stopSounds() (inside a component, stopSounds() for its own entity)",
+        lua: "solis.entity.stopSounds(target)",
+    },
+    Moved {
+        old: "setBusVolume",
+        lust: "Audio:setVolume(Bus.Music, volume), with fetch \"solis/project\":Bus;",
+        lua: "solis.Audio:setVolume(\"Music\", volume)",
+    },
 ];
 
 /// Every native method Solis gives game code.
@@ -379,45 +404,45 @@ pub const NATIVES: &[Native] = &[
     },
     Native {
         file: "sound",
-        name: "playSound",
-        owner: "",
-        lust: "method playSound(string event) native;",
-        about: "Plays a sound event (its file in assets, without .solsound: \"sfx/footstep\"), the same everywhere: music, the interface. At the end of the tick, as a move lands. Nothing comes back, so sound can never change the game.",
+        name: "play",
+        owner: "Audio",
+        lust: "method play(Sound event) native;",
+        about: "Plays one of the project's sound events (Sound.Sfx.Footstep for sfx/footstep), the same everywhere: music, the interface. At the end of the tick, as a move lands. Nothing comes back, so sound can never change the game.",
     },
     Native {
         file: "sound",
-        name: "playSoundAt",
-        owner: "",
-        lust: "method playSoundAt(string event, vec3 place) native;",
+        name: "playAt",
+        owner: "Audio",
+        lust: "method playAt(Sound event, vec3 place) native;",
         about: "Plays a sound event at a place in the world: quieter far from the camera, and from its direction.",
     },
     Native {
         file: "sound",
-        name: "playSoundOn",
-        owner: "",
-        lust: "method playSoundOn(string event, entity on) native;",
-        about: "Plays a sound event on an entity, following it as it moves: an engine, a voice.",
+        name: "playSound",
+        owner: "entity",
+        lust: "method entity:playSound(Sound event) native;",
+        about: "Plays a sound event on the entity, following it as it moves: an engine, a voice.",
     },
     Native {
         file: "sound",
-        name: "stopSoundsOn",
-        owner: "",
-        lust: "method stopSoundsOn(entity on) native;",
-        about: "Stops the sounds playing on an entity, with a short fade.",
+        name: "stopSounds",
+        owner: "entity",
+        lust: "method entity:stopSounds() native;",
+        about: "Stops the sounds playing on the entity, with a short fade, at the end of the tick (not its AudioSource: setSoundPlaying does that).",
     },
     Native {
         file: "sound",
         name: "setSoundPlaying",
-        owner: "",
-        lust: "method setSoundPlaying(entity on, bool playing) native;",
+        owner: "entity",
+        lust: "method entity:setSoundPlaying(bool playing) native;",
         about: "Turns an entity's AudioSource (a sound that keeps playing at it: an engine, a campfire) on or off, at the end of the tick.",
     },
     Native {
         file: "sound",
-        name: "setBusVolume",
-        owner: "",
-        lust: "method setBusVolume(string bus, float volume) native;",
-        about: "Sets a bus's volume (\"Music\", \"Effects\": the Mixer's buses) for the rest of the play, from 0 (silent) to 1 (as set in the Mixer): for an options menu's sliders.",
+        name: "setVolume",
+        owner: "Audio",
+        lust: "method setVolume(Bus bus, float volume) native;",
+        about: "Sets a bus's volume for the rest of the play, from 0 (silent) to 1 (as set in the Mixer), at the end of the tick: what an options menu's sliders call.",
     },
     Native {
         file: "animation",
@@ -722,7 +747,7 @@ fn descriptions_with(
 /// The project's own names as states, written by the editor into
 /// `solis/project.lst` ([`crate::project_names::project_file`]): what natives take where a string
 /// once named a file.
-pub const PROJECT_STATES: &[&str] = &["Assembly", "Action"];
+pub const PROJECT_STATES: &[&str] = &["Assembly", "Action", "Sound", "Bus"];
 
 /// What the first line of each file describing the engine says after who made it: how the
 /// compiler knows the engine's own folder (Lust's host folder, decision 0072), without the
@@ -774,11 +799,11 @@ mod tests {
         files.push((
             "main.lst".into(),
             "fetch \"solis/world\":[World, Saves];\n\
-             fetch \"solis/project\":[Assembly, Action];\n\
+             fetch \"solis/project\":[Assembly, Action, Sound, Bus];\n\
              fetch \"solis/input\":Input;\n\
              get \"solis/entity\":facingAlong;\n\
              fetch \"solis/physics\":[Physics, RayHit];\n\
-             get \"solis/sound\":[playSound, playSoundAt, playSoundOn, stopSoundsOn, setSoundPlaying, setBusVolume];\n\
+             fetch \"solis/sound\":Audio;\n\
              get \"solis/animation\":[playClip, replayClip, stopClip];\n\
              fetch \"solis/animation\":AnimationCue;\n\
              fetch \"solis/animation\":ClipFinished;\n\
@@ -821,6 +846,12 @@ mod tests {
                      World:setSeed(World:randomInt(1, 6));\n\
                      float r = World:random() + World:randomRange(1, 2);\n\
                      World:fire(position(), step, 10, 1, [1, 0, 0]);\n\
+                     Audio:play(Sound.None);\n\
+                     Audio:playAt(Sound.None, position());\n\
+                     playSound(Sound.None);\n\
+                     other:stopSounds();\n\
+                     setSoundPlaying(true);\n\
+                     Audio:setVolume(Bus.Music, 0.5);\n\
                      is Input:held(Action.Jump) && Input:pressed(Action.Jump) || Input:released(Action.Jump)? then {\n\
                          Input:rebind(Action.Jump, \"Space\");\n\
                          World:say(Input:binding(Action.Jump) + Input:axis(Action.Move).x.text());\n\
