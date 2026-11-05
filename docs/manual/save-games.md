@@ -9,19 +9,19 @@ It's also a debugging tool: save just before something goes wrong, and you can l
 
 ## How to use it
 
-**From game code** (in Lust, `get "solis/world":[saveGame, loadGame];`; in Lua, `solis.saveGame("quick")`):
+**From game code** (in Lust, `fetch "solis/world":Saves;` then `Saves:saveTo("quick")`; in Lua, `solis.Saves:saveTo("quick")`):
 
 ```
-get "solis/world":[saveGame, loadGame];
 get "solis/input":[pressed];
+fetch "solis/world":Saves;
 
 component QuickSave {
     method update(float dt) {
         is pressed("QuickSave")? then {
-            saveGame("quick");
+            Saves:saveTo("quick");
         }
         is pressed("QuickLoad")? then {
-            loadGame("quick");
+            Saves:loadFrom("quick");
         }
     }
 }
@@ -34,10 +34,10 @@ Add the QuickSave and QuickLoad actions in **Edit > Input actions…** and bind 
 
 - A **slot** is a save's name: letters, digits, `_` and `-` (`quick`, `slot_1`, `before-boss`), but not a name Windows keeps for a device (`CON`, `NUL`, `PRN`, `AUX`, `COM1`, `LPT1` and so on). Saving to a slot that has a save replaces it. A project keeps at most 100 saves, and 2 GB of them together; past that, game code can replace one but not add more (the Console says so).
 - Both happen at the **end of the tick**, after every component's `update`, like moves ([what game code sees](game-code.md#components)). A load replaces the whole game, so nothing else runs in that frame after it.
-- Asking for the same slot again in one tick saves once (a save is the whole game, so a `saveGame` in every unit's `update` would otherwise make thousands at a time). At most four slots are saved or loaded in one tick.
+- Asking for the same slot again in one tick saves once (a save is the whole game, so a `Saves:saveTo` in every unit's `update` would otherwise make thousands at a time). At most four slots are saved or loaded in one tick.
 - Loading doesn't run the game's starts again (the code outside components, and its fields' starting values): what they did already happened in the saved game.
-- `saveGame`, `loadGame` and `rebind` work from `update` and events, not while a component starts (the Console says so if you try).
-- A `loadGame` from game code leaves the game the mouse and keys, so the player carries on at once; **Play > Load a save…** gives them back to the editor.
+- `Saves:saveTo`, `Saves:loadFrom` and `rebind` work from `update` and events, not while a component starts (the Console says so if you try).
+- A `Saves:loadFrom` from game code leaves the game the mouse and keys, so the player carries on at once; **Play > Load a save…** gives them back to the editor.
 - **Physics** is kept as each body's place and motion. Saving starts physics afresh from those, which a loaded game does too, so the loaded game carries on exactly as the saved one does (a stack of crates may settle by a hair as you save).
 
 **From the editor:** **Play > Load a save…** picks a save from the project's `saves` folder and plays from it, whether or not the game is running. **Stop** still puts the area back as it was before you pressed Play: a save is a moment in a game, not a change to your area.

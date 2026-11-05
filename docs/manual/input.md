@@ -45,7 +45,6 @@ Changes are saved straight away, and a game that's playing takes them at once (a
 **In game code** (`get "solis/input":[held, pressed, axis];` in Lust; `solis.held("Jump")` in Lua):
 
 ```
-get "solis/entity":[positionOf, moveTo];
 get "solis/input":[axis, pressed];
 
 component Walker {
@@ -56,9 +55,9 @@ component Walker {
     method update(float dt) {
         vec3 way = axis("Move");
         vec3 step = [way.x, way.y, 0];
-        moveTo(this, positionOf(this) + step * speed * dt);
+        moveTo(position() + step * speed * dt);
         is pressed("Jump")? then {
-            moveTo(this, positionOf(this) + [0, 0, 1]);
+            moveTo(position() + [0, 0, 1]);
         }
     }
 }
@@ -81,7 +80,7 @@ Input is read **once per [tick](concepts.md#game-code)**, so every component, on
 **Recording and playing back** (the **Play** menu)
 1. With a [project](projects-and-the-library.md) open, choose **Play > Play and record inputs**. Play as usual.
 2. Press **Stop**. The recording is saved in the project's `recordings` folder (the Console says its name).
-3. Choose **Play > Replay a recording…** and pick it. (While it replays, the game's `saveGame` makes its save as the recorded play did, but doesn't write over your saves.) Solis plays from the start with the same seed and every tick's recorded input, checking the game is exactly the same tick by tick ([checksums](concepts.md#simulation)). At the end it pauses and says whether it matched, or by which tick it stopped matching (the world is compared every tick, game code's own values once a second).
+3. Choose **Play > Replay a recording…** and pick it. (While it replays, the game's `Saves:saveTo` makes its save as the recorded play did, but doesn't write over your saves.) Solis plays from the start with the same seed and every tick's recorded input, checking the game is exactly the same tick by tick ([checksums](concepts.md#simulation)). At the end it pauses and says whether it matched, or by which tick it stopped matching (the world is compared every tick, game code's own values once a second).
 
 A replay that stops matching means the game came out differently from the same input: the area or code changed since recording, or something in the game isn't deterministic. That's how you find it the tick it starts.
 

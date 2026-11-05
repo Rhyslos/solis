@@ -12,8 +12,8 @@ use glam::Vec3;
 /// A busy game: a counter that staggers randomly, kicks a crate on its
 /// first tick, fires a laser now and then, and saves or loads when its
 /// `request` field says to.
-const BUSY: &str = "get \"solis/world\":[randomRange, find, fire, saveGame, loadGame];\n\
-    get \"solis/entity\":[positionOf, moveTo];\n\
+const BUSY: &str = "fetch \"solis/world\":[World, Saves];\n\n\
+    \n\
     get \"solis/physics\":[push];\n\
     component Busy {\n\
         has {\n\
@@ -23,20 +23,20 @@ const BUSY: &str = "get \"solis/world\":[randomRange, find, fire, saveGame, load
         }\n\
         method update(float dt) {\n\
             is ticks == 0? then {\n\
-                push(find(\"Crate\"), [3, 1, 0]);\n\
+                push(World:find(\"Crate\"), [3, 1, 0]);\n\
             }\n\
             ticks = ticks + 1;\n\
-            wander = wander + randomRange(-1, 1);\n\
-            moveTo(me, positionOf(me) + [randomRange(-0.1, 0.1), 0.05, 0]);\n\
+            wander = wander + World:randomRange(-1, 1);\n\
+            moveTo(position() + [World:randomRange(-0.1, 0.1), 0.05, 0]);\n\
             is ticks % 20 == 0? then {\n\
-                fire(positionOf(me), [1, 0, 0], 30, 1, [2, 0.5, 0.2]);\n\
+                World:fire(position(), [1, 0, 0], 30, 1, [2, 0.5, 0.2]);\n\
             }\n\
             is request == 1? then {\n\
-                saveGame(\"quick\");\n\
+                Saves:saveTo(\"quick\");\n\
                 request = 0;\n\
             }\n\
             is request == 2? then {\n\
-                loadGame(\"quick\");\n\
+                Saves:loadFrom(\"quick\");\n\
                 request = 0;\n\
             }\n\
         }\n\
@@ -44,7 +44,11 @@ const BUSY: &str = "get \"solis/world\":[randomRange, find, fire, saveGame, load
     pass Busy;\nend\n";
 
 fn program(main: &str) -> Arc<script::Compiled> {
-    let mut files = script::describe::descriptions("Test Engine 9.9.9", "solis");
+    let (mut files, _) = script::describe::descriptions_for(
+        "Test Engine 9.9.9",
+        "solis",
+        &["drones/drone".to_string(), "nowhere".to_string()],
+    );
     files.push(("main.lst".into(), main.to_string()));
     let code = script::Code {
         files,
@@ -509,17 +513,11 @@ fn resummed(text: &str) -> String {
 fn loading_doesn_t_run_the_game_s_starts_again_on_top_of_the_save() {
     // The code's own start moves the crate up and sets the seed: right
     // at Play, wrong on top of a loaded game.
-    let code = BUSY
-        .replacen(
-            "component Busy {",
-            "moveTo(find(\"Crate\"), [0, 0, 4]);\nsetSeed(99);\ncomponent Busy {",
-            1,
-        )
-        .replacen(
-            "get \"solis/world\":[randomRange, find, fire, saveGame, loadGame];",
-            "get \"solis/world\":[randomRange, find, fire, saveGame, loadGame, setSeed];",
-            1,
-        );
+    let code = BUSY.replacen(
+        "component Busy {",
+        "World:find(\"Crate\"):moveTo([0, 0, 4]);\nWorld:setSeed(99);\ncomponent Busy {",
+        1,
+    );
     let mut w = busy("Harbour");
     w.set_program(Some(program(&code)));
     w.play();
@@ -546,10 +544,10 @@ fn busy_with_keys() -> Workbench {
             "component Keys {\n\
                 method update(float dt) {\n\
                     is pressed(\"QuickSave\")? then {\n\
-                        saveGame(\"quick\");\n\
+                        Saves:saveTo(\"quick\");\n\
                     }\n\
                     is pressed(\"QuickLoad\")? then {\n\
-                        loadGame(\"quick\");\n\
+                        Saves:loadFrom(\"quick\");\n\
                     }\n\
                 }\n\
             }\n\

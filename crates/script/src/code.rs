@@ -98,9 +98,61 @@ impl From<lust::Problem> for CodeProblem {
             file: p.file,
             line: p.line,
             column: p.column,
-            message: p.message,
+            message: moved_message(p.message),
         }
     }
+}
+
+/// Lust's message for a call that moved (decision 0065: a straight
+/// switch), saying how it's written now: "there's no method called
+/// positionOf." becomes "positionOf is now written target:position() …".
+/// A moved call that kept its name (`moveTo`) given the entity first
+/// gets the same help after Lust's own words.
+fn moved_message(message: String) -> String {
+    for moved in crate::describe::MOVED {
+        if message == format!("there's no method called {}.", moved.old) {
+            return format!("{} is now written {}.", moved.old, moved.lust);
+        }
+        if message.starts_with(&format!("{} takes ", moved.old)) {
+            return format!("{message} {} is now written {}.", moved.old, moved.lust);
+        }
+    }
+    message
+}
+
+/// Lua's uses of calls that moved (`solis.positionOf(e)`), as mistakes
+/// saying how they're written now: Lua would only find out as it ran.
+pub(crate) fn moved_lua_uses(code: &Code) -> Vec<CodeProblem> {
+    let mut found = Vec::new();
+    for (file, text) in &code.lua {
+        for (n, line) in text.lines().enumerate() {
+            let code_part = line.split("--").next().unwrap_or_default();
+            for moved in crate::describe::MOVED {
+                let old = format!("solis.{}", moved.old);
+                let mut from = 0;
+                while let Some(at) = code_part[from..].find(&old) {
+                    let start = from + at;
+                    let end = start + old.len();
+                    from = end;
+                    let word = |c: char| c.is_alphanumeric() || c == '_';
+                    let before = code_part[..start].chars().next_back();
+                    if before.is_some_and(|c| word(c) || c == '.')
+                        || code_part[end..].chars().next().is_some_and(word)
+                    {
+                        continue;
+                    }
+                    found.push(CodeProblem {
+                        file: file.clone(),
+                        line: u32::try_from(n + 1).unwrap_or(u32::MAX),
+                        column: u32::try_from(code_part[..start].chars().count() + 1)
+                            .unwrap_or(u32::MAX),
+                        message: format!("{old} is now written {}.", moved.lua),
+                    });
+                }
+            }
+        }
+    }
+    found
 }
 
 /// Reads every `.lst` and `.lua` file under `assets`, skipping hidden
@@ -461,6 +513,7 @@ fn compile_here(code: &Code) -> Result<Option<Compiled>, Vec<CodeProblem>> {
         }
     }
     if !code.lua.is_empty() {
+        problems.extend(moved_lua_uses(code));
         let lua = crate::luau::sandboxed_lua().map_err(|_| vec![compiler_stopped()])?;
         for (path, text) in &code.lua {
             let chunk = crate::luau::as_text(lua.load(text));
@@ -1090,5 +1143,47 @@ mod renamed_tests {
                 .contains("solis.spawnAt is now solis.spawn")
         );
         assert!(renamed_uses(&code).is_empty(), "nothing is renamed yet");
+    }
+
+    #[test]
+    fn a_call_that_moved_is_a_mistake_that_says_the_new_way() {
+        let mut files = crate::describe::descriptions("Test Engine 9.9.9", "solis");
+        files.push((
+            "main.lst".into(),
+            "component A {\n    method update(float dt) {\n        vec3 at = positionOf(this);\n        moveTo(this, at);\n    }\n}\npass A;\nend\n"
+                .into(),
+        ));
+        let code = Code {
+            files,
+            lua: vec![(
+                "b.lua".into(),
+                "-- solis.say(\"in a comment\")\nlocal at = solis.positionOf(self.me) solis.entity.position(self.me)\n".into(),
+            )],
+            notes: Vec::new(),
+        };
+        let problems = check(&code);
+        let said: Vec<String> = problems.iter().map(ToString::to_string).collect();
+        assert!(
+            said.iter().any(|p| p.starts_with(
+                "b.lua, line 2:12: solis.positionOf is now written solis.entity.position(target)"
+            )),
+            "{said:?}"
+        );
+        assert_eq!(
+            said.iter().filter(|p| p.starts_with("b.lua")).count(),
+            1,
+            "not in a comment, nor the new way: {said:?}"
+        );
+        let lust: Vec<&String> = said.iter().filter(|p| p.starts_with("main.lst")).collect();
+        assert!(
+            lust.iter()
+                .any(|p| p.contains("positionOf is now written target:position()")),
+            "{lust:?}"
+        );
+        assert!(
+            lust.iter()
+                .any(|p| p.contains("moveTo is now written target:moveTo(place)")),
+            "{lust:?}"
+        );
     }
 }

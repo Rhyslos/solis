@@ -8,7 +8,13 @@ use reflect::Value;
 fn chunk(main: &str) -> Compiled {
     let mut files = crate::describe::descriptions("Test 1.0", "solis");
     files.push(("main.lst".into(), main.to_string()));
-    match lust::to_lua("main.lst", &files) {
+    match lust::to_lua_with(
+        &lust::Engine {
+            folders: crate::describe::engine_folders(&files),
+        },
+        "main.lst",
+        &files,
+    ) {
         Ok(chunk) => Compiled {
             lust: Some(chunk),
             lua: Vec::new(),

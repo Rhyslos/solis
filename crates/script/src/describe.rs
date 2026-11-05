@@ -11,13 +11,40 @@
 pub struct Native {
     /// The file it's described in, inside `solis/` (without `.lst`).
     pub file: &'static str,
-    /// Its name, as Lust calls it (and as the body's key in
-    /// `LUST_NATIVES`).
+    /// Its name, as Lust calls it.
     pub name: &'static str,
+    /// Whose method it is: `""` for a method on its own (`facingAlong`),
+    /// `"entity"` for an entity's (`target:moveTo(place)`, `moveTo(place)`
+    /// inside a component), or an engine object's name (`World`, for
+    /// `World:say(words)`). Its body's key in `LUST_NATIVES` is
+    /// [`Native::key`].
+    pub owner: &'static str,
     /// Its Lust: what it takes and gives back.
     pub lust: &'static str,
     /// What it does, in plain words, written above it.
     pub about: &'static str,
+}
+
+impl Native {
+    /// Its body's key in `LUST_NATIVES`, as Lust's Lua calls it: the name,
+    /// `entity_<name>` for an entity's method, `<Object>_<name>` for an
+    /// engine object's.
+    pub fn key(&self) -> String {
+        match self.owner {
+            "" => self.name.to_string(),
+            owner => format!("{owner}_{}", self.name),
+        }
+    }
+
+    /// How game code calls it, for messages and the manual:
+    /// `World:say(…)`, `target:moveTo(…)`, `facingAlong(…)`.
+    pub fn shown(&self) -> String {
+        match self.owner {
+            "" => format!("{}(…)", self.name),
+            "entity" => format!("target:{}(…)", self.name),
+            owner => format!("{owner}:{}(…)", self.name),
+        }
+    }
 }
 
 /// A native renamed on purpose, whose old name keeps working until a
@@ -71,259 +98,415 @@ pub const ENGINE_EVENTS: &[EngineEvent] = &[
 /// while. None yet: the first rename adds a line here.
 pub const RENAMED: &[Renamed] = &[];
 
+/// A call game code had that's now written another way (the game API
+/// guidelines, decision 0065): a straight switch, so the old way is a
+/// mistake that says the new one.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub struct Moved {
+    /// What it was called.
+    pub old: &'static str,
+    /// How it's written in Lust now.
+    pub lust: &'static str,
+    /// How it's written in Lua now.
+    pub lua: &'static str,
+}
+
+/// Every call that moved.
+pub const MOVED: &[Moved] = &[
+    Moved {
+        old: "say",
+        lust: "World:say(words)",
+        lua: "solis.World:say(words)",
+    },
+    Moved {
+        old: "time",
+        lust: "World:time()",
+        lua: "solis.World:time()",
+    },
+    Moved {
+        old: "frameTime",
+        lust: "World:frameTime()",
+        lua: "solis.World:frameTime()",
+    },
+    Moved {
+        old: "find",
+        lust: "World:find(name)",
+        lua: "solis.World:find(name)",
+    },
+    Moved {
+        old: "fire",
+        lust: "World:fire(from, direction, speed, life, colour)",
+        lua: "solis.World:fire(from, direction, speed, life, colour)",
+    },
+    Moved {
+        old: "spawn",
+        lust: "World:spawn(Assembly.Ships.Fighter, place), with fetch \"solis/project\":Assembly;",
+        lua: "solis.World:spawn(\"Ships.Fighter\", place)",
+    },
+    Moved {
+        old: "despawn",
+        lust: "target:despawn() (inside a component, despawn() for its own entity)",
+        lua: "solis.entity.despawn(target)",
+    },
+    Moved {
+        old: "random",
+        lust: "World:random()",
+        lua: "solis.World:random()",
+    },
+    Moved {
+        old: "randomRange",
+        lust: "World:randomRange(low, high)",
+        lua: "solis.World:randomRange(low, high)",
+    },
+    Moved {
+        old: "randomInt",
+        lust: "World:randomInt(low, high)",
+        lua: "solis.World:randomInt(low, high)",
+    },
+    Moved {
+        old: "setSeed",
+        lust: "World:setSeed(seed)",
+        lua: "solis.World:setSeed(seed)",
+    },
+    Moved {
+        old: "saveGame",
+        lust: "Saves:saveTo(slot)",
+        lua: "solis.Saves:saveTo(slot)",
+    },
+    Moved {
+        old: "loadGame",
+        lust: "Saves:loadFrom(slot)",
+        lua: "solis.Saves:loadFrom(slot)",
+    },
+    Moved {
+        old: "positionOf",
+        lust: "target:position() (inside a component, position() for its own entity)",
+        lua: "solis.entity.position(target)",
+    },
+    Moved {
+        old: "moveTo",
+        lust: "target:moveTo(place) (inside a component, moveTo(place) for its own entity)",
+        lua: "solis.entity.moveTo(target, place)",
+    },
+    Moved {
+        old: "rotationOf",
+        lust: "target:rotation() (inside a component, rotation() for its own entity)",
+        lua: "solis.entity.rotation(target)",
+    },
+    Moved {
+        old: "turnTo",
+        lust: "target:turnTo(facing) (inside a component, turnTo(facing) for its own entity)",
+        lua: "solis.entity.turnTo(target, facing)",
+    },
+    Moved {
+        old: "nameOf",
+        lust: "target:name() (inside a component, name() for its own entity)",
+        lua: "solis.entity.name(target)",
+    },
+];
+
 /// Every native method Solis gives game code.
 pub const NATIVES: &[Native] = &[
     Native {
         file: "world",
         name: "say",
+        owner: "World",
         lust: "method say(string words) native;",
         about: "Writes words in the Console.",
     },
     Native {
         file: "world",
         name: "time",
+        owner: "World",
         lust: "method float time() native;",
         about: "How long the game has been running, in seconds of game time.",
     },
     Native {
         file: "world",
         name: "find",
+        owner: "World",
         lust: "method entity find(string name) native;",
         about: "The first entity with this name, in the Area panel's order, or nothing.",
     },
     Native {
         file: "world",
         name: "fire",
+        owner: "World",
         lust: "method fire(vec3 from, vec3 direction, float speed, float life, vec3 colour) native;",
         about: "Fires a projectile (a laser): from a place, flying a way at a speed in metres a second, for a life in seconds, glowing in a colour (red, green, blue; above 1 glows brighter).",
     },
     Native {
         file: "world",
         name: "spawn",
-        lust: "method entity spawn(string file, vec3 place) native;",
-        about: "Makes a copy of an assembly (its file in the assets, such as \"ships/fighter.solasm\", or just its name) at a place; its entity, which is in the game from the next tick, or nothing if there's no such assembly.",
+        owner: "World",
+        lust: "method entity spawn(Assembly which, vec3 place) native;",
+        about: "Makes a copy of an assembly (one of the project's, Assembly.Ships.Fighter for ships/fighter) at a place; its entity, which is in the game from the next tick, or nothing if it can't be made.",
     },
     Native {
         file: "world",
         name: "despawn",
-        lust: "method despawn(entity which) native;",
-        about: "Takes an entity, and everything under it, out of the game at the end of the tick.",
+        owner: "entity",
+        lust: "method entity:despawn() native;",
+        about: "Takes the entity, and everything under it, out of the game at the end of the tick.",
     },
     Native {
         file: "world",
         name: "frameTime",
+        owner: "World",
         lust: "method float frameTime() native;",
         about: "How long the last frame took, in seconds of real time (1/60 at 60 frames a second).",
     },
     Native {
         file: "world",
         name: "random",
+        owner: "World",
         lust: "method float random() native;",
         about: "A random number from 0 up to 1. The same game with the same seed gets the same numbers, on any computer.",
     },
     Native {
         file: "world",
         name: "randomRange",
+        owner: "World",
         lust: "method float randomRange(float low, float high) native;",
         about: "A random number from low up to high.",
     },
     Native {
         file: "world",
         name: "randomInt",
+        owner: "World",
         lust: "method int randomInt(int low, int high) native;",
-        about: "A random whole number from low to high, both included (randomInt(1, 6) rolls a die).",
+        about: "A random whole number from low to high, both included (World:randomInt(1, 6) rolls a die).",
     },
     Native {
         file: "world",
         name: "setSeed",
+        owner: "World",
         lust: "method setSeed(int seed) native;",
         about: "Starts the game's random numbers again from a seed, at the end of the tick: the same seed gives the same numbers again.",
     },
     Native {
         file: "world",
-        name: "saveGame",
-        lust: "method saveGame(string slot) native;",
+        name: "saveTo",
+        owner: "Saves",
+        lust: "method saveTo(string slot) native;",
         about: "Saves the whole game in a slot (a name such as \"quick\" or \"slot_1\": letters, digits, _ and -), at the end of the tick: every entity, every component's values, the lasers, physics, the clock and the random numbers.",
     },
     Native {
         file: "world",
-        name: "loadGame",
-        lust: "method loadGame(string slot) native;",
+        name: "loadFrom",
+        owner: "Saves",
+        lust: "method loadFrom(string slot) native;",
         about: "Loads the game saved in a slot, at the end of the tick: everything is put back exactly as it was when it was saved.",
     },
     Native {
         file: "sound",
         name: "playSound",
+        owner: "",
         lust: "method playSound(string event) native;",
         about: "Plays a sound event (its file in assets, without .solsound: \"sfx/footstep\"), the same everywhere: music, the interface. At the end of the tick, as a move lands. Nothing comes back, so sound can never change the game.",
     },
     Native {
         file: "sound",
         name: "playSoundAt",
+        owner: "",
         lust: "method playSoundAt(string event, vec3 place) native;",
         about: "Plays a sound event at a place in the world: quieter far from the camera, and from its direction.",
     },
     Native {
         file: "sound",
         name: "playSoundOn",
+        owner: "",
         lust: "method playSoundOn(string event, entity on) native;",
         about: "Plays a sound event on an entity, following it as it moves: an engine, a voice.",
     },
     Native {
         file: "sound",
         name: "stopSoundsOn",
+        owner: "",
         lust: "method stopSoundsOn(entity on) native;",
         about: "Stops the sounds playing on an entity, with a short fade.",
     },
     Native {
         file: "sound",
         name: "setSoundPlaying",
+        owner: "",
         lust: "method setSoundPlaying(entity on, bool playing) native;",
         about: "Turns an entity's AudioSource (a sound that keeps playing at it: an engine, a campfire) on or off, at the end of the tick.",
     },
     Native {
         file: "sound",
         name: "setBusVolume",
+        owner: "",
         lust: "method setBusVolume(string bus, float volume) native;",
         about: "Sets a bus's volume (\"Music\", \"Effects\": the Mixer's buses) for the rest of the play, from 0 (silent) to 1 (as set in the Mixer): for an options menu's sliders.",
     },
     Native {
         file: "animation",
         name: "playClip",
+        owner: "",
         lust: "method playClip(entity on, string clip) native;",
         about: "Plays a clip on an entity's Sprite (\"walk\": one of its sheet's Aseprite tags, or a clip of its clips file), at the end of the tick. Already playing it, or finished it: it carries on as it is, so it's safe to call every tick. Another clip: it starts from its beginning.",
     },
     Native {
         file: "animation",
         name: "replayClip",
+        owner: "",
         lust: "method replayClip(entity on, string clip) native;",
         about: "Plays a clip on an entity's Sprite from its beginning, whatever it was doing: a swing each time a button is pressed.",
     },
     Native {
         file: "animation",
         name: "stopClip",
+        owner: "",
         lust: "method stopClip(entity on) native;",
         about: "Stops an entity's Sprite where it is in its clip, at the end of the tick; playClip carries on from there.",
     },
     Native {
         file: "input",
         name: "held",
+        owner: "",
         lust: "method bool held(string action) native;",
         about: "Whether an action's input is held down this tick (\"Jump\"; an axis such as \"Move\": not at rest). Actions are set up in Edit > Input actions.",
     },
     Native {
         file: "input",
         name: "pressed",
+        owner: "",
         lust: "method bool pressed(string action) native;",
         about: "Whether an action's input went down since the last tick: true once per press.",
     },
     Native {
         file: "input",
         name: "released",
+        owner: "",
         lust: "method bool released(string action) native;",
         about: "Whether an action's input came up since the last tick: true once per release.",
     },
     Native {
         file: "input",
         name: "axis",
+        owner: "",
         lust: "method vec3 axis(string action) native;",
         about: "An axis action's two numbers as x (across: right is +1) and y (up or forward: +1); z is 0. Move gives which way to go, each from -1 to 1; Look gives how far to turn this tick, in degrees.",
     },
     Native {
         file: "input",
         name: "bindingOf",
+        owner: "",
         lust: "method string bindingOf(string action) native;",
         about: "The input that sets an action off (a key first, then the mouse, then the gamepad), such as \"F\": for telling the player \"Press F\". Empty if it has none.",
     },
     Native {
         file: "input",
         name: "rebind",
+        owner: "",
         lust: "method rebind(string action, string input) native;",
         about: "Binds an input (\"E\", \"Mouse Right\", \"Pad Y\") to an action from the next tick, in place of its inputs of the same kind: what a controls menu does. Lasts while the game plays.",
     },
     Native {
         file: "physics",
         name: "push",
+        owner: "",
         lust: "method push(entity which, vec3 impulse) native;",
         about: "Gives an entity's body a push, at the end of the tick: a heavy body moves less than a light one (the push is in kilograms times metres a second).",
     },
     Native {
         file: "physics",
         name: "velocityOf",
+        owner: "",
         lust: "method vec3 velocityOf(entity which) native;",
         about: "How fast and which way an entity's body moves, in metres a second (nothing moving without a RigidBody).",
     },
     Native {
         file: "physics",
         name: "setVelocity",
+        owner: "",
         lust: "method setVelocity(entity which, vec3 velocity) native;",
         about: "Sets how fast and which way an entity's body moves, in metres a second, at the end of the tick.",
     },
     Native {
         file: "physics",
         name: "castRay",
+        owner: "",
         lust: "method float castRay(vec3 from, vec3 direction, float reach) native;",
         about: "Looks along a line from a place, a direction, up to reach metres: how far away the first collider is, or -1 if there's none. Colliders the line starts inside are passed through.",
     },
     Native {
         file: "physics",
         name: "castRayHit",
+        owner: "",
         lust: "method entity castRayHit(vec3 from, vec3 direction, float reach) native;",
         about: "Looks along a line like castRay: the entity whose collider it meets first, or nothing.",
     },
     Native {
         file: "physics",
         name: "castRayNormal",
+        owner: "",
         lust: "method vec3 castRayNormal(vec3 from, vec3 direction, float reach) native;",
         about: "Looks along a line like castRay: which way the surface it meets faces (straight up for a floor), or [0, 0, 0] if it meets nothing.",
     },
     Native {
         file: "physics",
         name: "moveCharacter",
+        owner: "",
         lust: "method moveCharacter(entity which, vec3 wanted) native;",
         about: "Moves a character (an entity with a CharacterBody) this far, in metres, at the end of the tick: it climbs steps and slopes, slides along walls, pushes crates and rides moving platforms, and stops where it can't go. Ask once a tick, with speed times dt.",
     },
     Native {
         file: "physics",
         name: "onGround",
+        owner: "",
         lust: "method bool onGround(entity which) native;",
         about: "Whether a character stood on something after its last move: for jumping only from the ground, and for falling.",
     },
     Native {
         file: "entity",
-        name: "positionOf",
-        lust: "method vec3 positionOf(entity which) native;",
-        about: "Where an entity is in the world, in metres.",
+        name: "position",
+        owner: "entity",
+        lust: "method vec3 entity:position() native;",
+        about: "Where the entity is in the world, in metres.",
     },
     Native {
         file: "entity",
         name: "moveTo",
-        lust: "method moveTo(entity which, vec3 place) native;",
-        about: "Puts an entity at a place in the world, in metres.",
+        owner: "entity",
+        lust: "method entity:moveTo(vec3 place) native;",
+        about: "Puts the entity at a place in the world, in metres.",
     },
     Native {
         file: "entity",
-        name: "rotationOf",
-        lust: "method rotation rotationOf(entity which) native;",
-        about: "Which way an entity faces in the world.",
+        name: "rotation",
+        owner: "entity",
+        lust: "method rotation entity:rotation() native;",
+        about: "Which way the entity faces in the world.",
     },
     Native {
         file: "entity",
         name: "turnTo",
-        lust: "method turnTo(entity which, rotation facing) native;",
-        about: "Turns an entity to face this way in the world.",
+        owner: "entity",
+        lust: "method entity:turnTo(rotation facing) native;",
+        about: "Turns the entity to face this way in the world.",
     },
     Native {
         file: "entity",
         name: "facingAlong",
+        owner: "",
         lust: "method rotation facingAlong(vec3 direction) native;",
-        about: "The upright rotation that faces along a direction (an entity's forward is +Y): turnTo(me, facingAlong(where - positionOf(me))) turns to face a place.",
+        about: "The upright rotation that faces along a direction (an entity's forward is +Y), for working out a turn. To turn the entity itself, face(direction) does it in one.",
     },
     Native {
         file: "entity",
-        name: "nameOf",
-        lust: "method string nameOf(entity which) native;",
-        about: "An entity's name, as the Area panel shows it.",
+        name: "face",
+        owner: "entity",
+        lust: "method entity:face(vec3 direction) native;",
+        about: "Turns the entity, upright, to face along a direction (its forward is +Y): face(target:position() - position()) turns to face a place.",
+    },
+    Native {
+        file: "entity",
+        name: "name",
+        owner: "entity",
+        lust: "method string entity:name() native;",
+        about: "The entity's name, as the Area panel shows it.",
     },
 ];
 
@@ -332,15 +515,35 @@ pub const NATIVES: &[Native] = &[
 /// between folders, in `folder` (the program's name in small letters, from
 /// the app's branding: `solis`). `made_by` names the program and version
 /// that wrote them, for their first line.
+///
+/// They include `project.lst`, the project's names as states (here for a
+/// project with none: [`descriptions_for`] gives a project's own).
 pub fn descriptions(made_by: &str, folder: &str) -> Vec<(String, String)> {
-    descriptions_with(made_by, folder, RENAMED)
+    descriptions_with(made_by, folder, RENAMED, &[]).0
 }
 
-/// [`descriptions`], with these natives renamed.
-fn descriptions_with(made_by: &str, folder: &str, renamed: &[Renamed]) -> Vec<(String, String)> {
-    let mut files: Vec<&str> = NATIVES.iter().map(|n| n.file).collect();
-    files.dedup();
-    files
+/// [`descriptions`] for a project with these assemblies (their paths in
+/// the assets, without `.solassembly`), with notes on any game code can't
+/// name.
+pub fn descriptions_for(
+    made_by: &str,
+    folder: &str,
+    assemblies: &[String],
+) -> (Vec<(String, String)>, Vec<String>) {
+    descriptions_with(made_by, folder, RENAMED, assemblies)
+}
+
+/// [`descriptions_for`], with these natives renamed.
+fn descriptions_with(
+    made_by: &str,
+    folder: &str,
+    renamed: &[Renamed],
+    assemblies: &[String],
+) -> (Vec<(String, String)>, Vec<String>) {
+    let (project, notes) = crate::project_names::project_file(made_by, assemblies);
+    let mut names: Vec<&str> = NATIVES.iter().map(|n| n.file).collect();
+    names.dedup();
+    let files = names
         .into_iter()
         .map(|file| {
             let mine: Vec<&Native> = NATIVES.iter().filter(|n| n.file == file).collect();
@@ -348,10 +551,51 @@ fn descriptions_with(made_by: &str, folder: &str, renamed: &[Renamed]) -> Vec<(S
                 "-- Made by {made_by}{ENGINE_FILE} It's written again\n\
                  -- whenever the project opens, so changes made here don't last.\n\n"
             );
-            for native in &mine {
-                text.push_str(&format!("-- {}\n{}\n\n", native.about, native.lust));
+            // The project's names it takes (Assembly, say), from the file
+            // the editor writes beside these.
+            let wanted: Vec<&str> = PROJECT_STATES
+                .iter()
+                .copied()
+                .filter(|state| {
+                    mine.iter().any(|n| {
+                        n.lust.contains(&format!("({state} "))
+                            || n.lust.contains(&format!(", {state} "))
+                    })
+                })
+                .collect();
+            if !wanted.is_empty() {
+                text.push_str(&format!(
+                    "fetch \"{folder}/project\":[{}];\n\n",
+                    wanted.join(", ")
+                ));
             }
-            let mut names: Vec<&str> = mine.iter().map(|n| n.name).collect();
+            // Methods on their own and the entity's first, then each engine
+            // object's in a block of its own.
+            let mut names: Vec<&str> = Vec::new();
+            for native in mine
+                .iter()
+                .filter(|n| n.owner.is_empty() || n.owner == "entity")
+            {
+                text.push_str(&format!("-- {}\n{}\n\n", native.about, native.lust));
+                if native.owner.is_empty() {
+                    names.push(native.name);
+                }
+            }
+            let mut objects: Vec<&str> = Vec::new();
+            for owner in mine.iter().map(|n| n.owner) {
+                if !owner.is_empty() && owner != "entity" && !objects.contains(&owner) {
+                    objects.push(owner);
+                }
+            }
+            for object in objects {
+                text.push_str(&format!("object {object} {{\n"));
+                for native in mine.iter().filter(|n| n.owner == object) {
+                    text.push_str(&format!("    -- {}\n    {}\n\n", native.about, native.lust));
+                }
+                text.truncate(text.trim_end().len());
+                text.push_str("\n}\n\n");
+                names.push(object);
+            }
             for event in ENGINE_EVENTS.iter().filter(|e| e.file == file) {
                 text.push_str(&format!("-- {}\n{}\n\n", event.about, event.lust));
                 names.push(event.name);
@@ -369,9 +613,14 @@ fn descriptions_with(made_by: &str, folder: &str, renamed: &[Renamed]) -> Vec<(S
                     names.push(renamed.old);
                 }
             }
-            text.push_str(&format!("pass {};\nend\n", names.join(", ")));
+            if names.is_empty() {
+                text.push_str("end\n");
+            } else {
+                text.push_str(&format!("pass {};\nend\n", names.join(", ")));
+            }
             (format!("{folder}/{file}.lst"), text)
         })
+        .chain(std::iter::once((format!("{folder}/project.lst"), project)))
         .chain(KIT.iter().map(|(file, body)| {
             (
                 format!("{folder}/kit/{file}"),
@@ -384,8 +633,14 @@ fn descriptions_with(made_by: &str, folder: &str, renamed: &[Renamed]) -> Vec<(S
                 ),
             )
         }))
-        .collect()
+        .collect();
+    (files, notes)
 }
+
+/// The project's own names as states, written by the editor into
+/// `solis/project.lst` ([`crate::project_names::project_file`]): what natives take where a string
+/// once named a file.
+pub const PROJECT_STATES: &[&str] = &["Assembly"];
 
 /// What the first line of each file describing the engine says after who made it: how the
 /// compiler knows the engine's own folder (Lust's host folder, decision 0072), without the
@@ -431,12 +686,14 @@ mod tests {
     #[test]
     fn the_descriptions_check_cleanly_and_a_game_can_use_them() {
         let mut files = descriptions("Test Engine 9.9.9", "solis");
-        assert_eq!(files.len(), 9);
+        assert_eq!(files.len(), 10);
+        assert!(files.iter().any(|(p, _)| p == "solis/project.lst"));
         assert!(files[0].1.starts_with("-- Made by Test Engine 9.9.9"));
         files.push((
             "main.lst".into(),
-            "get \"solis/world\":[say, time, find];\n\
-             get \"solis/entity\":[positionOf, moveTo, rotationOf, turnTo, nameOf];\n\
+            "fetch \"solis/world\":[World, Saves];\n\
+             fetch \"solis/project\":Assembly;\n\
+             get \"solis/entity\":facingAlong;\n\
              get \"solis/physics\":[push, velocityOf, setVelocity, castRay, castRayHit, castRayNormal];\n\
              get \"solis/input\":[held, pressed, released, axis, bindingOf, rebind];\n\
              get \"solis/sound\":[playSound, playSoundAt, playSoundOn, stopSoundsOn, setSoundPlaying, setBusVolume];\n\
@@ -452,10 +709,10 @@ mod tests {
                  }\n\
                  on ClipFinished(string clip) {\n\
                      is clip == \"hoe\"? then {\n\
-                         playClip(me, \"idle\");\n\
-                         replayClip(me, \"hoe\");\n\
+                         playClip(this, \"idle\");\n\
+                         replayClip(this, \"hoe\");\n\
                      }\n\
-                     stopClip(me);\n\
+                     stopClip(this);\n\
                  }\n\
              }\n\
              component Mover {\n\
@@ -464,18 +721,30 @@ mod tests {
                  }\n\
                  method update(float dt) {\n\
                      vec3 step = [1, 0, 0];\n\
-                     moveTo(me, positionOf(me) + step * speed * dt);\n\
-                     turnTo(me, rotationOf(me));\n\
-                     is time() > 10? then {\n\
-                         say(nameOf(me) + \" has gone far\");\n\
+                     moveTo(position() + step * speed * dt);\n\
+                     turnTo(rotation());\n\
+                     face(step);\n\
+                     turnTo(facingAlong(step));\n\
+                     is World:time() > 10 && World:frameTime() > 0? then {\n\
+                         World:say(name() + \" has gone far\");\n\
+                         Saves:saveTo(\"quick\");\n\
+                         Saves:loadFrom(\"quick\");\n\
                      }\n\
-                     entity other = find(\"Crate\");\n\
+                     entity other = World:find(\"Crate\");\n\
+                     entity made = World:spawn(Assembly.None, other:position());\n\
+                     made:moveTo(other:position() + [0, 0, 1]);\n\
+                     made:turnTo(other:rotation());\n\
+                     World:say(made:name());\n\
+                     made:despawn();\n\
+                     World:setSeed(World:randomInt(1, 6));\n\
+                     float r = World:random() + World:randomRange(1, 2);\n\
+                     World:fire(position(), step, 10, 1, [1, 0, 0]);\n\
                      is held(\"Jump\") && pressed(\"Jump\") || released(\"Jump\")? then {\n\
                          rebind(\"Jump\", \"Space\");\n\
-                         say(bindingOf(\"Jump\") + axis(\"Move\").x.text());\n\
+                         World:say(bindingOf(\"Jump\") + axis(\"Move\").x.text());\n\
                      }\n\
-                     push(other, velocityOf(me) + castRayNormal(positionOf(me), step, 10));\n\
-                     is castRay(positionOf(me), step, 10) > 0 && castRayHit(positionOf(me), step, 10) == other? then {\n\
+                     push(other, velocityOf(this) + castRayNormal(position(), step, 10));\n\
+                     is castRay(position(), step, 10) > 0 && castRayHit(position(), step, 10) == other? then {\n\
                          setVelocity(other, step);\n\
                      }\n\
                  }\n\
@@ -536,19 +805,20 @@ mod tests {
 
     #[test]
     fn every_native_is_in_a_known_file_with_its_own_name() {
-        let mut names: Vec<&str> = NATIVES.iter().map(|n| n.name).collect();
-        names.sort_unstable();
-        names.dedup();
-        assert_eq!(names.len(), NATIVES.len(), "no name twice");
+        let mut keys: Vec<String> = NATIVES.iter().map(Native::key).collect();
+        keys.sort_unstable();
+        keys.dedup();
+        assert_eq!(keys.len(), NATIVES.len(), "no key twice");
         for native in NATIVES {
             assert!(
                 ["world", "entity", "physics", "input", "sound", "animation"]
                     .contains(&native.file)
             );
-            assert!(
-                native.lust.contains(&format!(" {}(", native.name)),
-                "{native:?}"
-            );
+            let named = match native.owner {
+                "entity" => format!(" entity:{}(", native.name),
+                _ => format!(" {}(", native.name),
+            };
+            assert!(native.lust.contains(&named), "{native:?}");
             assert!(native.lust.ends_with("native;"));
         }
     }
@@ -556,24 +826,25 @@ mod tests {
     #[test]
     fn an_old_name_still_checks_in_lust() {
         let renamed = [Renamed {
-            file: "world",
-            old: "spawnAt",
-            new: "spawn",
+            file: "entity",
+            old: "facingTowards",
+            new: "facingAlong",
             until: "Phase 12",
         }];
-        let mut files = descriptions_with("Test Engine 9.9.9", "solis", &renamed);
-        assert!(
-            files[0]
-                .1
-                .contains("method entity spawnAt(string file, vec3 place) native;")
-        );
-        assert!(files[0].1.contains("stops working in Phase 12"));
+        let mut files = descriptions_with("Test Engine 9.9.9", "solis", &renamed, &[]).0;
+        let entity = &files
+            .iter()
+            .find(|(p, _)| p == "solis/entity.lst")
+            .unwrap()
+            .1;
+        assert!(entity.contains("method rotation facingTowards(vec3 direction) native;"));
+        assert!(entity.contains("stops working in Phase 12"));
         files.push((
             "main.lst".into(),
-            "get \"solis/world\":[spawnAt];\n\
+            "get \"solis/entity\":facingTowards;\n\
              component A {\n\
                  method update(float dt) {\n\
-                     entity e = spawnAt(\"ships/fighter\", [0, 0, 0]);\n\
+                     turnTo(facingTowards([0, 1, 0]));\n\
                  }\n\
              }\n\
              pass A;\nend\n"

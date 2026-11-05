@@ -18,12 +18,16 @@ fn program(main: &str) -> Arc<script::Compiled> {
 
 /// [`program`], or its mistakes.
 fn compiled(main: &str) -> Result<script::Compiled, Vec<script::CodeProblem>> {
-    let mut files = script::describe::descriptions("Test Engine 9.9.9", "solis");
+    let (mut files, _) = script::describe::descriptions_for(
+        "Test Engine 9.9.9",
+        "solis",
+        &["drones/drone".to_string(), "nowhere".to_string()],
+    );
     files.push((
         "main.lst".into(),
         format!(
-            "get \"solis/world\":[say, time, find];\n\
-             get \"solis/entity\":[positionOf, moveTo, rotationOf, turnTo, nameOf];\n{main}"
+            "\n\
+             \n{main}"
         ),
     ));
     let code = script::Code {
@@ -34,7 +38,7 @@ fn compiled(main: &str) -> Result<script::Compiled, Vec<script::CodeProblem>> {
     script::compile(&code).map(|c| c.expect("there's code"))
 }
 
-const MOVER: &str = "component Mover {\n\
+const MOVER: &str = "fetch \"solis/world\":World;\ncomponent Mover {\n\
         has {\n\
             float speed = 6;\n\
             int steps = 0;\n\
@@ -42,10 +46,10 @@ const MOVER: &str = "component Mover {\n\
         }\n\
         method update(float dt) {\n\
             vec3 ahead = [1, 0, 0];\n\
-            moveTo(me, positionOf(me) + ahead * speed * dt);\n\
+            moveTo(position() + ahead * speed * dt);\n\
             steps = steps + 1;\n\
             is steps == 1? then {\n\
-                say(nameOf(me) + \" sets off\");\n\
+                World:say(name() + \" sets off\");\n\
             }\n\
         }\n\
     }\n\
@@ -319,7 +323,7 @@ fn a_lust_and_a_rust_component_on_one_entity_talk_through_events() {
     .unwrap();
     assert!(w.document.registry.get("Bell").is_some(), "in Properties");
     w.set_program(Some(program(
-        "event Ping();\n\
+        "fetch \"solis/world\":World;\nevent Ping();\n\
          event Rang(int times);\n\
          component Ringer {\n\
              has {\n\
@@ -332,7 +336,7 @@ fn a_lust_and_a_rust_component_on_one_entity_talk_through_events() {
                  }\n\
              }\n\
              on Rang(int times) {\n\
-                 say(\"the bell rang \" + times.text());\n\
+                 World:say(\"the bell rang \" + times.text());\n\
              }\n\
          }\n\
          pass Ringer;\nend\n",
@@ -385,7 +389,7 @@ fn new_code_while_playing_is_swapped_in_and_keeps_where_things_are() {
              }\n\
              method update(float dt) {\n\
                  vec3 back = [-1, 0, 0];\n\
-                 moveTo(me, positionOf(me) + back * speed * dt);\n\
+                 moveTo(position() + back * speed * dt);\n\
                  steps = steps + 1;\n\
              }\n\
          }\n\
@@ -537,11 +541,11 @@ fn code_changed_while_playing_keeps_its_components_after_stop() {
 fn a_component_named_like_a_built_in_one_doesn_t_run() {
     let mut w = Workbench::new(info(), None);
     w.set_program(Some(program(
-        "component Light {\n    has {\n        int on = 1;\n    }\n\
-         \x20   method update(float dt) {\n        say(\"lust light ran\");\n    }\n}\n\
+        "fetch \"solis/world\":World;\ncomponent Light {\n    has {\n        int on = 1;\n    }\n\
+         \x20   method update(float dt) {\n        World:say(\"lust light ran\");\n    }\n}\n\
          pass Light;\nend\n",
     )));
-    assert_eq!(w.code_problems()[0].line, 3, "where it's written");
+    assert_eq!(w.code_problems()[0].line, 4, "where it's written");
     w.play();
     w.run_game(1.0 / 60.0);
     assert!(
@@ -576,7 +580,7 @@ fn adding_an_entity_while_playing_keeps_where_the_game_moved_things() {
 }
 
 /// Lust whose start fails only when the game's world has a Cart.
-const NEEDS_NO_CART: &str = "entity cart = find(\"Cart\");\n\
+const NEEDS_NO_CART: &str = "entity cart = World:find(\"Cart\");\n\
     is cart != nothing? then {\n    int zero = 0;\n    int bad = 1 / zero;\n}\n";
 
 #[test]
@@ -584,7 +588,10 @@ fn new_code_the_running_game_can_t_take_leaves_the_last_program_and_registry() {
     let (mut w, id) = with_a_mover();
     w.play();
     w.run_game(1.0 / 60.0);
-    w.set_program(Some(program(&format!("{NEEDS_NO_CART}{SPINNER}"))));
+    w.set_program(Some(program(&format!(
+        "fetch \"solis/world\":World;\n{NEEDS_NO_CART}{}",
+        SPINNER.replacen("fetch \"solis/world\":World;\n", "", 1)
+    ))));
     assert!(w.document.registry.get("Mover").is_some(), "still known");
     assert!(w.document.registry.get("Spinner").is_none());
     assert_eq!(w.code_problems().len(), 1, "{:?}", w.code_problems());
@@ -629,7 +636,10 @@ fn rust_components_run_even_when_the_code_s_start_fails_at_play() {
     let (mut w, id) = with_a_mover();
     w.set_rust_components(vec![ticker()]);
     // Accepted while editing (no world), but its start fails at Play.
-    w.set_program(Some(program(&format!("{NEEDS_NO_CART}{MOVER}"))));
+    w.set_program(Some(program(&format!(
+        "fetch \"solis/world\":World;\n{NEEDS_NO_CART}{}",
+        MOVER.replacen("fetch \"solis/world\":World;\n", "", 1)
+    ))));
     w.apply_property(
         PropertyRequest::AddComponent {
             entity: id,
@@ -725,12 +735,12 @@ fn verdict(what: &str, ms: f64, target: f64) {
 
 /// A component that finds its target by name every tick (the turret and
 /// AI way).
-const SEEKER: &str = "component Seeker {\n\
+const SEEKER: &str = "fetch \"solis/world\":World;\ncomponent Seeker {\n\
         has {\n\
             int seen = 0;\n\
         }\n\
         method update(float dt) {\n\
-            entity target = find(\"Cart 1999\");\n\
+            entity target = World:find(\"Cart 1999\");\n\
             is target != nothing? then {\n\
                 seen = seen + 1;\n\
             }\n\
@@ -832,17 +842,21 @@ fn scale_check_dragging_512_entities_with_running_components() {
 fn guns_in_lust_and_lua_fire_projectiles_that_fly_and_end() {
     // A Lust gun and a Lua gun, each firing one projectile a tick along
     // +Y at 30 m/s, living a quarter of a second.
-    let mut files = script::describe::descriptions("Test Engine 9.9.9", "solis");
+    let (mut files, _) = script::describe::descriptions_for(
+        "Test Engine 9.9.9",
+        "solis",
+        &["drones/drone".to_string(), "nowhere".to_string()],
+    );
     files.push((
         "main.lst".into(),
-        "get \"solis/world\":[fire];\n\
-         get \"solis/entity\":[positionOf];\n\
+        "fetch \"solis/world\":World;\n\n\
+         \n\
          component LustGun {\n\
              has {\n\
                  int shots = 0;\n\
              }\n\
              method update(float dt) {\n\
-                 fire(positionOf(me), [0, 1, 0], 30, 0.25, [4, 0.2, 0.1]);\n\
+                 World:fire(position(), [0, 1, 0], 30, 0.25, [4, 0.2, 0.1]);\n\
              }\n\
          }\n\
          pass LustGun;\nend\n"
@@ -854,7 +868,7 @@ fn guns_in_lust_and_lua_fire_projectiles_that_fly_and_end() {
             "gun.lua".into(),
             "local G = component(\"LuaGun\", {})\n\
              function G:update(dt)\n\
-               solis.fire(solis.positionOf(self.me), vec3(0, 1, 0), 30, 0.25, vec3(0.1, 4, 0.2))\n\
+               solis.World:fire(solis.entity.position(self.me), vec3(0, 1, 0), 30, 0.25, vec3(0.1, 4, 0.2))\n\
              end\n"
                 .into(),
         )],
@@ -909,13 +923,13 @@ fn guns_in_lust_and_lua_fire_projectiles_that_fly_and_end() {
 fn past_the_projectile_limit_the_console_says_so_once() {
     let mut w = Workbench::new(info(), None);
     w.set_program(Some(program(
-        "get \"solis/world\":[fire];\n\
+        "fetch \"solis/world\":World;\n\n\
          component Gun {\n\
              has {\n\
                  int shots = 0;\n\
              }\n\
              method update(float dt) {\n\
-                 fire([0, 0, 0], [0, 1, 0], 30, 50, [4, 0.2, 0.1]);\n\
+                 World:fire([0, 0, 0], [0, 1, 0], 30, 50, [4, 0.2, 0.1]);\n\
              }\n\
          }\n\
          pass Gun;\nend\n",
@@ -992,17 +1006,17 @@ fn with_drones(main: &str) -> Workbench {
 
 /// A hive that spawns three drones on its first tick; each drone climbs
 /// and takes itself out after ten ticks.
-const HIVE: &str = "get \"solis/world\":[spawn, despawn];\n\
+const HIVE: &str = "fetch \"solis/world\":World;\nfetch \"solis/project\":Assembly;\n\n\
     component Hive {\n\
         has {\n\
             int made = 0;\n\
         }\n\
         method update(float dt) {\n\
             is made == 0? then {\n\
-                entity a = spawn(\"drones/drone.solasm\", [0, 0, 1]);\n\
-                entity b = spawn(\"drones/drone\", [2, 0, 1]);\n\
-                entity c = spawn(\"drone\", [4, 0, 1]);\n\
-                entity d = spawn(\"nowhere\", [6, 0, 1]);\n\
+                entity a = World:spawn(Assembly.Drones.Drone, [0, 0, 1]);\n\
+                entity b = World:spawn(Assembly.Drones.Drone, [2, 0, 1]);\n\
+                entity c = World:spawn(Assembly.Drones.Drone, [4, 0, 1]);\n\
+                entity d = World:spawn(Assembly.Nowhere, [6, 0, 1]);\n\
                 made = 3;\n\
             }\n\
         }\n\
@@ -1013,9 +1027,9 @@ const HIVE: &str = "get \"solis/world\":[spawn, despawn];\n\
         }\n\
         method update(float dt) {\n\
             age = age + 1;\n\
-            moveTo(me, positionOf(me) + [0, 0, 1]);\n\
+            moveTo(position() + [0, 0, 1]);\n\
             is age >= 10? then {\n\
-                despawn(me);\n\
+                despawn();\n\
             }\n\
         }\n\
     }\n\
@@ -1041,8 +1055,8 @@ fn game_code_spawns_copies_of_assemblies_and_takes_them_out() {
     let before = w.document.area().len();
     w.play();
     w.run_game(1.0 / 60.0);
-    // Three made (by path, path without extension, and name); the fourth
-    // name isn't an assembly, and the Console says so.
+    // Three made; the fourth is named in the project file but isn't an
+    // assembly any more (deleted since), and the Console says so.
     let drones: Vec<EntityId> = w
         .document
         .area()
@@ -1055,7 +1069,7 @@ fn game_code_spawns_copies_of_assemblies_and_takes_them_out() {
     assert!(
         w.log_lines()
             .iter()
-            .any(|l| l.text.contains("spawned \"nowhere\""))
+            .any(|l| l.text.contains("spawned \"Nowhere\""))
     );
     // Next frames: they're in the game, and their own code runs.
     for _ in 0..3 {
@@ -1119,7 +1133,7 @@ fn spawned_entities_get_the_same_ids_every_time() {
 #[test]
 fn spawning_too_much_in_one_frame_is_refused_and_said_once() {
     let mut w = with_drones(
-        "get \"solis/world\":[spawn];\n\
+        "fetch \"solis/world\":World;\nfetch \"solis/project\":Assembly;\n\n\
          component Hive {\n\
              has {\n\
                  int made = 0;\n\
@@ -1127,7 +1141,7 @@ fn spawning_too_much_in_one_frame_is_refused_and_said_once() {
              method update(float dt) {\n\
                  is made == 0? then {\n\
                      loop 10010 {\n\
-                         entity e = spawn(\"drone\", [0, 0, 1]);\n\
+                         entity e = World:spawn(Assembly.Drones.Drone, [0, 0, 1]);\n\
                      }\n\
                      made = 1;\n\
                  }\n\
@@ -1288,15 +1302,15 @@ fn the_game_drawn_between_ticks_lags_where_it_is_by_part_of_a_tick() {
 }
 
 /// A drunkard: staggers a random step each tick.
-const DRUNKARD: &str = "get \"solis/world\":[randomRange];\n\
-    get \"solis/entity\":[moveTo, positionOf];\n\
+const DRUNKARD: &str = "fetch \"solis/world\":World;\n\n\
+    \n\
     component Drunkard {\n\
         has {\n\
             int steps = 0;\n\
         }\n\
         method update(float dt) {\n\
-            vec3 step = [randomRange(-1, 1), randomRange(-1, 1), 0];\n\
-            moveTo(me, positionOf(me) + step);\n\
+            vec3 step = [World:randomRange(-1, 1), World:randomRange(-1, 1), 0];\n\
+            moveTo(position() + step);\n\
             steps = steps + 1;\n\
         }\n\
     }\n\
@@ -1353,23 +1367,23 @@ fn a_chosen_seed_plays_the_same_twice_and_a_new_one_differently() {
 
 /// A kicker: kicks the crate along X on its first tick, and says how far
 /// below it the crate's top is, by a ray, every 30 ticks.
-const KICKER: &str = "get \"solis/world\":[say, find];\n\
-    get \"solis/entity\":[positionOf];\n\
+const KICKER: &str = "fetch \"solis/world\":World;\n\n\
+    \n\
     get \"solis/physics\":[push, castRay, castRayHit, velocityOf];\n\
     component Kicker {\n\
         has {\n\
             int ticks = 0;\n\
         }\n\
         method update(float dt) {\n\
-            entity box = find(\"Crate\");\n\
+            entity box = World:find(\"Crate\");\n\
             is ticks == 0? then {\n\
                 push(box, [5, 0, 0]);\n\
             }\n\
             ticks = ticks + 1;\n\
             is ticks % 30 == 0? then {\n\
-                vec3 above = positionOf(box) + [0, 0, 10];\n\
+                vec3 above = box:position() + [0, 0, 10];\n\
                 is castRayHit(above, [0, 0, -1], 50) == box? then {\n\
-                    say(\"crate \" + castRay(above, [0, 0, -1], 50).text() + \" \" + velocityOf(box).x.text());\n\
+                    World:say(\"crate \" + castRay(above, [0, 0, -1], 50).text() + \" \" + velocityOf(box).x.text());\n\
                 }\n\
             }\n\
         }\n\

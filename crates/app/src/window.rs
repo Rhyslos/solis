@@ -307,7 +307,7 @@ impl App {
                     );
                 }
                 // The engine described to game code, then the code checked.
-                for note in crate::game_code::GameCode::describe(&assets, &self.made_by) {
+                for note in self.game_code.describe_opened(&assets, &self.made_by) {
                     self.workbench.log(LogLevel::Warning, note);
                 }
                 // Rust components built into Solis that this project uses
@@ -1678,6 +1678,10 @@ impl eframe::App for App {
                     self.workbench.log(LogLevel::Warning, note.clone());
                 }
                 self.rust_note = note;
+                // An assembly added or renamed changes the project's names.
+                for note in self.game_code.describe_again(&assets, &self.made_by) {
+                    self.workbench.log(LogLevel::Warning, note);
+                }
                 self.game_code.check(assets);
             }
         }

@@ -59,16 +59,16 @@ impl Host for Said {
 
 #[test]
 fn the_code_s_start_can_send_and_call_natives_and_its_components_know_where_they_are() {
-    let main = "get \"solis/world\":[say, time];\n\
+    let main = "fetch \"solis/world\":World;\n\n\
         event Hello();\n\
         send Hello() to nothing;\n\
-        component Clock {\n    has {\n        float born = time();\n    }\n}\n\
+        component Clock {\n    has {\n        float born = World:time();\n    }\n}\n\
         pass Clock;\nend\n";
     let spin = "local S = component('Spinner', { { 'n', 'int', 0 } })";
     let compiled = compiled(main, &[("parts/spin.lua", spin)]).unwrap();
     let names: Vec<&str> = compiled.schemas.iter().map(|s| s.name.as_str()).collect();
     assert_eq!(names, ["Clock", "Spinner"]);
-    assert_eq!(compiled.places["Clock"], ("main.lst".to_string(), 4));
+    assert_eq!(compiled.places["Clock"], ("main.lst".to_string(), 5));
     assert_eq!(compiled.places["Spinner"].0, "parts/spin.lua");
 }
 
@@ -197,7 +197,7 @@ fn a_lua_field_can_t_hide_the_entity_or_a_method() {
 
 #[test]
 fn a_left_out_component_doesn_t_run_but_a_rust_one_of_that_name_does() {
-    let lua = "local A = component('Armour', {})\nfunction A:update(dt) solis.say('lua') end";
+    let lua = "local A = component('Armour', {})\nfunction A:update(dt) solis.World:say('lua') end";
     let compiled = compiled("", &[("armour.lua", lua)]).unwrap();
     let mut runtime = Runtime::new().unwrap();
     runtime.load(&compiled, &mut NoHost).unwrap();
@@ -219,9 +219,9 @@ fn a_failure_with_no_place_reads_cleanly() {
 
 #[test]
 fn vec3_values_are_luau_vectors_in_lust_and_lua_alike() {
-    let main = "get \"solis/entity\":[positionOf, moveTo];\n\
+    let main = "\n\
         component Walker {\n    has {\n        vec3 step = [1, 0, 0];\n    }\n\
-        \x20   method update(float dt) {\n        moveTo(me, positionOf(me) + step);\n    }\n}\n\
+        \x20   method update(float dt) {\n        moveTo(position() + step);\n    }\n}\n\
         pass Walker;\nend\n";
     let lua = "local A = component('Aimer', { { 'aim', 'vec3', vec3(0, 0, 1) } })\n\
                function A:update(dt)\n\

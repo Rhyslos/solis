@@ -33,9 +33,8 @@ An entity with a collider and nothing else never moves: floors, walls, rocks.
 **From game code** (Lust; in Lua they're `solis.push`, `solis.velocityOf` and so on):
 
 ```
-get "solis/world":[find, say];
-get "solis/entity":[positionOf, nameOf];
 get "solis/physics":[push, castRay, castRayHit];
+fetch "solis/world":World;
 
 component Kicker {
     has {
@@ -43,14 +42,14 @@ component Kicker {
     }
 
     method update(float dt) {
-        entity ball = find("Ball");
+        entity ball = World:find("Ball");
         is kicked == 0? then {
             push(ball, [5, 0, 2]);
             kicked = 1;
         }
         // Is anything below me, within 2 metres?
-        is castRay(positionOf(this), [0, 0, -1], 2) >= 0? then {
-            say(nameOf(castRayHit(positionOf(this), [0, 0, -1], 2)) + " is below me");
+        is castRay(position(), [0, 0, -1], 2) >= 0? then {
+            World:say(castRayHit(position(), [0, 0, -1], 2):name() + " is below me");
         }
     }
 }

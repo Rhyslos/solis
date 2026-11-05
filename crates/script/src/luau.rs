@@ -161,19 +161,19 @@ end
 function vec3(x, y, z)
   return vector.create(x or 0, y or 0, z or 0)
 end
--- Lua's own random numbers follow the game's seed, like Lust's random(),
+-- Lua's own random numbers follow the game's seed, like Lust's World:random(),
 -- so the same game gives the same numbers on any computer.
 math.random = function(m, n)
-  local r = natives and natives.random
+  local r = natives and natives.World_random
   if not r then error("random numbers can only be had while the game runs", 2) end
-  if m == nil then return r() end
+  if m == nil then return r(nil) end
   if n == nil then m, n = 1, m end
-  return natives.randomInt(m, n)
+  return natives.World_randomInt(nil, m, n)
 end
 math.randomseed = function(seed)
-  local s = natives and natives.setSeed
+  local s = natives and natives.World_setSeed
   if not s then error("the seed can only be set while the game runs", 2) end
-  s(seed)
+  s(nil, seed)
 end
 -- table.move is one loop in C that the time limits can't stop: a range
 -- of two billion held the editor for a minute. Bigger ranges than any
@@ -194,7 +194,28 @@ collectgarbage = function(option)
   end
   return gc("count")
 end
+-- solis.World:say(words) and the other engine objects, and an entity's
+-- methods as solis.entity.moveTo(e, place): the same words as Lust's.
+local function group(prefix)
+  local inside = { __index = function(_, key)
+    local f = natives and natives[prefix .. "_" .. tostring(key)]
+    if not f then
+      error("solis." .. prefix .. "." .. tostring(key) .. " isn't something Solis offers to game code", 2)
+    end
+    return f
+  end, __newindex = function()
+    error("solis." .. prefix .. " is read-only", 2)
+  end, __metatable = "solis" }
+  table.freeze(inside)
+  return setmetatable({}, inside)
+end
+local groups = {}
+for _, name in ipairs({ "World", "Saves", "Input", "Physics", "Audio", "entity" }) do
+  groups[name] = group(name)
+end
+table.freeze(groups)
 local reach = { __index = function(_, key)
+  if groups[key] then return groups[key] end
   local f = natives and key ~= "send_event" and natives[key]
   if not f then
     error("solis." .. tostring(key) .. " isn't something Solis offers to game code", 2)
@@ -334,6 +355,9 @@ mod tests {
             "string.rep = nil",
             "table.insert = nil",
             "solis.say = print",
+            "solis.World.say = print",
+            "solis.entity.moveTo = print",
+            "getmetatable(solis.World).__index = nil",
             "getmetatable(solis).__index = nil",
             "vector.create = nil",
             "setmetatable(_G, {})",

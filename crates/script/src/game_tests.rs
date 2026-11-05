@@ -100,7 +100,8 @@ impl GameWorld for TestWorld {
 }
 
 fn compiled(main: &str) -> Arc<Compiled> {
-    let mut files = crate::describe::descriptions("Test 1.0", "solis");
+    let (mut files, _) =
+        crate::describe::descriptions_for("Test 1.0", "solis", &["drone".to_string()]);
     files.push(("main.lst".into(), main.to_string()));
     let code = Code {
         files,
@@ -116,8 +117,8 @@ fn compiled(main: &str) -> Arc<Compiled> {
 
 /// Walkers step along x; each tells the next one it moved; a Watcher says
 /// where the first walker is.
-const BUSY: &str = "get \"solis/world\":[say, find, time];\n\
-    get \"solis/entity\":[positionOf, moveTo, nameOf];\n\
+const BUSY: &str = "fetch \"solis/world\":World;\n\n\
+    \n\
     event Stepped(entity by, float x);\n\
     component Walker {\n\
         has {\n\
@@ -126,13 +127,13 @@ const BUSY: &str = "get \"solis/world\":[say, find, time];\n\
             int heard = 0;\n\
         }\n\
         method update(float dt) {\n\
-            vec3 at = positionOf(me) + [speed, 0, 0];\n\
-            moveTo(me, at);\n\
+            vec3 at = position() + [speed, 0, 0];\n\
+            moveTo(at);\n\
             send Stepped(me, at.x) to next;\n\
         }\n\
         on Stepped(entity by, float x) {\n\
             heard = heard + 1;\n\
-            say(nameOf(me) + \" heard \" + nameOf(by));\n\
+            World:say(name() + \" heard \" + by:name());\n\
         }\n\
     }\n\
     component Watcher {\n\
@@ -141,7 +142,7 @@ const BUSY: &str = "get \"solis/world\":[say, find, time];\n\
         }\n\
         method update(float dt) {\n\
             looked = looked + 1;\n\
-            say(\"walker 1 at \" + positionOf(find(\"W1\")).x.text());\n\
+            World:say(\"walker 1 at \" + World:find(\"W1\"):position().x.text());\n\
         }\n\
     }\n\
     pass Walker, Watcher;\nend\n";
@@ -206,15 +207,15 @@ fn game_code_sees_the_start_of_the_tick_but_its_own_changes_at_once() {
     // A Mover moves itself, then reads its own place (the new one); a
     // Reader, after it in the order, reads the Mover's place (the one at
     // the start of the tick).
-    const SEEING: &str = "get \"solis/world\":[say, find];\n\
-        get \"solis/entity\":[positionOf, moveTo];\n\
+    const SEEING: &str = "fetch \"solis/world\":World;\n\n\
+        \n\
         component Mover {\n\
             has {\n\
                 int n = 0;\n\
             }\n\
             method update(float dt) {\n\
-                moveTo(me, positionOf(me) + [10, 0, 0]);\n\
-                say(\"mover sees itself at \" + positionOf(me).x.text());\n\
+                moveTo(position() + [10, 0, 0]);\n\
+                World:say(\"mover sees itself at \" + position().x.text());\n\
             }\n\
         }\n\
         component Reader {\n\
@@ -222,7 +223,7 @@ fn game_code_sees_the_start_of_the_tick_but_its_own_changes_at_once() {
                 int n = 0;\n\
             }\n\
             method update(float dt) {\n\
-                say(\"reader sees the mover at \" + positionOf(find(\"M\")).x.text());\n\
+                World:say(\"reader sees the mover at \" + World:find(\"M\"):position().x.text());\n\
             }\n\
         }\n\
         pass Mover, Reader;\nend\n";
@@ -251,13 +252,13 @@ fn game_code_sees_the_start_of_the_tick_but_its_own_changes_at_once() {
 #[test]
 fn two_components_moving_one_entity_the_last_in_the_order_wins() {
     // Both on entity 1: Alpha then Beta by name; Beta's move lands last.
-    const TWO: &str = "get \"solis/entity\":[moveTo];\n\
+    const TWO: &str = "\n\
         component Alpha {\n\
             has {\n\
                 int n = 0;\n\
             }\n\
             method update(float dt) {\n\
-                moveTo(me, [1, 0, 0]);\n\
+                moveTo([1, 0, 0]);\n\
             }\n\
         }\n\
         component Beta {\n\
@@ -265,7 +266,7 @@ fn two_components_moving_one_entity_the_last_in_the_order_wins() {
                 int n = 0;\n\
             }\n\
             method update(float dt) {\n\
-                moveTo(me, [2, 0, 0]);\n\
+                moveTo([2, 0, 0]);\n\
             }\n\
         }\n\
         pass Alpha, Beta;\nend\n";
@@ -318,14 +319,14 @@ fn swapping_values_and_stopping_reach_every_shard() {
 fn shots_fired_land_in_order_on_any_number_of_shards() {
     // Each gun fires towards +Y from where it is, a little faster the
     // later it is in the list.
-    const GUNS: &str = "get \"solis/world\":[fire];\n\
-        get \"solis/entity\":[positionOf];\n\
+    const GUNS: &str = "fetch \"solis/world\":World;\n\n\
+        \n\
         component Gun {\n\
             has {\n\
                 float speed = 10;\n\
             }\n\
             method update(float dt) {\n\
-                fire(positionOf(me), [0, 1, 0], speed, 2, [4, 0.2, 0.1]);\n\
+                World:fire(position(), [0, 1, 0], speed, 2, [4, 0.2, 0.1]);\n\
             }\n\
         }\n\
         pass Gun;\nend\n";
@@ -363,14 +364,14 @@ fn shots_fired_land_in_order_on_any_number_of_shards() {
 
 #[test]
 fn spawns_make_the_same_entities_on_any_number_of_shards() {
-    const HIVES: &str = "get \"solis/world\":[spawn, despawn];\n\
+    const HIVES: &str = "fetch \"solis/world\":World;\nfetch \"solis/project\":Assembly;\n\n\
         component Hive {\n\
             has {\n\
                 entity last = nothing;\n\
             }\n\
             method update(float dt) {\n\
-                last = spawn(\"drone\", [1, 2, 3]);\n\
-                despawn(last);\n\
+                last = World:spawn(Assembly.Drone, [1, 2, 3]);\n\
+                last:despawn();\n\
             }\n\
         }\n\
         pass Hive;\nend\n";
@@ -397,7 +398,7 @@ fn spawns_make_the_same_entities_on_any_number_of_shards() {
     match (&one[0], &one[1]) {
         (Change::Spawn(made, file, place), Change::Despawn(gone)) => {
             assert_eq!(made, gone, "the entity spawn gave back");
-            assert_eq!(file, "drone");
+            assert_eq!(file, "Drone");
             assert_eq!(*place, Vec3::new(1.0, 2.0, 3.0));
         }
         other => panic!("{other:?}"),
@@ -464,7 +465,7 @@ fn a_runaway_loop_can_t_keep_unbounded_changes() {
 fn spawns_in_different_rounds_of_events_make_different_entities() {
     // Each round's only event (number 0 in its round) reaches the same
     // component, which spawns and sends the next.
-    const ECHO: &str = "get \"solis/world\":[spawn];\n\
+    const ECHO: &str = "fetch \"solis/world\":World;\nfetch \"solis/project\":Assembly;\n\n\
         event Ping(int left);\n\
         component Echo {\n\
             has {\n\
@@ -477,7 +478,7 @@ fn spawns_in_different_rounds_of_events_make_different_entities() {
                 }\n\
             }\n\
             on Ping(int left) {\n\
-                entity made = spawn(\"drone\", [0, 0, 0]);\n\
+                entity made = World:spawn(Assembly.Drone, [0, 0, 0]);\n\
                 is left > 0? then {\n\
                     send Ping(left - 1) to me;\n\
                 }\n\
@@ -543,16 +544,16 @@ fn spawned_entities_share_out_across_shards() {
 
 /// Lust and Lua dice: each rolls and says what came up, every tick; the
 /// Lust one sets the seed back to 7 on its tenth tick.
-const DICE: &str = "get \"solis/world\":[random, randomInt, randomRange, setSeed, say];\n\
+const DICE: &str = "fetch \"solis/world\":World;\n\n\
     component Die {\n\
         has {\n\
             int rolls = 0;\n\
         }\n\
         method update(float dt) {\n\
             rolls = rolls + 1;\n\
-            say(\"lust \" + randomInt(1, 6).text() + \" \" + random().text() + \" \" + randomRange(-2, 2).text());\n\
+            World:say(\"lust \" + World:randomInt(1, 6).text() + \" \" + World:random().text() + \" \" + World:randomRange(-2, 2).text());\n\
             is rolls == 10? then {\n\
-                setSeed(7);\n\
+                World:setSeed(7);\n\
             }\n\
         }\n\
     }\n\
@@ -560,7 +561,7 @@ const DICE: &str = "get \"solis/world\":[random, randomInt, randomRange, setSeed
 
 const LUA_DIE: &str = "local LuaDie = component(\"LuaDie\", {})\n\
     function LuaDie:update(dt)\n\
-        solis.say(\"lua \" .. math.random(6) .. \" \" .. math.random(10, 12) .. \" \" .. math.random())\n\
+        solis.World:say(\"lua \" .. math.random(6) .. \" \" .. math.random(10, 12) .. \" \" .. math.random())\n\
     end\n";
 
 /// What `count` Lust dice and a Lua one say over `ticks` on `shards`
@@ -655,12 +656,12 @@ fn game_code_s_checksum_is_the_same_on_any_number_of_shards() {
 fn sounds_asked_for_land_in_order_on_any_number_of_shards() {
     // Each speaker plays at itself, on itself, and everywhere; the last
     // also stops the first's sounds. A bad place or name is left out.
-    const SPEAKERS: &str = "get \"solis/sound\":[playSound, playSoundAt, playSoundOn, stopSoundsOn];\n\
-        get \"solis/world\":[find];\n\
-        get \"solis/entity\":[positionOf];\n\
+    const SPEAKERS: &str = "fetch \"solis/world\":World;\nget \"solis/sound\":[playSound, playSoundAt, playSoundOn, stopSoundsOn];\n\
+        \n\
+        \n\
         component Speaker {\n\
             method update(float dt) {\n\
-                playSoundAt(\"sfx/step\", positionOf(me));\n\
+                playSoundAt(\"sfx/step\", position());\n\
                 playSoundOn(\"engine\", me);\n\
                 playSound(\"music/theme\");\n\
                 playSound(\"\");\n\
@@ -668,7 +669,7 @@ fn sounds_asked_for_land_in_order_on_any_number_of_shards() {
         }\n\
         component Hush {\n\
             method update(float dt) {\n\
-                stopSoundsOn(find(\"S1\"));\n\
+                stopSoundsOn(World:find(\"S1\"));\n\
             }\n\
         }\n\
         pass Speaker, Hush;\nend\n";
@@ -775,12 +776,12 @@ fn set_bus_volume_lands_within_zero_to_one() {
 
 #[test]
 fn set_sound_playing_lands_for_entities_only() {
-    const RADIO: &str = "get \"solis/sound\":[setSoundPlaying];\n\
-        get \"solis/world\":[find];\n\
+    const RADIO: &str = "fetch \"solis/world\":World;\nget \"solis/sound\":[setSoundPlaying];\n\
+        \n\
         component Switch {\n\
             method update(float dt) {\n\
-                setSoundPlaying(find(\"R\"), false);\n\
-                setSoundPlaying(find(\"Nobody\"), true);\n\
+                setSoundPlaying(World:find(\"R\"), false);\n\
+                setSoundPlaying(World:find(\"Nobody\"), true);\n\
             }\n\
         }\n\
         pass Switch;\nend\n";

@@ -45,15 +45,71 @@ pub struct GameCode {
     again: Option<PathBuf>,
     /// The code the last reported check found, by its hash.
     last: Option<u64>,
+    /// The notes [`GameCode::describe_again`] last gave.
+    told: Vec<String>,
 }
+
+/// The project's assemblies, as paths in `assets` without the extension
+/// (`ships/fighter`), sorted: hidden folders and the engine's own are
+/// skipped, and links to folders aren't followed. At most
+/// [`MAX_ASSEMBLY_NAMES`].
+fn assemblies(assets: &Path) -> Vec<String> {
+    let ext = format!(".{}", asset_db::ASSEMBLY_EXTENSION);
+    let mut found = Vec::new();
+    let mut folders = vec![assets.to_path_buf()];
+    while let Some(folder) = folders.pop() {
+        let Ok(listing) = std::fs::read_dir(&folder) else {
+            continue;
+        };
+        for entry in listing.filter_map(Result::ok) {
+            let name = entry.file_name().to_string_lossy().into_owned();
+            let Ok(kind) = entry.file_type() else {
+                continue;
+            };
+            let path = entry.path();
+            if name.starts_with('.') {
+                continue;
+            }
+            if kind.is_dir() {
+                if folder != assets || name != crate::branding::CODE_FOLDER {
+                    folders.push(path);
+                }
+            } else if kind.is_file()
+                && name.to_lowercase().ends_with(&ext)
+                && let Ok(inside) = path.strip_prefix(assets)
+            {
+                let inside = inside.to_string_lossy().replace('\\', "/");
+                found.push(inside[..inside.len() - ext.len()].to_string());
+                if found.len() >= MAX_ASSEMBLY_NAMES {
+                    folders.clear();
+                    break;
+                }
+            }
+        }
+    }
+    found.sort();
+    found
+}
+
+/// The most assemblies named in `solis/project.lst`: past it, the rest
+/// can't be spawned from game code (a guard against a folder of millions).
+const MAX_ASSEMBLY_NAMES: usize = 10_000;
 
 impl GameCode {
     /// Writes the files describing the engine (`assets/solis/*.lst`) if
     /// they're missing or different. `made_by` names the program and
     /// version. Returns notes on any that couldn't be written.
+    ///
+    /// They include `solis/project.lst`, the project's names (its
+    /// assemblies) as states, so call this again when the assets change;
+    /// the notes then also say which names game code can't use.
     pub fn describe(assets: &Path, made_by: &str) -> Vec<String> {
-        let mut notes = Vec::new();
-        for (path, text) in script::describe::descriptions(made_by, crate::branding::CODE_FOLDER) {
+        let (files, mut notes) = script::describe::descriptions_for(
+            made_by,
+            crate::branding::CODE_FOLDER,
+            &assemblies(assets),
+        );
+        for (path, text) in files {
             let file = assets.join(&path);
             if same_text(&file, &text) {
                 continue;
@@ -73,6 +129,22 @@ impl GameCode {
             }
         }
         notes
+    }
+
+    /// [`GameCode::describe`]'s notes, kept to say only when they change.
+    pub fn describe_again(&mut self, assets: &Path, made_by: &str) -> Vec<String> {
+        let notes = Self::describe(assets, made_by);
+        if notes == self.told {
+            return Vec::new();
+        }
+        self.told.clone_from(&notes);
+        notes
+    }
+
+    /// [`GameCode::describe`] for a project just opened: every note said.
+    pub fn describe_opened(&mut self, assets: &Path, made_by: &str) -> Vec<String> {
+        self.told = Self::describe(assets, made_by);
+        self.told.clone()
     }
 
     /// Reads and checks the code in `assets` on a worker; if a check is
@@ -216,6 +288,42 @@ mod tests {
     }
 
     #[test]
+    fn the_project_s_assemblies_become_names_and_its_notes_are_said_once() {
+        let assets = folder("names");
+        std::fs::create_dir_all(assets.join("ships")).unwrap();
+        std::fs::create_dir_all(assets.join(".hidden")).unwrap();
+        std::fs::create_dir_all(assets.join("solis")).unwrap();
+        for file in [
+            "ships/fighter.solassembly",
+            "crate.SOLASSEMBLY",
+            "big-ship.solassembly",
+            ".hidden/x.solassembly",
+            "solis/y.solassembly",
+            "ships/notes.txt",
+        ] {
+            std::fs::write(assets.join(file), "").unwrap();
+        }
+        let mut code = GameCode::default();
+        let notes = code.describe_opened(&assets, "Test 1.0");
+        assert_eq!(notes.len(), 1, "{notes:?}");
+        assert!(notes[0].contains("big-ship"));
+        let project = std::fs::read_to_string(assets.join("solis/project.lst")).unwrap();
+        assert!(
+            project.contains("state Assembly = [Crate, Ships [Fighter]];"),
+            "{project}"
+        );
+        // The same again: nothing new to say. A new assembly joins.
+        assert!(code.describe_again(&assets, "Test 1.0").is_empty());
+        std::fs::write(assets.join("ships/freighter.solassembly"), "").unwrap();
+        assert!(
+            code.describe_again(&assets, "Test 1.0").is_empty(),
+            "the same note isn't said again"
+        );
+        let project = std::fs::read_to_string(assets.join("solis/project.lst")).unwrap();
+        assert!(project.contains("Ships [Fighter, Freighter]"), "{project}");
+    }
+
+    #[test]
     fn the_engine_is_described_once_and_the_code_checked_when_it_changes() {
         let assets = folder("check");
         assert!(GameCode::describe(&assets, "Test 1.0").is_empty());
@@ -237,7 +345,7 @@ mod tests {
         let mut code = GameCode::default();
         std::fs::write(
             assets.join("main.lst"),
-            "get \"solis/world\":[say];\ncomponent Gun {\n    has {\n        int ammo = \"x\";\n    }\n}\npass Gun;\nend\n",
+            "fetch \"solis/world\":World;\ncomponent Gun {\n    has {\n        int ammo = \"x\";\n    }\n}\npass Gun;\nend\n",
         )
         .unwrap();
         code.check(assets.clone());
@@ -250,7 +358,7 @@ mod tests {
         assert!(finished(&mut code).is_none());
         std::fs::write(
             assets.join("main.lst"),
-            "get \"solis/world\":[say];\ncomponent Gun {\n    has {\n        int ammo = 3;\n    }\n}\npass Gun;\nend\n",
+            "fetch \"solis/world\":World;\ncomponent Gun {\n    has {\n        int ammo = 3;\n    }\n}\npass Gun;\nend\n",
         )
         .unwrap();
         code.check(assets);

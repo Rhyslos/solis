@@ -14,6 +14,7 @@ mod interrupt;
 mod lua_components;
 pub mod luau;
 mod lust_program;
+pub mod project_names;
 pub mod runtime;
 pub mod rust_component;
 mod syncing;

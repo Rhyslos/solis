@@ -8,12 +8,12 @@ local Sparks = component("Sparks", {
 
 function Sparks:on_Dented(platesLeft)
     self.shown = self.shown + 1
-    solis.say("Sparks fly from " .. solis.nameOf(self.me) .. ": " .. platesLeft .. " armour plates left.")
+    solis.World:say("Sparks fly from " .. solis.entity.name(self.me) .. ": " .. platesLeft .. " armour plates left.")
 end
 
 function Sparks:on_Destroyed()
-    solis.say(solis.nameOf(self.me) .. " is destroyed!")
+    solis.World:say(solis.entity.name(self.me) .. " is destroyed!")
     -- It drops to the ground.
-    local at = solis.positionOf(self.me)
-    solis.moveTo(self.me, vec3(at.x, at.y, 0))
+    local at = solis.entity.position(self.me)
+    solis.entity.moveTo(self.me, vec3(at.x, at.y, 0))
 end

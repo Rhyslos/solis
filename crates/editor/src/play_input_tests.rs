@@ -12,19 +12,19 @@ use std::sync::Arc;
 /// A walker: walks along Move, hops on Jump, says when Interact is
 /// pressed and which key it is, and rebinds Jump to J when Sprint is
 /// pressed.
-const WALKER: &str = "get \"solis/world\":[say];\n\
-    get \"solis/entity\":[positionOf, moveTo];\n\
+const WALKER: &str = "fetch \"solis/world\":World;\n\n\
+    \n\
     get \"solis/input\":[held, pressed, axis, bindingOf, rebind];\n\
     component Walker {\n\
         method update(float dt) {\n\
             vec3 way = axis(\"Move\");\n\
             vec3 step = [way.x, way.y, 0];\n\
-            moveTo(me, positionOf(me) + step * 0.1);\n\
+            moveTo(position() + step * 0.1);\n\
             is held(\"Jump\")? then {\n\
-                moveTo(me, positionOf(me) + step * 0.1 + [0, 0, 1]);\n\
+                moveTo(position() + step * 0.1 + [0, 0, 1]);\n\
             }\n\
             is pressed(\"Interact\")? then {\n\
-                say(\"interact with \" + bindingOf(\"Interact\"));\n\
+                World:say(\"interact with \" + bindingOf(\"Interact\"));\n\
             }\n\
             is pressed(\"Sprint\")? then {\n\
                 rebind(\"Jump\", \"J\");\n\
@@ -34,7 +34,11 @@ const WALKER: &str = "get \"solis/world\":[say];\n\
     pass Walker;\nend\n";
 
 fn program(main: &str) -> Arc<script::Compiled> {
-    let mut files = script::describe::descriptions("Test Engine 9.9.9", "solis");
+    let (mut files, _) = script::describe::descriptions_for(
+        "Test Engine 9.9.9",
+        "solis",
+        &["drones/drone".to_string(), "nowhere".to_string()],
+    );
     files.push(("main.lst".into(), main.to_string()));
     let code = script::Code {
         files,
@@ -337,17 +341,17 @@ fn input_actions_changed_while_playing_reach_the_game_and_paused_input_waits_for
 fn a_recording_keeps_play_s_seed_not_the_one_a_start_set() {
     // The second review: a start that set the seed made the recording
     // keep that one, so a replay drew different numbers from Play's.
-    let code = "get \"solis/world\":[setSeed, randomRange];\n\
-        get \"solis/entity\":[positionOf, moveTo];\n\
+    let code = "fetch \"solis/world\":World;\n\n\
+        \n\
         component Drifter {\n\
             has {\n\
-                float start = randomRange(0, 10);\n\
+                float start = World:randomRange(0, 10);\n\
             }\n\
             method update(float dt) {\n\
-                moveTo(me, positionOf(me) + [randomRange(-1, 1), start * 0.01, 0]);\n\
+                moveTo(position() + [World:randomRange(-1, 1), start * 0.01, 0]);\n\
             }\n\
         }\n\
-        setSeed(42);\n\
+        World:setSeed(42);\n\
         pass Drifter;\nend\n";
     let mut w = with_a_walker();
     w.set_program(Some(program(code)));

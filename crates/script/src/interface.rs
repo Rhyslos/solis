@@ -24,7 +24,13 @@ pub fn snapshot() -> String {
     );
     out.push_str("\n## Lust (solis/<file>.lst)\n\n");
     for native in NATIVES {
-        out.push_str(&format!("{}: {}\n", native.file, native.lust));
+        match native.owner {
+            "" | "entity" => out.push_str(&format!("{}: {}\n", native.file, native.lust)),
+            object => out.push_str(&format!(
+                "{}: object {object}: {}\n",
+                native.file, native.lust
+            )),
+        }
     }
     out.push_str("\n## Events the engine sends (fetch \"solis/<file>\":<Name>)\n\n");
     for event in ENGINE_EVENTS {
@@ -34,8 +40,16 @@ pub fn snapshot() -> String {
     let mut lua = lent_names(include_str!("host.rs"));
     lua.push("send".to_owned());
     lua.sort();
+    // As Lua writes them: solis.World:say, solis.entity.moveTo.
     for name in lua {
-        out.push_str(&format!("solis.{name}\n"));
+        let shown = match name.split_once('_') {
+            Some(("entity", method)) => format!("entity.{method}"),
+            Some((object, method)) if object.starts_with(char::is_uppercase) => {
+                format!("{object}:{method}")
+            }
+            _ => name,
+        };
+        out.push_str(&format!("solis.{shown}\n"));
     }
     out.push_str("\n## Lua's own names Solis adds or changes (its prelude)\n\n");
     for line in crate::luau::PRELUDE.lines() {
@@ -213,14 +227,14 @@ mod tests {
         let lent = lent_names(include_str!("host.rs"));
         for native in NATIVES {
             assert!(
-                lent.iter().any(|n| n == native.name),
+                lent.iter().any(|n| *n == native.key()),
                 "{} isn't lent",
-                native.name
+                native.key()
             );
         }
         for name in &lent {
             assert!(
-                NATIVES.iter().any(|n| n.name == name),
+                NATIVES.iter().any(|n| n.key() == *name),
                 "{name} is lent but not described"
             );
         }
