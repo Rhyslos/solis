@@ -74,7 +74,7 @@ Solis is built on other people's libraries, which saves years of work. Each libr
 | `rayon` | The job system that uses every core (decision 0031) | MIT OR Apache-2.0 | app, editor, physics, render, world | shared | Fork it, or a job system of Solis's own (the uses are simple parallel loops) |
 | `rfd` | Open and Save file windows | MIT | app | walled | Ask Windows directly (its common file dialogs) |
 | `ron` | Reads a test file format in tests | MIT OR Apache-2.0 | editor (tests) | tests | Drop it from the tests |
-| `serde` | Turns data into files and back | MIT OR Apache-2.0 | asset_db, editor, input, reflect, updater | shared | Stay on the last good version (it's the standard, with a vast following); or Solis's own readers and writers through `reflect` |
+| `serde` | Turns data into files and back | MIT OR Apache-2.0 | app, asset_db, editor, input, reflect, updater | shared | Stay on the last good version (it's the standard, with a vast following); or Solis's own readers and writers through `reflect` |
 | `serde_json` | Reads GitHub's answers in the updater | MIT OR Apache-2.0 | updater | walled | Read the few fields the updater needs ourselves |
 | `sha2` | Checks downloaded updates (SHA-256) | MIT OR Apache-2.0 | updater | walled | Write SHA-256 (about 150 lines, tested against the standard's examples) |
 | `toml` | Reads and writes settings and input files | MIT OR Apache-2.0 | asset_db, input, reflect (tests) | shared | Fork it, or read the small part of TOML Solis uses ourselves |
