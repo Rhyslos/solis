@@ -134,6 +134,65 @@ impl LibraryKind {
     }
 }
 
+/// The Library's filter chips (decision 0085): every file, or one group
+/// of kinds.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub(crate) enum Filter {
+    /// Every file.
+    #[default]
+    All,
+    /// Models and assemblies.
+    Models,
+    /// Sprite sheets, their clips, animators and pictures.
+    Sprites,
+    /// Areas, tile maps and tilesets.
+    Maps,
+    /// Sound files and sound events.
+    Sounds,
+    /// Lust, Lua and Rust files.
+    Code,
+}
+
+impl Filter {
+    /// Every chip, in order.
+    pub(crate) const ALL: [Self; 6] = [
+        Self::All,
+        Self::Models,
+        Self::Sprites,
+        Self::Maps,
+        Self::Sounds,
+        Self::Code,
+    ];
+
+    /// The chip's words.
+    pub(crate) fn name(self) -> &'static str {
+        match self {
+            Self::All => "All",
+            Self::Models => "Models",
+            Self::Sprites => "Sprites",
+            Self::Maps => "Maps",
+            Self::Sounds => "Sounds",
+            Self::Code => "Code",
+        }
+    }
+
+    /// Whether a file of `kind` passes.
+    pub(crate) fn passes(self, kind: LibraryKind) -> bool {
+        use LibraryKind as K;
+        match self {
+            Self::All => true,
+            Self::Models => matches!(kind, K::Model | K::Assembly),
+            Self::Sprites => matches!(
+                kind,
+                K::SpriteSheet | K::SpriteClips | K::Animator | K::Texture
+            ),
+            Self::Maps => matches!(kind, K::Area | K::TileMap | K::Tileset),
+            Self::Sounds => matches!(kind, K::Sound | K::SoundEvent),
+            Self::Code => kind == K::Code,
+        }
+    }
+}
+
 /// One file in the Library.
 #[derive(Debug, Clone, PartialEq, Eq, Default)]
 pub struct LibraryItem {
@@ -185,6 +244,8 @@ pub(crate) struct LibraryState {
     pub(crate) selected: Option<String>,
     /// The file or folder being renamed, and the name typed so far.
     pub(crate) renaming: Option<(String, String)>,
+    /// The chip picked: every file, or one group of kinds.
+    pub(crate) filter: Filter,
 }
 
 impl Default for LibraryState {
@@ -196,6 +257,7 @@ impl Default for LibraryState {
             search: String::new(),
             selected: None,
             renaming: None,
+            filter: Filter::All,
         }
     }
 }
@@ -277,8 +339,21 @@ const PICTURE: f32 = 72.0;
 const ROW: f32 = 21.0;
 const TREE_WIDTH: f32 = 150.0;
 
+/// Whether the Library is pinned (docked as a panel) or a drawer, for its
+/// pin button.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) enum Pin {
+    /// Docked: the button unpins it.
+    Docked,
+    /// Popped up as a drawer: the button pins it.
+    Drawer,
+}
+
 /// The Library panel (or, with `code`, the Code panel: code files only,
-/// as a list). Returns what was asked for.
+/// as a list). Returns what was asked for; `pin` is where it is, for its
+/// pin button (`None` for the Code panel), and `pin_clicked` says it was
+/// clicked.
+#[allow(clippy::too_many_arguments)]
 pub(crate) fn library(
     ui: &mut Ui,
     project: Option<&ProjectInfo>,
@@ -287,9 +362,18 @@ pub(crate) fn library(
     accent: Accent,
     code: bool,
     sounds: Sounds<'_>,
+    (pin, pin_clicked): (Option<Pin>, &mut bool),
 ) -> Vec<LibraryRequest> {
     let mut requests = Vec::new();
-    menu_row(ui, state, code, project.is_some(), &mut requests);
+    *pin_clicked |= menu_row(
+        ui,
+        state,
+        code,
+        project.is_some(),
+        accent,
+        pin,
+        &mut requests,
+    );
     let Some(project) = project else {
         note(
             ui,
@@ -452,8 +536,8 @@ fn note(ui: &mut Ui, text: &str) {
 }
 
 /// The items to show: the open folder's (or every folder's matches while
-/// searching), code files only in the Code panel and never in the
-/// Library.
+/// searching) that pass the chip picked; code files only in the Code
+/// panel.
 fn shown_items<'a>(
     items: &'a [LibraryItem],
     state: &LibraryState,
@@ -462,7 +546,13 @@ fn shown_items<'a>(
     let search = state.search.trim().to_lowercase();
     items
         .iter()
-        .filter(|i| (i.kind == LibraryKind::Code) == code)
+        .filter(|i| {
+            if code {
+                i.kind == LibraryKind::Code
+            } else {
+                state.filter.passes(i.kind)
+            }
+        })
         .filter(|i| {
             if search.is_empty() {
                 code || i.folder() == state.folder
@@ -473,36 +563,67 @@ fn shown_items<'a>(
         .collect()
 }
 
-/// ≡, Import, View and the search box.
+/// The Library's tool row, as in the editor overhaul's mock-up (decision
+/// 0085): **+ New** (the accent's colour), **Import**, the filter chips,
+/// **View**, then on the right the search and the pin. Returns whether the
+/// pin was clicked.
 fn menu_row(
     ui: &mut Ui,
     state: &mut LibraryState,
     code: bool,
     open: bool,
+    accent: Accent,
+    pin: Option<Pin>,
     requests: &mut Vec<LibraryRequest>,
-) {
+) -> bool {
+    let mut pin_clicked = false;
     theme::menu_row_frame().show(ui, |ui| {
         ui.set_min_width(ui.available_width());
-        egui::MenuBar::new().ui(ui, |ui| {
-            ui.spacing_mut().item_spacing.x = 8.0;
-            ui.label("≡");
+        ui.horizontal_wrapped(|ui| {
+            ui.spacing_mut().item_spacing.x = 6.0;
             if !code {
                 ui.add_enabled_ui(open, |ui| {
-                    ui.menu_button("+ New", |ui| new_items(ui, &state.folder, requests))
-                        .response
+                    let colors = accent.colors();
+                    let new = egui::containers::menu::MenuButton::from_button(
+                        egui::Button::new(RichText::new("+ New ▾").color(Color32::WHITE).strong())
+                            .fill(colors.fill)
+                            .corner_radius(4.0),
+                    )
+                    .ui(ui, |ui| new_items(ui, &state.folder, requests));
+                    new.0.widget_info(|| {
+                        egui::WidgetInfo::labeled(egui::WidgetType::Button, true, "+ New")
+                    });
+                    new.0
                         .on_hover_text("Make something new in the folder shown (or right-click)")
                         .on_disabled_hover_text("Open or make a project first (File)");
                 });
-                ui.menu_button("Import", |ui| {
-                    if ui
-                        .button("Import model…")
-                        .on_hover_text("Copies a glTF model into the project")
-                        .clicked()
-                    {
-                        requests.push(LibraryRequest::Import);
-                        ui.close();
+                let import = ui
+                    .add_enabled(open, egui::Button::new("Import"))
+                    .on_hover_text("Copies a glTF model into the project");
+                if import.clicked() {
+                    requests.push(LibraryRequest::Import);
+                }
+                ui.add_space(6.0);
+                for filter in Filter::ALL {
+                    let on = state.filter == filter;
+                    let chip = ui
+                        .add(
+                            egui::Button::new(RichText::new(filter.name()).size(12.0))
+                                .selected(on)
+                                .corner_radius(10.0),
+                        )
+                        .on_hover_text(match filter {
+                            Filter::All => "Every file".to_string(),
+                            other => format!("Only {}", other.name().to_lowercase()),
+                        });
+                    let name = format!("{} files", filter.name());
+                    chip.widget_info(|| {
+                        egui::WidgetInfo::selected(egui::WidgetType::Button, true, on, &name)
+                    });
+                    if chip.clicked() {
+                        state.filter = filter;
                     }
-                });
+                }
                 ui.menu_button("View", |ui| {
                     if ui
                         .add(egui::Button::new("Thumbnails").selected(!state.list))
@@ -523,10 +644,42 @@ fn menu_row(
                 });
             }
             ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
+                if let Some(pin) = pin {
+                    let (words, name, hover) = match pin {
+                        Pin::Docked => (
+                            "Unpin",
+                            "Unpin the Library",
+                            "Makes the Library a drawer: Ctrl + Space pops it up over the \
+                             editor and it tucks away again, so the viewport gets its space",
+                        ),
+                        Pin::Drawer => (
+                            "Pin",
+                            "Pin the Library",
+                            "Docks the Library as a panel again, along the bottom",
+                        ),
+                    };
+                    let button = ui
+                        .add(
+                            egui::Button::new(
+                                RichText::new(words).size(12.0).color(theme::TEXT_WEAK),
+                            )
+                            .frame(false),
+                        )
+                        .on_hover_text(hover);
+                    button.widget_info(|| {
+                        egui::WidgetInfo::labeled(egui::WidgetType::Button, true, name)
+                    });
+                    ui.label(
+                        RichText::new("Ctrl + Space")
+                            .size(11.0)
+                            .color(theme::TEXT_WEAK),
+                    );
+                    pin_clicked = button.clicked();
+                }
                 let search = ui.add(
                     egui::TextEdit::singleline(&mut state.search)
-                        .hint_text("Search")
-                        .desired_width(ui.available_width().clamp(40.0, 160.0)),
+                        .hint_text("Search the project")
+                        .desired_width(ui.available_width().clamp(40.0, 180.0)),
                 );
                 let label = if code {
                     "Search code"
@@ -539,6 +692,7 @@ fn menu_row(
             });
         });
     });
+    pin_clicked
 }
 
 /// The folder tree: the assets folder and every folder in it.
@@ -1250,7 +1404,7 @@ mod tests {
     }
 
     #[test]
-    fn the_library_shows_one_folder_or_every_match_and_never_code() {
+    fn the_library_shows_one_folder_or_every_match() {
         let items = [
             item("crate.glb", LibraryKind::Model),
             item("props/rock.glb", LibraryKind::Model),
@@ -1264,7 +1418,7 @@ mod tests {
                 .map(|i| i.name.clone())
                 .collect()
         };
-        assert_eq!(names(&state, false), ["crate"]);
+        assert_eq!(names(&state, false), ["crate", "turret"]);
         state.folder = "props".into();
         assert_eq!(names(&state, false), ["rock", "rocket"]);
         state.search = "ROCK".into();
@@ -1276,5 +1430,47 @@ mod tests {
         );
         state.search.clear();
         assert_eq!(names(&state, true), ["turret"], "the Code panel");
+    }
+
+    #[test]
+    fn a_chip_shows_one_kind_of_file() {
+        let items = [
+            item("crate.glb", LibraryKind::Model),
+            item("farmer.aseprite", LibraryKind::SpriteSheet),
+            item("farm.tilemap.lst", LibraryKind::TileMap),
+            item("birdsong.ogg", LibraryKind::Sound),
+            item("main.lst", LibraryKind::Code),
+        ];
+        let mut state = LibraryState::default();
+        let mut names = |filter| -> Vec<String> {
+            state.filter = filter;
+            shown_items(&items, &state, false)
+                .iter()
+                .map(|i| i.name.clone())
+                .collect()
+        };
+        assert_eq!(names(Filter::All).len(), 5);
+        assert_eq!(names(Filter::Models), ["crate"]);
+        assert_eq!(names(Filter::Sprites), ["farmer"]);
+        assert_eq!(names(Filter::Maps), ["farm"]);
+        assert_eq!(names(Filter::Sounds), ["birdsong"]);
+        assert_eq!(names(Filter::Code), ["main"]);
+        // Every kind passes at least one chip besides All.
+        for kind in [
+            LibraryKind::Model,
+            LibraryKind::Assembly,
+            LibraryKind::Area,
+            LibraryKind::Texture,
+            LibraryKind::Code,
+            LibraryKind::Sound,
+            LibraryKind::SoundEvent,
+            LibraryKind::SpriteSheet,
+            LibraryKind::SpriteClips,
+            LibraryKind::Animator,
+            LibraryKind::Tileset,
+            LibraryKind::TileMap,
+        ] {
+            assert!(Filter::ALL[1..].iter().any(|f| f.passes(kind)), "{kind:?}");
+        }
     }
 }

@@ -60,7 +60,13 @@ fn the_library_shows_one_folder_and_the_tree_opens_others() {
     h.run();
     assert!(shown(&h, "crate") && shown(&h, "docks"));
     assert!(!shown(&h, "rock"), "inside a folder");
-    assert!(!shown(&h, "turret"), "code is in the Code panel");
+    // Code shows too (decision 0085), and the Code chip shows only it.
+    assert!(shown(&h, "turret"));
+    h.get_by_label("Code files").click();
+    h.run();
+    assert!(shown(&h, "turret") && !shown(&h, "crate"));
+    h.get_by_label("All files").click();
+    h.run();
     h.get_by_label("Folder props").click();
     h.run();
     assert!(shown(&h, "rock") && shown(&h, "bark"));

@@ -56,6 +56,8 @@ pub(crate) struct PanelViewer<'a> {
     pub(crate) folders: &'a [String],
     pub(crate) library_state: &'a mut LibraryState,
     pub(crate) library_requests: &'a mut Vec<LibraryRequest>,
+    /// Set when the docked Library's Unpin was clicked.
+    pub(crate) library_pin_clicked: &'a mut bool,
     /// The sound files measured, and the one playing.
     pub(crate) sounds: crate::library::Sounds<'a>,
     /// The sound file Properties shows instead of the selection, if any.
@@ -370,14 +372,19 @@ impl TabViewer for PanelViewer<'_> {
                 self.requests.extend(requests);
             }
             Panel::Library | Panel::Code => {
+                let code = *tab == Panel::Code;
                 let requests = library(
                     ui,
                     self.project,
                     (self.library, self.folders),
                     self.library_state,
                     self.accent,
-                    *tab == Panel::Code,
+                    code,
                     self.sounds,
+                    (
+                        (!code).then_some(crate::library::Pin::Docked),
+                        &mut *self.library_pin_clicked,
+                    ),
                 );
                 self.library_requests.extend(requests);
             }

@@ -51,6 +51,8 @@ The research's rules, each from what people praise or complain about in Unreal, 
 
 ### O3. The Library as a drawer
 
+> **Built:** Unpin and Pin, the drawer on Ctrl + Space (tucks away on Ctrl + Space, Esc, a click outside, placing or opening, or a drag out), the choice remembered; chips for All, Models, Sprites, Maps, Sounds and Code, with code files now in the Library; **+ New** filled in the accent. Tags (`#crops`) wait for tags; a UI chip comes with UI screens.
+
 - Filter chips (All, Sprites, Maps, Code, UI, Sounds) and tags (`#crops`), a search box for the whole project.
 - Cards coloured along the bottom by kind, as now.
 - A drawer that pops up over the editor and can be pinned to stay docked (Ctrl + Space, as in Unreal).
