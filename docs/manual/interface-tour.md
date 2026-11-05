@@ -10,9 +10,18 @@ When finding your way around, or making the layout suit your screen.
 **The top bar**, from left to right:
 - **The logo**, then the **menus:** File, Edit, View, Entity, Play, Window and Help. **Play** has the play buttons, loads [save games](save-games.md), and records a play's input to play back ([Input](input.md)); **Edit > Input actions…** sets the game's controls and **Edit > Settings…** the editor's own ([Settings](settings.md)). **File > New project…**, **Open project…** and **Recent projects** work with [projects](projects-and-the-library.md), and **File > Start page** shows the start page again; **New area**, **Open area…**, **Save area** and **Save area as…** with [area files](saving-areas.md); **File > Import model…** brings a model in (see [Importing models](importing-models.md)); **Edit > Undo** and **Redo** take back changes (see [Undo and redo](undo.md)); **Help > Add the sample area** brings in a ready-made one, and **Help > Make the playground…** makes a project with a level to walk around in ([Characters and cameras](characters-and-cameras.md)). Only what's built is shown: things still to come (building a game to share, playing with two players, layers) appear when they work.
 - **The area tab:** the open area ("Untitled area"), and tabs for the animator or tileset open.
+- **Search or do anything…**: one search for everything (see below).
 - **Play**, **Pause**, **Step** and **Stop**, on the right. They run the area as a game: see [Play mode](play-mode.md).
 
 **The start page** comes up when Solis starts with no project open: **New project…**, **Open project…**, your recent projects, three examples to start from (the playground, the turret sample and the benchmark), four first steps, and a link to this manual. Tick **Don't show this at start** to skip it; **File > Start page** brings it back.
+
+**One search for everything:** press **Space** (with nothing being typed) or click **Search or do anything…** in the top bar. Type part of a name and the list finds:
+- every **action** in the menus (Save area, Add point light, Play…), with its shortcut beside it, so you pick up the keys as you go;
+- every **file** in the project, which opens it (a model or sprite sheet is shown in the Library instead, ready to drag in);
+- every **entity** in the area, which selects it and points the camera at it;
+- every **panel**, which comes to the front.
+
+Up and Down choose, **Enter** does it, **Esc** closes. Why? You don't have to remember which menu something is in: type what you want. Actions that can't be done right now (Pause while editing, Delete with nothing selected) aren't listed. In the Frames tab, Space still plays and stops the clip, so point somewhere else first.
 
 **The status bar** along the bottom says what's happening, so you don't have to go looking:
 - **Code checked**, or how many mistakes the game's code has. Solis checks the code when the project opens and each time you save a code file; hover to see when it last did.

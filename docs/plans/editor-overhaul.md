@@ -59,6 +59,8 @@ The research's rules, each from what people praise or complain about in Unreal, 
 
 ### O4. One search for everything
 
+> **Built:** the box in the top bar (left of Play) and Space open a list at the top middle; it finds the menus' actions with their shortcuts (leaving out what can't be done now), the project's files (opening them, or showing a placeable one in the Library), the area's entities (selecting and framing them) and the panels. Words score by where they match: the start of a word, inside one, or letters in order. Settings themselves come into it with more settings.
+
 - A search box in the top bar ("Search or do anything…") that finds every menu action, file, entity and setting, with its shortcut beside it, and runs or opens what's picked (Space, tapped, with nothing being typed; the Frames tab keeps Space for its clip).
 
 ### O5. Playing is unmistakable

@@ -316,6 +316,8 @@ pub struct Workbench {
     pub(crate) library_pinned: bool,
     /// Whether the Library's drawer is popped up (unpinned only).
     pub(crate) drawer_open: bool,
+    /// One search for everything (decision 0085).
+    pub(crate) search: crate::search::SearchState,
     /// The program's logo, for the top bar (the app hands it over).
     pub(crate) logo: Option<egui::TextureId>,
     /// The sound event a sprite's clip event plays, by the event's name
@@ -483,6 +485,7 @@ impl Workbench {
             code_checked: None,
             library_pinned: true,
             drawer_open: false,
+            search: crate::search::SearchState::default(),
             logo: None,
             cue_sounds: HashMap::new(),
             frames_editor: None,
@@ -882,6 +885,7 @@ impl Workbench {
             self.file_keys(ui, &mut actions);
             self.console_key(ui);
             self.library_keys(ui);
+            self.search_key(ui);
         }
         let seconds = ui.input(|i| i.stable_dt);
         self.run_game(seconds);
