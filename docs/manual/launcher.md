@@ -9,7 +9,9 @@ The launcher fills the window when Solis starts without a project, and **File > 
 - open a project you've worked on before, without hunting for its folder;
 - keep the projects you're working on now at the top (pin them);
 - see, before opening a project, which build of Solis last opened it: useful after an update, or when a project comes from someone with a newer copy;
-- tidy the list: a project you've finished with, or one whose folder has gone, can be removed from it;
+- tidy the list: a project you've finished with, or one whose folder has gone, can be removed from it, and one you moved can be found again;
+- rename a project, make a copy of it to try something risky, or open its folder in Explorer;
+- find projects already on your computer (copied from a USB stick, cloned from Git) without opening each one;
 - start something new, or make one of the examples to learn from.
 
 Solis also opens the project you had open last when it starts, so if you only ever work on one game you may rarely see the launcher.
@@ -19,10 +21,15 @@ Solis also opens the project you had open last when it starts, so if you only ev
 1. **Projects** (on the left) lists every project Solis knows, the [pinned](#settings) ones first. Each row shows the project's first letter, its name, its folder, the [build](concepts.md) that last opened it, and when you last opened it.
 2. **Double-click** a project to open it, or click it once and press **Enter**. With unsaved changes in the open area, Solis asks first.
 3. **☆** pins a project so it stays at the top under **Pinned**; **★** unpins it.
-4. **⋯** on a row has **Open** and **Remove from list**. Removing only forgets the project here: its folder and files stay exactly where they are, and **Open project…** brings it back.
+4. **⋯** on a row has:
+   - **Open**.
+   - **Show in Explorer**: opens the project's folder.
+   - **Rename…**: changes the project's name (in the title bar and the list). Its folder keeps its name, so nothing that points at the folder breaks. Type the new name and press **Enter**; **Esc** leaves it as it was.
+   - **Make a copy…**: choose an empty folder, and the whole project is copied there, named "… copy". Handy before trying something you may want to undo. The import cache is left out (the copy makes its own when it opens), and so are links to elsewhere on the computer. A big project takes a while: a note at the top says when it's done, and the copy joins the list.
+   - **Remove from list**: only forgets the project here. Its folder and files stay exactly where they are, and **Open project…** brings it back.
 5. **Search projects** narrows the list as you type, by name or folder. Every word you type must appear somewhere, in any order.
 6. **Sort by** orders the list by when each was last opened, or by name. Pinned projects always come first.
-7. **+ New project** makes a folder into a new project; **Open project…** opens a project folder that isn't in the list yet.
+7. **+ New project** makes a folder into a new project; **Open project…** opens a project folder that isn't in the list yet. **Scan a folder…** looks through a folder you choose, and the folders inside it (four levels down), and adds every project it finds to the list, without opening them. It doesn't look inside projects or hidden folders.
 8. **Learn** has three examples, each made as a new project in a folder you choose (the Playground, the Turret sample and the Benchmark), the first steps for someone new, and a link to this manual.
 9. To go back to the editor without opening anything, press **Esc**, or click **← Back to** your project (or **Carry on without a project**) at the bottom left.
 
@@ -57,9 +64,12 @@ A copy built from source has no build number of its own: it shows each project's
 
 ## Tips and common problems
 
-- **Problem:** a row says **Folder not found** and its letter is a **?**. **Why:** the folder was moved, renamed or deleted, or it's on a drive that isn't plugged in. **Fix:** plug the drive in and open the launcher again (it looks each time), or click **Remove** and open the project from its new place with **Open project…**.
+- **Problem:** a row says **Folder not found** and its letter is a **?**. **Why:** the folder was moved, renamed or deleted, or it's on a drive that isn't plugged in. **Fix:** plug the drive in and open the launcher again (it looks each time). If you moved the folder, click **Locate…** and choose where it is now: the project keeps its pin. Otherwise click **Remove**.
 - **Problem:** a row says **project.solis is gone from its folder**. **Why:** the folder is there, but the file that makes it a project isn't (it was deleted, or the folder was emptied). **Fix:** if the project is in Git, get the file back from there; otherwise **Remove** it.
 - **Problem:** `project.solis` shows as changed in Git after opening a project. **Why:** Solis noted its build number in it (`saved_by`). **Fix:** commit it with your other changes: it tells your teammates which build last opened the project.
+
+- **Problem:** Make a copy… says the folder **isn't empty**. **Why:** a copy never goes over other files. **Fix:** make a new, empty folder for it (the folder window has a New folder button).
+- **Problem:** Scan a folder… says **it stopped early**. **Why:** it looks through at most 20,000 folders, so choosing a whole drive can't keep it busy for long. **Fix:** choose the folder your projects are in, such as Documents.
 
 ## Related
 

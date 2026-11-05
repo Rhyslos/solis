@@ -66,6 +66,19 @@ pub enum WorkbenchAction {
     PinProject(std::path::PathBuf, bool),
     /// Forget a project in the launcher's list; its files stay.
     ForgetProject(std::path::PathBuf),
+    /// Show a project's folder in Explorer (the launcher's ⋯).
+    ShowProject(std::path::PathBuf),
+    /// Give the project in this folder a new name (its folder keeps its
+    /// name).
+    RenameProject(std::path::PathBuf, String),
+    /// Ask for an empty folder and copy the project in this folder there.
+    CopyProject(std::path::PathBuf),
+    /// Ask where the project known in this folder is now (its folder was
+    /// moved).
+    LocateProject(std::path::PathBuf),
+    /// Ask for a folder and look through it for projects to add to the
+    /// list.
+    ScanForProjects,
     /// Place the project's asset where the camera looks (a double-click in
     /// the Library).
     PlaceAsset(AssetId),

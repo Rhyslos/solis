@@ -85,6 +85,22 @@ pub(crate) struct Launcher {
     pub(crate) selected: Option<PathBuf>,
     /// The search box takes the keys when the launcher comes up.
     focus_search: bool,
+    /// A line from the app about what it did or couldn't do (renamed,
+    /// copying, found), shown under the heading until closed.
+    pub(crate) notice: Option<String>,
+    /// The project being renamed, the name typed, and why it can't be.
+    pub(crate) renaming: Option<Renaming>,
+}
+
+/// The Rename… question.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub(crate) struct Renaming {
+    /// The project's folder.
+    pub(crate) root: PathBuf,
+    /// The name typed.
+    pub(crate) name: String,
+    /// Its focus is given once.
+    focused: bool,
 }
 
 impl Default for Launcher {
@@ -97,6 +113,8 @@ impl Default for Launcher {
             sort: Sort::LastOpened,
             selected: None,
             focus_search: true,
+            notice: None,
+            renaming: None,
         }
     }
 }
@@ -271,6 +289,21 @@ fn tile_colour(name: &str) -> (Color32, Color32) {
     TILES[sum % TILES.len()]
 }
 
+/// Why `name` can't be a project's name, if it can't (the app checks
+/// again when it renames).
+fn name_problem(name: &str) -> Option<String> {
+    let name = name.trim();
+    if name.is_empty() {
+        Some("A project needs a name.".into())
+    } else if name.chars().count() > 100 {
+        Some("Names are at most 100 letters.".into())
+    } else if name.chars().any(char::is_control) {
+        Some("A name can't hold line breaks.".into())
+    } else {
+        None
+    }
+}
+
 /// Seconds since 1970, now.
 fn now() -> u64 {
     std::time::SystemTime::now()
@@ -321,6 +354,20 @@ impl Workbench {
         self.this_build = build;
     }
 
+    /// A line about what the app did for the launcher (renamed, copied,
+    /// found), shown on the Projects page until closed.
+    pub fn launcher_notice(&mut self, notice: impl Into<String>) {
+        self.launcher.notice = Some(notice.into());
+    }
+
+    /// The open project was renamed: its new name in the title and the
+    /// launcher, without opening it again.
+    pub fn rename_open_project(&mut self, name: &str) {
+        if let Some(project) = &mut self.project {
+            project.name = name.to_string();
+        }
+    }
+
     /// Where the manual is, for the launcher's link (the app knows it).
     pub fn set_manual_url(&mut self, url: String) {
         self.manual_url = url;
@@ -334,7 +381,11 @@ impl Workbench {
         }
         let mut asked: Vec<WorkbenchAction> = Vec::new();
         if ui.input(|i| i.key_pressed(egui::Key::Escape)) && self.unsaved_prompt.is_none() {
-            self.launcher.open = false;
+            if self.launcher.renaming.is_some() {
+                self.launcher.renaming = None;
+            } else {
+                self.launcher.open = false;
+            }
         }
         egui::Panel::left("launcher sidebar")
             .exact_size(SIDEBAR)
@@ -355,6 +406,7 @@ impl Workbench {
                 Page::Projects => self.projects_page(ui, &mut asked),
                 Page::Learn => self.learn_page(ui, &mut asked),
             });
+        self.rename_question(ui, &mut asked);
         for action in asked {
             if let WorkbenchAction::OpenRecent(root) = &action
                 && self.project.as_ref().is_some_and(|p| &p.root == root)
@@ -482,8 +534,44 @@ impl Workbench {
                 {
                     asked.push(WorkbenchAction::OpenProject);
                 }
+                if ui
+                    .add(egui::Button::new("Scan a folder…").min_size(vec2(0.0, 32.0)))
+                    .on_hover_text(
+                        "Looks through a folder, and the folders in it, for projects to add to \
+                         the list",
+                    )
+                    .clicked()
+                {
+                    asked.push(WorkbenchAction::ScanForProjects);
+                }
             });
         });
+        if let Some(notice) = self.launcher.notice.clone() {
+            ui.add_space(8.0);
+            egui::Frame::new()
+                .fill(Color32::from_rgb(0x23, 0x30, 0x3f))
+                .stroke(egui::Stroke::new(1.0, Color32::from_rgb(0x3f, 0x5a, 0x7a)))
+                .corner_radius(6.0)
+                .inner_margin(egui::Margin::symmetric(12, 8))
+                .show(ui, |ui| {
+                    ui.horizontal(|ui| {
+                        ui.label(RichText::new(&notice).color(theme::TEXT_STRONG));
+                        ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                            let close = ui.add(egui::Button::new("×").frame(false));
+                            close.widget_info(|| {
+                                egui::WidgetInfo::labeled(
+                                    egui::WidgetType::Button,
+                                    true,
+                                    "Close the note",
+                                )
+                            });
+                            if close.clicked() {
+                                self.launcher.notice = None;
+                            }
+                        });
+                    });
+                });
+        }
         ui.add_space(14.0);
         ui.horizontal(|ui| {
             let sort_width = 190.0;
@@ -775,6 +863,26 @@ impl Workbench {
         // The pin and ⋯, or Remove for a project that can't be opened.
         let root = project.root.clone();
         if project.problem.is_some() {
+            let locate = ui.put(
+                egui::Rect::from_center_size(
+                    egui::pos2(right - 140.0, rect.center().y),
+                    vec2(84.0, 28.0),
+                ),
+                egui::Button::new("Locate…"),
+            );
+            locate.widget_info(|| {
+                egui::WidgetInfo::labeled(
+                    egui::WidgetType::Button,
+                    true,
+                    format!("Locate {}", project.name),
+                )
+            });
+            if locate
+                .on_hover_text("Moved it? Choose the folder where it is now")
+                .clicked()
+            {
+                asked.push(WorkbenchAction::LocateProject(root.clone()));
+            }
             let remove = ui.put(
                 egui::Rect::from_center_size(
                     egui::pos2(right - 52.0, rect.center().y),
@@ -844,6 +952,33 @@ impl Workbench {
                         asked.push(WorkbenchAction::OpenRecent(root.clone()));
                         ui.close();
                     }
+                    if ui.button("Show in Explorer").clicked() {
+                        asked.push(WorkbenchAction::ShowProject(root.clone()));
+                        ui.close();
+                    }
+                    if ui
+                        .button("Rename…")
+                        .on_hover_text("Changes the project's name; its folder keeps its name")
+                        .clicked()
+                    {
+                        self.launcher.renaming = Some(Renaming {
+                            root: root.clone(),
+                            name: project.name.clone(),
+                            focused: false,
+                        });
+                        ui.close();
+                    }
+                    if ui
+                        .button("Make a copy…")
+                        .on_hover_text(
+                            "Copies the whole folder to an empty one you choose (leaving out the \
+                             import cache, which is made again)",
+                        )
+                        .clicked()
+                    {
+                        asked.push(WorkbenchAction::CopyProject(root.clone()));
+                        ui.close();
+                    }
                     ui.separator();
                     if ui
                         .button("Remove from list")
@@ -873,6 +1008,65 @@ impl Workbench {
             row.on_hover_text(problem.clone());
         } else {
             row.on_hover_text("Double-click to open");
+        }
+    }
+
+    /// The Rename… question, while it's asked: Enter or Rename gives the
+    /// project its new name, Esc or Cancel leaves it.
+    fn rename_question(&mut self, ui: &mut Ui, asked: &mut Vec<WorkbenchAction>) {
+        let Some(renaming) = &mut self.launcher.renaming else {
+            return;
+        };
+        let mut done = None;
+        egui::Modal::new(egui::Id::new("rename project")).show(ui.ctx(), |ui| {
+            ui.set_width(380.0);
+            ui.label(
+                RichText::new("Rename the project")
+                    .size(16.0)
+                    .strong()
+                    .color(theme::TEXT_STRONG),
+            );
+            ui.label(
+                RichText::new("Its name in the title bar and the list. Its folder keeps its name.")
+                    .color(theme::TEXT_WEAK),
+            );
+            ui.add_space(8.0);
+            let field = ui.add(
+                egui::TextEdit::singleline(&mut renaming.name)
+                    .desired_width(f32::INFINITY)
+                    .margin(vec2(8.0, 6.0)),
+            );
+            if !renaming.focused {
+                field.request_focus();
+                renaming.focused = true;
+            }
+            let why = name_problem(&renaming.name);
+            if let Some(why) = &why {
+                ui.label(RichText::new(why).small().color(theme::WARNING));
+            }
+            let enter = field.lost_focus() && ui.input(|i| i.key_pressed(egui::Key::Enter));
+            ui.add_space(8.0);
+            ui.horizontal(|ui| {
+                let ok = ui.add_enabled(why.is_none(), egui::Button::new("Rename"));
+                if (ok.clicked() || enter) && why.is_none() {
+                    done = Some(true);
+                }
+                if ui.button("Cancel").clicked() {
+                    done = Some(false);
+                }
+            });
+        });
+        match done {
+            Some(true) => {
+                if let Some(renaming) = self.launcher.renaming.take() {
+                    asked.push(WorkbenchAction::RenameProject(
+                        renaming.root,
+                        renaming.name.trim().to_string(),
+                    ));
+                }
+            }
+            Some(false) => self.launcher.renaming = None,
+            None => {}
         }
     }
 
