@@ -1,6 +1,7 @@
 //! The open project, as the window holds it: its asset database, the
-//! watcher on its assets folder, and the list of recent projects
-//! ([decision 0021](../../../docs/decisions/0021-asset-database-and-models.md)).
+//! watcher on its assets folder, and the list of projects Solis knows
+//! ([decision 0021](../../../docs/decisions/0021-asset-database-and-models.md),
+//! [decision 0086](../../../docs/decisions/0086-the-launcher.md)).
 
 use asset_db::{AssetDb, Change, FileKind, Listing, Project, Watcher};
 use editor::{LibraryItem, LibraryKind, ProjectInfo};
@@ -15,7 +16,9 @@ pub const MAX_RECENT: usize = 8;
 pub struct Projects {
     db: Option<AssetDb>,
     watcher: Option<Watcher>,
-    recent: Vec<PathBuf>,
+    known: crate::known_projects::KnownProjects,
+    /// This copy's build number, recorded in each project it opens.
+    build: Option<u64>,
     /// Whether the assets folder changed since last asked (any file, not
     /// only assets: the Library lists them all).
     changed: bool,
@@ -34,10 +37,13 @@ pub struct Opened {
 }
 
 impl Projects {
-    /// Remembers `recent` (newest first).
-    pub fn with_recent(recent: Vec<PathBuf>) -> Self {
+    /// Remembers the projects `known`; `build` is this copy's number,
+    /// written into each project it opens (none for a copy built from
+    /// source).
+    pub fn with_known(known: crate::known_projects::KnownProjects, build: Option<u64>) -> Self {
         Self {
-            recent: recent.into_iter().take(MAX_RECENT).collect(),
+            known,
+            build,
             ..Self::default()
         }
     }
@@ -85,9 +91,16 @@ impl Projects {
             root: root.to_path_buf(),
             assets: db.project().assets(),
         };
-        self.recent.retain(|p| p != root);
-        self.recent.insert(0, root.to_path_buf());
-        self.recent.truncate(MAX_RECENT);
+        if let Some(build) = self.build
+            && let Err(why) = db.project().record_build(build)
+        {
+            notes.push(format!(
+                "Couldn't note this build in {}: {why}.",
+                asset_db::PROJECT_FILE
+            ));
+        }
+        self.known
+            .opened(root, db.project().name(), crate::known_projects::now());
         let watching = watcher.is_some();
         self.db = Some(db);
         self.watcher = watcher;
@@ -108,9 +121,20 @@ impl Projects {
         self.db.as_ref().map(|db| db.project().cache())
     }
 
-    /// The projects opened lately, newest first.
-    pub fn recent(&self) -> &[PathBuf] {
-        &self.recent
+    /// The projects opened lately, newest first, for File > Recent
+    /// projects.
+    pub fn recent(&self) -> Vec<PathBuf> {
+        self.known.recent(MAX_RECENT)
+    }
+
+    /// Every project Solis knows.
+    pub fn known(&self) -> &crate::known_projects::KnownProjects {
+        &self.known
+    }
+
+    /// Every project Solis knows, to pin, forget or list.
+    pub fn known_mut(&mut self) -> &mut crate::known_projects::KnownProjects {
+        &mut self.known
     }
 
     /// The open project's folder.
@@ -537,7 +561,8 @@ mod tests {
             format!("solis-app-projects-{}", std::process::id())
         );
         assert!(root.join("project.solis").exists());
-        assert_eq!(projects.recent(), std::slice::from_ref(&root));
+        assert_eq!(projects.recent(), vec![root.clone()]);
+        assert_eq!(asset_db::Project::summary(&root).unwrap().saved_by, None);
         // Opening it again doesn't make it again, and it stays first.
         projects
             .open(&root, false, assets::Limits::default())
@@ -610,7 +635,23 @@ mod tests {
     #[test]
     fn the_recent_list_is_kept_short() {
         let many: Vec<PathBuf> = (0..20).map(|i| PathBuf::from(format!("/p{i}"))).collect();
-        assert_eq!(Projects::with_recent(many).recent().len(), MAX_RECENT);
+        let known = crate::known_projects::KnownProjects::from_saved(None, many);
+        assert_eq!(Projects::with_known(known, None).recent().len(), MAX_RECENT);
+    }
+
+    #[test]
+    fn a_numbered_build_notes_itself_in_each_project_it_opens() {
+        let root = folder("noted-build");
+        std::fs::create_dir_all(&root).unwrap();
+        let mut projects = Projects::with_known(Default::default(), Some(61));
+        projects
+            .open(&root, true, assets::Limits::default())
+            .unwrap();
+        assert_eq!(
+            asset_db::Project::summary(&root).unwrap().saved_by,
+            Some(61)
+        );
+        let _ = std::fs::remove_dir_all(&root);
     }
 
     #[test]

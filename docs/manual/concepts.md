@@ -40,6 +40,8 @@
 
 - **Lust data file:** a Lust file that only holds values, read by Solis without running anything. Everything Solis makes (tile maps, tilesets, and the rest as they move over) is one, named for what it holds: `farm.tilemap.lst`. See [Backups and upgrades](backups-and-upgrades.md).
 - **Project:** a folder holding one game: its assets, settings and areas. See [Projects and the Library](projects-and-the-library.md).
+- **Launcher:** the page listing your projects, where you open, pin and tidy them, and find the examples. See [The launcher](launcher.md).
+- **Build:** one numbered version of Solis, made from the code at one moment (build 57, then 58). Installed copies update from one build to the next; each project remembers the build that last opened it.
 - **Asset:** a file the game uses: a model, a picture, a sound, an assembly, code.
 - **Sidecar:** the small `.solmeta` text file beside each asset holding its ID, so renaming the file breaks nothing. Commit it with the asset.
 - **Library:** the panel showing the project's files, folder by folder, with thumbnails; drag from it to place things.

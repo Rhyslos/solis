@@ -1,0 +1,404 @@
+//! The launcher (decision 0086) and the editor basics (E1): New in the Library, a new
+//! Lust file that compiles, a new area, and what isn't built kept out of
+//! sight.
+
+use super::*;
+use crate::library::{LibraryItem, LibraryKind, LibraryRequest, ProjectInfo};
+use crate::test_support::*;
+use egui_kittest::kittest::Queryable;
+
+fn farm() -> ProjectInfo {
+    ProjectInfo {
+        name: "Farm".into(),
+        root: "/projects/farm".into(),
+        assets: "/projects/farm/assets".into(),
+    }
+}
+
+fn item(path: &str, kind: LibraryKind) -> LibraryItem {
+    LibraryItem {
+        id: Some(reflect::AssetId::random()),
+        kind,
+        name: crate::sprite_sheets::name_of(path),
+        path: path.into(),
+        thumbnail: None,
+    }
+}
+
+/// The text of each new file asked for, by path.
+fn made(actions: &[WorkbenchAction]) -> Vec<(String, String)> {
+    actions
+        .iter()
+        .filter_map(|a| match a {
+            WorkbenchAction::NewTextFile { path, text } => {
+                Some((path.display().to_string(), text.clone()))
+            }
+            _ => None,
+        })
+        .collect()
+}
+
+fn known(name: &str, root: &str, last_opened: Option<u64>) -> KnownProject {
+    KnownProject {
+        root: root.into(),
+        name: name.into(),
+        problem: None,
+        pinned: false,
+        last_opened,
+        saved_by: None,
+    }
+}
+
+fn some_projects() -> Vec<KnownProject> {
+    let mut gone = known("Old jam", "/jam/old", Some(10));
+    gone.problem = Some("Folder not found".into());
+    let mut pinned = known("Zebra farm", "/games/zebra", Some(50));
+    pinned.pinned = true;
+    pinned.saved_by = Some(57);
+    vec![
+        known("Playground", "/games/playground", Some(100)),
+        pinned,
+        known("Benchmark", "/games/bench", None),
+        gone,
+    ]
+}
+
+fn launcher_with(projects: Vec<KnownProject>) -> Workbench {
+    let mut w = Workbench::new(info(), None);
+    w.set_known_projects(projects);
+    w.set_this_build(Some(57));
+    w.set_manual_url("https://example.com/manual".into());
+    w.launch_launcher(true);
+    w
+}
+
+#[test]
+fn pinned_projects_come_first_then_the_order_chosen_and_search_narrows() {
+    let projects = some_projects();
+    let names =
+        |list: &[usize]| -> Vec<&str> { list.iter().map(|&i| projects[i].name.as_str()).collect() };
+    let (pinned, rest) = shown(&projects, "", Sort::LastOpened);
+    assert_eq!(names(&pinned), ["Zebra farm"]);
+    assert_eq!(
+        names(&rest),
+        ["Playground", "Old jam", "Benchmark"],
+        "never-timed last"
+    );
+    let (_, rest) = shown(&projects, "", Sort::Name);
+    assert_eq!(names(&rest), ["Benchmark", "Old jam", "Playground"]);
+    // Every word, in the name or the folder, any case.
+    let (pinned, rest) = shown(&projects, "GAMES  pla", Sort::Name);
+    assert!(pinned.is_empty());
+    assert_eq!(names(&rest), ["Playground"]);
+    let (pinned, rest) = shown(&projects, "nothing like it", Sort::Name);
+    assert!(pinned.is_empty() && rest.is_empty());
+    assert_eq!(shown(&[], "", Sort::Name), (vec![], vec![]));
+}
+
+#[test]
+fn how_long_ago_is_said_in_words() {
+    let (minute, hour, day) = (60, 3600, 86_400);
+    let now = 1_000 * day;
+    for (then, said) in [
+        (now, "Just now"),
+        (now + 50, "Just now"),
+        (now - minute, "1 minute ago"),
+        (now - 5 * minute, "5 minutes ago"),
+        (now - 2 * hour, "2 hours ago"),
+        (now - day - hour, "Yesterday"),
+        (now - 3 * day, "3 days ago"),
+        (now - 15 * day, "2 weeks ago"),
+        (now - 90 * day, "3 months ago"),
+        (now - 800 * day, "2 years ago"),
+    ] {
+        assert_eq!(ago(then, now), said, "{}", now.abs_diff(then));
+    }
+}
+
+#[test]
+fn a_project_s_build_is_compared_with_this_one() {
+    assert_eq!(BuildMark::of(None, Some(5)), None);
+    assert_eq!(BuildMark::of(Some(5), Some(5)), Some(BuildMark::ThisOne(5)));
+    assert_eq!(BuildMark::of(Some(4), Some(5)), Some(BuildMark::Older(4)));
+    assert_eq!(BuildMark::of(Some(6), Some(5)), Some(BuildMark::Newer(6)));
+    assert_eq!(BuildMark::of(Some(6), None), Some(BuildMark::Some(6)));
+}
+
+#[test]
+fn the_launcher_lists_projects_and_does_what_it_offers() {
+    let mut h = harness(launcher_with(some_projects()));
+    h.run();
+    assert!(h.state().0.launcher_open());
+    for label in [
+        "Learn",
+        "Playground",
+        "Zebra farm",
+        "Unpin Zebra farm",
+        "Pin Playground",
+        "More for Playground",
+        "Remove Old jam from the list",
+        "Close the launcher",
+    ] {
+        assert!(h.query_by_label(label).is_some(), "{label}");
+    }
+    assert!(h.query_by_label_contains("build 57 · this one").is_some());
+    assert!(
+        h.query_by_label("Pin Old jam").is_none(),
+        "a missing one can only go"
+    );
+    // Pinning goes to the app, and shows at once.
+    h.get_by_label("Pin Playground").click();
+    h.run();
+    assert!(h.state().0.known_projects[0].pinned);
+    assert!(h.state().1.actions.contains(&WorkbenchAction::PinProject(
+        "/games/playground".into(),
+        true
+    )));
+    h.get_by_label("Remove Old jam from the list").click();
+    h.run();
+    assert_eq!(h.state().0.known_projects.len(), 3);
+    assert!(
+        h.state()
+            .1
+            .actions
+            .contains(&WorkbenchAction::ForgetProject("/jam/old".into()))
+    );
+    // A click picks a row; Enter opens it.
+    h.get_by_label("Benchmark").click();
+    h.run();
+    h.key_press(egui::Key::Enter);
+    h.run();
+    assert!(
+        h.state()
+            .1
+            .actions
+            .contains(&WorkbenchAction::OpenRecent("/games/bench".into()))
+    );
+    // ⋯ > Open does the same; Remove from list forgets it.
+    h.get_by_label("More for Playground").click();
+    h.run();
+    h.get_by_label("Remove from list").click();
+    h.run();
+    assert!(
+        h.state()
+            .1
+            .actions
+            .contains(&WorkbenchAction::ForgetProject("/games/playground".into()))
+    );
+    // The arrows move along the list.
+    h.state_mut().0.launcher.selected = None;
+    h.key_press(egui::Key::ArrowDown);
+    h.run();
+    assert_eq!(
+        h.state().0.launcher.selected,
+        Some("/games/zebra".into()),
+        "the pinned one is first"
+    );
+    h.key_press(egui::Key::ArrowDown);
+    h.run();
+    assert_eq!(h.state().0.launcher.selected, Some("/games/bench".into()));
+    h.get_by_label("Close the launcher").click();
+    h.run();
+    assert!(!h.state().0.launcher_open());
+}
+
+#[test]
+fn the_learn_page_offers_the_examples_and_the_manual() {
+    let mut h = harness(launcher_with(Vec::new()));
+    h.run();
+    assert!(h.query_by_label_contains("No projects yet").is_some());
+    h.get_by_label("Learn").click();
+    h.run();
+    for label in [
+        "Make the Playground",
+        "Make the Turret sample",
+        "Make the Benchmark",
+        "Open the manual ↗",
+    ] {
+        assert!(h.query_by_label(label).is_some(), "{label}");
+    }
+    h.get_by_label("Make the Playground").click();
+    h.run();
+    assert!(
+        h.state()
+            .1
+            .actions
+            .contains(&WorkbenchAction::MakePlayground)
+    );
+    h.get_by_label_contains("Show this page when").click();
+    h.run();
+    assert!(!h.state().0.launcher_at_launch());
+}
+
+#[test]
+fn the_launcher_stays_away_with_a_project_or_when_turned_off() {
+    let mut w = Workbench::new(info(), None);
+    w.launch_launcher(false);
+    assert!(!w.launcher_open());
+    w.launch_launcher(true);
+    assert!(w.launcher_open());
+    // A project opening closes it.
+    w.set_project(Some(farm()));
+    assert!(!w.launcher_open());
+    w.launch_launcher(true);
+    assert!(!w.launcher_open(), "never over an open project at launch");
+}
+
+#[test]
+fn file_projects_brings_it_back_over_an_open_project_and_esc_goes_back() {
+    let mut w = Workbench::new(info(), None);
+    w.set_project(Some(farm()));
+    w.set_known_projects(vec![known("Farm", "/projects/farm", Some(1))]);
+    w.open_launcher();
+    let mut h = harness(w);
+    h.run();
+    assert!(
+        h.state().1.actions.contains(&WorkbenchAction::ListProjects),
+        "the list is read afresh"
+    );
+    assert!(
+        h.query_by_label("← Back to Farm").is_some()
+            || h.query_by_label("Close the launcher").is_some()
+    );
+    // The open project, opened again, is simply gone back to.
+    h.state_mut().1.actions.clear();
+    h.get_by_label("Farm").click();
+    h.run();
+    h.key_press(egui::Key::Enter);
+    h.run();
+    assert!(!h.state().0.launcher_open());
+    assert!(
+        !h.state()
+            .1
+            .actions
+            .iter()
+            .any(|a| matches!(a, WorkbenchAction::OpenRecent(_)))
+    );
+    h.state_mut().0.open_launcher();
+    h.run();
+    h.key_press(egui::Key::Escape);
+    h.run();
+    assert!(!h.state().0.launcher_open());
+}
+
+#[test]
+fn the_first_code_file_is_main_lst_and_later_ones_components() {
+    let mut w = Workbench::new(info(), None);
+    w.set_project(Some(farm()));
+    let mut actions = Vec::new();
+    w.library_request(LibraryRequest::NewCodeFile("crops".into()), &mut actions);
+    let files = made(&actions);
+    assert_eq!(files[0].0, "main.lst", "game code starts there");
+    assert!(files[0].1.contains("component Game"));
+    // It opens in the computer's editor for Lust (Ledger), once written.
+    let opened = actions
+        .iter()
+        .position(|a| matches!(a, WorkbenchAction::OpenExternally(p) if p.ends_with("main.lst")))
+        .expect("opened");
+    assert!(opened > 0, "after it's made");
+    w.set_library(vec![item("main.lst", LibraryKind::Code)]);
+    let mut actions = Vec::new();
+    w.library_request(LibraryRequest::NewCodeFile("crops".into()), &mut actions);
+    let files = made(&actions);
+    assert_eq!(files[0].0, "crops/component.lst");
+    assert!(files[0].1.contains("fetch \"crops/component\":Component;"));
+    assert!(files[0].1.contains("component Component"));
+}
+
+#[test]
+fn new_code_files_compile_as_they_are() {
+    // The game's first file on its own, and a component fetched from it.
+    let check = |files: Vec<(String, String)>| {
+        let mut all = script::describe::descriptions("Test 1.0", "solis");
+        all.extend(files);
+        let code = script::Code {
+            files: all,
+            lua: Vec::new(),
+            notes: Vec::new(),
+        };
+        let problems = script::check(&code);
+        assert!(problems.is_empty(), "{problems:?}");
+    };
+    let main = crate::workbench_library::starter_code("Game", "main.lst");
+    check(vec![("main.lst".into(), main)]);
+    let wheat = crate::workbench_library::starter_code("Wheat", "crops/wheat.lst");
+    check(vec![
+        (
+            "main.lst".into(),
+            "fetch \"crops/wheat\":Wheat;\nend\n".into(),
+        ),
+        ("crops/wheat.lst".into(), wheat),
+    ]);
+}
+
+#[test]
+fn a_new_area_is_saved_where_it_was_asked_for_and_opened() {
+    let mut w = Workbench::new(info(), None);
+    w.set_project(Some(farm()));
+    w.set_library(vec![item("levels/area.solarea", LibraryKind::Area)]);
+    let mut actions = Vec::new();
+    w.library_request(LibraryRequest::NewArea("levels".into()), &mut actions);
+    let files = made(&actions);
+    assert_eq!(files[0].0, "levels/area 2.solarea", "a free name");
+    assert!(files[0].1.contains("area version"));
+    let read = area::text::read(&files[0].1, &w.document.registry).expect("reads");
+    assert!(!read.is_empty(), "an environment, as a new area has");
+    assert!(actions.iter().any(
+        |a| matches!(a, WorkbenchAction::OpenAreaFile(p) if p.ends_with("levels/area 2.solarea"))
+    ));
+}
+
+#[test]
+fn right_clicking_the_library_offers_new_everywhere() {
+    let mut w = Workbench::new(info(), None);
+    w.set_project(Some(farm()));
+    w.set_library(vec![item("tiles.png", LibraryKind::Texture)]);
+    let mut h = harness(w);
+    h.run();
+    h.get_by_label("+ New").click();
+    h.run();
+    for label in [
+        "Lust code file",
+        "Folder",
+        "Tile map",
+        "Tileset",
+        "Animator",
+        "Sound event",
+    ] {
+        assert!(h.query_by_label(label).is_some(), "{label}");
+    }
+    assert!(
+        h.query_all_by_label("Area").count() >= 2,
+        "the tab and the item"
+    );
+    h.get_by_label("Tile map").click();
+    h.run();
+    assert!(
+        h.state()
+            .1
+            .actions
+            .iter()
+            .any(|a| matches!(a, WorkbenchAction::SaveTileMap { .. }))
+    );
+}
+
+#[test]
+fn what_isn_t_built_isn_t_shown() {
+    let mut h = harness(Workbench::new(info(), None));
+    h.run();
+    for label in [
+        "Build",
+        "Build & Play",
+        "Play with two players",
+        "Layers",
+        "Wireframe",
+    ] {
+        assert!(h.query_by_label(label).is_none(), "{label}");
+    }
+    // A layout saved with the Layers tab loses it.
+    let mut saved = crate::layout::standard();
+    saved.push_to_focused_leaf(crate::panel::Panel::Layers);
+    let restored = crate::layout::restore(Some(saved));
+    assert!(restored.find_tab(&crate::panel::Panel::Layers).is_none());
+    assert!(crate::layout::is_complete(&restored));
+}

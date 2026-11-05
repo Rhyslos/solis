@@ -18,6 +18,8 @@ The mock-up's version numbers (0.4.0, 0.5.0) stand for Solis's build numbers: wh
 
 ### L1. The Projects and Learn pages
 
+> **Built:** as planned. A project's name, the build that last opened it and whether its folder is there are read each time the launcher opens; arrows move along the list and typing goes to the search box. A copy built from source shows each project's build without comparing it. Updates' place in the sidebar waits for L3.
+
 - The launcher replaces the start page: a full page with the sidebar (the logo, Projects, Learn, Updates' place, and the build at the bottom), shown when no project is open and from File > Projects….
 - **Projects:** the list of known projects (up to 200, read from the old recent list once), pinned first; search; sort by last opened or name; ☆ to pin; double-click or Enter opens; ⋯ with Open and Remove from list; a missing folder says so, with Remove; New project and Open project….
 - Each row: the first letter in a colour of its own, the name (from the project file), the folder, the build that last saved it ("this one", "older", "newer") and when it was last opened.

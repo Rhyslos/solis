@@ -248,6 +248,7 @@ dependencies = [
  "render",
  "rfd",
  "script",
+ "serde",
  "sound",
  "tiles",
  "ui",

@@ -39,7 +39,8 @@ const ACCENT_KEY: &str = "accent2";
 /// The accent as saved before: amber there was the standard of its day,
 /// so it reads as the new standard, blue; any other was chosen and stays.
 const OLD_ACCENT_KEY: &str = "accent";
-/// Whether the start page comes up when no project opens (E1).
+/// Whether the launcher comes up when no project opens (E1, decision
+/// 0086).
 const START_PAGE_KEY: &str = "start_page";
 /// Key under which whether the Library is pinned (docked) rather than a
 /// drawer is remembered (decision 0085).
@@ -56,8 +57,12 @@ const LOOK_KEY: &str = "viewport_look";
 const CAMERA_KEY: &str = "viewport_camera";
 /// Key under which the project open last is remembered, to open it again.
 const LAST_PROJECT_KEY: &str = "last_project";
-/// Key under which the recent projects are remembered.
+/// Key under which the recent projects were remembered before the
+/// launcher: read once into its list.
 const RECENT_PROJECTS_KEY: &str = "recent_projects";
+/// Key under which every project the launcher knows is remembered
+/// (decision 0086).
+const KNOWN_PROJECTS_KEY: &str = "known_projects";
 /// Key under which the viewport's views (layout, cameras, looks) are
 /// remembered.
 const VIEWS_KEY: &str = "viewport_views";
@@ -178,6 +183,10 @@ impl App {
         let recent: Vec<PathBuf> = storage
             .and_then(|s| eframe::get_value(s, RECENT_PROJECTS_KEY))
             .unwrap_or_default();
+        let known = crate::known_projects::KnownProjects::from_saved(
+            storage.and_then(|s| eframe::get_value(s, KNOWN_PROJECTS_KEY)),
+            recent,
+        );
         let auto_update: bool = storage
             .and_then(|s| eframe::get_value(s, AUTO_UPDATE_KEY))
             .unwrap_or(true);
@@ -228,7 +237,7 @@ impl App {
             sounds: crate::sounds::Sounds::default(),
             sprites: crate::sprites::Sprites::default(),
             game_audio: crate::game_audio::GameAudio::default(),
-            projects: Projects::with_recent(recent),
+            projects: Projects::with_known(known, copy.build),
             to_place: HashSet::new(),
             thumbnails: crate::thumbnails::Thumbnails::default(),
             game_code: crate::game_code::GameCode::default(),
@@ -251,7 +260,8 @@ impl App {
         };
         app.workbench
             .set_logo(app.logo.as_ref().map(egui::TextureHandle::id));
-        app.workbench.set_recent(app.projects.recent().to_vec());
+        app.workbench.set_this_build(copy.build);
+        app.list_projects();
         app.workbench.set_manual_url(format!(
             "https://github.com/{}/tree/main/docs/manual",
             branding::UPDATE_REPO
@@ -259,7 +269,7 @@ impl App {
         if let Some(root) = last_project.filter(|r| r.join(asset_db::PROJECT_FILE).is_file()) {
             app.open_project(&root, false);
         }
-        app.workbench.launch_start_page(start_page);
+        app.workbench.launch_launcher(start_page);
         if !library_pinned {
             app.workbench.set_library_pinned(false);
         }
@@ -274,6 +284,14 @@ impl App {
     }
 
     /// Opens (or, with `create`, makes) the project in `root`.
+    /// Reads every project Solis knows afresh, for the launcher and File >
+    /// Recent projects.
+    fn list_projects(&mut self) {
+        let rows = self.projects.known_mut().rows();
+        self.workbench.set_known_projects(rows);
+        self.workbench.set_recent(self.projects.recent());
+    }
+
     fn open_project(&mut self, root: &Path, create: bool) {
         // Opening the open project again changes nothing: going through
         // with it would empty the viewport and stop watching the area.
@@ -348,7 +366,7 @@ impl App {
                 self.rust_note = note;
                 self.game_code.check(assets);
                 self.refresh_library();
-                self.workbench.set_recent(self.projects.recent().to_vec());
+                self.list_projects();
             }
             Err(why) => self.workbench.log(
                 LogLevel::Error,
@@ -809,6 +827,15 @@ impl App {
                 WorkbenchAction::NewProject => self.importer.ask_folder(FolderFor::NewProject),
                 WorkbenchAction::OpenProject => self.importer.ask_folder(FolderFor::OpenProject),
                 WorkbenchAction::OpenRecent(root) => self.open_project(&root, false),
+                WorkbenchAction::ListProjects => self.list_projects(),
+                WorkbenchAction::PinProject(root, pinned) => {
+                    self.projects.known_mut().pin(&root, pinned);
+                    self.list_projects();
+                }
+                WorkbenchAction::ForgetProject(root) => {
+                    self.projects.known_mut().forget(&root);
+                    self.list_projects();
+                }
                 WorkbenchAction::PlaceAsset(id) => self.place(id),
                 WorkbenchAction::PlaySound(path) => self.play_sound(&path),
                 WorkbenchAction::StopSound => self.sounds.stop(self.sound.device()),
@@ -1894,14 +1921,14 @@ impl eframe::App for App {
         eframe::set_value(
             storage,
             START_PAGE_KEY,
-            &self.workbench.start_page_at_launch(),
+            &self.workbench.launcher_at_launch(),
         );
         eframe::set_value(storage, OVERLAYS_KEY, &self.workbench.overlays());
         eframe::set_value(storage, SNAPPING_KEY, &self.workbench.snapping());
         eframe::set_value(storage, CAMERA_KEY, &self.workbench.camera());
         eframe::set_value(storage, LOOK_KEY, &self.workbench.look());
         eframe::set_value(storage, LAST_PROJECT_KEY, &self.projects.root());
-        eframe::set_value(storage, RECENT_PROJECTS_KEY, &self.projects.recent());
+        eframe::set_value(storage, KNOWN_PROJECTS_KEY, &self.projects.known().saved());
         eframe::set_value(storage, VIEWS_KEY, &self.workbench.views());
         eframe::set_value(storage, AUTO_UPDATE_KEY, &self.workbench.auto_update());
         eframe::set_value(storage, SKIPPED_BUILD_KEY, &self.updates.skipped());
