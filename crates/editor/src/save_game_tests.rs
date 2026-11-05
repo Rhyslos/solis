@@ -47,7 +47,8 @@ fn program(main: &str) -> Arc<script::Compiled> {
     let (mut files, _) = script::describe::descriptions_for(
         "Test Engine 9.9.9",
         "solis",
-        &["drones/drone".to_string(), "nowhere".to_string()],
+        &script::project_names::Names::with_assemblies(&["drones/drone", "nowhere"])
+            .and_actions(&["QuickLoad", "QuickSave"]),
     );
     files.push(("main.lst".into(), main.to_string()));
     let code = script::Code {
@@ -536,17 +537,17 @@ fn busy_with_keys() -> Workbench {
     let code = BUSY
         .replacen(
             "get \"solis/physics\":[push];",
-            "get \"solis/physics\":[push];\nget \"solis/input\":[pressed];",
+            "get \"solis/physics\":[push];\nfetch \"solis/project\":Action;\nfetch \"solis/input\":Input;",
             1,
         )
         .replacen(
             "pass Busy;",
             "component Keys {\n\
                 method update(float dt) {\n\
-                    is pressed(\"QuickSave\")? then {\n\
+                    is Input:pressed(Action.QuickSave)? then {\n\
                         Saves:saveTo(\"quick\");\n\
                     }\n\
-                    is pressed(\"QuickLoad\")? then {\n\
+                    is Input:pressed(Action.QuickLoad)? then {\n\
                         Saves:loadFrom(\"quick\");\n\
                     }\n\
                 }\n\

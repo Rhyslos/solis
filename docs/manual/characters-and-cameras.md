@@ -52,7 +52,8 @@ These are the ready-made [actions](input.md) **Pan**, **Drag**, **Turn** and **Z
 
 ```
 get "solis/physics":[moveCharacter, onGround];
-get "solis/input":[axis, pressed];
+fetch "solis/input":Input;
+fetch "solis/project":Action;
 
 component Hopper {
     has {
@@ -60,11 +61,11 @@ component Hopper {
     }
 
     method update(float dt) {
-        vec3 move = axis("Move");
+        vec3 move = Input:axis(Action.Move);
         vec3 walk = [move.x, move.y, 0];
         is onGround(this)? then {
             fall = 0;
-            is pressed("Jump")? then {
+            is Input:pressed(Action.Jump)? then {
                 fall = 5;
             }
         } or {

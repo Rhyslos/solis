@@ -244,7 +244,7 @@ pass Hangar;
 end
 ```
 
-- **Which assembly:** one of the project's, named from its file with folders as options inside options: `ships/fighter.solassembly` is `Assembly.Ships.Fighter` (each part's first letter a capital). Solis writes the names into `solis/project.lst` whenever you add, rename or remove an assembly, so a misspelt or deleted one is a mistake before the game runs, with "did you mean". A file whose name can't be a Lust name (it starts with a digit, has a dash or space, is all capitals, or is one of Lust's own objects like `time`) is left out, and the Console says which. `Assembly.None` is there when the project has none, and makes nothing.
+- **Which assembly:** one of the project's, named from its file with folders as options inside options: `ships/fighter.solassembly` is `Assembly.Ships.Fighter` (each part's first letter a capital). Solis writes the names into `solis/project.lst` whenever you add, rename or remove an assembly, so a misspelt or deleted one is a mistake before the game runs, listing the real ones. A file whose name can't be a Lust name (it starts with a digit, has a dash or space, is all capitals, or is one of Lust's own objects like `time`) is left out, and the Console says which. `Assembly.None` is there when the project has none, and makes nothing.
 - **When:** like a move, it happens after every `update` in the tick ([what game code sees](#components)). `World:spawn` gives back the new entity at once, so you can keep it. It joins the game at the end of the tick, after the tick's moves: its components start then and run from the next tick, even when a slow frame runs several ticks at once. A `despawn` lands at the same moment, in the order they were asked for, so spawning something and taking it out in one tick leaves nothing behind. New copies go at the end of the area's tree, in the order they were spawned.
 - **Where it shows:** copies game code makes appear in the Area panel while playing, and are gone when you press **Stop**, like everything else changed while playing. They aren't undo steps.
 - At most 10,000 copies are made in one tick, and an area holds at most a million entities; past that, the Console says so and the rest aren't made.
@@ -314,7 +314,7 @@ In Lua they're `solis.playSoundAt("sfx/footstep", solis.entity.position(self.me)
 
 ## Input
 
-Game code reads the player's controls as named actions, never keys: `axis("Move")`, `pressed("Jump")`, `held("Sprint")`, in `solis/input`. See [Input](input.md), which also covers gamepads, rebinding and recording a play.
+Game code reads the player's controls as named actions, never keys: `Input:axis(Action.Move)`, `Input:pressed(Action.Jump)`, `Input:held(Action.Sprint)`, with `Input` from `solis/input` and `Action` from `solis/project`. See [Input](input.md), which also covers gamepads, rebinding and recording a play.
 
 ## Physics
 
@@ -346,12 +346,13 @@ Things that fall, collide and get pushed have a **RigidBody** and a **Collider**
 | `solis/animation` | `stopClip(entity on)` | Stops an entity's Sprite where it is in its clip. |
 | `solis/animation` | event `AnimationCue(string name)` | Sent when a sprite's clip reaches a frame with an event (bring it in with `fetch "solis/animation":AnimationCue;`). |
 | `solis/animation` | event `ClipFinished(string clip)` | Sent when a sprite's clip has played all its times. |
-| `solis/input` | `bool held(string action)` | Whether an action is held this tick ([Input](input.md)). |
-| `solis/input` | `bool pressed(string action)` | True once, the tick an action went down. |
-| `solis/input` | `bool released(string action)` | True once, the tick it came up. |
-| `solis/input` | `vec3 axis(string action)` | An axis action's x and y. |
-| `solis/input` | `string bindingOf(string action)` | The key that sets an action off, for "Press F". |
-| `solis/input` | `rebind(string action, string input)` | Binds a new input to an action, from the next tick. |
+| `solis/input` | `bool Input:held(Action action)` | Whether an action is held this tick ([Input](input.md)). |
+| `solis/input` | `bool Input:pressed(Action action)` | True once, the tick an action went down. |
+| `solis/input` | `bool Input:released(Action action)` | True once, the tick it came up. |
+| `solis/input` | `vec3 Input:axis(Action action)` | An axis action's x and y. |
+| `solis/input` | `string Input:binding(Action action)` | The key that sets an action off, for "Press F". |
+| `solis/input` | `Input:rebind(Action action, string input)` | Binds a new input to an action, from the next tick. |
+| `solis/project` | `state Action` | The project's input actions (`Action.Jump`), from Edit > Input actions…. |
 | `solis/physics` | `push(entity which, vec3 impulse)` | Gives a body a push ([Physics](physics.md)). |
 | `solis/physics` | `vec3 velocityOf(entity which)` | How fast and which way a body moves, metres a second. |
 | `solis/physics` | `setVelocity(entity which, vec3 velocity)` | Sets how fast and which way a body moves. |
@@ -381,7 +382,9 @@ An entity's abilities are called bare for the component's own entity (`moveTo(pl
 | `say`, `time`, `frameTime`, `find`, `fire`, `random`, `randomRange`, `randomInt`, `setSeed` | the same names on `World`: `World:say(words)` |
 | `spawn("ships/fighter", p)` | `World:spawn(Assembly.Ships.Fighter, p)` |
 | `saveGame(slot)`, `loadGame(slot)` | `Saves:saveTo(slot)`, `Saves:loadFrom(slot)` |
-| Lua `solis.positionOf(e)`, `solis.say(w)` | `solis.entity.position(e)`, `solis.World:say(w)` |
+| `held("Jump")`, `pressed`, `released`, `axis("Move")` | `Input:held(Action.Jump)` and so on, with `fetch "solis/input":Input;` and `fetch "solis/project":Action;` |
+| `bindingOf("Jump")`, `rebind("Jump", key)` | `Input:binding(Action.Jump)`, `Input:rebind(Action.Jump, key)` |
+| Lua `solis.positionOf(e)`, `solis.say(w)`, `solis.held("Jump")` | `solis.entity.position(e)`, `solis.World:say(w)`, `solis.Input:held("Jump")` |
 
 **When an update renames something.** What game code can call doesn't change by accident: Solis's own checks stop any update that changes it without saying so. When a name does change on purpose, the old name keeps working for a few phases, so your game still runs the day you update. Each place your code uses the old name shows in the [Problems](problems.md) panel as a warning, with its file and line, the new name, and when the old one stops working. Change the call to the new name before then.
 

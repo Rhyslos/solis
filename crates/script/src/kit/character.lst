@@ -8,7 +8,8 @@
 
 get "solis/entity":facingAlong;
 get "solis/physics":[moveCharacter, onGround];
-get "solis/input":[axis, held, pressed];
+fetch "solis/input":Input;
+fetch "solis/project":Action;
 
 component CharacterController {
     has {
@@ -35,11 +36,11 @@ component CharacterController {
             forward = facingAlong([ahead.x, ahead.y, 0]):degrees().z;
         }
         rotation heading = [0, 0, forward];
-        vec3 move = axis("Move");
+        vec3 move = Input:axis(Action.Move);
         vec3 wanted = heading * [move.x, move.y, 0];
 
         float speed = walkSpeed;
-        is held("Sprint")? then {
+        is Input:held(Action.Sprint)? then {
             speed = sprintSpeed;
         }
 
@@ -48,7 +49,7 @@ component CharacterController {
         -- slopes (and pressing down would only cost time).
         is onGround(this)? then {
             fall = 0;
-            is pressed("Jump")? then {
+            is Input:pressed(Action.Jump)? then {
                 fall = Maths:sqrt(2 * gravity * jumpHeight);
             }
         } or {

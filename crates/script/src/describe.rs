@@ -203,6 +203,36 @@ pub const MOVED: &[Moved] = &[
         lust: "target:name() (inside a component, name() for its own entity)",
         lua: "solis.entity.name(target)",
     },
+    Moved {
+        old: "held",
+        lust: "Input:held(Action.Jump), with fetch \"solis/input\":Input; and fetch \"solis/project\":Action;",
+        lua: "solis.Input:held(\"Jump\")",
+    },
+    Moved {
+        old: "pressed",
+        lust: "Input:pressed(Action.Jump), with fetch \"solis/input\":Input; and fetch \"solis/project\":Action;",
+        lua: "solis.Input:pressed(\"Jump\")",
+    },
+    Moved {
+        old: "released",
+        lust: "Input:released(Action.Jump), with fetch \"solis/input\":Input; and fetch \"solis/project\":Action;",
+        lua: "solis.Input:released(\"Jump\")",
+    },
+    Moved {
+        old: "axis",
+        lust: "Input:axis(Action.Move), with fetch \"solis/input\":Input; and fetch \"solis/project\":Action;",
+        lua: "solis.Input:axis(\"Move\")",
+    },
+    Moved {
+        old: "bindingOf",
+        lust: "Input:binding(Action.Jump)",
+        lua: "solis.Input:binding(\"Jump\")",
+    },
+    Moved {
+        old: "rebind",
+        lust: "Input:rebind(Action.Jump, input)",
+        lua: "solis.Input:rebind(\"Jump\", input)",
+    },
 ];
 
 /// Every native method Solis gives game code.
@@ -364,43 +394,43 @@ pub const NATIVES: &[Native] = &[
     Native {
         file: "input",
         name: "held",
-        owner: "",
-        lust: "method bool held(string action) native;",
+        owner: "Input",
+        lust: "method bool held(Action action) native;",
         about: "Whether an action's input is held down this tick (\"Jump\"; an axis such as \"Move\": not at rest). Actions are set up in Edit > Input actions.",
     },
     Native {
         file: "input",
         name: "pressed",
-        owner: "",
-        lust: "method bool pressed(string action) native;",
+        owner: "Input",
+        lust: "method bool pressed(Action action) native;",
         about: "Whether an action's input went down since the last tick: true once per press.",
     },
     Native {
         file: "input",
         name: "released",
-        owner: "",
-        lust: "method bool released(string action) native;",
+        owner: "Input",
+        lust: "method bool released(Action action) native;",
         about: "Whether an action's input came up since the last tick: true once per release.",
     },
     Native {
         file: "input",
         name: "axis",
-        owner: "",
-        lust: "method vec3 axis(string action) native;",
+        owner: "Input",
+        lust: "method vec3 axis(Action action) native;",
         about: "An axis action's two numbers as x (across: right is +1) and y (up or forward: +1); z is 0. Move gives which way to go, each from -1 to 1; Look gives how far to turn this tick, in degrees.",
     },
     Native {
         file: "input",
-        name: "bindingOf",
-        owner: "",
-        lust: "method string bindingOf(string action) native;",
+        name: "binding",
+        owner: "Input",
+        lust: "method string binding(Action action) native;",
         about: "The input that sets an action off (a key first, then the mouse, then the gamepad), such as \"F\": for telling the player \"Press F\". Empty if it has none.",
     },
     Native {
         file: "input",
         name: "rebind",
-        owner: "",
-        lust: "method rebind(string action, string input) native;",
+        owner: "Input",
+        lust: "method rebind(Action action, string input) native;",
         about: "Binds an input (\"E\", \"Mouse Right\", \"Pad Y\") to an action from the next tick, in place of its inputs of the same kind: what a controls menu does. Lasts while the game plays.",
     },
     Native {
@@ -517,9 +547,16 @@ pub const NATIVES: &[Native] = &[
 /// that wrote them, for their first line.
 ///
 /// They include `project.lst`, the project's names as states (here for a
-/// project with none: [`descriptions_for`] gives a project's own).
+/// project with no assemblies and the ready-made input actions:
+/// [`descriptions_for`] gives a project's own).
 pub fn descriptions(made_by: &str, folder: &str) -> Vec<(String, String)> {
-    descriptions_with(made_by, folder, RENAMED, &[]).0
+    descriptions_with(
+        made_by,
+        folder,
+        RENAMED,
+        &crate::project_names::Names::standard(),
+    )
+    .0
 }
 
 /// [`descriptions`] for a project with these assemblies (their paths in
@@ -528,9 +565,9 @@ pub fn descriptions(made_by: &str, folder: &str) -> Vec<(String, String)> {
 pub fn descriptions_for(
     made_by: &str,
     folder: &str,
-    assemblies: &[String],
+    names: &crate::project_names::Names,
 ) -> (Vec<(String, String)>, Vec<String>) {
-    descriptions_with(made_by, folder, RENAMED, assemblies)
+    descriptions_with(made_by, folder, RENAMED, names)
 }
 
 /// [`descriptions_for`], with these natives renamed.
@@ -538,9 +575,9 @@ fn descriptions_with(
     made_by: &str,
     folder: &str,
     renamed: &[Renamed],
-    assemblies: &[String],
+    names: &crate::project_names::Names,
 ) -> (Vec<(String, String)>, Vec<String>) {
-    let (project, notes) = crate::project_names::project_file(made_by, assemblies);
+    let (project, notes) = crate::project_names::project_file(made_by, names);
     let mut names: Vec<&str> = NATIVES.iter().map(|n| n.file).collect();
     names.dedup();
     let files = names
@@ -640,7 +677,7 @@ fn descriptions_with(
 /// The project's own names as states, written by the editor into
 /// `solis/project.lst` ([`crate::project_names::project_file`]): what natives take where a string
 /// once named a file.
-pub const PROJECT_STATES: &[&str] = &["Assembly"];
+pub const PROJECT_STATES: &[&str] = &["Assembly", "Action"];
 
 /// What the first line of each file describing the engine says after who made it: how the
 /// compiler knows the engine's own folder (Lust's host folder, decision 0072), without the
@@ -692,10 +729,10 @@ mod tests {
         files.push((
             "main.lst".into(),
             "fetch \"solis/world\":[World, Saves];\n\
-             fetch \"solis/project\":Assembly;\n\
+             fetch \"solis/project\":[Assembly, Action];\n\
+             fetch \"solis/input\":Input;\n\
              get \"solis/entity\":facingAlong;\n\
              get \"solis/physics\":[push, velocityOf, setVelocity, castRay, castRayHit, castRayNormal];\n\
-             get \"solis/input\":[held, pressed, released, axis, bindingOf, rebind];\n\
              get \"solis/sound\":[playSound, playSoundAt, playSoundOn, stopSoundsOn, setSoundPlaying, setBusVolume];\n\
              get \"solis/animation\":[playClip, replayClip, stopClip];\n\
              fetch \"solis/animation\":AnimationCue;\n\
@@ -739,9 +776,9 @@ mod tests {
                      World:setSeed(World:randomInt(1, 6));\n\
                      float r = World:random() + World:randomRange(1, 2);\n\
                      World:fire(position(), step, 10, 1, [1, 0, 0]);\n\
-                     is held(\"Jump\") && pressed(\"Jump\") || released(\"Jump\")? then {\n\
-                         rebind(\"Jump\", \"Space\");\n\
-                         World:say(bindingOf(\"Jump\") + axis(\"Move\").x.text());\n\
+                     is Input:held(Action.Jump) && Input:pressed(Action.Jump) || Input:released(Action.Jump)? then {\n\
+                         Input:rebind(Action.Jump, \"Space\");\n\
+                         World:say(Input:binding(Action.Jump) + Input:axis(Action.Move).x.text());\n\
                      }\n\
                      push(other, velocityOf(this) + castRayNormal(position(), step, 10));\n\
                      is castRay(position(), step, 10) > 0 && castRayHit(position(), step, 10) == other? then {\n\
@@ -831,7 +868,13 @@ mod tests {
             new: "facingAlong",
             until: "Phase 12",
         }];
-        let mut files = descriptions_with("Test Engine 9.9.9", "solis", &renamed, &[]).0;
+        let mut files = descriptions_with(
+            "Test Engine 9.9.9",
+            "solis",
+            &renamed,
+            &crate::project_names::Names::standard(),
+        )
+        .0;
         let entity = &files
             .iter()
             .find(|(p, _)| p == "solis/entity.lst")

@@ -3,7 +3,8 @@
 -- actions…), so players can rebind them.
 
 get "solis/physics":[velocityOf, castRay];
-get "solis/input":[axis, held];
+fetch "solis/input":Input;
+fetch "solis/project":Action;
 
 -- Follows behind a character, turning with Look. A wall between them
 -- pulls the camera in, so it never looks through walls. The wheel (Zoom)
@@ -26,11 +27,11 @@ component ThirdPersonCamera {
         is target == nothing? then {
             return;
         }
-        vec3 look = axis("Look");
+        vec3 look = Input:axis(Action.Look);
         yaw = yaw - look.x;
         pitch = Maths:clamp(pitch + look.y, lowest, highest);
         is wheelZooms? then {
-            distance = distance * Maths:power(0.85, axis("Zoom").y);
+            distance = distance * Maths:power(0.85, Input:axis(Action.Zoom).y);
             distance = Maths:clamp(distance, closest, farthest);
         }
         -- Where the character will be after this tick, so the camera
@@ -68,7 +69,7 @@ component FirstPersonCamera {
         is body == nothing? then {
             return;
         }
-        vec3 look = axis("Look");
+        vec3 look = Input:axis(Action.Look);
         yaw = yaw - look.x;
         pitch = Maths:clamp(pitch + look.y, lowest, highest);
         moveTo(body:position() + velocityOf(body) * dt + [0, 0, eyes]);
@@ -97,16 +98,16 @@ component RtsCamera {
     }
 
     method update(float dt) {
-        yaw = yaw - axis("Turn").x * turnSpeed * dt;
-        height = height * Maths:power(0.88, axis("Zoom").y);
+        yaw = yaw - Input:axis(Action.Turn).x * turnSpeed * dt;
+        height = height * Maths:power(0.88, Input:axis(Action.Zoom).y);
         height = Maths:clamp(height, lowest, highest);
         -- Higher up, it pans faster, so the map moves the same on screen.
         float scale = height / 30;
         rotation heading = [0, 0, yaw];
-        vec3 pan = axis("Pan");
+        vec3 pan = Input:axis(Action.Pan);
         focus = focus + heading * [pan.x, pan.y, 0] * panSpeed * scale * dt;
-        is held("Drag")? then {
-            vec3 drag = axis("Look");
+        is Input:held(Action.Drag)? then {
+            vec3 drag = Input:axis(Action.Look);
             focus = focus - heading * [drag.x, drag.y, 0] * height * 0.01;
         }
         float down = Maths:clamp(tilt, 10, 90) * Maths.pi / 180;

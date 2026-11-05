@@ -101,14 +101,24 @@ impl GameCode {
     /// version. Returns notes on any that couldn't be written.
     ///
     /// They include `solis/project.lst`, the project's names (its
-    /// assemblies) as states, so call this again when the assets change;
+    /// assemblies, and the input actions in its `input.solinput`, beside
+    /// `assets`) as states, so call this again when they change;
     /// the notes then also say which names game code can't use.
     pub fn describe(assets: &Path, made_by: &str) -> Vec<String> {
-        let (files, mut notes) = script::describe::descriptions_for(
-            made_by,
-            crate::branding::CODE_FOLDER,
-            &assemblies(assets),
-        );
+        let names = script::project_names::Names {
+            assemblies: assemblies(assets),
+            actions: assets
+                .parent()
+                .map_or_else(input::Bindings::default, |root| {
+                    crate::play_files::load_bindings(root).0
+                })
+                .actions
+                .into_iter()
+                .map(|a| a.name)
+                .collect(),
+        };
+        let (files, mut notes) =
+            script::describe::descriptions_for(made_by, crate::branding::CODE_FOLDER, &names);
         for (path, text) in files {
             let file = assets.join(&path);
             if same_text(&file, &text) {
@@ -321,6 +331,26 @@ mod tests {
         );
         let project = std::fs::read_to_string(assets.join("solis/project.lst")).unwrap();
         assert!(project.contains("Ships [Fighter, Freighter]"), "{project}");
+        assert!(
+            project.contains("state Action = [Move, Look, Jump,"),
+            "the ready-made actions: {project}"
+        );
+        // The project's own input actions, beside its assets.
+        let mut bindings = input::Bindings::default();
+        bindings
+            .actions
+            .push(input::Action::button("OpenMap", &["M"]));
+        bindings
+            .actions
+            .push(input::Action::button("openMap2", &["N"]));
+        std::fs::write(assets.parent().unwrap().join(input::FILE), bindings.write()).unwrap();
+        let notes = code.describe_again(&assets, "Test 1.0");
+        assert!(
+            notes.iter().any(|n| n.contains("\"openMap2\"")),
+            "{notes:?}"
+        );
+        let project = std::fs::read_to_string(assets.join("solis/project.lst")).unwrap();
+        assert!(project.contains("Drag, OpenMap];"), "{project}");
     }
 
     #[test]

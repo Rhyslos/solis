@@ -12,15 +12,16 @@ It's also a debugging tool: save just before something goes wrong, and you can l
 **From game code** (in Lust, `fetch "solis/world":Saves;` then `Saves:saveTo("quick")`; in Lua, `solis.Saves:saveTo("quick")`):
 
 ```
-get "solis/input":[pressed];
 fetch "solis/world":Saves;
+fetch "solis/input":Input;
+fetch "solis/project":Action;
 
 component QuickSave {
     method update(float dt) {
-        is pressed("QuickSave")? then {
+        is Input:pressed(Action.QuickSave)? then {
             Saves:saveTo("quick");
         }
-        is pressed("QuickLoad")? then {
+        is Input:pressed(Action.QuickLoad)? then {
             Saves:loadFrom("quick");
         }
     }
@@ -36,7 +37,7 @@ Add the QuickSave and QuickLoad actions in **Edit > Input actions…** and bind 
 - Both happen at the **end of the tick**, after every component's `update`, like moves ([what game code sees](game-code.md#components)). A load replaces the whole game, so nothing else runs in that frame after it.
 - Asking for the same slot again in one tick saves once (a save is the whole game, so a `Saves:saveTo` in every unit's `update` would otherwise make thousands at a time). At most four slots are saved or loaded in one tick.
 - Loading doesn't run the game's starts again (the code outside components, and its fields' starting values): what they did already happened in the saved game.
-- `Saves:saveTo`, `Saves:loadFrom` and `rebind` work from `update` and events, not while a component starts (the Console says so if you try).
+- `Saves:saveTo`, `Saves:loadFrom` and `Input:rebind` work from `update` and events, not while a component starts (the Console says so if you try).
 - A `Saves:loadFrom` from game code leaves the game the mouse and keys, so the player carries on at once; **Play > Load a save…** gives them back to the editor.
 - **Physics** is kept as each body's place and motion. Saving starts physics afresh from those, which a loaded game does too, so the loaded game carries on exactly as the saved one does (a stack of crates may settle by a hair as you save).
 

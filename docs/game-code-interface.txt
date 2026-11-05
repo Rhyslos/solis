@@ -28,12 +28,12 @@ sound: method setBusVolume(string bus, float volume) native;
 animation: method playClip(entity on, string clip) native;
 animation: method replayClip(entity on, string clip) native;
 animation: method stopClip(entity on) native;
-input: method bool held(string action) native;
-input: method bool pressed(string action) native;
-input: method bool released(string action) native;
-input: method vec3 axis(string action) native;
-input: method string bindingOf(string action) native;
-input: method rebind(string action, string input) native;
+input: object Input: method bool held(Action action) native;
+input: object Input: method bool pressed(Action action) native;
+input: object Input: method bool released(Action action) native;
+input: object Input: method vec3 axis(Action action) native;
+input: object Input: method string binding(Action action) native;
+input: object Input: method rebind(Action action, string input) native;
 physics: method push(entity which, vec3 impulse) native;
 physics: method vec3 velocityOf(entity which) native;
 physics: method setVelocity(entity which, vec3 velocity) native;
@@ -57,6 +57,12 @@ animation: event ClipFinished(string clip);
 
 ## Lua (solis.<name>)
 
+solis.Input:axis
+solis.Input:binding
+solis.Input:held
+solis.Input:pressed
+solis.Input:rebind
+solis.Input:released
 solis.Saves:loadFrom
 solis.Saves:saveTo
 solis.World:find
@@ -69,8 +75,6 @@ solis.World:say
 solis.World:setSeed
 solis.World:spawn
 solis.World:time
-solis.axis
-solis.bindingOf
 solis.castRay
 solis.castRayHit
 solis.castRayNormal
@@ -82,17 +86,13 @@ solis.entity.position
 solis.entity.rotation
 solis.entity.turnTo
 solis.facingAlong
-solis.held
 solis.moveCharacter
 solis.onGround
 solis.playClip
 solis.playSound
 solis.playSoundAt
 solis.playSoundOn
-solis.pressed
 solis.push
-solis.rebind
-solis.released
 solis.replayClip
 solis.send
 solis.setBusVolume
