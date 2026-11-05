@@ -37,7 +37,30 @@ pub enum UpdateNotice {
     Failed(String),
 }
 
+/// What a newer build brings, as its release on GitHub says, for the
+/// launcher's Updates page (decision 0086).
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct ReleaseNotes {
+    /// Its build number.
+    pub build: u64,
+    /// Its notes, as plain text (may be empty).
+    pub notes: String,
+    /// The day it was published (`2026-11-05`), if known.
+    pub published: Option<String>,
+}
+
 impl UpdateNotice {
+    /// The newer build this is about, if any.
+    pub fn newer_build(&self) -> Option<u64> {
+        match self {
+            UpdateNotice::Available(b)
+            | UpdateNotice::Downloading(b)
+            | UpdateNotice::Ready(b)
+            | UpdateNotice::NotInstalled(b) => Some(*b),
+            _ => None,
+        }
+    }
+
     /// One line for the Help menu.
     pub fn line(&self) -> String {
         match self {
@@ -59,6 +82,12 @@ impl UpdateNotice {
 }
 
 impl Workbench {
+    /// What the newer build found brings, for the launcher's Updates
+    /// page.
+    pub fn set_release_notes(&mut self, notes: Option<ReleaseNotes>) {
+        self.release_notes = notes;
+    }
+
     /// Tells the editor how updating is going.
     pub fn set_update(&mut self, notice: UpdateNotice) {
         self.update = notice;
@@ -81,6 +110,11 @@ impl Workbench {
         let Some(offer) = self.offer.clone() else {
             return;
         };
+        // The launcher's Updates page shows the same, with its buttons.
+        if self.launcher.open && self.launcher.page == crate::launcher::Page::Updates {
+            self.offer = None;
+            return;
+        }
         let name = self.info.name.clone();
         let Some(answer) =
             crate::splash::update_question(ctx, &name, &offer, &mut self.skip_offer, 0.0)

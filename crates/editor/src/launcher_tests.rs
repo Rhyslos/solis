@@ -292,6 +292,76 @@ fn renaming_the_open_project_changes_its_name_and_nothing_else() {
 }
 
 #[test]
+fn the_updates_page_says_what_s_new_and_does_the_next_step() {
+    use crate::updates::{ReleaseNotes, UpdateNotice};
+    let mut w = launcher_with(Vec::new());
+    w.set_update(UpdateNotice::Available(60));
+    w.set_release_notes(Some(ReleaseNotes {
+        build: 60,
+        notes: "Build 60 of Test Engine:\n\n> The launcher".into(),
+        published: Some("2026-11-05".into()),
+    }));
+    let mut h = harness(w);
+    h.run();
+    // A newer build is marked in the sidebar and at its bottom.
+    assert!(h.query_by_label_contains("Build 60 is out").is_some());
+    h.get_by_label("Updates").click();
+    h.run();
+    for label in [
+        "What's new in build 60",
+        "The launcher",
+        "Published 2026-11-05",
+        "Build 57",
+    ] {
+        assert!(h.query_by_label_contains(label).is_some(), "{label}");
+    }
+    h.get_by_label("Download").click();
+    h.run();
+    assert!(
+        h.state()
+            .1
+            .actions
+            .contains(&WorkbenchAction::DownloadUpdate)
+    );
+    h.get_by_label("Check now").click();
+    h.run();
+    assert!(
+        h.state()
+            .1
+            .actions
+            .contains(&WorkbenchAction::CheckForUpdates)
+    );
+    h.get_by_label_contains("Look for updates when").click();
+    h.run();
+    assert!(
+        h.state()
+            .1
+            .actions
+            .contains(&WorkbenchAction::SetAutoUpdate(false))
+    );
+    // Downloaded: Restart to update closes to install it.
+    h.state_mut().0.set_update(UpdateNotice::Ready(60));
+    h.run();
+    h.get_by_label("Restart to update").click();
+    h.run();
+    assert!(h.state().0.restarting());
+    assert!(h.state().1.actions.contains(&WorkbenchAction::Quit));
+    // The question Help > Check for updates asks isn't asked over this page.
+    h.state_mut().0.offer_update(crate::splash::UpdateOffer {
+        latest: 61,
+        current: Some(57),
+        installed: true,
+    });
+    h.run();
+    assert!(h.state().0.offer.is_none());
+    // Up to date: no notes, nothing to do.
+    h.state_mut().0.set_update(UpdateNotice::UpToDate(57));
+    h.run();
+    assert!(h.query_by_label("You have it").is_some());
+    assert!(h.query_by_label_contains("What's new").is_none());
+}
+
+#[test]
 fn the_learn_page_offers_the_examples_and_the_manual() {
     let mut h = harness(launcher_with(Vec::new()));
     h.run();

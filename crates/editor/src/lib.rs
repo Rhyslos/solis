@@ -96,7 +96,7 @@ pub use save_game::{FORMAT as SAVE_FORMAT, save_read_back, save_reads};
 pub use sound_view::{EventState, Preview, SoundInfo, SoundState};
 pub use splash::{SplashView, UpdateAnswer, UpdateOffer};
 pub use transforming::Snapping;
-pub use updates::UpdateNotice;
+pub use updates::{ReleaseNotes, UpdateNotice};
 pub use viewport::{
     DrawReport, GAME_IMAGE, GpuSplit, MAX_IMAGES, NoRenderer, Overlays, PixelView, Tool,
     VIEWPORT_IMAGE, VIEWS, ViewBolt, ViewLayout, ViewSettings, Viewport, ViewportRenderer,

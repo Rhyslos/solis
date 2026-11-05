@@ -269,6 +269,8 @@ pub struct Workbench {
     pub(crate) settings_window: Option<crate::settings_window::SettingsWindow>,
     /// How updating is going, as the app last said.
     pub(crate) update: crate::updates::UpdateNotice,
+    /// What the newer build found brings (the launcher's Updates page).
+    pub(crate) release_notes: Option<crate::updates::ReleaseNotes>,
     /// Whether updates are checked when Solis starts.
     pub(crate) auto_update: bool,
     /// The update question, while it's asked (Help > Check for updates).
@@ -498,6 +500,7 @@ impl Workbench {
             sound_spent: std::time::Duration::ZERO,
             settings_window: None,
             update: Default::default(),
+            release_notes: None,
             auto_update: true,
             offer: None,
             skip_offer: false,

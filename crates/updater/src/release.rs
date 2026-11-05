@@ -9,6 +9,8 @@ pub const MAX_RELEASE_TEXT: u64 = 1024 * 1024;
 pub const MAX_CHECKSUM_TEXT: u64 = 4 * 1024;
 /// The most files a release may list.
 pub const MAX_ASSETS: usize = 64;
+/// The most of a release's notes kept, in characters.
+pub const MAX_NOTES: usize = 4000;
 /// The biggest installer downloaded.
 pub const MAX_INSTALLER_SIZE: u64 = 512 * 1024 * 1024;
 
@@ -24,6 +26,11 @@ pub struct Release {
     pub installer: Asset,
     /// The text file holding the installer's SHA-256.
     pub checksum: Asset,
+    /// What the build brings, as its release says (plain text, at most
+    /// [`MAX_NOTES`] characters; empty when it says nothing).
+    pub notes: String,
+    /// The day it was published (`2026-11-05`), if GitHub says.
+    pub published: Option<String>,
 }
 
 /// One file of a release.
@@ -46,6 +53,10 @@ struct RawRelease {
     prerelease: bool,
     #[serde(default)]
     assets: Vec<RawAsset>,
+    #[serde(default)]
+    body: Option<String>,
+    #[serde(default)]
+    published_at: Option<String>,
 }
 
 #[derive(Deserialize)]
@@ -114,7 +125,32 @@ pub fn read_release(text: &str, repo: &str, installer_name: &str) -> Result<Rele
         build,
         installer,
         checksum,
+        notes: notes_of(raw.body.as_deref().unwrap_or("")),
+        published: raw.published_at.as_deref().and_then(day_of),
     })
+}
+
+/// A release's notes made safe to show: control characters but line
+/// breaks and tabs dropped, Windows line ends made plain, and cut to
+/// [`MAX_NOTES`] characters.
+pub fn notes_of(body: &str) -> String {
+    let text: String = body
+        .replace("\r\n", "\n")
+        .chars()
+        .filter(|c| !c.is_control() || *c == '\n' || *c == '\t')
+        .take(MAX_NOTES)
+        .collect();
+    text.trim().to_string()
+}
+
+/// The day of a GitHub time (`2026-11-05T19:45:00Z` gives `2026-11-05`),
+/// if it starts with one.
+pub fn day_of(time: &str) -> Option<String> {
+    let day = time.get(..10)?;
+    let b = day.as_bytes();
+    let digits = |r: std::ops::Range<usize>| b[r].iter().all(u8::is_ascii_digit);
+    (digits(0..4) && b[4] == b'-' && digits(5..7) && b[7] == b'-' && digits(8..10))
+        .then(|| day.to_string())
 }
 
 /// Whether `url` is a file of one of `repo`'s releases on github.com.

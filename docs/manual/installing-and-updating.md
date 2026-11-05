@@ -30,7 +30,9 @@ Solis is now in the Start menu (with its logo, a glowing swirl round a dark cent
 
 **Check now:** Help > **Check for updates**. If there's a newer build, the same window asks, even about a build you skipped. **Update now** then downloads it while you keep working, and a **Restart to update** button appears at the top right, just left of the Play buttons: click it (Solis asks about unsaved work first), or keep working and the update installs when you close Solis. The line under Check for updates says how it went: *Up to date (build 57)*, *Build 58 is available*, *Downloading build 58…*, or what went wrong.
 
-**Which build do I have?** Help > **About Solis** shows the version and build number, as does the window's title.
+**The Updates page:** the [launcher](launcher.md) (**File > Projects…**) has an **Updates** page with the same steps in one place: the build you have, the newest build and what it brings, **Check now**, **Download** and **Restart to update**. A **New** mark beside Updates says a newer build is out.
+
+**Which build do I have?** Help > **About Solis** shows the version and build number, as does the window's title, and so does the bottom of the launcher's sidebar.
 
 ## Settings
 | Setting | What it does |

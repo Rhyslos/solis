@@ -1,4 +1,7 @@
-use crate::release::{self, build_of_tag, is_release_download, read_checksum, read_release};
+use crate::release::{
+    self, MAX_NOTES, build_of_tag, day_of, is_release_download, notes_of, read_checksum,
+    read_release,
+};
 use crate::*;
 use std::cell::Cell;
 use std::path::{Path, PathBuf};
@@ -33,6 +36,25 @@ fn a_release_gives_its_build_installer_and_checksum() {
     assert_eq!(release.installer.size, 1234);
     assert_eq!(release.installer.url, url("build-57", SETUP));
     assert_eq!(release.checksum.name, format!("{SETUP}.sha256"));
+}
+
+#[test]
+fn a_release_s_notes_and_day_are_read_safely() {
+    let text = release_text("build-9").replacen(
+        "\"draft\"",
+        "\"body\":\"Build 9:\\r\\n\\n> The launcher\\u0007\",\"published_at\":\"2026-11-05T19:45:00Z\",\"draft\"",
+        1,
+    );
+    let release = read_release(&text, REPO, SETUP).unwrap();
+    assert_eq!(release.notes, "Build 9:\n\n> The launcher");
+    assert_eq!(release.published.as_deref(), Some("2026-11-05"));
+    // None given: empty, and no day.
+    let plain = read_release(&release_text("build-9"), REPO, SETUP).unwrap();
+    assert_eq!((plain.notes.as_str(), plain.published), ("", None));
+    assert_eq!(notes_of(&"x".repeat(MAX_NOTES * 2)).len(), MAX_NOTES);
+    for bad in ["", "2026-11", "20261105T00", "2026-1x-05T", "😀😀😀😀😀😀"] {
+        assert_eq!(day_of(bad), None, "{bad}");
+    }
 }
 
 #[test]

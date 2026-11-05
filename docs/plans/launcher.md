@@ -36,6 +36,8 @@ The mock-up's version numbers (0.4.0, 0.5.0) stand for Solis's build numbers: wh
 
 ### L3. The Updates page
 
+> **Built:** as planned, but without "installed on" and "last checked at" times, which Solis doesn't keep. A newer build's notes and published day come from its release; the update question isn't asked over the Updates page, which has the same buttons. **The launcher is complete** (L1 to L3). Next: all of game UI.
+
 - This build and when it was installed; the newest build and what it brings (its release's text); **Check now**; **Download** or **Restart to update**; "Look for updates when Solis starts".
 - Updates' place in the sidebar marks a new build; the bottom line says it's ready.
 - The release workflow writes what the build brings: the pull request's title instead of the merge's commit line.
