@@ -166,14 +166,72 @@ impl Runtime {
         &self,
         view: &mlua::Function,
         limit: std::time::Duration,
+        shown_for: Option<EntityId>,
+        readers: &[(String, String)],
+        reader: &mut dyn crate::screens::ScreenReader,
     ) -> Result<Table, CodeProblem> {
         let luau = &self.luau;
-        luau.clock
-            .within(limit, || luau.clock.limited(|| view.call::<Table>(())))
-            .map_err(|err| match self.lust.as_ref() {
-                Some(program) => located(&program.chunk, &err),
-                None => lua_problem("", &err),
-            })
+        let lua = &luau.lua;
+        let program = self.lust.as_ref();
+        let reader = RefCell::new(reader);
+        let result = lua.scope(|scope| {
+            let natives = lua.create_table()?;
+            natives.raw_set(
+                "Ui_entity",
+                scope.create_function(move |_, _ui: LuaValue| {
+                    Ok(shown_for.map(|e| e.to_string()))
+                })?,
+            )?;
+            for (component, method) in readers {
+                let reader = &reader;
+                natives.raw_set(
+                    format!("entity_{method}"),
+                    scope.create_function(move |_, which: LuaValue| {
+                        // Stopped at the screen's line, as Lust's own natives stop:
+                        // Lua's error, four calls up (past this, Lust's
+                        // L.native and the method's own body).
+                        let stop = |message: String| -> mlua::Result<Table> {
+                            let error: mlua::Function = match program {
+                                Some(p) => p.env.get("error")?,
+                                None => lua.globals().get("error")?,
+                            };
+                            error.call::<()>((message, 4))?;
+                            Err(mlua::Error::runtime("stopped"))
+                        };
+                        let Some(program) = program else {
+                            return stop("the screens have no code".into());
+                        };
+                        let Some(entity) = crate::convert::entity_of(&which) else {
+                            return stop(format!(
+                                "{method}() needs an entity, and this is nothing"
+                            ));
+                        };
+                        let Some(data) = reader.borrow_mut().values(entity, component) else {
+                            return stop(format!(
+                                "this entity has no {component}, so {method}() has nothing to \
+                                 give"
+                            ));
+                        };
+                        copy_of(lua, program, component, entity, &data)
+                    })?,
+                )?;
+            }
+            let env = program.map(|p| &p.env);
+            if let Some(env) = env {
+                env.raw_set("LUST_NATIVES", &natives)?;
+            }
+            let ran = luau
+                .clock
+                .within(limit, || luau.clock.limited(|| view.call::<Table>(())));
+            if let Some(env) = env {
+                env.raw_set("LUST_NATIVES", LuaValue::Nil)?;
+            }
+            ran
+        });
+        result.map_err(|err| match program {
+            Some(program) => located(&program.chunk, &err),
+            None => lua_problem("", &err),
+        })
     }
 
     /// Adds a kind of Rust component, kept across loads.
@@ -887,4 +945,29 @@ fn open_views_in(
     let host = luau.lua.create_table()?;
     host.raw_set("ui_open", open)?;
     env.raw_set("LUST_HOST", host)
+}
+
+/// A copy of the component `name` on `entity`, made by the program as a
+/// new one of its kind (so its methods work), with `data`'s values where
+/// they fit: what a screen reads (decision 0087).
+fn copy_of(
+    lua: &mlua::Lua,
+    program: &LustProgram,
+    name: &str,
+    entity: EntityId,
+    data: &ComponentData,
+) -> mlua::Result<Table> {
+    let new: mlua::Function = program.api.raw_get("new")?;
+    let table: Table = new.call((name, entity.to_string()))?;
+    if let Some(fields) = program.fields.get(name) {
+        for field in fields {
+            if let Some(value) = data
+                .get(&field.name)
+                .and_then(|v| crate::convert::to_lua(lua, &field.kind, v))
+            {
+                table.raw_set(field.key.as_str(), value)?;
+            }
+        }
+    }
+    Ok(table)
 }

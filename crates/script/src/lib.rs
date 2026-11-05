@@ -33,7 +33,7 @@ pub use lust::LuaChunk as Chunk;
 pub use objects::ObjectValues;
 pub use runtime::{Failure, Runtime, Swapped, Ticked};
 pub use rust_component::{Context, RustComponent, RustKind};
-pub use screens::{ScreenCode, Screens};
+pub use screens::{NoReader, ScreenCode, ScreenReader, Screens};
 pub use ticking::Order;
 
 /// The Lust compiler's version.

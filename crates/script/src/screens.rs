@@ -6,7 +6,10 @@
 //! view, which is run after each tick and read as a tree for `ui` to lay
 //! out. The game-wide objects are copied in, as every core gets them; a
 //! screen changing one stops with Lust's message, and anything else it
-//! changes stays in its own Luau. No engine calls are lent yet.
+//! changes stays in its own Luau. `Ui:entity()` is the entity a screen is
+//! shown for, and a reading method on entities for each Lust component
+//! (`solis/screen.lst`, which only screens fetch) gives a copy of it as the
+//! last tick left it. Nothing else of the engine's is lent.
 
 use crate::code::CodeProblem;
 use crate::runtime::{Failure, Runtime};
@@ -35,6 +38,70 @@ pub struct ScreenCode {
     /// Each screen's name (`Hud`) and file (`ui/hud.lst`), in the order
     /// they're opened.
     pub screens: Vec<(String, String)>,
+    /// The components screens can read, each with its reading method's
+    /// name (`Health`, `health`), as `solis/screen.lst` offers them.
+    pub readers: Vec<(String, String)>,
+    /// What's worth saying about them: components left out, and why.
+    pub notes: Vec<String>,
+}
+
+/// The file only screens fetch (decision 0087): `Ui`, and a reading
+/// method on entities for each component.
+pub const READERS: &str = "solis/screen.lst";
+
+/// The reading method for a component called `name` (`Health` gives
+/// `health`).
+pub fn reader_name(name: &str) -> String {
+    let mut chars = name.chars();
+    match chars.next() {
+        Some(first) => first.to_ascii_lowercase().to_string() + chars.as_str(),
+        None => String::new(),
+    }
+}
+
+/// `solis/screen.lst` for `components` (each Lust component's name and
+/// file): `Ui:entity()` and a reading method for each, except one whose
+/// name an engine call on entities has already. Gives the file, the
+/// readers kept, and notes on those left out.
+pub fn readers_file(
+    components: &[(String, String)],
+) -> (String, Vec<(String, String)>, Vec<String>) {
+    let taken: Vec<&str> = crate::describe::NATIVES
+        .iter()
+        .filter(|n| n.owner == "entity")
+        .map(|n| n.name)
+        .collect();
+    let mut text = String::from(
+        "-- Made by Solis for its screens (decision 0087): what a screen can read. Only\n\
+         -- screens fetch it.\n\n",
+    );
+    let mut readers = Vec::new();
+    let mut notes = Vec::new();
+    for (name, file) in components {
+        let reader = reader_name(name);
+        if taken.contains(&reader.as_str()) {
+            notes.push(format!(
+                "Screens can't read the component {name}: entities already have a {reader}(). \
+                 Give the component another name to read it from a screen."
+            ));
+            continue;
+        }
+        let module = file.strip_suffix(".lst").unwrap_or(file);
+        text.push_str(&format!("fetch \"{module}\":{name};\n"));
+        readers.push((name.clone(), reader));
+    }
+    text.push_str(
+        "\nobject Ui {\n    -- The entity this screen is shown for: the one whose Screen \
+         shows it.\n    method entity entity() native;\n}\n\n",
+    );
+    for (name, reader) in &readers {
+        text.push_str(&format!(
+            "-- A copy of the entity's {name} as the last tick left it; the screen stops if it \
+             has none.\nmethod {name} entity:{reader}() native;\n\n"
+        ));
+    }
+    text.push_str("pass Ui;\nend\n");
+    (text, readers, notes)
 }
 
 /// The name a screen file's assembly has: its file's name, first letter
@@ -95,10 +162,13 @@ pub fn entry(screens: &[(String, String)]) -> String {
 }
 
 /// Compiles the screens in `files` (none: nothing to do), with the
-/// engine's folders. Mistakes name the screen's file and line.
+/// engine's folders and a reading method for each of `components` (each
+/// Lust component's name and file). Mistakes name the screen's file and
+/// line.
 pub fn compile(
     files: &[(String, String)],
     engine: &lust::Engine,
+    components: &[(String, String)],
 ) -> Result<Option<ScreenCode>, Vec<CodeProblem>> {
     let (screens, mut problems) = find(files);
     if screens.is_empty() {
@@ -108,11 +178,25 @@ pub fn compile(
             Err(problems)
         };
     }
+    let (readers_text, readers, notes) = readers_file(components);
     let mut with_entry = files.to_vec();
-    with_entry.retain(|(p, _)| p != ENTRY);
+    with_entry.retain(|(p, _)| p != ENTRY && p != READERS);
     with_entry.push((ENTRY.to_string(), entry(&screens)));
-    match std::panic::catch_unwind(|| lust::to_lua_with(engine, ENTRY, &with_entry)) {
-        Ok(Ok(chunk)) if problems.is_empty() => Ok(Some(ScreenCode { chunk, screens })),
+    with_entry.push((READERS.to_string(), readers_text));
+    // The readers' file is the engine's, like solis/'s others.
+    let mut engine = lust::Engine {
+        folders: engine.folders.clone(),
+    };
+    if !engine.folders.iter().any(|f| f == "solis") {
+        engine.folders.push("solis".into());
+    }
+    match std::panic::catch_unwind(|| lust::to_lua_with(&engine, ENTRY, &with_entry)) {
+        Ok(Ok(chunk)) if problems.is_empty() => Ok(Some(ScreenCode {
+            chunk,
+            screens,
+            readers,
+            notes,
+        })),
         Ok(Ok(_)) => Err(problems),
         Ok(Err(found)) => {
             problems.extend(found.into_iter().map(CodeProblem::from).map(|mut p| {
@@ -144,6 +228,24 @@ pub struct Screens {
     views: Vec<(String, Function)>,
     /// Where each screen is written.
     files: Vec<String>,
+    /// The components screens read, with their readers' names.
+    readers: Vec<(String, String)>,
+}
+
+/// Where screens read components' values from: the running game.
+pub trait ScreenReader {
+    /// The values of the component `name` on `entity` as the last tick
+    /// left them, if it has one.
+    fn values(&mut self, entity: reflect::EntityId, name: &str) -> Option<reflect::ComponentData>;
+}
+
+/// No game to read: every entity has no components.
+pub struct NoReader;
+
+impl ScreenReader for NoReader {
+    fn values(&mut self, _: reflect::EntityId, _: &str) -> Option<reflect::ComponentData> {
+        None
+    }
 }
 
 impl std::fmt::Debug for Screens {
@@ -181,6 +283,7 @@ impl Screens {
             runtime,
             views,
             files: code.screens.iter().map(|(_, f)| f.clone()).collect(),
+            readers: code.readers.clone(),
         })
     }
 
@@ -194,10 +297,16 @@ impl Screens {
         let _ = self.runtime.set_object_values(values);
     }
 
-    /// Runs the screen `name`'s view and reads its tree, or says why not:
-    /// it failed (at its file and line), it took too long, or there's no
-    /// such screen.
-    pub fn view(&self, name: &str) -> Result<Node, CodeProblem> {
+    /// Runs the screen `name`'s view, shown for `entity` (`Ui:entity()`),
+    /// reading components through `reader`, and reads its tree; or says
+    /// why not: it failed (at its file and line), it took too long, or
+    /// there's no such screen.
+    pub fn view(
+        &self,
+        name: &str,
+        entity: Option<reflect::EntityId>,
+        reader: &mut dyn ScreenReader,
+    ) -> Result<Node, CodeProblem> {
         let Some(at) = self.views.iter().position(|(n, _)| n == name) else {
             return Err(CodeProblem {
                 file: String::new(),
@@ -209,7 +318,7 @@ impl Screens {
         let file = self.files.get(at).cloned().unwrap_or_default();
         let tree = self
             .runtime
-            .run_view(&self.views[at].1, VIEW_LIMIT)
+            .run_view(&self.views[at].1, VIEW_LIMIT, entity, &self.readers, reader)
             .map_err(|mut p| {
                 if p.file.is_empty() {
                     p.file = file;

@@ -501,7 +501,6 @@ fn declarations(text: &str) -> Vec<(u32, &'static str, String)> {
 fn compile_here(code: &Code) -> Result<Option<Compiled>, Vec<CodeProblem>> {
     let mut problems = Vec::new();
     let mut lust = None;
-    let mut screens = None;
     if !code.files.is_empty() {
         let mut missing = check_entry(code);
         missing.extend(long_prefix_chains(&code.files));
@@ -517,13 +516,6 @@ fn compile_here(code: &Code) -> Result<Option<Compiled>, Vec<CodeProblem>> {
                 Ok(Ok(chunk)) => lust = Some(chunk),
                 Ok(Err(found)) => problems.extend(found.into_iter().map(CodeProblem::from)),
                 Err(_) => problems.push(compiler_stopped()),
-            }
-            // The screens, once the game's code is sound (decision 0087).
-            if problems.is_empty() {
-                match crate::screens::compile(files, &engine) {
-                    Ok(code) => screens = code,
-                    Err(found) => problems.extend(found),
-                }
             }
         } else {
             problems.extend(missing);
@@ -559,7 +551,7 @@ fn compile_here(code: &Code) -> Result<Option<Compiled>, Vec<CodeProblem>> {
         schemas: Vec::new(),
         places: std::collections::BTreeMap::new(),
         bytecode,
-        screens,
+        screens: None,
     };
     // Starting it here reads its components, so the editor needn't on the
     // frame.
@@ -585,6 +577,20 @@ fn compile_here(code: &Code) -> Result<Option<Compiled>, Vec<CodeProblem>> {
         if let Some(place) = place {
             compiled.places.insert(schema.name.clone(), place);
         }
+    }
+    // The screens, once the game's code is sound and its components known
+    // (decision 0087): each Lust component readable from them.
+    if !code.files.is_empty() {
+        let components: Vec<(String, String)> = compiled
+            .places
+            .iter()
+            .filter(|(_, (file, _))| file.ends_with(".lst"))
+            .map(|(name, (file, _))| (name.clone(), file.clone()))
+            .collect();
+        let engine = lust::Engine {
+            folders: crate::describe::engine_folders(&code.files),
+        };
+        compiled.screens = crate::screens::compile(&code.files, &engine, &components)?;
     }
     Ok(Some(compiled))
 }

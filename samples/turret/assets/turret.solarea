@@ -39,6 +39,9 @@ entity APS1EF29SEJJQ {
     order = "a2";
     Armour = {};
     Health = {};
+    Screen.screen = "DroneHealth";
+    Screen.shown = true;
+    Screen.order = 0;
     Sparks = {};
     Transform.position = [0.0, 10.0, 4.0];
     Transform.rotation = [0.0, 0.0, 0.0, 1.0];

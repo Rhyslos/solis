@@ -57,7 +57,7 @@ fn a_screen_is_compiled_on_its_own_and_reads_the_game_s_objects() {
     assert_eq!(screen_code.screens[0].0, "Hud");
     let screens = Screens::start(&screen_code).unwrap();
     assert_eq!(screens.names(), vec!["Hud".to_string()]);
-    let view = screens.view("Hud").unwrap();
+    let view = screens.view("Hud", None, &mut NoReader).unwrap();
     assert_eq!(view.kind, "view");
     let mut said = Vec::new();
     texts(&view, &mut said);
@@ -75,9 +75,12 @@ fn a_screen_is_compiled_on_its_own_and_reads_the_game_s_objects() {
     game.tick(0.1, &mut crate::NoHost);
     screens.set_objects(&game.object_values());
     let mut said = Vec::new();
-    texts(&screens.view("Hud").unwrap(), &mut said);
+    texts(
+        &screens.view("Hud", None, &mut NoReader).unwrap(),
+        &mut said,
+    );
     assert_eq!(said, vec!["Hour 8".to_string()]);
-    assert!(screens.view("Nope").is_err());
+    assert!(screens.view("Nope", None, &mut NoReader).is_err());
 }
 
 #[test]
@@ -90,7 +93,7 @@ fn a_screen_can_t_change_the_game_s_objects() {
         .unwrap()
         .unwrap();
     let screens = Screens::start(compiled.screens.as_ref().unwrap()).unwrap();
-    let err = screens.view("Hud").unwrap_err();
+    let err = screens.view("Hud", None, &mut NoReader).unwrap_err();
     assert!(err.message.contains("can't be changed here"), "{err:?}");
     assert_eq!(err.file, "ui/hud.lst");
     assert!(err.line > 0);
@@ -107,7 +110,7 @@ fn a_screen_that_runs_forever_is_stopped() {
         .unwrap();
     let screens = Screens::start(compiled.screens.as_ref().unwrap()).unwrap();
     let started = std::time::Instant::now();
-    assert!(screens.view("Hud").is_err());
+    assert!(screens.view("Hud", None, &mut NoReader).is_err());
     assert!(started.elapsed() < std::time::Duration::from_secs(2));
 }
 
@@ -136,4 +139,76 @@ fn mistakes_in_screens_name_their_file() {
     // No screens: nothing to run.
     let compiled = compile(&code(&[("main.lst", MAIN)])).unwrap().unwrap();
     assert!(compiled.screens.is_none());
+}
+
+const HEALTH: &str = "component Health {\n    has {\n        float hp = 20;\n        float maxHp = 20;\n    }\n    method float fraction() {\n        return hp / maxHp;\n    }\n}\ncomponent Position {\n    has { float x = 0; }\n}\npass Health, Position;\nend\n";
+
+const BAR: &str = "fetch \"solis/screen\":Ui;\nfetch \"main\":Health;\n\nassembly Bar {\n    view {\n        Health h = Ui:entity():health();\n        text h.hp.text() + \" of \" + h.maxHp.text();\n        progress h:fraction() [to 1.0];\n        h.hp = 0;\n    }\n}\n\npass Bar;\nend\n";
+
+/// A game whose Health on `drone` has `hp`.
+struct Drone(reflect::EntityId, f64);
+
+impl ScreenReader for Drone {
+    fn values(&mut self, entity: reflect::EntityId, name: &str) -> Option<reflect::ComponentData> {
+        (entity == self.0 && name == "Health").then(|| {
+            let mut data = reflect::ComponentData::default();
+            data.set("hp", reflect::Value::Float(self.1));
+            data.set("maxHp", reflect::Value::Float(20.0));
+            data
+        })
+    }
+}
+
+#[test]
+fn a_screen_reads_the_entity_it_s_shown_for_through_the_engine() {
+    let compiled = compile(&code(&[("main.lst", HEALTH), ("ui/bar.lst", BAR)]))
+        .unwrap()
+        .unwrap();
+    let screen_code = compiled.screens.as_ref().unwrap();
+    assert!(
+        screen_code
+            .readers
+            .contains(&("Health".into(), "health".into()))
+    );
+    // Position's reader would be entities' own position(): left out, said.
+    assert!(!screen_code.readers.iter().any(|(n, _)| n == "Position"));
+    assert!(
+        screen_code.notes.iter().any(|n| n.contains("Position")),
+        "{:?}",
+        screen_code.notes
+    );
+    let screens = Screens::start(screen_code).unwrap();
+    let drone = reflect::EntityId::random();
+    let mut game = Drone(drone, 5.0);
+    let view = screens.view("Bar", Some(drone), &mut game).unwrap();
+    let mut said = Vec::new();
+    texts(&view, &mut said);
+    assert_eq!(said, vec!["5.0 of 20.0".to_string()]);
+    assert_eq!(
+        view.children[1].value,
+        Some(0.25),
+        "its method works on the copy"
+    );
+    // The screen changed its copy (hp = 0): the game's is untouched, and
+    // the next view reads it again.
+    game.1 = 15.0;
+    let mut said = Vec::new();
+    texts(
+        &screens.view("Bar", Some(drone), &mut game).unwrap(),
+        &mut said,
+    );
+    assert_eq!(said, vec!["15.0 of 20.0".to_string()]);
+    // Shown for an entity with no Health, or for none: stopped, at its line.
+    let err = screens
+        .view("Bar", Some(reflect::EntityId::random()), &mut game)
+        .unwrap_err();
+    assert!(err.message.contains("no Health"), "{err:?}");
+    assert_eq!((err.file.as_str(), err.line), ("ui/bar.lst", 6));
+    assert!(screens.view("Bar", None, &mut game).is_err());
+}
+
+#[test]
+fn only_screens_can_fetch_the_readers() {
+    let main = HEALTH.replace("pass Health", "fetch \"solis/screen\":Ui;\npass Health");
+    assert!(compile(&code(&[("main.lst", &main)])).is_err());
 }

@@ -42,6 +42,10 @@ pub const FILES: &[(&str, &str)] = &[
         AREA,
         include_str!("../../../samples/turret/assets/turret.solarea"),
     ),
+    (
+        "ui/droneHealth.lst",
+        include_str!("../../../samples/turret/assets/ui/droneHealth.lst"),
+    ),
 ];
 
 /// Makes `root` the turret sample: a new project with the sample's files.
@@ -63,7 +67,11 @@ pub fn make(root: &Path) -> Result<(), asset_db::ProjectError> {
     }
     let project = Project::create(root, NAME)?;
     for (path, text) in FILES {
-        asset_db::write_atomically(&project.assets().join(path), text.as_bytes())?;
+        let file = project.assets().join(path);
+        if let Some(folder) = file.parent() {
+            std::fs::create_dir_all(folder)?;
+        }
+        asset_db::write_atomically(&file, text.as_bytes())?;
     }
     Ok(())
 }

@@ -53,17 +53,29 @@ impl GameScreens {
 
 /// The screens shown in `world`, in drawing order: each entity's Screen
 /// that's shown and names one, by its order, then the area's order.
-pub(crate) fn shown_in(world: &world::World) -> Vec<String> {
-    let mut shown: Vec<(i64, usize, String)> = world
+pub(crate) fn shown_in(world: &world::World) -> Vec<(reflect::EntityId, String)> {
+    let mut shown: Vec<(i64, usize, reflect::EntityId, String)> = world
         .values_named(area::builtin::Screen::NAME)
         .into_iter()
         .enumerate()
-        .map(|(i, (_, data))| (i, area::builtin::Screen::from_data(&data)))
-        .filter(|(_, s)| s.shown && !s.screen.is_empty())
-        .map(|(i, s)| (s.order, i, s.screen))
+        .map(|(i, (id, data))| (i, id, area::builtin::Screen::from_data(&data)))
+        .filter(|(_, _, s)| s.shown && !s.screen.is_empty())
+        .map(|(i, id, s)| (s.order, i, id, s.screen))
         .collect();
-    shown.sort();
-    shown.into_iter().map(|(_, _, name)| name).collect()
+    shown.sort_by_key(|(order, i, _, _)| (*order, *i));
+    shown
+        .into_iter()
+        .map(|(_, _, id, name)| (id, name))
+        .collect()
+}
+
+/// What screens read: the running game's components.
+struct GameReader<'a>(Option<&'a mut script::Game>);
+
+impl script::ScreenReader for GameReader<'_> {
+    fn values(&mut self, entity: reflect::EntityId, name: &str) -> Option<reflect::ComponentData> {
+        self.0.as_deref_mut()?.values(entity, name)
+    }
 }
 
 impl Workbench {
@@ -83,10 +95,12 @@ impl Workbench {
         // Started with the program, and again when it changes.
         let fresh = !matches!(&screens.running, Some((_, from)) if Arc::ptr_eq(from, &program));
         let mut said = Vec::new();
+        let mut warned = Vec::new();
         if fresh {
             screens.last.clear();
             screens.running = None;
             if let Some(code) = &program.screens {
+                warned.extend(code.notes.iter().cloned());
                 match script::Screens::start(code) {
                     Ok(started) => screens.running = Some((started, Arc::clone(&program))),
                     Err(failure) => {
@@ -100,8 +114,9 @@ impl Workbench {
                 running.set_objects(&game.object_values());
             }
             let mut pictures = Vec::new();
-            for name in shown_in(&playing.world) {
-                match running.view(&name) {
+            let mut reader = GameReader(playing.game.as_mut());
+            for (entity, name) in shown_in(&playing.world) {
+                match running.view(&name, Some(entity), &mut reader) {
                     Ok(view) => {
                         let picture = Arc::new(ui::Screen {
                             name: name.clone(),
@@ -123,11 +138,21 @@ impl Workbench {
             }
             screens.pictures = pictures;
         }
+        for line in warned {
+            if self.game_screens.told.insert(line.clone()) {
+                self.log(LogLevel::Warning, line);
+            }
+        }
         for line in said {
             if self.game_screens.told.insert(line.clone()) {
                 self.log(LogLevel::Error, line);
             }
         }
+    }
+
+    /// The game's screens drawn over the Game panel now, in order.
+    pub fn game_screens(&self) -> &[Arc<ui::Screen>] {
+        &self.game_screens.pictures
     }
 
     /// The names of the game's screens, for a Screen's choices.
