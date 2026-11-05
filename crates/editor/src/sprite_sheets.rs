@@ -113,6 +113,42 @@ pub struct SpriteSheets {
 }
 
 impl SpriteSheets {
+    /// Each animator game code can reach, by its names (decision 0078),
+    /// sorted by path.
+    pub fn animator_names(&self) -> Vec<script::animator_code::AnimatorNames> {
+        use script::animator_code::{AnimatorNames, ParamKind};
+        let mut all: Vec<AnimatorNames> = self
+            .animators
+            .iter()
+            .filter_map(|(path, state)| match state {
+                AnimatorState::Read(file, _) => Some((path, file)),
+                AnimatorState::Failed(_) => None,
+            })
+            .map(|(path, file)| AnimatorNames {
+                path: path
+                    .rsplit_once('.')
+                    .map_or(path.as_str(), |(stem, _)| stem)
+                    .to_owned(),
+                parameters: file
+                    .parameters
+                    .iter()
+                    .map(|p| {
+                        let kind = match p.kind {
+                            animation::ParameterKind::Number(_) => ParamKind::Number,
+                            animation::ParameterKind::Switch(_) => ParamKind::Switch,
+                            animation::ParameterKind::Trigger => ParamKind::Trigger,
+                            animation::ParameterKind::Direction(_) => ParamKind::Direction,
+                        };
+                        (p.name.clone(), kind)
+                    })
+                    .collect(),
+                states: file.states.iter().map(|s| s.name.clone()).collect(),
+            })
+            .collect();
+        all.sort_by(|a, b| a.path.cmp(&b.path));
+        all
+    }
+
     /// The clips game code can name, as `sheet/clip` paths (the sheet's
     /// path without its extension), and the names of their events (cues),
     /// each sorted, for the project file (decision 0077).

@@ -30,7 +30,61 @@ For one-off sprites (a door, a crop swaying) a plain clip on the Sprite is simpl
 Every change is saved at once and runs at once, in a game that's playing too. **Ctrl + Z** and **Ctrl + Y** over the tab undo and redo changes to the animator. If the file changes on disk (edited by hand, or by Git), the tab shows it as it is now.
 
 ### In game code
-Game code can't set an animator's parameters yet. Under Solis's [API guidelines](../game-api-guidelines.md), it will reach each animator through a Lust file Solis writes for it, with a state of its state names and a method for each parameter, so a misspelt name is caught before the game runs. Until then, a game picks clips itself with `playClip` (see [Animating sprites](sprite-animation.md)), and the animator is for trying rules out in the preview.
+Each animator gets a Lust file of its own, which Solis writes into `solis/animators/` whenever the animator changes: `farmer.solanim` gives `solis/animators/farmer.lst`. In it are a [state](concepts.md#game-code) of the graph's states (`FarmerState`) and a class with a method for each thing code can set or ask (`FarmerAnimator`). Why a file? Because then every name in the graph is something Lust checks: rename the *moving* switch, and every line still calling `setMoving` is a mistake in Problems, instead of a setting that silently does nothing.
+
+A component holds the animator as a field with no starting value. Solis fills it in with the entity's own animator before the component's first update:
+
+```lust
+fetch "solis/animators/farmer":[FarmerAnimator, FarmerState];
+fetch "solis/project":Action;
+fetch "solis/input":Input;
+
+component Farmer {
+    has {
+        FarmerAnimator anim;        -- filled in by Solis
+    }
+
+    method update(float dt) {
+        -- How is the farmer moving?
+        vec3 velocity = velocity();
+        float speed = velocity:length();
+
+        -- Tell the animator.
+        anim:setMoving(speed > 0.1);
+        anim:setSpeed(speed);
+        anim:setFacing(velocity);
+
+        -- The use button swings the hoe.
+        is Input:pressed(Action.Interact)? then {
+            anim:swing();
+        }
+
+        -- Stand still while using a tool.
+        is anim:current() == FarmerState.UseTool? then {
+            setVelocity([0, 0, 0]);
+        }
+    }
+}
+
+pass Farmer;
+end
+```
+
+| A parameter or | becomes |
+|---|---|
+| switch *moving* | `anim:setMoving(on)` |
+| number *speed* | `anim:setSpeed(value)` |
+| direction *facing* | `anim:setFacing(direction)` (on the ground: its height is left out) |
+| trigger *swing* | `anim:swing()` |
+| its states (*Idle*, *Use tool*) | `FarmerState.Idle`, `FarmerState.UseTool` |
+| which state it's in | `anim:current()` |
+| jumping straight to a state | `anim:jumpTo(FarmerState.Idle)` |
+| how fast it plays | `anim:setPlaybackSpeed(1.5)` |
+
+What's set lands at the end of the tick, like a move, and the animator takes it at its next step. `current()` says the state as the tick started.
+
+- Names become Lust names: *Use tool* is `UseTool`, the file *farmer* is `FarmerAnimator`. A name that can't (it starts with a digit, or has a dash), or a parameter whose method would be one the class has already (`current`, `jumpTo`, `setPlaybackSpeed`), is left out, and the Console says which, so you can rename it.
+- The entity needs an Animator component using that file; the field's class says which file.
 
 ## Settings
 The Animator component:

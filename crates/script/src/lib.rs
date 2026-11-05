@@ -2,6 +2,7 @@
 //! a project's Lust, checked and turned into Lua by the Lust compiler, and
 //! run in Luau while the game plays.
 
+pub mod animator_code;
 pub mod code;
 mod convert;
 pub mod describe;
@@ -23,7 +24,7 @@ mod ticking;
 pub use code::{Bytecode, Code, CodeProblem, Compiled, check, compile, gather, renamed_uses};
 pub use events::Event;
 pub use game::{Change, Game, GameWorld, ViewIndex, WorldView};
-pub use host::{Host, NoHost, Shot, SoundAt};
+pub use host::{AnimatorValue, Host, NoHost, Shot, SoundAt};
 /// Game code turned into Lua, ready for a [`Runtime`].
 pub use lust::LuaChunk as Chunk;
 pub use runtime::{Failure, Runtime, Swapped, Ticked};

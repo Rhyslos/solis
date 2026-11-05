@@ -72,6 +72,8 @@ What changed in each version, for people using Solis. Newest first.
 
 ### Added
 
+- **Game code drives animators** ([decision 0078](docs/decisions/0078-animators-reached-through-their-own-files.md)): each animator gets a Lust file of its own in `solis/animators/`, with a method for each parameter and its states as names. A component holds it as a field Solis fills in (`FarmerAnimator anim;`), then calls `anim:setMoving(true)`, `anim:swing()`, `anim:current() == FarmerState.UseTool` or `anim:jumpTo(FarmerState.Idle)`. Rename a parameter in the graph and every line still using the old name is a mistake.
+
 - **`face(direction)`** turns an entity, upright, to face along a direction in one call.
 - **`solis/project.lst`**: the project's assemblies as names game code can use (`Assembly.Ships.Fighter`), written again whenever an assembly is added, renamed or removed. A misspelt or deleted assembly is now a mistake before the game runs; a file whose name can't be used from code is listed in the Console.
 

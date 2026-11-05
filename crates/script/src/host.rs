@@ -154,6 +154,27 @@ pub trait Host {
     fn set_bus_volume(&mut self, bus: &str, share: f32) {
         let _ = (bus, share);
     }
+    /// Sets a parameter of `which`'s animator, by its name in the graph,
+    /// at the end of the tick (an animator's own Lust file calls it).
+    fn animator_set(&mut self, which: EntityId, name: &str, value: AnimatorValue) {
+        let _ = (which, name, value);
+    }
+    /// The state `which`'s animator is in, by its name in the graph, as
+    /// the tick started.
+    fn animator_state(&self, which: EntityId) -> Option<String> {
+        let _ = which;
+        None
+    }
+    /// Puts `which`'s animator straight into the state called `state`, at
+    /// the end of the tick.
+    fn animator_jump(&mut self, which: EntityId, state: &str) {
+        let _ = (which, state);
+    }
+    /// How fast `which`'s animator plays its clips (1 as made), from the
+    /// end of the tick.
+    fn animator_speed(&mut self, which: EntityId, scale: f32) {
+        let _ = (which, scale);
+    }
     /// The first collider a ray meets (see `physics::State::cast_ray`).
     fn cast_ray(&self, from: Vec3, direction: Vec3, reach: f32) -> Option<physics::Hit> {
         let _ = (from, direction, reach);
@@ -167,6 +188,19 @@ pub trait Host {
     fn at(&mut self, order: &crate::ticking::Order) {
         let _ = order;
     }
+}
+
+/// A value game code gives an animator's parameter.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub enum AnimatorValue {
+    /// A number.
+    Number(f32),
+    /// On or off.
+    Switch(bool),
+    /// A trigger, fired.
+    Fire,
+    /// A direction on the ground (z is left out).
+    Direction(Vec3),
 }
 
 /// The upright rotation that turns +Y (an entity's forward) to point
@@ -620,6 +654,86 @@ pub(crate) fn with_natives<'h, R>(
                     Ok(())
                 },
             )?,
+        )?;
+        // An animator's own Lust file reaches it by its graph's names.
+        let animator = move |which: &LuaValue, name: &mlua::LuaString, value: AnimatorValue| {
+            if let (Some(e), Ok(name)) = (entity_of(which), name.to_str())
+                && name.len() <= 256
+            {
+                h.borrow_mut().animator_set(e, &name, value);
+            }
+        };
+        natives.raw_set(
+            "Animators_setNumber",
+            scope.create_function(
+                move |_, (_a, which, name, value): (LuaValue, LuaValue, mlua::LuaString, f64)| {
+                    if value.is_finite() {
+                        animator(&which, &name, AnimatorValue::Number(value as f32));
+                    }
+                    Ok(())
+                },
+            )?,
+        )?;
+        natives.raw_set(
+            "Animators_setSwitch",
+            scope.create_function(
+                move |_, (_a, which, name, on): (LuaValue, LuaValue, mlua::LuaString, bool)| {
+                    animator(&which, &name, AnimatorValue::Switch(on));
+                    Ok(())
+                },
+            )?,
+        )?;
+        natives.raw_set(
+            "Animators_fire",
+            scope.create_function(
+                move |_, (_a, which, name): (LuaValue, LuaValue, mlua::LuaString)| {
+                    animator(&which, &name, AnimatorValue::Fire);
+                    Ok(())
+                },
+            )?,
+        )?;
+        natives.raw_set(
+            "Animators_setDirection",
+            scope.create_function(
+                move |_, (_a, which, name, way): (LuaValue, LuaValue, mlua::LuaString, LuaValue)| {
+                    if let Some(way) = vec3_of(&way).filter(|w| w.is_finite()) {
+                        animator(&which, &name, AnimatorValue::Direction(way));
+                    }
+                    Ok(())
+                },
+            )?,
+        )?;
+        natives.raw_set(
+            "Animators_stateOf",
+            scope.create_function(move |_, (_a, which): (LuaValue, LuaValue)| {
+                Ok(entity_of(&which)
+                    .and_then(|e| h.borrow().animator_state(e))
+                    .unwrap_or_default())
+            })?,
+        )?;
+        natives.raw_set(
+            "Animators_jumpTo",
+            scope.create_function(
+                move |_, (_a, which, state): (LuaValue, LuaValue, mlua::LuaString)| {
+                    if let (Some(e), Ok(state)) = (entity_of(&which), state.to_str())
+                        && state.len() <= 256
+                    {
+                        h.borrow_mut().animator_jump(e, &state);
+                    }
+                    Ok(())
+                },
+            )?,
+        )?;
+        natives.raw_set(
+            "Animators_setPlaybackSpeed",
+            scope.create_function(move |_, (_a, which, scale): (LuaValue, LuaValue, f64)| {
+                if let Some(e) = entity_of(&which)
+                    && scale.is_finite()
+                {
+                    h.borrow_mut().animator_speed(e, scale as f32);
+                }
+                Ok(())
+            })?,
         )?;
         natives.raw_set(
             "Saves_saveTo",

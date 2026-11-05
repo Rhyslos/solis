@@ -28,6 +28,13 @@ sound: object Audio: method setVolume(Bus bus, float volume) native;
 animation: method entity:animate(Clip clip) native;
 animation: method entity:animateFromStart(Clip clip) native;
 animation: method entity:stopAnimation() native;
+animation: object Animators: method setNumber(entity owner, string name, float value) native;
+animation: object Animators: method setSwitch(entity owner, string name, bool on) native;
+animation: object Animators: method fire(entity owner, string name) native;
+animation: object Animators: method setDirection(entity owner, string name, vec3 direction) native;
+animation: object Animators: method string stateOf(entity owner) native;
+animation: object Animators: method jumpTo(entity owner, string named) native;
+animation: object Animators: method setPlaybackSpeed(entity owner, float scale) native;
 input: object Input: method bool held(Action action) native;
 input: object Input: method bool pressed(Action action) native;
 input: object Input: method bool released(Action action) native;
@@ -55,6 +62,13 @@ animation: event ClipFinished(Clip clip);
 
 ## Lua (solis.<name>)
 
+solis.Animators:fire
+solis.Animators:jumpTo
+solis.Animators:setDirection
+solis.Animators:setNumber
+solis.Animators:setPlaybackSpeed
+solis.Animators:setSwitch
+solis.Animators:stateOf
 solis.Audio:play
 solis.Audio:playAt
 solis.Audio:setVolume
@@ -139,6 +153,10 @@ Host: fn set_sound_playing(&mut self, which: EntityId, playing: bool)
 Host: fn play_clip(&mut self, which: EntityId, clip: &str, again: bool)
 Host: fn stop_clip(&mut self, which: EntityId)
 Host: fn set_bus_volume(&mut self, bus: &str, share: f32)
+Host: fn animator_set(&mut self, which: EntityId, name: &str, value: AnimatorValue)
+Host: fn animator_state(&self, which: EntityId) -> Option<String>
+Host: fn animator_jump(&mut self, which: EntityId, state: &str)
+Host: fn animator_speed(&mut self, which: EntityId, scale: f32)
 Host: fn cast_ray(&self, from: Vec3, direction: Vec3, reach: f32) -> Option<physics::Hit>
 Host: fn at(&mut self, order: &crate::ticking::Order)
 RustComponent: fn update(&mut self, _cx: &mut Context<'_>, _dt: f64)

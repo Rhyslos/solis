@@ -284,6 +284,12 @@ fn option_name(part: &str) -> Option<String> {
     Some(name)
 }
 
+/// A name as a Lust option or class name, folded as a path's part is
+/// (`farmer` is `Farmer`), for the animators' files; or none.
+pub fn option_name_of(part: &str) -> Option<String> {
+    option_name(part)
+}
+
 /// Lust's own objects, which no option may be called.
 const LUST_OBJECTS: &[&str] = &["Maths", "Files", "Time", "Json", "Web", "Random"];
 

@@ -575,8 +575,10 @@ impl App {
         self.workbench.set_sprite_sheets(sheets.clone());
         // The clips and their cues are names game code uses: the project
         // file is written again with them, and the code checked.
-        let (clips, cues) = self.workbench.sprite_sheets().clip_names();
-        if self.game_code.set_animation(clips, cues)
+        let sheets = self.workbench.sprite_sheets();
+        let (clips, cues) = sheets.clip_names();
+        let animators = sheets.animator_names();
+        if self.game_code.set_animation((clips, cues, animators))
             && let Some(assets) = self.projects.db().map(|db| db.project().assets())
         {
             for note in self.game_code.describe_again(&assets, &self.made_by) {

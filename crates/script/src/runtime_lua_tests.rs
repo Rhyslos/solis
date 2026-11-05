@@ -339,3 +339,121 @@ fn mistakes_in_lua_say_their_file_and_line() {
         ("typo.lua", 2)
     );
 }
+
+/// Keeps what an animator's file asked, and says it's walking.
+#[derive(Default)]
+struct Animated {
+    set: Vec<(EntityId, String, crate::AnimatorValue)>,
+    jumps: Vec<(EntityId, String)>,
+    speeds: Vec<(EntityId, f32)>,
+}
+
+impl Host for Animated {
+    fn say(&mut self, _words: &str) {}
+    fn time(&self) -> f64 {
+        0.0
+    }
+    fn find(&self, _name: &str) -> Option<EntityId> {
+        None
+    }
+    fn position(&self, _which: EntityId) -> Option<glam::Vec3> {
+        None
+    }
+    fn move_to(&mut self, _which: EntityId, _place: glam::Vec3) {}
+    fn rotation(&self, _which: EntityId) -> Option<glam::Quat> {
+        None
+    }
+    fn turn_to(&mut self, _which: EntityId, _facing: glam::Quat) {}
+    fn name(&self, _which: EntityId) -> Option<String> {
+        None
+    }
+    fn animator_set(&mut self, which: EntityId, name: &str, value: crate::AnimatorValue) {
+        self.set.push((which, name.to_string(), value));
+    }
+    fn animator_state(&self, _which: EntityId) -> Option<String> {
+        Some("Use tool".into())
+    }
+    fn animator_jump(&mut self, which: EntityId, state: &str) {
+        self.jumps.push((which, state.to_string()));
+    }
+    fn animator_speed(&mut self, which: EntityId, scale: f32) {
+        self.speeds.push((which, scale));
+    }
+}
+
+#[test]
+fn a_component_drives_its_animator_through_the_animator_s_own_file() {
+    use crate::animator_code::{AnimatorNames, ParamKind, animator_file};
+    let farmer = AnimatorNames {
+        path: "farmer".into(),
+        parameters: vec![
+            ("moving".into(), ParamKind::Switch),
+            ("speed".into(), ParamKind::Number),
+            ("facing".into(), ParamKind::Direction),
+            ("swing".into(), ParamKind::Trigger),
+        ],
+        states: vec!["Idle".into(), "Walk".into(), "Use tool".into()],
+    };
+    let (path, text) = animator_file("Test 1.0", "solis", &farmer).0.unwrap();
+    let mut files = crate::describe::descriptions("Test 1.0", "solis");
+    files.push((path, text));
+    files.push((
+        "main.lst".into(),
+        "fetch \"solis/animators/farmer\":[FarmerAnimator, FarmerState];\n\
+         component Farmer {\n    has {\n        FarmerAnimator anim;\n    }\n\
+         \x20   method update(float dt) {\n        anim:setMoving(true);\n        anim:setSpeed(2.5);\n\
+         \x20       anim:setFacing([0, 3, 0]);\n        anim:swing();\n\
+         \x20       is anim:current() == FarmerState.UseTool? then {\n            anim:jumpTo(FarmerState.Idle);\n        }\n\
+         \x20       anim:setPlaybackSpeed(2);\n    }\n}\npass Farmer;\nend\n"
+            .into(),
+    ));
+    let chunk = match lust::to_lua_with(
+        &lust::Engine {
+            folders: crate::describe::engine_folders(&files),
+        },
+        "main.lst",
+        &files,
+    ) {
+        Ok(chunk) => chunk,
+        Err(problems) => panic!("{}", problems[0]),
+    };
+    let compiled = Compiled {
+        lust: Some(chunk),
+        lua: Vec::new(),
+        schemas: Vec::new(),
+        places: Default::default(),
+        bytecode: Default::default(),
+    };
+    let mut runtime = Runtime::new().unwrap();
+    runtime.load(&compiled, &mut NoHost).unwrap();
+    // The engine's field isn't something Properties shows.
+    let schema = runtime
+        .schemas()
+        .iter()
+        .find(|s| s.name == "Farmer")
+        .unwrap()
+        .clone();
+    assert!(schema.fields.is_empty(), "{:?}", schema.fields);
+    let me = id(4);
+    let mut host = Animated::default();
+    runtime
+        .sync(me, "Farmer", &ComponentData::default(), &mut host)
+        .unwrap();
+    let failures = runtime.tick(0.5, &mut host).failures;
+    assert!(failures.is_empty(), "{failures:?}");
+    assert_eq!(
+        host.set,
+        [
+            (me, "moving".to_string(), crate::AnimatorValue::Switch(true)),
+            (me, "speed".to_string(), crate::AnimatorValue::Number(2.5)),
+            (
+                me,
+                "facing".to_string(),
+                crate::AnimatorValue::Direction(glam::Vec3::new(0.0, 3.0, 0.0))
+            ),
+            (me, "swing".to_string(), crate::AnimatorValue::Fire),
+        ]
+    );
+    assert_eq!(host.jumps, [(me, "Idle".to_string())]);
+    assert_eq!(host.speeds, [(me, 2.0)]);
+}

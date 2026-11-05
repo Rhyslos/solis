@@ -48,8 +48,45 @@ pub struct GameCode {
     /// The notes [`GameCode::describe_again`] last gave.
     told: Vec<String>,
     /// The sprites' clips (`sheet/clip` paths) and cues, for the project
-    /// file, as the editor last read them.
-    animation: (Vec<String>, Vec<String>),
+    /// file, and the animators, as the editor last read them.
+    animation: Animation,
+}
+
+/// What the editor read of the project's animation, for game code's names:
+/// the sprites' clips (`sheet/clip` paths), their cues, and the animators.
+pub type Animation = (
+    Vec<String>,
+    Vec<String>,
+    Vec<script::animator_code::AnimatorNames>,
+);
+
+/// Takes away the animators' files in `assets/solis/animators/` that
+/// `files` no longer has (an animator deleted or renamed). Only `.lst`
+/// files, never through a link.
+fn forget_animator_files(assets: &Path, files: &[(String, String)]) {
+    let folder = assets.join(crate::branding::CODE_FOLDER).join("animators");
+    let wanted: std::collections::HashSet<std::path::PathBuf> =
+        files.iter().map(|(p, _)| assets.join(p)).collect();
+    let mut folders = vec![folder];
+    while let Some(folder) = folders.pop() {
+        let Ok(listing) = std::fs::read_dir(&folder) else {
+            continue;
+        };
+        for entry in listing.filter_map(Result::ok) {
+            let path = entry.path();
+            let Ok(kind) = entry.file_type() else {
+                continue;
+            };
+            if kind.is_dir() {
+                folders.push(path);
+            } else if kind.is_file()
+                && path.extension().is_some_and(|e| e == "lst")
+                && !wanted.contains(&path)
+            {
+                let _ = std::fs::remove_file(&path);
+            }
+        }
+    }
 }
 
 /// The project's files with extension `ext` (assemblies, sound events),
@@ -109,17 +146,14 @@ impl GameCode {
     /// `assets`) as states, so call this again when they change;
     /// the notes then also say which names game code can't use.
     pub fn describe(assets: &Path, made_by: &str) -> Vec<String> {
-        Self::describe_with(assets, made_by, &[], &[])
+        Self::describe_with(assets, made_by, &(Vec::new(), Vec::new(), Vec::new()))
     }
 
     /// [`GameCode::describe`], with the sprites' clips (`sheet/clip`
-    /// paths) and cues.
-    pub fn describe_with(
-        assets: &Path,
-        made_by: &str,
-        clips: &[String],
-        cues: &[String],
-    ) -> Vec<String> {
+    /// paths) and cues, and each animator's own file
+    /// (`solis/animators/…`; those no longer wanted are taken away).
+    pub fn describe_with(assets: &Path, made_by: &str, animation: &Animation) -> Vec<String> {
+        let (clips, cues, animators) = animation;
         let root = assets.parent();
         let names = script::project_names::Names {
             assemblies: asset_paths(assets, asset_db::ASSEMBLY_EXTENSION),
@@ -144,8 +178,30 @@ impl GameCode {
                 .map(|a| a.name)
                 .collect(),
         };
-        let (files, mut notes) =
+        let (mut files, mut notes) =
             script::describe::descriptions_for(made_by, crate::branding::CODE_FOLDER, &names);
+        let mut classes = std::collections::HashSet::new();
+        for animator in animators {
+            let (file, said) = script::animator_code::animator_file(
+                made_by,
+                crate::branding::CODE_FOLDER,
+                animator,
+            );
+            notes.extend(said);
+            // Two animators of the same name in different folders would
+            // be the same class: the first keeps it.
+            if let Some((path, text)) = file {
+                match script::animator_code::class_names(&animator.path) {
+                    Some((class, _)) if !classes.insert(class.clone()) => notes.push(format!(
+                        "The animator {} can't be reached from game code: another is called \
+                         {class} too. Rename one.",
+                        animator.path
+                    )),
+                    _ => files.push((path, text)),
+                }
+            }
+        }
+        forget_animator_files(assets, &files);
         for (path, text) in files {
             let file = assets.join(&path);
             if same_text(&file, &text) {
@@ -170,7 +226,7 @@ impl GameCode {
 
     /// [`GameCode::describe`]'s notes, kept to say only when they change.
     pub fn describe_again(&mut self, assets: &Path, made_by: &str) -> Vec<String> {
-        let notes = Self::describe_with(assets, made_by, &self.animation.0, &self.animation.1);
+        let notes = Self::describe_with(assets, made_by, &self.animation);
         if notes == self.told {
             return Vec::new();
         }
@@ -180,16 +236,16 @@ impl GameCode {
 
     /// [`GameCode::describe`] for a project just opened: every note said.
     pub fn describe_opened(&mut self, assets: &Path, made_by: &str) -> Vec<String> {
-        self.animation = (Vec::new(), Vec::new());
+        self.animation = (Vec::new(), Vec::new(), Vec::new());
         self.told = Self::describe(assets, made_by);
         self.told.clone()
     }
 
     /// Takes the sprites' clips and cues as the editor has read them;
     /// whether they changed (then describe again and check the code).
-    pub fn set_animation(&mut self, clips: Vec<String>, cues: Vec<String>) -> bool {
-        let changed = self.animation != (clips.clone(), cues.clone());
-        self.animation = (clips, cues);
+    pub fn set_animation(&mut self, animation: Animation) -> bool {
+        let changed = self.animation != animation;
+        self.animation = animation;
         changed
     }
 
@@ -400,6 +456,36 @@ mod tests {
             project.contains("state Bus = [Master, Music, Effects, Voice, Ambience, Ui];"),
             "{project}"
         );
+    }
+
+    #[test]
+    fn each_animator_gets_its_own_file_and_a_gone_one_s_is_taken_away() {
+        use script::animator_code::{AnimatorNames, ParamKind};
+        let assets = folder("animators");
+        let farmer = AnimatorNames {
+            path: "animals/farmer".into(),
+            parameters: vec![("moving".into(), ParamKind::Switch)],
+            states: vec!["Idle".into(), "Walk".into()],
+        };
+        let twin = AnimatorNames {
+            path: "people/farmer".into(),
+            ..farmer.clone()
+        };
+        let notes = GameCode::describe_with(
+            &assets,
+            "Test 1.0",
+            &(Vec::new(), Vec::new(), vec![farmer, twin]),
+        );
+        let file = assets.join("solis/animators/animals/farmer.lst");
+        let text = std::fs::read_to_string(&file).unwrap();
+        assert!(text.contains("class FarmerAnimator"), "{text}");
+        assert!(
+            notes.iter().any(|n| n.contains("people/farmer")),
+            "the same class twice: {notes:?}"
+        );
+        assert!(!assets.join("solis/animators/people/farmer.lst").exists());
+        GameCode::describe(&assets, "Test 1.0");
+        assert!(!file.exists(), "a gone animator's file is taken away");
     }
 
     #[test]

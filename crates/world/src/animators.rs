@@ -261,6 +261,28 @@ impl World {
         ))
     }
 
+    /// The state each running animator is in, by its name in the graph,
+    /// by entity ID (for game code's view of the tick).
+    pub fn animator_state_names(&self) -> std::collections::HashMap<EntityId, String> {
+        self.ecs
+            .query::<(&Id, &Running)>()
+            .iter()
+            .map(|(id, r)| (id.0, r.of.state_name(r.run.state).to_owned()))
+            .collect()
+    }
+
+    /// Sets how fast `id`'s animator plays its clips (its Animator's
+    /// speed; game code, through the animator's own file).
+    pub fn set_animator_speed(&mut self, id: EntityId, scale: f32) {
+        if let Some(&entity) = self.by_id.get(&id)
+            && let Ok(mut animator) = self.ecs.get::<&mut Animator>(entity)
+            && animator.speed != scale
+        {
+            animator.speed = scale;
+            self.touched = true;
+        }
+    }
+
     /// Every running animator's parameters, by entity ID (for saves).
     pub fn animator_values(&self) -> Vec<(EntityId, Vec<(String, ParamValue)>)> {
         let mut all: Vec<(EntityId, Vec<(String, ParamValue)>)> = self
