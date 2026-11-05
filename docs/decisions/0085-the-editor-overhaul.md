@@ -17,7 +17,7 @@ The audit of 3 November (decision 0070) found the editor's surface was what made
 
 - The level editor mock-up (`docs/plans/editor-overhaul-level.png`) is the editor's target, and the research's rules are its guide ([plan](../plans/editor-overhaul.md)).
 - It is built in seven milestones, one pull request each, ahead of the game UI editor in "Usable first" step 7: **O1** the frame (top bar, status bar, panel tabs); **O2** Properties as values, not buttons; **O3** the Library as a drawer; **O4** one search for everything; **O5** playing is unmistakable, and changes made while playing are kept or undone, never lost; **O6** workspaces (Level, Animate, UI, Code); **O7** help in place (hints, the floating tool bar, the cursor readout, the Area panel's kinds).
-- Decision 0070's rule stands: nothing is shown before it works, so the mock-up's **Playtest build**, Layers tab and each workspace tab arrive with what they need. New keys are asked about first (the search's Ctrl+K and the drawer's Ctrl+Space, as drawn).
+- Decision 0070's rule stands: nothing is shown before it works, so the mock-up's **Playtest build**, Layers tab and each workspace tab arrive with what they need. The keys chosen by the project lead: Space opens the search (the Frames tab keeps Space for its clip), Ctrl + Space the Library drawer. The Code workspace is a testing layout beside Ledger, not a code editor.
 - Docking stays (decision 0004): the mock-up is the standard layout.
 
 ## Consequences

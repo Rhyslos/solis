@@ -136,7 +136,8 @@ fn hidden_entities_and_their_children_are_not_drawn_and_locked_ones_not_picked()
 fn the_hide_and_lock_switches_appear_on_the_row_and_switch() {
     let (w, _, _, crate_id) = a_room();
     let mut h = harness(w);
-    h.hover_at(egui::pos2(1200.0, 160.0));
+    // The Area panel is on the left (decision 0085).
+    h.hover_at(egui::pos2(200.0, 160.0));
     h.run();
     h.get_by_label("Hide Crate").click();
     h.run();

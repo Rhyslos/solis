@@ -25,7 +25,10 @@ const PREVIEW_FRAME: std::time::Duration = std::time::Duration::from_millis(33);
 /// How often a frame is drawn while nothing happens, to look for changes
 /// on disk and messages from background work.
 const IDLE_FRAME: std::time::Duration = std::time::Duration::from_secs(1);
-const LAYOUT_KEY: &str = "panel_layout";
+/// Key under which the panels' arrangement is remembered: a new key
+/// since the editor overhaul's standard layout (decision 0085), so every
+/// editor starts once from it; Window > Reset layout brings it back later.
+const LAYOUT_KEY: &str = "panel_layout2";
 /// Key under which the accent colour is remembered.
 /// The accent chosen, saved since blue became the standard (decision
 /// 0070).
@@ -230,6 +233,8 @@ impl App {
             began: std::time::Instant::now(),
             logo: load_logo(&cc.egui_ctx),
         };
+        app.workbench
+            .set_logo(app.logo.as_ref().map(egui::TextureHandle::id));
         app.workbench.set_recent(app.projects.recent().to_vec());
         app.workbench.set_manual_url(format!(
             "https://github.com/{}/tree/main/docs/manual",

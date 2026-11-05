@@ -1009,30 +1009,36 @@ impl Viewport {
         // bottom centre, snapping bottom right. With several, each view is
         // too narrow for a full bottom row, so the view in use has its
         // tools top left, snapping top right and frame rate bottom right.
+        // One view too narrow for its bottom row (the painting tools
+        // beside the view and snapping controls) is crowded: snapping
+        // goes top right and the frame rate bottom right, as with several.
         let mut covered: Vec<Rect> = tile_bar.into_iter().collect();
+        let mut bottom_left = corner(ui, "view", Layout::bottom_up(Align::Min));
+        self.view_controls(&mut bottom_left, several);
+        covered.push(bottom_left.min_rect());
+        // The tool bar's size: the transform tools', or with a map
+        // selected the width the bar took last frame (it has the painting
+        // tools too).
+        let size = if self.tile_overlay.paint.allowed {
+            vec2(self.paint_bar_width.max(TOOL_BAR_SIZE.x), TOOL_BAR_SIZE.y)
+        } else {
+            TOOL_BAR_SIZE
+        };
+        let room = inner.right() - bottom_left.min_rect().right() - self.snapping_width - 24.0;
+        let crowded = several || (self.overlays.tools && room < size.x);
         if self.overlays.stats && in_use {
-            let layout = if several {
+            let layout = if crowded {
                 Layout::bottom_up(Align::Max)
             } else {
                 Layout::top_down(Align::Max)
             };
             let mut stats = corner(ui, "stats", layout);
-            self.stats(&mut stats, several);
+            self.stats(&mut stats, crowded);
             covered.push(stats.min_rect());
         }
-        let mut bottom_left = corner(ui, "view", Layout::bottom_up(Align::Min));
-        self.view_controls(&mut bottom_left, several);
-        covered.push(bottom_left.min_rect());
         if self.overlays.tools && in_use {
             // A centred layout would stretch the bar, so it gets a rect of
-            // exactly its own width: the transform tools', or with a map
-            // selected the width the bar took last frame (it has the
-            // painting tools too).
-            let size = if self.tile_overlay.paint.allowed {
-                vec2(self.paint_bar_width.max(TOOL_BAR_SIZE.x), TOOL_BAR_SIZE.y)
-            } else {
-                TOOL_BAR_SIZE
-            };
+            // exactly its own width.
             let bar = if several {
                 Rect::from_min_size(inner.min, size)
             } else {
@@ -1040,7 +1046,11 @@ impl Viewport {
                 // wide as last frame) when the painting tools make it
                 // wide, never over the view controls.
                 let half = size.x / 2.0;
-                let right = inner.right() - self.snapping_width - 8.0;
+                let right = if crowded {
+                    inner.right() - 8.0
+                } else {
+                    inner.right() - self.snapping_width - 8.0
+                };
                 let left = bottom_left.min_rect().right() + 8.0;
                 let x = inner.center().x.min(right - half).max(left + half);
                 Rect::from_center_size(egui::pos2(x, inner.bottom() - size.y / 2.0), size)
@@ -1057,8 +1067,9 @@ impl Viewport {
             }
             covered.push(bar_ui.min_rect());
         }
+        let mut snapping_height = 0.0;
         if self.overlays.snapping && in_use {
-            let layout = if several {
+            let layout = if crowded {
                 Layout::top_down(Align::Max)
             } else {
                 Layout::bottom_up(Align::Max)
@@ -1071,7 +1082,7 @@ impl Viewport {
                     &mut self.camera.zoom,
                     self.pixels,
                     accent,
-                    !several,
+                    !crowded,
                 );
             } else {
                 viewport_tools::snapping_corner(
@@ -1079,22 +1090,35 @@ impl Viewport {
                     &mut self.snapping,
                     accent,
                     self.camera.speed,
-                    !several,
+                    !crowded,
                 );
             }
-            self.snapping_width = corner_ui.min_rect().width();
+            // Measured where it would sit on the bottom row, so a view
+            // crowded once isn't crowded for good.
+            if !crowded {
+                self.snapping_width = corner_ui.min_rect().width();
+            }
+            snapping_height = corner_ui.min_rect().height();
             covered.push(corner_ui.min_rect());
         }
         if in_use
             && self.tile_overlay.paint.painting()
             && let Some(stamp) = &self.tile_overlay.paint.stamp
         {
-            // The copy held: its buttons above the snapping corner.
-            let above = covered
-                .last()
-                .map_or(0.0, |r| inner.bottom() - r.top() + 6.0);
-            let mut stamp_ui = corner(ui, "stamp", Layout::bottom_up(Align::Max));
-            stamp_ui.add_space(above);
+            // The copy held: its buttons beside the snapping corner
+            // (above it, or below it when it's top right).
+            let mut stamp_ui = if crowded {
+                let mut stamp_ui = corner(ui, "stamp", Layout::top_down(Align::Max));
+                stamp_ui.add_space(snapping_height + 6.0);
+                stamp_ui
+            } else {
+                let above = covered
+                    .last()
+                    .map_or(0.0, |r| inner.bottom() - r.top() + 6.0);
+                let mut stamp_ui = corner(ui, "stamp", Layout::bottom_up(Align::Max));
+                stamp_ui.add_space(above);
+                stamp_ui
+            };
             let asked = crate::tile_paint::stamp_bar(&mut stamp_ui, stamp);
             if asked.is_some() {
                 self.tile_overlay.turn_asked = asked;

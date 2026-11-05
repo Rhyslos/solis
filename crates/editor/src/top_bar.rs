@@ -19,6 +19,13 @@ impl Workbench {
             self.restart_button(ui, actions);
             ui.with_layout(Layout::left_to_right(Align::Center), |ui| {
                 egui::MenuBar::new().ui(ui, |ui| {
+                    // The logo first, as in the overhaul's mock-up
+                    // (decision 0085).
+                    if let Some(logo) = self.logo {
+                        ui.add_space(4.0);
+                        ui.add(egui::Image::new((logo, egui::vec2(18.0, 18.0))));
+                        ui.add_space(6.0);
+                    }
                     // The mockup's roomier menu titles.
                     ui.spacing_mut().button_padding = egui::vec2(7.0, 4.0);
                     ui.spacing_mut().item_spacing.x = 2.0;

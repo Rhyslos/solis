@@ -5,52 +5,48 @@
 use crate::panel::Panel;
 use egui_dock::{DockState, NodeIndex};
 
-/// Share of the window width given to the viewport's side (the right
-/// column with Area and Properties gets the rest).
-const MAIN_AREA_WIDTH: f32 = 0.77;
-/// Share of the right column given to Area.
-const AREA_HEIGHT: f32 = 0.45;
-/// Share of the main area given to the viewport (the bottom panels get the
-/// rest).
-const VIEWPORT_HEIGHT: f32 = 0.74;
-/// Share of the bottom given to the library (the console gets the rest).
-const LIBRARY_WIDTH: f32 = 0.6;
+/// Share of the window width given to everything but Properties (the
+/// right column).
+const MAIN_AREA_WIDTH: f32 = 0.765;
+/// Share of the main area's height given to Area and the viewport (the
+/// bottom panels get the rest).
+const TOP_HEIGHT: f32 = 0.72;
+/// Share of the top given to the Area panel (the viewport gets the rest).
+const AREA_WIDTH: f32 = 0.245;
 /// The standard arrangement: what a first start shows, and what Reset
 /// layout brings back. There are no other presets: every panel docks
 /// freely, so any arrangement is a drag away ([decision 0061](../../../docs/decisions/0061-settings-window-and-no-layout-presets.md)).
+/// It's the editor overhaul's mock-up ([decision 0085](../../../docs/decisions/0085-the-editor-overhaul.md)):
 ///
 /// ```text
-/// ┌──────────────────┬──────┐
-/// │ Viewport · Game  │Area │
-/// │                  ├──────┤
-/// ├──────────┬───────┤Props │
-/// │ Library  │Console│      │
-/// └──────────┴───────┴──────┘
+/// ┌──────┬─────────────────┬───────┐
+/// │ Area │ Viewport · Game │ Props │
+/// │      │                 │       │
+/// ├──────┴─────────────────┤       │
+/// │ Library · Console · …  │       │
+/// └────────────────────────┴───────┘
 /// ```
 ///
-/// Area has its group to itself, Library shares with Code and Console
-/// with Problems and the Profiler, as in the mockup.
+/// The bottom holds the Library, Console, Problems, Mixer, Profiler and
+/// Code as tabs.
 pub fn standard() -> DockState<Panel> {
     let mut dock = DockState::new(vec![Panel::Viewport, Panel::Game]);
     let tree = dock.main_surface_mut();
-    let [main_area, right_column] =
-        tree.split_right(NodeIndex::root(), MAIN_AREA_WIDTH, vec![Panel::Area]);
-    tree.split_below(right_column, AREA_HEIGHT, vec![Panel::Properties]);
-    let [_, bottom] = tree.split_below(
+    let [main_area, _] =
+        tree.split_right(NodeIndex::root(), MAIN_AREA_WIDTH, vec![Panel::Properties]);
+    let [top, _] = tree.split_below(
         main_area,
-        VIEWPORT_HEIGHT,
-        vec![Panel::Library, Panel::Code],
-    );
-    tree.split_right(
-        bottom,
-        LIBRARY_WIDTH,
+        TOP_HEIGHT,
         vec![
+            Panel::Library,
             Panel::Console,
             Panel::Problems,
-            Panel::Profiler,
             Panel::Mixer,
+            Panel::Profiler,
+            Panel::Code,
         ],
     );
+    tree.split_left(top, AREA_WIDTH, vec![Panel::Area]);
     dock
 }
 
@@ -272,22 +268,23 @@ mod tests {
     }
 
     #[test]
-    fn the_default_puts_library_and_console_side_by_side() {
+    fn the_default_is_the_overhaul_mock_up() {
+        // Area on the left, the viewport in the middle, Properties on the
+        // right, and the rest as tabs along the bottom (decision 0085).
         let dock = standard();
         assert_eq!(
             tab_group_of(&dock, Panel::Library),
-            [Panel::Library, Panel::Code]
-        );
-        assert_eq!(
-            tab_group_of(&dock, Panel::Console),
             [
+                Panel::Library,
                 Panel::Console,
                 Panel::Problems,
+                Panel::Mixer,
                 Panel::Profiler,
-                Panel::Mixer
+                Panel::Code
             ]
         );
         assert_eq!(tab_group_of(&dock, Panel::Area), [Panel::Area]);
+        assert_eq!(tab_group_of(&dock, Panel::Properties), [Panel::Properties]);
         assert_eq!(beside_viewport(&dock), [Panel::Viewport, Panel::Game]);
     }
 
@@ -312,10 +309,12 @@ mod tests {
     fn a_missing_panel_goes_beside_the_viewport_when_its_group_is_gone() {
         let mut old = standard();
         for panel in [
+            Panel::Library,
             Panel::Console,
             Panel::Problems,
             Panel::Profiler,
             Panel::Mixer,
+            Panel::Code,
         ] {
             let path = old.find_tab(&panel).unwrap();
             old.remove_tab(path);

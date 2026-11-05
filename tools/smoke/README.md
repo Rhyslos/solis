@@ -14,4 +14,4 @@ cargo run -p assets --example sample -- smoke-output/sample.glb
 SAMPLE_MODEL=smoke-output/sample.glb xvfb-run -s "-screen 0 1440x900x24" tools/smoke/window-smoke.sh target/debug/<program> "<program name>" smoke-output
 ```
 
-The binary's name and the window title come from `APP_ID` and `APP_NAME` in `crates/app/src/branding.rs`; CONTRIBUTING.md, "Setting up", and `.github/workflows/ci.yml` have the command filled in. Screen positions in the script are for the Default layout on a 1440x900 screen, so a layout change may need them updated.
+The binary's name and the window title come from `APP_ID` and `APP_NAME` in `crates/app/src/branding.rs`; CONTRIBUTING.md, "Setting up", and `.github/workflows/ci.yml` have the command filled in. Screen positions in the script are for the standard layout (decision 0085) on a 1440x900 screen, so a layout change may need them updated.

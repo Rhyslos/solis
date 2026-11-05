@@ -414,6 +414,14 @@ pub fn top_bar_frame() -> Frame {
         .stroke(Stroke::new(1.0, LINE))
 }
 
+/// The frame of the status bar along the bottom (decision 0085).
+pub fn status_bar_frame() -> Frame {
+    Frame::new()
+        .fill(HEADER)
+        .inner_margin(Margin::symmetric(10, 0))
+        .stroke(Stroke::new(1.0, LINE))
+}
+
 /// The frame of the small menu row under a panel's title.
 pub fn menu_row_frame() -> Frame {
     Frame::new()

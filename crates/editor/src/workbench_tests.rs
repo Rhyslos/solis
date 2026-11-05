@@ -327,6 +327,8 @@ fn console_messages_carry_the_time() {
 #[test]
 fn a_level_filter_hides_and_shows_its_messages() {
     let mut h = harness();
+    // The Console shares the bottom with the Library, in front.
+    crate::layout::bring_to_front(&mut h.state_mut().dock, crate::panel::Panel::Console);
     h.state_mut().log(LogLevel::Warning, "Shader slow to build");
     h.run();
     assert!(h.query_by_label("Shader slow to build").is_some());
@@ -472,6 +474,8 @@ fn the_console_clears_and_searches_from_its_panel() {
     let mut w = Workbench::new(info(), None);
     w.log(LogLevel::Warning, "Texture too big");
     w.log(LogLevel::Info, "Imported crate");
+    // The Console shares the bottom with the Library, in front.
+    crate::layout::bring_to_front(&mut w.dock, crate::panel::Panel::Console);
     let mut h = acting(w);
     h.run();
     assert!(h.query_by_label("Texture too big").is_some());
@@ -488,6 +492,8 @@ fn a_console_message_clicked_is_shown_in_full() {
     let long = format!("A long message {}the end", "and more ".repeat(60));
     let mut w = Workbench::new(info(), None);
     w.log(LogLevel::Warning, long.clone());
+    // The Console shares the bottom with the Library, in front.
+    crate::layout::bring_to_front(&mut w.dock, crate::panel::Panel::Console);
     let mut h = acting(w);
     h.run();
     h.get_by_label(&long).click();
@@ -1879,8 +1885,12 @@ fn an_entity_field_shows_a_name_and_picks_from_the_area() {
     // None, as a word; the list offers the area's entities by name.
     h.get_by_value("None").click();
     h.run();
-    // The Area panel lists it too: the list's is the last.
-    h.query_all_by_label("Flagship").last().unwrap().click();
+    // The Area panel (on the left) lists it too: the list's is the one
+    // under the field, in Properties on the right.
+    h.query_all_by_label("Flagship")
+        .max_by(|a, b| a.rect().left().total_cmp(&b.rect().left()))
+        .unwrap()
+        .click();
     h.run();
     let target = |w: &Workbench| {
         w.document().area().get(follower).unwrap().components["Follow"]
