@@ -535,6 +535,76 @@ pub const NATIVES: &[Native] = &[
         about: "How fast the owner's animator plays its clips: 1 as made (for the animators' own files).",
     },
     Native {
+        file: "tiles",
+        name: "width",
+        owner: "Maps",
+        lust: "method int width(string tileMap) native;",
+        about: "How many cells across a map is. For the maps' own files (solis/maps/): game code uses the map's class, farm:width().",
+    },
+    Native {
+        file: "tiles",
+        name: "height",
+        owner: "Maps",
+        lust: "method int height(string tileMap) native;",
+        about: "How many cells up a map is (for the maps' own files).",
+    },
+    Native {
+        file: "tiles",
+        name: "terrain",
+        owner: "Maps",
+        lust: "method int terrain(string tileMap, int layer, int x, int y) native;",
+        about: "The terrain's code on a layer's cell, 0 for empty (for the maps' own files).",
+    },
+    Native {
+        file: "tiles",
+        name: "setTerrain",
+        owner: "Maps",
+        lust: "method setTerrain(string tileMap, int layer, int x, int y, int code) native;",
+        about: "Paints a layer's cell with a terrain's code, 0 to clear it, at the end of the tick (for the maps' own files).",
+    },
+    Native {
+        file: "tiles",
+        name: "number",
+        owner: "Maps",
+        lust: "method int number(string tileMap, int value, int x, int y) native;",
+        about: "A number value on a cell (for the maps' own files).",
+    },
+    Native {
+        file: "tiles",
+        name: "setNumber",
+        owner: "Maps",
+        lust: "method setNumber(string tileMap, int value, int x, int y, int to) native;",
+        about: "Sets a number value on a cell, at the end of the tick (for the maps' own files).",
+    },
+    Native {
+        file: "tiles",
+        name: "isOn",
+        owner: "Maps",
+        lust: "method bool isOn(string tileMap, int value, int x, int y) native;",
+        about: "A switch value on a cell (for the maps' own files).",
+    },
+    Native {
+        file: "tiles",
+        name: "setSwitch",
+        owner: "Maps",
+        lust: "method setSwitch(string tileMap, int value, int x, int y, bool on) native;",
+        about: "Sets a switch value on a cell, at the end of the tick (for the maps' own files).",
+    },
+    Native {
+        file: "tiles",
+        name: "choice",
+        owner: "Maps",
+        lust: "method int choice(string tileMap, int value, int x, int y) native;",
+        about: "A choice value on a cell, by its option's place, -1 for none (for the maps' own files).",
+    },
+    Native {
+        file: "tiles",
+        name: "setChoice",
+        owner: "Maps",
+        lust: "method setChoice(string tileMap, int value, int x, int y, int chosen) native;",
+        about: "Sets a choice value on a cell, by its option's place, -1 for none, at the end of the tick (for the maps' own files).",
+    },
+    Native {
         file: "input",
         name: "held",
         owner: "Input",
@@ -866,7 +936,7 @@ mod tests {
     #[test]
     fn the_descriptions_check_cleanly_and_a_game_can_use_them() {
         let mut files = descriptions("Test Engine 9.9.9", "solis");
-        assert_eq!(files.len(), 10);
+        assert_eq!(files.len(), 11);
         assert!(files.iter().any(|(p, _)| p == "solis/project.lst"));
         assert!(files[0].1.starts_with("-- Made by Test Engine 9.9.9"));
         files.push((
@@ -1003,8 +1073,16 @@ mod tests {
         assert_eq!(keys.len(), NATIVES.len(), "no key twice");
         for native in NATIVES {
             assert!(
-                ["world", "entity", "physics", "input", "sound", "animation"]
-                    .contains(&native.file)
+                [
+                    "world",
+                    "entity",
+                    "physics",
+                    "input",
+                    "sound",
+                    "animation",
+                    "tiles"
+                ]
+                .contains(&native.file)
             );
             let named = match native.owner {
                 "entity" => format!(" entity:{}(", native.name),

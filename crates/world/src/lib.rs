@@ -166,6 +166,8 @@ pub struct World {
     map_files: std::sync::Arc<MapFiles>,
     /// Maps a loaded save gave entities whose maps haven't started yet.
     saved_maps: HashMap<EntityId, tiles::TileMap>,
+    /// Goes up whenever a map at play changes (`World::maps_revision`).
+    maps_revision: u64,
     /// 2D physics (decision 0071): every entity with a `Collider2D`, and
     /// each tile map's walls.
     flat: physics::flat::Flat,
@@ -266,6 +268,7 @@ impl World {
             saved_values: HashMap::new(),
             map_files: std::sync::Arc::default(),
             saved_maps: HashMap::new(),
+            maps_revision: 0,
             flat: physics::flat::Flat::new(),
             pixels: area::pixels::PixelSettings::default(),
             solid_sets: std::sync::Arc::default(),

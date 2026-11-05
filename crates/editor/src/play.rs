@@ -505,6 +505,8 @@ impl Workbench {
                 .world
                 .set_tile_maps(Arc::clone(&self.viewport.sheets.map_set));
             playing.world.start_maps();
+            // Game code names maps by their files' paths (decision 0079).
+            playing.view.set_map_paths(&self.viewport.sheets);
             // 2D physics (decision 0071): pixels to metres, and which
             // terrains are solid, as they are now.
             playing.world.set_pixels(self.viewport.pixels);

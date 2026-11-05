@@ -113,6 +113,57 @@ pub struct SpriteSheets {
 }
 
 impl SpriteSheets {
+    /// Each tile map game code can reach, by its names (decision 0079),
+    /// sorted by path: its layers, its tileset's terrains and its values.
+    pub fn map_names(&self) -> Vec<script::map_code::MapNames> {
+        use script::map_code::{MapNames, ValueNames};
+        let mut all: Vec<MapNames> = self
+            .tile_maps
+            .iter()
+            .filter_map(|(path, state)| match state {
+                MapFileState::Read(map, _) => Some((path, map)),
+                MapFileState::Failed(_) => None,
+            })
+            .map(|(path, map)| MapNames {
+                path: path
+                    .rsplit_once('.')
+                    .map_or(path.as_str(), |(stem, _)| stem)
+                    .to_owned(),
+                layers: map.layers().iter().map(|l| l.name.clone()).collect(),
+                terrains: map
+                    .tileset
+                    .and_then(|id| self.tileset(id))
+                    .map(|set| {
+                        set.terrains
+                            .iter()
+                            .filter_map(|t| {
+                                u8::try_from(u32::from(t.code))
+                                    .ok()
+                                    .map(|c| (c, t.name.clone()))
+                            })
+                            .collect()
+                    })
+                    .unwrap_or_default(),
+                values: map
+                    .values()
+                    .iter()
+                    .map(|v| {
+                        let kind = match &v.kind {
+                            tiles::ValueKind::Number => ValueNames::Number,
+                            tiles::ValueKind::Switch => ValueNames::Switch,
+                            tiles::ValueKind::Choice(options) => {
+                                ValueNames::Choice(options.clone())
+                            }
+                        };
+                        (v.name.clone(), kind)
+                    })
+                    .collect(),
+            })
+            .collect();
+        all.sort_by(|a, b| a.path.cmp(&b.path));
+        all
+    }
+
     /// Each animator game code can reach, by its names (decision 0078),
     /// sorted by path.
     pub fn animator_names(&self) -> Vec<script::animator_code::AnimatorNames> {
