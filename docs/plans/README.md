@@ -15,6 +15,7 @@ Working plans for the phases of [ROADMAP.md](../../ROADMAP.md). A plan records t
 | `compatibility.md` | 8: Compatibility (draft) |
 | `2d.md` | 9 and 10: First-class 2D (draft) |
 | `lust-data.md` | Usable first, 2: what Solis makes is Lust (decision 0081) |
+| `editor-overhaul.md` | Usable first, 7: the editor overhaul before the game UI editor (decision 0085); `editor-overhaul-level.png` is its mock-up |
 | `game-ui.md` | 12: Game UI (draft) |
 | `light.md` | 13: Light, sky and atmosphere (draft) |
 | `materials.md` | 14: Materials and shaders (draft) |
