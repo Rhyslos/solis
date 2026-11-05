@@ -15,7 +15,11 @@ use std::sync::Arc;
 const MAIN: &str = "fetch \"solis/kit/topdown\":[TopDownController];\nend\n";
 
 fn program() -> Arc<script::Compiled> {
-    let mut files = script::describe::descriptions("Test Engine 9.9.9", "solis");
+    let (mut files, _) = script::describe::descriptions_for(
+        "Test Engine 9.9.9",
+        "solis",
+        &["drones/drone".to_string(), "nowhere".to_string()],
+    );
     files.push(("main.lst".into(), MAIN.to_string()));
     let code = script::Code {
         files,

@@ -16,7 +16,13 @@ fn code(main: &str, lua: &[(&str, &str)]) -> Compiled {
     let lust = (!main.is_empty()).then(|| {
         let mut files = crate::describe::descriptions("Test 1.0", "solis");
         files.push(("main.lst".into(), main.to_string()));
-        match lust::to_lua("main.lst", &files) {
+        match lust::to_lua_with(
+            &lust::Engine {
+                folders: crate::describe::engine_folders(&files),
+            },
+            "main.lst",
+            &files,
+        ) {
             Ok(chunk) => chunk,
             Err(problems) => panic!("{}", problems[0]),
         }
@@ -114,9 +120,9 @@ fn a_file_can_t_break_the_others_or_the_lust() {
                   pcall(function() table.sort = nil end)\n\
                   pcall(function() solis.say = nil end)\n\
                   component('Vandal', {})";
-    let lust = "get \"solis/world\":[say];\n\
+    let lust = "fetch \"solis/world\":World;\n\n\
         component Counter {\n    has {\n        int ticks = 0;\n    }\n\
-        \x20   method update(float dt) {\n        ticks = ticks + 1;\n        say(\"tick\");\n    }\n}\n\
+        \x20   method update(float dt) {\n        ticks = ticks + 1;\n        World:say(\"tick\");\n    }\n}\n\
         pass Counter;\nend\n";
     let spinner = "local S = component('Spinner', { { 'n', 'int', 0 } })\n\
                    function S:update(dt) for _ in pairs({ 1 }) do self.n = self.n + 1 end end";
@@ -181,7 +187,7 @@ fn what_game_code_says_and_sends_is_kept_small() {
     let loud = "local S = component('Loud', {})\n\
                 function S:update(dt)\n\
                   local big = string.rep('x', 1000000)\n\
-                  for i = 1, 1000 do solis.say(big) end\n\
+                  for i = 1, 1000 do solis.World:say(big) end\n\
                 end";
     let mut runtime = Runtime::new().unwrap();
     runtime

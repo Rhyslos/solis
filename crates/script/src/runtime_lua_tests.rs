@@ -14,7 +14,13 @@ fn code(main: &str, lua: &[(&str, &str)]) -> Compiled {
     let lust = (!main.is_empty()).then(|| {
         let mut files = crate::describe::descriptions("Test 1.0", "solis");
         files.push(("main.lst".into(), main.to_string()));
-        match lust::to_lua("main.lst", &files) {
+        match lust::to_lua_with(
+            &lust::Engine {
+                folders: crate::describe::engine_folders(&files),
+            },
+            "main.lst",
+            &files,
+        ) {
             Ok(chunk) => chunk,
             Err(problems) => panic!("{}", problems[0]),
         }
@@ -75,9 +81,9 @@ local Spinner = component("Spinner", {
 
 function Spinner:update(dt)
     self.turns = self.turns + 1
-    solis.moveTo(self.me, solis.positionOf(self.me) + vec3(1, 0, 0) * self.speed * dt)
+    solis.entity.moveTo(self.me, solis.entity.position(self.me) + vec3(1, 0, 0) * self.speed * dt)
     if self.turns == 1 then
-        solis.say(solis.nameOf(self.me) .. " spins at " .. solis.time())
+        solis.World:say(solis.entity.name(self.me) .. " spins at " .. solis.World:time())
     end
 end
 "#;
@@ -117,7 +123,7 @@ fn a_lua_component_has_its_fields_in_order_and_runs_with_the_natives() {
 
 #[test]
 fn lua_and_lust_components_talk_through_the_same_events() {
-    let lust = "get \"solis/world\":[say];\n\
+    let lust = "fetch \"solis/world\":World;\n\n\
         event Hit(entity by, float damage);\n\
         event Healed(int amount);\n\
         component Health {\n\
@@ -126,7 +132,7 @@ fn lua_and_lust_components_talk_through_the_same_events() {
             }\n\
             on Hit(entity by, float damage) {\n\
                 hp = hp - damage;\n\
-                say(\"lust hp \" + hp.text());\n\
+                World:say(\"lust hp \" + hp.text());\n\
                 send Healed(1) to me;\n\
             }\n\
         }\n\
@@ -146,7 +152,7 @@ end
 
 function Gun:on_Healed(amount)
     self.healed = self.healed + amount
-    solis.say("lua healed " .. amount)
+    solis.World:say("lua healed " .. amount)
 end
 "#;
     let mut runtime = Runtime::new().unwrap();

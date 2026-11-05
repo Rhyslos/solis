@@ -47,7 +47,7 @@ The Lua side, for example:
 
 ```lua
 function Sparks:on_Dented(platesLeft)
-    solis.say("Sparks fly from " .. solis.nameOf(self.me) .. ": " .. platesLeft .. " armour plates left.")
+    solis.World:say("Sparks fly from " .. solis.entity.name(self.me) .. ": " .. platesLeft .. " armour plates left.")
 end
 ```
 

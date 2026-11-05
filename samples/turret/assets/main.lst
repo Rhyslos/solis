@@ -3,9 +3,9 @@
 -- (Rust, in armour.rs) and sparks (Lua, in sparks.lua): the three talk
 -- to each other with the events below.
 
-get "solis/world":[say];
-
 -- What the components tell each other.
+fetch "solis/world":World;
+
 event Hit(entity by, float damage);
 event Dented(int platesLeft);
 event Destroyed();
@@ -27,7 +27,7 @@ component Turret {
             ammo = ammo - 1;
             reload = cooldown;
             is ammo == 0? then {
-                say("The turret is out of ammo.");
+                World:say("The turret is out of ammo.");
             }
         }
     }

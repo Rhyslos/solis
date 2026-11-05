@@ -53,15 +53,21 @@ impl Host for TestHost {
     }
 }
 
-const NATIVES: &str = "get \"solis/world\":[say, time, find];\n\
-                       get \"solis/entity\":[positionOf, moveTo, rotationOf, turnTo, nameOf];\n";
+const NATIVES: &str = "\n\
+                       \n";
 
 /// The Lua for a program whose `main.lst` is `main`, with the engine's
 /// description files.
 fn chunk(main: &str) -> Compiled {
     let mut files = crate::describe::descriptions("Test 1.0", "solis");
     files.push(("main.lst".into(), format!("{NATIVES}{main}")));
-    match lust::to_lua("main.lst", &files) {
+    match lust::to_lua_with(
+        &lust::Engine {
+            folders: crate::describe::engine_folders(&files),
+        },
+        "main.lst",
+        &files,
+    ) {
         Ok(chunk) => Compiled {
             lust: Some(chunk),
             lua: Vec::new(),
@@ -175,15 +181,15 @@ fn the_area_s_values_reach_a_component_and_only_changes_are_sent_again() {
 #[test]
 fn ticks_run_in_order_and_natives_reach_the_host() {
     let mut runtime = loaded(
-        "component Mover {\n\
+        "fetch \"solis/world\":World;\ncomponent Mover {\n\
              has {\n\
                  float speed = 2;\n\
              }\n\
              method update(float dt) {\n\
                  vec3 ahead = [1, 0, 0];\n\
-                 moveTo(me, positionOf(me) + ahead * speed * dt);\n\
-                 turnTo(me, rotationOf(find(\"Pole\")));\n\
-                 say(nameOf(me) + \" at \" + time().text());\n\
+                 moveTo(position() + ahead * speed * dt);\n\
+                 turnTo(World:find(\"Pole\"):rotation());\n\
+                 World:say(name() + \" at \" + World:time().text());\n\
              }\n\
          }\n\
          pass Mover;\nend\n",

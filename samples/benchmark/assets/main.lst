@@ -3,8 +3,8 @@
 -- Each area has one Fleets entity saying how many ships to make, or a
 -- Ceiling entity that keeps adding ships until 60 frames a second ends.
 
-get "solis/world":[say, fire, spawn, frameTime];
-get "solis/entity":[positionOf, moveTo, turnTo];
+fetch "solis/world":World;
+fetch "solis/project":Assembly;
 
 -- One ship: flies round its own loop, facing the way it goes, and fires a
 -- laser ahead six times a second (each flies for 1 2/3 seconds, so every
@@ -12,6 +12,7 @@ get "solis/entity":[positionOf, moveTo, turnTo];
 -- red fleet's loops are round x = -120, the green fleet's round x = 120,
 -- and where on its loop it starts comes from that place too, so the
 -- fleets swirl rather than fly in step.
+
 component Ship {
     has {
         bool started = false;
@@ -25,7 +26,7 @@ component Ship {
 
     method update(float dt) {
         is started == false? then {
-            vec3 at = positionOf(this);
+            vec3 at = position();
             team = 0;
             centre = [-120, at.y, at.z];
             is at.x > 0? then {
@@ -42,12 +43,12 @@ component Ship {
         float c = Maths:cos(angle);
         float s = Maths:sin(angle);
         vec3 at = centre + [c * radius, s * radius, 0];
-        moveTo(this, at);
+        moveTo(at);
         rotation facing = [0, 0, angle * 57.29578];
         is team == 1? then {
             facing = [0, 0, angle * 57.29578 + 180];
         }
-        turnTo(this, facing);
+        turnTo(facing);
         cooldown = cooldown - 1;
         is cooldown <= 0? then {
             cooldown = 10;
@@ -59,7 +60,7 @@ component Ship {
             is team == 1? then {
                 colour = [0.3, 4, 0.6];
             }
-            fire(at + ahead * 3, ahead, 80, 1.66, colour);
+            World:fire(at + ahead * 3, ahead, 80, 1.66, colour);
         }
     }
 }
@@ -89,7 +90,7 @@ component Fleets {
     method update(float dt) {
         int batch = 0;
         loop (made < ships && batch < 500) {
-            entity ship = spawn("fighter", startOf(made));
+            entity ship = World:spawn(Assembly.Ships.Fighter, startOf(made));
             made = made + 1;
             batch = batch + 1;
         }
@@ -117,11 +118,11 @@ component Ceiling {
         }
         is ships == 0? then {
             ships = step;
-            say("The ceiling run starts with " + ships.text() + " ships.");
+            World:say("The ceiling run starts with " + ships.text() + " ships.");
         }
         int batch = 0;
         loop (made < ships && batch < 500) {
-            entity ship = spawn("fighter", startOf(made));
+            entity ship = World:spawn(Assembly.Ships.Fighter, startOf(made));
             made = made + 1;
             batch = batch + 1;
         }
@@ -134,7 +135,7 @@ component Ceiling {
             return;
         }
         frames = frames + 1;
-        total = total + frameTime();
+        total = total + World:frameTime();
         is frames < 120? then {
             return;
         }
@@ -142,12 +143,12 @@ component Ceiling {
         float fps = 1.0 / average;
         is fps >= 59? then {
             best = ships;
-            say(ships.text() + " ships and " + (ships * 10).text() + " lasers: " + Maths:round(fps).text() + " frames a second. Adding " + step.text() + " more.");
+            World:say(ships.text() + " ships and " + (ships * 10).text() + " lasers: " + Maths:round(fps).text() + " frames a second. Adding " + step.text() + " more.");
             ships = ships + step;
         } or {
             done = true;
-            say(ships.text() + " ships: " + Maths:round(fps).text() + " frames a second.");
-            say("This computer keeps 60 frames a second up to about " + best.text() + " ships and " + (best * 10).text() + " lasers.");
+            World:say(ships.text() + " ships: " + Maths:round(fps).text() + " frames a second.");
+            World:say("This computer keeps 60 frames a second up to about " + best.text() + " ships and " + (best * 10).text() + " lasers.");
         }
         waited = 0;
         frames = 0;

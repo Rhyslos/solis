@@ -31,10 +31,10 @@ use reflect::{ComponentData, EntityId, Value};
 use std::collections::BTreeMap;
 use std::sync::Arc;
 
-const MAIN: &str = "fetch \"solis/kit/character\":[CharacterController];\n\
+const MAIN: &str = "fetch \"solis/world\":[World, Saves];\nfetch \"solis/project\":Assembly;\nfetch \"solis/kit/character\":[CharacterController];\n\
     fetch \"solis/kit/cameras\":[ThirdPersonCamera];\n\
-    get \"solis/world\":[spawn, despawn, saveGame, loadGame, randomRange, randomInt];\n\
-    get \"solis/entity\":[positionOf, moveTo];\n\
+    \n\
+    \n\
     get \"solis/input\":[pressed];\n\
     get \"solis/physics\":[push];\n\
     \n\
@@ -51,14 +51,14 @@ const MAIN: &str = "fetch \"solis/kit/character\":[CharacterController];\n\
             is t > 2? then {\n\
                 way = -1;\n\
             }\n\
-            moveTo(me, positionOf(me) + [way * dt, 0, 0]);\n\
+            moveTo(position() + [way * dt, 0, 0]);\n\
         }\n\
     }\n\
     \n\
     component Hive {\n\
         method update(float dt) {\n\
             is pressed(\"Interact\")? then {\n\
-                entity made = spawn(\"drone\", [randomRange(-3, 3), randomRange(2, 6), 1]);\n\
+                entity made = World:spawn(Assembly.Drones.Drone, [World:randomRange(-3, 3), World:randomRange(2, 6), 1]);\n\
             }\n\
         }\n\
     }\n\
@@ -70,12 +70,12 @@ const MAIN: &str = "fetch \"solis/kit/character\":[CharacterController];\n\
         }\n\
         method update(float dt) {\n\
             is life == 0? then {\n\
-                life = randomInt(20, 90);\n\
-                push(me, [randomRange(-1, 1), randomRange(-1, 1), 2]);\n\
+                life = World:randomInt(20, 90);\n\
+                push(me, [World:randomRange(-1, 1), World:randomRange(-1, 1), 2]);\n\
             }\n\
             age = age + 1;\n\
             is age >= life? then {\n\
-                despawn(me);\n\
+                despawn();\n\
             }\n\
         }\n\
     }\n\
@@ -83,16 +83,16 @@ const MAIN: &str = "fetch \"solis/kit/character\":[CharacterController];\n\
     component Keys {\n\
         method update(float dt) {\n\
             is pressed(\"SaveA\")? then {\n\
-                saveGame(\"a\");\n\
+                Saves:saveTo(\"a\");\n\
             }\n\
             is pressed(\"SaveB\")? then {\n\
-                saveGame(\"b\");\n\
+                Saves:saveTo(\"b\");\n\
             }\n\
             is pressed(\"LoadA\")? then {\n\
-                loadGame(\"a\");\n\
+                Saves:loadFrom(\"a\");\n\
             }\n\
             is pressed(\"LoadB\")? then {\n\
-                loadGame(\"b\");\n\
+                Saves:loadFrom(\"b\");\n\
             }\n\
         }\n\
     }\n\
@@ -101,7 +101,11 @@ const MAIN: &str = "fetch \"solis/kit/character\":[CharacterController];\n\
     end\n";
 
 fn program() -> Arc<script::Compiled> {
-    let mut files = script::describe::descriptions("Test Engine 9.9.9", "solis");
+    let (mut files, _) = script::describe::descriptions_for(
+        "Test Engine 9.9.9",
+        "solis",
+        &["drones/drone".to_string(), "nowhere".to_string()],
+    );
     files.push(("main.lst".into(), MAIN.to_string()));
     let code = script::Code {
         files,

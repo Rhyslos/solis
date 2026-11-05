@@ -6,19 +6,19 @@
 
 ## Lust (solis/<file>.lst)
 
-world: method say(string words) native;
-world: method float time() native;
-world: method entity find(string name) native;
-world: method fire(vec3 from, vec3 direction, float speed, float life, vec3 colour) native;
-world: method entity spawn(string file, vec3 place) native;
-world: method despawn(entity which) native;
-world: method float frameTime() native;
-world: method float random() native;
-world: method float randomRange(float low, float high) native;
-world: method int randomInt(int low, int high) native;
-world: method setSeed(int seed) native;
-world: method saveGame(string slot) native;
-world: method loadGame(string slot) native;
+world: object World: method say(string words) native;
+world: object World: method float time() native;
+world: object World: method entity find(string name) native;
+world: object World: method fire(vec3 from, vec3 direction, float speed, float life, vec3 colour) native;
+world: object World: method entity spawn(Assembly which, vec3 place) native;
+world: method entity:despawn() native;
+world: object World: method float frameTime() native;
+world: object World: method float random() native;
+world: object World: method float randomRange(float low, float high) native;
+world: object World: method int randomInt(int low, int high) native;
+world: object World: method setSeed(int seed) native;
+world: object Saves: method saveTo(string slot) native;
+world: object Saves: method loadFrom(string slot) native;
 sound: method playSound(string event) native;
 sound: method playSoundAt(string event, vec3 place) native;
 sound: method playSoundOn(string event, entity on) native;
@@ -42,12 +42,13 @@ physics: method entity castRayHit(vec3 from, vec3 direction, float reach) native
 physics: method vec3 castRayNormal(vec3 from, vec3 direction, float reach) native;
 physics: method moveCharacter(entity which, vec3 wanted) native;
 physics: method bool onGround(entity which) native;
-entity: method vec3 positionOf(entity which) native;
-entity: method moveTo(entity which, vec3 place) native;
-entity: method rotation rotationOf(entity which) native;
-entity: method turnTo(entity which, rotation facing) native;
+entity: method vec3 entity:position() native;
+entity: method entity:moveTo(vec3 place) native;
+entity: method rotation entity:rotation() native;
+entity: method entity:turnTo(rotation facing) native;
 entity: method rotation facingAlong(vec3 direction) native;
-entity: method string nameOf(entity which) native;
+entity: method entity:face(vec3 direction) native;
+entity: method string entity:name() native;
 
 ## Events the engine sends (fetch "solis/<file>":<Name>)
 
@@ -56,48 +57,49 @@ animation: event ClipFinished(string clip);
 
 ## Lua (solis.<name>)
 
+solis.Saves:loadFrom
+solis.Saves:saveTo
+solis.World:find
+solis.World:fire
+solis.World:frameTime
+solis.World:random
+solis.World:randomInt
+solis.World:randomRange
+solis.World:say
+solis.World:setSeed
+solis.World:spawn
+solis.World:time
 solis.axis
 solis.bindingOf
 solis.castRay
 solis.castRayHit
 solis.castRayNormal
-solis.despawn
+solis.entity.despawn
+solis.entity.face
+solis.entity.moveTo
+solis.entity.name
+solis.entity.position
+solis.entity.rotation
+solis.entity.turnTo
 solis.facingAlong
-solis.find
-solis.fire
-solis.frameTime
 solis.held
-solis.loadGame
 solis.moveCharacter
-solis.moveTo
-solis.nameOf
 solis.onGround
 solis.playClip
 solis.playSound
 solis.playSoundAt
 solis.playSoundOn
-solis.positionOf
 solis.pressed
 solis.push
-solis.random
-solis.randomInt
-solis.randomRange
 solis.rebind
 solis.released
 solis.replayClip
-solis.rotationOf
-solis.saveGame
-solis.say
 solis.send
 solis.setBusVolume
-solis.setSeed
 solis.setSoundPlaying
 solis.setVelocity
-solis.spawn
 solis.stopClip
 solis.stopSoundsOn
-solis.time
-solis.turnTo
 solis.velocityOf
 
 ## Lua's own names Solis adds or changes (its prelude)

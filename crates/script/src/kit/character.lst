@@ -6,7 +6,7 @@
 -- Set camera to the camera that follows it, so "forward" is the way the
 -- camera looks; leave it nothing to walk the way the character faces.
 
-get "solis/entity":[rotationOf, turnTo, facingAlong];
+get "solis/entity":facingAlong;
 get "solis/physics":[moveCharacter, onGround];
 get "solis/input":[axis, held, pressed];
 
@@ -25,9 +25,9 @@ component CharacterController {
     method update(float dt) {
         -- Which way is forward: the way the camera looks (along its -Z;
         -- its top, looking straight down), or the character's own.
-        float forward = rotationOf(this):degrees().z;
+        float forward = rotation():degrees().z;
         is camera != nothing? then {
-            rotation eye = rotationOf(camera);
+            rotation eye = camera:rotation();
             vec3 ahead = eye * [0, 0, -1];
             is ahead.x == 0 && ahead.y == 0? then {
                 ahead = eye * [0, 1, 0];
@@ -59,7 +59,7 @@ component CharacterController {
 
         -- Turn towards where it walks, at most turnSpeed degrees a second.
         is facesWhereItWalks && (move.x != 0 || move.y != 0)? then {
-            float now = rotationOf(this):degrees().z;
+            float now = rotation():degrees().z;
             float target = facingAlong(wanted):degrees().z;
             float turn = target - now;
             loop (turn > 180) {
@@ -69,7 +69,7 @@ component CharacterController {
                 turn = turn + 360;
             }
             float most = turnSpeed * dt;
-            turnTo(this, [0, 0, now + Maths:clamp(turn, -most, most)]);
+            turnTo([0, 0, now + Maths:clamp(turn, -most, most)]);
         }
     }
 }

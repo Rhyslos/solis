@@ -45,7 +45,7 @@ Play, Pause, Step and Stop are buttons only, so a stray key never starts or stop
 ## Tips and common problems
 - **Problem:** I changed something while playing and it went back when I pressed Stop. **Why:** that's what Stop is for. **Fix:** make lasting changes after Stop. To keep a value you tried while playing, note it down (or copy the component's values with ⋯ > Copy values, and paste them after Stop).
 - **Problem:** the Game panel shows the editor's view. **Why:** the area has no camera. **Fix:** Entity > Add camera.
-- **Problem:** new entities appear in the Area panel while playing. **Why:** game code made them (`spawn`, see [Game code](game-code.md#making-and-removing-entities)). **Fix:** nothing: they go when you press Stop.
+- **Problem:** new entities appear in the Area panel while playing. **Why:** game code made them (`World:spawn`, see [Game code](game-code.md#making-and-removing-entities)). **Fix:** nothing: they go when you press Stop.
 - **Problem:** pressing keys while playing changes the area (W picks the move tool). **Why:** the editor has the keys. **Fix:** click the Game panel to give them to the game; Esc gives them back.
 - **Problem:** Step is greyed out. **Why:** it runs one tick of a paused game. **Fix:** press Pause first.
 - **Problem:** the game shows the wrong camera. **Why:** it uses the first one in the Area panel's list. **Fix:** delete the cameras you don't need, or take their Camera component off (the × beside it in Properties).

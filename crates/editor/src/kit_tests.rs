@@ -15,17 +15,21 @@ use std::sync::Arc;
 
 const MAIN: &str = "fetch \"solis/kit/character\":[CharacterController];\n\
     fetch \"solis/kit/cameras\":[ThirdPersonCamera, FirstPersonCamera, RtsCamera];\n\
-    get \"solis/entity\":[positionOf, moveTo];\n\
+    \n\
     component Slider {\n\
         method update(float dt) {\n\
-            moveTo(me, positionOf(me) + [dt, 0, 0]);\n\
+            moveTo(position() + [dt, 0, 0]);\n\
         }\n\
     }\n\
     pass Slider;\n\
     end\n";
 
 fn program() -> Arc<script::Compiled> {
-    let mut files = script::describe::descriptions("Test Engine 9.9.9", "solis");
+    let (mut files, _) = script::describe::descriptions_for(
+        "Test Engine 9.9.9",
+        "solis",
+        &["drones/drone".to_string(), "nowhere".to_string()],
+    );
     files.push(("main.lst".into(), MAIN.to_string()));
     let code = script::Code {
         files,
@@ -446,7 +450,11 @@ fn the_manual_s_hopper_is_sound_code_and_hops() {
         .unwrap();
     let end = start + page[start..].find("end\n").unwrap() + 4;
     let code = &page[start..end];
-    let mut files = script::describe::descriptions("Test Engine 9.9.9", "solis");
+    let (mut files, _) = script::describe::descriptions_for(
+        "Test Engine 9.9.9",
+        "solis",
+        &["drones/drone".to_string(), "nowhere".to_string()],
+    );
     files.push(("main.lst".into(), code.to_string()));
     let compiled = script::compile(&script::Code {
         files,

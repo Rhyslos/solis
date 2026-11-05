@@ -15,14 +15,11 @@ Not sure which? [Which language when](which-language.md) compares them, with num
 **Right now:** Lust and Lua components work: they appear in Properties, run in play mode, talk to each other through events, and take new code while the game runs. Rust components can join them, but for now only in a Solis built from source.
 
 ## How to use it
-1. Open a [project](projects-and-the-library.md). Solis puts a `solis` folder in its `assets`, holding `world.lst` and `entity.lst`. They describe what your code can ask of the engine, such as `say` (write in the Console) or `moveTo` (put an entity somewhere).
+1. Open a [project](projects-and-the-library.md). Solis puts a `solis` folder in its `assets`, holding `world.lst`, `entity.lst` and `project.lst`. They describe what your code can ask of the engine, such as `World:say` (write in the Console) or `moveTo` (put an entity somewhere). `project.lst` holds your project's own names, such as its assemblies, written again whenever you add or rename one.
 2. Right-click in the Library and choose **New > Lust code file**. The first one is `main.lst`, at the top of the `assets` folder: your game's code starts there. Lust reads `main.lst` first, and every other code file is fetched from it, or from a file it fetches. The file opens in your code editor for Lust (Ledger), with a component to start from. You can also make the file by hand in any text editor.
-3. Use what the engine offers with Lust's `get`:
+3. Write a component. An entity's own abilities, such as `position()` and `moveTo(place)`, need no `get`: they're on every entity. The engine's other parts are objects you `fetch`, such as `fetch "solis/world":World;` for `World:say(…)`:
 
    ```
-   get "solis/world":[say, time];
-   get "solis/entity":[positionOf, moveTo];
-
    component Spinner {
        has {
            float speed = 2;
@@ -41,8 +38,6 @@ Not sure which? [Which language when](which-language.md) compares them, with num
 A [component](concepts.md#the-area) written in Lust works like Solis's own: put it on an entity, set its fields in Properties, and it does its job when the game runs.
 
 ```
-get "solis/entity":[positionOf, moveTo];
-
 component Mover {
     has {
         float speed = 2;
@@ -50,7 +45,7 @@ component Mover {
 
     method update(float dt) {
         vec3 ahead = [1, 0, 0];
-        moveTo(this, positionOf(this) + ahead * speed * dt);
+        moveTo(position() + ahead * speed * dt);
     }
 }
 
@@ -66,7 +61,7 @@ local Mover = component("Mover", {
 })
 
 function Mover:update(dt)
-    solis.moveTo(self.me, solis.positionOf(self.me) + vec3(1, 0, 0) * self.speed * dt)
+    solis.entity.moveTo(self.me, solis.entity.position(self.me) + vec3(1, 0, 0) * self.speed * dt)
 end
 ```
 
@@ -84,15 +79,15 @@ What a field can hold: `bool`, `int`, `float`, `string`, a `state` (shown as a c
 
 **What game code sees during a tick:** the world as it was when the tick started, plus its own changes. Solis runs game code on every core of your processor at once, so components can't see each other's moves while they happen. Instead:
 
-- `positionOf`, `rotationOf`, `nameOf` and `find` read the world as it was at the start of the tick. A component that moves its own entity sees the new place at once; another component sees it next tick.
-- `moveTo`, `turnTo` and `say` are kept, and happen when every `update` is done, in the order above. If two components move the same entity, the last one in that order wins.
+- `position()`, `rotation()`, `name()` and `World:find` read the world as it was at the start of the tick. A component that moves its own entity sees the new place at once; another component sees it next tick.
+- `moveTo`, `turnTo`, `face` and `World:say` are kept, and happen when every `update` is done, in the order above. If two components move the same entity, the last one in that order wins.
 - Events are delivered after that, a round at a time; each round sees the world as the round before left it.
 
 So a game runs the same way on a computer with 2 cores or 32. Most code never notices: a unit chasing another simply aims at where the other was a sixtieth of a second ago. Code that needs to see a move straight away should move things from one component, or tell the other with an event.
 
 **When something goes wrong while it runs,** such as dividing by zero, that component stops and the Console says which one, on which entity, and where in the Lust: "Divider on Splitter stopped: main.lst, line 8: …". The rest of the game keeps going. A component that runs for more than a tenth of a second without stopping (a loop that never ends) is stopped the same way, so it can't freeze Solis.
 
-**When code changes too much at once:** a loop that calls `moveTo`, `fire`, `spawn` or `say` hundreds of thousands of times in one tick has the changes past 200,000 left out (for each core), and the Console says so once. It's nearly always a loop that never ends.
+**When code changes too much at once:** a loop that calls `moveTo`, `World:fire`, `World:spawn` or `World:say` hundreds of thousands of times in one tick has the changes past 200,000 left out (for each core), and the Console says so once. It's nearly always a loop that never ends.
 
 **When the whole tick is too slow:** if the game's code takes more than a quarter of a second in one tick on any one core (many slow components, say), the rest of that tick waits and the game **pauses**, with a message in the Console saying why. None of the components is to blame on its own, so none stops; make the slow ones faster, then press **Pause** or **Play** to carry on. Without this, the game would try to catch up and the editor would hardly respond.
 
@@ -116,7 +111,7 @@ The Console says what changed each time: "The running game took the new code (Gu
 Components tell each other things with [events](concepts.md#game-code): a gun tells a target it was hit, the target's health tells its entity it died. An event says what it carries. A component reacts to it with `on`, and anything sends it to an entity with `send`:
 
 ```
-get "solis/world":[say];
+fetch "solis/world":World;
 
 event Hit(entity by, float damage);
 event Died();
@@ -136,7 +131,7 @@ component Health {
     }
 
     on Died() {
-        say("down!");
+        World:say("down!");
     }
 }
 
@@ -197,8 +192,7 @@ Other code files can sit in any folder in `assets`. Fetch them by their path fro
 Lasers, bolts and tracer rounds come in their thousands, so they aren't entities: they're [projectiles](concepts.md#game-code), which Solis moves itself, every tick, on every core.
 
 ```
-get "solis/world":[fire];
-get "solis/entity":[positionOf];
+fetch "solis/world":World;
 
 component Turret {
     has {
@@ -208,7 +202,7 @@ component Turret {
     method update(float dt) {
         cooldown = cooldown - 1;
         is cooldown <= 0? then {
-            fire(positionOf(this), [0, 1, 0], 60, 2, [4, 0.3, 0.2]);
+            World:fire(position(), [0, 1, 0], 60, 2, [4, 0.3, 0.2]);
             cooldown = 30;
         }
     }
@@ -218,7 +212,7 @@ pass Turret;
 end
 ```
 
-`fire` takes where it starts, which way it flies (any length), its speed in metres a second, how long it lives in seconds, and its colour as red, green and blue. Above 1 glows brighter: `[4, 0.3, 0.2]` is a hot red laser. In Lua it's `solis.fire(from, direction, speed, life, colour)`, with `vec3(…)` for each.
+`fire` takes where it starts, which way it flies (any length), its speed in metres a second, how long it lives in seconds, and its colour as red, green and blue. Above 1 glows brighter: `[4, 0.3, 0.2]` is a hot red laser. In Lua it's `solis.World:fire(from, direction, speed, life, colour)`, with `vec3(…)` for each.
 
 - It flies in a straight line and disappears when its time is up. It doesn't hit anything: lasers are kept out of [physics](physics.md) so a million can fly. To see what a shot would hit, look along its line with `castRay`.
 - It's drawn in the **Game** panel as a glowing streak, as long as it flies in two frames. Streaks add their light where they cross.
@@ -230,7 +224,8 @@ end
 Game code can make copies of [assemblies](assemblies.md) while it plays, and take entities away:
 
 ```
-get "solis/world":[spawn, despawn];
+fetch "solis/world":World;
+fetch "solis/project":Assembly;
 
 component Hangar {
     has {
@@ -239,7 +234,7 @@ component Hangar {
 
     method update(float dt) {
         is made < 10? then {
-            entity ship = spawn("ships/fighter.solassembly", [made * 5, 0, 10]);
+            entity ship = World:spawn(Assembly.Ships.Fighter, [made * 5, 0, 10]);
             made = made + 1;
         }
     }
@@ -249,22 +244,22 @@ pass Hangar;
 end
 ```
 
-- **Which assembly:** its file in the project's assets (`ships/fighter.solassembly`), that without the extension (`ships/fighter`), or just its name (`fighter`) when only one assembly has it. A name that isn't an assembly makes nothing, and the Console says so once.
-- **When:** like a move, it happens after every `update` in the tick ([what game code sees](#components)). `spawn` gives back the new entity at once, so you can keep it. It joins the game at the end of the tick, after the tick's moves: its components start then and run from the next tick, even when a slow frame runs several ticks at once. A `despawn` lands at the same moment, in the order they were asked for, so spawning something and taking it out in one tick leaves nothing behind. New copies go at the end of the area's tree, in the order they were spawned.
+- **Which assembly:** one of the project's, named from its file with folders as options inside options: `ships/fighter.solassembly` is `Assembly.Ships.Fighter` (each part's first letter a capital). Solis writes the names into `solis/project.lst` whenever you add, rename or remove an assembly, so a misspelt or deleted one is a mistake before the game runs, with "did you mean". A file whose name can't be a Lust name (it starts with a digit, has a dash or space, is all capitals, or is one of Lust's own objects like `time`) is left out, and the Console says which. `Assembly.None` is there when the project has none, and makes nothing.
+- **When:** like a move, it happens after every `update` in the tick ([what game code sees](#components)). `World:spawn` gives back the new entity at once, so you can keep it. It joins the game at the end of the tick, after the tick's moves: its components start then and run from the next tick, even when a slow frame runs several ticks at once. A `despawn` lands at the same moment, in the order they were asked for, so spawning something and taking it out in one tick leaves nothing behind. New copies go at the end of the area's tree, in the order they were spawned.
 - **Where it shows:** copies game code makes appear in the Area panel while playing, and are gone when you press **Stop**, like everything else changed while playing. They aren't undo steps.
 - At most 10,000 copies are made in one tick, and an area holds at most a million entities; past that, the Console says so and the rest aren't made.
-- `despawn(this)` is how a component takes its own entity away. It ends at the end of the tick.
+- `despawn()` is how a component takes its own entity away, and `target:despawn()` takes another. It ends at the end of the tick.
 
 ## Random numbers
 
 Dice, loot, where an enemy wanders next: `random()` gives a number from 0 up to 1, `randomRange(low, high)` one between two numbers, and `randomInt(low, high)` a whole number, both ends included.
 
 ```
-get "solis/world":[randomInt, randomRange, say];
+fetch "solis/world":World;
 
 component Die {
     method update(float dt) {
-        say("rolled " + randomInt(1, 6).text());
+        World:say("rolled " + World:randomInt(1, 6).text());
     }
 }
 
@@ -276,7 +271,7 @@ Solis makes them from the game's **seed** ([random numbers](concepts.md#game-cod
 
 ## Saving and loading
 
-`saveGame("quick")` saves the whole game and `loadGame("quick")` puts it back exactly as it was: see [Save games](save-games.md).
+`Saves:saveTo("quick")` saves the whole game and `Saves:loadFrom("quick")` puts it back exactly as it was: see [Save games](save-games.md). (`save` and `load` on their own are Lust's own words, for its files.)
 
 ## Sounds
 
@@ -284,7 +279,6 @@ Game code plays [sound events](sound-events.md) by name: the event's file in `as
 
 ```
 get "solis/sound":[playSoundAt, playSoundOn, stopSoundsOn];
-get "solis/entity":[positionOf];
 
 component Walker {
     has {
@@ -294,7 +288,7 @@ component Walker {
     method update(float dt) {
         steps = steps + 1;
         is steps % 30 == 0? then {
-            playSoundAt("sfx/footstep", positionOf(this));
+            playSoundAt("sfx/footstep", position());
         }
     }
 }
@@ -309,7 +303,7 @@ end
 - `setSoundPlaying(entity, playing)` turns an entity's [AudioSource](sound-events.md#sounds-that-keep-playing) (a sound that keeps playing: an engine, a campfire) on or off.
 - `setBusVolume(bus, volume)` sets a [bus](mixer.md) ("Music", "Effects") for the rest of the play, from 0 (silent) to 1 (as set in the Mixer): what an options menu's volume sliders call. Stop puts the Mixer's back.
 
-In Lua they're `solis.playSoundAt("sfx/footstep", solis.positionOf(self.me))` and so on. In Rust, through the component's host: `cx.host().play_sound("sfx/footstep", SoundAt::Place(place))`, and `cx.host().set_bus_volume("Music", 0.5)`.
+In Lua they're `solis.playSoundAt("sfx/footstep", solis.entity.position(self.me))` and so on. In Rust, through the component's host: `cx.host().play_sound("sfx/footstep", SoundAt::Place(place))`, and `cx.host().set_bus_volume("Music", 0.5)`.
 
 **Sound never changes the game.** None of these gives anything back, so code can't ask "is it still playing?": a game plays exactly the same with sound on, off, or with no sound card, and a [recording](concepts.md#simulation) replays the same. Each play picks its take from the game's seed and the tick, so the same game even sounds the same each time. Like a move, a sound lands at the end of the tick.
 
@@ -330,19 +324,19 @@ Things that fall, collide and get pushed have a **RigidBody** and a **Collider**
 
 | In | Method | What it does |
 |---|---|---|
-| `solis/world` | `say(string words)` | Writes words in the Console. |
-| `solis/world` | `float time()` | How long the game has been running, in seconds. |
-| `solis/world` | `entity find(string name)` | The first entity with this name, in the Area panel's order, or `nothing`. |
-| `solis/world` | `fire(vec3 from, vec3 direction, float speed, float life, vec3 colour)` | Fires a projectile (see Projectiles, below). |
-| `solis/world` | `entity spawn(string file, vec3 place)` | Makes a copy of an assembly at a place (see Making and removing entities, below). |
-| `solis/world` | `despawn(entity which)` | Takes an entity, and everything under it, out of the game. |
-| `solis/world` | `float frameTime()` | How long the last frame took, in seconds of real time (1/60 at 60 frames a second). |
-| `solis/world` | `float random()` | A random number from 0 up to 1 (see Random numbers, above). |
-| `solis/world` | `float randomRange(float low, float high)` | A random number from low up to high. |
-| `solis/world` | `int randomInt(int low, int high)` | A random whole number from low to high, both included. |
-| `solis/world` | `setSeed(int seed)` | Starts the random numbers again from a seed, at the end of the tick. |
-| `solis/world` | `saveGame(string slot)` | Saves the whole game in a slot, at the end of the tick ([Save games](save-games.md)). |
-| `solis/world` | `loadGame(string slot)` | Loads the game saved in a slot, at the end of the tick. |
+| `solis/world` | `World:say(string words)` | Writes words in the Console. |
+| `solis/world` | `float World:time()` | How long the game has been running, in seconds. |
+| `solis/world` | `entity World:find(string name)` | The first entity with this name, in the Area panel's order, or `nothing`. |
+| `solis/world` | `World:fire(vec3 from, vec3 direction, float speed, float life, vec3 colour)` | Fires a projectile (see Projectiles, below). |
+| `solis/world` | `entity World:spawn(Assembly which, vec3 place)` | Makes a copy of one of the project's assemblies at a place (see Making and removing entities, below). |
+| `solis/world` | `float World:frameTime()` | How long the last frame took, in seconds of real time (1/60 at 60 frames a second). |
+| `solis/world` | `float World:random()` | A random number from 0 up to 1 (see Random numbers, above). |
+| `solis/world` | `float World:randomRange(float low, float high)` | A random number from low up to high. |
+| `solis/world` | `int World:randomInt(int low, int high)` | A random whole number from low to high, both included. |
+| `solis/world` | `World:setSeed(int seed)` | Starts the random numbers again from a seed, at the end of the tick. |
+| `solis/world` | `Saves:saveTo(string slot)` | Saves the whole game in a slot, at the end of the tick ([Save games](save-games.md)). |
+| `solis/world` | `Saves:loadFrom(string slot)` | Loads the game saved in a slot, at the end of the tick. |
+| `solis/project` | `state Assembly` | The project's assemblies, folders as options inside options (`Assembly.Ships.Fighter`). |
 | `solis/sound` | `playSound(string event)` | Plays a sound event the same everywhere (see Sounds, above). |
 | `solis/sound` | `playSoundAt(string event, vec3 place)` | Plays a sound event at a place in the world. |
 | `solis/sound` | `playSoundOn(string event, entity on)` | Plays a sound event on an entity, following it. |
@@ -366,12 +360,28 @@ Things that fall, collide and get pushed have a **RigidBody** and a **Collider**
 | `solis/physics` | `vec3 castRayNormal(vec3 from, vec3 direction, float reach)` | Which way the surface a line meets faces. |
 | `solis/physics` | `moveCharacter(entity which, vec3 wanted)` | Moves a character this far, climbing steps, sliding along walls ([Characters and cameras](characters-and-cameras.md)). |
 | `solis/physics` | `bool onGround(entity which)` | Whether a character stood on something after its last move. |
-| `solis/entity` | `vec3 positionOf(entity which)` | Where an entity is in the world, in metres. |
-| `solis/entity` | `moveTo(entity which, vec3 place)` | Puts an entity at a place in the world. |
-| `solis/entity` | `rotation rotationOf(entity which)` | Which way an entity faces. |
-| `solis/entity` | `turnTo(entity which, rotation facing)` | Turns an entity to face this way. |
-| `solis/entity` | `rotation facingAlong(vec3 direction)` | The upright rotation facing along a direction (an entity's forward is +Y): `turnTo(this, facingAlong(target - positionOf(this)))` faces a place. |
-| `solis/entity` | `string nameOf(entity which)` | An entity's name. |
+| any entity | `vec3 position()` | Where the entity is in the world, in metres. |
+| any entity | `moveTo(vec3 place)` | Puts the entity at a place in the world. |
+| any entity | `rotation rotation()` | Which way the entity faces. |
+| any entity | `turnTo(rotation facing)` | Turns the entity to face this way. |
+| any entity | `face(vec3 direction)` | Turns the entity, upright, to face along a direction (its forward is +Y): `face(target:position() - position())` faces a place. |
+| any entity | `string name()` | The entity's name. |
+| any entity | `despawn()` | Takes the entity, and everything under it, out of the game. |
+| `solis/entity` | `rotation facingAlong(vec3 direction)` | The upright rotation facing along a direction, for working out a turn without making it. |
+
+An entity's abilities are called bare for the component's own entity (`moveTo(place)`) and with `:` on any other (`target:moveTo(place)`). In Lua they're `solis.entity.moveTo(target, place)`, and the objects' `solis.World:say(words)`.
+
+**Calls that changed.** Solis's calls now follow one shape (methods on things, the project's names as states), so some older ones are written differently. Old code is a mistake that says the new way: "positionOf is now written target:position() (inside a component, position() for its own entity)".
+
+| Before | Now |
+|---|---|
+| `positionOf(e)`, `moveTo(e, p)` | `e:position()`, `e:moveTo(p)` (bare for the component's own entity) |
+| `rotationOf(e)`, `turnTo(e, r)`, `nameOf(e)`, `despawn(e)` | `e:rotation()`, `e:turnTo(r)`, `e:name()`, `e:despawn()` |
+| `turnTo(this, facingAlong(d))` | `face(d)` |
+| `say`, `time`, `frameTime`, `find`, `fire`, `random`, `randomRange`, `randomInt`, `setSeed` | the same names on `World`: `World:say(words)` |
+| `spawn("ships/fighter", p)` | `World:spawn(Assembly.Ships.Fighter, p)` |
+| `saveGame(slot)`, `loadGame(slot)` | `Saves:saveTo(slot)`, `Saves:loadFrom(slot)` |
+| Lua `solis.positionOf(e)`, `solis.say(w)` | `solis.entity.position(e)`, `solis.World:say(w)` |
 
 **When an update renames something.** What game code can call doesn't change by accident: Solis's own checks stop any update that changes it without saying so. When a name does change on purpose, the old name keeps working for a few phases, so your game still runs the day you update. Each place your code uses the old name shows in the [Problems](problems.md) panel as a warning, with its file and line, the new name, and when the old one stops working. Change the call to the new name before then.
 
@@ -385,11 +395,11 @@ Game code runs inside a **sandbox**: it can reach the game through the engine's 
 - **Problem:** Problems says the game's code starts at `main.lst` and there isn't one. **Why:** there are `.lst` files, but none is called `main.lst` in the `assets` folder itself. **Fix:** make `assets/main.lst`, and fetch your other files from it.
 - **Problem:** changes I made to `solis/world.lst` (or `solis/kit/…`) disappeared. **Why:** Solis writes the `solis` files again when the project opens, so they always match the engine. **Fix:** put your own code in your own files; to change a ready-made component, copy its file outside `solis/` and rename the component.
 - **Problem:** my component isn't in **Add component**. **Why:** the code has a mistake (see Problems), or its Lust file isn't fetched from `main.lst` (directly, or through a file `main.lst` fetches). Lua files are all read, wherever they are in `assets`. **Fix:** fix the mistake, or fetch the file.
-- **Problem:** "solis.moveTo isn't something Solis offers" in Lua. **Why:** the name is misspelt, or the method was used outside `update` or an `on_` function, when the game isn't running. **Fix:** check the name against the table above.
+- **Problem:** "solis.entity.moveTo isn't something Solis offers" in Lua. **Why:** the name is misspelt, or the method was used outside `update` or an `on_` function, when the game isn't running. **Fix:** check the name against the table above.
 - **Problem:** a component is called the same as one of Solis's (`Light`) or a Rust one, or a Lust and a Lua component share a name. **Why:** two components can't share a name. The one in your code doesn't run (Solis's own, or the Rust one, does). **Fix:** rename yours; Problems says where it is.
 - **Problem:** I saved new code while playing, and the Console says the running game couldn't take it. **Why:** the code's start failed with the game's world (it ran fine with no world while checking). **Fix:** fix the line it points at; the game keeps the last code meanwhile.
 - **Problem:** Problems says something is nested too deeply. **Why:** more than 150 levels of brackets, blocks or operators inside each other (`a + b + c …` counts each `+`) is more than Lust takes. **Fix:** split it up with variables or methods.
-- **Problem:** Problems says the code stopped while starting. **Why:** Solis runs the code's own start (the lines outside components, and each field's starting value) to read its components, before anything plays and with no world: `find` finds nothing then. A start that fails or takes more than a second is a mistake. **Fix:** fix the line Problems points at.
+- **Problem:** Problems says the code stopped while starting. **Why:** Solis runs the code's own start (the lines outside components, and each field's starting value) to read its components, before anything plays and with no world: `World:find` finds nothing then. A start that fails or takes more than a second is a mistake. **Fix:** fix the line Problems points at.
 - **Problem:** the Console says a code file was left out. **Why:** each code file can be at most 1 MB, and all of them together 16 MB. Files that aren't text are left out too. **Fix:** split a huge file into smaller ones.
 - **Problem:** a component reads another entity's place and gets where it was before this tick's move. **Why:** during a tick, game code sees the world as it was when the tick started (see Components, above), so every core sees the same world. **Fix:** usually nothing: it catches up next tick. If it must be at once, do both in one component, or send an event (events see the moves made before them).
 - Commit the `solis` folder with your game, so `lust check` works on other computers too.

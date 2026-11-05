@@ -2,7 +2,6 @@
 -- component. Each reads the ready-made input actions (Edit > Input
 -- actions…), so players can rebind them.
 
-get "solis/entity":[positionOf, moveTo, turnTo];
 get "solis/physics":[velocityOf, castRay];
 get "solis/input":[axis, held];
 
@@ -36,7 +35,7 @@ component ThirdPersonCamera {
         }
         -- Where the character will be after this tick, so the camera
         -- keeps up with it.
-        vec3 pivot = positionOf(target) + velocityOf(target) * dt + [0, 0, height];
+        vec3 pivot = target:position() + velocityOf(target) * dt + [0, 0, height];
         -- A camera looks along its -Z: tipped up 90 degrees it looks
         -- along +Y, then pitch and yaw turn it.
         rotation facing = [90 + pitch, 0, yaw];
@@ -46,8 +45,8 @@ component ThirdPersonCamera {
         is wall >= 0? then {
             away = Maths:max(Maths:min(away, wall - 0.3), 0.2);
         }
-        moveTo(this, pivot + behind * away);
-        turnTo(this, facing);
+        moveTo(pivot + behind * away);
+        turnTo(facing);
     }
 }
 
@@ -72,10 +71,10 @@ component FirstPersonCamera {
         vec3 look = axis("Look");
         yaw = yaw - look.x;
         pitch = Maths:clamp(pitch + look.y, lowest, highest);
-        moveTo(this, positionOf(body) + velocityOf(body) * dt + [0, 0, eyes]);
-        turnTo(this, [90 + pitch, 0, yaw]);
+        moveTo(body:position() + velocityOf(body) * dt + [0, 0, eyes]);
+        turnTo([90 + pitch, 0, yaw]);
         is turnsBody? then {
-            turnTo(body, [0, 0, yaw]);
+            body:turnTo([0, 0, yaw]);
         }
     }
 }
@@ -112,8 +111,8 @@ component RtsCamera {
         }
         float down = Maths:clamp(tilt, 10, 90) * Maths.pi / 180;
         vec3 back = heading * [0, 0 - Maths:cos(down) / Maths:sin(down), 0] * height;
-        moveTo(this, focus + back + [0, 0, height]);
-        turnTo(this, [90 - Maths:clamp(tilt, 10, 90), 0, yaw]);
+        moveTo(focus + back + [0, 0, height]);
+        turnTo([90 - Maths:clamp(tilt, 10, 90), 0, yaw]);
     }
 }
 

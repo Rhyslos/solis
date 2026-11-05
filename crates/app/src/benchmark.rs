@@ -162,7 +162,11 @@ mod tests {
     use super::*;
 
     fn compiled() -> script::Compiled {
-        let mut files = script::describe::descriptions("Test Engine 9.9.9", "solis");
+        let (mut files, _) = script::describe::descriptions_for(
+            "Test Engine 9.9.9",
+            "solis",
+            &[SHIP_ASSEMBLY.trim_end_matches(".solassembly").to_string()],
+        );
         files.push(("main.lst".into(), MAIN.to_string()));
         let code = script::Code {
             files,

@@ -13,22 +13,26 @@ use reflect::EntityId;
 use std::sync::Arc;
 
 const SPEAKER: &str = "get \"solis/sound\":[playSound, playSoundAt, playSoundOn];\n\
-    get \"solis/entity\":[positionOf, moveTo];\n\
+    \n\
     component Speaker {\n\
         has {\n\
             int ticks = 0;\n\
         }\n\
         method update(float dt) {\n\
             ticks = ticks + 1;\n\
-            playSoundAt(\"sfx/step\", positionOf(me));\n\
+            playSoundAt(\"sfx/step\", position());\n\
             playSoundOn(\"engine\", me);\n\
-            moveTo(me, positionOf(me) + [1, 0, 0]);\n\
+            moveTo(position() + [1, 0, 0]);\n\
         }\n\
     }\n\
     pass Speaker;\nend\n";
 
 fn program(main: &str) -> Arc<script::Compiled> {
-    let mut files = script::describe::descriptions("Test Engine 9.9.9", "solis");
+    let (mut files, _) = script::describe::descriptions_for(
+        "Test Engine 9.9.9",
+        "solis",
+        &["drones/drone".to_string(), "nowhere".to_string()],
+    );
     files.push(("main.lst".into(), main.to_string()));
     let code = script::Code {
         files,
@@ -242,7 +246,7 @@ fn a_new_play_starts_its_sounds_afresh() {
     assert_eq!(w.play_number(), paused, "carrying on isn't a new play");
 }
 
-const WALKER: &str = "get \"solis/world\":[say];\n\
+const WALKER: &str = "fetch \"solis/world\":World;\n\n\
     get \"solis/animation\":[playClip];\n\
     fetch \"solis/animation\":AnimationCue;\n\
     fetch \"solis/animation\":ClipFinished;\n\
@@ -251,10 +255,10 @@ const WALKER: &str = "get \"solis/world\":[say];\n\
             playClip(me, \"walk\");\n\
         }\n\
         on AnimationCue(string name) {\n\
-            say(\"cue \" + name);\n\
+            World:say(\"cue \" + name);\n\
         }\n\
         on ClipFinished(string clip) {\n\
-            say(\"done \" + clip);\n\
+            World:say(\"done \" + clip);\n\
         }\n\
     }\n\
     pass Walker;\nend\n";

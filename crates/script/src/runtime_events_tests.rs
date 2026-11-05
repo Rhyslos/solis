@@ -40,11 +40,14 @@ fn id(n: u64) -> EntityId {
 
 fn loaded(main: &str) -> Runtime {
     let mut files = crate::describe::descriptions("Test 1.0", "solis");
-    files.push((
-        "main.lst".into(),
-        format!("get \"solis/world\":[say];\n{main}"),
-    ));
-    let chunk = match lust::to_lua("main.lst", &files) {
+    files.push(("main.lst".into(), format!("\n{main}")));
+    let chunk = match lust::to_lua_with(
+        &lust::Engine {
+            folders: crate::describe::engine_folders(&files),
+        },
+        "main.lst",
+        &files,
+    ) {
         Ok(chunk) => crate::code::Compiled {
             lust: Some(chunk),
             lua: Vec::new(),
@@ -120,7 +123,7 @@ fn armour() -> RustKind {
     }
 }
 
-const GAME: &str = "event Hit(entity by, float damage);\n\
+const GAME: &str = "fetch \"solis/world\":World;\nevent Hit(entity by, float damage);\n\
     event Broken(int pieces);\n\
     component Gun {\n\
         has {\n\
@@ -130,7 +133,7 @@ const GAME: &str = "event Hit(entity by, float damage);\n\
         method update(float dt) {\n\
             is shots < 2? then {\n\
                 shots = shots + 1;\n\
-                say(\"bang\");\n\
+                World:say(\"bang\");\n\
                 send Hit(me, 2.5) to target;\n\
             }\n\
         }\n\
@@ -141,10 +144,10 @@ const GAME: &str = "event Hit(entity by, float damage);\n\
         }\n\
         on Hit(entity by, float damage) {\n\
             hp = hp - damage;\n\
-            say(\"hp \" + hp.text());\n\
+            World:say(\"hp \" + hp.text());\n\
         }\n\
         on Broken(int pieces) {\n\
-            say(\"broken into \" + pieces.text());\n\
+            World:say(\"broken into \" + pieces.text());\n\
         }\n\
     }\n\
     pass Gun, Health;\nend\n";

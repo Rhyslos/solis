@@ -165,15 +165,15 @@ fn a_recording_that_saves_plays_back_the_same_and_writes_nothing() {
     // loads. A recording ends at a load (it plays back from Play), so only
     // saves come up while one plays back: they're kept by the check, never
     // written into the project.
-    const CODE: &str = "get \"solis/world\":[saveGame, loadGame];\n\
-        get \"solis/entity\":[positionOf, moveTo];\n\
+    const CODE: &str = "fetch \"solis/world\":Saves;\n\n\
+        \n\
         component Hopper {\n\
             has { int ticks = 0; }\n\
             method update(float dt) {\n\
                 ticks = ticks + 1;\n\
-                moveTo(me, positionOf(me) + [0.1, 0, 0]);\n\
-                is ticks == 10? then { saveGame(\"quick\"); }\n\
-                is ticks == 20? then { loadGame(\"quick\"); }\n\
+                moveTo(position() + [0.1, 0, 0]);\n\
+                is ticks == 10? then { Saves:saveTo(\"quick\"); }\n\
+                is ticks == 20? then { Saves:loadFrom(\"quick\"); }\n\
             }\n\
         }\n\
         pass Hopper;\nend\n";

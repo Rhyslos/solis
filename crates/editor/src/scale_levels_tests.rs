@@ -36,7 +36,11 @@ fn start_of(n: usize) -> Vec3 {
 
 /// A workbench playing `units` of the benchmark's ships, each a model.
 fn fleet(units: usize) -> Workbench {
-    let mut files = script::describe::descriptions("Test Engine 9.9.9", "solis");
+    let (mut files, _) = script::describe::descriptions_for(
+        "Test Engine 9.9.9",
+        "solis",
+        &["ships/fighter".to_string()],
+    );
     files.push(("main.lst".into(), BENCHMARK.to_string()));
     let code = script::Code {
         files,
