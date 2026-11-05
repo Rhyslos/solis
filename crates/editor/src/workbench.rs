@@ -316,6 +316,10 @@ pub struct Workbench {
     pub(crate) library_pinned: bool,
     /// Whether the Library's drawer is popped up (unpinned only).
     pub(crate) drawer_open: bool,
+    /// The workspace in use (decision 0085).
+    pub(crate) workspace: crate::workspace::Workspace,
+    /// The other workspaces' layouts, as last left.
+    pub(crate) other_layouts: BTreeMap<crate::workspace::Workspace, DockState<Panel>>,
     /// Changes made while playing, waiting for Keep or Undo all.
     pub(crate) play_changes: Option<crate::play_changes::PlayChanges>,
     /// One search for everything (decision 0085).
@@ -487,6 +491,8 @@ impl Workbench {
             code_checked: None,
             library_pinned: true,
             drawer_open: false,
+            workspace: crate::workspace::Workspace::Level,
+            other_layouts: BTreeMap::new(),
             play_changes: None,
             search: crate::search::SearchState::default(),
             logo: None,
@@ -1051,6 +1057,14 @@ impl Workbench {
                     accent: self.accent.colors().fill,
                 },
             });
+        // Which entities use each code file's components, for the Code
+        // panel (decision 0085): only worked out while it's in front.
+        let code_uses =
+            if self.in_front.contains(&Panel::Code) || self.in_front.contains(&Panel::Library) {
+                self.code_uses()
+            } else {
+                BTreeMap::new()
+            };
         let frames = self.frames_editor.as_mut().map(|editor| {
             crate::workbench_frames::frames_ui(
                 editor,
@@ -1125,6 +1139,7 @@ impl Workbench {
                             mixer: &self.mixer.mixer,
                             sheets: &sheets,
                             sheet_pictures: &self.sheet_pictures,
+                            code_uses: &code_uses,
                         },
                         mixer: &self.mixer,
                         mixer_requests: &mut mixer_requests,

@@ -76,6 +76,7 @@ pub(crate) enum Doing {
     ResetLayout,
     PinLibrary,
     UnpinLibrary,
+    Workspace(crate::workspace::Workspace),
     About,
 }
 
@@ -412,6 +413,17 @@ impl Workbench {
             true,
             SearchItem::action("Reset layout", "Window", "", T::Do(Doing::ResetLayout)),
         );
+        for workspace in crate::workspace::Workspace::ALL {
+            push(
+                workspace != self.workspace,
+                SearchItem::action(
+                    format!("{} workspace", workspace.name()),
+                    "Workspaces",
+                    "",
+                    T::Do(Doing::Workspace(workspace)),
+                ),
+            );
+        }
         push(
             !self.library_pinned,
             SearchItem::action("Pin the Library", "Window", "", T::Do(Doing::PinLibrary)),
@@ -570,6 +582,7 @@ impl Workbench {
                 Doing::ResetLayout => self.reset_layout(),
                 Doing::PinLibrary => self.set_library_pinned(true),
                 Doing::UnpinLibrary => self.set_library_pinned(false),
+                Doing::Workspace(workspace) => self.switch_workspace(workspace),
                 Doing::About => self.about_open = true,
             },
             SearchTarget::Panel(Panel::Library) if !self.library_pinned => {

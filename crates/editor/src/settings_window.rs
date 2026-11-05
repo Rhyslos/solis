@@ -192,9 +192,9 @@ impl Workbench {
         }
     }
 
-    /// Puts every panel back in the standard layout.
+    /// Puts every panel of the workspace in use back where it started.
     pub fn reset_layout(&mut self) {
-        self.dock = crate::layout::standard();
+        self.reset_workspace();
     }
 
     /// Draws the Settings window, if it's open.

@@ -74,6 +74,8 @@ What changed in each version, for people using Solis. Newest first.
 
 ### Added
 
+- **Workspaces, one per job** (the editor overhaul's sixth part, [decision 0085](docs/decisions/0085-the-editor-overhaul.md)): **Level**, **Animate** and **Code** tabs in the top bar switch the whole layout at once, each remembering how you arranged it. Animate gives clips, frames and animators room; Code is a testing layout to keep beside Ledger (the game big, your code files with which entities use each, the Console and Problems side by side). A file's panels come with you; Window > Reset layout resets only the workspace in use. The search can switch workspaces too.
+
 - **Playing is unmistakable, and nothing is lost** (the editor overhaul's fifth part, [decision 0085](docs/decisions/0085-the-editor-overhaul.md)): while the game runs, the window has a blue edge and blue-tinted top and status bars (amber while paused). When you press Stop after changing the area while playing, Solis lists what you did and asks **Keep** (your changes back, each still undoable) or **Undo all** (the area as before Play), instead of quietly throwing the changes away.
 
 - **One search for everything** (the editor overhaul's fourth part, [decision 0085](docs/decisions/0085-the-editor-overhaul.md)): press **Space** with nothing being typed, or click **Search or do anything…** in the top bar, and type: it finds every action in the menus (with its shortcut beside it), every file in the project, every entity in the area and every panel. Up and Down choose, Enter does it, Esc closes. Actions that can't be done right now aren't listed. In the Frames tab Space still plays the clip.
