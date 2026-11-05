@@ -37,16 +37,18 @@ const EULER: EulerRot = EulerRot::ZXY;
 
 /// A labelled row: the field's name on the left, its widget after it.
 pub(crate) fn row<R>(ui: &mut Ui, label: &str, help: &str, add: impl FnOnce(&mut Ui) -> R) -> R {
-    row_marked(ui, label, help, false, add)
+    row_marked(ui, label, help, false, false, add)
 }
 
 /// A row whose name is bold when `changed` (a placed assembly's copy that
-/// differs from the assembly).
+/// differs from the assembly), with a dot after it when `moved` (its value
+/// isn't the standard one, decision 0085).
 fn row_marked<R>(
     ui: &mut Ui,
     label: &str,
     help: &str,
     changed: bool,
+    moved: bool,
     add: impl FnOnce(&mut Ui) -> R,
 ) -> R {
     ui.horizontal(|ui| {
@@ -57,7 +59,14 @@ fn row_marked<R>(
         } else {
             RichText::new(label).color(crate::theme::TEXT_WEAK)
         };
-        let label = ui.add_sized(egui::vec2(96.0, 18.0), egui::Label::new(text).truncate());
+        let spacing = std::mem::replace(&mut ui.spacing_mut().item_spacing.x, 0.0);
+        let label = ui.add_sized(egui::vec2(88.0, 18.0), egui::Label::new(text).truncate());
+        let (dot, _) = ui.allocate_exact_size(egui::vec2(8.0, 18.0), egui::Sense::hover());
+        ui.spacing_mut().item_spacing.x = spacing;
+        if moved {
+            ui.painter()
+                .circle_filled(dot.center(), 2.5, ui.visuals().selection.bg_fill);
+        }
         if !help.is_empty() {
             label.on_hover_text(help);
         }
@@ -147,13 +156,37 @@ pub(crate) fn fields(
         let mixed = Mixed::of(field, value, others);
         let changed =
             assembly.is_some_and(|a| a.get(&field.name).unwrap_or(&field.default) != value);
+        // Not its standard value: a dot, and a way back (decision 0085).
+        // An assembly's copy shows how it differs from the assembly
+        // instead.
+        let moved = !changed && !mixed.whole && moved_from_default(field, value);
         let id = ui.id().with((&schema.name, &field.name));
         ui.push_id(id, |ui| {
-            let (set, revert, apply) =
-                row_marked(ui, &field.label, field.hint.help, changed, |ui| {
+            let (set, revert, apply, reset) =
+                row_marked(ui, &field.label, field.hint.help, changed, moved, |ui| {
                     let set = field_widget(ui, field, value, (models, sheets, data), area, mixed);
+                    if let Value::Asset(Some(used)) = value {
+                        shared_by(ui, area, used.asset);
+                    }
+                    if moved {
+                        let back = ui
+                            .add(
+                                egui::Button::new(
+                                    RichText::new(format!("↺ {}", short(&field.default)))
+                                        .color(crate::theme::TEXT_WEAK)
+                                        .size(12.0),
+                                )
+                                .frame(false),
+                            )
+                            .on_hover_text("Back to its standard value");
+                        let name = format!("Reset {}", field.label);
+                        back.widget_info(|| {
+                            egui::WidgetInfo::labeled(egui::WidgetType::Button, true, &name)
+                        });
+                        return (set, false, false, back.clicked());
+                    }
                     if !changed {
-                        return (set, false, false);
+                        return (set, false, false, false);
                     }
                     let small = |ui: &mut Ui, text: &str, hover: &str, name: String| {
                         let button = ui
@@ -181,8 +214,15 @@ pub(crate) fn fields(
                         "Make this the assembly's value, for every copy",
                         format!("Apply {}", field.label),
                     );
-                    (set, revert, apply)
+                    (set, revert, apply, false)
                 });
+            if reset {
+                changes.push(FieldChange::Set {
+                    field: field.name.clone(),
+                    value: field.default.clone(),
+                    part: None,
+                });
+            }
             if let Some((value, part)) = set {
                 changes.push(FieldChange::Set {
                     field: field.name.clone(),
@@ -199,6 +239,86 @@ pub(crate) fn fields(
         });
     }
     changes
+}
+
+/// Whether a field's value isn't its standard one, for the kinds where
+/// that's worth a dot: a number, a switch, words, a choice or a colour. A
+/// place, a turn or a picked file starts empty and is meant to be set, so
+/// it isn't marked.
+pub(crate) fn moved_from_default(field: &FieldInfo, value: &Value) -> bool {
+    matches!(
+        field.kind,
+        FieldKind::Bool
+            | FieldKind::Int
+            | FieldKind::Float
+            | FieldKind::Text
+            | FieldKind::Choice(_)
+            | FieldKind::Color
+    ) && value != &field.default
+}
+
+/// A value in a few characters, for a reset button: `3`, `0.5`, `on`,
+/// `Walk`.
+pub(crate) fn short(value: &Value) -> String {
+    match value {
+        Value::Bool(true) => "on".into(),
+        Value::Bool(false) => "off".into(),
+        Value::Int(i) => i.to_string(),
+        Value::Float(f) => {
+            let text = format!("{f:.3}");
+            let text = text.trim_end_matches('0').trim_end_matches('.');
+            if text == "-0" {
+                "0".into()
+            } else {
+                text.into()
+            }
+        }
+        Value::Text(t) if t.is_empty() => "empty".into(),
+        Value::Text(t) => {
+            let mut cut: String = t.chars().take(12).collect();
+            if t.chars().count() > 12 {
+                cut.push('…');
+            }
+            cut
+        }
+        _ => String::new(),
+    }
+}
+
+/// How many entities in `area` use the file `asset`.
+pub(crate) fn users_of(area: &area::Area, asset: AssetId) -> usize {
+    area.iter()
+        .filter(|(_, entity)| {
+            entity.components.values().any(|c| {
+                c.fields
+                    .values()
+                    .any(|v| matches!(v, Value::Asset(Some(r)) if r.asset == asset))
+            })
+        })
+        .count()
+}
+
+/// "shared by 3" after a file used by more than one entity, so changing
+/// the file isn't a surprise (decision 0085).
+fn shared_by(ui: &mut Ui, area: &area::Area, asset: AssetId) {
+    let users = users_of(area, asset);
+    if users > 1 {
+        egui::Frame::new()
+            .stroke(egui::Stroke::new(1.0, crate::theme::BUTTON_BORDER))
+            .corner_radius(4.0)
+            .inner_margin(egui::Margin::symmetric(5, 1))
+            .show(ui, |ui| {
+                ui.label(
+                    RichText::new(format!("shared by {users}"))
+                        .color(crate::theme::TEXT_WEAK)
+                        .size(11.0),
+                )
+            })
+            .response
+            .on_hover_text(format!(
+                "{users} entities in this area use this file: a change to the file changes                  them all"
+            ));
+    }
 }
 
 /// One field's widget; `Some` with the new value when the user changed it

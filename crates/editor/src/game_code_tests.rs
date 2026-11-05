@@ -57,7 +57,11 @@ const MOVER: &str = "fetch \"solis/world\":World;\ncomponent Mover {\n\
 
 /// A workbench with the Mover program and an entity carrying it.
 fn with_a_mover() -> (Workbench, EntityId) {
-    let mut w = Workbench::new(info(), None);
+    mover_on(Workbench::new(info(), None))
+}
+
+/// `w`, given the Mover program and an entity carrying it.
+fn mover_on(mut w: Workbench) -> (Workbench, EntityId) {
     w.set_program(Some(program(MOVER)));
     let id = EntityId::random();
     w.document
@@ -1814,4 +1818,45 @@ fn scale_check_the_same_work_in_rust_lust_and_lua() {
         );
         assert!(ms <= TARGET_MS, "{language}: a tick takes {ms:.2} ms");
     }
+}
+
+#[test]
+fn a_game_code_component_s_card_opens_its_file() {
+    use egui_kittest::kittest::Queryable;
+    // The card names the file it's written in, and opens it in its
+    // program (decision 0085): Ledger, for Lust.
+    let mut w = Workbench::new(info(), None);
+    w.set_project(Some(crate::library::ProjectInfo {
+        name: "Farm".into(),
+        root: "/projects/farm".into(),
+        assets: "/projects/farm/assets".into(),
+    }));
+    w.set_manual_url("https://example.org/manual".into());
+    let (mut w, id) = mover_on(w);
+    w.select(id);
+    let mut h = harness(w);
+    h.run();
+    let _ = h.get_by_label("main.lst");
+    assert!(
+        h.query_by_label("About Mover").is_none(),
+        "no manual page: its file instead"
+    );
+    h.get_by_label("Open Mover's code").click();
+    h.run();
+    let opened: Vec<_> = h
+        .state()
+        .1
+        .actions
+        .iter()
+        .filter_map(|a| match a {
+            crate::workbench::WorkbenchAction::OpenExternally(path) => Some(path.clone()),
+            _ => None,
+        })
+        .collect();
+    assert_eq!(
+        opened,
+        [std::path::PathBuf::from("/projects/farm/assets/main.lst")]
+    );
+    // The engine's own components have a manual page instead.
+    assert!(h.query_by_label("About Transform").is_some());
 }

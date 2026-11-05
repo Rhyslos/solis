@@ -1115,6 +1115,10 @@ impl Workbench {
                         part: part.as_ref(),
                         running: running.as_ref(),
                         requests: &mut requests,
+                        help: crate::properties::Help {
+                            manual: &self.manual_url,
+                            places: self.program.as_ref().map(|p| &p.places),
+                        },
                         accent: self.accent,
                         in_front: &self.in_front,
                         shown: &mut shown,

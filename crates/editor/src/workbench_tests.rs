@@ -463,6 +463,9 @@ fn delete_in_properties_deletes_the_selected_entity() {
         h.query_all_by_label("Model").count() >= 2,
         "component and field"
     );
+    // Delete is in the entity's ⋯ menu, beside its name (decision 0085).
+    h.get_by_label("Entity menu").click();
+    h.run();
     h.get_by_label("Delete").click();
     h.run();
     assert!(!h.state().0.document().area().contains(id));
@@ -554,7 +557,11 @@ fn the_entity_menu_adds_lights_shown_in_area_and_properties() {
     // Listed in the Area panel, its fields in Properties.
     assert!(h.query_all_by_label("Point light 1").next().is_some());
     let _ = h.get_by_label("Strength");
+    h.get_by_label("Entity menu").click();
+    h.run();
     let _ = h.get_by_label("Move here");
+    h.key_press(egui::Key::Escape);
+    h.run();
     h.get_all_by_label("Entity").next().unwrap().click();
     h.run();
     h.get_by_label("Add spotlight").click();
@@ -566,9 +573,8 @@ fn the_entity_menu_adds_lights_shown_in_area_and_properties() {
         h.state().camera().position
     );
     assert_eq!(data.get::<Light>().unwrap().kind, LightKind::Spot);
-    // Delete removes it and clears the selection (scrolled to first:
-    // the spotlight's settings fill the panel).
-    h.get_by_label("Delete").scroll_to_me();
+    // Delete removes it and clears the selection.
+    h.get_by_label("Entity menu").click();
     h.run();
     h.get_by_label("Delete").click();
     h.run();
@@ -1134,7 +1140,12 @@ fn a_component_registered_at_run_time_is_added_shown_edited_and_undone() {
     // list hard to read).
     let _ = h.get_by_label("Built in");
     let _ = h.get_by_label("Game code");
-    h.get_by_label("Health").click();
+    // Typing narrows the list (decision 0085); Enter takes the first.
+    h.get_by_label("Search components").type_text("heal");
+    h.run();
+    assert!(h.query_by_label("Light").is_none(), "only what matches");
+    h.key_press(egui::Key::Enter);
+    h.run();
     h.run();
     assert!(h.state().document().area().get(id).unwrap().has("Health"));
     // Its fields are drawn from its schema, with no code for it.
@@ -1161,7 +1172,9 @@ fn a_component_registered_at_run_time_is_added_shown_edited_and_undone() {
     );
     h.state_mut().undo();
     assert_eq!(hp(h.state()), Some(reflect::Value::Float(100.0)));
-    // × takes it off; undo puts it back with its values.
+    // Its ⋯ menu takes it off; undo puts it back with its values.
+    h.run();
+    h.get_by_label("Health menu").click();
     h.run();
     h.get_by_label("Remove Health").click();
     h.run();

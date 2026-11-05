@@ -435,6 +435,15 @@ impl Workbench {
                 field,
             } => self.apply_field(entity, &component, &field),
             PropertyRequest::Unpack(root) => self.unpack(root),
+            PropertyRequest::OpenCode(file) => match &self.project {
+                Some(project) => self
+                    .outbox
+                    .push(WorkbenchAction::OpenExternally(project.assets.join(&file))),
+                None => self.log(
+                    LogLevel::Warning,
+                    format!("{file} is in the ready-made code: open a project to see it."),
+                ),
+            },
             PropertyRequest::SetFieldMany {
                 entities,
                 component,

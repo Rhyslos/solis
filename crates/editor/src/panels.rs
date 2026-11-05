@@ -68,6 +68,9 @@ pub(crate) struct PanelViewer<'a> {
     /// now, by component.
     pub(crate) running: Option<&'a BTreeMap<String, reflect::ComponentData>>,
     pub(crate) requests: &'a mut Vec<PropertyRequest>,
+    /// The manual's address and where game code components are written,
+    /// for Properties' **?** and **Open in Ledger** (decision 0085).
+    pub(crate) help: crate::properties::Help<'a>,
     pub(crate) accent: Accent,
     pub(crate) in_front: &'a HashSet<Panel>,
     pub(crate) shown: &'a mut HashSet<Panel>,
@@ -362,6 +365,7 @@ impl TabViewer for PanelViewer<'_> {
                     (self.models, self.sounds.sheets),
                     self.copied,
                     self.running,
+                    self.help,
                 );
                 self.requests.extend(requests);
             }
