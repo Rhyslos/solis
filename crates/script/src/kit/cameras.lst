@@ -1,10 +1,12 @@
--- Three ready-made cameras. Put one on the entity with the Camera
+-- Four ready-made cameras. Put one on the entity with the Camera
 -- component. Each reads the ready-made input actions (Edit > Input
 -- actions…), so players can rebind them.
 
 fetch "solis/input":Input;
 fetch "solis/project":Action;
 fetch "solis/physics":Physics;
+fetch "solis/world":World;
+fetch "solis/tiles":MapBounds;
 
 -- Follows behind a character, turning with Look. A wall between them
 -- pulls the camera in, so it never looks through walls. The wheel (Zoom)
@@ -117,5 +119,75 @@ component RtsCamera {
     }
 }
 
-pass ThirdPersonCamera, FirstPersonCamera, RtsCamera;
+-- Follows a character in a 2D game, with no keys of its own. The
+-- character can move inside the dead zone (how far from the middle,
+-- across and up, in metres) before the camera follows; then it catches up
+-- smoothly, taking about smoothing seconds (0: at once). With bounds set
+-- to an entity showing a tile map, it never shows past the map's edges,
+-- and a map smaller than the view stays in the middle.
+component FollowCamera2D {
+    has {
+        entity target = nothing;
+        entity bounds = nothing;
+        vec3 deadZone = [1, 0.75, 0];
+        float smoothing = 0.2;
+        vec3 speed = [0, 0, 0];
+    }
+
+    method update(float dt) {
+        is target == nothing? then {
+            return;
+        }
+        vec3 here = position();
+        -- Where the character will be after this tick, so the camera
+        -- keeps up with it.
+        vec3 aim = target:position() + target:velocity() * dt;
+        float goalX = here.x;
+        float goalY = here.y;
+        is aim.x > here.x + deadZone.x? then {
+            goalX = aim.x - deadZone.x;
+        }
+        is aim.x < here.x - deadZone.x? then {
+            goalX = aim.x + deadZone.x;
+        }
+        is aim.y > here.y + deadZone.y? then {
+            goalY = aim.y - deadZone.y;
+        }
+        is aim.y < here.y - deadZone.y? then {
+            goalY = aim.y + deadZone.y;
+        }
+        vec3 goal = [goalX, goalY, here.z];
+        vec3 next = goal;
+        is smoothing > 0? then {
+            -- A spring that's just stiff enough not to overshoot
+            -- (critically damped), so it eases in and stops dead.
+            float omega = 2 / smoothing;
+            float x = omega * dt;
+            float fade = 1 / (1 + x + 0.48 * x * x + 0.235 * x * x * x);
+            vec3 change = here - goal;
+            vec3 pull = (speed + change * omega) * dt;
+            speed = (speed - pull * omega) * fade;
+            next = goal + (change + pull) * fade;
+        }
+        is bounds != nothing? then {
+            MapBounds box = bounds:mapBounds();
+            is box.found? then {
+                vec3 half = World:viewSize() * 0.5;
+                next = [within(next.x, box.low.x + half.x, box.high.x - half.x), within(next.y, box.low.y + half.y, box.high.y - half.y), here.z];
+            }
+        }
+        moveTo([next.x, next.y, here.z]);
+    }
+
+    -- v kept between low and high; their middle when the room between
+    -- them is less than nothing (a map smaller than the view).
+    method float within(float v, float low, float high) {
+        is low > high? then {
+            return (low + high) / 2;
+        }
+        return Maths:clamp(v, low, high);
+    }
+}
+
+pass ThirdPersonCamera, FirstPersonCamera, RtsCamera, FollowCamera2D;
 end

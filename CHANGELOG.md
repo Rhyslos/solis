@@ -74,6 +74,8 @@ What changed in each version, for people using Solis. Newest first.
 
 ### Added
 
+- **A camera for 2D games, and the cell at a place** ([decision 0082](docs/decisions/0082-the-2d-follow-camera-and-cells-at-places.md)): the ready-made **FollowCamera2D** follows the player calmly (a little slack, then it eases after them) and never shows past the tile map's edges; it has no keys. Game code asks a map which cell a place is on with `farm:cellAt(position())` and where a cell is with `farm:placeOf(x, y)`; `mapBounds()` gives the box a map covers and `World:viewSize()` how much a 2D camera shows.
+
 - **Everything Solis makes is becoming Lust** ([decision 0081](docs/decisions/0081-what-solis-makes-is-lust.md)): each file is named for what it holds (`<name>.<kind>.lst`), read with Lust's own reader, which checks every type and option and runs nothing. Tile maps and tilesets first; the rest follow, one at a time ([plan](docs/plans/lust-data.md)).
 
 - **Game-wide objects run and are saved** ([decision 0080](docs/decisions/0080-objects-change-only-in-their-own-update.md)): a Lust `object` your code passes (a clock, the money, the weather) has its `update` run once a tick, before any component, and is kept in save games and when code changes while playing. Components everywhere read the same values; changing an object outside its own `update` stops with a message saying where, so a game plays the same on any number of cores. Saves are now version 6 (older ones still load).

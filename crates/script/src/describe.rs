@@ -114,11 +114,23 @@ pub struct Moved {
 /// Classes the engine's files declare for natives to give back (decision
 /// 0065, rule 6: one question, one call), as (file, its Lust, a line
 /// saying what it is).
-pub const ENGINE_CLASSES: &[(&str, &str, &str)] = &[(
-    "physics",
-    "class RayHit {\n    has {\n        bool found = false;\n        float distance = -1;\n        entity entity = nothing;\n        vec3 normal = [0, 0, 0];\n    }\n}",
-    "What Physics:castRay found: whether it met a collider, how far along, whose, and which way its surface faces.",
-)];
+pub const ENGINE_CLASSES: &[(&str, &str, &str)] = &[
+    (
+        "physics",
+        "class RayHit {\n    has {\n        bool found = false;\n        float distance = -1;\n        entity entity = nothing;\n        vec3 normal = [0, 0, 0];\n    }\n}",
+        "What Physics:castRay found: whether it met a collider, how far along, whose, and which way its surface faces.",
+    ),
+    (
+        "tiles",
+        "class MapCell {\n    has {\n        bool inside = false;\n        int x = 0;\n        int y = 0;\n    }\n}",
+        "A tile map's cell at a place (farm:cellAt(position())): whether the place is on the map, and the cell's column and row (counted from the top left, even off the map).",
+    ),
+    (
+        "tiles",
+        "class MapBounds {\n    has {\n        bool found = false;\n        vec3 low = [0, 0, 0];\n        vec3 high = [0, 0, 0];\n    }\n}",
+        "The box a tile map covers in the world (entity:mapBounds()): whether the entity shows one, and its lowest and highest corners.",
+    ),
+];
 
 /// Every call that moved.
 pub const MOVED: &[Moved] = &[
@@ -382,6 +394,13 @@ pub const NATIVES: &[Native] = &[
     },
     Native {
         file: "world",
+        name: "viewSize",
+        owner: "World",
+        lust: "method vec3 viewSize() native;",
+        about: "How much of the world a 2D camera shows, in metres: x across, y up (the project's 2D settings).",
+    },
+    Native {
+        file: "world",
         name: "random",
         owner: "World",
         lust: "method float random() native;",
@@ -603,6 +622,27 @@ pub const NATIVES: &[Native] = &[
         owner: "Maps",
         lust: "method setChoice(string tileMap, int value, int x, int y, int chosen) native;",
         about: "Sets a choice value on a cell, by its option's place, -1 for none, at the end of the tick (for the maps' own files).",
+    },
+    Native {
+        file: "tiles",
+        name: "cellAt",
+        owner: "Maps",
+        lust: "method MapCell cellAt(string tileMap, vec3 place) native;",
+        about: "The cell of a map at a place in the world (for the maps' own files: game code uses farm:cellAt(place)).",
+    },
+    Native {
+        file: "tiles",
+        name: "placeOf",
+        owner: "Maps",
+        lust: "method vec3 placeOf(string tileMap, int x, int y) native;",
+        about: "The place in the world at a cell's middle (for the maps' own files: farm:placeOf(x, y)).",
+    },
+    Native {
+        file: "tiles",
+        name: "mapBounds",
+        owner: "entity",
+        lust: "method MapBounds entity:mapBounds() native;",
+        about: "The box the tile map on this entity covers in the world, as the tick started: a 2D camera stays inside it.",
     },
     Native {
         file: "input",

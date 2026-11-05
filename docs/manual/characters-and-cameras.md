@@ -7,7 +7,7 @@ Almost every game has someone to move around and a camera to see them with. Gett
 
 - **CharacterBody** (a built-in component) does the hard part: it moves a standing capsule as far as it can go, the way game characters move. It's what `moveCharacter` moves.
 - **CharacterController** (a ready-made component in Lust) reads the player's input and tells the CharacterBody where to go.
-- **ThirdPersonCamera**, **FirstPersonCamera** and **RtsCamera** (ready-made, in Lust) put the [camera](concepts.md#playing) behind the character, in its eyes, or high above a map.
+- **ThirdPersonCamera**, **FirstPersonCamera** and **RtsCamera** (ready-made, in Lust) put the [camera](concepts.md#playing) behind the character, in its eyes, or high above a map. **FollowCamera2D** follows the player in a 2D game.
 
 They're written in Lust and their files are in your project's `solis/kit/` folder, so you can read exactly what they do and copy them to make your own. Use them as they are to get going; change a copy when your game needs something different.
 
@@ -29,6 +29,7 @@ It has sounds too ([Sound events](sound-events.md)): footsteps as the character 
    fetch "solis/kit/cameras":[ThirdPersonCamera];
    end
    ```
+   (For a 2D game, fetch `FollowCamera2D` and the kit's `TopDownController` instead: see [Tile maps](tile-maps.md).)
 5. Add **CharacterController** to the character. Set its **camera** to the camera entity (next step).
 6. On the entity with the **Camera** component, add **ThirdPersonCamera** and set its **target** to the character.
 7. Press **Play** and click the Game panel.
@@ -36,6 +37,11 @@ It has sounds too ([Sound events](sound-events.md)): footsteps as the character 
 **The other cameras**
 - **FirstPersonCamera**: set its **body** to the character. It sits at the eyes and turns the character with it, so untick the CharacterController's **facesWhereItWalks** (it would turn the other way).
 - **RtsCamera**: needs no character. It looks down on the map from above, as strategy games do.
+- **FollowCamera2D**, for a 2D game (a camera whose **View** is 2D: [2D: pixel-perfect](2d-pixel-perfect.md)): set its **target** to the player, and its **bounds** to the entity showing your [tile map](tile-maps.md). It has no keys: it just follows.
+  - The player can walk a little way from the middle (the **deadZone**, in metres across and up) before the camera moves, so small steps don't shake the picture.
+  - Then it catches up smoothly in about **smoothing** seconds, easing in and stopping without going past (0 follows at once). **Why:** a camera glued to the player jerks with every step; a little slack and easing feels calm, as in farming and adventure games.
+  - With **bounds** set, it never shows past the map's edges: near the edge the player walks towards the side of the screen instead. A map smaller than the view stays in the middle.
+  - The picture stays crisp: Solis keeps the camera on whole pixels as it draws, whatever the camera does.
 
 | RTS camera | Keyboard and mouse | Gamepad |
 |---|---|---|
@@ -119,6 +125,8 @@ In Lua it's `solis.entity.walk(self.me, {x, y, z})` and `solis.entity.grounded(s
 **FirstPersonCamera** (ready-made): **body** (the character), **eyes** (how high its eyes are), **turnsBody**, **lowest** and **highest**.
 
 **RtsCamera** (ready-made): **focus** (the point on the map it looks at), **height**, **lowest** and **highest** (how far it zooms), **tilt** (degrees it looks down), **panSpeed** and **turnSpeed**.
+
+**FollowCamera2D** (ready-made): **target** (who it follows), **bounds** (an entity with a tile map it stays inside; empty: no edges), **deadZone** (how far, in metres across and up, the target can move from the middle before it follows; 1 and 0.75 to start), **smoothing** (about how many seconds it takes to catch up; 0.2 to start, 0 for at once), and **speed** (how fast it's moving now; you don't need to set it).
 
 The fields at the bottom of each (`fall`, `yaw`, `pitch`) are how it's moving right now: how fast it's falling, and which way it's looking. While playing, Properties shows them changing. They're fields so a [save game](save-games.md) keeps them; you don't need to set them.
 

@@ -89,3 +89,4 @@ Titles below are shortened; the files have the full reasoning. Decisions 0019 to
 | `0079-tile-maps-reached-through-their-own-files.md` | Each tile map's own Lust file (`FarmMap`, `FarmLayer`, `FarmTerrain`), held by a component as a field Solis fills in | Accepted (carries out 0065's rule 4 for tile maps; builds on 0067 and 0078) |
 | `0080-objects-change-only-in-their-own-update.md` | Game-wide objects tick first on one core, are copied to the others, change only in their own update, and are kept in saves | Accepted (builds on 0033 and 0038) |
 | `0081-what-solis-makes-is-lust.md` | Everything Solis makes but the project file is a Lust data file, `<name>.<kind>.lst`; older files move to Lust when a project opens | Accepted (carries out 0070's second step) |
+| `0082-the-2d-follow-camera-and-cells-at-places.md` | The kit's FollowCamera2D, and turning places into a map's cells and back | Accepted |
