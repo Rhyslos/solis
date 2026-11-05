@@ -11,7 +11,8 @@ Draw the editor with egui and egui_dock, keep its state between frames (the pane
 **Where things are:**
 
 - `workbench.rs`: the editor's state, and `show`, which draws a frame and returns the actions.
-- `top_bar.rs`: the menus, document tabs, Play and Build.
+- `top_bar.rs`: the logo, menus, document tabs, and Play, Pause, Step and Stop.
+- `status_bar.rs`: the status bar along the bottom (decision 0085).
 - `panels.rs`: draws each docked panel and the bits panels share.
 - `area_panel.rs`, `properties.rs`, `console.rs`: those panels' contents.
 - `viewport.rs`: the viewport, its views (one, two or four, each with its own camera) and their corner controls.

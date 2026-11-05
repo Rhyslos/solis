@@ -7,7 +7,7 @@ Solis is a Rust program split into small, single-purpose crates. **Lower layers 
 | Layer | Name | Crates | Rule |
 | --- | --- | --- | --- |
 | 3 | App | `app`, `updater` | Opens the window, owns the frame loop, wires the rest together. No feature logic. `updater` finds, downloads and checks new builds on GitHub (decision 0043). |
-| 2 | Editor | `editor` | The editor's interface: top bar, dockable panels, theme. Never needed by a game. |
+| 2 | Editor | `editor` | The editor's interface: top bar, dockable panels, status bar, theme. Never needed by a game. |
 | 1 | Engine | `render`, `assets`, `asset_db`, `world`, `script`, `physics`, `input`, `sound`, `animation`, `tiles`, `ui` | What games run on. Knows nothing about the editor. `assets` reads model files; `render` draws; `asset_db` keeps the project's assets by stable ID; `world` holds the running game's entities; `script` runs game code; `physics` wraps Rapier (3D, and Rapier2D for 2D in `physics::flat`); `input` turns keys and buttons into named actions; `sound` wraps Kira and reads sound files; `animation` plays clips of frames by time and reads sprites' clips files; `tiles` holds tilesets and tile maps, reads their files and autotiles; `ui` lays game UI's screens out on any screen. |
 | 0 | Core | `reflect`, `area` | Shared building blocks with no GPU, window or interface. `reflect` holds IDs, values and component schemas; `area` holds the area document and the built-in components. |
 
@@ -24,7 +24,7 @@ Panels never change the document: Properties returns `PropertyRequest`s and the 
 ## How a frame runs
 
 1. **Input:** winit delivers mouse and keyboard events to egui (through eframe).
-2. **Editor:** the workbench draws the top bar and the docked panels and returns any actions (such as Quit) for the app to carry out.
+2. **Editor:** the workbench draws the top bar, the status bar (`status_bar.rs`: `Workbench::status` works out what it says, apart from drawing) and the docked panels, in the standard arrangement of the editor overhaul ([decision 0085](docs/decisions/0085-the-editor-overhaul.md); `layout::standard`), and returns any actions (such as Quit) for the app to carry out.
 3. **Camera:** the viewport turns the mouse and keys into a `FlyInput`, and `Camera::fly` (in `editor/src/camera.rs`) moves the camera.
 4. **Imports:** File > Import model (or a file dropped on the window) asks the app to import; the app reads the file with `assets` on a thread of its own, then uploads it with `render` and tells the workbench, which lists it (with any lamps the file carries) and frames the camera on it.
 5. **Viewport:** the viewport panel asks a `ViewportRenderer` for an image of its size, with the sun's settings and the lamps. The app's implementation renders it with `render` on the window's own GPU device (first the sun's shadow map, then the view) and hands it to egui as a texture.

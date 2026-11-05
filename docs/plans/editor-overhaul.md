@@ -31,6 +31,8 @@ The research's rules, each from what people praise or complain about in Unreal, 
 
 ### O1. The frame: top bar, status bar, panel tabs
 
+> **Built** (the first pull request): the status bar, the standard layout as in the mock-up (a new saved-layout key, so every editor starts from it once), and the logo in the top bar. The panel tabs already had their icons and underline; the viewport's chips at its top right wait for O7, with the floating tool bar. Ledger connected isn't shown: Solis doesn't talk to Ledger yet. While a viewport is too narrow for its tool bar and snapping controls in one row, the snapping controls go top right.
+
 - **Top bar:** the logo, the menus (File, Edit, View, Entity, Window, Help), then on the right one group of Play (blue), Pause, Step and Stop.
 - **Status bar** along the bottom: "Lust checked 0.2 s ago" (or the first mistake), the number of problems (clicking opens Problems), "Saved" or "Unsaved changes", and on the right the area's kind and size (`farm · 2D · 480 × 270`) and whether Ledger is connected.
 - **Panel tabs** with an icon each and the accent underline; the panels' standard places as in the mock-up (Area on the left, Properties and Map on the right, Library, Console, Problems, Mixer and Profiler at the bottom).
@@ -49,11 +51,11 @@ The research's rules, each from what people praise or complain about in Unreal, 
 
 - Filter chips (All, Sprites, Maps, Code, UI, Sounds) and tags (`#crops`), a search box for the whole project.
 - Cards coloured along the bottom by kind, as now.
-- A drawer that pops up over the editor and can be pinned to stay docked (the key is asked first; the mock-up shows Ctrl+Space).
+- A drawer that pops up over the editor and can be pinned to stay docked (Ctrl + Space, as in Unreal).
 
 ### O4. One search for everything
 
-- A search box in the top bar ("Search or do anything…") that finds every menu action, file, entity and setting, with its shortcut beside it, and runs or opens what's picked (the key is asked first; the mock-up shows Ctrl+K).
+- A search box in the top bar ("Search or do anything…") that finds every menu action, file, entity and setting, with its shortcut beside it, and runs or opens what's picked (Space, tapped, with nothing being typed; the Frames tab keeps Space for its clip).
 
 ### O5. Playing is unmistakable
 
@@ -62,7 +64,7 @@ The research's rules, each from what people praise or complain about in Unreal, 
 
 ### O6. Workspaces
 
-- Level, Animate, UI and Code in the top bar, each a remembered layout of the panels. Each appears once what it holds is built: Level and Animate first; UI with the game UI editor; Code once it has something to hold (game code is written in Ledger, so what the Code workspace shows is asked first).
+- Level, Animate, UI and Code in the top bar, each a remembered layout of the panels. Each appears once what it holds is built: Level and Animate first; UI with the game UI editor; Code as a testing layout beside Ledger (the game big, Console and Problems, the code files and who uses them, objects' live values).
 
 ### O7. Help in place
 
@@ -73,8 +75,12 @@ The research's rules, each from what people praise or complain about in Unreal, 
 
 After O7, the game UI editor (the game UI plan's M4 onwards) is built inside the UI workspace.
 
-## Open questions for the project lead
+## Chosen by the project lead (5 November)
 
-- The keys for the search (Ctrl+K) and the Library drawer (Ctrl+Space): asked before O3 and O4.
-- What the Code workspace holds: asked before O6.
-- The other three mock-ups of 4 November (playing, the UI workspace, the search) shape O4 to O6; they're used as drawn there.
+- **The search opens with Space** (tapped, with nothing being typed and the game not holding the keys), as in Spotlight and Raycast. In the Frames tab Space still plays and stops the clip.
+- **The Library drawer opens with Ctrl + Space**, as in Unreal.
+- **The Code workspace is a testing layout** (B of three): the Game panel big; the Console and Problems side by side, a Lust mistake clicked opening its line in Ledger; the project's code files and which entities use each; game-wide objects' live values. Code is still written in Ledger, beside Solis.
+
+## Still open
+
+- The other three mock-ups of 4 November (playing, the UI workspace, the search) shape O4 to O6; they're used as drawn there if found.

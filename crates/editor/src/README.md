@@ -22,7 +22,8 @@ Tests: files ending `_tests.rs` hold the tests of the file with the same start (
 | `document.rs` | The open area as the editor holds it: the area, the component registry, the selection and undo history. It only changes through `Document::edit`. | `Document`, `Selection` |
 | `commands.rs`, `commands_many.rs` | Everything the editor does to the area, each turned into reversible edits and recorded as one undo step; `commands_many.rs` covers several entities at once and copy and paste of values. | |
 | `menu_items.rs` | Menu items shared by the top bar and the panels' own menu rows. | `MenuCommand` |
-| `top_bar.rs` | The top bar: menus, document tabs, Play and Build. | |
+| `top_bar.rs` | The top bar: the logo, menus, document tabs, Play, Pause, Step and Stop. | |
+| `status_bar.rs` | The status bar along the bottom: the code checked or its mistakes, problems (click to open), saved or not, playing, and the area's name and 2D size (decision 0085). Tests in `status_bar_tests.rs`. | `Status`, `Workbench::status` |
 | `panel.rs`, `panels.rs`, `layout.rs` | The list of dockable panels, drawing each one's contents, and the standard layout with checks on a saved layout. | `Panel`, `layout::standard` |
 | `theme.rs`, `icons.rs` | The editor's look (greys, accent colour, fonts, text contrast checks) and its icons, drawn in code. | `Accent`, `Icon` |
 | `splash.rs`, `updates.rs` | The splash screen while the program starts, and what the editor shows about updates (decisions 0043 and 0045). | `SplashView`, `UpdateNotice` |

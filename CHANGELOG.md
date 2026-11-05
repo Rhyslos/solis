@@ -74,6 +74,8 @@ What changed in each version, for people using Solis. Newest first.
 
 ### Added
 
+- **A status bar, and the panels where the editor's new plan puts them** (the editor overhaul's first part, [decision 0085](docs/decisions/0085-the-editor-overhaul.md)): a bar along the bottom says whether the game's code is checked or how many mistakes it has, how many problems there are (click to open Problems), whether the area is saved, whether the game is playing, and the area's name with 2D or 3D and a 2D game's size. The Area panel is now on the left, Properties on the right, and the Library, Console, Problems, Mixer, Profiler and Code share the bottom; the logo sits at the top left. Every editor starts once from this layout, so an arrangement of your own from before is replaced (drag panels back, or Window > Reset layout to start again). When the viewport is too narrow for its tool bar and the snapping controls in one row (a map's painting tools), the snapping controls move to its top right.
+
 - **The editor overhaul is planned** ([decision 0085](docs/decisions/0085-the-editor-overhaul.md)): the editor will take the look of the 4 November mock-up, one part at a time (a top bar and status bar, Properties as values, the Library as a drawer, one search for everything, a clear sign while playing, workspaces, hints), before the game UI editor ([plan](docs/plans/editor-overhaul.md)).
 
 - **Game UI text** ([decision 0084](docs/decisions/0084-game-ui-text.md)): game UI can show words, sharp at any size, aligned left, in the middle or right of their box, and on the game's pixels for pixel-art screens. The sample HUD from `ui test` now shows the day, the time, the money and the energy label.

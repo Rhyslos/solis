@@ -14,7 +14,9 @@
 # crates/app/src/branding.rs); CI passes it in, so this script never names
 # the program. Screenshots land in the output folder for looking at in CI.
 #
-# Positions are for the Default layout on a 1440x900 screen.
+# Positions are for the standard layout (decision 0085: Area on the left,
+# Properties on the right, the Library and Console along the bottom) on a
+# 1440x900 screen.
 set -euo pipefail
 
 BIN="${1:?usage: window-smoke.sh <binary> <window title> [output folder]}"
@@ -92,9 +94,10 @@ changed_pixels() {
 
 # File > Quit with the mouse, then wait for the program to end.
 quit() {
-    xdotool mousemove 19 16 click 1
+    # File is after the logo.
+    xdotool mousemove 55 16 click 1
     sleep 1
-    xdotool mousemove 40 "${QUIT_Y:-311}" click 1
+    xdotool mousemove 76 "${QUIT_Y:-311}" click 1
     sleep 2
     # With unsaved changes (an imported model), Solis asks first: answer
     # Don't save, in the middle of the window.
@@ -124,7 +127,7 @@ grep -q "No 3D view" "$OUT/app.log" && fail "the 3D view could not be shown"
 # 2. W picks the Move tool: its button in the tool bar lights up.
 xdotool key --window "$WINDOW_ID" w || true
 shot move-tool
-TOOL_CHANGE="$(changed_pixels first move-tool 200x50+450+630)"
+TOOL_CHANGE="$(changed_pixels first move-tool 200x50+560+595)"
 echo "Pixels changed in the tool bar by pressing W: $TOOL_CHANGE"
 [ "$TOOL_CHANGE" -gt 100 ] || fail "W did not pick the Move tool"
 
@@ -144,19 +147,19 @@ sleep 1.5
 xdotool keyup w
 xdotool mouseup 3
 shot flown
-FLY_CHANGE="$(changed_pixels move-tool flown 1000x500+50+120)"
+FLY_CHANGE="$(changed_pixels move-tool flown 800x450+280+100)"
 echo "Pixels changed in the viewport by flying: $FLY_CHANGE"
 [ "$FLY_CHANGE" -gt 5000 ] || fail "right mouse and W did not fly the camera"
-TOOL_AFTER="$(changed_pixels move-tool flown 200x50+450+630)"
+TOOL_AFTER="$(changed_pixels move-tool flown 200x50+560+595)"
 echo "Pixels changed in the tool bar by flying: $TOOL_AFTER"
 [ "$TOOL_AFTER" -lt 100 ] || fail "W picked a tool while flying"
 
 # 4. Drag the Console tab onto the right-hand column, below Properties.
-xdotool mousemove 721 689
+xdotool mousemove 147 655
 sleep 0.3
 xdotool mousedown 1
 for i in $(seq 1 20); do
-    xdotool mousemove $((721 + i * 28)) $((689 + i * 6))
+    xdotool mousemove $((147 + i * 56)) $((655 - i * 3))
     sleep 0.1
 done
 sleep 0.5

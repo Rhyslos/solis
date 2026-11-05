@@ -309,6 +309,11 @@ pub struct Workbench {
     pub(crate) mixer: crate::mixer_view::MixerState,
     /// The project's 2D settings (Settings > 2D, `pixels.solpix`).
     pub(crate) pixels: area::pixels::PixelSettings,
+    /// When the game's code was last checked (the local time, for the
+    /// status bar); none before the first check.
+    pub(crate) code_checked: Option<String>,
+    /// The program's logo, for the top bar (the app hands it over).
+    pub(crate) logo: Option<egui::TextureId>,
     /// The sound event a sprite's clip event plays, by the event's name
     /// (Phase 9, D3): each sound event by its path without `.solsound`
     /// ("sfx/footstep"), and by its file's name alone ("footstep") when
@@ -471,6 +476,8 @@ impl Workbench {
             sound_shown: None,
             mixer: Default::default(),
             pixels: area::pixels::PixelSettings::default(),
+            code_checked: None,
+            logo: None,
             cue_sounds: HashMap::new(),
             frames_editor: None,
             frames_hovered: false,
@@ -875,6 +882,10 @@ impl Workbench {
             .frame(theme::top_bar_frame())
             .exact_size(34.0)
             .show(ui, |ui| self.top_bar(ui, &mut actions));
+        egui::Panel::bottom("status_bar")
+            .frame(theme::status_bar_frame())
+            .exact_size(crate::status_bar::HEIGHT)
+            .show(ui, |ui| self.status_bar(ui));
         let style = theme::dock_style(ui.style().as_ref(), self.accent);
         self.play_frames(ui.input(|i| f64::from(i.stable_dt)));
         self.play_animator(ui.input(|i| f64::from(i.stable_dt)));
@@ -1321,6 +1332,12 @@ impl Workbench {
             self.log(level, text);
         }
         self.code_problems = problems;
+        self.code_checked = Some(chrono::Local::now().format("%H:%M:%S").to_string());
+    }
+
+    /// Hands over the program's logo, for the top bar.
+    pub fn set_logo(&mut self, logo: Option<egui::TextureId>) {
+        self.logo = logo;
     }
 
     /// Mistakes in the game's code, from the last check.
