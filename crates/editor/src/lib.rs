@@ -76,6 +76,7 @@ mod workbench_start;
 mod workbench_tiles;
 mod workbench_tileset;
 mod workbench_tools;
+pub mod workspace;
 
 pub use area_view::{AreaView, ViewLight, ViewModel};
 pub use camera::{Camera, FlyInput, ViewKind};

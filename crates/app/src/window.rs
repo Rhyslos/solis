@@ -29,6 +29,9 @@ const IDLE_FRAME: std::time::Duration = std::time::Duration::from_secs(1);
 /// since the editor overhaul's standard layout (decision 0085), so every
 /// editor starts once from it; Window > Reset layout brings it back later.
 const LAYOUT_KEY: &str = "panel_layout2";
+/// Key under which every workspace's layout, and the one in use, is
+/// remembered (decision 0085); the layout above is read when it's missing.
+const WORKSPACES_KEY: &str = "workspaces";
 /// Key under which the accent colour is remembered.
 /// The accent chosen, saved since blue became the standard (decision
 /// 0070).
@@ -148,6 +151,8 @@ impl App {
         let library_pinned: bool = storage
             .and_then(|s| eframe::get_value(s, LIBRARY_PINNED_KEY))
             .unwrap_or(true);
+        let workspaces: Option<editor::workspace::Workspaces> =
+            storage.and_then(|s| eframe::get_value(s, WORKSPACES_KEY));
         let camera: Camera = storage
             .and_then(|s| eframe::get_value(s, CAMERA_KEY))
             .unwrap_or_default();
@@ -252,6 +257,9 @@ impl App {
         app.workbench.launch_start_page(start_page);
         if !library_pinned {
             app.workbench.set_library_pinned(false);
+        }
+        if let Some(workspaces) = workspaces {
+            app.workbench.set_workspaces(workspaces);
         }
         for path in imports {
             app.import(&path);
@@ -1869,6 +1877,7 @@ impl eframe::App for App {
 
     fn save(&mut self, storage: &mut dyn eframe::Storage) {
         eframe::set_value(storage, LAYOUT_KEY, self.workbench.layout());
+        eframe::set_value(storage, WORKSPACES_KEY, &self.workbench.workspaces());
         eframe::set_value(storage, ACCENT_KEY, &self.workbench.accent());
         eframe::set_value(
             storage,

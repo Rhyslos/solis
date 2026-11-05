@@ -85,6 +85,7 @@ impl Workbench {
             editor.max,
         );
         let mut pin_clicked = false;
+        let code_uses = self.code_uses();
         let sounds = crate::library::Sounds {
             states: &self.sounds,
             events: &self.sound_events,
@@ -92,6 +93,7 @@ impl Workbench {
             mixer: &self.mixer.mixer,
             sheets,
             sheet_pictures: &self.sheet_pictures,
+            code_uses: &code_uses,
         };
         let shown = egui::Area::new(egui::Id::new("library drawer"))
             .order(egui::Order::Foreground)

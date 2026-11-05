@@ -21,7 +21,7 @@ Neither part is an undo step. Your game's controls are in **Edit > Input actions
 | Setting | What it does |
 |---|---|
 | Appearance > Accent colour | The colour that marks what's chosen and selected: the chosen tool, the front tab, the selected row. Ten colours, each with a swatch: Blue (the standard), Red, Copper, Orange, Gold, Olive, Marine green, Petrol blue, Amber and Plum. If you never chose one while amber was the standard, you now get blue; a colour you chose stays. All are dark enough that white text on them reads easily. Colours that mean something keep their own whatever you pick: Play is blue, Stop is red while the game runs, and the Console's information, warnings and errors are grey, amber and red. |
-| Appearance > Panel layout | **Reset layout** puts every panel back where it started: the viewport in the middle, Area and Properties on the right, the Library and the Console side by side underneath. |
+| Appearance > Panel layout | **Reset layout** puts every panel of the workspace you're in back where it started (in Level: the Area panel on the left, the viewport in the middle, Properties on the right, and the Library, Console and the rest along the bottom). The other workspaces keep their layouts. |
 | 2D > Base resolution | The size the project's 2D games are drawn at, in pixels, before they're scaled up: 480 × 270 to start. See [2D](2d-pixel-perfect.md). |
 | 2D > Pixels per unit | How many pixels make a metre: 16 to start. |
 | 2D > Tile size | The 2D view's grid, in pixels: 16 × 16 to start. |

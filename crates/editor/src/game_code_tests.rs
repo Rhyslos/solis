@@ -1860,3 +1860,14 @@ fn a_game_code_component_s_card_opens_its_file() {
     // The engine's own components have a manual page instead.
     assert!(h.query_by_label("About Transform").is_some());
 }
+
+#[test]
+fn each_code_file_says_how_many_entities_use_its_components() {
+    // For the Code panel in the Code workspace (decision 0085).
+    let mut w = Workbench::new(info(), None);
+    assert!(w.code_uses().is_empty(), "no code yet");
+    w.set_program(Some(program(MOVER)));
+    assert_eq!(w.code_uses()["main.lst"], "Mover · 0");
+    let (w, _) = mover_on(w);
+    assert_eq!(w.code_uses()["main.lst"], "Mover · 1");
+}

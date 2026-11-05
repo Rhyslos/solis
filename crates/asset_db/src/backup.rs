@@ -254,7 +254,18 @@ fn utf8_prefix(bytes: &[u8]) -> &str {
 /// date and time, or with " 2", " 3" after it when a different file is
 /// already there under that name (clocks put back an hour).
 fn free_copy(root: &Path, relative: &Path, old: &[u8]) -> (PathBuf, PathBuf) {
-    let stamp = chrono::Local::now().format(STAMP).to_string();
+    free_copy_at(
+        root,
+        relative,
+        old,
+        &chrono::Local::now().format(STAMP).to_string(),
+    )
+}
+
+/// As [`free_copy`], for the backup made at `stamp` (the date and time as
+/// a backup folder is named), so tests needn't race the clock.
+fn free_copy_at(root: &Path, relative: &Path, old: &[u8], stamp: &str) -> (PathBuf, PathBuf) {
+    let stamp = stamp.to_string();
     for n in 1..100 {
         let name = if n == 1 {
             stamp.clone()
@@ -621,12 +632,14 @@ mod tests {
         // a different file under that name.
         let root = project("again");
         let relative = Path::new("assets/a.note");
-        let (first, copy) = free_copy(&root, relative, b"one");
+        // One time for all three: the clock mustn't tick over between them.
+        let stamp = "2026-10-25 02-30-00";
+        let (first, copy) = free_copy_at(&root, relative, b"one", stamp);
         std::fs::create_dir_all(copy.parent().unwrap()).unwrap();
         std::fs::write(&copy, "one").unwrap();
-        let (same, _) = free_copy(&root, relative, b"one");
+        let (same, _) = free_copy_at(&root, relative, b"one", stamp);
         assert_eq!(same, first, "the same file: the same copy");
-        let (other, _) = free_copy(&root, relative, b"two");
+        let (other, _) = free_copy_at(&root, relative, b"two", stamp);
         assert_ne!(other, first);
         assert!(other.to_string_lossy().ends_with(" 2"), "{other:?}");
         // The trim still reads it as a backup.

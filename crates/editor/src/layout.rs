@@ -121,8 +121,17 @@ pub fn close(dock: &mut DockState<Panel>, panel: Panel) {
 /// with in the default layout, as decision 0004 says. A damaged layout,
 /// one with a panel twice, or `None`, gives the default one.
 pub fn restore(saved: Option<DockState<Panel>>) -> DockState<Panel> {
+    restore_with(saved, standard)
+}
+
+/// As [`restore`], with `fallback` for a missing or damaged layout (a
+/// workspace's own standard, decision 0085).
+pub fn restore_with(
+    saved: Option<DockState<Panel>>,
+    fallback: fn() -> DockState<Panel>,
+) -> DockState<Panel> {
     let Some(mut dock) = saved else {
-        return standard();
+        return fallback();
     };
     // Tabs that come with a file aren't kept: no file is open yet.
     for panel in Panel::OPEN_WITH_A_FILE.into_iter().chain(Panel::NOT_BUILT) {
@@ -135,7 +144,7 @@ pub fn restore(saved: Option<DockState<Panel>>) -> DockState<Panel> {
             > 1
     });
     if twice || dock.iter_all_tabs().next().is_none() {
-        return standard();
+        return fallback();
     }
     for panel in Panel::ALL {
         if dock.find_tab(&panel).is_none() {
@@ -145,7 +154,7 @@ pub fn restore(saved: Option<DockState<Panel>>) -> DockState<Panel> {
     if is_complete(&dock) && draws(&dock) {
         dock
     } else {
-        standard()
+        fallback()
     }
 }
 

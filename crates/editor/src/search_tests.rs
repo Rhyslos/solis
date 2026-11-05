@@ -156,3 +156,18 @@ fn picking_an_entity_selects_it_and_a_panel_brings_it_forward() {
     );
     assert!(actions.contains(&WorkbenchAction::SaveArea));
 }
+
+#[test]
+fn workspaces_can_be_switched_from_the_search() {
+    let mut w = fresh();
+    let items = w.search_items();
+    let code = results(&items, "code workspace")[0].clone();
+    assert_eq!(code.name, "Code workspace");
+    let ctx = egui::Context::default();
+    w.do_search(code.target, &ctx, &mut Vec::new());
+    assert_eq!(w.workspace(), crate::workspace::Workspace::Code);
+    assert!(
+        !w.search_items().iter().any(|i| i.name == "Code workspace"),
+        "the one in use isn't offered"
+    );
+}

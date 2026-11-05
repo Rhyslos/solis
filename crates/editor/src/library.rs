@@ -16,7 +16,7 @@ use crate::sound_view::{self, EventState, Preview, SOUND_COLOR, SoundState};
 use crate::theme::{self, Accent};
 use egui::{Align, Color32, Layout, RichText, Ui};
 use reflect::AssetId;
-use std::collections::HashMap;
+use std::collections::{BTreeMap, HashMap};
 use std::path::PathBuf;
 
 /// The open project, as the editor shows it.
@@ -324,6 +324,10 @@ pub(crate) struct Sounds<'a> {
     /// a picture, by path.
     pub(crate) sheets: &'a crate::sprite_sheets::SpriteSheets,
     pub(crate) sheet_pictures: &'a HashMap<String, egui::TextureHandle>,
+    /// For each code file (by path), the components written in it and how
+    /// many entities in the area use each (`Player · 1`), for the Code
+    /// panel (decision 0085).
+    pub(crate) code_uses: &'a BTreeMap<String, String>,
 }
 
 impl Sounds<'_> {
@@ -1304,6 +1308,15 @@ fn list(
                 response.widget_info(|| {
                     egui::WidgetInfo::selected(egui::WidgetType::Button, true, selected, &item.name)
                 });
+                if let Some(uses) = sounds.code_uses.get(&item.path) {
+                    ui.painter().text(
+                        egui::pos2(rect.right() - 8.0, rect.center().y),
+                        egui::Align2::RIGHT_CENTER,
+                        uses,
+                        egui::FontId::proportional(11.5),
+                        theme::TEXT_WEAK,
+                    );
+                }
                 let response = response.on_hover_text(hint(item));
                 let plus_area =
                     egui::Rect::from_min_max(egui::pos2(rect.right() - 22.0, rect.top()), rect.max);

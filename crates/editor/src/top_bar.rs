@@ -34,7 +34,10 @@ impl Workbench {
                     ui.spacing_mut().button_padding = egui::vec2(7.0, 4.0);
                     ui.spacing_mut().item_spacing.x = 2.0;
                     self.menus(ui, actions);
-                    ui.add_space(8.0);
+                    // The workspaces, one per job (decision 0085).
+                    ui.add_space(14.0);
+                    self.workspace_tabs(ui);
+                    ui.add_space(10.0);
                     let mut name = self.document.name();
                     if self.document.is_dirty() {
                         name.push_str(" •");

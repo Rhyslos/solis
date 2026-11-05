@@ -72,6 +72,8 @@ The research's rules, each from what people praise or complain about in Unreal, 
 
 ### O6. Workspaces
 
+> **Built:** Level, Animate and Code tabs after the menus, each a layout of its own (remembered, saved with the others, read back as a saved layout is), a file's panels carried over, Reset layout per workspace, workspaces in the search; the Code panel shows which entities use each code file's components. Game-wide objects' live values in the Code workspace wait for a panel of their own (with game UI's tied values, which read them too); UI comes with the UI editor.
+
 - Level, Animate, UI and Code in the top bar, each a remembered layout of the panels. Each appears once what it holds is built: Level and Animate first; UI with the game UI editor; Code as a testing layout beside Ledger (the game big, Console and Problems, the code files and who uses them, objects' live values).
 
 ### O7. Help in place
