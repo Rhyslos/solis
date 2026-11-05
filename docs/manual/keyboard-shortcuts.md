@@ -128,6 +128,7 @@ These work in the viewport while a tile map's entity is selected; see [Painting 
 | Duplicate the selection | Ctrl + D |
 | Rename | F2 |
 | Point the camera at the selection | F |
+| Search for any action, file, entity or panel (with nothing being typed) | Space |
 | Pop the Library drawer up or away (or bring the pinned Library to the front) | Ctrl + Space |
 
 ## In the Area panel

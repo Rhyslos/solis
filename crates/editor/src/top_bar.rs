@@ -17,6 +17,10 @@ impl Workbench {
         ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
             self.play_and_build(ui);
             self.restart_button(ui, actions);
+            // One search for everything (decision 0085), left of Play.
+            ui.add_space(16.0);
+            self.search_box(ui);
+            ui.add_space(8.0);
             ui.with_layout(Layout::left_to_right(Align::Center), |ui| {
                 egui::MenuBar::new().ui(ui, |ui| {
                     // The logo first, as in the overhaul's mock-up
@@ -81,6 +85,7 @@ impl Workbench {
                 });
             });
         });
+        self.search_list(ui, actions);
     }
 
     pub(crate) fn menus(&mut self, ui: &mut Ui, actions: &mut Vec<WorkbenchAction>) {

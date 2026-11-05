@@ -46,6 +46,7 @@ pub mod profiler;
 mod properties;
 mod save_game;
 pub mod screen;
+mod search;
 mod settings_window;
 mod sheet_view;
 mod sound_event_view;
