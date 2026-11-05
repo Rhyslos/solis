@@ -42,7 +42,7 @@ A connected **gamepad** works whenever the game is playing; it has nothing of th
 
 Changes are saved straight away, and a game that's playing takes them at once (any rebinding game code did in this play gives way to them). They're kept in the project's `input.solinput`, a small text file beside `project.solis` that Git can merge.
 
-**In game code**, the actions are names Lust checks: Solis writes them into `solis/project.lst` as `state Action` whenever you change them here, so `Action.Jmp` is a mistake before the game runs, with "did you mean Jump". Fetch `Input` and `Action`, and ask `Input` (in Lua, `solis.Input:held("Jump")`):
+**In game code**, the actions are names Lust checks: Solis writes them into `solis/project.lst` as `state Action` whenever you change them here, so `Action.Jmp` is a mistake before the game runs, listing the real actions. Fetch `Input` and `Action`, and ask `Input` (in Lua, `solis.Input:held("Jump")`):
 
 ```
 fetch "solis/input":Input;
