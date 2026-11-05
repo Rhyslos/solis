@@ -32,7 +32,7 @@ pub use hash::{ContentHash, hash_file};
 pub use jobs::Jobs;
 pub use project::{
     ASSETS_FOLDER, CACHE_FOLDER, FORMAT, GITATTRIBUTES, GITIGNORE, PROJECT_FILE, PROJECT_FORMAT,
-    Project, ProjectError, own_folder, read_limited, write_atomically,
+    Project, ProjectError, Summary, own_folder, read_limited, write_atomically,
 };
 pub use sidecar::{Part, PartKey, PartKind, SIDECAR_FORMAT, Sidecar};
 pub use watch::Watcher;

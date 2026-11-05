@@ -117,11 +117,11 @@ impl Workbench {
                 ui.close();
             }
             if ui
-                .button("Start page")
-                .on_hover_text("New and recent projects, the examples, and where to begin")
+                .button("Projects…")
+                .on_hover_text("The launcher: every project, the examples, and where to begin")
                 .clicked()
             {
-                self.open_start_page();
+                self.open_launcher();
                 ui.close();
             }
             let mut pending = Vec::new();

@@ -57,8 +57,15 @@ pub enum WorkbenchAction {
     NewProject,
     /// Open a project from a folder the user picks (File > Open project…).
     OpenProject,
-    /// Open the project in this folder (File > Recent projects).
+    /// Open the project in this folder (File > Recent projects, the
+    /// launcher).
     OpenRecent(std::path::PathBuf),
+    /// Read the projects Solis knows afresh, for the launcher.
+    ListProjects,
+    /// Pin (true) or unpin a project in the launcher's list.
+    PinProject(std::path::PathBuf, bool),
+    /// Forget a project in the launcher's list; its files stay.
+    ForgetProject(std::path::PathBuf),
     /// Place the project's asset where the camera looks (a double-click in
     /// the Library).
     PlaceAsset(AssetId),
@@ -235,9 +242,13 @@ pub struct Workbench {
     /// Whether files are being dragged over the window.
     pub(crate) files_hovering: bool,
     pub(crate) about_open: bool,
-    /// The start page (E1).
-    pub(crate) start: crate::workbench_start::StartPage,
-    /// Where the manual is, for the start page.
+    /// The launcher (decision 0086).
+    pub(crate) launcher: crate::launcher::Launcher,
+    /// The projects Solis knows, for the launcher (the app reads them).
+    pub(crate) known_projects: Vec<crate::launcher::KnownProject>,
+    /// This copy's build number, for the launcher's marks.
+    pub(crate) this_build: Option<u64>,
+    /// Where the manual is, for the launcher's Learn page.
     pub(crate) manual_url: String,
     /// How long the game's sound took last frame (the Profiler's Sound).
     pub(crate) sound_spent: std::time::Duration,
@@ -467,7 +478,9 @@ impl Workbench {
             models: BTreeMap::new(),
             files_hovering: false,
             about_open: false,
-            start: Default::default(),
+            launcher: Default::default(),
+            known_projects: Vec::new(),
+            this_build: None,
             manual_url: String::new(),
             sound_spent: std::time::Duration::ZERO,
             settings_window: None,
@@ -599,8 +612,8 @@ impl Workbench {
     /// project.
     pub fn set_project(&mut self, project: Option<ProjectInfo>) {
         if project.is_some() {
-            // A project is open: the start page has done its job.
-            self.start.open = false;
+            // A project is open: the launcher has done its job.
+            self.launcher.open = false;
         }
         if project != self.project {
             self.replace_document(Document::default());
@@ -880,6 +893,14 @@ impl Workbench {
             std::mem::take(&mut self.sound_spent),
         );
         let mut actions = std::mem::take(&mut self.outbox);
+        // The launcher, while it's up, is all there is.
+        if self.launcher(ui, &mut actions) {
+            self.prompts(ui, &mut actions);
+            self.about(ui);
+            self.update_question(ui.ctx(), &mut actions);
+            actions.append(&mut self.outbox);
+            return actions;
+        }
         self.refresh_sheet_pictures(ui.ctx());
         self.viewport.idle = !self.wants_frames(ui.ctx());
         if ui.input(|i| i.pointer.any_pressed()) {
@@ -1218,7 +1239,6 @@ impl Workbench {
         self.about(ui);
         self.play_changes_window(ui);
         self.play_edge(ui.ctx());
-        self.start_page(ui, &mut actions);
         self.input_actions_window(ui.ctx());
         self.settings(ui.ctx(), &mut actions);
         self.prompts(ui, &mut actions);

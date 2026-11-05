@@ -39,6 +39,7 @@ opener.workspace = true
 log.workspace = true
 updater.workspace = true
 sound.workspace = true
+serde.workspace = true
 
 # Gamepads, on Windows only: the only system Solis is made for (decision
 # 0012), and on Linux gilrs needs system libraries the checks don't.

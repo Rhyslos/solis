@@ -65,7 +65,7 @@ pub(crate) enum SearchTarget {
 /// The editor's own actions the search can do.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum Doing {
-    StartPage,
+    Launcher,
     Settings,
     InputActions,
     Play,
@@ -223,7 +223,12 @@ impl Workbench {
         );
         push(
             true,
-            SearchItem::action("Start page", "File", "", T::Do(Doing::StartPage)),
+            SearchItem::action(
+                "Projects (the launcher)",
+                "File",
+                "",
+                T::Do(Doing::Launcher),
+            ),
         );
         push(
             true,
@@ -571,7 +576,7 @@ impl Workbench {
             SearchTarget::Menu(command) => self.run(command, ctx),
             SearchTarget::App(action) => self.request(action, actions),
             SearchTarget::Do(doing) => match doing {
-                Doing::StartPage => self.open_start_page(),
+                Doing::Launcher => self.open_launcher(),
                 Doing::Settings => self.open_settings(),
                 Doing::InputActions => self.open_input_window(),
                 Doing::Play => self.play(),

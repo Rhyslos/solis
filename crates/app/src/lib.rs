@@ -17,6 +17,7 @@ pub mod game_code;
 pub mod gamepad;
 pub mod gpu;
 pub mod import;
+pub mod known_projects;
 pub mod logger;
 pub mod play_files;
 pub mod playground;

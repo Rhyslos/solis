@@ -16,7 +16,7 @@ Make a project as soon as you start something you want to keep. Without one, Sol
 1. **File > New project…** and choose an empty folder (make one in the window if you need to). The project is named after the folder.
 2. Solis makes `project.solis`, an `assets` folder, and a hidden `.solis` folder for its cache. If you use Git, it also adds `.gitignore` and `.gitattributes` files set up for games.
 
-**Open a project:** **File > Open project…** and choose the project's folder, or pick it from **File > Recent projects**. Solis opens the last project again when it starts.
+**Open a project:** **File > Open project…** and choose the project's folder, or pick it from **File > Recent projects** or the [launcher](launcher.md) (**File > Projects…**). Solis opens the last project again when it starts.
 
 **Add models:** **File > Import model…**, or drop a `.glb` or `.gltf` file onto the window: it's copied into the project's assets and placed in the area. You can also put files straight into the assets folder (or a folder inside it) from Explorer: they appear in the Library within a moment.
 

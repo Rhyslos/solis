@@ -109,6 +109,20 @@ struct ProjectFile {
     name: String,
     /// The format version.
     format: u32,
+    /// The build of Solis that last opened it (decision 0086), for the
+    /// launcher's list. Optional: older files and copies built from source
+    /// leave it out.
+    #[serde(default, skip_serializing_if = "Option::is_none")]
+    saved_by: Option<u64>,
+}
+
+/// What the launcher shows of a project, read from its project file alone.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Summary {
+    /// Its name.
+    pub name: String,
+    /// The build of Solis that last opened it, if recorded.
+    pub saved_by: Option<u64>,
 }
 
 /// An open project.
@@ -176,6 +190,7 @@ impl Project {
         let file = ProjectFile {
             name: name.to_string(),
             format: FORMAT,
+            saved_by: None,
         };
         let text = toml::to_string(&file).map_err(|e| ProjectError::Damaged(e.to_string()))?;
         write_atomically(&root.join(PROJECT_FILE), text.as_bytes())?;
@@ -206,13 +221,51 @@ impl Project {
     /// The project's name from `project.solis`'s text, refusing a damaged
     /// file or one from a newer Solis. (Fuzzed: a project can be anyone's.)
     pub fn read_file(text: &str) -> Result<String, ProjectError> {
+        Self::read_summary(text).map(|s| s.name)
+    }
+
+    /// The project's name and the build that last opened it, from
+    /// `project.solis`'s text (refused as [`Project::read_file`] refuses).
+    pub fn read_summary(text: &str) -> Result<Summary, ProjectError> {
         // Newer: refused with the plain reason the editor shows.
         if let Some(found) = format_key_version(text).filter(|v| *v > FORMAT) {
             return Err(ProjectError::TooNew(found));
         }
         let file: ProjectFile =
             read_toml_versioned(text, &PROJECT_FORMAT).map_err(ProjectError::Damaged)?;
-        Ok(file.name)
+        Ok(Summary {
+            name: file.name,
+            saved_by: file.saved_by,
+        })
+    }
+
+    /// What the launcher shows of the project in `root`, reading only its
+    /// project file: nothing is made or changed.
+    pub fn summary(root: &Path) -> Result<Summary, ProjectError> {
+        let path = root.join(PROJECT_FILE);
+        if !path.is_file() {
+            return Err(ProjectError::NotAProject(root.to_path_buf()));
+        }
+        Self::read_summary(&read_text_limited(&path, 64 * 1024)?)
+    }
+
+    /// Notes in the project file that `build` opened it last, keeping
+    /// everything else the file says. Returns whether the file changed:
+    /// it's left alone when it already says so.
+    pub fn record_build(&self, build: u64) -> Result<bool, ProjectError> {
+        let path = self.root.join(PROJECT_FILE);
+        let text = read_text_limited(&path, 64 * 1024)?;
+        if Self::read_summary(&text)?.saved_by == Some(build) {
+            return Ok(false);
+        }
+        let mut table: toml::Table =
+            toml::from_str(&text).map_err(|e| ProjectError::Damaged(e.to_string()))?;
+        let build = i64::try_from(build)
+            .map_err(|_| ProjectError::Damaged("the build number is too big".into()))?;
+        table.insert("saved_by".into(), toml::Value::Integer(build));
+        let text = toml::to_string(&table).map_err(|e| ProjectError::Damaged(e.to_string()))?;
+        write_atomically(&path, text.as_bytes())?;
+        Ok(true)
     }
 
     /// Its name.
@@ -389,6 +442,68 @@ mod tests {
             assert!(read_limited(&link, 1 << 20).is_err(), "a device");
         }
         let _ = std::fs::remove_dir_all(&folder);
+    }
+
+    #[test]
+    fn the_build_that_opened_a_project_is_recorded_and_read_back() {
+        let root = test_folder("saved-by");
+        let project = Project::create(&root, "Farm").unwrap();
+        let none = Summary {
+            name: "Farm".into(),
+            saved_by: None,
+        };
+        assert_eq!(
+            Project::summary(&root).unwrap(),
+            none,
+            "a new one says none"
+        );
+        // Something a later Solis wrote is kept.
+        let path = root.join(PROJECT_FILE);
+        let text = std::fs::read_to_string(&path).unwrap() + "later = \"kept\"\n";
+        std::fs::write(&path, text).unwrap();
+        assert!(project.record_build(57).unwrap());
+        assert!(
+            !project.record_build(57).unwrap(),
+            "the same build: unchanged"
+        );
+        assert_eq!(Project::summary(&root).unwrap().saved_by, Some(57));
+        let text = std::fs::read_to_string(&path).unwrap();
+        assert!(text.contains("later = \"kept\""), "{text}");
+        assert!(
+            project.record_build(52).unwrap(),
+            "an older build opening it"
+        );
+        assert_eq!(Project::summary(&root).unwrap().saved_by, Some(52));
+        assert_eq!(Project::open(&root).unwrap().name(), "Farm");
+        let _ = std::fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn a_summary_refuses_what_opening_refuses() {
+        let root = test_folder("summary-refused");
+        assert!(matches!(
+            Project::summary(&root),
+            Err(ProjectError::NotAProject(_))
+        ));
+        std::fs::create_dir_all(&root).unwrap();
+        std::fs::write(root.join(PROJECT_FILE), "name = \"X\"\nformat = 99\n").unwrap();
+        assert!(matches!(
+            Project::summary(&root),
+            Err(ProjectError::TooNew(99))
+        ));
+        std::fs::write(root.join(PROJECT_FILE), "name = 3\nformat = 1\n").unwrap();
+        assert!(matches!(
+            Project::summary(&root),
+            Err(ProjectError::Damaged(_))
+        ));
+        // A build number that isn't a number is a damaged file, not a crash.
+        std::fs::write(
+            root.join(PROJECT_FILE),
+            "name = \"X\"\nformat = 1\nsaved_by = -4\n",
+        )
+        .unwrap();
+        assert!(Project::summary(&root).is_err());
+        let _ = std::fs::remove_dir_all(&root);
     }
 
     #[test]
