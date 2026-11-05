@@ -57,7 +57,7 @@ Solis is built on other people's libraries, which saves years of work. Each libr
 | `kira` | Plays and mixes sound: tracks, effects, sound placed in 3D (decision 0056) | MIT OR Apache-2.0 | sound | walled | Fork it (MIT or Apache-2.0), or mix ourselves on top of `cpal` underneath; only the sound crate changes |
 | `lewton` | Reads Ogg Vorbis sound files | MIT OR Apache-2.0 | sound | walled | Fork it (no release since 2021, so Solis's own fuzz tests vet it), or another permissive Vorbis reader |
 | `log` | Passes messages to the Console | MIT OR Apache-2.0 | app, render, sound, updater | shared | A few lines of Solis's own logging |
-| `lust` | Lust, the project lead's language (Solis's game code) | MIT | script | walled | Ours: the project lead's own repository, pinned to one commit |
+| `lust` | Lust, the project lead's language (Solis's game code, and reading the data files Solis makes, decision 0081) | MIT | area, script | shared | Ours: the project lead's own repository, pinned to one commit |
 | `meshopt` | Makes levels of detail (simpler meshes for far away) | MIT OR Apache-2.0 | assets | walled | Write a simplifier (quadric error, a known method), or fork; meshoptimizer underneath is MIT |
 | `mint` | Hands places and turns to Kira (the shared maths types it takes) | MIT | sound | walled | Kira's own; would go with it |
 | `mlua` | Runs Lua and Luau game code, sandboxed | MIT | script | walled | Fork it (MIT), or bind to Luau ourselves (Luau is MIT); only the script crate changes |

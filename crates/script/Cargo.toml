@@ -19,6 +19,7 @@ reflect.workspace = true
 physics.workspace = true
 input.workspace = true
 tiles.workspace = true
+area.workspace = true
 glam.workspace = true
 lust.workspace = true
 mlua.workspace = true

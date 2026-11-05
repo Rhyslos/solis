@@ -35,11 +35,17 @@ use area::settings::{self, BlockOut, Field};
 use reflect::{AssetId, Id, Value};
 use std::fmt;
 
-/// The layout version this build writes and reads.
-pub const VERSION: u32 = 2;
+/// The layout version this build writes and reads: 3, a Lust data file
+/// (`map_lust`, decision 0081).
+pub const VERSION: u32 = 3;
+/// The last version in the older layout (`tilemap version 2;`).
+const OLD_VERSION: u32 = 2;
 const KIND: &str = "tilemap";
-/// The file's extension.
-pub const EXTENSION: &str = "soltilemap";
+/// The older files' extension (`farm.soltilemap`), still read; Solis moves
+/// them to Lust when a project opens.
+pub const OLD_EXTENSION: &str = "soltilemap";
+/// The end of a tile map file's name: `farm.tilemap.lst`.
+pub const ENDING: &str = ".tilemap.lst";
 /// The biggest map file read.
 pub const MAX_BYTES: usize = 64 << 20;
 /// The most blocks a map file has (every chunk of every layer of the
@@ -52,9 +58,18 @@ pub const STANDARD_SIZE: [u32; 2] = [64, 64];
 pub static FORMAT: reflect::upgrade::Format<settings::BlockSettings> = reflect::upgrade::Format {
     name: "tile map",
     current: VERSION,
-    version_of: |text| reflect::upgrade::header_version(text, &[KIND]),
-    steps: &[exact_came_later],
+    version_of: |text| {
+        area::lust_data::version_of(text)
+            .or_else(|| reflect::upgrade::header_version(text, &[KIND]))
+    },
+    steps: &[exact_came_later, lust_came_later],
 };
+
+/// Version 2 to 3: the same parts, written as Lust (decision 0081); the
+/// older layout is read as it was.
+fn lust_came_later(_: &mut settings::BlockSettings) -> Result<(), String> {
+    Ok(())
+}
 
 /// Version 1 to 2: nothing to change. Version 1 had no exact tiles; every
 /// cell is autotiled, which is what a cell without one is.
@@ -92,11 +107,14 @@ pub struct ReadMap {
     pub notes: Vec<String>,
 }
 
-/// Whether `path` names a tile map file (by its extension).
+/// Whether `path` names a tile map file: `farm.tilemap.lst`, or an older
+/// `farm.soltilemap`.
 pub fn is_map_file(path: &std::path::Path) -> bool {
-    path.extension()
-        .and_then(|e| e.to_str())
-        .is_some_and(|e| e.eq_ignore_ascii_case(EXTENSION))
+    reflect::data_files::is(path, KIND)
+        || path
+            .extension()
+            .and_then(|e| e.to_str())
+            .is_some_and(|e| e.eq_ignore_ascii_case(OLD_EXTENSION))
 }
 
 fn get<'a>(fields: &'a [Field], key: &str) -> Option<&'a Value> {
@@ -148,13 +166,30 @@ pub fn read(text: &str) -> Result<ReadMap, MapFileError> {
             ),
         });
     }
-    let mut read =
-        settings::read_block_settings_within(text, KIND, VERSION, MAX_BLOCKS).map_err(|e| {
+    let mut read = if area::lust_data::is_data(text) {
+        let read = crate::map_lust::read(text, MAX_BYTES).map_err(|e| MapFileError {
+            line: e.line,
+            message: e.message,
+        })?;
+        if read.version > VERSION {
+            return Err(MapFileError {
+                line: 0,
+                message: format!(
+                    "it was saved by a newer version (layout {}; this one reads up to \
+                     {VERSION}). Update to open it.",
+                    read.version
+                ),
+            });
+        }
+        read
+    } else {
+        settings::read_block_settings_within(text, KIND, OLD_VERSION, MAX_BLOCKS).map_err(|e| {
             MapFileError {
                 line: e.line,
                 message: e.message,
             }
-        })?;
+        })?
+    };
     FORMAT
         .upgrade(read.version, &mut read)
         .map_err(|e| MapFileError {
@@ -560,14 +595,13 @@ pub fn write(map: &TileMap) -> String {
             }
         }
     }
-    settings::write_block_settings(
-        KIND,
-        VERSION,
+    crate::map_lust::write(
         "A tile map. Written by Solis; safe to edit by hand.\n\
          Cells are in chunks of 32 by 32: each layer's rows of terrain codes (a space\n\
          for an empty cell), and the values of cells that aren't at their start,\n\
          each [x, y, value] within the chunk. Exact tiles are cells that show one\n\
-         piece of the tileset as it is, each [x, y, piece] within the chunk.",
+         piece of the tileset as it is, each [x, y] within the chunk with its piece.",
+        VERSION,
         &fields,
         &blocks,
     )

@@ -102,7 +102,7 @@ impl Workbench {
     /// Makes a new tileset in `folder` with a few terrains, saved, and shows
     /// it in Properties.
     pub(crate) fn new_tileset(&mut self, folder: &str) {
-        let path = free_path(folder, "tileset", tiles::tileset::EXTENSION, |p| {
+        let path = free_path(folder, "tileset", &tiles::tileset::ENDING[1..], |p| {
             self.taken(p)
         });
         let set = starter_tileset();
@@ -124,7 +124,9 @@ impl Workbench {
     /// first tileset (by name), its ground filled with that tileset's
     /// first terrain. Shown in Properties.
     pub(crate) fn new_tile_map(&mut self, folder: &str) {
-        let path = free_path(folder, "map", tiles::map_file::EXTENSION, |p| self.taken(p));
+        let path = free_path(folder, "map", &tiles::map_file::ENDING[1..], |p| {
+            self.taken(p)
+        });
         let sheets = &self.viewport.sheets;
         let tileset = sheets.listed_tiles(false).first().map(|(_, id)| *id);
         let fill = tileset

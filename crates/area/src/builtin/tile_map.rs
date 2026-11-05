@@ -1,4 +1,4 @@
-//! A tile map in an area (Phase 9, D4): a tile map file (`.soltilemap`)
+//! A tile map in an area (Phase 9, D4): a tile map file (`.tilemap.lst`)
 //! placed at the entity, its top-left corner on the entity's place.
 
 use reflect::{
@@ -25,7 +25,7 @@ impl Component for TileMap {
                 .into(),
             fields: vec![
                 FieldInfo::new("map", "Map", FieldKind::Asset, Value::Asset(None)).hint(Hint {
-                    help: "The tile map file (.soltilemap) in the project.",
+                    help: "The tile map file (.tilemap.lst) in the project.",
                     offers: Offer::Assets("tile map"),
                     ..Hint::default()
                 }),

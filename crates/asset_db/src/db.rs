@@ -35,9 +35,9 @@ pub enum AssetKind {
     SpriteClips,
     /// An animator (`.solanim`; Phase 9, D3b): states choosing the clip.
     Animator,
-    /// A tileset (`.soltileset`; Phase 9, D4): the terrains a cell can be.
+    /// A tileset (`.tileset.lst`; Phase 9, D4): the terrains a cell can be.
     Tileset,
-    /// A tile map (`.soltilemap`; Phase 9, D4).
+    /// A tile map (`.tilemap.lst`; Phase 9, D4).
     TileMap,
     /// A picture (PNG or JPEG; Phase 9, D5): a tileset's art, given an ID
     /// so a tileset keeps it when it's moved or renamed.
@@ -61,11 +61,24 @@ pub const SPRITE_CLIPS_EXTENSION: &str = "solframes";
 /// The extension of animator files (the `animation` crate reads them).
 pub const ANIMATOR_EXTENSION: &str = "solanim";
 
-/// The extension of tilesets (the `tiles` crate reads them).
+/// The extension of older tilesets (`ground.soltileset`); tilesets are
+/// Lust now (`ground.tileset.lst`, decision 0081), read by the `tiles`
+/// crate.
 pub const TILESET_EXTENSION: &str = "soltileset";
 
-/// The extension of tile maps (the `tiles` crate reads them).
+/// The extension of older tile maps (`farm.soltilemap`); tile maps are
+/// Lust now (`farm.tilemap.lst`).
 pub const TILE_MAP_EXTENSION: &str = "soltilemap";
+
+/// The kind of a Lust data file Solis makes (decision 0081), by the word
+/// before its `.lst`.
+fn data_kind(path: &Path) -> Option<AssetKind> {
+    match reflect::data_files::kind_of(path)? {
+        "tileset" => Some(AssetKind::Tileset),
+        "tilemap" => Some(AssetKind::TileMap),
+        _ => None,
+    }
+}
 
 impl AssetKind {
     /// The kind of the file at `path`, by its extension, if Solis reads it.
@@ -75,6 +88,9 @@ impl AssetKind {
         }
         if assets::aseprite::is_aseprite_file(path) {
             return Some(Self::SpriteSheet);
+        }
+        if let Some(kind) = data_kind(path) {
+            return Some(kind);
         }
         let ext = path.extension()?.to_string_lossy().to_lowercase();
         if ext == ASSEMBLY_EXTENSION {
@@ -137,10 +153,7 @@ pub struct AssetRecord {
 impl AssetRecord {
     /// Its name: the file's name without its extension.
     pub fn name(&self) -> String {
-        self.path.file_stem().map_or_else(
-            || self.path.display().to_string(),
-            |s| s.to_string_lossy().into_owned(),
-        )
+        reflect::data_files::stem(&self.path).unwrap_or_else(|| self.path.display().to_string())
     }
 }
 

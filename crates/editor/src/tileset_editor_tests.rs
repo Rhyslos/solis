@@ -10,7 +10,7 @@ fn editor() -> TilesetEditor {
     let mut set = crate::workbench_tiles::starter_tileset();
     set.terrains[1].kind = TileKind::Dual16;
     set.picture = Some(AssetId::random());
-    TilesetEditor::new("sprites/farm.soltileset".into(), set)
+    TilesetEditor::new("sprites/farm.tileset.lst".into(), set)
 }
 
 fn tilled(e: &TilesetEditor) -> Id {

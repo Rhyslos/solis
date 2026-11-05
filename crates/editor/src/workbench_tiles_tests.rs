@@ -39,8 +39,8 @@ pub(crate) fn farm_map(tileset: AssetId) -> TileMap {
     map
 }
 
-/// A workbench with a project holding `farm.soltileset` and
-/// `farm.soltilemap`; the map's and tileset's asset IDs.
+/// A workbench with a project holding `farm.tileset.lst` and
+/// `farm.tilemap.lst`; the map's and tileset's asset IDs.
 pub(crate) fn with_map() -> (Workbench, AssetId, AssetId) {
     let mut w = Workbench::new(info(), None);
     w.set_project(Some(ProjectInfo {
@@ -57,20 +57,20 @@ pub(crate) fn with_map() -> (Workbench, AssetId, AssetId) {
         thumbnail: None,
     };
     w.set_library(vec![
-        item("farm.soltileset", LibraryKind::Tileset, set),
-        item("farm.soltilemap", LibraryKind::TileMap, map),
+        item("farm.tileset.lst", LibraryKind::Tileset, set),
+        item("farm.tilemap.lst", LibraryKind::TileMap, map),
     ]);
     let mut sheets = SpriteSheets::default();
     sheets.tilesets.insert(
-        "farm.soltileset".into(),
+        "farm.tileset.lst".into(),
         TilesetState::Read(Arc::new(farm_set()), Vec::new()),
     );
     sheets.tile_maps.insert(
-        "farm.soltilemap".into(),
+        "farm.tilemap.lst".into(),
         MapFileState::Read(Arc::new(farm_map(set)), Vec::new()),
     );
-    sheets.paths.insert(set, "farm.soltileset".into());
-    sheets.paths.insert(map, "farm.soltilemap".into());
+    sheets.paths.insert(set, "farm.tileset.lst".into());
+    sheets.paths.insert(map, "farm.tilemap.lst".into());
     w.set_sprite_sheets(sheets);
     (w, map, set)
 }
@@ -88,7 +88,7 @@ pub(crate) fn saved_maps(actions: &[WorkbenchAction]) -> Vec<(String, String)> {
 }
 
 pub(crate) fn the_map(w: &Workbench) -> Arc<TileMap> {
-    w.map_file("farm.soltilemap").unwrap()
+    w.map_file("farm.tilemap.lst").unwrap()
 }
 
 #[test]
@@ -143,8 +143,8 @@ fn a_change_in_the_tab_is_saved_at_once_and_undone_and_redone() {
     ]);
     let saves = saved_maps(&w.outbox);
     assert_eq!(saves.len(), 2, "each its own step, each saved");
-    assert_eq!(saves[0].0, "farm.soltilemap");
-    assert!(saves[1].1.contains("name = \"age\";"), "{}", saves[1].1);
+    assert_eq!(saves[0].0, "farm.tilemap.lst");
+    assert!(saves[1].1.contains("name = \"age\""), "{}", saves[1].1);
     let now = the_map(&w);
     assert_eq!(now.layers().len(), 4);
     assert_eq!(now.layers()[3].name, "Layer1");
@@ -235,14 +235,17 @@ fn new_tilesets_and_maps_are_made_saved_and_shown_with_free_names() {
         .collect();
     assert_eq!(
         paths,
-        ["sprites/tileset.soltileset", "sprites/tileset 2.soltileset"]
+        [
+            "sprites/tileset.tileset.lst",
+            "sprites/tileset 2.tileset.lst"
+        ]
     );
     w.outbox.clear();
     w.library_request(LibraryRequest::NewTileMap(String::new()), &mut actions);
     let saves = saved_maps(&w.outbox);
     assert_eq!(saves.len(), 1);
-    assert_eq!(saves[0].0, "map.soltilemap");
-    let made = w.map_file("map.soltilemap").unwrap();
+    assert_eq!(saves[0].0, "map.tilemap.lst");
+    let made = w.map_file("map.tilemap.lst").unwrap();
     assert_eq!(made.size(), tiles::map_file::STANDARD_SIZE);
     assert_eq!(made.tileset, Some(set), "the project's first tileset");
     assert_eq!(
@@ -256,7 +259,7 @@ fn new_tilesets_and_maps_are_made_saved_and_shown_with_free_names() {
 fn a_map_with_no_tileset_says_how_to_get_one() {
     let mut w = Workbench::new(info(), None);
     w.new_tile_map("");
-    let made = w.map_file("map.soltilemap").unwrap();
+    let made = w.map_file("map.tilemap.lst").unwrap();
     assert_eq!(made.tileset, None);
     assert_eq!(made.code(0, 0, 0), Some(0), "empty");
     assert!(
@@ -272,7 +275,7 @@ fn properties_change_a_map_file_s_tileset_and_size() {
     let (mut w, _, set) = with_map();
     let mut actions = Vec::new();
     w.library_request(
-        LibraryRequest::ShapeTileMap("farm.soltilemap".into(), Some(set), [20, 10]),
+        LibraryRequest::ShapeTileMap("farm.tilemap.lst".into(), Some(set), [20, 10]),
         &mut actions,
     );
     let map = the_map(&w);
@@ -283,15 +286,15 @@ fn properties_change_a_map_file_s_tileset_and_size() {
     w.new_tile_map("");
     let mut sheets = (*w.viewport.sheets).clone();
     sheets.tile_maps.insert(
-        "bare.soltilemap".into(),
+        "bare.tilemap.lst".into(),
         MapFileState::Read(Arc::new(TileMap::new([4, 4], None, None)), Vec::new()),
     );
     w.set_sprite_sheets(sheets);
     w.library_request(
-        LibraryRequest::ShapeTileMap("bare.soltilemap".into(), Some(set), [4, 4]),
+        LibraryRequest::ShapeTileMap("bare.tilemap.lst".into(), Some(set), [4, 4]),
         &mut actions,
     );
-    let bare = w.map_file("bare.soltilemap").unwrap();
+    let bare = w.map_file("bare.tilemap.lst").unwrap();
     assert_eq!(bare.tileset, Some(set));
     assert_eq!(bare.counts(0)[usize::from(b'.')], 16);
     // A tileset's terrains changed in Properties are saved.
@@ -299,7 +302,7 @@ fn properties_change_a_map_file_s_tileset_and_size() {
     changed.terrains[0].name = "meadow".into();
     w.outbox.clear();
     w.library_request(
-        LibraryRequest::SaveTileset("farm.soltileset".into(), changed),
+        LibraryRequest::SaveTileset("farm.tileset.lst".into(), changed),
         &mut actions,
     );
     assert!(w.outbox.iter().any(|a| matches!(
@@ -316,13 +319,13 @@ fn properties_change_a_map_file_s_tileset_and_size() {
 fn properties_show_a_tileset_and_a_map_file_from_the_library() {
     let (mut w, _, _) = with_map();
     let selection = w.document.selection.clone();
-    w.sound_shown = Some(("farm.soltileset".into(), selection.clone()));
+    w.sound_shown = Some(("farm.tileset.lst".into(), selection.clone()));
     let mut h = harness(w);
     h.run();
     h.run();
     assert!(h.query_by_label("Remove grass").is_some());
     assert!(h.query_by_label("+ Terrain").is_some());
-    h.state_mut().0.sound_shown = Some(("farm.soltilemap".into(), selection));
+    h.state_mut().0.sound_shown = Some(("farm.tilemap.lst".into(), selection));
     h.run();
     h.run();
     assert!(h.query_by_label_contains("3 layers · 3 values").is_some());
@@ -368,7 +371,7 @@ fn a_terrain_made_solid_is_saved_in_its_tileset_and_its_walls_shown() {
             _ => None,
         })
         .expect("saved");
-    assert!(text.contains("solid = true;"), "{text}");
+    assert!(text.contains("solid = true"), "{text}");
     // Asking again changes nothing.
     let before = w.outbox.len();
     w.map_requests_done(vec![crate::map_tab::MapRequest::SetSolid(b'~', true)]);

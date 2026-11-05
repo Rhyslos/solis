@@ -11,8 +11,8 @@ use assets::tile_art::TileArt;
 use egui_kittest::kittest::Queryable;
 use reflect::AssetId;
 
-/// A project with `farm.soltileset` (tilled 16-tile, its art on
-/// `tiles.png`, every slot but 6), `tiles.png` read and `farm.soltilemap`.
+/// A project with `farm.tileset.lst` (tilled 16-tile, its art on
+/// `tiles.png`, every slot but 6), `tiles.png` read and `farm.tilemap.lst`.
 fn with_tileset() -> (Workbench, AssetId, AssetId) {
     let mut w = Workbench::new(info(), None);
     w.set_project(Some(ProjectInfo {
@@ -29,8 +29,8 @@ fn with_tileset() -> (Workbench, AssetId, AssetId) {
         thumbnail: None,
     };
     w.set_library(vec![
-        item("farm.soltileset", LibraryKind::Tileset, set_id),
-        item("farm.soltilemap", LibraryKind::TileMap, map_id),
+        item("farm.tileset.lst", LibraryKind::Tileset, set_id),
+        item("farm.tilemap.lst", LibraryKind::TileMap, map_id),
         item("tiles.png", LibraryKind::Texture, png),
     ]);
     let mut set = crate::workbench_tiles::starter_tileset();
@@ -50,7 +50,7 @@ fn with_tileset() -> (Workbench, AssetId, AssetId) {
     }
     let mut sheets = SpriteSheets::default();
     sheets.tilesets.insert(
-        "farm.soltileset".into(),
+        "farm.tileset.lst".into(),
         TilesetState::Read(Arc::new(set), Vec::new()),
     );
     sheets.tile_art.insert(
@@ -64,11 +64,11 @@ fn with_tileset() -> (Workbench, AssetId, AssetId) {
     let mut map = tiles::TileMap::new([8, 8], Some(set_id), Some(b'.'));
     map.set_code(0, 2, 2, b't').unwrap();
     sheets.tile_maps.insert(
-        "farm.soltilemap".into(),
+        "farm.tilemap.lst".into(),
         MapFileState::Read(Arc::new(map), Vec::new()),
     );
-    sheets.paths.insert(set_id, "farm.soltileset".into());
-    sheets.paths.insert(map_id, "farm.soltilemap".into());
+    sheets.paths.insert(set_id, "farm.tileset.lst".into());
+    sheets.paths.insert(map_id, "farm.tilemap.lst".into());
     sheets.paths.insert(png, "tiles.png".into());
     w.set_sprite_sheets(sheets);
     (w, set_id, map_id)
@@ -89,7 +89,7 @@ fn double_clicking_a_tileset_opens_its_tab_first_beside_the_viewport() {
     let (mut w, _, _) = with_tileset();
     let mut actions = Vec::new();
     w.library_request(
-        LibraryRequest::Open(LibraryKind::Tileset, "farm.soltileset".into()),
+        LibraryRequest::Open(LibraryKind::Tileset, "farm.tileset.lst".into()),
         &mut actions,
     );
     assert!(w.tileset_editor.is_some());
@@ -105,7 +105,7 @@ fn double_clicking_a_tileset_opens_its_tab_first_beside_the_viewport() {
         "Tileset picture",
         "Slot 6",
         "Try-it patch",
-        "farm.soltileset",
+        "farm.tileset.lst",
     ] {
         assert!(h.query_by_label(label).is_some(), "{label}");
     }
@@ -113,7 +113,7 @@ fn double_clicking_a_tileset_opens_its_tab_first_beside_the_viewport() {
     // A saved layout never keeps it, and its document tab closes it.
     let restored = layout::restore(Some(h.state().0.dock.clone()));
     assert!(restored.find_tab(&Panel::Tileset).is_none());
-    h.get_by_label("Close farm.soltileset").click();
+    h.get_by_label("Close farm.tileset.lst").click();
     h.run();
     h.run();
     assert!(h.state().0.tileset_editor.is_none());
@@ -122,24 +122,24 @@ fn double_clicking_a_tileset_opens_its_tab_first_beside_the_viewport() {
 #[test]
 fn a_change_is_saved_shown_at_once_and_undone_over_the_tab() {
     let (mut w, set_id, _) = with_tileset();
-    w.open_tileset("farm.soltileset");
+    w.open_tileset("farm.tileset.lst");
     w.tileset_editor.as_mut().unwrap().assign(6, [2, 1]);
     w.save_open_tileset();
     let texts = saved(&w.outbox);
     assert_eq!(texts.len(), 1);
-    assert!(texts[0].contains("slot = 6;"), "{}", texts[0]);
+    assert!(texts[0].contains("slot = 6"), "{}", texts[0]);
     let set = w.viewport.sheets.tileset(set_id).unwrap();
     assert!(tiles::autotile::missing_slots(set, &set.terrains[1]).is_empty());
     w.outbox.clear();
     w.tileset_hovered = true;
     w.tileset_undo(false, true);
-    assert!(!saved(&w.outbox)[0].contains("slot = 6;"));
+    assert!(!saved(&w.outbox)[0].contains("slot = 6"));
     // Its own save read back changes nothing; a change by hand is taken in.
     let mut sheets = (*w.viewport.sheets).clone();
     let mut by_hand = w.tileset_editor.as_ref().unwrap().file.clone();
     by_hand.tile = [16, 16];
     sheets.tilesets.insert(
-        "farm.soltileset".into(),
+        "farm.tileset.lst".into(),
         TilesetState::Read(Arc::new(by_hand), Vec::new()),
     );
     w.set_sprite_sheets(sheets.clone());
@@ -161,10 +161,10 @@ fn a_new_tileset_opens_in_its_tab_and_stays_until_it_s_read() {
     let (mut w, _, _) = with_tileset();
     w.new_tileset("sprites");
     let e = w.tileset_editor.as_ref().unwrap();
-    assert_eq!(e.path, "sprites/tileset.soltileset");
+    assert_eq!(e.path, "sprites/tileset.tileset.lst");
     // A read of the project from before it was written doesn't close it.
     let mut sheets = (*w.viewport.sheets).clone();
-    sheets.tilesets.remove("sprites/tileset.soltileset");
+    sheets.tilesets.remove("sprites/tileset.tileset.lst");
     w.set_sprite_sheets(sheets);
     assert!(w.tileset_editor.is_some());
 }
@@ -172,7 +172,7 @@ fn a_new_tileset_opens_in_its_tab_and_stays_until_it_s_read() {
 #[test]
 fn a_template_is_saved_beside_the_tileset_as_a_png() {
     let (mut w, _, _) = with_tileset();
-    w.open_tileset("farm.soltileset");
+    w.open_tileset("farm.tileset.lst");
     w.save_template(TileKind::Blob47);
     let (path, bytes) = w
         .outbox

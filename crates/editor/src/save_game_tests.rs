@@ -991,10 +991,10 @@ fn busy_with_a_map() -> (Workbench, EntityId) {
     map.add_value("watered", tiles::ValueKind::Switch).unwrap();
     let mut sheets = crate::sprite_sheets::SpriteSheets::default();
     sheets.tile_maps.insert(
-        "field.soltilemap".into(),
+        "field.tilemap.lst".into(),
         crate::sprite_sheets::MapFileState::Read(Arc::new(map), Vec::new()),
     );
-    sheets.paths.insert(map_id, "field.soltilemap".into());
+    sheets.paths.insert(map_id, "field.tilemap.lst".into());
     w.set_sprite_sheets(sheets);
     let field = w.spawn_selected(EntityData::new("Field").with(&Transform::default()).with(
         &area::builtin::TileMap {

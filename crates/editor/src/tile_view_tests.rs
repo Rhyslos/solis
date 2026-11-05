@@ -14,10 +14,10 @@ fn tileset() -> (AssetId, tiles::Tileset) {
 fn sheets_with(id: AssetId, set: tiles::Tileset) -> SpriteSheets {
     let mut sheets = SpriteSheets::default();
     sheets.tilesets.insert(
-        "farm.soltileset".into(),
+        "farm.tileset.lst".into(),
         crate::sprite_sheets::TilesetState::Read(Arc::new(set), Vec::new()),
     );
-    sheets.paths.insert(id, "farm.soltileset".into());
+    sheets.paths.insert(id, "farm.tileset.lst".into());
     sheets
 }
 

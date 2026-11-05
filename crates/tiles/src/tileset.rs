@@ -45,11 +45,39 @@ use std::fmt;
 
 /// The layout version this build writes and reads: 2 added the picture,
 /// kinds, pieces and rules (D5); 3 added whether a terrain is solid
-/// (decision 0071).
-pub const VERSION: u32 = 3;
-const KIND: &str = "tileset";
-/// The file's extension.
-pub const EXTENSION: &str = "soltileset";
+/// (decision 0071); 4 is a Lust data file (`ground.tileset.lst`,
+/// decision 0081).
+pub const VERSION: u32 = 4;
+/// The last version in the older layout (`tileset version 3;`).
+const OLD_VERSION: u32 = 3;
+/// The word before `.lst` in a tileset's file name.
+pub const KIND: &str = "tileset";
+/// The older files' extension (`ground.soltileset`), still read; Solis
+/// moves them to Lust when a project opens.
+pub const OLD_EXTENSION: &str = "soltileset";
+/// The end of a tileset's file name: `ground.tileset.lst`.
+pub const ENDING: &str = ".tileset.lst";
+
+/// What a tileset file holds, in Lust: written into every project's
+/// `solis/data/tileset.lst`, and handed to Lust when a tileset is read.
+pub const CLASSES: &str = "-- What a tileset file holds (Solis writes this; tilesets fetch it).\n\
+class Tileset {\n    has {\n        string picture = \"\";\n        int array tile = [];\n    }\n}\n\n\
+class Terrain {\n    has {\n        string id = \"\";\n        string name = \"\";\n        string code = \"\";\n        float array colour = [];\n        string kind = \"plain\";\n        bool solid = false;\n    }\n}\n\n\
+class Piece {\n    has {\n        string id = \"\";\n        string terrain = \"\";\n        int slot = 0;\n        int array at = [];\n        float weight = 1;\n        string animation = \"\";\n        int frames = 1;\n        int ms = 100;\n    }\n}\n\n\
+class Rule {\n    has {\n        string id = \"\";\n        string terrain = \"\";\n        string array pattern = [];\n        int slot = 0;\n    }\n}\n\n\
+pass Tileset, Terrain, Piece, Rule;\nend\n";
+
+/// How a tileset's parts are kept as Lust.
+const SHAPE: area::lust_data::Shape<'static> = area::lust_data::Shape {
+    kind: KIND,
+    fetches: &["Tileset", "Terrain", "Piece", "Rule"],
+    top: ("Tileset", "tileset"),
+    blocks: &[
+        ("terrain", "Terrain", "terrains"),
+        ("piece", "Piece", "pieces"),
+        ("rule", "Rule", "rules"),
+    ],
+};
 /// The biggest tileset file read.
 pub const MAX_BYTES: usize = 1 << 20;
 /// The most terrains a tileset has.
@@ -79,9 +107,18 @@ pub const MAX_PATTERN: usize = 9;
 pub static FORMAT: reflect::upgrade::Format<settings::BlockSettings> = reflect::upgrade::Format {
     name: "tileset",
     current: VERSION,
-    version_of: |text| reflect::upgrade::header_version(text, &[KIND]),
-    steps: &[art_came_later, solid_came_later],
+    version_of: |text| {
+        area::lust_data::version_of(text)
+            .or_else(|| reflect::upgrade::header_version(text, &[KIND]))
+    },
+    steps: &[art_came_later, solid_came_later, lust_came_later],
 };
+
+/// Version 3 to 4: the same parts, written as Lust (decision 0081); the
+/// older layout is read as it was.
+fn lust_came_later(_: &mut settings::BlockSettings) -> Result<(), String> {
+    Ok(())
+}
 
 /// Version 2 to 3: nothing to change. Version 2 had no solid terrains;
 /// a terrain without `solid` isn't.
@@ -400,9 +437,12 @@ pub struct ReadTileset {
 
 /// Whether `path` names a tileset (by its extension).
 pub fn is_tileset_file(path: &std::path::Path) -> bool {
+    if reflect::data_files::is(path, KIND) {
+        return true;
+    }
     path.extension()
         .and_then(|e| e.to_str())
-        .is_some_and(|e| e.eq_ignore_ascii_case(EXTENSION))
+        .is_some_and(|e| e.eq_ignore_ascii_case(OLD_EXTENSION))
 }
 
 fn get<'a>(fields: &'a [Field], key: &str) -> Option<&'a Value> {
@@ -444,16 +484,42 @@ pub fn read(text: &str) -> Result<ReadTileset, TilesetError> {
             ),
         });
     }
-    let mut read = settings::read_block_settings_within(
-        text,
-        KIND,
-        VERSION,
-        MAX_TERRAINS + MAX_PIECES + MAX_RULES + 64,
-    )
-    .map_err(|e| TilesetError {
-        line: e.line,
-        message: e.message,
-    })?;
+    let mut read = if area::lust_data::is_data(text) {
+        let read = area::lust_data::read_blocks(text, &SHAPE, CLASSES, MAX_BYTES).map_err(|e| {
+            TilesetError {
+                line: e.line,
+                message: e.message,
+            }
+        })?;
+        if read.version > VERSION {
+            return Err(TilesetError {
+                line: 0,
+                message: format!(
+                    "it was saved by a newer version (layout {}; this one reads up to \
+                     {VERSION}). Update to open it.",
+                    read.version
+                ),
+            });
+        }
+        if read.blocks.len() > MAX_TERRAINS + MAX_PIECES + MAX_RULES {
+            return Err(TilesetError {
+                line: 0,
+                message: "it has more terrains, pieces and rules than a tileset can".into(),
+            });
+        }
+        read
+    } else {
+        settings::read_block_settings_within(
+            text,
+            KIND,
+            OLD_VERSION,
+            MAX_TERRAINS + MAX_PIECES + MAX_RULES + 64,
+        )
+        .map_err(|e| TilesetError {
+            line: e.line,
+            message: e.message,
+        })?
+    };
     FORMAT
         .upgrade(read.version, &mut read)
         .map_err(|e| TilesetError {
@@ -856,17 +922,18 @@ pub fn write(tileset: &Tileset) -> String {
             ]),
         ));
     }
-    settings::write_block_settings(
-        KIND,
-        VERSION,
+    area::lust_data::write_blocks(
+        &SHAPE,
         "A tileset. Written by Solis; safe to edit by hand.\n\
          Each terrain is something a tile map's cell can be: its name, the one character\n\
          a map file writes for it, its colour, how its art is chosen (its kind), and\n\
          whether it's solid (nothing with a body passes into it).\n\
          Each piece is a tile of the picture filling one of a terrain's slots; each rule\n\
          a pattern of the cells around one, for a terrain of its own rules.",
+        VERSION,
         &fields,
         &blocks,
+        &[],
     )
 }
 

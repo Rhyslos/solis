@@ -16,6 +16,7 @@ layer = 0
 
 [dependencies]
 reflect.workspace = true
+lust.workspace = true
 glam.workspace = true
 
 [dev-dependencies]

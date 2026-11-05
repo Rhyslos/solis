@@ -111,9 +111,9 @@ pub(crate) fn farm_art() -> Tileset {
 fn a_tileset_round_trips_and_finds_its_terrains() {
     let set = farm();
     let text = write(&set);
-    assert!(text.contains("tileset version 3;"));
-    assert!(!text.contains("picture ="), "no art, no picture line");
-    assert!(text.contains("code = \"~\";"));
+    assert!(text.contains("lock int version = 4;"));
+    assert!(!text.contains("picture ="), "no art, no picture");
+    assert!(text.contains("code = \"~\""));
     let back = read(&text).unwrap();
     assert!(back.notes.is_empty(), "{:?}", back.notes);
     assert_eq!(back.tileset, set);
@@ -126,14 +126,14 @@ fn a_tileset_round_trips_and_finds_its_terrains() {
 fn art_pieces_and_rules_round_trip() {
     let set = farm_art();
     let text = write(&set);
-    assert!(text.contains("kind = \"16-tile\";"), "{text}");
-    assert!(text.contains("animation = \"columns\";"), "{text}");
+    assert!(text.contains("kind = \"16-tile\""), "{text}");
+    assert!(text.contains("animation = \"columns\""), "{text}");
     assert!(
-        text.contains("pattern = [\"?.?\", \"=*=\", \"???\"];"),
+        text.contains("pattern = [\"?.?\", \"=*=\", \"???\"]"),
         "{text}"
     );
-    assert!(text.contains("weight = 3.0;"), "{text}");
-    assert_eq!(text.matches("solid = true;").count(), 3, "{text}");
+    assert!(text.contains("weight = 3.0"), "{text}");
+    assert_eq!(text.matches("solid = true").count(), 3, "{text}");
     let back = read(&text).unwrap();
     assert!(back.notes.is_empty(), "{:?}", back.notes);
     assert_eq!(back.tileset, set);
@@ -159,7 +159,25 @@ fn the_fixture_reads_without_notes() {
     let read = read(text).unwrap();
     assert!(read.notes.is_empty(), "{:?}", read.notes);
     assert_eq!(read.tileset, farm_art());
-    assert_eq!(write(&read.tileset), text, "written as Solis writes it");
+    // Written again, it's the version 4 example: the same, as Lust.
+    let v4 = include_str!("../../../tests/fixtures/tileset/v4/farm.tileset.lst");
+    assert_eq!(write(&read.tileset), v4, "written as Solis writes it");
+}
+
+#[test]
+fn the_lust_fixture_reads_back_as_itself() {
+    let text = include_str!("../../../tests/fixtures/tileset/v4/farm.tileset.lst");
+    let read = read(text).unwrap();
+    assert!(read.notes.is_empty(), "{:?}", read.notes);
+    assert_eq!(read.tileset, farm_art());
+    assert_eq!(write(&read.tileset), text);
+    assert_eq!((FORMAT.version_of)(text), Some(4));
+    let wrong = text.replacen("slot = 0", "slot = \"zero\"", 1);
+    assert!(read_err_line(&wrong) > 0);
+}
+
+fn read_err_line(text: &str) -> usize {
+    read(text).unwrap_err().line
 }
 
 #[test]

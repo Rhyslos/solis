@@ -44,7 +44,7 @@ pub enum Panel {
     /// beside Properties while a map is selected.
     Map,
     /// The tileset open (Phase 9, D5): its terrains, picture, slots and
-    /// rules, beside the viewport while a `.soltileset` file is open.
+    /// rules, beside the viewport while a `.tileset.lst` file is open.
     Tileset,
 }
 

@@ -136,7 +136,7 @@ pub enum WorkbenchAction {
         /// What to save.
         text: String,
     },
-    /// Save a tileset (`.soltileset`, inside the project's assets), making
+    /// Save a tileset (`.tileset.lst`, inside the project's assets), making
     /// it if it isn't there yet (Phase 9, D4).
     SaveTileset {
         /// The file.
@@ -144,7 +144,7 @@ pub enum WorkbenchAction {
         /// What to save.
         text: String,
     },
-    /// Save a tile map file (`.soltilemap`, inside the project's assets),
+    /// Save a tile map file (`.tilemap.lst`, inside the project's assets),
     /// making it if it isn't there yet (Phase 9, D4).
     SaveTileMap {
         /// The file.

@@ -38,6 +38,7 @@
 
 ## Projects
 
+- **Lust data file:** a Lust file that only holds values, read by Solis without running anything. Everything Solis makes (tile maps, tilesets, and the rest as they move over) is one, named for what it holds: `farm.tilemap.lst`. See [Backups and upgrades](backups-and-upgrades.md).
 - **Project:** a folder holding one game: its assets, settings and areas. See [Projects and the Library](projects-and-the-library.md).
 - **Asset:** a file the game uses: a model, a picture, a sound, an assembly, code.
 - **Sidecar:** the small `.solmeta` text file beside each asset holding its ID, so renaming the file breaks nothing. Commit it with the asset.
@@ -176,8 +177,8 @@
 - **Parameter:** a value an animator's transitions look at: a number, a switch (on or off), a trigger (fired for one tick) or a direction (which way it faces).
 - **Graph editor:** the canvas of boxes and arrows the Animator tab draws on; materials and effects will use the same one, with the same controls.
 - **Frame event:** a name on a frame of a clip (*footstep*). When the clip reaches the frame, a sound event of that name plays and game code hears `CueReached`, with the event as `Cue.Footstep`.
-- **Tile map:** a grid of cells laid out in a 2D world, saved as a `.soltilemap` file and placed by an entity's **Tile Map** component. Each cell holds a terrain on each layer, and values. See [Tile maps](tile-maps.md).
-- **Tileset:** a `.soltileset` file listing the terrains a tile map's cells can be. Every map that uses it draws its terrains the same way.
+- **Tile map:** a grid of cells laid out in a 2D world, saved as a `.tilemap.lst` file and placed by an entity's **Tile Map** component. Each cell holds a terrain on each layer, and values. See [Tile maps](tile-maps.md).
+- **Tileset:** a `.tileset.lst` file listing the terrains a tile map's cells can be. Every map that uses it draws its terrains the same way.
 - **Terrain:** what a cell is (*grass*, *tilled*, *water*), with a name, a colour and the one character a map file writes for it (its **code**, such as `.` for grass).
 - **Layer (tile map):** one of a map's stacked grids, such as Ground, Decoration and Above. A layer is drawn **under** sprites (the ground they walk on) or **over** them (roofs they walk behind).
 - **Cell value:** something every cell of a map has besides its terrain: a **number** (growth), a **switch** (watered) or a **choice** (crop: wheat or corn). The game changes them as it plays, and saves keep them.

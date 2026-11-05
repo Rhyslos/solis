@@ -65,9 +65,11 @@ cp tests/fixtures/animator/v1/farmer.solanim "$seeds/animator/"
 mkdir -p "$seeds/tileset"
 cp tests/fixtures/tileset/v1/farm.soltileset "$seeds/tileset/"
 cp tests/fixtures/tileset/v2/farm.soltileset "$seeds/tileset/farm-art.soltileset"
+cp tests/fixtures/tileset/v4/farm.tileset.lst "$seeds/tileset/farm.tileset.lst"
 mkdir -p "$seeds/tile_map"
 cp tests/fixtures/tilemap/v1/farm.soltilemap "$seeds/tile_map/"
 cp tests/fixtures/tilemap/v2/farm.soltilemap "$seeds/tile_map/farm-exact.soltilemap"
+cp tests/fixtures/tilemap/v3/farm.tilemap.lst "$seeds/tile_map/farm.tilemap.lst"
 mkdir -p "$seeds/tile_art"
 # The first byte chooses the reader: 0 a PNG, 1 an Aseprite file.
 python3 - "$seeds" <<'PY'

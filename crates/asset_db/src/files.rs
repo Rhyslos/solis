@@ -35,9 +35,9 @@ pub enum FileKind {
     SpriteClips,
     /// An animator (`.solanim`).
     Animator,
-    /// A tileset (`.soltileset`).
+    /// A tileset (`.tileset.lst`).
     Tileset,
-    /// A tile map (`.soltilemap`).
+    /// A tile map (`.tilemap.lst`).
     TileMap,
     /// Anything else.
     Other,
@@ -54,6 +54,12 @@ impl FileKind {
         }
         if assets::aseprite::is_aseprite_file(path) {
             return Self::SpriteSheet;
+        }
+        // A Lust data file Solis makes (decision 0081), before code.
+        match reflect::data_files::kind_of(path) {
+            Some("tileset") => return Self::Tileset,
+            Some("tilemap") => return Self::TileMap,
+            _ => {}
         }
         let ext = path
             .extension()
@@ -560,6 +566,21 @@ mod tests {
             crate::AssetKind::of(Path::new("farm.soltilemap")),
             Some(crate::AssetKind::TileMap)
         );
+        // Lust data files (decision 0081) are what they hold, not code.
+        assert_eq!(
+            FileKind::of(Path::new("maps/farm.tilemap.lst")),
+            FileKind::TileMap
+        );
+        assert_eq!(
+            FileKind::of(Path::new("ground.tileset.lst")),
+            FileKind::Tileset
+        );
+        assert_eq!(
+            crate::AssetKind::of(Path::new("farm.TileMap.lst")),
+            Some(crate::AssetKind::TileMap)
+        );
+        assert_eq!(FileKind::of(Path::new("main.lst")), FileKind::Code);
+        assert_eq!(crate::AssetKind::of(Path::new("main.lst")), None);
         assert_eq!(FileKind::of(Path::new("a.JPEG")), FileKind::Texture);
         // Pictures have IDs (Phase 9, D5): a tileset's art keeps its picture.
         for p in ["tiles.png", "a.JPEG", "b.jpg"] {

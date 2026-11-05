@@ -141,7 +141,7 @@ pub struct WorldView {
     /// name in the graph (an animator's own file asks it).
     pub animator_states: Arc<std::collections::HashMap<EntityId, String>>,
     /// The tile maps at play as the tick started, by their file's path
-    /// without `.soltilemap` (the first entity showing each).
+    /// without `.tilemap.lst` (the first entity showing each).
     pub maps: Arc<std::collections::HashMap<String, Arc<tiles::TileMap>>>,
 }
 

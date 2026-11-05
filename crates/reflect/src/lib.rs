@@ -7,6 +7,7 @@
 
 mod checksum;
 mod component;
+pub mod data_files;
 mod id;
 mod registry;
 mod schema;

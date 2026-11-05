@@ -39,7 +39,7 @@ fn harness(with_picture: bool) -> Harness<'static, State> {
         set.picture = Some(picture);
     }
     let state = State {
-        editor: TilesetEditor::new("farm.soltileset".into(), set),
+        editor: TilesetEditor::new("farm.tileset.lst".into(), set),
         art: with_picture.then(art),
         texture: None,
         out: TilesetOut::default(),

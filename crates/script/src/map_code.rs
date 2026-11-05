@@ -1,6 +1,6 @@
 //! Each tile map's own Lust file ([decision 0079](../../../docs/decisions/0079-tile-maps-reached-through-their-own-files.md)):
 //! like the animators' (decision 0078), the game API guidelines' rule 4.
-//! `maps/farm.soltilemap` gives `solis/maps/maps/farm.lst`: states of its
+//! `maps/farm.tilemap.lst` gives `solis/maps/maps/farm.lst`: states of its
 //! layers (`FarmLayer`), its tileset's terrains (`FarmTerrain`) and each
 //! choice value's options (`FarmCrop`), and a class with a method per thing
 //! code can ask or change (`FarmMap`: `terrain(layer, x, y)`,
@@ -24,7 +24,7 @@ pub enum ValueNames {
 }
 
 /// One tile map file, as the editor read it: its path without
-/// `.soltilemap`, its layers, its tileset's terrains (code and name) and
+/// `.tilemap.lst`, its layers, its tileset's terrains (code and name) and
 /// its values.
 #[derive(Debug, Clone, PartialEq)]
 pub struct MapNames {
@@ -246,7 +246,7 @@ pub fn map_file(
     }
     passed.push(class.clone());
     let text = format!(
-        "-- Made by {made_by}: {path}.soltilemap's names, for game code. It's written again\n\
+        "-- Made by {made_by}: the tile map {path}'s names, for game code. It's written again\n\
          -- whenever the map or its tileset changes, so changes made here don't last.\n\
          -- Hold one in a component as a field the engine fills in: {class} map;\n\n\
          fetch \"{folder}/tiles\":Maps;\n\n\

@@ -54,9 +54,9 @@ pub enum LibraryKind {
     SpriteClips,
     /// An animator (`.solanim`, Phase 9, D3b).
     Animator,
-    /// A tileset (`.soltileset`, Phase 9, D4): the terrains a cell can be.
+    /// A tileset (`.tileset.lst`, Phase 9, D4): the terrains a cell can be.
     Tileset,
-    /// A tile map (`.soltilemap`, Phase 9, D4).
+    /// A tile map (`.tilemap.lst`, Phase 9, D4).
     TileMap,
     /// Anything else.
     Other,

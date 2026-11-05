@@ -28,3 +28,5 @@ Tile maps (Phase 9, D4 to D6; decisions [0067](../../docs/decisions/0067-tile-ma
 ## Status
 
 Phase 9, D4: tilesets with colours, maps with layers and values, their files. D5: tilesets' art and autotiling. D6: exact tiles, the painter's shapes and stamps (the painter itself is the editor's). Usable first, 2D movement: solid terrains and walls.
+
+Usable first, L1 (decision 0081): tile maps are Lust data files (`farm.tilemap.lst`, version 3, `map_lust.rs`: its shape and classes) and so are tilesets (`ground.tileset.lst`, version 4, through `area::lust_data`'s blocks). The older layouts are still read.
