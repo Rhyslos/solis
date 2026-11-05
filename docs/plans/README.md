@@ -14,6 +14,7 @@ Working plans for the phases of [ROADMAP.md](../../ROADMAP.md). A plan records t
 | `phase-7-animation.md` | Animation: the state machine and graph editor in 9 (2D), skeletons in 16 (decision 0059) |
 | `compatibility.md` | 8: Compatibility (draft) |
 | `2d.md` | 9 and 10: First-class 2D (draft) |
+| `lust-data.md` | Usable first, 2: what Solis makes is Lust (decision 0081) |
 | `game-ui.md` | 12: Game UI (draft) |
 | `light.md` | 13: Light, sky and atmosphere (draft) |
 | `materials.md` | 14: Materials and shaders (draft) |

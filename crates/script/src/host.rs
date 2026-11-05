@@ -176,7 +176,7 @@ pub trait Host {
         let _ = (which, scale);
     }
     /// The tile map at play from the file `file` (its path without
-    /// `.soltilemap`), as the tick started: the first entity showing it.
+    /// `.tilemap.lst`), as the tick started: the first entity showing it.
     fn map(&self, file: &str) -> Option<std::sync::Arc<tiles::TileMap>> {
         let _ = file;
         None

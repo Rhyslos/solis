@@ -44,7 +44,7 @@ pub enum AnimatorState {
     Failed(String),
 }
 
-/// What the editor knows of one tileset (`.soltileset`, Phase 9, D4).
+/// What the editor knows of one tileset (`.tileset.lst`, Phase 9, D4).
 #[derive(Debug, Clone, PartialEq)]
 pub enum TilesetState {
     /// Read, with what was put right while reading it.
@@ -53,7 +53,7 @@ pub enum TilesetState {
     Failed(String),
 }
 
-/// What the editor knows of one tile map file (`.soltilemap`, D4).
+/// What the editor knows of one tile map file (`.tilemap.lst`, D4).
 #[derive(Debug, Clone, PartialEq)]
 pub enum MapFileState {
     /// Read, with what was put right while reading it.
@@ -88,9 +88,9 @@ pub struct SpriteSheets {
     pub frames: HashMap<String, FramesState>,
     /// Each animator file (`.solanim`), by path inside the assets.
     pub animators: HashMap<String, AnimatorState>,
-    /// Each tileset (`.soltileset`), by path inside the assets.
+    /// Each tileset (`.tileset.lst`), by path inside the assets.
     pub tilesets: HashMap<String, TilesetState>,
-    /// Each tile map file (`.soltilemap`), by path inside the assets.
+    /// Each tile map file (`.tilemap.lst`), by path inside the assets.
     pub tile_maps: HashMap<String, MapFileState>,
     /// Each tileset's picture (a PNG, JPEG or Aseprite file), by path
     /// inside the assets: read whole, for cutting into tiles.
@@ -125,10 +125,7 @@ impl SpriteSheets {
                 MapFileState::Failed(_) => None,
             })
             .map(|(path, map)| MapNames {
-                path: path
-                    .rsplit_once('.')
-                    .map_or(path.as_str(), |(stem, _)| stem)
-                    .to_owned(),
+                path: reflect::data_files::path_stem(path),
                 layers: map.layers().iter().map(|l| l.name.clone()).collect(),
                 terrains: map
                     .tileset
@@ -499,7 +496,7 @@ impl SpriteSheets {
 /// A file's name without its folder or extension.
 pub(crate) fn name_of(path: &str) -> String {
     let file = path.rsplit_once('/').map_or(path, |(_, f)| f);
-    file.rsplit_once('.').map_or(file, |(n, _)| n).to_owned()
+    reflect::data_files::path_stem(file)
 }
 
 /// A sprite an area draws: the entity's Sprite, where the entity is, and

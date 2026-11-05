@@ -1,0 +1,43 @@
+-- A tile map. Written by Solis; safe to edit by hand.
+-- Cells are in chunks of 32 by 32: each layer's rows of terrain codes (a space
+-- for an empty cell), and the values of cells that aren't at their start,
+-- each [x, y, value] within the chunk. Exact tiles are cells that show one
+-- piece of the tileset as it is, each [x, y] within the chunk with its piece.
+fetch "solis/data/tilemap":[ValueKind, TileMap, Layer, Value, Cells, Exact, Numbers, Switches, Choices];
+
+lock int version = 3;
+lock TileMap tiles = new TileMap { tileset = "000000000002D", size = [40, 36] };
+lock Layer array layers = [
+    new Layer { id = "0000000000001", name = "Ground", over = false },
+    new Layer { id = "0000000000002", name = "Decoration", over = false },
+    new Layer { id = "0000000000003", name = "Above", over = true },
+];
+lock Value array values = [
+    new Value { id = "000000000000A", name = "crop", kind = ValueKind.Choice, options = ["wheat", "corn"] },
+    new Value { id = "000000000000B", name = "growth", kind = ValueKind.Number },
+    new Value { id = "000000000000C", name = "watered", kind = ValueKind.Switch },
+];
+lock Cells array cells = [
+    new Cells { layer = "0000000000001", chunk = [0, 0], rows = ["................................", "................................", "..............................~~", "....ttttttttt.................~~", "....ttttttttt.................~~", "....ttttttttt.................~~", "....ttttttttt.................~~", "....ttttttttt...................", "....ttttttttt...................", "................................", "................................", "................................", "................................", "................................", "................................", "................................", "................................", "................................", "................................", "................................", "................................", "................................", "................................", "................................", "................................", "................................", "................................", "................................", "................................", "................................", "................................", "................................"] },
+    new Cells { layer = "0000000000001", chunk = [1, 0], rows = ["........", "........", "~~~~~...", "~~~~~...", "~~~~~...", "~~~~~...", "~~~~~...", "........", "........", "........", "........", "........", "........", "........", "........", "........", "........", "........", "........", "........", "........", "........", "........", "........", "........", "........", "........", "........", "........", "........", "........", "........"] },
+    new Cells { layer = "0000000000001", chunk = [0, 1], rows = ["................................", "................................", "................................", "................................"] },
+    new Cells { layer = "0000000000001", chunk = [1, 1], rows = ["........", "........", "........", "........"] },
+    new Cells { layer = "0000000000002", chunk = [0, 0], rows = ["                                ", "                                ", "                                ", "                                ", "                                ", "                                ", "                                ", "                                ", "                                ", "                                ", "                                ", "                                ", "                                ", "                                ", "                                ", "                                ", "                                ", "                                ", "                                ", "                                ", "################################", "                                ", "                                ", "                                ", "                                ", "                                ", "                                ", "                                ", "                                ", "                                ", "                                ", "                                "] },
+    new Cells { layer = "0000000000002", chunk = [1, 0], rows = ["        ", "        ", "        ", "        ", "        ", "        ", "        ", "        ", "        ", "        ", "        ", "        ", "        ", "        ", "        ", "        ", "        ", "        ", "        ", "        ", "########", "        ", "        ", "        ", "        ", "        ", "        ", "        ", "        ", "        ", "        ", "        "] },
+];
+lock Exact array exact = [
+    new Exact { layer = "0000000000001", chunk = [0, 0], cells = [[0, 0]], pieces = ["0000000000035"] },
+    new Exact { layer = "0000000000001", chunk = [1, 0], cells = [[1, 2]], pieces = ["0000000000036"] },
+];
+lock Numbers array numbers = [
+    new Numbers { value = "growth", chunk = [0, 0], cells = [[4, 3, 2], [5, 3, 2]] },
+    new Numbers { value = "growth", chunk = [1, 1], cells = [[1, 2, 2]] },
+];
+lock Switches array switches = [
+    new Switches { value = "watered", chunk = [0, 0], cells = [[5, 3]] },
+];
+lock Choices array choices = [
+    new Choices { value = "crop", chunk = [0, 0], cells = [[4, 3], [5, 3]], picks = ["wheat", "wheat"] },
+    new Choices { value = "crop", chunk = [1, 1], cells = [[1, 2]], picks = ["wheat"] },
+];
+end

@@ -181,7 +181,7 @@ fn a_tileset_s_properties_add_and_remove_terrains() {
         .with_size(vec2(360.0, 400.0))
         .build_ui_state(
             |ui, s: &mut (Tileset, Option<Tileset>)| {
-                if let Some(changed) = tileset_properties(ui, "sprites/farm.soltileset", &s.0, &[])
+                if let Some(changed) = tileset_properties(ui, "sprites/farm.tileset.lst", &s.0, &[])
                 {
                     s.1 = Some(changed);
                 }
@@ -189,7 +189,7 @@ fn a_tileset_s_properties_add_and_remove_terrains() {
             (set(), None),
         );
     h.run();
-    assert!(h.query_by_label("farm.soltileset").is_some());
+    assert!(h.query_by_label("farm.tileset.lst").is_some());
     h.get_by_label("+ Terrain").click();
     h.run();
     let added = h.state().1.clone().unwrap();
@@ -214,7 +214,7 @@ fn a_map_file_s_properties_choose_its_tileset() {
         .with_size(vec2(360.0, 300.0))
         .build_ui_state(
             move |ui, s: &mut FileState| {
-                if let Some(out) = map_file_properties(ui, "farm.soltilemap", &s.0, &tilesets, &[])
+                if let Some(out) = map_file_properties(ui, "farm.tilemap.lst", &s.0, &tilesets, &[])
                 {
                     s.1 = Some(out);
                 }

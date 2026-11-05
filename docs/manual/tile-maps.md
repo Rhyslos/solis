@@ -17,8 +17,8 @@ Why values in the map, rather than an entity per plant? A field of a thousand cr
 For a few things that move or think (a scarecrow that turns, a chicken), use [sprites](sprites.md) instead.
 
 ## How to use it
-1. **Make a tileset:** in the Library, open the folder you want it in, then **New > Tileset** (right-click in the Library, or **+ New**). Solis makes `tileset.soltileset` with grass, tilled and water, and opens it in the **Tileset** tab, where terrains get their art (see [Tilesets and autotiling](tilesets.md)). Choose a terrain to change its name, its **code** (the one character the map file writes for it) and its colour in Properties; **+** adds one. Clicking a tileset in the Library shows its terrains in Properties too. The first terrain fills new maps.
-2. **Make a map:** **New > Tile map**. Solis makes `map.soltilemap`, 64 × 64 cells of the project's first tileset's first terrain. Click it in the Library to change its **Tileset** and its **Size** (in cells) in Properties.
+1. **Make a tileset:** in the Library, open the folder you want it in, then **New > Tileset** (right-click in the Library, or **+ New**). Solis makes `tileset.tileset.lst` with grass, tilled and water, and opens it in the **Tileset** tab, where terrains get their art (see [Tilesets and autotiling](tilesets.md)). Choose a terrain to change its name, its **code** (the one character the map file writes for it) and its colour in Properties; **+** adds one. Clicking a tileset in the Library shows its terrains in Properties too. The first terrain fills new maps.
+2. **Make a map:** **New > Tile map**. Solis makes `map.tilemap.lst`, 64 × 64 cells of the project's first tileset's first terrain. Click it in the Library to change its **Tileset** and its **Size** (in cells) in Properties.
 3. **Place it:** double-click the map in the Library (it goes where the viewport looks), or drag it into the viewport. Its top-left corner lands on a whole tile, and each cell is one tile across (the tile size in [2D settings](2d-pixel-perfect.md)). The **2D** view shows it best.
 4. **The Map tab** opens beside Properties while the map's entity is selected (select it in the Area panel). It shows:
    - **Layers**, top first. Each has a small picture of its cells, its name (click to rename), **under sprites** or **over sprites**, an eye that shows or hides it here in the editor only (the game always shows it), and **…** to move it up or down or delete it. **+** adds a layer on top.
@@ -35,8 +35,12 @@ A terrain is drawn in its colour until its tileset gives it art: then each cell'
 
 Paint a map's cells with the **tile painter**: while the map is selected, its brush, rectangle, line, fill and eyedropper join the tool bar at the bottom of the viewport, and the Map tab's terrain swatches are its palette (see [Painting tiles](painting-tiles.md)). The file is plain text you can also edit by hand: each chunk of a layer is rows of codes (`.` grass, `t` tilled, a space for nothing), and cells painted with an exact tile are listed in `exact` blocks.
 
+### The file
+
+A tile map is an ordinary Lust file, `farm.tilemap.lst`, and its tileset is another, `ground.tileset.lst`. Open one in Ledger to read it: a list of the map's layers and values, then its cells in chunks of 32 × 32, each layer's rows of terrain codes (a space for an empty cell). It's safe to change by hand; Solis checks it as Lust when it reads it, and a mistake is shown with its line. Chunks keep a change to one cell to one line, so Git shows exactly what changed. (Older maps, `.soltilemap`, move to Lust by themselves when the project opens: see [Backups and upgrades](backups-and-upgrades.md).)
+
 ### In game code
-Each tile map gets a Lust file of its own, which Solis writes into `solis/maps/` whenever the map or its tileset changes: `maps/farm.soltilemap` gives `solis/maps/maps/farm.lst`. In it are [states](concepts.md#game-code) of the map's layers (`FarmLayer`), its tileset's terrains (`FarmTerrain`, with `Empty` for nothing painted) and each choice value's options (`FarmCrop`), and a class with a method for each thing code can ask or change (`FarmMap`). So *watered* misspelt is a mistake before the game runs, and renaming it in the Map tab points at every line still using the old name.
+Each tile map gets a Lust file of its own, which Solis writes into `solis/maps/` whenever the map or its tileset changes: `maps/farm.tilemap.lst` gives `solis/maps/maps/farm.lst`. In it are [states](concepts.md#game-code) of the map's layers (`FarmLayer`), its tileset's terrains (`FarmTerrain`, with `Empty` for nothing painted) and each choice value's options (`FarmCrop`), and a class with a method for each thing code can ask or change (`FarmMap`). So *watered* misspelt is a mistake before the game runs, and renaming it in the Map tab points at every line still using the old name.
 
 A component holds the map as a field with no starting value, which Solis fills in:
 
@@ -87,7 +91,7 @@ The Tile Map component:
 
 | Setting | What it does |
 |---|---|
-| Map | The tile map file (`.soltilemap`) it shows. Its top-left corner is at the entity. |
+| Map | The tile map file (`.tilemap.lst`) it shows. Its top-left corner is at the entity. |
 
 A map file's Properties:
 

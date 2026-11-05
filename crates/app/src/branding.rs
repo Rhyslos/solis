@@ -33,6 +33,14 @@ mod tests {
     use super::*;
 
     #[test]
+    fn the_data_files_fetch_from_the_code_folder() {
+        // Data files Solis writes fetch their classes from here (decision
+        // 0081); it can't name the app's folder itself, so this keeps the
+        // two the same.
+        assert_eq!(area::lust_data::ENGINE_FOLDER, CODE_FOLDER);
+    }
+
+    #[test]
     fn names_are_not_empty() {
         assert!(!APP_NAME.trim().is_empty());
         assert!(!APP_ID.trim().is_empty());

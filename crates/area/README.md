@@ -36,3 +36,5 @@ Be the one place an area lives while it's edited. The editor, saving and loading
 ## Status
 
 Phase 2 complete: the document, the built-in components, edits and undo history, the tree, and the text format. Phase 7, S2: settings files (`settings.rs`) in the same text style, for sound events and later the mixer. Phase 9, D3b: settings files with blocks (`word ID { key = value; … }`) as well as fields, for animators.
+
+Usable first, L1 (decision 0081): `lust_data` writes and reads Lust data files: exact numbers and text, a header that fetches the format's classes from `solis/data/`, and `write_blocks`/`read_blocks`, which keep a settings file's fields and blocks as Lust things and read them back into the same blocks. Reading goes through `lust::read_values`, which runs nothing. `area` depends on `lust` for it.

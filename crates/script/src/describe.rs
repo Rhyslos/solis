@@ -871,6 +871,16 @@ fn descriptions_with(
             (format!("{folder}/{file}.lst"), text)
         })
         .chain(std::iter::once((format!("{folder}/project.lst"), project)))
+        .chain(DATA_CLASSES.iter().map(|(kind, classes)| {
+            (
+                format!("{folder}/{}/{kind}.lst", area::lust_data::CLASSES_FOLDER),
+                format!(
+                    "-- Made by {made_by}: what a {kind} file holds, which the files Solis makes\n\
+                     -- fetch. It's written again whenever the project opens, so changes made here\n\
+                     -- don't last.\n{classes}"
+                ),
+            )
+        }))
         .chain(KIT.iter().map(|(file, body)| {
             (
                 format!("{folder}/kit/{file}"),
@@ -886,6 +896,14 @@ fn descriptions_with(
         .collect();
     (files, notes)
 }
+
+/// What each kind of Lust data file Solis makes holds (decision 0081),
+/// written into `solis/data/` so Ledger and `lust check` can follow the
+/// files' `fetch`.
+pub const DATA_CLASSES: &[(&str, &str)] = &[
+    (tiles::map_lust::KIND, tiles::map_lust::CLASSES),
+    (tiles::tileset::KIND, tiles::tileset::CLASSES),
+];
 
 /// The project's own names as states, written by the editor into
 /// `solis/project.lst` ([`crate::project_names::project_file`]): what natives take where a string
@@ -936,8 +954,9 @@ mod tests {
     #[test]
     fn the_descriptions_check_cleanly_and_a_game_can_use_them() {
         let mut files = descriptions("Test Engine 9.9.9", "solis");
-        assert_eq!(files.len(), 11);
+        assert_eq!(files.len(), 13);
         assert!(files.iter().any(|(p, _)| p == "solis/project.lst"));
+        assert!(files.iter().any(|(p, _)| p == "solis/data/tilemap.lst"));
         assert!(files[0].1.starts_with("-- Made by Test Engine 9.9.9"));
         files.push((
             "main.lst".into(),
@@ -948,6 +967,12 @@ mod tests {
              fetch \"solis/physics\":[Physics, RayHit];\n\
              fetch \"solis/sound\":Audio;\n\
              fetch \"solis/animation\":[CueReached, ClipFinished];\n\
+             -- A game's own class may share a name with a data file's class.\n\
+             class Layer {\n\
+                 has {\n\
+                     int depth = 0;\n\
+                 }\n\
+             }\n\
              component Walker {\n\
                  has {\n\
                      int steps = 0;\n\

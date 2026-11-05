@@ -51,17 +51,20 @@ pub(crate) fn farm() -> TileMap {
 fn a_map_round_trips() {
     let map = farm();
     let text = write(&map);
-    assert!(text.contains("tilemap version 2;"));
-    assert!(text.contains("size = [40, 36];"));
-    assert!(text.contains(&format!("cells {}.1.0 {{", id(1))));
+    assert!(text.contains("lock int version = 3;"));
+    assert!(text.contains("size = [40, 36]"));
+    assert!(text.contains(&format!(
+        "new Cells {{ layer = \"{}\", chunk = [1, 0]",
+        id(1)
+    )));
     assert!(
-        text.contains("crop = [[4, 3, \"wheat\"], [5, 3, \"wheat\"]];"),
+        text.contains("value = \"crop\", chunk = [0, 0], cells = [[4, 3], [5, 3]], picks = [\"wheat\", \"wheat\"]"),
         "{text}"
     );
-    assert!(text.contains("watered = [[5, 3]];"));
-    assert!(text.contains("values 1.1 {"), "the chunk with (33, 34)");
+    assert!(text.contains("value = \"watered\", chunk = [0, 0], cells = [[5, 3]]"));
+    assert!(text.contains("chunk = [1, 1]"), "the chunk with (33, 34)");
     assert!(
-        !text.contains(&format!("cells {}.", id(3))),
+        !text.contains(&format!("layer = \"{}\", chunk", id(3))),
         "an empty layer writes nothing"
     );
     let back = read(&text).unwrap();
@@ -96,9 +99,9 @@ fn version_1_reads_with_every_cell_autotiled() {
     assert!(read.notes.is_empty(), "{:?}", read.notes);
     assert_eq!(read.map.size(), [40, 36]);
     assert_eq!(read.map.exact_tiles(0).count(), 0);
-    // Written again, it's version 2 with the same cells.
+    // Written again, it's the current version with the same cells.
     let again = write(&read.map);
-    assert!(again.contains("tilemap version 2;"));
+    assert!(again.contains("lock int version = 3;"));
     assert_eq!(super::read(&again).unwrap().map, read.map);
 }
 
@@ -112,7 +115,31 @@ fn the_fixture_reads_without_notes() {
     assert_eq!(read.map.exact(0, 0, 0), Some(piece("0000000000035")));
     assert_eq!(read.map.exact(0, 33, 2), Some(piece("0000000000036")));
     assert_eq!(read.map.exact_tiles(0).count(), 2);
-    assert_eq!(write(&read.map), text, "written as Solis writes it");
+    // Written again, it's the version 3 example: the same, as Lust.
+    let v3 = include_str!("../../../tests/fixtures/tilemap/v3/farm.tilemap.lst");
+    assert_eq!(write(&read.map), v3, "written as Solis writes it");
+}
+
+#[test]
+fn the_lust_fixture_reads_back_as_itself() {
+    let text = include_str!("../../../tests/fixtures/tilemap/v3/farm.tilemap.lst");
+    let read = read(text).unwrap();
+    assert!(read.notes.is_empty(), "{:?}", read.notes);
+    assert_eq!(read.map.exact_tiles(0).count(), 2);
+    assert_eq!(write(&read.map), text);
+    assert_eq!((FORMAT.version_of)(text), Some(3));
+}
+
+#[test]
+fn a_mistake_in_the_lust_says_its_line() {
+    let text = include_str!("../../../tests/fixtures/tilemap/v3/farm.tilemap.lst");
+    let wrong = text.replacen("over = false", "over = 3", 1);
+    let why = read(&wrong).unwrap_err();
+    assert!(why.line > 0, "{why}");
+    let newer = text.replacen("lock int version = 3;", "lock int version = 9;", 1);
+    assert!(read(&newer).unwrap_err().message.contains("newer"));
+    let runs = text.replacen("size = [40, 36]", "size = [40, Maths:abs(36)]", 1);
+    assert!(read(&runs).is_err());
 }
 
 #[test]

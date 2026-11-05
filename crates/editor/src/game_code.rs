@@ -304,10 +304,7 @@ impl ViewCache {
             .keys()
             .filter_map(|id| {
                 let path = sheets.paths.get(id)?;
-                let stem = path
-                    .rsplit_once('.')
-                    .map_or(path.as_str(), |(stem, _)| stem);
-                Some((*id, stem.to_owned()))
+                Some((*id, reflect::data_files::path_stem(path)))
             })
             .collect();
         self.maps.0 = None;

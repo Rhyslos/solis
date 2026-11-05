@@ -60,8 +60,12 @@ impl Projects {
             }
             other => other?,
         };
+        // Older files Solis made move to Lust first (decision 0081), so
+        // the asset database finds them under their new names.
+        let moved = crate::to_lust::move_older_files(root, &project.assets());
         let watcher = Watcher::new(&project.assets()).ok();
-        let (db, _, notes) = AssetDb::open(project, limits);
+        let (db, _, mut notes) = AssetDb::open(project, limits);
+        notes.splice(0..0, moved);
         // The cache keeps within its size, on a worker: a model whose entry
         // goes meanwhile is simply imported again.
         let cache = db.project().cache();
@@ -400,7 +404,7 @@ impl Projects {
         asset_db::write_atomically(&file, text.as_bytes()).map_err(|e| e.to_string())
     }
 
-    /// Saves a tileset (`.soltileset`, inside the assets, Phase 9, D4),
+    /// Saves a tileset (`.tileset.lst`, inside the assets, Phase 9, D4),
     /// making it if it isn't there. Gives back where an older one was
     /// kept, if it was.
     pub fn save_tileset(&self, path: &Path, text: &str) -> Result<Option<PathBuf>, String> {
@@ -436,7 +440,7 @@ impl Projects {
         )
     }
 
-    /// Saves a tile map file (`.soltilemap`, inside the assets, Phase 9, D4),
+    /// Saves a tile map file (`.tilemap.lst`, inside the assets, Phase 9, D4),
     /// making it if it isn't there. Gives back where an older one was
     /// kept, if it was.
     pub fn save_tile_map(&self, path: &Path, text: &str) -> Result<Option<PathBuf>, String> {

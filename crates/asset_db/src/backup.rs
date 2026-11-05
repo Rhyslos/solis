@@ -158,6 +158,72 @@ pub fn save(
     Ok(Some(copy))
 }
 
+/// Moves an older file to a new name and format (decision 0081: a tile
+/// map's `farm.soltilemap` becomes `farm.tilemap.lst`): `check` must accept
+/// the new text (it reads it back and compares it with the old file's);
+/// the old file is copied to the backups and the copy checked; the new file
+/// is written and checked; its sidecar moves with it, so it keeps its ID;
+/// then the old file goes (its copy is in the backups). Nothing happens if
+/// a file already has the new name. Returns where the copy went.
+pub fn move_to_new_format(
+    root: &Path,
+    old_path: &Path,
+    new_path: &Path,
+    bytes: &[u8],
+    check: impl FnOnce(&str) -> Result<(), String>,
+) -> Result<PathBuf, SaveError> {
+    if new_path.exists() {
+        return Err(SaveError::Io(std::io::Error::new(
+            std::io::ErrorKind::AlreadyExists,
+            format!("{} is already there", new_path.display()),
+        )));
+    }
+    let relative = old_path
+        .strip_prefix(root)
+        .ok()
+        .filter(|r| {
+            r.components()
+                .all(|c| matches!(c, std::path::Component::Normal(_)))
+        })
+        .map(Path::to_path_buf)
+        .ok_or_else(|| SaveError::Outside(old_path.to_path_buf()))?;
+    let old = read_limited(old_path, MAX_BACKUP_BYTES)?;
+    let text = std::str::from_utf8(bytes).map_err(|_| SaveError::Check("it isn't text".into()))?;
+    check(text).map_err(SaveError::Check)?;
+    own_folder(root, &format!("{CACHE_FOLDER}/{BACKUPS_FOLDER}"))?;
+    let (stamp_folder, copy) = free_copy(root, &relative, &old);
+    if let Some(parent) = copy.parent() {
+        std::fs::create_dir_all(parent)?;
+    }
+    if !copy.exists() {
+        write_atomically(&copy, &old)?;
+    }
+    if read_limited(&copy, MAX_BACKUP_BYTES)? != old {
+        return Err(SaveError::ReadBack(copy));
+    }
+    write_atomically(new_path, bytes)?;
+    if read_limited(new_path, MAX_BACKUP_BYTES.max(bytes.len() as u64))? != bytes {
+        let _ = std::fs::remove_file(new_path);
+        return Err(SaveError::ReadBack(new_path.to_path_buf()));
+    }
+    let old_sidecar = crate::sidecar::path_for(old_path);
+    if old_sidecar.is_file() {
+        let new_sidecar = crate::sidecar::path_for(new_path);
+        if let Err(e) = std::fs::rename(&old_sidecar, &new_sidecar) {
+            let _ = std::fs::remove_file(new_path);
+            return Err(e.into());
+        }
+    }
+    std::fs::remove_file(old_path)?;
+    let _ = trim_keeping(
+        root,
+        chrono::Local::now().naive_local(),
+        MAX_TOTAL_BYTES,
+        &stamp_folder,
+    );
+    Ok(copy)
+}
+
 /// The start of the file at `path` (up to [`HEAD_BYTES`]), if it's an
 /// ordinary file.
 fn read_head(path: &Path) -> std::io::Result<Vec<u8>> {
@@ -326,6 +392,39 @@ mod tests {
             }
         }
         found
+    }
+
+    #[test]
+    fn a_file_moved_to_a_new_format_keeps_its_sidecar_and_a_copy() {
+        let root = project("move");
+        let old = root.join("assets/levels/farm.soltilemap");
+        let new = root.join("assets/levels/farm.tilemap.lst");
+        std::fs::write(&old, "tilemap version 2;\nold").unwrap();
+        std::fs::write(crate::sidecar::path_for(&old), "id = \"x\"\n").unwrap();
+        let copy = move_to_new_format(&root, &old, &new, b"lock int version = 3;\nend\n", |t| {
+            assert!(t.contains("version = 3"));
+            Ok(())
+        })
+        .unwrap();
+        assert!(!old.exists());
+        assert!(!crate::sidecar::path_for(&old).exists());
+        assert_eq!(
+            std::fs::read_to_string(crate::sidecar::path_for(&new)).unwrap(),
+            "id = \"x\"\n",
+            "the sidecar moved, so the ID stays"
+        );
+        assert_eq!(
+            std::fs::read_to_string(&copy).unwrap(),
+            "tilemap version 2;\nold"
+        );
+        assert!(copy.ends_with("assets/levels/farm.soltilemap"));
+        // Already there, or a failed check: nothing happens.
+        std::fs::write(&old, "tilemap version 2;\nagain").unwrap();
+        assert!(move_to_new_format(&root, &old, &new, b"x", |_| Ok(())).is_err());
+        let other = root.join("assets/levels/other.tilemap.lst");
+        assert!(move_to_new_format(&root, &old, &other, b"x", |_| Err("no".into())).is_err());
+        assert!(old.exists() && !other.exists());
+        let _ = std::fs::remove_dir_all(&root);
     }
 
     #[test]

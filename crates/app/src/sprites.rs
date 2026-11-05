@@ -111,7 +111,7 @@ fn text_within(path: &Path, max: usize, what: &str) -> Result<String, String> {
     String::from_utf8(bytes).map_err(|_| "it isn't text".to_owned())
 }
 
-/// Reads a tileset (`.soltileset`, Phase 9, D4).
+/// Reads a tileset (`.tileset.lst`, Phase 9, D4).
 pub fn read_tileset(path: &Path) -> TilesetState {
     match text_within(path, tiles::tileset::MAX_BYTES, "a tileset")
         .and_then(|t| tiles::tileset::read(&t).map_err(|e| e.to_string()))
@@ -121,7 +121,7 @@ pub fn read_tileset(path: &Path) -> TilesetState {
     }
 }
 
-/// Reads a tile map file (`.soltilemap`, Phase 9, D4).
+/// Reads a tile map file (`.tilemap.lst`, Phase 9, D4).
 pub fn read_tile_map(path: &Path) -> MapFileState {
     match text_within(path, tiles::map_file::MAX_BYTES, "a tile map")
         .and_then(|t| tiles::map_file::read(&t).map_err(|e| e.to_string()))

@@ -181,7 +181,7 @@ fn ctrl_or_exact_places_the_piece_chosen() {
         weight: 1.0,
         animation: tiles::Animation::None,
     });
-    w.save_tileset("farm.soltileset", set);
+    w.save_tileset("farm.tileset.lst", set);
     w.viewport.tile_overlay.paint.code = Some(b'~');
     frame(&mut w, [30, 30], true, false, true, [true, false]);
     frame(&mut w, [30, 30], false, false, false, [false; 2]);
@@ -300,7 +300,7 @@ fn scale_check_painting_a_1000_by_1000_map() {
     }
     let mut sheets = (*w.viewport.sheets).clone();
     sheets.tilesets.insert(
-        "farm.soltileset".into(),
+        "farm.tileset.lst".into(),
         crate::sprite_sheets::TilesetState::Read(Arc::new(set), Vec::new()),
     );
     sheets.tile_art.insert(
@@ -318,7 +318,7 @@ fn scale_check_painting_a_1000_by_1000_map() {
             .unwrap();
     }
     sheets.tile_maps.insert(
-        "farm.soltilemap".into(),
+        "farm.tilemap.lst".into(),
         crate::sprite_sheets::MapFileState::Read(Arc::new(big), Vec::new()),
     );
     w.set_sprite_sheets(sheets);

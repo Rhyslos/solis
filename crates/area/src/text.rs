@@ -302,7 +302,7 @@ fn quoted(text: &str) -> String {
 /// when it is one (every number Solis's own components hold), otherwise as
 /// an `f64`, written so it can't be mistaken for an `f32`'s text (see
 /// [`read_float`]). Always with a `.` or an `e`, so it reads as a decimal.
-fn float_text(v: f64) -> String {
+pub(crate) fn float_text(v: f64) -> String {
     let single = v as f32;
     if f64::from(single) == v {
         return single_text(single);

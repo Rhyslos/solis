@@ -14,6 +14,7 @@ How components describe themselves (decision 0019): stable IDs, plain values, co
 | `registry.rs` | Every component the program knows, by name. | `Registry`, `RegistryError` |
 | `checksum.rs` | One number summing up a game's state, the same on every computer, so two runs can be compared tick by tick (not for security). | `Checksum` |
 | `upgrade.rs` | The one upgrade path every file format shares (Phase 8, C1): a format's version, how to find it in a file, and its upgraders, run one version at a time; newer files refused. | `Format`, `Step`, `Upgraded`, `UpgradeError`, `Versioned` |
+| `data_files.rs` | The names of the Lust data files Solis makes (decision 0081): `farm.tilemap.lst`'s kind, and its name without it. | `KINDS`, `kind_of`, `stem`, `path_stem` |
 
 ## How the pieces fit
 

@@ -185,6 +185,9 @@ pub fn gather(assets: &Path) -> Code {
                 && path
                     .extension()
                     .is_some_and(|e| e.eq_ignore_ascii_case("lst") || e.eq_ignore_ascii_case("lua"))
+                // What Solis makes (a tile map's farm.tilemap.lst) is
+                // data, not part of the game's program (decision 0081).
+                && reflect::data_files::kind_of(&path).is_none()
             {
                 found.push(path);
             }
@@ -649,6 +652,12 @@ mod tests {
         std::fs::write(assets.join("weapons/gun.lst"), "end\n").unwrap();
         std::fs::write(assets.join(".hidden/x.lst"), "end\n").unwrap();
         std::fs::write(assets.join("notes.txt"), "not code").unwrap();
+        // A tile map is data, never part of the program (decision 0081).
+        std::fs::write(
+            assets.join("weapons/farm.tilemap.lst"),
+            "lock int version = 3;\nend\n",
+        )
+        .unwrap();
         std::fs::write(assets.join("binary.lst"), [0xff, 0xfe, 0x00]).unwrap();
         std::fs::write(
             assets.join("huge.lst"),
