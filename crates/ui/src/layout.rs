@@ -15,6 +15,10 @@ pub enum ShapeKind {
     Ellipse,
     /// A line from the box's `from` to `to`, `width` thick.
     Line,
+    /// A letter: its box drawn from the letters' atlas, the part from
+    /// `from` to `to` (atlas pixels), `round` its size over
+    /// [`crate::text::SDF_SIZE`].
+    Letter,
 }
 
 /// Which way a fill's colours run.
@@ -132,16 +136,44 @@ pub fn place(element: &Element, parent: [f32; 4], scale: f32) -> [f32; 4] {
 /// [`scale_of`]), into shapes in drawing order. Hidden elements, and
 /// anything past [`MAX_ELEMENTS`] or [`MAX_DEPTH`], are left out.
 pub fn layout(screen: &Screen, size: [u32; 2], pixel_step: Option<u32>) -> Vec<Shape> {
+    layout_with(screen, size, pixel_step, None)
+}
+
+/// [`layout`], with text: its letters from `fonts` (their distance images
+/// made into its atlas the first time each is used). Without fonts, text
+/// is left out.
+pub fn layout_with(
+    screen: &Screen,
+    size: [u32; 2],
+    pixel_step: Option<u32>,
+    fonts: Option<&mut crate::text::Fonts>,
+) -> Vec<Shape> {
     let screen_px = [size[0] as f32, size[1] as f32];
     let scale = scale_of(screen.scale, screen.design, screen_px, pixel_step);
     let crisp = screen.scale == ScaleRule::WholeSteps;
     let mut out = Vec::new();
     let mut count = 0;
     let whole = [0.0, 0.0, screen_px[0], screen_px[1]];
+    let mut walking = Walk {
+        scale,
+        crisp,
+        count: &mut count,
+        out: &mut out,
+        fonts,
+    };
     for e in &screen.elements {
-        walk(e, whole, scale, 1.0, crisp, 0, &mut count, &mut out);
+        walking.walk(e, whole, 1.0, 0);
     }
     out
+}
+
+/// What laying a screen out carries as it goes.
+struct Walk<'a> {
+    scale: f32,
+    crisp: bool,
+    count: &'a mut usize,
+    out: &'a mut Vec<Shape>,
+    fonts: Option<&'a mut crate::text::Fonts>,
 }
 
 /// [`layout`] in part of a screen: the game's picture, `size` pixels big
@@ -152,115 +184,142 @@ pub fn layout_at(
     origin: [u32; 2],
     size: [u32; 2],
     pixel_step: Option<u32>,
+    fonts: Option<&mut crate::text::Fonts>,
 ) -> Vec<Shape> {
     let [x, y] = origin.map(|v| v as f32);
-    let mut shapes = layout(screen, size, pixel_step);
+    let mut shapes = layout_with(screen, size, pixel_step, fonts);
     for s in &mut shapes {
         s.rect = [s.rect[0] + x, s.rect[1] + y, s.rect[2] + x, s.rect[3] + y];
-        s.from = [s.from[0] + x, s.from[1] + y];
-        s.to = [s.to[0] + x, s.to[1] + y];
+        if s.kind != ShapeKind::Letter {
+            s.from = [s.from[0] + x, s.from[1] + y];
+            s.to = [s.to[0] + x, s.to[1] + y];
+        }
     }
     shapes
 }
 
-#[allow(clippy::too_many_arguments)]
-fn walk(
-    e: &Element,
-    parent: [f32; 4],
-    scale: f32,
-    opacity: f32,
-    crisp: bool,
-    depth: usize,
-    count: &mut usize,
-    out: &mut Vec<Shape>,
-) {
-    if !e.shown || depth >= MAX_DEPTH || *count >= MAX_ELEMENTS {
-        return;
-    }
-    *count += 1;
-    let mut rect = place(e, parent, scale);
-    if crisp {
-        // On whole screen pixels of the game's own pixels' grid.
-        rect = rect.map(|v| (v / scale).round() * scale);
-    }
-    let opacity = opacity * finite(e.opacity).clamp(0.0, 1.0);
-    let (colours, stretch) = match e.fill {
-        Fill::Solid(c) => ([c, c], Stretch::Across),
-        Fill::Across(a, b) => ([a, b], Stretch::Across),
-        Fill::Down(a, b) => ([a, b], Stretch::Down),
-    };
-    let faded = |c: Colour| {
-        let c = c.sanitized();
-        c.with_alpha(c.0[3] * opacity)
-    };
-    let colours = colours.map(faded);
-    let border = e.border.map_or((0.0, Colour::NONE), |(w, c)| {
-        (finite(w).max(0.0) * scale, faded(c))
-    });
-    let base = Shape {
-        kind: ShapeKind::Box,
-        rect,
-        from: [rect[0], rect[1]],
-        to: [rect[2], rect[3]],
-        round: 0.0,
-        colours,
-        stretch,
-        border,
-        crisp,
-    };
-    match &e.kind {
-        ElementKind::Group => {}
-        ElementKind::Box { round } => out.push(Shape {
-            round: finite(*round).max(0.0) * scale,
-            ..base
-        }),
-        ElementKind::Ellipse => out.push(Shape {
-            kind: ShapeKind::Ellipse,
-            ..base
-        }),
-        ElementKind::Line { width } => out.push(Shape {
-            kind: ShapeKind::Line,
-            round: finite(*width).max(0.0) * scale,
-            border: (0.0, Colour::NONE),
-            ..base
-        }),
-        ElementKind::Bar {
-            round,
-            value,
-            background,
-        } => {
-            let round = finite(*round).max(0.0) * scale;
-            let back = faded(*background);
-            out.push(Shape {
-                round,
-                colours: [back, back],
-                ..base
-            });
-            let value = finite(*value).clamp(0.0, 1.0);
-            // The full part inside the border.
-            let inset = base.border.0;
-            let inner = [
-                rect[0] + inset,
-                rect[1] + inset,
-                rect[2] - inset,
-                rect[3] - inset,
-            ];
-            let mut right = inner[0] + (inner[2] - inner[0]).max(0.0) * value;
-            if crisp {
-                right = (right / scale).round() * scale;
+impl Walk<'_> {
+    fn walk(&mut self, e: &Element, parent: [f32; 4], opacity: f32, depth: usize) {
+        let (scale, crisp) = (self.scale, self.crisp);
+        if !e.shown || depth >= MAX_DEPTH || *self.count >= MAX_ELEMENTS {
+            return;
+        }
+        *self.count += 1;
+        let mut rect = place(e, parent, scale);
+        if crisp {
+            // On whole screen pixels of the game's own pixels' grid.
+            rect = rect.map(|v| (v / scale).round() * scale);
+        }
+        let opacity = opacity * finite(e.opacity).clamp(0.0, 1.0);
+        let (colours, stretch) = match e.fill {
+            Fill::Solid(c) => ([c, c], Stretch::Across),
+            Fill::Across(a, b) => ([a, b], Stretch::Across),
+            Fill::Down(a, b) => ([a, b], Stretch::Down),
+        };
+        let faded = |c: Colour| {
+            let c = c.sanitized();
+            c.with_alpha(c.0[3] * opacity)
+        };
+        let colours = colours.map(faded);
+        let border = e.border.map_or((0.0, Colour::NONE), |(w, c)| {
+            (finite(w).max(0.0) * scale, faded(c))
+        });
+        let base = Shape {
+            kind: ShapeKind::Box,
+            rect,
+            from: [rect[0], rect[1]],
+            to: [rect[2], rect[3]],
+            round: 0.0,
+            colours,
+            stretch,
+            border,
+            crisp,
+        };
+        match &e.kind {
+            ElementKind::Group => {}
+            ElementKind::Text {
+                text,
+                size,
+                font,
+                align,
+            } => {
+                if let Some(fonts) = self.fonts.as_deref_mut() {
+                    let px = finite(*size).max(0.0) * scale;
+                    let [w, h] = fonts.measure(*font, text, px);
+                    let left = match align {
+                        Edge::Middle => (rect[0] + rect[2] - w) * 0.5,
+                        Edge::End => rect[2] - w,
+                        Edge::Start | Edge::Stretch => rect[0],
+                    };
+                    let top = (rect[1] + rect[3] - h) * 0.5;
+                    let step = crisp.then_some(scale);
+                    for letter in fonts.place(*font, text, px, [left, top], step) {
+                        let [l, t, r, b] = letter.atlas.map(f32::from);
+                        self.out.push(Shape {
+                            kind: ShapeKind::Letter,
+                            rect: letter.rect,
+                            from: [l, t],
+                            to: [r, b],
+                            round: px / crate::text::SDF_SIZE,
+                            colours: [colours[0], colours[0]],
+                            border: (0.0, Colour::NONE),
+                            ..base
+                        });
+                    }
+                }
             }
-            if right > inner[0] {
-                out.push(Shape {
-                    rect: [inner[0], inner[1], right, inner[3]],
-                    round: (round - inset).max(0.0),
-                    border: (0.0, Colour::NONE),
+            ElementKind::Box { round } => self.out.push(Shape {
+                round: finite(*round).max(0.0) * scale,
+                ..base
+            }),
+            ElementKind::Ellipse => self.out.push(Shape {
+                kind: ShapeKind::Ellipse,
+                ..base
+            }),
+            ElementKind::Line { width } => self.out.push(Shape {
+                kind: ShapeKind::Line,
+                round: finite(*width).max(0.0) * scale,
+                border: (0.0, Colour::NONE),
+                ..base
+            }),
+            ElementKind::Bar {
+                round,
+                value,
+                background,
+            } => {
+                let round = finite(*round).max(0.0) * scale;
+                let back = faded(*background);
+                self.out.push(Shape {
+                    round,
+                    colours: [back, back],
                     ..base
                 });
+                let value = finite(*value).clamp(0.0, 1.0);
+                // The full part inside the border.
+                let inset = base.border.0;
+                let inner = [
+                    rect[0] + inset,
+                    rect[1] + inset,
+                    rect[2] - inset,
+                    rect[3] - inset,
+                ];
+                let mut right = inner[0] + (inner[2] - inner[0]).max(0.0) * value;
+                if crisp {
+                    right = (right / scale).round() * scale;
+                }
+                if right > inner[0] {
+                    self.out.push(Shape {
+                        rect: [inner[0], inner[1], right, inner[3]],
+                        round: (round - inset).max(0.0),
+                        border: (0.0, Colour::NONE),
+                        ..base
+                    });
+                }
             }
         }
-    }
-    for c in &e.children {
-        walk(c, rect, scale, opacity, crisp, depth + 1, count, out);
+        for c in &e.children {
+            self.walk(c, rect, opacity, depth + 1);
+        }
     }
 }
 

@@ -15,6 +15,7 @@ publish.workspace = true
 layer = 1
 
 [dependencies]
+ab_glyph.workspace = true
 
 [dev-dependencies]
 proptest.workspace = true

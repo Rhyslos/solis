@@ -817,9 +817,16 @@ impl ViewportRenderer {
         queue: &wgpu::Queue,
         target: &ViewportTarget,
         shapes: &[ui::Shape],
+        atlas: Option<&ui::text::Atlas>,
     ) {
-        self.ui
-            .draw(device, queue, target.display_view(), target.size(), shapes);
+        self.ui.draw(
+            device,
+            queue,
+            target.display_view(),
+            target.size(),
+            shapes,
+            atlas,
+        );
     }
 
     /// Draws game UI's `shapes` over a 2D game's scaled-up picture.
@@ -829,9 +836,16 @@ impl ViewportRenderer {
         queue: &wgpu::Queue,
         image: &crate::pixel::PixelImage,
         shapes: &[ui::Shape],
+        atlas: Option<&ui::text::Atlas>,
     ) {
-        self.ui
-            .draw(device, queue, image.display_view(), image.size(), shapes);
+        self.ui.draw(
+            device,
+            queue,
+            image.display_view(),
+            image.size(),
+            shapes,
+            atlas,
+        );
     }
 
     /// Asks what is drawn inside `rect` of `target` (x, y, width and

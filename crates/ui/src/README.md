@@ -4,6 +4,7 @@
 | --- | --- | --- |
 | `lib.rs` | Lists the modules and what the crate offers. | |
 | `screen.rs` | What a screen is made of: elements, anchors, fills, the scale rule. | `Screen`, `Element`, `ElementKind`, `Anchor`, `Edge`, `Fill`, `Colour`, `ScaleRule` |
-| `layout.rs` | A screen laid out on a real screen into shapes. Tests in `layout_tests.rs`. | `layout`, `layout_at`, `scale_of`, `Shape` |
+| `layout.rs` | A screen laid out on a real screen into shapes. Tests in `layout_tests.rs`. | `layout`, `layout_with`, `layout_at`, `scale_of`, `Shape` |
+| `text.rs` | Fonts, text laid out letter by letter, and the letters' distance images in one atlas (decision 0084). Tests in `text_tests.rs`. | `Fonts`, `Atlas`, `Placed`, `SDF_SIZE`, `SPREAD` |
 | `presets.rs` | The screen sizes the UI editor previews. | `PRESETS`, `custom` |
 | `sample.rs` | The mock-up's sample HUD. | `hud` |

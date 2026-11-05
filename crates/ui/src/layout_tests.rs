@@ -234,7 +234,7 @@ proptest::proptest! {
 fn laid_out_in_part_of_the_screen_moves_every_shape_there() {
     let screen = hud(ScaleRule::WholeSteps, 0.5);
     let plain = layout(&screen, [1920, 1080], Some(4));
-    let moved = crate::layout_at(&screen, [320, 0], [1920, 1080], Some(4));
+    let moved = crate::layout_at(&screen, [320, 0], [1920, 1080], Some(4), None);
     assert_eq!(plain.len(), moved.len());
     assert_eq!(moved[0].rect[0], plain[0].rect[0] + 320.0);
     assert_eq!(moved[0].rect[1], plain[0].rect[1]);

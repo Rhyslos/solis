@@ -141,6 +141,18 @@ pub enum ElementKind {
         /// How thick, in design pixels.
         width: f32,
     },
+    /// Text in the element's box, in its fill's first colour, vertically
+    /// in the middle (decision 0084).
+    Text {
+        /// What it says (`\n` starts a new line).
+        text: String,
+        /// How tall its letters are, in design pixels.
+        size: f32,
+        /// Which of the game's fonts (0: the standard one).
+        font: usize,
+        /// Where along the box: left, middle or right.
+        align: Edge,
+    },
     /// A bar: a box filled `value` of the way across (0 to 1), its
     /// background behind it (the energy bar).
     Bar {
