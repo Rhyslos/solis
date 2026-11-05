@@ -933,6 +933,24 @@ impl World {
         self.ecs.get::<&T>(entity).ok().map(|c| (*c).clone())
     }
 
+    /// Every entity with a component called `name` kept as plain values
+    /// (game code's, and built-ins with no Rust type in the world, such as
+    /// a Screen), with its values, in the area's tree order.
+    pub fn values_named(&self, name: &str) -> Vec<(EntityId, ComponentData)> {
+        let mut found = Vec::new();
+        for &(entity, _) in &self.order {
+            let Ok(e) = self.ecs.entity(entity) else {
+                continue;
+            };
+            if let (Some(id), Some(values)) = (e.get::<&Id>(), e.get::<&Values>())
+                && let Some(data) = values.0.get(name)
+            {
+                found.push((id.0, data.clone()));
+            }
+        }
+        found
+    }
+
     /// Where the entity is in the world.
     pub fn global(&self, id: EntityId) -> Option<Mat4> {
         self.get::<Global>(id).map(|g| g.0)

@@ -173,6 +173,7 @@ pub(crate) fn manual_page(component: &str) -> Option<&'static str> {
         "Sprite" => "sprites.md",
         "Animator" => "animators.md",
         "TileMap" => "tile-maps.md",
+        "Screen" => "screens.md",
         _ => return None,
     })
 }
@@ -190,6 +191,7 @@ fn component_icon(component: &str, game_code: bool) -> Option<(crate::icons::Ico
         "Sprite" => (Icon::Game, kind::SPRITE),
         "Animator" => (Icon::Animator, kind::SOUND_EVENT),
         "TileMap" => (Icon::Layers, kind::AREA),
+        "Screen" => (Icon::Game, kind::PICTURE),
         "Transform" => (Icon::Properties, theme::TEXT),
         _ if game_code => (Icon::Code, kind::CODE),
         _ => return None,

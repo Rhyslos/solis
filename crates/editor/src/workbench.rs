@@ -432,6 +432,8 @@ pub struct Workbench {
     /// A test screen the Game panel shows over the game (the Console's
     /// `ui test`, decision 0083), until screens are made in Lust.
     pub(crate) ui_test: Option<std::sync::Arc<ui::Screen>>,
+    /// The game's screens while it plays (decision 0087).
+    pub(crate) game_screens: crate::game_screens::GameScreens,
     /// What the Game panel showed last, and what it was worked out for:
     /// made again only when the world, the models or the state changed
     /// (not on a frame without a tick, or while paused).
@@ -551,6 +553,7 @@ impl Workbench {
             editor_view: None,
             fixed_seed: None,
             ui_test: None,
+            game_screens: Default::default(),
             bindings: input::Bindings::default(),
             devices: input::Devices::new(),
             game_input: false,
@@ -1162,6 +1165,7 @@ impl Workbench {
                         code_problems: &self.code_problems,
                         game: game.as_ref().map(|(_, scene)| scene),
                         ui_test: self.ui_test.clone(),
+                        game_screens: &self.game_screens.pictures,
                         playing,
                         game_input: self.game_input,
                         pixels: self.pixels,

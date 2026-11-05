@@ -184,6 +184,8 @@ The Rust layer DESIGN.md §12 asks for first, which Lust's `view` is read into l
 
 **M2a. Screens drawn, reading objects.**
 
+> **Built:** as planned. A screen's view is laid out each time it's drawn (the trees are small); the canvas doesn't cut off what's outside it yet; a screen's own pieces (assemblies used inside its view) wait for a small Lust fix; screens start again from their own start when the code changes while playing. No engine calls are lent to screens until M2b.
+
 - A screen is `assets/ui/<name>.lst`, passing the assembly named after the file (`ui/hud.lst` passes `Hud`), with a `view [width 1920, height 1080] { … }` (the design size; without one, 1920 × 1080).
 - **The screens' program:** Solis writes an entry that fetches and opens every screen (`Hud:open();`), compiles it with the game's files on the same worker, and runs it in a Luau of its own. Lust's `LUST_HOST.ui_open` hands Solis each screen's settings and its view; nothing in the screens' Luau can change the game (writing calls stop with "a screen can't …").
 - **Each tick,** after it lands: the game-wide objects' values are copied in (as every core gets them), and each shown screen's view runs; its tree is laid out with Lust's rules (column, row, stack, space, text, progress, canvas with box, circle and line; padding, gaps, sizes and `fill`, alignment, colours, `round`, `border`, `opacity`) at the design height, as wide as the screen's shape, and drawn by the UI shader (decisions 0083 and 0084). Between ticks nothing is worked out again unless the panel's size changes.

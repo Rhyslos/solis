@@ -238,3 +238,83 @@ fn text_is_drawn_from_the_letters_atlas_in_its_colour() {
     let gap = px(&pixels, 200, ((h[0] + h[2]) / 2.0) as u32, y);
     assert!(near(gap, GREY), "{gap:?}");
 }
+
+/// A HUD as Lust's view gives it (decision 0087): a full-screen stack
+/// pinning a column to the bottom left, with a word and a green bar.
+fn lust_hud() -> ui::view::Node {
+    use ui::view::{Node, Style};
+    let n = |v: f64| Style::Number(v);
+    let on = Style::Flag(true);
+    let piece = |kind: &str, styles: Vec<(&str, Style)>, children: Vec<Node>| Node {
+        kind: kind.into(),
+        styles: styles
+            .into_iter()
+            .map(|(k, v)| (k.to_string(), v))
+            .collect(),
+        children,
+        ..Node::default()
+    };
+    let mut bar = piece(
+        "progress",
+        vec![
+            ("to", n(10.0)),
+            ("width", n(300.0)),
+            ("height", n(24.0)),
+            ("green", on.clone()),
+        ],
+        vec![],
+    );
+    bar.value = Some(10.0);
+    let words = Node {
+        text: "Day 3".into(),
+        ..piece(
+            "text",
+            vec![
+                ("size", n(48.0)),
+                ("bold", on.clone()),
+                ("white", on.clone()),
+            ],
+            vec![],
+        )
+    };
+    piece(
+        "view",
+        vec![("width", n(1920.0)), ("height", n(1080.0))],
+        vec![piece(
+            "stack",
+            vec![
+                ("width", Style::Text("fill".into())),
+                ("height", Style::Text("fill".into())),
+                ("bottom", on.clone()),
+                ("pad", n(48.0)),
+            ],
+            vec![piece("column", vec![("gap", n(12.0))], vec![words, bar])],
+        )],
+    )
+}
+
+#[test]
+fn a_lust_view_is_laid_out_and_drawn() {
+    let mut fonts = fonts();
+    let view = lust_hud();
+    let mut screen = ui::Screen::new("hud", ui::view::design_of(&view), ui::ScaleRule::Grow);
+    screen.view = Some(view);
+    let size = [960, 540];
+    let shapes = ui::layout_with(&screen, size, None, Some(&mut fonts));
+    let Some(pixels) = draw_with(size, &shapes, Some(&fonts.atlas)) else {
+        return;
+    };
+    if let Some(path) = std::env::var_os("SOLIS_UI_PICTURE") {
+        // A picture to look at by hand (PPM).
+        let mut out = format!("P6\n{} {}\n255\n", size[0], size[1]).into_bytes();
+        for p in pixels.chunks(4) {
+            out.extend_from_slice(&p[..3]);
+        }
+        std::fs::write(path, out).unwrap();
+    }
+    // Half size: the bar, 300 × 24 at 48 from the bottom left, is green
+    // at its middle; above the words, the grey picture shows through.
+    let green = px(&pixels, size[0], 24 + 75, 540 - 24 - 6);
+    assert!(green[1] > 120 && green[0] < 100, "{green:?}");
+    assert!(near(px(&pixels, size[0], 480, 100), GREY));
+}

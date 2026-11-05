@@ -218,7 +218,7 @@ Solis is built in phases, one milestone per pull request. Each phase ends with a
 - [x] 2D physics and top-down movement: solid terrains, walls, Collider2D, the kit's TopDownController ([decision 0071](docs/decisions/0071-2d-physics-and-top-down-movement.md))
 - [ ] The 2D camera
 - [x] The launcher: projects, Learn and updates ([decision 0086](docs/decisions/0086-the-launcher.md))
-- [ ] Game UI and the UI editor
+- [ ] Game UI and the UI editor (shapes, text, and screens in Lust reading the game's objects built)
 - [ ] Day and night, and lamps
 - [ ] The playtest export
 

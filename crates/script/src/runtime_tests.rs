@@ -74,6 +74,7 @@ fn chunk(main: &str) -> Compiled {
             schemas: Vec::new(),
             places: Default::default(),
             bytecode: Default::default(),
+            screens: None,
         },
         Err(problems) => panic!("{}", problems[0]),
     }

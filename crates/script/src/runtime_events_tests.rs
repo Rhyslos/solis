@@ -54,6 +54,7 @@ fn loaded(main: &str) -> Runtime {
             schemas: Vec::new(),
             places: Default::default(),
             bytecode: Default::default(),
+            screens: None,
         },
         Err(problems) => panic!("{}", problems[0]),
     };

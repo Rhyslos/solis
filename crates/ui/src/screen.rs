@@ -135,11 +135,13 @@ pub enum ElementKind {
     },
     /// An ellipse filling the element's box.
     Ellipse,
-    /// A line from the box's top left to its bottom right, `width` design
-    /// pixels thick.
+    /// A line from the box's top left to its bottom right (or, rising,
+    /// from its bottom left to its top right), `width` design pixels thick.
     Line {
         /// How thick, in design pixels.
         width: f32,
+        /// From the bottom left to the top right.
+        rising: bool,
     },
     /// Text in the element's box, in its fill's first colour, vertically
     /// in the middle (decision 0084).
@@ -309,6 +311,9 @@ pub struct Screen {
     pub scale: ScaleRule,
     /// Its elements, drawn in order (later on top).
     pub elements: Vec<Element>,
+    /// A view written in Lust (decision 0087), laid out with Lust's rules
+    /// each time the screen is drawn, after the elements.
+    pub view: Option<crate::view::Node>,
 }
 
 impl Screen {
@@ -319,6 +324,7 @@ impl Screen {
             design,
             scale,
             elements: Vec::new(),
+            view: None,
         }
     }
 

@@ -376,6 +376,9 @@ fn field_widget(
             };
             return whole(state_picker(ui, value, file.map(|f| &**f), mixed.whole));
         }
+        (FieldKind::Text, Offer::Screens) => {
+            return whole(screen_picker(ui, value, &sheets.screens, mixed.whole));
+        }
         (FieldKind::Text, Offer::ClipsOf(sheet_field)) => {
             let clips = match data.get(sheet_field) {
                 Some(Value::Asset(Some(r))) => sheets.clips(r.asset),
@@ -599,6 +602,56 @@ fn asset_picker(
 }
 
 /// A state name field: the animator's states (and its start, for none).
+/// A Screen's choice of the game's screens (decision 0087).
+fn screen_picker(ui: &mut Ui, value: &Value, screens: &[String], mixed: bool) -> Option<Value> {
+    let current = match value {
+        Value::Text(t) => t.as_str(),
+        _ => "",
+    };
+    let shown = if mixed {
+        "—".to_owned()
+    } else if current.is_empty() {
+        "None".to_owned()
+    } else {
+        current.to_owned()
+    };
+    let mut chosen = None;
+    egui::ComboBox::from_id_salt("game screen")
+        .selected_text(shown)
+        .show_ui(ui, |ui| {
+            if ui
+                .selectable_label(current.is_empty() && !mixed, "None")
+                .clicked()
+            {
+                chosen = Some(Value::Text(String::new()));
+            }
+            for name in screens {
+                if ui
+                    .selectable_label(current == name && !mixed, name)
+                    .clicked()
+                {
+                    chosen = Some(Value::Text(name.clone()));
+                }
+            }
+            if screens.is_empty() {
+                ui.label(
+                    RichText::new(
+                        "No screens yet: make a Lust file in the ui folder (ui/hud.lst), \
+                         holding an assembly with a view.",
+                    )
+                    .color(crate::theme::TEXT_WEAK),
+                );
+            }
+        });
+    if !current.is_empty() && !screens.iter().any(|s| s == current) {
+        ui.label(
+            RichText::new(format!("\"{current}\" isn't one of the game's screens"))
+                .color(crate::theme::WARNING),
+        );
+    }
+    chosen
+}
+
 fn state_picker(
     ui: &mut Ui,
     value: &Value,

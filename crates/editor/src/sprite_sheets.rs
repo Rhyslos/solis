@@ -110,6 +110,9 @@ pub struct SpriteSheets {
     /// Tile maps' layers as pictures, kept from frame to frame (shared by
     /// every copy of these sheets).
     pub tile_pictures: Arc<crate::tile_view::TilePictures>,
+    /// The game's screens' names (decision 0087), for a Screen's choices:
+    /// from the program, set when the code changes.
+    pub screens: Vec<String>,
 }
 
 impl SpriteSheets {

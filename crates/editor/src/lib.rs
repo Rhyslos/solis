@@ -20,6 +20,7 @@ pub mod frames_editor;
 mod frames_view;
 mod game_code;
 mod game_panel;
+mod game_screens;
 pub mod game_sound;
 #[cfg(test)]
 mod game_sound_tests;

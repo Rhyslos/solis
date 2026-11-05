@@ -94,6 +94,7 @@
 ## Playing
 
 - **Game UI:** what a game draws over its picture: health bars, money, menus, an inventory. Each piece is **pinned** (anchored) to a corner, an edge or the middle of the screen, so it stays there on any screen shape. A screen's **scale rule** says how big it gets on a bigger screen: **grow with the screen** (the same share of it), **keep its size** (the same pixels) or **whole steps** (pixel art, scaled ×2, ×3, ×4 so every pixel stays square).
+- **Screen (game UI):** one of a game's screens (the HUD, a pause menu), written as a Lust file in the `ui` folder and shown by a **Screen** component. It reads the game's values after every tick and never changes the game. See [Game screens](screens.md).
 - **Play mode:** running the area as a game inside the editor. Press Play to start and Stop to finish; everything changed while playing is undone by Stop. See [Play mode](play-mode.md).
 - **Game:** what players see and do. In the editor it's shown in the **Game** panel, through the game's camera, without the editor's grid and markers.
 - **Camera:** an entity the game looks through. The game uses the first camera in the area. Its **field of view** is how wide it sees.

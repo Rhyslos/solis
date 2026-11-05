@@ -97,6 +97,7 @@ fn compiled(main: &str) -> Compiled {
         schemas: Vec::new(),
         places: Default::default(),
         bytecode: Default::default(),
+        screens: None,
     }
 }
 

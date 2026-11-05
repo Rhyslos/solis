@@ -55,6 +55,9 @@ pub struct Compiled {
     /// The Lust and Lua compiled for Luau on the worker, so loading them
     /// on the frame is quick (empty: they're compiled when loaded).
     pub bytecode: Bytecode,
+    /// The game's screens, compiled into a program of their own
+    /// (decision 0087), if it has any.
+    pub screens: Option<crate::screens::ScreenCode>,
 }
 
 /// Luau's own compiled form of the game's code (see
@@ -498,6 +501,7 @@ fn declarations(text: &str) -> Vec<(u32, &'static str, String)> {
 fn compile_here(code: &Code) -> Result<Option<Compiled>, Vec<CodeProblem>> {
     let mut problems = Vec::new();
     let mut lust = None;
+    let mut screens = None;
     if !code.files.is_empty() {
         let mut missing = check_entry(code);
         missing.extend(long_prefix_chains(&code.files));
@@ -513,6 +517,13 @@ fn compile_here(code: &Code) -> Result<Option<Compiled>, Vec<CodeProblem>> {
                 Ok(Ok(chunk)) => lust = Some(chunk),
                 Ok(Err(found)) => problems.extend(found.into_iter().map(CodeProblem::from)),
                 Err(_) => problems.push(compiler_stopped()),
+            }
+            // The screens, once the game's code is sound (decision 0087).
+            if problems.is_empty() {
+                match crate::screens::compile(files, &engine) {
+                    Ok(code) => screens = code,
+                    Err(found) => problems.extend(found),
+                }
             }
         } else {
             problems.extend(missing);
@@ -548,6 +559,7 @@ fn compile_here(code: &Code) -> Result<Option<Compiled>, Vec<CodeProblem>> {
         schemas: Vec::new(),
         places: std::collections::BTreeMap::new(),
         bytecode,
+        screens,
     };
     // Starting it here reads its components, so the editor needn't on the
     // frame.

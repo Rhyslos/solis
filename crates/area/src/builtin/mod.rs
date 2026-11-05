@@ -12,6 +12,7 @@ mod listener;
 mod model;
 mod physics;
 mod reverb_zone;
+mod screen;
 mod sprite;
 mod tile_map;
 mod transform;
@@ -26,6 +27,7 @@ pub use listener::Listener;
 pub use model::Model;
 pub use physics::{BodyKind, CharacterBody, Collider, ColliderShape, RigidBody};
 pub use reverb_zone::{ReverbZone, ZoneShape};
+pub use screen::Screen;
 pub use sprite::Sprite;
 pub use tile_map::TileMap;
 pub use transform::Transform;
@@ -51,6 +53,7 @@ pub fn registry() -> Result<Registry, RegistryError> {
     registry.register_type::<Listener>()?;
     registry.register_type::<Animator>()?;
     registry.register_type::<TileMap>()?;
+    registry.register_type::<Screen>()?;
     Ok(registry)
 }
 
@@ -163,6 +166,7 @@ mod tests {
                 "Model",
                 "ReverbZone",
                 "RigidBody",
+                "Screen",
                 "Sprite",
                 "TileMap",
                 "Transform"
