@@ -19,6 +19,7 @@ mod readback;
 mod renderer;
 mod sprites;
 mod timing;
+mod ui;
 
 pub use environment::{Environment, Fog, Sky, Tonemap};
 pub use frame::{
@@ -43,6 +44,7 @@ pub use renderer::{
 };
 pub use sprites::{GpuSheet, SpriteInstance, SpriteLayer, SpritePicks, SpriteRun};
 pub use timing::{FrameStats, GpuTimes};
+pub use ui::{MAX_SHAPES as MAX_UI_SHAPES, UiInstance, UiPipeline};
 
 #[cfg(test)]
 mod shader_tests {
@@ -61,6 +63,19 @@ mod shader_tests {
         )
         .validate(&module)
         .unwrap_or_else(|e| panic!("{}", e.emit_to_string(SHADER_SOURCE)));
+    }
+
+    #[test]
+    fn the_ui_shader_is_valid() {
+        let source = include_str!("ui.wgsl");
+        let module = naga::front::wgsl::parse_str(source)
+            .unwrap_or_else(|e| panic!("{}", e.emit_to_string(source)));
+        naga::valid::Validator::new(
+            naga::valid::ValidationFlags::all(),
+            naga::valid::Capabilities::empty(),
+        )
+        .validate(&module)
+        .unwrap_or_else(|e| panic!("{}", e.emit_to_string(source)));
     }
 
     #[test]

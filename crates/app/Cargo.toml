@@ -29,6 +29,7 @@ script.workspace = true
 input.workspace = true
 reflect.workspace = true
 area.workspace = true
+ui.workspace = true
 render.workspace = true
 eframe.workspace = true
 rfd.workspace = true

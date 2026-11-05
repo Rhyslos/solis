@@ -21,6 +21,7 @@ area.workspace = true
 world.workspace = true
 animation.workspace = true
 tiles.workspace = true
+ui.workspace = true
 physics.workspace = true
 script.workspace = true
 input.workspace = true

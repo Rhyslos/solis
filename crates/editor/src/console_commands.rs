@@ -114,6 +114,11 @@ pub(crate) const COMMANDS: &[CommandInfo] = &[
         help: "Says the running game's seed (what its random numbers come from); with a number, every Play starts from that seed, so a play can be repeated; `seed new` gives each Play a new one again.",
     },
     CommandInfo {
+        name: "ui",
+        usage: "ui test [grow | keep | whole] | ui test off",
+        help: "Shows a sample HUD over the Game panel, laid out by a scale rule (grow with the screen, keep its size, or whole steps for pixel art), to see how game UI fits the panel's size; `ui test off` hides it. Until screens are made in Lust.",
+    },
+    CommandInfo {
         name: "checksum",
         usage: "checksum",
         help: "While playing, the game's checksums at this tick: one number for the world and one for game code's values. Two plays that agree on them at the same tick are in exactly the same state.",
@@ -287,6 +292,7 @@ impl Workbench {
             "stats" => Ok(self.stats()),
             "seed" => self.seed_command(args),
             "checksum" => self.checksum_command(),
+            "ui" => self.ui_command(args),
             _ => Err(format!(
                 "there's no command \"{name}\"; type help to see them all"
             )),
@@ -548,6 +554,26 @@ impl Workbench {
     }
 
     /// `seed`, `seed 1234` or `seed new`.
+    fn ui_command(&mut self, args: &[String]) -> Result<String, String> {
+        let words: Vec<&str> = args.iter().map(String::as_str).collect();
+        let rule = match words.as_slice() {
+            ["test"] | ["test", "grow"] => ui::ScaleRule::Grow,
+            ["test", "keep"] => ui::ScaleRule::Keep,
+            ["test", "whole"] => ui::ScaleRule::WholeSteps,
+            ["test", "off"] => {
+                self.ui_test = None;
+                return Ok("The test HUD is hidden.".into());
+            }
+            _ => return Err("type ui test, ui test keep, ui test whole or ui test off".into()),
+        };
+        self.ui_test = Some(std::sync::Arc::new(ui::sample::hud(rule, 0.65)));
+        Ok(format!(
+            "The Game panel shows a sample HUD laid out by \"{}\". Make the panel bigger or \
+             smaller to see it fit; ui test off hides it.",
+            rule.words()
+        ))
+    }
+
     fn seed_command(&mut self, args: &[String]) -> Result<String, String> {
         match args {
             [] => {

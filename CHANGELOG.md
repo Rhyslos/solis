@@ -74,6 +74,8 @@ What changed in each version, for people using Solis. Newest first.
 
 ### Added
 
+- **Game UI's first part: shapes on any screen** ([decision 0083](docs/decisions/0083-game-ui-on-any-screen.md)): Solis can draw game UI over the Game panel: boxes with rounded corners, circles, lines and bars, sharp at any size, each pinned to a corner, an edge or the middle so it stays there on any screen shape, and grown by the screen's scale rule (grow with the screen, keep its size, or whole steps for pixel art). Type `ui test` in the Console while playing to see a sample HUD; text and screens of your own come next.
+
 - **A camera for 2D games, and the cell at a place** ([decision 0082](docs/decisions/0082-the-2d-follow-camera-and-cells-at-places.md)): the ready-made **FollowCamera2D** follows the player calmly (a little slack, then it eases after them) and never shows past the tile map's edges; it has no keys. Game code asks a map which cell a place is on with `farm:cellAt(position())` and where a cell is with `farm:placeOf(x, y)`; `mapBounds()` gives the box a map covers and `World:viewSize()` how much a 2D camera shows.
 
 - **Everything Solis makes is becoming Lust** ([decision 0081](docs/decisions/0081-what-solis-makes-is-lust.md)): each file is named for what it holds (`<name>.<kind>.lst`), read with Lust's own reader, which checks every type and option and runs nothing. Tile maps and tilesets first; the rest follow, one at a time ([plan](docs/plans/lust-data.md)).

@@ -384,6 +384,9 @@ pub struct Workbench {
     /// was chosen (`seed` in the Console); otherwise each Play has a new
     /// one.
     pub(crate) fixed_seed: Option<u64>,
+    /// A test screen the Game panel shows over the game (the Console's
+    /// `ui test`, decision 0083), until screens are made in Lust.
+    pub(crate) ui_test: Option<std::sync::Arc<ui::Screen>>,
     /// What the Game panel showed last, and what it was worked out for:
     /// made again only when the world, the models or the state changed
     /// (not on a frame without a tick, or while paused).
@@ -490,6 +493,7 @@ impl Workbench {
             profiler: crate::profiler::Profiler::default(),
             editor_view: None,
             fixed_seed: None,
+            ui_test: None,
             bindings: input::Bindings::default(),
             devices: input::Devices::new(),
             game_input: false,
@@ -1073,6 +1077,7 @@ impl Workbench {
                         problems: &self.problems.list,
                         code_problems: &self.code_problems,
                         game: game.as_ref().map(|(_, scene)| scene),
+                        ui_test: self.ui_test.clone(),
                         playing,
                         game_input: self.game_input,
                         pixels: self.pixels,

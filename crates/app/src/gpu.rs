@@ -389,6 +389,22 @@ impl GpuViewport {
             &images.out,
             &layout,
         );
+        // Game UI over the picture (decision 0083): laid out on the
+        // picture's part of the screen, in its whole steps when it has them.
+        if let Some(screen) = &view.ui {
+            let shapes = ui::layout_at(
+                screen,
+                layout.origin,
+                layout.size,
+                layout.whole.then_some(layout.scale as u32),
+            );
+            self.renderer.draw_ui_on_pixels(
+                &self.state.device,
+                &self.state.queue,
+                &images.out,
+                &shapes,
+            );
+        }
         let texture = images.texture;
         count(&mut self.report, &stats);
         if !self.drawn.contains(&(view.image, true)) {
@@ -590,6 +606,16 @@ impl ViewportRenderer for GpuViewport {
             },
         );
         count(&mut self.report, &stats);
+        // Game UI over the finished picture (decision 0083).
+        if let Some(screen) = &view.ui {
+            let shapes = ui::layout(screen, image.target.size(), None);
+            self.renderer.draw_ui(
+                &self.state.device,
+                &self.state.queue,
+                &image.target,
+                &shapes,
+            );
+        }
         if !self.drawn.contains(&(view.image, false)) {
             self.drawn.push((view.image, false));
         }

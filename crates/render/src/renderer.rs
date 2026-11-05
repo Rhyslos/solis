@@ -632,6 +632,7 @@ pub struct ViewportRenderer {
     axis_count: u32,
     pick: crate::pick::PickPipeline,
     pixel: crate::pixel::PixelPipeline,
+    ui: crate::ui::UiPipeline,
     sprites: crate::sprites::SpritePipelines,
 }
 
@@ -765,6 +766,7 @@ impl ViewportRenderer {
             axis_count: axis_vertices.len() as u32,
             pick: crate::pick::PickPipeline::new(device, &sprites.sheet_layout),
             pixel: crate::pixel::PixelPipeline::new(device),
+            ui: crate::ui::UiPipeline::new(device, COLOR_FORMAT),
             sprites,
         }
     }
@@ -805,6 +807,31 @@ impl ViewportRenderer {
         layout: &crate::pixel::PixelLayout,
     ) {
         image.draw(device, queue, &self.pixel, source.display_view(), layout);
+    }
+
+    /// Draws game UI's `shapes` over `target`'s finished picture (decision
+    /// 0083), after tone mapping, and submits it. Never waits for the GPU.
+    pub fn draw_ui(
+        &self,
+        device: &wgpu::Device,
+        queue: &wgpu::Queue,
+        target: &ViewportTarget,
+        shapes: &[ui::Shape],
+    ) {
+        self.ui
+            .draw(device, queue, target.display_view(), target.size(), shapes);
+    }
+
+    /// Draws game UI's `shapes` over a 2D game's scaled-up picture.
+    pub fn draw_ui_on_pixels(
+        &self,
+        device: &wgpu::Device,
+        queue: &wgpu::Queue,
+        image: &crate::pixel::PixelImage,
+        shapes: &[ui::Shape],
+    ) {
+        self.ui
+            .draw(device, queue, image.display_view(), image.size(), shapes);
     }
 
     /// Asks what is drawn inside `rect` of `target` (x, y, width and

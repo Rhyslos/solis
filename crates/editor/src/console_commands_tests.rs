@@ -538,3 +538,19 @@ fn seed_and_checksum_say_what_they_do() {
     run(&mut w, "seed new");
     assert_eq!(w.fixed_seed, None);
 }
+
+#[test]
+fn ui_test_shows_and_hides_a_sample_hud() {
+    let mut w = Workbench::new(info(), None);
+    run(&mut w, "ui test whole");
+    let screen = w.ui_test.clone().expect("shown");
+    assert_eq!(screen.scale, ui::ScaleRule::WholeSteps);
+    assert!(screen.find("energy").is_some());
+    assert!(w.log_lines().last().unwrap().text.contains("Whole steps"));
+    run(&mut w, "ui test");
+    assert_eq!(w.ui_test.as_ref().unwrap().scale, ui::ScaleRule::Grow);
+    run(&mut w, "ui test off");
+    assert!(w.ui_test.is_none());
+    run(&mut w, "ui sideways");
+    assert_eq!(w.log_lines().last().unwrap().level, LogLevel::Error);
+}
