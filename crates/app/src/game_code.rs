@@ -52,19 +52,38 @@ pub struct GameCode {
     animation: Animation,
 }
 
-/// What the editor read of the project's animation, for game code's names:
-/// the sprites' clips (`sheet/clip` paths), their cues, and the animators.
-pub type Animation = (
-    Vec<String>,
-    Vec<String>,
-    Vec<script::animator_code::AnimatorNames>,
-);
+/// What the editor read of the project for game code's names: the sprites'
+/// clips (`sheet/clip` paths), their cues, the animators and the tile maps.
+#[derive(Debug, Clone, Default, PartialEq)]
+pub struct Animation {
+    /// The sprites' clips, as `sheet/clip` paths.
+    pub clips: Vec<String>,
+    /// The clips' events' names.
+    pub cues: Vec<String>,
+    /// Each animator, for its own file.
+    pub animators: Vec<script::animator_code::AnimatorNames>,
+    /// Each tile map, for its own file.
+    pub maps: Vec<script::map_code::MapNames>,
+}
 
-/// Takes away the animators' files in `assets/solis/animators/` that
-/// `files` no longer has (an animator deleted or renamed). Only `.lst`
-/// files, never through a link.
-fn forget_animator_files(assets: &Path, files: &[(String, String)]) {
-    let folder = assets.join(crate::branding::CODE_FOLDER).join("animators");
+impl Animation {
+    /// The names in the editor's sheets.
+    pub fn of(sheets: &editor::sprite_sheets::SpriteSheets) -> Self {
+        let (clips, cues) = sheets.clip_names();
+        Self {
+            clips,
+            cues,
+            animators: sheets.animator_names(),
+            maps: sheets.map_names(),
+        }
+    }
+}
+
+/// Takes away the animators' or maps' files in `assets/solis/<kind>/` that
+/// `files` no longer has (one deleted or renamed). Only `.lst` files, never
+/// through a link.
+fn forget_animator_files(assets: &Path, files: &[(String, String)], kind: &str) {
+    let folder = assets.join(crate::branding::CODE_FOLDER).join(kind);
     let wanted: std::collections::HashSet<std::path::PathBuf> =
         files.iter().map(|(p, _)| assets.join(p)).collect();
     let mut folders = vec![folder];
@@ -146,14 +165,19 @@ impl GameCode {
     /// `assets`) as states, so call this again when they change;
     /// the notes then also say which names game code can't use.
     pub fn describe(assets: &Path, made_by: &str) -> Vec<String> {
-        Self::describe_with(assets, made_by, &(Vec::new(), Vec::new(), Vec::new()))
+        Self::describe_with(assets, made_by, &Animation::default())
     }
 
     /// [`GameCode::describe`], with the sprites' clips (`sheet/clip`
     /// paths) and cues, and each animator's own file
     /// (`solis/animators/…`; those no longer wanted are taken away).
     pub fn describe_with(assets: &Path, made_by: &str, animation: &Animation) -> Vec<String> {
-        let (clips, cues, animators) = animation;
+        let Animation {
+            clips,
+            cues,
+            animators,
+            maps,
+        } = animation;
         let root = assets.parent();
         let names = script::project_names::Names {
             assemblies: asset_paths(assets, asset_db::ASSEMBLY_EXTENSION),
@@ -201,7 +225,30 @@ impl GameCode {
                 }
             }
         }
-        forget_animator_files(assets, &files);
+        for map in maps {
+            let (file, said) =
+                script::map_code::map_file(made_by, crate::branding::CODE_FOLDER, map);
+            notes.extend(said);
+            if let Some((path, text)) = file {
+                let class = map
+                    .path
+                    .rsplit('/')
+                    .next()
+                    .unwrap_or_default()
+                    .to_ascii_lowercase();
+                if classes.insert(format!("map:{class}")) {
+                    files.push((path, text));
+                } else {
+                    notes.push(format!(
+                        "The tile map {} can't be reached from game code: another has the same file \
+                         name. Rename one.",
+                        map.path
+                    ));
+                }
+            }
+        }
+        forget_animator_files(assets, &files, "animators");
+        forget_animator_files(assets, &files, "maps");
         for (path, text) in files {
             let file = assets.join(&path);
             if same_text(&file, &text) {
@@ -236,7 +283,7 @@ impl GameCode {
 
     /// [`GameCode::describe`] for a project just opened: every note said.
     pub fn describe_opened(&mut self, assets: &Path, made_by: &str) -> Vec<String> {
-        self.animation = (Vec::new(), Vec::new(), Vec::new());
+        self.animation = Animation::default();
         self.told = Self::describe(assets, made_by);
         self.told.clone()
     }
@@ -474,7 +521,10 @@ mod tests {
         let notes = GameCode::describe_with(
             &assets,
             "Test 1.0",
-            &(Vec::new(), Vec::new(), vec![farmer, twin]),
+            &Animation {
+                animators: vec![farmer, twin],
+                ..Animation::default()
+            },
         );
         let file = assets.join("solis/animators/animals/farmer.lst");
         let text = std::fs::read_to_string(&file).unwrap();

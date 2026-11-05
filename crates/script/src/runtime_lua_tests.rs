@@ -457,3 +457,135 @@ fn a_component_drives_its_animator_through_the_animator_s_own_file() {
     assert_eq!(host.jumps, [(me, "Idle".to_string())]);
     assert_eq!(host.speeds, [(me, 2.0)]);
 }
+
+/// A farm map, and what a map's own file asked to change on it.
+struct Farm {
+    map: std::sync::Arc<tiles::TileMap>,
+    tiles: Vec<(String, usize, [u32; 2], u8)>,
+    values: Vec<(String, usize, [u32; 2], tiles::CellValue)>,
+}
+
+impl Host for Farm {
+    fn say(&mut self, _words: &str) {}
+    fn time(&self) -> f64 {
+        0.0
+    }
+    fn find(&self, _name: &str) -> Option<EntityId> {
+        None
+    }
+    fn position(&self, _which: EntityId) -> Option<glam::Vec3> {
+        None
+    }
+    fn move_to(&mut self, _which: EntityId, _place: glam::Vec3) {}
+    fn rotation(&self, _which: EntityId) -> Option<glam::Quat> {
+        None
+    }
+    fn turn_to(&mut self, _which: EntityId, _facing: glam::Quat) {}
+    fn name(&self, _which: EntityId) -> Option<String> {
+        None
+    }
+    fn map(&self, file: &str) -> Option<std::sync::Arc<tiles::TileMap>> {
+        (file == "maps/farm").then(|| std::sync::Arc::clone(&self.map))
+    }
+    fn set_map_tile(&mut self, file: &str, layer: usize, cell: [u32; 2], code: u8) {
+        self.tiles.push((file.to_string(), layer, cell, code));
+    }
+    fn set_map_value(&mut self, file: &str, value: usize, cell: [u32; 2], to: tiles::CellValue) {
+        self.values.push((file.to_string(), value, cell, to));
+    }
+}
+
+#[test]
+fn a_component_changes_a_tile_map_through_the_map_s_own_file() {
+    use crate::map_code::{MapNames, ValueNames, map_file};
+    let names = MapNames {
+        path: "maps/farm".into(),
+        layers: vec!["Ground".into(), "Decoration".into(), "Above".into()],
+        terrains: vec![(b'g', "grass".into()), (b's', "soil".into())],
+        values: vec![
+            ("growth".into(), ValueNames::Number),
+            ("watered".into(), ValueNames::Switch),
+            (
+                "crop".into(),
+                ValueNames::Choice(vec!["parsnip".into(), "corn".into()]),
+            ),
+        ],
+    };
+    let mut map = tiles::TileMap::new([8, 6], None, Some(b'g'));
+    map.add_value("growth", tiles::ValueKind::Number).unwrap();
+    map.add_value("watered", tiles::ValueKind::Switch).unwrap();
+    map.add_value(
+        "crop",
+        tiles::ValueKind::Choice(vec!["parsnip".into(), "corn".into()]),
+    )
+    .unwrap();
+    map.set_code(0, 3, 4, b's').unwrap();
+    map.set_value(0, 3, 4, tiles::CellValue::Number(2)).unwrap();
+    map.set_value(2, 3, 4, tiles::CellValue::Choice(Some(1)))
+        .unwrap();
+    let (path, text) = map_file("Test 1.0", "solis", &names).0.unwrap();
+    let mut files = crate::describe::descriptions("Test 1.0", "solis");
+    files.push((path, text));
+    files.push((
+        "main.lst".into(),
+        "fetch \"solis/maps/maps/farm\":[FarmMap, FarmLayer, FarmTerrain, FarmCrop];\n\
+         component Farmer {\n    has {\n        FarmMap farm;\n        int seen = 0;\n    }\n\
+         \x20   method update(float dt) {\n\
+         \x20       is farm:width() == 8 && farm:height() == 6? then {\n            seen = seen + 1;\n        }\n\
+         \x20       is farm:terrain(FarmLayer.Ground, 3, 4) == FarmTerrain.Soil && farm:terrain(FarmLayer.Ground, 0, 0) == FarmTerrain.Grass? then {\n            seen = seen + 10;\n        }\n\
+         \x20       is farm:crop(3, 4) == FarmCrop.Corn && farm:crop(0, 0) == FarmCrop.None && not farm:watered(3, 4)? then {\n            seen = seen + 100;\n        }\n\
+         \x20       is farm:terrain(FarmLayer.Ground, 99, -1) == FarmTerrain.Empty? then {\n            seen = seen + 1000;\n        }\n\
+         \x20       farm:setWatered(3, 4, true);\n        farm:setGrowth(3, 4, farm:growth(3, 4) + 1);\n\
+         \x20       farm:setCrop(3, 4, FarmCrop.None);\n        farm:setTerrain(FarmLayer.Above, 1, 2, FarmTerrain.Soil);\n\
+         \x20       farm:setTerrain(FarmLayer.Ground, -1, 2, FarmTerrain.Empty);\n    }\n}\npass Farmer;\nend\n"
+            .into(),
+    ));
+    let chunk = match lust::to_lua_with(
+        &lust::Engine {
+            folders: crate::describe::engine_folders(&files),
+        },
+        "main.lst",
+        &files,
+    ) {
+        Ok(chunk) => chunk,
+        Err(problems) => panic!("{}", problems[0]),
+    };
+    let compiled = Compiled {
+        lust: Some(chunk),
+        lua: Vec::new(),
+        schemas: Vec::new(),
+        places: Default::default(),
+        bytecode: Default::default(),
+    };
+    let mut runtime = Runtime::new().unwrap();
+    runtime.load(&compiled, &mut NoHost).unwrap();
+    let me = id(4);
+    let mut host = Farm {
+        map: std::sync::Arc::new(map),
+        tiles: Vec::new(),
+        values: Vec::new(),
+    };
+    runtime
+        .sync(me, "Farmer", &ComponentData::default(), &mut host)
+        .unwrap();
+    let failures = runtime.tick(0.5, &mut host).failures;
+    assert!(failures.is_empty(), "{failures:?}");
+    assert_eq!(
+        runtime.values(me, "Farmer").unwrap().get("seen"),
+        Some(&Value::Int(1111))
+    );
+    let farm = "maps/farm".to_string();
+    assert_eq!(
+        host.values,
+        [
+            (farm.clone(), 1, [3, 4], tiles::CellValue::Switch(true)),
+            (farm.clone(), 0, [3, 4], tiles::CellValue::Number(3)),
+            (farm.clone(), 2, [3, 4], tiles::CellValue::Choice(None)),
+        ]
+    );
+    assert_eq!(
+        host.tiles,
+        [(farm, 2, [1, 2], b's')],
+        "off the map changes nothing"
+    );
+}

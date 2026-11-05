@@ -76,6 +76,26 @@ impl World {
             let _ = self.ecs.insert_one(entity, state);
         }
         self.touched = true;
+        self.maps_revision += 1;
+    }
+
+    /// Every map at play with the file it came from, by entity ID, in ID
+    /// order: what game code reads (decision 0079).
+    pub fn tile_maps_at_play(&self) -> Vec<(EntityId, AssetId, TileMap)> {
+        let mut all: Vec<(EntityId, AssetId, TileMap)> = self
+            .ecs
+            .query::<(&Id, &TileMapComponent, &MapState)>()
+            .iter()
+            .filter_map(|(id, c, s)| Some((id.0, c.map?.asset, s.map.clone())))
+            .collect();
+        all.sort_by_key(|(id, _, _)| *id);
+        all
+    }
+
+    /// Goes up whenever a map at play changes or starts again: game code's
+    /// copy of the maps is made again only then.
+    pub fn maps_revision(&self) -> u64 {
+        self.maps_revision
     }
 
     /// `id`'s map as the game has it (just loaded and not started yet: as
@@ -102,6 +122,7 @@ impl World {
         let result = change(&mut state.map);
         drop(state);
         self.touched = true;
+        self.maps_revision += 1;
         result
     }
 

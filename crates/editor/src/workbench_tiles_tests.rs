@@ -392,3 +392,58 @@ fn a_terrain_made_solid_is_saved_in_its_tileset_and_its_walls_shown() {
     w.set_tile_overlay();
     assert!(w.viewport.tile_overlay.solid.is_none());
 }
+
+#[test]
+fn game_code_waters_the_farm_through_the_map_s_own_file() {
+    let (mut w, map, _) = with_map();
+    let placed = w.place_tile_map(map, None).unwrap();
+    // The map's own file, as the app writes it, and a component using it.
+    let names = w.sprite_sheets().map_names();
+    assert_eq!(names.len(), 1);
+    let (path, text) = script::map_code::map_file("Test 1.0", "solis", &names[0])
+        .0
+        .unwrap();
+    assert!(
+        text.contains("state FarmCrop = [None, Wheat, Corn];"),
+        "{text}"
+    );
+    let mut files = script::describe::descriptions("Test 1.0", "solis");
+    files.push((path, text));
+    files.push((
+        "main.lst".into(),
+        "fetch \"solis/maps/farm\":[FarmMap, FarmCrop];\n\
+         component Waterer {\n    has {\n        FarmMap farm;\n    }\n\
+         \x20   method update(float dt) {\n\
+         \x20       is not farm:watered(4, 4)? then {\n            farm:setWatered(4, 4, true);\n\
+         \x20           farm:setGrowth(4, 4, farm:growth(5, 5) + 1);\n            farm:setCrop(4, 4, FarmCrop.Wheat);\n        }\n\
+         \x20   }\n}\npass Waterer;\nend\n"
+            .into(),
+    ));
+    let code = script::Code {
+        files,
+        lua: Vec::new(),
+        notes: Vec::new(),
+    };
+    let program = match script::compile(&code) {
+        Ok(Some(c)) => Arc::new(c),
+        Ok(None) => panic!("no code"),
+        Err(problems) => panic!("{}", problems[0]),
+    };
+    w.set_program(Some(program));
+    w.apply_property(
+        crate::properties::PropertyRequest::AddComponent {
+            entity: placed,
+            component: "Waterer".into(),
+        },
+        1,
+    );
+    w.play();
+    w.run_game(2.0 / 60.0);
+    let played = w.world().unwrap().tile_map(placed).unwrap();
+    assert_eq!(played.value(2, 4, 4), Some(CellValue::Switch(true)));
+    assert_eq!(played.value(1, 4, 4), Some(CellValue::Number(4)));
+    assert_eq!(played.value(0, 4, 4), Some(CellValue::Choice(Some(0))));
+    // The map file itself is left as it was: only the game's copy changed.
+    let file = w.sprite_sheets().tile_map(map).unwrap();
+    assert_eq!(file.value(2, 4, 4), Some(CellValue::Switch(false)));
+}

@@ -72,6 +72,8 @@ What changed in each version, for people using Solis. Newest first.
 
 ### Added
 
+- **Game code reads and changes tile maps** ([decision 0079](docs/decisions/0079-tile-maps-reached-through-their-own-files.md)): each map gets a Lust file of its own in `solis/maps/`, with its layers, terrains and choices as names and a method for each value. A component holds it as a field Solis fills in (`FarmMap farm;`), then calls `farm:terrain(FarmLayer.Ground, x, y)`, `farm:setWatered(x, y, true)` or `farm:setCrop(x, y, FarmCrop.Parsnip)`. Changes are in saves.
+
 - **Game code drives animators** ([decision 0078](docs/decisions/0078-animators-reached-through-their-own-files.md)): each animator gets a Lust file of its own in `solis/animators/`, with a method for each parameter and its states as names. A component holds it as a field Solis fills in (`FarmerAnimator anim;`), then calls `anim:setMoving(true)`, `anim:swing()`, `anim:current() == FarmerState.UseTool` or `anim:jumpTo(FarmerState.Idle)`. Rename a parameter in the graph and every line still using the old name is a mistake.
 
 - **`face(direction)`** turns an entity, upright, to face along a direction in one call.

@@ -35,6 +35,16 @@ animation: object Animators: method setDirection(entity owner, string name, vec3
 animation: object Animators: method string stateOf(entity owner) native;
 animation: object Animators: method jumpTo(entity owner, string named) native;
 animation: object Animators: method setPlaybackSpeed(entity owner, float scale) native;
+tiles: object Maps: method int width(string tileMap) native;
+tiles: object Maps: method int height(string tileMap) native;
+tiles: object Maps: method int terrain(string tileMap, int layer, int x, int y) native;
+tiles: object Maps: method setTerrain(string tileMap, int layer, int x, int y, int code) native;
+tiles: object Maps: method int number(string tileMap, int value, int x, int y) native;
+tiles: object Maps: method setNumber(string tileMap, int value, int x, int y, int to) native;
+tiles: object Maps: method bool isOn(string tileMap, int value, int x, int y) native;
+tiles: object Maps: method setSwitch(string tileMap, int value, int x, int y, bool on) native;
+tiles: object Maps: method int choice(string tileMap, int value, int x, int y) native;
+tiles: object Maps: method setChoice(string tileMap, int value, int x, int y, int chosen) native;
 input: object Input: method bool held(Action action) native;
 input: object Input: method bool pressed(Action action) native;
 input: object Input: method bool released(Action action) native;
@@ -78,6 +88,16 @@ solis.Input:held
 solis.Input:pressed
 solis.Input:rebind
 solis.Input:released
+solis.Maps:choice
+solis.Maps:height
+solis.Maps:isOn
+solis.Maps:number
+solis.Maps:setChoice
+solis.Maps:setNumber
+solis.Maps:setSwitch
+solis.Maps:setTerrain
+solis.Maps:terrain
+solis.Maps:width
 solis.Physics:castRay
 solis.Saves:loadFrom
 solis.Saves:saveTo
@@ -157,6 +177,9 @@ Host: fn animator_set(&mut self, which: EntityId, name: &str, value: AnimatorVal
 Host: fn animator_state(&self, which: EntityId) -> Option<String>
 Host: fn animator_jump(&mut self, which: EntityId, state: &str)
 Host: fn animator_speed(&mut self, which: EntityId, scale: f32)
+Host: fn map(&self, file: &str) -> Option<std::sync::Arc<tiles::TileMap>>
+Host: fn set_map_tile(&mut self, file: &str, layer: usize, cell: [u32
+Host: fn set_map_value(&mut self, file: &str, value: usize, cell: [u32
 Host: fn cast_ray(&self, from: Vec3, direction: Vec3, reach: f32) -> Option<physics::Hit>
 Host: fn at(&mut self, order: &crate::ticking::Order)
 RustComponent: fn update(&mut self, _cx: &mut Context<'_>, _dt: f64)

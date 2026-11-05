@@ -175,6 +175,22 @@ pub trait Host {
     fn animator_speed(&mut self, which: EntityId, scale: f32) {
         let _ = (which, scale);
     }
+    /// The tile map at play from the file `file` (its path without
+    /// `.soltilemap`), as the tick started: the first entity showing it.
+    fn map(&self, file: &str) -> Option<std::sync::Arc<tiles::TileMap>> {
+        let _ = file;
+        None
+    }
+    /// Paints a layer's cell of the map from `file` with a terrain's code
+    /// (0 clears it), at the end of the tick.
+    fn set_map_tile(&mut self, file: &str, layer: usize, cell: [u32; 2], code: u8) {
+        let _ = (file, layer, cell, code);
+    }
+    /// Sets a value on a cell of the map from `file`, at the end of the
+    /// tick.
+    fn set_map_value(&mut self, file: &str, value: usize, cell: [u32; 2], to: tiles::CellValue) {
+        let _ = (file, value, cell, to);
+    }
     /// The first collider a ray meets (see `physics::State::cast_ray`).
     fn cast_ray(&self, from: Vec3, direction: Vec3, reach: f32) -> Option<physics::Hit> {
         let _ = (from, direction, reach);
@@ -734,6 +750,158 @@ pub(crate) fn with_natives<'h, R>(
                 }
                 Ok(())
             })?,
+        )?;
+        // A map's own Lust file reaches it by its path and places.
+        let cell = |x: i64, y: i64| -> Option<[u32; 2]> {
+            Some([u32::try_from(x).ok()?, u32::try_from(y).ok()?])
+        };
+        natives.raw_set(
+            "Maps_width",
+            scope.create_function(move |_, (_m, file): (LuaValue, mlua::LuaString)| {
+                Ok(h.borrow().map(&file.to_str()?).map_or(0, |m| m.size()[0]))
+            })?,
+        )?;
+        natives.raw_set(
+            "Maps_height",
+            scope.create_function(move |_, (_m, file): (LuaValue, mlua::LuaString)| {
+                Ok(h.borrow().map(&file.to_str()?).map_or(0, |m| m.size()[1]))
+            })?,
+        )?;
+        natives.raw_set(
+            "Maps_terrain",
+            scope.create_function(
+                move |_, (_m, file, layer, x, y): (LuaValue, mlua::LuaString, i64, i64, i64)| {
+                    let map = h.borrow().map(&file.to_str()?);
+                    Ok(map
+                        .zip(cell(x, y))
+                        .zip(usize::try_from(layer).ok())
+                        .and_then(|((m, [x, y]), layer)| m.code(layer, x, y))
+                        .map_or(0, i64::from))
+                },
+            )?,
+        )?;
+        natives.raw_set(
+            "Maps_setTerrain",
+            scope.create_function(
+                move |_,
+                      (_m, file, layer, x, y, code): (
+                    LuaValue,
+                    mlua::LuaString,
+                    i64,
+                    i64,
+                    i64,
+                    i64,
+                )| {
+                    if let (Some(at), Ok(layer), Ok(code)) =
+                        (cell(x, y), usize::try_from(layer), u8::try_from(code))
+                    {
+                        h.borrow_mut()
+                            .set_map_tile(&file.to_str()?, layer, at, code);
+                    }
+                    Ok(())
+                },
+            )?,
+        )?;
+        let value_at = move |file: &mlua::LuaString, value: i64, x: i64, y: i64| {
+            let map = h.borrow().map(&file.to_str().ok()?)?;
+            let [x, y] = cell(x, y)?;
+            map.value(usize::try_from(value).ok()?, x, y)
+        };
+        natives.raw_set(
+            "Maps_number",
+            scope.create_function(
+                move |_, (_m, file, value, x, y): (LuaValue, mlua::LuaString, i64, i64, i64)| {
+                    Ok(match value_at(&file, value, x, y) {
+                        Some(tiles::CellValue::Number(n)) => i64::from(n),
+                        _ => 0,
+                    })
+                },
+            )?,
+        )?;
+        natives.raw_set(
+            "Maps_isOn",
+            scope.create_function(
+                move |_, (_m, file, value, x, y): (LuaValue, mlua::LuaString, i64, i64, i64)| {
+                    Ok(matches!(
+                        value_at(&file, value, x, y),
+                        Some(tiles::CellValue::Switch(true))
+                    ))
+                },
+            )?,
+        )?;
+        natives.raw_set(
+            "Maps_choice",
+            scope.create_function(
+                move |_, (_m, file, value, x, y): (LuaValue, mlua::LuaString, i64, i64, i64)| {
+                    Ok(match value_at(&file, value, x, y) {
+                        Some(tiles::CellValue::Choice(Some(i))) => i64::from(i),
+                        _ => -1,
+                    })
+                },
+            )?,
+        )?;
+        let set_value =
+            move |file: &mlua::LuaString, value: i64, x: i64, y: i64, to: tiles::CellValue| {
+                if let (Some(at), Ok(value), Ok(file)) =
+                    (cell(x, y), usize::try_from(value), file.to_str())
+                {
+                    h.borrow_mut().set_map_value(&file, value, at, to);
+                }
+            };
+        natives.raw_set(
+            "Maps_setNumber",
+            scope.create_function(
+                move |_,
+                      (_m, file, value, x, y, to): (
+                    LuaValue,
+                    mlua::LuaString,
+                    i64,
+                    i64,
+                    i64,
+                    f64,
+                )| {
+                    if to.is_finite() {
+                        let to = to.clamp(f64::from(i32::MIN), f64::from(i32::MAX)) as i32;
+                        set_value(&file, value, x, y, tiles::CellValue::Number(to));
+                    }
+                    Ok(())
+                },
+            )?,
+        )?;
+        natives.raw_set(
+            "Maps_setSwitch",
+            scope.create_function(
+                move |_,
+                      (_m, file, value, x, y, on): (
+                    LuaValue,
+                    mlua::LuaString,
+                    i64,
+                    i64,
+                    i64,
+                    bool,
+                )| {
+                    set_value(&file, value, x, y, tiles::CellValue::Switch(on));
+                    Ok(())
+                },
+            )?,
+        )?;
+        natives.raw_set(
+            "Maps_setChoice",
+            scope.create_function(
+                move |_,
+                      (_m, file, value, x, y, chosen): (
+                    LuaValue,
+                    mlua::LuaString,
+                    i64,
+                    i64,
+                    i64,
+                    i64,
+                )| {
+                    let chosen = u8::try_from(chosen).ok();
+                    set_value(&file, value, x, y, tiles::CellValue::Choice(chosen));
+                    Ok(())
+                },
+            )?,
         )?;
         natives.raw_set(
             "Saves_saveTo",

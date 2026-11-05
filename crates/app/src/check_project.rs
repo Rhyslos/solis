@@ -328,8 +328,7 @@ fn sprite_clip_names(project: &asset_db::Project) -> crate::game_code::Animation
     }
     let mut sheets = sprites.sheets().clone();
     sheets.work_out_clips();
-    let (clips, cues) = sheets.clip_names();
-    (clips, cues, sheets.animator_names())
+    crate::game_code::Animation::of(&sheets)
 }
 
 /// Plays back each recording in `recordings/checks/`.

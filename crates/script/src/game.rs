@@ -79,6 +79,11 @@ pub enum Change {
     AnimatorJump(EntityId, String),
     /// An animator's own file setting how fast it plays its clips.
     AnimatorSpeed(EntityId, f32),
+    /// A map's own file painting a layer's cell (map file, layer, cell,
+    /// terrain code).
+    MapTile(String, usize, [u32; 2], u8),
+    /// A map's own file setting a value on a cell (map file, value, cell).
+    MapValue(String, usize, [u32; 2], tiles::CellValue),
 }
 
 /// The entities of a [`WorldView`]: the same while the world's entities,
@@ -135,6 +140,9 @@ pub struct WorldView {
     /// The state each running animator is in as the tick started, by its
     /// name in the graph (an animator's own file asks it).
     pub animator_states: Arc<std::collections::HashMap<EntityId, String>>,
+    /// The tile maps at play as the tick started, by their file's path
+    /// without `.soltilemap` (the first entity showing each).
+    pub maps: Arc<std::collections::HashMap<String, Arc<tiles::TileMap>>>,
 }
 
 impl WorldView {
@@ -473,6 +481,28 @@ impl Host for ViewHost {
             self.kept
                 .changes
                 .push((order, Change::AnimatorSet(which, name.to_string(), value)));
+        }
+    }
+
+    fn map(&self, file: &str) -> Option<Arc<tiles::TileMap>> {
+        self.view.maps.get(file).cloned()
+    }
+
+    fn set_map_tile(&mut self, file: &str, layer: usize, cell: [u32; 2], code: u8) {
+        if file.len() <= MAX_SOUND_NAME && self.kept.room() {
+            let order = self.order();
+            self.kept
+                .changes
+                .push((order, Change::MapTile(file.to_string(), layer, cell, code)));
+        }
+    }
+
+    fn set_map_value(&mut self, file: &str, value: usize, cell: [u32; 2], to: tiles::CellValue) {
+        if file.len() <= MAX_SOUND_NAME && self.kept.room() {
+            let order = self.order();
+            self.kept
+                .changes
+                .push((order, Change::MapValue(file.to_string(), value, cell, to)));
         }
     }
 

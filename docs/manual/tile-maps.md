@@ -36,7 +36,51 @@ A terrain is drawn in its colour until its tileset gives it art: then each cell'
 Paint a map's cells with the **tile painter**: while the map is selected, its brush, rectangle, line, fill and eyedropper join the tool bar at the bottom of the viewport, and the Map tab's terrain swatches are its palette (see [Painting tiles](painting-tiles.md)). The file is plain text you can also edit by hand: each chunk of a layer is rows of codes (`.` grass, `t` tilled, a space for nothing), and cells painted with an exact tile are listed in `exact` blocks.
 
 ### In game code
-Game code can't read or change a map yet. Under Solis's [API guidelines](../game-api-guidelines.md), it will reach each map through a Lust file Solis writes for it, with its terrains, layers and values as names the checker knows, so a misspelt *watered* is caught before the game runs. That arrives with the API milestone, as for [animators](animators.md).
+Each tile map gets a Lust file of its own, which Solis writes into `solis/maps/` whenever the map or its tileset changes: `maps/farm.soltilemap` gives `solis/maps/maps/farm.lst`. In it are [states](concepts.md#game-code) of the map's layers (`FarmLayer`), its tileset's terrains (`FarmTerrain`, with `Empty` for nothing painted) and each choice value's options (`FarmCrop`), and a class with a method for each thing code can ask or change (`FarmMap`). So *watered* misspelt is a mistake before the game runs, and renaming it in the Map tab points at every line still using the old name.
+
+A component holds the map as a field with no starting value, which Solis fills in:
+
+```lust
+fetch "solis/maps/maps/farm":[FarmMap, FarmLayer, FarmTerrain, FarmCrop];
+
+component Sprinkler {
+    has {
+        FarmMap farm;        -- filled in by Solis
+        int x = 3;
+        int y = 4;
+    }
+
+    method update(float dt) {
+        -- Water the cell if it's tilled soil and dry.
+        bool soil = farm:terrain(FarmLayer.Ground, x, y) == FarmTerrain.Soil;
+        is soil && not farm:watered(x, y)? then {
+            farm:setWatered(x, y, true);
+            farm:setGrowth(x, y, farm:growth(x, y) + 1);
+        }
+
+        -- Plant parsnips where nothing grows yet.
+        is farm:crop(x, y) == FarmCrop.None? then {
+            farm:setCrop(x, y, FarmCrop.Parsnip);
+        }
+    }
+}
+
+pass Sprinkler;
+end
+```
+
+| In the Map tab | becomes |
+|---|---|
+| its size | `farm:width()`, `farm:height()` (in cells) |
+| a layer's terrain on a cell | `farm:terrain(FarmLayer.Ground, x, y)`, `farm:setTerrain(FarmLayer.Ground, x, y, FarmTerrain.Soil)` |
+| a number value *growth* | `farm:growth(x, y)`, `farm:setGrowth(x, y, to)` |
+| a switch value *watered* | `farm:watered(x, y)`, `farm:setWatered(x, y, on)` |
+| a choice value *crop* | `farm:crop(x, y) == FarmCrop.Parsnip`, `farm:setCrop(x, y, FarmCrop.Corn)` |
+
+- Cells count from 0 at the map's first corner, as the Map tab shows them. A cell off the map reads as empty, 0 or off, and changing it does nothing.
+- Changes land at the end of the tick, like moves, and what code reads is the map as the tick started. They're in saves, and a solid terrain painted by code becomes a wall at once.
+- The map is the one placed by the first entity showing that file (most games have one per file).
+- Which cell is the player on? That comes with the 2D camera's milestone, as a way to turn a place in the world into a cell.
 
 ## Settings
 The Tile Map component:

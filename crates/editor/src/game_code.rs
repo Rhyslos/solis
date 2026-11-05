@@ -9,6 +9,7 @@ use area::Area;
 use glam::Mat4;
 use reflect::EntityId;
 use script::{Change, CodeProblem, Failure, Game, GameWorld, ViewIndex, WorldView};
+use std::collections::HashMap;
 use std::sync::Arc;
 
 impl Workbench {
@@ -276,6 +277,41 @@ pub(crate) fn new_game(rust: &[script::RustKind]) -> Result<Game, Failure> {
 pub(crate) struct ViewCache {
     revision: Option<u64>,
     index: Arc<ViewIndex>,
+    /// Each tile map file's path without its extension, by asset ID.
+    map_paths: HashMap<reflect::AssetId, String>,
+    /// The map files those paths were worked out for.
+    map_set: Option<Arc<world::MapFiles>>,
+    /// The maps at play game code reads, by path, and their world's
+    /// maps revision; and each path's entity, for changes to land on.
+    maps: (Option<u64>, Arc<HashMap<String, Arc<tiles::TileMap>>>),
+    map_ids: HashMap<String, EntityId>,
+}
+
+impl ViewCache {
+    /// Works out the map files' paths again when the editor's map files
+    /// change.
+    pub(crate) fn set_map_paths(&mut self, sheets: &crate::sprite_sheets::SpriteSheets) {
+        if self
+            .map_set
+            .as_ref()
+            .is_some_and(|m| Arc::ptr_eq(m, &sheets.map_set))
+        {
+            return;
+        }
+        self.map_set = Some(Arc::clone(&sheets.map_set));
+        self.map_paths = sheets
+            .map_set
+            .keys()
+            .filter_map(|id| {
+                let path = sheets.paths.get(id)?;
+                let stem = path
+                    .rsplit_once('.')
+                    .map_or(path.as_str(), |(stem, _)| stem);
+                Some((*id, stem.to_owned()))
+            })
+            .collect();
+        self.maps.0 = None;
+    }
 }
 
 /// Something game code asked to happen to the area: a copy of an
@@ -356,6 +392,29 @@ impl<'a> PlayWorld<'a> {
     }
 }
 
+impl PlayWorld<'_> {
+    /// The maps at play by their files' paths, made again only when one
+    /// changed (the first entity showing each file, by ID).
+    fn maps(&mut self) -> Arc<HashMap<String, Arc<tiles::TileMap>>> {
+        let revision = self.world.maps_revision();
+        if self.cache.maps.0 != Some(revision) {
+            let mut maps = HashMap::new();
+            let mut ids = HashMap::new();
+            for (id, asset, map) in self.world.tile_maps_at_play() {
+                if let Some(path) = self.cache.map_paths.get(&asset)
+                    && !maps.contains_key(path)
+                {
+                    maps.insert(path.clone(), Arc::new(map));
+                    ids.insert(path.clone(), id);
+                }
+            }
+            self.cache.maps = (Some(revision), Arc::new(maps));
+            self.cache.map_ids = ids;
+        }
+        Arc::clone(&self.cache.maps.1)
+    }
+}
+
 impl GameWorld for PlayWorld<'_> {
     fn view(&mut self) -> WorldView {
         let revision = self.world.revision();
@@ -376,6 +435,7 @@ impl GameWorld for PlayWorld<'_> {
             input: Arc::clone(&self.input),
             bindings: Arc::clone(&self.bindings),
             animator_states: Arc::new(self.world.animator_state_names()),
+            maps: self.maps(),
         }
     }
 
@@ -428,6 +488,18 @@ impl GameWorld for PlayWorld<'_> {
                     self.world.jump_to_animator_state(which, state);
                 }
                 Change::AnimatorSpeed(which, scale) => self.world.set_animator_speed(which, scale),
+                // A cell or value off the map, or a map no entity shows,
+                // changes nothing.
+                Change::MapTile(ref file, layer, cell, code) => {
+                    if let Some(&id) = self.cache.map_ids.get(file) {
+                        let _ = self.world.set_tile(id, layer, cell, code);
+                    }
+                }
+                Change::MapValue(ref file, value, cell, to) => {
+                    if let Some(&id) = self.cache.map_ids.get(file) {
+                        let _ = self.world.set_cell_value(id, value, cell, to);
+                    }
+                }
                 Change::BusVolume(ref bus, share) => self
                     .sounds
                     .push(crate::game_sound::Request::BusVolume(bus.clone(), share)),
