@@ -143,6 +143,13 @@ pub struct WorldView {
     /// The tile maps at play as the tick started, by their file's path
     /// without `.tilemap.lst` (the first entity showing each).
     pub maps: Arc<std::collections::HashMap<String, Arc<tiles::TileMap>>>,
+    /// Where each of those maps lies in the world, by the same path
+    /// (decision 0082).
+    pub map_places: Arc<std::collections::HashMap<String, crate::MapPlace>>,
+    /// The box each entity's tile map covers in the world, by entity.
+    pub map_bounds: Arc<std::collections::HashMap<EntityId, (Vec3, Vec3)>>,
+    /// How much of the world a 2D camera shows, in metres (x across, y up).
+    pub view_size: Vec3,
 }
 
 impl WorldView {
@@ -486,6 +493,18 @@ impl Host for ViewHost {
 
     fn map(&self, file: &str) -> Option<Arc<tiles::TileMap>> {
         self.view.maps.get(file).cloned()
+    }
+
+    fn map_place(&self, file: &str) -> Option<crate::MapPlace> {
+        self.view.map_places.get(file).copied()
+    }
+
+    fn map_bounds(&self, which: EntityId) -> Option<(Vec3, Vec3)> {
+        self.view.map_bounds.get(&which).copied()
+    }
+
+    fn view_size(&self) -> Vec3 {
+        self.view.view_size
     }
 
     fn set_map_tile(&mut self, file: &str, layer: usize, cell: [u32; 2], code: u8) {

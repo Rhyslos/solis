@@ -197,6 +197,24 @@ pub trait Host {
         None
     }
 
+    /// Where the tile map from the file `file` lies in the world, as the
+    /// tick started (decision 0082).
+    fn map_place(&self, file: &str) -> Option<MapPlace> {
+        let _ = file;
+        None
+    }
+    /// The box a tile map on `which` covers in the world (its lowest and
+    /// highest corners), as the tick started.
+    fn map_bounds(&self, which: EntityId) -> Option<(Vec3, Vec3)> {
+        let _ = which;
+        None
+    }
+    /// How much of the world a 2D camera shows, in metres (x across, y
+    /// up); nothing for a host without 2D settings.
+    fn view_size(&self) -> Vec3 {
+        Vec3::ZERO
+    }
+
     /// The component about to run, and where what it does belongs in the
     /// tick's order ([decision 0033](../../../docs/decisions/0033-game-code-sees-the-start-of-the-tick.md)).
     /// A host that keeps changes to land later (game code on several
@@ -230,6 +248,62 @@ pub fn facing_along(direction: Vec3) -> Quat {
     let compass = (-direction.x).atan2(direction.y);
     let tip = direction.z.atan2(flat);
     Quat::from_euler(glam::EulerRot::ZXY, compass, tip, 0.0)
+}
+
+/// Where a tile map lies in the world (decision 0082): its entity's
+/// transform, a cell's size in metres, and its size in cells. Its top
+/// left corner is at the entity; columns go along x, rows down y.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct MapPlace {
+    /// The entity's transform.
+    pub transform: glam::Mat4,
+    /// A cell's size in metres, across and down.
+    pub cell: [f32; 2],
+    /// The map's size in cells.
+    pub size: [u32; 2],
+}
+
+impl MapPlace {
+    /// The cell at `place` (column and row, even off the map), and whether
+    /// it's on the map.
+    pub fn cell_at(&self, place: Vec3) -> ([i64; 2], bool) {
+        let local = self.transform.inverse().transform_point3(place);
+        let (x, y) = (
+            (local.x / self.cell[0]).floor(),
+            (-local.y / self.cell[1]).floor(),
+        );
+        let far = 1.0e9;
+        if !(x.is_finite() && y.is_finite() && x.abs() < far && y.abs() < far) {
+            return ([0, 0], false);
+        }
+        let (x, y) = (x as i64, y as i64);
+        let [w, h] = self.size;
+        (
+            [x, y],
+            (0..i64::from(w)).contains(&x) && (0..i64::from(h)).contains(&y),
+        )
+    }
+
+    /// The place in the world at the middle of the cell `[x, y]`.
+    pub fn place_of(&self, x: i64, y: i64) -> Vec3 {
+        self.transform.transform_point3(Vec3::new(
+            (x as f32 + 0.5) * self.cell[0],
+            -(y as f32 + 0.5) * self.cell[1],
+            0.0,
+        ))
+    }
+
+    /// The box the map covers: its lowest and highest corners.
+    pub fn bounds(&self) -> (Vec3, Vec3) {
+        let [w, h] = self.size;
+        let a = self.transform.transform_point3(Vec3::ZERO);
+        let b = self.transform.transform_point3(Vec3::new(
+            w as f32 * self.cell[0],
+            -(h as f32) * self.cell[1],
+            0.0,
+        ));
+        (a.min(b), a.max(b))
+    }
 }
 
 /// A projectile game code fires (`fire`): where from, which way, how fast
@@ -755,6 +829,52 @@ pub(crate) fn with_natives<'h, R>(
         let cell = |x: i64, y: i64| -> Option<[u32; 2]> {
             Some([u32::try_from(x).ok()?, u32::try_from(y).ok()?])
         };
+        natives.raw_set(
+            "Maps_cellAt",
+            scope.create_function(
+                move |lua, (_m, file, place): (LuaValue, mlua::LuaString, LuaValue)| {
+                    let found = vec3_of(&place)
+                        .zip(h.borrow().map_place(&file.to_str()?))
+                        .map(|(place, map)| map.cell_at(place));
+                    let ([x, y], inside) = found.unwrap_or(([0, 0], false));
+                    let t = lua.create_table()?;
+                    t.raw_set("inside", inside)?;
+                    t.raw_set("x", x as f64)?;
+                    t.raw_set("y", y as f64)?;
+                    Ok(t)
+                },
+            )?,
+        )?;
+        natives.raw_set(
+            "Maps_placeOf",
+            scope.create_function(
+                move |_, (_m, file, x, y): (LuaValue, mlua::LuaString, i64, i64)| {
+                    let place = h
+                        .borrow()
+                        .map_place(&file.to_str()?)
+                        .map_or(Vec3::ZERO, |map| map.place_of(x, y));
+                    Ok(vec3_value(place))
+                },
+            )?,
+        )?;
+        natives.raw_set(
+            "entity_mapBounds",
+            scope.create_function(move |lua, which: LuaValue| {
+                let bounds = entity_of(&which).and_then(|e| h.borrow().map_bounds(e));
+                let t = lua.create_table()?;
+                t.raw_set("found", bounds.is_some())?;
+                let (low, high) = bounds.unwrap_or((Vec3::ZERO, Vec3::ZERO));
+                t.raw_set("low", vec3_value(low))?;
+                t.raw_set("high", vec3_value(high))?;
+                Ok(t)
+            })?,
+        )?;
+        natives.raw_set(
+            "World_viewSize",
+            scope.create_function(move |_, _world: LuaValue| {
+                Ok(vec3_value(h.borrow().view_size()))
+            })?,
+        )?;
         natives.raw_set(
             "Maps_width",
             scope.create_function(move |_, (_m, file): (LuaValue, mlua::LuaString)| {

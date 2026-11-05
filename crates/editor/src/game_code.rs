@@ -285,6 +285,9 @@ pub(crate) struct ViewCache {
     /// maps revision; and each path's entity, for changes to land on.
     maps: (Option<u64>, Arc<HashMap<String, Arc<tiles::TileMap>>>),
     map_ids: HashMap<String, EntityId>,
+    /// Every entity showing a map, with its file's path (if it has one)
+    /// and its size in cells, for where maps lie (decision 0082).
+    map_entities: Vec<(EntityId, Option<String>, [u32; 2])>,
 }
 
 impl ViewCache {
@@ -397,18 +400,53 @@ impl PlayWorld<'_> {
         if self.cache.maps.0 != Some(revision) {
             let mut maps = HashMap::new();
             let mut ids = HashMap::new();
+            let mut entities = Vec::new();
             for (id, asset, map) in self.world.tile_maps_at_play() {
-                if let Some(path) = self.cache.map_paths.get(&asset)
-                    && !maps.contains_key(path)
+                let path = self.cache.map_paths.get(&asset).cloned();
+                entities.push((id, path.clone(), map.size()));
+                if let Some(path) = path
+                    && !maps.contains_key(&path)
                 {
                     maps.insert(path.clone(), Arc::new(map));
-                    ids.insert(path.clone(), id);
+                    ids.insert(path, id);
                 }
             }
             self.cache.maps = (Some(revision), Arc::new(maps));
             self.cache.map_ids = ids;
+            self.cache.map_entities = entities;
         }
         Arc::clone(&self.cache.maps.1)
+    }
+
+    /// Where each map at play lies, by its file's path (the first entity
+    /// showing it), and the box each entity's map covers: worked out each
+    /// tick, since game code may move a map's entity.
+    fn map_places(
+        &self,
+    ) -> (
+        HashMap<String, script::MapPlace>,
+        HashMap<EntityId, (glam::Vec3, glam::Vec3)>,
+    ) {
+        let cell = self.world.pixels().tile_size();
+        let mut places = HashMap::new();
+        let mut bounds = HashMap::new();
+        for (id, path, size) in &self.cache.map_entities {
+            let Some(transform) = self.world.global(*id) else {
+                continue;
+            };
+            let place = script::MapPlace {
+                transform,
+                cell,
+                size: *size,
+            };
+            bounds.insert(*id, place.bounds());
+            if let Some(path) = path
+                && self.cache.map_ids.get(path) == Some(id)
+            {
+                places.insert(path.clone(), place);
+            }
+        }
+        (places, bounds)
     }
 }
 
@@ -421,6 +459,8 @@ impl GameWorld for PlayWorld<'_> {
         }
         let mut places: Vec<Mat4> = Vec::new();
         self.world.globals(&mut places);
+        let maps = self.maps();
+        let places_of_maps = self.map_places();
         WorldView {
             time: self.time,
             index: Arc::clone(&self.cache.index),
@@ -432,7 +472,17 @@ impl GameWorld for PlayWorld<'_> {
             input: Arc::clone(&self.input),
             bindings: Arc::clone(&self.bindings),
             animator_states: Arc::new(self.world.animator_state_names()),
-            maps: self.maps(),
+            maps,
+            map_places: Arc::new(places_of_maps.0),
+            map_bounds: Arc::new(places_of_maps.1),
+            view_size: {
+                let pixels = self.world.pixels();
+                glam::Vec3::new(
+                    pixels.base[0] as f32 * pixels.pixel_size(),
+                    pixels.base[1] as f32 * pixels.pixel_size(),
+                    0.0,
+                )
+            },
         }
     }
 

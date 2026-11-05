@@ -39,7 +39,14 @@ pub struct MapNames {
 }
 
 /// The methods every map's class has, which no value may take.
-const OWN: &[&str] = &["width", "height", "terrain", "setTerrain"];
+const OWN: &[&str] = &[
+    "width",
+    "height",
+    "terrain",
+    "setTerrain",
+    "cellAt",
+    "placeOf",
+];
 
 /// Words with each one's first letter a capital (`use tool` is `UseTool`),
 /// as a Lust name, or none.
@@ -179,6 +186,10 @@ pub fn map_file(
     let mut methods = format!(
         "    -- How many cells across and up.\n    method int width() {{\n        return Maps:width({file});\n    }}\n\
          \x20   method int height() {{\n        return Maps:height({file});\n    }}\n\
+         \x20   -- The cell at a place in the world (whether it's on the map, and its x and y).\n\
+         \x20   method MapCell cellAt(vec3 place) {{\n        return Maps:cellAt({file}, place);\n    }}\n\
+         \x20   -- The place in the world at a cell's middle.\n\
+         \x20   method vec3 placeOf(int x, int y) {{\n        return Maps:placeOf({file}, x, y);\n    }}\n\
          \x20   -- The terrain painted on a layer's cell.\n    method {terrain_state} terrain({layer_state} layer, int x, int y) {{\n"
     );
     methods.push_str(&to_number("layer", "at", &layers, &index));
@@ -249,7 +260,7 @@ pub fn map_file(
         "-- Made by {made_by}: the tile map {path}'s names, for game code. It's written again\n\
          -- whenever the map or its tileset changes, so changes made here don't last.\n\
          -- Hold one in a component as a field the engine fills in: {class} map;\n\n\
-         fetch \"{folder}/tiles\":Maps;\n\n\
+         fetch \"{folder}/tiles\":[Maps, MapCell];\n\n\
          {states}\
          class {class} {{\n    has {{\n        entity owner = nothing;\n    }}\n{methods}}}\n\n\
          pass {};\nend\n",

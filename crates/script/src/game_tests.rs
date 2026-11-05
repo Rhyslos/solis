@@ -68,6 +68,9 @@ impl GameWorld for TestWorld {
             bindings: Arc::default(),
             animator_states: Arc::default(),
             maps: Arc::default(),
+            map_places: Arc::default(),
+            map_bounds: Arc::default(),
+            view_size: Vec3::ZERO,
         }
     }
 

@@ -13,6 +13,7 @@ world: object World: method fire(vec3 from, vec3 direction, float speed, float l
 world: object World: method entity spawn(Assembly which, vec3 place) native;
 world: method entity:despawn() native;
 world: object World: method float frameTime() native;
+world: object World: method vec3 viewSize() native;
 world: object World: method float random() native;
 world: object World: method float randomRange(float low, float high) native;
 world: object World: method int randomInt(int low, int high) native;
@@ -45,6 +46,9 @@ tiles: object Maps: method bool isOn(string tileMap, int value, int x, int y) na
 tiles: object Maps: method setSwitch(string tileMap, int value, int x, int y, bool on) native;
 tiles: object Maps: method int choice(string tileMap, int value, int x, int y) native;
 tiles: object Maps: method setChoice(string tileMap, int value, int x, int y, int chosen) native;
+tiles: object Maps: method MapCell cellAt(string tileMap, vec3 place) native;
+tiles: object Maps: method vec3 placeOf(string tileMap, int x, int y) native;
+tiles: method MapBounds entity:mapBounds() native;
 input: object Input: method bool held(Action action) native;
 input: object Input: method bool pressed(Action action) native;
 input: object Input: method bool released(Action action) native;
@@ -88,10 +92,12 @@ solis.Input:held
 solis.Input:pressed
 solis.Input:rebind
 solis.Input:released
+solis.Maps:cellAt
 solis.Maps:choice
 solis.Maps:height
 solis.Maps:isOn
 solis.Maps:number
+solis.Maps:placeOf
 solis.Maps:setChoice
 solis.Maps:setNumber
 solis.Maps:setSwitch
@@ -111,11 +117,13 @@ solis.World:say
 solis.World:setSeed
 solis.World:spawn
 solis.World:time
+solis.World:viewSize
 solis.entity.animate
 solis.entity.animateFromStart
 solis.entity.despawn
 solis.entity.face
 solis.entity.grounded
+solis.entity.mapBounds
 solis.entity.moveTo
 solis.entity.name
 solis.entity.playSound
@@ -181,6 +189,9 @@ Host: fn map(&self, file: &str) -> Option<std::sync::Arc<tiles::TileMap>>
 Host: fn set_map_tile(&mut self, file: &str, layer: usize, cell: [u32
 Host: fn set_map_value(&mut self, file: &str, value: usize, cell: [u32
 Host: fn cast_ray(&self, from: Vec3, direction: Vec3, reach: f32) -> Option<physics::Hit>
+Host: fn map_place(&self, file: &str) -> Option<MapPlace>
+Host: fn map_bounds(&self, which: EntityId) -> Option<(Vec3, Vec3)>
+Host: fn view_size(&self) -> Vec3
 Host: fn at(&mut self, order: &crate::ticking::Order)
 RustComponent: fn update(&mut self, _cx: &mut Context<'_>, _dt: f64)
 RustComponent: fn handle(&mut self, _cx: &mut Context<'_>, _event: &Event) -> bool
@@ -241,3 +252,9 @@ kit/cameras.lst: RtsCamera.float tilt = 55
 kit/cameras.lst: RtsCamera.float panSpeed = 20
 kit/cameras.lst: RtsCamera.float turnSpeed = 90
 kit/cameras.lst: RtsCamera.float yaw = 0
+kit/cameras.lst: component FollowCamera2D
+kit/cameras.lst: FollowCamera2D.entity target = nothing
+kit/cameras.lst: FollowCamera2D.entity bounds = nothing
+kit/cameras.lst: FollowCamera2D.vec3 deadZone = [1, 0.75, 0]
+kit/cameras.lst: FollowCamera2D.float smoothing = 0.2
+kit/cameras.lst: FollowCamera2D.vec3 speed = [0, 0, 0]

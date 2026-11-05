@@ -80,6 +80,34 @@ end
 | a number value *growth* | `farm:growth(x, y)`, `farm:setGrowth(x, y, to)` |
 | a switch value *watered* | `farm:watered(x, y)`, `farm:setWatered(x, y, on)` |
 | a choice value *crop* | `farm:crop(x, y) == FarmCrop.Parsnip`, `farm:setCrop(x, y, FarmCrop.Corn)` |
+| the cell at a place in the world | `farm:cellAt(position())`: a `MapCell` with `inside` (on the map?), `x` and `y` |
+| the place at a cell's middle | `farm:placeOf(x, y)` |
+| the box a map's entity covers | `ground:mapBounds()`: a `MapBounds` with `found`, `low` and `high` corners |
+
+**Which cell is the player on?** Ask the map with the player's place. `MapCell` comes from `solis/tiles`:
+
+```lust
+fetch "solis/maps/maps/farm":[FarmMap, FarmLayer, FarmTerrain];
+fetch "solis/tiles":MapCell;
+
+component Hoe {
+    has {
+        FarmMap farm;
+    }
+
+    method update(float dt) {
+        MapCell here = farm:cellAt(position());
+        is here.inside && farm:terrain(FarmLayer.Ground, here.x, here.y) == FarmTerrain.Grass? then {
+            farm:setTerrain(FarmLayer.Ground, here.x, here.y, FarmTerrain.Tilled);
+        }
+    }
+}
+
+pass Hoe;
+end
+```
+
+It works wherever the map's entity is, even moved or turned. Cells are counted from the map's top left corner, x across and y down, like the Map tab; a place off the map still gets the cell it would be (handy for a tool reaching past the edge), with `inside` false. A 2D camera that stays inside the map is ready-made: **FollowCamera2D** ([Characters and cameras](characters-and-cameras.md)).
 
 - Cells count from 0 at the map's first corner, as the Map tab shows them. A cell off the map reads as empty, 0 or off, and changing it does nothing.
 - Changes land at the end of the tick, like moves, and what code reads is the map as the tick started. They're in saves, and a solid terrain painted by code becomes a wall at once.

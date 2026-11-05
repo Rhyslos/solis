@@ -450,3 +450,52 @@ fn game_code_waters_the_farm_through_the_map_s_own_file() {
     let file = w.sprite_sheets().tile_map(map).unwrap();
     assert_eq!(file.value(2, 4, 4), Some(CellValue::Switch(false)));
 }
+
+#[test]
+fn game_code_finds_the_cell_at_a_place_wherever_the_map_is() {
+    let (mut w, map, _) = with_map();
+    let placed = w.place_tile_map(map, None).unwrap();
+    let names = w.sprite_sheets().map_names();
+    let (path, text) = script::map_code::map_file("Test 1.0", "solis", &names[0])
+        .0
+        .unwrap();
+    let mut files = script::describe::descriptions("Test 1.0", "solis");
+    files.push((path, text));
+    // The middle of cell 6, 2 is on the map, and its cell is 6, 2 again,
+    // wherever the map was placed; past the map's box is off it.
+    files.push((
+        "main.lst".into(),
+        "fetch \"solis/maps/farm\":FarmMap;\nfetch \"solis/tiles\":[MapCell, MapBounds];\n\
+         component Finder {\n    has {\n        FarmMap farm;\n    }\n\
+         \x20   method update(float dt) {\n\
+         \x20       MapCell cell = farm:cellAt(farm:placeOf(6, 2));\n\
+         \x20       MapBounds box = mapBounds();\n\
+         \x20       bool off = farm:cellAt(box.high + [1, 1, 0]).inside;\n\
+         \x20       is cell.inside && box.found && not off? then {\n            farm:setWatered(cell.x, cell.y, true);\n        }\n\
+         \x20   }\n}\npass Finder;\nend\n"
+            .into(),
+    ));
+    let code = script::Code {
+        files,
+        lua: Vec::new(),
+        notes: Vec::new(),
+    };
+    let program = match script::compile(&code) {
+        Ok(Some(c)) => Arc::new(c),
+        Ok(None) => panic!("no code"),
+        Err(problems) => panic!("{}", problems[0]),
+    };
+    w.set_program(Some(program));
+    w.apply_property(
+        crate::properties::PropertyRequest::AddComponent {
+            entity: placed,
+            component: "Finder".into(),
+        },
+        1,
+    );
+    w.play();
+    w.run_game(2.0 / 60.0);
+    let played = w.world().unwrap().tile_map(placed).unwrap();
+    assert_eq!(played.value(2, 6, 2), Some(CellValue::Switch(true)));
+    assert_eq!(played.value(2, 2, 6), Some(CellValue::Switch(false)));
+}

@@ -33,6 +33,6 @@ Game code (decision 0028): a project's Lust, checked and turned into Lua by the 
 
 ## Tests
 
-`runtime_tests.rs` and the `runtime_*_tests.rs` files test `runtime.rs`: events, swapping code, Lua components, hostile code that once froze or crashed the editor, where the runtime meets the rest (seams), and the speed fixes. `game_tests.rs` tests `game.rs`: the same results on one shard or many; `game_objects_tests.rs` its game-wide objects.
+`runtime_tests.rs` and the `runtime_*_tests.rs` files test `runtime.rs`: events, swapping code, Lua components, hostile code that once froze or crashed the editor, where the runtime meets the rest (seams), and the speed fixes. `runtime_camera_tests.rs` tests cells at places and the kit's 2D follow camera. `game_tests.rs` tests `game.rs`: the same results on one shard or many; `game_objects_tests.rs` its game-wide objects.
 
 **Read next:** the crate's [README](../README.md).
