@@ -9,7 +9,7 @@ Updates (decision 0043): finds the newest build of the program on GitHub, downlo
 | `lib.rs` | Lists the modules and what the crate offers. | |
 | `check.rs` | Checking for updates and downloading one, each on a thread of its own: a check only asks; the download waits until the person says Update now (decision 0045). | `Status`, `Remote`, `start`, `start_download`, `should_offer` |
 | `fetch.rs` | Talking to GitHub over HTTPS, checked by the system's own certificates: asking for the latest release and downloading its files. | `Source` |
-| `release.rs` | What GitHub says about the newest build, read within limits, and the checksum file published beside it. | `Release`, `Asset`, `read_release`, `read_checksum`, `sha256` |
+| `release.rs` | What GitHub says about the newest build, read within limits (with its notes, cut short and stripped of control characters, and the day it was published, for the launcher's Updates page), and the checksum file published beside it. | `Release`, `Asset`, `read_release`, `notes_of`, `day_of`, `read_checksum`, `sha256` |
 | `install.rs` | This copy of the program: its build number, whether the installer put it here, where updates are downloaded, and starting an installer. | `this_build`, `is_installed`, `start_installer` |
 | `tests.rs` | Tests, including damaged release answers that must be read or refused, never crash. | |
 

@@ -17,6 +17,8 @@ fn release(build: u64) -> Release {
         build,
         installer: asset("solis-setup.exe"),
         checksum: asset("solis-setup.exe.sha256"),
+        notes: String::new(),
+        published: None,
     }
 }
 

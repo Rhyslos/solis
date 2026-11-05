@@ -132,7 +132,14 @@ jobs:
           NAME: ${{ steps.brand.outputs.name }}
           BUILD: ${{ steps.brand.outputs.build }}
         run: |
+          # What the build brings, as the launcher's Updates page shows it
+          # (decision 0086): a merge's pull request title (the first line
+          # of its message's body), or the commit's own subject.
           subject=$(git log -1 --format=%s)
+          title=$(git log -1 --format=%b | sed -n '/./{p;q;}')
+          case "$subject" in
+            "Merge pull request"*) [ -n "$title" ] && subject="$title" ;;
+          esac
           printf 'Build %s of %s, from %s:\n\n> %s\n\nInstall it with the setup file below. Installed copies update to it by themselves.\n' \
             "$BUILD" "$NAME" "$GITHUB_SHA" "$subject" > notes.md
           if gh release view "$TAG" > /dev/null 2>&1; then

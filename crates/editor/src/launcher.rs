@@ -46,6 +46,8 @@ pub(crate) enum Page {
     Projects,
     /// The examples and how to begin.
     Learn,
+    /// This build, the newest, and updating.
+    Updates,
 }
 
 /// How the projects are ordered (pinned ones always first).
@@ -304,6 +306,64 @@ fn name_problem(name: &str) -> Option<String> {
     }
 }
 
+/// The Updates page's words about the newest build: a small heading,
+/// a big line and what it means.
+fn newest_words(
+    update: &crate::updates::UpdateNotice,
+    name: &str,
+) -> (&'static str, String, String) {
+    use crate::updates::UpdateNotice as N;
+    match update {
+        N::Available(b) => (
+            "NEW BUILD",
+            format!("Build {b}"),
+            "Out now: download it while you work; it installs when you close or restart."
+                .to_string(),
+        ),
+        N::Downloading(b) => (
+            "NEW BUILD",
+            format!("Build {b}"),
+            "Downloading…".to_string(),
+        ),
+        N::Ready(b) => (
+            "NEW BUILD",
+            format!("Build {b}"),
+            format!(
+                "Downloaded and checked. {name} closes (asking about unsaved work first), \
+                 updates and opens again. Your projects aren't touched."
+            ),
+        ),
+        N::NotInstalled(b) => (
+            "NEW BUILD",
+            format!("Build {b}"),
+            "This copy wasn't installed with the installer, so it can't update itself: get \
+             the new build from the releases page."
+                .to_string(),
+        ),
+        N::UpToDate(_) => (
+            "NEWEST BUILD",
+            "You have it".to_string(),
+            "Nothing to do.".to_string(),
+        ),
+        N::Checking => (
+            "NEWEST BUILD",
+            "Checking…".to_string(),
+            "Asking GitHub.".to_string(),
+        ),
+        N::NotChecked => (
+            "NEWEST BUILD",
+            "Not checked yet".to_string(),
+            "Check now asks GitHub.".to_string(),
+        ),
+        N::FromSource => (
+            "NEWEST BUILD",
+            "—".to_string(),
+            "Copies built from source don't update themselves; installed copies do.".to_string(),
+        ),
+        N::Failed(why) => ("NEWEST BUILD", "Couldn't check".to_string(), why.clone()),
+    }
+}
+
 /// Seconds since 1970, now.
 fn now() -> u64 {
     std::time::SystemTime::now()
@@ -405,6 +465,7 @@ impl Workbench {
             .show(ui, |ui| match self.launcher.page {
                 Page::Projects => self.projects_page(ui, &mut asked),
                 Page::Learn => self.learn_page(ui, &mut asked),
+                Page::Updates => self.updates_page(ui, &mut asked),
             });
         self.rename_question(ui, &mut asked);
         for action in asked {
@@ -434,9 +495,15 @@ impl Workbench {
             );
         });
         ui.add_space(22.0);
+        let newer = self.update.newer_build();
         for (page, name, icon) in [
-            (Page::Projects, "Projects", crate::icons::Icon::Library),
-            (Page::Learn, "Learn", crate::icons::Icon::Info),
+            (
+                Page::Projects,
+                "Projects",
+                Some(crate::icons::Icon::Library),
+            ),
+            (Page::Learn, "Learn", Some(crate::icons::Icon::Info)),
+            (Page::Updates, "Updates", None),
         ] {
             let on = self.launcher.page == page;
             let (rect, item) =
@@ -448,19 +515,43 @@ impl Workbench {
                 painter.rect_filled(rect, 6.0, theme::MENU_ROW);
             }
             let colour = if on { theme::TEXT_STRONG } else { theme::TEXT };
-            crate::icons::icon(
-                painter,
-                egui::Rect::from_center_size(
-                    rect.left_center() + vec2(20.0, 0.0),
-                    vec2(14.0, 14.0),
+            let icon_colour = if on {
+                self.accent.colors().fill
+            } else {
+                theme::TEXT_WEAK
+            };
+            let icon_at = rect.left_center() + vec2(20.0, 0.0);
+            match icon {
+                Some(icon) => crate::icons::icon(
+                    painter,
+                    egui::Rect::from_center_size(icon_at, vec2(14.0, 14.0)),
+                    icon,
+                    icon_colour,
                 ),
-                icon,
-                if on {
-                    self.accent.colors().fill
-                } else {
-                    theme::TEXT_WEAK
-                },
-            );
+                // A downward arrow onto a line: updates.
+                None => {
+                    let stroke = egui::Stroke::new(1.5, icon_colour);
+                    let c = icon_at;
+                    painter.line_segment([c + vec2(0.0, -6.0), c + vec2(0.0, 3.0)], stroke);
+                    painter.line_segment([c + vec2(-4.0, -1.0), c + vec2(0.0, 3.0)], stroke);
+                    painter.line_segment([c + vec2(4.0, -1.0), c + vec2(0.0, 3.0)], stroke);
+                    painter.line_segment([c + vec2(-6.0, 6.5), c + vec2(6.0, 6.5)], stroke);
+                }
+            }
+            if page == Page::Updates && newer.is_some() {
+                let badge = egui::Rect::from_min_size(
+                    egui::pos2(rect.right() - 46.0, rect.center().y - 9.0),
+                    vec2(38.0, 18.0),
+                );
+                painter.rect_filled(badge, 9.0, self.accent.colors().fill);
+                painter.text(
+                    badge.center(),
+                    Align2::CENTER_CENTER,
+                    "New",
+                    FontId::proportional(11.0),
+                    Color32::WHITE,
+                );
+            }
             painter.text(
                 rect.left_center() + vec2(38.0, 0.0),
                 Align2::LEFT_CENTER,
@@ -485,6 +576,21 @@ impl Workbench {
                 ),
             };
             ui.label(RichText::new(build).small().color(theme::TEXT_WEAK));
+            if let Some(line) = match &self.update {
+                crate::updates::UpdateNotice::Ready(b) => {
+                    Some(format!("Build {b} is ready to install"))
+                }
+                crate::updates::UpdateNotice::Available(b)
+                | crate::updates::UpdateNotice::NotInstalled(b) => {
+                    Some(format!("Build {b} is out"))
+                }
+                crate::updates::UpdateNotice::Downloading(b) => {
+                    Some(format!("Downloading build {b}…"))
+                }
+                _ => None,
+            } {
+                ui.label(RichText::new(line).small().color(theme::WARNING));
+            }
             ui.add_space(6.0);
             let back = match &self.project {
                 Some(p) => format!("← Back to {}", p.name),
@@ -1068,6 +1174,198 @@ impl Workbench {
             Some(false) => self.launcher.renaming = None,
             None => {}
         }
+    }
+
+    fn updates_page(&mut self, ui: &mut Ui, asked: &mut Vec<WorkbenchAction>) {
+        use crate::updates::UpdateNotice as N;
+        let fill = self.accent.colors().fill;
+        let name = self.info.name.clone();
+        ui.label(
+            RichText::new("Updates")
+                .size(24.0)
+                .strong()
+                .color(theme::TEXT_STRONG),
+        );
+        ui.add_space(16.0);
+        let card = |fill: Color32, edge: Color32| {
+            egui::Frame::new()
+                .fill(fill)
+                .stroke(egui::Stroke::new(1.0, edge))
+                .corner_radius(10.0)
+                .inner_margin(egui::Margin::symmetric(20, 16))
+        };
+        let small_heading = |ui: &mut Ui, text: &str, colour: Color32| {
+            ui.label(RichText::new(text).small().strong().color(colour));
+        };
+        ui.horizontal_top(|ui| {
+            card(theme::PANEL, Color32::from_rgb(0x30, 0x30, 0x30)).show(ui, |ui| {
+                ui.set_width(260.0);
+                ui.set_min_height(86.0);
+                ui.vertical(|ui| {
+                    small_heading(ui, "YOU HAVE", theme::TEXT_WEAK);
+                    let (big, under) = match self.this_build {
+                        Some(build) => (
+                            format!("Build {build}"),
+                            format!("{name} {}", self.info.version),
+                        ),
+                        None => (
+                            format!("{name} {}", self.info.version),
+                            "Built from source: it doesn't update itself".to_string(),
+                        ),
+                    };
+                    ui.label(
+                        RichText::new(big)
+                            .size(24.0)
+                            .strong()
+                            .color(theme::TEXT_STRONG),
+                    );
+                    ui.label(RichText::new(under).color(theme::TEXT_WEAK));
+                });
+            });
+            ui.add_space(12.0);
+            let newer = self.update.newer_build();
+            let (back, edge) = if newer.is_some() {
+                (
+                    Color32::from_rgb(0x23, 0x30, 0x3f),
+                    Color32::from_rgb(0x3f, 0x5a, 0x7a),
+                )
+            } else {
+                (theme::PANEL, Color32::from_rgb(0x30, 0x30, 0x30))
+            };
+            card(back, edge).show(ui, |ui| {
+                ui.set_width((ui.available_width() - 40.0).max(300.0));
+                ui.set_min_height(86.0);
+                ui.horizontal(|ui| {
+                    ui.vertical(|ui| {
+                        let (heading, big, under) = newest_words(&self.update, &name);
+                        let colour = if newer.is_some() {
+                            Color32::from_rgb(0x9c, 0xc5, 0xf5)
+                        } else {
+                            theme::TEXT_WEAK
+                        };
+                        small_heading(ui, heading, colour);
+                        let mut line = RichText::new(big)
+                            .size(24.0)
+                            .strong()
+                            .color(theme::TEXT_STRONG);
+                        if newer.is_none() {
+                            line = line.size(18.0);
+                        }
+                        ui.label(line);
+                        if let Some(day) = self
+                            .release_notes
+                            .as_ref()
+                            .filter(|n| Some(n.build) == newer)
+                            .and_then(|n| n.published.clone())
+                        {
+                            ui.label(
+                                RichText::new(format!("Published {day}"))
+                                    .small()
+                                    .color(theme::TEXT_WEAK),
+                            );
+                        }
+                        ui.add(egui::Label::new(RichText::new(under).color(theme::TEXT)).wrap());
+                    });
+                });
+                ui.add_space(8.0);
+                ui.horizontal(|ui| {
+                    let big = |text: &str| {
+                        egui::Button::new(RichText::new(text).color(Color32::WHITE).strong())
+                            .fill(fill)
+                            .min_size(vec2(0.0, 32.0))
+                    };
+                    let button = match &self.update {
+                        N::Available(_) => Some(("Download", WorkbenchAction::DownloadUpdate)),
+                        N::Ready(_) => Some(("Restart to update", WorkbenchAction::Quit)),
+                        N::NotInstalled(_) => {
+                            Some(("Open the releases page ↗", WorkbenchAction::OpenUpdatePage))
+                        }
+                        _ => None,
+                    };
+                    if let Some((text, action)) = button
+                        && ui.add(big(text)).clicked()
+                    {
+                        // Restart to update: the window closes to install it.
+                        self.restarting = action == WorkbenchAction::Quit;
+                        asked.push(action);
+                    }
+                });
+            });
+        });
+        ui.add_space(14.0);
+        ui.horizontal(|ui| {
+            let busy = matches!(self.update, N::Checking | N::Downloading(_));
+            if ui
+                .add_enabled(
+                    !busy,
+                    egui::Button::new("Check now").min_size(vec2(0.0, 28.0)),
+                )
+                .on_hover_text("Asks GitHub for the newest build now")
+                .clicked()
+            {
+                asked.push(WorkbenchAction::CheckForUpdates);
+            }
+            ui.add_space(12.0);
+            let mut auto = self.auto_update;
+            if ui
+                .checkbox(&mut auto, format!("Look for updates when {name} starts"))
+                .changed()
+            {
+                self.auto_update = auto;
+                asked.push(WorkbenchAction::SetAutoUpdate(auto));
+            }
+        });
+        ui.add_space(16.0);
+        let notes = self
+            .release_notes
+            .clone()
+            .filter(|n| Some(n.build) == self.update.newer_build());
+        if let Some(notes) = notes {
+            card(theme::PANEL, Color32::from_rgb(0x30, 0x30, 0x30)).show(ui, |ui| {
+                ui.set_width(ui.available_width());
+                ui.label(
+                    RichText::new(format!("What's new in build {}", notes.build))
+                        .size(17.0)
+                        .strong()
+                        .color(theme::TEXT_STRONG),
+                );
+                ui.add_space(6.0);
+                let text = if notes.notes.is_empty() {
+                    "Its release says nothing more: see the changes list.".to_string()
+                } else {
+                    notes.notes.clone()
+                };
+                egui::ScrollArea::vertical()
+                    .max_height(260.0)
+                    .show(ui, |ui| {
+                        for line in text.lines() {
+                            let line = line.trim_start_matches("> ");
+                            ui.add(egui::Label::new(RichText::new(line).color(theme::TEXT)).wrap());
+                        }
+                    });
+                ui.add_space(8.0);
+                if ui.link("Every change, build by build ↗").clicked() {
+                    asked.push(WorkbenchAction::OpenUpdatePage);
+                }
+            });
+            ui.add_space(12.0);
+        }
+        egui::Frame::new()
+            .fill(Color32::from_rgb(0x2e, 0x28, 0x16))
+            .stroke(egui::Stroke::new(1.0, Color32::from_rgb(0x4a, 0x3d, 0x1c)))
+            .corner_radius(6.0)
+            .inner_margin(egui::Margin::symmetric(14, 10))
+            .show(ui, |ui| {
+                ui.set_width(ui.available_width());
+                ui.label(
+                    RichText::new(
+                        "Projects opened with an older build open in a newer one. Files laid \
+                         out the old way are upgraded when saved, with a backup copy first, so \
+                         you can go back.",
+                    )
+                    .color(Color32::from_rgb(0xe8, 0xc0, 0x6a)),
+                );
+            });
     }
 
     fn learn_page(&mut self, ui: &mut Ui, asked: &mut Vec<WorkbenchAction>) {

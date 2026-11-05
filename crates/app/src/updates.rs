@@ -188,6 +188,11 @@ impl Updates {
             ),
             Status::Available(release) => {
                 let build = release.build;
+                workbench.set_release_notes(Some(editor::ReleaseNotes {
+                    build,
+                    notes: release.notes.clone(),
+                    published: release.published.clone(),
+                }));
                 let copy = this_copy();
                 let said = if self.asked {
                     workbench.offer_update(UpdateOffer {
@@ -294,6 +299,8 @@ mod tests {
             build,
             installer: asset("a"),
             checksum: asset("b"),
+            notes: String::new(),
+            published: None,
         }
     }
 

@@ -204,9 +204,9 @@ Solis is built in phases, one milestone per pull request. Each phase ends with a
 
 **Gate:** a project from an older build opens, backed up and upgraded; a save from before an update loads after it.
 
-### Usable first — 2 of 10
+### Usable first — 3 of 10
 
-`██░░░░░░░░` 20%
+`███░░░░░░░` 30%
 
 <details>
 <summary>Milestones</summary>
@@ -217,7 +217,7 @@ Solis is built in phases, one milestone per pull request. Each phase ends with a
 - [ ] Game-wide objects
 - [x] 2D physics and top-down movement: solid terrains, walls, Collider2D, the kit's TopDownController ([decision 0071](docs/decisions/0071-2d-physics-and-top-down-movement.md))
 - [ ] The 2D camera
-- [ ] The launcher: projects, Learn and updates ([decision 0086](docs/decisions/0086-the-launcher.md); the Projects and Learn pages, and renaming, copying, scanning and locating built)
+- [x] The launcher: projects, Learn and updates ([decision 0086](docs/decisions/0086-the-launcher.md))
 - [ ] Game UI and the UI editor
 - [ ] Day and night, and lamps
 - [ ] The playtest export
