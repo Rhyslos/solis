@@ -3,7 +3,7 @@
 > Your game's controls as named actions: Move, Look, Jump, Sprint, Interact, the cameras' Pan, Turn, Zoom and Drag, and any you add, from the keyboard, mouse or a gamepad, and rebindable.
 
 ## When to use it
-Whenever the player controls something. Game code never asks "is W down?"; it asks "is the player moving?" (`axis("Move")`) or "did they press Jump?" (`pressed("Jump")`). Which keys and buttons mean Jump is set in one place, the **Input actions** window, so:
+Whenever the player controls something. Game code never asks "is W down?"; it asks "is the player moving?" (`Input:axis(Action.Move)`) or "did they press Jump?" (`Input:pressed(Action.Jump)`). Which keys and buttons mean Jump is set in one place, the **Input actions** window, so:
 - a gamepad works without extra code (the A button is bound to Jump too);
 - players can change the keys (rebinding) without changing your game;
 - a play's input can be recorded and played back exactly, which is how you check the game always comes out the same.
@@ -35,17 +35,18 @@ A connected **gamepad** works whenever the game is playing; it has nothing of th
 1. Each action shows its inputs. Click **×** beside one to unbind it.
 2. Click **+** and press the key, mouse button or gamepad button to bind (Esc cancels). Hold Ctrl, Alt or Shift while pressing a key to bind the **combination**, such as `Alt+Left`; turn the mouse wheel to bind a notch up or down.
 3. An **axis** (like Move) has **Up**, **Down**, **Left** and **Right** keys, and whole-axis inputs (a stick, the mouse's movement, or the mouse wheel). One that goes with the mouse or the wheel has a **Mouse speed** and a **Stick and key speed**.
-4. Type a name under the list and choose **Add button** or **Add axis** for a new action (letters, digits and _, starting with a letter: `OpenMap`, `Fire_2`).
+4. Type a name under the list and choose **Add button** or **Add axis** for a new action (letters, digits and _, starting with a capital: `OpenMap`, `Fire_2`, so game code can name it `Action.OpenMap`).
 5. **Add the ready-made actions it's missing** appears in projects made before the cameras: it adds Pan, Turn, Zoom and Drag and changes nothing else. **Restore the ready-made actions** puts all the ready-made ones back as they were, leaving your own.
 
 **Combinations.** A key on its own doesn't count while you hold modifiers that some action binds with it. With Turn on `Alt+Left` and Pan on `Left`, holding Alt and pressing the left arrow turns, and doesn't pan as well. The up arrow (with no `Alt+Up` bound) still pans while Alt is held.
 
 Changes are saved straight away, and a game that's playing takes them at once (any rebinding game code did in this play gives way to them). They're kept in the project's `input.solinput`, a small text file beside `project.solis` that Git can merge.
 
-**In game code** (`get "solis/input":[held, pressed, axis];` in Lust; `solis.held("Jump")` in Lua):
+**In game code**, the actions are names Lust checks: Solis writes them into `solis/project.lst` as `state Action` whenever you change them here, so `Action.Jmp` is a mistake before the game runs, with "did you mean Jump". Fetch `Input` and `Action`, and ask `Input` (in Lua, `solis.Input:held("Jump")`):
 
 ```
-get "solis/input":[axis, pressed];
+fetch "solis/input":Input;
+fetch "solis/project":Action;
 
 component Walker {
     has {
@@ -53,10 +54,10 @@ component Walker {
     }
 
     method update(float dt) {
-        vec3 way = axis("Move");
+        vec3 way = Input:axis(Action.Move);
         vec3 step = [way.x, way.y, 0];
         moveTo(position() + step * speed * dt);
-        is pressed("Jump")? then {
+        is Input:pressed(Action.Jump)? then {
             moveTo(position() + [0, 0, 1]);
         }
     }
@@ -68,12 +69,12 @@ end
 
 | Method | What it gives |
 |---|---|
-| `bool held(string action)` | Whether it's held down this tick (an axis: not at rest). |
-| `bool pressed(string action)` | True once, the tick it went down. A tap between two ticks still counts. |
-| `bool released(string action)` | True once, the tick it came up. |
-| `vec3 axis(string action)` | An axis's two numbers as x and y (z is 0). |
-| `string bindingOf(string action)` | The key that sets it off, such as `F`, for showing "Press F" to the player. |
-| `rebind(string action, string input)` | Binds a new input (`"E"`, `"Mouse Right"`, `"Pad Y"`) in place of its others of the same kind, from the next tick: what a controls menu does. Lasts while the game plays. |
+| `bool Input:held(Action action)` | Whether it's held down this tick (an axis: not at rest). |
+| `bool Input:pressed(Action action)` | True once, the tick it went down. A tap between two ticks still counts. |
+| `bool Input:released(Action action)` | True once, the tick it came up. |
+| `vec3 Input:axis(Action action)` | An axis's two numbers as x and y (z is 0). |
+| `string Input:binding(Action action)` | The key that sets it off, such as `F`, for showing "Press F" to the player. |
+| `Input:rebind(Action action, string input)` | Binds a new input (`"E"`, `"Mouse Right"`, `"Pad Y"`) in place of its others of the same kind, from the next tick: what a controls menu does. Lasts while the game plays. |
 
 Input is read **once per [tick](concepts.md#game-code)**, so every component, on every core, sees the same input for that tick.
 
@@ -101,7 +102,8 @@ While the game has them, every key is the game's: the editor's shortcuts are off
 ## Tips and common problems
 - **Problem:** my character doesn't move when I press W. **Why:** the editor has the keys. **Fix:** click the Game panel first; its corner says when the game has the mouse and keys.
 - **Problem:** pressing W while playing picked the move tool. **Why:** the same: the game didn't have the keys. **Fix:** click the Game panel.
-- **Problem:** `pressed("Jump")` is never true. **Why:** the name doesn't match an action exactly (names are case-sensitive), or the action has no inputs. **Fix:** check Edit > Input actions….
+- **Problem:** `Input:pressed(Action.Jump)` is never true. **Why:** the action has no inputs. **Fix:** check Edit > Input actions….
+- **Problem:** the Console says an input action "can't be named in game code". **Why:** game code names actions as Lust names, which start with a capital and hold letters, digits and `_` (`OpenMap`, `Fire_2`), and aren't all capitals. **Fix:** rename it in Edit > Input actions….
 - **Problem:** Esc does nothing in my game. **Why:** in the editor, Esc gives the mouse and keys back, so a game can't use it there. Exported games (Phase 11) can.
 - **Problem:** the Console says the input actions couldn't be read. **Why:** `input.solinput` was changed by hand and has a mistake. **Fix:** the Console says what; fix it, or change any action in the window, which writes it again.
 - **Problem:** the Console says the input actions file had a mistake and was kept as `input.solinput.bak`. **Why:** the file couldn't be read, so the ready-made actions were used; changing anything in the window writes the file again, so Solis kept yours first. **Fix:** copy what you need from the `.bak` file, then delete it.

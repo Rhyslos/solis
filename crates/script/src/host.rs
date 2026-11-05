@@ -603,40 +603,40 @@ pub(crate) fn with_natives<'h, R>(
             })?,
         )?;
         natives.raw_set(
-            "held",
-            scope.create_function(move |_, name: mlua::LuaString| {
+            "Input_held",
+            scope.create_function(move |_, (_input, name): (LuaValue, mlua::LuaString)| {
                 Ok(h.borrow().action(&name.to_str()?).held)
             })?,
         )?;
         natives.raw_set(
-            "pressed",
-            scope.create_function(move |_, name: mlua::LuaString| {
+            "Input_pressed",
+            scope.create_function(move |_, (_input, name): (LuaValue, mlua::LuaString)| {
                 Ok(h.borrow().action(&name.to_str()?).pressed)
             })?,
         )?;
         natives.raw_set(
-            "released",
-            scope.create_function(move |_, name: mlua::LuaString| {
+            "Input_released",
+            scope.create_function(move |_, (_input, name): (LuaValue, mlua::LuaString)| {
                 Ok(h.borrow().action(&name.to_str()?).released)
             })?,
         )?;
         natives.raw_set(
-            "axis",
-            scope.create_function(move |_, name: mlua::LuaString| {
+            "Input_axis",
+            scope.create_function(move |_, (_input, name): (LuaValue, mlua::LuaString)| {
                 let a = h.borrow().action(&name.to_str()?).axis;
                 Ok(vec3_value(Vec3::new(a.x, a.y, 0.0)))
             })?,
         )?;
         natives.raw_set(
-            "bindingOf",
-            scope.create_function(move |_, name: mlua::LuaString| {
+            "Input_binding",
+            scope.create_function(move |_, (_input, name): (LuaValue, mlua::LuaString)| {
                 Ok(h.borrow().binding(&name.to_str()?).unwrap_or_default())
             })?,
         )?;
         natives.raw_set(
-            "rebind",
+            "Input_rebind",
             scope.create_function(
-                move |_, (action, input): (mlua::LuaString, mlua::LuaString)| {
+                move |_, (_input, action, input): (LuaValue, mlua::LuaString, mlua::LuaString)| {
                     h.borrow_mut().rebind(&action.to_str()?, &input.to_str()?);
                     Ok(())
                 },

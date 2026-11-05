@@ -100,8 +100,11 @@ impl GameWorld for TestWorld {
 }
 
 fn compiled(main: &str) -> Arc<Compiled> {
-    let (mut files, _) =
-        crate::describe::descriptions_for("Test 1.0", "solis", &["drone".to_string()]);
+    let (mut files, _) = crate::describe::descriptions_for(
+        "Test 1.0",
+        "solis",
+        &crate::project_names::Names::with_assemblies(&["drone"]),
+    );
     files.push(("main.lst".into(), main.to_string()));
     let code = Code {
         files,

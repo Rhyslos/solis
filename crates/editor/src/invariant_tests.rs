@@ -31,11 +31,11 @@ use reflect::{ComponentData, EntityId, Value};
 use std::collections::BTreeMap;
 use std::sync::Arc;
 
-const MAIN: &str = "fetch \"solis/world\":[World, Saves];\nfetch \"solis/project\":Assembly;\nfetch \"solis/kit/character\":[CharacterController];\n\
+const MAIN: &str = "fetch \"solis/input\":Input;\nfetch \"solis/world\":[World, Saves];\nfetch \"solis/project\":[Assembly, Action];\nfetch \"solis/kit/character\":[CharacterController];\n\
     fetch \"solis/kit/cameras\":[ThirdPersonCamera];\n\
     \n\
     \n\
-    get \"solis/input\":[pressed];\n\
+    \n\
     get \"solis/physics\":[push];\n\
     \n\
     component Platform {\n\
@@ -57,7 +57,7 @@ const MAIN: &str = "fetch \"solis/world\":[World, Saves];\nfetch \"solis/project
     \n\
     component Hive {\n\
         method update(float dt) {\n\
-            is pressed(\"Interact\")? then {\n\
+            is Input:pressed(Action.Interact)? then {\n\
                 entity made = World:spawn(Assembly.Drones.Drone, [World:randomRange(-3, 3), World:randomRange(2, 6), 1]);\n\
             }\n\
         }\n\
@@ -82,16 +82,16 @@ const MAIN: &str = "fetch \"solis/world\":[World, Saves];\nfetch \"solis/project
     \n\
     component Keys {\n\
         method update(float dt) {\n\
-            is pressed(\"SaveA\")? then {\n\
+            is Input:pressed(Action.SaveA)? then {\n\
                 Saves:saveTo(\"a\");\n\
             }\n\
-            is pressed(\"SaveB\")? then {\n\
+            is Input:pressed(Action.SaveB)? then {\n\
                 Saves:saveTo(\"b\");\n\
             }\n\
-            is pressed(\"LoadA\")? then {\n\
+            is Input:pressed(Action.LoadA)? then {\n\
                 Saves:loadFrom(\"a\");\n\
             }\n\
-            is pressed(\"LoadB\")? then {\n\
+            is Input:pressed(Action.LoadB)? then {\n\
                 Saves:loadFrom(\"b\");\n\
             }\n\
         }\n\
@@ -104,7 +104,8 @@ fn program() -> Arc<script::Compiled> {
     let (mut files, _) = script::describe::descriptions_for(
         "Test Engine 9.9.9",
         "solis",
-        &["drones/drone".to_string(), "nowhere".to_string()],
+        &script::project_names::Names::with_assemblies(&["drones/drone", "nowhere"])
+            .and_actions(&["LoadA", "LoadB", "SaveA", "SaveB"]),
     );
     files.push(("main.lst".into(), MAIN.to_string()));
     let code = script::Code {

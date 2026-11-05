@@ -18,7 +18,7 @@ fn program() -> Arc<script::Compiled> {
     let (mut files, _) = script::describe::descriptions_for(
         "Test Engine 9.9.9",
         "solis",
-        &["drones/drone".to_string(), "nowhere".to_string()],
+        &script::project_names::Names::with_assemblies(&["drones/drone", "nowhere"]),
     );
     files.push(("main.lst".into(), MAIN.to_string()));
     let code = script::Code {

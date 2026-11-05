@@ -21,7 +21,7 @@ fn compiled(main: &str) -> Result<script::Compiled, Vec<script::CodeProblem>> {
     let (mut files, _) = script::describe::descriptions_for(
         "Test Engine 9.9.9",
         "solis",
-        &["drones/drone".to_string(), "nowhere".to_string()],
+        &script::project_names::Names::with_assemblies(&["drones/drone", "nowhere"]),
     );
     files.push((
         "main.lst".into(),
@@ -845,7 +845,7 @@ fn guns_in_lust_and_lua_fire_projectiles_that_fly_and_end() {
     let (mut files, _) = script::describe::descriptions_for(
         "Test Engine 9.9.9",
         "solis",
-        &["drones/drone".to_string(), "nowhere".to_string()],
+        &script::project_names::Names::with_assemblies(&["drones/drone", "nowhere"]),
     );
     files.push((
         "main.lst".into(),

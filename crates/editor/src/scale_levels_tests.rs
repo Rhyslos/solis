@@ -39,7 +39,7 @@ fn fleet(units: usize) -> Workbench {
     let (mut files, _) = script::describe::descriptions_for(
         "Test Engine 9.9.9",
         "solis",
-        &["ships/fighter".to_string()],
+        &script::project_names::Names::with_assemblies(&["ships/fighter"]),
     );
     files.push(("main.lst".into(), BENCHMARK.to_string()));
     let code = script::Code {

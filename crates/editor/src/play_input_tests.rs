@@ -12,22 +12,22 @@ use std::sync::Arc;
 /// A walker: walks along Move, hops on Jump, says when Interact is
 /// pressed and which key it is, and rebinds Jump to J when Sprint is
 /// pressed.
-const WALKER: &str = "fetch \"solis/world\":World;\n\n\
+const WALKER: &str = "fetch \"solis/project\":Action;\nfetch \"solis/input\":Input;\nfetch \"solis/world\":World;\n\n\
     \n\
-    get \"solis/input\":[held, pressed, axis, bindingOf, rebind];\n\
+    \n\
     component Walker {\n\
         method update(float dt) {\n\
-            vec3 way = axis(\"Move\");\n\
+            vec3 way = Input:axis(Action.Move);\n\
             vec3 step = [way.x, way.y, 0];\n\
             moveTo(position() + step * 0.1);\n\
-            is held(\"Jump\")? then {\n\
+            is Input:held(Action.Jump)? then {\n\
                 moveTo(position() + step * 0.1 + [0, 0, 1]);\n\
             }\n\
-            is pressed(\"Interact\")? then {\n\
-                World:say(\"interact with \" + bindingOf(\"Interact\"));\n\
+            is Input:pressed(Action.Interact)? then {\n\
+                World:say(\"interact with \" + Input:binding(Action.Interact));\n\
             }\n\
-            is pressed(\"Sprint\")? then {\n\
-                rebind(\"Jump\", \"J\");\n\
+            is Input:pressed(Action.Sprint)? then {\n\
+                Input:rebind(Action.Jump, \"J\");\n\
             }\n\
         }\n\
     }\n\
@@ -37,7 +37,7 @@ fn program(main: &str) -> Arc<script::Compiled> {
     let (mut files, _) = script::describe::descriptions_for(
         "Test Engine 9.9.9",
         "solis",
-        &["drones/drone".to_string(), "nowhere".to_string()],
+        &script::project_names::Names::with_assemblies(&["drones/drone", "nowhere"]),
     );
     files.push(("main.lst".into(), main.to_string()));
     let code = script::Code {

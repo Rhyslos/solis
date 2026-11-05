@@ -10,7 +10,8 @@
 -- directions set to 4).
 
 get "solis/physics":[moveCharacter];
-get "solis/input":[axis];
+fetch "solis/input":Input;
+fetch "solis/project":Action;
 
 component TopDownController {
     has {
@@ -27,7 +28,7 @@ component TopDownController {
     method update(float dt) {
         vec3 want = wanted;
         is usesInput? then {
-            want = axis("Move");
+            want = Input:axis(Action.Move);
         }
         -- Four directions: only the bigger of across and up counts, as
         -- far as the whole push went (a diagonal is as fast as straight).

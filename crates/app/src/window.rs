@@ -917,7 +917,16 @@ impl App {
                 WorkbenchAction::OpenAreaFile(path) => self.open_area(&path),
                 WorkbenchAction::SaveBindings(text) => {
                     if let Some(root) = self.projects.root().map(Path::to_path_buf) {
-                        match crate::play_files::save_bindings(&root, &text) {
+                        let saved = crate::play_files::save_bindings(&root, &text);
+                        // The actions are names game code uses: written again
+                        // into solis/project.lst, and the code checked with them.
+                        if let Some(assets) = self.projects.db().map(|db| db.project().assets()) {
+                            for note in self.game_code.describe_again(&assets, &self.made_by) {
+                                self.workbench.log(LogLevel::Warning, note);
+                            }
+                            self.game_code.check(assets);
+                        }
+                        match saved {
                             Ok(Some(crate::play_files::Kept::Older(copy))) => self.workbench.log(
                                 LogLevel::Info,
                                 crate::upgrades::kept_note(&root, input::FILE, &copy),

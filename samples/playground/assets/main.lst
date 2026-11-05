@@ -5,7 +5,9 @@
 -- drip are AudioSources in the area; the cave's echo is a ReverbZone.
 
 get "solis/sound":[playSoundOn];
-get "solis/input":[pressed, bindingOf];
+fetch "solis/input":Input;
+fetch "solis/project":Action;
+
 fetch "solis/kit/character":[CharacterController];
 fetch "solis/kit/cameras":[ThirdPersonCamera, FirstPersonCamera, RtsCamera];
 fetch "solis/world":[World, Saves];
@@ -14,11 +16,11 @@ fetch "solis/world":[World, Saves];
 -- (F7). Rebind them in Edit > Input actions.
 component QuickSave {
     method update(float dt) {
-        is pressed("QuickSave")? then {
+        is Input:pressed(Action.QuickSave)? then {
             Saves:saveTo("quick");
-            World:say("Saved. " + bindingOf("QuickLoad") + " loads it.");
+            World:say("Saved. " + Input:binding(Action.QuickLoad) + " loads it.");
         }
-        is pressed("QuickLoad")? then {
+        is Input:pressed(Action.QuickLoad)? then {
             Saves:loadFrom("quick");
         }
     }
