@@ -92,3 +92,4 @@ Titles below are shortened; the files have the full reasoning. Decisions 0019 to
 | `0082-the-2d-follow-camera-and-cells-at-places.md` | The kit's FollowCamera2D, and turning places into a map's cells and back | Accepted |
 | `0083-game-ui-on-any-screen.md` | Game UI's anchors, scale rules and screen previews; pictures cut from sheets | Accepted |
 | `0084-game-ui-text.md` | Game UI text: `ab_glyph` and single-channel distance images in one atlas, instead of the plan's `parley` and `fdsm` | Accepted (carries out 0083's text) |
+| `0085-the-editor-overhaul.md` | The editor overhaul from the 4 November mock-up, in seven milestones before the game UI editor | Accepted (carries out 0070's UI overhaul; builds on 0004) |

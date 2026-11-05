@@ -74,6 +74,8 @@ What changed in each version, for people using Solis. Newest first.
 
 ### Added
 
+- **The editor overhaul is planned** ([decision 0085](docs/decisions/0085-the-editor-overhaul.md)): the editor will take the look of the 4 November mock-up, one part at a time (a top bar and status bar, Properties as values, the Library as a drawer, one search for everything, a clear sign while playing, workspaces, hints), before the game UI editor ([plan](docs/plans/editor-overhaul.md)).
+
 - **Game UI text** ([decision 0084](docs/decisions/0084-game-ui-text.md)): game UI can show words, sharp at any size, aligned left, in the middle or right of their box, and on the game's pixels for pixel-art screens. The sample HUD from `ui test` now shows the day, the time, the money and the energy label.
 - **Game UI's first part: shapes on any screen** ([decision 0083](docs/decisions/0083-game-ui-on-any-screen.md)): Solis can draw game UI over the Game panel: boxes with rounded corners, circles, lines and bars, sharp at any size, each pinned to a corner, an edge or the middle so it stays there on any screen shape, and grown by the screen's scale rule (grow with the screen, keep its size, or whole steps for pixel art). Type `ui test` in the Console while playing to see a sample HUD; text and screens of your own come next.
 
