@@ -14,7 +14,7 @@ use glam::Vec3;
 /// `request` field says to.
 const BUSY: &str = "fetch \"solis/world\":[World, Saves];\n\n\
     \n\
-    get \"solis/physics\":[push];\n\
+    \n\
     component Busy {\n\
         has {\n\
             int ticks = 0;\n\
@@ -23,7 +23,7 @@ const BUSY: &str = "fetch \"solis/world\":[World, Saves];\n\n\
         }\n\
         method update(float dt) {\n\
             is ticks == 0? then {\n\
-                push(World:find(\"Crate\"), [3, 1, 0]);\n\
+                World:find(\"Crate\"):push([3, 1, 0]);\n\
             }\n\
             ticks = ticks + 1;\n\
             wander = wander + World:randomRange(-1, 1);\n\
@@ -536,8 +536,8 @@ fn loading_doesn_t_run_the_game_s_starts_again_on_top_of_the_save() {
 fn busy_with_keys() -> Workbench {
     let code = BUSY
         .replacen(
-            "get \"solis/physics\":[push];",
-            "get \"solis/physics\":[push];\nfetch \"solis/project\":Action;\nfetch \"solis/input\":Input;",
+            "fetch \"solis/world\":[World, Saves];",
+            "fetch \"solis/world\":[World, Saves];\nfetch \"solis/project\":Action;\nfetch \"solis/input\":Input;",
             1,
         )
         .replacen(

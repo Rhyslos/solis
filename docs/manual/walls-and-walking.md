@@ -34,18 +34,17 @@ Three parts work together:
 6. Press **Play** and walk with WASD or the arrow keys. It stops at solid tiles and other colliders and slides along them.
 
 **Walk an NPC from your own code**
-Add a TopDownController, untick **Uses input**, set **Directions** to 4 if you like, and set its `wanted` field from your code to where it should head (`[1, 0, 0]` walks right, `[0, 0, 0]` stops). Or call `moveCharacter` yourself with how far to move this tick:
+Add a TopDownController, untick **Uses input**, set **Directions** to 4 if you like, and set its `wanted` field from your code to where it should head (`[1, 0, 0]` walks right, `[0, 0, 0]` stops). Or call `walk` yourself with how far to move this tick:
 
 ```lust
-get "solis/physics":[moveCharacter];
 component Wanderer {
     method update(float dt) {
-        moveCharacter(this, [1.5 * dt, 0, 0]);
+        walk([1.5 * dt, 0, 0]);
     }
 }
 ```
 
-In Lua it's `solis.moveCharacter(self.me, {1.5 * dt, 0, 0})`. In Rust, through the component's host: `cx.host().move_character(cx.me(), Vec3::new(1.5 * dt, 0.0, 0.0))`.
+In Lua it's `solis.entity.walk(self.me, {1.5 * dt, 0, 0})`. In Rust, through the component's host: `cx.host().walk(cx.me(), Vec3::new(1.5 * dt, 0.0, 0.0))`.
 
 A 2D character moves on the ground: the move's third number (height) is ignored, and it stays on its layer.
 
@@ -58,7 +57,7 @@ A 2D character moves on the ground: the move's third number (height) is ignored,
 | Radius | A circle's size, in pixels. A third of a 16-pixel sprite's width (about 5) is a good start. |
 | Width, Height | A box's size, in pixels. |
 | Across, Up | Where the shape's middle is from the entity's place, in pixels. Raise a character's circle to its feet so its head can overlap things above it, as top-down games do. |
-| Character | Ticked: game code walks it (`moveCharacter`, or the TopDownController) and it slides along what's in its way. Unticked: solid and still. |
+| Character | Ticked: game code walks it (`walk`, or the TopDownController) and it slides along what's in its way. Unticked: solid and still. |
 
 Pixels become metres with the project's 2D settings (**Edit > Settings… > 2D**, pixels per unit).
 
@@ -88,7 +87,7 @@ Change them in **Edit > Input actions…** (the Move action). A project with its
 
 ## Tips and common problems
 - **Problem:** the character walks through a fence. **Why:** the fence's terrain isn't solid, or the character has no Collider2D ticked Character. **Fix:** right-click the fence's swatch and tick Solid; press Walls to check it shows.
-- **Problem:** nothing moves when I press keys. **Why:** the entity has no TopDownController, or its Collider2D isn't ticked Character (moveCharacter only moves characters). **Fix:** check both in Properties, and look in the Console for game code mistakes.
+- **Problem:** nothing moves when I press keys. **Why:** the entity has no TopDownController, or its Collider2D isn't ticked Character (walk only moves characters). **Fix:** check both in Properties, and look in the Console for game code mistakes.
 - **Problem:** the character stops at a doorway it should fit through. **Why:** its circle is wider than the gap. **Fix:** make the Radius smaller, or the door wider.
 - **Problem:** it catches on corners. **Why:** a Box collider meets corners square on. **Fix:** use a Circle for characters.
 - Walking into a door or a shop counter to make something happen (a trigger) comes with a later update.

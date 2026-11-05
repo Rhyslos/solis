@@ -111,6 +111,15 @@ pub struct Moved {
     pub lua: &'static str,
 }
 
+/// Classes the engine's files declare for natives to give back (decision
+/// 0065, rule 6: one question, one call), as (file, its Lust, a line
+/// saying what it is).
+pub const ENGINE_CLASSES: &[(&str, &str, &str)] = &[(
+    "physics",
+    "class RayHit {\n    has {\n        bool found = false;\n        float distance = -1;\n        entity entity = nothing;\n        vec3 normal = [0, 0, 0];\n    }\n}",
+    "What Physics:castRay found: whether it met a collider, how far along, whose, and which way its surface faces.",
+)];
+
 /// Every call that moved.
 pub const MOVED: &[Moved] = &[
     Moved {
@@ -232,6 +241,46 @@ pub const MOVED: &[Moved] = &[
         old: "rebind",
         lust: "Input:rebind(Action.Jump, input)",
         lua: "solis.Input:rebind(\"Jump\", input)",
+    },
+    Moved {
+        old: "push",
+        lust: "target:push(impulse) (inside a component, push(impulse) for its own entity)",
+        lua: "solis.entity.push(target, impulse)",
+    },
+    Moved {
+        old: "velocityOf",
+        lust: "target:velocity() (inside a component, velocity() for its own entity)",
+        lua: "solis.entity.velocity(target)",
+    },
+    Moved {
+        old: "setVelocity",
+        lust: "target:setVelocity(velocity) (inside a component, setVelocity(velocity) for its own entity)",
+        lua: "solis.entity.setVelocity(target, velocity)",
+    },
+    Moved {
+        old: "moveCharacter",
+        lust: "target:walk(wanted) (inside a component, walk(wanted) for its own entity)",
+        lua: "solis.entity.walk(target, wanted)",
+    },
+    Moved {
+        old: "onGround",
+        lust: "target:grounded() (inside a component, grounded() for its own entity)",
+        lua: "solis.entity.grounded(target)",
+    },
+    Moved {
+        old: "castRay",
+        lust: "RayHit hit = Physics:castRay(from, direction, reach); then hit.found and hit.distance, with fetch \"solis/physics\":[Physics, RayHit];",
+        lua: "solis.Physics:castRay(from, direction, reach).distance",
+    },
+    Moved {
+        old: "castRayHit",
+        lust: "Physics:castRay(from, direction, reach).entity",
+        lua: "solis.Physics:castRay(from, direction, reach).entity",
+    },
+    Moved {
+        old: "castRayNormal",
+        lust: "Physics:castRay(from, direction, reach).normal",
+        lua: "solis.Physics:castRay(from, direction, reach).normal",
     },
 ];
 
@@ -436,57 +485,43 @@ pub const NATIVES: &[Native] = &[
     Native {
         file: "physics",
         name: "push",
-        owner: "",
-        lust: "method push(entity which, vec3 impulse) native;",
-        about: "Gives an entity's body a push, at the end of the tick: a heavy body moves less than a light one (the push is in kilograms times metres a second).",
+        owner: "entity",
+        lust: "method entity:push(vec3 impulse) native;",
+        about: "Gives the entity's body a push (kilograms times metres a second), made at the next physics step: a kick, an explosion.",
     },
     Native {
         file: "physics",
-        name: "velocityOf",
-        owner: "",
-        lust: "method vec3 velocityOf(entity which) native;",
-        about: "How fast and which way an entity's body moves, in metres a second (nothing moving without a RigidBody).",
+        name: "velocity",
+        owner: "entity",
+        lust: "method vec3 entity:velocity() native;",
+        about: "How fast and which way the entity's body moves, in metres a second (none without a body).",
     },
     Native {
         file: "physics",
         name: "setVelocity",
-        owner: "",
-        lust: "method setVelocity(entity which, vec3 velocity) native;",
-        about: "Sets how fast and which way an entity's body moves, in metres a second, at the end of the tick.",
+        owner: "entity",
+        lust: "method entity:setVelocity(vec3 velocity) native;",
+        about: "Sets how fast and which way the entity's body moves, at the next physics step.",
     },
     Native {
         file: "physics",
         name: "castRay",
-        owner: "",
-        lust: "method float castRay(vec3 from, vec3 direction, float reach) native;",
-        about: "Looks along a line from a place, a direction, up to reach metres: how far away the first collider is, or -1 if there's none. Colliders the line starts inside are passed through.",
+        owner: "Physics",
+        lust: "method RayHit castRay(vec3 from, vec3 direction, float reach) native;",
+        about: "Looks along a line from a place, a way, up to reach metres, and gives back the first collider it meets: hit.found, hit.distance, hit.entity and hit.normal (which way its surface faces). Nothing found: found is false and distance -1.",
     },
     Native {
         file: "physics",
-        name: "castRayHit",
-        owner: "",
-        lust: "method entity castRayHit(vec3 from, vec3 direction, float reach) native;",
-        about: "Looks along a line like castRay: the entity whose collider it meets first, or nothing.",
+        name: "walk",
+        owner: "entity",
+        lust: "method entity:walk(vec3 wanted) native;",
+        about: "Walks a character (a CharacterBody, or a Collider2D ticked Character) by wanted metres this tick, as far as it can: climbing steps, sliding along walls.",
     },
     Native {
         file: "physics",
-        name: "castRayNormal",
-        owner: "",
-        lust: "method vec3 castRayNormal(vec3 from, vec3 direction, float reach) native;",
-        about: "Looks along a line like castRay: which way the surface it meets faces (straight up for a floor), or [0, 0, 0] if it meets nothing.",
-    },
-    Native {
-        file: "physics",
-        name: "moveCharacter",
-        owner: "",
-        lust: "method moveCharacter(entity which, vec3 wanted) native;",
-        about: "Moves a character (an entity with a CharacterBody) this far, in metres, at the end of the tick: it climbs steps and slopes, slides along walls, pushes crates and rides moving platforms, and stops where it can't go. Ask once a tick, with speed times dt.",
-    },
-    Native {
-        file: "physics",
-        name: "onGround",
-        owner: "",
-        lust: "method bool onGround(entity which) native;",
+        name: "grounded",
+        owner: "entity",
+        lust: "method bool entity:grounded() native;",
         about: "Whether a character stood on something after its last move: for jumping only from the ground, and for falling.",
     },
     Native {
@@ -606,9 +641,19 @@ fn descriptions_with(
                     wanted.join(", ")
                 ));
             }
-            // Methods on their own and the entity's first, then each engine
-            // object's in a block of its own.
+            // Its classes first (what natives give back), then methods on
+            // their own and the entity's, then each engine object's in a
+            // block of its own.
             let mut names: Vec<&str> = Vec::new();
+            for (_, lust, about) in ENGINE_CLASSES.iter().filter(|(f, _, _)| *f == file) {
+                text.push_str(&format!("-- {about}\n{lust}\n\n"));
+                if let Some(name) = lust
+                    .strip_prefix("class ")
+                    .and_then(|l| l.split_whitespace().next())
+                {
+                    names.push(name);
+                }
+            }
             for native in mine
                 .iter()
                 .filter(|n| n.owner.is_empty() || n.owner == "entity")
@@ -732,7 +777,7 @@ mod tests {
              fetch \"solis/project\":[Assembly, Action];\n\
              fetch \"solis/input\":Input;\n\
              get \"solis/entity\":facingAlong;\n\
-             get \"solis/physics\":[push, velocityOf, setVelocity, castRay, castRayHit, castRayNormal];\n\
+             fetch \"solis/physics\":[Physics, RayHit];\n\
              get \"solis/sound\":[playSound, playSoundAt, playSoundOn, stopSoundsOn, setSoundPlaying, setBusVolume];\n\
              get \"solis/animation\":[playClip, replayClip, stopClip];\n\
              fetch \"solis/animation\":AnimationCue;\n\
@@ -780,9 +825,15 @@ mod tests {
                          Input:rebind(Action.Jump, \"Space\");\n\
                          World:say(Input:binding(Action.Jump) + Input:axis(Action.Move).x.text());\n\
                      }\n\
-                     push(other, velocityOf(this) + castRayNormal(position(), step, 10));\n\
-                     is castRay(position(), step, 10) > 0 && castRayHit(position(), step, 10) == other? then {\n\
-                         setVelocity(other, step);\n\
+                     RayHit hit = Physics:castRay(position(), step, 10);\n\
+                     other:push(velocity() + hit.normal);\n\
+                     is hit.found && hit.distance > 0 && hit.entity == other? then {\n\
+                         other:setVelocity(step);\n\
+                         setVelocity(other:velocity());\n\
+                         walk(step);\n\
+                         is grounded() || other:grounded()? then {\n\
+                             other:walk(step);\n\
+                         }\n\
                      }\n\
                  }\n\
              }\n\

@@ -318,7 +318,7 @@ Game code reads the player's controls as named actions, never keys: `Input:axis(
 
 ## Physics
 
-Things that fall, collide and get pushed have a **RigidBody** and a **Collider**: see [Physics](physics.md). Game code pushes them (`push`), reads and sets how fast they move (`velocityOf`, `setVelocity`), and looks along lines (`castRay`, `castRayHit`, `castRayNormal`), all in `solis/physics`. Characters with a **CharacterBody** are moved with `moveCharacter` and asked `onGround`: see [Characters and cameras](characters-and-cameras.md), which also has the ready-made character controller and cameras in `solis/kit/`.
+Things that fall, collide and get pushed have a **RigidBody** and a **Collider**: see [Physics](physics.md). Game code pushes them (`push`), reads and sets how fast they move (`velocity`, `setVelocity`), and looks along lines with `Physics:castRay`, which gives back a `RayHit`. Characters with a **CharacterBody** are moved with `walk` and asked `grounded`: see [Characters and cameras](characters-and-cameras.md), which also has the ready-made character controller and cameras in `solis/kit/`.
 
 ## What the engine offers
 
@@ -353,14 +353,7 @@ Things that fall, collide and get pushed have a **RigidBody** and a **Collider**
 | `solis/input` | `string Input:binding(Action action)` | The key that sets an action off, for "Press F". |
 | `solis/input` | `Input:rebind(Action action, string input)` | Binds a new input to an action, from the next tick. |
 | `solis/project` | `state Action` | The project's input actions (`Action.Jump`), from Edit > Input actions…. |
-| `solis/physics` | `push(entity which, vec3 impulse)` | Gives a body a push ([Physics](physics.md)). |
-| `solis/physics` | `vec3 velocityOf(entity which)` | How fast and which way a body moves, metres a second. |
-| `solis/physics` | `setVelocity(entity which, vec3 velocity)` | Sets how fast and which way a body moves. |
-| `solis/physics` | `float castRay(vec3 from, vec3 direction, float reach)` | How far along a line the first collider is, or -1. |
-| `solis/physics` | `entity castRayHit(vec3 from, vec3 direction, float reach)` | The entity a line meets first, or nothing. |
-| `solis/physics` | `vec3 castRayNormal(vec3 from, vec3 direction, float reach)` | Which way the surface a line meets faces. |
-| `solis/physics` | `moveCharacter(entity which, vec3 wanted)` | Moves a character this far, climbing steps, sliding along walls ([Characters and cameras](characters-and-cameras.md)). |
-| `solis/physics` | `bool onGround(entity which)` | Whether a character stood on something after its last move. |
+| `solis/physics` | `RayHit Physics:castRay(vec3 from, vec3 direction, float reach)` | What a line meets first: `found`, `distance`, `entity` and `normal` ([Physics](physics.md)). |
 | any entity | `vec3 position()` | Where the entity is in the world, in metres. |
 | any entity | `moveTo(vec3 place)` | Puts the entity at a place in the world. |
 | any entity | `rotation rotation()` | Which way the entity faces. |
@@ -368,6 +361,11 @@ Things that fall, collide and get pushed have a **RigidBody** and a **Collider**
 | any entity | `face(vec3 direction)` | Turns the entity, upright, to face along a direction (its forward is +Y): `face(target:position() - position())` faces a place. |
 | any entity | `string name()` | The entity's name. |
 | any entity | `despawn()` | Takes the entity, and everything under it, out of the game. |
+| any entity | `push(vec3 impulse)` | Gives its body a push ([Physics](physics.md)). |
+| any entity | `vec3 velocity()` | How fast and which way its body moves, metres a second. |
+| any entity | `setVelocity(vec3 velocity)` | Sets how fast and which way its body moves. |
+| any entity | `walk(vec3 wanted)` | Walks a character this far, climbing steps, sliding along walls ([Characters and cameras](characters-and-cameras.md), [Walls and walking](walls-and-walking.md)). |
+| any entity | `bool grounded()` | Whether a character stood on something after its last move. |
 | `solis/entity` | `rotation facingAlong(vec3 direction)` | The upright rotation facing along a direction, for working out a turn without making it. |
 
 An entity's abilities are called bare for the component's own entity (`moveTo(place)`) and with `:` on any other (`target:moveTo(place)`). In Lua they're `solis.entity.moveTo(target, place)`, and the objects' `solis.World:say(words)`.
@@ -384,6 +382,9 @@ An entity's abilities are called bare for the component's own entity (`moveTo(pl
 | `saveGame(slot)`, `loadGame(slot)` | `Saves:saveTo(slot)`, `Saves:loadFrom(slot)` |
 | `held("Jump")`, `pressed`, `released`, `axis("Move")` | `Input:held(Action.Jump)` and so on, with `fetch "solis/input":Input;` and `fetch "solis/project":Action;` |
 | `bindingOf("Jump")`, `rebind("Jump", key)` | `Input:binding(Action.Jump)`, `Input:rebind(Action.Jump, key)` |
+| `push(e, f)`, `velocityOf(e)`, `setVelocity(e, v)` | `e:push(f)`, `e:velocity()`, `e:setVelocity(v)` |
+| `moveCharacter(e, w)`, `onGround(e)` | `e:walk(w)`, `e:grounded()` |
+| `castRay(…)`, `castRayHit(…)`, `castRayNormal(…)` | one call: `RayHit hit = Physics:castRay(…);` then `hit.distance`, `hit.entity`, `hit.normal` |
 | Lua `solis.positionOf(e)`, `solis.say(w)`, `solis.held("Jump")` | `solis.entity.position(e)`, `solis.World:say(w)`, `solis.Input:held("Jump")` |
 
 **When an update renames something.** What game code can call doesn't change by accident: Solis's own checks stop any update that changes it without saying so. When a name does change on purpose, the old name keeps working for a few phases, so your game still runs the day you update. Each place your code uses the old name shows in the [Problems](problems.md) panel as a warning, with its file and line, the new name, and when the old one stops working. Change the call to the new name before then.

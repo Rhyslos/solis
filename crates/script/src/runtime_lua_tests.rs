@@ -67,6 +67,66 @@ impl Host for Log {
     fn name(&self, _which: EntityId) -> Option<String> {
         Some("Cart".into())
     }
+    fn cast_ray(
+        &self,
+        from: glam::Vec3,
+        _direction: glam::Vec3,
+        reach: f32,
+    ) -> Option<physics::Hit> {
+        // Something two metres below, within reach; nothing past it.
+        (reach >= 2.0).then(|| physics::Hit {
+            entity: id(9),
+            distance: 2.0,
+            point: from - glam::Vec3::Z * 2.0,
+            normal: glam::Vec3::Z,
+        })
+    }
+}
+
+#[test]
+fn a_ray_gives_back_all_its_answers_at_once_in_lust_and_lua() {
+    let main = "fetch \"solis/world\":World;\nfetch \"solis/physics\":[Physics, RayHit];\n\
+        component Feeler {\n    method update(float dt) {\n\
+        RayHit near = Physics:castRay(position(), [0, 0, -1], 1);\n\
+        RayHit far = Physics:castRay(position(), [0, 0, -1], 5);\n\
+        World:say(near.found.text() + \" \" + near.distance.text() + \" \" + (near.entity == nothing).text());\n\
+        World:say(far.found.text() + \" \" + far.distance.text() + \" \" + far.entity:name() + \" \" + far.normal.z.text());\n\
+        }\n}\npass Feeler;\nend\n";
+    let lua = "local Probe = component(\"Probe\", {})\n\
+        function Probe:update(dt)\n\
+            local hit = solis.Physics:castRay(vec3(0, 0, 0), vec3(0, 0, -1), 5)\n\
+            solis.World:say(\"lua \" .. tostring(hit.found) .. \" \" .. hit.distance .. \" \" .. hit.entity)\n\
+        end\n";
+    let mut runtime = Runtime::new().unwrap();
+    runtime
+        .load(&code(main, &[("probe.lua", lua)]), &mut NoHost)
+        .unwrap();
+    let mut log = Log::default();
+    let me = id(4);
+    log.at.insert(me, glam::Vec3::ZERO);
+    runtime
+        .sync(me, "Feeler", &ComponentData::default(), &mut log)
+        .unwrap();
+    runtime
+        .sync(me, "Probe", &ComponentData::default(), &mut log)
+        .unwrap();
+    let failures = runtime.tick(0.5, &mut log).failures;
+    assert!(failures.is_empty(), "{failures:?}");
+    assert!(
+        log.said.contains(&"false -1.0 true".to_string()),
+        "{:?}",
+        log.said
+    );
+    assert!(
+        log.said.contains(&"true 2.0 Cart 1.0".to_string()),
+        "{:?}",
+        log.said
+    );
+    assert!(
+        log.said.contains(&format!("lua true 2 {}", id(9))),
+        "{:?}",
+        log.said
+    );
 }
 
 const SPINNER: &str = r#"

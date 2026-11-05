@@ -7,7 +7,7 @@
 -- camera looks; leave it nothing to walk the way the character faces.
 
 get "solis/entity":facingAlong;
-get "solis/physics":[moveCharacter, onGround];
+
 fetch "solis/input":Input;
 fetch "solis/project":Action;
 
@@ -47,7 +47,7 @@ component CharacterController {
         -- Falling, landing and jumping. On the ground it doesn't fall:
         -- the CharacterBody keeps it to the ground going down steps and
         -- slopes (and pressing down would only cost time).
-        is onGround(this)? then {
+        is grounded()? then {
             fall = 0;
             is Input:pressed(Action.Jump)? then {
                 fall = Maths:sqrt(2 * gravity * jumpHeight);
@@ -56,7 +56,7 @@ component CharacterController {
             fall = fall - gravity * dt;
         }
 
-        moveCharacter(this, wanted * speed * dt + [0, 0, fall * dt]);
+        walk(wanted * speed * dt + [0, 0, fall * dt]);
 
         -- Turn towards where it walks, at most turnSpeed degrees a second.
         is facesWhereItWalks && (move.x != 0 || move.y != 0)? then {

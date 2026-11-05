@@ -36,7 +36,7 @@ const MAIN: &str = "fetch \"solis/input\":Input;\nfetch \"solis/world\":[World, 
     \n\
     \n\
     \n\
-    get \"solis/physics\":[push];\n\
+    \n\
     \n\
     component Platform {\n\
         has {\n\
@@ -71,7 +71,7 @@ const MAIN: &str = "fetch \"solis/input\":Input;\nfetch \"solis/world\":[World, 
         method update(float dt) {\n\
             is life == 0? then {\n\
                 life = World:randomInt(20, 90);\n\
-                push(me, [World:randomRange(-1, 1), World:randomRange(-1, 1), 2]);\n\
+                push([World:randomRange(-1, 1), World:randomRange(-1, 1), 2]);\n\
             }\n\
             age = age + 1;\n\
             is age >= life? then {\n\

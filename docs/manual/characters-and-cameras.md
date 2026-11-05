@@ -48,10 +48,9 @@ These are the ready-made [actions](input.md) **Pan**, **Drag**, **Turn** and **Z
 
 **Moving a character from your own code**
 
-`moveCharacter(entity, wanted)` moves a character by `wanted` metres, as far as it can: it climbs steps and slopes, slides along walls, pushes crates and rides moving platforms, and stops where it can't go. It happens at the end of the [tick](concepts.md#game-code), after physics has had game code's other changes. Call it once a tick with speed times `dt`, plus your own falling:
+`walk(wanted)` moves the component's character by `wanted` metres (`target:walk(wanted)` moves another), as far as it can: it climbs steps and slopes, slides along walls, pushes crates and rides moving platforms, and stops where it can't go. It happens at the end of the [tick](concepts.md#game-code), after physics has had game code's other changes. Call it once a tick with speed times `dt`, plus your own falling:
 
 ```
-get "solis/physics":[moveCharacter, onGround];
 fetch "solis/input":Input;
 fetch "solis/project":Action;
 
@@ -62,8 +61,8 @@ component Hopper {
 
     method update(float dt) {
         vec3 move = Input:axis(Action.Move);
-        vec3 walk = [move.x, move.y, 0];
-        is onGround(this)? then {
+        vec3 step = [move.x, move.y, 0];
+        is grounded()? then {
             fall = 0;
             is Input:pressed(Action.Jump)? then {
                 fall = 5;
@@ -71,7 +70,7 @@ component Hopper {
         } or {
             fall = fall - 20 * dt;
         }
-        moveCharacter(this, walk * 4 * dt + [0, 0, fall * dt]);
+        walk(step * 4 * dt + [0, 0, fall * dt]);
     }
 }
 
@@ -81,7 +80,7 @@ end
 
 Why your own falling? Because how a character falls and jumps is part of how a game feels (floaty or snappy), so it's yours to choose. On the ground it stops falling (`fall = 0`): the CharacterBody keeps it to the ground going down steps and slopes (its **Keeps to the ground** setting).
 
-In Lua it's `solis.moveCharacter(me, {x, y, z})` and `solis.onGround(me)`.
+In Lua it's `solis.entity.walk(self.me, {x, y, z})` and `solis.entity.grounded(self.me)`.
 
 ## Settings
 
