@@ -73,6 +73,12 @@ pub enum Change {
     PlayClip(EntityId, String, bool),
     /// `stopAnimation`: stop the entity's Sprite where it is.
     StopClip(EntityId),
+    /// An animator's own file setting one of its parameters, by name.
+    AnimatorSet(EntityId, String, crate::host::AnimatorValue),
+    /// An animator's own file putting it straight into a state, by name.
+    AnimatorJump(EntityId, String),
+    /// An animator's own file setting how fast it plays its clips.
+    AnimatorSpeed(EntityId, f32),
 }
 
 /// The entities of a [`WorldView`]: the same while the world's entities,
@@ -126,6 +132,9 @@ pub struct WorldView {
     pub input: Arc<input::Frame>,
     /// The actions' bindings, to say which input sets one off.
     pub bindings: Arc<input::Bindings>,
+    /// The state each running animator is in as the tick started, by its
+    /// name in the graph (an animator's own file asks it).
+    pub animator_states: Arc<std::collections::HashMap<EntityId, String>>,
 }
 
 impl WorldView {
@@ -455,6 +464,37 @@ impl Host for ViewHost {
         if self.kept.room() {
             let order = self.order();
             self.kept.changes.push((order, Change::StopClip(which)));
+        }
+    }
+
+    fn animator_set(&mut self, which: EntityId, name: &str, value: crate::host::AnimatorValue) {
+        if name.len() <= MAX_CLIP_NAME && self.kept.room() {
+            let order = self.order();
+            self.kept
+                .changes
+                .push((order, Change::AnimatorSet(which, name.to_string(), value)));
+        }
+    }
+
+    fn animator_state(&self, which: EntityId) -> Option<String> {
+        self.view.animator_states.get(&which).cloned()
+    }
+
+    fn animator_jump(&mut self, which: EntityId, state: &str) {
+        if state.len() <= MAX_CLIP_NAME && self.kept.room() {
+            let order = self.order();
+            self.kept
+                .changes
+                .push((order, Change::AnimatorJump(which, state.to_string())));
+        }
+    }
+
+    fn animator_speed(&mut self, which: EntityId, scale: f32) {
+        if scale.is_finite() && self.kept.room() {
+            let order = self.order();
+            self.kept
+                .changes
+                .push((order, Change::AnimatorSpeed(which, scale.clamp(0.0, 100.0))));
         }
     }
 

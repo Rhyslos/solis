@@ -36,6 +36,10 @@ pub(crate) struct LustProgram {
 pub(crate) struct Methods {
     pub(crate) update: Option<Function>,
     pub(crate) handle: Option<Function>,
+    /// Its fields the engine fills in before its first update (Lust's
+    /// "object" fields: an animator's class, decision 0078), as (key in
+    /// the table, class).
+    pub(crate) filled: Vec<(String, String)>,
 }
 
 /// `chunk` compiled in `luau`, with globals of its own (not run yet).
@@ -144,14 +148,23 @@ fn read_components(api: &Table) -> mlua::Result<Components> {
                 _ => None,
             })
         };
+        let schema: Table = class.get("__schema")?;
+        // Fields the engine fills in (an animator's class): kind "object".
+        let mut filled = Vec::new();
+        for entry in schema.sequence_values::<Table>() {
+            let entry = entry?;
+            if entry.get::<String>(3)? == "object" {
+                filled.push((entry.get::<String>(1)?, entry.get::<String>(4)?));
+            }
+        }
         methods.insert(
             name.clone(),
             Methods {
                 update: method("update")?,
                 handle: method("handle")?,
+                filled,
             },
         );
-        let schema: Table = class.get("__schema")?;
         for entry in schema.sequence_values::<Table>() {
             let entry = entry?;
             let key: String = entry.get(1)?;

@@ -375,6 +375,7 @@ impl GameWorld for PlayWorld<'_> {
             flat: Arc::clone(self.world.flat().state()),
             input: Arc::clone(&self.input),
             bindings: Arc::clone(&self.bindings),
+            animator_states: Arc::new(self.world.animator_state_names()),
         }
     }
 
@@ -409,6 +410,24 @@ impl GameWorld for PlayWorld<'_> {
                     self.world.play_clip(which, clip, again);
                 }
                 Change::StopClip(which) => self.world.stop_clip(which),
+                Change::AnimatorSet(which, ref name, value) => {
+                    let value = match value {
+                        script::AnimatorValue::Number(n) => animation::ParamValue::Number(n),
+                        script::AnimatorValue::Switch(on) => animation::ParamValue::Switch(on),
+                        script::AnimatorValue::Fire => animation::ParamValue::Trigger(true),
+                        script::AnimatorValue::Direction(way) => {
+                            let flat = glam::Vec2::new(way.x, way.y).normalize_or_zero();
+                            animation::ParamValue::Direction([flat.x, flat.y])
+                        }
+                    };
+                    // A name the animator doesn't have (its file changed
+                    // since the code was checked) sets nothing.
+                    let _ = self.world.set_animator_value(which, name, value);
+                }
+                Change::AnimatorJump(which, ref state) => {
+                    self.world.jump_to_animator_state(which, state);
+                }
+                Change::AnimatorSpeed(which, scale) => self.world.set_animator_speed(which, scale),
                 Change::BusVolume(ref bus, share) => self
                     .sounds
                     .push(crate::game_sound::Request::BusVolume(bus.clone(), share)),

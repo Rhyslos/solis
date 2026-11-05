@@ -278,8 +278,8 @@ fn check_code(
     let assets = &project.assets();
     // The sprites' clips and cues are names game code uses: read the
     // sheets first, as the editor does.
-    let (clips, cues) = sprite_clip_names(project);
-    for note in crate::game_code::GameCode::describe_with(assets, made_by, &clips, &cues) {
+    let animation = sprite_clip_names(project);
+    for note in crate::game_code::GameCode::describe_with(assets, made_by, &animation) {
         report.note(note);
     }
     let code = script::gather(assets);
@@ -311,9 +311,10 @@ fn check_code(
     }
 }
 
-/// The project's sprites' clips (`sheet/clip` paths) and cues, read as the
-/// editor reads them, waiting for the sheets (at most a minute).
-fn sprite_clip_names(project: &asset_db::Project) -> (Vec<String>, Vec<String>) {
+/// The project's sprites' clips (`sheet/clip` paths), cues and animators,
+/// read as the editor reads them, waiting for the sheets (at most a
+/// minute).
+fn sprite_clip_names(project: &asset_db::Project) -> crate::game_code::Animation {
     let (db, _, _) = asset_db::AssetDb::open(project.clone(), assets::Limits::default());
     let mut sprites = crate::sprites::Sprites::default();
     sprites.want(&db.listing(), &project.assets());
@@ -327,7 +328,8 @@ fn sprite_clip_names(project: &asset_db::Project) -> (Vec<String>, Vec<String>) 
     }
     let mut sheets = sprites.sheets().clone();
     sheets.work_out_clips();
-    sheets.clip_names()
+    let (clips, cues) = sheets.clip_names();
+    (clips, cues, sheets.animator_names())
 }
 
 /// Plays back each recording in `recordings/checks/`.

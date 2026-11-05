@@ -351,6 +351,7 @@ Things that fall, collide and get pushed have a **RigidBody** and a **Collider**
 | `solis/animation` | event `CueReached(Cue cue)` | Sent when a sprite's clip reaches a frame with an event (bring it in with `fetch "solis/animation":CueReached;`). |
 | `solis/animation` | event `ClipFinished(Clip clip)` | Sent when a sprite's clip has played all its times. |
 | `solis/project` | `state Clip`, `state Cue` | The sprites' clips, under their sheets (`Clip.Sprites.Farmer.Walk`), and their frame events (`Cue.Footstep`). |
+| `solis/animators/<file>` | `class <File>Animator`, `state <File>State` | Each animator's own file: `anim:setMoving(true)`, `anim:current()` ([Animators](animators.md)). |
 | `solis/input` | `bool Input:held(Action action)` | Whether an action is held this tick ([Input](input.md)). |
 | `solis/input` | `bool Input:pressed(Action action)` | True once, the tick an action went down. |
 | `solis/input` | `bool Input:released(Action action)` | True once, the tick it came up. |

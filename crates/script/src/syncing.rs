@@ -144,6 +144,19 @@ impl Syncing<'_> {
                 table.raw_set(field.key.as_str(), value)?;
             }
         }
+        // What the engine fills in: one of the engine's classes (an
+        // animator's), made for this entity, before the first update.
+        if let Some(methods) = program.methods.get(name)
+            && !methods.filled.is_empty()
+        {
+            let make: mlua::Function = program.api.raw_get("make")?;
+            for (key, class) in &methods.filled {
+                let values = self.luau.lua.create_table()?;
+                values.raw_set("owner", entity.to_string())?;
+                let made: mlua::Value = make.call((class.as_str(), values))?;
+                table.raw_set(key.as_str(), made)?;
+            }
+        }
         Ok(table)
     }
 }

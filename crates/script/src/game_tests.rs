@@ -66,6 +66,7 @@ impl GameWorld for TestWorld {
             flat: Arc::default(),
             input: Arc::default(),
             bindings: Arc::default(),
+            animator_states: Arc::default(),
         }
     }
 
