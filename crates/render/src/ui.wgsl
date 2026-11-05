@@ -9,6 +9,13 @@ struct Screen {
 };
 
 @group(0) @binding(0) var<uniform> screen: Screen;
+// Letters as distance images (decision 0084): 128 on a letter's edge.
+@group(0) @binding(1) var atlas: texture_2d<f32>;
+@group(0) @binding(2) var atlas_sampler: sampler;
+
+// ui::text's SPREAD and ATLAS_SIDE.
+const SPREAD: f32 = 6.0;
+const ATLAS_SIDE: f32 = 1024.0;
 
 struct Instance {
     @location(0) rect: vec4<f32>,
@@ -33,6 +40,7 @@ struct Out {
 
 const KIND_ELLIPSE: f32 = 1.0;
 const KIND_LINE: f32 = 2.0;
+const KIND_LETTER: f32 = 3.0;
 
 @vertex
 fn ui_vs(@builtin(vertex_index) v: u32, i: Instance) -> Out {
@@ -88,7 +96,14 @@ fn ui_fs(o: Out) -> @location(0) vec4<f32> {
     let flags = u32(o.shape.w);
     let crisp = (flags & 1u) != 0u;
     var d: f32;
-    if (kind == KIND_LINE) {
+    if (kind == KIND_LETTER) {
+        // Where in the letter's distance image, then how far from its
+        // edge in the image's pixels, then in the screen's.
+        let t = clamp((o.at - o.rect.xy) / max(o.rect.zw - o.rect.xy, vec2<f32>(0.0001)), vec2<f32>(0.0), vec2<f32>(1.0));
+        let uv = mix(o.ends.xy, o.ends.zw, t) / ATLAS_SIDE;
+        let v = textureSampleLevel(atlas, atlas_sampler, uv, 0.0).r;
+        d = -((v * 255.0 - 128.0) / 127.0 * SPREAD) * o.shape.x;
+    } else if (kind == KIND_LINE) {
         d = segment(o.at, o.ends.xy, o.ends.zw) - o.shape.x * 0.5;
     } else if (kind == KIND_ELLIPSE) {
         d = ellipse(p, half);

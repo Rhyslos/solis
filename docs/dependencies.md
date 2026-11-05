@@ -40,6 +40,7 @@ Solis is built on other people's libraries, which saves years of work. Each libr
 
 | Library | What it does for Solis | Licence | Allowed in | Reach | Exit plan |
 | --- | --- | --- | --- | --- | --- |
+| `ab_glyph` | Reads fonts for game UI text: letters' outlines, advances and kerning ([decision 0084](decisions/0084-game-ui-text.md)) | Apache-2.0 | ui | walled | Stay on the last good version (it's also inside egui); or `skrifa`, or `ttf-parser` (which it wraps) |
 | `base64` | Decodes models' embedded data (glTF `data:` addresses) | MIT OR Apache-2.0 | assets | walled | Write it (about 100 lines, tested against the standard's examples) |
 | `bytemuck` | Turns Solis's structs into bytes for the graphics card, safely | Zlib OR Apache-2.0 OR MIT | app, assets, editor, render | shared | Stay on the last good version (it's small, stable and needs nothing else); or write the few safe casts Solis uses |
 | `chrono` | Times on Console messages, and the names of backup folders | MIT OR Apache-2.0 | asset_db, editor | walled | Use the standard library's clock and format the time ourselves |

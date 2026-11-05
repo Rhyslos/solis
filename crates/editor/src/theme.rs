@@ -241,8 +241,10 @@ impl Accent {
 pub const SEMIBOLD: &str = "semibold";
 
 /// Inter, the interface font (SIL Open Font License 1.1; see licenses/fonts).
-const INTER_REGULAR: &[u8] = include_bytes!("../assets/fonts/Inter-Regular.ttf");
-const INTER_SEMIBOLD: &[u8] = include_bytes!("../assets/fonts/Inter-SemiBold.ttf");
+/// Also game UI's standard fonts (decision 0084): font 0 and 1.
+pub const INTER_REGULAR: &[u8] = include_bytes!("../assets/fonts/Inter-Regular.ttf");
+/// Inter's semibold, game UI's font 1.
+pub const INTER_SEMIBOLD: &[u8] = include_bytes!("../assets/fonts/Inter-SemiBold.ttf");
 const JETBRAINS_MONO: &[u8] = include_bytes!("../assets/fonts/JetBrainsMonoNL-Regular.ttf");
 
 /// Applies the theme to the whole editor with `accent`. The editor is

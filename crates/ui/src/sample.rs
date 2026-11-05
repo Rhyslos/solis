@@ -5,6 +5,25 @@
 
 use crate::screen::{Anchor, Colour, Element, ElementKind, Fill, ScaleRule, Screen};
 
+/// A text element: `words` in `colour`, `size` design pixels, filling its
+/// parent's box with `left` design pixels' room on the left.
+fn label(name: &str, words: &str, size: f32, colour: Colour, left: f32, font: usize) -> Element {
+    Element::new(
+        name,
+        ElementKind::Text {
+            text: words.into(),
+            size,
+            font,
+            align: crate::Edge::Start,
+        },
+    )
+    .at(
+        Anchor::new(crate::Edge::Stretch, crate::Edge::Stretch),
+        [left, 0.0],
+    )
+    .filled(Fill::Solid(colour))
+}
+
 /// The wood-and-parchment look of the mock-up.
 fn panel(name: &str, round: f32) -> Element {
     Element::new(name, ElementKind::Box { round })
@@ -32,6 +51,27 @@ pub fn hud(rule: ScaleRule, energy: f32) -> Screen {
                 )
                 .sized(s([40.0, 40.0]))
                 .filled(Fill::Solid(Colour::rgb(255, 217, 106))),
+            label(
+                "season",
+                "Spring 3",
+                34.0 * k,
+                Colour::rgb(255, 233, 184),
+                80.0 * k,
+                1,
+            )
+            .sized([0.0, 46.0 * k]),
+            label(
+                "time",
+                "Mon · 08:40",
+                24.0 * k,
+                Colour::rgb(240, 217, 168),
+                80.0 * k,
+                0,
+            )
+            .at(
+                Anchor::new(crate::Edge::Stretch, crate::Edge::Stretch),
+                s([80.0, 50.0]),
+            ),
         ]);
     let money = panel("money", 10.0 * k)
         .at(Anchor::TOP_RIGHT, s([32.0, 28.0]))
@@ -44,6 +84,14 @@ pub fn hud(rule: ScaleRule, energy: f32) -> Screen {
                 )
                 .sized(s([28.0, 28.0]))
                 .filled(Fill::Solid(Colour::rgb(255, 217, 106))),
+            label(
+                "amount",
+                "1,250 g",
+                30.0 * k,
+                Colour::rgb(255, 217, 106),
+                60.0 * k,
+                1,
+            ),
         ]);
     let energy = Element::new(
         "energy",
@@ -60,6 +108,9 @@ pub fn hud(rule: ScaleRule, energy: f32) -> Screen {
         Colour::rgb(184, 232, 106),
     ))
     .bordered(2.0, Colour::rgb(201, 164, 106));
+    let energy_label = label("energy label", "ENERGY", 20.0 * k, Colour::WHITE, 0.0, 1)
+        .at(Anchor::BOTTOM_LEFT, s([34.0, 132.0]))
+        .sized(s([200.0, 28.0]));
     let slots: Vec<Element> = (0..10)
         .map(|i| {
             let mut slot = panel(&format!("slot {}", i + 1), 8.0 * k)
@@ -75,6 +126,6 @@ pub fn hud(rule: ScaleRule, energy: f32) -> Screen {
         .at(Anchor::BOTTOM, s([0.0, 32.0]))
         .sized(s([912.0, 84.0]))
         .holding(slots);
-    screen.elements = vec![day, money, energy, hotbar];
+    screen.elements = vec![day, money, energy, energy_label, hotbar];
     screen
 }

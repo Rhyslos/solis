@@ -52,6 +52,8 @@ pub struct GpuViewport {
     /// (by number, and whether through a 2D camera).
     report: editor::DrawReport,
     drawn: Vec<(usize, bool)>,
+    /// Game UI's fonts and the letters' atlas (decision 0084).
+    fonts: ui::Fonts,
 }
 
 impl GpuViewport {
@@ -76,6 +78,11 @@ impl GpuViewport {
             thumbnail_target: None,
             report: editor::DrawReport::default(),
             drawn: Vec::new(),
+            fonts: ui::Fonts::new(vec![
+                editor::theme::INTER_REGULAR.to_vec(),
+                editor::theme::INTER_SEMIBOLD.to_vec(),
+            ])
+            .0,
         }
     }
 
@@ -397,12 +404,14 @@ impl GpuViewport {
                 layout.origin,
                 layout.size,
                 layout.whole.then_some(layout.scale as u32),
+                Some(&mut self.fonts),
             );
             self.renderer.draw_ui_on_pixels(
                 &self.state.device,
                 &self.state.queue,
                 &images.out,
                 &shapes,
+                Some(&self.fonts.atlas),
             );
         }
         let texture = images.texture;
@@ -608,12 +617,13 @@ impl ViewportRenderer for GpuViewport {
         count(&mut self.report, &stats);
         // Game UI over the finished picture (decision 0083).
         if let Some(screen) = &view.ui {
-            let shapes = ui::layout(screen, image.target.size(), None);
+            let shapes = ui::layout_with(screen, image.target.size(), None, Some(&mut self.fonts));
             self.renderer.draw_ui(
                 &self.state.device,
                 &self.state.queue,
                 &image.target,
                 &shapes,
+                Some(&self.fonts.atlas),
             );
         }
         if !self.drawn.contains(&(view.image, false)) {

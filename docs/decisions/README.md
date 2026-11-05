@@ -91,3 +91,4 @@ Titles below are shortened; the files have the full reasoning. Decisions 0019 to
 | `0081-what-solis-makes-is-lust.md` | Everything Solis makes but the project file is a Lust data file, `<name>.<kind>.lst`; older files move to Lust when a project opens | Accepted (carries out 0070's second step) |
 | `0082-the-2d-follow-camera-and-cells-at-places.md` | The kit's FollowCamera2D, and turning places into a map's cells and back | Accepted |
 | `0083-game-ui-on-any-screen.md` | Game UI's anchors, scale rules and screen previews; pictures cut from sheets | Accepted |
+| `0084-game-ui-text.md` | Game UI text: `ab_glyph` and single-channel distance images in one atlas, instead of the plan's `parley` and `fdsm` | Accepted (carries out 0083's text) |

@@ -14,7 +14,7 @@ The program's code: the command line, the window and its frame loop, the GPU hoo
 | `cli.rs` | Reads the command line: `--version`, `--help`, or open the editor (with `--import <file>`). | `Command`, `parse`, `usage` |
 | `startup.rs` | Starting up behind the splash screen, which asks for a newer build first (decision 0045). Tests in `startup_tests.rs`. | `Startup`, `Next` |
 | `window.rs` | The editor window: opens it with eframe, restores saved settings, hands each frame to the workbench, carries out its actions, and starts the job pool. | `run`, `start_jobs` |
-| `gpu.rs` | Connects the `render` crate to the window's GPU device and to egui: one image for the viewport, one for the Game panel; sprite sheets and tile map layers' pictures uploaded. | `GpuViewport` |
+| `gpu.rs` | Connects the `render` crate to the window's GPU device and to egui: one image for the viewport, one for the Game panel; sprite sheets and tile map layers' pictures uploaded; game UI laid out with the fonts it keeps (Inter regular and semibold) and drawn after the frame. | `GpuViewport` |
 | `logger.rs` | Passes what libraries write through the `log` facade to the Console: every library's warnings and errors, information only from the program's own crates. | `Messages`, `Level`, `install` |
 | `gamepad.rs` | Reads the first gamepad each frame on Windows and hands it to the editor as `input::Pad` (decision 0037). | `Gamepads` |
 

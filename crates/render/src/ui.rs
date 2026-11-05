@@ -29,6 +29,7 @@ impl UiInstance {
             ui::ShapeKind::Box => 0.0,
             ui::ShapeKind::Ellipse => 1.0,
             ui::ShapeKind::Line => 2.0,
+            ui::ShapeKind::Letter => 3.0,
         };
         let mut flags = 0u32;
         if shape.crisp {
@@ -48,11 +49,16 @@ impl UiInstance {
     }
 }
 
-/// The pipeline game UI is drawn with.
+/// The pipeline game UI is drawn with, and the letters' atlas on the card.
 #[derive(Debug)]
 pub struct UiPipeline {
     layout: wgpu::BindGroupLayout,
     pipeline: wgpu::RenderPipeline,
+    atlas: wgpu::Texture,
+    atlas_view: wgpu::TextureView,
+    sampler: wgpu::Sampler,
+    /// The atlas revision on the card (`u64::MAX`: none yet).
+    uploaded: std::sync::atomic::AtomicU64,
 }
 
 impl UiPipeline {
@@ -64,16 +70,34 @@ impl UiPipeline {
         });
         let layout = device.create_bind_group_layout(&wgpu::BindGroupLayoutDescriptor {
             label: Some("game ui layout"),
-            entries: &[wgpu::BindGroupLayoutEntry {
-                binding: 0,
-                visibility: wgpu::ShaderStages::VERTEX,
-                ty: wgpu::BindingType::Buffer {
-                    ty: wgpu::BufferBindingType::Uniform,
-                    has_dynamic_offset: false,
-                    min_binding_size: None,
+            entries: &[
+                wgpu::BindGroupLayoutEntry {
+                    binding: 0,
+                    visibility: wgpu::ShaderStages::VERTEX,
+                    ty: wgpu::BindingType::Buffer {
+                        ty: wgpu::BufferBindingType::Uniform,
+                        has_dynamic_offset: false,
+                        min_binding_size: None,
+                    },
+                    count: None,
                 },
-                count: None,
-            }],
+                wgpu::BindGroupLayoutEntry {
+                    binding: 1,
+                    visibility: wgpu::ShaderStages::FRAGMENT,
+                    ty: wgpu::BindingType::Texture {
+                        sample_type: wgpu::TextureSampleType::Float { filterable: true },
+                        view_dimension: wgpu::TextureViewDimension::D2,
+                        multisampled: false,
+                    },
+                    count: None,
+                },
+                wgpu::BindGroupLayoutEntry {
+                    binding: 2,
+                    visibility: wgpu::ShaderStages::FRAGMENT,
+                    ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
+                    count: None,
+                },
+            ],
         });
         let pipeline_layout = device.create_pipeline_layout(&wgpu::PipelineLayoutDescriptor {
             label: Some("game ui pipeline layout"),
@@ -116,7 +140,65 @@ impl UiPipeline {
             multiview_mask: None,
             cache: None,
         });
-        Self { layout, pipeline }
+        let side = ui::text::ATLAS_SIDE;
+        let atlas = device.create_texture(&wgpu::TextureDescriptor {
+            label: Some("game ui letters"),
+            size: wgpu::Extent3d {
+                width: side,
+                height: side,
+                depth_or_array_layers: 1,
+            },
+            mip_level_count: 1,
+            sample_count: 1,
+            dimension: wgpu::TextureDimension::D2,
+            format: wgpu::TextureFormat::R8Unorm,
+            usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
+            view_formats: &[],
+        });
+        let atlas_view = atlas.create_view(&wgpu::TextureViewDescriptor::default());
+        let sampler = device.create_sampler(&wgpu::SamplerDescriptor {
+            label: Some("game ui letters"),
+            mag_filter: wgpu::FilterMode::Linear,
+            min_filter: wgpu::FilterMode::Linear,
+            ..Default::default()
+        });
+        Self {
+            layout,
+            pipeline,
+            atlas,
+            atlas_view,
+            sampler,
+            uploaded: std::sync::atomic::AtomicU64::new(u64::MAX),
+        }
+    }
+
+    /// Sends the letters' atlas to the card when it changed since last.
+    fn upload(&self, queue: &wgpu::Queue, atlas: &ui::text::Atlas) {
+        use std::sync::atomic::Ordering;
+        if self.uploaded.load(Ordering::Relaxed) == atlas.revision {
+            return;
+        }
+        let side = ui::text::ATLAS_SIDE;
+        queue.write_texture(
+            wgpu::TexelCopyTextureInfo {
+                texture: &self.atlas,
+                mip_level: 0,
+                origin: wgpu::Origin3d::ZERO,
+                aspect: wgpu::TextureAspect::All,
+            },
+            &atlas.pixels,
+            wgpu::TexelCopyBufferLayout {
+                offset: 0,
+                bytes_per_row: Some(side),
+                rows_per_image: Some(side),
+            },
+            wgpu::Extent3d {
+                width: side,
+                height: side,
+                depth_or_array_layers: 1,
+            },
+        );
+        self.uploaded.store(atlas.revision, Ordering::Relaxed);
     }
 
     /// Draws `shapes` over `view` (an image `size` pixels big, kept as it
@@ -129,9 +211,13 @@ impl UiPipeline {
         view: &wgpu::TextureView,
         size: [u32; 2],
         shapes: &[ui::Shape],
+        atlas: Option<&ui::text::Atlas>,
     ) {
         if shapes.is_empty() || size[0] == 0 || size[1] == 0 {
             return;
+        }
+        if let Some(atlas) = atlas {
+            self.upload(queue, atlas);
         }
         let instances: Vec<UiInstance> =
             shapes.iter().take(MAX_SHAPES).map(UiInstance::of).collect();
@@ -149,10 +235,20 @@ impl UiPipeline {
         let bind_group = device.create_bind_group(&wgpu::BindGroupDescriptor {
             label: Some("game ui bind group"),
             layout: &self.layout,
-            entries: &[wgpu::BindGroupEntry {
-                binding: 0,
-                resource: uniform.as_entire_binding(),
-            }],
+            entries: &[
+                wgpu::BindGroupEntry {
+                    binding: 0,
+                    resource: uniform.as_entire_binding(),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 1,
+                    resource: wgpu::BindingResource::TextureView(&self.atlas_view),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 2,
+                    resource: wgpu::BindingResource::Sampler(&self.sampler),
+                },
+            ],
         });
         let mut encoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
             label: Some("game ui"),

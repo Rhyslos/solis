@@ -39,6 +39,14 @@ fn gpu() -> Option<(
 
 /// Draws `shapes` over a grey image `size` big and reads it back.
 fn draw(size: [u32; 2], shapes: &[ui::Shape]) -> Option<Vec<u8>> {
+    draw_with(size, shapes, None)
+}
+
+fn draw_with(
+    size: [u32; 2],
+    shapes: &[ui::Shape],
+    atlas: Option<&ui::text::Atlas>,
+) -> Option<Vec<u8>> {
     let (device, queue, _turn) = gpu()?;
     let texture = device.create_texture(&wgpu::TextureDescriptor {
         label: Some("ui test"),
@@ -78,7 +86,8 @@ fn draw(size: [u32; 2], shapes: &[ui::Shape]) -> Option<Vec<u8>> {
         multiview_mask: None,
     });
     queue.submit([encoder.finish()]);
-    UiPipeline::new(&device, render::COLOR_FORMAT).draw(&device, &queue, &view, size, shapes);
+    UiPipeline::new(&device, render::COLOR_FORMAT)
+        .draw(&device, &queue, &view, size, shapes, atlas);
     Some(read_texture(&device, &queue, &texture, size).unwrap())
 }
 
@@ -181,4 +190,51 @@ fn half_seen_shapes_blend_and_no_shapes_draw_nothing() {
         return;
     };
     assert!(near(px(&none, 8, 4, 4), GREY));
+}
+
+fn fonts() -> ui::Fonts {
+    let (fonts, notes) = ui::Fonts::new(vec![
+        include_bytes!("../../editor/assets/fonts/Inter-Regular.ttf").to_vec(),
+        include_bytes!("../../editor/assets/fonts/Inter-SemiBold.ttf").to_vec(),
+    ]);
+    assert!(notes.is_empty());
+    fonts
+}
+
+#[test]
+fn text_is_drawn_from_the_letters_atlas_in_its_colour() {
+    let mut fonts = fonts();
+    let mut screen = ui::Screen::new("t", [200.0, 100.0], ui::ScaleRule::Keep);
+    screen.elements = vec![
+        ui::Element::new(
+            "big",
+            ui::ElementKind::Text {
+                text: "H".into(),
+                size: 80.0,
+                font: 1,
+                align: ui::Edge::Start,
+            },
+        )
+        .at(
+            ui::Anchor::new(ui::Edge::Stretch, ui::Edge::Stretch),
+            [10.0, 0.0],
+        )
+        .filled(ui::Fill::Solid(ui::Colour::rgb(255, 0, 0))),
+    ];
+    let shapes = ui::layout_with(&screen, [200, 100], None, Some(&mut fonts));
+    assert_eq!(shapes.len(), 1);
+    let Some(pixels) = draw_with([200, 100], &shapes, Some(&fonts.atlas)) else {
+        return;
+    };
+    let h = shapes[0].rect;
+    // A third of the way down the H: red somewhere in its left half (the
+    // stem; the box has room around the letter, so it's searched for),
+    // and the grey below in the middle, between the stems.
+    let y = (h[1] + (h[3] - h[1]) / 3.0) as u32;
+    let red = (h[0].max(0.0) as u32..((h[0] + h[2]) / 2.0) as u32)
+        .map(|x| px(&pixels, 200, x, y))
+        .any(|c| c[0] > 200 && c[1] < 60 && c[2] < 60);
+    assert!(red, "no red stem on row {y} of {h:?}");
+    let gap = px(&pixels, 200, ((h[0] + h[2]) / 2.0) as u32, y);
+    assert!(near(gap, GREY), "{gap:?}");
 }
