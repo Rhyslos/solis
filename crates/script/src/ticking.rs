@@ -254,6 +254,57 @@ impl Ticking<'_> {
         phase
     }
 
+    /// Runs every game-wide object's `update`, in name order, open to
+    /// change (decision 0080), telling the host which runs; gives back
+    /// what they sent and their failures. An object that fails stops
+    /// until the code changes. Once the budget is used up, the rest wait.
+    pub(crate) fn objects(&self, lent: &Lent<'_, '_>, dt: f64) -> Phase {
+        let mut phase = Phase::default();
+        let Some(objects) = self.lust.map(|p| &p.objects) else {
+            return phase;
+        };
+        for object in &objects.list {
+            if self.luau.clock.over() {
+                break;
+            }
+            let Some(update) = &object.update else {
+                continue;
+            };
+            if objects.stopped.borrow().contains(&object.name) {
+                continue;
+            }
+            let at = Order {
+                major: 0,
+                component: object.name.as_str().into(),
+                seq: 0,
+                entity: 0,
+            };
+            lent.borrow_mut().at(&at);
+            let result = objects.open(|| {
+                self.luau
+                    .clock
+                    .limited(|| update.call::<()>((&object.table, dt)))
+            });
+            self.collect_sent(&at, &mut phase);
+            if let Err(err) = result {
+                if self.luau.clock.over() {
+                    break;
+                }
+                objects.stopped.borrow_mut().insert(object.name.clone());
+                phase.failures.push((
+                    at,
+                    Failure {
+                        entity: None,
+                        component: object.name.clone(),
+                        at: self.located(&err),
+                        stopped: true,
+                    },
+                ));
+            }
+        }
+        phase
+    }
+
     /// Delivers one round of `events` (each with its number in the round)
     /// to each running component on their entity, in order of their names,
     /// telling the host which one runs; gives back what they sent and

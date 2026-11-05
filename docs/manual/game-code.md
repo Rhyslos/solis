@@ -269,6 +269,52 @@ end
 
 Solis makes them from the game's **seed** ([random numbers](concepts.md#game-code)), so the same seed gives the same numbers, on any computer and any number of cores. Each Play has a new seed; type `seed` in the [Console](console.md) to see it, and `seed 42` to start every Play from 42, so you can watch the same game again. `setSeed(n)` starts the numbers again from `n` at the end of the tick. Lua's own `math.random` and `math.randomseed` follow the same seed.
 
+## Game-wide objects
+
+Some things belong to the whole game, not to any one entity: the time of day, the player's money, the weather. Write one as a Lust `object` and pass it, and Solis runs it for you ([game-wide object](concepts.md#game-code)):
+
+```
+object Clock {
+    has {
+        int day = 1;
+        float hour = 6;
+    }
+
+    method update(float dt) {
+        hour += dt / 60;
+        is hour >= 24? then {
+            hour -= 24;
+            day += 1;
+        }
+    }
+
+    method bool isNight() {
+        return hour < 6 || hour >= 20;
+    }
+}
+
+component StreetLamp {
+    has {
+        bool lit = false;
+    }
+
+    method update(float dt) {
+        lit = Clock:isNight();
+    }
+}
+
+pass Clock, StreetLamp;
+end
+```
+
+- **Ticked first:** each passed object's `update(float dt)` runs once a tick, objects in order of their names, before any entity's components. So every lamp sees the same hour, the one the clock has just moved to.
+- **Read anywhere, changed only in its own update.** Components read an object's fields and call its methods (`Clock.hour`, `Clock:isNight()`). Changing one of its fields anywhere else (`Clock.hour = 12;` in a component) stops that component, with a message pointing at the line: "Clock.hour can't be changed here: an object changes only in its own update". An object's `update` may change other objects too. **Why:** Solis runs game code on every core of the computer at once, each core with its own copy of the code. Objects run on the first, and their fields are copied to the others before the components run; if a component on one core could change the clock, the others would never know.
+- **Kept in save games:** a save keeps every object's fields, and loading gives them back ([Save games](save-games.md)). New code while the game runs keeps them too, field by field, by name, like a component's.
+- **Which fields:** the kinds a component's fields can be (`bool`, `int`, `float`, `string`, a state, `vec3`, `rotation`, `entity`) are copied and kept. A list, a map or a thing in an object isn't saved yet, and each core keeps its own copy, so the Console says so when you press Play. Keep what every part of the game must see in plain fields.
+- **An object that fails** in its `update` stops, and the Console says where, like a component; it runs again when the code changes. Components can still read it.
+- **Lust only:** objects are written in Lust. Lua and Rust components can't read them yet.
+- An object that isn't passed is its file's own helper, and Solis leaves it alone.
+
 ## Saving and loading
 
 `Saves:saveTo("quick")` saves the whole game and `Saves:loadFrom("quick")` puts it back exactly as it was: see [Save games](save-games.md). (`save` and `load` on their own are Lust's own words, for its files.)

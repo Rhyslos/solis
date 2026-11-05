@@ -29,6 +29,8 @@ pub(crate) struct LustProgram {
     /// Each component's methods, looked up once (Lust's classes never
     /// change while the code runs), by component name.
     pub(crate) methods: BTreeMap<String, Methods>,
+    /// The game-wide objects it passes (decision 0080).
+    pub(crate) objects: crate::objects::Objects,
 }
 
 /// A Lust component's `update` and `handle`, if it has them.
@@ -97,10 +99,15 @@ pub(crate) fn prepare(
     }
     // Reading the components makes one of each, which works out their
     // fields' starting values: game code, so the natives are lent too.
-    let ((fields, schemas, methods), events) = call_with(luau, Some(&env), host, discard, || {
-        Ok((read_components(&api)?, read_events(&api)?))
-    })
-    .map_err(failed)?;
+    let ((fields, schemas, methods), events, objects) =
+        call_with(luau, Some(&env), host, discard, || {
+            Ok((
+                read_components(&api)?,
+                read_events(&api)?,
+                crate::objects::Objects::read(luau, &api)?,
+            ))
+        })
+        .map_err(failed)?;
     Ok(LustProgram {
         api,
         env,
@@ -109,6 +116,7 @@ pub(crate) fn prepare(
         schemas,
         events: Rc::new(events),
         methods,
+        objects,
     })
 }
 

@@ -5,15 +5,15 @@ use super::*;
 use crate::code::Code;
 use reflect::Value;
 
-fn id(n: u64) -> EntityId {
+pub(super) fn id(n: u64) -> EntityId {
     EntityId(reflect::Id::from_raw(n).unwrap())
 }
 
 /// A small world: named entities at places, standing alone.
 #[derive(Debug, Clone, Default, PartialEq)]
-struct TestWorld {
+pub(super) struct TestWorld {
     entities: Vec<(EntityId, String, Mat4)>,
-    said: Vec<String>,
+    pub(super) said: Vec<String>,
     time: f64,
     shots: Vec<crate::Shot>,
     seed: u64,
@@ -21,7 +21,7 @@ struct TestWorld {
 }
 
 impl TestWorld {
-    fn with(names: &[&str]) -> Self {
+    pub(super) fn with(names: &[&str]) -> Self {
         Self {
             entities: names
                 .iter()
@@ -101,7 +101,7 @@ impl GameWorld for TestWorld {
     }
 }
 
-fn compiled(main: &str) -> Arc<Compiled> {
+pub(super) fn compiled(main: &str) -> Arc<Compiled> {
     let (mut files, _) = crate::describe::descriptions_for(
         "Test 1.0",
         "solis",
