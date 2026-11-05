@@ -58,6 +58,8 @@ pub(crate) struct PanelViewer<'a> {
     pub(crate) library_requests: &'a mut Vec<LibraryRequest>,
     /// Set when the docked Library's Unpin was clicked.
     pub(crate) library_pin_clicked: &'a mut bool,
+    /// What the Hints panel says (none: hints are off).
+    pub(crate) hints: Option<&'a [String]>,
     /// The sound files measured, and the one playing.
     pub(crate) sounds: crate::library::Sounds<'a>,
     /// The sound file Properties shows instead of the selection, if any.
@@ -416,6 +418,7 @@ impl TabViewer for PanelViewer<'_> {
                     self.console_requests.push(request);
                 }
             }
+            Panel::Hints => crate::hints::hints_panel(ui, self.hints),
             Panel::Mixer => {
                 let requests = crate::mixer_view::mixer_panel(ui, self.mixer, self.playing);
                 self.mixer_requests.extend(requests);

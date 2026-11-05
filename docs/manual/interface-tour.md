@@ -50,6 +50,7 @@ Up and Down choose, **Enter** does it, **Esc** closes. Why? You don't have to re
 | Console | Library, and the rest along the bottom | Messages from the editor and the engine, and a command line. See [The Console](console.md). |
 | Problems | Library, and the rest along the bottom | Mistakes found in the area, such as a missing model; a number on the tab says how many. See [Problems](problems.md). |
 | Profiler | Library, and the rest along the bottom | Where each frame's time goes: game code, the world, drawing, the editor, and the graphics card. See [The Profiler](profiler.md). |
+| Hints | (under Properties) | A few plain sentences about what's selected and what you can do with it, such as where a game code component's file is and that saving it in Ledger updates the game at once; with nothing selected, how to start. Turn hints off in **Edit > Settings… > Appearance** once you know your way around. |
 | Mixer | Library, and the rest along the bottom | The project's buses: a fader, meter, mute and solo each, and ducking. See [The Mixer](mixer.md). |
 
 **Rearranging panels ([docking](concepts.md#the-window)):**

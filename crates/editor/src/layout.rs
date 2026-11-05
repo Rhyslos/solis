@@ -8,6 +8,9 @@ use egui_dock::{DockState, NodeIndex};
 /// Share of the window width given to everything but Properties (the
 /// right column).
 const MAIN_AREA_WIDTH: f32 = 0.765;
+/// Share of the right column's height given to Properties (Hints gets the
+/// rest, under it).
+const PROPERTIES_HEIGHT: f32 = 0.72;
 /// Share of the main area's height given to Area and the viewport (the
 /// bottom panels get the rest).
 const TOP_HEIGHT: f32 = 0.72;
@@ -32,8 +35,9 @@ const AREA_WIDTH: f32 = 0.245;
 pub fn standard() -> DockState<Panel> {
     let mut dock = DockState::new(vec![Panel::Viewport, Panel::Game]);
     let tree = dock.main_surface_mut();
-    let [main_area, _] =
+    let [main_area, right] =
         tree.split_right(NodeIndex::root(), MAIN_AREA_WIDTH, vec![Panel::Properties]);
+    tree.split_below(right, PROPERTIES_HEIGHT, vec![Panel::Hints]);
     let [top, _] = tree.split_below(
         main_area,
         TOP_HEIGHT,
@@ -210,6 +214,16 @@ fn draws(dock: &DockState<Panel>) -> bool {
 /// default layout; or, if none of them is there, beside the viewport (or
 /// in the first group).
 fn add_beside_its_group(dock: &mut DockState<Panel>, panel: Panel) {
+    // Hints, new since layouts were saved (decision 0085), goes under
+    // Properties, as in the standard layout.
+    if panel == Panel::Hints
+        && let Some(path) = dock.find_tab(&Panel::Properties)
+        && path.surface == egui_dock::SurfaceIndex::main()
+    {
+        dock.main_surface_mut()
+            .split_below(path.node, PROPERTIES_HEIGHT, vec![Panel::Hints]);
+        return;
+    }
     let default = standard();
     let companions: Vec<Panel> = default
         .find_tab(&panel)
