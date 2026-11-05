@@ -104,7 +104,11 @@ impl Workspace {
 pub fn animate() -> DockState<Panel> {
     let mut dock = DockState::new(vec![Panel::Viewport, Panel::Game]);
     let tree = dock.main_surface_mut();
-    let [main, _] = tree.split_right(NodeIndex::root(), 0.765, vec![Panel::Properties]);
+    let [main, _] = tree.split_right(
+        NodeIndex::root(),
+        0.765,
+        vec![Panel::Properties, Panel::Hints],
+    );
     let [top, _] = tree.split_below(
         main,
         0.6,
@@ -133,7 +137,11 @@ pub fn animate() -> DockState<Panel> {
 pub fn code() -> DockState<Panel> {
     let mut dock = DockState::new(vec![Panel::Game, Panel::Viewport]);
     let tree = dock.main_surface_mut();
-    let [main, _] = tree.split_right(NodeIndex::root(), 0.765, vec![Panel::Properties]);
+    let [main, _] = tree.split_right(
+        NodeIndex::root(),
+        0.765,
+        vec![Panel::Properties, Panel::Hints],
+    );
     let [top, bottom] = tree.split_below(
         main,
         0.66,

@@ -78,6 +78,10 @@ The research's rules, each from what people praise or complain about in Unreal, 
 
 ### O7. Help in place
 
+> **Built:** the Hints panel under Properties (a sentence per component, a game code component's file, how to start, a word while playing; off in Settings > Appearance; older layouts get it under Properties); the readout beside the pointer in 2D. The floating tool bar (with the map's choices) and the Area panel's kinds and eye switches were already there. The view's choices as chips at the viewport's top (`2D ▾`, `Lit ▾`, `Grid`, `Snap`) stay at the bottom for now: moving them is a change of its own, mocked up first if wanted.
+
+**The overhaul is complete** (O1 to O7). Next, as the project lead ordered (2026-11-05): all of game UI, starting with screens in Lust, then the UI editor in a UI workspace.
+
 - A **Hints** panel that says what the selected thing is and what to do with it, which can be turned off in Settings.
 - The viewport's tool bar floating at the bottom middle, as the tile painter's already does, with the tool's choices beside it (`Ground ▾`).
 - A readout by the cursor in 2D (`x 192 · y 64 px · cell 12, 4`).

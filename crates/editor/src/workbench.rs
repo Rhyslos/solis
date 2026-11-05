@@ -316,6 +316,8 @@ pub struct Workbench {
     pub(crate) library_pinned: bool,
     /// Whether the Library's drawer is popped up (unpinned only).
     pub(crate) drawer_open: bool,
+    /// Whether the Hints panel shows hints (Settings > Appearance).
+    pub(crate) hints: bool,
     /// The workspace in use (decision 0085).
     pub(crate) workspace: crate::workspace::Workspace,
     /// The other workspaces' layouts, as last left.
@@ -491,6 +493,7 @@ impl Workbench {
             code_checked: None,
             library_pinned: true,
             drawer_open: false,
+            hints: true,
             workspace: crate::workspace::Workspace::Level,
             other_layouts: BTreeMap::new(),
             play_changes: None,
@@ -1065,6 +1068,9 @@ impl Workbench {
             } else {
                 BTreeMap::new()
             };
+        // The hints for what's selected (decision 0085), while they show.
+        let hints = (self.hints && self.in_front.contains(&Panel::Hints)).then(|| self.hints());
+        let hints_off = !self.hints;
         let frames = self.frames_editor.as_mut().map(|editor| {
             crate::workbench_frames::frames_ui(
                 editor,
@@ -1132,6 +1138,11 @@ impl Workbench {
                         library_state: &mut self.library_state,
                         library_requests: &mut library_requests,
                         library_pin_clicked: &mut library_pin_clicked,
+                        hints: if hints_off {
+                            None
+                        } else {
+                            Some(hints.as_deref().unwrap_or(&[]))
+                        },
                         sounds: crate::library::Sounds {
                             states: &self.sounds,
                             events: &self.sound_events,

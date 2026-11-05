@@ -971,6 +971,25 @@ impl Viewport {
             accent,
         );
         viewport_tools::draw(ui, rect, &self.tools, &seen, snapping.locked, accent);
+        // In 2D, where the pointer is, in the game's pixels, and the map's
+        // cell under it (decision 0085), beside the pointer.
+        if two_d
+            && response.hovered()
+            && let Some(at) = mouse
+            && let Some(ground) = seen
+                .ray_through(at, glam::Vec2::new(rect.width(), rect.height()))
+                .hit_ground(0.0)
+            && let Some(pointer) = ui.input(|i| i.pointer.latest_pos())
+        {
+            let words = cursor_readout(ground, self.pixels, self.tile_overlay.hovered);
+            let galley =
+                painter.layout_no_wrap(words, egui::FontId::monospace(11.5), theme::TEXT_STRONG);
+            let corner = pointer + egui::vec2(16.0, 14.0);
+            let back =
+                egui::Rect::from_min_size(corner, galley.size()).expand2(egui::vec2(6.0, 3.0));
+            painter.rect_filled(back, 4.0, theme::HEADER.gamma_multiply(0.9));
+            painter.galley(corner, galley, theme::TEXT_STRONG);
+        }
         if let Some(dragged) = response.dnd_hover_payload::<crate::library::LibraryDrag>()
             && dragged.0.kind.placeable()
             && let Some(at) = ui.input(|i| i.pointer.latest_pos())
@@ -1512,6 +1531,26 @@ fn tool_button(ui: &mut Ui, tool: Tool, chosen: bool, accent: Accent) -> egui::R
     response
 }
 
+/// Where `ground` (a point on the ground, in metres) is, in the game's
+/// pixels, and the map cell under it if a map is selected:
+/// `x 192 · y 64 px · cell 12, 4`. In a 2D game, down the screen is down
+/// the picture, so y counts downward from the top as pixel-art programs do.
+pub(crate) fn cursor_readout(
+    ground: glam::Vec3,
+    pixels: area::pixels::PixelSettings,
+    cell: Option<[u32; 2]>,
+) -> String {
+    let per = pixels.pixels_per_unit.max(1) as f32;
+    // Whole pixels, and never "-0".
+    let x = (ground.x * per).floor() + 0.0;
+    let y = (-ground.y * per).floor() + 0.0;
+    let place = format!("x {x:.0} · y {y:.0} px");
+    match cell {
+        Some([cx, cy]) => format!("{place} · cell {cx}, {cy}"),
+        None => place,
+    }
+}
+
 #[cfg(test)]
 #[path = "views_tests.rs"]
 mod views_tests;
@@ -1519,6 +1558,31 @@ mod views_tests;
 #[cfg(test)]
 mod tests {
     use super::*;
+
+    #[test]
+    fn the_cursor_readout_is_in_the_game_s_pixels_y_counting_down() {
+        let pixels = area::pixels::PixelSettings {
+            pixels_per_unit: 16,
+            ..Default::default()
+        };
+        assert_eq!(
+            cursor_readout(glam::Vec3::new(12.0, -4.0, 0.0), pixels, Some([12, 4])),
+            "x 192 · y 64 px · cell 12, 4"
+        );
+        assert_eq!(
+            cursor_readout(glam::Vec3::new(0.5, 0.25, 0.0), pixels, None),
+            "x 8 · y -4 px"
+        );
+        // A nonsense density counts as one pixel a metre.
+        let none = area::pixels::PixelSettings {
+            pixels_per_unit: 0,
+            ..Default::default()
+        };
+        assert_eq!(
+            cursor_readout(glam::Vec3::new(3.0, 0.0, 0.0), none, None),
+            "x 3 · y 0 px"
+        );
+    }
 
     #[test]
     fn every_tool_has_its_own_key() {

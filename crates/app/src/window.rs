@@ -44,6 +44,8 @@ const START_PAGE_KEY: &str = "start_page";
 /// Key under which whether the Library is pinned (docked) rather than a
 /// drawer is remembered (decision 0085).
 const LIBRARY_PINNED_KEY: &str = "library_pinned";
+/// Key under which whether the Hints panel shows hints is remembered.
+const HINTS_KEY: &str = "hints";
 /// Key under which the viewport's corner controls are remembered.
 const OVERLAYS_KEY: &str = "viewport_overlays";
 /// Key under which snapping and the axis locks are remembered.
@@ -150,6 +152,9 @@ impl App {
             .unwrap_or(true);
         let library_pinned: bool = storage
             .and_then(|s| eframe::get_value(s, LIBRARY_PINNED_KEY))
+            .unwrap_or(true);
+        let hints: bool = storage
+            .and_then(|s| eframe::get_value(s, HINTS_KEY))
             .unwrap_or(true);
         let workspaces: Option<editor::workspace::Workspaces> =
             storage.and_then(|s| eframe::get_value(s, WORKSPACES_KEY));
@@ -258,6 +263,7 @@ impl App {
         if !library_pinned {
             app.workbench.set_library_pinned(false);
         }
+        app.workbench.set_hints_on(hints);
         if let Some(workspaces) = workspaces {
             app.workbench.set_workspaces(workspaces);
         }
@@ -1878,6 +1884,7 @@ impl eframe::App for App {
     fn save(&mut self, storage: &mut dyn eframe::Storage) {
         eframe::set_value(storage, LAYOUT_KEY, self.workbench.layout());
         eframe::set_value(storage, WORKSPACES_KEY, &self.workbench.workspaces());
+        eframe::set_value(storage, HINTS_KEY, &self.workbench.hints_on());
         eframe::set_value(storage, ACCENT_KEY, &self.workbench.accent());
         eframe::set_value(
             storage,

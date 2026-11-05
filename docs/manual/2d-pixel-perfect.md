@@ -11,7 +11,7 @@ For now you can set a project up for 2D, look at it in pixels, play it through a
 
 ## How to use it
 1. **Set the project's 2D settings:** **Edit > Settings…**, then **2D** under *This project*. The standard ones suit most pixel-art games: 480 × 270, 16 pixels to a metre and 16-pixel tiles. They're saved in the project (`pixels.solpix`), so everyone working on it shares them.
-2. **Look in pixels:** in the viewport, the **Perspective ▴** button at the bottom left, then **2D**. The view looks straight down at the ground. The grid is the tile size, and the corner shows the zoom.
+2. **Look in pixels:** in the viewport, the **Perspective ▴** button at the bottom left, then **2D**. The view looks straight down at the ground. The grid is the tile size, and the corner shows the zoom. Beside the pointer, a small readout says where it is in the game's pixels (`x 192 · y 64 px`, with y counting down the picture as in pixel-art programs) and, with a tile map selected, the cell under it (`cell 12, 4`), so you can place things exactly without counting grid lines.
    - **Hold the right or middle button and drag** to slide the view.
    - **Turn the wheel** to zoom in or out one whole step at a time (100%, 200%, 300%…), towards the pointer. At whole steps every pixel of your game is the same size on screen, so nothing blurs.
 3. **Add a 2D camera:** with the 2D view in use, **Entity > Add camera**. It goes over the middle of the view, on a whole pixel, as a 2D camera. A dashed frame shows what it sees, labelled **Game screen** for the camera the game looks through (the first camera in the area). To turn an existing camera into one, set its **View** to **2D** in Properties.

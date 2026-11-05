@@ -25,6 +25,7 @@ pub mod game_sound;
 mod game_sound_tests;
 pub mod gizmo;
 mod graph_canvas;
+pub mod hints;
 pub mod icons;
 mod input_window;
 mod inspector;

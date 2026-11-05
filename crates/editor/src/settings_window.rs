@@ -44,6 +44,7 @@ impl Page {
 enum Setting {
     Accent,
     Layout,
+    Hints,
     BaseResolution,
     PixelsPerUnit,
     TileSize,
@@ -53,7 +54,7 @@ enum Setting {
 impl Setting {
     fn page(self) -> Page {
         match self {
-            Self::Accent | Self::Layout => Page::Appearance,
+            Self::Accent | Self::Layout | Self::Hints => Page::Appearance,
             Self::BaseResolution | Self::PixelsPerUnit | Self::TileSize | Self::Scaling => {
                 Page::TwoD
             }
@@ -64,6 +65,7 @@ impl Setting {
         match self {
             Self::Accent => "Accent colour",
             Self::Layout => "Panel layout",
+            Self::Hints => "Hints",
             Self::BaseResolution => "Base resolution",
             Self::PixelsPerUnit => "Pixels per unit",
             Self::TileSize => "Tile size",
@@ -77,6 +79,10 @@ impl Setting {
                 "Marks what's chosen and selected. Play, Stop and warnings keep their own colours."
             }
             Self::Layout => "Puts every panel back where it started.",
+            Self::Hints => {
+                "The Hints panel says what's selected and what you can do with it. Turn it off \
+                 once you know your way around."
+            }
             Self::BaseResolution => {
                 "The size the game is drawn at, in pixels, before it's scaled up to fill the \
                  screen."
@@ -92,9 +98,10 @@ impl Setting {
         }
     }
 
-    const ALL: [Self; 6] = [
+    const ALL: [Self; 7] = [
         Self::Accent,
         Self::Layout,
+        Self::Hints,
         Self::BaseResolution,
         Self::PixelsPerUnit,
         Self::TileSize,
@@ -121,6 +128,11 @@ pub(crate) struct SettingsWindow {
 enum Request {
     Accent(Accent),
     ResetLayout,
+    /// Hints on or off.
+    Hints(bool),
+    /// The Appearance page as it was at first: the standard accent, and
+    /// hints on.
+    ResetAppearance,
     /// New 2D settings, and whether to save them now (not while a number
     /// is being dragged).
     Pixels(PixelSettings, bool),
@@ -210,6 +222,7 @@ impl Workbench {
         let mut request = None;
         let now = Now {
             accent: self.accent,
+            hints: self.hints,
             pixels: self.pixels,
             project: self.project.is_some(),
         };
@@ -227,6 +240,11 @@ impl Workbench {
         match request {
             Some(Request::Accent(accent)) => self.choose_accent(ctx, accent),
             Some(Request::ResetLayout) => self.reset_layout(),
+            Some(Request::Hints(on)) => self.hints = on,
+            Some(Request::ResetAppearance) => {
+                self.choose_accent(ctx, Accent::default());
+                self.hints = true;
+            }
             Some(Request::Pixels(settings, save)) => self.change_pixels(settings, save, actions),
             None => {}
         }
@@ -239,6 +257,8 @@ impl Workbench {
 /// The settings as they are, for the window to show.
 struct Now {
     accent: Accent,
+    /// Whether the Hints panel shows hints.
+    hints: bool,
     pixels: PixelSettings,
     /// Whether a project is open (its settings can be changed).
     project: bool,
@@ -328,7 +348,7 @@ fn contents(ui: &mut Ui, window: &mut SettingsWindow, now: &Now) -> Option<Reque
                     .clicked()
             {
                 request = match window.page {
-                    Page::Appearance => Some(Request::Accent(Accent::default())),
+                    Page::Appearance => Some(Request::ResetAppearance),
                     Page::TwoD => now
                         .project
                         .then(|| Request::Pixels(PixelSettings::default(), true)),
@@ -384,6 +404,12 @@ fn row(ui: &mut Ui, setting: Setting, now: &Now) -> Option<Request> {
             );
         });
         match setting {
+            Setting::Hints => {
+                let mut on = now.hints;
+                if ui.checkbox(&mut on, "Show hints").changed() {
+                    request = Some(Request::Hints(on));
+                }
+            }
             Setting::Accent => {
                 egui::ComboBox::from_id_salt("settings-accent")
                     .selected_text(accent.name())
@@ -519,7 +545,7 @@ fn pixel_control(ui: &mut Ui, setting: Setting, s: PixelSettings) -> Option<Requ
                     }
                 });
         }
-        Setting::Accent | Setting::Layout => {}
+        Setting::Accent | Setting::Layout | Setting::Hints => {}
     }
     if changed.get() && new != s {
         // Saved once the drag ends, not every step of it.

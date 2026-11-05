@@ -46,11 +46,14 @@ pub enum Panel {
     /// The tileset open (Phase 9, D5): its terrains, picture, slots and
     /// rules, beside the viewport while a `.tileset.lst` file is open.
     Tileset,
+    /// What's selected and what you can do with it (decision 0085): under
+    /// Properties.
+    Hints,
 }
 
 impl Panel {
     /// Every panel, in the order the Window menu lists them.
-    pub const ALL: [Self; 10] = [
+    pub const ALL: [Self; 11] = [
         Self::Viewport,
         Self::Game,
         Self::Area,
@@ -61,6 +64,7 @@ impl Panel {
         Self::Problems,
         Self::Profiler,
         Self::Mixer,
+        Self::Hints,
     ];
 
     /// Panels that come and go with what's open (a clips file), never in
@@ -104,6 +108,7 @@ impl Panel {
             Self::Animator => "Animator",
             Self::Map => "Map",
             Self::Tileset => "Tileset",
+            Self::Hints => "Hints",
         }
     }
 
@@ -126,6 +131,7 @@ impl Panel {
             Self::Animator => Icon::Animator,
             Self::Map => Icon::Layers,
             Self::Tileset => Icon::Layers,
+            Self::Hints => Icon::Info,
         }
     }
 }
