@@ -14,15 +14,20 @@ A lamp is just an entity with a Transform and a Light. Give a model a Light (**A
 
 **See what something is made of**
 1. Click it in the **Area** panel, or in the viewport ([Selecting and moving things](selecting-and-moving.md)).
-2. **Properties** shows its **Name** and each of its components, Transform first, with their settings. Point at a setting's name to see what it does.
+2. **Properties** shows its **Name** and each of its components in a card of its own, Transform first, with their settings. Point at a setting's name to see what it does.
+3. Each card's **?** opens this manual's page about that component. A component from your game code shows the file it's written in instead, with **Open in Ledger ↗** to open that file in the program you write code in.
+
+**What's been changed:** a small blue dot after a setting's name means it isn't the component's standard value (what it starts with). Beside the setting, **↺** and the standard value (`↺ 1000`) put it back, as one step Ctrl + Z undoes. Why? So you can see at a glance what you've tuned, and undo an experiment without remembering the old number. Places, turns and picked files aren't marked: they start empty and are meant to be set. (A component that came set up for a job, such as the Sun's Light, shows dots on what makes it a sun.)
+
+**Shared files:** a file several entities use, such as a model or sprite sheet, says **shared by 3** beside it. Changing the file itself (in Aseprite, say) changes all of them, so this tells you before you do.
 
 **Add an entity**
 - **Entity > Add entity** adds an empty one (only a Transform) at the point the camera looks at. Entity > Add point light and Add spotlight add [lights](lights.md); importing a model adds an entity for it.
 
 **Add or remove a component**
-- Click **Add component** at the bottom of Properties and pick one: a **Light** turns any entity into a lamp, a **Model** shows a model, and so on. It starts with its usual settings. The list is in two groups: **Built in** (Solis's own) and **Game code** (the ready-made kit's and your own); point at one to see what it does.
+- Click **+ Add component…** at the bottom of Properties, type part of a name to narrow the list, and pick one (or press Enter for the first): a **Light** turns any entity into a lamp, a **Model** shows a model, and so on. It starts with its usual settings. The list is in two groups: **Built in** (Solis's own) and **Game code** (the ready-made kit's and your own); point at one to see what it does.
 - A setting that points at another entity (a camera's **target**, say) shows that entity's name. Click it for a list of the area's entities, with a box to find one by name, and **None** to point at nothing.
-- The **×** beside a component's name takes it off. Game code's own components (from Phase 4) appear in the same list.
+- A card's **⋯** has **Remove**, which takes the component off. Game code's own components appear in the same list.
 
 **Select several**
 - **Click** one to select just it. **Ctrl + click** adds one to the selection, or takes it out. **Shift + click** selects every row from the one you picked first to this one.
@@ -35,15 +40,15 @@ A lamp is just an entity with a Transform and a Light. Give a model a Light (**A
 - Hiding and locking are only how you see the area while you work: they aren't saved in the area, aren't undo steps, and don't change the game.
 
 **Copy settings from one entity to another**
-- The **⋯** beside a component's name has **Copy values**, **Paste values** and **Reset to defaults**. Copy a Light from one lamp and paste it onto another to make them match; pasting onto an entity without that component adds it.
-- **Edit > Copy components** at the top of Properties copies all of them at once, and **Paste components** gives them to everything selected.
+- A card's **⋯** has **Copy values**, **Paste values** and **Reset to defaults**. Copy a Light from one lamp and paste it onto another to make them match; pasting onto an entity without that component adds it.
+- The **⋯** beside the entity's name has **Copy components**, which copies all of them at once, and **Paste components**, which gives them to everything selected.
 
 **Rename, move, copy or delete**
 - Type in **Name**, press **F2**, or **double-click** it in the Area panel to rename it (Enter to keep, Esc to cancel).
-- Change **Position** under Transform, or click **Move here** to bring it to where the camera looks.
+- Change **Position** under Transform, or choose **Move here** in the **⋯** beside its name to bring it to where the camera looks.
 - **Ctrl + D** duplicates the selection, with everything under each one, and selects the copies.
-- **Unpack** (in Properties, for a model or a placed [assembly](assemblies.md)) splits it into separate entities.
-- **Delete** (the key, the button in Properties, or **Edit > Delete** in the Area panel's own menu) removes the selection and everything under it. In the Area panel, models also have a × that does the same.
+- **Unpack** (in the **⋯** beside a model's name, or beside a placed [assembly](assemblies.md)'s note) splits it into separate entities.
+- **Delete** (the key, the **⋯** beside its name in Properties, or **Edit > Delete** in the Area panel's own menu) removes the selection and everything under it. In the Area panel, models also have a × that does the same.
 - The Area panel's own **Edit** and **Entity** menus are the same as the ones in the top bar, closer to hand.
 - **F** points the camera at the selection.
 

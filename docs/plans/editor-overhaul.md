@@ -40,6 +40,8 @@ The research's rules, each from what people praise or complain about in Unreal, 
 
 ### O2. Properties: values, not buttons
 
+> **Built:** cards with icons, ? to the manual page or Open in Ledger ↗ for game code, ⋯ per card (copy, paste, reset, remove) and per entity (move here, unpack, copy and paste components, delete); a dot and ↺ on a setting that isn't its standard value (numbers, switches, words, choices, colours); "shared by N" on a file; a searchable Add component. Tags wait for entities to have tags (a change to areas, with their own decision).
+
 - Each component a card: its icon and name, **?** (its manual page) and **⋯** (reset, remove, copy, paste, move up or down).
 - A changed value shows a dot and its standard value to reset to (`3.5 ↺ 3.0`).
 - A file shared by several things says so (`farmer.aseprite · shared by 3`).
