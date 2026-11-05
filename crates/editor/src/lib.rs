@@ -40,6 +40,7 @@ pub mod panel;
 mod panels;
 pub mod picking;
 pub mod play;
+pub mod play_changes;
 mod play_input;
 pub mod problems;
 pub mod profiler;

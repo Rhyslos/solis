@@ -300,6 +300,19 @@ impl<S: Clone + Weigh> History<S> {
         self.redo.last().map(|s| s.label.as_str())
     }
 
+    /// The labels of the undo steps made after `state` (a [`state`] taken
+    /// earlier), oldest first: what was done since then. Empty if nothing
+    /// was, or it was all undone again.
+    ///
+    /// [`state`]: Self::state
+    pub fn labels_since(&self, state: u64) -> Vec<String> {
+        self.undo
+            .iter()
+            .filter(|s| s.serial > state)
+            .map(|s| s.label.clone())
+            .collect()
+    }
+
     /// How many steps can be undone.
     pub fn undo_len(&self) -> usize {
         self.undo.len()
@@ -381,6 +394,26 @@ mod tests {
         target: 1,
         gesture: 1,
     });
+
+    #[test]
+    fn labels_since_list_what_was_done_after_a_point() {
+        let (mut s, id) = lamp();
+        let mut h = History::<u32>::default();
+        h.apply(&mut s, "Change strength", vec![set(id, 5.0)], None, 1, 2)
+            .unwrap();
+        let at = h.state();
+        assert!(h.labels_since(at).is_empty());
+        h.apply(&mut s, "Brighter", vec![set(id, 9.0)], None, 2, 3)
+            .unwrap();
+        h.apply(&mut s, "Dimmer", vec![set(id, 2.0)], None, 3, 4)
+            .unwrap();
+        assert_eq!(h.labels_since(at), ["Brighter", "Dimmer"]);
+        // Undone again: nothing since.
+        h.undo(&mut s).unwrap().unwrap();
+        h.undo(&mut s).unwrap().unwrap();
+        assert!(h.labels_since(at).is_empty());
+        assert_eq!(h.labels_since(0), ["Change strength"]);
+    }
 
     #[test]
     fn undo_and_redo_go_back_and_forth_with_the_selection() {
