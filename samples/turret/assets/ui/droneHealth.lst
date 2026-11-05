@@ -1,0 +1,20 @@
+-- The drone's health bar: a screen (decision 0087). The Drone's Screen
+-- component shows it, and Ui:entity() is the drone. It reads a copy of
+-- the drone's Health after every tick; it can't change the game.
+fetch "solis/screen":Ui;
+fetch "main":Health;
+
+assembly DroneHealth {
+    view [width 1920, height 1080] {
+        Health health = Ui:entity():health();
+        stack [width fill, height fill, top, center, pad 40] {
+            column [gap 8, padX 20, padY 14, background "#000000", round 12, opacity 0.85] {
+                text "Drone " + health.hp.text() + " / 20" [size 26, bold, white];
+                progress health.hp [to 20, width 360, height 18, red5];
+            }
+        }
+    }
+}
+
+pass DroneHealth;
+end

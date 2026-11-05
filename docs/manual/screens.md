@@ -40,7 +40,29 @@ For now screens are written by hand in Lust. The UI editor, where you draw them,
 3. **Show it.** Add a **Screen** component to an entity (the player, or a "Game" entity), and pick **Hud** in its **Screen** field. **Shown** turns it on and off; **Order** decides which of several screens is on top.
 4. **Press Play.** The screen is drawn over the Game panel, and changes with the game: after every tick it reads the game's values again.
 
-**What a screen can read:** the game's [game-wide objects](game-code.md) (`Clock.hour`, `Money.amount`), and its own fields (`coins` above). Reading the entity it's shown for (its health, say) comes next.
+**What a screen can read:**
+
+- the game's [game-wide objects](game-code.md) (`Clock.hour`, `Money.amount`);
+- its own fields (`coins` above): the screen's memory;
+- **the entity it's shown for** (the one whose Screen component shows it): `Ui:entity()`, and a copy of any of that entity's [Lust components](game-code.md), with a reading method named after the component: `Ui:entity():health()` gives its `Health`. Fetch `Ui` from `solis/screen` and the component from its file:
+
+  ```
+  fetch "solis/screen":Ui;
+  fetch "main":Health;
+
+  assembly DroneHealth {
+      view {
+          Health health = Ui:entity():health();
+          text "Drone " + health.hp.text() + " / 20" [size 26, bold, white];
+          progress health.hp [to 20, width 360, height 18, red5];
+      }
+  }
+
+  pass DroneHealth;
+  end
+  ```
+
+  The copy is the component as the last tick left it: its methods work (`health:fraction()`), and changing it changes nothing in the game. The turret sample (**Help > Make the sample game…**) has this health bar over its drone.
 
 **What a screen can use:** `column`, `row`, `stack`, `space`, `text`, `progress` bars, and `canvas` with `box`, `circle` and `line` placed by `x` and `y`. Styles: `pad` (and `padX`, `padTop`…), `gap`, `width` and `height` (a number, or `fill`), `grow`, `size`, `bold`, the alignment words, colour words (`white`, `red5`, `gray9`, `#ff8800`), `background`, `round`, `border` and `opacity`. Other pieces are laid out but not drawn yet.
 
@@ -59,6 +81,9 @@ The **Screen** component:
 - **Problem:** Problems says "each file in ui/ passes the assembly named after it". **Why:** Solis finds a screen by its file's name. **Fix:** the file `ui/hud.lst` holds `assembly Hud { … }` and ends with `pass Hud;`.
 - **Problem:** the Console says "The screen Hud stopped: … can't be changed here". **Why:** a screen only reads the game; it tried to change one of the game's objects. **Fix:** change the game in game code, and let the screen show the result. A screen may change its own fields.
 - **Problem:** the screen stopped, and the Game panel still shows the last picture. **Why:** something in its view failed (the Console names the file and line), so its last good picture stays. **Fix:** fix the line; the screen runs again when the code is saved.
+- **Problem:** the Console says "this entity has no Health, so health() has nothing to give". **Why:** the entity whose Screen shows the screen has no such component. **Fix:** put the Screen component on the entity that has it, or add the component.
+- **Problem:** the Console says "Screens can't read the component Position: entities already have a position()". **Why:** a reading method is named after its component, and this name is an engine call on entities already. **Fix:** give the component another name.
+- **Problem:** game code says there's no file `solis/screen.lst`. **Why:** only screens can fetch it: game code reads other entities through its own calls. **Fix:** fetch it only in files in the `ui` folder.
 - **Problem:** text is dark and hard to read over the game. **Why:** like Lust's windows, text is dark unless told otherwise. **Fix:** give it a colour word: `white`.
 
 ## Related

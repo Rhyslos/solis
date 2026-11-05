@@ -15,7 +15,7 @@ Game code (decision 0028): a project's Lust, checked and turned into Lua by the 
 | `lust_program.rs` | The game's Lust loaded into Luau, with its components' fields, schemas and events, and its game-wide objects. | |
 | `objects.rs` | The game-wide objects (decision 0080): each passed Lust `object`'s fields moved into a guarded store, so only the objects' updates change them; their kept values read and written for other cores, saves and new code. | `ObjectValues` |
 | `lua_components.rs` | Components written in Lua (decision 0003): each `.lua` file in the assets makes components with `component`. | |
-| `screens.rs` | Game screens (decision 0087): the files in `ui/`, their own program (an entry opening each), and `Screens`, which runs it in a runtime of its own and reads each view's tree for `ui`. Tests in `screens_tests.rs`. | `ScreenCode`, `Screens`, `screen_name` |
+| `screens.rs` | Game screens (decision 0087): the files in `ui/`, their own program (an entry opening each, and `solis/screen.lst` with `Ui` and a reader per Lust component), and `Screens`, which runs it in a runtime of its own, lends the readers through a `ScreenReader`, and reads each view's tree for `ui`. Tests in `screens_tests.rs`. | `ScreenCode`, `Screens`, `ScreenReader`, `readers_file` |
 | `rust_component.rs` | Components written in Rust by a game, running in the same ticks and order and sending the same events as Lust's. | `RustComponent`, `Context` |
 
 ## Running it

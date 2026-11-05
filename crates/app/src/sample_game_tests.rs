@@ -29,6 +29,8 @@ fn write_the_sample_area() {
             .components
             .insert(component.into(), reflect::ComponentData::default());
     }
+    // Its health bar (decision 0087): the screen in ui/droneHealth.lst.
+    let drone = drone.with(&area::builtin::Screen::showing("DroneHealth"));
     let drone = add(&mut area, drone);
     let mut turret = EntityData::new("Turret").with(&place(0.0, 0.0, 1.0));
     let mut gun = reflect::ComponentData::default();
@@ -105,10 +107,32 @@ fn the_sample_is_made_as_a_project_and_plays_through_all_three_languages() {
         .unwrap();
     w.open_area(area, assets.join(AREA));
     w.play();
+    // The drone's health bar (decision 0087) reads its Health.
+    let words = |w: &editor::Workbench| -> Vec<String> {
+        fn texts(n: &ui::view::Node, out: &mut Vec<String>) {
+            if n.kind == "text" {
+                out.push(n.text.clone());
+            }
+            n.children.iter().for_each(|c| texts(c, out));
+        }
+        let mut out = Vec::new();
+        for s in w.game_screens() {
+            texts(s.view.as_ref().unwrap(), &mut out);
+        }
+        out
+    };
+    w.play_for(1.0 / 60.0);
+    // The turret hits it on the first tick.
+    assert_eq!(words(&w), vec!["Drone 17.5 / 20".to_string()]);
     // Eight hits at half a second each: about four seconds of game.
     for _ in 0..(60 * 5) {
         w.play_for(1.0 / 60.0);
     }
+    assert_eq!(
+        words(&w),
+        vec!["Drone 0.0 / 20".to_string()],
+        "it follows the drone"
+    );
     let said: Vec<&str> = w.log_lines().iter().map(|l| l.text.as_str()).collect();
     let count = |start: &str| said.iter().filter(|t| t.starts_with(start)).count();
     assert_eq!(count("Sparks fly from Drone"), 3, "{said:?}");
