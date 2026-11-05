@@ -49,12 +49,12 @@ pub struct GameCode {
     told: Vec<String>,
 }
 
-/// The project's assemblies, as paths in `assets` without the extension
-/// (`ships/fighter`), sorted: hidden folders and the engine's own are
-/// skipped, and links to folders aren't followed. At most
-/// [`MAX_ASSEMBLY_NAMES`].
-fn assemblies(assets: &Path) -> Vec<String> {
-    let ext = format!(".{}", asset_db::ASSEMBLY_EXTENSION);
+/// The project's files with extension `ext` (assemblies, sound events),
+/// as paths in `assets` without it (`ships/fighter`), sorted: hidden
+/// folders and the engine's own are skipped, and links to folders aren't
+/// followed. At most [`MAX_ASSEMBLY_NAMES`].
+fn asset_paths(assets: &Path, ext: &str) -> Vec<String> {
+    let ext = format!(".{ext}");
     let mut found = Vec::new();
     let mut folders = vec![assets.to_path_buf()];
     while let Some(folder) = folders.pop() {
@@ -91,8 +91,9 @@ fn assemblies(assets: &Path) -> Vec<String> {
     found
 }
 
-/// The most assemblies named in `solis/project.lst`: past it, the rest
-/// can't be spawned from game code (a guard against a folder of millions).
+/// The most of each kind of file named in `solis/project.lst`: past it,
+/// the rest can't be named from game code (a guard against a folder of
+/// millions).
 const MAX_ASSEMBLY_NAMES: usize = 10_000;
 
 impl GameCode {
@@ -105,8 +106,18 @@ impl GameCode {
     /// `assets`) as states, so call this again when they change;
     /// the notes then also say which names game code can't use.
     pub fn describe(assets: &Path, made_by: &str) -> Vec<String> {
+        let root = assets.parent();
         let names = script::project_names::Names {
-            assemblies: assemblies(assets),
+            assemblies: asset_paths(assets, asset_db::ASSEMBLY_EXTENSION),
+            sounds: asset_paths(assets, sound::event::EXTENSION),
+            buses: root
+                .map_or_else(sound::Mixer::default, |root| {
+                    crate::play_files::load_mixer(root).0
+                })
+                .buses
+                .into_iter()
+                .map(|b| b.name)
+                .collect(),
             actions: assets
                 .parent()
                 .map_or_else(input::Bindings::default, |root| {
@@ -351,6 +362,29 @@ mod tests {
         );
         let project = std::fs::read_to_string(assets.join("solis/project.lst")).unwrap();
         assert!(project.contains("Drag, OpenMap];"), "{project}");
+        // Sound events and the Mixer's buses.
+        std::fs::create_dir_all(assets.join("sfx")).unwrap();
+        std::fs::write(assets.join("sfx/footstep.solsound"), "").unwrap();
+        code.describe_again(&assets, "Test 1.0");
+        let project = std::fs::read_to_string(assets.join("solis/project.lst")).unwrap();
+        assert!(
+            project.contains("state Sound = [Sfx [Footstep]];"),
+            "{project}"
+        );
+        assert!(
+            project.contains("state Bus = [Master, Music, Effects, Voice, Ambience, Ui];"),
+            "{project}"
+        );
+    }
+
+    #[test]
+    fn the_standard_names_have_a_new_project_s_buses() {
+        let buses: Vec<String> = sound::Mixer::default()
+            .buses
+            .into_iter()
+            .map(|b| b.name)
+            .collect();
+        assert_eq!(buses, script::project_names::Names::standard().buses);
     }
 
     #[test]

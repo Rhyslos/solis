@@ -10,7 +10,7 @@ Any time a place should sound like a place: a cave, a hall, a tunnel, a small ro
 2. In Properties, **Add component > ReverbZone**.
 3. Pick its **Shape**: a **Box** for rooms, halls and tunnels (set its **Size** along X, Y and Z), or a **Ball** for caves and domes (set its **Radius**). With the entity selected, the zone is outlined in the viewport in teal, so you can see what it covers. It grows, turns and moves with its entity.
 4. Pick what it **Sounds like**, and its **Strength**.
-5. Press **Play** and move the camera in and out: sounds placed in the world (`playSoundAt`, `playSoundOn`, AudioSources) echo inside, and the echo fades in across the **Soft edge** as you go in.
+5. Press **Play** and move the camera in and out: sounds placed in the world (`Audio:playAt`, an entity's `playSound`, AudioSources) echo inside, and the echo fades in across the **Soft edge** as you go in.
 
 Only sounds placed **In the world** get the echo; music and the interface, heard the same everywhere, don't. Echoes follow their bus: turn a bus down or mute it in the [Mixer](mixer.md) and its echoes go with it.
 

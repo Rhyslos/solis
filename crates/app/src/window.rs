@@ -951,7 +951,15 @@ impl App {
                 }
                 WorkbenchAction::SaveMixer(mixer) => {
                     if let Some(root) = self.projects.root().map(Path::to_path_buf) {
-                        match crate::play_files::save_mixer(&root, &mixer) {
+                        let saved = crate::play_files::save_mixer(&root, &mixer);
+                        // The buses are names game code uses (Bus.Music).
+                        if let Some(assets) = self.projects.db().map(|db| db.project().assets()) {
+                            for note in self.game_code.describe_again(&assets, &self.made_by) {
+                                self.workbench.log(LogLevel::Warning, note);
+                            }
+                            self.game_code.check(assets);
+                        }
+                        match saved {
                             Ok(Some(crate::play_files::Kept::Older(copy))) => self.workbench.log(
                                 LogLevel::Info,
                                 crate::upgrades::kept_note(&root, sound::mixer::FILE_NAME, &copy),

@@ -1069,7 +1069,7 @@ fn game_code_spawns_copies_of_assemblies_and_takes_them_out() {
     assert!(
         w.log_lines()
             .iter()
-            .any(|l| l.text.contains("spawned \"Nowhere\""))
+            .any(|l| l.text.contains("spawned \"nowhere\""))
     );
     // Next frames: they're in the game, and their own code runs.
     for _ in 0..3 {

@@ -275,10 +275,11 @@ Solis makes them from the game's **seed** ([random numbers](concepts.md#game-cod
 
 ## Sounds
 
-Game code plays [sound events](sound-events.md) by name: the event's file in `assets`, without `.solsound`, so `assets/sfx/footstep.solsound` is `"sfx/footstep"`.
+Game code plays [sound events](sound-events.md) by the project's names for them: Solis writes each event into `solis/project.lst` as `state Sound`, folders as options inside options, so `assets/sfx/footstep.solsound` is `Sound.Sfx.Footstep`. A misspelt or deleted event is a mistake before the game runs. Fetch `Audio` from `solis/sound` and `Sound` from `solis/project`:
 
 ```
-get "solis/sound":[playSoundAt, playSoundOn, stopSoundsOn];
+fetch "solis/sound":Audio;
+fetch "solis/project":Sound;
 
 component Walker {
     has {
@@ -288,7 +289,7 @@ component Walker {
     method update(float dt) {
         steps = steps + 1;
         is steps % 30 == 0? then {
-            playSoundAt("sfx/footstep", position());
+            Audio:playAt(Sound.Sfx.Footstep, position());
         }
     }
 }
@@ -297,13 +298,13 @@ pass Walker;
 end
 ```
 
-- `playSound(event)` plays it the same everywhere: music, the interface.
-- `playSoundAt(event, place)` plays it at a place in the world: quieter far from the camera, and from its direction (for an event whose Placement is **In the world**).
-- `playSoundOn(event, entity)` plays it on an entity and follows it as it moves: an engine, a voice. `stopSoundsOn(entity)` stops them, with a short fade, even ones asked for earlier in the same tick; it doesn't stop the entity's AudioSource (use `setSoundPlaying` for that).
-- `setSoundPlaying(entity, playing)` turns an entity's [AudioSource](sound-events.md#sounds-that-keep-playing) (a sound that keeps playing: an engine, a campfire) on or off.
-- `setBusVolume(bus, volume)` sets a [bus](mixer.md) ("Music", "Effects") for the rest of the play, from 0 (silent) to 1 (as set in the Mixer): what an options menu's volume sliders call. Stop puts the Mixer's back.
+- `Audio:play(Sound.Music.Theme)` plays it the same everywhere: music, the interface.
+- `Audio:playAt(Sound.Sfx.Footstep, place)` plays it at a place in the world: quieter far from the camera, and from its direction (for an event whose Placement is **In the world**).
+- `playSound(Sound.Sfx.Engine)` plays it on the component's entity and follows it as it moves: an engine, a voice (`target:playSound(…)` on another). `stopSounds()` stops them, with a short fade, even ones asked for earlier in the same tick; it doesn't stop the entity's AudioSource (use `setSoundPlaying` for that).
+- `setSoundPlaying(playing)` turns the entity's [AudioSource](sound-events.md#sounds-that-keep-playing) (a sound that keeps playing: an engine, a campfire) on or off.
+- `Audio:setVolume(Bus.Music, volume)` sets a [bus](mixer.md) for the rest of the play (the buses are the Mixer's, as `state Bus` in `solis/project.lst`; the UI bus is `Bus.Ui`, since Lust names aren't all capitals), from 0 (silent) to 1 (as set in the Mixer): what an options menu's volume sliders call. Stop puts the Mixer's back.
 
-In Lua they're `solis.playSoundAt("sfx/footstep", solis.entity.position(self.me))` and so on. In Rust, through the component's host: `cx.host().play_sound("sfx/footstep", SoundAt::Place(place))`, and `cx.host().set_bus_volume("Music", 0.5)`.
+In Lua they're `solis.Audio:playAt("Sfx.Footstep", solis.entity.position(self.me))` and so on (the option's name as text; `"sfx/footstep"` works too). In Rust, through the component's host: `cx.host().play_sound("sfx/footstep", SoundAt::Place(place))`, and `cx.host().set_bus_volume("Music", 0.5)`.
 
 **Sound never changes the game.** None of these gives anything back, so code can't ask "is it still playing?": a game plays exactly the same with sound on, off, or with no sound card, and a [recording](concepts.md#simulation) replays the same. Each play picks its take from the game's seed and the tick, so the same game even sounds the same each time. Like a move, a sound lands at the end of the tick.
 
@@ -337,10 +338,13 @@ Things that fall, collide and get pushed have a **RigidBody** and a **Collider**
 | `solis/world` | `Saves:saveTo(string slot)` | Saves the whole game in a slot, at the end of the tick ([Save games](save-games.md)). |
 | `solis/world` | `Saves:loadFrom(string slot)` | Loads the game saved in a slot, at the end of the tick. |
 | `solis/project` | `state Assembly` | The project's assemblies, folders as options inside options (`Assembly.Ships.Fighter`). |
-| `solis/sound` | `playSound(string event)` | Plays a sound event the same everywhere (see Sounds, above). |
-| `solis/sound` | `playSoundAt(string event, vec3 place)` | Plays a sound event at a place in the world. |
-| `solis/sound` | `playSoundOn(string event, entity on)` | Plays a sound event on an entity, following it. |
-| `solis/sound` | `stopSoundsOn(entity on)` | Stops the sounds on an entity, with a short fade. |
+| `solis/sound` | `Audio:play(Sound event)` | Plays a sound event the same everywhere (see Sounds, above). |
+| `solis/sound` | `Audio:playAt(Sound event, vec3 place)` | Plays a sound event at a place in the world. |
+| `solis/sound` | `Audio:setVolume(Bus bus, float volume)` | Sets a bus's volume for the rest of the play, 0 to 1. |
+| any entity | `playSound(Sound event)` | Plays a sound event on the entity, following it. |
+| any entity | `stopSounds()` | Stops the sounds on the entity, with a short fade. |
+| any entity | `setSoundPlaying(bool playing)` | Turns the entity's AudioSource on or off. |
+| `solis/project` | `state Sound`, `state Bus` | The project's sound events (`Sound.Sfx.Footstep`) and the Mixer's buses (`Bus.Music`). |
 | `solis/animation` | `playClip(entity on, string clip)` | Plays a clip on an entity's Sprite; already playing or finished it, it carries on as it is ([Animating sprites](sprite-animation.md)). |
 | `solis/animation` | `replayClip(entity on, string clip)` | Plays a clip from its beginning, whatever it was doing. |
 | `solis/animation` | `stopClip(entity on)` | Stops an entity's Sprite where it is in its clip. |
@@ -384,6 +388,9 @@ An entity's abilities are called bare for the component's own entity (`moveTo(pl
 | `bindingOf("Jump")`, `rebind("Jump", key)` | `Input:binding(Action.Jump)`, `Input:rebind(Action.Jump, key)` |
 | `push(e, f)`, `velocityOf(e)`, `setVelocity(e, v)` | `e:push(f)`, `e:velocity()`, `e:setVelocity(v)` |
 | `moveCharacter(e, w)`, `onGround(e)` | `e:walk(w)`, `e:grounded()` |
+| `playSound("sfx/x")`, `playSoundAt("sfx/x", p)` | `Audio:play(Sound.Sfx.X)`, `Audio:playAt(Sound.Sfx.X, p)` |
+| `playSoundOn("sfx/x", e)`, `stopSoundsOn(e)`, `setSoundPlaying(e, b)` | `e:playSound(Sound.Sfx.X)`, `e:stopSounds()`, `e:setSoundPlaying(b)` |
+| `setBusVolume("Music", v)` | `Audio:setVolume(Bus.Music, v)` |
 | `castRay(…)`, `castRayHit(…)`, `castRayNormal(…)` | one call: `RayHit hit = Physics:castRay(…);` then `hit.distance`, `hit.entity`, `hit.normal` |
 | Lua `solis.positionOf(e)`, `solis.say(w)`, `solis.held("Jump")` | `solis.entity.position(e)`, `solis.World:say(w)`, `solis.Input:held("Jump")` |
 

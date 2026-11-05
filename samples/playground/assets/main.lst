@@ -4,9 +4,8 @@
 -- moving platform and footsteps. The music, the radio and the cave's
 -- drip are AudioSources in the area; the cave's echo is a ReverbZone.
 
-get "solis/sound":[playSoundOn];
 fetch "solis/input":Input;
-fetch "solis/project":Action;
+fetch "solis/project":[Action, Sound];
 
 fetch "solis/kit/character":[CharacterController];
 fetch "solis/kit/cameras":[ThirdPersonCamera, FirstPersonCamera, RtsCamera];
@@ -64,7 +63,7 @@ component Footsteps {
                 gone = gone + Maths:sqrt(step.x * step.x + step.y * step.y);
             }
             is gone >= stride? then {
-                playSoundOn("sfx/footstep", this);
+                playSound(Sound.Sfx.Footstep);
                 gone = 0;
             }
         }

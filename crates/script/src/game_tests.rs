@@ -103,7 +103,12 @@ fn compiled(main: &str) -> Arc<Compiled> {
     let (mut files, _) = crate::describe::descriptions_for(
         "Test 1.0",
         "solis",
-        &crate::project_names::Names::with_assemblies(&["drone"]),
+        &crate::project_names::Names::with_assemblies(&["drone"]).and_sounds(&[
+            "boom",
+            "engine",
+            "music/theme",
+            "sfx/step",
+        ]),
     );
     files.push(("main.lst".into(), main.to_string()));
     let code = Code {
@@ -401,7 +406,7 @@ fn spawns_make_the_same_entities_on_any_number_of_shards() {
     match (&one[0], &one[1]) {
         (Change::Spawn(made, file, place), Change::Despawn(gone)) => {
             assert_eq!(made, gone, "the entity spawn gave back");
-            assert_eq!(file, "Drone");
+            assert_eq!(file, "drone");
             assert_eq!(*place, Vec3::new(1.0, 2.0, 3.0));
         }
         other => panic!("{other:?}"),
@@ -659,20 +664,19 @@ fn game_code_s_checksum_is_the_same_on_any_number_of_shards() {
 fn sounds_asked_for_land_in_order_on_any_number_of_shards() {
     // Each speaker plays at itself, on itself, and everywhere; the last
     // also stops the first's sounds. A bad place or name is left out.
-    const SPEAKERS: &str = "fetch \"solis/world\":World;\nget \"solis/sound\":[playSound, playSoundAt, playSoundOn, stopSoundsOn];\n\
+    const SPEAKERS: &str = "fetch \"solis/project\":Sound;\nfetch \"solis/sound\":Audio;\nfetch \"solis/world\":World;\n\n\
         \n\
         \n\
         component Speaker {\n\
             method update(float dt) {\n\
-                playSoundAt(\"sfx/step\", position());\n\
-                playSoundOn(\"engine\", me);\n\
-                playSound(\"music/theme\");\n\
-                playSound(\"\");\n\
+                Audio:playAt(Sound.Sfx.Step, position());\n\
+                playSound(Sound.Engine);\n\
+                Audio:play(Sound.Music.Theme);\n\
             }\n\
         }\n\
         component Hush {\n\
             method update(float dt) {\n\
-                stopSoundsOn(World:find(\"S1\"));\n\
+                World:find(\"S1\"):stopSounds();\n\
             }\n\
         }\n\
         pass Speaker, Hush;\nend\n";
@@ -727,11 +731,11 @@ fn sounds_asked_for_land_in_order_on_any_number_of_shards() {
 
 #[test]
 fn a_flood_of_sounds_is_capped() {
-    const LOUD: &str = "get \"solis/sound\":[playSound, setBusVolume];\n\
+    const LOUD: &str = "fetch \"solis/project\":[Sound, Bus];\nfetch \"solis/sound\":Audio;\n\n\
         component Loud {\n\
             method update(float dt) {\n\
-                loop 1000 { playSound(\"boom\"); }\n\
-                setBusVolume(\"Music\", 0.5);\n\
+                loop 1000 { Audio:play(Sound.Boom); }\n\
+                Audio:setVolume(Bus.Music, 0.5);\n\
             }\n\
         }\n\
         pass Loud;\nend\n";
@@ -751,13 +755,12 @@ fn a_flood_of_sounds_is_capped() {
 
 #[test]
 fn set_bus_volume_lands_within_zero_to_one() {
-    const OPTIONS: &str = "get \"solis/sound\":[setBusVolume];\n\
+    const OPTIONS: &str = "fetch \"solis/project\":Bus;\nfetch \"solis/sound\":Audio;\n\n\
         component Options {\n\
             method update(float dt) {\n\
-                setBusVolume(\"Music\", 0.5);\n\
-                setBusVolume(\"Effects\", 7);\n\
-                setBusVolume(\"UI\", -1);\n\
-                setBusVolume(\"\", 0.5);\n\
+                Audio:setVolume(Bus.Music, 0.5);\n\
+                Audio:setVolume(Bus.Effects, 7);\n\
+                Audio:setVolume(Bus.Ui, -1);\n\
             }\n\
         }\n\
         pass Options;\nend\n";
@@ -771,20 +774,20 @@ fn set_bus_volume_lands_within_zero_to_one() {
         [
             Change::BusVolume("Music".into(), 0.5),
             Change::BusVolume("Effects".into(), 1.0),
-            Change::BusVolume("UI".into(), 0.0),
+            Change::BusVolume("Ui".into(), 0.0),
         ],
-        "kept within 0 to 1, and a bus with no name left out"
+        "kept within 0 to 1"
     );
 }
 
 #[test]
 fn set_sound_playing_lands_for_entities_only() {
-    const RADIO: &str = "fetch \"solis/world\":World;\nget \"solis/sound\":[setSoundPlaying];\n\
+    const RADIO: &str = "fetch \"solis/world\":World;\n\n\
         \n\
         component Switch {\n\
             method update(float dt) {\n\
-                setSoundPlaying(World:find(\"R\"), false);\n\
-                setSoundPlaying(World:find(\"Nobody\"), true);\n\
+                World:find(\"R\"):setSoundPlaying(false);\n\
+                World:find(\"Nobody\"):setSoundPlaying(true);\n\
             }\n\
         }\n\
         pass Switch;\nend\n";

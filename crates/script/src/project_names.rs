@@ -12,6 +12,10 @@
 
 use std::collections::BTreeMap;
 
+/// The buses a new project's Mixer has (`sound::Mixer::default`; the app
+/// checks they agree).
+pub const STANDARD_BUSES: &[&str] = &["Master", "Music", "Effects", "Voice", "Ambience", "UI"];
+
 /// The option a project has when it has none of its own (Lust's states
 /// need one): `Assembly.None`, which makes nothing.
 pub const NO_OPTION: &str = "None";
@@ -34,6 +38,11 @@ pub struct Names {
     /// Its input actions' names (`Jump`), as Edit > Input actions… has
     /// them.
     pub actions: Vec<String>,
+    /// Its sound events: their paths in the assets, without `.solsound`
+    /// (`sfx/footstep`).
+    pub sounds: Vec<String>,
+    /// Its Mixer's buses' names (`Music`).
+    pub buses: Vec<String>,
 }
 
 impl Names {
@@ -47,6 +56,8 @@ impl Names {
                 .into_iter()
                 .map(|a| a.name)
                 .collect(),
+            sounds: Vec::new(),
+            buses: STANDARD_BUSES.iter().map(|b| (*b).to_string()).collect(),
         }
     }
 }
@@ -58,6 +69,20 @@ impl Names {
         let mut names = Self::standard();
         names.assemblies = paths.iter().map(|p| (*p).to_string()).collect();
         names
+    }
+
+    /// These names with these sound events (paths without the extension).
+    #[must_use]
+    pub fn and_sounds(mut self, sounds: &[&str]) -> Self {
+        self.sounds.extend(sounds.iter().map(|a| (*a).to_string()));
+        self
+    }
+
+    /// These names with more buses.
+    #[must_use]
+    pub fn and_buses(mut self, buses: &[&str]) -> Self {
+        self.buses.extend(buses.iter().map(|a| (*a).to_string()));
+        self
     }
 
     /// These names with more input actions.
@@ -75,7 +100,9 @@ impl Names {
 pub fn project_file(made_by: &str, names: &Names) -> (String, Vec<String>) {
     let mut notes = Vec::new();
     let assembly = state_text("Assembly", &names.assemblies, "assembly", &mut notes);
-    let action = names_text("Action", &names.actions, "input action", &mut notes);
+    let action = names_text("Action", &names.actions, "input action", true, &mut notes);
+    let sound = state_text("Sound", &names.sounds, "sound event", &mut notes);
+    let bus = names_text("Bus", &names.buses, "bus", false, &mut notes);
     let text = format!(
         "-- Made by {made_by}: the project's names, for game code. It's written again\n\
          -- whenever the project's files change, so changes made here don't last.\n\n\
@@ -84,6 +111,11 @@ pub fn project_file(made_by: &str, names: &Names) -> (String, Vec<String>) {
          {assembly}\n\n\
          -- The project's input actions (Edit > Input actions…): Input:pressed(Action.Jump).\n\
          {action}\n\n\
+         -- The project's sound events, folders as options inside options: Audio:play(Sound.Sfx.Footstep)\n\
+         -- for sfx/footstep.\n\
+         {sound}\n\n\
+         -- The Mixer's buses: Audio:setVolume(Bus.Music, 0.5).\n\
+         {bus}\n\n\
          pass {};\n\
          end\n",
         crate::describe::PROJECT_STATES.join(", ")
@@ -114,7 +146,7 @@ fn state_text(state: &str, paths: &[String], what: &str, notes: &mut Vec<String>
                 None => {
                     notes.push(format!(
                         "The {what} {path} can't be named in game code: each part of its path must start \
-                         with a letter, hold only letters, digits and _, not be all capitals, and not be one \
+                         with a letter, hold only letters, digits and _, and not be one \
                          of Lust's own objects (Maths, Files, Time, Json, Web, Random). Rename it to use it \
                          from code."
                     ));
@@ -141,13 +173,22 @@ fn state_text(state: &str, paths: &[String], what: &str, notes: &mut Vec<String>
     format!("state {state} = [{}];", options.join(", "))
 }
 
-/// A state of plain names that are already options (`Jump`): one that
-/// isn't (`jump`, `Quick save`) is left out with a note, since game code
-/// would ask for it by another name than the one the project has.
-fn names_text(state: &str, names: &[String], what: &str, notes: &mut Vec<String>) -> String {
-    let mut options: Vec<&str> = Vec::new();
+/// A state of plain names. `exact`: each must already be an option as it
+/// is (`Jump`; an input action, which game code asks for by its exact
+/// name), else it's left out with a note. Otherwise it's made one as a
+/// path's part is (the `UI` bus is `Bus.Ui`), and found again ignoring
+/// capitals.
+fn names_text(
+    state: &str,
+    names: &[String],
+    what: &str,
+    exact: bool,
+    notes: &mut Vec<String>,
+) -> String {
+    let mut options: Vec<String> = Vec::new();
     for name in names {
-        if option_name(name).as_deref() != Some(name.as_str()) {
+        let option = option_name(name);
+        if option.is_none() || exact && option.as_deref() != Some(name.as_str()) {
             notes.push(format!(
                 "The {what} \"{name}\" can't be named in game code: it must start with a capital, hold \
                  only letters, digits and _, not be all capitals, and not be one of Lust's own objects. \
@@ -157,12 +198,12 @@ fn names_text(state: &str, names: &[String], what: &str, notes: &mut Vec<String>
             notes.push(format!(
                 "Two {what}s are called \"{name}\" but for capitals, so game code can't tell them apart."
             ));
-        } else {
-            options.push(name);
+        } else if let Some(option) = option {
+            options.push(option);
         }
     }
     if options.is_empty() {
-        options.push(NO_OPTION);
+        options.push(NO_OPTION.to_string());
     }
     format!("state {state} = [{}];", options.join(", "))
 }
@@ -199,10 +240,10 @@ fn write_level(
     }
 }
 
-/// A path part as an option's name (its first letter a capital), or none
-/// when it can't be one, by Lust's rules: it must start with a letter,
-/// hold only ASCII letters, digits and `_`, not be all capitals (`UFO`), and not
-/// be one of Lust's own objects (`Time`).
+/// A path part as an option's name (its first letter a capital, and one in
+/// all capitals, which Lust doesn't take, as `Ufo`), or none when it can't
+/// be one, by Lust's rules: it must start with a letter, hold only ASCII
+/// letters, digits and `_`, and not be one of Lust's own objects (`Time`).
 fn option_name(part: &str) -> Option<String> {
     let mut chars = part.chars();
     let first = chars.next()?;
@@ -210,10 +251,10 @@ fn option_name(part: &str) -> Option<String> {
     {
         return None;
     }
-    let name = first.to_ascii_uppercase().to_string() + chars.as_str();
+    let mut name = first.to_ascii_uppercase().to_string() + chars.as_str();
     let letters: Vec<char> = name.chars().filter(char::is_ascii_alphabetic).collect();
     if letters.len() >= 2 && letters.iter().all(char::is_ascii_uppercase) {
-        return None;
+        name = name[..1].to_string() + &name[1..].to_ascii_lowercase();
     }
     if LUST_OBJECTS.contains(&name.as_str()) {
         return None;
@@ -225,10 +266,23 @@ fn option_name(part: &str) -> Option<String> {
 const LUST_OBJECTS: &[&str] = &["Maths", "Files", "Time", "Json", "Web", "Random"];
 
 /// A state's full option name from a native (`"Ships.Fighter"`) as the
-/// path it stands for, to find the file by (`"Ships/Fighter"`; the Library
-/// ignores capitals). `None` for [`NO_OPTION`].
+/// path it stands for, to find the file by: each part's first letter made
+/// small again (`"ships/fighter"`), as files are mostly named; the Library
+/// and the sounds find it ignoring capitals anyway. `None` for
+/// [`NO_OPTION`].
 pub fn path_of(option: &str) -> Option<String> {
-    (option != NO_OPTION && !option.is_empty()).then(|| option.replace('.', "/"))
+    (option != NO_OPTION && !option.is_empty()).then(|| {
+        option
+            .split('.')
+            .map(|part| {
+                let mut chars = part.chars();
+                chars.next().map_or_else(String::new, |first| {
+                    first.to_ascii_lowercase().to_string() + chars.as_str()
+                })
+            })
+            .collect::<Vec<_>>()
+            .join("/")
+    })
 }
 
 #[cfg(test)]
@@ -238,14 +292,13 @@ mod tests {
     fn assemblies(list: &[&str]) -> Names {
         Names {
             assemblies: list.iter().map(|p| (*p).to_string()).collect(),
-            actions: Vec::new(),
+            ..Names::default()
         }
     }
 
     #[test]
     fn input_actions_are_a_state_of_their_own_names() {
         let names = Names {
-            assemblies: Vec::new(),
             actions: [
                 "Move",
                 "Jump",
@@ -258,6 +311,7 @@ mod tests {
             ]
             .map(String::from)
             .to_vec(),
+            ..Names::default()
         };
         let (text, notes) = project_file("Test 1.0", &names);
         assert!(
@@ -267,7 +321,15 @@ mod tests {
         assert_eq!(notes.len(), 4, "{notes:?}");
         let (text, _) = project_file("Test 1.0", &Names::default());
         assert!(text.contains("state Action = [None];"));
-        assert!(text.ends_with("pass Assembly, Action;\nend\n"));
+        // Buses are found again ignoring capitals, so the UI bus is Bus.Ui.
+        let (text, notes) = project_file("Test 1.0", &Names::standard());
+        assert!(notes.is_empty(), "{notes:?}");
+        assert!(
+            text.contains("state Bus = [Master, Music, Effects, Voice, Ambience, Ui];"),
+            "{text}"
+        );
+        assert!(text.ends_with("pass Assembly, Action, Sound, Bus;\nend\n"));
+        assert!(text.contains("state Sound = [None];"));
     }
 
     #[test]
@@ -281,7 +343,8 @@ mod tests {
             text.contains("state Assembly = [Crate, Crops [Wheat], Ships [Fighter, Freighter]];"),
             "{text}"
         );
-        assert!(text.ends_with("pass Assembly, Action;\nend\n"));
+        assert!(text.ends_with("pass Assembly, Action, Sound, Bus;\nend\n"));
+        assert!(text.contains("state Sound = [None];"));
     }
 
     #[test]
@@ -310,10 +373,10 @@ mod tests {
             ]),
         );
         assert!(
-            text.contains("state Assembly = [Dock [Crane], Fighter, Ok, Ships [A, B]];"),
+            text.contains("state Assembly = [Dock [Crane], Fighter, Ok, Ships [A, B], Ufo];"),
             "{text}"
         );
-        assert_eq!(notes.len(), 6, "{notes:?}");
+        assert_eq!(notes.len(), 5, "{notes:?}");
         assert!(notes.iter().any(|n| n.contains("2fast")));
         assert!(notes.iter().any(|n| n.contains("big-ship")));
         assert!(
@@ -330,8 +393,9 @@ mod tests {
 
     #[test]
     fn an_option_leads_back_to_its_file() {
-        assert_eq!(path_of("Ships.Fighter").as_deref(), Some("Ships/Fighter"));
-        assert_eq!(path_of("Crate").as_deref(), Some("Crate"));
+        assert_eq!(path_of("Ships.Fighter").as_deref(), Some("ships/fighter"));
+        assert_eq!(path_of("Crate").as_deref(), Some("crate"));
+        assert_eq!(path_of("BigShip").as_deref(), Some("bigShip"));
         assert_eq!(path_of(NO_OPTION), None);
     }
 
@@ -357,7 +421,7 @@ mod tests {
         fn any_paths_give_a_file_lust_takes(
             paths in proptest::collection::vec("[a-zA-Z0-9_ -]{1,6}(/[a-zA-Z0-9_ -]{1,6}){0,2}", 0..12)
         ) {
-            let (text, _notes) = project_file("Test 1.0", &Names { assemblies: paths, actions: Vec::new() });
+            let (text, _notes) = project_file("Test 1.0", &Names { assemblies: paths.clone(), sounds: paths, ..Names::default() });
             let files = vec![
                 ("solis/project.lst".to_string(), text.clone()),
                 ("main.lst".to_string(), "fetch \"solis/project\":Assembly;\nend\n".to_string()),

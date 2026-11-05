@@ -12,7 +12,7 @@ use glam::Vec3;
 use reflect::EntityId;
 use std::sync::Arc;
 
-const SPEAKER: &str = "get \"solis/sound\":[playSound, playSoundAt, playSoundOn];\n\
+const SPEAKER: &str = "fetch \"solis/project\":Sound;\nfetch \"solis/sound\":Audio;\n\n\
     \n\
     component Speaker {\n\
         has {\n\
@@ -20,8 +20,8 @@ const SPEAKER: &str = "get \"solis/sound\":[playSound, playSoundAt, playSoundOn]
         }\n\
         method update(float dt) {\n\
             ticks = ticks + 1;\n\
-            playSoundAt(\"sfx/step\", position());\n\
-            playSoundOn(\"engine\", me);\n\
+            Audio:playAt(Sound.Sfx.Step, position());\n\
+            playSound(Sound.Engine);\n\
             moveTo(position() + [1, 0, 0]);\n\
         }\n\
     }\n\
@@ -31,7 +31,8 @@ fn program(main: &str) -> Arc<script::Compiled> {
     let (mut files, _) = script::describe::descriptions_for(
         "Test Engine 9.9.9",
         "solis",
-        &script::project_names::Names::with_assemblies(&["drones/drone", "nowhere"]),
+        &script::project_names::Names::with_assemblies(&["drones/drone", "nowhere"])
+            .and_sounds(&["engine", "sfx/step"]),
     );
     files.push(("main.lst".into(), main.to_string()));
     let code = script::Code {
