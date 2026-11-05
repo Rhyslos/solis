@@ -1367,9 +1367,9 @@ fn a_chosen_seed_plays_the_same_twice_and_a_new_one_differently() {
 
 /// A kicker: kicks the crate along X on its first tick, and says how far
 /// below it the crate's top is, by a ray, every 30 ticks.
-const KICKER: &str = "fetch \"solis/world\":World;\n\n\
+const KICKER: &str = "fetch \"solis/physics\":Physics;\nfetch \"solis/world\":World;\n\n\
     \n\
-    get \"solis/physics\":[push, castRay, castRayHit, velocityOf];\n\
+    \n\
     component Kicker {\n\
         has {\n\
             int ticks = 0;\n\
@@ -1377,13 +1377,13 @@ const KICKER: &str = "fetch \"solis/world\":World;\n\n\
         method update(float dt) {\n\
             entity box = World:find(\"Crate\");\n\
             is ticks == 0? then {\n\
-                push(box, [5, 0, 0]);\n\
+                box:push([5, 0, 0]);\n\
             }\n\
             ticks = ticks + 1;\n\
             is ticks % 30 == 0? then {\n\
                 vec3 above = box:position() + [0, 0, 10];\n\
-                is castRayHit(above, [0, 0, -1], 50) == box? then {\n\
-                    World:say(\"crate \" + castRay(above, [0, 0, -1], 50).text() + \" \" + velocityOf(box).x.text());\n\
+                is Physics:castRay(above, [0, 0, -1], 50).entity == box? then {\n\
+                    World:say(\"crate \" + Physics:castRay(above, [0, 0, -1], 50).distance.text() + \" \" + box:velocity().x.text());\n\
                 }\n\
             }\n\
         }\n\

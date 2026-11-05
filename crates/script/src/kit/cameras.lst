@@ -2,9 +2,9 @@
 -- component. Each reads the ready-made input actions (Edit > Input
 -- actions…), so players can rebind them.
 
-get "solis/physics":[velocityOf, castRay];
 fetch "solis/input":Input;
 fetch "solis/project":Action;
+fetch "solis/physics":Physics;
 
 -- Follows behind a character, turning with Look. A wall between them
 -- pulls the camera in, so it never looks through walls. The wheel (Zoom)
@@ -36,13 +36,13 @@ component ThirdPersonCamera {
         }
         -- Where the character will be after this tick, so the camera
         -- keeps up with it.
-        vec3 pivot = target:position() + velocityOf(target) * dt + [0, 0, height];
+        vec3 pivot = target:position() + target:velocity() * dt + [0, 0, height];
         -- A camera looks along its -Z: tipped up 90 degrees it looks
         -- along +Y, then pitch and yaw turn it.
         rotation facing = [90 + pitch, 0, yaw];
         vec3 behind = facing * [0, 0, 1];
         float away = distance;
-        float wall = castRay(pivot, behind, distance + 0.3);
+        float wall = Physics:castRay(pivot, behind, distance + 0.3).distance;
         is wall >= 0? then {
             away = Maths:max(Maths:min(away, wall - 0.3), 0.2);
         }
@@ -72,7 +72,7 @@ component FirstPersonCamera {
         vec3 look = Input:axis(Action.Look);
         yaw = yaw - look.x;
         pitch = Maths:clamp(pitch + look.y, lowest, highest);
-        moveTo(body:position() + velocityOf(body) * dt + [0, 0, eyes]);
+        moveTo(body:position() + body:velocity() * dt + [0, 0, eyes]);
         turnTo([90 + pitch, 0, yaw]);
         is turnsBody? then {
             body:turnTo([0, 0, yaw]);

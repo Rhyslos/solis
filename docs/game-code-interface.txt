@@ -34,14 +34,12 @@ input: object Input: method bool released(Action action) native;
 input: object Input: method vec3 axis(Action action) native;
 input: object Input: method string binding(Action action) native;
 input: object Input: method rebind(Action action, string input) native;
-physics: method push(entity which, vec3 impulse) native;
-physics: method vec3 velocityOf(entity which) native;
-physics: method setVelocity(entity which, vec3 velocity) native;
-physics: method float castRay(vec3 from, vec3 direction, float reach) native;
-physics: method entity castRayHit(vec3 from, vec3 direction, float reach) native;
-physics: method vec3 castRayNormal(vec3 from, vec3 direction, float reach) native;
-physics: method moveCharacter(entity which, vec3 wanted) native;
-physics: method bool onGround(entity which) native;
+physics: method entity:push(vec3 impulse) native;
+physics: method vec3 entity:velocity() native;
+physics: method entity:setVelocity(vec3 velocity) native;
+physics: object Physics: method RayHit castRay(vec3 from, vec3 direction, float reach) native;
+physics: method entity:walk(vec3 wanted) native;
+physics: method bool entity:grounded() native;
 entity: method vec3 entity:position() native;
 entity: method entity:moveTo(vec3 place) native;
 entity: method rotation entity:rotation() native;
@@ -63,6 +61,7 @@ solis.Input:held
 solis.Input:pressed
 solis.Input:rebind
 solis.Input:released
+solis.Physics:castRay
 solis.Saves:loadFrom
 solis.Saves:saveTo
 solis.World:find
@@ -75,32 +74,29 @@ solis.World:say
 solis.World:setSeed
 solis.World:spawn
 solis.World:time
-solis.castRay
-solis.castRayHit
-solis.castRayNormal
 solis.entity.despawn
 solis.entity.face
+solis.entity.grounded
 solis.entity.moveTo
 solis.entity.name
 solis.entity.position
+solis.entity.push
 solis.entity.rotation
+solis.entity.setVelocity
 solis.entity.turnTo
+solis.entity.velocity
+solis.entity.walk
 solis.facingAlong
-solis.moveCharacter
-solis.onGround
 solis.playClip
 solis.playSound
 solis.playSoundAt
 solis.playSoundOn
-solis.push
 solis.replayClip
 solis.send
 solis.setBusVolume
 solis.setSoundPlaying
-solis.setVelocity
 solis.stopClip
 solis.stopSoundsOn
-solis.velocityOf
 
 ## Lua's own names Solis adds or changes (its prelude)
 
@@ -131,8 +127,8 @@ Host: fn set_seed(&mut self, seed: u64)
 Host: fn push(&mut self, which: EntityId, impulse: Vec3)
 Host: fn velocity(&self, which: EntityId) -> Option<Vec3>
 Host: fn set_velocity(&mut self, which: EntityId, velocity: Vec3)
-Host: fn move_character(&mut self, which: EntityId, wanted: Vec3)
-Host: fn on_ground(&self, which: EntityId) -> bool
+Host: fn walk(&mut self, which: EntityId, wanted: Vec3)
+Host: fn grounded(&self, which: EntityId) -> bool
 Host: fn save_game(&mut self, slot: &str, load: bool)
 Host: fn action(&self, name: &str) -> input::ActionState
 Host: fn binding(&self, action: &str) -> Option<String>

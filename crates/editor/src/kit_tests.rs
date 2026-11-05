@@ -446,7 +446,7 @@ fn the_manual_s_hopper_is_sound_code_and_hops() {
     // Windows checkouts may give the page Windows line endings.
     let page = include_str!("../../../docs/manual/characters-and-cameras.md").replace("\r\n", "\n");
     let start = page
-        .find("get \"solis/physics\":[moveCharacter, onGround];")
+        .find("fetch \"solis/input\":Input;\nfetch \"solis/project\":Action;\n\ncomponent Hopper")
         .unwrap();
     let end = start + page[start..].find("end\n").unwrap() + 4;
     let code = &page[start..end];

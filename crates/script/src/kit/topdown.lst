@@ -9,7 +9,6 @@
 -- code instead: set wanted to where it should head (an NPC, say, with
 -- directions set to 4).
 
-get "solis/physics":[moveCharacter];
 fetch "solis/input":Input;
 fetch "solis/project":Action;
 
@@ -75,7 +74,7 @@ component TopDownController {
             facing = [want.x, want.y, 0] * (1 / Maths:max(length, 0.0001));
         }
 
-        moveCharacter(this, velocity * dt);
+        walk(velocity * dt);
     }
 }
 

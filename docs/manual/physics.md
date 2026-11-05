@@ -30,11 +30,11 @@ An entity with a collider and nothing else never moves: floors, walls, rocks.
 - A **Fixed** body never moves, like a collider on its own.
 - You can still `moveTo` a dynamic body to put it somewhere new (say, back on its shelf); physics carries on from there.
 
-**From game code** (Lust; in Lua they're `solis.push`, `solis.velocityOf` and so on):
+**From game code**, a body's abilities are on its entity (`ball:push(force)`, or `push(force)` for the component's own), and rays are asked of `Physics` (in Lua, `solis.entity.push(e, force)` and `solis.Physics:castRay(from, direction, reach)`):
 
 ```
-get "solis/physics":[push, castRay, castRayHit];
 fetch "solis/world":World;
+fetch "solis/physics":[Physics, RayHit];
 
 component Kicker {
     has {
@@ -44,12 +44,13 @@ component Kicker {
     method update(float dt) {
         entity ball = World:find("Ball");
         is kicked == 0? then {
-            push(ball, [5, 0, 2]);
+            ball:push([5, 0, 2]);
             kicked = 1;
         }
-        // Is anything below me, within 2 metres?
-        is castRay(position(), [0, 0, -1], 2) >= 0? then {
-            World:say(castRayHit(position(), [0, 0, -1], 2):name() + " is below me");
+        -- Is anything below, within 2 metres?
+        RayHit below = Physics:castRay(position(), [0, 0, -1], 2);
+        is below.found? then {
+            World:say(below.entity:name() + " is below me");
         }
     }
 }
@@ -60,12 +61,12 @@ end
 
 | Method | What it does |
 |---|---|
-| `push(entity which, vec3 impulse)` | A push, like a kick: a heavy body moves less than a light one. `[5, 0, 0]` gives a 1 kg crate 5 m/s along X. |
-| `vec3 velocityOf(entity which)` | How fast and which way it's moving, metres a second. |
-| `setVelocity(entity which, vec3 velocity)` | Makes it move this fast, this way, whatever its weight. |
-| `float castRay(vec3 from, vec3 direction, float reach)` | Looks along a line: how far away the first collider is, or -1 if there's nothing within reach. |
-| `entity castRayHit(vec3 from, vec3 direction, float reach)` | The entity it meets first, or nothing. |
-| `vec3 castRayNormal(vec3 from, vec3 direction, float reach)` | Which way that surface faces: `[0, 0, 1]` for a floor. |
+| `push(vec3 impulse)` | A push, like a kick: a heavy body moves less than a light one. `[5, 0, 0]` gives a 1 kg crate 5 m/s along X. |
+| `vec3 velocity()` | How fast and which way it's moving, metres a second. |
+| `setVelocity(vec3 velocity)` | Makes it move this fast, this way, whatever its weight. |
+| `RayHit Physics:castRay(vec3 from, vec3 direction, float reach)` | Looks along a line and gives back what it met, all at once: `hit.found` (whether anything was within reach), `hit.distance` (how far, or -1), `hit.entity` (whose collider, or nothing) and `hit.normal` (which way its surface faces: `[0, 0, 1]` for a floor). |
+
+Why one call for a ray? Each question a ray answers is worked out at once, so asking for the distance, the entity and the surface separately looked three times; `RayHit` keeps them together.
 
 Like moves, pushes and velocities land when every `update` in the tick is done, then physics moves everything on once ([what game code sees](game-code.md#components)). A ray sees the world as the tick started. A ray that starts inside a collider (your own character's, say) passes out of it and finds what's beyond.
 

@@ -366,7 +366,7 @@ impl Host for ViewHost {
         }
     }
 
-    fn move_character(&mut self, which: EntityId, wanted: Vec3) {
+    fn walk(&mut self, which: EntityId, wanted: Vec3) {
         // A 3D character (CharacterBody), or a 2D one (a Collider2D ticked
         // Character), which walks on the ground: the world tells them apart.
         let character =
@@ -379,7 +379,7 @@ impl Host for ViewHost {
         }
     }
 
-    fn on_ground(&self, which: EntityId) -> bool {
+    fn grounded(&self, which: EntityId) -> bool {
         self.view
             .physics
             .character(which)
