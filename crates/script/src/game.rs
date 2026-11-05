@@ -68,10 +68,10 @@ pub enum Change {
     /// `setBusVolume`: this bus at this share of its fader (0 to 1) for
     /// the rest of the play.
     BusVolume(String, f32),
-    /// `playClip` (or, with `true`, `replayClip`): play this clip on the
+    /// `animate` (or, with `true`, `animateFromStart`): play this clip on the
     /// entity's Sprite (Phase 9, D3).
     PlayClip(EntityId, String, bool),
-    /// `stopClip`: stop the entity's Sprite where it is.
+    /// `stopAnimation`: stop the entity's Sprite where it is.
     StopClip(EntityId),
 }
 
@@ -174,7 +174,7 @@ pub const MAX_SOUNDS: usize = 256;
 /// The longest sound event name read.
 pub const MAX_SOUND_NAME: usize = 256;
 
-/// The longest clip name `playClip` takes.
+/// The longest clip name `animate` takes.
 pub const MAX_CLIP_NAME: usize = 64;
 
 /// The most bytes of assembly names one shard keeps for spawns in one

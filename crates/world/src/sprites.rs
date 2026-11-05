@@ -73,11 +73,11 @@ impl World {
         &self.clip_sets
     }
 
-    /// Plays `clip` on `id`'s Sprite (game code's `playClip`): already
+    /// Plays `clip` on `id`'s Sprite (game code's `animate`): already
     /// playing it, it carries on; stopped part way, it carries on from
     /// there; finished, it stays on its last frame (so calling it every
     /// tick is safe); another clip starts from its beginning. With
-    /// `again` (`replayClip`), it starts from its beginning whatever it
+    /// `again` (`animateFromStart`), it starts from its beginning whatever it
     /// was doing. Nothing happens for an entity without a Sprite.
     pub fn play_clip(&mut self, id: EntityId, clip: &str, again: bool) {
         let Some(&entity) = self.by_id.get(&id) else {
@@ -86,6 +86,20 @@ impl World {
         let Ok(mut sprite) = self.ecs.get::<&mut Sprite>(entity) else {
             return;
         };
+        // Game code names a clip as an option (`Clip.Farmer.Walk`, which
+        // asks for "Walk"): the sheet's own name for it, found ignoring
+        // capitals.
+        let named = sprite
+            .sheet
+            .and_then(|s| self.clip_sets.get(&s.asset))
+            .and_then(|set| {
+                set.clips
+                    .iter()
+                    .find(|c| c.name == clip)
+                    .or_else(|| set.clips.iter().find(|c| c.name.eq_ignore_ascii_case(clip)))
+                    .map(|c| c.name.clone())
+            });
+        let clip = named.as_deref().unwrap_or(clip);
         let same = sprite.clip == clip;
         let finished = same
             && sprite
@@ -105,8 +119,15 @@ impl World {
         self.touched = true;
     }
 
+    /// The sheet `id`'s Sprite shows (its asset), if it has one.
+    pub fn sprite_sheet(&self, id: EntityId) -> Option<AssetId> {
+        let entity = *self.by_id.get(&id)?;
+        let sprite = self.ecs.get::<&Sprite>(entity).ok()?;
+        sprite.sheet.map(|s| s.asset)
+    }
+
     /// Stops `id`'s Sprite where it is in its clip (game code's
-    /// `stopClip`).
+    /// `stopAnimation`).
     pub fn stop_clip(&mut self, id: EntityId) {
         if let Some(&entity) = self.by_id.get(&id)
             && let Ok(mut sprite) = self.ecs.get::<&mut Sprite>(entity)

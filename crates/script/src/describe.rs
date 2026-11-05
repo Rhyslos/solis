@@ -82,14 +82,14 @@ pub struct EngineEvent {
 pub const ENGINE_EVENTS: &[EngineEvent] = &[
     EngineEvent {
         file: "animation",
-        name: "AnimationCue",
-        lust: "event AnimationCue(string name);",
-        about: "Sent to an entity when its Sprite's clip reaches a frame with an event (\"footstep\"), before the tick's other events. A sound event of that name also plays by itself.",
+        name: "CueReached",
+        lust: "event CueReached(Cue cue);",
+        about: "Sent to an entity when its Sprite's clip reaches a frame with an event (Cue.Footstep), before the tick's other events. A sound event of that name also plays by itself.",
     },
     EngineEvent {
         file: "animation",
         name: "ClipFinished",
-        lust: "event ClipFinished(string clip);",
+        lust: "event ClipFinished(Clip clip);",
         about: "Sent to an entity when its Sprite's clip has played all its times (a clip that plays over and over never finishes).",
     },
 ];
@@ -307,6 +307,26 @@ pub const MOVED: &[Moved] = &[
         lust: "Audio:setVolume(Bus.Music, volume), with fetch \"solis/project\":Bus;",
         lua: "solis.Audio:setVolume(\"Music\", volume)",
     },
+    Moved {
+        old: "playClip",
+        lust: "target:animate(Clip.Sprites.Farmer.Walk) (inside a component, animate(…) for its own entity)",
+        lua: "solis.entity.animate(target, \"Sprites.Farmer.Walk\")",
+    },
+    Moved {
+        old: "replayClip",
+        lust: "target:animateFromStart(Clip.Sprites.Farmer.Walk) (inside a component, animateFromStart(…))",
+        lua: "solis.entity.animateFromStart(target, \"Sprites.Farmer.Walk\")",
+    },
+    Moved {
+        old: "stopClip",
+        lust: "target:stopAnimation() (inside a component, stopAnimation())",
+        lua: "solis.entity.stopAnimation(target)",
+    },
+    Moved {
+        old: "AnimationCue",
+        lust: "on CueReached(Cue cue), with fetch \"solis/animation\":CueReached; and fetch \"solis/project\":Cue;",
+        lua: "function C:on_CueReached(cue)",
+    },
 ];
 
 /// Every native method Solis gives game code.
@@ -446,24 +466,24 @@ pub const NATIVES: &[Native] = &[
     },
     Native {
         file: "animation",
-        name: "playClip",
-        owner: "",
-        lust: "method playClip(entity on, string clip) native;",
-        about: "Plays a clip on an entity's Sprite (\"walk\": one of its sheet's Aseprite tags, or a clip of its clips file), at the end of the tick. Already playing it, or finished it: it carries on as it is, so it's safe to call every tick. Another clip: it starts from its beginning.",
+        name: "animate",
+        owner: "entity",
+        lust: "method entity:animate(Clip clip) native;",
+        about: "Plays a clip on the entity's Sprite (Clip.Sprites.Farmer.Walk), at the end of the tick: already playing it (or finished it), it carries on as it is, so calling it every tick is safe; another clip starts from its beginning.",
     },
     Native {
         file: "animation",
-        name: "replayClip",
-        owner: "",
-        lust: "method replayClip(entity on, string clip) native;",
-        about: "Plays a clip on an entity's Sprite from its beginning, whatever it was doing: a swing each time a button is pressed.",
+        name: "animateFromStart",
+        owner: "entity",
+        lust: "method entity:animateFromStart(Clip clip) native;",
+        about: "Plays a clip on the entity's Sprite from its beginning, whatever it was doing.",
     },
     Native {
         file: "animation",
-        name: "stopClip",
-        owner: "",
-        lust: "method stopClip(entity on) native;",
-        about: "Stops an entity's Sprite where it is in its clip, at the end of the tick; playClip carries on from there.",
+        name: "stopAnimation",
+        owner: "entity",
+        lust: "method entity:stopAnimation() native;",
+        about: "Stops the entity's Sprite where it is in its clip.",
     },
     Native {
         file: "input",
@@ -654,10 +674,14 @@ fn descriptions_with(
                 .iter()
                 .copied()
                 .filter(|state| {
-                    mine.iter().any(|n| {
-                        n.lust.contains(&format!("({state} "))
-                            || n.lust.contains(&format!(", {state} "))
-                    })
+                    let takes = |lust: &str| {
+                        lust.contains(&format!("({state} "))
+                            || lust.contains(&format!(", {state} "))
+                    };
+                    mine.iter().any(|n| takes(n.lust))
+                        || ENGINE_EVENTS
+                            .iter()
+                            .any(|e| e.file == file && takes(e.lust))
                 })
                 .collect();
             if !wanted.is_empty() {
@@ -747,7 +771,7 @@ fn descriptions_with(
 /// The project's own names as states, written by the editor into
 /// `solis/project.lst` ([`crate::project_names::project_file`]): what natives take where a string
 /// once named a file.
-pub const PROJECT_STATES: &[&str] = &["Assembly", "Action", "Sound", "Bus"];
+pub const PROJECT_STATES: &[&str] = &["Assembly", "Action", "Sound", "Bus", "Clip", "Cue"];
 
 /// What the first line of each file describing the engine says after who made it: how the
 /// compiler knows the engine's own folder (Lust's host folder, decision 0072), without the
@@ -799,27 +823,27 @@ mod tests {
         files.push((
             "main.lst".into(),
             "fetch \"solis/world\":[World, Saves];\n\
-             fetch \"solis/project\":[Assembly, Action, Sound, Bus];\n\
+             fetch \"solis/project\":[Assembly, Action, Sound, Bus, Clip, Cue];\n\
              fetch \"solis/input\":Input;\n\
              get \"solis/entity\":facingAlong;\n\
              fetch \"solis/physics\":[Physics, RayHit];\n\
              fetch \"solis/sound\":Audio;\n\
-             get \"solis/animation\":[playClip, replayClip, stopClip];\n\
-             fetch \"solis/animation\":AnimationCue;\n\
-             fetch \"solis/animation\":ClipFinished;\n\
+             fetch \"solis/animation\":[CueReached, ClipFinished];\n\
              component Walker {\n\
                  has {\n\
                      int steps = 0;\n\
                  }\n\
-                 on AnimationCue(string name) {\n\
-                     steps = steps + 1;\n\
-                 }\n\
-                 on ClipFinished(string clip) {\n\
-                     is clip == \"hoe\"? then {\n\
-                         playClip(this, \"idle\");\n\
-                         replayClip(this, \"hoe\");\n\
+                 on CueReached(Cue cue) {\n\
+                     is cue != Cue.None? then {\n\
+                         steps = steps + 1;\n\
                      }\n\
-                     stopClip(this);\n\
+                 }\n\
+                 on ClipFinished(Clip clip) {\n\
+                     is clip == Clip.None? then {\n\
+                         animate(Clip.None);\n\
+                         animateFromStart(clip);\n\
+                     }\n\
+                     stopAnimation();\n\
                  }\n\
              }\n\
              component Mover {\n\

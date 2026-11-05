@@ -25,9 +25,9 @@ sound: method entity:playSound(Sound event) native;
 sound: method entity:stopSounds() native;
 sound: method entity:setSoundPlaying(bool playing) native;
 sound: object Audio: method setVolume(Bus bus, float volume) native;
-animation: method playClip(entity on, string clip) native;
-animation: method replayClip(entity on, string clip) native;
-animation: method stopClip(entity on) native;
+animation: method entity:animate(Clip clip) native;
+animation: method entity:animateFromStart(Clip clip) native;
+animation: method entity:stopAnimation() native;
 input: object Input: method bool held(Action action) native;
 input: object Input: method bool pressed(Action action) native;
 input: object Input: method bool released(Action action) native;
@@ -50,8 +50,8 @@ entity: method string entity:name() native;
 
 ## Events the engine sends (fetch "solis/<file>":<Name>)
 
-animation: event AnimationCue(string name);
-animation: event ClipFinished(string clip);
+animation: event CueReached(Cue cue);
+animation: event ClipFinished(Clip clip);
 
 ## Lua (solis.<name>)
 
@@ -77,6 +77,8 @@ solis.World:say
 solis.World:setSeed
 solis.World:spawn
 solis.World:time
+solis.entity.animate
+solis.entity.animateFromStart
 solis.entity.despawn
 solis.entity.face
 solis.entity.grounded
@@ -88,15 +90,13 @@ solis.entity.push
 solis.entity.rotation
 solis.entity.setSoundPlaying
 solis.entity.setVelocity
+solis.entity.stopAnimation
 solis.entity.stopSounds
 solis.entity.turnTo
 solis.entity.velocity
 solis.entity.walk
 solis.facingAlong
-solis.playClip
-solis.replayClip
 solis.send
-solis.stopClip
 
 ## Lua's own names Solis adds or changes (its prelude)
 

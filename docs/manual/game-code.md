@@ -345,11 +345,12 @@ Things that fall, collide and get pushed have a **RigidBody** and a **Collider**
 | any entity | `stopSounds()` | Stops the sounds on the entity, with a short fade. |
 | any entity | `setSoundPlaying(bool playing)` | Turns the entity's AudioSource on or off. |
 | `solis/project` | `state Sound`, `state Bus` | The project's sound events (`Sound.Sfx.Footstep`) and the Mixer's buses (`Bus.Music`). |
-| `solis/animation` | `playClip(entity on, string clip)` | Plays a clip on an entity's Sprite; already playing or finished it, it carries on as it is ([Animating sprites](sprite-animation.md)). |
-| `solis/animation` | `replayClip(entity on, string clip)` | Plays a clip from its beginning, whatever it was doing. |
-| `solis/animation` | `stopClip(entity on)` | Stops an entity's Sprite where it is in its clip. |
-| `solis/animation` | event `AnimationCue(string name)` | Sent when a sprite's clip reaches a frame with an event (bring it in with `fetch "solis/animation":AnimationCue;`). |
-| `solis/animation` | event `ClipFinished(string clip)` | Sent when a sprite's clip has played all its times. |
+| any entity | `animate(Clip clip)` | Plays a clip on the entity's Sprite; already playing or finished it, it carries on as it is ([Animating sprites](sprite-animation.md)). |
+| any entity | `animateFromStart(Clip clip)` | Plays a clip from its beginning, whatever it was doing. |
+| any entity | `stopAnimation()` | Stops the entity's Sprite where it is in its clip. |
+| `solis/animation` | event `CueReached(Cue cue)` | Sent when a sprite's clip reaches a frame with an event (bring it in with `fetch "solis/animation":CueReached;`). |
+| `solis/animation` | event `ClipFinished(Clip clip)` | Sent when a sprite's clip has played all its times. |
+| `solis/project` | `state Clip`, `state Cue` | The sprites' clips, under their sheets (`Clip.Sprites.Farmer.Walk`), and their frame events (`Cue.Footstep`). |
 | `solis/input` | `bool Input:held(Action action)` | Whether an action is held this tick ([Input](input.md)). |
 | `solis/input` | `bool Input:pressed(Action action)` | True once, the tick an action went down. |
 | `solis/input` | `bool Input:released(Action action)` | True once, the tick it came up. |
@@ -391,6 +392,8 @@ An entity's abilities are called bare for the component's own entity (`moveTo(pl
 | `playSound("sfx/x")`, `playSoundAt("sfx/x", p)` | `Audio:play(Sound.Sfx.X)`, `Audio:playAt(Sound.Sfx.X, p)` |
 | `playSoundOn("sfx/x", e)`, `stopSoundsOn(e)`, `setSoundPlaying(e, b)` | `e:playSound(Sound.Sfx.X)`, `e:stopSounds()`, `e:setSoundPlaying(b)` |
 | `setBusVolume("Music", v)` | `Audio:setVolume(Bus.Music, v)` |
+| `playClip(e, "walk")`, `replayClip`, `stopClip(e)` | `e:animate(Clip.Sprites.Farmer.Walk)`, `e:animateFromStart(…)`, `e:stopAnimation()` |
+| `on AnimationCue(string name)`, `on ClipFinished(string clip)` | `on CueReached(Cue cue)`, `on ClipFinished(Clip clip)` |
 | `castRay(…)`, `castRayHit(…)`, `castRayNormal(…)` | one call: `RayHit hit = Physics:castRay(…);` then `hit.distance`, `hit.entity`, `hit.normal` |
 | Lua `solis.positionOf(e)`, `solis.say(w)`, `solis.held("Jump")` | `solis.entity.position(e)`, `solis.World:say(w)`, `solis.Input:held("Jump")` |
 

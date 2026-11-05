@@ -38,7 +38,7 @@ New to game engines? Start with [Concepts](concepts.md).
 - [Input: the game's controls as named actions, gamepads, rebinding and recordings](input.md)
 - [2D: the pixel-perfect view, a project's 2D settings, and 2D cameras](2d-pixel-perfect.md)
 - [Sprites from Aseprite: sprite sheets, placing sprites, pivots, front and behind](sprites.md)
-- [Animating sprites: clips from Aseprite tags and your own, the Clips and Frames tabs, events that play sounds, playClip](sprite-animation.md)
+- [Animating sprites: clips from Aseprite tags and your own, the Clips and Frames tabs, events that play sounds, animate](sprite-animation.md)
 - [Animators: states, transitions and parameters that choose a sprite's clip, the Animator tab](animators.md)
 - [Tile maps: a grid of terrains in layers under and over sprites, values every cell has, the Map tab](tile-maps.md)
 - [Tilesets and autotiling: terrains' art from a picture, edges worked out from neighbours, the Tileset tab](tilesets.md)

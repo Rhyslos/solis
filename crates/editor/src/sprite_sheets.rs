@@ -113,6 +113,33 @@ pub struct SpriteSheets {
 }
 
 impl SpriteSheets {
+    /// The clips game code can name, as `sheet/clip` paths (the sheet's
+    /// path without its extension), and the names of their events (cues),
+    /// each sorted, for the project file (decision 0077).
+    pub fn clip_names(&self) -> (Vec<String>, Vec<String>) {
+        let mut clips = Vec::new();
+        let mut cues = Vec::new();
+        for (id, set) in self.clip_sets.iter() {
+            let Some(path) = self.paths.get(id) else {
+                continue;
+            };
+            let stem = path
+                .rsplit_once('.')
+                .map_or(path.as_str(), |(stem, _)| stem);
+            for clip in &set.clips {
+                clips.push(format!("{stem}/{}", clip.name));
+                for frame in &clip.frames {
+                    cues.extend(frame.events.iter().cloned());
+                }
+            }
+        }
+        clips.sort();
+        clips.dedup();
+        cues.sort();
+        cues.dedup();
+        (clips, cues)
+    }
+
     /// The sheet with asset ID `id` (an Aseprite file, or a clips file
     /// naming one), if it's been read.
     pub fn get(&self, id: AssetId) -> Option<&Arc<SpriteSheet>> {

@@ -113,6 +113,9 @@ fn moved_message(message: String) -> String {
         if message == format!("there's no method called {}.", moved.old) {
             return format!("{} is now written {}.", moved.old, moved.lust);
         }
+        if message.ends_with(&format!(" has no {}.", moved.old)) {
+            return format!("{message} {} is now written {}.", moved.old, moved.lust);
+        }
         if message.starts_with(&format!("{} takes ", moved.old)) {
             return format!("{message} {} is now written {}.", moved.old, moved.lust);
         }

@@ -117,8 +117,8 @@ impl Component for Sprite {
                     "playing",
                     "Playing",
                     d.playing,
-                    "Whether the clip moves on while the game runs (game code's playClip \
-                     and stopClip turn it on and off).",
+                    "Whether the clip moves on while the game runs (game code's animate \
+                     and stopAnimation turn it on and off).",
                 ),
                 field::float(
                     "speed",
