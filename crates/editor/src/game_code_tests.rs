@@ -1140,7 +1140,7 @@ fn spawning_too_much_in_one_frame_is_refused_and_said_once() {
              }\n\
              method update(float dt) {\n\
                  is made == 0? then {\n\
-                     loop 10010 {\n\
+                     loop 1430 {\n\
                          entity e = World:spawn(Assembly.Drones.Drone, [0, 0, 1]);\n\
                      }\n\
                      made = 1;\n\
@@ -1154,23 +1154,29 @@ fn spawning_too_much_in_one_frame_is_refused_and_said_once() {
          }\n\
          pass Hive, Drone;\nend\n",
     );
-    let mut hive = EntityData::new("Hive");
-    hive.components
-        .insert("Hive".into(), reflect::ComponentData::default());
-    w.document
-        .edit(
-            "Add",
-            vec![area::Edit::Spawn {
-                entities: vec![(EntityId::random(), hive)],
-            }],
-            None,
-            None,
-        )
-        .unwrap();
+    // Seven hives of 1,430 each: more than the most in a tick, with no
+    // one update near the time a call may take (on a slow machine, one
+    // update making them all ran out of time first).
+    for _ in 0..7 {
+        let mut hive = EntityData::new("Hive");
+        hive.components
+            .insert("Hive".into(), reflect::ComponentData::default());
+        w.document
+            .edit(
+                "Add",
+                vec![area::Edit::Spawn {
+                    entities: vec![(EntityId::random(), hive)],
+                }],
+                None,
+                None,
+            )
+            .unwrap();
+    }
     let before = w.document.area().len();
     w.play();
     w.run_game(1.0 / 60.0);
     w.run_game(1.0 / 60.0);
+    assert!(w.log_lines().iter().all(|l| !l.text.contains("stopped")));
     assert_eq!(
         w.document.area().len(),
         before + crate::play::MAX_SPAWNS_PER_TICK
