@@ -38,12 +38,12 @@ Each is a question for the project lead, with the recommendation first. Those ma
 2. **What a screen's file is.**
    - **Recommended: an ordinary Lust file (`.lst`) in the project's `assets/ui/` folder**, holding one `assembly … like Screen` with a `view`. It's real Lust, so the checker checks it, the Code panel opens it, and it reads like the rest of a game. The Library shows it with a UI icon and opens it in the canvas.
    - *Alternative:* a new kind of file (`.solui`) written Lust-style like areas (decision 0020): simpler for Solis to read and write, but not real Lust, so the "code behind every element" promise of decision 0039 is lost.
-3. **How a value is tied to the game.** Ties need a new word in Lust (the project lead's language).
+3. **How a value is tied to the game.** *(Replaced by decision 0087: screens read the game through the engine's calls; no new Lust word.)* Ties need a new word in Lust (the project lead's language).
    - **Recommended: a `tied` word on a screen's fields**, with the field's starting value used as the preview in the canvas:
      `float hp = 20 tied "Player".Health.hp;` ("this number follows the `hp` of the `Health` on the entity called Player"). `me` ties to the entity the screen belongs to (choice 5): `tied me.Health.hp`. A method works too: `tied "Player".Health:fraction()`.
    - *Alternative:* the Lust way for windows today: a component passes values in (`Hud { hp = hp };` inside the component's own view). No new word, but every tie needs game code, and the canvas can't make ties on its own.
    - *Alternative:* other wording: `follows`, `from`, `<-`.
-4. **How elements are named,** so code, the canvas and Git can find each one.
+4. **How elements are named,** so code, the canvas and Git can find each one. *(Replaced by decision 0087: elements are found by their place in Lust's view.)*
    - **Recommended: a `name` style word,** `box [name healthFill, …];`, unique within the file. The canvas gives new elements names like `box3`, renamed in Properties. Readable in code and in Git.
    - *Alternative:* random IDs as areas use (stable, but unreadable in code); or no names (elements found by their place, which breaks when one is moved).
 5. **How a screen gets on screen.**
@@ -178,15 +178,25 @@ The Rust layer DESIGN.md §12 asks for first, which Lust's `view` is read into l
 - A screen can be built in Rust for now; the Game panel shows a test HUD from a Console command (`ui test`), so it can be seen before Lust can make one.
 - Tests: layout at every preview size (anchored elements keep their distance to their edge; stretched ones grow); a 1-pixel line and 8-point text drawn at 4K and at 720p (GPU pixel tests, also on the software driver); nothing re-tessellated when only a box's width changes; a curve with NaN or a million points refused; the atlas fills and frees; fuzz the font reader. Scale case: 1,000 elements with 200 texts changing each tick, CPU and GPU times in the Profiler.
 
-### M2. Screens in Lust, with values tied to the game
+### M2. Screens in Lust, read through the engine
 
-- **In Lust** (a pull request in the Lust repository, then Solis pins it): the drawing words (`box`, `ellipse`, `line`, `path`; `name`, `anchor`, `at`, `rotate`, `glow`, `outline`, colours with transparency; a shape is filled with Lust's own `background`), `tied` fields, `like Screen`, the screen rules in the checker (above), and a trailing comma allowed in `[ ]` so each style can sit on its own line (see Saving and Git). Lust's existing words keep their meanings (`size` is text size, `background`, `round`, `border`, `width`, `height`, `opacity`).
-- **A screen file** (example below) is checked with the rest of the game's code; its mistakes go to Problems with file and line.
-- **Reading a view:** when the program is loaded, each screen's view runs in the UI Luau and its tree of tables becomes the `ui` tree, kept between frames: an element is matched by its `name` (or its place, inside loops by the row's key, as in Lust), so only what changed is laid out and drawn again.
-- **Ties:** resolved by Rust after each tick (above); methods in the UI Luau.
-- **The `Screen` component** (choice 5) puts a screen in the Game panel; several are drawn in their `order`.
-- In the editor (before the canvas exists), a screen file opens in the Code panel and shows in the Game panel while playing; new code is swapped in while playing, like components (decision 0028).
-- Tests: a tied field follows a component's value tick by tick; a method tie gives the same text on 1 core and 4; a method that tries to change a value changes only the UI's copy; `moveTo` in a screen is a mistake; the view is read again only after a tick or a resize; a tie to a missing entity or field shows the preview value and one message; round trip of the Lust (Luau and, when Phase 15 allows, Rust). **First half of the gate:** a health bar, written by hand, follows the turret sample's drone's `Health.hp`.
+> **Changed by [decision 0087](../decisions/0087-screens-through-the-engine.md)** (the project lead, 2026-11-05): Lust stays as it is. No `tied`, `name`, `anchor` or drawing words: a screen is an ordinary Lust `assembly` with a `view`, using Lust's own pieces, and it reads the game through calls the engine offers. Components are readable from the start. Built in two parts:
+
+**M2a. Screens drawn, reading objects.**
+
+- A screen is `assets/ui/<name>.lst`, passing the assembly named after the file (`ui/hud.lst` passes `Hud`), with a `view [width 1920, height 1080] { … }` (the design size; without one, 1920 × 1080).
+- **The screens' program:** Solis writes an entry that fetches and opens every screen (`Hud:open();`), compiles it with the game's files on the same worker, and runs it in a Luau of its own. Lust's `LUST_HOST.ui_open` hands Solis each screen's settings and its view; nothing in the screens' Luau can change the game (writing calls stop with "a screen can't …").
+- **Each tick,** after it lands: the game-wide objects' values are copied in (as every core gets them), and each shown screen's view runs; its tree is laid out with Lust's rules (column, row, stack, space, text, progress, canvas with box, circle and line; padding, gaps, sizes and `fill`, alignment, colours, `round`, `border`, `opacity`) at the design height, as wide as the screen's shape, and drawn by the UI shader (decisions 0083 and 0084). Between ticks nothing is worked out again unless the panel's size changes.
+- **The `Screen` component:** its file (offered from the project's screens), `shown`, and `order`. Several draw in order.
+- A screen's mistakes go to Problems with file and line, like the game's; a screen that fails while running stops (its last picture stays), with the line in the Console, and runs again when the code changes. New code is swapped in while playing.
+- Tests: the tree read from Lust's own output; layout of each piece and style against Lust's rules; an object's value shown after the tick that changed it; a write stops with its message; one Luau for any number of cores gives the same picture; hostile trees (deep, huge, odd values) refused or clamped, never a crash (fuzz).
+
+**M2b. Reading the entity's components.**
+
+- `Ui:entity()` is the entity the screen is shown for (its Screen component's).
+- For each component the game has (its Lust and Lua components and Solis's own), Solis writes a reading method into `solis/screen.lst`, a file only screens fetch: `get "solis/screen":health;` then `Ui:entity():health().hp`. It gives a copy of the component as the tick left it; a missing one stops the screen naming the line.
+- A component whose method name is taken by an engine call (`Position`) isn't offered, with a note in Problems.
+- Tests: a read value follows the component tick by tick; changing the copy changes nothing in the game; a missing entity or component stops with its message; the same on 1 core and 4. **First half of the gate:** a health bar, written by hand, follows the turret sample's drone's `Health.hp`, and the farm HUD shows the clock and the money.
 
 ### M3. Menus: clicks, focus, gamepads and pausing
 
