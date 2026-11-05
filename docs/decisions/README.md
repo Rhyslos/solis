@@ -94,3 +94,4 @@ Titles below are shortened; the files have the full reasoning. Decisions 0019 to
 | `0084-game-ui-text.md` | Game UI text: `ab_glyph` and single-channel distance images in one atlas, instead of the plan's `parley` and `fdsm` | Accepted (carries out 0083's text) |
 | `0085-the-editor-overhaul.md` | The editor overhaul from the 4 November mock-up, in seven milestones before the game UI editor | Accepted (carries out 0070's UI overhaul; builds on 0004) |
 | `0086-the-launcher.md` | The launcher inside Solis: projects (pin, search, sort, rename, copy, scan, the build each was saved with), Learn and Updates | Accepted (grows 0070's start page; builds on 0043 and 0045) |
+| `0087-screens-through-the-engine.md` | Screens are Lust's own views read through the engine (objects, `Ui:entity()`, a reading method per component); no new Lust words | Accepted (replaces the game UI plan's choices 3 and 4) |
