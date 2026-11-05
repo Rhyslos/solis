@@ -12,7 +12,7 @@ use glam::Vec3;
 /// A busy game: a counter that staggers randomly, kicks a crate on its
 /// first tick, fires a laser now and then, and saves or loads when its
 /// `request` field says to.
-const BUSY: &str = "fetch \"solis/world\":[World, Saves];\n\n\
+pub(super) const BUSY: &str = "fetch \"solis/world\":[World, Saves];\n\n\
     \n\
     \n\
     component Busy {\n\
@@ -43,7 +43,7 @@ const BUSY: &str = "fetch \"solis/world\":[World, Saves];\n\n\
     }\n\
     pass Busy;\nend\n";
 
-fn program(main: &str) -> Arc<script::Compiled> {
+pub(super) fn program(main: &str) -> Arc<script::Compiled> {
     let (mut files, _) = script::describe::descriptions_for(
         "Test Engine 9.9.9",
         "solis",
@@ -65,7 +65,7 @@ fn raw(n: u64) -> EntityId {
 
 /// A workbench in a project called `project`, with the busy game: a
 /// floor, a crate on it, and the busy entity.
-fn busy(project: &str) -> Workbench {
+pub(super) fn busy(project: &str) -> Workbench {
     let mut w = Workbench::new(info(), None);
     w.project = Some(crate::library::ProjectInfo {
         name: project.into(),
@@ -118,7 +118,7 @@ fn busy(project: &str) -> Workbench {
 }
 
 /// Runs `w` until `ticks` have run in all.
-fn run_to(w: &mut Workbench, ticks: u64) {
+pub(super) fn run_to(w: &mut Workbench, ticks: u64) {
     while w.world().unwrap().clock().ticks < ticks {
         let left = ticks - w.world().unwrap().clock().ticks;
         w.run_game((world::TICK * (left.min(3) as f64) + 1e-9) as f32);
@@ -126,7 +126,7 @@ fn run_to(w: &mut Workbench, ticks: u64) {
 }
 
 /// The game's checksums now: the world's and game code's.
-fn sums(w: &mut Workbench) -> (u64, u64) {
+pub(super) fn sums(w: &mut Workbench) -> (u64, u64) {
     let playing = w.playing.as_mut().unwrap();
     (
         playing.world.checksum(),
@@ -257,9 +257,9 @@ fn saves_from_elsewhere_or_damaged_are_refused_and_nothing_changes() {
     // Damaged: cut short, a byte changed, a newer version, not a save.
     let mut damaged = vec![
         text[..text.len() / 2].to_string(),
-        text.replacen("solis save 5", "solis save 9", 1),
-        text.replacen("solis save 5", "solis save 2", 1),
-        text.replacen("solis save 5", "solis save 1", 1),
+        text.replacen("solis save 6", "solis save 9", 1),
+        text.replacen("solis save 6", "solis save 2", 1),
+        text.replacen("solis save 6", "solis save 1", 1),
         "hello".to_string(),
         String::new(),
     ];
@@ -294,12 +294,12 @@ fn saves_from_elsewhere_or_damaged_are_refused_and_nothing_changes() {
     assert!(Save::read(&"x".repeat(MAX_SAVE_BYTES + 1)).is_err());
     // The third review: this version's header with Windows line endings
     // or a space after it is damaged, not "from a newer Solis".
-    for header in ["solis save 5\r", "solis save 5 "] {
-        let why = Save::read(&text.replacen("solis save 5", header, 1)).unwrap_err();
+    for header in ["solis save 6\r", "solis save 6 "] {
+        let why = Save::read(&text.replacen("solis save 6", header, 1)).unwrap_err();
         assert!(why.contains("damaged"), "{header:?}: {why}");
     }
     assert!(
-        Save::read(&text.replacen("solis save 5", "solis save 9", 1))
+        Save::read(&text.replacen("solis save 6", "solis save 9", 1))
             .unwrap_err()
             .contains("newer")
     );
@@ -930,7 +930,7 @@ fn an_animator_s_state_and_values_survive_a_save() {
     run_to(&mut w, 8);
     assert_eq!(w.world().unwrap().animator_of(farmer).unwrap().0, "Walk");
     let text = w.save_text().expect("saved");
-    assert!(text.starts_with("solis save 5\n"));
+    assert!(text.starts_with("solis save 6\n"));
     assert!(text.contains("animators "), "{text}");
     assert!(text.contains("moving=s1 speed=n40200000"), "{text}");
     let saved = sums(&mut w);

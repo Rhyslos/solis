@@ -609,6 +609,8 @@ fn random_from(seed: u64, order: &Order, phase: u32, time: f64) -> f64 {
 const PHASE_LOAD: u32 = u32::MAX;
 /// A sync (components started or given changes from the editor).
 const PHASE_SYNC: u32 = u32::MAX - 1;
+/// The game-wide objects' updates, before the components' (decision 0080).
+const PHASE_OBJECTS: u32 = u32::MAX - 2;
 
 /// The entity a spawn at `order`, in `phase` of the tick, at game time
 /// `time`, makes: a hash of all three (FNV-1a), made odd so it's never
@@ -643,7 +645,15 @@ enum Job {
     Len,
     Checksum,
     AllValues,
-    Updates(f64, WorldView),
+    /// The updates; whether the tick has started already (the objects'
+    /// updates ran first on this shard).
+    Updates(f64, WorldView, bool),
+    /// The objects' updates: the first shard only.
+    Objects(f64, WorldView),
+    ObjectValues,
+    SetObjects(Arc<crate::ObjectValues>),
+    ObjectInfo,
+    ObjectChecksum,
     Round(Vec<(u32, Event)>, WorldView, u32),
     FinishTick,
 }
@@ -660,6 +670,10 @@ enum Done {
     AllValues(Vec<(EntityId, String, ComponentData)>),
     Phase(Result<Phase, String>, Kept),
     Finished(bool),
+    ObjectValues(crate::ObjectValues),
+    /// Values that couldn't be given, as (object, field).
+    LeftOut(Vec<(String, String)>),
+    ObjectInfo(Vec<ComponentSchema>, Vec<(String, String)>),
 }
 
 /// Does `job` on `runtime`.
@@ -709,13 +723,27 @@ fn work(runtime: &mut Runtime, job: Job) -> Done {
         Job::Len => Done::Len(runtime.len()),
         Job::Checksum => Done::Checksum(runtime.checksum()),
         Job::AllValues => Done::AllValues(runtime.all_values()),
-        Job::Updates(dt, view) => {
+        Job::Updates(dt, view, started) => {
             // The tick starts with its updates: one hand-over, not two.
-            runtime.start_tick();
+            if !started {
+                runtime.start_tick();
+            }
             let mut host = ViewHost::new(view, 0);
             let phase = runtime.run_updates(dt, &mut host);
             Done::Phase(phase, host.kept)
         }
+        Job::Objects(dt, view) => {
+            runtime.start_tick();
+            let mut host = ViewHost::new(view, PHASE_OBJECTS);
+            let phase = runtime.run_objects(dt, &mut host);
+            Done::Phase(phase, host.kept)
+        }
+        Job::ObjectValues => Done::ObjectValues(runtime.object_values()),
+        Job::SetObjects(values) => Done::LeftOut(runtime.set_object_values(&values)),
+        Job::ObjectInfo => {
+            Done::ObjectInfo(runtime.object_schemas(), runtime.unkept_object_fields())
+        }
+        Job::ObjectChecksum => Done::Checksum(runtime.object_checksum()),
         Job::Round(events, view, round) => {
             let mut host = ViewHost::new(view, round);
             let phase = runtime.run_round(&events, &mut host);
@@ -805,6 +833,8 @@ pub struct Game {
     /// How many components run, once counted (the Profiler asks every
     /// frame; only adding, removing or new code changes it).
     count: Option<usize>,
+    /// Whether the code has game-wide objects (decision 0080).
+    objects: bool,
 }
 
 impl std::fmt::Debug for Game {
@@ -853,6 +883,7 @@ impl Game {
             told_too_much: false,
             running: None,
             count: None,
+            objects: false,
         })
     }
 
@@ -1009,6 +1040,7 @@ impl Game {
         self.code = code.schemas.iter().map(|s| s.name.clone()).collect();
         self.told = false;
         self.told_too_much = false;
+        self.objects = !self.object_values().is_empty();
     }
 
     /// Stops the game's Lust and Lua (see [`Runtime::unload`]).
@@ -1018,6 +1050,7 @@ impl Game {
         self.running = None;
         self.code.clear();
         self.schemas.clear();
+        self.objects = false;
     }
 
     /// The code's components (Lust and Lua), as the editor shows them.
@@ -1061,12 +1094,18 @@ impl Game {
     pub fn checksum(&mut self) -> u64 {
         // Each shard's components are its own, so their sums add up in
         // any order.
-        self.all(|_| Job::Checksum)
+        let components = self
+            .all(|_| Job::Checksum)
             .into_iter()
             .fold(0_u64, |sum, a| match a {
                 Some(Done::Checksum(c)) => sum.wrapping_add(c),
                 _ => sum,
-            })
+            });
+        // The objects once: every shard has the first's.
+        match self.first(Job::ObjectChecksum) {
+            Some(Done::Checksum(c)) if self.objects => components.wrapping_add(c),
+            _ => components,
+        }
     }
 
     /// Every running component's values (Lust's, Lua's and Rust's), by
@@ -1177,9 +1216,34 @@ impl Game {
         &mut self,
         dt: f64,
         world: &mut dyn GameWorld,
-        engine: Vec<Event>,
+        mut engine: Vec<Event>,
     ) -> Ticked {
         let told = self.told;
+        // The game-wide objects first, on the first shard, and then every
+        // shard has their values, so every component reads the same
+        // (decision 0080). What they send is delivered after the
+        // engine's events.
+        let mut object_failures = Vec::new();
+        let objects = self.objects;
+        if objects {
+            let view = world.view();
+            let answer = self.first(Job::Objects(dt, view));
+            match self.gather(vec![answer], world) {
+                Ok(phase) => {
+                    let (sent, failures) = crate::runtime::sorted(phase);
+                    engine.extend(sent);
+                    object_failures = failures;
+                }
+                Err(why) => {
+                    let _ = self.all(|_| Job::FinishTick);
+                    return Ticked {
+                        failures: Vec::new(),
+                        pause: pause_for(false, Some(why)),
+                    };
+                }
+            }
+            self.share_objects();
+        }
         // Which round of events: spawns in different rounds may share
         // everything else about where they were asked for.
         let mut rounds = 0_u32;
@@ -1189,7 +1253,7 @@ impl Game {
             || {
                 let view = world.borrow_mut().view();
                 this.borrow_mut().phase(
-                    |_| Job::Updates(dt, view.clone()),
+                    |i| Job::Updates(dt, view.clone(), objects && i == 0),
                     &mut **world.borrow_mut(),
                 )
             },
@@ -1214,9 +1278,67 @@ impl Game {
         if failures.iter().any(is_flood) {
             self.told = true;
         }
+        object_failures.extend(failures);
         Ticked {
-            failures,
+            failures: object_failures,
             pause: pause_for(over, broke),
+        }
+    }
+
+    /// Asks only the first shard (where the game-wide objects run).
+    fn first(&mut self, job: Job) -> Option<Done> {
+        let mut here = None;
+        self.shards[0].ask(job, &mut here);
+        self.shards[0].answer(&mut here)
+    }
+
+    /// Gives every shard but the first the first's objects' values.
+    fn share_objects(&mut self) {
+        if self.shards.len() < 2 {
+            return;
+        }
+        let Some(Done::ObjectValues(values)) = self.first(Job::ObjectValues) else {
+            return;
+        };
+        let values = Arc::new(values);
+        let mut here: Vec<Option<Done>> = Vec::new();
+        here.resize_with(self.shards.len(), || None);
+        for (shard, here) in self.shards.iter_mut().zip(here.iter_mut()).skip(1) {
+            shard.ask(Job::SetObjects(Arc::clone(&values)), here);
+        }
+        for (shard, here) in self.shards.iter_mut().zip(here.iter_mut()).skip(1) {
+            let _ = shard.answer(here);
+        }
+    }
+
+    /// The game-wide objects' values, as they are now (a save game keeps
+    /// them; decision 0080).
+    pub fn object_values(&mut self) -> crate::ObjectValues {
+        match self.first(Job::ObjectValues) {
+            Some(Done::ObjectValues(values)) => values,
+            _ => Vec::new(),
+        }
+    }
+
+    /// Gives every shard's objects `values` (a loaded save's). Gives back
+    /// the (object, field) values that couldn't be given: gone from the
+    /// code, or of another kind now.
+    pub fn set_object_values(&mut self, values: crate::ObjectValues) -> Vec<(String, String)> {
+        let values = Arc::new(values);
+        let answers = self.all(|_| Job::SetObjects(Arc::clone(&values)));
+        match answers.into_iter().next() {
+            Some(Some(Done::LeftOut(left_out))) => left_out,
+            _ => Vec::new(),
+        }
+    }
+
+    /// The game-wide objects as the editor shows them (their kept fields,
+    /// with what they hold now), and their fields that aren't kept or
+    /// shared (lists, maps, things), as (object, field).
+    pub fn object_info(&mut self) -> (Vec<ComponentSchema>, Vec<(String, String)>) {
+        match self.first(Job::ObjectInfo) {
+            Some(Done::ObjectInfo(schemas, unkept)) => (schemas, unkept),
+            _ => (Vec::new(), Vec::new()),
         }
     }
 
@@ -1238,10 +1360,21 @@ impl Game {
         job: impl FnMut(usize) -> Job,
         world: &mut dyn GameWorld,
     ) -> Result<Phase, String> {
+        let answers = self.all(job);
+        self.gather(answers, world)
+    }
+
+    /// Shards' answers to a phase put together, and what they changed
+    /// landed in `world`, in order.
+    fn gather(
+        &mut self,
+        answers: Vec<Option<Done>>,
+        world: &mut dyn GameWorld,
+    ) -> Result<Phase, String> {
         let mut phase = Phase::default();
         let mut kept = Kept::default();
         let mut broke = None;
-        for answer in self.all(job) {
+        for answer in answers {
             match answer {
                 Some(Done::Phase(Ok(p), k)) => {
                     phase.sent.extend(p.sent);
@@ -1300,3 +1433,7 @@ fn land(mut kept: Kept, world: &mut dyn GameWorld) {
 #[cfg(test)]
 #[path = "game_tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "game_objects_tests.rs"]
+mod objects_tests;

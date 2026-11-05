@@ -16,6 +16,7 @@ mod lua_components;
 pub mod luau;
 mod lust_program;
 pub mod map_code;
+mod objects;
 pub mod project_names;
 pub mod runtime;
 pub mod rust_component;
@@ -28,6 +29,7 @@ pub use game::{Change, Game, GameWorld, ViewIndex, WorldView};
 pub use host::{AnimatorValue, Host, NoHost, Shot, SoundAt};
 /// Game code turned into Lua, ready for a [`Runtime`].
 pub use lust::LuaChunk as Chunk;
+pub use objects::ObjectValues;
 pub use runtime::{Failure, Runtime, Swapped, Ticked};
 pub use rust_component::{Context, RustComponent, RustKind};
 pub use ticking::Order;

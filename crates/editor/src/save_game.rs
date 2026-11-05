@@ -6,7 +6,7 @@
 //! opened) by a person:
 //!
 //! ```text
-//! solis save 5
+//! solis save 6
 //! project Harbour
 //! tick 1234
 //! time 4060000000000000
@@ -29,6 +29,8 @@
 //! tilemaps 1234
 //! ID 1220
 //! …the map as the game has changed it (a tile map file)…
+//! objects 140
+//! …the game-wide objects' values, one block holding them (area text)…
 //! ```
 //!
 //! Physics is kept as each body's place and motion, never Rapier's own
@@ -47,9 +49,9 @@ use reflect::EntityId;
 use std::sync::Arc;
 
 /// The first line of a save this Solis writes and reads.
-const HEADER: &str = "solis save 5";
+const HEADER: &str = "solis save 6";
 /// The version in [`HEADER`].
-const SAVE_VERSION: u32 = 5;
+const SAVE_VERSION: u32 = 6;
 
 /// Save games' version and upgraders (Phase 8, C2; decision 0053): a save
 /// made by an earlier Solis loads in a later one, never refused just for
@@ -73,6 +75,7 @@ pub static FORMAT: reflect::upgrade::Format<Sections> = reflect::upgrade::Format
         places_kept_apart,
         animators_kept,
         tile_maps_kept,
+        objects_kept,
     ],
 };
 
@@ -151,6 +154,66 @@ fn tile_maps_kept(sections: &mut Sections) -> Result<(), String> {
     Ok(())
 }
 
+/// Version 5 to 6: version 5 had no game-wide objects (decision 0080),
+/// so they start as the code writes them.
+fn objects_kept(sections: &mut Sections) -> Result<(), String> {
+    if sections.list.iter().any(|(n, _)| n == "objects") {
+        return Err("it already has objects".into());
+    }
+    sections.list.push(("objects".into(), String::new()));
+    Ok(())
+}
+
+/// The game-wide objects' values as a save keeps them: area text, one
+/// entity whose components are the objects (none: empty). Written with no
+/// registry, so an object named like a component keeps its own fields.
+fn objects_text(objects: &script::ObjectValues) -> String {
+    if objects.is_empty() {
+        return String::new();
+    }
+    let mut holder = area::EntityData::new("objects");
+    holder.components = objects.iter().cloned().collect();
+    let mut area = Area::new();
+    area.insert(objects_holder(), holder);
+    area::text::write(&area, &reflect::Registry::new(), &|_| None)
+}
+
+/// The entity a save's objects are kept on.
+fn objects_holder() -> EntityId {
+    EntityId(reflect::Id::from_raw(1).unwrap_or_else(|| unreachable!("1 is an ID")))
+}
+
+/// A save's objects section read back, each value fitted to its field in
+/// `schemas` (the objects as the running code has them).
+fn objects_of(
+    text: &str,
+    schemas: &[reflect::ComponentSchema],
+) -> Result<script::ObjectValues, String> {
+    if text.is_empty() {
+        return Ok(Vec::new());
+    }
+    let area = area::text::read(text, &reflect::Registry::new()).map_err(|e| e.to_string())?;
+    let holder = area
+        .get(objects_holder())
+        .ok_or("its objects are damaged")?;
+    Ok(holder
+        .components
+        .iter()
+        .map(|(name, data)| {
+            let schema = schemas.iter().find(|s| s.name == *name);
+            let mut fitted = reflect::ComponentData::default();
+            for (field, value) in &data.fields {
+                let value = match schema.and_then(|s| s.fields.iter().find(|f| f.name == *field)) {
+                    Some(info) => area::text::fit_value(value.clone(), &info.kind),
+                    None => value.clone(),
+                };
+                fitted.set(field, value);
+            }
+            (name.clone(), fitted)
+        })
+        .collect())
+}
+
 /// The biggest save read.
 pub(crate) const MAX_SAVE_BYTES: usize = 256 << 20;
 
@@ -197,6 +260,10 @@ pub(crate) struct Save {
     pub(crate) animators: Vec<(EntityId, Vec<(String, animation::ParamValue)>)>,
     /// Each tile map as the game has changed it, in entity order.
     pub(crate) tile_maps: Vec<(EntityId, tiles::TileMap)>,
+    /// The game-wide objects' values (decision 0080), as area text: one
+    /// entity, `objects`, whose components are the objects. Empty when
+    /// the game has none.
+    pub(crate) objects: String,
     /// What upgrading an older save couldn't carry over, for the Console
     /// (never written).
     pub(crate) notes: Vec<String>,
@@ -298,6 +365,7 @@ impl Save {
             })
             .collect();
         section("tilemaps", &maps);
+        section("objects", &self.objects);
         let head = format!(
             "project {}\ntick {}\ntime {:x}\nseed {}\n",
             one_line(&self.project),
@@ -566,6 +634,7 @@ impl Save {
             }
             tile_maps.push((EntityId(id), read.map));
         }
+        let objects = section("objects")?.to_string();
         Ok(Self {
             project,
             ticks,
@@ -579,6 +648,7 @@ impl Save {
             places,
             animators,
             tile_maps,
+            objects,
             notes: {
                 // A section no version writes: not a save this Solis made.
                 if !list.is_empty() {
@@ -676,6 +746,11 @@ impl Workbench {
             places,
             animators: playing.world.animator_values(),
             tile_maps: playing.world.tile_maps(),
+            objects: playing
+                .game
+                .as_mut()
+                .map(|game| objects_text(&game.object_values()))
+                .unwrap_or_default(),
             notes: Vec::new(),
         })
     }
@@ -858,6 +933,40 @@ impl Workbench {
                 let text = crate::game_code::failure_text(self.document.area(), &failure);
                 self.log(LogLevel::Error, text);
             }
+            // And the game-wide objects theirs (decision 0080).
+            let (schemas, _) = game.object_info();
+            match objects_of(&save.objects, &schemas) {
+                Ok(objects) => {
+                    let mut gone: Vec<String> = objects
+                        .iter()
+                        .filter(|(name, _)| !schemas.iter().any(|s| s.name == *name))
+                        .map(|(name, _)| {
+                            format!(
+                                "the game's code has no object {name} any more, so its saved \
+                                 values were left out"
+                            )
+                        })
+                        .collect();
+                    for (object, field) in game.set_object_values(objects) {
+                        if schemas.iter().any(|s| s.name == object) {
+                            gone.push(format!(
+                                "{object}'s {field} is a different kind now, so it starts as the \
+                                 code writes it"
+                            ));
+                        }
+                    }
+                    for why in gone {
+                        self.console.push(
+                            LogLevel::Warning,
+                            format!("Loading {name_shown}: {why}."),
+                        );
+                    }
+                }
+                Err(why) => self.log(
+                    LogLevel::Warning,
+                    format!("Loading {name_shown}: its objects couldn't be read ({why}), so they start as the code writes them."),
+                ),
+            }
         }
         let Some(playing) = &mut self.playing else {
             return;
@@ -895,3 +1004,7 @@ impl Workbench {
 #[cfg(test)]
 #[path = "save_game_tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "save_game_objects_tests.rs"]
+mod objects_tests;

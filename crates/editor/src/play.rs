@@ -297,7 +297,30 @@ impl Workbench {
         }
         let said = if say { said } else { Vec::new() };
         self.tell_game(said, &failures);
+        if say {
+            self.tell_unkept_object_fields(&mut game);
+        }
         (Some(game), pending)
+    }
+
+    /// Says, once a play, which fields of game-wide objects aren't kept in
+    /// saves or shared between cores: lists, maps and things (decision
+    /// 0080).
+    fn tell_unkept_object_fields(&mut self, game: &mut script::Game) {
+        let (_, unkept) = game.object_info();
+        if unkept.is_empty() {
+            return;
+        }
+        let fields: Vec<String> = unkept.iter().map(|(o, f)| format!("{o}.{f}")).collect();
+        self.log(
+            LogLevel::Warning,
+            format!(
+                "{} can't be kept in save games yet, and each of the computer's cores keeps its \
+                 own copy (only plain fields, like numbers, text and states, are copied to every \
+                 core). Keep what every part of the game must see in plain fields.",
+                fields.join(", ")
+            ),
+        );
     }
 
     /// Writes what game code said, and its failures, in the Console.

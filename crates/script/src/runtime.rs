@@ -218,7 +218,16 @@ impl Runtime {
         }
         self.told.set(false);
         self.queue.borrow_mut().clear();
+        // The objects keep their values by name (decision 0080).
+        let objects_before = self.object_values();
         self.commit(lust, classes);
+        if let Some(program) = &self.lust {
+            for (object, field) in program.objects.set_values(&self.luau, &objects_before) {
+                swapped.notes.push(format!(
+                    "{object}'s {field} is a different kind now, so it starts again."
+                ));
+            }
+        }
         Ok(swapped)
     }
 
@@ -421,6 +430,55 @@ impl Runtime {
         total
     }
 
+    /// Every game-wide object's kept fields, as they are now, in name
+    /// order (decision 0080).
+    pub fn object_values(&self) -> crate::ObjectValues {
+        self.lust
+            .as_ref()
+            .map(|p| p.objects.values())
+            .unwrap_or_default()
+    }
+
+    /// Gives the game-wide objects `values` (a save game's, or another
+    /// core's): each field still there, of the same kind, takes its value.
+    /// Gives back the (object, field) values that couldn't be.
+    pub fn set_object_values(&self, values: &crate::ObjectValues) -> Vec<(String, String)> {
+        self.lust
+            .as_ref()
+            .map(|p| p.objects.set_values(&self.luau, values))
+            .unwrap_or_default()
+    }
+
+    /// The game-wide objects, as the editor shows them: their kept fields,
+    /// with what they hold now.
+    pub fn object_schemas(&self) -> Vec<ComponentSchema> {
+        self.lust
+            .as_ref()
+            .map(|p| p.objects.schemas())
+            .unwrap_or_default()
+    }
+
+    /// Each game-wide object's fields that aren't kept or shared (lists,
+    /// maps, things), as (object, field).
+    pub fn unkept_object_fields(&self) -> Vec<(String, String)> {
+        self.lust
+            .iter()
+            .flat_map(|p| &p.objects.list)
+            .flat_map(|o| o.unkept.iter().map(|f| (o.name.clone(), f.clone())))
+            .collect()
+    }
+
+    /// A checksum of the game-wide objects (see [`Self::checksum`]).
+    pub fn object_checksum(&self) -> u64 {
+        self.lust.as_ref().map_or(0, |p| p.objects.checksum())
+    }
+
+    /// The game-wide objects' updates, the first part of a tick in
+    /// phases.
+    pub(crate) fn run_objects(&mut self, dt: f64, host: &mut dyn Host) -> Result<Phase, String> {
+        self.phase(host, |ticking, lent, _| ticking.objects(lent, dt))
+    }
+
     /// Runs one tick of `dt` seconds: every running component's `update`,
     /// entities in ID order and components in name order, then the events
     /// they sent, in rounds. A component that fails stops (until the code
@@ -446,12 +504,17 @@ impl Runtime {
         // The natives are lent once for the whole tick, all its rounds.
         let mut outcome = (Vec::new(), None);
         let lent = with_natives(&self.luau, lust_env, host, Some(&self.send), |lent| {
+            // The objects first, then the components (decision 0080).
+            let objects = ticking.objects(lent, dt);
+            let (first, mut failures) = sorted(objects);
             outcome = in_rounds(
                 || Ok(ticking.updates(lent, &mut running.borrow_mut(), dt)),
                 |events| Ok(ticking.round(lent, &mut running.borrow_mut(), events)),
-                Vec::new(),
+                first,
                 told,
             );
+            failures.append(&mut outcome.0);
+            outcome.0 = failures;
             Ok(())
         });
         let (failures, mut broke) = outcome;
@@ -691,6 +754,18 @@ pub(crate) fn in_rounds(
         };
     }
     (failures, None)
+}
+
+/// A phase's events and failures, each in order.
+pub(crate) fn sorted(phase: Phase) -> (Vec<Event>, Vec<Failure>) {
+    let mut sent = phase.sent;
+    sent.sort_by(|a, b| a.0.cmp(&b.0));
+    let mut failures = phase.failures;
+    failures.sort_by(|a, b| a.0.cmp(&b.0));
+    (
+        sent.into_iter().map(|(_, e)| e).collect(),
+        failures.into_iter().map(|(_, f)| f).collect(),
+    )
 }
 
 /// The failure saying too many events were sent in one tick.
