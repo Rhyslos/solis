@@ -17,6 +17,7 @@ mod hash;
 mod jobs;
 mod project;
 pub mod sidecar;
+pub mod tidy;
 mod watch;
 
 pub use db::{

@@ -128,6 +128,8 @@ struct App {
     messages: Option<crate::logger::Messages>,
     /// Checking for, downloading and installing newer builds.
     updates: crate::updates::Updates,
+    /// Copying a project or looking for projects, for the launcher.
+    tidying: crate::known_projects::Tidying,
     /// Starting up behind the splash screen, until the editor opens.
     startup: Option<crate::startup::Startup>,
     /// When the splash appeared.
@@ -254,6 +256,7 @@ impl App {
             title: String::new(),
             messages: crate::logger::install(),
             updates: crate::updates::Updates::new(pending, skipped),
+            tidying: Default::default(),
             startup: Some(startup),
             began: std::time::Instant::now(),
             logo: load_logo(&cc.egui_ctx),
@@ -290,6 +293,132 @@ impl App {
         let rows = self.projects.known_mut().rows();
         self.workbench.set_known_projects(rows);
         self.workbench.set_recent(self.projects.recent());
+    }
+
+    /// Gives the project in `root` a new name (the launcher's Rename…).
+    fn rename_project(&mut self, root: &Path, name: &str) {
+        match asset_db::tidy::rename(root, name) {
+            Ok(name) => {
+                if self
+                    .projects
+                    .root()
+                    .is_some_and(|open| same_folder(open, root))
+                {
+                    self.workbench.rename_open_project(&name);
+                }
+                self.workbench
+                    .launcher_notice(format!("Renamed to {name}. Its folder keeps its name."));
+            }
+            Err(why) => self
+                .workbench
+                .launcher_notice(format!("Couldn't rename it: {why}.")),
+        }
+        self.list_projects();
+    }
+
+    /// Starts copying the project in `from` into `to` (Make a copy…).
+    fn copy_project(&mut self, from: PathBuf, to: PathBuf) {
+        if self.tidying.busy() {
+            self.workbench
+                .launcher_notice("Wait for the copy or scan going on to finish.");
+            return;
+        }
+        let name = match asset_db::Project::summary(&from) {
+            Ok(summary) => format!("{} copy", summary.name),
+            Err(why) => {
+                self.workbench
+                    .launcher_notice(format!("Couldn't copy it: {why}."));
+                return;
+            }
+        };
+        self.workbench.launcher_notice(format!(
+            "Copying {} to {}…",
+            file_name(&from),
+            to.display()
+        ));
+        self.tidying.copy(from, to, name);
+    }
+
+    /// Points the project known in `old` at `new`, its folder's new place
+    /// (Locate…).
+    fn locate_project(&mut self, old: &Path, new: &Path) {
+        match asset_db::Project::summary(new) {
+            Ok(summary) => {
+                self.projects.known_mut().relocate(old, new);
+                self.workbench.launcher_notice(format!(
+                    "Found {} in {}.",
+                    summary.name,
+                    new.display()
+                ));
+            }
+            Err(why) => self.workbench.launcher_notice(format!(
+                "{} isn't that project's folder: {why}.",
+                new.display()
+            )),
+        }
+        self.list_projects();
+    }
+
+    /// Starts looking through `folder` for projects (Scan a folder…).
+    fn scan_for_projects(&mut self, folder: PathBuf) {
+        if self.tidying.busy() {
+            self.workbench
+                .launcher_notice("Wait for the copy or scan going on to finish.");
+            return;
+        }
+        self.workbench
+            .launcher_notice(format!("Looking for projects in {}…", folder.display()));
+        self.tidying.scan(folder);
+    }
+
+    /// What a copy or scan found, in the list and in words.
+    fn tidied(&mut self, done: crate::known_projects::Tidied) {
+        use crate::known_projects::Tidied;
+        let note = match done {
+            Tidied::Copied {
+                to,
+                result: Ok(copied),
+            } => {
+                self.projects.known_mut().add(&to);
+                let mut note = format!(
+                    "Copied: {} files ({} MB) in {}.",
+                    copied.files,
+                    copied.bytes >> 20,
+                    to.display()
+                );
+                if copied.links_skipped > 0 {
+                    note.push_str(&format!(" {} links left out.", copied.links_skipped));
+                }
+                note
+            }
+            Tidied::Copied {
+                result: Err(why), ..
+            } => format!("Couldn't copy it: {why}."),
+            Tidied::Scanned {
+                folder,
+                found,
+                stopped,
+            } => {
+                let new = found
+                    .iter()
+                    .filter(|root| self.projects.known_mut().add(root))
+                    .count();
+                let mut note = match (found.len(), new) {
+                    (0, _) => format!("No projects in {}.", folder.display()),
+                    (n, 0) => format!("Found {n}, all in the list already."),
+                    (n, new) => format!("Found {n}: {new} added to the list."),
+                };
+                if stopped {
+                    note.push_str(
+                        " It stopped early: choose a smaller folder to look through the rest.",
+                    );
+                }
+                note
+            }
+        };
+        self.workbench.log(LogLevel::Info, note.clone());
+        self.workbench.launcher_notice(note);
+        self.list_projects();
     }
 
     fn open_project(&mut self, root: &Path, create: bool) {
@@ -836,6 +965,20 @@ impl App {
                     self.projects.known_mut().forget(&root);
                     self.list_projects();
                 }
+                WorkbenchAction::ShowProject(root) => {
+                    if let Err(why) = open_externally(&root) {
+                        self.workbench
+                            .launcher_notice(format!("Couldn't show {}: {why}.", root.display()));
+                    }
+                }
+                WorkbenchAction::RenameProject(root, name) => self.rename_project(&root, &name),
+                WorkbenchAction::CopyProject(root) => {
+                    self.importer.ask_folder(FolderFor::CopyProject(root));
+                }
+                WorkbenchAction::LocateProject(root) => {
+                    self.importer.ask_folder(FolderFor::LocateProject(root));
+                }
+                WorkbenchAction::ScanForProjects => self.importer.ask_folder(FolderFor::ScanFolder),
                 WorkbenchAction::PlaceAsset(id) => self.place(id),
                 WorkbenchAction::PlaySound(path) => self.play_sound(&path),
                 WorkbenchAction::StopSound => self.sounds.stop(self.sound.device()),
@@ -1743,8 +1886,15 @@ impl eframe::App for App {
                 FolderFor::SampleGame => self.make_sample_game(&folder),
                 FolderFor::Benchmark => self.make_benchmark(&folder),
                 FolderFor::Playground => self.make_playground(&folder),
-                _ => self.open_project(&folder, purpose == FolderFor::NewProject),
+                FolderFor::CopyProject(from) => self.copy_project(from, folder),
+                FolderFor::LocateProject(old) => self.locate_project(&old, &folder),
+                FolderFor::ScanFolder => self.scan_for_projects(folder),
+                FolderFor::NewProject => self.open_project(&folder, true),
+                FolderFor::OpenProject => self.open_project(&folder, false),
             }
+        }
+        if let Some(done) = self.tidying.done() {
+            self.tidied(done);
         }
         let (changes, notes) = self.projects.poll();
         self.follow_changes(changes, notes);

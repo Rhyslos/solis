@@ -23,7 +23,7 @@ The program's code: the command line, the window and its frame loop, the GPU hoo
 | File | What it does | Main items |
 | --- | --- | --- |
 | `project.rs` | The open project: its asset database, the watcher on its assets folder, and the projects Solis knows (decision 0021); notes this build in each project it opens (decision 0086). | `Projects`, `Opened` |
-| `known_projects.rs` | Every project the launcher knows (decision 0086): folder, pin, when last opened and the name last read, up to 200, saved with the settings and read once from the recent list kept before; each one's project file read for the launcher's rows. | `KnownProjects`, `Known` |
+| `known_projects.rs` | Every project the launcher knows (decision 0086): folder, pin, when last opened and the name last read, up to 200, saved with the settings and read once from the recent list kept before; each one's project file read for the launcher's rows; copying a project and scanning a folder on a worker (`Tidying`). | `KnownProjects`, `Known`, `Tidying` |
 | `area_file.rs` | Reading and saving area files, the Open and Save windows, and noticing when the open file changes on disk (decision 0020). | `AreaFiles` |
 | `import.rs` | Imports models on a small pool of workers (through the import cache when a project is open), so the window never waits; also the system's Open windows. | `Importer`, `Finished`, `FolderFor` |
 | `thumbnails.rs` | The Library's thumbnails: pictures shrunk on a worker, models drawn once on the GPU. | `Thumbnails` |

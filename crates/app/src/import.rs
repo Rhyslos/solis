@@ -25,7 +25,7 @@ pub struct Finished {
 }
 
 /// What a folder is being chosen for.
-#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+#[derive(Debug, Clone, PartialEq, Eq)]
 pub enum FolderFor {
     /// A new project.
     NewProject,
@@ -37,6 +37,14 @@ pub enum FolderFor {
     Benchmark,
     /// A folder to make the playground in.
     Playground,
+    /// An empty folder for a copy of the project in this folder (the
+    /// launcher's Make a copy…).
+    CopyProject(PathBuf),
+    /// The new place of the project the launcher knew in this folder
+    /// (Locate…).
+    LocateProject(PathBuf),
+    /// A folder to look for projects in (Scan a folder…).
+    ScanFolder,
 }
 
 /// Starts imports and collects them when they finish.
@@ -76,13 +84,17 @@ impl Importer {
             return;
         }
         let (sender, receiver) = channel();
+        let asked = purpose.clone();
         std::thread::spawn(move || {
-            let title = match purpose {
+            let title = match asked {
                 FolderFor::NewProject => "Choose a folder for the new project",
                 FolderFor::OpenProject => "Open project",
                 FolderFor::SampleGame => "Choose an empty folder for the sample game",
                 FolderFor::Benchmark => "Choose an empty folder for the benchmark",
                 FolderFor::Playground => "Choose an empty folder for the playground",
+                FolderFor::CopyProject(_) => "Choose an empty folder for the copy",
+                FolderFor::LocateProject(_) => "Where is the project's folder now?",
+                FolderFor::ScanFolder => "Choose a folder to look for projects in",
             };
             let _ = sender.send(rfd::FileDialog::new().set_title(title).pick_folder());
         });
@@ -93,7 +105,7 @@ impl Importer {
     /// closed with a choice.
     pub fn chosen_folder(&mut self) -> Option<(FolderFor, PathBuf)> {
         let (purpose, receiver) = self.folder_dialog.as_ref()?;
-        let purpose = *purpose;
+        let purpose = purpose.clone();
         match receiver.try_recv() {
             Ok(choice) => {
                 self.folder_dialog = None;

@@ -203,6 +203,95 @@ fn the_launcher_lists_projects_and_does_what_it_offers() {
 }
 
 #[test]
+fn the_menu_shows_renames_and_copies_and_a_missing_folder_can_be_located() {
+    let mut h = harness(launcher_with(some_projects()));
+    h.run();
+    let asked = |h: &egui_kittest::Harness<'static, State>, a: WorkbenchAction| {
+        h.state().1.actions.contains(&a)
+    };
+    h.get_by_label("Scan a folder…").click();
+    h.run();
+    assert!(asked(&h, WorkbenchAction::ScanForProjects));
+    h.get_by_label("Locate Old jam").click();
+    h.run();
+    assert!(asked(&h, WorkbenchAction::LocateProject("/jam/old".into())));
+    h.get_by_label("More for Playground").click();
+    h.run();
+    h.get_by_label("Show in Explorer").click();
+    h.run();
+    assert!(asked(
+        &h,
+        WorkbenchAction::ShowProject("/games/playground".into())
+    ));
+    h.get_by_label("More for Playground").click();
+    h.run();
+    h.get_by_label("Make a copy…").click();
+    h.run();
+    assert!(asked(
+        &h,
+        WorkbenchAction::CopyProject("/games/playground".into())
+    ));
+    // Rename… asks for the name, with the old one to change.
+    h.get_by_label("More for Playground").click();
+    h.run();
+    h.get_by_label("Rename…").click();
+    h.run();
+    h.run();
+    assert_eq!(
+        h.state()
+            .0
+            .launcher
+            .renaming
+            .as_ref()
+            .map(|r| r.name.as_str()),
+        Some("Playground")
+    );
+    h.state_mut().0.launcher.renaming.as_mut().unwrap().name = "   ".into();
+    h.run();
+    assert!(h.query_by_label_contains("needs a name").is_some());
+    h.state_mut().0.launcher.renaming.as_mut().unwrap().name = " Play park ".into();
+    h.run();
+    h.get_by_label("Rename").click();
+    h.run();
+    assert!(asked(
+        &h,
+        WorkbenchAction::RenameProject("/games/playground".into(), "Play park".into())
+    ));
+    assert!(h.state().0.launcher.renaming.is_none());
+    // Esc while renaming leaves the name, not the launcher.
+    h.state_mut().0.launcher.renaming = Some(Renaming {
+        root: "/games/bench".into(),
+        name: "Bench".into(),
+        focused: true,
+    });
+    h.run();
+    h.key_press(egui::Key::Escape);
+    h.run();
+    assert!(h.state().0.launcher.renaming.is_none());
+    assert!(h.state().0.launcher_open());
+    // What the app did is said until closed.
+    h.state_mut()
+        .0
+        .launcher_notice("Found 2: 1 added to the list.");
+    h.run();
+    assert!(h.query_by_label("Found 2: 1 added to the list.").is_some());
+    h.get_by_label("Close the note").click();
+    h.run();
+    assert!(h.state().0.launcher.notice.is_none());
+}
+
+#[test]
+fn renaming_the_open_project_changes_its_name_and_nothing_else() {
+    let mut w = Workbench::new(info(), None);
+    w.set_project(Some(farm()));
+    let revision = w.document.revision();
+    w.rename_open_project("Farm days");
+    assert_eq!(w.project().unwrap().name, "Farm days");
+    assert_eq!(w.document.revision(), revision);
+    assert!(w.title().contains("Farm days"));
+}
+
+#[test]
 fn the_learn_page_offers_the_examples_and_the_manual() {
     let mut h = harness(launcher_with(Vec::new()));
     h.run();

@@ -28,6 +28,8 @@ The mock-up's version numbers (0.4.0, 0.5.0) stand for Solis's build numbers: wh
 
 ### L2. Rename, copy, show, scan and locate
 
+> **Built:** as planned. Copying and scanning run on a worker, one at a time, with a note at the top of the page when they're done (or why not); a copy leaves out links as well as the cache, and never goes into a folder that isn't empty or inside the project. A scan looks four levels down, at most 20,000 folders, never inside projects or hidden folders.
+
 - ⋯ gains Show in Explorer, Rename… (the project's name, not its folder) and Make a copy… (the folder, without the import cache, to a new one).
 - **Scan a folder…** looks through a folder and the folders inside it (a few levels down) for projects not yet in the list, and adds them.
 - A missing project's **Locate…** points it at its folder's new place.

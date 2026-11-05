@@ -104,6 +104,36 @@ impl KnownProjects {
         }
     }
 
+    /// Adds the project in `root` if it's new (found by a scan), at the
+    /// end, never opened. Returns whether it was new.
+    pub fn add(&mut self, root: &Path) -> bool {
+        if self.find(root).is_some() || self.list.len() >= MAX_KNOWN {
+            return false;
+        }
+        self.list.push(Known {
+            root: root.to_path_buf(),
+            pinned: false,
+            last_opened: None,
+            name: None,
+        });
+        true
+    }
+
+    /// The project known in `old` is now in `new` (Locate…): it keeps its
+    /// pin and when it was opened. A project already known in `new` is
+    /// kept instead.
+    pub fn relocate(&mut self, old: &Path, new: &Path) {
+        let Some(at) = self.find(old) else {
+            return;
+        };
+        if self.find(new).is_some() {
+            self.list.remove(at);
+            return;
+        }
+        self.list[at].root = new.to_path_buf();
+        self.list[at].name = None;
+    }
+
     /// Forgets the project in `root`. Its files stay where they are.
     pub fn forget(&mut self, root: &Path) {
         if let Some(at) = self.find(root) {
@@ -188,6 +218,89 @@ impl KnownProjects {
     }
 }
 
+/// Slow tidying done on a worker: copying a project's folder, or looking
+/// through a folder for projects.
+#[derive(Default)]
+pub struct Tidying {
+    job: Option<std::sync::mpsc::Receiver<Tidied>>,
+}
+
+/// What a worker finished.
+#[derive(Debug)]
+pub enum Tidied {
+    /// A project copied to `to` (or why not).
+    Copied {
+        /// The copy's folder.
+        to: PathBuf,
+        /// What was copied, or why it wasn't.
+        result: Result<asset_db::tidy::Copied, String>,
+    },
+    /// Projects found in a folder, and whether the scan stopped early.
+    Scanned {
+        /// The folder looked through.
+        folder: PathBuf,
+        /// The projects found.
+        found: Vec<PathBuf>,
+        /// Whether it stopped at its limit.
+        stopped: bool,
+    },
+}
+
+impl Tidying {
+    /// Whether a job is running (another waits for it).
+    pub fn busy(&self) -> bool {
+        self.job.is_some()
+    }
+
+    /// Copies the project in `from` to `to`, named `name`, on a worker.
+    pub fn copy(&mut self, from: PathBuf, to: PathBuf, name: String) {
+        self.start(move || {
+            let result = asset_db::tidy::copy_project(&from, &to, &name);
+            Tidied::Copied { to, result }
+        });
+    }
+
+    /// Looks through `folder` for projects, on a worker.
+    pub fn scan(&mut self, folder: PathBuf) {
+        self.start(move || {
+            let (found, stopped) = asset_db::tidy::find_projects(&folder);
+            Tidied::Scanned {
+                folder,
+                found,
+                stopped,
+            }
+        });
+    }
+
+    fn start(&mut self, work: impl FnOnce() -> Tidied + Send + 'static) {
+        let (send, receive) = std::sync::mpsc::channel();
+        let started = std::thread::Builder::new()
+            .name("tidying projects".into())
+            .spawn(move || {
+                let _ = send.send(work());
+            });
+        if started.is_ok() {
+            self.job = Some(receive);
+        }
+    }
+
+    /// The job's result, once it's done (never waits).
+    pub fn done(&mut self) -> Option<Tidied> {
+        let result = self.job.as_ref()?.try_recv();
+        match result {
+            Ok(done) => {
+                self.job = None;
+                Some(done)
+            }
+            Err(std::sync::mpsc::TryRecvError::Empty) => None,
+            Err(std::sync::mpsc::TryRecvError::Disconnected) => {
+                self.job = None;
+                None
+            }
+        }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;
@@ -252,6 +365,23 @@ mod tests {
             list.saved().iter().any(|k| k.root == last),
             "the pinned one stays"
         );
+    }
+
+    #[test]
+    fn scans_add_and_locating_moves_keeping_the_pin() {
+        let mut list = KnownProjects::from_saved(Some(vec![known("/a")]), vec![]);
+        assert!(list.add(Path::new("/b")));
+        assert!(!list.add(Path::new("/a")), "known already");
+        assert_eq!(list.saved()[1].last_opened, None);
+        list.pin(Path::new("/a"), true);
+        list.relocate(Path::new("/a"), Path::new("/moved"));
+        assert_eq!(list.saved()[0].root, PathBuf::from("/moved"));
+        assert!(list.saved()[0].pinned);
+        // Located where another known project is: one entry stays.
+        list.relocate(Path::new("/moved"), Path::new("/b"));
+        assert_eq!(list.recent(8), vec![PathBuf::from("/b")]);
+        list.relocate(Path::new("/nowhere"), Path::new("/x"));
+        assert_eq!(list.saved().len(), 1);
     }
 
     #[test]
