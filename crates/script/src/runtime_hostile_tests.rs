@@ -36,6 +36,7 @@ fn code(main: &str, lua: &[(&str, &str)]) -> Compiled {
         schemas: Vec::new(),
         places: Default::default(),
         bytecode: Default::default(),
+        screens: None,
     }
 }
 

@@ -4187,6 +4187,7 @@ dependencies = [
  "proptest",
  "reflect",
  "tiles",
+ "ui",
 ]
 
 [[package]]

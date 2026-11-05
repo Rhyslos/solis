@@ -108,6 +108,9 @@ pub struct Runtime {
     /// Names whose Lust or Lua components don't run (the editor refused
     /// them: the name is taken by one of its own, or a Rust component).
     left_out: std::collections::BTreeSet<String>,
+    /// For the screens' program (decision 0087): where each screen's view
+    /// is put when Lust opens it.
+    views: Option<Rc<RefCell<Vec<mlua::Function>>>>,
 }
 
 impl std::fmt::Debug for Runtime {
@@ -146,7 +149,31 @@ impl Runtime {
             told: Cell::new(false),
             no_events: EventKinds::new(),
             left_out: std::collections::BTreeSet::new(),
+            views: None,
         })
+    }
+
+    /// Makes this the screens' runtime (decision 0087): when the code is
+    /// loaded, each `open()` puts the screen's view in `views` instead of
+    /// opening a window.
+    pub(crate) fn open_views(&mut self, views: Rc<RefCell<Vec<mlua::Function>>>) {
+        self.views = Some(views);
+    }
+
+    /// Runs a screen's view (from [`Self::open_views`]) within `limit`,
+    /// giving back its tree, or where it failed.
+    pub(crate) fn run_view(
+        &self,
+        view: &mlua::Function,
+        limit: std::time::Duration,
+    ) -> Result<Table, CodeProblem> {
+        let luau = &self.luau;
+        luau.clock
+            .within(limit, || luau.clock.limited(|| view.call::<Table>(())))
+            .map_err(|err| match self.lust.as_ref() {
+                Some(program) => located(&program.chunk, &err),
+                None => lua_problem("", &err),
+            })
     }
 
     /// Adds a kind of Rust component, kept across loads.
@@ -610,10 +637,19 @@ impl Runtime {
             stopped: true,
         };
         let lust_code = match &code.lust {
-            Some(chunk) => Some((
-                chunk,
-                lust_program::compile(&self.luau, chunk, code.bytecode.lust.as_deref())?,
-            )),
+            Some(chunk) => {
+                let compiled =
+                    lust_program::compile(&self.luau, chunk, code.bytecode.lust.as_deref())?;
+                if let Some(views) = &self.views {
+                    open_views_in(&self.luau, &compiled.1, views).map_err(|err| Failure {
+                        entity: None,
+                        component: String::new(),
+                        at: plain(format!("the screens couldn't be set up: {err}")),
+                        stopped: true,
+                    })?;
+                }
+                Some((chunk, compiled))
+            }
             None => None,
         };
         let files = compile_files(&self.luau, &code.lua, &code.bytecode.lua).map_err(failed)?;
@@ -832,3 +868,23 @@ mod speed_tests;
 #[cfg(test)]
 #[path = "runtime_camera_tests.rs"]
 mod camera_tests;
+
+/// Gives the screens' program `LUST_HOST.ui_open`, which keeps each
+/// screen's view in `views` (and opens no window).
+fn open_views_in(
+    luau: &Luau,
+    env: &Table,
+    views: &Rc<RefCell<Vec<mlua::Function>>>,
+) -> mlua::Result<()> {
+    views.borrow_mut().clear();
+    let kept = Rc::clone(views);
+    let open =
+        luau.lua
+            .create_function(move |_, (_settings, view): (LuaValue, mlua::Function)| {
+                kept.borrow_mut().push(view);
+                Ok(())
+            })?;
+    let host = luau.lua.create_table()?;
+    host.raw_set("ui_open", open)?;
+    env.raw_set("LUST_HOST", host)
+}

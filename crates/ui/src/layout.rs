@@ -164,6 +164,18 @@ pub fn layout_with(
     for e in &screen.elements {
         walking.walk(e, whole, 1.0, 0);
     }
+    // A view written in Lust: laid out in design pixels as wide as the
+    // screen's shape, then drawn like elements.
+    if let Some(view) = &screen.view {
+        let design = [screen_px[0] / scale, screen_px[1] / scale];
+        let elements = match walking.fonts.as_deref_mut() {
+            Some(fonts) => crate::view::lay_out(view, design, fonts),
+            None => crate::view::lay_out(view, design, &mut crate::view::NoFonts),
+        };
+        for e in &elements {
+            walking.walk(e, whole, 1.0, 0);
+        }
+    }
     out
 }
 
@@ -276,10 +288,16 @@ impl Walk<'_> {
                 kind: ShapeKind::Ellipse,
                 ..base
             }),
-            ElementKind::Line { width } => self.out.push(Shape {
+            ElementKind::Line { width, rising } => self.out.push(Shape {
                 kind: ShapeKind::Line,
                 round: finite(*width).max(0.0) * scale,
                 border: (0.0, Colour::NONE),
+                from: if *rising {
+                    [rect[0], rect[3]]
+                } else {
+                    base.from
+                },
+                to: if *rising { [rect[2], rect[1]] } else { base.to },
                 ..base
             }),
             ElementKind::Bar {

@@ -20,6 +20,7 @@ mod objects;
 pub mod project_names;
 pub mod runtime;
 pub mod rust_component;
+pub mod screens;
 mod syncing;
 mod ticking;
 
@@ -32,6 +33,7 @@ pub use lust::LuaChunk as Chunk;
 pub use objects::ObjectValues;
 pub use runtime::{Failure, Runtime, Swapped, Ticked};
 pub use rust_component::{Context, RustComponent, RustKind};
+pub use screens::{ScreenCode, Screens};
 pub use ticking::Order;
 
 /// The Lust compiler's version.

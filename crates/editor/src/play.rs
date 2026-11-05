@@ -377,6 +377,7 @@ impl Workbench {
         };
         let seconds = playing.world.clock().time;
         self.game_sounds.clear();
+        self.game_screens.clear();
         self.moving = None;
         self.give_back_input();
         if let Some(recording) = playing.recording.filter(|r| !r.ticks.is_empty()) {
@@ -791,6 +792,11 @@ impl Workbench {
         );
         if !said.is_empty() || !failures.is_empty() {
             self.tell_game(said, &failures);
+        }
+        // The game's screens read what this frame's ticks left (decision
+        // 0087), and start again when the code changes.
+        if ran > 0 || self.game_screens.out_of_date(self.program.as_ref()) {
+            self.refresh_game_screens();
         }
         if let Some(why) = pause {
             // A replay that matched is good news, not a warning.

@@ -72,6 +72,11 @@ impl Workbench {
             self.told_code_notes = notes;
         }
         self.program = chunk;
+        // The screens a Screen can show (decision 0087).
+        let screens = self.screen_names();
+        if self.viewport.sheets.screens != screens {
+            std::sync::Arc::make_mut(&mut self.viewport.sheets).screens = screens;
+        }
         self.fit_values_to_code();
     }
 

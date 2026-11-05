@@ -9,6 +9,8 @@
 //! - [`presets`]: the screen sizes the UI editor previews.
 //! - [`text`]: fonts, and letters as distance images in an atlas
 //!   ([decision 0084](../../../docs/decisions/0084-game-ui-text.md)).
+//! - [`view`]: a screen written in Lust, its view's tree laid out with
+//!   Lust's rules ([decision 0087](../../../docs/decisions/0087-screens-through-the-engine.md)).
 //!
 //! No GPU and no window: `render` draws the shapes, the editor shows them.
 
@@ -17,6 +19,7 @@ pub mod presets;
 pub mod sample;
 pub mod screen;
 pub mod text;
+pub mod view;
 
 pub use layout::{Shape, ShapeKind, Stretch, layout, layout_at, layout_with};
 pub use screen::{Anchor, Colour, Edge, Element, ElementKind, Fill, ScaleRule, Screen};

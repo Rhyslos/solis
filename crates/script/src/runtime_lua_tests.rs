@@ -34,6 +34,7 @@ fn code(main: &str, lua: &[(&str, &str)]) -> Compiled {
         schemas: Vec::new(),
         places: Default::default(),
         bytecode: Default::default(),
+        screens: None,
     }
 }
 
@@ -423,6 +424,7 @@ fn a_component_drives_its_animator_through_the_animator_s_own_file() {
         schemas: Vec::new(),
         places: Default::default(),
         bytecode: Default::default(),
+        screens: None,
     };
     let mut runtime = Runtime::new().unwrap();
     runtime.load(&compiled, &mut NoHost).unwrap();
@@ -556,6 +558,7 @@ fn a_component_changes_a_tile_map_through_the_map_s_own_file() {
         schemas: Vec::new(),
         places: Default::default(),
         bytecode: Default::default(),
+        screens: None,
     };
     let mut runtime = Runtime::new().unwrap();
     runtime.load(&compiled, &mut NoHost).unwrap();

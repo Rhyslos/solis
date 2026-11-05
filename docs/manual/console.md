@@ -44,7 +44,7 @@ Names never care about capitals. A name with spaces goes in quotes: `select "Poi
 | `play`, `pause`, `step`, `stop` | Like the buttons at the top (`step` runs one tick while paused): see [Play mode](play-mode.md). |
 | `stats` | Counts the entities, models, lights and triangles, and says how fast the editor is drawing. |
 | `seed`, `seed 42`, `seed new` | The [seed](concepts.md#game-code) the running game started with (where its random numbers come from), and the one in use if game code or a load changed it since. With a number, every Play starts from that seed, so a play can be repeated; `seed new` gives each Play a new one again. |
-| `ui test`, `ui test keep`, `ui test whole`, `ui test off` | While playing, shows a sample HUD over the Game panel (a day box with the date and time, money, an energy bar with its label and a hotbar), laid out by a [scale rule](concepts.md#playing): grow with the screen, keep its size, or whole steps for pixel art. Make the panel bigger or smaller to see each part stay pinned to its corner. Game UI you make yourself comes with the UI editor. |
+| `ui test`, `ui test keep`, `ui test whole`, `ui test off` | While playing, shows a sample HUD over the Game panel (a day box with the date and time, money, an energy bar with its label and a hotbar), laid out by a [scale rule](concepts.md#playing): grow with the screen, keep its size, or whole steps for pixel art. Make the panel bigger or smaller to see each part stay pinned to its corner. Game UI you make yourself is a [screen](screens.md). |
 | `checksum` | While playing, the game's [checksums](concepts.md#simulation) at this tick: two plays that agree at the same tick are in exactly the same state. |
 
 **Values for `set`:**

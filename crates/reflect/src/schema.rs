@@ -82,6 +82,9 @@ pub enum Offer {
     /// The state names of the animator in the named asset field of the
     /// same component, for a text field (Phase 9, D3b).
     StatesOf(&'static str),
+    /// The names of the game's screens (`Hud`), for a text field
+    /// (decision 0087).
+    Screens,
 }
 
 /// One field of a component.

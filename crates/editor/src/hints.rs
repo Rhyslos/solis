@@ -43,6 +43,9 @@ pub(crate) fn about(component: &str) -> Option<&'static str> {
         "TileMap" => {
             "Tile map is a grid of tiles: pick a tool at the bottom of the viewport and paint."
         }
+        "Screen" => {
+            "Screen shows one of the game's screens (a HUD, a menu) over the game while it plays: pick it, then press Play."
+        }
         _ => return None,
     })
 }

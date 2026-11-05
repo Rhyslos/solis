@@ -161,9 +161,10 @@ pub struct ViewportView {
     /// with `view_projection` for it, then scaled up to `size_px` by the
     /// pixel stage.
     pub pixel: Option<PixelView>,
-    /// Game UI drawn over the finished picture (decision 0083): the
-    /// renderer lays it out on the picture's real size.
-    pub ui: Option<std::sync::Arc<ui::Screen>>,
+    /// Game UI drawn over the finished picture (decision 0083), screen
+    /// after screen: the renderer lays each out on the picture's real
+    /// size.
+    pub ui: Vec<std::sync::Arc<ui::Screen>>,
 }
 
 /// How a 2D game's picture is drawn small and scaled up: the renderer
@@ -743,7 +744,7 @@ impl Viewport {
             ),
             tile_pictures: std::sync::Arc::new(tile_pictures),
             pixel: None,
-            ui: None,
+            ui: Vec::new(),
         }
     }
 
