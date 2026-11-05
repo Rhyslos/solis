@@ -1,9 +1,9 @@
 # Play mode
 
-> Run the area as a game inside the editor, try things, and press Stop to get everything back exactly as it was.
+> Run the area as a game inside the editor, try things, and press Stop: keep what you changed, or get everything back exactly as it was.
 
 ## When to use it
-Whenever you want to see the area the way a player will: through the game's camera, with no grid, gizmos or markers. The game's own [code](game-code.md) runs too: every component written in Lust runs its `update` 60 times a second. The habit is worth learning now: **anything you change while playing is undone when you press Stop**, so you can move things, delete things and experiment freely.
+Whenever you want to see the area the way a player will: through the game's camera, with no grid, gizmos or markers. The game's own [code](game-code.md) runs too: every component written in Lust runs its `update` 60 times a second. You can move things, delete things and experiment freely while playing: when you press **Stop**, Solis lists what you changed and asks whether to **Keep** it or **Undo all**, so nothing is lost by accident and nothing sticks that you didn't mean.
 
 ## How to use it
 
@@ -15,11 +15,16 @@ Whenever you want to see the area the way a player will: through the game's came
 The game looks through the **first camera** in the Area panel's list. With no camera, the Game panel shows the editor's own view and says so.
 
 **Play, pause and stop** (the buttons at the top right)
-1. Press **Play** (▶). The **Game** panel comes to the front and shows the game. A coloured border goes round the viewport and the Game panel, Play is outlined, and **Stop** turns red: all reminders that you're playing.
+1. Press **Play** (▶). The **Game** panel comes to the front and shows the game. The whole window takes a colour (a blue edge, and blue-tinted top and bottom bars; amber while paused), a coloured border goes round the viewport and the Game panel, Play is outlined, and **Stop** turns red: all reminders that you're playing, so you never mistake playing for editing.
 2. Work as usual: the Area panel, Properties, the viewport and its gizmos all still work. Changes show in the game straight away. For game code's components, Properties shows their values as they are right now (a counter counting, a camera's `yaw` turning), and a change you make there reaches the game; Stop puts every value back as it was before Play. Switch to the **Viewport** tab beside Game to move things with the gizmos.
 3. Press **Pause** (❚❚) to stop the game's clock; press Pause or Play to carry on. The Game panel's corner shows *Playing* or *Paused* and how long the game has run.
 4. While paused, press **Step** (▶❙, beside Pause) to run exactly one [tick](concepts.md#game-code): game code runs once, everything moves on by a sixtieth of a second, and the game stays paused. It's the way to watch something that happens too fast to see, one step at a time.
 5. Press **Stop** (■). The game is thrown away and the area comes back exactly as it was when you pressed Play: every entity and setting, the undo history (Ctrl + Z carries on from where you were) and the selection.
+6. If you changed the area while playing, a question lists what you did (*Add Point light 1*, *Move Crate*…):
+   - **Keep** puts your changes back, and each can still be undone with Ctrl + Z.
+   - **Undo all** leaves the area as it was before Play.
+
+   Why ask? Other engines quietly throw away everything changed while playing, and people lose work that way. Solis asks instead. The question waits for an answer; until then, Play and the editor's keys wait too. What the *game* did (entities it spawned, places it moved things to) is never kept: only your own edits are.
 
 You can also type `play`, `pause`, `step` and `stop` in the [Console](console.md).
 
@@ -43,7 +48,7 @@ You can also type `play`, `pause`, `step` and `stop` in the [Console](console.md
 Play, Pause, Step and Stop are buttons only, so a stray key never starts or stops the game. In the Console: `play`, `pause`, `step`, `stop`.
 
 ## Tips and common problems
-- **Problem:** I changed something while playing and it went back when I pressed Stop. **Why:** that's what Stop is for. **Fix:** make lasting changes after Stop. To keep a value you tried while playing, note it down (or copy the component's values with ⋯ > Copy values, and paste them after Stop).
+- **Problem:** I changed something while playing and it went back when I pressed Stop. **Why:** you chose **Undo all** when Stop asked. **Fix:** Undo all can't be taken back; next time choose **Keep**. A value the *game* changed (not you) always goes back: copy the component's values with ⋯ > Copy values before Stop, and paste them after.
 - **Problem:** the Game panel shows the editor's view. **Why:** the area has no camera. **Fix:** Entity > Add camera.
 - **Problem:** new entities appear in the Area panel while playing. **Why:** game code made them (`World:spawn`, see [Game code](game-code.md#making-and-removing-entities)). **Fix:** nothing: they go when you press Stop.
 - **Problem:** pressing keys while playing changes the area (W picks the move tool). **Why:** the editor has the keys. **Fix:** click the Game panel to give them to the game; Esc gives them back.

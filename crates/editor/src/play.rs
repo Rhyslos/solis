@@ -171,6 +171,10 @@ impl Workbench {
     /// Play: runs the area as a game (or carries on, if paused). The
     /// Game panel comes to the front.
     pub fn play(&mut self) {
+        // Changes from the last play wait for Keep or Undo all first.
+        if self.play_changes.is_some() {
+            return;
+        }
         if let Some(playing) = &mut self.playing {
             if playing.paused {
                 playing.paused = false;
@@ -390,6 +394,10 @@ impl Workbench {
                     recording.write(),
                 ));
         }
+        // Changes made to the area while playing wait for Keep or Undo
+        // all (decision 0085): never thrown away silently.
+        let edited = self.document.clone();
+        let asked = self.note_play_changes(&edited, playing.before.history().state());
         // The area as it was, but the components known now: code that
         // changed while playing keeps its components in the registry.
         self.replace_document(*playing.before);
@@ -397,7 +405,11 @@ impl Workbench {
         let now = std::mem::replace(&mut self.assemblies, playing.assemblies_before);
         self.log(
             LogLevel::Info,
-            format!("Stopped after {seconds:.1} s; the area is back as it was."),
+            if asked {
+                format!("Stopped after {seconds:.1} s; keep the changes made while playing?")
+            } else {
+                format!("Stopped after {seconds:.1} s; the area is back as it was.")
+            },
         );
         for (id, file) in now {
             let changed = self

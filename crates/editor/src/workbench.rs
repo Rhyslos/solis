@@ -316,6 +316,8 @@ pub struct Workbench {
     pub(crate) library_pinned: bool,
     /// Whether the Library's drawer is popped up (unpinned only).
     pub(crate) drawer_open: bool,
+    /// Changes made while playing, waiting for Keep or Undo all.
+    pub(crate) play_changes: Option<crate::play_changes::PlayChanges>,
     /// One search for everything (decision 0085).
     pub(crate) search: crate::search::SearchState,
     /// The program's logo, for the top bar (the app hands it over).
@@ -485,6 +487,7 @@ impl Workbench {
             code_checked: None,
             library_pinned: true,
             drawer_open: false,
+            play_changes: None,
             search: crate::search::SearchState::default(),
             logo: None,
             cue_sounds: HashMap::new(),
@@ -876,7 +879,8 @@ impl Workbench {
         // While the game has the mouse and keys, they're the game's: the
         // editor's own keys are off (decision 0037).
         self.feed_input(ui.ctx());
-        if !self.game_input {
+        // While Keep or Undo all is asked, the keys wait for the answer.
+        if !self.game_input && self.play_changes.is_none() {
             self.tool_keys(ui);
             self.paint_keys(ui);
             self.tool_extra_keys(ui);
@@ -890,11 +894,11 @@ impl Workbench {
         let seconds = ui.input(|i| i.stable_dt);
         self.run_game(seconds);
         egui::Panel::top("top_bar")
-            .frame(theme::top_bar_frame())
+            .frame(theme::top_bar_frame().fill(self.tinted(theme::HEADER)))
             .exact_size(34.0)
             .show(ui, |ui| self.top_bar(ui, &mut actions));
         egui::Panel::bottom("status_bar")
-            .frame(theme::status_bar_frame())
+            .frame(theme::status_bar_frame().fill(self.tinted(theme::HEADER)))
             .exact_size(crate::status_bar::HEIGHT)
             .show(ui, |ui| self.status_bar(ui));
         let style = theme::dock_style(ui.style().as_ref(), self.accent);
@@ -1186,6 +1190,8 @@ impl Workbench {
             drop_hint(ui, self.accent);
         }
         self.about(ui);
+        self.play_changes_window(ui);
+        self.play_edge(ui.ctx());
         self.start_page(ui, &mut actions);
         self.input_actions_window(ui.ctx());
         self.settings(ui.ctx(), &mut actions);

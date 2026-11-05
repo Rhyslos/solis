@@ -74,6 +74,8 @@ What changed in each version, for people using Solis. Newest first.
 
 ### Added
 
+- **Playing is unmistakable, and nothing is lost** (the editor overhaul's fifth part, [decision 0085](docs/decisions/0085-the-editor-overhaul.md)): while the game runs, the window has a blue edge and blue-tinted top and status bars (amber while paused). When you press Stop after changing the area while playing, Solis lists what you did and asks **Keep** (your changes back, each still undoable) or **Undo all** (the area as before Play), instead of quietly throwing the changes away.
+
 - **One search for everything** (the editor overhaul's fourth part, [decision 0085](docs/decisions/0085-the-editor-overhaul.md)): press **Space** with nothing being typed, or click **Search or do anything…** in the top bar, and type: it finds every action in the menus (with its shortcut beside it), every file in the project, every entity in the area and every panel. Up and Down choose, Enter does it, Esc closes. Actions that can't be done right now aren't listed. In the Frames tab Space still plays the clip.
 
 - **The Library as a drawer, and chips to narrow it** (the editor overhaul's third part, [decision 0085](docs/decisions/0085-the-editor-overhaul.md)): **Unpin** takes the Library out of the layout, and then **Ctrl + Space** pops it up over the bottom of the editor, as in Unreal; it tucks away on Ctrl + Space, Esc, a click outside, placing or opening a file, or dragging one out. **Pin** docks it again, and Solis remembers. With it pinned, Ctrl + Space brings it to the front. Chips (All, Models, Sprites, Maps, Sounds, Code) show one kind of file; the Library now lists code files too (the Code panel still lists only code). **+ New** is a filled button in the accent colour.

@@ -65,6 +65,8 @@ The research's rules, each from what people praise or complain about in Unreal, 
 
 ### O5. Playing is unmistakable
 
+> **Built:** the window's edge and its top and status bars take blue while playing, amber paused; Stop lists the edits made while playing (the undo history's labels since Play) and asks Keep or Undo all in a modal question, Play and the editor's keys waiting meanwhile. Only the user's edits are offered, never what the game did.
+
 - The editor's frame takes a colour while the game runs (paused: another).
 - Changes made to the area while playing are kept in a list; when you stop, **Keep** or **Undo all**, never thrown away silently.
 
