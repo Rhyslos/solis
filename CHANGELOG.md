@@ -74,6 +74,7 @@ What changed in each version, for people using Solis. Newest first.
 
 ### Added
 
+- **How menus will work is settled** ([decision 0088](docs/decisions/0088-menus-send-events.md)): a screen's buttons send events to the game (kept in recordings), and game code opens and closes screens with `showScreen` and `hideScreen` on an entity ([plan](docs/plans/game-ui.md)).
 - **Screens read the entity they're shown for** ([decision 0087](docs/decisions/0087-screens-through-the-engine.md)): `Ui:entity()`, and a copy of any of its Lust components through a reading method named after it (`Ui:entity():health().hp`). The turret sample now shows a health bar over its drone ([manual](docs/manual/screens.md)).
 - **Game screens** ([decision 0087](docs/decisions/0087-screens-through-the-engine.md)): a Lust file in `assets/ui/` (an assembly with a view, using Lust's own pieces: column, row, stack, text, progress bars, canvas with boxes, circles and lines) is a screen, shown over the Game panel while playing by a new **Screen** component. It reads the game-wide objects after every tick and can't change the game ([manual](docs/manual/screens.md)).
 - **How game screens will work is settled** ([decision 0087](docs/decisions/0087-screens-through-the-engine.md)): a screen is an ordinary Lust file using Lust's own pieces, and reads the game through the engine (the game-wide objects, and the components of the entity it's shown for), so Lust needs no new words ([plan](docs/plans/game-ui.md)).

@@ -204,13 +204,22 @@ The Rust layer DESIGN.md §12 asks for first, which Lust's `view` is read into l
 
 ### M3. Menus: clicks, focus, gamepads and pausing
 
-- **Buttons:** any element can be a `button` (a block that runs when chosen); hover and pressed looks (`hover:[ … ]`, `pressed:[ … ]`), and `disabled`.
-- **Focus:** the first button of a screen that takes focus gets it (or the one marked `focus`); UI Move goes to the nearest button in that direction (or the one named with `next up healthButton`); a focus ring drawn by Solis, styled in the screen.
-- **The actions** of choice 7, sampled with the others; while a screen that takes focus is shown, the game's own actions are held back.
-- **The pointer** (choice 8): a screen with `[pointer]` frees it inside the Game panel; clicks hit the frontmost element under it.
-- **UI events into ticks:** `send` and `press` from buttons become part of the next tick's `Frame`, recorded and replayed.
-- **Pausing** (choice 6): `setGameSpeed`, `gameSpeed` natives; the Game panel's corner note says "Game speed 0".
-- Tests: spatial focus picks the expected button in grids and odd layouts; a click and a gamepad A choose the same button; a replay with menu clicks matches its checksums with no UI drawn; the game doesn't jump when A chooses; editor keys stay off; damaged recordings with UI events are refused (fuzz). **Second half of the gate, by code:** a hand-written pause menu pauses, resumes and quits to a "Paused" note.
+> **Changed by [decision 0088](../decisions/0088-menus-send-events.md)** (the project lead, 2026-11-05): buttons send events (Lust's own `send`), and game code shows screens with methods on the entity (`showScreen(Screen.Pause)`). No `press` from screens. Built in three parts:
+
+**M3a. Buttons and events.**
+
+- Lust's `button` (and a `box` or `circle` with a `{ }` in a canvas) on a screen is clicked with the mouse in the Game panel while playing; `hover:[ … ]` looks, a pressed look, and `disabled`.
+- **A screen can ask for the pointer** (`view [pointer]`): while one is shown, the game gives the pointer back inside the Game panel; clicks go to the frontmost button under it, and clicks on nothing go to the game.
+- **What a button sends** joins the next tick's input `Frame` (a new section of UI events: the entity, the event's name and its values), so recordings keep it and replays match without a screen (recording version 3; older ones still play).
+- **`showScreen`, `hideScreen`, `screenShown`** on entities, with `state Screen` in `solis/project.lst` from the project's screen files.
+- Tests: a click sends the event the next tick; a replay with clicks matches its checksums without screens; clicks on nothing reach the game; damaged recordings with UI events are refused (fuzz); a screen shown and hidden from game code is saved and loaded.
+
+**M3b. Focus and the menu keys.**
+
+- The menu actions of choice 7, sampled with the others; the first button of a screen that takes focus gets it (or one marked `focus`); UI Move goes to the nearest button that way; a focus ring Solis draws; while such a screen is shown, the game's own actions wait.
+- Tests: spatial focus in grids and odd layouts; a click and a gamepad A choose the same button; the game doesn't jump when A chooses; editor keys stay off.
+
+**M3c. The game's speed.** `World:setGameSpeed(speed)` and `World:gameSpeed()`: time, physics, projectiles and `dt` stop at 0, components still run; the Game panel's corner says "Game speed 0". **Second half of the gate:** a hand-written pause menu pauses, resumes and quits to a "Paused" note.
 
 ### M4. The canvas, part 1: selecting, moving and Properties
 
