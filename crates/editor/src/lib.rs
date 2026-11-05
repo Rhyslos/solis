@@ -30,6 +30,7 @@ mod input_window;
 mod inspector;
 pub mod layout;
 pub mod library;
+pub mod library_drawer;
 pub mod look;
 mod map_tab;
 mod menu_items;

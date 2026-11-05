@@ -312,6 +312,10 @@ pub struct Workbench {
     /// When the game's code was last checked (the local time, for the
     /// status bar); none before the first check.
     pub(crate) code_checked: Option<String>,
+    /// Whether the Library is docked (pinned) or a drawer (decision 0085).
+    pub(crate) library_pinned: bool,
+    /// Whether the Library's drawer is popped up (unpinned only).
+    pub(crate) drawer_open: bool,
     /// The program's logo, for the top bar (the app hands it over).
     pub(crate) logo: Option<egui::TextureId>,
     /// The sound event a sprite's clip event plays, by the event's name
@@ -477,6 +481,8 @@ impl Workbench {
             mixer: Default::default(),
             pixels: area::pixels::PixelSettings::default(),
             code_checked: None,
+            library_pinned: true,
+            drawer_open: false,
             logo: None,
             cue_sounds: HashMap::new(),
             frames_editor: None,
@@ -875,6 +881,7 @@ impl Workbench {
             self.editing_keys(ui);
             self.file_keys(ui, &mut actions);
             self.console_key(ui);
+            self.library_keys(ui);
         }
         let seconds = ui.input(|i| i.stable_dt);
         self.run_game(seconds);
@@ -893,6 +900,7 @@ impl Workbench {
         let mut shown = HashSet::new();
         let mut area_requests = Vec::new();
         let mut library_requests = Vec::new();
+        let mut library_pin_clicked = false;
         let mut mixer_requests = Vec::new();
         let picked_before = self.library_state.selected.clone();
         self.drop_stale_sound();
@@ -1067,7 +1075,7 @@ impl Workbench {
                 self.accent.colors().fill,
             )
         });
-        theme::dock_frame().show(ui, |ui| {
+        let editor = theme::dock_frame().show(ui, |ui| {
             DockArea::new(&mut self.dock)
                 .style(style)
                 .tab_context_menus(false)
@@ -1101,6 +1109,7 @@ impl Workbench {
                         folders: &self.folders,
                         library_state: &mut self.library_state,
                         library_requests: &mut library_requests,
+                        library_pin_clicked: &mut library_pin_clicked,
                         sounds: crate::library::Sounds {
                             states: &self.sounds,
                             events: &self.sound_events,
@@ -1132,6 +1141,11 @@ impl Workbench {
                     },
                 );
         });
+        let editor = editor.response.rect;
+        if library_pin_clicked {
+            self.set_library_pinned(false);
+        }
+        self.library_drawer(ui, editor, &sheets, &mut library_requests);
         self.in_front = shown;
         self.map_hovered = frames_out.map_hovered;
         self.frames_tabs_done(frames_out, &mut actions);

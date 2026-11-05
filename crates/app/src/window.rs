@@ -38,6 +38,9 @@ const ACCENT_KEY: &str = "accent2";
 const OLD_ACCENT_KEY: &str = "accent";
 /// Whether the start page comes up when no project opens (E1).
 const START_PAGE_KEY: &str = "start_page";
+/// Key under which whether the Library is pinned (docked) rather than a
+/// drawer is remembered (decision 0085).
+const LIBRARY_PINNED_KEY: &str = "library_pinned";
 /// Key under which the viewport's corner controls are remembered.
 const OVERLAYS_KEY: &str = "viewport_overlays";
 /// Key under which snapping and the axis locks are remembered.
@@ -142,6 +145,9 @@ impl App {
         let start_page: bool = storage
             .and_then(|s| eframe::get_value(s, START_PAGE_KEY))
             .unwrap_or(true);
+        let library_pinned: bool = storage
+            .and_then(|s| eframe::get_value(s, LIBRARY_PINNED_KEY))
+            .unwrap_or(true);
         let camera: Camera = storage
             .and_then(|s| eframe::get_value(s, CAMERA_KEY))
             .unwrap_or_default();
@@ -244,6 +250,9 @@ impl App {
             app.open_project(&root, false);
         }
         app.workbench.launch_start_page(start_page);
+        if !library_pinned {
+            app.workbench.set_library_pinned(false);
+        }
         for path in imports {
             app.import(&path);
         }
@@ -1861,6 +1870,11 @@ impl eframe::App for App {
     fn save(&mut self, storage: &mut dyn eframe::Storage) {
         eframe::set_value(storage, LAYOUT_KEY, self.workbench.layout());
         eframe::set_value(storage, ACCENT_KEY, &self.workbench.accent());
+        eframe::set_value(
+            storage,
+            LIBRARY_PINNED_KEY,
+            &self.workbench.library_pinned(),
+        );
         eframe::set_value(
             storage,
             START_PAGE_KEY,
