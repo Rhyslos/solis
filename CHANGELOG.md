@@ -76,6 +76,8 @@ What changed in each version, for people using Solis. Newest first.
 
 ### Added
 
+- **Atlas Crop** ([decision 0089](docs/decisions/0089-atlas-crop-and-the-ui-editor.md)): right-click a picture in the Library and choose **Atlas Crop…** to cut named pictures out of it, drawn as boxes snapped to a grid, or every tile at once. They're kept in a file beside the picture (`tools.atlas.lst`), which never changes, and game code names them `Picture.Sprites.Tools.Axe` ([manual](docs/manual/atlas-crop.md)).
+
 - **Screens read Lua and Rust components and Solis's own** ([decision 0087](docs/decisions/0087-screens-through-the-engine.md)): `fetch "solis/screen":[Ui, Transform];` then `Ui:entity():transform().position`, and the same for a Lua component such as the turret sample's `Sparks` ([manual](docs/manual/screens.md)).
 - **Game code can pause the game** (game UI, M3c): `World:setGameSpeed(0)` stops game time, physics, projectiles and sprites while components and screens keep running, so a pause menu works; `World:setGameSpeed(1)` carries on, and `World:gameSpeed()` asks. The Game panel's corner says "Game speed 0". The turret sample has a pause menu on P or Start ([manual](docs/manual/screens.md)).
 - **A screen's canvas cuts off what reaches past its edges** ([manual](docs/manual/screens.md)): a box, circle or line placed partly outside a `canvas` is drawn only inside it.

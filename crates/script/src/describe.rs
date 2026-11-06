@@ -977,6 +977,7 @@ fn descriptions_with(
 /// files' `fetch`.
 pub const DATA_CLASSES: &[(&str, &str)] = &[
     (tiles::map_lust::KIND, tiles::map_lust::CLASSES),
+    (animation::atlas::KIND, animation::atlas::CLASSES),
     (tiles::tileset::KIND, tiles::tileset::CLASSES),
 ];
 
@@ -984,7 +985,7 @@ pub const DATA_CLASSES: &[(&str, &str)] = &[
 /// `solis/project.lst` ([`crate::project_names::project_file`]): what natives take where a string
 /// once named a file.
 pub const PROJECT_STATES: &[&str] = &[
-    "Assembly", "Action", "Sound", "Bus", "Clip", "Cue", "Screen",
+    "Assembly", "Action", "Sound", "Bus", "Clip", "Cue", "Screen", "Picture",
 ];
 
 /// What the first line of each file describing the engine says after who made it: how the
@@ -1031,14 +1032,14 @@ mod tests {
     #[test]
     fn the_descriptions_check_cleanly_and_a_game_can_use_them() {
         let mut files = descriptions("Test Engine 9.9.9", "solis");
-        assert_eq!(files.len(), 14);
+        assert_eq!(files.len(), 15);
         assert!(files.iter().any(|(p, _)| p == "solis/project.lst"));
         assert!(files.iter().any(|(p, _)| p == "solis/data/tilemap.lst"));
         assert!(files[0].1.starts_with("-- Made by Test Engine 9.9.9"));
         files.push((
             "main.lst".into(),
             "fetch \"solis/world\":[World, Saves];\n\
-             fetch \"solis/project\":[Assembly, Action, Sound, Bus, Clip, Cue, Screen];\n\
+             fetch \"solis/project\":[Assembly, Action, Sound, Bus, Clip, Cue, Screen, Picture];\n\
              fetch \"solis/input\":Input;\n\
              get \"solis/entity\":facingAlong;\n\
              fetch \"solis/physics\":[Physics, RayHit];\n\

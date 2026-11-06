@@ -178,6 +178,18 @@ impl Workbench {
         if self.frames_editor.is_some() && (out.closed || one_gone) {
             self.close_frames();
         }
+        self.atlas_hovered = out.atlas_hovered;
+        if out.atlas_changed {
+            self.save_open_atlas();
+        }
+        if let Some(said) = &out.atlas_said {
+            self.log(crate::console::LogLevel::Info, said.clone());
+        }
+        if self.atlas_editor.is_some()
+            && (out.atlas_closed || self.dock.find_tab(&Panel::AtlasCrop).is_none())
+        {
+            self.close_atlas();
+        }
         self.tileset_hovered = out.tileset_hovered;
         if out.tileset_changed {
             self.save_open_tileset();

@@ -29,4 +29,4 @@ glam (vectors and rotations). Random IDs use only the standard library.
 
 Phase 2, milestone 1. Phase 5: `IdMap`, a map keyed by entity IDs with `IdHasher` (one multiplication: IDs are random already), many times quicker than the standard hasher on the game's hot paths. Phase 9, D2: a field's hint can say what it `offers` (`Offer`): the project's assets of a kind (a Sprite's Sheet) or the slices of the sheet in another field (its Pivot), so Properties shows a list to pick from; D3 adds the clips of the sheet in another field (a Sprite's Clip).
 
-Usable first, L1 (decision 0081): `data_files` names the Lust data files Solis makes (`farm.tilemap.lst`): the one list of kinds, a file's kind and its name without it.
+Decision 0089: `atlas` joins the data kinds (`tools.atlas.lst`, Atlas Crop). Usable first, L1 (decision 0081): `data_files` names the Lust data files Solis makes (`farm.tilemap.lst`): the one list of kinds, a file's kind and its name without it.

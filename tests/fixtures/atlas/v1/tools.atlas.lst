@@ -1,0 +1,10 @@
+-- Pictures cut from tools.png (Atlas Crop). Written by Solis; safe to edit by hand.
+fetch "solis/data/atlas":[Atlas, Crop];
+
+lock int version = 1;
+lock Atlas atlas = new Atlas { picture = "tools.png", grid = [16, 16] };
+lock Crop array crops = [
+    new Crop { name = "Axe", box = [0, 0, 16, 16] },
+    new Crop { name = "Hoe", box = [16, 0, 16, 32] },
+];
+end

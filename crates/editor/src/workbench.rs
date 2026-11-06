@@ -164,6 +164,14 @@ pub enum WorkbenchAction {
         /// What to save.
         text: String,
     },
+    /// Save an atlas file (`.atlas.lst`, inside the project's assets, a
+    /// picture's crops; decision 0089), making it if it isn't there yet.
+    SaveAtlas {
+        /// The file.
+        path: std::path::PathBuf,
+        /// What to save.
+        text: String,
+    },
     /// Save a tile map file (`.tilemap.lst`, inside the project's assets),
     /// making it if it isn't there yet (Phase 9, D4).
     SaveTileMap {
@@ -371,6 +379,12 @@ pub struct Workbench {
     pub(crate) animator_hovered: bool,
     /// The tileset open in the Tileset tab (Phase 9, D5).
     pub(crate) tileset_editor: Option<crate::tileset_editor::TilesetEditor>,
+    /// The atlas open in the Atlas Crop tab (decision 0089).
+    pub(crate) atlas_editor: Option<crate::atlas_editor::AtlasEditor>,
+    /// Whether the pointer was over the Atlas Crop tab last frame.
+    pub(crate) atlas_hovered: bool,
+    /// The open atlas's picture as a texture.
+    pub(crate) atlas_texture: crate::workbench_atlas::AtlasTexture,
     /// Whether the pointer was over the Tileset tab last frame: Ctrl+Z and
     /// Ctrl+Y are the tileset's then.
     pub(crate) tileset_hovered: bool,
@@ -536,6 +550,9 @@ impl Workbench {
             animator_editor: None,
             animator_hovered: false,
             tileset_editor: None,
+            atlas_editor: None,
+            atlas_hovered: false,
+            atlas_texture: None,
             tileset_hovered: false,
             tile_textures: Default::default(),
             map_edits: Default::default(),
@@ -1050,6 +1067,7 @@ impl Workbench {
         };
         let mut frames_out = crate::panels::FramesOut::default();
         self.tileset_texture(ui.ctx());
+        self.atlas_texture_now(ui.ctx());
         let live = self.live_animator();
         let mut map_requests = Vec::new();
         let map_shown = self.map_shown();
@@ -1111,6 +1129,7 @@ impl Workbench {
         // The hints for what's selected (decision 0085), while they show.
         let hints = (self.hints && self.in_front.contains(&Panel::Hints)).then(|| self.hints());
         let hints_off = !self.hints;
+        let atlas_problem = self.atlas_picture().1;
         let frames = self.frames_editor.as_mut().map(|editor| {
             crate::workbench_frames::frames_ui(
                 editor,
@@ -1133,6 +1152,16 @@ impl Workbench {
                 tile_ms,
                 self.accent.colors().fill,
             )
+        });
+        let atlas = self.atlas_editor.as_mut().map(|editor| {
+            let picture = self.atlas_texture.as_ref().and_then(|(art, texture)| {
+                Some(crate::atlas_view::AtlasPicture {
+                    texture,
+                    size: art.size,
+                    rgba: art.frames.first()?,
+                })
+            });
+            (editor, picture, atlas_problem)
         });
         let animator = self.animator_editor.as_mut().map(|editor| {
             crate::workbench_animator::animator_ui(
@@ -1211,6 +1240,7 @@ impl Workbench {
                         frames_out: &mut frames_out,
                         animator,
                         tileset,
+                        atlas,
                         map,
                         map_requests: &mut map_requests,
                     },
@@ -1475,6 +1505,11 @@ impl Workbench {
         } else if self.tileset_hovered && self.tileset_editor.is_some() {
             // Over the Tileset tab: the tileset's changes.
             self.tileset_undo(redo, undo);
+        } else if self.atlas_hovered && self.atlas_editor.is_some() {
+            // Over the Atlas Crop tab: the crops' changes.
+            if redo || undo {
+                self.atlas_undo(redo);
+            }
         } else if (self.map_hovered || self.viewport.tile_overlay.paint.painting())
             && self.map_edits.path.is_some()
         {

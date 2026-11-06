@@ -20,6 +20,7 @@ Fuzz targets for every reader of a file a project can ship ([decision 0042](../d
 | `pixels` | The project's 2D settings (`pixels.solpix`); settings read are within the limits and write back to themselves |
 | `frames` | A sprite's clips file (`.solframes`); clips read are within the limits, write back to themselves, and play without panicking |
 | `animator` | An animator file (`.solanim`); an animator read is within the limits, writes back to itself, and runs without panicking whatever game code sets |
+| `atlas` | An atlas file (`.atlas.lst`, Atlas Crop); crops read are within the limits, each name good and used once, and write back to themselves |
 | `tileset` | A tileset (`.soltileset`); terrains read are within the limits, each name and code used once, and write back to themselves |
 | `tile_art` | A tileset's picture (PNG, JPEG or Aseprite, the first byte choosing); a picture read is within the limits, every frame its size, and its grid and kind are found without panicking |
 | `tile_map` | A tile map file (`.soltilemap`); a map read is within the limits, writes back to itself, is autotiled, painted (a fill, a stamp flipped and turned, exact tiles) and changed cell by cell, resized and summed without panicking |

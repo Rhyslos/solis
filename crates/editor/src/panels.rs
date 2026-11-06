@@ -90,6 +90,13 @@ pub(crate) struct PanelViewer<'a> {
     pub(crate) animator: Option<crate::animator_view::AnimatorUi<'a>>,
     /// The tileset open in the Tileset tab, if any (Phase 9, D5).
     pub(crate) tileset: Option<crate::tileset_view::TilesetUi<'a>>,
+    /// The atlas open in the Atlas Crop tab, its picture, and why there's
+    /// none (decision 0089).
+    pub(crate) atlas: Option<(
+        &'a mut crate::atlas_editor::AtlasEditor,
+        Option<crate::atlas_view::AtlasPicture<'a>>,
+        Option<String>,
+    )>,
     /// The selected tile map, for the Map tab (Phase 9, D4).
     pub(crate) map: Option<crate::map_tab::MapUi<'a>>,
     pub(crate) map_requests: &'a mut Vec<crate::map_tab::MapRequest>,
@@ -121,6 +128,14 @@ pub(crate) struct FramesOut {
     pub(crate) tileset_hovered: bool,
     /// Save this kind's template.
     pub(crate) tileset_template: Option<tiles::TileKind>,
+    /// The atlas changed: save it.
+    pub(crate) atlas_changed: bool,
+    /// The Atlas Crop tab was closed: close the file.
+    pub(crate) atlas_closed: bool,
+    /// The pointer is over the Atlas Crop tab (Ctrl+Z is its).
+    pub(crate) atlas_hovered: bool,
+    /// What the Atlas Crop tab has to say in the Console.
+    pub(crate) atlas_said: Option<String>,
 }
 
 impl TabViewer for PanelViewer<'_> {
@@ -503,6 +518,26 @@ impl TabViewer for PanelViewer<'_> {
                     self.frames_out.tileset_template = out.save_template;
                 }
             }
+            Panel::AtlasCrop => {
+                if ui.rect_contains_pointer(ui.max_rect()) {
+                    self.frames_out.atlas_hovered = true;
+                }
+                let Some((editor, picture, problem)) = &mut self.atlas else {
+                    placeholder(ui, "No picture's crops are open.");
+                    return;
+                };
+                let out = crate::atlas_view::atlas_tab(
+                    ui,
+                    editor,
+                    picture.take(),
+                    problem.as_deref(),
+                    self.accent.colors().fill,
+                );
+                self.frames_out.atlas_changed |= out.changed;
+                if out.said.is_some() {
+                    self.frames_out.atlas_said = out.said;
+                }
+            }
             Panel::Animator => {
                 if ui.rect_contains_pointer(ui.max_rect()) {
                     self.frames_out.animator_hovered = true;
@@ -530,6 +565,10 @@ impl TabViewer for PanelViewer<'_> {
         }
         if *tab == Panel::Tileset {
             self.frames_out.tileset_closed = true;
+            return egui_dock::widgets::tab_viewer::OnCloseResponse::Close;
+        }
+        if *tab == Panel::AtlasCrop {
+            self.frames_out.atlas_closed = true;
             return egui_dock::widgets::tab_viewer::OnCloseResponse::Close;
         }
         // Either tab closes the clips file, and the other goes with it.

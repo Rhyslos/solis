@@ -43,6 +43,7 @@ New to game engines? Start with [Concepts](concepts.md).
 - [Animating sprites: clips from Aseprite tags and your own, the Clips and Frames tabs, events that play sounds, animate](sprite-animation.md)
 - [Animators: states, transitions and parameters that choose a sprite's clip, the Animator tab](animators.md)
 - [Tile maps: a grid of terrains in layers under and over sprites, values every cell has, the Map tab](tile-maps.md)
+- [Atlas Crop: pictures cut out of a sprite sheet](atlas-crop.md)
 - [Tilesets and autotiling: terrains' art from a picture, edges worked out from neighbours, the Tileset tab](tilesets.md)
 - [Painting tiles: brush, rectangle, line, fill and eyedropper on the viewport's tool bar, copies, exact tiles](painting-tiles.md)
 - [Walls and walking in 2D: solid terrains, Collider2D, the TopDownController](walls-and-walking.md)

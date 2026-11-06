@@ -179,3 +179,10 @@ path = "fuzz_targets/tile_art.rs"
 test = false
 doc = false
 bench = false
+
+[[bin]]
+name = "atlas"
+path = "fuzz_targets/atlas.rs"
+test = false
+doc = false
+bench = false

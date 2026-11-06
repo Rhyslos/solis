@@ -51,6 +51,10 @@ pub struct Names {
     pub cues: Vec<String>,
     /// Its game screens' names (`PauseMenu`, from `ui/pauseMenu.lst`).
     pub screens: Vec<String>,
+    /// Its pictures cut by Atlas Crop, as paths: the picture's path in the
+    /// assets without its extension, then the crop's name
+    /// (`sprites/tools/Axe`).
+    pub pictures: Vec<String>,
 }
 
 impl Names {
@@ -69,6 +73,7 @@ impl Names {
             clips: Vec::new(),
             cues: Vec::new(),
             screens: Vec::new(),
+            pictures: Vec::new(),
         }
     }
 }
@@ -133,6 +138,7 @@ pub fn project_file(made_by: &str, names: &Names) -> (String, Vec<String>) {
     let clip = state_text("Clip", &names.clips, "sprite clip", &mut notes);
     let cue = names_text("Cue", &names.cues, "clip event", false, &mut notes);
     let screen = names_text("Screen", &names.screens, "screen", false, &mut notes);
+    let picture = state_text("Picture", &names.pictures, "cropped picture", &mut notes);
     let text = format!(
         "-- Made by {made_by}: the project's names, for game code. It's written again\n\
          -- whenever the project's files change, so changes made here don't last.\n\n\
@@ -152,6 +158,9 @@ pub fn project_file(made_by: &str, names: &Names) -> (String, Vec<String>) {
          {cue}\n\n\
          -- The game's screens (files in ui/): showScreen(Screen.PauseMenu) for ui/pauseMenu.lst.\n\
          {screen}\n\n\
+         -- The pictures cut out with Atlas Crop, by their pictures: Picture.Sprites.Tools.Axe for\n\
+         -- sprites/tools.png's Axe.\n\
+         {picture}\n\n\
          pass {};\n\
          end\n",
         crate::describe::PROJECT_STATES.join(", ")
@@ -378,10 +387,29 @@ mod tests {
             text.contains("state Bus = [Master, Music, Effects, Voice, Ambience, Ui];"),
             "{text}"
         );
-        assert!(text.ends_with("pass Assembly, Action, Sound, Bus, Clip, Cue, Screen;\nend\n"));
+        assert!(
+            text.ends_with("pass Assembly, Action, Sound, Bus, Clip, Cue, Screen, Picture;\nend\n")
+        );
+        assert!(text.contains("state Picture = [None];"));
         assert!(text.contains("state Screen = [None];"));
         assert!(text.contains("state Clip = [None];"));
         assert!(text.contains("state Sound = [None];"));
+    }
+
+    #[test]
+    fn cropped_pictures_are_options_under_their_pictures() {
+        let mut names = Names::standard();
+        names.pictures = vec![
+            "sprites/tools/Axe".into(),
+            "sprites/tools/Hoe".into(),
+            "hero/Face".into(),
+        ];
+        let (text, notes) = project_file("Test 1.0", &names);
+        assert!(
+            text.contains("state Picture = [Hero [Face], Sprites [Tools [Axe, Hoe]]];"),
+            "{text}"
+        );
+        assert!(notes.is_empty(), "{notes:?}");
     }
 
     #[test]
@@ -403,7 +431,9 @@ mod tests {
             text.contains("state Assembly = [Crate, Crops [Wheat], Ships [Fighter, Freighter]];"),
             "{text}"
         );
-        assert!(text.ends_with("pass Assembly, Action, Sound, Bus, Clip, Cue, Screen;\nend\n"));
+        assert!(
+            text.ends_with("pass Assembly, Action, Sound, Bus, Clip, Cue, Screen, Picture;\nend\n")
+        );
         assert!(text.contains("state Screen = [None];"));
         assert!(text.contains("state Clip = [None];"));
         assert!(text.contains("state Sound = [None];"));

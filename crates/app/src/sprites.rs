@@ -121,6 +121,17 @@ pub fn read_tileset(path: &Path) -> TilesetState {
     }
 }
 
+/// Reads an atlas file (`.atlas.lst`, Atlas Crop).
+pub fn read_atlas(path: &Path) -> editor::sprite_sheets::AtlasState {
+    use editor::sprite_sheets::AtlasState;
+    match text_within(path, animation::atlas::MAX_BYTES, "an atlas file")
+        .and_then(|t| animation::atlas::read(&t).map_err(|e| e.to_string()))
+    {
+        Ok(read) => AtlasState::Read(Arc::new(read.atlas), read.notes),
+        Err(why) => AtlasState::Failed(why),
+    }
+}
+
 /// Reads a tile map file (`.tilemap.lst`, Phase 9, D4).
 pub fn read_tile_map(path: &Path) -> MapFileState {
     match text_within(path, tiles::map_file::MAX_BYTES, "a tile map")
@@ -275,11 +286,12 @@ impl Sprites {
             .retain(|p, _| animators_present.contains(p));
         self.dirty |= before != self.sheets.animators.len();
         let mut tiles_present = HashSet::new();
-        for file in listing
-            .files
-            .iter()
-            .filter(|f| matches!(f.kind, FileKind::Tileset | FileKind::TileMap))
-        {
+        for file in listing.files.iter().filter(|f| {
+            matches!(
+                f.kind,
+                FileKind::Tileset | FileKind::TileMap | FileKind::Atlas
+            )
+        }) {
             let path = crate::project::slashed(&file.path);
             if let Some(id) = file.id {
                 paths.insert(id, path.clone());
@@ -293,12 +305,16 @@ impl Sprites {
             self.tiles_tried.insert(path.clone(), now);
             if file.kind == FileKind::Tileset {
                 self.sheets.tilesets.insert(path, read_tileset(&full));
+            } else if file.kind == FileKind::Atlas {
+                self.sheets.atlases.insert(path, read_atlas(&full));
             } else {
                 self.sheets.tile_maps.insert(path, read_tile_map(&full));
             }
             self.dirty = true;
         }
-        let before = self.sheets.tilesets.len() + self.sheets.tile_maps.len();
+        let before =
+            self.sheets.tilesets.len() + self.sheets.tile_maps.len() + self.sheets.atlases.len();
+        self.sheets.atlases.retain(|p, _| tiles_present.contains(p));
         self.sheets
             .tilesets
             .retain(|p, _| tiles_present.contains(p));
@@ -306,7 +322,8 @@ impl Sprites {
             .tile_maps
             .retain(|p, _| tiles_present.contains(p));
         self.tiles_tried.retain(|p, _| tiles_present.contains(p));
-        self.dirty |= before != self.sheets.tilesets.len() + self.sheets.tile_maps.len();
+        self.dirty |= before
+            != self.sheets.tilesets.len() + self.sheets.tile_maps.len() + self.sheets.atlases.len();
         for file in listing
             .files
             .iter()
@@ -348,9 +365,11 @@ impl Sprites {
         self.dirty |= before != self.sheets.by_path.len();
     }
 
-    /// Reads every picture a read tileset takes its art from, not read yet
-    /// or changed since; forgets those no tileset uses.
+    /// Reads every picture a read tileset takes its art from, or an atlas
+    /// file crops, not read yet or changed since; forgets those nothing
+    /// uses.
     fn want_art(&mut self, paths: &HashMap<AssetId, String>, assets: &Path) {
+        use editor::sprite_sheets::AtlasState;
         let wanted: HashSet<String> = self
             .sheets
             .tilesets
@@ -359,6 +378,10 @@ impl Sprites {
                 TilesetState::Read(set, _) => set.picture.and_then(|p| paths.get(&p)).cloned(),
                 TilesetState::Failed(_) => None,
             })
+            .chain(self.sheets.atlases.iter().filter_map(|(path, a)| match a {
+                AtlasState::Read(atlas, _) => Some(animation::atlas::picture_path(path, atlas)),
+                AtlasState::Failed(_) => None,
+            }))
             .collect();
         for path in &wanted {
             let full = assets.join(path);
