@@ -942,8 +942,8 @@ fn the_game_s_speed_scales_game_time_and_stops_physics_at_0() {
     let before = world.checksum();
     world.set_speed(0.0);
     assert_ne!(world.checksum(), before, "the speed is the game's");
-    world.step(TICK * 10.0 + 1e-9);
     for _ in 0..10 {
+        world.step(TICK + 1e-9);
         world.step_physics();
     }
     assert_eq!(world.clock().ticks, 10, "ticks still run");
