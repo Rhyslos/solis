@@ -927,6 +927,8 @@ impl Workbench {
         self.document.replace_by_game(&area);
         let _ = self.document.take_changes();
         let mut view = crate::game_code::ViewCache::default();
+        // The player's settings aren't the game's: a load keeps them.
+        view.settings = self.player_settings;
         // Game code starts on a world of its own, thrown away after: what
         // starts do (spawn, move, set the seed) already happened in the
         // saved game, so they mustn't happen again on top of it.

@@ -305,3 +305,53 @@ fn the_screen_s_look_reaches_every_shape_in_screen_pixels() {
     assert_eq!(plain[0].outline.0, 0.0);
     assert_eq!(plain[0].pixel, 0.0);
 }
+
+#[test]
+fn review_findings_stay_fixed() {
+    use crate::screen::ScreenLook;
+    // A text's letters' halos all come before its letters, so one letter's
+    // outline never covers the letter before it.
+    let inter = include_bytes!("../../editor/assets/fonts/Inter-Regular.ttf");
+    let (mut fonts, _) = crate::text::Fonts::new(vec![inter.to_vec()]);
+    let mut screen = Screen::new("t", [400.0, 100.0], ScaleRule::Keep);
+    screen.elements = vec![
+        Element::new(
+            "words",
+            ElementKind::Text {
+                text: "Hello".into(),
+                size: 30.0,
+                font: 0,
+                align: Edge::Start,
+            },
+        )
+        .sized([300.0, 50.0])
+        .filled(Fill::Solid(Colour::WHITE)),
+    ];
+    screen.look = ScreenLook {
+        outline: 2.0,
+        ..ScreenLook::default()
+    };
+    let shapes = layout_with(&screen, [400, 100], None, Some(&mut fonts));
+    let n = shapes.len();
+    assert!(n >= 10 && n % 2 == 0, "{n}");
+    for s in &shapes[..n / 2] {
+        assert_eq!(s.colours[0], Colour::NONE, "a halo alone");
+        assert_eq!(s.outline.0, 2.0);
+    }
+    for s in &shapes[n / 2..] {
+        assert_eq!(s.colours[0], Colour::WHITE, "the letter");
+        assert_eq!(s.outline.0, 0.0, "without its halo again");
+    }
+    // A gradient whose first stop is see-through glows in its other one.
+    let blue = Colour::rgb(0, 0, 255);
+    screen.elements = vec![
+        Element::new("bar", ElementKind::Box { round: 0.0 })
+            .sized([10.0, 10.0])
+            .filled(Fill::Across(Colour::NONE, blue)),
+    ];
+    screen.look = ScreenLook {
+        glow: 4.0,
+        ..ScreenLook::default()
+    };
+    assert_eq!(layout(&screen, [400, 100], None)[0].glow.1, blue);
+}

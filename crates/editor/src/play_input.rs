@@ -154,13 +154,12 @@ impl Workbench {
                 // game doesn't see it.
                 egui::Event::Key {
                     key: egui::Key::Enter,
-                    pressed,
+                    pressed: true,
+                    repeat,
                     modifiers,
                     ..
                 } if modifiers.alt => {
-                    if pressed {
-                        alt_enter = true;
-                    }
+                    alt_enter |= !repeat;
                 }
                 egui::Event::Key {
                     key,

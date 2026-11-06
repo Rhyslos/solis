@@ -488,3 +488,30 @@ fn a_pixel_size_draws_the_screen_in_blocks() {
         }
     }
 }
+
+#[test]
+fn a_hollow_shape_s_glow_and_outline_stay_outside_it() {
+    // A box with only a border: the inside stays the grey underneath.
+    let mut screen = ui::Screen::new("t", [100.0, 100.0], ui::ScaleRule::Keep);
+    let mut ring = ui::Element::new("ring", ui::ElementKind::Box { round: 0.0 })
+        .sized([40.0, 40.0])
+        .at(ui::Anchor::TOP_LEFT, [30.0, 30.0]);
+    ring.border = Some((2.0, ui::Colour::rgb(0, 0, 255)));
+    screen.elements = vec![ring];
+    screen.look = ui::ScreenLook {
+        glow: 8.0,
+        outline: 3.0,
+        outline_colour: ui::Colour::rgb(255, 0, 0),
+        pixel: 1.0,
+    };
+    let shapes = ui::layout(&screen, [100, 100], None);
+    let Some(pixels) = draw([100, 100], &shapes) else {
+        return;
+    };
+    assert!(near(px(&pixels, 100, 50, 50), GREY), "inside: still hollow");
+    let ring = px(&pixels, 100, 71, 50);
+    assert!(
+        ring[0] > 200 && ring[2] < 60,
+        "the outline outside: {ring:?}"
+    );
+}

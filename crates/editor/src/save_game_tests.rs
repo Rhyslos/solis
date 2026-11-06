@@ -1075,3 +1075,22 @@ fn a_save_keeps_the_game_s_speed() {
     fast.speed = 9.0;
     assert!(Save::read(&fast.write()).is_err());
 }
+
+#[test]
+fn loading_a_game_keeps_the_player_s_settings() {
+    let mut w = busy("Harbour");
+    w.play();
+    run_to(&mut w, 5);
+    let text = w.save_of_game().unwrap().write();
+    w.player_settings = w
+        .player_settings
+        .with(script::settings::Setting::TextSize(1.75));
+    w.playing.as_mut().unwrap().view.settings = w.player_settings;
+    w.load_game(&text, "quick");
+    run_to(&mut w, 8);
+    assert_eq!(
+        w.player_settings.text_size, 1.75,
+        "the player's, not the save's"
+    );
+    assert_eq!(w.playing.as_ref().unwrap().view.settings.text_size, 1.75);
+}

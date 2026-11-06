@@ -2,7 +2,8 @@
 //! every screen (`Screens`, decision 0089), and the game's window
 //! (`Window`: fullscreen, its size). Game code reads and sets them (a
 //! pause menu offers them); screens read them. They're the player's, not the game's: they're not
-//! in saves or recordings, and a replay plays the same whatever they are.
+//! in saves, recordings or the checksum, so game code should only offer
+//! and show them, never let the game itself depend on them.
 
 /// The player's settings.
 #[derive(Debug, Clone, Copy, PartialEq)]

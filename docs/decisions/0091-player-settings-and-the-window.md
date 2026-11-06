@@ -28,7 +28,7 @@ Option 1, the project lead's choice (2026-11-06, "Game's own menu + Alt+Enter").
   - In Lua: `solis.Screens:…` and `solis.Window:…`. In Rust: `set_text_size`, `set_fullscreen` and the rest on the host.
   - Changes land at the end of the tick, like every change game code makes.
 - **Screens read them and never change them.** A screen that calls a setter stops, saying to send an event instead (decision 0088's rule).
-- **The settings are the player's, not the game's.** They're not in save games, recordings or the checksum, and a replay plays the same whatever they are.
+- **The settings are the player's, not the game's.** They're not in save games, recordings or the checksum, and loading a game keeps the player's. Game code may read them to offer them (a menu showing "Text size 150%", or stepping it on), but nothing that changes the game itself should depend on them: a replay with other settings would then play differently. The manual says so.
 - **Where they're kept:**
   - While playing in the editor, they're kept from play to play, for as long as the editor is open. The editor's window isn't the game's, so fullscreen and the window size are only said in the Console.
   - The exported game saves them in the player's saved-games folder, beside its saves, and uses them as it starts.

@@ -169,7 +169,7 @@ component Pauser {
 
 In Lua: `solis.World:setGameSpeed(0)`. In Rust: `cx.host().set_game_speed(0.0)`.
 
-**Text size and UI size for players.** Some players need bigger text, and a game played from a sofa needs a bigger HUD. Two player settings grow every screen: **text size** (`Screens:setTextSize(1.5)`: every text half as big again, from 0.5 to 3; the columns and rows round it make room, and long lines wrap) and **UI size** (`Screens:setUiSize(1.25)`: the whole screen bigger, from 0.5 to 2). A pause menu usually offers them. They're the player's, not the game's: they're not in save games or recordings, and they're kept from one play to the next. Screens read them too (`text "Text " + Screens:textSize().text();`), but only game code changes them, so a menu's button sends an event and the entity's code does it:
+**Text size and UI size for players.** Some players need bigger text, and a game played from a sofa needs a bigger HUD. Two player settings grow every screen: **text size** (`Screens:setTextSize(1.5)`: every text half as big again, from 0.5 to 3; the columns and rows round it make room, and long lines wrap) and **UI size** (`Screens:setUiSize(1.25)`: the whole screen bigger, from 0.5 to 2). A pause menu usually offers them. They're the player's, not the game's: they're not in save games or recordings, a loaded game keeps the player's, and they're kept from one play to the next. So only let them change what's shown and offered, never the game itself (how hard it is, say): a recording played back with other settings would go differently. Screens read them too (`text "Text " + Screens:textSize().text();`), but only game code changes them, so a menu's button sends an event and the entity's code does it:
 
 ```
 fetch "solis/screens":Screens;

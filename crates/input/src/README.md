@@ -8,7 +8,7 @@ The game's input as named actions (decision 0037): game code asks about "Jump" o
 | --- | --- | --- |
 | `lib.rs` | Lists the modules, explains the flow, and checks action and input names. | `valid_action_name`, `split_combination` |
 | `bindings.rs` | A project's actions and what sets each off (keys, mouse, gamepad), and reading and writing their file (format 2; `FORMAT` upgrades version 1, which wrote the arrow keys `ArrowUp`). | `Bindings`, `Action`, `ActionKind`, `BindingsError`, `FORMAT` |
-| `devices.rs` | What the keyboard, mouse and gamepad are doing, sampled into a `Frame` once per tick. | `Devices`, `Pad` |
+| `devices.rs` | What the keyboard, mouse and gamepad are doing, sampled into a `Frame` once per tick (`is_held` asks about one key). | `Devices`, `Pad` |
 | `frame.rs` | What game code sees of the input in one tick. | `Frame`, `ActionState` |
 | `recording.rs` | A play's input tick by tick, with checksums, so a replay can say at which tick it stopped matching. Text, a line per tick, after a `solis recording N` header. | `Recording`, `Tick`, `RecordingError`, `FORMAT` |
 | `tests.rs` | Tests: bindings and their file, sampling, recordings, and damaged files never crashing. | |

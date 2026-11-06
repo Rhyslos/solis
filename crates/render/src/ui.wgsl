@@ -202,22 +202,33 @@ fn ui_fs(o_in: Out) -> @location(0) vec4<f32> {
     var out = vec4<f32>(colour.rgb, colour.a * cover);
     // Its outline, just outside its edge, then its glow beyond that, both
     // under it.
-    let line = o.halo.y;
-    let reach = o.halo.x;
+    // A letter's distance reaches only as far as its distance image's
+    // spread, so its outline and glow do too.
+    var line = o.halo.y;
+    var reach = o.halo.x;
+    if (kind == KIND_LETTER) {
+        let most = SPREAD * o.shape.x;
+        line = min(line, most);
+        reach = min(reach, max(most - line, 0.0));
+    }
+    // Only outside its edge: a hollow shape (a border, a focus ring) stays
+    // hollow, and a see-through fill doesn't show them through it.
+    var outside = clamp(d + 0.5, 0.0, 1.0);
+    if (hard) {
+        outside = select(0.0, 1.0, d >= 0.0);
+    }
     if (line > 0.0) {
         var band = clamp(0.5 - (d - line), 0.0, 1.0);
         if (hard) {
             band = select(0.0, 1.0, d - line < 0.0);
         }
+        band = band * outside;
         out = over(out, vec4<f32>(o.outline.rgb, o.outline.a * band));
     }
     if (reach > 0.0) {
         // Brightest at the edge, fading to nothing at its reach.
         let t = clamp((d - line) / reach, 0.0, 1.0);
-        var g = (1.0 - t) * (1.0 - t);
-        if (d - line < 0.0) {
-            g = 1.0;
-        }
+        let g = (1.0 - t) * (1.0 - t) * outside;
         out = over(out, vec4<f32>(o.glow.rgb, o.glow.a * g * 0.75));
     }
     return out;

@@ -499,8 +499,12 @@ impl Walk<'_> {
         };
         // Its own glow and outline, or the screen's: the glow in its own
         // colour (or its border's when it has no fill).
-        let own = if colours[0].0[3] > 0.0 {
-            colours[0]
+        let own = if colours[0].0[3].max(colours[1].0[3]) > 0.0 {
+            if colours[1].0[3] > colours[0].0[3] {
+                colours[1]
+            } else {
+                colours[0]
+            }
         } else {
             border.1
         };
@@ -548,18 +552,42 @@ impl Walk<'_> {
                     };
                     let top = (rect[1] + rect[3] - h) * 0.5;
                     let step = crisp.then_some(scale);
-                    for letter in fonts.place(*font, text, px, [left, top], step) {
-                        let [l, t, r, b] = letter.atlas.map(f32::from);
-                        self.out.push(Shape {
-                            kind: ShapeKind::Letter,
-                            rect: letter.rect,
-                            from: [l, t],
-                            to: [r, b],
-                            round: px / crate::text::SDF_SIZE,
-                            colours: [colours[0], colours[0]],
-                            border: (0.0, Colour::NONE),
-                            ..base
-                        });
+                    let letters: Vec<Shape> = fonts
+                        .place(*font, text, px, [left, top], step)
+                        .into_iter()
+                        .map(|letter| {
+                            let [l, t, r, b] = letter.atlas.map(f32::from);
+                            Shape {
+                                kind: ShapeKind::Letter,
+                                rect: letter.rect,
+                                from: [l, t],
+                                to: [r, b],
+                                round: px / crate::text::SDF_SIZE,
+                                colours: [colours[0], colours[0]],
+                                border: (0.0, Colour::NONE),
+                                ..base
+                            }
+                        })
+                        .collect();
+                    // Every letter's glow and outline first, then the
+                    // letters, so one letter's halo never covers the
+                    // letter before it.
+                    if base.glow.0 > 0.0 || base.outline.0 > 0.0 {
+                        for l in &letters {
+                            self.out.push(Shape {
+                                colours: [Colour::NONE, Colour::NONE],
+                                ..*l
+                            });
+                        }
+                        for l in letters {
+                            self.out.push(Shape {
+                                glow: (0.0, Colour::NONE),
+                                outline: (0.0, Colour::NONE),
+                                ..l
+                            });
+                        }
+                    } else {
+                        self.out.extend(letters);
                     }
                 }
             }
