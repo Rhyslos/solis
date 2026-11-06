@@ -74,9 +74,9 @@ impl Sort {
 pub(crate) struct Launcher {
     /// It's showing.
     pub(crate) open: bool,
-    /// It shows when the editor starts with no project (saved per
-    /// computer).
-    pub(crate) at_launch: bool,
+    /// The newer build whose bar was put away with Not now (this time
+    /// the launcher is up).
+    pub(crate) update_hidden: Option<u64>,
     /// The page shown.
     pub(crate) page: Page,
     /// What's typed in the search box.
@@ -109,7 +109,7 @@ impl Default for Launcher {
     fn default() -> Self {
         Self {
             open: false,
-            at_launch: true,
+            update_hidden: None,
             page: Page::Projects,
             search: String::new(),
             sort: Sort::LastOpened,
@@ -372,19 +372,81 @@ fn now() -> u64 {
 }
 
 impl Workbench {
-    /// Whether the launcher comes up when the editor starts with no
-    /// project (for the app to save).
-    pub fn launcher_at_launch(&self) -> bool {
-        self.launcher.at_launch
+    /// The bar under the heading while a newer build is out, downloading
+    /// or downloaded (the project lead, 2026-11-06): no question when
+    /// Solis starts; Update now, See what's new, and Not now.
+    fn update_bar(&mut self, ui: &mut Ui, asked: &mut Vec<WorkbenchAction>) {
+        use crate::updates::UpdateNotice as N;
+        let name = self.info.name.clone();
+        let (text, button) = match &self.update {
+            N::Available(build) if self.launcher.update_hidden != Some(*build) => (
+                format!(
+                    "Build {build} is out. Your projects are backed up before an update changes \
+                     them."
+                ),
+                Some(("Update now", WorkbenchAction::DownloadUpdate)),
+            ),
+            N::Downloading(build) => (format!("Downloading build {build}…"), None),
+            N::Ready(build) => (
+                format!("Build {build} is downloaded. It installs when {name} closes."),
+                Some(("Restart to update", WorkbenchAction::Quit)),
+            ),
+            _ => return,
+        };
+        let fill = self.accent.colors().fill;
+        ui.add_space(10.0);
+        egui::Frame::new()
+            .fill(Color32::from_rgb(0x1d, 0x3a, 0x66))
+            .stroke(egui::Stroke::new(1.0, fill))
+            .corner_radius(6.0)
+            .inner_margin(egui::Margin::symmetric(12, 8))
+            .show(ui, |ui| {
+                ui.horizontal(|ui| {
+                    ui.label(RichText::new("⬇").color(theme::TEXT_STRONG));
+                    ui.label(RichText::new(&text).color(theme::TEXT_STRONG));
+                    ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
+                        if let Some((label, action)) = button {
+                            let go = egui::Button::new(
+                                RichText::new(label).color(Color32::WHITE).strong(),
+                            )
+                            .fill(fill);
+                            if ui.add(go).clicked() {
+                                // Restart to update: the window closes to
+                                // install it.
+                                self.restarting = action == WorkbenchAction::Quit;
+                                asked.push(action);
+                            }
+                        }
+                        if let N::Available(build) = self.update {
+                            if ui.link("Not now").clicked() {
+                                self.launcher.update_hidden = Some(build);
+                            }
+                            if ui.link("See what's new").clicked() {
+                                self.launcher.page = Page::Updates;
+                            }
+                        }
+                    });
+                });
+            });
     }
 
-    /// Sets whether the launcher comes up at launch (as saved), and shows
-    /// it now if it should: no project is open.
-    pub fn launch_launcher(&mut self, at_launch: bool) {
-        self.launcher.at_launch = at_launch;
-        if at_launch && self.project.is_none() {
-            self.open_launcher();
-        }
+    /// Shows the launcher as the editor starts: Solis always opens on it,
+    /// and a project opens from it (the project lead, 2026-11-06).
+    pub fn launch_launcher(&mut self) {
+        self.open_launcher();
+    }
+
+    /// Keeps the launcher's update bar away for `build` (one skipped with
+    /// Skip this version).
+    pub fn hide_update_bar(&mut self, build: u64) {
+        self.launcher.update_hidden = Some(build);
+    }
+
+    /// Shows the launcher again (the editor's window was closed with a
+    /// project open, or File > Projects…): the project stays open behind
+    /// it, and "Back to" returns to it.
+    pub fn back_to_launcher(&mut self) {
+        self.open_launcher();
     }
 
     /// Whether the launcher is up.
@@ -652,6 +714,7 @@ impl Workbench {
                 }
             });
         });
+        self.update_bar(ui, asked);
         if let Some(notice) = self.launcher.notice.clone() {
             ui.add_space(8.0);
             egui::Frame::new()
@@ -1470,20 +1533,6 @@ impl Workbench {
                         .open_url(egui::OpenUrl::new_tab(self.manual_url.clone()));
                 }
             });
-        ui.add_space(16.0);
-        let mut show = self.launcher.at_launch;
-        if ui
-            .checkbox(
-                &mut show,
-                format!(
-                    "Show this page when {} starts without a project",
-                    self.info.name
-                ),
-            )
-            .changed()
-        {
-            self.launcher.at_launch = show;
-        }
     }
 }
 

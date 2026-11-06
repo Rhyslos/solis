@@ -1,6 +1,6 @@
 # Installing and updating
 
-> Install Solis once, and it offers every new build from GitHub as it starts.
+> Install Solis once, and the launcher tells you about every new build from GitHub.
 
 ## When to use it
 The first time you get Solis, and any time you want to know which build you have or get the newest one now. After installing, you don't need to do anything: new builds arrive by themselves.
@@ -20,13 +20,13 @@ If you'd rather not install anything, you can still download the program on its 
 Solis is now in the Start menu (with its logo, a glowing swirl round a dark centre), and in Windows' **Settings > Apps** where you can uninstall it. If you ticked the box, there's a desktop shortcut too.
 
 **How updates work:**
-1. When Solis starts, the splash screen shows its logo, name and version for a moment while Solis asks GitHub whether there's a newer build. It waits at most a few seconds: offline, Solis just opens.
-2. If there's a newer build, a window says so: *Build 58 of Solis is available (you have build 57)*.
+1. When Solis starts, it asks GitHub in the background whether there's a newer build, and opens the [launcher](launcher.md) straight away: nothing waits for the answer, and offline nothing happens.
+2. If there's a newer build, a blue bar over your projects says so: *Build 58 is out*. **Updates** in the sidebar gets a **New** mark.
 3. Choose:
-   - **Update now:** the splash says *Downloading build 58…*, Solis checks the download's [SHA-256](concepts.md#getting-solis) against the one GitHub published (and throws it away if they differ), then closes, installs it and opens the new build. It takes about as long as the download.
-   - **Open without updating:** Solis opens as it is, and asks again next time.
-   - Tick **Skip this version** first to stop being asked about that build. When a newer one comes out, Solis asks again.
-4. A copy you didn't install with the setup file (a downloaded `solis.exe`) can't replace itself: its button is **Open the download page** instead.
+   - **Update now:** the bar says *Downloading build 58…* while Solis checks the download's [SHA-256](concepts.md#getting-solis) against the one GitHub published (and throws it away if they differ). Then it says the build is downloaded: **Restart to update** closes Solis (asking about unsaved work first), installs it and opens the new build; or keep working, and it installs when you close Solis.
+   - **See what's new:** the Updates page, with what the build brings.
+   - **Not now:** the bar goes until Solis starts again.
+4. A copy you didn't install with the setup file (a downloaded `solis.exe`) can't replace itself: the Updates page offers **Open the releases page** instead.
 
 **Check now:** Help > **Check for updates**. If there's a newer build, the same window asks, even about a build you skipped. **Update now** then downloads it while you keep working, and a **Restart to update** button appears at the top right, just left of the Play buttons: click it (Solis asks about unsaved work first), or keep working and the update installs when you close Solis. The line under Check for updates says how it went: *Up to date (build 57)*, *Build 58 is available*, *Downloading build 58…*, or what went wrong.
 
@@ -37,8 +37,8 @@ Solis is now in the Start menu (with its logo, a glowing swirl round a dark cent
 ## Settings
 | Setting | What it does |
 |---|---|
-| Help > Check for updates when starting | On (the usual): Solis asks GitHub for a newer build on the splash screen each time it starts, and asks you whether to update. Off: nothing is asked of GitHub unless you choose Check for updates. Remembered between starts. |
-| Skip this version (in the update window) | Stops Solis asking about that one build when it starts. A newer build asks again; Check for updates always shows what's newest. |
+| Help > Check for updates when starting | On (the usual): Solis asks GitHub for a newer build each time it starts, and the launcher shows a bar when there is one. Off: nothing is asked of GitHub unless you choose Check for updates. Remembered between starts. |
+| Skip this version (in the update window from Help > Check for updates) | Stops Solis mentioning that one build. A newer build is shown again; Check for updates always shows what's newest. |
 
 ## Shortcuts
 None: updating has no keys.

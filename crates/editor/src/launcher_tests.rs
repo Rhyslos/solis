@@ -68,7 +68,7 @@ fn launcher_with(projects: Vec<KnownProject>) -> Workbench {
     w.set_known_projects(projects);
     w.set_this_build(Some(57));
     w.set_manual_url("https://example.com/manual".into());
-    w.launch_launcher(true);
+    w.launch_launcher();
     w
 }
 
@@ -303,8 +303,9 @@ fn the_updates_page_says_what_s_new_and_does_the_next_step() {
     }));
     let mut h = harness(w);
     h.run();
-    // A newer build is marked in the sidebar and at its bottom.
-    assert!(h.query_by_label_contains("Build 60 is out").is_some());
+    // A newer build is marked in the sidebar, at its bottom, and in the
+    // bar over the projects.
+    assert!(h.query_all_by_label_contains("Build 60 is out").count() >= 2);
     h.get_by_label("Updates").click();
     h.run();
     for label in [
@@ -384,23 +385,26 @@ fn the_learn_page_offers_the_examples_and_the_manual() {
             .actions
             .contains(&WorkbenchAction::MakePlayground)
     );
-    h.get_by_label_contains("Show this page when").click();
-    h.run();
-    assert!(!h.state().0.launcher_at_launch());
+    assert!(
+        h.query_by_label_contains("Show this page when").is_none(),
+        "it always shows: nothing to turn off"
+    );
 }
 
 #[test]
-fn the_launcher_stays_away_with_a_project_or_when_turned_off() {
+fn solis_always_starts_on_the_launcher_and_comes_back_to_it() {
     let mut w = Workbench::new(info(), None);
-    w.launch_launcher(false);
     assert!(!w.launcher_open());
-    w.launch_launcher(true);
-    assert!(w.launcher_open());
+    w.launch_launcher();
+    assert!(w.launcher_open(), "always at launch");
     // A project opening closes it.
     w.set_project(Some(farm()));
     assert!(!w.launcher_open());
-    w.launch_launcher(true);
-    assert!(!w.launcher_open(), "never over an open project at launch");
+    // Closing the editor's window comes back to it, the project open
+    // behind it.
+    w.back_to_launcher();
+    assert!(w.launcher_open());
+    assert!(w.project.is_some());
 }
 
 #[test]
@@ -560,4 +564,36 @@ fn what_isn_t_built_isn_t_shown() {
     let restored = crate::layout::restore(Some(saved));
     assert!(restored.find_tab(&crate::panel::Panel::Layers).is_none());
     assert!(crate::layout::is_complete(&restored));
+}
+
+#[test]
+fn a_newer_build_is_a_bar_over_the_projects_not_a_question() {
+    use crate::updates::UpdateNotice;
+    let mut w = launcher_with(Vec::new());
+    w.set_update(UpdateNotice::Available(60));
+    let mut h = harness(w);
+    h.run();
+    h.get_by_label("Update now").click();
+    h.run();
+    assert!(
+        h.state()
+            .1
+            .actions
+            .contains(&WorkbenchAction::DownloadUpdate)
+    );
+    h.get_by_label("See what's new").click();
+    h.run();
+    assert_eq!(h.state().0.launcher.page, Page::Updates);
+    h.state_mut().0.launcher.page = Page::Projects;
+    h.run();
+    h.get_by_label("Not now").click();
+    h.run();
+    assert!(h.query_by_label("Update now").is_none(), "put away");
+    // Downloaded: Restart to update quits, to install it.
+    h.state_mut().0.set_update(UpdateNotice::Ready(60));
+    h.run();
+    h.get_by_label("Restart to update").click();
+    h.run();
+    assert!(h.state().1.actions.contains(&WorkbenchAction::Quit));
+    assert!(h.state().0.restarting());
 }

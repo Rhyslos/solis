@@ -36,6 +36,8 @@ What changed in each version, for people using Solis. Newest first.
 
 ### Changed
 
+- **Solis always starts on the launcher** ([decision 0090](docs/decisions/0090-always-through-the-launcher.md)), in a small window: pick the project there, and the window grows to the editor. The last project no longer reopens by itself. Closing the editor's window goes back to the launcher; closing the launcher quits. A newer build is now a bar over your projects (Update now, See what's new, Not now) instead of a question as Solis starts. The "Show this page when Solis starts" setting is gone ([manual](docs/manual/launcher.md)).
+
 - **Game code is checked by Lust alpha 59** (was alpha 35; [decision 0072](docs/decisions/0072-lust-alpha-59-and-the-engine-folder.md)). Lust code can now use `check` blocks, `print(a, b)`, values in text (`"hp: {hp}"`), `+=` and friends, sized numbers (`int8` to `uint32`), `lock`, and counting loops. A `{` straight before a name in text now shows that value (`"{lives}"`): write `\{` to keep the brace. `this` is the entity a component is on; `me` still works, with a note in the Console saying to write `this`. The kit, samples and manual use `this`.
 - **The Lust compiler's notes show in the Console** as warnings: things that aren't mistakes but are worth changing.
 
