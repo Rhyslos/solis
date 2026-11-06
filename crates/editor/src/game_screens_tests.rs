@@ -382,3 +382,151 @@ fn a_screen_game_code_hid_stays_hidden_after_a_load() {
     w.run_game((world::TICK + 1e-9) as f32);
     assert_eq!(drawn(&w), vec!["Hud".to_string()], "as saved");
 }
+
+/// Game code counting what the menu sends, and whether it saw Jump.
+const COUNTER: &str = "fetch \"solis/project\":[Screen, Action];\n\
+    fetch \"solis/input\":Input;\n\
+    event Resumed();\n\
+    event Quit();\n\
+    component Pauser {\n\
+        has {\n\
+            int resumed = 0;\n\
+            int quit = 0;\n\
+            int jumps = 0;\n\
+            int choices = 0;\n\
+        }\n\
+        method update(float dt) {\n\
+            is Input:pressed(Action.Jump)? then { jumps = jumps + 1; }\n\
+            is Input:pressed(Action.MenuChoose)? then { choices = choices + 1; }\n\
+        }\n\
+        on Resumed() { resumed = resumed + 1; }\n\
+        on Quit() { quit = quit + 1; }\n\
+    }\n\
+    pass Pauser, Resumed, Quit;\nend\n";
+
+/// A menu of two buttons, one above the other.
+const TWO: &str = "fetch \"solis/screen\":Ui;\nfetch \"main\":[Resumed, Quit];\n\
+    assembly Menu {\n    view {\n        column [gap 20, pad 40] {\n            \
+    button \"Resume\" [width 300] { send Resumed() to Ui:entity(); }\n            \
+    button \"Quit\" [width 300] { send Quit() to Ui:entity(); }\n        }\n    }\n}\npass Menu;\nend\n";
+
+fn with_two_buttons() -> (Workbench, EntityId) {
+    let (mut files, _) = script::describe::descriptions_for(
+        "Test Engine 9.9.9",
+        "solis",
+        &script::project_names::Names::standard().and_screens(&["Menu"]),
+    );
+    files.push(("main.lst".into(), COUNTER.into()));
+    files.push(("ui/menu.lst".into(), TWO.into()));
+    let code = script::Code {
+        files,
+        lua: Vec::new(),
+        notes: Vec::new(),
+    };
+    let program = match script::compile(&code) {
+        Ok(Some(c)) => Arc::new(c),
+        Ok(None) => panic!("no code"),
+        Err(problems) => panic!("{}", problems[0]),
+    };
+    let mut w = showing(program, &[("Menu", true, 0)]);
+    let id = w
+        .document
+        .area()
+        .iter()
+        .find(|(_, data)| data.get::<Screen>().is_some())
+        .unwrap()
+        .0;
+    w.apply_property(
+        crate::properties::PropertyRequest::AddComponent {
+            entity: id,
+            component: "Pauser".into(),
+        },
+        1,
+    );
+    (w, id)
+}
+
+/// Holds `key` for a tick, then lets it go for one.
+fn tap(w: &mut Workbench, key: &str) {
+    let now = w.world().unwrap().clock().ticks;
+    w.devices.set(key, true);
+    run_to(w, now + 1);
+    w.devices.set(key, false);
+    run_to(w, now + 2);
+}
+
+#[test]
+fn the_menu_keys_move_the_focus_and_choose_and_the_game_s_own_actions_wait() {
+    let (mut w, id) = with_two_buttons();
+    w.play();
+    w.give_game_input(&egui::Context::default());
+    run_to(&mut w, 1);
+    assert!(w.game_screens.wants_pointer());
+    assert_eq!(w.game_screens.focus, None);
+    // The first button is ready: Down moves on from it, and the ring
+    // shows.
+    tap(&mut w, "Down");
+    assert_eq!(w.game_screens.focus, Some((0, 1)));
+    assert_eq!(w.game_screens.pictures[0].looks.focus, Some(1));
+    tap(&mut w, "Down");
+    assert_eq!(w.game_screens.focus, Some((0, 1)), "nothing further down");
+    // Space chooses (and isn't Jump while the menu is shown).
+    tap(&mut w, "Space");
+    let now = w.world().unwrap().clock().ticks;
+    run_to(&mut w, now + 1);
+    assert_eq!(pauser(&mut w, id, "quit"), reflect::Value::Int(1));
+    assert_eq!(pauser(&mut w, id, "resumed"), reflect::Value::Int(0));
+    assert_eq!(
+        pauser(&mut w, id, "jumps"),
+        reflect::Value::Int(0),
+        "the game didn't jump"
+    );
+    assert_eq!(
+        pauser(&mut w, id, "choices"),
+        reflect::Value::Int(1),
+        "game code sees the menu's"
+    );
+    tap(&mut w, "Up");
+    assert_eq!(w.game_screens.focus, Some((0, 0)));
+    // The mouse over a button takes the focus there, and hides the ring.
+    let area = crate::game_screens::ScreensArea {
+        origin: [0, 0],
+        size: [1920, 1080],
+        step: None,
+    };
+    let quit = (40..1000)
+        .step_by(4)
+        .find(|&y| {
+            w.game_screens.point_at(Some([100.0, y as f32]), area);
+            w.game_screens.hover == Some((0, 1))
+        })
+        .expect("Quit is somewhere down the left");
+    assert!(quit > 40);
+    assert_eq!(w.game_screens.focus, Some((0, 1)));
+    assert_eq!(w.game_screens.pictures[0].looks.focus, None);
+}
+
+#[test]
+fn with_no_screen_with_buttons_the_game_gets_every_action() {
+    let (mut w, id) = with_two_buttons();
+    w.document
+        .edit(
+            "Hide",
+            vec![area::Edit::SetField {
+                entity: id,
+                component: "Screen".into(),
+                field: "shown".into(),
+                value: Some(reflect::Value::Bool(false)),
+            }],
+            None,
+            None,
+        )
+        .unwrap();
+    w.play();
+    w.give_game_input(&egui::Context::default());
+    run_to(&mut w, 1);
+    tap(&mut w, "Space");
+    assert_eq!(pauser(&mut w, id, "jumps"), reflect::Value::Int(1));
+    assert_eq!(pauser(&mut w, id, "choices"), reflect::Value::Int(1));
+    assert_eq!(w.game_screens.focus, None);
+}

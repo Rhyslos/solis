@@ -22,6 +22,16 @@ pub(crate) struct GameScreens {
     shown: Vec<(reflect::EntityId, String)>,
     /// The button under the pointer: its picture and its number.
     pub(crate) hover: Option<(usize, usize)>,
+    /// The button with the keys' focus (M3b): its picture and its number.
+    pub(crate) focus: Option<(usize, usize)>,
+    /// Whether the menu keys were used since the mouse last moved over a
+    /// button: the focus ring shows only then.
+    keys_used: bool,
+    /// Which way MenuMove points, and for how many ticks, to move on
+    /// once and then again while it's held.
+    way: Option<([i8; 2], u32)>,
+    /// Where the screens were laid out last, on the Game panel.
+    pub(crate) area: ScreensArea,
     /// What buttons sent since the last tick, for the next one's input
     /// (decision 0088).
     pub(crate) sent: Vec<input::Sent>,
@@ -69,13 +79,8 @@ impl GameScreens {
     /// whole pixel step for a 2D game), topmost screen first, and shows it
     /// hovered. `None` (the pointer is elsewhere) hovers nothing.
     pub(crate) fn point_at(&mut self, at: Option<[f32; 2]>, area: ScreensArea) {
-        let fonts = self.fonts.get_or_insert_with(|| {
-            ui::Fonts::new(vec![
-                crate::theme::INTER_REGULAR.to_vec(),
-                crate::theme::INTER_SEMIBOLD.to_vec(),
-            ])
-            .0
-        });
+        self.area = area;
+        let fonts = self.fonts.get_or_insert_with(editor_fonts);
         let found = at.and_then(|at| {
             let at = [at[0] - area.origin[0] as f32, at[1] - area.origin[1] as f32];
             self.pictures.iter().enumerate().rev().find_map(|(i, p)| {
@@ -87,18 +92,118 @@ impl GameScreens {
         }
         if found != self.hover {
             self.hover = found;
-            self.show_hover();
+            // The keys carry on from the button the mouse is on.
+            if found.is_some() {
+                self.focus = found;
+                self.keys_used = false;
+            }
+            self.show_looks();
         }
     }
 
-    /// Each picture with the hovered button (if it's on it) shown so.
-    fn show_hover(&mut self) {
+    /// Each picture with the hovered button and the focused one (if
+    /// they're on it) shown so; the focus ring only once the keys are used.
+    fn show_looks(&mut self) {
         for (i, picture) in self.pictures.iter_mut().enumerate() {
-            let hover = self.hover.filter(|(p, _)| *p == i).map(|(_, a)| a);
-            if picture.looks.hover != hover {
-                Arc::make_mut(picture).looks.hover = hover;
+            let on = |b: Option<(usize, usize)>| b.filter(|(p, _)| *p == i).map(|(_, a)| a);
+            let looks = ui::view::Looks {
+                hover: on(self.hover),
+                focus: on(self.focus.filter(|_| self.keys_used)),
+            };
+            if picture.looks != looks {
+                Arc::make_mut(picture).looks = looks;
             }
         }
+    }
+
+    /// The menu keys in this tick's input (decision 0088): MenuMove moves
+    /// the focus to the nearest button that way (again every tenth of a
+    /// second once held), MenuChoose gives back the focused button to press.
+    /// Only while a screen with buttons is shown.
+    fn menu_keys(&mut self, frame: &input::Frame) -> Option<(usize, usize)> {
+        let state = |name: &str| frame.actions.get(name).copied().unwrap_or_default();
+        let axis = state(input::MENU_MOVE).axis;
+        // The way it points, on the screen (y down), one of four.
+        let way = if axis.x.abs() >= axis.y.abs() && axis.x.abs() > 0.5 {
+            Some([axis.x.signum() as i8, 0])
+        } else if axis.y.abs() > 0.5 {
+            Some([0, -axis.y.signum() as i8])
+        } else {
+            None
+        };
+        let held = match (way, self.way) {
+            (Some(w), Some((was, n))) if w == was => n + 1,
+            (Some(_), _) => 1,
+            (None, _) => 0,
+        };
+        self.way = way.map(|w| (w, held));
+        // Once, then after 0.4 s every 0.1 s (at 60 ticks a second).
+        let step = held == 1 || held >= 24 && (held - 24) % 6 == 0;
+        let choose = state(input::MENU_CHOOSE).pressed;
+        if !(step || choose) {
+            return None;
+        }
+        self.keys_used = true;
+        // The focus is on the topmost screen with buttons.
+        let top = (0..self.pictures.len()).rev().find(|&i| {
+            self.pictures[i]
+                .view
+                .as_ref()
+                .is_some_and(ui::view::has_actions)
+        })?;
+        let area = if self.area.size[0] == 0 || self.area.size[1] == 0 {
+            ScreensArea {
+                origin: [0, 0],
+                size: [1920, 1080],
+                step: None,
+            }
+        } else {
+            self.area
+        };
+        let fonts = self.fonts.get_or_insert_with(editor_fonts);
+        let (clickable, _) =
+            ui::layout::clickables(&self.pictures[top], area.size, area.step, fonts);
+        // With nothing focused yet, the first button is (so the first
+        // press moves on from it, as a menu's first button is ready).
+        let from = self
+            .focus
+            .filter(|(p, _)| *p == top)
+            .map(|(_, a)| a)
+            .or_else(|| clickable.first().map(|c| c.action));
+        let towards = match way.filter(|_| step) {
+            Some(w) => [f32::from(w[0]), f32::from(w[1])],
+            None => [0.0, 0.0],
+        };
+        self.focus = ui::view::next_focus(&clickable, from, towards).map(|a| (top, a));
+        self.show_looks();
+        self.focus.filter(|_| choose)
+    }
+}
+
+/// The editor's own Inter, to measure screens' text as the renderer draws it.
+fn editor_fonts() -> ui::Fonts {
+    ui::Fonts::new(vec![
+        crate::theme::INTER_REGULAR.to_vec(),
+        crate::theme::INTER_SEMIBOLD.to_vec(),
+    ])
+    .0
+}
+
+impl GameScreens {
+    /// The menu keys in a tick's `frame`, while a screen with buttons is
+    /// shown: the button they choose, if any, and the frame game code
+    /// gets, holding only the menu actions (the game's own wait, so A
+    /// choosing doesn't also jump).
+    pub(crate) fn take_menu_keys(&mut self, frame: &mut input::Frame) -> Option<(usize, usize)> {
+        if !self.wants_pointer() {
+            self.way = None;
+            return None;
+        }
+        let chosen = self.menu_keys(frame);
+        frame
+            .actions
+            .retain(|name, _| input::MENU_ACTIONS.contains(&name.as_str()));
+        chosen
     }
 }
 
@@ -216,15 +321,22 @@ impl Workbench {
                     }
                 }
             }
-            // The same button stays hovered while the pointer rests.
-            let hovered = screens
-                .hover
-                .and_then(|(i, a)| Some((screens.shown.get(i)?.clone(), a)));
+            // The same button stays hovered and focused while its screen
+            // stays.
+            let by_screen = |b: Option<(usize, usize)>, shown: &[(reflect::EntityId, String)]| {
+                b.and_then(|(i, a)| Some((shown.get(i)?.clone(), a)))
+            };
+            let hovered = by_screen(screens.hover, &screens.shown);
+            let focused = by_screen(screens.focus, &screens.shown);
             screens.pictures = pictures;
             screens.shown = shown;
-            screens.hover = hovered
-                .and_then(|(was, a)| Some((screens.shown.iter().position(|s| *s == was)?, a)));
-            screens.show_hover();
+            let again = |b: Option<((reflect::EntityId, String), usize)>,
+                         shown: &[(reflect::EntityId, String)]| {
+                b.and_then(|(was, a)| Some((shown.iter().position(|s| *s == was)?, a)))
+            };
+            screens.hover = again(hovered, &screens.shown);
+            screens.focus = again(focused, &screens.shown);
+            screens.show_looks();
         }
         for line in warned {
             if self.game_screens.told.insert(line.clone()) {
@@ -242,9 +354,14 @@ impl Workbench {
     /// and what it sends waits for the next tick's input. Says in the
     /// Console if the screen stopped.
     pub(crate) fn press_hovered(&mut self) {
-        let Some((picture, action)) = self.game_screens.hover else {
-            return;
-        };
+        if let Some(button) = self.game_screens.hover {
+            self.press(button);
+        }
+    }
+
+    /// Runs button `action` of picture `picture` (decision 0088); what it
+    /// sends waits for the next tick's input.
+    pub(crate) fn press(&mut self, (picture, action): (usize, usize)) {
         let Some((entity, name)) = self.game_screens.shown.get(picture).cloned() else {
             return;
         };

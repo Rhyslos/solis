@@ -13,7 +13,19 @@ fn the_ready_made_actions_are_the_chosen_controls() {
     assert_eq!(
         names,
         [
-            "Move", "Look", "Jump", "Sprint", "Interact", "Pan", "Turn", "Zoom", "Drag"
+            "Move",
+            "Look",
+            "Jump",
+            "Sprint",
+            "Interact",
+            "Pan",
+            "Turn",
+            "Zoom",
+            "Drag",
+            "MenuMove",
+            "MenuChoose",
+            "MenuBack",
+            "Pause"
         ]
     );
     // The cameras' controls (decision 0041).
@@ -444,7 +456,19 @@ fn an_older_project_gets_the_ready_made_actions_it_is_missing() {
         actions: Bindings::default().actions[..5].to_vec(),
     };
     b.get_mut("Jump").unwrap().inputs = vec!["E".into()];
-    assert_eq!(b.add_missing(), ["Pan", "Turn", "Zoom", "Drag"]);
+    assert_eq!(
+        b.add_missing(),
+        [
+            "Pan",
+            "Turn",
+            "Zoom",
+            "Drag",
+            "MenuMove",
+            "MenuChoose",
+            "MenuBack",
+            "Pause"
+        ]
+    );
     // Its own changes stay.
     assert_eq!(b.get("Jump").unwrap().inputs, ["E"]);
     assert!(b.add_missing().is_empty());

@@ -1,6 +1,6 @@
 # Input
 
-> Your game's controls as named actions: Move, Look, Jump, Sprint, Interact, the cameras' Pan, Turn, Zoom and Drag, and any you add, from the keyboard, mouse or a gamepad, and rebindable.
+> Your game's controls as named actions: Move, Look, Jump, Sprint, Interact, the cameras' Pan, Turn, Zoom and Drag, the menus' MenuMove, MenuChoose, MenuBack and Pause, and any you add, from the keyboard, mouse or a gamepad, and rebindable.
 
 ## When to use it
 Whenever the player controls something. Game code never asks "is W down?"; it asks "is the player moving?" (`Input:axis(Action.Move)`) or "did they press Jump?" (`Input:pressed(Action.Jump)`). Which keys and buttons mean Jump is set in one place, the **Input actions** window, so:
@@ -30,13 +30,19 @@ A connected **gamepad** works whenever the game is playing; it has nothing of th
 | Turn | Alt + left and right arrows | right stick | which way to turn the RTS camera |
 | Zoom | mouse wheel, Page Up and Page Down | right and left triggers | how far to zoom this tick, in steps (a wheel notch is one) |
 | Drag | middle mouse button | | held while dragging the map |
+| MenuMove | arrow keys | d-pad, left stick | moves the focus between a [screen's buttons](screens.md) |
+| MenuChoose | Enter, Space | A | chooses the button with the focus |
+| MenuBack | Backspace | B | held, pressed, released (your code decides what "back" does) |
+| Pause | P | Start | held, pressed, released (your code opens its pause menu) |
+
+While a screen with buttons is shown, only the four menu actions reach game code: Jump on Space doesn't also jump while Space chooses a button. A project whose input actions file is from before them still gets them while playing.
 
 **Changing them: Edit > Input actions…**
 1. Each action shows its inputs. Click **×** beside one to unbind it.
 2. Click **+** and press the key, mouse button or gamepad button to bind (Esc cancels). Hold Ctrl, Alt or Shift while pressing a key to bind the **combination**, such as `Alt+Left`; turn the mouse wheel to bind a notch up or down.
 3. An **axis** (like Move) has **Up**, **Down**, **Left** and **Right** keys, and whole-axis inputs (a stick, the mouse's movement, or the mouse wheel). One that goes with the mouse or the wheel has a **Mouse speed** and a **Stick and key speed**.
 4. Type a name under the list and choose **Add button** or **Add axis** for a new action (letters, digits and _, starting with a capital: `OpenMap`, `Fire_2`, so game code can name it `Action.OpenMap`).
-5. **Add the ready-made actions it's missing** appears in projects made before the cameras: it adds Pan, Turn, Zoom and Drag and changes nothing else. **Restore the ready-made actions** puts all the ready-made ones back as they were, leaving your own.
+5. **Add the ready-made actions it's missing** appears in projects made before the cameras: it adds the ones it lacks (Pan, Turn, Zoom and Drag; MenuMove, MenuChoose, MenuBack and Pause) and changes nothing else. **Restore the ready-made actions** puts all the ready-made ones back as they were, leaving your own.
 
 **Combinations.** A key on its own doesn't count while you hold modifiers that some action binds with it. With Turn on `Alt+Left` and Pan on `Left`, holding Alt and pressing the left arrow turns, and doesn't pan as well. The up arrow (with no `Alt+Up` bound) still pans while Alt is held.
 

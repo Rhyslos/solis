@@ -75,6 +75,8 @@ What changed in each version, for people using Solis. Newest first.
 
 ### Added
 
+- **Menus with the keys and a controller** ([decision 0088](docs/decisions/0088-menus-send-events.md)): new ready-made input actions MenuMove (arrows, d-pad, left stick), MenuChoose (Enter, Space, A), MenuBack (Backspace, B) and Pause (P, Start). While a screen with buttons is shown, MenuMove moves a focus ring to the nearest button that way and MenuChoose chooses it, and only the menu actions reach game code ([manual](docs/manual/screens.md)).
+
 - **Buttons on game screens** ([decision 0088](docs/decisions/0088-menus-send-events.md)): `button "Resume" { send Resumed() to Ui:entity(); }` in a screen draws a button that darkens under the pointer (or takes its `hover:[…]` styles) and, when clicked, sends its events to the game at the start of the next tick. While a screen with buttons is shown, the pointer stays free over the Game panel. Game code shows and hides screens with `showScreen(Screen.PauseMenu)`, `hideScreen` and `screenShown` on an entity; the game's screens are names in `solis/project.lst`, and which are open is kept in save games ([manual](docs/manual/screens.md)).
 
 - **How menus will work is settled** ([decision 0088](docs/decisions/0088-menus-send-events.md)): a screen's buttons send events to the game (kept in recordings), and game code opens and closes screens with `showScreen` and `hideScreen` on an entity ([plan](docs/plans/game-ui.md)).

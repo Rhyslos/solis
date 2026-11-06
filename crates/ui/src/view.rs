@@ -974,6 +974,44 @@ pub fn hit(clickable: &[Clickable], at: [f32; 2]) -> Option<usize> {
         .map(|c| c.action)
 }
 
+/// Where the keys' focus goes from the clickable piece `from` (its
+/// number), moving `towards` a way (x right, y down; any length): the
+/// nearest piece that way, nearer counting more along the way than across
+/// it, as most games' menus move (decision 0088). With no focus yet (or one
+/// no longer there), the first piece; with nothing that way, it stays.
+pub fn next_focus(
+    clickable: &[Clickable],
+    from: Option<usize>,
+    towards: [f32; 2],
+) -> Option<usize> {
+    let centre = |c: &Clickable| [(c.rect[0] + c.rect[2]) / 2.0, (c.rect[1] + c.rect[3]) / 2.0];
+    let Some(now) = from.and_then(|a| clickable.iter().find(|c| c.action == a)) else {
+        return clickable.first().map(|c| c.action);
+    };
+    let length = (towards[0] * towards[0] + towards[1] * towards[1]).sqrt();
+    if !length.is_finite() || length == 0.0 {
+        return Some(now.action);
+    }
+    let way = [towards[0] / length, towards[1] / length];
+    let here = centre(now);
+    let mut best: Option<(f32, usize)> = None;
+    for c in clickable.iter().filter(|c| c.action != now.action) {
+        let there = centre(c);
+        let d = [there[0] - here[0], there[1] - here[1]];
+        let along = d[0] * way[0] + d[1] * way[1];
+        // Only pieces past this one's edge that way, not beside it.
+        if along.is_nan() || along <= 0.5 {
+            continue;
+        }
+        let across = (d[0] * way[1] - d[1] * way[0]).abs();
+        let score = along + 2.0 * across;
+        if best.is_none_or(|(b, _)| score < b) {
+            best = Some((score, c.action));
+        }
+    }
+    Some(best.map_or(now.action, |(_, a)| a))
+}
+
 /// Whether a view has anything to click (a button): such a screen frees
 /// the pointer while it's shown. Looked for no deeper than the layout goes.
 pub fn has_actions(view: &Node) -> bool {

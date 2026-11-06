@@ -203,6 +203,9 @@ impl GameCode {
                 .map_or_else(input::Bindings::default, |root| {
                     crate::play_files::load_bindings(root).0
                 })
+                // A play adds the menu actions a project's file lacks, so
+                // game code can name them.
+                .with_menu_actions()
                 .actions
                 .into_iter()
                 .map(|a| a.name)
@@ -495,7 +498,7 @@ mod tests {
             "{notes:?}"
         );
         let project = std::fs::read_to_string(assets.join("solis/project.lst")).unwrap();
-        assert!(project.contains("Drag, OpenMap];"), "{project}");
+        assert!(project.contains("Pause, OpenMap];"), "{project}");
         // Sound events and the Mixer's buses.
         std::fs::create_dir_all(assets.join("sfx")).unwrap();
         std::fs::write(assets.join("sfx/footstep.solsound"), "").unwrap();

@@ -214,7 +214,10 @@ impl Workbench {
             told_unknown: Default::default(),
             told_too_many_spawns: false,
             pending,
-            bindings: Arc::new(self.bindings.clone()),
+            // The menu actions even in a project whose input actions file
+            // is from before them, so its screens' buttons can be reached
+            // with the keys (decision 0088).
+            bindings: Arc::new(self.bindings.clone().with_menu_actions()),
             start_seed: seed,
             recording: None,
             recording_bytes: 0,
@@ -579,6 +582,10 @@ impl Workbench {
             // input (decision 0088), so a replay sends it again; during a
             // replay, the recording's own.
             let mut frame = frame;
+            // While a screen with buttons is shown, the menu keys move
+            // its focus and choose, and the game's own actions wait; what
+            // game code sees (and a recording keeps) is that frame.
+            let chosen = self.game_screens.take_menu_keys(&mut frame);
             let sent = std::mem::take(&mut self.game_screens.sent);
             if playing.replay.is_none() {
                 frame.sent = sent;
@@ -640,6 +647,11 @@ impl Workbench {
                 if let (Some(seed), Some(playing)) = (seed, &mut self.playing) {
                     playing.world.set_seed(seed);
                 }
+            }
+            // A button the menu keys chose runs now; what it sends is the
+            // next tick's.
+            if let Some(button) = chosen {
+                self.press(button);
             }
             // Physics moves on last, with game code's moves and pushes
             // (decision 0036).
