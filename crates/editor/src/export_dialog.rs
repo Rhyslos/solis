@@ -278,12 +278,17 @@ impl Workbench {
     }
 
     /// Draws File > Export for playtesting…, if it's open.
-    pub(crate) fn export_window(&mut self, ctx: &egui::Context, actions: &mut Vec<WorkbenchAction>) {
+    pub(crate) fn export_window(
+        &mut self,
+        ctx: &egui::Context,
+        actions: &mut Vec<WorkbenchAction>,
+    ) {
         let Some(mut window) = self.export_window.take() else {
             return;
         };
         let areas = self.areas();
         let program = self.info.name.clone();
+        let accent = self.accent.colors().fill;
         let mut open = true;
         let mut close = false;
         egui::Window::new("Export for playtesting")
@@ -294,7 +299,7 @@ impl Workbench {
             .default_pos(ctx.content_rect().center())
             .default_width(560.0)
             .show(ctx, |ui| {
-                close = contents(ui, &mut window, &areas, &program, actions);
+                close = contents(ui, &mut window, &areas, &program, accent, actions);
             });
         if open && !close {
             self.export_window = Some(window);
@@ -308,6 +313,7 @@ fn contents(
     window: &mut ExportWindow,
     areas: &[String],
     program: &str,
+    accent: egui::Color32,
     actions: &mut Vec<WorkbenchAction>,
 ) -> bool {
     let name = game_name(&window.playtest.name);
@@ -345,12 +351,10 @@ fn contents(
             ui.label("Into the folder");
             ui.horizontal(|ui| {
                 ui.add(egui::TextEdit::singleline(&mut window.folder).desired_width(280.0))
-                    .on_hover_text("Made for the export; a folder that has files in already isn't used");
-                if ui
-                    .button("…")
-                    .on_hover_text("Choose the folder")
-                    .clicked()
-                {
+                    .on_hover_text(
+                        "Made for the export; a folder that has files in already isn't used",
+                    );
+                if ui.button("…").on_hover_text("Choose the folder").clicked() {
                     actions.push(WorkbenchAction::ChooseExportFolder);
                 }
             });
@@ -382,13 +386,19 @@ fn contents(
             });
             ui.end_row();
             ui.label("");
-            ui.label(
-                egui::RichText::new(
-                    "How it starts. Players change these in your game's menu, or Alt+Enter for \
-                     fullscreen, and their choice is kept.",
-                )
-                .weak(),
-            );
+            ui.scope(|ui| {
+                ui.set_max_width(330.0);
+                ui.add(
+                    egui::Label::new(
+                        egui::RichText::new(
+                            "How it starts. Players change these in your game's menu, or \
+                             Alt+Enter for fullscreen, and their choice is kept.",
+                        )
+                        .weak(),
+                    )
+                    .wrap(),
+                );
+            });
             ui.end_row();
         });
     ui.add_space(8.0);
@@ -423,7 +433,15 @@ fn contents(
                 && !window.busy;
             let export = ui.add_enabled(
                 ready,
-                egui::Button::new(if window.busy { "Exporting…" } else { "Export" }),
+                egui::Button::new(
+                    egui::RichText::new(if window.busy {
+                        "Exporting…"
+                    } else {
+                        "Export"
+                    })
+                    .color(egui::Color32::WHITE),
+                )
+                .fill(accent),
             );
             if export.clicked() {
                 window.playtest.name = game_name(&window.playtest.name);

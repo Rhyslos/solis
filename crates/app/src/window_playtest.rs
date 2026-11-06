@@ -7,9 +7,9 @@
 
 use super::{App, file_name};
 use crate::playtest::{self, Found};
-use eframe::egui;
-use editor::play_only::NotPlaying;
 use editor::LogLevel;
+use editor::play_only::NotPlaying;
+use eframe::egui;
 use script::settings::PlayerSettings;
 use std::path::PathBuf;
 use std::sync::{Arc, Mutex};
@@ -209,10 +209,7 @@ impl App {
         let Some(saved) = &run.saved else {
             return;
         };
-        let worth: Vec<&String> = new
-            .iter()
-            .filter(|l| !l.contains(" Info: "))
-            .collect();
+        let worth: Vec<&String> = new.iter().filter(|l| !l.contains(" Info: ")).collect();
         if worth.is_empty() {
             return;
         }

@@ -28,6 +28,9 @@ pub(crate) struct GameScene {
     pub(crate) speed: f64,
     /// The projectiles in flight.
     pub(crate) bolts: std::sync::Arc<Vec<crate::viewport::ViewBolt>>,
+    /// An exported game's (decision 0093): drawn without the editor's
+    /// notes over it.
+    pub(crate) play_only: bool,
 }
 
 impl GameScene {
@@ -60,6 +63,7 @@ impl GameScene {
                     .map(|p| crate::viewport::ViewBolt::between(p, t))
                     .collect()
             }),
+            play_only: false,
         }
     }
 }
@@ -314,6 +318,14 @@ pub(crate) fn game_panel(
         PlayState::Paused => "Paused",
         _ => "Playing",
     };
+    // An exported game is only the game: no notes over it.
+    if scene.play_only {
+        return GamePanelOut {
+            clicked,
+            pointer,
+            area,
+        };
+    }
     let mut notes = vec![format!("{state} · {:.1} s", scene.seconds)];
     // Game code's own pause (or slow motion), apart from the editor's.
     if scene.speed != 1.0 {

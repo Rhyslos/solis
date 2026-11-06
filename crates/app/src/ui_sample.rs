@@ -31,8 +31,6 @@ pub const FILES: &[(&str, &str)] = &[
         "ui/pauseMenu.lst",
         include_str!("../../../samples/ui/assets/ui/pauseMenu.lst"),
     ),
-    (
-    ),
 ];
 
 /// Makes `root` the UI sample: a new project with the sample's files.

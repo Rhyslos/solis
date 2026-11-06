@@ -1,9 +1,9 @@
 //! An exported game's workbench (decision 0093).
 
 use super::*;
-use egui_kittest::kittest::Queryable;
 use crate::test_support::{Picker, info};
 use crate::workbench::Workbench;
+use egui_kittest::kittest::Queryable;
 
 /// A workbench playing only the game, whose Quitter says the tick and
 /// calls `Window:quit()` on its third update.
@@ -76,6 +76,12 @@ fn an_exported_game_shows_only_the_game_and_closes_when_its_code_quits() {
     h.state_mut().0.start_play_only(&ctx);
     assert!(h.state().0.playing.is_some());
     assert!(h.state().0.game_input, "the game has the mouse and keys");
+    h.step();
+    assert!(
+        h.query_by_label_contains("Playing ·").is_none()
+            && h.query_by_label_contains("Esc gives").is_none(),
+        "no editor's notes over the game"
+    );
     for _ in 0..30 {
         h.step();
         h.state_mut().0.run_game(1.0 / 60.0);
@@ -116,11 +122,10 @@ fn in_the_editor_quitting_stops_play_and_says_so() {
         w.run_game(1.0 / 60.0);
     }
     assert!(w.playing.is_none());
-    assert!(
-        w.log_lines()
-            .iter()
-            .any(|l| l.text.contains("Window:quit(): the exported game would close"))
-    );
+    assert!(w.log_lines().iter().any(|l| {
+        l.text
+            .contains("Window:quit(): the exported game would close")
+    }));
     // The editor itself stays open.
     let mut actions = Vec::new();
     w.hold_while_playing(&mut actions);

@@ -68,7 +68,10 @@ fn an_export_never_mixes_with_or_replaces_anything() {
     std::fs::write(full.join("mine.txt"), "keep").unwrap();
     let why = export(&root, &program, &farm(), &full).unwrap_err();
     assert!(why.contains("already has files"), "{why}");
-    assert_eq!(std::fs::read_to_string(full.join("mine.txt")).unwrap(), "keep");
+    assert_eq!(
+        std::fs::read_to_string(full.join("mine.txt")).unwrap(),
+        "keep"
+    );
     // An empty folder is fine.
     let empty = dir.join("empty");
     std::fs::create_dir_all(&empty).unwrap();
@@ -129,7 +132,11 @@ fn the_player_s_settings_read_back_and_start_from_the_export_s_window() {
         .with(Setting::Resolution(1920, 1080));
     save_settings(&dir, &changed).unwrap();
     assert_eq!(load_settings(Some(&dir), &farm()), changed);
-    assert_eq!(load_settings(None, &farm()), start, "no folder: as exported");
+    assert_eq!(
+        load_settings(None, &farm()),
+        start,
+        "no folder: as exported"
+    );
     let _ = std::fs::remove_dir_all(&dir);
 }
 
@@ -169,7 +176,10 @@ fn the_crash_log_says_what_happened_and_what_was_said() {
     let text = std::fs::read_to_string(path).unwrap();
     assert!(text.starts_with("Farm stopped unexpectedly."));
     assert!(text.contains("When: "));
-    assert!(text.contains("line 99") && !text.contains("line 10\n"), "the last 40");
+    assert!(
+        text.contains("line 99") && !text.contains("line 10\n"),
+        "the last 40"
+    );
     let _ = std::fs::remove_dir_all(&dir);
 }
 
@@ -182,7 +192,13 @@ fn a_project_remembers_how_it_was_exported() {
         ..farm()
     };
     remember_export(&dir, &p).unwrap();
-    assert_eq!(last_export(&dir), Some(Playtest { name: "Turret test".into(), ..p }));
+    assert_eq!(
+        last_export(&dir),
+        Some(Playtest {
+            name: "Turret test".into(),
+            ..p
+        })
+    );
     let _ = std::fs::remove_dir_all(&dir);
 }
 

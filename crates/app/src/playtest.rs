@@ -139,8 +139,8 @@ pub fn export(
     };
     copy_tree(root, &folder.join(GAME_FOLDER), true, &mut made)?;
     let to = folder.join(program_name(&playtest.name));
-    made.bytes += std::fs::copy(program, &to)
-        .map_err(|e| format!("couldn't copy the program: {e}"))?;
+    made.bytes +=
+        std::fs::copy(program, &to).map_err(|e| format!("couldn't copy the program: {e}"))?;
     let shipped = Playtest {
         folder: None,
         ..playtest.clone()
@@ -286,7 +286,10 @@ pub fn load_settings(saved: Option<&Path>, playtest: &Playtest) -> PlayerSetting
 /// Keeps the player's settings in `saved` (made if it isn't there).
 pub fn save_settings(saved: &Path, settings: &PlayerSettings) -> std::io::Result<()> {
     std::fs::create_dir_all(saved)?;
-    asset_db::write_atomically(&saved.join(SETTINGS_FILE), settings_text(settings).as_bytes())
+    asset_db::write_atomically(
+        &saved.join(SETTINGS_FILE),
+        settings_text(settings).as_bytes(),
+    )
 }
 
 /// Writes what went wrong to the crash log in `saved`, for a playtester

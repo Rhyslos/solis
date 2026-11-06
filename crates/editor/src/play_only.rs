@@ -92,7 +92,10 @@ impl Workbench {
         self.refresh_screen_pictures();
         let rect = ui.max_rect();
         ui.painter().rect_filled(rect, 0.0, egui::Color32::BLACK);
-        let game = self.game_scene_now();
+        let game = self.game_scene_now().map(|(key, mut scene)| {
+            scene.play_only = true;
+            (key, scene)
+        });
         let mut game_ui = ui.new_child(egui::UiBuilder::new().max_rect(rect));
         let out = match &game {
             Some((_, scene)) => crate::game_panel::game_panel(

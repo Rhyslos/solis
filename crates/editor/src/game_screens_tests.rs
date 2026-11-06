@@ -505,6 +505,17 @@ fn the_menu_keys_move_the_focus_and_choose_and_the_game_s_own_actions_wait() {
     assert!(quit > 40);
     assert_eq!(w.game_screens.focus, Some((0, 1)));
     assert_eq!(w.game_screens.pictures[0].looks.focus, None);
+    // A menu shown under a still mouse (the pointer resting where Quit
+    // appears) keeps the keys' focus where it was: Enter never chooses
+    // what the pointer happened to rest on (found trying the playtest
+    // export).
+    tap(&mut w, "Up");
+    assert_eq!(w.game_screens.focus, Some((0, 0)));
+    w.game_screens.point_at(None, area);
+    assert_eq!(w.game_screens.hover, None);
+    w.game_screens.point_at(Some([100.0, quit as f32]), area);
+    assert_eq!(w.game_screens.hover, Some((0, 1)), "hovered");
+    assert_eq!(w.game_screens.focus, Some((0, 0)), "but not focused");
 }
 
 #[test]

@@ -153,7 +153,12 @@ struct App {
     /// An exported game being played (decision 0093): only the game shows.
     playtest: Option<playtest_window::Run>,
     /// An export to a folder, on a thread of its own: its outcome.
-    exporting: Option<std::sync::mpsc::Receiver<(editor::export_dialog::Playtest, Result<crate::playtest::Exported, String>)>>,
+    exporting: Option<
+        std::sync::mpsc::Receiver<(
+            editor::export_dialog::Playtest,
+            Result<crate::playtest::Exported, String>,
+        )>,
+    >,
 }
 
 #[path = "window_playtest.rs"]
@@ -250,8 +255,8 @@ impl App {
         // a bar in the launcher (the project lead, 2026-11-06).
         let copy = crate::updates::this_copy();
         // An exported game never asks GitHub for anything.
-        let check = (auto_update && playtest.is_none())
-            .then(|| crate::updates::start_check(&cc.egui_ctx));
+        let check =
+            (auto_update && playtest.is_none()).then(|| crate::updates::start_check(&cc.egui_ctx));
         let startup = crate::startup::Startup::new(None, skipped, copy.installed, copy.build);
         let mut app = Self {
             workbench,
@@ -1313,29 +1318,27 @@ impl App {
                     self.recordings
                         .ask(crate::play_files::PlayFile::Save, folder);
                 }
-                WorkbenchAction::SaveGame { slot, text } => {
-                    match self.saves_root() {
-                        Some(root) => match crate::play_files::save_game(&root, &slot, &text) {
-                            Ok((path, copy)) => {
-                                self.workbench
-                                    .log(LogLevel::Info, format!("Saved the game as {slot}."));
-                                if let Some(copy) = copy {
-                                    let note =
-                                        crate::upgrades::kept_note(&root, &file_name(&path), &copy);
-                                    self.workbench.log(LogLevel::Info, note);
-                                }
+                WorkbenchAction::SaveGame { slot, text } => match self.saves_root() {
+                    Some(root) => match crate::play_files::save_game(&root, &slot, &text) {
+                        Ok((path, copy)) => {
+                            self.workbench
+                                .log(LogLevel::Info, format!("Saved the game as {slot}."));
+                            if let Some(copy) = copy {
+                                let note =
+                                    crate::upgrades::kept_note(&root, &file_name(&path), &copy);
+                                self.workbench.log(LogLevel::Info, note);
                             }
-                            Err(why) => self.workbench.log(
-                                LogLevel::Error,
-                                format!("Couldn't save the game as {slot}: {why}."),
-                            ),
-                        },
-                        None => self.workbench.log(
-                            LogLevel::Warning,
-                            "The game wasn't saved: save games are kept in a project.",
+                        }
+                        Err(why) => self.workbench.log(
+                            LogLevel::Error,
+                            format!("Couldn't save the game as {slot}: {why}."),
                         ),
-                    }
-                }
+                    },
+                    None => self.workbench.log(
+                        LogLevel::Warning,
+                        "The game wasn't saved: save games are kept in a project.",
+                    ),
+                },
                 WorkbenchAction::LoadGame(slot) => {
                     let path = self
                         .saves_root()
