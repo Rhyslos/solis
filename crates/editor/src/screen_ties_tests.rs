@@ -143,21 +143,11 @@ fn nothing_picked_or_nothing_to_tie_changes_nothing() {
 }
 
 #[test]
-fn a_button_sends_an_event_the_file_fetches() {
+fn a_button_sends_one_of_the_game_s_events_fetching_it() {
     let mut d = doc();
-    let text = d.text.replacen(
-        "fetch \"solis/screen\":Ui;",
-        "fetch \"solis/screen\":Ui;\nfetch \"main\":[Health, Pause, Quit, helper];",
-        1,
-    );
-    assert!(d.change(text));
-    assert_eq!(
-        d.fetched_events(&[health()]),
-        vec!["Pause".to_string(), "Quit".to_string()]
-    );
     d.picked = vec![vec![0, 3]];
     assert_eq!(d.sends(), Some(None), "nothing yet");
-    assert!(d.set_sends("Pause"));
+    assert!(d.set_sends("Pause", "main.lst"));
     reads_ok(&d.text);
     assert!(
         d.text.contains(
@@ -166,10 +156,16 @@ fn a_button_sends_an_event_the_file_fetches() {
         "{}",
         d.text
     );
+    assert!(d.text.contains("fetch \"main\":Pause;"), "{}", d.text);
     assert_eq!(d.sends(), Some(Some("Pause".into())));
-    assert!(d.set_sends("Quit"));
+    assert!(d.set_sends("Quit", "main.lst"));
     assert_eq!(d.sends(), Some(Some("Quit".into())));
     assert_eq!(d.text.matches("send ").count(), 1, "replaced, not added");
+    assert!(
+        d.text.contains("fetch \"main\":[Pause, Quit];"),
+        "{}",
+        d.text
+    );
     // Code of its own: not shown as an event.
     let t = d.text.replace(
         "send Quit() to Ui:entity();",
@@ -180,5 +176,74 @@ fn a_button_sends_an_event_the_file_fetches() {
     // A piece with no { }.
     d.picked = vec![vec![0, 0]];
     assert_eq!(d.sends(), None);
-    assert!(!d.set_sends("Pause"));
+    assert!(!d.set_sends("Pause", "main.lst"));
+}
+
+#[test]
+fn review_findings_stay_fixed() {
+    // A comment after a fetch line: the name goes in the list, not the
+    // comment.
+    assert_eq!(
+        fetched("fetch \"main\":[Pause]; // events\n", "main", "Health"),
+        "fetch \"main\":[Pause, Health]; // events\n"
+    );
+    assert_eq!(
+        fetched("fetch \"main\":Pause; -- x\n", "main", "Health"),
+        "fetch \"main\":[Pause, Health]; -- x\n"
+    );
+    // Odd spacing is still the same fetch line.
+    assert_eq!(
+        fetched("fetch  \"main\" : [A,B];\n", "main", "B"),
+        "fetch  \"main\" : [A,B];\n"
+    );
+    assert_eq!(
+        fetched("fetch \"main\" : [A,B];\n", "main", "C"),
+        "fetch \"main\":[A, B, C];\n"
+    );
+    assert_eq!(
+        fetched("fetch \"main\":[];\n", "main", "C"),
+        "fetch \"main\":C;\n",
+        "an empty list"
+    );
+    // A fetch with no line end after it.
+    assert_eq!(
+        fetched("fetch \"a\":X;", "main", "C"),
+        "fetch \"a\":X;\nfetch \"main\":C;\n"
+    );
+    // Solis's own components: Ui fetched too.
+    let mut d = ScreenDoc::new(
+        "ui/hud.lst".into(),
+        "Hud".into(),
+        HUD.replace("fetch \"solis/screen\":Ui;", "fetch \"main\":Clock;"),
+    );
+    d.picked = vec![vec![0, 0]];
+    let sparks = Readable {
+        component: "Sparks".into(),
+        reader: "sparks".into(),
+        module: "solis/screen".into(),
+        fields: vec![],
+    };
+    assert!(d.tie(&sparks, "shown", &TieTo::Words));
+    assert!(
+        d.text.contains("fetch \"solis/screen\":[Sparks, Ui];"),
+        "{}",
+        d.text
+    );
+    // Hidden and locked pieces stay so after a read is put in above them.
+    let mut d = doc();
+    d.hidden.insert(vec![0, 1]);
+    d.locked.insert(vec![0, 2]);
+    d.picked = vec![vec![0, 0]];
+    assert!(d.tie(&health(), "hp", &TieTo::Words));
+    assert!(d.hidden.contains(&vec![1, 1]), "{:?}", d.hidden);
+    assert!(d.locked.contains(&vec![1, 2]), "{:?}", d.locked);
+    // A component written in the screen's own file isn't fetched from it.
+    let mut d = doc();
+    d.picked = vec![vec![0, 0]];
+    let own = Readable {
+        module: "ui/hud".into(),
+        ..health()
+    };
+    assert!(d.tie(&own, "hp", &TieTo::Words));
+    assert!(!d.text.contains("fetch \"ui/hud\""), "{}", d.text);
 }

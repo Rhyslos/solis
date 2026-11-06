@@ -113,8 +113,8 @@ pub(crate) struct ScreenUi<'a> {
     pub(crate) pictures: Option<std::sync::Arc<ui::Pictures>>,
     /// The project's pictures, for the Image tool.
     pub(crate) picture_files: Vec<String>,
-    /// The project's components that screens can read, for ties.
-    pub(crate) readable: Vec<crate::screen_ties::Readable>,
+    /// What screens can be tied to and send.
+    pub(crate) game: std::sync::Arc<crate::screen_ties::ScreenGame>,
 }
 
 /// What the Clips and Frames tabs did this frame.
@@ -308,7 +308,7 @@ impl TabViewer for PanelViewer<'_> {
                                     crate::screen_props::screen_properties(
                                         ui,
                                         screen.doc,
-                                        &screen.readable,
+                                        &screen.game,
                                     );
                             });
                         });
@@ -576,8 +576,8 @@ impl TabViewer for PanelViewer<'_> {
                         fonts: screen.fonts,
                         pictures: screen.pictures.clone(),
                         accent: self.accent.colors().fill,
-                        picture_files: screen.picture_files.clone(),
-                        readable: &screen.readable,
+                        picture_files: &screen.picture_files,
+                        readable: &screen.game.readable,
                     },
                 );
                 if out.said.is_some() {

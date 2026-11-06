@@ -38,7 +38,7 @@ pub(crate) struct CanvasUi<'a> {
     pub(crate) accent: Color32,
     /// The project's pictures (paths inside the assets), for the Image
     /// tool.
-    pub(crate) picture_files: Vec<String>,
+    pub(crate) picture_files: &'a [String],
     /// What the screen's entity can be read for (Preview values).
     pub(crate) readable: &'a [crate::screen_ties::Readable],
 }
@@ -347,7 +347,7 @@ fn canvas(ui: &mut Ui, c: CanvasUi<'_>, out: &mut CanvasOut) {
             draw_with_tool(ui, &response, doc, &drawn, &painter, accent, out);
         }
     }
-    tools_bar(ui, area, doc, &picture_files, accent);
+    tools_bar(ui, area, doc, picture_files, accent);
     tool_keys(ui, &response, doc);
     // Outlines: what's under the pointer, and what's picked with handles.
     let hover = response
@@ -897,7 +897,9 @@ fn draw_with_tool(
             painter.line_segment([p, at], Stroke::new(1.0, accent));
         }
         let finish = response.double_clicked()
-            || (response.hovered() && ui.input(|i| i.key_pressed(egui::Key::Enter)));
+            || (response.hovered()
+                && !ui.ctx().egui_wants_keyboard_input()
+                && ui.input(|i| i.key_pressed(egui::Key::Enter)));
         if finish {
             out.changed |= finish_pen(doc, drawn);
         } else if response.clicked()

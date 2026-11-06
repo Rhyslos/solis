@@ -34,6 +34,30 @@ pub(crate) struct Readable {
     pub(crate) fields: Vec<(String, Kind, f64)>,
 }
 
+/// What a screen can be tied to and send, worked out once per build of
+/// the game's code.
+#[derive(Debug, Clone, Default, PartialEq)]
+pub(crate) struct ScreenGame {
+    /// The components the screen's entity can be read for.
+    pub(crate) readable: Vec<Readable>,
+    /// The game's events (name, file), for a button to send.
+    pub(crate) events: Vec<(String, String)>,
+}
+
+/// What a screen can be tied to and send, for `program`.
+pub(crate) fn screen_game(
+    program: Option<&script::Compiled>,
+    registry: &reflect::Registry,
+) -> ScreenGame {
+    ScreenGame {
+        readable: readable(program, registry),
+        events: program
+            .and_then(|p| p.screens.as_ref())
+            .map(|c| c.events.clone())
+            .unwrap_or_default(),
+    }
+}
+
 /// Every component screens can read, with its fields.
 pub(crate) fn readable(
     program: Option<&script::Compiled>,
@@ -111,50 +135,122 @@ pub(crate) enum TieTo {
     },
 }
 
-/// `text` with `Name` fetched from `module`: added to its fetch line, or
-/// a new fetch line after the others.
-pub(crate) fn fetched(text: &str, module: &str, name: &str) -> String {
-    let head = format!("fetch \"{module}\":");
-    // Already fetched?
-    for line in text.lines() {
-        let t = line.trim();
-        if let Some(rest) = t.strip_prefix(&head) {
-            let names: Vec<&str> = rest
-                .trim_end_matches(';')
-                .trim_matches(|c| c == '[' || c == ']')
-                .split(',')
-                .map(str::trim)
-                .collect();
-            if names.contains(&name) {
-                return text.to_string();
-            }
+/// A `fetch "module":[A, B];` line read: its module, its names, and
+/// where its statement is in the text (from `fetch` to its `;`).
+#[derive(Debug, Clone, PartialEq)]
+pub(crate) struct FetchLine {
+    pub(crate) module: String,
+    pub(crate) names: Vec<String>,
+    pub(crate) span: std::ops::Range<usize>,
+}
+
+/// Reads the line starting at byte `at` of `text` as a fetch, if it is
+/// one written plainly (spaces anywhere between its parts; anything after
+/// its `;`, such as a comment, kept). Anything unusual: `None`.
+fn fetch_line(at: usize, line: &str) -> Option<FetchLine> {
+    let lead = line.len() - line.trim_start().len();
+    let rest = line[lead..].strip_prefix("fetch")?;
+    let mut i = lead + 5;
+    let skip = |s: &str, i: &mut usize| {
+        while s[*i..].starts_with([' ', '\t']) {
+            *i += 1;
         }
+    };
+    if !rest.starts_with([' ', '\t', '"']) {
+        return None;
     }
-    // Into its fetch line.
+    skip(line, &mut i);
+    let after_quote = line[i..].strip_prefix('"')?;
+    let close = after_quote.find('"')?;
+    let module = after_quote[..close].to_string();
+    if module.contains('\\') {
+        return None;
+    }
+    i += 1 + close + 1;
+    skip(line, &mut i);
+    i += line[i..].strip_prefix(':').map(|_| 1)?;
+    skip(line, &mut i);
+    let semi = i + line[i..].find(';')?;
+    let list = line[i..semi].trim();
+    let inner = match list.strip_prefix('[') {
+        Some(l) => l.strip_suffix(']')?,
+        None => list,
+    };
+    let names: Vec<String> = inner
+        .split(',')
+        .map(str::trim)
+        .filter(|n| !n.is_empty())
+        .map(str::to_string)
+        .collect();
+    if names
+        .iter()
+        .any(|n| !n.chars().all(|c| c.is_ascii_alphanumeric() || c == '_'))
+    {
+        return None;
+    }
+    Some(FetchLine {
+        module,
+        names,
+        span: at + lead..at + semi + 1,
+    })
+}
+
+/// Every plainly written fetch line in `text`.
+pub(crate) fn fetch_lines(text: &str) -> Vec<FetchLine> {
+    let mut out = Vec::new();
     let mut at = 0;
     for line in text.split_inclusive('\n') {
-        let t = line.trim();
-        if let Some(rest) = t.strip_prefix(&head) {
-            let list = rest.trim_end_matches(';').trim();
-            let names = list.trim_matches(|c| c == '[' || c == ']');
-            let new = format!("{head}[{names}, {name}];");
-            let start = at + line.find("fetch").unwrap_or(0);
-            let end = at + line.trim_end().len();
-            return source::replaced(text, start..end, &new);
+        let body = line.trim_end_matches(['\n', '\r']);
+        if let Some(f) = fetch_line(at, body) {
+            out.push(f);
         }
         at += line.len();
+    }
+    out
+}
+
+/// `text` with `name` fetched from `module`: added to its fetch line, or
+/// a new fetch line after the others (at the top when there are none).
+pub(crate) fn fetched(text: &str, module: &str, name: &str) -> String {
+    let lines = fetch_lines(text);
+    if lines
+        .iter()
+        .any(|f| f.module == module && f.names.iter().any(|n| n == name))
+    {
+        return text.to_string();
+    }
+    if let Some(f) = lines.iter().find(|f| f.module == module) {
+        let mut names = f.names.clone();
+        names.push(name.to_string());
+        let list = if names.len() == 1 {
+            names[0].clone()
+        } else {
+            format!("[{}]", names.join(", "))
+        };
+        return source::replaced(text, f.span.clone(), &format!("fetch \"{module}\":{list};"));
     }
     // A new line, after the last fetch, or at the top.
-    let mut after = 0;
-    let mut at = 0;
-    for line in text.split_inclusive('\n') {
-        at += line.len();
-        if line.trim_start().starts_with("fetch ") {
-            after = at;
-        }
-    }
+    let after = lines.last().map_or(0, |f| {
+        text[f.span.end..]
+            .find('\n')
+            .map_or(text.len(), |i| f.span.end + i + 1)
+    });
     let nl = if text.contains("\r\n") { "\r\n" } else { "\n" };
-    source::replaced(text, after..after, &format!("{head}{name};{nl}"))
+    let lead = if after == text.len() && !text.is_empty() && !text.ends_with('\n') {
+        nl
+    } else {
+        ""
+    };
+    source::replaced(
+        text,
+        after..after,
+        &format!("{lead}fetch \"{module}\":{name};{nl}"),
+    )
+}
+
+/// The module a file is fetched as: `ui/hud.lst` as `ui/hud`.
+fn module_of(path: &str) -> &str {
+    path.strip_suffix(".lst").unwrap_or(path)
 }
 
 impl ScreenDoc {
@@ -237,53 +333,29 @@ impl ScreenDoc {
             text = source::insert_piece(&text, &view, 0, &decl);
             moved = true;
         }
-        text = fetched(&text, &r.module, &r.component);
-        if r.module != "solis/screen" {
-            text = fetched(&text, "solis/screen", "Ui");
+        if r.module != module_of(&self.path) {
+            text = fetched(&text, &r.module, &r.component);
         }
+        text = fetched(&text, "solis/screen", "Ui");
+        let (hidden, locked) = (self.hidden.clone(), self.locked.clone());
         let changed = self.change(text);
         if changed {
             self.behind = true;
             if moved {
+                self.hidden = hidden;
+                self.locked = locked;
                 // Everything in the view is one further down now.
-                let mut now = path;
-                now[0] += 1;
-                self.picked = vec![now];
-                self.hidden.clear();
-                self.locked.clear();
+                let down = |p: &Vec<usize>| {
+                    let mut p = p.clone();
+                    p[0] += 1;
+                    p
+                };
+                self.picked = vec![down(&path)];
+                self.hidden = self.hidden.iter().map(down).collect();
+                self.locked = self.locked.iter().map(down).collect();
             }
         }
         changed
-    }
-
-    /// The events the file fetches: names after `fetch` that aren't the
-    /// screen's `Ui` or a component screens read.
-    pub(crate) fn fetched_events(&self, readable: &[Readable]) -> Vec<String> {
-        let mut out = Vec::new();
-        for line in self.text.lines() {
-            let t = line.trim();
-            let Some(rest) = t.strip_prefix("fetch ") else {
-                continue;
-            };
-            let Some((_, names)) = rest.split_once(':') else {
-                continue;
-            };
-            for n in names
-                .trim_end_matches(';')
-                .trim_matches(|c| c == '[' || c == ']' || c == ' ')
-                .split(',')
-                .map(str::trim)
-            {
-                let known = n == "Ui" || readable.iter().any(|r| r.component == n);
-                if !known
-                    && n.starts_with(|c: char| c.is_ascii_uppercase())
-                    && !out.iter().any(|o| o == n)
-                {
-                    out.push(n.to_string());
-                }
-            }
-        }
-        out
     }
 
     /// The event the piece picked sends, if what it does is just that:
@@ -305,9 +377,9 @@ impl ScreenDoc {
             .then(|| Some(name.to_string()))
     }
 
-    /// Makes the piece picked send `event` to the screen's entity when
-    /// clicked.
-    pub(crate) fn set_sends(&mut self, event: &str) -> bool {
+    /// Makes the piece picked send `event` (written in `file`) to the
+    /// screen's entity when clicked, fetching it if it isn't yet.
+    pub(crate) fn set_sends(&mut self, event: &str, file: &str) -> bool {
         let Some(piece) = self.picked.first().and_then(|p| self.piece(p)).cloned() else {
             return false;
         };
@@ -327,7 +399,11 @@ impl ScreenDoc {
             "\n"
         };
         let body = format!("{nl}{indent}    send {event}() to Ui:entity();{nl}{indent}");
-        let text = source::replaced(&self.text, action, &body);
+        let mut text = source::replaced(&self.text, action, &body);
+        if module_of(file) != module_of(&self.path) {
+            text = fetched(&text, module_of(file), event);
+        }
+        text = fetched(&text, "solis/screen", "Ui");
         let changed = self.change(text);
         self.behind |= changed;
         changed

@@ -64,11 +64,11 @@ fn each_tool_writes_its_piece_in_a_canvas_or_among_others() {
     );
     assert_eq!(
         piece_text(CanvasTool::Button, a, a, false, None).unwrap(),
-        "button \"Button\";"
+        "button \"Button\" {\n}"
     );
     assert_eq!(
         piece_text(CanvasTool::Button, a, a, true, None).unwrap(),
-        "button \"Button\" [x 10, y 20];"
+        "button \"Button\" [x 10, y 20] {\n}"
     );
 }
 

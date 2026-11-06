@@ -203,10 +203,11 @@ pub(crate) fn piece_text(
             )
         }
         CanvasTool::Button => {
+            // With its { }, so what it does can be chosen.
             if on_canvas {
-                format!("button \"Button\" [{}];", at(""))
+                format!("button \"Button\" [{}] {{\n}}", at(""))
             } else {
-                "button \"Button\";".to_string()
+                "button \"Button\" {\n}".to_string()
             }
         }
     })

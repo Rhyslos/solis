@@ -39,7 +39,7 @@ Solis writes the Lust for you: it reads the component once at the top of the vie
 **Preview values** (top of the canvas) lets you try other numbers for what the screen reads, with a slider each: drag health down to see the bar empty. They're never saved; **Back to the starting values** forgets them.
 
 ### What a button does
-A button's **When clicked** in Properties has a **Sends** list: the [events](game-code.md) your screen's file fetches (`fetch "main":Pause;`). Pick one and the button sends it to the screen's entity, whose code reacts with `on Pause() { … }`. This is the safe way for a screen to change the game: screens never change it themselves ([why](screens.md)). A button whose `{ }` does more than send one event shows its code instead.
+A button's **When clicked** in Properties has a **Sends** list: the [events](game-code.md) your game's code declares (`event Pause();`). Pick one and the button sends it to the screen's entity (Solis fetches it at the top of the screen's file for you), whose code reacts with `on Pause() { … }`. This is the safe way for a screen to change the game: screens never change it themselves ([why](screens.md)). A button whose `{ }` does more than send one event shows its code instead.
 
 ## Settings
 | Setting | What it does |
@@ -57,7 +57,7 @@ A button's **When clicked** in Properties has a **Sends** list: the [events](gam
 | Hover | A look while the pointer is over it. **+ Add a hover look** dims it a little; edit it in **All its settings**. |
 | Disabled | Greyed, and clicks do nothing. |
 | Tie to… | Shows a field of one of the entity's components in this piece: its words, its value, how full it is, or its opacity. |
-| Sends | For a button: the event sent to the screen's entity when it's clicked, from those the file fetches. |
+| Sends | For a button: the event sent to the screen's entity when it's clicked, from the game's events. |
 | When clicked | What a button does, as written in its `{ }`, when it's more than one event: change it as code. |
 | Preview values | Other numbers to try on the canvas for what the screen reads. Never saved. |
 | All its settings | Everything in the piece's `[ ]`, as written. Type anything Lust has (`nowrap`, `spread`, `minWidth 200`); press Enter to keep it. If it doesn't read, it isn't changed. |
@@ -87,7 +87,7 @@ A button's **When clicked** in Properties has a **Sends** list: the [events](gam
 - **Problem:** "Updating…" shows after a piece was moved, added or deleted. **Why:** the canvas waits for the game's code to be checked again, which takes a moment. **Fix:** nothing: it goes in about a second.
 - **Problem:** a bar or a number shows as empty. **Why:** the canvas draws the screen for an entity whose values are all their starting ones (health 0, say). **Fix:** try other numbers with **Preview values**, or press Play to see it with the game's real values in the Game panel.
 - **Problem:** **Tie to…** says to give the entity a component. **Why:** the game's code has no components a screen can read yet, or has a mistake. **Fix:** write a component (`component Health { has { float hp = 20; } }`), check Problems is empty, and try again.
-- **Problem:** **Sends** has nothing to pick. **Why:** only events the file fetches are offered, so a screen can't send something the game doesn't have. **Fix:** declare the event in your game code (`event Pause();`, and `pass` it), and fetch it at the top of the screen's file (`fetch "main":Pause;`).
+- **Problem:** **Sends** has nothing to pick. **Why:** the game's code declares no events yet, so there's nothing a button could send. **Fix:** declare one in your game code (`event Pause();`, and `pass` it), and check Problems is empty.
 - **Problem:** dragging a piece doesn't move it where expected. **Why:** in a column or a row, pieces go one after another: a piece moves *between* its neighbours, not to any spot. **Fix:** to place pieces freely, put them in a `canvas` and drag them there.
 
 ## Related

@@ -29,7 +29,7 @@ fn harness() -> Harness<'static, State> {
                         fonts: &mut s.fonts,
                         pictures: None,
                         accent: Color32::from_rgb(0x24, 0x68, 0xd8),
-                        picture_files: Vec::new(),
+                        picture_files: &[],
                         readable: &[],
                     },
                 );

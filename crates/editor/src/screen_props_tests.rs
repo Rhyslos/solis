@@ -12,7 +12,7 @@ fn harness(picked: Vec<usize>) -> Harness<'static, (ScreenDoc, bool)> {
         .with_size(egui::vec2(420.0, 900.0))
         .build_ui_state(
             |ui, (doc, changed): &mut (ScreenDoc, bool)| {
-                *changed |= screen_properties(ui, doc, &[]);
+                *changed |= screen_properties(ui, doc, &Default::default());
             },
             (doc, false),
         )
@@ -110,17 +110,20 @@ fn a_tie_is_chosen_from_the_entity_s_components() {
     use crate::screen_ties::{Kind, Readable};
     let mut doc = ScreenDoc::new("ui/pauseMenu.lst".into(), "PauseMenu".into(), MENU.into());
     doc.picked = vec![vec![0, 0, 0]];
-    let readable = vec![Readable {
-        component: "Health".into(),
-        reader: "health".into(),
-        module: "main".into(),
-        fields: vec![("hp".into(), Kind::Number, 20.0)],
-    }];
+    let game = crate::screen_ties::ScreenGame {
+        readable: vec![Readable {
+            component: "Health".into(),
+            reader: "health".into(),
+            module: "main".into(),
+            fields: vec![("hp".into(), Kind::Number, 20.0)],
+        }],
+        events: Vec::new(),
+    };
     let mut h = Harness::builder()
         .with_size(egui::vec2(420.0, 900.0))
         .build_ui_state(
             move |ui, (doc, changed): &mut (ScreenDoc, bool)| {
-                *changed |= screen_properties(ui, doc, &readable);
+                *changed |= screen_properties(ui, doc, &game);
             },
             (doc, false),
         );

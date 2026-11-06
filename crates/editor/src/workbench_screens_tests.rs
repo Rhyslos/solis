@@ -230,13 +230,14 @@ fn a_tie_and_a_send_make_code_the_game_reads_and_preview_values_try_numbers() {
             .iter()
             .any(|(n, k, s)| n == "hp" && *k == crate::screen_ties::Kind::Number && *s == 20.0)
     );
+    let events = &w.program.as_ref().unwrap().screens.as_ref().unwrap().events;
+    assert_eq!(events, &[("Pause".to_string(), "main.lst".to_string())]);
     let doc = w.screen_doc.as_mut().unwrap();
-    assert_eq!(doc.fetched_events(&readable), vec!["Pause".to_string()]);
     doc.picked = vec![vec![0, 0, 0]];
     assert!(doc.tie(&health, "hp", &crate::screen_ties::TieTo::Words));
     doc.picked = vec![vec![1, 0, 2]];
     assert_eq!(doc.sends(), Some(None));
-    assert!(doc.set_sends("Pause"));
+    assert!(doc.set_sends("Pause", "main.lst"));
     // The game's own code reads what was written.
     let text = doc.text.clone();
     w.set_program(Some(tied_program(&text)));

@@ -48,6 +48,9 @@ pub struct ScreenCode {
     /// The screens' files as they were compiled (path, text), for the UI
     /// editor's canvas to read and change.
     pub sources: Vec<(String, String)>,
+    /// The game's events (`event Pause();`) and the files they're
+    /// written in, for a button to send (decision 0089).
+    pub events: Vec<(String, String)>,
 }
 
 /// A picture named in a screen's code: `image "sprites/tools.png#Axe"`.
@@ -358,6 +361,35 @@ pub fn find(files: &[(String, String)]) -> (Vec<(String, String)>, Vec<CodeProbl
     (screens, problems)
 }
 
+/// The events declared in the game's Lust files (`event Pause();` at a
+/// line's start), with their files: Solis's own files left out.
+pub fn events_named(files: &[(String, String)]) -> Vec<(String, String)> {
+    let mut out: Vec<(String, String)> = Vec::new();
+    for (path, text) in files {
+        if path.starts_with("solis/") || !path.ends_with(".lst") {
+            continue;
+        }
+        for line in text.lines() {
+            let Some(rest) = line.trim_start().strip_prefix("event ") else {
+                continue;
+            };
+            let name: String = rest
+                .trim_start()
+                .chars()
+                .take_while(|c| c.is_ascii_alphanumeric() || *c == '_')
+                .collect();
+            if name.starts_with(|c: char| c.is_ascii_alphabetic())
+                && !out.iter().any(|(n, _)| *n == name)
+                && out.len() < 1024
+            {
+                out.push((name, path.clone()));
+            }
+        }
+    }
+    out.sort();
+    out
+}
+
 /// The entry that opens every screen.
 pub fn entry(screens: &[(String, String)]) -> String {
     let mut text = String::from("-- Made by Solis for its screens: never saved.\n");
@@ -418,6 +450,7 @@ pub fn compile(
             notes,
             pictures: pictures_named(files),
             sources,
+            events: events_named(files),
         })),
         Ok(Ok(_)) => Err(problems),
         Ok(Err(found)) => {

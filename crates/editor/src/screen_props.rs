@@ -6,7 +6,7 @@
 //! is one undo step, and the rest of its `[ ]` can be typed as written.
 
 use crate::screen_doc::ScreenDoc;
-use crate::screen_ties::{Kind, Readable, TieTo};
+use crate::screen_ties::{Kind, Readable, ScreenGame, TieTo};
 use crate::theme;
 use egui::{RichText, Ui};
 
@@ -22,7 +22,8 @@ const ACROSS: [&str; 3] = ["left", "center", "right"];
 const DOWN: [&str; 3] = ["top", "middle", "bottom"];
 
 /// Properties for the piece picked; gives whether the screen changed.
-pub(crate) fn screen_properties(ui: &mut Ui, doc: &mut ScreenDoc, readable: &[Readable]) -> bool {
+pub(crate) fn screen_properties(ui: &mut Ui, doc: &mut ScreenDoc, game: &ScreenGame) -> bool {
+    let readable = &game.readable[..];
     let Some(path) = doc.picked.first().cloned() else {
         ui.label(RichText::new(&doc.screen).strong());
         ui.label(
@@ -193,18 +194,21 @@ pub(crate) fn screen_properties(ui: &mut Ui, doc: &mut ScreenDoc, readable: &[Re
         section(ui, "WHEN CLICKED");
         let body = text[action.clone()].trim();
         if let (Some(now), false) = (doc.sends(), many) {
-            let events = doc.fetched_events(readable);
+            let events = &game.events;
             ui.horizontal(|ui| {
                 ui.label("Sends");
                 egui::ComboBox::from_id_salt(("screen sends", &path))
                     .selected_text(now.clone().unwrap_or_else(|| "nothing".into()))
                     .height(520.0)
                     .show_ui(ui, |ui| {
-                        for e in &events {
-                            if ui.selectable_label(now.as_deref() == Some(e), e).clicked()
+                        for (e, file) in events {
+                            if ui
+                                .selectable_label(now.as_deref() == Some(e), e)
+                                .on_hover_text(format!("Written in {file}"))
+                                .clicked()
                                 && now.as_deref() != Some(e)
                             {
-                                changed |= doc.set_sends(e);
+                                changed |= doc.set_sends(e, file);
                             }
                         }
                     })
@@ -213,9 +217,9 @@ pub(crate) fn screen_properties(ui: &mut Ui, doc: &mut ScreenDoc, readable: &[Re
             });
             ui.label(
                 RichText::new(if events.is_empty() {
-                    "Fetch an event at the top of the file (fetch \"main\":Pause;) to choose it here."
+                    "Declare an event in your game's code (event Pause();) to choose it here."
                 } else {
-                    "Events the file fetches. The entity's code reacts with on Pause."
+                    "The game's events. The entity's code reacts with on Pause() { }."
                 })
                 .color(theme::TEXT_WEAK)
                 .small(),
@@ -282,9 +286,13 @@ fn ties(
     }
     if !matches!(piece.kind.as_str(), "text" | "button") {
         for side in ["width", "height"] {
-            let full = piece
-                .style_text(text, side)
-                .and_then(|v| v.trim().parse::<f32>().ok());
+            let written = piece.style_text(text, side).map(str::trim);
+            // A number, or a bar already tied: `360 * health.hp / health.maxHp`.
+            let full = written.and_then(|v| {
+                v.parse::<f32>()
+                    .ok()
+                    .or_else(|| v.split_once(" * ")?.0.trim().parse().ok())
+            });
             if let Some(full) = full {
                 let label = if side == "width" {
                     "Fill across"
@@ -332,7 +340,10 @@ fn ties(
                         .style_text(text, n)
                         .filter(|v| v.contains('.'))
                         .map(str::to_string),
-                    TieTo::Bar { .. } => None,
+                    TieTo::Bar { side, .. } => piece
+                        .style_text(text, side)
+                        .filter(|v| v.contains(" * ") && v.contains('.'))
+                        .map(|v| v.trim().to_string()),
                 };
                 let shown = now.clone().unwrap_or_else(|| "Tie to…".into());
                 ui.menu_button(shown, |ui| {
