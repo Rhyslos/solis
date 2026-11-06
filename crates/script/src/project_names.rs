@@ -49,6 +49,8 @@ pub struct Names {
     pub clips: Vec<String>,
     /// The names of its clips' events (cues: `footstep`).
     pub cues: Vec<String>,
+    /// Its game screens' names (`PauseMenu`, from `ui/pauseMenu.lst`).
+    pub screens: Vec<String>,
 }
 
 impl Names {
@@ -66,6 +68,7 @@ impl Names {
             buses: STANDARD_BUSES.iter().map(|b| (*b).to_string()).collect(),
             clips: Vec::new(),
             cues: Vec::new(),
+            screens: Vec::new(),
         }
     }
 }
@@ -91,6 +94,14 @@ impl Names {
     pub fn and_clips(mut self, clips: &[&str], cues: &[&str]) -> Self {
         self.clips.extend(clips.iter().map(|a| (*a).to_string()));
         self.cues.extend(cues.iter().map(|a| (*a).to_string()));
+        self
+    }
+
+    /// These names with these screens (`PauseMenu`).
+    #[must_use]
+    pub fn and_screens(mut self, screens: &[&str]) -> Self {
+        self.screens
+            .extend(screens.iter().map(|a| (*a).to_string()));
         self
     }
 
@@ -121,6 +132,7 @@ pub fn project_file(made_by: &str, names: &Names) -> (String, Vec<String>) {
     let bus = names_text("Bus", &names.buses, "bus", false, &mut notes);
     let clip = state_text("Clip", &names.clips, "sprite clip", &mut notes);
     let cue = names_text("Cue", &names.cues, "clip event", false, &mut notes);
+    let screen = names_text("Screen", &names.screens, "screen", false, &mut notes);
     let text = format!(
         "-- Made by {made_by}: the project's names, for game code. It's written again\n\
          -- whenever the project's files change, so changes made here don't last.\n\n\
@@ -138,6 +150,8 @@ pub fn project_file(made_by: &str, names: &Names) -> (String, Vec<String>) {
          {clip}\n\n\
          -- The clips' events: on CueReached(Cue cue) {{ is cue == Cue.Footstep? … }}.\n\
          {cue}\n\n\
+         -- The game's screens (files in ui/): showScreen(Screen.PauseMenu) for ui/pauseMenu.lst.\n\
+         {screen}\n\n\
          pass {};\n\
          end\n",
         crate::describe::PROJECT_STATES.join(", ")
@@ -364,9 +378,18 @@ mod tests {
             text.contains("state Bus = [Master, Music, Effects, Voice, Ambience, Ui];"),
             "{text}"
         );
-        assert!(text.ends_with("pass Assembly, Action, Sound, Bus, Clip, Cue;\nend\n"));
+        assert!(text.ends_with("pass Assembly, Action, Sound, Bus, Clip, Cue, Screen;\nend\n"));
+        assert!(text.contains("state Screen = [None];"));
         assert!(text.contains("state Clip = [None];"));
         assert!(text.contains("state Sound = [None];"));
+    }
+
+    #[test]
+    fn the_game_s_screens_are_a_state_of_their_names() {
+        let names = Names::standard().and_screens(&["PauseMenu", "Hud", "HUD"]);
+        let (text, notes) = project_file("Test 1.0", &names);
+        assert!(text.contains("state Screen = [PauseMenu, Hud];"), "{text}");
+        assert_eq!(notes.len(), 1, "HUD is all capitals: {notes:?}");
     }
 
     #[test]
@@ -380,7 +403,8 @@ mod tests {
             text.contains("state Assembly = [Crate, Crops [Wheat], Ships [Fighter, Freighter]];"),
             "{text}"
         );
-        assert!(text.ends_with("pass Assembly, Action, Sound, Bus, Clip, Cue;\nend\n"));
+        assert!(text.ends_with("pass Assembly, Action, Sound, Bus, Clip, Cue, Screen;\nend\n"));
+        assert!(text.contains("state Screen = [None];"));
         assert!(text.contains("state Clip = [None];"));
         assert!(text.contains("state Sound = [None];"));
     }

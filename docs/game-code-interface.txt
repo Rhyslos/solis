@@ -68,6 +68,9 @@ entity: method entity:turnTo(rotation facing) native;
 entity: method rotation facingAlong(vec3 direction) native;
 entity: method entity:face(vec3 direction) native;
 entity: method string entity:name() native;
+screens: method entity:showScreen(Screen which) native;
+screens: method entity:hideScreen(Screen which) native;
+screens: method bool entity:screenShown(Screen which) native;
 
 ## Events the engine sends (fetch "solis/<file>":<Name>)
 
@@ -123,6 +126,7 @@ solis.entity.animateFromStart
 solis.entity.despawn
 solis.entity.face
 solis.entity.grounded
+solis.entity.hideScreen
 solis.entity.mapBounds
 solis.entity.moveTo
 solis.entity.name
@@ -130,8 +134,10 @@ solis.entity.playSound
 solis.entity.position
 solis.entity.push
 solis.entity.rotation
+solis.entity.screenShown
 solis.entity.setSoundPlaying
 solis.entity.setVelocity
+solis.entity.showScreen
 solis.entity.stopAnimation
 solis.entity.stopSounds
 solis.entity.turnTo
@@ -178,6 +184,8 @@ Host: fn rebind(&mut self, action: &str, input: &str)
 Host: fn play_sound(&mut self, event: &str, at: SoundAt)
 Host: fn stop_sounds_on(&mut self, which: EntityId)
 Host: fn set_sound_playing(&mut self, which: EntityId, playing: bool)
+Host: fn show_screen(&mut self, which: EntityId, screen: &str, shown: bool)
+Host: fn screen_shown(&self, which: EntityId, screen: &str) -> bool
 Host: fn play_clip(&mut self, which: EntityId, clip: &str, again: bool)
 Host: fn stop_clip(&mut self, which: EntityId)
 Host: fn set_bus_volume(&mut self, bus: &str, share: f32)

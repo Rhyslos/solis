@@ -29,6 +29,29 @@ pub struct Node {
     pub styles: Vec<(String, Style)>,
     /// What's inside it, in order.
     pub children: Vec<Node>,
+    /// For a piece with a `{ }` (a button, or a box or circle in a
+    /// canvas): its number among the view's clickable pieces, in order.
+    pub action: Option<usize>,
+}
+
+/// What's happening to a view's clickable pieces, by their numbers: the
+/// one under the pointer, and the one with the keys' focus.
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub struct Looks {
+    /// Under the pointer.
+    pub hover: Option<usize>,
+    /// Has the focus (decision 0088).
+    pub focus: Option<usize>,
+}
+
+/// A clickable piece where it was laid out: its box in design pixels
+/// (left, top, right, bottom) and its number.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct Clickable {
+    /// Left, top, right, bottom, in design pixels.
+    pub rect: [f32; 4],
+    /// Its number ([`Node::action`]).
+    pub action: usize,
 }
 
 /// One style's value.
@@ -41,6 +64,8 @@ pub enum Style {
     Number(f64),
     /// A word or text (`width fill`, `background "red5"`).
     Text(String),
+    /// Styles inside (`hover:[background red5]`).
+    Nested(Vec<(String, Style)>),
 }
 
 /// What laying a view out needs to know about text.
@@ -117,6 +142,7 @@ struct Look {
     to_y: f32,
     rad: f32,
     thick: f32,
+    disabled: bool,
 }
 
 /// Lust's text colour on a light window, and its muted one.
@@ -156,9 +182,16 @@ fn base_look(kind: &str) -> Look {
         to_y: 0.0,
         rad: 10.0,
         thick: 2.0,
+        disabled: false,
     };
     match kind {
         "row" => l.valign = Align::Center,
+        "button" => {
+            l.pad = [7.0, 14.0, 7.0, 14.0];
+            l.background = Some(0xe9ecef);
+            l.radius = 6.0;
+            l.halign = Align::Center;
+        }
         "canvas" => {
             l.width = Size::Fixed(300.0);
             l.height = Size::Fixed(150.0);
@@ -279,6 +312,7 @@ fn apply(l: &mut Look, kind: &str, styles: &[(String, Style)]) {
             "bottom" => l.valign = Align::End,
             "spread" => l.spread = true,
             "subtle" => l.background = None,
+            "disabled" => l.disabled = true,
             "from" => l.from = n.unwrap_or(0.0),
             "to" => l.to = n.unwrap_or(100.0),
             "x" => l.at_x = n.unwrap_or(0.0),
@@ -290,7 +324,11 @@ fn apply(l: &mut Look, kind: &str, styles: &[(String, Style)]) {
             other => {
                 // A colour on its own: a shape's fill, a bar's, or text's.
                 if let Some(c) = colour(other) {
-                    if matches!(kind, "box" | "circle") {
+                    if kind == "button" {
+                        // A button takes the colour, with text that reads on it.
+                        l.background = Some(c);
+                        l.color = if light(c) { INK } else { 0xffffff };
+                    } else if matches!(kind, "box" | "circle") {
                         l.background = Some(c);
                     } else if kind == "progress" {
                         l.accent = c;
@@ -301,6 +339,12 @@ fn apply(l: &mut Look, kind: &str, styles: &[(String, Style)]) {
             }
         }
     }
+}
+
+/// Whether a colour is light (dark text reads on it), as Lust decides.
+fn light(c: u32) -> bool {
+    let [_, r, g, b] = c.to_be_bytes();
+    0.299 * f32::from(r) + 0.587 * f32::from(g) + 0.114 * f32::from(b) > 160.0
 }
 
 /// A colour word (`red5`, `white`) or `#rgb` / `#rrggbb`, as Lust has them.
@@ -435,21 +479,48 @@ struct Laid {
     w: f32,
     h: f32,
     lines: Vec<String>,
+    /// Its number among the clickable pieces, if it's one.
+    action: Option<usize>,
+    /// Drawn with the focus ring.
+    focused: bool,
 }
 
-/// Turns the tree into placed pieces, within the limits.
-fn lay(node: &Node, depth: usize, count: &mut usize) -> Laid {
+/// Turns the tree into placed pieces, within the limits, with `looks`'
+/// hover and focus styles on the pieces they name.
+fn lay(node: &Node, depth: usize, count: &mut usize, looks: Looks) -> Laid {
     let id = *count;
     *count += 1;
     let mut look = base_look(&node.kind);
     apply(&mut look, &node.kind, &node.styles);
+    let live = node.action.filter(|_| !look.disabled);
+    if live.is_some() && live == looks.hover {
+        // Lust's hover look, or a button a little darker.
+        let hover: Vec<(String, Style)> = node
+            .styles
+            .iter()
+            .filter_map(|(k, v)| match (k.as_str(), v) {
+                ("hover", Style::Nested(inner)) => Some(inner.clone()),
+                _ => None,
+            })
+            .flatten()
+            .collect();
+        if hover.is_empty() {
+            look.background = look.background.map(|c| shade(c, 0.9));
+        } else {
+            apply(&mut look, &node.kind, &hover);
+        }
+    }
+    if look.disabled {
+        look.opacity *= 0.45;
+    }
+    let focused = live.is_some() && live == looks.focus;
     let mut children = Vec::new();
     if depth + 1 < MAX_DEPTH {
         for c in &node.children {
             if *count >= MAX_ELEMENTS {
                 break;
             }
-            children.push(lay(c, depth + 1, count));
+            children.push(lay(c, depth + 1, count, looks));
         }
     }
     Laid {
@@ -467,7 +538,16 @@ fn lay(node: &Node, depth: usize, count: &mut usize) -> Laid {
         w: 0.0,
         h: 0.0,
         lines: Vec::new(),
+        action: live,
+        focused,
     }
+}
+
+/// `c` with each channel times `k`.
+fn shade(c: u32, k: f32) -> u32 {
+    let [_, r, g, b] = c.to_be_bytes();
+    let s = |v: u8| (f32::from(v) * k).clamp(0.0, 255.0) as u32;
+    (s(r) << 16) | (s(g) << 8) | s(b)
 }
 
 /// Laying out: the text measurer, and sizes already measured.
@@ -481,7 +561,7 @@ fn font_of(l: &Look) -> usize {
 }
 
 fn shows_text(kind: &str) -> bool {
-    kind == "text"
+    matches!(kind, "text" | "button")
 }
 
 fn flex(c: &Laid, row: bool) -> Option<f32> {
@@ -829,8 +909,19 @@ fn rgb(v: u32, opacity: f32) -> Colour {
 /// real screen's shape, and the view's design height), into elements in
 /// drawing order: each placed from the top left, in design pixels.
 pub fn lay_out(view: &Node, size: [f32; 2], measure: &mut dyn Measure) -> Vec<Element> {
+    lay_out_with(view, size, measure, Looks::default()).0
+}
+
+/// [`lay_out`], with hover and focus looks, giving also where each
+/// clickable piece went (frontmost last).
+pub fn lay_out_with(
+    view: &Node,
+    size: [f32; 2],
+    measure: &mut dyn Measure,
+    looks: Looks,
+) -> (Vec<Element>, Vec<Clickable>) {
     let mut count = 0;
-    let mut top = lay(view, 0, &mut count);
+    let mut top = lay(view, 0, &mut count, looks);
     // The view's top is a column as big as the screen; columns and rows
     // directly in it are as wide as it, as in Lust's windows.
     top.kind = "view".into();
@@ -854,7 +945,43 @@ pub fn lay_out(view: &Node, size: [f32; 2], measure: &mut dyn Measure) -> Vec<El
     layout.place(&mut top, 0.0, 0.0, size[0], size[1]);
     let mut out = Vec::new();
     emit(&top, 1.0, &mut out);
-    out
+    let mut clickable = Vec::new();
+    clickables(&top, &mut clickable);
+    (out, clickable)
+}
+
+/// Every clickable piece's box, in drawing order.
+fn clickables(n: &Laid, out: &mut Vec<Clickable>) {
+    if let Some(action) = n.action {
+        out.push(Clickable {
+            rect: [n.x, n.y, n.x + n.w, n.y + n.h],
+            action,
+        });
+    }
+    for c in &n.children {
+        clickables(c, out);
+    }
+}
+
+/// The frontmost clickable piece at `at` (design pixels), if any.
+pub fn hit(clickable: &[Clickable], at: [f32; 2]) -> Option<usize> {
+    clickable
+        .iter()
+        .rev()
+        .find(|c| {
+            at[0] >= c.rect[0] && at[0] < c.rect[2] && at[1] >= c.rect[1] && at[1] < c.rect[3]
+        })
+        .map(|c| c.action)
+}
+
+/// Whether a view has anything to click (a button): such a screen frees
+/// the pointer while it's shown. Looked for no deeper than the layout goes.
+pub fn has_actions(view: &Node) -> bool {
+    fn look(node: &Node, depth: usize) -> bool {
+        node.action.is_some()
+            || depth < MAX_DEPTH && node.children.iter().any(|c| look(c, depth + 1))
+    }
+    look(view, 0)
 }
 
 /// The design size a view asks for (`view [width 1920, height 1080]`),
@@ -949,6 +1076,20 @@ fn emit(n: &Laid, opacity: f32, out: &mut Vec<Element>) {
         e.fill = Fill::Solid(l.background.map_or(Colour::NONE, |c| rgb(c, opacity)));
         e.border = l.border.map(|c| (l.border_w, rgb(c, opacity)));
         out.push(e);
+    }
+    if n.focused {
+        // The focus ring: the accent's blue, just outside the piece.
+        let mut ring = at(
+            n.x - 3.0,
+            n.y - 3.0,
+            n.w + 6.0,
+            n.h + 6.0,
+            ElementKind::Box {
+                round: round(n.w, n.h) + 3.0,
+            },
+        );
+        ring.border = Some((2.5, rgb(0x4dabf7, opacity)));
+        out.push(ring);
     }
     if shows_text(&n.kind) && !n.lines.is_empty() {
         let (ix, iy) = (n.x + l.pad[3], n.y + l.pad[0]);

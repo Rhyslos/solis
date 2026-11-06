@@ -81,7 +81,7 @@ impl std::fmt::Display for RecordingError {
 }
 
 /// The format version this build writes.
-pub(crate) const VERSION: u32 = 2;
+pub(crate) const VERSION: u32 = 3;
 /// The first line, before the version.
 const HEADER: &str = "solis recording";
 
@@ -95,8 +95,14 @@ pub static FORMAT: reflect::upgrade::Format<Recording> = reflect::upgrade::Forma
         let line = text.lines().next()?.trim();
         line.strip_prefix(HEADER)?.trim().parse().ok()
     },
-    steps: &[the_area_isn_t_known],
+    steps: &[the_area_isn_t_known, nothing_was_sent],
 };
+
+/// Version 2 to 3: screens' buttons sent nothing before version 3
+/// (decision 0088), so there's nothing to add.
+fn nothing_was_sent(_: &mut Recording) -> Result<(), String> {
+    Ok(())
+}
 
 /// Version 1 to 2: version 1 didn't say which area it was recorded in.
 fn the_area_isn_t_known(recording: &mut Recording) -> Result<(), String> {
@@ -117,6 +123,12 @@ impl Tick {
                 .actions
                 .keys()
                 .map(|name| name.len() + 23)
+                .sum::<usize>()
+            + self
+                .frame
+                .sent
+                .iter()
+                .map(|s| 20 + s.name.len() + s.values.iter().map(value_len).sum::<usize>())
                 .sum::<usize>()
     }
 }
@@ -158,6 +170,15 @@ impl Recording {
                 }
             }
             text.push('\n');
+            // What screens sent (format 3): a line each, after its tick.
+            for sent in &tick.frame.sent {
+                text.push_str(&format!("s {} {}", sent.to, sent.name));
+                for value in &sent.values {
+                    text.push(' ');
+                    write_value(&mut text, value);
+                }
+                text.push('\n');
+            }
         }
         text
     }
@@ -226,6 +247,17 @@ impl Recording {
                 return Err(RecordingError::TooBig);
             }
             let damaged = RecordingError::Damaged(n + 1);
+            // What a screen sent in the tick before (format 3).
+            if let Some(rest) = line.strip_prefix("s ").filter(|_| version >= 3) {
+                let tick: &mut Tick = ticks.last_mut().ok_or(damaged.clone())?;
+                if tick.frame.sent.len() >= crate::MAX_SENT {
+                    return Err(damaged);
+                }
+                tick.frame
+                    .sent
+                    .push(read_sent(rest).ok_or(damaged.clone())?);
+                continue;
+            }
             let mut words = line.split_ascii_whitespace();
             let number: usize = words
                 .next()
@@ -316,4 +348,125 @@ impl Recording {
             a.world != b.world || matches!((a.game, b.game), (Some(x), Some(y)) if x != y)
         })
     }
+}
+
+/// At most how many bytes a value takes in a recording.
+fn value_len(value: &reflect::Value) -> usize {
+    match value {
+        reflect::Value::Text(t) => 2 + t.len() * 2,
+        reflect::Value::List(items) => 2 + items.iter().map(|v| value_len(v) + 1).sum::<usize>(),
+        _ => 40,
+    }
+}
+
+/// A value as one word: `b1`, `i-3`, `f<bits>`, `t<hex>`, `e<id>` or `e-`,
+/// `l(...)` for a list (its values with `,` between). Assets aren't sent.
+fn write_value(text: &mut String, value: &reflect::Value) {
+    use reflect::Value;
+    match value {
+        Value::Bool(b) => text.push_str(if *b { "b1" } else { "b0" }),
+        Value::Int(n) => text.push_str(&format!("i{n}")),
+        Value::Float(v) => text.push_str(&format!("f{:x}", v.to_bits())),
+        Value::Text(t) => {
+            text.push('t');
+            for byte in t.bytes() {
+                text.push_str(&format!("{byte:02x}"));
+            }
+        }
+        Value::Entity(Some(id)) => text.push_str(&format!("e{id}")),
+        Value::Entity(None) | Value::Asset(_) => text.push_str("e-"),
+        Value::List(items) => {
+            text.push_str("l(");
+            for (i, item) in items.iter().enumerate() {
+                if i > 0 {
+                    text.push(',');
+                }
+                write_value(text, item);
+            }
+            text.push(')');
+        }
+    }
+}
+
+/// One `s` line's rest: the entity, the event's name and its values.
+fn read_sent(rest: &str) -> Option<crate::Sent> {
+    let mut words = rest.split(' ');
+    let to = words.next()?.parse().ok()?;
+    let name = words.next()?;
+    if name.is_empty()
+        || name.len() > crate::MAX_SENT_NAME
+        || !name.chars().all(|c| c.is_ascii_alphanumeric() || c == '_')
+    {
+        return None;
+    }
+    let mut values = Vec::new();
+    for word in words {
+        if values.len() >= crate::MAX_SENT_VALUES {
+            return None;
+        }
+        values.push(read_value(word, 0)?);
+    }
+    Some(crate::Sent {
+        to,
+        name: name.to_string(),
+        values,
+    })
+}
+
+/// A value written by [`write_value`]; lists go at most 4 deep.
+fn read_value(word: &str, depth: usize) -> Option<reflect::Value> {
+    use reflect::Value;
+    let (kind, rest) = word.split_at_checked(1)?;
+    Some(match kind {
+        "b" => match rest {
+            "1" => Value::Bool(true),
+            "0" => Value::Bool(false),
+            _ => return None,
+        },
+        "i" => Value::Int(rest.parse().ok()?),
+        "f" => {
+            let v = f64::from_bits(u64::from_str_radix(rest, 16).ok()?);
+            if !v.is_finite() {
+                return None;
+            }
+            Value::Float(v)
+        }
+        "t" => {
+            if rest.len() % 2 != 0 || rest.len() > 2 * crate::MAX_SENT_TEXT {
+                return None;
+            }
+            let bytes: Option<Vec<u8>> = (0..rest.len())
+                .step_by(2)
+                .map(|i| u8::from_str_radix(rest.get(i..i + 2)?, 16).ok())
+                .collect();
+            Value::Text(String::from_utf8(bytes?).ok()?)
+        }
+        "e" if rest == "-" => Value::Entity(None),
+        "e" => Value::Entity(Some(rest.parse().ok()?)),
+        "l" if depth < 4 => {
+            let inner = rest.strip_prefix('(')?.strip_suffix(')')?;
+            let mut items = Vec::new();
+            // Split at the commas of this list only, not of lists inside.
+            let (mut level, mut start) = (0usize, 0usize);
+            for (i, c) in inner.char_indices() {
+                match c {
+                    '(' => level += 1,
+                    ')' => level = level.checked_sub(1)?,
+                    ',' if level == 0 => {
+                        items.push(read_value(&inner[start..i], depth + 1)?);
+                        start = i + 1;
+                    }
+                    _ => {}
+                }
+                if items.len() > crate::MAX_SENT_VALUES {
+                    return None;
+                }
+            }
+            if !inner.is_empty() {
+                items.push(read_value(&inner[start..], depth + 1)?);
+            }
+            Value::List(items)
+        }
+        _ => return None,
+    })
 }

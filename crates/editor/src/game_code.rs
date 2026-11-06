@@ -477,6 +477,7 @@ impl GameWorld for PlayWorld<'_> {
             input: Arc::clone(&self.input),
             bindings: Arc::clone(&self.bindings),
             animator_states: Arc::new(self.world.animator_state_names()),
+            screens: Arc::new(self.world.screens_shown()),
             maps,
             map_places: Arc::new(places_of_maps.0),
             map_bounds: Arc::new(places_of_maps.1),
@@ -517,6 +518,9 @@ impl GameWorld for PlayWorld<'_> {
                 }
                 Change::SoundPlaying(which, playing) => {
                     self.world.set_sound_playing(which, playing);
+                }
+                Change::ShowScreen(which, ref screen, shown) => {
+                    self.world.set_screen(which, screen, shown);
                 }
                 Change::PlayClip(which, ref clip, again) => {
                     self.world.play_clip(which, clip, again);

@@ -190,6 +190,28 @@ fn sample_recording() -> Recording {
             game: (n % 4 == 0).then_some(n * 7),
         });
     }
+    // What screens' buttons sent (format 3), with every kind of value.
+    ticks[3].frame.sent.push(Sent {
+        to: reflect::EntityId::random(),
+        name: "Bought".into(),
+        values: vec![
+            reflect::Value::Text("Seed bag, ünïcode".into()),
+            reflect::Value::Int(-3),
+            reflect::Value::Float(0.1),
+            reflect::Value::Bool(true),
+            reflect::Value::Entity(None),
+            reflect::Value::Entity(Some(reflect::EntityId::random())),
+            reflect::Value::List(vec![
+                reflect::Value::Float(1.0),
+                reflect::Value::List(vec![reflect::Value::Int(2)]),
+            ]),
+        ],
+    });
+    ticks[3].frame.sent.push(Sent {
+        to: reflect::EntityId::random(),
+        name: "Resumed".into(),
+        values: Vec::new(),
+    });
     Recording {
         seed: 42,
         start: 0xdead_beef,
@@ -202,7 +224,7 @@ fn sample_recording() -> Recording {
 fn recordings_round_trip_exactly() {
     let r = sample_recording();
     let text = r.write();
-    assert!(text.starts_with("solis recording 2\nseed 42\narea areas/harbour.solarea\n"));
+    assert!(text.starts_with("solis recording 3\nseed 42\narea areas/harbour.solarea\n"));
     assert_eq!(Recording::read(&text).unwrap(), r);
     // Playing back the same: no difference; a changed checksum is found.
     assert_eq!(r.first_difference(&r.ticks), None);
@@ -219,7 +241,7 @@ fn damaged_recordings_are_refused_never_crashing() {
     let good = sample_recording().write();
     assert_eq!(Recording::read("hello"), Err(RecordingError::NotARecording));
     // A newer one is refused before it's read on, with why.
-    let newer = Recording::read("solis recording 3\nseed 1\nstart 0\n").unwrap_err();
+    let newer = Recording::read("solis recording 4\nseed 1\nstart 0\n").unwrap_err();
     assert!(newer.to_string().contains("newer version"), "{newer}");
     assert!(matches!(
         Recording::read("solis recording 0\nseed 1\nstart 0\n"),
@@ -234,6 +256,16 @@ fn damaged_recordings_are_refused_never_crashing() {
         "solis recording 1\nseed 1\nstart 0\n0 w 0 Jump=h,7fc00000,0\n",
         "solis recording 1\nseed 1\nstart 0\n0 w 0 has-dash=h\n",
         "solis recording 1\nseed 1\nstart 0\n0 x 0\n",
+        // What screens sent: before any tick, or damaged.
+        "solis recording 3\nseed 1\narea\nstart 0\ns 5A329QT768NJB Go\n",
+        "solis recording 3\nseed 1\narea\nstart 0\n0 w 0\ns nope Go\n",
+        "solis recording 3\nseed 1\narea\nstart 0\n0 w 0\ns 5A329QT768NJB Go-on\n",
+        "solis recording 3\nseed 1\narea\nstart 0\n0 w 0\ns 5A329QT768NJB Go x1\n",
+        "solis recording 3\nseed 1\narea\nstart 0\n0 w 0\ns 5A329QT768NJB Go f7ff8000000000000\n",
+        "solis recording 3\nseed 1\narea\nstart 0\n0 w 0\ns 5A329QT768NJB Go t4\n",
+        "solis recording 3\nseed 1\narea\nstart 0\n0 w 0\ns 5A329QT768NJB Go tff\n",
+        "solis recording 3\nseed 1\narea\nstart 0\n0 w 0\ns 5A329QT768NJB Go l(l(l(l(l(i1)))))\n",
+        "solis recording 3\nseed 1\narea\nstart 0\n0 w 0\ns 5A329QT768NJB Go l(i1\n",
     ] {
         assert!(
             matches!(Recording::read(bad), Err(RecordingError::Damaged(_))),
@@ -681,9 +713,19 @@ fn a_recording_names_its_area_and_older_ones_don_t() {
         Some("a b")
     );
     // Version 1 had no area line: it reads, with none.
-    let one = text
-        .replacen("solis recording 2", "solis recording 1", 1)
-        .replacen("area areas/harbour.solarea\n", "", 1);
+    let one: String = text
+        .replacen("solis recording 3", "solis recording 1", 1)
+        .replacen("area areas/harbour.solarea\n", "", 1)
+        .lines()
+        .filter(|l| !l.starts_with("s "))
+        .map(|l| format!("{l}\n"))
+        .collect();
+    // ... and nothing sent: a line saying so is damage there.
+    let sent_in_one = format!("{one}s 5A329QT768NJB Go\n");
+    assert!(matches!(
+        Recording::read(&sent_in_one),
+        Err(RecordingError::Damaged(_))
+    ));
     let read = Recording::read(&one).unwrap();
     assert_eq!((read.area, read.ticks.len()), (None, r.ticks.len()));
     // Too long, or a control character: damaged.
@@ -709,4 +751,50 @@ fn a_recording_names_its_area_and_older_ones_don_t() {
     assert!(Recording::is_plain_area_path("areas/farm 2/barn.solarea"));
     let missing = text.replacen("area areas/harbour.solarea\n", "", 1);
     assert!(Recording::read(&missing).is_err());
+}
+
+#[test]
+fn only_what_a_recording_reads_back_the_same_is_recordable() {
+    use reflect::Value;
+    let sent = |name: &str, values: Vec<Value>| Sent {
+        to: reflect::EntityId::random(),
+        name: name.into(),
+        values,
+    };
+    assert!(sent("Resumed", vec![]).recordable());
+    assert!(sent("Bought_2", vec![Value::Text("Seeds".into()), Value::Int(3)]).recordable());
+    assert!(!sent("", vec![]).recordable());
+    assert!(!sent("Two words", vec![]).recordable());
+    assert!(!sent(&"A".repeat(MAX_SENT_NAME + 1), vec![]).recordable());
+    assert!(!sent("Hit", vec![Value::Float(f64::NAN)]).recordable());
+    assert!(!sent("Hit", vec![Value::Text("x".repeat(MAX_SENT_TEXT + 1))]).recordable());
+    assert!(!sent("Hit", vec![Value::Int(1); MAX_SENT_VALUES + 1]).recordable());
+    let mut deep = Value::Int(1);
+    for _ in 0..5 {
+        deep = Value::List(vec![deep]);
+    }
+    assert!(!sent("Hit", vec![deep]).recordable());
+    // What's recordable comes back the same.
+    let kept = sent(
+        "Bought",
+        vec![
+            Value::List(vec![Value::Bool(true), Value::Float(0.1)]),
+            Value::Entity(None),
+        ],
+    );
+    let recording = Recording {
+        seed: 1,
+        start: 2,
+        ticks: vec![Tick {
+            frame: Frame {
+                actions: Default::default(),
+                sent: vec![kept.clone()],
+            },
+            world: 3,
+            game: None,
+        }],
+        area: None,
+    };
+    let back = Recording::read(&recording.write()).unwrap();
+    assert_eq!(back.ticks[0].frame.sent, vec![kept]);
 }

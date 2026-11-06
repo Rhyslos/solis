@@ -168,15 +168,81 @@ pub fn layout_with(
     // screen's shape, then drawn like elements.
     if let Some(view) = &screen.view {
         let design = [screen_px[0] / scale, screen_px[1] / scale];
-        let elements = match walking.fonts.as_deref_mut() {
-            Some(fonts) => crate::view::lay_out(view, design, fonts),
-            None => crate::view::lay_out(view, design, &mut crate::view::NoFonts),
+        let (elements, _) = match walking.fonts.as_deref_mut() {
+            Some(fonts) => crate::view::lay_out_with(view, design, fonts, screen.looks),
+            None => {
+                crate::view::lay_out_with(view, design, &mut crate::view::NoFonts, screen.looks)
+            }
         };
         for e in &elements {
             walking.walk(e, whole, 1.0, 0);
         }
     }
     out
+}
+
+/// Where a 2D game's picture of `base` pixels goes on a `screen` (both in
+/// pixels), and how it's scaled: what the renderer's pixel stage draws, and
+/// so where game UI is laid out ([`layout_at`]) and clicked.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct PictureArea {
+    /// Screen pixels per picture pixel.
+    pub scale: f32,
+    /// Whether that's a whole number.
+    pub whole: bool,
+    /// The picture's top-left corner on the screen, in whole pixels.
+    pub origin: [u32; 2],
+    /// The picture's size on the screen, in whole pixels.
+    pub size: [u32; 2],
+}
+
+/// [`PictureArea`] for a picture of `base` pixels on a `screen`:
+/// `whole_steps` keeps each picture pixel a whole number of screen pixels
+/// (with bars round it), else it fills as much as it can. A screen smaller
+/// than the picture shows it shrunk to fit.
+pub fn picture_area(base: [u32; 2], screen: [u32; 2], whole_steps: bool) -> PictureArea {
+    let base = base.map(|v| v.max(1));
+    let screen = screen.map(|v| v.max(1));
+    let fits = (screen[0] as f32 / base[0] as f32).min(screen[1] as f32 / base[1] as f32);
+    let steps = (screen[0] / base[0]).min(screen[1] / base[1]);
+    let whole = steps >= 1 && (whole_steps || fits == steps as f32);
+    let scale = if whole { steps as f32 } else { fits };
+    let size = if whole {
+        [base[0] * steps, base[1] * steps]
+    } else {
+        [
+            ((base[0] as f32 * scale).round() as u32).clamp(1, screen[0]),
+            ((base[1] as f32 * scale).round() as u32).clamp(1, screen[1]),
+        ]
+    };
+    let origin = [(screen[0] - size[0]) / 2, (screen[1] - size[1]) / 2];
+    PictureArea {
+        scale,
+        whole,
+        origin,
+        size,
+    }
+}
+
+/// The clickable piece of `screen`'s view (decision 0088) at `at`, in a
+/// screen `size` pixels big (`at` in its pixels, from its top left), laid
+/// out as [`layout_with`] lays it out (with the same `pixel_step`).
+pub fn clickable_at(
+    screen: &Screen,
+    size: [u32; 2],
+    pixel_step: Option<u32>,
+    at: [f32; 2],
+    measure: &mut dyn crate::view::Measure,
+) -> Option<usize> {
+    let view = screen.view.as_ref()?;
+    if !(at[0].is_finite() && at[1].is_finite()) {
+        return None;
+    }
+    let screen_px = [size[0] as f32, size[1] as f32];
+    let scale = scale_of(screen.scale, screen.design, screen_px, pixel_step);
+    let design = [screen_px[0] / scale, screen_px[1] / scale];
+    let (_, clickable) = crate::view::lay_out_with(view, design, measure, screen.looks);
+    crate::view::hit(&clickable, [at[0] / scale, at[1] / scale])
 }
 
 /// What laying a screen out carries as it goes.

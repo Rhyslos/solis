@@ -136,6 +136,17 @@ pub trait Host {
     fn set_sound_playing(&mut self, which: EntityId, playing: bool) {
         let _ = (which, playing);
     }
+    /// Shows (`shown`) or hides the screen named `screen` on the entity's
+    /// Screen, at the end of the tick (decision 0087).
+    fn show_screen(&mut self, which: EntityId, screen: &str, shown: bool) {
+        let _ = (which, screen, shown);
+    }
+    /// Whether the entity's Screen shows the screen named `screen`, as the
+    /// tick started.
+    fn screen_shown(&self, which: EntityId, screen: &str) -> bool {
+        let _ = (which, screen);
+        false
+    }
     /// Plays a clip on the entity's Sprite at the end of the tick (Phase
     /// 9, D3): already playing it (or finished it), it carries on as it
     /// is; another clip starts from its beginning. With `again`
@@ -689,6 +700,39 @@ pub(crate) fn with_natives<'h, R>(
                     h.borrow_mut().set_sound_playing(e, playing);
                 }
                 Ok(())
+            })?,
+        )?;
+        // Screen.PauseMenu comes as "PauseMenu" (Screen.None, a project
+        // with no screens, shows nothing).
+        let screen_named = |screen: &mlua::LuaString| -> Option<String> {
+            let screen = screen.to_str().ok()?;
+            (*screen != *crate::project_names::NO_OPTION).then(|| screen.to_string())
+        };
+        natives.raw_set(
+            "entity_showScreen",
+            scope.create_function(move |_, (which, screen): (LuaValue, mlua::LuaString)| {
+                if let (Some(e), Some(screen)) = (entity_of(&which), screen_named(&screen)) {
+                    h.borrow_mut().show_screen(e, &screen, true);
+                }
+                Ok(())
+            })?,
+        )?;
+        natives.raw_set(
+            "entity_hideScreen",
+            scope.create_function(move |_, (which, screen): (LuaValue, mlua::LuaString)| {
+                if let (Some(e), Some(screen)) = (entity_of(&which), screen_named(&screen)) {
+                    h.borrow_mut().show_screen(e, &screen, false);
+                }
+                Ok(())
+            })?,
+        )?;
+        natives.raw_set(
+            "entity_screenShown",
+            scope.create_function(move |_, (which, screen): (LuaValue, mlua::LuaString)| {
+                Ok(match (entity_of(&which), screen_named(&screen)) {
+                    (Some(e), Some(screen)) => h.borrow().screen_shown(e, &screen),
+                    _ => false,
+                })
             })?,
         )?;
         natives.raw_set(

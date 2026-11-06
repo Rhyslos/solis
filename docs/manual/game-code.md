@@ -397,6 +397,10 @@ Things that fall, collide and get pushed have a **RigidBody** and a **Collider**
 | `solis/animation` | event `CueReached(Cue cue)` | Sent when a sprite's clip reaches a frame with an event (bring it in with `fetch "solis/animation":CueReached;`). |
 | `solis/animation` | event `ClipFinished(Clip clip)` | Sent when a sprite's clip has played all its times. |
 | `solis/project` | `state Clip`, `state Cue` | The sprites' clips, under their sheets (`Clip.Sprites.Farmer.Walk`), and their frame events (`Cue.Footstep`). |
+| any entity | `showScreen(Screen which)` | Shows one of the game's screens on the entity, at the end of the tick ([Game screens](screens.md)). |
+| any entity | `hideScreen(Screen which)` | Hides it, if the entity shows it. |
+| any entity | `screenShown(Screen which)` | Whether the entity shows that screen, as the tick started. |
+| `solis/project` | `state Screen` | The game's screens, by their files in `ui/` (`Screen.PauseMenu` for `ui/pauseMenu.lst`). |
 | `solis/animators/<file>` | `class <File>Animator`, `state <File>State` | Each animator's own file: `anim:setMoving(true)`, `anim:current()` ([Animators](animators.md)). |
 | `solis/maps/<file>` | `class <File>Map`, its layers, terrains and choices as states | Each tile map's own file: `farm:setWatered(x, y, true)`, `farm:terrain(FarmLayer.Ground, x, y)` ([Tile maps](tile-maps.md)). |
 | `solis/input` | `bool Input:held(Action action)` | Whether an action is held this tick ([Input](input.md)). |

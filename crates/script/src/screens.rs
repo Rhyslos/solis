@@ -230,7 +230,16 @@ pub struct Screens {
     files: Vec<String>,
     /// The components screens read, with their readers' names.
     readers: Vec<(String, String)>,
+    /// Each screen's buttons from its last view, by the screen's name and
+    /// the entity it was shown for, in their numbers' order.
+    actions: RefCell<Buttons>,
 }
+
+/// Each screen's buttons, by its name and the entity it's shown for.
+type Buttons = std::collections::BTreeMap<(String, Option<reflect::EntityId>), Vec<Function>>;
+
+/// The most buttons one view keeps.
+pub const MAX_ACTIONS: usize = 1024;
 
 /// Where screens read components' values from: the running game.
 pub trait ScreenReader {
@@ -284,6 +293,7 @@ impl Screens {
             views,
             files: code.screens.iter().map(|(_, f)| f.clone()).collect(),
             readers: code.readers.clone(),
+            actions: RefCell::default(),
         })
     }
 
@@ -326,12 +336,80 @@ impl Screens {
                 p
             })?;
         let mut count = 0;
-        Ok(read_node(&tree, 0, &mut count))
+        let mut actions = Vec::new();
+        let node = read_node(&tree, 0, &mut count, &mut actions);
+        self.actions
+            .borrow_mut()
+            .insert((name.to_string(), entity), actions);
+        Ok(node)
+    }
+
+    /// Runs the button `action` (its number, [`Node::action`]) of the
+    /// screen `name` as last viewed for `entity`, giving back what it sent
+    /// (for the next tick), or why it stopped. A button not there (the
+    /// view changed) does nothing.
+    pub fn press(
+        &self,
+        name: &str,
+        entity: Option<reflect::EntityId>,
+        action: usize,
+        reader: &mut dyn ScreenReader,
+    ) -> Result<Vec<crate::Event>, CodeProblem> {
+        let Some(f) = self
+            .actions
+            .borrow()
+            .get(&(name.to_string(), entity))
+            .and_then(|a| a.get(action).cloned())
+        else {
+            return Ok(Vec::new());
+        };
+        let file = self
+            .views
+            .iter()
+            .position(|(n, _)| n == name)
+            .and_then(|at| self.files.get(at).cloned())
+            .unwrap_or_default();
+        self.runtime
+            .run_action(&f, VIEW_LIMIT, entity, &self.readers, reader)
+            .map_err(|mut p| {
+                if p.file.is_empty() {
+                    p.file = file;
+                }
+                p
+            })
     }
 }
 
+/// A style's value from the tree: a word, a number, a bool, or styles
+/// inside (`hover:[…]`), at most two deep.
+fn read_style(value: LuaValue, depth: usize) -> Option<Style> {
+    Some(match value {
+        LuaValue::Boolean(b) => Style::Flag(b),
+        LuaValue::Integer(i) => Style::Number(i as f64),
+        LuaValue::Number(n) => Style::Number(n),
+        LuaValue::String(s) => Style::Text(s.to_string_lossy()),
+        LuaValue::Table(t) if depth < 2 => Style::Nested(read_styles(&t, depth + 1)),
+        _ => return None,
+    })
+}
+
+/// A list of `{name, value}` pairs.
+fn read_styles(styles: &Table, depth: usize) -> Vec<(String, Style)> {
+    let mut out = Vec::new();
+    for pair in styles.sequence_values::<Table>().flatten().take(256) {
+        let Ok(LuaValue::String(name)) = pair.raw_get::<LuaValue>(1) else {
+            continue;
+        };
+        let name: String = name.to_string_lossy().chars().take(64).collect();
+        if let Some(value) = read_style(pair.raw_get(2).unwrap_or(LuaValue::Nil), depth) {
+            out.push((name, value));
+        }
+    }
+    out
+}
+
 /// A piece of the tree Lust's view gave: `{k, t, s, c, v}`.
-fn read_node(t: &Table, depth: usize, count: &mut usize) -> Node {
+fn read_node(t: &Table, depth: usize, count: &mut usize, actions: &mut Vec<Function>) -> Node {
     *count += 1;
     let text = |v: LuaValue| match v {
         LuaValue::String(s) => {
@@ -351,17 +429,14 @@ fn read_node(t: &Table, depth: usize, count: &mut usize) -> Node {
         ..Node::default()
     };
     if let Ok(styles) = t.raw_get::<Table>("s") {
-        for pair in styles.sequence_values::<Table>().flatten().take(256) {
-            let name = text(pair.raw_get(1).unwrap_or(LuaValue::Nil));
-            let value = match pair.raw_get(2).unwrap_or(LuaValue::Nil) {
-                LuaValue::Boolean(b) => Style::Flag(b),
-                LuaValue::Integer(i) => Style::Number(i as f64),
-                LuaValue::Number(n) => Style::Number(n),
-                LuaValue::String(s) => Style::Text(s.to_string_lossy()),
-                _ => continue,
-            };
-            node.styles.push((name, value));
-        }
+        node.styles = read_styles(&styles, 0);
+    }
+    // A button's (or a canvas shape's) { }: kept, and numbered.
+    if let Ok(f) = t.raw_get::<Function>("f")
+        && actions.len() < MAX_ACTIONS
+    {
+        node.action = Some(actions.len());
+        actions.push(f);
     }
     if depth + 1 < ui::screen::MAX_DEPTH
         && let Ok(children) = t.raw_get::<Table>("c")
@@ -370,7 +445,8 @@ fn read_node(t: &Table, depth: usize, count: &mut usize) -> Node {
             if *count >= MAX_PIECES {
                 break;
             }
-            node.children.push(read_node(&child, depth + 1, count));
+            node.children
+                .push(read_node(&child, depth + 1, count, actions));
         }
     }
     node

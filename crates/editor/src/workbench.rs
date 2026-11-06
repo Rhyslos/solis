@@ -1043,7 +1043,7 @@ impl Workbench {
             _ => None,
         };
         let playing = self.playing.is_some();
-        let mut game_clicked = false;
+        let mut game_out = crate::game_panel::GamePanelOut::default();
         let mut renderer = crate::profiler::Timed {
             inner: renderer,
             spent: std::time::Duration::ZERO,
@@ -1169,7 +1169,7 @@ impl Workbench {
                         playing,
                         game_input: self.game_input,
                         pixels: self.pixels,
-                        game_clicked: &mut game_clicked,
+                        game_out: &mut game_out,
                         document: &self.document,
                         models: &self.models,
                         area_requests: &mut area_requests,
@@ -1227,9 +1227,7 @@ impl Workbench {
         self.map_requests_done(map_requests);
         self.tile_overlay_done();
         self.paint_frame();
-        if game_clicked {
-            self.give_game_input(ui.ctx());
-        }
+        self.game_panel_done(ui.ctx(), game_out);
         self.tool_events();
         for request in requests {
             self.apply_property(request, self.gesture);

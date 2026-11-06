@@ -777,6 +777,27 @@ pub const NATIVES: &[Native] = &[
         lust: "method string entity:name() native;",
         about: "The entity's name, as the Area panel shows it.",
     },
+    Native {
+        file: "screens",
+        name: "showScreen",
+        owner: "entity",
+        lust: "method entity:showScreen(Screen which) native;",
+        about: "Shows one of the game's screens (a file in ui/) on the entity's Screen, at the end of the tick: showScreen(Screen.PauseMenu). An entity without a Screen is given one. An entity shows one screen at a time: use another entity for another.",
+    },
+    Native {
+        file: "screens",
+        name: "hideScreen",
+        owner: "entity",
+        lust: "method entity:hideScreen(Screen which) native;",
+        about: "Hides the screen, at the end of the tick, if the entity's Screen shows it.",
+    },
+    Native {
+        file: "screens",
+        name: "screenShown",
+        owner: "entity",
+        lust: "method bool entity:screenShown(Screen which) native;",
+        about: "Whether the entity's Screen shows this screen, as the tick started.",
+    },
 ];
 
 /// The description files, and the ready-made components in `kit/`
@@ -948,7 +969,9 @@ pub const DATA_CLASSES: &[(&str, &str)] = &[
 /// The project's own names as states, written by the editor into
 /// `solis/project.lst` ([`crate::project_names::project_file`]): what natives take where a string
 /// once named a file.
-pub const PROJECT_STATES: &[&str] = &["Assembly", "Action", "Sound", "Bus", "Clip", "Cue"];
+pub const PROJECT_STATES: &[&str] = &[
+    "Assembly", "Action", "Sound", "Bus", "Clip", "Cue", "Screen",
+];
 
 /// What the first line of each file describing the engine says after who made it: how the
 /// compiler knows the engine's own folder (Lust's host folder, decision 0072), without the
@@ -994,14 +1017,14 @@ mod tests {
     #[test]
     fn the_descriptions_check_cleanly_and_a_game_can_use_them() {
         let mut files = descriptions("Test Engine 9.9.9", "solis");
-        assert_eq!(files.len(), 13);
+        assert_eq!(files.len(), 14);
         assert!(files.iter().any(|(p, _)| p == "solis/project.lst"));
         assert!(files.iter().any(|(p, _)| p == "solis/data/tilemap.lst"));
         assert!(files[0].1.starts_with("-- Made by Test Engine 9.9.9"));
         files.push((
             "main.lst".into(),
             "fetch \"solis/world\":[World, Saves];\n\
-             fetch \"solis/project\":[Assembly, Action, Sound, Bus, Clip, Cue];\n\
+             fetch \"solis/project\":[Assembly, Action, Sound, Bus, Clip, Cue, Screen];\n\
              fetch \"solis/input\":Input;\n\
              get \"solis/entity\":facingAlong;\n\
              fetch \"solis/physics\":[Physics, RayHit];\n\
@@ -1145,7 +1168,8 @@ mod tests {
                     "input",
                     "sound",
                     "animation",
-                    "tiles"
+                    "tiles",
+                    "screens"
                 ]
                 .contains(&native.file)
             );

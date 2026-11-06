@@ -140,10 +140,23 @@ pub(crate) fn pixel_camera(
     )
 }
 
+/// What the Game panel saw this frame.
+#[derive(Debug, Clone, Copy, Default, PartialEq)]
+pub(crate) struct GamePanelOut {
+    /// The picture was clicked: a screen's button, or else the game then
+    /// takes the mouse and keys.
+    pub(crate) clicked: bool,
+    /// Where the pointer is over the picture, in its pixels from its top
+    /// left.
+    pub(crate) pointer: Option<[f32; 2]>,
+    /// Where the game's screens are laid out on the picture.
+    pub(crate) area: crate::game_screens::ScreensArea,
+}
+
 /// Draws the Game panel: the game's picture with its state in a corner,
-/// or, when nothing runs, how to start it. Returns whether the picture
-/// was clicked (the game then takes the mouse and keys); `has_input` is
-/// whether it has them.
+/// or, when nothing runs, how to start it. Says whether the picture was
+/// clicked and where the pointer is; `has_input` is whether the game has
+/// the mouse and keys.
 #[allow(clippy::too_many_arguments)]
 pub(crate) fn game_panel(
     ui: &mut Ui,
@@ -155,28 +168,32 @@ pub(crate) fn game_panel(
     sheets: &crate::sprite_sheets::SpriteSheets,
     renderer: &mut dyn ViewportRenderer,
     screens: Vec<std::sync::Arc<ui::Screen>>,
-) -> bool {
+) -> GamePanelOut {
     let Some(scene) = scene else {
         if playing {
             // The first frame after Play, before the panel was in front.
             crate::panels::placeholder(ui, "Starting…");
             ui.ctx().request_repaint();
-            return false;
+            return GamePanelOut::default();
         }
         crate::panels::placeholder(
             ui,
             "Press Play (at the top) to run the area here. The game looks through the first \
              camera in the area: Entity > Add camera adds one where you're looking from.",
         );
-        return false;
+        return GamePanelOut::default();
     };
     let rect = ui.max_rect();
-    let clicked = ui.allocate_rect(rect, egui::Sense::click()).clicked();
+    let response = ui.allocate_rect(rect, egui::Sense::click());
+    let clicked = response.clicked();
     let ppp = ui.ctx().pixels_per_point();
     let size_px = [
         (rect.width() * ppp).round().max(1.0) as u32,
         (rect.height() * ppp).round().max(1.0) as u32,
     ];
+    let pointer = response
+        .hover_pos()
+        .map(|p| [(p.x - rect.min.x) * ppp, (p.y - rect.min.y) * ppp]);
     let aspect = size_px[0] as f32 / size_px[1] as f32;
     let mut pixel = None;
     let (view_projection, position) = match scene.camera {
@@ -246,6 +263,28 @@ pub(crate) fn game_panel(
         pixel,
         ui: screens,
     };
+    // Where the renderer lays the screens out: a 2D game's picture inside
+    // its bars, in its whole steps (ui::layout::picture_area, which the
+    // renderer's pixel stage uses too), or all of it.
+    let area = match pixel {
+        Some(p) => {
+            let a = ui::layout::picture_area(
+                p.base,
+                size_px,
+                p.scaling == area::pixels::Scaling::WholeSteps,
+            );
+            crate::game_screens::ScreensArea {
+                origin: a.origin,
+                size: a.size,
+                step: a.whole.then_some(a.scale as u32),
+            }
+        }
+        None => crate::game_screens::ScreensArea {
+            origin: [0, 0],
+            size: size_px,
+            step: None,
+        },
+    };
     let painter = ui.painter_at(rect);
     match renderer.render(&view) {
         Ok(texture) => {
@@ -295,7 +334,11 @@ pub(crate) fn game_panel(
                 ui.label(RichText::new(note).size(12.0).color(theme::TEXT_STRONG));
             });
     }
-    clicked
+    GamePanelOut {
+        clicked,
+        pointer,
+        area,
+    }
 }
 
 #[cfg(test)]

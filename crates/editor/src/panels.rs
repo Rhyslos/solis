@@ -49,7 +49,7 @@ pub(crate) struct PanelViewer<'a> {
     /// The project's 2D settings, for a 2D camera's picture.
     pub(crate) pixels: area::pixels::PixelSettings,
     /// Set when the Game panel's picture was clicked.
-    pub(crate) game_clicked: &'a mut bool,
+    pub(crate) game_out: &'a mut crate::game_panel::GamePanelOut,
     pub(crate) document: &'a Document,
     pub(crate) models: &'a BTreeMap<AssetId, ModelInfo>,
     pub(crate) area_requests: &'a mut Vec<AreaRequest>,
@@ -395,7 +395,7 @@ impl TabViewer for PanelViewer<'_> {
             Panel::Game => {
                 let full = ui.max_rect();
                 let mut game_ui = ui.new_child(egui::UiBuilder::new().max_rect(full));
-                *self.game_clicked |= crate::game_panel::game_panel(
+                *self.game_out = crate::game_panel::game_panel(
                     &mut game_ui,
                     self.game,
                     self.playing,

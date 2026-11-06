@@ -64,7 +64,7 @@ fn showing(program: Arc<script::Compiled>, screens: &[(&str, bool, i64)]) -> Wor
 /// The words each screen drawn shows, in drawing order.
 fn drawn(w: &Workbench) -> Vec<String> {
     fn texts(node: &ui::view::Node, out: &mut Vec<String>) {
-        if node.kind == "text" {
+        if node.kind == "text" || node.kind == "button" {
             out.push(node.text.clone());
         }
         for c in &node.children {
@@ -145,4 +145,240 @@ fn the_screens_names_are_offered_for_a_screen_component() {
     let w = showing(program(&hud("text \"x\";"), None), &[]);
     assert_eq!(w.screen_names(), vec!["Hud".to_string()]);
     assert!(Workbench::new(info(), None).screen_names().is_empty());
+}
+
+/// Game code that hides the menu when its button says so and shows the
+/// HUD instead, with the project's names.
+const PAUSER: &str = "fetch \"solis/project\":Screen;\n\
+    event Resumed();\n\
+    component Pauser {\n\
+        has {\n\
+            int ticks = 0;\n\
+            int resumed = 0;\n\
+            bool sawMenu = false;\n\
+        }\n\
+        method update(float dt) {\n\
+            ticks = ticks + 1;\n\
+            sawMenu = screenShown(Screen.Menu);\n\
+        }\n\
+        on Resumed() {\n\
+            resumed = resumed + 1;\n\
+            hideScreen(Screen.Menu);\n\
+            showScreen(Screen.Hud);\n\
+        }\n\
+    }\n\
+    pass Pauser, Resumed;\nend\n";
+
+/// A menu that's one big button.
+const RESUME: &str = "fetch \"solis/screen\":Ui;\nfetch \"main\":Resumed;\n\
+    assembly Menu {\n    view {\n        stack [width fill, height fill] {\n            \
+    button \"Resume\" [width fill, height fill] {\n                send Resumed() to Ui:entity();\n            }\n        }\n    }\n}\npass Menu;\nend\n";
+
+fn pauser_program() -> Arc<script::Compiled> {
+    let (mut files, _) = script::describe::descriptions_for(
+        "Test Engine 9.9.9",
+        "solis",
+        &script::project_names::Names::standard().and_screens(&["Hud", "Menu"]),
+    );
+    files.push(("main.lst".into(), PAUSER.into()));
+    files.push(("ui/menu.lst".into(), RESUME.into()));
+    files.push((
+        "ui/hud.lst".into(),
+        "assembly Hud {\n    view {\n        text \"Hud\";\n    }\n}\npass Hud;\nend\n".into(),
+    ));
+    let code = script::Code {
+        files,
+        lua: Vec::new(),
+        notes: Vec::new(),
+    };
+    match script::compile(&code) {
+        Ok(Some(c)) => Arc::new(c),
+        Ok(None) => panic!("no code"),
+        Err(problems) => panic!("{}", problems[0]),
+    }
+}
+
+/// A workbench showing the menu on an entity with a Pauser.
+fn with_a_menu() -> (Workbench, EntityId) {
+    let mut w = showing(pauser_program(), &[("Menu", true, 0)]);
+    let id = w
+        .document
+        .area()
+        .iter()
+        .find(|(_, data)| data.get::<Screen>().is_some())
+        .unwrap()
+        .0;
+    w.apply_property(
+        crate::properties::PropertyRequest::AddComponent {
+            entity: id,
+            component: "Pauser".into(),
+        },
+        1,
+    );
+    (w, id)
+}
+
+fn pauser(w: &mut Workbench, id: EntityId, field: &str) -> reflect::Value {
+    let game = w.playing.as_mut().unwrap().game.as_mut().unwrap();
+    game.values(id, "Pauser")
+        .unwrap()
+        .get(field)
+        .unwrap()
+        .clone()
+}
+
+#[test]
+fn a_button_clicked_sends_its_event_in_the_next_tick_and_game_code_hides_the_screen() {
+    let (mut w, id) = with_a_menu();
+    w.play();
+    w.run_game(1.0 / 60.0);
+    assert_eq!(drawn(&w), vec!["Resume".to_string()]);
+    assert!(
+        w.game_screens.wants_pointer(),
+        "a screen with a button frees the pointer"
+    );
+    assert_eq!(pauser(&mut w, id, "sawMenu"), reflect::Value::Bool(true));
+    let area = crate::game_screens::ScreensArea {
+        origin: [0, 0],
+        size: [1280, 720],
+        step: None,
+    };
+    w.game_screens.point_at(Some([640.0, 360.0]), area);
+    assert_eq!(w.game_screens.hover, Some((0, 0)));
+    assert_eq!(
+        w.game_screens.pictures[0].looks.hover,
+        Some(0),
+        "drawn hovered"
+    );
+    w.press_hovered();
+    assert_eq!(w.game_screens.sent.len(), 1, "waiting for the next tick");
+    assert_eq!(pauser(&mut w, id, "resumed"), reflect::Value::Int(0));
+    w.run_game(1.0 / 60.0);
+    assert!(w.game_screens.sent.is_empty());
+    assert_eq!(pauser(&mut w, id, "resumed"), reflect::Value::Int(1));
+    // Hidden at the end of that tick, and the HUD shown instead.
+    assert_eq!(drawn(&w), vec!["Hud".to_string()]);
+    assert!(!w.game_screens.wants_pointer());
+    assert_eq!(
+        w.game_screens.hover, None,
+        "the button went with its screen"
+    );
+    w.run_game(1.0 / 60.0);
+    assert_eq!(pauser(&mut w, id, "sawMenu"), reflect::Value::Bool(false));
+}
+
+#[test]
+fn a_pointer_off_the_buttons_or_off_the_panel_hovers_nothing() {
+    let (mut w, _) = with_a_menu();
+    w.play();
+    w.run_game(1.0 / 60.0);
+    let area = crate::game_screens::ScreensArea {
+        origin: [100, 50],
+        size: [400, 300],
+        step: Some(2),
+    };
+    w.game_screens.point_at(Some([50.0, 20.0]), area);
+    assert_eq!(w.game_screens.hover, None, "in the bars");
+    w.game_screens.point_at(Some([300.0, 200.0]), area);
+    assert_eq!(w.game_screens.hover, Some((0, 0)));
+    w.game_screens.point_at(None, area);
+    assert_eq!(w.game_screens.hover, None);
+    assert_eq!(w.game_screens.pictures[0].looks.hover, None);
+    w.game_screens.point_at(Some([f32::NAN, 1.0]), area);
+    assert_eq!(w.game_screens.hover, None);
+    // Nothing hovered: a press does nothing.
+    w.press_hovered();
+    assert!(w.game_screens.sent.is_empty());
+}
+
+fn run_to(w: &mut Workbench, ticks: u64) {
+    while w.world().unwrap().clock().ticks < ticks {
+        let left = ticks - w.world().unwrap().clock().ticks;
+        w.run_game((world::TICK * (left.min(3) as f64) + 1e-9) as f32);
+    }
+}
+
+/// Clicks the menu's one button, as the Game panel does.
+fn click(w: &mut Workbench) {
+    let area = crate::game_screens::ScreensArea {
+        origin: [0, 0],
+        size: [1280, 720],
+        step: None,
+    };
+    w.game_screens.point_at(Some([640.0, 360.0]), area);
+    w.press_hovered();
+}
+
+#[test]
+fn a_recording_keeps_what_buttons_sent_and_its_replay_sends_it_again() {
+    let (mut w, id) = with_a_menu();
+    w.project = Some(crate::library::ProjectInfo {
+        name: "Menus".into(),
+        root: std::env::temp_dir(),
+        assets: std::env::temp_dir(),
+    });
+    w.play_and_record();
+    run_to(&mut w, 5);
+    click(&mut w);
+    run_to(&mut w, 20);
+    assert_eq!(pauser(&mut w, id, "resumed"), reflect::Value::Int(1));
+    w.stop();
+    let text = w
+        .outbox
+        .iter()
+        .find_map(|a| match a {
+            crate::workbench::WorkbenchAction::SaveRecording(text) => Some(text.clone()),
+            _ => None,
+        })
+        .unwrap();
+    let recording = input::Recording::read(&text).unwrap();
+    let sent: Vec<&input::Sent> = recording.ticks.iter().flat_map(|t| &t.frame.sent).collect();
+    assert_eq!(sent.len(), 1, "kept on its tick");
+    assert_eq!((sent[0].to, sent[0].name.as_str()), (id, "Resumed"));
+    // Played back, the recording's click arrives; a click meanwhile doesn't.
+    w.replay(&text, "menu.solrec");
+    run_to(&mut w, 3);
+    click(&mut w);
+    for _ in 0..100 {
+        if w.play_state() == crate::play::PlayState::Paused {
+            break;
+        }
+        w.run_game((world::TICK * 2.0) as f32);
+    }
+    assert!(
+        w.log_lines()
+            .iter()
+            .any(|l| l.text.contains("matched the recording")),
+        "{:?}",
+        w.log_lines().iter().map(|l| &l.text).collect::<Vec<_>>()
+    );
+    assert_eq!(pauser(&mut w, id, "resumed"), reflect::Value::Int(1));
+}
+
+#[test]
+fn a_screen_game_code_hid_stays_hidden_after_a_load() {
+    let (mut w, id) = with_a_menu();
+    w.project = Some(crate::library::ProjectInfo {
+        name: "Menus".into(),
+        root: std::env::temp_dir(),
+        assets: std::env::temp_dir(),
+    });
+    w.play();
+    run_to(&mut w, 2);
+    click(&mut w);
+    run_to(&mut w, 4);
+    let world = &w.playing.as_ref().unwrap().world;
+    assert_eq!(world.screen_shown(id).as_deref(), Some("Hud"));
+    let text = w.save_text().unwrap();
+    w.stop();
+    w.play();
+    run_to(&mut w, 1);
+    assert_eq!(
+        drawn(&w),
+        vec!["Resume".to_string()],
+        "a new play starts over"
+    );
+    w.load_game_from_code(&text, "quick");
+    w.run_game((world::TICK + 1e-9) as f32);
+    assert_eq!(drawn(&w), vec!["Hud".to_string()], "as saved");
 }
