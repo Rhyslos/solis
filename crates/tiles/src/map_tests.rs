@@ -198,7 +198,7 @@ fn a_map_s_layers_and_values_stay_within_their_memory() {
     let cells = u64::from(MAX_SIDE) * u64::from(MAX_SIDE);
     let bytes = (layers as u64 + numbers as u64 * 4) * cells;
     assert!(bytes <= MAX_MAP_BYTES, "{bytes}");
-    assert!(layers >= 3 && layers <= MAX_LAYERS);
+    assert!((3..=MAX_LAYERS).contains(&layers));
     // A small map has room for all of them.
     let mut small = TileMap::bare([64, 64], None);
     for _ in 0..MAX_LAYERS {
