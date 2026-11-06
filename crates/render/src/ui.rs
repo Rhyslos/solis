@@ -32,6 +32,7 @@ impl UiInstance {
             ui::ShapeKind::Ellipse => 1.0,
             ui::ShapeKind::Line => 2.0,
             ui::ShapeKind::Letter => 3.0,
+            ui::ShapeKind::Picture => 4.0,
         };
         let mut flags = 0u32;
         if shape.crisp {
@@ -39,6 +40,9 @@ impl UiInstance {
         }
         if shape.stretch == ui::Stretch::Down {
             flags |= 2;
+        }
+        if shape.blocky {
+            flags |= 4;
         }
         Self {
             rect: shape.rect,
@@ -52,7 +56,8 @@ impl UiInstance {
     }
 }
 
-/// The pipeline game UI is drawn with, and the letters' atlas on the card.
+/// The pipeline game UI is drawn with, and the letters' and pictures'
+/// atlases on the card.
 #[derive(Debug)]
 pub struct UiPipeline {
     layout: wgpu::BindGroupLayout,
@@ -62,6 +67,10 @@ pub struct UiPipeline {
     sampler: wgpu::Sampler,
     /// The atlas revision on the card (`u64::MAX`: none yet).
     uploaded: std::sync::atomic::AtomicU64,
+    /// The pictures' atlas (decision 0089), and its revision on the card.
+    pictures: wgpu::Texture,
+    pictures_view: wgpu::TextureView,
+    pictures_uploaded: std::sync::atomic::AtomicU64,
 }
 
 impl UiPipeline {
@@ -98,6 +107,16 @@ impl UiPipeline {
                     binding: 2,
                     visibility: wgpu::ShaderStages::FRAGMENT,
                     ty: wgpu::BindingType::Sampler(wgpu::SamplerBindingType::Filtering),
+                    count: None,
+                },
+                wgpu::BindGroupLayoutEntry {
+                    binding: 3,
+                    visibility: wgpu::ShaderStages::FRAGMENT,
+                    ty: wgpu::BindingType::Texture {
+                        sample_type: wgpu::TextureSampleType::Float { filterable: true },
+                        view_dimension: wgpu::TextureViewDimension::D2,
+                        multisampled: false,
+                    },
                     count: None,
                 },
             ],
@@ -165,6 +184,23 @@ impl UiPipeline {
             min_filter: wgpu::FilterMode::Linear,
             ..Default::default()
         });
+        let side = ui::pictures::SIDE;
+        let pictures = device.create_texture(&wgpu::TextureDescriptor {
+            label: Some("game ui pictures"),
+            size: wgpu::Extent3d {
+                width: side,
+                height: side,
+                depth_or_array_layers: 1,
+            },
+            mip_level_count: 1,
+            sample_count: 1,
+            dimension: wgpu::TextureDimension::D2,
+            // Colours as the screen has them (sRGB numbers), as shapes' are.
+            format: wgpu::TextureFormat::Rgba8Unorm,
+            usage: wgpu::TextureUsages::TEXTURE_BINDING | wgpu::TextureUsages::COPY_DST,
+            view_formats: &[],
+        });
+        let pictures_view = pictures.create_view(&wgpu::TextureViewDescriptor::default());
         Self {
             layout,
             pipeline,
@@ -172,7 +208,42 @@ impl UiPipeline {
             atlas_view,
             sampler,
             uploaded: std::sync::atomic::AtomicU64::new(u64::MAX),
+            pictures,
+            pictures_view,
+            pictures_uploaded: std::sync::atomic::AtomicU64::new(u64::MAX),
         }
+    }
+
+    /// Sends the pictures' atlas to the card when it's another or changed.
+    fn upload_pictures(&self, queue: &wgpu::Queue, pictures: &ui::Pictures) {
+        use std::sync::atomic::Ordering;
+        let side = ui::pictures::SIDE;
+        if self.pictures_uploaded.load(Ordering::Relaxed) == pictures.revision
+            || pictures.pixels.len() != (side * side * 4) as usize
+        {
+            return;
+        }
+        queue.write_texture(
+            wgpu::TexelCopyTextureInfo {
+                texture: &self.pictures,
+                mip_level: 0,
+                origin: wgpu::Origin3d::ZERO,
+                aspect: wgpu::TextureAspect::All,
+            },
+            &pictures.pixels,
+            wgpu::TexelCopyBufferLayout {
+                offset: 0,
+                bytes_per_row: Some(side * 4),
+                rows_per_image: Some(side),
+            },
+            wgpu::Extent3d {
+                width: side,
+                height: side,
+                depth_or_array_layers: 1,
+            },
+        );
+        self.pictures_uploaded
+            .store(pictures.revision, Ordering::Relaxed);
     }
 
     /// Sends the letters' atlas to the card when it changed since last.
@@ -205,8 +276,10 @@ impl UiPipeline {
     }
 
     /// Draws `shapes` over `view` (an image `size` pixels big, kept as it
-    /// is underneath), in order, and submits it. Shapes past
-    /// [`MAX_SHAPES`] are left out. Never waits for the GPU.
+    /// is underneath), in order, with letters from `atlas` and pictures
+    /// from `pictures`, and submits it. Shapes past [`MAX_SHAPES`] are left
+    /// out. Never waits for the GPU.
+    #[allow(clippy::too_many_arguments)]
     pub fn draw(
         &self,
         device: &wgpu::Device,
@@ -215,12 +288,16 @@ impl UiPipeline {
         size: [u32; 2],
         shapes: &[ui::Shape],
         atlas: Option<&ui::text::Atlas>,
+        pictures: Option<&ui::Pictures>,
     ) {
         if shapes.is_empty() || size[0] == 0 || size[1] == 0 {
             return;
         }
         if let Some(atlas) = atlas {
             self.upload(queue, atlas);
+        }
+        if let Some(pictures) = pictures {
+            self.upload_pictures(queue, pictures);
         }
         let instances: Vec<UiInstance> =
             shapes.iter().take(MAX_SHAPES).map(UiInstance::of).collect();
@@ -250,6 +327,10 @@ impl UiPipeline {
                 wgpu::BindGroupEntry {
                     binding: 2,
                     resource: wgpu::BindingResource::Sampler(&self.sampler),
+                },
+                wgpu::BindGroupEntry {
+                    binding: 3,
+                    resource: wgpu::BindingResource::TextureView(&self.pictures_view),
                 },
             ],
         });

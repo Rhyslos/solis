@@ -19,4 +19,5 @@ Decision 0083 settled cutting named pictures out of a sheet (Godot's AtlasTextur
 ## Consequences
 
 - Atlas Crop comes first (this decision's first pull request); pictures drawn on screens follow, then the UI editor (M4, M5), then styles and text size (M6) and the UI sample (M7).
+- Pictures on screens (built second): every picture the screens name is packed into one 2048 × 2048 atlas (`ui::Pictures`), drawn in the same draw call as shapes and letters. A picture shown bigger than it is keeps square pixels (pixel art); one shown smaller is smoothed. Names written out in a screen's code are checked against the Library and Atlas Crop, and listed in Problems with their line.
 - `image "file#Crop"` is a string name for something Solis makes, an exception to the API guidelines' rule, because `image` is Lust's own piece. Solis checks every such name, so a typo is still a problem shown before the game runs.

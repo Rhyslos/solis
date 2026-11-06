@@ -4,7 +4,7 @@
 //!
 //! The rules are Lust's (its `native_ui.rs`: `measure`, `place`, `apply`,
 //! `base_look`), for the pieces a game screen uses: `column`, `row`,
-//! `stack`, `space`, `text`, `progress`, and `canvas` with `box`,
+//! `stack`, `space`, `text`, `button`, `image`, `progress`, and `canvas` with `box`,
 //! `circle` and `line`. Other pieces are laid out as columns and draw
 //! nothing (yet). Nothing here trusts the tree: sizes, depth and counts
 //! are kept within limits.
@@ -68,10 +68,34 @@ pub enum Style {
     Nested(Vec<(String, Style)>),
 }
 
-/// What laying a view out needs to know about text.
+/// What laying a view out needs to know about text and pictures.
 pub trait Measure {
     /// How wide and tall `text` is in `font` at `size` design pixels.
     fn measure(&mut self, font: usize, text: &str, size: f32) -> [f32; 2];
+
+    /// How big the picture `name` is, in its own pixels, if there is one
+    /// (decision 0089). None knows of none.
+    fn picture(&mut self, _name: &str) -> Option<[u32; 2]> {
+        None
+    }
+}
+
+/// A measure that also knows a screen's pictures.
+pub struct WithPictures<'a> {
+    /// What measures text.
+    pub text: &'a mut dyn Measure,
+    /// The pictures, if the screen has any.
+    pub pictures: Option<&'a crate::pictures::Pictures>,
+}
+
+impl Measure for WithPictures<'_> {
+    fn measure(&mut self, font: usize, text: &str, size: f32) -> [f32; 2] {
+        self.text.measure(font, text, size)
+    }
+
+    fn picture(&mut self, name: &str) -> Option<[u32; 2]> {
+        self.pictures?.get(name).map(|p| p.size)
+    }
 }
 
 impl Measure for crate::text::Fonts {
@@ -143,6 +167,8 @@ struct Look {
     rad: f32,
     thick: f32,
     disabled: bool,
+    /// A picture covers its box rather than fitting inside it.
+    cover: bool,
 }
 
 /// Lust's text colour on a light window, and its muted one.
@@ -183,6 +209,7 @@ fn base_look(kind: &str) -> Look {
         rad: 10.0,
         thick: 2.0,
         disabled: false,
+        cover: false,
     };
     match kind {
         "row" => l.valign = Align::Center,
@@ -313,6 +340,7 @@ fn apply(l: &mut Look, kind: &str, styles: &[(String, Style)]) {
             "spread" => l.spread = true,
             "subtle" => l.background = None,
             "disabled" => l.disabled = true,
+            "cover" => l.cover = true,
             "from" => l.from = n.unwrap_or(0.0),
             "to" => l.to = n.unwrap_or(100.0),
             "x" => l.at_x = n.unwrap_or(0.0),
@@ -689,6 +717,26 @@ impl Layout<'_> {
             }
             "space" | "progress" | "canvas" | "box" | "line" => (0.0, 0.0),
             "circle" => (2.0 * l.rad, 2.0 * l.rad),
+            "image" => {
+                // As Lust sizes a picture: as big as it is (64 × 64 when
+                // there's none), shrunk to fit, keeping its shape.
+                let [pw, ph] = self
+                    .measure
+                    .picture(&n.text)
+                    .map_or([64.0, 64.0], |s| s.map(|v| v as f32));
+                let ratio = ph / pw.max(1.0);
+                let w = match (l.width, l.height) {
+                    (Size::Fixed(f), _) => f - padx,
+                    (Size::Fill, _) if inner.is_finite() => inner,
+                    (Size::Auto, Size::Fixed(g)) => (g - pady) / ratio.max(1e-6),
+                    _ => pw.min(inner),
+                };
+                let h = match l.height {
+                    Size::Fixed(g) => g - pady,
+                    _ => w * ratio,
+                };
+                (w.max(0.0), h.max(0.0))
+            }
             "row" => {
                 let sizes = self.row_sizes(n, inner);
                 (
@@ -1128,6 +1176,21 @@ fn emit(n: &Laid, opacity: f32, out: &mut Vec<Element>) {
         );
         ring.border = Some((2.5, rgb(0x4dabf7, opacity)));
         out.push(ring);
+    }
+    if n.kind == "image" {
+        let mut e = at(
+            n.x + l.pad[3],
+            n.y + l.pad[0],
+            n.w - l.pad[1] - l.pad[3],
+            n.h - l.pad[0] - l.pad[2],
+            ElementKind::Picture {
+                name: n.text.clone(),
+                round: l.radius,
+                cover: l.cover,
+            },
+        );
+        e.fill = Fill::Solid(Colour::WHITE.with_alpha(opacity));
+        out.push(e);
     }
     if shows_text(&n.kind) && !n.lines.is_empty() {
         let (ix, iy) = (n.x + l.pad[3], n.y + l.pad[0]);

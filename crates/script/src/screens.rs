@@ -43,6 +43,66 @@ pub struct ScreenCode {
     pub readers: Vec<(String, String)>,
     /// What's worth saying about them: components left out, and why.
     pub notes: Vec<String>,
+    /// Every picture a screen names in its code (decision 0089), where.
+    pub pictures: Vec<PictureUse>,
+}
+
+/// A picture named in a screen's code: `image "sprites/tools.png#Axe"`.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct PictureUse {
+    /// The screen's file.
+    pub file: String,
+    /// Its line and column, from 1.
+    pub line: u32,
+    /// Its column, from 1 (at the name's opening quote).
+    pub column: u32,
+    /// The name, as written: a picture's path inside the assets, perhaps
+    /// with `#` and a crop's name.
+    pub name: String,
+}
+
+/// The most picture names read from the screens' code.
+pub const MAX_PICTURE_USES: usize = 4096;
+
+/// Every `image "…"` with its name written out in `files`' screens (those
+/// in [`FOLDER`]), skipping comments; a name worked out as the game runs is
+/// found then. At most [`MAX_PICTURE_USES`].
+pub fn pictures_named(files: &[(String, String)]) -> Vec<PictureUse> {
+    let mut found = Vec::new();
+    for (path, text) in files.iter().filter(|(p, _)| p.starts_with(FOLDER)) {
+        for (n, line) in text.lines().enumerate() {
+            let code = line.split("--").next().unwrap_or("");
+            let mut rest = code;
+            let mut gone = 0;
+            while let Some(at) = rest.find("image") {
+                let before = code[..gone + at].chars().next_back();
+                let after = &rest[at + "image".len()..];
+                let word_start = before.is_none_or(|c| !(c.is_alphanumeric() || c == '_'));
+                let trimmed = after.trim_start();
+                if word_start
+                    && after.len() != trimmed.len()
+                    && let Some(quoted) = trimmed.strip_prefix('"')
+                    && let Some(end) = quoted.find('"')
+                    && !quoted[..end].contains('\\')
+                {
+                    if found.len() >= MAX_PICTURE_USES {
+                        return found;
+                    }
+                    let quote_at = gone + at + "image".len() + (after.len() - trimmed.len());
+                    found.push(PictureUse {
+                        file: path.clone(),
+                        line: u32::try_from(n + 1).unwrap_or(u32::MAX),
+                        column: u32::try_from(code[..quote_at].chars().count() + 1)
+                            .unwrap_or(u32::MAX),
+                        name: quoted[..end].to_string(),
+                    });
+                }
+                gone += at + "image".len();
+                rest = &code[gone..];
+            }
+        }
+    }
+    found
 }
 
 /// The file only screens fetch (decision 0087): `Ui`, and a reading
@@ -339,6 +399,7 @@ pub fn compile(
             screens,
             readers,
             notes,
+            pictures: pictures_named(files),
         })),
         Ok(Ok(_)) => Err(problems),
         Ok(Err(found)) => {

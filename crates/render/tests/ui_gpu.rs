@@ -1,6 +1,7 @@
 //! Game UI drawn on a real GPU (decision 0083): shapes land where the
 //! layout says, sharp at any size, blended over the picture underneath,
-//! and pixel-art screens have hard edges.
+//! and pixel-art screens have hard edges; pictures show from their atlas
+//! (decision 0089).
 
 #![allow(clippy::unwrap_used, clippy::expect_used, clippy::print_stderr)]
 
@@ -47,6 +48,15 @@ fn draw_with(
     shapes: &[ui::Shape],
     atlas: Option<&ui::text::Atlas>,
 ) -> Option<Vec<u8>> {
+    draw_all(size, shapes, atlas, None)
+}
+
+fn draw_all(
+    size: [u32; 2],
+    shapes: &[ui::Shape],
+    atlas: Option<&ui::text::Atlas>,
+    pictures: Option<&ui::Pictures>,
+) -> Option<Vec<u8>> {
     let (device, queue, _turn) = gpu()?;
     let texture = device.create_texture(&wgpu::TextureDescriptor {
         label: Some("ui test"),
@@ -87,7 +97,7 @@ fn draw_with(
     });
     queue.submit([encoder.finish()]);
     UiPipeline::new(&device, render::COLOR_FORMAT)
-        .draw(&device, &queue, &view, size, shapes, atlas);
+        .draw(&device, &queue, &view, size, shapes, atlas, pictures);
     Some(read_texture(&device, &queue, &texture, size).unwrap())
 }
 
@@ -343,4 +353,46 @@ fn a_canvas_cuts_off_what_s_outside_it() {
     assert!(near(px(&pixels, 100, 75, 75), GREY), "outside: cut off");
     assert!(near(px(&pixels, 100, 69, 55), [255, 255, 255]));
     assert!(near(px(&pixels, 100, 71, 55), GREY));
+}
+
+#[test]
+fn a_picture_shows_its_pixels_blocky_when_grown_and_see_through_where_it_is() {
+    // A 2 × 2 picture: red, green, blue, and a see-through corner, shown
+    // 8 times as big at (8, 8).
+    let mut pictures = ui::Pictures::new();
+    let rgba = [
+        255, 0, 0, 255, 0, 255, 0, 255, //
+        0, 0, 255, 255, 255, 255, 255, 0,
+    ];
+    pictures.add("dots.png", [2, 2], &rgba).unwrap();
+    let screen = ui::Screen {
+        elements: vec![
+            ui::Element::new(
+                "dots",
+                ui::ElementKind::Picture {
+                    name: "dots.png".into(),
+                    round: 0.0,
+                    cover: false,
+                },
+            )
+            .sized([16.0, 16.0])
+            .at(ui::Anchor::TOP_LEFT, [8.0, 8.0]),
+        ],
+        pictures: Some(std::sync::Arc::new(pictures)),
+        ..ui::Screen::new("Dots", [64.0, 64.0], ui::ScaleRule::Keep)
+    };
+    let shapes = ui::layout(&screen, [64, 64], None);
+    assert_eq!(shapes.len(), 1);
+    let Some(pixels) = draw_all([64, 64], &shapes, None, screen.pictures.as_deref()) else {
+        return;
+    };
+    let at = |x, y| px(&pixels, 64, x, y);
+    assert!(near(at(9, 9), [255, 0, 0]), "{:?}", at(9, 9));
+    assert!(near(at(22, 9), [0, 255, 0]), "{:?}", at(22, 9));
+    assert!(near(at(9, 22), [0, 0, 255]), "{:?}", at(9, 22));
+    // Right up to the edge of a pixel, no blending with the next.
+    assert!(near(at(15, 9), [255, 0, 0]), "{:?}", at(15, 9));
+    assert!(near(at(16, 9), [0, 255, 0]), "{:?}", at(16, 9));
+    assert!(near(at(22, 22), GREY), "see-through: {:?}", at(22, 22));
+    assert!(near(at(40, 40), GREY), "outside");
 }

@@ -52,6 +52,7 @@ pub mod profiler;
 mod properties;
 mod save_game;
 pub mod screen;
+mod screen_pictures;
 mod search;
 mod settings_window;
 mod sheet_view;

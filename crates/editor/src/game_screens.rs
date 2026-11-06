@@ -277,6 +277,8 @@ impl Workbench {
             return;
         };
         let screens = &mut self.game_screens;
+        let seen = &mut self.screen_pictures.seen;
+        let shown_pictures = self.screen_pictures.pictures.clone();
         // Started with the program, and again when it changes.
         let fresh = !matches!(&screens.running, Some((_, from)) if Arc::ptr_eq(from, &program));
         let mut said = Vec::new();
@@ -304,6 +306,7 @@ impl Workbench {
             for (entity, name) in shown_in(&playing.world) {
                 match running.view(&name, Some(entity), &mut reader) {
                     Ok(view) => {
+                        crate::screen_pictures::names_in(&view, seen);
                         let picture = Arc::new(ui::Screen {
                             name: name.clone(),
                             design: ui::view::design_of(&view),
@@ -311,6 +314,7 @@ impl Workbench {
                             elements: Vec::new(),
                             view: Some(view),
                             looks: ui::view::Looks::default(),
+                            pictures: shown_pictures.clone(),
                         });
                         screens.last.insert(name.clone(), Arc::clone(&picture));
                         pictures.push(picture);

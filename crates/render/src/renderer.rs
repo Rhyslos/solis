@@ -810,7 +810,9 @@ impl ViewportRenderer {
     }
 
     /// Draws game UI's `shapes` over `target`'s finished picture (decision
-    /// 0083), after tone mapping, and submits it. Never waits for the GPU.
+    /// 0083), after tone mapping, with letters from `atlas` and pictures
+    /// from `pictures` (decision 0089), and submits it. Never waits for the
+    /// GPU.
     pub fn draw_ui(
         &self,
         device: &wgpu::Device,
@@ -818,6 +820,7 @@ impl ViewportRenderer {
         target: &ViewportTarget,
         shapes: &[ui::Shape],
         atlas: Option<&ui::text::Atlas>,
+        pictures: Option<&ui::Pictures>,
     ) {
         self.ui.draw(
             device,
@@ -826,6 +829,7 @@ impl ViewportRenderer {
             target.size(),
             shapes,
             atlas,
+            pictures,
         );
     }
 
@@ -837,6 +841,7 @@ impl ViewportRenderer {
         image: &crate::pixel::PixelImage,
         shapes: &[ui::Shape],
         atlas: Option<&ui::text::Atlas>,
+        pictures: Option<&ui::Pictures>,
     ) {
         self.ui.draw(
             device,
@@ -845,6 +850,7 @@ impl ViewportRenderer {
             image.size(),
             shapes,
             atlas,
+            pictures,
         );
     }
 

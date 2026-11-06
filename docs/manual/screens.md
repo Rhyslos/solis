@@ -169,7 +169,32 @@ component Pauser {
 
 In Lua: `solis.World:setGameSpeed(0)`. In Rust: `cx.host().set_game_speed(0.0)`.
 
-**What a screen can use:** `column`, `row`, `stack`, `space`, `text`, `button`, `progress` bars, and `canvas` with `box`, `circle` and `line` placed by `x` and `y` (anything reaching past the canvas's edges is cut off there, so a needle or a bar can't spill out of its dial). Styles: `pad` (and `padX`, `padTop`…), `gap`, `width` and `height` (a number, or `fill`), `grow`, `size`, `bold`, the alignment words, colour words (`white`, `red5`, `gray9`, `#ff8800`), `background`, `round`, `border` and `opacity`. Other pieces are laid out but not drawn yet.
+**Pictures.** `image` shows a picture from your assets, named by its place inside them: `image "sprites/coin.png";`. To show one part of a sprite sheet, cut it out with [Atlas Crop](atlas-crop.md) and add `#` and the crop's name: `image "sprites/tools.png#Axe";`. A crop is better than a picture of its own for icons: the artist keeps drawing on one sheet, and every crop follows.
+
+```
+assembly Hotbar {
+    view {
+        stack [width fill, height fill, bottom, center, pad 24] {
+            row [gap 8, background gray9, pad 8, round 8] {
+                image "sprites/tools.png#Axe" [width 64];
+                image "sprites/tools.png#Hoe" [width 64];
+                image "sprites/tools.png#Can" [width 64, opacity 0.4];
+            }
+        }
+    }
+}
+
+pass Hotbar;
+end
+```
+
+- A picture is as big as it is unless you give it a `width` or a `height`; give one and the other follows, keeping its shape. Give both and it fits inside that box, in the middle; add `cover` to fill the box instead, cutting off what reaches past it.
+- `round` rounds its corners, and `opacity` fades it.
+- Shown bigger than it is, a picture's pixels stay sharp squares, as pixel art wants; shown smaller, it's smoothed so it doesn't flicker.
+- The name can be worked out as the game runs (`image item.icon;`): that picture is read the first time it's shown.
+- A name written out in the screen's code that names no picture, or no crop of it, is listed in **Problems** with its line before you press Play. A missing picture shows as a grey box with its name.
+
+**What a screen can use:** `column`, `row`, `stack`, `space`, `text`, `button`, `image`, `progress` bars, and `canvas` with `box`, `circle` and `line` placed by `x` and `y` (anything reaching past the canvas's edges is cut off there, so a needle or a bar can't spill out of its dial). Styles: `pad` (and `padX`, `padTop`…), `gap`, `width` and `height` (a number, or `fill`), `grow`, `size`, `bold`, the alignment words, colour words (`white`, `red5`, `gray9`, `#ff8800`), `background`, `round`, `border`, `opacity` and, for pictures, `cover`. Other pieces are laid out but not drawn yet.
 
 ## Settings
 
@@ -192,6 +217,9 @@ The **Screen** component:
 - **Problem:** clicking a button does nothing in the game. **Why:** the event goes to the entity the screen is shown for (`Ui:entity()`), and only its components' `on` blocks hear it. **Fix:** put the component that handles it on the entity with the Screen, and check the event's name and values match its `on` line.
 - **Problem:** `Screen.PauseMenu` is "not an option". **Why:** a screen's name comes from its file, first letter made a capital: `ui/pauseMenu.lst` is `PauseMenu`. Names in all capitals (`HUD`) can't be Lust names. **Fix:** rename the file, or use the name the Problems panel suggests.
 - **Problem:** the Console says a screen "sent events the game couldn't take". **Why:** at most 64 events wait for each tick, and an event from a screen carries plain values (no assets, texts of at most 4,096 letters). **Fix:** send fewer, smaller events.
+- **Problem:** Problems says "there's no picture sprites/x.png in the project". **Why:** `image` names a picture by its place inside your assets, with `/` between folders and its ending (`.png`). **Fix:** check the path in the Library: right-click the picture to see where it is.
+- **Problem:** Problems says a picture "has no crop called Axe". **Why:** the part after `#` is the name of a crop made in Atlas Crop, and capitals don't matter but spelling does. **Fix:** open the picture's Atlas Crop tab and name a crop that, or use one of the names Problems lists.
+- **Problem:** a picture "can't be shown on a screen: there's no room left". **Why:** all the screens' pictures share one sheet of 2048 × 2048 pixels on the graphics card. **Fix:** use smaller pictures, or crops of one sprite sheet instead of whole big pictures.
 - **Problem:** text is dark and hard to read over the game. **Why:** like Lust's windows, text is dark unless told otherwise. **Fix:** give it a colour word: `white`.
 
 ## Related

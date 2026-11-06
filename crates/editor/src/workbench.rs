@@ -448,6 +448,8 @@ pub struct Workbench {
     pub(crate) ui_test: Option<std::sync::Arc<ui::Screen>>,
     /// The game's screens while it plays (decision 0087).
     pub(crate) game_screens: crate::game_screens::GameScreens,
+    /// The pictures the game's screens show (decision 0089).
+    pub(crate) screen_pictures: crate::screen_pictures::ScreenPictures,
     /// What the Game panel showed last, and what it was worked out for:
     /// made again only when the world, the models or the state changed
     /// (not on a frame without a tick, or while paused).
@@ -571,6 +573,7 @@ impl Workbench {
             fixed_seed: None,
             ui_test: None,
             game_screens: Default::default(),
+            screen_pictures: Default::default(),
             bindings: input::Bindings::default(),
             devices: input::Devices::new(),
             game_input: false,
@@ -663,6 +666,7 @@ impl Workbench {
             self.assemblies.clear();
             self.place_targets.clear();
             self.code_problems.clear();
+            self.screen_pictures = crate::screen_pictures::ScreenPictures::default();
             self.set_program(None);
             self.set_rust_components(Vec::new());
             self.pending_reload = None;
@@ -1008,6 +1012,8 @@ impl Workbench {
         self.set_tile_overlay();
         self.prepare_tools();
         self.find_problems();
+        self.refresh_screen_pictures();
+        let code_problems = self.all_code_problems().into_owned();
         let menu = crate::menu_items::MenuState::of(self);
         let copied: Vec<String> = self.copied.iter().map(|(name, _)| name.clone()).collect();
         // Worked out only while the Game panel is in front.
@@ -1191,7 +1197,7 @@ impl Workbench {
                         console: &mut self.console,
                         console_requests: &mut console_requests,
                         problems: &self.problems.list,
-                        code_problems: &self.code_problems,
+                        code_problems: &code_problems,
                         game: game.as_ref().map(|(_, scene)| scene),
                         ui_test: self.ui_test.clone(),
                         game_screens: &self.game_screens.pictures,
@@ -1465,6 +1471,17 @@ impl Workbench {
     /// Mistakes in the game's code, from the last check.
     pub fn code_problems(&self) -> &[script::CodeProblem] {
         &self.code_problems
+    }
+
+    /// The code's mistakes, then pictures its screens name that can't be
+    /// shown (decision 0089): everything Problems lists from the code.
+    pub(crate) fn all_code_problems(&self) -> std::borrow::Cow<'_, [script::CodeProblem]> {
+        let pictures = self.picture_problems();
+        if pictures.is_empty() {
+            std::borrow::Cow::Borrowed(&self.code_problems)
+        } else {
+            std::borrow::Cow::Owned([&self.code_problems[..], pictures].concat())
+        }
     }
 
     /// The problems found in the area, for the app and tests.

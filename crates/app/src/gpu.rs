@@ -412,6 +412,7 @@ impl GpuViewport {
                 &images.out,
                 &shapes,
                 Some(&self.fonts.atlas),
+                screen.pictures.as_deref(),
             );
         }
         let texture = images.texture;
@@ -624,6 +625,7 @@ impl ViewportRenderer for GpuViewport {
                 &image.target,
                 &shapes,
                 Some(&self.fonts.atlas),
+                screen.pictures.as_deref(),
             );
         }
         if !self.drawn.contains(&(view.image, false)) {
