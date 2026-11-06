@@ -212,6 +212,11 @@ impl Workbench {
             LibraryRequest::Open(LibraryKind::Area, path) => {
                 self.request(WorkbenchAction::OpenAreaFile(full(&path)), actions);
             }
+            // A screen's file opens on the canvas (decision 0089), unless
+            // the canvas is what asked for it as code.
+            LibraryRequest::Open(LibraryKind::Code, path)
+                if !self.screen_doc.as_ref().is_some_and(|d| d.path == path)
+                    && self.open_screen(&path, None) => {}
             LibraryRequest::Open(kind, path) => {
                 // Only kinds whose program is known to just show or edit
                 // them open in it (a picture viewer, a text editor for

@@ -99,6 +99,19 @@ These work while the pointer is over the Atlas Crop tab; see [Atlas Crop](atlas-
 | Zoom, move the picture | Mouse wheel, middle-button drag |
 | Undo or redo a change to the crops | Ctrl + Z, Ctrl + Y |
 
+## The UI editor (a screen open on the canvas)
+| Action | Shortcut |
+|---|---|
+| Pick a piece | Click it (on the canvas or in Elements) |
+| Pick more | `Shift + click` (Elements: `Shift` or `Ctrl + click`) |
+| Pick everything in a box | Drag on an empty part of the canvas |
+| Move a piece | Drag it (between its neighbours, or into a column or row) |
+| Size a piece | Drag the square on its right edge, bottom edge or corner |
+| Delete, copy what's picked | `Delete`, `Ctrl + D` |
+| Pick nothing | `Esc` |
+| Undo, redo | `Ctrl + Z`, `Ctrl + Y` |
+| Zoom, move the view | Mouse wheel, middle mouse drag |
+
 ## The Map tab (a tile map selected)
 
 These work while the pointer is over the Map tab; see [Tile maps](tile-maps.md).

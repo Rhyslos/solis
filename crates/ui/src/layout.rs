@@ -266,6 +266,31 @@ pub fn clickables(
     (clickable, scale)
 }
 
+/// Every piece of `screen`'s view's box in a screen `size` pixels big (in
+/// its pixels: left, top, right, bottom), by its place in the view's tree
+/// (see [`crate::view::boxes`]), for the UI editor's canvas.
+pub fn boxes(
+    screen: &Screen,
+    size: [u32; 2],
+    pixel_step: Option<u32>,
+    measure: &mut dyn crate::view::Measure,
+) -> Vec<(Vec<usize>, [f32; 4])> {
+    let screen_px = [size[0] as f32, size[1] as f32];
+    let scale = scale_of(screen.scale, screen.design, screen_px, pixel_step);
+    let Some(view) = screen.view.as_ref() else {
+        return Vec::new();
+    };
+    let design = [screen_px[0] / scale, screen_px[1] / scale];
+    let mut measure = crate::view::WithPictures {
+        text: measure,
+        pictures: screen.pictures.as_deref(),
+    };
+    crate::view::boxes(view, design, &mut measure, screen.looks)
+        .into_iter()
+        .map(|(path, r)| (path, r.map(|v| v * scale)))
+        .collect()
+}
+
 /// The clickable piece of `screen`'s view at `at`, in a screen `size`
 /// pixels big (`at` in its pixels, from its top left): see [`clickables`].
 pub fn clickable_at(

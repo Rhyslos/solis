@@ -169,6 +169,8 @@ component Pauser {
 
 In Lua: `solis.World:setGameSpeed(0)`. In Rust: `cx.host().set_game_speed(0.0)`.
 
+**Drawing it instead of writing it.** Double-click a screen's file in the Library to open it on the [UI editor's canvas](ui-editor.md): pick pieces, drag them, size them and change their look, and Solis writes the Lust for you, changing only what it must.
+
 **Pictures.** `image` shows a picture from your assets, named by its place inside them: `image "sprites/coin.png";`. To show one part of a sprite sheet, cut it out with [Atlas Crop](atlas-crop.md) and add `#` and the crop's name: `image "sprites/tools.png#Axe";`. A crop is better than a picture of its own for icons: the artist keeps drawing on one sheet, and every crop follows.
 
 ```

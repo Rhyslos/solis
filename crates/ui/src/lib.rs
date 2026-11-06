@@ -21,6 +21,7 @@ pub mod pictures;
 pub mod presets;
 pub mod sample;
 pub mod screen;
+pub mod source;
 pub mod text;
 pub mod view;
 

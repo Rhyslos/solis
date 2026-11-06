@@ -35,6 +35,7 @@ New to game engines? Start with [Concepts](concepts.md).
 - [The Console: messages, search and commands](console.md)
 - [Game code: writing your game's rules in Lust, Lua and Rust](game-code.md)
 - [Game screens: a HUD and menus in Lust](screens.md)
+- [The UI editor: drawing a screen on the canvas](ui-editor.md)
 - [Which language when: Lust, Lua or Rust, with measured numbers](which-language.md)
 - [Physics: things that fall, collide and get pushed](physics.md)
 - [Input: the game's controls as named actions, gamepads, rebinding and recordings](input.md)

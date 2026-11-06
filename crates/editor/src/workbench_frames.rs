@@ -178,6 +178,19 @@ impl Workbench {
         if self.frames_editor.is_some() && (out.closed || one_gone) {
             self.close_frames();
         }
+        self.screen_hovered = out.screen_hovered;
+        if out.screen_changed {
+            self.save_screen();
+        }
+        if out.screen_code
+            && let Some(doc) = &self.screen_doc
+        {
+            let path = doc.path.clone();
+            self.library_request(
+                crate::library::LibraryRequest::Open(crate::library::LibraryKind::Code, path),
+                actions,
+            );
+        }
         self.atlas_hovered = out.atlas_hovered;
         if out.atlas_changed {
             self.save_open_atlas();

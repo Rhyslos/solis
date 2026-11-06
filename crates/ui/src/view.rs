@@ -968,6 +968,16 @@ pub fn lay_out_with(
     measure: &mut dyn Measure,
     looks: Looks,
 ) -> (Vec<Element>, Vec<Clickable>) {
+    let top = laid_out(view, size, measure, looks);
+    let mut out = Vec::new();
+    emit(&top, 1.0, &mut out);
+    let mut clickable = Vec::new();
+    clickables(&top, &mut clickable);
+    (out, clickable)
+}
+
+/// The view's tree placed on a screen `size` design pixels big.
+fn laid_out(view: &Node, size: [f32; 2], measure: &mut dyn Measure, looks: Looks) -> Laid {
     let mut count = 0;
     let mut top = lay(view, 0, &mut count, looks);
     // The view's top is a column as big as the screen; columns and rows
@@ -991,11 +1001,31 @@ pub fn lay_out_with(
         measured: std::collections::HashMap::new(),
     };
     layout.place(&mut top, 0.0, 0.0, size[0], size[1]);
+    top
+}
+
+/// Every piece's box on a screen `size` design pixels big (left, top,
+/// right, bottom), by its place in the view's tree: the indices of each
+/// child from the top (the top itself is `[]`). For the UI editor's
+/// canvas, to pick and outline pieces.
+pub fn boxes(
+    view: &Node,
+    size: [f32; 2],
+    measure: &mut dyn Measure,
+    looks: Looks,
+) -> Vec<(Vec<usize>, [f32; 4])> {
+    fn walk(n: &Laid, path: &mut Vec<usize>, out: &mut Vec<(Vec<usize>, [f32; 4])>) {
+        out.push((path.clone(), [n.x, n.y, n.x + n.w, n.y + n.h]));
+        for (i, c) in n.children.iter().enumerate() {
+            path.push(i);
+            walk(c, path, out);
+            path.pop();
+        }
+    }
+    let top = laid_out(view, size, measure, looks);
     let mut out = Vec::new();
-    emit(&top, 1.0, &mut out);
-    let mut clickable = Vec::new();
-    clickables(&top, &mut clickable);
-    (out, clickable)
+    walk(&top, &mut Vec::new(), &mut out);
+    out
 }
 
 /// Every clickable piece's box, in drawing order.

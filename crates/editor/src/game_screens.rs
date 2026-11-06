@@ -181,7 +181,7 @@ impl GameScreens {
 }
 
 /// The editor's own Inter, to measure screens' text as the renderer draws it.
-fn editor_fonts() -> ui::Fonts {
+pub(crate) fn editor_fonts() -> ui::Fonts {
     ui::Fonts::new(vec![
         crate::theme::INTER_REGULAR.to_vec(),
         crate::theme::INTER_SEMIBOLD.to_vec(),

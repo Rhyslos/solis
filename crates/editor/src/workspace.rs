@@ -29,11 +29,13 @@ pub enum Workspace {
     Animate,
     /// Testing game code written in Ledger.
     Code,
+    /// Drawing game screens on the canvas (decision 0089).
+    Ui,
 }
 
 impl Workspace {
     /// Every workspace, in the top bar's order.
-    pub const ALL: [Self; 3] = [Self::Level, Self::Animate, Self::Code];
+    pub const ALL: [Self; 4] = [Self::Level, Self::Animate, Self::Code, Self::Ui];
 
     /// Its tab's name.
     pub fn name(self) -> &'static str {
@@ -41,6 +43,7 @@ impl Workspace {
             Self::Level => "Level",
             Self::Animate => "Animate",
             Self::Code => "Code",
+            Self::Ui => "UI",
         }
     }
 
@@ -58,6 +61,10 @@ impl Workspace {
                 "Testing game code beside Ledger: the game big, your code files, and the Console \
                  and Problems side by side"
             }
+            Self::Ui => {
+                "Drawing game screens: a screen's file on the canvas, its pieces in Elements and \
+                 the one picked in Properties"
+            }
         }
     }
 
@@ -68,6 +75,7 @@ impl Workspace {
             Self::Level => Icon::AreaFile,
             Self::Animate => Icon::Animator,
             Self::Code => Icon::Code,
+            Self::Ui => Icon::Game,
         }
     }
 
@@ -77,6 +85,7 @@ impl Workspace {
             Self::Level => layout::standard(),
             Self::Animate => animate(),
             Self::Code => code(),
+            Self::Ui => ui_layout(),
         }
     }
 
@@ -85,6 +94,7 @@ impl Workspace {
             Self::Level => layout::standard,
             Self::Animate => animate,
             Self::Code => code,
+            Self::Ui => ui_layout,
         }
     }
 }
@@ -152,6 +162,23 @@ pub fn code() -> DockState<Panel> {
     dock
 }
 
+/// UI's standard layout: the canvas big in the middle (the Game panel
+/// behind it), the screen's Elements on the left, Properties on the right
+/// for the piece picked, and the Library along the bottom for pictures.
+///
+/// ```text
+/// ┌──────────┬────────────────────┬───────┐
+/// │ Elements │ Canvas · Game      │ Props │
+/// │ Area     ├────────────────────┼───────┤
+/// │          │ Library · Console  │ Hints │
+/// └──────────┴────────────────────┴───────┘
+/// ```
+///
+/// The canvas and Elements come with a screen: they open when one does.
+pub fn ui_layout() -> DockState<Panel> {
+    layout::standard()
+}
+
 /// Every workspace's layout and which one is in use, as saved between
 /// runs.
 #[derive(Debug, Clone, Serialize, Deserialize)]
@@ -213,12 +240,35 @@ impl Workbench {
         for panel in &open {
             layout::close(&mut leaving, *panel);
         }
+        // The canvas and Elements belong to UI: kept there, not carried.
+        if self.workspace == Workspace::Ui {
+            for panel in [Panel::Canvas, Panel::Elements] {
+                if self.dock.find_tab(&panel).is_some() {
+                    layout::open_first_beside(
+                        &mut leaving,
+                        panel,
+                        match panel {
+                            Panel::Canvas => Panel::Viewport,
+                            _ => Panel::Area,
+                        },
+                    );
+                }
+            }
+        }
+        let open: Vec<Panel> = open
+            .into_iter()
+            .filter(|p| !matches!(p, Panel::Canvas | Panel::Elements))
+            .collect();
         self.other_layouts.insert(self.workspace, leaving);
         self.dock = self
             .other_layouts
             .remove(&workspace)
             .unwrap_or_else(|| workspace.standard());
         self.workspace = workspace;
+        if workspace == Workspace::Ui && self.screen_doc.is_some() {
+            layout::open_first_beside(&mut self.dock, Panel::Canvas, Panel::Viewport);
+            layout::open_first_beside(&mut self.dock, Panel::Elements, Panel::Area);
+        }
         for panel in open {
             let beside = match panel {
                 Panel::Frames => Panel::Console,

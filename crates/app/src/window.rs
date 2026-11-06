@@ -1054,6 +1054,14 @@ impl App {
                         ),
                     }
                 }
+                WorkbenchAction::SaveScreen { path, text } => {
+                    if let Err(why) = self.projects.save_screen(&path, &text) {
+                        self.workbench.log(
+                            LogLevel::Error,
+                            format!("Couldn't save {}: {why}.", path.display()),
+                        );
+                    }
+                }
                 WorkbenchAction::SaveAtlas { path, text } => {
                     if let Err(why) = self.projects.save_atlas(&path, &text) {
                         self.workbench.log(
