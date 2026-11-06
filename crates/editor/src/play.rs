@@ -801,7 +801,9 @@ impl Workbench {
                     }
                 }
             }
-            if loading || pause.is_some() {
+            // `Window:quit()`: no more ticks.
+            let quit = self.playing.as_ref().is_some_and(|p| p.view.quit);
+            if loading || pause.is_some() || quit {
                 break;
             }
         }
@@ -816,7 +818,10 @@ impl Workbench {
         // for the next play; the window's only said, since the editor's
         // window isn't the game's.
         self.player_settings = playing.view.settings;
-        for asked in std::mem::take(&mut playing.view.asked) {
+        let asked = std::mem::take(&mut playing.view.asked);
+        // An exported game's window does change (the app follows the
+        // settings), so there's nothing to say.
+        for asked in asked.into_iter().filter(|_| !self.play_only) {
             use script::settings::Setting;
             match asked {
                 Setting::Fullscreen(on) => said.push(format!(
@@ -847,8 +852,22 @@ impl Workbench {
             crate::profiler::Stage::World,
             started.elapsed().saturating_sub(code),
         );
+        let quit = std::mem::take(&mut playing.view.quit);
         if !said.is_empty() || !failures.is_empty() {
             self.tell_game(said, &failures);
+        }
+        // `Window:quit()` (decision 0093): the exported game closes; in
+        // the editor, play stops.
+        if quit {
+            if !self.play_only {
+                self.log(
+                    LogLevel::Info,
+                    "Window:quit(): the exported game would close here, so play stops.",
+                );
+            }
+            self.quit_asked = true;
+            self.stop();
+            return;
         }
         // The game's screens read what this frame's ticks left (decision
         // 0087), and start again when the code changes.

@@ -173,6 +173,21 @@ impl Workbench {
                 ui.close();
             }
             ui.separator();
+            if ui
+                .add_enabled(
+                    self.project.is_some(),
+                    egui::Button::new("Export for playtesting…"),
+                )
+                .on_hover_text(
+                    "A folder with the game in it, to zip and send to a friend: no editor needed",
+                )
+                .on_disabled_hover_text("Open a project first")
+                .clicked()
+            {
+                self.open_export();
+                ui.close();
+            }
+            ui.separator();
             if ui.button("Quit").clicked() {
                 self.request(WorkbenchAction::Quit, actions);
             }

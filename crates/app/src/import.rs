@@ -47,6 +47,8 @@ pub enum FolderFor {
     LocateProject(PathBuf),
     /// A folder to look for projects in (Scan a folder…).
     ScanFolder,
+    /// The folder File > Export for playtesting… exports into.
+    ExportFolder,
 }
 
 /// Starts imports and collects them when they finish.
@@ -98,6 +100,7 @@ impl Importer {
                 FolderFor::CopyProject(_) => "Choose an empty folder for the copy",
                 FolderFor::LocateProject(_) => "Where is the project's folder now?",
                 FolderFor::ScanFolder => "Choose a folder to look for projects in",
+                FolderFor::ExportFolder => "Choose a new or empty folder for the export",
             };
             let _ = sender.send(rfd::FileDialog::new().set_title(title).pick_folder());
         });

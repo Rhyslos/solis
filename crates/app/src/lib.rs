@@ -21,6 +21,7 @@ pub mod known_projects;
 pub mod logger;
 pub mod play_files;
 pub mod playground;
+pub mod playtest;
 mod playground_sounds;
 pub mod project;
 pub mod sample_game;

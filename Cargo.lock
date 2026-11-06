@@ -234,6 +234,7 @@ dependencies = [
  "asset_db",
  "assets",
  "bytemuck",
+ "chrono",
  "editor",
  "eframe",
  "gilrs",

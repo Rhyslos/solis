@@ -6,6 +6,8 @@ What changed in each version, for people using Solis. Newest first.
 
 ### Breaking
 
+- **The UI sample's Quit closes the game** ([decision 0093](docs/decisions/0093-the-playtest-export.md)): it calls `Window:quit()` (in the editor, play stops) instead of showing a note, so its `ui/quitNote.lst` is gone from new copies. UI samples made before keep theirs.
+
 - **Save games are format 8** ([decision 0092](docs/decisions/0092-day-and-night-and-lamps-on-sprites.md)): they keep the time of day game code set (`World:setTimeOfDay`). Saves from earlier builds still load (the day where the Environment starts it); a save made now can't be loaded by an earlier build.
 - **Save games are format 7** (game UI, M3c): they keep the game's speed (`World:setGameSpeed`). Saves from earlier builds still load (running as usual); a save made now can't be loaded by an earlier build.
 - **Recordings are format 3** ([decision 0088](docs/decisions/0088-menus-send-events.md)): they keep the events screens' buttons sent, on `s` lines after their tick. Recordings from earlier builds still play back; recordings made now can't be played back by an earlier build.
@@ -80,6 +82,9 @@ What changed in each version, for people using Solis. Newest first.
 - Lights brought in with a model are listed under it in the Area panel, and deleting the model deletes them.
 
 ### Added
+
+- **Export for playtesting** ([decision 0093](docs/decisions/0093-the-playtest-export.md)): **File > Export for playtesting…** makes a folder holding your game, to zip and send. A friend double-clicks the program inside (named after your game) and plays, with no editor. Choose the game's name, the area it starts in, the folder (a dated one in Documents by default) and the window. The player's settings work for real in the exported game (Alt+Enter, fullscreen, the window's size) and are kept, with its saves, a log and a crash log, in the player's `Saved Games/<Game>` folder.
+- **`Window:quit()`** closes the game, for a menu's Quit button. While playing in the editor, play stops. In Lua `solis.Window:quit()`; in Rust `quit`.
 
 - **Day and night, and lamps on sprites** ([decision 0092](docs/decisions/0092-day-and-night-and-lamps-on-sprites.md)): the Environment has **Day and night** (how long a day lasts, the hour it starts at, and the day's colours as stops you can add to, with a **Preview time** for the viewport), and game code reads and sets the hour (`World:timeOfDay()`, `World:setTimeOfDay(6)`). **Light sprites** lights a 2D game's sprites and tile maps with the day's colour and the lamps, crisp on the game's pixels, in **Light steps** if you like; every Light has **Only at night**. In 3D the day tints the sun and the sky's light ([manual](docs/manual/sky-fog-and-exposure.md)).
 - **The UI sample** (game UI M7): **Help > Make the UI sample…** (or the launcher's examples) makes a small game whose screens show everything game UI does: a HUD with the turret's ammo and hits, the drone's health bar, and a pause menu with Resume, Text size, Fullscreen, Resolution and Quit, each screen drawn on the UI editor's canvas. It plays the same from a recording, menu and all ([manual](docs/manual/ui-sample.md)). Game UI is complete.

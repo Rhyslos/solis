@@ -32,8 +32,6 @@ pub const FILES: &[(&str, &str)] = &[
         include_str!("../../../samples/ui/assets/ui/pauseMenu.lst"),
     ),
     (
-        "ui/quitNote.lst",
-        include_str!("../../../samples/ui/assets/ui/quitNote.lst"),
     ),
 ];
 

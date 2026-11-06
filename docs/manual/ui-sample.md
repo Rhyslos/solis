@@ -13,7 +13,7 @@ Open it when you're about to give your own game a HUD or a menu: it's the shorte
 3. Try the menu:
    - **Text size** makes every screen's text a quarter bigger each time (back to 100% after 200%). The menu's buttons grow to fit it (they're at least 360 wide, `minWidth 360`, rather than exactly).
    - **Fullscreen** and **Resolution** say in the Console what the exported game would do; in the editor the game stays in the Game panel.
-   - **Resume** carries on, and **Quit** leaves the game stopped with a note.
+   - **Resume** carries on, and **Quit** closes the game (`Window:quit()`): while you play in the editor, play stops; in an [exported game](playtest-export.md), the game closes.
 4. Press **Stop**, open the Library's `ui` folder and double-click **hud**: it opens on the canvas. Pick a piece and change it in Properties, or try **Preview values** to see the ammo bar empty.
 
 **How its parts fit together:**
@@ -24,7 +24,6 @@ Open it when you're about to give your own game a HUD or a menu: it's the shorte
 | `ui/hud.lst` | The HUD, shown by the Turret's **Screen** component. It reads the turret's ammo and hits (`Ui:entity():turret()`); the bar is a `box` whose width is `300 * ammo / maxAmmo`, and while the turret reloads it stays empty, with `shadow` for a glow. The Screen component's **Glow** gives the whole HUD a soft light. |
 | `ui/droneHealth.lst` | The drone's health bar, shown by the Drone's Screen component, reading its Health. |
 | `ui/pauseMenu.lst` | The menu. It reads the settings (`Screens:textSize()`, `Window:fullscreen()`, `Window:resolution()`) to show them, and each button sends an event to the Game entity (`send BiggerText() to Ui:entity();`), since screens never change the game themselves. |
-| `ui/quitNote.lst` | The note left after Quit. |
 | `ui.solarea` | The area: the camera, the turret, the drone and the Game entity with the Pauser. |
 
 **Why the buttons send events instead of changing the settings themselves:** a screen only reads the game. That keeps every change in game code, where recordings and replays see it, so the sample plays back the same from a recording, menu and all.

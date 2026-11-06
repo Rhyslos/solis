@@ -386,6 +386,7 @@ Things that fall, collide and get pushed have a **RigidBody** and a **Collider**
 | `solis/screens` | `Screens:setUiSize(float size)`, `Screens:uiSize()` | The player's UI size: every screen bigger or smaller, 0.5 to 2. |
 | `solis/window` | `Window:setFullscreen(bool on)`, `Window:fullscreen()` | Whether the game fills the screen (Alt+Enter switches it too). |
 | `solis/window` | `Window:setResolution(int width, int height)`, `Window:resolution()`, `Window:useNextResolution()` | The window's size in pixels, and the next usual one, for a menu. |
+| `solis/window` | `Window:quit()` | Closes the game at the end of the tick, for a menu's Quit button. While playing in the editor, play stops ([Exporting for playtesting](playtest-export.md)). In Lua `solis.Window:quit()`; in Rust `quit`. |
 | `solis/world` | `float World:timeOfDay()`, `World:setTimeOfDay(float hour)` | The game's hour, 0 up to 24, from the Environment's Day and night; setting it moves the day on from there, at the end of the tick ([Sky, fog and exposure](sky-fog-and-exposure.md)). In Lua `solis.World:timeOfDay()`; in Rust `time_of_day`. |
 | `solis/world` | `World:setSeed(int seed)` | Starts the random numbers again from a seed, at the end of the tick. |
 | `solis/world` | `Saves:saveTo(string slot)` | Saves the whole game in a slot, at the end of the tick ([Save games](save-games.md)). |

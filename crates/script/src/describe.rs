@@ -896,6 +896,13 @@ pub const NATIVES: &[Native] = &[
         lust: "method useNextResolution() native;",
         about: "Switches the window to the next usual size (1280 × 720, 1600 × 900, 1920 × 1080, 2560 × 1440, 3440 × 1440, 3840 × 2160, then round again), at the end of the tick: for a menu's Resolution button.",
     },
+    Native {
+        file: "window",
+        name: "quit",
+        owner: "Window",
+        lust: "method quit() native;",
+        about: "Closes the game at the end of the tick: for a menu's Quit button. While playing in the editor, play stops.",
+    },
 ];
 
 /// The description files, and the ready-made components in `kit/`

@@ -68,10 +68,12 @@ impl Workbench {
             ctx.send_viewport_cmd(egui::ViewportCommand::CursorGrab(egui::CursorGrab::Locked));
             ctx.send_viewport_cmd(egui::ViewportCommand::CursorVisible(false));
         }
-        self.log(
-            LogLevel::Info,
-            "The game has the mouse and keys; press Esc to give them back to the editor.",
-        );
+        if !self.play_only {
+            self.log(
+                LogLevel::Info,
+                "The game has the mouse and keys; press Esc to give them back to the editor.",
+            );
+        }
     }
 
     /// What the Game panel saw this frame: the pointer over the game's
@@ -140,15 +142,18 @@ impl Workbench {
         }
         let (events, modifiers, focused) =
             ctx.input(|i| (i.events.clone(), i.modifiers, i.focused));
-        let mut give_back = !focused;
+        // An exported game keeps the keys when its window loses focus: it
+        // has nothing else to give them to.
+        let mut give_back = !focused && !self.play_only;
         let mut alt_enter = false;
         for event in events {
             match event {
+                // In an exported game, Esc is the game's.
                 egui::Event::Key {
                     key: egui::Key::Escape,
                     pressed: true,
                     ..
-                } => give_back = true,
+                } if !self.play_only => give_back = true,
                 // Alt+Enter switches the player's fullscreen setting
                 // (decision 0091), as players expect of any game; the
                 // game doesn't see it.
@@ -199,7 +204,9 @@ impl Workbench {
             // editor's (it would clear the selection).
             ctx.input_mut(|i| i.consume_key(egui::Modifiers::NONE, egui::Key::Escape));
             self.give_back_input();
-            self.log(LogLevel::Info, "The editor has the mouse and keys again.");
+            if !self.play_only {
+                self.log(LogLevel::Info, "The editor has the mouse and keys again.");
+            }
         }
     }
 
@@ -213,6 +220,9 @@ impl Workbench {
             .with(script::settings::Setting::Fullscreen(on));
         if let Some(playing) = &mut self.playing {
             playing.view.settings = self.player_settings;
+        }
+        if self.play_only {
+            return;
         }
         self.log(
             LogLevel::Info,

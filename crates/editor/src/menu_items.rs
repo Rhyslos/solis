@@ -9,6 +9,7 @@ use egui::Ui;
 /// Something picked from a menu.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 pub(crate) enum MenuCommand {
+    ExportPlaytest,
     Undo,
     Redo,
     Duplicate,
@@ -34,6 +35,8 @@ pub(crate) struct MenuState {
     pub(crate) redo: Option<String>,
     /// Whether anything is selected.
     pub(crate) selection: bool,
+    /// Whether a project is open.
+    pub(crate) project: bool,
 }
 
 impl MenuState {
@@ -44,6 +47,7 @@ impl MenuState {
             undo: history.undo_label().map(|l| format!("Undo {l}")),
             redo: history.redo_label().map(|l| format!("Redo {l}")),
             selection: workbench.document.selection.primary().is_some(),
+            project: workbench.project.is_some(),
         }
     }
 }
@@ -181,6 +185,7 @@ impl Workbench {
     /// Carries out a menu command.
     pub(crate) fn run(&mut self, command: MenuCommand, ctx: &egui::Context) {
         match command {
+            MenuCommand::ExportPlaytest => self.open_export(),
             MenuCommand::Undo => self.undo(),
             MenuCommand::Redo => self.redo(),
             MenuCommand::Duplicate => self.duplicate_selection(),

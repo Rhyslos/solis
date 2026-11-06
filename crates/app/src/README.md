@@ -8,12 +8,14 @@ The program's code: the command line, the window and its frame loop, the GPU hoo
 
 | File | What it does | Main items |
 | --- | --- | --- |
-| `main.rs` | The entry point: reads the command line, then opens the editor, or prints the version or help. | `main` |
+| `main.rs` | The entry point: plays the exported game beside the program if there is one (decision 0093); otherwise reads the command line, then opens the editor, or prints the version or help. | `main` |
 | `lib.rs` | The library part shared by `main.rs` and the tests: lists the modules, builds the version banner and the editor's `AppInfo`. | `version_banner`, `app_info` |
 | `branding.rs` | The program's name and identity, in one place. Never write the name anywhere else (see `RENAMING.md`). | `APP_NAME`, `APP_ID` |
 | `cli.rs` | Reads the command line: `--version`, `--help`, or open the editor (with `--import <file>`). | `Command`, `parse`, `usage` |
 | `startup.rs` | Starting up behind the splash screen, which asks for a newer build first (decision 0045). Tests in `startup_tests.rs`. | `Startup`, `Next` |
 | `window.rs` | The editor window: opens it with eframe, restores saved settings, hands each frame to the workbench, carries out its actions, and starts the job pool. | `run`, `start_jobs` |
+| `window_playtest.rs` | The window as an exported game (decision 0093): opens the project beside the program, plays its area once its code is ready, draws only the game, makes the window follow the player's settings, keeps saves, settings and a log in the player's folder, and writes a crash log on a crash; and File > Export for playtesting… carried out on a thread. A child module of `window.rs`. | `run_playtest` |
+| `playtest.rs` | The playtest export (decision 0093): copying a project and the program into a folder, finding an exported game beside the program, the player's Saved Games folder, their settings file and the crash log. Tests in `playtest_tests.rs`, including fuzzed settings files. | `export`, `beside`, `saved_games`, `load_settings` |
 | `gpu.rs` | Connects the `render` crate to the window's GPU device and to egui: one image for the viewport, one for the Game panel; sprite sheets and tile map layers' pictures uploaded; game UI laid out with the fonts it keeps (Inter regular and semibold) and drawn after the frame. | `GpuViewport` |
 | `logger.rs` | Passes what libraries write through the `log` facade to the Console: every library's warnings and errors, information only from the program's own crates. | `Messages`, `Level`, `install` |
 | `gamepad.rs` | Reads the first gamepad each frame on Windows and hands it to the editor as `input::Pad` (decision 0037). | `Gamepads` |
