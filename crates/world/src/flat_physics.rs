@@ -215,10 +215,13 @@ impl World {
             }
         }
         self.update_walls();
+        // Each character's move this tick, for game code's `grounded()`
+        // and `velocity()`; none asked, they all stood still.
+        let seconds = self.tick_time() as f32;
+        self.flat.move_characters(walks, seconds);
         if walks.is_empty() {
             return;
         }
-        self.flat.move_characters(walks);
         self.following = true;
         for (id, place) in self.flat.moved() {
             self.change_transform(id, |parent, mut t| {

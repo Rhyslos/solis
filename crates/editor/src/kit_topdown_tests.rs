@@ -172,3 +172,91 @@ fn game_code_can_walk_it_instead_of_the_keys() {
     let went = walk(&mut w, &["W"], 60);
     assert!(went.x < -3.7 && went.y.abs() < 1e-4, "{went}");
 }
+
+/// A 2D character falling onto a floor, running right: game code's
+/// `grounded()` and `velocity()` tell it so.
+const FALLER: &str = "fetch \"solis/world\":World;\n\
+component Faller {\n\
+    has { int said = 0; }\n\
+    method update(float dt) {\n\
+        walk([3 * dt, 0 - 6 * dt, 0]);\n\
+        is grounded() && said == 0? then {\n\
+            said = 1;\n\
+            World:say(\"landed going \" + velocity().x.text());\n\
+        }\n\
+    }\n\
+}\n\
+pass Faller;\nend\n";
+
+#[test]
+fn a_2d_character_knows_it_s_grounded_and_how_fast_it_goes() {
+    let (mut files, _) = script::describe::descriptions_for(
+        "Test Engine 9.9.9",
+        "solis",
+        &script::project_names::Names::with_assemblies(&[]),
+    );
+    files.push(("main.lst".into(), FALLER.to_string()));
+    let code = script::Code {
+        files,
+        lua: Vec::new(),
+        notes: Vec::new(),
+    };
+    let program = match script::compile(&code) {
+        Ok(Some(c)) => Arc::new(c),
+        Ok(None) => panic!("no code"),
+        Err(problems) => panic!("{}", problems[0]),
+    };
+    let mut w = Workbench::new(info(), None);
+    w.set_program(Some(program));
+    let mut hero = EntityData::new("Hero")
+        .with(&Transform {
+            position: Vec3::new(0.0, 1.0, 0.0),
+            ..Transform::default()
+        })
+        .with(&Collider2D {
+            radius: 4.0,
+            character: true,
+            ..Collider2D::default()
+        });
+    hero.components
+        .insert("Faller".into(), ComponentData::default());
+    let floor = EntityData::new("Floor")
+        .with(&Transform {
+            position: Vec3::new(0.0, -0.5, 0.0),
+            ..Transform::default()
+        })
+        .with(&Collider2D {
+            shape: Shape2D::Box,
+            width: 3200.0,
+            height: 16.0,
+            ..Collider2D::default()
+        });
+    w.document
+        .edit(
+            "Add",
+            vec![
+                area::Edit::Spawn {
+                    entities: vec![(id(1), hero)],
+                },
+                area::Edit::Spawn {
+                    entities: vec![(id(2), floor)],
+                },
+            ],
+            None,
+            None,
+        )
+        .unwrap();
+    w.play();
+    ticks(&mut w, 30);
+    let landed: Vec<String> = w
+        .log_lines()
+        .iter()
+        .filter(|l| l.text.contains("landed going"))
+        .map(|l| l.text.clone())
+        .collect();
+    assert_eq!(landed.len(), 1, "it landed: {:?}", w.log_lines());
+    let speed: f32 = landed[0].rsplit(' ').next().unwrap().parse().unwrap();
+    assert!((speed - 3.0).abs() < 0.05, "running at 3 m/s: {speed}");
+    // Standing on the floor, not in it.
+    assert!(at(&w).y > -0.5 + 0.25, "{}", at(&w));
+}

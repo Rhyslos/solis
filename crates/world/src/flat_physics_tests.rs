@@ -166,3 +166,31 @@ fn the_same_walks_end_in_the_same_place_and_a_walk_changes_the_checksum() {
     assert_ne!(a.checksum(), before);
     let _ = TICK;
 }
+
+#[test]
+fn a_despawned_collider_and_map_leave_2d_physics_with_them() {
+    let (mut world, map, farmer) = farm();
+    // A bin in the farmer's way, then despawned: no invisible wall left.
+    let bin = EntityId::random();
+    let data = EntityData::new("Bin")
+        .with(&Transform {
+            position: Vec3::new(5.0, -5.5, 0.0),
+            ..Transform::default()
+        })
+        .with(&Collider2D {
+            shape: Shape2D::Box,
+            width: 32.0,
+            height: 8.0,
+            ..Collider2D::default()
+        });
+    world.add_subtree(&[(bin, data)]);
+    world.remove_subtrees(&[bin]);
+    assert!(!world.flat().state().contains(bin));
+    let at = walk(&mut world, farmer, Vec3::new(0.1, 0.0, 0.0), 40);
+    assert!(at.x > 6.0, "walked on past where the bin was: {at}");
+    // The map despawned: its fence's walls go too.
+    world.remove_subtrees(&[map]);
+    world.step_physics();
+    let at = walk(&mut world, farmer, Vec3::new(0.1, 0.0, 0.0), 80);
+    assert!(at.x > 11.0, "on past the fence: {at}");
+}

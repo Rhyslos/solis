@@ -388,6 +388,11 @@ impl Host for ViewHost {
         // A component sees its own new velocity at once.
         let own = self.own_velocities.get(&which).copied();
         own.or_else(|| self.view.physics.velocity(which))
+            .or_else(|| {
+                // A 2D character: how fast its last tick's move went.
+                let last = self.view.flat.last_move(which)?;
+                Some(last.velocity.extend(0.0))
+            })
     }
 
     fn set_velocity(&mut self, which: EntityId, velocity: Vec3) {
@@ -414,10 +419,11 @@ impl Host for ViewHost {
     }
 
     fn grounded(&self, which: EntityId) -> bool {
-        self.view
-            .physics
-            .character(which)
-            .is_some_and(|c| c.grounded)
+        match self.view.physics.character(which) {
+            Some(c) => c.grounded,
+            // A 2D character: whether a floor stopped its last tick's move.
+            None => self.view.flat.last_move(which).is_some_and(|m| m.grounded),
+        }
     }
 
     fn cast_ray(&self, from: Vec3, direction: Vec3, reach: f32) -> Option<physics::Hit> {

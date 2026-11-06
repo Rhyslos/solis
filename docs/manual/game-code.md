@@ -421,10 +421,10 @@ Things that fall, collide and get pushed have a **RigidBody** and a **Collider**
 | any entity | `string name()` | The entity's name. |
 | any entity | `despawn()` | Takes the entity, and everything under it, out of the game. |
 | any entity | `push(vec3 impulse)` | Gives its body a push ([Physics](physics.md)). |
-| any entity | `vec3 velocity()` | How fast and which way its body moves, metres a second. |
+| any entity | `vec3 velocity()` | How fast and which way its body moves, metres a second; for a 2D character, how fast its last tick's move went. |
 | any entity | `setVelocity(vec3 velocity)` | Sets how fast and which way its body moves. |
 | any entity | `walk(vec3 wanted)` | Walks a character this far, climbing steps, sliding along walls ([Characters and cameras](characters-and-cameras.md), [Walls and walking](walls-and-walking.md)). |
-| any entity | `bool grounded()` | Whether a character stood on something after its last move. |
+| any entity | `bool grounded()` | Whether a character stood on something after its last move (3D or 2D). |
 | `solis/entity` | `rotation facingAlong(vec3 direction)` | The upright rotation facing along a direction, for working out a turn without making it. |
 
 An entity's abilities are called bare for the component's own entity (`moveTo(place)`) and with `:` on any other (`target:moveTo(place)`). In Lua they're `solis.entity.moveTo(target, place)`, and the objects' `solis.World:say(words)`.

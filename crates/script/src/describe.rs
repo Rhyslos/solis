@@ -712,7 +712,7 @@ pub const NATIVES: &[Native] = &[
         name: "velocity",
         owner: "entity",
         lust: "method vec3 entity:velocity() native;",
-        about: "How fast and which way the entity's body moves, in metres a second (none without a body).",
+        about: "How fast and which way the entity's body moves, in metres a second; for a 2D character, how fast its last tick's move went (none without a body or a 2D character).",
     },
     Native {
         file: "physics",
@@ -740,7 +740,7 @@ pub const NATIVES: &[Native] = &[
         name: "grounded",
         owner: "entity",
         lust: "method bool entity:grounded() native;",
-        about: "Whether a character stood on something after its last move: for jumping only from the ground, and for falling.",
+        about: "Whether a character stood on something after its last move (a 2D character: whether a floor under it stopped it going down): for jumping only from the ground, and for falling.",
     },
     Native {
         file: "entity",
