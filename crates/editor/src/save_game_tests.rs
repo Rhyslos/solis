@@ -1094,3 +1094,29 @@ fn loading_a_game_keeps_the_player_s_settings() {
     );
     assert_eq!(w.playing.as_ref().unwrap().view.settings.text_size, 1.75);
 }
+
+#[test]
+fn a_save_keeps_the_time_of_day() {
+    let text = std::fs::read_to_string(save_fixtures().join("v8/harbour.solsave")).unwrap();
+    let save = Save::read(&text).unwrap();
+    assert_eq!(save.day_shift, 6.0);
+    assert_eq!(save.write(), text, "read back as written");
+    let older = std::fs::read_to_string(save_fixtures().join("v7/harbour.solsave")).unwrap();
+    assert_eq!(
+        Save::read(&older).unwrap().day_shift,
+        0.0,
+        "older saves start the day at its starting hour"
+    );
+    let mut w = busy("Harbour");
+    w.play();
+    w.load_game(&text, "the save");
+    assert_eq!(w.world().unwrap().day_shift(), 6.0);
+    // A shift outside the day, or one that isn't a number, is damage.
+    for bad in [24.0, -1.0, f64::NAN] {
+        let mut odd = save.clone();
+        odd.day_shift = bad;
+        assert!(Save::read(&odd.write()).is_err(), "{bad}");
+    }
+    let garbled = text.replace(&format!("{:x}", 6.0f64.to_bits()), "zz");
+    assert!(Save::read(&garbled).is_err());
+}

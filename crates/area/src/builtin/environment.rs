@@ -313,6 +313,8 @@ impl Component for Environment {
                 .map_or(d.day_colours, super::DayColours::parse),
             light_sprites: f.bool("light_sprites", d.light_sprites),
             light_steps: match data.get("light_steps") {
+                // One step would be all or nothing: two is the fewest.
+                Some(Value::Int(1)) => 2,
                 Some(Value::Int(n)) => (*n).clamp(0, Self::MAX_STEPS),
                 _ => 0,
             },

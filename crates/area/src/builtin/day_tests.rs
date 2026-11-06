@@ -48,3 +48,38 @@ fn night_is_darker_than_half_the_brightest() {
     // Dusk: on somewhere between 18:00 and 21:00.
     assert!(!d.is_night(17.0) && d.is_night(21.0));
 }
+
+#[test]
+fn a_day_all_of_black_is_all_night() {
+    let d = DayColours::from_stops(&[(6.0, [0.0; 3]), (18.0, [0.0; 3])]);
+    assert!(d.is_night(12.0) && d.is_night(0.0));
+}
+
+#[test]
+fn the_environment_s_day_reads_back_and_older_ones_change_nothing() {
+    use crate::builtin::Environment;
+    use reflect::{Component, ComponentData, Value};
+    let e = Environment {
+        day_night: true,
+        day_minutes: 10.0,
+        day_start: 6.0,
+        light_sprites: true,
+        light_steps: 4,
+        ..Default::default()
+    };
+    assert_eq!(Environment::from_data(&e.to_data()), e);
+    // Ten-minute days from 06:00: five minutes in, it's 18:00; a shift
+    // of 13 hours wraps round to 07:00.
+    assert_eq!(e.hour_at(300.0, 0.0), 18.0);
+    assert_eq!(e.hour_at(300.0, 13.0), 7.0);
+    // One step would be all or nothing: it reads as two.
+    let mut data = e.to_data();
+    data.set("light_steps", Value::Int(1));
+    assert_eq!(Environment::from_data(&data).light_steps, 2);
+    data.set("light_steps", Value::Int(99));
+    assert_eq!(Environment::from_data(&data).light_steps, 8);
+    // An Environment from before day and night: off, and sprites unlit.
+    let old = Environment::from_data(&ComponentData::default());
+    assert!(!old.day_night && !old.light_sprites);
+    assert_eq!(old.tint_at(23.0), [1.0; 3], "white with the day off");
+}

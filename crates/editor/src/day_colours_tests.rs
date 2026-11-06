@@ -154,3 +154,25 @@ fn game_code_sets_the_hour_and_night_lamps_follow_it() {
     assert!(text.contains("\nday 16\n"), "{text}");
     w.stop();
 }
+
+#[test]
+fn the_preview_time_is_left_out_while_playing_and_forgotten_with_its_project() {
+    let mut w = with_a_day(22.0);
+    let ctx = egui::Context::default();
+    // Opening the project forgot any earlier preview.
+    assert_eq!(w.preview_hour(&ctx), None);
+    ctx.data_mut(|d| d.insert_temp(preview_id(), Some(23.0f64)));
+    assert_eq!(w.preview_hour(&ctx), Some(23.0));
+    w.play();
+    assert_eq!(w.preview_hour(&ctx), None, "the game's hour while playing");
+    w.stop();
+    assert_eq!(w.preview_hour(&ctx), Some(23.0), "back after Stop");
+    w.set_project(Some(crate::library::ProjectInfo {
+        name: "Another".into(),
+        root: "/projects/another".into(),
+        assets: "/projects/another/assets".into(),
+    }));
+    assert_eq!(w.preview_hour(&ctx), None, "forgotten with its project");
+    let kept: Option<Option<f64>> = ctx.data(|d| d.get_temp(preview_id()));
+    assert_eq!(kept, None);
+}

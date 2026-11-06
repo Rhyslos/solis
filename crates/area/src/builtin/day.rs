@@ -175,7 +175,8 @@ impl DayColours {
             .iter()
             .map(|(_, c)| brightness(*c))
             .fold(0.0, f32::max);
-        brightness(self.at(hour)) < brightest * 0.5
+        // A day all of black is all night.
+        brightest <= 0.0 || brightness(self.at(hour)) < brightest * 0.5
     }
 }
 

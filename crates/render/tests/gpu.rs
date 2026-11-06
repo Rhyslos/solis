@@ -3251,4 +3251,16 @@ fn lit_sprites_take_the_day_s_tint_and_a_lamp_s_pool_in_steps() {
         return;
     };
     assert_ne!(near(&steps), near(&smooth), "banded differs from smooth");
+    // A dark night in steps stays dark, never black: only the lamps'
+    // light is banded (a review finding).
+    let dark = Environment {
+        sprite_light: Some(8),
+        tint: [0.16, 0.18, 0.35],
+        ..night
+    };
+    let Some(dark_night) = render_sprites_lit(std::slice::from_ref(&sprites), dark, &[lamp]) else {
+        return;
+    };
+    let d = far(&dark_night);
+    assert!(d[2] > 0, "not black: {d:?}");
 }

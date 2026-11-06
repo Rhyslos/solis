@@ -232,8 +232,8 @@ impl FrameUniforms {
                     GridPlane::Side => 2.0,
                 },
             ],
-            sky_top: sky.top.extend_one(),
-            sky_horizon: sky.horizon.extend_one(),
+            sky_top: tinted(sky.top.extend_one()),
+            sky_horizon: tinted(sky.horizon.extend_one()),
             ground: sky.ground.extend_one(),
             shading: [
                 match params.shading.look {

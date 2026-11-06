@@ -835,20 +835,23 @@ fn sprite_vs(@builtin(vertex_index) index: u32, s: SpriteIn) -> SpriteOut {
 // tint, and every lamp shining down on the ground there, as it lights a
 // surface facing up; banded in `steps` when there are any.
 fn sprite_lit(world: vec3<f32>) -> vec3<f32> {
-    var light = frame.sprite_light.rgb;
+    var lamps = vec3<f32>(0.0);
     let count = u32(frame.shadow.z);
     for (var i = 0u; i < count; i = i + 1u) {
         let lamp = lamp_light(i, world);
-        light = light + lamp.radiance * max(lamp.l.z, 0.0) / PI;
+        lamps = lamps + lamp.radiance * max(lamp.l.z, 0.0) / PI;
     }
-    light = min(light, vec3<f32>(4.0));
+    // Steps band the lamps' pools; the day's tint stays as it is, so a
+    // dark night never rounds down to black.
     let steps = frame.sprite_light.w;
     if steps >= 1.0 {
-        let lum = max(dot(light, vec3<f32>(0.2126, 0.7152, 0.0722)), 0.0001);
-        let banded = floor(lum * steps + 0.5) / steps;
-        light = light * (banded / lum);
+        let lum = dot(lamps, vec3<f32>(0.2126, 0.7152, 0.0722));
+        if lum > 0.0 {
+            let banded = floor(lum * steps + 0.5) / steps;
+            lamps = lamps * (banded / lum);
+        }
     }
-    return light;
+    return min(frame.sprite_light.rgb + lamps, vec3<f32>(4.0));
 }
 
 // The frame's pixel at `p` (its own pixels, flipped as asked); see-through
@@ -884,17 +887,22 @@ fn sprite_fs(in: SpriteOut) -> @location(0) vec4<f32> {
                 max(sprite_texel(p + vec2<f32>(0.0, 1.0), in.rect, in.flags).a,
                     sprite_texel(p - vec2<f32>(0.0, 1.0), in.rect, in.flags).a));
             if near >= 0.5 {
-                return vec4<f32>(in.outline, select(0.0, 1.0, see_through));
+                var line = in.outline;
+                if frame.sprite_light.w >= 0.0 {
+                    line = line * sprite_lit(in.world);
+                }
+                return vec4<f32>(line, select(0.0, 1.0, see_through));
             }
         }
         discard;
     }
     var colour = decode(texel.rgb) * in.tint.rgb;
-    colour = mix(colour, vec3<f32>(1.0), clamp(in.tint.a, 0.0, 1.0));
-    // Lit by the day and the lamps, when the area says so.
+    // Lit by the day and the lamps, when the area says so; a hit's flash
+    // goes on top, as bright at night as by day.
     if frame.sprite_light.w >= 0.0 {
         colour = colour * sprite_lit(in.world);
     }
+    colour = mix(colour, vec3<f32>(1.0), clamp(in.tint.a, 0.0, 1.0));
     // Alpha 0: the last pass shows it as drawn, never tone mapped, so pixel
     // art keeps its exact colours (see the top of this file). See-through
     // sprites carry their own alpha, which only blends: the picture's

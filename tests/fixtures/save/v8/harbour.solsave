@@ -3,7 +3,7 @@ project Harbour
 tick 40
 time 3fe5555555555559
 seed 11
-sum 7055693caebd5bf3
+sum 40a173b794e2f903
 area 2139
 -- An area. Safe to edit by hand: one block per entity, one line per field.
 area version 1;
@@ -195,6 +195,5 @@ objects 0
 
 speed 16
 3fe0000000000000
-
 day 16
 4018000000000000

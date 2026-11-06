@@ -86,11 +86,13 @@ pub(crate) fn day_colours(ui: &mut Ui, value: &Value, mixed: bool) -> Option<Val
     ui.vertical(|ui| {
         strip(ui, &day, preview);
         let mut remove = None;
+        let hours: Vec<f32> = stops.iter().map(|(h, _)| *h).collect();
         for (i, (hour, colour)) in stops.iter_mut().enumerate() {
             ui.horizontal(|ui| {
-                let mut c = *colour;
-                if ui.color_edit_button_rgb(&mut c).changed() {
-                    *colour = c;
+                // The stops are sRGB, as the strip shows them.
+                let mut c = colour.map(|v| (v.clamp(0.0, 1.0) * 255.0).round() as u8);
+                if ui.color_edit_button_srgb(&mut c).changed() {
+                    *colour = c.map(|v| f32::from(v) / 255.0);
                     changed = true;
                 }
                 let mut h = f64::from(*hour);
@@ -105,10 +107,23 @@ pub(crate) fn day_colours(ui: &mut Ui, value: &Value, mixed: bool) -> Option<Val
                         }),
                 );
                 if drag.changed() {
-                    *hour = h as f32;
+                    let mut h = h as f32;
+                    // While dragging, a stop stays between its neighbours:
+                    // the rows are sorted by hour, so passing one would
+                    // hand the drag to it. A typed hour can go anywhere.
+                    if drag.dragged() && hours.len() > 1 {
+                        let low = if i == 0 { 0.0 } else { hours[i - 1] + 0.05 };
+                        let high = hours.get(i + 1).map_or(23.99, |n| n - 0.05);
+                        if low <= high {
+                            h = h.clamp(low, high);
+                        }
+                    }
+                    *hour = h;
                     changed = true;
                 }
-                drag.on_hover_text("When the day is this colour: drag, or type 19:30");
+                drag.on_hover_text(
+                    "When the day is this colour: drag between its neighbours, or type 19:30 to put it anywhere",
+                );
                 if day.stops().len() > 1
                     && ui
                         .small_button("Remove")
