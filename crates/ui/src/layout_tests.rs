@@ -333,7 +333,7 @@ fn review_findings_stay_fixed() {
     };
     let shapes = layout_with(&screen, [400, 100], None, Some(&mut fonts));
     let n = shapes.len();
-    assert!(n >= 10 && n % 2 == 0, "{n}");
+    assert!(n >= 10 && n.is_multiple_of(2), "{n}");
     for s in &shapes[..n / 2] {
         assert_eq!(s.colours[0], Colour::NONE, "a halo alone");
         assert_eq!(s.outline.0, 2.0);
