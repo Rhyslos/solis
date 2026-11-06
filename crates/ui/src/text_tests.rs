@@ -89,7 +89,15 @@ fn a_full_atlas_says_so_and_carries_on() {
     let all: String = (0x20u32..0x2500).filter_map(char::from_u32).collect();
     let _ = f.place(0, &all, 20.0, [0.0, 0.0], None);
     assert!(f.full);
-    let _ = f.place(0, "still fine", 20.0, [0.0, 0.0], None);
+    // The next text starts the atlas again, so its letters show (they
+    // used to be lost for good).
+    // An arrow, near the end, was one that didn't fit.
+    let placed = f.place(0, "→ still fine", 20.0, [0.0, 0.0], None);
+    assert_eq!(
+        placed.len(),
+        "→stillfine".chars().count(),
+        "every letter has a place"
+    );
 }
 
 #[test]

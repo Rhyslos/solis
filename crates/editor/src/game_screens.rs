@@ -367,6 +367,12 @@ impl Workbench {
                     }
                 }
             }
+            running.keep_buttons_of(
+                &shown
+                    .iter()
+                    .map(|(e, n)| (n.clone(), Some(*e)))
+                    .collect::<Vec<_>>(),
+            );
             // The same button stays hovered and focused while its screen
             // stays.
             let by_screen = |b: Option<(usize, usize)>, shown: &[(reflect::EntityId, String)]| {

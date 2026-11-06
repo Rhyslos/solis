@@ -36,6 +36,9 @@ pub(crate) struct Stroke {
     anchor: [i64; 2],
 }
 
+/// The longest brush line walked cell by cell, in cells.
+const MAX_LINE: i64 = 1 << 16;
+
 /// What a cell becomes, painted with `brush` lined up at `anchor` (the
 /// brush repeated across the map like a pattern), or emptied.
 fn brush_cell(brush: &Stamp, anchor: [i64; 2], at: [i64; 2], erase: bool) -> Option<StampCell> {
@@ -82,12 +85,24 @@ impl Stroke {
             return vec![at];
         }
         let [w, h] = self.brush.size.map(i64::from);
-        // The repeat of the pattern the pointer is in.
-        let x0 = self.anchor[0] + (at[0] - self.anchor[0]).div_euclid(w) * w;
-        let y0 = self.anchor[1] + (at[1] - self.anchor[1]).div_euclid(h) * h;
+        let [x0, y0] = self.dab_origin(at);
         (y0..y0 + h)
             .flat_map(|y| (x0..x0 + w).map(move |x| [x, y]))
             .collect()
+    }
+
+    /// Where the brush's dab at `at` starts: the repeat of the pattern the
+    /// pointer is in (the cell itself when emptying). Worked out without
+    /// making the dab, so a drag over many cells of one repeat is cheap.
+    fn dab_origin(&self, at: [i64; 2]) -> [i64; 2] {
+        if self.erase {
+            return at;
+        }
+        let [w, h] = self.brush.size.map(|s| i64::from(s.max(1)));
+        [
+            self.anchor[0] + (at[0] - self.anchor[0]).div_euclid(w) * w,
+            self.anchor[1] + (at[1] - self.anchor[1]).div_euclid(h) * h,
+        ]
     }
 
     /// The rectangle from the start to `to`.
@@ -365,11 +380,22 @@ impl Workbench {
             PaintTool::Brush => {
                 // Every cell between, so a fast drag leaves no gaps; the
                 // stamp's repeats along the way, each once.
-                let mut dabs: Vec<[i64; 2]> = Vec::new();
-                for cell in line_cells(stroke.last, at).into_iter().skip(1) {
-                    let dab = stroke.dab(cell);
-                    if dabs.last() != dab.first() {
-                        dabs.push(dab[0]);
+                // A jump of more cells than a map has (a drag far off
+                // it, zoomed out) paints only where it lands.
+                let span = (at[0] - stroke.last[0])
+                    .abs()
+                    .max((at[1] - stroke.last[1]).abs());
+                let cells = if span > MAX_LINE {
+                    vec![stroke.last, at]
+                } else {
+                    line_cells(stroke.last, at)
+                };
+                let mut last_origin = None;
+                for cell in cells.into_iter().skip(1) {
+                    let origin = stroke.dab_origin(cell);
+                    if last_origin != Some(origin) {
+                        last_origin = Some(origin);
+                        let dab = stroke.dab(cell);
                         stroke.paint(layer, dab);
                     }
                 }

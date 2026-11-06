@@ -181,3 +181,33 @@ fn a_chunk_s_revision_moves_on_only_when_it_changes() {
         "a resize changes every chunk"
     );
 }
+
+#[test]
+fn a_map_s_layers_and_values_stay_within_their_memory() {
+    // The stability review: the biggest map, filled with every value a
+    // file may list, would take gigabytes.
+    let mut map = TileMap::bare([MAX_SIDE, MAX_SIDE], None);
+    let mut layers = 0;
+    while map.add_layer("layer", false).is_ok() {
+        layers += 1;
+    }
+    let mut numbers = 0;
+    while map.add_value("n", ValueKind::Number).is_ok() {
+        numbers += 1;
+    }
+    let cells = u64::from(MAX_SIDE) * u64::from(MAX_SIDE);
+    let bytes = (layers as u64 + numbers as u64 * 4) * cells;
+    assert!(bytes <= MAX_MAP_BYTES, "{bytes}");
+    assert!(layers >= 3 && layers <= MAX_LAYERS);
+    // A small map has room for all of them.
+    let mut small = TileMap::bare([64, 64], None);
+    for _ in 0..MAX_LAYERS {
+        small.add_layer("layer", false).unwrap();
+    }
+    for _ in 0..MAX_VALUES {
+        small.add_value("n", ValueKind::Number).unwrap();
+    }
+    // Growing it to past the budget is refused, and changes nothing.
+    assert!(!small.resize([MAX_SIDE, MAX_SIDE]));
+    assert_eq!(small.size(), [64, 64]);
+}
