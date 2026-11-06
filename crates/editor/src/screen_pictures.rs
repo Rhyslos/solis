@@ -53,13 +53,16 @@ pub(crate) fn names_in(view: &ui::view::Node, out: &mut BTreeSet<String>) {
     walk(view, 0, out);
 }
 
+/// A picture's pixels (straight RGBA) and its size.
+type Pixels = (Vec<u8>, [u32; 2]);
+
 /// Why the picture `name` can't be shown, or its pixels and size (`None`
 /// for both while its file is still being read).
 fn pixels_of(
     name: &str,
     sheets: &SpriteSheets,
     in_project: &dyn Fn(&str) -> bool,
-) -> Result<Option<(Vec<u8>, [u32; 2])>, String> {
+) -> Result<Option<Pixels>, String> {
     let (file, crop) = ui::pictures::split(name);
     if !is_picture(file) {
         return Err(format!(

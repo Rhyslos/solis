@@ -433,7 +433,7 @@ impl Walk<'_> {
             stretch,
             border,
             crisp,
-            blocky: crisp,
+            blocky: false,
             clip,
         };
         match &e.kind {
