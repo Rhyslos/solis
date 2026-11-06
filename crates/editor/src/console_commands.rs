@@ -65,7 +65,14 @@ pub(crate) const COMMANDS: &[CommandInfo] = &[
     CommandInfo {
         name: "get",
         usage: "get <Component>[.field]",
-        help: "Shows a component's settings on the selected entity.",
+        help: "Shows a component's settings on the selected entity; while the game plays, as \
+               the game has them now.",
+    },
+    CommandInfo {
+        name: "values",
+        usage: "values [name]",
+        help: "Shows every component of the selected entity (or the one with that name) as it \
+               is now: while the game plays, as game code has changed it.",
     },
     CommandInfo {
         name: "set",
@@ -258,6 +265,7 @@ impl Workbench {
             "delete" => self.with_selection(Self::delete_selection),
             "duplicate" => self.with_selection(Self::duplicate_selection),
             "get" => self.get_field(args),
+            "values" => self.all_values(args),
             "set" => self.set_field(args, ctx),
             "undo" => {
                 self.undo();
@@ -444,7 +452,50 @@ impl Workbench {
         Ok((schema.name.clone(), field))
     }
 
-    fn get_field(&self, args: &[String]) -> Result<String, String> {
+    /// Every component of the selected entity, or of the one named in
+    /// `args`, as it is now.
+    fn all_values(&mut self, args: &[String]) -> Result<String, String> {
+        let id = match args.first() {
+            Some(word) => *self
+                .named(&args.join(" "))
+                .first()
+                .ok_or_else(|| format!("nothing is called \"{word}\""))?,
+            None => self
+                .document
+                .selection
+                .primary()
+                .ok_or("values of what? Select an entity, or give its name")?,
+        };
+        let entity = self.document.area().get(id).ok_or("it isn't in the area")?;
+        let (name, components): (String, Vec<String>) = (
+            entity.name.clone(),
+            entity.components.keys().cloned().collect(),
+        );
+        let mut lines = vec![if self.playing.is_some() {
+            format!("{name}, as the game has it now:")
+        } else {
+            format!("{name}:")
+        }];
+        for component in components {
+            let Some(schema) = self.document.registry.get(&component).cloned() else {
+                continue;
+            };
+            let Some(data) = self.values_now(id, &component) else {
+                continue;
+            };
+            for f in &schema.fields {
+                let value = data.get(&f.name).unwrap_or(&f.default);
+                lines.push(format!(
+                    "{component}.{} = {}",
+                    f.name,
+                    shown_value(f, value)
+                ));
+            }
+        }
+        Ok(lines.join("\n"))
+    }
+
+    fn get_field(&mut self, args: &[String]) -> Result<String, String> {
         let path = args
             .first()
             .ok_or("get what? Give Component or Component.field")?;
@@ -455,10 +506,12 @@ impl Workbench {
             .primary()
             .ok_or("nothing is selected")?;
         let entity = self.document.area().get(id).ok_or("nothing is selected")?;
-        let data = entity
-            .components
-            .get(&component)
-            .ok_or_else(|| format!("{} has no {component}", entity.name))?;
+        if !entity.has(&component) {
+            return Err(format!("{} has no {component}", entity.name));
+        }
+        let data = self
+            .values_now(id, &component)
+            .ok_or_else(|| format!("it has no {component}"))?;
         let schema = self
             .document
             .registry

@@ -48,7 +48,7 @@ Tests: files ending `_tests.rs` hold the tests of the file with the same start (
 | `mixer_view.rs` | The Mixer panel (a strip per bus: name, meter, fader, volume, mute and solo), a bus in Properties (inside, volume, ducking rules), and the Game panel's mute button; edits saved once let go. | `MixerState`, `Workbench::set_mixer`, `Workbench::set_bus_meters` |
 | `sound_event_view.rs` | A sound event in Properties: its takes (sound files dropped on the list are added), how each play varies, where it's heard, and Play; saved once the mouse is let go. | `event_properties` |
 | `sound_view.rs` | Sound files in the Library and Properties: waveform, details, Play and Stop. | `SoundInfo`, `SoundState`, `EventState`, `Preview` |
-| `console.rs`, `console_commands.rs` | The Console panel (messages, filters, search) and the commands typed under it. | `LogLine`, `LogLevel` |
+| `console.rs`, `console_commands.rs` | The Console panel (messages, filters, search) and the commands typed under it; `get` and `values` read a playing game through `Workbench::values_now`. | `LogLine`, `LogLevel` |
 | `problems.rs` | The Problems panel: mistakes in game code and in the open area. | `Problem`, `ProblemKind` |
 | `profiler.rs` | The Profiler panel: where each frame's time goes, on the CPU (game code, the world, preparing, drawing, sound, the editor) and the GPU. | `Profiler`, `Stage` |
 | `game_panel.rs` | The Game panel: the running game through the area's first camera; a 2D camera's picture is drawn small and scaled up (`pixel_camera`). | |

@@ -35,7 +35,8 @@ Names never care about capitals. A name with spaces goes in quotes: `select "Poi
 | `new Harbour wall` | Adds an empty entity where the camera looks, named as you say, and selects it. |
 | `delete` | Deletes the selection and everything under it. |
 | `duplicate` | Duplicates the selection, like **Ctrl + D**. |
-| `get Transform` | Shows a [component's](concepts.md#the-area) settings on the selected entity. `get Light.color` shows one. |
+| `get Transform` | Shows a [component's](concepts.md#the-area) settings on the selected entity. `get Light.color` shows one. While the game plays, it shows them as the game has them now. |
+| `values Hero` | Shows every component of the entity called Hero (or, with no name, the selected one) as it is now. While the game plays, that's as game code has changed it: the score, the hero's health, where things are. Properties shows the same for the selected entity. |
 | `set Transform.position 0 0 2` | Changes a setting on every selected entity that has that component, as one undo step. |
 | `undo`, `redo` | Like **Ctrl + Z** and **Ctrl + Y**. |
 | `save` | Saves the area, like **Ctrl + S**. |
