@@ -282,8 +282,10 @@ fn the_check_plays_with_the_project_s_own_2d_settings() {
     // The phase review: the check used the standard 2D settings, so a
     // project with its own tile size played differently there.
     let root = playground_with_a_check("pixels");
-    let mut settings = area::pixels::PixelSettings::default();
-    settings.tile = [32, 32];
+    let settings = area::pixels::PixelSettings {
+        tile: [32, 32],
+        ..Default::default()
+    };
     crate::play_files::save_pixels(&root, &settings).unwrap();
     let project = asset_db::Project::open(&root).unwrap();
     let (db, _, _) = asset_db::AssetDb::open(project, assets::Limits::default());
