@@ -392,7 +392,7 @@ fn actions_ui(
         && ui
             .button(format!("Add the {missing} ready-made actions it's missing"))
             .on_hover_text(
-                "Projects made before the cameras lack Pan, Turn, Zoom and Drag: this adds \
+                "Projects made before the cameras or menus lack some of Pan, Turn, Zoom, Drag, MenuMove, MenuChoose, MenuBack and Pause: this adds \
                  them with their usual keys, and changes nothing else",
             )
             .clicked()
@@ -403,7 +403,7 @@ fn actions_ui(
     if ui
         .button("Restore the ready-made actions")
         .on_hover_text(
-            "Move, Look, Jump, Sprint, Interact, Pan, Turn, Zoom and Drag with their usual \
+            "Move, Look, Jump, Sprint, Interact, Pan, Turn, Zoom, Drag and the menu actions with their usual \
              keys; other actions stay",
         )
         .clicked()

@@ -8,7 +8,9 @@ Use a screen for anything the player reads on top of the game: the day and time,
 
 A screen can also have **buttons** (a pause menu's Resume, a shop's Buy). A button doesn't change the game either: it sends an [event](game-code.md#events), and game code decides what happens, in the next tick. That keeps a menu as fair as the keys: what was clicked is kept in a [recording](play-mode.md) like a key press, and plays back the same.
 
-For now screens are written by hand in Lust. The UI editor, where you draw them, comes later and edits the same files. Moving through a menu with the keys or a controller comes next.
+A menu can be used with the keys or a controller too: the arrow keys (or the d-pad) move a ring between its buttons, and Enter (or A) chooses.
+
+For now screens are written by hand in Lust. The UI editor, where you draw them, comes later and edits the same files.
 
 ## How to use it
 
@@ -124,6 +126,10 @@ In Lua they're `solis.entity.showScreen(self.me, "PauseMenu")`, `solis.entity.hi
 Use another entity (a "Menus" entity) for a second screen shown at the same time. Which screens are open is part of the game: it's in save games and recordings.
 
 **The mouse while a screen has buttons.** While a screen with buttons is shown, the pointer stays visible over the Game panel, even after you click the game to give it the keys, so you can click the buttons. A click on a button goes to the button, not to the game; a click anywhere else gives the game the mouse and keys as usual. When the last screen with buttons goes, the pointer is held by the game again.
+
+**With the keys or a controller.** Once the game has the keys, **MenuMove** (the arrow keys, the d-pad or the left stick) moves the focus to the nearest button that way, shown with a blue ring; held down, it moves on again every tenth of a second. **MenuChoose** (Enter, Space or A) chooses the button with the focus, just as a click would. The first press finds the first button. The focus is on the topmost screen with buttons, and moving the mouse over a button moves the focus there (the ring hides until the keys are used again).
+
+While a screen with buttons is shown, the game's own actions wait: only MenuMove, MenuChoose, **MenuBack** (Backspace, B) and **Pause** (P, Start) reach game code, so Space choosing a button doesn't also jump. Use MenuBack and Pause in game code to close a menu or open the pause menu: `is Input:pressed(Action.Pause)? then { showScreen(Screen.PauseMenu); }`. They're ordinary [input actions](input.md), rebindable in **Edit > Input actions…**.
 
 **What a screen can use:** `column`, `row`, `stack`, `space`, `text`, `button`, `progress` bars, and `canvas` with `box`, `circle` and `line` placed by `x` and `y`. Styles: `pad` (and `padX`, `padTop`…), `gap`, `width` and `height` (a number, or `fill`), `grow`, `size`, `bold`, the alignment words, colour words (`white`, `red5`, `gray9`, `#ff8800`), `background`, `round`, `border` and `opacity`. Other pieces are laid out but not drawn yet.
 

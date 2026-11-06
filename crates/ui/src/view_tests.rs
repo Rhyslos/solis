@@ -580,3 +580,49 @@ fn a_screen_s_button_is_found_where_its_picture_is_drawn() {
     assert_eq!(at([961.0, 10.0]), None);
     assert_eq!(at([f32::NAN, 10.0]), None);
 }
+
+#[test]
+fn the_focus_moves_to_the_nearest_button_that_way() {
+    let at = |action: usize, x: f32, y: f32| Clickable {
+        rect: [x, y, x + 100.0, y + 40.0],
+        action,
+    };
+    // A 3 × 2 grid, numbered across then down.
+    let grid: Vec<Clickable> = (0..6)
+        .map(|i| at(i, (i % 3) as f32 * 120.0, (i / 3) as f32 * 60.0))
+        .collect();
+    assert_eq!(
+        next_focus(&grid, None, [1.0, 0.0]),
+        Some(0),
+        "the first to start"
+    );
+    assert_eq!(
+        next_focus(&grid, Some(99), [0.0, 1.0]),
+        Some(0),
+        "gone: the first"
+    );
+    assert_eq!(next_focus(&grid, Some(0), [1.0, 0.0]), Some(1));
+    assert_eq!(next_focus(&grid, Some(1), [0.0, 1.0]), Some(4));
+    assert_eq!(next_focus(&grid, Some(4), [-1.0, 0.0]), Some(3));
+    assert_eq!(
+        next_focus(&grid, Some(2), [1.0, 0.0]),
+        Some(2),
+        "nothing that way"
+    );
+    assert_eq!(next_focus(&grid, Some(3), [0.0, -1.0]), Some(0));
+    assert_eq!(next_focus(&grid, Some(3), [f32::NAN, 1.0]), Some(3));
+    assert_eq!(next_focus(&grid, Some(3), [0.0, 0.0]), Some(3));
+    // An odd layout: a wide button under two small ones goes up to the
+    // nearer of them, and back down to it from either.
+    let odd = vec![
+        at(0, 0.0, 0.0),
+        at(1, 300.0, 0.0),
+        Clickable {
+            rect: [0.0, 100.0, 200.0, 140.0],
+            action: 2,
+        },
+    ];
+    assert_eq!(next_focus(&odd, Some(2), [0.0, -1.0]), Some(0));
+    assert_eq!(next_focus(&odd, Some(1), [0.0, 1.0]), Some(2));
+    assert_eq!(next_focus(&[], None, [1.0, 0.0]), None);
+}

@@ -266,8 +266,60 @@ impl Default for Bindings {
                 ),
                 zoom,
                 Action::button("Drag", &["Mouse Middle"]),
-            ],
+            ]
+            .into_iter()
+            .chain(Self::menu_actions())
+            .collect(),
         }
+    }
+}
+
+/// The ready-made actions that move through game screens' buttons
+/// (decision 0088): [`MENU_MOVE`], [`MENU_CHOOSE`], [`MENU_BACK`] and
+/// [`PAUSE`]. While a screen with buttons is shown, only these reach game
+/// code.
+pub const MENU_ACTIONS: [&str; 4] = [MENU_MOVE, MENU_CHOOSE, MENU_BACK, PAUSE];
+/// Moves the focus between a screen's buttons: the arrow keys, the d-pad
+/// and the left stick.
+pub const MENU_MOVE: &str = "MenuMove";
+/// Chooses the button with the focus: Enter, Space or A.
+pub const MENU_CHOOSE: &str = "MenuChoose";
+/// Goes back (game code decides what that means): Backspace or B.
+pub const MENU_BACK: &str = "MenuBack";
+/// Pauses (game code opens its pause menu): P or Start.
+pub const PAUSE: &str = "Pause";
+
+impl Bindings {
+    /// The menu actions as they're made ready.
+    fn menu_actions() -> Vec<Action> {
+        vec![
+            Action::axis(
+                MENU_MOVE,
+                &["Pad LeftStick"],
+                [
+                    &["Up", "Pad Up"],
+                    &["Down", "Pad Down"],
+                    &["Left", "Pad Left"],
+                    &["Right", "Pad Right"],
+                ],
+            ),
+            Action::button(MENU_CHOOSE, &["Enter", "Space", "Pad A"]),
+            Action::button(MENU_BACK, &["Backspace", "Pad B"]),
+            Action::button(PAUSE, &["P", "Pad Start"]),
+        ]
+    }
+
+    /// These bindings with the menu actions they lack, as they're made
+    /// ready: a project whose input actions file is from before them can
+    /// still move through its screens.
+    #[must_use]
+    pub fn with_menu_actions(mut self) -> Self {
+        for action in Self::menu_actions() {
+            if self.get(&action.name).is_none() && self.actions.len() < MAX_ACTIONS {
+                self.actions.push(action);
+            }
+        }
+        self
     }
 }
 

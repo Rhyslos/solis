@@ -224,9 +224,28 @@ pub fn picture_area(base: [u32; 2], screen: [u32; 2], whole_steps: bool) -> Pict
     }
 }
 
-/// The clickable piece of `screen`'s view (decision 0088) at `at`, in a
-/// screen `size` pixels big (`at` in its pixels, from its top left), laid
-/// out as [`layout_with`] lays it out (with the same `pixel_step`).
+/// The clickable pieces of `screen`'s view (decision 0088) in a screen
+/// `size` pixels big, in its design pixels, laid out as [`layout_with`]
+/// lays it out (with the same `pixel_step`); and the scale from those to
+/// the screen's pixels.
+pub fn clickables(
+    screen: &Screen,
+    size: [u32; 2],
+    pixel_step: Option<u32>,
+    measure: &mut dyn crate::view::Measure,
+) -> (Vec<crate::view::Clickable>, f32) {
+    let screen_px = [size[0] as f32, size[1] as f32];
+    let scale = scale_of(screen.scale, screen.design, screen_px, pixel_step);
+    let Some(view) = screen.view.as_ref() else {
+        return (Vec::new(), scale);
+    };
+    let design = [screen_px[0] / scale, screen_px[1] / scale];
+    let (_, clickable) = crate::view::lay_out_with(view, design, measure, screen.looks);
+    (clickable, scale)
+}
+
+/// The clickable piece of `screen`'s view at `at`, in a screen `size`
+/// pixels big (`at` in its pixels, from its top left): see [`clickables`].
 pub fn clickable_at(
     screen: &Screen,
     size: [u32; 2],
@@ -234,14 +253,10 @@ pub fn clickable_at(
     at: [f32; 2],
     measure: &mut dyn crate::view::Measure,
 ) -> Option<usize> {
-    let view = screen.view.as_ref()?;
-    if !(at[0].is_finite() && at[1].is_finite()) {
+    if screen.view.is_none() || !(at[0].is_finite() && at[1].is_finite()) {
         return None;
     }
-    let screen_px = [size[0] as f32, size[1] as f32];
-    let scale = scale_of(screen.scale, screen.design, screen_px, pixel_step);
-    let design = [screen_px[0] / scale, screen_px[1] / scale];
-    let (_, clickable) = crate::view::lay_out_with(view, design, measure, screen.looks);
+    let (clickable, scale) = clickables(screen, size, pixel_step, measure);
     crate::view::hit(&clickable, [at[0] / scale, at[1] / scale])
 }
 

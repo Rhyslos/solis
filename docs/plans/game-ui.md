@@ -218,6 +218,8 @@ The Rust layer DESIGN.md §12 asks for first, which Lust's `view` is read into l
 
 **M3b. Focus and the menu keys.**
 
+> **Built:** the actions are named `MenuMove`, `MenuChoose`, `MenuBack` and `Pause` (Lust's names can't have spaces), added to a play's bindings when a project's file lacks them. A screen with buttons is one that takes the focus; the first press finds its first button (a `focus` word to pick another waits). The editor moves the focus from each tick's frame, so a replay moves it the same, and what game code sees and a recording keeps is the frame with only the menu actions.
+
 - The menu actions of choice 7, sampled with the others; the first button of a screen that takes focus gets it (or one marked `focus`); UI Move goes to the nearest button that way; a focus ring Solis draws; while such a screen is shown, the game's own actions wait.
 - Tests: spatial focus in grids and odd layouts; a click and a gamepad A choose the same button; the game doesn't jump when A chooses; editor keys stay off.
 
