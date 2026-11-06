@@ -1473,6 +1473,22 @@ impl Workbench {
         &self.code_problems
     }
 
+    /// Entity `id`'s component `name` as it is now: while the game plays,
+    /// as game code (or, for Solis's own components, the running world)
+    /// has it; otherwise as the area has it. For the Console's `get` and
+    /// `values`, and for tests reading a game as it plays.
+    pub fn values_now(&mut self, id: EntityId, name: &str) -> Option<reflect::ComponentData> {
+        if let Some(playing) = &mut self.playing {
+            if let Some(found) = playing.game.as_mut().and_then(|g| g.values(id, name)) {
+                return Some(found);
+            }
+            if let Some(found) = playing.world.component_data(id, name) {
+                return Some(found);
+            }
+        }
+        self.document.area().get(id)?.components.get(name).cloned()
+    }
+
     /// The code's mistakes, then pictures its screens name that can't be
     /// shown (decision 0089): everything Problems lists from the code.
     pub(crate) fn all_code_problems(&self) -> std::borrow::Cow<'_, [script::CodeProblem]> {

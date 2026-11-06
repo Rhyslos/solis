@@ -554,3 +554,57 @@ fn ui_test_shows_and_hides_a_sample_hud() {
     run(&mut w, "ui sideways");
     assert_eq!(w.log_lines().last().unwrap().level, LogLevel::Error);
 }
+
+#[test]
+fn values_and_get_show_a_playing_game_as_game_code_has_changed_it() {
+    let code = script::Code {
+        files: vec![(
+            "main.lst".into(),
+            "component Score {\n    has { int points = 0; }\n    method update(float dt) {\n        points = points + 10;\n    }\n}\npass Score;\nend\n"
+                .into(),
+        )],
+        lua: Vec::new(),
+        notes: Vec::new(),
+    };
+    let program = std::sync::Arc::new(script::compile(&code).unwrap().unwrap());
+    let mut w = Workbench::new(info(), None);
+    w.set_program(Some(program));
+    let id = EntityId::random();
+    let mut hero = area::EntityData::new("Hero").with(&Transform::default());
+    hero.components
+        .insert("Score".into(), reflect::ComponentData::default());
+    w.document
+        .edit(
+            "Add",
+            vec![area::Edit::Spawn {
+                entities: vec![(id, hero)],
+            }],
+            None,
+            None,
+        )
+        .unwrap();
+    run(&mut w, "values Hero");
+    assert!(answer(&w).contains("Score.points = 0"), "{}", answer(&w));
+    w.play();
+    for _ in 0..3 {
+        let until = w.world().unwrap().clock().ticks + 1;
+        while w.world().unwrap().clock().ticks < until {
+            w.run_game((world::TICK * 0.6) as f32);
+        }
+    }
+    run(&mut w, "values Hero");
+    let now = answer(&w);
+    assert!(now.starts_with("Hero, as the game has it now:"), "{now}");
+    assert!(now.contains("Score.points = 30"), "{now}");
+    assert!(now.contains("Transform.position"), "Solis's own too: {now}");
+    w.document.selection.select_all([id], id);
+    run(&mut w, "get Score.points");
+    assert_eq!(answer(&w), "Score.points = 30");
+    assert_eq!(
+        w.values_now(id, "Score").unwrap().get("points"),
+        Some(&reflect::Value::Int(30)),
+        "for tests, too"
+    );
+    run(&mut w, "values Nobody");
+    assert!(said(&w).1.contains("nothing is called"), "{:?}", said(&w));
+}
