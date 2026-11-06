@@ -34,7 +34,9 @@ pub use bindings::{
     Action, ActionKind, Bindings, BindingsError, FORMAT as BINDINGS_FORMAT, MAX_ACTIONS, MAX_INPUTS,
 };
 pub use devices::{Devices, Pad};
-pub use frame::{ActionState, Frame};
+pub use frame::{
+    ActionState, Frame, MAX_SENT, MAX_SENT_NAME, MAX_SENT_TEXT, MAX_SENT_VALUES, Sent,
+};
 pub use recording::{
     FORMAT as RECORDING_FORMAT, MAX_FILE_BYTES as MAX_RECORDING_BYTES, Recording, RecordingError,
     Tick,

@@ -192,6 +192,12 @@ impl GameCode {
                 .collect(),
             clips: clips.to_vec(),
             cues: cues.to_vec(),
+            // ui/pauseMenu.lst is the screen PauseMenu (as the screens'
+            // program finds them).
+            screens: asset_paths(&assets.join(script::screens::FOLDER), "lst")
+                .iter()
+                .filter_map(|p| script::screens::screen_name(&format!("{p}.lst")))
+                .collect(),
             actions: assets
                 .parent()
                 .map_or_else(input::Bindings::default, |root| {

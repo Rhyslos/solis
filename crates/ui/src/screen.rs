@@ -314,6 +314,8 @@ pub struct Screen {
     /// A view written in Lust (decision 0087), laid out with Lust's rules
     /// each time the screen is drawn, after the elements.
     pub view: Option<crate::view::Node>,
+    /// Its view's hover and focus looks (decision 0088).
+    pub looks: crate::view::Looks,
 }
 
 impl Screen {
@@ -325,6 +327,7 @@ impl Screen {
             scale,
             elements: Vec::new(),
             view: None,
+            looks: crate::view::Looks::default(),
         }
     }
 

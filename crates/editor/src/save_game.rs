@@ -697,6 +697,20 @@ impl Workbench {
                 {
                     data.set(&source);
                 }
+                // And a screen game code showed or hid (decision 0087).
+                if let Some(screen) = playing
+                    .world
+                    .values_named_for(id, <area::builtin::Screen as reflect::Component>::NAME)
+                    && data
+                        .components
+                        .get(<area::builtin::Screen as reflect::Component>::NAME)
+                        != Some(&screen)
+                {
+                    data.components.insert(
+                        <area::builtin::Screen as reflect::Component>::NAME.to_string(),
+                        screen,
+                    );
+                }
                 // And a sprite's clip, as far as it had played (Phase 9,
                 // D3).
                 if let Some(sprite) = playing.world.get::<area::builtin::Sprite>(id)

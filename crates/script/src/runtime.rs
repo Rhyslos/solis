@@ -170,6 +170,42 @@ impl Runtime {
         readers: &[(String, String)],
         reader: &mut dyn crate::screens::ScreenReader,
     ) -> Result<Table, CodeProblem> {
+        match self.run_screen(view, limit, shown_for, readers, reader, false)? {
+            LuaValue::Table(tree) => Ok(tree),
+            _ => Err(plain("the screen's view gave back no pieces".into())),
+        }
+    }
+
+    /// Runs a screen's button (its `{ }`, decision 0088) within `limit`,
+    /// as [`Self::run_view`] runs its view, with Lust's `send` lent: what
+    /// it sends is given back, for the next tick.
+    pub(crate) fn run_action(
+        &self,
+        action: &mlua::Function,
+        limit: std::time::Duration,
+        shown_for: Option<EntityId>,
+        readers: &[(String, String)],
+        reader: &mut dyn crate::screens::ScreenReader,
+    ) -> Result<Vec<Event>, CodeProblem> {
+        self.queue.borrow_mut().clear();
+        let ran = self.run_screen(action, limit, shown_for, readers, reader, true);
+        let mut sent = Vec::new();
+        while let Some(event) = self.queue.borrow_mut().pop() {
+            sent.push(event);
+        }
+        ran.map(|_| sent)
+    }
+
+    /// Runs `f`, a screen's view or button, with the screens' natives.
+    fn run_screen(
+        &self,
+        f: &mlua::Function,
+        limit: std::time::Duration,
+        shown_for: Option<EntityId>,
+        readers: &[(String, String)],
+        reader: &mut dyn crate::screens::ScreenReader,
+        may_send: bool,
+    ) -> Result<LuaValue, CodeProblem> {
         let luau = &self.luau;
         let lua = &luau.lua;
         let program = self.lust.as_ref();
@@ -216,13 +252,16 @@ impl Runtime {
                     })?,
                 )?;
             }
+            if may_send {
+                natives.raw_set("send_event", self.send.clone())?;
+            }
             let env = program.map(|p| &p.env);
             if let Some(env) = env {
                 env.raw_set("LUST_NATIVES", &natives)?;
             }
             let ran = luau
                 .clock
-                .within(limit, || luau.clock.limited(|| view.call::<Table>(())));
+                .within(limit, || luau.clock.limited(|| f.call::<LuaValue>(())));
             if let Some(env) = env {
                 env.raw_set("LUST_NATIVES", LuaValue::Nil)?;
             }

@@ -212,3 +212,55 @@ fn only_screens_can_fetch_the_readers() {
     let main = HEALTH.replace("pass Health", "fetch \"solis/screen\":Ui;\npass Health");
     assert!(compile(&code(&[("main.lst", &main)])).is_err());
 }
+
+const EVENTS: &str =
+    "event Resumed();\nevent Bought(string item, int count);\npass Resumed, Bought;\nend\n";
+
+const MENU: &str = "fetch \"solis/screen\":Ui;\nfetch \"events\":[Resumed, Bought];\n\nassembly Menu {\n    has {\n        int clicks = 0;\n    }\n\n    view {\n        column [gap 8] {\n            text \"Clicked \" + clicks.text();\n            button \"Resume\" [blue, hover:[background red5]] {\n                clicks = clicks + 1;\n                send Resumed() to Ui:entity();\n            }\n            button \"Buy\" {\n                send Bought(\"Seeds\", 3) to Ui:entity();\n            }\n        }\n    }\n}\n\npass Menu;\nend\n";
+
+#[test]
+fn a_screen_s_buttons_send_events_and_keep_its_own_memory() {
+    let compiled = compile(&code(&[
+        ("main.lst", MAIN),
+        ("events.lst", EVENTS),
+        ("ui/menu.lst", MENU),
+    ]))
+    .unwrap()
+    .unwrap();
+    let screens = Screens::start(compiled.screens.as_ref().unwrap()).unwrap();
+    let id = reflect::EntityId::random();
+    let me = Some(id);
+    let view = screens.view("Menu", me, &mut NoReader).unwrap();
+    let column = &view.children[0];
+    assert_eq!(column.children[1].action, Some(0));
+    assert_eq!(column.children[2].action, Some(1));
+    assert!(matches!(
+        column.children[1].styles.iter().find(|(k, _)| k == "hover"),
+        Some((_, Style::Nested(inner))) if inner[0].0 == "background"
+    ));
+    let sent = screens.press("Menu", me, 0, &mut NoReader).unwrap();
+    assert_eq!(sent.len(), 1);
+    assert_eq!((sent[0].to, sent[0].name.as_str()), (id, "Resumed"));
+    let sent = screens.press("Menu", me, 1, &mut NoReader).unwrap();
+    assert_eq!(
+        sent[0].values,
+        vec![reflect::Value::Text("Seeds".into()), reflect::Value::Int(3)]
+    );
+    // The click changed the screen's own field: the next view shows it.
+    let mut said = Vec::new();
+    texts(&screens.view("Menu", me, &mut NoReader).unwrap(), &mut said);
+    assert_eq!(said, vec!["Clicked 1".to_string()]);
+    // A button that isn't there (any more) does nothing.
+    assert!(
+        screens
+            .press("Menu", me, 9, &mut NoReader)
+            .unwrap()
+            .is_empty()
+    );
+    assert!(
+        screens
+            .press("Menu", None, 0, &mut NoReader)
+            .unwrap()
+            .is_empty()
+    );
+}

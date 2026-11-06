@@ -208,6 +208,8 @@ The Rust layer DESIGN.md §12 asks for first, which Lust's `view` is read into l
 
 **M3a. Buttons and events.**
 
+> **Built:** buttons (Lust's `button`; boxes and circles in a canvas with a `{ }` wait for canvas clicks), `hover:[…]` and `disabled`; there's no pressed look yet. Lust doesn't allow `view [pointer]`, so **a screen with any button frees the pointer** instead. A click runs the button's `{ }` in the screens' Luau; what it sends goes into the next tick's `Frame::sent` (recording format 3) and is delivered with the engine's events. An entity shows one screen at a time: `showScreen` sets its Screen (adding one), `hideScreen` hides it only if it shows that screen. Which screens are open is in the world's checksum and copied into a save's area.
+
 - Lust's `button` (and a `box` or `circle` with a `{ }` in a canvas) on a screen is clicked with the mouse in the Game panel while playing; `hover:[ … ]` looks, a pressed look, and `disabled`.
 - **A screen can ask for the pointer** (`view [pointer]`): while one is shown, the game gives the pointer back inside the Game panel; clicks go to the frontmost button under it, and clicks on nothing go to the game.
 - **What a button sends** joins the next tick's input `Frame` (a new section of UI events: the entity, the event's name and its values), so recordings keep it and replays match without a screen (recording version 3; older ones still play).

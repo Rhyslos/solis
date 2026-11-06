@@ -1,0 +1,9 @@
+solis recording 3
+seed 42
+area areas/turret.solarea
+start 0000000000000abc
+0 w 0000000000001000 Jump=hp
+s 5A329QT768NJB Resumed
+1 w 0000000000001001 g 0000000000000077 Jump=h
+s 5A329QT768NJB Bought t53656564 i3 l(f3ff0000000000000,b1) e-
+2 w 0000000000001002 Jump=h

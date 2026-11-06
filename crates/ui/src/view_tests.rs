@@ -334,7 +334,7 @@ fn random_trees_never_crash_or_give_odd_numbers() {
     // and style mixed in, laid out at odd sizes.
     let kinds = [
         "view", "column", "row", "stack", "space", "text", "progress", "canvas", "box", "circle",
-        "line", "grid", "",
+        "line", "grid", "", "button",
     ];
     let words = [
         "pad",
@@ -414,6 +414,7 @@ fn random_trees_never_crash_or_give_odd_numbers() {
             value: [None, Some(5.0), Some(f64::INFINITY)][next(3)],
             styles,
             children,
+            action: [None, Some(0), Some(9_999)][next(3)],
         }
     }
     for _ in 0..300 {
@@ -431,4 +432,151 @@ fn random_trees_never_crash_or_give_odd_numbers() {
             );
         }
     }
+}
+
+fn button(label: &str, action: usize, styles: &[(&str, Style)]) -> Node {
+    Node {
+        text: label.into(),
+        action: Some(action),
+        ..node("button", styles, vec![])
+    }
+}
+
+#[test]
+fn buttons_are_laid_out_as_lust_s_and_can_be_hit() {
+    let view = node(
+        "view",
+        &[],
+        vec![node(
+            "column",
+            &[("gap", n(10.0))],
+            vec![
+                button("Resume", 0, &[("blue", on())]),
+                button("Quit", 1, &[("disabled", on())]),
+            ],
+        )],
+    );
+    let (out, clickable) = lay_out_with(&view, [400.0, 300.0], &mut Fixed, Looks::default());
+    // Its padding round the words, filled with its colour, the words white.
+    assert_eq!(out[0].size, [88.0, 34.0], "its words and padding");
+    assert_eq!(out[0].fill, Fill::Solid(Colour::rgb(0x1c, 0x7e, 0xd6)));
+    let ElementKind::Text { text, align, .. } = &out[1].kind else {
+        panic!("its words");
+    };
+    assert_eq!((text.as_str(), *align), ("Resume", Edge::Middle));
+    assert_eq!(out[1].fill, Fill::Solid(Colour::WHITE));
+    // Only the one that isn't disabled can be clicked; it's found there.
+    assert_eq!(clickable.len(), 1);
+    assert_eq!(hit(&clickable, [40.0, 17.0]), Some(0));
+    assert_eq!(hit(&clickable, [30.0, 60.0]), None, "the disabled one");
+    assert_eq!(hit(&clickable, [200.0, 200.0]), None);
+}
+
+#[test]
+fn hover_and_focus_change_how_a_button_looks() {
+    let hover_red = (
+        "hover",
+        Style::Nested(vec![("background".into(), Style::Text("red5".into()))]),
+    );
+    let view = node(
+        "view",
+        &[],
+        vec![button("Go", 0, &[hover_red]), button("Stay", 1, &[])],
+    );
+    let plain = lay_out_with(&view, [400.0, 300.0], &mut Fixed, Looks::default()).0;
+    let hovered = lay_out_with(
+        &view,
+        [400.0, 300.0],
+        &mut Fixed,
+        Looks {
+            hover: Some(0),
+            focus: None,
+        },
+    )
+    .0;
+    assert_eq!(hovered[0].fill, Fill::Solid(Colour::rgb(0xff, 0x6b, 0x6b)));
+    assert_ne!(plain[0].fill, hovered[0].fill);
+    // Without a hover look of its own, a little darker.
+    let darker = lay_out_with(
+        &view,
+        [400.0, 300.0],
+        &mut Fixed,
+        Looks {
+            hover: Some(1),
+            focus: None,
+        },
+    )
+    .0;
+    assert_ne!(darker[2].fill, plain[2].fill);
+    // The focus ring: one more element, round the focused button.
+    let focused = lay_out_with(
+        &view,
+        [400.0, 300.0],
+        &mut Fixed,
+        Looks {
+            hover: None,
+            focus: Some(1),
+        },
+    )
+    .0;
+    assert_eq!(focused.len(), plain.len() + 1);
+}
+
+#[test]
+fn a_view_with_a_button_anywhere_inside_has_actions() {
+    let plain = node("column", &[], vec![text("Hi", &[])]);
+    assert!(!has_actions(&plain));
+    let deep = node(
+        "column",
+        &[],
+        vec![node("row", &[], vec![button("Go", 0, &[])])],
+    );
+    assert!(has_actions(&deep));
+}
+
+#[test]
+fn a_screen_s_button_is_found_where_its_picture_is_drawn() {
+    use crate::layout::{clickable_at, picture_area};
+    // A 2D game's 320 × 180 picture on a 1000 × 700 panel: whole steps of
+    // 3, with bars round it.
+    let area = picture_area([320, 180], [1000, 700], true);
+    assert!(area.whole);
+    assert_eq!(
+        (area.scale, area.size, area.origin),
+        (3.0, [960, 540], [20, 80])
+    );
+    let filling = picture_area([320, 180], [1000, 700], false);
+    assert!(!filling.whole && filling.size[0] == 1000);
+    // Without whole steps it fills; a screen smaller than the picture
+    // shrinks it.
+    let small = picture_area([320, 180], [100, 100], true);
+    assert!(small.size[0] <= 100 && small.size[1] <= 100);
+    let view = node(
+        "stack",
+        &[
+            ("width", Style::Text("fill".into())),
+            ("height", Style::Text("fill".into())),
+        ],
+        vec![button(
+            "Go",
+            0,
+            &[
+                ("width", Style::Text("fill".into())),
+                ("height", Style::Text("fill".into())),
+            ],
+        )],
+    );
+    let screen = crate::Screen {
+        name: "Menu".into(),
+        design: [320.0, 180.0],
+        scale: crate::ScaleRule::WholeSteps,
+        elements: Vec::new(),
+        view: Some(view),
+        looks: Looks::default(),
+    };
+    let at = |p: [f32; 2]| clickable_at(&screen, area.size, Some(3), p, &mut Fixed);
+    assert_eq!(at([480.0, 270.0]), Some(0));
+    assert_eq!(at([-1.0, 10.0]), None);
+    assert_eq!(at([961.0, 10.0]), None);
+    assert_eq!(at([f32::NAN, 10.0]), None);
 }

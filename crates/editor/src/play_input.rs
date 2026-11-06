@@ -62,12 +62,54 @@ impl Workbench {
             return;
         }
         self.game_input = true;
-        ctx.send_viewport_cmd(egui::ViewportCommand::CursorGrab(egui::CursorGrab::Locked));
-        ctx.send_viewport_cmd(egui::ViewportCommand::CursorVisible(false));
+        // A screen with buttons keeps the pointer free (free_pointer).
+        self.game_screens.freed = self.game_screens.wants_pointer();
+        if !self.game_screens.freed {
+            ctx.send_viewport_cmd(egui::ViewportCommand::CursorGrab(egui::CursorGrab::Locked));
+            ctx.send_viewport_cmd(egui::ViewportCommand::CursorVisible(false));
+        }
         self.log(
             LogLevel::Info,
             "The game has the mouse and keys; press Esc to give them back to the editor.",
         );
+    }
+
+    /// What the Game panel saw this frame: the pointer over the game's
+    /// screens' buttons, and a click, which presses the button under it or
+    /// else gives the game the mouse and keys (decision 0088). And the
+    /// pointer freed or held as screens with buttons come and go.
+    pub(crate) fn game_panel_done(
+        &mut self,
+        ctx: &egui::Context,
+        out: crate::game_panel::GamePanelOut,
+    ) {
+        if self.playing.is_none() {
+            self.game_screens.hover = None;
+            return;
+        }
+        let wants = self.game_screens.wants_pointer();
+        // The pointer is only over buttons while it can be seen.
+        let pointer = out
+            .pointer
+            .filter(|_| wants && (!self.game_input || self.game_screens.freed));
+        self.game_screens.point_at(pointer, out.area);
+        if out.clicked {
+            if self.game_screens.hover.is_some() {
+                self.press_hovered();
+            } else {
+                self.give_game_input(ctx);
+            }
+        }
+        if self.game_input && wants != self.game_screens.freed {
+            self.game_screens.freed = wants;
+            let (grab, visible) = if wants {
+                (egui::CursorGrab::None, true)
+            } else {
+                (egui::CursorGrab::Locked, false)
+            };
+            ctx.send_viewport_cmd(egui::ViewportCommand::CursorGrab(grab));
+            ctx.send_viewport_cmd(egui::ViewportCommand::CursorVisible(visible));
+        }
     }
 
     /// Takes the mouse and keys back from the game: everything it held is
@@ -77,6 +119,7 @@ impl Workbench {
             self.game_input = false;
             self.release_pointer = true;
         }
+        self.game_screens.freed = false;
         self.devices.release_all();
     }
 
@@ -111,10 +154,15 @@ impl Workbench {
                     repeat: false,
                     ..
                 } => self.devices.set(key_name(key), pressed),
+                // A click on a screen's button is the screen's, not the
+                // game's; while the pointer is free for buttons, moving it
+                // doesn't turn the game's camera.
                 egui::Event::PointerButton {
                     button, pressed, ..
-                } => self.devices.set(mouse_name(button), pressed),
-                egui::Event::MouseMoved(delta) => {
+                } if !(pressed && self.game_screens.hover.is_some()) => {
+                    self.devices.set(mouse_name(button), pressed);
+                }
+                egui::Event::MouseMoved(delta) if !self.game_screens.freed => {
                     self.devices.mouse_moved(glam::Vec2::new(delta.x, delta.y));
                 }
                 egui::Event::MouseWheel { unit, delta, .. } => {

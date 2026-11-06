@@ -236,6 +236,9 @@ impl Devices {
         self.went_down.clear();
         self.motion = Vec2::ZERO;
         self.wheel = 0.0;
-        Frame { actions }
+        Frame {
+            actions,
+            sent: Vec::new(),
+        }
     }
 }

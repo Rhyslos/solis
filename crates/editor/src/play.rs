@@ -575,6 +575,20 @@ impl Workbench {
                     .unwrap_or_default(),
                 None => sampled,
             };
+            // What screens' buttons sent since the last tick is part of its
+            // input (decision 0088), so a replay sends it again; during a
+            // replay, the recording's own.
+            let mut frame = frame;
+            let sent = std::mem::take(&mut self.game_screens.sent);
+            if playing.replay.is_none() {
+                frame.sent = sent;
+            }
+            let mut engine_events = engine_events;
+            engine_events.extend(frame.sent.iter().map(|s| script::Event {
+                to: s.to,
+                name: s.name.clone(),
+                values: s.values.clone(),
+            }));
             let frame = Arc::new(frame);
             let mut slow = None;
             let mut saves = Vec::new();

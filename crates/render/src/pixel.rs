@@ -85,19 +85,10 @@ pub fn pixel_layout(
             0.0
         }
     });
-    let fits = (screen[0] as f32 / base[0] as f32).min(screen[1] as f32 / base[1] as f32);
-    let steps = (screen[0] / base[0]).min(screen[1] / base[1]);
-    let whole = steps >= 1 && (scaling == PixelScaling::WholeSteps || fits == steps as f32);
-    let scale = if whole { steps as f32 } else { fits };
-    let size = if whole {
-        [base[0] * steps, base[1] * steps]
-    } else {
-        [
-            ((base[0] as f32 * scale).round() as u32).clamp(1, screen[0]),
-            ((base[1] as f32 * scale).round() as u32).clamp(1, screen[1]),
-        ]
-    };
-    let origin = [(screen[0] - size[0]) / 2, (screen[1] - size[1]) / 2];
+    // Where it goes is game UI's to know too (its screens are laid out
+    // and clicked there), so it's worked out in one place.
+    let area = ui::layout::picture_area(base, screen, scaling == PixelScaling::WholeSteps);
+    let (whole, scale, size, origin) = (area.whole, area.scale, area.size, area.origin);
     let slide = if whole {
         slide.map(|s| (s * scale).round())
     } else {

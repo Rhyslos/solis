@@ -687,6 +687,82 @@ impl World {
         }
     }
 
+    /// Shows or hides a screen for an entity (game code's `showScreen` and
+    /// `hideScreen`, decision 0087). Showing sets the entity's Screen to
+    /// `screen` and shows it, giving it a Screen if it has none; hiding
+    /// hides it only if it shows `screen`. Nothing happens for an entity
+    /// not in the world, or a name a Screen can't hold.
+    pub fn set_screen(&mut self, id: EntityId, screen: &str, shown: bool) {
+        use area::builtin::Screen;
+        use reflect::Component;
+        let Some(&entity) = self.by_id.get(&id) else {
+            return;
+        };
+        let now = self
+            .ecs
+            .get::<&Values>(entity)
+            .ok()
+            .and_then(|v| v.0.get(Screen::NAME).map(Screen::from_data));
+        let wanted = match (&now, shown) {
+            (Some(now), true) => Screen {
+                screen: screen.to_string(),
+                shown: true,
+                ..now.clone()
+            },
+            (None, true) => Screen::showing(screen),
+            (Some(now), false) if now.screen.eq_ignore_ascii_case(screen) => Screen {
+                shown: false,
+                ..now.clone()
+            },
+            _ => return,
+        }
+        .sanitized();
+        if wanted.screen.is_empty() || now.as_ref() == Some(&wanted) {
+            return;
+        }
+        let data = wanted.to_data();
+        if let Ok(mut values) = self.ecs.get::<&mut Values>(entity) {
+            values.0.insert(Screen::NAME.to_string(), data);
+        } else {
+            let mut values = Values::default();
+            values.0.insert(Screen::NAME.to_string(), data);
+            let _ = self.ecs.insert_one(entity, values);
+        }
+        // The Screen is among the values the structure's sum holds.
+        self.structure = std::sync::OnceLock::new();
+        self.touched = true;
+    }
+
+    /// The screen an entity's Screen shows, if it has one and it's shown.
+    pub fn screen_shown(&self, id: EntityId) -> Option<String> {
+        use area::builtin::Screen;
+        use reflect::Component;
+        let entity = *self.by_id.get(&id)?;
+        let values = self.ecs.get::<&Values>(entity).ok()?;
+        let screen = Screen::from_data(values.0.get(Screen::NAME)?);
+        (screen.shown && !screen.screen.is_empty()).then_some(screen.screen)
+    }
+
+    /// The values of one entity's component called `name` kept as plain
+    /// values (as [`Self::values_named`] gives them for every entity).
+    pub fn values_named_for(&self, id: EntityId, name: &str) -> Option<ComponentData> {
+        let entity = *self.by_id.get(&id)?;
+        let values = self.ecs.get::<&Values>(entity).ok()?;
+        values.0.get(name).cloned()
+    }
+
+    /// The screen each entity's Screen shows, for those shown.
+    pub fn screens_shown(&self) -> std::collections::HashMap<EntityId, String> {
+        use area::builtin::Screen;
+        use reflect::Component;
+        self.values_named(Screen::NAME)
+            .into_iter()
+            .map(|(id, data)| (id, Screen::from_data(&data)))
+            .filter(|(_, s)| s.shown && !s.screen.is_empty())
+            .map(|(id, s)| (id, s.screen))
+            .collect()
+    }
+
     /// The projectiles in flight.
     pub fn projectiles(&self) -> &Projectiles {
         &self.projectiles

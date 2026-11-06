@@ -888,3 +888,42 @@ fn sprites_arrive_as_rust_types_and_are_drawn_where_they_stand() {
     assert_eq!(*got, sprite);
     assert_eq!(place.w_axis.truncate(), Vec3::new(2.0, 3.0, 0.0));
 }
+
+#[test]
+fn game_code_shows_and_hides_screens_and_the_checksum_follows() {
+    use area::builtin::Screen;
+    let mut area = Area::new();
+    let menu = area.spawn(EntityData::new("Menu").with(&Screen {
+        screen: "Menu".into(),
+        shown: true,
+        order: 3,
+    }));
+    let bare = area.spawn(EntityData::new("Bare"));
+    let mut world = World::from_area(&area);
+    assert_eq!(world.screen_shown(menu).as_deref(), Some("Menu"));
+    assert_eq!(world.screen_shown(bare), None);
+    let before = world.checksum();
+    // Hiding another screen does nothing; hiding this one keeps its order.
+    world.set_screen(menu, "Hud", false);
+    assert_eq!(world.checksum(), before);
+    world.set_screen(menu, "menu", false);
+    assert_eq!(world.screen_shown(menu), None);
+    assert_ne!(
+        world.checksum(),
+        before,
+        "which screens are open is the game's"
+    );
+    let kept = world.values_named_for(menu, "Screen").unwrap();
+    assert_eq!(Screen::from_data(&kept).order, 3);
+    // Showing gives an entity a Screen if it has none.
+    world.set_screen(bare, "Hud", true);
+    assert_eq!(world.screen_shown(bare).as_deref(), Some("Hud"));
+    assert_eq!(world.screens_shown().len(), 1);
+    // Names a Screen can't hold, and entities not there, change nothing.
+    let now = world.checksum();
+    world.set_screen(bare, "Not a name!", true);
+    world.set_screen(bare, "", true);
+    world.set_screen(EntityId::random(), "Hud", true);
+    assert_eq!(world.checksum(), now);
+    assert_eq!(world.screen_shown(bare).as_deref(), Some("Hud"));
+}

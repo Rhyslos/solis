@@ -23,12 +23,66 @@ impl ActionState {
     }
 }
 
+/// An event a screen's button sent (decision 0088): it reaches the game
+/// in the next tick, with the keys pressed, and recordings keep it.
+#[derive(Debug, Clone, PartialEq)]
+pub struct Sent {
+    /// The entity it's for.
+    pub to: reflect::EntityId,
+    /// The event's name, as declared (`Resumed`).
+    pub name: String,
+    /// What it carries, in the declared order.
+    pub values: Vec<reflect::Value>,
+}
+
+impl Sent {
+    /// Whether a recording keeps it as it is (and reads it back the same):
+    /// a name of letters, digits and `_` at most [`MAX_SENT_NAME`] long, at
+    /// most [`MAX_SENT_VALUES`] values, finite numbers, texts of at most
+    /// [`MAX_SENT_TEXT`] bytes, lists at most 4 deep, and no assets.
+    pub fn recordable(&self) -> bool {
+        fn value(v: &reflect::Value, depth: usize) -> bool {
+            match v {
+                reflect::Value::Float(f) => f.is_finite(),
+                reflect::Value::Text(t) => t.len() <= MAX_SENT_TEXT,
+                reflect::Value::Asset(_) => false,
+                reflect::Value::List(items) => {
+                    depth < 4
+                        && items.len() <= MAX_SENT_VALUES
+                        && items.iter().all(|i| value(i, depth + 1))
+                }
+                _ => true,
+            }
+        }
+        !self.name.is_empty()
+            && self.name.len() <= MAX_SENT_NAME
+            && self
+                .name
+                .chars()
+                .all(|c| c.is_ascii_alphanumeric() || c == '_')
+            && self.values.len() <= MAX_SENT_VALUES
+            && self.values.iter().all(|v| value(v, 0))
+    }
+}
+
+/// The longest text an event sent from a screen carries, in bytes.
+pub const MAX_SENT_TEXT: usize = 4096;
+
+/// The most events screens send in one tick.
+pub const MAX_SENT: usize = 64;
+/// The longest event name kept.
+pub const MAX_SENT_NAME: usize = 64;
+/// The most values one event carries.
+pub const MAX_SENT_VALUES: usize = 32;
+
 /// Every action's state in one tick, by name; actions doing nothing are
-/// left out.
+/// left out. And what screens sent.
 #[derive(Debug, Clone, PartialEq, Default)]
 pub struct Frame {
     /// The busy actions.
     pub actions: BTreeMap<String, ActionState>,
+    /// What the screens' buttons sent since the last tick (decision 0088).
+    pub sent: Vec<Sent>,
 }
 
 impl Frame {
@@ -45,6 +99,19 @@ impl Frame {
             sum.u64(u64::from(s.held) | u64::from(s.pressed) << 1 | u64::from(s.released) << 2);
             sum.f32(s.axis.x);
             sum.f32(s.axis.y);
+        }
+        // Only when there are any, so older recordings' sums stand.
+        if !self.sent.is_empty() {
+            sum.u64(self.sent.len() as u64);
+            for sent in &self.sent {
+                sum.entity(sent.to);
+                sum.bytes(sent.name.as_bytes());
+                let mut data = reflect::ComponentData::default();
+                for (i, v) in sent.values.iter().enumerate() {
+                    data.set(&i.to_string(), v.clone());
+                }
+                sum.data(&data);
+            }
         }
     }
 }

@@ -65,6 +65,9 @@ pub enum Change {
     StopSounds(EntityId),
     /// `setSoundPlaying`: turn this entity's `AudioSource` on or off.
     SoundPlaying(EntityId, bool),
+    /// `showScreen` (true) or `hideScreen` (false): this entity's Screen
+    /// shows, or stops showing, the screen named here.
+    ShowScreen(EntityId, String, bool),
     /// `setBusVolume`: this bus at this share of its fader (0 to 1) for
     /// the rest of the play.
     BusVolume(String, f32),
@@ -150,6 +153,9 @@ pub struct WorldView {
     pub map_bounds: Arc<std::collections::HashMap<EntityId, (Vec3, Vec3)>>,
     /// How much of the world a 2D camera shows, in metres (x across, y up).
     pub view_size: Vec3,
+    /// The screen each entity's Screen shows as the tick started, for
+    /// those shown (`screenShown`).
+    pub screens: Arc<std::collections::HashMap<EntityId, String>>,
 }
 
 impl WorldView {
@@ -463,6 +469,25 @@ impl Host for ViewHost {
                 .changes
                 .push((order, Change::SoundPlaying(which, playing)));
         }
+    }
+
+    fn show_screen(&mut self, which: EntityId, screen: &str, shown: bool) {
+        let named = screen.len() <= area::builtin::Screen::MAX_NAME
+            && !screen.is_empty()
+            && screen.chars().all(|c| c.is_ascii_alphanumeric());
+        if named && self.kept.room() {
+            let order = self.order();
+            self.kept
+                .changes
+                .push((order, Change::ShowScreen(which, screen.to_string(), shown)));
+        }
+    }
+
+    fn screen_shown(&self, which: EntityId, screen: &str) -> bool {
+        self.view
+            .screens
+            .get(&which)
+            .is_some_and(|s| s.eq_ignore_ascii_case(screen))
     }
 
     fn play_clip(&mut self, which: EntityId, clip: &str, again: bool) {
