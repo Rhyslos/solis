@@ -462,6 +462,9 @@ pub struct Workbench {
     pub(crate) screen_doc: Option<crate::screen_doc::ScreenDoc>,
     /// The program its view was drawn from.
     pub(crate) screen_from: Option<usize>,
+    /// The player's settings (decision 0091): text size, UI size and the
+    /// window, as game code last set them; kept from play to play.
+    pub(crate) player_settings: script::settings::PlayerSettings,
     /// What the open screen can be tied to and send, and the build of the
     /// game's code it's for.
     pub(crate) screen_game: Option<(
@@ -599,6 +602,7 @@ impl Workbench {
             screen_pictures: Default::default(),
             screen_doc: None,
             screen_from: None,
+            player_settings: Default::default(),
             screen_game: None,
             screen_fonts: None,
             screen_hovered: false,

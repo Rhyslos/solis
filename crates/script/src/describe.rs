@@ -819,6 +819,69 @@ pub const NATIVES: &[Native] = &[
         lust: "method bool entity:screenShown(Screen which) native;",
         about: "Whether the entity's Screen shows this screen, as the tick started.",
     },
+    Native {
+        file: "screens",
+        name: "textSize",
+        owner: "Screens",
+        lust: "method float textSize() native;",
+        about: "The player's text size: every screen's text times this (1 as designed, 1.5 half as big again; 0.5 to 3).",
+    },
+    Native {
+        file: "screens",
+        name: "setTextSize",
+        owner: "Screens",
+        lust: "method setTextSize(float size) native;",
+        about: "Sets the player's text size, at the end of the tick: every screen's text grows or shrinks, and the pieces round it make room. Kept for the next time the game starts.",
+    },
+    Native {
+        file: "screens",
+        name: "uiSize",
+        owner: "Screens",
+        lust: "method float uiSize() native;",
+        about: "The player's UI size: every screen times this (1 as designed; 0.5 to 2).",
+    },
+    Native {
+        file: "screens",
+        name: "setUiSize",
+        owner: "Screens",
+        lust: "method setUiSize(float size) native;",
+        about: "Sets the player's UI size, at the end of the tick: every screen grows or shrinks. Kept for the next time the game starts.",
+    },
+    Native {
+        file: "window",
+        name: "fullscreen",
+        owner: "Window",
+        lust: "method bool fullscreen() native;",
+        about: "Whether the game fills the screen.",
+    },
+    Native {
+        file: "window",
+        name: "setFullscreen",
+        owner: "Window",
+        lust: "method setFullscreen(bool on) native;",
+        about: "Makes the game fill the screen (true) or sit in a window (false), at the end of the tick. Kept for the next time the game starts. While playing in the editor it only says so in the Console.",
+    },
+    Native {
+        file: "window",
+        name: "resolution",
+        owner: "Window",
+        lust: "method vec3 resolution() native;",
+        about: "The window's size in pixels when it isn't fullscreen: x across, y down.",
+    },
+    Native {
+        file: "window",
+        name: "setResolution",
+        owner: "Window",
+        lust: "method setResolution(int width, int height) native;",
+        about: "Sets the window's size in pixels (each 320 to 16384), at the end of the tick. Kept for the next time the game starts. While playing in the editor it only says so in the Console.",
+    },
+    Native {
+        file: "window",
+        name: "useNextResolution",
+        owner: "Window",
+        lust: "method useNextResolution() native;",
+        about: "Switches the window to the next usual size (1280 × 720, 1600 × 900, 1920 × 1080, 2560 × 1440, 3440 × 1440, 3840 × 2160, then round again), at the end of the tick: for a menu's Resolution button.",
+    },
 ];
 
 /// The description files, and the ready-made components in `kit/`
@@ -859,8 +922,13 @@ fn descriptions_with(
     names: &crate::project_names::Names,
 ) -> (Vec<(String, String)>, Vec<String>) {
     let (project, notes) = crate::project_names::project_file(made_by, names);
-    let mut names: Vec<&str> = NATIVES.iter().map(|n| n.file).collect();
-    names.dedup();
+    // Each file once, in the order they first come.
+    let mut names: Vec<&str> = Vec::new();
+    for file in NATIVES.iter().map(|n| n.file) {
+        if !names.contains(&file) {
+            names.push(file);
+        }
+    }
     let files = names
         .into_iter()
         .map(|file| {
@@ -1039,7 +1107,7 @@ mod tests {
     #[test]
     fn the_descriptions_check_cleanly_and_a_game_can_use_them() {
         let mut files = descriptions("Test Engine 9.9.9", "solis");
-        assert_eq!(files.len(), 15);
+        assert_eq!(files.len(), 16);
         assert!(files.iter().any(|(p, _)| p == "solis/project.lst"));
         assert!(files.iter().any(|(p, _)| p == "solis/data/tilemap.lst"));
         assert!(files[0].1.starts_with("-- Made by Test Engine 9.9.9"));
@@ -1191,7 +1259,8 @@ mod tests {
                     "sound",
                     "animation",
                     "tiles",
-                    "screens"
+                    "screens",
+                    "window"
                 ]
                 .contains(&native.file)
             );

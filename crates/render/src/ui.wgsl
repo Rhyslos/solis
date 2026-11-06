@@ -32,6 +32,10 @@ struct Instance {
     @location(5) border: vec4<f32>,
     // Where it may be drawn: left, top, right, bottom (a canvas's box).
     @location(6) clip: vec4<f32>,
+    // Glow reach, outline width, pixel size (decision 0089).
+    @location(7) halo: vec4<f32>,
+    @location(8) glow: vec4<f32>,
+    @location(9) outline: vec4<f32>,
 };
 
 struct Out {
@@ -44,6 +48,9 @@ struct Out {
     @location(5) @interpolate(flat) colour_b: vec4<f32>,
     @location(6) @interpolate(flat) border: vec4<f32>,
     @location(7) @interpolate(flat) cut: vec4<f32>,
+    @location(8) @interpolate(flat) halo: vec4<f32>,
+    @location(9) @interpolate(flat) glow: vec4<f32>,
+    @location(10) @interpolate(flat) outline: vec4<f32>,
 };
 
 const KIND_ELLIPSE: f32 = 1.0;
@@ -61,8 +68,10 @@ fn ui_vs(@builtin(vertex_index) v: u32, i: Instance) -> Out {
         lo = min(i.ends.xy, i.ends.zw) - vec2<f32>(i.shape.x);
         hi = max(i.ends.xy, i.ends.zw) + vec2<f32>(i.shape.x);
     }
-    lo = lo - vec2<f32>(1.0);
-    hi = hi + vec2<f32>(1.0);
+    // Room for its glow and outline, and a whole block of pixels.
+    let reach = 1.0 + i.halo.x + i.halo.y + max(i.halo.z, 0.0);
+    lo = lo - vec2<f32>(reach);
+    hi = hi + vec2<f32>(reach);
     let corner = vec2<f32>(f32(v & 1u), f32((v >> 1u) & 1u));
     let at = mix(lo, hi, corner);
     let ndc = vec2<f32>(at.x / screen.size.x * 2.0 - 1.0, 1.0 - at.y / screen.size.y * 2.0);
@@ -76,6 +85,9 @@ fn ui_vs(@builtin(vertex_index) v: u32, i: Instance) -> Out {
     o.colour_b = i.colour_b;
     o.border = i.border;
     o.cut = i.clip;
+    o.halo = i.halo;
+    o.glow = i.glow;
+    o.outline = i.outline;
     return o;
 }
 
@@ -97,8 +109,25 @@ fn segment(p: vec2<f32>, a: vec2<f32>, b: vec2<f32>) -> f32 {
     return length(p - a - ab * t);
 }
 
+// `a` over `b`, both with straight (not premultiplied) colours.
+fn over(a: vec4<f32>, b: vec4<f32>) -> vec4<f32> {
+    let alpha = a.a + b.a * (1.0 - a.a);
+    if (alpha <= 0.0) {
+        return vec4<f32>(0.0);
+    }
+    return vec4<f32>((a.rgb * a.a + b.rgb * b.a * (1.0 - a.a)) / alpha, alpha);
+}
+
 @fragment
-fn ui_fs(o: Out) -> @location(0) vec4<f32> {
+fn ui_fs(o_in: Out) -> @location(0) vec4<f32> {
+    var o = o_in;
+    // The screen's pixel size: every pixel of a block is worked out at
+    // the block's middle, so the whole screen is drawn in blocks lined up
+    // from its top left.
+    let block = o.halo.z;
+    if (block > 1.0) {
+        o.at = (floor(o.at / block) + vec2<f32>(0.5)) * block;
+    }
     // Cut off outside its canvas (whole pixels: a pixel's centre inside).
     if (o.at.x < o.cut.x || o.at.y < o.cut.y || o.at.x >= o.cut.z || o.at.y >= o.cut.w) {
         discard;
@@ -117,6 +146,9 @@ fn ui_fs(o: Out) -> @location(0) vec4<f32> {
         let uv = mix(o.ends.xy, o.ends.zw, t) / ATLAS_SIDE;
         let v = textureSampleLevel(atlas, atlas_sampler, uv, 0.0).r;
         d = -((v * 255.0 - 128.0) / 127.0 * SPREAD) * o.shape.x;
+        // Past the letter's own image (a glow reaching further): its
+        // distance from the image's edge added on.
+        d = d + length(max(abs(p) - half, vec2<f32>(0.0)));
     } else if (kind == KIND_LINE) {
         d = segment(o.at, o.ends.xy, o.ends.zw) - o.shape.x * 0.5;
     } else if (kind == KIND_ELLIPSE) {
@@ -125,9 +157,11 @@ fn ui_fs(o: Out) -> @location(0) vec4<f32> {
         d = rounded_box(p, half, min(o.shape.x, min(half.x, half.y)));
     }
     // How much of the pixel the shape covers: a soft pixel-wide edge, or
-    // all or nothing for pixel art.
+    // all or nothing for pixel art (and for blocks of the screen's pixel
+    // size).
+    let hard = crisp || block > 1.0;
     var cover = clamp(0.5 - d, 0.0, 1.0);
-    if (crisp) {
+    if (hard) {
         cover = select(0.0, 1.0, d < 0.0);
     }
     // Its colour along it: across or down.
@@ -165,5 +199,37 @@ fn ui_fs(o: Out) -> @location(0) vec4<f32> {
         }
         colour = mix(o.border, colour, inside);
     }
-    return vec4<f32>(colour.rgb, colour.a * cover);
+    var out = vec4<f32>(colour.rgb, colour.a * cover);
+    // Its outline, just outside its edge, then its glow beyond that, both
+    // under it.
+    // A letter's distance reaches only as far as its distance image's
+    // spread, so its outline and glow do too.
+    var line = o.halo.y;
+    var reach = o.halo.x;
+    if (kind == KIND_LETTER) {
+        let most = SPREAD * o.shape.x;
+        line = min(line, most);
+        reach = min(reach, max(most - line, 0.0));
+    }
+    // Only outside its edge: a hollow shape (a border, a focus ring) stays
+    // hollow, and a see-through fill doesn't show them through it.
+    var outside = clamp(d + 0.5, 0.0, 1.0);
+    if (hard) {
+        outside = select(0.0, 1.0, d >= 0.0);
+    }
+    if (line > 0.0) {
+        var band = clamp(0.5 - (d - line), 0.0, 1.0);
+        if (hard) {
+            band = select(0.0, 1.0, d - line < 0.0);
+        }
+        band = band * outside;
+        out = over(out, vec4<f32>(o.outline.rgb, o.outline.a * band));
+    }
+    if (reach > 0.0) {
+        // Brightest at the edge, fading to nothing at its reach.
+        let t = clamp((d - line) / reach, 0.0, 1.0);
+        let g = (1.0 - t) * (1.0 - t) * outside;
+        out = over(out, vec4<f32>(o.glow.rgb, o.glow.a * g * 0.75));
+    }
+    return out;
 }

@@ -255,6 +255,55 @@ impl Runtime {
             if may_send {
                 natives.raw_set("send_event", self.send.clone())?;
             }
+            // The player's settings, to read (decision 0091); changing
+            // them is for the game's code.
+            let settings = reader.borrow().settings();
+            natives.raw_set(
+                "Screens_textSize",
+                lua.create_function(move |_, _w: LuaValue| Ok(settings.text_size))?,
+            )?;
+            natives.raw_set(
+                "Screens_uiSize",
+                lua.create_function(move |_, _w: LuaValue| Ok(settings.ui_size))?,
+            )?;
+            natives.raw_set(
+                "Window_fullscreen",
+                lua.create_function(move |_, _w: LuaValue| Ok(settings.fullscreen))?,
+            )?;
+            natives.raw_set(
+                "Window_resolution",
+                lua.create_function(move |_, _w: LuaValue| {
+                    let [w, h] = settings.resolution;
+                    Ok(crate::convert::vec3_value(glam::Vec3::new(
+                        w as f32, h as f32, 0.0,
+                    )))
+                })?,
+            )?;
+            for (owner, name) in [
+                ("Screens", "setTextSize"),
+                ("Screens", "setUiSize"),
+                ("Window", "setFullscreen"),
+                ("Window", "setResolution"),
+                ("Window", "useNextResolution"),
+            ] {
+                natives.raw_set(
+                    format!("{owner}_{name}"),
+                    scope.create_function(move |_, _: mlua::MultiValue| -> mlua::Result<()> {
+                        let error: mlua::Function = match program {
+                            Some(p) => p.env.get("error")?,
+                            None => lua.globals().get("error")?,
+                        };
+                        error.call::<()>((
+                            format!(
+                                "a screen can't change the player's settings: send an event to \
+                                 the entity, and its code calls {owner}:{name}"
+                            ),
+                            4,
+                        ))?;
+                        Err(mlua::Error::runtime("stopped"))
+                    })?,
+                )?;
+            }
             let env = program.map(|p| &p.env);
             if let Some(env) = env {
                 env.raw_set("LUST_NATIVES", &natives)?;

@@ -207,6 +207,12 @@ pub struct Element {
     pub children: Vec<Element>,
     /// Whether what's inside it is cut off at its edges (a canvas).
     pub clips: bool,
+    /// A glow round it: how far it reaches in design pixels, and its
+    /// colour (decision 0089, M6).
+    pub glow: Option<(f32, Colour)>,
+    /// An outline just outside its edge: how thick in design pixels, and
+    /// its colour.
+    pub outline: Option<(f32, Colour)>,
 }
 
 impl Element {
@@ -230,6 +236,8 @@ impl Element {
             shown: true,
             children: Vec::new(),
             clips: false,
+            glow: None,
+            outline: None,
         }
     }
 
@@ -340,6 +348,40 @@ pub struct Screen {
     /// The pictures it shows (decision 0089), shared by every screen of
     /// the game.
     pub pictures: Option<std::sync::Arc<crate::pictures::Pictures>>,
+    /// The player's UI size (decision 0089, M6): 1 as designed, 1.5 half
+    /// as big again (0.5 to 2).
+    pub ui_size: f32,
+    /// Its look, from the Screen component showing it: a glow and an
+    /// outline round everything, and its pixel size.
+    pub look: ScreenLook,
+}
+
+/// A whole screen's look (decision 0089, M6), set on the Screen
+/// component that shows it.
+#[derive(Debug, Clone, Copy, PartialEq)]
+pub struct ScreenLook {
+    /// How far a glow reaches round everything, in design pixels, in each
+    /// piece's own colour (0 for none).
+    pub glow: f32,
+    /// How thick an outline is just outside everything, in design pixels
+    /// (0 for none).
+    pub outline: f32,
+    /// The outline's colour.
+    pub outline_colour: Colour,
+    /// The screen drawn in blocks this many design pixels big (1 or less:
+    /// smooth).
+    pub pixel: f32,
+}
+
+impl Default for ScreenLook {
+    fn default() -> Self {
+        Self {
+            glow: 0.0,
+            outline: 0.0,
+            outline_colour: Colour::rgb(0, 0, 0),
+            pixel: 1.0,
+        }
+    }
 }
 
 impl Screen {
@@ -353,6 +395,8 @@ impl Screen {
             view: None,
             looks: crate::view::Looks::default(),
             pictures: None,
+            ui_size: 1.0,
+            look: ScreenLook::default(),
         }
     }
 

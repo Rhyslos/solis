@@ -109,6 +109,7 @@ impl GameScreens {
             let looks = ui::view::Looks {
                 hover: on(self.hover),
                 focus: on(self.focus.filter(|_| self.keys_used)),
+                text_percent: picture.looks.text_percent,
             };
             if picture.looks != looks {
                 Arc::make_mut(picture).looks = looks;
@@ -234,25 +235,41 @@ impl GameScreens {
 
 /// The screens shown in `world`, in drawing order: each entity's Screen
 /// that's shown and names one, by its order, then the area's order.
-pub(crate) fn shown_in(world: &world::World) -> Vec<(reflect::EntityId, String)> {
-    let mut shown: Vec<(i64, usize, reflect::EntityId, String)> = world
+/// With each Screen component's look (decision 0089, M6).
+pub(crate) fn shown_with_looks(
+    world: &world::World,
+) -> Vec<(reflect::EntityId, String, ui::ScreenLook)> {
+    let mut shown: Vec<(i64, usize, reflect::EntityId, area::builtin::Screen)> = world
         .values_named(area::builtin::Screen::NAME)
         .into_iter()
         .enumerate()
         .map(|(i, (id, data))| (i, id, area::builtin::Screen::from_data(&data)))
         .filter(|(_, _, s)| s.shown && !s.screen.is_empty())
-        .map(|(i, id, s)| (s.order, i, id, s.screen))
+        .map(|(i, id, s)| (s.order, i, id, s))
         .collect();
     shown.sort_by_key(|(order, i, _, _)| (*order, *i));
     shown
         .into_iter()
-        .map(|(_, _, id, name)| (id, name))
+        .map(|(_, _, id, s)| {
+            let [r, g, b] = s.outline_color.map(|c| (c * 255.0).round() as u8);
+            let look = ui::ScreenLook {
+                glow: s.glow,
+                outline: s.outline,
+                outline_colour: ui::Colour::rgb(r, g, b),
+                pixel: s.pixel_size as f32,
+            };
+            (id, s.screen, look)
+        })
         .collect()
 }
 
 /// What screens read: the running game's components (Lust, Lua and
 /// Rust), and Solis's own as the world has them.
-struct GameReader<'a>(Option<&'a mut script::Game>, &'a world::World);
+struct GameReader<'a>(
+    Option<&'a mut script::Game>,
+    &'a world::World,
+    script::settings::PlayerSettings,
+);
 
 impl script::ScreenReader for GameReader<'_> {
     fn values(&mut self, entity: reflect::EntityId, name: &str) -> Option<reflect::ComponentData> {
@@ -260,6 +277,10 @@ impl script::ScreenReader for GameReader<'_> {
             return Some(found);
         }
         self.1.component_data(entity, name)
+    }
+
+    fn settings(&self) -> script::settings::PlayerSettings {
+        self.2
     }
 }
 
@@ -302,8 +323,9 @@ impl Workbench {
             }
             let mut pictures = Vec::new();
             let mut shown = Vec::new();
-            let mut reader = GameReader(playing.game.as_mut(), &playing.world);
-            for (entity, name) in shown_in(&playing.world) {
+            let settings = playing.view.settings;
+            let mut reader = GameReader(playing.game.as_mut(), &playing.world, settings);
+            for (entity, name, look) in shown_with_looks(&playing.world) {
                 match running.view(&name, Some(entity), &mut reader) {
                     Ok(view) => {
                         crate::screen_pictures::names_in(&view, seen);
@@ -313,8 +335,13 @@ impl Workbench {
                             scale: ui::ScaleRule::Grow,
                             elements: Vec::new(),
                             view: Some(view),
-                            looks: ui::view::Looks::default(),
+                            looks: ui::view::Looks {
+                                text_percent: settings.text_percent(),
+                                ..Default::default()
+                            },
                             pictures: shown_pictures.clone(),
+                            ui_size: settings.ui_size as f32,
+                            look,
                         });
                         screens.last.insert(name.clone(), Arc::clone(&picture));
                         pictures.push(picture);
@@ -379,7 +406,7 @@ impl Workbench {
         let Some((running, _)) = &self.game_screens.running else {
             return;
         };
-        let mut reader = GameReader(playing.game.as_mut(), &playing.world);
+        let mut reader = GameReader(playing.game.as_mut(), &playing.world, playing.view.settings);
         match running.press(&name, Some(entity), action, &mut reader) {
             Ok(events) => {
                 let mut dropped = 0;

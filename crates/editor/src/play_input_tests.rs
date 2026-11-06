@@ -442,3 +442,70 @@ fn the_arrow_keys_reach_the_ready_made_actions() {
         }
     }
 }
+
+#[test]
+fn alt_enter_switches_the_player_s_fullscreen_and_the_game_doesn_t_see_it() {
+    let mut w = with_a_walker();
+    w.play();
+    let mut h = harness(w);
+    h.run();
+    h.state_mut().0.give_game_input(&egui::Context::default());
+    h.key_press_modifiers(egui::Modifiers::ALT, egui::Key::Enter);
+    h.run();
+    assert!(h.state().0.player_settings.fullscreen);
+    assert!(
+        h.state()
+            .0
+            .playing
+            .as_ref()
+            .unwrap()
+            .view
+            .settings
+            .fullscreen,
+        "game code sees it from the next tick"
+    );
+    assert!(
+        h.state()
+            .0
+            .log_lines()
+            .iter()
+            .any(|l| l.text.starts_with("Alt+Enter")),
+        "said in the Console"
+    );
+    h.key_press_modifiers(egui::Modifiers::ALT, egui::Key::Enter);
+    h.run();
+    assert!(!h.state().0.player_settings.fullscreen, "and back");
+}
+
+#[test]
+fn alt_enter_held_switches_once_and_lets_enter_go() {
+    let mut w = with_a_walker();
+    w.play();
+    let mut h = harness(w);
+    h.run();
+    h.state_mut().0.give_game_input(&egui::Context::default());
+    let key = |pressed: bool, repeat: bool, modifiers: egui::Modifiers| egui::Event::Key {
+        key: egui::Key::Enter,
+        physical_key: None,
+        pressed,
+        repeat,
+        modifiers,
+    };
+    // Held: the first press switches it; the repeats don't.
+    h.event(key(true, false, egui::Modifiers::ALT));
+    h.event(key(true, true, egui::Modifiers::ALT));
+    h.event(key(true, true, egui::Modifiers::ALT));
+    h.run();
+    assert!(h.state().0.player_settings.fullscreen);
+    // Enter pressed for the game, then Alt, then Enter let go: the game
+    // sees it let go.
+    h.event(key(true, false, egui::Modifiers::NONE));
+    h.run();
+    h.event(key(false, false, egui::Modifiers::ALT));
+    h.run();
+    assert!(!h.state().0.devices.is_held("Enter"), "not stuck down");
+    assert!(
+        h.state().0.player_settings.fullscreen,
+        "a let-go switches nothing"
+    );
+}

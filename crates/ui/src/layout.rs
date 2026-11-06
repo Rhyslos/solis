@@ -65,6 +65,15 @@ pub struct Shape {
     /// cut off, as a canvas cuts off what's inside it. [`UNCLIPPED`] for
     /// anywhere.
     pub clip: [f32; 4],
+    /// A glow round it (decision 0089): how far it reaches in pixels (0
+    /// for none), and its colour.
+    pub glow: (f32, Colour),
+    /// An outline just outside its edge: how thick in pixels (0 for
+    /// none), and its colour.
+    pub outline: (f32, Colour),
+    /// The screen's pixel size: drawn in blocks this many pixels big (1 or
+    /// less: smooth), lined up from the screen's top left.
+    pub pixel: f32,
 }
 
 /// A [`Shape::clip`] that cuts nothing off.
@@ -164,7 +173,7 @@ pub fn layout_with(
     fonts: Option<&mut crate::text::Fonts>,
 ) -> Vec<Shape> {
     let screen_px = [size[0] as f32, size[1] as f32];
-    let scale = scale_of(screen.scale, screen.design, screen_px, pixel_step);
+    let scale = screen_scale(screen, screen_px, pixel_step);
     let crisp = screen.scale == ScaleRule::WholeSteps;
     let mut out = Vec::new();
     let mut count = 0;
@@ -173,6 +182,7 @@ pub fn layout_with(
     let mut walking = Walk {
         scale,
         crisp,
+        look: screen.look,
         count: &mut count,
         out: &mut out,
         fonts,
@@ -196,7 +206,35 @@ pub fn layout_with(
             walking.walk(e, whole, 1.0, 0, UNCLIPPED);
         }
     }
+    // The screen's pixel size, in whole pixels of the screen.
+    // 1 (or less) is smooth, however big the screen.
+    let pixel = (finite(screen.look.pixel).clamp(0.0, MAX_PIXEL) * scale).round();
+    if screen.look.pixel > 1.0 && pixel > 1.0 {
+        for s in &mut out {
+            s.pixel = pixel;
+        }
+    }
     out
+}
+
+/// The biggest pixel size, in design pixels.
+pub const MAX_PIXEL: f32 = 32.0;
+
+/// The scale from `screen`'s design pixels to a screen `screen_px` big:
+/// [`scale_of`] times the player's UI size (a whole number of the game's
+/// pixels for [`ScaleRule::WholeSteps`]).
+pub fn screen_scale(screen: &Screen, screen_px: [f32; 2], pixel_step: Option<u32>) -> f32 {
+    let scale = scale_of(screen.scale, screen.design, screen_px, pixel_step);
+    let ui = if screen.ui_size.is_finite() {
+        screen.ui_size.clamp(0.5, 2.0)
+    } else {
+        1.0
+    };
+    if screen.scale == ScaleRule::WholeSteps {
+        (scale * ui).round().max(1.0)
+    } else {
+        scale * ui
+    }
 }
 
 /// Where a 2D game's picture of `base` pixels goes on a `screen` (both in
@@ -253,7 +291,7 @@ pub fn clickables(
     measure: &mut dyn crate::view::Measure,
 ) -> (Vec<crate::view::Clickable>, f32) {
     let screen_px = [size[0] as f32, size[1] as f32];
-    let scale = scale_of(screen.scale, screen.design, screen_px, pixel_step);
+    let scale = screen_scale(screen, screen_px, pixel_step);
     let Some(view) = screen.view.as_ref() else {
         return (Vec::new(), scale);
     };
@@ -276,7 +314,7 @@ pub fn boxes(
     measure: &mut dyn crate::view::Measure,
 ) -> Vec<(Vec<usize>, [f32; 4])> {
     let screen_px = [size[0] as f32, size[1] as f32];
-    let scale = scale_of(screen.scale, screen.design, screen_px, pixel_step);
+    let scale = screen_scale(screen, screen_px, pixel_step);
     let Some(view) = screen.view.as_ref() else {
         return Vec::new();
     };
@@ -311,6 +349,9 @@ pub fn clickable_at(
 struct Walk<'a> {
     scale: f32,
     crisp: bool,
+    /// The screen's look: a glow and an outline round every shape that
+    /// hasn't its own.
+    look: crate::screen::ScreenLook,
     count: &'a mut usize,
     out: &'a mut Vec<Shape>,
     fonts: Option<&'a mut crate::text::Fonts>,
@@ -448,6 +489,35 @@ impl Walk<'_> {
         let border = e.border.map_or((0.0, Colour::NONE), |(w, c)| {
             (finite(w).max(0.0) * scale, faded(c))
         });
+        let halo = |h: Option<(f32, Colour)>| {
+            h.map_or((0.0, Colour::NONE), |(w, c)| {
+                (
+                    finite(w).clamp(0.0, crate::view::MAX_HALO) * scale,
+                    faded(c),
+                )
+            })
+        };
+        // Its own glow and outline, or the screen's: the glow in its own
+        // colour (or its border's when it has no fill).
+        let own = if colours[0].0[3].max(colours[1].0[3]) > 0.0 {
+            if colours[1].0[3] > colours[0].0[3] {
+                colours[1]
+            } else {
+                colours[0]
+            }
+        } else {
+            border.1
+        };
+        let look = self.look;
+        let glow = match e.glow {
+            Some(_) => halo(e.glow),
+            None if look.glow > 0.0 => (finite(look.glow).min(crate::view::MAX_HALO) * scale, own),
+            None => (0.0, Colour::NONE),
+        };
+        let outline = halo(
+            e.outline
+                .or_else(|| (look.outline > 0.0).then_some((look.outline, look.outline_colour))),
+        );
         let base = Shape {
             kind: ShapeKind::Box,
             rect,
@@ -460,6 +530,9 @@ impl Walk<'_> {
             crisp,
             blocky: false,
             clip,
+            glow,
+            outline,
+            pixel: 0.0,
         };
         match &e.kind {
             ElementKind::Group => {}
@@ -479,18 +552,42 @@ impl Walk<'_> {
                     };
                     let top = (rect[1] + rect[3] - h) * 0.5;
                     let step = crisp.then_some(scale);
-                    for letter in fonts.place(*font, text, px, [left, top], step) {
-                        let [l, t, r, b] = letter.atlas.map(f32::from);
-                        self.out.push(Shape {
-                            kind: ShapeKind::Letter,
-                            rect: letter.rect,
-                            from: [l, t],
-                            to: [r, b],
-                            round: px / crate::text::SDF_SIZE,
-                            colours: [colours[0], colours[0]],
-                            border: (0.0, Colour::NONE),
-                            ..base
-                        });
+                    let letters: Vec<Shape> = fonts
+                        .place(*font, text, px, [left, top], step)
+                        .into_iter()
+                        .map(|letter| {
+                            let [l, t, r, b] = letter.atlas.map(f32::from);
+                            Shape {
+                                kind: ShapeKind::Letter,
+                                rect: letter.rect,
+                                from: [l, t],
+                                to: [r, b],
+                                round: px / crate::text::SDF_SIZE,
+                                colours: [colours[0], colours[0]],
+                                border: (0.0, Colour::NONE),
+                                ..base
+                            }
+                        })
+                        .collect();
+                    // Every letter's glow and outline first, then the
+                    // letters, so one letter's halo never covers the
+                    // letter before it.
+                    if base.glow.0 > 0.0 || base.outline.0 > 0.0 {
+                        for l in &letters {
+                            self.out.push(Shape {
+                                colours: [Colour::NONE, Colour::NONE],
+                                ..*l
+                            });
+                        }
+                        for l in letters {
+                            self.out.push(Shape {
+                                glow: (0.0, Colour::NONE),
+                                outline: (0.0, Colour::NONE),
+                                ..l
+                            });
+                        }
+                    } else {
+                        self.out.extend(letters);
                     }
                 }
             }

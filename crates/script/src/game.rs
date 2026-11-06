@@ -70,6 +70,8 @@ pub enum Change {
     /// `showScreen` (true) or `hideScreen` (false): this entity's Screen
     /// shows, or stops showing, the screen named here.
     ShowScreen(EntityId, String, bool),
+    /// `Screens:set…` or `Window:set…`: one of the player's settings (decision 0091).
+    Setting(crate::settings::Setting),
     /// `setBusVolume`: this bus at this share of its fader (0 to 1) for
     /// the rest of the play.
     BusVolume(String, f32),
@@ -162,6 +164,8 @@ pub struct WorldView {
     pub screens: Arc<std::collections::HashMap<EntityId, String>>,
     /// How fast the game runs as the tick started (`World:gameSpeed`).
     pub game_speed: f64,
+    /// The player's settings as the tick started (`Screens:textSize`).
+    pub settings: crate::settings::PlayerSettings,
 }
 
 impl WorldView {
@@ -635,6 +639,17 @@ impl Host for ViewHost {
 
     fn game_speed(&self) -> f64 {
         self.view.game_speed
+    }
+
+    fn settings(&self) -> crate::settings::PlayerSettings {
+        self.view.settings
+    }
+
+    fn set_setting(&mut self, change: crate::settings::Setting) {
+        if self.kept.room() {
+            let order = self.order();
+            self.kept.changes.push((order, Change::Setting(change)));
+        }
     }
 
     fn at(&mut self, order: &Order) {

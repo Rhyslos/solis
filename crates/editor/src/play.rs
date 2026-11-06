@@ -199,6 +199,7 @@ impl Workbench {
         let _ = self.document.take_changes();
         let cameras = world.placed::<area::builtin::Camera>().len();
         let mut view = ViewCache::default();
+        view.settings = self.player_settings;
         let (game, pending) = self.start_game(&mut world, &mut view);
         self.playing = Some(Playing {
             world,
@@ -809,6 +810,32 @@ impl Workbench {
         let refused = playing.world.projectiles().refused() > 0 && !playing.told_too_many;
         if refused {
             playing.told_too_many = true;
+        }
+        // The player's settings game code changed (decision 0091): kept
+        // for the next play; the window's only said, since the editor's
+        // window isn't the game's.
+        self.player_settings = playing.view.settings;
+        for asked in std::mem::take(&mut playing.view.asked) {
+            use script::settings::Setting;
+            match asked {
+                Setting::Fullscreen(on) => said.push(format!(
+                    "Window:setFullscreen({on}): the exported game would {}. While playing in the \
+                     editor, the game stays in the Game panel.",
+                    if on {
+                        "fill the screen"
+                    } else {
+                        "sit in a window"
+                    }
+                )),
+                Setting::Resolution(..) => {
+                    let [w, h] = self.player_settings.resolution;
+                    said.push(format!(
+                        "Window:setResolution: the exported game's window would be {w} × {h}. \
+                         While playing in the editor, the game stays in the Game panel."
+                    ));
+                }
+                Setting::TextSize(_) | Setting::UiSize(_) => {}
+            }
         }
         let bodies_refused = playing.world.physics_refused() > 0 && !playing.told_too_many_bodies;
         if bodies_refused {

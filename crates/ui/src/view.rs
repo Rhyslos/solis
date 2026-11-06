@@ -42,7 +42,26 @@ pub struct Looks {
     pub hover: Option<usize>,
     /// Has the focus (decision 0088).
     pub focus: Option<usize>,
+    /// The player's text size, in percent (150 for half as big again; 0
+    /// as 100): every text's `size` grows by it, and the pieces round it
+    /// make room.
+    pub text_percent: u16,
 }
+
+impl Looks {
+    /// How much the player's text size multiplies text by.
+    pub fn text_scale(&self) -> f32 {
+        match self.text_percent {
+            0 => 1.0,
+            p => (f32::from(p) / 100.0).clamp(0.5, 3.0),
+        }
+    }
+}
+
+/// The most a glow or an outline reaches, in design pixels.
+pub const MAX_HALO: f32 = 64.0;
+/// How far Lust's `shadow` glows, in design pixels (decision 0089).
+pub const SHADOW_GLOW: f32 = 8.0;
 
 /// A clickable piece where it was laid out: its box in design pixels
 /// (left, top, right, bottom) and its number.
@@ -169,6 +188,9 @@ struct Look {
     disabled: bool,
     /// A picture covers its box rather than fitting inside it.
     cover: bool,
+    /// Lust's `shadow`: drawn as a soft glow in its own colour
+    /// (decision 0089).
+    shadow: bool,
 }
 
 /// Lust's text colour on a light window, and its muted one.
@@ -210,6 +232,7 @@ fn base_look(kind: &str) -> Look {
         thick: 2.0,
         disabled: false,
         cover: false,
+        shadow: false,
     };
     match kind {
         "row" => l.valign = Align::Center,
@@ -349,6 +372,7 @@ fn apply(l: &mut Look, kind: &str, styles: &[(String, Style)]) {
             "toY" => l.to_y = n.unwrap_or(0.0),
             "radius" => l.rad = n.unwrap_or(10.0).max(0.0),
             "thick" => l.thick = n.unwrap_or(2.0).max(0.0),
+            "shadow" => l.shadow = true,
             other => {
                 // A colour on its own: a shape's fill, a bar's, or text's.
                 if let Some(c) = colour(other) {
@@ -541,6 +565,7 @@ fn lay(node: &Node, depth: usize, count: &mut usize, looks: Looks) -> Laid {
     if look.disabled {
         look.opacity *= 0.45;
     }
+    look.size = (look.size * looks.text_scale()).min(2000.0);
     let focused = live.is_some() && live == looks.focus;
     let mut children = Vec::new();
     if depth + 1 < MAX_DEPTH {
@@ -1123,6 +1148,13 @@ fn emit(n: &Laid, opacity: f32, out: &mut Vec<Element>) {
     }
     let l = &n.look;
     let opacity = opacity * l.opacity;
+    // Lust's shadow, drawn as a soft glow in `own`, its colour.
+    let halo = |mut e: Element, own: u32| {
+        if l.shadow {
+            e.glow = Some((SHADOW_GLOW, rgb(own, opacity)));
+        }
+        e
+    };
     let at = |x: f32, y: f32, w: f32, h: f32, kind: ElementKind| {
         Element::new("", kind)
             .sized([w.max(0.0), h.max(0.0)])
@@ -1144,14 +1176,14 @@ fn emit(n: &Laid, opacity: f32, out: &mut Vec<Element>) {
                 },
             );
             e.fill = Fill::Solid(rgb(l.color, opacity));
-            out.push(e);
+            out.push(halo(e, l.color));
             return;
         }
         "circle" => {
             let mut e = at(n.x, n.y, n.w, n.h, ElementKind::Ellipse);
             e.fill = Fill::Solid(l.background.map_or(Colour::NONE, |c| rgb(c, opacity)));
             e.border = l.border.map(|c| (l.border_w, rgb(c, opacity)));
-            out.push(e);
+            out.push(halo(e, l.background.or(l.border).unwrap_or(l.color)));
             return;
         }
         "progress" => {
@@ -1173,7 +1205,7 @@ fn emit(n: &Laid, opacity: f32, out: &mut Vec<Element>) {
                 },
             );
             e.fill = Fill::Solid(rgb(l.accent, opacity));
-            out.push(e);
+            out.push(halo(e, l.accent));
             return;
         }
         _ => {}
@@ -1191,7 +1223,7 @@ fn emit(n: &Laid, opacity: f32, out: &mut Vec<Element>) {
         );
         e.fill = Fill::Solid(l.background.map_or(Colour::NONE, |c| rgb(c, opacity)));
         e.border = l.border.map(|c| (l.border_w, rgb(c, opacity)));
-        out.push(e);
+        out.push(halo(e, l.background.or(l.border).unwrap_or(l.color)));
     }
     if n.focused {
         // The focus ring: the accent's blue, just outside the piece.
@@ -1220,7 +1252,7 @@ fn emit(n: &Laid, opacity: f32, out: &mut Vec<Element>) {
             },
         );
         e.fill = Fill::Solid(Colour::WHITE.with_alpha(opacity));
-        out.push(e);
+        out.push(halo(e, 0xffffff));
     }
     if shows_text(&n.kind) && !n.lines.is_empty() {
         let (ix, iy) = (n.x + l.pad[3], n.y + l.pad[0]);
@@ -1244,7 +1276,7 @@ fn emit(n: &Laid, opacity: f32, out: &mut Vec<Element>) {
             },
         );
         e.fill = Fill::Solid(rgb(l.color, opacity));
-        out.push(e);
+        out.push(halo(e, l.color));
     }
     // A canvas cuts off what's inside it at its edges: its pieces go in
     // a group as big as it, placed from its corner.

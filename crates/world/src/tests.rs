@@ -897,6 +897,7 @@ fn game_code_shows_and_hides_screens_and_the_checksum_follows() {
         screen: "Menu".into(),
         shown: true,
         order: 3,
+        ..Screen::default()
     }));
     let bare = area.spawn(EntityData::new("Bare"));
     let mut world = World::from_area(&area);

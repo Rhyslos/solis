@@ -53,6 +53,11 @@ impl Devices {
         }
     }
 
+    /// Whether a key or mouse button (by its input name) is down.
+    pub fn is_held(&self, input: &str) -> bool {
+        self.down.contains(input)
+    }
+
     /// The mouse moved by `delta` pixels (y down, as screens count).
     pub fn mouse_moved(&mut self, delta: Vec2) {
         if delta.is_finite() {

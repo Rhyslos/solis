@@ -46,6 +46,7 @@ fn showing(program: Arc<script::Compiled>, screens: &[(&str, bool, i64)]) -> Wor
             screen: (*name).into(),
             shown: *shown,
             order: *order,
+            ..Screen::default()
         });
         w.document
             .edit(
@@ -586,4 +587,93 @@ fn a_screen_reads_lua_components_and_solis_s_own() {
         said[0], "x 3.0 count 3",
         "the game's Transform and its Lua component"
     );
+}
+
+/// Game code that makes text half as big again, goes fullscreen and
+/// steps the window's size, every tick; and a screen saying the text size.
+fn settings_program(hud_text: &str) -> Arc<script::Compiled> {
+    let main = "fetch \"solis/window\":Window;\nfetch \"solis/screens\":Screens;\n\
+        component Settler {\n    method update(float dt) {\n        Screens:setTextSize(1.5);\n        Screens:setUiSize(1.25);\n        Window:setFullscreen(true);\n        Window:useNextResolution();\n    }\n}\npass Settler;\nend\n";
+    let (mut files, _) = script::describe::descriptions_for(
+        "Test Engine 9.9.9",
+        "solis",
+        &script::project_names::Names::standard().and_screens(&["Hud"]),
+    );
+    files.push(("main.lst".into(), main.into()));
+    files.push(("ui/hud.lst".into(), hud_text.into()));
+    let code = script::Code {
+        files,
+        lua: Vec::new(),
+        notes: Vec::new(),
+    };
+    match script::compile(&code) {
+        Ok(Some(c)) => Arc::new(c),
+        Ok(None) => panic!("no code"),
+        Err(problems) => panic!("{}", problems[0]),
+    }
+}
+
+#[test]
+fn game_code_sets_the_player_s_settings_and_screens_read_and_follow_them() {
+    let hud = "fetch \"solis/screens\":Screens;\nassembly Hud {\n    view {\n        text \"Text \" + Screens:textSize().text() [size 20];\n    }\n}\npass Hud;\nend\n";
+    let mut w = showing(settings_program(hud), &[("Hud", true, 0)]);
+    let mut settler = EntityData::new("Settler");
+    settler
+        .components
+        .insert("Settler".into(), reflect::ComponentData::default());
+    w.document
+        .edit(
+            "Add",
+            vec![area::Edit::Spawn {
+                entities: vec![(EntityId::random(), settler)],
+            }],
+            None,
+            None,
+        )
+        .unwrap();
+    w.play();
+    w.run_game(1.0 / 60.0);
+    w.run_game(1.0 / 60.0);
+    assert_eq!(drawn(&w), vec!["Text 1.5".to_string()]);
+    let picture = &w.game_screens.pictures[0];
+    assert_eq!(
+        picture.looks.text_percent, 150,
+        "text drawn half as big again"
+    );
+    assert_eq!(picture.ui_size, 1.25);
+    assert!(w.player_settings.fullscreen);
+    assert_ne!(w.player_settings.resolution, [1280, 720], "stepped on");
+    // The window's changes are said, not made, in the editor.
+    let said: Vec<String> = w
+        .console
+        .lines()
+        .iter()
+        .map(|l| l.text.clone())
+        .filter(|l| l.starts_with("Window:"))
+        .collect();
+    assert!(
+        said.iter().any(|l| l.contains("fill the screen")),
+        "{said:?}"
+    );
+    // Kept for the next play.
+    w.stop();
+    assert_eq!(w.player_settings.text_size, 1.5);
+}
+
+#[test]
+fn a_screen_can_t_change_the_player_s_settings() {
+    let hud = "fetch \"solis/screens\":Screens;\nassembly Hud {\n    view {\n        Screens:setTextSize(2.0);\n        text \"never\";\n    }\n}\npass Hud;\nend\n";
+    let mut w = showing(settings_program(hud), &[("Hud", true, 0)]);
+    w.play();
+    w.run_game(1.0 / 60.0);
+    let said: Vec<String> = w
+        .console
+        .lines()
+        .iter()
+        .map(|l| l.text.clone())
+        .filter(|l| l.contains("can't change the player's settings"))
+        .collect();
+    assert_eq!(said.len(), 1, "{:?}", w.console.lines());
+    assert!(said[0].contains("ui/hud.lst"), "{}", said[0]);
+    assert_eq!(w.player_settings.text_size, 1.0);
 }

@@ -16,6 +16,7 @@ Game code (decision 0028): a project's Lust, checked and turned into Lua by the 
 | `objects.rs` | The game-wide objects (decision 0080): each passed Lust `object`'s fields moved into a guarded store, so only the objects' updates change them; their kept values read and written for other cores, saves and new code. | `ObjectValues` |
 | `lua_components.rs` | Components written in Lua (decision 0003): each `.lua` file in the assets makes components with `component`. | |
 | `screens.rs` | Game screens (decision 0087): the files in `ui/`, their own program (an entry opening each, and `solis/screen.lst` with `Ui` and a reader per Lust component), and `Screens`, which runs it in a runtime of its own, lends the readers through a `ScreenReader`, and reads each view's tree for `ui`; `pictures_named` finds each `image "…"` written out in them (decision 0089), with its line; `ScreenCode::sources` keeps their files for the UI editor, and `events_named` lists the game's events for its buttons. Tests in `screens_tests.rs`. | `ScreenCode`, `Screens`, `ScreenReader`, `readers_file` |
+| `settings.rs` | The player's settings (decision 0091): text size and UI size (`Screens:`), fullscreen and the window's size (`Window:`), kept in their ranges, and the usual window sizes. Not game state: not in saves, recordings or the checksum. Tests in `settings_tests.rs`. | `PlayerSettings`, `Setting` |
 | `rust_component.rs` | Components written in Rust by a game, running in the same ticks and order and sending the same events as Lust's. | `RustComponent`, `Context` |
 
 ## Running it

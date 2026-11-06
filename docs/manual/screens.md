@@ -169,6 +169,35 @@ component Pauser {
 
 In Lua: `solis.World:setGameSpeed(0)`. In Rust: `cx.host().set_game_speed(0.0)`.
 
+**Text size and UI size for players.** Some players need bigger text, and a game played from a sofa needs a bigger HUD. Two player settings grow every screen: **text size** (`Screens:setTextSize(1.5)`: every text half as big again, from 0.5 to 3; the columns and rows round it make room, and long lines wrap) and **UI size** (`Screens:setUiSize(1.25)`: the whole screen bigger, from 0.5 to 2). A pause menu usually offers them. They're the player's, not the game's: they're not in save games or recordings, a loaded game keeps the player's, and they're kept from one play to the next. So only let them change what's shown and offered, never the game itself (how hard it is, say): a recording played back with other settings would go differently. Screens read them too (`text "Text " + Screens:textSize().text();`), but only game code changes them, so a menu's button sends an event and the entity's code does it:
+
+```
+fetch "solis/screens":Screens;
+fetch "solis/window":Window;
+
+component Pauser {
+    on BiggerText() {
+        float size = Screens:textSize() + 0.25;
+        is size > 2? then {
+            size = 1;
+        }
+        Screens:setTextSize(size);
+    }
+    on Fullscreen() {
+        Window:setFullscreen(not Window:fullscreen());
+    }
+    on NextResolution() {
+        Window:useNextResolution();
+    }
+}
+```
+
+In Lua: `solis.Screens:setTextSize(1.5)` and `solis.Window:setFullscreen(true)`. In Rust: `cx.host().set_text_size(1.5)` and `cx.host().set_fullscreen(true)`.
+
+**The window.** `Window:setFullscreen(true)` fills the screen, and `Window:setResolution(1920, 1080)` (or `Window:useNextResolution()`, for a menu's Resolution button) sizes the window; `Window:fullscreen()` and `Window:resolution()` read them. **Alt+Enter** switches fullscreen in any game, as players expect. While you play in the editor, the game stays in the Game panel: the Console says what the exported game would do, and the settings are kept so the menu shows them.
+
+**A screen's look.** On the **Screen** component, **Glow** puts a soft light round everything on the screen, in each piece's own colour; **Outline** puts a line just outside everything, in **Outline colour**; and **Pixel size** draws the whole screen in blocks that many pixels big, for a pixel-art look that matches a 2D game's. They're on the component, not in the file, so the same screen can glow on one entity and not on another. For a single piece, Lust's own `shadow` (`box [shadow, red]`) draws a soft glow in its colour.
+
 **Drawing it instead of writing it.** Double-click a screen's file in the Library to open it on the [UI editor's canvas](ui-editor.md): pick pieces, drag them, size them and change their look, and Solis writes the Lust for you, changing only what it must.
 
 **Pictures.** `image` shows a picture from your assets, named by its place inside them: `image "sprites/coin.png";`. To show one part of a sprite sheet, cut it out with [Atlas Crop](atlas-crop.md) and add `#` and the crop's name: `image "sprites/tools.png#Axe";`. A crop is better than a picture of its own for icons: the artist keeps drawing on one sheet, and every crop follows.
@@ -207,6 +236,10 @@ The **Screen** component:
 | Screen | Which screen: a file in `assets/ui`, by its name (`ui/hud.lst` is **Hud**). |
 | Shown | Whether it's on screen. Game code shows and hides screens with `showScreen` and `hideScreen`. |
 | Order | Which screen is on top when several are shown: higher is on top. |
+| Glow | A soft light round everything on the screen, in each piece's own colour, this many pixels out (on its design size). 0 for none. |
+| Outline | A line just outside everything on the screen, this thick. 0 for none. |
+| Outline colour | The outline's colour. |
+| Pixel size | Draws the whole screen in blocks this many pixels big (1 is smooth). |
 
 ## Tips and common problems
 
@@ -222,6 +255,8 @@ The **Screen** component:
 - **Problem:** Problems says "there's no picture sprites/x.png in the project". **Why:** `image` names a picture by its place inside your assets, with `/` between folders and its ending (`.png`). **Fix:** check the path in the Library: right-click the picture to see where it is.
 - **Problem:** Problems says a picture "has no crop called Axe". **Why:** the part after `#` is the name of a crop made in Atlas Crop, and capitals don't matter but spelling does. **Fix:** open the picture's Atlas Crop tab and name a crop that, or use one of the names Problems lists.
 - **Problem:** a picture "can't be shown on a screen: there's no room left". **Why:** all the screens' pictures share one sheet of 2048 × 2048 pixels on the graphics card. **Fix:** use smaller pictures, or crops of one sprite sheet instead of whole big pictures.
+- **Problem:** the Console says "a screen can't change the player's settings". **Why:** screens only read the game, settings included. **Fix:** have the button send an event, and call `Screens:setTextSize` in the entity's code.
+- **Problem:** with a big text size, words reach past a box. **Why:** a piece with a set `width` or `height` stays that size, so its text has no room to grow. **Fix:** leave the size out (it then fits what's in it), or use `minWidth`; check on the canvas with **Text 150%** and **200%**.
 - **Problem:** text is dark and hard to read over the game. **Why:** like Lust's windows, text is dark unless told otherwise. **Fix:** give it a colour word: `white`.
 
 ## Related

@@ -382,6 +382,10 @@ Things that fall, collide and get pushed have a **RigidBody** and a **Collider**
 | `solis/world` | `int World:randomInt(int low, int high)` | A random whole number from low to high, both included. |
 | `solis/world` | `World:setGameSpeed(float speed)` | Runs the game at a speed, from the end of the tick: 0 pauses it (time, physics, projectiles and sprites stop and `dt` is 0, but components still run, so a pause menu works), 1 as usual, up to 4. |
 | `solis/world` | `World:gameSpeed()` | How fast the game runs, as the tick started. |
+| `solis/screens` | `Screens:setTextSize(float size)`, `Screens:textSize()` | The player's text size on every screen, 0.5 to 3 (1 as designed), from the end of the tick ([Game screens](screens.md)). |
+| `solis/screens` | `Screens:setUiSize(float size)`, `Screens:uiSize()` | The player's UI size: every screen bigger or smaller, 0.5 to 2. |
+| `solis/window` | `Window:setFullscreen(bool on)`, `Window:fullscreen()` | Whether the game fills the screen (Alt+Enter switches it too). |
+| `solis/window` | `Window:setResolution(int width, int height)`, `Window:resolution()`, `Window:useNextResolution()` | The window's size in pixels, and the next usual one, for a menu. |
 | `solis/world` | `World:setSeed(int seed)` | Starts the random numbers again from a seed, at the end of the tick. |
 | `solis/world` | `Saves:saveTo(string slot)` | Saves the whole game in a slot, at the end of the tick ([Save games](save-games.md)). |
 | `solis/world` | `Saves:loadFrom(string slot)` | Loads the game saved in a slot, at the end of the tick. |

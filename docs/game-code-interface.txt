@@ -74,6 +74,15 @@ entity: method string entity:name() native;
 screens: method entity:showScreen(Screen which) native;
 screens: method entity:hideScreen(Screen which) native;
 screens: method bool entity:screenShown(Screen which) native;
+screens: object Screens: method float textSize() native;
+screens: object Screens: method setTextSize(float size) native;
+screens: object Screens: method float uiSize() native;
+screens: object Screens: method setUiSize(float size) native;
+window: object Window: method bool fullscreen() native;
+window: object Window: method setFullscreen(bool on) native;
+window: object Window: method vec3 resolution() native;
+window: object Window: method setResolution(int width, int height) native;
+window: object Window: method useNextResolution() native;
 
 ## Events the engine sends (fetch "solis/<file>":<Name>)
 
@@ -113,6 +122,15 @@ solis.Maps:width
 solis.Physics:castRay
 solis.Saves:loadFrom
 solis.Saves:saveTo
+solis.Screens:setTextSize
+solis.Screens:setUiSize
+solis.Screens:textSize
+solis.Screens:uiSize
+solis.Window:fullscreen
+solis.Window:resolution
+solis.Window:setFullscreen
+solis.Window:setResolution
+solis.Window:useNextResolution
 solis.World:find
 solis.World:fire
 solis.World:frameTime
@@ -209,6 +227,17 @@ Host: fn map_bounds(&self, which: EntityId) -> Option<(Vec3, Vec3)>
 Host: fn view_size(&self) -> Vec3
 Host: fn set_game_speed(&mut self, speed: f64)
 Host: fn game_speed(&self) -> f64
+Host: fn settings(&self) -> crate::settings::PlayerSettings
+Host: fn set_setting(&mut self, change: crate::settings::Setting)
+Host: fn text_size(&self) -> f64
+Host: fn set_text_size(&mut self, size: f64)
+Host: fn ui_size(&self) -> f64
+Host: fn set_ui_size(&mut self, size: f64)
+Host: fn fullscreen(&self) -> bool
+Host: fn set_fullscreen(&mut self, on: bool)
+Host: fn resolution(&self) -> [u32
+Host: fn set_resolution(&mut self, width: u32, height: u32)
+Host: fn use_next_resolution(&mut self)
 Host: fn at(&mut self, order: &crate::ticking::Order)
 RustComponent: fn update(&mut self, _cx: &mut Context<'_>, _dt: f64)
 RustComponent: fn handle(&mut self, _cx: &mut Context<'_>, _event: &Event) -> bool
