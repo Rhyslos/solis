@@ -576,6 +576,14 @@ fn a_screen_reads_lua_components_and_solis_s_own() {
     w.play();
     run_to(&mut w, 3);
     let said = drawn(&w);
-    assert_eq!(said.len(), 1, "{said:?} {:?}", w.log_lines().iter().map(|l| &l.text).collect::<Vec<_>>());
-    assert_eq!(said[0], "x 3.0 count 3", "the game's Transform and its Lua component");
+    assert_eq!(
+        said.len(),
+        1,
+        "{said:?} {:?}",
+        w.log_lines().iter().map(|l| &l.text).collect::<Vec<_>>()
+    );
+    assert_eq!(
+        said[0], "x 3.0 count 3",
+        "the game's Transform and its Lua component"
+    );
 }

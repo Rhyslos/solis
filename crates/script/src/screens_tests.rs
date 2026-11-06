@@ -279,7 +279,12 @@ fn components_not_in_lust_are_described_to_screens_as_lust_ones() {
             FieldInfo::new("shown", "Shown", FieldKind::Int, Value::Int(0)),
             FieldInfo::new("loop", "Loop", FieldKind::Bool, Value::Bool(false)),
             FieldInfo::new("look", "Look", FieldKind::Asset, Value::Asset(None)),
-            FieldInfo::new("turn", "Turn", FieldKind::Rotation, Value::floats(&[0.0, 0.0, 0.0, 1.0])),
+            FieldInfo::new(
+                "turn",
+                "Turn",
+                FieldKind::Rotation,
+                Value::floats(&[0.0, 0.0, 0.0, 1.0]),
+            ),
         ],
     );
     let (text, readers, notes) = readers_file(
@@ -304,5 +309,9 @@ fn components_not_in_lust_are_described_to_screens_as_lust_ones() {
         ],
         "a Lust component isn't described again"
     );
-    assert_eq!(notes.len(), 2, "Screen is a project state, position() is taken: {notes:?}");
+    assert_eq!(
+        notes.len(),
+        2,
+        "Screen is a project state, position() is taken: {notes:?}"
+    );
 }

@@ -601,8 +601,7 @@ fn compile_here(code: &Code) -> Result<Option<Compiled>, Vec<CodeProblem>> {
         if let Ok(builtin) = area::builtin::registry() {
             described.extend(builtin.iter().map(|s| (**s).clone()));
         }
-        compiled.screens =
-            crate::screens::compile(&code.files, &engine, &components, &described)?;
+        compiled.screens = crate::screens::compile(&code.files, &engine, &components, &described)?;
     }
     Ok(Some(compiled))
 }
