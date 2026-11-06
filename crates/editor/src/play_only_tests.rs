@@ -167,3 +167,22 @@ fn code_with_mistakes_says_why_the_game_can_t_start() {
         "the reason shows"
     );
 }
+
+#[test]
+fn an_exported_game_s_log_keeps_up_while_the_console_lets_old_lines_go() {
+    let mut w = Workbench::new(info(), None);
+    let (_, mut seen) = w.log_since(0);
+    let mut written = Vec::new();
+    for i in 0..5_000 {
+        w.log(crate::LogLevel::Warning, format!("line {i}"));
+        if i % 7 == 0 {
+            let (new, now) = w.log_since(seen);
+            written.extend(new.iter().map(|l| l.text.clone()));
+            seen = now;
+        }
+    }
+    let (new, _) = w.log_since(seen);
+    written.extend(new.iter().map(|l| l.text.clone()));
+    let expected: Vec<String> = (0..5_000).map(|i| format!("line {i}")).collect();
+    assert_eq!(written, expected, "every line once, in order");
+}

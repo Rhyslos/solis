@@ -46,10 +46,13 @@ The project lead's choice (2026-11-06): **Solis, renamed (Recommended)**, and th
   - the saves (`saves/`);
   - the settings;
   - `log.txt` (the game's warnings and mistakes);
-  - `crash log.txt`, written if the program stops unexpectedly. It says what happened and the last 40 things the game said.
+  - `crash log.txt`, written if the program stops unexpectedly (not for problems it carries on from). It says what happened and the last 40 things the game said.
+  
+  If the game's files can't be read, or play stops without the game quitting, the window says why instead of a blank screen.
 
 ## Consequences
 
+- The first start writes a cache into `game/`, so the export must be unzipped somewhere the player can write.
 - The program has two modes, chosen by what's beside it. A stray `playtest.txt` next to the editor's own program would make it a game, so the installer's folder must never hold one.
 - The export is as big as the program and the project (the program alone is tens of megabytes in a release build).
 - Exported games run Lust and Lua as Play does. A game's own Rust components wait for Phase 18. The turret sample's built-in ones work, since they're part of the program.

@@ -54,18 +54,27 @@ pub fn game_name(name: &str) -> String {
         .take(MAX_NAME)
         .collect();
     let kept = kept.trim_matches(|c: char| c.is_whitespace() || c == '.');
-    // Names Windows keeps for devices.
-    let reserved = ["CON", "PRN", "AUX", "NUL"];
-    let upper = kept.to_ascii_uppercase();
-    let device = reserved.contains(&upper.as_str())
-        || ((upper.starts_with("COM") || upper.starts_with("LPT"))
-            && upper.len() == 4
-            && upper.as_bytes()[3].is_ascii_digit());
-    if kept.is_empty() || device {
+    if kept.is_empty() || device_name(kept) {
         "Game".into()
     } else {
         kept.to_owned()
     }
+}
+
+/// Whether Windows keeps `name` for a device (`CON`, `COM1`, `LPT3`,
+/// `CONIN$`…), alone or before a dot (`con.txt`), so no file can have it.
+fn device_name(name: &str) -> bool {
+    let base = name.split('.').next().unwrap_or_default().trim_end();
+    let upper = base.to_uppercase();
+    if ["CON", "PRN", "AUX", "NUL", "CONIN$", "CONOUT$"].contains(&upper.as_str()) {
+        return true;
+    }
+    let mut chars = upper.chars();
+    let prefix: String = chars.by_ref().take(3).collect();
+    let rest: Vec<char> = chars.collect();
+    (prefix == "COM" || prefix == "LPT")
+        && rest.len() == 1
+        && matches!(rest[0], '1'..='9' | '¹' | '²' | '³')
 }
 
 /// Whether `area` is an area's path inside the assets: relative, with `/`
@@ -77,6 +86,7 @@ pub fn usable_area(area: &str) -> bool {
         && !area.starts_with('/')
         && !area.contains('\\')
         && !area.contains(':')
+        && !area.chars().any(char::is_control)
         && area
             .split('/')
             .all(|part| !part.is_empty() && part != "." && part != "..")
@@ -148,6 +158,23 @@ pub fn default_folder(documents: &Path, name: &str, date: &str) -> PathBuf {
     documents
         .join(format!("{name} exports"))
         .join(format!("{name} playtest {date}"))
+}
+
+/// `folder`, or, when it's there with files in already (an export earlier
+/// the same day), the first of `folder (2)`, `folder (3)`… that isn't.
+pub fn unused(folder: PathBuf) -> PathBuf {
+    let used = |f: &Path| std::fs::read_dir(f).is_ok_and(|mut e| e.next().is_some());
+    if !used(&folder) {
+        return folder;
+    }
+    let name = folder
+        .file_name()
+        .map(|n| n.to_string_lossy().into_owned())
+        .unwrap_or_default();
+    (2..1000)
+        .map(|n| folder.with_file_name(format!("{name} ({n})")))
+        .find(|f| !used(f))
+        .unwrap_or(folder)
 }
 
 /// What the export window asks the app to do.
@@ -228,6 +255,7 @@ impl Workbench {
                 .map(|p| default_folder(p, &playtest.name, &date))
                 .unwrap_or_default(),
         };
+        let folder = unused(folder);
         self.export_window = Some(ExportWindow {
             playtest,
             folder: folder.display().to_string(),
@@ -273,6 +301,10 @@ impl Workbench {
         }
         if let Some(window) = &mut self.export_window {
             window.busy = false;
+            // Exporting again goes in a folder of its own.
+            if let Ok(folder) = &outcome {
+                window.folder = unused(folder.clone()).display().to_string();
+            }
             window.done = Some(outcome);
         }
     }
@@ -289,6 +321,7 @@ impl Workbench {
         let areas = self.areas();
         let program = self.info.name.clone();
         let accent = self.accent.colors().fill;
+        let unsaved = self.document.is_dirty();
         let mut open = true;
         let mut close = false;
         egui::Window::new("Export for playtesting")
@@ -299,7 +332,7 @@ impl Workbench {
             .default_pos(ctx.content_rect().center())
             .default_width(560.0)
             .show(ctx, |ui| {
-                close = contents(ui, &mut window, &areas, &program, accent, actions);
+                close = contents(ui, &mut window, &areas, &program, accent, unsaved, actions);
             });
         if open && !close {
             self.export_window = Some(window);
@@ -314,6 +347,7 @@ fn contents(
     areas: &[String],
     program: &str,
     accent: egui::Color32,
+    unsaved: bool,
     actions: &mut Vec<WorkbenchAction>,
 ) -> bool {
     let name = game_name(&window.playtest.name);
@@ -409,6 +443,14 @@ fn contents(
              the player's settings and a crash log go in the player's Saved Games/{name} folder."
         ));
     });
+    if unsaved {
+        ui.add_space(6.0);
+        ui.colored_label(
+            crate::theme::WARNING,
+            "The open area has changes that aren't saved: the export holds it as last saved. \
+             Save it first (Ctrl+S) to include them.",
+        );
+    }
     match &window.done {
         Some(Ok(folder)) => {
             ui.add_space(6.0);

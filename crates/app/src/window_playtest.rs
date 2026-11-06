@@ -19,6 +19,10 @@ const KEPT_LINES: usize = 40;
 
 /// The log of what the game said, beside the player's saves.
 pub(crate) const LOG_FILE: &str = "log.txt";
+/// The log before, once the log grows past [`MAX_LOG_BYTES`].
+const OLD_LOG_FILE: &str = "log.old.txt";
+/// How big the log grows before it's started again.
+const MAX_LOG_BYTES: u64 = 1 << 20;
 
 /// An exported game, as it runs.
 pub(super) struct Run {
@@ -31,10 +35,14 @@ pub(super) struct Run {
     started: bool,
     /// The settings the window was last made to follow.
     applied: Option<PlayerSettings>,
-    /// How many of the Console's lines were written to the log.
-    logged: usize,
+    /// How many of the Console's lines were written to the log (counting
+    /// every line ever added, `Workbench::log_since`).
+    logged: u64,
     /// The last lines said, for a crash log.
     pub(super) recent: Arc<Mutex<Vec<String>>>,
+    /// Why the game can't go on, once it can't (its files can't be read,
+    /// or play stopped without the game asking to quit).
+    failed: Option<String>,
 }
 
 impl App {
@@ -52,6 +60,7 @@ impl App {
             applied: None,
             logged: 0,
             recent: RECENT.clone(),
+            failed: None,
         });
     }
 
@@ -77,7 +86,19 @@ impl App {
                 .join(asset_db::ASSETS_FOLDER)
                 .join(&run.found.playtest.area);
             self.open_project(&root, false);
-            self.open_area(&area);
+            if self.projects.root().is_some() {
+                self.open_area(&area);
+            }
+            // Either failing is said in the Console, which the player
+            // can't see: the window says it instead.
+            let opened = self.projects.root().is_some()
+                && self.workbench.document().file() == Some(area.as_path());
+            if !opened {
+                let why = self.last_problem();
+                if let Some(run) = self.playtest.as_mut() {
+                    run.failed = Some(format!("The game's files can't be read. {why}"));
+                }
+            }
         }
         let (changes, notes) = self.projects.poll();
         self.follow_changes(changes, notes);
@@ -105,8 +126,10 @@ impl App {
         self.workbench.set_gamepad(self.gamepads.read());
         // Starts once the code is read; with mistakes in it, says so.
         let checking = self.game_code.waiting();
-        let waiting = match self.workbench.code_mistakes() {
-            Some(why) if !checking => NotPlaying::Cannot(format!(
+        let failed = self.playtest.as_ref().and_then(|r| r.failed.clone());
+        let waiting = match (failed, self.workbench.code_mistakes()) {
+            (Some(why), _) => NotPlaying::Cannot(why),
+            (None, Some(why)) if !checking => NotPlaying::Cannot(format!(
                 "The game can't start: its code has mistakes.\n\n{why}"
             )),
             _ => NotPlaying::Starting,
@@ -114,10 +137,25 @@ impl App {
         let ready = !checking && self.workbench.code_ready() && !self.importer.waiting();
         if let Some(run) = self.playtest.as_mut()
             && !run.started
+            && run.failed.is_none()
             && ready
         {
             run.started = true;
             self.workbench.start_play_only(&ctx);
+        }
+        // Play stopped without the game asking to quit: say why.
+        let stopped = self.workbench.play_state() == editor::PlayState::Editing
+            && !self.workbench.quit_asked();
+        if stopped
+            && self
+                .playtest
+                .as_ref()
+                .is_some_and(|r| r.started && r.failed.is_none())
+        {
+            let why = self.last_problem();
+            if let Some(run) = self.playtest.as_mut() {
+                run.failed = Some(format!("The game stopped. {why}"));
+            }
         }
         let renderer: &mut dyn editor::ViewportRenderer = match self.gpu.as_mut() {
             Some(gpu) => gpu,
@@ -147,6 +185,26 @@ impl App {
         }
     }
 
+    /// The last warning or mistake the Console has, for a player to pass
+    /// on, and where the log is.
+    fn last_problem(&self) -> String {
+        let said = self
+            .workbench
+            .log_lines()
+            .iter()
+            .rev()
+            .find(|l| l.level != LogLevel::Info)
+            .map(|l| l.text.clone())
+            .unwrap_or_default();
+        let log = self
+            .playtest
+            .as_ref()
+            .and_then(|r| r.saved.as_ref())
+            .map(|s| format!("\n\nMore in {}.", s.join(LOG_FILE).display()))
+            .unwrap_or_default();
+        format!("{said}{log}")
+    }
+
     /// Makes the window follow the player's settings, and keeps them in
     /// their folder, when they change.
     fn follow_settings(&mut self, ctx: &egui::Context) {
@@ -165,13 +223,17 @@ impl App {
         let size_changed = was.is_none_or(|w| w.resolution != settings.resolution);
         if !settings.fullscreen && (size_changed || fullscreen_changed) {
             // The setting is in the screen's pixels; the window's size in
-            // points.
+            // points, and never bigger than the screen.
             let ppp = ctx.pixels_per_point().max(0.25);
             let [w, h] = settings.resolution;
-            ctx.send_viewport_cmd(egui::ViewportCommand::InnerSize(egui::vec2(
-                w as f32 / ppp,
-                h as f32 / ppp,
-            )));
+            let mut size = egui::vec2(w as f32 / ppp, h as f32 / ppp);
+            if let Some(screen) = ctx.input(|i| i.viewport().monitor_size)
+                && screen.x > 0.0
+                && screen.y > 0.0
+            {
+                size = size.min(screen);
+            }
+            ctx.send_viewport_cmd(egui::ViewportCommand::InnerSize(size));
         }
         if was.is_some()
             && let Some(saved) = &run.saved
@@ -188,19 +250,15 @@ impl App {
         let Some(run) = self.playtest.as_mut() else {
             return;
         };
-        let lines = self.workbench.log_lines();
-        if run.logged > lines.len() {
-            // The Console let its oldest lines go.
-            run.logged = lines.len().saturating_sub(1);
-        }
-        if run.logged == lines.len() {
+        let (lines, seen) = self.workbench.log_since(run.logged);
+        if seen == run.logged {
             return;
         }
-        let new: Vec<String> = lines[run.logged..]
+        let new: Vec<String> = lines
             .iter()
             .map(|l| format!("{} {:?}: {}", l.time, l.level, l.text))
             .collect();
-        run.logged = lines.len();
+        run.logged = seen;
         if let Ok(mut recent) = run.recent.lock() {
             recent.extend(new.iter().cloned());
             let extra = recent.len().saturating_sub(KEPT_LINES);
@@ -215,6 +273,12 @@ impl App {
         }
         use std::io::Write;
         let _ = std::fs::create_dir_all(saved).and_then(|()| {
+            // Kept small: a game that warns every tick doesn't fill the
+            // disk. The one before is kept as log.old.txt.
+            let path = saved.join(LOG_FILE);
+            if std::fs::metadata(&path).is_ok_and(|m| m.len() > MAX_LOG_BYTES) {
+                std::fs::rename(&path, saved.join(OLD_LOG_FILE))?;
+            }
             let mut file = std::fs::OpenOptions::new()
                 .create(true)
                 .append(true)
@@ -230,6 +294,9 @@ impl App {
     /// own, so the editor keeps drawing.
     pub(super) fn export_playtest(&mut self, request: editor::export_dialog::ExportRequest) {
         if self.exporting.is_some() {
+            self.workbench.export_finished(Err(
+                "an export is already running: wait for it to finish".into(),
+            ));
             return;
         }
         let Some(root) = self.projects.root().map(std::path::Path::to_path_buf) else {
@@ -251,7 +318,7 @@ impl App {
             if outcome.is_ok() {
                 let _ = playtest::remember_export(&root, &request.playtest);
             }
-            let _ = sender.send((request.playtest, outcome));
+            let _ = sender.send((root, request.playtest, outcome));
         });
         self.exporting = Some(receiver);
     }
@@ -265,13 +332,20 @@ impl App {
             Ok(outcome) => outcome,
             Err(std::sync::mpsc::TryRecvError::Empty) => return,
             Err(std::sync::mpsc::TryRecvError::Disconnected) => (
+                PathBuf::new(),
                 editor::export_dialog::Playtest::default(),
                 Err("the export stopped unexpectedly".into()),
             ),
         };
         self.exporting = None;
-        let (playtest, outcome) = outcome;
-        if outcome.is_ok() {
+        let (root, playtest, outcome) = outcome;
+        // Remembered by the project it was exported from, if that's still
+        // the open one (on disk, it's remembered either way).
+        let same = self
+            .projects
+            .root()
+            .is_some_and(|open| super::same_folder(open, &root));
+        if outcome.is_ok() && same {
             self.workbench.set_last_export(Some(playtest));
         }
         if let Ok(made) = &outcome {
@@ -295,6 +369,9 @@ impl App {
 static RECENT: std::sync::LazyLock<Arc<Mutex<Vec<String>>>> =
     std::sync::LazyLock::new(Arc::default);
 
+/// The last panic on the window's thread, for the crash log.
+static LAST_PANIC: Mutex<Option<String>> = Mutex::new(None);
+
 /// Opens the exported game `found` in a window of its own, and runs until
 /// it closes. A crash writes a crash log in the player's folder.
 pub fn run_playtest(info: editor::AppInfo, found: Found) -> Result<(), String> {
@@ -302,18 +379,16 @@ pub fn run_playtest(info: editor::AppInfo, found: Found) -> Result<(), String> {
     let name = found.playtest.name.clone();
     let saved = playtest::saved_games(&name);
     let settings = playtest::load_settings(saved.as_deref(), &found.playtest);
-    let crash_folder = saved.clone();
     let program = format!("{} {}", info.name, info.version);
-    let game = name.clone();
+    // Panics that are caught and carried on from (a model that can't be
+    // read, say) aren't crashes: the hook only notes the window's thread's
+    // last one, and the crash log is written below if the window stopped.
     let earlier = std::panic::take_hook();
     std::panic::set_hook(Box::new(move |panic| {
-        if let Some(folder) = &crash_folder {
-            let said = RECENT.lock().map(|r| r.clone()).unwrap_or_default();
-            let about = format!(
-                "{game} stopped unexpectedly. Please send this file to the game's maker.\n\n\
-                 What happened: {panic}\nMade with: {program}"
-            );
-            let _ = playtest::write_crash_log(folder, &about, &said);
+        if std::thread::current().name() == Some("main")
+            && let Ok(mut last) = LAST_PANIC.try_lock()
+        {
+            *last = Some(panic.to_string());
         }
         earlier(panic);
     }));
@@ -328,6 +403,9 @@ pub fn run_playtest(info: editor::AppInfo, found: Found) -> Result<(), String> {
             .with_icon(super::window_icon()),
         renderer: eframe::Renderer::Wgpu,
         wgpu_options: super::gpu_options(),
+        // The window opens as the player's settings say, not as eframe
+        // last saw it.
+        persist_window: false,
         ..Default::default()
     };
     let pending = crate::updates::PendingSlot::default();
@@ -351,10 +429,19 @@ pub fn run_playtest(info: editor::AppInfo, found: Found) -> Result<(), String> {
         Err(payload) => {
             let mut why = super::explain_panic(payload.as_ref());
             if let Some(folder) = &saved {
-                why.push_str(&format!(
-                    " A crash log is in {}.",
-                    folder.join(playtest::CRASH_FILE).display()
-                ));
+                let said = RECENT.try_lock().map(|r| r.clone()).unwrap_or_default();
+                let what = LAST_PANIC
+                    .try_lock()
+                    .ok()
+                    .and_then(|mut l| l.take())
+                    .unwrap_or_else(|| why.clone());
+                let about = format!(
+                    "{name} stopped unexpectedly. Please send this file to the game's maker.\n\n\
+                     What happened: {what}\nMade with: {program}"
+                );
+                if let Ok(path) = playtest::write_crash_log(folder, &about, &said) {
+                    why.push_str(&format!(" A crash log is in {}.", path.display()));
+                }
             }
             Err(why)
         }

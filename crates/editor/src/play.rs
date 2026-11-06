@@ -191,6 +191,7 @@ impl Workbench {
         // play's waits to be heard in it.
         self.plays += 1;
         self.game_sounds.clear();
+        self.quit_asked = false;
         let mut world = world::World::from_area(self.document.area());
         // A new seed each Play, unless one was chosen (`seed` in the
         // Console), so random numbers differ between plays but a play can

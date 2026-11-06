@@ -155,6 +155,7 @@ struct App {
     /// An export to a folder, on a thread of its own: its outcome.
     exporting: Option<
         std::sync::mpsc::Receiver<(
+            PathBuf,
             editor::export_dialog::Playtest,
             Result<crate::playtest::Exported, String>,
         )>,
@@ -1336,7 +1337,11 @@ impl App {
                     },
                     None => self.workbench.log(
                         LogLevel::Warning,
-                        "The game wasn't saved: save games are kept in a project.",
+                        if self.playtest.is_some() {
+                            "The game wasn't saved: there's no folder for the player's saves."
+                        } else {
+                            "The game wasn't saved: save games are kept in a project."
+                        },
                     ),
                 },
                 WorkbenchAction::LoadGame(slot) => {

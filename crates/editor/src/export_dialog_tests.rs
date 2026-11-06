@@ -12,7 +12,14 @@ fn game_names_are_usable_as_file_names() {
     assert_eq!(game_name(""), "Game");
     assert_eq!(game_name("con"), "Game", "a name Windows keeps for itself");
     assert_eq!(game_name("COM1"), "Game");
+    assert_eq!(game_name("lpt9"), "Game");
+    assert_eq!(game_name("COM²"), "Game");
+    assert_eq!(game_name("CONIN$"), "Game");
+    assert_eq!(game_name("con.x"), "Game", "a device name before a dot too");
+    assert_eq!(game_name("COM0"), "COM0", "Windows allows these");
+    assert_eq!(game_name("LPT10"), "LPT10");
     assert_eq!(game_name("Compost"), "Compost");
+    assert_eq!(game_name("Console"), "Console");
     assert_eq!(game_name(&"a".repeat(200)).len(), MAX_NAME);
     assert_eq!(game_name("tab\there"), "tabhere");
 }
@@ -30,6 +37,7 @@ fn only_areas_inside_the_assets_can_start_a_game() {
         "areas\\farm.solarea",
         "C:/farm.solarea",
         "areas//farm.solarea",
+        "areas/far\nm.solarea",
     ] {
         assert!(!usable_area(bad), "{bad}");
     }
@@ -235,4 +243,35 @@ fn file_has_export_for_playtesting_above_quit() {
     h.get_by_label("Export for playtesting…").click();
     h.run();
     assert!(h.state().0.export_window.is_some());
+}
+
+#[test]
+fn a_second_export_the_same_day_gets_a_folder_of_its_own() {
+    let dir = std::env::temp_dir().join(format!("solis-export-unused-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&dir);
+    let first = dir.join("Farm playtest 2026-11-06");
+    assert_eq!(unused(first.clone()), first, "nothing there yet");
+    std::fs::create_dir_all(&first).unwrap();
+    assert_eq!(unused(first.clone()), first, "an empty folder is fine");
+    std::fs::write(first.join("Farm.exe"), "x").unwrap();
+    let second = dir.join("Farm playtest 2026-11-06 (2)");
+    assert_eq!(unused(first.clone()), second);
+    std::fs::create_dir_all(&second).unwrap();
+    std::fs::write(second.join("Farm.exe"), "x").unwrap();
+    assert_eq!(unused(first), dir.join("Farm playtest 2026-11-06 (3)"));
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn unsaved_changes_are_pointed_out_before_exporting() {
+    let mut w = farm();
+    w.add_entity();
+    assert!(w.document.is_dirty());
+    w.open_export();
+    let mut h = harness(w);
+    h.run();
+    assert!(
+        h.query_by_label_contains("changes that aren't saved")
+            .is_some()
+    );
 }

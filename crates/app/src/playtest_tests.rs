@@ -209,3 +209,39 @@ fn saves_go_in_the_player_s_own_folder_named_after_the_game() {
     assert!(folder.is_absolute());
     assert!(program_name("Farm").starts_with("Farm"));
 }
+
+#[test]
+fn a_failed_export_leaves_nothing_in_the_way() {
+    let dir = scratch("failed");
+    let (root, _) = project(&dir);
+    let folder = dir.join("out");
+    let why = export(&root, &dir.join("no program here"), &farm(), &folder).unwrap_err();
+    assert!(why.contains("program"), "{why}");
+    assert!(!folder.exists(), "the folder it made is gone again");
+    // A folder that was there and empty stays, emptied again.
+    std::fs::create_dir_all(&folder).unwrap();
+    assert!(export(&root, &dir.join("no program here"), &farm(), &folder).is_err());
+    assert!(folder.is_dir());
+    assert_eq!(std::fs::read_dir(&folder).unwrap().count(), 0);
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[cfg(unix)]
+#[test]
+fn a_path_into_the_project_through_a_missing_folder_is_refused() {
+    let dir = scratch("sneaky");
+    let (root, program) = project(&dir);
+    // `missing/..` can't be worked out until `missing` is made.
+    let folder = dir.join("missing").join("..").join("project").join("sub");
+    let why = export(&root, &program, &farm(), &folder).unwrap_err();
+    assert!(why.contains("inside the project"), "{why}");
+    assert!(!root.join("sub").exists(), "nothing left in the project");
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[cfg(not(windows))]
+#[test]
+fn the_program_never_takes_the_game_folder_s_name() {
+    assert_eq!(program_name("game"), "game (game)");
+    assert_eq!(program_name("playtest.txt"), "playtest.txt (game)");
+}

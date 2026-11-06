@@ -76,6 +76,10 @@ pub fn program_name(game: &str) -> String {
     let name = editor::export_dialog::game_name(game);
     if cfg!(windows) {
         format!("{name}.exe")
+    } else if name.eq_ignore_ascii_case(GAME_FOLDER) || name.eq_ignore_ascii_case(PLAYTEST_FILE) {
+        // Beside the game folder and the playtest file, it needs a name
+        // of its own.
+        format!("{name} (game)")
     } else {
         name
     }
@@ -118,7 +122,13 @@ pub fn export(
     {
         return Err("the folder is inside the project: choose one outside it".into());
     }
-    match std::fs::read_dir(folder) {
+    // Measured first, so a project too big is refused before anything is
+    // copied.
+    let size = measure(root, true, 0)?;
+    if size > MAX_EXPORT_BYTES {
+        return Err(too_big());
+    }
+    let made_folder = match std::fs::read_dir(folder) {
         Ok(mut entries) => {
             if entries.next().is_some() {
                 return Err(format!(
@@ -126,11 +136,41 @@ pub fn export(
                     folder.display()
                 ));
             }
+            false
         }
         Err(e) if e.kind() == std::io::ErrorKind::NotFound => {
-            std::fs::create_dir_all(folder).map_err(|e| format!("couldn't make the folder: {e}"))?
+            std::fs::create_dir_all(folder)
+                .map_err(|e| format!("couldn't make the folder: {e}"))?;
+            true
         }
         Err(e) => return Err(format!("couldn't use the folder: {e}")),
+    };
+    let outcome = fill(root, program, playtest, folder);
+    if outcome.is_err() {
+        // Nothing half-made is left in the way of trying again.
+        let _ = std::fs::remove_dir_all(folder.join(GAME_FOLDER));
+        let _ = std::fs::remove_file(folder.join(program_name(&playtest.name)));
+        let _ = std::fs::remove_file(folder.join(PLAYTEST_FILE));
+        if made_folder {
+            let _ = std::fs::remove_dir(folder);
+        }
+    }
+    outcome
+}
+
+/// Fills the empty `folder`: the project, the program and what to play.
+fn fill(
+    root: &Path,
+    program: &Path,
+    playtest: &Playtest,
+    folder: &Path,
+) -> Result<Exported, String> {
+    // Checked again now the folder is there: a path that went through a
+    // folder that wasn't there yet can only be told apart now.
+    if let (Ok(r), Ok(f)) = (root.canonicalize(), folder.canonicalize())
+        && f.starts_with(&r)
+    {
+        return Err("the folder is inside the project: choose one outside it".into());
     }
     let mut made = Exported {
         folder: folder.to_path_buf(),
@@ -148,6 +188,37 @@ pub fn export(
     asset_db::write_atomically(&folder.join(PLAYTEST_FILE), shipped.text().as_bytes())
         .map_err(|e| format!("couldn't write {PLAYTEST_FILE}: {e}"))?;
     Ok(made)
+}
+
+fn too_big() -> String {
+    format!(
+        "the project holds more than {} GB; take what the game doesn't use out of the assets",
+        MAX_EXPORT_BYTES >> 30
+    )
+}
+
+/// How many bytes `from`'s files hold, as [`copy_tree`] would copy them,
+/// stopping once past [`MAX_EXPORT_BYTES`].
+fn measure(from: &Path, top: bool, mut sum: u64) -> Result<u64, String> {
+    let entries =
+        std::fs::read_dir(from).map_err(|e| format!("couldn't read {}: {e}", from.display()))?;
+    for entry in entries.filter_map(Result::ok) {
+        if top && LEFT_OUT.iter().any(|left| entry.file_name() == *left) {
+            continue;
+        }
+        let Ok(kind) = entry.file_type() else {
+            continue;
+        };
+        if kind.is_dir() {
+            sum = measure(&entry.path(), false, sum)?;
+        } else if kind.is_file() {
+            sum = sum.saturating_add(entry.metadata().map_or(0, |m| m.len()));
+        }
+        if sum > MAX_EXPORT_BYTES {
+            break;
+        }
+    }
+    Ok(sum)
 }
 
 /// The nearest folder of `path` that's there, made whole.
@@ -179,11 +250,7 @@ fn copy_tree(from: &Path, to: &Path, top: bool, made: &mut Exported) -> Result<(
             made.files += 1;
             made.bytes += bytes;
             if made.bytes > MAX_EXPORT_BYTES {
-                return Err(format!(
-                    "the project holds more than {} GB; take what the game doesn't use out of \
-                     the assets",
-                    MAX_EXPORT_BYTES >> 30
-                ));
+                return Err(too_big());
             }
         }
         // Links are left out: the copy is what the game holds itself.

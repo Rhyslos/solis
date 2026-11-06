@@ -71,6 +71,9 @@ pub struct LogLine {
 #[derive(Debug, Clone, Default)]
 pub(crate) struct Console {
     lines: Vec<LogLine>,
+    /// How many messages were ever added, for a reader that keeps up with
+    /// new ones while old ones are dropped (an exported game's log).
+    pushed: u64,
     /// Each line's text in lower case, for searching without making new
     /// text every frame.
     lowered: Vec<String>,
@@ -126,6 +129,7 @@ impl Console {
         let time = chrono::Local::now().format("%H:%M:%S").to_string();
         self.lowered.push(text.to_lowercase());
         self.lines.push(LogLine { time, level, text });
+        self.pushed += 1;
         self.counts[level.slot()] += 1;
         if self.lines.len() > CONSOLE_LIMIT {
             let extra = self.lines.len() - CONSOLE_LIMIT + DROP_AT_ONCE;
@@ -134,6 +138,11 @@ impl Console {
             }
             self.lowered.drain(..extra);
         }
+    }
+
+    /// How many messages were ever added (dropped ones included).
+    pub(crate) fn pushed(&self) -> u64 {
+        self.pushed
     }
 
     /// Every message, oldest first.

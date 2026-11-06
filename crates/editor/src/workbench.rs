@@ -949,6 +949,18 @@ impl Workbench {
         self.console.lines()
     }
 
+    /// The messages added since `seen` messages had been (counting every
+    /// one ever added, so old ones dropped from the Console don't shift
+    /// it), and the count to pass next time.
+    pub fn log_since(&self, seen: u64) -> (&[LogLine], u64) {
+        let pushed = self.console.pushed();
+        let lines = self.console.lines();
+        let new = usize::try_from(pushed.saturating_sub(seen))
+            .unwrap_or(usize::MAX)
+            .min(lines.len());
+        (&lines[lines.len() - new..], pushed)
+    }
+
     /// Adds a message to the console.
     pub fn log(&mut self, level: LogLevel, text: impl Into<String>) {
         self.console.push(level, text.into());

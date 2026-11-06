@@ -16,7 +16,7 @@ It's a **playtest** build, made in seconds, because the game's Lust and Lua code
 4. Click **Export**. The window and the [Console](console.md) say where it went. Click **Open folder** to see it.
 5. Zip that folder (in Windows Explorer, right-click it, then **Send to > Compressed (zipped) folder**) and send the zip.
 
-Your friend unzips it and double-clicks **`<Game>.exe`** inside.
+Your friend unzips it (all of it, somewhere they can write, such as their Documents) and double-clicks **`<Game>.exe`** inside. Double-clicking it inside the zip doesn't work: Windows takes only the program out, without the game beside it.
 
 **What's in the folder, and why:**
 
@@ -26,11 +26,11 @@ Your friend unzips it and double-clicks **`<Game>.exe`** inside.
 | `playtest.txt` | The game's name, the area it starts in, and its first window. |
 | `game/` | Your project's files: code, areas, sprites, sounds, screens. The editor's own things stay out: its cache, saves, recordings, backups and Git's history. |
 
-**Where the player's things go:** the game never writes beside itself, so it works from anywhere, even a read-only folder. Everything that's the player's goes in their own folder, `Saved Games/<Game>` on Windows (next to other games' saves):
+**Where the player's things go:** everything that's the player's goes in their own folder, `Saved Games/<Game>` on Windows (next to other games' saves):
 
 - `saves/`: the game's [save games](save-games.md);
 - `settings.txt`: the player's [settings](concepts.md#player-setting) (text size, UI size, fullscreen, window size), kept from one start to the next;
-- `log.txt`: warnings and mistakes the game reported, like the Console's;
+- `log.txt`: warnings and mistakes the game reported, like the Console's (past 1 MB it starts again, keeping the one before as `log.old.txt`);
 - `crash log.txt`: written if the program stops unexpectedly. It says what happened and the last things the game said. Ask your playtesters to send it to you.
 
 **Quitting:** give your pause menu a Quit button that calls `Window:quit()` (see [Game code](game-code.md)). The game closes at the end of that tick. While you play in the editor, play stops instead, and the Console says the exported game would close. The window's close button always works too.
@@ -56,6 +56,7 @@ In an exported game, every key is the game's, Esc included.
 
 - **Problem:** the game says "The game can't start: its code has mistakes." **Why:** the exported code doesn't compile. **Fix:** fix the mistakes in the Problems panel, then export again.
 - **Problem:** "already has files in it". **Why:** exports never mix with, or replace, anything. **Fix:** choose a new folder, or empty that one.
+- **Problem:** the game says "The game's files can't be read", or "The game stopped". **Why:** the `game` folder is missing or damaged, or it's somewhere the game can't write (the first start writes a cache into `game/`). **Fix:** unzip the whole export again, somewhere like Documents. The message names the log with more.
 - **Problem:** the export is big. **Why:** it holds the program and everything in the project's assets, used or not. **Fix:** move files the game doesn't use out of the assets.
 - **Problem:** Windows warns about the program when your friend opens it. **Why:** it isn't signed, as programs from big companies are. **Fix:** they choose **More info > Run anyway**. Send builds only to people who trust you.
 - **Problem:** saves from an older build are gone. **Why:** the game's name changed, so the saves folder did too. **Fix:** keep the name the same.
