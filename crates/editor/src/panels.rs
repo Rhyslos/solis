@@ -111,6 +111,10 @@ pub(crate) struct ScreenUi<'a> {
     pub(crate) doc: &'a mut crate::screen_doc::ScreenDoc,
     pub(crate) fonts: &'a mut ui::Fonts,
     pub(crate) pictures: Option<std::sync::Arc<ui::Pictures>>,
+    /// The project's pictures, for the Image tool.
+    pub(crate) picture_files: Vec<String>,
+    /// The project's components that screens can read, for ties.
+    pub(crate) readable: Vec<crate::screen_ties::Readable>,
 }
 
 /// What the Clips and Frames tabs did this frame.
@@ -153,6 +157,8 @@ pub(crate) struct FramesOut {
     pub(crate) screen_hovered: bool,
     /// Open the screen's file as code.
     pub(crate) screen_code: bool,
+    /// What the canvas has to say in the Console.
+    pub(crate) screen_said: Option<String>,
 }
 
 impl TabViewer for PanelViewer<'_> {
@@ -299,7 +305,11 @@ impl TabViewer for PanelViewer<'_> {
                         .show(ui, |ui| {
                             egui::Frame::new().inner_margin(8.0).show(ui, |ui| {
                                 self.frames_out.screen_changed |=
-                                    crate::screen_props::screen_properties(ui, screen.doc);
+                                    crate::screen_props::screen_properties(
+                                        ui,
+                                        screen.doc,
+                                        &screen.readable,
+                                    );
                             });
                         });
                     return;
@@ -566,8 +576,13 @@ impl TabViewer for PanelViewer<'_> {
                         fonts: screen.fonts,
                         pictures: screen.pictures.clone(),
                         accent: self.accent.colors().fill,
+                        picture_files: screen.picture_files.clone(),
+                        readable: &screen.readable,
                     },
                 );
+                if out.said.is_some() {
+                    self.frames_out.screen_said = out.said;
+                }
                 self.frames_out.screen_changed |= out.changed;
                 self.frames_out.screen_hovered |= out.hovered;
                 self.frames_out.screen_code |= out.open_code;

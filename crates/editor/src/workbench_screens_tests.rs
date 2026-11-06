@@ -179,3 +179,73 @@ fn undo_over_the_canvas_saves_again_and_a_change_on_disk_is_taken_in() {
     w.refresh_screen();
     assert!(w.screen_doc.is_none());
 }
+
+/// MENU's game with a Health component and a Pause event, Quit with an
+/// empty { }.
+fn tied_program(menu: &str) -> Arc<script::Compiled> {
+    let main = "event Pause();\ncomponent Health {\n    has {\n        float hp = 20;\n        float maxHp = 20;\n    }\n}\npass Health, Pause;\nend\n";
+    let code = script::Code {
+        files: vec![
+            ("main.lst".to_string(), main.to_string()),
+            ("ui/pauseMenu.lst".to_string(), menu.to_string()),
+        ],
+        lua: Vec::new(),
+        notes: Vec::new(),
+    };
+    match script::compile(&code) {
+        Ok(Some(c)) => Arc::new(c),
+        Ok(None) => panic!("no code"),
+        Err(problems) => panic!("{}\n{menu}", problems[0]),
+    }
+}
+
+/// The words of the title piece drawn.
+fn title(w: &Workbench) -> String {
+    let view = w.screen_doc.as_ref().unwrap().view.as_ref().unwrap();
+    view.children[0].children[0].children[0].text.clone()
+}
+
+#[test]
+fn a_tie_and_a_send_make_code_the_game_reads_and_preview_values_try_numbers() {
+    let menu = MENU
+        .replace(
+            "fetch \"solis/screen\":Ui;",
+            "fetch \"solis/screen\":Ui;\nfetch \"main\":Pause;",
+        )
+        .replace("button \"Quit\";", "button \"Quit\" {\n                }");
+    let mut w = opened();
+    w.set_program(Some(tied_program(&menu)));
+    w.refresh_screen();
+    let readable = crate::screen_ties::readable(w.program.as_deref(), &w.document.registry);
+    let health = readable
+        .iter()
+        .find(|r| r.component == "Health")
+        .expect("Health can be read")
+        .clone();
+    assert_eq!(health.module, "main");
+    assert_eq!(health.reader, "health");
+    assert!(
+        health
+            .fields
+            .iter()
+            .any(|(n, k, s)| n == "hp" && *k == crate::screen_ties::Kind::Number && *s == 20.0)
+    );
+    let doc = w.screen_doc.as_mut().unwrap();
+    assert_eq!(doc.fetched_events(&readable), vec!["Pause".to_string()]);
+    doc.picked = vec![vec![0, 0, 0]];
+    assert!(doc.tie(&health, "hp", &crate::screen_ties::TieTo::Words));
+    doc.picked = vec![vec![1, 0, 2]];
+    assert_eq!(doc.sends(), Some(None));
+    assert!(doc.set_sends("Pause"));
+    // The game's own code reads what was written.
+    let text = doc.text.clone();
+    w.set_program(Some(tied_program(&text)));
+    w.refresh_screen();
+    assert_eq!(title(&w), "20.0", "the starting hp");
+    let doc = w.screen_doc.as_mut().unwrap();
+    doc.preview.insert(("Health".into(), "hp".into()), 7.0);
+    doc.redraw = true;
+    w.refresh_screen();
+    assert_eq!(title(&w), "7.0", "a preview value");
+    assert!(!w.screen_doc.as_ref().unwrap().redraw);
+}

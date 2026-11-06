@@ -854,6 +854,20 @@ pub fn set_words(text: &str, piece: &ElementSource, words: &str) -> Option<Strin
     }
 }
 
+/// Sets `piece`'s value to the code `expr` (`health.hp`, or
+/// `health.hp.text()` for words), or gives `None` for a piece that takes
+/// no value.
+pub fn set_arg(text: &str, piece: &ElementSource, expr: &str) -> Option<String> {
+    match &piece.arg {
+        Some(a) => Some(replaced(text, a.span.clone(), expr)),
+        None if is_bare(&piece.kind) => None,
+        None => {
+            let after = piece.span.start + piece.kind.len();
+            Some(replaced(text, after..after, &format!(" {expr}")))
+        }
+    }
+}
+
 /// The range a piece takes up as whole lines (with its indent and line
 /// end), when nothing else is on its lines; else just its text.
 fn whole_lines(text: &str, span: &Range<usize>) -> Range<usize> {

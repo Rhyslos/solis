@@ -1185,10 +1185,32 @@ impl Workbench {
         let screen_fonts = self
             .screen_fonts
             .get_or_insert_with(crate::game_screens::editor_fonts);
+        // Only worked out while a screen is open.
+        let (picture_files, readable) = if self.screen_doc.is_some() {
+            let files: Vec<String> = self
+                .library
+                .iter()
+                .filter(|i| {
+                    matches!(
+                        i.kind,
+                        crate::library::LibraryKind::Texture
+                            | crate::library::LibraryKind::SpriteSheet
+                    )
+                })
+                .map(|i| i.path.clone())
+                .collect();
+            let readable =
+                crate::screen_ties::readable(self.program.as_deref(), &self.document.registry);
+            (files, readable)
+        } else {
+            (Vec::new(), Vec::new())
+        };
         let screen = self.screen_doc.as_mut().map(|doc| crate::panels::ScreenUi {
             doc,
             fonts: screen_fonts,
             pictures: screen_pictures,
+            picture_files,
+            readable,
         });
         let atlas = self.atlas_editor.as_mut().map(|editor| {
             let picture = self.atlas_texture.as_ref().and_then(|(art, texture)| {

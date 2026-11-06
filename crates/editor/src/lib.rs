@@ -14,6 +14,8 @@ mod atlas_editor;
 mod atlas_view;
 pub mod camera;
 mod canvas_view;
+mod canvas_tools;
+mod screen_ties;
 mod commands;
 mod commands_many;
 pub mod console;
