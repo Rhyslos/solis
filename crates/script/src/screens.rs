@@ -219,7 +219,8 @@ fn lust_field(kind: &reflect::FieldKind) -> Option<(&'static str, &'static str)>
 /// file) and each other component screens can read (`described`: the
 /// game's Lua and Rust components and Solis's own, by their schemas),
 /// except one whose method name an engine call on entities has already,
-/// or that isn't a Lust name. A described one is written into the file as
+/// or that isn't a Lust name (a note says so, unless it's one of Solis's
+/// own, which nobody can rename). A described one is written into the file as
 /// a Lust component of its fields (those Lust can hold), so a screen
 /// fetches it from `solis/screen` and gets a copy as Lust components do.
 /// Gives the file, the readers kept, and notes on those left out.
@@ -264,11 +265,19 @@ pub fn readers_file(
         readers.push((name.clone(), reader));
     }
     let mut written = Vec::new();
+    // Solis's own components (Screen, Transform…) left out aren't worth a
+    // note: nobody can rename them.
+    let own = area::builtin::registry().ok();
     for schema in described {
         if lust.iter().any(|(n, _)| *n == schema.name) {
             continue;
         }
-        let Some(reader) = readable(&schema.name, &mut notes) else {
+        let mut said = Vec::new();
+        let reader = readable(&schema.name, &mut said);
+        if own.as_ref().is_none_or(|r| r.get(&schema.name).is_none()) {
+            notes.extend(said);
+        }
+        let Some(reader) = reader else {
             continue;
         };
         let mut fields = String::new();

@@ -11,7 +11,8 @@ Solis is a free, open-source 3D game engine with high standards for stability an
 ## Setting up
 
 1. Install Rust with [rustup](https://rustup.rs). The Rust version is pinned in `rust-toolchain.toml` and installs automatically.
-2. Clone the repository and run:
+2. On Linux (to build there, though Solis is made for Windows), install the sound library's headers first: `sudo apt-get install libasound2-dev`. Without them the `sound` crate doesn't build.
+3. Clone the repository and run:
 
 ```
 cargo run -p app                # build and start the editor

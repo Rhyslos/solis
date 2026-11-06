@@ -309,11 +309,12 @@ fn components_not_in_lust_are_described_to_screens_as_lust_ones() {
         ],
         "a Lust component isn't described again"
     );
-    assert_eq!(
-        notes.len(),
-        2,
-        "Screen is a project state, position() is taken: {notes:?}"
-    );
+    // Solis's own Screen (a project state's name) is left out quietly:
+    // nobody can rename it. A game's own Position (position() is taken)
+    // gets a note saying why.
+    assert_eq!(notes.len(), 1, "{notes:?}");
+    assert!(notes[0].contains("Position"), "{notes:?}");
+    assert!(!readers.iter().any(|(n, _)| n == "Screen"));
 }
 
 #[test]
