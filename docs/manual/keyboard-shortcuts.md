@@ -102,6 +102,10 @@ These work while the pointer is over the Atlas Crop tab; see [Atlas Crop](atlas-
 ## The UI editor (a screen open on the canvas)
 | Action | Shortcut |
 |---|---|
+| Pick a tool: Select, Box, Ellipse, Line, Pen, Text, Image | `1` to `7` (pointer over the canvas) |
+| All the tools in a ring | `E` |
+| Back to Select | `Esc` |
+| Finish the Pen's line | `Enter` or double-click |
 | Pick a piece | Click it (on the canvas or in Elements) |
 | Pick more | `Shift + click` (Elements: `Shift` or `Ctrl + click`) |
 | Pick everything in a box | Drag on an empty part of the canvas |

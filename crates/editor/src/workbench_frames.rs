@@ -179,6 +179,9 @@ impl Workbench {
             self.close_frames();
         }
         self.screen_hovered = out.screen_hovered;
+        if let Some(said) = &out.screen_said {
+            self.log(crate::console::LogLevel::Info, said.clone());
+        }
         if out.screen_changed {
             self.save_screen();
         }

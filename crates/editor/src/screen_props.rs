@@ -6,6 +6,7 @@
 //! is one undo step, and the rest of its `[ ]` can be typed as written.
 
 use crate::screen_doc::ScreenDoc;
+use crate::screen_ties::{Kind, Readable, ScreenGame, TieTo};
 use crate::theme;
 use egui::{RichText, Ui};
 
@@ -21,7 +22,8 @@ const ACROSS: [&str; 3] = ["left", "center", "right"];
 const DOWN: [&str; 3] = ["top", "middle", "bottom"];
 
 /// Properties for the piece picked; gives whether the screen changed.
-pub(crate) fn screen_properties(ui: &mut Ui, doc: &mut ScreenDoc) -> bool {
+pub(crate) fn screen_properties(ui: &mut Ui, doc: &mut ScreenDoc, game: &ScreenGame) -> bool {
+    let readable = &game.readable[..];
     let Some(path) = doc.picked.first().cloned() else {
         ui.label(RichText::new(&doc.screen).strong());
         ui.label(
@@ -83,6 +85,9 @@ pub(crate) fn screen_properties(ui: &mut Ui, doc: &mut ScreenDoc) -> bool {
                 ui.end_row();
             }
         });
+    if !many {
+        changed |= ties(ui, doc, readable, &piece, &text);
+    }
     section(ui, "SIZE AND PLACE");
     egui::Grid::new("screen piece size")
         .num_columns(2)
@@ -188,16 +193,49 @@ pub(crate) fn screen_properties(ui: &mut Ui, doc: &mut ScreenDoc) -> bool {
     if let Some(action) = &piece.action {
         section(ui, "WHEN CLICKED");
         let body = text[action.clone()].trim();
-        ui.label(
-            RichText::new(if body.is_empty() { "nothing yet" } else { body })
-                .monospace()
-                .color(theme::TEXT_WEAK),
-        );
-        ui.label(
-            RichText::new("What it does is written in its { }: Open as code to change it.")
+        if let (Some(now), false) = (doc.sends(), many) {
+            let events = &game.events;
+            ui.horizontal(|ui| {
+                ui.label("Sends");
+                egui::ComboBox::from_id_salt(("screen sends", &path))
+                    .selected_text(now.clone().unwrap_or_else(|| "nothing".into()))
+                    .height(520.0)
+                    .show_ui(ui, |ui| {
+                        for (e, file) in events {
+                            if ui
+                                .selectable_label(now.as_deref() == Some(e), e)
+                                .on_hover_text(format!("Written in {file}"))
+                                .clicked()
+                                && now.as_deref() != Some(e)
+                            {
+                                changed |= doc.set_sends(e, file);
+                            }
+                        }
+                    })
+                    .response
+                    .on_hover_text("The event sent to the screen's entity when it's clicked");
+            });
+            ui.label(
+                RichText::new(if events.is_empty() {
+                    "Declare an event in your game's code (event Pause();) to choose it here."
+                } else {
+                    "The game's events. The entity's code reacts with on Pause() { }."
+                })
                 .color(theme::TEXT_WEAK)
                 .small(),
-        );
+            );
+        } else {
+            ui.label(
+                RichText::new(if body.is_empty() { "nothing yet" } else { body })
+                    .monospace()
+                    .color(theme::TEXT_WEAK),
+            );
+            ui.label(
+                RichText::new("What it does is written in its { }: Open as code to change it.")
+                    .color(theme::TEXT_WEAK)
+                    .small(),
+            );
+        }
     }
     // Everything in its [ ], as written.
     section(ui, "ALL ITS SETTINGS");
@@ -228,6 +266,149 @@ pub(crate) fn screen_properties(ui: &mut Ui, doc: &mut ScreenDoc) -> bool {
             .color(theme::TEXT_WEAK)
             .small(),
     );
+    changed
+}
+
+/// What the piece picked can be tied to, with a menu of the screen's
+/// entity's components and their fields for each.
+fn ties(
+    ui: &mut Ui,
+    doc: &mut ScreenDoc,
+    readable: &[Readable],
+    piece: &ui::source::ElementSource,
+    text: &str,
+) -> bool {
+    let mut targets: Vec<(&str, Kind, TieTo)> = Vec::new();
+    match piece.kind.as_str() {
+        "text" | "button" => targets.push(("Words", Kind::Words, TieTo::Words)),
+        "progress" | "slider" => targets.push(("Value", Kind::Number, TieTo::Value)),
+        _ => {}
+    }
+    if !matches!(piece.kind.as_str(), "text" | "button") {
+        for side in ["width", "height"] {
+            let written = piece.style_text(text, side).map(str::trim);
+            // A number, or a bar already tied: `360 * health.hp / health.maxHp`.
+            let full = written.and_then(|v| {
+                v.parse::<f32>()
+                    .ok()
+                    .or_else(|| v.split_once(" * ")?.0.trim().parse().ok())
+            });
+            if let Some(full) = full {
+                let label = if side == "width" {
+                    "Fill across"
+                } else {
+                    "Fill up"
+                };
+                targets.push((
+                    label,
+                    Kind::Number,
+                    TieTo::Bar {
+                        side: side.into(),
+                        full,
+                        max: String::new(),
+                    },
+                ));
+            }
+        }
+    }
+    targets.push(("Opacity", Kind::Number, TieTo::Style("opacity".into())));
+    section(ui, "TIED TO THE GAME");
+    let mut changed = false;
+    if readable.is_empty() {
+        ui.label(
+            RichText::new(
+                "Give the entity this screen is shown for a component, and its fields can be tied here.",
+            )
+            .color(theme::TEXT_WEAK)
+            .small(),
+        );
+        return false;
+    }
+    egui::Grid::new("screen ties")
+        .num_columns(2)
+        .spacing([10.0, 6.0])
+        .show(ui, |ui| {
+            for (label, kind, to) in &targets {
+                ui.label(*label);
+                let now = match to {
+                    TieTo::Words | TieTo::Value => piece
+                        .arg
+                        .as_ref()
+                        .filter(|a| a.words.is_none())
+                        .map(|a| text[a.span.clone()].to_string()),
+                    TieTo::Style(n) => piece
+                        .style_text(text, n)
+                        .filter(|v| v.contains('.'))
+                        .map(str::to_string),
+                    TieTo::Bar { side, .. } => piece
+                        .style_text(text, side)
+                        .filter(|v| v.contains(" * ") && v.contains('.'))
+                        .map(|v| v.trim().to_string()),
+                };
+                let shown = now.clone().unwrap_or_else(|| "Tie to…".into());
+                ui.menu_button(shown, |ui| {
+                    for r in readable {
+                        let fields: Vec<_> = r
+                            .fields
+                            .iter()
+                            .filter(|f| f.1 == *kind || *kind == Kind::Words)
+                            .collect();
+                        if fields.is_empty() {
+                            continue;
+                        }
+                        ui.menu_button(&r.component, |ui| {
+                            for (field, _, start) in &fields {
+                                match to {
+                                    TieTo::Bar { side, full, .. } => {
+                                        ui.menu_button(format!("{field} out of"), |ui| {
+                                            // Its starting value as the most:
+                                            // health starts full.
+                                            let most = crate::canvas_tools::num(*start as f32);
+                                            if *start > 0.0
+                                                && ui
+                                                    .button(format!("{most} (its start)"))
+                                                    .clicked()
+                                            {
+                                                let to = TieTo::Bar {
+                                                    side: side.clone(),
+                                                    full: *full,
+                                                    max: most.clone(),
+                                                };
+                                                changed |= doc.tie(r, field, &to);
+                                                ui.close();
+                                            }
+                                            for (max, k, _) in &r.fields {
+                                                if *k == Kind::Number
+                                                    && max != field
+                                                    && ui.button(max).clicked()
+                                                {
+                                                    let to = TieTo::Bar {
+                                                        side: side.clone(),
+                                                        full: *full,
+                                                        max: max.clone(),
+                                                    };
+                                                    changed |= doc.tie(r, field, &to);
+                                                    ui.close();
+                                                }
+                                            }
+                                        });
+                                    }
+                                    _ => {
+                                        if ui.button(field).clicked() {
+                                            changed |= doc.tie(r, field, to);
+                                            ui.close();
+                                        }
+                                    }
+                                }
+                            }
+                        });
+                    }
+                })
+                .response
+                .on_hover_text("Shows one of the entity's values, read again after every tick");
+                ui.end_row();
+            }
+        });
     changed
 }
 

@@ -360,3 +360,20 @@ proptest::proptest! {
         proptest::prop_assert!(found.iter().all(|p| p.line >= 1 && p.column >= 1));
     }
 }
+
+#[test]
+fn the_game_s_events_are_found_with_their_files() {
+    let files = vec![
+        ("main.lst".to_string(), "event Pause();\n  event Hit(int amount);\nevent;\nevent 9x();\npass Pause, Hit;\nend\n".to_string()),
+        ("more.lst".to_string(), "event Pause();\nevent Quit();\n-- event Not();\nend\n".to_string()),
+        ("solis/screen.lst".to_string(), "event Inner();\n".to_string()),
+    ];
+    assert_eq!(
+        events_named(&files),
+        vec![
+            ("Hit".to_string(), "main.lst".to_string()),
+            ("Pause".to_string(), "main.lst".to_string()),
+            ("Quit".to_string(), "more.lst".to_string()),
+        ]
+    );
+}

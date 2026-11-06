@@ -48,6 +48,17 @@ pub(crate) struct ScreenDoc {
     pub(crate) zoom: Option<f32>,
     /// How far it's moved from the middle, in points.
     pub(crate) pan: egui::Vec2,
+    /// The tool in use on the canvas (M5).
+    pub(crate) tool: crate::canvas_tools::CanvasTool,
+    /// The pen's corners so far, in design pixels on the screen.
+    pub(crate) pen: Vec<[f32; 2]>,
+    /// The picture the Image tool puts (a path inside the assets).
+    pub(crate) picture: Option<String>,
+    /// Values tried on the canvas in place of components' starting ones
+    /// (component, field), never saved.
+    pub(crate) preview: std::collections::BTreeMap<(String, String), f64>,
+    /// The view is to be drawn again (a preview value changed).
+    pub(crate) redraw: bool,
     undo: Vec<String>,
     redo: Vec<String>,
     /// The text Solis last saved, to tell its own save from a change on
@@ -171,6 +182,11 @@ impl ScreenDoc {
             snap: true,
             zoom: None,
             pan: egui::Vec2::ZERO,
+            tool: Default::default(),
+            pen: Vec::new(),
+            picture: None,
+            preview: Default::default(),
+            redraw: false,
             undo: Vec::new(),
             redo: Vec::new(),
         }

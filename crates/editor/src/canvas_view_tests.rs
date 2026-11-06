@@ -29,6 +29,8 @@ fn harness() -> Harness<'static, State> {
                         fonts: &mut s.fonts,
                         pictures: None,
                         accent: Color32::from_rgb(0x24, 0x68, 0xd8),
+                        picture_files: &[],
+                        readable: &[],
                     },
                 );
                 s.out.push(out);
@@ -259,4 +261,114 @@ fn the_toolbar_picks_a_size_and_the_wheel_zooms() {
     assert_eq!(last.image, CANVAS_IMAGE);
     let [w, hgt] = last.size_px;
     assert!((w as f32 / hgt as f32 - 16.0 / 9.0).abs() < 0.02);
+}
+
+/// Presses `key` with the pointer over the canvas.
+fn press(h: &mut Harness<'static, State>, key: egui::Key) {
+    h.hover_at(Pos2::new(500.0, 320.0));
+    h.run();
+    h.key_press(key);
+    h.run();
+}
+
+#[test]
+fn keys_pick_tools_and_a_dragged_box_goes_among_the_pieces() {
+    use crate::canvas_tools::CanvasTool;
+    let mut h = harness();
+    h.run();
+    press(&mut h, egui::Key::Num2);
+    assert_eq!(h.state().doc.tool, CanvasTool::Box);
+    // Over the column, below Quit: a box goes into the column.
+    let quit = rect_of(&h, &[0, 0, 2]);
+    let from = quit.center_bottom() + Vec2::new(-20.0, 4.0);
+    drag(&mut h, from, from + Vec2::new(60.0, 30.0));
+    assert!(changed(&h));
+    let doc = &h.state().doc;
+    assert!(doc.text.contains("box [width "), "{}", doc.text);
+    assert_eq!(doc.picked.len(), 1);
+    assert_eq!(doc.picked[0][..2], [0, 0], "in the column");
+    // Esc goes back to picking.
+    press(&mut h, egui::Key::Escape);
+    assert_eq!(h.state().doc.tool, CanvasTool::Select);
+}
+
+#[test]
+fn a_click_with_text_puts_words_and_the_ring_picks_a_tool() {
+    use crate::canvas_tools::CanvasTool;
+    let mut h = harness();
+    h.run();
+    press(&mut h, egui::Key::Num6);
+    assert_eq!(h.state().doc.tool, CanvasTool::Text);
+    let at = rect_of(&h, &[0, 0, 0]).center_bottom() + Vec2::new(0.0, 2.0);
+    h.hover_at(at);
+    for pressed in [true, false] {
+        h.event(egui::Event::PointerButton {
+            pos: at,
+            button: egui::PointerButton::Primary,
+            pressed,
+            modifiers: egui::Modifiers::NONE,
+        });
+    }
+    h.run();
+    assert!(
+        h.state().doc.text.contains("text \"Text\" [size 24];"),
+        "{}",
+        h.state().doc.text
+    );
+    // E opens the ring at the pointer; a click on Box picks it, and puts
+    // nothing on the canvas.
+    let before = h.state().doc.text.clone();
+    let c = Pos2::new(500.0, 320.0);
+    press(&mut h, egui::Key::E);
+    let n = CanvasTool::ALL.len() as f32;
+    let a = std::f32::consts::TAU * (1.0 / n) - std::f32::consts::FRAC_PI_2;
+    let box_at = c + Vec2::new(a.cos(), a.sin()) * 52.0;
+    h.hover_at(box_at);
+    h.run();
+    for pressed in [true, false] {
+        h.event(egui::Event::PointerButton {
+            pos: box_at,
+            button: egui::PointerButton::Primary,
+            pressed,
+            modifiers: egui::Modifiers::NONE,
+        });
+    }
+    h.run();
+    h.run();
+    assert_eq!(h.state().doc.tool, CanvasTool::Box);
+    assert_eq!(h.state().doc.text, before, "the ring's click puts nothing");
+}
+
+#[test]
+fn the_pen_s_corners_become_lines_on_enter() {
+    let mut h = harness();
+    h.run();
+    press(&mut h, egui::Key::Num5);
+    for p in [
+        Pos2::new(120.0, 100.0),
+        Pos2::new(200.0, 140.0),
+        Pos2::new(260.0, 90.0),
+    ] {
+        h.hover_at(p);
+        h.run();
+        for pressed in [true, false] {
+            h.event(egui::Event::PointerButton {
+                pos: p,
+                button: egui::PointerButton::Primary,
+                pressed,
+                modifiers: egui::Modifiers::NONE,
+            });
+        }
+        h.run();
+        // Not a double-click.
+        std::thread::sleep(std::time::Duration::from_millis(1));
+        h.run();
+    }
+    assert_eq!(h.state().doc.pen.len(), 3);
+    h.key_press(egui::Key::Enter);
+    h.run();
+    let text = &h.state().doc.text;
+    assert_eq!(text.matches("line [").count(), 2, "{text}");
+    assert!(text.contains("canvas [width"), "{text}");
+    assert!(h.state().doc.pen.is_empty());
 }

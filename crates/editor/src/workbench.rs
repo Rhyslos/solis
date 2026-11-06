@@ -462,6 +462,12 @@ pub struct Workbench {
     pub(crate) screen_doc: Option<crate::screen_doc::ScreenDoc>,
     /// The program its view was drawn from.
     pub(crate) screen_from: Option<usize>,
+    /// What the open screen can be tied to and send, and the build of the
+    /// game's code it's for.
+    pub(crate) screen_game: Option<(
+        Option<usize>,
+        std::sync::Arc<crate::screen_ties::ScreenGame>,
+    )>,
     /// The fonts the canvas measures with.
     pub(crate) screen_fonts: Option<ui::Fonts>,
     /// Whether the pointer is over the canvas or Elements (Ctrl+Z is
@@ -593,6 +599,7 @@ impl Workbench {
             screen_pictures: Default::default(),
             screen_doc: None,
             screen_from: None,
+            screen_game: None,
             screen_fonts: None,
             screen_hovered: false,
             bindings: input::Bindings::default(),
@@ -1185,10 +1192,51 @@ impl Workbench {
         let screen_fonts = self
             .screen_fonts
             .get_or_insert_with(crate::game_screens::editor_fonts);
+        // Only worked out while a screen is open: what it can be tied to
+        // once per build of the game's code, the pictures only while the
+        // Image tool is in use.
+        let (picture_files, screen_game) = match &self.screen_doc {
+            Some(doc) => {
+                let from = self
+                    .program
+                    .as_ref()
+                    .map(|p| std::sync::Arc::as_ptr(p) as usize);
+                let game = match &self.screen_game {
+                    Some((built, game)) if *built == from => std::sync::Arc::clone(game),
+                    _ => {
+                        let game = std::sync::Arc::new(crate::screen_ties::screen_game(
+                            self.program.as_deref(),
+                            &self.document.registry,
+                        ));
+                        self.screen_game = Some((from, std::sync::Arc::clone(&game)));
+                        game
+                    }
+                };
+                let files: Vec<String> = if doc.tool == crate::canvas_tools::CanvasTool::Image {
+                    self.library
+                        .iter()
+                        .filter(|i| {
+                            matches!(
+                                i.kind,
+                                crate::library::LibraryKind::Texture
+                                    | crate::library::LibraryKind::SpriteSheet
+                            )
+                        })
+                        .map(|i| i.path.clone())
+                        .collect()
+                } else {
+                    Vec::new()
+                };
+                (files, game)
+            }
+            None => (Vec::new(), std::sync::Arc::default()),
+        };
         let screen = self.screen_doc.as_mut().map(|doc| crate::panels::ScreenUi {
             doc,
             fonts: screen_fonts,
             pictures: screen_pictures,
+            picture_files,
+            game: screen_game,
         });
         let atlas = self.atlas_editor.as_mut().map(|editor| {
             let picture = self.atlas_texture.as_ref().and_then(|(art, texture)| {

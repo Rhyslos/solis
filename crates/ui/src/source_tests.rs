@@ -272,3 +272,29 @@ fn review_findings_stay_fixed() {
     let out = insert_piece(&crlf, &column, 0, "text \"new\";");
     assert!(!out.replace("\r\n", "").contains('\n'), "no bare \\n");
 }
+
+#[test]
+fn a_value_s_code_is_set_or_added() {
+    let text = "assembly A {\n    view {\n        text \"Hi\" [size 9];\n        progress 3;\n        column {}\n        text;\n    }\n}\n";
+    let view = parse(text).unwrap().remove(0).view;
+    let hi = view.at(&[0]).unwrap();
+    assert_eq!(
+        set_arg(text, hi, "h.hp.text()").unwrap(),
+        text.replace("text \"Hi\" [size 9]", "text h.hp.text() [size 9]")
+    );
+    let bar = view.at(&[1]).unwrap();
+    assert_eq!(
+        set_arg(text, bar, "h.hp").unwrap(),
+        text.replace("progress 3;", "progress h.hp;")
+    );
+    assert_eq!(
+        set_arg(text, view.at(&[2]).unwrap(), "x"),
+        None,
+        "a column takes none"
+    );
+    let bare = view.at(&[3]).unwrap();
+    assert_eq!(
+        set_arg(text, bare, "x.text()").unwrap(),
+        text.replace("text;", "text x.text();")
+    );
+}

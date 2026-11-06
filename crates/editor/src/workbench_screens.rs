@@ -21,6 +21,9 @@ pub(crate) fn preview_entity() -> reflect::EntityId {
 struct PreviewReader<'a> {
     schemas: Vec<reflect::ComponentSchema>,
     registry: &'a reflect::Registry,
+    /// Numbers tried in place of the starting ones (Preview values), by
+    /// component and field.
+    preview: &'a std::collections::BTreeMap<(String, String), f64>,
 }
 
 impl script::ScreenReader for PreviewReader<'_> {
@@ -32,7 +35,13 @@ impl script::ScreenReader for PreviewReader<'_> {
             .or_else(|| self.registry.get(name).map(|s| &**s))?;
         let mut data = reflect::ComponentData::default();
         for f in &schema.fields {
-            data.set(&f.name, f.default.clone());
+            let tried = self.preview.get(&(name.to_string(), f.name.clone()));
+            let value = match (tried, &f.default) {
+                (Some(n), reflect::Value::Int(_)) => reflect::Value::Int(n.round() as i64),
+                (Some(n), reflect::Value::Float(_)) => reflect::Value::Float(*n),
+                _ => f.default.clone(),
+            };
+            data.set(&f.name, value);
         }
         Some(data)
     }
@@ -133,9 +142,10 @@ impl Workbench {
         let Some(doc) = &mut self.screen_doc else {
             return;
         };
-        if self.screen_from == from && doc.view.is_some() {
+        if self.screen_from == from && doc.view.is_some() && !doc.redraw {
             return;
         }
+        doc.redraw = false;
         self.screen_from = from;
         let Some(program) = program.as_ref() else {
             doc.view_problem = Some(
@@ -181,9 +191,11 @@ impl Workbench {
         // The view drawn by the game's own code, with no game running: for
         // an entity of its own, whose components all have their starting
         // values.
+        let preview = doc.preview.clone();
         let mut reader = PreviewReader {
             schemas: program.schemas.clone(),
             registry: &self.document.registry,
+            preview: &preview,
         };
         let made = script::screens::Screens::start(code)
             .map_err(|f| f.to_string())
