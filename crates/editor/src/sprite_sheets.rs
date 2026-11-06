@@ -586,10 +586,11 @@ pub struct SpriteBatch {
     pub sheet: AssetId,
     /// Whether they're see-through (drawn after the rest, back to front).
     pub see_through: bool,
-    /// The sprites.
-    pub sprites: Vec<ViewSprite>,
+    /// The sprites (shared: a tile map layer's are kept from frame to
+    /// frame while nothing in them changes).
+    pub sprites: Arc<Vec<ViewSprite>>,
     /// Each one's pick number, in the same order.
-    pub picks: Vec<u32>,
+    pub picks: Arc<Vec<u32>>,
 }
 
 /// sRGB (0 to 1) to linear, as the renderer works.
@@ -724,11 +725,11 @@ pub fn batches(
             let batch = cut.entry(id).or_insert_with(|| SpriteBatch {
                 sheet: id,
                 see_through: false,
-                sprites: Vec::new(),
-                picks: Vec::new(),
+                sprites: Arc::default(),
+                picks: Arc::default(),
             });
-            batch.sprites.push(drawn);
-            batch.picks.push(s.pick);
+            Arc::make_mut(&mut batch.sprites).push(drawn);
+            Arc::make_mut(&mut batch.picks).push(s.pick);
         }
     }
     let mut out: Vec<SpriteBatch> = cut.into_values().collect();
@@ -743,14 +744,14 @@ pub fn batches(
     for (id, drawn, pick) in clear {
         match out.last_mut() {
             Some(last) if last.see_through && last.sheet == id => {
-                last.sprites.push(drawn);
-                last.picks.push(pick);
+                Arc::make_mut(&mut last.sprites).push(drawn);
+                Arc::make_mut(&mut last.picks).push(pick);
             }
             _ => out.push(SpriteBatch {
                 sheet: id,
                 see_through: true,
-                sprites: vec![drawn],
-                picks: vec![pick],
+                sprites: Arc::new(vec![drawn]),
+                picks: Arc::new(vec![pick]),
             }),
         }
     }

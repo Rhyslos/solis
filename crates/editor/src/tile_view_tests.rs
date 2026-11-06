@@ -401,7 +401,7 @@ fn missing_tiles_are_pink_and_terrains_without_art_their_colour() {
         0,
         None,
     );
-    let all: Vec<&ViewSprite> = batches.iter().flat_map(|b| &b.sprites).collect();
+    let all: Vec<&ViewSprite> = batches.iter().flat_map(|b| b.sprites.iter()).collect();
     let white = |s: &&&ViewSprite| s.rect[1] == 8.0;
     assert_eq!(
         all.iter().filter(white).count(),
@@ -433,4 +433,127 @@ fn the_ground_in_view_is_where_the_corners_land() {
         ..crate::camera::Camera::default()
     };
     assert!(ground_in_view(level.view_projection(1.0), 0.0).is_none());
+}
+
+#[test]
+fn a_layer_s_tiles_are_kept_while_nothing_they_show_changes() {
+    // The phase review: every frame copied, sorted and made every tile of
+    // every layer in view again.
+    let (id, mut set) = tileset();
+    let png = AssetId::random();
+    set.picture = Some(png);
+    set.tile = [4, 4];
+    set.pieces.push(tiles::Piece {
+        id: Id::random(),
+        terrain: set.terrains[0].id,
+        slot: 0,
+        at: [0, 0],
+        weight: 1.0,
+        animation: tiles::Animation::None,
+    });
+    let mut sheets = sheets_with(id, set);
+    sheets.tile_art.insert(
+        "tiles.png".into(),
+        crate::sprite_sheets::ArtState::Read(Arc::new(assets::tile_art::TileArt {
+            size: [8, 4],
+            frames: vec![vec![9; 8 * 4 * 4]],
+            durations: vec![100],
+        })),
+    );
+    sheets.paths.insert(png, "tiles.png".into());
+    let who = entity();
+    let draw = |pictures: &TilePictures, map: &TileMap, ms| {
+        let maps = [ViewTileMap {
+            entity: who,
+            transform: Mat4::IDENTITY,
+            map: Arc::new(map.clone()),
+        }];
+        pictures
+            .draw(
+                &maps,
+                &sheets,
+                [1.0, 1.0],
+                &HashSet::new(),
+                &|_| None,
+                ms,
+                None,
+            )
+            .1
+    };
+    let mut map = TileMap::new([3, 2], Some(id), Some(b'.'));
+    let pictures = TilePictures::default();
+    let first = draw(&pictures, &map, 0);
+    let again = draw(&pictures, &map, 150);
+    assert!(
+        Arc::ptr_eq(&first[0].sprites, &again[0].sprites),
+        "the same tiles, kept (nothing moves in this tileset)"
+    );
+    map.set_code(0, 1, 1, b'?').unwrap();
+    let changed = draw(&pictures, &map, 150);
+    assert!(!Arc::ptr_eq(&first[0].sprites, &changed[0].sprites));
+}
+
+#[test]
+#[ignore = "scale check: run by tools/scale/scale-check.sh"]
+fn scale_check_a_tile_map_in_view_frame_after_frame() {
+    // The phase review: a big map in view was rebuilt and sorted every
+    // frame. Now a frame where nothing changed reuses each layer's tiles.
+    const TARGET_MS: f64 = 1.0;
+    let (id, mut set) = tileset();
+    let png = AssetId::random();
+    set.picture = Some(png);
+    set.tile = [4, 4];
+    set.pieces.push(tiles::Piece {
+        id: Id::random(),
+        terrain: set.terrains[0].id,
+        slot: 0,
+        at: [0, 0],
+        weight: 1.0,
+        animation: tiles::Animation::None,
+    });
+    let mut sheets = sheets_with(id, set);
+    sheets.tile_art.insert(
+        "tiles.png".into(),
+        crate::sprite_sheets::ArtState::Read(Arc::new(assets::tile_art::TileArt {
+            size: [8, 4],
+            frames: vec![vec![9; 8 * 4 * 4]],
+            durations: vec![100],
+        })),
+    );
+    sheets.paths.insert(png, "tiles.png".into());
+    // As many chunks as are drawn tile by tile, each full.
+    let side = 32 * 8;
+    let mut map = TileMap::new([side, side], Some(id), Some(b'.'));
+    map.set_code(1, 3, 3, b'.').unwrap();
+    let maps = [ViewTileMap {
+        entity: entity(),
+        transform: Mat4::IDENTITY,
+        map: Arc::new(map),
+    }];
+    let pictures = TilePictures::default();
+    let draw = || {
+        pictures.draw(
+            &maps,
+            &sheets,
+            [1.0, 1.0],
+            &HashSet::new(),
+            &|_| None,
+            0,
+            None,
+        )
+    };
+    let (_, first) = draw();
+    let tiles: usize = first.iter().map(|b| b.sprites.len()).sum();
+    assert!(tiles >= (side * side) as usize, "{tiles}");
+    let start = std::time::Instant::now();
+    for _ in 0..10 {
+        let _ = draw();
+    }
+    let ms = start.elapsed().as_secs_f64() * 1000.0 / 10.0;
+    let verdict = if ms <= TARGET_MS { "ok" } else { "SLOW" };
+    println!(
+        "Scale check: a {side} × {side} tile map in view, a frame with nothing changed {ms:.3} ms \
+         (target {TARGET_MS} ms) {verdict}"
+    );
+    assert!(ms <= TARGET_MS, "{ms:.3} ms");
 }

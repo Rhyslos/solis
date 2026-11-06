@@ -27,6 +27,12 @@ What changed in each version, for people using Solis. Newest first.
 
 ### Fixed
 
+- **Quicker** (the phase review, speed):
+  - A tile map in view keeps each layer's tiles from frame to frame while nothing they show changes. Before, every tile of every layer was copied, sorted and made again each frame: a 256 × 256 map in view now takes about half a millisecond a frame.
+  - Long text in game UI wraps measuring each word once. Before, each word measured the whole line again.
+  - An exported game writes its log at most once a second.
+  - The editor works out what's hidden or locked only when that changes, and the screens' pictures check the Library only when they need to.
+
 - **Steadier with damaged or huge files** (the phase review, stability):
   - An Aseprite file whose cels together would take more than 256 MB is refused instead of filling the memory. Cels linked to big pictures far off the canvas are no longer drawn pixel by pixel, and a file holds at most 65,536 cels.
   - A tile map's layers and values together take at most 512 MB, so a few lines of a map file can't ask for gigabytes. Growing a map past that is refused. Big maps keep fewer undo steps.

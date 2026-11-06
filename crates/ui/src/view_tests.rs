@@ -954,3 +954,31 @@ fn long_lines_wrap_measuring_each_word_once_not_the_whole_line_again() {
         paragraph.len()
     );
 }
+
+#[test]
+#[ignore = "scale check: run by tools/scale/scale-check.sh"]
+fn scale_check_wrapping_a_long_text() {
+    // The phase review: a long text wrapped in a wide box measured every
+    // line again for each word. The most a text holds, 4,096 letters.
+    const TARGET_MS: f64 = 2.0;
+    let paragraph: Vec<String> = (0..1300).map(|i| format!("w{}", i % 10)).collect();
+    let view = node(
+        "view",
+        &[],
+        vec![node(
+            "column",
+            &[("width", n(10_000.0))],
+            vec![text(&paragraph.join(" "), &[])],
+        )],
+    );
+    let start = std::time::Instant::now();
+    for _ in 0..10 {
+        let _ = lay_out(&view, [20_000.0, 30_000.0], &mut Fixed);
+    }
+    let ms = start.elapsed().as_secs_f64() * 1000.0 / 10.0;
+    let verdict = if ms <= TARGET_MS { "ok" } else { "SLOW" };
+    println!(
+        "Scale check: wrapping 4,000 letters into lines of 1,000 {ms:.3} ms (target {TARGET_MS} ms) {verdict}"
+    );
+    assert!(ms <= TARGET_MS, "{ms:.3} ms");
+}

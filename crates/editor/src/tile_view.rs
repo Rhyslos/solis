@@ -77,7 +77,14 @@ pub struct TilePictures {
     made: Mutex<HashMap<(EntityId, usize), Arc<TilePicture>>>,
     atlases: Mutex<HashMap<u64, Arc<TilePicture>>>,
     chunks: Mutex<HashMap<ChunkId, ChunkTiles>>,
+    /// Each layer's sprites as last made, and what they were made from:
+    /// kept while nothing they show changes, so a big map isn't rebuilt
+    /// and sorted every frame (the phase review, speed).
+    layers: Mutex<HashMap<(EntityId, reflect::Id), LayerSprites>>,
 }
+
+/// A layer's finished sprites, and the key of what made them.
+type LayerSprites = (u64, Arc<Vec<ViewSprite>>, Arc<Vec<u32>>);
 
 /// The pictures kept are a cache, never part of what sheets are.
 impl PartialEq for TilePictures {
@@ -285,6 +292,7 @@ impl TilePictures {
         lock(&self.made).retain(|k, _| used.contains(k));
         lock(&self.atlases).retain(|k, _| used_atlases.contains(k));
         lock(&self.chunks).retain(|k, _| used_chunks.contains(k));
+        lock(&self.layers).retain(|(e, l), _| used_chunks.iter().any(|c| c.0 == *e && c.1 == *l));
         under.extend(over);
         under.retain(|b| !b.sprites.is_empty());
         (pictures, under)
@@ -356,20 +364,56 @@ impl TilePictures {
             return SpriteBatch {
                 sheet: AssetId(reflect::Id::random()),
                 see_through: false,
-                sprites: Vec::new(),
-                picks: Vec::new(),
+                sprites: Arc::default(),
+                picks: Arc::default(),
             };
         };
         let layer = &m.map.layers()[i];
         let cells_ptr = m.map.layer_cells(i).map_or(0, |c| c.as_ptr() as usize);
         let set_ptr = Arc::as_ptr(set) as usize;
+        // What the layer's sprites are made from: its chunks as they are,
+        // where it's drawn, the art, and the time only if tiles move.
+        let keys: Vec<u64> = chunks
+            .iter()
+            .map(|&c| chunk_key(&m.map, c, cells_ptr, set_ptr))
+            .collect();
+        let animated = set
+            .pieces
+            .iter()
+            .any(|p| !matches!(p.animation, tiles::Animation::None));
+        let layer_key = {
+            let mut sum = reflect::Checksum::new();
+            for (&c, &k) in chunks.iter().zip(&keys) {
+                sum.u64(u64::from(c[0]) << 32 | u64::from(c[1]));
+                sum.u64(k);
+            }
+            for v in m.transform.to_cols_array() {
+                sum.u64(u64::from(v.to_bits()));
+            }
+            sum.u64(u64::from(cell[0].to_bits()) << 32 | u64::from(cell[1].to_bits()));
+            sum.u64(Arc::as_ptr(art) as u64);
+            sum.u64(if animated { ms } else { 0 });
+            sum.u64(u64::from(layer.over));
+            sum.finish()
+        };
+        for &c in chunks {
+            used.insert((m.entity, layer.id, c));
+        }
+        if let Some((key, sprites, picks)) = lock(&self.layers).get(&(m.entity, layer.id))
+            && *key == layer_key
+        {
+            return SpriteBatch {
+                sheet: atlas.id,
+                see_through: false,
+                sprites: Arc::clone(sprites),
+                picks: Arc::clone(picks),
+            };
+        }
         let mut placed: Vec<Placed> = Vec::new();
         {
             let mut cache = lock(&self.chunks);
-            for &c in chunks {
-                let key = chunk_key(&m.map, c, cells_ptr, set_ptr);
+            for (&c, &key) in chunks.iter().zip(&keys) {
                 let id = (m.entity, layer.id, c);
-                used.insert(id);
                 let tiles = match cache.get(&id) {
                     Some((k, tiles)) if *k == key => Arc::clone(tiles),
                     _ => {
@@ -441,10 +485,16 @@ impl TilePictures {
                 }
             })
             .collect();
+        let picks = Arc::new(vec![0; sprites.len()]);
+        let sprites = Arc::new(sprites);
+        lock(&self.layers).insert(
+            (m.entity, layer.id),
+            (layer_key, Arc::clone(&sprites), Arc::clone(&picks)),
+        );
         SpriteBatch {
             sheet: atlas.id,
             see_through: false,
-            picks: vec![0; sprites.len()],
+            picks,
             sprites,
         }
     }
@@ -460,7 +510,7 @@ fn colour_batch(m: &ViewTileMap, i: usize, picture: &TilePicture, cell: [f32; 2]
     SpriteBatch {
         sheet: picture.id,
         see_through: false,
-        sprites: vec![ViewSprite {
+        sprites: Arc::new(vec![ViewSprite {
             corner: corner.to_array(),
             flags: if layer.over { OVER } else { UNDER },
             axis_x: [across.x, across.y],
@@ -469,8 +519,8 @@ fn colour_batch(m: &ViewTileMap, i: usize, picture: &TilePicture, cell: [f32; 2]
             tint: [1.0, 1.0, 1.0, 0.0],
             outline: [0.0; 4],
             foot: [corner.x, corner.y],
-        }],
-        picks: vec![0],
+        }]),
+        picks: Arc::new(vec![0]),
     }
 }
 
