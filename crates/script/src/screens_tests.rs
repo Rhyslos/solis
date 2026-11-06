@@ -263,6 +263,19 @@ fn a_screen_s_buttons_send_events_and_keep_its_own_memory() {
             .unwrap()
             .is_empty()
     );
+    // Entities that come and go don't leave their buttons behind (the
+    // stability review).
+    for _ in 0..50 {
+        let gone = Some(reflect::EntityId::random());
+        screens.view("Menu", gone, &mut NoReader).unwrap();
+    }
+    assert_eq!(screens.kept_buttons(), 51);
+    screens.keep_buttons_of(&[("Menu".to_string(), me)]);
+    assert_eq!(screens.kept_buttons(), 1);
+    assert_eq!(
+        screens.press("Menu", me, 0, &mut NoReader).unwrap().len(),
+        1
+    );
 }
 
 #[test]

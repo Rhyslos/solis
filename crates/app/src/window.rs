@@ -2242,8 +2242,10 @@ impl eframe::App for App {
     }
 
     fn save(&mut self, storage: &mut dyn eframe::Storage) {
-        // An exported game keeps the player's settings itself.
+        // An exported game keeps the player's settings itself, in their
+        // folder (eframe asks here as the window closes, too).
         if self.playtest.is_some() {
+            self.keep_settings(true);
             self.flush_log(true);
             return;
         }

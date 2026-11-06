@@ -17,6 +17,9 @@ use tiles::{TileMap, Tileset};
 
 /// The most undo steps the Map tab keeps.
 const MAX_UNDO: usize = 50;
+/// The most cells the tile maps' undo steps hold together (a 4096 × 4096
+/// map keeps 16 steps).
+const MAX_UNDO_BYTES: u64 = 256 << 20;
 
 /// The map file the Map tab is changing: its path, and its undo steps
 /// (copies of the map, which share their cells until changed).
@@ -47,6 +50,15 @@ impl MapEdits {
     pub(crate) fn push_undo(&mut self, path: String, map: TileMap) {
         self.undo.push((path, map));
         if self.undo.len() > MAX_UNDO {
+            self.undo.remove(0);
+        }
+        // Each step keeps its own copy of what it changed (a layer, at
+        // least): big maps keep fewer steps, within MAX_UNDO_BYTES (the
+        // stability review).
+        let step = |m: &TileMap| u64::from(m.size()[0]) * u64::from(m.size()[1]);
+        while self.undo.len() > 1
+            && self.undo.iter().map(|(_, m)| step(m)).sum::<u64>() > MAX_UNDO_BYTES
+        {
             self.undo.remove(0);
         }
         self.redo.clear();

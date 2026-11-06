@@ -605,6 +605,21 @@ impl Screens {
         Ok(node)
     }
 
+    /// Lets go of the buttons of every view not in `shown` (screen names
+    /// and their entities): those of entities gone, or screens hidden, so
+    /// a game spawning entities with screens doesn't keep their functions
+    /// for ever (the stability review).
+    pub fn keep_buttons_of(&self, shown: &[(String, Option<reflect::EntityId>)]) {
+        self.actions
+            .borrow_mut()
+            .retain(|key, _| shown.iter().any(|s| s.0 == key.0 && s.1 == key.1));
+    }
+
+    /// How many views' buttons are kept.
+    pub fn kept_buttons(&self) -> usize {
+        self.actions.borrow().len()
+    }
+
     /// Runs the button `action` (its number, [`Node::action`]) of the
     /// screen `name` as last viewed for `entity`, giving back what it sent
     /// (for the next tick), or why it stopped. A button not there (the

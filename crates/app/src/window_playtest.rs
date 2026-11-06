@@ -51,6 +51,10 @@ pub(super) struct Run {
     /// Why the game can't go on, once it can't (its files can't be read,
     /// or play stopped without the game asking to quit).
     failed: Option<String>,
+    /// Whether the settings changed since they were last kept, and when
+    /// that was.
+    unsaved: bool,
+    last_saved: Option<std::time::Instant>,
     /// Log lines not written yet, and when the log was last written.
     log_waiting: Vec<String>,
     log_written: Option<std::time::Instant>,
@@ -72,6 +76,8 @@ impl App {
             logged: 0,
             recent: RECENT.clone(),
             failed: None,
+            unsaved: false,
+            last_saved: None,
             log_waiting: Vec::new(),
             log_written: None,
         });
@@ -180,7 +186,9 @@ impl App {
         self.queued.extend(actions);
         self.run_queue(&ctx);
         self.follow_settings(&ctx);
-        if self.quitting || ctx.input(|i| i.viewport().close_requested()) {
+        let closing = self.quitting || ctx.input(|i| i.viewport().close_requested());
+        self.keep_settings(closing);
+        if closing {
             self.flush_log(true);
         }
         self.write_log();
@@ -251,8 +259,28 @@ impl App {
             }
             ctx.send_viewport_cmd(egui::ViewportCommand::InnerSize(size));
         }
-        if was.is_some()
-            && let Some(saved) = &run.saved
+        if was.is_some() {
+            run.unsaved = true;
+        }
+    }
+
+    /// Keeps the player's settings in their folder, at most once a second
+    /// (game code changing them every tick doesn't write every frame), or
+    /// now when `now` (the game closing).
+    pub(super) fn keep_settings(&mut self, now: bool) {
+        let settings = self.workbench.player_settings();
+        let Some(run) = self.playtest.as_mut() else {
+            return;
+        };
+        let due = run
+            .last_saved
+            .is_none_or(|t| t.elapsed() >= std::time::Duration::from_secs(1));
+        if !run.unsaved || !(now || due) {
+            return;
+        }
+        run.unsaved = false;
+        run.last_saved = Some(std::time::Instant::now());
+        if let Some(saved) = &run.saved
             && let Err(why) = playtest::save_settings(saved, &settings)
         {
             let note = format!("The player's settings couldn't be kept: {why}.");

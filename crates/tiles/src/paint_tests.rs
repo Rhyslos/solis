@@ -99,6 +99,12 @@ fn a_stamp_is_copied_flipped_and_turned() {
     let empty = TileMap::new([4, 4], None, None);
     assert!(Stamp::copy(&empty, 0, [0, 0], [3, 3]).is_none());
     assert!(Stamp::copy(&map, 0, [5, 5], [9, 9]).is_none());
+    // A stamp bigger than 256 × 256 isn't kept (the stability review: a
+    // whole big map as a brush would be copied at every move).
+    let mut big = TileMap::new([300, 300], None, None);
+    big.set_code(0, 0, 0, b'a').unwrap();
+    assert!(Stamp::copy(&big, 0, [0, 0], [299, 299]).is_none());
+    assert!(Stamp::copy(&big, 0, [0, 0], [255, 255]).is_some());
 }
 
 #[test]
