@@ -515,6 +515,12 @@ impl World {
                     self.place.remove(&id);
                     self.game_moved.remove(&id);
                     self.physics.remove(id);
+                    // And from 2D physics: its collider, and a map's walls.
+                    self.flat.remove(id);
+                    if self.walls_built.remove(&id).is_some() {
+                        self.flat.remove_walls(id);
+                    }
+                    self.touched = true;
                 }
                 let _ = self.ecs.despawn(entity);
                 continue;

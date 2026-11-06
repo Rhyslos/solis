@@ -31,7 +31,7 @@ fn world(at: Vec2, walls: &[(Vec2, Vec2)]) -> Flat {
 
 fn walk(flat: &mut Flat, step: Vec2, ticks: usize) -> Vec2 {
     for _ in 0..ticks {
-        flat.move_characters(&[(id(1), step)]);
+        flat.move_characters(&[(id(1), step)], 1.0 / 60.0);
     }
     flat.state().place(id(1)).unwrap()
 }
@@ -76,7 +76,7 @@ fn walking_along_a_thousand_seams_never_bumps() {
     let step = Vec2::new(0.11, -0.02); // pressed down into the walls
     let mut last = flat.state().place(id(1)).unwrap();
     for _ in 0..9500 {
-        flat.move_characters(&[(id(1), step)]);
+        flat.move_characters(&[(id(1), step)], 1.0 / 60.0);
         let at = flat.state().place(id(1)).unwrap();
         if at.x > 998.0 {
             break;
@@ -142,7 +142,7 @@ fn characters_bump_into_each_other_and_solid_things() {
     let at = walk(&mut flat, Vec2::new(0.0, 0.1), 60);
     assert!(at.y < 2.5 - 0.25 + 1e-3, "stopped at the box: {at}");
     // A solid thing isn't moved by asking.
-    flat.move_characters(&[(id(3), Vec2::new(1.0, 0.0))]);
+    flat.move_characters(&[(id(3), Vec2::new(1.0, 0.0))], 1.0 / 60.0);
     assert_eq!(flat.state().place(id(3)), Some(Vec2::new(0.0, 3.0)));
 }
 
@@ -192,8 +192,8 @@ fn moved_by_hand_it_goes_there_without_sliding() {
 #[test]
 fn nothing_that_isn_t_a_number_gets_in() {
     let mut flat = world(Vec2::ZERO, &[]);
-    flat.move_characters(&[(id(1), Vec2::new(f32::NAN, 0.0))]);
-    flat.move_characters(&[(id(1), Vec2::new(1.0e30, 0.0))]);
+    flat.move_characters(&[(id(1), Vec2::new(f32::NAN, 0.0))], 1.0 / 60.0);
+    flat.move_characters(&[(id(1), Vec2::new(1.0e30, 0.0))], 1.0 / 60.0);
     let at = flat.state().place(id(1)).unwrap();
     assert_eq!(at, Vec2::new(MAX_FLAT_MOVE, 0.0), "cut short");
     flat.add(id(2), Vec2::new(f32::NAN, 0.0), circle(0.5), true);
@@ -212,7 +212,45 @@ fn nothing_that_isn_t_a_number_gets_in() {
         Some(Vec2::ZERO),
         "sizes made sensible"
     );
-    flat.move_characters(&[(id(42), Vec2::ONE)]);
+    flat.move_characters(&[(id(42), Vec2::ONE)], 1.0 / 60.0);
+}
+
+#[test]
+fn a_character_knows_when_it_stands_on_the_ground_and_how_fast_it_goes() {
+    // A floor under a character a skin above it, and a wall to its right.
+    let mut flat = world(
+        Vec2::new(0.0, 0.25 + SKIN),
+        &[rect(-10.0, -1.0, 10.0, 0.0), rect(2.0, 0.0, 3.0, 5.0)],
+    );
+    let fall = Vec2::new(0.0, -0.1);
+    walk(&mut flat, fall, 1);
+    let last = flat.state().last_move(id(1)).unwrap();
+    assert!(last.grounded, "falling onto the floor: on the ground");
+    assert!(last.velocity.y.abs() < 0.5, "stopped going down: {last:?}");
+    // Running right along it: 0.05 a tick at 60 a second is 3 m/s.
+    walk(&mut flat, Vec2::new(0.05, -0.1), 1);
+    let last = flat.state().last_move(id(1)).unwrap();
+    assert!(last.grounded);
+    assert!((last.velocity.x - 3.0).abs() < 0.01, "{last:?}");
+    // Into the wall: stopped, and a wall isn't ground.
+    walk(&mut flat, Vec2::new(0.1, 0.0), 60);
+    let last = flat.state().last_move(id(1)).unwrap();
+    assert!(!last.grounded && last.velocity.x.abs() < 0.01, "{last:?}");
+    // Jumping up: off the ground, going up.
+    walk(&mut flat, Vec2::new(0.0, 0.1), 1);
+    let last = flat.state().last_move(id(1)).unwrap();
+    assert!(
+        !last.grounded && (last.velocity.y - 6.0).abs() < 0.01,
+        "{last:?}"
+    );
+    // A tick it isn't moved: standing still, not grounded; paused: no speed.
+    flat.move_characters(&[], 1.0 / 60.0);
+    assert_eq!(flat.state().last_move(id(1)), Some(FlatMove::default()));
+    flat.move_characters(&[(id(1), Vec2::new(0.0, -0.1))], 0.0);
+    assert_eq!(flat.state().last_move(id(1)).unwrap().velocity, Vec2::ZERO);
+    // Not a character: nothing to say.
+    flat.add(id(5), Vec2::new(-5.0, 3.0), circle(0.2), false);
+    assert_eq!(flat.state().last_move(id(5)), None);
 }
 
 #[test]
@@ -225,10 +263,13 @@ fn the_same_moves_give_the_same_places_and_checksum() {
         flat.add(id(2), Vec2::new(0.0, -1.5), circle(0.3), true);
         for i in 0..300 {
             let a = i as f32 * 0.07;
-            flat.move_characters(&[
-                (id(1), Vec2::new(a.cos(), a.sin()) * 0.08),
-                (id(2), Vec2::new(-a.sin(), a.cos()) * 0.05),
-            ]);
+            flat.move_characters(
+                &[
+                    (id(1), Vec2::new(a.cos(), a.sin()) * 0.08),
+                    (id(2), Vec2::new(-a.sin(), a.cos()) * 0.05),
+                ],
+                1.0 / 60.0,
+            );
         }
         (
             flat.state().place(id(1)),
@@ -267,7 +308,7 @@ proptest! {
             .collect();
         let mut flat = world(Vec2::ZERO, &walls);
         for (x, y) in moves {
-            flat.move_characters(&[(id(1), Vec2::new(x, y))]);
+            flat.move_characters(&[(id(1), Vec2::new(x, y))], 1.0 / 60.0);
             let at = flat.state().place(id(1)).unwrap();
             for (lo, hi) in &walls {
                 let nearest = at.clamp(*lo, *hi);

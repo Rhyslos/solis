@@ -88,11 +88,30 @@ impl FlatCollider {
     }
 }
 
+/// How a 2D character's last tick's move went, for game code's
+/// `grounded()` and `velocity()`.
+#[derive(Debug, Clone, Copy, Default, PartialEq)]
+pub struct FlatMove {
+    /// How fast it went, in metres a second (what it moved, over the
+    /// tick's time; nothing when the game is paused or it didn't move).
+    pub velocity: Vec2,
+    /// Whether something under it stopped it moving down: it stands on
+    /// the ground (a floor facing up, not a wall or a slope steeper than
+    /// about 45°).
+    pub grounded: bool,
+}
+
+/// How steep a floor may be and still count as ground: the up part of its
+/// facing (cos 45°).
+const GROUND: f32 = 0.7;
+
 /// One entity's part in 2D physics.
 #[derive(Debug, Clone, Copy)]
 struct Entry {
     collider: rp::ColliderHandle,
     spec: FlatCollider,
+    /// Its last tick's move, if it's a character.
+    last: FlatMove,
     /// Moved by game code, sliding (otherwise it stays where it's put).
     character: bool,
 }
@@ -168,6 +187,15 @@ impl FlatState {
         self.by_entity.get(&id).is_some_and(|e| e.character)
     }
 
+    /// How character `id`'s last tick's move went (`None` if it isn't a
+    /// character).
+    pub fn last_move(&self, id: EntityId) -> Option<FlatMove> {
+        self.by_entity
+            .get(&id)
+            .filter(|e| e.character)
+            .map(|e| e.last)
+    }
+
     /// Where `id` is (its entity's place, not its collider's middle).
     pub fn place(&self, id: EntityId) -> Option<Vec2> {
         let entry = self.by_entity.get(&id)?;
@@ -215,10 +243,13 @@ impl FlatState {
 
     /// Where the collider `skip`, at `start`, ends moving by `wanted`:
     /// stopping a skin short of what it meets and sliding along it.
-    fn slide(&self, skip: rp::ColliderHandle, start: Vec2, wanted: Vec2) -> Vec2 {
+    /// Where a move from `start` by `wanted` ends, sliding, and whether a
+    /// floor (facing up) stopped it going down.
+    fn slide(&self, skip: rp::ColliderHandle, start: Vec2, wanted: Vec2) -> (Vec2, bool) {
         let Some(c) = self.colliders.get(skip) else {
-            return start;
+            return (start, false);
         };
+        let mut floor = false;
         let shape = c.shared_shape().clone();
         let options = ShapeCastOptions {
             max_time_of_impact: 1.0,
@@ -279,9 +310,10 @@ impl FlatState {
             // meet a skin away, so a seam never catches it.
             at += left * t + normal * SKIN;
             left = rest - normal * into;
+            floor |= normal.y > GROUND;
             passed.push(handle);
         }
-        if at.is_finite() { at } else { start }
+        (if at.is_finite() { at } else { start }, floor)
     }
 }
 
@@ -373,6 +405,7 @@ impl Flat {
                 collider: handle,
                 spec: collider,
                 character,
+                last: FlatMove::default(),
             },
         );
     }
@@ -503,8 +536,20 @@ impl Flat {
     /// ground), in the order given, each as far as it can: it stops a
     /// skin short of what's in its way and slides along it. Others than
     /// characters, and wanted moves that aren't finite, are left alone.
-    /// A move further than [`MAX_FLAT_MOVE`] is cut short.
-    pub fn move_characters(&mut self, moves: &[(EntityId, Vec2)]) {
+    /// A move further than [`MAX_FLAT_MOVE`] is cut short. Each
+    /// character's [`FlatMove`] is this tick's (`seconds` long): one not
+    /// moved stood still and isn't grounded.
+    pub fn move_characters(&mut self, moves: &[(EntityId, Vec2)], seconds: f32) {
+        if self
+            .state
+            .by_entity
+            .values()
+            .any(|e| e.last != FlatMove::default())
+        {
+            for entry in self.state_mut().by_entity.values_mut() {
+                entry.last = FlatMove::default();
+            }
+        }
         for (id, wanted) in moves {
             let Some(entry) = self.state.by_entity.get(id).copied() else {
                 continue;
@@ -528,9 +573,27 @@ impl Flat {
             } else {
                 wanted.clamp_length_max(MAX_FLAT_MOVE)
             };
-            let end = self.state.slide(entry.collider, start, wanted);
+            let (end, floor) = self.state.slide(entry.collider, start, wanted);
+            let velocity = if seconds > 0.0 && seconds.is_finite() {
+                (end - start) / seconds
+            } else {
+                Vec2::ZERO
+            };
+            let last = FlatMove {
+                velocity: if velocity.is_finite() {
+                    velocity
+                } else {
+                    Vec2::ZERO
+                },
+                grounded: floor,
+            };
+            let state = self.state_mut();
+            if let Some(e) = state.by_entity.get_mut(id) {
+                // Moves add up when it's asked twice in a tick.
+                e.last.velocity += last.velocity;
+                e.last.grounded |= last.grounded;
+            }
             if end != start {
-                let state = self.state_mut();
                 if let Some(c) = state.colliders.get_mut(entry.collider) {
                     c.set_translation(to_rp(end));
                 }

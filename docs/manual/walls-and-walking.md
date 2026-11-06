@@ -48,6 +48,27 @@ In Lua it's `solis.entity.walk(self.me, {1.5 * dt, 0, 0})`. In Rust, through the
 
 A 2D character moves on the ground: the move's third number (height) is ignored, and it stays on its layer.
 
+**Side-on games (platformers).** The second number is up and down, so walk a hero down a little every tick for gravity, and ask how its last move went:
+
+- `grounded()` is true when a floor under it stopped it going down: jump only then. A wall, or a slope steeper than about 45°, isn't ground.
+- `velocity()` is how fast its last tick's move really went, in metres a second: less than you asked for when something stopped it. A head bump shows as `velocity().y` dropping to 0 while you asked to go up.
+
+```
+component Hero {
+    has { float fall = 0; }
+    method update(float dt) {
+        fall = fall - 30 * dt;
+        is grounded()? then {
+            fall = 0;
+            is Input:pressed(Action.Jump)? then { fall = 12; }
+        }
+        walk([4 * dt, fall * dt, 0]);
+    }
+}
+```
+
+When an entity with a Collider2D is despawned, its collider goes with it at once, so a squashed enemy never leaves an invisible wall.
+
 ## Settings
 **Collider2D**
 
