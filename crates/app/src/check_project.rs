@@ -85,6 +85,7 @@ pub fn check(root: &Path, made_by: &str) -> Report {
         }
     };
     report.ok(format!("the project \"{}\" opens", project.name()));
+    settle_new_files(&project, &mut report);
     report.heading("Files");
     check_files(root, &mut report);
     report.heading("Game code");
@@ -311,13 +312,36 @@ fn check_code(
     }
 }
 
-/// The project's sprites' clips (`sheet/clip` paths), cues and animators,
-/// read as the editor reads them, waiting for the sheets (at most a
-/// minute).
-fn sprite_clip_names(project: &asset_db::Project) -> crate::game_code::Animation {
-    let (db, _, _) = asset_db::AssetDb::open(project.clone(), assets::Limits::default());
+/// Gives files just made their sidecars, as the editor would once they
+/// settle: a file written moments before the check (a new tile map, say)
+/// waits [`asset_db::SETTLE`] for Git's sake, and the check waits with it
+/// rather than leaving it for the next check.
+fn settle_new_files(project: &asset_db::Project, report: &mut Report) {
+    let (mut db, _, _) = asset_db::AssetDb::open(project.clone(), assets::Limits::default());
+    // At most twice: a file still being written gets one more wait.
+    for _ in 0..2 {
+        let Some(at) = db.look_again_at() else {
+            return;
+        };
+        let wait = at
+            .saturating_duration_since(std::time::Instant::now())
+            .min(asset_db::SETTLE + std::time::Duration::from_millis(500));
+        std::thread::sleep(wait);
+        db.rescan();
+    }
+    if db.look_again_at().is_some() {
+        report.note(
+            "some new files are still changing, so they get their sidecars on the next check",
+        );
+    }
+}
+
+/// The project's sprite sheets, tilesets, tile maps, their pictures and
+/// atlas files, read as the editor reads them, waiting for the sheets (at
+/// most a minute).
+pub(crate) fn read_sheets(db: &asset_db::AssetDb) -> editor::sprite_sheets::SpriteSheets {
     let mut sprites = crate::sprites::Sprites::default();
-    sprites.want(&db.listing(), &project.assets());
+    sprites.want(&db.listing(), &db.project().assets());
     let start = std::time::Instant::now();
     loop {
         sprites.poll();
@@ -326,7 +350,14 @@ fn sprite_clip_names(project: &asset_db::Project) -> crate::game_code::Animation
         }
         std::thread::sleep(std::time::Duration::from_millis(5));
     }
-    let mut sheets = sprites.sheets().clone();
+    sprites.sheets().clone()
+}
+
+/// The project's sprites' clips (`sheet/clip` paths), cues and animators,
+/// read as the editor reads them.
+fn sprite_clip_names(project: &asset_db::Project) -> crate::game_code::Animation {
+    let (db, _, _) = asset_db::AssetDb::open(project.clone(), assets::Limits::default());
+    let mut sheets = read_sheets(&db);
     sheets.work_out_clips();
     crate::game_code::Animation::of(&sheets)
 }
@@ -362,10 +393,10 @@ fn check_recordings(
         return;
     }
     let (db, _, _) = asset_db::AssetDb::open(project.clone(), assets::Limits::default());
-    let mut assemblies = None;
+    let mut read = Read::default();
     for path in recordings {
         let name = shown(root, &path);
-        match play_back(root, &db, program.clone(), made_by, &path, &mut assemblies) {
+        match play_back(root, &db, program.clone(), made_by, &path, &mut read) {
             Ok(ticks) => report.ok(format!("{name} plays back the same on all {ticks} ticks")),
             Err(why) => report.fail(format!("{name}: {why}")),
         }
@@ -380,7 +411,7 @@ fn play_back(
     program: Option<std::sync::Arc<script::Compiled>>,
     made_by: &str,
     path: &Path,
-    assemblies: &mut Option<Assemblies>,
+    read: &mut Read,
 ) -> Result<usize, String> {
     let text = asset_db::read_limited(path, input::MAX_RECORDING_BYTES as u64)
         .map_err(|e| e.to_string())
@@ -390,7 +421,7 @@ fn play_back(
         "it doesn't say which area it was recorded in (it was made before recordings did): \
          record it again",
     )?;
-    let mut w = workbench_for(root, db, program, made_by, &area_path, assemblies)?;
+    let mut w = workbench_for(root, db, program, made_by, &area_path, read)?;
     w.replay(&text, &path.display().to_string());
     // The area must start as it did when recorded: otherwise the build
     // isn't what changed.
@@ -462,16 +493,26 @@ impl Saves {
 /// The project's assemblies, read once for a whole check.
 pub(crate) type Assemblies = Vec<(reflect::AssetId, std::sync::Arc<area::text::AreaFile>)>;
 
+/// What a check reads once for all its recordings: the assemblies, and
+/// the sprite sheets with the tile maps and their pictures.
+#[derive(Default)]
+pub(crate) struct Read {
+    assemblies: Option<Assemblies>,
+    sheets: Option<editor::sprite_sheets::SpriteSheets>,
+}
+
 /// A workbench with the project at `root` open as the editor would have
-/// it, headless: its code, input actions, assemblies and Library, and the
-/// area at `area_path` (inside the assets, `/` between folders).
+/// it, headless: its code, input actions, assemblies, Library and sprite
+/// sheets (with tilesets, tile maps and pictures, so a 2D game has its
+/// walls), and the area at `area_path` (inside the assets, `/` between
+/// folders).
 pub(crate) fn workbench_for(
     root: &Path,
     db: &asset_db::AssetDb,
     program: Option<std::sync::Arc<script::Compiled>>,
     made_by: &str,
     area_path: &str,
-    assemblies: &mut Option<Assemblies>,
+    read: &mut Read,
 ) -> Result<editor::Workbench, String> {
     let assets = db.project().assets();
     let area_file = assets.join(area_path);
@@ -498,7 +539,7 @@ pub(crate) fn workbench_for(
     let (items, folders) = crate::project::Projects::library(&db.listing(), |_| None);
     // Every assembly, so game code can spawn any of them: read once for
     // all of a check's recordings (the Phase 8 review).
-    let read = assemblies.get_or_insert_with(|| {
+    let assemblies = read.assemblies.get_or_insert_with(|| {
         items
             .iter()
             .filter(|item| item.kind == editor::LibraryKind::Assembly)
@@ -511,11 +552,13 @@ pub(crate) fn workbench_for(
             })
             .collect()
     });
-    for (id, file) in read.iter() {
+    for (id, file) in assemblies.iter() {
         w.set_assembly(*id, std::sync::Arc::clone(file));
     }
     w.set_library(items);
     w.set_folders(folders);
+    let sheets = read.sheets.get_or_insert_with(|| read_sheets(db));
+    w.set_sprite_sheets(sheets.clone());
     let file = crate::area_file::AreaFiles::read(&area_file, &w.document().registry)
         .map_err(|why| format!("its area, {area_path}: {why}"))?;
     let area = w.expand_file(&file).map_err(|e| e.to_string())?;

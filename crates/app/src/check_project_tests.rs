@@ -24,7 +24,7 @@ fn playground_with_a_check(name: &str) -> PathBuf {
         program,
         MADE_BY,
         crate::playground::AREA,
-        &mut None,
+        &mut Read::default(),
     )
     .unwrap();
     w.play_and_record();
@@ -115,7 +115,7 @@ fn an_area_outside_the_assets_is_refused() {
         "a\\..\\..\\x.solarea",
         "C:/x.solarea",
     ] {
-        let refused = workbench_for(&root, &db, None, MADE_BY, bad, &mut None)
+        let refused = workbench_for(&root, &db, None, MADE_BY, bad, &mut Read::default())
             .err()
             .unwrap();
         assert!(refused.contains("isn't in the assets"), "{bad}: {refused}");
@@ -199,7 +199,15 @@ fn a_recording_that_saves_plays_back_the_same_and_writes_nothing() {
     let program = check_code(&project, MADE_BY, &mut quiet);
     assert!(program.is_some(), "{:?}", quiet.lines);
     let (db, _, _) = asset_db::AssetDb::open(project, assets::Limits::default());
-    let mut w = workbench_for(&root, &db, program, MADE_BY, "hop.solarea", &mut None).unwrap();
+    let mut w = workbench_for(
+        &root,
+        &db,
+        program,
+        MADE_BY,
+        "hop.solarea",
+        &mut Read::default(),
+    )
+    .unwrap();
     w.play_and_record();
     let mut saved = Saves::default();
     for _ in 0..15 {
@@ -212,5 +220,59 @@ fn a_recording_that_saves_plays_back_the_same_and_writes_nothing() {
     let report = check(&root, MADE_BY);
     assert_eq!(report.failed, 0, "{}", report.text());
     assert!(!root.join("saves").exists(), "the check writes no saves");
+    let _ = std::fs::remove_dir_all(&root);
+}
+
+#[test]
+fn a_file_made_just_before_a_check_gets_its_sidecar_in_that_check() {
+    let root = playground_with_a_check("new-file");
+    let map = root.join("assets/farm.tilemap.lst");
+    std::fs::write(
+        &map,
+        tiles::map_file::write(&tiles::TileMap::new([4, 4], None, None)),
+    )
+    .unwrap();
+    let project = asset_db::Project::open(&root).unwrap();
+    let mut report = Report::default();
+    settle_new_files(&project, &mut report);
+    assert!(
+        asset_db::sidecar::path_for(&map).exists(),
+        "made in this check: {:?}",
+        report.lines
+    );
+    let _ = std::fs::remove_dir_all(&root);
+}
+
+#[test]
+fn a_recording_plays_back_with_the_project_s_tile_maps_and_tilesets() {
+    let root = playground_with_a_check("tile-maps");
+    let assets = root.join("assets");
+    std::fs::write(
+        assets.join("farm.tileset.lst"),
+        tiles::tileset::write(&tiles::Tileset::default()),
+    )
+    .unwrap();
+    std::fs::write(
+        assets.join("farm.tilemap.lst"),
+        tiles::map_file::write(&tiles::TileMap::new([4, 4], None, None)),
+    )
+    .unwrap();
+    let project = asset_db::Project::open(&root).unwrap();
+    settle_new_files(&project, &mut Report::default());
+    let (db, _, _) = asset_db::AssetDb::open(project, assets::Limits::default());
+    let mut read = Read::default();
+    let w = workbench_for(
+        &root,
+        &db,
+        None,
+        MADE_BY,
+        crate::playground::AREA,
+        &mut read,
+    )
+    .unwrap();
+    let sheets = w.sprite_sheets();
+    assert!(sheets.tile_maps.contains_key("farm.tilemap.lst"));
+    assert!(sheets.tilesets.contains_key("farm.tileset.lst"));
+    assert_eq!(sheets.map_set.len(), 1, "for the running game, by ID");
     let _ = std::fs::remove_dir_all(&root);
 }
