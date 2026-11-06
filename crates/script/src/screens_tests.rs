@@ -264,3 +264,45 @@ fn a_screen_s_buttons_send_events_and_keep_its_own_memory() {
             .is_empty()
     );
 }
+
+#[test]
+fn components_not_in_lust_are_described_to_screens_as_lust_ones() {
+    use reflect::{ComponentSchema, FieldInfo, FieldKind, Value};
+    let schema = |name: &str, fields: Vec<FieldInfo>| ComponentSchema {
+        name: name.into(),
+        help: String::new(),
+        fields,
+    };
+    let sparks = schema(
+        "Sparks",
+        vec![
+            FieldInfo::new("shown", "Shown", FieldKind::Int, Value::Int(0)),
+            FieldInfo::new("loop", "Loop", FieldKind::Bool, Value::Bool(false)),
+            FieldInfo::new("look", "Look", FieldKind::Asset, Value::Asset(None)),
+            FieldInfo::new("turn", "Turn", FieldKind::Rotation, Value::floats(&[0.0, 0.0, 0.0, 1.0])),
+        ],
+    );
+    let (text, readers, notes) = readers_file(
+        &[("Health".into(), "main.lst".into())],
+        &[
+            sparks,
+            schema("Health", Vec::new()),
+            schema("Screen", Vec::new()),
+            schema("Position", Vec::new()),
+        ],
+    );
+    assert!(text.contains("fetch \"main\":Health;"));
+    assert!(text.contains("component Sparks {\n    has {\n        int shown = 0;\n        rotation turn = [0, 0, 0];\n    }\n}"), "{text}");
+    assert!(!text.contains("loop"), "a Lust word isn't a field name");
+    assert!(text.contains("method Sparks entity:sparks() native;"));
+    assert!(text.ends_with("pass Ui, Sparks;\nend\n"), "{text}");
+    assert_eq!(
+        readers,
+        vec![
+            ("Health".to_string(), "health".to_string()),
+            ("Sparks".to_string(), "sparks".to_string())
+        ],
+        "a Lust component isn't described again"
+    );
+    assert_eq!(notes.len(), 2, "Screen is a project state, position() is taken: {notes:?}");
+}

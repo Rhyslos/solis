@@ -195,7 +195,7 @@ The Rust layer DESIGN.md §12 asks for first, which Lust's `view` is read into l
 
 **M2b. Reading the entity's components.**
 
-> **Built:** for the game's Lust components: a reader for each in `solis/screen.lst` (added only when the screens are compiled, so game code can't fetch it), giving a copy made by the program as a new one of its kind with the game's values (its methods work). Lua components and Solis's own wait for Lust types of their own. `Ui` joins the engine objects. **First half of the gate built:** the turret sample's drone has a health bar (`ui/droneHealth.lst`). The farm HUD comes with the farm.
+> **Built:** for the game's Lust components: a reader for each in `solis/screen.lst` (added only when the screens are compiled, so game code can't fetch it), giving a copy made by the program as a new one of its kind with the game's values (its methods work). Lua and Rust components and Solis's own followed: each is written into `solis/screen.lst` as a Lust component of its fields (those Lust can hold), read from the game or, for Solis's own, from the world. `Ui` joins the engine objects. **First half of the gate built:** the turret sample's drone has a health bar (`ui/droneHealth.lst`). The farm HUD comes with the farm.
 
 - `Ui:entity()` is the entity the screen is shown for (its Screen component's).
 - For each component the game has (its Lust and Lua components and Solis's own), Solis writes a reading method into `solis/screen.lst`, a file only screens fetch: `get "solis/screen":health;` then `Ui:entity():health().hp`. It gives a copy of the component as the tick left it; a missing one stops the screen naming the line.

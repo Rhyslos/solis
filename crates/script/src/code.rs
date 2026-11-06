@@ -590,7 +590,19 @@ fn compile_here(code: &Code) -> Result<Option<Compiled>, Vec<CodeProblem>> {
         let engine = lust::Engine {
             folders: crate::describe::engine_folders(&code.files),
         };
-        compiled.screens = crate::screens::compile(&code.files, &engine, &components)?;
+        // And the game's Lua and Rust components and Solis's own, described
+        // to screens as Lust components of their fields.
+        let mut described: Vec<reflect::ComponentSchema> = compiled
+            .schemas
+            .iter()
+            .filter(|s| !components.iter().any(|(n, _)| *n == s.name))
+            .cloned()
+            .collect();
+        if let Ok(builtin) = area::builtin::registry() {
+            described.extend(builtin.iter().map(|s| (**s).clone()));
+        }
+        compiled.screens =
+            crate::screens::compile(&code.files, &engine, &components, &described)?;
     }
     Ok(Some(compiled))
 }

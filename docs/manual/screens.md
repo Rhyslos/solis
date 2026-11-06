@@ -68,6 +68,25 @@ For now screens are written by hand in Lust. The UI editor, where you draw them,
 
   The copy is the component as the last tick left it: its methods work (`health:fraction()`), and changing it changes nothing in the game. The turret sample (**Help > Make the sample game…**) has this health bar over its drone.
 
+  **Lua and Rust components, and Solis's own** (Transform, Sprite, Camera, AudioSource and the rest) are read the same way. Solis describes each one to screens as a Lust component of its fields, so fetch it from `solis/screen` instead of from a file of yours:
+
+  ```
+  fetch "solis/screen":[Ui, Transform, Sparks];
+
+  assembly Where {
+      view {
+          Transform t = Ui:entity():transform();
+          Sparks s = Ui:entity():sparks();
+          text "x " + t.position.x.text() + ", sparks " + s.shown.text() [white];
+      }
+  }
+
+  pass Where;
+  end
+  ```
+
+  Their fields are copies, as Lust components' are; they have no methods. A field Lust can't hold (a model or other asset, or one named like one of Lust's own words) is left out.
+
 **Buttons.** A `button` has its words and, in `{ }`, what a click does: usually `send` an event to the entity the screen is shown for. Declare the event in game code, fetch it in the screen, and handle it in a component on that entity:
 
 ```
