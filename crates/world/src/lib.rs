@@ -807,11 +807,12 @@ impl World {
         }
         let env = self.environment().unwrap_or_default();
         let now = env.hour_at(self.clock.time, 0.0);
-        self.day_shift = (hour.rem_euclid(24.0) - now).rem_euclid(24.0);
+        self.day_shift = within_day(hour.rem_euclid(24.0) - now);
         self.touched = true;
     }
 
-    /// The hours game code moved the day on by, for saves.
+    /// The hours game code moved the day on by, for saves: always 0 up to
+    /// (not including) 24.
     pub fn day_shift(&self) -> f64 {
         self.day_shift
     }
@@ -819,7 +820,7 @@ impl World {
     /// Puts back the hours a save moved the day on by.
     pub fn set_day_shift(&mut self, shift: f64) {
         if shift.is_finite() {
-            self.day_shift = shift.rem_euclid(24.0);
+            self.day_shift = within_day(shift);
         }
     }
 
@@ -1684,3 +1685,11 @@ fn components_of(id: EntityId, data: &area::EntityData) -> hecs::EntityBuilder {
 
 #[cfg(test)]
 mod tests;
+
+/// `hours` wrapped into 0 up to (not including) 24. `rem_euclid` can round
+/// a tiny negative up to exactly 24.0, which saves would refuse (the phase
+/// review).
+fn within_day(hours: f64) -> f64 {
+    let h = hours.rem_euclid(24.0);
+    if h >= 24.0 { 0.0 } else { h }
+}

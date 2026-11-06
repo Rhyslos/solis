@@ -27,6 +27,12 @@ What changed in each version, for people using Solis. Newest first.
 
 ### Fixed
 
+- **Where parts meet** (the phase review, correctness):
+  - **Replays match however many ticks a frame runs:** a menu shown by game code takes the keys from the next tick, not the next frame. Before, a play recorded at a low frame rate could let a key through to the game that its replay (or the project check) held back, and the replay stopped matching.
+  - **The project check plays with the project's own 2D settings and buses**, as the editor does. Before, a 2D project with its own tile size played differently in the check.
+  - **The project check reads tile maps, tilesets, Atlas Crop files, animators and clips too**, so a build that can't read them any more doesn't check out.
+  - **`World:setTimeOfDay` exactly at the current hour** could make a save that Solis then called damaged (a rounding of 24 hours). It's midnight now, and such saves load.
+
 - **The project check plays 2D games back as the editor does** (found making a platformer): it reads the sprite sheets, tilesets and tile maps before playing recordings back, so a 2D game's walls are there; and a file made moments before a check gets its sidecar in that check, instead of the next one. The Console no longer says that screens can't read Solis's own components (Screen, say), which nobody can rename. Building on Linux needs `libasound2-dev`, now in CONTRIBUTING.md.
 - **2D characters in side-on games** (found making a platformer): `grounded()` and `velocity()` work for a 2D character (a Collider2D ticked Character) as they do for a 3D one: whether a floor stopped its last move down, and how fast that move really went. A despawned entity's 2D collider (or a despawned map's walls) no longer stays behind as an invisible wall ([manual](docs/manual/walls-and-walking.md)).
 - **Quicker game sound with many AudioSources** (the Phase 7 review, speed): each playing AudioSource keeps its event and pick from frame to frame instead of working them out again (picked again when the event or its files change); a loop at the edge of the voice limit no longer stops and starts every frame as it trades places with another (one already playing counts 1 dB louder); echoes follow a ducking bus once its level has moved a quarter of a decibel, instead of every sound's sends being set every frame; and checking the game's state, "only who caused it" and the Mixer's ducking and solo do less copying. A frame with 2,000 AudioSources playing went from about 0.9 ms to about 0.67 ms.
