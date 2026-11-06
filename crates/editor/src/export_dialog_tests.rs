@@ -138,11 +138,13 @@ fn the_window_starts_from_the_project_and_the_open_area() {
     let window = w.export_window.as_ref().unwrap();
     assert_eq!(window.playtest.name, "Farm the game");
     assert_eq!(window.playtest.area, "areas/farm.solarea");
-    assert!(
-        window
-            .folder
-            .starts_with("/home/me/Documents/Farm the game exports/Farm the game playtest ")
+    let folder = PathBuf::from(&window.folder);
+    assert_eq!(
+        folder.parent(),
+        Some(Path::new("/home/me/Documents/Farm the game exports"))
     );
+    let name = folder.file_name().unwrap().to_string_lossy().into_owned();
+    assert!(name.starts_with("Farm the game playtest "), "{name}");
     // Remembered from last time: a new dated folder beside the last.
     w.set_last_export(Some(Playtest {
         name: "Farm".into(),
@@ -155,12 +157,11 @@ fn the_window_starts_from_the_project_and_the_open_area() {
     let window = w.export_window.as_ref().unwrap();
     assert_eq!(window.playtest.area, "areas/town.solarea");
     assert!(window.playtest.fullscreen);
-    assert!(
-        window.folder.starts_with("/elsewhere/Farm playtest "),
-        "{}",
-        window.folder
-    );
-    assert!(!window.folder.ends_with("2026-01-01"));
+    let folder = PathBuf::from(&window.folder);
+    assert_eq!(folder.parent(), Some(Path::new("/elsewhere")));
+    let name = folder.file_name().unwrap().to_string_lossy().into_owned();
+    assert!(name.starts_with("Farm playtest "), "{name}");
+    assert!(!name.ends_with("2026-01-01"));
     // An area that's gone: the open one instead.
     w.set_last_export(Some(Playtest {
         area: "areas/gone.solarea".into(),
