@@ -201,12 +201,10 @@ impl ScreenDoc {
         };
         // The value used.
         let mut text = match to {
-            TieTo::Words => {
-                match source::set_arg(&self.text, &piece, &format!("{value}.text()")) {
-                    Some(t) => t,
-                    None => return false,
-                }
-            }
+            TieTo::Words => match source::set_arg(&self.text, &piece, &format!("{value}.text()")) {
+                Some(t) => t,
+                None => return false,
+            },
             TieTo::Value => match source::set_arg(&self.text, &piece, &value) {
                 Some(t) => t,
                 None => return false,
@@ -228,14 +226,14 @@ impl ScreenDoc {
             let Ok(screens) = source::parse(&text) else {
                 return false;
             };
-            let Some(view) = screens.into_iter().find(|s| s.name == self.screen).map(|s| s.view)
+            let Some(view) = screens
+                .into_iter()
+                .find(|s| s.name == self.screen)
+                .map(|s| s.view)
             else {
                 return false;
             };
-            let decl = format!(
-                "{} {var} = Ui:entity():{}();",
-                r.component, r.reader
-            );
+            let decl = format!("{} {var} = Ui:entity():{}();", r.component, r.reader);
             text = source::insert_piece(&text, &view, 0, &decl);
             moved = true;
         }
@@ -316,12 +314,18 @@ impl ScreenDoc {
         let Some(action) = piece.action.clone() else {
             return false;
         };
-        let line_start = self.text[..piece.span.start].rfind('\n').map_or(0, |i| i + 1);
+        let line_start = self.text[..piece.span.start]
+            .rfind('\n')
+            .map_or(0, |i| i + 1);
         let indent: String = self.text[line_start..piece.span.start]
             .chars()
             .take_while(|c| c.is_whitespace())
             .collect();
-        let nl = if self.text.contains("\r\n") { "\r\n" } else { "\n" };
+        let nl = if self.text.contains("\r\n") {
+            "\r\n"
+        } else {
+            "\n"
+        };
         let body = format!("{nl}{indent}    send {event}() to Ui:entity();{nl}{indent}");
         let text = source::replaced(&self.text, action, &body);
         let changed = self.change(text);

@@ -157,7 +157,11 @@ fn preview_values(ui: &mut Ui, doc: &mut ScreenDoc, readable: &[crate::screen_ti
         .filter(|r| reads.iter().any(|(c, _)| *c == r.component))
         .collect();
     let tried = !doc.preview.is_empty();
-    let label = if tried { "Preview values •" } else { "Preview values" };
+    let label = if tried {
+        "Preview values •"
+    } else {
+        "Preview values"
+    };
     ui.add_enabled_ui(!read.is_empty(), |ui| {
         ui.menu_button(label, |ui| {
             ui.label(
@@ -332,7 +336,10 @@ fn canvas(ui: &mut Ui, c: CanvasUi<'_>, out: &mut CanvasOut) {
         }
     }
     // While the tool ring is open, a click is for it alone.
-    let ring_open = ui.data(|d| d.get_temp::<Pos2>(egui::Id::new("canvas tool ring")).is_some());
+    let ring_open = ui.data(|d| {
+        d.get_temp::<Pos2>(egui::Id::new("canvas tool ring"))
+            .is_some()
+    });
     if !ring_open {
         if doc.tool == crate::canvas_tools::CanvasTool::Select {
             interact(ui, &response, doc, &drawn, accent, out);
@@ -951,7 +958,13 @@ fn finish_pen(doc: &mut ScreenDoc, drawn: &Drawn) -> bool {
 fn tools_bar(ui: &mut Ui, area: Rect, doc: &mut ScreenDoc, pictures: &[String], accent: Color32) {
     use crate::canvas_tools::{CanvasTool, paint_tool};
     let n = CanvasTool::ALL.len() as f32;
-    let width = n * 30.0 + 8.0 + if doc.tool == CanvasTool::Image { 220.0 } else { 0.0 };
+    let width = n * 30.0
+        + 8.0
+        + if doc.tool == CanvasTool::Image {
+            220.0
+        } else {
+            0.0
+        };
     let bar = Rect::from_center_size(
         Pos2::new(area.center().x, area.bottom() - 26.0),
         Vec2::new(width, 34.0),
@@ -967,10 +980,23 @@ fn tools_bar(ui: &mut Ui, area: Rect, doc: &mut ScreenDoc, pictures: &[String], 
                 for tool in CanvasTool::ALL {
                     let on = doc.tool == tool;
                     let (rect, r) = ui.allocate_exact_size(Vec2::splat(26.0), Sense::click());
-                    let fill = if on { accent } else if r.hovered() { theme::HOVER } else { Color32::TRANSPARENT };
+                    let fill = if on {
+                        accent
+                    } else if r.hovered() {
+                        theme::HOVER
+                    } else {
+                        Color32::TRANSPARENT
+                    };
                     ui.painter().rect_filled(rect, 4.0, fill);
-                    paint_tool(ui.painter(), rect, tool, if on { Color32::WHITE } else { theme::TEXT });
-                    r.widget_info(|| egui::WidgetInfo::selected(egui::WidgetType::Button, true, on, tool.name()));
+                    paint_tool(
+                        ui.painter(),
+                        rect,
+                        tool,
+                        if on { Color32::WHITE } else { theme::TEXT },
+                    );
+                    r.widget_info(|| {
+                        egui::WidgetInfo::selected(egui::WidgetType::Button, true, on, tool.name())
+                    });
                     if r.on_hover_text(tool.hint()).clicked() {
                         doc.tool = tool;
                         doc.pen.clear();
@@ -979,7 +1005,11 @@ fn tools_bar(ui: &mut Ui, area: Rect, doc: &mut ScreenDoc, pictures: &[String], 
                 if doc.tool == CanvasTool::Image {
                     egui::ComboBox::from_id_salt("canvas picture")
                         .width(200.0)
-                        .selected_text(doc.picture.clone().unwrap_or_else(|| "Choose a picture".into()))
+                        .selected_text(
+                            doc.picture
+                                .clone()
+                                .unwrap_or_else(|| "Choose a picture".into()),
+                        )
                         .show_ui(ui, |ui| {
                             for p in pictures {
                                 ui.selectable_value(&mut doc.picture, Some(p.clone()), p);
@@ -1017,21 +1047,34 @@ fn tool_keys(ui: &mut Ui, response: &egui::Response, doc: &mut ScreenDoc) {
             }
             ring_at = None;
         }
-        if response.hovered() && ui.input(|i| i.key_pressed(egui::Key::E) && i.modifiers.is_none()) {
+        if response.hovered() && ui.input(|i| i.key_pressed(egui::Key::E) && i.modifiers.is_none())
+        {
             ring_at = response.hover_pos();
         }
     }
     // The ring: every tool round the pointer; a click picks one.
     if let Some(c) = ring_at {
-        let painter = ui.ctx().layer_painter(egui::LayerId::new(egui::Order::Foreground, ring));
+        let painter = ui
+            .ctx()
+            .layer_painter(egui::LayerId::new(egui::Order::Foreground, ring));
         let n = CanvasTool::ALL.len() as f32;
         let mut chosen = None;
         for (i, tool) in CanvasTool::ALL.into_iter().enumerate() {
             let a = std::f32::consts::TAU * (i as f32 / n) - std::f32::consts::FRAC_PI_2;
             let p = c + Vec2::new(a.cos(), a.sin()) * 52.0;
             let r = Rect::from_center_size(p, Vec2::splat(30.0));
-            let hover = ui.input(|i| i.pointer.hover_pos()).is_some_and(|h| r.contains(h));
-            painter.circle_filled(p, 17.0, if hover || doc.tool == tool { theme::HOVER } else { theme::PANEL });
+            let hover = ui
+                .input(|i| i.pointer.hover_pos())
+                .is_some_and(|h| r.contains(h));
+            painter.circle_filled(
+                p,
+                17.0,
+                if hover || doc.tool == tool {
+                    theme::HOVER
+                } else {
+                    theme::PANEL
+                },
+            );
             crate::canvas_tools::paint_tool(&painter, r, tool, theme::TEXT);
             if hover && ui.input(|i| i.pointer.primary_clicked()) {
                 chosen = Some(tool);

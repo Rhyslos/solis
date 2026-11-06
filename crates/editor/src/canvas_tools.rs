@@ -220,8 +220,12 @@ pub(crate) fn pen_text(points: &[[f32; 2]], on_canvas: bool) -> Option<String> {
         return None;
     }
     let points: Vec<[f32; 2]> = points.iter().map(|p| p.map(f32::round)).collect();
-    let (x0, y0) = points.iter().fold((f32::MAX, f32::MAX), |(x, y), p| (x.min(p[0]), y.min(p[1])));
-    let (x1, y1) = points.iter().fold((f32::MIN, f32::MIN), |(x, y), p| (x.max(p[0]), y.max(p[1])));
+    let (x0, y0) = points
+        .iter()
+        .fold((f32::MAX, f32::MAX), |(x, y), p| (x.min(p[0]), y.min(p[1])));
+    let (x1, y1) = points
+        .iter()
+        .fold((f32::MIN, f32::MIN), |(x, y), p| (x.max(p[0]), y.max(p[1])));
     let (ox, oy) = if on_canvas { (0.0, 0.0) } else { (x0, y0) };
     let lines: Vec<String> = points
         .windows(2)
@@ -252,18 +256,36 @@ pub(crate) fn pen_text(points: &[[f32; 2]], on_canvas: bool) -> Option<String> {
 }
 
 /// Draws `tool`'s icon in `rect`.
-pub(crate) fn paint_tool(painter: &egui::Painter, rect: egui::Rect, tool: CanvasTool, colour: egui::Color32) {
+pub(crate) fn paint_tool(
+    painter: &egui::Painter,
+    rect: egui::Rect,
+    tool: CanvasTool,
+    colour: egui::Color32,
+) {
     use egui::{Pos2, Stroke, pos2};
     let r = rect.shrink(rect.width() * 0.22);
     let s = Stroke::new(1.5, colour);
     let at = |x: f32, y: f32| pos2(r.left() + x * r.width(), r.top() + y * r.height());
     match tool {
         CanvasTool::Select => {
-            let arrow: Vec<Pos2> = vec![at(0.2, 0.0), at(0.2, 0.85), at(0.42, 0.65), at(0.62, 1.0), at(0.75, 0.93), at(0.56, 0.6), at(0.85, 0.6)];
+            let arrow: Vec<Pos2> = vec![
+                at(0.2, 0.0),
+                at(0.2, 0.85),
+                at(0.42, 0.65),
+                at(0.62, 1.0),
+                at(0.75, 0.93),
+                at(0.56, 0.6),
+                at(0.85, 0.6),
+            ];
             painter.add(egui::Shape::convex_polygon(arrow, colour, Stroke::NONE));
         }
         CanvasTool::Box => {
-            painter.rect_stroke(r.shrink2(egui::vec2(0.0, r.height() * 0.15)), 1.0, s, egui::StrokeKind::Inside);
+            painter.rect_stroke(
+                r.shrink2(egui::vec2(0.0, r.height() * 0.15)),
+                1.0,
+                s,
+                egui::StrokeKind::Inside,
+            );
         }
         CanvasTool::Ellipse => {
             painter.circle_stroke(r.center(), r.width().min(r.height()) / 2.0, s);
@@ -272,17 +294,40 @@ pub(crate) fn paint_tool(painter: &egui::Painter, rect: egui::Rect, tool: Canvas
             painter.line_segment([at(0.0, 1.0), at(1.0, 0.0)], s);
         }
         CanvasTool::Pen => {
-            painter.add(egui::Shape::line(vec![at(0.0, 0.8), at(0.3, 0.2), at(0.6, 0.75), at(1.0, 0.15)], s));
+            painter.add(egui::Shape::line(
+                vec![at(0.0, 0.8), at(0.3, 0.2), at(0.6, 0.75), at(1.0, 0.15)],
+                s,
+            ));
         }
         CanvasTool::Text => {
-            painter.text(r.center(), egui::Align2::CENTER_CENTER, "T", egui::FontId::proportional(r.height() * 1.2), colour);
+            painter.text(
+                r.center(),
+                egui::Align2::CENTER_CENTER,
+                "T",
+                egui::FontId::proportional(r.height() * 1.2),
+                colour,
+            );
         }
         CanvasTool::Image => {
             painter.rect_stroke(r, 1.0, s, egui::StrokeKind::Inside);
-            painter.add(egui::Shape::line(vec![at(0.0, 0.85), at(0.35, 0.45), at(0.6, 0.7), at(0.8, 0.5), at(1.0, 0.7)], s));
+            painter.add(egui::Shape::line(
+                vec![
+                    at(0.0, 0.85),
+                    at(0.35, 0.45),
+                    at(0.6, 0.7),
+                    at(0.8, 0.5),
+                    at(1.0, 0.7),
+                ],
+                s,
+            ));
         }
         CanvasTool::Button => {
-            painter.rect_stroke(r.shrink2(egui::vec2(0.0, r.height() * 0.22)), r.height() * 0.3, s, egui::StrokeKind::Inside);
+            painter.rect_stroke(
+                r.shrink2(egui::vec2(0.0, r.height() * 0.22)),
+                r.height() * 0.3,
+                s,
+                egui::StrokeKind::Inside,
+            );
         }
     }
 }

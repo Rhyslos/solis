@@ -201,9 +201,7 @@ pub(crate) fn screen_properties(ui: &mut Ui, doc: &mut ScreenDoc, readable: &[Re
                     .height(520.0)
                     .show_ui(ui, |ui| {
                         for e in &events {
-                            if ui
-                                .selectable_label(now.as_deref() == Some(e), e)
-                                .clicked()
+                            if ui.selectable_label(now.as_deref() == Some(e), e).clicked()
                                 && now.as_deref() != Some(e)
                             {
                                 changed |= doc.set_sends(e);
@@ -288,7 +286,11 @@ fn ties(
                 .style_text(text, side)
                 .and_then(|v| v.trim().parse::<f32>().ok());
             if let Some(full) = full {
-                let label = if side == "width" { "Fill across" } else { "Fill up" };
+                let label = if side == "width" {
+                    "Fill across"
+                } else {
+                    "Fill up"
+                };
                 targets.push((
                     label,
                     Kind::Number,
@@ -335,8 +337,11 @@ fn ties(
                 let shown = now.clone().unwrap_or_else(|| "Tie to…".into());
                 ui.menu_button(shown, |ui| {
                     for r in readable {
-                        let fields: Vec<_> =
-                            r.fields.iter().filter(|f| f.1 == *kind || *kind == Kind::Words).collect();
+                        let fields: Vec<_> = r
+                            .fields
+                            .iter()
+                            .filter(|f| f.1 == *kind || *kind == Kind::Words)
+                            .collect();
                         if fields.is_empty() {
                             continue;
                         }

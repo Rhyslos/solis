@@ -310,7 +310,11 @@ fn a_click_with_text_puts_words_and_the_ring_picks_a_tool() {
         });
     }
     h.run();
-    assert!(h.state().doc.text.contains("text \"Text\" [size 24];"), "{}", h.state().doc.text);
+    assert!(
+        h.state().doc.text.contains("text \"Text\" [size 24];"),
+        "{}",
+        h.state().doc.text
+    );
     // E opens the ring at the pointer; a click on Box picks it, and puts
     // nothing on the canvas.
     let before = h.state().doc.text.clone();
@@ -337,11 +341,14 @@ fn a_click_with_text_puts_words_and_the_ring_picks_a_tool() {
 
 #[test]
 fn the_pen_s_corners_become_lines_on_enter() {
-    use crate::canvas_tools::CanvasTool;
     let mut h = harness();
     h.run();
     press(&mut h, egui::Key::Num5);
-    for p in [Pos2::new(120.0, 100.0), Pos2::new(200.0, 140.0), Pos2::new(260.0, 90.0)] {
+    for p in [
+        Pos2::new(120.0, 100.0),
+        Pos2::new(200.0, 140.0),
+        Pos2::new(260.0, 90.0),
+    ] {
         h.hover_at(p);
         h.run();
         for pressed in [true, false] {

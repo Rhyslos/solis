@@ -287,7 +287,11 @@ fn a_value_s_code_is_set_or_added() {
         set_arg(text, bar, "h.hp").unwrap(),
         text.replace("progress 3;", "progress h.hp;")
     );
-    assert_eq!(set_arg(text, view.at(&[2]).unwrap(), "x"), None, "a column takes none");
+    assert_eq!(
+        set_arg(text, view.at(&[2]).unwrap(), "x"),
+        None,
+        "a column takes none"
+    );
     let bare = view.at(&[3]).unwrap();
     assert_eq!(
         set_arg(text, bare, "x.text()").unwrap(),

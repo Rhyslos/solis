@@ -136,7 +136,10 @@ fn a_tie_is_chosen_from_the_entity_s_components() {
     assert!(h.state().1);
     let text = &h.state().0.text;
     assert!(text.contains("text health.hp.text() [size 28];"), "{text}");
-    assert!(text.contains("Health health = Ui:entity():health();"), "{text}");
+    assert!(
+        text.contains("Health health = Ui:entity():health();"),
+        "{text}"
+    );
 }
 
 #[test]

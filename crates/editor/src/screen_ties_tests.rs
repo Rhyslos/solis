@@ -39,8 +39,16 @@ fn tying_words_reads_the_component_once_and_fetches_it() {
     d.picked = vec![vec![0, 0]];
     assert!(d.tie(&health(), "hp", &TieTo::Words));
     reads_ok(&d.text);
-    assert!(d.text.contains("Health health = Ui:entity():health();"), "{}", d.text);
-    assert!(d.text.contains("text health.hp.text() [size 20];"), "{}", d.text);
+    assert!(
+        d.text.contains("Health health = Ui:entity():health();"),
+        "{}",
+        d.text
+    );
+    assert!(
+        d.text.contains("text health.hp.text() [size 20];"),
+        "{}",
+        d.text
+    );
     assert!(d.text.contains("fetch \"main\":Health;"), "{}", d.text);
     assert_eq!(d.picked, vec![vec![1, 0]], "the piece is one further down");
     assert_eq!(d.reads(), vec![("Health".into(), "health".into())]);
@@ -69,7 +77,8 @@ fn a_bar_fills_by_one_field_out_of_another() {
     assert!(d.tie(&health(), "hp", &to));
     reads_ok(&d.text);
     assert!(
-        d.text.contains("box [width 300 * health.hp / health.maxHp, height 12, red];"),
+        d.text
+            .contains("box [width 300 * health.hp / health.maxHp, height 12, red];"),
         "{}",
         d.text
     );
@@ -89,7 +98,11 @@ fn solis_s_own_components_come_from_solis_screen() {
         fields: vec![],
     };
     assert!(d.tie(&t, "position", &TieTo::Words));
-    assert!(d.text.contains("fetch \"solis/screen\":[Ui, Transform];"), "{}", d.text);
+    assert!(
+        d.text.contains("fetch \"solis/screen\":[Ui, Transform];"),
+        "{}",
+        d.text
+    );
     reads_ok(&d.text);
 }
 
@@ -103,7 +116,10 @@ fn fetching_adds_to_the_line_or_makes_one() {
     );
     let t2 = "fetch \"main\":[Clock, Money];\n";
     assert_eq!(fetched(t2, "main", "Money"), t2);
-    assert_eq!(fetched(t2, "main", "Hp"), "fetch \"main\":[Clock, Money, Hp];\n");
+    assert_eq!(
+        fetched(t2, "main", "Hp"),
+        "fetch \"main\":[Clock, Money, Hp];\n"
+    );
     assert_eq!(
         fetched("assembly A {}\n", "main", "Hp"),
         "fetch \"main\":Hp;\nassembly A {}\n",
@@ -129,20 +145,36 @@ fn nothing_picked_or_nothing_to_tie_changes_nothing() {
 #[test]
 fn a_button_sends_an_event_the_file_fetches() {
     let mut d = doc();
-    let text = d.text.replacen("fetch \"solis/screen\":Ui;", "fetch \"solis/screen\":Ui;\nfetch \"main\":[Health, Pause, Quit, helper];", 1);
+    let text = d.text.replacen(
+        "fetch \"solis/screen\":Ui;",
+        "fetch \"solis/screen\":Ui;\nfetch \"main\":[Health, Pause, Quit, helper];",
+        1,
+    );
     assert!(d.change(text));
-    assert_eq!(d.fetched_events(&[health()]), vec!["Pause".to_string(), "Quit".to_string()]);
+    assert_eq!(
+        d.fetched_events(&[health()]),
+        vec!["Pause".to_string(), "Quit".to_string()]
+    );
     d.picked = vec![vec![0, 3]];
     assert_eq!(d.sends(), Some(None), "nothing yet");
     assert!(d.set_sends("Pause"));
     reads_ok(&d.text);
-    assert!(d.text.contains("button \"Pause\" {\n                send Pause() to Ui:entity();\n            }"), "{}", d.text);
+    assert!(
+        d.text.contains(
+            "button \"Pause\" {\n                send Pause() to Ui:entity();\n            }"
+        ),
+        "{}",
+        d.text
+    );
     assert_eq!(d.sends(), Some(Some("Pause".into())));
     assert!(d.set_sends("Quit"));
     assert_eq!(d.sends(), Some(Some("Quit".into())));
     assert_eq!(d.text.matches("send ").count(), 1, "replaced, not added");
     // Code of its own: not shown as an event.
-    let t = d.text.replace("send Quit() to Ui:entity();", "send Quit() to Ui:entity(); Ui:close();");
+    let t = d.text.replace(
+        "send Quit() to Ui:entity();",
+        "send Quit() to Ui:entity(); Ui:close();",
+    );
     assert!(d.change(t));
     assert_eq!(d.sends(), None);
     // A piece with no { }.

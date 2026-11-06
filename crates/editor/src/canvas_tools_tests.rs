@@ -45,7 +45,10 @@ fn each_tool_writes_its_piece_in_a_canvas_or_among_others() {
         "line [x 10, y 20, toX 110, toY 70];"
     );
     let line = piece_text(CanvasTool::Line, a, b, false, None).unwrap();
-    assert!(line.starts_with("canvas [width 100, height 50] {"), "{line}");
+    assert!(
+        line.starts_with("canvas [width 100, height 50] {"),
+        "{line}"
+    );
     assert!(line.contains("line [x 0, y 0, toX 100, toY 50];"), "{line}");
     assert_eq!(
         piece_text(CanvasTool::Text, a, a, true, None).unwrap(),
@@ -88,7 +91,10 @@ fn every_piece_written_is_lust_a_screen_can_run() {
                 "fetch \"solis/screen\":Ui;\nassembly A {{\n    view {{\n{body}\n    }}\n}}\npass A;\nend\n"
             );
             let code = script::Code {
-                files: vec![("main.lst".into(), "end\n".into()), ("ui/a.lst".into(), file.clone())],
+                files: vec![
+                    ("main.lst".into(), "end\n".into()),
+                    ("ui/a.lst".into(), file.clone()),
+                ],
                 lua: Vec::new(),
                 notes: Vec::new(),
             };
@@ -103,9 +109,17 @@ fn every_piece_written_is_lust_a_screen_can_run() {
 fn too_small_or_nothing_to_put_writes_nothing() {
     let a = [10.0, 10.0];
     for tool in [CanvasTool::Box, CanvasTool::Ellipse, CanvasTool::Line] {
-        assert_eq!(piece_text(tool, a, [11.0, 11.0], true, None), None, "{tool:?}");
+        assert_eq!(
+            piece_text(tool, a, [11.0, 11.0], true, None),
+            None,
+            "{tool:?}"
+        );
     }
-    assert_eq!(piece_text(CanvasTool::Image, a, a, true, None), None, "no picture");
+    assert_eq!(
+        piece_text(CanvasTool::Image, a, a, true, None),
+        None,
+        "no picture"
+    );
     assert_eq!(piece_text(CanvasTool::Select, a, a, true, None), None);
     assert_eq!(piece_text(CanvasTool::Pen, a, a, true, None), None);
     assert_eq!(pen_text(&[a], true), None, "one corner is no line");
@@ -114,11 +128,18 @@ fn too_small_or_nothing_to_put_writes_nothing() {
 
 #[test]
 fn a_picture_s_name_is_quoted_safely() {
-    let t = piece_text(CanvasTool::Image, [0.0; 2], [0.0; 2], false, Some("a \"b\".png")).unwrap();
-    assert!(ui::source::parse(&format!(
-        "assembly A {{ view {{ {t} }} }}\npass A;\nend\n"
-    ))
-    .is_ok(), "{t}");
+    let t = piece_text(
+        CanvasTool::Image,
+        [0.0; 2],
+        [0.0; 2],
+        false,
+        Some("a \"b\".png"),
+    )
+    .unwrap();
+    assert!(
+        ui::source::parse(&format!("assembly A {{ view {{ {t} }} }}\npass A;\nend\n")).is_ok(),
+        "{t}"
+    );
 }
 
 #[test]
@@ -154,7 +175,14 @@ fn a_piece_put_in_is_one_undo_step_and_picked() {
     assert!(d.insert(&[0, 0], 1, "box [width 40, height 40];"));
     assert_eq!(d.picked, vec![vec![0, 0, 1]]);
     assert!(d.text.contains("box [width 40, height 40];"));
-    let col = d.block().unwrap().at(&[0, 0]).unwrap().children.clone().unwrap();
+    let col = d
+        .block()
+        .unwrap()
+        .at(&[0, 0])
+        .unwrap()
+        .children
+        .clone()
+        .unwrap();
     assert_eq!(col.pieces.len(), 5, "four and the box");
     assert!(d.undo());
     assert_eq!(d.text, MENU);
