@@ -32,6 +32,13 @@ What changed in each version, for people using Solis. Newest first.
   - **The project check plays with the project's own 2D settings and buses**, as the editor does. Before, a 2D project with its own tile size played differently in the check.
   - **The project check reads tile maps, tilesets, Atlas Crop files, animators and clips too**, so a build that can't read them any more doesn't check out.
   - **`World:setTimeOfDay` exactly at the current hour** could make a save that Solis then called damaged (a rounding of 24 hours). It's midnight now, and such saves load.
+- **Steadier with damaged or huge files** (the phase review, stability):
+  - An Aseprite file whose cels together would take more than 256 MB is refused instead of filling the memory. Cels linked to big pictures far off the canvas are no longer drawn pixel by pixel, and a file holds at most 65,536 cels.
+  - A tile map's layers and values together take at most 512 MB, so a few lines of a map file can't ask for gigabytes. Growing a map past that is refused. Big maps keep fewer undo steps.
+  - The eyedropper copies at most 256 × 256 cells. Dragging the brush far off the map (zoomed right out) no longer freezes the editor.
+  - Screens shown for entities that come and go (enemies' health bars) no longer keep their buttons for ever.
+  - When the letters of game UI text fill their atlas, it starts again, instead of new letters never showing.
+  - An exported game keeps the player's settings at most once a second, and as it closes, even if game code changes them every tick.
 
 - **The project check plays 2D games back as the editor does** (found making a platformer): it reads the sprite sheets, tilesets and tile maps before playing recordings back, so a 2D game's walls are there; and a file made moments before a check gets its sidecar in that check, instead of the next one. The Console no longer says that screens can't read Solis's own components (Screen, say), which nobody can rename. Building on Linux needs `libasound2-dev`, now in CONTRIBUTING.md.
 - **2D characters in side-on games** (found making a platformer): `grounded()` and `velocity()` work for a 2D character (a Collider2D ticked Character) as they do for a 3D one: whether a floor stopped its last move down, and how fast that move really went. A despawned entity's 2D collider (or a despawned map's walls) no longer stays behind as an invisible wall ([manual](docs/manual/walls-and-walking.md)).

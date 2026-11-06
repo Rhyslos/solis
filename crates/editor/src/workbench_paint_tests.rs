@@ -72,6 +72,14 @@ fn a_brush_stroke_paints_every_cell_dragged_over_as_one_undo_step() {
     assert_eq!(row(&w, 1, 9..18), ".........");
     w.map_undo(true, false);
     assert_eq!(row(&w, 1, 9..18), ".~~~~~~~.");
+    // A drag far off the map (zoomed right out) is quick and paints
+    // nothing there (the stability review).
+    let started = std::time::Instant::now();
+    frame(&mut w, [16, 1], true, false, true, [false; 2]);
+    frame(&mut w, [900_000, 1], true, false, false, [false; 2]);
+    frame(&mut w, [-900_000, 1], true, false, false, [false; 2]);
+    frame(&mut w, [-900_000, 1], false, false, false, [false; 2]);
+    assert!(started.elapsed() < std::time::Duration::from_secs(5));
 }
 
 #[test]

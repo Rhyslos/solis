@@ -499,3 +499,19 @@ fn game_code_finds_the_cell_at_a_place_wherever_the_map_is() {
     assert_eq!(played.value(2, 6, 2), Some(CellValue::Switch(true)));
     assert_eq!(played.value(2, 2, 6), Some(CellValue::Switch(false)));
 }
+
+#[test]
+fn big_maps_keep_fewer_undo_steps() {
+    // The stability review: fifty steps of a 4096 × 4096 map would hold
+    // gigabytes.
+    let mut edits = MapEdits::default();
+    for _ in 0..30 {
+        edits.push_undo("big.tilemap.lst".into(), TileMap::bare([4096, 4096], None));
+    }
+    assert_eq!(edits.undo.len(), 16);
+    let mut small = MapEdits::default();
+    for _ in 0..60 {
+        small.push_undo("small.tilemap.lst".into(), TileMap::bare([64, 64], None));
+    }
+    assert_eq!(small.undo.len(), 50, "small maps keep them all");
+}

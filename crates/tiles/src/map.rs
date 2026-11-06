@@ -24,6 +24,10 @@ pub const MAX_VALUES: usize = 32;
 pub const MAX_OPTIONS: usize = 64;
 /// The biggest (and, negated, smallest) number value.
 pub const MAX_NUMBER: i32 = 1_000_000_000;
+/// The most memory one map's layers and values take together (the
+/// stability review: a few lines of a map file could otherwise ask for
+/// gigabytes).
+pub const MAX_MAP_BYTES: u64 = 512 << 20;
 
 /// A layer of cells.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -87,6 +91,14 @@ pub(crate) enum Column {
     Switch(Vec<bool>),
     /// 0 for none; otherwise the option's place plus one.
     Choice(Vec<u8>),
+}
+
+/// The bytes one cell's value of `kind` takes.
+fn value_bytes(kind: &ValueKind) -> u64 {
+    match kind {
+        ValueKind::Number => 4,
+        ValueKind::Switch | ValueKind::Choice(_) => 1,
+    }
 }
 
 impl Column {
@@ -499,6 +511,21 @@ impl TileMap {
 
     // Layers and values.
 
+    /// The bytes each cell takes, over all layers and values.
+    fn bytes_per_cell(&self) -> u64 {
+        self.layers.len() as u64
+            + self
+                .values
+                .iter()
+                .map(|v| value_bytes(&v.kind))
+                .sum::<u64>()
+    }
+
+    /// Whether `more` bytes a cell still fit within [`MAX_MAP_BYTES`].
+    fn room_for(&self, more: u64) -> bool {
+        (self.bytes_per_cell() + more).saturating_mul(self.cell_count() as u64) <= MAX_MAP_BYTES
+    }
+
     /// Adds a layer on top. Its index.
     pub fn add_layer(&mut self, name: &str, over: bool) -> Result<usize, MapError> {
         self.add_layer_with_id(Id::random(), name, over)
@@ -506,7 +533,7 @@ impl TileMap {
 
     /// Adds a layer with a known ID (a file being read).
     pub fn add_layer_with_id(&mut self, id: Id, name: &str, over: bool) -> Result<usize, MapError> {
-        if self.layers.len() >= MAX_LAYERS {
+        if self.layers.len() >= MAX_LAYERS || !self.room_for(1) {
             return Err(MapError::Full);
         }
         self.layers.push(Layer {
@@ -586,6 +613,9 @@ impl TileMap {
         if matches!(&kind, ValueKind::Choice(o) if o.len() > MAX_OPTIONS) {
             return Err(MapError::Full);
         }
+        if !self.room_for(value_bytes(&kind)) {
+            return Err(MapError::Full);
+        }
         self.columns
             .push(Arc::new(Column::new(&kind, self.cell_count())));
         self.values.push(ValueDef {
@@ -657,6 +687,10 @@ impl TileMap {
     pub fn resize(&mut self, size: [u32; 2]) -> bool {
         let size = size.map(|s| s.clamp(1, MAX_SIDE));
         if size == self.size {
+            return false;
+        }
+        let cells = u64::from(size[0]) * u64::from(size[1]);
+        if self.bytes_per_cell().saturating_mul(cells) > MAX_MAP_BYTES {
             return false;
         }
         let old = self.size;

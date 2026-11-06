@@ -574,3 +574,45 @@ fn write_fuzz_seeds() {
     indexed.frames = vec![(100, vec![cel(0, 0, 0, TestPixels::Raw(2, 1, vec![1, 0]))])];
     std::fs::write(folder.join("indexed.aseprite"), write_test_file(&indexed)).unwrap();
 }
+
+#[test]
+fn many_big_cels_are_refused_before_they_fill_the_memory() {
+    // The stability review: each cel alone is allowed, but together they'd
+    // ask for far more than a sheet may hold.
+    let side = 2048u32;
+    let zeros = vec![0u8; (side * side * 4) as usize];
+    let mut f = walker();
+    f.size = [64, 64];
+    f.frames = (0..20)
+        .map(|_| {
+            (
+                100,
+                vec![cel(
+                    0,
+                    0,
+                    0,
+                    TestPixels::Compressed(side, side, zeros.clone()),
+                )],
+            )
+        })
+        .collect();
+    f.tags.clear();
+    f.slices.clear();
+    let why = read_aseprite(&write_test_file(&f)).unwrap_err();
+    assert!(why.0.contains("layers' pictures"), "{}", why.0);
+}
+
+#[test]
+fn a_cel_far_off_the_canvas_is_clipped_not_walked() {
+    assert_eq!(clipped(-10, 30, 16), 10..26);
+    assert_eq!(clipped(5, 30, 16), 0..11);
+    assert_eq!(clipped(100, 30, 16), 0..0, "off to the right: nothing");
+    assert_eq!(clipped(-100, 30, 16), 30..30, "off to the left: nothing");
+    assert_eq!(clipped(i32::MIN, u32::MAX, 16).len(), 16);
+    // Drawn the same as before for a cel half off the canvas.
+    let mut f = walker();
+    f.frames[0].1[0].x = -4;
+    let a = read_aseprite(&write_test_file(&f)).unwrap();
+    assert_eq!(px(&a, 0, 0, 20), [100, 80, 40, 255]);
+    assert_eq!(px(&a, 0, 4, 20), [0, 0, 0, 0], "the body ends at x 3");
+}
