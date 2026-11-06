@@ -153,13 +153,7 @@ struct App {
     /// An exported game being played (decision 0093): only the game shows.
     playtest: Option<playtest_window::Run>,
     /// An export to a folder, on a thread of its own: its outcome.
-    exporting: Option<
-        std::sync::mpsc::Receiver<(
-            PathBuf,
-            editor::export_dialog::Playtest,
-            Result<crate::playtest::Exported, String>,
-        )>,
-    >,
+    exporting: Option<std::sync::mpsc::Receiver<playtest_window::ExportDone>>,
 }
 
 #[path = "window_playtest.rs"]

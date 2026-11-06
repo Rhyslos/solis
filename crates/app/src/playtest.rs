@@ -367,7 +367,7 @@ pub fn write_crash_log(saved: &Path, about: &str, said: &[String]) -> std::io::R
     let path = saved.join(CRASH_FILE);
     let mut text = format!(
         "{about}\nWhen: {}\n\nWhat the game said last:\n",
-        chrono::Local::now().format("%Y-%m-%d %H:%M:%S")
+        editor::export_dialog::now_for_logs()
     );
     for line in said.iter().rev().take(40).rev() {
         text.push_str(line);

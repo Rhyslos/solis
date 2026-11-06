@@ -177,6 +177,11 @@ pub fn unused(folder: PathBuf) -> PathBuf {
         .unwrap_or(folder)
 }
 
+/// The date and time now, as logs write it: `2026-11-06 19:30:05`.
+pub fn now_for_logs() -> String {
+    chrono::Local::now().format("%Y-%m-%d %H:%M:%S").to_string()
+}
+
 /// What the export window asks the app to do.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct ExportRequest {

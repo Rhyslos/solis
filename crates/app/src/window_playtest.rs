@@ -24,6 +24,14 @@ const OLD_LOG_FILE: &str = "log.old.txt";
 /// How big the log grows before it's started again.
 const MAX_LOG_BYTES: u64 = 1 << 20;
 
+/// An export that finished: the project it came from, what it was, and
+/// how it went.
+pub(super) type ExportDone = (
+    PathBuf,
+    editor::export_dialog::Playtest,
+    Result<playtest::Exported, String>,
+);
+
 /// An exported game, as it runs.
 pub(super) struct Run {
     found: Found,
