@@ -141,6 +141,7 @@ impl Workbench {
         let (events, modifiers, focused) =
             ctx.input(|i| (i.events.clone(), i.modifiers, i.focused));
         let mut give_back = !focused;
+        let mut alt_enter = false;
         for event in events {
             match event {
                 egui::Event::Key {
@@ -148,6 +149,19 @@ impl Workbench {
                     pressed: true,
                     ..
                 } => give_back = true,
+                // Alt+Enter switches the player's fullscreen setting
+                // (decision 0091), as players expect of any game; the
+                // game doesn't see it.
+                egui::Event::Key {
+                    key: egui::Key::Enter,
+                    pressed,
+                    modifiers,
+                    ..
+                } if modifiers.alt => {
+                    if pressed {
+                        alt_enter = true;
+                    }
+                }
                 egui::Event::Key {
                     key,
                     pressed,
@@ -178,6 +192,9 @@ impl Workbench {
         self.devices.set("Shift", modifiers.shift);
         self.devices.set("Ctrl", modifiers.ctrl);
         self.devices.set("Alt", modifiers.alt);
+        if alt_enter {
+            self.switch_fullscreen();
+        }
         if give_back {
             // The Esc that gave the editor its keys back isn't also the
             // editor's (it would clear the selection).
@@ -185,6 +202,31 @@ impl Workbench {
             self.give_back_input();
             self.log(LogLevel::Info, "The editor has the mouse and keys again.");
         }
+    }
+
+    /// Alt+Enter while the game has the keys: the player's fullscreen
+    /// setting switches, as `Window:setFullscreen` would. While playing in
+    /// the editor the game stays in the Game panel, so it's said.
+    pub(crate) fn switch_fullscreen(&mut self) {
+        let on = !self.player_settings.fullscreen;
+        self.player_settings = self
+            .player_settings
+            .with(script::settings::Setting::Fullscreen(on));
+        if let Some(playing) = &mut self.playing {
+            playing.view.settings = self.player_settings;
+        }
+        self.log(
+            LogLevel::Info,
+            format!(
+                "Alt+Enter: the exported game would {} (Window:fullscreen() is {on} now). While \
+                 playing in the editor, the game stays in the Game panel.",
+                if on {
+                    "fill the screen"
+                } else {
+                    "sit in a window"
+                }
+            ),
+        );
     }
 
     /// Plays, recording each tick's input and checksums; Stop saves the

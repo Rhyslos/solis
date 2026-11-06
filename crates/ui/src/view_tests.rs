@@ -509,6 +509,7 @@ fn hover_and_focus_change_how_a_button_looks() {
         Looks {
             hover: Some(0),
             focus: None,
+            ..Default::default()
         },
     )
     .0;
@@ -522,6 +523,7 @@ fn hover_and_focus_change_how_a_button_looks() {
         Looks {
             hover: Some(1),
             focus: None,
+            ..Default::default()
         },
     )
     .0;
@@ -534,6 +536,7 @@ fn hover_and_focus_change_how_a_button_looks() {
         Looks {
             hover: None,
             focus: Some(1),
+            ..Default::default()
         },
     )
     .0;
@@ -592,6 +595,8 @@ fn a_screen_s_button_is_found_where_its_picture_is_drawn() {
         view: Some(view),
         looks: Looks::default(),
         pictures: None,
+        ui_size: 1.0,
+        look: crate::ScreenLook::default(),
     };
     let at = |p: [f32; 2]| clickable_at(&screen, area.size, Some(3), p, &mut Fixed);
     assert_eq!(at([480.0, 270.0]), Some(0));
@@ -682,6 +687,8 @@ fn a_canvas_cuts_off_its_shapes_at_its_edges() {
         view: Some(view),
         looks: Looks::default(),
         pictures: None,
+        ui_size: 1.0,
+        look: crate::ScreenLook::default(),
     };
     let shapes = crate::layout(&screen, [400, 300], None);
     let boxed = shapes
@@ -832,4 +839,74 @@ fn a_picture_not_there_is_a_grey_box_and_clicks_land_where_pictures_are() {
     // The button is under both pictures: 20 + 16 down.
     let (clickable, _) = crate::layout::clickables(&screen, [400, 300], None, &mut Fixed);
     assert_eq!(clickable[0].rect[1], 36.0);
+}
+
+#[test]
+fn lust_s_shadow_is_a_soft_glow_in_the_piece_s_own_colour() {
+    let view = node(
+        "view",
+        &[],
+        vec![
+            node(
+                "box",
+                &[
+                    ("width", n(10.0)),
+                    ("height", n(10.0)),
+                    ("red", on()),
+                    ("shadow", on()),
+                ],
+                vec![],
+            ),
+            node(
+                "column",
+                &[("background", Style::Text("blue".into()))],
+                vec![],
+            ),
+        ],
+    );
+    let els = lay_out(&view, [200.0, 200.0], &mut Fixed);
+    let shown: Vec<_> = els
+        .iter()
+        .filter(|e| e.fill != Fill::Solid(Colour::NONE))
+        .collect();
+    assert_eq!(shown.len(), 2, "{els:?}");
+    let (reach, colour) = shown[0].glow.unwrap();
+    assert_eq!(reach, SHADOW_GLOW);
+    assert_eq!(Fill::Solid(colour), shown[0].fill, "its own colour");
+    assert_eq!(shown[1].glow, None, "no shadow: no glow");
+    assert_eq!(shown[0].outline, None);
+}
+
+#[test]
+fn the_player_s_text_size_grows_text_and_the_room_round_it() {
+    let view = node(
+        "view",
+        &[],
+        vec![node(
+            "column",
+            &[],
+            vec![text("Hello there", &[("size", n(20.0))])],
+        )],
+    );
+    let size = |percent: u16| {
+        let looks = Looks {
+            text_percent: percent,
+            ..Default::default()
+        };
+        let (els, _) = lay_out_with(&view, [2000.0, 1000.0], &mut Fixed, looks);
+        let t = els
+            .iter()
+            .find(|e| matches!(e.kind, ElementKind::Text { .. }))
+            .unwrap();
+        let ElementKind::Text { size, .. } = t.kind else {
+            unreachable!()
+        };
+        (size, t.size)
+    };
+    let (normal, _) = size(100);
+    let (big, _) = size(200);
+    assert_eq!(normal, 20.0);
+    assert_eq!(big, 40.0);
+    assert_eq!(size(0).0, 20.0, "0 is as designed");
+    assert_eq!(size(900).0, 60.0, "at most three times");
 }

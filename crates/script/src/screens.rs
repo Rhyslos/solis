@@ -501,6 +501,12 @@ pub trait ScreenReader {
     /// The values of the component `name` on `entity` as the last tick
     /// left them, if it has one.
     fn values(&mut self, entity: reflect::EntityId, name: &str) -> Option<reflect::ComponentData>;
+
+    /// The player's settings, for `Screens:textSize()` and the rest
+    /// (decision 0091).
+    fn settings(&self) -> crate::settings::PlayerSettings {
+        crate::settings::PlayerSettings::default()
+    }
 }
 
 /// No game to read: every entity has no components.

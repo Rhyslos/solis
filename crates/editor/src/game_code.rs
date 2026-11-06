@@ -293,6 +293,11 @@ pub(crate) struct ViewCache {
     /// Every entity showing a map, with its file's path (if it has one)
     /// and its size in cells, for where maps lie (decision 0082).
     map_entities: Vec<(EntityId, Option<String>, [u32; 2])>,
+    /// The player's settings as game code sees them (decision 0091), and
+    /// the changes it asked for, in order, for the editor to take after
+    /// the tick.
+    pub(crate) settings: script::settings::PlayerSettings,
+    pub(crate) asked: Vec<script::settings::Setting>,
 }
 
 impl ViewCache {
@@ -479,6 +484,7 @@ impl GameWorld for PlayWorld<'_> {
             animator_states: Arc::new(self.world.animator_state_names()),
             screens: Arc::new(self.world.screens_shown()),
             game_speed: self.world.speed(),
+            settings: self.cache.settings,
             maps,
             map_places: Arc::new(places_of_maps.0),
             map_bounds: Arc::new(places_of_maps.1),
@@ -504,6 +510,12 @@ impl GameWorld for PlayWorld<'_> {
                 Change::Despawn(id) => self.edits.push(GameEdit::Despawn(id)),
                 Change::Seed(seed) => self.seed = Some(seed),
                 Change::GameSpeed(speed) => self.world.set_speed(speed),
+                Change::Setting(change) => {
+                    self.cache.settings = self.cache.settings.with(change);
+                    if self.cache.asked.len() < 64 {
+                        self.cache.asked.push(change);
+                    }
+                }
                 Change::Push(which, impulse) => self.world.push(which, impulse),
                 Change::Velocity(which, velocity) => self.world.set_velocity(which, velocity),
                 Change::Character(which, wanted) => self.world.move_character(which, wanted),

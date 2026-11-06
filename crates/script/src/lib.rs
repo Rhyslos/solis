@@ -21,6 +21,7 @@ pub mod project_names;
 pub mod runtime;
 pub mod rust_component;
 pub mod screens;
+pub mod settings;
 mod syncing;
 mod ticking;
 

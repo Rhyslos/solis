@@ -154,6 +154,7 @@ fn a_name_worked_out_as_the_game_runs_is_read_shown_and_said_once_if_wrong() {
                         screen: "Items".into(),
                         shown: true,
                         order: 0,
+                        ..Default::default()
                     }),
                 )],
             }],

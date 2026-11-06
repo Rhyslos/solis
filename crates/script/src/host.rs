@@ -241,6 +241,53 @@ pub trait Host {
         1.0
     }
 
+    /// The player's settings, as the tick started (decision 0091).
+    fn settings(&self) -> crate::settings::PlayerSettings {
+        crate::settings::PlayerSettings::default()
+    }
+    /// Changes one of the player's settings, at the end of the tick.
+    fn set_setting(&mut self, change: crate::settings::Setting) {
+        let _ = change;
+    }
+
+    /// `Screens:textSize()`.
+    fn text_size(&self) -> f64 {
+        self.settings().text_size
+    }
+    /// `Screens:setTextSize(size)`.
+    fn set_text_size(&mut self, size: f64) {
+        self.set_setting(crate::settings::Setting::TextSize(size));
+    }
+    /// `Screens:uiSize()`.
+    fn ui_size(&self) -> f64 {
+        self.settings().ui_size
+    }
+    /// `Screens:setUiSize(size)`.
+    fn set_ui_size(&mut self, size: f64) {
+        self.set_setting(crate::settings::Setting::UiSize(size));
+    }
+    /// `Window:fullscreen()`.
+    fn fullscreen(&self) -> bool {
+        self.settings().fullscreen
+    }
+    /// `Window:setFullscreen(on)`.
+    fn set_fullscreen(&mut self, on: bool) {
+        self.set_setting(crate::settings::Setting::Fullscreen(on));
+    }
+    /// `Window:resolution()`, in pixels.
+    fn resolution(&self) -> [u32; 2] {
+        self.settings().resolution
+    }
+    /// `Window:setResolution(width, height)`.
+    fn set_resolution(&mut self, width: u32, height: u32) {
+        self.set_setting(crate::settings::Setting::Resolution(width, height));
+    }
+    /// `Window:useNextResolution()`.
+    fn use_next_resolution(&mut self) {
+        let [w, h] = self.settings().next_resolution();
+        self.set_resolution(w, h);
+    }
+
     /// The component about to run, and where what it does belongs in the
     /// tick's order ([decision 0033](../../../docs/decisions/0033-game-code-sees-the-start-of-the-tick.md)).
     /// A host that keeps changes to land later (game code on several
@@ -949,6 +996,71 @@ pub(crate) fn with_natives<'h, R>(
         natives.raw_set(
             "World_gameSpeed",
             scope.create_function(move |_, _world: LuaValue| Ok(h.borrow().game_speed()))?,
+        )?;
+        // The player's settings (decision 0091).
+        natives.raw_set(
+            "Screens_textSize",
+            scope.create_function(move |_, _w: LuaValue| Ok(h.borrow().settings().text_size))?,
+        )?;
+        natives.raw_set(
+            "Screens_uiSize",
+            scope.create_function(move |_, _w: LuaValue| Ok(h.borrow().settings().ui_size))?,
+        )?;
+        natives.raw_set(
+            "Window_fullscreen",
+            scope.create_function(move |_, _w: LuaValue| Ok(h.borrow().settings().fullscreen))?,
+        )?;
+        natives.raw_set(
+            "Window_resolution",
+            scope.create_function(move |_, _w: LuaValue| {
+                let [w, h2] = h.borrow().settings().resolution;
+                Ok(vec3_value(Vec3::new(w as f32, h2 as f32, 0.0)))
+            })?,
+        )?;
+        natives.raw_set(
+            "Screens_setTextSize",
+            scope.create_function(move |_, (_w, size): (LuaValue, f64)| {
+                h.borrow_mut()
+                    .set_setting(crate::settings::Setting::TextSize(size));
+                Ok(())
+            })?,
+        )?;
+        natives.raw_set(
+            "Screens_setUiSize",
+            scope.create_function(move |_, (_w, size): (LuaValue, f64)| {
+                h.borrow_mut()
+                    .set_setting(crate::settings::Setting::UiSize(size));
+                Ok(())
+            })?,
+        )?;
+        natives.raw_set(
+            "Window_setFullscreen",
+            scope.create_function(move |_, (_w, on): (LuaValue, bool)| {
+                h.borrow_mut()
+                    .set_setting(crate::settings::Setting::Fullscreen(on));
+                Ok(())
+            })?,
+        )?;
+        natives.raw_set(
+            "Window_setResolution",
+            scope.create_function(move |_, (_w, width, height): (LuaValue, i64, i64)| {
+                let side = |v: i64| v.clamp(0, i64::from(u32::MAX)) as u32;
+                h.borrow_mut()
+                    .set_setting(crate::settings::Setting::Resolution(
+                        side(width),
+                        side(height),
+                    ));
+                Ok(())
+            })?,
+        )?;
+        natives.raw_set(
+            "Window_useNextResolution",
+            scope.create_function(move |_, _w: LuaValue| {
+                let [width, height] = h.borrow().settings().next_resolution();
+                h.borrow_mut()
+                    .set_setting(crate::settings::Setting::Resolution(width, height));
+                Ok(())
+            })?,
         )?;
         natives.raw_set(
             "World_viewSize",

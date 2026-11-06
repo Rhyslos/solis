@@ -116,6 +116,17 @@ fn toolbar(
             })
             .response
             .on_hover_text("The screen size the canvas shows: check the screen on each");
+        egui::ComboBox::from_id_salt("canvas text size")
+            .selected_text(format!("Text {}%", doc.text_percent))
+            .show_ui(ui, |ui| {
+                for p in [100u16, 150, 200] {
+                    ui.selectable_value(&mut doc.text_percent, p, format!("{p}%"));
+                }
+            })
+            .response
+            .on_hover_text(
+                "The player's text size: check the screen still fits when players make text bigger",
+            );
         ui.toggle_value(&mut doc.safe_area, "Safe area")
             .on_hover_text("A guide 5% in from each edge: keep text and buttons inside it");
         ui.toggle_value(&mut doc.snap, "Snap")
@@ -276,8 +287,13 @@ fn canvas(ui: &mut Ui, c: CanvasUi<'_>, out: &mut CanvasOut) {
         scale: ui::ScaleRule::Grow,
         elements: Vec::new(),
         view: Some(drawn_view),
-        looks: ui::view::Looks::default(),
+        looks: ui::view::Looks {
+            text_percent: doc.text_percent,
+            ..Default::default()
+        },
         pictures,
+        ui_size: 1.0,
+        look: ui::ScreenLook::default(),
     });
     let image = canvas_image(size_px, Arc::clone(&screen));
     match renderer.render(&image) {

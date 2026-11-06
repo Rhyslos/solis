@@ -11,7 +11,7 @@ use crate::theme;
 use egui::{RichText, Ui};
 
 /// The colours offered, Lust's own words.
-const COLOURS: &[&str] = &[
+pub(crate) const COLOURS: &[&str] = &[
     "white", "black", "gray1", "gray3", "gray5", "gray7", "gray9", "red", "orange", "yellow",
     "green", "teal", "blue", "indigo", "purple", "pink", "red5", "orange5", "yellow5", "green5",
     "teal5", "blue5", "indigo5", "purple5",
@@ -29,6 +29,16 @@ pub(crate) fn screen_properties(ui: &mut Ui, doc: &mut ScreenDoc, game: &ScreenG
         ui.label(
             RichText::new("Pick a piece on the canvas or in Elements to change it.")
                 .color(theme::TEXT_WEAK),
+        );
+        ui.add_space(8.0);
+        ui.label(
+            RichText::new(
+                "The screen's look (a glow, an outline, a pixel size) is set on the Screen \
+                 component that shows it, so one screen can look different for different \
+                 entities. Pieces with shadow in their [ ] glow in their own colour.",
+            )
+            .color(theme::TEXT_WEAK)
+            .small(),
         );
         return false;
     };

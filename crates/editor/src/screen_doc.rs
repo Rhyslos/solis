@@ -59,6 +59,8 @@ pub(crate) struct ScreenDoc {
     pub(crate) preview: std::collections::BTreeMap<(String, String), f64>,
     /// The view is to be drawn again (a preview value changed).
     pub(crate) redraw: bool,
+    /// The player's text size the canvas previews, in percent.
+    pub(crate) text_percent: u16,
     undo: Vec<String>,
     redo: Vec<String>,
     /// The text Solis last saved, to tell its own save from a change on
@@ -187,6 +189,7 @@ impl ScreenDoc {
             picture: None,
             preview: Default::default(),
             redraw: false,
+            text_percent: 100,
             undo: Vec::new(),
             redo: Vec::new(),
         }

@@ -27,5 +27,5 @@ pub mod view;
 
 pub use layout::{Shape, ShapeKind, Stretch, UNCLIPPED, layout, layout_at, layout_with};
 pub use pictures::Pictures;
-pub use screen::{Anchor, Colour, Edge, Element, ElementKind, Fill, ScaleRule, Screen};
+pub use screen::{Anchor, Colour, Edge, Element, ElementKind, Fill, ScaleRule, Screen, ScreenLook};
 pub use text::Fonts;

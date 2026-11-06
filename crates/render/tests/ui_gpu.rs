@@ -396,3 +396,95 @@ fn a_picture_shows_its_pixels_blocky_when_grown_and_see_through_where_it_is() {
     assert!(near(at(22, 22), GREY), "see-through: {:?}", at(22, 22));
     assert!(near(at(40, 40), GREY), "outside");
 }
+
+/// A white 40 × 40 box at (30, 30) on a 100 × 100 screen, with `glow`
+/// and `outline` (design pixels) and the screen's `pixel` size.
+fn haloed(
+    glow: Option<(f32, ui::Colour)>,
+    outline: Option<(f32, ui::Colour)>,
+    pixel: f32,
+) -> Vec<ui::Shape> {
+    let mut screen = ui::Screen::new("t", [100.0, 100.0], ui::ScaleRule::Keep);
+    let mut b = ui::Element::new("box", ui::ElementKind::Box { round: 0.0 })
+        .sized([40.0, 40.0])
+        .at(ui::Anchor::TOP_LEFT, [30.0, 30.0])
+        .filled(ui::Fill::Solid(ui::Colour::WHITE));
+    b.glow = glow;
+    b.outline = outline;
+    screen.elements = vec![b];
+    let mut shapes = ui::layout(&screen, [100, 100], None);
+    for s in &mut shapes {
+        s.pixel = pixel;
+    }
+    shapes
+}
+
+#[test]
+fn an_outline_rings_a_shape_and_a_glow_fades_out_past_it() {
+    let red = ui::Colour::rgb(255, 0, 0);
+    let blue = ui::Colour::rgb(0, 0, 255);
+    let shapes = haloed(Some((10.0, blue)), Some((3.0, red)), 0.0);
+    let Some(pixels) = draw([100, 100], &shapes) else {
+        return;
+    };
+    assert!(
+        near(px(&pixels, 100, 50, 50), [255, 255, 255]),
+        "inside: the box"
+    );
+    // Just outside the box's edge (x 70): its outline.
+    let ring = px(&pixels, 100, 71, 50);
+    assert!(ring[0] > 200 && ring[2] < 60, "the outline: {ring:?}");
+    // Past the outline: blue fading out to the grey.
+    let near_glow = px(&pixels, 100, 75, 50);
+    let far_glow = px(&pixels, 100, 81, 50);
+    assert!(
+        near_glow[2] > far_glow[2],
+        "fades: {near_glow:?} {far_glow:?}"
+    );
+    assert!(near_glow[2] > 150, "{near_glow:?}");
+    assert!(
+        near(px(&pixels, 100, 90, 50), GREY),
+        "past its reach: untouched"
+    );
+    // Without them, the grey right beside the box.
+    let Some(plain) = draw([100, 100], &haloed(None, None, 0.0)) else {
+        return;
+    };
+    assert!(near(px(&plain, 100, 72, 50), GREY));
+}
+
+#[test]
+fn a_pixel_size_draws_the_screen_in_blocks() {
+    // A circle, drawn in blocks of 5 pixels: every block one colour, and
+    // nothing between white and grey.
+    let mut screen = ui::Screen::new("t", [100.0, 100.0], ui::ScaleRule::Keep);
+    screen.elements = vec![
+        ui::Element::new("dot", ui::ElementKind::Ellipse)
+            .sized([62.0, 62.0])
+            .at(ui::Anchor::TOP_LEFT, [19.0, 19.0])
+            .filled(ui::Fill::Solid(ui::Colour::WHITE)),
+    ];
+    let mut shapes = ui::layout(&screen, [100, 100], None);
+    for s in &mut shapes {
+        s.pixel = 5.0;
+    }
+    let Some(pixels) = draw([100, 100], &shapes) else {
+        return;
+    };
+    for by in 0..20 {
+        for bx in 0..20 {
+            let first = px(&pixels, 100, bx * 5, by * 5);
+            for (dx, dy) in [(4, 0), (0, 4), (4, 4), (2, 3)] {
+                assert_eq!(
+                    px(&pixels, 100, bx * 5 + dx, by * 5 + dy),
+                    first,
+                    "block {bx}, {by}"
+                );
+            }
+            assert!(
+                near(first, [255, 255, 255]) || near(first, GREY),
+                "hard: {first:?}"
+            );
+        }
+    }
+}

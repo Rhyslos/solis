@@ -13,7 +13,7 @@ The canvas never takes your file away from you. It changes only the letters it h
 3. **Change it in Properties** on the right: its words, its width and height, how what's inside it lines up, its padding, colour, corners and opacity. Every change is saved straight away, and `Ctrl + Z` over the canvas undoes it.
 4. **Move it**: drag it on the canvas to another place among its neighbours, or into another column or row; a blue line shows where it will land. In Elements, drag its row above or below another row, or onto the middle of a column's row to put it inside.
 5. **Size it**: pick one piece and drag the small square on its right edge, bottom edge or corner.
-6. Check the screen on other screen sizes with the size list at the top left (Full HD, 4K, ultrawide, a phone). The dashed line is the **safe area**: keep text and buttons inside it, since some TVs cut the edges off.
+6. Check the screen on other screen sizes with the size list at the top left (Full HD, 4K, ultrawide, a phone), and with players' bigger text with **Text 150%** and **200%** beside it. The dashed line is the **safe area**: keep text and buttons inside it, since some TVs cut the edges off.
 7. **Open as code** (top right) opens the file in your code editor, for anything the canvas doesn't edit.
 
 ### Drawing new pieces
@@ -61,6 +61,7 @@ A button's **When clicked** in Properties has a **Sends** list: the [events](gam
 | When clicked | What a button does, as written in its `{ }`, when it's more than one event: change it as code. |
 | Preview values | Other numbers to try on the canvas for what the screen reads. Never saved. |
 | All its settings | Everything in the piece's `[ ]`, as written. Type anything Lust has (`nowrap`, `spread`, `minWidth 200`); press Enter to keep it. If it doesn't read, it isn't changed. |
+| Text 100% / 150% / 200% | Previews the screen with players' bigger text (`Screens:setTextSize`), to check nothing spills out. |
 | Safe area | Shows the guide 5% in from each edge. |
 | Snap | Sizes snap to whole pixels and to other pieces' edges. |
 
