@@ -31,6 +31,7 @@ sound: object Audio: method setVolume(Bus bus, float volume) native;
 animation: method entity:animate(Clip clip) native;
 animation: method entity:animateFromStart(Clip clip) native;
 animation: method entity:stopAnimation() native;
+animation: method entity:setFlip(bool across, bool down) native;
 animation: object Animators: method setNumber(entity owner, string name, float value) native;
 animation: object Animators: method setSwitch(entity owner, string name, bool on) native;
 animation: object Animators: method fire(entity owner, string name) native;
@@ -139,6 +140,7 @@ solis.entity.position
 solis.entity.push
 solis.entity.rotation
 solis.entity.screenShown
+solis.entity.setFlip
 solis.entity.setSoundPlaying
 solis.entity.setVelocity
 solis.entity.showScreen
@@ -192,6 +194,7 @@ Host: fn show_screen(&mut self, which: EntityId, screen: &str, shown: bool)
 Host: fn screen_shown(&self, which: EntityId, screen: &str) -> bool
 Host: fn play_clip(&mut self, which: EntityId, clip: &str, again: bool)
 Host: fn stop_clip(&mut self, which: EntityId)
+Host: fn set_flip(&mut self, which: EntityId, across: bool, down: bool)
 Host: fn set_bus_volume(&mut self, bus: &str, share: f32)
 Host: fn animator_set(&mut self, which: EntityId, name: &str, value: AnimatorValue)
 Host: fn animator_state(&self, which: EntityId) -> Option<String>
