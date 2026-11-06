@@ -85,6 +85,9 @@ pub enum Offer {
     /// The names of the game's screens (`Hud`), for a text field
     /// (decision 0087).
     Screens,
+    /// A day's colours at their hours, for a text field holding them
+    /// (`6:00 #e99a6a, 9:00 #fff6e0`; decision 0092).
+    DayColours,
 }
 
 /// One field of a component.

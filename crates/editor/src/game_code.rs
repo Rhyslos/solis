@@ -485,6 +485,7 @@ impl GameWorld for PlayWorld<'_> {
             screens: Arc::new(self.world.screens_shown()),
             game_speed: self.world.speed(),
             settings: self.cache.settings,
+            time_of_day: self.world.time_of_day(),
             maps,
             map_places: Arc::new(places_of_maps.0),
             map_bounds: Arc::new(places_of_maps.1),
@@ -510,6 +511,7 @@ impl GameWorld for PlayWorld<'_> {
                 Change::Despawn(id) => self.edits.push(GameEdit::Despawn(id)),
                 Change::Seed(seed) => self.seed = Some(seed),
                 Change::GameSpeed(speed) => self.world.set_speed(speed),
+                Change::TimeOfDay(hour) => self.world.set_time_of_day(hour),
                 Change::Setting(change) => {
                     self.cache.settings = self.cache.settings.with(change);
                     if self.cache.asked.len() < 64 {

@@ -241,6 +241,15 @@ pub trait Host {
         1.0
     }
 
+    /// The game's hour as the tick started (decision 0092): 0 up to 24.
+    fn time_of_day(&self) -> f64 {
+        8.0
+    }
+    /// Sets the game's hour, at the end of the tick.
+    fn set_time_of_day(&mut self, hour: f64) {
+        let _ = hour;
+    }
+
     /// The player's settings, as the tick started (decision 0091).
     fn settings(&self) -> crate::settings::PlayerSettings {
         crate::settings::PlayerSettings::default()
@@ -996,6 +1005,19 @@ pub(crate) fn with_natives<'h, R>(
         natives.raw_set(
             "World_gameSpeed",
             scope.create_function(move |_, _world: LuaValue| Ok(h.borrow().game_speed()))?,
+        )?;
+        natives.raw_set(
+            "World_timeOfDay",
+            scope.create_function(move |_, _world: LuaValue| Ok(h.borrow().time_of_day()))?,
+        )?;
+        natives.raw_set(
+            "World_setTimeOfDay",
+            scope.create_function(move |_, (_world, hour): (LuaValue, f64)| {
+                if hour.is_finite() {
+                    h.borrow_mut().set_time_of_day(hour);
+                }
+                Ok(())
+            })?,
         )?;
         // The player's settings (decision 0091).
         natives.raw_set(

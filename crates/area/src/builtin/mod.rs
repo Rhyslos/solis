@@ -6,6 +6,7 @@ mod animator;
 mod audio_source;
 mod camera;
 mod collider_2d;
+mod day;
 mod environment;
 mod light;
 mod listener;
@@ -21,6 +22,7 @@ pub use animator::Animator;
 pub use audio_source::AudioSource;
 pub use camera::{Camera, CameraView};
 pub use collider_2d::{Collider2D, Shape2D};
+pub use day::{DayColours, MAX_STOPS};
 pub use environment::{Environment, Sky, ToneMapping};
 pub use light::{Light, LightKind, aim, sun_rotation};
 pub use listener::Listener;
@@ -69,7 +71,13 @@ pub fn starter_area() -> Area {
             })
             .with(&Light::sun()),
     );
-    area.spawn(EntityData::new("Environment").with(&Environment::default()));
+    // New areas light their sprites (decision 0092): with no lamps and
+    // day and night off, they look exactly as drawn. Older areas, without
+    // the field, keep sprites unlit.
+    area.spawn(EntityData::new("Environment").with(&Environment {
+        light_sprites: true,
+        ..Environment::default()
+    }));
     area
 }
 

@@ -318,6 +318,9 @@ pub struct Workbench {
     /// The area as the file now on disk holds it, waiting for Keep mine
     /// or Load the file.
     pub(crate) pending_reload: Option<area::Area>,
+    /// Whether the Environment's Preview time is forgotten next frame
+    /// (another project was opened).
+    forget_preview: bool,
     /// Whether the window may close despite unsaved changes (the user
     /// said Don't save).
     pub(crate) may_close: bool,
@@ -625,6 +628,7 @@ impl Workbench {
             outbox: Vec::new(),
             unsaved_prompt: None,
             pending_reload: None,
+            forget_preview: false,
             may_close: false,
             project: None,
             recent: Vec::new(),
@@ -704,6 +708,7 @@ impl Workbench {
             self.set_program(None);
             self.set_rust_components(Vec::new());
             self.pending_reload = None;
+            self.forget_preview = true;
             self.unsaved_prompt = None;
             self.library_state = Default::default();
             if let Some(p) = &project {
@@ -955,6 +960,21 @@ impl Workbench {
             || ctx.input(|i| i.pointer.any_down() || !i.keys_down.is_empty())
     }
 
+    /// The Environment's Preview time (decision 0092), set in Properties:
+    /// the hour the viewport shows the area at. It's forgotten with its
+    /// project, and never used while playing, when the viewport shows the
+    /// game's own hour.
+    pub(crate) fn preview_hour(&mut self, ctx: &egui::Context) -> Option<f64> {
+        if std::mem::take(&mut self.forget_preview) {
+            ctx.data_mut(|d| d.remove::<Option<f64>>(crate::day_colours::preview_id()));
+        }
+        if self.playing.is_some() {
+            return None;
+        }
+        ctx.data(|d| d.get_temp::<Option<f64>>(crate::day_colours::preview_id()))
+            .flatten()
+    }
+
     /// Draws the editor filling `ui`, and returns what the app must do.
     pub fn show(
         &mut self,
@@ -967,6 +987,9 @@ impl Workbench {
             std::mem::take(&mut self.sound_spent),
         );
         let mut actions = std::mem::take(&mut self.outbox);
+        // The Environment's Preview time (decision 0092), set in
+        // Properties: the viewport shows the area at that hour.
+        self.viewport.preview_hour = self.preview_hour(ui.ctx());
         // The launcher, while it's up, is all there is.
         if self.launcher(ui, &mut actions) {
             self.prompts(ui, &mut actions);

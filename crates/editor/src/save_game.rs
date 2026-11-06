@@ -6,7 +6,7 @@
 //! opened) by a person:
 //!
 //! ```text
-//! solis save 7
+//! solis save 8
 //! project Harbour
 //! tick 1234
 //! time 4060000000000000
@@ -33,6 +33,8 @@
 //! …the game-wide objects' values, one block holding them (area text)…
 //! speed 16
 //! 3fe0000000000000 (the game's speed's exact bits; empty when 1)
+//! day 16
+//! 4018000000000000 (the hours game code moved the day on by; empty when 0)
 //! ```
 //!
 //! Physics is kept as each body's place and motion, never Rapier's own
@@ -51,9 +53,9 @@ use reflect::EntityId;
 use std::sync::Arc;
 
 /// The first line of a save this Solis writes and reads.
-const HEADER: &str = "solis save 7";
+const HEADER: &str = "solis save 8";
 /// The version in [`HEADER`].
-const SAVE_VERSION: u32 = 7;
+const SAVE_VERSION: u32 = 8;
 
 /// Save games' version and upgraders (Phase 8, C2; decision 0053): a save
 /// made by an earlier Solis loads in a later one, never refused just for
@@ -79,6 +81,7 @@ pub static FORMAT: reflect::upgrade::Format<Sections> = reflect::upgrade::Format
         tile_maps_kept,
         objects_kept,
         speed_kept,
+        day_kept,
     ],
 };
 
@@ -174,6 +177,16 @@ fn speed_kept(sections: &mut Sections) -> Result<(), String> {
         return Err("it already has a speed".into());
     }
     sections.list.push(("speed".into(), String::new()));
+    Ok(())
+}
+
+/// Version 7 to 8: version 7 had no time of day (decision 0092), so the
+/// day is where the Environment starts it.
+fn day_kept(sections: &mut Sections) -> Result<(), String> {
+    if sections.list.iter().any(|(n, _)| n == "day") {
+        return Err("it already has a day".into());
+    }
+    sections.list.push(("day".into(), String::new()));
     Ok(())
 }
 
@@ -279,6 +292,9 @@ pub(crate) struct Save {
     pub(crate) objects: String,
     /// How fast the game ran (`World:setGameSpeed`; 1 as usual).
     pub(crate) speed: f64,
+    /// The hours game code moved the day on by (`World:setTimeOfDay`; 0
+    /// as usual).
+    pub(crate) day_shift: f64,
     /// What upgrading an older save couldn't carry over, for the Console
     /// (never written).
     pub(crate) notes: Vec<String>,
@@ -388,6 +404,12 @@ impl Save {
             format!("{:x}", self.speed.to_bits())
         };
         section("speed", &speed);
+        let day = if self.day_shift == 0.0 {
+            String::new()
+        } else {
+            format!("{:x}", self.day_shift.to_bits())
+        };
+        section("day", &day);
         let head = format!(
             "project {}\ntick {}\ntime {:x}\nseed {}\n",
             one_line(&self.project),
@@ -664,6 +686,13 @@ impl Save {
         if !(speed.is_finite() && (0.0..=world::MAX_SPEED).contains(&speed)) {
             return Err(damaged());
         }
+        let day_shift = match section("day")? {
+            "" => 0.0,
+            bits => f64::from_bits(u64::from_str_radix(bits, 16).map_err(|_| damaged())?),
+        };
+        if !(day_shift.is_finite() && (0.0..24.0).contains(&day_shift)) {
+            return Err(damaged());
+        }
         Ok(Self {
             project,
             ticks,
@@ -679,6 +708,7 @@ impl Save {
             tile_maps,
             objects,
             speed,
+            day_shift,
             notes: {
                 // A section no version writes: not a save this Solis made.
                 if !list.is_empty() {
@@ -796,6 +826,7 @@ impl Workbench {
                 .map(|game| objects_text(&game.object_values()))
                 .unwrap_or_default(),
             speed: playing.world.speed(),
+            day_shift: playing.world.day_shift(),
             notes: Vec::new(),
         })
     }
@@ -907,6 +938,7 @@ impl Workbench {
         world.set_clock(save.ticks, save.time);
         world.set_seed(save.seed);
         world.set_speed(save.speed);
+        world.set_day_shift(save.day_shift);
         world.projectiles_mut().restore(save.projectiles);
         world.restore_animator_values(save.animators);
         world.restore_tile_maps(save.tile_maps);

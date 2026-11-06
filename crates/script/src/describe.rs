@@ -436,6 +436,20 @@ pub const NATIVES: &[Native] = &[
     },
     Native {
         file: "world",
+        name: "timeOfDay",
+        owner: "World",
+        lust: "method float timeOfDay() native;",
+        about: "The game's hour as the tick started: 0 up to 24 (19.5 is half past seven in the evening). It runs with the game's time, a day as long as the Environment's Day and night says.",
+    },
+    Native {
+        file: "world",
+        name: "setTimeOfDay",
+        owner: "World",
+        lust: "method setTimeOfDay(float hour) native;",
+        about: "Sets the game's hour, at the end of the tick, and the day carries on from there: World:setTimeOfDay(6) after a night's sleep. Kept in save games.",
+    },
+    Native {
+        file: "world",
         name: "setSeed",
         owner: "World",
         lust: "method setSeed(int seed) native;",

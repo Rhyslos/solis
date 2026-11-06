@@ -8,7 +8,7 @@ Draws viewports on the GPU with wgpu, into offscreen images: the sky, every copy
 | --- | --- | --- |
 | `lib.rs` | Lists the modules and what the crate offers; checks the shaders compile. | |
 | `renderer.rs` | Draws one viewport frame into its own image: shadow map, sky, models, grid, axes, projectiles, then the last tone-mapping pass. | `ViewportRenderer`, `ViewportTarget`, `LineVertex` |
-| `frame.rs` | What the renderer needs each frame (camera, colours, look, grid plane) and how it is laid out for the GPU. | `FrameParams`, `Look`, `Shading`, `GridPlane` |
+| `frame.rs` | What the renderer needs each frame (camera, colours, look, grid plane, the day's tint and lit sprites) and how it is laid out for the GPU. | `FrameParams`, `Look`, `Shading`, `GridPlane` |
 | `gpu_model.rs` | Models on the GPU: an `assets::Model` uploaded once into buffers and textures, then drawn every frame; also the outline and shadow passes. | `GpuModel` |
 | `instances.rs` | Where each copy of a mesh is drawn: all placements gathered into one buffer each frame, grouped so each mesh is drawn once for all its copies; copies out of view are left out, far ones get simpler levels. | `Placement` |
 | `lighting.rs` | The sun and lamps, the sun's shadow map fitted to what's in view, and the markers drawn where lamps are. | `Sun`, `Light`, `LightKind`, `sun_view_fitted` |
@@ -20,7 +20,7 @@ Draws viewports on the GPU with wgpu, into offscreen images: the sky, every copy
 | `pick.rs` | Picking: draws placement and sprite numbers and depth into a small image (sprites by their own pixels) to say what is under the mouse. | `PickResult` |
 | `timing.rs` | How long the GPU takes over each pass, for the Profiler, read back a frame or two later without waiting; and counts of what was drawn. | `GpuTimes`, `FrameStats` |
 | `readback.rs` | Copies a finished image back from the GPU, for tests and screenshots. The only place that waits on the GPU. | `read_pixels`, `read_texture` |
-| `viewport.wgsl` | The shaders (small programs that run on the GPU): sky, grid, lines, models in each look, lighting and shadows, and the final exposure, tone mapping and sRGB pass (`post_fs`). | `mesh_vs`, `sky_fs`, `grid_fs`, `post_fs` |
+| `viewport.wgsl` | The shaders (small programs that run on the GPU): sky, grid, lines, models in each look, lighting and shadows, sprites (lit by the day's tint and the lamps when the area says so, decision 0092), and the final exposure, tone mapping and sRGB pass (`post_fs`). | `mesh_vs`, `sky_fs`, `grid_fs`, `post_fs` |
 | `pick.wgsl` | The picking shader, kept apart so the viewport shader stays as it is. | |
 | `pixel.wgsl` | The pixel stage's shader: one screen-filling triangle that picks (or, for fill, sharply blends) the small picture's pixels. | `pixel_vs`, `pixel_fs` |
 

@@ -142,6 +142,9 @@ pub struct World {
     /// paused): game time, physics, projectiles and sprites go at this
     /// share of each tick, while game code still runs every tick.
     speed: f64,
+    /// Hours game code moved the day on by (`World:setTimeOfDay`,
+    /// decision 0092); 0 as it starts.
+    day_shift: f64,
     /// The Screens game code showed or hid, kept when the world is built
     /// again.
     game_screens: reflect::IdMap<ComponentData>,
@@ -267,6 +270,7 @@ impl World {
             projectiles: Projectiles::default(),
             seed: 0,
             speed: 1.0,
+            day_shift: 0.0,
             game_screens: reflect::IdMap::default(),
             physics: physics::Physics::new(),
             physics_moved: Vec::new(),
@@ -352,6 +356,7 @@ impl World {
         let projectiles = std::mem::take(&mut self.projectiles);
         let seed = self.seed;
         let speed = self.speed;
+        let day_shift = self.day_shift;
         let game_screens = std::mem::take(&mut self.game_screens);
         let playbacks = self.playbacks();
         let clip_sets = std::sync::Arc::clone(&self.clip_sets);
@@ -370,6 +375,7 @@ impl World {
         self.projectiles = projectiles;
         self.seed = seed;
         self.speed = speed;
+        self.day_shift = day_shift;
         for (id, data) in game_screens {
             self.put_screen(id, data);
         }
@@ -781,6 +787,39 @@ impl World {
         if speed.is_finite() {
             self.speed = speed.clamp(0.0, MAX_SPEED);
             self.touched = true;
+        }
+    }
+
+    /// The game's hour (decision 0092): 0 up to 24, from the area's
+    /// Environment's day (its start and length) and the game's time,
+    /// moved on by game code's `setTimeOfDay`. With no Environment, the
+    /// default day's.
+    pub fn time_of_day(&self) -> f64 {
+        let env = self.environment().unwrap_or_default();
+        env.hour_at(self.clock.time, self.day_shift)
+    }
+
+    /// Sets the game's hour (game code's `World:setTimeOfDay`): the day
+    /// carries on from there. Not a number changes nothing.
+    pub fn set_time_of_day(&mut self, hour: f64) {
+        if !hour.is_finite() {
+            return;
+        }
+        let env = self.environment().unwrap_or_default();
+        let now = env.hour_at(self.clock.time, 0.0);
+        self.day_shift = (hour.rem_euclid(24.0) - now).rem_euclid(24.0);
+        self.touched = true;
+    }
+
+    /// The hours game code moved the day on by, for saves.
+    pub fn day_shift(&self) -> f64 {
+        self.day_shift
+    }
+
+    /// Puts back the hours a save moved the day on by.
+    pub fn set_day_shift(&mut self, shift: f64) {
+        if shift.is_finite() {
+            self.day_shift = shift.rem_euclid(24.0);
         }
     }
 
@@ -1265,6 +1304,11 @@ impl World {
         // recordings' sums stand).
         if self.speed != 1.0 {
             sum.u64(self.speed.to_bits());
+        }
+        // The day moved on by game code, when it was (so older
+        // recordings' sums stand).
+        if self.day_shift != 0.0 {
+            sum.u64(self.day_shift.to_bits());
         }
         // Which sounds game code turned on and off (it's in a save).
         // Only the on/off flag counts, so the sources aren't copied.

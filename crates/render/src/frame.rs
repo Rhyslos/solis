@@ -158,6 +158,9 @@ pub(crate) struct FrameUniforms {
     light_below: [f32; 4],
     fog: [f32; 4],
     post: [f32; 4],
+    /// The day's tint (rgb, linear); w: the steps sprites are lit in (0
+    /// smooth), or -1 for sprites drawn as they are (decision 0092).
+    sprite_light: [f32; 4],
 }
 
 /// What the renderer worked out about the sun and lamps for one frame.
@@ -195,6 +198,15 @@ impl FrameUniforms {
             params.sun.strength,
         );
         let mut post = crate::environment::post_uniform(&params.environment);
+        // The day's tint, linear; the sun and the sky's light take it.
+        let tint = params.environment.tint.map(|c| {
+            srgb_to_linear(if c.is_finite() {
+                c.clamp(0.0, 1.0)
+            } else {
+                1.0
+            })
+        });
+        let tinted = |v: [f32; 4]| [v[0] * tint[0], v[1] * tint[1], v[2] * tint[2], v[3]];
         post[2] = if sky.daylight { 1.0 } else { 0.0 };
         let reach = grid_reach(params.camera_position.distance(params.focus));
         let step = if params.grid_step.is_finite() && params.grid_step > 0.0 {
@@ -220,8 +232,8 @@ impl FrameUniforms {
                     GridPlane::Side => 2.0,
                 },
             ],
-            sky_top: sky.top.extend_one(),
-            sky_horizon: sky.horizon.extend_one(),
+            sky_top: tinted(sky.top.extend_one()),
+            sky_horizon: tinted(sky.horizon.extend_one()),
             ground: sky.ground.extend_one(),
             shading: [
                 match params.shading.look {
@@ -240,17 +252,26 @@ impl FrameUniforms {
             screen: [params.size_px[0] as f32, params.size_px[1] as f32, 0.0, 0.0],
             sun_view_proj: light.sun_view_projection.to_cols_array_2d(),
             sun_direction,
-            sun_color,
+            sun_color: tinted(sun_color),
             shadow: [
                 light.texel,
                 crate::lighting::SHADOW_MAP_SIZE as f32,
                 light.lamps as f32,
                 0.0,
             ],
-            light_above: sky.light_above.extend_one(),
-            light_below: sky.light_below.extend_one(),
+            light_above: tinted(sky.light_above.extend_one()),
+            light_below: tinted(sky.light_below.extend_one()),
             fog: crate::environment::fog_uniform(params.environment.fog, &sky),
             post,
+            sprite_light: [
+                tint[0],
+                tint[1],
+                tint[2],
+                params
+                    .environment
+                    .sprite_light
+                    .map_or(-1.0, |steps| steps.min(8) as f32),
+            ],
         }
     }
 }
@@ -259,7 +280,7 @@ impl FrameUniforms {
 mod tests {
     use super::*;
 
-    fn params() -> FrameParams {
+    pub(super) fn params() -> FrameParams {
         FrameParams {
             view_projection: Mat4::IDENTITY,
             camera_position: Vec3::new(0.0, -10.0, 5.0),
@@ -279,8 +300,8 @@ mod tests {
 
     #[test]
     fn uniforms_match_the_shader_layout() {
-        // Three matrices and sixteen vectors of 16 bytes.
-        assert_eq!(std::mem::size_of::<FrameUniforms>(), 3 * 64 + 16 * 16);
+        // Three matrices and seventeen vectors of 16 bytes.
+        assert_eq!(std::mem::size_of::<FrameUniforms>(), 3 * 64 + 17 * 16);
     }
 
     #[test]
@@ -384,5 +405,33 @@ mod light_tests {
         assert_eq!(u.sun_direction[3], 1.0);
         assert_eq!(u.sun_view_proj[0][0], 2.0);
         assert!(u.sun_direction[2] > 0.0, "towards the sun, which is up");
+    }
+
+    #[test]
+    fn the_day_s_tint_dims_the_sun_and_sky_light_and_reaches_sprites() {
+        let mut p = super::tests::params();
+        p.sun = crate::lighting::Sun {
+            strength: 3.0,
+            ..crate::lighting::Sun::default()
+        };
+        let day = FrameUniforms::new(&p, &FrameLight::default());
+        assert_eq!(
+            day.sprite_light,
+            [1.0, 1.0, 1.0, -1.0],
+            "white, sprites as drawn"
+        );
+        p.environment.tint = [0.5, 0.5, 1.0];
+        p.environment.sprite_light = Some(3);
+        let night = FrameUniforms::new(&p, &FrameLight::default());
+        assert!(
+            night.sun_color[0] < day.sun_color[0] * 0.3,
+            "dimmed (linear)"
+        );
+        assert_eq!(night.sun_color[2], day.sun_color[2], "blue kept");
+        assert!(night.light_above[0] < day.light_above[0]);
+        assert_eq!(night.sprite_light[3], 3.0);
+        p.environment.tint = [f32::NAN, 2.0, -1.0];
+        let odd = FrameUniforms::new(&p, &FrameLight::default());
+        assert_eq!(odd.sprite_light[..3], [1.0, 1.0, 0.0], "kept in range");
     }
 }

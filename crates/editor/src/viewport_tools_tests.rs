@@ -25,6 +25,7 @@ fn lamp(entity: EntityId, position: Vec3) -> ViewLight {
         inner: 0.0,
         outer: 0.0,
         shadows: false,
+        only_at_night: false,
     }
 }
 

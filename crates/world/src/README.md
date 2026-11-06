@@ -4,7 +4,7 @@ The game's fast storage while it runs (decision 0024). The area (`area::Area`) i
 
 | File | What it does | Main items |
 | --- | --- | --- |
-| `lib.rs` | Everything about the world: building it from an area, adding and removing entities while playing, the game's clock, stepping physics, and finding things. Start here. | `World`, `Clock`, `Id`, `Name`, `Parent`, `Global`, `Values` |
+| `lib.rs` | Everything about the world: building it from an area, adding and removing entities while playing, the game's clock and time of day (decision 0092), stepping physics, and finding things. Start here. | `World`, `Clock`, `Id`, `Name`, `Parent`, `Global`, `Values` |
 | `projectiles.rs` | Thousands of small, fast things that aren't entities (lasers, bolts), each with a place, speed, time left and colour, moved in jobs every tick. | `Projectiles`, `Projectile`, `Shot` |
 | `animators.rs` | Animators in the running game (Phase 9, D3b): each entity's run stepped every tick before sprites, its sprite's clip and speed set, game code's settings and jumps, values for saves and the checksum. Tests in `animators_tests.rs`, with the scale case of 10,000 animators. | `Animators`, `value_words`, `value_of_words` |
 | `tile_maps.rs` | Tile maps in the running game (Phase 9, D4): each entity's copy of its map file, started and restarted from its file, changed cell by cell, in the checksum and saves. Tests in `tile_maps_tests.rs`. | `MapFiles`, `World::set_tile_maps`, `World::tile_map`, `World::set_tile`, `World::set_cell_value` |
