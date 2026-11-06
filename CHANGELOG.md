@@ -79,6 +79,7 @@ What changed in each version, for people using Solis. Newest first.
 
 ### Added
 
+- **`setFlip(across, down)`** (found making a platformer): game code mirrors an entity's Sprite, so one clip drawn facing right faces left too (`setFlip(true, false)`), instead of separate left-facing clips. In Lua `solis.entity.setFlip(e, true, false)`, in Rust `set_flip` ([manual](docs/manual/sprite-animation.md)).
 - **Pictures on game screens** ([decision 0089](docs/decisions/0089-atlas-crop-and-the-ui-editor.md)): Lust's `image "sprites/coin.png";` shows a picture from the assets on a screen, and `image "sprites/tools.png#Axe";` one of its Atlas Crop crops, with `width`, `height`, `cover`, `round` and `opacity`. Pictures shown bigger keep sharp pixels. A name written in a screen that names no picture or no crop is listed in Problems with its line ([manual](docs/manual/screens.md)).
 - **Atlas Crop** ([decision 0089](docs/decisions/0089-atlas-crop-and-the-ui-editor.md)): right-click a picture in the Library and choose **Atlas Crop…** to cut named pictures out of it, drawn as boxes snapped to a grid, or every tile at once. They're kept in a file beside the picture (`tools.atlas.lst`), which never changes, and game code names them `Picture.Sprites.Tools.Axe` ([manual](docs/manual/atlas-crop.md)).
 

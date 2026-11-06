@@ -60,7 +60,15 @@ end
 - `animate(Clip.Sprites.Farmer.Walk)` plays a clip on the component's entity (`target:animate(…)` on another). If it's already playing that clip, or has finished it, it carries on as it is, so it's safe to call every tick; another clip starts from its beginning.
 - `animateFromStart(Clip.Sprites.Farmer.Hoe)` plays a clip from its beginning, whatever it was doing: a swing each time a button is pressed.
 - `stopAnimation()` stops it where it is; `animate` with the same clip carries on from there.
-- In Lua: `solis.entity.animate(e, "Sprites.Farmer.Walk")`, `solis.entity.animateFromStart(e, …)` and `solis.entity.stopAnimation(e)`; a function called `on_CueReached(cue)` or `on_ClipFinished(clip)` reacts to the events, with the names as text. In Rust: `cx.host().play_clip(entity, "walk", false)` (`true` to start it again) and `stop_clip`, and the events arrive in `handle` named `CueReached` and `ClipFinished`.
+- `setFlip(across, down)` mirrors the sprite (its **Flip across** and **Flip up** settings): `setFlip(true, false)` faces it the other way. So you draw a run facing right only once, and one `Run` clip does both ways, instead of a `RunLeft` as well:
+
+  ```
+  is walkingLeft? then { setFlip(true, false); } or { setFlip(false, false); }
+  animate(Clip.Sprites.Hero.Run);
+  ```
+
+  It's safe to call every tick, and like the other calls it lands at the end of the tick.
+- In Lua: `solis.entity.animate(e, "Sprites.Farmer.Walk")`, `solis.entity.animateFromStart(e, …)`, `solis.entity.stopAnimation(e)` and `solis.entity.setFlip(e, true, false)`; a function called `on_CueReached(cue)` or `on_ClipFinished(clip)` reacts to the events, with the names as text. In Rust: `cx.host().play_clip(entity, "walk", false)` (`true` to start it again), `stop_clip` and `set_flip(entity, true, false)`, and the events arrive in `handle` named `CueReached` and `ClipFinished`.
 
 A clip's place is part of the game: the same inputs give the same frames every time, and a saved game comes back on the same frame.
 

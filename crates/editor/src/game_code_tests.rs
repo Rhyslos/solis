@@ -1871,3 +1871,60 @@ fn each_code_file_says_how_many_entities_use_its_components() {
     let (w, _) = mover_on(w);
     assert_eq!(w.code_uses()["main.lst"], "Mover · 1");
 }
+
+/// Faces left while x is less than 3, then right.
+const FACER: &str = "component Facer {\n\
+        has { float x = 0; }\n\
+        method update(float dt) {\n\
+            x = x + 1;\n\
+            setFlip(x < 3, false);\n\
+        }\n\
+    }\n\
+    pass Facer;\nend\n";
+
+#[test]
+fn game_code_mirrors_a_sprite_with_set_flip() {
+    let mut w = Workbench::new(info(), None);
+    w.set_program(Some(program(FACER)));
+    let id = EntityId::random();
+    let mut data = EntityData::new("Hero")
+        .with(&Transform::default())
+        .with(&area::builtin::Sprite::default());
+    data.components
+        .insert("Facer".into(), reflect::ComponentData::default());
+    w.document
+        .edit(
+            "Add",
+            vec![area::Edit::Spawn {
+                entities: vec![(id, data)],
+            }],
+            None,
+            None,
+        )
+        .unwrap();
+    w.play();
+    let flipped = |w: &Workbench| {
+        let s = w.world().unwrap().get::<area::builtin::Sprite>(id).unwrap();
+        (s.flip_x, s.flip_y)
+    };
+    let tick = |w: &mut Workbench| {
+        let until = w.world().unwrap().clock().ticks + 1;
+        while w.world().unwrap().clock().ticks < until {
+            w.run_game((world::TICK * 0.6) as f32);
+        }
+    };
+    tick(&mut w);
+    assert_eq!(flipped(&w), (true, false), "facing left");
+    tick(&mut w);
+    tick(&mut w);
+    assert_eq!(flipped(&w), (false, false), "facing right again");
+    // The area itself is as it was: the flip is the running game's.
+    let sprite = w
+        .document
+        .area()
+        .get(id)
+        .unwrap()
+        .get::<area::builtin::Sprite>()
+        .unwrap();
+    assert!(!sprite.flip_x);
+}

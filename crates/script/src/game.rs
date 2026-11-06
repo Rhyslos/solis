@@ -78,6 +78,8 @@ pub enum Change {
     PlayClip(EntityId, String, bool),
     /// `stopAnimation`: stop the entity's Sprite where it is.
     StopClip(EntityId),
+    /// `setFlip`: mirror the entity's Sprite across and down.
+    Flip(EntityId, bool, bool),
     /// An animator's own file setting one of its parameters, by name.
     AnimatorSet(EntityId, String, crate::host::AnimatorValue),
     /// An animator's own file putting it straight into a state, by name.
@@ -514,6 +516,15 @@ impl Host for ViewHost {
         if self.kept.room() {
             let order = self.order();
             self.kept.changes.push((order, Change::StopClip(which)));
+        }
+    }
+
+    fn set_flip(&mut self, which: EntityId, across: bool, down: bool) {
+        if self.kept.room() {
+            let order = self.order();
+            self.kept
+                .changes
+                .push((order, Change::Flip(which, across, down)));
         }
     }
 

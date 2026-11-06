@@ -138,6 +138,19 @@ impl World {
         }
     }
 
+    /// Mirrors `id`'s Sprite (game code's `setFlip`): `across` left for
+    /// right, `down` upside down. The same as it is changes nothing.
+    pub fn set_flip(&mut self, id: EntityId, across: bool, down: bool) {
+        if let Some(&entity) = self.by_id.get(&id)
+            && let Ok(mut sprite) = self.ecs.get::<&mut Sprite>(entity)
+            && (sprite.flip_x, sprite.flip_y) != (across, down)
+        {
+            sprite.flip_x = across;
+            sprite.flip_y = down;
+            self.touched = true;
+        }
+    }
+
     /// Moves every playing Sprite's clip on by `dt` seconds times its own
     /// speed and its clip's, and gives back what happened: the events
     /// passed and the clips finished, by entity ID, each entity's in the
