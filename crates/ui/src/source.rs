@@ -121,6 +121,9 @@ pub struct ElementSource {
     pub children: Option<Block>,
     /// What it does (a button's `{ }`), inside the braces.
     pub action: Option<Range<usize>>,
+    /// Where its kind, value and a dropdown's choices end: a new `[ ]`
+    /// goes here.
+    pub head_end: usize,
 }
 
 /// Code in a view that isn't a piece.
@@ -285,7 +288,11 @@ fn tokens(text: &str) -> Vec<Token> {
                             }
                             _ => plain = false,
                         }
-                        i += 2;
+                        // Past the backslash and the whole letter after it.
+                        i = (i + 2).min(b.len());
+                        while !text.is_char_boundary(i) {
+                            i += 1;
+                        }
                     }
                     b'{' if b.get(i + 1).is_some_and(|n| {
                         n.is_ascii_alphabetic() || matches!(n, b'(' | b'#' | b'"')
@@ -536,6 +543,10 @@ impl Reader<'_> {
                     // `text = 3;` is code, not a piece.
                     !(self.is_sym(1, '=') || self.is_sym(1, '.') || self.is_sym(1, '('))
                 }
+                // A game's own piece: `TodoRow [w 200] { label = x; }`.
+                Tk::Word(w) if w.starts_with(|c: char| c.is_ascii_uppercase()) => {
+                    self.is_sym(1, '[') || self.is_sym(1, '{') || self.is_sym(1, ';')
+                }
                 _ => false,
             };
             if element {
@@ -609,6 +620,7 @@ impl Reader<'_> {
                 }
             }
         }
+        let head_end = self.end().max(start + kind.len());
         let styles = if self.is_sym(0, '[') {
             Some(self.style_list()?)
         } else {
@@ -628,7 +640,10 @@ impl Reader<'_> {
             }
         } else if self.is_sym(0, ';') {
             self.at += 1;
-        } else {
+        } else if !(matches!(kind.as_str(), "input" | "textarea")
+            && self.is_word(0, "enter")
+            && self.is_sym(1, '{'))
+        {
             return Err(format!("a {kind} ends with ; or {{ }}"));
         }
         if self.is_word(0, "enter") && self.is_sym(1, '{') {
@@ -643,6 +658,7 @@ impl Reader<'_> {
             styles,
             children,
             action,
+            head_end,
         })
     }
 }
@@ -721,6 +737,11 @@ pub fn parse(text: &str) -> Result<Vec<ScreenSource>, String> {
 
 // ---------------------------------------------------------------- changing
 
+/// The line end `text` uses: Windows' `\r\n` if it has one, else `\n`.
+fn eol(text: &str) -> &'static str {
+    if text.contains("\r\n") { "\r\n" } else { "\n" }
+}
+
 /// The spaces at the start of the line `at` is on.
 fn indent_at(text: &str, at: usize) -> &str {
     let line_start = text[..at.min(text.len())].rfind('\n').map_or(0, |i| i + 1);
@@ -781,11 +802,8 @@ pub fn set_style(text: &str, piece: &ElementSource, name: &str, value: Option<&s
             }
         },
         None => {
-            // After the value, or the kind.
-            let after = piece
-                .arg
-                .as_ref()
-                .map_or(piece.span.start + piece.kind.len(), |a| a.span.end);
+            // After the value (and a dropdown's choices), or the kind.
+            let after = piece.head_end;
             replaced(text, after..after, &format!(" [{item}]"))
         }
     }
@@ -871,7 +889,7 @@ fn reindented(text: &str, piece: &ElementSource, indent: &str) -> String {
             }
         })
         .collect::<Vec<_>>()
-        .join("\n")
+        .join(eol(text))
 }
 
 /// Where a new piece goes in `block` at `index` among its pieces: the
@@ -919,13 +937,14 @@ pub fn insert_piece(text: &str, block: &Block, index: usize, piece_text: &str) -
     let body: Vec<String> = piece_text.lines().map(|l| format!("{indent}{l}")).collect();
     let line_start = text[..at].rfind('\n').map_or(0, |i| i + 1);
     let on_own_line = at == line_start;
-    let joined = body.join("\n");
+    let nl = eol(text);
+    let joined = body.join(nl);
     if on_own_line {
-        replaced(text, at..at, &format!("{joined}\n"))
+        replaced(text, at..at, &format!("{joined}{nl}"))
     } else {
         // A one-line block (`row { text "a"; }`): on its own line inside.
         let outer = indent_at(text, at);
-        replaced(text, at..at, &format!("\n{joined}\n{outer}"))
+        replaced(text, at..at, &format!("{nl}{joined}{nl}{outer}"))
     }
 }
 

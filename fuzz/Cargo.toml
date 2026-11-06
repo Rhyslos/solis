@@ -26,6 +26,7 @@ reflect = { path = "../crates/reflect" }
 updater = { path = "../crates/updater" }
 sound = { path = "../crates/sound" }
 animation = { path = "../crates/animation" }
+ui = { path = "../crates/ui" }
 tiles = { path = "../crates/tiles" }
 
 # Its own workspace, so the engine's never builds it.
@@ -183,6 +184,13 @@ bench = false
 [[bin]]
 name = "atlas"
 path = "fuzz_targets/atlas.rs"
+test = false
+doc = false
+bench = false
+
+[[bin]]
+name = "screen_source"
+path = "fuzz_targets/screen_source.rs"
 test = false
 doc = false
 bench = false

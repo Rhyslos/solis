@@ -173,11 +173,10 @@ pub fn code() -> DockState<Panel> {
 /// │          │ Library · Console  │ Hints │
 /// └──────────┴────────────────────┴───────┘
 /// ```
+///
+/// The canvas and Elements come with a screen: they open when one does.
 pub fn ui_layout() -> DockState<Panel> {
-    let mut dock = layout::standard();
-    layout::open_first_beside(&mut dock, Panel::Canvas, Panel::Viewport);
-    layout::open_first_beside(&mut dock, Panel::Elements, Panel::Area);
-    dock
+    layout::standard()
 }
 
 /// Every workspace's layout and which one is in use, as saved between

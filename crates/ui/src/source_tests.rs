@@ -244,3 +244,31 @@ proptest::proptest! {
         }
     }
 }
+
+#[test]
+fn review_findings_stay_fixed() {
+    // A backslash before a letter of more than one byte: no panic.
+    assert!(parse("assembly A { view { text \"caf\\é\"; } }").is_ok());
+    // A dropdown's new [ ] goes after its choices, so Lust still reads it.
+    let text = "assembly A {\n    view {\n        dropdown size in [\"S\", \"M\"];\n    }\n}\n";
+    let d = view(text).at(&[0]).unwrap().clone();
+    let out = set_style(text, &d, "bold", None);
+    assert!(
+        out.contains("dropdown size in [\"S\", \"M\"] [bold];"),
+        "{out}"
+    );
+    assert!(parse(&out).is_ok());
+    // An input with enter { } and no ; reads.
+    let text = "assembly A {\n    view {\n        input name [width 100] enter {\n            go();\n        }\n        text \"after\";\n    }\n}\n";
+    assert_eq!(view(text).pieces.len(), 2);
+    // A game's own piece is one piece.
+    let text = "assembly A {\n    view {\n        TodoRow [width 200] { label = \"x\"; }\n        text \"after\";\n    }\n}\n";
+    let v = view(text);
+    assert_eq!(v.at(&[0]).unwrap().kind, "TodoRow");
+    assert_eq!(v.at(&[1]).unwrap().kind, "text");
+    // Windows line ends stay Windows line ends.
+    let crlf = MENU.replace('\n', "\r\n");
+    let column = view(&crlf).at(&[0, 0]).unwrap().children.clone().unwrap();
+    let out = insert_piece(&crlf, &column, 0, "text \"new\";");
+    assert!(!out.replace("\r\n", "").contains('\n'), "no bare \\n");
+}

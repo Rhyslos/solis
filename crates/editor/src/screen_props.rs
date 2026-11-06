@@ -151,7 +151,7 @@ pub(crate) fn screen_properties(ui: &mut Ui, doc: &mut ScreenDoc) -> bool {
                     ui.horizontal(|ui| {
                         ui.label(RichText::new(look).monospace());
                         if ui
-                            .small_button("✕")
+                            .small_button("Remove")
                             .on_hover_text("No hover look")
                             .clicked()
                         {
@@ -231,6 +231,28 @@ pub(crate) fn screen_properties(ui: &mut Ui, doc: &mut ScreenDoc) -> bool {
     changed
 }
 
+/// A number being dragged is kept between frames (so a drag adds up),
+/// and saved once, when the drag ends or a typed number is entered.
+fn kept_while_dragged(
+    ui: &Ui,
+    drag: &egui::Response,
+    id: egui::Id,
+    n: f32,
+    save: impl FnOnce() -> bool,
+) -> bool {
+    if drag.dragged() || drag.has_focus() {
+        ui.data_mut(|d| d.insert_temp(id, n));
+    }
+    let done = drag.drag_stopped()
+        || (drag.changed() && !drag.dragged() && !drag.has_focus())
+        || drag.lost_focus();
+    if done {
+        ui.data_mut(|d| d.remove::<f32>(id));
+        return save();
+    }
+    false
+}
+
 /// A grey heading.
 fn section(ui: &mut Ui, title: &str) {
     ui.add_space(8.0);
@@ -294,14 +316,16 @@ fn size_field(
             Some("") | Some("fill") => "fill",
             Some(_) => "number",
         };
-        let mut n: f32 = now.and_then(|v| v.trim().parse().ok()).unwrap_or(100.0);
+        let id = egui::Id::new(("screen size", name, piece.span.start));
+        let written: f32 = now.and_then(|v| v.trim().parse().ok()).unwrap_or(100.0);
+        let mut n: f32 = ui.data(|d| d.get_temp(id)).unwrap_or(written);
         let drag = ui.add_enabled(
             mode == "number",
             egui::DragValue::new(&mut n).range(0.0..=8192.0).speed(1.0),
         );
-        if drag.drag_stopped() || (drag.changed() && !drag.dragged()) {
-            changed |= doc.set_style(name, Some(&format!("{}", n.round())));
-        }
+        changed |= kept_while_dragged(ui, &drag, id, n, || {
+            doc.set_style(name, Some(&format!("{}", n.round())))
+        });
         for (m, label, hint) in [
             ("number", "set", "A size in the screen's pixels"),
             ("fill", "fill", "As big as the room it has"),
@@ -343,7 +367,10 @@ fn number_field(
             ui.label(RichText::new("(code)").color(theme::TEXT_WEAK));
             return;
         }
-        let mut n = written.unwrap_or(default);
+        let id = egui::Id::new(("screen number", name, piece.span.start));
+        let mut n: f32 = ui
+            .data(|d| d.get_temp(id))
+            .unwrap_or(written.unwrap_or(default));
         let range = if name == "opacity" {
             0.0..=1.0
         } else {
@@ -351,14 +378,14 @@ fn number_field(
         };
         let speed = if name == "opacity" { 0.01 } else { 1.0 };
         let drag = ui.add(egui::DragValue::new(&mut n).range(range).speed(speed));
-        if drag.drag_stopped() || (drag.changed() && !drag.dragged()) {
+        changed |= kept_while_dragged(ui, &drag, id, n, || {
             let v = if name == "opacity" {
                 format!("{:.2}", n)
             } else {
                 format!("{}", n.round())
             };
-            changed |= doc.set_style(name, Some(&v));
-        }
+            doc.set_style(name, Some(&v))
+        });
         if written.is_some() {
             if ui
                 .small_button("↺")

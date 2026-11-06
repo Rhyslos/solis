@@ -552,9 +552,15 @@ fn interact(
             Some(d) => Some(d),
             None => match piece_at(doc, drawn, start) {
                 Some(i) => {
+                    // The piece dragged is the one moved: first of those
+                    // picked (or the only one, if it wasn't picked).
                     let file = drawn.pieces[i].0.clone();
-                    if !doc.picked.contains(&file) {
-                        doc.picked = vec![file];
+                    match doc.picked.iter().position(|p| *p == file) {
+                        Some(k) => {
+                            let it = doc.picked.remove(k);
+                            doc.picked.insert(0, it);
+                        }
+                        None => doc.picked = vec![file],
                     }
                     Some(Drag::Move)
                 }
@@ -603,7 +609,8 @@ fn interact(
                     doc.block()?.at(parent).map(|e| e.kind == "canvas")
                 });
                 if parent_canvas == Some(true) {
-                    // On a canvas: moved by its x and y.
+                    // On a canvas: moved by its x and y (the one dragged).
+                    doc.picked.truncate(1);
                     let total = at - drag_origin(ui, response, at);
                     let path = doc.picked[0].clone();
                     let (x, y) = doc

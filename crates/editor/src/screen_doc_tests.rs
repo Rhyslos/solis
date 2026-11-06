@@ -175,3 +175,34 @@ fn a_word_alone_colour_is_swapped_in_one_step() {
     assert!(d.restyle(&["blue", "red"], &[("green", None)]));
     assert!(d.text.contains("button \"Resume\" [green] {"), "{}", d.text);
 }
+
+#[test]
+fn review_findings_in_the_document_stay_fixed() {
+    // Duplicating two leaves the copies picked, not the originals.
+    let mut d = doc();
+    d.picked = vec![vec![0, 0, 0], vec![0, 0, 2]];
+    assert!(d.duplicate_picked());
+    let mut picked = d.picked.clone();
+    picked.sort();
+    assert_eq!(picked, vec![vec![0, 0, 1], vec![0, 0, 4]]);
+    let words = |d: &ScreenDoc, p: &[usize]| {
+        d.piece(p)
+            .unwrap()
+            .arg
+            .as_ref()
+            .unwrap()
+            .words
+            .clone()
+            .unwrap()
+    };
+    assert_eq!(words(&d, &[0, 0, 1]), "Paused");
+    assert_eq!(words(&d, &[0, 0, 4]), "Quit");
+    // Undo forgets places, which would name other pieces now.
+    d.hidden.insert(vec![0, 0, 4]);
+    assert!(d.undo());
+    assert!(d.picked.is_empty() && d.hidden.is_empty());
+    // A change that would break the file is refused.
+    d.picked = vec![vec![0, 0, 1]];
+    assert!(!d.set_style("size", Some("[")));
+    assert_eq!(d.text, MENU);
+}

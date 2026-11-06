@@ -119,7 +119,9 @@ pub(crate) fn matched(block: &Block, node: &Node) -> Vec<(Vec<usize>, Vec<usize>
                     let Some(n) = node.children.get(child) else {
                         return;
                     };
-                    if n.kind != e.kind {
+                    // A game's own piece (`TodoRow`) is a "piece" in the view.
+                    let game_piece = e.kind.starts_with(|c: char| c.is_ascii_uppercase());
+                    if n.kind != e.kind && !(game_piece && n.kind == "piece") {
                         return;
                     }
                     file.push(i);
@@ -199,6 +201,11 @@ impl ScreenDoc {
         if text == self.text {
             return false;
         }
+        // A change that leaves the screen unreadable is refused: the
+        // canvas never saves a broken file.
+        if read(&text, &self.screen).is_err() && self.source.is_ok() {
+            return false;
+        }
         let before = std::mem::replace(&mut self.text, text);
         self.undo.push(before);
         if self.undo.len() > MAX_UNDO {
@@ -223,6 +230,14 @@ impl ScreenDoc {
         self.locked.retain(alive);
     }
 
+    /// Forgets what's picked, hidden and locked: after pieces were added,
+    /// taken out or moved, their places name other pieces.
+    fn forget_places(&mut self) {
+        self.picked.clear();
+        self.hidden.clear();
+        self.locked.clear();
+    }
+
     /// Undoes the last change; whether there was one.
     pub(crate) fn undo(&mut self) -> bool {
         let Some(before) = self.undo.pop() else {
@@ -230,6 +245,7 @@ impl ScreenDoc {
         };
         self.redo.push(std::mem::replace(&mut self.text, before));
         self.read_again();
+        self.forget_places();
         self.behind = true;
         true
     }
@@ -241,6 +257,7 @@ impl ScreenDoc {
         };
         self.undo.push(std::mem::replace(&mut self.text, after));
         self.read_again();
+        self.forget_places();
         self.behind = true;
         true
     }
@@ -389,7 +406,7 @@ impl ScreenDoc {
         }
         let changed = self.change(text);
         if changed {
-            self.picked.clear();
+            self.forget_places();
             self.behind = true;
         }
         changed
@@ -400,9 +417,12 @@ impl ScreenDoc {
         let mut picked = self.picked.clone();
         picked.sort();
         picked.dedup();
+        // A piece inside another picked one is copied with it.
+        let all = picked.clone();
+        picked.retain(|p| !all.iter().any(|q| q != p && p.starts_with(q)));
         picked.sort_by(|a, b| b.cmp(a));
         let mut text = self.text.clone();
-        let mut copies = Vec::new();
+        let mut copies: Vec<Vec<usize>> = Vec::new();
         for path in &picked {
             let Some((parent, own)) = path.split_last().map(|(o, p)| (p.to_vec(), *o)) else {
                 continue;
@@ -430,12 +450,21 @@ impl ScreenDoc {
                 .collect::<Vec<_>>()
                 .join("\n");
             text = source::insert_piece(&text, block, own + 1, &copy);
+            // Copies made already, after this one in the same block or
+            // inside a piece after it, move down one.
+            for c in &mut copies {
+                if c.len() > parent.len() && c.starts_with(&parent) && c[parent.len()] > own {
+                    c[parent.len()] += 1;
+                }
+            }
             let mut at = parent;
             at.push(own + 1);
             copies.push(at);
         }
         let changed = self.change(text);
         if changed {
+            self.hidden.clear();
+            self.locked.clear();
             self.picked = copies;
             self.behind = true;
         }
@@ -469,6 +498,8 @@ impl ScreenDoc {
                 .and_then(|b| b.block_at(&into))
                 .map_or(0, |b| b.pieces.len());
             into.push(index.min(len.saturating_sub(1)));
+            self.hidden.clear();
+            self.locked.clear();
             self.picked = vec![into];
             self.behind = true;
         }
@@ -480,6 +511,7 @@ impl ScreenDoc {
     pub(crate) fn taken_in(&mut self, text: String) {
         self.saved = text.clone();
         if self.change(text) {
+            self.forget_places();
             self.behind = true;
         }
     }
