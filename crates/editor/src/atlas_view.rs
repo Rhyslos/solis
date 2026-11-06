@@ -95,17 +95,19 @@ fn crop_list(
             out.changed = true;
         }
     });
-    if let Some(picture) = picture {
-        if ui
+    if let Some(picture) = picture
+        && ui
             .button("Crop every tile")
-            .on_hover_text("A crop for every grid cell with something drawn in it, named by its column and row.")
+            .on_hover_text(
+                "A crop for every grid cell with something drawn in it, named by its column and \
+                 row.",
+            )
             .clicked()
-        {
-            let (rgba, size) = (picture.rgba, picture.size);
-            let added = editor.crop_every_tile(size, &|r| filled(rgba, size, r));
-            out.changed |= added > 0;
-            out.said = Some(format!("Atlas Crop: added {added} crops."));
-        }
+    {
+        let (rgba, size) = (picture.rgba, picture.size);
+        let added = editor.crop_every_tile(size, &|r| filled(rgba, size, r));
+        out.changed |= added > 0;
+        out.said = Some(format!("Atlas Crop: added {added} crops."));
     }
     ui.separator();
     if editor.atlas.crops.is_empty() {
