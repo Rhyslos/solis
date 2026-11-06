@@ -103,8 +103,58 @@ type Reader = fn(&str) -> Result<(), String>;
 /// editor's own limit for that kind of file).
 fn reader_for(path: &Path) -> Option<(&'static dyn Versioned, Reader, u64)> {
     let name = path.file_name()?.to_str()?.to_ascii_lowercase();
-    let extension = name.rsplit_once('.').map_or("", |(_, e)| e);
+    // Lust data files Solis makes (decision 0081): by the word before
+    // `.lst` (the phase review: the check used to leave them out).
+    let extension = match reflect::data_files::kind_of(path) {
+        Some(kind) => kind,
+        None => name.rsplit_once('.').map_or("", |(_, e)| e),
+    };
     Some(match extension {
+        "tilemap" | "soltilemap" => (
+            &tiles::map_file::FORMAT,
+            |text| {
+                tiles::map_file::read(text)
+                    .map(drop)
+                    .map_err(|e| e.to_string())
+            },
+            tiles::map_file::MAX_BYTES as u64,
+        ),
+        "tileset" | "soltileset" => (
+            &tiles::tileset::FORMAT,
+            |text| {
+                tiles::tileset::read(text)
+                    .map(drop)
+                    .map_err(|e| e.to_string())
+            },
+            tiles::tileset::MAX_BYTES as u64,
+        ),
+        "atlas" => (
+            &animation::atlas::FORMAT,
+            |text| {
+                animation::atlas::read(text)
+                    .map(drop)
+                    .map_err(|e| e.to_string())
+            },
+            animation::atlas::MAX_BYTES as u64,
+        ),
+        "solanim" => (
+            &animation::animator_file::FORMAT,
+            |text| {
+                animation::animator_file::read(text)
+                    .map(drop)
+                    .map_err(|e| e.to_string())
+            },
+            animation::animator_file::MAX_BYTES as u64,
+        ),
+        "solframes" => (
+            &animation::frames_file::FORMAT,
+            |text| {
+                animation::frames_file::read(text)
+                    .map(drop)
+                    .map_err(|e| e.to_string())
+            },
+            animation::frames_file::MAX_BYTES as u64,
+        ),
         "solarea" | "solassembly" => (
             &area::text::FORMAT,
             |text| {
@@ -536,6 +586,11 @@ pub(crate) fn workbench_for(
     w.set_rust_components(crate::sample_game::rust_components(&assets).0);
     w.set_program(program);
     w.set_bindings(crate::play_files::load_bindings(root).0);
+    // The project's 2D settings (tile size, view size) and buses, as the
+    // editor opens it with: a 2D game's play depends on them (the phase
+    // review).
+    w.set_pixels(crate::play_files::load_pixels(root).0);
+    w.set_mixer(crate::play_files::load_mixer(root).0);
     let (items, folders) = crate::project::Projects::library(&db.listing(), |_| None);
     // Every assembly, so game code can spawn any of them: read once for
     // all of a check's recordings (the Phase 8 review).

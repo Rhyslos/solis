@@ -1013,3 +1013,15 @@ fn the_time_of_day_runs_with_the_game_and_game_code_can_set_it() {
     other.set_day_shift(shift);
     assert_eq!(other.time_of_day(), world.time_of_day());
 }
+
+#[test]
+fn a_shift_that_rounds_to_a_whole_day_is_midnight() {
+    // The phase review: a hair below 0 wraps to exactly 24.0 in
+    // floating point, which saves refuse.
+    assert_eq!((-1e-17f64).rem_euclid(24.0), 24.0, "the rounding itself");
+    let mut world = World::from_area(&area::Area::new());
+    world.set_day_shift(-1e-17);
+    assert_eq!(world.day_shift(), 0.0);
+    world.set_day_shift(25.0);
+    assert_eq!(world.day_shift(), 1.0);
+}

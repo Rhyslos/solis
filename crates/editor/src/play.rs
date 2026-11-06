@@ -529,6 +529,13 @@ impl Workbench {
             let landing = std::time::Instant::now();
             failures.extend(self.land_edits(time, seconds));
             code += landing.elapsed();
+            // Game code showed or hid a screen last tick: the screens run
+            // again now, so whether a menu has the keys this tick follows
+            // the game itself, however many ticks a frame runs (the phase
+            // review: a replay could otherwise stop matching).
+            if self.screens_out_of_step() {
+                self.refresh_game_screens();
+            }
             let Some(playing) = &mut self.playing else {
                 break;
             };

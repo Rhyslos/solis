@@ -27,6 +27,11 @@ What changed in each version, for people using Solis. Newest first.
 
 ### Fixed
 
+- **Where parts meet** (the phase review, correctness):
+  - **Replays match however many ticks a frame runs:** a menu shown by game code takes the keys from the next tick, not the next frame. Before, a play recorded at a low frame rate could let a key through to the game that its replay (or the project check) held back, and the replay stopped matching.
+  - **The project check plays with the project's own 2D settings and buses**, as the editor does. Before, a 2D project with its own tile size played differently in the check.
+  - **The project check reads tile maps, tilesets, Atlas Crop files, animators and clips too**, so a build that can't read them any more doesn't check out.
+  - **`World:setTimeOfDay` exactly at the current hour** could make a save that Solis then called damaged (a rounding of 24 hours). It's midnight now, and such saves load.
 - **Steadier with damaged or huge files** (the phase review, stability):
   - An Aseprite file whose cels together would take more than 256 MB is refused instead of filling the memory. Cels linked to big pictures far off the canvas are no longer drawn pixel by pixel, and a file holds at most 65,536 cels.
   - A tile map's layers and values together take at most 512 MB, so a few lines of a map file can't ask for gigabytes. Growing a map past that is refused. Big maps keep fewer undo steps.
