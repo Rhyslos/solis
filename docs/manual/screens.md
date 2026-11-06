@@ -131,7 +131,7 @@ Use another entity (a "Menus" entity) for a second screen shown at the same time
 
 While a screen with buttons is shown, the game's own actions wait: only MenuMove, MenuChoose, **MenuBack** (Backspace, B) and **Pause** (P, Start) reach game code, so Space choosing a button doesn't also jump. Use MenuBack and Pause in game code to close a menu or open the pause menu: `is Input:pressed(Action.Pause)? then { showScreen(Screen.PauseMenu); }`. They're ordinary [input actions](input.md), rebindable in **Edit > Input actions…**.
 
-**What a screen can use:** `column`, `row`, `stack`, `space`, `text`, `button`, `progress` bars, and `canvas` with `box`, `circle` and `line` placed by `x` and `y`. Styles: `pad` (and `padX`, `padTop`…), `gap`, `width` and `height` (a number, or `fill`), `grow`, `size`, `bold`, the alignment words, colour words (`white`, `red5`, `gray9`, `#ff8800`), `background`, `round`, `border` and `opacity`. Other pieces are laid out but not drawn yet.
+**What a screen can use:** `column`, `row`, `stack`, `space`, `text`, `button`, `progress` bars, and `canvas` with `box`, `circle` and `line` placed by `x` and `y` (anything reaching past the canvas's edges is cut off there, so a needle or a bar can't spill out of its dial). Styles: `pad` (and `padX`, `padTop`…), `gap`, `width` and `height` (a number, or `fill`), `grow`, `size`, `bold`, the alignment words, colour words (`white`, `red5`, `gray9`, `#ff8800`), `background`, `round`, `border` and `opacity`. Other pieces are laid out but not drawn yet.
 
 ## Settings
 

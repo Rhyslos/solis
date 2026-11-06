@@ -6,7 +6,7 @@
 
 use wgpu::util::DeviceExt as _;
 
-/// One shape as the shader reads it (96 bytes).
+/// One shape as the shader reads it (112 bytes).
 #[repr(C)]
 #[derive(Debug, Clone, Copy, bytemuck::Pod, bytemuck::Zeroable)]
 pub struct UiInstance {
@@ -17,6 +17,8 @@ pub struct UiInstance {
     colour_a: [f32; 4],
     colour_b: [f32; 4],
     border: [f32; 4],
+    /// Where it may be drawn: left, top, right, bottom.
+    clip: [f32; 4],
 }
 
 /// The most shapes drawn at once (more are left out).
@@ -45,6 +47,7 @@ impl UiInstance {
             colour_a: shape.colours[0].0,
             colour_b: shape.colours[1].0,
             border: shape.border.1.0,
+            clip: shape.clip,
         }
     }
 }
@@ -106,7 +109,7 @@ impl UiPipeline {
         });
         let attributes = wgpu::vertex_attr_array![
             0 => Float32x4, 1 => Float32x4, 2 => Float32x4,
-            3 => Float32x4, 4 => Float32x4, 5 => Float32x4
+            3 => Float32x4, 4 => Float32x4, 5 => Float32x4, 6 => Float32x4
         ];
         let pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
             label: Some("game ui pipeline"),
@@ -284,8 +287,8 @@ mod tests {
     use super::*;
 
     #[test]
-    fn an_instance_is_96_bytes_and_says_its_kind_and_flags() {
-        assert_eq!(std::mem::size_of::<UiInstance>(), 96);
+    fn an_instance_is_112_bytes_and_says_its_kind_and_flags() {
+        assert_eq!(std::mem::size_of::<UiInstance>(), 112);
         let screen = ui::sample::hud(ui::ScaleRule::WholeSteps, 0.5);
         let shapes = ui::layout(&screen, [1920, 1080], Some(4));
         let i = UiInstance::of(&shapes[1]);

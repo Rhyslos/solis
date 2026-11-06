@@ -53,7 +53,14 @@ pub struct Shape {
     pub border: (f32, Colour),
     /// Whether its edges are hard, for pixel art (no smoothing).
     pub crisp: bool,
+    /// Where it may be drawn (left, top, right, bottom): what's outside is
+    /// cut off, as a canvas cuts off what's inside it. [`UNCLIPPED`] for
+    /// anywhere.
+    pub clip: [f32; 4],
 }
+
+/// A [`Shape::clip`] that cuts nothing off.
+pub const UNCLIPPED: [f32; 4] = [-1.0e9, -1.0e9, 1.0e9, 1.0e9];
 
 /// How a screen designed at `design` is scaled onto a screen `screen`
 /// pixels big. `pixel_step` is the whole number the game's picture is
@@ -162,7 +169,7 @@ pub fn layout_with(
         fonts,
     };
     for e in &screen.elements {
-        walking.walk(e, whole, 1.0, 0);
+        walking.walk(e, whole, 1.0, 0, UNCLIPPED);
     }
     // A view written in Lust: laid out in design pixels as wide as the
     // screen's shape, then drawn like elements.
@@ -175,7 +182,7 @@ pub fn layout_with(
             }
         };
         for e in &elements {
-            walking.walk(e, whole, 1.0, 0);
+            walking.walk(e, whole, 1.0, 0, UNCLIPPED);
         }
     }
     out
@@ -283,6 +290,9 @@ pub fn layout_at(
     let mut shapes = layout_with(screen, size, pixel_step, fonts);
     for s in &mut shapes {
         s.rect = [s.rect[0] + x, s.rect[1] + y, s.rect[2] + x, s.rect[3] + y];
+        if s.clip != UNCLIPPED {
+            s.clip = [s.clip[0] + x, s.clip[1] + y, s.clip[2] + x, s.clip[3] + y];
+        }
         if s.kind != ShapeKind::Letter {
             s.from = [s.from[0] + x, s.from[1] + y];
             s.to = [s.to[0] + x, s.to[1] + y];
@@ -292,7 +302,7 @@ pub fn layout_at(
 }
 
 impl Walk<'_> {
-    fn walk(&mut self, e: &Element, parent: [f32; 4], opacity: f32, depth: usize) {
+    fn walk(&mut self, e: &Element, parent: [f32; 4], opacity: f32, depth: usize, clip: [f32; 4]) {
         let (scale, crisp) = (self.scale, self.crisp);
         if !e.shown || depth >= MAX_DEPTH || *self.count >= MAX_ELEMENTS {
             return;
@@ -327,6 +337,7 @@ impl Walk<'_> {
             stretch,
             border,
             crisp,
+            clip,
         };
         match &e.kind {
             ElementKind::Group => {}
@@ -416,8 +427,19 @@ impl Walk<'_> {
                 }
             }
         }
+        // A canvas cuts off what's inside it at its edges.
+        let inside = if e.clips {
+            [
+                clip[0].max(rect[0]),
+                clip[1].max(rect[1]),
+                clip[2].min(rect[2]),
+                clip[3].min(rect[3]),
+            ]
+        } else {
+            clip
+        };
         for c in &e.children {
-            self.walk(c, rect, opacity, depth + 1);
+            self.walk(c, rect, opacity, depth + 1, inside);
         }
     }
 }

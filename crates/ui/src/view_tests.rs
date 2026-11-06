@@ -44,12 +44,30 @@ fn on() -> Style {
     Style::Flag(true)
 }
 
-/// Where each element went: [x, y, w, h].
+/// Where each element went: [x, y, w, h], those in a canvas's group
+/// (which cuts them off) put where they are on the screen.
 fn rects(elements: &[Element]) -> Vec<[f32; 4]> {
-    elements
+    flat(elements)
         .iter()
         .map(|e| [e.offset[0], e.offset[1], e.size[0], e.size[1]])
         .collect()
+}
+
+/// The elements, a canvas's group's own in its place, moved where they
+/// are on the screen.
+fn flat(elements: &[Element]) -> Vec<Element> {
+    let mut out = Vec::new();
+    for e in elements {
+        if e.clips {
+            for mut c in flat(&e.children) {
+                c.offset = [c.offset[0] + e.offset[0], c.offset[1] + e.offset[1]];
+                out.push(c);
+            }
+        } else {
+            out.push(e.clone());
+        }
+    }
+    out
 }
 
 #[test]
@@ -174,7 +192,7 @@ fn a_canvas_places_shapes_where_they_say() {
             ],
         )],
     );
-    let out = lay_out(&view, [400.0, 300.0], &mut Fixed);
+    let out = flat(&lay_out(&view, [400.0, 300.0], &mut Fixed));
     assert_eq!(
         rects(&out),
         vec![
@@ -625,4 +643,59 @@ fn the_focus_moves_to_the_nearest_button_that_way() {
     assert_eq!(next_focus(&odd, Some(2), [0.0, -1.0]), Some(0));
     assert_eq!(next_focus(&odd, Some(1), [0.0, 1.0]), Some(2));
     assert_eq!(next_focus(&[], None, [1.0, 0.0]), None);
+}
+
+#[test]
+fn a_canvas_cuts_off_its_shapes_at_its_edges() {
+    let shape = |kind: &str, x: f64, y: f64| {
+        node(
+            kind,
+            &[
+                ("x", n(x)),
+                ("y", n(y)),
+                ("width", n(40.0)),
+                ("height", n(40.0)),
+                ("background", Style::Text("red5".into())),
+            ],
+            vec![],
+        )
+    };
+    let view = node(
+        "view",
+        &[],
+        vec![node(
+            "column",
+            &[("pad", n(10.0))],
+            vec![node(
+                "canvas",
+                &[("width", n(100.0)), ("height", n(50.0))],
+                vec![shape("box", 80.0, 30.0)],
+            )],
+        )],
+    );
+    let screen = crate::Screen {
+        name: "Canvas".into(),
+        design: [400.0, 300.0],
+        scale: crate::ScaleRule::Keep,
+        elements: Vec::new(),
+        view: Some(view),
+        looks: Looks::default(),
+    };
+    let shapes = crate::layout(&screen, [400, 300], None);
+    let boxed = shapes
+        .iter()
+        .find(|s| s.rect[0] > 80.0)
+        .unwrap_or_else(|| panic!("the box: {shapes:?}"));
+    assert_eq!(boxed.rect, [90.0, 40.0, 130.0, 80.0]);
+    assert_eq!(boxed.clip, [10.0, 10.0, 110.0, 60.0], "the canvas's box");
+    // Laid out inside part of a screen, the cut moves with it.
+    let moved = crate::layout_at(&screen, [5, 7], [400, 300], None, None);
+    let boxed = moved.iter().find(|s| s.rect[0] > 85.0).unwrap();
+    assert_eq!(boxed.clip, [15.0, 17.0, 115.0, 67.0]);
+    // Outside a canvas nothing is cut.
+    let plain = crate::Screen {
+        view: Some(node("column", &[], vec![shape("box", 0.0, 0.0)])),
+        ..screen
+    };
+    assert!(crate::layout(&plain, [400, 300], None).iter().all(|s| s.clip == crate::UNCLIPPED));
 }
