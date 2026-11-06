@@ -39,6 +39,8 @@ pub enum FileKind {
     Tileset,
     /// A tile map (`.tilemap.lst`).
     TileMap,
+    /// A picture's crops (`.atlas.lst`, Atlas Crop).
+    Atlas,
     /// Anything else.
     Other,
 }
@@ -59,6 +61,7 @@ impl FileKind {
         match reflect::data_files::kind_of(path) {
             Some("tileset") => return Self::Tileset,
             Some("tilemap") => return Self::TileMap,
+            Some("atlas") => return Self::Atlas,
             _ => {}
         }
         let ext = path

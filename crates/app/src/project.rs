@@ -217,6 +217,7 @@ impl Projects {
                     FileKind::Animator => LibraryKind::Animator,
                     FileKind::Tileset => LibraryKind::Tileset,
                     FileKind::TileMap => LibraryKind::TileMap,
+                    FileKind::Atlas => LibraryKind::Atlas,
                     FileKind::Other => LibraryKind::Other,
                 },
                 // Files Solis doesn't know keep their whole name, so
@@ -420,6 +421,26 @@ impl Projects {
         if file.exists() {
             return Err("a file is already there".to_owned());
         }
+        if let Some(folder) = file.parent()
+            && !folder.is_dir()
+        {
+            return Err("its folder isn't there any more".to_owned());
+        }
+        asset_db::write_atomically(&file, text.as_bytes()).map_err(|e| e.to_string())
+    }
+
+    /// Saves an atlas file (`.atlas.lst`, inside the assets, a picture's
+    /// crops; decision 0089), making it if it isn't there. Version 1 is
+    /// the only one, so there's no older one to keep.
+    pub fn save_atlas(&self, path: &Path, text: &str) -> Result<(), String> {
+        let db = self.db.as_ref().ok_or("no project is open")?;
+        let plain = path
+            .components()
+            .all(|c| matches!(c, std::path::Component::Normal(_)));
+        if !reflect::data_files::is(path, animation::atlas::KIND) || !plain {
+            return Err("it isn't an atlas file in the assets".to_owned());
+        }
+        let file = db.project().assets().join(path);
         if let Some(folder) = file.parent()
             && !folder.is_dir()
         {

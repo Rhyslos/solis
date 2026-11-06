@@ -58,6 +58,8 @@ pub enum LibraryKind {
     Tileset,
     /// A tile map (`.tilemap.lst`, Phase 9, D4).
     TileMap,
+    /// A picture's crops (`.atlas.lst`, Atlas Crop).
+    Atlas,
     /// Anything else.
     Other,
 }
@@ -78,6 +80,7 @@ impl LibraryKind {
             Self::Animator => "Animator",
             Self::Tileset => "Tileset",
             Self::TileMap => "Tile map",
+            Self::Atlas => "Atlas crops",
             Self::Other => "File",
         }
     }
@@ -97,7 +100,8 @@ impl LibraryKind {
             | Self::SpriteClips
             | Self::Animator
             | Self::Tileset
-            | Self::TileMap => theme::kind::SPRITE,
+            | Self::TileMap
+            | Self::Atlas => theme::kind::SPRITE,
             Self::Other => theme::kind::OTHER,
         }
     }
@@ -114,6 +118,7 @@ impl LibraryKind {
             Self::SpriteSheet | Self::SpriteClips => Icon::Viewport,
             Self::Animator => Icon::Animator,
             Self::Tileset | Self::TileMap => Icon::Layers,
+            Self::Atlas => Icon::Viewport,
             Self::Other => Icon::Properties,
         }
     }
@@ -130,7 +135,10 @@ impl LibraryKind {
     /// it: a sprite's clips file opens its Clips and Frames tabs, an
     /// animator its Animator tab.
     pub fn opens_on_double_click(self) -> bool {
-        matches!(self, Self::SpriteClips | Self::Animator | Self::Tileset)
+        matches!(
+            self,
+            Self::SpriteClips | Self::Animator | Self::Tileset | Self::Atlas
+        )
     }
 }
 
@@ -307,6 +315,9 @@ pub(crate) enum LibraryRequest {
     /// Make a clips file beside the Aseprite file at this path (or open
     /// the one there), from its Properties (Phase 9, D3).
     MakeClipsFile(String),
+    /// Open the crops of the picture at this path in the Atlas Crop tab,
+    /// making its atlas file if it has none (decision 0089).
+    AtlasCrop(String),
     /// Add a sound file (by its asset ID) to a sound event's takes.
     AddTake(String, AssetId),
 }
@@ -898,6 +909,17 @@ fn item_actions(picked: Picked<'_>, state: &mut LibraryState, requests: &mut Vec
     response.context_menu(|ui| {
         ui.menu_button("New", |ui| new_items(ui, item.folder(), requests));
         ui.separator();
+        if matches!(item.kind, LibraryKind::Texture | LibraryKind::SpriteSheet)
+            && ui
+                .button("Atlas Crop…")
+                .on_hover_text(
+                    "Cut named pictures out of it, to use one sprite or a few on their own",
+                )
+                .clicked()
+        {
+            requests.push(LibraryRequest::AtlasCrop(item.path.clone()));
+            ui.close();
+        }
         if item.kind == LibraryKind::Sound && ui.button("Play").clicked() {
             requests.push(LibraryRequest::PlaySound(item.path.clone()));
             ui.close();

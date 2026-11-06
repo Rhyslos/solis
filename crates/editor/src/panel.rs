@@ -46,6 +46,9 @@ pub enum Panel {
     /// The tileset open (Phase 9, D5): its terrains, picture, slots and
     /// rules, beside the viewport while a `.tileset.lst` file is open.
     Tileset,
+    /// A picture's crops (decision 0089): beside the viewport while its
+    /// atlas file is open.
+    AtlasCrop,
     /// What's selected and what you can do with it (decision 0085): under
     /// Properties.
     Hints,
@@ -69,12 +72,13 @@ impl Panel {
 
     /// Panels that come and go with what's open (a clips file), never in
     /// [`Self::ALL`] or the Window menu, and never saved in a layout.
-    pub const OPEN_WITH_A_FILE: [Self; 5] = [
+    pub const OPEN_WITH_A_FILE: [Self; 6] = [
         Self::Clips,
         Self::Frames,
         Self::Animator,
         Self::Map,
         Self::Tileset,
+        Self::AtlasCrop,
     ];
 
     /// Panels taken out until what they show is built (decision 0070): a
@@ -108,6 +112,7 @@ impl Panel {
             Self::Animator => "Animator",
             Self::Map => "Map",
             Self::Tileset => "Tileset",
+            Self::AtlasCrop => "Atlas Crop",
             Self::Hints => "Hints",
         }
     }
@@ -131,6 +136,7 @@ impl Panel {
             Self::Animator => Icon::Animator,
             Self::Map => Icon::Layers,
             Self::Tileset => Icon::Layers,
+            Self::AtlasCrop => Icon::Viewport,
             Self::Hints => Icon::Info,
         }
     }

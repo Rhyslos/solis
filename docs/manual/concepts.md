@@ -158,6 +158,7 @@
 
 ## 2D
 
+- **Atlas crop:** a named part of a picture (one item from a sheet of them), cut out in the **Atlas Crop** tab and kept in a file beside the picture, which never changes. Game code names one `Picture.Sprites.Tools.Axe`. See [Atlas Crop](atlas-crop.md).
 - **2D in Solis:** flat things lying on the ground, seen from straight above by a camera with no perspective. They're in the same world as 3D, so light, sound, physics, saving and game code work on them too. Height (Z) says what's drawn over what. See [2D: the pixel-perfect view](2d-pixel-perfect.md).
 - **Pixel art:** pictures drawn one pixel at a time, at a small size, meant to be shown scaled up with every pixel kept square and sharp.
 - **Base resolution:** the size a 2D game is drawn at before it's scaled up to the screen, such as 480 × 270. Smaller shows chunkier pixels and less of the world.

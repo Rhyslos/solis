@@ -88,6 +88,17 @@ These work while the pointer is over the Tileset tab; see [Tilesets and autotili
 |---|---|
 | Undo or redo a change to the tileset | Ctrl + Z, Ctrl + Y |
 
+## The Atlas Crop tab (a picture's crops open)
+
+These work while the pointer is over the Atlas Crop tab; see [Atlas Crop](atlas-crop.md).
+
+| Action | Shortcut |
+|---|---|
+| Draw a crop | Drag with the left button on the picture |
+| Delete the picked crop | Delete |
+| Zoom, move the picture | Mouse wheel, middle-button drag |
+| Undo or redo a change to the crops | Ctrl + Z, Ctrl + Y |
+
 ## The Map tab (a tile map selected)
 
 These work while the pointer is over the Map tab; see [Tile maps](tile-maps.md).

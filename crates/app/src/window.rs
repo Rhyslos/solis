@@ -1033,6 +1033,14 @@ impl App {
                         ),
                     }
                 }
+                WorkbenchAction::SaveAtlas { path, text } => {
+                    if let Err(why) = self.projects.save_atlas(&path, &text) {
+                        self.workbench.log(
+                            LogLevel::Error,
+                            format!("Couldn't save {}: {why}.", path.display()),
+                        );
+                    }
+                }
                 WorkbenchAction::SaveTileset { path, text } => {
                     match self.projects.save_tileset(&path, &text) {
                         Ok(Some(copy)) => {

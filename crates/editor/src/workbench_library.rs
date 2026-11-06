@@ -91,6 +91,7 @@ impl Workbench {
         // code writes, so it could name a network share or a drive.
         let path_of = |request: &LibraryRequest| match request {
             LibraryRequest::Open(_, path)
+            | LibraryRequest::AtlasCrop(path)
             | LibraryRequest::Show(path)
             | LibraryRequest::PlaySound(path) => Some(path.clone()),
             _ => None,
@@ -131,6 +132,25 @@ impl Workbench {
             LibraryRequest::Open(LibraryKind::SpriteClips, path) => self.open_frames(&path),
             LibraryRequest::Open(LibraryKind::Animator, path) => self.open_animator(&path),
             LibraryRequest::Open(LibraryKind::Tileset, path) => self.open_tileset(&path),
+            LibraryRequest::AtlasCrop(picture) => self.open_atlas(&picture),
+            LibraryRequest::Open(LibraryKind::Atlas, path) => {
+                match self.viewport.sheets.atlases.get(&path) {
+                    Some(crate::sprite_sheets::AtlasState::Read(atlas, _)) => {
+                        let picture = animation::atlas::picture_path(&path, atlas);
+                        self.open_atlas(&picture);
+                    }
+                    Some(crate::sprite_sheets::AtlasState::Failed(why)) => self.log(
+                        LogLevel::Error,
+                        format!(
+                            "Couldn't open {path}: {why}. Fix it in a text editor, or delete it."
+                        ),
+                    ),
+                    None => self.log(
+                        LogLevel::Warning,
+                        format!("{path} is still being read; open it again in a moment."),
+                    ),
+                }
+            }
             LibraryRequest::NewAnimator(folder) => self.new_animator(&folder),
             LibraryRequest::NewTileset(folder) => self.new_tileset(&folder),
             LibraryRequest::NewTileMap(folder) => self.new_tile_map(&folder),
@@ -336,6 +356,7 @@ impl Workbench {
         self.viewport.sheets = std::sync::Arc::new(sheets);
         self.animator_read_again();
         self.tileset_read_again();
+        self.atlas_read_again();
     }
 
     /// The project's sprite sheets.

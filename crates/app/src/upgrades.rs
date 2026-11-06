@@ -66,8 +66,9 @@ pub(crate) mod tests {
 
     /// Every file format a project holds, for the notes and the tests that
     /// open the example files of every version (`tests/fixtures/`).
-    pub(crate) fn formats() -> [&'static dyn Versioned; 12] {
+    pub(crate) fn formats() -> [&'static dyn Versioned; 13] {
         [
+            &animation::atlas::FORMAT,
             &area::text::FORMAT,
             &area::pixels::FORMAT,
             &animation::frames_file::FORMAT,

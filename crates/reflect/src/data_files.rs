@@ -14,7 +14,7 @@ use std::path::Path;
 pub const LUST_EXTENSION: &str = "lst";
 
 /// Each kind of data file Solis writes, by the word before `.lst`.
-pub const KINDS: &[&str] = &["tilemap", "tileset"];
+pub const KINDS: &[&str] = &["atlas", "tilemap", "tileset"];
 
 /// The kind of data file at `path` (`tilemap` for `farm.tilemap.lst`), if
 /// it is one. Capitals in the name don't matter.

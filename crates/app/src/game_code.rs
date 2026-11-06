@@ -64,6 +64,8 @@ pub struct Animation {
     pub animators: Vec<script::animator_code::AnimatorNames>,
     /// Each tile map, for its own file.
     pub maps: Vec<script::map_code::MapNames>,
+    /// The pictures cut by Atlas Crop (`sprites/tools/Axe`).
+    pub pictures: Vec<String>,
 }
 
 impl Animation {
@@ -75,6 +77,7 @@ impl Animation {
             cues,
             animators: sheets.animator_names(),
             maps: sheets.map_names(),
+            pictures: sheets.picture_names(),
         }
     }
 }
@@ -177,6 +180,7 @@ impl GameCode {
             cues,
             animators,
             maps,
+            pictures,
         } = animation;
         let root = assets.parent();
         let names = script::project_names::Names {
@@ -192,6 +196,7 @@ impl GameCode {
                 .collect(),
             clips: clips.to_vec(),
             cues: cues.to_vec(),
+            pictures: pictures.to_vec(),
             // ui/pauseMenu.lst is the screen PauseMenu (as the screens'
             // program finds them).
             screens: asset_paths(&assets.join(script::screens::FOLDER), "lst")

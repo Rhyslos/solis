@@ -71,6 +71,15 @@ pub enum ArtState {
     Failed(String),
 }
 
+/// What the editor knows of one atlas file (`.atlas.lst`, Atlas Crop).
+#[derive(Debug, Clone, PartialEq)]
+pub enum AtlasState {
+    /// Read, with what was put right or left out.
+    Read(Arc<animation::atlas::Atlas>, Vec<String>),
+    /// Couldn't be read, and why.
+    Failed(String),
+}
+
 /// Whether `path` is a picture a tileset can take its art from.
 pub fn is_picture(path: &str) -> bool {
     let lower = path.to_ascii_lowercase();
@@ -95,6 +104,9 @@ pub struct SpriteSheets {
     /// Each tileset's picture (a PNG, JPEG or Aseprite file), by path
     /// inside the assets: read whole, for cutting into tiles.
     pub tile_art: HashMap<String, ArtState>,
+    /// Each atlas file (`.atlas.lst`, Atlas Crop), by path inside the
+    /// assets; its picture is read whole too (into `tile_art`).
+    pub atlases: HashMap<String, AtlasState>,
     /// Each sheet's, clips file's, animator's, tileset's, map's and
     /// picture's path, by asset ID.
     pub paths: HashMap<AssetId, String>,
@@ -198,6 +210,33 @@ impl SpriteSheets {
             .collect();
         all.sort_by(|a, b| a.path.cmp(&b.path));
         all
+    }
+
+    /// The pictures cut by Atlas Crop, as `picture/Crop` paths (the
+    /// picture's path without its extension), sorted, for the project
+    /// file (decision 0089).
+    pub fn picture_names(&self) -> Vec<String> {
+        let mut names: Vec<String> = self
+            .atlases
+            .iter()
+            .filter_map(|(path, a)| match a {
+                AtlasState::Read(atlas, _) => Some((path, atlas)),
+                AtlasState::Failed(_) => None,
+            })
+            .flat_map(|(path, atlas)| {
+                let picture = animation::atlas::picture_path(path, atlas);
+                let stem = picture
+                    .rsplit_once('.')
+                    .map_or(picture.as_str(), |(s, _)| s)
+                    .to_string();
+                atlas
+                    .crops
+                    .iter()
+                    .map(move |c| format!("{stem}/{}", c.name))
+            })
+            .collect();
+        names.sort();
+        names
     }
 
     /// The clips game code can name, as `sheet/clip` paths (the sheet's
