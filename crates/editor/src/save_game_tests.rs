@@ -257,9 +257,9 @@ fn saves_from_elsewhere_or_damaged_are_refused_and_nothing_changes() {
     // Damaged: cut short, a byte changed, a newer version, not a save.
     let mut damaged = vec![
         text[..text.len() / 2].to_string(),
-        text.replacen("solis save 6", "solis save 9", 1),
-        text.replacen("solis save 6", "solis save 2", 1),
-        text.replacen("solis save 6", "solis save 1", 1),
+        text.replacen("solis save 7", "solis save 9", 1),
+        text.replacen("solis save 7", "solis save 2", 1),
+        text.replacen("solis save 7", "solis save 1", 1),
         "hello".to_string(),
         String::new(),
     ];
@@ -294,12 +294,12 @@ fn saves_from_elsewhere_or_damaged_are_refused_and_nothing_changes() {
     assert!(Save::read(&"x".repeat(MAX_SAVE_BYTES + 1)).is_err());
     // The third review: this version's header with Windows line endings
     // or a space after it is damaged, not "from a newer Solis".
-    for header in ["solis save 6\r", "solis save 6 "] {
-        let why = Save::read(&text.replacen("solis save 6", header, 1)).unwrap_err();
+    for header in ["solis save 7\r", "solis save 7 "] {
+        let why = Save::read(&text.replacen("solis save 7", header, 1)).unwrap_err();
         assert!(why.contains("damaged"), "{header:?}: {why}");
     }
     assert!(
-        Save::read(&text.replacen("solis save 6", "solis save 9", 1))
+        Save::read(&text.replacen("solis save 7", "solis save 9", 1))
             .unwrap_err()
             .contains("newer")
     );
@@ -930,7 +930,7 @@ fn an_animator_s_state_and_values_survive_a_save() {
     run_to(&mut w, 8);
     assert_eq!(w.world().unwrap().animator_of(farmer).unwrap().0, "Walk");
     let text = w.save_text().expect("saved");
-    assert!(text.starts_with("solis save 6\n"));
+    assert!(text.starts_with("solis save 7\n"));
     assert!(text.contains("animators "), "{text}");
     assert!(text.contains("moving=s1 speed=n40200000"), "{text}");
     let saved = sums(&mut w);
@@ -1048,4 +1048,30 @@ fn a_tile_map_the_game_changed_survives_a_save() {
         run_to(&mut loaded, t);
         assert_eq!(sums(&mut loaded), sums(&mut w), "tick {t}");
     }
+}
+
+#[test]
+fn a_save_keeps_the_game_s_speed() {
+    let text = std::fs::read_to_string(save_fixtures().join("v7/harbour.solsave")).unwrap();
+    let save = Save::read(&text).unwrap();
+    assert_eq!(save.speed, 0.5);
+    assert_eq!(save.write(), text, "read back as written");
+    let older = std::fs::read_to_string(save_fixtures().join("v6/harbour.solsave")).unwrap();
+    assert_eq!(
+        Save::read(&older).unwrap().speed,
+        1.0,
+        "older saves run as usual"
+    );
+    let mut w = busy("Harbour");
+    w.play();
+    w.load_game(&text, "the save");
+    assert_eq!(w.world().unwrap().speed(), 0.5);
+    let time = w.world().unwrap().clock().time;
+    run_to(&mut w, 46);
+    let ran = w.world().unwrap().clock().time - time;
+    assert!((ran - 6.0 * world::TICK * 0.5).abs() < 1e-9, "{ran}");
+    // A speed past what Solis runs at is damage.
+    let mut fast = save.clone();
+    fast.speed = 9.0;
+    assert!(Save::read(&fast.write()).is_err());
 }

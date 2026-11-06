@@ -6,7 +6,7 @@
 //! opened) by a person:
 //!
 //! ```text
-//! solis save 6
+//! solis save 7
 //! project Harbour
 //! tick 1234
 //! time 4060000000000000
@@ -31,6 +31,8 @@
 //! …the map as the game has changed it (a tile map file)…
 //! objects 140
 //! …the game-wide objects' values, one block holding them (area text)…
+//! speed 16
+//! 3fe0000000000000 (the game's speed's exact bits; empty when 1)
 //! ```
 //!
 //! Physics is kept as each body's place and motion, never Rapier's own
@@ -49,9 +51,9 @@ use reflect::EntityId;
 use std::sync::Arc;
 
 /// The first line of a save this Solis writes and reads.
-const HEADER: &str = "solis save 6";
+const HEADER: &str = "solis save 7";
 /// The version in [`HEADER`].
-const SAVE_VERSION: u32 = 6;
+const SAVE_VERSION: u32 = 7;
 
 /// Save games' version and upgraders (Phase 8, C2; decision 0053): a save
 /// made by an earlier Solis loads in a later one, never refused just for
@@ -76,6 +78,7 @@ pub static FORMAT: reflect::upgrade::Format<Sections> = reflect::upgrade::Format
         animators_kept,
         tile_maps_kept,
         objects_kept,
+        speed_kept,
     ],
 };
 
@@ -91,7 +94,7 @@ pub fn save_reads(text: &str) -> Result<(), String> {
     Save::read(text).map(drop)
 }
 
-/// The most sections a save has (it writes six).
+/// The most sections a save has (it writes eleven).
 const MAX_SECTIONS: usize = 16;
 
 /// A save's sections as written (`name length`, then that much text),
@@ -161,6 +164,16 @@ fn objects_kept(sections: &mut Sections) -> Result<(), String> {
         return Err("it already has objects".into());
     }
     sections.list.push(("objects".into(), String::new()));
+    Ok(())
+}
+
+/// Version 6 to 7: version 6 had no game speed (game UI, M3c), so the
+/// game runs as usual.
+fn speed_kept(sections: &mut Sections) -> Result<(), String> {
+    if sections.list.iter().any(|(n, _)| n == "speed") {
+        return Err("it already has a speed".into());
+    }
+    sections.list.push(("speed".into(), String::new()));
     Ok(())
 }
 
@@ -264,6 +277,8 @@ pub(crate) struct Save {
     /// entity, `objects`, whose components are the objects. Empty when
     /// the game has none.
     pub(crate) objects: String,
+    /// How fast the game ran (`World:setGameSpeed`; 1 as usual).
+    pub(crate) speed: f64,
     /// What upgrading an older save couldn't carry over, for the Console
     /// (never written).
     pub(crate) notes: Vec<String>,
@@ -366,6 +381,13 @@ impl Save {
             .collect();
         section("tilemaps", &maps);
         section("objects", &self.objects);
+        // Its exact bits, or nothing when it's as usual.
+        let speed = if self.speed == 1.0 {
+            String::new()
+        } else {
+            format!("{:x}", self.speed.to_bits())
+        };
+        section("speed", &speed);
         let head = format!(
             "project {}\ntick {}\ntime {:x}\nseed {}\n",
             one_line(&self.project),
@@ -635,6 +657,13 @@ impl Save {
             tile_maps.push((EntityId(id), read.map));
         }
         let objects = section("objects")?.to_string();
+        let speed = match section("speed")? {
+            "" => 1.0,
+            bits => f64::from_bits(u64::from_str_radix(bits, 16).map_err(|_| damaged())?),
+        };
+        if !(speed.is_finite() && (0.0..=world::MAX_SPEED).contains(&speed)) {
+            return Err(damaged());
+        }
         Ok(Self {
             project,
             ticks,
@@ -649,6 +678,7 @@ impl Save {
             animators,
             tile_maps,
             objects,
+            speed,
             notes: {
                 // A section no version writes: not a save this Solis made.
                 if !list.is_empty() {
@@ -765,6 +795,7 @@ impl Workbench {
                 .as_mut()
                 .map(|game| objects_text(&game.object_values()))
                 .unwrap_or_default(),
+            speed: playing.world.speed(),
             notes: Vec::new(),
         })
     }
@@ -875,6 +906,7 @@ impl Workbench {
         world.rebuild_physics(&save.physics, true);
         world.set_clock(save.ticks, save.time);
         world.set_seed(save.seed);
+        world.set_speed(save.speed);
         world.projectiles_mut().restore(save.projectiles);
         world.restore_animator_values(save.animators);
         world.restore_tile_maps(save.tile_maps);

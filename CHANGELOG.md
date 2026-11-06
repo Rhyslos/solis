@@ -6,6 +6,7 @@ What changed in each version, for people using Solis. Newest first.
 
 ### Breaking
 
+- **Save games are format 7** (game UI, M3c): they keep the game's speed (`World:setGameSpeed`). Saves from earlier builds still load (running as usual); a save made now can't be loaded by an earlier build.
 - **Recordings are format 3** ([decision 0088](docs/decisions/0088-menus-send-events.md)): they keep the events screens' buttons sent, on `s` lines after their tick. Recordings from earlier builds still play back; recordings made now can't be played back by an earlier build.
 - **Tile maps and tilesets are Lust files** ([decision 0081](docs/decisions/0081-what-solis-makes-is-lust.md)): `farm.soltilemap` is now `farm.tilemap.lst` and `ground.soltileset` is `ground.tileset.lst`, ordinary Lust you can read and check in Ledger (tile maps version 3, tilesets version 4). Opening a project moves its older ones at once, keeping each one's ID (its `.solmeta` moves with it) and a copy of the older file in `.solis/backups/`; older ones are still read. The classes they hold are written into every project's `solis/data/`.
 - **A component can't change a game-wide object any more** ([decision 0080](docs/decisions/0080-objects-change-only-in-their-own-update.md)): `Clock.hour = 12;` in a component (or a method of the object a component calls that changes it) now stops that component with a message pointing at the line. Change an object's fields in its own `update`; components read them. Objects never ran before, so only code that used an object as a shared notebook is affected.
@@ -75,6 +76,7 @@ What changed in each version, for people using Solis. Newest first.
 
 ### Added
 
+- **Game code can pause the game** (game UI, M3c): `World:setGameSpeed(0)` stops game time, physics, projectiles and sprites while components and screens keep running, so a pause menu works; `World:setGameSpeed(1)` carries on, and `World:gameSpeed()` asks. The Game panel's corner says "Game speed 0". The turret sample has a pause menu on P or Start ([manual](docs/manual/screens.md)).
 - **A screen's canvas cuts off what reaches past its edges** ([manual](docs/manual/screens.md)): a box, circle or line placed partly outside a `canvas` is drawn only inside it.
 
 - **Menus with the keys and a controller** ([decision 0088](docs/decisions/0088-menus-send-events.md)): new ready-made input actions MenuMove (arrows, d-pad, left stick), MenuChoose (Enter, Space, A), MenuBack (Backspace, B) and Pause (P, Start). While a screen with buttons is shown, MenuMove moves a focus ring to the nearest button that way and MenuChoose chooses it, and only the menu actions reach game code ([manual](docs/manual/screens.md)).

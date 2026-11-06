@@ -34,6 +34,12 @@ entity 75YXHCXAFFCDN {
     Environment.tone_mapping = "AgX";
 }
 
+entity 8Q4ZK2M7TV0R3 {
+    name = "Game";
+    order = "a5";
+    Pauser = {};
+}
+
 entity APS1EF29SEJJQ {
     name = "Drone";
     order = "a2";
@@ -62,3 +68,4 @@ entity AY1RJM94EKZNV {
     Transform.rotation = [0.33036608, 0.088521324, 0.24321035, 0.90767336];
     Transform.scale = [1.0, 1.0, 1.0];
 }
+

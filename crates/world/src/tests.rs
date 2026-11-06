@@ -927,3 +927,45 @@ fn game_code_shows_and_hides_screens_and_the_checksum_follows() {
     assert_eq!(world.checksum(), now);
     assert_eq!(world.screen_shown(bare).as_deref(), Some("Hud"));
 }
+
+#[test]
+fn the_game_s_speed_scales_game_time_and_stops_physics_at_0() {
+    let mut area = Area::new();
+    let ball = area.spawn(
+        EntityData::new("Ball")
+            .with(&at(0.0, 0.0, 10.0))
+            .with(&area::builtin::RigidBody::default())
+            .with(&area::builtin::Collider::default()),
+    );
+    let mut world = World::from_area(&area);
+    assert_eq!(world.speed(), 1.0);
+    let before = world.checksum();
+    world.set_speed(0.0);
+    assert_ne!(world.checksum(), before, "the speed is the game's");
+    for _ in 0..10 {
+        world.step(TICK + 1e-9);
+        world.step_physics();
+    }
+    assert_eq!(world.clock().ticks, 10, "ticks still run");
+    assert_eq!(world.clock().time, 0.0, "game time doesn't");
+    assert_eq!(world.global(ball).unwrap().w_axis.z, 10.0, "nothing falls");
+    world.set_speed(2.0);
+    world.step(TICK + 1e-9);
+    world.step_physics();
+    assert!((world.clock().time - 2.0 * TICK).abs() < 1e-12);
+    assert!(
+        world.global(ball).unwrap().w_axis.z < 10.0,
+        "it falls again"
+    );
+    world.set_speed(f64::NAN);
+    world.set_speed(100.0);
+    assert_eq!(world.speed(), MAX_SPEED);
+    world.set_speed(-1.0);
+    assert_eq!(world.speed(), 0.0);
+    // Kept when the world is built again, as game code's screens are.
+    world.set_speed(0.5);
+    world.set_screen(ball, "Hud", true);
+    world.rebuild(&area);
+    assert_eq!(world.speed(), 0.5);
+    assert_eq!(world.screen_shown(ball).as_deref(), Some("Hud"));
+}

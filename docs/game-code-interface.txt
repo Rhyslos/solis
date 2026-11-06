@@ -17,6 +17,8 @@ world: object World: method vec3 viewSize() native;
 world: object World: method float random() native;
 world: object World: method float randomRange(float low, float high) native;
 world: object World: method int randomInt(int low, int high) native;
+world: object World: method setGameSpeed(float speed) native;
+world: object World: method float gameSpeed() native;
 world: object World: method setSeed(int seed) native;
 world: object Saves: method saveTo(string slot) native;
 world: object Saves: method loadFrom(string slot) native;
@@ -113,10 +115,12 @@ solis.Saves:saveTo
 solis.World:find
 solis.World:fire
 solis.World:frameTime
+solis.World:gameSpeed
 solis.World:random
 solis.World:randomInt
 solis.World:randomRange
 solis.World:say
+solis.World:setGameSpeed
 solis.World:setSeed
 solis.World:spawn
 solis.World:time
@@ -200,6 +204,8 @@ Host: fn cast_ray(&self, from: Vec3, direction: Vec3, reach: f32) -> Option<phys
 Host: fn map_place(&self, file: &str) -> Option<MapPlace>
 Host: fn map_bounds(&self, which: EntityId) -> Option<(Vec3, Vec3)>
 Host: fn view_size(&self) -> Vec3
+Host: fn set_game_speed(&mut self, speed: f64)
+Host: fn game_speed(&self) -> f64
 Host: fn at(&mut self, order: &crate::ticking::Order)
 RustComponent: fn update(&mut self, _cx: &mut Context<'_>, _dt: f64)
 RustComponent: fn handle(&mut self, _cx: &mut Context<'_>, _event: &Event) -> bool

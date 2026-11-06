@@ -422,6 +422,20 @@ pub const NATIVES: &[Native] = &[
     },
     Native {
         file: "world",
+        name: "setGameSpeed",
+        owner: "World",
+        lust: "method setGameSpeed(float speed) native;",
+        about: "Sets how fast the game runs, at the end of the tick: 0 pauses it (time, physics, projectiles and sprites stop, and dt is 0, but components still run, so a pause menu works), 1 is as usual, up to 4.",
+    },
+    Native {
+        file: "world",
+        name: "gameSpeed",
+        owner: "World",
+        lust: "method float gameSpeed() native;",
+        about: "How fast the game runs, as the tick started: 1 as usual, 0 paused.",
+    },
+    Native {
+        file: "world",
         name: "setSeed",
         owner: "World",
         lust: "method setSeed(int seed) native;",

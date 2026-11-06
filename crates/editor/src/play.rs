@@ -532,7 +532,8 @@ impl Workbench {
             // Where everything is as the tick starts: what drawing between
             // ticks moves from.
             playing.world.remember();
-            playing.world.projectiles_mut().tick(world::TICK as f32);
+            let dt = playing.world.tick_time() as f32;
+            playing.world.projectiles_mut().tick(dt);
             // Sprites' clips move on (Phase 9, D3): the events they pass
             // play their sound events and reach game code first this tick.
             playing
@@ -558,7 +559,7 @@ impl Workbench {
                 .world
                 .set_animators(Arc::clone(&self.viewport.sheets.animator_set));
             playing.world.step_animators();
-            let cues = playing.world.step_sprites(world::TICK);
+            let cues = playing.world.step_sprites(playing.world.tick_time());
             let (cue_sounds, engine_events) = cues_of(
                 &playing.world,
                 cues,
@@ -606,13 +607,15 @@ impl Workbench {
                 sound_tick,
                 sound_seed,
             );
+            // Game code's dt at the game's speed (0 paused, M3c).
+            let dt = playing.world.tick_time();
             if let Some(game) = &mut playing.game {
                 let mut host = PlayWorld::new(&mut playing.world, &mut playing.view, time);
                 host.frame_time = f64::from(seconds);
                 host.input = Arc::clone(&frame);
                 host.bindings = Arc::clone(&playing.bindings);
                 let ticking = std::time::Instant::now();
-                let ticked = game.tick_with_events(world::TICK, &mut host, engine_events);
+                let ticked = game.tick_with_events(dt, &mut host, engine_events);
                 code += ticking.elapsed();
                 failures.extend(ticked.failures);
                 said.append(&mut host.said);

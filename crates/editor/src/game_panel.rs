@@ -24,6 +24,8 @@ pub(crate) struct GameScene {
     pub(crate) state: PlayState,
     /// The game's time, in seconds.
     pub(crate) seconds: f64,
+    /// How fast the game runs (`World:setGameSpeed`; 1 as usual).
+    pub(crate) speed: f64,
     /// The projectiles in flight.
     pub(crate) bolts: std::sync::Arc<Vec<crate::viewport::ViewBolt>>,
 }
@@ -48,6 +50,7 @@ impl GameScene {
                 .map(|(_, camera, global)| (camera, global)),
             state,
             seconds: world.clock().time,
+            speed: world.speed(),
             bolts: std::sync::Arc::new({
                 use rayon::prelude::*;
                 world
@@ -311,6 +314,13 @@ pub(crate) fn game_panel(
         _ => "Playing",
     };
     let mut notes = vec![format!("{state} · {:.1} s", scene.seconds)];
+    // Game code's own pause (or slow motion), apart from the editor's.
+    if scene.speed != 1.0 {
+        notes.push(format!(
+            "Game speed {}",
+            (scene.speed * 100.0).round() / 100.0
+        ));
+    }
     if scene.camera.is_none() {
         notes.push("No camera in the area: showing the editor's view".into());
     }

@@ -43,6 +43,8 @@ pub enum Change {
     Despawn(EntityId),
     /// `setSeed`: start the game's randomness again from this seed.
     Seed(u64),
+    /// `setGameSpeed`: run the game at this speed (0 paused, 1 as usual).
+    GameSpeed(f64),
     /// `push`: give the entity's body a push (kilograms times metres a
     /// second).
     Push(EntityId, Vec3),
@@ -156,6 +158,8 @@ pub struct WorldView {
     /// The screen each entity's Screen shows as the tick started, for
     /// those shown (`screenShown`).
     pub screens: Arc<std::collections::HashMap<EntityId, String>>,
+    /// How fast the game runs as the tick started (`World:gameSpeed`).
+    pub game_speed: f64,
 }
 
 impl WorldView {
@@ -603,6 +607,17 @@ impl Host for ViewHost {
             let order = self.order();
             self.kept.changes.push((order, Change::Seed(seed)));
         }
+    }
+
+    fn set_game_speed(&mut self, speed: f64) {
+        if speed.is_finite() && self.kept.room() {
+            let order = self.order();
+            self.kept.changes.push((order, Change::GameSpeed(speed)));
+        }
+    }
+
+    fn game_speed(&self) -> f64 {
+        self.view.game_speed
     }
 
     fn at(&mut self, order: &Order) {
