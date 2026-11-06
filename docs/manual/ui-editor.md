@@ -31,7 +31,7 @@ A screen is only useful when it shows the game: the player's health, the coins. 
 
 - **Words** (text and buttons): shows the field as words, `health.hp.text()`.
 - **Value** (progress bars and sliders): `progress health.hp`.
-- **Fill across, Fill up** (anything with a set width or height): a bar that's as wide as it is now when the field is at its most. Pick the field, then the field holding the most: `width 300 * health.hp / health.maxHp`.
+- **Fill across, Fill up** (anything with a set width or height): a bar that's as wide as it is now when the field is at its most. Pick the field, then what it is out of: another field holding the most, or its starting value (health starts full): `width 300 * health.hp / health.maxHp`, or `/ 20`.
 - **Opacity**: fades it with a number field.
 
 Solis writes the Lust for you: it reads the component once at the top of the view (`Health health = Ui:entity():health();`) and fetches it from its file, then uses it. It's ordinary Lust, so you can change it as code later.

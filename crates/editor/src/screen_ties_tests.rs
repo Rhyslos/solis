@@ -82,6 +82,15 @@ fn a_bar_fills_by_one_field_out_of_another() {
         "{}",
         d.text
     );
+    // Out of a number: its starting value.
+    let to = TieTo::Bar {
+        side: "height".into(),
+        full: 12.0,
+        max: "20".into(),
+    };
+    d.picked = vec![vec![1, 2]];
+    assert!(d.tie(&health(), "hp", &to));
+    assert!(d.text.contains("height 12 * health.hp / 20"), "{}", d.text);
     d.picked = vec![vec![1, 2]];
     assert!(d.tie(&health(), "hp", &TieTo::Style("opacity".into())));
     assert!(d.text.contains("opacity health.hp"), "{}", d.text);

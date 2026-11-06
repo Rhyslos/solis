@@ -130,7 +130,7 @@ pub(crate) enum TieTo {
         side: String,
         /// The size when the field is at its most.
         full: f32,
-        /// The field holding the most.
+        /// The field holding the most, or a number.
         max: String,
     },
 }
@@ -311,8 +311,13 @@ impl ScreenDoc {
                 &piece,
                 side,
                 Some(&format!(
-                    "{} * {value} / {var}.{max}",
-                    crate::canvas_tools::num(*full)
+                    "{} * {value} / {}",
+                    crate::canvas_tools::num(*full),
+                    if max.parse::<f64>().is_ok() {
+                        max.clone()
+                    } else {
+                        format!("{var}.{max}")
+                    }
                 )),
             ),
         };

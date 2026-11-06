@@ -357,10 +357,26 @@ fn ties(
                             continue;
                         }
                         ui.menu_button(&r.component, |ui| {
-                            for (field, _, _) in &fields {
+                            for (field, _, start) in &fields {
                                 match to {
                                     TieTo::Bar { side, full, .. } => {
                                         ui.menu_button(format!("{field} out of"), |ui| {
+                                            // Its starting value as the most:
+                                            // health starts full.
+                                            let most = crate::canvas_tools::num(*start as f32);
+                                            if *start > 0.0
+                                                && ui
+                                                    .button(format!("{most} (its start)"))
+                                                    .clicked()
+                                            {
+                                                let to = TieTo::Bar {
+                                                    side: side.clone(),
+                                                    full: *full,
+                                                    max: most.clone(),
+                                                };
+                                                changed |= doc.tie(r, field, &to);
+                                                ui.close();
+                                            }
                                             for (max, k, _) in &r.fields {
                                                 if *k == Kind::Number
                                                     && max != field
