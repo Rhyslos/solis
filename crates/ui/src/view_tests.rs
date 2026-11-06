@@ -591,6 +591,7 @@ fn a_screen_s_button_is_found_where_its_picture_is_drawn() {
         elements: Vec::new(),
         view: Some(view),
         looks: Looks::default(),
+        pictures: None,
     };
     let at = |p: [f32; 2]| clickable_at(&screen, area.size, Some(3), p, &mut Fixed);
     assert_eq!(at([480.0, 270.0]), Some(0));
@@ -680,6 +681,7 @@ fn a_canvas_cuts_off_its_shapes_at_its_edges() {
         elements: Vec::new(),
         view: Some(view),
         looks: Looks::default(),
+        pictures: None,
     };
     let shapes = crate::layout(&screen, [400, 300], None);
     let boxed = shapes
@@ -702,4 +704,132 @@ fn a_canvas_cuts_off_its_shapes_at_its_edges() {
             .iter()
             .all(|s| s.clip == crate::UNCLIPPED)
     );
+}
+
+fn image(file: &str, styles: &[(&str, Style)]) -> Node {
+    Node {
+        text: file.into(),
+        ..node("image", styles, vec![])
+    }
+}
+
+/// A screen of `view` with one picture, `tools.png#Axe`, 32 × 16.
+fn with_axe(view: Node) -> crate::Screen {
+    let mut pictures = crate::Pictures::new();
+    pictures
+        .add("tools.png#Axe", [32, 16], &[255; 32 * 16 * 4])
+        .unwrap();
+    crate::Screen {
+        view: Some(view),
+        pictures: Some(std::sync::Arc::new(pictures)),
+        ..crate::Screen::new("Items", [400.0, 300.0], crate::ScaleRule::Keep)
+    }
+}
+
+#[test]
+fn an_image_is_as_big_as_its_picture_or_its_size_keeping_its_shape() {
+    let view = node(
+        "column",
+        &[],
+        vec![
+            image("tools.png#Axe", &[]),
+            image("tools.png#Axe", &[("width", n(64.0))]),
+            image("tools.png#Axe", &[("height", n(8.0))]),
+            image("gone.png", &[]),
+        ],
+    );
+    let screen = with_axe(Node::default());
+    let mut measure = WithPictures {
+        text: &mut Fixed,
+        pictures: screen.pictures.as_deref(),
+    };
+    let out = lay_out(&view, [400.0, 300.0], &mut measure);
+    let sizes: Vec<[f32; 2]> = out.iter().map(|e| e.size).collect();
+    assert_eq!(
+        sizes,
+        [[32.0, 16.0], [64.0, 32.0], [16.0, 8.0], [64.0, 64.0]],
+        "as big as it is; wider, taller in step; one not there is 64 × 64"
+    );
+    let ElementKind::Picture { name, cover, .. } = &out[0].kind else {
+        panic!("{:?}", out[0].kind);
+    };
+    assert_eq!((name.as_str(), *cover), ("tools.png#Axe", false));
+}
+
+#[test]
+fn a_picture_fits_its_box_or_covers_it_and_shows_from_the_atlas() {
+    let fit = with_axe(node(
+        "column",
+        &[],
+        vec![image(
+            "tools.png#Axe",
+            &[("width", n(64.0)), ("height", n(64.0)), ("round", n(4.0))],
+        )],
+    ));
+    let shapes = crate::layout(&fit, [400, 300], None);
+    let p = shapes
+        .iter()
+        .find(|s| s.kind == crate::ShapeKind::Picture)
+        .unwrap();
+    assert_eq!(p.rect, [0.0, 16.0, 64.0, 48.0], "fitted, in the middle");
+    assert_eq!((p.from, p.to), ([1.0, 1.0], [33.0, 17.0]), "all of it");
+    assert_eq!(p.round, 4.0);
+    assert!(p.blocky, "shown twice as big: its pixels as squares");
+    let cover = with_axe(node(
+        "column",
+        &[],
+        vec![image(
+            "tools.png#Axe",
+            &[("width", n(16.0)), ("height", n(16.0)), ("cover", on())],
+        )],
+    ));
+    let shapes = crate::layout(&cover, [400, 300], None);
+    let p = shapes
+        .iter()
+        .find(|s| s.kind == crate::ShapeKind::Picture)
+        .unwrap();
+    assert_eq!(p.rect, [0.0, 0.0, 16.0, 16.0], "the box");
+    assert_eq!((p.from, p.to), ([9.0, 1.0], [25.0, 17.0]), "its middle");
+    assert!(p.blocky, "as big as it is");
+    let shrunk = with_axe(node(
+        "column",
+        &[],
+        vec![image("tools.png#Axe", &[("width", n(8.0))])],
+    ));
+    let shapes = crate::layout(&shrunk, [400, 300], None);
+    assert!(
+        shapes
+            .iter()
+            .any(|s| s.kind == crate::ShapeKind::Picture && !s.blocky),
+        "shrunk: smoothed"
+    );
+    // Laid out in part of a screen, the atlas part doesn't move.
+    let moved = crate::layout_at(&fit, [5, 7], [400, 300], None, None);
+    let p = moved
+        .iter()
+        .find(|s| s.kind == crate::ShapeKind::Picture)
+        .unwrap();
+    assert_eq!((p.rect[0], p.from), (5.0, [1.0, 1.0]));
+}
+
+#[test]
+fn a_picture_not_there_is_a_grey_box_and_clicks_land_where_pictures_are() {
+    let screen = with_axe(node(
+        "column",
+        &[],
+        vec![
+            image("gone.png", &[("width", n(40.0)), ("height", n(20.0))]),
+            image("tools.png#Axe", &[]),
+            Node {
+                action: Some(0),
+                ..node("button", &[], vec![])
+            },
+        ],
+    ));
+    let shapes = crate::layout(&screen, [400, 300], None);
+    assert_eq!(shapes[0].kind, crate::ShapeKind::Box);
+    assert_eq!(shapes[0].rect, [0.0, 0.0, 40.0, 20.0]);
+    // The button is under both pictures: 20 + 16 down.
+    let (clickable, _) = crate::layout::clickables(&screen, [400, 300], None, &mut Fixed);
+    assert_eq!(clickable[0].rect[1], 36.0);
 }

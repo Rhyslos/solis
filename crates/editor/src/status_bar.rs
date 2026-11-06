@@ -84,7 +84,7 @@ impl Workbench {
     /// What the status bar says now.
     pub fn status(&self) -> Status {
         let code = self.code_checked.as_ref().map(|at| {
-            match self.code_problems.len() {
+            match self.code_problems.len() + self.picture_problems().len() {
                 0 => Part::new("Code checked", theme::TEXT_WEAK).marked(Mark::Tick),
                 1 => Part::new("1 mistake in the code", theme::WARNING).marked(Mark::Warning),
                 n => Part::new(format!("{n} mistakes in the code"), theme::WARNING)
@@ -118,7 +118,9 @@ impl Workbench {
         };
         Status {
             code,
-            problems: self.problems.list.len() + self.code_problems.len(),
+            problems: self.problems.list.len()
+                + self.code_problems.len()
+                + self.picture_problems().len(),
             saved,
             playing,
             area,

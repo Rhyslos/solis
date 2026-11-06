@@ -2090,6 +2090,13 @@ impl eframe::App for App {
             self.workbench.set_sounds(self.sounds.states());
             self.workbench.set_sound_events(self.sounds.events());
         }
+        // The pictures the game's screens show are read like the others
+        // (decision 0089).
+        if let Some(wanted) = self.workbench.take_wanted_pictures()
+            && let Some(assets) = self.projects.db().map(|db| db.project().assets())
+        {
+            self.sprites.want_pictures(wanted, &assets);
+        }
         self.follow_sprites();
         let preview = self.sounds.preview(self.sound.device());
         self.workbench.set_preview(preview);

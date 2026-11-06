@@ -12,10 +12,15 @@ struct Screen {
 // Letters as distance images (decision 0084): 128 on a letter's edge.
 @group(0) @binding(1) var atlas: texture_2d<f32>;
 @group(0) @binding(2) var atlas_sampler: sampler;
+// Pictures (decision 0089): RGBA, colours times their alpha, each with a
+// pixel of its edge copied round it.
+@group(0) @binding(3) var pictures: texture_2d<f32>;
 
 // ui::text's SPREAD and ATLAS_SIDE.
 const SPREAD: f32 = 6.0;
 const ATLAS_SIDE: f32 = 1024.0;
+// ui::pictures's SIDE.
+const PICTURES_SIDE: f32 = 2048.0;
 
 struct Instance {
     @location(0) rect: vec4<f32>,
@@ -44,6 +49,7 @@ struct Out {
 const KIND_ELLIPSE: f32 = 1.0;
 const KIND_LINE: f32 = 2.0;
 const KIND_LETTER: f32 = 3.0;
+const KIND_PICTURE: f32 = 4.0;
 
 @vertex
 fn ui_vs(@builtin(vertex_index) v: u32, i: Instance) -> Out {
@@ -131,6 +137,25 @@ fn ui_fs(o: Out) -> @location(0) vec4<f32> {
         t = clamp((o.at.y - o.rect.y) / span.y, 0.0, 1.0);
     }
     var colour = mix(o.colour_a, o.colour_b, t);
+    if (kind == KIND_PICTURE) {
+        // Where in the picture, in the atlas's pixels: a whole pixel for
+        // blocky pictures, else smoothed between the four nearest (kept
+        // inside the picture's own pixels).
+        let along = clamp((o.at - o.rect.xy) / span, vec2<f32>(0.0), vec2<f32>(1.0));
+        let px = mix(o.ends.xy, o.ends.zw, along);
+        var c: vec4<f32>;
+        if ((flags & 4u) != 0u) {
+            let lo = vec2<i32>(floor(o.ends.xy));
+            let hi = max(vec2<i32>(ceil(o.ends.zw)) - vec2<i32>(1), lo);
+            c = textureLoad(pictures, clamp(vec2<i32>(floor(px)), lo, hi), 0);
+        } else {
+            let q = clamp(px, o.ends.xy + vec2<f32>(0.5), max(o.ends.zw - vec2<f32>(0.5), o.ends.xy + vec2<f32>(0.5)));
+            c = textureSampleLevel(pictures, atlas_sampler, q / PICTURES_SIDE, 0.0);
+        }
+        // Back to straight colours, then the shape's colour over it.
+        let straight = select(vec3<f32>(0.0), c.rgb / max(c.a, 0.0001), c.a > 0.0);
+        colour = vec4<f32>(straight, c.a) * o.colour_a;
+    }
     // The border: the band inside the edge.
     let width = o.shape.y;
     if (width > 0.0 && kind != KIND_LINE) {

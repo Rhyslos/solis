@@ -165,6 +165,19 @@ pub enum ElementKind {
         /// The empty part's colour.
         background: Colour,
     },
+    /// A picture from the screen's [`crate::pictures::Pictures`] by its
+    /// name (`sprites/tools.png#Axe`), fitted inside the box (or covering
+    /// it), its fill's first colour multiplying it (white shows it as it
+    /// is). One that isn't there is a grey box with its name.
+    Picture {
+        /// Its name.
+        name: String,
+        /// How round its corners are, in design pixels.
+        round: f32,
+        /// Whether it covers the box (cut off at its edges) rather than
+        /// fitting inside it.
+        cover: bool,
+    },
 }
 
 /// One element of a screen.
@@ -198,15 +211,20 @@ pub struct Element {
 
 impl Element {
     /// An element called `name`, drawing `kind`, pinned top left with no
-    /// size and nothing to fill it.
+    /// size and nothing to fill it (a picture is filled white: shown as it
+    /// is).
     pub fn new(name: &str, kind: ElementKind) -> Self {
+        let fill = match kind {
+            ElementKind::Picture { .. } => Fill::Solid(Colour::WHITE),
+            _ => Fill::default(),
+        };
         Self {
             name: name.to_string(),
             kind,
             anchor: Anchor::TOP_LEFT,
             offset: [0.0, 0.0],
             size: [0.0, 0.0],
-            fill: Fill::default(),
+            fill,
             border: None,
             opacity: 1.0,
             shown: true,
@@ -319,6 +337,9 @@ pub struct Screen {
     pub view: Option<crate::view::Node>,
     /// Its view's hover and focus looks (decision 0088).
     pub looks: crate::view::Looks,
+    /// The pictures it shows (decision 0089), shared by every screen of
+    /// the game.
+    pub pictures: Option<std::sync::Arc<crate::pictures::Pictures>>,
 }
 
 impl Screen {
@@ -331,6 +352,7 @@ impl Screen {
             elements: Vec::new(),
             view: None,
             looks: crate::view::Looks::default(),
+            pictures: None,
         }
     }
 

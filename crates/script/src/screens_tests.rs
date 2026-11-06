@@ -315,3 +315,47 @@ fn components_not_in_lust_are_described_to_screens_as_lust_ones() {
         "Screen is a project state, position() is taken: {notes:?}"
     );
 }
+
+#[test]
+fn pictures_named_in_screens_are_found_with_where_and_reach_the_view() {
+    let items = "assembly Items {\n    has { string icon = \"sprites/tools.png#Hoe\"; }\n    view {\n        row [gap 4] {\n            image \"sprites/tools.png#Axe\" [width 32];\n            image icon; -- image \"not/this.png\"\n            text \"myimage\";\n        }\n    }\n}\n\npass Items;\nend\n";
+    let compiled = compile(&code(&[("main.lst", MAIN), ("ui/items.lst", items)]))
+        .unwrap()
+        .unwrap();
+    let screen_code = compiled.screens.clone().expect("a screen");
+    assert_eq!(
+        screen_code.pictures,
+        vec![PictureUse {
+            file: "ui/items.lst".into(),
+            line: 5,
+            column: 19,
+            name: "sprites/tools.png#Axe".into(),
+        }],
+        "only the one written out, not in a comment or another word"
+    );
+    // As the game runs, each image's name is its text, written out or not.
+    let screens = Screens::start(&screen_code).unwrap();
+    let view = screens.view("Items", None, &mut NoReader).unwrap();
+    let row = &view.children[0];
+    let names: Vec<(&str, &str)> = row
+        .children
+        .iter()
+        .map(|c| (c.kind.as_str(), c.text.as_str()))
+        .collect();
+    assert_eq!(
+        names,
+        [
+            ("image", "sprites/tools.png#Axe"),
+            ("image", "sprites/tools.png#Hoe"),
+            ("text", "myimage")
+        ]
+    );
+}
+
+proptest::proptest! {
+    #[test]
+    fn finding_picture_names_never_panics(text in "(image|\"|#|-|\\\\|[a-z/. \n]){0,80}") {
+        let found = pictures_named(&[("ui/x.lst".into(), text)]);
+        proptest::prop_assert!(found.iter().all(|p| p.line >= 1 && p.column >= 1));
+    }
+}

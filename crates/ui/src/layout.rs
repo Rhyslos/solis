@@ -19,6 +19,11 @@ pub enum ShapeKind {
     /// `from` to `to` (atlas pixels), `round` its size over
     /// [`crate::text::SDF_SIZE`].
     Letter,
+    /// A picture (decision 0089): its box drawn from the pictures' atlas,
+    /// the part from `from` to `to` (atlas pixels), its corners rounded by
+    /// `round`, its first colour multiplying it. [`Shape::crisp`] (or
+    /// [`Shape::blocky`]) draws its pixels as squares.
+    Picture,
 }
 
 /// Which way a fill's colours run.
@@ -53,6 +58,9 @@ pub struct Shape {
     pub border: (f32, Colour),
     /// Whether its edges are hard, for pixel art (no smoothing).
     pub crisp: bool,
+    /// For a picture: its pixels drawn as squares, not smoothed (it's
+    /// shown bigger than it is, or on a pixel-art screen).
+    pub blocky: bool,
     /// Where it may be drawn (left, top, right, bottom): what's outside is
     /// cut off, as a canvas cuts off what's inside it. [`UNCLIPPED`] for
     /// anywhere.
@@ -161,12 +169,14 @@ pub fn layout_with(
     let mut out = Vec::new();
     let mut count = 0;
     let whole = [0.0, 0.0, screen_px[0], screen_px[1]];
+    let pictures = screen.pictures.as_deref();
     let mut walking = Walk {
         scale,
         crisp,
         count: &mut count,
         out: &mut out,
         fonts,
+        pictures,
     };
     for e in &screen.elements {
         walking.walk(e, whole, 1.0, 0, UNCLIPPED);
@@ -175,12 +185,13 @@ pub fn layout_with(
     // screen's shape, then drawn like elements.
     if let Some(view) = &screen.view {
         let design = [screen_px[0] / scale, screen_px[1] / scale];
-        let (elements, _) = match walking.fonts.as_deref_mut() {
-            Some(fonts) => crate::view::lay_out_with(view, design, fonts, screen.looks),
-            None => {
-                crate::view::lay_out_with(view, design, &mut crate::view::NoFonts, screen.looks)
-            }
+        let mut none = crate::view::NoFonts;
+        let text: &mut dyn crate::view::Measure = match walking.fonts.as_deref_mut() {
+            Some(fonts) => fonts,
+            None => &mut none,
         };
+        let mut measure = crate::view::WithPictures { text, pictures };
+        let (elements, _) = crate::view::lay_out_with(view, design, &mut measure, screen.looks);
         for e in &elements {
             walking.walk(e, whole, 1.0, 0, UNCLIPPED);
         }
@@ -247,7 +258,11 @@ pub fn clickables(
         return (Vec::new(), scale);
     };
     let design = [screen_px[0] / scale, screen_px[1] / scale];
-    let (_, clickable) = crate::view::lay_out_with(view, design, measure, screen.looks);
+    let mut measure = crate::view::WithPictures {
+        text: measure,
+        pictures: screen.pictures.as_deref(),
+    };
+    let (_, clickable) = crate::view::lay_out_with(view, design, &mut measure, screen.looks);
     (clickable, scale)
 }
 
@@ -274,6 +289,7 @@ struct Walk<'a> {
     count: &'a mut usize,
     out: &'a mut Vec<Shape>,
     fonts: Option<&'a mut crate::text::Fonts>,
+    pictures: Option<&'a crate::pictures::Pictures>,
 }
 
 /// [`layout`] in part of a screen: the game's picture, `size` pixels big
@@ -293,7 +309,7 @@ pub fn layout_at(
         if s.clip != UNCLIPPED {
             s.clip = [s.clip[0] + x, s.clip[1] + y, s.clip[2] + x, s.clip[3] + y];
         }
-        if s.kind != ShapeKind::Letter {
+        if !matches!(s.kind, ShapeKind::Letter | ShapeKind::Picture) {
             s.from = [s.from[0] + x, s.from[1] + y];
             s.to = [s.to[0] + x, s.to[1] + y];
         }
@@ -302,6 +318,86 @@ pub fn layout_at(
 }
 
 impl Walk<'_> {
+    /// A picture in `base`'s box: fitted inside it (or covering it, the
+    /// part outside cut off), or a grey box with its name when the screen
+    /// has no picture of that name.
+    fn picture(&mut self, name: &str, round: f32, cover: bool, base: &Shape) {
+        let [l, t, r, b] = base.rect;
+        let (bw, bh) = (r - l, b - t);
+        if !(bw > 0.0 && bh > 0.0) {
+            return;
+        }
+        let Some(placed) = self.pictures.and_then(|p| p.get(name)) else {
+            // As Lust shows a missing picture.
+            let grey = Colour::rgb(0xe9, 0xec, 0xef);
+            let grey = grey.with_alpha(base.colours[0].0[3]);
+            self.out.push(Shape {
+                round: round.min(bw.min(bh) * 0.5),
+                colours: [grey, grey],
+                ..*base
+            });
+            let label = crate::pictures::split(name)
+                .0
+                .rsplit(['/', '\\'])
+                .next()
+                .unwrap_or("");
+            let size = 11.0 * self.scale;
+            if let Some(fonts) = self.fonts.as_deref_mut()
+                && !label.is_empty()
+                && fonts.measure(0, label, size)[0] < bw - 8.0 * self.scale
+            {
+                let ink = Colour::rgb(0x86, 0x8e, 0x96).with_alpha(base.colours[0].0[3]);
+                let [w, h] = fonts.measure(0, label, size);
+                let at = [(l + r - w) * 0.5, (t + b - h) * 0.5];
+                for letter in fonts.place(0, label, size, at, self.crisp.then_some(self.scale)) {
+                    let [al, top, ar, ab] = letter.atlas.map(f32::from);
+                    self.out.push(Shape {
+                        kind: ShapeKind::Letter,
+                        rect: letter.rect,
+                        from: [al, top],
+                        to: [ar, ab],
+                        round: size / crate::text::SDF_SIZE,
+                        colours: [ink, ink],
+                        border: (0.0, Colour::NONE),
+                        ..*base
+                    });
+                }
+            }
+            return;
+        };
+        let [pw, ph] = placed.size.map(|v| v as f32);
+        let [al, at, ar, ab] = placed.rect();
+        let (rect, uv) = if cover {
+            // The box, showing the middle of the picture that fills it.
+            let fit = (bw / pw).max(bh / ph);
+            let (sw, sh) = (bw / fit, bh / fit);
+            let (sx, sy) = ((pw - sw) * 0.5, (ph - sh) * 0.5);
+            (base.rect, [al + sx, at + sy, al + sx + sw, at + sy + sh])
+        } else {
+            let fit = (bw / pw).min(bh / ph);
+            let (dw, dh) = (pw * fit, ph * fit);
+            let (dx, dy) = (l + (bw - dw) * 0.5, t + (bh - dh) * 0.5);
+            let mut rect = [dx, dy, dx + dw, dy + dh];
+            if self.crisp {
+                rect = rect.map(|v| (v / self.scale).round() * self.scale);
+            }
+            (rect, [al, at, ar, ab])
+        };
+        let shown = (rect[2] - rect[0]) / (uv[2] - uv[0]).max(1e-6);
+        let r_max = ((rect[2] - rect[0]).min(rect[3] - rect[1]) * 0.5).max(0.0);
+        self.out.push(Shape {
+            kind: ShapeKind::Picture,
+            rect,
+            from: [uv[0], uv[1]],
+            to: [uv[2], uv[3]],
+            round: round.min(r_max),
+            // Shown bigger than it is: its pixels as squares, as pixel art
+            // wants; shrunk, smoothed.
+            blocky: base.crisp || shown >= 1.0 - 1e-3,
+            ..*base
+        });
+    }
+
     fn walk(&mut self, e: &Element, parent: [f32; 4], opacity: f32, depth: usize, clip: [f32; 4]) {
         let (scale, crisp) = (self.scale, self.crisp);
         if !e.shown || depth >= MAX_DEPTH || *self.count >= MAX_ELEMENTS {
@@ -337,6 +433,7 @@ impl Walk<'_> {
             stretch,
             border,
             crisp,
+            blocky: false,
             clip,
         };
         match &e.kind {
@@ -371,6 +468,9 @@ impl Walk<'_> {
                         });
                     }
                 }
+            }
+            ElementKind::Picture { name, round, cover } => {
+                self.picture(name, finite(*round).max(0.0) * scale, *cover, &base);
             }
             ElementKind::Box { round } => self.out.push(Shape {
                 round: finite(*round).max(0.0) * scale,

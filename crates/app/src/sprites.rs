@@ -183,6 +183,9 @@ pub struct Sprites {
     tiles_tried: HashMap<String, Stamp>,
     /// Tilesets' pictures read or failed, with how they were then.
     art_tried: HashMap<String, Stamp>,
+    /// The pictures the game's screens show (decision 0089), read whole
+    /// like tilesets' pictures.
+    ui_wanted: HashSet<String>,
     /// Goes up when another project opens: results for the last one are
     /// thrown away.
     generation: u64,
@@ -201,6 +204,7 @@ impl Default for Sprites {
             animators_tried: HashMap::new(),
             tiles_tried: HashMap::new(),
             art_tried: HashMap::new(),
+            ui_wanted: HashSet::new(),
             generation: 0,
             jobs: Jobs::new(1),
             dirty: false,
@@ -365,9 +369,17 @@ impl Sprites {
         self.dirty |= before != self.sheets.by_path.len();
     }
 
-    /// Reads every picture a read tileset takes its art from, or an atlas
-    /// file crops, not read yet or changed since; forgets those nothing
-    /// uses.
+    /// Reads the pictures in `wanted` (paths inside the assets) for the
+    /// game's screens, as well as tilesets' and atlas files' pictures.
+    pub fn want_pictures(&mut self, wanted: impl IntoIterator<Item = String>, assets: &Path) {
+        self.ui_wanted = wanted.into_iter().collect();
+        let paths = self.sheets.paths.clone();
+        self.want_art(&paths, assets);
+    }
+
+    /// Reads every picture a read tileset takes its art from, an atlas
+    /// file crops, or the game's screens show, not read yet or changed
+    /// since; forgets those nothing uses.
     fn want_art(&mut self, paths: &HashMap<AssetId, String>, assets: &Path) {
         use editor::sprite_sheets::AtlasState;
         let wanted: HashSet<String> = self
@@ -382,6 +394,7 @@ impl Sprites {
                 AtlasState::Read(atlas, _) => Some(animation::atlas::picture_path(path, atlas)),
                 AtlasState::Failed(_) => None,
             }))
+            .chain(self.ui_wanted.iter().cloned())
             .collect();
         for path in &wanted {
             let full = assets.join(path);
@@ -408,6 +421,7 @@ impl Sprites {
         self.animators_tried.clear();
         self.tiles_tried.clear();
         self.art_tried.clear();
+        self.ui_wanted.clear();
         self.generation += 1;
         self.dirty = true;
     }
@@ -589,6 +603,32 @@ mod tests {
         s.want(&list, &dir);
         settle(&mut s);
         assert!(s.sheets().get(id).is_some());
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn a_picture_the_screens_show_is_read_and_forgotten_once_they_don_t() {
+        let dir = folder("ui-pictures");
+        let png_id = AssetId::random();
+        std::fs::write(
+            dir.join("sprites/icon.png"),
+            assets::tile_art::png_of([4, 2], &[7; 4 * 2 * 4]).unwrap(),
+        )
+        .unwrap();
+        let list = listing(&[("sprites/icon.png", png_id)]);
+        let mut s = Sprites::default();
+        s.want(&list, &dir);
+        assert!(s.sheets().tile_art.is_empty(), "nothing uses it yet");
+        s.want_pictures(["sprites/icon.png".to_string()], &dir);
+        assert!(matches!(
+            s.sheets().tile_art.get("sprites/icon.png"),
+            Some(ArtState::Read(art)) if art.size == [4, 2]
+        ));
+        // Listing again keeps it while the screens show it.
+        s.want(&list, &dir);
+        assert!(s.sheets().tile_art.contains_key("sprites/icon.png"));
+        s.want_pictures([], &dir);
+        assert!(s.sheets().tile_art.is_empty());
         let _ = std::fs::remove_dir_all(&dir);
     }
 
