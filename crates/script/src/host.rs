@@ -159,6 +159,12 @@ pub trait Host {
     fn stop_clip(&mut self, which: EntityId) {
         let _ = which;
     }
+    /// Mirrors the entity's Sprite at the end of the tick: `across`
+    /// faces it the other way (left for right), `down` turns it upside
+    /// down.
+    fn set_flip(&mut self, which: EntityId, across: bool, down: bool) {
+        let _ = (which, across, down);
+    }
     /// Sets a bus's volume for the rest of the play, as a share of its
     /// Mixer fader (1 as set, 0 silent), at the end of the tick: an
     /// options menu's sliders.
@@ -772,6 +778,15 @@ pub(crate) fn with_natives<'h, R>(
                     && *clip != *crate::project_names::NO_OPTION
                 {
                     h.borrow_mut().play_clip(e, name, true);
+                }
+                Ok(())
+            })?,
+        )?;
+        natives.raw_set(
+            "entity_setFlip",
+            scope.create_function(move |_, (which, across, down): (LuaValue, bool, bool)| {
+                if let Some(e) = entity_of(&which) {
+                    h.borrow_mut().set_flip(e, across, down);
                 }
                 Ok(())
             })?,

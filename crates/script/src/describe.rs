@@ -520,6 +520,13 @@ pub const NATIVES: &[Native] = &[
     },
     Native {
         file: "animation",
+        name: "setFlip",
+        owner: "entity",
+        lust: "method entity:setFlip(bool across, bool down) native;",
+        about: "Mirrors the entity's Sprite at the end of the tick: across (facing the other way, left for right) and down (upside down). One clip then faces either way: setFlip(true, false) to face left.",
+    },
+    Native {
+        file: "animation",
         name: "setNumber",
         owner: "Animators",
         lust: "method setNumber(entity owner, string name, float value) native;",

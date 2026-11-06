@@ -396,6 +396,7 @@ Things that fall, collide and get pushed have a **RigidBody** and a **Collider**
 | any entity | `animate(Clip clip)` | Plays a clip on the entity's Sprite; already playing or finished it, it carries on as it is ([Animating sprites](sprite-animation.md)). |
 | any entity | `animateFromStart(Clip clip)` | Plays a clip from its beginning, whatever it was doing. |
 | any entity | `stopAnimation()` | Stops the entity's Sprite where it is in its clip. |
+| any entity | `setFlip(bool across, bool down)` | Mirrors the entity's Sprite: across faces it the other way, down turns it upside down. |
 | `solis/animation` | event `CueReached(Cue cue)` | Sent when a sprite's clip reaches a frame with an event (bring it in with `fetch "solis/animation":CueReached;`). |
 | `solis/animation` | event `ClipFinished(Clip clip)` | Sent when a sprite's clip has played all its times. |
 | `solis/project` | `state Clip`, `state Cue` | The sprites' clips, under their sheets (`Clip.Sprites.Farmer.Walk`), and their frame events (`Cue.Footstep`). |

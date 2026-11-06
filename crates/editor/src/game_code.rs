@@ -528,6 +528,7 @@ impl GameWorld for PlayWorld<'_> {
                     self.world.play_clip(which, clip, again);
                 }
                 Change::StopClip(which) => self.world.stop_clip(which),
+                Change::Flip(which, across, down) => self.world.set_flip(which, across, down),
                 Change::AnimatorSet(which, ref name, value) => {
                     let value = match value {
                         script::AnimatorValue::Number(n) => animation::ParamValue::Number(n),
