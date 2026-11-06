@@ -59,12 +59,113 @@ pub fn reader_name(name: &str) -> String {
     }
 }
 
-/// `solis/screen.lst` for `components` (each Lust component's name and
-/// file): `Ui:entity()` and a reading method for each, except one whose
-/// name an engine call on entities has already. Gives the file, the
-/// readers kept, and notes on those left out.
+/// Lust's own words (LUST.md, section 22), its built-ins and its
+/// built-in objects: no field Solis writes into a screen's Lust may be
+/// called one.
+const LUST_WORDS: &[&str] = &[
+    "class",
+    "object",
+    "node",
+    "assembly",
+    "create",
+    "has",
+    "method",
+    "hook",
+    "return",
+    "like",
+    "new",
+    "nothing",
+    "schema",
+    "route",
+    "view",
+    "style",
+    "keep",
+    "pass",
+    "fetch",
+    "get",
+    "lua",
+    "is",
+    "then",
+    "or",
+    "either",
+    "not",
+    "true",
+    "false",
+    "loop",
+    "stop",
+    "skip",
+    "in",
+    "try",
+    "error",
+    "state",
+    "save",
+    "load",
+    "saved",
+    "end",
+    "database",
+    "int",
+    "float",
+    "string",
+    "bool",
+    "array",
+    "cMap",
+    "map",
+    "native",
+    "component",
+    "check",
+    "when",
+    "lock",
+    "print",
+    "wait",
+    "ask",
+    "Maths",
+    "Files",
+    "Time",
+    "Json",
+    "Web",
+    "Random",
+    "this",
+    "me",
+];
+
+/// Whether `name` can be a name in Lust: a letter, then letters, digits
+/// and `_`, not all capitals, and not one of Lust's own words.
+fn lust_name(name: &str) -> bool {
+    let mut chars = name.chars();
+    chars.next().is_some_and(|c| c.is_ascii_alphabetic())
+        && chars.all(|c| c.is_ascii_alphanumeric() || c == '_')
+        && !(name.len() > 1 && name.chars().all(|c| !c.is_ascii_lowercase()))
+        && !LUST_WORDS.contains(&name)
+}
+
+/// A field's Lust type and starting value, for a component Solis
+/// describes to screens; `None` for a kind screens can't hold (an asset).
+fn lust_field(kind: &reflect::FieldKind) -> Option<(&'static str, &'static str)> {
+    use reflect::FieldKind;
+    Some(match kind {
+        FieldKind::Bool => ("bool", "false"),
+        FieldKind::Int => ("int", "0"),
+        FieldKind::Float => ("float", "0"),
+        FieldKind::Text | FieldKind::Choice(_) => ("string", "\"\""),
+        FieldKind::Vec3 | FieldKind::Color => ("vec3", "[0, 0, 0]"),
+        FieldKind::Rotation => ("rotation", "[0, 0, 0]"),
+        FieldKind::Entity => ("entity", "nothing"),
+        FieldKind::Asset => return None,
+    })
+}
+
+/// `solis/screen.lst` (decision 0087): `Ui:entity()`, and a reading method
+/// for each of the game's Lust components (`lust`: each one's name and
+/// file) and each other component screens can read (`described`: the
+/// game's Lua and Rust components and Solis's own, by their schemas),
+/// except one whose method name an engine call on entities has already,
+/// or that isn't a Lust name. A described one is written into the file as
+/// a Lust component of its fields (those Lust can hold), so a screen
+/// fetches it from `solis/screen` and gets a copy as Lust components do.
+/// Gives the file, the readers kept, and notes on those left out.
 pub fn readers_file(
-    components: &[(String, String)],
+    lust: &[(String, String)],
+    described: &[reflect::ComponentSchema],
 ) -> (String, Vec<(String, String)>, Vec<String>) {
     let taken: Vec<&str> = crate::describe::NATIVES
         .iter()
@@ -77,18 +178,53 @@ pub fn readers_file(
     );
     let mut readers = Vec::new();
     let mut notes = Vec::new();
-    for (name, file) in components {
+    let readable = |name: &str, notes: &mut Vec<String>| {
         let reader = reader_name(name);
         if taken.contains(&reader.as_str()) {
             notes.push(format!(
                 "Screens can't read the component {name}: entities already have a {reader}(). \
                  Give the component another name to read it from a screen."
             ));
-            continue;
+            return None;
         }
+        if !lust_name(name) || crate::describe::PROJECT_STATES.contains(&name) {
+            notes.push(format!(
+                "Screens can't read the component {name}: its name can't be a Lust name."
+            ));
+            return None;
+        }
+        Some(reader)
+    };
+    for (name, file) in lust {
+        let Some(reader) = readable(name, &mut notes) else {
+            continue;
+        };
         let module = file.strip_suffix(".lst").unwrap_or(file);
         text.push_str(&format!("fetch \"{module}\":{name};\n"));
         readers.push((name.clone(), reader));
+    }
+    let mut written = Vec::new();
+    for schema in described {
+        if lust.iter().any(|(n, _)| *n == schema.name) {
+            continue;
+        }
+        let Some(reader) = readable(&schema.name, &mut notes) else {
+            continue;
+        };
+        let mut fields = String::new();
+        for field in &schema.fields {
+            if let Some((kind, start)) = lust_field(&field.kind).filter(|_| lust_name(&field.name))
+            {
+                fields.push_str(&format!("        {kind} {} = {start};\n", field.name));
+            }
+        }
+        text.push_str(&format!(
+            "\n-- {name}'s fields, as the last tick left them, for screens to read.\n\
+             component {name} {{\n    has {{\n{fields}    }}\n}}\n",
+            name = schema.name
+        ));
+        written.push(schema.name.clone());
+        readers.push((schema.name.clone(), reader));
     }
     text.push_str(
         "\nobject Ui {\n    -- The entity this screen is shown for: the one whose Screen \
@@ -100,7 +236,10 @@ pub fn readers_file(
              has none.\nmethod {name} entity:{reader}() native;\n\n"
         ));
     }
-    text.push_str("pass Ui;\nend\n");
+    let passed: Vec<&str> = std::iter::once("Ui")
+        .chain(written.iter().map(String::as_str))
+        .collect();
+    text.push_str(&format!("pass {};\nend\n", passed.join(", ")));
     (text, readers, notes)
 }
 
@@ -150,6 +289,9 @@ pub fn find(files: &[(String, String)]) -> (Vec<(String, String)>, Vec<CodeProbl
 /// The entry that opens every screen.
 pub fn entry(screens: &[(String, String)]) -> String {
     let mut text = String::from("-- Made by Solis for its screens: never saved.\n");
+    // The readers' file always, so the components it describes are known
+    // to Lust even when no screen fetches it.
+    text.push_str("fetch \"solis/screen\":Ui;\n");
     for (name, path) in screens {
         let module = path.strip_suffix(".lst").unwrap_or(path);
         text.push_str(&format!("fetch \"{module}\":{name};\n"));
@@ -163,12 +305,13 @@ pub fn entry(screens: &[(String, String)]) -> String {
 
 /// Compiles the screens in `files` (none: nothing to do), with the
 /// engine's folders and a reading method for each of `components` (each
-/// Lust component's name and file). Mistakes name the screen's file and
-/// line.
+/// Lust component's name and file) and each of `described` (see
+/// [`readers_file`]). Mistakes name the screen's file and line.
 pub fn compile(
     files: &[(String, String)],
     engine: &lust::Engine,
     components: &[(String, String)],
+    described: &[reflect::ComponentSchema],
 ) -> Result<Option<ScreenCode>, Vec<CodeProblem>> {
     let (screens, mut problems) = find(files);
     if screens.is_empty() {
@@ -178,7 +321,7 @@ pub fn compile(
             Err(problems)
         };
     }
-    let (readers_text, readers, notes) = readers_file(components);
+    let (readers_text, readers, notes) = readers_file(components, described);
     let mut with_entry = files.to_vec();
     with_entry.retain(|(p, _)| p != ENTRY && p != READERS);
     with_entry.push((ENTRY.to_string(), entry(&screens)));

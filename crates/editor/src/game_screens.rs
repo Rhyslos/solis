@@ -250,12 +250,16 @@ pub(crate) fn shown_in(world: &world::World) -> Vec<(reflect::EntityId, String)>
         .collect()
 }
 
-/// What screens read: the running game's components.
-struct GameReader<'a>(Option<&'a mut script::Game>);
+/// What screens read: the running game's components (Lust, Lua and
+/// Rust), and Solis's own as the world has them.
+struct GameReader<'a>(Option<&'a mut script::Game>, &'a world::World);
 
 impl script::ScreenReader for GameReader<'_> {
     fn values(&mut self, entity: reflect::EntityId, name: &str) -> Option<reflect::ComponentData> {
-        self.0.as_deref_mut()?.values(entity, name)
+        if let Some(found) = self.0.as_deref_mut().and_then(|g| g.values(entity, name)) {
+            return Some(found);
+        }
+        self.1.component_data(entity, name)
     }
 }
 
@@ -296,7 +300,7 @@ impl Workbench {
             }
             let mut pictures = Vec::new();
             let mut shown = Vec::new();
-            let mut reader = GameReader(playing.game.as_mut());
+            let mut reader = GameReader(playing.game.as_mut(), &playing.world);
             for (entity, name) in shown_in(&playing.world) {
                 match running.view(&name, Some(entity), &mut reader) {
                     Ok(view) => {
@@ -371,7 +375,7 @@ impl Workbench {
         let Some((running, _)) = &self.game_screens.running else {
             return;
         };
-        let mut reader = GameReader(playing.game.as_mut());
+        let mut reader = GameReader(playing.game.as_mut(), &playing.world);
         match running.press(&name, Some(entity), action, &mut reader) {
             Ok(events) => {
                 let mut dropped = 0;

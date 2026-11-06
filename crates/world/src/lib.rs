@@ -801,6 +801,39 @@ impl World {
         values.0.get(name).cloned()
     }
 
+    /// The values of an entity's component called `name` as the game has
+    /// it now: a built-in kept as its Rust type (its Transform as the game
+    /// moved it), or one kept as plain values. What screens read of
+    /// Solis's own components (decision 0087).
+    pub fn component_data(&self, id: EntityId, name: &str) -> Option<ComponentData> {
+        use area::builtin::{Collider2D, TileMap};
+        use reflect::Component;
+        fn typed<T: Component + hecs::Component + Clone>(
+            world: &World,
+            id: EntityId,
+        ) -> Option<ComponentData> {
+            world.get::<T>(id).map(|c| c.to_data())
+        }
+        match name {
+            Transform::NAME => typed::<Transform>(self, id),
+            Light::NAME => typed::<Light>(self, id),
+            RigidBody::NAME => typed::<RigidBody>(self, id),
+            Collider::NAME => typed::<Collider>(self, id),
+            Collider2D::NAME => typed::<Collider2D>(self, id),
+            CharacterBody::NAME => typed::<CharacterBody>(self, id),
+            Model::NAME => typed::<Model>(self, id),
+            Environment::NAME => typed::<Environment>(self, id),
+            Camera::NAME => typed::<Camera>(self, id),
+            AudioSource::NAME => typed::<AudioSource>(self, id),
+            ReverbZone::NAME => typed::<ReverbZone>(self, id),
+            Listener::NAME => typed::<Listener>(self, id),
+            Sprite::NAME => typed::<Sprite>(self, id),
+            Animator::NAME => typed::<Animator>(self, id),
+            TileMap::NAME => typed::<TileMap>(self, id),
+            _ => self.values_named_for(id, name),
+        }
+    }
+
     /// The screen each entity's Screen shows, for those shown.
     pub fn screens_shown(&self) -> std::collections::HashMap<EntityId, String> {
         use area::builtin::Screen;

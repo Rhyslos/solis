@@ -530,3 +530,60 @@ fn with_no_screen_with_buttons_the_game_gets_every_action() {
     assert_eq!(pauser(&mut w, id, "choices"), reflect::Value::Int(1));
     assert_eq!(w.game_screens.focus, None);
 }
+
+#[test]
+fn a_screen_reads_lua_components_and_solis_s_own() {
+    let main = "component Mover {\n    method update(float dt) {\n        moveTo(position() + [1, 0, 0]);\n    }\n}\npass Mover;\nend\n";
+    let lua = "local Counter = component(\"Counter\", {\n    { \"count\", \"int\", 0 },\n})\n\nfunction Counter:update(dt)\n    self.count = self.count + 1\nend\n";
+    let hud = "fetch \"solis/screen\":[Ui, Transform, Counter];\n\
+        assembly Hud {\n    view {\n        Transform t = Ui:entity():transform();\n        \
+        Counter c = Ui:entity():counter();\n        \
+        text \"x \" + t.position.x.text() + \" count \" + c.count.text();\n    }\n}\npass Hud;\nend\n";
+    let (mut files, _) = script::describe::descriptions_for(
+        "Test Engine 9.9.9",
+        "solis",
+        &script::project_names::Names::standard(),
+    );
+    files.push(("main.lst".into(), main.into()));
+    files.push(("ui/hud.lst".into(), hud.into()));
+    let code = script::Code {
+        files,
+        lua: vec![("counter.lua".into(), lua.into())],
+        notes: Vec::new(),
+    };
+    let program = match script::compile(&code) {
+        Ok(Some(c)) => Arc::new(c),
+        Ok(None) => panic!("no code"),
+        Err(problems) => panic!("{}", problems[0]),
+    };
+    let mut w = showing(program, &[("Hud", true, 0)]);
+    let id = w
+        .document
+        .area()
+        .iter()
+        .find(|(_, data)| data.get::<Screen>().is_some())
+        .unwrap()
+        .0;
+    for component in ["Mover", "Counter"] {
+        w.apply_property(
+            crate::properties::PropertyRequest::AddComponent {
+                entity: id,
+                component: component.into(),
+            },
+            1,
+        );
+    }
+    w.play();
+    run_to(&mut w, 3);
+    let said = drawn(&w);
+    assert_eq!(
+        said.len(),
+        1,
+        "{said:?} {:?}",
+        w.log_lines().iter().map(|l| &l.text).collect::<Vec<_>>()
+    );
+    assert_eq!(
+        said[0], "x 3.0 count 3",
+        "the game's Transform and its Lua component"
+    );
+}
