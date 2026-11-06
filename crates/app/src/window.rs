@@ -2244,6 +2244,7 @@ impl eframe::App for App {
     fn save(&mut self, storage: &mut dyn eframe::Storage) {
         // An exported game keeps the player's settings itself.
         if self.playtest.is_some() {
+            self.flush_log(true);
             return;
         }
         eframe::set_value(storage, LAYOUT_KEY, self.workbench.layout());

@@ -1102,17 +1102,20 @@ impl Workbench {
         let part = self.assembly_part();
         let mut requests = Vec::new();
         let preparing = std::time::Instant::now();
-        let (hidden, locked) = self.area_panel.in_effect(&self.document);
         // Worked out again only when something it shows changed: while
-        // playing, the area usually doesn't.
+        // playing, the area usually doesn't. What's hidden or locked
+        // (with everything inside it) is only worked out then too (the
+        // phase review, speed): the key holds what was picked, which is
+        // small.
         let key = ViewKey {
             revision: self.document.revision(),
             sources: self.sources,
             models: self.models.len(),
-            hidden: hidden.clone(),
-            locked: locked.clone(),
+            hidden: self.area_panel.hidden.clone(),
+            locked: self.area_panel.locked.clone(),
         };
         if self.editor_view.as_ref() != Some(&key) {
+            let (hidden, locked) = self.area_panel.in_effect(&self.document);
             self.viewport.area = AreaView::of_placed(
                 self.document.area(),
                 &self.document.tree(),
