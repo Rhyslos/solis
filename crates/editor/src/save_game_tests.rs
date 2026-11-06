@@ -1052,7 +1052,7 @@ fn a_tile_map_the_game_changed_survives_a_save() {
 
 #[test]
 fn a_save_keeps_the_game_s_speed() {
-    let text = std::fs::read_to_string(save_fixtures().join("v7/harbour.solsave")).unwrap();
+    let text = std::fs::read_to_string(save_fixtures().join("v8/harbour.solsave")).unwrap();
     let save = Save::read(&text).unwrap();
     assert_eq!(save.speed, 0.5);
     assert_eq!(save.write(), text, "read back as written");
