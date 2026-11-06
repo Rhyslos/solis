@@ -1459,16 +1459,21 @@ impl Workbench {
         );
         ui.add_space(6.0);
         let fill = self.accent.colors().fill;
+        // The cards share the room across, up to their usual width.
+        let all = examples();
+        let gap = ui.spacing().item_spacing.x;
+        let count = all.len() as f32;
+        let card = ((ui.available_width() - gap * (count - 1.0)) / count - 34.0).clamp(150.0, CARD);
         ui.horizontal(|ui| {
-            for example in examples() {
+            for example in all {
                 egui::Frame::new()
                     .fill(theme::PANEL)
                     .stroke(egui::Stroke::new(1.0, Color32::from_rgb(0x30, 0x30, 0x30)))
                     .corner_radius(10.0)
                     .inner_margin(16.0)
                     .show(ui, |ui| {
-                        ui.set_width(CARD);
-                        ui.set_height(118.0);
+                        ui.set_width(card);
+                        ui.set_height(if card < CARD { 140.0 } else { 118.0 });
                         ui.vertical(|ui| {
                             ui.label(
                                 RichText::new(example.name)

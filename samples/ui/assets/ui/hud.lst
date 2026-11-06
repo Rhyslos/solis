@@ -14,7 +14,7 @@ assembly Hud {
                     box [width 300 * turret.ammo / turret.maxAmmo, height 14, yellow5, shadow];
                 }
                 text "Hits " + turret.hits.text() [size 22, white];
-                text "Space fires, P pauses" [size 16, gray5];
+                text "Space fires, P pauses" [size 18, gray5];
             }
         }
     }

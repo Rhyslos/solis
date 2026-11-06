@@ -16,19 +16,19 @@ assembly PauseMenu {
         stack [width fill, height fill, center, middle] {
             column [gap 14, pad 36, background gray9, round 12, center] {
                 text "Paused" [size 44, bold, white];
-                button "Resume" [width 320, blue] {
+                button "Resume" [width 360, size 24, blue] {
                     send Resumed() to Ui:entity();
                 }
-                button "Text size " + (Screens:textSize() * 100).int().text() + "%" [width 320] {
+                button "Text size " + (Screens:textSize() * 100).int().text() + "%" [width 360, size 24] {
                     send BiggerText() to Ui:entity();
                 }
-                button "Fullscreen: " + full [width 320] {
+                button "Fullscreen: " + full [width 360, size 24] {
                     send Fullscreen() to Ui:entity();
                 }
-                button "Resolution " + size.x.int().text() + " × " + size.y.int().text() [width 320] {
+                button "Resolution " + size.x.int().text() + " × " + size.y.int().text() [width 360, size 24] {
                     send NextResolution() to Ui:entity();
                 }
-                button "Quit" [width 320, hover:[background red7]] {
+                button "Quit" [width 360, size 24, hover:[background red7]] {
                     send Quit() to Ui:entity();
                 }
             }
