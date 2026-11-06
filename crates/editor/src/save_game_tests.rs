@@ -257,9 +257,9 @@ fn saves_from_elsewhere_or_damaged_are_refused_and_nothing_changes() {
     // Damaged: cut short, a byte changed, a newer version, not a save.
     let mut damaged = vec![
         text[..text.len() / 2].to_string(),
-        text.replacen("solis save 7", "solis save 9", 1),
-        text.replacen("solis save 7", "solis save 2", 1),
-        text.replacen("solis save 7", "solis save 1", 1),
+        text.replacen("solis save 8", "solis save 9", 1),
+        text.replacen("solis save 8", "solis save 2", 1),
+        text.replacen("solis save 8", "solis save 1", 1),
         "hello".to_string(),
         String::new(),
     ];
@@ -294,12 +294,12 @@ fn saves_from_elsewhere_or_damaged_are_refused_and_nothing_changes() {
     assert!(Save::read(&"x".repeat(MAX_SAVE_BYTES + 1)).is_err());
     // The third review: this version's header with Windows line endings
     // or a space after it is damaged, not "from a newer Solis".
-    for header in ["solis save 7\r", "solis save 7 "] {
-        let why = Save::read(&text.replacen("solis save 7", header, 1)).unwrap_err();
+    for header in ["solis save 8\r", "solis save 8 "] {
+        let why = Save::read(&text.replacen("solis save 8", header, 1)).unwrap_err();
         assert!(why.contains("damaged"), "{header:?}: {why}");
     }
     assert!(
-        Save::read(&text.replacen("solis save 7", "solis save 9", 1))
+        Save::read(&text.replacen("solis save 8", "solis save 9", 1))
             .unwrap_err()
             .contains("newer")
     );
@@ -930,7 +930,7 @@ fn an_animator_s_state_and_values_survive_a_save() {
     run_to(&mut w, 8);
     assert_eq!(w.world().unwrap().animator_of(farmer).unwrap().0, "Walk");
     let text = w.save_text().expect("saved");
-    assert!(text.starts_with("solis save 7\n"));
+    assert!(text.starts_with("solis save 8\n"));
     assert!(text.contains("animators "), "{text}");
     assert!(text.contains("moving=s1 speed=n40200000"), "{text}");
     let saved = sums(&mut w);

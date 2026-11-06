@@ -70,6 +70,8 @@ pub enum Change {
     /// `showScreen` (true) or `hideScreen` (false): this entity's Screen
     /// shows, or stops showing, the screen named here.
     ShowScreen(EntityId, String, bool),
+    /// `setTimeOfDay`: the game's hour (decision 0092).
+    TimeOfDay(f64),
     /// `Screens:set…` or `Window:set…`: one of the player's settings (decision 0091).
     Setting(crate::settings::Setting),
     /// `setBusVolume`: this bus at this share of its fader (0 to 1) for
@@ -164,6 +166,9 @@ pub struct WorldView {
     pub screens: Arc<std::collections::HashMap<EntityId, String>>,
     /// How fast the game runs as the tick started (`World:gameSpeed`).
     pub game_speed: f64,
+    /// The game's hour as the tick started (`World:timeOfDay`, 0 up to
+    /// 24).
+    pub time_of_day: f64,
     /// The player's settings as the tick started (`Screens:textSize`).
     pub settings: crate::settings::PlayerSettings,
 }
@@ -643,6 +648,17 @@ impl Host for ViewHost {
 
     fn settings(&self) -> crate::settings::PlayerSettings {
         self.view.settings
+    }
+
+    fn time_of_day(&self) -> f64 {
+        self.view.time_of_day
+    }
+
+    fn set_time_of_day(&mut self, hour: f64) {
+        if hour.is_finite() && self.kept.room() {
+            let order = self.order();
+            self.kept.changes.push((order, Change::TimeOfDay(hour)));
+        }
     }
 
     fn set_setting(&mut self, change: crate::settings::Setting) {

@@ -19,6 +19,7 @@ mod commands;
 mod commands_many;
 pub mod console;
 mod console_commands;
+mod day_colours;
 pub mod document;
 mod elements_view;
 pub mod frames_editor;

@@ -970,3 +970,46 @@ fn the_game_s_speed_scales_game_time_and_stops_physics_at_0() {
     assert_eq!(world.speed(), 0.5);
     assert_eq!(world.screen_shown(ball).as_deref(), Some("Hud"));
 }
+
+#[test]
+fn the_time_of_day_runs_with_the_game_and_game_code_can_set_it() {
+    use area::builtin::Environment;
+    let mut area = Area::new();
+    area.spawn(EntityData::new("Environment").with(&Environment {
+        day_night: true,
+        day_minutes: 24.0,
+        day_start: 8.0,
+        ..Environment::default()
+    }));
+    let mut world = World::from_area(&area);
+    assert_eq!(world.time_of_day(), 8.0, "as it starts");
+    // A day of 24 minutes: an hour a minute of game time.
+    world.set_clock(3600, 60.0);
+    assert!((world.time_of_day() - 9.0).abs() < 1e-9);
+    let before = world.checksum();
+    // A night's sleep: 6 in the morning, and on from there.
+    world.set_time_of_day(6.0);
+    assert!((world.time_of_day() - 6.0).abs() < 1e-9);
+    assert_ne!(world.checksum(), before, "it's in the sum");
+    world.set_clock(7200, 120.0);
+    assert!((world.time_of_day() - 7.0).abs() < 1e-9);
+    // Kept when the world is built again (an edit while playing).
+    world.rebuild(&area);
+    assert!((world.time_of_day() - 7.0).abs() < 1e-9);
+    // Round midnight, and nonsense changes nothing.
+    world.set_time_of_day(23.5);
+    world.set_time_of_day(f64::NAN);
+    assert!((world.time_of_day() - 23.5).abs() < 1e-9);
+    world.set_clock(9000, 150.0);
+    assert!(
+        (world.time_of_day() - 0.0).abs() < 1e-9,
+        "{}",
+        world.time_of_day()
+    );
+    // A save's shift comes back.
+    let shift = world.day_shift();
+    let mut other = World::from_area(&area);
+    other.set_clock(9000, 150.0);
+    other.set_day_shift(shift);
+    assert_eq!(other.time_of_day(), world.time_of_day());
+}

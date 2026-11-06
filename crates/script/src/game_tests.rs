@@ -70,6 +70,7 @@ impl GameWorld for TestWorld {
             screens: Arc::default(),
             game_speed: 1.0,
             settings: Default::default(),
+            time_of_day: 8.0,
             maps: Arc::default(),
             map_places: Arc::default(),
             map_bounds: Arc::default(),

@@ -32,6 +32,8 @@ pub struct ViewLight {
     pub outer: f32,
     /// Whether it casts shadows.
     pub shadows: bool,
+    /// Whether it shines only at night (decision 0092).
+    pub only_at_night: bool,
 }
 
 /// A model to draw.
@@ -63,6 +65,9 @@ pub struct AreaView {
     pub lamps: Vec<ViewLight>,
     /// The sky, fog and picture settings (the first in the area).
     pub environment: Environment,
+    /// The hour it's shown at (decision 0092): the game's time of day, or
+    /// the Environment's start while editing.
+    pub hour: f64,
     /// How many triangles the models have together.
     pub triangles: usize,
     /// The cameras, where they are (for their markers).
@@ -169,6 +174,7 @@ impl AreaView {
                 .unwrap_or_default(),
             ..Self::default()
         };
+        view.hour = f64::from(view.environment.day_start);
         view.locked = locked.clone();
         for (id, model) in area.with::<Model>() {
             if hidden.contains(&id) {
@@ -257,6 +263,7 @@ impl AreaView {
         use rayon::prelude::*;
         let mut view = Self {
             environment: world.environment().unwrap_or_default(),
+            hour: world.time_of_day(),
             ..Self::default()
         };
         // Models in jobs (decision 0031), kept in tree order. None of the
@@ -374,6 +381,7 @@ fn place(entity: reflect::EntityId, light: &Light, world: glam::Mat4) -> ViewLig
         inner: inner.min(outer),
         outer,
         shadows: light.shadows,
+        only_at_night: light.only_at_night,
     }
 }
 

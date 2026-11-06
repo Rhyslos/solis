@@ -19,6 +19,8 @@ world: object World: method float randomRange(float low, float high) native;
 world: object World: method int randomInt(int low, int high) native;
 world: object World: method setGameSpeed(float speed) native;
 world: object World: method float gameSpeed() native;
+world: object World: method float timeOfDay() native;
+world: object World: method setTimeOfDay(float hour) native;
 world: object World: method setSeed(int seed) native;
 world: object Saves: method saveTo(string slot) native;
 world: object Saves: method loadFrom(string slot) native;
@@ -141,8 +143,10 @@ solis.World:randomRange
 solis.World:say
 solis.World:setGameSpeed
 solis.World:setSeed
+solis.World:setTimeOfDay
 solis.World:spawn
 solis.World:time
+solis.World:timeOfDay
 solis.World:viewSize
 solis.entity.animate
 solis.entity.animateFromStart
@@ -227,6 +231,8 @@ Host: fn map_bounds(&self, which: EntityId) -> Option<(Vec3, Vec3)>
 Host: fn view_size(&self) -> Vec3
 Host: fn set_game_speed(&mut self, speed: f64)
 Host: fn game_speed(&self) -> f64
+Host: fn time_of_day(&self) -> f64
+Host: fn set_time_of_day(&mut self, hour: f64)
 Host: fn settings(&self) -> crate::settings::PlayerSettings
 Host: fn set_setting(&mut self, change: crate::settings::Setting)
 Host: fn text_size(&self) -> f64

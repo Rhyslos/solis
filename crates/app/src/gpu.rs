@@ -123,7 +123,7 @@ impl GpuViewport {
             },
             size_px: [side, side],
             sun: render::Sun::default(),
-            environment: to_render_environment(&Environment::default()),
+            environment: to_render_environment(&Environment::default(), 12.0),
             editor_lines: true,
             grid_plane: render::GridPlane::Ground,
             grid_step: 1.0,
@@ -474,9 +474,14 @@ fn count(report: &mut editor::DrawReport, stats: &render::FrameStats) {
     report.triangles += stats.triangles;
 }
 
-/// The area's sky, fog and exposure as the renderer takes them.
-fn to_render_environment(env: &Environment) -> render::Environment {
+/// The area's sky, fog and exposure as the renderer takes them, with the
+/// day's tint at `hour` (decision 0092).
+fn to_render_environment(env: &Environment, hour: f64) -> render::Environment {
     render::Environment {
+        tint: env.tint_at(hour),
+        sprite_light: env
+            .light_sprites
+            .then_some(env.light_steps.clamp(0, 8) as u32),
         sky: match env.sky {
             Sky::Backdrop => render::Sky::Backdrop,
             Sky::Daylight => render::Sky::Daylight {
@@ -565,7 +570,7 @@ impl ViewportRenderer for GpuViewport {
             },
             size_px: view.size_px,
             sun: to_render_sun(view.sun.as_ref()),
-            environment: to_render_environment(&view.environment),
+            environment: to_render_environment(&view.environment, view.hour),
             editor_lines: view.editor_lines,
             grid_plane: match view.kind {
                 editor::ViewKind::Front => render::GridPlane::Front,
@@ -576,7 +581,9 @@ impl ViewportRenderer for GpuViewport {
             },
             grid_step: view.grid_step,
         };
-        let lights: Vec<render::Light> = view.lamps.iter().map(to_render_light).collect();
+        // Lamps that shine only at night, on while it's night (decision
+        // 0092).
+        let lights: Vec<render::Light> = view.lamps_shining().map(to_render_light).collect();
         if view.image >= editor::MAX_IMAGES {
             return Err("too many views".into());
         }

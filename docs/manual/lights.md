@@ -49,11 +49,13 @@ Every light is an [entity](concepts.md#the-area) with a **Light** [component](co
 | Cone (spotlights) | How wide the light reaches, in degrees from the middle of the cone. |
 | Soft edge (spotlights) | How gradually the light fades at the cone's edge: 0° for a hard circle, more for a soft one. |
 | Shadows | Whether it casts shadows. For now only the sun does. |
+| Only at night | On from dusk to dawn, by the [Environment's day and night](sky-fog-and-exposure.md): a street lamp, a lantern. With day and night off, it's always on. |
 
 ## Tips and common problems
 - **Problem:** a lamp lights through a wall. **Why:** for now only the sun casts shadows; lamps don't. Shadows from lamps come with the lighting choices of [decision 0008](../decisions/0008-lighting-is-a-project-choice.md).
 - **Problem:** a lamp seems to have no effect. **Why:** it may be too weak for its distance: light gets four times weaker each time the distance doubles. **Fix:** raise its strength, or move it closer.
 - **Problem:** everything is washed out near a lamp. **Why:** the lamp is very strong for its distance. **Fix:** lower its strength, or the exposure under [Environment](sky-fog-and-exposure.md).
+- **Problem:** a street lamp is off at night. **Why:** **Only at night** follows the Environment's **Day and night**: it's on while the day's colour is darker than half the brightest one. **Fix:** check the night colours are darker than the day's, and that Day and night is ticked.
 - **Problem:** lamps far from the camera stop lighting. **Why:** up to 16 lamps light the view at once, the ones nearest the camera.
 - **Problem:** things far from the camera have no shadows. **Why:** the sun's shadows reach 200 m from the camera. The shadow map covers only what the view shows within that distance, so its detail goes where you're looking, however big the area. **Fix:** move closer; at that distance, shadows are too small to see anyway.
 - **Problem:** shadows look blurry. **Why:** the shadow map covers everything in view up to 200 m away, so looking out over a wide area spreads its pixels further. **Fix:** look from closer, or from higher up so less ground is in view.

@@ -52,6 +52,9 @@ pub struct Light {
     pub soft_edge: f32,
     /// Whether it casts shadows (the sun only, for now).
     pub shadows: bool,
+    /// Whether it shines only at night (decision 0092): on at dusk, off
+    /// at dawn, by the Environment's day and night.
+    pub only_at_night: bool,
 }
 
 impl Default for Light {
@@ -71,6 +74,7 @@ impl Light {
             cone: 30.0,
             soft_edge: 10.0,
             shadows: true,
+            only_at_night: false,
         }
     }
 
@@ -81,6 +85,7 @@ impl Light {
             color: [1.0, 1.0, 1.0],
             strength: 1000.0,
             shadows: false,
+            only_at_night: false,
             ..Self::sun()
         }
     }
@@ -184,6 +189,12 @@ impl Component for Light {
                     d.shadows,
                     "Whether it casts shadows (the sun, for now).",
                 ),
+                field::boolean(
+                    "only_at_night",
+                    "Only at night",
+                    false,
+                    "On at dusk, off at dawn, by the Environment's day and night: a street lamp.",
+                ),
             ],
         }
     }
@@ -197,6 +208,7 @@ impl Component for Light {
         data.set("cone", Value::Float(f64::from(self.cone)));
         data.set("soft_edge", Value::Float(f64::from(self.soft_edge)));
         data.set("shadows", Value::Bool(self.shadows));
+        data.set("only_at_night", Value::Bool(self.only_at_night));
         data
     }
 
@@ -216,6 +228,7 @@ impl Component for Light {
             cone: f.float("cone", d.cone),
             soft_edge: f.float("soft_edge", d.soft_edge),
             shadows: f.bool("shadows", d.shadows),
+            only_at_night: f.bool("only_at_night", false),
         }
     }
 }

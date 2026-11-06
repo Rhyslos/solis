@@ -376,6 +376,9 @@ fn field_widget(
             };
             return whole(state_picker(ui, value, file.map(|f| &**f), mixed.whole));
         }
+        (FieldKind::Text, Offer::DayColours) => {
+            return whole(crate::day_colours::day_colours(ui, value, mixed.whole));
+        }
         (FieldKind::Text, Offer::Screens) => {
             return whole(screen_picker(ui, value, &sheets.screens, mixed.whole));
         }

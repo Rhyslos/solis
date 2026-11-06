@@ -133,6 +133,9 @@ pub struct ViewportView {
     pub lamps: Vec<ViewLight>,
     /// The sky, fog and exposure.
     pub environment: area::builtin::Environment,
+    /// The hour it's drawn at (decision 0092), for the day's tint and the
+    /// lamps that shine only at night.
+    pub hour: f64,
     /// A rectangle of the image (x, y, width, height in pixels) to find
     /// out what's under, after drawing this frame: the answer comes from
     /// [`ViewportRenderer::picked`] on a later frame.
@@ -165,6 +168,15 @@ pub struct ViewportView {
     /// after screen: the renderer lays each out on the picture's real
     /// size.
     pub ui: Vec<std::sync::Arc<ui::Screen>>,
+}
+
+impl ViewportView {
+    /// The lamps shining at this view's hour: those that shine only at
+    /// night are left out by day (decision 0092).
+    pub fn lamps_shining(&self) -> impl Iterator<Item = &ViewLight> {
+        let night = self.environment.is_night(self.hour);
+        self.lamps.iter().filter(move |l| night || !l.only_at_night)
+    }
 }
 
 /// How a 2D game's picture is drawn small and scaled up: the renderer
@@ -365,6 +377,9 @@ pub struct Viewport {
     /// The selected tile map's values laid over it, its hidden layers,
     /// and the cell under the pointer (Phase 9, D4).
     pub(crate) tile_overlay: crate::tile_view::TileOverlay,
+    /// The hour the viewport shows the area at, from the Environment's
+    /// Preview time (decision 0092); never saved. `None`: its start.
+    pub(crate) preview_hour: Option<f64>,
     /// The time animated tiles show, in milliseconds (the editor's clock).
     pub(crate) tile_ms: u64,
     /// The tool bar's width last frame, with the painting tools.
@@ -509,6 +524,7 @@ impl Default for Viewport {
             pixels: area::pixels::PixelSettings::default(),
             sheets: std::sync::Arc::default(),
             tile_overlay: crate::tile_view::TileOverlay::default(),
+            preview_hour: None,
             tile_ms: 0,
             paint_bar_width: 0.0,
             snapping_width: 0.0,
@@ -718,6 +734,7 @@ impl Viewport {
             } else {
                 self.area.environment
             },
+            hour: self.preview_hour.unwrap_or(self.area.hour),
             pick: None,
             image: VIEWPORT_IMAGE + self.active,
             editor_lines: true,

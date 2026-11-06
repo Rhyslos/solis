@@ -7,8 +7,9 @@ The built-in components. Each is a typed Rust struct that turns into values and 
 | `mod.rs` | Lists the components, builds the registry of their schemas, and makes the starter area a new project opens with. Start here. | `registry`, `starter_area` |
 | `transform.rs` | Where an entity is: position, rotation and scale relative to its parent. Z is up, units are metres. | `Transform` |
 | `model.rs` | A model drawn at the entity: an imported asset, or one node of it. | `Model` |
-| `light.rs` | The sun, point lights and spotlights. A light shines along its entity's -Z. | `Light`, `LightKind` |
-| `environment.rs` | The sky, fog, exposure and tone mapping, saved with each area (decision 0017). | `Environment`, `Sky`, `ToneMapping` |
+| `light.rs` | The sun, point lights and spotlights, and whether a lamp shines only at night (decision 0092). A light shines along its entity's -Z. | `Light`, `LightKind` |
+| `environment.rs` | The sky, fog, exposure and tone mapping, saved with each area (decision 0017); day and night (a day's length, start and colours) and Light sprites (decision 0092). | `Environment`, `Sky`, `ToneMapping` |
+| `day.rs` | A day's colours (decision 0092): time→colour stops written as text (`6:00 #e99a6a, …`), the tint at any hour, and whether it's night. Tests in `day_tests.rs`. | `DayColours` |
 | `camera.rs` | What the game shows: its View (perspective, or 2D: straight down, pixel-perfect), field of view, near and far, and its projection. Looks along the entity's -Z. | `Camera`, `CameraView` |
 | `audio_source.rs` | A sound that keeps playing at the entity: a sound event by name, on or off, and a volume (Phase 7, S5). | `AudioSource` |
 | `reverb_zone.rs` | A place where sounds echo: a box or a ball with a soft edge, a preset and a strength (Phase 7, S6). | `ReverbZone`, `ZoneShape` |

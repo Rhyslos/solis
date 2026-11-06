@@ -68,6 +68,13 @@ pub struct Environment {
     pub exposure: f32,
     /// How brightness is mapped to the screen.
     pub tonemap: Tonemap,
+    /// The day's tint at this hour (decision 0092), sRGB 0 to 1: the sun,
+    /// the sky's light and lit sprites take it. White as the day starts or
+    /// with day and night off.
+    pub tint: [f32; 3],
+    /// Whether sprites and tile maps are lit (by the tint and the lamps),
+    /// and in how many steps (0 smooth).
+    pub sprite_light: Option<u32>,
 }
 
 impl Default for Environment {
@@ -77,6 +84,8 @@ impl Default for Environment {
             fog: None,
             exposure: 0.0,
             tonemap: Tonemap::Agx,
+            tint: [1.0; 3],
+            sprite_light: None,
         }
     }
 }

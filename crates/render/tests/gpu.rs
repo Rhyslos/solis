@@ -1161,6 +1161,7 @@ fn env(sky: Sky, fog: Option<Fog>, exposure: f32, tonemap: Tonemap) -> Environme
         fog,
         exposure,
         tonemap,
+        ..Environment::default()
     }
 }
 
@@ -2854,6 +2855,15 @@ fn render_sprites(sprites: &[render::SpriteInstance]) -> Option<Vec<u8>> {
 /// Draws each of `groups` of sprites as a run of its own (a run is drawn
 /// by its first sprite's pipeline), and reads the picture back.
 fn render_runs(groups: &[Vec<render::SpriteInstance>]) -> Option<Vec<u8>> {
+    render_sprites_lit(groups, Environment::default(), &[])
+}
+
+/// [`render_runs`], in `environment` with `lights`.
+fn render_sprites_lit(
+    groups: &[Vec<render::SpriteInstance>],
+    environment: Environment,
+    lights: &[render::Light],
+) -> Option<Vec<u8>> {
     let sprites: Vec<&render::SpriteInstance> = groups.iter().flatten().collect();
     let gpu = gpu()?;
     let renderer = ViewportRenderer::new(&gpu.device, 1);
@@ -2876,7 +2886,7 @@ fn render_runs(groups: &[Vec<render::SpriteInstance>]) -> Option<Vec<u8>> {
         shading: Shading::default(),
         size_px: [64, 64],
         sun: Sun::default(),
-        environment: Environment::default(),
+        environment,
         editor_lines: false,
         grid_plane: GridPlane::Ground,
         grid_step: 1.0,
@@ -2888,6 +2898,7 @@ fn render_runs(groups: &[Vec<render::SpriteInstance>]) -> Option<Vec<u8>> {
         &params,
         &render::Scene {
             sprites: &runs,
+            lights,
             ..render::Scene::default()
         },
     );
@@ -3164,4 +3175,80 @@ fn scale_check_100000_sprites() {
     }
     let ms = spent.as_secs_f64() * 1000.0 / f64::from(frames);
     gathering_verdict("handing over 100,000 sprites", ms, 2.0, true);
+}
+
+#[test]
+fn lit_sprites_take_the_day_s_tint_and_a_lamp_s_pool_in_steps() {
+    // Two sprites far apart; a lamp 2 m above the first.
+    let white = [1.0, 1.0, 1.0, 0.0];
+    let sprites = vec![
+        sprite_at(10.0, 10.0, 0.0, 0, white),
+        sprite_at(50.0, 50.0, 0.0, 0, white),
+    ];
+    let night = Environment {
+        tint: [0.25, 0.25, 0.5],
+        sprite_light: Some(0),
+        ..Environment::default()
+    };
+    let lamp = render::Light {
+        kind: render::LightKind::Point,
+        position: Vec3::new(12.0, 64.0 - 12.0, 2.0),
+        direction: Vec3::NEG_Z,
+        color: [1.0, 0.9, 0.6],
+        strength: 300.0,
+        range: Some(8.0),
+    };
+    let Some(plain) = render_runs(std::slice::from_ref(&sprites)) else {
+        return;
+    };
+    let Some(lit) = render_sprites_lit(std::slice::from_ref(&sprites), night, &[lamp]) else {
+        return;
+    };
+    let far = |p: &[u8]| pixel(p, 64, 50, 50);
+    let near = |p: &[u8]| pixel(p, 64, 11, 11);
+    // Far from the lamp: the night's tint, darker and bluer.
+    let (a, b) = (far(&plain), far(&lit));
+    assert!(b[0] < a[0] && b[1] < a[1], "darker: {a:?} {b:?}");
+    assert!(
+        f32::from(b[2]) / f32::from(b[0].max(1)) > f32::from(a[2]) / f32::from(a[0].max(1)),
+        "bluer"
+    );
+    // Under the lamp: brighter than the far one.
+    let lamp_lit = near(&lit);
+    assert!(
+        lamp_lit[0] > b[0] + 20,
+        "the lamp's pool: {lamp_lit:?} {b:?}"
+    );
+    // Unlit (the switch off): exactly as drawn, tint or not.
+    let off = Environment {
+        sprite_light: None,
+        ..night
+    };
+    let Some(as_drawn) = render_sprites_lit(std::slice::from_ref(&sprites), off, &[lamp]) else {
+        return;
+    };
+    assert_eq!(far(&as_drawn), far(&plain));
+    assert_eq!(near(&as_drawn), near(&plain));
+    // In steps: the light comes in bands, so fewer shades along a line
+    // out from the lamp.
+    let banded = Environment {
+        sprite_light: Some(2),
+        tint: [0.0; 3],
+        ..night
+    };
+    let wide = vec![sprite_at(10.0, 10.0, 0.0, 0, white); 1];
+    let Some(steps) = render_sprites_lit(std::slice::from_ref(&wide), banded, &[lamp]) else {
+        return;
+    };
+    let Some(smooth) = render_sprites_lit(
+        std::slice::from_ref(&wide),
+        Environment {
+            sprite_light: Some(0),
+            ..banded
+        },
+        &[lamp],
+    ) else {
+        return;
+    };
+    assert_ne!(near(&steps), near(&smooth), "banded differs from smooth");
 }

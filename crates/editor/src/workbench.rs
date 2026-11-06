@@ -967,6 +967,12 @@ impl Workbench {
             std::mem::take(&mut self.sound_spent),
         );
         let mut actions = std::mem::take(&mut self.outbox);
+        // The Environment's Preview time (decision 0092), set in
+        // Properties: the viewport shows the area at that hour.
+        self.viewport.preview_hour = ui
+            .ctx()
+            .data(|d| d.get_temp::<Option<f64>>(crate::day_colours::preview_id()))
+            .flatten();
         // The launcher, while it's up, is all there is.
         if self.launcher(ui, &mut actions) {
             self.prompts(ui, &mut actions);

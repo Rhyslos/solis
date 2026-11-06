@@ -54,6 +54,9 @@ struct Frame {
     // x: exposure multiplier; y: tone mapping (0 AgX, 1 ACES, 2 none);
     // z: 1 for the daylight sky, 0 for the editor's backdrop.
     post: vec4<f32>,
+    // The day's tint (rgb, linear); w: the steps sprites are lit in (0
+    // smooth), or -1 for sprites drawn as they are (decision 0092).
+    sprite_light: vec4<f32>,
 };
 
 // One lamp, as LightUniform in lighting.rs.
@@ -798,6 +801,8 @@ struct SpriteOut {
     @location(2) @interpolate(flat) flags: u32,
     @location(3) @interpolate(flat) tint: vec4<f32>,
     @location(4) @interpolate(flat) outline: vec3<f32>,
+    // Where in the world (for the lamps).
+    @location(5) world: vec3<f32>,
 };
 
 @vertex
@@ -822,7 +827,28 @@ fn sprite_vs(@builtin(vertex_index) index: u32, s: SpriteIn) -> SpriteOut {
     out.flags = s.flags;
     out.tint = s.tint;
     out.outline = s.outline.rgb;
+    out.world = world;
     return out;
+}
+
+// The light on a sprite's pixel at `world` (decision 0092): the day's
+// tint, and every lamp shining down on the ground there, as it lights a
+// surface facing up; banded in `steps` when there are any.
+fn sprite_lit(world: vec3<f32>) -> vec3<f32> {
+    var light = frame.sprite_light.rgb;
+    let count = u32(frame.shadow.z);
+    for (var i = 0u; i < count; i = i + 1u) {
+        let lamp = lamp_light(i, world);
+        light = light + lamp.radiance * max(lamp.l.z, 0.0) / PI;
+    }
+    light = min(light, vec3<f32>(4.0));
+    let steps = frame.sprite_light.w;
+    if steps >= 1.0 {
+        let lum = max(dot(light, vec3<f32>(0.2126, 0.7152, 0.0722)), 0.0001);
+        let banded = floor(lum * steps + 0.5) / steps;
+        light = light * (banded / lum);
+    }
+    return light;
 }
 
 // The frame's pixel at `p` (its own pixels, flipped as asked); see-through
@@ -865,6 +891,10 @@ fn sprite_fs(in: SpriteOut) -> @location(0) vec4<f32> {
     }
     var colour = decode(texel.rgb) * in.tint.rgb;
     colour = mix(colour, vec3<f32>(1.0), clamp(in.tint.a, 0.0, 1.0));
+    // Lit by the day and the lamps, when the area says so.
+    if frame.sprite_light.w >= 0.0 {
+        colour = colour * sprite_lit(in.world);
+    }
     // Alpha 0: the last pass shows it as drawn, never tone mapped, so pixel
     // art keeps its exact colours (see the top of this file). See-through
     // sprites carry their own alpha, which only blends: the picture's

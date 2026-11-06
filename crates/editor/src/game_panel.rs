@@ -242,6 +242,7 @@ pub(crate) fn game_panel(
         sun: scene.view.sun,
         lamps: scene.view.lamps.clone(),
         environment: scene.view.environment,
+        hour: scene.view.hour,
         pick: None,
         image: GAME_IMAGE,
         editor_lines: false,
