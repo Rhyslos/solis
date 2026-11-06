@@ -449,6 +449,30 @@ impl Projects {
         asset_db::write_atomically(&file, text.as_bytes()).map_err(|e| e.to_string())
     }
 
+    /// Saves a screen's Lust file (inside the assets) after a change on
+    /// the UI editor's canvas (decision 0089). Only a `.lst` file that's
+    /// there already: the canvas changes screens, it never makes files.
+    pub fn save_screen(&self, path: &Path, text: &str) -> Result<(), String> {
+        let db = self.db.as_ref().ok_or("no project is open")?;
+        let plain = path
+            .components()
+            .all(|c| matches!(c, std::path::Component::Normal(_)));
+        let lust = path
+            .extension()
+            .is_some_and(|e| e.eq_ignore_ascii_case("lst"));
+        if !plain || !lust {
+            return Err("it isn't a Lust file in the assets".to_owned());
+        }
+        let file = db.project().assets().join(path);
+        if !file.is_file() {
+            return Err("it isn't there any more".to_owned());
+        }
+        if text.len() > ui::source::MAX_BYTES {
+            return Err("it's too big".to_owned());
+        }
+        asset_db::write_atomically(&file, text.as_bytes()).map_err(|e| e.to_string())
+    }
+
     /// Saves a tileset (`.tileset.lst`, inside the assets, Phase 9, D4),
     /// making it if it isn't there. Gives back where an older one was
     /// kept, if it was.

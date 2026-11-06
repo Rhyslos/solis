@@ -10,7 +10,7 @@ When finding your way around, or making the layout suit your screen.
 **The top bar**, from left to right:
 - **The logo**, then the **menus:** File, Edit, View, Entity, Play, Window and Help. **Play** has the play buttons, loads [save games](save-games.md), and records a play's input to play back ([Input](input.md)); **Edit > Input actions…** sets the game's controls and **Edit > Settings…** the editor's own ([Settings](settings.md)). **File > New project…**, **Open project…** and **Recent projects** work with [projects](projects-and-the-library.md), and **File > Projects…** shows the [launcher](launcher.md) again; **New area**, **Open area…**, **Save area** and **Save area as…** with [area files](saving-areas.md); **File > Import model…** brings a model in (see [Importing models](importing-models.md)); **Edit > Undo** and **Redo** take back changes (see [Undo and redo](undo.md)); **Help > Add the sample area** brings in a ready-made one, and **Help > Make the playground…** makes a project with a level to walk around in ([Characters and cameras](characters-and-cameras.md)). Only what's built is shown: things still to come (building a game to share, playing with two players, layers) appear when they work.
 - The **area tab** shows the open area ("Untitled area"), with tabs for the animator or tileset open.
-- **The workspaces**, **Level**, **Animate** and **Code** (see below), then the **area tab**.
+- **The workspaces**, **Level**, **Animate**, **Code** and **UI** (see below), then the **area tab**.
 - **Search or do anything…**: one search for everything (see below).
 - **Play**, **Pause**, **Step** and **Stop**, on the right. They run the area as a game: see [Play mode](play-mode.md).
 
@@ -18,6 +18,7 @@ When finding your way around, or making the layout suit your screen.
 
 **Workspaces, one per job:** the tabs after the menus switch the whole layout at once, so each kind of work has the panels it needs where it needs them. Each remembers how you arranged it, separately.
 - **Level** is for building areas: the layout shown above.
+- **UI** draws game screens: the screen open on the **Canvas** in the middle, its pieces in **Elements** on the left, and the piece picked in **Properties** on the right. Double-click a screen's file in the Library to open it there. See [The UI editor](ui-editor.md).
 - **Animate** gives animating sprites room: the Library on the left to pick sheets and animators from, the viewport (an animator opens beside it), and a taller bottom for a clips file's Frames.
 - **Code** is a testing layout to keep beside Ledger, where you write game code: the game big in the middle, your code files on the left (each says which of its components entities in the area use, as in `Player · 1`), Properties on the right (game code's values, live while playing), and the Console and Problems side by side along the bottom.
 

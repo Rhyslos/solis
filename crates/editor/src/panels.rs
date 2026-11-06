@@ -99,7 +99,18 @@ pub(crate) struct PanelViewer<'a> {
     )>,
     /// The selected tile map, for the Map tab (Phase 9, D4).
     pub(crate) map: Option<crate::map_tab::MapUi<'a>>,
+    /// The screen open on the canvas, the fonts it's measured with and the
+    /// screens' pictures (decision 0089).
+    pub(crate) screen: Option<ScreenUi<'a>>,
     pub(crate) map_requests: &'a mut Vec<crate::map_tab::MapRequest>,
+}
+
+/// The screen open on the canvas, for the Canvas, Elements and
+/// Properties.
+pub(crate) struct ScreenUi<'a> {
+    pub(crate) doc: &'a mut crate::screen_doc::ScreenDoc,
+    pub(crate) fonts: &'a mut ui::Fonts,
+    pub(crate) pictures: Option<std::sync::Arc<ui::Pictures>>,
 }
 
 /// What the Clips and Frames tabs did this frame.
@@ -136,6 +147,12 @@ pub(crate) struct FramesOut {
     pub(crate) atlas_hovered: bool,
     /// What the Atlas Crop tab has to say in the Console.
     pub(crate) atlas_said: Option<String>,
+    /// The screen on the canvas changed: save it.
+    pub(crate) screen_changed: bool,
+    /// The pointer is over the canvas or Elements (Ctrl+Z is theirs).
+    pub(crate) screen_hovered: bool,
+    /// Open the screen's file as code.
+    pub(crate) screen_code: bool,
 }
 
 impl TabViewer for PanelViewer<'_> {
@@ -273,6 +290,20 @@ impl TabViewer for PanelViewer<'_> {
                 );
             }
             Panel::Properties => {
+                if (self.in_front.contains(&Panel::Canvas)
+                    || self.in_front.contains(&Panel::Elements))
+                    && let Some(screen) = &mut self.screen
+                {
+                    egui::ScrollArea::vertical()
+                        .id_salt("screen properties")
+                        .show(ui, |ui| {
+                            egui::Frame::new().inner_margin(8.0).show(ui, |ui| {
+                                self.frames_out.screen_changed |=
+                                    crate::screen_props::screen_properties(ui, screen.doc);
+                            });
+                        });
+                    return;
+                }
                 if self.in_front.contains(&Panel::Tileset)
                     && let Some(tileset) = &mut self.tileset
                 {
@@ -517,6 +548,47 @@ impl TabViewer for PanelViewer<'_> {
                 if out.save_template.is_some() {
                     self.frames_out.tileset_template = out.save_template;
                 }
+            }
+            Panel::Canvas => {
+                let Some(screen) = &mut self.screen else {
+                    placeholder(
+                        ui,
+                        "No screen is open. Double-click a screen's file (in ui/) in the \
+                         Library to draw it here.",
+                    );
+                    return;
+                };
+                let out = crate::canvas_view::canvas_tab(
+                    ui,
+                    crate::canvas_view::CanvasUi {
+                        doc: screen.doc,
+                        renderer: self.renderer,
+                        fonts: screen.fonts,
+                        pictures: screen.pictures.clone(),
+                        accent: self.accent.colors().fill,
+                    },
+                );
+                self.frames_out.screen_changed |= out.changed;
+                self.frames_out.screen_hovered |= out.hovered;
+                self.frames_out.screen_code |= out.open_code;
+            }
+            Panel::Elements => {
+                let Some(screen) = &mut self.screen else {
+                    placeholder(ui, "No screen is open.");
+                    return;
+                };
+                let out = egui::Frame::new()
+                    .inner_margin(egui::Margin::symmetric(6, 6))
+                    .show(ui, |ui| {
+                        crate::elements_view::elements_tab(
+                            ui,
+                            screen.doc,
+                            self.accent.colors().fill,
+                        )
+                    })
+                    .inner;
+                self.frames_out.screen_changed |= out.changed;
+                self.frames_out.screen_hovered |= out.hovered;
             }
             Panel::AtlasCrop => {
                 if ui.rect_contains_pointer(ui.max_rect()) {

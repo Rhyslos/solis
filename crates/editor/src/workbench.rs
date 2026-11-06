@@ -172,6 +172,14 @@ pub enum WorkbenchAction {
         /// What to save.
         text: String,
     },
+    /// Save a screen's Lust file (inside the project's assets) after a
+    /// change on the UI editor's canvas (decision 0089). It must be there.
+    SaveScreen {
+        /// The file.
+        path: std::path::PathBuf,
+        /// What to save.
+        text: String,
+    },
     /// Save a tile map file (`.tilemap.lst`, inside the project's assets),
     /// making it if it isn't there yet (Phase 9, D4).
     SaveTileMap {
@@ -450,6 +458,15 @@ pub struct Workbench {
     pub(crate) game_screens: crate::game_screens::GameScreens,
     /// The pictures the game's screens show (decision 0089).
     pub(crate) screen_pictures: crate::screen_pictures::ScreenPictures,
+    /// The screen open on the UI editor's canvas (decision 0089).
+    pub(crate) screen_doc: Option<crate::screen_doc::ScreenDoc>,
+    /// The program its view was drawn from.
+    pub(crate) screen_from: Option<usize>,
+    /// The fonts the canvas measures with.
+    pub(crate) screen_fonts: Option<ui::Fonts>,
+    /// Whether the pointer is over the canvas or Elements (Ctrl+Z is
+    /// theirs then).
+    pub(crate) screen_hovered: bool,
     /// What the Game panel showed last, and what it was worked out for:
     /// made again only when the world, the models or the state changed
     /// (not on a frame without a tick, or while paused).
@@ -574,6 +591,10 @@ impl Workbench {
             ui_test: None,
             game_screens: Default::default(),
             screen_pictures: Default::default(),
+            screen_doc: None,
+            screen_from: None,
+            screen_fonts: None,
+            screen_hovered: false,
             bindings: input::Bindings::default(),
             devices: input::Devices::new(),
             game_input: false,
@@ -1013,6 +1034,7 @@ impl Workbench {
         self.prepare_tools();
         self.find_problems();
         self.refresh_screen_pictures();
+        self.refresh_screen();
         let code_problems = self.all_code_problems().into_owned();
         let menu = crate::menu_items::MenuState::of(self);
         let copied: Vec<String> = self.copied.iter().map(|(name, _)| name.clone()).collect();
@@ -1159,6 +1181,15 @@ impl Workbench {
                 self.accent.colors().fill,
             )
         });
+        let screen_pictures = self.screen_pictures.pictures.clone();
+        let screen_fonts = self
+            .screen_fonts
+            .get_or_insert_with(crate::game_screens::editor_fonts);
+        let screen = self.screen_doc.as_mut().map(|doc| crate::panels::ScreenUi {
+            doc,
+            fonts: screen_fonts,
+            pictures: screen_pictures,
+        });
         let atlas = self.atlas_editor.as_mut().map(|editor| {
             let picture = self.atlas_texture.as_ref().and_then(|(art, texture)| {
                 Some(crate::atlas_view::AtlasPicture {
@@ -1249,6 +1280,7 @@ impl Workbench {
                         atlas,
                         map,
                         map_requests: &mut map_requests,
+                        screen,
                     },
                 );
         });
@@ -1538,6 +1570,11 @@ impl Workbench {
         } else if self.tileset_hovered && self.tileset_editor.is_some() {
             // Over the Tileset tab: the tileset's changes.
             self.tileset_undo(redo, undo);
+        } else if self.screen_hovered && self.screen_doc.is_some() {
+            // Over the canvas or Elements: the screen's changes.
+            if redo || undo {
+                self.screen_undo(redo);
+            }
         } else if self.atlas_hovered && self.atlas_editor.is_some() {
             // Over the Atlas Crop tab: the crops' changes.
             if redo || undo {

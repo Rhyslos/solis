@@ -52,6 +52,11 @@ pub enum Panel {
     /// What's selected and what you can do with it (decision 0085): under
     /// Properties.
     Hints,
+    /// The UI editor's canvas (decision 0089): a screen drawn to pick and
+    /// change, in the UI workspace while a screen is open.
+    Canvas,
+    /// The open screen's pieces as a tree, beside the canvas.
+    Elements,
 }
 
 impl Panel {
@@ -72,13 +77,15 @@ impl Panel {
 
     /// Panels that come and go with what's open (a clips file), never in
     /// [`Self::ALL`] or the Window menu, and never saved in a layout.
-    pub const OPEN_WITH_A_FILE: [Self; 6] = [
+    pub const OPEN_WITH_A_FILE: [Self; 8] = [
         Self::Clips,
         Self::Frames,
         Self::Animator,
         Self::Map,
         Self::Tileset,
         Self::AtlasCrop,
+        Self::Canvas,
+        Self::Elements,
     ];
 
     /// Panels taken out until what they show is built (decision 0070): a
@@ -114,6 +121,8 @@ impl Panel {
             Self::Tileset => "Tileset",
             Self::AtlasCrop => "Atlas Crop",
             Self::Hints => "Hints",
+            Self::Canvas => "Canvas",
+            Self::Elements => "Elements",
         }
     }
 
@@ -138,6 +147,8 @@ impl Panel {
             Self::Tileset => Icon::Layers,
             Self::AtlasCrop => Icon::Viewport,
             Self::Hints => Icon::Info,
+            Self::Canvas => Icon::Game,
+            Self::Elements => Icon::Area,
         }
     }
 }

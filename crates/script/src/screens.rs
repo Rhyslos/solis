@@ -45,6 +45,9 @@ pub struct ScreenCode {
     pub notes: Vec<String>,
     /// Every picture a screen names in its code (decision 0089), where.
     pub pictures: Vec<PictureUse>,
+    /// The screens' files as they were compiled (path, text), for the UI
+    /// editor's canvas to read and change.
+    pub sources: Vec<(String, String)>,
 }
 
 /// A picture named in a screen's code: `image "sprites/tools.png#Axe"`.
@@ -402,6 +405,11 @@ pub fn compile(
     if !engine.folders.iter().any(|f| f == "solis") {
         engine.folders.push("solis".into());
     }
+    let sources: Vec<(String, String)> = files
+        .iter()
+        .filter(|(p, _)| screens.iter().any(|(_, f)| f == p))
+        .cloned()
+        .collect();
     match std::panic::catch_unwind(|| lust::to_lua_with(&engine, ENTRY, &with_entry)) {
         Ok(Ok(chunk)) if problems.is_empty() => Ok(Some(ScreenCode {
             chunk,
@@ -409,6 +417,7 @@ pub fn compile(
             readers,
             notes,
             pictures: pictures_named(files),
+            sources,
         })),
         Ok(Ok(_)) => Err(problems),
         Ok(Err(found)) => {
