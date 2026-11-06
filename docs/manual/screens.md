@@ -263,4 +263,5 @@ The **Screen** component:
 
 - [Game code](game-code.md): game-wide objects, which screens read.
 - [Play mode](play-mode.md): the Game panel, where screens are drawn, and recordings.
+- [The UI sample](ui-sample.md): a HUD and a pause menu with the player's settings, start to finish.
 - [Concepts](concepts.md): [game UI](concepts.md#playing), [screen](concepts.md#playing).

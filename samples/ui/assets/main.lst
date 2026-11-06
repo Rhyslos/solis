@@ -1,0 +1,114 @@
+-- The UI sample: a turret you fire, a drone to hit, and the game's screens.
+-- ui/hud.lst shows the turret's ammo and hits, ui/droneHealth.lst the
+-- drone's health, and ui/pauseMenu.lst is a pause menu with the player's
+-- settings. Every screen was drawn on the UI editor's canvas: double-click
+-- one in the Library to see it there.
+
+fetch "solis/world":World;
+fetch "solis/input":Input;
+fetch "solis/project":[Action, Screen];
+fetch "solis/screens":Screens;
+fetch "solis/window":Window;
+
+-- What the components and the screens' buttons tell each other.
+event Hit(entity by, float damage);
+event Destroyed();
+event Resumed();
+event BiggerText();
+event Fullscreen();
+event NextResolution();
+event Quit();
+
+-- The player's turret: Jump (Space, or the pad's A) fires at the drone.
+-- Out of ammo, it reloads on its own.
+component Turret {
+    has {
+        entity target = nothing;
+        int ammo = 12;
+        int maxAmmo = 12;
+        int hits = 0;
+        float damage = 2.5;
+        float cooldown = 0;
+    }
+
+    method update(float dt) {
+        cooldown = cooldown - dt;
+
+        -- Fire, if it's ready.
+        is Input:pressed(Action.Jump) && cooldown <= 0 && ammo > 0? then {
+            send Hit(this, damage) to target;
+            ammo = ammo - 1;
+            hits = hits + 1;
+            cooldown = 0.25;
+        }
+
+        -- Out of ammo: two seconds to reload.
+        is ammo == 0 && cooldown <= 0? then {
+            ammo = maxAmmo;
+            cooldown = 2;
+        }
+    }
+}
+
+-- The drone takes the hits, and mends when it's down.
+component Health {
+    has {
+        float hp = 20;
+        float maxHp = 20;
+    }
+
+    on Hit(entity by, float damage) {
+        hp = hp - damage;
+        is hp <= 0? then {
+            World:say("The drone is down. It mends itself.");
+            hp = maxHp;
+        }
+    }
+}
+
+-- The pause menu: P (or Start) opens it and stops the game. Its buttons
+-- send the events below, and the player's settings are changed here,
+-- since screens only read the game.
+component Pauser {
+    method update(float dt) {
+        is Input:pressed(Action.Pause) || Input:pressed(Action.MenuBack)? then {
+            is screenShown(Screen.PauseMenu)? then {
+                send Resumed() to this;
+            } or is not screenShown(Screen.QuitNote)? then {
+                showScreen(Screen.PauseMenu);
+                World:setGameSpeed(0);
+            }
+        }
+    }
+
+    on Resumed() {
+        hideScreen(Screen.PauseMenu);
+        World:setGameSpeed(1);
+    }
+
+    -- Text a quarter bigger each time, back to as designed after 200%.
+    on BiggerText() {
+        float size = Screens:textSize() + 0.25;
+        is size > 2? then {
+            size = 1;
+        }
+        Screens:setTextSize(size);
+    }
+
+    on Fullscreen() {
+        Window:setFullscreen(not Window:fullscreen());
+    }
+
+    on NextResolution() {
+        Window:useNextResolution();
+    }
+
+    -- Quitting leaves the game stopped, with a note saying so.
+    on Quit() {
+        showScreen(Screen.QuitNote);
+        World:say("You quit the game: press Stop to go back to editing.");
+    }
+}
+
+pass Turret, Health, Pauser, Resumed, BiggerText, Fullscreen, NextResolution, Quit;
+end

@@ -1131,6 +1131,7 @@ impl App {
                 } => self.apply_to_assembly(assembly, &path, &component, &field, value),
                 WorkbenchAction::AddSampleArea => self.add_sample(),
                 WorkbenchAction::MakeSampleGame => self.importer.ask_folder(FolderFor::SampleGame),
+                WorkbenchAction::MakeUiSample => self.importer.ask_folder(FolderFor::UiSample),
                 WorkbenchAction::MakeBenchmark => self.importer.ask_folder(FolderFor::Benchmark),
                 WorkbenchAction::MakePlayground => self.importer.ask_folder(FolderFor::Playground),
                 WorkbenchAction::NewArea => {
@@ -1595,6 +1596,32 @@ impl App {
         );
     }
 
+    /// Makes the UI sample in `folder` as a new project, opens it and its
+    /// area, or says why it couldn't.
+    fn make_ui_sample(&mut self, folder: &Path) {
+        if let Err(why) = crate::ui_sample::make(folder) {
+            self.workbench.log(
+                LogLevel::Error,
+                format!(
+                    "Couldn't make the UI sample in {}: {why}.",
+                    folder.display()
+                ),
+            );
+            return;
+        }
+        self.open_project(folder, false);
+        let area = folder
+            .join(asset_db::ASSETS_FOLDER)
+            .join(crate::ui_sample::AREA);
+        self.open_area(&area);
+        self.workbench.log(
+            LogLevel::Info,
+            "The UI sample is ready. Press Play, click the Game panel, and press Space to fire \
+             and P to pause. Double-click a screen in the Library's ui folder to see it on the \
+             canvas.",
+        );
+    }
+
     /// Makes the playground in `folder` as a new project, opens it and
     /// its area, or says why it couldn't.
     fn make_playground(&mut self, folder: &Path) {
@@ -1981,6 +2008,7 @@ impl eframe::App for App {
         if editing && let Some((purpose, folder)) = self.importer.chosen_folder() {
             match purpose {
                 FolderFor::SampleGame => self.make_sample_game(&folder),
+                FolderFor::UiSample => self.make_ui_sample(&folder),
                 FolderFor::Benchmark => self.make_benchmark(&folder),
                 FolderFor::Playground => self.make_playground(&folder),
                 FolderFor::CopyProject(from) => self.copy_project(from, folder),

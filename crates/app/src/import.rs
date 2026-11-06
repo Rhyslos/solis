@@ -33,6 +33,8 @@ pub enum FolderFor {
     OpenProject,
     /// A folder to make the sample game in.
     SampleGame,
+    /// A folder to make the UI sample in.
+    UiSample,
     /// A folder to make the benchmark in.
     Benchmark,
     /// A folder to make the playground in.
@@ -90,6 +92,7 @@ impl Importer {
                 FolderFor::NewProject => "Choose a folder for the new project",
                 FolderFor::OpenProject => "Open project",
                 FolderFor::SampleGame => "Choose an empty folder for the sample game",
+                FolderFor::UiSample => "Choose an empty folder for the UI sample",
                 FolderFor::Benchmark => "Choose an empty folder for the benchmark",
                 FolderFor::Playground => "Choose an empty folder for the playground",
                 FolderFor::CopyProject(_) => "Choose an empty folder for the copy",

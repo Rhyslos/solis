@@ -361,6 +361,18 @@ impl Workbench {
                 ui.close();
             }
             if ui
+                .button("Make the UI sample…")
+                .on_hover_text(
+                    "A game's screens, as a new project in a folder you choose: a HUD, a health \
+                     bar and a pause menu with text size, fullscreen and resolution, each drawn \
+                     on the UI editor's canvas",
+                )
+                .clicked()
+            {
+                actions.push(WorkbenchAction::MakeUiSample);
+                ui.close();
+            }
+            if ui
                 .button("Make the benchmark…")
                 .on_hover_text(
                     "Two fleets of ships firing lasers, as a new project in a folder you choose: \

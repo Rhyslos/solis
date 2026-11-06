@@ -46,6 +46,8 @@ pub enum WorkbenchAction {
     /// Make the turret sample game as a new project, in a folder the app
     /// asks for (Help > Make the sample game).
     MakeSampleGame,
+    /// Help > Make the UI sample…: a folder to make it in, then it opens.
+    MakeUiSample,
     /// Make the benchmark as a new project, in a folder the app asks for
     /// (Help > Make the benchmark).
     MakeBenchmark,

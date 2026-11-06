@@ -464,6 +464,15 @@ impl Workbench {
         push(
             true,
             SearchItem::action(
+                "Make the UI sample…",
+                "Help",
+                "",
+                T::App(WorkbenchAction::MakeUiSample),
+            ),
+        );
+        push(
+            true,
+            SearchItem::action(
                 "Make the benchmark…",
                 "Help",
                 "",

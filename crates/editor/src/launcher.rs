@@ -133,7 +133,7 @@ struct Example {
     make: WorkbenchAction,
 }
 
-fn examples() -> [Example; 3] {
+fn examples() -> [Example; 4] {
     [
         Example {
             name: "Playground",
@@ -144,6 +144,11 @@ fn examples() -> [Example; 3] {
             name: "Turret sample",
             about: "Game code in Lust, Lua and Rust, talking through events",
             make: WorkbenchAction::MakeSampleGame,
+        },
+        Example {
+            name: "UI sample",
+            about: "A HUD and a pause menu with the player's settings, drawn on the canvas",
+            make: WorkbenchAction::MakeUiSample,
         },
         Example {
             name: "Benchmark",
