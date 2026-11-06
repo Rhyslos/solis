@@ -463,12 +463,11 @@ fn the_menu_keys_move_the_focus_and_choose_and_the_game_s_own_actions_wait() {
     run_to(&mut w, 1);
     assert!(w.game_screens.wants_pointer());
     assert_eq!(w.game_screens.focus, None);
-    // The first press finds the first button and shows the ring.
-    tap(&mut w, "Down");
-    assert_eq!(w.game_screens.focus, Some((0, 0)));
-    assert_eq!(w.game_screens.pictures[0].looks.focus, Some(0));
+    // The first button is ready: Down moves on from it, and the ring
+    // shows.
     tap(&mut w, "Down");
     assert_eq!(w.game_screens.focus, Some((0, 1)));
+    assert_eq!(w.game_screens.pictures[0].looks.focus, Some(1));
     tap(&mut w, "Down");
     assert_eq!(w.game_screens.focus, Some((0, 1)), "nothing further down");
     // Space chooses (and isn't Jump while the menu is shown).

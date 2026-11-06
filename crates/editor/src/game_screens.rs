@@ -163,12 +163,17 @@ impl GameScreens {
         let fonts = self.fonts.get_or_insert_with(editor_fonts);
         let (clickable, _) =
             ui::layout::clickables(&self.pictures[top], area.size, area.step, fonts);
-        let from = self.focus.filter(|(p, _)| *p == top).map(|(_, a)| a);
+        // With nothing focused yet, the first button is (so the first
+        // press moves on from it, as a menu's first button is ready).
+        let from = self
+            .focus
+            .filter(|(p, _)| *p == top)
+            .map(|(_, a)| a)
+            .or_else(|| clickable.first().map(|c| c.action));
         let towards = match way.filter(|_| step) {
             Some(w) => [f32::from(w[0]), f32::from(w[1])],
             None => [0.0, 0.0],
         };
-        // A first press only finds the first button; Choose presses it.
         self.focus = ui::view::next_focus(&clickable, from, towards).map(|a| (top, a));
         self.show_looks();
         self.focus.filter(|_| choose)
