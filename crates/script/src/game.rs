@@ -74,6 +74,8 @@ pub enum Change {
     TimeOfDay(f64),
     /// `Screens:set…` or `Window:set…`: one of the player's settings (decision 0091).
     Setting(crate::settings::Setting),
+    /// `Window:quit()`: close the game (decision 0093).
+    Quit,
     /// `setBusVolume`: this bus at this share of its fader (0 to 1) for
     /// the rest of the play.
     BusVolume(String, f32),
@@ -665,6 +667,13 @@ impl Host for ViewHost {
         if self.kept.room() {
             let order = self.order();
             self.kept.changes.push((order, Change::Setting(change)));
+        }
+    }
+
+    fn quit(&mut self) {
+        if self.kept.room() {
+            let order = self.order();
+            self.kept.changes.push((order, Change::Quit));
         }
     }
 

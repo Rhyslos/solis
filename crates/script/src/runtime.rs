@@ -285,6 +285,7 @@ impl Runtime {
                 ("Window", "setFullscreen"),
                 ("Window", "setResolution"),
                 ("Window", "useNextResolution"),
+                ("Window", "quit"),
             ] {
                 natives.raw_set(
                     format!("{owner}_{name}"),

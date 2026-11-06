@@ -296,6 +296,9 @@ pub trait Host {
         let [w, h] = self.settings().next_resolution();
         self.set_resolution(w, h);
     }
+    /// `Window:quit()`: closes the game at the end of the tick (decision
+    /// 0093). While playing in the editor, play stops.
+    fn quit(&mut self) {}
 
     /// The component about to run, and where what it does belongs in the
     /// tick's order ([decision 0033](../../../docs/decisions/0033-game-code-sees-the-start-of-the-tick.md)).
@@ -1072,6 +1075,13 @@ pub(crate) fn with_natives<'h, R>(
                         side(width),
                         side(height),
                     ));
+                Ok(())
+            })?,
+        )?;
+        natives.raw_set(
+            "Window_quit",
+            scope.create_function(move |_, _w: LuaValue| {
+                h.borrow_mut().quit();
                 Ok(())
             })?,
         )?;

@@ -51,6 +51,7 @@ New to game engines? Start with [Concepts](concepts.md).
 - [Walls and walking in 2D: solid terrains, Collider2D, the TopDownController](walls-and-walking.md)
 - [Characters and cameras: a character that walks and jumps, third-person, first-person and RTS cameras, and the playground](characters-and-cameras.md)
 - [Save games: save everything, and load it back exactly](save-games.md)
+- [Exporting for playtesting: a folder with your game, to send to a friend](playtest-export.md)
 - [Your first game: the turret sample, in all three languages](first-game.md)
 - [Problems: mistakes found in the area and the game's code](problems.md)
 - [The Profiler: where each frame's time goes](profiler.md)

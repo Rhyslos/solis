@@ -212,23 +212,19 @@ fn review_findings_stay_fixed() {
         w.play_for(1.0 / 60.0);
     }
     assert!(has(&w, "Ammo 12 / 12"), "{:?}", words(&w));
-    // After Quit the game stays stopped: Space (A) fires nothing.
-    let hits = words(&w)
-        .into_iter()
-        .find(|t| t.starts_with("Hits"))
-        .unwrap();
+    // Quit closes the game: in the editor, play stops (decision 0093).
     tap(&mut w, "Start");
     for _ in 0..4 {
         tap(&mut w, "Down");
     }
     tap(&mut w, "A");
     w.play_for(1.0 / 60.0);
-    assert!(has(&w, "You quit"), "{:?}", words(&w));
-    tap(&mut w, "A");
-    tap(&mut w, "A");
-    assert!(has(&w, "Ammo 12 / 12"), "{:?}", words(&w));
-    assert!(has(&w, &hits), "{:?}", words(&w));
-    tap(&mut w, "Start");
-    assert!(has(&w, "You quit"), "P doesn't open the menu over the note");
+    assert_eq!(w.play_state(), editor::PlayState::Editing, "play stopped");
+    assert!(
+        w.log_lines()
+            .iter()
+            .any(|l| l.text.contains("the exported game would close")),
+        "the Console says so"
+    );
     let _ = std::fs::remove_dir_all(root.parent().unwrap());
 }

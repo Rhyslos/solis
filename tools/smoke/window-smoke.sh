@@ -98,7 +98,7 @@ quit() {
     # File is after the logo.
     xdotool mousemove 55 16 click 1
     sleep 1
-    xdotool mousemove 76 "${QUIT_Y:-311}" click 1
+    xdotool mousemove 76 "${QUIT_Y:-347}" click 1
     sleep 2
     # With unsaved changes (an imported model), Solis asks first: answer
     # Don't save, in the middle of the window.

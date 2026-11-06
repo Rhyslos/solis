@@ -31,6 +31,28 @@ fn main() -> ExitCode {
         })
         .unwrap_or_else(|| app::branding::APP_ID.to_string());
 
+    // An exported game: the playtest file beside the program says what
+    // to play, and the editor never opens (decision 0093).
+    if let Some(found) = std::env::current_exe()
+        .ok()
+        .and_then(|exe| app::playtest::beside(&exe))
+    {
+        let outcome = found.and_then(|found| app::window::run_playtest(app::app_info(), found));
+        return match outcome {
+            Ok(()) => ExitCode::SUCCESS,
+            Err(why) => {
+                // Release builds on Windows have no console to print to.
+                let shown = rfd::MessageDialog::new()
+                    .set_title("The game couldn't run")
+                    .set_description(&why)
+                    .set_level(rfd::MessageLevel::Error)
+                    .show();
+                let _ = shown;
+                say(&format!("{why}\n"), true);
+                ExitCode::FAILURE
+            }
+        };
+    }
     match cli::parse(args) {
         Ok(Command::Version) => exit_with(say(&format!("{}\n", app::version_banner()), false)),
         Ok(Command::Help) => exit_with(say(&cli::usage(&program), false)),

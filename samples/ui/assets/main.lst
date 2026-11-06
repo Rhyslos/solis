@@ -81,7 +81,7 @@ component Pauser {
         is Input:pressed(Action.Pause) || Input:pressed(Action.MenuBack)? then {
             is screenShown(Screen.PauseMenu)? then {
                 send Resumed() to this;
-            } or is not screenShown(Screen.QuitNote)? then {
+            } or {
                 showScreen(Screen.PauseMenu);
                 World:setGameSpeed(0);
             }
@@ -110,10 +110,9 @@ component Pauser {
         Window:useNextResolution();
     }
 
-    -- Quitting leaves the game stopped, with a note saying so.
+    -- Quit closes the game (in the editor, play stops).
     on Quit() {
-        showScreen(Screen.QuitNote);
-        World:say("You quit the game: press Stop to go back to editing.");
+        Window:quit();
     }
 }
 

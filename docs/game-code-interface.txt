@@ -85,6 +85,7 @@ window: object Window: method setFullscreen(bool on) native;
 window: object Window: method vec3 resolution() native;
 window: object Window: method setResolution(int width, int height) native;
 window: object Window: method useNextResolution() native;
+window: object Window: method quit() native;
 
 ## Events the engine sends (fetch "solis/<file>":<Name>)
 
@@ -129,6 +130,7 @@ solis.Screens:setUiSize
 solis.Screens:textSize
 solis.Screens:uiSize
 solis.Window:fullscreen
+solis.Window:quit
 solis.Window:resolution
 solis.Window:setFullscreen
 solis.Window:setResolution
@@ -244,6 +246,7 @@ Host: fn set_fullscreen(&mut self, on: bool)
 Host: fn resolution(&self) -> [u32
 Host: fn set_resolution(&mut self, width: u32, height: u32)
 Host: fn use_next_resolution(&mut self)
+Host: fn quit(&mut self)
 Host: fn at(&mut self, order: &crate::ticking::Order)
 RustComponent: fn update(&mut self, _cx: &mut Context<'_>, _dt: f64)
 RustComponent: fn handle(&mut self, _cx: &mut Context<'_>, _event: &Event) -> bool

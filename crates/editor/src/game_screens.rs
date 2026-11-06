@@ -27,6 +27,9 @@ pub(crate) struct GameScreens {
     /// Whether the menu keys were used since the mouse last moved over a
     /// button: the focus ring shows only then.
     keys_used: bool,
+    /// Where the pointer was last frame: the keys' focus follows the
+    /// mouse only when it moves, not when a menu opens under it.
+    pointer_was: Option<[f32; 2]>,
     /// Which way MenuMove points, and for how many ticks, to move on
     /// once and then again while it's held.
     way: Option<([i8; 2], u32)>,
@@ -87,13 +90,21 @@ impl GameScreens {
                 ui::layout::clickable_at(p, area.size, area.step, at, fonts).map(|a| (i, a))
             })
         });
+        // Moved: seen last frame somewhere else. Coming into view (the
+        // menu freeing the pointer) isn't moving.
+        let moved = matches!(
+            (std::mem::replace(&mut self.pointer_was, at), at),
+            (Some(a), Some(b)) if a != b
+        );
         if at.is_none() && self.hover.is_none() {
             return;
         }
-        if found != self.hover {
+        if found != self.hover || (moved && found.is_some() && found != self.focus) {
             self.hover = found;
-            // The keys carry on from the button the mouse is on.
-            if found.is_some() {
+            // The keys carry on from the button the mouse moved onto; a
+            // menu opening under a still mouse keeps its first button, so
+            // Enter doesn't choose what the pointer happened to rest on.
+            if found.is_some() && moved {
                 self.focus = found;
                 self.keys_used = false;
             }

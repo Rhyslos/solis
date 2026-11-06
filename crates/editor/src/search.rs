@@ -275,6 +275,15 @@ impl Workbench {
                 T::App(WorkbenchAction::ImportModel),
             ),
         );
+        push(
+            state.project,
+            SearchItem::action(
+                "Export for playtesting…",
+                "File",
+                "",
+                T::Menu(MenuCommand::ExportPlaytest),
+            ),
+        );
         // Edit.
         if let Some(undo) = &state.undo {
             push(

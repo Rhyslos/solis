@@ -298,6 +298,9 @@ pub(crate) struct ViewCache {
     /// the tick.
     pub(crate) settings: script::settings::PlayerSettings,
     pub(crate) asked: Vec<script::settings::Setting>,
+    /// Whether game code asked to close the game (`Window:quit()`,
+    /// decision 0093).
+    pub(crate) quit: bool,
 }
 
 impl ViewCache {
@@ -512,6 +515,7 @@ impl GameWorld for PlayWorld<'_> {
                 Change::Seed(seed) => self.seed = Some(seed),
                 Change::GameSpeed(speed) => self.world.set_speed(speed),
                 Change::TimeOfDay(hour) => self.world.set_time_of_day(hour),
+                Change::Quit => self.cache.quit = true,
                 Change::Setting(change) => {
                     self.cache.settings = self.cache.settings.with(change);
                     if self.cache.asked.len() < 64 {

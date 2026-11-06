@@ -150,7 +150,15 @@ struct App {
     began: std::time::Instant,
     /// The logo, for the splash.
     logo: Option<egui::TextureHandle>,
+    /// An exported game being played (decision 0093): only the game shows.
+    playtest: Option<playtest_window::Run>,
+    /// An export to a folder, on a thread of its own: its outcome.
+    exporting: Option<std::sync::mpsc::Receiver<playtest_window::ExportDone>>,
 }
+
+#[path = "window_playtest.rs"]
+mod playtest_window;
+pub use playtest_window::run_playtest;
 
 impl App {
     fn new(
@@ -158,6 +166,7 @@ impl App {
         info: AppInfo,
         imports: Vec<PathBuf>,
         pending: crate::updates::PendingSlot,
+        playtest: Option<crate::playtest::Found>,
     ) -> Self {
         let storage = cc.storage;
         let layout: Option<DockState<Panel>> =
@@ -240,7 +249,9 @@ impl App {
         // 0045), but nothing is asked of the person: a newer build shows as
         // a bar in the launcher (the project lead, 2026-11-06).
         let copy = crate::updates::this_copy();
-        let check = auto_update.then(|| crate::updates::start_check(&cc.egui_ctx));
+        // An exported game never asks GitHub for anything.
+        let check =
+            (auto_update && playtest.is_none()).then(|| crate::updates::start_check(&cc.egui_ctx));
         let startup = crate::startup::Startup::new(None, skipped, copy.installed, copy.build);
         let mut app = Self {
             workbench,
@@ -269,14 +280,22 @@ impl App {
             messages: crate::logger::install(),
             updates: crate::updates::Updates::new(pending, skipped),
             tidying: Default::default(),
-            startup: Some(startup),
+            startup: playtest.is_none().then_some(startup),
             quitting: false,
             editor_size,
             launcher_sized: None,
             settling: None,
             began: std::time::Instant::now(),
             logo: load_logo(&cc.egui_ctx),
+            playtest: None,
+            exporting: None,
         };
+        app.workbench
+            .set_documents_folder(crate::playtest::documents());
+        if let Some(found) = playtest {
+            app.start_playtest(found);
+            return app;
+        }
         app.workbench
             .set_logo(app.logo.as_ref().map(egui::TextureHandle::id));
         app.workbench.set_this_build(copy.build);
@@ -471,6 +490,8 @@ impl App {
                 self.area_files.forget();
                 let assets = opened.info.assets.clone();
                 self.workbench.set_project(Some(opened.info));
+                self.workbench
+                    .set_last_export(crate::playtest::last_export(root));
                 // Its input actions (decision 0037).
                 let (bindings, note) = crate::play_files::load_bindings(root);
                 self.workbench.set_bindings(bindings);
@@ -1132,6 +1153,10 @@ impl App {
                 WorkbenchAction::AddSampleArea => self.add_sample(),
                 WorkbenchAction::MakeSampleGame => self.importer.ask_folder(FolderFor::SampleGame),
                 WorkbenchAction::MakeUiSample => self.importer.ask_folder(FolderFor::UiSample),
+                WorkbenchAction::ChooseExportFolder => {
+                    self.importer.ask_folder(FolderFor::ExportFolder);
+                }
+                WorkbenchAction::ExportPlaytest(request) => self.export_playtest(request),
                 WorkbenchAction::MakeBenchmark => self.importer.ask_folder(FolderFor::Benchmark),
                 WorkbenchAction::MakePlayground => self.importer.ask_folder(FolderFor::Playground),
                 WorkbenchAction::NewArea => {
@@ -1288,34 +1313,35 @@ impl App {
                     self.recordings
                         .ask(crate::play_files::PlayFile::Save, folder);
                 }
-                WorkbenchAction::SaveGame { slot, text } => {
-                    match self.projects.root().map(Path::to_path_buf) {
-                        Some(root) => match crate::play_files::save_game(&root, &slot, &text) {
-                            Ok((path, copy)) => {
-                                self.workbench
-                                    .log(LogLevel::Info, format!("Saved the game as {slot}."));
-                                if let Some(copy) = copy {
-                                    let note =
-                                        crate::upgrades::kept_note(&root, &file_name(&path), &copy);
-                                    self.workbench.log(LogLevel::Info, note);
-                                }
+                WorkbenchAction::SaveGame { slot, text } => match self.saves_root() {
+                    Some(root) => match crate::play_files::save_game(&root, &slot, &text) {
+                        Ok((path, copy)) => {
+                            self.workbench
+                                .log(LogLevel::Info, format!("Saved the game as {slot}."));
+                            if let Some(copy) = copy {
+                                let note =
+                                    crate::upgrades::kept_note(&root, &file_name(&path), &copy);
+                                self.workbench.log(LogLevel::Info, note);
                             }
-                            Err(why) => self.workbench.log(
-                                LogLevel::Error,
-                                format!("Couldn't save the game as {slot}: {why}."),
-                            ),
-                        },
-                        None => self.workbench.log(
-                            LogLevel::Warning,
-                            "The game wasn't saved: save games are kept in a project.",
+                        }
+                        Err(why) => self.workbench.log(
+                            LogLevel::Error,
+                            format!("Couldn't save the game as {slot}: {why}."),
                         ),
-                    }
-                }
+                    },
+                    None => self.workbench.log(
+                        LogLevel::Warning,
+                        if self.playtest.is_some() {
+                            "The game wasn't saved: there's no folder for the player's saves."
+                        } else {
+                            "The game wasn't saved: save games are kept in a project."
+                        },
+                    ),
+                },
                 WorkbenchAction::LoadGame(slot) => {
                     let path = self
-                        .projects
-                        .root()
-                        .and_then(|root| crate::play_files::save_path(root, &slot));
+                        .saves_root()
+                        .and_then(|root| crate::play_files::save_path(&root, &slot));
                     let read = path.as_ref().map(|p| {
                         crate::play_files::read_limited(p, crate::play_files::MAX_SAVE_BYTES)
                     });
@@ -1978,6 +2004,12 @@ impl eframe::App for App {
             eframe::set_value(storage, SKIPPED_BUILD_KEY, &skipped);
             storage.flush();
         }
+        // An exported game: only the game (decision 0093).
+        if self.playtest.is_some() {
+            self.playtest_frame(ui);
+            return;
+        }
+        self.follow_export();
         // The splash screen until starting is done (decision 0045).
         if self.startup.is_some() {
             self.splash(ui);
@@ -2014,6 +2046,7 @@ impl eframe::App for App {
                 FolderFor::CopyProject(from) => self.copy_project(from, folder),
                 FolderFor::LocateProject(old) => self.locate_project(&old, &folder),
                 FolderFor::ScanFolder => self.scan_for_projects(folder),
+                FolderFor::ExportFolder => self.workbench.set_export_folder(folder),
                 FolderFor::NewProject => self.open_project(&folder, true),
                 FolderFor::OpenProject => self.open_project(&folder, false),
             }
@@ -2209,6 +2242,10 @@ impl eframe::App for App {
     }
 
     fn save(&mut self, storage: &mut dyn eframe::Storage) {
+        // An exported game keeps the player's settings itself.
+        if self.playtest.is_some() {
+            return;
+        }
         eframe::set_value(storage, LAYOUT_KEY, self.workbench.layout());
         eframe::set_value(storage, WORKSPACES_KEY, &self.workbench.workspaces());
         eframe::set_value(storage, HINTS_KEY, &self.workbench.hints_on());
@@ -2256,7 +2293,7 @@ pub fn run(info: AppInfo, imports: Vec<PathBuf>) -> Result<(), String> {
         eframe::run_native(
             branding::APP_ID,
             options,
-            Box::new(move |cc| Ok(Box::new(App::new(cc, info, imports, slot)))),
+            Box::new(move |cc| Ok(Box::new(App::new(cc, info, imports, slot, None)))),
         )
     }));
     // The window is gone: a downloaded update installs now (decision 0043).

@@ -25,7 +25,7 @@
 | Give them back to the editor | Esc |
 | Switch the game's fullscreen setting | Alt + Enter |
 
-While the game has them, every key is the game's and the editor's shortcuts are off. The game's own controls (W A S D, mouse, Space, Shift, F, and a gamepad, by default; for the RTS camera, the arrow keys, Alt + arrows, the middle mouse button, the wheel and Page Up / Page Down) are set in **Edit > Input actions…**: see [Input](input.md) and [Characters and cameras](characters-and-cameras.md). The [playground](characters-and-cameras.md#how-to-use-it) saves on F6 and loads on F7.
+While the game has them, every key is the game's and the editor's shortcuts are off. In an [exported game](playtest-export.md), the game has them from the start, Esc included, and Alt + Enter really switches the window. The game's own controls (W A S D, mouse, Space, Shift, F, and a gamepad, by default; for the RTS camera, the arrow keys, Alt + arrows, the middle mouse button, the wheel and Page Up / Page Down) are set in **Edit > Input actions…**: see [Input](input.md) and [Characters and cameras](characters-and-cameras.md). The [playground](characters-and-cameras.md#how-to-use-it) saves on F6 and loads on F7.
 
 ## Tools (when the right mouse button isn't held)
 

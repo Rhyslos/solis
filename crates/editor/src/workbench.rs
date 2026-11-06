@@ -39,6 +39,10 @@ pub struct AppInfo {
 pub enum WorkbenchAction {
     /// Close the window.
     Quit,
+    /// Export the game for playtesting (decision 0093).
+    ExportPlaytest(crate::export_dialog::ExportRequest),
+    /// Choose the folder File > Export for playtesting… exports into.
+    ChooseExportFolder,
     /// Ask which model file to import (File > Import model…).
     ImportModel,
     /// Bring in the built-in sample area (Help > Add the sample area).
@@ -285,6 +289,12 @@ pub struct Workbench {
     pub(crate) sound_spent: std::time::Duration,
     /// The Settings window, while it's open (Edit > Settings…).
     pub(crate) settings_window: Option<crate::settings_window::SettingsWindow>,
+    /// File > Export for playtesting…, while it's open (decision 0093).
+    pub(crate) export_window: Option<crate::export_dialog::ExportWindow>,
+    /// How the open project was last exported, to start from.
+    pub(crate) last_export: Option<crate::export_dialog::Playtest>,
+    /// The Documents folder, for exports to go in by default.
+    pub(crate) documents: Option<std::path::PathBuf>,
     /// How updating is going, as the app last said.
     pub(crate) update: crate::updates::UpdateNotice,
     /// What the newer build found brings (the launcher's Updates page).
@@ -321,6 +331,11 @@ pub struct Workbench {
     /// Whether the Environment's Preview time is forgotten next frame
     /// (another project was opened).
     forget_preview: bool,
+    /// An exported game (decision 0093): only the game shows, filling the
+    /// window, and the window follows the player's settings.
+    pub(crate) play_only: bool,
+    /// Whether game code asked to close the game (`Window:quit()`).
+    pub(crate) quit_asked: bool,
     /// Whether the window may close despite unsaved changes (the user
     /// said Don't save).
     pub(crate) may_close: bool,
@@ -484,7 +499,7 @@ pub struct Workbench {
     /// What the Game panel showed last, and what it was worked out for:
     /// made again only when the world, the models or the state changed
     /// (not on a frame without a tick, or while paused).
-    game_scene: Option<(GameKey, crate::game_panel::GameScene)>,
+    pub(crate) game_scene: Option<(GameKey, crate::game_panel::GameScene)>,
     /// Game code's sound requests since the app last took them.
     pub(crate) game_sounds: Vec<crate::game_sound::GameSound>,
     /// How many times Play has started a game (the app's sound starts
@@ -518,7 +533,7 @@ struct ViewKey {
 /// What the Game panel's picture depends on: when it's the same, the
 /// picture is too.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-struct GameKey {
+pub(crate) struct GameKey {
     world: u64,
     /// How far between ticks it's drawn (its bits): it moves every frame
     /// while playing.
@@ -548,6 +563,9 @@ impl Workbench {
             manual_url: String::new(),
             sound_spent: std::time::Duration::ZERO,
             settings_window: None,
+            export_window: None,
+            last_export: None,
+            documents: None,
             update: Default::default(),
             release_notes: None,
             auto_update: true,
@@ -629,6 +647,8 @@ impl Workbench {
             unsaved_prompt: None,
             pending_reload: None,
             forget_preview: false,
+            play_only: false,
+            quit_asked: false,
             may_close: false,
             project: None,
             recent: Vec::new(),
@@ -709,6 +729,8 @@ impl Workbench {
             self.set_rust_components(Vec::new());
             self.pending_reload = None;
             self.forget_preview = true;
+            self.export_window = None;
+            self.last_export = None;
             self.unsaved_prompt = None;
             self.library_state = Default::default();
             if let Some(p) = &project {
@@ -927,6 +949,18 @@ impl Workbench {
         self.console.lines()
     }
 
+    /// The messages added since `seen` messages had been (counting every
+    /// one ever added, so old ones dropped from the Console don't shift
+    /// it), and the count to pass next time.
+    pub fn log_since(&self, seen: u64) -> (&[LogLine], u64) {
+        let pushed = self.console.pushed();
+        let lines = self.console.lines();
+        let new = usize::try_from(pushed.saturating_sub(seen))
+            .unwrap_or(usize::MAX)
+            .min(lines.len());
+        (&lines[lines.len() - new..], pushed)
+    }
+
     /// Adds a message to the console.
     pub fn log(&mut self, level: LogLevel, text: impl Into<String>) {
         self.console.push(level, text.into());
@@ -958,6 +992,31 @@ impl Workbench {
             || self.moving.is_some()
             || self.viewport.needs_frames()
             || ctx.input(|i| i.pointer.any_down() || !i.keys_down.is_empty())
+    }
+
+    /// What the game looks like now, while playing: last frame's when
+    /// nothing it shows changed.
+    pub(crate) fn game_scene_now(&mut self) -> Option<(GameKey, crate::game_panel::GameScene)> {
+        let state = self.play_state();
+        let playing = self.playing.as_mut()?;
+        let between = match state {
+            crate::play::PlayState::Playing => playing.world.progress().to_bits(),
+            _ => 1.0_f32.to_bits(),
+        };
+        let key = GameKey {
+            world: playing.world.changes(),
+            between,
+            sources: self.sources,
+            models: self.models.len(),
+            state,
+        };
+        Some(match self.game_scene.take() {
+            Some((was, scene)) if was == key => (key, scene),
+            _ => (
+                key,
+                crate::game_panel::GameScene::of(&playing.world, &self.models, state),
+            ),
+        })
     }
 
     /// The Environment's Preview time (decision 0092), set in Properties:
@@ -1075,29 +1134,10 @@ impl Workbench {
         let menu = crate::menu_items::MenuState::of(self);
         let copied: Vec<String> = self.copied.iter().map(|(name, _)| name.clone()).collect();
         // Worked out only while the Game panel is in front.
-        let state = self.play_state();
-        let game = match &mut self.playing {
-            Some(playing) if self.in_front.contains(&crate::panel::Panel::Game) => {
-                let between = match state {
-                    crate::play::PlayState::Playing => playing.world.progress().to_bits(),
-                    _ => 1.0_f32.to_bits(),
-                };
-                let key = GameKey {
-                    world: playing.world.changes(),
-                    between,
-                    sources: self.sources,
-                    models: self.models.len(),
-                    state,
-                };
-                match self.game_scene.take() {
-                    Some((was, scene)) if was == key => Some((key, scene)),
-                    _ => Some((
-                        key,
-                        crate::game_panel::GameScene::of(&playing.world, &self.models, state),
-                    )),
-                }
-            }
-            _ => None,
+        let game = if self.in_front.contains(&crate::panel::Panel::Game) {
+            self.game_scene_now()
+        } else {
+            None
         };
         self.profiler
             .add(crate::profiler::Stage::Prepare, preparing.elapsed());
@@ -1404,6 +1444,7 @@ impl Workbench {
         self.play_edge(ui.ctx());
         self.input_actions_window(ui.ctx());
         self.settings(ui.ctx(), &mut actions);
+        self.export_window(ui.ctx(), &mut actions);
         self.prompts(ui, &mut actions);
         self.update_question(ui.ctx(), &mut actions);
         self.hold_while_playing(&mut actions);
