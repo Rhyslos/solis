@@ -21,6 +21,6 @@ pub mod screen;
 pub mod text;
 pub mod view;
 
-pub use layout::{Shape, ShapeKind, Stretch, layout, layout_at, layout_with};
+pub use layout::{Shape, ShapeKind, Stretch, UNCLIPPED, layout, layout_at, layout_with};
 pub use screen::{Anchor, Colour, Edge, Element, ElementKind, Fill, ScaleRule, Screen};
 pub use text::Fonts;

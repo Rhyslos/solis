@@ -1153,6 +1153,22 @@ fn emit(n: &Laid, opacity: f32, out: &mut Vec<Element>) {
         e.fill = Fill::Solid(rgb(l.color, opacity));
         out.push(e);
     }
+    // A canvas cuts off what's inside it at its edges: its pieces go in
+    // a group as big as it, placed from its corner.
+    if n.kind == "canvas" {
+        let mut inside = Vec::new();
+        for c in &n.children {
+            emit(c, opacity, &mut inside);
+        }
+        for e in &mut inside {
+            e.offset = [e.offset[0] - n.x, e.offset[1] - n.y];
+        }
+        let mut group = at(n.x, n.y, n.w, n.h, ElementKind::Group);
+        group.clips = true;
+        group.children = inside;
+        out.push(group);
+        return;
+    }
     for c in &n.children {
         emit(c, opacity, out);
     }

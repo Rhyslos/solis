@@ -25,6 +25,8 @@ struct Instance {
     @location(3) colour_a: vec4<f32>,
     @location(4) colour_b: vec4<f32>,
     @location(5) border: vec4<f32>,
+    // Where it may be drawn: left, top, right, bottom (a canvas's box).
+    @location(6) clip: vec4<f32>,
 };
 
 struct Out {
@@ -36,6 +38,7 @@ struct Out {
     @location(4) @interpolate(flat) colour_a: vec4<f32>,
     @location(5) @interpolate(flat) colour_b: vec4<f32>,
     @location(6) @interpolate(flat) border: vec4<f32>,
+    @location(7) @interpolate(flat) cut: vec4<f32>,
 };
 
 const KIND_ELLIPSE: f32 = 1.0;
@@ -66,6 +69,7 @@ fn ui_vs(@builtin(vertex_index) v: u32, i: Instance) -> Out {
     o.colour_a = i.colour_a;
     o.colour_b = i.colour_b;
     o.border = i.border;
+    o.cut = i.clip;
     return o;
 }
 
@@ -89,6 +93,10 @@ fn segment(p: vec2<f32>, a: vec2<f32>, b: vec2<f32>) -> f32 {
 
 @fragment
 fn ui_fs(o: Out) -> @location(0) vec4<f32> {
+    // Cut off outside its canvas (whole pixels: a pixel's centre inside).
+    if (o.at.x < o.cut.x || o.at.y < o.cut.y || o.at.x >= o.cut.z || o.at.y >= o.cut.w) {
+        discard;
+    }
     let centre = (o.rect.xy + o.rect.zw) * 0.5;
     let half = max((o.rect.zw - o.rect.xy) * 0.5, vec2<f32>(0.0));
     let p = o.at - centre;

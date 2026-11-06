@@ -318,3 +318,29 @@ fn a_lust_view_is_laid_out_and_drawn() {
     assert!(green[1] > 120 && green[0] < 100, "{green:?}");
     assert!(near(px(&pixels, size[0], 480, 100), GREY));
 }
+
+#[test]
+fn a_canvas_cuts_off_what_s_outside_it() {
+    // A white box half out of a 40 × 40 group that clips, at (30, 30).
+    let mut screen = ui::Screen::new("t", [100.0, 100.0], ui::ScaleRule::Keep);
+    let mut canvas = ui::Element::new("canvas", ui::ElementKind::Group)
+        .sized([40.0, 40.0])
+        .at(ui::Anchor::TOP_LEFT, [30.0, 30.0]);
+    canvas.clips = true;
+    canvas.children = vec![
+        ui::Element::new("box", ui::ElementKind::Box { round: 0.0 })
+            .sized([40.0, 40.0])
+            .at(ui::Anchor::TOP_LEFT, [20.0, 20.0])
+            .filled(ui::Fill::Solid(ui::Colour::WHITE)),
+    ];
+    screen.elements = vec![canvas];
+    let shapes = ui::layout(&screen, [100, 100], None);
+    assert_eq!(shapes[0].clip, [30.0, 30.0, 70.0, 70.0]);
+    let Some(pixels) = draw([100, 100], &shapes) else {
+        return;
+    };
+    assert!(near(px(&pixels, 100, 60, 60), [255, 255, 255]), "inside");
+    assert!(near(px(&pixels, 100, 75, 75), GREY), "outside: cut off");
+    assert!(near(px(&pixels, 100, 69, 55), [255, 255, 255]));
+    assert!(near(px(&pixels, 100, 71, 55), GREY));
+}

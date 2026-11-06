@@ -192,6 +192,8 @@ pub struct Element {
     pub shown: bool,
     /// What's inside it, drawn after it (on top), in order.
     pub children: Vec<Element>,
+    /// Whether what's inside it is cut off at its edges (a canvas).
+    pub clips: bool,
 }
 
 impl Element {
@@ -209,6 +211,7 @@ impl Element {
             opacity: 1.0,
             shown: true,
             children: Vec::new(),
+            clips: false,
         }
     }
 
