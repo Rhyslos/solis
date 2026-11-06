@@ -6,12 +6,16 @@ fetch "main":Turret;
 assembly Hud {
     view [width 1920, height 1080] {
         Turret turret = Ui:entity():turret();
+        int most = turret.maxAmmo;
+        is most < 1? then {
+            most = 1;
+        }
         stack [width fill, height fill, bottom, left, pad 40] {
             column [gap 10, padX 24, padY 18, background gray9, round 12, opacity 0.9] {
                 text "Ammo " + turret.ammo.text() + " / " + turret.maxAmmo.text() [size 28, bold, white];
                 canvas [width 300, height 14] {
                     box [width 300, height 14, gray7];
-                    box [width 300 * turret.ammo / turret.maxAmmo, height 14, yellow5, shadow];
+                    box [width 300 * turret.ammo / most, height 14, yellow5, shadow];
                 }
                 text "Hits " + turret.hits.text() [size 22, white];
                 text "Space fires, P pauses" [size 18, gray5];

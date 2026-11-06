@@ -9,7 +9,7 @@ assembly DroneHealth {
         stack [width fill, height fill, top, center, pad 40] {
             column [gap 8, padX 20, padY 14, background "#000000", round 12, opacity 0.85] {
                 text "Drone " + health.hp.text() + " / " + health.maxHp.text() [size 26, bold, white];
-                progress health.hp [to 20, width 360, height 18, red5];
+                progress health.hp [to health.maxHp, width 360, height 18, red5];
             }
         }
     }

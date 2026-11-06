@@ -1464,7 +1464,7 @@ impl Workbench {
         let gap = ui.spacing().item_spacing.x;
         let count = all.len() as f32;
         let card = ((ui.available_width() - gap * (count - 1.0)) / count - 34.0).clamp(150.0, CARD);
-        ui.horizontal(|ui| {
+        ui.horizontal_wrapped(|ui| {
             for example in all {
                 egui::Frame::new()
                     .fill(theme::PANEL)

@@ -11,7 +11,7 @@ Open it when you're about to give your own game a HUD or a menu: it's the shorte
    - **Space** (or a gamepad's **A**) fires the turret at the drone. The HUD in the bottom left counts the ammo and the hits, with a yellow bar that empties as you fire; the drone's health bar at the top follows its health.
    - **P** (or **Start**) pauses: the game stops and the pause menu shows. Move with the arrow keys or the stick, choose with **Space**, **Enter** or **A**, or click.
 3. Try the menu:
-   - **Text size** makes every screen's text a quarter bigger each time (back to 100% after 200%). The menu grows to fit it.
+   - **Text size** makes every screen's text a quarter bigger each time (back to 100% after 200%). The menu's buttons grow to fit it (they're at least 360 wide, `minWidth 360`, rather than exactly).
    - **Fullscreen** and **Resolution** say in the Console what the exported game would do; in the editor the game stays in the Game panel.
    - **Resume** carries on, and **Quit** leaves the game stopped with a note.
 4. Press **Stop**, open the Library's `ui` folder and double-click **hud**: it opens on the canvas. Pick a piece and change it in Properties, or try **Preview values** to see the ammo bar empty.
@@ -21,7 +21,7 @@ Open it when you're about to give your own game a HUD or a menu: it's the shorte
 | File | What it does |
 |---|---|
 | `main.lst` | The game code: the **Turret** (fires on Jump, reloads), the drone's **Health**, and the **Pauser**, which opens the menu and changes the player's settings when the menu's buttons say so. |
-| `ui/hud.lst` | The HUD, shown by the Turret's **Screen** component. It reads the turret's ammo and hits (`Ui:entity():turret()`); the bar is a `box` whose width is `300 * ammo / maxAmmo`, with `shadow` for a glow. The Screen component's **Glow** gives the whole HUD a soft light. |
+| `ui/hud.lst` | The HUD, shown by the Turret's **Screen** component. It reads the turret's ammo and hits (`Ui:entity():turret()`); the bar is a `box` whose width is `300 * ammo / maxAmmo`, and while the turret reloads it stays empty, with `shadow` for a glow. The Screen component's **Glow** gives the whole HUD a soft light. |
 | `ui/droneHealth.lst` | The drone's health bar, shown by the Drone's Screen component, reading its Health. |
 | `ui/pauseMenu.lst` | The menu. It reads the settings (`Screens:textSize()`, `Window:fullscreen()`, `Window:resolution()`) to show them, and each button sends an event to the Game entity (`send BiggerText() to Ui:entity();`), since screens never change the game themselves. |
 | `ui/quitNote.lst` | The note left after Quit. |
@@ -36,7 +36,7 @@ The sample has no settings of its own. The **Screen** components on the Turret a
 | Action | Shortcut |
 |---|---|
 | Fire | `Space`, or the gamepad's `A` |
-| Pause, and back | `P`, or `Start`; `Backspace` or `B` closes the menu |
+| Pause, and back | `P` or `Start` (`Backspace` or `B` too) |
 | Move in the menu, choose | Arrow keys or the stick; `Space`, `Enter` or `A` |
 | Switch fullscreen | `Alt + Enter` |
 

@@ -190,3 +190,45 @@ fn every_screen_of_the_ui_sample_opens_on_the_canvas() {
         );
     }
 }
+
+#[test]
+fn review_findings_stay_fixed() {
+    let (root, mut w) = made("review");
+    w.play();
+    w.play_for(1.0 / 60.0);
+    // Twelve shots empty it; it stays empty while reloading, then refills.
+    for _ in 0..12 {
+        tap(&mut w, "A");
+        for _ in 0..16 {
+            w.play_for(1.0 / 60.0);
+        }
+    }
+    assert!(has(&w, "Ammo 0 / 12"), "{:?}", words(&w));
+    for _ in 0..60 {
+        w.play_for(1.0 / 60.0);
+    }
+    assert!(has(&w, "Ammo 0 / 12"), "a second in: still reloading");
+    for _ in 0..70 {
+        w.play_for(1.0 / 60.0);
+    }
+    assert!(has(&w, "Ammo 12 / 12"), "{:?}", words(&w));
+    // After Quit the game stays stopped: Space (A) fires nothing.
+    let hits = words(&w)
+        .into_iter()
+        .find(|t| t.starts_with("Hits"))
+        .unwrap();
+    tap(&mut w, "Start");
+    for _ in 0..4 {
+        tap(&mut w, "Down");
+    }
+    tap(&mut w, "A");
+    w.play_for(1.0 / 60.0);
+    assert!(has(&w, "You quit"), "{:?}", words(&w));
+    tap(&mut w, "A");
+    tap(&mut w, "A");
+    assert!(has(&w, "Ammo 12 / 12"), "{:?}", words(&w));
+    assert!(has(&w, &hits), "{:?}", words(&w));
+    tap(&mut w, "Start");
+    assert!(has(&w, "You quit"), "P doesn't open the menu over the note");
+    let _ = std::fs::remove_dir_all(root.parent().unwrap());
+}
