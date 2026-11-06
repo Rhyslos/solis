@@ -133,7 +133,7 @@ struct Example {
     make: WorkbenchAction,
 }
 
-fn examples() -> [Example; 3] {
+fn examples() -> [Example; 4] {
     [
         Example {
             name: "Playground",
@@ -144,6 +144,11 @@ fn examples() -> [Example; 3] {
             name: "Turret sample",
             about: "Game code in Lust, Lua and Rust, talking through events",
             make: WorkbenchAction::MakeSampleGame,
+        },
+        Example {
+            name: "UI sample",
+            about: "A HUD and a pause menu with the player's settings, drawn on the canvas",
+            make: WorkbenchAction::MakeUiSample,
         },
         Example {
             name: "Benchmark",
@@ -1454,16 +1459,21 @@ impl Workbench {
         );
         ui.add_space(6.0);
         let fill = self.accent.colors().fill;
-        ui.horizontal(|ui| {
-            for example in examples() {
+        // The cards share the room across, up to their usual width.
+        let all = examples();
+        let gap = ui.spacing().item_spacing.x;
+        let count = all.len() as f32;
+        let card = ((ui.available_width() - gap * (count - 1.0)) / count - 34.0).clamp(150.0, CARD);
+        ui.horizontal_wrapped(|ui| {
+            for example in all {
                 egui::Frame::new()
                     .fill(theme::PANEL)
                     .stroke(egui::Stroke::new(1.0, Color32::from_rgb(0x30, 0x30, 0x30)))
                     .corner_radius(10.0)
                     .inner_margin(16.0)
                     .show(ui, |ui| {
-                        ui.set_width(CARD);
-                        ui.set_height(118.0);
+                        ui.set_width(card);
+                        ui.set_height(if card < CARD { 140.0 } else { 118.0 });
                         ui.vertical(|ui| {
                             ui.label(
                                 RichText::new(example.name)

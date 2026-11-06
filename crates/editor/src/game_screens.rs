@@ -444,6 +444,19 @@ impl Workbench {
         }
     }
 
+    /// The player's settings (decision 0091), as game code last set them.
+    pub fn player_settings(&self) -> script::settings::PlayerSettings {
+        self.player_settings
+    }
+
+    /// Starts from these player settings (an exported game's saved ones).
+    pub fn set_player_settings(&mut self, settings: script::settings::PlayerSettings) {
+        self.player_settings = settings.sanitized();
+        if let Some(playing) = &mut self.playing {
+            playing.view.settings = self.player_settings;
+        }
+    }
+
     /// The game's screens drawn over the Game panel now, in order.
     pub fn game_screens(&self) -> &[Arc<ui::Screen>] {
         &self.game_screens.pictures

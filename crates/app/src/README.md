@@ -44,6 +44,7 @@ The program's code: the command line, the window and its frame loop, the GPU hoo
 | File | What it does |
 | --- | --- |
 | `sample_game.rs` | The turret sample (Help > Make the sample game): a turret in Lust shooting a drone with armour in Rust and sparks in Lua. Its files come from `samples/turret/assets`. Tests in `sample_game_tests.rs`. |
+| `ui_sample.rs` | The UI sample (Help > Make the UI sample): a HUD, a health bar and a pause menu with the player's settings, every screen drawn on the canvas. Its files come from `samples/ui/assets`. Tests in `ui_sample_tests.rs`, including its recording checked with the menu used. |
 | `benchmark.rs` | The benchmark (Help > Make the benchmark, decision 0030): two fleets of ships and lasers at three sizes. Its game code comes from `samples/benchmark/assets`. |
 | `playground.rs` | The playground (Help > Make the playground): a level for trying the character, cameras, physics, saves and sound (footsteps, music, a radio ducking it, a cave that echoes). Its game code comes from `samples/playground/assets`. Tests in `playground_tests.rs`. |
 

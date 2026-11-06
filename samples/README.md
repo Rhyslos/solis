@@ -5,6 +5,7 @@ The game code and files of the ready-made projects in the Help menu. Each sample
 | Folder | Help menu item | What's in its `assets/` |
 | --- | --- | --- |
 | `turret/` | Make the sample game | The first game, in all three languages: `main.lst` (the turret and the drone's health, in Lust), `armour.rs` (the drone's armour, in Rust, built into the program until Phase 10, decision 0029), `sparks.lua` (sparks, in Lua), `ui/droneHealth.lst` (the drone's health bar, a screen reading its Health; decision 0087) and `turret.solarea` (the area, whose Drone has a Screen showing it). Made by `crates/app/src/sample_game.rs`. |
+| `ui/` | Make the UI sample | A game's screens (game UI M7): `main.lst` (a turret the player fires, the drone's health, and the Pauser, which changes the player's settings when the menu asks), `ui/hud.lst`, `ui/droneHealth.lst`, `ui/pauseMenu.lst` (Resume, Text size, Fullscreen, Resolution, Quit) and `ui/quitNote.lst`, and `ui.solarea`. Made by `crates/app/src/ui_sample.rs`. |
 | `benchmark/` | Make the benchmark | `main.lst`: two fleets of ships flying loops and firing lasers, at three sizes (decision 0030). Made by `crates/app/src/benchmark.rs`, which also builds its areas. |
 | `playground/` | Make the playground | `main.lst`: quick saves, the moving platform and footsteps for a level to walk around in, using the ready-made character and camera. Made by `crates/app/src/playground.rs`, which also builds the level. |
 

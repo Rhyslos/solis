@@ -30,6 +30,7 @@ pub mod sprites;
 pub mod startup;
 pub mod thumbnails;
 mod to_lust;
+pub mod ui_sample;
 pub mod updates;
 mod upgrades;
 pub mod window;
