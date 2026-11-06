@@ -697,5 +697,9 @@ fn a_canvas_cuts_off_its_shapes_at_its_edges() {
         view: Some(node("column", &[], vec![shape("box", 0.0, 0.0)])),
         ..screen
     };
-    assert!(crate::layout(&plain, [400, 300], None).iter().all(|s| s.clip == crate::UNCLIPPED));
+    assert!(
+        crate::layout(&plain, [400, 300], None)
+            .iter()
+            .all(|s| s.clip == crate::UNCLIPPED)
+    );
 }
