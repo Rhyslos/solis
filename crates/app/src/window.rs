@@ -39,9 +39,10 @@ const ACCENT_KEY: &str = "accent2";
 /// The accent as saved before: amber there was the standard of its day,
 /// so it reads as the new standard, blue; any other was chosen and stays.
 const OLD_ACCENT_KEY: &str = "accent";
-/// Whether the launcher comes up when no project opens (E1, decision
-/// 0086).
-const START_PAGE_KEY: &str = "start_page";
+/// Key under which the editor window's size is remembered: the window is
+/// the launcher's size while it's up, and this size again once a project
+/// opens (the project lead, 2026-11-06).
+const EDITOR_SIZE_KEY: &str = "editor_size";
 /// Key under which whether the Library is pinned (docked) rather than a
 /// drawer is remembered (decision 0085).
 const LIBRARY_PINNED_KEY: &str = "library_pinned";
@@ -55,8 +56,6 @@ const SNAPPING_KEY: &str = "viewport_snapping";
 const LOOK_KEY: &str = "viewport_look";
 /// Key under which the viewport camera is remembered.
 const CAMERA_KEY: &str = "viewport_camera";
-/// Key under which the project open last is remembered, to open it again.
-const LAST_PROJECT_KEY: &str = "last_project";
 /// Key under which the recent projects were remembered before the
 /// launcher: read once into its list.
 const RECENT_PROJECTS_KEY: &str = "recent_projects";
@@ -74,6 +73,9 @@ const AUTO_UPDATE_KEY: &str = "auto_update";
 const SKIPPED_BUILD_KEY: &str = "skipped_build";
 /// Window size on first launch, in logical pixels.
 const FIRST_SIZE: [f32; 2] = [1440.0, 900.0];
+/// The window's size while the launcher is up (the project lead,
+/// 2026-11-06: a small window to pick a project in).
+const LAUNCHER_SIZE: [f32; 2] = [1100.0, 700.0];
 /// The smallest the window may get while staying usable.
 const MIN_SIZE: [f32; 2] = [960.0, 600.0];
 
@@ -132,6 +134,14 @@ struct App {
     tidying: crate::known_projects::Tidying,
     /// Starting up behind the splash screen, until the editor opens.
     startup: Option<crate::startup::Startup>,
+    /// File > Quit (or the launcher's close) asked to quit: the window's
+    /// close isn't turned into going back to the launcher.
+    quitting: bool,
+    /// The editor window's size while a project's open, to grow back to
+    /// from the launcher's.
+    editor_size: [f32; 2],
+    /// Whether the window was the launcher's size last frame.
+    launcher_sized: Option<bool>,
     /// When the splash appeared.
     began: std::time::Instant,
     /// The logo, for the splash.
@@ -154,9 +164,7 @@ impl App {
                     .or_else(|| eframe::get_value(s, OLD_ACCENT_KEY).map(accent_from_before))
             })
             .unwrap_or_default();
-        let start_page: bool = storage
-            .and_then(|s| eframe::get_value(s, START_PAGE_KEY))
-            .unwrap_or(true);
+        let editor_size = storage.map_or(FIRST_SIZE, saved_editor_size);
         let library_pinned: bool = storage
             .and_then(|s| eframe::get_value(s, LIBRARY_PINNED_KEY))
             .unwrap_or(true);
@@ -181,7 +189,6 @@ impl App {
         let console_history: Vec<String> = storage
             .and_then(|s| eframe::get_value(s, CONSOLE_HISTORY_KEY))
             .unwrap_or_default();
-        let last_project = storage.and_then(saved_last_project);
         let recent: Vec<PathBuf> = storage
             .and_then(|s| eframe::get_value(s, RECENT_PROJECTS_KEY))
             .unwrap_or_default();
@@ -225,11 +232,12 @@ impl App {
         let skipped: Option<u64> = storage
             .and_then(|s| eframe::get_value::<Option<u64>>(s, SKIPPED_BUILD_KEY))
             .flatten();
-        // The splash asks GitHub while it shows, unless checking is off
-        // (decision 0045).
+        // GitHub is asked as Solis starts, unless checking is off (decision
+        // 0045), but nothing is asked of the person: a newer build shows as
+        // a bar in the launcher (the project lead, 2026-11-06).
         let copy = crate::updates::this_copy();
         let check = auto_update.then(|| crate::updates::start_check(&cc.egui_ctx));
-        let startup = crate::startup::Startup::new(check, skipped, copy.installed, copy.build);
+        let startup = crate::startup::Startup::new(None, skipped, copy.installed, copy.build);
         let mut app = Self {
             workbench,
             gpu,
@@ -258,21 +266,26 @@ impl App {
             updates: crate::updates::Updates::new(pending, skipped),
             tidying: Default::default(),
             startup: Some(startup),
+            quitting: false,
+            editor_size,
+            launcher_sized: None,
             began: std::time::Instant::now(),
             logo: load_logo(&cc.egui_ctx),
         };
         app.workbench
             .set_logo(app.logo.as_ref().map(egui::TextureHandle::id));
         app.workbench.set_this_build(copy.build);
+        if let Some(check) = check {
+            app.updates.adopt(check, &mut app.workbench);
+        }
         app.list_projects();
         app.workbench.set_manual_url(format!(
             "https://github.com/{}/tree/main/docs/manual",
             branding::UPDATE_REPO
         ));
-        if let Some(root) = last_project.filter(|r| r.join(asset_db::PROJECT_FILE).is_file()) {
-            app.open_project(&root, false);
-        }
-        app.workbench.launch_launcher(start_page);
+        // Solis always opens on the launcher, and a project opens from it
+        // (the project lead, 2026-11-06): the last project isn't reopened.
+        app.workbench.launch_launcher();
         if !library_pinned {
             app.workbench.set_library_pinned(false);
         }
@@ -930,7 +943,10 @@ impl App {
             && let Some(action) = self.queued.pop_front()
         {
             match action {
-                WorkbenchAction::Quit => ctx.send_viewport_cmd(egui::ViewportCommand::Close),
+                WorkbenchAction::Quit => {
+                    self.quitting = true;
+                    ctx.send_viewport_cmd(egui::ViewportCommand::Close);
+                }
                 WorkbenchAction::DownloadUpdate => {
                     self.updates.download(&mut self.workbench, ctx);
                 }
@@ -1723,6 +1739,47 @@ impl App {
 }
 
 impl App {
+    /// Sizes the window for what's showing: the launcher's small size
+    /// while it's up, the editor's own size (as last left) otherwise,
+    /// centred each time it changes.
+    fn fit_window(&mut self, ctx: &egui::Context) {
+        let launcher = self.workbench.launcher_open();
+        if self.launcher_sized == Some(launcher) {
+            // While the editor shows, its size is remembered as it's
+            // changed (not while maximized: the size to come back to).
+            let (inner, maximized) =
+                ctx.input(|i| (i.viewport().inner_rect, i.viewport().maximized));
+            if !launcher
+                && maximized != Some(true)
+                && let Some(rect) = inner
+                && rect.width() >= MIN_SIZE[0]
+                && rect.height() >= MIN_SIZE[1]
+            {
+                self.editor_size = [rect.width(), rect.height()];
+            }
+            return;
+        }
+        self.launcher_sized = Some(launcher);
+        let size = if launcher {
+            LAUNCHER_SIZE
+        } else {
+            self.editor_size
+        };
+        ctx.send_viewport_cmd(egui::ViewportCommand::Maximized(false));
+        ctx.send_viewport_cmd(egui::ViewportCommand::InnerSize(egui::vec2(
+            size[0], size[1],
+        )));
+        // Centred for its new size (egui's own centring goes by the size
+        // it has now).
+        if let Some(monitor) = ctx.input(|i| i.viewport().monitor_size) {
+            let at = (monitor - egui::vec2(size[0], size[1])) / 2.0;
+            ctx.send_viewport_cmd(egui::ViewportCommand::OuterPosition(egui::pos2(
+                at.x.max(0.0),
+                at.y.max(0.0),
+            )));
+        }
+    }
+
     /// One frame of the splash screen: asks the update question when
     /// there's a newer build, moves starting on, and opens the editor (or
     /// closes, to install a new build) when it's done.
@@ -1830,10 +1887,16 @@ fn models_wanted<'a>(
         .collect()
 }
 
-/// The project open when Solis last closed, as saved (an optional path:
-/// none when no project was open).
-fn saved_last_project(storage: &dyn eframe::Storage) -> Option<PathBuf> {
-    eframe::get_value::<Option<PathBuf>>(storage, LAST_PROJECT_KEY).flatten()
+/// The editor window's size as saved, if it's a sensible one (at least
+/// the smallest the window gets); the first launch's size otherwise.
+fn saved_editor_size(storage: &dyn eframe::Storage) -> [f32; 2] {
+    eframe::get_value::<[f32; 2]>(storage, EDITOR_SIZE_KEY)
+        .filter(|s| {
+            s.iter()
+                .zip(MIN_SIZE)
+                .all(|(v, min)| v.is_finite() && *v >= min && *v <= 100_000.0)
+        })
+        .unwrap_or(FIRST_SIZE)
 }
 
 /// Whether two paths are the same folder (however they're written).
@@ -1986,9 +2049,21 @@ impl eframe::App for App {
                 ),
             }
         }
-        if ctx.input(|i| i.viewport().close_requested()) && !self.workbench.close_requested() {
-            ctx.send_viewport_cmd(egui::ViewportCommand::CancelClose);
+        if ctx.input(|i| i.viewport().close_requested()) {
+            // Closing the editor goes back to the launcher (the project
+            // stays open behind it); closing the launcher, File > Quit or
+            // Restart to update quits, asking about unsaved work first.
+            let quit =
+                self.quitting || self.workbench.launcher_open() || self.workbench.restarting();
+            if !quit {
+                ctx.send_viewport_cmd(egui::ViewportCommand::CancelClose);
+                self.workbench.back_to_launcher();
+            } else if !self.workbench.close_requested() {
+                self.quitting = false;
+                ctx.send_viewport_cmd(egui::ViewportCommand::CancelClose);
+            }
         }
+        self.fit_window(&ctx);
         self.collect_imports();
         if let Some((level, text)) = self.sound.poll(std::time::Instant::now()) {
             self.workbench.log(level, text);
@@ -2076,16 +2151,11 @@ impl eframe::App for App {
             LIBRARY_PINNED_KEY,
             &self.workbench.library_pinned(),
         );
-        eframe::set_value(
-            storage,
-            START_PAGE_KEY,
-            &self.workbench.launcher_at_launch(),
-        );
+        eframe::set_value(storage, EDITOR_SIZE_KEY, &self.editor_size);
         eframe::set_value(storage, OVERLAYS_KEY, &self.workbench.overlays());
         eframe::set_value(storage, SNAPPING_KEY, &self.workbench.snapping());
         eframe::set_value(storage, CAMERA_KEY, &self.workbench.camera());
         eframe::set_value(storage, LOOK_KEY, &self.workbench.look());
-        eframe::set_value(storage, LAST_PROJECT_KEY, &self.projects.root());
         eframe::set_value(storage, KNOWN_PROJECTS_KEY, &self.projects.known().saved());
         eframe::set_value(storage, VIEWS_KEY, &self.workbench.views());
         eframe::set_value(storage, AUTO_UPDATE_KEY, &self.workbench.auto_update());
@@ -2286,15 +2356,15 @@ mod tests {
     }
 
     #[test]
-    fn the_last_project_reopens_as_it_was_saved() {
-        // Regression: it was saved as an optional path but read back as a
-        // plain one, so it never reopened.
+    fn the_editor_s_size_comes_back_as_saved_when_it_s_sensible() {
         let mut storage = Memory::default();
-        let root = Path::new("/projects/harbour");
-        eframe::set_value(&mut storage, LAST_PROJECT_KEY, &Some(root));
-        assert_eq!(saved_last_project(&storage), Some(root.to_path_buf()));
-        eframe::set_value(&mut storage, LAST_PROJECT_KEY, &None::<&Path>);
-        assert_eq!(saved_last_project(&storage), None);
-        assert_eq!(saved_last_project(&Memory::default()), None);
+        assert_eq!(saved_editor_size(&storage), FIRST_SIZE, "first launch");
+        eframe::set_value(&mut storage, EDITOR_SIZE_KEY, &[1600.0_f32, 1000.0]);
+        assert_eq!(saved_editor_size(&storage), [1600.0, 1000.0]);
+        for odd in [[10.0_f32, 10.0], [f32::NAN, 900.0], [1.0e9, 900.0]] {
+            eframe::set_value(&mut storage, EDITOR_SIZE_KEY, &odd);
+            assert_eq!(saved_editor_size(&storage), FIRST_SIZE, "{odd:?}");
+        }
+        const { assert!(LAUNCHER_SIZE[0] >= MIN_SIZE[0] && LAUNCHER_SIZE[1] >= MIN_SIZE[1]) };
     }
 }

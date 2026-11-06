@@ -4,7 +4,7 @@
 
 ## When to use it
 
-The launcher fills the window when Solis starts without a project, and **File > Projects…** brings it back at any time. Use it to:
+Solis always starts on the launcher, in a small window, and you pick the project to work on there; the window then grows to the editor's size. Closing the editor's window brings you back to the launcher (the project stays open behind it: **← Back to** returns to it), and closing the launcher quits Solis, asking about unsaved work first. **File > Projects…** brings it back at any time too. Use it to:
 
 - open a project you've worked on before, without hunting for its folder;
 - keep the projects you're working on now at the top (pin them);
@@ -14,7 +14,9 @@ The launcher fills the window when Solis starts without a project, and **File > 
 - find projects already on your computer (copied from a USB stick, cloned from Git) without opening each one;
 - start something new, or make one of the examples to learn from.
 
-Solis also opens the project you had open last when it starts, so if you only ever work on one game you may rarely see the launcher.
+Solis doesn't open the last project by itself: the projects you opened most recently are at the top, so it's one double-click.
+
+When a newer build of Solis is out, a blue bar over your projects says so, with **Update now**, **See what's new** (the Updates page) and **Not now** (until Solis starts again). Nothing interrupts you as Solis starts.
 
 ## How to use it
 
@@ -40,7 +42,6 @@ Solis also opens the project you had open last when it starts, so if you only ev
 |---|---|
 | Pinned (☆ / ★) | Keeps a project at the top of the list, whatever the sort. Use it for the projects you're working on now. |
 | Sort by | **Last opened** (the most recent first; projects from before the launcher, whose time isn't known, come last) or **Name** (A to Z). |
-| Show this page when Solis starts without a project | Under **Learn**. Turn it off to start in the empty editor instead. |
 
 ## The build each project was last opened with
 

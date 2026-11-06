@@ -201,13 +201,17 @@ impl Updates {
                         installed: copy.installed,
                     });
                     None
-                } else if updater::should_offer(build, self.skipped, false) {
+                } else if !updater::should_offer(build, self.skipped, false) {
+                    // Skipped: no bar for it in the launcher.
+                    workbench.hide_update_bar(build);
+                    None
+                } else {
                     Some((
                         LogLevel::Info,
-                        format!("Build {build} of {name} is available: Help > Check for updates."),
+                        format!(
+                            "Build {build} of {name} is out: Update now in the launcher gets it."
+                        ),
                     ))
-                } else {
-                    None
                 };
                 self.offered = Some(release);
                 (UpdateNotice::Available(build), said)
