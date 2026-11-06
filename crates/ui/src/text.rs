@@ -94,6 +94,10 @@ pub struct Fonts {
     pub atlas: Atlas,
     /// Whether a letter didn't fit (the atlas is full): said once.
     pub full: bool,
+    /// Whether the atlas filled since text was last placed: it starts
+    /// again empty before the next, so letters wanted now get room (the
+    /// stability review: a full atlas used to lose new letters for good).
+    start_again: bool,
 }
 
 impl Fonts {
@@ -123,6 +127,7 @@ impl Fonts {
                 letters: HashMap::new(),
                 atlas: Atlas::default(),
                 full: false,
+                start_again: false,
             },
             notes,
         )
@@ -171,6 +176,7 @@ impl Fonts {
         let sdf = distance_image(&cover, w as usize, h as usize);
         let Some([ax, ay]) = self.atlas.room(w as u32, h as u32) else {
             self.full = true;
+            self.start_again = true;
             return None;
         };
         for y in 0..h as u32 {
@@ -229,6 +235,14 @@ impl Fonts {
         at: [f32; 2],
         crisp: Option<f32>,
     ) -> Vec<Placed> {
+        if std::mem::take(&mut self.start_again) {
+            let revision = self.atlas.revision + 1;
+            self.atlas = Atlas {
+                revision,
+                ..Atlas::default()
+            };
+            self.letters.clear();
+        }
         let font = font.min(self.fonts.len().saturating_sub(1));
         let Some(f) = self.fonts.get(font).cloned() else {
             return Vec::new();

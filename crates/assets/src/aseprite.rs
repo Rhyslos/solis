@@ -373,6 +373,11 @@ pub fn read_aseprite_within(bytes: &[u8], limits: AseLimits) -> Result<Aseprite,
     let layer_opacity = flags & 1 != 0;
     let mut layers: Vec<RawLayer> = Vec::new();
     let mut cels: Vec<Vec<Cel>> = Vec::with_capacity(frame_count as usize);
+    // Every cel's pictures together, as decoded (the stability review:
+    // a small file of tightly packed big cels could ask for gigabytes),
+    // and how many pixels linked cels draw, kept within the same budget.
+    let mut decoded: u64 = 0;
+    let mut cel_count: usize = 0;
     let mut durations = Vec::with_capacity(frame_count as usize);
     let mut cel_texts: Vec<Vec<Option<String>>> = Vec::with_capacity(frame_count as usize);
     let mut tags: Vec<AseTag> = Vec::new();
@@ -475,6 +480,13 @@ pub fn read_aseprite_within(bytes: &[u8], limits: AseLimits) -> Result<Aseprite,
                                 ));
                             }
                             let want = (w as usize) * (h as usize) * bpp;
+                            decoded = decoded.saturating_add(want as u64);
+                            if decoded > limits.max_pixel_bytes {
+                                return fail(format!(
+                                    "its layers' pictures would take more than {} MB",
+                                    limits.max_pixel_bytes >> 20
+                                ));
+                            }
                             let rest = &c.data[c.at..];
                             let data = if cel_type == 0 {
                                 if rest.len() < want {
@@ -509,6 +521,10 @@ pub fn read_aseprite_within(bytes: &[u8], limits: AseLimits) -> Result<Aseprite,
                             ));
                         }
                     };
+                    cel_count += 1;
+                    if cel_count > MAX_CELS {
+                        return fail(format!("it has more than {MAX_CELS} cels"));
+                    }
                     frame_cels.push(Cel {
                         layer,
                         x,
@@ -743,6 +759,14 @@ fn shown_layers(layers: &[RawLayer]) -> Vec<bool> {
     shown
 }
 
+/// The most cels a file may hold, all frames together.
+pub const MAX_CELS: usize = 65_536;
+
+/// The most pixels drawing all the cels may touch, all frames together:
+/// many cels linked to one big picture would otherwise keep a worker busy
+/// for hours (the stability review).
+const MAX_DRAWN_PIXELS: u64 = 1 << 30;
+
 /// Every frame's picture: its shown layers' cels drawn over each other.
 #[allow(clippy::too_many_arguments)]
 fn flatten(
@@ -757,6 +781,7 @@ fn flatten(
     transparent: u8,
 ) -> Result<Vec<AseFrame>, AseError> {
     let mut frames = Vec::with_capacity(cels.len());
+    let mut drawn: u64 = 0;
     for (f, frame_cels) in cels.iter().enumerate() {
         let mut rgba = vec![0u8; width as usize * height as usize * 4];
         // Drawing order: the layer's place plus the cel's z-index; when
@@ -782,6 +807,16 @@ fn flatten(
                 continue;
             };
             let opacity = u32::from(cel.opacity) * u32::from(layer.opacity) / 255;
+            // Only the part on the canvas is drawn, and counted.
+            let across = clipped(cel.x, *w, width);
+            let down = clipped(cel.y, *h, height);
+            drawn = drawn.saturating_add((across.len() as u64) * (down.len() as u64));
+            if drawn > MAX_DRAWN_PIXELS {
+                return Err(AseError(
+                    "its cels would take too long to draw: too many are linked to big pictures"
+                        .into(),
+                ));
+            }
             draw_cel(
                 &mut rgba,
                 [width, height],
@@ -806,6 +841,16 @@ fn flatten(
     Ok(frames)
 }
 
+/// The cel's columns (or rows) from `at`, `size` long, that land on a
+/// canvas `side` wide: only these are walked.
+fn clipped(at: i32, size: u32, side: u32) -> std::ops::Range<i32> {
+    let size = i64::from(size);
+    let at = i64::from(at);
+    let first = (-at).clamp(0, size);
+    let last = (i64::from(side) - at).clamp(first, size);
+    first as i32..last as i32
+}
+
 /// Draws one cel's pixels over `canvas` at `(x, y)`, normal blending.
 #[allow(clippy::too_many_arguments)]
 fn draw_cel(
@@ -821,16 +866,10 @@ fn draw_cel(
     if opacity == 0 {
         return;
     }
-    for row in 0..h as i32 {
+    for row in clipped(y, h, height) {
         let cy = y + row;
-        if cy < 0 || cy >= height as i32 {
-            continue;
-        }
-        for col in 0..w as i32 {
+        for col in clipped(x, w, width) {
             let cx = x + col;
-            if cx < 0 || cx >= width as i32 {
-                continue;
-            }
             let at = (row as usize * w as usize + col as usize) * bpp;
             let Some(p) = pixels.get(at..at + bpp) else {
                 continue;

@@ -105,6 +105,9 @@ pub struct StampCell {
     pub exact: Option<Id>,
 }
 
+/// The most cells a stamp holds (256 × 256).
+pub const MAX_STAMP_CELLS: u64 = 256 * 256;
+
 /// An area of a layer copied with the eyedropper, to paint with: flipped
 /// and turned, then put down where the pointer is.
 #[derive(Debug, Clone, PartialEq, Eq)]
@@ -121,6 +124,12 @@ impl Stamp {
     /// every cell of it is empty.
     pub fn copy(map: &TileMap, layer: usize, a: [i64; 2], b: [i64; 2]) -> Option<Stamp> {
         let [[x0, y0], [x1, y1]] = rect_within(a, b, map.size())?;
+        // A stamp is painted with, a repeat at a time: one the size of a
+        // whole big map would make every brush move copy it (the
+        // stability review).
+        if u64::from(x1 - x0 + 1) * u64::from(y1 - y0 + 1) > MAX_STAMP_CELLS {
+            return None;
+        }
         let mut cells = Vec::with_capacity(((x1 - x0 + 1) * (y1 - y0 + 1)) as usize);
         for y in y0..=y1 {
             for x in x0..=x1 {
