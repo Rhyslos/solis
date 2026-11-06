@@ -53,6 +53,11 @@ fn write_the_sample_area() {
             })
             .with(&Camera::default()),
     );
+    // The pause menu's keeper (game UI, M3c): it shows its screens itself.
+    let mut game = EntityData::new("Game");
+    game.components
+        .insert("Pauser".into(), reflect::ComponentData::default());
+    add(&mut area, game);
     let registry = area::builtin::registry().unwrap();
     let text = area::text::write(&area, &registry, &|_| None);
     if std::env::var_os("SOLIS_WRITE_SAMPLE").is_some() {
@@ -139,6 +144,41 @@ fn the_sample_is_made_as_a_project_and_plays_through_all_three_languages() {
     assert_eq!(count("Drone is destroyed!"), 1, "{said:?}");
     let x = w.world().unwrap().global(drone).unwrap().w_axis;
     assert_eq!(x.z, 0.0, "it dropped to the ground");
+    // The pause menu (game UI, M3c), with a controller: Start opens it and
+    // stops the game, A chooses Resume, then Start, down and A quit.
+    let tap = |w: &mut editor::Workbench, button: &str| {
+        let mut pad = input::Pad::default();
+        pad.buttons.insert(button.to_string());
+        w.set_gamepad(Some(pad));
+        w.play_for(1.0 / 60.0);
+        w.set_gamepad(Some(input::Pad::default()));
+        w.play_for(1.0 / 60.0);
+    };
+    tap(&mut w, "Start");
+    assert_eq!(w.world().unwrap().speed(), 0.0, "paused");
+    assert!(words(&w).contains(&"Paused".to_string()), "{:?}", words(&w));
+    let time = w.world().unwrap().clock().time;
+    for _ in 0..10 {
+        w.play_for(1.0 / 60.0);
+    }
+    assert_eq!(w.world().unwrap().clock().time, time, "game time stands still");
+    tap(&mut w, "A");
+    w.play_for(1.0 / 60.0);
+    assert_eq!(w.world().unwrap().speed(), 1.0, "resumed");
+    assert!(!words(&w).contains(&"Paused".to_string()));
+    tap(&mut w, "Start");
+    tap(&mut w, "Down");
+    tap(&mut w, "A");
+    w.play_for(1.0 / 60.0);
+    assert_eq!(w.world().unwrap().speed(), 0.0, "quitting leaves it stopped");
+    assert!(
+        words(&w)
+            .iter()
+            .any(|t| t.starts_with("You quit")),
+        "{:?}",
+        words(&w)
+    );
+    assert!(w.log_lines().iter().any(|l| l.text.starts_with("You quit the game")));
     // A changed armour.rs is noted: changes don't run until Phase 18.
     std::fs::write(assets.join("armour.rs"), "// mine\n").unwrap();
     assert!(rust_components(&assets).1.is_some());
@@ -172,7 +212,12 @@ fn the_manual_s_things_to_try_are_sound_code() {
     let main = FILES[0].1;
     assert!(main.contains("reload = cooldown;"));
     let changed = main.replace("reload = cooldown;", "reload = cooldown / 5;");
-    let mut files = script::describe::descriptions("Test 1.0", "solis");
+    // With the sample's screens among the project's names.
+    let (mut files, _) = script::describe::descriptions_for(
+        "Test 1.0",
+        "solis",
+        &script::project_names::Names::standard().and_screens(&["DroneHealth", "PauseMenu", "QuitNote"]),
+    );
     files.push(("main.lst".into(), changed));
     let code = script::Code {
         files,

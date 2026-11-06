@@ -41,6 +41,9 @@ pub const TICK: f64 = 1.0 / 60.0;
 /// window dragged) the game skips ahead instead of racing to catch up.
 pub const MAX_TICKS_PER_STEP: u64 = 8;
 
+/// The fastest the game runs ([`World::set_speed`]): four times.
+pub const MAX_SPEED: f64 = 4.0;
+
 /// An entity's ID in the area, on its world entity.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct Id(pub EntityId);
@@ -135,6 +138,13 @@ pub struct World {
     projectiles: Projectiles,
     /// The seed the game's random numbers are made from.
     seed: u64,
+    /// How fast the game runs (`World:setGameSpeed`; 1 as it starts, 0
+    /// paused): game time, physics, projectiles and sprites go at this
+    /// share of each tick, while game code still runs every tick.
+    speed: f64,
+    /// The Screens game code showed or hid, kept when the world is built
+    /// again.
+    game_screens: reflect::IdMap<ComponentData>,
     /// Bodies and colliders (decision 0036): every entity with a
     /// `RigidBody`, a `Collider` or a `CharacterBody`.
     physics: physics::Physics,
@@ -256,6 +266,8 @@ impl World {
             game_moved: reflect::IdMap::default(),
             projectiles: Projectiles::default(),
             seed: 0,
+            speed: 1.0,
+            game_screens: reflect::IdMap::default(),
             physics: physics::Physics::new(),
             physics_moved: Vec::new(),
             physics_asked: Vec::new(),
@@ -339,6 +351,8 @@ impl World {
             .collect();
         let projectiles = std::mem::take(&mut self.projectiles);
         let seed = self.seed;
+        let speed = self.speed;
+        let game_screens = std::mem::take(&mut self.game_screens);
         let playbacks = self.playbacks();
         let clip_sets = std::sync::Arc::clone(&self.clip_sets);
         let animators = std::sync::Arc::clone(&self.animators);
@@ -355,6 +369,10 @@ impl World {
         self.clock = clock;
         self.projectiles = projectiles;
         self.seed = seed;
+        self.speed = speed;
+        for (id, data) in game_screens {
+            self.put_screen(id, data);
+        }
         self.clip_sets = clip_sets;
         self.animators = animators;
         self.saved_values = saved_values;
@@ -639,10 +657,11 @@ impl World {
         due
     }
 
-    /// A tick begins: the clock moves on by one.
+    /// A tick begins: the clock moves on by one, and game time by a tick
+    /// at the game's speed.
     pub fn begin_tick(&mut self) {
         self.clock.ticks = self.clock.ticks.saturating_add(1);
-        self.clock.time += TICK;
+        self.clock.time += self.tick_time();
         self.touched = true;
     }
 
@@ -720,7 +739,18 @@ impl World {
         if wanted.screen.is_empty() || now.as_ref() == Some(&wanted) {
             return;
         }
-        let data = wanted.to_data();
+        self.put_screen(id, wanted.to_data());
+    }
+
+    /// Puts a Screen's values on an entity, as game code left it (and
+    /// keeps it so over a rebuild). Nothing for an entity not there.
+    fn put_screen(&mut self, id: EntityId, data: ComponentData) {
+        use area::builtin::Screen;
+        use reflect::Component;
+        let Some(&entity) = self.by_id.get(&id) else {
+            return;
+        };
+        self.game_screens.insert(id, data.clone());
         if let Ok(mut values) = self.ecs.get::<&mut Values>(entity) {
             values.0.insert(Screen::NAME.to_string(), data);
         } else {
@@ -731,6 +761,26 @@ impl World {
         // The Screen is among the values the structure's sum holds.
         self.structure = std::sync::OnceLock::new();
         self.touched = true;
+    }
+
+    /// How fast the game runs: 1 as it starts, 0 paused.
+    pub fn speed(&self) -> f64 {
+        self.speed
+    }
+
+    /// Sets how fast the game runs (game code's `World:setGameSpeed`),
+    /// from 0 (paused: time, physics, projectiles and sprites stop; game
+    /// code still runs) to [`MAX_SPEED`]. Not a number changes nothing.
+    pub fn set_speed(&mut self, speed: f64) {
+        if speed.is_finite() {
+            self.speed = speed.clamp(0.0, MAX_SPEED);
+            self.touched = true;
+        }
+    }
+
+    /// A tick's seconds of game time at the game's speed.
+    pub fn tick_time(&self) -> f64 {
+        TICK * self.speed
     }
 
     /// The screen an entity's Screen shows, if it has one and it's shown.
@@ -1172,6 +1222,11 @@ impl World {
                 }
             }
         }
+        // The game's speed, when game code changed it (so older
+        // recordings' sums stand).
+        if self.speed != 1.0 {
+            sum.u64(self.speed.to_bits());
+        }
         // Which sounds game code turned on and off (it's in a save).
         // Only the on/off flag counts, so the sources aren't copied.
         let mut sounds: Vec<(EntityId, bool)> = self
@@ -1369,10 +1424,17 @@ impl World {
                 PhysicsAsk::Flat(..) => {}
             }
         }
-        if !characters.is_empty() {
-            self.physics.move_characters(&characters, TICK as f32);
+        // At the game's speed; paused, bodies stay where they are (game
+        // code's own moves above still land).
+        let dt = self.tick_time() as f32;
+        if dt <= 0.0 {
+            self.settle();
+            return;
         }
-        self.physics.step(TICK as f32);
+        if !characters.is_empty() {
+            self.physics.move_characters(&characters, dt);
+        }
+        self.physics.step(dt);
         // The entities follow their bodies, without sending it back.
         self.following = true;
         for (id, position, rotation) in self.physics.moved() {

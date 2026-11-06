@@ -223,7 +223,7 @@ The Rust layer DESIGN.md §12 asks for first, which Lust's `view` is read into l
 - The menu actions of choice 7, sampled with the others; the first button of a screen that takes focus gets it (or one marked `focus`); UI Move goes to the nearest button that way; a focus ring Solis draws; while such a screen is shown, the game's own actions wait.
 - Tests: spatial focus in grids and odd layouts; a click and a gamepad A choose the same button; the game doesn't jump when A chooses; editor keys stay off.
 
-**M3c. The game's speed.** `World:setGameSpeed(speed)` and `World:gameSpeed()`: time, physics, projectiles and `dt` stop at 0, components still run; the Game panel's corner says "Game speed 0". **Second half of the gate:** a hand-written pause menu pauses, resumes and quits to a "Paused" note.
+**M3c. The game's speed.** **Built:** as planned, from 0 to 4 (save games format 7, the speed in the checksum when it isn't 1); the turret sample's pause menu on P or Start is the gate's second half (Quit shows a "Paused" note and leaves the game stopped). `World:setGameSpeed(speed)` and `World:gameSpeed()`: time, physics, projectiles and `dt` stop at 0, components still run; the Game panel's corner says "Game speed 0". **Second half of the gate:** a hand-written pause menu pauses, resumes and quits to a "Paused" note.
 
 ### M4. The canvas, part 1: selecting, moving and Properties
 

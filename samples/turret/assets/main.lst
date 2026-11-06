@@ -5,10 +5,14 @@
 
 -- What the components tell each other.
 fetch "solis/world":World;
+fetch "solis/input":Input;
+fetch "solis/project":[Action, Screen];
 
 event Hit(entity by, float damage);
 event Dented(int platesLeft);
 event Destroyed();
+event Resumed();
+event Quit();
 
 -- Shoots at its target every so often, until its ammo runs out.
 component Turret {
@@ -49,5 +53,31 @@ component Health {
     }
 }
 
-pass Turret, Health;
+-- The pause menu (ui/pauseMenu.lst): P (or Start) opens it and stops the
+-- game; its buttons send Resumed or Quit back here.
+component Pauser {
+    method update(float dt) {
+        is Input:pressed(Action.Pause) || Input:pressed(Action.MenuBack)? then {
+            is screenShown(Screen.PauseMenu)? then {
+                send Resumed() to this;
+            } or is not screenShown(Screen.QuitNote)? then {
+                showScreen(Screen.PauseMenu);
+                World:setGameSpeed(0);
+            }
+        }
+    }
+
+    on Resumed() {
+        hideScreen(Screen.PauseMenu);
+        World:setGameSpeed(1);
+    }
+
+    -- Quitting leaves the game stopped, with a note saying so.
+    on Quit() {
+        showScreen(Screen.QuitNote);
+        World:say("You quit the game: press Stop to go back to editing.");
+    }
+}
+
+pass Turret, Health, Pauser, Resumed, Quit;
 end

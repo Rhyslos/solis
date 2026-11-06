@@ -380,6 +380,8 @@ Things that fall, collide and get pushed have a **RigidBody** and a **Collider**
 | `solis/world` | `float World:random()` | A random number from 0 up to 1 (see Random numbers, above). |
 | `solis/world` | `float World:randomRange(float low, float high)` | A random number from low up to high. |
 | `solis/world` | `int World:randomInt(int low, int high)` | A random whole number from low to high, both included. |
+| `solis/world` | `World:setGameSpeed(float speed)` | Runs the game at a speed, from the end of the tick: 0 pauses it (time, physics, projectiles and sprites stop and `dt` is 0, but components still run, so a pause menu works), 1 as usual, up to 4. |
+| `solis/world` | `World:gameSpeed()` | How fast the game runs, as the tick started. |
 | `solis/world` | `World:setSeed(int seed)` | Starts the random numbers again from a seed, at the end of the tick. |
 | `solis/world` | `Saves:saveTo(string slot)` | Saves the whole game in a slot, at the end of the tick ([Save games](save-games.md)). |
 | `solis/world` | `Saves:loadFrom(string slot)` | Loads the game saved in a slot, at the end of the tick. |

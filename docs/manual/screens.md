@@ -131,6 +131,25 @@ Use another entity (a "Menus" entity) for a second screen shown at the same time
 
 While a screen with buttons is shown, the game's own actions wait: only MenuMove, MenuChoose, **MenuBack** (Backspace, B) and **Pause** (P, Start) reach game code, so Space choosing a button doesn't also jump. Use MenuBack and Pause in game code to close a menu or open the pause menu: `is Input:pressed(Action.Pause)? then { showScreen(Screen.PauseMenu); }`. They're ordinary [input actions](input.md), rebindable in **Edit > Input actions…**.
 
+**A pause menu.** `World:setGameSpeed(0)` stops the game while game code keeps running: game time, physics, projectiles and sprites stand still and every `dt` is 0, but components' `update`s, events and the screens go on, so a menu can be used. `World:setGameSpeed(1)` carries on (anything between 0 and 4 runs slower or faster). The Game panel's corner says *Game speed 0* meanwhile, and the speed is kept in save games. The turret sample has one: press P (or Start) while it plays.
+
+```
+component Pauser {
+    method update(float dt) {
+        is Input:pressed(Action.Pause)? then {
+            showScreen(Screen.PauseMenu);
+            World:setGameSpeed(0);
+        }
+    }
+    on Resumed() {
+        hideScreen(Screen.PauseMenu);
+        World:setGameSpeed(1);
+    }
+}
+```
+
+In Lua: `solis.World:setGameSpeed(0)`. In Rust: `cx.host().set_game_speed(0.0)`.
+
 **What a screen can use:** `column`, `row`, `stack`, `space`, `text`, `button`, `progress` bars, and `canvas` with `box`, `circle` and `line` placed by `x` and `y` (anything reaching past the canvas's edges is cut off there, so a needle or a bar can't spill out of its dial). Styles: `pad` (and `padX`, `padTop`…), `gap`, `width` and `height` (a number, or `fill`), `grow`, `size`, `bold`, the alignment words, colour words (`white`, `red5`, `gray9`, `#ff8800`), `background`, `round`, `border` and `opacity`. Other pieces are laid out but not drawn yet.
 
 ## Settings

@@ -478,6 +478,7 @@ impl GameWorld for PlayWorld<'_> {
             bindings: Arc::clone(&self.bindings),
             animator_states: Arc::new(self.world.animator_state_names()),
             screens: Arc::new(self.world.screens_shown()),
+            game_speed: self.world.speed(),
             maps,
             map_places: Arc::new(places_of_maps.0),
             map_bounds: Arc::new(places_of_maps.1),
@@ -502,6 +503,7 @@ impl GameWorld for PlayWorld<'_> {
                 }
                 Change::Despawn(id) => self.edits.push(GameEdit::Despawn(id)),
                 Change::Seed(seed) => self.seed = Some(seed),
+                Change::GameSpeed(speed) => self.world.set_speed(speed),
                 Change::Push(which, impulse) => self.world.push(which, impulse),
                 Change::Velocity(which, velocity) => self.world.set_velocity(which, velocity),
                 Change::Character(which, wanted) => self.world.move_character(which, wanted),

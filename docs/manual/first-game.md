@@ -8,7 +8,8 @@ Right after reading [Game code](game-code.md), or instead of it if you learn bes
 ## How to use it
 1. Choose **Help > Make the sample game…** and pick an empty folder. Solis makes a project there called **Turret sample**, opens it, and opens its area.
 2. Press **Play**. The sample has no models yet, so its story is told in the Console (later phases give it models). Watch the Console: every half second the turret fires. The drone's armour dents three times ("Sparks fly from Drone: 2 armour plates left"), and after eight hits the drone is destroyed and drops to the ground.
-3. Press **Stop**, then open the code from the Library's **Code** tab.
+3. While it plays, click the Game panel and press **P** (or Start on a controller): the game stops and a pause menu shows (the **Pauser** component on the **Game** entity, and `ui/pauseMenu.lst`). **Resume** carries on; **Quit** leaves it stopped with a note. See [Game screens](screens.md).
+4. Press **Stop**, then open the code from the Library's **Code** tab.
 
 ## What's in it
 

@@ -46,6 +46,14 @@ pub const FILES: &[(&str, &str)] = &[
         "ui/droneHealth.lst",
         include_str!("../../../samples/turret/assets/ui/droneHealth.lst"),
     ),
+    (
+        "ui/pauseMenu.lst",
+        include_str!("../../../samples/turret/assets/ui/pauseMenu.lst"),
+    ),
+    (
+        "ui/quitNote.lst",
+        include_str!("../../../samples/turret/assets/ui/quitNote.lst"),
+    ),
 ];
 
 /// Makes `root` the turret sample: a new project with the sample's files.

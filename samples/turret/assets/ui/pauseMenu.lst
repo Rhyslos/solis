@@ -1,0 +1,22 @@
+-- The pause menu: shown by the Pauser in main.lst while the game is stopped.
+fetch "solis/screen":Ui;
+fetch "main":[Resumed, Quit];
+
+assembly PauseMenu {
+    view {
+        stack [width fill, height fill, center, middle] {
+            column [gap 14, pad 36, background gray9, round 12, center] {
+                text "Paused" [size 44, bold, white];
+                button "Resume" [width 260, blue] {
+                    send Resumed() to Ui:entity();
+                }
+                button "Quit" [width 260, hover:[background red7]] {
+                    send Quit() to Ui:entity();
+                }
+            }
+        }
+    }
+}
+
+pass PauseMenu;
+end

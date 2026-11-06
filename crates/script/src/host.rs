@@ -225,6 +225,15 @@ pub trait Host {
     fn view_size(&self) -> Vec3 {
         Vec3::ZERO
     }
+    /// Sets how fast the game runs, at the end of the tick: 0 pauses time,
+    /// physics, projectiles and sprites; game code still runs.
+    fn set_game_speed(&mut self, speed: f64) {
+        let _ = speed;
+    }
+    /// How fast the game runs, as the tick started (1 as it starts).
+    fn game_speed(&self) -> f64 {
+        1.0
+    }
 
     /// The component about to run, and where what it does belongs in the
     /// tick's order ([decision 0033](../../../docs/decisions/0033-game-code-sees-the-start-of-the-tick.md)).
@@ -912,6 +921,19 @@ pub(crate) fn with_natives<'h, R>(
                 t.raw_set("high", vec3_value(high))?;
                 Ok(t)
             })?,
+        )?;
+        natives.raw_set(
+            "World_setGameSpeed",
+            scope.create_function(move |_, (_world, speed): (LuaValue, f64)| {
+                if speed.is_finite() {
+                    h.borrow_mut().set_game_speed(speed);
+                }
+                Ok(())
+            })?,
+        )?;
+        natives.raw_set(
+            "World_gameSpeed",
+            scope.create_function(move |_, _world: LuaValue| Ok(h.borrow().game_speed()))?,
         )?;
         natives.raw_set(
             "World_viewSize",
