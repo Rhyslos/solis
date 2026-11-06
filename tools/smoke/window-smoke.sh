@@ -64,7 +64,8 @@ launch() {
     # Let the first frames draw (software rendering is slow).
     sleep 6
     xdotool windowfocus --sync "$WINDOW_ID" 2>/dev/null || true
-    # With no project, the start page comes up first (E1): Esc closes it.
+    # Solis always starts on the launcher (decision 0090): Esc carries on
+    # without a project, into the editor.
     xdotool key --window "$WINDOW_ID" Escape 2>/dev/null || true
     sleep 1
 }

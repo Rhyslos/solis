@@ -142,6 +142,10 @@ struct App {
     editor_size: [f32; 2],
     /// Whether the window was the launcher's size last frame.
     launcher_sized: Option<bool>,
+    /// Growing to the editor's size: the size asked for, and the frames
+    /// waited. The editor isn't drawn meanwhile, so its floating panels
+    /// aren't pushed inside the launcher's smaller window.
+    settling: Option<([f32; 2], u32)>,
     /// When the splash appeared.
     began: std::time::Instant,
     /// The logo, for the splash.
@@ -269,6 +273,7 @@ impl App {
             quitting: false,
             editor_size,
             launcher_sized: None,
+            settling: None,
             began: std::time::Instant::now(),
             logo: load_logo(&cc.egui_ctx),
         };
@@ -1744,6 +1749,13 @@ impl App {
     /// centred each time it changes.
     fn fit_window(&mut self, ctx: &egui::Context) {
         let launcher = self.workbench.launcher_open();
+        if let Some((size, frames)) = self.settling {
+            let now = ctx.input(|i| i.viewport().inner_rect).map(|r| r.size());
+            let there =
+                now.is_some_and(|n| (n.x - size[0]).abs() < 2.0 && (n.y - size[1]).abs() < 2.0);
+            self.settling = (!there && frames < 30 && !launcher).then_some((size, frames + 1));
+            ctx.request_repaint();
+        }
         if self.launcher_sized == Some(launcher) {
             // While the editor shows, its size is remembered as it's
             // changed (not while maximized: the size to come back to).
@@ -1759,12 +1771,18 @@ impl App {
             }
             return;
         }
+        // The very first frame, whatever size the window opened at; then
+        // only when the launcher comes or goes.
+        let first = self.launcher_sized.is_none();
         self.launcher_sized = Some(launcher);
         let size = if launcher {
             LAUNCHER_SIZE
         } else {
             self.editor_size
         };
+        if !launcher && !first {
+            self.settling = Some((size, 0));
+        }
         ctx.send_viewport_cmd(egui::ViewportCommand::Maximized(false));
         ctx.send_viewport_cmd(egui::ViewportCommand::InnerSize(egui::vec2(
             size[0], size[1],
@@ -2104,6 +2122,12 @@ impl eframe::App for App {
             Some(gpu) => gpu,
             None => &mut self.no_gpu,
         };
+        if self.settling.is_some() {
+            // Growing to the editor's size: drawn once it's there.
+            ui.painter()
+                .rect_filled(ui.max_rect(), 0.0, editor::theme::BACKGROUND);
+            return;
+        }
         let actions = self.workbench.show(ui, renderer);
         // What this frame's ticks asked to hear.
         self.game_audio
