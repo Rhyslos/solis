@@ -316,7 +316,10 @@ pub(crate) fn game_panel(
     let mut notes = vec![format!("{state} · {:.1} s", scene.seconds)];
     // Game code's own pause (or slow motion), apart from the editor's.
     if scene.speed != 1.0 {
-        notes.push(format!("Game speed {}", (scene.speed * 100.0).round() / 100.0));
+        notes.push(format!(
+            "Game speed {}",
+            (scene.speed * 100.0).round() / 100.0
+        ));
     }
     if scene.camera.is_none() {
         notes.push("No camera in the area: showing the editor's view".into());

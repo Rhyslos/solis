@@ -1057,7 +1057,11 @@ fn a_save_keeps_the_game_s_speed() {
     assert_eq!(save.speed, 0.5);
     assert_eq!(save.write(), text, "read back as written");
     let older = std::fs::read_to_string(save_fixtures().join("v6/harbour.solsave")).unwrap();
-    assert_eq!(Save::read(&older).unwrap().speed, 1.0, "older saves run as usual");
+    assert_eq!(
+        Save::read(&older).unwrap().speed,
+        1.0,
+        "older saves run as usual"
+    );
     let mut w = busy("Harbour");
     w.play();
     w.load_game(&text, "the save");

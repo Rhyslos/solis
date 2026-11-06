@@ -161,7 +161,11 @@ fn the_sample_is_made_as_a_project_and_plays_through_all_three_languages() {
     for _ in 0..10 {
         w.play_for(1.0 / 60.0);
     }
-    assert_eq!(w.world().unwrap().clock().time, time, "game time stands still");
+    assert_eq!(
+        w.world().unwrap().clock().time,
+        time,
+        "game time stands still"
+    );
     tap(&mut w, "A");
     w.play_for(1.0 / 60.0);
     assert_eq!(w.world().unwrap().speed(), 1.0, "resumed");
@@ -170,15 +174,21 @@ fn the_sample_is_made_as_a_project_and_plays_through_all_three_languages() {
     tap(&mut w, "Down");
     tap(&mut w, "A");
     w.play_for(1.0 / 60.0);
-    assert_eq!(w.world().unwrap().speed(), 0.0, "quitting leaves it stopped");
+    assert_eq!(
+        w.world().unwrap().speed(),
+        0.0,
+        "quitting leaves it stopped"
+    );
     assert!(
-        words(&w)
-            .iter()
-            .any(|t| t.starts_with("You quit")),
+        words(&w).iter().any(|t| t.starts_with("You quit")),
         "{:?}",
         words(&w)
     );
-    assert!(w.log_lines().iter().any(|l| l.text.starts_with("You quit the game")));
+    assert!(
+        w.log_lines()
+            .iter()
+            .any(|l| l.text.starts_with("You quit the game"))
+    );
     // A changed armour.rs is noted: changes don't run until Phase 18.
     std::fs::write(assets.join("armour.rs"), "// mine\n").unwrap();
     assert!(rust_components(&assets).1.is_some());
@@ -216,7 +226,11 @@ fn the_manual_s_things_to_try_are_sound_code() {
     let (mut files, _) = script::describe::descriptions_for(
         "Test 1.0",
         "solis",
-        &script::project_names::Names::standard().and_screens(&["DroneHealth", "PauseMenu", "QuitNote"]),
+        &script::project_names::Names::standard().and_screens(&[
+            "DroneHealth",
+            "PauseMenu",
+            "QuitNote",
+        ]),
     );
     files.push(("main.lst".into(), changed));
     let code = script::Code {

@@ -953,7 +953,10 @@ fn the_game_s_speed_scales_game_time_and_stops_physics_at_0() {
     world.step(TICK + 1e-9);
     world.step_physics();
     assert!((world.clock().time - 2.0 * TICK).abs() < 1e-12);
-    assert!(world.global(ball).unwrap().w_axis.z < 10.0, "it falls again");
+    assert!(
+        world.global(ball).unwrap().w_axis.z < 10.0,
+        "it falls again"
+    );
     world.set_speed(f64::NAN);
     world.set_speed(100.0);
     assert_eq!(world.speed(), MAX_SPEED);
