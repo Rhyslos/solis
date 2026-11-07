@@ -690,9 +690,12 @@ impl Save {
             "" => 0.0,
             bits => f64::from_bits(u64::from_str_radix(bits, 16).map_err(|_| damaged())?),
         };
-        if !(day_shift.is_finite() && (0.0..24.0).contains(&day_shift)) {
+        // 24 is midnight again: an earlier build could write it (the
+        // phase review).
+        if !(day_shift.is_finite() && (0.0..=24.0).contains(&day_shift)) {
             return Err(damaged());
         }
+        let day_shift = if day_shift >= 24.0 { 0.0 } else { day_shift };
         Ok(Self {
             project,
             ticks,

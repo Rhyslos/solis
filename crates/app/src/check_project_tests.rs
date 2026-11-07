@@ -276,3 +276,63 @@ fn a_recording_plays_back_with_the_project_s_tile_maps_and_tilesets() {
     assert_eq!(sheets.map_set.len(), 1, "for the running game, by ID");
     let _ = std::fs::remove_dir_all(&root);
 }
+
+#[test]
+fn the_check_plays_with_the_project_s_own_2d_settings() {
+    // The phase review: the check used the standard 2D settings, so a
+    // project with its own tile size played differently there.
+    let root = playground_with_a_check("pixels");
+    let settings = area::pixels::PixelSettings {
+        tile: [32, 32],
+        ..Default::default()
+    };
+    crate::play_files::save_pixels(&root, &settings).unwrap();
+    let project = asset_db::Project::open(&root).unwrap();
+    let (db, _, _) = asset_db::AssetDb::open(project, assets::Limits::default());
+    let w = workbench_for(
+        &root,
+        &db,
+        None,
+        MADE_BY,
+        crate::playground::AREA,
+        &mut Read::default(),
+    )
+    .unwrap();
+    assert_eq!(w.pixels(), settings);
+    let _ = std::fs::remove_dir_all(root.parent().unwrap());
+}
+
+#[test]
+fn maps_tilesets_atlases_animators_and_clips_are_read_too() {
+    // The phase review: a build that couldn't read them any more used to
+    // check out.
+    let root = playground_with_a_check("data");
+    for (name, text) in [
+        ("farm.tilemap.lst", "this isn't a map"),
+        ("ground.tileset.lst", "nor a tileset"),
+        ("tools.atlas.lst", "nor crops"),
+        ("farmer.solanim", "nor an animator"),
+        ("farmer.solframes", "nor clips"),
+        ("old.soltilemap", "nor an old map"),
+    ] {
+        std::fs::write(root.join("assets").join(name), text).unwrap();
+    }
+    let report = check(&root, MADE_BY);
+    let text = report.text();
+    for name in [
+        "farm.tilemap.lst",
+        "ground.tileset.lst",
+        "tools.atlas.lst",
+        "farmer.solanim",
+        "farmer.solframes",
+        "old.soltilemap",
+    ] {
+        assert!(
+            text.contains(&format!("FAIL  assets/{name}")),
+            "{name}: {text}"
+        );
+    }
+    // Game code in Lust isn't a data file.
+    assert!(!text.contains("FAIL  assets/main.lst"), "{text}");
+    let _ = std::fs::remove_dir_all(root.parent().unwrap());
+}

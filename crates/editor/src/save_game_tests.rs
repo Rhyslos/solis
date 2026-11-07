@@ -1112,7 +1112,11 @@ fn a_save_keeps_the_time_of_day() {
     w.load_game(&text, "the save");
     assert_eq!(w.world().unwrap().day_shift(), 6.0);
     // A shift outside the day, or one that isn't a number, is damage.
-    for bad in [24.0, -1.0, f64::NAN] {
+    // 24 is midnight again (an earlier build could write it).
+    let mut midnight = save.clone();
+    midnight.day_shift = 24.0;
+    assert_eq!(Save::read(&midnight.write()).unwrap().day_shift, 0.0);
+    for bad in [24.5, -1.0, f64::NAN] {
         let mut odd = save.clone();
         odd.day_shift = bad;
         assert!(Save::read(&odd.write()).is_err(), "{bad}");

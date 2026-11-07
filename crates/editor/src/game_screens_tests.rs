@@ -688,3 +688,72 @@ fn a_screen_can_t_change_the_player_s_settings() {
     assert!(said[0].contains("ui/hud.lst"), "{}", said[0]);
     assert_eq!(w.player_settings.text_size, 1.0);
 }
+
+/// Jump shows the menu; how many ticks Jump was held for the game.
+const OPENER: &str = "fetch \"solis/project\":[Screen, Action];\n\
+    fetch \"solis/input\":Input;\n\
+    event Resumed();\n\
+    event Quit();\n\
+    component Pauser {\n\
+        has { int held = 0; }\n\
+        method update(float dt) {\n\
+            is Input:held(Action.Jump)? then {\n\
+                held = held + 1;\n\
+                showScreen(Screen.Menu);\n\
+            }\n\
+        }\n\
+    }\n\
+    pass Pauser, Resumed, Quit;\nend\n";
+
+#[test]
+fn a_menu_shown_this_tick_has_the_keys_next_tick_however_many_ticks_a_frame_runs() {
+    // The phase review: the menu's hold on the keys followed the frame,
+    // not the tick, so a replay (one tick a frame) could stop matching a
+    // play that ran several ticks in a frame.
+    let held_after = |seconds_per_frame: f32| {
+        let (mut files, _) = script::describe::descriptions_for(
+            "Test Engine 9.9.9",
+            "solis",
+            &script::project_names::Names::standard().and_screens(&["Menu"]),
+        );
+        files.push(("main.lst".into(), OPENER.into()));
+        files.push(("ui/menu.lst".into(), TWO.into()));
+        let program = match script::compile(&script::Code {
+            files,
+            lua: Vec::new(),
+            notes: Vec::new(),
+        }) {
+            Ok(Some(c)) => Arc::new(c),
+            Ok(None) => panic!("no code"),
+            Err(problems) => panic!("{}", problems[0]),
+        };
+        let mut w = showing(program, &[("Menu", false, 0)]);
+        let id = w
+            .document
+            .area()
+            .iter()
+            .find(|(_, data)| data.get::<Screen>().is_some())
+            .unwrap()
+            .0;
+        w.apply_property(
+            crate::properties::PropertyRequest::AddComponent {
+                entity: id,
+                component: "Pauser".into(),
+            },
+            1,
+        );
+        w.play();
+        w.give_game_input(&egui::Context::default());
+        w.devices.set("Space", true);
+        let mut ran = 0.0;
+        while ran < 0.2 {
+            w.run_game(seconds_per_frame);
+            ran += seconds_per_frame;
+        }
+        pauser(&mut w, id, "held")
+    };
+    let one_a_frame = held_after(world::TICK as f32);
+    let many_a_frame = held_after(world::TICK as f32 * 6.0);
+    assert_eq!(one_a_frame, reflect::Value::Int(1), "only before the menu");
+    assert_eq!(many_a_frame, one_a_frame);
+}
