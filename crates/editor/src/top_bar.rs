@@ -103,16 +103,25 @@ impl Workbench {
 
     /// The File menu.
     fn file_menu(&mut self, ui: &mut Ui, actions: &mut Vec<WorkbenchAction>) {
+        // What replaces or saves the area waits until the game stops: greyed
+        // out meanwhile, saying so.
+        let playing = self.playing.is_some();
         ui.menu_button("File", |ui| {
             if ui
-                .button("New project…")
+                .add_enabled(!playing, egui::Button::new("New project…"))
                 .on_hover_text("Makes a folder into a project: its assets, settings and areas")
+                .on_disabled_hover_text(STOP_FIRST)
                 .clicked()
             {
                 self.request(WorkbenchAction::NewProject, actions);
                 ui.close();
             }
-            if ui.button("Open project…").clicked() {
+            if ui
+                .add_enabled(!playing, egui::Button::new("Open project…"))
+                .on_hover_text("Opens a project's folder")
+                .on_disabled_hover_text(STOP_FIRST)
+                .clicked()
+            {
                 self.request(WorkbenchAction::OpenProject, actions);
                 ui.close();
             }
@@ -125,8 +134,8 @@ impl Workbench {
                 ui.close();
             }
             let mut pending = Vec::new();
-            ui.add_enabled_ui(!self.recent.is_empty(), |ui| {
-                ui.menu_button("Recent projects", |ui| {
+            ui.add_enabled_ui(!self.recent.is_empty() && !playing, |ui| {
+                let menu = ui.menu_button("Recent projects", |ui| {
                     for path in &self.recent {
                         let name = path.file_name().map_or_else(
                             || path.display().to_string(),
@@ -142,6 +151,11 @@ impl Workbench {
                         }
                     }
                 });
+                menu.response.on_disabled_hover_text(if playing {
+                    STOP_FIRST
+                } else {
+                    "No projects opened yet"
+                });
             });
             for action in pending {
                 self.request(action, actions);
@@ -154,7 +168,8 @@ impl Workbench {
                 ("Save area as…", "Ctrl+Shift+S", WorkbenchAction::SaveAreaAs),
             ] {
                 if ui
-                    .add(egui::Button::new(item).shortcut_text(keys))
+                    .add_enabled(!playing, egui::Button::new(item).shortcut_text(keys))
+                    .on_disabled_hover_text(STOP_FIRST)
                     .clicked()
                 {
                     self.request(action, actions);
@@ -190,6 +205,7 @@ impl Workbench {
             ui.separator();
             if ui.button("Quit").clicked() {
                 self.request(WorkbenchAction::Quit, actions);
+                ui.close();
             }
         });
     }
@@ -216,9 +232,7 @@ impl Workbench {
                 ui.separator();
                 if ui
                     .button("Settings…")
-                    .on_hover_text(
-                        "The editor's settings: its colour, its layout, and more to come",
-                    )
+                    .on_hover_text("The editor's settings: its colour, its layout, hints and 2D")
                     .clicked()
                 {
                     settings = true;
@@ -243,13 +257,19 @@ impl Workbench {
     /// play's input to play it back.
     fn play_menu(&mut self, ui: &mut Ui, actions: &mut Vec<WorkbenchAction>) {
         let state = self.play_state();
+        let why_not_play = self.why_not_play();
         ui.menu_button("Play", |ui| {
-            if ui.button("Play").clicked() {
+            if ui
+                .add_enabled(why_not_play.is_none(), egui::Button::new("Play"))
+                .on_disabled_hover_text(why_not_play.unwrap_or_default())
+                .clicked()
+            {
                 self.play();
                 ui.close();
             }
             if ui
                 .add_enabled(state != PlayState::Editing, egui::Button::new("Pause"))
+                .on_disabled_hover_text("Press Play first")
                 .clicked()
             {
                 self.pause();
@@ -260,6 +280,7 @@ impl Workbench {
                     state == PlayState::Paused,
                     egui::Button::new("Step one tick"),
                 )
+                .on_disabled_hover_text("Pause the game first")
                 .clicked()
             {
                 self.step();
@@ -267,6 +288,7 @@ impl Workbench {
             }
             if ui
                 .add_enabled(state != PlayState::Editing, egui::Button::new("Stop"))
+                .on_disabled_hover_text("Press Play first")
                 .clicked()
             {
                 self.stop();
@@ -284,11 +306,23 @@ impl Workbench {
                 ui.close();
             }
             ui.separator();
+            let record_why_not = if state != PlayState::Editing {
+                "Stop the game first"
+            } else if self.project.is_none() {
+                "Recordings are kept in a project: open or make one first"
+            } else {
+                ""
+            };
             if ui
                 .add_enabled(
-                    state == PlayState::Editing,
+                    record_why_not.is_empty() && why_not_play.is_none(),
                     egui::Button::new("Play and record inputs"),
                 )
+                .on_disabled_hover_text(if record_why_not.is_empty() {
+                    why_not_play.unwrap_or_default()
+                } else {
+                    record_why_not
+                })
                 .on_hover_text(
                     "Plays, keeping every tick's input; Stop saves it in the project's recordings \
                      folder, to play back exactly",
@@ -341,7 +375,7 @@ impl Workbench {
         ui.menu_button("Window", |ui| {
             if ui
                 .button("Reset layout")
-                .on_hover_text("Puts every panel back where it started")
+                .on_hover_text("Puts this workspace's panels back where they started")
                 .clicked()
             {
                 self.reset_layout();
@@ -352,9 +386,22 @@ impl Workbench {
 
     /// The Help menu.
     fn help_menu(&mut self, ui: &mut Ui, actions: &mut Vec<WorkbenchAction>) {
+        let playing = self.playing.is_some();
         ui.menu_button("Help", |ui| {
+            if !self.manual_url.is_empty()
+                && ui
+                    .button("Open the manual ↗")
+                    .on_hover_text("The user manual, in your web browser")
+                    .clicked()
+            {
+                ui.ctx()
+                    .open_url(egui::OpenUrl::new_tab(self.manual_url.clone()));
+                ui.close();
+            }
+            ui.separator();
             if ui
-                .button("Add the sample area")
+                .add_enabled(!playing, egui::Button::new("Add the sample area"))
+                .on_disabled_hover_text(STOP_FIRST)
                 .on_hover_text(
                     "A small area for trying the looks: a checker cube, rows of plastic and \
                      metal spheres, and a grooved wall with a glowing stripe",
@@ -365,7 +412,8 @@ impl Workbench {
                 ui.close();
             }
             if ui
-                .button("Make the sample game…")
+                .add_enabled(!playing, egui::Button::new("Make the sample game…"))
+                .on_disabled_hover_text(STOP_FIRST)
                 .on_hover_text(
                     "A small first game, as a new project in a folder you choose: a turret \
                      shooting at a drone, written in Lust, Lua and Rust that talk through events",
@@ -376,7 +424,8 @@ impl Workbench {
                 ui.close();
             }
             if ui
-                .button("Make the UI sample…")
+                .add_enabled(!playing, egui::Button::new("Make the UI sample…"))
+                .on_disabled_hover_text(STOP_FIRST)
                 .on_hover_text(
                     "A game's screens, as a new project in a folder you choose: a HUD, a health \
                      bar and a pause menu with text size, fullscreen and resolution, each drawn \
@@ -388,7 +437,8 @@ impl Workbench {
                 ui.close();
             }
             if ui
-                .button("Make the benchmark…")
+                .add_enabled(!playing, egui::Button::new("Make the benchmark…"))
+                .on_disabled_hover_text(STOP_FIRST)
                 .on_hover_text(
                     "Two fleets of ships firing lasers, as a new project in a folder you choose: \
                      play its areas to see how many this computer keeps at 60 frames a second",
@@ -399,7 +449,8 @@ impl Workbench {
                 ui.close();
             }
             if ui
-                .button("Make the playground…")
+                .add_enabled(!playing, egui::Button::new("Make the playground…"))
+                .on_disabled_hover_text(STOP_FIRST)
                 .on_hover_text(
                     "A level to walk around in, as a new project in a folder you choose: a \
                      character with the third-person camera, steps, ramps, crates to push, a \
@@ -430,22 +481,40 @@ impl Workbench {
         // Play with two players come back when they're built (decision
         // 0070: nothing that isn't built is shown).
         let state = self.play_state();
-        let stop_fill = (state != PlayState::Editing).then_some(theme::ERROR);
-        if icon_button(ui, Icon::Stop, 11.0, stop_fill, "Stop").clicked() {
+        let editing = state == PlayState::Editing;
+        // Each is clickable only when it does something, and says why
+        // not when it isn't.
+        let stop_fill = (!editing).then_some(theme::ERROR);
+        let stop = ui.add_enabled_ui(!editing, |ui| {
+            icon_button(ui, Icon::Stop, 11.0, stop_fill, "Stop")
+                .on_disabled_hover_text("Stop: press Play first")
+        });
+        if stop.inner.clicked() {
             self.stop();
         }
         // Step runs one tick, while paused.
         let step = ui.add_enabled_ui(state == PlayState::Paused, |ui| {
             icon_button(ui, Icon::Step, 12.0, None, "Step one tick")
+                .on_disabled_hover_text("Step one tick: pause the game first")
         });
         if step.inner.clicked() {
             self.step();
         }
         let pause_fill = (state == PlayState::Paused).then_some(fill);
-        if icon_button(ui, Icon::Pause, 12.0, pause_fill, "Pause").clicked() {
+        let pause = ui.add_enabled_ui(!editing, |ui| {
+            icon_button(ui, Icon::Pause, 12.0, pause_fill, "Pause")
+                .on_disabled_hover_text("Pause: press Play first")
+        });
+        if pause.inner.clicked() {
             self.pause();
         }
-        let play = icon_button(ui, Icon::Play, 13.0, Some(theme::GO), "Play");
+        let why_not_play = self.why_not_play();
+        let play = ui
+            .add_enabled_ui(why_not_play.is_none(), |ui| {
+                icon_button(ui, Icon::Play, 13.0, Some(theme::GO), "Play")
+                    .on_disabled_hover_text(why_not_play.unwrap_or_default())
+            })
+            .inner;
         if state == PlayState::Playing {
             // Lit while the game runs.
             ui.painter().rect_stroke(
@@ -461,6 +530,10 @@ impl Workbench {
     }
 }
 
+/// Why something that replaces or saves the area is greyed out while
+/// playing.
+const STOP_FIRST: &str = "Stop the game first";
+
 /// Size of the icon buttons in the top bar (Play, Stop).
 pub(crate) const BAR_BUTTON: egui::Vec2 = egui::vec2(30.0, 26.0);
 
@@ -475,6 +548,7 @@ pub(crate) fn icon_button(
     name: &str,
 ) -> egui::Response {
     let (rect, response) = ui.allocate_exact_size(BAR_BUTTON, egui::Sense::click());
+    let enabled = ui.is_enabled();
     let response = response.on_hover_text(name);
     response.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Button, true, name));
     let background = match fill {
@@ -484,7 +558,9 @@ pub(crate) fn icon_button(
         None => Color32::TRANSPARENT,
     };
     ui.painter().rect_filled(rect, 4.0, background);
-    let color = if fill.is_some() {
+    let color = if !enabled {
+        theme::TEXT_WEAK.gamma_multiply(0.6)
+    } else if fill.is_some() {
         Color32::WHITE
     } else {
         theme::TEXT_CONSOLE
@@ -524,7 +600,10 @@ pub(crate) fn document_tab(
         .painter()
         .layout_no_wrap("×".to_string(), font, theme::TEXT_WEAK);
     let (pad, icon_size, gap) = (12.0, 12.0, 7.0);
-    let width = pad + icon_size + gap + text.size().x + gap + close.size().x + pad;
+    // An × only on a tab that can be closed: one that can't shows none,
+    // so there's nothing to click that does nothing.
+    let close_width = if closes { gap + close.size().x } else { 0.0 };
+    let width = pad + icon_size + gap + text.size().x + close_width + pad;
     let (row, response) = ui.allocate_exact_size(
         egui::vec2(width, ui.available_height().min(bar.height())),
         egui::Sense::click(),
@@ -569,11 +648,13 @@ pub(crate) fn document_tab(
         egui::pos2(x - 3.0, rect.center().y - close.size().y / 2.0 - 2.0),
         close.size() + egui::vec2(6.0, 4.0),
     );
-    painter.galley(
-        egui::pos2(x, rect.center().y - close.size().y / 2.0),
-        close,
-        theme::TEXT_WEAK,
-    );
+    if closes {
+        painter.galley(
+            egui::pos2(x, rect.center().y - close.size().y / 2.0),
+            close,
+            theme::TEXT_WEAK,
+        );
+    }
     let mut closed = false;
     if closes {
         let r = ui.interact(

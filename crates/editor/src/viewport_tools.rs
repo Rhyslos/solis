@@ -1029,7 +1029,9 @@ fn lock_button(ui: &mut Ui, locked: &mut bool, name: &str) {
 
 /// A small ▴ menu choosing one of `steps`.
 fn step_menu(ui: &mut Ui, value: &mut f32, steps: &[f32], text: impl Fn(f32) -> String) {
-    let response = ui.add(egui::Button::new("▴").min_size(egui::vec2(14.0, 20.0)));
+    let response = ui
+        .add(egui::Button::new("▴").min_size(egui::vec2(14.0, 20.0)))
+        .on_hover_text("Choose the step");
     egui::Popup::menu(&response)
         .align(egui::RectAlign::TOP_START)
         .show(|ui| {

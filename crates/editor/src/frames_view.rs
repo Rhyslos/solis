@@ -609,10 +609,20 @@ fn toolbar(ui: &mut Ui, f: &mut FramesUi<'_>, sheet: &SpriteSheet, clip: &animat
         }
         ui.separator();
         ui.label(RichText::new("Zoom").color(theme::TEXT_WEAK));
-        if ui.button("-").clicked() {
+        if ui
+            .add_enabled(f.editor.zoom > ZOOM_RANGE.0, egui::Button::new("-"))
+            .on_hover_text("Zoom out")
+            .on_disabled_hover_text("Zoomed out as far as it goes")
+            .clicked()
+        {
             f.editor.zoom = (f.editor.zoom / 1.5).max(ZOOM_RANGE.0);
         }
-        if ui.button("+").clicked() {
+        if ui
+            .add_enabled(f.editor.zoom < ZOOM_RANGE.1, egui::Button::new("+"))
+            .on_hover_text("Zoom in")
+            .on_disabled_hover_text("Zoomed in as far as it goes")
+            .clicked()
+        {
             f.editor.zoom = (f.editor.zoom * 1.5).min(ZOOM_RANGE.1);
         }
         if (f.editor.zoom - STANDARD_ZOOM).abs() > 1.0 && ui.small_button("100%").clicked() {

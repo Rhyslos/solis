@@ -194,7 +194,11 @@ pub(crate) fn map_tab(ui: &mut Ui, m: &MapUi<'_>) -> Vec<MapRequest> {
                     map.layers().len() < tiles::map::MAX_LAYERS,
                     egui::Button::new("+"),
                 )
-                .on_hover_text("Add a layer on top");
+                .on_hover_text("Add a layer on top")
+                .on_disabled_hover_text(format!(
+                    "A map has at most {} layers",
+                    tiles::map::MAX_LAYERS
+                ));
             add.widget_info(|| {
                 egui::WidgetInfo::labeled(egui::WidgetType::Button, true, "Add a layer")
             });
@@ -253,7 +257,7 @@ pub(crate) fn map_tab(ui: &mut Ui, m: &MapUi<'_>) -> Vec<MapRequest> {
                     if eye.clicked() {
                         asked.push(MapRequest::ToggleHidden(layer.id));
                     }
-                    ui.menu_button("…", |ui| {
+                    ui.menu_button("⋯", |ui| {
                         if ui
                             .add_enabled(i + 1 < map.layers().len(), egui::Button::new("Move up"))
                             .clicked()
@@ -272,7 +276,9 @@ pub(crate) fn map_tab(ui: &mut Ui, m: &MapUi<'_>) -> Vec<MapRequest> {
                             asked.push(MapRequest::RemoveLayer(i));
                             ui.close();
                         }
-                    });
+                    })
+                    .response
+                    .on_hover_text("Move or delete this layer");
                 });
             });
     }
@@ -407,7 +413,11 @@ pub(crate) fn map_tab(ui: &mut Ui, m: &MapUi<'_>) -> Vec<MapRequest> {
                     map.values().len() < tiles::map::MAX_VALUES,
                     egui::Button::new("+"),
                 )
-                .on_hover_text("Add a value every cell has (a switch to start)");
+                .on_hover_text("Add a value every cell has (a switch to start)")
+                .on_disabled_hover_text(format!(
+                    "A map has at most {} values",
+                    tiles::map::MAX_VALUES
+                ));
             add.widget_info(|| {
                 egui::WidgetInfo::labeled(egui::WidgetType::Button, true, "Add a value")
             });
@@ -698,6 +708,10 @@ pub(crate) fn tileset_properties(
     let can_add = set.terrains.len() < tiles::tileset::MAX_TERRAINS;
     if ui
         .add_enabled(can_add, egui::Button::new("+ Terrain"))
+        .on_disabled_hover_text(format!(
+            "A tileset has at most {} terrains",
+            tiles::tileset::MAX_TERRAINS
+        ))
         .clicked()
         && let Some(code) = set.free_code()
     {

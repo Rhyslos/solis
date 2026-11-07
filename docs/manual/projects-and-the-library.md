@@ -46,7 +46,7 @@ Make a project as soon as you start something you want to keep. Without one, Sol
 - **Area**: an empty level, saved there and opened (Solis asks first if yours has unsaved changes). See [Saving areas](saving-areas.md).
 - **Tile map**, **Tileset**, **Animator** and **Sound event**: see [Tile maps](tile-maps.md), [Tilesets and autotiling](tilesets.md), [Animators](animators.md) and [Sound events](sound-events.md).
 
-**Import** above the Library brings in a model, like **File > Import model…**.
+**Import model…** above the Library brings in a model, like **File > Import model…**. It's greyed until a project is open, since the model is copied into it.
 
 **Organise files** (right-click a file or folder):
 - **Rename…**: type a new name. The file's ID file goes with it, so nothing using it breaks. Changing only capitals works too. Renaming the open area is fine: Solis saves to the new name. A name must work on every computer: at most 100 characters, none of `< > : " / \ | ? *`, and not a name Windows keeps for a device (`CON`, `NUL`, `COM1` …); the Console says why if it isn't.

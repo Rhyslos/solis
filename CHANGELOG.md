@@ -27,6 +27,14 @@ What changed in each version, for people using Solis. Newest first.
 
 ### Fixed
 
+- **Every button you can see does something, or says why it can't** (the UI check):
+  - While the game plays, Stop and Pause work, and the File and Help items that would change the project are greyed with "Stop the game first". Play, Pause, Step and Stop greyed in the top bar or the Play menu say why when you point at them. Pressing Play while a play's changes are waiting says to keep or undo them first, instead of doing nothing.
+  - Greyed buttons say why: the Library's Import model… (no project), Export (no area or folder yet), the map's and tileset's **+** buttons at their limits, the animator's **+ Direction** and **+ Condition**, Reset this page in Settings, Show everything hidden and Unlock everything.
+  - A tileset's first rule can't move up nor its last down; the frames' zoom buttons stop at their limits and say so.
+  - Gone: the × on area tabs that can't close, the Area panel's "≡" that did nothing, and the unbuilt Layers panel's "Edit View" that looked like menus.
+  - New: Help > Open the manual ↗. File > Quit closes its menu. The Export window's Cancel while exporting is "Close", since the export carries on.
+  - Clearer words: Settings, Reset layout, the map layer's ⋯ menu and the viewport's step menus say what they do.
+
 - **Quicker** (the phase review, speed):
   - A tile map in view keeps each layer's tiles from frame to frame while nothing they show changes. Before, every tile of every layer was copied, sorted and made again each frame: a 256 × 256 map in view now takes under a tenth of a millisecond a frame.
   - Long text in game UI wraps measuring each word once. Before, each word measured the whole line again.

@@ -490,6 +490,13 @@ fn contents(
                 )
                 .fill(accent),
             );
+            let export = if window.busy {
+                export.on_disabled_hover_text("Exporting: wait for it to finish")
+            } else if !usable_area(&window.playtest.area) {
+                export.on_disabled_hover_text("Choose the area the game starts in first")
+            } else {
+                export.on_disabled_hover_text("Choose a folder to export to first")
+            };
             if export.clicked() {
                 window.playtest.name = game_name(&window.playtest.name);
                 let folder = PathBuf::from(window.folder.trim());
@@ -502,7 +509,13 @@ fn contents(
                 }));
             }
             let done = window.done.as_ref().is_some_and(Result::is_ok);
-            if ui.button(if done { "Close" } else { "Cancel" }).clicked() {
+            let shut = if window.busy {
+                ui.button("Close")
+                    .on_hover_text("The export carries on: the Console says when it's done")
+            } else {
+                ui.button(if done { "Close" } else { "Cancel" })
+            };
+            if shut.clicked() {
                 close = true;
             }
         });

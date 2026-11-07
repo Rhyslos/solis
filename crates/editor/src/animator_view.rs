@@ -749,6 +749,7 @@ fn state_properties(ui: &mut Ui, a: &mut AnimatorUi<'_>, state: &animation::Stat
                         by_clips.len() < Facing::ALL.len(),
                         egui::Button::new("+ Direction"),
                     )
+                    .on_disabled_hover_text("Every direction has a clip already")
                     .clicked()
                 {
                     changed |= editor.add_direction(state.id);
@@ -973,6 +974,10 @@ fn transition_properties(ui: &mut Ui, a: &mut AnimatorUi<'_>, t: &animation::Tra
             t.when.len() < animation::animator_file::MAX_CONDITIONS,
             egui::Button::new("+ Condition"),
         )
+        .on_disabled_hover_text(format!(
+            "A transition has at most {} conditions",
+            animation::animator_file::MAX_CONDITIONS
+        ))
         .clicked()
     {
         changed |= editor.add_condition(t.id);
