@@ -218,8 +218,15 @@ impl Workbench {
             }
             return;
         }
-        let library: HashSet<&str> = self.library.iter().map(|i| i.path.as_str()).collect();
-        let in_project = |f: &str| library.contains(f);
+        // Made only if a name is looked up: most frames nothing changed
+        // (the phase review, speed).
+        let items = &self.library;
+        let library: std::cell::OnceCell<HashSet<&str>> = std::cell::OnceCell::new();
+        let in_project = |f: &str| {
+            library
+                .get_or_init(|| items.iter().map(|i| i.path.as_str()).collect())
+                .contains(f)
+        };
         let said =
             self.screen_pictures
                 .refresh(uses, &self.viewport.sheets, &in_project, self.sources);

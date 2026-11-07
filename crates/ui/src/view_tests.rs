@@ -910,3 +910,75 @@ fn the_player_s_text_size_grows_text_and_the_room_round_it() {
     assert_eq!(size(0).0, 20.0, "0 is as designed");
     assert_eq!(size(900).0, 60.0, "at most three times");
 }
+
+/// Counts how many letters were measured, as [`Fixed`] measures them.
+struct Counting(usize);
+
+impl Measure for Counting {
+    fn measure(&mut self, font: usize, text: &str, size: f32) -> [f32; 2] {
+        self.0 += text.len();
+        Fixed.measure(font, text, size)
+    }
+}
+
+#[test]
+fn long_lines_wrap_measuring_each_word_once_not_the_whole_line_again() {
+    // The phase review: every word measured the whole line so far again,
+    // so wide lines of long text took time growing with their square.
+    // 1,300 words: within the most a text keeps (4,096 letters).
+    let paragraph: Vec<String> = (0..1300).map(|i| format!("w{}", i % 10)).collect();
+    let paragraph = paragraph.join(" ");
+    let view = node(
+        "view",
+        &[],
+        vec![node(
+            "column",
+            &[("width", n(10_000.0))],
+            vec![text(&paragraph, &[])],
+        )],
+    );
+    let mut counting = Counting(0);
+    let out = lay_out(&view, [20_000.0, 30_000.0], &mut counting);
+    let ElementKind::Text { text, .. } = &out[0].kind else {
+        panic!("text");
+    };
+    // Lines of at most 1,000 letters, as full as they can be.
+    let lines: Vec<&str> = text.split('\n').collect();
+    assert!(lines.iter().all(|l| l.len() <= 1000));
+    assert!(lines[0].len() > 990, "{}", lines[0].len());
+    assert_eq!(lines.join(" "), paragraph, "nothing lost");
+    assert!(
+        counting.0 < paragraph.len() * 10,
+        "{} letters measured for {}",
+        counting.0,
+        paragraph.len()
+    );
+}
+
+#[test]
+#[ignore = "scale check: run by tools/scale/scale-check.sh"]
+fn scale_check_wrapping_a_long_text() {
+    // The phase review: a long text wrapped in a wide box measured every
+    // line again for each word. The most a text holds, 4,096 letters.
+    const TARGET_MS: f64 = 2.0;
+    let paragraph: Vec<String> = (0..1300).map(|i| format!("w{}", i % 10)).collect();
+    let view = node(
+        "view",
+        &[],
+        vec![node(
+            "column",
+            &[("width", n(10_000.0))],
+            vec![text(&paragraph.join(" "), &[])],
+        )],
+    );
+    let start = std::time::Instant::now();
+    for _ in 0..10 {
+        let _ = lay_out(&view, [20_000.0, 30_000.0], &mut Fixed);
+    }
+    let ms = start.elapsed().as_secs_f64() * 1000.0 / 10.0;
+    let verdict = if ms <= TARGET_MS { "ok" } else { "SLOW" };
+    println!(
+        "Scale check: wrapping 4,000 letters into lines of 1,000 {ms:.3} ms (target {TARGET_MS} ms) {verdict}"
+    );
+    assert!(ms <= TARGET_MS, "{ms:.3} ms");
+}

@@ -2246,6 +2246,7 @@ impl eframe::App for App {
         // folder (eframe asks here as the window closes, too).
         if self.playtest.is_some() {
             self.keep_settings(true);
+            self.flush_log(true);
             return;
         }
         eframe::set_value(storage, LAYOUT_KEY, self.workbench.layout());

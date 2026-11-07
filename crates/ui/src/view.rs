@@ -689,18 +689,31 @@ impl Layout<'_> {
                 out.push(para.to_string());
                 continue;
             }
+            // The line's width is kept as words join it, each measured
+            // once with its space (the phase review: measuring the whole
+            // line again for every word made long text quadratic). Close
+            // to the edge, where letters' kerning across the join could
+            // tip it, the joined line is measured exactly.
             let mut line = String::new();
+            let mut line_w = 0.0;
             for w in para.split(' ') {
-                let joined = if line.is_empty() {
-                    w.to_string()
-                } else {
-                    format!("{line} {w}")
-                };
-                if self.text_width(&joined, l) <= max_w + 0.5 || line.is_empty() {
-                    line = joined;
+                if line.is_empty() {
+                    line = w.to_string();
+                    line_w = self.text_width(w, l);
+                    continue;
+                }
+                let spaced = format!(" {w}");
+                let mut joined_w = line_w + self.text_width(&spaced, l);
+                if (joined_w - (max_w + 0.5)).abs() < 2.0 {
+                    joined_w = self.text_width(&format!("{line}{spaced}"), l);
+                }
+                if joined_w <= max_w + 0.5 {
+                    line.push_str(&spaced);
+                    line_w = joined_w;
                 } else {
                     out.push(std::mem::take(&mut line));
                     line = w.to_string();
+                    line_w = self.text_width(w, l);
                 }
             }
             out.push(line);

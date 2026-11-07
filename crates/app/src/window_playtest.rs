@@ -55,6 +55,9 @@ pub(super) struct Run {
     /// that was.
     unsaved: bool,
     last_saved: Option<std::time::Instant>,
+    /// Log lines not written yet, and when the log was last written.
+    log_waiting: Vec<String>,
+    log_written: Option<std::time::Instant>,
 }
 
 impl App {
@@ -75,6 +78,8 @@ impl App {
             failed: None,
             unsaved: false,
             last_saved: None,
+            log_waiting: Vec::new(),
+            log_written: None,
         });
     }
 
@@ -183,6 +188,9 @@ impl App {
         self.follow_settings(&ctx);
         let closing = self.quitting || ctx.input(|i| i.viewport().close_requested());
         self.keep_settings(closing);
+        if closing {
+            self.flush_log(true);
+        }
         self.write_log();
         let title = self
             .playtest
@@ -300,13 +308,29 @@ impl App {
             let extra = recent.len().saturating_sub(KEPT_LINES);
             recent.drain(..extra);
         }
+        run.log_waiting
+            .extend(new.into_iter().filter(|l| !l.contains(" Info: ")));
+        self.flush_log(false);
+    }
+
+    /// Writes the waiting log lines to the log: at most once a second (a
+    /// game that warns every tick doesn't touch the disk every frame; the
+    /// phase review), or now when `now` (the game closing).
+    pub(super) fn flush_log(&mut self, now: bool) {
+        let Some(run) = self.playtest.as_mut() else {
+            return;
+        };
+        let due = run
+            .log_written
+            .is_none_or(|t| t.elapsed() >= std::time::Duration::from_secs(1));
+        if run.log_waiting.is_empty() || !(now || due) {
+            return;
+        }
+        run.log_written = Some(std::time::Instant::now());
+        let worth = std::mem::take(&mut run.log_waiting);
         let Some(saved) = &run.saved else {
             return;
         };
-        let worth: Vec<&String> = new.iter().filter(|l| !l.contains(" Info: ")).collect();
-        if worth.is_empty() {
-            return;
-        }
         use std::io::Write;
         let _ = std::fs::create_dir_all(saved).and_then(|()| {
             // Kept small: a game that warns every tick doesn't fill the

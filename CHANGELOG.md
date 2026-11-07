@@ -27,6 +27,12 @@ What changed in each version, for people using Solis. Newest first.
 
 ### Fixed
 
+- **Quicker** (the phase review, speed):
+  - A tile map in view keeps each layer's tiles from frame to frame while nothing they show changes. Before, every tile of every layer was copied, sorted and made again each frame: a 256 × 256 map in view now takes under a tenth of a millisecond a frame.
+  - Long text in game UI wraps measuring each word once. Before, each word measured the whole line again.
+  - An exported game writes its log at most once a second.
+  - The editor works out what's hidden or locked only when that changes, and the screens' pictures check the Library only when they need to.
+
 - **Where parts meet** (the phase review, correctness):
   - **Replays match however many ticks a frame runs:** a menu shown by game code takes the keys from the next tick, not the next frame. Before, a play recorded at a low frame rate could let a key through to the game that its replay (or the project check) held back, and the replay stopped matching.
   - **The project check plays with the project's own 2D settings and buses**, as the editor does. Before, a 2D project with its own tile size played differently in the check.

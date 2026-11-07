@@ -193,11 +193,11 @@ fn sprites_gather_into_a_run_per_sheet_and_see_through_ones_last_far_to_near() {
     let cut: Vec<&SpriteBatch> = runs.iter().filter(|r| !r.see_through).collect();
     assert_eq!(cut.len(), 2);
     let of_a = cut.iter().find(|r| r.sheet == a).unwrap();
-    assert_eq!(of_a.picks, [1, 3]);
+    assert_eq!(*of_a.picks, [1, 3]);
     let clear: Vec<u32> = runs
         .iter()
         .filter(|r| r.see_through)
-        .flat_map(|r| r.picks.clone())
+        .flat_map(|r| r.picks.iter().copied())
         .collect();
     assert_eq!(clear, [5, 4], "far (lower) first");
     assert!(runs.last().unwrap().see_through, "see-through ones last");
