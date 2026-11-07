@@ -169,11 +169,27 @@ impl Workbench {
         self.playing.as_ref().map(|p| &p.world)
     }
 
+    /// Why Play can't be pressed now, if it can't: for its buttons to be
+    /// greyed out saying so.
+    pub(crate) fn why_not_play(&self) -> Option<&'static str> {
+        if self.play_changes.is_some() {
+            Some("Keep or undo the last play's changes first")
+        } else if self.play_state() == PlayState::Playing {
+            Some("Already playing")
+        } else {
+            None
+        }
+    }
+
     /// Play: runs the area as a game (or carries on, if paused). The
     /// Game panel comes to the front.
     pub fn play(&mut self) {
         // Changes from the last play wait for Keep or Undo all first.
         if self.play_changes.is_some() {
+            self.log(
+                LogLevel::Info,
+                "Keep or undo the last play's changes first, then press Play.",
+            );
             return;
         }
         if let Some(playing) = &mut self.playing {

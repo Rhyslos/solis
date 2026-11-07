@@ -613,8 +613,9 @@ fn menu_row(
                         .on_disabled_hover_text("Open or make a project first (File)");
                 });
                 let import = ui
-                    .add_enabled(open, egui::Button::new("Import"))
-                    .on_hover_text("Copies a glTF model into the project");
+                    .add_enabled(open, egui::Button::new("Import model…"))
+                    .on_hover_text("Copies a glTF model (.gltf or .glb) into the project")
+                    .on_disabled_hover_text("Open or make a project first (File)");
                 if import.clicked() {
                     requests.push(LibraryRequest::Import);
                 }

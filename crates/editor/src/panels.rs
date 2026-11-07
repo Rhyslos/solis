@@ -5,7 +5,7 @@
 use crate::area_panel::{AreaPanelState, AreaRequest, area_tree};
 use crate::console::{Console, ConsoleRequest, console};
 use crate::document::Document;
-use crate::icons::{self, Icon};
+use crate::icons;
 use crate::library::{LibraryItem, LibraryRequest, LibraryState, ProjectInfo, library};
 use crate::menu_items::MenuState;
 use crate::models::ModelInfo;
@@ -13,7 +13,7 @@ use crate::panel::Panel;
 use crate::properties::{AssemblyPart, PropertyRequest, properties};
 use crate::theme::{self, Accent};
 use crate::viewport::{Viewport, ViewportRenderer};
-use egui::{Align, Color32, Id, Layout, RichText, Ui, WidgetText};
+use egui::{Color32, Id, RichText, Ui, WidgetText};
 use egui_dock::TabViewer;
 use reflect::AssetId;
 use std::collections::{BTreeMap, HashSet};
@@ -288,7 +288,6 @@ impl TabViewer for PanelViewer<'_> {
                 self.area_requests.extend(requests);
             }
             Panel::Layers => {
-                menu_row(ui, &["Edit", "View"]);
                 placeholder(
                     ui,
                     "Layers (groups of entities to show, hide or lock together) aren't built \
@@ -673,26 +672,6 @@ fn playing_border(ui: &Ui, rect: egui::Rect, accent: Accent) {
         egui::Stroke::new(2.0, accent.colors().light),
         egui::StrokeKind::Inside,
     );
-}
-
-/// The small menu row under a panel's title: "≡ Edit View …".
-pub(crate) fn menu_row(ui: &mut Ui, items: &[&str]) {
-    theme::menu_row_frame().show(ui, |ui| {
-        ui.set_min_width(ui.available_width());
-        ui.horizontal(|ui| {
-            ui.spacing_mut().item_spacing.x = 12.0;
-            ui.label("≡");
-            for item in items {
-                ui.label(*item);
-            }
-            ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
-                let (rect, response) =
-                    ui.allocate_exact_size(egui::vec2(12.0, 12.0), egui::Sense::hover());
-                response.on_hover_text("Searching arrives with the panel's contents");
-                icons::icon(ui.painter(), rect, Icon::Search, theme::TEXT_WEAK);
-            });
-        });
-    });
 }
 
 /// Shown while files are dragged over the window: where they'll go.

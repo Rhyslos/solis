@@ -216,7 +216,11 @@ fn terrains(ui: &mut Ui, t: &mut TilesetUi<'_>) -> bool {
                     t.editor.file.terrains.len() < tiles::tileset::MAX_TERRAINS,
                     egui::Button::new("+"),
                 )
-                .on_hover_text("Add a terrain: something a cell can be");
+                .on_hover_text("Add a terrain: something a cell can be")
+                .on_disabled_hover_text(format!(
+                    "A tileset has at most {} terrains",
+                    tiles::tileset::MAX_TERRAINS
+                ));
             add.widget_info(|| {
                 egui::WidgetInfo::labeled(egui::WidgetType::Button, true, "Add a terrain")
             });
@@ -837,13 +841,19 @@ fn rules(ui: &mut Ui, t: &mut TilesetUi<'_>, c: &tiles::Terrain, out: &mut Tiles
                                 out.changed |= t.editor.set_rule_size(rule.id, size);
                             }
                             if ui
-                                .small_button("↑")
+                                .add_enabled(n > 0, egui::Button::new("↑").small())
                                 .on_hover_text("Try it sooner")
+                                .on_disabled_hover_text("It's tried first already")
                                 .clicked()
                             {
                                 out.changed |= t.editor.move_rule(rule.id, true);
                             }
-                            if ui.small_button("↓").on_hover_text("Try it later").clicked() {
+                            if ui
+                                .add_enabled(n + 1 < list.len(), egui::Button::new("↓").small())
+                                .on_hover_text("Try it later")
+                                .on_disabled_hover_text("It's tried last already")
+                                .clicked()
+                            {
                                 out.changed |= t.editor.move_rule(rule.id, false);
                             }
                             let x = ui.small_button("×").on_hover_text("Take this rule away");

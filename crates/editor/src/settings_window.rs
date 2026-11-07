@@ -78,7 +78,7 @@ impl Setting {
             Self::Accent => {
                 "Marks what's chosen and selected. Play, Stop and warnings keep their own colours."
             }
-            Self::Layout => "Puts every panel back where it started.",
+            Self::Layout => "Puts this workspace's panels back where they started.",
             Self::Hints => {
                 "The Hints panel says what's selected and what you can do with it. Turn it off \
                  once you know your way around."
@@ -335,16 +335,19 @@ fn contents(ui: &mut Ui, window: &mut SettingsWindow, now: &Now) -> Option<Reque
             let footer = if words.is_empty() && window.page == Page::TwoD {
                 fits(now.pixels)
             } else {
-                "More settings join here as features arrive. The editor's are kept on this \
-                 computer, a project's in the project."
+                "The editor's settings are kept on this computer, a project's in the project."
                     .to_owned()
             };
             ui.label(RichText::new(footer).color(theme::TEXT_WEAK).size(11.0));
             ui.add_space(8.0);
+            // The 2D page's settings are the project's: nothing to reset
+            // without one.
+            let can_reset = window.page != Page::TwoD || now.project;
             if words.is_empty()
                 && ui
-                    .button("Reset this page")
+                    .add_enabled(can_reset, egui::Button::new("Reset this page"))
                     .on_hover_text("Puts this page's settings back as they were at first")
+                    .on_disabled_hover_text("Open a project first: these settings are its own")
                     .clicked()
             {
                 request = match window.page {

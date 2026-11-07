@@ -475,7 +475,7 @@ fn tree_rows(
     rows
 }
 
-/// The panel's menu row: ≡, the Edit, View and Entity menus, and the
+/// The panel's menu row: the Edit, View and Entity menus, and the
 /// search box. Returns the menu command picked.
 fn menu_row(ui: &mut Ui, state: &mut AreaPanelState, menu: &MenuState) -> Option<MenuCommand> {
     let mut picked = None;
@@ -483,7 +483,6 @@ fn menu_row(ui: &mut Ui, state: &mut AreaPanelState, menu: &MenuState) -> Option
         ui.set_min_width(ui.available_width());
         egui::MenuBar::new().ui(ui, |ui| {
             ui.spacing_mut().item_spacing.x = 8.0;
-            ui.label("≡");
             if let Some(c) = ui
                 .menu_button("Edit", |ui| menu_items::edit_items(ui, menu))
                 .inner
@@ -508,6 +507,7 @@ fn menu_row(ui: &mut Ui, state: &mut AreaPanelState, menu: &MenuState) -> Option
                             !state.hidden.is_empty(),
                             egui::Button::new("Show everything hidden"),
                         )
+                        .on_disabled_hover_text("Nothing is hidden")
                         .clicked()
                     {
                         state.hidden.clear();
@@ -518,6 +518,7 @@ fn menu_row(ui: &mut Ui, state: &mut AreaPanelState, menu: &MenuState) -> Option
                             !state.locked.is_empty(),
                             egui::Button::new("Unlock everything"),
                         )
+                        .on_disabled_hover_text("Nothing is locked")
                         .clicked()
                     {
                         state.locked.clear();
