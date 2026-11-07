@@ -706,7 +706,9 @@ pub fn batches(
     snap: Option<f32>,
     ahead: f64,
 ) -> Vec<SpriteBatch> {
-    let mut cut: HashMap<AssetId, SpriteBatch> = HashMap::new();
+    // Gathered in plain lists, then shared (SpriteBatch holds them
+    // shared so tile layers can be kept between frames).
+    let mut cut: HashMap<AssetId, (Vec<ViewSprite>, Vec<u32>)> = HashMap::new();
     let mut clear: Vec<(AssetId, ViewSprite, u32)> = Vec::new();
     for s in sprites {
         let Some(id) = s.sprite.sheet.map(|r| r.asset) else {
@@ -722,17 +724,20 @@ pub fn batches(
         if s.sprite.see_through {
             clear.push((id, drawn, s.pick));
         } else {
-            let batch = cut.entry(id).or_insert_with(|| SpriteBatch {
-                sheet: id,
-                see_through: false,
-                sprites: Arc::default(),
-                picks: Arc::default(),
-            });
-            Arc::make_mut(&mut batch.sprites).push(drawn);
-            Arc::make_mut(&mut batch.picks).push(s.pick);
+            let (sprites, picks) = cut.entry(id).or_default();
+            sprites.push(drawn);
+            picks.push(s.pick);
         }
     }
-    let mut out: Vec<SpriteBatch> = cut.into_values().collect();
+    let mut out: Vec<SpriteBatch> = cut
+        .into_iter()
+        .map(|(sheet, (sprites, picks))| SpriteBatch {
+            sheet,
+            see_through: false,
+            sprites: Arc::new(sprites),
+            picks: Arc::new(picks),
+        })
+        .collect();
     out.sort_by_key(|b| b.sheet);
     // See-through: far to near, then from the top of the screen down,
     // a run each time the sheet changes.
@@ -741,20 +746,22 @@ pub fn batches(
             .total_cmp(&b.1.corner[2])
             .then(b.1.foot[1].total_cmp(&a.1.foot[1]))
     });
+    let mut runs: Vec<(AssetId, Vec<ViewSprite>, Vec<u32>)> = Vec::new();
     for (id, drawn, pick) in clear {
-        match out.last_mut() {
-            Some(last) if last.see_through && last.sheet == id => {
-                Arc::make_mut(&mut last.sprites).push(drawn);
-                Arc::make_mut(&mut last.picks).push(pick);
+        match runs.last_mut() {
+            Some(last) if last.0 == id => {
+                last.1.push(drawn);
+                last.2.push(pick);
             }
-            _ => out.push(SpriteBatch {
-                sheet: id,
-                see_through: true,
-                sprites: Arc::new(vec![drawn]),
-                picks: Arc::new(vec![pick]),
-            }),
+            _ => runs.push((id, vec![drawn], vec![pick])),
         }
     }
+    out.extend(runs.into_iter().map(|(sheet, sprites, picks)| SpriteBatch {
+        sheet,
+        see_through: true,
+        sprites: Arc::new(sprites),
+        picks: Arc::new(picks),
+    }));
     out
 }
 
