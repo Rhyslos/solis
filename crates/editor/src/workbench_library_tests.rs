@@ -421,9 +421,10 @@ fn a_picture_dropped_on_the_viewport_becomes_a_sprite_once_read() {
     // One that can't be read says why, and isn't placed.
     let other = AssetId::random();
     sheets.paths.insert(other, "broken.png".into());
-    sheets
-        .by_path
-        .insert("broken.png".into(), SheetState::Failed("it isn't a PNG".into()));
+    sheets.by_path.insert(
+        "broken.png".into(),
+        SheetState::Failed("it isn't a PNG".into()),
+    );
     w.set_sprite_sheets(sheets.clone());
     w.place_dropped(other, Vec3::ZERO, None);
     w.set_sprite_sheets(sheets);
