@@ -269,6 +269,8 @@ Light and effects meet in materials: how a surface takes light, glows, gets wet 
 
 **Later, not next:** Phases 16 to 19 are written down so nothing is lost, but they aren't built, planned in detail or reordered until Phase 15 is done and the project lead decides it's time ([decision 0059](docs/decisions/0059-2d-first.md)). 2D and effects will turn up things nobody can foresee yet, so expect these to change.
 
+**Where 2D and 3D stand:** [docs/plans/roadmap-2d-3d.md](docs/plans/roadmap-2d-3d.md), a snapshot of each side: built, planned, later, and what other engines have that hasn't been talked about.
+
 **Ideas, not yet placed:** [docs/plans/ideas.md](docs/plans/ideas.md) lists tools that help make games (timers, tween, tags, field hints, debug drawing and more), written down on 8 November 2026 to come back to. None is planned yet; each needs a decision.
 
 ## Phase 16: 3D animation

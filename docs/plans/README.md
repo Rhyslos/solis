@@ -21,6 +21,7 @@ Working plans for the phases of [ROADMAP.md](../../ROADMAP.md). A plan records t
 | `light.md` | 13: Light, sky and atmosphere (draft) |
 | `materials.md` | 14: Materials and shaders (draft) |
 | `effects.md` | 15: Effects (draft) |
+| `roadmap-2d-3d.md` | No phase: where 2D and 3D each stand (built, planned, later, not talked about yet), a snapshot from 8 November 2026 |
 | `ideas.md` | No phase yet: tools that help make games (timers, tween, tags and more), written down to come back to; nothing decided |
 
 Name a new plan after its phase (`phase-N.md`) or its subject, and add it here.
