@@ -26,6 +26,8 @@ Layers behind are drawn behind everything, tile maps included: the slowest first
 
 **Where it's drawn.** A layer is exactly where you put it while the game's [camera](concepts.md#playing) is where it starts. As the camera moves, the layer moves at its own speed: with 0.5, half as far as the world. So the editor shows your game's first picture, layers and all. A layer can be several sprites (a row of trees with the same scrolls): they stay as far apart as you put them.
 
+**Smooth, even when slow.** Through a [2D camera](2d-pixel-perfect.md), each layer is drawn as a small picture of its own and slides smoothly by less than a pixel at a time, as the camera does, so a far layer crawling slowly never jumps a whole pixel at once. Up to 8 layers are drawn this way; each different set of scrolls, behind or in front, is one layer.
+
 In the editor, layers stay where you put them (the editor's camera isn't the game's), repeated across the view, behind or in front as in the game. Clicking one behind the world selects it only where nothing else is in the way; the Area panel always finds it.
 
 ## Settings
@@ -41,7 +43,7 @@ In the editor, layers stay where you put them (the editor's camera isn't the gam
 
 ## Tips and common problems
 - **Problem:** a repeated layer shows a seam where the copies meet. **Why:** its left and right edges don't match, or the picture has empty columns at its sides. **Fix:** draw it so the edges continue into each other, using the whole canvas. Copies are one canvas width apart.
-- **Problem:** a slow layer moves in little steps during a slow pan. **Why:** layers are drawn on the game's whole pixels, and a slow layer reaches the next pixel only now and then. Its own smooth slide comes in a later update.
+- **Problem:** a slow layer moves in little steps during a slow pan. **Why:** you have more than 8 layers (each different set of scrolls, behind or in front, is one), so they're drawn on the game's whole pixels, and a slow layer reaches the next pixel only now and then. **Fix:** give layers that are about as far away the same scrolls, so they share one.
 - **Problem:** a layer far along the level isn't where I put it. **Why:** layers are where you put them only while the camera is at its start; by the time the camera gets there, a slow layer has gone along with it. **Fix:** place layers around the camera's start, and use **Repeat across** for ones that must last the whole level.
 - **Problem:** the player bumps into nothing in front of a layer. **Why:** a Parallax only changes how the sprite looks; a [Collider2D](walls-and-walking.md) on the same entity stays where the entity is. **Fix:** keep layers as pictures only, and put colliders on entities of their own.
 - Tile maps can't be layers yet: draw backgrounds as pictures.

@@ -77,6 +77,9 @@ pub struct ViewportTarget {
     /// Times the GPU's passes, once the first frame has asked (`None`
     /// inside: the card can't).
     timer: Option<Option<crate::timing::GpuTimer>>,
+    /// A layer's picture (decision 0094): no sky, and clear where nothing
+    /// is drawn, so the pixel stage lays it over what's behind.
+    layered: bool,
 }
 
 /// The most lamps shown with a marker; more are drawn without one.
@@ -351,6 +354,13 @@ impl ViewportTarget {
     /// any, or on a card without timestamps. Never waits.
     pub fn gpu_times(&self, device: &wgpu::Device) -> Option<crate::timing::GpuTimes> {
         self.timer.as_ref()?.as_ref()?.poll(device)
+    }
+
+    /// Makes this a layer's picture (decision 0094), or an ordinary one:
+    /// a layer's has no sky and is clear (alpha 0) where nothing is
+    /// drawn, its colours as drawn, for [`ViewportRenderer::draw_pixel_layers`].
+    pub fn set_layered(&mut self, layered: bool) {
+        self.layered = layered;
     }
 
     /// Whether this card can time its passes (known after the first
@@ -809,6 +819,25 @@ impl ViewportRenderer {
         image.draw(device, queue, &self.pixel, source.display_view(), layout);
     }
 
+    /// Scales several small pictures into `image`, each as its own layout
+    /// says (its own slide), laid on each other in order (decision 0094):
+    /// the first as it is, the rest (layer pictures, see
+    /// [`ViewportTarget::set_layered`]) over it by how covered each pixel
+    /// is. Submits it; never waits for the GPU.
+    pub fn draw_pixel_layers(
+        &self,
+        device: &wgpu::Device,
+        queue: &wgpu::Queue,
+        sources: &[(&ViewportTarget, crate::pixel::PixelLayout)],
+        image: &crate::pixel::PixelImage,
+    ) {
+        let views: Vec<(&wgpu::TextureView, crate::pixel::PixelLayout)> = sources
+            .iter()
+            .map(|(target, layout)| (target.display_view(), *layout))
+            .collect();
+        image.draw_layers(device, queue, &self.pixel, &views);
+    }
+
     /// Draws game UI's `shapes` over `target`'s finished picture (decision
     /// 0083), after tone mapping, with letters from `atlas` and pictures
     /// from `pictures` (decision 0089), and submits it. Never waits for the
@@ -995,6 +1024,7 @@ impl ViewportRenderer {
             depth_view,
             pick: None,
             timer: None,
+            layered: false,
         }
     }
 
@@ -1177,7 +1207,7 @@ impl ViewportRenderer {
         queue.write_buffer(
             &frame.uniform_buffer,
             0,
-            bytemuck::bytes_of(&FrameUniforms::new(params, &light)),
+            bytemuck::bytes_of(&FrameUniforms::new(params, &light).layered(target.layered)),
         );
         queue.write_buffer(&frame.lights_buffer, 0, bytemuck::bytes_of(&lamps));
         let marked = &lights[..lights.len().min(MAX_MARKED_LAMPS)];
@@ -1236,7 +1266,11 @@ impl ViewportRenderer {
                     depth_slice: None,
                     resolve_target,
                     ops: wgpu::Operations {
-                        load: wgpu::LoadOp::Clear(wgpu::Color::BLACK),
+                        load: wgpu::LoadOp::Clear(if target.layered {
+                            wgpu::Color::TRANSPARENT
+                        } else {
+                            wgpu::Color::BLACK
+                        }),
                         store: if resolve_target.is_some() {
                             wgpu::StoreOp::Discard
                         } else {
@@ -1257,8 +1291,12 @@ impl ViewportRenderer {
                 multiview_mask: None,
             });
             pass.set_bind_group(0, &frame.bind_group, &[]);
-            pass.set_pipeline(&self.sky_pipeline);
-            pass.draw(0..3, 0..1);
+            // A layer's picture has no sky: what's behind shows through.
+            if !target.layered {
+                pass.set_pipeline(&self.sky_pipeline);
+                pass.draw(0..3, 0..1);
+            }
+            let layered = target.layered;
             use crate::sprites::SpriteLayer;
             let draw_sprites = |pass: &mut wgpu::RenderPass<'_>, layer: SpriteLayer| {
                 let (Some(buffer), Some(starts)) = (frame.sprites.as_ref(), sprite_starts.as_ref())
@@ -1271,10 +1309,12 @@ impl ViewportRenderer {
                 {
                     return;
                 }
-                pass.set_pipeline(match layer {
-                    SpriteLayer::CutOut => &self.sprites.cut_out,
-                    SpriteLayer::SeeThrough => &self.sprites.blended,
-                    SpriteLayer::Under | SpriteLayer::Over => &self.sprites.flat,
+                pass.set_pipeline(match (layer, layered) {
+                    (SpriteLayer::CutOut, _) => &self.sprites.cut_out,
+                    (SpriteLayer::SeeThrough, false) => &self.sprites.blended,
+                    (SpriteLayer::SeeThrough, true) => &self.sprites.blended_layered,
+                    (SpriteLayer::Under | SpriteLayer::Over, false) => &self.sprites.flat,
+                    (SpriteLayer::Under | SpriteLayer::Over, true) => &self.sprites.flat_layered,
                 });
                 pass.set_vertex_buffer(0, buffer.slice(..));
                 for (run, &start) in sprites.iter().zip(starts) {

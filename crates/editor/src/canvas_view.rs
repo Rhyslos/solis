@@ -475,6 +475,7 @@ fn canvas_image(size_px: [u32; 2], screen: Arc<ui::Screen>) -> ViewportView {
         sprites: Arc::default(),
         tile_pictures: Arc::default(),
         pixel: None,
+        layers: Vec::new(),
         ui: vec![screen],
     }
 }

@@ -9,7 +9,7 @@ use crate::play::PlayState;
 use crate::theme;
 use crate::viewport::{GAME_IMAGE, PixelView, ViewportRenderer, ViewportView};
 use egui::{Color32, Rect, RichText, Ui};
-use glam::{Mat4, Vec3};
+use glam::{Mat4, Vec2, Vec3};
 use reflect::AssetId;
 use std::collections::BTreeMap;
 
@@ -159,6 +159,60 @@ pub(crate) fn pixel_camera(
     )
 }
 
+/// The most parallax layers drawn as small pictures of their own; with
+/// more, every layer is drawn on whole pixels in the world's picture.
+pub(crate) const MAX_SMOOTH_LAYERS: usize = 8;
+
+/// A 2D game's parallax layers (decision 0094) as small pictures of their
+/// own: each seen by a camera that has moved its scroll's share of the way
+/// from where the game's camera started to where it is now (at
+/// `position`), so its bit of a pixel slides it smoothly. Behind ones
+/// first, then those in front, slowest first. `None` when there are none,
+/// or more than [`MAX_SMOOTH_LAYERS`].
+pub(crate) fn smooth_layers(
+    sprites: &[crate::sprite_sheets::AreaSprite],
+    sheets: &crate::sprite_sheets::SpriteSheets,
+    pixels: area::pixels::PixelSettings,
+    position: Vec3,
+    start: Vec3,
+    (near, far): (f32, f32),
+) -> Option<Vec<crate::viewport::PixelLayer>> {
+    let camera = |scroll: [f32; 2]| {
+        let at = start.truncate() + Vec2::from(scroll) * (position - start).truncate();
+        pixel_camera(at.extend(position.z), pixels, near, far)
+    };
+    let (behind, front) = crate::sprite_parallax::parallax_layers(
+        sprites,
+        sheets,
+        pixels.pixel_size(),
+        Some(pixels.pixel_size()),
+        0.0,
+        &crate::sprite_parallax::ParallaxView {
+            moved: None,
+            seen: &|z, scroll| crate::tile_view::ground_in_view(camera(scroll).0, z),
+        },
+    );
+    let count = behind.len() + front.len();
+    if count == 0 || count > MAX_SMOOTH_LAYERS {
+        return None;
+    }
+    Some(
+        behind
+            .into_iter()
+            .chain(front)
+            .map(|layer| {
+                let (view_projection, view) = camera(layer.scroll);
+                crate::viewport::PixelLayer {
+                    view_projection,
+                    slide: view.slide,
+                    in_front: layer.in_front,
+                    sprites: std::sync::Arc::new(layer.batches),
+                }
+            })
+            .collect(),
+    )
+}
+
 /// What the Game panel saw this frame.
 #[derive(Debug, Clone, Copy, Default, PartialEq)]
 pub(crate) struct GamePanelOut {
@@ -215,10 +269,12 @@ pub(crate) fn game_panel(
         .map(|p| [(p.x - rect.min.x) * ppp, (p.y - rect.min.y) * ppp]);
     let aspect = size_px[0] as f32 / size_px[1] as f32;
     let mut pixel = None;
+    let mut near_far = (0.1, 2000.0);
     let (view_projection, position) = match scene.camera {
         Some((camera, global)) if camera.view == area::builtin::CameraView::TwoD => {
             let position = global.w_axis.truncate();
             let c = camera.sanitized();
+            near_far = (c.near, c.far);
             let (view_projection, view) = pixel_camera(position, pixels, c.near, c.far);
             pixel = Some(view);
             (view_projection, position)
@@ -243,6 +299,48 @@ pub(crate) fn game_panel(
         (scene.seconds.max(0.0) * 1000.0) as u64,
         None,
     );
+    // Through a 2D camera, sprites land on whole pixels; tile maps'
+    // layers under and over them; parallax layers follow the camera the
+    // game looks through (decision 0094), each a small picture of its own
+    // when there aren't too many.
+    let world = crate::sprite_sheets::batches(
+        &scene.view.sprites,
+        sheets,
+        pixels.pixel_size(),
+        pixel.map(|_| pixels.pixel_size()),
+        0.0,
+    );
+    let start = scene.camera_start.unwrap_or(Vec3::ZERO);
+    let smooth = pixel.and_then(|_| {
+        smooth_layers(
+            &scene.view.sprites,
+            sheets,
+            pixels,
+            position,
+            start,
+            near_far,
+        )
+    });
+    let (sprites, layers) = match smooth {
+        Some(layers) => (tile_batches.into_iter().chain(world).collect(), layers),
+        None => {
+            let (behind, front) = crate::sprite_parallax::parallax_layers(
+                &scene.view.sprites,
+                sheets,
+                pixels.pixel_size(),
+                pixel.map(|_| pixels.pixel_size()),
+                0.0,
+                &crate::sprite_parallax::ParallaxView {
+                    moved: Some((position - start).truncate()),
+                    seen: &|z, _| crate::tile_view::ground_in_view(view_projection, z),
+                },
+            );
+            (
+                crate::sprite_parallax::in_order(behind, tile_batches, world, front),
+                Vec::new(),
+            )
+        }
+    };
     let view = ViewportView {
         size_px,
         view_projection,
@@ -267,36 +365,10 @@ pub(crate) fn game_panel(
         grid_step: 1.0,
         // Through a 2D camera, sprites land on whole pixels; tile maps'
         // layers under and over them.
-        sprites: std::sync::Arc::new({
-            let snap = pixel.map(|_| pixels.pixel_size());
-            // Parallax layers follow the camera the game looks through
-            // (decision 0094).
-            let (behind, front) = crate::sprite_parallax::parallax_layers(
-                &scene.view.sprites,
-                sheets,
-                pixels.pixel_size(),
-                snap,
-                0.0,
-                &crate::sprite_parallax::ParallaxView {
-                    moved: Some((position - scene.camera_start.unwrap_or(Vec3::ZERO)).truncate()),
-                    seen: &|z| crate::tile_view::ground_in_view(view_projection, z),
-                },
-            );
-            crate::sprite_parallax::in_order(
-                behind,
-                tile_batches,
-                crate::sprite_sheets::batches(
-                    &scene.view.sprites,
-                    sheets,
-                    pixels.pixel_size(),
-                    snap,
-                    0.0,
-                ),
-                front,
-            )
-        }),
+        sprites: std::sync::Arc::new(sprites),
         tile_pictures: std::sync::Arc::new(tile_pictures),
         pixel,
+        layers,
         ui: screens,
     };
     // Where the renderer lays the screens out: a 2D game's picture inside
@@ -466,5 +538,61 @@ mod pixel_tests {
         assert!(depth(-91.0).abs() < 1e-5, "far: 0");
         let (vp, view) = pixel_camera(Vec3::splat(f32::NAN), s, f32::NAN, -1.0);
         assert!(vp.is_finite() && view.slide == [0.0, 0.0]);
+    }
+
+    #[test]
+    fn each_parallax_layer_has_a_camera_of_its_own_sliding_smoothly() {
+        use crate::sprite_sheets::{AreaSprite, tests::sheets_with};
+        let s = PixelSettings::default();
+        let id = reflect::AssetId::random();
+        let sheets = sheets_with(id);
+        let layer = |scroll: f32, in_front: bool| AreaSprite {
+            entity: reflect::EntityId::random(),
+            sprite: area::builtin::Sprite {
+                sheet: Some(reflect::AssetRef {
+                    asset: id,
+                    part: None,
+                }),
+                ..area::builtin::Sprite::default()
+            },
+            transform: Mat4::IDENTITY,
+            pick: 0,
+            parallax: Some(area::builtin::Parallax {
+                scroll_x: scroll,
+                scroll_y: scroll,
+                repeat_x: false,
+                repeat_y: false,
+                in_front,
+            }),
+        };
+        let list = vec![layer(1.5, true), layer(0.5, false), layer(0.0, false)];
+        let start = Vec3::new(0.0, 0.0, 10.0);
+        // The camera moved a pixel and a half: the half-speed layer's
+        // camera three quarters of one, the sky's not at all.
+        let px = 1.0 / 16.0;
+        let now = Vec3::new(1.5 * px, 0.0, 10.0);
+        let layers = smooth_layers(&list, &sheets, s, now, start, (0.1, 100.0)).unwrap();
+        assert_eq!(layers.len(), 3);
+        assert!(!layers[0].in_front && !layers[1].in_front && layers[2].in_front);
+        assert_eq!(layers[0].slide, [0.0, 0.0], "the sky stays put");
+        assert!(
+            (layers[1].slide[0] - (-0.25)).abs() < 1e-3,
+            "{:?}",
+            layers[1].slide
+        );
+        assert!(
+            (layers[2].slide[0] - 0.25).abs() < 1e-3,
+            "{:?}",
+            layers[2].slide
+        );
+        // Each layer's sprites are where they were placed, on whole
+        // pixels: its camera does the moving.
+        assert_eq!(layers[1].sprites[0].sprites[0].foot, [0.0, 0.0]);
+        // None to draw, or too many: the world's picture draws them.
+        assert!(smooth_layers(&[], &sheets, s, now, start, (0.1, 100.0)).is_none());
+        let many: Vec<AreaSprite> = (0..=MAX_SMOOTH_LAYERS)
+            .map(|n| layer(n as f32 * 0.1, false))
+            .collect();
+        assert!(smooth_layers(&many, &sheets, s, now, start, (0.1, 100.0)).is_none());
     }
 }

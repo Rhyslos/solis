@@ -164,10 +164,29 @@ pub struct ViewportView {
     /// with `view_projection` for it, then scaled up to `size_px` by the
     /// pixel stage.
     pub pixel: Option<PixelView>,
+    /// With `pixel`: parallax layers drawn as small pictures of their own,
+    /// each slid by its own bit of a pixel and laid behind or over the
+    /// world's (decision 0094), slowest first.
+    pub layers: Vec<PixelLayer>,
     /// Game UI drawn over the finished picture (decision 0083), screen
     /// after screen: the renderer lays each out on the picture's real
     /// size.
     pub ui: Vec<std::sync::Arc<ui::Screen>>,
+}
+
+/// A parallax layer of a 2D game's picture drawn on its own (decision
+/// 0094): its sprites seen by a camera of its own, whose bit of a pixel
+/// slides it smoothly.
+#[derive(Debug, Clone, PartialEq)]
+pub struct PixelLayer {
+    /// Its own camera's view and projection, for the small picture.
+    pub view_projection: Mat4,
+    /// Its own bit of a pixel, as [`PixelView::slide`].
+    pub slide: [f32; 2],
+    /// Drawn over the world's picture (in front) or behind it.
+    pub in_front: bool,
+    /// Its sprites, a run per sheet.
+    pub sprites: std::sync::Arc<Vec<crate::sprite_sheets::SpriteBatch>>,
 }
 
 impl ViewportView {
@@ -759,7 +778,7 @@ impl Viewport {
                     ahead,
                     &crate::sprite_parallax::ParallaxView {
                         moved: None,
-                        seen: &|z| crate::tile_view::ground_in_view(view_projection, z),
+                        seen: &|z, _| crate::tile_view::ground_in_view(view_projection, z),
                     },
                 );
                 crate::sprite_parallax::in_order(
@@ -777,6 +796,7 @@ impl Viewport {
             }),
             tile_pictures: std::sync::Arc::new(tile_pictures),
             pixel: None,
+            layers: Vec::new(),
             ui: Vec::new(),
         }
     }

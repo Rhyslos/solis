@@ -26,6 +26,9 @@ struct Image {
 struct PixelImages {
     small: ViewportTarget,
     small_size: [u32; 2],
+    /// A small picture for each parallax layer drawn on its own (decision
+    /// 0094), made as needed, the same size as `small`.
+    layers: Vec<ViewportTarget>,
     out: render::PixelImage,
     out_size: [u32; 2],
     texture: egui::TextureId,
@@ -304,6 +307,7 @@ impl GpuViewport {
                 if images.small_size != small {
                     images.small = self.renderer.create_target(device, small);
                     images.small_size = small;
+                    images.layers.clear();
                 }
                 if images.out_size != out {
                     images.out = self.renderer.create_pixel_image(device, out);
@@ -329,6 +333,7 @@ impl GpuViewport {
                 self.pixel_images[slot] = Some(PixelImages {
                     small: self.renderer.create_target(device, small),
                     small_size: small,
+                    layers: Vec::new(),
                     out: out_image,
                     out_size: out,
                     texture,
@@ -368,7 +373,39 @@ impl GpuViewport {
         let bolts: &[render::Bolt] = bytemuck::cast_slice(view.bolts.as_slice());
         let picks = sprite_runs(&self.sheets, &view.sprites);
         let runs: Vec<render::SpriteRun> = picks.iter().map(|p| p.run).collect();
-        let stats = self.renderer.render_scene(
+        // Parallax layers drawn on their own (decision 0094): the farthest
+        // holds the sky; the world's picture and every other layer are
+        // clear where nothing is, laid over what's behind them.
+        let behind = view.layers.iter().filter(|l| !l.in_front).count();
+        while images.layers.len() < view.layers.len() {
+            images
+                .layers
+                .push(self.renderer.create_target(&self.state.device, small));
+        }
+        let mut stats = render::FrameStats::default();
+        for (n, (layer, target)) in view.layers.iter().zip(&mut images.layers).enumerate() {
+            target.set_layered(n > 0 || layer.in_front);
+            let layer_picks = sprite_runs(&self.sheets, &layer.sprites);
+            let layer_runs: Vec<render::SpriteRun> = layer_picks.iter().map(|p| p.run).collect();
+            let drawn = self.renderer.render_scene(
+                &self.state.device,
+                &self.state.queue,
+                target,
+                &FrameParams {
+                    view_projection: layer.view_projection,
+                    ..params
+                },
+                &render::Scene {
+                    placed: &[],
+                    lights,
+                    bolts: &[],
+                    sprites: &layer_runs,
+                },
+            );
+            stats.sprites += drawn.sprites;
+        }
+        images.small.set_layered(behind > 0);
+        let world = self.renderer.render_scene(
             &self.state.device,
             &self.state.queue,
             &mut images.small,
@@ -380,22 +417,46 @@ impl GpuViewport {
                 sprites: &runs,
             },
         );
-        let layout = render::pixel_layout(
-            pixel.base,
-            images.out_size,
-            match pixel.scaling {
-                area::pixels::Scaling::WholeSteps => render::PixelScaling::WholeSteps,
-                area::pixels::Scaling::Fill => render::PixelScaling::Fill,
-            },
-            pixel.slide,
-        );
-        self.renderer.draw_pixels(
-            &self.state.device,
-            &self.state.queue,
-            &images.small,
-            &images.out,
-            &layout,
-        );
+        stats = render::FrameStats {
+            sprites: world.sprites + stats.sprites,
+            ..world
+        };
+        let scaling = match pixel.scaling {
+            area::pixels::Scaling::WholeSteps => render::PixelScaling::WholeSteps,
+            area::pixels::Scaling::Fill => render::PixelScaling::Fill,
+        };
+        let layout = render::pixel_layout(pixel.base, images.out_size, scaling, pixel.slide);
+        if view.layers.is_empty() {
+            self.renderer.draw_pixels(
+                &self.state.device,
+                &self.state.queue,
+                &images.small,
+                &images.out,
+                &layout,
+            );
+        } else {
+            let laid = |l: &editor::PixelLayer| {
+                render::pixel_layout(pixel.base, images.out_size, scaling, l.slide)
+            };
+            let mut sources: Vec<(&ViewportTarget, render::PixelLayout)> = view.layers[..behind]
+                .iter()
+                .zip(&images.layers)
+                .map(|(l, t)| (t, laid(l)))
+                .collect();
+            sources.push((&images.small, layout));
+            sources.extend(
+                view.layers[behind..]
+                    .iter()
+                    .zip(&images.layers[behind..])
+                    .map(|(l, t)| (t, laid(l))),
+            );
+            self.renderer.draw_pixel_layers(
+                &self.state.device,
+                &self.state.queue,
+                &sources,
+                &images.out,
+            );
+        }
         // Game UI over the picture (decision 0083): laid out on the
         // picture's part of the screen, in its whole steps when it has them.
         for screen in &view.ui {

@@ -126,6 +126,10 @@ pub(crate) struct SpritePipelines {
     pub(crate) blended: wgpu::RenderPipeline,
     /// Blended with no depth at all: tile layers under and over.
     pub(crate) flat: wgpu::RenderPipeline,
+    /// [`Self::blended`] and [`Self::flat`] for a layer's picture
+    /// (decision 0094): the alpha keeps how covered each pixel is.
+    pub(crate) blended_layered: wgpu::RenderPipeline,
+    pub(crate) flat_layered: wgpu::RenderPipeline,
 }
 
 impl SpritePipelines {
@@ -153,7 +157,7 @@ impl SpritePipelines {
             bind_group_layouts: &[Some(frame_layout), None, None, Some(&sheet_layout)],
             immediate_size: 0,
         });
-        let make = |blended: bool, flat: bool| {
+        let make = |blended: bool, flat: bool, layered: bool| {
             let buffers = [Some(wgpu::VertexBufferLayout {
                 array_stride: std::mem::size_of::<SpriteInstance>() as wgpu::BufferAddress,
                 step_mode: wgpu::VertexStepMode::Instance,
@@ -166,11 +170,20 @@ impl SpritePipelines {
                     operation: wgpu::BlendOperation::Add,
                 },
                 // The picture's alpha (what the last pass tone maps) is
-                // left alone.
-                alpha: wgpu::BlendComponent {
-                    src_factor: wgpu::BlendFactor::Zero,
-                    dst_factor: wgpu::BlendFactor::One,
-                    operation: wgpu::BlendOperation::Add,
+                // left alone; in a layer's picture it's how covered the
+                // pixel is, and grows as things are drawn over it.
+                alpha: if layered {
+                    wgpu::BlendComponent {
+                        src_factor: wgpu::BlendFactor::One,
+                        dst_factor: wgpu::BlendFactor::OneMinusSrcAlpha,
+                        operation: wgpu::BlendOperation::Add,
+                    }
+                } else {
+                    wgpu::BlendComponent {
+                        src_factor: wgpu::BlendFactor::Zero,
+                        dst_factor: wgpu::BlendFactor::One,
+                        operation: wgpu::BlendOperation::Add,
+                    }
                 },
             });
             device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
@@ -224,9 +237,11 @@ impl SpritePipelines {
             })
         };
         Self {
-            cut_out: make(false, false),
-            blended: make(true, false),
-            flat: make(true, true),
+            cut_out: make(false, false, false),
+            blended: make(true, false, false),
+            flat: make(true, true, false),
+            blended_layered: make(true, false, true),
+            flat_layered: make(true, true, true),
             sheet_layout,
         }
     }

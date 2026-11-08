@@ -172,11 +172,16 @@ pub(crate) struct StageUniform {
     scale: f32,
     whole: f32,
     slide: [f32; 2],
-    _pad: [f32; 2],
+    over: [f32; 2],
 }
 
 impl StageUniform {
     pub(crate) fn new(layout: &PixelLayout) -> Self {
+        Self::laid(layout, false)
+    }
+
+    /// For a picture laid `over` the one below (decision 0094), or not.
+    pub(crate) fn laid(layout: &PixelLayout, over: bool) -> Self {
         Self {
             origin: layout.origin.map(|v| v as f32),
             size: layout.size.map(|v| v as f32),
@@ -184,7 +189,7 @@ impl StageUniform {
             scale: layout.scale,
             whole: if layout.whole { 1.0 } else { 0.0 },
             slide: layout.slide,
-            _pad: [0.0; 2],
+            over: [if over { 1.0 } else { 0.0 }, 0.0],
         }
     }
 }
@@ -194,6 +199,9 @@ impl StageUniform {
 pub(crate) struct PixelPipeline {
     layout: wgpu::BindGroupLayout,
     pipeline: wgpu::RenderPipeline,
+    /// For pictures laid over the one below (decision 0094): blended by
+    /// how covered each pixel is, its colours already weighed by it.
+    over: wgpu::RenderPipeline,
     sampler: wgpu::Sampler,
 }
 
@@ -239,31 +247,35 @@ impl PixelPipeline {
             bind_group_layouts: &[Some(&layout)],
             immediate_size: 0,
         });
-        let pipeline = device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
-            label: Some("pixel stage pipeline"),
-            layout: Some(&pipeline_layout),
-            vertex: wgpu::VertexState {
-                module: &shader,
-                entry_point: Some("pixel_vs"),
-                compilation_options: wgpu::PipelineCompilationOptions::default(),
-                buffers: &[],
-            },
-            primitive: wgpu::PrimitiveState::default(),
-            depth_stencil: None,
-            multisample: wgpu::MultisampleState::default(),
-            fragment: Some(wgpu::FragmentState {
-                module: &shader,
-                entry_point: Some("pixel_fs"),
-                compilation_options: wgpu::PipelineCompilationOptions::default(),
-                targets: &[Some(wgpu::ColorTargetState {
-                    format: crate::renderer::COLOR_FORMAT,
-                    blend: None,
-                    write_mask: wgpu::ColorWrites::ALL,
-                })],
-            }),
-            multiview_mask: None,
-            cache: None,
-        });
+        let make = |blend: Option<wgpu::BlendState>| {
+            device.create_render_pipeline(&wgpu::RenderPipelineDescriptor {
+                label: Some("pixel stage pipeline"),
+                layout: Some(&pipeline_layout),
+                vertex: wgpu::VertexState {
+                    module: &shader,
+                    entry_point: Some("pixel_vs"),
+                    compilation_options: wgpu::PipelineCompilationOptions::default(),
+                    buffers: &[],
+                },
+                primitive: wgpu::PrimitiveState::default(),
+                depth_stencil: None,
+                multisample: wgpu::MultisampleState::default(),
+                fragment: Some(wgpu::FragmentState {
+                    module: &shader,
+                    entry_point: Some("pixel_fs"),
+                    compilation_options: wgpu::PipelineCompilationOptions::default(),
+                    targets: &[Some(wgpu::ColorTargetState {
+                        format: crate::renderer::COLOR_FORMAT,
+                        blend,
+                        write_mask: wgpu::ColorWrites::ALL,
+                    })],
+                }),
+                multiview_mask: None,
+                cache: None,
+            })
+        };
+        let pipeline = make(None);
+        let over = make(Some(wgpu::BlendState::PREMULTIPLIED_ALPHA_BLENDING));
         let sampler = device.create_sampler(&wgpu::SamplerDescriptor {
             label: Some("pixel stage sampler"),
             mag_filter: wgpu::FilterMode::Linear,
@@ -275,6 +287,7 @@ impl PixelPipeline {
         Self {
             layout,
             pipeline,
+            over,
             sampler,
         }
     }
@@ -397,6 +410,95 @@ impl PixelImage {
             pass.set_pipeline(&pipeline.pipeline);
             pass.set_bind_group(0, &bind_group, &[]);
             pass.draw(0..3, 0..1);
+        }
+        queue.submit([encoder.finish()]);
+    }
+}
+
+impl PixelImage {
+    /// Scales each of `sources` (small pictures, each with its own
+    /// layout and slide) into this image, laid on each other in order
+    /// (decision 0094): the first as it is, the rest over it by how
+    /// covered each pixel is. Submits it; never waits for the GPU.
+    pub(crate) fn draw_layers(
+        &self,
+        device: &wgpu::Device,
+        queue: &wgpu::Queue,
+        pipeline: &PixelPipeline,
+        sources: &[(&wgpu::TextureView, PixelLayout)],
+    ) {
+        use wgpu::util::DeviceExt;
+        let Some(((first, first_layout), rest)) = sources.split_first() else {
+            return;
+        };
+        queue.write_buffer(
+            &self.uniform,
+            0,
+            bytemuck::bytes_of(&StageUniform::new(first_layout)),
+        );
+        let bind = |uniform: &wgpu::Buffer, source: &wgpu::TextureView| {
+            device.create_bind_group(&wgpu::BindGroupDescriptor {
+                label: Some("pixel stage bind group"),
+                layout: &pipeline.layout,
+                entries: &[
+                    wgpu::BindGroupEntry {
+                        binding: 0,
+                        resource: uniform.as_entire_binding(),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 1,
+                        resource: wgpu::BindingResource::TextureView(source),
+                    },
+                    wgpu::BindGroupEntry {
+                        binding: 2,
+                        resource: wgpu::BindingResource::Sampler(&pipeline.sampler),
+                    },
+                ],
+            })
+        };
+        let mut groups = vec![bind(&self.uniform, first)];
+        let mut uniforms = Vec::with_capacity(rest.len());
+        for (_, layout) in rest {
+            uniforms.push(
+                device.create_buffer_init(&wgpu::util::BufferInitDescriptor {
+                    label: Some("pixel stage layer uniform"),
+                    contents: bytemuck::bytes_of(&StageUniform::laid(layout, true)),
+                    usage: wgpu::BufferUsages::UNIFORM,
+                }),
+            );
+        }
+        for ((source, _), uniform) in rest.iter().zip(&uniforms) {
+            groups.push(bind(uniform, source));
+        }
+        let mut encoder = device.create_command_encoder(&wgpu::CommandEncoderDescriptor {
+            label: Some("pixel stage layers"),
+        });
+        {
+            let mut pass = encoder.begin_render_pass(&wgpu::RenderPassDescriptor {
+                label: Some("pixel stage layers"),
+                color_attachments: &[Some(wgpu::RenderPassColorAttachment {
+                    view: &self.view,
+                    depth_slice: None,
+                    resolve_target: None,
+                    ops: wgpu::Operations {
+                        load: wgpu::LoadOp::Clear(wgpu::Color::BLACK),
+                        store: wgpu::StoreOp::Store,
+                    },
+                })],
+                depth_stencil_attachment: None,
+                timestamp_writes: None,
+                occlusion_query_set: None,
+                multiview_mask: None,
+            });
+            for (n, group) in groups.iter().enumerate() {
+                pass.set_pipeline(if n == 0 {
+                    &pipeline.pipeline
+                } else {
+                    &pipeline.over
+                });
+                pass.set_bind_group(0, group, &[]);
+                pass.draw(0..3, 0..1);
+            }
         }
         queue.submit([encoder.finish()]);
     }
