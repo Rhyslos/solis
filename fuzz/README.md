@@ -21,6 +21,7 @@ Fuzz targets for every reader of a file a project can ship ([decision 0042](../d
 | `frames` | A sprite's clips file (`.solframes`); clips read are within the limits, write back to themselves, and play without panicking |
 | `animator` | An animator file (`.solanim`); an animator read is within the limits, writes back to itself, and runs without panicking whatever game code sets |
 | `atlas` | An atlas file (`.atlas.lst`, Atlas Crop); crops read are within the limits, each name good and used once, and write back to themselves |
+| `text_file` | A text file shown in Properties: any bytes become Markdown blocks and inline runs, never a panic |
 | `screen_source` | A screen's Lust file as the UI editor reads it; pieces' places inside the text, and its edits never panic |
 | `tileset` | A tileset (`.soltileset`); terrains read are within the limits, each name and code used once, and write back to themselves |
 | `tile_art` | A tileset's picture (PNG, JPEG or Aseprite, the first byte choosing); a picture read is within the limits, every frame its size, and its grid and kind are found without panicking |

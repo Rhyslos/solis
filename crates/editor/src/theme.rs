@@ -99,6 +99,14 @@ pub mod kind {
     pub const ENVIRONMENT: Color32 = Color32::from_rgb(0x4f, 0xb3, 0xa9);
     /// Cameras.
     pub const CAMERA: Color32 = super::TEXT;
+    /// Notes: Markdown and plain text files (`.md`, `.txt`).
+    pub const NOTES: Color32 = Color32::from_rgb(0x7c, 0xc4, 0xff);
+    /// JSON files.
+    pub const JSON: Color32 = Color32::from_rgb(0x7a, 0xd1, 0x7a);
+    /// Tables of data (`.csv`).
+    pub const TABLE: Color32 = Color32::from_rgb(0xf0, 0x9a, 0xc0);
+    /// Settings files (`.toml`, `.ron`).
+    pub const SETTINGS: Color32 = Color32::from_rgb(0xa0, 0xac, 0xc4);
     /// Anything else.
     pub const OTHER: Color32 = super::TEXT_WEAK;
 }

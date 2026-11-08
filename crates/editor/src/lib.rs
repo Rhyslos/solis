@@ -73,6 +73,7 @@ pub mod sprite_sheets;
 pub mod status_bar;
 #[cfg(test)]
 mod test_support;
+pub mod text_view;
 pub mod theme;
 pub mod tile_paint;
 pub mod tile_view;

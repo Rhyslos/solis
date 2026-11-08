@@ -218,11 +218,12 @@ impl Projects {
                     FileKind::Tileset => LibraryKind::Tileset,
                     FileKind::TileMap => LibraryKind::TileMap,
                     FileKind::Atlas => LibraryKind::Atlas,
+                    FileKind::Text => LibraryKind::Text,
                     FileKind::Other => LibraryKind::Other,
                 },
                 // Files Solis doesn't know keep their whole name, so
                 // "brick.png.exe" never passes for "brick.png".
-                name: if f.kind == FileKind::Other {
+                name: if matches!(f.kind, FileKind::Other | FileKind::Text) {
                     f.path.file_name()
                 } else {
                     f.path.file_stem()

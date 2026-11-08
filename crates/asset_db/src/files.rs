@@ -41,9 +41,15 @@ pub enum FileKind {
     TileMap,
     /// A picture's crops (`.atlas.lst`, Atlas Crop).
     Atlas,
+    /// Plain text: notes and data ([`TEXT_EXTENSIONS`]), shown in
+    /// Properties and opened in the computer's program for it.
+    Text,
     /// Anything else.
     Other,
 }
+
+/// The extensions of plain text files the Library shows as text.
+pub const TEXT_EXTENSIONS: [&str; 6] = ["md", "txt", "json", "csv", "toml", "ron"];
 
 /// The extension of area files.
 pub const AREA_EXTENSION: &str = "solarea";
@@ -79,6 +85,7 @@ impl FileKind {
             e if e == ANIMATOR_EXTENSION => Self::Animator,
             e if e == TILESET_EXTENSION => Self::Tileset,
             e if e == TILE_MAP_EXTENSION => Self::TileMap,
+            e if TEXT_EXTENSIONS.contains(&e) => Self::Text,
             _ => Self::Other,
         }
     }
@@ -437,7 +444,7 @@ mod tests {
             [
                 ("crate.glb".into(), FileKind::Model, true),
                 ("main.solarea".into(), FileKind::Area, false),
-                ("notes.txt".into(), FileKind::Other, false),
+                ("notes.txt".into(), FileKind::Text, false),
                 ("props/bark.png".into(), FileKind::Texture, true),
                 ("props/rock.glb".into(), FileKind::Model, true),
                 ("turret.lst".into(), FileKind::Code, false),
@@ -595,5 +602,16 @@ mod tests {
         }
         assert_eq!(FileKind::of(Path::new("a.lua")), FileKind::Code);
         assert_eq!(FileKind::of(Path::new("a")), FileKind::Other);
+        for text in [
+            "notes.md",
+            "a/README.TXT",
+            "d.json",
+            "t.csv",
+            "c.toml",
+            "s.ron",
+        ] {
+            assert_eq!(FileKind::of(Path::new(text)), FileKind::Text, "{text}");
+        }
+        assert_eq!(FileKind::of(Path::new("notes.md.exe")), FileKind::Other);
     }
 }

@@ -66,6 +66,8 @@ pub(crate) struct PanelViewer<'a> {
     pub(crate) sounds: crate::library::Sounds<'a>,
     /// The sound file Properties shows instead of the selection, if any.
     pub(crate) sound_shown: Option<&'a str>,
+    /// The text file shown, as the app last read it.
+    pub(crate) text_file: Option<&'a (String, crate::text_view::TextRead)>,
     /// The project's buses, and the bus Properties shows, if any.
     pub(crate) mixer: &'a crate::mixer_view::MixerState,
     pub(crate) mixer_requests: &'a mut Vec<crate::mixer_view::MixerRequest>,
@@ -346,6 +348,19 @@ impl TabViewer for PanelViewer<'_> {
                     return;
                 }
                 if let Some(path) = self.sound_shown {
+                    if self
+                        .library
+                        .iter()
+                        .any(|i| i.path == path && i.kind == crate::library::LibraryKind::Text)
+                    {
+                        let read = self
+                            .text_file
+                            .filter(|(read_path, _)| read_path == path)
+                            .map(|(_, read)| read);
+                        let requests = crate::text_view::text_properties(ui, path, read);
+                        self.library_requests.extend(requests);
+                        return;
+                    }
                     let sheets = self.sounds.sheets;
                     if let Some(crate::sprite_sheets::TilesetState::Read(set, notes)) =
                         sheets.tilesets.get(path)
