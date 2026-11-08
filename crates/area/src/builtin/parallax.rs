@@ -206,10 +206,8 @@ mod tests {
             scroll_x: f32::INFINITY,
             ..Parallax::default()
         };
-        assert!(
-            p.shifted([1.0, 1.0], [5.0, 5.0])
-                .iter()
-                .all(|v| v.is_finite())
-        );
+        // A broken speed in memory moves with the world.
+        assert_eq!(p.sanitized().scroll_x, 1.0);
+        assert!(p.offset([5.0, 5.0]).iter().all(|v| v.is_finite()));
     }
 }
