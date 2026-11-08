@@ -32,3 +32,4 @@ Solis remembers your panel layout, accent colour, camera and viewport controls i
 
 ## Related
 - [Interface tour](interface-tour.md)
+- [Your first 2D platformer](first-platformer.md): once Solis is running, start here.

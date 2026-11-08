@@ -260,3 +260,152 @@ fn a_2d_character_knows_it_s_grounded_and_how_fast_it_goes() {
     // Standing on the floor, not in it.
     assert!(at(&w).y > -0.5 + 0.25, "{}", at(&w));
 }
+
+/// One of the platformer guide's code files, from its first line (`-- name`)
+/// to its `end`.
+fn guide_file(page: &str, first: &str) -> String {
+    let start = page.find(first).expect(first);
+    let end = start + page[start..].find("\nend\n").unwrap() + 5;
+    page[start..end].to_string()
+}
+
+#[test]
+fn the_platformer_guide_s_code_runs_jumps_and_collects_coins() {
+    // docs/manual/first-platformer.md: its three files, as written there.
+    let page = include_str!("../../../docs/manual/first-platformer.md").replace("\r\n", "\n");
+    let mut main = guide_file(&page, "-- main.lst");
+    // Step 7 adds the coin's fetch under the hero's.
+    assert!(page.contains("```lust\nfetch \"coin\":[Coin];\n```"));
+    main = main.replace(
+        "fetch \"hero\":[Hero];\n",
+        "fetch \"hero\":[Hero];\nfetch \"coin\":[Coin];\n",
+    );
+    let (mut files, _) = script::describe::descriptions_for(
+        "Test Engine 9.9.9",
+        "solis",
+        &script::project_names::Names::with_assemblies(&[]),
+    );
+    files.push(("main.lst".into(), main));
+    files.push(("hero.lst".into(), guide_file(&page, "-- hero.lst")));
+    files.push(("coin.lst".into(), guide_file(&page, "-- coin.lst")));
+    let code = script::Code {
+        files,
+        lua: Vec::new(),
+        notes: Vec::new(),
+    };
+    let program = match script::compile(&code) {
+        Ok(Some(c)) => Arc::new(c),
+        Ok(None) => panic!("no code"),
+        Err(problems) => panic!("{}", problems[0]),
+    };
+    const HERO: u64 = 1;
+    const FLOOR: u64 = 2;
+    const COIN: u64 = 3;
+    let mut w = Workbench::new(info(), None);
+    w.set_program(Some(program));
+    // The guide's hero: a 12 × 16 px box raised 8 px onto its feet, a
+    // tile above a floor whose top is at y = 0.
+    let mut hero = EntityData::new("hero")
+        .with(&Transform {
+            position: Vec3::new(0.0, 1.0, 0.0),
+            ..Transform::default()
+        })
+        .with(&Collider2D {
+            shape: Shape2D::Box,
+            width: 12.0,
+            height: 16.0,
+            up: 8.0,
+            character: true,
+            ..Collider2D::default()
+        });
+    hero.components
+        .insert("Hero".into(), ComponentData::default());
+    let floor = EntityData::new("Floor")
+        .with(&Transform {
+            position: Vec3::new(0.0, -0.5, 0.0),
+            ..Transform::default()
+        })
+        .with(&Collider2D {
+            shape: Shape2D::Box,
+            width: 3200.0,
+            height: 16.0,
+            ..Collider2D::default()
+        });
+    let mut coin = EntityData::new("coin").with(&Transform {
+        position: Vec3::new(5.0, 0.0, 0.0),
+        ..Transform::default()
+    });
+    let mut collects = ComponentData::default();
+    collects.set("player", Value::Entity(Some(id(HERO))));
+    coin.components.insert("Coin".into(), collects);
+    w.document
+        .edit(
+            "Add",
+            vec![
+                area::Edit::Spawn {
+                    entities: vec![(id(HERO), hero)],
+                },
+                area::Edit::Spawn {
+                    entities: vec![(id(FLOOR), floor)],
+                },
+                area::Edit::Spawn {
+                    entities: vec![(id(COIN), coin)],
+                },
+            ],
+            None,
+            None,
+        )
+        .unwrap();
+    w.fixed_seed = Some(3);
+    w.play();
+    let hero_at = |w: &Workbench| {
+        w.world()
+            .unwrap()
+            .global(id(HERO))
+            .unwrap()
+            .w_axis
+            .truncate()
+    };
+    // It falls and lands with its feet on the floor.
+    ticks(&mut w, 60);
+    let landed = hero_at(&w);
+    assert!(landed.y.abs() < 0.05, "standing on the floor: {landed}");
+    // A jump, pressed at any moment while standing, goes about 2.4 m up.
+    for wait in [1, 2, 3, 7] {
+        ticks(&mut w, wait);
+        w.devices.set("Space", true);
+        let mut top = 0.0_f32;
+        for _ in 0..90 {
+            ticks(&mut w, 1);
+            w.devices.set("Space", false);
+            top = top.max(hero_at(&w).y);
+        }
+        assert!(
+            top > 2.2 && top < 2.6,
+            "jumped {top} m after waiting {wait}"
+        );
+        assert!(hero_at(&w).y.abs() < 0.05, "and landed again");
+    }
+    // D runs right at 6 m/s, onto the coin, which is collected once.
+    let from = hero_at(&w);
+    w.devices.set("D", true);
+    ticks(&mut w, 60);
+    w.devices.set("D", false);
+    let ran = hero_at(&w) - from;
+    assert!(ran.x > 5.8 && ran.x < 6.1 && ran.y.abs() < 0.05, "{ran}");
+    assert!(
+        w.world().unwrap().global(id(COIN)).is_none(),
+        "the coin is gone"
+    );
+    let said = w
+        .log_lines()
+        .iter()
+        .filter(|l| l.text.contains("Got a coin!"))
+        .count();
+    assert_eq!(said, 1);
+    assert!(
+        !w.log_lines().iter().any(|l| l.text.contains("stopped")),
+        "{:?}",
+        w.log_lines()
+    );
+}

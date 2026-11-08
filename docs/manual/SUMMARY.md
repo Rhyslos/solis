@@ -2,11 +2,12 @@
 
 This manual describes what Solis can do **right now**. It grows with every update: a feature appears here when it reaches the main version, not before.
 
-New to game engines? Start with [Concepts](concepts.md).
+New to game engines? Start with [Concepts](concepts.md), then build [your first 2D platformer](first-platformer.md).
 
 ## Basics
 
 - [Getting started: install Solis, download it, or build it yourself](getting-started.md)
+- [Getting started: your first 2D platformer, step by step, learning Solis and Lust](first-platformer.md)
 - [Installing and updating: install once, and new builds arrive by themselves](installing-and-updating.md)
 - [Concepts: the ideas behind a game engine's editor](concepts.md)
 - [Interface tour: the top bar, the panels, and rearranging them](interface-tour.md)
