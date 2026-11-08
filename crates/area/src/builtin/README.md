@@ -18,6 +18,7 @@ The built-in components. Each is a typed Rust struct that turns into values and 
 | `animator.rs` | An animator (Phase 9, D3b): the animator file that chooses the Sprite's clip, the state it starts in, and a speed. | `Animator` |
 | `tile_map.rs` | A tile map (Phase 9, D4): a tile map file placed at the entity, its top-left corner on the entity's place. | `TileMap` |
 | `screen.rs` | A game screen shown (decision 0087): which of the project's screens, whether it's shown, its order, and its look (glow, outline, pixel size; decision 0089). Kept as plain values in the world, so saves and checksums keep it. | `Screen` |
+| `parallax.rs` | A parallax layer (decision 0094): how far the entity's Sprite moves with the camera across and up, whether it repeats, and whether it's in front of everything; where it's drawn for a camera. | `Parallax` |
 | `sprite.rs` | A sprite (Phase 9, D2): one frame of a sprite sheet lying on the ground at the entity, standing on its pivot slice, with flip, tint, flash, outline and see-through. | `Sprite` |
 
 **Adding a component:** write its struct here, implement `reflect::Component`, and add it to `registry` in `mod.rs`. Properties then draws it without any editor code.

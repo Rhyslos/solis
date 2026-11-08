@@ -874,6 +874,7 @@ impl World {
             ReverbZone::NAME => typed::<ReverbZone>(self, id),
             Listener::NAME => typed::<Listener>(self, id),
             Sprite::NAME => typed::<Sprite>(self, id),
+            area::builtin::Parallax::NAME => typed::<area::builtin::Parallax>(self, id),
             Animator::NAME => typed::<Animator>(self, id),
             TileMap::NAME => typed::<TileMap>(self, id),
             _ => self.values_named_for(id, name),
@@ -1653,6 +1654,9 @@ fn components_of(id: EntityId, data: &area::EntityData) -> hecs::EntityBuilder {
             }
             ReverbZone::NAME => {
                 builder.add(ReverbZone::from_data(component));
+            }
+            area::builtin::Parallax::NAME => {
+                builder.add(area::builtin::Parallax::from_data(component));
             }
             Listener::NAME => {
                 builder.add(Listener::from_data(component));

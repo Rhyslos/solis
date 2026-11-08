@@ -82,6 +82,13 @@ fn sprite_pick_vs(@builtin(vertex_index) index: u32, s: SpriteIn) -> SpritePickO
     out.clip = frame.view_projection * vec4<f32>(world, 1.0);
     let foot = frame.view_projection * vec4<f32>(s.foot, s.corner.z, 1.0);
     out.clip.z = out.clip.z - FOOT_DEPTH * (foot.y / foot.w) * out.clip.w;
+    // A parallax layer (decision 0094) is picked as it's drawn: one
+    // behind only where nothing else is, one in front over everything.
+    // Depth runs from 1 (near) to 0 (far).
+    if (s.flags & 64u) != 0u {
+        let near = select(0.000001, 0.999999, (s.flags & 32u) != 0u);
+        out.clip.z = near * out.clip.w;
+    }
     out.local = local;
     out.rect = s.rect;
     out.flags = s.flags;

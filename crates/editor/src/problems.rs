@@ -769,6 +769,7 @@ mod tests {
             sprite: sprite(None),
             transform: Mat4::from_translation(Vec3::new(x, y, 0.0)) * Mat4::from_rotation_z(turn),
             pick: 0,
+            parallax: None,
         };
         // 16 pixels a metre: 2.5 m is pixel 40; 1.01 m is pixel 16.16.
         let mut sprites = vec![

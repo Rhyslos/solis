@@ -215,6 +215,9 @@ impl AreaView {
                 sprite,
                 transform: at(id),
                 pick,
+                parallax: area
+                    .get(id)
+                    .and_then(|e| e.get::<area::builtin::Parallax>()),
             });
         }
         for (id, tile_map) in area.with::<area::builtin::TileMap>() {
@@ -288,6 +291,7 @@ impl AreaView {
                     sprite,
                     transform,
                     pick: 0,
+                    parallax: world.get::<area::builtin::Parallax>(entity),
                 },
             )
             .collect();

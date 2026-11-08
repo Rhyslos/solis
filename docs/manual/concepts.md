@@ -205,6 +205,7 @@
 - **Solid (terrain):** a terrain nothing with a 2D collider can walk into, such as a fence or water. Your game chooses which terrains are solid, in the Map tab. See [Walls and walking in 2D](walls-and-walking.md).
 - **Walls (2D):** what 2D physics makes of a map's solid cells: neighbouring cells merged into a few rectangles, so sliding along a fence never catches on the seams between tiles. The viewport's **Walls** switch shows them.
 - **Collider2D:** a built-in component giving an entity a shape on the ground for 2D physics, in pixels: a circle or a box. Solid and still, or a **character** that game code walks and that slides along what's in its way.
+- **Parallax:** things far away seem to move less than things close by when you move. A **parallax layer** is a sprite with a Parallax component: it moves with the camera at its own speed (its **scroll**: 0 stays put, 1 moves with the world), drawn behind everything or in front, so a flat 2D level feels deep. See [Parallax layers](parallax.md).
 - **Top-down movement:** walking across a map seen from above, in 8 directions (with diagonals) or 4. The kit's **TopDownController** does it, never faster diagonally than straight.
 
 ## Getting Solis
