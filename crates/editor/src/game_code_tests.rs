@@ -1239,6 +1239,66 @@ fn spawned_entities_join_on_the_next_tick_even_within_one_frame() {
     assert_eq!(xs, vec![0.0, 2.0, 4.0]);
 }
 
+/// A hive that spawns a drone and, in the same tick, sends it where to
+/// go; the drone moves there when the event arrives.
+const LAUNCHER: &str = "fetch \"solis/world\":World;\nfetch \"solis/project\":Assembly;\n\n\
+    event Launch(float height);\n\
+    component Hive {\n\
+        has {\n\
+            int made = 0;\n\
+        }\n\
+        method update(float dt) {\n\
+            is made == 0? then {\n\
+                entity a = World:spawn(Assembly.Drones.Drone, [0, 0, 0]);\n\
+                send Launch(7) to a;\n\
+                made = 1;\n\
+            }\n\
+        }\n\
+    }\n\
+    component Drone {\n\
+        has {\n\
+            float got = 0;\n\
+        }\n\
+        on Launch(float height) {\n\
+            got = height;\n\
+            moveTo([0, 0, height]);\n\
+        }\n\
+    }\n\
+    pass Hive, Drone;\nend\n";
+
+#[test]
+fn an_event_sent_to_an_entity_spawned_in_the_same_tick_reaches_it() {
+    // The playtest games' feedback: every bullet needed "keep it in a
+    // field, launch it next tick", since an event sent to an entity
+    // spawned that tick was lost. It's held, and delivered next tick.
+    let mut w = with_drones(LAUNCHER);
+    let mut hive = EntityData::new("Hive");
+    hive.components
+        .insert("Hive".into(), reflect::ComponentData::default());
+    w.document
+        .edit(
+            "Add",
+            vec![area::Edit::Spawn {
+                entities: vec![(EntityId::random(), hive)],
+            }],
+            None,
+            None,
+        )
+        .unwrap();
+    w.play();
+    w.run_game((3.5 * world::TICK) as f32);
+    let playing = w.playing.as_ref().unwrap();
+    let drone = w
+        .document
+        .area()
+        .children(None)
+        .into_iter()
+        .find(|&id| w.document.area().get(id).is_some_and(|e| e.name == "drone"))
+        .expect("spawned");
+    let z = playing.world.global(drone).unwrap().w_axis.z;
+    assert!((z - 7.0).abs() < 1e-4, "the launch arrived: {z}");
+}
+
 #[test]
 fn step_runs_one_tick_while_paused_and_only_then() {
     let (mut w, id) = with_a_mover();

@@ -108,6 +108,10 @@ pub(crate) struct Phase {
     pub(crate) sent: Vec<(Order, Event)>,
     /// The components that failed.
     pub(crate) failures: Vec<(Order, Failure)>,
+    /// Events no component took because their entity has none running
+    /// (yet), with their numbers in the round: one sent to an entity
+    /// spawned this tick is held for the next (`Game`).
+    pub(crate) unclaimed: Vec<(u32, Event)>,
 }
 
 /// An event on its way to the components on its entity, with what they
@@ -328,10 +332,12 @@ impl Ticking<'_> {
                 event: event.clone(),
             };
             let from = (event.to, String::new());
+            let mut claimed = false;
             for ((entity, name), component) in running.range_mut(from..) {
                 if *entity != event.to {
                     break;
                 }
+                claimed = true;
                 if component.stopped {
                     continue;
                 }
@@ -369,6 +375,9 @@ impl Ticking<'_> {
                         stopped: false,
                     },
                 ));
+            }
+            if !claimed {
+                phase.unclaimed.push((*number, event.clone()));
             }
         }
         phase

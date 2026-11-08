@@ -27,6 +27,10 @@ What changed in each version, for people using Solis. Newest first.
 
 ### Fixed
 
+- **Fixes from three playtest games** (written in Solis by another session):
+  - **An event sent to an entity spawned in the same tick is no longer lost:** it arrives at the start of the next tick's events, once the entity's components exist. Bullets and shock waves no longer need the "keep it in a field, launch it next tick" workaround.
+  - **The kit's cameras and controllers compile in any project:** the actions they read (Move, Look, Jump, Sprint, Zoom, Pan, Turn, Drag) are always named in `solis/project.lst`, after the project's own; one the project hasn't made is never pressed. Before, a project needed empty Look and Zoom actions.
+  - The manual says plainly that `walk` takes metres this tick, so it needs `dt` to follow the game's speed.
 - **Every button you can see does something, or says why it can't** (the UI check):
   - While the game plays, Stop and Pause work, and the File and Help items that would change the project are greyed with "Stop the game first". Play, Pause, Step and Stop greyed in the top bar or the Play menu say why when you point at them. Pressing Play while a play's changes are waiting says to keep or undo them first, instead of doing nothing.
   - Greyed buttons say why: the Library's Import model… (no project), Export (no area or folder yet), the map's and tileset's **+** buttons at their limits, the animator's **+ Direction** and **+ Condition**, Reset this page in Settings, Show everything hidden and Unlock everything.
