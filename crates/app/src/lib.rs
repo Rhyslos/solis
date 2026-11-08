@@ -29,6 +29,7 @@ pub mod sound;
 pub mod sounds;
 pub mod sprites;
 pub mod startup;
+pub mod text_files;
 pub mod thumbnails;
 mod to_lust;
 pub mod ui_sample;

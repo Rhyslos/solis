@@ -224,7 +224,9 @@ impl Workbench {
                 // "brick.png.exe" or a .lua file another program might
                 // run, is shown in its folder instead, never opened.
                 let opens = match kind {
-                    LibraryKind::Texture => true,
+                    // Text files only ever show text: a .md opens in
+                    // the computer's Markdown program (Ledger), never runs.
+                    LibraryKind::Texture | LibraryKind::Text => true,
                     LibraryKind::Code => path.to_lowercase().ends_with(".lst"),
                     _ => false,
                 };
@@ -301,6 +303,7 @@ impl Workbench {
                             | LibraryKind::SpriteSheet
                             | LibraryKind::Tileset
                             | LibraryKind::TileMap
+                            | LibraryKind::Text
                     )
             })
         {
@@ -590,6 +593,10 @@ mod opening_tests {
             PathBuf::from("props")
         );
         assert_eq!(opened(LibraryKind::Other, "run.bat"), PathBuf::from(""));
+        assert_eq!(
+            opened(LibraryKind::Text, "notes/plan.md"),
+            PathBuf::from("notes/plan.md")
+        );
         assert_eq!(
             opened(LibraryKind::Code, "ai/sparks.lua"),
             PathBuf::from("ai")

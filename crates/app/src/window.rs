@@ -95,6 +95,8 @@ struct App {
     sounds: crate::sounds::Sounds,
     /// The project's sprite sheets (Phase 9, D2).
     sprites: crate::sprites::Sprites,
+    /// The text file shown in Properties, read when it changes.
+    text_files: crate::text_files::TextFiles,
     /// The game's sounds: playing what game code asks for.
     game_audio: crate::game_audio::GameAudio,
     /// The open project and its assets.
@@ -279,6 +281,7 @@ impl App {
             title: String::new(),
             messages: crate::logger::install(),
             updates: crate::updates::Updates::new(pending, skipped),
+            text_files: crate::text_files::TextFiles::default(),
             tidying: Default::default(),
             startup: playtest.is_none().then_some(startup),
             quitting: false,
@@ -2167,6 +2170,9 @@ impl eframe::App for App {
             self.sprites.want_pictures(wanted, &assets);
         }
         self.follow_sprites();
+        let assets = self.projects.db().map(|db| db.project().assets());
+        self.text_files
+            .follow(&mut self.workbench, assets.as_deref());
         let preview = self.sounds.preview(self.sound.device());
         self.workbench.set_preview(preview);
         self.updates.frame(&mut self.workbench);

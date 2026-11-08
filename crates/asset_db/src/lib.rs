@@ -26,8 +26,8 @@ pub use db::{
     TILESET_EXTENSION,
 };
 pub use files::{
-    AREA_EXTENSION, FileEntry, FileError, FileKind, Listing, MAX_NAME_CHARS, file_name_from,
-    valid_file_name,
+    AREA_EXTENSION, FileEntry, FileError, FileKind, Listing, MAX_NAME_CHARS, TEXT_EXTENSIONS,
+    file_name_from, valid_file_name,
 };
 pub use hash::{ContentHash, hash_file};
 pub use jobs::Jobs;

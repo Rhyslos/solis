@@ -9,6 +9,7 @@ One fuzz target per reader of a file a project can ship (decision 0042). Each ta
 | `animator.rs` | An animator file (`.solanim`): refused or read, within the limits, written back to itself, and run with every parameter set every way. |
 | `game_code.rs` | One Lust file and one Lua file (split by a 0x01 byte): checked, then loaded and run for a tick within the time limits. |
 | `import_cache.rs` | An import cache entry (`.solis/cache/*.solbin`): refused, or read with every index pointing somewhere. |
+| `text_file.rs` | A text file shown in Properties (`.md`, `.txt` and the like): read as the app reads it, then made into Markdown blocks and inline runs, never a panic. |
 | `input_actions.rs` | A project's input actions (`input.solinput`): refused or read, then written and read back the same. |
 | `model.rs` | A model file (glb or glTF): refused with why, or imported within the limits, its numbers finite. |
 | `pixels.rs` | The project's 2D settings (`pixels.solpix`): refused or read, always within the limits, and written back to themselves. |

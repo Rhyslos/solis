@@ -46,6 +46,8 @@ Make a project as soon as you start something you want to keep. Without one, Sol
 - **Area**: an empty level, saved there and opened (Solis asks first if yours has unsaved changes). See [Saving areas](saving-areas.md).
 - **Tile map**, **Tileset**, **Animator** and **Sound event**: see [Tile maps](tile-maps.md), [Tilesets and autotiling](tilesets.md), [Animators](animators.md) and [Sound events](sound-events.md).
 
+**Text files** (`.md` and `.txt` notes, and data in `.json`, `.csv`, `.toml` and `.ron`) show in the Library with their extension as their icon: notes in light blue, JSON in green, tables in pink, settings in grey-blue. Click one and Properties shows it, read only: a Markdown file's headings, lists, quotes, code and **bold** as they read, the others as plain text (up to 512 KB and the first 3,000 lines). **Open in its program** (or a double-click) opens it in the program your computer uses for that kind of file, such as Ledger for Markdown, to edit it there; Properties shows the change as soon as you save. They're under the **Code** chip too.
+
 **Import model…** above the Library brings in a model, like **File > Import model…**. It's greyed until a project is open, since the model is copied into it.
 
 **Organise files** (right-click a file or folder):

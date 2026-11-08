@@ -367,6 +367,9 @@ pub struct Workbench {
     /// area's selection as it was then: picking something else in the
     /// area shows that instead.
     pub(crate) sound_shown: Option<(String, crate::document::Selection)>,
+    /// The text file shown in Properties, as the app last read it (by
+    /// path inside the assets).
+    pub(crate) text_file: Option<(String, crate::text_view::TextRead)>,
     /// The project's buses, mute and solo, and the meters (the Mixer).
     pub(crate) mixer: crate::mixer_view::MixerState,
     /// The project's 2D settings (Settings > 2D, `pixels.solpix`).
@@ -584,6 +587,7 @@ impl Workbench {
             sound_events: std::collections::HashMap::new(),
             preview: None,
             sound_shown: None,
+            text_file: None,
             mixer: Default::default(),
             pixels: area::pixels::PixelSettings::default(),
             code_checked: None,
@@ -1385,6 +1389,7 @@ impl Workbench {
                         mixer: &self.mixer,
                         mixer_requests: &mut mixer_requests,
                         sound_shown: self.sound_shown.as_ref().map(|(path, _)| path.as_str()),
+                        text_file: self.text_file.as_ref(),
                         part: part.as_ref(),
                         running: running.as_ref(),
                         requests: &mut requests,

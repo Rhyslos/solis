@@ -60,6 +60,9 @@ pub enum LibraryKind {
     TileMap,
     /// A picture's crops (`.atlas.lst`, Atlas Crop).
     Atlas,
+    /// Plain text: notes (`.md`, `.txt`) and data (`.json`, `.csv`,
+    /// `.toml`, `.ron`), shown in Properties.
+    Text,
     /// Anything else.
     Other,
 }
@@ -81,6 +84,7 @@ impl LibraryKind {
             Self::Tileset => "Tileset",
             Self::TileMap => "Tile map",
             Self::Atlas => "Atlas crops",
+            Self::Text => "Text",
             Self::Other => "File",
         }
     }
@@ -102,6 +106,7 @@ impl LibraryKind {
             | Self::Tileset
             | Self::TileMap
             | Self::Atlas => theme::kind::SPRITE,
+            Self::Text => theme::kind::NOTES,
             Self::Other => theme::kind::OTHER,
         }
     }
@@ -119,7 +124,7 @@ impl LibraryKind {
             Self::Animator => Icon::Animator,
             Self::Tileset | Self::TileMap => Icon::Layers,
             Self::Atlas => Icon::Viewport,
-            Self::Other => Icon::Properties,
+            Self::Text | Self::Other => Icon::Properties,
         }
     }
 
@@ -196,7 +201,7 @@ impl Filter {
             ),
             Self::Maps => matches!(kind, K::Area | K::TileMap | K::Tileset),
             Self::Sounds => matches!(kind, K::Sound | K::SoundEvent),
-            Self::Code => kind == K::Code,
+            Self::Code => matches!(kind, K::Code | K::Text),
         }
     }
 }
@@ -217,6 +222,25 @@ pub struct LibraryItem {
 }
 
 impl LibraryItem {
+    /// Its colour: its kind's, or a text file's by its extension (notes
+    /// light blue, JSON green, tables pink, settings grey-blue).
+    pub(crate) fn colour(&self) -> Color32 {
+        match self.text_extension().as_deref() {
+            Some("md" | "txt") => theme::kind::NOTES,
+            Some("json") => theme::kind::JSON,
+            Some("csv") => theme::kind::TABLE,
+            Some(_) => theme::kind::SETTINGS,
+            None => self.kind.color(),
+        }
+    }
+
+    /// A text file's extension, lower case, which its icon shows ("md").
+    pub(crate) fn text_extension(&self) -> Option<String> {
+        (self.kind == LibraryKind::Text)
+            .then(|| self.path.rsplit_once('.').map(|(_, e)| e.to_lowercase()))
+            .flatten()
+    }
+
     /// The folder it's in, inside the assets ("" for the assets folder
     /// itself).
     pub fn folder(&self) -> &str {
@@ -1108,6 +1132,15 @@ fn tile<'a>(
             egui::Rect::from_min_max(egui::pos2(0.0, 0.0), egui::pos2(1.0, 1.0)),
             Color32::WHITE,
         );
+    } else if let Some(extension) = item.text_extension() {
+        // A text file's icon is its extension, in its colour.
+        painter.text(
+            picture.center(),
+            egui::Align2::CENTER_CENTER,
+            extension,
+            egui::FontId::monospace(20.0),
+            item.colour(),
+        );
     } else {
         icons::icon(
             painter,
@@ -1126,7 +1159,7 @@ fn tile<'a>(
             picture.max,
         ),
         0.0,
-        item.kind.color(),
+        item.colour(),
     );
     let name_rect = egui::Rect::from_min_max(egui::pos2(rect.left(), picture.bottom()), rect.max);
     let galley = ui.painter().layout(
@@ -1305,17 +1338,24 @@ fn list(
                         egui::vec2(3.0, ROW - 8.0),
                     ),
                     1.0,
-                    item.kind.color(),
+                    item.colour(),
                 );
-                icons::icon(
-                    ui.painter(),
-                    egui::Rect::from_min_size(
-                        egui::pos2(rect.left() + 8.0, rect.center().y - 6.0),
-                        egui::vec2(12.0, 12.0),
-                    ),
-                    item.kind.icon(),
-                    item.kind.color(),
+                let icon = egui::Rect::from_min_size(
+                    egui::pos2(rect.left() + 8.0, rect.center().y - 6.0),
+                    egui::vec2(12.0, 12.0),
                 );
+                match item.text_extension() {
+                    Some(extension) => {
+                        ui.painter().text(
+                            icon.center(),
+                            egui::Align2::CENTER_CENTER,
+                            extension,
+                            egui::FontId::monospace(8.5),
+                            item.colour(),
+                        );
+                    }
+                    None => icons::icon(ui.painter(), icon, item.kind.icon(), item.kind.color()),
+                }
                 let text = if state.search.is_empty() {
                     item.name.clone()
                 } else {
