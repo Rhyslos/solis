@@ -128,11 +128,17 @@ impl LibraryKind {
         }
     }
 
-    /// Whether it can be placed in an area (dragged in, double-clicked).
+    /// Whether it can be placed in an area (dragged in, double-clicked; a
+    /// picture, as a sprite, is only dragged in: a double-click opens it).
     pub fn placeable(self) -> bool {
         matches!(
             self,
-            Self::Model | Self::Assembly | Self::SpriteSheet | Self::SpriteClips | Self::TileMap
+            Self::Model
+                | Self::Assembly
+                | Self::SpriteSheet
+                | Self::SpriteClips
+                | Self::TileMap
+                | Self::Texture
         )
     }
 
@@ -925,7 +931,9 @@ fn item_actions(picked: Picked<'_>, state: &mut LibraryState, requests: &mut Vec
         requests.push(LibraryRequest::Place(id));
     } else if response.double_clicked() {
         match (item.kind.placeable(), item.id) {
-            (true, Some(id)) if !item.kind.opens_on_double_click() => {
+            (true, Some(id))
+                if !item.kind.opens_on_double_click() && item.kind != LibraryKind::Texture =>
+            {
                 requests.push(LibraryRequest::Place(id));
             }
             _ => requests.push(LibraryRequest::Open(item.kind, item.path.clone())),
@@ -950,6 +958,10 @@ fn item_actions(picked: Picked<'_>, state: &mut LibraryState, requests: &mut Vec
             ui.close();
         }
         if item.kind.opens_on_double_click() && ui.button("Open").clicked() {
+            requests.push(LibraryRequest::Open(item.kind, item.path.clone()));
+            ui.close();
+        }
+        if item.kind == LibraryKind::Texture && ui.button("Open").clicked() {
             requests.push(LibraryRequest::Open(item.kind, item.path.clone()));
             ui.close();
         }
@@ -1033,6 +1045,10 @@ fn hint(item: &LibraryItem) -> String {
         LibraryKind::SoundEvent => {
             "▶ to listen (a different take each time); drop sound files on it to add takes; \
              click it to change it in Properties."
+        }
+        LibraryKind::Texture => {
+            "Drag it into the viewport to place it as a sprite; double-click to open it in its \
+             own program."
         }
         _ => "Double-click to open it in its own program.",
     };

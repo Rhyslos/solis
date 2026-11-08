@@ -271,3 +271,27 @@ fn scale_check_batching_100000_sprites() {
     );
     assert!(ms <= TARGET_MS, "batching sprites takes {ms:.2} ms");
 }
+
+#[test]
+fn a_picture_is_asked_for_when_used_and_listed_as_a_picture() {
+    let mut sheets = SpriteSheets::default();
+    let id = AssetId::random();
+    sheets.paths.insert(id, "hills/far.png".into());
+    // Not read yet: nothing to draw, and the app is asked to read it once.
+    assert!(sheets.get(id).is_none());
+    assert!(sheets.get(id).is_none());
+    assert_eq!(sheets.pictures_wanted.take(), ["hills/far.png"]);
+    assert!(sheets.pictures_wanted.take().is_empty());
+    // Offered in the sheet list before it's read.
+    assert_eq!(sheets.listed(), [("far (picture)".to_string(), id)]);
+    // Read: drawn like any sheet, and no longer asked for.
+    sheets.by_path.insert(
+        "hills/far.png".into(),
+        SheetState::Read(std::sync::Arc::new(test_sheet())),
+    );
+    assert!(sheets.get(id).is_some());
+    assert!(sheets.pictures_wanted.take().is_empty());
+    // Tileset art and other files aren't pictures to read as sprites.
+    assert!(is_plain_picture("a/b.PNG") && is_plain_picture("x.jpeg"));
+    assert!(!is_plain_picture("walker.aseprite") && !is_plain_picture("png"));
+}

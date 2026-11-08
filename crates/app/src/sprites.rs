@@ -31,9 +31,23 @@ fn job_id(path: &Path) -> AssetId {
     AssetId(Id::from_raw(hasher.finish() | 1).unwrap_or_else(Id::random))
 }
 
-/// Reads and packs one Aseprite file (on a worker).
+/// Reads and packs one Aseprite file, or a PNG or JPEG as a sheet of one
+/// frame (on a worker).
 pub fn read_sheet(path: &Path) -> SheetState {
     let limits = assets::aseprite::AseLimits::default();
+    if !assets::aseprite::is_aseprite_file(path) {
+        return match asset_db::read_limited(path, limits.max_file_bytes as u64) {
+            Ok(bytes) => match assets::sprite_sheet::picture_sheet(&bytes) {
+                Ok(sheet) => SheetState::Read(Arc::new(sheet)),
+                Err(why) => SheetState::Failed(why.0),
+            },
+            Err(e) if e.kind() == std::io::ErrorKind::FileTooLarge => SheetState::Failed(format!(
+                "it's bigger than {} MB, too big for a sprite",
+                limits.max_file_bytes >> 20
+            )),
+            Err(e) => SheetState::Failed(format!("it couldn't be read ({e})")),
+        };
+    }
     let bytes = match asset_db::read_limited(path, limits.max_file_bytes as u64) {
         Ok(bytes) => bytes,
         Err(e) if e.kind() == std::io::ErrorKind::FileTooLarge => {
@@ -192,6 +206,9 @@ pub struct Sprites {
     jobs: Jobs<(String, u64, SheetState)>,
     /// Whether anything changed since the editor was last told.
     dirty: bool,
+    /// The assets folder of the last listing, for pictures a sprite asks
+    /// for between listings.
+    assets: Option<PathBuf>,
 }
 
 impl Default for Sprites {
@@ -208,6 +225,7 @@ impl Default for Sprites {
             generation: 0,
             jobs: Jobs::new(1),
             dirty: false,
+            assets: None,
         }
     }
 }
@@ -352,12 +370,26 @@ impl Sprites {
             self.queued.retain(|(p, _)| *p != path);
             self.queued.push_back((path, full));
         }
-        // Pictures have IDs too (D5), for tilesets to take art from.
+        // Pictures have IDs too (D5), for tilesets to take art from, and
+        // for sprites: one a sprite has asked for is read as a sheet of
+        // one frame, again when it changes.
         for file in listing.files.iter().filter(|f| f.kind == FileKind::Texture) {
+            let path = crate::project::slashed(&file.path);
             if let Some(id) = file.id {
-                paths.insert(id, crate::project::slashed(&file.path));
+                paths.insert(id, path.clone());
+            }
+            if self.tried.contains_key(&path) {
+                present.insert(path.clone());
+                let full = assets.join(&file.path);
+                let now = stamp(&full);
+                if self.tried.get(&path) != Some(&now) {
+                    self.tried.insert(path.clone(), now);
+                    self.queued.retain(|(p, _)| *p != path);
+                    self.queued.push_back((path, full));
+                }
             }
         }
+        self.assets = Some(assets.to_path_buf());
         self.want_art(&paths, assets);
         if paths != self.sheets.paths {
             self.sheets.paths = paths;
@@ -430,6 +462,23 @@ impl Sprites {
     /// read since the last call (the GPU uploads them), and whether the
     /// editor should be told what's changed.
     pub fn poll(&mut self) -> (Vec<String>, bool) {
+        // Pictures a sprite asked for since (they're read as sheets of one
+        // frame from now on).
+        for path in self.sheets.pictures_wanted.take() {
+            let Some(assets) = self.assets.as_ref() else {
+                break;
+            };
+            if self.tried.contains_key(&path) || !self.sheets.paths.values().any(|p| *p == path) {
+                continue;
+            }
+            let full = assets.join(&path);
+            self.tried.insert(path.clone(), stamp(&full));
+            self.sheets
+                .by_path
+                .insert(path.clone(), SheetState::Reading);
+            self.queued.push_back((path, full));
+            self.dirty = true;
+        }
         while self.jobs.running() < AT_ONCE {
             let Some((path, full)) = self.queued.pop_front() else {
                 break;
@@ -575,6 +624,40 @@ mod tests {
         // Gone: forgotten.
         s.want(&listing(&[]), &dir);
         assert!(s.sheets().by_path.is_empty());
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    #[test]
+    fn a_picture_is_read_as_a_sheet_only_once_a_sprite_asks_for_it() {
+        let dir = folder("picture");
+        let id = AssetId::random();
+        let file = dir.join("sprites/hill.png");
+        let png = assets::tile_art::png_of([4, 2], &[200; 4 * 2 * 4]).unwrap();
+        std::fs::write(&file, &png).unwrap();
+        let mut s = Sprites::default();
+        let list = listing(&[("sprites/hill.png", id)]);
+        s.want(&list, &dir);
+        settle(&mut s);
+        // Nothing asked: a project's pictures aren't all read as sheets.
+        assert!(s.sheets().by_path.is_empty());
+        // A sprite draws it: asked, read, a sheet of one frame.
+        assert!(s.sheets().get(id).is_none());
+        assert_eq!(settle(&mut s), ["sprites/hill.png"]);
+        let sheet = s.sheets().get(id).expect("read").clone();
+        assert_eq!((sheet.size, sheet.frames.len()), ([4, 2], 1));
+        // Kept with the next listing; read again when it changes.
+        s.want(&list, &dir);
+        assert!(!s.waiting());
+        assert!(s.sheets().get(id).is_some());
+        std::thread::sleep(std::time::Duration::from_millis(20));
+        let png = assets::tile_art::png_of([2, 2], &[90; 2 * 2 * 4]).unwrap();
+        std::fs::write(&file, &png).unwrap();
+        s.want(&list, &dir);
+        settle(&mut s);
+        assert_eq!(s.sheets().get(id).expect("read").size, [2, 2]);
+        // A broken picture says why.
+        std::fs::write(&file, b"not a png").unwrap();
+        assert!(matches!(read_sheet(&file), SheetState::Failed(_)));
         let _ = std::fs::remove_dir_all(&dir);
     }
 

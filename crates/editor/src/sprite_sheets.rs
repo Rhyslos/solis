@@ -125,6 +125,46 @@ pub struct SpriteSheets {
     /// The game's screens' names (decision 0087), for a Screen's choices:
     /// from the program, set when the code changes.
     pub screens: Vec<String>,
+    /// Pictures (PNG, JPEG) a sprite asked for that aren't read as sheets
+    /// yet, by path: the app reads them (shared by every copy). Pictures
+    /// are read as sheets only when a sprite uses one, so a 3D project's
+    /// textures aren't read twice.
+    pub pictures_wanted: Arc<PicturesWanted>,
+}
+
+/// Paths of pictures wanted as sprite sheets (see
+/// [`SpriteSheets::pictures_wanted`]).
+#[derive(Debug, Default)]
+pub struct PicturesWanted(std::sync::Mutex<std::collections::BTreeSet<String>>);
+
+impl PicturesWanted {
+    /// Asks for the picture at `path`.
+    pub fn ask(&self, path: &str) {
+        if let Ok(mut wanted) = self.0.lock() {
+            wanted.insert(path.to_owned());
+        }
+    }
+
+    /// Every picture asked for since, emptied.
+    pub fn take(&self) -> Vec<String> {
+        self.0
+            .lock()
+            .map(|mut w| std::mem::take(&mut *w).into_iter().collect())
+            .unwrap_or_default()
+    }
+}
+
+impl PartialEq for PicturesWanted {
+    fn eq(&self, _: &Self) -> bool {
+        true
+    }
+}
+
+/// Whether `path` is a plain picture (PNG or JPEG), which can be a sprite
+/// sheet of one frame.
+pub fn is_plain_picture(path: &str) -> bool {
+    let lower = path.to_lowercase();
+    [".png", ".jpg", ".jpeg"].iter().any(|e| lower.ends_with(e))
 }
 
 impl SpriteSheets {
@@ -273,6 +313,11 @@ impl SpriteSheets {
         match self.by_path.get(path) {
             Some(SheetState::Read(sheet)) => Some(sheet),
             Some(_) => None,
+            // A picture is read as a sheet once a sprite asks for it.
+            None if is_plain_picture(path) => {
+                self.pictures_wanted.ask(path);
+                None
+            }
             None => match self.frames.get(path)? {
                 FramesState::Read(file, _) => {
                     match self.by_path.get(self.paths.get(&file.sheet?)?)? {
@@ -522,7 +567,13 @@ impl SpriteSheets {
             .iter()
             .filter_map(
                 |(id, path)| match (self.by_path.get(path), self.frames.get(path)) {
+                    (Some(SheetState::Read(_)), _) if is_plain_picture(path) => {
+                        Some((format!("{} (picture)", name_of(path)), *id))
+                    }
                     (Some(SheetState::Read(_)), _) => Some((name_of(path), *id)),
+                    (None, None) if is_plain_picture(path) => {
+                        Some((format!("{} (picture)", name_of(path)), *id))
+                    }
                     (_, Some(FramesState::Read(..))) => {
                         Some((format!("{} (clips)", name_of(path)), *id))
                     }
