@@ -11,6 +11,7 @@ mod environment;
 mod light;
 mod listener;
 mod model;
+mod parallax;
 mod physics;
 mod reverb_zone;
 mod screen;
@@ -27,6 +28,7 @@ pub use environment::{Environment, Sky, ToneMapping};
 pub use light::{Light, LightKind, aim, sun_rotation};
 pub use listener::Listener;
 pub use model::Model;
+pub use parallax::Parallax;
 pub use physics::{BodyKind, CharacterBody, Collider, ColliderShape, RigidBody};
 pub use reverb_zone::{ReverbZone, ZoneShape};
 pub use screen::Screen;
@@ -56,6 +58,7 @@ pub fn registry() -> Result<Registry, RegistryError> {
     registry.register_type::<Animator>()?;
     registry.register_type::<TileMap>()?;
     registry.register_type::<Screen>()?;
+    registry.register_type::<Parallax>()?;
     Ok(registry)
 }
 
@@ -172,6 +175,7 @@ mod tests {
                 "Light",
                 "Listener",
                 "Model",
+                "Parallax",
                 "ReverbZone",
                 "RigidBody",
                 "Screen",
@@ -197,6 +201,14 @@ mod tests {
     #[test]
     fn every_built_in_round_trips_through_values() {
         round_trip(&Transform::default());
+        round_trip(&Parallax::default());
+        round_trip(&Parallax {
+            scroll_x: 2.0,
+            scroll_y: 0.0,
+            repeat_x: false,
+            repeat_y: true,
+            in_front: true,
+        });
         round_trip(&Camera::default());
         round_trip(&Animator::default());
         round_trip(&TileMap::default());

@@ -91,6 +91,7 @@ Tests: files ending `_tests.rs` hold the tests of the file with the same start (
 | `frames_editor.rs` | A sprite's clips file open for editing (Phase 9, D3): clips made, copied, renamed, sped up; frames added, timed, given events, moved and taken out; picking; playing; undo. Tests in `frames_editor_tests.rs`. | `FramesEditor` |
 | `frames_view.rs` | The Clips tab (the clips and their settings) and the Frames tab (the chosen clip's frames along a time ruler, events below) drawn. | `clips_tab`, `frames_tab` |
 | `sheet_view.rs` | A sprite sheet in the Library and Properties (Phase 9, D2): frames drawn crisply, a strip of frames, its tags, slices, layers and palette. | |
+| `sprite_parallax.rs` | Parallax layers (decision 0094): sprites with a Parallax moved for the game's camera (or left where placed in the editor), repeated across the view (at most `MAX_REPEATS`), and sorted into layers behind and in front, slowest first; `in_order` puts a frame's runs in drawing order. Tests in `sprite_parallax_tests.rs`. | `parallax_layers`, `ParallaxView`, `ParallaxLayer`, `in_order` |
 | `sprite_sheets.rs` | Sprite sheets in the editor (Phase 9, D2): the sheets the app read, and the area's sprites turned into what the renderer draws, a run per sheet with pick numbers. Tests in `sprite_sheets_tests.rs`. | `SpriteSheets`, `ViewSprite`, `SpriteBatch`, `batches` |
 
 ## Playing

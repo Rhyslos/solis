@@ -261,7 +261,7 @@ Solis is built in phases, one milestone per pull request. Each phase ends with a
 - [ ] Pathfinding
 - [ ] Soft shadows and richer 2D light
 - [ ] More movement: grid-step and platformer
-- [ ] Polish, the 2D sample and the manual
+- [ ] Polish, the 2D sample and the manual (parallax layers built early for the project lead's platformer, [decision 0094](docs/decisions/0094-parallax-layers.md))
 
 </details>
 

@@ -150,30 +150,35 @@ fn sprites_gather_into_a_run_per_sheet_and_see_through_ones_last_far_to_near() {
             sprite: sprite(a),
             transform: at(0.0, 0.0, 0.0),
             pick: 1,
+            parallax: None,
         },
         AreaSprite {
             entity: entity(),
             sprite: sprite(b),
             transform: at(1.0, 0.0, 0.0),
             pick: 2,
+            parallax: None,
         },
         AreaSprite {
             entity: entity(),
             sprite: sprite(a),
             transform: at(2.0, 0.0, 0.0),
             pick: 3,
+            parallax: None,
         },
         AreaSprite {
             entity: entity(),
             sprite: clear(a),
             transform: at(0.0, 0.0, 5.0),
             pick: 4,
+            parallax: None,
         },
         AreaSprite {
             entity: entity(),
             sprite: clear(a),
             transform: at(0.0, 3.0, 1.0),
             pick: 5,
+            parallax: None,
         },
         // No sheet, and a sheet not read: left out.
         AreaSprite {
@@ -181,12 +186,14 @@ fn sprites_gather_into_a_run_per_sheet_and_see_through_ones_last_far_to_near() {
             sprite: Sprite::default(),
             transform: at(0.0, 0.0, 0.0),
             pick: 6,
+            parallax: None,
         },
         AreaSprite {
             entity: entity(),
             sprite: sprite(AssetId::random()),
             transform: at(0.0, 0.0, 0.0),
             pick: 7,
+            parallax: None,
         },
     ];
     let runs = batches(&list, &sheets, 1.0, None, 0.0);
@@ -247,6 +254,7 @@ fn scale_check_batching_100000_sprites() {
                 0.0,
             )),
             pick: i + 1,
+            parallax: None,
         })
         .collect();
     let px = 1.0 / 16.0;

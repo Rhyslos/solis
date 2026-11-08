@@ -445,16 +445,18 @@ fn sprite_runs<'a>(
         .collect()
 }
 
-/// The runs a click can pick: sprites, not tile map layers (which lie
-/// under or over everything, and have no pick numbers).
+/// The runs a click can pick: sprites and parallax layers, not tile map
+/// layers (which lie under or over everything, and have no pick
+/// numbers).
 fn pickable<'a>(runs: &[render::SpritePicks<'a>]) -> Vec<render::SpritePicks<'a>> {
     runs.iter()
         .filter(|r| {
             r.run.instances.first().is_some_and(|i| {
-                matches!(
-                    i.layer(),
-                    render::SpriteLayer::CutOut | render::SpriteLayer::SeeThrough
-                )
+                i.flags & render::SpriteInstance::PARALLAX != 0
+                    || matches!(
+                        i.layer(),
+                        render::SpriteLayer::CutOut | render::SpriteLayer::SeeThrough
+                    )
             })
         })
         .copied()

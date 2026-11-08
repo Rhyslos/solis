@@ -1012,10 +1012,13 @@ impl Workbench {
         };
         Some(match self.game_scene.take() {
             Some((was, scene)) if was == key => (key, scene),
-            _ => (
-                key,
-                crate::game_panel::GameScene::of(&playing.world, &self.models, state),
-            ),
+            _ => (key, {
+                let mut scene =
+                    crate::game_panel::GameScene::of(&playing.world, &self.models, state);
+                scene.camera_start =
+                    crate::game_panel::GameScene::camera_start_in(playing.before.area());
+                scene
+            }),
         })
     }
 

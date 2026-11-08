@@ -57,6 +57,10 @@ impl SpriteInstance {
     /// A tile map's layer over everything (roofs, treetops): drawn last,
     /// blended, over whatever is there.
     pub const OVER: u32 = 32;
+    /// A parallax layer (decision 0094), with [`Self::UNDER`] or
+    /// [`Self::OVER`]: drawn as they are, and picked only where nothing
+    /// else is (behind) or over everything (in front).
+    pub const PARALLAX: u32 = 64;
 
     /// Whether it's drawn blended.
     pub fn see_through(&self) -> bool {

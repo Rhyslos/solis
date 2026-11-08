@@ -31,6 +31,10 @@ pub(crate) struct GameScene {
     /// An exported game's (decision 0093): drawn without the editor's
     /// notes over it.
     pub(crate) play_only: bool,
+    /// Where the camera looked through started, when Play was pressed:
+    /// parallax layers are drawn as placed while it's there (decision
+    /// 0094).
+    pub(crate) camera_start: Option<Vec3>,
 }
 
 impl GameScene {
@@ -64,7 +68,15 @@ impl GameScene {
                     .collect()
             }),
             play_only: false,
+            camera_start: None,
         }
+    }
+
+    /// Where the first camera in `area`'s tree order is, as the game's
+    /// starts.
+    pub(crate) fn camera_start_in(area: &area::Area) -> Option<Vec3> {
+        let first = area.first_in_tree(area.with::<area::builtin::Camera>().map(|(id, _)| id))?;
+        Some(area.world_matrix(first).w_axis.truncate())
     }
 }
 
@@ -255,18 +267,34 @@ pub(crate) fn game_panel(
         grid_step: 1.0,
         // Through a 2D camera, sprites land on whole pixels; tile maps'
         // layers under and over them.
-        sprites: std::sync::Arc::new(
-            tile_batches
-                .into_iter()
-                .chain(crate::sprite_sheets::batches(
+        sprites: std::sync::Arc::new({
+            let snap = pixel.map(|_| pixels.pixel_size());
+            // Parallax layers follow the camera the game looks through
+            // (decision 0094).
+            let (behind, front) = crate::sprite_parallax::parallax_layers(
+                &scene.view.sprites,
+                sheets,
+                pixels.pixel_size(),
+                snap,
+                0.0,
+                &crate::sprite_parallax::ParallaxView {
+                    moved: Some((position - scene.camera_start.unwrap_or(Vec3::ZERO)).truncate()),
+                    seen: &|z| crate::tile_view::ground_in_view(view_projection, z),
+                },
+            );
+            crate::sprite_parallax::in_order(
+                behind,
+                tile_batches,
+                crate::sprite_sheets::batches(
                     &scene.view.sprites,
                     sheets,
                     pixels.pixel_size(),
-                    pixel.map(|_| pixels.pixel_size()),
+                    snap,
                     0.0,
-                ))
-                .collect(),
-        ),
+                ),
+                front,
+            )
+        }),
         tile_pictures: std::sync::Arc::new(tile_pictures),
         pixel,
         ui: screens,

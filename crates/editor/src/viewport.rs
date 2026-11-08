@@ -747,18 +747,34 @@ impl Viewport {
             },
             // Sprites land on whole pixels in the 2D view, as in the game;
             // tile maps' layers under and over them.
-            sprites: std::sync::Arc::new(
-                tile_batches
-                    .into_iter()
-                    .chain(crate::sprite_sheets::batches(
+            sprites: std::sync::Arc::new({
+                let snap = (self.camera.kind == ViewKind::TwoD).then(|| self.pixels.pixel_size());
+                // Parallax layers where they're placed: the editor's
+                // camera isn't the game's (decision 0094).
+                let (behind, front) = crate::sprite_parallax::parallax_layers(
+                    &self.area.sprites,
+                    &self.sheets,
+                    self.pixels.pixel_size(),
+                    snap,
+                    ahead,
+                    &crate::sprite_parallax::ParallaxView {
+                        moved: None,
+                        seen: &|z| crate::tile_view::ground_in_view(view_projection, z),
+                    },
+                );
+                crate::sprite_parallax::in_order(
+                    behind,
+                    tile_batches,
+                    crate::sprite_sheets::batches(
                         &self.area.sprites,
                         &self.sheets,
                         self.pixels.pixel_size(),
-                        (self.camera.kind == ViewKind::TwoD).then(|| self.pixels.pixel_size()),
+                        snap,
                         ahead,
-                    ))
-                    .collect(),
-            ),
+                    ),
+                    front,
+                )
+            }),
             tile_pictures: std::sync::Arc::new(tile_pictures),
             pixel: None,
             ui: Vec::new(),

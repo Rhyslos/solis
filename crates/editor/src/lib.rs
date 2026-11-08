@@ -68,6 +68,7 @@ mod sheet_view;
 mod sound_event_view;
 pub mod sound_view;
 pub mod splash;
+pub mod sprite_parallax;
 pub mod sprite_sheets;
 pub mod status_bar;
 #[cfg(test)]

@@ -553,6 +553,8 @@ pub struct AreaSprite {
     pub transform: Mat4,
     /// Its number for picking, as models have (`AreaView::pickable`).
     pub pick: u32,
+    /// Its entity's Parallax, which makes it a layer (decision 0094).
+    pub parallax: Option<area::builtin::Parallax>,
 }
 
 /// One sprite to draw, laid out exactly as `render::SpriteInstance`, so
@@ -695,7 +697,7 @@ pub fn view_frame(
 }
 
 /// Every sprite of `sprites` that has a sheet read, as runs of one sheet
-/// each (cut-out ones, then see-through ones, sorted far to near, then
+/// each, leaving out parallax layers (`sprite_parallax::parallax_layers`) (cut-out ones, then see-through ones, sorted far to near, then
 /// top of the screen to bottom), ready to draw. Each shows its clip's
 /// frame, `ahead` seconds after its own time (a preview; 0 to show it as
 /// it is).
@@ -710,7 +712,7 @@ pub fn batches(
     // shared so tile layers can be kept between frames).
     let mut cut: HashMap<AssetId, (Vec<ViewSprite>, Vec<u32>)> = HashMap::new();
     let mut clear: Vec<(AssetId, ViewSprite, u32)> = Vec::new();
-    for s in sprites {
+    for s in sprites.iter().filter(|s| s.parallax.is_none()) {
         let Some(id) = s.sprite.sheet.map(|r| r.asset) else {
             continue;
         };

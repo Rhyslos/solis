@@ -15,6 +15,7 @@
 //! layers over sprites last, over everything (`render::SpriteLayer`). The
 //! app uploads a picture only when its key changes.
 
+use crate::sprite_parallax::{OVER, UNDER};
 use crate::sprite_sheets::{SpriteBatch, SpriteSheets, ViewSprite};
 use glam::{Mat4, Vec2, Vec3};
 use reflect::{AssetId, EntityId};
@@ -27,10 +28,6 @@ use tiles::autotile::{Art, Placed};
 /// drawn in this, so a missing terrain shows instead of quietly looking
 /// like another.
 pub(crate) const MISSING: [u8; 4] = [255, 0, 255, 255];
-
-/// `render::SpriteInstance::UNDER` and `OVER`.
-const UNDER: u32 = 16;
-const OVER: u32 = 32;
 
 /// The most chunks drawn tile by tile in one view: past this (seen from
 /// far away), a map's layers are drawn as their colour pictures.

@@ -110,6 +110,7 @@ What changed in each version, for people using Solis. Newest first.
 
 ### Added
 
+- **Parallax layers** ([decision 0094](docs/decisions/0094-parallax-layers.md)): add a **Parallax** component to a sprite and it moves with the camera at its own speed (**Scroll across** and **Scroll up**: 0 stays still, 0.5 half as far, 1 with the world, above 1 faster), repeated side by side if wanted, drawn behind everything (slowest first) or **In front**. Layers are where they're put while the game's camera is where it starts, which the editor shows; then they move at their own speed. See the manual's Parallax layers page.
 - **Export for playtesting** ([decision 0093](docs/decisions/0093-the-playtest-export.md)): **File > Export for playtesting…** makes a folder holding your game, to zip and send. A friend double-clicks the program inside (named after your game) and plays, with no editor. Choose the game's name, the area it starts in, the folder (a dated one in Documents by default) and the window. The player's settings work for real in the exported game (Alt+Enter, fullscreen, the window's size) and are kept, with its saves, a log and a crash log, in the player's `Saved Games/<Game>` folder.
 - **`Window:quit()`** closes the game, for a menu's Quit button. While playing in the editor, play stops. In Lua `solis.Window:quit()`; in Rust `quit`.
 

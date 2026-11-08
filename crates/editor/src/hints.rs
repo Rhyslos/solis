@@ -37,6 +37,9 @@ pub(crate) fn about(component: &str) -> Option<&'static str> {
         "Listener" => "Listener is the ears: sounds are heard from here.",
         "ReverbZone" => "Reverb zone makes sounds inside it echo, as in a hall or a cave.",
         "Sprite" => "Sprite shows a picture from a sprite sheet. Clip picks which animation plays.",
+        "Parallax" => {
+            "Parallax makes the sprite a background or foreground layer that moves with the camera at its own speed: press Play and move to see it."
+        }
         "Animator" => {
             "Animator plays clips by itself, switching between them as game code asks: open its graph to change how."
         }

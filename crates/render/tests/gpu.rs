@@ -3114,6 +3114,75 @@ fn sprites_are_picked_by_their_own_pixels_nearest_first() {
 }
 
 #[test]
+fn parallax_layers_are_picked_behind_everything_or_over_it() {
+    // Decision 0094: a layer behind is picked only where nothing else is;
+    // one in front over everything.
+    let Some(gpu) = gpu() else {
+        return;
+    };
+    let renderer = ViewportRenderer::new(&gpu.device, 1);
+    let mut target = renderer.create_target(&gpu.device, [64, 64]);
+    let sheet = renderer.upload_sheet(&gpu.device, &gpu.queue, [4, 4], &sheet_pixels());
+    let white = [1.0, 1.0, 1.0, 0.0];
+    let behind = render::SpriteInstance::PARALLAX | render::SpriteInstance::UNDER;
+    let front = render::SpriteInstance::PARALLAX | render::SpriteInstance::OVER;
+    // A layer behind, a metre higher than the sprite (which would win
+    // without the flag); the sprite two pixels right; a layer in front
+    // over the sprite's right half, lower down.
+    let back = [sprite_at(10.0, 10.0, 1.0, behind, white)];
+    let middle = [sprite_at(12.0, 10.0, 0.0, 0, white)];
+    let near = [sprite_at(14.0, 10.0, -1.0, front, white)];
+    let runs = [
+        render::SpritePicks {
+            run: render::SpriteRun {
+                sheet: &sheet,
+                instances: &back,
+            },
+            picks: &[5],
+        },
+        render::SpritePicks {
+            run: render::SpriteRun {
+                sheet: &sheet,
+                instances: &middle,
+            },
+            picks: &[6],
+        },
+        render::SpritePicks {
+            run: render::SpriteRun {
+                sheet: &sheet,
+                instances: &near,
+            },
+            picks: &[7],
+        },
+    ];
+    assert!(renderer.request_pick_with_sprites(
+        &gpu.device,
+        &gpu.queue,
+        &mut target,
+        flat_down(),
+        &[],
+        &runs,
+        [0, 0, 64, 64],
+    ));
+    let result = wait_for_pick(&gpu, &mut target);
+    assert_eq!(
+        result.pick_at(10, 10),
+        Some(5),
+        "the layer, where it's alone"
+    );
+    assert_eq!(
+        result.pick_at(12, 11),
+        Some(6),
+        "the sprite over the layer behind"
+    );
+    assert_eq!(
+        result.pick_at(14, 11),
+        Some(7),
+        "the layer in front over the sprite"
+    );
+}
+
+#[test]
 #[ignore = "scale check: run by tools/scale/scale-check.sh"]
 fn scale_check_100000_sprites() {
     // The CPU's side of drawing 100,000 sprites of one sheet, the plan's
