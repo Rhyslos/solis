@@ -114,6 +114,7 @@ What changed in each version, for people using Solis. Newest first.
 
 ### Added
 
+- **A getting-started guide: your first 2D platformer** (the manual's `first-platformer.md`). From an empty project to a level of solid tiles, a hero who runs and jumps, a following camera and coins to collect, explaining the editor and each line of Lust on the way. A test plays the guide's code, so it keeps working.
 - **Pictures as sprites**: a `.png` or `.jpg` in the project can be a sprite, not just an Aseprite file. Drag it from the Library into the viewport, or pick it in a Sprite's **Sheet** (*name (picture)*): it's one frame, standing on its bottom middle, up to 4096 × 4096. It's read only once a sprite uses it, and again when it's saved. Double-clicking a picture still opens it in its own program.
 - **Text files in the Library and Properties**: `.md` and `.txt` notes, and `.json`, `.csv`, `.toml` and `.ron` data, show with their extension as their icon, coloured by kind. Click one to read it in Properties (Markdown drawn as it reads); **Open in its program** or a double-click opens it in its program, such as Ledger. Before, they showed as plain files and a double-click only opened their folder.
 - **Parallax layers slide smoothly** ([decision 0094](docs/decisions/0094-parallax-layers.md)): through a 2D camera, each layer (up to 8) is drawn as a small picture of its own and slides by less than a pixel at a time, as the camera does, so slow layers never step a whole pixel at once.
