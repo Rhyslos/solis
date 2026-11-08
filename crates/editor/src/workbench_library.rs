@@ -120,6 +120,10 @@ impl Workbench {
             LibraryRequest::Place(id) if self.viewport.sheets.get(id).is_some() => {
                 self.place_sprite(id, None);
             }
+            LibraryRequest::Place(id) if self.is_picture(id) => {
+                // Read as a sheet first (asked for by `get` above).
+                self.pictures_placing.insert(id, None);
+            }
             LibraryRequest::Place(id) if self.viewport.sheets.tile_map(id).is_some() => {
                 self.place_tile_map(id, None);
             }
@@ -362,9 +366,45 @@ impl Workbench {
         // for drawing, Properties and the running game.
         sheets.work_out_clips();
         self.viewport.sheets = std::sync::Arc::new(sheets);
+        self.place_read_pictures();
         self.animator_read_again();
         self.tileset_read_again();
         self.atlas_read_again();
+    }
+
+    /// Whether `asset` is a picture (PNG, JPEG), which a sprite can show.
+    pub(crate) fn is_picture(&self, asset: AssetId) -> bool {
+        self.viewport
+            .sheets
+            .paths
+            .get(&asset)
+            .is_some_and(|p| crate::sprite_sheets::is_plain_picture(p))
+    }
+
+    /// Places each picture waiting to be a sprite that's now read as a
+    /// sheet; says why for one that couldn't be.
+    fn place_read_pictures(&mut self) {
+        let waiting: Vec<_> = self.pictures_placing.keys().copied().collect();
+        for id in waiting {
+            let sheets = std::sync::Arc::clone(&self.viewport.sheets);
+            let state = sheets.paths.get(&id).and_then(|p| sheets.by_path.get(p));
+            match state {
+                Some(crate::sprite_sheets::SheetState::Read(_)) => {
+                    let target = self.pictures_placing.remove(&id).flatten();
+                    self.place_sprite(id, target);
+                }
+                Some(crate::sprite_sheets::SheetState::Failed(why)) => {
+                    self.pictures_placing.remove(&id);
+                    self.log(
+                        LogLevel::Warning,
+                        format!("Couldn't place the picture as a sprite: {why}."),
+                    );
+                }
+                _ => {
+                    let _ = sheets.get(id);
+                }
+            }
+        }
     }
 
     /// The project's sprite sheets.
@@ -458,6 +498,10 @@ impl Workbench {
         }
         if self.viewport.sheets.tile_map(asset).is_some() {
             self.place_tile_map(asset, Some((at, parent)));
+            return;
+        }
+        if self.is_picture(asset) {
+            self.pictures_placing.insert(asset, Some((at, parent)));
             return;
         }
         self.place_targets.insert(asset, (at, parent));

@@ -384,6 +384,58 @@ fn a_sprite_sheet_shows_its_frames_in_the_library_and_properties() {
 }
 
 #[test]
+fn a_picture_dropped_on_the_viewport_becomes_a_sprite_once_read() {
+    use crate::sprite_sheets::{SheetState, SpriteSheets};
+    let (mut w, _, _) = with_a_project();
+    let id = AssetId::random();
+    w.set_library(vec![item("hill.png", LibraryKind::Texture, Some(id))]);
+    let mut sheets = SpriteSheets::default();
+    sheets.paths.insert(id, "hill.png".into());
+    let wanted = std::sync::Arc::clone(&sheets.pictures_wanted);
+    w.set_sprite_sheets(sheets.clone());
+    let before = w.document.area().len();
+    w.place_dropped(id, Vec3::new(2.0, 1.0, 0.0), None);
+    assert_eq!(w.document.area().len(), before, "not read yet");
+    assert_eq!(w.pictures_placing.len(), 1);
+    // The app is asked to read it.
+    w.set_sprite_sheets(sheets.clone());
+    assert_eq!(wanted.take(), ["hill.png"]);
+    // Read: placed where it was dropped, a sprite of the picture.
+    sheets.by_path.insert(
+        "hill.png".into(),
+        SheetState::Read(std::sync::Arc::new(
+            crate::sprite_sheets::tests::test_sheet(),
+        )),
+    );
+    w.set_sprite_sheets(sheets.clone());
+    assert!(w.pictures_placing.is_empty());
+    assert_eq!(w.document.area().len(), before + 1);
+    let placed = w.selection().expect("selected");
+    let sprite = w
+        .document
+        .area()
+        .get(placed)
+        .and_then(|e| e.get::<area::builtin::Sprite>())
+        .expect("a sprite");
+    assert_eq!(sprite.sheet.map(|r| r.asset), Some(id));
+    // One that can't be read says why, and isn't placed.
+    let other = AssetId::random();
+    sheets.paths.insert(other, "broken.png".into());
+    sheets
+        .by_path
+        .insert("broken.png".into(), SheetState::Failed("it isn't a PNG".into()));
+    w.set_sprite_sheets(sheets.clone());
+    w.place_dropped(other, Vec3::ZERO, None);
+    w.set_sprite_sheets(sheets);
+    assert!(w.pictures_placing.is_empty());
+    assert!(
+        w.log_lines()
+            .last()
+            .is_some_and(|l| l.text.contains("Couldn't place the picture"))
+    );
+}
+
+#[test]
 fn a_sprite_s_sheet_and_pivot_are_picked_from_lists() {
     let (mut w, id) = with_a_sprite_sheet();
     let placed = w.place_sprite(id, None).expect("placed");

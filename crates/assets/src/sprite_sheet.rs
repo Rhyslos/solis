@@ -105,6 +105,36 @@ fn trim(size: [u32; 2], rgba: &[u8]) -> Trimmed {
     }
 }
 
+/// A PNG or JPEG as a sprite sheet of one frame (no clips, slices or
+/// layers), so a plain picture can be a sprite. `bytes` are the file's.
+pub fn picture_sheet(bytes: &[u8]) -> Result<SpriteSheet, SheetError> {
+    let art = crate::tile_art::read_tile_art(bytes, false).map_err(SheetError)?;
+    let side = crate::aseprite::AseLimits::default().max_side;
+    if art.size[0] > side || art.size[1] > side {
+        return Err(SheetError(format!(
+            "it's {} × {} pixels; a sprite can be at most {side} × {side}",
+            art.size[0], art.size[1]
+        )));
+    }
+    build_sheet(Aseprite {
+        size: art.size,
+        frames: art
+            .frames
+            .into_iter()
+            .map(|rgba| crate::aseprite::AseFrame {
+                duration_ms: 100,
+                rgba,
+                events: Vec::new(),
+            })
+            .collect(),
+        layers: Vec::new(),
+        tags: Vec::new(),
+        slices: Vec::new(),
+        palette: Vec::new(),
+        notes: Vec::new(),
+    })
+}
+
 /// Packs `file`'s frames into a sheet.
 pub fn build_sheet(file: Aseprite) -> Result<SpriteSheet, SheetError> {
     let trimmed: Vec<Trimmed> = file
@@ -380,5 +410,20 @@ mod tests {
             notes: Vec::new(),
         };
         assert!(build_sheet(file).unwrap_err().0.contains("don't fit"));
+    }
+
+    #[test]
+    fn a_picture_is_a_sheet_of_one_frame() {
+        // A 3 × 2 picture: its canvas is its size, one frame, no clips.
+        let rgba: Vec<u8> = (0..6).flat_map(|i| [i * 40, 0, 0, 255]).collect();
+        let png = crate::tile_art::png_of([3, 2], &rgba).unwrap();
+        let sheet = super::picture_sheet(&png).unwrap();
+        assert_eq!(sheet.size, [3, 2]);
+        assert_eq!(sheet.frames.len(), 1);
+        assert!(sheet.tags.is_empty() && sheet.slices.is_empty());
+        // Not a picture, or too big: why, in words.
+        assert!(super::picture_sheet(b"not a picture").is_err());
+        let wide = crate::tile_art::png_of([5000, 1], &vec![255; 5000 * 4]).unwrap();
+        assert!(super::picture_sheet(&wide).is_err());
     }
 }

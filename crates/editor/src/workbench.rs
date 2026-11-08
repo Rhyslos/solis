@@ -434,6 +434,9 @@ pub struct Workbench {
     /// Where assets being placed go, when they were dropped somewhere:
     /// the point, and the entity they go under.
     pub(crate) place_targets: BTreeMap<AssetId, (glam::Vec3, Option<EntityId>)>,
+    /// Pictures being placed as sprites, waiting to be read as sheets:
+    /// where each goes (`None`: where the camera looks).
+    pub(crate) pictures_placing: BTreeMap<AssetId, Option<(glam::Vec3, Option<EntityId>)>>,
     /// Mistakes found in the area, for the Problems panel.
     pub(crate) problems: crate::problems::Problems,
     /// The game, while it runs.
@@ -615,6 +618,7 @@ impl Workbench {
             sheet_pictures: HashMap::new(),
             sheet_pictures_from: HashMap::new(),
             place_targets: BTreeMap::new(),
+            pictures_placing: BTreeMap::new(),
             problems: Default::default(),
             playing: None,
             sources: 0,
@@ -727,6 +731,7 @@ impl Workbench {
             // Library's place in its folders, its code's mistakes.
             self.assemblies.clear();
             self.place_targets.clear();
+            self.pictures_placing.clear();
             self.code_problems.clear();
             self.screen_pictures = crate::screen_pictures::ScreenPictures::default();
             self.set_program(None);
