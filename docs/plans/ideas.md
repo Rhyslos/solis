@@ -91,6 +91,7 @@ Each idea: what it is in everyday words, then a note for whoever builds it.
 31. **Mods.** Your players change and add to your game with LustScript (`.lsc`), which is what LustScript was made for. *Later.*
 32. **Steam:** achievements, cloud saves, the Workshop and the Steam Deck. *Later.*
 33. **Photo mode and screenshots.** *New.*
+34. **A note for code files nothing fetches.** A `.lst` file is only part of the game if `main.lst` fetches it, or a file it fetches. One that isn't is quietly left out: its components never show in Add component, and nothing says why. Problems would show a soft hint ("`enemies/dragon.lst` isn't fetched from `main.lst`, so its components aren't in the game"), with a quick fix to fetch it and a way to silence it for parked files or folders. A small change. Making *every* `.lst` file count, as `.lua` files already do, is a bigger question for Lust's own design, and is left to the Lust project. Also worth a scale case one day: checking thousands of code files on every save. *New.*
 
 ### Left out on purpose
 
