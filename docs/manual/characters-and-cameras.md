@@ -54,7 +54,7 @@ These are the ready-made [actions](input.md) **Pan**, **Drag**, **Turn** and **Z
 
 **Moving a character from your own code**
 
-`walk(wanted)` moves the component's character by `wanted` metres (`target:walk(wanted)` moves another), as far as it can: it climbs steps and slopes, slides along walls, pushes crates and rides moving platforms, and stops where it can't go. It happens at the end of the [tick](concepts.md#game-code), after physics has had game code's other changes. Call it once a tick with speed times `dt`, plus your own falling:
+`walk(wanted)` moves the component's character by `wanted` metres (`target:walk(wanted)` moves another), as far as it can: it climbs steps and slopes, slides along walls, pushes crates and rides moving platforms, and stops where it can't go. It happens at the end of the [tick](concepts.md#game-code), after physics has had game code's other changes. Call it once a tick with speed times `dt`, plus your own falling. Always multiply by `dt`: it's the tick's length at the game's speed, so the character slows down and stops with `World:setGameSpeed` like everything else. A `walk` without `dt` ignores the game's speed.
 
 ```
 fetch "solis/input":Input;
@@ -139,7 +139,7 @@ The fields at the bottom of each (`fall`, `yaw`, `pitch`) are how it's moving ri
 | Sprint | Shift (left stick click) |
 | Save and load, in the playground | F6 and F7 |
 
-All of these are the game's only while it has the mouse and keys (click the Game panel); see [Input](input.md).
+All of these are the game's only while it has the mouse and keys (click the Game panel); see [Input](input.md). The kit's actions (Move, Look, Jump, Sprint, Zoom, Pan, Turn, Drag) are always named in game code, so the kit works in a project that hasn't made them all; one your project hasn't made in **Edit > Input actions…** is never pressed.
 
 ## Tips and common problems
 - **Problem:** the character doesn't move. **Why:** the game doesn't have the keys, or there's no ground under it (it fell). **Fix:** click the Game panel; give the floor a Collider.

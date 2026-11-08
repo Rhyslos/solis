@@ -126,13 +126,26 @@ impl Names {
     }
 }
 
+/// The actions the kit's ready-made components read (`solis/kit/`). They
+/// are always named, so the kit compiles in a project that hasn't made
+/// them; one the project hasn't made is never held and its axis is 0.
+pub const KIT_ACTIONS: [&str; 8] = [
+    "Move", "Look", "Jump", "Sprint", "Zoom", "Pan", "Turn", "Drag",
+];
+
 /// `solis/project.lst`'s text, from the project's names, and notes on any
 /// that can't be named in Lust. `made_by` names the program and version,
 /// for the first line.
 pub fn project_file(made_by: &str, names: &Names) -> (String, Vec<String>) {
     let mut notes = Vec::new();
     let assembly = state_text("Assembly", &names.assemblies, "assembly", &mut notes);
-    let action = names_text("Action", &names.actions, "input action", true, &mut notes);
+    let mut actions = names.actions.clone();
+    for kit in KIT_ACTIONS {
+        if !actions.iter().any(|a| a.eq_ignore_ascii_case(kit)) {
+            actions.push(kit.to_string());
+        }
+    }
+    let action = names_text("Action", &actions, "input action", true, &mut notes);
     let sound = state_text("Sound", &names.sounds, "sound event", &mut notes);
     let bus = names_text("Bus", &names.buses, "bus", false, &mut notes);
     let clip = state_text("Clip", &names.clips, "sprite clip", &mut notes);
@@ -373,13 +386,20 @@ mod tests {
             ..Names::default()
         };
         let (text, notes) = project_file("Test 1.0", &names);
+        // The project's own first, then the kit's it hasn't made, so the
+        // kit compiles anywhere (the playtest games' feedback).
         assert!(
-            text.contains("state Action = [Move, Jump, QuickSave, Fire_2];"),
+            text.contains(
+                "state Action = [Move, Jump, QuickSave, Fire_2, Look, Sprint, Zoom, Pan, Turn, Drag];"
+            ),
             "{text}"
         );
         assert_eq!(notes.len(), 4, "{notes:?}");
         let (text, _) = project_file("Test 1.0", &Names::default());
-        assert!(text.contains("state Action = [None];"));
+        assert!(
+            text.contains("state Action = [Move, Look, Jump, Sprint, Zoom, Pan, Turn, Drag];"),
+            "{text}"
+        );
         // Buses are found again ignoring capitals, so the UI bus is Bus.Ui.
         let (text, notes) = project_file("Test 1.0", &Names::standard());
         assert!(notes.is_empty(), "{notes:?}");

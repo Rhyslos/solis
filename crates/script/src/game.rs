@@ -951,6 +951,13 @@ pub struct Game {
     count: Option<usize>,
     /// Whether the code has game-wide objects (decision 0080).
     objects: bool,
+    /// Entities spawned this tick, so far.
+    spawned: BTreeSet<EntityId>,
+    /// Events this tick no component took, in the order they were sent.
+    unclaimed: Vec<Event>,
+    /// Events sent to entities spawned in the tick they were sent in,
+    /// whose components didn't exist yet: delivered first next tick.
+    held: Vec<Event>,
 }
 
 impl std::fmt::Debug for Game {
@@ -1000,6 +1007,9 @@ impl Game {
             running: None,
             count: None,
             objects: false,
+            spawned: BTreeSet::new(),
+            unclaimed: Vec::new(),
+            held: Vec::new(),
         })
     }
 
@@ -1332,9 +1342,17 @@ impl Game {
         &mut self,
         dt: f64,
         world: &mut dyn GameWorld,
-        mut engine: Vec<Event>,
+        engine: Vec<Event>,
     ) -> Ticked {
         let told = self.told;
+        // Events sent last tick to entities spawned in it reach them now,
+        // first: their components exist since that tick ended.
+        let mut engine: Vec<Event> = std::mem::take(&mut self.held)
+            .into_iter()
+            .chain(engine)
+            .collect();
+        self.spawned.clear();
+        self.unclaimed.clear();
         // The game-wide objects first, on the first shard, and then every
         // shard has their values, so every component reads the same
         // (decision 0080). What they send is delivered after the
@@ -1395,6 +1413,15 @@ impl Game {
             self.told = true;
         }
         object_failures.extend(failures);
+        // Events for entities spawned this tick wait for the next one,
+        // where their components will be (one tick only: an entity that
+        // still has none doesn't take events).
+        let spawned = std::mem::take(&mut self.spawned);
+        self.held = std::mem::take(&mut self.unclaimed)
+            .into_iter()
+            .filter(|e| spawned.contains(&e.to))
+            .take(crate::events::MAX_WAITING)
+            .collect();
         Ticked {
             failures: object_failures,
             pause: pause_for(over, broke),
@@ -1495,6 +1522,7 @@ impl Game {
                 Some(Done::Phase(Ok(p), k)) => {
                     phase.sent.extend(p.sent);
                     phase.failures.extend(p.failures);
+                    phase.unclaimed.extend(p.unclaimed);
                     kept.changes.extend(k.changes);
                     kept.said.extend(k.said);
                     kept.dropped += k.dropped;
@@ -1525,6 +1553,15 @@ impl Game {
                 },
             ));
         }
+        for (_, change) in &kept.changes {
+            if let Change::Spawn(id, ..) = change {
+                self.spawned.insert(*id);
+            }
+        }
+        let mut unclaimed = std::mem::take(&mut phase.unclaimed);
+        unclaimed.sort_by_key(|(number, _)| *number);
+        self.unclaimed
+            .extend(unclaimed.into_iter().map(|(_, event)| event));
         land(kept, world);
         match broke {
             Some(why) => Err(why),

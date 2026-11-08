@@ -150,6 +150,7 @@ end
 ```
 
 - **When they arrive:** after every component's `update` in the tick (and after the moves those made), in the order they were sent (by the sending entity's ID, then component name). On the entity, each component with an `on` for it reacts, in the order of the components' names. An event sent while reacting to another (Hit sends Died) arrives later in the same tick.
+- **To something you just spawned:** an event sent to an entity spawned in the same tick (`entity shot = World:spawn(…); send Launch(dir) to shot;`) arrives at the start of the next tick's events, once its components exist. Its first `update` runs just before, so set it moving in the `on`, not in `update`'s first run.
 - **An event to `nothing`** goes nowhere, so a gun with no target is harmless.
 - **Lust checks** that every `send` carries what the event says, so a misspelt event or a missing value is a mistake in Problems before anything runs.
 - **Components that keep sending to each other** forever are stopped after 10,000 events in one tick, with a message in the Console (once, until the code changes), so the game can't freeze. At most 10,000 events can wait at once, holding at most 16 MB of text: past that, the `send` itself fails, so the Console points at the component sending too much.
