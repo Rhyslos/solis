@@ -37,7 +37,7 @@ fn still(scroll: f32) -> Parallax {
     }
 }
 
-fn nothing_seen(_: f32) -> Option<[Vec2; 2]> {
+fn nothing_seen(_: f32, _: [f32; 2]) -> Option<[Vec2; 2]> {
     None
 }
 
@@ -159,7 +159,7 @@ fn a_repeated_layer_covers_the_view_side_by_side() {
     };
     let list = vec![layer(id, 0.0, 0.0, Some(p), 0)];
     // The view sees from -10 m to 10 m: the sheet is 16 px = 1 m wide.
-    let seen = |_: f32| Some([Vec2::new(-10.0, -3.0), Vec2::new(10.0, 3.0)]);
+    let seen = |_: f32, _: [f32; 2]| Some([Vec2::new(-10.0, -3.0), Vec2::new(10.0, 3.0)]);
     let view = ParallaxView {
         moved: None,
         seen: &seen,
@@ -218,7 +218,7 @@ fn a_repeated_layer_has_limits() {
     let (behind, _) = parallax_layers(&list, &sheets, PX, None, 0.0, &view);
     assert_eq!(behind[0].batches[0].sprites.len(), 17 * 17);
     // Zoomed out to a continent: never more than MAX_REPEATS.
-    let huge = |_: f32| Some([Vec2::splat(-1.0e6), Vec2::splat(1.0e6)]);
+    let huge = |_: f32, _: [f32; 2]| Some([Vec2::splat(-1.0e6), Vec2::splat(1.0e6)]);
     let view = ParallaxView {
         moved: None,
         seen: &huge,
@@ -226,7 +226,7 @@ fn a_repeated_layer_has_limits() {
     let (behind, _) = parallax_layers(&list, &sheets, PX, None, 0.0, &view);
     assert_eq!(behind[0].batches[0].sprites.len(), MAX_REPEATS);
     // Broken numbers draw nothing strange.
-    let broken = |_: f32| Some([Vec2::splat(f32::NAN), Vec2::splat(f32::INFINITY)]);
+    let broken = |_: f32, _: [f32; 2]| Some([Vec2::splat(f32::NAN), Vec2::splat(f32::INFINITY)]);
     let view = ParallaxView {
         moved: Some(Vec2::new(f32::NAN, 0.0)),
         seen: &broken,

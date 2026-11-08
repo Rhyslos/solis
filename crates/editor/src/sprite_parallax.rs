@@ -27,9 +27,11 @@ pub struct ParallaxView<'a> {
     /// started (x, y); `None` in the editor, where layers are drawn where
     /// they're placed.
     pub moved: Option<Vec2>,
-    /// The part of the ground at a height a view sees (for repeating),
-    /// `None` when it can't tell (a view up to the horizon).
-    pub seen: &'a dyn Fn(f32) -> Option<[Vec2; 2]>,
+    /// The part of the ground at a height (for repeating) a view sees,
+    /// for a layer of the given scrolls (a layer drawn on its own has a
+    /// camera of its own); `None` when it can't tell (a view up to the
+    /// horizon).
+    pub seen: &'a dyn Fn(f32, [f32; 2]) -> Option<[Vec2; 2]>,
 }
 
 /// One parallax layer's sprites, ready to draw: its speeds and side, and
@@ -94,7 +96,12 @@ pub fn parallax_layers(
             continue;
         };
         one.flags |= PARALLAX | if parallax.in_front { OVER } else { UNDER };
-        let copies = repeats(&one, sheet, parallax, (view.seen)(one.corner[2]));
+        let copies = repeats(
+            &one,
+            sheet,
+            parallax,
+            (view.seen)(one.corner[2], [parallax.scroll_x, parallax.scroll_y]),
+        );
         drawn.push(Gathered {
             in_front: parallax.in_front,
             scroll: [parallax.scroll_x, parallax.scroll_y],

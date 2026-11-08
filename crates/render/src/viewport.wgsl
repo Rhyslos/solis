@@ -700,6 +700,18 @@ fn post_fs(in: PostOut) -> @location(0) vec4<f32> {
     } else {
         mapped = exposed;
     }
+    if frame.post.w > 0.5 {
+        // A layer's picture (decision 0094): its alpha is how covered each
+        // pixel is, its colours already weighed by it. Shown as drawn,
+        // clear where nothing is, weighed again for laying over what's
+        // behind.
+        let covered = clamp(hdr.a, 0.0, 1.0);
+        if covered <= 0.0 {
+            return vec4<f32>(0.0);
+        }
+        let colour = clamp(max(hdr.rgb, vec3<f32>(0.0)) / covered, vec3<f32>(0.0), vec3<f32>(1.0));
+        return vec4<f32>(encode(colour) * covered, covered);
+    }
     let shown = mix(hdr.rgb, mapped, clamp(hdr.a, 0.0, 1.0));
     return vec4<f32>(encode(clamp(shown, vec3<f32>(0.0), vec3<f32>(1.0))), 1.0);
 }
@@ -891,7 +903,8 @@ fn sprite_fs(in: SpriteOut) -> @location(0) vec4<f32> {
                 if frame.sprite_light.w >= 0.0 {
                     line = line * sprite_lit(in.world);
                 }
-                return vec4<f32>(line, select(0.0, 1.0, see_through));
+                // In a layer's picture the alpha is how covered it is.
+                return vec4<f32>(line, select(select(0.0, 1.0, see_through), 1.0, frame.post.w > 0.5));
             }
         }
         discard;
@@ -907,5 +920,8 @@ fn sprite_fs(in: SpriteOut) -> @location(0) vec4<f32> {
     // art keeps its exact colours (see the top of this file). See-through
     // sprites carry their own alpha, which only blends: the picture's
     // alpha below is kept.
-    return vec4<f32>(colour, select(0.0, texel.a, see_through));
+    // In a layer's picture (decision 0094) the alpha is how covered the
+    // pixel is: whole for pixel art, its own for see-through.
+    let solid = select(0.0, 1.0, frame.post.w > 0.5);
+    return vec4<f32>(colour, select(solid, texel.a, see_through));
 }

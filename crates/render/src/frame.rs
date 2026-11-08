@@ -163,6 +163,16 @@ pub(crate) struct FrameUniforms {
     sprite_light: [f32; 4],
 }
 
+impl FrameUniforms {
+    /// Marks the frame as a layer (decision 0094): the shaders write how
+    /// covered each pixel is into its alpha, and the last pass leaves the
+    /// picture clear where nothing is.
+    pub(crate) fn layered(mut self, on: bool) -> Self {
+        self.post[3] = if on { 1.0 } else { 0.0 };
+        self
+    }
+}
+
 /// What the renderer worked out about the sun and lamps for one frame.
 #[derive(Debug, Clone, Copy, PartialEq)]
 pub(crate) struct FrameLight {

@@ -17,7 +17,9 @@ struct Stage {
     // How far the picture slides across the source: in whole screen
     // pixels for whole steps, in source pixels for fill.
     slide: vec2<f32>,
-    _pad: vec2<f32>,
+    // x: 1 for a picture laid over the one below (decision 0094): clear
+    // where it shows nothing, its colours weighed by how covered they are.
+    over: vec2<f32>,
 };
 
 @group(0) @binding(0) var<uniform> stage: Stage;
@@ -43,8 +45,9 @@ fn pixel_fs(in: Out) -> @location(0) vec4<f32> {
     // This screen pixel, from the picture's corner.
     let at = floor(in.clip.xy) - stage.origin;
     if at.x < 0.0 || at.y < 0.0 || at.x >= stage.size.x || at.y >= stage.size.y {
-        // The bars around a picture that doesn't fill the screen.
-        return vec4<f32>(0.0, 0.0, 0.0, 1.0);
+        // The bars around a picture that doesn't fill the screen (left as
+        // they are by a picture laid over).
+        return select(vec4<f32>(0.0, 0.0, 0.0, 1.0), vec4<f32>(0.0), stage.over.x > 0.5);
     }
     if stage.whole > 0.5 {
         // Whole steps: the one source pixel under it, never a blend. The
@@ -53,7 +56,8 @@ fn pixel_fs(in: Out) -> @location(0) vec4<f32> {
         let texel = floor((at + stage.slide) / stage.scale) + vec2<f32>(1.0, 1.0);
         let most = stage.base + vec2<f32>(1.0, 1.0);
         let clamped = clamp(texel, vec2<f32>(0.0, 0.0), most);
-        return vec4<f32>(textureLoad(source, vec2<i32>(clamped), 0).rgb, 1.0);
+        let seen = textureLoad(source, vec2<i32>(clamped), 0);
+        return select(vec4<f32>(seen.rgb, 1.0), seen, stage.over.x > 0.5);
     }
     // Fill: where the middle of this screen pixel falls in the source,
     // with the blend squeezed into the last screen pixel of each source
@@ -65,5 +69,6 @@ fn pixel_fs(in: Out) -> @location(0) vec4<f32> {
     let sharp = clamp((f - vec2<f32>(0.5, 0.5)) * stage.scale + vec2<f32>(0.5, 0.5), vec2<f32>(0.0, 0.0), vec2<f32>(1.0, 1.0));
     let size = stage.base + vec2<f32>(2.0, 2.0);
     let uv = (corner + vec2<f32>(0.5, 0.5) + sharp) / size;
-    return vec4<f32>(textureSampleLevel(source, smooth_sampler, uv, 0.0).rgb, 1.0);
+    let seen = textureSampleLevel(source, smooth_sampler, uv, 0.0);
+    return select(vec4<f32>(seen.rgb, 1.0), seen, stage.over.x > 0.5);
 }

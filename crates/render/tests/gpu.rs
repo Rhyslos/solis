@@ -2763,6 +2763,188 @@ fn filling_the_screen_keeps_edges_sharp() {
     assert!(blended <= 481, "{blended} blended pixels");
 }
 
+#[test]
+fn layers_lie_over_each_other_each_slid_by_its_own_bit_of_a_pixel() {
+    // Decision 0094: the back picture as it is, a layer over it clear but
+    // for a 2 × 2 white block (its colours weighed by how covered they
+    // are), slid half a pixel: two screen pixels at ×4.
+    let Some(gpu) = gpu() else { return };
+    let renderer = ViewportRenderer::new(&gpu.device, 1);
+    let base = [480, 270];
+    let back = pattern_source(&gpu, &renderer, base);
+    let size = [base[0] + 2, base[1] + 2];
+    let front = renderer.create_target(&gpu.device, size);
+    let mut bytes = vec![0u8; (size[0] * size[1] * 4) as usize];
+    for (x, y) in [(11, 11), (12, 11), (11, 12), (12, 12)] {
+        let at = ((y * size[0] + x) * 4) as usize;
+        bytes[at..at + 4].copy_from_slice(&[255, 255, 255, 255]);
+    }
+    gpu.queue.write_texture(
+        front.color_texture().as_image_copy(),
+        &bytes,
+        wgpu::TexelCopyBufferLayout {
+            offset: 0,
+            bytes_per_row: Some(size[0] * 4),
+            rows_per_image: Some(size[1]),
+        },
+        wgpu::Extent3d {
+            width: size[0],
+            height: size[1],
+            depth_or_array_layers: 1,
+        },
+    );
+    let screen = [1920, 1080];
+    let image = renderer.create_pixel_image(&gpu.device, screen);
+    let still = pixel_layout(base, screen, PixelScaling::WholeSteps, [0.0; 2]);
+    let slid = pixel_layout(base, screen, PixelScaling::WholeSteps, [0.5, 0.0]);
+    renderer.draw_pixel_layers(
+        &gpu.device,
+        &gpu.queue,
+        &[(&back, still), (&front, slid)],
+        &image,
+    );
+    let pixels = read_texture(&gpu.device, &gpu.queue, image.texture(), screen).unwrap();
+    let at = |x: u32, y: u32| {
+        let i = ((y * screen[0] + x) * 4) as usize;
+        [pixels[i], pixels[i + 1], pixels[i + 2], pixels[i + 3]]
+    };
+    // Source pixel 11 starts at screen pixel 40 still; slid, at 38.
+    assert_eq!(at(38, 41), [255, 255, 255, 255], "the block, slid");
+    assert_eq!(at(45, 47), [255, 255, 255, 255]);
+    assert_eq!(
+        at(46, 41),
+        source_colour(12, 11),
+        "the back picture after it"
+    );
+    assert_eq!(at(37, 41), source_colour(10, 11), "and before it");
+    // Everywhere else, exactly the back picture.
+    assert_eq!(at(200, 300), source_colour(51, 76));
+}
+
+#[test]
+fn a_layer_s_picture_is_clear_where_nothing_is_drawn() {
+    // Decision 0094: no sky, alpha 0 where nothing is, whole where a
+    // sprite is.
+    let Some(gpu) = gpu() else { return };
+    let renderer = ViewportRenderer::new(&gpu.device, 1);
+    let sheet = renderer.upload_sheet(&gpu.device, &gpu.queue, [4, 4], &sheet_pixels());
+    let instances = [sprite_at(10.0, 10.0, 0.0, 0, [1.0, 1.0, 1.0, 0.0])];
+    let under = [sprite_at(
+        30.0,
+        30.0,
+        0.0,
+        render::SpriteInstance::UNDER | render::SpriteInstance::PARALLAX,
+        [1.0, 1.0, 1.0, 0.0],
+    )];
+    let runs = [
+        render::SpriteRun {
+            sheet: &sheet,
+            instances: &instances,
+        },
+        render::SpriteRun {
+            sheet: &sheet,
+            instances: &under,
+        },
+    ];
+    let params = FrameParams {
+        view_projection: flat_down(),
+        camera_position: Vec3::new(32.0, 32.0, 50.0),
+        focus: Vec3::new(32.0, 32.0, 0.0),
+        sky_top: srgb(SKY_TOP),
+        sky_horizon: srgb(SKY_HORIZON),
+        ground: srgb(GROUND),
+        shading: Shading::default(),
+        size_px: [64, 64],
+        sun: Sun::default(),
+        environment: Environment::default(),
+        editor_lines: false,
+        grid_plane: GridPlane::Ground,
+        grid_step: 1.0,
+    };
+    let mut target = renderer.create_target(&gpu.device, [64, 64]);
+    target.set_layered(true);
+    renderer.render_scene(
+        &gpu.device,
+        &gpu.queue,
+        &mut target,
+        &params,
+        &render::Scene {
+            sprites: &runs,
+            ..render::Scene::default()
+        },
+    );
+    let pixels = read_pixels(&gpu.device, &gpu.queue, &target).unwrap();
+    let alpha = |x: u32, y: u32| pixels[((y * 64 + x) * 4 + 3) as usize];
+    assert_eq!(alpha(0, 0), 0, "clear where nothing is");
+    assert_eq!(alpha(50, 50), 0);
+    assert_eq!(alpha(10, 10), 255, "a sprite covers");
+    assert_eq!(alpha(30, 30), 255, "a layer's flat sprite covers too");
+    // Its colours as drawn.
+    let got = pixel(&pixels, 64, 10, 10);
+    let want = sheet_colour(0, 0);
+    assert!(
+        got.iter().zip(want).all(|(a, b)| a.abs_diff(b) <= 1),
+        "{got:?}"
+    );
+    // An ordinary picture again: the sky, every pixel whole.
+    target.set_layered(false);
+    renderer.render_scene(
+        &gpu.device,
+        &gpu.queue,
+        &mut target,
+        &params,
+        &render::Scene {
+            sprites: &runs,
+            ..render::Scene::default()
+        },
+    );
+    let pixels = read_pixels(&gpu.device, &gpu.queue, &target).unwrap();
+    assert_eq!(pixels[3], 255);
+}
+
+/// Part of the scale check (decision 0011): eight parallax layers laid
+/// over the world's picture at 4K (decision 0094), each its own small
+/// picture slid by its own bit of a pixel. Reported, not judged: software
+/// drivers are far slower than a card.
+#[test]
+#[ignore = "scale check: run by tools/scale/scale-check.sh"]
+fn scale_check_eight_parallax_layers_at_4k() {
+    let Some(gpu) = gpu() else { return };
+    let renderer = ViewportRenderer::new(&gpu.device, 1);
+    let base = [480, 270];
+    let sources: Vec<render::ViewportTarget> = (0..9)
+        .map(|_| pattern_source(&gpu, &renderer, base))
+        .collect();
+    let image = renderer.create_pixel_image(&gpu.device, [3840, 2160]);
+    let frames = 60u32;
+    let start = std::time::Instant::now();
+    for i in 0..frames {
+        let laid: Vec<(&render::ViewportTarget, render::PixelLayout)> = sources
+            .iter()
+            .enumerate()
+            .map(|(n, source)| {
+                let slide = [(i as usize * (n + 1)) as f32 / 60.0 % 1.0, 0.0];
+                (
+                    source,
+                    pixel_layout(base, [3840, 2160], PixelScaling::WholeSteps, slide),
+                )
+            })
+            .collect();
+        renderer.draw_pixel_layers(&gpu.device, &gpu.queue, &laid, &image);
+        gpu.device
+            .poll(wgpu::PollType::Wait {
+                submission_index: None,
+                timeout: None,
+            })
+            .unwrap();
+    }
+    let ms = start.elapsed().as_secs_f64() * 1000.0 / f64::from(frames);
+    println!(
+        "Scale check: eight parallax layers and the world laid at 3840x2160 {ms:.2} ms (about nine times the pixel stage alone) on {}",
+        gpu.adapter.get_info().name
+    );
+}
+
 /// Part of the scale check (decision 0011): the pixel stage at 4K, which
 /// the 2D plan budgets at 0.2 ms on the reference card. Reported, not
 /// judged: software drivers are far slower.
