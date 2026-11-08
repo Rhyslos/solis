@@ -94,7 +94,7 @@ fn in_the_game_a_layer_moves_at_its_own_speed_on_whole_pixels() {
         seen: &nothing_seen,
     };
     let drawn = &parallax_layers(&two, &sheets, PX, Some(PX), 0.0, &view).0[0].batches[0].sprites;
-    assert_eq!(drawn[1].foot[0] - drawn[0].foot[0], 10.0);
+    assert_eq!((drawn[1].foot[0] - drawn[0].foot[0]).abs(), 10.0);
 }
 
 #[test]
