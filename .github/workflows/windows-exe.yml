@@ -37,6 +37,13 @@ concurrency:
 
 env:
   CARGO_TERM_COLOR: always
+  # The exact Inno Setup that makes the installer every installed copy
+  # downloads and runs. GitHub's Windows machines come with one, but which
+  # one changes when they are rebuilt, so the step below checks it and
+  # installs this version when it is another. Dependabot doesn't update
+  # this (or cargo-about's version below): a person does, in a pull request
+  # of its own (.github/workflows/README.md, "Tools the workflows install").
+  INNO_SETUP_VERSION: "6.7.1"
 
 jobs:
   exe:
@@ -92,13 +99,37 @@ jobs:
           cargo about generate -c about.toml licenses/third-party.hbs \
             -m crates/app/Cargo.toml -o dist/THIRD-PARTY-NOTICES.txt
           test -s dist/THIRD-PARTY-NOTICES.txt
+      # Only the pinned Inno Setup may make the installer. The compiler is
+      # asked what it is before it is used: its file carries no version
+      # number, and it prints one only when it compiles, so it checks
+      # (without building, /O-) a script of four lines. Any other answer,
+      # or none, installs the pinned version from Chocolatey and asks
+      # again; if that still isn't it, the build stops here.
       - name: Make the installer
         shell: pwsh
         run: |
+          $want = $env:INNO_SETUP_VERSION
           $iscc = "${env:ProgramFiles(x86)}\Inno Setup 6\ISCC.exe"
-          if (-not (Test-Path $iscc)) {
-            choco install innosetup --no-progress -y
+          function Get-InnoSetupVersion {
+            if (-not (Test-Path $iscc)) { return "missing" }
+            $probe = Join-Path $env:RUNNER_TEMP "inno-setup-version.iss"
+            Set-Content -Path $probe -Value '[Setup]', 'AppName=Version check', 'AppVersion=0', 'DefaultDirName={autopf}\Version check'
+            $said = & $iscc /O- $probe | Select-String -Pattern 'Compiler engine version: Inno Setup (\d+(\.\d+)+)' | Select-Object -First 1
+            if ($said) { return $said.Matches[0].Groups[1].Value }
+            return "unknown"
           }
+          $have = Get-InnoSetupVersion
+          if ($have -ne $want) {
+            Write-Host "Inno Setup on this machine: $have. Installing $want."
+            choco install innosetup "--version=$want" --allow-downgrade --no-progress -y
+            Write-Host "Chocolatey finished with exit code $LASTEXITCODE."
+            $have = Get-InnoSetupVersion
+          }
+          if ($have -ne $want) {
+            Write-Host "::error::The installer is made with Inno Setup $want only, and the compiler at '$iscc' is: $have. Nothing was built. The lines above say what Chocolatey did; if it no longer has innosetup $want, choose a new version in INNO_SETUP_VERSION (windows-exe.yml)."
+            exit 1
+          }
+          Write-Host "Making the installer with Inno Setup $have."
           & $iscc /Qp `
             "/DAppName=${{ steps.brand.outputs.name }}" `
             "/DAppId=${{ steps.brand.outputs.id }}" `

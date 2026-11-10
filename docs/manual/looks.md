@@ -7,7 +7,7 @@
 - **Stylized** is a cartoon or "cel-shaded" look, like many stylized games: light in a few flat bands, crisp highlights and dark outlines. It's the look Solis is built for.
 - **Unlit** shows colours and textures exactly as painted, with no light at all. Use it to check a texture.
 
-For now the look applies to every model in the view. Once materials become assets (Phase 2), each material can have its own.
+The look applies to every model in the view at once: a material can't have a look of its own yet.
 
 ## How to use it
 1. At the bottom left of the viewport, click the look button (it shows the look in use, such as **Standard ▴**).

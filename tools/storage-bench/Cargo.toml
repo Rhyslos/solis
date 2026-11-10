@@ -1,6 +1,7 @@
 # The benchmark behind decision 0024: hecs against a small storage of
 # Solis's own, at the scale target (DESIGN.md §2). Not part of the
-# workspace, so hecs never enters Solis's own build.
+# workspace, so Solis's own build never builds it. (hecs won, and is in
+# that build now: the `world` crate uses it.)
 #
 #     cargo run --release --manifest-path tools/storage-bench/Cargo.toml
 

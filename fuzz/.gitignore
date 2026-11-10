@@ -2,3 +2,6 @@ target/
 corpus/
 artifacts/
 coverage/
+# Written from the main Cargo.lock whenever the fuzzers are built
+# (tools/ci/fuzz-lock.sh), so it is never kept: see README.md, The lock file.
+/Cargo.lock

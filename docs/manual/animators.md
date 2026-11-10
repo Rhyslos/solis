@@ -107,6 +107,8 @@ These work while the pointer is over the Animator tab.
 | Move picked states | Drag one of them |
 | Join two states | Drag from a state's edge to another |
 | Add a state, Make transition, Start here, Delete | Right-click empty space, a state or an arrow |
+| Give up an arrow started with Make transition | Esc |
+| Delete a parameter, or start it at the value shown | Right-click its name |
 | Take away what's picked | Delete |
 | Pan | Middle-drag |
 | Zoom round the pointer | Mouse wheel |

@@ -40,7 +40,13 @@ jobs:
           persist-credentials: false
       - name: Name the archive after Cargo.lock
         id: lock
-        run: echo "hash=$(sha256sum Cargo.lock | cut -c1-12)" >> "$GITHUB_OUTPUT"
+        # `shell: bash` turns on pipefail, and the hash is set on a line of
+        # its own, so a failed sha256sum fails the step instead of naming
+        # the archive after nothing.
+        shell: bash
+        run: |
+          hash=$(sha256sum Cargo.lock | cut -c1-12)
+          echo "hash=$hash" >> "$GITHUB_OUTPUT"
       - name: Check whether this lock file is archived already
         id: exists
         env:
@@ -88,6 +94,9 @@ jobs:
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
+        # `shell: bash` turns on pipefail: if the list can't be fetched the
+        # step fails, instead of passing with nothing deleted.
+        shell: bash
         run: |
           gh release list --limit 200 --json tagName,createdAt \
             --jq 'map(select(.tagName | startswith("sources-"))) | sort_by(.createdAt) | reverse | .[5:] | .[].tagName' \

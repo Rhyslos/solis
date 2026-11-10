@@ -96,6 +96,7 @@ A clip's settings in the Clips tab:
 ## Shortcuts
 | Action | Shortcut |
 |---|---|
+| Rename a clip (your own clips) | Double-click it in the Clips tab (`Enter` keeps the name, `Esc` leaves it) |
 | Pick a frame | Click it |
 | Pick several frames | `Ctrl` + click, or `Shift` + click for a run |
 | Move picked frames (your own clips) | Drag them |
