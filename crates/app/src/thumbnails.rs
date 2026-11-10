@@ -241,6 +241,11 @@ mod tests {
         std::fs::write(folder.join("bad.png"), b"not a picture").unwrap();
         assert!(picture(&folder.join("bad.png")).is_err());
         assert!(picture(&folder.join("missing.png")).is_err());
+        // A folder, a device or a pipe named like a picture: refused at
+        // once.
+        for odd in crate::odd_files(&folder, "odd.png") {
+            assert!(picture(&odd).is_err_and(|why| why.contains("ordinary file")));
+        }
     }
 
     /// A whole BMP of one pixel, named like a PNG, is refused as a

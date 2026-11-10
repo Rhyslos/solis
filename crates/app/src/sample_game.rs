@@ -89,10 +89,6 @@ pub fn make(root: &Path) -> Result<(), asset_db::ProjectError> {
 /// With a note if that file was changed, since changes to it don't run
 /// until Phase 18.
 pub fn rust_components(assets: &Path) -> (Vec<script::RustKind>, Option<String>) {
-    use std::io::Read;
-    let Ok(file) = std::fs::File::open(assets.join("armour.rs")) else {
-        return (Vec::new(), None);
-    };
     // Line endings don't count: Git on Windows may give either file
     // Windows ones.
     let built_in = FILES
@@ -100,11 +96,12 @@ pub fn rust_components(assets: &Path) -> (Vec<script::RustKind>, Option<String>)
         .find(|(path, _)| *path == "armour.rs")
         .map_or("", |(_, t)| *t)
         .replace("\r\n", "\n");
-    // Read no more than could match (it's read on the frame).
-    let mut text = Vec::new();
-    let _ = file
-        .take(built_in.len() as u64 * 2 + 1)
-        .read_to_end(&mut text);
+    // Read no more than could match (it's read on the frame), and only
+    // from an ordinary file: opening a pipe would wait for ever.
+    let most = built_in.len() as u64 * 2 + 1;
+    let Ok(text) = reflect::ordinary_file::read_start(&assets.join("armour.rs"), most) else {
+        return (Vec::new(), None);
+    };
     let text = String::from_utf8_lossy(&text).replace("\r\n", "\n");
     let note = (text != built_in).then(|| {
         "armour.rs was changed. Rust changes don't run yet: until Phase 18 builds a game's own \

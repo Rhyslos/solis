@@ -7,7 +7,7 @@ Sound (decision 0056): the Kira library does the playing and mixing, wrapped her
 | File | What it does | Main items |
 | --- | --- | --- |
 | `lib.rs` | Lists the modules and what the crate offers. | |
-| `read.rs` | Reads WAV (through `hound`) and Ogg Vorbis (through `lewton`) within limits. Short sounds are decoded into memory; long ones are measured once and streamed from their file. | `Clip`, `ClipInfo`, `Samples`, `Format`, `ReadError`, `read_file`, `measure_file` |
+| `read.rs` | Reads WAV (through `hound`) and Ogg Vorbis (through `lewton`) within limits. Short sounds are decoded into memory; long ones are measured once and streamed from their file. Every sound file is opened in one place (`open`): only an ordinary file, within the size limit. | `Clip`, `ClipInfo`, `Samples`, `Format`, `ReadError`, `read_file`, `measure_file` |
 | `vorbis_check.rs` | Checks an Ogg Vorbis file's headers before `lewton` reads them, because a damaged header can make it ask for more memory than there is. Walks every page on the way, refusing a second stream or stray bytes. | |
 | `vorbis_stream.rs` | An Ogg Vorbis file as it's decoded: reads its packets itself and hands `lewton` one at a time, only of the stream that was checked; opens at any frame, starting on a page the check walked. | `VorbisStream` (inside the crate) |
 | `overview.rs` | A sound's loudness over its length, small enough to keep for every sound: the waveform the Library and Properties draw. | `Overview` |

@@ -227,18 +227,7 @@ pub fn move_to_new_format(
 /// The start of the file at `path` (up to [`HEAD_BYTES`]), if it's an
 /// ordinary file.
 fn read_head(path: &Path) -> std::io::Result<Vec<u8>> {
-    use std::io::Read;
-    if !std::fs::metadata(path)?.is_file() {
-        return Err(std::io::Error::new(
-            std::io::ErrorKind::InvalidData,
-            "it isn't an ordinary file",
-        ));
-    }
-    let mut head = Vec::with_capacity(HEAD_BYTES);
-    std::fs::File::open(path)?
-        .take(HEAD_BYTES as u64)
-        .read_to_end(&mut head)?;
-    Ok(head)
+    Ok(reflect::ordinary_file::read_start(path, HEAD_BYTES as u64)?)
 }
 
 /// The part of `bytes` that's whole UTF-8 text (a read cut short may end
@@ -519,6 +508,26 @@ mod tests {
         let _ = std::fs::remove_file(&elsewhere);
         let _ = std::fs::remove_file(&climbing);
         let _ = std::fs::remove_dir_all(&root);
+    }
+
+    #[test]
+    fn only_an_ordinary_file_is_saved_over_and_only_its_start_looked_at() {
+        let root = project("ordinary");
+        // A folder, a device or a pipe where the file should be: saving
+        // refuses at once, and writes nothing through it.
+        for odd in crate::odd_files(&root.join("assets"), "farm.note") {
+            let err = read_head(&odd).unwrap_err();
+            assert_eq!(err.kind(), std::io::ErrorKind::InvalidData, "{odd:?}");
+            let refused = save(&root, &odd, b"note version 2;", &NOTE, |_| Ok(()));
+            assert!(matches!(refused, Err(SaveError::Io(_))), "{odd:?}");
+        }
+        assert!(backups(&root).is_empty());
+        // Of a long file, only the start is read.
+        let long = root.join("assets/long.note");
+        std::fs::write(&long, vec![b'n'; HEAD_BYTES + 100]).unwrap();
+        assert_eq!(read_head(&long).unwrap(), vec![b'n'; HEAD_BYTES]);
+        std::fs::write(&long, b"short").unwrap();
+        assert_eq!(read_head(&long).unwrap(), b"short");
     }
 
     #[test]

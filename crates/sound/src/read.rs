@@ -182,16 +182,24 @@ impl From<io::Error> for ReadError {
     }
 }
 
-/// Reads a sound file: held in memory if it's up to
-/// [`MAX_IN_MEMORY_SECONDS`] long, otherwise measured and streamed from
-/// the file when played.
-pub fn read_file(path: &Path) -> Result<Clip, ReadError> {
-    let file = File::open(path)?;
+/// Opens the sound file at `path`, the one way this crate opens a file:
+/// only an ordinary file (a project can hold a link to a device, which
+/// never ends, or a pipe, which waits for ever, named like a sound; see
+/// `reflect::ordinary_file`) of at most [`MAX_FILE_BYTES`].
+pub(crate) fn open(path: &Path) -> Result<BufReader<File>, ReadError> {
+    let file = reflect::ordinary_file::open(path).map_err(|why| ReadError::Io(why.to_string()))?;
     let size = file.metadata()?.len();
     if size > MAX_FILE_BYTES {
         return Err(ReadError::TooBig(size));
     }
-    let mut decoder = Decoder::new(BufReader::new(file))?;
+    Ok(BufReader::new(file))
+}
+
+/// Reads a sound file: held in memory if it's up to
+/// [`MAX_IN_MEMORY_SECONDS`] long, otherwise measured and streamed from
+/// the file when played.
+pub fn read_file(path: &Path) -> Result<Clip, ReadError> {
+    let mut decoder = Decoder::new(open(path)?)?;
     let (frames, overview) = decode_all(&mut decoder, Keep::OrStream)?;
     let info = decoder.info_with(overview.frames());
     let samples = match frames {
@@ -227,12 +235,7 @@ pub fn read_bytes(bytes: &[u8]) -> Result<Clip, ReadError> {
 /// file ([`Clip::streamed`]), so nothing big is held for a sound that's
 /// only listed.
 pub fn measure_file(path: &Path) -> Result<(ClipInfo, Overview), ReadError> {
-    let file = File::open(path)?;
-    let size = file.metadata()?.len();
-    if size > MAX_FILE_BYTES {
-        return Err(ReadError::TooBig(size));
-    }
-    let mut decoder = Decoder::new(BufReader::new(file))?;
+    let mut decoder = Decoder::new(open(path)?)?;
     let (_, overview) = decode_all(&mut decoder, Keep::Nothing)?;
     Ok((decoder.info_with(overview.frames()), overview))
 }

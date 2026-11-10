@@ -78,16 +78,7 @@ impl ContentHash {
     /// ordinary file of at most `MAX_HASHED_BYTES` (4 GB) is read: a link to a
     /// device or a pipe would never end.
     pub fn update_file(&mut self, path: &Path) -> std::io::Result<()> {
-        let not_a_file = || std::io::Error::other("it isn't an ordinary file");
-        // Checked before opening too: opening a pipe waits for a writer.
-        if !std::fs::metadata(path)?.is_file() {
-            return Err(not_a_file());
-        }
-        let file = std::fs::File::open(path)?;
-        if !file.metadata()?.is_file() {
-            return Err(not_a_file());
-        }
-        let mut file = file.take(MAX_HASHED_BYTES + 1);
+        let mut file = reflect::ordinary_file::open(path)?.take(MAX_HASHED_BYTES + 1);
         let mut buffer = vec![0u8; 1 << 16];
         let mut read = 0u64;
         loop {
@@ -135,6 +126,22 @@ mod tests {
             pieces.update(chunk);
         }
         assert_eq!(pieces.finish(), of(&data));
+    }
+
+    #[test]
+    fn only_an_ordinary_file_is_hashed() {
+        let folder = crate::test_folder("hash-ordinary");
+        std::fs::create_dir_all(&folder).unwrap();
+        let file = folder.join("crate.glb");
+        std::fs::write(&file, b"crate").unwrap();
+        assert_eq!(hash_file(&file).unwrap(), of(b"crate"));
+        // A folder, a device or a pipe named like a model: refused at once.
+        for odd in crate::odd_files(&folder, "crate.glb") {
+            let err = hash_file(&odd).unwrap_err();
+            assert_eq!(err.to_string(), "it isn't an ordinary file", "{odd:?}");
+        }
+        assert!(hash_file(&folder.join("none.glb")).is_err());
+        let _ = std::fs::remove_dir_all(&folder);
     }
 
     #[test]

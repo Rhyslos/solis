@@ -6,7 +6,6 @@
 
 use script::{Code, CodeProblem};
 use std::hash::{Hash, Hasher};
-use std::io::Read;
 use std::path::{Path, PathBuf};
 use std::sync::Arc;
 use std::sync::mpsc::{Receiver, channel};
@@ -405,16 +404,11 @@ impl GameCode {
     }
 }
 
-/// Whether `file` holds exactly `text`, reading no more than that.
+/// Whether `file` is an ordinary file holding exactly `text`, reading no
+/// more than that.
 fn same_text(file: &Path, text: &str) -> bool {
-    let Ok(opened) = std::fs::File::open(file) else {
-        return false;
-    };
-    let mut old = Vec::with_capacity(text.len());
-    opened
-        .take(text.len() as u64 + 1)
-        .read_to_end(&mut old)
-        .is_ok_and(|_| old == text.as_bytes())
+    reflect::ordinary_file::read_start(file, text.len() as u64 + 1)
+        .is_ok_and(|old| old == text.as_bytes())
 }
 
 /// A hash of the files read and those left out, to tell a change.
@@ -448,6 +442,23 @@ mod tests {
             std::thread::sleep(std::time::Duration::from_millis(5));
         }
         None
+    }
+
+    #[test]
+    fn a_file_is_the_same_text_only_if_it_is_an_ordinary_file_holding_it() {
+        let dir = folder("same-text");
+        let file = dir.join("names.lst");
+        std::fs::write(&file, "enum Clip {}").unwrap();
+        assert!(same_text(&file, "enum Clip {}"));
+        assert!(!same_text(&file, "enum Clip {"), "the file holds more");
+        assert!(!same_text(&file, "enum Clip {};"), "the file holds less");
+        assert!(!same_text(&dir.join("none.lst"), ""));
+        // A folder, a device or a pipe in its place: never the same, and
+        // answered at once (it's asked on every check of the game's code).
+        for odd in crate::odd_files(&dir, "names.lst") {
+            assert!(!same_text(&odd, ""), "{odd:?}");
+            assert!(!same_text(&odd, "enum Clip {}"), "{odd:?}");
+        }
     }
 
     #[test]

@@ -23,14 +23,14 @@ Read sound files and play them, without ever changing the game.
 ## Must never
 
 - Change game state, or be part of the checksum: sound is output only.
-- Crash, or read past a limit, on a damaged or hostile file.
+- Crash, or read past a limit, on a damaged or hostile file, or open anything but an ordinary file (`read::open`, the one place a sound file is opened: a link to a device or a pipe named like a sound would never end).
 - Make the frame wait: files are read on workers, and Kira mixes on its own thread.
 - Show Kira's types outside this crate.
 - Know about the editor or the GPU.
 
 ## Depends on
 
-`area` (its settings-file reader, for `.solsound` files) and `reflect` (asset IDs and values), Kira (`cpal` backend only), hound, lewton, ogg, log.
+`area` (its settings-file reader, for `.solsound` files) and `reflect` (asset IDs and values, and the one way files are opened), Kira (`cpal` backend only), hound, lewton, ogg, log.
 
 ## Status
 

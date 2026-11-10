@@ -15,6 +15,7 @@ use crate::model::{
 };
 use crate::texture;
 use base64::Engine as _;
+use reflect::ordinary_file::{self, Refused};
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
@@ -193,62 +194,29 @@ fn every_corner_lands(model: &Model) -> Result<(), ImportError> {
 }
 
 /// Reads a file, refusing it first if it is bigger than `limit` bytes,
-/// and never reading more than that even if it grows meanwhile.
+/// and never reading more than that even if it grows meanwhile. Only an
+/// ordinary file is read: a link to a device or a pipe (which would never
+/// end, or wait for ever) is refused.
 fn read_limited(path: &Path, limit: u64) -> Result<Vec<u8>, ImportError> {
-    use std::io::Read;
-    let unreadable =
-        |e: std::io::Error| ImportError::Unreadable(format!("{} ({e})", path.display()));
-    let file = open_file(path)?;
-    let size = file.metadata().map_err(unreadable)?.len();
-    if size > limit {
-        return Err(ImportError::TooBig { bytes: size, limit });
-    }
-    let mut bytes = Vec::with_capacity(size as usize);
-    file.take(limit.saturating_add(1))
-        .read_to_end(&mut bytes)
-        .map_err(unreadable)?;
-    if bytes.len() as u64 > limit {
-        return Err(ImportError::TooBig {
-            bytes: bytes.len() as u64,
-            limit,
-        });
-    }
-    Ok(bytes)
+    ordinary_file::read_limited(path, limit).map_err(|why| refused(path, why))
 }
 
-/// Opens an ordinary file: a link to a device or a pipe (which would
-/// never end, or wait for ever) is refused.
-fn open_file(path: &Path) -> Result<std::fs::File, ImportError> {
-    let unreadable =
-        |e: std::io::Error| ImportError::Unreadable(format!("{} ({e})", path.display()));
-    let not_a_file =
-        || ImportError::Unreadable(format!("{} isn't an ordinary file", path.display()));
-    // Checked before opening too: opening a pipe waits for a writer.
-    if !std::fs::metadata(path).map_err(unreadable)?.is_file() {
-        return Err(not_a_file());
-    }
-    let file = std::fs::File::open(path).map_err(unreadable)?;
-    if !file.metadata().map_err(unreadable)?.is_file() {
-        return Err(not_a_file());
-    }
-    Ok(file)
-}
-
-/// Reads at most `length` bytes from the start of a file: a buffer only
-/// ever takes what it declares, however big the file it points at is.
+/// Reads at most `length` bytes from the start of an ordinary file: a
+/// buffer only ever takes what it declares, however big the file it
+/// points at is.
 fn read_prefix(path: &Path, length: u64) -> Result<Vec<u8>, ImportError> {
-    use std::io::Read;
-    let unreadable =
-        |e: std::io::Error| ImportError::Unreadable(format!("{} ({e})", path.display()));
-    let file = open_file(path)?;
-    // Room for exactly what will be read: a list left to grow by itself
-    // doubles, and could take twice the bytes the buffer was counted as.
-    let size = file.metadata().map_err(unreadable)?.len();
-    let mut data = Vec::with_capacity(length.min(size) as usize);
-    file.take(length)
-        .read_to_end(&mut data)
-        .map_err(unreadable)?;
-    Ok(data)
+    ordinary_file::read_start(path, length).map_err(|why| refused(path, why))
+}
+
+/// Why the file at `path` wasn't read, as an import error.
+fn refused(path: &Path, why: Refused) -> ImportError {
+    match why {
+        Refused::NotAFile => {
+            ImportError::Unreadable(format!("{} isn't an ordinary file", path.display()))
+        }
+        Refused::TooBig { bytes, limit } => ImportError::TooBig { bytes, limit },
+        Refused::Io(e) => ImportError::Unreadable(format!("{} ({e})", path.display())),
+    }
 }
 
 /// The bytes a buffer without an address takes from a `.glb`'s binary

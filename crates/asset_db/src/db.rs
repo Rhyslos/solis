@@ -8,6 +8,7 @@ use crate::hash::hash_file;
 use crate::project::Project;
 use crate::sidecar::{self, Sidecar};
 use reflect::AssetId;
+use reflect::ordinary_file::Refused;
 use std::collections::{BTreeMap, HashMap};
 use std::path::{Path, PathBuf};
 use std::time::{Duration, Instant, SystemTime};
@@ -601,13 +602,12 @@ fn walk(root: &Path) -> (Vec<PathBuf>, Vec<PathBuf>) {
 /// Copies the file `from` to a new file `to`: never into a file or link
 /// already there.
 fn copy_new(from: &Path, to: &Path) -> std::io::Result<()> {
-    let mut source = std::fs::File::open(from)?;
-    if !source.metadata()?.is_file() {
-        return Err(std::io::Error::other(format!(
-            "{} isn't an ordinary file",
-            from.display()
-        )));
-    }
+    let mut source = reflect::ordinary_file::open(from).map_err(|why| match why {
+        Refused::NotAFile => {
+            std::io::Error::other(format!("{} isn't an ordinary file", from.display()))
+        }
+        other => other.into(),
+    })?;
     let mut target = std::fs::OpenOptions::new()
         .write(true)
         .create_new(true)
@@ -878,6 +878,31 @@ mod tests {
         std::fs::write(assets.join("crate.bin"), &bin).unwrap();
         let (changes, _) = db.rescan();
         assert!(changes.contains(&Change::Changed(id)));
+    }
+
+    #[test]
+    fn only_ordinary_files_are_copied_in() {
+        let (project, assets) = project("db-copy-odd");
+        let outside = test_folder("db-copy-odd-source");
+        std::fs::create_dir_all(&outside).unwrap();
+        let (db, ..) = open(project);
+        // A folder, a device or a pipe named like a model: refused at
+        // once (a pipe would wait for ever), and nothing is left behind.
+        for odd in crate::odd_files(&outside, "crate.glb") {
+            let err = db.copy_in(&odd).unwrap_err();
+            assert!(err.to_string().contains("isn't an ordinary file"), "{err}");
+        }
+        assert!(!assets.join("crate.glb").exists());
+        // The same for a file the model reads.
+        let mut b = assets::sample::Builder::default();
+        b.add_cube_mesh(0.5, None);
+        b.json_nodes = vec![r#"{"mesh":0}"#.into()];
+        for odd in crate::odd_files(&outside, "crate.bin") {
+            let model = odd.with_file_name("crate.gltf");
+            std::fs::write(&model, b.json(Some("crate.bin"))).unwrap();
+            assert!(db.copy_in(&model).is_err(), "{odd:?}");
+        }
+        assert!(!assets.join("crate.bin").exists());
     }
 
     #[test]

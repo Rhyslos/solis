@@ -245,6 +245,62 @@ fn a_file_bigger_than_the_limit_is_refused_before_reading() {
     );
 }
 
+/// A project can hold a folder, or a link to a device or a pipe, named
+/// like a sound. A device never ends and a pipe nobody writes to never
+/// opens, so each is refused at once, before it's opened, by everything
+/// that opens a sound file. (If this test hangs, that check has gone.)
+#[test]
+fn only_an_ordinary_file_is_opened_as_a_sound() {
+    let dir = test_dir("special");
+    let (info, _) = measure_file(&data("tone_mono_44k.ogg")).unwrap();
+    let folder = dir.join("folder.wav");
+    std::fs::create_dir(&folder).unwrap();
+    #[cfg_attr(not(unix), allow(unused_mut))]
+    let mut odd = vec![folder];
+    // Windows has no devices or pipes in a project's folder: Unix only.
+    #[cfg(unix)]
+    {
+        let device = dir.join("zero.wav");
+        std::os::unix::fs::symlink("/dev/zero", &device).unwrap();
+        let pipe = dir.join("pipe.ogg");
+        let made = std::process::Command::new("mkfifo").arg(&pipe).status();
+        assert!(made.unwrap().success(), "mkfifo");
+        odd.extend([device, pipe]);
+    }
+    let refused = ReadError::Io("it isn't an ordinary file".into());
+    for path in &odd {
+        assert_eq!(read_file(path).unwrap_err(), refused, "{path:?}");
+        assert_eq!(measure_file(path).unwrap_err(), refused, "{path:?}");
+        let stream = crate::device::FileStream::open(path, info);
+        assert_eq!(stream.err(), Some(refused.clone()), "{path:?}");
+    }
+    assert_eq!(
+        refused.to_string(),
+        "couldn't read it: it isn't an ordinary file"
+    );
+    // An ordinary file beside them still reads, and plays from its file.
+    let good = dir.join("tone.ogg");
+    std::fs::copy(data("tone_mono_44k.ogg"), &good).unwrap();
+    assert_eq!(read_file(&good).unwrap().info, info);
+    assert!(crate::device::FileStream::open(&good, info).is_ok());
+}
+
+/// A sound that's played from its file is opened again each time it
+/// starts: one that has grown past the limit since it was measured is
+/// refused then too.
+#[test]
+fn a_streamed_sound_grown_past_the_limit_is_refused_when_it_plays() {
+    let dir = test_dir("grown");
+    let path = dir.join("tone.ogg");
+    std::fs::copy(data("tone_mono_44k.ogg"), &path).unwrap();
+    let (info, _) = measure_file(&path).unwrap();
+    assert!(crate::device::FileStream::open(&path, info).is_ok());
+    let file = std::fs::OpenOptions::new().write(true).open(&path).unwrap();
+    file.set_len(MAX_FILE_BYTES + 1).unwrap(); // sparse: nothing is written
+    let stream = crate::device::FileStream::open(&path, info);
+    assert_eq!(stream.err(), Some(ReadError::TooBig(MAX_FILE_BYTES + 1)));
+}
+
 #[test]
 fn a_missing_file_is_an_error_not_a_crash() {
     assert!(matches!(

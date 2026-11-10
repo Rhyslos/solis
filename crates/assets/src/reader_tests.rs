@@ -491,6 +491,89 @@ fn damaged_files_with_lights_never_crash_the_reader() {
     }
 }
 
+/// Things that aren't ordinary files, each called `name` in a folder of
+/// its own under `folder`: a folder and, on Unix, a link to a device
+/// (which never ends) and a pipe nobody writes to (which never opens).
+/// Windows has neither of those in a project's folder. A reader that
+/// hangs on one has lost its check (`reflect::ordinary_file`).
+fn odd_files(folder: &std::path::Path, name: &str) -> Vec<std::path::PathBuf> {
+    let inside = |kind: &str| {
+        std::fs::create_dir_all(folder.join(kind)).unwrap();
+        folder.join(kind).join(name)
+    };
+    let as_folder = inside("as-folder");
+    std::fs::create_dir_all(&as_folder).unwrap();
+    #[cfg_attr(not(unix), allow(unused_mut))]
+    let mut odd = vec![as_folder];
+    #[cfg(unix)]
+    {
+        let device = inside("as-device");
+        std::os::unix::fs::symlink("/dev/zero", &device).unwrap();
+        let pipe = inside("as-pipe");
+        let made = std::process::Command::new("mkfifo").arg(&pipe).status();
+        assert!(made.unwrap().success(), "mkfifo");
+        odd.extend([device, pipe]);
+    }
+    odd
+}
+
+#[test]
+fn only_ordinary_files_are_read_for_a_model() {
+    let folder = std::env::temp_dir().join(format!("solis-odd-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&folder);
+    // The model itself: refused at once, saying why.
+    for odd in odd_files(&folder.join("models"), "ship.glb") {
+        for err in [
+            load(&odd, &limits()).unwrap_err(),
+            referenced_files(&odd, &limits()).unwrap_err(),
+        ] {
+            assert!(
+                matches!(&err, ImportError::Unreadable(why) if why.ends_with("isn't an ordinary file")),
+                "{odd:?}: {err}"
+            );
+        }
+    }
+    // Its buffer: the model can't be read.
+    let mut b = Builder::default();
+    let mesh = b.add_cube_mesh(0.5, Some(0));
+    b.json_materials = vec![r#"{"pbrMetallicRoughness":{"baseColorTexture":{"index":0}}}"#.into()];
+    b.json_textures = vec![r#"{"source":0,"sampler":0}"#.into()];
+    b.json_images = vec![r#"{"uri":"paint.png"}"#.into()];
+    b.json_nodes = vec![format!(r#"{{"mesh":{mesh}}}"#)];
+    for odd in odd_files(&folder.join("buffers"), "cube.bin") {
+        let path = odd.with_file_name("cube.gltf");
+        std::fs::write(&path, b.json(Some("cube.bin"))).unwrap();
+        assert!(load(&path, &limits()).is_err(), "{odd:?}");
+    }
+    // Its texture: left out with a warning, and the model still reads.
+    for odd in odd_files(&folder.join("textures"), "paint.png") {
+        let path = odd.with_file_name("cube.gltf");
+        std::fs::write(&path, b.json(Some("cube.bin"))).unwrap();
+        std::fs::write(odd.with_file_name("cube.bin"), &b.bin).unwrap();
+        let model = load(&path, &limits()).unwrap();
+        assert!(model.textures.is_empty(), "{odd:?}");
+        assert_eq!(model.warnings.len(), 1, "{odd:?}: {:?}", model.warnings);
+    }
+    // Ordinary files in the same places read as ever, and one past the
+    // limit is refused with its size.
+    let path = folder.join("cube.gltf");
+    std::fs::write(&path, b.json(Some("cube.bin"))).unwrap();
+    std::fs::write(folder.join("cube.bin"), &b.bin).unwrap();
+    std::fs::write(folder.join("paint.png"), checker_png(16, 4)).unwrap();
+    let model = load(&path, &limits()).unwrap();
+    assert_eq!((model.triangles(), model.textures.len()), (12, 1));
+    let size = std::fs::metadata(&path).unwrap().len();
+    let tight = Limits {
+        max_file_bytes: size - 1,
+        ..limits()
+    };
+    assert!(matches!(
+        load(&path, &tight),
+        Err(ImportError::TooBig { bytes, limit }) if bytes == size && limit == size - 1
+    ));
+    let _ = std::fs::remove_dir_all(&folder);
+}
+
 // ------------------------------------- holes found by the Phase 1 review ---
 
 #[test]

@@ -15,11 +15,13 @@ Give every part of Solis one way to see any component, whether it's built in, wr
 
 Nothing here knows Rust types beyond the [`Component`] trait for typed access, so components defined while the program runs work the same way as built-in ones.
 
+As the one crate every reader of files already depends on, it also holds the one way a file is opened (`ordinary_file`): only an ordinary file, never a folder, a device or a pipe (a project can ship a link to one, named like any picture or sound, and reading it would never end), and never more of it than asked. The model, picture, sound, project and text readers all open their files there.
+
 ## Must never
 
 - Identify a component by its Rust type (`TypeId`): names only, so Lust libraries can be rebuilt and Lua components defined at run time.
 - Clamp a stored value to a field's range: ranges are hints for dragging only.
-- Depend on any other Solis crate, or on the GPU, the window or files.
+- Depend on any other Solis crate, or on the GPU or the window. It knows no file's layout either: the one thing it does with files is open them safely (`ordinary_file`), for every crate that reads one.
 
 ## Depends on
 
