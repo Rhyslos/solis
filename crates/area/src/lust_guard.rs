@@ -3,7 +3,9 @@
 //! and a long run of `!` takes it time that grows with the square of the
 //! run's length. So game code (`script::code`) and data files
 //! ([`crate::lust_data`]) are looked over here first, and what would set
-//! either off is refused as an ordinary mistake.
+//! either off is refused as an ordinary mistake. A data file is then
+//! checked piece by piece against what one may hold
+//! ([`crate::lust_check`], with the same [`Pieces`]).
 //!
 //! The text is split as Lust's own reader splits it: comments, text,
 //! numbers, `lua { }` blocks and the characters Lust skips each end where
@@ -38,10 +40,7 @@ pub enum Found<'a> {
 /// Everything the guards look for in `text`, in order, each with its line
 /// (from 1). One pass, in time that grows only with the text's length.
 pub fn scan(text: &str) -> impl Iterator<Item = (u32, Found<'_>)> {
-    let mut pieces = Pieces {
-        rest: text,
-        line: 1,
-    };
+    let mut pieces = Pieces::new(text);
     let mut declaring = None;
     let mut run = 0usize;
     std::iter::from_fn(move || {
@@ -66,13 +65,13 @@ pub fn scan(text: &str) -> impl Iterator<Item = (u32, Found<'_>)> {
                 }
                 // Lust skips these, so a word and its name still meet.
                 Piece::Stray(_) => {}
-                Piece::Text { value } => {
+                Piece::Text { value, .. } => {
                     declaring = None;
                     if value {
                         return Some((line, Found::Value));
                     }
                 }
-                Piece::Other => declaring = None,
+                Piece::Number(_) | Piece::Symbol(_) => declaring = None,
             }
         }
     })
@@ -80,24 +79,48 @@ pub fn scan(text: &str) -> impl Iterator<Item = (u32, Found<'_>)> {
 
 /// A piece of Lust text, as Lust's reader splits it.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum Piece<'a> {
-    /// A name or one of Lust's words.
+pub(crate) enum Piece<'a> {
+    /// A name or one of Lust's words. A `lua { }` block after the word
+    /// `lua` is stepped over with it.
     Word(&'a str),
-    /// Text in quotes, and whether a `{` in it starts a value.
-    Text { value: bool },
-    /// Anything else Lust reads: a number, a symbol, a `lua { }` block.
-    Other,
+    /// Text in quotes: what's between them as written, whether a `{` in it
+    /// starts a value, and whether its closing quote is there.
+    Text {
+        inside: &'a str,
+        value: bool,
+        closed: bool,
+    },
+    /// A number, as written.
+    Number(&'a str),
+    /// A symbol Lust reads (`;`, `=`, `!=`). Lust joins a few more pairs
+    /// into one (`==`, `-=`), which come here as two: no guard needs them
+    /// joined.
+    Symbol(&'a str),
     /// A character Lust has no use for, which it reports and skips.
     Stray(char),
 }
 
 /// Lust text, a piece at a time, each with the line it starts on.
-struct Pieces<'a> {
+pub(crate) struct Pieces<'a> {
     rest: &'a str,
     line: u32,
 }
 
 impl<'a> Pieces<'a> {
+    /// The pieces of `text`, from its first line.
+    pub(crate) fn new(text: &'a str) -> Self {
+        Self {
+            rest: text,
+            line: 1,
+        }
+    }
+
+    /// The line the next piece is looked for from (the text's last, once
+    /// there are no more).
+    pub(crate) fn line(&self) -> u32 {
+        self.line
+    }
+
     /// The next `bytes` of the text, stepped over with their line breaks
     /// counted.
     fn take(&mut self, bytes: usize) -> &'a str {
@@ -111,7 +134,9 @@ impl<'a> Pieces<'a> {
         taken
     }
 
-    fn next(&mut self) -> Option<(u32, Piece<'a>)> {
+    /// The next piece and the line it starts on, past blank space and
+    /// comments.
+    pub(crate) fn next(&mut self) -> Option<(u32, Piece<'a>)> {
         loop {
             let first = self.rest.chars().next()?;
             let line = self.line;
@@ -137,11 +162,10 @@ impl<'a> Pieces<'a> {
                 }
                 return Some((line, Piece::Word(word)));
             } else if first.is_ascii_digit() {
-                self.take(number_len(self.rest));
-                return Some((line, Piece::Other));
+                let number = self.take(number_len(self.rest));
+                return Some((line, Piece::Number(number)));
             } else if first == '"' {
-                let value = self.text();
-                return Some((line, Piece::Text { value }));
+                return Some((line, self.text()));
             } else {
                 let symbol = match first {
                     ';' | ',' | '.' | ':' | '(' | ')' | '{' | '}' | '[' | ']' | '?' | '#' | '+'
@@ -154,8 +178,8 @@ impl<'a> Pieces<'a> {
                         return Some((line, Piece::Stray(first)));
                     }
                 };
-                self.take(symbol);
-                return Some((line, Piece::Other));
+                let symbol = self.take(symbol);
+                return Some((line, Piece::Symbol(symbol)));
             }
         }
     }
@@ -184,35 +208,45 @@ impl<'a> Pieces<'a> {
     }
 
     /// Steps over text from its opening quote to its closing one or the
-    /// end of its line, and says whether a `{` in it starts a value. A
-    /// backslash takes the next character with it, a line break too.
-    fn text(&mut self) -> bool {
+    /// end of its line, and gives it as a piece. A backslash takes the next
+    /// character with it, a line break too.
+    fn text(&mut self) -> Piece<'a> {
         self.take(1);
+        let start = self.rest;
         let mut value = false;
         loop {
             let plain = self.rest.find(['"', '\\', '{', '\n']);
             self.take(plain.unwrap_or(self.rest.len()));
+            let inside = &start[..start.len() - self.rest.len()];
             let mut chars = self.rest.chars();
-            match chars.next() {
+            let closed = match chars.next() {
                 Some('"') => {
                     self.take(1);
-                    return value;
+                    true
                 }
                 // Lust reads a file with its `\r\n` line breaks made `\n`.
                 Some('\\') if self.rest[1..].starts_with("\r\n") => {
                     self.take(3);
+                    continue;
                 }
                 Some('\\') => {
                     self.take(1 + chars.next().map_or(0, char::len_utf8));
+                    continue;
                 }
                 Some('{') => {
                     value |= chars
                         .next()
                         .is_some_and(|c| c.is_alphabetic() || matches!(c, '(' | '#' | '"'));
                     self.take(1);
+                    continue;
                 }
-                _ => return value,
-            }
+                _ => false,
+            };
+            return Piece::Text {
+                inside,
+                value,
+                closed,
+            };
         }
     }
 }

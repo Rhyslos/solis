@@ -77,6 +77,63 @@ fn a_map_round_trips() {
 }
 
 #[test]
+fn a_map_with_as_many_parts_as_one_has_reads_back() {
+    // Every layer and value a map can have, a whole chunk of each value,
+    // exact tiles, and cells of the odder codes (`{`, `'`, `@`): every
+    // shape a map file holds, in one, which the data reader's checks must
+    // let through whole.
+    let [w, h] = [96, 70];
+    let mut map = TileMap::bare([w, h], Some(AssetId(id(77))));
+    for n in 0..MAX_LAYERS {
+        map.add_layer_with_id(id(100 + n as u64), &format!("layer_{n}"), n % 2 == 1)
+            .unwrap();
+    }
+    let options: Vec<String> = (0..MAX_OPTIONS).map(|o| format!("option_{o}")).collect();
+    for n in 0..MAX_VALUES {
+        let kind = match n % 3 {
+            0 => ValueKind::Number,
+            1 => ValueKind::Switch,
+            _ => ValueKind::Choice(options.clone()),
+        };
+        map.add_value_with_id(id(200 + n as u64), &format!("value_{n}"), kind)
+            .unwrap();
+    }
+    let codes: Vec<u8> = (b'!'..=b'~').filter(|c| usable_code(*c as char)).collect();
+    for layer in 0..MAX_LAYERS {
+        for y in 0..h {
+            for x in 0..w {
+                let n = (x * 7 + y * 3) as usize + layer;
+                if !n.is_multiple_of(5) {
+                    map.set_code(layer, x, y, codes[n % codes.len()]).unwrap();
+                    if n.is_multiple_of(11) {
+                        map.set_exact(layer, x, y, Some(id(5000 + n as u64)))
+                            .unwrap();
+                    }
+                }
+            }
+        }
+    }
+    for value in 0..MAX_VALUES {
+        for y in 0..CHUNK {
+            for x in CHUNK..2 * CHUNK {
+                let to = match value % 3 {
+                    0 => CellValue::Number(crate::map::MAX_NUMBER - (x * y) as i32),
+                    1 => CellValue::Switch(true),
+                    _ => CellValue::Choice(Some(((x + y) as usize % MAX_OPTIONS) as u8)),
+                };
+                map.set_value(value, x, y, to).unwrap();
+            }
+        }
+    }
+    let _ = map.take_dirty();
+    let text = write(&map);
+    let back = read(&text).unwrap();
+    assert!(back.notes.is_empty(), "{:?}", back.notes);
+    assert_eq!(write(&back.map), text);
+    assert_eq!(back.map.checksum(), map.checksum());
+}
+
+#[test]
 fn one_changed_cell_is_one_changed_line() {
     let map = farm();
     let before = write(&map);

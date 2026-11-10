@@ -23,7 +23,8 @@
 //!
 //! This module is what every such format shares: writing values exactly,
 //! reading a file within limits, and reading its values with plain-words
-//! mistakes.
+//! mistakes. A file read is someone else's, and Lust has no budget, so
+//! only what the writers here write is handed to it ([`read`]).
 
 pub use lust::{Fixed, Values};
 use std::fmt::Write as _;
@@ -195,9 +196,12 @@ pub fn is_data(text: &str) -> bool {
 }
 
 /// Reads a data file of `kind` whose classes are `classes` (Lust text),
-/// refusing one bigger than `max_bytes`, and one whose text holds a
-/// character that couldn't be written back ([`unwritable`]). Every mistake
-/// comes back with its line; nothing in the file runs.
+/// refusing one bigger than `max_bytes`, one that holds anything but
+/// values of those classes ([`crate::lust_check`]: Lust takes minutes over
+/// a file full of mistakes, so it's handed none), and one whose text holds
+/// a character that couldn't be written back ([`unwritable`]). Every
+/// mistake comes back with its line; nothing in the file runs. The time
+/// it takes grows only with the file's length.
 pub fn read(text: &str, kind: &str, classes: &str, max_bytes: usize) -> Result<Values, DataError> {
     if text.len() > max_bytes {
         return Err(error(0, format!("it's bigger than {} MB", max_bytes >> 20)));
@@ -205,6 +209,7 @@ pub fn read(text: &str, kind: &str, classes: &str, max_bytes: usize) -> Result<V
     if let Some((line, found)) = crate::lust_guard::scan(text).next() {
         return Err(error(line as usize, not_data(found)));
     }
+    crate::lust_check::Classes::read(kind, classes)?.check(text)?;
     let files = vec![
         (ENTRY.to_string(), text.to_string()),
         (

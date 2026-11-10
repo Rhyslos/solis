@@ -146,6 +146,87 @@ fn art_pieces_and_rules_round_trip() {
 }
 
 #[test]
+fn a_tileset_as_full_as_one_gets_reads_back() {
+    // The most terrains, pieces and rules a tileset has, each in its
+    // longest shape and with the odder codes (`{`, `'`, `@`): the biggest
+    // tileset Solis writes, which the data reader's checks must let
+    // through whole.
+    let codes: Vec<char> = ('!'..='~').filter(|c| usable_code(*c)).collect();
+    let mut set = Tileset {
+        picture: Some(reflect::AssetId(id(9))),
+        tile: [MAX_TILE, MAX_TILE],
+        terrains: Vec::new(),
+        pieces: Vec::new(),
+        rules: Vec::new(),
+    };
+    for (n, &code) in codes.iter().enumerate().take(MAX_TERRAINS) {
+        set.terrains.push(Terrain {
+            id: id(1000 + n as u64),
+            name: format!("terrain_{n}"),
+            code,
+            colour: [n as f32 / 64.0, 0.42, 1.0],
+            kind: TileKind::ALL[n % TileKind::ALL.len()],
+            solid: n % 2 == 0,
+        });
+    }
+    for n in 0..MAX_PIECES {
+        let terrain = &set.terrains[n % MAX_TERRAINS];
+        set.pieces.push(Piece {
+            id: id(10_000 + n as u64),
+            terrain: terrain.id,
+            slot: n as u32 % crate::autotile::slot_count(terrain.kind),
+            at: [n as u32, MAX_AT - n as u32 % 7],
+            weight: 0.25 * (1 + n % 9) as f32,
+            animation: match n % 3 {
+                0 => Animation::None,
+                1 => Animation::Columns {
+                    count: 2 + n as u32 % (MAX_FRAMES - 1),
+                    ms: FRAME_MS.0 + n as u32,
+                },
+                _ => Animation::Frames,
+            },
+        });
+    }
+    let of_rules: Vec<Id> = set
+        .terrains
+        .iter()
+        .filter(|t| t.kind == TileKind::Rules)
+        .map(|t| t.id)
+        .collect();
+    for n in 0..MAX_RULES {
+        let around = [
+            Cond::Any,
+            Cond::Same,
+            Cond::Other,
+            Cond::Empty,
+            Cond::Terrain(codes[n % codes.len()]),
+        ];
+        let mut pattern: Vec<Cond> = (0..MAX_PATTERN * MAX_PATTERN)
+            .map(|cell| around[(cell + n) % around.len()])
+            .collect();
+        pattern[MAX_PATTERN * MAX_PATTERN / 2] = Cond::Same;
+        set.rules.push(Rule {
+            id: id(20_000 + n as u64),
+            terrain: of_rules[n % of_rules.len()],
+            size: MAX_PATTERN,
+            pattern,
+            slot: n as u32 % crate::autotile::RULE_SLOTS,
+        });
+    }
+    assert_eq!(set.terrains.len(), MAX_TERRAINS);
+    let text = write(&set);
+    assert!(
+        area::lust_data::is_data(&text) && text.len() < MAX_BYTES,
+        "{}",
+        text.len()
+    );
+    let back = read(&text).unwrap();
+    assert!(back.notes.is_empty(), "{:?}", back.notes);
+    assert_eq!(back.tileset, set);
+    assert_eq!(write(&back.tileset), text);
+}
+
+#[test]
 fn version_1_reads_as_plain_terrains_with_no_art() {
     let text = include_str!("../../../tests/fixtures/tileset/v1/farm.soltileset");
     let read = read(text).unwrap();

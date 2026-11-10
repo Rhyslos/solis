@@ -11,6 +11,7 @@ pub mod builtin;
 mod document;
 mod edit;
 mod history;
+mod lust_check;
 pub mod lust_data;
 pub mod lust_guard;
 pub mod pixels;
