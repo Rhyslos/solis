@@ -243,6 +243,37 @@ mod tests {
         assert!(picture(&folder.join("missing.png")).is_err());
     }
 
+    /// A whole BMP of one pixel, named like a PNG, is refused as a
+    /// thumbnail, a sprite and a tileset's picture, even by a build that
+    /// carries a BMP decoder (the Windows build does, through another
+    /// library): the format is told by the file's first bytes.
+    #[test]
+    fn a_bmp_named_like_a_png_is_refused_everywhere_pictures_are_read() {
+        use editor::sprite_sheets::{ArtState, SheetState};
+        let folder = std::env::temp_dir().join(format!("solis-thumb-bmp-{}", std::process::id()));
+        std::fs::create_dir_all(&folder).unwrap();
+        let file = folder.join("sneaky.png");
+        // The file's length, where its pixels start, the header's length,
+        // one pixel by one, one plane of 24 bits, not compressed.
+        let mut bmp = b"BM".to_vec();
+        for number in [58u32, 0, 54, 40, 1, 1, 1 | 24 << 16, 0, 4, 0, 0, 0, 0] {
+            bmp.extend_from_slice(&number.to_le_bytes());
+        }
+        bmp.extend_from_slice(&[0, 0, 255, 0]);
+        std::fs::write(&file, &bmp).unwrap();
+        let unread = |why: &str| why.contains("isn't PNG or JPEG");
+        assert!(picture(&file).is_err_and(|why| unread(&why)));
+        assert!(matches!(
+            crate::sprites::read_sheet(&file),
+            SheetState::Failed(why) if unread(&why)
+        ));
+        assert!(matches!(
+            crate::sprites::read_art(&file),
+            ArtState::Failed(why) if unread(&why)
+        ));
+        let _ = std::fs::remove_dir_all(&folder);
+    }
+
     #[test]
     fn models_and_pictures_are_wanted_once() {
         let mut t = Thumbnails::default();

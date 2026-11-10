@@ -4,7 +4,6 @@
 //! Read as a hostile file, within limits, with a plain-language reason
 //! when refused.
 
-use image::ImageReader;
 use std::io::Cursor;
 
 /// The widest and tallest picture read, in pixels.
@@ -29,7 +28,8 @@ pub struct TileArt {
 }
 
 /// Reads a tileset's picture from `bytes`: an Aseprite file if
-/// `aseprite`, otherwise a PNG or JPEG.
+/// `aseprite`, otherwise a PNG or JPEG (told by its first bytes, in
+/// `picture::open`; any other format is refused).
 pub fn read_tile_art(bytes: &[u8], aseprite: bool) -> Result<TileArt, String> {
     if bytes.len() > MAX_FILE_BYTES {
         return Err(format!(
@@ -56,9 +56,7 @@ pub fn read_tile_art(bytes: &[u8], aseprite: bool) -> Result<TileArt, String> {
             frames: ase.frames.into_iter().map(|f| f.rgba).collect(),
         });
     }
-    let mut reader = ImageReader::new(Cursor::new(bytes))
-        .with_guessed_format()
-        .map_err(|e| format!("couldn't read the picture: {e}"))?;
+    let mut reader = crate::picture::open(bytes, "picture")?;
     let mut limits = image::Limits::default();
     limits.max_image_width = Some(MAX_SIDE);
     limits.max_image_height = Some(MAX_SIDE);
@@ -68,8 +66,10 @@ pub fn read_tile_art(bytes: &[u8], aseprite: bool) -> Result<TileArt, String> {
         image::ImageError::Limits(_) => {
             format!("the picture is bigger than {MAX_SIDE} pixels across")
         }
+        // It is a PNG or a JPEG (`picture::open` saw to that), of a kind
+        // the decoder doesn't handle.
         image::ImageError::Unsupported(_) => {
-            "the picture isn't PNG or JPEG, the formats Solis reads".to_owned()
+            "the picture is a kind of PNG or JPEG that Solis doesn't read".to_owned()
         }
         other => format!("the picture is damaged: {other}"),
     })?;

@@ -671,6 +671,31 @@ fn textures_past_the_models_budget_are_left_out_with_a_warning() {
     );
 }
 
+/// A BMP inside a model, called a PNG: left out with why, even by a build
+/// that carries a BMP decoder (the Windows build does, through another
+/// library).
+#[test]
+fn a_bmp_inside_a_model_is_left_out_whatever_the_build_decodes() {
+    let mut b = Builder::default();
+    let cube = b.add_cube_mesh(1.0, Some(0));
+    let image = b.add_image(&crate::picture::tests::bmp());
+    b.json_materials = vec![
+        r#"{"name":"Painted","pbrMetallicRoughness":{"baseColorTexture":{"index":0}}}"#.into(),
+    ];
+    b.json_textures = vec![format!(r#"{{"source":{image}}}"#)];
+    b.json_nodes = vec![format!(r#"{{"mesh":{cube}}}"#)];
+    let model = load_bytes(&b.glb(), None, "X", &limits()).unwrap();
+    assert!(model.textures.is_empty());
+    assert!(
+        model
+            .warnings
+            .iter()
+            .any(|w| w.contains("isn't PNG or JPEG")),
+        "{:?}",
+        model.warnings
+    );
+}
+
 #[test]
 fn a_file_needing_an_unknown_extension_says_which() {
     let mut b = Builder::default();

@@ -2,9 +2,9 @@
 //! their mip levels.
 
 use crate::model::{Limits, Sampler, Texture};
+use crate::picture;
+use image::RgbaImage;
 use image::imageops::FilterType;
-use image::{ImageReader, RgbaImage};
-use std::io::Cursor;
 
 /// The most memory one image may take while decoding, in bytes.
 const MAX_DECODE_BYTES: u64 = 1 << 30;
@@ -12,7 +12,8 @@ const MAX_DECODE_BYTES: u64 = 1 << 30;
 /// Decodes `bytes` into a texture with all its mip levels, scaling it down
 /// first if it is wider or taller than `limits.max_texture_side`. Images
 /// bigger than `limits.max_image_side`, or in formats other than PNG and
-/// JPEG, are refused with a reason.
+/// JPEG (told by their first bytes, in `picture::open`), are refused with
+/// a reason.
 pub fn decode(
     bytes: &[u8],
     sampler: Sampler,
@@ -23,9 +24,7 @@ pub fn decode(
     // The size it will take, worked out from the image's header before
     // any pixels are decoded: refused if it's past what's left of the
     // model's texture budget.
-    let (width, height) = ImageReader::new(Cursor::new(bytes))
-        .with_guessed_format()
-        .map_err(|e| format!("couldn't read the image: {e}"))?
+    let (width, height) = picture::open(bytes, "image")?
         .into_dimensions()
         .map_err(|e| format!("the image is damaged: {e}"))?;
     let side = limits.max_texture_side.max(1);
@@ -38,9 +37,7 @@ pub fn decode(
             limits.max_texture_bytes / 1_000_000
         ));
     }
-    let mut reader = ImageReader::new(Cursor::new(bytes))
-        .with_guessed_format()
-        .map_err(|e| format!("couldn't read the image: {e}"))?;
+    let mut reader = picture::open(bytes, "image")?;
     let mut image_limits = image::Limits::default();
     image_limits.max_image_width = Some(limits.max_image_side);
     image_limits.max_image_height = Some(limits.max_image_side);
@@ -51,8 +48,10 @@ pub fn decode(
             "the image is bigger than {} pixels across",
             limits.max_image_side
         ),
+        // It is a PNG or a JPEG (`picture::open` saw to that), of a kind
+        // the decoder doesn't handle.
         image::ImageError::Unsupported(_) => {
-            "the image isn't PNG or JPEG, the formats Solis reads".to_string()
+            "the image is a kind of PNG or JPEG that Solis doesn't read".to_string()
         }
         other => format!("the image is damaged: {other}"),
     })?;
@@ -111,6 +110,7 @@ pub fn level_count(width: u32, height: u32) -> u32 {
 #[cfg(test)]
 mod tests {
     use super::*;
+    use std::io::Cursor;
 
     fn png(width: u32, height: u32) -> Vec<u8> {
         let image = RgbaImage::from_fn(width, height, |x, y| {
@@ -165,6 +165,41 @@ mod tests {
         };
         let err = decode(&png(32, 16), Sampler::default(), true, &limits, u64::MAX).unwrap_err();
         assert!(err.contains("bigger than 8"), "{err}");
+    }
+
+    #[test]
+    fn a_jpeg_decodes() {
+        let bytes = crate::picture::tests::jpeg(16, 8);
+        let t = decode(
+            &bytes,
+            Sampler::default(),
+            true,
+            &Limits::default(),
+            u64::MAX,
+        )
+        .unwrap();
+        assert_eq!((t.width, t.height), (16, 8));
+    }
+
+    /// A BMP is refused even by a build that carries a BMP decoder (the
+    /// Windows build does, through another library), and so is every
+    /// other format, each by its first bytes.
+    #[test]
+    fn a_bmp_and_every_other_format_is_refused_before_decoding() {
+        for (name, bytes) in crate::picture::tests::other_formats() {
+            let err = decode(
+                &bytes,
+                Sampler::default(),
+                true,
+                &Limits::default(),
+                u64::MAX,
+            )
+            .unwrap_err();
+            assert_eq!(
+                err, "the image isn't PNG or JPEG, the formats Solis reads",
+                "{name}"
+            );
+        }
     }
 
     #[test]
