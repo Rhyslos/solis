@@ -317,3 +317,69 @@ proptest! {
         }
     }
 }
+
+/// Whether what Rapier was handed is in range: each entity's collider
+/// within a kilometre of its `place`, and no bigger than two across.
+fn colliders_in_range(flat: &Flat, place: Vec2) -> bool {
+    flat.state.by_entity.values().all(|entry| {
+        let c = &flat.state.colliders[entry.collider];
+        let off = from_rp(c.translation()) - place;
+        let size = from_rp(c.shape().compute_local_aabb().extents());
+        off.is_finite()
+            && off.abs().max_element() <= 1000.0
+            && size.is_finite()
+            && size.max_element() <= 2000.0
+    })
+}
+
+#[test]
+fn a_collider_s_centre_and_size_are_held_in_range_in_2d_too() {
+    // SEC-12's case on the 2D side: in 3D a centre of 1e30 on an entity
+    // scaled 1e30 put a collider an endless way off. A 2D collider isn't
+    // scaled with its entity, and its centre and size are each held to a
+    // kilometre: this keeps it so.
+    let place = Vec2::new(2.0, 3.0);
+    let mut flat = world(place, &[rect(4.0, 2.0, 5.0, 4.0)]);
+    let far = FlatCollider {
+        shape: FlatShape::Box(Vec2::splat(1.0e30)),
+        center: Vec2::new(1.0e30, -f32::MAX),
+    };
+    flat.add(id(1), place, far, true);
+    assert!(colliders_in_range(&flat, place));
+    let made = &flat.state.colliders[flat.state.by_entity[&id(1)].collider];
+    assert_eq!(
+        from_rp(made.translation()),
+        place + Vec2::new(1000.0, -1000.0)
+    );
+    assert_eq!(flat.state().place(id(1)), Some(place));
+    flat.move_characters(&[(id(1), Vec2::new(0.1, 0.0))], 1.0 / 60.0);
+    assert_eq!(flat.state().wall_count(), 1, "2D physics carries on");
+    assert!(flat.state().place(id(1)).unwrap().is_finite());
+}
+
+#[test]
+fn no_centre_or_size_hands_2d_rapier_a_number_out_of_range() {
+    // A sweep: every mix of extreme (but finite) centres and sizes, on
+    // each shape, a character or not.
+    let extremes = [0.0, 1.0e-30, 1.0, -2.5, 1.0e9, -1.0e19, 1.0e30, f32::MAX];
+    let place = Vec2::new(-3.0, 1.5);
+    for (i, &across) in extremes.iter().enumerate() {
+        for (j, &up) in extremes.iter().enumerate() {
+            for (k, &size) in extremes.iter().enumerate() {
+                let collider = FlatCollider {
+                    shape: match (i + j + k) % 2 {
+                        0 => FlatShape::Circle(size),
+                        _ => FlatShape::Box(Vec2::new(size, extremes[(k + 3) % 8])),
+                    },
+                    center: Vec2::new(across, -up),
+                };
+                let mut flat = world(Vec2::ZERO, &[rect(4.0, 2.0, 5.0, 4.0)]);
+                flat.add(id(1), place, collider, (i + k) % 2 == 0);
+                assert!(colliders_in_range(&flat, place), "{collider:?}");
+                flat.move_characters(&[(id(1), Vec2::new(0.1, -0.1))], 1.0 / 60.0);
+                assert_eq!(flat.state().wall_count(), 1, "{collider:?}");
+                assert!(flat.state().place(id(1)).unwrap().is_finite());
+            }
+        }
+    }
+}
