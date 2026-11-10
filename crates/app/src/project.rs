@@ -204,23 +204,7 @@ impl Projects {
             .iter()
             .map(|f| LibraryItem {
                 id: f.id,
-                kind: match f.kind {
-                    FileKind::Model => LibraryKind::Model,
-                    FileKind::Assembly => LibraryKind::Assembly,
-                    FileKind::Area => LibraryKind::Area,
-                    FileKind::Texture => LibraryKind::Texture,
-                    FileKind::Code => LibraryKind::Code,
-                    FileKind::Sound => LibraryKind::Sound,
-                    FileKind::SoundEvent => LibraryKind::SoundEvent,
-                    FileKind::SpriteSheet => LibraryKind::SpriteSheet,
-                    FileKind::SpriteClips => LibraryKind::SpriteClips,
-                    FileKind::Animator => LibraryKind::Animator,
-                    FileKind::Tileset => LibraryKind::Tileset,
-                    FileKind::TileMap => LibraryKind::TileMap,
-                    FileKind::Atlas => LibraryKind::Atlas,
-                    FileKind::Text => LibraryKind::Text,
-                    FileKind::Other => LibraryKind::Other,
-                },
+                kind: library_kind(f.kind),
                 // Files Solis doesn't know keep their whole name, so
                 // "brick.png.exe" never passes for "brick.png".
                 name: if matches!(f.kind, FileKind::Other | FileKind::Text) {
@@ -572,6 +556,28 @@ impl Projects {
             .id_at(&target)
             .ok_or_else(|| std::io::Error::other("its sidecar couldn't be made"))?;
         Ok((id, target))
+    }
+}
+
+/// The Library's kind for a file of `kind` (what its name's ending says it
+/// is).
+pub fn library_kind(kind: FileKind) -> LibraryKind {
+    match kind {
+        FileKind::Model => LibraryKind::Model,
+        FileKind::Assembly => LibraryKind::Assembly,
+        FileKind::Area => LibraryKind::Area,
+        FileKind::Texture => LibraryKind::Texture,
+        FileKind::Code => LibraryKind::Code,
+        FileKind::Sound => LibraryKind::Sound,
+        FileKind::SoundEvent => LibraryKind::SoundEvent,
+        FileKind::SpriteSheet => LibraryKind::SpriteSheet,
+        FileKind::SpriteClips => LibraryKind::SpriteClips,
+        FileKind::Animator => LibraryKind::Animator,
+        FileKind::Tileset => LibraryKind::Tileset,
+        FileKind::TileMap => LibraryKind::TileMap,
+        FileKind::Atlas => LibraryKind::Atlas,
+        FileKind::Text => LibraryKind::Text,
+        FileKind::Other => LibraryKind::Other,
     }
 }
 

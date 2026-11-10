@@ -104,9 +104,15 @@ pub enum WorkbenchAction {
     /// Open this area file (a double-click in the Library); the app reads
     /// it and calls [`Workbench::open_area`].
     OpenAreaFile(std::path::PathBuf),
-    /// Open this file or folder in the system's own program or file
-    /// browser.
+    /// Open this file of the project's assets in the program the computer
+    /// has for it, or show this folder of them in the file browser. The
+    /// app opens a file only if its kind is one that's safe to
+    /// ([`LibraryKind::opens_in_its_program`](crate::LibraryKind::opens_in_its_program)),
+    /// showing its folder if not, and refuses a path outside the assets.
     OpenExternally(std::path::PathBuf),
+    /// Show this folder, one the user chose on this computer (an export's),
+    /// in the file browser. Never opens a file.
+    ShowFolder(std::path::PathBuf),
     /// Rename or move a file or folder inside the project's assets, with
     /// its sidecar.
     MoveFile {

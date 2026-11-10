@@ -219,7 +219,7 @@ fn export_asks_the_app_and_says_where_it_went() {
     h.run();
     assert!(h.state().1.actions.iter().any(|a| matches!(
         a,
-        WorkbenchAction::OpenExternally(p) if p.ends_with("x")
+        WorkbenchAction::ShowFolder(p) if p.ends_with("x")
     )));
     assert!(
         h.state()

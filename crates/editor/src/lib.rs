@@ -122,6 +122,7 @@ pub use viewport::{
 };
 pub use viewport_tools::{Outline, PickAnswer};
 pub use workbench::{AppInfo, Workbench, WorkbenchAction};
+pub use workbench_library::plain_relative;
 
 #[cfg(test)]
 mod invariant_tests;
@@ -129,5 +130,7 @@ mod invariant_tests;
 mod kit_tests;
 #[cfg(test)]
 mod kit_topdown_tests;
+#[cfg(test)]
+mod open_externally_tests;
 #[cfg(test)]
 mod scale_levels_tests;

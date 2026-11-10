@@ -15,7 +15,7 @@ A lamp is just an entity with a Transform and a Light. Give a model a Light (**A
 **See what something is made of**
 1. Click it in the **Area** panel, or in the viewport ([Selecting and moving things](selecting-and-moving.md)).
 2. **Properties** shows its **Name** and each of its components in a card of its own, Transform first, with their settings. Point at a setting's name to see what it does.
-3. Each card's **?** opens this manual's page about that component. A component from your game code shows the file it's written in instead, with **Open in Ledger ↗** to open that file in the program you write code in.
+3. Each card's **?** opens this manual's page about that component. A component from your game code shows the file it's written in instead, with **Open in Ledger ↗** to open that file in the program you write code in. A component written in Lua says **Show in folder ↗** and shows its file in its folder for you to open from your editor. Why? Solis only ever opens pictures, text and Lust in another program: a downloaded project's `.lua` file, opened by a program on your computer that runs Lua, would run outside Solis's sandbox (see [Projects and the Library](projects-and-the-library.md)).
 
 **What's been changed:** a small blue dot after a setting's name means it isn't the component's standard value (what it starts with). Beside the setting, **↺** and the standard value (`↺ 1000`) put it back, as one step Ctrl + Z undoes. Why? So you can see at a glance what you've tuned, and undo an experiment without remembering the old number. Places, turns and picked files aren't marked: they start empty and are meant to be set. (A component that came set up for a job, such as the Sun's Light, shows dots on what makes it a sun.)
 

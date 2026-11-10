@@ -10,6 +10,7 @@ pub mod benchmark;
 pub mod branding;
 pub mod check_project;
 pub mod cli;
+mod external;
 #[cfg(test)]
 mod fixtures_tests;
 pub mod game_audio;

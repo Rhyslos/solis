@@ -435,15 +435,22 @@ impl Workbench {
                 field,
             } => self.apply_field(entity, &component, &field),
             PropertyRequest::Unpack(root) => self.unpack(root),
-            PropertyRequest::OpenCode(file) => match &self.project {
-                Some(project) => self
-                    .outbox
-                    .push(WorkbenchAction::OpenExternally(project.assets.join(&file))),
-                None => self.log(
-                    LogLevel::Warning,
-                    format!("{file} is in the ready-made code: open a project to see it."),
-                ),
-            },
+            // Asked of the Library, so a component's file is treated as a
+            // double-click on it there is: Lust opens in its program, a
+            // .lua file is shown in its folder (never run), and a file
+            // named outside the assets isn't asked for at all.
+            PropertyRequest::OpenCode(file) if self.project.is_some() => {
+                let mut actions = Vec::new();
+                self.library_request(
+                    crate::library::LibraryRequest::Open(crate::library::LibraryKind::Code, file),
+                    &mut actions,
+                );
+                self.outbox.extend(actions);
+            }
+            PropertyRequest::OpenCode(file) => self.log(
+                LogLevel::Warning,
+                format!("{file} is in the ready-made code: open a project to see it."),
+            ),
             PropertyRequest::SetFieldMany {
                 entities,
                 component,

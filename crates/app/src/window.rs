@@ -3,6 +3,7 @@
 
 use crate::area_file::{AreaFiles, Purpose};
 use crate::branding;
+use crate::external::{External, Handed, open_externally};
 use crate::gpu::GpuViewport;
 use crate::import::{Finished, FolderFor, Importer};
 use crate::project::Projects;
@@ -1017,7 +1018,7 @@ impl App {
                     self.list_projects();
                 }
                 WorkbenchAction::ShowProject(root) => {
-                    if let Err(why) = open_externally(&root) {
+                    if let Err(why) = open_externally(External::Folder(&root)) {
                         self.workbench
                             .launcher_notice(format!("Couldn't show {}: {why}.", root.display()));
                     }
@@ -1370,10 +1371,35 @@ impl App {
                     }
                 }
                 WorkbenchAction::OpenExternally(path) => {
-                    if let Err(why) = open_externally(&path) {
-                        self.workbench.log(
+                    let assets = self.projects.db().map(|db| db.project().assets());
+                    let want = External::InProject {
+                        path: &path,
+                        assets: assets.as_deref(),
+                    };
+                    match open_externally(want) {
+                        // A file was asked for, and the rule showed its
+                        // folder instead.
+                        Ok(Handed::Shown(folder)) if folder != path => self.workbench.log(
+                            LogLevel::Info,
+                            format!(
+                                "Showing {} in its folder: {} doesn't open this kind of file \
+                                 in another program.",
+                                file_name(&path),
+                                branding::APP_NAME
+                            ),
+                        ),
+                        Ok(_) => {}
+                        Err(why) => self.workbench.log(
                             LogLevel::Error,
                             format!("Couldn't open {}: {why}.", file_name(&path)),
+                        ),
+                    }
+                }
+                WorkbenchAction::ShowFolder(folder) => {
+                    if let Err(why) = open_externally(External::Folder(&folder)) {
+                        self.workbench.log(
+                            LogLevel::Error,
+                            format!("Couldn't show {}: {why}.", folder.display()),
                         );
                     }
                 }
@@ -2369,26 +2395,6 @@ fn explain_panic(payload: &(dyn std::any::Any + Send)) -> String {
     } else {
         message.to_string()
     }
-}
-
-/// Opens a file in the program the computer chooses for it, or shows a
-/// folder. A folder goes straight to Explorer on Windows, so it can never
-/// be taken for a program to run (if it vanished and a file of a similar
-/// name took its place, say).
-fn open_externally(path: &std::path::Path) -> std::io::Result<()> {
-    let meta = std::fs::metadata(path)?;
-    if meta.is_dir() {
-        #[cfg(windows)]
-        {
-            return std::process::Command::new("explorer.exe")
-                .arg(path)
-                .spawn()
-                .map(|_| ());
-        }
-    } else if !meta.is_file() {
-        return Err(std::io::Error::other("it isn't a file or a folder"));
-    }
-    opener::open(path).map_err(std::io::Error::other)
 }
 
 #[cfg(test)]

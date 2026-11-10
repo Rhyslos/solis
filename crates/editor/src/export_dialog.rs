@@ -462,7 +462,7 @@ fn contents(
             ui.horizontal(|ui| {
                 ui.label(format!("Exported to {}.", folder.display()));
                 if ui.button("Open folder").clicked() {
-                    actions.push(WorkbenchAction::OpenExternally(folder.clone()));
+                    actions.push(WorkbenchAction::ShowFolder(folder.clone()));
                 }
             });
         }
