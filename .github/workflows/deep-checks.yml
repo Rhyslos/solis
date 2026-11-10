@@ -2,8 +2,10 @@
 # too slow for every pull request.
 #
 # - Fuzzing: every reader of a file a project can ship (fuzz/README.md),
-#   each for a time box, starting from fuzz/seeds. A crash or hang is
-#   uploaded and opens an issue.
+#   each for a time box, starting from fuzz/seeds. The targets are read
+#   from fuzz/Cargo.toml, never listed here, so a new one is fuzzed the
+#   next Sunday with no change to this file. A crash or hang is uploaded
+#   and opens an issue.
 # - The whole-game invariant tests, with many more games than a pull
 #   request runs (PROPTEST_CASES). A failure opens an issue with the
 #   smallest game that shows it.
@@ -40,8 +42,73 @@ env:
   CARGO_FUZZ_VERSION: "0.13.2"
 
 jobs:
+  # The list of fuzz targets, read from fuzz/ itself. It used to be kept
+  # by hand in the matrix below, and fell ten targets behind with nothing
+  # to say so (the review of November 2026). The step fails, and says why,
+  # when fuzz/Cargo.toml and fuzz/fuzz_targets don't name the same targets,
+  # because a target missing from either would never be fuzzed.
+  targets:
+    name: List the fuzz targets
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      issues: write
+    outputs:
+      targets: ${{ steps.list.outputs.targets }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - name: Read the targets from fuzz/Cargo.toml
+        id: list
+        run: |
+          python3 - <<'PY'
+          import json, os, pathlib, re, sys, tomllib
+
+          manifest = tomllib.loads(pathlib.Path("fuzz/Cargo.toml").read_text())
+          bins = {b["name"]: b.get("path", "") for b in manifest.get("bin", [])}
+          files = {p.stem for p in pathlib.Path("fuzz/fuzz_targets").glob("*.rs")}
+          problems = []
+          if not bins:
+              problems.append("fuzz/Cargo.toml lists no fuzz targets")
+          for name, path in sorted(bins.items()):
+              # The names go into file paths and shell commands below.
+              if not re.fullmatch(r"[a-z][a-z0-9_]*", name):
+                  problems.append(f"the target name {name!r} must be lower-case letters, digits and underscores")
+              elif path != f"fuzz_targets/{name}.rs":
+                  problems.append(f"{name}: its path in fuzz/Cargo.toml is {path!r}, not 'fuzz_targets/{name}.rs'")
+              elif name not in files:
+                  problems.append(f"{name}: fuzz/Cargo.toml lists it, but fuzz/fuzz_targets/{name}.rs isn't there")
+          for name in sorted(files - set(bins)):
+              problems.append(f"fuzz/fuzz_targets/{name}.rs has no [[bin]] in fuzz/Cargo.toml, so it would never be fuzzed")
+          for problem in problems:
+              print(f"::error::{problem}")
+          if problems:
+              sys.exit(1)
+          names = sorted(bins)
+          with open(os.environ["GITHUB_OUTPUT"], "a") as out:
+              out.write(f"targets={json.dumps(names)}\n")
+          print(f"{len(names)} targets: {' '.join(names)}")
+          PY
+      - name: Open an issue
+        if: failure() && github.event_name == 'schedule'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RUN: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          gh issue create --label bug \
+            --title "The weekly fuzzing didn't run: its targets couldn't be listed" \
+            --body "The weekly deep checks read the list of fuzz targets from \`fuzz/Cargo.toml\` and check it against the files in \`fuzz/fuzz_targets\`. This week the list couldn't be made, so nothing was fuzzed. The run says what is wrong: $RUN. Every file in \`fuzz/fuzz_targets\` needs a \`[[bin]]\` of the same name in \`fuzz/Cargo.toml\`, and every \`[[bin]]\` its file (fuzz/fuzz_targets/README.md, Adding a target)."
+
+  # One job for each target, side by side, so more targets make the run
+  # no longer: each fuzzes for 20 minutes (the `minutes` input when
+  # started by hand) and may take 90 with its build. GitHub starts as many
+  # at once as the account allows, and the rest wait their turn.
   fuzz:
     name: Fuzz ${{ matrix.target }}
+    needs: targets
     runs-on: ubuntu-latest
     timeout-minutes: 90
     permissions:
@@ -50,20 +117,9 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        target:
-          - save_game
-          - recording
-          - input_actions
-          - area_file
-          - model
-          - import_cache
-          - sidecar
-          - project_file
-          - game_code
-          - update_answer
-          - sound_file
-          - sound_event
-          - mixer
+        target: ${{ fromJSON(needs.targets.outputs.targets) }}
+    env:
+      TARGET: ${{ matrix.target }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
@@ -71,19 +127,30 @@ jobs:
       - run: rustup toolchain install "$FUZZ_NIGHTLY" --profile minimal
       # The sound crate builds against ALSA on Linux.
       - run: sudo apt-get update && sudo apt-get install -y libasound2-dev
+      # One cache for every target, not one each: they are all built from
+      # the same libraries, and a copy for each target would crowd the
+      # pull request checks' caches out of the repository's allowance.
       - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2
         with:
           workspaces: fuzz
-          key: ${{ matrix.target }}
+          key: ${{ env.FUZZ_NIGHTLY }}
       - run: cargo install "cargo-fuzz@$CARGO_FUZZ_VERSION" --locked
       - name: Fuzz
         working-directory: fuzz
         env:
           MINUTES: ${{ github.event.inputs.minutes || '20' }}
         run: |
-          mkdir -p "corpus/${{ matrix.target }}" "artifacts/${{ matrix.target }}"
-          cargo "+$FUZZ_NIGHTLY" fuzz run -O "${{ matrix.target }}" \
-            "corpus/${{ matrix.target }}" "seeds/${{ matrix.target }}" -- \
+          mkdir -p "corpus/$TARGET" "artifacts/$TARGET"
+          # A target with no starting files yet is still fuzzed, from
+          # nothing: the fuzzer stops at once if handed a folder that
+          # isn't there.
+          folders=("corpus/$TARGET")
+          if [ -d "seeds/$TARGET" ]; then
+            folders+=("seeds/$TARGET")
+          else
+            echo "::warning::$TARGET has no starting files (fuzz/seeds/$TARGET, made by fuzz/make-seeds.sh), so it starts from nothing and gets less far."
+          fi
+          cargo "+$FUZZ_NIGHTLY" fuzz run -O "$TARGET" "${folders[@]}" -- \
             -max_total_time=$((MINUTES * 60)) -timeout=45 -rss_limit_mb=4096 \
             -max_len=1048576 -print_final_stats=1
       - name: Keep what it found
@@ -100,8 +167,8 @@ jobs:
           RUN: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
           gh issue create --label bug \
-            --title "Fuzzing found a problem: ${{ matrix.target }}" \
-            --body "The weekly deep checks' fuzzer for \`${{ matrix.target }}\` found an input that crashes or hangs Solis. The input is attached to the run as the \`fuzz-${{ matrix.target }}\` artifact: $RUN. Replay it with \`cargo fuzz run ${{ matrix.target }} <file>\` (fuzz/README.md), fix it, and add a regression test."
+            --title "Fuzzing found a problem: $TARGET" \
+            --body "The weekly deep checks' fuzzer for \`$TARGET\` found an input that crashes or hangs Solis. The input is attached to the run as the \`fuzz-$TARGET\` artifact: $RUN. Replay it with \`cargo fuzz run $TARGET <file>\` (fuzz/README.md), fix it, and add a regression test."
 
   invariants:
     name: Whole-game invariants, many games

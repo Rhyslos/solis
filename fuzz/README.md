@@ -23,12 +23,14 @@ Fuzz targets for every reader of a file a project can ship ([decision 0042](../d
 | `atlas` | An atlas file (`.atlas.lst`, Atlas Crop); crops read are within the limits, each name good and used once, and write back to themselves |
 | `text_file` | A text file shown in Properties: any bytes become Markdown blocks and inline runs, never a panic |
 | `screen_source` | A screen's Lust file as the UI editor reads it; pieces' places inside the text, and its edits never panic |
-| `tileset` | A tileset (`.soltileset`); terrains read are within the limits, each name and code used once, and write back to themselves |
+| `tileset` | A tileset (`.tileset.lst`, or an older `.soltileset`); terrains read are within the limits, each name and code used once, and write back to themselves |
 | `tile_art` | A tileset's picture (PNG, JPEG or Aseprite, the first byte choosing); a picture read is within the limits, every frame its size, and its grid and kind are found without panicking |
-| `tile_map` | A tile map file (`.soltilemap`); a map read is within the limits, writes back to itself, is autotiled, painted (a fill, a stamp flipped and turned, exact tiles) and changed cell by cell, resized and summed without panicking |
+| `tile_map` | A tile map file (`.tilemap.lst`, or an older `.soltilemap`); a map read is within the limits, writes back to itself, is autotiled, painted (a fill, a stamp flipped and turned, exact tiles) and changed cell by cell, resized and summed without panicking |
 | `sound_file` | A WAV or Ogg Vorbis sound file (`sound::read_bytes`); a sound read is within the limits, as long as its overview, and every sample a number between -1 and 1 |
 
 ## Running
+
+Every Sunday the weekly deep checks ([`deep-checks.yml`](../.github/workflows/deep-checks.yml)) fuzz every target for 20 minutes, each in a job of its own. They read the targets from the `[[bin]]` entries in [`Cargo.toml`](Cargo.toml), so a new target needs no change to the workflow. A crash or hang there is kept with the run and opens an issue.
 
 You need [cargo-fuzz](https://github.com/rust-fuzz/cargo-fuzz) (`cargo install cargo-fuzz@<version> --locked`) and a nightly compiler. The weekly run pins both, as `CARGO_FUZZ_VERSION` and `FUZZ_NIGHTLY` at the top of [`deep-checks.yml`](../.github/workflows/deep-checks.yml): use those two to get exactly what it gets. From the repository's top folder:
 
