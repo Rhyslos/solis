@@ -87,7 +87,7 @@ fn harness_with(workbench: Workbench) -> egui_kittest::Harness<'static, Workbenc
         .build_ui_state(
             move |ui, workbench: &mut Workbench| {
                 if !themed {
-                    theme::apply(ui.ctx(), workbench.accent());
+                    theme::apply(ui.ctx(), workbench.accent(), workbench.appearance());
                     themed = true;
                 }
                 let _ = workbench.show(ui, &mut renderer);

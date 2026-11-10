@@ -116,9 +116,9 @@ impl GpuViewport {
             camera_position: camera.position,
             // The grid under the model, as in the viewport.
             focus: glam::Vec3::new(centre.x, centre.y, 0.0),
-            sky_top: editor::theme::backdrop::rgb(editor::theme::backdrop::SKY_TOP),
-            sky_horizon: editor::theme::backdrop::rgb(editor::theme::backdrop::HORIZON),
-            ground: editor::theme::backdrop::rgb(editor::theme::backdrop::GROUND),
+            sky_top: editor::theme::backdrop::rgb(editor::theme::backdrop::sky_top()),
+            sky_horizon: editor::theme::backdrop::rgb(editor::theme::backdrop::horizon()),
+            ground: editor::theme::backdrop::rgb(editor::theme::backdrop::ground()),
             shading: render::Shading {
                 look: render::Look::Standard,
                 bands: 3,

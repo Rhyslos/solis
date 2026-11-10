@@ -10,10 +10,10 @@ fn fresh() -> Workbench {
 fn the_editor_takes_a_colour_while_the_game_runs() {
     let mut w = fresh();
     assert_eq!(w.play_tint(), None);
-    assert_eq!(w.tinted(theme::HEADER), theme::HEADER);
+    assert_eq!(w.tinted(theme::header()), theme::header());
     w.play();
     assert_eq!(w.play_tint(), Some(PLAYING));
-    assert_ne!(w.tinted(theme::HEADER), theme::HEADER);
+    assert_ne!(w.tinted(theme::header()), theme::header());
     w.pause();
     assert_eq!(w.play_tint(), Some(theme::WARNING));
     w.stop();

@@ -330,24 +330,44 @@ impl Workbench {
     /// in use lit with the accent's underline.
     pub(crate) fn workspace_tabs(&mut self, ui: &mut egui::Ui) {
         use crate::theme;
+        if !theme::rounded() {
+            self.workspace_tab_row(ui);
+            return;
+        }
+        // Rounded panels: the workspaces sit in one group, like pills.
+        egui::Frame::new()
+            .fill(theme::panel())
+            .stroke(egui::Stroke::new(1.0, theme::line()))
+            .corner_radius(theme::CARD_RADIUS)
+            .inner_margin(2)
+            .show(ui, |ui| {
+                ui.spacing_mut().item_spacing.x = 2.0;
+                self.workspace_tab_row(ui);
+            });
+    }
+
+    fn workspace_tab_row(&mut self, ui: &mut egui::Ui) {
+        use crate::theme;
         let mut picked = None;
         for workspace in Workspace::ALL {
             let on = workspace == self.workspace;
             let font = egui::FontId::proportional(13.0);
             let width = ui.fonts_mut(|f| {
-                f.layout_no_wrap(workspace.name().to_string(), font.clone(), theme::TEXT)
+                f.layout_no_wrap(workspace.name().to_string(), font.clone(), theme::text())
                     .size()
                     .x
             }) + 34.0;
             let (rect, tab) = ui.allocate_exact_size(egui::vec2(width, 26.0), egui::Sense::click());
             let colour = if on || tab.hovered() {
-                theme::TEXT_STRONG
+                theme::text_strong()
             } else {
-                theme::TEXT_WEAK
+                theme::text_weak()
             };
             let painter = ui.painter();
-            if on {
-                painter.rect_filled(rect, 4.0, theme::FIELD);
+            if on && theme::rounded() {
+                painter.rect_filled(rect.shrink(1.0), f32::from(theme::corner()), theme::hover());
+            } else if on {
+                painter.rect_filled(rect, 4.0, theme::field());
                 painter.hline(
                     rect.x_range().shrink(6.0),
                     rect.bottom() - 1.0,

@@ -268,6 +268,8 @@ pub struct Workbench {
     pub(crate) info: AppInfo,
     pub(crate) dock: DockState<Panel>,
     pub(crate) accent: Accent,
+    /// The theme and whether panels are rounded (decision 0096).
+    pub(crate) appearance: theme::Appearance,
     pub(crate) viewport: Viewport,
     pub(crate) console: Console,
     /// The open area and what's selected in it.
@@ -557,6 +559,7 @@ impl Workbench {
             info,
             dock: layout::restore(saved_layout),
             accent: Accent::default(),
+            appearance: theme::Appearance::default(),
             viewport: Viewport::default(),
             console: Console::default(),
             document: Document::default(),
@@ -668,6 +671,13 @@ impl Workbench {
     #[must_use]
     pub fn with_accent(mut self, accent: Accent) -> Self {
         self.accent = accent;
+        self
+    }
+
+    /// Uses `appearance` (as saved last time).
+    #[must_use]
+    pub fn with_appearance(mut self, appearance: theme::Appearance) -> Self {
+        self.appearance = appearance;
         self
     }
 
@@ -904,6 +914,11 @@ impl Workbench {
         self.accent
     }
 
+    /// The theme and rounded panels, for saving.
+    pub fn appearance(&self) -> theme::Appearance {
+        self.appearance
+    }
+
     /// Uses `camera` (as saved last time), with anything unusable in it
     /// replaced (see [`Camera::sanitized`]).
     #[must_use]
@@ -1092,11 +1107,11 @@ impl Workbench {
         let seconds = ui.input(|i| i.stable_dt);
         self.run_game(seconds);
         egui::Panel::top("top_bar")
-            .frame(theme::top_bar_frame().fill(self.tinted(theme::HEADER)))
+            .frame(theme::top_bar_frame().fill(self.tinted(theme::header())))
             .exact_size(34.0)
             .show(ui, |ui| self.top_bar(ui, &mut actions));
         egui::Panel::bottom("status_bar")
-            .frame(theme::status_bar_frame().fill(self.tinted(theme::HEADER)))
+            .frame(theme::status_bar_frame().fill(self.tinted(theme::header())))
             .exact_size(crate::status_bar::HEIGHT)
             .show(ui, |ui| self.status_bar(ui));
         let style = theme::dock_style(ui.style().as_ref(), self.accent);

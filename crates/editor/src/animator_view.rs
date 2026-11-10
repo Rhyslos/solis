@@ -131,7 +131,7 @@ pub(crate) fn animator_tab(ui: &mut Ui, a: &mut AnimatorUi<'_>) -> bool {
     ui.painter().vline(
         right.left(),
         right.y_range(),
-        egui::Stroke::new(1.0, theme::LINE),
+        egui::Stroke::new(1.0, theme::line()),
     );
     let mut graph_ui = ui.new_child(egui::UiBuilder::new().max_rect(right));
     changed |= graph(&mut graph_ui, a);
@@ -144,7 +144,7 @@ pub(crate) fn animator_tab(ui: &mut Ui, a: &mut AnimatorUi<'_>) -> bool {
 fn parameters(ui: &mut Ui, a: &mut AnimatorUi<'_>) -> bool {
     let mut changed = false;
     ui.horizontal(|ui| {
-        ui.label(RichText::new("Parameters").color(theme::TEXT_WEAK));
+        ui.label(RichText::new("Parameters").color(theme::text_weak()));
         ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
             ui.menu_button("+", |ui| {
                 for (label, kind) in [
@@ -168,7 +168,7 @@ fn parameters(ui: &mut Ui, a: &mut AnimatorUi<'_>) -> bool {
     if params.is_empty() {
         ui.label(
             RichText::new("None yet. Add a switch (moving), a number (speed), a trigger (use) or a direction (facing) for transitions and states to follow.")
-                .color(theme::TEXT_WEAK),
+                .color(theme::text_weak()),
         );
     }
     let live = a.live.clone();
@@ -201,7 +201,11 @@ fn parameters(ui: &mut Ui, a: &mut AnimatorUi<'_>) -> bool {
                 if edit.lost_focus() && name != p.name {
                     changed |= a.editor.rename_parameter(&p.name, &name);
                 }
-                ui.label(RichText::new(p.kind.word()).small().color(theme::TEXT_WEAK));
+                ui.label(
+                    RichText::new(p.kind.word())
+                        .small()
+                        .color(theme::text_weak()),
+                );
                 edit.context_menu(|ui| {
                     if ui.button("Start at this value").clicked() {
                         let start = match (p.kind, value) {
@@ -241,7 +245,7 @@ fn parameters(ui: &mut Ui, a: &mut AnimatorUi<'_>) -> bool {
             "Set them here to try the animator in the preview; the game starts each at the value it's made with (right-click a name to change that)."
         })
         .small()
-        .color(theme::TEXT_WEAK),
+        .color(theme::text_weak()),
     );
     changed
 }
@@ -285,7 +289,7 @@ fn parameter_value(
             let (rect, r) = ui.allocate_exact_size(vec2(40.0, 40.0), egui::Sense::click_and_drag());
             let c = rect.center();
             let p = ui.painter();
-            p.circle_stroke(c, 18.0, egui::Stroke::new(1.0, theme::BUTTON_BORDER));
+            p.circle_stroke(c, 18.0, egui::Stroke::new(1.0, theme::button_border()));
             p.line_segment(
                 [c, c + vec2(v[0], -v[1]) * 16.0],
                 egui::Stroke::new(2.0, crate::graph_canvas::LIVE),
@@ -296,7 +300,7 @@ fn parameter_value(
                 let d = at - c;
                 editor.set_preview(name, ParamValue::Direction([d.x, -d.y]));
             }
-            ui.label(RichText::new(Facing::nearest(v).word()).color(theme::TEXT_WEAK));
+            ui.label(RichText::new(Facing::nearest(v).word()).color(theme::text_weak()));
         }
         None => {}
     }
@@ -305,7 +309,7 @@ fn parameter_value(
 /// The sheet's frame the preview shows, and what it's playing.
 fn preview(ui: &mut Ui, a: &mut AnimatorUi<'_>) {
     egui::Frame::new()
-        .fill(theme::FIELD)
+        .fill(theme::field())
         .corner_radius(4.0)
         .inner_margin(8.0)
         .show(ui, |ui| {
@@ -322,7 +326,7 @@ fn preview(ui: &mut Ui, a: &mut AnimatorUi<'_>) {
                     None => "Preview".to_owned(),
                 })
                 .small()
-                .color(theme::TEXT_WEAK),
+                .color(theme::text_weak()),
             );
             let (rect, _) =
                 ui.allocate_exact_size(vec2(ui.available_width(), 140.0), egui::Sense::hover());
@@ -356,7 +360,7 @@ fn preview(ui: &mut Ui, a: &mut AnimatorUi<'_>) {
                             "No clip to show"
                         },
                         egui::FontId::proportional(11.0),
-                        theme::TEXT_WEAK,
+                        theme::text_weak(),
                     );
                 }
             }
@@ -545,7 +549,7 @@ fn graph(ui: &mut Ui, a: &mut AnimatorUi<'_>) -> bool {
             egui::Align2::CENTER_CENTER,
             "Right-click to add a state",
             egui::FontId::proportional(13.0),
-            theme::TEXT_WEAK,
+            theme::text_weak(),
         );
     }
     changed
@@ -579,8 +583,8 @@ pub(crate) fn animator_properties(ui: &mut Ui, a: &mut AnimatorUi<'_>) -> bool {
 
 fn heading(ui: &mut Ui, kind: &str, name: &str) {
     ui.horizontal(|ui| {
-        ui.label(RichText::new(kind).color(theme::TEXT_WEAK));
-        ui.label(RichText::new("·").color(theme::TEXT_WEAK));
+        ui.label(RichText::new(kind).color(theme::text_weak()));
+        ui.label(RichText::new("·").color(theme::text_weak()));
         ui.label(RichText::new(name).strong());
     });
     ui.add_space(4.0);
@@ -588,7 +592,7 @@ fn heading(ui: &mut Ui, kind: &str, name: &str) {
 
 fn hint(ui: &mut Ui, text: &str) {
     ui.add_space(8.0);
-    ui.label(RichText::new(text).small().color(theme::TEXT_WEAK));
+    ui.label(RichText::new(text).small().color(theme::text_weak()));
 }
 
 /// A clip picker of the sheet's clips. Returns the clip chosen.
@@ -612,7 +616,7 @@ fn clip_choice(
                 }
             }
             if clips.is_none() {
-                ui.label(RichText::new("Choose the animator's sprite sheet first (click empty space in the graph).").color(theme::TEXT_WEAK));
+                ui.label(RichText::new("Choose the animator's sprite sheet first (click empty space in the graph).").color(theme::text_weak()));
             }
         });
     if !current.is_empty() && clips.is_some_and(|c| c.get(current).is_none()) {
@@ -718,7 +722,7 @@ fn state_properties(ui: &mut Ui, a: &mut AnimatorUi<'_>, state: &animation::Stat
             ui.label(
                 RichText::new("Clips by direction (the nearest to facing plays)")
                     .small()
-                    .color(theme::TEXT_WEAK),
+                    .color(theme::text_weak()),
             );
             for (facing, clip) in by_clips {
                 crate::inspector::row(ui, &facing_text(*facing), "", |ui| {
@@ -757,7 +761,7 @@ fn state_properties(ui: &mut Ui, a: &mut AnimatorUi<'_>, state: &animation::Stat
                 ui.label(
                     RichText::new("(8 for diagonals)")
                         .small()
-                        .color(theme::TEXT_WEAK),
+                        .color(theme::text_weak()),
                 );
             });
         }
@@ -884,7 +888,7 @@ fn condition_row(
                 });
         }
         (Condition::Is(_), Some(ParameterKind::Trigger)) => {
-            ui.label(RichText::new("fired").color(theme::TEXT_WEAK));
+            ui.label(RichText::new("fired").color(theme::text_weak()));
         }
         (Condition::Above(n, v) | Condition::Below(n, v), Some(ParameterKind::Number(_))) => {
             let above = matches!(c, Condition::Above(..));
@@ -940,7 +944,7 @@ fn transition_properties(ui: &mut Ui, a: &mut AnimatorUi<'_>, t: &animation::Tra
         "Transition",
         &format!("{} → {}", name(t.from), name(Some(t.to))),
     );
-    ui.label(RichText::new("Taken when all of these hold:").color(theme::TEXT_WEAK));
+    ui.label(RichText::new("Taken when all of these hold:").color(theme::text_weak()));
     let params = editor.file.parameters.clone();
     for (i, c) in t.when.iter().enumerate() {
         ui.horizontal(|ui| {
@@ -1060,7 +1064,7 @@ fn file_properties(ui: &mut Ui, a: &mut AnimatorUi<'_>) -> bool {
             f.transitions.len(),
             f.parameters.len()
         ))
-        .color(theme::TEXT_WEAK),
+        .color(theme::text_weak()),
     );
     for note in &a.notes {
         ui.label(RichText::new(note).small().color(theme::WARNING));

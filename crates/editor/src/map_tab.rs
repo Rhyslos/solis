@@ -129,7 +129,7 @@ fn solid_mark(ui: &Ui, swatch: egui::Rect) {
 fn layer_thumb(ui: &mut Ui, map: &TileMap, layer: usize, set: Option<&Tileset>) {
     let (rect, _) = ui.allocate_exact_size(vec2(30.0, 20.0), egui::Sense::hover());
     let painter = ui.painter();
-    painter.rect_filled(rect, 2.0, theme::FIELD);
+    painter.rect_filled(rect, 2.0, theme::field());
     let [w, h] = map.size();
     let (cols, rows) = (6u32, 4u32);
     let step = vec2(rect.width() / cols as f32, rect.height() / rows as f32);
@@ -181,13 +181,13 @@ pub(crate) fn map_tab(ui: &mut Ui, m: &MapUi<'_>) -> Vec<MapRequest> {
         ui.label(RichText::new(&m.name).strong());
         ui.label(
             RichText::new(format!("{} × {} cells", map.size()[0], map.size()[1]))
-                .color(theme::TEXT_WEAK),
+                .color(theme::text_weak()),
         );
     });
     ui.add_space(6.0);
     // Layers, top first as they're drawn.
     ui.horizontal(|ui| {
-        ui.label(RichText::new("Layers").color(theme::TEXT_WEAK));
+        ui.label(RichText::new("Layers").color(theme::text_weak()));
         ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
             let add = ui
                 .add_enabled(
@@ -212,7 +212,7 @@ pub(crate) fn map_tab(ui: &mut Ui, m: &MapUi<'_>) -> Vec<MapRequest> {
             .fill(if i == 0 {
                 Color32::from_rgb(0x3a, 0x2e, 0x18)
             } else {
-                theme::FIELD
+                theme::field()
             })
             .corner_radius(4.0)
             .inner_margin(4.0)
@@ -286,11 +286,11 @@ pub(crate) fn map_tab(ui: &mut Ui, m: &MapUi<'_>) -> Vec<MapRequest> {
     // Terrains, with how many cells use each (every layer together): the
     // painter's palette.
     ui.horizontal(|ui| {
-        ui.label(RichText::new("Terrains").color(theme::TEXT_WEAK));
+        ui.label(RichText::new("Terrains").color(theme::text_weak()));
         ui.label(
             RichText::new("(click one to paint with it; the outlined one is painted)")
                 .small()
-                .color(theme::TEXT_WEAK),
+                .color(theme::text_weak()),
         );
     });
     let mut counts = [0usize; 256];
@@ -384,7 +384,7 @@ pub(crate) fn map_tab(ui: &mut Ui, m: &MapUi<'_>) -> Vec<MapRequest> {
                         "Painting with a copy of {w} × {h} cells: X and Y flip it, Z turns it, Esc puts it away."
                     ))
                     .small()
-                    .color(theme::TEXT_WEAK),
+                    .color(theme::text_weak()),
                 );
             } else if m.paint.exact {
                 exact_tiles(ui, set, m, &mut asked);
@@ -406,7 +406,7 @@ pub(crate) fn map_tab(ui: &mut Ui, m: &MapUi<'_>) -> Vec<MapRequest> {
     ui.add_space(8.0);
     // Cell values.
     ui.horizontal(|ui| {
-        ui.label(RichText::new("Cell values").color(theme::TEXT_WEAK));
+        ui.label(RichText::new("Cell values").color(theme::text_weak()));
         ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
             let add = ui
                 .add_enabled(
@@ -494,7 +494,7 @@ pub(crate) fn map_tab(ui: &mut Ui, m: &MapUi<'_>) -> Vec<MapRequest> {
         ui.label(
             RichText::new("None yet. A value is something every cell has: crop (a choice), growth (a number), watered (a switch).")
                 .small()
-                .color(theme::TEXT_WEAK),
+                .color(theme::text_weak()),
         );
     }
     ui.add_space(8.0);
@@ -504,13 +504,13 @@ pub(crate) fn map_tab(ui: &mut Ui, m: &MapUi<'_>) -> Vec<MapRequest> {
             ui.label(
                 RichText::new("Point at a cell in the viewport to see it here.")
                     .small()
-                    .color(theme::TEXT_WEAK),
+                    .color(theme::text_weak()),
             );
         }
         Some([x, y]) => {
-            ui.label(RichText::new(format!("Cell · x {x}, y {y}")).color(theme::TEXT_WEAK));
+            ui.label(RichText::new(format!("Cell · x {x}, y {y}")).color(theme::text_weak()));
             egui::Frame::new()
-                .fill(theme::FIELD)
+                .fill(theme::field())
                 .corner_radius(4.0)
                 .inner_margin(6.0)
                 .show(ui, |ui| {
@@ -518,7 +518,7 @@ pub(crate) fn map_tab(ui: &mut Ui, m: &MapUi<'_>) -> Vec<MapRequest> {
                     for (i, layer) in map.layers().iter().enumerate() {
                         crate::inspector::row(ui, &layer.name, "", |ui| match map.code(i, x, y) {
                             Some(0) | None => {
-                                ui.label(RichText::new("—").color(theme::TEXT_WEAK));
+                                ui.label(RichText::new("—").color(theme::text_weak()));
                             }
                             Some(code) => {
                                 let name = m
@@ -556,7 +556,7 @@ pub(crate) fn map_tab(ui: &mut Ui, m: &MapUi<'_>) -> Vec<MapRequest> {
             "Changes save at once; Ctrl+Z over this tab (or while painting) undoes them. Paint with the brush, rectangle, line, fill and eyedropper at the bottom of the viewport (B, U, N, G, I)."
         })
         .small()
-        .color(theme::TEXT_WEAK),
+        .color(theme::text_weak()),
     );
     asked
 }
@@ -581,7 +581,7 @@ fn exact_tiles(ui: &mut Ui, set: &Tileset, m: &MapUi<'_>, asked: &mut Vec<MapReq
             terrain.name
         ))
         .small()
-        .color(theme::TEXT_WEAK),
+        .color(theme::text_weak()),
     );
     let pieces: Vec<usize> = (0..set.pieces.len())
         .filter(|&i| set.pieces[i].terrain == terrain.id)
@@ -644,7 +644,7 @@ pub(crate) fn tileset_properties(
         ui.label(RichText::new("▦").color(theme::kind::SPRITE));
         ui.label(RichText::new(name).strong());
     });
-    ui.label(RichText::new("Terrains (what a cell can be)").color(theme::TEXT_WEAK));
+    ui.label(RichText::new("Terrains (what a cell can be)").color(theme::text_weak()));
     for (i, t) in set.terrains.iter().enumerate() {
         ui.horizontal(|ui| {
             let mut c = t.colour.map(|v| (v.clamp(0.0, 1.0) * 255.0).round() as u8);
@@ -739,7 +739,7 @@ pub(crate) fn tileset_properties(
     ui.label(
         RichText::new("Its name, the character the map file writes for it, and its colour. The first fills new maps. Double-click the tileset in the Library to give its terrains art in the Tileset tab.")
             .small()
-            .color(theme::TEXT_WEAK),
+            .color(theme::text_weak()),
     );
     for note in notes {
         ui.label(RichText::new(note).small().color(theme::WARNING));
@@ -799,7 +799,7 @@ pub(crate) fn map_file_properties(
                 1.0..=max,
                 0.2,
             );
-            ui.label(RichText::new("×").color(theme::TEXT_WEAK));
+            ui.label(RichText::new("×").color(theme::text_weak()));
             let b = crate::frames_view::settled_whole_drag(
                 ui,
                 &format!("map h {path}"),
@@ -807,7 +807,7 @@ pub(crate) fn map_file_properties(
                 1.0..=max,
                 0.2,
             );
-            ui.label(RichText::new("cells").color(theme::TEXT_WEAK));
+            ui.label(RichText::new("cells").color(theme::text_weak()));
             if a.is_some() || b.is_some() {
                 out = Some((
                     map.tileset,
@@ -823,7 +823,7 @@ pub(crate) fn map_file_properties(
             map.values().len()
         ))
         .small()
-        .color(theme::TEXT_WEAK),
+        .color(theme::text_weak()),
     );
     for note in notes {
         ui.label(RichText::new(note).small().color(theme::WARNING));

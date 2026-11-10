@@ -114,6 +114,7 @@ What changed in each version, for people using Solis. Newest first.
 
 ### Added
 
+- **A second theme, Graphite, and rounded panels** (Edit > Settings… > Appearance). Graphite is near-black with lighter hairlines and crisp white text; **Use rounded panels** makes each panel a rounded card with small gaps, the front tab a soft pill, and the workspaces one group of pills. The two are separate, so either can be tried alone, and both are remembered.
 - **A getting-started guide: your first 2D platformer** (the manual's `first-platformer.md`). From an empty project to a level of solid tiles, a hero who runs and jumps, a following camera and coins to collect, explaining the editor and each line of Lust on the way. A test plays the guide's code, so it keeps working.
 - **Pictures as sprites**: a `.png` or `.jpg` in the project can be a sprite, not just an Aseprite file. Drag it from the Library into the viewport, or pick it in a Sprite's **Sheet** (*name (picture)*): it's one frame, standing on its bottom middle, up to 4096 × 4096. It's read only once a sprite uses it, and again when it's saved. Double-clicking a picture still opens it in its own program.
 - **Text files in the Library and Properties**: `.md` and `.txt` notes, and `.json`, `.csv`, `.toml` and `.ron` data, show with their extension as their icon, coloured by kind. Click one to read it in Properties (Markdown drawn as it reads); **Open in its program** or a double-click opens it in its program, such as Ledger. Before, they showed as plain files and a double-click only opened their folder.

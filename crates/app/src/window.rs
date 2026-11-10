@@ -48,6 +48,8 @@ const EDITOR_SIZE_KEY: &str = "editor_size";
 const LIBRARY_PINNED_KEY: &str = "library_pinned";
 /// Key under which whether the Hints panel shows hints is remembered.
 const HINTS_KEY: &str = "hints";
+/// Where the theme and rounded panels are kept (decision 0096).
+const APPEARANCE_KEY: &str = "appearance";
 /// Key under which the viewport's corner controls are remembered.
 const OVERLAYS_KEY: &str = "viewport_overlays";
 /// Key under which snapping and the axis locks are remembered.
@@ -214,9 +216,13 @@ impl App {
         let auto_update: bool = storage
             .and_then(|s| eframe::get_value(s, AUTO_UPDATE_KEY))
             .unwrap_or(true);
-        editor::theme::apply(&cc.egui_ctx, accent);
+        let appearance: editor::theme::Appearance = storage
+            .and_then(|s| eframe::get_value(s, APPEARANCE_KEY))
+            .unwrap_or_default();
+        editor::theme::apply(&cc.egui_ctx, accent, appearance);
         let mut workbench = Workbench::new(info.clone(), layout)
             .with_accent(accent)
+            .with_appearance(appearance)
             .with_overlays(overlays)
             .with_snapping(snapping)
             .with_camera(camera)
@@ -2207,7 +2213,7 @@ impl eframe::App for App {
         if self.settling.is_some() {
             // Growing to the editor's size: drawn once it's there.
             ui.painter()
-                .rect_filled(ui.max_rect(), 0.0, editor::theme::BACKGROUND);
+                .rect_filled(ui.max_rect(), 0.0, editor::theme::background());
             return;
         }
         let actions = self.workbench.show(ui, renderer);
@@ -2259,6 +2265,7 @@ impl eframe::App for App {
         eframe::set_value(storage, WORKSPACES_KEY, &self.workbench.workspaces());
         eframe::set_value(storage, HINTS_KEY, &self.workbench.hints_on());
         eframe::set_value(storage, ACCENT_KEY, &self.workbench.accent());
+        eframe::set_value(storage, APPEARANCE_KEY, &self.workbench.appearance());
         eframe::set_value(
             storage,
             LIBRARY_PINNED_KEY,

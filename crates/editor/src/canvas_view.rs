@@ -153,7 +153,7 @@ fn toolbar(
                 out.open_code = true;
             }
             if doc.behind {
-                ui.label(RichText::new("Updating…").color(theme::TEXT_WEAK));
+                ui.label(RichText::new("Updating…").color(theme::text_weak()));
             }
         });
     });
@@ -177,7 +177,7 @@ fn preview_values(ui: &mut Ui, doc: &mut ScreenDoc, readable: &[crate::screen_ti
         ui.menu_button(label, |ui| {
             ui.label(
                 RichText::new("Try other values on the canvas. They're never saved.")
-                    .color(theme::TEXT_WEAK)
+                    .color(theme::text_weak())
                     .small(),
             );
             for r in &read {
@@ -230,7 +230,7 @@ fn canvas(ui: &mut Ui, c: CanvasUi<'_>, out: &mut CanvasOut) {
     let response = ui.allocate_rect(area, Sense::click_and_drag());
     out.hovered = response.hovered() || response.dragged();
     let painter = ui.painter_at(area);
-    painter.rect_filled(area, 0.0, theme::backdrop::HORIZON);
+    painter.rect_filled(area, 0.0, theme::backdrop::horizon());
     let preset = ui::presets::PRESETS
         .get(doc.preset)
         .copied()
@@ -312,14 +312,14 @@ fn canvas(ui: &mut Ui, c: CanvasUi<'_>, out: &mut CanvasOut) {
                 egui::Align2::CENTER_CENTER,
                 format!("The screen can't be drawn: {why}"),
                 egui::FontId::proportional(13.0),
-                theme::TEXT_WEAK,
+                theme::text_weak(),
             );
         }
     }
     painter.rect_stroke(
         rect,
         0.0,
-        Stroke::new(1.0, theme::LINE),
+        Stroke::new(1.0, theme::line()),
         egui::StrokeKind::Outside,
     );
     if doc.safe_area {
@@ -991,7 +991,7 @@ fn tools_bar(ui: &mut Ui, area: Rect, doc: &mut ScreenDoc, pictures: &[String], 
     );
     let mut child = ui.new_child(egui::UiBuilder::new().max_rect(bar));
     egui::Frame::new()
-        .fill(theme::PANEL)
+        .fill(theme::panel())
         .corner_radius(6.0)
         .inner_margin(4.0)
         .show(&mut child, |ui| {
@@ -1003,7 +1003,7 @@ fn tools_bar(ui: &mut Ui, area: Rect, doc: &mut ScreenDoc, pictures: &[String], 
                     let fill = if on {
                         accent
                     } else if r.hovered() {
-                        theme::HOVER
+                        theme::hover()
                     } else {
                         Color32::TRANSPARENT
                     };
@@ -1012,7 +1012,7 @@ fn tools_bar(ui: &mut Ui, area: Rect, doc: &mut ScreenDoc, pictures: &[String], 
                         ui.painter(),
                         rect,
                         tool,
-                        if on { Color32::WHITE } else { theme::TEXT },
+                        if on { Color32::WHITE } else { theme::text() },
                     );
                     r.widget_info(|| {
                         egui::WidgetInfo::selected(egui::WidgetType::Button, true, on, tool.name())
@@ -1090,12 +1090,12 @@ fn tool_keys(ui: &mut Ui, response: &egui::Response, doc: &mut ScreenDoc) {
                 p,
                 17.0,
                 if hover || doc.tool == tool {
-                    theme::HOVER
+                    theme::hover()
                 } else {
-                    theme::PANEL
+                    theme::panel()
                 },
             );
-            crate::canvas_tools::paint_tool(&painter, r, tool, theme::TEXT);
+            crate::canvas_tools::paint_tool(&painter, r, tool, theme::text());
             if hover && ui.input(|i| i.pointer.primary_clicked()) {
                 chosen = Some(tool);
             }

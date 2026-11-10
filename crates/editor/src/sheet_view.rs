@@ -71,7 +71,7 @@ pub(crate) fn sheet_properties(
     });
     let sheet = match state {
         None | Some(SheetState::Reading) => {
-            ui.label(RichText::new("Reading…").color(theme::TEXT_WEAK));
+            ui.label(RichText::new("Reading…").color(theme::text_weak()));
             return false;
         }
         Some(SheetState::Failed(why)) => {
@@ -90,7 +90,7 @@ pub(crate) fn sheet_properties(
         egui::vec2(ui.available_width(), 120.0),
         egui::Sense::hover(),
     );
-    ui.painter().rect_filled(rect, 3.0, theme::FIELD);
+    ui.painter().rect_filled(rect, 3.0, theme::field());
     if let Some(atlas) = atlas {
         draw_frame(ui.painter(), rect.shrink(4.0), sheet, atlas, frame);
     }
@@ -104,14 +104,14 @@ pub(crate) fn sheet_properties(
                     let (cell, response) =
                         ui.allocate_exact_size(egui::vec2(24.0, 26.0), egui::Sense::click());
                     let painter = ui.painter();
-                    painter.rect_filled(cell, 2.0, theme::FIELD);
+                    painter.rect_filled(cell, 2.0, theme::field());
                     if let Some(atlas) = atlas {
                         draw_frame(painter, cell.shrink(2.0), sheet, atlas, i);
                     }
                     let stroke = if i == frame {
                         egui::Stroke::new(1.5, theme::kind::SPRITE)
                     } else {
-                        egui::Stroke::new(1.0, theme::BUTTON_BORDER)
+                        egui::Stroke::new(1.0, theme::button_border())
                     };
                     painter.rect_stroke(cell, 2.0, stroke, egui::StrokeKind::Inside);
                     response.widget_info(|| {
@@ -148,7 +148,7 @@ pub(crate) fn sheet_properties(
             f.duration_ms
         ))
         .size(11.0)
-        .color(theme::TEXT_WEAK),
+        .color(theme::text_weak()),
     );
     ui.add_space(4.0);
     let row = |ui: &mut Ui, k: &str, v: String| {
@@ -174,13 +174,13 @@ pub(crate) fn sheet_properties(
         ui.label(
             RichText::new("No tags: in Aseprite, tag runs of frames to make clips.")
                 .size(11.0)
-                .color(theme::TEXT_WEAK),
+                .color(theme::text_weak()),
         );
     } else {
         ui.label(
             RichText::new("Tags: the clips it can play")
                 .size(11.0)
-                .color(theme::TEXT_WEAK),
+                .color(theme::text_weak()),
         );
         egui::Grid::new(("tags", path))
             .num_columns(3)
@@ -192,7 +192,7 @@ pub(crate) fn sheet_properties(
                         RichText::new(crate::library::frames_text(
                             (tag.to - tag.from + 1) as usize,
                         ))
-                        .color(theme::TEXT_WEAK),
+                        .color(theme::text_weak()),
                     );
                     let times = match tag.repeats {
                         0 => "loops".to_owned(),
@@ -201,7 +201,7 @@ pub(crate) fn sheet_properties(
                     };
                     ui.label(
                         RichText::new(format!("{}, {times}", tag.direction.name()))
-                            .color(theme::TEXT_WEAK),
+                            .color(theme::text_weak()),
                     );
                     ui.end_row();
                 }
@@ -224,7 +224,7 @@ pub(crate) fn sheet_properties(
         ui.label(
             RichText::new(format!("Slices: {}", slices.join(" · ")))
                 .size(11.0)
-                .color(theme::TEXT_WEAK),
+                .color(theme::text_weak()),
         );
     }
     if !sheet.palette.is_empty() {
@@ -232,7 +232,7 @@ pub(crate) fn sheet_properties(
             ui.label(
                 RichText::new(format!("Palette: {} colours", sheet.palette.len()))
                     .size(11.0)
-                    .color(theme::TEXT_WEAK),
+                    .color(theme::text_weak()),
             );
             for c in sheet.palette.iter().take(64) {
                 let (swatch, _) =
@@ -260,7 +260,7 @@ pub(crate) fn sheet_properties(
              as a sprite.",
         )
         .size(11.0)
-        .color(theme::TEXT_WEAK),
+        .color(theme::text_weak()),
     );
     make
 }

@@ -384,7 +384,7 @@ pub(crate) fn problems_panel(
             if !problems.is_empty() {
                 heading.push(count(problems.len(), "the area", "select its entity"));
             }
-            ui.label(RichText::new(heading.join(" ")).color(theme::TEXT_WEAK));
+            ui.label(RichText::new(heading.join(" ")).color(theme::text_weak()));
             ui.add_space(4.0);
             let rows = code.len() + problems.len();
             egui::ScrollArea::vertical().auto_shrink(false).show_rows(
@@ -418,7 +418,7 @@ fn problem_row(ui: &mut Ui, text: &str) -> egui::Response {
     let response = response.on_hover_text(text);
     response.widget_info(|| egui::WidgetInfo::labeled(egui::WidgetType::Button, true, text));
     if response.hovered() {
-        ui.painter().rect_filled(rect, 3.0, theme::HOVER);
+        ui.painter().rect_filled(rect, 3.0, theme::hover());
     }
     let size = 11.0;
     icons::icon(
@@ -436,14 +436,14 @@ fn problem_row(ui: &mut Ui, text: &str) -> egui::Response {
     let mut job = egui::text::LayoutJob::simple_singleline(
         text.to_string(),
         egui::TextStyle::Body.resolve(ui.style()),
-        theme::TEXT,
+        theme::text(),
     );
     job.wrap = egui::text::TextWrapping::truncate_at_width((rect.right() - left).max(0.0));
     let galley = ui.painter().layout_job(job);
     ui.painter().galley(
         egui::pos2(left, rect.center().y - galley.size().y / 2.0),
         galley,
-        theme::TEXT,
+        theme::text(),
     );
     response
 }

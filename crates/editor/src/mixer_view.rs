@@ -129,7 +129,7 @@ pub(crate) fn mixer_panel(ui: &mut Ui, state: &MixerState, playing: bool) -> Vec
                 }
             }
             ui.separator();
-            ui.label(RichText::new("Heard at once").color(theme::TEXT_WEAK))
+            ui.label(RichText::new("Heard at once").color(theme::text_weak()))
                 .on_hover_text(
                     "How many sounds play at once: when more want to, the most important \
                      are heard (by their event's priority, then the loudest)",
@@ -145,7 +145,7 @@ pub(crate) fn mixer_panel(ui: &mut Ui, state: &MixerState, playing: bool) -> Vec
                 requests.push(MixerRequest::Changed { mixer, save });
             }
             ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
-                ui.label(RichText::new(status(state, playing)).color(theme::TEXT_WEAK));
+                ui.label(RichText::new(status(state, playing)).color(theme::text_weak()));
             });
         });
     });
@@ -195,7 +195,7 @@ fn strip(ui: &mut Ui, state: &MixerState, i: usize, requests: &mut Vec<MixerRequ
         .inner_margin(egui::Margin::symmetric(2, 4))
         .corner_radius(3)
         .fill(if selected {
-            theme::HOVER
+            theme::hover()
         } else {
             Color32::TRANSPARENT
         });
@@ -203,9 +203,9 @@ fn strip(ui: &mut Ui, state: &MixerState, i: usize, requests: &mut Vec<MixerRequ
         ui.set_width(STRIP_WIDTH);
         ui.vertical_centered(|ui| {
             let name = RichText::new(&bus.name).color(if i == 0 {
-                theme::TEXT_STRONG
+                theme::text_strong()
             } else {
-                theme::TEXT
+                theme::text()
             });
             if ui
                 .add(
@@ -306,10 +306,10 @@ fn toggle(ui: &mut Ui, text: &str, on: bool, color: Color32, hint: &str) -> bool
     let button = egui::Button::new(RichText::new(text).color(if on {
         Color32::WHITE
     } else {
-        theme::TEXT_WEAK
+        theme::text_weak()
     }))
     .min_size(egui::vec2(20.0, 17.0))
-    .fill(if on { color } else { theme::FIELD });
+    .fill(if on { color } else { theme::field() });
     let response = ui.add(button).on_hover_text(hint);
     response.widget_info(|| egui::WidgetInfo::selected(egui::WidgetType::Checkbox, true, on, hint));
     response.clicked()
@@ -320,7 +320,7 @@ fn toggle(ui: &mut Ui, text: &str, on: bool, color: Color32, hint: &str) -> bool
 fn meter(ui: &mut Ui, db: f32) {
     let (rect, _) = ui.allocate_exact_size(egui::vec2(6.0, FADER_HEIGHT), egui::Sense::hover());
     let painter = ui.painter();
-    painter.rect_filled(rect, 1.0, theme::LINE);
+    painter.rect_filled(rect, 1.0, theme::line());
     let share = |db: f32| ((db - SILENT_DB) / -SILENT_DB).clamp(0.0, 1.0);
     let top = rect.bottom() - rect.height() * share(db);
     for (from, to, color) in [
@@ -356,7 +356,7 @@ pub(crate) fn bus_properties(ui: &mut Ui, state: &MixerState, at: usize) -> Vec<
                 .show(ui, |ui| {
                     ui.horizontal(|ui| {
                         ui.label(RichText::new(&bus.name).heading());
-                        ui.label(RichText::new("· bus").color(theme::TEXT_WEAK));
+                        ui.label(RichText::new("· bus").color(theme::text_weak()));
                     });
                     ui.add_space(4.0);
                     egui::Grid::new(("bus", at))
@@ -373,7 +373,7 @@ pub(crate) fn bus_properties(ui: &mut Ui, state: &MixerState, at: usize) -> Vec<
                             "{} gets quieter while another bus plays: music under voices.",
                             bus.name
                         ))
-                        .color(theme::TEXT_WEAK)
+                        .color(theme::text_weak())
                         .size(11.0),
                     );
                     for (r, rule) in bus.ducking.iter().enumerate() {
@@ -430,7 +430,7 @@ fn identity_rows(
     bus: &Bus,
     requests: &mut Vec<MixerRequest>,
 ) {
-    ui.label(RichText::new("Name").color(theme::TEXT_WEAK));
+    ui.label(RichText::new("Name").color(theme::text_weak()));
     if at == 0 {
         ui.label(MASTER)
             .on_hover_text("Master is the top bus, and keeps its name");
@@ -453,7 +453,7 @@ fn identity_rows(
     }
     ui.end_row();
     if at > 0 {
-        ui.label(RichText::new("Inside").color(theme::TEXT_WEAK));
+        ui.label(RichText::new("Inside").color(theme::text_weak()));
         egui::ComboBox::from_id_salt(("bus-inside", at))
             .selected_text(&bus.inside)
             .show_ui(ui, |ui| {
@@ -485,7 +485,7 @@ fn identity_rows(
             });
         ui.end_row();
     }
-    ui.label(RichText::new("Volume").color(theme::TEXT_WEAK));
+    ui.label(RichText::new("Volume").color(theme::text_weak()));
     let mut volume = bus.volume_db;
     let field = ui.add(
         egui::DragValue::new(&mut volume)
@@ -512,7 +512,7 @@ fn rule_rows(
         .num_columns(2)
         .spacing([12.0, 4.0])
         .show(ui, |ui| {
-            ui.label(RichText::new("Quieter while").color(theme::TEXT_WEAK));
+            ui.label(RichText::new("Quieter while").color(theme::text_weak()));
             ui.horizontal(|ui| {
                 egui::ComboBox::from_id_salt(("bus-rule-while", at, r))
                     .selected_text(&rule.while_bus)
@@ -543,7 +543,7 @@ fn rule_rows(
             });
             ui.end_row();
             let number = |ui: &mut Ui, label: &str, value: f32, range, suffix: &str| {
-                ui.label(RichText::new(label).color(theme::TEXT_WEAK));
+                ui.label(RichText::new(label).color(theme::text_weak()));
                 let mut v = value;
                 let field = ui.add(
                     egui::DragValue::new(&mut v)
@@ -687,9 +687,9 @@ pub(crate) fn game_mute_button(ui: &mut Ui, panel: egui::Rect, muted: bool) -> b
     });
     let painter = ui.painter();
     let fill = if response.hovered() {
-        theme::HOVER
+        theme::hover()
     } else {
-        theme::OVERLAY
+        theme::overlay()
     };
     painter.rect_filled(rect, 4.0, fill);
     crate::icons::icon(
@@ -697,9 +697,9 @@ pub(crate) fn game_mute_button(ui: &mut Ui, panel: egui::Rect, muted: bool) -> b
         egui::Rect::from_center_size(rect.center(), egui::vec2(13.0, 13.0)),
         crate::icons::Icon::Sound,
         if muted {
-            theme::TEXT_WEAK
+            theme::text_weak()
         } else {
-            theme::TEXT_STRONG
+            theme::text_strong()
         },
     );
     if muted {

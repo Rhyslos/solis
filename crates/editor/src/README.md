@@ -34,7 +34,8 @@ Tests: files ending `_tests.rs` hold the tests of the file with the same start (
 | `search.rs` | One search for everything (decision 0085): the top bar's box and Space open a list of the menus' actions (with shortcuts), the project's files, the area's entities and the panels; type to narrow it, arrows to choose, Enter to do it. Tests in `search_tests.rs`. | `Workbench::search_items`, `search::results`, `search::score` |
 | `status_bar.rs` | The status bar along the bottom: the code checked or its mistakes, problems (click to open), saved or not, playing, and the area's name and 2D size (decision 0085). Tests in `status_bar_tests.rs`. | `Status`, `Workbench::status` |
 | `panel.rs`, `panels.rs`, `layout.rs` | The list of dockable panels, drawing each one's contents, and the standard layout with checks on a saved layout. | `Panel`, `layout::standard` |
-| `theme.rs`, `icons.rs` | The editor's look (greys, accent colour, fonts, text contrast checks) and its icons, drawn in code. | `Accent`, `Icon` |
+| `theme.rs`, `icons.rs` | The editor's look (the accent colour, fonts, frames, the docked panels' style, text contrast checks) and its icons, drawn in code. | `Accent`, `Icon` |
+| `palette.rs` | The two themes' neutral colours (Standard and Graphite) and the rounded-panels switch, kept for the thread that draws; `theme` re-exports its colour functions (`theme::panel()`, `theme::text_weak()` ...). Decision 0096. | `Theme`, `Appearance`, `Palette` |
 | `splash.rs`, `updates.rs` | The splash screen while the program starts, and what the editor shows about updates (decisions 0043 and 0045). | `SplashView`, `UpdateNotice` |
 
 ## Panels

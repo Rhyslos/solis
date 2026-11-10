@@ -647,13 +647,13 @@ impl Workbench {
         painter.rect(
             rect,
             5.0,
-            theme::FIELD,
+            theme::field(),
             egui::Stroke::new(
                 1.0,
                 if hovered {
-                    theme::TEXT_WEAK
+                    theme::text_weak()
                 } else {
-                    theme::BUTTON_BORDER
+                    theme::button_border()
                 },
             ),
             egui::StrokeKind::Inside,
@@ -662,20 +662,25 @@ impl Workbench {
             rect.left_center() + egui::vec2(14.0, 0.0),
             egui::vec2(12.0, 12.0),
         );
-        crate::icons::icon(painter, icon, crate::icons::Icon::Search, theme::TEXT_WEAK);
+        crate::icons::icon(
+            painter,
+            icon,
+            crate::icons::Icon::Search,
+            theme::text_weak(),
+        );
         painter.text(
             rect.left_center() + egui::vec2(26.0, 0.0),
             egui::Align2::LEFT_CENTER,
             "Search or do anything…",
             egui::FontId::proportional(12.5),
-            theme::TEXT_WEAK,
+            theme::text_weak(),
         );
         painter.text(
             rect.right_center() - egui::vec2(8.0, 0.0),
             egui::Align2::RIGHT_CENTER,
             "Space",
             egui::FontId::proportional(11.0),
-            theme::TEXT_WEAK,
+            theme::text_weak(),
         );
         response.widget_info(|| {
             egui::WidgetInfo::labeled(egui::WidgetType::Button, true, "Search or do anything")
@@ -745,7 +750,7 @@ impl Workbench {
                                     "Nothing is called “{}”.",
                                     self.search.query.trim()
                                 ))
-                                .color(theme::TEXT_WEAK),
+                                .color(theme::text_weak()),
                             );
                         }
                         egui::ScrollArea::vertical()
@@ -803,7 +808,7 @@ fn result_row(ui: &mut Ui, item: &SearchItem, chosen: bool) -> egui::Response {
         egui::Align2::LEFT_CENTER,
         &item.name,
         font,
-        theme::TEXT_STRONG,
+        theme::text_strong(),
     );
     if !item.detail.is_empty() {
         painter.text(
@@ -811,7 +816,7 @@ fn result_row(ui: &mut Ui, item: &SearchItem, chosen: bool) -> egui::Response {
             egui::Align2::LEFT_CENTER,
             &item.detail,
             egui::FontId::proportional(12.0),
-            theme::TEXT_WEAK,
+            theme::text_weak(),
         );
     }
     let kind = painter.text(
@@ -819,7 +824,7 @@ fn result_row(ui: &mut Ui, item: &SearchItem, chosen: bool) -> egui::Response {
         egui::Align2::RIGHT_CENTER,
         item.kind.label(),
         egui::FontId::proportional(11.0),
-        theme::TEXT_WEAK,
+        theme::text_weak(),
     );
     if !item.keys.is_empty() {
         painter.text(
@@ -827,7 +832,7 @@ fn result_row(ui: &mut Ui, item: &SearchItem, chosen: bool) -> egui::Response {
             egui::Align2::RIGHT_CENTER,
             item.keys,
             egui::FontId::monospace(11.5),
-            theme::TEXT,
+            theme::text(),
         );
     }
     let label = item.name.clone();

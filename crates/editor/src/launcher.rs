@@ -255,8 +255,8 @@ impl BuildMark {
             ),
             Self::Some(b) => (
                 format!("build {b}"),
-                theme::TEXT,
-                theme::FIELD,
+                theme::text(),
+                theme::field(),
                 "Last opened with this build (this copy was built from source and has no \
                  number to compare)",
             ),
@@ -407,8 +407,8 @@ impl Workbench {
             .inner_margin(egui::Margin::symmetric(12, 8))
             .show(ui, |ui| {
                 ui.horizontal(|ui| {
-                    ui.label(RichText::new("⬇").color(theme::TEXT_STRONG));
-                    ui.label(RichText::new(&text).color(theme::TEXT_STRONG));
+                    ui.label(RichText::new("⬇").color(theme::text_strong()));
+                    ui.label(RichText::new(&text).color(theme::text_strong()));
                     ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                         if let Some((label, action)) = button {
                             let go = egui::Button::new(
@@ -519,14 +519,14 @@ impl Workbench {
             .resizable(false)
             .frame(
                 egui::Frame::new()
-                    .fill(theme::HEADER)
+                    .fill(theme::header())
                     .inner_margin(egui::Margin::symmetric(14, 22)),
             )
             .show(ui, |ui| self.launcher_sidebar(ui));
         egui::CentralPanel::default()
             .frame(
                 egui::Frame::new()
-                    .fill(theme::BACKGROUND)
+                    .fill(theme::background())
                     .inner_margin(egui::Margin::symmetric(36, 28)),
             )
             .show(ui, |ui| match self.launcher.page {
@@ -558,7 +558,7 @@ impl Workbench {
                 RichText::new(&self.info.name)
                     .size(18.0)
                     .strong()
-                    .color(theme::TEXT_STRONG),
+                    .color(theme::text_strong()),
             );
         });
         ui.add_space(22.0);
@@ -579,13 +579,17 @@ impl Workbench {
             if on {
                 painter.rect_filled(rect, 6.0, Color32::from_rgb(0x2c, 0x3a, 0x4d));
             } else if item.hovered() {
-                painter.rect_filled(rect, 6.0, theme::MENU_ROW);
+                painter.rect_filled(rect, 6.0, theme::menu_row());
             }
-            let colour = if on { theme::TEXT_STRONG } else { theme::TEXT };
+            let colour = if on {
+                theme::text_strong()
+            } else {
+                theme::text()
+            };
             let icon_colour = if on {
                 self.accent.colors().fill
             } else {
-                theme::TEXT_WEAK
+                theme::text_weak()
             };
             let icon_at = rect.left_center() + vec2(20.0, 0.0);
             match icon {
@@ -642,7 +646,7 @@ impl Workbench {
                     self.info.name, self.info.version
                 ),
             };
-            ui.label(RichText::new(build).small().color(theme::TEXT_WEAK));
+            ui.label(RichText::new(build).small().color(theme::text_weak()));
             if let Some(line) = match &self.update {
                 crate::updates::UpdateNotice::Ready(b) => {
                     Some(format!("Build {b} is ready to install"))
@@ -664,7 +668,7 @@ impl Workbench {
                 None => "Carry on without a project".to_string(),
             };
             let close = ui
-                .add(egui::Button::new(RichText::new(back).color(theme::TEXT_WEAK)).frame(false))
+                .add(egui::Button::new(RichText::new(back).color(theme::text_weak())).frame(false))
                 .on_hover_text("Closes this page (Esc)");
             close.widget_info(|| {
                 egui::WidgetInfo::labeled(egui::WidgetType::Button, true, "Close the launcher")
@@ -683,7 +687,7 @@ impl Workbench {
                 RichText::new("Projects")
                     .size(24.0)
                     .strong()
-                    .color(theme::TEXT_STRONG),
+                    .color(theme::text_strong()),
             );
             ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                 let new = egui::Button::new(
@@ -729,7 +733,7 @@ impl Workbench {
                 .inner_margin(egui::Margin::symmetric(12, 8))
                 .show(ui, |ui| {
                     ui.horizontal(|ui| {
-                        ui.label(RichText::new(&notice).color(theme::TEXT_STRONG));
+                        ui.label(RichText::new(&notice).color(theme::text_strong()));
                         ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                             let close = ui.add(egui::Button::new("×").frame(false));
                             close.widget_info(|| {
@@ -767,7 +771,7 @@ impl Workbench {
                             ui.selectable_value(&mut self.launcher.sort, sort, sort.name());
                         }
                     });
-                ui.label(RichText::new("Sort by").small().color(theme::TEXT_WEAK));
+                ui.label(RichText::new("Sort by").small().color(theme::text_weak()));
             });
         });
         ui.add_space(14.0);
@@ -813,7 +817,7 @@ impl Workbench {
                 ui.label(
                     RichText::new("No projects yet")
                         .size(18.0)
-                        .color(theme::TEXT_STRONG),
+                        .color(theme::text_strong()),
                 );
                 ui.add_space(6.0);
                 ui.label(
@@ -821,7 +825,7 @@ impl Workbench {
                         "Make one with + New project, open a folder with Open project…, or try \
                          an example under Learn.",
                     )
-                    .color(theme::TEXT_WEAK),
+                    .color(theme::text_weak()),
                 );
             });
             return;
@@ -832,7 +836,7 @@ impl Workbench {
                     "No project matches \u{201c}{}\u{201d}.",
                     self.launcher.search
                 ))
-                .color(theme::TEXT_WEAK),
+                .color(theme::text_weak()),
             );
             return;
         }
@@ -851,7 +855,7 @@ impl Workbench {
                             RichText::new(heading)
                                 .small()
                                 .strong()
-                                .color(theme::TEXT_WEAK),
+                                .color(theme::text_weak()),
                         );
                         ui.add_space(2.0);
                     }
@@ -867,7 +871,7 @@ impl Workbench {
                          its files where they are.",
                     )
                     .small()
-                    .color(theme::TEXT_WEAK),
+                    .color(theme::text_weak()),
                 );
             });
         for change in changes {
@@ -912,9 +916,9 @@ impl Workbench {
                 Color32::from_rgb(0x3f, 0x5a, 0x7a),
             )
         } else if row.hovered() {
-            (theme::MENU_ROW, theme::BUTTON_BORDER)
+            (theme::menu_row(), theme::button_border())
         } else {
-            (theme::PANEL, Color32::from_rgb(0x30, 0x30, 0x30))
+            (theme::panel(), Color32::from_rgb(0x30, 0x30, 0x30))
         };
         painter.rect(
             rect,
@@ -926,7 +930,7 @@ impl Workbench {
         // The letter.
         let tile = egui::Rect::from_min_size(rect.left_top() + vec2(14.0, 9.0), vec2(70.0, 44.0));
         let (back, front) = if project.problem.is_some() {
-            (theme::FIELD, theme::TEXT_WEAK)
+            (theme::field(), theme::text_weak())
         } else {
             tile_colour(&project.name)
         };
@@ -951,9 +955,9 @@ impl Workbench {
         let words = rect.left() + 100.0;
         let right = rect.right();
         let name_colour = if project.problem.is_some() {
-            theme::TEXT_WEAK
+            theme::text_weak()
         } else {
-            theme::TEXT_STRONG
+            theme::text_strong()
         };
         let clip = egui::Rect::from_min_max(
             egui::pos2(words, rect.top()),
@@ -975,7 +979,7 @@ impl Workbench {
             ),
             None => (
                 project.root.display().to_string(),
-                theme::TEXT_WEAK,
+                theme::text_weak(),
                 FontId::monospace(12.0),
             ),
         };
@@ -1009,7 +1013,7 @@ impl Workbench {
                 Align2::LEFT_CENTER,
                 "—",
                 FontId::proportional(13.0),
-                theme::TEXT_WEAK,
+                theme::text_weak(),
             );
             ui.interact(
                 egui::Rect::from_center_size(chip_at + vec2(6.0, 0.0), vec2(20.0, 20.0)),
@@ -1031,7 +1035,7 @@ impl Workbench {
                 Align2::LEFT_CENTER,
                 when,
                 FontId::proportional(13.0),
-                theme::TEXT,
+                theme::text(),
             );
         }
         // The pin and ⋯, or Remove for a project that can't be opened.
@@ -1089,7 +1093,7 @@ impl Workbench {
                         .color(if project.pinned {
                             theme::WARNING
                         } else {
-                            theme::TEXT_WEAK
+                            theme::text_weak()
                         }),
                 )
                 .frame(false),
@@ -1118,7 +1122,7 @@ impl Workbench {
             );
             ui.scope_builder(egui::UiBuilder::new().max_rect(more_rect), |ui| {
                 let menu = egui::containers::menu::MenuButton::from_button(
-                    egui::Button::new(RichText::new("⋯").size(16.0).color(theme::TEXT))
+                    egui::Button::new(RichText::new("⋯").size(16.0).color(theme::text()))
                         .min_size(vec2(30.0, 30.0)),
                 )
                 .ui(ui, |ui| {
@@ -1198,11 +1202,11 @@ impl Workbench {
                 RichText::new("Rename the project")
                     .size(16.0)
                     .strong()
-                    .color(theme::TEXT_STRONG),
+                    .color(theme::text_strong()),
             );
             ui.label(
                 RichText::new("Its name in the title bar and the list. Its folder keeps its name.")
-                    .color(theme::TEXT_WEAK),
+                    .color(theme::text_weak()),
             );
             ui.add_space(8.0);
             let field = ui.add(
@@ -1252,7 +1256,7 @@ impl Workbench {
             RichText::new("Updates")
                 .size(24.0)
                 .strong()
-                .color(theme::TEXT_STRONG),
+                .color(theme::text_strong()),
         );
         ui.add_space(16.0);
         let card = |fill: Color32, edge: Color32| {
@@ -1266,11 +1270,11 @@ impl Workbench {
             ui.label(RichText::new(text).small().strong().color(colour));
         };
         ui.horizontal_top(|ui| {
-            card(theme::PANEL, Color32::from_rgb(0x30, 0x30, 0x30)).show(ui, |ui| {
+            card(theme::panel(), Color32::from_rgb(0x30, 0x30, 0x30)).show(ui, |ui| {
                 ui.set_width(260.0);
                 ui.set_min_height(86.0);
                 ui.vertical(|ui| {
-                    small_heading(ui, "YOU HAVE", theme::TEXT_WEAK);
+                    small_heading(ui, "YOU HAVE", theme::text_weak());
                     let (big, under) = match self.this_build {
                         Some(build) => (
                             format!("Build {build}"),
@@ -1285,9 +1289,9 @@ impl Workbench {
                         RichText::new(big)
                             .size(24.0)
                             .strong()
-                            .color(theme::TEXT_STRONG),
+                            .color(theme::text_strong()),
                     );
-                    ui.label(RichText::new(under).color(theme::TEXT_WEAK));
+                    ui.label(RichText::new(under).color(theme::text_weak()));
                 });
             });
             ui.add_space(12.0);
@@ -1298,7 +1302,7 @@ impl Workbench {
                     Color32::from_rgb(0x3f, 0x5a, 0x7a),
                 )
             } else {
-                (theme::PANEL, Color32::from_rgb(0x30, 0x30, 0x30))
+                (theme::panel(), Color32::from_rgb(0x30, 0x30, 0x30))
             };
             card(back, edge).show(ui, |ui| {
                 ui.set_width((ui.available_width() - 40.0).max(300.0));
@@ -1309,13 +1313,13 @@ impl Workbench {
                         let colour = if newer.is_some() {
                             Color32::from_rgb(0x9c, 0xc5, 0xf5)
                         } else {
-                            theme::TEXT_WEAK
+                            theme::text_weak()
                         };
                         small_heading(ui, heading, colour);
                         let mut line = RichText::new(big)
                             .size(24.0)
                             .strong()
-                            .color(theme::TEXT_STRONG);
+                            .color(theme::text_strong());
                         if newer.is_none() {
                             line = line.size(18.0);
                         }
@@ -1329,10 +1333,10 @@ impl Workbench {
                             ui.label(
                                 RichText::new(format!("Published {day}"))
                                     .small()
-                                    .color(theme::TEXT_WEAK),
+                                    .color(theme::text_weak()),
                             );
                         }
-                        ui.add(egui::Label::new(RichText::new(under).color(theme::TEXT)).wrap());
+                        ui.add(egui::Label::new(RichText::new(under).color(theme::text())).wrap());
                     });
                 });
                 ui.add_space(8.0);
@@ -1389,13 +1393,13 @@ impl Workbench {
             .clone()
             .filter(|n| Some(n.build) == self.update.newer_build());
         if let Some(notes) = notes {
-            card(theme::PANEL, Color32::from_rgb(0x30, 0x30, 0x30)).show(ui, |ui| {
+            card(theme::panel(), Color32::from_rgb(0x30, 0x30, 0x30)).show(ui, |ui| {
                 ui.set_width(ui.available_width());
                 ui.label(
                     RichText::new(format!("What's new in build {}", notes.build))
                         .size(17.0)
                         .strong()
-                        .color(theme::TEXT_STRONG),
+                        .color(theme::text_strong()),
                 );
                 ui.add_space(6.0);
                 let text = if notes.notes.is_empty() {
@@ -1408,7 +1412,9 @@ impl Workbench {
                     .show(ui, |ui| {
                         for line in text.lines() {
                             let line = line.trim_start_matches("> ");
-                            ui.add(egui::Label::new(RichText::new(line).color(theme::TEXT)).wrap());
+                            ui.add(
+                                egui::Label::new(RichText::new(line).color(theme::text())).wrap(),
+                            );
                         }
                     });
                 ui.add_space(8.0);
@@ -1441,21 +1447,21 @@ impl Workbench {
             RichText::new("Learn")
                 .size(24.0)
                 .strong()
-                .color(theme::TEXT_STRONG),
+                .color(theme::text_strong()),
         );
         ui.label(
             RichText::new(
                 "New to making games? Make an example, press Play, then change something and \
                  see what happens.",
             )
-            .color(theme::TEXT_WEAK),
+            .color(theme::text_weak()),
         );
         ui.add_space(20.0);
         ui.label(
             RichText::new("EXAMPLES TO OPEN AND TAKE APART")
                 .small()
                 .strong()
-                .color(theme::TEXT_WEAK),
+                .color(theme::text_weak()),
         );
         ui.add_space(6.0);
         let fill = self.accent.colors().fill;
@@ -1467,7 +1473,7 @@ impl Workbench {
         ui.horizontal_wrapped(|ui| {
             for example in all {
                 egui::Frame::new()
-                    .fill(theme::PANEL)
+                    .fill(theme::panel())
                     .stroke(egui::Stroke::new(1.0, Color32::from_rgb(0x30, 0x30, 0x30)))
                     .corner_radius(10.0)
                     .inner_margin(16.0)
@@ -1479,11 +1485,11 @@ impl Workbench {
                                 RichText::new(example.name)
                                     .size(15.0)
                                     .strong()
-                                    .color(theme::TEXT_STRONG),
+                                    .color(theme::text_strong()),
                             );
                             ui.add(
                                 egui::Label::new(
-                                    RichText::new(example.about).color(theme::TEXT_WEAK),
+                                    RichText::new(example.about).color(theme::text_weak()),
                                 )
                                 .wrap(),
                             );
@@ -1515,7 +1521,7 @@ impl Workbench {
         });
         ui.add_space(20.0);
         egui::Frame::new()
-            .fill(theme::PANEL)
+            .fill(theme::panel())
             .stroke(egui::Stroke::new(1.0, Color32::from_rgb(0x30, 0x30, 0x30)))
             .corner_radius(10.0)
             .inner_margin(egui::Margin::symmetric(22, 18))
@@ -1525,7 +1531,7 @@ impl Workbench {
                     RichText::new("Your first hour")
                         .size(16.0)
                         .strong()
-                        .color(theme::TEXT_STRONG),
+                        .color(theme::text_strong()),
                 );
                 ui.add_space(6.0);
                 for step in [

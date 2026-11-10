@@ -193,7 +193,7 @@ fn component_icon(component: &str, game_code: bool) -> Option<(crate::icons::Ico
         "Animator" => (Icon::Animator, kind::SOUND_EVENT),
         "TileMap" => (Icon::Layers, kind::AREA),
         "Screen" => (Icon::Game, kind::PICTURE),
-        "Transform" => (Icon::Properties, theme::TEXT),
+        "Transform" => (Icon::Properties, theme::text()),
         _ if game_code => (Icon::Code, kind::CODE),
         _ => return None,
     })
@@ -273,7 +273,7 @@ pub(crate) fn properties(
                                                      is shown, and a change applies to each.",
                                                     selected.len()
                                                 ))
-                                                .color(theme::TEXT_WEAK),
+                                                .color(theme::text_weak()),
                                             )
                                             .wrap(),
                                         );
@@ -312,7 +312,7 @@ pub(crate) fn properties(
                                     "Playing: game code's values are shown as they are now. A \
                                      change here reaches the game; Stop puts every value back.",
                                 )
-                                .color(theme::TEXT_WEAK),
+                                .color(theme::text_weak()),
                             );
                         }
                     }
@@ -499,8 +499,8 @@ fn header_request(
 /// A component's card: a softly lit box with a border, filling the width.
 fn card(ui: &mut Ui, add: impl FnOnce(&mut Ui)) {
     egui::Frame::new()
-        .fill(theme::MENU_ROW)
-        .stroke(egui::Stroke::new(1.0, theme::BUTTON_BORDER))
+        .fill(theme::menu_row())
+        .stroke(egui::Stroke::new(1.0, theme::button_border()))
         .corner_radius(6.0)
         .inner_margin(egui::Margin::symmetric(8, 6))
         .show(ui, |ui| {
@@ -536,16 +536,16 @@ fn component_header(
             let (rect, _) = ui.allocate_exact_size(egui::vec2(14.0, 14.0), egui::Sense::hover());
             crate::icons::icon(ui.painter(), rect, icon, colour);
         }
-        ui.label(RichText::new(name).strong().color(theme::TEXT_STRONG))
+        ui.label(RichText::new(name).strong().color(theme::text_strong()))
             .on_hover_text(help);
         if let Some(file) = file {
             let shown = file.rsplit_once('/').map_or(file, |(_, n)| n);
-            ui.label(RichText::new(shown).color(theme::TEXT_WEAK).size(12.0))
+            ui.label(RichText::new(shown).color(theme::text_weak()).size(12.0))
                 .on_hover_text(file);
         }
         ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
             let mut picked = None;
-            let menu = ui.menu_button(RichText::new("⋯").color(theme::TEXT_WEAK), |ui| {
+            let menu = ui.menu_button(RichText::new("⋯").color(theme::text_weak()), |ui| {
                 if ui.button("Copy values").clicked() {
                     picked = Some(HeaderAction::Copy);
                     ui.close();
@@ -598,7 +598,7 @@ fn component_header(
             } else if let Some(page) = manual_page(name).filter(|_| !manual.is_empty()) {
                 let more = quiet_button(
                     ui,
-                    RichText::new("?").color(theme::TEXT_WEAK),
+                    RichText::new("?").color(theme::text_weak()),
                     &format!("About {name}"),
                     &format!("Opens the manual's page about {name}"),
                 );
@@ -630,7 +630,7 @@ struct EntityMenu<'a> {
 /// pasting every component's values, and Delete.
 fn entity_menu(ui: &mut Ui, menu: &EntityMenu<'_>, requests: &mut Vec<PropertyRequest>) {
     let one = (menu.selected.len() == 1).then(|| menu.selected[0]);
-    let shown = ui.menu_button(RichText::new("⋯").color(theme::TEXT_WEAK), |ui| {
+    let shown = ui.menu_button(RichText::new("⋯").color(theme::text_weak()), |ui| {
         if let Some(id) = one.filter(|_| menu.move_here)
             && ui
                 .button("Move here")
@@ -702,7 +702,7 @@ fn entity_menu(ui: &mut Ui, menu: &EntityMenu<'_>, requests: &mut Vec<PropertyRe
 fn add_component_menu(ui: &mut Ui, document: &Document, selected: &[EntityId]) -> Option<String> {
     let mut picked = None;
     let button = ui.add(
-        egui::Button::new(RichText::new("+  Add component…").color(theme::TEXT))
+        egui::Button::new(RichText::new("+  Add component…").color(theme::text()))
             .min_size(egui::vec2(ui.available_width(), 26.0)),
     );
     button
@@ -762,7 +762,9 @@ fn add_component_menu(ui: &mut Ui, document: &Document, selected: &[EntityId]) -
                                 if any {
                                     ui.separator();
                                 }
-                                ui.label(RichText::new(heading).color(theme::TEXT_WEAK).size(11.0));
+                                ui.label(
+                                    RichText::new(heading).color(theme::text_weak()).size(11.0),
+                                );
                             }
                             any = true;
                             first.get_or_insert_with(|| schema.name.clone());
@@ -781,7 +783,7 @@ fn add_component_menu(ui: &mut Ui, document: &Document, selected: &[EntityId]) -
                         } else {
                             format!("No component it lacks is called “{}”.", query.trim())
                         };
-                        ui.label(RichText::new(words).color(theme::TEXT_WEAK));
+                        ui.label(RichText::new(words).color(theme::text_weak()));
                     }
                 });
             // Enter takes the first one shown.
@@ -826,7 +828,7 @@ fn assembly_note(
         } else {
             format!("Part of {}", part.name)
         };
-        ui.label(RichText::new(text).color(theme::TEXT_WEAK))
+        ui.label(RichText::new(text).color(theme::text_weak()))
             .on_hover_text("Bold settings differ from the assembly: ↺ puts one back, ↑ makes it the assembly's");
         if part.root
             && ui

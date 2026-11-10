@@ -54,7 +54,7 @@ pub(crate) fn atlas_tab(
     let mut left = ui.new_child(egui::UiBuilder::new().max_rect(list.shrink(8.0)));
     crop_list(&mut left, editor, picture.as_ref(), &mut out);
     ui.painter()
-        .vline(list.max.x, full.y_range(), Stroke::new(1.0, theme::LINE));
+        .vline(list.max.x, full.y_range(), Stroke::new(1.0, theme::line()));
     let mut right = ui.new_child(egui::UiBuilder::new().max_rect(canvas));
     match (&picture, problem) {
         (Some(picture), _) => picture_canvas(&mut right, editor, picture, accent, &mut out),
@@ -112,7 +112,8 @@ fn crop_list(
     ui.separator();
     if editor.atlas.crops.is_empty() {
         ui.label(
-            RichText::new("Drag on the picture to crop out a part of it.").color(theme::TEXT_WEAK),
+            RichText::new("Drag on the picture to crop out a part of it.")
+                .color(theme::text_weak()),
         );
     }
     let mut picked = editor.picked;
@@ -163,7 +164,7 @@ fn picture_canvas(
     let rect = ui.max_rect();
     let response = ui.allocate_rect(rect, Sense::click_and_drag());
     let painter = ui.painter_at(rect);
-    painter.rect_filled(rect, 0.0, theme::backdrop::HORIZON);
+    painter.rect_filled(rect, 0.0, theme::backdrop::horizon());
     // Wheel zooms about the pointer; middle-drag moves.
     if response.hovered() {
         let wheel = ui.input(|i| i.smooth_scroll_delta.y);

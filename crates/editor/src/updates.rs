@@ -185,7 +185,7 @@ impl Workbench {
         ui.label(
             RichText::new(self.update.line())
                 .small()
-                .color(theme::TEXT_WEAK),
+                .color(theme::text_weak()),
         );
     }
 

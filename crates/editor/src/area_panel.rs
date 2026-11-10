@@ -103,7 +103,7 @@ fn area_row(
         ui.painter()
             .rect_filled(row, 3.0, accent.colors().fill.gamma_multiply(0.45));
     } else if response.hovered() {
-        ui.painter().rect_filled(row, 3.0, theme::HOVER);
+        ui.painter().rect_filled(row, 3.0, theme::hover());
     }
     let mut row_ui = ui.new_child(
         egui::UiBuilder::new()
@@ -125,7 +125,7 @@ fn area_row(
     );
     ui.add_space(4.0);
     let label = if dim {
-        RichText::new(name).color(theme::TEXT_WEAK)
+        RichText::new(name).color(theme::text_weak())
     } else {
         RichText::new(name)
     };
@@ -145,7 +145,7 @@ fn area_row(
     ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
         if let Some(what) = remove {
             let button = ui
-                .add(egui::Button::new(RichText::new("×").color(theme::TEXT_WEAK)).frame(false))
+                .add(egui::Button::new(RichText::new("×").color(theme::text_weak())).frame(false))
                 .on_hover_text(format!("Remove {what} from the area"));
             button.widget_info(|| {
                 egui::WidgetInfo::labeled(egui::WidgetType::Button, true, format!("Remove {what}"))
@@ -164,7 +164,7 @@ fn area_row(
                 toggled = Some(Toggle::Hide);
             }
         }
-        ui.add(egui::Label::new(RichText::new(note).color(theme::TEXT_WEAK)).selectable(false));
+        ui.add(egui::Label::new(RichText::new(note).color(theme::text_weak())).selectable(false));
     });
     (response, removed, toggled)
 }
@@ -175,13 +175,13 @@ fn area_row(
 fn switch(ui: &mut Ui, on: bool, by_parent: bool, icon: Icon, name: &str, hint: &str) -> bool {
     let (rect, response) = ui.allocate_exact_size(egui::vec2(16.0, 16.0), egui::Sense::click());
     let color = if on {
-        theme::TEXT_STRONG
+        theme::text_strong()
     } else if by_parent {
-        theme::TEXT_WEAK.gamma_multiply(0.6)
+        theme::text_weak().gamma_multiply(0.6)
     } else if response.hovered() {
-        theme::TEXT
+        theme::text()
     } else {
-        theme::TEXT_WEAK
+        theme::text_weak()
     };
     icons::icon(ui.painter(), rect.shrink(2.0), icon, color);
     let response = response.on_hover_text(hint);
@@ -384,7 +384,7 @@ pub(crate) fn area_tree(
                 }
             });
             if rows.is_empty() && !state.search.is_empty() {
-                ui.label(RichText::new("Nothing has that name.").color(theme::TEXT_WEAK));
+                ui.label(RichText::new("Nothing has that name.").color(theme::text_weak()));
             }
             // Dropping anywhere in the list but on a row moves to the top
             // level.
@@ -399,7 +399,7 @@ pub(crate) fn area_tree(
                     onto: None,
                 });
             }
-            ui.label(RichText::new(note).color(theme::TEXT_WEAK).size(11.0));
+            ui.label(RichText::new(note).color(theme::text_weak()).size(11.0));
         });
     requests
 }
@@ -563,9 +563,9 @@ fn fold_button(ui: &mut Ui, id: EntityId, has_children: bool, state: &mut AreaPa
     }
     let folded = state.collapsed.contains(&id);
     let color = if response.hovered() {
-        theme::TEXT_STRONG
+        theme::text_strong()
     } else {
-        theme::TEXT_WEAK
+        theme::text_weak()
     };
     ui.painter().text(
         rect.center(),

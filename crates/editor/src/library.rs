@@ -455,7 +455,7 @@ pub(crate) fn library(
         ui.painter().vline(
             rect.right() + 0.5,
             rect.y_range(),
-            egui::Stroke::new(1.0, theme::LINE),
+            egui::Stroke::new(1.0, theme::line()),
         );
     }
     if !code {
@@ -505,7 +505,7 @@ pub(crate) fn library(
         } else {
             "This folder is empty.".to_string()
         };
-        files.label(RichText::new(text).color(theme::TEXT_WEAK));
+        files.label(RichText::new(text).color(theme::text_weak()));
     } else if state.list || code {
         list(&mut files, &shown, state, accent, sounds, &mut requests);
     } else {
@@ -576,7 +576,7 @@ fn note(ui: &mut Ui, text: &str) {
     egui::Frame::new()
         .inner_margin(theme::panel_margin())
         .show(ui, |ui| {
-            ui.label(RichText::new(text).color(theme::TEXT_WEAK));
+            ui.label(RichText::new(text).color(theme::text_weak()));
         });
 }
 
@@ -707,7 +707,7 @@ fn menu_row(
                     let button = ui
                         .add(
                             egui::Button::new(
-                                RichText::new(words).size(12.0).color(theme::TEXT_WEAK),
+                                RichText::new(words).size(12.0).color(theme::text_weak()),
                             )
                             .frame(false),
                         )
@@ -718,7 +718,7 @@ fn menu_row(
                     ui.label(
                         RichText::new("Ctrl + Space")
                             .size(11.0)
-                            .color(theme::TEXT_WEAK),
+                            .color(theme::text_weak()),
                     );
                     pin_clicked = button.clicked();
                 }
@@ -779,7 +779,7 @@ fn folder_tree(
                     ui.painter()
                         .rect_filled(rect, 3.0, accent.colors().fill.gamma_multiply(0.45));
                 } else if response.hovered() {
-                    ui.painter().rect_filled(rect, 3.0, theme::HOVER);
+                    ui.painter().rect_filled(rect, 3.0, theme::hover());
                 }
                 let x = rect.left() + 6.0 + depth as f32 * 12.0;
                 icons::icon(
@@ -880,7 +880,7 @@ fn breadcrumb(ui: &mut Ui, project: &str, state: &mut LibraryState) {
         let mut so_far = String::new();
         for part in state.folder.split('/').filter(|p| !p.is_empty()) {
             so_far = join(&so_far, part);
-            ui.label(RichText::new("›").color(theme::TEXT_WEAK));
+            ui.label(RichText::new("›").color(theme::text_weak()));
             if ui.link(part).clicked() {
                 go = Some(so_far.clone());
             }
@@ -1101,7 +1101,7 @@ fn tile<'a>(
     let selected = state.selected.as_deref() == Some(item.path.as_str());
     let painter = ui.painter();
     let picture = egui::Rect::from_min_size(rect.min, egui::vec2(TILE.x, PICTURE));
-    painter.rect_filled(picture, 3.0, theme::FIELD);
+    painter.rect_filled(picture, 3.0, theme::field());
     let waveform = match sounds.states.get(&item.path) {
         Some(SoundState::Read(info)) if item.kind == LibraryKind::Sound => Some(info),
         _ => None,
@@ -1139,7 +1139,7 @@ fn tile<'a>(
             egui::Align2::RIGHT_TOP,
             badge.unwrap_or_else(|| frames_text(sheet.frames.len())),
             egui::FontId::proportional(10.5),
-            theme::TEXT,
+            theme::text(),
         );
     } else if let Some(texture) = item.thumbnail {
         painter.image(
@@ -1181,13 +1181,13 @@ fn tile<'a>(
     let galley = ui.painter().layout(
         item.name.clone(),
         egui::FontId::proportional(11.5),
-        theme::TEXT,
+        theme::text(),
         TILE.x - 4.0,
     );
     ui.painter().galley(
         egui::pos2(name_rect.left() + 2.0, name_rect.top() + 3.0),
         galley,
-        theme::TEXT,
+        theme::text(),
     );
     if selected {
         ui.painter().rect_stroke(
@@ -1200,7 +1200,7 @@ fn tile<'a>(
         ui.painter().rect_stroke(
             rect.expand(1.0),
             4.0,
-            egui::Stroke::new(1.0, theme::BUTTON_BORDER),
+            egui::Stroke::new(1.0, theme::button_border()),
             egui::StrokeKind::Outside,
         );
     }
@@ -1227,7 +1227,7 @@ fn place_button(ui: &mut Ui, item: &LibraryItem, area: egui::Rect) -> bool {
     let button = ui
         .put(
             plus,
-            egui::Button::new(RichText::new("+").color(theme::TEXT_STRONG)).frame(false),
+            egui::Button::new(RichText::new("+").color(theme::text_strong())).frame(false),
         )
         .on_hover_text("Place it where the camera looks");
     button.widget_info(|| {
@@ -1302,7 +1302,7 @@ fn listen_button(
         spot.shrink(4.5),
         shape,
         if button.hovered() {
-            theme::TEXT_STRONG
+            theme::text_strong()
         } else {
             SOUND_COLOR
         },
@@ -1346,7 +1346,7 @@ fn list(
                     ui.painter()
                         .rect_filled(rect, 3.0, accent.colors().fill.gamma_multiply(0.45));
                 } else if response.hovered() {
-                    ui.painter().rect_filled(rect, 3.0, theme::HOVER);
+                    ui.painter().rect_filled(rect, 3.0, theme::hover());
                 }
                 ui.painter().rect_filled(
                     egui::Rect::from_min_size(
@@ -1393,7 +1393,7 @@ fn list(
                         egui::Align2::RIGHT_CENTER,
                         uses,
                         egui::FontId::proportional(11.5),
-                        theme::TEXT_WEAK,
+                        theme::text_weak(),
                     );
                 }
                 let response = response.on_hover_text(hint(item));
@@ -1452,7 +1452,7 @@ fn rename_window(ui: &Ui, state: &mut LibraryState, requests: &mut Vec<LibraryRe
             });
             ui.label(
                 RichText::new("Its ID file goes with it, so nothing that uses it breaks.")
-                    .color(theme::TEXT_WEAK)
+                    .color(theme::text_weak())
                     .size(11.0),
             );
         });

@@ -121,7 +121,7 @@ fn settled(
 pub(crate) fn clips_tab(ui: &mut Ui, f: &mut FramesUi<'_>) -> bool {
     let mut changed = false;
     ui.horizontal(|ui| {
-        ui.label(RichText::new(file_name(&f.editor.path)).color(theme::TEXT_WEAK));
+        ui.label(RichText::new(file_name(&f.editor.path)).color(theme::text_weak()));
     });
     let Some(sheet) = f.sheet else {
         changed |= choose_sheet(ui, f);
@@ -181,7 +181,7 @@ pub(crate) fn clips_tab(ui: &mut Ui, f: &mut FramesUi<'_>) -> bool {
                     RichText::new(
                         "No clips yet: tag runs of frames in Aseprite, or make one here with + Clip.",
                     )
-                    .color(theme::TEXT_WEAK),
+                    .color(theme::text_weak()),
                 );
             }
         });
@@ -199,7 +199,7 @@ pub(crate) fn clips_tab(ui: &mut Ui, f: &mut FramesUi<'_>) -> bool {
 fn choose_sheet(ui: &mut Ui, f: &mut FramesUi<'_>) -> bool {
     ui.label(
         RichText::new("Choose the sprite sheet (an Aseprite file) whose frames these clips play:")
-            .color(theme::TEXT_WEAK),
+            .color(theme::text_weak()),
     );
     let mut chosen = None;
     egui::ComboBox::from_id_salt("frames sheet")
@@ -247,7 +247,7 @@ fn clip_row(
     if chosen {
         painter.rect_filled(rect, 3.0, theme::kind::SPRITE.gamma_multiply(0.22));
     } else if response.hovered() {
-        painter.rect_filled(rect, 3.0, theme::FIELD);
+        painter.rect_filled(rect, 3.0, theme::field());
     }
     let first = clips.first == Some(i);
     let y = rect.center().y;
@@ -265,7 +265,7 @@ fn clip_row(
         egui::Align2::LEFT_CENTER,
         &clip.name,
         egui::FontId::proportional(theme::TEXT_SIZE),
-        theme::TEXT,
+        theme::text(),
     );
     let small = egui::FontId::proportional(11.0);
     painter.text(
@@ -273,7 +273,7 @@ fn clip_row(
         egui::Align2::LEFT_CENTER,
         about(clip),
         small.clone(),
-        theme::TEXT_WEAK,
+        theme::text_weak(),
     );
     painter.text(
         egui::pos2(rect.right() - 6.0, y),
@@ -284,7 +284,7 @@ fn clip_row(
             "made here"
         },
         small,
-        theme::TEXT_WEAK,
+        theme::text_weak(),
     );
     response.widget_info(|| {
         egui::WidgetInfo::selected(egui::WidgetType::SelectableLabel, true, chosen, &clip.name)
@@ -326,7 +326,7 @@ fn clip_settings(ui: &mut Ui, editor: &mut FramesEditor, clip: &animation::Clip)
             if clip.from_aseprite {
                 ui.label(
                     RichText::new(format!("{} (Aseprite)", clip.direction.name()))
-                        .color(theme::TEXT_WEAK),
+                        .color(theme::text_weak()),
                 );
             } else {
                 let mut picked = None;
@@ -356,7 +356,7 @@ fn clip_settings(ui: &mut Ui, editor: &mut FramesEditor, clip: &animation::Clip)
                     1 => "once".to_owned(),
                     n => format!("{n} times"),
                 };
-                ui.label(RichText::new(format!("{times} (Aseprite)")).color(theme::TEXT_WEAK));
+                ui.label(RichText::new(format!("{times} (Aseprite)")).color(theme::text_weak()));
             } else {
                 let mut repeats = clip.repeats;
                 let response = ui.add(
@@ -394,7 +394,7 @@ fn clip_settings(ui: &mut Ui, editor: &mut FramesEditor, clip: &animation::Clip)
                 clip.name
             ))
             .size(11.0)
-            .color(theme::TEXT_WEAK),
+            .color(theme::text_weak()),
         );
     }
     changed
@@ -405,13 +405,13 @@ pub(crate) fn frames_tab(ui: &mut Ui, f: &mut FramesUi<'_>) -> bool {
     let Some(sheet) = f.sheet else {
         ui.label(
             RichText::new("Choose its sprite sheet in the Clips tab to see its frames.")
-                .color(theme::TEXT_WEAK),
+                .color(theme::text_weak()),
         );
         return false;
     };
     let clips = f.editor.clips(sheet);
     let Some(clip) = clips.get(&f.editor.clip).cloned() else {
-        ui.label(RichText::new("Choose a clip in the Clips tab.").color(theme::TEXT_WEAK));
+        ui.label(RichText::new("Choose a clip in the Clips tab.").color(theme::text_weak()));
         return false;
     };
     let mut changed = false;
@@ -483,7 +483,7 @@ fn toolbar(ui: &mut Ui, f: &mut FramesUi<'_>, sheet: &SpriteSheet, clip: &animat
             "▶ Play"
         })
         .fill(if f.editor.playing {
-            theme::FIELD
+            theme::field()
         } else {
             theme::GO
         });
@@ -512,14 +512,14 @@ fn toolbar(ui: &mut Ui, f: &mut FramesUi<'_>, sheet: &SpriteSheet, clip: &animat
                 seconds(clip.length_seconds().unwrap_or(clip.pass_seconds())),
                 now.map_or(0, |m| m.index + 1)
             ))
-            .color(theme::TEXT_WEAK),
+            .color(theme::text_weak()),
         );
         ui.separator();
         ui.add_enabled_ui(own, |ui| {
             let add = ui.menu_button("+ Add frames ▾", |ui| {
                 ui.label(
                     RichText::new("Click the sheet's frames to add them after the picked one:")
-                        .color(theme::TEXT_WEAK),
+                        .color(theme::text_weak()),
                 );
                 egui::ScrollArea::vertical()
                     .max_height(260.0)
@@ -531,7 +531,7 @@ fn toolbar(ui: &mut Ui, f: &mut FramesUi<'_>, sheet: &SpriteSheet, clip: &animat
                                     egui::vec2(40.0, 48.0),
                                     egui::Sense::click(),
                                 );
-                                ui.painter().rect_filled(rect, 2.0, theme::FIELD);
+                                ui.painter().rect_filled(rect, 2.0, theme::field());
                                 if let Some(atlas) = f.atlas {
                                     crate::sheet_view::draw_frame(
                                         ui.painter(),
@@ -546,7 +546,7 @@ fn toolbar(ui: &mut Ui, f: &mut FramesUi<'_>, sheet: &SpriteSheet, clip: &animat
                                     egui::Align2::LEFT_TOP,
                                     (n + 1).to_string(),
                                     egui::FontId::proportional(10.0),
-                                    theme::TEXT_WEAK,
+                                    theme::text_weak(),
                                 );
                                 response.widget_info(|| {
                                     egui::WidgetInfo::labeled(
@@ -587,7 +587,7 @@ fn toolbar(ui: &mut Ui, f: &mut FramesUi<'_>, sheet: &SpriteSheet, clip: &animat
             } else {
                 format!("{picked} frames:")
             });
-            ui.label(RichText::new("time").color(theme::TEXT_WEAK));
+            ui.label(RichText::new("time").color(theme::text_weak()));
             if own {
                 if let Some(ms) = settled_drag(
                     ui,
@@ -601,14 +601,14 @@ fn toolbar(ui: &mut Ui, f: &mut FramesUi<'_>, sheet: &SpriteSheet, clip: &animat
                 }
             } else {
                 ui.label(
-                    RichText::new(format!("{} ms (Aseprite)", frame.ms)).color(theme::TEXT_WEAK),
+                    RichText::new(format!("{} ms (Aseprite)", frame.ms)).color(theme::text_weak()),
                 );
             }
-            ui.label(RichText::new("event").color(theme::TEXT_WEAK));
+            ui.label(RichText::new("event").color(theme::text_weak()));
             changed |= event_field(ui, f, &clips_now(f, sheet), frame);
         }
         ui.separator();
-        ui.label(RichText::new("Zoom").color(theme::TEXT_WEAK));
+        ui.label(RichText::new("Zoom").color(theme::text_weak()));
         if ui
             .add_enabled(f.editor.zoom > ZOOM_RANGE.0, egui::Button::new("-"))
             .on_hover_text("Zoom out")
@@ -676,7 +676,7 @@ fn event_field(
         changed |= f.editor.set_event(clips, &typed);
     }
     ui.menu_button("Sound events ▾", |ui| {
-        ui.label(RichText::new("Sound events").color(theme::TEXT_WEAK));
+        ui.label(RichText::new("Sound events").color(theme::text_weak()));
         for name in &f.sounds {
             if ui.button(name).clicked() {
                 changed |= f.editor.set_event(clips, name);
@@ -709,7 +709,7 @@ fn event_field(
                     .collect::<Vec<_>>()
                     .join(", ")
             ))
-            .color(theme::TEXT_WEAK),
+            .color(theme::text_weak()),
         );
     }
     changed
@@ -739,7 +739,7 @@ fn ruler(ui: &mut Ui, f: &mut FramesUi<'_>, sheet: &SpriteSheet, clip: &animatio
     painter.hline(
         area.x_range(),
         ruler_y + 17.0,
-        egui::Stroke::new(1.0, theme::BUTTON_BORDER),
+        egui::Stroke::new(1.0, theme::button_border()),
     );
     let mut x = left;
     let mut marks = Vec::new();
@@ -754,7 +754,7 @@ fn ruler(ui: &mut Ui, f: &mut FramesUi<'_>, sheet: &SpriteSheet, clip: &animatio
         painter.vline(
             at,
             (ruler_y + 11.0)..=(ruler_y + 17.0),
-            egui::Stroke::new(1.0, theme::BUTTON_BORDER),
+            egui::Stroke::new(1.0, theme::button_border()),
         );
         if ms % 100 == 0 {
             painter.text(
@@ -762,7 +762,7 @@ fn ruler(ui: &mut Ui, f: &mut FramesUi<'_>, sheet: &SpriteSheet, clip: &animatio
                 egui::Align2::LEFT_TOP,
                 seconds(f64::from(ms) / 1000.0),
                 egui::FontId::proportional(10.0),
-                theme::TEXT_WEAK,
+                theme::text_weak(),
             );
         }
     }
@@ -787,11 +787,11 @@ fn ruler(ui: &mut Ui, f: &mut FramesUi<'_>, sheet: &SpriteSheet, clip: &animatio
         let response = ui.interact(rect, id, sense);
         let picked = !ghost && f.editor.selected.contains(&i);
         let fade = if ghost { 0.45 } else { 1.0 };
-        painter.rect_filled(rect, 4.0, theme::FIELD.gamma_multiply(fade));
+        painter.rect_filled(rect, 4.0, theme::field().gamma_multiply(fade));
         let stroke = if picked {
             egui::Stroke::new(2.0, theme::kind::SPRITE)
         } else {
-            egui::Stroke::new(1.0, theme::BUTTON_BORDER.gamma_multiply(fade))
+            egui::Stroke::new(1.0, theme::button_border().gamma_multiply(fade))
         };
         painter.rect_stroke(rect, 4.0, stroke, egui::StrokeKind::Inside);
         if let Some(atlas) = f.atlas {
@@ -799,13 +799,13 @@ fn ruler(ui: &mut Ui, f: &mut FramesUi<'_>, sheet: &SpriteSheet, clip: &animatio
             let tinted = ui.painter_at(rect).with_layer_id(ui.layer_id());
             crate::sheet_view::draw_frame(&tinted, inner, sheet, atlas, frame.frame as usize);
             if ghost {
-                tinted.rect_filled(rect, 4.0, theme::PANEL.gamma_multiply(0.55));
+                tinted.rect_filled(rect, 4.0, theme::panel().gamma_multiply(0.55));
             }
         }
         let text_color = if ghost {
-            theme::TEXT_WEAK.gamma_multiply(0.7)
+            theme::text_weak().gamma_multiply(0.7)
         } else {
-            theme::TEXT
+            theme::text()
         };
         painter.text(
             rect.left_top() + egui::vec2(5.0, 3.0),
@@ -819,7 +819,7 @@ fn ruler(ui: &mut Ui, f: &mut FramesUi<'_>, sheet: &SpriteSheet, clip: &animatio
             egui::Align2::RIGHT_BOTTOM,
             format!("{} ms", frame.ms),
             egui::FontId::proportional(10.5),
-            theme::TEXT_WEAK.gamma_multiply(fade),
+            theme::text_weak().gamma_multiply(fade),
         );
         if ghost {
             continue;
@@ -873,7 +873,7 @@ fn ruler(ui: &mut Ui, f: &mut FramesUi<'_>, sheet: &SpriteSheet, clip: &animatio
         egui::pos2(area.left(), tiles_y + TILE_HEIGHT + 8.0),
         egui::vec2(area.width(), 22.0),
     );
-    painter.rect_filled(lane, 3.0, theme::FIELD.gamma_multiply(0.7));
+    painter.rect_filled(lane, 3.0, theme::field().gamma_multiply(0.7));
     painter.text(
         lane.left_center() + egui::vec2(4.0, 0.0),
         egui::Align2::LEFT_CENTER,
@@ -883,7 +883,7 @@ fn ruler(ui: &mut Ui, f: &mut FramesUi<'_>, sheet: &SpriteSheet, clip: &animatio
             "Events: none (pick a frame and give it one above)"
         },
         egui::FontId::proportional(10.5),
-        theme::TEXT_WEAK,
+        theme::text_weak(),
     );
     for (step, (&i, &tx)) in order.iter().zip(&marks).enumerate() {
         let events = &clip.frames[i].events;

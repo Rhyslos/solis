@@ -35,7 +35,7 @@ pub(crate) fn event_properties(
                 .show(ui, |ui| match sounds.events.get(path) {
                     None => {
                         header(ui, name, path, sounds, &mut requests, false);
-                        ui.label(RichText::new("Reading it…").color(theme::TEXT_WEAK));
+                        ui.label(RichText::new("Reading it…").color(theme::text_weak()));
                     }
                     Some(EventState::Failed(why)) => {
                         header(ui, name, path, sounds, &mut requests, false);
@@ -44,13 +44,13 @@ pub(crate) fn event_properties(
                                 "Solis couldn't read it: {why}. Fix the file in a text editor, \
                                  or delete it and make a new one."
                             ))
-                            .color(theme::TEXT_WEAK),
+                            .color(theme::text_weak()),
                         );
                     }
                     Some(EventState::Read { event, notes }) => {
                         header(ui, name, path, sounds, &mut requests, true);
                         for note in notes {
-                            ui.label(RichText::new(note).color(theme::TEXT_WEAK).size(11.0));
+                            ui.label(RichText::new(note).color(theme::text_weak()).size(11.0));
                         }
                         editor(ui, path, event, sounds, library, &mut requests);
                     }
@@ -98,7 +98,7 @@ fn header(
                     } else {
                         crate::icons::Icon::Play
                     },
-                    theme::TEXT_STRONG,
+                    theme::text_strong(),
                 );
                 button.widget_info(|| {
                     egui::WidgetInfo::labeled(
@@ -129,7 +129,7 @@ fn header(
         },
         None => "Each press of Play picks a different take, pitch and volume.".to_owned(),
     };
-    ui.label(RichText::new(text).color(theme::TEXT_WEAK).size(11.0));
+    ui.label(RichText::new(text).color(theme::text_weak()).size(11.0));
     ui.add_space(4.0);
 }
 
@@ -357,7 +357,7 @@ fn editor(
 /// A heading between groups of settings.
 fn section(ui: &mut Ui, text: &str) {
     ui.add_space(8.0);
-    ui.label(RichText::new(text).color(theme::TEXT_WEAK).size(12.0));
+    ui.label(RichText::new(text).color(theme::text_weak()).size(12.0));
 }
 
 /// The takes, each with its waveform, length and ×; sound files dropped
@@ -378,7 +378,7 @@ fn takes(
         ),
     );
     let frame = egui::Frame::new()
-        .fill(theme::FIELD)
+        .fill(theme::field())
         .corner_radius(3.0)
         .inner_margin(egui::Margin::symmetric(6, 4));
     let (zone, dropped) = ui.dnd_drop_zone::<LibraryDrag, _>(frame, |ui| {
@@ -388,7 +388,7 @@ fn takes(
                 RichText::new(
                     "No takes yet. Drag sound files here from the Library: each play picks one.",
                 )
-                .color(theme::TEXT_WEAK),
+                .color(theme::text_weak()),
             );
         }
         let mut remove = None;
@@ -406,11 +406,13 @@ fn takes(
                         ui.label(&item.name);
                     }
                     None => {
-                        ui.label(RichText::new(format!("{id} (missing)")).color(theme::TEXT_WEAK))
-                            .on_hover_text(
-                                "No sound file in the project has this ID: it was deleted, or its \
+                        ui.label(
+                            RichText::new(format!("{id} (missing)")).color(theme::text_weak()),
+                        )
+                        .on_hover_text(
+                            "No sound file in the project has this ID: it was deleted, or its \
                              .solmeta file was lost. Plays skip it.",
-                            );
+                        );
                     }
                 }
                 ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
@@ -439,7 +441,7 @@ fn takes(
                                 "{} · {channels}",
                                 sound_view::length_text(info.seconds)
                             ))
-                            .color(theme::TEXT_WEAK),
+                            .color(theme::text_weak()),
                         );
                     }
                 });

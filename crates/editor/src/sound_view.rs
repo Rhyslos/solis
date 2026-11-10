@@ -144,7 +144,7 @@ pub(crate) fn draw_waveform(
         let top = middle - hi.clamp(-1.0, 1.0) * half;
         let bottom = (middle - lo.clamp(-1.0, 1.0) * half).max(top + 1.0);
         let colour = if head.is_some_and(|h| x <= h) {
-            theme::TEXT_STRONG
+            theme::text_strong()
         } else {
             SOUND_COLOR
         };
@@ -158,7 +158,7 @@ pub(crate) fn draw_waveform(
         painter.vline(
             x,
             rect.y_range(),
-            egui::Stroke::new(1.5, theme::TEXT_STRONG),
+            egui::Stroke::new(1.5, theme::text_strong()),
         );
     }
 }
@@ -195,12 +195,12 @@ pub(crate) fn sound_properties(
                     ui.add_space(4.0);
                     match state {
                         None | Some(SoundState::Measuring) => {
-                            ui.label(RichText::new("Reading it…").color(theme::TEXT_WEAK));
+                            ui.label(RichText::new("Reading it…").color(theme::text_weak()));
                         }
                         Some(SoundState::Failed(why)) => {
                             ui.label(
                                 RichText::new(format!("Solis couldn't read it: {why}."))
-                                    .color(theme::TEXT_WEAK),
+                                    .color(theme::text_weak()),
                             );
                         }
                         Some(SoundState::Read(info)) => {
@@ -223,7 +223,7 @@ fn details(
     let played = played(path, preview);
     let (rect, _) =
         ui.allocate_exact_size(egui::vec2(ui.available_width(), 64.0), egui::Sense::hover());
-    ui.painter().rect_filled(rect, 3.0, theme::FIELD);
+    ui.painter().rect_filled(rect, 3.0, theme::field());
     draw_waveform(
         ui.painter(),
         rect.shrink2(egui::vec2(4.0, 4.0)),
@@ -247,7 +247,7 @@ fn details(
                 egui::vec2(11.0, 11.0),
             ),
             icon,
-            theme::TEXT_STRONG,
+            theme::text_strong(),
         );
         button.widget_info(|| {
             egui::WidgetInfo::labeled(egui::WidgetType::Button, true, format!("{label} the sound"))
@@ -273,7 +273,7 @@ fn details(
                 length_text(at),
                 length_text(info.seconds)
             ))
-            .color(theme::TEXT_WEAK),
+            .color(theme::text_weak()),
         );
     });
     ui.add_space(6.0);

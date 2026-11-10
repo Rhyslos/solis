@@ -735,9 +735,9 @@ impl Viewport {
             view_projection: camera.view_projection(aspect),
             camera_position: camera.viewpoint(),
             focus: camera.focus(),
-            sky_top: rgb(theme::backdrop::SKY_TOP),
-            sky_horizon: rgb(theme::backdrop::HORIZON),
-            ground: rgb(theme::backdrop::GROUND),
+            sky_top: rgb(theme::backdrop::sky_top()),
+            sky_horizon: rgb(theme::backdrop::horizon()),
+            ground: rgb(theme::backdrop::ground()),
             models: self.area.models.clone(),
             look: self.look,
             outline_px: self.look.outline_px(pixels_per_point),
@@ -855,7 +855,7 @@ impl Viewport {
         let several = shown.len() > 1;
         if several {
             // The gaps between the views.
-            ui.painter().rect_filled(full, 0.0, theme::PANEL);
+            ui.painter().rect_filled(full, 0.0, theme::panel());
         }
         for &(i, rect) in &shown {
             self.activate(i);
@@ -1001,13 +1001,13 @@ impl Viewport {
                 response.widget_info(|| {
                     egui::WidgetInfo::labeled(egui::WidgetType::Label, true, &message)
                 });
-                painter.rect_filled(rect, 0.0, theme::backdrop::HORIZON);
+                painter.rect_filled(rect, 0.0, theme::backdrop::horizon());
                 painter.text(
                     rect.center(),
                     egui::Align2::CENTER_CENTER,
                     message,
                     egui::FontId::proportional(13.0),
-                    theme::TEXT_WEAK,
+                    theme::text_weak(),
                 );
             }
         }
@@ -1037,12 +1037,12 @@ impl Viewport {
         {
             let words = cursor_readout(ground, self.pixels, self.tile_overlay.hovered);
             let galley =
-                painter.layout_no_wrap(words, egui::FontId::monospace(11.5), theme::TEXT_STRONG);
+                painter.layout_no_wrap(words, egui::FontId::monospace(11.5), theme::text_strong());
             let corner = pointer + egui::vec2(16.0, 14.0);
             let back =
                 egui::Rect::from_min_size(corner, galley.size()).expand2(egui::vec2(6.0, 3.0));
-            painter.rect_filled(back, 4.0, theme::HEADER.gamma_multiply(0.9));
-            painter.galley(corner, galley, theme::TEXT_STRONG);
+            painter.rect_filled(back, 4.0, theme::header().gamma_multiply(0.9));
+            painter.galley(corner, galley, theme::text_strong());
         }
         if let Some(dragged) = response.dnd_hover_payload::<crate::library::LibraryDrag>()
             && dragged.0.kind.placeable()
@@ -1053,7 +1053,7 @@ impl Viewport {
                 egui::Align2::LEFT_TOP,
                 format!("Drop to place {}", dragged.0.name),
                 egui::FontId::proportional(12.0),
-                theme::TEXT_STRONG,
+                theme::text_strong(),
             );
         }
         if let viewport_tools::Pressing::Gizmo {
@@ -1066,7 +1066,7 @@ impl Viewport {
                 egui::Align2::LEFT_TOP,
                 viewport_tools::readout(*change),
                 egui::FontId::monospace(12.0),
-                theme::TEXT_STRONG,
+                theme::text_strong(),
             );
         }
         let inner = rect.shrink(8.0);
@@ -1361,7 +1361,7 @@ impl Viewport {
                         for text in [
                             RichText::new(format!("{}  ", each.name())),
                             RichText::new("flat, in pixels")
-                                .color(theme::TEXT_WEAK)
+                                .color(theme::text_weak())
                                 .size(11.0),
                         ] {
                             text.append_to(
@@ -1423,12 +1423,12 @@ impl Viewport {
                 "Sprites play their clips while you edit. Off: each shows its clip's frame at \
                  its Clip time, and the editor rests. The game always animates.",
             );
-        ui.label(RichText::new("While you edit").color(theme::TEXT_WEAK));
+        ui.label(RichText::new("While you edit").color(theme::text_weak()));
         ui.add_space(6.0);
         ui.checkbox(&mut self.overlays.stats, "Frame rate and entity count");
         ui.checkbox(&mut self.overlays.snapping, "Grid, angle and camera speed");
         ui.checkbox(&mut self.overlays.tools, "Tools");
-        ui.label(RichText::new("Show in the viewport").color(theme::TEXT_WEAK));
+        ui.label(RichText::new("Show in the viewport").color(theme::text_weak()));
         ui.add_space(6.0);
         for layout in ViewLayout::ALL.into_iter().rev() {
             if ui.radio(self.layout == layout, layout.name()).clicked() {
@@ -1436,7 +1436,7 @@ impl Viewport {
                 self.maximized = None;
             }
         }
-        ui.label(RichText::new("Views").color(theme::TEXT_WEAK));
+        ui.label(RichText::new("Views").color(theme::text_weak()));
     }
 
     fn tools(&mut self, ui: &mut Ui, accent: Accent) {
@@ -1486,7 +1486,7 @@ fn look_menu(ui: &mut Ui, look: &mut Look) {
     ui.separator();
     let stylized = look.kind == LookKind::Stylized;
     ui.add_enabled_ui(stylized, |ui| {
-        ui.label(RichText::new("Stylized look").color(theme::TEXT_WEAK));
+        ui.label(RichText::new("Stylized look").color(theme::text_weak()));
         ui.horizontal(|ui| {
             ui.label("Bands of light");
             for bands in Look::BANDS {
@@ -1563,7 +1563,7 @@ fn tool_button(ui: &mut Ui, tool: Tool, chosen: bool, accent: Accent) -> egui::R
     let fill = if chosen {
         accent.colors().fill
     } else if response.hovered() {
-        theme::HOVER
+        theme::hover()
     } else {
         Color32::TRANSPARENT
     };
@@ -1571,7 +1571,7 @@ fn tool_button(ui: &mut Ui, tool: Tool, chosen: bool, accent: Accent) -> egui::R
     let color = if chosen {
         Color32::WHITE
     } else {
-        theme::TEXT_STRONG
+        theme::text_strong()
     };
     icons::tool_icon(
         ui.painter(),
@@ -1652,7 +1652,7 @@ mod tests {
     fn the_view_carries_the_size_and_backdrop() {
         let view = Viewport::default().view([800, 600], 1.0);
         assert_eq!(view.size_px, [800, 600]);
-        assert_eq!(view.sky_top, rgb(theme::backdrop::SKY_TOP));
+        assert_eq!(view.sky_top, rgb(theme::backdrop::sky_top()));
         assert!(view.view_projection.is_finite());
     }
 
@@ -1708,9 +1708,9 @@ fn draw_screens(
         };
         let frame = Rect::from_two_pos(top_left, bottom_right);
         let colour = if game {
-            theme::TEXT_STRONG
+            theme::text_strong()
         } else {
-            theme::TEXT_WEAK
+            theme::text_weak()
         };
         let stroke = egui::Stroke::new(1.5, colour);
         for (a, b) in [

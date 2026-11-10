@@ -49,7 +49,7 @@ impl LogLevel {
 
     fn color(self) -> Color32 {
         match self {
-            Self::Info => theme::TEXT_CONSOLE,
+            Self::Info => theme::text_console(),
             Self::Warning => theme::WARNING,
             Self::Error => theme::ERROR,
         }
@@ -288,7 +288,7 @@ pub(crate) fn console(ui: &mut Ui, console: &mut Console) -> Option<ConsoleReque
                     ui.label(
                         RichText::new(&line.time)
                             .monospace()
-                            .color(theme::TEXT_TIME),
+                            .color(theme::text_time()),
                     );
                     ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
                         if ui.small_button("Close").clicked() {
@@ -393,7 +393,7 @@ fn command_line(ui: &mut Ui, console: &mut Console) -> Option<ConsoleRequest> {
                 egui::Label::new(
                     RichText::new(console.choices.join("   "))
                         .monospace()
-                        .color(theme::TEXT_WEAK),
+                        .color(theme::text_weak()),
                 )
                 .truncate(),
             );
@@ -402,7 +402,7 @@ fn command_line(ui: &mut Ui, console: &mut Console) -> Option<ConsoleRequest> {
     theme::menu_row_frame().show(ui, |ui| {
         ui.set_min_width(ui.available_width());
         ui.horizontal(|ui| {
-            ui.label(RichText::new("›").monospace().color(theme::TEXT_WEAK));
+            ui.label(RichText::new("›").monospace().color(theme::text_weak()));
             let output = egui::TextEdit::singleline(&mut console.input)
                 .id(id)
                 .font(egui::TextStyle::Monospace)
@@ -455,7 +455,7 @@ pub(crate) fn level_filter(ui: &mut Ui, level: LogLevel, count: usize, on: bool)
         };
         (Color32::WHITE, fill)
     } else {
-        (theme::TEXT_WEAK, theme::MENU_ROW)
+        (theme::text_weak(), theme::menu_row())
     };
     let number = ui
         .painter()
@@ -478,7 +478,7 @@ pub(crate) fn level_filter(ui: &mut Ui, level: LogLevel, count: usize, on: bool)
         painter.rect_stroke(
             rect,
             3.0,
-            egui::Stroke::new(1.0, theme::BUTTON_BORDER),
+            egui::Stroke::new(1.0, theme::button_border()),
             egui::StrokeKind::Inside,
         );
     }
@@ -531,7 +531,7 @@ fn console_line(ui: &mut Ui, line: &LogLine, chosen: bool) -> egui::Response {
     ui.label(
         RichText::new(&line.time)
             .monospace()
-            .color(theme::TEXT_TIME),
+            .color(theme::text_time()),
     );
     let size = 11.0;
     let (rect, _) = ui.allocate_exact_size(egui::vec2(size, size), egui::Sense::hover());
