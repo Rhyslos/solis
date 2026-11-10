@@ -339,7 +339,7 @@ From here, 2D is finished first, what suits both 2D and 3D is built once for bot
 <details>
 <summary>Milestones</summary>
 
-- [ ] More movement: grid-step and platformer
+- [ ] More movement: grid-step and platformer, and triggers (walking into a zone tells game code; left over from "Usable first")
 - [ ] Soft shadows, normal and glow layers
 - [ ] Light for 2D worlds: 2D bounced light and the sky over 2D
 - [ ] Polish, the 2D sample and the manual (parallax built early, [decision 0094](docs/decisions/0094-parallax-layers.md))

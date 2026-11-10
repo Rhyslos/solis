@@ -26,7 +26,7 @@ Each phase ends with a **gate**: something the project lead tries by hand before
 | Shared 1. The editor's UI, remade | The editor rebuilt with the project lead's own design |
 | Shared 2. Game code: finding and making things | Tile map questions, tags and world questions, spawning with values, game tests |
 | 2D 1. The world and tiles | Levels and the world map, advanced tiling, pathfinding |
-| 2D 2. Movement, light and polish | Platformer and grid-step controllers, soft shadows, 2D bounced light, the 2D sample: 2D complete |
+| 2D 2. Movement, light and polish | Platformer and grid-step controllers, triggers, soft shadows, 2D bounced light, the 2D sample: 2D complete |
 | Shared 3. Time and feel | Timers, tween, steps in order, states, shake and fade, noise and weighted random |
 | Shared 4. Data and the editor | Data tables, save slots, field hints, more kinds of settings, drawing in the editor, paths |
 | Shared 5. Screens, words and sound | Text effects, button pictures, tooltips and drag and drop, translations and subtitles, music that follows the game |
@@ -178,13 +178,13 @@ The project lead's game moves to Solis next, so before it does, updates must nev
 
 The engine audit of 3 November ([decision 0070](docs/decisions/0070-usable-first.md)) put a new order ahead of the rest: everything needed to make a Stardew Valley-like farming game in Lust, with the editor's everyday basics first. It takes over Phase 9's last three milestones; Phase 10 and everything after follow it. One milestone per pull request, as always.
 
-1. **Editor basics (E1):** blue, nothing shown that isn't built, New in the Library (right-click anywhere, or **+ New**), a start page.
-2. **One project file, the rest as Lust:** what the editor makes is written as Lust data files.
-3. **The API milestone:** game code changes tiles and their values, drives animators and plays clips (four Lust changes, approved 3 November).
+1. **Editor basics (E1):** blue, nothing shown that isn't built, New in the Library (right-click anywhere, or **+ New**), a start page. *Built.*
+2. **One project file, the rest as Lust:** what the editor makes is written as Lust data files. *Begun: the base, tile maps and tilesets are Lust ([decision 0081](docs/decisions/0081-what-solis-makes-is-lust.md)); the other files follow, one at a time ([plan](docs/plans/lust-data.md)).*
+3. **The API milestone:** game code changes tiles and their values, drives animators and plays clips (four Lust changes, approved 3 November). *Built: clips by name ([decision 0077](docs/decisions/0077-clips-and-cues-as-names.md)), animators and tile maps reached through their own files ([decisions 0078](docs/decisions/0078-animators-reached-through-their-own-files.md) and [0079](docs/decisions/0079-tile-maps-reached-through-their-own-files.md)). It was built without the triggers step 5 left for it.*
 4. **Game-wide objects:** Lust's `object` (a clock, money, the inventory), ticked by Solis and kept in saves. *Built: they tick first and change only in their own update ([decision 0080](docs/decisions/0080-objects-change-only-in-their-own-update.md)); telling one something from a component comes later.*
-5. **2D physics and top-down movement:** tile collision, 8 directions for the player, 4 for NPCs. *Built ahead of 2 to 4, which wait on Lust's changes ([decision 0071](docs/decisions/0071-2d-physics-and-top-down-movement.md)); triggers move to the API milestone.*
+5. **2D physics and top-down movement:** tile collision, 8 directions for the player, 4 for NPCs. *Built ahead of 2 to 4, which were waiting on Lust's changes at the time ([decision 0071](docs/decisions/0071-2d-physics-and-top-down-movement.md)). **Triggers are not built:** walking into a zone (a door, a shop counter) doesn't tell game code yet. Decision 0071 left them for the API milestone, which was built without them; they are now part of [2D 2](#2d-2-movement-light-and-polish)'s "More movement" milestone.*
 6. **The 2D camera** that follows the player. *Built: the kit's FollowCamera2D, and cells at places ([decision 0082](docs/decisions/0082-the-2d-follow-camera-and-cells-at-places.md)).*
-7. **Game UI and the UI editor:** menus, HUD, inventory, dialogue, a pause menu with key rebinding (Phase 12, brought forward). *Begun: shapes laid out on any screen ([decision 0083](docs/decisions/0083-game-ui-on-any-screen.md)); text built ([decision 0084](docs/decisions/0084-game-ui-text.md)). **Before the UI editor, the editor overhaul** ([decision 0085](docs/decisions/0085-the-editor-overhaul.md), [plan](docs/plans/editor-overhaul.md)): built: the frame, Properties, the Library drawer, one search, playing, workspaces, help in place; the UI editor then lives in its UI workspace. The project lead's order (2026-11-05): the overhaul's parts, then all of game UI, before anything else. Screens are Lust's own views read through the engine ([decision 0087](docs/decisions/0087-screens-through-the-engine.md)). **Before game UI, the launcher** ([decision 0086](docs/decisions/0086-the-launcher.md), [plan](docs/plans/launcher.md)): built: projects, Learn and Updates on a page of their own.*
+7. **Game UI and the UI editor:** menus, HUD, inventory, dialogue, a pause menu with key rebinding (Phase 12, brought forward). *Built: shapes laid out on any screen ([decision 0083](docs/decisions/0083-game-ui-on-any-screen.md)), text ([decision 0084](docs/decisions/0084-game-ui-text.md)), menus that send events ([decision 0088](docs/decisions/0088-menus-send-events.md)), Atlas Crop and the UI editor ([decision 0089](docs/decisions/0089-atlas-crop-and-the-ui-editor.md)), and the player's settings ([decision 0091](docs/decisions/0091-player-settings-and-the-window.md)). **Before the UI editor, the editor overhaul** ([decision 0085](docs/decisions/0085-the-editor-overhaul.md), [plan](docs/plans/editor-overhaul.md)): built: the frame, Properties, the Library drawer, one search, playing, workspaces, help in place; the UI editor lives in its UI workspace. The project lead's order (2026-11-05): the overhaul's parts, then all of game UI, before anything else. Screens are Lust's own views read through the engine ([decision 0087](docs/decisions/0087-screens-through-the-engine.md)). **Before game UI, the launcher** ([decision 0086](docs/decisions/0086-the-launcher.md), [plan](docs/plans/launcher.md)): built: projects, Learn and Updates on a page of their own.*
 8. **Day and night, and lamps** on sprites. *Built ([decision 0092](docs/decisions/0092-day-and-night-and-lamps-on-sprites.md)).*
 9. **The playtest export** (Phase 11, brought forward). *Built ([decision 0093](docs/decisions/0093-the-playtest-export.md)).*
 
@@ -200,7 +200,7 @@ First-class 2D ([decision 0054](docs/decisions/0054-first-class-2d.md)), built a
 - **Tile maps that change as you play:** cells store meaning and their own data (a crop's growth), changes batched per chunk, saved as text that merges in Git.
 - **Autotiling:** each tileset chooses its kind (16-tile, 47-tile, edge sets or custom rules), set up with a wizard.
 - **The tile painter.**
-- **2D physics** (Rapier2D) with tile collision merged into smooth shapes, triggers, and a ready-made top-down controller in Lust. *Moved to "Usable first".*
+- **2D physics** (Rapier2D) with tile collision merged into smooth shapes, triggers, and a ready-made top-down controller in Lust. *Moved to "Usable first", and built there without the triggers, which are now part of 2D 2.*
 - **The 2D camera and feel tools.** *Moved to "Usable first".*
 - **Lamps and day and night on sprites,** crisp on the pixel grid. *Moved to "Usable first".*
 
@@ -277,7 +277,7 @@ Was Phase 10, part one.
 
 Was Phase 10, part two, and 2D's light from Phase 13.
 
-- **More movement:** grid-step and platformer controllers (coyote time, jump buffering, wall-jump), one-way platforms, slopes and moving platforms.
+- **More movement:** grid-step and platformer controllers (coyote time, jump buffering, wall-jump), one-way platforms, slopes and moving platforms. And **triggers:** walking into or out of a zone (a door, a shop counter) tells game code; left over from Phase 9's 2D physics ([decision 0071](docs/decisions/0071-2d-physics-and-top-down-movement.md)).
 - **Soft shadows** from walls and objects, and optional normal and glow layers.
 - **Light for 2D worlds:** 2D bounced light and the sky over 2D.
 - **Polish:** parallax (built early, [decision 0094](docs/decisions/0094-parallax-layers.md)), palette swaps and cycling, clean pixel-art rotation, hit-stop and squash, the 2D sample and the manual's 2D section.

@@ -1,4 +1,4 @@
-# Phase 12 plan: Sungraph UI (being built: usable first, step 7)
+# Phase 12 plan: Sungraph UI (built in "usable first", step 7)
 
 The working plan for Phase 12, game UI (ROADMAP.md, "Phase 12: Game UI"; it was the game-UI half of the first plan's Phase 9 until [decisions 0046](../decisions/0046-light-before-netcode.md), [0048](../decisions/0048-materials-and-shaders-before-effects.md) and [0054](../decisions/0054-first-class-2d.md) gave it its own phase, right after 2D and the playtest export; [decision 0039](../decisions/0039-game-ui-is-drawn-in-solis.md)). Effects (Phase 15, Solstice) have their own plan, and post-processing (bloom, grading) moved to light's Phase 13 plan; **Sharing with effects** below says where the two meet so nothing is built twice. Update this file as milestones are built: tick them off here and in the README tracker, and change a milestone's plan if its design changes.
 
