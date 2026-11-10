@@ -347,10 +347,17 @@ impl Workbench {
     /// its folder there, and shows it in Properties if it's a sound or
     /// sound event (the app calls this after making a new sound event).
     pub fn show_in_library(&mut self, path: &str) {
+        self.pick_in_library(path);
+        self.sound_shown = Some((path.to_owned(), self.document.selection.clone()));
+    }
+
+    /// Picks the file at `path` (inside the assets) in the Library and
+    /// opens its folder there, with the Library's own search cleared so
+    /// the file is in view.
+    pub(crate) fn pick_in_library(&mut self, path: &str) {
         self.library_state.folder = path.rsplit_once('/').map_or("", |(f, _)| f).to_owned();
         self.library_state.search.clear();
         self.library_state.selected = Some(path.to_owned());
-        self.sound_shown = Some((path.to_owned(), self.document.selection.clone()));
     }
 
     /// The project's sprite sheets as the app has read them (Phase 9, D2).

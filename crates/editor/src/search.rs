@@ -622,9 +622,16 @@ impl Workbench {
             }
             SearchTarget::File(kind, path) => {
                 if kind.placeable() && !kind.opens_on_double_click() {
-                    // Placed, not opened: shown in the Library, chosen.
-                    self.library_state.selected = Some(path.clone());
-                    self.library_request(LibraryRequest::Show(path), actions);
+                    // Placed, not opened: picked in the Library, in its
+                    // folder, with Properties following as for a click
+                    // there. Nothing is asked of the computer's own
+                    // programs.
+                    let before = self.library_state.selected.clone();
+                    self.pick_in_library(&path);
+                    if !self.library_state.filter.passes(kind) {
+                        self.library_state.filter = crate::library::Filter::All;
+                    }
+                    self.follow_sound_selection(&before);
                     if self.library_pinned {
                         crate::layout::bring_to_front(&mut self.dock, Panel::Library);
                     } else {

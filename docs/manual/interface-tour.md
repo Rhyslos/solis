@@ -37,7 +37,7 @@ The panels that come with an open file or a selected tile map (see the second ta
 
 **One search for everything:** press **Space** (with nothing being typed) or click **Search or do anything…** in the top bar. Type part of a name and the list finds:
 - the **actions** in the menus (Save area, Add point light, Play…), each with its shortcut beside it when it has one, so you pick up the keys as you go; switching workspace and pinning the Library are there too;
-- every **file** in the project, which opens it (a model or sprite sheet is shown in the Library instead, ready to drag in);
+- every **file** in the project, which opens it as a double-click in the [Library](projects-and-the-library.md) would. A file you place rather than open (a model, an assembly, a sprite sheet, a tile map or a picture) is picked in the Library instead, with its folder open, ready to drag in;
 - every **entity** in the area, which selects it and points the camera at it;
 - a **panel** by its name, which comes to the front.
 
