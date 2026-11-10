@@ -483,6 +483,24 @@ fn a_file_has_so_many_values_and_goes_so_deep() {
 }
 
 #[test]
+fn a_file_has_so_many_pieces() {
+    // The code review: Lust keeps about 100 bytes for each piece of a file
+    // it reads, whatever the piece, so a file of short numbers as long as
+    // a tile map's may be (64 MB) asked it for gigabytes. A file with more
+    // pieces than Lust can be handed is refused before it is, as the whole
+    // file, by the reader every data file goes through: were this one
+    // handed to Lust, the test would take a gigabyte and several seconds.
+    let numbers = "1,".repeat(MAX_PIECES / 2);
+    let read = read_test(&format!("lock int array a = [{numbers}];\nend\n"));
+    let found = read.map(drop).unwrap_err();
+    assert_eq!(found.line, 0);
+    assert_eq!(
+        found.message,
+        "it's too big to read: it holds more than 12 million numbers, texts, names and symbols"
+    );
+}
+
+#[test]
 fn what_lust_takes_long_over_never_reaches_it() {
     // Each of these took Lust (rev 930afae) from seconds to more than a
     // minute to refuse, its time growing with the square of the file's

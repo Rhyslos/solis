@@ -126,7 +126,7 @@ A map file's Properties:
 | Setting | What it does |
 |---|---|
 | Tileset | The terrains its cells can be. Giving a map with an empty ground its first tileset fills the ground with that tileset's first terrain. |
-| Size | Its width and height in cells, up to 4,096 each. Making it smaller takes away the cells past its new edges. |
+| Size | Its width and height in cells, up to 4,096 each. Making it smaller takes away the cells past its new edges. A map that big with a lot in it can be too big to open again (see the problems below). |
 
 A terrain's settings (right-click its swatch in the Map tab):
 
@@ -154,6 +154,7 @@ Value kinds:
 - **Problem:** the Map tab is gone. **Why:** it shows only while a map is selected. **Fix:** select the map's entity.
 - **Problem:** numbers don't show on the cells. **Why:** cells are too small to write on, or too many are in view. **Fix:** zoom in.
 - **Problem:** a value's numbers are gone after changing its kind. **Why:** a value's cells start again when its kind changes. **Fix:** Ctrl + Z over the Map tab.
+- **Problem:** a very big map won't open: "the map is too big to read" or "it's too big to read". **Why:** a map is kept as text, and reading text takes far more memory than the file's size, so Solis reads a map file of up to 64 MB with up to 12 million numbers, texts and symbols in it (about 2 GB of memory and 10 seconds at worst). The biggest map, 4,096 × 4,096, fits with three layers painted all over; each cell whose value isn't at its start counts too (a number in a million and a half cells is too many), and so does each exact tile. **Fix:** split a very big world into several maps, each on its own entity, and give values only to the cells that need them. Solis doesn't yet stop a map growing past this while you work on it, so open the project again now and then to check that a very big map still opens, and keep it in Git.
 - Problems lists a Tile Map with no map chosen, or whose file isn't in the project.
 
 ## Related

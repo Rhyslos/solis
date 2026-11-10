@@ -31,10 +31,11 @@
 //! Reading turns it into the blocks the older layout had, so one set of
 //! checks (`map_file`) makes the map from either.
 
-use area::lust_data::Fixed;
-use area::lust_data::{self as data, DataError};
+use crate::map::{CHUNK, MAX_LAYERS, MAX_SIDE, MAX_VALUES};
+use area::lust_data::{self as data, DataError, Fixed, Values};
 use area::settings::{Block, BlockOut, BlockSettings, Field};
 use reflect::Value;
+use std::collections::HashMap;
 
 /// The word before `.lst` in a tile map's file name.
 pub const KIND: &str = "tilemap";
@@ -52,6 +53,19 @@ class Numbers {\n    has {\n        string value = \"\";\n        int array chun
 class Switches {\n    has {\n        string value = \"\";\n        int array chunk = [];\n        int array array cells = [];\n    }\n}\n\n\
 class Choices {\n    has {\n        string value = \"\";\n        int array chunk = [];\n        int array array cells = [];\n        string array picks = [];\n    }\n}\n\n\
 pass ValueKind, TileMap, Layer, Value, Cells, Exact, Numbers, Switches, Choices;\nend\n";
+
+/// The lists of a map file's things.
+const LISTS: [&str; 7] = [
+    "layers", "values", "cells", "exact", "numbers", "switches", "choices",
+];
+
+/// The most things a map file has: every layer and value, and for each
+/// chunk of the biggest map every layer's cells and exact tiles and every
+/// value's cells (1,048,624). The older layout's limit on its blocks is
+/// lower because it keeps a chunk's values in one block.
+const MAX_THINGS: usize = MAX_LAYERS
+    + MAX_VALUES
+    + (MAX_SIDE.div_ceil(CHUNK) as usize).pow(2) * (2 * MAX_LAYERS + MAX_VALUES);
 
 const NAMES: [&str; 9] = [
     "ValueKind",
@@ -295,18 +309,42 @@ fn int_values(items: &[Fixed]) -> Value {
     )
 }
 
-/// A chunk `[x, y]` as its name `x.y`, or none.
-fn chunk_name(thing: &Fixed) -> Option<String> {
+/// A thing's chunk `[x, y]`, or none if it isn't two whole numbers.
+fn chunk_of(thing: &Fixed) -> Option<[i64; 2]> {
     match data::field_ints(thing, "chunk")?.as_slice() {
-        [x, y] => Some(format!("{x}.{y}")),
+        [x, y] => Some([*x, *y]),
         _ => None,
     }
+}
+
+/// A chunk `[x, y]` as its name `x.y`, or none.
+fn chunk_name(thing: &Fixed) -> Option<String> {
+    chunk_of(thing).map(|[x, y]| format!("{x}.{y}"))
 }
 
 /// Reads a tile map's Lust data file into the blocks the older layout had.
 pub fn read(text: &str, max_bytes: usize) -> Result<BlockSettings, DataError> {
     let values = data::read(text, KIND, CLASSES, max_bytes)?;
-    let version = data::version_of(text).unwrap_or(0);
+    blocks(&values, data::version_of(text).unwrap_or(0))
+}
+
+/// What a map file's values hold, as the blocks the older layout had. A
+/// file with more things than the biggest map has is refused before any
+/// block is made of them.
+fn blocks(values: &Values, version: u32) -> Result<BlockSettings, DataError> {
+    let things: usize = LISTS
+        .iter()
+        .map(|list| data::things(values, list).len())
+        .sum();
+    if things > MAX_THINGS {
+        return Err(data::error(
+            0,
+            format!(
+                "it lists more layers, values and chunks of cells ({things}) than the \
+                 biggest tile map has ({MAX_THINGS})"
+            ),
+        ));
+    }
     let line_of = |name: &str| {
         values
             .values
@@ -314,7 +352,7 @@ pub fn read(text: &str, max_bytes: usize) -> Result<BlockSettings, DataError> {
             .find(|v| v.name == name)
             .map_or(0, |v| v.line as usize)
     };
-    let tiles = data::get(&values, "tiles")?;
+    let tiles = data::get(values, "tiles")?;
     let line = line_of("tiles");
     let mut out = BlockSettings {
         version,
@@ -337,7 +375,7 @@ pub fn read(text: &str, max_bytes: usize) -> Result<BlockSettings, DataError> {
         });
     };
     let line = line_of("layers");
-    for l in data::things(&values, "layers") {
+    for l in data::things(values, "layers") {
         block(
             line,
             "layer",
@@ -353,7 +391,7 @@ pub fn read(text: &str, max_bytes: usize) -> Result<BlockSettings, DataError> {
         );
     }
     let line = line_of("values");
-    for v in data::things(&values, "values") {
+    for v in data::things(values, "values") {
         let kind = data::field_option(v, "kind")
             .unwrap_or("Number")
             .to_ascii_lowercase();
@@ -381,7 +419,7 @@ pub fn read(text: &str, max_bytes: usize) -> Result<BlockSettings, DataError> {
         block(line, "value", data::field_text(v, "id").to_string(), fields);
     }
     let line = line_of("cells");
-    for c in data::things(&values, "cells") {
+    for c in data::things(values, "cells") {
         let chunk =
             chunk_name(c).ok_or_else(|| data::error(line, "a Cells' chunk should be [x, y]"))?;
         let rows = data::field_texts(c, "rows");
@@ -401,7 +439,7 @@ pub fn read(text: &str, max_bytes: usize) -> Result<BlockSettings, DataError> {
         );
     }
     let line = line_of("exact");
-    for e in data::things(&values, "exact") {
+    for e in data::things(values, "exact") {
         let chunk =
             chunk_name(e).ok_or_else(|| data::error(line, "an Exact's chunk should be [x, y]"))?;
         let pieces = data::field_texts(e, "pieces");
@@ -430,13 +468,35 @@ pub fn read(text: &str, max_bytes: usize) -> Result<BlockSettings, DataError> {
             vec![field(line, "cells", Value::List(items))],
         );
     }
-    // Each chunk's values, gathered into one block per chunk as before.
-    let mut chunks: Vec<(String, usize, Vec<Field>)> = Vec::new();
+    out.blocks.extend(value_blocks(values, line_of)?);
+    Ok(out)
+}
+
+/// One chunk's values, while a file's things are gathered.
+struct ChunkValues<'a> {
+    chunk: [i64; 2],
+    /// The line of the list that first names the chunk.
+    line: usize,
+    /// Each value: its name, the line of the list that first names it in
+    /// this chunk, and its cells.
+    values: Vec<(&'a str, usize, Vec<Value>)>,
+}
+
+/// Each chunk's values, gathered from the three lists of them into one
+/// `values` block per chunk as the older layout had: the chunks, and each
+/// chunk's values, in the order the file first names them. A file may name
+/// as many chunks, or as many values in one chunk, as it has things (they
+/// aren't checked against the map until its blocks are read), so both are
+/// looked up, never searched for: a search made the time grow with the
+/// square of the things.
+fn value_blocks(values: &Values, line_of: impl Fn(&str) -> usize) -> Result<Vec<Block>, DataError> {
+    let mut chunks: Vec<ChunkValues<'_>> = Vec::new();
+    let mut chunk_at: HashMap<[i64; 2], usize> = HashMap::new();
+    let mut value_at: HashMap<(usize, &str), usize> = HashMap::new();
     for (list, with_picks) in [("numbers", false), ("switches", false), ("choices", true)] {
         let line = line_of(list);
-        for t in data::things(&values, list) {
-            let chunk =
-                chunk_name(t).ok_or_else(|| data::error(line, "a chunk should be [x, y]"))?;
+        for t in data::things(values, list) {
+            let chunk = chunk_of(t).ok_or_else(|| data::error(line, "a chunk should be [x, y]"))?;
             let cells = data::field_list(t, "cells");
             let picks = data::field_texts(t, "picks");
             if with_picks && picks.len() != cells.len() {
@@ -445,35 +505,43 @@ pub fn read(text: &str, max_bytes: usize) -> Result<BlockSettings, DataError> {
                     "Choices need a pick for each of their cells",
                 ));
             }
-            let items: Vec<Value> = cells
-                .iter()
-                .enumerate()
-                .map(|(i, cell)| {
-                    let Value::List(mut parts) = int_values(cell.as_list().unwrap_or_default())
-                    else {
-                        unreachable!("int_values makes a list")
-                    };
-                    if with_picks {
-                        parts.push(Value::Text(picks[i].to_string()));
-                    }
-                    Value::List(parts)
-                })
-                .collect();
-            let key = data::field_text(t, "value").to_string();
-            match chunks.iter_mut().find(|(c, _, _)| *c == chunk) {
-                Some((_, _, fields)) => match fields.iter_mut().find(|f| f.key == key) {
-                    Some(Field {
-                        value: Value::List(all),
-                        ..
-                    }) => all.extend(items),
-                    _ => fields.push(field(line, &key, Value::List(items))),
-                },
-                None => chunks.push((chunk, line, vec![field(line, &key, Value::List(items))])),
-            }
+            let items = cells.iter().enumerate().map(|(i, cell)| {
+                let Value::List(mut parts) = int_values(cell.as_list().unwrap_or_default()) else {
+                    unreachable!("int_values makes a list")
+                };
+                if with_picks {
+                    parts.push(Value::Text(picks[i].to_string()));
+                }
+                Value::List(parts)
+            });
+            let at = *chunk_at.entry(chunk).or_insert_with(|| {
+                chunks.push(ChunkValues {
+                    chunk,
+                    line,
+                    values: Vec::new(),
+                });
+                chunks.len() - 1
+            });
+            let named = &mut chunks[at].values;
+            let key = data::field_text(t, "value");
+            let value = *value_at.entry((at, key)).or_insert_with(|| {
+                named.push((key, line, Vec::new()));
+                named.len() - 1
+            });
+            named[value].2.extend(items);
         }
     }
-    for (chunk, line, fields) in chunks {
-        block(line, "values", chunk, fields);
-    }
-    Ok(out)
+    let blocks = chunks.into_iter().map(|gathered| Block {
+        line: gathered.line,
+        word: "values".to_string(),
+        name: format!("{}.{}", gathered.chunk[0], gathered.chunk[1]),
+        fields: (gathered.values.into_iter())
+            .map(|(key, line, cells)| field(line, key, Value::List(cells)))
+            .collect(),
+    });
+    Ok(blocks.collect())
 }
+
+#[cfg(test)]
+#[path = "map_lust_tests.rs"]
+mod tests;

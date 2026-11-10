@@ -16,6 +16,10 @@
 //! its own words). The tests sweep thousands of muddled files through
 //! both to check exactly that.
 //!
+//! Reading even a file with nothing wrong costs Lust memory and time for
+//! each piece of it, far more than the file's own length, so a file with
+//! more pieces than [`MAX_PIECES`] is refused here too.
+//!
 //! The file is split as Lust splits it ([`crate::lust_guard::Pieces`]), and
 //! nothing is let through that Lust might read another way. What Lust
 //! allows and Solis never writes is refused too: `new Item` without its
@@ -33,6 +37,16 @@ pub(crate) const MAX_VALUES: usize = 64;
 /// How deep lists and things go inside each other: deeper than any class
 /// asks for, and well inside what Lust reads.
 pub(crate) const MAX_DEPTH: usize = 32;
+
+/// The most pieces (numbers, texts, names and symbols) one data file has.
+/// A file's length says little of what Lust needs to read it: Lust (rev
+/// 930afae) keeps about 100 bytes for each piece while it reads, and takes
+/// over half a second for a million of them, and a megabyte is 65,000
+/// pieces of a tile map's rows of codes or a million of `[1,1,1],`
+/// (measured: 12 MB of those took 1.3 GB and 7.5 seconds; 60 MB of rows,
+/// 1 GB and 4 seconds). This many keeps the biggest file read (a tile
+/// map's 64 MB), at its worst, under 2 GB and 10 seconds.
+pub(crate) const MAX_PIECES: usize = 12_000_000;
 
 /// The most fields a class has (each is filled in once, kept track of in
 /// one number).
@@ -87,6 +101,8 @@ struct Reader<'a> {
     pieces: Pieces<'a>,
     ahead: Option<(u32, Piece<'a>)>,
     line: u32,
+    /// How many pieces have been read.
+    taken: usize,
 }
 
 impl<'a> Reader<'a> {
@@ -98,6 +114,7 @@ impl<'a> Reader<'a> {
             pieces,
             ahead,
             line: 1,
+            taken: 0,
         }
     }
 
@@ -110,6 +127,7 @@ impl<'a> Reader<'a> {
     fn take(&mut self) -> Option<Piece<'a>> {
         let taken = std::mem::replace(&mut self.ahead, self.pieces.next());
         self.line = taken.map_or(self.pieces.line(), |(line, _)| line);
+        self.taken += usize::from(taken.is_some());
         taken.map(|(_, piece)| piece)
     }
 
@@ -168,13 +186,18 @@ impl<'a> Reader<'a> {
 
     /// Reads the items after a `[` or `{` up to its `close`: each read by
     /// `item`, with a `,` between them, and one after the last if it likes
-    /// (as Lust reads a list, a thing's fields and a fetch's names).
+    /// (as Lust reads a list, a thing's fields and a fetch's names). All but
+    /// a few of a file's pieces are read here, so a file with more than
+    /// [`MAX_PIECES`] is refused here, without reading the rest of it.
     fn items(
         &mut self,
         close: &str,
         mut item: impl FnMut(&mut Self) -> Result<(), DataError>,
     ) -> Result<(), DataError> {
         loop {
+            if self.taken > MAX_PIECES {
+                return Err(error(0, too_big()));
+            }
             if self.peek() == Some(Piece::Symbol(close)) {
                 self.take();
                 return Ok(());
@@ -522,6 +545,14 @@ impl<'a> Classes<'a> {
             self.value(r, fields[at].1, fetched, depth + 1)
         })
     }
+}
+
+/// The mistake of a file with more pieces than Lust is handed.
+fn too_big() -> String {
+    format!(
+        "it's too big to read: it holds more than {} million numbers, texts, names and symbols",
+        MAX_PIECES / 1_000_000
+    )
 }
 
 /// The mistake of lists and things too deep inside each other.
