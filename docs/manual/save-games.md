@@ -48,7 +48,7 @@ Add the QuickSave and QuickLoad actions in **Edit > Input actions…** and bind 
 
 **Your game's own versions:** when your game changes in a way old saves don't fit (a new map, say), that's for your game to decide, not Solis. Keep a version number in a component's `has` block (`int saveVersion = 3;`), and check it in code after a load: carry on, put things right, or tell the player.
 
-**Where saves live:** in the project's `saves` folder, one `.solsave` file per slot, beside `project.solis`. New projects keep this folder out of Git, since saves are your test plays, not part of the game. Exported games (Phase 11) will keep players' saves in their own saved-games folder.
+**Where saves live:** in the project's `saves` folder, one `.solsave` file per slot, beside `project.solis`. New projects keep this folder out of Git, since saves are your test plays, not part of the game. An exported game keeps players' saves in their own saved-games folder instead ([Exporting for playtesting](playtest-export.md)).
 
 ## Settings
 Save games have no settings: everything is saved.

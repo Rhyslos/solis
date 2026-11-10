@@ -2,13 +2,24 @@
 # too slow for every pull request.
 #
 # - Fuzzing: every reader of a file a project can ship (fuzz/README.md),
-#   each for a time box, starting from fuzz/seeds. A crash or hang is
-#   uploaded and opens an issue.
+#   each for a time box, starting from fuzz/seeds. The targets are read
+#   from fuzz/Cargo.toml, never listed here, so a new one is fuzzed the
+#   next Sunday with no change to this file. A crash or hang is uploaded
+#   and opens an issue. The fuzzers have no lock file of their own in the
+#   repository: each job writes it from the main Cargo.lock
+#   (tools/ci/fuzz-lock.sh), so what is fuzzed is what ships.
 # - The whole-game invariant tests, with many more games than a pull
 #   request runs (PROPTEST_CASES). A failure opens an issue with the
 #   smallest game that shows it.
+# - The updater against the real GitHub: its two tests that need the
+#   internet (crates/updater/src/tests.rs), which no pull request runs.
+#   They ask for the newest build and download its installer, checked
+#   against its published SHA-256, and never start it. A failure opens
+#   an issue.
 #
-# Linux only: the readers and the game are the same code on every system.
+# On Linux: the readers and the game are the same code on every system.
+# The updater's tests alone run on Windows, where the updater is used and
+# where it trusts a server by Windows' own certificates.
 name: Deep checks
 
 on:
@@ -30,10 +41,83 @@ concurrency:
 
 env:
   CARGO_TERM_COLOR: always
+  # The fuzzer's tools, pinned so a new release of either can't change or
+  # break the weekly run with no change in this repository. These are the
+  # two the run of 2026-11-08 used, with every target passing. Dependabot
+  # doesn't update them: a person does, both together, in a pull request
+  # of its own, then runs this workflow by hand
+  # (.github/workflows/README.md, "Tools the workflows install").
+  FUZZ_NIGHTLY: nightly-2026-11-08
+  CARGO_FUZZ_VERSION: "0.13.2"
 
 jobs:
+  # The list of fuzz targets, read from fuzz/ itself. It used to be kept
+  # by hand in the matrix below, and fell ten targets behind with nothing
+  # to say so (the review of November 2026). The step fails, and says why,
+  # when fuzz/Cargo.toml and fuzz/fuzz_targets don't name the same targets,
+  # because a target missing from either would never be fuzzed.
+  targets:
+    name: List the fuzz targets
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    permissions:
+      contents: read
+      issues: write
+    outputs:
+      targets: ${{ steps.list.outputs.targets }}
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      - name: Read the targets from fuzz/Cargo.toml
+        id: list
+        run: |
+          python3 - <<'PY'
+          import json, os, pathlib, re, sys, tomllib
+
+          manifest = tomllib.loads(pathlib.Path("fuzz/Cargo.toml").read_text())
+          bins = {b["name"]: b.get("path", "") for b in manifest.get("bin", [])}
+          files = {p.stem for p in pathlib.Path("fuzz/fuzz_targets").glob("*.rs")}
+          problems = []
+          if not bins:
+              problems.append("fuzz/Cargo.toml lists no fuzz targets")
+          for name, path in sorted(bins.items()):
+              # The names go into file paths and shell commands below.
+              if not re.fullmatch(r"[a-z][a-z0-9_]*", name):
+                  problems.append(f"the target name {name!r} must be lower-case letters, digits and underscores")
+              elif path != f"fuzz_targets/{name}.rs":
+                  problems.append(f"{name}: its path in fuzz/Cargo.toml is {path!r}, not 'fuzz_targets/{name}.rs'")
+              elif name not in files:
+                  problems.append(f"{name}: fuzz/Cargo.toml lists it, but fuzz/fuzz_targets/{name}.rs isn't there")
+          for name in sorted(files - set(bins)):
+              problems.append(f"fuzz/fuzz_targets/{name}.rs has no [[bin]] in fuzz/Cargo.toml, so it would never be fuzzed")
+          for problem in problems:
+              print(f"::error::{problem}")
+          if problems:
+              sys.exit(1)
+          names = sorted(bins)
+          with open(os.environ["GITHUB_OUTPUT"], "a") as out:
+              out.write(f"targets={json.dumps(names)}\n")
+          print(f"{len(names)} targets: {' '.join(names)}")
+          PY
+      - name: Open an issue
+        if: failure() && github.event_name == 'schedule'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RUN: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          gh issue create --label bug \
+            --title "The weekly fuzzing didn't run: its targets couldn't be listed" \
+            --body "The weekly deep checks read the list of fuzz targets from \`fuzz/Cargo.toml\` and check it against the files in \`fuzz/fuzz_targets\`. This week the list couldn't be made, so nothing was fuzzed. The run says what is wrong: $RUN. Every file in \`fuzz/fuzz_targets\` needs a \`[[bin]]\` of the same name in \`fuzz/Cargo.toml\`, and every \`[[bin]]\` its file (fuzz/fuzz_targets/README.md, Adding a target)."
+
+  # One job for each target, side by side, so more targets make the run
+  # no longer: each fuzzes for 20 minutes (the `minutes` input when
+  # started by hand) and may take 90 with its build. GitHub starts as many
+  # at once as the account allows, and the rest wait their turn.
   fuzz:
     name: Fuzz ${{ matrix.target }}
+    needs: targets
     runs-on: ubuntu-latest
     timeout-minutes: 90
     permissions:
@@ -42,40 +126,55 @@ jobs:
     strategy:
       fail-fast: false
       matrix:
-        target:
-          - save_game
-          - recording
-          - input_actions
-          - area_file
-          - model
-          - import_cache
-          - sidecar
-          - project_file
-          - game_code
-          - update_answer
-          - sound_file
-          - sound_event
-          - mixer
+        target: ${{ fromJSON(needs.targets.outputs.targets) }}
+    env:
+      TARGET: ${{ matrix.target }}
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           persist-credentials: false
-      - run: rustup toolchain install nightly --profile minimal
-      # The sound crate builds against ALSA on Linux.
-      - run: sudo apt-get update && sudo apt-get install -y libasound2-dev
+      - run: rustup toolchain install "$FUZZ_NIGHTLY" --profile minimal
+      # fuzz/ is a workspace of its own, and its lock file isn't kept in
+      # the repository, where it drifted away from the main one. It is
+      # written here from the main Cargo.lock, so the fuzzers build the
+      # library versions the program ships; `cargo fuzz` then builds from
+      # it and has no reason to change it. Each fuzz job writes its own
+      # rather than the first job handing one down: it takes seconds,
+      # needs no upload and download, and comes out the same in every job,
+      # because everything in it is pinned by the main lock or, for the
+      # two libraries only the fuzzers use, in fuzz/Cargo.toml. Before the
+      # cache step, so that step sees a lock file as it always has.
+      - name: Write the fuzzers' lock file from the main one
+        env:
+          RUSTUP_TOOLCHAIN: ${{ env.FUZZ_NIGHTLY }}
+        run: tools/ci/fuzz-lock.sh
+      # The sound crate builds against ALSA on Linux. The same list of
+      # packages as every other Linux job, here and in ci.yml.
+      - run: tools/ci/linux-packages.sh
+      # One cache for every target, not one each: they are all built from
+      # the same libraries, and a copy for each target would crowd the
+      # pull request checks' caches out of the repository's allowance.
       - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2
         with:
           workspaces: fuzz
-          key: ${{ matrix.target }}
-      - run: cargo install cargo-fuzz --locked
+          key: ${{ env.FUZZ_NIGHTLY }}
+      - run: cargo install "cargo-fuzz@$CARGO_FUZZ_VERSION" --locked
       - name: Fuzz
         working-directory: fuzz
         env:
           MINUTES: ${{ github.event.inputs.minutes || '20' }}
         run: |
-          mkdir -p "corpus/${{ matrix.target }}" "artifacts/${{ matrix.target }}"
-          cargo +nightly fuzz run -O "${{ matrix.target }}" \
-            "corpus/${{ matrix.target }}" "seeds/${{ matrix.target }}" -- \
+          mkdir -p "corpus/$TARGET" "artifacts/$TARGET"
+          # A target with no starting files yet is still fuzzed, from
+          # nothing: the fuzzer stops at once if handed a folder that
+          # isn't there.
+          folders=("corpus/$TARGET")
+          if [ -d "seeds/$TARGET" ]; then
+            folders+=("seeds/$TARGET")
+          else
+            echo "::warning::$TARGET has no starting files (fuzz/seeds/$TARGET, made by fuzz/make-seeds.sh), so it starts from nothing and gets less far."
+          fi
+          cargo "+$FUZZ_NIGHTLY" fuzz run -O "$TARGET" "${folders[@]}" -- \
             -max_total_time=$((MINUTES * 60)) -timeout=45 -rss_limit_mb=4096 \
             -max_len=1048576 -print_final_stats=1
       - name: Keep what it found
@@ -92,13 +191,113 @@ jobs:
           RUN: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
         run: |
           gh issue create --label bug \
-            --title "Fuzzing found a problem: ${{ matrix.target }}" \
-            --body "The weekly deep checks' fuzzer for \`${{ matrix.target }}\` found an input that crashes or hangs Solis. The input is attached to the run as the \`fuzz-${{ matrix.target }}\` artifact: $RUN. Replay it with \`cargo fuzz run ${{ matrix.target }} <file>\` (fuzz/README.md), fix it, and add a regression test."
+            --title "Fuzzing found a problem: $TARGET" \
+            --body "The weekly deep checks' fuzzer for \`$TARGET\` found an input that crashes or hangs Solis. The input is attached to the run as the \`fuzz-$TARGET\` artifact: $RUN. Replay it with \`cargo fuzz run $TARGET <file>\` (fuzz/README.md), fix it, and add a regression test."
 
+  # The updater's two tests that talk to the real GitHub. Every other
+  # test of the updater uses a stand-in, so a pull request never fails
+  # because the network did; these two are marked `#[ignore]` and run
+  # here alone. The second is the one that would have caught build 74,
+  # whose every download failed at its last byte.
+  #
+  # What they do: ask GitHub for the newest build, then download its
+  # installer into a temporary folder and check it against its published
+  # SHA-256 and size. Nothing starts the installer (only
+  # `updater::start_installer` can, and neither test calls it), and the
+  # machine is thrown away afterwards.
+  #
+  # On Windows, unlike the rest of this file: installed copies exist only
+  # there (decision 0012), and the updater checks GitHub's certificate
+  # with the system's own verifier, which is different code on Linux. A
+  # download that works on Linux proves less than one that works where
+  # people update. No build cache: this builds one small crate once a
+  # week, and GitHub drops a cache nobody has used for a week.
+  updater:
+    name: The updater against the real GitHub (Windows)
+    runs-on: windows-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      # Built first, in a step of its own, so the tries below repeat only
+      # the tests, and a build that fails says so once.
+      - name: Build the updater's tests
+        shell: bash
+        run: cargo test --locked -p updater --lib --no-run
+      - name: Ask GitHub, and download the newest installer
+        # `shell: bash` for pipefail, as in the invariants job below: each
+        # try's result is cargo's and not tee's.
+        shell: bash
+        run: |
+          # The two tests by their full names, never every ignored test in
+          # the crate: one added later might do more than download, and
+          # is added here on purpose or not at all.
+          tests=(
+            tests::github_answers
+            tests::the_newest_installer_downloads_whole_and_matches
+          )
+          # Up to three tries, two minutes apart. The tests ask GitHub
+          # without signing in, as an installed copy does, and GitHub
+          # allows few such questions an hour from one address, which
+          # this machine shares with others. A try that failed is still
+          # shown on the run as a warning.
+          for attempt in 1 2 3; do
+            if cargo test --locked -p updater --lib -- --ignored --exact "${tests[@]}" 2>&1 | tee updater.txt; then
+              # A name that matches no test runs nothing and passes, so a
+              # renamed test would quietly stop being run: count them.
+              if grep -q "^test result: ok. ${#tests[@]} passed" updater.txt; then
+                exit 0
+              fi
+              echo "::error::Fewer than ${#tests[@]} tests ran: one of the names in this step no longer matches a test in crates/updater/src/tests.rs." | tee -a updater.txt
+              exit 1
+            fi
+            if [ "$attempt" -lt 3 ]; then
+              echo "::warning::Try $attempt of the updater's network tests failed; trying again in two minutes."
+              sleep 120
+            fi
+          done
+          exit 1
+      - name: Open an issue
+        if: failure() && github.event_name == 'schedule'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RUN: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          {
+            echo "The weekly deep checks asked the real GitHub for the newest build and downloaded its installer, the way an installed copy of Solis updates itself (the two network tests in \`crates/updater/src/tests.rs\`). It failed (a failing test is tried three times, two minutes apart). The end of what the last try said:"
+            echo
+            echo '```'
+            # No updater.txt means the tests never started (the build failed).
+            tail -n 40 updater.txt 2>/dev/null || echo "The tests never started; the run says why."
+            echo '```'
+            echo
+            echo "Run: $RUN. If it says GitHub couldn't be reached, took too long or asked to wait, start the workflow again by hand (the Actions tab, Deep checks, Run workflow). If it fails again, or says anything else, installed copies may not be able to update: find out why before the next build is published."
+          } > body.md
+          gh issue create --label bug --title "The updater's weekly check against GitHub failed" --body-file body.md
+
+  # 1,000 games for each of the three whole-game rules, and 1,000 crowds
+  # in physics, in a release build. Nothing here opens a window, draws or
+  # plays a sound, so the machine needs no screen and no GPU: only the
+  # packages the build needs.
+  #
+  # Why an hour is allowed. In the pull request checks the three rules
+  # play 12 games each, unoptimised and beside 700 other tests, and all
+  # are done within 11 seconds: 1,000 games each take a quarter of an
+  # hour at that pace, and less optimised. The crowds take seconds. The
+  # release build before them is reckoned at 10 to 20 minutes with
+  # nothing cached (the fuzzers' optimised build of the same crates takes
+  # under 10). So about half an hour at worst, and twice that is allowed;
+  # it was two hours, which nothing here needs.
   invariants:
     name: Whole-game invariants, many games
     runs-on: ubuntu-latest
-    timeout-minutes: 120
+    timeout-minutes: 60
     permissions:
       contents: read
       issues: write
@@ -107,10 +306,19 @@ jobs:
         with:
           persist-credentials: false
       - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2
+      # The editor uses the sound crate, which builds against ALSA on
+      # Linux. This step was missing, so the build stopped at `alsa-sys`
+      # and no game was ever played (the review of November 2026).
+      - run: tools/ci/linux-packages.sh
       - name: Play many games
         env:
           PROPTEST_CASES: "1000"
-        # GitHub's bash stops at the first failing pipeline (pipefail).
+        # `shell: bash` is what lets a failing test fail this step: it turns
+        # on pipefail, so each line's result is cargo's and not tee's
+        # (GitHub's default shell leaves pipefail off, and the step would
+        # always pass). The step stops at the first command that fails,
+        # with its output already in invariants.txt for the issue below.
+        shell: bash
         run: |
           cargo test --release --locked -p editor invariant_tests 2>&1 | tee invariants.txt
           cargo test --release --locked -p physics a_crowd 2>&1 | tee -a invariants.txt
@@ -120,6 +328,8 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
           RUN: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        # The default shell on purpose (no pipefail): a grep that finds
+        # nothing must not stop the issue from being opened.
         run: |
           {
             echo "The weekly deep checks played a game that broke one of the whole-game rules (ARCHITECTURE.md, Checks). The smallest game that shows it:"

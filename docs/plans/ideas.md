@@ -2,11 +2,11 @@
 
 **Now milestones** (10 November 2026, [decision 0098](../decisions/0098-ideas-become-milestones.md)): each idea below says which phase of [ROADMAP.md](../../ROADMAP.md) builds it. Two are not planned: photo mode and screenshots, and Steam's features built in, which are for each game's developer, not the engine.
 
-Written down on 8 November 2026 so nothing is forgotten. **None of this is planned or decided yet.** Each idea gets its own decision (DESIGN.md §17) before it's built, and the project lead picks what comes first.
+Written down on 8 November 2026 so nothing is forgotten, when none of it was planned or decided; two days later all but two became milestones (above). Each idea still gets its own decision (DESIGN.md §17) before it's built.
 
 These came from comparing Solis with other engines (Godot, Unity, Unreal, GameMaker, Defold) and from Lust's own rulebook. They're general tools any game could use: game-specific systems, like an inventory or crafting, belong in games (CLAUDE.md).
 
-**Status:** *New* means it isn't planned anywhere yet. *Later* means DESIGN.md's "Later" list already has it. *Phase N* means it's already on the roadmap.
+**Status:** each idea ends with the milestone that builds it (*Milestone: Shared 3*, a phase of ROADMAP.md's three tracks), or with *Not planned*.
 
 ## In plain words: the first ones worth doing
 

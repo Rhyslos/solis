@@ -18,8 +18,10 @@ Solis is built on other people's libraries, which saves years of work. Each libr
    - **The version Solis uses keeps its licence:** a library that changes its licence can usually only do so for new versions, and the version already published stays under the licence it was published with. Solis stays on the last good version and replaces the library in its own time. This is general understanding, not legal advice.
 4. **Exact versions, from known places.**
    - `Cargo.lock` pins every version, and nothing updates on its own. Dependabot proposes updates as pull requests, checked like any change.
+   - **One lock file.** The fuzzing workspace (`fuzz/`) needs a lock file of its own, and nothing in Cargo keeps two in step, so it isn't kept in the repository: `tools/ci/fuzz-lock.sh` writes it from `Cargo.lock` whenever the fuzzers are built. What the fuzzers vet is then what ships, and a version held back in `Cargo.lock` is held back for them too ([fuzz/README.md](../fuzz/README.md#the-lock-file)).
    - Libraries come only from the official registry, or from the project lead's own Lust repository pinned to one commit (`deny.toml`, `[sources]`).
    - Removed ("yanked") versions fail the check.
+   - The tools the workflows download (Inno Setup for the installer, cargo-about for the notices, cargo-fuzz and its nightly compiler for fuzzing) are each pinned to one exact version in the workflow files, and the two libraries only the fuzzers use in `fuzz/Cargo.toml`. Dependabot doesn't update those: a person does ([`.github/workflows/README.md`](../.github/workflows/README.md), "Tools the workflows install").
 5. **A copy of every library's source.** Whenever `Cargo.lock` changes on main, the **Source archive** workflow saves the source of every library in it (`cargo vendor`, about 60 MB compressed) as a pre-release on GitHub, named after the lock file's hash. A library deleted from the internet can't stop Solis from building: unpack the archive and build offline (see "Building from the archive").
 6. **Known problems are watched.** The weekly security check reads the RustSec advisories, and every exception in `deny.toml` carries its reason.
 7. **A reason for every new library.** Adding one needs a line in the register (the test insists), and the pull request says why Solis shouldn't write it itself. Solis writes its core systems itself ([decision 0051](decisions/0051-understand-then-build.md)), so the list should shrink in the core over time.
@@ -27,6 +29,7 @@ Solis is built on other people's libraries, which saves years of work. Each libr
    - Is each library still maintained?
    - Has its reach grown?
    - Is an exit plan now cheap enough to just do?
+   - Are the tools the workflows download (safeguard 4) still the versions to use?
 
 ## The register
 
@@ -83,7 +86,7 @@ Solis is built on other people's libraries, which saves years of work. Each libr
 | `wgpu` | Talks to the graphics card (DirectX 12, Vulkan) | MIT OR Apache-2.0 | render | foundation | Stay on the last good version, or maintain a fork (MIT or Apache-2.0); it's walled into `render`, so the rest of Solis never sees it |
 | `winresource` | Puts the logo into `solis.exe` when building | MIT | app (build) | build | Write the small resource file ourselves and run Windows' resource compiler |
 
-Outside the register: the tools in `tools/` and the fuzzing workspace in `fuzz/`, which never ship. Their libraries are still checked by `cargo deny` where they share the workspace.
+Outside the register: the tools in `tools/` and the fuzzing workspace in `fuzz/`, which never ship. `tools/layer-check` is part of the main workspace, so `cargo deny` checks its libraries with everything else. `fuzz/` is a workspace of its own, but its lock file is written from `Cargo.lock` (safeguard 4), so every library it shares with Solis is the same version, already checked. Only the fuzzing tools themselves are outside `Cargo.lock`: `libfuzzer-sys` and `arbitrary`, pinned to exact versions in `fuzz/Cargo.toml`, which no licence or security check reads and which the phase's look (safeguard 8) covers with the other pinned tools. `tools/storage-bench` is also its own workspace, with a lock file kept beside it; it is run by hand only, to check decision 0024 again, and no check or update reaches it.
 
 ## Patches: libraries Solis stands in for
 

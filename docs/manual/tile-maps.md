@@ -10,7 +10,7 @@ A tile map stores what each cell *means*, not a picture:
 - **[Layers](concepts.md#2d)** stack: Ground, then Decoration (fences, flowers), both drawn **under** sprites, and Above (roofs, treetops), drawn **over** them so the farmer walks behind a roof.
 - **[Cell values](concepts.md#2d)** are things every cell has besides its terrain. *crop* is a choice (wheat, corn), *growth* is a number, and *watered* is a switch.
 
-Why meaning rather than pictures? Because the art can change without touching a single map: when tilesets get their art, Solis works out which picture each cell shows from its neighbours. And because "every watered crop" is a question about values, not about how things look.
+Why meaning rather than pictures? Because the art can change without touching a single map: Solis works out which picture each cell shows from its neighbours, using the tileset's art ([Tilesets and autotiling](tilesets.md)). And because "every watered crop" is a question about values, not about how things look.
 
 Why values in the map, rather than an entity per plant? A field of a thousand crops as a thousand entities is a lot to run and save. As values, they're a few bytes each, saved with the map. A plant that needs to animate or think can still be an entity standing on its cell.
 
@@ -112,7 +112,6 @@ It works wherever the map's entity is, even moved or turned. Cells are counted f
 - Cells count from 0 at the map's first corner, as the Map tab shows them. A cell off the map reads as empty, 0 or off, and changing it does nothing.
 - Changes land at the end of the tick, like moves, and what code reads is the map as the tick started. They're in saves, and a solid terrain painted by code becomes a wall at once.
 - The map is the one placed by the first entity showing that file (most games have one per file).
-- Which cell is the player on? That comes with the 2D camera's milestone, as a way to turn a place in the world into a cell.
 
 ## Settings
 The Tile Map component:
@@ -146,6 +145,7 @@ Value kinds:
 | Action | Shortcut |
 |---|---|
 | Undo or redo a change in the Map tab, or a painted stroke | Ctrl + Z, Ctrl + Y (pointer over the tab, or a painting tool in use) |
+| A terrain's settings | Right-click its swatch in the Map tab |
 | The painting tools | B, U, N, G, I (see [Painting tiles](painting-tiles.md)) |
 
 ## Tips and common problems

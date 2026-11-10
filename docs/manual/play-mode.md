@@ -53,7 +53,7 @@ Play, Pause, Step and Stop are buttons only, so a stray key never starts or stop
 - **Problem:** new entities appear in the Area panel while playing. **Why:** game code made them (`World:spawn`, see [Game code](game-code.md#making-and-removing-entities)). **Fix:** nothing: they go when you press Stop.
 - **Problem:** pressing keys while playing changes the area (W picks the move tool). **Why:** the editor has the keys. **Fix:** click the Game panel to give them to the game; Esc gives them back.
 - **Problem:** Step is greyed out. **Why:** it runs one tick of a paused game. **Fix:** press Pause first.
-- **Problem:** the game shows the wrong camera. **Why:** it uses the first one in the Area panel's list. **Fix:** delete the cameras you don't need, or take their Camera component off (the × beside it in Properties).
+- **Problem:** the game shows the wrong camera. **Why:** it uses the first one in the Area panel's list. **Fix:** delete the cameras you don't need, or take their Camera component off (**Remove Camera**, in the **⋯** on its card in Properties).
 - **Problem:** the picture in the Game panel looks different from the viewport. **Why:** the game always uses the standard [look](looks.md); the viewport's look is only for editing. Hidden entities (the eye in the Area panel) show in the game, because hiding is only for the editor.
 
 ## Related

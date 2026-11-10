@@ -74,9 +74,9 @@ A button's **When clicked** in Properties has a **Sends** list: the [events](gam
 | Finish the Pen's line | `Enter` or double-click |
 | Pick more (canvas) | `Shift + click` |
 | Pick more (Elements) | `Shift + click` or `Ctrl + click` |
-| Delete what's picked | `Delete` (over the canvas or Elements) |
+| Delete what's picked | `Delete` (over the canvas or Elements), or `Backspace` (over the canvas) |
 | Copy what's picked, just after itself | `Ctrl + D` |
-| Pick nothing | `Esc` |
+| Pick nothing | `Esc`, or click an empty part of the canvas |
 | Undo, redo | `Ctrl + Z`, `Ctrl + Y` (over the canvas or Elements) |
 | Zoom | Mouse wheel |
 | Move the view | Middle mouse button drag |

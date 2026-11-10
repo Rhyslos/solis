@@ -5,7 +5,7 @@
 ## When to use it
 Whenever you want to see a model in Solis. Solis reads **glTF** files ([concepts](concepts.md#models)), the standard format for game models: Blender, Aventail and most 3D programs export it.
 
-Until areas and entities arrive (Phase 2), an imported model sits in the viewport where its file puts it. It isn't saved: next time Solis starts, import it again.
+An imported model becomes an [entity](entities.md) in the area, where its file puts it. With a [project](projects-and-the-library.md) open, the file is copied into the project and [saving the area](saving-areas.md) keeps the model in it. Without one, Solis works as a viewer: the model is shown but not kept.
 
 ## How to use it
 
