@@ -40,6 +40,9 @@ pub const ENGINE_FOLDER: &str = "solis";
 /// A file's own name when its text is handed to Lust.
 const ENTRY: &str = "data.lst";
 
+/// How many characters of a text a mistake about it shows.
+const SHOWN: usize = 40;
+
 /// Why a data file couldn't be read.
 #[derive(Debug, Clone, PartialEq, Eq)]
 pub struct DataError {
@@ -69,9 +72,18 @@ pub fn error(line: usize, message: impl Into<String>) -> DataError {
     }
 }
 
+/// Whether `c` is a character no data file's text holds: a control
+/// character other than a line break or a tab, which can't be seen and
+/// which Lust has no way to write but as itself. [`text`] leaves these
+/// out and [`read`] refuses a file with one, so every text that's read is
+/// written back as exactly itself.
+fn unwritable(c: char) -> bool {
+    c.is_control() && !matches!(c, '\n' | '\t')
+}
+
 /// `text` as a Lust text: in quotes, with `"`, `\`, braces, line breaks
 /// and tabs written so they read back as themselves. Other control
-/// characters can't be written in Lust, and are left out.
+/// characters are left out ([`unwritable`]).
 pub fn text(text: &str) -> String {
     let mut out = String::with_capacity(text.len() + 2);
     out.push('"');
@@ -83,7 +95,7 @@ pub fn text(text: &str) -> String {
             '}' => out.push_str("\\}"),
             '\n' => out.push_str("\\n"),
             '\t' => out.push_str("\\t"),
-            c if c.is_control() => {}
+            c if unwritable(c) => {}
             c => out.push(c),
         }
     }
@@ -183,8 +195,9 @@ pub fn is_data(text: &str) -> bool {
 }
 
 /// Reads a data file of `kind` whose classes are `classes` (Lust text),
-/// refusing one bigger than `max_bytes`. Every mistake comes back with its
-/// line; nothing in the file runs.
+/// refusing one bigger than `max_bytes`, and one whose text holds a
+/// character that couldn't be written back ([`unwritable`]). Every mistake
+/// comes back with its line; nothing in the file runs.
 pub fn read(text: &str, kind: &str, classes: &str, max_bytes: usize) -> Result<Values, DataError> {
     if text.len() > max_bytes {
         return Err(error(0, format!("it's bigger than {} MB", max_bytes >> 20)));
@@ -202,13 +215,49 @@ pub fn read(text: &str, kind: &str, classes: &str, max_bytes: usize) -> Result<V
     let engine = lust::Engine {
         folders: vec![ENGINE_FOLDER.into()],
     };
-    lust::read_values_with(&engine, ENTRY, &files).map_err(|problems| {
+    let values = lust::read_values_with(&engine, ENTRY, &files).map_err(|problems| {
         let first = problems.first();
         error(
             first.map_or(0, |p| p.line as usize),
             first.map_or_else(|| "it couldn't be read".to_string(), |p| p.message.clone()),
         )
-    })
+    })?;
+    let lost = values
+        .values
+        .iter()
+        .find_map(|v| Some((v.line, unwritable_text(&v.value)?)));
+    match lost {
+        Some((line, text)) => Err(error(line as usize, not_plain(text))),
+        None => Ok(values),
+    }
+}
+
+/// The first text in `value` (itself, or in its list or fields) holding a
+/// character that couldn't be written back.
+fn unwritable_text(value: &Fixed) -> Option<&str> {
+    match value {
+        Fixed::Text(text) => text.contains(unwritable).then_some(text),
+        Fixed::List(items) => items.iter().find_map(unwritable_text),
+        Fixed::Thing { fields, .. } => fields.iter().find_map(|(_, v)| unwritable_text(v)),
+        _ => None,
+    }
+}
+
+/// Why `text`, holding a character that couldn't be written back, keeps a
+/// file from being read: with the start of the text (a `?` for each
+/// character that can't be seen) and the first such character's number,
+/// so it can be found.
+fn not_plain(text: &str) -> String {
+    let shown: String = text
+        .chars()
+        .take(SHOWN)
+        .map(|c| if c.is_control() { '?' } else { c })
+        .collect();
+    let code = text.chars().find(|&c| unwritable(c)).map_or(0, u32::from);
+    format!(
+        "the text \"{shown}\" holds a character that can't be seen (U+{code:04X}), which a \
+         data file can't keep: type the text again without it"
+    )
 }
 
 /// Why what a guard found keeps a file from being a data file. Lust would
@@ -510,6 +559,53 @@ mod tests {
         assert_eq!(single(f32::INFINITY), "0.0");
         assert_eq!("0.1".parse::<f64>().unwrap() as f32, 0.1_f32);
         assert_eq!(text("bell\u{7}"), "\"bell\"");
+    }
+
+    #[test]
+    fn every_character_is_written_back_or_refused() {
+        // Found by the atlas fuzzer's first run: Lust reads a control
+        // character in quotes as itself, and `text` leaves one out, so a
+        // name read with one was written without it. Every character of
+        // the first 65,536 and a few past them, a block at a time.
+        let name_in = |text: &str| {
+            read(text, "test", CLASSES, 1 << 20)
+                .map(|values| field_text(&things(&values, "items")[0], "name").to_string())
+        };
+        let every: Vec<char> = ('\0'..='\u{ffff}')
+            .chain(['\u{10000}', '\u{e0001}', '\u{10ffff}'])
+            .collect();
+        for block in every.chunks(256) {
+            // Written by Solis, all but those it leaves out read back.
+            let all: String = block.iter().collect();
+            let kept: String = block.iter().filter(|c| !unwritable(**c)).collect();
+            assert_eq!(name_in(&sample(&all, 1.0)), Ok(kept.clone()));
+            // In a file as themselves (but the four Lust reads its own
+            // way), each is read, so written back, as itself.
+            let plain = kept.replace(['"', '\\', '{', '\n'], "");
+            let file = sample("x", 1.0).replace("\"x\"", &format!("\"{plain}\""));
+            assert_eq!(name_in(&file), Ok(plain.clone()));
+            assert_eq!(name_in(&sample(&plain, 1.0)), Ok(plain));
+        }
+        // A file holding one that would be left out is refused, on the
+        // line its value starts, with enough to find it.
+        let unseen: Vec<char> = every.into_iter().filter(|c| unwritable(*c)).collect();
+        assert_eq!(
+            unseen.len(),
+            63,
+            "all 65 control characters but \\n and \\t"
+        );
+        for c in unseen {
+            let file = sample("x", 1.0).replace("\"x\"", &format!("\"a{c}\tb\""));
+            let why = name_in(&file).unwrap_err();
+            assert_eq!(why.line, 6, "{c:?}");
+            let code = u32::from(c);
+            let said = format!("\"a??b\" holds a character that can't be seen (U+{code:04X})");
+            assert!(why.message.contains(&said), "{c:?}: {why}");
+        }
+        // However long the text, the mistake stays short.
+        let long = format!("{}\u{7}", "a".repeat(5000));
+        let file = sample("x", 1.0).replace("\"x\"", &format!("\"{long}\""));
+        assert!(name_in(&file).unwrap_err().message.len() < 200);
     }
 
     /// What reading `text` answers. A reader that never finishes fails the

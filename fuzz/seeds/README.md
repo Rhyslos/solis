@@ -5,6 +5,7 @@ Real files the fuzzers start from, one folder per target in [`../fuzz_targets`](
 | Folder | What it holds |
 | --- | --- |
 | `area_file/` | Area files (`.solarea`), including the turret sample's. |
+| `atlas/` | Atlas files (`.atlas.lst`): the fixture of version 1, and a hostile one from `crates/animation/tests/data` that the reader refuses (a control character in its picture's name, which was read but not written back: the file the fuzzer's first run found, made small). |
 | `frames/` | A sprite's clips file (`.solframes`), as the fixture of version 1. |
 | `game_code/` | Each sample's `main.lst`, and the turret's Lust and Lua joined by a 0x01 byte. |
 | `import_cache/` | Import cache entries (`.solbin`) of the sample models. |

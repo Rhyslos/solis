@@ -315,6 +315,130 @@ proptest! {
 }
 
 #[test]
+fn a_character_that_can_t_be_seen_is_refused() {
+    // What the atlas fuzzer found (see `area::lust_data`) can't reach a
+    // map, whose names and rows are all checked; the file is refused all
+    // the same, on the line its list starts.
+    let fixture = include_str!("../../../tests/fixtures/tilemap/v3/farm.tilemap.lst");
+    for (line, from, to) in [
+        (10, "\"Ground\"", "\"Gro\u{7f}und\""),
+        (15, "\"wheat\", \"corn\"", "\"wheat\", \"corn\0\""),
+    ] {
+        let why = read(&fixture.replace(from, to)).unwrap_err();
+        assert_eq!(why.line, line, "{to:?}");
+        assert!(why.message.contains("can't be seen"), "{why}");
+    }
+}
+
+/// What the fuzz target (`fuzz/fuzz_targets/tile_map.rs`) holds the
+/// reader to, for `text`: refused, or read within the limits, every layer
+/// with a cell for each of the map's, written back to itself, and then
+/// changed every way without a panic ([`changed_every_way`]). Says
+/// whether it was read.
+fn keeps_its_promises(text: &str, set: &crate::Tileset) -> bool {
+    use crate::map::{MAX_LAYERS, MAX_OPTIONS, MAX_SIDE, MAX_VALUES};
+    let Ok(read) = read(text) else {
+        return false;
+    };
+    let map = read.map;
+    let [w, h] = map.size();
+    assert!(
+        (1..=MAX_SIDE).contains(&w) && (1..=MAX_SIDE).contains(&h),
+        "{text:?}"
+    );
+    assert!(map.layers().len() <= MAX_LAYERS, "{text:?}");
+    assert!(map.values().len() <= MAX_VALUES, "{text:?}");
+    for value in map.values() {
+        if let ValueKind::Choice(options) = &value.kind {
+            assert!(options.len() <= MAX_OPTIONS, "{text:?}");
+        }
+    }
+    for l in 0..map.layers().len() {
+        let cells = map.layer_cells(l).map(<[u8]>::len);
+        assert_eq!(cells, Some(w as usize * h as usize), "{text:?}");
+    }
+    let written = write(&map);
+    let again = super::read(&written).unwrap_or_else(|e| panic!("{e}\n{text:?}"));
+    assert_eq!(again.map, map, "{text:?}");
+    changed_every_way(map, set);
+    true
+}
+
+/// The rest of what the fuzz target does with a map it read: autotiled
+/// with `set`, painted with a fill, a stamp and an exact tile, changed at
+/// its corners and past them, and resized, none of which may panic.
+fn changed_every_way(mut map: TileMap, set: &crate::Tileset) {
+    let [w, h] = map.size();
+    for l in 0..map.layers().len() {
+        let _ = crate::autotile::chunk_tiles(&map, l, set, [0, 0]);
+    }
+    if !map.layers().is_empty() {
+        let reached = crate::paint::flood_fill(&map, 0, [0, 0]);
+        assert!(reached.len() <= w as usize * h as usize);
+        if let Some(mut stamp) = crate::paint::Stamp::copy(&map, 0, [-2, -2], [3, 2]) {
+            stamp.flip_x();
+            stamp.rotate();
+            stamp.flip_y();
+            let cells: Vec<_> = stamp.placed([i64::from(w), 1], [w, h]).collect();
+            for ([x, y], c) in cells {
+                let _ = map.set_code(0, x, y, c.code);
+                let _ = map.set_exact(0, x, y, c.exact);
+            }
+        }
+        let _ = crate::paint::line_cells([0, 0], [i64::from(w), i64::from(h)]);
+        let _ = map.set_exact(0, w - 1, h - 1, Id::from_raw(5));
+        let last = [(w - 1) / crate::CHUNK, (h - 1) / crate::CHUNK];
+        let _ = crate::autotile::chunk_tiles(&map, 0, set, last);
+    }
+    for (x, y) in [(0, 0), (w - 1, h - 1), (w, 0), (0, h), (u32::MAX, 3)] {
+        for l in 0..=map.layers().len() {
+            let _ = map.set_code(l, x, y, b't');
+        }
+        for v in 0..=map.values().len() {
+            for to in [
+                CellValue::Number(i32::MAX),
+                CellValue::Switch(true),
+                CellValue::Choice(Some(200)),
+            ] {
+                let _ = map.set_value(v, x, y, to);
+            }
+        }
+    }
+    let _ = map.take_dirty();
+    map.resize([w.min(40) + 1, h.min(40)]);
+    for l in 0..map.layers().len() {
+        let _ = map.counts(l);
+    }
+    let _ = map.checksum();
+}
+
+#[test]
+fn no_damaged_map_breaks_a_promise() {
+    // Fuzz-style, the same every run: a thousand damaged copies of each
+    // version's example, the older layouts too, each held to what the fuzz
+    // target holds the reader to.
+    let set = crate::tileset::read(include_str!(
+        "../../../tests/fixtures/tileset/v2/farm.soltileset"
+    ))
+    .unwrap()
+    .tileset;
+    let mut next = crate::tileset::tests::chooser(0x5EC2_0000_711E_3A90);
+    let mut read = 0;
+    for good in [
+        include_str!("../../../tests/fixtures/tilemap/v1/farm.soltilemap"),
+        include_str!("../../../tests/fixtures/tilemap/v2/farm.soltilemap"),
+        include_str!("../../../tests/fixtures/tilemap/v3/farm.tilemap.lst"),
+    ] {
+        for _ in 0..1000 {
+            let text = crate::tileset::tests::damaged(good, &mut next);
+            read += usize::from(keeps_its_promises(&text, &set));
+        }
+    }
+    // Both sides are reached: files read, and files refused.
+    assert!((750..2250).contains(&read), "{read}");
+}
+
+#[test]
 #[ignore = "scale check: run by tools/scale/scale-check.sh"]
 fn scale_check_reading_a_1000_by_1000_map() {
     // The plan's budget: a 1,000 × 1,000 map loads in under a second.

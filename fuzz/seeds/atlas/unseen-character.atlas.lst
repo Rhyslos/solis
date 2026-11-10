@@ -1,0 +1,9 @@
+-- An atlas as a fuzzer left it, made small: its picture's name has a character
+-- that can't be seen where its dot was (the one numbered 23). Solis read the
+-- name with it and wrote it without, so the atlas didn't write back to itself;
+-- now the file is refused.
+fetch "solis/data/atlas":[Atlas, Crop];
+
+lock int version = 1;
+lock Atlas atlas = new Atlas { picture = "toolspng", grid = [16, 16] };
+end

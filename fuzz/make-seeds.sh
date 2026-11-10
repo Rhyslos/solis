@@ -64,6 +64,8 @@ mkdir -p "$seeds/animator"
 cp tests/fixtures/animator/v1/farmer.solanim "$seeds/animator/"
 mkdir -p "$seeds/atlas"
 cp tests/fixtures/atlas/v1/tools.atlas.lst "$seeds/atlas/"
+# And the animation crate's hostile ones, which the reader refuses.
+cp crates/animation/tests/data/*.atlas.lst "$seeds/atlas/"
 mkdir -p "$seeds/tileset"
 cp tests/fixtures/tileset/v1/farm.soltileset "$seeds/tileset/"
 cp tests/fixtures/tileset/v2/farm.soltileset "$seeds/tileset/farm-art.soltileset"
