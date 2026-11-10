@@ -28,9 +28,9 @@ The first build takes a few minutes. `cargo run -p app -- --help` lists the opti
 
 Solis is built in phases, one milestone per pull request. Each phase ends with a **gate** the project lead tries by hand before the next starts. This tracker is updated by the pull request that finishes each milestone; the full plan is in [ROADMAP.md](ROADMAP.md).
 
-**Overall: 53 of 131 milestones** `█████░░░░░░░░` 40%
+**Overall: 92 of 149 milestones** `████████░░░░░` 62%
 
-**Now:** Phases 1, 2 and 3 are built and wait for their gates to be tried by hand ([Phase 3 plan](docs/plans/phase-3.md)). Phase 4, game code, is built and reviewed, and waits for its gate too ([Phase 4 plan](docs/plans/phase-4.md)). Phase 5, scale, is built and reviewed, and waits for its gate ([Phase 5 plan](docs/plans/phase-5.md)): try **Help > Make the benchmark…**. Phase 6, simulation and play, is built and reviewed three times, and waits for its gate ([Phase 6 plan](docs/plans/phase-6.md)): try **Help > Make the playground…**. The hardening milestone is done and everything is merged: its gate is reading the [hardening report](docs/reports/hardening-phase-6.md) and trying the playground once more. Solis now installs and updates itself from GitHub's Releases page. Phase 7, sound, has begun: sounds can be listened to in the Library (S1), sound events vary each play (S2), game code plays them in the world (S3), the Mixer balances them through buses with ducking (S4), sounds keep playing on entities with only the most important heard (S5), reverb zones make places echo (S6), the playground has the gate's sounds (S7), and listeners decide who hears what (S8). Phase 7 is built and reviewed (correctness, stability and speed fixes all merged), and waits for its gate ([sound plan](docs/plans/phase-7-sound.md), decision 0056). Phase 8, compatibility, is built and reviewed, and waits for its gate ([plan](docs/plans/compatibility.md)): every file format has a version and upgraders, with a backup before an older file is saved again; save games from earlier builds load; what game code can call changes only on purpose; `--check-project` checks a project before an update; breaking changes are labelled; and Lua's speed is measured. Three small pieces of its UI wait for the project lead's yes (Fix in Problems, Record a check, the Profiler's Lua hint). Phase 9, 2D, has begun: a project has 2D settings (Edit > Settings… > 2D), a camera can be 2D, the game is drawn small and scaled up crisply, and the editor has a 2D view in pixels (D1, [decision 0062](docs/decisions/0062-2d-on-the-ground-drawn-small-scaled-whole.md)); sprites come straight from Aseprite files, drawn crisply with front and behind worked out for free (D2); and sprites play clips, edited in Clips and Frames tabs, with events that play footsteps and reach game code (D3); animators choose the clip from states and transitions, drawn in the Animator tab, a clip per facing direction (D3b); and tile maps lay out the ground as terrains in layers under and over sprites, with values every cell carries (crop, growth, watered), changed by the game and kept in saves, shown in the Map tab (D4, [decision 0067](docs/decisions/0067-tile-maps.md)); and tilesets give terrains art from a picture, each cell's tile worked out from its neighbours (16-tile, 47-tile, edges or your own rules), set up in the Tileset tab (D5, [decision 0068](docs/decisions/0068-tile-art-and-autotiling.md)); and the tile painter paints maps with a brush, rectangle, line, fill and eyedropper from the viewport's tool bar, each stroke one undo step (D6, [decision 0069](docs/decisions/0069-the-tile-painter.md)). Game code's calls now follow the project lead's [API guidelines](docs/game-api-guidelines.md) (decision 0065): the existing calls move over, and game code reaches animators and tile maps; game-wide objects (a clock, the money) tick before the components and are kept in saves ([decision 0080](docs/decisions/0080-objects-change-only-in-their-own-update.md)). **Usable first** ([decision 0070](docs/decisions/0070-usable-first.md)): an audit of the engine on 3 November chose to revamp rather than start over, with a new build order around the project lead's farming game: the editor's basics first (blue, nothing shown that isn't built, New anywhere in the Library, a start page, now grown into the launcher: done), 2D movement built ahead of the milestones waiting on Lust (terrains can be solid, a map's solid cells become walls, and the kit's TopDownController walks a farmer in 8 directions or 4: done, [decision 0071](docs/decisions/0071-2d-physics-and-top-down-movement.md)), then what Solis makes became Lust files (the base, tile maps and tilesets so far, [decision 0081](docs/decisions/0081-what-solis-makes-is-lust.md)), game code reaches tiles and animators, game-wide objects, and a 2D follow camera: done. Game UI is built, and waits for its gate: shapes and sharp text, screens written in Lust that read the game, buttons and menus with the keys and a controller, a pause menu and the game's speed, Atlas Crop and pictures on screens (decision 0089), the UI editor's canvas with drawing tools and ties, screens' looks and the player's text size, UI size and window ([decision 0091](docs/decisions/0091-player-settings-and-the-window.md)), and the UI sample (**Help > Make the UI sample…**). Solis always starts on the launcher, in a small window, and updates show there as a bar ([decision 0090](docs/decisions/0090-always-through-the-launcher.md)). Day and night runs on the Environment, with lamps on sprites ([decision 0092](docs/decisions/0092-day-and-night-and-lamps-on-sprites.md)). Games can be exported for playtesting (**File > Export for playtesting…**, [decision 0093](docs/decisions/0093-the-playtest-export.md)): a folder a friend plays without the editor. Usable first is built. **Next:** the phase review, then the project lead's farming game and the gate. 2D comes first now ([decision 0059](docs/decisions/0059-2d-first.md)): animation's state machine and graph editor arrive with 2D's frame animation, and 3D skeletal animation waits for Phase 16, once 2D is complete. Work stops for a rethink after effects (Phase 15): what comes after is written down as later, not next. Then compatibility (Phase 8, [plan](docs/plans/compatibility.md)), so updates never lose work, and first-class 2D in two parts (Phases 9 and 10, [plan](docs/plans/2d.md), [decision 0054](docs/decisions/0054-first-class-2d.md)), so the project lead's own 2D game can move to Solis; then a playtest export and game UI, then light, materials and effects ([decisions 0046](docs/decisions/0046-light-before-netcode.md) and [0048](docs/decisions/0048-materials-and-shaders-before-effects.md)).
+**Now:** Phases 1, 2 and 3 are built and wait for their gates to be tried by hand ([Phase 3 plan](docs/plans/phase-3.md)). Phase 4, game code, is built and reviewed, and waits for its gate too ([Phase 4 plan](docs/plans/phase-4.md)). Phase 5, scale, is built and reviewed, and waits for its gate ([Phase 5 plan](docs/plans/phase-5.md)): try **Help > Make the benchmark…**. Phase 6, simulation and play, is built and reviewed three times, and waits for its gate ([Phase 6 plan](docs/plans/phase-6.md)): try **Help > Make the playground…**. The hardening milestone is done and everything is merged: its gate is reading the [hardening report](docs/reports/hardening-phase-6.md) and trying the playground once more. Solis now installs and updates itself from GitHub's Releases page. Phase 7, sound, has begun: sounds can be listened to in the Library (S1), sound events vary each play (S2), game code plays them in the world (S3), the Mixer balances them through buses with ducking (S4), sounds keep playing on entities with only the most important heard (S5), reverb zones make places echo (S6), the playground has the gate's sounds (S7), and listeners decide who hears what (S8). Phase 7 is built and reviewed (correctness, stability and speed fixes all merged), and waits for its gate ([sound plan](docs/plans/phase-7-sound.md), decision 0056). Phase 8, compatibility, is built and reviewed, and waits for its gate ([plan](docs/plans/compatibility.md)): every file format has a version and upgraders, with a backup before an older file is saved again; save games from earlier builds load; what game code can call changes only on purpose; `--check-project` checks a project before an update; breaking changes are labelled; and Lua's speed is measured. Three small pieces of its UI wait for the project lead's yes (Fix in Problems, Record a check, the Profiler's Lua hint). Phase 9, 2D, has begun: a project has 2D settings (Edit > Settings… > 2D), a camera can be 2D, the game is drawn small and scaled up crisply, and the editor has a 2D view in pixels (D1, [decision 0062](docs/decisions/0062-2d-on-the-ground-drawn-small-scaled-whole.md)); sprites come straight from Aseprite files, drawn crisply with front and behind worked out for free (D2); and sprites play clips, edited in Clips and Frames tabs, with events that play footsteps and reach game code (D3); animators choose the clip from states and transitions, drawn in the Animator tab, a clip per facing direction (D3b); and tile maps lay out the ground as terrains in layers under and over sprites, with values every cell carries (crop, growth, watered), changed by the game and kept in saves, shown in the Map tab (D4, [decision 0067](docs/decisions/0067-tile-maps.md)); and tilesets give terrains art from a picture, each cell's tile worked out from its neighbours (16-tile, 47-tile, edges or your own rules), set up in the Tileset tab (D5, [decision 0068](docs/decisions/0068-tile-art-and-autotiling.md)); and the tile painter paints maps with a brush, rectangle, line, fill and eyedropper from the viewport's tool bar, each stroke one undo step (D6, [decision 0069](docs/decisions/0069-the-tile-painter.md)). Game code's calls now follow the project lead's [API guidelines](docs/game-api-guidelines.md) (decision 0065): the existing calls move over, and game code reaches animators and tile maps; game-wide objects (a clock, the money) tick before the components and are kept in saves ([decision 0080](docs/decisions/0080-objects-change-only-in-their-own-update.md)). **Usable first** ([decision 0070](docs/decisions/0070-usable-first.md)): an audit of the engine on 3 November chose to revamp rather than start over, with a new build order around the project lead's farming game: the editor's basics first (blue, nothing shown that isn't built, New anywhere in the Library, a start page, now grown into the launcher: done), 2D movement built ahead of the milestones waiting on Lust (terrains can be solid, a map's solid cells become walls, and the kit's TopDownController walks a farmer in 8 directions or 4: done, [decision 0071](docs/decisions/0071-2d-physics-and-top-down-movement.md)), then what Solis makes became Lust files (the base, tile maps and tilesets so far, [decision 0081](docs/decisions/0081-what-solis-makes-is-lust.md)), game code reaches tiles and animators, game-wide objects, and a 2D follow camera: done. Game UI is built, and waits for its gate: shapes and sharp text, screens written in Lust that read the game, buttons and menus with the keys and a controller, a pause menu and the game's speed, Atlas Crop and pictures on screens (decision 0089), the UI editor's canvas with drawing tools and ties, screens' looks and the player's text size, UI size and window ([decision 0091](docs/decisions/0091-player-settings-and-the-window.md)), and the UI sample (**Help > Make the UI sample…**). Solis always starts on the launcher, in a small window, and updates show there as a bar ([decision 0090](docs/decisions/0090-always-through-the-launcher.md)). Day and night runs on the Environment, with lamps on sprites ([decision 0092](docs/decisions/0092-day-and-night-and-lamps-on-sprites.md)). Games can be exported for playtesting (**File > Export for playtesting…**, [decision 0093](docs/decisions/0093-the-playtest-export.md)): a folder a friend plays without the editor. Usable first is built. **Next:** the rest of the playtest fixes, "one project file", the phase review, then the project lead's farming game and the gate. After that the plan runs in **three tracks** ([decision 0097](docs/decisions/0097-three-tracks.md)): 2D is finished first (2D 1 and 2), then what suits both 2D and 3D is built once for both (materials, effects, weather and the finished picture), then a rethink and the big testing pass, then the full export and Git, 3D (animation, then light in four steps), netcode and Solis 0.1.
 
 ### Phase 0 · Groundwork — 7 of 7
 
@@ -184,7 +184,7 @@ Solis is built in phases, one milestone per pull request. Each phase ends with a
 
 </details>
 
-**Gate:** footsteps each sound a little different, the music dips while someone speaks, and walking into a reverb zone makes the steps echo. (Animation moved: frames to Phase 9, skeletons to Phase 16; [decision 0059](docs/decisions/0059-2d-first.md).)
+**Gate:** footsteps each sound a little different, the music dips while someone speaks, and walking into a reverb zone makes the steps echo. (Animation moved: frames to Phase 9, skeletons to 3D 1; [decision 0059](docs/decisions/0059-2d-first.md).)
 
 ### Phase 8 · Compatibility — 6 of 6
 
@@ -204,9 +204,9 @@ Solis is built in phases, one milestone per pull request. Each phase ends with a
 
 **Gate:** a project from an older build opens, backed up and upgraded; a save from before an update loads after it.
 
-### Usable first — 6 of 10
+### Usable first — 9 of 10
 
-`██████░░░░` 60%
+`████████████░` 90%
 
 <details>
 <summary>Milestones</summary>
@@ -226,9 +226,9 @@ Solis is built in phases, one milestone per pull request. Each phase ends with a
 
 **Gate:** the project lead starts their farming game in Solis, in Lust: walk the farm, till, plant and water, crops grow over days, a menu and an inventory, saving, and a build a friend can play.
 
-### Phase 9 · 2D, part 1 — 9 of 11 (the last three moved to "Usable first")
+### Phase 9 · 2D, part 1 — 11 of 11 (the last three built in "Usable first")
 
-`█████████░░` 82%
+`█████████████` 100%
 
 <details>
 <summary>Milestones</summary>
@@ -241,31 +241,13 @@ Solis is built in phases, one milestone per pull request. Each phase ends with a
 - [x] Tile maps that change as you play
 - [x] Autotiling and tilesets
 - [x] The tile painter
-- [ ] 2D physics and top-down movement
-- [ ] The 2D camera and feel tools
+- [x] 2D physics and top-down movement (built in "Usable first")
+- [x] The 2D camera and feel tools (built in "Usable first")
 - [x] Lamps and day and night on sprites
 
 </details>
 
 **Gate:** the project lead rebuilds a slice of their own game in Lust: till, plant, water, grow over days, sleep, lamps at night; smooth and crisp.
-
-### Phase 10 · 2D, part 2 — 0 of 6
-
-`░░░░░░░░░░░░░` 0%
-
-<details>
-<summary>Milestones</summary>
-
-- [ ] Levels, entities and the world
-- [ ] Advanced tiling
-- [ ] Pathfinding
-- [ ] Soft shadows and richer 2D light
-- [ ] More movement: grid-step and platformer
-- [ ] Polish, the 2D sample and the manual (parallax layers built early for the project lead's platformer, [decision 0094](docs/decisions/0094-parallax-layers.md))
-
-</details>
-
-**Gate:** the 2D sample and the extended game slice; every speed budget met; the old tools' known problems, each a passing test.
 
 ### Phase 11 · Playtest export — 3 of 3
 
@@ -301,57 +283,60 @@ Solis is built in phases, one milestone per pull request. Each phase ends with a
 
 **Gate:** a health bar and a pause menu on screen, drawn and tied to the game in the editor.
 
-### Phase 13 · Light, sky and atmosphere — 0 of 20
+### Three tracks (decision 0097)
+
+From here, 2D is finished first, what suits both 2D and 3D is built once for both, and 3D follows; big phases are split into smaller ones, with the same milestones ([ROADMAP.md](ROADMAP.md#how-the-rest-is-built-three-tracks)).
+
+### 2D 1 · The world and tiles — 0 of 3
 
 `░░░░░░░░░░░░░` 0%
 
 <details>
 <summary>Milestones</summary>
 
-- [ ] Measure first: the light showcase and quality levels ([plan](docs/plans/light.md), decision 0046)
-- [ ] Real light and automatic exposure
-- [ ] The physical sky: sunsets, twilight, haze over distance
-- [ ] Light from the sky: ambient light and reflections
-- [ ] The finished picture, part two: bloom, white balance, grading
-- [ ] Time of day and night: sun, moons, stars and the aurora
-- [ ] Weather and moods
-- [ ] Clouds: a flat layer and volumetric clouds
-- [ ] Ambient occlusion
-- [ ] Shadows near and far: cascades, contact and soft shadows
-- [ ] Many lamps, glowing surfaces and area lights
-- [ ] The light ramp look, for blocky games
-- [ ] Volumetric fog and light shafts
-- [ ] Reflection probes
-- [ ] Reflections on the screen and wet surfaces
-- [ ] Baked light probes: bounced light
-- [ ] Real-time bounced light, traced against a simplified world
-- [ ] Bounce from the screen, joined with the probes
-- [ ] An experiment: a Solis method for bounced light, kept only if it wins
-- [ ] Light for 2D worlds: 2D bounced light and the sky over 2D
+- [ ] Levels, entities and the world
+- [ ] Advanced tiling
+- [ ] Pathfinding
 
 </details>
 
-**Gate:** in the light showcase, noon to night with no jumps; a golden hour that feels like the best game sunsets; no Backrooms indoors; the stylized look as good; the benchmark's target at 60 fps.
+**Gate:** a level of rooms on a world map, decorated with the new tiling tools, and a character that finds its way as the map changes.
 
-### Phase 14 · Materials and shaders — 0 of 6
+### 2D 2 · Movement, light and polish — 0 of 4
 
 `░░░░░░░░░░░░░` 0%
 
 <details>
 <summary>Milestones</summary>
 
-- [ ] Materials as assets, each with its own look ([plan](docs/plans/materials.md), decision 0048)
+- [ ] More movement: grid-step and platformer
+- [ ] Soft shadows, normal and glow layers
+- [ ] Light for 2D worlds: 2D bounced light and the sky over 2D
+- [ ] Polish, the 2D sample and the manual (parallax built early, [decision 0094](docs/decisions/0094-parallax-layers.md))
+
+</details>
+
+**Gate:** 2D complete: the 2D sample and the extended game slice; every speed budget met.
+
+### Shared 1 · Materials and shaders — 0 of 6
+
+`░░░░░░░░░░░░░` 0%
+
+<details>
+<summary>Milestones</summary>
+
+- [ ] Materials as assets, for sprites and models ([plan](docs/plans/materials.md), decision 0048)
 - [ ] Inputs that drive any material value
 - [ ] The node graph for materials and shaders
 - [ ] Code nodes for experts
-- [ ] Stylized building blocks and wind
+- [ ] Stylized building blocks, wind, and sprite effects
 - [ ] Per-copy values at scale, and the material showcase
 
 </details>
 
-**Gate:** without code, a plant that glows as night falls, stone that gets wet in rain, a toon character with its own outline and a swaying tree; the benchmark's target at 60 fps.
+**Gate:** without code, a sprite that flashes and dissolves, a plant that glows as night falls, a toon outline and a swaying tree; 60 fps.
 
-### Phase 15 · Effects (Solstice) — 0 of 6
+### Shared 2 · Effects (Solstice) — 0 of 6
 
 `░░░░░░░░░░░░░` 0%
 
@@ -367,15 +352,45 @@ Solis is built in phases, one milestone per pull request. Each phase ends with a
 
 </details>
 
-**Gate:** lasers, hits and explosions look good in the benchmark battle at 60 fps.
+**Gate:** lasers and explosions in the battle at 60 fps; fireflies and wind streaks crisp in a pixel-art field.
 
-### Later
+### Shared 3 · Weather and the finished picture — 0 of 2
 
-**Later, not next:** Phases 16 to 19 are written down so nothing is lost, but they aren't built, planned in detail or reordered until Phase 15 is done and the project lead decides it's time ([decision 0059](docs/decisions/0059-2d-first.md)). 2D and effects will turn up things nobody can foresee yet, so expect these to change.
+`░░░░░░░░░░░░░` 0%
 
-### Phase 16 · 3D animation — 0 of 5
+<details>
+<summary>Milestones</summary>
 
-`░░░░░` 0%
+- [ ] The finished picture, part two: bloom, white balance, grading
+- [ ] Weather and moods
+
+</details>
+
+**Gate:** a 2D and a 3D scene each go from a clear morning to a rainy evening, smoothly.
+
+### The rethink
+
+2D and effects are complete: the project lead's big testing pass, then what follows is planned in detail.
+
+### Shared 4 · Scripting, full export and Git — 0 of 4
+
+`░░░░░░░░░░░░░` 0%
+
+<details>
+<summary>Milestones</summary>
+
+- [ ] The scripting window: editor tools in LustScript or Lua
+- [ ] Exporting games for Windows
+- [ ] The Git panel: commit, pull, push, branches, locking
+- [ ] The area merge tool
+
+</details>
+
+**Gate:** an editor tool, an exported game on a PC without Solis, and an evening of teamwork through GitHub.
+
+### 3D 1 · 3D animation — 0 of 5
+
+`░░░░░░░░░░░░░` 0%
 
 <details>
 <summary>Milestones</summary>
@@ -388,9 +403,74 @@ Solis is built in phases, one milestone per pull request. Each phase ends with a
 
 </details>
 
-**Gate:** a character walks and runs with smooth blending, and its footsteps play on the right frames.
+**Gate:** a character walks and runs with smooth blending, footsteps on the right frames.
 
-### Phase 17 · Netcode — 0 of 5
+### 3D 2 · Real light and the sky — 0 of 4
+
+`░░░░░░░░░░░░░` 0%
+
+<details>
+<summary>Milestones</summary>
+
+- [ ] Measure first: the light showcase and quality levels ([plan](docs/plans/light.md), decision 0046)
+- [ ] Real light and automatic exposure
+- [ ] The physical sky: sunsets, twilight, haze over distance
+- [ ] Light from the sky: ambient light and reflections
+
+</details>
+
+**Gate:** noon to sunset with no jumps; the golden hour feels right.
+
+### 3D 3 · Night, clouds and shadows — 0 of 4
+
+`░░░░░░░░░░░░░` 0%
+
+<details>
+<summary>Milestones</summary>
+
+- [ ] Time of day and night: sun, moons, stars and the aurora
+- [ ] Clouds: a flat layer and volumetric clouds
+- [ ] Ambient occlusion
+- [ ] Shadows near and far: cascades, contact and soft shadows
+
+</details>
+
+**Gate:** noon to night under clouds, shadows reaching the horizon.
+
+### 3D 4 · Lamps, fog and reflections — 0 of 5
+
+`░░░░░░░░░░░░░` 0%
+
+<details>
+<summary>Milestones</summary>
+
+- [ ] Many lamps, glowing surfaces and area lights
+- [ ] The light ramp look, for blocky games
+- [ ] Volumetric fog and light shafts
+- [ ] Reflection probes
+- [ ] Reflections on the screen and wet surfaces
+
+</details>
+
+**Gate:** a rainy street at night: hundreds of lamps, fog, wet reflections.
+
+### 3D 5 · Bounced light — 0 of 4
+
+`░░░░░░░░░░░░░` 0%
+
+<details>
+<summary>Milestones</summary>
+
+- [ ] Baked light probes: bounced light
+- [ ] Real-time bounced light, traced against a simplified world
+- [ ] Bounce from the screen, joined with the probes
+- [ ] An experiment: a Solis method for bounced light, kept only if it wins
+
+</details>
+
+**Gate:** indoors never looks flat; the benchmark's target at 60 fps.
+
+### Shared 5 · Netcode — 0 of 5
 
 `░░░░░░░░░░░░░` 0%
 
@@ -405,25 +485,9 @@ Solis is built in phases, one milestone per pull request. Each phase ends with a
 
 </details>
 
-**Gate:** two PCs on different networks play the benchmark together without desyncing.
+**Gate:** two PCs on different networks play together without desyncing.
 
-### Phase 18 · Scripting, full export and Git — 0 of 4
-
-`░░░░░░░░░░░░░` 0%
-
-<details>
-<summary>Milestones</summary>
-
-- [ ] The scripting window: editor tools in LustScript or Lua
-- [ ] Exporting games for Windows
-- [ ] The Git panel: commit, pull, push, branches, locking
-- [ ] The area merge tool
-
-</details>
-
-**Gate:** write a small editor tool; export a game that runs without Solis; two people work on one project through GitHub.
-
-### Phase 19 · Solis 0.1 — 0 of 4
+### Shared 6 · Solis 0.1 — 0 of 4
 
 `░░░░░░░░░░░░░` 0%
 
@@ -437,7 +501,7 @@ Solis is built in phases, one milestone per pull request. Each phase ends with a
 
 </details>
 
-**Gate:** someone new to Solis follows the tutorial and makes something that runs.
+**Gate:** someone new follows the tutorial and makes something that runs.
 
 ## More
 
