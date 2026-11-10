@@ -8,7 +8,7 @@ Every area in Solis is built the same way, so once you know this you can underst
 - An **entity** is one thing: the sun, a lamp, an imported model, the sky. On its own it is only a name.
 - **Components** make it something. A **Transform** gives it a place in the world, a **Light** makes it shine, a **Model** draws an imported model, an **Environment** sets the sky and fog, a **Camera** is what the game looks through ([Play mode](play-mode.md)), and a **RigidBody** and a **Collider** make it take part in [physics](physics.md).
 
-A lamp is just an entity with a Transform and a Light. Give a model a Light (**Add component > Light**) and it shines like a lamp too. Your game's own code will add components of its own (Phase 4), shown the same way.
+A lamp is just an entity with a Transform and a Light. Give a model a Light (**Add component > Light**) and it shines like a lamp too. Your game's own code adds components of its own ([Game code](game-code.md#components)), shown the same way.
 
 ## How to use it
 

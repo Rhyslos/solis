@@ -7,7 +7,7 @@ For a 2D game, especially one in pixel art: a farming game, a platformer, a top-
 
 2D in Solis lives in the same world as 3D: flat things lie on the ground, seen from straight above, so lights, the sun, sound, saving and game code all work on them as they do in 3D. A project can mix both, with a 3D camera in one area and a 2D camera in another.
 
-For now you can set a project up for 2D, look at it in pixels, play it through a 2D camera, and place [sprites from Aseprite](sprites.md). Frame animation and tile maps come next.
+This page covers the groundwork: setting a project up for 2D, looking at it in pixels and playing it through a 2D camera. What you put in that world has pages of its own: [sprites from Aseprite](sprites.md), [animating them](sprite-animation.md), [tile maps](tile-maps.md) for the ground, and [walls and walking](walls-and-walking.md).
 
 ## How to use it
 1. **Set the project's 2D settings:** **Edit > Settings…**, then **2D** under *This project*. The standard ones suit most pixel-art games: 480 × 270, 16 pixels to a metre and 16-pixel tiles. They're saved in the project (`pixels.solpix`), so everyone working on it shares them.
@@ -23,7 +23,7 @@ For now you can set a project up for 2D, look at it in pixels, play it through a
 |---|---|
 | Base resolution | The size the game is drawn at, in pixels, before it's scaled up. 480 × 270 scales to a 1080p screen four times and to 4K eight times exactly; 320 × 180 gives chunkier pixels and shows less of the world; 640 × 360 shows more. The menu offers common sizes, or type your own. |
 | Pixels per unit | How many pixels make one metre of the world. Usually the same as the tile size, so a tile is one metre: physics, sound distances and game code then all count in tiles. |
-| Tile size | The 2D view's grid, in pixels, and the size tile maps will use when they arrive. |
+| Tile size | The 2D view's grid, in pixels, and the size of each cell of a [tile map](tile-maps.md). |
 | Scaling to the screen | **Whole steps** (the standard): every pixel becomes the same whole number of screen pixels, with bars at the edges when the screen doesn't divide evenly: always crisp. **Fill the screen**: no bars; it scales up as far as whole steps go, then smooths only the last bit at each pixel's edge, so edges stay sharp. |
 | Camera > View | **Perspective** (as the eye sees) or **2D** (flat, straight down, at the base resolution). A 2D camera follows its entity's place but never turns. |
 | 2D view > Snap | What moves land on: **whole pixels**, **tiles** or **off**. |

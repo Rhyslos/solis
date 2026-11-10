@@ -27,6 +27,7 @@ What changed in each version, for people using Solis. Newest first.
 
 ### Fixed
 
+- **The manual no longer says built features are still to come:** lit sprites, tile maps and their art, sprite animation, the UI editor, sounds placed in the level, the Mixer, game code's components, the call that finds the cell at a place, and an exported game's saves and Esc key are described as they are, with links to their pages (2D, Sprites, Game screens, Sounds, Importing models, Entities, Save games, Tile maps, Looks and Input).
 - **The manual says what a project's `solis` folder really holds** (Game code): a file for each part of the engine, `project.lst`, and the `kit`, `animators`, `maps` and `data` folders, not just three files.
 - **The manual names two controls as they are:** **Entity > Add entity** (Physics and Characters and cameras said "Add empty"), and a card's **⋯ > Remove Camera** to take a component off (Play mode pointed at an × that isn't there).
 - **The manual no longer says Properties shows starting values while playing** (Game code): it shows game code's values as they are right now, and Stop asks whether to keep a value you changed there.

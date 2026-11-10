@@ -9,9 +9,9 @@ Solis reads Aseprite's own `.aseprite` files: there's nothing to export. Its [ta
 
 **Plain pictures work too.** A `.png` or `.jpg` in the project can be a sprite as it is: drag it from the Library into the viewport, or pick it in a Sprite's **Sheet** (it's listed as *name (picture)*). It's a sheet of one frame, the whole picture, standing on its bottom middle. That's handy for a background, a hill or a sign drawn in any paint program; for frames, tags and a *feet* slice, use Aseprite. A picture is read only once a sprite uses it (so the textures of 3D models aren't read twice), and up to 4096 × 4096 pixels. Saving it again in your paint program updates it in Solis.
 
-Sprites are drawn with their colours exactly as you painted them: never lit, shaded or tone mapped. (Lamps and day and night on sprites come later in Phase 9.)
+Sprites are drawn with the colours you painted, never tone mapped. Whether light falls on them is the area's choice: with **Light sprites** ticked on its Environment (new areas have it ticked), the day's colour and [lamps](lights.md) light them ([Sky, fog and exposure](sky-fog-and-exposure.md)). With no lamps and day and night off, a sprite looks exactly as drawn.
 
-For the ground itself, tile maps come next. To make sprites move, see [Animating sprites](sprite-animation.md): a sprite plays its sheet's tags as clips.
+For the ground itself, use [tile maps](tile-maps.md). To make sprites move, see [Animating sprites](sprite-animation.md): a sprite plays its sheet's tags as clips.
 
 ## How to use it
 1. **Save your Aseprite file into the project's assets**, for example `assets/sprites/farmer.aseprite`. It appears in the **Library** with its first frame and how many frames it has. Saving it again in Aseprite updates it in Solis straight away.

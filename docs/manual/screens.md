@@ -10,7 +10,7 @@ A screen can also have **buttons** (a pause menu's Resume, a shop's Buy). A butt
 
 A menu can be used with the keys or a controller too: the arrow keys (or the d-pad) move a ring between its buttons, and Enter (or A) chooses.
 
-For now screens are written by hand in Lust. The UI editor, where you draw them, comes later and edits the same files.
+This page writes screens by hand in Lust. [The UI editor](ui-editor.md) draws them on a canvas instead, and edits the same files, so you can go back and forth.
 
 ## How to use it
 
