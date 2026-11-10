@@ -248,6 +248,10 @@ impl Sidecar {
             .map(|p| p.id)
             .max()
             .map_or(Some(0), |m| m.checked_add(1));
+        // Past the end, the numbers still to look through for one not yet
+        // used. It only moves forward (every number behind it is in use for
+        // good), so many new IDs cost one pass, not one pass each.
+        let mut unsearched = 0..=u32::MAX;
         let mut fresh = || -> u32 {
             let id = match next {
                 Some(id) => {
@@ -255,7 +259,7 @@ impl Sidecar {
                     id
                 }
                 // Past the end: the first number not yet used.
-                None => (0..=u32::MAX).find(|n| !used.contains(n)).unwrap_or(0),
+                None => unsearched.find(|n| !used.contains(n)).unwrap_or(0),
             };
             used.insert(id);
             id
@@ -385,6 +389,94 @@ mod tests {
         let mut text = sidecar.to_text();
         text = text.replace(&format!("id = {}", ids[1]), &format!("id = {}", ids[2]));
         assert!(Sidecar::parse(&text).unwrap_err().contains("share the ID"));
+    }
+
+    fn old_part(id: u32, index: usize) -> Part {
+        Part {
+            id,
+            kind: PartKind::Node,
+            path: format!("old{index}"),
+            index,
+            missing: false,
+        }
+    }
+
+    #[test]
+    fn a_sidecar_using_the_biggest_id_still_gives_many_new_ids_at_once() {
+        // Regression (SEC-10): once a part used the biggest ID, each new ID
+        // was looked for from 0 again, past every ID already given: a model
+        // of 200,000 nodes (the importer's limit) beside such a sidecar took
+        // about 2×10^10 look-ups, on the window's thread. Here 100,000 old
+        // parts hold the low IDs, so the old search never finished in a
+        // test's time.
+        const OLD: u32 = 100_000;
+        const NEW: usize = 200_000;
+        let mut sidecar = Sidecar::new(1);
+        sidecar.parts = (0..OLD).map(|i| old_part(i, i as usize)).collect();
+        sidecar.parts.push(old_part(u32::MAX, OLD as usize));
+        let mut keys: Vec<PartKey> = sidecar
+            .parts
+            .iter()
+            .map(|p| key(PartKind::Node, &p.path, p.index))
+            .collect();
+        let old = keys.len();
+        keys.extend((0..NEW).map(|i| key(PartKind::Node, &format!("new{i}"), old + i)));
+        let ids = sidecar.assign_parts(&keys);
+        let kept: Vec<u32> = (0..OLD).chain([u32::MAX]).collect();
+        assert_eq!(&ids[..old], kept, "every old part keeps its ID");
+        // The first numbers not in use, in order: what the slow search gave.
+        let given: Vec<u32> = (OLD..).take(NEW).collect();
+        assert_eq!(&ids[old..], given);
+        assert_eq!(sidecar.assign_parts(&keys), ids, "and keeps them");
+    }
+
+    #[test]
+    fn new_ids_are_the_first_unused_ones_whatever_ids_a_sidecar_holds() {
+        // A sweep: sidecars holding IDs at both ends of the range, in any
+        // order, with new parts beside them. Each new ID is checked against
+        // the plain rule (one past the biggest; past the end, the first
+        // number not in use, looked for from 0 every time).
+        let pool: Vec<u32> = (0..6).chain(u32::MAX - 5..=u32::MAX).collect();
+        let mut seed = 0x0005_EC10_u64;
+        let mut random = move |below: usize| {
+            seed ^= seed << 13;
+            seed ^= seed >> 7;
+            seed ^= seed << 17;
+            (seed % below as u64) as usize
+        };
+        for _ in 0..2000 {
+            let mut left = pool.clone();
+            let mut sidecar = Sidecar::new(1);
+            for index in 0..random(pool.len() + 1) {
+                let id = left.swap_remove(random(left.len()));
+                sidecar.parts.push(old_part(id, index));
+            }
+            let old: Vec<Part> = sidecar.parts.clone();
+            let mut keys: Vec<PartKey> = old
+                .iter()
+                .map(|p| key(PartKind::Node, &p.path, p.index))
+                .collect();
+            keys.extend((0..random(12)).map(|i| key(PartKind::Node, &format!("new{i}"), 100 + i)));
+            let ids = sidecar.assign_parts(&keys);
+
+            let mut used: std::collections::HashSet<u32> = old.iter().map(|p| p.id).collect();
+            let mut next = old
+                .iter()
+                .map(|p| p.id)
+                .max()
+                .map_or(Some(0), |m| m.checked_add(1));
+            let mut expected: Vec<u32> = old.iter().map(|p| p.id).collect();
+            for _ in old.len()..keys.len() {
+                let id = match next {
+                    Some(id) => id,
+                    None => (0..=u32::MAX).find(|n| !used.contains(n)).unwrap(),
+                };
+                next = next.and_then(|id| id.checked_add(1));
+                assert!(used.insert(id), "{id} given twice");
+                expected.push(id);
+            }
+            assert_eq!(ids, expected, "from {old:?}");
+        }
     }
 
     #[test]
