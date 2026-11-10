@@ -30,7 +30,7 @@ Fuzz targets for every reader of a file a project can ship ([decision 0042](../d
 
 ## Running
 
-You need [cargo-fuzz](https://github.com/rust-fuzz/cargo-fuzz) (`cargo install cargo-fuzz`) and the nightly compiler. From the repository's top folder:
+You need [cargo-fuzz](https://github.com/rust-fuzz/cargo-fuzz) (`cargo install cargo-fuzz@<version> --locked`) and a nightly compiler. The weekly run pins both, as `CARGO_FUZZ_VERSION` and `FUZZ_NIGHTLY` at the top of [`deep-checks.yml`](../.github/workflows/deep-checks.yml): use those two to get exactly what it gets. From the repository's top folder:
 
 ```
 fuzz/make-seeds.sh              # real files to start from, into fuzz/seeds/

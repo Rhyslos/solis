@@ -30,6 +30,14 @@ concurrency:
 
 env:
   CARGO_TERM_COLOR: always
+  # The fuzzer's tools, pinned so a new release of either can't change or
+  # break the weekly run with no change in this repository. These are the
+  # two the run of 2026-11-08 used, with every target passing. Dependabot
+  # doesn't update them: a person does, both together, in a pull request
+  # of its own, then runs this workflow by hand
+  # (.github/workflows/README.md, "Tools the workflows install").
+  FUZZ_NIGHTLY: nightly-2026-11-08
+  CARGO_FUZZ_VERSION: "0.13.2"
 
 jobs:
   fuzz:
@@ -60,21 +68,21 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           persist-credentials: false
-      - run: rustup toolchain install nightly --profile minimal
+      - run: rustup toolchain install "$FUZZ_NIGHTLY" --profile minimal
       # The sound crate builds against ALSA on Linux.
       - run: sudo apt-get update && sudo apt-get install -y libasound2-dev
       - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2
         with:
           workspaces: fuzz
           key: ${{ matrix.target }}
-      - run: cargo install cargo-fuzz --locked
+      - run: cargo install "cargo-fuzz@$CARGO_FUZZ_VERSION" --locked
       - name: Fuzz
         working-directory: fuzz
         env:
           MINUTES: ${{ github.event.inputs.minutes || '20' }}
         run: |
           mkdir -p "corpus/${{ matrix.target }}" "artifacts/${{ matrix.target }}"
-          cargo +nightly fuzz run -O "${{ matrix.target }}" \
+          cargo "+$FUZZ_NIGHTLY" fuzz run -O "${{ matrix.target }}" \
             "corpus/${{ matrix.target }}" "seeds/${{ matrix.target }}" -- \
             -max_total_time=$((MINUTES * 60)) -timeout=45 -rss_limit_mb=4096 \
             -max_len=1048576 -print_final_stats=1

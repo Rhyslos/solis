@@ -20,6 +20,7 @@ Solis is built on other people's libraries, which saves years of work. Each libr
    - `Cargo.lock` pins every version, and nothing updates on its own. Dependabot proposes updates as pull requests, checked like any change.
    - Libraries come only from the official registry, or from the project lead's own Lust repository pinned to one commit (`deny.toml`, `[sources]`).
    - Removed ("yanked") versions fail the check.
+   - The tools the workflows download (Inno Setup for the installer, cargo-about for the notices, cargo-fuzz and its nightly compiler for fuzzing) are each pinned to one exact version in the workflow files. Dependabot doesn't update those: a person does ([`.github/workflows/README.md`](../.github/workflows/README.md), "Tools the workflows install").
 5. **A copy of every library's source.** Whenever `Cargo.lock` changes on main, the **Source archive** workflow saves the source of every library in it (`cargo vendor`, about 60 MB compressed) as a pre-release on GitHub, named after the lock file's hash. A library deleted from the internet can't stop Solis from building: unpack the archive and build offline (see "Building from the archive").
 6. **Known problems are watched.** The weekly security check reads the RustSec advisories, and every exception in `deny.toml` carries its reason.
 7. **A reason for every new library.** Adding one needs a line in the register (the test insists), and the pull request says why Solis shouldn't write it itself. Solis writes its core systems itself ([decision 0051](decisions/0051-understand-then-build.md)), so the list should shrink in the core over time.
@@ -27,6 +28,7 @@ Solis is built on other people's libraries, which saves years of work. Each libr
    - Is each library still maintained?
    - Has its reach grown?
    - Is an exit plan now cheap enough to just do?
+   - Are the tools the workflows download (safeguard 4) still the versions to use?
 
 ## The register
 
