@@ -8,9 +8,11 @@
 //! them keep working when the assembly changes, and overrides find their
 //! entity again.
 //!
-//! Expanding counts entities before making any, refuses assemblies that
-//! place each other in a loop (naming the chain), and stops at
-//! [`MAX_NESTING`] levels, so no file can make the editor explode.
+//! Expanding counts entities before making any (a copy's changes to parts
+//! too, since one whose part is gone becomes an entity), keeps to the same
+//! limit while it makes them, refuses assemblies that place each other in a
+//! loop (naming the chain), and stops at [`MAX_NESTING`] levels, so no file
+//! can make the editor explode.
 
 use crate::document::{Area, EntityData, Origin};
 use crate::text::{AreaFile, FileKind, MAX_ENTITIES, MAX_NESTING, Override};
@@ -81,6 +83,9 @@ pub struct Expander<'a> {
     lookup: Lookup<'a>,
     expanded: HashMap<AssetId, (Arc<Area>, EntityId)>,
     sizes: HashMap<AssetId, usize>,
+    /// The most entities one expansion may make ([`MAX_ENTITIES`]; less in
+    /// tests).
+    most_made: usize,
     /// Entities held in `expanded`, all assemblies together, and the
     /// most it may hold ([`MAX_HELD`]; less in tests).
     held: usize,
@@ -112,6 +117,25 @@ fn path_in(area: &Area, root: EntityId, id: EntityId) -> Vec<EntityId> {
     }
 }
 
+/// The changes `file` makes to the copy whose root is `root`, by path.
+fn changes_of(
+    file: &AreaFile,
+    root: EntityId,
+) -> impl Iterator<Item = (&Vec<EntityId>, &Override)> {
+    file.overrides
+        .range((root, Vec::new())..)
+        .take_while(move |((copy, _), _)| *copy == root)
+        .map(|((_, path), changes)| (path, changes))
+}
+
+/// Whether `changes` to the part at `path` are kept as an entity of their
+/// own when that part is gone from the assembly: what [`Expander::count`]
+/// counts and [`Expander::place_in`] makes, asked in one place so the two
+/// can't come apart.
+fn outlives_its_part(path: &[EntityId], changes: &Override) -> bool {
+    !path.is_empty() && !changes.removed
+}
+
 /// Points every entity reference in `value` that `map` knows at its new ID.
 fn remap(value: &mut Value, map: &HashMap<EntityId, EntityId>) {
     match value {
@@ -132,13 +156,15 @@ impl<'a> Expander<'a> {
             lookup,
             expanded: HashMap::new(),
             sizes: HashMap::new(),
+            most_made: MAX_ENTITIES,
             held: 0,
             most_held: MAX_HELD,
         }
     }
 
-    /// How many entities a copy of assembly `id` is, counted without
-    /// making any (a copy can be refused for room before it's made).
+    /// How many entities a copy of assembly `id` is at most, counted
+    /// without making any (a copy can be refused for room before it's
+    /// made).
     pub fn size_of(&mut self, id: AssetId) -> Result<usize, AssemblyError> {
         self.size(id, &mut Vec::new())
     }
@@ -152,8 +178,8 @@ impl<'a> Expander<'a> {
         }
     }
 
-    /// How many entities assembly `id` expands to, counted without making
-    /// any.
+    /// How many entities assembly `id` expands to at most, counted without
+    /// making any.
     fn size(&mut self, id: AssetId, chain: &mut Vec<AssetId>) -> Result<usize, AssemblyError> {
         if let Some(&n) = self.sizes.get(&id) {
             return Ok(n);
@@ -173,15 +199,27 @@ impl<'a> Expander<'a> {
         Ok(n)
     }
 
+    /// How many entities `file` expands to at most: its own, each copy's
+    /// assembly, and each change a copy makes to a part without removing
+    /// it, because a change whose part is gone from the assembly becomes an
+    /// entity. Which parts are gone isn't known until the assembly is
+    /// expanded, so changes to parts still there are counted as well:
+    /// counting high only refuses a little sooner, while counting low let
+    /// a small file expand without limit.
     fn count(&mut self, file: &AreaFile, chain: &mut Vec<AssetId>) -> Result<usize, AssemblyError> {
         let mut total = 0usize;
-        for (_, entity) in file.area.iter() {
+        for (id, entity) in file.area.iter() {
             let n = match &entity.origin {
-                Some(o) if o.path.is_empty() => self.size(o.assembly, chain)?,
+                Some(o) if o.path.is_empty() => {
+                    let kept = changes_of(file, id)
+                        .filter(|(path, changes)| outlives_its_part(path, changes))
+                        .count();
+                    self.size(o.assembly, chain)?.saturating_add(kept)
+                }
                 _ => 1,
             };
             total = total.checked_add(n).ok_or(AssemblyError::TooBig)?;
-            if total > MAX_ENTITIES {
+            if total > self.most_made {
                 return Err(AssemblyError::TooBig);
             }
         }
@@ -232,11 +270,8 @@ impl<'a> Expander<'a> {
         for (id, entity) in file.area.iter() {
             let entities = match &entity.origin {
                 Some(o) if o.path.is_empty() => {
-                    let overrides: HashMap<Vec<EntityId>, Override> = file
-                        .overrides
-                        .range((id, Vec::new())..)
-                        .take_while(|((root, _), _)| *root == id)
-                        .map(|((_, path), o)| (path.clone(), o.clone()))
+                    let overrides: HashMap<Vec<EntityId>, Override> = changes_of(file, id)
+                        .map(|(path, changes)| (path.clone(), changes.clone()))
                         .collect();
                     self.place_in(o.assembly, id, entity, &overrides, chain)?
                 }
@@ -249,6 +284,12 @@ impl<'a> Expander<'a> {
                 )],
             };
             for (new, data) in entities {
+                // The count has refused a file too big already; the limit
+                // is kept on what's really made as well, so that a count
+                // which is ever wrong can't let a file expand without end.
+                if area.len() >= self.most_made {
+                    return Err(AssemblyError::TooBig);
+                }
                 if area.insert(new, data).is_some() {
                     return Err(AssemblyError::Clash(new));
                 }
@@ -323,9 +364,14 @@ impl<'a> Expander<'a> {
         }
         // Overrides whose part is gone from the assembly are kept as
         // entities of their own, so nothing is lost; the editor warns.
+        // The assembly's own parts fit the limit, being an expansion;
+        // these are as many as the file says, so the limit is kept here.
         for (path, changes) in overrides {
-            if path.is_empty() || found.contains(path) || changes.removed {
+            if found.contains(path) || !outlives_its_part(path, changes) {
                 continue;
+            }
+            if out.len() >= self.most_made {
+                return Err(AssemblyError::TooBig);
             }
             let mut data = EntityData::new(changes.name.as_deref().unwrap_or("Missing part"));
             data.parent = Some(changes.parent.unwrap_or(root));
@@ -916,6 +962,207 @@ mod tests {
         let mut expander = Expander::new(&lib);
         expander.most_held = size * 7;
         assert_eq!(expander.assembly(asset(506)).unwrap().0.len(), size);
+    }
+
+    /// An assembly holding one lamp post (`asset(100)`), with `gone`
+    /// empty changes to parts the lamp post doesn't have.
+    fn padded(gone: u64) -> AreaFile {
+        let mut area = Area::new();
+        area.insert(id(10), EntityData::new("Padded"));
+        let mut post = EntityData::new("Post");
+        post.parent = Some(id(10));
+        post.origin = Some(Origin {
+            assembly: asset(100),
+            instance: id(11),
+            path: Vec::new(),
+        });
+        area.insert(id(11), post);
+        AreaFile {
+            kind: FileKind::Assembly { root: id(10) },
+            area,
+            overrides: (0..gone)
+                .map(|n| ((id(11), vec![id(1000 + n)]), Override::default()))
+                .collect(),
+        }
+    }
+
+    /// An area of `copies` copies of the padded assembly (`asset(700)`),
+    /// their roots numbered from 50.
+    fn crowd(copies: u64) -> AreaFile {
+        let mut area = Area::new();
+        for n in 0..copies {
+            let mut copy = EntityData::new("Copy");
+            copy.origin = Some(Origin {
+                assembly: asset(700),
+                instance: id(50 + n),
+                path: Vec::new(),
+            });
+            area.insert(id(50 + n), copy);
+        }
+        AreaFile::plain(area)
+    }
+
+    #[test]
+    fn changes_to_parts_gone_from_the_assembly_are_counted_before_expanding() {
+        // Found in a full code review: a change to a part that's gone becomes
+        // an entity, but wasn't counted. An assembly of a few megabytes
+        // with 100,000 such changes counted as 3 entities, so an area
+        // placing it 1,000 times passed the count and expanded to a
+        // hundred million: the third security audit's bomb by another way.
+        let lib = library(vec![
+            (asset(100), lamp_post()),
+            (asset(700), padded(100_000)),
+        ]);
+        let mut expander = Expander::new(&lib);
+        assert_eq!(expander.size_of(asset(700)).unwrap(), 100_003);
+        assert_eq!(
+            expander.expand(&crowd(1_000)).unwrap_err(),
+            AssemblyError::TooBig
+        );
+        // Counted and refused: not one assembly was expanded to find out.
+        assert!(expander.expanded.is_empty());
+        assert_eq!(expander.held, 0);
+    }
+
+    #[test]
+    fn a_few_changes_to_parts_gone_still_expand_as_they_did() {
+        let lib = library(vec![(asset(100), lamp_post()), (asset(700), padded(3))]);
+        let (first, second) = (id(50), id(51));
+        let mut file = crowd(2);
+        // The area keeps a change of its own to a part that's gone.
+        file.overrides.insert(
+            (first, vec![id(11), id(555)]),
+            Override {
+                name: Some("Old sign".into()),
+                ..Override::default()
+            },
+        );
+        let area = Expander::new(&lib).expand(&file).unwrap();
+        // Twice the root, the post, its lamp and three kept parts; and the sign.
+        assert_eq!(area.len(), 2 * 6 + 1);
+        for copy in [first, second] {
+            let post = derive(copy, &[id(11)]);
+            assert_eq!(area.get(post).unwrap().name, "Post");
+            assert_eq!(area.get(post).unwrap().parent, Some(copy));
+            assert!(area.contains(derive(copy, &[id(11), id(2)])), "its lamp");
+            for n in 0..3 {
+                let path = vec![id(11), id(1000 + n)];
+                let kept = area.get(derive(copy, &path)).unwrap();
+                assert_eq!(kept.name, "Missing part");
+                assert_eq!(kept.parent, Some(post));
+                assert!(kept.components.is_empty());
+                assert_eq!(
+                    kept.origin,
+                    Some(Origin {
+                        assembly: asset(700),
+                        instance: copy,
+                        path,
+                    })
+                );
+            }
+        }
+        let sign = area.get(derive(first, &[id(11), id(555)])).unwrap();
+        assert_eq!(sign.name, "Old sign");
+        assert_eq!(sign.parent, Some(first));
+        assert!(!area.contains(derive(second, &[id(11), id(555)])));
+        // Saved and opened again, nothing is lost or added.
+        let saved = Expander::new(&lib).collapse(&area, FileKind::Area).unwrap();
+        assert_eq!(Expander::new(&lib).expand(&saved).unwrap(), area);
+    }
+
+    #[test]
+    fn empty_change_blocks_read_from_a_file_are_counted() {
+        // As a hostile file would hold them: `entity <copy>/<part> {}`.
+        let registry = crate::builtin::registry().unwrap();
+        let written = text::write_file(&padded(4), &registry, &|_| None);
+        assert_eq!(written.matches(&format!("entity {}/", id(11))).count(), 4);
+        let read = text::read_file(&written, &registry).unwrap();
+        assert_eq!(read.overrides.len(), 4);
+        let lib = library(vec![(asset(100), lamp_post()), (asset(700), read)]);
+        let mut expander = Expander::new(&lib);
+        assert_eq!(expander.size_of(asset(700)).unwrap(), 7);
+        assert_eq!(expander.assembly(asset(700)).unwrap().0.len(), 7);
+    }
+
+    #[test]
+    fn making_entities_stops_at_the_limit_even_if_the_count_is_wrong() {
+        // The padded assembly is 8 entities: its root, the post, its lamp
+        // and five kept parts. Its size is put in as 1, the kind of
+        // mistake the count once made.
+        let lib = library(vec![(asset(100), lamp_post()), (asset(700), padded(5))]);
+        let expand = |limit: usize| {
+            let mut expander = Expander::new(&lib);
+            expander.most_made = limit;
+            expander.sizes.insert(asset(700), 1);
+            expander.assembly(asset(700)).map(|(area, _)| area.len())
+        };
+        assert_eq!(expand(8), Ok(8), "room for it all");
+        // One short: stopped as the last entity goes into the area.
+        assert_eq!(expand(7), Err(AssemblyError::TooBig));
+        // Too little for the post's copy alone: stopped while it's made.
+        assert_eq!(expand(5), Err(AssemblyError::TooBig));
+        assert_eq!(expand(0), Err(AssemblyError::TooBig));
+    }
+
+    #[test]
+    fn the_count_is_never_below_what_expanding_makes() {
+        // Everything a file can say about a part: nothing, a change, an
+        // empty block, or that it's removed.
+        let says = |n: u32| match n % 4 {
+            0 => None,
+            1 => Some(Override {
+                name: Some("Changed".into()),
+                ..Override::default()
+            }),
+            2 => Some(Override::default()),
+            _ => Some(Override {
+                removed: true,
+                ..Override::default()
+            }),
+        };
+        // In the assembly, about its lamp post's lamp and two parts the
+        // post doesn't have; in the area, about the first copy's lamp, a
+        // part the assembly may have kept, and one nobody has: every mix.
+        let inner = [vec![id(2)], vec![id(98)], vec![id(99)]];
+        let outer = [
+            vec![id(11), id(2)],
+            vec![id(11), id(99)],
+            vec![id(11), id(77)],
+        ];
+        for mix in 0..4u32.pow(6) {
+            let mut assembly = padded(0);
+            for (n, path) in inner.iter().enumerate() {
+                if let Some(changes) = says(mix >> (2 * n)) {
+                    assembly.overrides.insert((id(11), path.clone()), changes);
+                }
+            }
+            let mut file = crowd(2);
+            for (n, path) in outer.iter().enumerate() {
+                if let Some(changes) = says(mix >> (6 + 2 * n)) {
+                    file.overrides.insert((id(50), path.clone()), changes);
+                }
+            }
+            let lib = library(vec![(asset(100), lamp_post()), (asset(700), assembly)]);
+            let mut expander = Expander::new(&lib);
+            let counted = expander.count(&file, &mut Vec::new()).unwrap();
+            let made = expander.expand(&file).unwrap().len();
+            assert!(made <= counted, "mix {mix}: {made} made, {counted} counted");
+            let size = expander.size_of(asset(700)).unwrap();
+            let held = expander.assembly(asset(700)).unwrap().0.len();
+            assert!(held <= size, "mix {mix}: {held} held, {size} counted");
+            // What the count lets through is never stopped part-way.
+            let mut exact = Expander::new(&lib);
+            exact.most_made = counted;
+            assert_eq!(exact.expand(&file).unwrap().len(), made, "mix {mix}");
+            // And nothing gets past a limit below what would be made.
+            let mut tight = Expander::new(&lib);
+            tight.most_made = made - 1;
+            assert_eq!(
+                tight.expand(&file).unwrap_err(),
+                AssemblyError::TooBig,
+                "mix {mix}"
+            );
+        }
     }
 
     #[test]

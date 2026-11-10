@@ -27,6 +27,7 @@ What changed in each version, for people using Solis. Newest first.
 
 ### Fixed
 
+- **A small project can no longer make the editor run out of memory through an assembly's changes to missing parts.** A placed assembly keeps each change to a part that's gone from the assembly as an entity of its own, but those weren't counted against the limit of a million entities, so a file a few megabytes big, placed many times, could grow without end when opened. They're counted now, before anything is made, and making entities stops at the limit as well; such an area is refused, saying it would make too many entities.
 - **Fixes from three playtest games** (written in Solis by another session):
   - **An event sent to an entity spawned in the same tick is no longer lost:** it arrives at the start of the next tick's events, once the entity's components exist. Bullets and shock waves no longer need the "keep it in a field, launch it next tick" workaround.
   - **The kit's cameras and controllers compile in any project:** the actions they read (Move, Look, Jump, Sprint, Zoom, Pan, Turn, Drag) are always named in `solis/project.lst`, after the project's own; one the project hasn't made is never pressed. Before, a project needed empty Look and Zoom actions.
