@@ -20,17 +20,20 @@ Each phase ends with a **gate**: something the project lead tries by hand before
 | 7. Sound | Sound events, buses and ducking, sounds in the world, reverb zones, listeners |
 | 8. Compatibility | Updates never lose work: backups before upgrades, old files keep opening, saves survive updates, the game-code interface guarded, real projects tested before an update ships |
 | 9. 2D, part 1 | Pixel-perfect 2D, sprites from Aseprite, frame animation with the animation state machine and graph editor, tile maps that change as you play, autotiling, the tile painter, top-down movement, the 2D camera, lamps on sprites |
-| 10. 2D, part 2 | Levels and the world map, advanced tiling, pathfinding, soft 2D shadows, the platformer and grid-step controllers, parallax and palette tools, the 2D sample |
 | 11. Playtest export | Games packaged for playtesting, without the editor |
 | 12. Game UI | Sungraph UI: HUDs and menus drawn in Solis |
-| 13. Light, sky and atmosphere | A physical sky, sunsets and night; shadows near and far; many lamps; fog and clouds; bounced light, baked and real-time; 2D bounced light |
-| 14. Materials and shaders | Materials as assets, values driven by the world, a node graph for shaders |
-| 15. Effects | Solstice, the effects suite: particles, trails, flipbooks; a pixel mode for pixel art |
-| *Later (decision 0059)* | |
-| 16. 3D animation | Animated characters from glTF: skins, blending, crowds, footsteps on the right frames |
-| 17. Netcode | Two PCs playing together over the internet |
-| 18. Scripting, full export and Git | The scripting window; finished games built for Windows, with their own Rust; working in teams through Git |
-| 19. Solis 0.1 | The flagship space battle, docs, release |
+| *Three tracks (decision 0097)* | |
+| 2D 1. The world and tiles | Levels and the world map, advanced tiling, pathfinding |
+| 2D 2. Movement, light and polish | Platformer and grid-step controllers, soft shadows, 2D bounced light, the 2D sample: 2D complete |
+| Shared 1. Materials and shaders | Materials for sprites and models, values driven by the world, a node graph for shaders |
+| Shared 2. Effects | Solstice: particles, trails, flipbooks; a pixel mode for pixel art |
+| Shared 3. Weather and the finished picture | Weather and moods, bloom and grading, in 2D and 3D |
+| *The rethink* | The project lead's big testing pass |
+| Shared 4. Scripting, full export and Git | The scripting window; finished games for Windows; teams through Git |
+| 3D 1. 3D animation | Animated characters from glTF: skins, blending, crowds |
+| 3D 2 to 5. Light, sky and atmosphere | A physical sky, night and clouds; shadows, lamps, fog, reflections; bounced light |
+| Shared 5. Netcode | Two PCs playing together over the internet |
+| Shared 6. Solis 0.1 | The flagship space battle, docs, release |
 
 Lust joins in Phase 4, right after the editor, so game logic can be written in Lust from then on ([decision 0016](docs/decisions/0016-how-lust-joins-solis.md)). Phases 0–3 don't need Lust; if it isn't ready by Phase 4, Phase 5 (Scale) goes first.
 
@@ -145,7 +148,7 @@ Stronger tests before building on the game loop ([decision 0042](docs/decisions/
 
 ## Phase 7: Sound
 
-The working plan is [docs/plans/phase-7-sound.md](docs/plans/phase-7-sound.md) ([decisions 0056](docs/decisions/0056-sound-with-kira.md) and [0058](docs/decisions/0058-listeners-and-who-hears-what.md)). Animation left this phase ([decision 0059](docs/decisions/0059-2d-first.md)): frame animation and the state machine come with 2D (Phase 9), and 3D skeletal animation has its own phase once 2D is complete (Phase 16).
+The working plan is [docs/plans/phase-7-sound.md](docs/plans/phase-7-sound.md) ([decisions 0056](docs/decisions/0056-sound-with-kira.md) and [0058](docs/decisions/0058-listeners-and-who-hears-what.md)). Animation left this phase ([decision 0059](docs/decisions/0059-2d-first.md)): frame animation and the state machine come with 2D (Phase 9), and 3D skeletal animation has its own phase once 2D is complete (3D 1).
 
 - **Sound** (Kira): sound events with random takes, pitch and volume; buses and ducking; sounds placed in the world; reverb zones; listeners, and who hears what.
 
@@ -186,7 +189,7 @@ First-class 2D ([decision 0054](docs/decisions/0054-first-class-2d.md)), built a
 
 - **The pixel-perfect view and the 2D editor:** drawn at the game's own resolution and scaled up crisply, smooth scrolling without shimmer, sharp text and menus.
 - **Sprites from Aseprite:** tags, slices, events, layers and palettes, reloaded on save; atlases packed automatically; 100,000 sprites drawn cheaply.
-- **Frame animation,** with the animation state machine and the animator graph editor built here, for sprite frames first, and made so 3D skeletons use the same ones later (Phase 16). Frame events can play sound events (footsteps with no code).
+- **Frame animation,** with the animation state machine and the animator graph editor built here, for sprite frames first, and made so 3D skeletons use the same ones later (3D 1). Frame events can play sound events (footsteps with no code).
 - **Tile maps that change as you play:** cells store meaning and their own data (a crop's growth), changes batched per chunk, saved as text that merges in Git.
 - **Autotiling:** each tileset chooses its kind (16-tile, 47-tile, edge sets or custom rules), set up with a wizard.
 - **The tile painter.**
@@ -195,17 +198,6 @@ First-class 2D ([decision 0054](docs/decisions/0054-first-class-2d.md)), built a
 - **Lamps and day and night on sprites,** crisp on the pixel grid. *Moved to "Usable first".*
 
 **Gate:** the project lead rebuilds a slice of their own game in Lust: walk the farm, till, plant and water, crops grow over days, sleep, lamps at night; smooth, crisp, no jitter.
-
-## Phase 10: 2D, part 2: 2D complete
-
-- **Levels and the world:** entities with typed fields, rooms on a world map, sort points for tall things.
-- **Advanced tiling:** rules for decoration and variety, scatter brushes, patterns and stamps.
-- **Pathfinding** on tile maps: A* and flow fields, updated as the map changes.
-- **Soft shadows** from walls and objects, and optional normal and glow layers.
-- **More movement:** grid-step and platformer controllers, one-way platforms, slopes and moving platforms.
-- **Polish:** parallax, palette swaps and cycling, clean pixel-art rotation, hit-stop and squash, the 2D sample and the manual's 2D section.
-
-**Gate:** the 2D sample and the project lead's extended game slice; every speed budget met; the old tools' known problems, each a passing test.
 
 ## Phase 11: Playtest export
 
@@ -221,97 +213,178 @@ First-class 2D ([decision 0054](docs/decisions/0054-first-class-2d.md)), built a
 
 **Gate:** a health bar and a pause menu on screen, drawn and tied to the game in the editor.
 
-## Phase 13: Light, sky and atmosphere
+## How the rest is built: three tracks
 
-Solis's selling point: skies, sunsets and light that feel right, never flat. The working plan, with the research and the choices to make, is [docs/plans/light.md](docs/plans/light.md) ([decision 0046](docs/decisions/0046-light-before-netcode.md)).
+The project lead's order of 10 November 2026 ([decision 0097](docs/decisions/0097-three-tracks.md)): 2D is finished first, so whole 2D games can be made; 3D comes after; and what isn't purely 2D or 3D is built **once, for both**, so no system is made twice. Big phases are split into smaller ones. The milestones are the same as before, regrouped; "was" says where each came from.
+
+**The order:**
+
+1. Finish "Usable first" (one project file, the rest as Lust) and its gate.
+2. **2D 1 and 2D 2:** 2D complete.
+3. **Shared 1 to 3:** materials and shaders, effects, weather and the finished picture, for sprites and models alike.
+4. **A pause to rethink,** and the project lead's big testing pass: 2D and effects are complete.
+5. **Shared 4:** scripting, the full export and Git, so finished games can ship.
+6. **3D 1 to 5:** 3D animation, then light, sky and atmosphere in four steps.
+7. **Shared 5 and 6:** netcode, and Solis 0.1.
+
+Steps 5 to 7 are written down so nothing is lost, but they aren't planned in detail or reordered until the rethink ([decision 0059](docs/decisions/0059-2d-first.md)): 2D and effects will turn up things nobody can foresee yet.
+
+**Where 2D and 3D stand:** [docs/plans/roadmap-2d-3d.md](docs/plans/roadmap-2d-3d.md). **Ideas, not yet placed:** [docs/plans/ideas.md](docs/plans/ideas.md); each needs a decision.
+
+---
+
+## 2D 1: The world and tiles
+
+Was Phase 10, part one.
+
+- **Levels and the world:** entities with typed fields, rooms on a world map, sort points for tall things.
+- **Advanced tiling:** rules for decoration and variety, scatter brushes, patterns and stamps.
+- **Pathfinding** on tile maps: A* and flow fields, updated as the map changes.
+
+**Gate:** a level of rooms on a world map, decorated with the new tiling tools, with a character that finds its way around walls as the map changes.
+
+## 2D 2: Movement, light and polish
+
+Was Phase 10, part two, and 2D's light from Phase 13.
+
+- **More movement:** grid-step and platformer controllers (coyote time, jump buffering, wall-jump), one-way platforms, slopes and moving platforms.
+- **Soft shadows** from walls and objects, and optional normal and glow layers.
+- **Light for 2D worlds:** 2D bounced light and the sky over 2D.
+- **Polish:** parallax (built early, [decision 0094](docs/decisions/0094-parallax-layers.md)), palette swaps and cycling, clean pixel-art rotation, hit-stop and squash, the 2D sample and the manual's 2D section.
+
+**Gate (2D complete):** the 2D sample and the project lead's extended game slice; every speed budget met; the old tools' known problems, each a passing test.
+
+## Shared 1: Materials and shaders
+
+Was Phase 14. For sprites and models alike: how a surface takes light, glows, dissolves, gets wet or sways in the wind ([decision 0048](docs/decisions/0048-materials-and-shaders-before-effects.md)). The working plan is [docs/plans/materials.md](docs/plans/materials.md).
+
+- **Materials as assets** (`.solmat`), each with its own look (standard, stylized, light ramp, unlit), edited in Properties with a live preview.
+- **Inputs that drive any material value:** the light around the surface, time, distance, height, the weather's wetness, noise, and values set by game code.
+- **A node graph for materials and shaders,** saved as readable text, sharing its graph editor with the animator and the effects.
+- **Code for experts:** a node holding a few lines of shader code, checked before it runs.
+- **Building blocks for stylized looks:** light ramps, rim light, hatching, dithering, outlines, wind sway, triplanar mapping; for sprites, dissolve, flash, outline and glow.
+- **Per-copy values at scale:** thousands of copies of one material, each with its own colour or glow, still drawn together.
+
+**Gate:** without writing code, make a sprite that flashes white when hit and dissolves when it dies, a plant that glows as night falls, a toon character with its own outline, and a tree that sways; the benchmark's target still runs at 60 fps.
+
+## Shared 2: Effects
+
+Was Phase 15.
+
+- **Solstice, the effects suite:** the file, the particles (on the CPU and the GPU) and game code ([plan](docs/plans/effects.md)); particles are drawn with Shared 1's materials.
+- **The effect preview tab and its graph.**
+- **Flipbooks, eroded and mesh particles:** the stylized look.
+- **Trails and ribbons.**
+- **The effects kit and the battle.**
+- **A pixel mode for pixel-art games:** pixel-shaped particles, movement snapped to the pixel grid, colours from the game's palette, and a ready-made set (wind streaks, fireflies, bubbles, rain, snow, dust, falling leaves, sparkles, smoke puffs); fireflies and sparks can give off real light.
+
+**Gate:** laser bolts, hits and explosions look good in the stylized look, in the benchmark battle, at 60 fps; in a pixel-art game, fireflies light a field at night and wind streaks cross it, all crisp on the pixel grid.
+
+## Shared 3: Weather and the finished picture
+
+From Phase 13: both are for 2D and 3D alike.
+
+- **The finished picture, part two:** bloom, white balance, colour grading.
+- **Weather and moods:** weather files keyed by time of day, blended, with one overcast control, bringing their effects (rain, snow) from Shared 2.
+
+**Gate:** a 2D scene and a 3D scene each go from a clear morning to a rainy evening, blended smoothly, with bloom on the lamps.
+
+## The rethink
+
+2D and effects are complete. The project lead's big testing pass happens here, and everything below is planned in detail, or reordered, only now.
+
+## Shared 4: Scripting, full export and Git
+
+Was Phase 18. Before 3D, so finished 2D games can ship.
+
+- **The scripting window:** LustScript and Lua through Luau, calling the same commands as the built-in tools, with undo, a sandbox and time limits.
+- **The full export:** finished games for Windows ([decision 0012](docs/decisions/0012-windows-only.md)), with the game's own Rust built in and Lust compiled for speed, an installer, and Build-and-Play from the top bar. It grows from the playtest export.
+- **The Git panel** ([decision 0006](docs/decisions/0006-git-built-in.md)): changes with plain-language area summaries, commit, pull and push, branches, history, Git LFS locking, and new projects from or published to a repository.
+- **The area merge tool:** merges areas and assemblies entity by entity; when two people changed the same field, asks which to keep.
+
+**Gate:** write a small editor tool that places objects in a ring; export a game and run it on a PC without Solis installed; two people work on the same project through GitHub for an evening and resolve one real area conflict in the editor.
+
+## 3D 1: 3D animation
+
+Was Phase 16 ([decision 0059](docs/decisions/0059-2d-first.md)). The working plan is [docs/plans/phase-7-animation.md](docs/plans/phase-7-animation.md) (decision 0057).
+
+- **Skins and clips from glTF,** read safely.
+- **Skinned drawing,** playing one clip.
+- **Crowds:** baked clips and animation levels of detail.
+- **Blending and blend spaces** for skeletons, on the state machine 2D brought.
+- **Cues on 3D clips:** footsteps on the right frames, in the playground.
+
+**Gate:** a character walks and runs with smooth blending, and its footsteps play on the right frames.
+
+## 3D 2: Real light and the sky
+
+Was Phase 13, part one. Solis's selling point: skies, sunsets and light that feel right, never flat ([plan](docs/plans/light.md), [decision 0046](docs/decisions/0046-light-before-netcode.md)).
 
 - **Measure first:** a light showcase project and quality levels (Low, Default, High).
 - **Real light and automatic exposure,** as eyes adjust.
 - **A physical sky** (Hillaire's method): blue by day, orange at sunset, blue at twilight, haze that tints distance; the painted sky kept as a style.
 - **Light from the sky:** ambient light and reflections from the real sky, instead of one flat colour.
-- **The finished picture, part two:** bloom, white balance, colour grading (moved from effects).
+
+**Decide before starting:** the light plan's open questions (light units, time of day as game state, quality levels, the night sky, the sky's styles).
+
+**Gate:** in the light showcase, noon to sunset with no jumps, and the golden hour feels right.
+
+## 3D 3: Night, clouds and shadows
+
+Was Phase 13, part two.
+
 - **Time of day and night:** sun, moons and stars where they really are, the aurora; colour curves and a tint over the sky for stylized games.
-- **Weather and moods:** weather files keyed by time of day, blended, with one overcast control (after the project lead's reference looks).
 - **Clouds:** a flat layer, and volumetric clouds at High.
-- **Ambient occlusion,** **cascaded and contact shadows** reaching far, and **hundreds of lamps** with a few shadowed, glowing surfaces that light the world (and glow that wakes in the dark, for plants and creatures), and area lights.
+- **Ambient occlusion.**
+- **Shadows near and far:** cascades, contact and soft shadows.
+
+**Gate:** the showcase runs from noon to night under clouds, with shadows reaching to the horizon.
+
+## 3D 4: Lamps, fog and reflections
+
+Was Phase 13, part three.
+
+- **Many lamps, glowing surfaces and area lights** (and glow that wakes in the dark, for plants and creatures).
 - **The light ramp look,** for blocky games: simple, readable light where dark means dark.
 - **Volumetric fog and light shafts,** with moving, coloured fog volumes and caustics.
-- **Reflection probes,** and **reflections on the screen with wet surfaces** (for neon streets in the rain).
-- **Bounced light, every way that can be made fast:** baked light probes (decision 0008's second source of indirect light), bounce from the screen, real-time probes traced against a simplified world (no ray-tracing hardware needed), and a time-boxed experiment for a better method, kept only if it wins.
+- **Reflection probes.**
+- **Reflections on the screen and wet surfaces** (for neon streets in the rain).
 
-**Decide before starting:** the plan's open questions (the effects suite's name, light units, time of day as game state, quality levels, the night sky, the sky's styles). The order, clouds and bounced light are answered.
+**Gate:** a rainy street at night with hundreds of lamps, fog and wet reflections; the stylized look is as good.
 
-**Gate:** in the light showcase, the day runs from noon to night with no jumps; the golden hour feels like the project lead's favourite game sunsets; indoors never looks like the Backrooms; the stylized look is as good; the benchmark's target still runs at 60 fps.
+## 3D 5: Bounced light
 
-## Phase 14: Materials and shaders
+Was Phase 13, part four.
 
-Light and effects meet in materials: how a surface takes light, glows, gets wet or sways in the wind. This phase sits between them ([decision 0048](docs/decisions/0048-materials-and-shaders-before-effects.md)). The working plan, with its choices, is [docs/plans/materials.md](docs/plans/materials.md).
+- **Baked light probes:** bounced light (decision 0008's second source of indirect light).
+- **Real-time bounced light,** traced against a simplified world (no ray-tracing hardware needed).
+- **Bounce from the screen,** joined with the probes.
+- **An experiment:** a Solis method for bounced light, kept only if it wins.
 
-- **Materials as assets** (`.solmat`), each with its own look (standard, stylized, light ramp, unlit), edited in Properties with a live preview.
-- **Inputs that drive any material value:** the light around the surface, time, distance, height, the weather's wetness, noise, and values set by game code. General tools, so one glows as night falls, another fades with distance, another pulses to a game's beat.
-- **A node graph for materials and shaders,** saved as readable text (decision 0039's rule), sharing its graph editor with the animator and the effects.
-- **Code for experts:** a node holding a few lines of shader code, checked before it runs.
-- **Building blocks for stylized looks:** light ramps, rim light, hatching, dithering, outlines per material, wind sway, triplanar mapping.
-- **Per-copy values at scale:** thousands of copies of one material, each with its own colour or glow, still drawn together.
+**Gate:** indoors never looks flat; the benchmark's target still runs at 60 fps.
 
-**Gate:** without writing code, make a plant that glows as night falls, stone that darkens and shines when it rains, a toon character with its own outline, and a tree that sways; the benchmark's target still runs at 60 fps.
+## Shared 5: Netcode
 
-## Phase 15: Effects
+Was Phase 17. What it needs (fixed ticks, determinism, checksums, save games) is built, and a CI check keeps two PCs playing the same game until then. Netcode in layers ([decision 0005](docs/decisions/0005-netcode-in-layers.md)):
 
-- **Solstice, the effects suite:** particles through instancing (on the CPU and the GPU), flipbooks, trails, stylized shading for effects, and a node graph editor. Plan: [docs/plans/effects.md](docs/plans/effects.md). Its bloom and grading moved to Phase 13; particles are drawn with Phase 14's materials.
-- **A pixel mode for pixel-art games:** pixel-shaped particles (single pixels, pixel lines for wind streaks and rain, pixel circles for bubbles), movement snapped to the pixel grid, colours from the game's palette, flipbooks at pixel-art frame rates, and a ready-made set (wind streaks, fireflies, bubbles, rain, snow, dust, falling leaves, sparkles, smoke puffs); fireflies and sparks can give off real light.
-
-**Gate:** laser bolts, hits and explosions look good in the stylized look, in the benchmark battle, at 60 fps; in a pixel-art game, fireflies light a field at night and wind streaks cross it, all crisp on the pixel grid.
-
----
-
-## Later
-
-**Later, not next:** Phases 16 to 19 are written down so nothing is lost, but they aren't built, planned in detail or reordered until Phase 15 is done and the project lead decides it's time ([decision 0059](docs/decisions/0059-2d-first.md)). 2D and effects will turn up things nobody can foresee yet, so expect these to change.
-
-**Where 2D and 3D stand:** [docs/plans/roadmap-2d-3d.md](docs/plans/roadmap-2d-3d.md), a snapshot of each side: built, planned, later, and what other engines have that hasn't been talked about.
-
-**Ideas, not yet placed:** [docs/plans/ideas.md](docs/plans/ideas.md) lists tools that help make games (timers, tween, tags, field hints, debug drawing and more), written down on 8 November 2026 to come back to. None is planned yet; each needs a decision.
-
-## Phase 16: 3D animation
-
-Moved here from Phase 7 ([decision 0059](docs/decisions/0059-2d-first.md)): Solis is 2D-ready first, so the project lead's game can be built in full, then the 3D parts follow. The working plan is [docs/plans/phase-7-animation.md](docs/plans/phase-7-animation.md) (decision 0057), whose research for skins and clips is already done.
-
-- **Skeletal animation from glTF:** skins and clips, read safely; skinned drawing; crowds with baked clips and animation levels of detail.
-- **Blending for skeletons:** crossfades and blend spaces, on the state machine 2D brought (Phase 9).
-- **Cues on 3D clips:** footsteps on the right frames, in the playground.
-
-**Gate:** a character walks and runs with smooth blending, and its footsteps play on the right frames.
-
-## Phase 17: Netcode
-
-Moved here from its first place, Phase 8 ([decisions 0046](docs/decisions/0046-light-before-netcode.md), [0048](docs/decisions/0048-materials-and-shaders-before-effects.md) and [0054](docs/decisions/0054-first-class-2d.md)): what it needs (fixed ticks, determinism, checksums, save games) is built, and a CI check keeps two PCs playing the same game until then. Netcode in layers ([decision 0005](docs/decisions/0005-netcode-in-layers.md)):
-
-- **Transport and sessions:** connections, reliable and unreliable messages, encryption, lobbies, and relays or Steam's networking for players behind home routers.
-- **Tools:** a lag and packet-loss simulator, network stats, desync detection with the checksums from Phase 6, and replays.
+- **Connections and sessions:** reliable and unreliable messages, encryption, lobbies, and relays or Steam's networking for players behind home routers.
+- **Network tools:** a lag and packet-loss simulator, network stats, desync detection, and replays.
 - **Lockstep,** as an optional module, for strategy games.
-- **Other models plug in:** check that `lightyear` (server-authoritative) and `ggrs` (rollback) work with Solis, with a small example each.
-- Dedicated server builds.
+- **Other netcode models plug in,** with a small example each.
+- **Dedicated servers.**
 
 **Decide before starting:** relays of our own or Steam's networking.
 
 **Gate:** two PCs on different networks play the benchmark area together without desyncing, with simulated lag.
 
-## Phase 18: Scripting, full export and Git
+## Shared 6: Solis 0.1
 
-- **The scripting window:** LustScript and Lua through Luau, calling the same commands as the built-in tools, with undo, a sandbox and time limits (the design Aventail plans for its Phase 9).
-- **The full export:** finished games for Windows ([decision 0012](docs/decisions/0012-windows-only.md)), with the game's own Rust built in and Lust compiled for speed, an installer, and Build-and-Play from the top bar. It grows from the playtest export (Phase 11).
-- **The Git panel** ([decision 0006](docs/decisions/0006-git-built-in.md)): changes with plain-language area summaries, commit, pull and push, branches, history, Git LFS locking, markers in the library and area tree, and new projects from or published to a repository.
-- **The area merge tool:** merges areas and assemblies entity by entity; when two people changed the same field, asks which to keep.
+Was Phase 19.
 
-**Gate:** write a small editor tool that places objects in a ring; export a game and run it on a PC without Solis installed. Two people on two PCs work on the same project through GitHub for an evening: commit, pull, lock a model, and resolve one real area conflict in the editor.
-
-## Phase 19: Solis 0.1
-
-- **The flagship sample, written in Lust:** a small space battle. Two capital ships, a carrier launching fighter squadrons, a few hundred lasers in the air, over the network.
-- **Docs:** getting started, a first-game tutorial, and a reference for the engine as Lust sees it (the `solis/` files).
-- Templates for a new project.
-- The 0.1 release.
+- **The flagship sample, written in Lust:** a small space battle, over the network.
+- **Docs:** getting started, a first-game tutorial, and a reference for the engine as Lust sees it.
+- **New project templates.**
+- **The 0.1 release.**
 
 **Gate:** someone new to Solis follows the tutorial and makes something that runs.
 

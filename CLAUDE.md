@@ -13,6 +13,7 @@ Solis is a 3D game engine. Read DESIGN.md before any change; it is the plan, and
 - **Engine development has begun** (Phase 0 onward). Design changes still go through DESIGN.md and a decision.
 - **Decisions go in two places:** a line in DESIGN.md §17, and a file in `docs/decisions/` numbered in order (`0002-short-name.md`) with Status, Date, Problem, Options where useful, Decision and Consequences.
 - **The engine is Rust; games can be Lust, Rust or Lua** (decisions 0002 and 0003). Lust is taught first; game code docs show all three.
+- **Three tracks** (the project lead, 2026-11-10, decision 0097): 2D is finished first, then 3D; anything not purely 2D or 3D is built once, for both, never twice. Phases stay small (two to six milestones).
 - **ROADMAP.md is the build order.** One milestone per pull request; a phase ends with its gate, which the project lead tries by hand.
 - **Game-specific systems stay out of the engine.** The engine meets the scale target in DESIGN.md §2; squads, campaigns and the like belong in games.
 - **Tandem work:** the project lead writes some of the code. Leave issues tagged by difficulty, explain what you build in plain words, and review their pull requests kindly and concretely.
