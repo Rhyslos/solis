@@ -152,7 +152,7 @@ No single netcode fits every game, so Solis provides it in layers ([decision 000
 
 **Built in, for every game:**
 - **Transport:** connections, reliable and unreliable messages, encryption.
-- **Sessions:** lobbies, invites, relays to get through home routers, and Steam networking.
+- **Sessions:** lobbies, invites, and relays to get through home routers.
 - **Foundations:** a fixed simulation timestep, separate from the frame rate; seeded randomness; compact message encoding.
 - **Tools:** a lag and packet-loss simulator, network stats, replays, and desync detection.
 
@@ -281,7 +281,7 @@ Settled in [decision 0004](docs/decisions/0004-editor-layout.md): Halberd's pane
 
 **Later:**
 - **Navigation and AI:** navmeshes, flowfields (moving many units), behaviour trees or state machines.
-- **Steam:** achievements, cloud saves, Workshop, Steam Deck.
+- **Store features** (Steam's achievements, cloud saves, Workshop) are left to each game's developer, not built into the engine ([decision 0098](docs/decisions/0098-ideas-become-milestones.md)).
 - **Localization and accessibility:** subtitles, text scaling, colourblind options.
 - **Modding** for games made with Solis (separate from editor scripting).
 - **Cutscene timeline.**
@@ -425,3 +425,4 @@ Both sides review each other's pull requests.
 - 2026-11-10: [0095](docs/decisions/0095-rules-from-the-video-editor.md): four rules from the project lead's video editor project, merged into Solis's: no name-dropping of any company or product, folder READMEs and CLAUDE.md always current, readable code without heavy commenting, and competing approaches compared for big systems (fast, smooth and robust is the bar).
 - 2026-11-10: [0096](docs/decisions/0096-graphite-theme-and-rounded-panels.md): a second theme, Graphite (the project lead's near-black palette), chosen in Settings beside Standard, and rounded panels (cards with gaps, pills) as a separate switch; colours that mean something stay the same in both.
 - 2026-11-10: [0097](docs/decisions/0097-three-tracks.md): the rest of the plan in three tracks: 2D finished first, what suits both built once for both (materials, effects, weather and the finished picture, export and Git, netcode), then 3D (animation, light in four steps); big phases split, the same milestones.
+- 2026-11-10: [0098](docs/decisions/0098-ideas-become-milestones.md): every idea on the ideas list becomes a milestone in the shared track (Shared 2 to 6 and 10, mods in Shared 11, navmeshes in 3D 1), the editor's UI remade comes first (Shared 1), and photo mode and built-in store features aren't planned.

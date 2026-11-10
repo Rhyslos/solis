@@ -17,7 +17,7 @@ A snapshot from 8 November 2026 (after pull request 217), with the phases rename
 - 2D 1 and 2D 2 (was Phase 10): levels and the world (typed fields, rooms on a world map, sort points); advanced tiling (decoration rules, scatter brushes, stamps); pathfinding on tile maps; soft shadows, normal and glow layers; more movement (a platformer controller with coyote time, jump buffering and wall-jump, grid-step movement, one-way platforms, slopes, moving platforms); polish (palette swaps and cycling, pixel-art rotation, hit-stop and squash, the 2D sample, the manual).
 - Shared 2: a pixel mode for effects (pixel-shaped particles: rain, wind streaks, fireflies, bubbles).
 
-**Later:** translations, subtitles and colour-blind options; Steam (achievements, cloud saves, Workshop, Steam Deck).
+**Later:** colour-blind options. Translations and subtitles are now Shared 5; Steam's features are left to each game's developer (decision 0098).
 
 **Not talked about yet:** bone animation for 2D characters (like Spine); isometric and hex maps; importing levels from LDtk or Tiled; sprite effects (dissolve, wobble, ripples, glowing edges); camera rooms and limits, screen shake; ropes, chains and swinging (2D joints); water (swimming, floating, waves); big streamed 2D worlds; diggable or breakable ground.
 

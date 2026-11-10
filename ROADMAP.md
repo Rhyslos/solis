@@ -23,17 +23,24 @@ Each phase ends with a **gate**: something the project lead tries by hand before
 | 11. Playtest export | Games packaged for playtesting, without the editor |
 | 12. Game UI | Sungraph UI: HUDs and menus drawn in Solis |
 | *Three tracks (decision 0097)* | |
+| Shared 1. The editor's UI, remade | The editor rebuilt with the project lead's own design |
+| Shared 2. Game code: finding and making things | Tile map questions, tags and world questions, spawning with values, game tests |
 | 2D 1. The world and tiles | Levels and the world map, advanced tiling, pathfinding |
 | 2D 2. Movement, light and polish | Platformer and grid-step controllers, soft shadows, 2D bounced light, the 2D sample: 2D complete |
-| Shared 1. Materials and shaders | Materials for sprites and models, values driven by the world, a node graph for shaders |
-| Shared 2. Effects | Solstice: particles, trails, flipbooks; a pixel mode for pixel art |
-| Shared 3. Weather and the finished picture | Weather and moods, bloom and grading, in 2D and 3D |
+| Shared 3. Time and feel | Timers, tween, steps in order, states, shake and fade, noise and weighted random |
+| Shared 4. Data and the editor | Data tables, save slots, field hints, more kinds of settings, drawing in the editor, paths |
+| Shared 5. Screens, words and sound | Text effects, button pictures, tooltips and drag and drop, translations and subtitles, music that follows the game |
+| Shared 6. Worlds and testing | Rooms, pools, debug drawing and a cheat box, bug reports with recordings |
+| Shared 7. Materials and shaders | Materials for sprites and models, values driven by the world, a node graph for shaders |
+| Shared 8. Effects | Solstice: particles, trails, flipbooks; a pixel mode for pixel art |
+| Shared 9. Weather and the finished picture | Weather and moods, bloom and grading, in 2D and 3D |
+| Shared 10. Cutscenes and behaviour | A cutscene timeline, behaviour drawn as diagrams |
 | *The rethink* | The project lead's big testing pass |
-| Shared 4. Scripting, full export and Git | The scripting window; finished games for Windows; teams through Git |
-| 3D 1. 3D animation | Animated characters from glTF: skins, blending, crowds |
+| Shared 11. Scripting, full export, Git and mods | The scripting window; finished games for Windows; teams through Git; mods |
+| 3D 1. 3D animation and navigation | Animated characters from glTF; navmeshes |
 | 3D 2 to 5. Light, sky and atmosphere | A physical sky, night and clouds; shadows, lamps, fog, reflections; bounced light |
-| Shared 5. Netcode | Two PCs playing together over the internet |
-| Shared 6. Solis 0.1 | The flagship space battle, docs, release |
+| Shared 12. Netcode | Two PCs playing together over the internet |
+| Shared 13. Solis 0.1 | The flagship space battle, docs, release |
 
 Lust joins in Phase 4, right after the editor, so game logic can be written in Lust from then on ([decision 0016](docs/decisions/0016-how-lust-joins-solis.md)). Phases 0–3 don't need Lust; if it isn't ready by Phase 4, Phase 5 (Scale) goes first.
 
@@ -203,7 +210,7 @@ First-class 2D ([decision 0054](docs/decisions/0054-first-class-2d.md)), built a
 
 - **File > Export for playtesting:** a folder to zip and send, with a game program without the editor and the project's files packed beside it.
 - Lust and Lua run as in Play, so there's no long compile; windowed, fullscreen and resolution settings; saves in the player's saved-games folder; a crash log playtesters can send back.
-- What waits for the full export (Phase 18): building a game's own Rust code, an installer, and Steam.
+- What waits for the full export (Shared 11): building a game's own Rust code, and an installer. Store features such as Steam's are left to each game's developer ([decision 0098](docs/decisions/0098-ideas-become-milestones.md)).
 
 **Gate:** a friend plays an exported build on their PC without Solis installed.
 
@@ -215,23 +222,46 @@ First-class 2D ([decision 0054](docs/decisions/0054-first-class-2d.md)), built a
 
 ## How the rest is built: three tracks
 
-The project lead's order of 10 November 2026 ([decision 0097](docs/decisions/0097-three-tracks.md)): 2D is finished first, so whole 2D games can be made; 3D comes after; and what isn't purely 2D or 3D is built **once, for both**, so no system is made twice. Big phases are split into smaller ones. The milestones are the same as before, regrouped; "was" says where each came from.
+The project lead's order of 10 November 2026 ([decision 0097](docs/decisions/0097-three-tracks.md)): 2D is finished first, so whole 2D games can be made; 3D comes after; and what isn't purely 2D or 3D is built **once, for both**, so no system is made twice. Big phases are split into smaller ones. "Was" says where each came from. The ideas list and the editor's UI remade joined as milestones the same day ([decision 0098](docs/decisions/0098-ideas-become-milestones.md)).
 
 **The order:**
 
-1. Finish "Usable first" (one project file, the rest as Lust) and its gate.
-2. **2D 1 and 2D 2:** 2D complete.
-3. **Shared 1 to 3:** materials and shaders, effects, weather and the finished picture, for sprites and models alike.
-4. **A pause to rethink,** and the project lead's big testing pass: 2D and effects are complete.
-5. **Shared 4:** scripting, the full export and Git, so finished games can ship.
-6. **3D 1 to 5:** 3D animation, then light, sky and atmosphere in four steps.
-7. **Shared 5 and 6:** netcode, and Solis 0.1.
+1. **Shared 1:** the editor's UI, remade.
+2. Finish "Usable first" (one project file, the rest as Lust) and its gate.
+3. **Shared 2:** game code: finding and making things (the rest of the playtest fixes).
+4. **2D 1 and 2D 2:** 2D complete.
+5. **Shared 3 to 6:** the tools from the ideas list: time and feel, data and the editor, screens and sound, worlds and testing.
+6. **Shared 7 to 10:** materials and shaders, effects, weather and the finished picture, cutscenes and behaviour, for sprites and models alike.
+7. **A pause to rethink,** and the project lead's big testing pass: 2D and effects are complete.
+8. **Shared 11:** scripting, the full export, Git and mods, so finished games can ship.
+9. **3D 1 to 5:** 3D animation and navigation, then light, sky and atmosphere in four steps.
+10. **Shared 12 and 13:** netcode, and Solis 0.1.
 
-Steps 5 to 7 are written down so nothing is lost, but they aren't planned in detail or reordered until the rethink ([decision 0059](docs/decisions/0059-2d-first.md)): 2D and effects will turn up things nobody can foresee yet.
+Steps 8 to 10 are written down so nothing is lost, but they aren't planned in detail or reordered until the rethink ([decision 0059](docs/decisions/0059-2d-first.md)): 2D and effects will turn up things nobody can foresee yet.
 
-**Where 2D and 3D stand:** [docs/plans/roadmap-2d-3d.md](docs/plans/roadmap-2d-3d.md). **Ideas, not yet placed:** [docs/plans/ideas.md](docs/plans/ideas.md); each needs a decision.
+**Where 2D and 3D stand:** [docs/plans/roadmap-2d-3d.md](docs/plans/roadmap-2d-3d.md). **Ideas:** every idea in [docs/plans/ideas.md](docs/plans/ideas.md) is now a milestone below, except two left out on purpose ([decision 0098](docs/decisions/0098-ideas-become-milestones.md)).
 
 ---
+
+## Shared 1: The editor's UI, remade
+
+Added 10 November 2026: the editor's interface rebuilt from scratch, with the project lead's own design. Mocked up first, on screenshots of the editor as it is, and planned in detail when it starts.
+
+- **The editor's UI, remade.**
+
+**Gate:** the project lead works in the new editor for an evening and wouldn't go back.
+
+## Shared 2: Game code: finding and making things
+
+The fixes the playtest games asked for (steps 2 to 5), and idea 34.
+
+- **Asking a tile map questions:** what's at a cell, the cells of a terrain, world positions to cells and back.
+- **Tags and questions about the world:** label entities ("crop", "enemy"), spelling checked before the game runs, and ask for all within 3 metres, or the nearest. (Ideas 8 and 9.)
+- **Spawning with values:** a spawned entity's fields set as it's made.
+- **Game tests:** small automatic checks ("a crop grows in three days"), run the way Solis tests itself. (Idea 29.)
+- **A note for code files nothing fetches,** in Problems, with a quick fix. (Idea 34.)
+
+**Gate:** a game finds the nearest enemy by tag, spawns a bullet already moving, and has a test that passes.
 
 ## 2D 1: The world and tiles
 
@@ -254,7 +284,56 @@ Was Phase 10, part two, and 2D's light from Phase 13.
 
 **Gate (2D complete):** the 2D sample and the project lead's extended game slice; every speed budget met; the old tools' known problems, each a passing test.
 
-## Shared 1: Materials and shaders
+## Shared 3: Time and feel
+
+Ideas 1 to 7 and 16: tools almost every game reaches for.
+
+- **Timers:** "do this in 2 seconds", "every day"; they pause with the game and are kept in saves.
+- **Tween:** a value changes smoothly over time, with a choice of easing.
+- **Steps in order:** "walk there, wait a second, say this", written top to bottom, for little cutscenes.
+- **States that know when they start and stop,** and stop what was started in them.
+- **Screen shake, flash and fade,** and controller rumble.
+- **Smooth randomness and weighted random:** noise that drifts gently, rare drops, and shuffled decks so nothing repeats too soon.
+
+**Gate:** a hit shakes the screen and flashes the sprite, a menu slides in, a door opens two seconds after a switch, and a chest drops a rare item now and then.
+
+## Shared 4: Data and the editor
+
+Ideas 15, 18 to 21 and 12.
+
+- **Data tables:** lists such as "every crop: days to grow, price, season", kept as a file and edited as a table.
+- **Save slots:** several saves with a picture, the date and time played, autosave; the player's own settings kept apart.
+- **Field hints:** a component's fields get sliders, limits and a sentence saying what they do.
+- **More kinds of settings:** a field can be a colour, a sound, a sprite, an assembly or a list.
+- **Components that draw in the editor,** such as a guard's view cone while you place it.
+- **Paths drawn in the editor,** for a guard to walk, a platform to follow or a camera to glide along.
+
+**Gate:** a shop reads its prices from a table; a guard's patrol path and view cone are drawn and tuned in the editor; the game saves to three slots.
+
+## Shared 5: Screens, words and sound
+
+Ideas 23 to 27 and 17.
+
+- **Text effects:** text that types itself out, wavy or shaking words, small icons inside text.
+- **Button pictures that match the player's controller,** switching between keyboard and gamepad.
+- **Tooltips, and drag and drop** for inventories and shops.
+- **Translations and subtitles:** the game's text in several languages, with a check for missing lines, and captions for sounds and speech.
+- **Music that follows the game:** layers fade in when danger is near, and changes land on the beat.
+
+**Gate:** a shop where items are dragged into a bag, with tooltips, in two languages; dialogue types itself out; the music swells when an enemy is near.
+
+## Shared 6: Worlds and testing
+
+Ideas 10, 11, 28 and 30.
+
+- **Rooms and moving between them:** into a house or a cellar, with a fade or a loading screen; what belonged to the room goes when you leave.
+- **Pools:** bullets, sparks and dropped items reused, so huge numbers stay smooth.
+- **Seeing inside the game while it runs:** debug drawing, a cheat box with your own commands, and live values.
+- **Bug reports from playtesters** carrying a recording of everything they pressed, to replay exactly what went wrong.
+
+**Gate:** walk into a house and back without a hitch; type `give seeds 10` in the cheat box; replay a playtester's bug report.
+
+## Shared 7: Materials and shaders
 
 Was Phase 14. For sprites and models alike: how a surface takes light, glows, dissolves, gets wet or sways in the wind ([decision 0048](docs/decisions/0048-materials-and-shaders-before-effects.md)). The working plan is [docs/plans/materials.md](docs/plans/materials.md).
 
@@ -267,11 +346,11 @@ Was Phase 14. For sprites and models alike: how a surface takes light, glows, di
 
 **Gate:** without writing code, make a sprite that flashes white when hit and dissolves when it dies, a plant that glows as night falls, a toon character with its own outline, and a tree that sways; the benchmark's target still runs at 60 fps.
 
-## Shared 2: Effects
+## Shared 8: Effects
 
 Was Phase 15.
 
-- **Solstice, the effects suite:** the file, the particles (on the CPU and the GPU) and game code ([plan](docs/plans/effects.md)); particles are drawn with Shared 1's materials.
+- **Solstice, the effects suite:** the file, the particles (on the CPU and the GPU) and game code ([plan](docs/plans/effects.md)); particles are drawn with Shared 7's materials.
 - **The effect preview tab and its graph.**
 - **Flipbooks, eroded and mesh particles:** the stylized look.
 - **Trails and ribbons.**
@@ -280,20 +359,29 @@ Was Phase 15.
 
 **Gate:** laser bolts, hits and explosions look good in the stylized look, in the benchmark battle, at 60 fps; in a pixel-art game, fireflies light a field at night and wind streaks cross it, all crisp on the pixel grid.
 
-## Shared 3: Weather and the finished picture
+## Shared 9: Weather and the finished picture
 
 From Phase 13: both are for 2D and 3D alike.
 
 - **The finished picture, part two:** bloom, white balance, colour grading.
-- **Weather and moods:** weather files keyed by time of day, blended, with one overcast control, bringing their effects (rain, snow) from Shared 2.
+- **Weather and moods:** weather files keyed by time of day, blended, with one overcast control, bringing their effects (rain, snow) from Shared 8.
 
 **Gate:** a 2D scene and a 3D scene each go from a clear morning to a rainy evening, blended smoothly, with bloom on the lamps.
+
+## Shared 10: Cutscenes and behaviour
+
+Ideas 22 and 14, after effects, so cutscenes and characters can use everything before them.
+
+- **A cutscene timeline:** camera moves, sounds, animations and effects arranged along a timeline.
+- **Behaviour for characters:** a villager's day or an animal's habits, drawn as a diagram like the Animator.
+
+**Gate:** a short cutscene plays from the timeline, and villagers follow their day on their own.
 
 ## The rethink
 
 2D and effects are complete. The project lead's big testing pass happens here, and everything below is planned in detail, or reordered, only now.
 
-## Shared 4: Scripting, full export and Git
+## Shared 11: Scripting, full export, Git and mods
 
 Was Phase 18. Before 3D, so finished 2D games can ship.
 
@@ -301,10 +389,11 @@ Was Phase 18. Before 3D, so finished 2D games can ship.
 - **The full export:** finished games for Windows ([decision 0012](docs/decisions/0012-windows-only.md)), with the game's own Rust built in and Lust compiled for speed, an installer, and Build-and-Play from the top bar. It grows from the playtest export.
 - **The Git panel** ([decision 0006](docs/decisions/0006-git-built-in.md)): changes with plain-language area summaries, commit, pull and push, branches, history, Git LFS locking, and new projects from or published to a repository.
 - **The area merge tool:** merges areas and assemblies entity by entity; when two people changed the same field, asks which to keep.
+- **Mods:** players change and add to a game with LustScript (`.lsc`), which is what LustScript was made for, with the same sandbox as the scripting window. (Was idea 31.)
 
 **Gate:** write a small editor tool that places objects in a ring; export a game and run it on a PC without Solis installed; two people work on the same project through GitHub for an evening and resolve one real area conflict in the editor.
 
-## 3D 1: 3D animation
+## 3D 1: 3D animation and navigation
 
 Was Phase 16 ([decision 0059](docs/decisions/0059-2d-first.md)). The working plan is [docs/plans/phase-7-animation.md](docs/plans/phase-7-animation.md) (decision 0057).
 
@@ -313,8 +402,9 @@ Was Phase 16 ([decision 0059](docs/decisions/0059-2d-first.md)). The working pla
 - **Crowds:** baked clips and animation levels of detail.
 - **Blending and blend spaces** for skeletons, on the state machine 2D brought.
 - **Cues on 3D clips:** footsteps on the right frames, in the playground.
+- **Navigation in 3D:** navmeshes built from the world, and characters walking around each other. (Was idea 13's 3D half.)
 
-**Gate:** a character walks and runs with smooth blending, and its footsteps play on the right frames.
+**Gate:** a character walks and runs with smooth blending, its footsteps play on the right frames, and it finds its way across a 3D level.
 
 ## 3D 2: Real light and the sky
 
@@ -363,21 +453,21 @@ Was Phase 13, part four.
 
 **Gate:** indoors never looks flat; the benchmark's target still runs at 60 fps.
 
-## Shared 5: Netcode
+## Shared 12: Netcode
 
 Was Phase 17. What it needs (fixed ticks, determinism, checksums, save games) is built, and a CI check keeps two PCs playing the same game until then. Netcode in layers ([decision 0005](docs/decisions/0005-netcode-in-layers.md)):
 
-- **Connections and sessions:** reliable and unreliable messages, encryption, lobbies, and relays or Steam's networking for players behind home routers.
+- **Connections and sessions:** reliable and unreliable messages, encryption, lobbies, and relays for players behind home routers.
 - **Network tools:** a lag and packet-loss simulator, network stats, desync detection, and replays.
 - **Lockstep,** as an optional module, for strategy games.
 - **Other netcode models plug in,** with a small example each.
 - **Dedicated servers.**
 
-**Decide before starting:** relays of our own or Steam's networking.
+**Decide before starting:** how relays are run.
 
 **Gate:** two PCs on different networks play the benchmark area together without desyncing, with simulated lag.
 
-## Shared 6: Solis 0.1
+## Shared 13: Solis 0.1
 
 Was Phase 19.
 
@@ -392,7 +482,9 @@ Was Phase 19.
 
 ## Not in 0.1
 
-Open-world streaming and terrain, navigation and AI, the full Solstice toolkit, rollback netcode, advanced animation (IK, root motion), Steam features, Linux and macOS (decision 0012).
+Open-world streaming and terrain, the full Solstice toolkit, rollback netcode, advanced animation (IK, root motion), Linux and macOS (decision 0012).
+
+**Not planned at all** ([decision 0098](docs/decisions/0098-ideas-become-milestones.md)): photo mode and screenshots, and store features built in (Steam's achievements, cloud saves, Workshop): those are for each game's developer, not the engine.
 
 ## Who does what
 
