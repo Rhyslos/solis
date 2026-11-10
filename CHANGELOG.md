@@ -27,6 +27,7 @@ What changed in each version, for people using Solis. Newest first.
 
 ### Fixed
 
+- **The manual says what a project's `solis` folder really holds** (Game code): a file for each part of the engine, `project.lst`, and the `kit`, `animators`, `maps` and `data` folders, not just three files.
 - **The manual names two controls as they are:** **Entity > Add entity** (Physics and Characters and cameras said "Add empty"), and a card's **⋯ > Remove Camera** to take a component off (Play mode pointed at an × that isn't there).
 - **The manual no longer says Properties shows starting values while playing** (Game code): it shows game code's values as they are right now, and Stop asks whether to keep a value you changed there.
 - **The manual no longer says Solis opens the last project again when it starts** (Projects and the Library): it always starts on the launcher, with your most recent projects at the top.

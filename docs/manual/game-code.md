@@ -15,7 +15,12 @@ Not sure which? [Which language when](which-language.md) compares them, with num
 **Right now:** Lust and Lua components work: they appear in Properties, run in play mode, talk to each other through events, and take new code while the game runs. Rust components can join them, but for now only in a Solis built from source.
 
 ## How to use it
-1. Open a [project](projects-and-the-library.md). Solis puts a `solis` folder in its `assets`, holding `world.lst`, `entity.lst` and `project.lst`. They describe what your code can ask of the engine, such as `World:say` (write in the Console) or `moveTo` (put an entity somewhere). `project.lst` holds your project's own names, such as its assemblies, written again whenever you add or rename one.
+1. Open a [project](projects-and-the-library.md). Solis puts a `solis` folder in its `assets`. Everything in it is written by Solis for your code to read, and written again whenever the project opens, so changes you make there don't last:
+   - a Lust file for each part of the engine (`world.lst`, `entity.lst`, `input.lst` and so on). They describe what your code can ask of the engine, such as `World:say` (write in the Console) or `moveTo` (put an entity somewhere). [What the engine offers](#what-the-engine-offers) lists every call and the file it's in.
+   - `project.lst`, which holds your project's own names, such as its assemblies, written again whenever you add or rename one.
+   - folders: `kit` holds the [ready-made components](concepts.md#simulation), `animators` and `maps` hold a file for each animator and tile map you make, and `data` says what the Lust files Solis makes (tile maps, tilesets and the like) hold.
+
+   Why files? Lust checks every call you write against them before the game runs, so a misspelt call is a mistake you see at once, not a surprise while playing.
 2. Right-click in the Library and choose **New > Lust code file**. The first one is `main.lst`, at the top of the `assets` folder: your game's code starts there. Lust reads `main.lst` first, and every other code file is fetched from it, or from a file it fetches. The file opens in your code editor for Lust (Ledger), with a component to start from. You can also make the file by hand in any text editor.
 3. Write a component. An entity's own abilities, such as `position()` and `moveTo(place)`, need no `get`: they're on every entity. The engine's other parts are objects you `fetch`, such as `fetch "solis/world":World;` for `World:say(…)`:
 
