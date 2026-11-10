@@ -72,6 +72,7 @@ For the chosen terrain (no slot picked): its **Name**, **Code** (the character m
 ## Shortcuts
 | Action | Shortcut |
 |---|---|
+| Give a tile to a slot | Click the tile in the picture, then the slot; or drag the tile onto the slot |
 | Undo or redo a change to the tileset | Ctrl + Z, Ctrl + Y (pointer over the Tileset tab) |
 
 ## Tips and common problems

@@ -145,6 +145,7 @@ Value kinds:
 | Action | Shortcut |
 |---|---|
 | Undo or redo a change in the Map tab, or a painted stroke | Ctrl + Z, Ctrl + Y (pointer over the tab, or a painting tool in use) |
+| A terrain's settings | Right-click its swatch in the Map tab |
 | The painting tools | B, U, N, G, I (see [Painting tiles](painting-tiles.md)) |
 
 ## Tips and common problems

@@ -63,6 +63,7 @@ A copy built from source has no build number of its own: it shows each project's
 | Open the project picked | `Enter`, or double-click |
 | Move along the list | `↑` and `↓` |
 | Back to the editor | `Esc` |
+| In **Rename…**: keep the new name, or leave it as it was | `Enter`, `Esc` |
 
 ## Tips and common problems
 

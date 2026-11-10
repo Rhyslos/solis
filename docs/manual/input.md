@@ -102,6 +102,7 @@ A replay that stops matching means the game came out differently from the same i
 |---|---|
 | Give the game the mouse and keys | Click the Game panel while playing |
 | Give them back to the editor | Esc |
+| Give up binding an input (after **+** in Edit > Input actions…) | Esc |
 
 While the game has them, every key is the game's: the editor's shortcuts are off.
 

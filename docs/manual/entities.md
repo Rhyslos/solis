@@ -59,7 +59,7 @@ A lamp is just an entity with a Transform and a Light. Give a model a Light (**A
 |---|---|
 | Add to or take from the selection | `Ctrl + click` |
 | Select a range | `Shift + click` |
-| Rename | `F2`, or double-click |
+| Rename | `F2`, or double-click (`Enter` keeps the name, `Esc` leaves it) |
 | Select everything | `Ctrl + A` |
 | Select nothing | `Esc` |
 | Duplicate | `Ctrl + D` |

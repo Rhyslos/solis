@@ -97,6 +97,9 @@ Your layout is remembered next time. (When this layout became the standard one, 
 | Action | Shortcut |
 |---|---|
 | Search for any action, file, entity or panel (with nothing being typed) | `Space` |
+| Choose a result in the search list | `Up`, `Down` |
+| Do what's chosen | `Enter`, or click a result |
+| Close the search | `Esc`, or click outside it |
 | Pop the Library drawer up or away (or bring the pinned Library to the front) | `Ctrl + Space` |
 
 See [Keyboard shortcuts](keyboard-shortcuts.md) for the rest.
