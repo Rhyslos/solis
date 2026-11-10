@@ -13,6 +13,7 @@ Read sound files and play them, without ever changing the game.
   - Limits: files up to 256 MB, sample rates 8,000 to 192,000 Hz, up to 8 channels. Mono plays on both sides, stereo as it is, and more channels are mixed down to one.
   - Short sounds (up to 10 minutes, and 128 MB of samples) are decoded into memory. Longer ones are measured once and streamed from their file as they play.
   - Damage never crashes: a cut-off WAV keeps its whole frames, samples that aren't numbers become silence, and everything else is a plain error.
+  - An Ogg file is one sound in whole pages: several one after another (a chained Ogg), or stray bytes between pages, are refused (`vorbis_check.rs`), because `lewton` reads a later sound's headers unchecked and the Ogg reader searches past stray bytes to find one.
 - **Overviews** (`overview.rs`): each sound's loudness over its length, at most 2,048 pairs of lowest and highest sample, made in the same pass as decoding, for drawing waveforms.
 - **Buses** (`mixer.rs`, `buses.rs`): the project's buses in a tree under Master, each a Kira track with a volume control (its fader, game code's share, ducking, mute and solo, worked out by `mixer::levels` and `mixer::Ducker`) and then a meter.
 - **The device** (`device.rs`): Kira's audio manager on the sound card, opened on a worker by the app. With no sound card, a silent device plays nothing and Solis carries on. Tests use Kira's mock device, so CI needs no sound card.

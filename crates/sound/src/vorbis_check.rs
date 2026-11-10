@@ -57,6 +57,10 @@ const MAX_PAGES: usize = 4 << 20;
 /// it meets it, unchecked, and a hostile one asks for more memory than
 /// there is (the Phase 7 review). Only the pages' headers are read: their
 /// contents are skipped.
+///
+/// Every page the Ogg reader can reach must be walked here, so bytes that
+/// aren't a page are refused too: the reader searches past them for the
+/// next page, and a second stream behind them went unseen (issue #156).
 fn one_stream<R: Read + Seek>(reader: &mut R) -> Result<(), ReadError> {
     let mut first_serial = None;
     for _ in 0..MAX_PAGES {
@@ -68,12 +72,15 @@ fn one_stream<R: Read + Seek>(reader: &mut R) -> Result<(), ReadError> {
                 n => got += n,
             }
         }
-        if got == 0 {
+        // The file ends here, or too soon for another page to follow:
+        // lewton reports a cut-off page as it reads.
+        if got < header.len() {
             return Ok(());
         }
-        // A short or broken page: lewton reports it as it reads.
-        if got < header.len() || &header[..4] != b"OggS" {
-            return Ok(());
+        if &header[..4] != b"OggS" {
+            return Err(damaged(
+                "it has stray bytes between its parts: save it again from your sound program",
+            ));
         }
         let first_of_stream = header[5] & 0x02 != 0;
         let serial = u32::from_le_bytes([header[14], header[15], header[16], header[17]]);
@@ -375,6 +382,14 @@ mod tests {
     fn lookup_values_the_file_doesnt_hold_are_refused() {
         assert!(setup(&one_book(2, 16, 2, 10)).is_err());
         assert!(setup(&one_book(2, 16, 1, 3)).is_err());
+    }
+
+    #[test]
+    fn a_codebook_with_no_dimensions_is_refused() {
+        // lewton takes lookup type 1 with no dimensions as 4,294,967,295
+        // values, and asks for room for them all (issue #156).
+        assert!(setup(&one_book(0, 1, 1, 0)).is_err());
+        assert!(setup(&one_book(0, 257, 1, 64)).is_err());
     }
 
     #[test]

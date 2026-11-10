@@ -337,6 +337,114 @@ fn a_chained_ogg_is_refused_before_lewton_reads_its_second_stream() {
     );
 }
 
+/// The weekly fuzzer's crash (issue #156), rebuilt: one stray byte between
+/// a good sound and a second stream hid that stream from the header check,
+/// which stopped at the byte, while the Ogg reader searched past it.
+/// `lewton` then read the second stream's setup header, whose codebook
+/// with no dimensions made it ask for room for 4,294,967,295 lookup values
+/// (17,179,869,180 bytes) before reading one.
+#[test]
+fn a_second_stream_hidden_behind_a_stray_byte_is_refused() {
+    let bytes = std::fs::read(data("chained_after_stray_byte.ogg")).unwrap();
+    // The check first: without it, reading this file ends the program.
+    let err = crate::vorbis_check::check(&mut std::io::Cursor::new(&bytes)).unwrap_err();
+    assert!(err.to_string().contains("stray bytes"), "{err}");
+    assert_eq!(read_bytes(&bytes).unwrap_err(), err);
+}
+
+/// The second stream of `chained_after_stray_byte.ogg`, with its checksums.
+fn hostile_stream() -> Vec<u8> {
+    let bytes = std::fs::read(data("chained_after_stray_byte.ogg")).unwrap();
+    let good = std::fs::read(data("tone_mono_44k.ogg")).unwrap();
+    bytes[good.len() + 1..].to_vec()
+}
+
+/// Whether the header check refuses `bytes`. If it passes them, every
+/// packet the Ogg reader finds in them must be of one stream, as `lewton`
+/// reads the headers of any other it meets, unchecked.
+fn refused_or_one_stream(bytes: &[u8]) -> bool {
+    if crate::vorbis_check::check(&mut std::io::Cursor::new(bytes)).is_err() {
+        assert!(read_bytes(bytes).is_err());
+        return true;
+    }
+    let mut packets = ogg::PacketReader::new(std::io::Cursor::new(bytes));
+    let mut serials = std::iter::from_fn(|| packets.read_packet().ok().flatten())
+        .map(|packet| packet.stream_serial());
+    let first = serials.next();
+    assert!(serials.all(|serial| Some(serial) == first));
+    false
+}
+
+#[test]
+fn no_gap_hides_a_second_stream() {
+    let good = std::fs::read(data("tone_mono_44k.ogg")).unwrap();
+    let hostile = hostile_stream();
+    // Up to and past the 150 KB the Ogg reader searches for a page, and
+    // gaps that look like the start of a page themselves.
+    let lengths = (0..=64).chain([255, 1023, 1024, 1025, 150 << 10, (150 << 10) + 1, 1 << 20]);
+    for len in lengths {
+        for fill in [&b"\0"[..], b"O", b"Og", b"Ogg", b"OggS", b"\xFF"] {
+            let gap = fill.iter().copied().cycle().take(len);
+            let bytes: Vec<u8> = good
+                .iter()
+                .copied()
+                .chain(gap)
+                .chain(hostile.iter().copied())
+                .collect();
+            assert!(refused_or_one_stream(&bytes), "a gap of {len} {fill:?}");
+        }
+    }
+}
+
+#[test]
+fn no_changed_page_header_hides_a_second_stream() {
+    // A page whose first bytes changed isn't a page to the Ogg reader,
+    // which passes over it to the next: the last page of the good sound
+    // lost that way left the second stream next in line.
+    let mut chained = std::fs::read(data("tone_mono_44k.ogg")).unwrap();
+    chained.extend(hostile_stream());
+    // Each page's header and its table of sizes.
+    let pages = [0..28, 58..98, 3168..3218, 4139..4167, 4197..4226];
+    for at in pages.into_iter().flatten() {
+        for value in [0, 1, 2, b'O', b'S', 0xFF, chained[at] ^ 1, chained[at] ^ 2] {
+            let mut bytes = chained.clone();
+            bytes[at] = value;
+            refused_or_one_stream(&bytes);
+            // Whatever it is now, reading it comes back.
+            let _ = read_bytes(&bytes);
+        }
+    }
+    let mut bytes = chained.clone();
+    bytes[3168] = b'o';
+    let err = read_bytes(&bytes).unwrap_err();
+    assert!(err.to_string().contains("stray bytes"), "{err}");
+}
+
+#[test]
+fn stray_bytes_in_a_good_ogg_are_damage() {
+    let good = std::fs::read(data("tone_mono_44k.ogg")).unwrap();
+    // Between pages, however few: the same answer as after the last page.
+    for (at, len) in [
+        (58, 1),
+        (3168, 1),
+        (3168, 40),
+        (good.len(), 27),
+        (good.len(), 100),
+    ] {
+        let mut bytes = good.clone();
+        bytes.splice(at..at, std::iter::repeat_n(0, len));
+        let err = read_bytes(&bytes).map(|clip| clip.info).unwrap_err();
+        assert!(
+            err.to_string().contains("stray bytes"),
+            "{len} at {at}: {err}"
+        );
+    }
+    // Too few after the last page to be one: the Ogg reader refuses them.
+    let mut bytes = good.clone();
+    bytes.extend([0; 26]);
+    assert!(matches!(read_bytes(&bytes), Err(ReadError::Damaged(_))));
+}
+
 /// Found by fuzzing too: a codebook claiming more lookup values than
 /// there's memory for.
 #[test]

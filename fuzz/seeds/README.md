@@ -15,7 +15,7 @@ Real files the fuzzers start from, one folder per target in [`../fuzz_targets`](
 | `save_game/` | Save games (`.solsave`): the current version and versions 1 and 2, so the upgraders are fuzzed too. |
 | `sidecar/` | Sidecars (`.solmeta`) of the sample models. |
 | `sound_event/` | A full sound event, an empty one and a looping 2D one. |
-| `sound_file/` | WAV files of each kind the reader takes, and Ogg Vorbis files from `crates/sound/tests/data`. |
+| `sound_file/` | WAV files of each kind the reader takes, and Ogg Vorbis files from `crates/sound/tests/data`: good ones, and hostile ones the reader refuses (a second stream after a good sound, one of them hidden behind a stray byte). |
 | `tile_art/` | The logo's PNG and the walker's Aseprite file, each after the byte that chooses its reader. |
 | `tile_map/` | Tile map files (`.soltilemap`), as the fixtures of version 1 and of version 2 (with exact tiles). |
 | `text_file/` | A Markdown file using every mark Properties draws, and the project's CONTRIBUTING.md. |
