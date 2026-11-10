@@ -27,6 +27,7 @@ What changed in each version, for people using Solis. Newest first.
 
 ### Fixed
 
+- **The manual no longer says Solis opens the last project again when it starts** (Projects and the Library): it always starts on the launcher, with your most recent projects at the top.
 - **The manual's Interface tour describes the editor as it is now:** the launcher Solis always starts on, the top bar in its real order with every menu, the four workspaces, the search, every panel (those that come with an open file too), the Library drawer, Hints and the status bar. It no longer points at a picture that wasn't there, or says the search, Hints, the UI workspace and exporting a game are still to come.
 - **Fixes from three playtest games** (written in Solis by another session):
   - **An event sent to an entity spawned in the same tick is no longer lost:** it arrives at the start of the next tick's events, once the entity's components exist. Bullets and shock waves no longer need the "keep it in a field, launch it next tick" workaround.
