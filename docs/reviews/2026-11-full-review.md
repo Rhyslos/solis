@@ -2,24 +2,28 @@
 
 The project lead asked for a review of the whole codebase (10 November 2026): weak code, instability, poor modularity, debt worked around, insecurity, spaghetti code, dependency trouble, flaky tests and outdated documentation. Fourteen reviewers each read one part of the code at commit `50f007a47` (about 170,000 lines of Rust, the shaders, CI, tools and every document), and the whole test suite was run three times to look for tests that fail by chance (all 1,849 passed each time).
 
-They reported 129 findings; with duplicates merged, **107 distinct problems**, listed below. Each is fixed by one agent working on that problem alone, and each fix is reviewed. What was fixed, and a second review of the result, are in [`2026-11-full-review-second-pass.md`](2026-11-full-review-second-pass.md).
+The reviewers reported 129 findings; with duplicates merged, 107 distinct problems. Seven more turned up while the fixing began: three sat in GitHub's open issues, which the reviewers couldn't see (two crashes the weekly fuzzer had found on 1 November, and a test known to fail now and then); two came from running the weekly checks by hand once they could fail (one check had never run at all, and a fuzzer that had never run found a hang within a minute); and two were noticed by agents fixing something else. That makes **114 problems**, listed below. Each is fixed by one agent working on that problem alone, and each fix is reviewed. What was fixed, and a second review of the result, are in [`2026-11-full-review-second-pass.md`](2026-11-full-review-second-pass.md).
 
 **Severity** runs from 1 to 10: 10 is lost work, a crash in normal use or something a hostile file can exploit; 5 is a real bug in an edge case or a serious cost to whoever maintains the code; 2 is small.
 
 ## In short
 
 - **The code is careful where it was told to be.** File readers have limits, the game-code sandbox holds, saves are atomic, and no test failed by chance in three runs.
-- **The most serious finds:** exported games play no sound; two crafted files can exhaust memory on open (an assembly, a model); a light with a bad cone angle crashes the editor; Keep after Stop writes what the game spawned into the area; Delete over the UI canvas also deletes the area's selection.
+- **The most serious finds:** exported games play no sound; crafted files can exhaust memory or hang a reader on open (an assembly, a model, a sound, a tileset); a light with a bad cone angle crashes the editor; Keep after Stop writes what the game spawned into the area; Delete over the UI canvas also deletes the area's selection.
+- **Checks that didn't check:** ten of 23 fuzzers never ran, the weekly "play 1,000 games" job had never built and reported success anyway, and two fuzzer crashes sat in open issues for nine days.
 - **A pattern:** the editor's central object (`Workbench`) wires each file editor by hand, and most editor bugs are a place where one editor was forgotten.
 - **Frame-loop work:** about a dozen places read files or walk everything every frame.
 - **Documents:** the manual's detail is right, but narrative written before the editor overhaul and the launcher is stale, and several READMEs lag the 2D work.
 
-## Insecurity (15)
+## Insecurity (19)
 
 | # | Severity | Problem | Where | Found by |
 | --- | --- | --- | --- | --- |
 | SEC-01 | 8 | An assembly's "missing part" overrides aren't counted, so a small project can expand to 100 million entities | `crates/area/src/assembly.rs:176,326` | world-sim F1 |
 | SEC-02 | 8 | A small .glb can make the importer copy its binary part once per buffer (100 GB asked for) | `crates/assets/src/reader.rs:310` | assets-media F1 |
+| SEC-16 | 8 | The weekly fuzzer found a file that aborts the model reader; the issue has been open since 1 November | `crates/assets (model import), GitHub issue #157` | lead (GitHub issues) |
+| SEC-17 | 8 | The weekly fuzzer found a sound file that asks for 16 GB of memory; the issue has been open since 1 November | `crates/sound/src/read.rs, GitHub issue #156` | lead (GitHub issues) |
+| SEC-19 | 7 | A fuzzer that had never run found a tileset file that hangs the reader within one minute | `crates/tiles/src/tileset.rs, dry run 42883728097 job "Fuzz tileset"` | lead (dry run of the weekly checks) |
 | SEC-08 | 6 | A screen's styles are copied out of game code with no size cap | `crates/script/src/screens.rs:661` | script F3 |
 | SEC-03 | 6 | "Open code" on a Lua component opens the .lua file in the system's program | `crates/editor/src/commands.rs:438, crates/app/src/window.rs:2377` | security F1 |
 | SEC-06 | 6 | A copy that wasn't installed still downloads and silently runs the installer | `crates/app/src/updates.rs:165` | app-and-tools F2, security F5 |
@@ -27,6 +31,7 @@ They reported 129 findings; with duplicates merged, **107 distinct problems**, l
 | SEC-14 | 5 | The Windows build decodes BMP pictures that nothing tests or fuzzes | `crates/assets/src/texture.rs:41, tile_art.rs:59` | dependencies F1 |
 | SEC-04 | 5 | A project's own file chooses the export folder, and the dialog probes it on opening (network share) | `crates/app/src/playtest.rs:266, crates/editor/src/export_dialog.rs:250` | security F2 |
 | SEC-07 | 5 | getfenv and setfenv are left in the Lua sandbox | `crates/script/src/luau.rs:257` | script F4 |
+| SEC-18 | 5 | A streamed Ogg's seek can reach stream headers nothing checked, seek(0) reopens without the check, and two hostile test files pass for the wrong reason | `crates/sound/src/read.rs (Decoder::seek), crates/sound/tests/data/huge_codebook.ogg` | noticed by the SEC-17 agent |
 | SEC-10 | 4 | A sidecar using the biggest part ID makes giving out new IDs quadratic | `crates/asset_db/src/sidecar.rs:251` | assets-media F4 |
 | SEC-11 | 4 | A save's lines are split into unbounded word lists before their length is checked | `crates/editor/src/save_game.rs:565,645` | editor-play F4 |
 | SEC-05 | 4 | Choosing a placeable file in the search opens it in the system's program | `crates/editor/src/search.rs:623` | security F4 |
@@ -34,7 +39,7 @@ They reported 129 findings; with duplicates merged, **107 distinct problems**, l
 | SEC-12 | 3 | A collider's centre can reach the physics library unbounded or infinite | `crates/physics/src/lib.rs:616` | world-sim F8 |
 | SEC-15 | 3 | The "ordinary file, bounded read" guard exists four times, and sound files have none | `crates/sound/src/read.rs:188, crates/assets/src/reader.rs:168` | assets-media F9 |
 
-## Instability and weak code (52)
+## Instability and weak code (53)
 
 | # | Severity | Problem | Where | Found by |
 | --- | --- | --- | --- | --- |
@@ -80,6 +85,7 @@ They reported 129 findings; with duplicates merged, **107 distinct problems**, l
 | BUG-40 | 4 | Every viewport target allocates a 16 MiB shadow map, including parallax layer pictures | `crates/render/src/renderer.rs:281` | render-ui F3 |
 | BUG-41 | 4 | A full letter atlas wipes itself mid-layout: garbled text and a frame-rate collapse | `crates/ui/src/text.rs:177` | render-ui F4 |
 | BUG-42 | 4 | "Matches the shader layout" tests only check Rust against itself | `crates/render/src/frame.rs:312` | render-ui F5 |
+| BUG-54 | 4 | Typing a field's starting value into Properties while playing never reaches the game | `crates/editor/src (syncing.rs), GitHub issue #57` | noticed by the DOC-10 agent |
 | BUG-24 | 3 | Right-click doesn't cancel a box selection in a perspective view | `crates/editor/src/viewport.rs:1218` | editor-tools F10 |
 | BUG-29 | 3 | Hard-coded neutral colours left behind by the theme switch | `crates/editor/src/launcher.rs:404, theme.rs:251` | editor-chrome F8 |
 | BUG-30 | 3 | The Library's right-click menu shows "Open" twice | `crates/editor/src/library.rs:960` | editor-chrome F9 |
@@ -117,20 +123,22 @@ They reported 129 findings; with duplicates merged, **107 distinct problems**, l
 | DEP-06 | 3 | notify-debouncer-mini ships tempfile in the program for an 80-line wrapper | `crates/asset_db/src/watch.rs:7` | dependencies F7 |
 | DEP-07 | 2 | log is declared but unused in two crates, and the register test can't see it | `crates/sound/Cargo.toml:25, crates/updater/Cargo.toml:23` | dependencies F8 |
 
-## Flaky tests (4)
+## Flaky tests (5)
 
 | # | Severity | Problem | Where | Found by |
 | --- | --- | --- | --- | --- |
 | TEST-01 | 5 | A sidecar test must reach its check within 50 ms of writing a file | `crates/asset_db/src/db.rs:783` | flaky-tests F1, assets-media F7 |
+| TEST-05 | 5 | The game-code checksum test sometimes differs between 1 and 3 shards on a busy machine | `crates/script/src/game_tests.rs, GitHub issue #177` | lead (GitHub issues) |
 | TEST-02 | 4 | Tests race the game code's real-time limits (100 ms a call, 250 ms a tick) | `crates/script/src/runtime_hostile_tests.rs:162, crates/editor/src/game_code_tests.rs:473` | flaky-tests F2, script F7, editor-play F6 |
 | TEST-03 | 3 | The window smoke test waits by sleeping fixed times | `tools/smoke/window-smoke.sh:65` | flaky-tests F3 |
 | TEST-04 | 2 | Short wall-clock budgets asserted in ordinary tests | `crates/reflect/src/id.rs:297, crates/editor/src/workbench_paint_tests.rs:77, crates/app/src/sprites.rs:539` | flaky-tests F4, world-sim F10, editor-workbench F10 |
 
-## Checks that don't check (5)
+## Checks that don't check (6)
 
 | # | Severity | Problem | Where | Found by |
 | --- | --- | --- | --- | --- |
 | CI-02 | 6 | The weekly whole-game invariants job cannot fail | `.github/workflows/deep-checks.yml:113` | app-and-tools F4 |
+| CI-06 | 6 | The weekly whole-game invariants job has never really run: it cannot build, and reported success | `.github/workflows/deep-checks.yml` | lead (dry run 42883728097) |
 | CI-01 | 5 | Ten of the 23 fuzz targets never run in CI; playtest.txt has no target; fuzz READMEs are behind | `.github/workflows/deep-checks.yml:45, fuzz/` | app-and-tools F6, security F3, docs-developer F1 and F7 |
 | CI-03 | 3 | The release pipeline installs unpinned tools | `.github/workflows/windows-exe.yml:98` | app-and-tools F10, security F6 |
 | CI-05 | 3 | The fuzzers' lock file is ungoverned and out of step with the main one | `fuzz/Cargo.lock, .github/dependabot.yml` | dependencies F5 |
