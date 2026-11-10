@@ -110,7 +110,12 @@ jobs:
       - name: Play many games
         env:
           PROPTEST_CASES: "1000"
-        # GitHub's bash stops at the first failing pipeline (pipefail).
+        # `shell: bash` is what lets a failing test fail this step: it turns
+        # on pipefail, so each line's result is cargo's and not tee's
+        # (GitHub's default shell leaves pipefail off, and the step would
+        # always pass). The step stops at the first command that fails,
+        # with its output already in invariants.txt for the issue below.
+        shell: bash
         run: |
           cargo test --release --locked -p editor invariant_tests 2>&1 | tee invariants.txt
           cargo test --release --locked -p physics a_crowd 2>&1 | tee -a invariants.txt
@@ -120,6 +125,8 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
           RUN: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        # The default shell on purpose (no pipefail): a grep that finds
+        # nothing must not stop the issue from being opened.
         run: |
           {
             echo "The weekly deep checks played a game that broke one of the whole-game rules (ARCHITECTURE.md, Checks). The smallest game that shows it:"

@@ -7,9 +7,11 @@ The checks and builds GitHub runs on its own machines ([decision 0018](../../doc
 | `ci.yml` | Formatting, lints and licences first; then tests and API docs on Linux, the GPU tests and the window test on Linux, and every test (GPU ones through Windows' software renderer) on Windows. Failed tests are summarised by `tools/ci/failed-tests.sh`. | Every update to a non-draft pull request, merges into main, release tags, and by hand |
 | `changelog.yml` | Fails a pull request that changes code (`crates/`, `tools/`, `Cargo.*`) without a `CHANGELOG.md` entry, unless it is labelled `internal`. | Every update to a non-draft pull request, and when labels change |
 | `security.yml` | Checks dependencies for newly published security advisories (`cargo deny check advisories`). | Mondays, and by hand |
-| `deep-checks.yml` | What's too slow for every pull request (decision 0042): every fuzz target for a time box, starting from `fuzz/seeds`, and the whole-game invariant tests with many more games. A failure opens an issue. | Sundays, and by hand |
+| `deep-checks.yml` | What's too slow for every pull request (decision 0042): every fuzz target for a time box, starting from `fuzz/seeds`, and the whole-game invariant tests with many more games. A failure in the Sunday run opens an issue. | Sundays, and by hand |
 | `windows-exe.yml` | Builds the program for Windows, stamps its build number, makes the installer from `installer/setup.iss`, and publishes a `build-<number>` release that installed copies update from (decisions 0010 and 0043). | Code merged into main, and by hand |
 | `sources.yml` | Keeps a copy of every library's source code as a pre-release, so a library deleted from the internet can't stop the build (decision 0052). | When `Cargo.lock` changes on main, and by hand |
+
+A step that must fail when a command before a pipe fails (`cargo test ... | tee file`) sets `shell: bash`. That turns on bash's `pipefail`; GitHub's default shell on Linux leaves it off, and the step would pass whatever the first command did.
 
 ## The rest of `.github`
 
