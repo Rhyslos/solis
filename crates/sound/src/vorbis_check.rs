@@ -25,10 +25,32 @@ fn damaged(why: &str) -> ReadError {
     ReadError::Damaged(why.to_owned())
 }
 
-/// Checks the comment and setup headers of the Vorbis stream in `reader`.
-/// Leaves the reader anywhere: rewind it before reading the file.
-pub(crate) fn check<R: Read + Seek>(reader: &mut R) -> Result<(), ReadError> {
-    one_stream(reader)?;
+/// Why a file holding more than one stream is refused.
+pub(crate) const MORE_THAN_ONE_SOUND: &str =
+    "it holds more than one sound one after another (a chained Ogg): save it as one";
+
+/// A page of the file, as the check walks past it.
+pub(crate) struct Page {
+    /// Where it starts in the file.
+    pub(crate) at: u64,
+    /// The frame its last packet ends on (Vorbis's granule position).
+    pub(crate) granule: u64,
+    /// How many packets end on it, not counting one begun on the page
+    /// before: the packets it hands on when reading starts here.
+    pub(crate) whole_packets: usize,
+    /// Whether it says it's the stream's last.
+    pub(crate) last_of_stream: bool,
+}
+
+/// Checks the comment and setup headers of the Vorbis stream in `reader`,
+/// showing `each` page of the file as it's walked (for finding where a
+/// frame is). Leaves the reader anywhere: rewind it before reading the
+/// file.
+pub(crate) fn check<R: Read + Seek>(
+    reader: &mut R,
+    each: impl FnMut(&Page),
+) -> Result<(), ReadError> {
+    one_stream(reader, each)?;
     reader.rewind()?;
     let mut packets = ogg::PacketReader::new(reader);
     let mut next = || {
@@ -61,8 +83,12 @@ const MAX_PAGES: usize = 4 << 20;
 /// Every page the Ogg reader can reach must be walked here, so bytes that
 /// aren't a page are refused too: the reader searches past them for the
 /// next page, and a second stream behind them went unseen (issue #156).
-fn one_stream<R: Read + Seek>(reader: &mut R) -> Result<(), ReadError> {
+fn one_stream<R: Read + Seek>(
+    reader: &mut R,
+    mut each: impl FnMut(&Page),
+) -> Result<(), ReadError> {
     let mut first_serial = None;
+    let mut at = 0_u64;
     for _ in 0..MAX_PAGES {
         let mut header = [0_u8; 27];
         let mut got = 0;
@@ -87,10 +113,7 @@ fn one_stream<R: Read + Seek>(reader: &mut R) -> Result<(), ReadError> {
         match first_serial {
             None => first_serial = Some(serial),
             Some(first) if serial != first || first_of_stream => {
-                return Err(damaged(
-                    "it holds more than one sound one after another (a chained Ogg): save it as \
-                     one",
-                ));
+                return Err(damaged(MORE_THAN_ONE_SOUND));
             }
             Some(_) => {}
         }
@@ -100,8 +123,21 @@ fn one_stream<R: Read + Seek>(reader: &mut R) -> Result<(), ReadError> {
         if reader.read_exact(&mut lacing[..segments]).is_err() {
             return Ok(());
         }
-        let body: i64 = lacing[..segments].iter().map(|&l| i64::from(l)).sum();
-        reader.seek(std::io::SeekFrom::Current(body))?;
+        let lacing = &lacing[..segments];
+        let body: u32 = lacing.iter().map(|&l| u32::from(l)).sum();
+        reader.seek(std::io::SeekFrom::Current(i64::from(body)))?;
+        let continued = usize::from(header[5] & 0x01 != 0);
+        let ended = lacing.iter().filter(|&&l| l < 255).count();
+        each(&Page {
+            at,
+            granule: u64::from_le_bytes([
+                header[6], header[7], header[8], header[9], header[10], header[11], header[12],
+                header[13],
+            ]),
+            whole_packets: ended.saturating_sub(continued),
+            last_of_stream: header[5] & 0x04 != 0,
+        });
+        at += header.len() as u64 + segments as u64 + u64::from(body);
     }
     Err(damaged("it has more pages than any sound Solis reads"))
 }

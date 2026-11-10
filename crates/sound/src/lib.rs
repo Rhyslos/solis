@@ -26,9 +26,12 @@ mod overview;
 pub mod read;
 pub mod reverb;
 #[cfg(test)]
+mod seek_tests;
+#[cfg(test)]
 mod tests;
 pub mod voices;
 mod vorbis_check;
+mod vorbis_stream;
 
 pub use device::SoundDevice;
 pub use event::{Pick, SoundEvent};

@@ -55,7 +55,7 @@ fn memory(clip: &Clip) -> &[Frame] {
     }
 }
 
-fn data(name: &str) -> PathBuf {
+pub(crate) fn data(name: &str) -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .join("tests/data")
         .join(name)
@@ -316,6 +316,15 @@ fn an_ogg_claiming_billions_of_comments_is_refused() {
     let bytes = std::fs::read(data("huge_comment_count.ogg")).unwrap();
     let err = read_bytes(&bytes).unwrap_err();
     assert!(matches!(err, ReadError::Damaged(_)), "{err}");
+    // The file as the fuzzer left it is refused sooner, for its checksums
+    // and stray bytes, which a fuzzing build doesn't look at. So the header
+    // check is shown the comment header itself: the first packet of the
+    // file's second page.
+    let err = crate::vorbis_check::comments(&bytes[98..162]).unwrap_err();
+    assert!(
+        err.to_string().contains("more comments than it holds"),
+        "{err}"
+    );
 }
 
 #[test]
@@ -347,7 +356,7 @@ fn a_chained_ogg_is_refused_before_lewton_reads_its_second_stream() {
 fn a_second_stream_hidden_behind_a_stray_byte_is_refused() {
     let bytes = std::fs::read(data("chained_after_stray_byte.ogg")).unwrap();
     // The check first: without it, reading this file ends the program.
-    let err = crate::vorbis_check::check(&mut std::io::Cursor::new(&bytes)).unwrap_err();
+    let err = crate::vorbis_check::check(&mut std::io::Cursor::new(&bytes), |_| {}).unwrap_err();
     assert!(err.to_string().contains("stray bytes"), "{err}");
     assert_eq!(read_bytes(&bytes).unwrap_err(), err);
 }
@@ -363,7 +372,7 @@ fn hostile_stream() -> Vec<u8> {
 /// packet the Ogg reader finds in them must be of one stream, as `lewton`
 /// reads the headers of any other it meets, unchecked.
 fn refused_or_one_stream(bytes: &[u8]) -> bool {
-    if crate::vorbis_check::check(&mut std::io::Cursor::new(bytes)).is_err() {
+    if crate::vorbis_check::check(&mut std::io::Cursor::new(bytes), |_| {}).is_err() {
         assert!(read_bytes(bytes).is_err());
         return true;
     }
@@ -452,6 +461,10 @@ fn an_ogg_with_a_huge_codebook_is_refused() {
     let bytes = std::fs::read(data("huge_codebook.ogg")).unwrap();
     let err = read_bytes(&bytes).unwrap_err();
     assert!(matches!(err, ReadError::Damaged(_)), "{err}");
+    // As above: the setup header itself, the second packet of the file's
+    // second page.
+    let err = crate::vorbis_check::setup(&bytes[164..3648]).unwrap_err();
+    assert!(err.to_string().contains("its setup is cut off"), "{err}");
 }
 
 #[test]
@@ -463,7 +476,7 @@ fn the_ogg_test_files_pass_the_header_check() {
         "silence_22k.ogg",
     ] {
         let mut file = std::io::Cursor::new(std::fs::read(data(name)).unwrap());
-        crate::vorbis_check::check(&mut file).unwrap_or_else(|e| panic!("{name}: {e}"));
+        crate::vorbis_check::check(&mut file, |_| {}).unwrap_or_else(|e| panic!("{name}: {e}"));
     }
 }
 
@@ -615,7 +628,7 @@ fn the_extension_and_the_contents_name_the_format() {
 }
 
 /// A fresh folder for one test.
-fn test_dir(name: &str) -> PathBuf {
+pub(crate) fn test_dir(name: &str) -> PathBuf {
     let dir = std::env::temp_dir().join(format!("solis-sound-{name}-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir_all(&dir).unwrap();
