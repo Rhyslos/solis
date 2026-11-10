@@ -5,8 +5,9 @@
 #   each for a time box, starting from fuzz/seeds. The targets are read
 #   from fuzz/Cargo.toml, never listed here, so a new one is fuzzed the
 #   next Sunday with no change to this file. A crash or hang is uploaded
-#   and opens an issue. Nothing is fuzzed unless fuzz/Cargo.lock names the
-#   library versions the program ships (tools/ci/fuzz-lock-check.sh).
+#   and opens an issue. The fuzzers have no lock file of their own in the
+#   repository: each job writes it from the main Cargo.lock
+#   (tools/ci/fuzz-lock.sh), so what is fuzzed is what ships.
 # - The whole-game invariant tests, with many more games than a pull
 #   request runs (PROPTEST_CASES). A failure opens an issue with the
 #   smallest game that shows it.
@@ -48,19 +49,10 @@ jobs:
   # to say so (the review of November 2026). The step fails, and says why,
   # when fuzz/Cargo.toml and fuzz/fuzz_targets don't name the same targets,
   # because a target missing from either would never be fuzzed.
-  #
-  # Before that, the same job checks the fuzzers' lock file, so that what
-  # is fuzzed is what ships: fuzz/Cargo.lock must name the same version as
-  # the main Cargo.lock of every package both have, and a build must not
-  # need to change it. `cargo fuzz` has no --locked to pass on to the
-  # build (which would quietly add whatever the file lacks, at the newest
-  # version), so Cargo is asked here, once, by the compiler the fuzz jobs
-  # build with. Every fuzz job needs this job, so none runs on other
-  # versions.
   targets:
-    name: Check the lock file, list the fuzz targets
+    name: List the fuzz targets
     runs-on: ubuntu-latest
-    timeout-minutes: 10
+    timeout-minutes: 5
     permissions:
       contents: read
       issues: write
@@ -70,11 +62,6 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           persist-credentials: false
-      - run: rustup toolchain install "$FUZZ_NIGHTLY" --profile minimal
-      - name: The fuzzers build the library versions the program ships
-        env:
-          RUSTUP_TOOLCHAIN: ${{ env.FUZZ_NIGHTLY }}
-        run: tools/ci/fuzz-lock-check.sh --locked
       - name: Read the targets from fuzz/Cargo.toml
         id: list
         run: |
@@ -106,20 +93,8 @@ jobs:
               out.write(f"targets={json.dumps(names)}\n")
           print(f"{len(names)} targets: {' '.join(names)}")
           PY
-      # Which issue is opened depends on what failed: the list of targets,
-      # or the lock file check before it (the list is then skipped).
-      - name: Open an issue about the lock file
-        if: failure() && steps.list.outcome != 'failure' && github.event_name == 'schedule'
-        env:
-          GH_TOKEN: ${{ github.token }}
-          GH_REPO: ${{ github.repository }}
-          RUN: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
-        run: |
-          gh issue create --label bug \
-            --title "The weekly fuzzing didn't run: the fuzzers' lock file is out of step" \
-            --body "Before fuzzing, the weekly deep checks make sure the fuzzers build the library versions the program ships: \`fuzz/Cargo.lock\` must name the same version as the main \`Cargo.lock\` of every package both have, and a build must not need to change it. This week that check didn't pass, so nothing was fuzzed. The run names each package: $RUN. To fix, run \`tools/ci/fuzz-lock-check.sh --fix\` and commit \`fuzz/Cargo.lock\` (fuzz/README.md, The lock file)."
-      - name: Open an issue about the targets
-        if: failure() && steps.list.outcome == 'failure' && github.event_name == 'schedule'
+      - name: Open an issue
+        if: failure() && github.event_name == 'schedule'
         env:
           GH_TOKEN: ${{ github.token }}
           GH_REPO: ${{ github.repository }}
@@ -152,6 +127,20 @@ jobs:
         with:
           persist-credentials: false
       - run: rustup toolchain install "$FUZZ_NIGHTLY" --profile minimal
+      # fuzz/ is a workspace of its own, and its lock file isn't kept in
+      # the repository, where it drifted away from the main one. It is
+      # written here from the main Cargo.lock, so the fuzzers build the
+      # library versions the program ships; `cargo fuzz` then builds from
+      # it and has no reason to change it. Each fuzz job writes its own
+      # rather than the first job handing one down: it takes seconds,
+      # needs no upload and download, and comes out the same in every job,
+      # because everything in it is pinned by the main lock or, for the
+      # two libraries only the fuzzers use, in fuzz/Cargo.toml. Before the
+      # cache step, so that step sees a lock file as it always has.
+      - name: Write the fuzzers' lock file from the main one
+        env:
+          RUSTUP_TOOLCHAIN: ${{ env.FUZZ_NIGHTLY }}
+        run: tools/ci/fuzz-lock.sh
       # The sound crate builds against ALSA on Linux.
       - run: sudo apt-get update && sudo apt-get install -y libasound2-dev
       # One cache for every target, not one each: they are all built from
@@ -177,8 +166,6 @@ jobs:
           else
             echo "::warning::$TARGET has no starting files (fuzz/seeds/$TARGET, made by fuzz/make-seeds.sh), so it starts from nothing and gets less far."
           fi
-          # Built from fuzz/Cargo.lock as it is: the first job checked
-          # that this build has no reason to change it.
           cargo "+$FUZZ_NIGHTLY" fuzz run -O "$TARGET" "${folders[@]}" -- \
             -max_total_time=$((MINUTES * 60)) -timeout=45 -rss_limit_mb=4096 \
             -max_len=1048576 -print_final_stats=1

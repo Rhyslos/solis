@@ -38,7 +38,7 @@ You need [cargo-fuzz](https://github.com/rust-fuzz/cargo-fuzz) (`cargo install c
 fuzz/make-seeds.sh              # real files to start from, into fuzz/seeds/
 fuzz/run-all.sh                 # every target for 10 minutes, two at a time
 SECONDS_EACH=3600 fuzz/run-all.sh
-cd fuzz && cargo +nightly fuzz run save_game corpus/save_game seeds/save_game
+tools/ci/fuzz-lock.sh && cd fuzz && cargo +nightly fuzz run save_game corpus/save_game seeds/save_game
 ```
 
 On a machine that can't download nightly, `RUSTC_BOOTSTRAP=1` lets the pinned stable compiler build the targets (only ever for fuzzing).
@@ -51,16 +51,10 @@ While fuzzing, Solis is built with `--cfg fuzzing`. The only difference is that 
 
 ## The lock file
 
-`fuzz/` is a workspace of its own, so the engine's build never builds the fuzzers. That gives it its own `Cargo.lock`, and nothing in Cargo keeps that file in step with the main one. Fuzzing is only worth its time if it tries the library versions the program ships, so a check holds the two together.
+`fuzz/` is a workspace of its own, so the engine's build never builds the fuzzers. Cargo wants a lock file in every workspace, and nothing in Cargo keeps a second lock file in step with the first: while `fuzz/Cargo.lock` was kept in the repository it drifted, until the weekly run was fuzzing versions of 15 libraries that weren't the ones in the program.
 
-[`tools/ci/fuzz-lock-check.sh`](../tools/ci/fuzz-lock-check.sh) fails, naming each package, when `fuzz/Cargo.lock` has a version of a package that the main `Cargo.lock` has at other versions only. With `--locked` it also asks Cargo whether a build of the fuzzers would change the file: `cargo fuzz` can't be told `--locked` itself, and would quietly add whatever the file lacks at the newest version. It runs with `--locked` on every pull request ([`ci.yml`](../.github/workflows/ci.yml)) and again before the weekly fuzzing, which doesn't start if it fails.
+So there is one lock file, the main `Cargo.lock`, and `fuzz/Cargo.lock` isn't kept ([`.gitignore`](.gitignore)). [`tools/ci/fuzz-lock.sh`](../tools/ci/fuzz-lock.sh) writes it before the fuzzers are built: a copy of the main lock, from which Cargo takes out what the fuzzers don't build. The fuzzers then build exactly the library versions the program ships, and an update to the main lock (Dependabot's weekly pull request, say) reaches them with nothing more to do. The weekly run writes it in every fuzz job, and `run-all.sh` writes it before building. The script starts from the main lock every time, so run it as often as you like; it stops, saying why, if the result would have another version of a library than the main lock.
 
-It fails after any change to the main `Cargo.lock` that touches a library the fuzzers build, Dependabot's weekly pull request included. To fix it, from the repository's top folder:
+Run it yourself before using `cargo fuzz` directly, as in the last line under [Running](#running). Without a `fuzz/Cargo.lock`, Cargo would make one up from the newest version of everything, and what you fuzz would not be what ships.
 
-```
-tools/ci/fuzz-lock-check.sh --fix
-```
-
-Then commit `fuzz/Cargo.lock`. The fix copies the main lock over the fuzzers' and has Cargo take out what they don't build and add what only they use: `libfuzzer-sys` and `arbitrary`, at their newest versions. That is how those two are kept up to date, so Dependabot isn't pointed at this folder. Never update this lock file by itself (`cargo update` in `fuzz/`): the check would fail.
-
-The weekly security check ([`security.yml`](../.github/workflows/security.yml)) reads this lock file as well as the main one, so a newly found problem in a library only the fuzzers use shows up too.
+Two libraries are in no lock file kept in the repository, because only the fuzzers use them: `libfuzzer-sys`, which the targets are built against, and `arbitrary`, which it needs. They never ship. Each is pinned to one exact version in [`Cargo.toml`](Cargo.toml), so the lock file written is the same every time. Dependabot doesn't read this folder and the security check doesn't see these two: a person updates them, together with cargo-fuzz and the nightly compiler ([`.github/workflows/README.md`](../.github/workflows/README.md#tools-the-workflows-install)).

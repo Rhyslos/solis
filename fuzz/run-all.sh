@@ -8,6 +8,9 @@
 set -uo pipefail
 seconds="${SECONDS_EACH:-600}"
 lanes="${LANES:-2}"
+# The fuzzers' lock file, written from the main one so they build the
+# library versions the program ships (fuzz/README.md, The lock file).
+tools/ci/fuzz-lock.sh || exit 1
 cd fuzz
 targets="${TARGETS:-$(cargo fuzz list)}"
 cargo fuzz build -O >/dev/null 2>&1 || { echo "build failed"; exit 1; }

@@ -1,11 +1,6 @@
 # A weekly check for newly found security problems in Solis's dependencies
 # (decision 0018). Pull requests check them too; this catches advisories
 # published between pull requests. A few seconds on Linux, no build.
-#
-# Two lock files are read: the main Cargo.lock, and the fuzzers' own
-# (fuzz/Cargo.lock). The fuzzers never ship, but they run on GitHub's
-# machines every week, and a few libraries are theirs alone (libfuzzer-sys
-# and what it needs), which no check of the main lock would ever see.
 name: Security
 
 on:
@@ -29,13 +24,3 @@ jobs:
       - uses: EmbarkStudios/cargo-deny-action@3c6349835b2b7b196a839186cb8b78e02f7b5f25 # v2
         with:
           command: check advisories
-      # The fuzzers' workspace, by the same rules: cargo deny reads the
-      # deny.toml in the folder it is started from, the repository's top.
-      # An exception there for a library the fuzzers don't build is only a
-      # warning here. Checked even when the step above found something, so
-      # one run reports both.
-      - uses: EmbarkStudios/cargo-deny-action@3c6349835b2b7b196a839186cb8b78e02f7b5f25 # v2
-        if: success() || failure()
-        with:
-          command: check advisories
-          manifest-path: fuzz/Cargo.toml

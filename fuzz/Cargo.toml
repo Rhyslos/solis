@@ -15,7 +15,14 @@ license = "MIT"
 cargo-fuzz = true
 
 [dependencies]
-libfuzzer-sys = "0.4"
+# The two libraries only the fuzzers use, each pinned to one exact version:
+# no lock file is kept here to hold them (see [workspace] below), and
+# Dependabot doesn't read this folder. A person changes them, with
+# cargo-fuzz and its compiler (.github/workflows/README.md, "Tools the
+# workflows install"). arbitrary is named only to pin it: libfuzzer-sys
+# uses it, no target does.
+libfuzzer-sys = "=0.4.13"
+arbitrary = "=1.5.0"
 editor = { path = "../crates/editor" }
 input = { path = "../crates/input" }
 area = { path = "../crates/area" }
@@ -29,9 +36,10 @@ animation = { path = "../crates/animation" }
 ui = { path = "../crates/ui" }
 tiles = { path = "../crates/tiles" }
 
-# Its own workspace, so the engine's never builds it. Its Cargo.lock must
-# follow the main one: tools/ci/fuzz-lock-check.sh (README.md, The lock
-# file).
+# Its own workspace, so the engine's never builds it. Its Cargo.lock isn't
+# kept in the repository: tools/ci/fuzz-lock.sh writes it from the main
+# one before the fuzzers are built, so they build the library versions the
+# program ships (README.md, The lock file).
 [workspace]
 
 # The same stand-in the engine uses for Kira's triple_buffer

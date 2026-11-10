@@ -1,16 +1,13 @@
 # Weekly pull requests for outdated dependencies (decision 0018), grouped
 # so they arrive as one pull request per kind rather than dozens.
 #
-# Only the main Cargo.lock is listed, on purpose. The fuzzers have a lock
-# file of their own (fuzz/Cargo.lock), and it must follow the main one
-# exactly, never move by itself: a check on every pull request fails when
-# the two differ (tools/ci/fuzz-lock-check.sh). So when a pull request
-# from here changes a library the fuzzers also build, that check fails
-# until someone runs `tools/ci/fuzz-lock-check.sh --fix` on its branch and
-# commits fuzz/Cargo.lock. The same command brings the two libraries only
-# the fuzzers use to their newest versions (fuzz/README.md, The lock
-# file). tools/storage-bench has a lock file too: it is run by hand only,
-# to check one decision again, and nothing updates it.
+# Only the top folder is listed, because the main Cargo.lock is the only
+# lock file kept. The fuzzers' is written from it whenever they are built
+# (tools/ci/fuzz-lock.sh), so an update merged here reaches them with
+# nothing more to do. The two libraries only the fuzzers use are pinned by
+# hand in fuzz/Cargo.toml. tools/storage-bench has a lock file of its own:
+# it is run by hand only, to check one decision again, and nothing updates
+# it.
 version: 2
 updates:
   - package-ecosystem: cargo
