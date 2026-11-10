@@ -1034,9 +1034,177 @@ fn made_up_lists_of_buffers_only_ever_hold_what_they_declare() {
     let _ = std::fs::remove_dir_all(&folder);
 }
 
-/// Writes the model fuzzer's starting file for a list of buffers that all
-/// claim the binary part into `$SOLIS_FUZZ_SEEDS/model`. Run by
-/// `fuzz/make-seeds.sh`.
+// ------------------------------ found by the weekly fuzzer (issue #157) ---
+
+/// A triangle with a corner `reach` metres out, shown by a part `scale`
+/// times its size: the shape of the file the fuzzer found.
+fn far_corner_glb(reach: f32, scale: f32) -> Vec<u8> {
+    let mut b = Builder::default();
+    let mesh = b.add_mesh(
+        &[[0.0, 0.0, 0.0], [reach, 0.0, 0.0], [0.0, 1.0, 0.0]],
+        &[[0.0, 0.0, 1.0]; 3],
+        &[[0.0, 0.0]; 3],
+        &[0, 1, 2],
+        None,
+    );
+    b.json_nodes = vec![format!(
+        r#"{{"name":"Body","mesh":{mesh},"scale":[{scale},1,1]}}"#
+    )];
+    b.glb()
+}
+
+/// Whether every corner of `model`, of every level of detail, is at a
+/// finite place once its part has placed it: what gets drawn.
+fn lands_somewhere(model: &Model) -> bool {
+    model.nodes.iter().all(|node| {
+        node.meshes.iter().all(|&m| {
+            let mesh = &model.meshes[m];
+            let levels = mesh.lods.iter().flat_map(|lod| &lod.vertices);
+            mesh.vertices.iter().chain(levels).all(|v| {
+                node.world
+                    .transform_point3(Vec3::from(v.position))
+                    .is_finite()
+            })
+        })
+    })
+}
+
+#[test]
+fn a_corner_placed_past_what_numbers_can_hold_is_refused() {
+    // The weekly fuzzer's file (issue #157): every number in it was finite
+    // (a corner 1e38 m out, in a part made 5 times as big), but placing the
+    // corner isn't, so the model came in with an endless box around it and
+    // the fuzzer's own check stopped the run.
+    let err = load_bytes(&far_corner_glb(1.0e38, 5.0), None, "X", &limits()).unwrap_err();
+    assert!(
+        matches!(&err, ImportError::Damaged(why) if why.contains("Body")),
+        "{err}"
+    );
+    // The same corner in a part of its own size is still a number.
+    let model = load_bytes(&far_corner_glb(1.0e38, 1.0), None, "X", &limits()).unwrap();
+    assert!(model.is_finite() && lands_somewhere(&model));
+    assert_eq!(model.bounds.max.x, 1.0e38);
+}
+
+#[test]
+fn parts_scaled_inside_each_other_past_what_numbers_can_hold_are_refused() {
+    // Each part's own size is a number; the two multiplied aren't. The
+    // inner part draws nothing here: its place alone is enough.
+    let mut b = Builder::default();
+    let mesh = b.add_cube_mesh(1.0, None);
+    b.json_nodes = vec![
+        format!(r#"{{"name":"Box","mesh":{mesh}}}"#),
+        r#"{"name":"Outer","scale":[1e30,1e30,1e30],"children":[2]}"#.to_string(),
+        r#"{"name":"Inner","scale":[1e30,1e30,1e30]}"#.to_string(),
+    ];
+    let err = load_bytes(&b.glb(), None, "X", &limits()).unwrap_err();
+    assert!(
+        matches!(&err, ImportError::Damaged(why) if why.contains("Inner")),
+        "{err}"
+    );
+}
+
+#[test]
+fn a_level_of_detail_landing_past_what_numbers_can_hold_is_refused() {
+    // A model's own level is moved into the space of the part it stands
+    // in for: a tiny part makes that a huge step.
+    let own_level = |ship_scale: &str, level_half: f32, level_scale: f32| {
+        let mut b = Builder::default();
+        let full = b.add_sphere_mesh(1.0, None);
+        let simple = b.add_cube_mesh(level_half, None);
+        b.json_nodes = vec![
+            format!(
+                r#"{{"name":"Ship","mesh":{full},"scale":[{ship_scale},{ship_scale},{ship_scale}]}}"#
+            ),
+            format!(r#"{{"name":"Ship_LOD1","mesh":{simple},"scale":[{level_scale},1,1]}}"#),
+        ];
+        load_bytes(&b.glb(), None, "X", &limits())
+    };
+    // Past what a number holds in the ship's own space.
+    let err = own_level("1e-10", 1.0e30, 1.0).unwrap_err();
+    assert!(
+        matches!(&err, ImportError::Damaged(why) if why.contains("Ship")),
+        "{err}"
+    );
+    // A number there, but not once the ship is placed.
+    let err = own_level("1e10", 1.0e38, 5.0).unwrap_err();
+    assert!(matches!(err, ImportError::Damaged(_)), "{err}");
+    // An ordinary level beside an ordinary ship still reads.
+    let model = own_level("2", 1.0, 1.0).unwrap();
+    assert_eq!(model.meshes[0].lods.len(), 1);
+    assert!(model.is_finite() && lands_somewhere(&model));
+}
+
+/// Thousands of made-up models whose every number is finite, with parts
+/// and corners of every size a number can hold, inside each other and as
+/// each other's levels of detail: each is read or refused with a reason,
+/// and one that is read holds only finite numbers (the fuzzer's own check)
+/// and draws every corner at a finite place.
+#[test]
+fn made_up_sizes_and_places_never_leave_a_number_that_isnt_finite() {
+    const SIZES: [&str; 8] = ["1e-30", "1e-12", "0.5", "1", "7", "1e12", "1e30", "3e38"];
+    const NAMES: [&str; 4] = ["Ship", "Ship_LOD1", "Ship_LOD2", "Mast"];
+    let mut noise = Noise(157);
+    let (mut read, mut refused) = (0, 0);
+    for _ in 0..3_000 {
+        let mut b = Builder::default();
+        let count = 1 + noise.below(4);
+        let size = |noise: &mut Noise| {
+            // Mostly ordinary, so many models read.
+            let pick = if noise.below(3) == 0 {
+                noise.below(8)
+            } else {
+                2 + noise.below(3)
+            };
+            SIZES[pick]
+        };
+        b.json_nodes = (0..count)
+            .map(|i| {
+                // The first part always draws something; others may only
+                // be places.
+                let mesh = if i == 0 || noise.below(4) > 0 {
+                    let half: f32 = size(&mut noise).parse().unwrap();
+                    format!(r#""mesh":{},"#, b.add_cube_mesh(half, None))
+                } else {
+                    String::new()
+                };
+                let name = NAMES[noise.below(4)];
+                let (scale, moved) = (size(&mut noise), size(&mut noise));
+                let sign = if noise.below(2) == 0 { "" } else { "-" };
+                // Only later parts as children, so the tree never loops.
+                let children: Vec<String> = (i + 1..count)
+                    .filter(|_| noise.below(3) == 0)
+                    .map(|child| child.to_string())
+                    .collect();
+                let children = if children.is_empty() {
+                    String::new()
+                } else {
+                    format!(r#","children":[{}]"#, children.join(","))
+                };
+                format!(
+                    r#"{{"name":"{name}",{mesh}"scale":[{scale},{sign}{scale},1],"translation":[{sign}{moved},0,{moved}]{children}}}"#
+                )
+            })
+            .collect();
+        match load_bytes(&b.glb(), None, "X", &limits()) {
+            Ok(model) => {
+                read += 1;
+                assert!(model.is_finite(), "{:?}", b.json_nodes);
+                assert!(lands_somewhere(&model), "{:?}", b.json_nodes);
+            }
+            Err(ImportError::Damaged(_)) => refused += 1,
+            Err(other) => panic!("{other}: {:?}", b.json_nodes),
+        }
+    }
+    assert!(
+        read > 100 && refused > 100,
+        "{read} read, {refused} refused"
+    );
+}
+
+/// Writes the model fuzzer's starting files made here (a list of buffers
+/// that all claim the binary part, and a corner placed past what numbers
+/// can hold) into `$SOLIS_FUZZ_SEEDS/model`. Run by `fuzz/make-seeds.sh`.
 #[test]
 #[ignore = "writes fuzz seeds: run by fuzz/make-seeds.sh"]
 fn write_fuzz_seeds() {
@@ -1046,4 +1214,5 @@ fn write_fuzz_seeds() {
     let folder = Path::new(&root).join("model");
     std::fs::create_dir_all(&folder).unwrap();
     std::fs::write(folder.join("many-buffers.glb"), many_buffers_glb(64, 0)).unwrap();
+    std::fs::write(folder.join("far-corner.glb"), far_corner_glb(1.0e38, 5.0)).unwrap();
 }

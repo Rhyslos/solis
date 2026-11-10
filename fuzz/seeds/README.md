@@ -9,7 +9,7 @@ Real files the fuzzers start from, one folder per target in [`../fuzz_targets`](
 | `game_code/` | Each sample's `main.lst`, and the turret's Lust and Lua joined by a 0x01 byte. |
 | `import_cache/` | Import cache entries (`.solbin`) of the sample models. |
 | `input_actions/` | Input action files (`.solinput`), with one of format 1 (no version line). |
-| `model/` | The sample models (`.glb`), and a cube whose 64 extra buffers all claim the file's binary part (refused). |
+| `model/` | The sample models (`.glb`), a cube whose 64 extra buffers all claim the file's binary part (refused), and a triangle with a corner placed past what numbers can hold (refused; the file the fuzzer found, issue #157, made small). |
 | `project_file/` | A small project file. |
 | `recording/` | Recordings of play (`.solrec`): a long one, and short ones of formats 1 and 2, so the upgrader is fuzzed too. |
 | `save_game/` | Save games (`.solsave`): the current version and versions 1 and 2, so the upgraders are fuzzed too. |

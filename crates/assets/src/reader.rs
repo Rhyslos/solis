@@ -6,11 +6,12 @@
 //! fit before any of it is read, and the model's size is checked against
 //! [`Limits`] before vertices are allocated. The `gltf` crate parses the
 //! file's structure; Solis reads the buffers and images itself, so it can
-//! apply those checks.
+//! apply those checks. A model that is read holds only finite numbers
+//! ([`Model::is_finite`]), and draws every corner at a finite place.
 
 use crate::geometry;
 use crate::model::{
-    AlphaMode, Bounds, ImportError, Limits, Material, Model, Sampler, Texture, Wrap,
+    AlphaMode, Bounds, ImportError, Limits, Material, Model, Sampler, Texture, Vertex, Wrap,
 };
 use crate::texture;
 use base64::Engine as _;
@@ -147,6 +148,7 @@ fn read_model(
         warnings,
     };
     crate::lods::add_lods(&mut model, limits);
+    every_corner_lands(&model)?;
     // The box is measured after the model's own levels of detail are moved
     // onto what they stand in for: modellers often keep `Ship_LOD1` beside
     // `Ship` in the file, and it isn't drawn there.
@@ -161,6 +163,33 @@ fn read_model(
     .or_else(|| Bounds::around(model.lamps.iter().map(|l| l.position)))
     .ok_or(ImportError::Empty)?;
     Ok(model)
+}
+
+/// Refuses a model with a corner that isn't at a finite place once its
+/// part has placed it. A corner's place and its part's can each be finite
+/// numbers and still multiply to one that isn't (a corner far out, in a
+/// part made bigger): nothing could draw such a corner, and the box around
+/// the model would have no end. The model's own levels of detail are
+/// checked too: they were moved into the space of the part they stand in
+/// for, which can take them just as far.
+fn every_corner_lands(model: &Model) -> Result<(), ImportError> {
+    for node in &model.nodes {
+        let lands = |v: &Vertex| {
+            node.world
+                .transform_point3(glam::Vec3::from(v.position))
+                .is_finite()
+        };
+        for mesh in node.meshes.iter().filter_map(|&m| model.meshes.get(m)) {
+            let levels = mesh.lods.iter().flat_map(|lod| &lod.vertices);
+            if !mesh.vertices.iter().chain(levels).all(lands) {
+                return Err(ImportError::Damaged(format!(
+                    "a corner of the part {} lands further away than numbers can hold",
+                    node.name
+                )));
+            }
+        }
+    }
+    Ok(())
 }
 
 /// Reads a file, refusing it first if it is bigger than `limit` bytes,
