@@ -46,10 +46,19 @@ const KIND: &str = "tilemap";
 pub const OLD_EXTENSION: &str = "soltilemap";
 /// The end of a tile map file's name: `farm.tilemap.lst`.
 pub const ENDING: &str = ".tilemap.lst";
-/// The biggest map file read.
+/// The biggest map file read. Read as Lust, what's in a file costs more
+/// than its length says (`area::lust_data` refuses a file of more than 12
+/// million numbers, texts and symbols), and the two limits together keep
+/// the costliest file read to about 2 GB of memory and 10 seconds. The
+/// biggest map with three layers painted all over (57 MB) is read, in
+/// about half of each; a number in each of a million and a half cells is
+/// too much. A map's own limits allow far more than a file this size
+/// holds (16 layers painted all over the biggest map are 306 MB of rows):
+/// such a map's file is refused as too big to read.
 pub const MAX_BYTES: usize = 64 << 20;
-/// The most blocks a map file has (every chunk of every layer of the
-/// biggest map, and its values').
+/// The most blocks a map file in the older layout has (every chunk of
+/// every layer of the biggest map, and its values'). The Lust layout has
+/// its own count (`map_lust`).
 const MAX_BLOCKS: usize = 300_000;
 /// A new map's size.
 pub const STANDARD_SIZE: [u32; 2] = [64, 64];
@@ -160,7 +169,8 @@ pub fn read(text: &str) -> Result<ReadMap, MapFileError> {
         return Err(MapFileError {
             line: 0,
             message: format!(
-                "the file is {} MB; tile maps up to {} MB are read",
+                "the map is too big to read: its file is {} MB, and tile maps up to {} MB \
+                 are read",
                 text.len() >> 20,
                 MAX_BYTES >> 20
             ),

@@ -13,6 +13,7 @@
 
 use crate::code::CodeProblem;
 use crate::runtime::{Failure, Runtime};
+use crate::ticking::plain;
 use mlua::{Function, Table, Value as LuaValue};
 use std::cell::RefCell;
 use std::rc::Rc;
@@ -27,6 +28,14 @@ pub const ENTRY: &str = "solis screens.lst";
 pub const MAX_SCREENS: usize = 64;
 /// The most pieces read from one screen's view.
 pub const MAX_PIECES: usize = ui::screen::MAX_ELEMENTS;
+/// The most styles read from one screen's view, on all its pieces
+/// together, those inside others (`hover:[…]`) counted too.
+pub const MAX_STYLES: usize = 200_000;
+/// The most text copied out of one screen's view, in bytes: its pieces'
+/// kinds and words and their styles' names and words together.
+pub const MAX_VIEW_BYTES: usize = 4 * 1024 * 1024;
+/// The longest words of one piece or one style, in bytes: the rest is cut.
+const MAX_WORDS: usize = 16 * 1024;
 /// The longest a screen's view may take to run, each time.
 pub const VIEW_LIMIT: std::time::Duration = std::time::Duration::from_millis(50);
 
@@ -570,8 +579,10 @@ impl Screens {
 
     /// Runs the screen `name`'s view, shown for `entity` (`Ui:entity()`),
     /// reading components through `reader`, and reads its tree; or says
-    /// why not: it failed (at its file and line), it took too long, or
-    /// there's no such screen.
+    /// why not: it failed (at its file and line), it took too long, its
+    /// tree holds more than a view may ([`MAX_STYLES`], [`MAX_VIEW_BYTES`];
+    /// its buttons stay as its last view left them), or there's no such
+    /// screen. Pieces past [`MAX_PIECES`] are left out.
     pub fn view(
         &self,
         name: &str,
@@ -586,22 +597,21 @@ impl Screens {
                 message: format!("there's no screen called {name}"),
             });
         };
-        let file = self.files.get(at).cloned().unwrap_or_default();
+        let in_file = |mut p: CodeProblem| {
+            if p.file.is_empty() {
+                p.file = self.files.get(at).cloned().unwrap_or_default();
+            }
+            p
+        };
         let tree = self
             .runtime
             .run_view(&self.views[at].1, VIEW_LIMIT, entity, &self.readers, reader)
-            .map_err(|mut p| {
-                if p.file.is_empty() {
-                    p.file = file;
-                }
-                p
-            })?;
-        let mut count = 0;
-        let mut actions = Vec::new();
-        let node = read_node(&tree, 0, &mut count, &mut actions);
+            .map_err(in_file)?;
+        let mut reading = Reading::whole();
+        let node = read_node(&tree, 0, &mut reading).map_err(in_file)?;
         self.actions
             .borrow_mut()
-            .insert((name.to_string(), entity), actions);
+            .insert((name.to_string(), entity), reading.actions);
         Ok(node)
     }
 
@@ -656,47 +666,118 @@ impl Screens {
     }
 }
 
+/// What's left of what one view may hold, and the buttons found in it.
+/// The tree is game code's and is read after the view's time limit has
+/// ended, so everything looked at in it or copied out of it is taken from
+/// here, each time it's met: a table used in many places (or holding
+/// itself) is paid for at every one, and can't multiply the work.
+struct Reading {
+    /// The pieces still to read: past them the rest are left out.
+    pieces: usize,
+    /// The styles still to read: past them the view is refused.
+    styles: usize,
+    /// The bytes of text still to copy: past them the view is refused.
+    bytes: usize,
+    /// The buttons found, in their numbers' order: at most [`MAX_ACTIONS`].
+    actions: Vec<Function>,
+}
+
+impl Reading {
+    /// All a view may hold.
+    fn whole() -> Self {
+        Self {
+            pieces: MAX_PIECES,
+            styles: MAX_STYLES,
+            bytes: MAX_VIEW_BYTES,
+            actions: Vec::new(),
+        }
+    }
+
+    /// A copy of `words`, cut to `most` bytes before it's made (Luau's
+    /// memory holds one string of tens of megabytes).
+    fn words(&mut self, words: &mlua::LuaString, most: usize) -> Result<String, CodeProblem> {
+        let bytes = words.as_bytes();
+        let copy = String::from_utf8_lossy(&bytes[..bytes.len().min(most)]).into_owned();
+        self.bytes = self.bytes.checked_sub(copy.len()).ok_or_else(|| {
+            plain(format!(
+                "the screen's view holds too much text: at most {} MB, in its pieces' words and \
+                 their styles together",
+                MAX_VIEW_BYTES / (1024 * 1024)
+            ))
+        })?;
+        Ok(copy)
+    }
+
+    /// One more thing in a list of styles, a style or not.
+    fn style(&mut self) -> Result<(), CodeProblem> {
+        self.styles = self.styles.checked_sub(1).ok_or_else(|| {
+            plain(format!(
+                "the screen's view has too many styles: at most {} thousand, on all its pieces \
+                 together",
+                MAX_STYLES / 1000
+            ))
+        })?;
+        Ok(())
+    }
+}
+
 /// A style's value from the tree: a word, a number, a bool, or styles
 /// inside (`hover:[…]`), at most two deep.
-fn read_style(value: LuaValue, depth: usize) -> Option<Style> {
-    Some(match value {
+fn read_style(
+    value: LuaValue,
+    depth: usize,
+    reading: &mut Reading,
+) -> Result<Option<Style>, CodeProblem> {
+    Ok(Some(match value {
         LuaValue::Boolean(b) => Style::Flag(b),
         LuaValue::Integer(i) => Style::Number(i as f64),
         LuaValue::Number(n) => Style::Number(n),
-        LuaValue::String(s) => Style::Text(s.to_string_lossy()),
-        LuaValue::Table(t) if depth < 2 => Style::Nested(read_styles(&t, depth + 1)),
-        _ => return None,
-    })
+        LuaValue::String(s) => Style::Text(reading.words(&s, MAX_WORDS)?),
+        LuaValue::Table(t) if depth < 2 => Style::Nested(read_styles(&t, depth + 1, reading)?),
+        _ => return Ok(None),
+    }))
 }
 
-/// A list of `{name, value}` pairs.
-fn read_styles(styles: &Table, depth: usize) -> Vec<(String, Style)> {
+/// A list of `{name, value}` pairs: the first 256 things in it, each
+/// counted whether it's a pair or not, so a list of anything else is read
+/// no further than a list of styles.
+fn read_styles(
+    styles: &Table,
+    depth: usize,
+    reading: &mut Reading,
+) -> Result<Vec<(String, Style)>, CodeProblem> {
     let mut out = Vec::new();
-    for pair in styles.sequence_values::<Table>().flatten().take(256) {
+    for pair in styles.sequence_values::<LuaValue>().take(256) {
+        reading.style()?;
+        let Ok(LuaValue::Table(pair)) = pair else {
+            continue;
+        };
         let Ok(LuaValue::String(name)) = pair.raw_get::<LuaValue>(1) else {
             continue;
         };
-        let name: String = name.to_string_lossy().chars().take(64).collect();
-        if let Some(value) = read_style(pair.raw_get(2).unwrap_or(LuaValue::Nil), depth) {
+        // 64 letters: four bytes hold any letter.
+        let name: String = reading.words(&name, 64 * 4)?.chars().take(64).collect();
+        if let Some(value) = read_style(pair.raw_get(2).unwrap_or(LuaValue::Nil), depth, reading)? {
             out.push((name, value));
         }
     }
-    out
+    Ok(out)
+}
+
+/// The words `t` has at `key`, cut to [`MAX_WORDS`]; none if it's no text.
+fn read_words(t: &Table, key: &str, reading: &mut Reading) -> Result<String, CodeProblem> {
+    match t.raw_get(key) {
+        Ok(LuaValue::String(s)) => reading.words(&s, MAX_WORDS),
+        _ => Ok(String::new()),
+    }
 }
 
 /// A piece of the tree Lust's view gave: `{k, t, s, c, v}`.
-fn read_node(t: &Table, depth: usize, count: &mut usize, actions: &mut Vec<Function>) -> Node {
-    *count += 1;
-    let text = |v: LuaValue| match v {
-        LuaValue::String(s) => {
-            let bytes = s.as_bytes();
-            String::from_utf8_lossy(&bytes[..bytes.len().min(16 * 1024)]).into_owned()
-        }
-        _ => String::new(),
-    };
+fn read_node(t: &Table, depth: usize, reading: &mut Reading) -> Result<Node, CodeProblem> {
+    reading.pieces = reading.pieces.saturating_sub(1);
     let mut node = Node {
-        kind: text(t.raw_get("k").unwrap_or(LuaValue::Nil)),
-        text: text(t.raw_get("t").unwrap_or(LuaValue::Nil)),
+        kind: read_words(t, "k", reading)?,
+        text: read_words(t, "t", reading)?,
         value: match t.raw_get("v").unwrap_or(LuaValue::Nil) {
             LuaValue::Integer(i) => Some(i as f64),
             LuaValue::Number(n) => Some(n),
@@ -705,29 +786,40 @@ fn read_node(t: &Table, depth: usize, count: &mut usize, actions: &mut Vec<Funct
         ..Node::default()
     };
     if let Ok(styles) = t.raw_get::<Table>("s") {
-        node.styles = read_styles(&styles, 0);
+        node.styles = read_styles(&styles, 0, reading)?;
     }
     // A button's (or a canvas shape's) { }: kept, and numbered.
     if let Ok(f) = t.raw_get::<Function>("f")
-        && actions.len() < MAX_ACTIONS
+        && reading.actions.len() < MAX_ACTIONS
     {
-        node.action = Some(actions.len());
-        actions.push(f);
+        node.action = Some(reading.actions.len());
+        reading.actions.push(f);
     }
     if depth + 1 < ui::screen::MAX_DEPTH
         && let Ok(children) = t.raw_get::<Table>("c")
     {
-        for child in children.sequence_values::<Table>().flatten() {
-            if *count >= MAX_PIECES {
+        for child in children.sequence_values::<LuaValue>() {
+            if reading.pieces == 0 {
                 break;
             }
-            node.children
-                .push(read_node(&child, depth + 1, count, actions));
+            match child {
+                Ok(LuaValue::Table(child)) => {
+                    node.children.push(read_node(&child, depth + 1, reading)?);
+                }
+                // Anything else in the list counts as a piece too, so a
+                // list of a million numbers is read no further than one
+                // of pieces.
+                _ => reading.pieces -= 1,
+            }
         }
     }
-    node
+    Ok(node)
 }
 
 #[cfg(test)]
 #[path = "screens_tests.rs"]
 mod tests;
+
+#[cfg(test)]
+#[path = "screens_reading_tests.rs"]
+mod reading_tests;

@@ -345,39 +345,11 @@ pub(crate) fn read_text_limited(path: &Path, limit: u64) -> std::io::Result<Stri
 
 /// Reads a file of at most `limit` bytes. Only an ordinary file is read
 /// (a link to a device or a pipe, which never ends, is refused), and never
-/// more than `limit` bytes of it, even if it grows while being read.
+/// more than `limit` bytes of it, even if it grows while being read
+/// (`reflect::ordinary_file`, the one place files are opened). One that
+/// isn't an ordinary file is `InvalidData`; a bigger one, `FileTooLarge`.
 pub fn read_limited(path: &Path, limit: u64) -> std::io::Result<Vec<u8>> {
-    use std::io::Read;
-    let not_a_file =
-        || std::io::Error::new(std::io::ErrorKind::InvalidData, "it isn't an ordinary file");
-    let too_big = |size: u64| {
-        std::io::Error::new(
-            std::io::ErrorKind::FileTooLarge,
-            format!("it's {size} bytes; the most read is {limit}"),
-        )
-    };
-    // Checked before opening too: opening a pipe waits for a writer.
-    let before = std::fs::metadata(path)?;
-    if !before.is_file() {
-        return Err(not_a_file());
-    }
-    if before.len() > limit {
-        return Err(too_big(before.len()));
-    }
-    let file = std::fs::File::open(path)?;
-    let meta = file.metadata()?;
-    if !meta.is_file() {
-        return Err(not_a_file());
-    }
-    if meta.len() > limit {
-        return Err(too_big(meta.len()));
-    }
-    let mut bytes = Vec::with_capacity(meta.len() as usize);
-    file.take(limit.saturating_add(1)).read_to_end(&mut bytes)?;
-    if bytes.len() as u64 > limit {
-        return Err(too_big(bytes.len() as u64));
-    }
-    Ok(bytes)
+    Ok(reflect::ordinary_file::read_limited(path, limit)?)
 }
 
 /// Makes the folder `name` (one or more plain parts) inside `root` if it
@@ -441,6 +413,15 @@ mod tests {
             std::os::unix::fs::symlink("/dev/zero", &link).unwrap();
             assert!(read_limited(&link, 1 << 20).is_err(), "a device");
         }
+        // A folder, a device or a pipe named like a file: refused at once,
+        // as text too.
+        for odd in crate::odd_files(&folder, "b.txt") {
+            let err = read_limited(&odd, 1 << 20).unwrap_err();
+            assert_eq!(err.kind(), std::io::ErrorKind::InvalidData, "{odd:?}");
+            assert_eq!(err.to_string(), "it isn't an ordinary file", "{odd:?}");
+            assert!(read_text_limited(&odd, 1 << 20).is_err(), "{odd:?}");
+        }
+        assert_eq!(read_text_limited(&path, 12).unwrap(), "twelve bytes");
         let _ = std::fs::remove_dir_all(&folder);
     }
 

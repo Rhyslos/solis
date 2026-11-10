@@ -2,6 +2,7 @@
 //! (CONTRIBUTING rule 9), and checked by the Lust compiler. Both are slow
 //! enough to run on a worker, never on the frame.
 
+use area::lust_guard::{Found, MAX_PREFIX_RUN};
 use reflect::ComponentSchema;
 use std::io::Read;
 use std::path::Path;
@@ -330,66 +331,24 @@ pub fn compile(code: &Code) -> Result<Option<Compiled>, Vec<CodeProblem>> {
 /// The longest checking the code may take before it's given up on.
 pub const COMPILE_LIMIT: std::time::Duration = std::time::Duration::from_secs(30);
 
-/// The longest run of `!` (as in `!!!x`) allowed in Lust. The Lust
+/// Problems for runs of `!` longer than [`MAX_PREFIX_RUN`]. The Lust
 /// compiler's nesting limit counts `not` and `-` but not `!`, and a long
 /// run takes it time that grows with the square of its length (a file of
-/// them, hours), so a run longer than any real code has is refused before
-/// compiling.
-pub const MAX_PREFIX_RUN: usize = 64;
-
-/// Problems for runs of `!` longer than [`MAX_PREFIX_RUN`],
-/// outside comments (`--` to the end of the line) and strings.
+/// them, hours), so one is refused before compiling. Found as Lust reads
+/// the text, outside comments and strings ([`area::lust_guard`]).
 fn long_prefix_chains(files: &[(String, String)]) -> Vec<CodeProblem> {
     let mut problems = Vec::new();
     for (path, text) in files {
-        let mut run = 0usize;
-        let mut line = 1u32;
-        let mut chars = text.chars().peekable();
-        let mut in_string = false;
-        while let Some(c) = chars.next() {
-            if c == '\n' {
-                line += 1;
-            }
-            if in_string {
-                match c {
-                    '\\' => {
-                        chars.next();
-                    }
-                    '"' | '\n' => in_string = false,
-                    _ => {}
-                }
-                continue;
-            }
-            match c {
-                '"' => {
-                    in_string = true;
-                    run = 0;
-                }
-                '-' if chars.peek() == Some(&'-') => {
-                    // A comment, to the end of the line.
-                    for c in chars.by_ref() {
-                        if c == '\n' {
-                            line += 1;
-                            break;
-                        }
-                    }
-                    run = 0;
-                }
-                '!' => {
-                    run += 1;
-                    if run == MAX_PREFIX_RUN + 1 {
-                        problems.push(CodeProblem {
-                            file: path.clone(),
-                            line,
-                            column: 0,
-                            message: format!(
-                                "more than {MAX_PREFIX_RUN} `!` in a row; write it more simply"
-                            ),
-                        });
-                    }
-                }
-                c if c.is_whitespace() => {}
-                _ => run = 0,
+        for (line, found) in area::lust_guard::scan(text) {
+            if found == Found::LongRun {
+                problems.push(CodeProblem {
+                    file: path.clone(),
+                    line,
+                    column: 0,
+                    message: format!(
+                        "more than {MAX_PREFIX_RUN} `!` in a row; write it more simply"
+                    ),
+                });
             }
         }
     }
@@ -399,15 +358,17 @@ fn long_prefix_chains(files: &[(String, String)]) -> Vec<CodeProblem> {
 /// Problems for two components, classes or objects with the same name,
 /// in one file or two. The Lust compiler (rev a60cf87) never finishes
 /// such code, so it's found here first (by the hardening milestone's
-/// fuzzing, decision 0042), with what to do about it. Outside comments and
-/// strings, as [`long_prefix_chains`] reads.
+/// fuzzing, decision 0042), with what to do about it. Found as
+/// [`long_prefix_chains`] finds its runs.
 fn shared_names(files: &[(String, String)]) -> Vec<CodeProblem> {
     let mut problems = Vec::new();
-    let mut seen: std::collections::HashMap<String, (String, u32)> =
-        std::collections::HashMap::new();
+    let mut seen: std::collections::HashMap<&str, (&str, u32)> = std::collections::HashMap::new();
     for (path, text) in files {
-        for (line, word, name) in declarations(text) {
-            match seen.get(&name) {
+        for (line, found) in area::lust_guard::scan(text) {
+            let Found::Declared(word @ ("component" | "class" | "object"), name) = found else {
+                continue;
+            };
+            match seen.get(name) {
                 Some((first, at)) => problems.push(CodeProblem {
                     file: path.clone(),
                     line,
@@ -418,83 +379,12 @@ fn shared_names(files: &[(String, String)]) -> Vec<CodeProblem> {
                     ),
                 }),
                 None => {
-                    seen.insert(name, (path.clone(), line));
+                    seen.insert(name, (path, line));
                 }
             }
         }
     }
     problems
-}
-
-/// Each `component`, `class` or `object` declared in `text`: its line,
-/// the word, and its name. Comments (`--` to the end of the line) and
-/// strings are skipped.
-fn declarations(text: &str) -> Vec<(u32, &'static str, String)> {
-    let mut found = Vec::new();
-    let mut line = 1u32;
-    let mut word = String::new();
-    // The declaring word just read, waiting for its name.
-    let mut pending: Option<&'static str> = None;
-    let mut chars = text.chars().peekable();
-    let mut in_string = false;
-    let mut finish = |word: &mut String, pending: &mut Option<&'static str>, line: u32| {
-        if word.is_empty() {
-            return;
-        }
-        if let Some(kind) = pending.take() {
-            found.push((line, kind, word.clone()));
-        } else {
-            *pending = match word.as_str() {
-                "component" => Some("component"),
-                "class" => Some("class"),
-                "object" => Some("object"),
-                _ => None,
-            };
-        }
-        word.clear();
-    };
-    while let Some(c) = chars.next() {
-        if in_string {
-            match c {
-                '\\' => {
-                    chars.next();
-                }
-                '"' => in_string = false,
-                '\n' => {
-                    in_string = false;
-                    line += 1;
-                }
-                _ => {}
-            }
-            continue;
-        }
-        if c.is_alphanumeric() || c == '_' {
-            word.push(c);
-            continue;
-        }
-        finish(&mut word, &mut pending, line);
-        match c {
-            '"' => {
-                in_string = true;
-                pending = None;
-            }
-            '-' if chars.peek() == Some(&'-') => {
-                for c in chars.by_ref() {
-                    if c == '\n' {
-                        line += 1;
-                        break;
-                    }
-                }
-            }
-            '\n' => line += 1,
-            c if c.is_whitespace() => {}
-            // Anything else between the word and a name: not a
-            // declaration (`component:` in a comment-free odd place, say).
-            _ => pending = None,
-        }
-    }
-    finish(&mut word, &mut pending, line);
-    found
 }
 
 /// [`compile`], on this thread.
@@ -880,16 +770,6 @@ mod tests {
         assert_eq!(long_prefix_chains(&one(format!("{spaced}x\n"))).len(), 1);
         let broken = "!x".repeat(70);
         assert!(long_prefix_chains(&one(broken)).is_empty());
-        // Declarations: after a string with an escaped quote; across a
-        // line break between the word and its name; not after a comment.
-        let decls = declarations(
-            "s = \"\\\"component Fake\";\ncomponent\n  Real {}\n-- component Gone\nclass Kept {}\n",
-        );
-        let names: Vec<(u32, &str, &str)> =
-            decls.iter().map(|(l, w, n)| (*l, *w, n.as_str())).collect();
-        assert_eq!(names, [(3, "component", "Real"), (5, "class", "Kept")]);
-        // A word that only starts like one isn't a declaration.
-        assert!(declarations("components X {}\nmy_class Y {}\n").is_empty());
     }
 
     #[test]

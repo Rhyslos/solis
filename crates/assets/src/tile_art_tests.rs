@@ -43,3 +43,24 @@ fn damaged_or_huge_pictures_are_refused_with_why() {
             .contains("pixels across")
     );
 }
+
+#[test]
+fn a_jpeg_is_read_whole() {
+    let art = read_tile_art(&crate::picture::tests::jpeg(16, 8), false).unwrap();
+    assert_eq!(art.size, [16, 8]);
+    assert_eq!(art.frames[0].len(), 16 * 8 * 4);
+}
+
+/// A BMP is refused even by a build that carries a BMP decoder (the
+/// Windows build does, through another library), and so is every other
+/// format, each by its first bytes.
+#[test]
+fn a_bmp_and_every_other_format_is_refused_before_decoding() {
+    for (name, bytes) in crate::picture::tests::other_formats() {
+        assert_eq!(
+            read_tile_art(&bytes, false).unwrap_err(),
+            "the picture isn't PNG or JPEG, the formats Solis reads",
+            "{name}"
+        );
+    }
+}

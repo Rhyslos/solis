@@ -57,9 +57,9 @@ Solis is built on other people's libraries, which saves years of work. Each libr
 | `hecs` | The game's fast storage for entities | MIT OR Apache-2.0 | world | walled | Solis's own storage: `tools/storage-bench` already has one, measured against `hecs` for decision 0024 |
 | `hound` | Reads WAV sound files | Apache-2.0 | sound | walled | Read WAV ourselves (a simple, public format: a header and the samples) |
 | `flate2` | Unpacks the zlib-packed pictures inside Aseprite files | MIT OR Apache-2.0 | assets | walled | Use `miniz_oxide` directly, or write an inflater |
-| `image` | Reads PNG and JPEG textures | MIT OR Apache-2.0 | assets, app (tests) | walled | Use smaller PNG and JPEG readers, or fork |
+| `image` | Reads PNG and JPEG textures (only those: `assets/src/picture.rs` checks a file's first bytes, whatever formats other libraries switch on) | MIT OR Apache-2.0 | assets, app (tests) | walled | Use smaller PNG and JPEG readers, or fork |
 | `kira` | Plays and mixes sound: tracks, effects, sound placed in 3D (decision 0056) | MIT OR Apache-2.0 | sound | walled | Fork it (MIT or Apache-2.0), or mix ourselves on top of `cpal` underneath; only the sound crate changes |
-| `lewton` | Reads Ogg Vorbis sound files | MIT OR Apache-2.0 | sound | walled | Fork it (no release since 2021, so Solis's own fuzz tests vet it), or another permissive Vorbis reader |
+| `lewton` | Decodes Ogg Vorbis sound (its headers and packets, handed to it by Solis; its own file reader isn't used) | MIT OR Apache-2.0 | sound | walled | Fork it (no release since 2021, so Solis's own fuzz tests vet it), or another permissive Vorbis reader |
 | `log` | Passes messages to the Console | MIT OR Apache-2.0 | app, render, sound, updater | shared | A few lines of Solis's own logging |
 | `lust` | Lust, the project lead's language (Solis's game code, and reading the data files Solis makes, decision 0081) | MIT | area, script | shared | Ours: the project lead's own repository, pinned to one commit |
 | `meshopt` | Makes levels of detail (simpler meshes for far away) | MIT OR Apache-2.0 | assets | walled | Write a simplifier (quadric error, a known method), or fork; meshoptimizer underneath is MIT |
@@ -67,7 +67,7 @@ Solis is built on other people's libraries, which saves years of work. Each libr
 | `mlua` | Runs Lua and Luau game code, sandboxed | MIT | script | walled | Fork it (MIT), or bind to Luau ourselves (Luau is MIT); only the script crate changes |
 | `notify` | Notices when files change on disk | CC0-1.0 | asset_db | walled | Ask Windows directly (`ReadDirectoryChangesW`), or check files on a timer |
 | `notify-debouncer-mini` | Groups bursts of file changes into one | MIT OR Apache-2.0 | asset_db | walled | Group them ourselves (a short timer) |
-| `ogg` | Reads the Ogg pages a Vorbis file is packed in, so Solis can check its comment header before `lewton` reads it | BSD-3-Clause | sound | walled | Read Ogg pages ourselves (a simple, public format) |
+| `ogg` | Reads the Ogg pages a Vorbis file is packed in, so Solis can check its headers before `lewton` reads them and hand `lewton` the sound a packet at a time | BSD-3-Clause | sound | walled | Read Ogg pages ourselves (a simple, public format) |
 | `opener` | Opens web pages and folders | MIT OR Apache-2.0 | app | walled | Ask Windows directly (`ShellExecute`) |
 | `percent-encoding` | Decodes `%20`-style names in model files | MIT OR Apache-2.0 | assets | walled | Write it (a few lines) |
 | `pollster` | Waits for the graphics card in tests | Apache-2.0/MIT | app (tests), render (tests) | tests | Write it (about 20 lines) |

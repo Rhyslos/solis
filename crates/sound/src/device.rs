@@ -253,10 +253,11 @@ pub(crate) struct FileStream {
 }
 
 impl FileStream {
-    /// Opens the file measured as `info`. A file changed since (another
-    /// rate or channels) is refused: Kira would play it as measured.
+    /// Opens the file measured as `info`, as carefully as when it was
+    /// measured (`read::open`). A file changed since (another rate or
+    /// channels) is refused: Kira would play it as measured.
     pub(crate) fn open(path: &Path, info: ClipInfo) -> Result<Self, ReadError> {
-        let decoder = Decoder::new(BufReader::new(File::open(path)?))?;
+        let decoder = Decoder::new(crate::read::open(path)?)?;
         let now = decoder.info_with(info.frames);
         if (now.sample_rate, now.channels) != (info.sample_rate, info.channels) {
             return Err(ReadError::Damaged(

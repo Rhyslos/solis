@@ -55,7 +55,7 @@ fn memory(clip: &Clip) -> &[Frame] {
     }
 }
 
-fn data(name: &str) -> PathBuf {
+pub(crate) fn data(name: &str) -> PathBuf {
     PathBuf::from(env!("CARGO_MANIFEST_DIR"))
         .join("tests/data")
         .join(name)
@@ -245,6 +245,62 @@ fn a_file_bigger_than_the_limit_is_refused_before_reading() {
     );
 }
 
+/// A project can hold a folder, or a link to a device or a pipe, named
+/// like a sound. A device never ends and a pipe nobody writes to never
+/// opens, so each is refused at once, before it's opened, by everything
+/// that opens a sound file. (If this test hangs, that check has gone.)
+#[test]
+fn only_an_ordinary_file_is_opened_as_a_sound() {
+    let dir = test_dir("special");
+    let (info, _) = measure_file(&data("tone_mono_44k.ogg")).unwrap();
+    let folder = dir.join("folder.wav");
+    std::fs::create_dir(&folder).unwrap();
+    #[cfg_attr(not(unix), allow(unused_mut))]
+    let mut odd = vec![folder];
+    // Windows has no devices or pipes in a project's folder: Unix only.
+    #[cfg(unix)]
+    {
+        let device = dir.join("zero.wav");
+        std::os::unix::fs::symlink("/dev/zero", &device).unwrap();
+        let pipe = dir.join("pipe.ogg");
+        let made = std::process::Command::new("mkfifo").arg(&pipe).status();
+        assert!(made.unwrap().success(), "mkfifo");
+        odd.extend([device, pipe]);
+    }
+    let refused = ReadError::Io("it isn't an ordinary file".into());
+    for path in &odd {
+        assert_eq!(read_file(path).unwrap_err(), refused, "{path:?}");
+        assert_eq!(measure_file(path).unwrap_err(), refused, "{path:?}");
+        let stream = crate::device::FileStream::open(path, info);
+        assert_eq!(stream.err(), Some(refused.clone()), "{path:?}");
+    }
+    assert_eq!(
+        refused.to_string(),
+        "couldn't read it: it isn't an ordinary file"
+    );
+    // An ordinary file beside them still reads, and plays from its file.
+    let good = dir.join("tone.ogg");
+    std::fs::copy(data("tone_mono_44k.ogg"), &good).unwrap();
+    assert_eq!(read_file(&good).unwrap().info, info);
+    assert!(crate::device::FileStream::open(&good, info).is_ok());
+}
+
+/// A sound that's played from its file is opened again each time it
+/// starts: one that has grown past the limit since it was measured is
+/// refused then too.
+#[test]
+fn a_streamed_sound_grown_past_the_limit_is_refused_when_it_plays() {
+    let dir = test_dir("grown");
+    let path = dir.join("tone.ogg");
+    std::fs::copy(data("tone_mono_44k.ogg"), &path).unwrap();
+    let (info, _) = measure_file(&path).unwrap();
+    assert!(crate::device::FileStream::open(&path, info).is_ok());
+    let file = std::fs::OpenOptions::new().write(true).open(&path).unwrap();
+    file.set_len(MAX_FILE_BYTES + 1).unwrap(); // sparse: nothing is written
+    let stream = crate::device::FileStream::open(&path, info);
+    assert_eq!(stream.err(), Some(ReadError::TooBig(MAX_FILE_BYTES + 1)));
+}
+
 #[test]
 fn a_missing_file_is_an_error_not_a_crash() {
     assert!(matches!(
@@ -316,6 +372,15 @@ fn an_ogg_claiming_billions_of_comments_is_refused() {
     let bytes = std::fs::read(data("huge_comment_count.ogg")).unwrap();
     let err = read_bytes(&bytes).unwrap_err();
     assert!(matches!(err, ReadError::Damaged(_)), "{err}");
+    // The file as the fuzzer left it is refused sooner, for its checksums
+    // and stray bytes, which a fuzzing build doesn't look at. So the header
+    // check is shown the comment header itself: the first packet of the
+    // file's second page.
+    let err = crate::vorbis_check::comments(&bytes[98..162]).unwrap_err();
+    assert!(
+        err.to_string().contains("more comments than it holds"),
+        "{err}"
+    );
 }
 
 #[test]
@@ -337,6 +402,114 @@ fn a_chained_ogg_is_refused_before_lewton_reads_its_second_stream() {
     );
 }
 
+/// The weekly fuzzer's crash (issue #156), rebuilt: one stray byte between
+/// a good sound and a second stream hid that stream from the header check,
+/// which stopped at the byte, while the Ogg reader searched past it.
+/// `lewton` then read the second stream's setup header, whose codebook
+/// with no dimensions made it ask for room for 4,294,967,295 lookup values
+/// (17,179,869,180 bytes) before reading one.
+#[test]
+fn a_second_stream_hidden_behind_a_stray_byte_is_refused() {
+    let bytes = std::fs::read(data("chained_after_stray_byte.ogg")).unwrap();
+    // The check first: without it, reading this file ends the program.
+    let err = crate::vorbis_check::check(&mut std::io::Cursor::new(&bytes), |_| {}).unwrap_err();
+    assert!(err.to_string().contains("stray bytes"), "{err}");
+    assert_eq!(read_bytes(&bytes).unwrap_err(), err);
+}
+
+/// The second stream of `chained_after_stray_byte.ogg`, with its checksums.
+fn hostile_stream() -> Vec<u8> {
+    let bytes = std::fs::read(data("chained_after_stray_byte.ogg")).unwrap();
+    let good = std::fs::read(data("tone_mono_44k.ogg")).unwrap();
+    bytes[good.len() + 1..].to_vec()
+}
+
+/// Whether the header check refuses `bytes`. If it passes them, every
+/// packet the Ogg reader finds in them must be of one stream, as `lewton`
+/// reads the headers of any other it meets, unchecked.
+fn refused_or_one_stream(bytes: &[u8]) -> bool {
+    if crate::vorbis_check::check(&mut std::io::Cursor::new(bytes), |_| {}).is_err() {
+        assert!(read_bytes(bytes).is_err());
+        return true;
+    }
+    let mut packets = ogg::PacketReader::new(std::io::Cursor::new(bytes));
+    let mut serials = std::iter::from_fn(|| packets.read_packet().ok().flatten())
+        .map(|packet| packet.stream_serial());
+    let first = serials.next();
+    assert!(serials.all(|serial| Some(serial) == first));
+    false
+}
+
+#[test]
+fn no_gap_hides_a_second_stream() {
+    let good = std::fs::read(data("tone_mono_44k.ogg")).unwrap();
+    let hostile = hostile_stream();
+    // Up to and past the 150 KB the Ogg reader searches for a page, and
+    // gaps that look like the start of a page themselves.
+    let lengths = (0..=64).chain([255, 1023, 1024, 1025, 150 << 10, (150 << 10) + 1, 1 << 20]);
+    for len in lengths {
+        for fill in [&b"\0"[..], b"O", b"Og", b"Ogg", b"OggS", b"\xFF"] {
+            let gap = fill.iter().copied().cycle().take(len);
+            let bytes: Vec<u8> = good
+                .iter()
+                .copied()
+                .chain(gap)
+                .chain(hostile.iter().copied())
+                .collect();
+            assert!(refused_or_one_stream(&bytes), "a gap of {len} {fill:?}");
+        }
+    }
+}
+
+#[test]
+fn no_changed_page_header_hides_a_second_stream() {
+    // A page whose first bytes changed isn't a page to the Ogg reader,
+    // which passes over it to the next: the last page of the good sound
+    // lost that way left the second stream next in line.
+    let mut chained = std::fs::read(data("tone_mono_44k.ogg")).unwrap();
+    chained.extend(hostile_stream());
+    // Each page's header and its table of sizes.
+    let pages = [0..28, 58..98, 3168..3218, 4139..4167, 4197..4226];
+    for at in pages.into_iter().flatten() {
+        for value in [0, 1, 2, b'O', b'S', 0xFF, chained[at] ^ 1, chained[at] ^ 2] {
+            let mut bytes = chained.clone();
+            bytes[at] = value;
+            refused_or_one_stream(&bytes);
+            // Whatever it is now, reading it comes back.
+            let _ = read_bytes(&bytes);
+        }
+    }
+    let mut bytes = chained.clone();
+    bytes[3168] = b'o';
+    let err = read_bytes(&bytes).unwrap_err();
+    assert!(err.to_string().contains("stray bytes"), "{err}");
+}
+
+#[test]
+fn stray_bytes_in_a_good_ogg_are_damage() {
+    let good = std::fs::read(data("tone_mono_44k.ogg")).unwrap();
+    // Between pages, however few: the same answer as after the last page.
+    for (at, len) in [
+        (58, 1),
+        (3168, 1),
+        (3168, 40),
+        (good.len(), 27),
+        (good.len(), 100),
+    ] {
+        let mut bytes = good.clone();
+        bytes.splice(at..at, std::iter::repeat_n(0, len));
+        let err = read_bytes(&bytes).map(|clip| clip.info).unwrap_err();
+        assert!(
+            err.to_string().contains("stray bytes"),
+            "{len} at {at}: {err}"
+        );
+    }
+    // Too few after the last page to be one: the Ogg reader refuses them.
+    let mut bytes = good.clone();
+    bytes.extend([0; 26]);
+    assert!(matches!(read_bytes(&bytes), Err(ReadError::Damaged(_))));
+}
+
 /// Found by fuzzing too: a codebook claiming more lookup values than
 /// there's memory for.
 #[test]
@@ -344,6 +517,10 @@ fn an_ogg_with_a_huge_codebook_is_refused() {
     let bytes = std::fs::read(data("huge_codebook.ogg")).unwrap();
     let err = read_bytes(&bytes).unwrap_err();
     assert!(matches!(err, ReadError::Damaged(_)), "{err}");
+    // As above: the setup header itself, the second packet of the file's
+    // second page.
+    let err = crate::vorbis_check::setup(&bytes[164..3648]).unwrap_err();
+    assert!(err.to_string().contains("its setup is cut off"), "{err}");
 }
 
 #[test]
@@ -355,7 +532,7 @@ fn the_ogg_test_files_pass_the_header_check() {
         "silence_22k.ogg",
     ] {
         let mut file = std::io::Cursor::new(std::fs::read(data(name)).unwrap());
-        crate::vorbis_check::check(&mut file).unwrap_or_else(|e| panic!("{name}: {e}"));
+        crate::vorbis_check::check(&mut file, |_| {}).unwrap_or_else(|e| panic!("{name}: {e}"));
     }
 }
 
@@ -507,7 +684,7 @@ fn the_extension_and_the_contents_name_the_format() {
 }
 
 /// A fresh folder for one test.
-fn test_dir(name: &str) -> PathBuf {
+pub(crate) fn test_dir(name: &str) -> PathBuf {
     let dir = std::env::temp_dir().join(format!("solis-sound-{name}-{}", std::process::id()));
     let _ = std::fs::remove_dir_all(&dir);
     std::fs::create_dir_all(&dir).unwrap();

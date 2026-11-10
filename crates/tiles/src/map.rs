@@ -651,7 +651,9 @@ impl TileMap {
     }
 
     /// Changes a value's kind. The cells keep what still fits: a choice's
-    /// options kept by name, everything else back to its start.
+    /// options kept by name, everything else back to its start. Whether it
+    /// changed: not if the kind is the one it has, has too many options,
+    /// or takes more memory a cell than the map has room for.
     pub fn set_value_kind(&mut self, value: usize, kind: ValueKind) -> bool {
         let Some(def) = self.values.get(value) else {
             return false;
@@ -660,6 +662,11 @@ impl TileMap {
             return false;
         }
         if matches!(&kind, ValueKind::Choice(o) if o.len() > MAX_OPTIONS) {
+            return false;
+        }
+        // A switch made a number goes from one byte a cell to four.
+        let more = value_bytes(&kind).saturating_sub(value_bytes(&def.kind));
+        if more > 0 && !self.room_for(more) {
             return false;
         }
         let new = match (&def.kind, &kind, &*self.columns[value]) {

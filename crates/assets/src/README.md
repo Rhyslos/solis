@@ -14,6 +14,7 @@ Reads model files (glTF 2.0: `.gltf` or `.glb`) and their PNG and JPEG textures 
 | `lods.rs` | Levels of detail: simpler versions of each mesh for when a copy is small on screen, made by simplifying or taken from the model's own `_LOD1` meshes (decision 0032). Tests in `lods_tests.rs`. | `add_lods`, `simplified` |
 | `aseprite.rs` | Reads Aseprite files (Phase 9, D2) within limits: frames flattened from the visible layers, tags, slices, layers, palette and user data. Tests in `aseprite_tests.rs`, which also writes test files and the fuzz seeds. | `read_aseprite`, `Aseprite`, `AseLimits` |
 | `sprite_sheet.rs` | Turns an Aseprite file into a sprite sheet: frames trimmed, identical ones kept once, packed into one atlas with padded edges; where a sprite stands (`pivot`). | `SpriteSheet`, `build_sheet` |
+| `picture.rs` | Which picture formats are read: PNG and JPEG, told by a file's first bytes. Every picture reader opens its bytes here, so nothing else reaches a decoder, whatever formats the build's `image` library carries. | (internal) |
 | `texture.rs` | Decodes PNG and JPEG images within limits, and works out their mip levels (smaller copies for distant surfaces). | `decode`, `with_mips`, `solid` |
 | `tile_art.rs` | A tileset's picture (Phase 9, D5): a PNG, JPEG or Aseprite file read whole within limits (never scaled; an Aseprite file's every frame and its time); and a picture written as a PNG (templates). Tests in `tile_art_tests.rs`. | `TileArt`, `read_tile_art`, `png_of` |
 | `lights.rs` | Reads the lights a file carries (suns, point lights, spotlights) and converts their strength into the units the editor shows. | `Lamp`, `LampKind` |
@@ -21,6 +22,6 @@ Reads model files (glTF 2.0: `.gltf` or `.glb`) and their PNG and JPEG textures 
 
 ## How the pieces fit
 
-`reader::load` opens the file and checks it against `Limits`; `geometry` turns its meshes into `Mesh`es and `Node`s, `texture` decodes its images, `lights` reads its lamps, and `lods` adds simpler levels, all into one `Model`. Nothing here touches the GPU: the `render` crate uploads the `Model`, and `asset_db` keeps it in the import cache.
+`reader::load` opens the file and checks it against `Limits`; `geometry` turns its meshes into `Mesh`es and `Node`s, `texture` decodes its images (opened by `picture`, like `tile_art`'s), `lights` reads its lamps, and `lods` adds simpler levels, all into one `Model`. Nothing here touches the GPU: the `render` crate uploads the `Model`, and `asset_db` keeps it in the import cache.
 
 **Read next:** the crate's [README](../README.md).

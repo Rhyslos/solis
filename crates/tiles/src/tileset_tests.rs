@@ -146,6 +146,87 @@ fn art_pieces_and_rules_round_trip() {
 }
 
 #[test]
+fn a_tileset_as_full_as_one_gets_reads_back() {
+    // The most terrains, pieces and rules a tileset has, each in its
+    // longest shape and with the odder codes (`{`, `'`, `@`): the biggest
+    // tileset Solis writes, which the data reader's checks must let
+    // through whole.
+    let codes: Vec<char> = ('!'..='~').filter(|c| usable_code(*c)).collect();
+    let mut set = Tileset {
+        picture: Some(reflect::AssetId(id(9))),
+        tile: [MAX_TILE, MAX_TILE],
+        terrains: Vec::new(),
+        pieces: Vec::new(),
+        rules: Vec::new(),
+    };
+    for (n, &code) in codes.iter().enumerate().take(MAX_TERRAINS) {
+        set.terrains.push(Terrain {
+            id: id(1000 + n as u64),
+            name: format!("terrain_{n}"),
+            code,
+            colour: [n as f32 / 64.0, 0.42, 1.0],
+            kind: TileKind::ALL[n % TileKind::ALL.len()],
+            solid: n % 2 == 0,
+        });
+    }
+    for n in 0..MAX_PIECES {
+        let terrain = &set.terrains[n % MAX_TERRAINS];
+        set.pieces.push(Piece {
+            id: id(10_000 + n as u64),
+            terrain: terrain.id,
+            slot: n as u32 % crate::autotile::slot_count(terrain.kind),
+            at: [n as u32, MAX_AT - n as u32 % 7],
+            weight: 0.25 * (1 + n % 9) as f32,
+            animation: match n % 3 {
+                0 => Animation::None,
+                1 => Animation::Columns {
+                    count: 2 + n as u32 % (MAX_FRAMES - 1),
+                    ms: FRAME_MS.0 + n as u32,
+                },
+                _ => Animation::Frames,
+            },
+        });
+    }
+    let of_rules: Vec<Id> = set
+        .terrains
+        .iter()
+        .filter(|t| t.kind == TileKind::Rules)
+        .map(|t| t.id)
+        .collect();
+    for n in 0..MAX_RULES {
+        let around = [
+            Cond::Any,
+            Cond::Same,
+            Cond::Other,
+            Cond::Empty,
+            Cond::Terrain(codes[n % codes.len()]),
+        ];
+        let mut pattern: Vec<Cond> = (0..MAX_PATTERN * MAX_PATTERN)
+            .map(|cell| around[(cell + n) % around.len()])
+            .collect();
+        pattern[MAX_PATTERN * MAX_PATTERN / 2] = Cond::Same;
+        set.rules.push(Rule {
+            id: id(20_000 + n as u64),
+            terrain: of_rules[n % of_rules.len()],
+            size: MAX_PATTERN,
+            pattern,
+            slot: n as u32 % crate::autotile::RULE_SLOTS,
+        });
+    }
+    assert_eq!(set.terrains.len(), MAX_TERRAINS);
+    let text = write(&set);
+    assert!(
+        area::lust_data::is_data(&text) && text.len() < MAX_BYTES,
+        "{}",
+        text.len()
+    );
+    let back = read(&text).unwrap();
+    assert!(back.notes.is_empty(), "{:?}", back.notes);
+    assert_eq!(back.tileset, set);
+    assert_eq!(write(&back.tileset), text);
+}
+
+#[test]
 fn version_1_reads_as_plain_terrains_with_no_art() {
     let text = include_str!("../../../tests/fixtures/tileset/v1/farm.soltileset");
     let read = read(text).unwrap();
@@ -351,4 +432,215 @@ fn solid_is_read_only_as_true_or_false() {
         "{:?}",
         read.notes
     );
+}
+
+/// What `read` answers. A reader that never finishes fails the test here,
+/// rather than holding up the whole run: fixed, it answers in well under a
+/// thousandth of this long.
+pub(crate) fn in_time<T: Send + 'static>(read: impl FnOnce() -> T + Send + 'static) -> T {
+    let (sender, answer) = std::sync::mpsc::channel();
+    std::thread::spawn(move || sender.send(read()));
+    answer
+        .recv_timeout(std::time::Duration::from_secs(30))
+        .expect("the reader never finished")
+}
+
+#[test]
+fn two_classes_with_one_name_are_refused_never_a_hang() {
+    // The tileset fuzzer's first run stopped on a file the reader never
+    // finished (over a minute, then given up on), here made small: a `new`
+    // turned into `class` twice, and Lust never finishes checking two
+    // classes with one name. A data file holds no class, so it's refused
+    // before Lust sees it.
+    let text = include_str!("../tests/data/two-classes-one-name.tileset.lst");
+    let why = in_time(|| read(text).map(|_| ())).unwrap_err();
+    assert_eq!(why.line, 9);
+    assert!(why.message.contains("only lock values"), "{why}");
+    // The fixture, damaged the same way.
+    let fixture = include_str!("../../../tests/fixtures/tileset/v4/farm.tileset.lst");
+    let damaged = fixture.replace("new Terrain", "class Terrain");
+    let why = in_time(move || read(&damaged).map(|_| ())).unwrap_err();
+    assert_eq!(why.line, 12);
+    assert!(why.message.contains("only lock values"), "{why}");
+}
+
+#[test]
+fn a_character_that_can_t_be_seen_is_refused_in_lust_and_skipped_in_the_older_layout() {
+    // What the atlas fuzzer found (see `area::lust_data`): a control
+    // character in a data file's text is read by Lust and left out when
+    // written. A terrain's name with one was always skipped, and no other
+    // text of a tileset is kept as it's read; now the Lust file is
+    // refused, on the line its list starts.
+    let fixture = include_str!("../../../tests/fixtures/tileset/v4/farm.tileset.lst");
+    let why = read(&fixture.replace("\"grass\"", "\"gra\u{17}ss\"")).unwrap_err();
+    assert_eq!(why.line, 11);
+    assert!(why.message.contains("can't be seen (U+0017)"), "{why}");
+    // The older layout writes one as `\u{17}`, and skips the terrain.
+    let older = include_str!("../../../tests/fixtures/tileset/v3/farm.soltileset");
+    let read = read(&older.replace("\"grass\"", "\"gra\\u{17}ss\"")).unwrap();
+    assert!(read.tileset.by_name("grass").is_none());
+    assert!(
+        read.notes.iter().any(|n| n.contains("isn't a name")),
+        "{:?}",
+        read.notes
+    );
+}
+
+/// `good` with a few changes of the kinds that reach past Lust's own
+/// checks: a letter put into a text (some that can't be seen, some Lust
+/// writes with a `\`), a number in place of another, a line twice or
+/// gone, a letter anywhere at all. `next` gives a number below its limit.
+pub(crate) fn damaged(good: &str, next: &mut impl FnMut(usize) -> usize) -> String {
+    const LETTERS: [&str; 32] = [
+        "\u{17}", "\r", "\0", "\u{7f}", "\u{85}", "\u{1b}", "\t", "\\t", "\\n", "\\\"", "\\\\",
+        "\\{", "\\}", "}", "{ ", " ", "é", "\u{a0}", "\u{2028}", "\u{feff}", "..", "/", ".", "_",
+        "a", "A", "1", "'", "--", "//", ";", "grass",
+    ];
+    const NUMBERS: [&str; 16] = [
+        "0",
+        "1",
+        "-1",
+        "31",
+        "32",
+        "64",
+        "4096",
+        "4097",
+        "4294967295",
+        "4294967296",
+        "9223372036854775807",
+        "9223372036854775808",
+        "1.5",
+        "1e3",
+        "007",
+        "-0",
+    ];
+    let mut text = good.to_string();
+    for _ in 0..1 + next(3) {
+        let places = |of: fn(char) -> bool| -> Vec<usize> {
+            text.match_indices(of).map(|(at, _)| at).collect()
+        };
+        let lines: Vec<usize> = std::iter::once(0)
+            .chain(places(|c| c == '\n').into_iter().map(|at| at + 1))
+            .collect();
+        let line = lines[next(lines.len())];
+        let end = text[line..].find('\n').map_or(text.len(), |n| line + n + 1);
+        match next(6) {
+            0 | 1 => {
+                let quotes = places(|c| c == '"');
+                let at = quotes[next(quotes.len())] + next(2);
+                text.insert_str(at, LETTERS[next(LETTERS.len())]);
+            }
+            2 | 3 => {
+                let digits = places(|c| c.is_ascii_digit());
+                let at = digits[next(digits.len())];
+                let end = text[at..]
+                    .find(|c: char| !c.is_ascii_digit())
+                    .map_or(text.len(), |n| at + n);
+                text.replace_range(at..end, NUMBERS[next(NUMBERS.len())]);
+            }
+            4 => {
+                let copy = text[line..end].to_string();
+                text.insert_str(line, &copy);
+            }
+            _ if next(2) == 0 => text.replace_range(line..end, ""),
+            _ => {
+                let mut at = line + next(end - line + 1);
+                while !text.is_char_boundary(at) {
+                    at -= 1;
+                }
+                text.insert_str(at, LETTERS[next(LETTERS.len())]);
+            }
+        }
+    }
+    text
+}
+
+/// A way to choose numbers below a limit, the same every run from `seed`.
+pub(crate) fn chooser(mut seed: u64) -> impl FnMut(usize) -> usize {
+    move |below| {
+        seed ^= seed << 13;
+        seed ^= seed >> 7;
+        seed ^= seed << 17;
+        (seed >> 24) as usize % below
+    }
+}
+
+/// What the fuzz target (`fuzz/fuzz_targets/tileset.rs`) holds the reader
+/// to, for `text`: refused, or read within the limits, each name and code
+/// used once, every piece's terrain there and its slot one of its kind's,
+/// written back to itself, and a small map of it autotiled inside the
+/// map's reach. Says whether it was read.
+fn keeps_its_promises(text: &str) -> bool {
+    let Ok(read) = read(text) else {
+        return false;
+    };
+    let set = &read.tileset;
+    assert!(set.terrains.len() <= MAX_TERRAINS, "{text:?}");
+    for terrain in &set.terrains {
+        assert!(usable_code(terrain.code), "{text:?}");
+        let letters = terrain.name.chars().count();
+        assert!((1..=MAX_NAME).contains(&letters), "{text:?}");
+        assert!(
+            terrain.colour.iter().all(|c| (0.0..=1.0).contains(c)),
+            "{text:?}"
+        );
+        let by_code = set.by_code(terrain.code).map(|t| t.id);
+        assert_eq!(by_code, Some(terrain.id), "{text:?}");
+        let by_name = set.by_name(&terrain.name).map(|t| t.id);
+        assert_eq!(by_name, Some(terrain.id), "{text:?}");
+    }
+    let written = write(set);
+    let again = super::read(&written).unwrap_or_else(|e| panic!("{e}\n{text:?}\n{written:?}"));
+    assert_eq!(&again.tileset, set, "{text:?}");
+    if let Some(code) = set.free_code() {
+        assert!(set.by_code(code).is_none() && usable_code(code), "{text:?}");
+    }
+    for piece in &set.pieces {
+        let kind = set.terrain(piece.terrain).map(|t| t.kind);
+        assert!(
+            kind.is_some_and(|k| piece.slot < crate::autotile::slot_count(k)),
+            "{text:?}"
+        );
+    }
+    let mut map = crate::TileMap::new([9, 7], None, None);
+    for (x, y) in (0..7u32).flat_map(|y| (0..9u32).map(move |x| (x, y))) {
+        let i = (x * 7 + y * 3) as usize % (set.terrains.len() + 1);
+        if let Some(terrain) = set.terrains.get(i) {
+            let _ = map.set_code(0, x, y, terrain.code as u8);
+        }
+    }
+    for placed in crate::autotile::chunk_tiles(&map, 0, set, [0, 0]) {
+        assert!(
+            (-1..=18).contains(&placed.x) && (-1..=14).contains(&placed.y),
+            "{text:?}"
+        );
+        if let crate::autotile::Art::Piece(i) = placed.art {
+            assert!(i < set.pieces.len(), "{text:?}");
+        }
+    }
+    for terrain in &set.terrains {
+        let _ = crate::autotile::missing_slots(set, terrain);
+    }
+    true
+}
+
+#[test]
+fn no_damaged_tileset_breaks_a_promise() {
+    // Fuzz-style, the same every run: thousands of damaged copies of each
+    // version's example, the older layouts too, each held to what the fuzz
+    // target holds the reader to.
+    let mut next = chooser(0x5EC2_0000_711E_5E70);
+    let mut read = 0;
+    for good in [
+        include_str!("../../../tests/fixtures/tileset/v1/farm.soltileset"),
+        include_str!("../../../tests/fixtures/tileset/v2/farm.soltileset"),
+        include_str!("../../../tests/fixtures/tileset/v3/farm.soltileset"),
+        include_str!("../../../tests/fixtures/tileset/v4/farm.tileset.lst"),
+    ] {
+        for _ in 0..1000 {
+            read += usize::from(keeps_its_promises(&damaged(good, &mut next)));
+        }
+    }
+    // Both sides are reached: files read, and files refused.
+    assert!((1000..3000).contains(&read), "{read}");
 }

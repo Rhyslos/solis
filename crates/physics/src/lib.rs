@@ -300,12 +300,14 @@ const MAX_SPEED: f32 = MAX_PLACE / 10.0;
 /// make Rapier's collision maths fail.
 const MAX_SIZE: f32 = 1.0e6;
 
-/// A length that's usable: positive and finite, at least a millimetre.
+/// A length that's usable: positive, at least a millimetre and at most
+/// [`MAX_SIZE`]. Endless counts as too big, not as rubbish: a size and a
+/// scale that are each a number can multiply past the biggest one.
 fn length(value: f32) -> f32 {
-    if value.is_finite() {
-        value.abs().clamp(0.001, MAX_SIZE)
-    } else {
+    if value.is_nan() {
         0.001
+    } else {
+        value.abs().clamp(0.001, MAX_SIZE)
     }
 }
 
@@ -613,8 +615,10 @@ impl Physics {
                     rp::ColliderBuilder::capsule_z(half, radius)
                 }
             };
+            // Held to where places are held: a centre and a scale that
+            // are each a number can multiply past the biggest one.
             let center = if c.center.is_finite() {
-                c.center * s
+                (c.center * s).clamp(Vec3::splat(-MAX_PLACE), Vec3::splat(MAX_PLACE))
             } else {
                 Vec3::ZERO
             };

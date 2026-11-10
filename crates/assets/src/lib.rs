@@ -11,6 +11,7 @@ mod geometry;
 pub mod lights;
 pub mod lods;
 pub mod model;
+mod picture;
 mod reader;
 pub mod sample;
 pub mod sprite_sheet;

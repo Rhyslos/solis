@@ -206,14 +206,22 @@ fn scene_nodes(document: &gltf::Document) -> Result<Vec<PlacedNode<'_>>, ImportE
             Mat4::IDENTITY
         };
         let world = parent.map_or(local, |p| out[p].world * local);
+        let name = node
+            .name()
+            .map_or_else(|| format!("Node {}", node.index()), str::to_string);
+        // Every placement in the file can be a finite number, and parts
+        // inside each other still multiply to one that isn't.
+        if !world.is_finite() {
+            return Err(ImportError::Damaged(format!(
+                "the part {name} is placed or scaled past what numbers can hold"
+            )));
+        }
         let index = out.len();
         too_many(steps, todo.len(), node.children().len())?;
         let children: Vec<_> = node.children().map(|c| (c, Some(index))).collect();
         todo.extend(children.into_iter().rev());
         out.push(PlacedNode {
-            name: node
-                .name()
-                .map_or_else(|| format!("Node {}", node.index()), str::to_string),
+            name,
             parent,
             local,
             world,

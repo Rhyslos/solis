@@ -7,8 +7,9 @@ Sound (decision 0056): the Kira library does the playing and mixing, wrapped her
 | File | What it does | Main items |
 | --- | --- | --- |
 | `lib.rs` | Lists the modules and what the crate offers. | |
-| `read.rs` | Reads WAV (through `hound`) and Ogg Vorbis (through `lewton`) within limits. Short sounds are decoded into memory; long ones are measured once and streamed from their file. | `Clip`, `ClipInfo`, `Samples`, `Format`, `ReadError`, `read_file`, `measure_file` |
-| `vorbis_check.rs` | Checks an Ogg Vorbis file's headers before `lewton` reads them, because a damaged header can make it ask for more memory than there is. | |
+| `read.rs` | Reads WAV (through `hound`) and Ogg Vorbis (through `lewton`) within limits. Short sounds are decoded into memory; long ones are measured once and streamed from their file. Every sound file is opened in one place (`open`): only an ordinary file, within the size limit. | `Clip`, `ClipInfo`, `Samples`, `Format`, `ReadError`, `read_file`, `measure_file` |
+| `vorbis_check.rs` | Checks an Ogg Vorbis file's headers before `lewton` reads them, because a damaged header can make it ask for more memory than there is. Walks every page on the way, refusing a second stream or stray bytes. | |
+| `vorbis_stream.rs` | An Ogg Vorbis file as it's decoded: reads its packets itself and hands `lewton` one at a time, only of the stream that was checked; opens at any frame, starting on a page the check walked. | `VorbisStream` (inside the crate) |
 | `overview.rs` | A sound's loudness over its length, small enough to keep for every sound: the waveform the Library and Properties draw. | `Overview` |
 | `device.rs` | The sound device on the sound card (or a test device, or none), and the editor's previews on a track of their own, varied in volume and pitch for sound events. | `SoundDevice` |
 | `event.rs` | Sound events (`.solsound`): reading and writing them within limits, and picking each play (a take, its volume and pitch) from sound's own random numbers; who hears it (S8). | `SoundEvent`, `HeardBy`, `Pick`, `read`, `write`, `pick` |
@@ -19,5 +20,6 @@ Sound (decision 0056): the Kira library does the playing and mixing, wrapped her
 | `buses.rs` | The buses on Kira's tracks: one track per bus, nested as they are, each with a volume control then a meter, so meters read after the fader. | `BusTree` (inside the crate) |
 | `event_tests.rs` | Tests for sound events: round trips, mistakes refused with their line, and picks within their ranges, never the same take twice running. | |
 | `tests.rs` | Tests for reading sound files, their overviews and the device, including the damaged files in [`../tests/data`](../tests/README.md). | |
+| `seek_tests.rs` | Tests for moving in a sound as it's decoded: an Ogg lands on the very frame, is checked again each time, and never reads a second stream; sweeps over damaged files and pages that lie about their frames. | |
 
 **Read next:** the crate's [README](../README.md).

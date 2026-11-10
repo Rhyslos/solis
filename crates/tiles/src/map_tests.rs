@@ -211,3 +211,45 @@ fn a_map_s_layers_and_values_stay_within_their_memory() {
     assert!(!small.resize([MAX_SIDE, MAX_SIDE]));
     assert_eq!(small.size(), [64, 64]);
 }
+
+#[test]
+fn a_value_s_kind_changes_only_within_the_map_s_memory() {
+    // The code review: adding a value checked the map's memory, but
+    // changing one's kind didn't, so on a full map each switch (a byte a
+    // cell) made a number (four) took 48 MB past the limit, and 32 of them
+    // a gigabyte and a half. The biggest map, full: 16 layers and 16
+    // switches.
+    let mut map = TileMap::bare([MAX_SIDE, MAX_SIDE], None);
+    for n in 0..MAX_LAYERS {
+        map.add_layer(&format!("layer{n}"), false).unwrap();
+    }
+    for n in 0..16 {
+        map.add_value(&format!("switch{n}"), ValueKind::Switch)
+            .unwrap();
+    }
+    assert_eq!(
+        map.add_value("more", ValueKind::Switch),
+        Err(MapError::Full)
+    );
+    map.set_value(0, 5, 5, CellValue::Switch(true)).unwrap();
+    let before = map.clone();
+    // A bigger kind doesn't fit: refused, and nothing changes.
+    assert!(!map.set_value_kind(0, ValueKind::Number));
+    assert!(map == before);
+    assert_eq!(map.revision(), before.revision());
+    assert_eq!(map.value(0, 5, 5), Some(CellValue::Switch(true)));
+    // A kind of the same size does.
+    assert!(map.set_value_kind(0, ValueKind::Choice(vec!["wheat".into()])));
+    assert_eq!(map.value(0, 5, 5), Some(CellValue::Choice(None)));
+    // With three values gone there is exactly room for one number, and for
+    // no second; made a switch again, it leaves that room to another.
+    for _ in 0..3 {
+        assert!(map.remove_value(15 - 3));
+    }
+    assert!(map.set_value_kind(1, ValueKind::Number));
+    assert!(!map.set_value_kind(2, ValueKind::Number));
+    assert!(map.set_value_kind(1, ValueKind::Switch));
+    assert!(map.set_value_kind(2, ValueKind::Number));
+    let cells = u64::from(MAX_SIDE) * u64::from(MAX_SIDE);
+    assert_eq!(map.bytes_per_cell() * cells, MAX_MAP_BYTES);
+}

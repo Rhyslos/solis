@@ -59,6 +59,33 @@ pub fn app_info() -> editor::AppInfo {
     }
 }
 
+/// Things that aren't ordinary files, each called `name` in a folder of
+/// its own under `folder`: a folder and, on Unix, a link to a device
+/// (which never ends) and a pipe nobody writes to (which never opens).
+/// Windows has neither of those in a project's folder. A reader that
+/// hangs on one has lost its check (`reflect::ordinary_file`).
+#[cfg(test)]
+pub(crate) fn odd_files(folder: &std::path::Path, name: &str) -> Vec<std::path::PathBuf> {
+    let inside = |kind: &str| {
+        std::fs::create_dir_all(folder.join(kind)).unwrap();
+        folder.join(kind).join(name)
+    };
+    let as_folder = inside("as-folder");
+    std::fs::create_dir_all(&as_folder).unwrap();
+    #[cfg_attr(not(unix), allow(unused_mut))]
+    let mut odd = vec![as_folder];
+    #[cfg(unix)]
+    {
+        let device = inside("as-device");
+        std::os::unix::fs::symlink("/dev/zero", &device).unwrap();
+        let pipe = inside("as-pipe");
+        let made = std::process::Command::new("mkfifo").arg(&pipe).status();
+        assert!(made.unwrap().success(), "mkfifo");
+        odd.extend([device, pipe]);
+    }
+    odd
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

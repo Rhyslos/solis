@@ -491,6 +491,89 @@ fn damaged_files_with_lights_never_crash_the_reader() {
     }
 }
 
+/// Things that aren't ordinary files, each called `name` in a folder of
+/// its own under `folder`: a folder and, on Unix, a link to a device
+/// (which never ends) and a pipe nobody writes to (which never opens).
+/// Windows has neither of those in a project's folder. A reader that
+/// hangs on one has lost its check (`reflect::ordinary_file`).
+fn odd_files(folder: &std::path::Path, name: &str) -> Vec<std::path::PathBuf> {
+    let inside = |kind: &str| {
+        std::fs::create_dir_all(folder.join(kind)).unwrap();
+        folder.join(kind).join(name)
+    };
+    let as_folder = inside("as-folder");
+    std::fs::create_dir_all(&as_folder).unwrap();
+    #[cfg_attr(not(unix), allow(unused_mut))]
+    let mut odd = vec![as_folder];
+    #[cfg(unix)]
+    {
+        let device = inside("as-device");
+        std::os::unix::fs::symlink("/dev/zero", &device).unwrap();
+        let pipe = inside("as-pipe");
+        let made = std::process::Command::new("mkfifo").arg(&pipe).status();
+        assert!(made.unwrap().success(), "mkfifo");
+        odd.extend([device, pipe]);
+    }
+    odd
+}
+
+#[test]
+fn only_ordinary_files_are_read_for_a_model() {
+    let folder = std::env::temp_dir().join(format!("solis-odd-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&folder);
+    // The model itself: refused at once, saying why.
+    for odd in odd_files(&folder.join("models"), "ship.glb") {
+        for err in [
+            load(&odd, &limits()).unwrap_err(),
+            referenced_files(&odd, &limits()).unwrap_err(),
+        ] {
+            assert!(
+                matches!(&err, ImportError::Unreadable(why) if why.ends_with("isn't an ordinary file")),
+                "{odd:?}: {err}"
+            );
+        }
+    }
+    // Its buffer: the model can't be read.
+    let mut b = Builder::default();
+    let mesh = b.add_cube_mesh(0.5, Some(0));
+    b.json_materials = vec![r#"{"pbrMetallicRoughness":{"baseColorTexture":{"index":0}}}"#.into()];
+    b.json_textures = vec![r#"{"source":0,"sampler":0}"#.into()];
+    b.json_images = vec![r#"{"uri":"paint.png"}"#.into()];
+    b.json_nodes = vec![format!(r#"{{"mesh":{mesh}}}"#)];
+    for odd in odd_files(&folder.join("buffers"), "cube.bin") {
+        let path = odd.with_file_name("cube.gltf");
+        std::fs::write(&path, b.json(Some("cube.bin"))).unwrap();
+        assert!(load(&path, &limits()).is_err(), "{odd:?}");
+    }
+    // Its texture: left out with a warning, and the model still reads.
+    for odd in odd_files(&folder.join("textures"), "paint.png") {
+        let path = odd.with_file_name("cube.gltf");
+        std::fs::write(&path, b.json(Some("cube.bin"))).unwrap();
+        std::fs::write(odd.with_file_name("cube.bin"), &b.bin).unwrap();
+        let model = load(&path, &limits()).unwrap();
+        assert!(model.textures.is_empty(), "{odd:?}");
+        assert_eq!(model.warnings.len(), 1, "{odd:?}: {:?}", model.warnings);
+    }
+    // Ordinary files in the same places read as ever, and one past the
+    // limit is refused with its size.
+    let path = folder.join("cube.gltf");
+    std::fs::write(&path, b.json(Some("cube.bin"))).unwrap();
+    std::fs::write(folder.join("cube.bin"), &b.bin).unwrap();
+    std::fs::write(folder.join("paint.png"), checker_png(16, 4)).unwrap();
+    let model = load(&path, &limits()).unwrap();
+    assert_eq!((model.triangles(), model.textures.len()), (12, 1));
+    let size = std::fs::metadata(&path).unwrap().len();
+    let tight = Limits {
+        max_file_bytes: size - 1,
+        ..limits()
+    };
+    assert!(matches!(
+        load(&path, &tight),
+        Err(ImportError::TooBig { bytes, limit }) if bytes == size && limit == size - 1
+    ));
+    let _ = std::fs::remove_dir_all(&folder);
+}
+
 // ------------------------------------- holes found by the Phase 1 review ---
 
 #[test]
@@ -671,6 +754,31 @@ fn textures_past_the_models_budget_are_left_out_with_a_warning() {
     );
 }
 
+/// A BMP inside a model, called a PNG: left out with why, even by a build
+/// that carries a BMP decoder (the Windows build does, through another
+/// library).
+#[test]
+fn a_bmp_inside_a_model_is_left_out_whatever_the_build_decodes() {
+    let mut b = Builder::default();
+    let cube = b.add_cube_mesh(1.0, Some(0));
+    let image = b.add_image(&crate::picture::tests::bmp());
+    b.json_materials = vec![
+        r#"{"name":"Painted","pbrMetallicRoughness":{"baseColorTexture":{"index":0}}}"#.into(),
+    ];
+    b.json_textures = vec![format!(r#"{{"source":{image}}}"#)];
+    b.json_nodes = vec![format!(r#"{{"mesh":{cube}}}"#)];
+    let model = load_bytes(&b.glb(), None, "X", &limits()).unwrap();
+    assert!(model.textures.is_empty());
+    assert!(
+        model
+            .warnings
+            .iter()
+            .any(|w| w.contains("isn't PNG or JPEG")),
+        "{:?}",
+        model.warnings
+    );
+}
+
 #[test]
 fn a_file_needing_an_unknown_extension_says_which() {
     let mut b = Builder::default();
@@ -833,4 +941,386 @@ fn one_node_naming_a_million_children_is_refused_before_listing_them() {
     ];
     let err = load_bytes(&b.glb(), None, "X", &limits()).unwrap_err();
     assert!(err.to_string().contains("nodes"), "{err}");
+}
+
+// ------------------------------------- holes found by a full code review ---
+
+/// `json` with its list of buffers replaced by `buffers`.
+fn with_buffers(json: &str, buffers: &str) -> String {
+    let start = json.find(r#""buffers":["#).unwrap() + r#""buffers":["#.len();
+    let end = start + json[start..].find(']').unwrap();
+    format!("{}{buffers}{}", &json[..start], &json[end..])
+}
+
+/// The buffers of a model file, read as the importer reads them.
+fn buffers_of(
+    bytes: &[u8],
+    folder: Option<&Path>,
+    limits: &Limits,
+) -> Result<Vec<Vec<u8>>, ImportError> {
+    let parsed = gltf::Gltf::from_slice(bytes).unwrap();
+    read_buffers(&parsed.document, parsed.blob.as_deref(), folder, limits)
+}
+
+/// A `.glb` holding a cube, followed by `extra` buffers of one byte that
+/// have no address, so each claims the file's binary part as well.
+fn many_buffers_glb(extra: usize, padding: usize) -> Vec<u8> {
+    let mut b = Builder::default();
+    let mesh = b.add_cube_mesh(0.5, None);
+    b.json_nodes = vec![format!(r#"{{"mesh":{mesh}}}"#)];
+    let mut buffers = format!(r#"{{"byteLength":{}}}"#, b.bin.len());
+    buffers.push_str(&r#",{"byteLength":1}"#.repeat(extra));
+    let mut bin = b.bin.clone();
+    bin.resize(bin.len() + padding, 0);
+    glb_from(&with_buffers(&b.json(None), &buffers), &bin)
+}
+
+#[test]
+fn a_glb_whose_buffers_all_claim_its_binary_part_is_refused() {
+    // Found in a full code review: every buffer without an address was
+    // given a copy of the whole binary part, and only the single byte each
+    // declared was counted. A small file is tried first, so a mistake here
+    // shows as a failed check and not as a machine out of memory.
+    let err = load_bytes(&many_buffers_glb(1_000, 0), None, "X", &limits()).unwrap_err();
+    assert!(
+        matches!(&err, ImportError::Damaged(why) if why.contains("binary part")),
+        "{err}"
+    );
+    // Even one such buffer is against glTF's rules.
+    let err = load_bytes(&many_buffers_glb(1, 0), None, "X", &limits()).unwrap_err();
+    assert!(matches!(err, ImportError::Damaged(_)), "{err}");
+    // The file from the review: 10 MB, whose 10,000 buffers would have
+    // taken 100 GB. It is refused at its second buffer, with no copy made
+    // for it; this test finishing at all is the proof.
+    let hostile = many_buffers_glb(10_000, 10_000_000);
+    let err = load_bytes(&hostile, None, "X", &limits()).unwrap_err();
+    assert!(matches!(err, ImportError::Damaged(_)), "{err}");
+}
+
+#[test]
+fn the_binary_part_is_copied_only_as_far_as_its_buffer_declares() {
+    // One buffer of 4 bytes over a binary part of a megabyte: only the 4
+    // bytes are taken, with no room kept for the rest.
+    let json = r#"{"asset":{"version":"2.0"},"buffers":[{"byteLength":4}]}"#;
+    let mut bin = vec![7u8; 1 << 20];
+    bin[..4].copy_from_slice(&[1, 2, 3, 4]);
+    let buffers = buffers_of(&glb_from(json, &bin), None, &limits()).unwrap();
+    assert_eq!(buffers, [vec![1, 2, 3, 4]]);
+    assert!(buffers[0].capacity() < 1024, "{}", buffers[0].capacity());
+}
+
+#[test]
+fn a_data_address_longer_than_its_buffer_declares_keeps_only_those_bytes() {
+    use base64::Engine as _;
+    let mut data = vec![7u8; 1 << 20];
+    data[..4].copy_from_slice(&[1, 2, 3, 4]);
+    let json = format!(
+        r#"{{"asset":{{"version":"2.0"}},"buffers":[{{"byteLength":4,"uri":"data:application/octet-stream;base64,{}"}}]}}"#,
+        base64::engine::general_purpose::STANDARD.encode(&data)
+    );
+    let buffers = buffers_of(json.as_bytes(), None, &limits()).unwrap();
+    assert_eq!(buffers, [vec![1, 2, 3, 4]]);
+    assert!(buffers[0].capacity() < 1024, "{}", buffers[0].capacity());
+}
+
+#[test]
+fn a_buffer_declaring_more_than_the_binary_part_holds_is_refused() {
+    let json = r#"{"asset":{"version":"2.0"},"buffers":[{"byteLength":64}]}"#;
+    let err = buffers_of(&glb_from(json, &[0; 16]), None, &limits()).unwrap_err();
+    assert!(
+        matches!(&err, ImportError::Damaged(why) if why.contains("16 bytes")),
+        "{err}"
+    );
+    // And a file with no binary part at all.
+    let err = buffers_of(json.as_bytes(), None, &limits()).unwrap_err();
+    assert!(
+        matches!(&err, ImportError::Damaged(why) if why.contains("missing")),
+        "{err}"
+    );
+}
+
+#[test]
+fn buffers_with_addresses_still_read_beside_the_binary_part() {
+    use base64::Engine as _;
+    let folder = std::env::temp_dir().join(format!("solis-buffers-{}", std::process::id()));
+    std::fs::create_dir_all(&folder).unwrap();
+    let mut b = Builder::default();
+    let mesh = b.add_cube_mesh(0.5, None);
+    b.json_nodes = vec![format!(r#"{{"mesh":{mesh}}}"#)];
+    // The cube's data moves to the second buffer; the first is 8 spare bytes.
+    let json = b.json(None).replace(r#""buffer":0"#, r#""buffer":1"#);
+    let cube = b.bin.len();
+    let inline = format!(
+        "data:application/octet-stream;base64,{}",
+        base64::engine::general_purpose::STANDARD.encode(&b.bin)
+    );
+    std::fs::write(folder.join("cube.bin"), &b.bin).unwrap();
+    std::fs::write(folder.join("spare.bin"), [0; 8]).unwrap();
+    let spare = "data:application/octet-stream;base64,AAAAAAAAAAA=";
+    for (first, second) in [
+        // A .glb's binary part, then a buffer in a file or in an address.
+        (None, "cube.bin"),
+        (None, inline.as_str()),
+        // A .gltf's buffers, each in a file or in an address.
+        (Some("spare.bin"), inline.as_str()),
+        (Some(spare), "cube.bin"),
+        (Some("spare.bin"), "cube.bin"),
+    ] {
+        let first_uri = first.map_or_else(String::new, |uri| format!(r#","uri":"{uri}""#));
+        let buffers =
+            format!(r#"{{"byteLength":8{first_uri}}},{{"byteLength":{cube},"uri":"{second}"}}"#);
+        let json = with_buffers(&json, &buffers);
+        let bytes = match first {
+            None => glb_from(&json, &[0; 8]),
+            Some(_) => json.into_bytes(),
+        };
+        let model = load_bytes(&bytes, Some(&folder), "X", &limits())
+            .unwrap_or_else(|e| panic!("{first:?}, {second:.20}: {e}"));
+        assert_eq!(model.triangles(), 12);
+    }
+    let _ = std::fs::remove_dir_all(&folder);
+}
+
+/// Thousands of made-up lists of buffers (the binary part, addresses
+/// holding data, files, of every declared length): each list is read or
+/// refused, a buffer after the first never takes the binary part, and what
+/// is read holds exactly the bytes declared, within the limit.
+#[test]
+fn made_up_lists_of_buffers_only_ever_hold_what_they_declare() {
+    use base64::Engine as _;
+    let folder = std::env::temp_dir().join(format!("solis-lists-{}", std::process::id()));
+    std::fs::create_dir_all(&folder).unwrap();
+    std::fs::write(folder.join("file.bin"), [6; 600]).unwrap();
+    let inline = format!(
+        "data:application/octet-stream;base64,{}",
+        base64::engine::general_purpose::STANDARD.encode([5; 300])
+    );
+    let tight = Limits {
+        max_file_bytes: 2_000,
+        ..limits()
+    };
+    let mut noise = Noise(2024);
+    let (mut read, mut refused) = (0, 0);
+    for _ in 0..3_000 {
+        let count = 1 + noise.below(6);
+        let kinds: Vec<usize> = (0..count).map(|_| noise.below(3)).collect();
+        let lengths: Vec<usize> = (0..count).map(|_| 1 + noise.below(700)).collect();
+        let buffers: Vec<String> = kinds
+            .iter()
+            .zip(&lengths)
+            .map(|(kind, length)| match kind {
+                0 => format!(r#"{{"byteLength":{length}}}"#),
+                1 => format!(r#"{{"byteLength":{length},"uri":"{inline}"}}"#),
+                _ => format!(r#"{{"byteLength":{length},"uri":"file.bin"}}"#),
+            })
+            .collect();
+        let json = format!(
+            r#"{{"asset":{{"version":"2.0"}},"buffers":[{}]}}"#,
+            buffers.join(",")
+        );
+        let bytes = glb_from(&json, &[4; 400]);
+        match buffers_of(&bytes, Some(&folder), &tight) {
+            Ok(held) => {
+                read += 1;
+                assert!(kinds[1..].iter().all(|&kind| kind != 0), "{json}");
+                assert!(lengths.iter().sum::<usize>() <= 2_000, "{json}");
+                for ((buffer, &length), kind) in held.iter().zip(&lengths).zip(&kinds) {
+                    assert_eq!(buffer.len(), length);
+                    assert!(buffer.capacity() <= length + 16, "{}", buffer.capacity());
+                    // The binary part is 4s, the address 5s, the file 6s.
+                    assert!(buffer.iter().all(|&byte| byte as usize == 4 + kind));
+                }
+            }
+            Err(ImportError::Damaged(_) | ImportError::TooBig { .. }) => refused += 1,
+            Err(other) => panic!("{other}: {json}"),
+        }
+    }
+    assert!(
+        read > 100 && refused > 100,
+        "{read} read, {refused} refused"
+    );
+    let _ = std::fs::remove_dir_all(&folder);
+}
+
+// ------------------------------ found by the weekly fuzzer (issue #157) ---
+
+/// A triangle with a corner `reach` metres out, shown by a part `scale`
+/// times its size: the shape of the file the fuzzer found.
+fn far_corner_glb(reach: f32, scale: f32) -> Vec<u8> {
+    let mut b = Builder::default();
+    let mesh = b.add_mesh(
+        &[[0.0, 0.0, 0.0], [reach, 0.0, 0.0], [0.0, 1.0, 0.0]],
+        &[[0.0, 0.0, 1.0]; 3],
+        &[[0.0, 0.0]; 3],
+        &[0, 1, 2],
+        None,
+    );
+    b.json_nodes = vec![format!(
+        r#"{{"name":"Body","mesh":{mesh},"scale":[{scale},1,1]}}"#
+    )];
+    b.glb()
+}
+
+/// Whether every corner of `model`, of every level of detail, is at a
+/// finite place once its part has placed it: what gets drawn.
+fn lands_somewhere(model: &Model) -> bool {
+    model.nodes.iter().all(|node| {
+        node.meshes.iter().all(|&m| {
+            let mesh = &model.meshes[m];
+            let levels = mesh.lods.iter().flat_map(|lod| &lod.vertices);
+            mesh.vertices.iter().chain(levels).all(|v| {
+                node.world
+                    .transform_point3(Vec3::from(v.position))
+                    .is_finite()
+            })
+        })
+    })
+}
+
+#[test]
+fn a_corner_placed_past_what_numbers_can_hold_is_refused() {
+    // The weekly fuzzer's file (issue #157): every number in it was finite
+    // (a corner 1e38 m out, in a part made 5 times as big), but placing the
+    // corner isn't, so the model came in with an endless box around it and
+    // the fuzzer's own check stopped the run.
+    let err = load_bytes(&far_corner_glb(1.0e38, 5.0), None, "X", &limits()).unwrap_err();
+    assert!(
+        matches!(&err, ImportError::Damaged(why) if why.contains("Body")),
+        "{err}"
+    );
+    // The same corner in a part of its own size is still a number.
+    let model = load_bytes(&far_corner_glb(1.0e38, 1.0), None, "X", &limits()).unwrap();
+    assert!(model.is_finite() && lands_somewhere(&model));
+    assert_eq!(model.bounds.max.x, 1.0e38);
+}
+
+#[test]
+fn parts_scaled_inside_each_other_past_what_numbers_can_hold_are_refused() {
+    // Each part's own size is a number; the two multiplied aren't. The
+    // inner part draws nothing here: its place alone is enough.
+    let mut b = Builder::default();
+    let mesh = b.add_cube_mesh(1.0, None);
+    b.json_nodes = vec![
+        format!(r#"{{"name":"Box","mesh":{mesh}}}"#),
+        r#"{"name":"Outer","scale":[1e30,1e30,1e30],"children":[2]}"#.to_string(),
+        r#"{"name":"Inner","scale":[1e30,1e30,1e30]}"#.to_string(),
+    ];
+    let err = load_bytes(&b.glb(), None, "X", &limits()).unwrap_err();
+    assert!(
+        matches!(&err, ImportError::Damaged(why) if why.contains("Inner")),
+        "{err}"
+    );
+}
+
+#[test]
+fn a_level_of_detail_landing_past_what_numbers_can_hold_is_refused() {
+    // A model's own level is moved into the space of the part it stands
+    // in for: a tiny part makes that a huge step.
+    let own_level = |ship_scale: &str, level_half: f32, level_scale: f32| {
+        let mut b = Builder::default();
+        let full = b.add_sphere_mesh(1.0, None);
+        let simple = b.add_cube_mesh(level_half, None);
+        b.json_nodes = vec![
+            format!(
+                r#"{{"name":"Ship","mesh":{full},"scale":[{ship_scale},{ship_scale},{ship_scale}]}}"#
+            ),
+            format!(r#"{{"name":"Ship_LOD1","mesh":{simple},"scale":[{level_scale},1,1]}}"#),
+        ];
+        load_bytes(&b.glb(), None, "X", &limits())
+    };
+    // Past what a number holds in the ship's own space.
+    let err = own_level("1e-10", 1.0e30, 1.0).unwrap_err();
+    assert!(
+        matches!(&err, ImportError::Damaged(why) if why.contains("Ship")),
+        "{err}"
+    );
+    // A number there, but not once the ship is placed.
+    let err = own_level("1e10", 1.0e38, 5.0).unwrap_err();
+    assert!(matches!(err, ImportError::Damaged(_)), "{err}");
+    // An ordinary level beside an ordinary ship still reads.
+    let model = own_level("2", 1.0, 1.0).unwrap();
+    assert_eq!(model.meshes[0].lods.len(), 1);
+    assert!(model.is_finite() && lands_somewhere(&model));
+}
+
+/// Thousands of made-up models whose every number is finite, with parts
+/// and corners of every size a number can hold, inside each other and as
+/// each other's levels of detail: each is read or refused with a reason,
+/// and one that is read holds only finite numbers (the fuzzer's own check)
+/// and draws every corner at a finite place.
+#[test]
+fn made_up_sizes_and_places_never_leave_a_number_that_isnt_finite() {
+    const SIZES: [&str; 8] = ["1e-30", "1e-12", "0.5", "1", "7", "1e12", "1e30", "3e38"];
+    const NAMES: [&str; 4] = ["Ship", "Ship_LOD1", "Ship_LOD2", "Mast"];
+    let mut noise = Noise(157);
+    let (mut read, mut refused) = (0, 0);
+    for _ in 0..3_000 {
+        let mut b = Builder::default();
+        let count = 1 + noise.below(4);
+        let size = |noise: &mut Noise| {
+            // Mostly ordinary, so many models read.
+            let pick = if noise.below(3) == 0 {
+                noise.below(8)
+            } else {
+                2 + noise.below(3)
+            };
+            SIZES[pick]
+        };
+        b.json_nodes = (0..count)
+            .map(|i| {
+                // The first part always draws something; others may only
+                // be places.
+                let mesh = if i == 0 || noise.below(4) > 0 {
+                    let half: f32 = size(&mut noise).parse().unwrap();
+                    format!(r#""mesh":{},"#, b.add_cube_mesh(half, None))
+                } else {
+                    String::new()
+                };
+                let name = NAMES[noise.below(4)];
+                let (scale, moved) = (size(&mut noise), size(&mut noise));
+                let sign = if noise.below(2) == 0 { "" } else { "-" };
+                // Only later parts as children, so the tree never loops.
+                let children: Vec<String> = (i + 1..count)
+                    .filter(|_| noise.below(3) == 0)
+                    .map(|child| child.to_string())
+                    .collect();
+                let children = if children.is_empty() {
+                    String::new()
+                } else {
+                    format!(r#","children":[{}]"#, children.join(","))
+                };
+                format!(
+                    r#"{{"name":"{name}",{mesh}"scale":[{scale},{sign}{scale},1],"translation":[{sign}{moved},0,{moved}]{children}}}"#
+                )
+            })
+            .collect();
+        match load_bytes(&b.glb(), None, "X", &limits()) {
+            Ok(model) => {
+                read += 1;
+                assert!(model.is_finite(), "{:?}", b.json_nodes);
+                assert!(lands_somewhere(&model), "{:?}", b.json_nodes);
+            }
+            Err(ImportError::Damaged(_)) => refused += 1,
+            Err(other) => panic!("{other}: {:?}", b.json_nodes),
+        }
+    }
+    assert!(
+        read > 100 && refused > 100,
+        "{read} read, {refused} refused"
+    );
+}
+
+/// Writes the model fuzzer's starting files made here (a list of buffers
+/// that all claim the binary part, and a corner placed past what numbers
+/// can hold) into `$SOLIS_FUZZ_SEEDS/model`. Run by `fuzz/make-seeds.sh`.
+#[test]
+#[ignore = "writes fuzz seeds: run by fuzz/make-seeds.sh"]
+fn write_fuzz_seeds() {
+    let Some(root) = std::env::var_os("SOLIS_FUZZ_SEEDS") else {
+        return;
+    };
+    let folder = Path::new(&root).join("model");
+    std::fs::create_dir_all(&folder).unwrap();
+    std::fs::write(folder.join("many-buffers.glb"), many_buffers_glb(64, 0)).unwrap();
+    std::fs::write(folder.join("far-corner.glb"), far_corner_glb(1.0e38, 5.0)).unwrap();
 }

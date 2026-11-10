@@ -944,3 +944,119 @@ fn a_ray_that_can_t_go_anywhere_meets_nothing() {
     assert!(cast(above, Vec3::ZERO, 100.0).is_none());
     assert!(cast(above, -Vec3::Z, 4.0).is_none(), "out of reach");
 }
+
+/// Whether what Rapier was handed is in range: every collider's place on
+/// its body within `MAX_PLACE`, and its shape within `MAX_SIZE` and no
+/// smaller than `smallest` across.
+fn colliders_in_range(physics: &Physics, smallest: f32) -> bool {
+    physics.state.colliders.iter().all(|(_, c)| {
+        let at = c
+            .position_wrt_parent()
+            .map_or(Vec3::ZERO, |p| from_rp(p.translation));
+        let size = from_rp(c.shape().compute_local_aabb().extents());
+        at.is_finite()
+            && at.abs().max_element() <= MAX_PLACE
+            && size.is_finite()
+            && size.max_element() <= 2.0 * MAX_SIZE
+            && size.min_element() >= smallest
+    })
+}
+
+#[test]
+fn a_collider_s_centre_and_size_are_held_in_range_after_scaling() {
+    // Regression (SEC-12): a centre and a scale that are each a number
+    // multiply past the biggest one (1e30 × 1e30), so the collider was
+    // put an endless way from its body; and a size that did the same
+    // became a millimetre instead of the biggest size.
+    let mut physics = with_floor();
+    let (body, collider) = crate_spec();
+    assert!(physics.add(
+        id(2),
+        (Vec3::new(0.0, 0.0, 5.0), Quat::IDENTITY),
+        Vec3::ONE,
+        body,
+        collider
+    ));
+    let far = ColliderSpec {
+        shape: Shape::Box(Vec3::splat(1.0e30)),
+        center: Vec3::new(1.0e30, 0.0, -1.0e30),
+        ..ColliderSpec::default()
+    };
+    assert!(physics.add(
+        id(3),
+        (Vec3::new(3.0, 0.0, 5.0), Quat::IDENTITY),
+        Vec3::splat(1.0e30),
+        body,
+        Some(far)
+    ));
+    // As far and as big as physics goes, not endless or tiny.
+    assert!(colliders_in_range(&physics, 1.0));
+    let entry = &physics.state.by_entity[&id(3)];
+    let made = &physics.state.colliders[entry.collider.unwrap()];
+    assert_eq!(
+        from_rp(made.position_wrt_parent().unwrap().translation),
+        Vec3::new(MAX_PLACE, 0.0, -MAX_PLACE)
+    );
+    assert_eq!(
+        from_rp(made.shape().compute_local_aabb().extents()),
+        Vec3::splat(2.0 * MAX_SIZE)
+    );
+    run(&mut physics, 5);
+    assert!(!physics.take_broke(), "physics carries on");
+    assert!(physics.state().contains(id(2)), "with everything in it");
+    let (p, r) = physics.state().pose(id(2)).unwrap();
+    assert!(p.is_finite() && r.is_finite());
+}
+
+#[test]
+fn no_scale_centre_or_size_hands_rapier_a_number_out_of_range() {
+    // A sweep: every mix of extreme (but finite) scales, centres and
+    // sizes, on each shape and kind of body.
+    let extremes = [0.0, 1.0e-30, 1.0, -2.5, 1.0e9, -1.0e19, 1.0e30, f32::MAX];
+    let kinds = [BodyKind::Dynamic, BodyKind::Kinematic, BodyKind::Fixed];
+    let mut tried = 0;
+    for (i, &scale) in extremes.iter().enumerate() {
+        // Uneven scales too: each axis its own extreme.
+        let uneven = Vec3::new(scale, extremes[(i + 3) % 8], extremes[(i + 5) % 8]);
+        for scale in [Vec3::splat(scale), uneven] {
+            for (j, &center) in extremes.iter().enumerate() {
+                let center = Vec3::new(center, -extremes[(j + 1) % 8], extremes[(j + 6) % 8]);
+                for (k, &size) in extremes.iter().enumerate() {
+                    let shape = match k % 3 {
+                        0 => Shape::Box(Vec3::new(size, extremes[(k + 2) % 8], size)),
+                        1 => Shape::Sphere(size),
+                        _ => Shape::Capsule {
+                            radius: size,
+                            height: extremes[(k + 4) % 8],
+                        },
+                    };
+                    let mut physics = with_floor();
+                    let body = Body {
+                        kind: kinds[(i + j + k) % 3],
+                        ..Body::default()
+                    };
+                    let spec = ColliderSpec {
+                        shape,
+                        center,
+                        ..ColliderSpec::default()
+                    };
+                    assert!(physics.add(
+                        id(2),
+                        (Vec3::new(0.0, 0.0, 5.0), Quat::IDENTITY),
+                        scale,
+                        Some(body),
+                        Some(spec)
+                    ));
+                    assert!(
+                        colliders_in_range(&physics, 0.0),
+                        "{scale} {center} {shape:?}"
+                    );
+                    physics.step(1.0 / 60.0);
+                    assert!(!physics.take_broke(), "{scale} {center} {shape:?}");
+                    tried += 1;
+                }
+            }
+        }
+    }
+    assert_eq!(tried, 8 * 2 * 8 * 8);
+}

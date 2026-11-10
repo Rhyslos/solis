@@ -51,7 +51,10 @@ egui_dock = { version = "0.21", features = ["serde"] }
 # Reading glTF models: the JSON and binary layout only. Buffers and
 # images are read by Solis itself, with size limits (crates/assets).
 gltf = { version = "1.4", default-features = false, features = ["names", "utils", "KHR_lights_punctual"] }
-# Decoding PNG and JPEG textures, with limits on size and memory.
+# Decoding PNG and JPEG textures, with limits on size and memory. These
+# features don't decide what Solis reads: another library can switch more
+# on for the whole build (the Windows build gets "bmp" that way), so
+# crates/assets/src/picture.rs refuses everything but PNG and JPEG itself.
 image = { version = "0.25", default-features = false, features = ["png", "jpeg"] }
 # Data inside glTF files ("data:" addresses).
 base64 = "0.23"

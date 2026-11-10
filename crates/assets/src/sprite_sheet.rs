@@ -426,4 +426,12 @@ mod tests {
         let wide = crate::tile_art::png_of([5000, 1], &vec![255; 5000 * 4]).unwrap();
         assert!(super::picture_sheet(&wide).is_err());
     }
+
+    #[test]
+    fn a_bmp_is_never_a_sprite_whatever_the_build_decodes() {
+        let err = super::picture_sheet(&crate::picture::tests::bmp()).unwrap_err();
+        assert!(err.0.contains("isn't PNG or JPEG"), "{}", err.0);
+        let jpeg = crate::picture::tests::jpeg(8, 4);
+        assert_eq!(super::picture_sheet(&jpeg).unwrap().size, [8, 4]);
+    }
 }

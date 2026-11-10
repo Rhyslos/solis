@@ -686,7 +686,12 @@ fn write_fuzz_seeds() {
     run_to(&mut w, 22);
     w.devices.set("F6", false);
     run_to(&mut w, 40);
-    put("save_game", "busy.solsave", &w.save_text().unwrap());
+    let save = w.save_text().unwrap();
+    put("save_game", "busy.solsave", &save);
+    // One very long line (SEC-11): thousands of words where a body has
+    // sixteen, which the reader refuses without listing them all.
+    let long = with_line(&save, "physics", &"0 ".repeat(4096));
+    put("save_game", "long-line.solsave", &long);
     w.stop();
     let recording = w
         .outbox
@@ -1123,4 +1128,106 @@ fn a_save_keeps_the_time_of_day() {
     }
     let garbled = text.replace(&format!("{:x}", 6.0f64.to_bits()), "zz");
     assert!(Save::read(&garbled).is_err());
+}
+
+/// `text` with `line` put first in its section `name` (the section's
+/// length and the checksum made again), as a hand-made save would be.
+fn with_line(text: &str, name: &str, line: &str) -> String {
+    let at = text.find(&format!("\n{name} ")).unwrap() + 1;
+    let (head, body) = text[at..].split_once('\n').unwrap();
+    let length: usize = head[name.len() + 1..].parse().unwrap();
+    resummed(&format!(
+        "{}{name} {}\n{line}\n{body}",
+        &text[..at],
+        length + line.len() + 1
+    ))
+}
+
+/// A line of each section that's read a line at a time, good but for
+/// `extra` words more than it can have: the section, and the line.
+fn lines_with_extra_words(extra: usize) -> [(&'static str, String); 4] {
+    let id = raw(9);
+    let more = " 0".repeat(extra);
+    let values: Vec<String> = (0..animation::animator_file::MAX_PARAMETERS + extra)
+        .map(|i| format!("p{i}=s1"))
+        .collect();
+    [
+        ("projectiles", format!("0 0 0 0 0 0 0 0 0 0{more}")),
+        (
+            "physics",
+            format!("{id} 0 0 0 0 0 0 3f800000 0 0 0 0 0 0{more} 0 -"),
+        ),
+        (
+            "places",
+            format!("{id} 0 0 0 0 0 0 3f800000 3f800000 3f800000 3f800000{more}"),
+        ),
+        ("animators", format!("{id} {}", values.join(" "))),
+    ]
+}
+
+#[test]
+fn a_line_of_too_many_words_is_damage_in_every_section() {
+    // SEC-11: each line was split into a list of all its words before
+    // they were counted, so a hand-made save with one line of a hundred
+    // million words asked for gigabytes instead of being called damaged.
+    let mut w = busy("Harbour");
+    w.play();
+    run_to(&mut w, 30);
+    let text = w.save_text().unwrap();
+    // As many words as a line can have: read.
+    for (section, line) in lines_with_extra_words(0) {
+        let read = Save::read(&with_line(&text, section, &line));
+        assert!(read.is_ok(), "{section}: {read:?}");
+    }
+    let full = &lines_with_extra_words(0)[3].1;
+    let read = Save::read(&with_line(&text, "animators", full)).unwrap();
+    assert_eq!(
+        read.animators[0].1.len(),
+        animation::animator_file::MAX_PARAMETERS
+    );
+    // One more, a few more, or a million more: damaged.
+    for extra in [1, 2, 3, 1_000_000] {
+        for (section, line) in lines_with_extra_words(extra) {
+            let read = Save::read(&with_line(&text, section, &line));
+            assert_eq!(read.unwrap_err(), "it's damaged", "{section} +{extra}");
+        }
+    }
+}
+
+#[test]
+fn a_line_s_words_are_taken_no_further_than_one_past_the_most() {
+    // What keeps a long line from costing anything: the reader stops
+    // taking words one past the most a line can have.
+    let long = "0 ".repeat(1_000_000);
+    assert_eq!(super::words_of(&long, super::BODY_WORDS).count(), 17);
+    assert_eq!(super::words_of(&long, 0).count(), 1);
+    let few: Vec<&str> = super::words_of("a b  c", 16).collect();
+    assert_eq!(few, ["a", "b", "", "c"], "a short line is as it was");
+    assert_eq!(super::words_of("", 16).count(), 1);
+}
+
+#[test]
+fn only_a_line_with_the_right_number_of_words_is_read() {
+    // A sweep: every length of line in each section, from no words to a
+    // few too many. Projectiles, bodies and places have one right length;
+    // an animator has its ID and any number of parameters up to the most.
+    let mut w = busy("Harbour");
+    w.play();
+    run_to(&mut w, 30);
+    let text = w.save_text().unwrap();
+    for (at, (section, good)) in lines_with_extra_words(0).into_iter().enumerate() {
+        let words: Vec<&str> = good.split(' ').collect();
+        for count in 0..words.len() + 4 {
+            let line = match count.checked_sub(words.len()) {
+                Some(extra) => lines_with_extra_words(extra)[at].1.clone(),
+                None => words[..count].join(" "),
+            };
+            let read = Save::read(&with_line(&text, section, &line)).is_ok();
+            let right = match section {
+                "animators" => (1..=words.len()).contains(&count),
+                _ => count == words.len(),
+            };
+            assert_eq!(read, right, "{section}: {count} words");
+        }
+    }
 }

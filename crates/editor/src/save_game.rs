@@ -247,6 +247,22 @@ pub(crate) const MAX_SAVE_BYTES: usize = 256 << 20;
 /// exactly, and centuries of play).
 const MAX_SAVED_TICKS: u64 = 1 << 53;
 
+/// The words on a projectile's line: its ten numbers.
+const PROJECTILE_WORDS: usize = 10;
+/// The words on a body's line: its ID, thirteen numbers, asleep and
+/// character.
+const BODY_WORDS: usize = 16;
+/// The words after the ID on a place's line: its transform's ten numbers.
+const PLACE_WORDS: usize = 10;
+
+/// The words of a line that can have `most`, and one more when it has
+/// more, so too many are seen (and the line refused) without a list of
+/// them all being made first: a hand-made save can put a hundred million
+/// words on one line.
+fn words_of(line: &str, most: usize) -> impl Iterator<Item = &str> {
+    line.split(' ').take(most + 1)
+}
+
 /// A save's checksum: of its header's lines and everything after them.
 fn sum_of(head: &str, body: &str) -> u64 {
     let mut sum = reflect::Checksum::new();
@@ -539,8 +555,7 @@ impl Save {
         let projectiles = projectiles_text
             .lines()
             .map(|l| {
-                let numbers: Vec<f32> = l
-                    .split(' ')
+                let numbers: Vec<f32> = words_of(l, PROJECTILE_WORDS)
                     .map(|w| u32::from_str_radix(w, 16).map(f32::from_bits))
                     .collect::<Result<_, _>>()
                     .map_err(|_| damaged())?;
@@ -562,7 +577,7 @@ impl Save {
         let physics = physics_text
             .lines()
             .map(|l| {
-                let words: Vec<&str> = l.split(' ').collect();
+                let words: Vec<&str> = words_of(l, BODY_WORDS).collect();
                 let [id, numbers @ .., asleep, character] = &words[..] else {
                     return Err(damaged());
                 };
@@ -607,8 +622,7 @@ impl Save {
             .map(|l| {
                 let (id, rest) = l.split_once(' ').ok_or_else(damaged)?;
                 let id: reflect::Id = id.parse().map_err(|_| damaged())?;
-                let n: Vec<f32> = rest
-                    .split(' ')
+                let n: Vec<f32> = words_of(rest, PLACE_WORDS)
                     .map(|w| u32::from_str_radix(w, 16).map(f32::from_bits))
                     .collect::<Result<_, _>>()
                     .map_err(|_| damaged())?;
@@ -637,7 +651,8 @@ impl Save {
         let animators = animators_text
             .lines()
             .map(|l| {
-                let mut words = l.split(' ');
+                // Its ID, then a word for each parameter.
+                let mut words = words_of(l, 1 + animation::animator_file::MAX_PARAMETERS);
                 let id: reflect::Id = words
                     .next()
                     .and_then(|w| w.parse().ok())

@@ -5,6 +5,7 @@
 //! their file as they play.
 
 use crate::overview::Overview;
+use crate::vorbis_stream::VorbisStream;
 use kira::Frame;
 use std::fmt;
 use std::fs::File;
@@ -181,16 +182,24 @@ impl From<io::Error> for ReadError {
     }
 }
 
-/// Reads a sound file: held in memory if it's up to
-/// [`MAX_IN_MEMORY_SECONDS`] long, otherwise measured and streamed from
-/// the file when played.
-pub fn read_file(path: &Path) -> Result<Clip, ReadError> {
-    let file = File::open(path)?;
+/// Opens the sound file at `path`, the one way this crate opens a file:
+/// only an ordinary file (a project can hold a link to a device, which
+/// never ends, or a pipe, which waits for ever, named like a sound; see
+/// `reflect::ordinary_file`) of at most [`MAX_FILE_BYTES`].
+pub(crate) fn open(path: &Path) -> Result<BufReader<File>, ReadError> {
+    let file = reflect::ordinary_file::open(path).map_err(|why| ReadError::Io(why.to_string()))?;
     let size = file.metadata()?.len();
     if size > MAX_FILE_BYTES {
         return Err(ReadError::TooBig(size));
     }
-    let mut decoder = Decoder::new(BufReader::new(file))?;
+    Ok(BufReader::new(file))
+}
+
+/// Reads a sound file: held in memory if it's up to
+/// [`MAX_IN_MEMORY_SECONDS`] long, otherwise measured and streamed from
+/// the file when played.
+pub fn read_file(path: &Path) -> Result<Clip, ReadError> {
+    let mut decoder = Decoder::new(open(path)?)?;
     let (frames, overview) = decode_all(&mut decoder, Keep::OrStream)?;
     let info = decoder.info_with(overview.frames());
     let samples = match frames {
@@ -226,12 +235,7 @@ pub fn read_bytes(bytes: &[u8]) -> Result<Clip, ReadError> {
 /// file ([`Clip::streamed`]), so nothing big is held for a sound that's
 /// only listed.
 pub fn measure_file(path: &Path) -> Result<(ClipInfo, Overview), ReadError> {
-    let file = File::open(path)?;
-    let size = file.metadata()?.len();
-    if size > MAX_FILE_BYTES {
-        return Err(ReadError::TooBig(size));
-    }
-    let mut decoder = Decoder::new(BufReader::new(file))?;
+    let mut decoder = Decoder::new(open(path)?)?;
     let (_, overview) = decode_all(&mut decoder, Keep::Nothing)?;
     Ok((decoder.info_with(overview.frames()), overview))
 }
@@ -301,11 +305,12 @@ fn decode_all<R: Read + Seek>(
 enum Inner<R: Read + Seek> {
     /// WAV, through hound, with how its samples are stored.
     Wav(hound::WavReader<R>, WavSamples),
-    /// Ogg Vorbis, through lewton, with samples decoded but not yet handed out.
-    Ogg(Box<lewton::inside_ogg::OggStreamReader<R>>, Vec<i16>),
-    /// Lost while starting again from the beginning (the file changed or
-    /// went): every read from now on says so.
-    Gone(String),
+    /// Ogg Vorbis, its packets decoded by lewton, with samples decoded but
+    /// not yet handed out.
+    Ogg(Box<VorbisStream<R>>, Vec<i16>),
+    /// Lost while being opened again to move in it (the file changed or
+    /// went): every read from now on says why.
+    Gone(ReadError),
 }
 
 /// How a WAV file's samples are stored.
@@ -350,12 +355,8 @@ impl<R: Read + Seek> Decoder<R> {
                 (Inner::Wav(wav, samples), spec.sample_rate, spec.channels)
             }
             Format::Ogg => {
-                crate::vorbis_check::check(&mut reader)?;
-                reader.rewind()?;
-                let ogg = lewton::inside_ogg::OggStreamReader::new(reader)
-                    .map_err(|e| ReadError::Damaged(e.to_string()))?;
-                let rate = ogg.ident_hdr.audio_sample_rate;
-                let channels = u16::from(ogg.ident_hdr.audio_channels);
+                let (ogg, _) = VorbisStream::open(reader, 0)?;
+                let (rate, channels) = (ogg.sample_rate(), ogg.channels());
                 (Inner::Ogg(Box::new(ogg), Vec::new()), rate, channels)
             }
         };
@@ -424,13 +425,12 @@ impl<R: Read + Seek> Decoder<R> {
             Inner::Ogg(ogg, pending) => {
                 while out.len() < CHUNK_FRAMES {
                     if pending.len() < channels {
-                        match ogg.read_dec_packet_itl() {
-                            Ok(Some(packet)) => {
+                        match ogg.next_packet()? {
+                            Some(packet) => {
                                 pending.extend_from_slice(&packet);
                                 continue;
                             }
-                            Ok(None) => return Ok(!out.is_empty()),
-                            Err(e) => return Err(ReadError::Damaged(e.to_string())),
+                            None => return Ok(!out.is_empty()),
                         }
                     }
                     let whole = (pending.len() / channels).min(CHUNK_FRAMES - out.len());
@@ -444,12 +444,12 @@ impl<R: Read + Seek> Decoder<R> {
                 }
                 Ok(true)
             }
-            Inner::Gone(why) => Err(ReadError::Damaged(why.clone())),
+            Inner::Gone(why) => Err(why.clone()),
         }
     }
 
-    /// Moves to frame `index` (or a little before it, for Ogg), returning
-    /// where it actually is.
+    /// Moves to frame `index` (the end, if that's sooner), returning where
+    /// it actually is.
     pub(crate) fn seek(&mut self, index: u64) -> Result<u64, ReadError> {
         match &mut self.inner {
             Inner::Wav(wav, _) => {
@@ -457,36 +457,37 @@ impl<R: Read + Seek> Decoder<R> {
                 wav.seek(to)?;
                 Ok(u64::from(to))
             }
-            // From the start: lewton's own seek lands on the header pages,
-            // whose packets aren't sound, so every streamed Ogg played
-            // nothing (the Phase 7 review). It's opened again instead.
-            Inner::Ogg(..) if index == 0 => {
-                let Inner::Ogg(ogg, _) = std::mem::replace(
-                    &mut self.inner,
-                    Inner::Gone("it couldn't start again".into()),
-                ) else {
-                    return Ok(0);
-                };
-                let mut reader = ogg.into_inner().into_inner();
-                reader.rewind()?;
-                match lewton::inside_ogg::OggStreamReader::new(reader) {
-                    Ok(fresh) => {
-                        self.inner = Inner::Ogg(Box::new(fresh), Vec::new());
-                        Ok(0)
-                    }
-                    Err(e) => {
-                        self.inner = Inner::Gone(e.to_string());
-                        Err(ReadError::Damaged(e.to_string()))
-                    }
-                }
+            Inner::Ogg(..) => self.reopen_ogg(index),
+            Inner::Gone(why) => Err(why.clone()),
+        }
+    }
+
+    /// Moves in an Ogg by opening it again at frame `index`: its headers
+    /// are checked afresh, since the file may have changed since it was
+    /// opened, and it must still be the sound its frames are cut for.
+    fn reopen_ogg(&mut self, index: u64) -> Result<u64, ReadError> {
+        let lost = ReadError::Damaged("it couldn't be read again".into());
+        let Inner::Ogg(ogg, _) = std::mem::replace(&mut self.inner, Inner::Gone(lost)) else {
+            return Ok(0);
+        };
+        let opened = VorbisStream::open(ogg.into_reader(), index).and_then(|(ogg, at)| {
+            if (ogg.sample_rate(), ogg.channels()) == (self.sample_rate, self.channels) {
+                Ok((ogg, at))
+            } else {
+                Err(ReadError::Damaged(
+                    "it changed since it was read: look at it in the Library again".into(),
+                ))
             }
-            Inner::Ogg(ogg, pending) => {
-                pending.clear();
-                ogg.seek_absgp_pg(index)
-                    .map_err(|e| ReadError::Damaged(e.to_string()))?;
-                Ok(index)
+        });
+        match opened {
+            Ok((ogg, at)) => {
+                self.inner = Inner::Ogg(Box::new(ogg), Vec::new());
+                Ok(at)
             }
-            Inner::Gone(why) => Err(ReadError::Damaged(why.clone())),
+            Err(why) => {
+                self.inner = Inner::Gone(why.clone());
+                Err(why)
+            }
         }
     }
 }

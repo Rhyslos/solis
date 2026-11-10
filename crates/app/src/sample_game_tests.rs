@@ -253,3 +253,16 @@ fn armour_rs_with_windows_line_endings_is_still_the_built_in_one() {
     std::fs::write(assets.join("armour.rs"), windows).unwrap();
     assert!(rust_components(&assets).1.is_none());
 }
+
+/// `armour.rs` is looked at on the frame: a folder, a device or a pipe
+/// under that name is passed over at once, as if it weren't there.
+#[test]
+fn armour_rs_is_only_read_if_it_is_an_ordinary_file() {
+    let root = std::env::temp_dir().join(format!("solis-armour-odd-{}", std::process::id()));
+    let _ = std::fs::remove_dir_all(&root);
+    for odd in crate::odd_files(&root, "armour.rs") {
+        let (rust, note) = rust_components(odd.parent().unwrap());
+        assert!(rust.is_empty() && note.is_none(), "{odd:?}");
+    }
+    let _ = std::fs::remove_dir_all(&root);
+}

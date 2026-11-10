@@ -6,6 +6,7 @@ use asset_db::{FileKind, Jobs, Listing};
 use editor::sprite_sheets::{
     AnimatorState, ArtState, FramesState, MapFileState, SheetState, SpriteSheets, TilesetState,
 };
+use reflect::ordinary_file::Refused;
 use reflect::{AssetId, Id};
 use std::collections::{HashMap, HashSet, VecDeque};
 use std::hash::{DefaultHasher, Hash, Hasher};
@@ -159,18 +160,15 @@ pub fn read_tile_map(path: &Path) -> MapFileState {
 /// Reads a tileset's picture (Phase 9, D5): a PNG, JPEG or Aseprite file,
 /// whole.
 pub fn read_art(path: &Path) -> ArtState {
-    let read = std::fs::metadata(path)
-        .map_err(|e| format!("couldn't open it: {e}"))
-        .and_then(|m| {
-            if m.len() > assets::tile_art::MAX_FILE_BYTES as u64 {
-                Err(format!(
-                    "it's {} MB; pictures up to {} MB are read",
-                    m.len() >> 20,
-                    assets::tile_art::MAX_FILE_BYTES >> 20
-                ))
-            } else {
-                std::fs::read(path).map_err(|e| format!("couldn't read it: {e}"))
-            }
+    let most = assets::tile_art::MAX_FILE_BYTES as u64;
+    let read = reflect::ordinary_file::read_limited(path, most)
+        .map_err(|why| match why {
+            Refused::TooBig { bytes, limit } => format!(
+                "it's {} MB; pictures up to {} MB are read",
+                bytes >> 20,
+                limit >> 20
+            ),
+            why => format!("couldn't read it: {why}"),
         })
         .and_then(|bytes| {
             assets::tile_art::read_tile_art(&bytes, assets::aseprite::is_aseprite_file(path))
@@ -712,6 +710,49 @@ mod tests {
         assert!(s.sheets().tile_art.contains_key("sprites/icon.png"));
         s.want_pictures([], &dir);
         assert!(s.sheets().tile_art.is_empty());
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    /// A project can hold a folder, or a link to a device or a pipe, named
+    /// like any file read here: each is refused at once, saying why.
+    #[test]
+    fn only_ordinary_files_are_read_as_pictures_sheets_and_data() {
+        let dir = folder("ordinary");
+        let unread = |why: &str| why.contains("it isn't an ordinary file");
+        for odd in crate::odd_files(&dir.join("art"), "tiles.png") {
+            assert_eq!(
+                read_art(&odd),
+                ArtState::Failed("couldn't read it: it isn't an ordinary file".into()),
+                "{odd:?}"
+            );
+            assert!(matches!(read_sheet(&odd), SheetState::Failed(why) if unread(&why)));
+        }
+        for odd in crate::odd_files(&dir.join("sheets"), "hero.aseprite") {
+            assert!(matches!(read_art(&odd), ArtState::Failed(why) if unread(&why)));
+            assert!(matches!(read_sheet(&odd), SheetState::Failed(why) if unread(&why)));
+        }
+        for odd in crate::odd_files(&dir.join("data"), "farm.lst") {
+            use editor::sprite_sheets::AtlasState;
+            assert!(matches!(read_frames(&odd), FramesState::Failed(why) if unread(&why)));
+            assert!(matches!(read_animator(&odd), AnimatorState::Failed(why) if unread(&why)));
+            assert!(matches!(read_tileset(&odd), TilesetState::Failed(why) if unread(&why)));
+            assert!(matches!(read_atlas(&odd), AtlasState::Failed(why) if unread(&why)));
+            assert!(matches!(read_tile_map(&odd), MapFileState::Failed(why) if unread(&why)));
+        }
+        // A picture past the limit is refused by its size, before any of
+        // it is read; one that isn't there says so.
+        let big = dir.join("big.png");
+        let most = assets::tile_art::MAX_FILE_BYTES as u64;
+        let file = std::fs::File::create(&big).unwrap();
+        file.set_len(most + (1 << 20)).unwrap(); // sparse: nothing is written
+        assert_eq!(
+            read_art(&big),
+            ArtState::Failed("it's 65 MB; pictures up to 64 MB are read".into())
+        );
+        assert!(matches!(
+            read_art(&dir.join("none.png")),
+            ArtState::Failed(why) if why.starts_with("couldn't read it: ")
+        ));
         let _ = std::fs::remove_dir_all(&dir);
     }
 

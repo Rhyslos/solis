@@ -12,13 +12,13 @@ Turn a model file into a `Model`: each mesh once, in its own space, and a tree o
 
 ## Must never
 
-- Crash on a damaged or hostile file. Every file is treated as hostile (CONTRIBUTING.md, rule 9): sizes are checked against `Limits` before anything big is allocated (a buffer only ever reads the bytes it declares, buffers and image files share one byte budget, decoded textures another, and corner counts are checked from the file's own numbers before reading), every buffer, view and accessor is checked to fit before it is read, images are decoded with size and memory limits, files are only read from the model's folder or below (checked again after decoding the address, and never a device's name such as `NUL`; `reserved_on_windows`), only ordinary files are opened (never a link to a device or a pipe), a node's children are counted before they're listed, and errors explain the problem in plain words. Fuzz tests feed it thousands of damaged files.
+- Crash on a damaged or hostile file. Every file is treated as hostile (CONTRIBUTING.md, rule 9): sizes are checked against `Limits` before anything big is allocated (a buffer only ever takes and keeps the bytes it declares, only a `.glb`'s first buffer may be its binary part, so that part is never copied once per buffer, buffers and image files share one byte budget, decoded textures another, and corner counts are checked from the file's own numbers before reading), every buffer, view and accessor is checked to fit before it is read, images are decoded with size and memory limits and only if their first bytes say PNG or JPEG (`picture.rs`, the one place that decides, so a format another library switched on in `image` for the whole build never reaches its decoder), files are only read from the model's folder or below (checked again after decoding the address, and never a device's name such as `NUL`; `reserved_on_windows`), only ordinary files are opened (never a link to a device or a pipe: `reflect::ordinary_file`, the one way every crate opens a file), a node's children are counted before they're listed, a part or a corner placed past what numbers can hold is refused (each number in a file can be finite and two of them still multiply to one that isn't, so every number of a model that is read is finite: `Model::is_finite`), and errors explain the problem in plain words. Fuzz tests feed it thousands of damaged files.
 - Touch the GPU, the window or the editor
 - Fetch anything from the internet: a model that refers to data elsewhere is refused
 
 ## Depends on
 
-`gltf` (the file's structure only), `image` (PNG and JPEG), `base64`, `percent-encoding`, `meshopt` (meshoptimizer: levels of detail), `flate2` (Aseprite's compressed cels, pure Rust), glam and bytemuck. No Solis crates.
+`gltf` (the file's structure only), `image` (PNG and JPEG), `base64`, `percent-encoding`, `meshopt` (meshoptimizer: levels of detail), `flate2` (Aseprite's compressed cels, pure Rust), glam and bytemuck. `reflect`, for the one way files are opened (`ordinary_file`).
 
 ## Status
 

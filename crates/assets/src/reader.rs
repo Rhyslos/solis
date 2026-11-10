@@ -6,14 +6,16 @@
 //! fit before any of it is read, and the model's size is checked against
 //! [`Limits`] before vertices are allocated. The `gltf` crate parses the
 //! file's structure; Solis reads the buffers and images itself, so it can
-//! apply those checks.
+//! apply those checks. A model that is read holds only finite numbers
+//! ([`Model::is_finite`]), and draws every corner at a finite place.
 
 use crate::geometry;
 use crate::model::{
-    AlphaMode, Bounds, ImportError, Limits, Material, Model, Sampler, Texture, Wrap,
+    AlphaMode, Bounds, ImportError, Limits, Material, Model, Sampler, Texture, Vertex, Wrap,
 };
 use crate::texture;
 use base64::Engine as _;
+use reflect::ordinary_file::{self, Refused};
 use std::collections::HashMap;
 use std::path::{Path, PathBuf};
 
@@ -147,6 +149,7 @@ fn read_model(
         warnings,
     };
     crate::lods::add_lods(&mut model, limits);
+    every_corner_lands(&model)?;
     // The box is measured after the model's own levels of detail are moved
     // onto what they stand in for: modellers often keep `Ship_LOD1` beside
     // `Ship` in the file, and it isn't drawn there.
@@ -163,60 +166,74 @@ fn read_model(
     Ok(model)
 }
 
+/// Refuses a model with a corner that isn't at a finite place once its
+/// part has placed it. A corner's place and its part's can each be finite
+/// numbers and still multiply to one that isn't (a corner far out, in a
+/// part made bigger): nothing could draw such a corner, and the box around
+/// the model would have no end. The model's own levels of detail are
+/// checked too: they were moved into the space of the part they stand in
+/// for, which can take them just as far.
+fn every_corner_lands(model: &Model) -> Result<(), ImportError> {
+    for node in &model.nodes {
+        let lands = |v: &Vertex| {
+            node.world
+                .transform_point3(glam::Vec3::from(v.position))
+                .is_finite()
+        };
+        for mesh in node.meshes.iter().filter_map(|&m| model.meshes.get(m)) {
+            let levels = mesh.lods.iter().flat_map(|lod| &lod.vertices);
+            if !mesh.vertices.iter().chain(levels).all(lands) {
+                return Err(ImportError::Damaged(format!(
+                    "a corner of the part {} lands further away than numbers can hold",
+                    node.name
+                )));
+            }
+        }
+    }
+    Ok(())
+}
+
 /// Reads a file, refusing it first if it is bigger than `limit` bytes,
-/// and never reading more than that even if it grows meanwhile.
+/// and never reading more than that even if it grows meanwhile. Only an
+/// ordinary file is read: a link to a device or a pipe (which would never
+/// end, or wait for ever) is refused.
 fn read_limited(path: &Path, limit: u64) -> Result<Vec<u8>, ImportError> {
-    use std::io::Read;
-    let unreadable =
-        |e: std::io::Error| ImportError::Unreadable(format!("{} ({e})", path.display()));
-    let file = open_file(path)?;
-    let size = file.metadata().map_err(unreadable)?.len();
-    if size > limit {
-        return Err(ImportError::TooBig { bytes: size, limit });
-    }
-    let mut bytes = Vec::with_capacity(size as usize);
-    file.take(limit.saturating_add(1))
-        .read_to_end(&mut bytes)
-        .map_err(unreadable)?;
-    if bytes.len() as u64 > limit {
-        return Err(ImportError::TooBig {
-            bytes: bytes.len() as u64,
-            limit,
-        });
-    }
-    Ok(bytes)
+    ordinary_file::read_limited(path, limit).map_err(|why| refused(path, why))
 }
 
-/// Opens an ordinary file: a link to a device or a pipe (which would
-/// never end, or wait for ever) is refused.
-fn open_file(path: &Path) -> Result<std::fs::File, ImportError> {
-    let unreadable =
-        |e: std::io::Error| ImportError::Unreadable(format!("{} ({e})", path.display()));
-    let not_a_file =
-        || ImportError::Unreadable(format!("{} isn't an ordinary file", path.display()));
-    // Checked before opening too: opening a pipe waits for a writer.
-    if !std::fs::metadata(path).map_err(unreadable)?.is_file() {
-        return Err(not_a_file());
-    }
-    let file = std::fs::File::open(path).map_err(unreadable)?;
-    if !file.metadata().map_err(unreadable)?.is_file() {
-        return Err(not_a_file());
-    }
-    Ok(file)
-}
-
-/// Reads at most `length` bytes from the start of a file: a buffer only
-/// ever takes what it declares, however big the file it points at is.
+/// Reads at most `length` bytes from the start of an ordinary file: a
+/// buffer only ever takes what it declares, however big the file it
+/// points at is.
 fn read_prefix(path: &Path, length: u64) -> Result<Vec<u8>, ImportError> {
-    use std::io::Read;
-    let unreadable =
-        |e: std::io::Error| ImportError::Unreadable(format!("{} ({e})", path.display()));
-    let file = open_file(path)?;
-    let mut data = Vec::new();
-    file.take(length)
-        .read_to_end(&mut data)
-        .map_err(unreadable)?;
-    Ok(data)
+    ordinary_file::read_start(path, length).map_err(|why| refused(path, why))
+}
+
+/// Why the file at `path` wasn't read, as an import error.
+fn refused(path: &Path, why: Refused) -> ImportError {
+    match why {
+        Refused::NotAFile => {
+            ImportError::Unreadable(format!("{} isn't an ordinary file", path.display()))
+        }
+        Refused::TooBig { bytes, limit } => ImportError::TooBig { bytes, limit },
+        Refused::Io(e) => ImportError::Unreadable(format!("{} ({e})", path.display())),
+    }
+}
+
+/// The bytes a buffer without an address takes from a `.glb`'s binary
+/// part: its start, as far as the buffer declares. glTF lets only the
+/// file's first buffer be the binary part; any other is refused, so a
+/// small file can't have that part copied once for each of thousands of
+/// buffers.
+fn binary_part(blob: Option<&[u8]>, buffer: &gltf::Buffer<'_>) -> Result<Vec<u8>, ImportError> {
+    if buffer.index() != 0 {
+        return Err(ImportError::Damaged(
+            "only its first buffer may be the file's binary part".into(),
+        ));
+    }
+    let blob = blob.ok_or_else(|| ImportError::Damaged("its binary part is missing".into()))?;
+    // A part shorter than declared is copied whole, and refused by the
+    // caller, which says how many bytes it holds.
+    Ok(blob.get(..buffer.length()).unwrap_or(blob).to_vec())
 }
 
 /// Where a `uri` in the file points.
@@ -315,10 +332,8 @@ fn read_buffers(
                     limit: limits.max_file_bytes,
                 });
             }
-            let data = match buffer.source() {
-                gltf::buffer::Source::Bin => blob
-                    .ok_or_else(|| ImportError::Damaged("its binary part is missing".into()))?
-                    .to_vec(),
+            let mut data = match buffer.source() {
+                gltf::buffer::Source::Bin => binary_part(blob, &buffer)?,
                 gltf::buffer::Source::Uri(uri) => match resolve(uri, folder)? {
                     Address::Data(data) => data,
                     Address::File(path) => read_prefix(&path, declared).map_err(|e| match e {
@@ -344,8 +359,11 @@ fn read_buffers(
                     data.len()
                 )));
             }
-            let mut data = data;
+            // Each buffer keeps exactly the bytes it declares, and room for
+            // no more (an address holding data may hold more than that), so
+            // `total` is the memory the buffers really take.
             data.truncate(declared as usize);
+            data.shrink_to_fit();
             Ok(data)
         })
         .collect()
