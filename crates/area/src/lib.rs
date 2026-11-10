@@ -12,6 +12,7 @@ mod document;
 mod edit;
 mod history;
 pub mod lust_data;
+pub mod lust_guard;
 pub mod pixels;
 pub mod settings;
 pub mod text;

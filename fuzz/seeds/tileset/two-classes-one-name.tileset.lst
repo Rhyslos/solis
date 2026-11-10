@@ -1,0 +1,14 @@
+-- A tileset as a fuzzer left it, made small: its list of pieces twice, and in
+-- each a piece whose "new" became "class". Two classes with one name were
+-- more than the reader could finish checking; now it's refused.
+fetch "solis/data/tileset":[Tileset, Terrain, Piece, Rule];
+
+lock int version = 4;
+lock Tileset tileset = new Tileset { picture = "000000000001E", tile = [16, 16] };
+lock Piece/array pieces = [
+  class Piece { id = "000000000003A", terrain = "0000000000002", slot = 4, at = [0, 1] },
+];
+lock Piece/array pieces = [
+  class Piece { id = "000000000003A", terrain = "0000000000002", slot = 4, at = [0, 1] },
+];
+end

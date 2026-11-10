@@ -189,6 +189,9 @@ pub fn read(text: &str, kind: &str, classes: &str, max_bytes: usize) -> Result<V
     if text.len() > max_bytes {
         return Err(error(0, format!("it's bigger than {} MB", max_bytes >> 20)));
     }
+    if let Some((line, found)) = crate::lust_guard::scan(text).next() {
+        return Err(error(line as usize, not_data(found)));
+    }
     let files = vec![
         (ENTRY.to_string(), text.to_string()),
         (
@@ -206,6 +209,25 @@ pub fn read(text: &str, kind: &str, classes: &str, max_bytes: usize) -> Result<V
             first.map_or_else(|| "it couldn't be read".to_string(), |p| p.message.clone()),
         )
     })
+}
+
+/// Why what a guard found keeps a file from being a data file. Lust would
+/// refuse each too, but only after checking the whole file, which two
+/// classes with one name or a long run of `!` keep it from finishing
+/// ([`crate::lust_guard`]): so none of them reaches it.
+fn not_data(found: crate::lust_guard::Found<'_>) -> String {
+    use crate::lust_guard::{Found, MAX_PREFIX_RUN};
+    match found {
+        Found::Declared(..) => "a data file holds only lock values: classes, methods and the \
+                                rest go in a file of their own"
+            .to_string(),
+        Found::Value => "text in a data file is plain: it can't have values in { } (write \\{ \
+                         for a plain {)"
+            .to_string(),
+        Found::LongRun => {
+            format!("more than {MAX_PREFIX_RUN} `!` in a row, which no data file has")
+        }
+    }
 }
 
 /// The value called `name`, or a mistake saying it's missing.
@@ -488,6 +510,124 @@ mod tests {
         assert_eq!(single(f32::INFINITY), "0.0");
         assert_eq!("0.1".parse::<f64>().unwrap() as f32, 0.1_f32);
         assert_eq!(text("bell\u{7}"), "\"bell\"");
+    }
+
+    /// What reading `text` answers. A reader that never finishes fails the
+    /// test here, rather than holding up the whole run: fixed, it answers
+    /// in well under a thousandth of this long.
+    fn read_in_time(text: &str) -> Result<Values, DataError> {
+        let (sender, answer) = std::sync::mpsc::channel();
+        let text = text.to_string();
+        std::thread::spawn(move || sender.send(read(&text, "test", CLASSES, 1 << 20)));
+        answer
+            .recv_timeout(std::time::Duration::from_secs(30))
+            .expect("the reader never finished")
+    }
+
+    #[test]
+    fn two_things_with_one_name_are_refused_never_a_hang() {
+        // Found by the tileset fuzzer's first run: Lust never finishes
+        // checking two classes with one name, and a data file reached it
+        // unguarded. The smallest such file, then every word that declares
+        // one, and each way the second was hidden from the older guards.
+        let header = "lock int version = 2;\n";
+        for (line, body) in [
+            (2, "class A{}class A{}"),
+            (2, "class A {}\nclass A {}\nend\n"),
+            (2, "object A {}\nobject A {}\nend\n"),
+            (2, "component A {}\ncomponent A {}\nend\n"),
+            (2, "node A {}\nnode A {}\nend\n"),
+            (2, "schema A {}\nschema A {}\nend\n"),
+            (
+                2,
+                "assembly A { has { int x = 0; } }\nassembly A { has { int x = 0; } }\nend\n",
+            ),
+            (2, "class A {}\nobject A {}\nend\n"),
+            (2, "--[[ ]] class A {}\n--[[ ]] class A {}\nend\n"),
+            (3, "// \"\\\nclass A {}\n// \"\\\nclass A {}\nend\n"),
+            (2, "lua { \" } class A {}\nlua { \" } class A {}\nend\n"),
+            (2, "' class A {}\n' class A {}\nend\n"),
+            (2, "class @ A {}\nclass ! A {}\nend\n"),
+            (3, "x = class\nclass A {}\nx = class\nclass A {}\nend\n"),
+        ] {
+            let why = read_in_time(&format!("{header}{body}")).unwrap_err();
+            assert!(why.message.contains("only lock values"), "{body:?}: {why}");
+            assert_eq!(why.line, line, "{body:?}");
+        }
+        // One class is as much a mistake as two, and so is one whose name
+        // the file's own classes have.
+        let one = sample("x", 1.0).replace("end\n", "class Item {}\nend\n");
+        let why = read_in_time(&one).unwrap_err();
+        assert!(why.message.contains("only lock values"), "{why}");
+        assert_eq!(why.line, 10);
+    }
+
+    #[test]
+    fn what_lust_is_slow_to_refuse_is_refused_first() {
+        // The other case the game code's guards know: a long run of `!`.
+        let run = "!".repeat(crate::lust_guard::MAX_PREFIX_RUN + 1);
+        let bangs = sample("x", 1.0).replace("weight = 1.0", &format!("weight = {run}1.0"));
+        let why = read_in_time(&bangs).unwrap_err();
+        assert!(why.message.contains("in a row"), "{why}");
+        assert_eq!(why.line, 7);
+        // Text with a value in it could end somewhere else for Lust than
+        // for the guards, so it's refused as Lust would refuse it.
+        for name in ["{hp}", "{", "{(1)} class A {} class A {}"] {
+            let text = sample("x", 1.0).replace("\"x\"", &format!("\"{name}\""));
+            let why = read_in_time(&text).unwrap_err();
+            assert!(why.message.contains("values in { }"), "{name:?}: {why}");
+            assert_eq!(why.line, 7);
+        }
+        // Written by Solis, the same letters are only letters.
+        let odd = format!("{{hp}} {{(1)}} class A {{}} class A {{}} {run} -- /* '");
+        let values = read_in_time(&sample(&odd, 1.0)).unwrap();
+        assert_eq!(field_text(&things(&values, "items")[0], "name"), odd);
+    }
+
+    #[test]
+    fn no_mix_of_declarations_and_what_might_hide_them_hangs_the_reader() {
+        // Fuzz-style: thousands of files of declarations, two or more of
+        // one name, each after a few pieces that open or close a comment,
+        // text or a lua block, or that Lust skips. Each must be answered,
+        // and refused wherever the guards found something.
+        const DECLARED: [&str; 8] = [
+            "class A {}\n",
+            "class A {} ",
+            "object A {} ",
+            "component A {}\n",
+            "node A {} ",
+            "schema A {} ",
+            "assembly A { has { int x = 0; } } ",
+            "class\nA\n{\n}\n",
+        ];
+        const BETWEEN: [&str; 32] = [
+            "\"", "\\", "\n", "\r\n", "-- ", "--[[", "]] ", "// ", "/*", "lua ", "lua { ", "{ ",
+            "} ", "'", "!", "@", "1", "1e", "2.5E+", "class ", "A ", "; ", "= ", "{a", "{(", "x ",
+            "end\n", "é", "\u{a0}", "#", "&", "|",
+        ];
+        let mut seed = 0x5EC1_9000_D00D_F00Du64;
+        let mut next = move |below: usize| {
+            seed ^= seed << 13;
+            seed ^= seed >> 7;
+            seed ^= seed << 17;
+            (seed >> 24) as usize % below
+        };
+        let mut refused = 0;
+        for case in 0..3000 {
+            let mut text = String::from("lock int version = 2;\n");
+            for _ in 0..2 + next(3) {
+                for _ in 0..next(4) {
+                    text.push_str(BETWEEN[next(BETWEEN.len())]);
+                }
+                text.push_str(DECLARED[next(DECLARED.len())]);
+            }
+            let found = crate::lust_guard::scan(&text).next().is_some();
+            let answer = read_in_time(&text);
+            assert!(!found || answer.is_err(), "case {case}: {text:?}");
+            refused += usize::from(found);
+        }
+        // Both sides of the guards are reached.
+        assert!((1000..3000).contains(&refused), "{refused}");
     }
 
     #[test]

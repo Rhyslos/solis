@@ -246,6 +246,18 @@ fn what_can_t_be_used_is_skipped_with_a_note() {
 }
 
 #[test]
+fn two_classes_with_one_name_are_refused_never_a_hang() {
+    // What the tileset fuzzer found (see the tileset's tests) reached tile
+    // maps the same way: the fixture with its `new Layer`s made `class
+    // Layer` was never finished with.
+    let fixture = include_str!("../../../tests/fixtures/tilemap/v3/farm.tilemap.lst");
+    let damaged = fixture.replace("new Layer", "class Layer");
+    let why = crate::tileset::tests::in_time(move || read(&damaged).map(|_| ())).unwrap_err();
+    assert_eq!(why.line, 11);
+    assert!(why.message.contains("only lock values"), "{why}");
+}
+
+#[test]
 fn a_damaged_or_too_big_file_is_refused_with_its_line() {
     assert!(
         read("tileset version 1;")

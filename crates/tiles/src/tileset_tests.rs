@@ -352,3 +352,33 @@ fn solid_is_read_only_as_true_or_false() {
         read.notes
     );
 }
+
+/// What `read` answers. A reader that never finishes fails the test here,
+/// rather than holding up the whole run: fixed, it answers in well under a
+/// thousandth of this long.
+pub(crate) fn in_time<T: Send + 'static>(read: impl FnOnce() -> T + Send + 'static) -> T {
+    let (sender, answer) = std::sync::mpsc::channel();
+    std::thread::spawn(move || sender.send(read()));
+    answer
+        .recv_timeout(std::time::Duration::from_secs(30))
+        .expect("the reader never finished")
+}
+
+#[test]
+fn two_classes_with_one_name_are_refused_never_a_hang() {
+    // The tileset fuzzer's first run stopped on a file the reader never
+    // finished (over a minute, then given up on), here made small: a `new`
+    // turned into `class` twice, and Lust never finishes checking two
+    // classes with one name. A data file holds no class, so it's refused
+    // before Lust sees it.
+    let text = include_str!("../tests/data/two-classes-one-name.tileset.lst");
+    let why = in_time(|| read(text).map(|_| ())).unwrap_err();
+    assert_eq!(why.line, 9);
+    assert!(why.message.contains("only lock values"), "{why}");
+    // The fixture, damaged the same way.
+    let fixture = include_str!("../../../tests/fixtures/tileset/v4/farm.tileset.lst");
+    let damaged = fixture.replace("new Terrain", "class Terrain");
+    let why = in_time(move || read(&damaged).map(|_| ())).unwrap_err();
+    assert_eq!(why.line, 12);
+    assert!(why.message.contains("only lock values"), "{why}");
+}

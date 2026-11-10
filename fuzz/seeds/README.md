@@ -19,7 +19,7 @@ Real files the fuzzers start from, one folder per target in [`../fuzz_targets`](
 | `tile_art/` | The logo's PNG and the walker's Aseprite file, each after the byte that chooses its reader. |
 | `tile_map/` | Tile map files (`.soltilemap`), as the fixtures of version 1 and of version 2 (with exact tiles). |
 | `text_file/` | A Markdown file using every mark Properties draws, and the project's CONTRIBUTING.md. |
-| `tileset/` | Tilesets (`.soltileset`): the fixtures of version 1 and of version 2 (art, every kind, rules). |
+| `tileset/` | Tilesets: the fixtures of version 1 and of version 2 (`.soltileset`; art, every kind, rules) and of version 4 (`.tileset.lst`), and a hostile one from `crates/tiles/tests/data` that the reader refuses (two classes with one name, which it never finished reading: the file the fuzzer's first run found, made small). |
 | `update_answer/` | A release answer and its checksum file, joined by a 0x01 byte. |
 
 They are made by [`../make-seeds.sh`](../make-seeds.sh) from the editor's tests, the sample models and the samples; run it again after a file format changes. What each fuzzing run finds goes in `fuzz/corpus/`, which isn't committed.
