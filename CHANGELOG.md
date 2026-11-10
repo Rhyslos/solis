@@ -27,6 +27,7 @@ What changed in each version, for people using Solis. Newest first.
 
 ### Fixed
 
+- **The manual names two controls as they are:** **Entity > Add entity** (Physics and Characters and cameras said "Add empty"), and a card's **⋯ > Remove Camera** to take a component off (Play mode pointed at an × that isn't there).
 - **The manual no longer says Properties shows starting values while playing** (Game code): it shows game code's values as they are right now, and Stop asks whether to keep a value you changed there.
 - **The manual no longer says Solis opens the last project again when it starts** (Projects and the Library): it always starts on the launcher, with your most recent projects at the top.
 - **The manual's Interface tour describes the editor as it is now:** the launcher Solis always starts on, the top bar in its real order with every menu, the four workspaces, the search, every panel (those that come with an open file too), the Library drawer, Hints and the status bar. It no longer points at a picture that wasn't there, or says the search, Hints, the UI workspace and exporting a game are still to come.
