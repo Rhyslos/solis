@@ -171,6 +171,42 @@ fn a_change_in_the_tab_is_saved_at_once_and_undone_and_redone() {
 }
 
 #[test]
+fn a_kind_the_map_has_no_room_for_changes_nothing_like_a_value_too_many() {
+    // The code review: on a full map a value could still be made a bigger
+    // kind, past the map's memory. Refused now, it's shown as a value too
+    // many is: the tab as it was, no step to undo, nothing saved. The
+    // biggest map, with every layer and as many switches as it has room for.
+    let (mut w, map, _) = with_map();
+    w.place_tile_map(map, None).unwrap();
+    w.follow_map_selection();
+    let side = tiles::map::MAX_SIDE;
+    let mut full = TileMap::bare([side, side], None);
+    for n in 0..tiles::map::MAX_LAYERS {
+        full.add_layer(&format!("Layer{n}"), false).unwrap();
+    }
+    for n in 0..16 {
+        full.add_value(&format!("value{n}"), ValueKind::Switch)
+            .unwrap();
+    }
+    let sheets = Arc::make_mut(&mut w.viewport.sheets);
+    sheets.tile_maps.insert(
+        "farm.tilemap.lst".into(),
+        MapFileState::Read(Arc::new(full), Vec::new()),
+    );
+    w.outbox.clear();
+    let steps = w.map_edits.undo.len();
+    w.map_requests_done(vec![
+        MapRequest::SetValueKind(0, ValueKind::Number),
+        MapRequest::AddValue,
+    ]);
+    assert_eq!(w.map_edits.undo.len(), steps);
+    assert!(saved_maps(&w.outbox).is_empty());
+    let now = the_map(&w);
+    assert_eq!(now.values().len(), 16);
+    assert_eq!(now.values()[0].kind, ValueKind::Switch);
+}
+
+#[test]
 fn hiding_a_layer_is_the_editor_s_alone() {
     let (mut w, map, _) = with_map();
     w.place_tile_map(map, None).unwrap();
