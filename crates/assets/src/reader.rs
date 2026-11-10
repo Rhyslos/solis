@@ -212,11 +212,31 @@ fn read_prefix(path: &Path, length: u64) -> Result<Vec<u8>, ImportError> {
     let unreadable =
         |e: std::io::Error| ImportError::Unreadable(format!("{} ({e})", path.display()));
     let file = open_file(path)?;
-    let mut data = Vec::new();
+    // Room for exactly what will be read: a list left to grow by itself
+    // doubles, and could take twice the bytes the buffer was counted as.
+    let size = file.metadata().map_err(unreadable)?.len();
+    let mut data = Vec::with_capacity(length.min(size) as usize);
     file.take(length)
         .read_to_end(&mut data)
         .map_err(unreadable)?;
     Ok(data)
+}
+
+/// The bytes a buffer without an address takes from a `.glb`'s binary
+/// part: its start, as far as the buffer declares. glTF lets only the
+/// file's first buffer be the binary part; any other is refused, so a
+/// small file can't have that part copied once for each of thousands of
+/// buffers.
+fn binary_part(blob: Option<&[u8]>, buffer: &gltf::Buffer<'_>) -> Result<Vec<u8>, ImportError> {
+    if buffer.index() != 0 {
+        return Err(ImportError::Damaged(
+            "only its first buffer may be the file's binary part".into(),
+        ));
+    }
+    let blob = blob.ok_or_else(|| ImportError::Damaged("its binary part is missing".into()))?;
+    // A part shorter than declared is copied whole, and refused by the
+    // caller, which says how many bytes it holds.
+    Ok(blob.get(..buffer.length()).unwrap_or(blob).to_vec())
 }
 
 /// Where a `uri` in the file points.
@@ -315,10 +335,8 @@ fn read_buffers(
                     limit: limits.max_file_bytes,
                 });
             }
-            let data = match buffer.source() {
-                gltf::buffer::Source::Bin => blob
-                    .ok_or_else(|| ImportError::Damaged("its binary part is missing".into()))?
-                    .to_vec(),
+            let mut data = match buffer.source() {
+                gltf::buffer::Source::Bin => binary_part(blob, &buffer)?,
                 gltf::buffer::Source::Uri(uri) => match resolve(uri, folder)? {
                     Address::Data(data) => data,
                     Address::File(path) => read_prefix(&path, declared).map_err(|e| match e {
@@ -344,8 +362,11 @@ fn read_buffers(
                     data.len()
                 )));
             }
-            let mut data = data;
+            // Each buffer keeps exactly the bytes it declares, and room for
+            // no more (an address holding data may hold more than that), so
+            // `total` is the memory the buffers really take.
             data.truncate(declared as usize);
+            data.shrink_to_fit();
             Ok(data)
         })
         .collect()

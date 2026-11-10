@@ -834,3 +834,216 @@ fn one_node_naming_a_million_children_is_refused_before_listing_them() {
     let err = load_bytes(&b.glb(), None, "X", &limits()).unwrap_err();
     assert!(err.to_string().contains("nodes"), "{err}");
 }
+
+// ------------------------------------- holes found by a full code review ---
+
+/// `json` with its list of buffers replaced by `buffers`.
+fn with_buffers(json: &str, buffers: &str) -> String {
+    let start = json.find(r#""buffers":["#).unwrap() + r#""buffers":["#.len();
+    let end = start + json[start..].find(']').unwrap();
+    format!("{}{buffers}{}", &json[..start], &json[end..])
+}
+
+/// The buffers of a model file, read as the importer reads them.
+fn buffers_of(
+    bytes: &[u8],
+    folder: Option<&Path>,
+    limits: &Limits,
+) -> Result<Vec<Vec<u8>>, ImportError> {
+    let parsed = gltf::Gltf::from_slice(bytes).unwrap();
+    read_buffers(&parsed.document, parsed.blob.as_deref(), folder, limits)
+}
+
+/// A `.glb` holding a cube, followed by `extra` buffers of one byte that
+/// have no address, so each claims the file's binary part as well.
+fn many_buffers_glb(extra: usize, padding: usize) -> Vec<u8> {
+    let mut b = Builder::default();
+    let mesh = b.add_cube_mesh(0.5, None);
+    b.json_nodes = vec![format!(r#"{{"mesh":{mesh}}}"#)];
+    let mut buffers = format!(r#"{{"byteLength":{}}}"#, b.bin.len());
+    buffers.push_str(&r#",{"byteLength":1}"#.repeat(extra));
+    let mut bin = b.bin.clone();
+    bin.resize(bin.len() + padding, 0);
+    glb_from(&with_buffers(&b.json(None), &buffers), &bin)
+}
+
+#[test]
+fn a_glb_whose_buffers_all_claim_its_binary_part_is_refused() {
+    // Found in a full code review: every buffer without an address was
+    // given a copy of the whole binary part, and only the single byte each
+    // declared was counted. A small file is tried first, so a mistake here
+    // shows as a failed check and not as a machine out of memory.
+    let err = load_bytes(&many_buffers_glb(1_000, 0), None, "X", &limits()).unwrap_err();
+    assert!(
+        matches!(&err, ImportError::Damaged(why) if why.contains("binary part")),
+        "{err}"
+    );
+    // Even one such buffer is against glTF's rules.
+    let err = load_bytes(&many_buffers_glb(1, 0), None, "X", &limits()).unwrap_err();
+    assert!(matches!(err, ImportError::Damaged(_)), "{err}");
+    // The file from the review: 10 MB, whose 10,000 buffers would have
+    // taken 100 GB. It is refused at its second buffer, with no copy made
+    // for it; this test finishing at all is the proof.
+    let hostile = many_buffers_glb(10_000, 10_000_000);
+    let err = load_bytes(&hostile, None, "X", &limits()).unwrap_err();
+    assert!(matches!(err, ImportError::Damaged(_)), "{err}");
+}
+
+#[test]
+fn the_binary_part_is_copied_only_as_far_as_its_buffer_declares() {
+    // One buffer of 4 bytes over a binary part of a megabyte: only the 4
+    // bytes are taken, with no room kept for the rest.
+    let json = r#"{"asset":{"version":"2.0"},"buffers":[{"byteLength":4}]}"#;
+    let mut bin = vec![7u8; 1 << 20];
+    bin[..4].copy_from_slice(&[1, 2, 3, 4]);
+    let buffers = buffers_of(&glb_from(json, &bin), None, &limits()).unwrap();
+    assert_eq!(buffers, [vec![1, 2, 3, 4]]);
+    assert!(buffers[0].capacity() < 1024, "{}", buffers[0].capacity());
+}
+
+#[test]
+fn a_data_address_longer_than_its_buffer_declares_keeps_only_those_bytes() {
+    use base64::Engine as _;
+    let mut data = vec![7u8; 1 << 20];
+    data[..4].copy_from_slice(&[1, 2, 3, 4]);
+    let json = format!(
+        r#"{{"asset":{{"version":"2.0"}},"buffers":[{{"byteLength":4,"uri":"data:application/octet-stream;base64,{}"}}]}}"#,
+        base64::engine::general_purpose::STANDARD.encode(&data)
+    );
+    let buffers = buffers_of(json.as_bytes(), None, &limits()).unwrap();
+    assert_eq!(buffers, [vec![1, 2, 3, 4]]);
+    assert!(buffers[0].capacity() < 1024, "{}", buffers[0].capacity());
+}
+
+#[test]
+fn a_buffer_declaring_more_than_the_binary_part_holds_is_refused() {
+    let json = r#"{"asset":{"version":"2.0"},"buffers":[{"byteLength":64}]}"#;
+    let err = buffers_of(&glb_from(json, &[0; 16]), None, &limits()).unwrap_err();
+    assert!(
+        matches!(&err, ImportError::Damaged(why) if why.contains("16 bytes")),
+        "{err}"
+    );
+    // And a file with no binary part at all.
+    let err = buffers_of(json.as_bytes(), None, &limits()).unwrap_err();
+    assert!(
+        matches!(&err, ImportError::Damaged(why) if why.contains("missing")),
+        "{err}"
+    );
+}
+
+#[test]
+fn buffers_with_addresses_still_read_beside_the_binary_part() {
+    use base64::Engine as _;
+    let folder = std::env::temp_dir().join(format!("solis-buffers-{}", std::process::id()));
+    std::fs::create_dir_all(&folder).unwrap();
+    let mut b = Builder::default();
+    let mesh = b.add_cube_mesh(0.5, None);
+    b.json_nodes = vec![format!(r#"{{"mesh":{mesh}}}"#)];
+    // The cube's data moves to the second buffer; the first is 8 spare bytes.
+    let json = b.json(None).replace(r#""buffer":0"#, r#""buffer":1"#);
+    let cube = b.bin.len();
+    let inline = format!(
+        "data:application/octet-stream;base64,{}",
+        base64::engine::general_purpose::STANDARD.encode(&b.bin)
+    );
+    std::fs::write(folder.join("cube.bin"), &b.bin).unwrap();
+    std::fs::write(folder.join("spare.bin"), [0; 8]).unwrap();
+    let spare = "data:application/octet-stream;base64,AAAAAAAAAAA=";
+    for (first, second) in [
+        // A .glb's binary part, then a buffer in a file or in an address.
+        (None, "cube.bin"),
+        (None, inline.as_str()),
+        // A .gltf's buffers, each in a file or in an address.
+        (Some("spare.bin"), inline.as_str()),
+        (Some(spare), "cube.bin"),
+        (Some("spare.bin"), "cube.bin"),
+    ] {
+        let first_uri = first.map_or_else(String::new, |uri| format!(r#","uri":"{uri}""#));
+        let buffers =
+            format!(r#"{{"byteLength":8{first_uri}}},{{"byteLength":{cube},"uri":"{second}"}}"#);
+        let json = with_buffers(&json, &buffers);
+        let bytes = match first {
+            None => glb_from(&json, &[0; 8]),
+            Some(_) => json.into_bytes(),
+        };
+        let model = load_bytes(&bytes, Some(&folder), "X", &limits())
+            .unwrap_or_else(|e| panic!("{first:?}, {second:.20}: {e}"));
+        assert_eq!(model.triangles(), 12);
+    }
+    let _ = std::fs::remove_dir_all(&folder);
+}
+
+/// Thousands of made-up lists of buffers (the binary part, addresses
+/// holding data, files, of every declared length): each list is read or
+/// refused, a buffer after the first never takes the binary part, and what
+/// is read holds exactly the bytes declared, within the limit.
+#[test]
+fn made_up_lists_of_buffers_only_ever_hold_what_they_declare() {
+    use base64::Engine as _;
+    let folder = std::env::temp_dir().join(format!("solis-lists-{}", std::process::id()));
+    std::fs::create_dir_all(&folder).unwrap();
+    std::fs::write(folder.join("file.bin"), [6; 600]).unwrap();
+    let inline = format!(
+        "data:application/octet-stream;base64,{}",
+        base64::engine::general_purpose::STANDARD.encode([5; 300])
+    );
+    let tight = Limits {
+        max_file_bytes: 2_000,
+        ..limits()
+    };
+    let mut noise = Noise(2024);
+    let (mut read, mut refused) = (0, 0);
+    for _ in 0..3_000 {
+        let count = 1 + noise.below(6);
+        let kinds: Vec<usize> = (0..count).map(|_| noise.below(3)).collect();
+        let lengths: Vec<usize> = (0..count).map(|_| 1 + noise.below(700)).collect();
+        let buffers: Vec<String> = kinds
+            .iter()
+            .zip(&lengths)
+            .map(|(kind, length)| match kind {
+                0 => format!(r#"{{"byteLength":{length}}}"#),
+                1 => format!(r#"{{"byteLength":{length},"uri":"{inline}"}}"#),
+                _ => format!(r#"{{"byteLength":{length},"uri":"file.bin"}}"#),
+            })
+            .collect();
+        let json = format!(
+            r#"{{"asset":{{"version":"2.0"}},"buffers":[{}]}}"#,
+            buffers.join(",")
+        );
+        let bytes = glb_from(&json, &[4; 400]);
+        match buffers_of(&bytes, Some(&folder), &tight) {
+            Ok(held) => {
+                read += 1;
+                assert!(kinds[1..].iter().all(|&kind| kind != 0), "{json}");
+                assert!(lengths.iter().sum::<usize>() <= 2_000, "{json}");
+                for ((buffer, &length), kind) in held.iter().zip(&lengths).zip(&kinds) {
+                    assert_eq!(buffer.len(), length);
+                    assert!(buffer.capacity() <= length + 16, "{}", buffer.capacity());
+                    // The binary part is 4s, the address 5s, the file 6s.
+                    assert!(buffer.iter().all(|&byte| byte as usize == 4 + kind));
+                }
+            }
+            Err(ImportError::Damaged(_) | ImportError::TooBig { .. }) => refused += 1,
+            Err(other) => panic!("{other}: {json}"),
+        }
+    }
+    assert!(
+        read > 100 && refused > 100,
+        "{read} read, {refused} refused"
+    );
+    let _ = std::fs::remove_dir_all(&folder);
+}
+
+/// Writes the model fuzzer's starting file for a list of buffers that all
+/// claim the binary part into `$SOLIS_FUZZ_SEEDS/model`. Run by
+/// `fuzz/make-seeds.sh`.
+#[test]
+#[ignore = "writes fuzz seeds: run by fuzz/make-seeds.sh"]
+fn write_fuzz_seeds() {
+    let Some(root) = std::env::var_os("SOLIS_FUZZ_SEEDS") else {
+        return;
+    };
+    let folder = Path::new(&root).join("model");
+    std::fs::create_dir_all(&folder).unwrap();
+    std::fs::write(folder.join("many-buffers.glb"), many_buffers_glb(64, 0)).unwrap();
+}
