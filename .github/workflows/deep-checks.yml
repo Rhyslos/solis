@@ -148,8 +148,9 @@ jobs:
         env:
           RUSTUP_TOOLCHAIN: ${{ env.FUZZ_NIGHTLY }}
         run: tools/ci/fuzz-lock.sh
-      # The sound crate builds against ALSA on Linux.
-      - run: sudo apt-get update && sudo apt-get install -y libasound2-dev
+      # The sound crate builds against ALSA on Linux. The same list of
+      # packages as every other Linux job, here and in ci.yml.
+      - run: tools/ci/linux-packages.sh
       # One cache for every target, not one each: they are all built from
       # the same libraries, and a copy for each target would crowd the
       # pull request checks' caches out of the repository's allowance.
@@ -280,10 +281,23 @@ jobs:
           } > body.md
           gh issue create --label bug --title "The updater's weekly check against GitHub failed" --body-file body.md
 
+  # 1,000 games for each of the three whole-game rules, and 1,000 crowds
+  # in physics, in a release build. Nothing here opens a window, draws or
+  # plays a sound, so the machine needs no screen and no GPU: only the
+  # packages the build needs.
+  #
+  # Why an hour is allowed. In the pull request checks the three rules
+  # play 12 games each, unoptimised and beside 700 other tests, and all
+  # are done within 11 seconds: 1,000 games each take a quarter of an
+  # hour at that pace, and less optimised. The crowds take seconds. The
+  # release build before them is reckoned at 10 to 20 minutes with
+  # nothing cached (the fuzzers' optimised build of the same crates takes
+  # under 10). So about half an hour at worst, and twice that is allowed;
+  # it was two hours, which nothing here needs.
   invariants:
     name: Whole-game invariants, many games
     runs-on: ubuntu-latest
-    timeout-minutes: 120
+    timeout-minutes: 60
     permissions:
       contents: read
       issues: write
@@ -292,6 +306,10 @@ jobs:
         with:
           persist-credentials: false
       - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2
+      # The editor uses the sound crate, which builds against ALSA on
+      # Linux. This step was missing, so the build stopped at `alsa-sys`
+      # and no game was ever played (the review of November 2026).
+      - run: tools/ci/linux-packages.sh
       - name: Play many games
         env:
           PROPTEST_CASES: "1000"
