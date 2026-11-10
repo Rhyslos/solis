@@ -29,7 +29,9 @@ animation = { path = "../crates/animation" }
 ui = { path = "../crates/ui" }
 tiles = { path = "../crates/tiles" }
 
-# Its own workspace, so the engine's never builds it.
+# Its own workspace, so the engine's never builds it. Its Cargo.lock must
+# follow the main one: tools/ci/fuzz-lock-check.sh (README.md, The lock
+# file).
 [workspace]
 
 # The same stand-in the engine uses for Kira's triple_buffer

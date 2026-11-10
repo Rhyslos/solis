@@ -48,3 +48,19 @@ What each run finds is kept in `fuzz/corpus/<target>` (not committed). A crash i
 Each target only counts a panic that escapes Solis: libraries' panics that Solis catches on purpose, and turns into a refused file, aren't failures. For example, the `gltf` crate (1.4.1) panics on a mesh whose POSITION names an accessor that isn't there.
 
 While fuzzing, Solis is built with `--cfg fuzzing`. The only difference is that a save game's checksum isn't checked, because a fuzzer can't make a matching one, so the rest of the reader gets tried.
+
+## The lock file
+
+`fuzz/` is a workspace of its own, so the engine's build never builds the fuzzers. That gives it its own `Cargo.lock`, and nothing in Cargo keeps that file in step with the main one. Fuzzing is only worth its time if it tries the library versions the program ships, so a check holds the two together.
+
+[`tools/ci/fuzz-lock-check.sh`](../tools/ci/fuzz-lock-check.sh) fails, naming each package, when `fuzz/Cargo.lock` has a version of a package that the main `Cargo.lock` has at other versions only. With `--locked` it also asks Cargo whether a build of the fuzzers would change the file: `cargo fuzz` can't be told `--locked` itself, and would quietly add whatever the file lacks at the newest version. It runs with `--locked` on every pull request ([`ci.yml`](../.github/workflows/ci.yml)) and again before the weekly fuzzing, which doesn't start if it fails.
+
+It fails after any change to the main `Cargo.lock` that touches a library the fuzzers build, Dependabot's weekly pull request included. To fix it, from the repository's top folder:
+
+```
+tools/ci/fuzz-lock-check.sh --fix
+```
+
+Then commit `fuzz/Cargo.lock`. The fix copies the main lock over the fuzzers' and has Cargo take out what they don't build and add what only they use: `libfuzzer-sys` and `arbitrary`, at their newest versions. That is how those two are kept up to date, so Dependabot isn't pointed at this folder. Never update this lock file by itself (`cargo update` in `fuzz/`): the check would fail.
+
+The weekly security check ([`security.yml`](../.github/workflows/security.yml)) reads this lock file as well as the main one, so a newly found problem in a library only the fuzzers use shows up too.

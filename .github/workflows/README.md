@@ -4,10 +4,10 @@ The checks and builds GitHub runs on its own machines ([decision 0018](../../doc
 
 | File | What it does | When |
 | --- | --- | --- |
-| `ci.yml` | Formatting, lints and licences first; then tests and API docs on Linux, the GPU tests and the window test on Linux, and every test (GPU ones through Windows' software renderer) on Windows. Failed tests are summarised by `tools/ci/failed-tests.sh`. | Every update to a non-draft pull request, merges into main, release tags, and by hand |
+| `ci.yml` | The fuzzers' lock file (`tools/ci/fuzz-lock-check.sh --locked`: `fuzz/Cargo.lock` names the library versions the main `Cargo.lock` does, and a build wouldn't change it), formatting, lints and licences first; then tests and API docs on Linux, the GPU tests and the window test on Linux, and every test (GPU ones through Windows' software renderer) on Windows. Failed tests are summarised by `tools/ci/failed-tests.sh`. | Every update to a non-draft pull request, merges into main, release tags, and by hand |
 | `changelog.yml` | Fails a pull request that changes code (`crates/`, `tools/`, `Cargo.*`) without a `CHANGELOG.md` entry, unless it is labelled `internal`. | Every update to a non-draft pull request, and when labels change |
-| `security.yml` | Checks dependencies for newly published security advisories (`cargo deny check advisories`). | Mondays, and by hand |
-| `deep-checks.yml` | What's too slow for every pull request (decision 0042): every fuzz target for a time box (20 minutes each, one job per target, side by side), starting from `fuzz/seeds`, and the whole-game invariant tests with many more games. The targets are read from `fuzz/Cargo.toml` by the run's first job, never listed in the workflow, so a new target is fuzzed with no change here; that job fails if a file in `fuzz/fuzz_targets` has no `[[bin]]` or a `[[bin]]` no file. A failure in the Sunday run opens an issue. | Sundays, and by hand |
+| `security.yml` | Checks dependencies for newly published security advisories (`cargo deny check advisories`), in the main `Cargo.lock` and in the fuzzers' (`fuzz/Cargo.lock`), which has a few libraries of its own. | Mondays, and by hand |
+| `deep-checks.yml` | What's too slow for every pull request (decision 0042): every fuzz target for a time box (20 minutes each, one job per target, side by side), starting from `fuzz/seeds`, and the whole-game invariant tests with many more games. The targets are read from `fuzz/Cargo.toml` by the run's first job, never listed in the workflow, so a new target is fuzzed with no change here; that job fails if a file in `fuzz/fuzz_targets` has no `[[bin]]` or a `[[bin]]` no file. The same job first runs `tools/ci/fuzz-lock-check.sh --locked` with the fuzzers' compiler, so nothing is fuzzed unless the fuzzers build the library versions the program ships (`cargo fuzz` has no `--locked` of its own). A failure in the Sunday run opens an issue. | Sundays, and by hand |
 | `windows-exe.yml` | Builds the program for Windows, stamps its build number, makes the installer from `installer/setup.iss`, and publishes a `build-<number>` release that installed copies update from (decisions 0010 and 0043). | Code merged into main, and by hand |
 | `sources.yml` | Keeps a copy of every library's source code as a pre-release, so a library deleted from the internet can't stop the build (decision 0052). | When `Cargo.lock` changes on main, and by hand |
 
@@ -34,7 +34,7 @@ The folder above has no README of its own, because GitHub would show a README th
 
 | File | What it does |
 | --- | --- |
-| `../dependabot.yml` | Opens grouped pull requests weekly for outdated Rust libraries and GitHub Actions. |
+| `../dependabot.yml` | Opens grouped pull requests weekly for outdated Rust libraries and GitHub Actions. It updates the main `Cargo.lock` only: when one of its pull requests changes a library the fuzzers build, `ci.yml`'s lock file check fails until `tools/ci/fuzz-lock-check.sh --fix` is run on the branch and `fuzz/Cargo.lock` committed ([fuzz/README.md](../../fuzz/README.md#the-lock-file)). |
 | `../pull_request_template.md` | The form every pull request fills in: what changed, test results, documentation updated, how to test. |
 
 **Read next:** ARCHITECTURE.md, "Checks", and CONTRIBUTING.md, "Pull requests".
