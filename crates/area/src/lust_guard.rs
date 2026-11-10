@@ -5,7 +5,7 @@
 //! ([`crate::lust_data`]) are looked over here first, and what would set
 //! either off is refused as an ordinary mistake. A data file is then
 //! checked piece by piece against what one may hold
-//! ([`crate::lust_check`], with the same [`Pieces`]).
+//! (`crate::lust_check`, with the same `Pieces`).
 //!
 //! The text is split as Lust's own reader splits it: comments, text,
 //! numbers, `lua { }` blocks and the characters Lust skips each end where

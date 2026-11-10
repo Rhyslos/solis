@@ -84,7 +84,7 @@ fn unwritable(c: char) -> bool {
 
 /// `text` as a Lust text: in quotes, with `"`, `\`, braces, line breaks
 /// and tabs written so they read back as themselves. Other control
-/// characters are left out ([`unwritable`]).
+/// characters are left out (`unwritable`).
 pub fn text(text: &str) -> String {
     let mut out = String::with_capacity(text.len() + 2);
     out.push('"');
@@ -197,9 +197,9 @@ pub fn is_data(text: &str) -> bool {
 
 /// Reads a data file of `kind` whose classes are `classes` (Lust text),
 /// refusing one bigger than `max_bytes`, one that holds anything but
-/// values of those classes ([`crate::lust_check`]: Lust takes minutes over
+/// values of those classes (`crate::lust_check`: Lust takes minutes over
 /// a file full of mistakes, so it's handed none), and one whose text holds
-/// a character that couldn't be written back ([`unwritable`]). Every
+/// a character that couldn't be written back (`unwritable`). Every
 /// mistake comes back with its line; nothing in the file runs. The time
 /// it takes grows only with the file's length.
 pub fn read(text: &str, kind: &str, classes: &str, max_bytes: usize) -> Result<Values, DataError> {
