@@ -13,7 +13,7 @@ Real files the fuzzers start from, one folder per target in [`../fuzz_targets`](
 | `model/` | The sample models (`.glb`), a cube whose 64 extra buffers all claim the file's binary part (refused), and a triangle with a corner placed past what numbers can hold (refused; the file the fuzzer found, issue #157, made small). |
 | `project_file/` | A small project file. |
 | `recording/` | Recordings of play (`.solrec`): a long one, and short ones of formats 1 and 2, so the upgrader is fuzzed too. |
-| `save_game/` | Save games (`.solsave`): the current version and versions 1 and 2, so the upgraders are fuzzed too. |
+| `save_game/` | Save games (`.solsave`): the current version and versions 1 and 2, so the upgraders are fuzzed too, and one with a single very long line (thousands of words where a body has sixteen), which the reader refuses without listing them all. |
 | `sidecar/` | Sidecars (`.solmeta`) of the sample models. |
 | `sound_event/` | A full sound event, an empty one and a looping 2D one. |
 | `sound_file/` | WAV files of each kind the reader takes, and Ogg Vorbis files from `crates/sound/tests/data`: good ones (one of many pages), and hostile ones the reader refuses (a second stream after a good sound, one of them hidden behind a stray byte). |
