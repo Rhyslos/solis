@@ -179,7 +179,7 @@ pub(crate) fn tileset_tab(ui: &mut Ui, t: &mut TilesetUi<'_>) -> TilesetOut {
     let right_w = (full.width() * 0.32).clamp(300.0, 380.0);
     let right = Rect::from_min_max(pos2(full.max.x - right_w, full.min.y), full.max);
     let middle = Rect::from_min_max(pos2(left.max.x, full.min.y), pos2(right.min.x, full.max.y));
-    let line = Stroke::new(1.0, theme::LINE);
+    let line = Stroke::new(1.0, theme::line());
     ui.painter().vline(left.max.x, full.y_range(), line);
     ui.painter().vline(right.min.x, full.y_range(), line);
     let mut column = |rect: Rect, salt: &str, add: &mut dyn FnMut(&mut Ui)| {
@@ -209,7 +209,7 @@ pub(crate) fn tileset_tab(ui: &mut Ui, t: &mut TilesetUi<'_>) -> TilesetOut {
 fn terrains(ui: &mut Ui, t: &mut TilesetUi<'_>) -> bool {
     let mut changed = false;
     ui.horizontal(|ui| {
-        ui.label(RichText::new("Terrains").color(theme::TEXT_WEAK));
+        ui.label(RichText::new("Terrains").color(theme::text_weak()));
         ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
             let add = ui
                 .add_enabled(
@@ -237,7 +237,7 @@ fn terrains(ui: &mut Ui, t: &mut TilesetUi<'_>) -> bool {
             ui.painter()
                 .rect_filled(rect, 3.0, t.accent.gamma_multiply(0.25));
         } else if r.hovered() {
-            ui.painter().rect_filled(rect, 3.0, theme::HOVER);
+            ui.painter().rect_filled(rect, 3.0, theme::hover());
         }
         ui.painter().rect_filled(
             Rect::from_min_size(rect.min + vec2(4.0, 5.0), vec2(16.0, 16.0)),
@@ -249,14 +249,14 @@ fn terrains(ui: &mut Ui, t: &mut TilesetUi<'_>) -> bool {
             egui::Align2::LEFT_CENTER,
             &terrain.name,
             egui::FontId::proportional(theme::TEXT_SIZE),
-            theme::TEXT,
+            theme::text(),
         );
         ui.painter().text(
             rect.min + vec2(28.0 + 8.0 * terrain.name.chars().count() as f32 + 6.0, 13.0),
             egui::Align2::LEFT_CENTER,
             terrain.code.to_string(),
             egui::FontId::monospace(12.0),
-            theme::TEXT_WEAK,
+            theme::text_weak(),
         );
         let missing = autotile::missing_slots(&t.editor.file, &terrain).len();
         let has_art = t.editor.file.has_art(terrain.id);
@@ -268,7 +268,7 @@ fn terrains(ui: &mut Ui, t: &mut TilesetUi<'_>) -> bool {
             if has_art && missing > 0 {
                 MISSING_LINE
             } else {
-                theme::TEXT_WEAK
+                theme::text_weak()
             },
         );
         let r = r.on_hover_text(if !has_art {
@@ -296,7 +296,7 @@ fn terrains(ui: &mut Ui, t: &mut TilesetUi<'_>) -> bool {
         }
     }
     ui.add_space(14.0);
-    ui.label(RichText::new("Picture").color(theme::TEXT_WEAK));
+    ui.label(RichText::new("Picture").color(theme::text_weak()));
     let shown = match t.editor.file.picture {
         None => "None".to_owned(),
         Some(id) => t.pictures.iter().find(|(_, i)| *i == id).map_or_else(
@@ -339,13 +339,13 @@ fn terrains(ui: &mut Ui, t: &mut TilesetUi<'_>) -> bool {
     }
     ui.add_space(8.0);
     ui.horizontal(|ui| {
-        ui.label(RichText::new("Tile size").color(theme::TEXT_WEAK));
+        ui.label(RichText::new("Tile size").color(theme::text_weak()));
         let [w, h] = t.editor.file.tile;
         let most = f64::from(tiles::tileset::MAX_TILE);
         let a = crate::frames_view::settled_whole_drag(ui, "tile w", f64::from(w), 1.0..=most, 0.1);
-        ui.label(RichText::new("×").color(theme::TEXT_WEAK));
+        ui.label(RichText::new("×").color(theme::text_weak()));
         let b = crate::frames_view::settled_whole_drag(ui, "tile h", f64::from(h), 1.0..=most, 0.1);
-        ui.label(RichText::new("px").color(theme::TEXT_WEAK));
+        ui.label(RichText::new("px").color(theme::text_weak()));
         if a.is_some() || b.is_some() {
             let tile = [a.map_or(w, |v| v as u32), b.map_or(h, |v| v as u32)];
             changed |= t.editor.set_picture(t.editor.file.picture, tile);
@@ -353,7 +353,7 @@ fn terrains(ui: &mut Ui, t: &mut TilesetUi<'_>) -> bool {
     });
     if let Some(p) = &t.picture {
         let [cols, rows] = grid(&t.editor.file, p);
-        ui.label(RichText::new(format!("Grid: {cols} × {rows} tiles")).color(theme::TEXT_WEAK));
+        ui.label(RichText::new(format!("Grid: {cols} × {rows} tiles")).color(theme::text_weak()));
         let found = autotile::detect_tile(p.size, &p.art.frames[0], t.project_tile);
         if found != t.editor.file.tile {
             let b = ui
@@ -371,7 +371,7 @@ fn terrains(ui: &mut Ui, t: &mut TilesetUi<'_>) -> bool {
              A second tile in a slot is a variation.",
         )
         .small()
-        .color(theme::TEXT_WEAK),
+        .color(theme::text_weak()),
     );
     for note in &t.notes {
         ui.label(RichText::new(note).small().color(theme::WARNING));
@@ -398,12 +398,12 @@ fn picture_column(ui: &mut Ui, t: &mut TilesetUi<'_>) -> bool {
         let pill = |ui: &mut Ui, s: Step, text: String| {
             let now = s == step;
             let text = if done(s) { format!("{text} ✓") } else { text };
-            let colour = if now { t.accent } else { theme::TEXT_WEAK };
+            let colour = if now { t.accent } else { theme::text_weak() };
             egui::Frame::new()
                 .fill(if now {
                     t.accent.gamma_multiply(0.18)
                 } else {
-                    theme::HOVER
+                    theme::hover()
                 })
                 .corner_radius(10.0)
                 .inner_margin(egui::Margin::symmetric(8, 2))
@@ -432,7 +432,7 @@ fn picture_column(ui: &mut Ui, t: &mut TilesetUi<'_>) -> bool {
                 "Choose a picture on the left: a PNG or an Aseprite file with the tiles drawn \
                  in a grid. Until then, each terrain is drawn in its colour."
             })
-            .color(theme::TEXT_WEAK),
+            .color(theme::text_weak()),
         );
         return false;
     };
@@ -450,7 +450,7 @@ fn picture_column(ui: &mut Ui, t: &mut TilesetUi<'_>) -> bool {
                     "From the tile picked (or the top left), it looks like a {} set. Is that right?",
                     guess.word()
                 ))
-                    .color(theme::TEXT),
+                    .color(theme::text()),
             );
             if ui.button(format!("Make {} {}", c.name, guess.word())).clicked() {
                 changed |= t.editor.set_kind(c.id, guess);
@@ -465,7 +465,7 @@ fn picture_column(ui: &mut Ui, t: &mut TilesetUi<'_>) -> bool {
         ui.label(
             RichText::new(format!("{:.0}%", t.editor.zoom * 100.0))
                 .small()
-                .color(theme::TEXT_WEAK),
+                .color(theme::text_weak()),
         );
         if ui.small_button("+").on_hover_text("Bigger").clicked() {
             t.editor.zoom = (t.editor.zoom + 1.0).min(8.0);
@@ -473,7 +473,7 @@ fn picture_column(ui: &mut Ui, t: &mut TilesetUi<'_>) -> bool {
         ui.label(
             RichText::new("Numbers mark the chosen terrain's slots.")
                 .small()
-                .color(theme::TEXT_WEAK),
+                .color(theme::text_weak()),
         );
     });
     let set = &t.editor.file;
@@ -565,11 +565,11 @@ fn picture_column(ui: &mut Ui, t: &mut TilesetUi<'_>) -> bool {
 /// What the chosen terrain needs, and the patch to try it on.
 fn needs_column(ui: &mut Ui, t: &mut TilesetUi<'_>, out: &mut TilesetOut) {
     let Some(c) = t.editor.chosen().cloned() else {
-        ui.label(RichText::new("Add a terrain on the left.").color(theme::TEXT_WEAK));
+        ui.label(RichText::new("Add a terrain on the left.").color(theme::text_weak()));
         return;
     };
     ui.horizontal(|ui| {
-        ui.label(RichText::new(format!("{} · {}", c.name, c.kind.word())).color(theme::TEXT));
+        ui.label(RichText::new(format!("{} · {}", c.name, c.kind.word())).color(theme::text()));
         ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
             let mut kind = c.kind;
             egui::ComboBox::from_id_salt("terrain kind")
@@ -608,7 +608,7 @@ fn slot_box(
     let (rect, r) = ui.allocate_exact_size(vec2(size, size), Sense::click());
     let set = &t.editor.file;
     let pieces: Vec<usize> = set.pieces_of(c.id, slot).map(|(i, _)| i).collect();
-    ui.painter().rect_filled(rect, 3.0, theme::FIELD);
+    ui.painter().rect_filled(rect, 3.0, theme::field());
     let needed = c.kind != TileKind::Dual16 || slot != 0;
     match (pieces.first(), &t.picture) {
         (Some(&i), Some(p)) => paint_piece(ui, rect.shrink(3.0), set, p, i, t.ms),
@@ -646,7 +646,7 @@ fn slot_box(
         ui.painter().rect_stroke(
             rect,
             3.0,
-            Stroke::new(1.0, theme::TEXT_WEAK),
+            Stroke::new(1.0, theme::text_weak()),
             egui::StrokeKind::Inside,
         );
     }
@@ -706,7 +706,7 @@ fn template(ui: &mut Ui, t: &mut TilesetUi<'_>, c: &tiles::Terrain, out: &mut Ti
         ui.label(
             RichText::new("No tiles yet: drawn in its colour on maps.")
                 .small()
-                .color(theme::TEXT_WEAK),
+                .color(theme::text_weak()),
         );
     }
     ui.horizontal_wrapped(|ui| {
@@ -751,7 +751,7 @@ fn rules(ui: &mut Ui, t: &mut TilesetUi<'_>, c: &tiles::Terrain, out: &mut Tiles
              pattern to change it: ? anything, = the same, ! not the same, _ nothing, or a terrain.",
         )
         .small()
-        .color(theme::TEXT_WEAK),
+        .color(theme::text_weak()),
     );
     let codes: Vec<char> = t.editor.file.terrains.iter().map(|x| x.code).collect();
     let cycle = |cond: Cond| -> Cond {
@@ -769,7 +769,7 @@ fn rules(ui: &mut Ui, t: &mut TilesetUi<'_>, c: &tiles::Terrain, out: &mut Tiles
             .fill(if picked {
                 t.accent.gamma_multiply(0.15)
             } else {
-                theme::FIELD
+                theme::field()
             })
             .corner_radius(4.0)
             .inner_margin(6.0)
@@ -796,7 +796,7 @@ fn rules(ui: &mut Ui, t: &mut TilesetUi<'_>, c: &tiles::Terrain, out: &mut Tiles
                         let fill = if middle {
                             colour(c.colour)
                         } else if resp.hovered() {
-                            theme::HOVER
+                            theme::hover()
                         } else {
                             Color32::from_rgb(0x2c, 0x2c, 0x2c)
                         };
@@ -806,7 +806,7 @@ fn rules(ui: &mut Ui, t: &mut TilesetUi<'_>, c: &tiles::Terrain, out: &mut Tiles
                             egui::Align2::CENTER_CENTER,
                             if middle { '*' } else { cond.char() }.to_string(),
                             egui::FontId::monospace((cell * 0.6).max(8.0)),
-                            theme::TEXT,
+                            theme::text(),
                         );
                         if !middle && resp.clicked() {
                             out.changed |= t.editor.set_cond(rule.id, i, cycle(*cond));
@@ -814,7 +814,9 @@ fn rules(ui: &mut Ui, t: &mut TilesetUi<'_>, c: &tiles::Terrain, out: &mut Tiles
                     }
                     ui.vertical(|ui| {
                         ui.horizontal(|ui| {
-                            ui.label(RichText::new(format!("{}.", n + 1)).color(theme::TEXT_WEAK));
+                            ui.label(
+                                RichText::new(format!("{}.", n + 1)).color(theme::text_weak()),
+                            );
                             ui.label("Shows slot");
                             let mut slot = rule.slot;
                             if ui
@@ -880,7 +882,7 @@ fn rules(ui: &mut Ui, t: &mut TilesetUi<'_>, c: &tiles::Terrain, out: &mut Tiles
     let needed = autotile::needed_slots(&t.editor.file, c);
     if !needed.is_empty() {
         ui.add_space(6.0);
-        ui.label(RichText::new("Slots the rules show").color(theme::TEXT_WEAK));
+        ui.label(RichText::new("Slots the rules show").color(theme::text_weak()));
         ui.horizontal_wrapped(|ui| {
             for slot in needed {
                 slot_box(ui, t, c, slot, 48.0, out);
@@ -892,7 +894,7 @@ fn rules(ui: &mut Ui, t: &mut TilesetUi<'_>, c: &tiles::Terrain, out: &mut Tiles
 /// The patch to try edges on: click cells to turn the terrain on or off.
 fn try_it(ui: &mut Ui, t: &mut TilesetUi<'_>) {
     ui.horizontal(|ui| {
-        ui.label(RichText::new("Try it").color(theme::TEXT_WEAK));
+        ui.label(RichText::new("Try it").color(theme::text_weak()));
         ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
             if ui.small_button("Clear").clicked() {
                 t.editor.try_cells.iter_mut().for_each(|c| *c = false);
@@ -984,7 +986,7 @@ fn try_it(ui: &mut Ui, t: &mut TilesetUi<'_>) {
     ui.label(
         RichText::new("Click cells to see the edges; not saved.")
             .small()
-            .color(theme::TEXT_WEAK),
+            .color(theme::text_weak()),
     );
 }
 
@@ -993,7 +995,7 @@ fn try_it(ui: &mut Ui, t: &mut TilesetUi<'_>) {
 pub(crate) fn tileset_properties(ui: &mut Ui, t: &mut TilesetUi<'_>) -> bool {
     let mut changed = false;
     let Some(c) = t.editor.chosen().cloned() else {
-        ui.label(RichText::new("No terrains yet.").color(theme::TEXT_WEAK));
+        ui.label(RichText::new("No terrains yet.").color(theme::text_weak()));
         return false;
     };
     let Some(slot) = t.editor.slot else {
@@ -1003,7 +1005,7 @@ pub(crate) fn tileset_properties(ui: &mut Ui, t: &mut TilesetUi<'_>) -> bool {
         });
         // The chosen terrain: its name, code and colour.
         ui.add_space(4.0);
-        ui.label(RichText::new(format!("Terrain · {}", c.kind.word())).color(theme::TEXT_WEAK));
+        ui.label(RichText::new(format!("Terrain · {}", c.kind.word())).color(theme::text_weak()));
         crate::inspector::row(ui, "Name", "What game code will call it.", |ui| {
             if let Some(name) =
                 crate::map_tab::name_field(ui, ("terrain name", c.id), &c.name, 120.0)
@@ -1061,7 +1063,7 @@ pub(crate) fn tileset_properties(ui: &mut Ui, t: &mut TilesetUi<'_>) -> bool {
                 set.pieces.len(),
                 set.rules.len()
             ))
-            .color(theme::TEXT_WEAK),
+            .color(theme::text_weak()),
         );
         if let Some(at) = t.editor.tile {
             let used: Vec<String> = set
@@ -1081,13 +1083,13 @@ pub(crate) fn tileset_properties(ui: &mut Ui, t: &mut TilesetUi<'_>) -> bool {
                 } else {
                     format!("Fills {}", used.join(", "))
                 })
-                .color(theme::TEXT_WEAK),
+                .color(theme::text_weak()),
             );
         } else {
             ui.label(
                 RichText::new("Click a slot on the right to see its tiles here.")
                     .small()
-                    .color(theme::TEXT_WEAK),
+                    .color(theme::text_weak()),
             );
         }
         return changed;
@@ -1102,14 +1104,14 @@ pub(crate) fn tileset_properties(ui: &mut Ui, t: &mut TilesetUi<'_>) -> bool {
     if pieces.is_empty() {
         ui.label(
             RichText::new("No tile yet: click a tile in the picture, then this slot.")
-                .color(theme::TEXT_WEAK),
+                .color(theme::text_weak()),
         );
     }
     let aseprite = t.picture.as_ref().is_some_and(|p| p.durations.len() > 1);
     let total: f32 = pieces.iter().map(|p| p.weight).sum();
     for (n, piece) in pieces.iter().enumerate() {
         egui::Frame::new()
-            .fill(theme::FIELD)
+            .fill(theme::field())
             .corner_radius(4.0)
             .inner_margin(6.0)
             .show(ui, |ui| {
@@ -1216,7 +1218,7 @@ pub(crate) fn tileset_properties(ui: &mut Ui, t: &mut TilesetUi<'_>) -> bool {
              cell every time.",
         )
         .small()
-        .color(theme::TEXT_WEAK),
+        .color(theme::text_weak()),
     );
     let _ = Id::random;
     changed

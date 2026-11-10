@@ -130,7 +130,7 @@ impl Workbench {
                 RichText::new("Keep the changes made while playing?")
                     .strong()
                     .size(15.0)
-                    .color(theme::TEXT_STRONG),
+                    .color(theme::text_strong()),
             );
             ui.add_space(4.0);
             ui.label(format!(
@@ -139,12 +139,12 @@ impl Workbench {
             ));
             ui.add_space(4.0);
             for label in labels.iter().take(LISTED) {
-                ui.label(RichText::new(format!("•  {label}")).color(theme::TEXT));
+                ui.label(RichText::new(format!("•  {label}")).color(theme::text()));
             }
             if labels.len() > LISTED {
                 ui.label(
                     RichText::new(format!("and {} more", labels.len() - LISTED))
-                        .color(theme::TEXT_WEAK),
+                        .color(theme::text_weak()),
                 );
             }
             ui.add_space(10.0);

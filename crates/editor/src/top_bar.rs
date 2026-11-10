@@ -554,16 +554,16 @@ pub(crate) fn icon_button(
     let background = match fill {
         Some(fill) if response.hovered() => fill.gamma_multiply(1.15),
         Some(fill) => fill,
-        None if response.hovered() => theme::HOVER,
+        None if response.hovered() => theme::hover(),
         None => Color32::TRANSPARENT,
     };
     ui.painter().rect_filled(rect, 4.0, background);
     let color = if !enabled {
-        theme::TEXT_WEAK.gamma_multiply(0.6)
+        theme::text_weak().gamma_multiply(0.6)
     } else if fill.is_some() {
         Color32::WHITE
     } else {
-        theme::TEXT_CONSOLE
+        theme::text_console()
     };
     icons::icon(
         ui.painter(),
@@ -589,16 +589,16 @@ pub(crate) fn document_tab(
 ) -> (bool, bool) {
     let font = egui::TextStyle::Button.resolve(ui.style());
     let strong = if front {
-        theme::TEXT_STRONG
+        theme::text_strong()
     } else {
-        theme::TEXT_WEAK
+        theme::text_weak()
     };
     let text = ui
         .painter()
         .layout_no_wrap(name.to_string(), font.clone(), strong);
     let close = ui
         .painter()
-        .layout_no_wrap("×".to_string(), font, theme::TEXT_WEAK);
+        .layout_no_wrap("×".to_string(), font, theme::text_weak());
     let (pad, icon_size, gap) = (12.0, 12.0, 7.0);
     // An × only on a tab that can be closed: one that can't shows none,
     // so there's nothing to click that does nothing.
@@ -615,7 +615,7 @@ pub(crate) fn document_tab(
         .widget_info(|| egui::WidgetInfo::selected(egui::WidgetType::Button, true, front, name));
     let painter = ui.painter();
     if front {
-        painter.rect_filled(rect, 0.0, theme::MENU_ROW);
+        painter.rect_filled(rect, 0.0, theme::menu_row());
         painter.hline(
             rect.x_range(),
             rect.bottom() - 1.0,
@@ -633,7 +633,7 @@ pub(crate) fn document_tab(
         if front {
             accent.colors().light
         } else {
-            theme::TEXT_WEAK
+            theme::text_weak()
         },
     );
     x += icon_size + gap;
@@ -652,7 +652,7 @@ pub(crate) fn document_tab(
         painter.galley(
             egui::pos2(x, rect.center().y - close.size().y / 2.0),
             close,
-            theme::TEXT_WEAK,
+            theme::text_weak(),
         );
     }
     let mut closed = false;

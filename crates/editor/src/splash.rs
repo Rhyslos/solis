@@ -36,7 +36,7 @@ const BAR_WIDTH: f32 = 260.0;
 pub fn show(ui: &mut Ui, view: &SplashView<'_>) {
     let rect = ui.max_rect();
     let painter = ui.painter_at(rect);
-    painter.rect_filled(rect, 0.0, theme::BACKGROUND);
+    painter.rect_filled(rect, 0.0, theme::background());
     let colors = view.accent.colors();
     let middle = rect.center();
     // The logo, the name, the version, the bar and the words, centred.
@@ -54,17 +54,17 @@ pub fn show(ui: &mut Ui, view: &SplashView<'_>) {
         Align2::CENTER_CENTER,
         &view.info.name,
         FontId::proportional(32.0),
-        theme::TEXT_STRONG,
+        theme::text_strong(),
     );
     painter.text(
         middle + vec2(0.0, 16.0),
         Align2::CENTER_CENTER,
         format!("Version {}", view.info.version),
         FontId::proportional(14.0),
-        theme::TEXT_WEAK,
+        theme::text_weak(),
     );
     let bar = Rect::from_center_size(middle + vec2(0.0, 50.0), vec2(BAR_WIDTH, 4.0));
-    painter.rect_filled(bar, 2.0, theme::PANEL);
+    painter.rect_filled(bar, 2.0, theme::panel());
     let done = match view.progress {
         Some(p) => {
             Rect::from_min_size(bar.min, vec2(bar.width() * p.clamp(0.0, 1.0), bar.height()))
@@ -85,7 +85,7 @@ pub fn show(ui: &mut Ui, view: &SplashView<'_>) {
         Align2::CENTER_CENTER,
         view.doing,
         FontId::proportional(13.0),
-        theme::TEXT_WEAK,
+        theme::text_weak(),
     );
     // One label for screen readers (and tests): the name, version and
     // what's happening.
@@ -155,7 +155,7 @@ pub fn update_question(
                         "This copy wasn't installed with the installer, so it can't update \
                          itself: download the new installer and run it once.",
                     )
-                    .color(theme::TEXT_WEAK),
+                    .color(theme::text_weak()),
                 );
             }
             ui.add_space(6.0);

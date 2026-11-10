@@ -14,7 +14,8 @@ use egui::{RichText, Ui};
 /// A page of the Settings window.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
 pub(crate) enum Page {
-    /// The editor's look: the accent colour and the panel layout.
+    /// The editor's look: the theme, rounded panels, the accent colour and
+    /// the panel layout.
     #[default]
     Appearance,
     /// The project's 2D settings.
@@ -42,6 +43,8 @@ impl Page {
 /// One setting: its name and its hint, which the search box looks in.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
 enum Setting {
+    Theme,
+    Rounded,
     Accent,
     Layout,
     Hints,
@@ -54,7 +57,9 @@ enum Setting {
 impl Setting {
     fn page(self) -> Page {
         match self {
-            Self::Accent | Self::Layout | Self::Hints => Page::Appearance,
+            Self::Theme | Self::Rounded | Self::Accent | Self::Layout | Self::Hints => {
+                Page::Appearance
+            }
             Self::BaseResolution | Self::PixelsPerUnit | Self::TileSize | Self::Scaling => {
                 Page::TwoD
             }
@@ -63,6 +68,8 @@ impl Setting {
 
     fn name(self) -> &'static str {
         match self {
+            Self::Theme => "Theme",
+            Self::Rounded => "Rounded panels",
             Self::Accent => "Accent colour",
             Self::Layout => "Panel layout",
             Self::Hints => "Hints",
@@ -75,6 +82,14 @@ impl Setting {
 
     fn hint(self) -> &'static str {
         match self {
+            Self::Theme => {
+                "The editor's colours. Graphite is near-black with crisp lines; Standard is the \
+                 grey Solis started with."
+            }
+            Self::Rounded => {
+                "Panels become rounded cards with small gaps between them, and the workspaces sit \
+                 in one group of pills. Works with either theme."
+            }
             Self::Accent => {
                 "Marks what's chosen and selected. Play, Stop and warnings keep their own colours."
             }
@@ -98,7 +113,9 @@ impl Setting {
         }
     }
 
-    const ALL: [Self; 7] = [
+    const ALL: [Self; 9] = [
+        Self::Theme,
+        Self::Rounded,
         Self::Accent,
         Self::Layout,
         Self::Hints,
@@ -127,11 +144,13 @@ pub(crate) struct SettingsWindow {
 /// What a click in the window asks for, carried out once it's drawn.
 enum Request {
     Accent(Accent),
+    /// A theme, rounded panels or not.
+    Appearance(theme::Appearance),
     ResetLayout,
     /// Hints on or off.
     Hints(bool),
-    /// The Appearance page as it was at first: the standard accent, and
-    /// hints on.
+    /// The Appearance page as it was at first: the standard theme, flat
+    /// panels, the standard accent, and hints on.
     ResetAppearance,
     /// New 2D settings, and whether to save them now (not while a number
     /// is being dragged).
@@ -166,7 +185,14 @@ impl Workbench {
     /// Sets the accent colour for the whole editor (remembered next time).
     pub(crate) fn choose_accent(&mut self, ctx: &egui::Context, accent: Accent) {
         self.accent = accent;
-        theme::set_accent(ctx, accent);
+        theme::restyle(ctx, accent, self.appearance);
+    }
+
+    /// Sets the theme and rounded panels for the whole editor (remembered
+    /// next time).
+    pub(crate) fn choose_appearance(&mut self, ctx: &egui::Context, appearance: theme::Appearance) {
+        self.appearance = appearance;
+        theme::restyle(ctx, self.accent, appearance);
     }
 
     /// Uses the project's 2D settings (as read from its `pixels.solpix`,
@@ -222,6 +248,7 @@ impl Workbench {
         let mut request = None;
         let now = Now {
             accent: self.accent,
+            appearance: self.appearance,
             hints: self.hints,
             pixels: self.pixels,
             project: self.project.is_some(),
@@ -239,9 +266,11 @@ impl Workbench {
             });
         match request {
             Some(Request::Accent(accent)) => self.choose_accent(ctx, accent),
+            Some(Request::Appearance(appearance)) => self.choose_appearance(ctx, appearance),
             Some(Request::ResetLayout) => self.reset_layout(),
             Some(Request::Hints(on)) => self.hints = on,
             Some(Request::ResetAppearance) => {
+                self.appearance = theme::Appearance::default();
                 self.choose_accent(ctx, Accent::default());
                 self.hints = true;
             }
@@ -257,6 +286,7 @@ impl Workbench {
 /// The settings as they are, for the window to show.
 struct Now {
     accent: Accent,
+    appearance: theme::Appearance,
     /// Whether the Hints panel shows hints.
     hints: bool,
     pixels: PixelSettings,
@@ -293,7 +323,7 @@ fn contents(ui: &mut Ui, window: &mut SettingsWindow, now: &Now) -> Option<Reque
             );
             ui.add_space(6.0);
             for (heading, project) in [("Editor", false), ("This project", true)] {
-                ui.label(RichText::new(heading).color(theme::TEXT_WEAK).size(11.0));
+                ui.label(RichText::new(heading).color(theme::text_weak()).size(11.0));
                 for page in Page::ALL.into_iter().filter(|p| p.is_project() == project) {
                     let chosen = words.is_empty() && window.page == page;
                     if ui.selectable_label(chosen, page.name()).clicked() {
@@ -319,11 +349,11 @@ fn contents(ui: &mut Ui, window: &mut SettingsWindow, now: &Now) -> Option<Reque
                 } else {
                     "These belong to a project: open or make one to change them."
                 };
-                ui.label(RichText::new(line).color(theme::TEXT_WEAK).size(11.0));
+                ui.label(RichText::new(line).color(theme::text_weak()).size(11.0));
             }
             ui.add_space(4.0);
             if shown.is_empty() {
-                ui.label(RichText::new("No setting matches that.").color(theme::TEXT_WEAK));
+                ui.label(RichText::new("No setting matches that.").color(theme::text_weak()));
             }
             for setting in shown {
                 if let Some(r) = row(ui, setting, now) {
@@ -338,7 +368,7 @@ fn contents(ui: &mut Ui, window: &mut SettingsWindow, now: &Now) -> Option<Reque
                 "The editor's settings are kept on this computer, a project's in the project."
                     .to_owned()
             };
-            ui.label(RichText::new(footer).color(theme::TEXT_WEAK).size(11.0));
+            ui.label(RichText::new(footer).color(theme::text_weak()).size(11.0));
             ui.add_space(8.0);
             // The 2D page's settings are the project's: nothing to reset
             // without one.
@@ -402,7 +432,7 @@ fn row(ui: &mut Ui, setting: Setting, now: &Now) -> Option<Request> {
             ui.label(setting.name());
             ui.label(
                 RichText::new(setting.hint())
-                    .color(theme::TEXT_WEAK)
+                    .color(theme::text_weak())
                     .size(11.0),
             );
         });
@@ -411,6 +441,33 @@ fn row(ui: &mut Ui, setting: Setting, now: &Now) -> Option<Request> {
                 let mut on = now.hints;
                 if ui.checkbox(&mut on, "Show hints").changed() {
                     request = Some(Request::Hints(on));
+                }
+            }
+            Setting::Theme => {
+                egui::ComboBox::from_id_salt("settings-theme")
+                    .selected_text(now.appearance.theme.name())
+                    .width(150.0)
+                    .show_ui(ui, |ui| {
+                        for choice in theme::Theme::ALL {
+                            if ui
+                                .selectable_label(now.appearance.theme == choice, choice.name())
+                                .clicked()
+                            {
+                                request = Some(Request::Appearance(theme::Appearance {
+                                    theme: choice,
+                                    ..now.appearance
+                                }));
+                            }
+                        }
+                    });
+            }
+            Setting::Rounded => {
+                let mut on = now.appearance.rounded;
+                if ui.checkbox(&mut on, "Use rounded panels").changed() {
+                    request = Some(Request::Appearance(theme::Appearance {
+                        rounded: on,
+                        ..now.appearance
+                    }));
                 }
             }
             Setting::Accent => {
@@ -489,7 +546,11 @@ fn pixel_control(ui: &mut Ui, setting: Setting, s: PixelSettings) -> Option<Requ
                         }
                     }
                     ui.separator();
-                    ui.label(RichText::new("Your own").color(theme::TEXT_WEAK).size(11.0));
+                    ui.label(
+                        RichText::new("Your own")
+                            .color(theme::text_weak())
+                            .size(11.0),
+                    );
                     ui.horizontal(|ui| {
                         number(
                             ui,
@@ -548,7 +609,7 @@ fn pixel_control(ui: &mut Ui, setting: Setting, s: PixelSettings) -> Option<Requ
                     }
                 });
         }
-        Setting::Accent | Setting::Layout | Setting::Hints => {}
+        Setting::Theme | Setting::Rounded | Setting::Accent | Setting::Layout | Setting::Hints => {}
     }
     if changed.get() && new != s {
         // Saved once the drag ends, not every step of it.
@@ -592,8 +653,11 @@ mod tests {
         // The accent restyles the editor, whose headings need its fonts.
         h.ctx.set_fonts(theme::fonts());
         h.run();
-        // The accent's drop-down, then a colour in it.
-        h.get_by_role(egui::accesskit::Role::ComboBox).click();
+        // The accent's drop-down (after the theme's), then a colour in it.
+        h.get_all_by_role(egui::accesskit::Role::ComboBox)
+            .nth(1)
+            .unwrap()
+            .click();
         h.run();
         h.get_by_label("Plum").click();
         h.run();
@@ -602,6 +666,33 @@ mod tests {
         h.get_by_label("Reset this page").click();
         h.run();
         assert_eq!(h.state().0.accent(), Accent::default());
+    }
+
+    #[test]
+    fn graphite_and_rounded_panels_restyle_the_editor_and_reset_puts_them_back() {
+        let mut h = opened();
+        h.ctx.set_fonts(theme::fonts());
+        h.run();
+        h.get_all_by_role(egui::accesskit::Role::ComboBox)
+            .next()
+            .unwrap()
+            .click();
+        h.run();
+        h.get_by_label("Graphite").click();
+        h.run();
+        h.get_by_label("Use rounded panels").click();
+        h.run();
+        let chosen = h.state().0.appearance();
+        assert_eq!(chosen.theme, theme::Theme::Graphite);
+        assert!(chosen.rounded);
+        assert_eq!(theme::panel(), theme::Theme::Graphite.palette().panel);
+        assert!(theme::rounded());
+        // The accent keeps its choice when the theme changes.
+        assert_eq!(h.state().0.accent(), Accent::default());
+        h.get_by_label("Reset this page").click();
+        h.run();
+        assert_eq!(h.state().0.appearance(), theme::Appearance::default());
+        assert_eq!(theme::panel(), theme::Theme::Standard.palette().panel);
     }
 
     #[test]

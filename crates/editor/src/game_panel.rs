@@ -346,9 +346,9 @@ pub(crate) fn game_panel(
         view_projection,
         camera_position: position,
         focus: position,
-        sky_top: theme::backdrop::rgb(theme::backdrop::SKY_TOP),
-        sky_horizon: theme::backdrop::rgb(theme::backdrop::HORIZON),
-        ground: theme::backdrop::rgb(theme::backdrop::GROUND),
+        sky_top: theme::backdrop::rgb(theme::backdrop::sky_top()),
+        sky_horizon: theme::backdrop::rgb(theme::backdrop::horizon()),
+        ground: theme::backdrop::rgb(theme::backdrop::ground()),
         models: scene.view.models.clone(),
         // The game's own look, whatever the viewport uses.
         look: Look::default(),
@@ -404,13 +404,13 @@ pub(crate) fn game_panel(
             );
         }
         Err(reason) => {
-            painter.rect_filled(rect, 0.0, theme::backdrop::HORIZON);
+            painter.rect_filled(rect, 0.0, theme::backdrop::horizon());
             painter.text(
                 rect.center(),
                 egui::Align2::CENTER_CENTER,
                 format!("No 3D view: {reason}"),
                 egui::FontId::proportional(13.0),
-                theme::TEXT_WEAK,
+                theme::text_weak(),
             );
         }
     }
@@ -454,7 +454,7 @@ pub(crate) fn game_panel(
             .corner_radius(4)
             .inner_margin(egui::Margin::symmetric(6, 3))
             .show(&mut overlay, |ui| {
-                ui.label(RichText::new(note).size(12.0).color(theme::TEXT_STRONG));
+                ui.label(RichText::new(note).size(12.0).color(theme::text_strong()));
             });
     }
     GamePanelOut {

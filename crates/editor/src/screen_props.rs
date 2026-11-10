@@ -28,7 +28,7 @@ pub(crate) fn screen_properties(ui: &mut Ui, doc: &mut ScreenDoc, game: &ScreenG
         ui.label(RichText::new(&doc.screen).strong());
         ui.label(
             RichText::new("Pick a piece on the canvas or in Elements to change it.")
-                .color(theme::TEXT_WEAK),
+                .color(theme::text_weak()),
         );
         ui.add_space(8.0);
         ui.label(
@@ -37,7 +37,7 @@ pub(crate) fn screen_properties(ui: &mut Ui, doc: &mut ScreenDoc, game: &ScreenG
                  component that shows it, so one screen can look different for different \
                  entities. Pieces with shadow in their [ ] glow in their own colour.",
             )
-            .color(theme::TEXT_WEAK)
+            .color(theme::text_weak())
             .small(),
         );
         return false;
@@ -57,12 +57,12 @@ pub(crate) fn screen_properties(ui: &mut Ui, doc: &mut ScreenDoc, game: &ScreenG
                 ui.label(RichText::new(&piece.kind).strong());
                 ui.label(
                     RichText::new(format!("{}, line {}", doc.path, piece.line))
-                        .color(theme::TEXT_WEAK),
+                        .color(theme::text_weak()),
                 );
                 if many {
                     ui.label(
                         RichText::new(format!("and {} more", doc.picked.len() - 1))
-                            .color(theme::TEXT_WEAK),
+                            .color(theme::text_weak()),
                     );
                 }
             });
@@ -88,7 +88,7 @@ pub(crate) fn screen_properties(ui: &mut Ui, doc: &mut ScreenDoc, game: &ScreenG
                         ui.label(
                             RichText::new(format!("{} (code)", &text[arg.span.clone()]))
                                 .monospace()
-                                .color(theme::TEXT_WEAK),
+                                .color(theme::text_weak()),
                         );
                     }
                 }
@@ -231,18 +231,18 @@ pub(crate) fn screen_properties(ui: &mut Ui, doc: &mut ScreenDoc, game: &ScreenG
                 } else {
                     "The game's events. The entity's code reacts with on Pause() { }."
                 })
-                .color(theme::TEXT_WEAK)
+                .color(theme::text_weak())
                 .small(),
             );
         } else {
             ui.label(
                 RichText::new(if body.is_empty() { "nothing yet" } else { body })
                     .monospace()
-                    .color(theme::TEXT_WEAK),
+                    .color(theme::text_weak()),
             );
             ui.label(
                 RichText::new("What it does is written in its { }: Open as code to change it.")
-                    .color(theme::TEXT_WEAK)
+                    .color(theme::text_weak())
                     .small(),
             );
         }
@@ -273,7 +273,7 @@ pub(crate) fn screen_properties(ui: &mut Ui, doc: &mut ScreenDoc, game: &ScreenG
     }
     ui.label(
         RichText::new("As written in its [ ]: anything Lust has, such as gap 8, center or nowrap.")
-            .color(theme::TEXT_WEAK)
+            .color(theme::text_weak())
             .small(),
     );
     changed
@@ -329,7 +329,7 @@ fn ties(
             RichText::new(
                 "Give the entity this screen is shown for a component, and its fields can be tied here.",
             )
-            .color(theme::TEXT_WEAK)
+            .color(theme::text_weak())
             .small(),
         );
         return false;
@@ -451,7 +451,7 @@ fn section(ui: &mut Ui, title: &str) {
         RichText::new(title)
             .small()
             .strong()
-            .color(theme::TEXT_WEAK),
+            .color(theme::text_weak()),
     );
 }
 
@@ -555,7 +555,7 @@ fn number_field(
     ui.horizontal(|ui| {
         if code {
             ui.label(RichText::new(now.unwrap_or_default()).monospace());
-            ui.label(RichText::new("(code)").color(theme::TEXT_WEAK));
+            ui.label(RichText::new("(code)").color(theme::text_weak()));
             return;
         }
         let id = egui::Id::new(("screen number", name, piece.span.start));
@@ -586,7 +586,7 @@ fn number_field(
                 changed |= doc.remove_styles(&[name]);
             }
         } else {
-            ui.label(RichText::new("default").color(theme::TEXT_WEAK).small());
+            ui.label(RichText::new("default").color(theme::text_weak()).small());
         }
     });
     changed
@@ -683,7 +683,7 @@ fn align_grid(ui: &mut Ui, doc: &mut ScreenDoc, piece: &ui::source::ElementSourc
                             } else {
                                 egui::Color32::TRANSPARENT
                             },
-                            egui::Stroke::new(1.0, theme::TEXT_WEAK),
+                            egui::Stroke::new(1.0, theme::text_weak()),
                             egui::StrokeKind::Inside,
                         );
                         let named = format!("{aw}, {dw}");
@@ -707,7 +707,7 @@ fn align_grid(ui: &mut Ui, doc: &mut ScreenDoc, piece: &ui::source::ElementSourc
                 DOWN[down.unwrap_or(0)]
             ),
         };
-        ui.label(RichText::new(words).color(theme::TEXT_WEAK));
+        ui.label(RichText::new(words).color(theme::text_weak()));
     });
     changed
 }

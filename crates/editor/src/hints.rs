@@ -130,16 +130,16 @@ pub(crate) fn hints_panel(ui: &mut Ui, hints: Option<&[String]>) {
             let Some(hints) = hints else {
                 ui.label(
                     RichText::new("Hints are off. Turn them on in Edit > Settings… > Appearance.")
-                        .color(theme::TEXT_WEAK),
+                        .color(theme::text_weak()),
                 );
                 return;
             };
             egui::ScrollArea::vertical().show(ui, |ui| {
                 for (n, hint) in hints.iter().enumerate() {
                     let colour = if n == 0 {
-                        theme::TEXT_STRONG
+                        theme::text_strong()
                     } else {
-                        theme::TEXT
+                        theme::text()
                     };
                     ui.label(RichText::new(hint).color(colour));
                     ui.add_space(6.0);
@@ -150,7 +150,7 @@ pub(crate) fn hints_panel(ui: &mut Ui, hints: Option<&[String]>) {
                         "Hints show here for what's selected. Turn them off in Edit > Settings… \
                          > Appearance.",
                     )
-                    .color(theme::TEXT_WEAK)
+                    .color(theme::text_weak())
                     .size(11.5),
                 );
             });

@@ -85,7 +85,7 @@ impl Workbench {
     pub fn status(&self) -> Status {
         let code = self.code_checked.as_ref().map(|at| {
             match self.code_problems.len() + self.picture_problems().len() {
-                0 => Part::new("Code checked", theme::TEXT_WEAK).marked(Mark::Tick),
+                0 => Part::new("Code checked", theme::text_weak()).marked(Mark::Tick),
                 1 => Part::new("1 mistake in the code", theme::WARNING).marked(Mark::Warning),
                 n => Part::new(format!("{n} mistakes in the code"), theme::WARNING)
                     .marked(Mark::Warning),
@@ -96,17 +96,18 @@ impl Workbench {
             ))
         });
         let saved = if self.document.is_dirty() {
-            Part::new("Unsaved changes", theme::TEXT).more("File > Save area (Ctrl+S) keeps them.")
+            Part::new("Unsaved changes", theme::text())
+                .more("File > Save area (Ctrl+S) keeps them.")
         } else if self.document.file().is_none() {
-            Part::new("Not saved yet", theme::TEXT_WEAK)
+            Part::new("Not saved yet", theme::text_weak())
                 .more("This area has no file yet: File > Save area (Ctrl+S) gives it one.")
         } else {
-            Part::new("Saved", theme::TEXT_WEAK)
+            Part::new("Saved", theme::text_weak())
         };
         let playing = match self.play_state() {
             PlayState::Editing => None,
             PlayState::Playing => {
-                Some(Part::new("Playing", theme::TEXT_STRONG).marked(Mark::Playing))
+                Some(Part::new("Playing", theme::text_strong()).marked(Mark::Playing))
             }
             PlayState::Paused => Some(Part::new("Paused", theme::WARNING).marked(Mark::Paused)),
         };
@@ -136,7 +137,7 @@ impl Workbench {
                 part(ui, code, false);
             }
             let problems = match status.problems {
-                0 => Part::new("No problems", theme::TEXT_WEAK),
+                0 => Part::new("No problems", theme::text_weak()),
                 1 => Part::new("1 problem", theme::WARNING).marked(Mark::Warning),
                 n => Part::new(format!("{n} problems"), theme::WARNING).marked(Mark::Warning),
             }
@@ -146,7 +147,7 @@ impl Workbench {
             }
             part(ui, &status.saved, false);
             ui.with_layout(Layout::right_to_left(Align::Center), |ui| {
-                part(ui, &Part::new(&status.area, theme::TEXT_WEAK), false);
+                part(ui, &Part::new(&status.area, theme::text_weak()), false);
                 if let Some(playing) = &status.playing {
                     part(ui, playing, false);
                 }

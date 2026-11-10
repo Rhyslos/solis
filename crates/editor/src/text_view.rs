@@ -218,13 +218,13 @@ fn inline(ui: &mut Ui, words: &str, size: f32, colour: Color32) {
     for (style, text) in inline_runs(words) {
         let format = match style {
             Style::Plain => TextFormat::simple(FontId::proportional(size), colour),
-            Style::Strong => TextFormat::simple(FontId::proportional(size), theme::TEXT_STRONG),
+            Style::Strong => TextFormat::simple(FontId::proportional(size), theme::text_strong()),
             Style::Emphasis => TextFormat {
                 italics: true,
                 ..TextFormat::simple(FontId::proportional(size), colour)
             },
             Style::Code => TextFormat {
-                background: theme::FIELD,
+                background: theme::field(),
                 ..TextFormat::simple(FontId::monospace(size - 1.0), colour)
             },
             Style::Link => TextFormat {
@@ -250,18 +250,18 @@ fn markdown(ui: &mut Ui, text: &str) {
                     _ => 13.5,
                 };
                 ui.add_space(if level <= 2 { 6.0 } else { 3.0 });
-                inline(ui, &words, size, theme::TEXT_STRONG);
+                inline(ui, &words, size, theme::text_strong());
                 ui.add_space(2.0);
             }
             Block::Paragraph(words) => {
-                inline(ui, &words, 13.0, theme::TEXT);
+                inline(ui, &words, 13.0, theme::text());
                 ui.add_space(6.0);
             }
             Block::Item(depth, marker, words) => {
                 ui.horizontal_top(|ui| {
                     ui.add_space(4.0 + f32::from(depth) * 14.0);
-                    ui.label(RichText::new(marker).color(theme::TEXT_WEAK));
-                    inline(ui, &words, 13.0, theme::TEXT);
+                    ui.label(RichText::new(marker).color(theme::text_weak()));
+                    inline(ui, &words, 13.0, theme::text());
                 });
             }
             Block::Quote(words) => {
@@ -272,14 +272,14 @@ fn markdown(ui: &mut Ui, text: &str) {
                         top: 2,
                         bottom: 2,
                     })
-                    .show(ui, |ui| inline(ui, &words, 13.0, theme::TEXT_WEAK))
+                    .show(ui, |ui| inline(ui, &words, 13.0, theme::text_weak()))
                     .response
                     .rect;
                 // A quote's bar down its left.
                 ui.painter().vline(
                     bar.left() + 2.0,
                     bar.y_range(),
-                    egui::Stroke::new(2.0, theme::TEXT_WEAK.gamma_multiply(0.5)),
+                    egui::Stroke::new(2.0, theme::text_weak().gamma_multiply(0.5)),
                 );
             }
             Block::Code(code) => {
@@ -296,7 +296,7 @@ fn markdown(ui: &mut Ui, text: &str) {
 /// Text as it is, in a fixed-width face on a darker field.
 fn plain_frame(ui: &mut Ui, text: &str) {
     egui::Frame::new()
-        .fill(theme::FIELD)
+        .fill(theme::field())
         .corner_radius(4.0)
         .inner_margin(8.0)
         .show(ui, |ui| {
@@ -304,7 +304,7 @@ fn plain_frame(ui: &mut Ui, text: &str) {
             ui.label(
                 RichText::new(text)
                     .font(FontId::monospace(12.0))
-                    .color(theme::TEXT),
+                    .color(theme::text()),
             );
         });
 }
@@ -330,7 +330,7 @@ pub(crate) fn text_properties(
     egui::Frame::new()
         .inner_margin(theme::panel_margin())
         .show(ui, |ui| {
-            ui.label(RichText::new(name).strong().color(theme::TEXT_STRONG));
+            ui.label(RichText::new(name).strong().color(theme::text_strong()));
             let about = match read {
                 Some(Ok(text)) => {
                     let lines = text.lines().count();
@@ -339,7 +339,7 @@ pub(crate) fn text_properties(
                 Some(Err(_)) => "Text".to_owned(),
                 None => "Text · reading…".to_owned(),
             };
-            ui.label(RichText::new(about).color(theme::TEXT_WEAK));
+            ui.label(RichText::new(about).color(theme::text_weak()));
             ui.add_space(4.0);
             if ui
                 .button("Open in its program ↗")
@@ -361,13 +361,13 @@ pub(crate) fn text_properties(
                 .inner_margin(theme::panel_margin())
                 .show(ui, |ui| match read {
                     None => {
-                        ui.label(RichText::new("Reading…").color(theme::TEXT_WEAK));
+                        ui.label(RichText::new("Reading…").color(theme::text_weak()));
                     }
                     Some(Err(why)) => {
                         ui.colored_label(theme::WARNING, format!("Can't show it: {why}."));
                     }
                     Some(Ok(text)) if text.trim().is_empty() => {
-                        ui.label(RichText::new("It's empty.").color(theme::TEXT_WEAK));
+                        ui.label(RichText::new("It's empty.").color(theme::text_weak()));
                     }
                     Some(Ok(text)) => {
                         let (shown, more) = first_lines(text);
@@ -382,7 +382,7 @@ pub(crate) fn text_properties(
                                     "Only the first {MAX_LINES} lines are shown: open it in its \
                                      program for the rest."
                                 ))
-                                .color(theme::TEXT_WEAK),
+                                .color(theme::text_weak()),
                             );
                         }
                         ui.add_space(8.0);
@@ -391,7 +391,7 @@ pub(crate) fn text_properties(
                                 "Read only: edit it in its program, and Solis shows the change \
                                  when you save.",
                             )
-                            .color(theme::TEXT_WEAK),
+                            .color(theme::text_weak()),
                         );
                     }
                 });

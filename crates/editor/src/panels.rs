@@ -209,7 +209,7 @@ impl TabViewer for PanelViewer<'_> {
                 5.0,
                 egui::TextFormat {
                     font_id: egui::FontId::proportional(theme::TEXT_SIZE),
-                    color: theme::TEXT_WEAK,
+                    color: theme::text_weak(),
                     ..Default::default()
                 },
             );
@@ -240,7 +240,7 @@ impl TabViewer for PanelViewer<'_> {
         let color = match (in_front, *tab) {
             (true, Panel::Library) => theme::FOLDER,
             (true, _) => self.accent.colors().light,
-            (false, _) => theme::TEXT_WEAK,
+            (false, _) => theme::text_weak(),
         };
         let size = 12.0;
         icons::icon(
@@ -708,7 +708,7 @@ pub(crate) fn drop_hint(ui: &Ui, accent: Accent) {
         egui::Align2::CENTER_CENTER,
         "Drop to import the model (.gltf or .glb)",
         egui::FontId::proportional(18.0),
-        theme::TEXT_STRONG,
+        theme::text_strong(),
     );
 }
 
@@ -717,6 +717,6 @@ pub(crate) fn placeholder(ui: &mut Ui, text: &str) {
     egui::Frame::new()
         .inner_margin(theme::panel_margin())
         .show(ui, |ui| {
-            ui.label(RichText::new(text).color(theme::TEXT_WEAK));
+            ui.label(RichText::new(text).color(theme::text_weak()));
         });
 }

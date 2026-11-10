@@ -194,7 +194,7 @@ pub(crate) fn paint_bar(
     let (rect, _) = ui.allocate_exact_size(vec2(7.0, 22.0), Sense::hover());
     ui.painter().line_segment(
         [rect.center_top(), rect.center_bottom()],
-        egui::Stroke::new(1.0, theme::TEXT_WEAK),
+        egui::Stroke::new(1.0, theme::text_weak()),
     );
     for tool in PaintTool::ALL {
         let chosen = paint.tool == Some(tool);
@@ -203,7 +203,7 @@ pub(crate) fn paint_bar(
         let fill = if chosen {
             accent.colors().fill
         } else if response.hovered() {
-            theme::HOVER
+            theme::hover()
         } else {
             Color32::TRANSPARENT
         };
@@ -211,7 +211,7 @@ pub(crate) fn paint_bar(
         let colour = if chosen {
             Color32::WHITE
         } else {
-            theme::TEXT_STRONG
+            theme::text_strong()
         };
         crate::icons::paint_icon(
             ui.painter(),
@@ -311,7 +311,7 @@ pub(crate) fn stamp_bar(ui: &mut Ui, stamp: &Stamp) -> Option<Option<Turn>> {
             }
             ui.label(
                 RichText::new(format!("Copy {} × {}", stamp.size[0], stamp.size[1]))
-                    .color(theme::TEXT_WEAK),
+                    .color(theme::text_weak()),
             );
         });
     });

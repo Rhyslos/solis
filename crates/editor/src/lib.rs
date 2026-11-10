@@ -46,6 +46,7 @@ mod map_tab;
 mod menu_items;
 pub mod mixer_view;
 pub mod models;
+mod palette;
 pub mod panel;
 mod panels;
 pub mod picking;

@@ -207,7 +207,7 @@ pub(crate) fn profiler_panel(ui: &mut Ui, profiler: &Profiler) {
                 "Nothing measured yet. Each frame the editor draws is measured here: \
                  press Play, or move around the viewport.",
             )
-            .color(theme::TEXT_WEAK),
+            .color(theme::text_weak()),
         );
         return;
     };
@@ -261,16 +261,16 @@ pub(crate) fn profiler_panel(ui: &mut Ui, profiler: &Profiler) {
             thousands(average.entities as u64),
             thousands(average.components as u64),
         ))
-        .color(theme::TEXT_WEAK),
+        .color(theme::text_weak()),
     );
     if d.bolts > 0 {
         ui.label(
             RichText::new(format!("Projectiles drawn: {}.", thousands(d.bolts)))
-                .color(theme::TEXT_WEAK),
+                .color(theme::text_weak()),
         );
     }
     if d.lods[1..].iter().any(|&n| n > 0) {
-        ui.label(RichText::new(lod_text(&d.lods)).color(theme::TEXT_WEAK))
+        ui.label(RichText::new(lod_text(&d.lods)).color(theme::text_weak()))
             .on_hover_text(
                 "Far away, simpler versions of models are drawn (levels of detail): level 1 is \
                  about half the triangles, 2 a quarter, 3 an eighth",
@@ -309,7 +309,7 @@ fn graph(ui: &mut Ui, profiler: &Profiler) {
     let width = ui.available_width().max(60.0);
     let (rect, _) = ui.allocate_exact_size(vec2(width, height), Sense::hover());
     let painter = ui.painter_at(rect);
-    painter.rect_filled(rect, 2.0, theme::FIELD);
+    painter.rect_filled(rect, 2.0, theme::field());
     let tallest = profiler
         .history()
         .map(Sample::cpu_total)
@@ -334,14 +334,14 @@ fn graph(ui: &mut Ui, profiler: &Profiler) {
         let at = y(ms);
         painter.line_segment(
             [egui::pos2(rect.left(), at), egui::pos2(rect.right(), at)],
-            Stroke::new(1.0, theme::TEXT_WEAK.gamma_multiply(0.6)),
+            Stroke::new(1.0, theme::text_weak().gamma_multiply(0.6)),
         );
         painter.text(
             egui::pos2(rect.left() + 4.0, at - 2.0),
             egui::Align2::LEFT_BOTTOM,
             label,
             egui::FontId::proportional(10.0),
-            theme::TEXT_WEAK,
+            theme::text_weak(),
         );
     }
 }

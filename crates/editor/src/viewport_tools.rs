@@ -584,7 +584,7 @@ pub(crate) fn draw_cameras(ui: &Ui, rect: Rect, cameras: &[(EntityId, Mat4)], ca
     let painter = ui.painter_at(rect);
     let size = Vec2::new(rect.width(), rect.height());
     let at = |p: Vec2| rect.min + egui::vec2(p.x, p.y);
-    let stroke = Stroke::new(1.2, theme::TEXT_CONSOLE);
+    let stroke = Stroke::new(1.2, theme::text_console());
     for (_, world) in cameras {
         let (_, rotation, position) = world.to_scale_rotation_translation();
         let place = |x: f32, y: f32, z: f32| position + rotation * Vec3::new(x, y, z);
@@ -678,7 +678,7 @@ pub(crate) fn draw(
                     Some(0) => theme::axis::X,
                     Some(1) => theme::axis::Y,
                     Some(_) => theme::axis::Z,
-                    None => theme::TEXT_STRONG,
+                    None => theme::text_strong(),
                 }
             };
             draw_shape(&painter, &shape, color, &at);

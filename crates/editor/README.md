@@ -6,7 +6,7 @@ The editor's interface, as decided in [decision 0004](../../docs/decisions/0004-
 
 ## Purpose
 
-Draw the editor with egui and egui_dock, keep its state between frames (the panel layout, the chosen tool, the accent colour, the camera, the console), and tell the app what to do through `WorkbenchAction`s.
+Draw the editor with egui and egui_dock, keep its state between frames (the panel layout, the chosen tool, the theme and accent colour, the camera, the console), and tell the app what to do through `WorkbenchAction`s.
 
 **Where things are:**
 

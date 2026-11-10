@@ -1,8 +1,11 @@
 //! The editor's look ([decision 0004](../../../docs/decisions/0004-editor-layout.md)):
 //! Aventail's dark neutral greys, flat panels split by thin dark lines,
 //! plain-text tabs with the front one underlined, small corners, and one
-//! accent colour chosen in Edit → Settings… (amber unless the user picks
-//! another). Text is Inter.
+//! accent colour chosen in Edit → Settings… (blue unless the user picks
+//! another). Text is Inter. The neutral colours come from the chosen
+//! theme, Standard or Graphite, and panels can be rounded cards instead
+//! ([decision 0096](../../../docs/decisions/0096-graphite-theme-and-rounded-panels.md),
+//! `palette.rs`).
 //!
 //! The accent marks what's chosen and selected. Colours that mean
 //! something keep their own whatever the accent ([decision 0060](../../../docs/decisions/0060-amber-and-colours-that-mean-something.md)):
@@ -13,6 +16,11 @@
 //! Text colours are checked for readability by the tests at the bottom
 //! (WCAG contrast 4.5:1 for normal text).
 
+pub use crate::palette::{
+    Appearance, Palette, Theme, appearance, background, button_border, field, header, hover,
+    hover_border, line, menu_row, overlay, palette, panel, pressed, rounded, text, text_console,
+    text_strong, text_time, text_weak,
+};
 use egui::{
     Color32, Context, CornerRadius, FontData, FontDefinitions, FontFamily, FontId, Frame, Margin,
     Shadow, Stroke, Style, TextStyle, Visuals, vec2,
@@ -20,32 +28,6 @@ use egui::{
 use serde::{Deserialize, Serialize};
 use std::sync::Arc;
 
-/// Window background, seen in the thin lines between panels.
-pub const BACKGROUND: Color32 = Color32::from_rgb(0x1b, 0x1b, 0x1b);
-/// Panel bodies.
-pub const PANEL: Color32 = Color32::from_rgb(0x26, 0x26, 0x26);
-/// Title bars above the panels, and the top bar.
-pub const HEADER: Color32 = Color32::from_rgb(0x22, 0x22, 0x22);
-/// The small menu row under a panel's title ("≡ Edit View …").
-pub const MENU_ROW: Color32 = Color32::from_rgb(0x2a, 0x2a, 0x2a);
-/// Text and number fields.
-pub const FIELD: Color32 = Color32::from_rgb(0x1c, 0x1c, 0x1c);
-/// Hairlines between areas and around fields.
-pub const LINE: Color32 = Color32::from_rgb(0x16, 0x16, 0x16);
-/// The thin border around buttons.
-pub const BUTTON_BORDER: Color32 = Color32::from_rgb(0x3a, 0x3a, 0x3a);
-/// A hovered button.
-pub const HOVER: Color32 = Color32::from_rgb(0x3a, 0x3a, 0x3a);
-/// Normal text.
-pub const TEXT: Color32 = Color32::from_rgb(0xc8, 0xc8, 0xc8);
-/// Bright text: headings and the front tab.
-pub const TEXT_STRONG: Color32 = Color32::from_rgb(0xf0, 0xf0, 0xf0);
-/// Quieter text: labels and hints.
-pub const TEXT_WEAK: Color32 = Color32::from_rgb(0xa5, 0xa5, 0xa5);
-/// Console text, a touch brighter than normal text (as in the mockup).
-pub const TEXT_CONSOLE: Color32 = Color32::from_rgb(0xd4, 0xd4, 0xd4);
-/// Times in the console.
-pub const TEXT_TIME: Color32 = Color32::from_rgb(0x9a, 0x9a, 0x9a);
 /// The Library's folder icon: a warm yellow.
 pub const FOLDER: Color32 = Color32::from_rgb(0xe8, 0xc3, 0x5a);
 /// Text that warns: a soft amber, readable on the panels.
@@ -98,7 +80,7 @@ pub mod kind {
     /// The environment (sky and fog).
     pub const ENVIRONMENT: Color32 = Color32::from_rgb(0x4f, 0xb3, 0xa9);
     /// Cameras.
-    pub const CAMERA: Color32 = super::TEXT;
+    pub const CAMERA: Color32 = Color32::from_rgb(0xc8, 0xc8, 0xc8);
     /// Notes: Markdown and plain text files (`.md`, `.txt`).
     pub const NOTES: Color32 = Color32::from_rgb(0x7c, 0xc4, 0xff);
     /// JSON files.
@@ -108,23 +90,25 @@ pub mod kind {
     /// Settings files (`.toml`, `.ron`).
     pub const SETTINGS: Color32 = Color32::from_rgb(0xa0, 0xac, 0xc4);
     /// Anything else.
-    pub const OTHER: Color32 = super::TEXT_WEAK;
+    pub const OTHER: Color32 = Color32::from_rgb(0xa5, 0xa5, 0xa5);
 }
-
-/// The panels drawn over the viewport (stats, view buttons, tools), a
-/// little see-through.
-pub const OVERLAY: Color32 = Color32::from_rgba_premultiplied(0x1f, 0x1f, 0x1f, 0xeb);
 
 /// The viewport's backdrop.
 pub mod backdrop {
     use egui::Color32;
 
-    /// The sky straight up: the darkest part, as in the mockup.
-    pub const SKY_TOP: Color32 = Color32::from_rgb(0x16, 0x18, 0x1d);
+    /// The sky straight up: the darkest part.
+    pub fn sky_top() -> Color32 {
+        super::palette().sky_top
+    }
     /// The sky at the horizon.
-    pub const HORIZON: Color32 = Color32::from_rgb(0x1c, 0x1e, 0x23);
+    pub fn horizon() -> Color32 {
+        super::palette().horizon
+    }
     /// The ground just below the horizon (it lightens towards your feet).
-    pub const GROUND: Color32 = Color32::from_rgb(0x1e, 0x21, 0x26);
+    pub fn ground() -> Color32 {
+        super::palette().ground
+    }
 
     /// A colour as the renderer takes it: sRGB, 0 to 1.
     pub fn rgb(c: Color32) -> [f32; 3] {
@@ -255,18 +239,29 @@ pub const INTER_REGULAR: &[u8] = include_bytes!("../assets/fonts/Inter-Regular.t
 pub const INTER_SEMIBOLD: &[u8] = include_bytes!("../assets/fonts/Inter-SemiBold.ttf");
 const JETBRAINS_MONO: &[u8] = include_bytes!("../assets/fonts/JetBrainsMonoNL-Regular.ttf");
 
-/// Applies the theme to the whole editor with `accent`. The editor is
-/// always dark, whatever the system prefers.
-pub fn apply(ctx: &Context, accent: Accent) {
+/// Applies the theme to the whole editor with `accent` and `look`. The
+/// editor is always dark, whatever the system prefers.
+pub fn apply(ctx: &Context, accent: Accent, look: Appearance) {
     ctx.set_fonts(fonts());
-    set_accent(ctx, accent);
+    restyle(ctx, accent, look);
     ctx.set_theme(egui::ThemePreference::Dark);
 }
 
-/// Switches the accent colour for the whole editor.
+/// Switches the accent colour for the whole editor, keeping the look.
 pub fn set_accent(ctx: &Context, accent: Accent) {
+    restyle(ctx, accent, appearance());
+}
+
+/// Switches the whole editor to `accent` and `look`.
+pub fn restyle(ctx: &Context, accent: Accent, look: Appearance) {
+    crate::palette::use_appearance(look);
     ctx.set_style_of(egui::Theme::Dark, style_with(accent));
     ctx.set_style_of(egui::Theme::Light, style_with(accent));
+}
+
+/// How round corners are: softer when panels are rounded cards.
+pub fn corner() -> u8 {
+    if rounded() { 6 } else { 4 }
 }
 
 /// Glyphs drawn as a browser draws them, without snapping their outlines
@@ -351,11 +346,11 @@ pub fn visuals(accent: Accent) -> Visuals {
     let accent = accent.colors();
     let mut v = Visuals::dark();
     v.override_text_color = None;
-    v.panel_fill = PANEL;
-    v.window_fill = PANEL;
-    v.window_stroke = Stroke::new(1.0, BUTTON_BORDER);
-    v.window_corner_radius = CornerRadius::same(4);
-    v.menu_corner_radius = CornerRadius::same(4);
+    v.panel_fill = panel();
+    v.window_fill = panel();
+    v.window_stroke = Stroke::new(1.0, button_border());
+    v.window_corner_radius = CornerRadius::same(corner());
+    v.menu_corner_radius = CornerRadius::same(corner());
     v.window_shadow = Shadow {
         offset: [0, 6],
         blur: 18,
@@ -368,48 +363,48 @@ pub fn visuals(accent: Accent) -> Visuals {
         spread: 0,
         color: Color32::from_black_alpha(100),
     };
-    v.extreme_bg_color = FIELD;
-    v.text_edit_bg_color = Some(FIELD);
-    v.faint_bg_color = MENU_ROW;
-    v.code_bg_color = FIELD;
+    v.extreme_bg_color = field();
+    v.text_edit_bg_color = Some(field());
+    v.faint_bg_color = menu_row();
+    v.code_bg_color = field();
     v.hyperlink_color = accent.light;
     v.selection.bg_fill = accent.fill;
-    v.selection.stroke = Stroke::new(1.0, TEXT_STRONG);
-    v.weak_text_color = Some(TEXT_WEAK);
+    v.selection.stroke = Stroke::new(1.0, text_strong());
+    v.weak_text_color = Some(text_weak());
 
-    let radius = CornerRadius::same(4);
+    let radius = CornerRadius::same(corner());
     let w = &mut v.widgets;
     // Labels, separators and frames that can't be interacted with.
-    w.noninteractive.bg_fill = PANEL;
-    w.noninteractive.weak_bg_fill = PANEL;
-    w.noninteractive.bg_stroke = Stroke::new(1.0, LINE);
-    w.noninteractive.fg_stroke = Stroke::new(1.0, TEXT);
+    w.noninteractive.bg_fill = panel();
+    w.noninteractive.weak_bg_fill = panel();
+    w.noninteractive.bg_stroke = Stroke::new(1.0, line());
+    w.noninteractive.fg_stroke = Stroke::new(1.0, text());
     w.noninteractive.corner_radius = radius;
     // Buttons and fields at rest: buttons have a thin border.
-    w.inactive.bg_fill = FIELD;
-    w.inactive.weak_bg_fill = MENU_ROW;
-    w.inactive.bg_stroke = Stroke::new(1.0, BUTTON_BORDER);
-    w.inactive.fg_stroke = Stroke::new(1.0, TEXT_STRONG);
+    w.inactive.bg_fill = field();
+    w.inactive.weak_bg_fill = menu_row();
+    w.inactive.bg_stroke = Stroke::new(1.0, button_border());
+    w.inactive.fg_stroke = Stroke::new(1.0, text_strong());
     w.inactive.corner_radius = radius;
     // Under the mouse.
-    w.hovered.bg_fill = HOVER;
-    w.hovered.weak_bg_fill = HOVER;
-    w.hovered.bg_stroke = Stroke::new(1.0, Color32::from_rgb(0x4a, 0x4a, 0x4a));
-    w.hovered.fg_stroke = Stroke::new(1.5, TEXT_STRONG);
+    w.hovered.bg_fill = hover();
+    w.hovered.weak_bg_fill = hover();
+    w.hovered.bg_stroke = Stroke::new(1.0, hover_border());
+    w.hovered.fg_stroke = Stroke::new(1.5, text_strong());
     w.hovered.corner_radius = radius;
     w.hovered.expansion = 0.0;
     // Being pressed or dragged.
-    w.active.bg_fill = Color32::from_rgb(0x44, 0x44, 0x44);
-    w.active.weak_bg_fill = Color32::from_rgb(0x44, 0x44, 0x44);
+    w.active.bg_fill = pressed();
+    w.active.weak_bg_fill = pressed();
     w.active.bg_stroke = Stroke::new(1.0, accent.light);
-    w.active.fg_stroke = Stroke::new(2.0, TEXT_STRONG);
+    w.active.fg_stroke = Stroke::new(2.0, text_strong());
     w.active.corner_radius = radius;
     w.active.expansion = 0.0;
     // An open menu.
-    w.open.bg_fill = PANEL;
-    w.open.weak_bg_fill = MENU_ROW;
-    w.open.bg_stroke = Stroke::new(1.0, BUTTON_BORDER);
-    w.open.fg_stroke = Stroke::new(1.0, TEXT_STRONG);
+    w.open.bg_fill = panel();
+    w.open.weak_bg_fill = menu_row();
+    w.open.bg_stroke = Stroke::new(1.0, button_border());
+    w.open.fg_stroke = Stroke::new(1.0, text_strong());
     w.open.corner_radius = radius;
     v
 }
@@ -417,38 +412,40 @@ pub fn visuals(accent: Accent) -> Visuals {
 /// The frame of the top bar.
 pub fn top_bar_frame() -> Frame {
     Frame::new()
-        .fill(HEADER)
+        .fill(header())
         .inner_margin(Margin::symmetric(6, 0))
-        .stroke(Stroke::new(1.0, LINE))
+        .stroke(Stroke::new(1.0, line()))
 }
 
 /// The frame of the status bar along the bottom (decision 0085).
 pub fn status_bar_frame() -> Frame {
     Frame::new()
-        .fill(HEADER)
+        .fill(header())
         .inner_margin(Margin::symmetric(10, 0))
-        .stroke(Stroke::new(1.0, LINE))
+        .stroke(Stroke::new(1.0, line()))
 }
 
 /// The frame of the small menu row under a panel's title.
 pub fn menu_row_frame() -> Frame {
     Frame::new()
-        .fill(MENU_ROW)
+        .fill(menu_row())
         .inner_margin(Margin::symmetric(8, 3))
 }
 
 /// The frame of the panels drawn over the viewport.
 pub fn overlay_frame() -> Frame {
     Frame::new()
-        .fill(OVERLAY)
-        .stroke(Stroke::new(1.0, BUTTON_BORDER))
-        .corner_radius(CornerRadius::same(4))
+        .fill(overlay())
+        .stroke(Stroke::new(1.0, button_border()))
+        .corner_radius(CornerRadius::same(corner()))
         .inner_margin(Margin::same(3))
 }
 
 /// The frame of the area the panels are docked in.
 pub fn dock_frame() -> Frame {
-    Frame::new().fill(BACKGROUND).inner_margin(Margin::same(0))
+    Frame::new()
+        .fill(background())
+        .inner_margin(Margin::same(0))
 }
 
 /// Padding inside the panels other than the viewport.
@@ -463,23 +460,44 @@ pub fn panel_margin() -> Margin {
 pub fn dock_style(base: &Style, accent: Accent) -> egui_dock::Style {
     let accent = accent.colors();
     let mut s = egui_dock::Style::from_egui(base);
-    s.dock_area_padding = None;
+    let cards = rounded();
+    s.dock_area_padding = cards.then_some(Margin::same(CARD_GAP as i8));
     s.main_surface_border_stroke = Stroke::NONE;
-    s.separator.width = 1.0;
+    // Rounded panels are cards with a gap of the window's colour between
+    // them; otherwise a hairline splits them.
+    s.separator.width = if cards { CARD_GAP } else { 1.0 };
     s.separator.extra = MIN_PANEL_SIZE;
-    s.separator.color_idle = LINE;
-    s.separator.color_hovered = HOVER;
+    s.separator.color_idle = if cards { background() } else { line() };
+    s.separator.color_hovered = hover();
     s.separator.color_dragged = accent.light;
-    s.tab_bar.bg_fill = HEADER;
+    s.tab_bar.bg_fill = header();
     s.tab_bar.height = 28.0;
-    s.tab_bar.hline_color = HEADER;
-    s.tab_bar.corner_radius = CornerRadius::ZERO;
-    s.tab.tab_body.bg_fill = PANEL;
+    s.tab_bar.hline_color = header();
+    s.tab_bar.corner_radius = if cards {
+        CornerRadius {
+            nw: CARD_RADIUS,
+            ne: CARD_RADIUS,
+            sw: 0,
+            se: 0,
+        }
+    } else {
+        CornerRadius::ZERO
+    };
+    s.tab.tab_body.bg_fill = panel();
     // No padding around tab bodies, so the viewport fills its panel edge to
     // edge; the other panels add their own (see `panel_margin`).
     s.tab.tab_body.inner_margin = Margin::ZERO;
     s.tab.tab_body.stroke = Stroke::NONE;
-    s.tab.tab_body.corner_radius = CornerRadius::ZERO;
+    s.tab.tab_body.corner_radius = if cards {
+        CornerRadius {
+            nw: 0,
+            ne: 0,
+            sw: CARD_RADIUS,
+            se: CARD_RADIUS,
+        }
+    } else {
+        CornerRadius::ZERO
+    };
     s.tab.hline_below_active_tab_name = false;
     for tab in [
         &mut s.tab.active,
@@ -487,24 +505,31 @@ pub fn dock_style(base: &Style, accent: Accent) -> egui_dock::Style {
         &mut s.tab.active_with_kb_focus,
         &mut s.tab.focused_with_kb_focus,
     ] {
-        tab.bg_fill = HEADER;
-        tab.text_color = TEXT_STRONG;
+        // The front tab is a soft pill on rounded panels.
+        tab.bg_fill = if cards { field() } else { header() };
+        tab.text_color = text_strong();
         tab.outline_color = Color32::TRANSPARENT;
-        tab.corner_radius = CornerRadius::ZERO;
+        tab.corner_radius = CornerRadius::same(if cards { corner() } else { 0 });
     }
     for tab in [&mut s.tab.inactive, &mut s.tab.inactive_with_kb_focus] {
-        tab.bg_fill = HEADER;
-        tab.text_color = TEXT_WEAK;
+        tab.bg_fill = header();
+        tab.text_color = text_weak();
         tab.outline_color = Color32::TRANSPARENT;
         tab.corner_radius = CornerRadius::ZERO;
     }
-    s.tab.hovered.bg_fill = HEADER;
-    s.tab.hovered.text_color = TEXT_STRONG;
+    s.tab.hovered.bg_fill = header();
+    s.tab.hovered.text_color = text_strong();
     s.tab.hovered.outline_color = Color32::TRANSPARENT;
     s.overlay.selection_color = accent.light.gamma_multiply(0.35);
-    s.overlay.button_color = TEXT_WEAK;
+    s.overlay.button_color = text_weak();
     s
 }
+
+/// The gap between rounded panels, in logical pixels.
+pub const CARD_GAP: f32 = 6.0;
+
+/// How round a rounded panel's corners are.
+pub const CARD_RADIUS: u8 = 8;
 
 /// The smallest a panel can be dragged to, in logical pixels: a title bar
 /// and a little room.
@@ -534,15 +559,31 @@ mod tests {
 
     const READABLE: f32 = 4.5;
 
+    /// Runs `check` with each theme in use, then puts the standard back.
+    fn in_every_theme(check: impl Fn(Theme)) {
+        for theme in Theme::ALL {
+            crate::palette::use_appearance(Appearance {
+                theme,
+                rounded: false,
+            });
+            check(theme);
+        }
+        crate::palette::use_appearance(Appearance::default());
+    }
+
     #[test]
     fn text_reads_on_every_surface() {
-        for surface in [PANEL, HEADER, MENU_ROW, FIELD, BACKGROUND] {
+        in_every_theme(|_| text_reads_on_every_surface_now());
+    }
+
+    fn text_reads_on_every_surface_now() {
+        for surface in [panel(), header(), menu_row(), field(), background()] {
             for text in [
-                TEXT,
-                TEXT_STRONG,
-                TEXT_WEAK,
-                TEXT_CONSOLE,
-                TEXT_TIME,
+                text(),
+                text_strong(),
+                text_weak(),
+                text_console(),
+                text_time(),
                 WARNING,
                 ERROR,
                 kind::MODEL,
@@ -579,17 +620,21 @@ mod tests {
 
     #[test]
     fn the_front_tab_stands_out() {
+        in_every_theme(|_| the_front_tab_stands_out_now());
+    }
+
+    fn the_front_tab_stands_out_now() {
         // The front tab's name is bright and the others are quieter, so the
         // accent underline (the mockup's deep accent) is never the only cue.
-        assert!(contrast(TEXT_STRONG, HEADER) > contrast(TEXT_WEAK, HEADER) + 3.0);
+        assert!(contrast(text_strong(), header()) > contrast(text_weak(), header()) + 3.0);
         for accent in Accent::ALL {
             assert!(
-                contrast(accent.colors().fill, HEADER) >= 1.8,
+                contrast(accent.colors().fill, header()) >= 1.8,
                 "{}",
                 accent.name()
             );
             assert!(
-                contrast(accent.colors().light, HEADER) >= 3.0,
+                contrast(accent.colors().light, header()) >= 3.0,
                 "{}",
                 accent.name()
             );
@@ -671,7 +716,29 @@ mod tests {
     fn style_uses_the_chosen_accent() {
         let style = style_with(Accent::Red);
         assert_eq!(style.visuals.selection.bg_fill, Accent::Red.colors().fill);
-        assert_eq!(style.visuals.panel_fill, PANEL);
+        assert_eq!(style.visuals.panel_fill, panel());
+    }
+
+    #[test]
+    fn graphite_is_darker_and_rounded_panels_are_cards() {
+        crate::palette::use_appearance(Appearance {
+            theme: Theme::Graphite,
+            rounded: true,
+        });
+        let style = style_with(Accent::Blue);
+        assert_eq!(style.visuals.panel_fill, Theme::Graphite.palette().panel);
+        assert!(
+            contrast(panel(), Color32::BLACK)
+                < contrast(Theme::Standard.palette().panel, Color32::BLACK)
+        );
+        let dock = dock_style(&style, Accent::Blue);
+        assert_eq!(dock.separator.width, CARD_GAP);
+        assert_eq!(dock.separator.color_idle, background());
+        assert_eq!(dock.tab.tab_body.corner_radius.sw, CARD_RADIUS);
+        crate::palette::use_appearance(Appearance::default());
+        let dock = dock_style(&style_with(Accent::Blue), Accent::Blue);
+        assert_eq!(dock.separator.width, 1.0);
+        assert_eq!(dock.tab.tab_body.corner_radius, CornerRadius::ZERO);
     }
 
     #[test]

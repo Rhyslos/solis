@@ -74,7 +74,7 @@ pub(crate) fn elements_tab(ui: &mut Ui, doc: &mut ScreenDoc, accent: Color32) ->
     };
     ui.horizontal(|ui| {
         ui.label(RichText::new(&doc.screen).strong());
-        ui.label(RichText::new("screen").color(theme::TEXT_WEAK));
+        ui.label(RichText::new("screen").color(theme::text_weak()));
     });
     let mut moves: Option<(Vec<usize>, Vec<usize>, usize)> = None;
     egui::ScrollArea::vertical()
@@ -92,7 +92,7 @@ pub(crate) fn elements_tab(ui: &mut Ui, doc: &mut ScreenDoc, accent: Color32) ->
             "Drag to reorder or move into another. The eye hides a piece while editing; the \
              lock stops it being picked on the canvas.",
         )
-        .color(theme::TEXT_WEAK)
+        .color(theme::text_weak())
         .small(),
     );
     if out.hovered && !ui.ctx().egui_wants_keyboard_input() {
@@ -135,7 +135,7 @@ fn rows(
                             "‹code› {}",
                             first.chars().take(36).collect::<String>()
                         ))
-                        .color(theme::TEXT_WEAK)
+                        .color(theme::text_weak())
                         .monospace(),
                     )
                     .on_hover_text(format!("Line {}: edited as code", c.line));
@@ -160,10 +160,14 @@ fn rows(
                 if picked {
                     painter.rect_filled(rect, 2.0, accent);
                 } else if response.hovered() {
-                    painter.rect_filled(rect, 2.0, theme::HOVER);
+                    painter.rect_filled(rect, 2.0, theme::hover());
                 }
                 let x = rect.left() + depth as f32 * 14.0 + 6.0;
-                let ink = if picked { Color32::WHITE } else { theme::TEXT };
+                let ink = if picked {
+                    Color32::WHITE
+                } else {
+                    theme::text()
+                };
                 let icon = if e.children.is_some() {
                     Icon::Layers
                 } else {
@@ -214,7 +218,7 @@ fn rows(
                         if picked {
                             Color32::WHITE
                         } else {
-                            theme::TEXT_WEAK
+                            theme::text_weak()
                         },
                     );
                 }

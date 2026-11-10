@@ -261,7 +261,7 @@ pub(crate) fn graph_canvas(
         }
     }
     let painter = ui.painter_at(full);
-    painter.rect_filled(full, 0.0, theme::BACKGROUND);
+    painter.rect_filled(full, 0.0, theme::background());
     // A quiet grid, so panning shows.
     let step = 40.0 * canvas.view.zoom;
     if step > 8.0 {
@@ -390,7 +390,7 @@ pub(crate) fn graph_canvas(
                 align,
                 &w.label,
                 font.clone(),
-                if w.picked { accent } else { theme::TEXT_WEAK },
+                if w.picked { accent } else { theme::text_weak() },
             );
         }
         if let Some(p) = pointer
@@ -461,14 +461,14 @@ pub(crate) fn graph_canvas(
             egui::Align2::LEFT_TOP,
             &b.title,
             title_font.clone(),
-            theme::TEXT_STRONG,
+            theme::text_strong(),
         );
         clip.text(
             rect.min + vec2(pad, 28.0 * view.zoom),
             egui::Align2::LEFT_TOP,
             &b.line,
             small.clone(),
-            theme::TEXT_WEAK,
+            theme::text_weak(),
         );
         if let Some(chip) = &b.chip {
             let galley = clip.layout_no_wrap(chip.clone(), small.clone(), theme::WARNING);

@@ -55,9 +55,9 @@ fn row_marked<R>(
         let text = if changed {
             RichText::new(label)
                 .strong()
-                .color(crate::theme::TEXT_STRONG)
+                .color(crate::theme::text_strong())
         } else {
-            RichText::new(label).color(crate::theme::TEXT_WEAK)
+            RichText::new(label).color(crate::theme::text_weak())
         };
         let spacing = std::mem::replace(&mut ui.spacing_mut().item_spacing.x, 0.0);
         let label = ui.add_sized(egui::vec2(88.0, 18.0), egui::Label::new(text).truncate());
@@ -173,7 +173,7 @@ pub(crate) fn fields(
                             .add(
                                 egui::Button::new(
                                     RichText::new(format!("↺ {}", short(&field.default)))
-                                        .color(crate::theme::TEXT_WEAK)
+                                        .color(crate::theme::text_weak())
                                         .size(12.0),
                                 )
                                 .frame(false),
@@ -192,7 +192,7 @@ pub(crate) fn fields(
                         let button = ui
                             .add(
                                 egui::Button::new(
-                                    RichText::new(text).color(crate::theme::TEXT_WEAK),
+                                    RichText::new(text).color(crate::theme::text_weak()),
                                 )
                                 .frame(false),
                             )
@@ -304,13 +304,13 @@ fn shared_by(ui: &mut Ui, area: &area::Area, asset: AssetId) {
     let users = users_of(area, asset);
     if users > 1 {
         egui::Frame::new()
-            .stroke(egui::Stroke::new(1.0, crate::theme::BUTTON_BORDER))
+            .stroke(egui::Stroke::new(1.0, crate::theme::button_border()))
             .corner_radius(4.0)
             .inner_margin(egui::Margin::symmetric(5, 1))
             .show(ui, |ui| {
                 ui.label(
                     RichText::new(format!("shared by {users}"))
-                        .color(crate::theme::TEXT_WEAK)
+                        .color(crate::theme::text_weak())
                         .size(11.0),
                 )
             })
@@ -545,7 +545,7 @@ fn sheet_picker(ui: &mut Ui, value: &Value, sheets: &SpriteSheets, mixed: bool) 
             if listed.is_empty() {
                 ui.label(
                     RichText::new("No sprite sheets yet: put an Aseprite file in the project.")
-                        .color(crate::theme::TEXT_WEAK),
+                        .color(crate::theme::text_weak()),
                 );
             }
         });
@@ -598,7 +598,7 @@ fn asset_picker(
                 }
             }
             if listed.is_empty() {
-                ui.label(RichText::new(none).color(crate::theme::TEXT_WEAK));
+                ui.label(RichText::new(none).color(crate::theme::text_weak()));
             }
         });
     chosen
@@ -642,7 +642,7 @@ fn screen_picker(ui: &mut Ui, value: &Value, screens: &[String], mixed: bool) ->
                         "No screens yet: make a Lust file in the ui folder (ui/hud.lst), \
                          holding an assembly with a view.",
                     )
-                    .color(crate::theme::TEXT_WEAK),
+                    .color(crate::theme::text_weak()),
                 );
             }
         });
@@ -801,7 +801,7 @@ fn clip_picker(
             if clips.is_some_and(|c| c.clips.is_empty()) {
                 ui.label(
                     RichText::new("No clips: tag runs of frames in Aseprite.")
-                        .color(crate::theme::TEXT_WEAK),
+                        .color(crate::theme::text_weak()),
                 );
             }
             if !current.is_empty() && clips.is_some_and(|c| c.get(current).is_none()) {
@@ -877,7 +877,7 @@ fn entity_picker(ui: &mut Ui, value: &Value, area: &area::Area, mixed: bool) -> 
             if more {
                 ui.label(
                     RichText::new(format!("Only the first {MAX_LISTED}: type to find others."))
-                        .color(crate::theme::TEXT_WEAK),
+                        .color(crate::theme::text_weak()),
                 );
             }
         });

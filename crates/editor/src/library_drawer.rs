@@ -101,8 +101,8 @@ impl Workbench {
             .show(ui.ctx(), |ui| {
                 ui.set_clip_rect(rect.expand(1.0));
                 egui::Frame::new()
-                    .fill(theme::PANEL)
-                    .stroke(egui::Stroke::new(1.0, theme::BUTTON_BORDER))
+                    .fill(theme::panel())
+                    .stroke(egui::Stroke::new(1.0, theme::button_border()))
                     .show(ui, |ui| {
                         ui.set_min_size(rect.size() - egui::vec2(2.0, 2.0));
                         ui.set_max_size(rect.size() - egui::vec2(2.0, 2.0));
