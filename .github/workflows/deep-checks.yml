@@ -11,8 +11,15 @@
 # - The whole-game invariant tests, with many more games than a pull
 #   request runs (PROPTEST_CASES). A failure opens an issue with the
 #   smallest game that shows it.
+# - The updater against the real GitHub: its two tests that need the
+#   internet (crates/updater/src/tests.rs), which no pull request runs.
+#   They ask for the newest build and download its installer, checked
+#   against its published SHA-256, and never start it. A failure opens
+#   an issue.
 #
-# Linux only: the readers and the game are the same code on every system.
+# On Linux: the readers and the game are the same code on every system.
+# The updater's tests alone run on Windows, where the updater is used and
+# where it trusts a server by Windows' own certificates.
 name: Deep checks
 
 on:
@@ -185,6 +192,93 @@ jobs:
           gh issue create --label bug \
             --title "Fuzzing found a problem: $TARGET" \
             --body "The weekly deep checks' fuzzer for \`$TARGET\` found an input that crashes or hangs Solis. The input is attached to the run as the \`fuzz-$TARGET\` artifact: $RUN. Replay it with \`cargo fuzz run $TARGET <file>\` (fuzz/README.md), fix it, and add a regression test."
+
+  # The updater's two tests that talk to the real GitHub. Every other
+  # test of the updater uses a stand-in, so a pull request never fails
+  # because the network did; these two are marked `#[ignore]` and run
+  # here alone. The second is the one that would have caught build 74,
+  # whose every download failed at its last byte.
+  #
+  # What they do: ask GitHub for the newest build, then download its
+  # installer into a temporary folder and check it against its published
+  # SHA-256 and size. Nothing starts the installer (only
+  # `updater::start_installer` can, and neither test calls it), and the
+  # machine is thrown away afterwards.
+  #
+  # On Windows, unlike the rest of this file: installed copies exist only
+  # there (decision 0012), and the updater checks GitHub's certificate
+  # with the system's own verifier, which is different code on Linux. A
+  # download that works on Linux proves less than one that works where
+  # people update. No build cache: this builds one small crate once a
+  # week, and GitHub drops a cache nobody has used for a week.
+  updater:
+    name: The updater against the real GitHub (Windows)
+    runs-on: windows-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+      issues: write
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
+        with:
+          persist-credentials: false
+      # Built first, in a step of its own, so the tries below repeat only
+      # the tests, and a build that fails says so once.
+      - name: Build the updater's tests
+        shell: bash
+        run: cargo test --locked -p updater --lib --no-run
+      - name: Ask GitHub, and download the newest installer
+        # `shell: bash` for pipefail, as in the invariants job below: each
+        # try's result is cargo's and not tee's.
+        shell: bash
+        run: |
+          # The two tests by their full names, never every ignored test in
+          # the crate: one added later might do more than download, and
+          # is added here on purpose or not at all.
+          tests=(
+            tests::github_answers
+            tests::the_newest_installer_downloads_whole_and_matches
+          )
+          # Up to three tries, two minutes apart. The tests ask GitHub
+          # without signing in, as an installed copy does, and GitHub
+          # allows few such questions an hour from one address, which
+          # this machine shares with others. A try that failed is still
+          # shown on the run as a warning.
+          for attempt in 1 2 3; do
+            if cargo test --locked -p updater --lib -- --ignored --exact "${tests[@]}" 2>&1 | tee updater.txt; then
+              # A name that matches no test runs nothing and passes, so a
+              # renamed test would quietly stop being run: count them.
+              if grep -q "^test result: ok. ${#tests[@]} passed" updater.txt; then
+                exit 0
+              fi
+              echo "::error::Fewer than ${#tests[@]} tests ran: one of the names in this step no longer matches a test in crates/updater/src/tests.rs." | tee -a updater.txt
+              exit 1
+            fi
+            if [ "$attempt" -lt 3 ]; then
+              echo "::warning::Try $attempt of the updater's network tests failed; trying again in two minutes."
+              sleep 120
+            fi
+          done
+          exit 1
+      - name: Open an issue
+        if: failure() && github.event_name == 'schedule'
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RUN: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          {
+            echo "The weekly deep checks asked the real GitHub for the newest build and downloaded its installer, the way an installed copy of Solis updates itself (the two network tests in \`crates/updater/src/tests.rs\`). It failed (a failing test is tried three times, two minutes apart). The end of what the last try said:"
+            echo
+            echo '```'
+            # No updater.txt means the tests never started (the build failed).
+            tail -n 40 updater.txt 2>/dev/null || echo "The tests never started; the run says why."
+            echo '```'
+            echo
+            echo "Run: $RUN. If it says GitHub couldn't be reached, took too long or asked to wait, start the workflow again by hand (the Actions tab, Deep checks, Run workflow). If it fails again, or says anything else, installed copies may not be able to update: find out why before the next build is published."
+          } > body.md
+          gh issue create --label bug --title "The updater's weekly check against GitHub failed" --body-file body.md
 
   invariants:
     name: Whole-game invariants, many games

@@ -11,6 +11,6 @@ Updates (decision 0043): finds the newest build of the program on GitHub, downlo
 | `fetch.rs` | Talking to GitHub over HTTPS, checked by the system's own certificates: asking for the latest release and downloading its files. | `Source` |
 | `release.rs` | What GitHub says about the newest build, read within limits (with its notes, cut short and stripped of control characters, and the day it was published, for the launcher's Updates page), and the checksum file published beside it. | `Release`, `Asset`, `read_release`, `notes_of`, `day_of`, `read_checksum`, `sha256` |
 | `install.rs` | This copy of the program: its build number, whether the installer put it here, where updates are downloaded, and starting an installer. | `this_build`, `is_installed`, `start_installer` |
-| `tests.rs` | Tests, including damaged release answers that must be read or refused, never crash. | |
+| `tests.rs` | Tests, including damaged release answers that must be read or refused, never crash. Two need the internet and are left out of `cargo test`; the weekly deep checks run them (the crate's README, Status). | |
 
 **Read next:** the crate's [README](../README.md), and [`installer/`](../../../installer/README.md) for the installer it starts.

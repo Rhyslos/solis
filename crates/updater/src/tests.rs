@@ -466,11 +466,13 @@ mod damaged {
     }
 }
 
-/// Asks the real GitHub (needs the internet, so only when asked:
-/// `cargo test -p updater -- --ignored`). Before the first build is
+/// Asks the real GitHub. It needs the internet, so `cargo test` and pull
+/// requests leave it out. The weekly deep checks run it, by this name
+/// (`.github/workflows/deep-checks.yml`, the `updater` job), and by hand
+/// it is `cargo test -p updater -- --ignored`. Before the first build is
 /// published, GitHub has none to give.
 #[test]
-#[ignore = "needs the internet"]
+#[ignore = "needs the internet: the weekly deep checks run it"]
 fn github_answers() {
     let source = Source {
         repo: REPO.into(),
@@ -557,12 +559,14 @@ fn ureq_reads_a_body_of_exactly_its_size_through_the_limit_we_give() {
 }
 
 /// Downloads the real newest installer and checks it against its
-/// published SHA-256 (needs the internet: `cargo test -p updater --
-/// --ignored`). The test that would have caught build 74's bug. (Behind
-/// some proxies ureq can't follow GitHub's redirect to its download host;
-/// on a normal connection it can.)
+/// published SHA-256, and never starts it. The test that would have
+/// caught build 74's bug. It needs the internet, so it runs where
+/// `github_answers` does: in the weekly deep checks, by this name, and by
+/// hand with `cargo test -p updater -- --ignored`. (Behind some proxies
+/// ureq can't follow GitHub's redirect to its download host; on a normal
+/// connection it can.)
 #[test]
-#[ignore = "needs the internet"]
+#[ignore = "needs the internet: the weekly deep checks run it"]
 fn the_newest_installer_downloads_whole_and_matches() {
     let source = Source {
         repo: REPO.into(),

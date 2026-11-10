@@ -30,4 +30,4 @@ ureq (with rustls, ring and rustls-platform-verifier), sha2, serde and serde_jso
 
 ## Status
 
-Decision 0043: checks, downloads, checksums, and starting the installer. Tests cover reading releases and checksums (with random and damaged answers), every way a check can end (with a stand-in for GitHub), and, when asked (`-- --ignored`), a real question to GitHub.
+Decision 0043: checks, downloads, checksums, and starting the installer. Tests cover reading releases and checksums (with random and damaged answers), every way a check can end (with a stand-in for GitHub), and two tests against the real GitHub: one asks for the newest build, the other downloads its installer and checks it against its published SHA-256, never starting it. Those two need the internet, so `cargo test` and pull requests leave them out (`#[ignore]`). The weekly deep checks run them by name, on Windows, and a failure there opens an issue ([`deep-checks.yml`](../../.github/workflows/deep-checks.yml), the `updater` job); by hand they are `cargo test -p updater -- --ignored`. A test added to that list must only download and compare.
