@@ -14,6 +14,12 @@
 //! too. Each assembly's contents are mended as they're expanded, and the
 //! whole file at the end, so no area that comes out has one.
 //!
+//! A copy's part is where the copy puts it: one moved to another parent
+//! or out to the top level stays when the part the assembly has it under
+//! is removed from the copy, and goes when what it was moved under goes.
+//! Deleting a copy's root leaves a part moved out from under it as an
+//! ordinary entity ([`despawn`]).
+//!
 //! Expanding counts entities before making any (a copy's changes to parts
 //! too, since one whose part is gone becomes an entity), keeps to the same
 //! limit while it makes them, refuses assemblies that place each other in a
@@ -21,6 +27,7 @@
 //! can make the editor explode.
 
 use crate::document::{Area, EntityData, Origin};
+use crate::edit::Edit;
 use crate::text::{AreaFile, FileKind, MAX_ENTITIES, MAX_NESTING, Override, ParentChange};
 use crate::tree::Mended;
 use reflect::{AssetId, EntityId, Value};
@@ -351,12 +358,17 @@ impl<'a> Expander<'a> {
             };
             let path = &paths[&id];
             found.insert(path.clone());
-            // A removed part takes everything under it.
-            if original.parent.is_some_and(|p| skipped.contains(&p)) {
+            let changes = overrides.get(path);
+            // A removed part takes everything still under it. A part this
+            // copy moved (to another parent, or out to the top level) is
+            // where it was put, not where the assembly has it, so it
+            // isn't taken along: it was once, and a part dragged out and
+            // kept was gone when the area opened again (BUG-56).
+            let moved = changes.is_some_and(|c| c.parent != ParentChange::Unchanged);
+            if !moved && original.parent.is_some_and(|p| skipped.contains(&p)) {
                 skipped.insert(id);
                 continue;
             }
-            let changes = overrides.get(path);
             if changes.is_some_and(|c| c.removed) {
                 skipped.insert(id);
                 continue;
@@ -535,6 +547,40 @@ impl<'a> Expander<'a> {
     }
 }
 
+/// The edits that delete `roots` and everything under each (none under
+/// another). A part of a placed assembly that was moved out from under
+/// its copy isn't under the copy's root when that goes, so it stays; but
+/// it's part of nothing then, and a file has no way to say otherwise
+/// (it's written as the ordinary entity it has become). So each such
+/// part is made an ordinary entity first, in the same step: what's saved
+/// is then what opens again, and undo brings the copy back with its
+/// parts. One pass over the area, and a walk up from each part of a copy
+/// that goes.
+pub fn despawn(area: &Area, roots: &[EntityId]) -> Vec<Edit> {
+    let going: HashSet<EntityId> = roots.iter().copied().collect();
+    let goes = |id: EntityId| {
+        going.contains(&id) || area.ancestors(id).any(|(above, _)| going.contains(&above))
+    };
+    let mut copy_goes: HashMap<EntityId, bool> = HashMap::new();
+    let mut edits = Vec::new();
+    for (entity, data) in area.iter() {
+        let Some(origin) = &data.origin else {
+            continue;
+        };
+        let its_copy_goes = *copy_goes
+            .entry(origin.instance)
+            .or_insert_with(|| goes(origin.instance));
+        if its_copy_goes && !goes(entity) {
+            edits.push(Edit::SetOrigin {
+                entity,
+                origin: None,
+            });
+        }
+    }
+    edits.extend(roots.iter().map(|&root| Edit::Despawn { root }));
+    edits
+}
+
 /// Sets `component.field` of the entity at `path` inside assembly `file`
 /// (Apply to assembly): on the entity itself, or, for an entity inside an
 /// assembly placed in this one, as that copy's override.
@@ -656,6 +702,10 @@ fn difference(wanted: &EntityData, actual: &EntityData, root: bool) -> Override 
     }
     changes
 }
+
+#[cfg(test)]
+#[path = "assembly_moves_tests.rs"]
+mod moves_tests;
 
 #[cfg(test)]
 mod tests {

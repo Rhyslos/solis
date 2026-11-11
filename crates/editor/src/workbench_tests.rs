@@ -1782,6 +1782,60 @@ fn a_part_dragged_out_of_its_copy_is_where_it_was_left_after_opening_again() {
 }
 
 #[test]
+fn a_part_dragged_out_outlives_the_part_it_was_under_and_its_copy() {
+    // The review of Phase 9, BUG-56. A lamp post whose lamp hangs from an
+    // arm: the lamp dragged out to the top level, then the arm deleted.
+    // Saved and opened again, the lamp was gone with the arm.
+    let id = |n| EntityId(reflect::Id::from_raw(n).unwrap());
+    let mut parts = area::Area::new();
+    for (n, name, parent) in [(1, "Post", None), (2, "Arm", Some(1)), (3, "Lamp", Some(2))] {
+        let mut part = area::EntityData::new(name).with(&Transform::default());
+        part.parent = parent.map(id);
+        parts.insert(id(n), part);
+    }
+    let file = area::text::AreaFile {
+        kind: area::text::FileKind::Assembly { root: id(1) },
+        area: parts,
+        overrides: Default::default(),
+    };
+    let asset = AssetId(reflect::Id::from_raw(901).unwrap());
+    let mut w = Workbench::new(info(), None);
+    w.set_assembly(asset, std::sync::Arc::new(file));
+    w.place_assembly(asset);
+    let root = w.selection().unwrap();
+    let arm = area::assembly::derive(root, &[id(2)]);
+    let lamp = area::assembly::derive(root, &[id(3)]);
+    w.reparent(&[lamp], None);
+    w.delete(arm);
+    assert!(w.document().area().contains(lamp));
+    let opened = saved_and_opened(&mut w);
+    assert!(opened.contains(lamp), "the lamp went with the arm");
+    assert_eq!(opened, *w.document().area());
+    // The copy itself deleted: the lamp isn't under it, so it stays, as
+    // an ordinary entity (a part of nothing), and the Console says so.
+    assert!(w.document().area().get(lamp).unwrap().origin.is_some());
+    w.delete(root);
+    let area = w.document().area();
+    assert!(!area.contains(root));
+    assert_eq!(area.get(lamp).unwrap().origin, None);
+    let said = &w.log_lines().last().unwrap().text;
+    assert!(
+        said.ends_with("A part moved out of the copy stays, as an ordinary entity."),
+        "{said}"
+    );
+    let opened = saved_and_opened(&mut w);
+    assert_eq!(opened, *w.document().area());
+    // Undo: the copy is back, and the lamp is its part again.
+    w.undo();
+    let area = w.document().area();
+    assert!(area.contains(root));
+    assert_eq!(
+        area.get(lamp).unwrap().origin.as_ref().unwrap().instance,
+        root
+    );
+}
+
+#[test]
 fn placing_an_assembly_makes_a_copy_that_saves_as_one_line() {
     let (mut w, _, root, lamp) = with_a_lamp_post();
     let area = w.document().area();

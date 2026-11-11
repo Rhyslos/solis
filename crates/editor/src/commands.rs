@@ -67,6 +67,21 @@ pub(crate) fn merge_key(target: impl Hash, gesture: u64) -> MergeKey {
     }
 }
 
+/// What the Console adds when a delete leaves parts of a deleted copy
+/// behind (parts moved out from under it, which `edits` make ordinary
+/// entities): nothing when it leaves none.
+fn left_behind(edits: &[Edit]) -> String {
+    let left = edits
+        .iter()
+        .filter(|e| matches!(e, Edit::SetOrigin { .. }))
+        .count();
+    match left {
+        0 => String::new(),
+        1 => " A part moved out of the copy stays, as an ordinary entity.".into(),
+        n => format!(" {n} parts moved out of the copy stay, as ordinary entities."),
+    }
+}
+
 impl Workbench {
     /// Changes the area as one undo step, or says in the console why it
     /// couldn't. Returns whether it worked.
@@ -1127,9 +1142,10 @@ impl Workbench {
             [one] => self.delete(*one),
             many => {
                 let label = format!("Delete {} entities", many.len());
-                let edits = many.iter().map(|&root| Edit::Despawn { root }).collect();
+                let edits = area::assembly::despawn(self.open.document.area(), many);
+                let left = left_behind(&edits);
                 if self.command(&label, edits, None, None) {
-                    self.log(LogLevel::Info, format!("{label}."));
+                    self.log(LogLevel::Info, format!("{label}.{left}"));
                 }
             }
         }
@@ -1190,8 +1206,10 @@ impl Workbench {
             1 => " and 1 entity under it".into(),
             n => format!(" and {n} entities under it"),
         };
-        if self.command(&label, vec![Edit::Despawn { root: id }], None, None) {
-            self.log(LogLevel::Info, format!("{label}{extra}."));
+        let edits = area::assembly::despawn(area, &[id]);
+        let left = left_behind(&edits);
+        if self.command(&label, edits, None, None) {
+            self.log(LogLevel::Info, format!("{label}{extra}.{left}"));
         }
     }
 
