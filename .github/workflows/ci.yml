@@ -6,9 +6,15 @@
 #   merge into main, for release tags, and by hand;
 # - skips changes that touch only documentation;
 # - cheap checks first: the build and tests run only if they pass;
-# - tests on Linux and on Windows. Solis is made for Windows only
-#   (decision 0012); the Linux runs are extra checks (a second GPU driver,
-#   and the window test, which needs X11 tools).
+# - lints, tests and API docs on Windows, which Solis is made for
+#   (decision 0012).
+#
+# The Linux build jobs are paused (decision 0102, the project lead,
+# 2026-11-11): they install Ubuntu packages before building, and a run
+# fails whenever Ubuntu's package servers can't be reached, whatever the
+# code. They stay in this file, switched off with `if: false`; to bring
+# them back, delete those two lines. The same checks are still run on
+# Linux by hand before every push (CLAUDE.md, Builds).
 name: CI
 
 on:
@@ -43,7 +49,7 @@ env:
 
 jobs:
   checks:
-    name: Formatting, lints and licences
+    name: Formatting and licences
     # Draft pull requests don't build.
     if: github.event_name != 'pull_request' || !github.event.pull_request.draft
     runs-on: ubuntu-latest
@@ -53,12 +59,9 @@ jobs:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           persist-credentials: false
-      - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2
-      # The sound crate builds against the system's sound library (ALSA)
-      # on Linux. One list of packages for every workflow, in the script.
-      - run: tools/ci/linux-packages.sh
+      # Neither check builds Solis, so this job needs no Ubuntu packages.
+      # The lints, which do build it, run on Windows below.
       - run: cargo fmt --all -- --check
-      - run: cargo clippy --workspace --all-targets --locked -- -D warnings
       - uses: EmbarkStudios/cargo-deny-action@3c6349835b2b7b196a839186cb8b78e02f7b5f25 # v2
         with:
           command: check
@@ -66,6 +69,8 @@ jobs:
   test:
     name: Tests and documentation (Linux)
     needs: checks
+    # Paused (decision 0102): delete this line to bring the job back.
+    if: false
     runs-on: ubuntu-latest
     timeout-minutes: 30
     env:
@@ -87,6 +92,8 @@ jobs:
   window:
     name: Window and GPU tests (Linux)
     needs: checks
+    # Paused (decision 0102): delete this line to bring the job back.
+    if: false
     runs-on: ubuntu-latest
     # A stuck step stops here instead of running for hours.
     timeout-minutes: 30
@@ -119,15 +126,21 @@ jobs:
           retention-days: 14
 
   windows:
-    name: Tests and GPU tests (Windows)
+    name: Lints, tests and documentation (Windows)
     needs: checks
     runs-on: windows-latest
-    timeout-minutes: 45
+    timeout-minutes: 75
+    env:
+      # Broken links or malformed docs fail the build.
+      RUSTDOCFLAGS: -D warnings
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7
         with:
           persist-credentials: false
       - uses: Swatinem/rust-cache@d1527c8f67ef9af357290475d4af4b0fab8f12e0 # v2
+      # The lints first: they are quicker than the tests, and they read
+      # the code as Windows builds it.
+      - run: cargo clippy --workspace --all-targets --locked -- -D warnings
       # Every test, with the GPU tests on Direct3D 12, the graphics path
       # Solis ships on, through Windows' software renderer (WARP). A
       # missing GPU is a failure here, not a skip.
@@ -140,3 +153,4 @@ jobs:
       - if: failure()
         shell: bash
         run: tools/ci/failed-tests.sh test-output.txt
+      - run: cargo doc --workspace --no-deps --locked
