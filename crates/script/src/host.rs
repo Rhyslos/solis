@@ -4,6 +4,7 @@
 
 use crate::convert::{QuatKeys, entity_of, quat_of_with, quat_table_with, vec3_of, vec3_value};
 use crate::luau::{Luau, capped};
+use crate::native_values::native;
 use glam::{Quat, Vec3};
 use mlua::{Table, Value as LuaValue};
 use reflect::EntityId;
@@ -482,7 +483,10 @@ pub(crate) type Lent<'a, 'h> = RefCell<&'a mut (dyn Host + 'h)>;
 /// `send_event`) for its length: as `LUST_NATIVES` in the Lust's globals
 /// `lust`, and for Lua's `solis`. `run` is given the host too, for Rust
 /// components to borrow between Lua calls. Past [`MAX_SAID_LINES`], what
-/// game code says is counted, and the count said at the end.
+/// game code says is counted, and the count said at the end. A native
+/// that takes several values is made with [`native`], under its own key,
+/// so a value of the wrong kind (from Lua: Lust is checked first) is a
+/// mistake that names the call.
 pub(crate) fn with_natives<'h, R>(
     luau: &Luau,
     lust: Option<&Table>,
@@ -501,17 +505,21 @@ pub(crate) fn with_natives<'h, R>(
         let said = &lines;
         natives.raw_set(
             "World_say",
-            scope.create_function(move |_, (_world, words): (LuaValue, mlua::LuaString)| {
-                let n = said.get() + 1;
-                said.set(n);
-                if n <= MAX_SAID_LINES {
-                    let words = words.as_bytes();
-                    let text =
-                        String::from_utf8_lossy(&words[..words.len().min(MAX_SAID_BYTES + 4)]);
-                    h.borrow_mut().say(&capped(&text, MAX_SAID_BYTES));
-                }
-                Ok(())
-            })?,
+            native(
+                scope,
+                "World_say",
+                move |_, (_world, words): (LuaValue, mlua::LuaString)| {
+                    let n = said.get() + 1;
+                    said.set(n);
+                    if n <= MAX_SAID_LINES {
+                        let words = words.as_bytes();
+                        let text =
+                            String::from_utf8_lossy(&words[..words.len().min(MAX_SAID_BYTES + 4)]);
+                        h.borrow_mut().say(&capped(&text, MAX_SAID_BYTES));
+                    }
+                    Ok(())
+                },
+            )?,
         )?;
         natives.raw_set(
             "World_time",
@@ -519,10 +527,14 @@ pub(crate) fn with_natives<'h, R>(
         )?;
         natives.raw_set(
             "World_find",
-            scope.create_function(move |_, (_world, name): (LuaValue, mlua::LuaString)| {
-                let name = name.to_str()?;
-                Ok(h.borrow().find(&name).map(|id| id.to_string()))
-            })?,
+            native(
+                scope,
+                "World_find",
+                move |_, (_world, name): (LuaValue, mlua::LuaString)| {
+                    let name = name.to_str()?;
+                    Ok(h.borrow().find(&name).map(|id| id.to_string()))
+                },
+            )?,
         )?;
         natives.raw_set(
             "entity_position",
@@ -533,12 +545,16 @@ pub(crate) fn with_natives<'h, R>(
         )?;
         natives.raw_set(
             "entity_moveTo",
-            scope.create_function(move |_, (which, place): (LuaValue, LuaValue)| {
-                if let (Some(e), Some(place)) = (entity_of(&which), vec3_of(&place)) {
-                    h.borrow_mut().move_to(e, place);
-                }
-                Ok(())
-            })?,
+            native(
+                scope,
+                "entity_moveTo",
+                move |_, (which, place): (LuaValue, LuaValue)| {
+                    if let (Some(e), Some(place)) = (entity_of(&which), vec3_of(&place)) {
+                        h.borrow_mut().move_to(e, place);
+                    }
+                    Ok(())
+                },
+            )?,
         )?;
         natives.raw_set(
             "entity_rotation",
@@ -556,21 +572,31 @@ pub(crate) fn with_natives<'h, R>(
         )?;
         natives.raw_set(
             "entity_face",
-            scope.create_function(move |_, (which, direction): (LuaValue, LuaValue)| {
-                if let (Some(e), Some(direction)) = (entity_of(&which), vec3_of(&direction)) {
-                    h.borrow_mut().turn_to(e, facing_along(direction));
-                }
-                Ok(())
-            })?,
+            native(
+                scope,
+                "entity_face",
+                move |_, (which, direction): (LuaValue, LuaValue)| {
+                    if let (Some(e), Some(direction)) = (entity_of(&which), vec3_of(&direction)) {
+                        h.borrow_mut().turn_to(e, facing_along(direction));
+                    }
+                    Ok(())
+                },
+            )?,
         )?;
         natives.raw_set(
             "entity_turnTo",
-            scope.create_function(move |_, (which, facing): (LuaValue, Table)| {
-                if let (Some(e), Some(facing)) = (entity_of(&which), quat_of_with(&facing, keys)) {
-                    h.borrow_mut().turn_to(e, facing);
-                }
-                Ok(())
-            })?,
+            native(
+                scope,
+                "entity_turnTo",
+                move |_, (which, facing): (LuaValue, Table)| {
+                    if let (Some(e), Some(facing)) =
+                        (entity_of(&which), quat_of_with(&facing, keys))
+                    {
+                        h.borrow_mut().turn_to(e, facing);
+                    }
+                    Ok(())
+                },
+            )?,
         )?;
         natives.raw_set(
             "entity_name",
@@ -582,7 +608,9 @@ pub(crate) fn with_natives<'h, R>(
         )?;
         natives.raw_set(
             "World_fire",
-            scope.create_function(
+            native(
+                scope,
+                "World_fire",
                 move |_,
                       (_world, from, direction, speed, life, colour): (
                     LuaValue,
@@ -609,7 +637,9 @@ pub(crate) fn with_natives<'h, R>(
         )?;
         natives.raw_set(
             "World_spawn",
-            scope.create_function(
+            native(
+                scope,
+                "World_spawn",
                 move |_, (_world, assembly, place): (LuaValue, mlua::LuaString, LuaValue)| {
                     // Assembly.Ships.Fighter comes as "Ships.Fighter": its file
                     // is ships/fighter (the Library ignores capitals).
@@ -640,30 +670,42 @@ pub(crate) fn with_natives<'h, R>(
         )?;
         natives.raw_set(
             "World_randomRange",
-            scope.create_function(move |_, (_world, low, high): (LuaValue, f64, f64)| {
-                let x = h.borrow_mut().random();
-                Ok(if low.is_finite() && high.is_finite() {
-                    low + (high - low) * x
-                } else {
-                    low
-                })
-            })?,
+            native(
+                scope,
+                "World_randomRange",
+                move |_, (_world, low, high): (LuaValue, f64, f64)| {
+                    let x = h.borrow_mut().random();
+                    Ok(if low.is_finite() && high.is_finite() {
+                        low + (high - low) * x
+                    } else {
+                        low
+                    })
+                },
+            )?,
         )?;
         natives.raw_set(
             "World_randomInt",
-            scope.create_function(move |_, (_world, low, high): (LuaValue, f64, f64)| {
-                let x = h.borrow_mut().random();
-                Ok(random_int(low, high, x))
-            })?,
+            native(
+                scope,
+                "World_randomInt",
+                move |_, (_world, low, high): (LuaValue, f64, f64)| {
+                    let x = h.borrow_mut().random();
+                    Ok(random_int(low, high, x))
+                },
+            )?,
         )?;
         natives.raw_set(
             "entity_push",
-            scope.create_function(move |_, (which, impulse): (LuaValue, LuaValue)| {
-                if let (Some(e), Some(impulse)) = (entity_of(&which), vec3_of(&impulse)) {
-                    h.borrow_mut().push(e, impulse);
-                }
-                Ok(())
-            })?,
+            native(
+                scope,
+                "entity_push",
+                move |_, (which, impulse): (LuaValue, LuaValue)| {
+                    if let (Some(e), Some(impulse)) = (entity_of(&which), vec3_of(&impulse)) {
+                        h.borrow_mut().push(e, impulse);
+                    }
+                    Ok(())
+                },
+            )?,
         )?;
         natives.raw_set(
             "entity_velocity",
@@ -674,21 +716,29 @@ pub(crate) fn with_natives<'h, R>(
         )?;
         natives.raw_set(
             "entity_setVelocity",
-            scope.create_function(move |_, (which, velocity): (LuaValue, LuaValue)| {
-                if let (Some(e), Some(velocity)) = (entity_of(&which), vec3_of(&velocity)) {
-                    h.borrow_mut().set_velocity(e, velocity);
-                }
-                Ok(())
-            })?,
+            native(
+                scope,
+                "entity_setVelocity",
+                move |_, (which, velocity): (LuaValue, LuaValue)| {
+                    if let (Some(e), Some(velocity)) = (entity_of(&which), vec3_of(&velocity)) {
+                        h.borrow_mut().set_velocity(e, velocity);
+                    }
+                    Ok(())
+                },
+            )?,
         )?;
         natives.raw_set(
             "entity_walk",
-            scope.create_function(move |_, (which, wanted): (LuaValue, LuaValue)| {
-                if let (Some(e), Some(wanted)) = (entity_of(&which), vec3_of(&wanted)) {
-                    h.borrow_mut().walk(e, wanted);
-                }
-                Ok(())
-            })?,
+            native(
+                scope,
+                "entity_walk",
+                move |_, (which, wanted): (LuaValue, LuaValue)| {
+                    if let (Some(e), Some(wanted)) = (entity_of(&which), vec3_of(&wanted)) {
+                        h.borrow_mut().walk(e, wanted);
+                    }
+                    Ok(())
+                },
+            )?,
         )?;
         natives.raw_set(
             "entity_grounded",
@@ -700,7 +750,7 @@ pub(crate) fn with_natives<'h, R>(
         // with its fields: found, distance, entity, normal).
         natives.raw_set(
                 "Physics_castRay",
-                scope.create_function(
+                native(scope, "Physics_castRay", 
                     move |lua,
                           (_physics, from, direction, reach): (
                         LuaValue,
@@ -725,18 +775,24 @@ pub(crate) fn with_natives<'h, R>(
             )?;
         natives.raw_set(
             "Audio_play",
-            scope.create_function(move |_, (_audio, event): (LuaValue, mlua::LuaString)| {
-                // Sound.Sfx.Footstep comes as "Sfx.Footstep": the event
-                // in sfx/footstep.solsound (found ignoring capitals).
-                if let Some(event) = crate::project_names::path_of(&event.to_str()?) {
-                    h.borrow_mut().play_sound(&event, SoundAt::Nowhere);
-                }
-                Ok(())
-            })?,
+            native(
+                scope,
+                "Audio_play",
+                move |_, (_audio, event): (LuaValue, mlua::LuaString)| {
+                    // Sound.Sfx.Footstep comes as "Sfx.Footstep": the event
+                    // in sfx/footstep.solsound (found ignoring capitals).
+                    if let Some(event) = crate::project_names::path_of(&event.to_str()?) {
+                        h.borrow_mut().play_sound(&event, SoundAt::Nowhere);
+                    }
+                    Ok(())
+                },
+            )?,
         )?;
         natives.raw_set(
             "Audio_playAt",
-            scope.create_function(
+            native(
+                scope,
+                "Audio_playAt",
                 move |_, (_audio, event, place): (LuaValue, mlua::LuaString, LuaValue)| {
                     let event = crate::project_names::path_of(&event.to_str()?);
                     if let (Some(event), Some(place)) =
@@ -750,13 +806,17 @@ pub(crate) fn with_natives<'h, R>(
         )?;
         natives.raw_set(
             "entity_playSound",
-            scope.create_function(move |_, (which, event): (LuaValue, mlua::LuaString)| {
-                let event = crate::project_names::path_of(&event.to_str()?);
-                if let (Some(e), Some(event)) = (entity_of(&which), event) {
-                    h.borrow_mut().play_sound(&event, SoundAt::On(e));
-                }
-                Ok(())
-            })?,
+            native(
+                scope,
+                "entity_playSound",
+                move |_, (which, event): (LuaValue, mlua::LuaString)| {
+                    let event = crate::project_names::path_of(&event.to_str()?);
+                    if let (Some(e), Some(event)) = (entity_of(&which), event) {
+                        h.borrow_mut().play_sound(&event, SoundAt::On(e));
+                    }
+                    Ok(())
+                },
+            )?,
         )?;
         natives.raw_set(
             "entity_stopSounds",
@@ -769,12 +829,16 @@ pub(crate) fn with_natives<'h, R>(
         )?;
         natives.raw_set(
             "entity_setSoundPlaying",
-            scope.create_function(move |_, (which, playing): (LuaValue, bool)| {
-                if let Some(e) = entity_of(&which) {
-                    h.borrow_mut().set_sound_playing(e, playing);
-                }
-                Ok(())
-            })?,
+            native(
+                scope,
+                "entity_setSoundPlaying",
+                move |_, (which, playing): (LuaValue, bool)| {
+                    if let Some(e) = entity_of(&which) {
+                        h.borrow_mut().set_sound_playing(e, playing);
+                    }
+                    Ok(())
+                },
+            )?,
         )?;
         // Screen.PauseMenu comes as "PauseMenu" (Screen.None, a project
         // with no screens, shows nothing).
@@ -784,71 +848,95 @@ pub(crate) fn with_natives<'h, R>(
         };
         natives.raw_set(
             "entity_showScreen",
-            scope.create_function(move |_, (which, screen): (LuaValue, mlua::LuaString)| {
-                if let (Some(e), Some(screen)) = (entity_of(&which), screen_named(&screen)) {
-                    h.borrow_mut().show_screen(e, &screen, true);
-                }
-                Ok(())
-            })?,
+            native(
+                scope,
+                "entity_showScreen",
+                move |_, (which, screen): (LuaValue, mlua::LuaString)| {
+                    if let (Some(e), Some(screen)) = (entity_of(&which), screen_named(&screen)) {
+                        h.borrow_mut().show_screen(e, &screen, true);
+                    }
+                    Ok(())
+                },
+            )?,
         )?;
         natives.raw_set(
             "entity_hideScreen",
-            scope.create_function(move |_, (which, screen): (LuaValue, mlua::LuaString)| {
-                if let (Some(e), Some(screen)) = (entity_of(&which), screen_named(&screen)) {
-                    h.borrow_mut().show_screen(e, &screen, false);
-                }
-                Ok(())
-            })?,
+            native(
+                scope,
+                "entity_hideScreen",
+                move |_, (which, screen): (LuaValue, mlua::LuaString)| {
+                    if let (Some(e), Some(screen)) = (entity_of(&which), screen_named(&screen)) {
+                        h.borrow_mut().show_screen(e, &screen, false);
+                    }
+                    Ok(())
+                },
+            )?,
         )?;
         natives.raw_set(
             "entity_screenShown",
-            scope.create_function(move |_, (which, screen): (LuaValue, mlua::LuaString)| {
-                Ok(match (entity_of(&which), screen_named(&screen)) {
-                    (Some(e), Some(screen)) => h.borrow().screen_shown(e, &screen),
-                    _ => false,
-                })
-            })?,
+            native(
+                scope,
+                "entity_screenShown",
+                move |_, (which, screen): (LuaValue, mlua::LuaString)| {
+                    Ok(match (entity_of(&which), screen_named(&screen)) {
+                        (Some(e), Some(screen)) => h.borrow().screen_shown(e, &screen),
+                        _ => false,
+                    })
+                },
+            )?,
         )?;
         natives.raw_set(
             "entity_animate",
-            scope.create_function(move |_, (which, clip): (LuaValue, mlua::LuaString)| {
-                // Clip.Sprites.Farmer.Walk comes as "Sprites.Farmer.Walk": the
-                // clip is the last part (found on the Sprite's sheet ignoring
-                // capitals).
-                let clip = clip.to_str()?;
-                let name = clip.rsplit('.').next().unwrap_or_default();
-                if let Some(e) = entity_of(&which)
-                    && *clip != *crate::project_names::NO_OPTION
-                {
-                    h.borrow_mut().play_clip(e, name, false);
-                }
-                Ok(())
-            })?,
+            native(
+                scope,
+                "entity_animate",
+                move |_, (which, clip): (LuaValue, mlua::LuaString)| {
+                    // Clip.Sprites.Farmer.Walk comes as "Sprites.Farmer.Walk": the
+                    // clip is the last part (found on the Sprite's sheet ignoring
+                    // capitals).
+                    let clip = clip.to_str()?;
+                    let name = clip.rsplit('.').next().unwrap_or_default();
+                    if let Some(e) = entity_of(&which)
+                        && *clip != *crate::project_names::NO_OPTION
+                    {
+                        h.borrow_mut().play_clip(e, name, false);
+                    }
+                    Ok(())
+                },
+            )?,
         )?;
         natives.raw_set(
             "entity_animateFromStart",
-            scope.create_function(move |_, (which, clip): (LuaValue, mlua::LuaString)| {
-                // Clip.Sprites.Farmer.Walk comes as "Sprites.Farmer.Walk": the
-                // clip is the last part (found on the Sprite's sheet ignoring
-                // capitals).
-                let clip = clip.to_str()?;
-                let name = clip.rsplit('.').next().unwrap_or_default();
-                if let Some(e) = entity_of(&which)
-                    && *clip != *crate::project_names::NO_OPTION
-                {
-                    h.borrow_mut().play_clip(e, name, true);
-                }
-                Ok(())
-            })?,
+            native(
+                scope,
+                "entity_animateFromStart",
+                move |_, (which, clip): (LuaValue, mlua::LuaString)| {
+                    // Clip.Sprites.Farmer.Walk comes as "Sprites.Farmer.Walk": the
+                    // clip is the last part (found on the Sprite's sheet ignoring
+                    // capitals).
+                    let clip = clip.to_str()?;
+                    let name = clip.rsplit('.').next().unwrap_or_default();
+                    if let Some(e) = entity_of(&which)
+                        && *clip != *crate::project_names::NO_OPTION
+                    {
+                        h.borrow_mut().play_clip(e, name, true);
+                    }
+                    Ok(())
+                },
+            )?,
         )?;
         natives.raw_set(
             "entity_setFlip",
-            scope.create_function(move |_, (which, across, down): (LuaValue, bool, bool)| {
-                if let Some(e) = entity_of(&which) {
-                    h.borrow_mut().set_flip(e, across, down);
-                }
-                Ok(())
-            })?,
+            native(
+                scope,
+                "entity_setFlip",
+                move |_, (which, across, down): (LuaValue, bool, bool)| {
+                    if let Some(e) = entity_of(&which) {
+                        h.borrow_mut().set_flip(e, across, down);
+                    }
+                    Ok(())
+                },
+            )?,
         )?;
         natives.raw_set(
             "entity_stopAnimation",
@@ -861,7 +949,9 @@ pub(crate) fn with_natives<'h, R>(
         )?;
         natives.raw_set(
             "Audio_setVolume",
-            scope.create_function(
+            native(
+                scope,
+                "Audio_setVolume",
                 move |_, (_audio, bus, share): (LuaValue, mlua::LuaString, f64)| {
                     // Bus.None, a project with no buses, sets nothing.
                     let bus = bus.to_str()?;
@@ -882,7 +972,9 @@ pub(crate) fn with_natives<'h, R>(
         };
         natives.raw_set(
             "Animators_setNumber",
-            scope.create_function(
+            native(
+                scope,
+                "Animators_setNumber",
                 move |_, (_a, which, name, value): (LuaValue, LuaValue, mlua::LuaString, f64)| {
                     if value.is_finite() {
                         animator(&which, &name, AnimatorValue::Number(value as f32));
@@ -893,7 +985,9 @@ pub(crate) fn with_natives<'h, R>(
         )?;
         natives.raw_set(
             "Animators_setSwitch",
-            scope.create_function(
+            native(
+                scope,
+                "Animators_setSwitch",
                 move |_, (_a, which, name, on): (LuaValue, LuaValue, mlua::LuaString, bool)| {
                     animator(&which, &name, AnimatorValue::Switch(on));
                     Ok(())
@@ -902,7 +996,9 @@ pub(crate) fn with_natives<'h, R>(
         )?;
         natives.raw_set(
             "Animators_fire",
-            scope.create_function(
+            native(
+                scope,
+                "Animators_fire",
                 move |_, (_a, which, name): (LuaValue, LuaValue, mlua::LuaString)| {
                     animator(&which, &name, AnimatorValue::Fire);
                     Ok(())
@@ -911,7 +1007,7 @@ pub(crate) fn with_natives<'h, R>(
         )?;
         natives.raw_set(
             "Animators_setDirection",
-            scope.create_function(
+            native(scope, "Animators_setDirection", 
                 move |_, (_a, which, name, way): (LuaValue, LuaValue, mlua::LuaString, LuaValue)| {
                     if let Some(way) = vec3_of(&way).filter(|w| w.is_finite()) {
                         animator(&which, &name, AnimatorValue::Direction(way));
@@ -922,15 +1018,21 @@ pub(crate) fn with_natives<'h, R>(
         )?;
         natives.raw_set(
             "Animators_stateOf",
-            scope.create_function(move |_, (_a, which): (LuaValue, LuaValue)| {
-                Ok(entity_of(&which)
-                    .and_then(|e| h.borrow().animator_state(e))
-                    .unwrap_or_default())
-            })?,
+            native(
+                scope,
+                "Animators_stateOf",
+                move |_, (_a, which): (LuaValue, LuaValue)| {
+                    Ok(entity_of(&which)
+                        .and_then(|e| h.borrow().animator_state(e))
+                        .unwrap_or_default())
+                },
+            )?,
         )?;
         natives.raw_set(
             "Animators_jumpTo",
-            scope.create_function(
+            native(
+                scope,
+                "Animators_jumpTo",
                 move |_, (_a, which, state): (LuaValue, LuaValue, mlua::LuaString)| {
                     if let (Some(e), Ok(state)) = (entity_of(&which), state.to_str())
                         && state.len() <= 256
@@ -943,14 +1045,18 @@ pub(crate) fn with_natives<'h, R>(
         )?;
         natives.raw_set(
             "Animators_setPlaybackSpeed",
-            scope.create_function(move |_, (_a, which, scale): (LuaValue, LuaValue, f64)| {
-                if let Some(e) = entity_of(&which)
-                    && scale.is_finite()
-                {
-                    h.borrow_mut().animator_speed(e, scale as f32);
-                }
-                Ok(())
-            })?,
+            native(
+                scope,
+                "Animators_setPlaybackSpeed",
+                move |_, (_a, which, scale): (LuaValue, LuaValue, f64)| {
+                    if let Some(e) = entity_of(&which)
+                        && scale.is_finite()
+                    {
+                        h.borrow_mut().animator_speed(e, scale as f32);
+                    }
+                    Ok(())
+                },
+            )?,
         )?;
         // A map's own Lust file reaches it by its path and places.
         let cell = |x: i64, y: i64| -> Option<[u32; 2]> {
@@ -958,7 +1064,9 @@ pub(crate) fn with_natives<'h, R>(
         };
         natives.raw_set(
             "Maps_cellAt",
-            scope.create_function(
+            native(
+                scope,
+                "Maps_cellAt",
                 move |lua, (_m, file, place): (LuaValue, mlua::LuaString, LuaValue)| {
                     let found = vec3_of(&place)
                         .zip(h.borrow().map_place(&file.to_str()?))
@@ -974,7 +1082,9 @@ pub(crate) fn with_natives<'h, R>(
         )?;
         natives.raw_set(
             "Maps_placeOf",
-            scope.create_function(
+            native(
+                scope,
+                "Maps_placeOf",
                 move |_, (_m, file, x, y): (LuaValue, mlua::LuaString, i64, i64)| {
                     let place = h
                         .borrow()
@@ -998,12 +1108,16 @@ pub(crate) fn with_natives<'h, R>(
         )?;
         natives.raw_set(
             "World_setGameSpeed",
-            scope.create_function(move |_, (_world, speed): (LuaValue, f64)| {
-                if speed.is_finite() {
-                    h.borrow_mut().set_game_speed(speed);
-                }
-                Ok(())
-            })?,
+            native(
+                scope,
+                "World_setGameSpeed",
+                move |_, (_world, speed): (LuaValue, f64)| {
+                    if speed.is_finite() {
+                        h.borrow_mut().set_game_speed(speed);
+                    }
+                    Ok(())
+                },
+            )?,
         )?;
         natives.raw_set(
             "World_gameSpeed",
@@ -1015,12 +1129,16 @@ pub(crate) fn with_natives<'h, R>(
         )?;
         natives.raw_set(
             "World_setTimeOfDay",
-            scope.create_function(move |_, (_world, hour): (LuaValue, f64)| {
-                if hour.is_finite() {
-                    h.borrow_mut().set_time_of_day(hour);
-                }
-                Ok(())
-            })?,
+            native(
+                scope,
+                "World_setTimeOfDay",
+                move |_, (_world, hour): (LuaValue, f64)| {
+                    if hour.is_finite() {
+                        h.borrow_mut().set_time_of_day(hour);
+                    }
+                    Ok(())
+                },
+            )?,
         )?;
         // The player's settings (decision 0091).
         natives.raw_set(
@@ -1044,39 +1162,55 @@ pub(crate) fn with_natives<'h, R>(
         )?;
         natives.raw_set(
             "Screens_setTextSize",
-            scope.create_function(move |_, (_w, size): (LuaValue, f64)| {
-                h.borrow_mut()
-                    .set_setting(crate::settings::Setting::TextSize(size));
-                Ok(())
-            })?,
+            native(
+                scope,
+                "Screens_setTextSize",
+                move |_, (_w, size): (LuaValue, f64)| {
+                    h.borrow_mut()
+                        .set_setting(crate::settings::Setting::TextSize(size));
+                    Ok(())
+                },
+            )?,
         )?;
         natives.raw_set(
             "Screens_setUiSize",
-            scope.create_function(move |_, (_w, size): (LuaValue, f64)| {
-                h.borrow_mut()
-                    .set_setting(crate::settings::Setting::UiSize(size));
-                Ok(())
-            })?,
+            native(
+                scope,
+                "Screens_setUiSize",
+                move |_, (_w, size): (LuaValue, f64)| {
+                    h.borrow_mut()
+                        .set_setting(crate::settings::Setting::UiSize(size));
+                    Ok(())
+                },
+            )?,
         )?;
         natives.raw_set(
             "Window_setFullscreen",
-            scope.create_function(move |_, (_w, on): (LuaValue, bool)| {
-                h.borrow_mut()
-                    .set_setting(crate::settings::Setting::Fullscreen(on));
-                Ok(())
-            })?,
+            native(
+                scope,
+                "Window_setFullscreen",
+                move |_, (_w, on): (LuaValue, bool)| {
+                    h.borrow_mut()
+                        .set_setting(crate::settings::Setting::Fullscreen(on));
+                    Ok(())
+                },
+            )?,
         )?;
         natives.raw_set(
             "Window_setResolution",
-            scope.create_function(move |_, (_w, width, height): (LuaValue, i64, i64)| {
-                let side = |v: i64| v.clamp(0, i64::from(u32::MAX)) as u32;
-                h.borrow_mut()
-                    .set_setting(crate::settings::Setting::Resolution(
-                        side(width),
-                        side(height),
-                    ));
-                Ok(())
-            })?,
+            native(
+                scope,
+                "Window_setResolution",
+                move |_, (_w, width, height): (LuaValue, i64, i64)| {
+                    let side = |v: i64| v.clamp(0, i64::from(u32::MAX)) as u32;
+                    h.borrow_mut()
+                        .set_setting(crate::settings::Setting::Resolution(
+                            side(width),
+                            side(height),
+                        ));
+                    Ok(())
+                },
+            )?,
         )?;
         natives.raw_set(
             "Window_quit",
@@ -1102,19 +1236,29 @@ pub(crate) fn with_natives<'h, R>(
         )?;
         natives.raw_set(
             "Maps_width",
-            scope.create_function(move |_, (_m, file): (LuaValue, mlua::LuaString)| {
-                Ok(h.borrow().map(&file.to_str()?).map_or(0, |m| m.size()[0]))
-            })?,
+            native(
+                scope,
+                "Maps_width",
+                move |_, (_m, file): (LuaValue, mlua::LuaString)| {
+                    Ok(h.borrow().map(&file.to_str()?).map_or(0, |m| m.size()[0]))
+                },
+            )?,
         )?;
         natives.raw_set(
             "Maps_height",
-            scope.create_function(move |_, (_m, file): (LuaValue, mlua::LuaString)| {
-                Ok(h.borrow().map(&file.to_str()?).map_or(0, |m| m.size()[1]))
-            })?,
+            native(
+                scope,
+                "Maps_height",
+                move |_, (_m, file): (LuaValue, mlua::LuaString)| {
+                    Ok(h.borrow().map(&file.to_str()?).map_or(0, |m| m.size()[1]))
+                },
+            )?,
         )?;
         natives.raw_set(
             "Maps_terrain",
-            scope.create_function(
+            native(
+                scope,
+                "Maps_terrain",
                 move |_, (_m, file, layer, x, y): (LuaValue, mlua::LuaString, i64, i64, i64)| {
                     let map = h.borrow().map(&file.to_str()?);
                     Ok(map
@@ -1127,7 +1271,9 @@ pub(crate) fn with_natives<'h, R>(
         )?;
         natives.raw_set(
             "Maps_setTerrain",
-            scope.create_function(
+            native(
+                scope,
+                "Maps_setTerrain",
                 move |_,
                       (_m, file, layer, x, y, code): (
                     LuaValue,
@@ -1154,7 +1300,9 @@ pub(crate) fn with_natives<'h, R>(
         };
         natives.raw_set(
             "Maps_number",
-            scope.create_function(
+            native(
+                scope,
+                "Maps_number",
                 move |_, (_m, file, value, x, y): (LuaValue, mlua::LuaString, i64, i64, i64)| {
                     Ok(match value_at(&file, value, x, y) {
                         Some(tiles::CellValue::Number(n)) => i64::from(n),
@@ -1165,7 +1313,9 @@ pub(crate) fn with_natives<'h, R>(
         )?;
         natives.raw_set(
             "Maps_isOn",
-            scope.create_function(
+            native(
+                scope,
+                "Maps_isOn",
                 move |_, (_m, file, value, x, y): (LuaValue, mlua::LuaString, i64, i64, i64)| {
                     Ok(matches!(
                         value_at(&file, value, x, y),
@@ -1176,7 +1326,9 @@ pub(crate) fn with_natives<'h, R>(
         )?;
         natives.raw_set(
             "Maps_choice",
-            scope.create_function(
+            native(
+                scope,
+                "Maps_choice",
                 move |_, (_m, file, value, x, y): (LuaValue, mlua::LuaString, i64, i64, i64)| {
                     Ok(match value_at(&file, value, x, y) {
                         Some(tiles::CellValue::Choice(Some(i))) => i64::from(i),
@@ -1195,7 +1347,9 @@ pub(crate) fn with_natives<'h, R>(
             };
         natives.raw_set(
             "Maps_setNumber",
-            scope.create_function(
+            native(
+                scope,
+                "Maps_setNumber",
                 move |_,
                       (_m, file, value, x, y, to): (
                     LuaValue,
@@ -1215,7 +1369,9 @@ pub(crate) fn with_natives<'h, R>(
         )?;
         natives.raw_set(
             "Maps_setSwitch",
-            scope.create_function(
+            native(
+                scope,
+                "Maps_setSwitch",
                 move |_,
                       (_m, file, value, x, y, on): (
                     LuaValue,
@@ -1232,7 +1388,9 @@ pub(crate) fn with_natives<'h, R>(
         )?;
         natives.raw_set(
             "Maps_setChoice",
-            scope.create_function(
+            native(
+                scope,
+                "Maps_setChoice",
                 move |_,
                       (_m, file, value, x, y, chosen): (
                     LuaValue,
@@ -1250,52 +1408,82 @@ pub(crate) fn with_natives<'h, R>(
         )?;
         natives.raw_set(
             "Saves_saveTo",
-            scope.create_function(move |_, (_saves, slot): (LuaValue, mlua::LuaString)| {
-                h.borrow_mut().save_game(&slot.to_str()?, false);
-                Ok(())
-            })?,
+            native(
+                scope,
+                "Saves_saveTo",
+                move |_, (_saves, slot): (LuaValue, mlua::LuaString)| {
+                    h.borrow_mut().save_game(&slot.to_str()?, false);
+                    Ok(())
+                },
+            )?,
         )?;
         natives.raw_set(
             "Saves_loadFrom",
-            scope.create_function(move |_, (_saves, slot): (LuaValue, mlua::LuaString)| {
-                h.borrow_mut().save_game(&slot.to_str()?, true);
-                Ok(())
-            })?,
+            native(
+                scope,
+                "Saves_loadFrom",
+                move |_, (_saves, slot): (LuaValue, mlua::LuaString)| {
+                    h.borrow_mut().save_game(&slot.to_str()?, true);
+                    Ok(())
+                },
+            )?,
         )?;
         natives.raw_set(
             "Input_held",
-            scope.create_function(move |_, (_input, name): (LuaValue, mlua::LuaString)| {
-                Ok(h.borrow().action(&name.to_str()?).held)
-            })?,
+            native(
+                scope,
+                "Input_held",
+                move |_, (_input, name): (LuaValue, mlua::LuaString)| {
+                    Ok(h.borrow().action(&name.to_str()?).held)
+                },
+            )?,
         )?;
         natives.raw_set(
             "Input_pressed",
-            scope.create_function(move |_, (_input, name): (LuaValue, mlua::LuaString)| {
-                Ok(h.borrow().action(&name.to_str()?).pressed)
-            })?,
+            native(
+                scope,
+                "Input_pressed",
+                move |_, (_input, name): (LuaValue, mlua::LuaString)| {
+                    Ok(h.borrow().action(&name.to_str()?).pressed)
+                },
+            )?,
         )?;
         natives.raw_set(
             "Input_released",
-            scope.create_function(move |_, (_input, name): (LuaValue, mlua::LuaString)| {
-                Ok(h.borrow().action(&name.to_str()?).released)
-            })?,
+            native(
+                scope,
+                "Input_released",
+                move |_, (_input, name): (LuaValue, mlua::LuaString)| {
+                    Ok(h.borrow().action(&name.to_str()?).released)
+                },
+            )?,
         )?;
         natives.raw_set(
             "Input_axis",
-            scope.create_function(move |_, (_input, name): (LuaValue, mlua::LuaString)| {
-                let a = h.borrow().action(&name.to_str()?).axis;
-                Ok(vec3_value(Vec3::new(a.x, a.y, 0.0)))
-            })?,
+            native(
+                scope,
+                "Input_axis",
+                move |_, (_input, name): (LuaValue, mlua::LuaString)| {
+                    let a = h.borrow().action(&name.to_str()?).axis;
+                    Ok(vec3_value(Vec3::new(a.x, a.y, 0.0)))
+                },
+            )?,
         )?;
         natives.raw_set(
             "Input_binding",
-            scope.create_function(move |_, (_input, name): (LuaValue, mlua::LuaString)| {
-                Ok(h.borrow().binding(&name.to_str()?).unwrap_or_default())
-            })?,
+            native(
+                scope,
+                "Input_binding",
+                move |_, (_input, name): (LuaValue, mlua::LuaString)| {
+                    Ok(h.borrow().binding(&name.to_str()?).unwrap_or_default())
+                },
+            )?,
         )?;
         natives.raw_set(
             "Input_rebind",
-            scope.create_function(
+            native(
+                scope,
+                "Input_rebind",
                 move |_, (_input, action, input): (LuaValue, mlua::LuaString, mlua::LuaString)| {
                     h.borrow_mut().rebind(&action.to_str()?, &input.to_str()?);
                     Ok(())
@@ -1304,18 +1492,22 @@ pub(crate) fn with_natives<'h, R>(
         )?;
         natives.raw_set(
             "World_setSeed",
-            scope.create_function(move |_, (_world, seed): (LuaValue, f64)| {
-                if seed.is_finite() {
-                    // Whole numbers as they are; others by their bits.
-                    let seed = if seed.fract() == 0.0 && seed.abs() < 9.0e15 {
-                        seed as i64 as u64
-                    } else {
-                        seed.to_bits()
-                    };
-                    h.borrow_mut().set_seed(seed);
-                }
-                Ok(())
-            })?,
+            native(
+                scope,
+                "World_setSeed",
+                move |_, (_world, seed): (LuaValue, f64)| {
+                    if seed.is_finite() {
+                        // Whole numbers as they are; others by their bits.
+                        let seed = if seed.fract() == 0.0 && seed.abs() < 9.0e15 {
+                            seed as i64 as u64
+                        } else {
+                            seed.to_bits()
+                        };
+                        h.borrow_mut().set_seed(seed);
+                    }
+                    Ok(())
+                },
+            )?,
         )?;
         // A native renamed on purpose keeps working under its old name for
         // a while (Phase 8, C3): the same function, lent twice.

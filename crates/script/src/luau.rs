@@ -234,11 +234,15 @@ math.random = function(m, n)
   if not r then error("random numbers can only be had while the game runs", 2) end
   if m == nil then return r(nil) end
   if n == nil then m, n = 1, m end
+  if not tonumber(m) or not tonumber(n) then
+    error("math.random wants numbers: math.random() for 0 to 1, math.random(6) for 1 to 6, math.random(2, 12) for 2 to 12", 2)
+  end
   return natives.World_randomInt(nil, m, n)
 end
 math.randomseed = function(seed)
   local s = natives and natives.World_setSeed
   if not s then error("the seed can only be set while the game runs", 2) end
+  if not tonumber(seed) then error("math.randomseed wants a number, such as math.randomseed(42)", 2) end
   s(nil, seed)
 end
 -- table.move is one loop in C that the time limits can't stop: a range
@@ -293,6 +297,9 @@ solis = setmetatable({}, reach)
 function solis.send(to, name, ...)
   local send = natives and natives.send_event
   if not send then error("events can only be sent while the game runs", 2) end
+  if type(name) ~= "string" then
+    error("solis.send(to, name, …) wants the event's name as text after the entity it's for, such as solis.send(self.me, \"Hit\", 2.5)", 2)
+  end
   send(to, name, table.pack(...))
 end
 -- For Solis alone (its list of what game code can call): each native lent
