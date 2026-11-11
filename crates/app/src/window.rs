@@ -2099,6 +2099,12 @@ impl eframe::App for App {
                 self.workbench.set_program(program);
             }
         }
+        // Models' thumbnails are drawn on the theme's backdrop: another
+        // theme, and they're made again.
+        let theme = self.workbench.appearance().theme;
+        if self.thumbnails.follow_theme(theme, self.gpu.as_ref()) {
+            self.refresh_library();
+        }
         if self.thumbnails.poll(&ctx, self.gpu.as_mut()) {
             self.show_library();
         }

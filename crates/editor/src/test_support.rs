@@ -128,6 +128,25 @@ pub(crate) fn rest_over(
     h
 }
 
+/// Every rectangle the last frame drew: where, its fill and its border's
+/// colour.
+pub(crate) fn rects_drawn<S>(
+    h: &egui_kittest::Harness<'_, S>,
+) -> Vec<(egui::Rect, egui::Color32, egui::Color32)> {
+    fn gather(shape: &egui::Shape, found: &mut Vec<(egui::Rect, egui::Color32, egui::Color32)>) {
+        match shape {
+            egui::Shape::Vec(shapes) => shapes.iter().for_each(|s| gather(s, found)),
+            egui::Shape::Rect(r) => found.push((r.rect, r.fill, r.stroke.color)),
+            _ => {}
+        }
+    }
+    let mut found = Vec::new();
+    for clipped in &h.output().shapes {
+        gather(&clipped.shape, &mut found);
+    }
+    found
+}
+
 pub(crate) trait Tap: Sized {
     fn tap(mut self, f: impl FnOnce(&mut Self)) -> Self {
         f(&mut self);

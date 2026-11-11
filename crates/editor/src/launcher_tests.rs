@@ -597,3 +597,38 @@ fn a_newer_build_is_a_bar_over_the_projects_not_a_question() {
     assert!(h.state().1.actions.contains(&WorkbenchAction::Quit));
     assert!(h.state().0.restarting());
 }
+
+/// The review, BUG-29: the launcher drew its cards, its chosen row and its
+/// notices in the standard theme's colours whatever the theme.
+#[test]
+fn the_launcher_wears_the_chosen_theme() {
+    use crate::theme::{self, Appearance, Theme};
+    for chosen in Theme::ALL {
+        let mut w = launcher_with(some_projects());
+        w.launcher_notice("Made a copy.");
+        let mut h = harness(w);
+        let look = Appearance {
+            theme: chosen,
+            rounded: false,
+        };
+        theme::restyle(&h.ctx, theme::Accent::default(), look);
+        h.run();
+        h.get_by_label("Playground").click();
+        h.run();
+        let drawn = rects_drawn(&h);
+        let fills = |colour| drawn.iter().any(|(_, fill, _)| *fill == colour);
+        let borders = |colour| drawn.iter().any(|(_, _, border)| *border == colour);
+        let palette = chosen.palette();
+        assert!(fills(palette.selected), "{}", chosen.name());
+        assert!(fills(palette.notice), "{}", chosen.name());
+        assert!(borders(palette.selected_border), "{}", chosen.name());
+        assert!(borders(palette.card_border), "{}", chosen.name());
+        for other in Theme::ALL.into_iter().filter(|t| *t != chosen) {
+            let palette = other.palette();
+            assert!(!fills(palette.selected), "{}", chosen.name());
+            assert!(!fills(palette.notice), "{}", chosen.name());
+            assert!(!borders(palette.selected_border), "{}", chosen.name());
+        }
+    }
+    crate::palette::use_appearance(Appearance::default());
+}

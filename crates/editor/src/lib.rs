@@ -140,3 +140,5 @@ mod kit_topdown_tests;
 mod open_externally_tests;
 #[cfg(test)]
 mod scale_levels_tests;
+#[cfg(test)]
+mod source_rules_tests;

@@ -151,3 +151,31 @@ fn with_nothing_to_read_ties_say_how_to_get_some() {
     h.run();
     assert!(h.query_by_label_contains("Give the entity").is_some());
 }
+
+/// The review, BUG-29: the square was always the standard blue.
+#[test]
+fn the_align_grid_marks_the_chosen_square_in_the_chosen_accent() {
+    use crate::theme::{self, Accent};
+    for accent in [Accent::Plum, Accent::Blue, Accent::Gold] {
+        // The stack: centred and in the middle.
+        let mut h = harness(vec![0]);
+        theme::restyle(&h.ctx, accent, theme::Appearance::default());
+        h.run();
+        // The square, not the words beside the grid.
+        let button = egui::accesskit::Role::Button;
+        let square = h.get_by_role_and_label(button, "center, middle").rect();
+        let drawn = crate::test_support::rects_drawn(&h);
+        let fill = drawn
+            .iter()
+            .find(|(rect, ..)| rect.center().distance(square.center()) < 0.5)
+            .map(|(_, fill, _)| *fill);
+        assert_eq!(fill, Some(accent.colors().fill), "{}", accent.name());
+        // And no other square.
+        let other = h.get_by_role_and_label(button, "left, top").rect();
+        let fill = drawn
+            .iter()
+            .find(|(rect, ..)| rect.center().distance(other.center()) < 0.5)
+            .map(|(_, fill, _)| *fill);
+        assert_eq!(fill, Some(egui::Color32::TRANSPARENT));
+    }
+}

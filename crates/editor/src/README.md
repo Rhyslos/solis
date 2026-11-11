@@ -39,7 +39,7 @@ Tests: files ending `_tests.rs` hold the tests of the file with the same start (
 | `status_bar.rs` | The status bar along the bottom: the code checked or its mistakes, problems (click to open), saved or not, playing, and the area's name and 2D size (decision 0085). Tests in `status_bar_tests.rs`. | `Status`, `Workbench::status` |
 | `panel.rs`, `panels.rs`, `layout.rs` | The list of dockable panels, drawing each one's contents, and the standard layout with checks on a saved layout. | `Panel`, `layout::standard` |
 | `theme.rs`, `icons.rs` | The editor's look (the accent colour, fonts, frames, the docked panels' style, text contrast checks) and its icons, drawn in code. | `Accent`, `Icon` |
-| `palette.rs` | The two themes' neutral colours (Standard and Graphite) and the rounded-panels switch, kept for the thread that draws; `theme` re-exports its colour functions (`theme::panel()`, `theme::text_weak()` ...). Decision 0096. | `Theme`, `Appearance`, `Palette` |
+| `palette.rs` | The two themes' neutral colours (Standard and Graphite) and the rounded-panels switch, kept for the thread that draws; `theme` re-exports its colour functions (`theme::panel()`, `theme::text_weak()` ...). The launcher's card border and its tints for the chosen row and for notices are here too (the review, BUG-29). Decision 0096. | `Theme`, `Appearance`, `Palette` |
 | `splash.rs`, `updates.rs` | The splash screen while the program starts, and what the editor shows about updates (decisions 0043 and 0045). | `SplashView`, `UpdateNotice` |
 
 ## Panels
@@ -111,6 +111,7 @@ Tests: files ending `_tests.rs` hold the tests of the file with the same start (
 | `save_game.rs` | Save games: the whole running game, so loading carries on exactly (decision 0038). Older saves load through `FORMAT`'s upgraders (Phase 8, C2), saying what couldn't be carried over; a component the game's code no longer has is left out and said. Game-wide objects are an `objects` section (decision 0080; tests in `save_game_objects_tests.rs`). | `Save`, `FORMAT` |
 | `two_d_tests.rs` | The 2D view and Settings > 2D (Phase 9, D1): whole-step zoom, pixels on whole screen pixels, the corner, snapping to pixels or tiles, 2D cameras and their frames. | |
 | `open_externally_tests.rs` | What each place in the editor asks the computer's own programs for: Properties' Open code asks exactly what the Library does for the same file, a `.lua` file is shown in its folder, and nothing outside the assets is asked for. | |
+| `source_rules_tests.rs` | Rules about the source text itself, read from the files: no colour is written as numbers outside `palette.rs` and `theme.rs`, in the editor or the app (the ones that belong to no theme are counted in its `KEPT` list, each with why; one more anywhere fails). | |
 | `invariant_tests.rs`, `kit_tests.rs`, `scale_levels_tests.rs` | Random games checked against rules that must always hold; the ready-made components played with input; and the scale levels timed (decision 0030). | |
 
 **Read next:** the crate's [README](../README.md), and [ARCHITECTURE.md](../../../ARCHITECTURE.md), "The area".

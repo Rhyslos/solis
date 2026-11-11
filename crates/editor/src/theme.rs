@@ -17,9 +17,9 @@
 //! (WCAG contrast 4.5:1 for normal text).
 
 pub use crate::palette::{
-    Appearance, Palette, Theme, appearance, background, button_border, field, header, hover,
-    hover_border, line, menu_row, overlay, palette, panel, pressed, rounded, text, text_console,
-    text_strong, text_time, text_weak,
+    Appearance, Palette, Theme, appearance, background, button_border, card_border, field, header,
+    hover, hover_border, line, menu_row, notice, overlay, palette, panel, pressed, rounded,
+    selected, selected_border, text, text_console, text_strong, text_time, text_weak,
 };
 use egui::{
     Color32, Context, CornerRadius, FontData, FontDefinitions, FontFamily, FontId, Frame, Margin,
@@ -39,6 +39,9 @@ pub const COLLIDER: Color32 = Color32::from_rgb(0x6e, 0xd8, 0x8a);
 /// Play and Build & Play, whatever the accent: petrol blue, white text
 /// reads on it.
 pub const GO: Color32 = Color32::from_rgb(0x1f, 0x6a, 0x8f);
+/// The launcher's bar that says a new build is ready, whatever the accent
+/// and the theme: a deep blue, bright text reads on it.
+pub const UPDATE: Color32 = Color32::from_rgb(0x1d, 0x3a, 0x66);
 
 /// The console's levels, whatever the accent: the fill of a level's filter
 /// button while that level is shown. White text reads on each.
@@ -245,11 +248,6 @@ pub fn apply(ctx: &Context, accent: Accent, look: Appearance) {
     ctx.set_fonts(fonts());
     restyle(ctx, accent, look);
     ctx.set_theme(egui::ThemePreference::Dark);
-}
-
-/// Switches the accent colour for the whole editor, keeping the look.
-pub fn set_accent(ctx: &Context, accent: Accent) {
-    restyle(ctx, accent, appearance());
 }
 
 /// Switches the whole editor to `accent` and `look`.
@@ -603,6 +601,60 @@ mod tests {
                     "{text:?} on {surface:?} has contrast {ratio:.2}, below {READABLE}"
                 );
             }
+        }
+    }
+
+    /// The launcher's tints carry the same text as the panels do, and its
+    /// update bar bright text.
+    #[test]
+    fn text_reads_on_the_launcher_s_tints_in_every_theme() {
+        in_every_theme(|theme| {
+            for surface in [selected(), notice()] {
+                for text in [text(), text_strong(), text_weak()] {
+                    let ratio = contrast(text, surface);
+                    assert!(
+                        ratio >= READABLE,
+                        "{}: {text:?} on {surface:?} has contrast {ratio:.2}",
+                        theme.name()
+                    );
+                }
+            }
+            let ratio = contrast(text_strong(), UPDATE);
+            assert!(ratio >= READABLE, "{}: {ratio:.2}", theme.name());
+        });
+    }
+
+    /// The review, BUG-29: the colours the launcher drew as numbers are
+    /// the standard theme's still, to the pixel, and Graphite has its own.
+    #[test]
+    fn the_launcher_s_colours_are_the_standard_theme_s_as_they_were() {
+        let standard = Theme::Standard.palette();
+        assert_eq!(standard.card_border, Color32::from_rgb(0x30, 0x30, 0x30));
+        assert_eq!(standard.selected, Color32::from_rgb(0x2c, 0x3a, 0x4d));
+        assert_eq!(
+            standard.selected_border,
+            Color32::from_rgb(0x3f, 0x5a, 0x7a)
+        );
+        assert_eq!(standard.notice, Color32::from_rgb(0x23, 0x30, 0x3f));
+        assert_eq!(UPDATE, Color32::from_rgb(0x1d, 0x3a, 0x66));
+        // Graphite: a card's border is its hairline (decision 0096), and
+        // each tint is as far from its panel as the standard one is.
+        let graphite = Theme::Graphite.palette();
+        assert_eq!(graphite.card_border, graphite.line);
+        let from_panel = |palette: &Palette, tint: Color32| {
+            [
+                i16::from(tint.r()) - i16::from(palette.panel.r()),
+                i16::from(tint.g()) - i16::from(palette.panel.g()),
+                i16::from(tint.b()) - i16::from(palette.panel.b()),
+            ]
+        };
+        let tints: [fn(&Palette) -> Color32; 3] =
+            [|p| p.selected, |p| p.selected_border, |p| p.notice];
+        for tint in tints {
+            assert_eq!(
+                from_panel(graphite, tint(graphite)),
+                from_panel(standard, tint(standard))
+            );
         }
     }
 

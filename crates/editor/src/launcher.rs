@@ -401,7 +401,7 @@ impl Workbench {
         let fill = self.accent.colors().fill;
         ui.add_space(10.0);
         egui::Frame::new()
-            .fill(Color32::from_rgb(0x1d, 0x3a, 0x66))
+            .fill(theme::UPDATE)
             .stroke(egui::Stroke::new(1.0, fill))
             .corner_radius(6.0)
             .inner_margin(egui::Margin::symmetric(12, 8))
@@ -577,7 +577,7 @@ impl Workbench {
                 ui.allocate_exact_size(vec2(ui.available_width(), 36.0), Sense::click());
             let painter = ui.painter();
             if on {
-                painter.rect_filled(rect, 6.0, Color32::from_rgb(0x2c, 0x3a, 0x4d));
+                painter.rect_filled(rect, 6.0, theme::selected());
             } else if item.hovered() {
                 painter.rect_filled(rect, 6.0, theme::menu_row());
             }
@@ -727,8 +727,8 @@ impl Workbench {
         if let Some(notice) = self.launcher.notice.clone() {
             ui.add_space(8.0);
             egui::Frame::new()
-                .fill(Color32::from_rgb(0x23, 0x30, 0x3f))
-                .stroke(egui::Stroke::new(1.0, Color32::from_rgb(0x3f, 0x5a, 0x7a)))
+                .fill(theme::notice())
+                .stroke(egui::Stroke::new(1.0, theme::selected_border()))
                 .corner_radius(6.0)
                 .inner_margin(egui::Margin::symmetric(12, 8))
                 .show(ui, |ui| {
@@ -911,14 +911,11 @@ impl Workbench {
         });
         let painter = ui.painter().clone();
         let (fill, edge) = if selected {
-            (
-                Color32::from_rgb(0x2c, 0x3a, 0x4d),
-                Color32::from_rgb(0x3f, 0x5a, 0x7a),
-            )
+            (theme::selected(), theme::selected_border())
         } else if row.hovered() {
             (theme::menu_row(), theme::button_border())
         } else {
-            (theme::panel(), Color32::from_rgb(0x30, 0x30, 0x30))
+            (theme::panel(), theme::card_border())
         };
         painter.rect(
             rect,
@@ -1270,7 +1267,7 @@ impl Workbench {
             ui.label(RichText::new(text).small().strong().color(colour));
         };
         ui.horizontal_top(|ui| {
-            card(theme::panel(), Color32::from_rgb(0x30, 0x30, 0x30)).show(ui, |ui| {
+            card(theme::panel(), theme::card_border()).show(ui, |ui| {
                 ui.set_width(260.0);
                 ui.set_min_height(86.0);
                 ui.vertical(|ui| {
@@ -1297,12 +1294,9 @@ impl Workbench {
             ui.add_space(12.0);
             let newer = self.update.newer_build();
             let (back, edge) = if newer.is_some() {
-                (
-                    Color32::from_rgb(0x23, 0x30, 0x3f),
-                    Color32::from_rgb(0x3f, 0x5a, 0x7a),
-                )
+                (theme::notice(), theme::selected_border())
             } else {
-                (theme::panel(), Color32::from_rgb(0x30, 0x30, 0x30))
+                (theme::panel(), theme::card_border())
             };
             card(back, edge).show(ui, |ui| {
                 ui.set_width((ui.available_width() - 40.0).max(300.0));
@@ -1393,7 +1387,7 @@ impl Workbench {
             .clone()
             .filter(|n| Some(n.build) == self.update.newer_build());
         if let Some(notes) = notes {
-            card(theme::panel(), Color32::from_rgb(0x30, 0x30, 0x30)).show(ui, |ui| {
+            card(theme::panel(), theme::card_border()).show(ui, |ui| {
                 ui.set_width(ui.available_width());
                 ui.label(
                     RichText::new(format!("What's new in build {}", notes.build))
@@ -1474,7 +1468,7 @@ impl Workbench {
             for example in all {
                 egui::Frame::new()
                     .fill(theme::panel())
-                    .stroke(egui::Stroke::new(1.0, Color32::from_rgb(0x30, 0x30, 0x30)))
+                    .stroke(egui::Stroke::new(1.0, theme::card_border()))
                     .corner_radius(10.0)
                     .inner_margin(16.0)
                     .show(ui, |ui| {
@@ -1522,7 +1516,7 @@ impl Workbench {
         ui.add_space(20.0);
         egui::Frame::new()
             .fill(theme::panel())
-            .stroke(egui::Stroke::new(1.0, Color32::from_rgb(0x30, 0x30, 0x30)))
+            .stroke(egui::Stroke::new(1.0, theme::card_border()))
             .corner_radius(10.0)
             .inner_margin(egui::Margin::symmetric(22, 18))
             .show(ui, |ui| {
