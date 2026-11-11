@@ -18,6 +18,8 @@ Make a project as soon as you start something you want to keep. Without one, Sol
 
 **Open a project:** **File > Open project…** and choose the project's folder, or pick it from **File > Recent projects** or the [launcher](launcher.md) (**File > Projects…**). Solis doesn't open the last project again when it starts: it always starts on the launcher, so you choose what to work on, and the projects you opened most recently are at the top of its list (after any you pinned), one double-click away.
 
+**Opening another project starts afresh.** Everything of the project you leave goes with it: its area, the files open in tabs (Clips, Frames, Animator, Map, Tileset, Atlas Crop, the UI canvas) and their undo steps, components' values you copied, and a `seed` chosen in the Console. Nothing of one project can then be saved into another by mistake, which matters most with a copy of a project, whose files have the same names. What's yours stays as it is: the layout, the cameras, the theme and the Console's messages.
+
 **Add models:** **File > Import model…**, or drop a `.glb` or `.gltf` file onto the window: it's copied into the project's assets and placed in the area. You can also put files straight into the assets folder (or a folder inside it) from Explorer: they appear in the Library within a moment.
 
 **Find your way around the Library**

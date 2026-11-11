@@ -5,6 +5,7 @@
 //! the area and every panel. Type to narrow it, Up and Down to choose,
 //! Enter to do it, Esc to close.
 
+use crate::key_owner::KeyOwner;
 use crate::library::{LibraryKind, LibraryRequest};
 use crate::menu_items::MenuCommand;
 use crate::panel::Panel;
@@ -196,7 +197,7 @@ impl Workbench {
         let mut items = Vec::new();
         let state = crate::menu_items::MenuState::of(self);
         let playing = self.play_state();
-        let project = self.project.is_some();
+        let project = self.open.project.is_some();
         let mut push = |ok: bool, item: SearchItem| {
             if ok {
                 items.push(item);
@@ -536,7 +537,7 @@ impl Workbench {
             }
         }
         // The area's entities.
-        for (id, entity) in self.document.area().iter() {
+        for (id, entity) in self.open.document.area().iter() {
             items.push(SearchItem {
                 name: entity.name.clone(),
                 kind: SearchKind::Entity,
@@ -547,7 +548,7 @@ impl Workbench {
         }
         // The project's files.
         if project {
-            for item in &self.library {
+            for item in &self.open.library {
                 items.push(SearchItem {
                     name: item.name.clone(),
                     kind: SearchKind::File,
@@ -574,7 +575,8 @@ impl Workbench {
     /// tab (where Space plays the clip) and the game not holding the keys,
     /// opens the search.
     pub(crate) fn search_key(&mut self, ui: &Ui) {
-        if self.search.open || self.frames_hovered || ui.ctx().egui_wants_keyboard_input() {
+        let keys = self.keys;
+        if self.search.open || keys == KeyOwner::Frames || !keys.takes_shortcuts() {
             return;
         }
         let space = ui.input_mut(|i| i.consume_key(egui::Modifiers::NONE, egui::Key::Space));
@@ -615,7 +617,7 @@ impl Workbench {
                 crate::layout::bring_to_front(&mut self.dock, panel);
             }
             SearchTarget::Entity(id) => {
-                if self.document.area().contains(id) {
+                if self.open.document.area().contains(id) {
                     self.select(id);
                     self.frame_selection();
                 }
@@ -626,10 +628,10 @@ impl Workbench {
                     // folder, with Properties following as for a click
                     // there. Nothing is asked of the computer's own
                     // programs.
-                    let before = self.library_state.selected.clone();
+                    let before = self.open.library_state.selected.clone();
                     self.pick_in_library(&path);
-                    if !self.library_state.filter.passes(kind) {
-                        self.library_state.filter = crate::library::Filter::All;
+                    if !self.open.library_state.filter.passes(kind) {
+                        self.open.library_state.filter = crate::library::Filter::All;
                     }
                     self.follow_sound_selection(&before);
                     if self.library_pinned {

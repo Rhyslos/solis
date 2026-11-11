@@ -109,7 +109,7 @@ fn chips_narrow_the_library() {
     h.get_by_label("Sprites files").click();
     h.run();
     assert_eq!(
-        h.state().0.library_state.filter,
+        h.state().0.open.library_state.filter,
         crate::library::Filter::Sprites
     );
 }

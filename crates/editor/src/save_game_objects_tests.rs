@@ -39,7 +39,7 @@ fn a_save_keeps_the_objects_and_the_loaded_game_goes_on_alike() {
         "{:?}",
         w.log_lines().last().map(|l| &l.text)
     );
-    let game = w.playing.as_mut().unwrap().game.as_mut().unwrap();
+    let game = w.open.playing.as_mut().unwrap().game.as_mut().unwrap();
     assert_eq!(
         game.object_values()[0].1.get("ticks"),
         Some(&reflect::Value::Int(20))

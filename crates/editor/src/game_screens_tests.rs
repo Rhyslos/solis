@@ -48,7 +48,8 @@ fn showing(program: Arc<script::Compiled>, screens: &[(&str, bool, i64)]) -> Wor
             order: *order,
             ..Screen::default()
         });
-        w.document
+        w.open
+            .document
             .edit(
                 "Add",
                 vec![area::Edit::Spawn {
@@ -73,7 +74,7 @@ fn drawn(w: &Workbench) -> Vec<String> {
         }
     }
     let mut out = Vec::new();
-    for picture in &w.game_screens.pictures {
+    for picture in &w.open.game_screens.pictures {
         texts(picture.view.as_ref().unwrap(), &mut out);
     }
     out
@@ -93,9 +94,12 @@ fn a_shown_screen_is_drawn_after_each_tick_with_the_game_s_objects() {
     let hour: i64 = first[0].trim_start_matches("Hour ").parse().unwrap();
     w.run_game(1.0 / 60.0);
     assert_eq!(drawn(&w), vec![format!("Hour {}", hour + 1)]);
-    assert_eq!(w.game_screens.pictures[0].design, [1920.0, 1080.0]);
+    assert_eq!(w.open.game_screens.pictures[0].design, [1920.0, 1080.0]);
     w.stop();
-    assert!(w.game_screens.pictures.is_empty(), "Stop takes it away");
+    assert!(
+        w.open.game_screens.pictures.is_empty(),
+        "Stop takes it away"
+    );
 }
 
 #[test]
@@ -203,6 +207,7 @@ fn pauser_program() -> Arc<script::Compiled> {
 fn with_a_menu() -> (Workbench, EntityId) {
     let mut w = showing(pauser_program(), &[("Menu", true, 0)]);
     let id = w
+        .open
         .document
         .area()
         .iter()
@@ -220,7 +225,7 @@ fn with_a_menu() -> (Workbench, EntityId) {
 }
 
 fn pauser(w: &mut Workbench, id: EntityId, field: &str) -> reflect::Value {
-    let game = w.playing.as_mut().unwrap().game.as_mut().unwrap();
+    let game = w.open.playing.as_mut().unwrap().game.as_mut().unwrap();
     game.values(id, "Pauser")
         .unwrap()
         .get(field)
@@ -235,7 +240,7 @@ fn a_button_clicked_sends_its_event_in_the_next_tick_and_game_code_hides_the_scr
     w.run_game(1.0 / 60.0);
     assert_eq!(drawn(&w), vec!["Resume".to_string()]);
     assert!(
-        w.game_screens.wants_pointer(),
+        w.open.game_screens.wants_pointer(),
         "a screen with a button frees the pointer"
     );
     assert_eq!(pauser(&mut w, id, "sawMenu"), reflect::Value::Bool(true));
@@ -244,24 +249,28 @@ fn a_button_clicked_sends_its_event_in_the_next_tick_and_game_code_hides_the_scr
         size: [1280, 720],
         step: None,
     };
-    w.game_screens.point_at(Some([640.0, 360.0]), area);
-    assert_eq!(w.game_screens.hover, Some((0, 0)));
+    w.open.game_screens.point_at(Some([640.0, 360.0]), area);
+    assert_eq!(w.open.game_screens.hover, Some((0, 0)));
     assert_eq!(
-        w.game_screens.pictures[0].looks.hover,
+        w.open.game_screens.pictures[0].looks.hover,
         Some(0),
         "drawn hovered"
     );
     w.press_hovered();
-    assert_eq!(w.game_screens.sent.len(), 1, "waiting for the next tick");
+    assert_eq!(
+        w.open.game_screens.sent.len(),
+        1,
+        "waiting for the next tick"
+    );
     assert_eq!(pauser(&mut w, id, "resumed"), reflect::Value::Int(0));
     w.run_game(1.0 / 60.0);
-    assert!(w.game_screens.sent.is_empty());
+    assert!(w.open.game_screens.sent.is_empty());
     assert_eq!(pauser(&mut w, id, "resumed"), reflect::Value::Int(1));
     // Hidden at the end of that tick, and the HUD shown instead.
     assert_eq!(drawn(&w), vec!["Hud".to_string()]);
-    assert!(!w.game_screens.wants_pointer());
+    assert!(!w.open.game_screens.wants_pointer());
     assert_eq!(
-        w.game_screens.hover, None,
+        w.open.game_screens.hover, None,
         "the button went with its screen"
     );
     w.run_game(1.0 / 60.0);
@@ -278,18 +287,18 @@ fn a_pointer_off_the_buttons_or_off_the_panel_hovers_nothing() {
         size: [400, 300],
         step: Some(2),
     };
-    w.game_screens.point_at(Some([50.0, 20.0]), area);
-    assert_eq!(w.game_screens.hover, None, "in the bars");
-    w.game_screens.point_at(Some([300.0, 200.0]), area);
-    assert_eq!(w.game_screens.hover, Some((0, 0)));
-    w.game_screens.point_at(None, area);
-    assert_eq!(w.game_screens.hover, None);
-    assert_eq!(w.game_screens.pictures[0].looks.hover, None);
-    w.game_screens.point_at(Some([f32::NAN, 1.0]), area);
-    assert_eq!(w.game_screens.hover, None);
+    w.open.game_screens.point_at(Some([50.0, 20.0]), area);
+    assert_eq!(w.open.game_screens.hover, None, "in the bars");
+    w.open.game_screens.point_at(Some([300.0, 200.0]), area);
+    assert_eq!(w.open.game_screens.hover, Some((0, 0)));
+    w.open.game_screens.point_at(None, area);
+    assert_eq!(w.open.game_screens.hover, None);
+    assert_eq!(w.open.game_screens.pictures[0].looks.hover, None);
+    w.open.game_screens.point_at(Some([f32::NAN, 1.0]), area);
+    assert_eq!(w.open.game_screens.hover, None);
     // Nothing hovered: a press does nothing.
     w.press_hovered();
-    assert!(w.game_screens.sent.is_empty());
+    assert!(w.open.game_screens.sent.is_empty());
 }
 
 fn run_to(w: &mut Workbench, ticks: u64) {
@@ -306,14 +315,14 @@ fn click(w: &mut Workbench) {
         size: [1280, 720],
         step: None,
     };
-    w.game_screens.point_at(Some([640.0, 360.0]), area);
+    w.open.game_screens.point_at(Some([640.0, 360.0]), area);
     w.press_hovered();
 }
 
 #[test]
 fn a_recording_keeps_what_buttons_sent_and_its_replay_sends_it_again() {
     let (mut w, id) = with_a_menu();
-    w.project = Some(crate::library::ProjectInfo {
+    w.open.project = Some(crate::library::ProjectInfo {
         name: "Menus".into(),
         root: std::env::temp_dir(),
         assets: std::env::temp_dir(),
@@ -325,6 +334,7 @@ fn a_recording_keeps_what_buttons_sent_and_its_replay_sends_it_again() {
     assert_eq!(pauser(&mut w, id, "resumed"), reflect::Value::Int(1));
     w.stop();
     let text = w
+        .open
         .outbox
         .iter()
         .find_map(|a| match a {
@@ -359,7 +369,7 @@ fn a_recording_keeps_what_buttons_sent_and_its_replay_sends_it_again() {
 #[test]
 fn a_screen_game_code_hid_stays_hidden_after_a_load() {
     let (mut w, id) = with_a_menu();
-    w.project = Some(crate::library::ProjectInfo {
+    w.open.project = Some(crate::library::ProjectInfo {
         name: "Menus".into(),
         root: std::env::temp_dir(),
         assets: std::env::temp_dir(),
@@ -368,7 +378,7 @@ fn a_screen_game_code_hid_stays_hidden_after_a_load() {
     run_to(&mut w, 2);
     click(&mut w);
     run_to(&mut w, 4);
-    let world = &w.playing.as_ref().unwrap().world;
+    let world = &w.open.playing.as_ref().unwrap().world;
     assert_eq!(world.screen_shown(id).as_deref(), Some("Hud"));
     let text = w.save_text().unwrap();
     w.stop();
@@ -431,6 +441,7 @@ fn with_two_buttons() -> (Workbench, EntityId) {
     };
     let mut w = showing(program, &[("Menu", true, 0)]);
     let id = w
+        .open
         .document
         .area()
         .iter()
@@ -462,15 +473,19 @@ fn the_menu_keys_move_the_focus_and_choose_and_the_game_s_own_actions_wait() {
     w.play();
     w.give_game_input(&egui::Context::default());
     run_to(&mut w, 1);
-    assert!(w.game_screens.wants_pointer());
-    assert_eq!(w.game_screens.focus, None);
+    assert!(w.open.game_screens.wants_pointer());
+    assert_eq!(w.open.game_screens.focus, None);
     // The first button is ready: Down moves on from it, and the ring
     // shows.
     tap(&mut w, "Down");
-    assert_eq!(w.game_screens.focus, Some((0, 1)));
-    assert_eq!(w.game_screens.pictures[0].looks.focus, Some(1));
+    assert_eq!(w.open.game_screens.focus, Some((0, 1)));
+    assert_eq!(w.open.game_screens.pictures[0].looks.focus, Some(1));
     tap(&mut w, "Down");
-    assert_eq!(w.game_screens.focus, Some((0, 1)), "nothing further down");
+    assert_eq!(
+        w.open.game_screens.focus,
+        Some((0, 1)),
+        "nothing further down"
+    );
     // Space chooses (and isn't Jump while the menu is shown).
     tap(&mut w, "Space");
     let now = w.world().unwrap().clock().ticks;
@@ -488,7 +503,7 @@ fn the_menu_keys_move_the_focus_and_choose_and_the_game_s_own_actions_wait() {
         "game code sees the menu's"
     );
     tap(&mut w, "Up");
-    assert_eq!(w.game_screens.focus, Some((0, 0)));
+    assert_eq!(w.open.game_screens.focus, Some((0, 0)));
     // The mouse over a button takes the focus there, and hides the ring.
     let area = crate::game_screens::ScreensArea {
         origin: [0, 0],
@@ -498,30 +513,33 @@ fn the_menu_keys_move_the_focus_and_choose_and_the_game_s_own_actions_wait() {
     let quit = (40..1000)
         .step_by(4)
         .find(|&y| {
-            w.game_screens.point_at(Some([100.0, y as f32]), area);
-            w.game_screens.hover == Some((0, 1))
+            w.open.game_screens.point_at(Some([100.0, y as f32]), area);
+            w.open.game_screens.hover == Some((0, 1))
         })
         .expect("Quit is somewhere down the left");
     assert!(quit > 40);
-    assert_eq!(w.game_screens.focus, Some((0, 1)));
-    assert_eq!(w.game_screens.pictures[0].looks.focus, None);
+    assert_eq!(w.open.game_screens.focus, Some((0, 1)));
+    assert_eq!(w.open.game_screens.pictures[0].looks.focus, None);
     // A menu shown under a still mouse (the pointer resting where Quit
     // appears) keeps the keys' focus where it was: Enter never chooses
     // what the pointer happened to rest on (found trying the playtest
     // export).
     tap(&mut w, "Up");
-    assert_eq!(w.game_screens.focus, Some((0, 0)));
-    w.game_screens.point_at(None, area);
-    assert_eq!(w.game_screens.hover, None);
-    w.game_screens.point_at(Some([100.0, quit as f32]), area);
-    assert_eq!(w.game_screens.hover, Some((0, 1)), "hovered");
-    assert_eq!(w.game_screens.focus, Some((0, 0)), "but not focused");
+    assert_eq!(w.open.game_screens.focus, Some((0, 0)));
+    w.open.game_screens.point_at(None, area);
+    assert_eq!(w.open.game_screens.hover, None);
+    w.open
+        .game_screens
+        .point_at(Some([100.0, quit as f32]), area);
+    assert_eq!(w.open.game_screens.hover, Some((0, 1)), "hovered");
+    assert_eq!(w.open.game_screens.focus, Some((0, 0)), "but not focused");
 }
 
 #[test]
 fn with_no_screen_with_buttons_the_game_gets_every_action() {
     let (mut w, id) = with_two_buttons();
-    w.document
+    w.open
+        .document
         .edit(
             "Hide",
             vec![area::Edit::SetField {
@@ -540,7 +558,7 @@ fn with_no_screen_with_buttons_the_game_gets_every_action() {
     tap(&mut w, "Space");
     assert_eq!(pauser(&mut w, id, "jumps"), reflect::Value::Int(1));
     assert_eq!(pauser(&mut w, id, "choices"), reflect::Value::Int(1));
-    assert_eq!(w.game_screens.focus, None);
+    assert_eq!(w.open.game_screens.focus, None);
 }
 
 #[test]
@@ -570,6 +588,7 @@ fn a_screen_reads_lua_components_and_solis_s_own() {
     };
     let mut w = showing(program, &[("Hud", true, 0)]);
     let id = w
+        .open
         .document
         .area()
         .iter()
@@ -632,7 +651,8 @@ fn game_code_sets_the_player_s_settings_and_screens_read_and_follow_them() {
     settler
         .components
         .insert("Settler".into(), reflect::ComponentData::default());
-    w.document
+    w.open
+        .document
         .edit(
             "Add",
             vec![area::Edit::Spawn {
@@ -646,7 +666,7 @@ fn game_code_sets_the_player_s_settings_and_screens_read_and_follow_them() {
     w.run_game(1.0 / 60.0);
     w.run_game(1.0 / 60.0);
     assert_eq!(drawn(&w), vec!["Text 1.5".to_string()]);
-    let picture = &w.game_screens.pictures[0];
+    let picture = &w.open.game_screens.pictures[0];
     assert_eq!(
         picture.looks.text_percent, 150,
         "text drawn half as big again"
@@ -729,6 +749,7 @@ fn a_menu_shown_this_tick_has_the_keys_next_tick_however_many_ticks_a_frame_runs
         };
         let mut w = showing(program, &[("Menu", false, 0)]);
         let id = w
+            .open
             .document
             .area()
             .iter()

@@ -135,7 +135,7 @@ fn it_opens_first_beside_the_viewport_as_drawn_in_the_mock_up() {
         LibraryRequest::Open(LibraryKind::Animator, "farmer.solanim".into()),
         &mut actions,
     );
-    assert!(w.animator_editor.is_some());
+    assert!(w.open.animator_editor.is_some());
     let path = w.dock.find_tab(&Panel::Animator).expect("open");
     let tabs = w.dock[path.surface][path.node].tabs().unwrap().to_vec();
     assert_eq!(tabs[0], Panel::Animator, "first in its group");
@@ -168,7 +168,7 @@ fn it_opens_first_beside_the_viewport_as_drawn_in_the_mock_up() {
     h.run();
     h.run();
     let w = &h.state().0;
-    assert!(w.animator_editor.is_none());
+    assert!(w.open.animator_editor.is_none());
     assert!(w.dock.find_tab(&Panel::Animator).is_none());
 }
 
@@ -203,7 +203,7 @@ fn clicking_a_state_and_an_arrow_shows_them_in_properties() {
 fn a_change_is_saved_run_at_once_and_undone_over_the_tab() {
     let (mut w, _, anim) = with_animator();
     w.open_animator("farmer.solanim");
-    let editor = w.animator_editor.as_mut().unwrap();
+    let editor = w.open.animator_editor.as_mut().unwrap();
     assert!(editor.rename_state(id(2), "Hoe"));
     let mut actions = Vec::new();
     w.frames_tabs_done(
@@ -220,10 +220,9 @@ fn a_change_is_saved_run_at_once_and_undone_over_the_tab() {
     let running = w.viewport.sheets.animator_set.get(&anim).unwrap();
     assert_eq!(running.state_name(1), "Hoe");
     // Undo over the tab undoes the file's change, and saves it.
-    w.animator_hovered = true;
     w.animator_undo(false, true);
     assert!(
-        saved(&w.outbox)
+        saved(&w.open.outbox)
             .last()
             .unwrap()
             .contains("name = \"Wave\";")
@@ -233,13 +232,13 @@ fn a_change_is_saved_run_at_once_and_undone_over_the_tab() {
     sheets.animators.insert(
         "farmer.solanim".into(),
         AnimatorState::Read(
-            Arc::new(w.animator_editor.as_ref().unwrap().file.clone()),
+            Arc::new(w.open.animator_editor.as_ref().unwrap().file.clone()),
             Vec::new(),
         ),
     );
     w.set_sprite_sheets(sheets);
     assert!(
-        w.animator_editor.as_mut().unwrap().redo(),
+        w.open.animator_editor.as_mut().unwrap().redo(),
         "its redo is still there"
     );
 }
@@ -257,7 +256,7 @@ fn a_file_changed_on_disk_is_taken_in_and_one_gone_closes() {
     );
     w.set_sprite_sheets(sheets.clone());
     assert_eq!(
-        w.animator_editor.as_ref().unwrap().file.states[0].name,
+        w.open.animator_editor.as_ref().unwrap().file.states[0].name,
         "Rest"
     );
     assert!(
@@ -268,7 +267,7 @@ fn a_file_changed_on_disk_is_taken_in_and_one_gone_closes() {
     );
     sheets.animators.clear();
     w.set_sprite_sheets(sheets);
-    assert!(w.animator_editor.is_none());
+    assert!(w.open.animator_editor.is_none());
     assert!(w.dock.find_tab(&Panel::Animator).is_none());
 }
 
@@ -277,10 +276,10 @@ fn a_new_animator_is_made_saved_and_opened_and_a_damaged_one_says_why() {
     let (mut w, _, _) = with_animator();
     let mut actions = Vec::new();
     w.library_request(LibraryRequest::NewAnimator("sprites".into()), &mut actions);
-    let made = saved(&w.outbox);
+    let made = saved(&w.open.outbox);
     assert_eq!(made.len(), 1);
     assert!(made[0].contains("name = \"Idle\";"));
-    let editor = w.animator_editor.as_ref().unwrap();
+    let editor = w.open.animator_editor.as_ref().unwrap();
     assert_eq!(editor.path, "sprites/animator.solanim");
     assert_eq!(editor.file.entry_state().unwrap().name, "Idle");
     // Not on disk yet: a read without it doesn't close it.
@@ -288,12 +287,12 @@ fn a_new_animator_is_made_saved_and_opened_and_a_damaged_one_says_why() {
     let mut without = sheets.clone();
     without.animators.remove("sprites/animator.solanim");
     w.set_sprite_sheets(without);
-    assert!(w.animator_editor.is_some());
+    assert!(w.open.animator_editor.is_some());
     // A second one gets a free name.
     w.set_sprite_sheets(sheets);
     w.new_animator("sprites");
     assert_eq!(
-        w.animator_editor.as_ref().unwrap().path,
+        w.open.animator_editor.as_ref().unwrap().path,
         "sprites/animator 2.solanim"
     );
     // A damaged file isn't opened.
@@ -305,7 +304,7 @@ fn a_new_animator_is_made_saved_and_opened_and_a_damaged_one_says_why() {
     w.set_sprite_sheets(sheets);
     w.close_animator();
     w.open_animator("farmer.solanim");
-    assert!(w.animator_editor.is_none());
+    assert!(w.open.animator_editor.is_none());
     assert!(
         w.console
             .lines()
@@ -335,7 +334,7 @@ fn it_runs_in_the_game_and_the_selected_entity_s_state_is_live() {
                 ..Animator::default()
             }),
     );
-    w.document.selection.select_only(walker);
+    w.open.document.selection.select_only(walker);
     w.open_animator("farmer.solanim");
     w.play();
     w.run_game(0.05);
@@ -345,7 +344,8 @@ fn it_runs_in_the_game_and_the_selected_entity_s_state_is_live() {
     assert_eq!(state, "Idle");
     assert_eq!(values, [("moving".to_owned(), ParamValue::Switch(false))]);
     // Set as game code will: the next tick takes it.
-    w.playing
+    w.open
+        .playing
         .as_mut()
         .unwrap()
         .world
@@ -374,7 +374,8 @@ fn it_runs_in_the_game_and_the_selected_entity_s_state_is_live() {
 fn the_preview_s_values_are_set_beside_the_graph() {
     let (mut w, _, _) = with_animator();
     w.open_animator("farmer.solanim");
-    w.animator_editor
+    w.open
+        .animator_editor
         .as_mut()
         .unwrap()
         .add_parameter(ParameterKind::Trigger);
@@ -383,7 +384,7 @@ fn the_preview_s_values_are_set_beside_the_graph() {
     h.run();
     h.get_by_label("moving").click();
     h.run();
-    let editor = h.state().0.animator_editor.as_ref().unwrap();
+    let editor = h.state().0.open.animator_editor.as_ref().unwrap();
     assert_eq!(editor.preview.values[0], ParamValue::Switch(true));
     h.get_by_label("Fire use").click();
     h.run();
@@ -391,7 +392,7 @@ fn the_preview_s_values_are_set_beside_the_graph() {
     for _ in 0..10 {
         h.run();
     }
-    let editor = h.state().0.animator_editor.as_ref().unwrap();
+    let editor = h.state().0.open.animator_editor.as_ref().unwrap();
     assert_eq!(editor.preview.values[1], ParamValue::Trigger(false));
     assert_eq!(
         editor.running.state_name(editor.preview.state),

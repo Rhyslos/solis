@@ -72,7 +72,7 @@ fn the_library_shows_one_folder_and_the_tree_opens_others() {
     assert!(shown(&h, "rock") && shown(&h, "bark"));
     assert!(!shown(&h, "crate"));
     // Searching looks in every folder.
-    h.state_mut().0.library_state.search = "r".into();
+    h.state_mut().0.open.library_state.search = "r".into();
     h.run();
     assert!(shown(&h, "rock") && shown(&h, "crate"));
 }
@@ -215,7 +215,7 @@ fn a_model_dropped_on_the_viewport_goes_on_the_surface_under_the_mouse() {
     };
     let id = h.state_mut().0.add_model(info, &[], 0.1, &[]);
     let w = &h.state().0;
-    let t: Transform = w.document.area().get(id).unwrap().get().unwrap();
+    let t: Transform = w.open.document.area().get(id).unwrap().get().unwrap();
     assert_eq!(t.position, point);
     assert_eq!(w.selection(), Some(id), "and is selected");
 }
@@ -233,7 +233,16 @@ fn a_model_dropped_where_nothing_is_lands_on_the_ground() {
         ..crate_model()
     };
     let id = h.state_mut().0.add_model(info, &[], 0.1, &[]);
-    let t: Transform = h.state().0.document.area().get(id).unwrap().get().unwrap();
+    let t: Transform = h
+        .state()
+        .0
+        .open
+        .document
+        .area()
+        .get(id)
+        .unwrap()
+        .get()
+        .unwrap();
     assert!(t.position.z.abs() < 1e-3, "on the ground: {}", t.position);
 }
 
@@ -246,7 +255,7 @@ fn a_model_dropped_on_an_entity_goes_under_it() {
         name: "Boathouse".into(),
     });
     let room_name = "Boathouse";
-    w.document.selection.clear();
+    w.open.document.selection.clear();
     let mut h = harness(w);
     h.run();
     let target = h
@@ -268,7 +277,7 @@ fn a_model_dropped_on_an_entity_goes_under_it() {
     };
     let id = h.state_mut().0.add_model(info, &[], 0.1, &[]);
     let w = &h.state().0;
-    let placed = w.document.area().get(id).unwrap();
+    let placed = w.open.document.area().get(id).unwrap();
     assert_eq!(placed.parent, Some(room));
     let t: Transform = placed.get().unwrap();
     assert!(t.position.length() < 1e-4, "at the room's own place");
@@ -339,7 +348,7 @@ fn a_sprite_sheet_dropped_on_the_viewport_becomes_a_sprite_on_a_whole_pixel() {
     );
     let w = &h.state().0;
     let placed = w.selection().expect("selected");
-    let entity = w.document.area().get(placed).unwrap();
+    let entity = w.open.document.area().get(placed).unwrap();
     assert_eq!(entity.name, "walker");
     let t: Transform = entity.get().unwrap();
     let pixels = t.position * 16.0;
@@ -352,7 +361,7 @@ fn a_sprite_sheet_dropped_on_the_viewport_becomes_a_sprite_on_a_whole_pixel() {
     assert!(!sprite.flip_x, "as drawn");
     // One undo step takes it away.
     h.state_mut().0.undo();
-    assert!(h.state().0.document.area().get(placed).is_none());
+    assert!(h.state().0.open.document.area().get(placed).is_none());
 }
 
 #[test]
@@ -393,10 +402,10 @@ fn a_picture_dropped_on_the_viewport_becomes_a_sprite_once_read() {
     sheets.paths.insert(id, "hill.png".into());
     let wanted = std::sync::Arc::clone(&sheets.pictures_wanted);
     w.set_sprite_sheets(sheets.clone());
-    let before = w.document.area().len();
+    let before = w.open.document.area().len();
     w.place_dropped(id, Vec3::new(2.0, 1.0, 0.0), None);
-    assert_eq!(w.document.area().len(), before, "not read yet");
-    assert_eq!(w.pictures_placing.len(), 1);
+    assert_eq!(w.open.document.area().len(), before, "not read yet");
+    assert_eq!(w.open.pictures_placing.len(), 1);
     // The app is asked to read it.
     w.set_sprite_sheets(sheets.clone());
     assert_eq!(wanted.take(), ["hill.png"]);
@@ -408,10 +417,11 @@ fn a_picture_dropped_on_the_viewport_becomes_a_sprite_once_read() {
         )),
     );
     w.set_sprite_sheets(sheets.clone());
-    assert!(w.pictures_placing.is_empty());
-    assert_eq!(w.document.area().len(), before + 1);
+    assert!(w.open.pictures_placing.is_empty());
+    assert_eq!(w.open.document.area().len(), before + 1);
     let placed = w.selection().expect("selected");
     let sprite = w
+        .open
         .document
         .area()
         .get(placed)
@@ -428,7 +438,7 @@ fn a_picture_dropped_on_the_viewport_becomes_a_sprite_once_read() {
     w.set_sprite_sheets(sheets.clone());
     w.place_dropped(other, Vec3::ZERO, None);
     w.set_sprite_sheets(sheets);
-    assert!(w.pictures_placing.is_empty());
+    assert!(w.open.pictures_placing.is_empty());
     assert!(
         w.log_lines()
             .last()
@@ -467,6 +477,7 @@ fn a_sprite_s_sheet_and_pivot_are_picked_from_lists() {
     let sprite = |h: &egui_kittest::Harness<'_, State>| -> area::builtin::Sprite {
         h.state()
             .0
+            .open
             .document
             .area()
             .get(placed)

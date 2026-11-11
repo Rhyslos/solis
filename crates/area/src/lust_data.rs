@@ -195,6 +195,26 @@ pub fn is_data(text: &str) -> bool {
     version_of(text).is_some()
 }
 
+/// Refuses text longer than `max_bytes`.
+fn within_bytes(text: &str, max_bytes: usize) -> Result<(), DataError> {
+    if text.len() > max_bytes {
+        return Err(error(0, format!("it's bigger than {} MB", max_bytes >> 20)));
+    }
+    Ok(())
+}
+
+/// Whether a data file of `text` is within what [`read`] takes for its
+/// size: no longer than `max_bytes`, and of no more pieces (numbers,
+/// texts, names and symbols) than Lust is handed. A writer whose data can
+/// outgrow its reader (a tile map's cells) asks this of what it's about to
+/// write, so that it never writes a file that can't be read back: these
+/// are the reader's own two limits, kept in one place, and what fits here
+/// [`read`] never refuses as too big.
+pub fn fits(text: &str, max_bytes: usize) -> Result<(), DataError> {
+    within_bytes(text, max_bytes)?;
+    crate::lust_check::within_pieces(text)
+}
+
 /// Reads a data file of `kind` whose classes are `classes` (Lust text),
 /// refusing one bigger than `max_bytes`, one that holds anything but
 /// values of those classes (`crate::lust_check`: Lust takes minutes over
@@ -203,9 +223,7 @@ pub fn is_data(text: &str) -> bool {
 /// mistake comes back with its line; nothing in the file runs. The time
 /// it takes grows only with the file's length.
 pub fn read(text: &str, kind: &str, classes: &str, max_bytes: usize) -> Result<Values, DataError> {
-    if text.len() > max_bytes {
-        return Err(error(0, format!("it's bigger than {} MB", max_bytes >> 20)));
-    }
+    within_bytes(text, max_bytes)?;
     if let Some((line, found)) = crate::lust_guard::scan(text).next() {
         return Err(error(line as usize, not_data(found)));
     }

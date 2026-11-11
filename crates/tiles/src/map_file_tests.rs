@@ -50,7 +50,7 @@ pub(crate) fn farm() -> TileMap {
 #[test]
 fn a_map_round_trips() {
     let map = farm();
-    let text = write(&map);
+    let text = write(&map).unwrap();
     assert!(text.contains("lock int version = 3;"));
     assert!(text.contains("size = [40, 36]"));
     assert!(text.contains(&format!(
@@ -69,7 +69,7 @@ fn a_map_round_trips() {
     );
     let back = read(&text).unwrap();
     assert!(back.notes.is_empty(), "{:?}", back.notes);
-    assert_eq!(write(&back.map), text);
+    assert_eq!(write(&back.map).unwrap(), text);
     let a = map.clone();
     let b = back.map.clone();
     assert_eq!(a.checksum(), b.checksum());
@@ -126,10 +126,10 @@ fn a_map_with_as_many_parts_as_one_has_reads_back() {
         }
     }
     let _ = map.take_dirty();
-    let text = write(&map);
+    let text = write(&map).unwrap();
     let back = read(&text).unwrap();
     assert!(back.notes.is_empty(), "{:?}", back.notes);
-    assert_eq!(write(&back.map), text);
+    assert_eq!(write(&back.map).unwrap(), text);
     assert_eq!(back.map.checksum(), map.checksum());
 }
 
@@ -145,7 +145,7 @@ fn values_listed_a_cell_at_a_time_in_any_order_read_as_one_map() {
         map.set_value(1, x, y, CellValue::Number(0)).unwrap();
         map.set_value(2, x, y, CellValue::Switch(false)).unwrap();
     }
-    let mut text = write(&map);
+    let mut text = write(&map).unwrap();
     let mut next = crate::tileset::tests::chooser(0x5EC0_9000_0C4A_11CE);
     let mut lists = [String::new(), String::new(), String::new()];
     for _ in 0..3000 {
@@ -189,16 +189,16 @@ fn values_listed_a_cell_at_a_time_in_any_order_read_as_one_map() {
     assert!(back.notes.is_empty(), "{:?}", back.notes);
     assert_eq!(back.map, map);
     // Written again, each chunk's cells of a value are one thing.
-    assert!(write(&back.map).len() < text.len() / 2);
+    assert!(write(&back.map).unwrap().len() < text.len() / 2);
 }
 
 #[test]
 fn one_changed_cell_is_one_changed_line() {
     let map = farm();
-    let before = write(&map);
+    let before = write(&map).unwrap();
     let mut changed = map.clone();
     changed.set_code(0, 20, 30, b't').unwrap();
-    let after = write(&changed);
+    let after = write(&changed).unwrap();
     let diff: Vec<(&str, &str)> = before
         .lines()
         .zip(after.lines())
@@ -216,7 +216,7 @@ fn version_1_reads_with_every_cell_autotiled() {
     assert_eq!(read.map.size(), [40, 36]);
     assert_eq!(read.map.exact_tiles(0).count(), 0);
     // Written again, it's the current version with the same cells.
-    let again = write(&read.map);
+    let again = write(&read.map).unwrap();
     assert!(again.contains("lock int version = 3;"));
     assert_eq!(super::read(&again).unwrap().map, read.map);
 }
@@ -233,7 +233,7 @@ fn the_fixture_reads_without_notes() {
     assert_eq!(read.map.exact_tiles(0).count(), 2);
     // Written again, it's the version 3 example: the same, as Lust.
     let v3 = include_str!("../../../tests/fixtures/tilemap/v3/farm.tilemap.lst");
-    assert_eq!(write(&read.map), v3, "written as Solis writes it");
+    assert_eq!(write(&read.map).unwrap(), v3, "written as Solis writes it");
 }
 
 #[test]
@@ -242,7 +242,7 @@ fn the_lust_fixture_reads_back_as_itself() {
     let read = read(text).unwrap();
     assert!(read.notes.is_empty(), "{:?}", read.notes);
     assert_eq!(read.map.exact_tiles(0).count(), 2);
-    assert_eq!(write(&read.map), text);
+    assert_eq!(write(&read.map).unwrap(), text);
     assert_eq!((FORMAT.version_of)(text), Some(3));
 }
 
@@ -263,7 +263,7 @@ fn exact_tiles_round_trip_and_go_with_their_cell() {
     let mut map = TileMap::new([70, 40], None, Some(b'.'));
     map.set_exact(0, 69, 39, Some(id(7))).unwrap();
     map.set_exact(0, 3, 4, Some(id(8))).unwrap();
-    let text = write(&map);
+    let text = write(&map).unwrap();
     assert!(text.contains("exact "), "{text}");
     assert_eq!(read(&text).unwrap().map, map);
     // Painted over, the cell is autotiled again; an empty cell holds none.
@@ -421,11 +421,133 @@ proptest! {
         for (x, y, l, p) in exact {
             let _ = map.set_exact(l, x % w, y % h, Some(id(p)));
         }
-        let text = write(&map);
+        let text = write(&map).unwrap();
         let back = read(&text).unwrap();
         prop_assert!(back.notes.is_empty(), "{:?}", back.notes);
-        prop_assert_eq!(write(&back.map), text);
+        prop_assert_eq!(write(&back.map).unwrap(), text);
         prop_assert_eq!(back.map, map);
+    }
+}
+
+#[test]
+fn a_map_is_written_only_when_its_file_would_be_read_back() {
+    // The review of Phase 9, BUG-55: the editor could save a map as a
+    // file the reader refuses as too big, and never open it again. The
+    // writer now asks the reader's own question first. With a reader
+    // that takes files just big enough for the farm, to the byte:
+    let map = farm();
+    let text = write(&map).unwrap();
+    let edge = text.len();
+    assert_eq!(write_within(&map, edge).as_ref(), Ok(&text));
+    assert_eq!(read_within(&text, edge).unwrap().map, map);
+    // One step past (one more cell with a value): not written, for the
+    // reason the reader would give for not reading it.
+    let mut bigger = map.clone();
+    bigger.set_value(1, 7, 7, CellValue::Number(4)).unwrap();
+    let refused = write_within(&bigger, edge).unwrap_err();
+    assert!(
+        refused.message.starts_with("the map is too big to read"),
+        "{refused}"
+    );
+    assert_eq!(read_within(&text_of(&bigger), edge), Err(refused));
+    // A bigger reader than the real one can't be asked for.
+    assert_eq!(write_within(&map, usize::MAX), Ok(text));
+}
+
+#[test]
+fn a_map_with_more_numbers_than_are_read_is_not_written() {
+    // BUG-55 at its real size: a number in every cell of a 1,280 × 1,280
+    // map is a 21 MB file, well inside the 64 MB read, but 13 million
+    // numbers and symbols, and 12 million are read. (That the reader
+    // refuses this text is in the scale check below.)
+    let mut map = TileMap::new([1280, 1280], None, Some(b'.'));
+    map.add_value("growth", ValueKind::Number).unwrap();
+    for y in 0..1280 {
+        for x in 0..1280 {
+            let to = CellValue::Number(1 + (x % 7) as i32);
+            map.set_value(0, x, y, to).unwrap();
+        }
+    }
+    let refused = write(&map).unwrap_err();
+    assert_eq!(refused.line, 0);
+    assert_eq!(
+        refused.message,
+        "it's too big to read: it holds more than 12 million numbers, texts, names and symbols"
+    );
+}
+
+proptest! {
+    #![proptest_config(ProptestConfig::with_cases(64))]
+
+    /// BUG-55: whatever the editor's changes make of a map (layers and
+    /// values added, a kind changed, cells painted, an area filled,
+    /// values and exact tiles set, the map made another size), and
+    /// whatever size of file the reader takes, at the map's own edge and
+    /// a few bytes either side: the map is written exactly when its file
+    /// would be read, and what's written reads back as the map.
+    #[test]
+    fn whatever_is_written_is_read_back_whatever_the_reader_takes(
+        size in (1u32..70, 1u32..70),
+        ground in proptest::option::of(prop_oneof![Just(b'.'), Just(b't')]),
+        layers in 0usize..4,
+        kind in 0usize..3,
+        cells in proptest::collection::vec((0u32..90, 0u32..90, 0usize..7, 33u8..127), 0..120),
+        fill in proptest::option::of((0u32..90, 0u32..90, 0usize..3)),
+        values in proptest::collection::vec((0u32..90, 0u32..90, 1i32..1000), 0..80),
+        exact in proptest::collection::vec((0u32..90, 0u32..90, 0usize..3, 1u64..1000), 0..40),
+        resized in proptest::option::of((1u32..90, 1u32..90)),
+        short in 1usize..40,
+    ) {
+        let mut map = TileMap::new(size.into(), None, ground);
+        for n in 0..layers {
+            map.add_layer(&format!("Layer{n}"), n % 2 == 0).unwrap();
+        }
+        map.add_value("v", ValueKind::Switch).unwrap();
+        let kinds = [
+            ValueKind::Switch,
+            ValueKind::Number,
+            ValueKind::Choice(vec!["wheat".into(), "corn".into()]),
+        ];
+        map.set_value_kind(0, kinds[kind].clone());
+        let [w, h] = map.size();
+        for (x, y, l, c) in cells {
+            if crate::tileset::usable_code(char::from(c)) {
+                let _ = map.set_code(l, x % w, y % h, c);
+            }
+        }
+        if let Some((x, y, l)) = fill {
+            for cell in crate::paint::flood_fill(&map, l, [x % w, y % h]) {
+                let _ = map.set_code(l, cell % w, cell / w, b'~');
+            }
+        }
+        for (x, y, n) in values {
+            let to = match kind {
+                0 => CellValue::Switch(true),
+                1 => CellValue::Number(n),
+                _ => CellValue::Choice(Some((n % 2) as u8)),
+            };
+            let _ = map.set_value(0, x % w, y % h, to);
+        }
+        for (x, y, l, p) in exact {
+            let _ = map.set_exact(l, x % w, y % h, Some(id(p)));
+        }
+        if let Some((w, h)) = resized {
+            map.resize([w, h]);
+        }
+        let text = text_of(&map);
+        let edge = text.len();
+        for takes in [edge - short.min(edge), edge - 1, edge, edge + short] {
+            let written = write_within(&map, takes);
+            let read = read_within(&text, takes);
+            if takes >= edge {
+                prop_assert_eq!(written.as_ref(), Ok(&text));
+                let read = read.unwrap();
+                prop_assert!(read.notes.is_empty(), "{:?}", read.notes);
+                prop_assert_eq!(&read.map, &map);
+            } else {
+                prop_assert_eq!(written.unwrap_err(), read.unwrap_err());
+            }
+        }
     }
 }
 
@@ -472,7 +594,7 @@ fn keeps_its_promises(text: &str, set: &crate::Tileset) -> bool {
         let cells = map.layer_cells(l).map(<[u8]>::len);
         assert_eq!(cells, Some(w as usize * h as usize), "{text:?}");
     }
-    let written = write(&map);
+    let written = write(&map).unwrap();
     let again = super::read(&written).unwrap_or_else(|e| panic!("{e}\n{text:?}"));
     assert_eq!(again.map, map, "{text:?}");
     changed_every_way(map, set);
@@ -567,7 +689,7 @@ fn scale_check_reading_a_1000_by_1000_map() {
         map.set_value(0, x, y, CellValue::Number((i % 5) as i32))
             .unwrap();
     }
-    let text = write(&map);
+    let text = write(&map).unwrap();
     let start = std::time::Instant::now();
     let back = read(&text).unwrap();
     let ms = start.elapsed().as_secs_f64() * 1000.0;
@@ -600,7 +722,7 @@ fn scale_check_reading_the_biggest_map_with_three_full_layers() {
             }
         }
     }
-    let text = write(&map);
+    let text = write(&map).unwrap();
     assert!(text.len() <= MAX_BYTES, "{}", text.len());
     let start = std::time::Instant::now();
     let back = read(&text).unwrap();
@@ -622,8 +744,29 @@ fn scale_check_reading_the_biggest_map_with_three_full_layers() {
         let to = CellValue::Number(1 + (i % 5) as i32);
         map.set_value(0, i % MAX_SIDE, i / MAX_SIDE, to).unwrap();
     }
-    let text = write(&map);
+    let text = text_of(&map);
     assert!(text.len() <= MAX_BYTES, "{}", text.len());
     let why = read(&text).unwrap_err();
     assert!(why.message.starts_with("it's too big to read"), "{why}");
+    // So it's never written: the writer refuses it in the reader's words
+    // (the review of Phase 9, BUG-55).
+    assert_eq!(write(&map), Err(why));
+    // Nor is a fourth layer painted all over the biggest map (76 MB).
+    let mut map = TileMap::new([MAX_SIDE, MAX_SIDE], None, None);
+    map.add_layer("Fourth", false).unwrap();
+    for layer in 0..4 {
+        for y in 0..MAX_SIDE {
+            for x in 0..MAX_SIDE {
+                map.set_code(layer, x, y, b'.').unwrap();
+            }
+        }
+    }
+    let text = text_of(&map);
+    assert!(text.len() > MAX_BYTES, "{}", text.len());
+    let why = read(&text).unwrap_err();
+    assert!(
+        why.message.starts_with("the map is too big to read"),
+        "{why}"
+    );
+    assert_eq!(write(&map), Err(why));
 }

@@ -49,7 +49,7 @@ While the game has them, every key is the game's and the editor's shortcuts are 
 
 The [playground](characters-and-cameras.md#how-to-use-it) adds two of its own: it saves on F6 and loads on F7.
 
-In **Edit > Input actions…**, after clicking **+** to bind an input, the next key, mouse button, wheel notch or gamepad button you press is the one bound; Esc gives up instead.
+In **Edit > Input actions…**, after clicking **+** to bind an input, the next key, mouse button, wheel notch or gamepad button you press is the one bound; Esc gives up instead. That key is only bound: it doesn't also do what it usually does in the editor, so pressing Delete to bind it deletes nothing.
 
 ## Tools (when the right mouse button isn't held)
 
@@ -60,6 +60,8 @@ In **Edit > Input actions…**, after clicking **+** to bind an input, the next 
 | Rotate | R |
 | Scale | S |
 | Transform (move, rotate and scale) | T |
+
+These are the area's keys: they wait while the pointer is over a tab with keys of its own (see [Editing](#editing)).
 
 ## Selecting and moving (in the viewport)
 
@@ -115,7 +117,7 @@ These work while the pointer is over the Tileset tab; see [Tilesets and autotili
 | Action | Shortcut |
 |---|---|
 | Give a tile to a slot | Click the tile in the picture, then the slot; or drag the tile onto the slot |
-| Undo or redo a change to the tileset | Ctrl + Z, Ctrl + Y |
+| Undo or redo a change to the tileset | Ctrl + Z, Ctrl + Y (over Properties while it shows the tileset, too) |
 
 ## The Atlas Crop tab (a picture's crops open)
 
@@ -195,7 +197,9 @@ These work in the viewport while a tile map's entity is selected; see [Painting 
 | Search for any action, file, entity or panel (with nothing being typed) | Space |
 | Pop the Library drawer up or away (or bring the pinned Library to the front) | Ctrl + Space |
 
-All but Ctrl + Space don't work while you're typing in a field: there, Ctrl + Z and Ctrl + Y undo the typing instead. See [Undo and redo](undo.md). With the pointer over one of the tabs above (Clips and Frames, Animator, Tileset, Atlas Crop, Map, the UI editor's Canvas and Elements), undo and redo are that tab's.
+All but Ctrl + Space don't work while you're typing in a field: there, Ctrl + Z and Ctrl + Y undo the typing instead. See [Undo and redo](undo.md).
+
+**Where the pointer rests decides what a key acts on**, so one press never does two things. With the pointer over a tab that edits a file of its own (Clips and Frames, Animator, Tileset, Atlas Crop, the UI editor's Canvas and Elements), the keys are that tab's alone: undo and redo, Delete, Ctrl + D and Esc act on what the tab shows, as its table above says, and never on the area as well. The area's other keys (the tools' and the tile painter's keys, F, F2, Ctrl + A, and X, Y, Z and L) wait until the pointer is back over the viewport or another panel. Over the Map tab, undo and redo are the map's, and every other key is still the area's; the same goes for Properties while it shows a tileset's terrains, where undo and redo are that tileset's. New, open and save, the search and Ctrl + Space work wherever the pointer is.
 
 ## The search list
 
@@ -218,7 +222,7 @@ See [Projects and the Library](projects-and-the-library.md).
 | Action | Shortcut |
 |---|---|
 | Pop the Library drawer up or away (or bring the pinned Library to the front) | Ctrl + Space (while typing too) |
-| Tuck the drawer away | Esc, or click outside it |
+| Tuck the drawer away (that Esc doesn't also select nothing) | Esc, or click outside it |
 | Place a model, assembly, sprite sheet or tile map where the camera looks; open any other file | Double-click it |
 | Place a model, assembly, sprite, picture or tile map where you point | Drag it into the viewport |
 | Place one under an entity | Drag it onto the entity in the Area panel |

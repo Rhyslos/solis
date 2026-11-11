@@ -48,8 +48,12 @@ impl Workbench {
 
     /// Ctrl + Space: pops the drawer up or tucks it away; with the Library
     /// pinned, brings it to the front. Works while typing too, so it can
-    /// be reached from anywhere; not while the game has the keys.
+    /// be reached from anywhere; not while the game has the keys, a
+    /// question waits for its answer, or a key is being bound.
     pub(crate) fn library_keys(&mut self, ui: &Ui) {
+        if !self.keys.is_editor() {
+            return;
+        }
         let pressed = ui.input_mut(|i| {
             i.consume_shortcut(&egui::KeyboardShortcut::new(
                 egui::Modifiers::COMMAND,
@@ -87,12 +91,12 @@ impl Workbench {
         let mut pin_clicked = false;
         let code_uses = self.code_uses();
         let sounds = crate::library::Sounds {
-            states: &self.sounds,
-            events: &self.sound_events,
-            preview: self.preview.as_ref(),
-            mixer: &self.mixer.mixer,
+            states: &self.open.sounds,
+            events: &self.open.sound_events,
+            preview: self.open.preview.as_ref(),
+            mixer: &self.open.mixer.mixer,
             sheets,
-            sheet_pictures: &self.sheet_pictures,
+            sheet_pictures: &self.open.sheet_pictures,
             code_uses: &code_uses,
         };
         let shown = egui::Area::new(egui::Id::new("library drawer"))
@@ -108,9 +112,9 @@ impl Workbench {
                         ui.set_max_size(rect.size() - egui::vec2(2.0, 2.0));
                         let asked = crate::library::library(
                             ui,
-                            self.project.as_ref(),
-                            (&self.library, &self.folders),
-                            &mut self.library_state,
+                            self.open.project.as_ref(),
+                            (&self.open.library, &self.open.folders),
+                            &mut self.open.library_state,
                             self.accent,
                             false,
                             sounds,

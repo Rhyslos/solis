@@ -18,7 +18,8 @@ fn with_project() -> Workbench {
 }
 
 fn saved(w: &Workbench) -> Vec<(String, String)> {
-    w.outbox
+    w.open
+        .outbox
         .iter()
         .filter_map(|a| match a {
             WorkbenchAction::SaveAtlas { path, text } => {
@@ -63,7 +64,7 @@ fn atlas_crop_makes_the_file_beside_the_picture_and_saves_each_change() {
     w.atlas_texture_now(&egui::Context::default());
     let (picture, problem) = w.atlas_picture();
     assert!(picture.is_some() && problem.is_none());
-    let editor = w.atlas_editor.as_mut().unwrap();
+    let editor = w.open.atlas_editor.as_mut().unwrap();
     assert_eq!(
         editor.crop_every_tile([32, 16], &|r| r[0] >= 16),
         1,
@@ -101,10 +102,10 @@ fn an_atlas_file_opens_its_picture_s_crops_and_a_change_on_disk_is_taken_in() {
         LibraryRequest::Open(LibraryKind::Atlas, "hero.atlas.lst".into()),
         &mut actions,
     );
-    assert_eq!(w.atlas_editor.as_ref().unwrap().atlas, atlas);
+    assert_eq!(w.open.atlas_editor.as_ref().unwrap().atlas, atlas);
     assert!(saved(&w).is_empty(), "nothing new to make");
     // No picture: the tab says why.
-    w.library.clear();
+    w.open.library.clear();
     let (_, problem) = w.atlas_picture();
     assert!(problem.unwrap().contains("hero.aseprite"));
     // Changed by hand: taken in, one undo step.
@@ -114,9 +115,9 @@ fn an_atlas_file_opens_its_picture_s_crops_and_a_change_on_disk_is_taken_in() {
         AtlasState::Read(Arc::new(atlas.clone()), Vec::new()),
     );
     w.atlas_read_again();
-    assert_eq!(w.atlas_editor.as_ref().unwrap().atlas.grid, [8, 8]);
+    assert_eq!(w.open.atlas_editor.as_ref().unwrap().atlas.grid, [8, 8]);
     // Gone: the tab closes.
     Arc::make_mut(&mut w.viewport.sheets).atlases.clear();
     w.atlas_read_again();
-    assert!(w.atlas_editor.is_none());
+    assert!(w.open.atlas_editor.is_none());
 }

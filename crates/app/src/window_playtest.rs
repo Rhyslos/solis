@@ -532,3 +532,7 @@ pub(super) fn id_of(name: &str) -> String {
     let id = id.trim_matches('-').to_owned();
     if id.is_empty() { "game".into() } else { id }
 }
+
+#[cfg(test)]
+#[path = "window_playtest_tests.rs"]
+mod tests;

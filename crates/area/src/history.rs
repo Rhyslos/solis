@@ -141,6 +141,19 @@ pub struct History<S> {
     /// if none was): with every step left undone, the area is still past
     /// it, so it mustn't look like the start.
     dropped: u64,
+    /// The state [`Self::hold`] was called at, if it was: steps made after
+    /// it are kept whatever the limit.
+    held: Option<u64>,
+}
+
+/// What [`History::follow`] did.
+#[derive(Debug, Clone, Default, PartialEq, Eq)]
+pub struct Followed {
+    /// The labels of the steps made again, oldest first.
+    pub made: Vec<String>,
+    /// The labels of the steps left out, oldest first: nothing of them
+    /// could be made here.
+    pub left_out: Vec<String>,
 }
 
 impl<S: Clone + Weigh> Default for History<S> {
@@ -161,6 +174,7 @@ impl<S: Clone + Weigh> History<S> {
             open: false,
             next_serial: 1,
             dropped: 0,
+            held: None,
         }
     }
 
@@ -243,11 +257,75 @@ impl<S: Clone + Weigh> History<S> {
         self.bytes += step.bytes;
         self.undo.push_back(Arc::new(step));
         while self.bytes > self.limit && self.undo.len() > 1 {
+            // A held step stays, and so does every step after it.
+            let held = self
+                .held
+                .is_some_and(|held| self.undo.front().is_some_and(|oldest| oldest.serial > held));
+            if held {
+                break;
+            }
             if let Some(old) = self.undo.pop_front() {
                 self.bytes -= old.bytes;
                 self.dropped = old.serial;
             }
         }
+    }
+
+    /// From now on, keeps every step made (or redone) after this moment,
+    /// whatever the limit: older steps are still dropped to keep within
+    /// it. For a copy that [`Self::follow`] will be asked about (the
+    /// editor's, while the game plays): a step dropped couldn't be made
+    /// again.
+    pub fn hold(&mut self) {
+        self.held = Some(self.state());
+    }
+
+    /// Makes here what was done in `played` since it was a copy of this
+    /// history (and `area` a copy of its area) that was then
+    /// [held](Self::hold): the steps undone there are undone here, and the
+    /// steps made there are made here, as steps of their own that can be
+    /// undone. What changed `played`'s area without being a step (a
+    /// running game's entities) isn't made, so a step may no longer fit:
+    /// for each entity, what the step did to it is made whole or left
+    /// out, and a step with nothing left isn't made at all. The steps
+    /// undone and not made again there can't be redone here.
+    pub fn follow(&mut self, area: &mut Area, played: &Self) -> Followed {
+        let there: HashSet<u64> = played.undo.iter().map(|s| s.serial).collect();
+        // Steps there keep their order, so the ones undone are the newest
+        // here. One dropped there to keep within the limit is still done.
+        while self
+            .undo
+            .back()
+            .is_some_and(|s| s.serial > played.dropped && !there.contains(&s.serial))
+        {
+            // Undoing a step on the area it was made on can't fail.
+            let _ = self.undo(area);
+        }
+        let here: HashSet<u64> = self.undo.iter().map(|s| s.serial).collect();
+        let mut followed = Followed::default();
+        for step in played.undo.iter().filter(|s| !here.contains(&s.serial)) {
+            let (undo, redo) = make_what_fits(area, &step.redo);
+            if redo.is_empty() {
+                followed.left_out.push(step.label.clone());
+                continue;
+            }
+            let mut made = Step {
+                label: step.label.clone(),
+                undo,
+                redo,
+                merge: None,
+                before: step.before.clone(),
+                after: step.after.clone(),
+                bytes: 0,
+                serial: self.serial(),
+            };
+            made.measure();
+            self.redo.clear();
+            self.push(made);
+            followed.made.push(step.label.clone());
+        }
+        self.open = false;
+        followed
     }
 
     /// Undoes the newest step, returning its label and the selection it
@@ -300,19 +378,6 @@ impl<S: Clone + Weigh> History<S> {
         self.redo.last().map(|s| s.label.as_str())
     }
 
-    /// The labels of the undo steps made after `state` (a [`state`] taken
-    /// earlier), oldest first: what was done since then. Empty if nothing
-    /// was, or it was all undone again.
-    ///
-    /// [`state`]: Self::state
-    pub fn labels_since(&self, state: u64) -> Vec<String> {
-        self.undo
-            .iter()
-            .filter(|s| s.serial > state)
-            .map(|s| s.label.clone())
-            .collect()
-    }
-
     /// How many steps can be undone.
     pub fn undo_len(&self) -> usize {
         self.undo.len()
@@ -335,6 +400,80 @@ impl<S: Clone + Weigh> History<S> {
         let next = self.next_serial;
         *self = Self::with_limit(self.limit);
         self.next_serial = next;
+    }
+}
+
+/// Makes as much of `edits` in `area` as fits, an entity at a time: what
+/// they do to one entity is made whole or not at all, so nothing is left
+/// half done (an entity moved under a new parent without the place that
+/// goes with it). Returns the edits that undo what was made, and the
+/// edits made, each in the order to apply them.
+fn make_what_fits(area: &mut Area, edits: &[Edit]) -> (Vec<Edit>, Vec<Edit>) {
+    let mut left_out: HashSet<Option<EntityId>> = HashSet::new();
+    loop {
+        let mut undo = Vec::new();
+        let mut made = Vec::new();
+        let mut all_fit = true;
+        for edit in edits {
+            let about = subject(edit);
+            if left_out.contains(&about) {
+                continue;
+            }
+            let done = if has_its_parent(area, edit) {
+                area.apply(edit.clone()).ok()
+            } else {
+                None
+            };
+            match done {
+                Some(inverse) => {
+                    undo.push(inverse);
+                    made.push(edit.clone());
+                }
+                None => {
+                    left_out.insert(about);
+                    all_fit = false;
+                }
+            }
+        }
+        undo.reverse();
+        if all_fit {
+            return (undo, made);
+        }
+        // One didn't fit: everything is taken back, and the rest made
+        // again without that entity's share (each round leaves out at
+        // least one more entity, so this ends).
+        for inverse in undo {
+            // Undoing what was just done can't fail.
+            let _ = area.apply(inverse);
+        }
+    }
+}
+
+/// The entity `edit` is about: the one it changes, or the first of the
+/// tree it adds or deletes.
+fn subject(edit: &Edit) -> Option<EntityId> {
+    match edit {
+        Edit::SetField { entity, .. }
+        | Edit::AddComponent { entity, .. }
+        | Edit::RemoveComponent { entity, .. }
+        | Edit::Rename { entity, .. }
+        | Edit::SetOrigin { entity, .. }
+        | Edit::Reparent { entity, .. } => Some(*entity),
+        Edit::Spawn { entities } => entities.first().map(|(id, _)| *id),
+        Edit::Despawn { root } => Some(*root),
+    }
+}
+
+/// Whether the tree `edit` adds has the parent it goes under in `area`
+/// (true for every other edit, and for a tree at the top level): applying
+/// the edit doesn't ask, and would leave the tree under nothing.
+fn has_its_parent(area: &Area, edit: &Edit) -> bool {
+    match edit {
+        Edit::Spawn { entities } => entities
+            .first()
+            .and_then(|(_, data)| data.parent)
+            .is_none_or(|parent| area.contains(parent)),
+        _ => true,
     }
 }
 
@@ -395,24 +534,247 @@ mod tests {
         gesture: 1,
     });
 
+    /// A step called `label` that sets the lamp's strength.
+    fn change(h: &mut History<u32>, s: &mut Area, label: &str, id: EntityId, to: f64) {
+        h.apply(s, label, vec![set(id, to)], None, 0, 0).unwrap();
+    }
+
     #[test]
-    fn labels_since_list_what_was_done_after_a_point() {
+    fn follow_makes_again_what_was_done_since_the_copy() {
         let (mut s, id) = lamp();
         let mut h = History::<u32>::default();
-        h.apply(&mut s, "Change strength", vec![set(id, 5.0)], None, 1, 2)
+        change(&mut h, &mut s, "Change strength", id, 5.0);
+        let (mut kept_area, mut kept) = (s.clone(), h.clone());
+        h.hold();
+        // Nothing done since: nothing to make.
+        assert_eq!(kept.follow(&mut kept_area, &h), Followed::default());
+        assert_eq!(kept.state(), h.state());
+        change(&mut h, &mut s, "Brighter", id, 9.0);
+        h.apply(&mut s, "Dimmer", vec![set(id, 2.0)], DRAG, 3, 4)
             .unwrap();
-        let at = h.state();
-        assert!(h.labels_since(at).is_empty());
-        h.apply(&mut s, "Brighter", vec![set(id, 9.0)], None, 2, 3)
+        let followed = kept.follow(&mut kept_area, &h);
+        assert_eq!(followed.made, ["Brighter", "Dimmer"]);
+        assert!(followed.left_out.is_empty());
+        assert_eq!(kept_area, s);
+        assert_eq!(kept.undo_len(), 3);
+        // Each is a step of its own, with its selections, and closed: the
+        // gesture that made the last one doesn't grow it here.
+        kept.apply(&mut kept_area, "Dimmer", vec![set(id, 1.0)], DRAG, 4, 5)
             .unwrap();
-        h.apply(&mut s, "Dimmer", vec![set(id, 2.0)], None, 3, 4)
-            .unwrap();
-        assert_eq!(h.labels_since(at), ["Brighter", "Dimmer"]);
-        // Undone again: nothing since.
+        assert_eq!(kept.undo_len(), 4);
+        kept.undo(&mut kept_area).unwrap().unwrap();
+        let undone = kept.undo(&mut kept_area).unwrap().unwrap();
+        assert_eq!((strength(&kept_area, id), undone.selection), (9.0, 3));
+        kept.undo(&mut kept_area).unwrap().unwrap();
+        assert_eq!(strength(&kept_area, id), 5.0);
+        let redone = kept.redo(&mut kept_area).unwrap().unwrap();
+        assert_eq!(
+            (strength(&kept_area, id), redone.label.as_str()),
+            (9.0, "Brighter")
+        );
+    }
+
+    #[test]
+    fn follow_undoes_what_was_undone_and_makes_what_was_redone() {
+        let (mut s, id) = lamp();
+        let mut h = History::<u32>::default();
+        change(&mut h, &mut s, "One", id, 1.0);
+        change(&mut h, &mut s, "Two", id, 2.0);
+        change(&mut h, &mut s, "Three", id, 3.0);
         h.undo(&mut s).unwrap().unwrap();
+        let copy = (s.clone(), h.clone());
+        h.hold();
+        // Undone since, and nothing else: it can be redone in the copy too.
         h.undo(&mut s).unwrap().unwrap();
-        assert!(h.labels_since(at).is_empty());
-        assert_eq!(h.labels_since(0), ["Change strength"]);
+        let (mut kept_area, mut kept) = copy.clone();
+        assert_eq!(kept.follow(&mut kept_area, &h), Followed::default());
+        assert_eq!((strength(&kept_area, id), kept.undo_len()), (1.0, 1));
+        assert_eq!(kept.redo_label(), Some("Two"));
+        // Undone and redone: as it was, so nothing to make.
+        h.redo(&mut s).unwrap().unwrap();
+        let (mut kept_area, mut kept) = copy.clone();
+        assert_eq!(kept.follow(&mut kept_area, &h), Followed::default());
+        assert_eq!(kept.state(), copy.1.state());
+        // A step undone before the copy and redone since is made.
+        h.redo(&mut s).unwrap().unwrap();
+        let (mut kept_area, mut kept) = copy.clone();
+        assert_eq!(kept.follow(&mut kept_area, &h).made, ["Three"]);
+        assert_eq!((strength(&kept_area, id), kept.undo_len()), (3.0, 3));
+        // Everything undone, then something new.
+        while h.undo(&mut s).is_some() {}
+        change(&mut h, &mut s, "Four", id, 4.0);
+        let (mut kept_area, mut kept) = copy;
+        assert_eq!(kept.follow(&mut kept_area, &h).made, ["Four"]);
+        assert_eq!(kept_area, s);
+        assert_eq!(kept.undo_len(), 1);
+        assert!(kept.redo(&mut kept_area).is_none());
+        kept.undo(&mut kept_area).unwrap().unwrap();
+        assert_eq!(strength(&kept_area, id), 1000.0);
+    }
+
+    /// The game's entities: never in the copy.
+    fn game_id(n: u64) -> EntityId {
+        EntityId(reflect::Id::from_raw(1_000_000 + n).unwrap())
+    }
+
+    fn spawn(id: EntityId, name: &str, parent: Option<EntityId>) -> Edit {
+        let mut data = EntityData::new(name).with(&Transform::default());
+        data.parent = parent;
+        Edit::Spawn {
+            entities: vec![(id, data)],
+        }
+    }
+
+    fn rename(entity: EntityId, name: &str) -> Edit {
+        Edit::Rename {
+            entity,
+            name: name.into(),
+        }
+    }
+
+    #[test]
+    fn follow_leaves_out_what_was_done_to_entities_that_arent_steps() {
+        let (mut s, lamp) = lamp();
+        let mut h = History::<u32>::default();
+        let crate_id = EntityId::random();
+        h.apply(
+            &mut s,
+            "Add crate",
+            vec![spawn(crate_id, "Crate", None)],
+            None,
+            0,
+            0,
+        )
+        .unwrap();
+        let (mut kept_area, mut kept) = (s.clone(), h.clone());
+        let before = s.clone();
+        h.hold();
+        // The game adds a drone and takes the crate out: not steps.
+        let drone = game_id(1);
+        s.apply(spawn(drone, "Drone", None)).unwrap();
+        // A step all about the drone; one about the drone and the lamp;
+        // one that puts the lamp under the drone, with the place that goes
+        // with it, and names the crate; and new entities under each.
+        h.apply(
+            &mut s,
+            "Rename drone",
+            vec![rename(drone, "Mine")],
+            None,
+            0,
+            0,
+        )
+        .unwrap();
+        h.apply(
+            &mut s,
+            "Rename 2 entities",
+            vec![rename(drone, "Both"), rename(lamp, "Both")],
+            None,
+            0,
+            0,
+        )
+        .unwrap();
+        let place = Edit::SetField {
+            entity: lamp,
+            component: "Light".into(),
+            field: "range".into(),
+            value: Some(Value::Float(7.0)),
+        };
+        let under = Edit::Reparent {
+            entity: lamp,
+            parent: Some(drone),
+            order: "a".into(),
+        };
+        h.apply(
+            &mut s,
+            "Move under drone",
+            vec![place, under, rename(crate_id, "Box")],
+            None,
+            0,
+            0,
+        )
+        .unwrap();
+        let (under_drone, under_crate) = (EntityId::random(), EntityId::random());
+        h.apply(
+            &mut s,
+            "Add 2 entities",
+            vec![
+                spawn(under_drone, "Under drone", Some(drone)),
+                spawn(under_crate, "Under crate", Some(crate_id)),
+            ],
+            None,
+            0,
+            0,
+        )
+        .unwrap();
+        s.apply(Edit::Despawn { root: crate_id }).unwrap();
+        h.apply(
+            &mut s,
+            "Delete drone",
+            vec![Edit::Despawn { root: drone }],
+            None,
+            0,
+            0,
+        )
+        .unwrap();
+        let followed = kept.follow(&mut kept_area, &h);
+        assert_eq!(
+            followed.made,
+            ["Rename 2 entities", "Move under drone", "Add 2 entities"]
+        );
+        assert_eq!(followed.left_out, ["Rename drone", "Delete drone"]);
+        // The copy as it was, with only what fits it: the lamp renamed but
+        // not moved (nor given the place that went with the move), the
+        // crate (still there) renamed and given its new child.
+        let mut expected = before.clone();
+        for edit in [
+            rename(lamp, "Both"),
+            rename(crate_id, "Box"),
+            spawn(under_crate, "Under crate", Some(crate_id)),
+        ] {
+            expected.apply(edit).unwrap();
+        }
+        assert_eq!(kept_area, expected);
+        assert!(!kept_area.contains(drone) && !kept_area.contains(under_drone));
+        // And each step made undoes exactly what it made.
+        for _ in 0..3 {
+            kept.undo(&mut kept_area).unwrap().unwrap();
+        }
+        assert_eq!(kept_area, before);
+        assert_eq!(kept.undo_len(), 1);
+    }
+
+    #[test]
+    fn a_held_history_keeps_every_step_made_since() {
+        let (mut s, id) = lamp();
+        let mut h = History::<u32>::with_limit(1_000);
+        change(&mut h, &mut s, "One", id, 1.0);
+        change(&mut h, &mut s, "Two", id, 2.0);
+        change(&mut h, &mut s, "Three", id, 3.0);
+        let copy = (s.clone(), h.clone());
+        assert_eq!(h.undo_len(), 3, "within the limit so far");
+        h.hold();
+        h.undo(&mut s).unwrap().unwrap();
+        for i in 0..100 {
+            change(&mut h, &mut s, &format!("Since {i}"), id, f64::from(i));
+        }
+        // The steps from before go, as the limit says; those made since
+        // stay, though they're over it.
+        assert_eq!(h.undo_len(), 100);
+        assert!(h.bytes() > 1_000);
+        // So the copy can follow: One and Two were dropped, so they're
+        // still done; Three was undone; and all hundred are made.
+        let (mut kept_area, mut kept) = copy;
+        let followed = kept.follow(&mut kept_area, &h);
+        assert_eq!(followed.made.len(), 100);
+        assert_eq!(kept_area, s);
+        // The copy isn't held: it keeps to its limit again.
+        assert!(kept.bytes() <= 1_000);
+        while kept.undo(&mut kept_area).is_some() {}
+        assert_ne!(
+            strength(&kept_area, id),
+            1000.0,
+            "One and Two are still done"
+        );
     }
 
     #[test]
@@ -650,6 +1012,122 @@ mod tests {
                 h.redo(&mut s).unwrap().unwrap();
                 assert_eq!(&s, expected, "seed {seed}");
             }
+        }
+    }
+
+    /// Random steps, undos and redos on a held history while "the game"
+    /// adds and removes entities of its own beside them, then the copy from
+    /// before follows: it has none of the game's entities, is exactly the
+    /// copy with the same steps made on it alone, and undoes back to where
+    /// it was.
+    #[test]
+    fn following_random_steps_never_brings_what_wasnt_a_step() {
+        for seed in 1..=60u64 {
+            let mut r = Rng(seed.wrapping_mul(0x9E37_79B9_7F4A_7C15));
+            let (mut s, _) = lamp();
+            let mut h = History::<()>::default();
+            for _ in 0..8 {
+                let edit = random_edit(&mut r, &s);
+                let _ = h.apply(&mut s, "Before", vec![edit], None, (), ());
+            }
+            if seed % 3 == 0 {
+                let _ = h.undo(&mut s);
+            }
+            let (mut kept_area, mut kept) = (s.clone(), h.clone());
+            // The same steps, made on a copy the game never touches: what
+            // following should come to. `done` and `undone` say which of
+            // the played history's undo and redo steps it has.
+            let (mut alone_area, mut alone) = (s.clone(), h.clone());
+            let mut done = vec![true; h.undo_len()];
+            let mut undone = vec![true; usize::from(h.redo_label().is_some())];
+            let mut exact = true;
+            h.hold();
+            let mut made = 0;
+            for _ in 0..80 {
+                match r.next() % 8 {
+                    // The game: a new entity of its own, or one taken out.
+                    0 | 1 => {
+                        made += 1;
+                        let _ = s.apply(spawn(game_id(made), "Game's", None));
+                    }
+                    2 => {
+                        let ids: Vec<EntityId> = s.iter().map(|(id, _)| id).collect();
+                        if !ids.is_empty() {
+                            let _ = s.apply(Edit::Despawn { root: r.pick(&ids) });
+                        }
+                    }
+                    3 => match h.undo(&mut s) {
+                        Some(Ok(_)) => {
+                            let had = done.pop().unwrap();
+                            if had {
+                                alone.undo(&mut alone_area).unwrap().unwrap();
+                            }
+                            undone.push(had);
+                        }
+                        // The game took away what the step needs: it's
+                        // gone from the history, which the copy alone
+                        // can't mirror.
+                        Some(Err(_)) => exact = false,
+                        None => {}
+                    },
+                    4 => match h.redo(&mut s) {
+                        Some(Ok(_)) => {
+                            let had = undone.pop().unwrap();
+                            if had {
+                                alone.redo(&mut alone_area).unwrap().unwrap();
+                            }
+                            done.push(had);
+                        }
+                        Some(Err(_)) => exact = false,
+                        None => {}
+                    },
+                    _ => {
+                        let ids: Vec<EntityId> = s.iter().map(|(id, _)| id).collect();
+                        let edit = if r.next().is_multiple_of(5) && !ids.is_empty() {
+                            spawn(EntityId::random(), "Under", Some(r.pick(&ids)))
+                        } else {
+                            random_edit(&mut r, &s)
+                        };
+                        if h.apply(&mut s, "Since", vec![edit.clone()], None, (), ())
+                            .is_ok()
+                        {
+                            undone.clear();
+                            let fits = has_its_parent(&alone_area, &edit)
+                                && alone
+                                    .apply(&mut alone_area, "Since", vec![edit], None, (), ())
+                                    .is_ok();
+                            done.push(fits);
+                        }
+                    }
+                }
+            }
+            let before = (kept_area.clone(), kept.undo_len());
+            let followed = kept.follow(&mut kept_area, &h);
+            for n in 1..=made {
+                assert!(!kept_area.contains(game_id(n)), "seed {seed}");
+            }
+            for (_, data) in kept_area.iter() {
+                assert!(
+                    data.parent.is_none_or(|p| kept_area.contains(p)),
+                    "seed {seed}"
+                );
+            }
+            if exact {
+                assert_eq!(kept_area, alone_area, "seed {seed}");
+                assert_eq!(kept.undo_len(), alone.undo_len(), "seed {seed}");
+            }
+            // What was made undoes and redoes cleanly.
+            let after = kept_area.clone();
+            for _ in 0..followed.made.len() {
+                kept.undo(&mut kept_area).unwrap().unwrap();
+            }
+            if kept.undo_len() == before.1 {
+                assert_eq!(kept_area, before.0, "seed {seed}");
+            }
+            for _ in 0..followed.made.len() {
+                kept.redo(&mut kept_area).unwrap().unwrap();
+            }
+            assert_eq!(kept_area, after, "seed {seed}");
         }
     }
 }

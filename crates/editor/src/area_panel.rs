@@ -315,15 +315,8 @@ pub(crate) fn area_tree(
     }
     if let Some(id) = state.reveal {
         // Unfold the way to it, so its row is there to scroll to.
-        let mut parent = document.area().get(id).and_then(|e| e.parent);
-        // A damaged area's loop of parents ends the walk.
-        let mut steps = 0;
-        while let Some(p) = parent
-            && steps <= document.area().len()
-        {
-            state.collapsed.remove(&p);
-            parent = document.area().get(p).and_then(|e| e.parent);
-            steps += 1;
+        for (parent, _) in document.area().ancestors(id) {
+            state.collapsed.remove(&parent);
         }
     }
     let rows = tree_rows(document.area(), &document.tree(), state);

@@ -55,7 +55,7 @@ fn fleet(units: usize) -> Workbench {
     let mut w = Workbench::new(info(), None);
     let model = crate_model();
     let asset = model.asset;
-    w.models.insert(asset, model);
+    w.open.models.insert(asset, model);
     w.set_program(Some(Arc::new(program)));
     let spawns = (0..units)
         .map(|i| {
@@ -73,7 +73,7 @@ fn fleet(units: usize) -> Workbench {
             }
         })
         .collect();
-    w.document.edit("Fleet", spawns, None, None).unwrap();
+    w.open.document.edit("Fleet", spawns, None, None).unwrap();
     w.play();
     w
 }
@@ -103,6 +103,7 @@ fn cpu_frame(units: usize, frames: usize) -> (f64, [f64; 6]) {
     let running = h
         .state_mut()
         .0
+        .open
         .playing
         .as_mut()
         .unwrap()
@@ -114,6 +115,7 @@ fn cpu_frame(units: usize, frames: usize) -> (f64, [f64; 6]) {
     let flying = h
         .state()
         .0
+        .open
         .playing
         .as_ref()
         .unwrap()
@@ -229,7 +231,7 @@ fn profile_game_code_by_hand() {
     for _ in 0..600 {
         w.play_for(1.0 / 60.0);
     }
-    assert!(!w.playing.as_ref().unwrap().paused);
+    assert!(!w.open.playing.as_ref().unwrap().paused);
 }
 
 #[test]

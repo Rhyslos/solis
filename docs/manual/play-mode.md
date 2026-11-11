@@ -16,15 +16,23 @@ The game looks through the **first camera** in the Area panel's list. With no ca
 
 **Play, pause and stop** (the buttons at the top right)
 1. Press **Play** (▶). The **Game** panel comes to the front and shows the game. The whole window takes a colour (a blue edge, and blue-tinted top and bottom bars; amber while paused), a coloured border goes round the viewport and the Game panel, Play is outlined, and **Stop** turns red: all reminders that you're playing, so you never mistake playing for editing.
-2. Work as usual: the Area panel, Properties, the viewport and its gizmos all still work. Changes show in the game straight away. For game code's components, Properties shows their values as they are right now (a counter counting, a camera's `yaw` turning), and a change you make there reaches the game; Stop puts every value back as it was before Play. Switch to the **Viewport** tab beside Game to move things with the gizmos.
+2. Work as usual: the Area panel, Properties, the viewport and its gizmos all still work. Changes show in the game straight away. For game code's components, Properties shows their values as they are right now (a counter counting, a camera's `yaw` turning), and a change you make there reaches the game. When you press Stop, every value the game changed goes back as it was before Play; a value you set yourself is one of your changes, which Stop asks about (step 6). Switch to the **Viewport** tab beside Game to move things with the gizmos.
 3. Press **Pause** (❚❚) to stop the game's clock (game code can pause itself too, for a pause menu: the corner then says *Game speed 0*, and the game still runs its code, see [Game screens](screens.md)); press Pause or Play to carry on. The Game panel's corner shows *Playing* or *Paused* and how long the game has run.
 4. While paused, press **Step** (▶❙, beside Pause) to run exactly one [tick](concepts.md#game-code): game code runs once, everything moves on by a sixtieth of a second, and the game stays paused. It's the way to watch something that happens too fast to see, one step at a time.
 5. Press **Stop** (■). The game is thrown away and the area comes back exactly as it was when you pressed Play: every entity and setting, the undo history (Ctrl + Z carries on from where you were) and the selection.
 6. If you changed the area while playing, a question lists what you did (*Add Point light 1*, *Move Crate*…):
-   - **Keep** puts your changes back, and each can still be undone with Ctrl + Z.
+   - **Keep** makes your changes again on the area as it was before Play, and each can still be undone with Ctrl + Z.
    - **Undo all** leaves the area as it was before Play.
 
-   Why ask? Other engines quietly throw away everything changed while playing, and people lose work that way. Solis asks instead. The question waits for an answer; until then, Play and the editor's keys wait too. What the *game* did (entities it spawned, places it moved things to) is never kept: only your own edits are.
+   Why ask? Other engines quietly throw away everything changed while playing, and people lose work that way. Solis asks instead. The question waits for an answer; until then, Play and the editor's keys wait too. So does anything that would leave the area: quitting, closing the window, a new or another area, and another project go ahead only once you've answered, so your changes can't slip away unasked. If you close the editor's window to go back to the [launcher](launcher.md) while the game plays, the question is asked there.
+
+**Only your own edits are kept, never what the game did.** After **Keep**, the area is exactly the area as it was when you pressed Play, plus the changes in the list. Entities the game spawned are gone, entities it removed are back, and every value and place it changed is as it was. That holds after loading a [save game](save-games.md) while playing too: your edits are made on your area, not on the save's. Solis can tell the two apart because each edit of yours is an undo step and nothing the game does is one. What that means when the two meet:
+- **A value you set that the game also changes** (a counter, where a cart stands) is kept as *you* set it, not as the game left it.
+- **A change to something the game made** (renaming a bullet it spawned) can't be kept, because that entity goes with the game. It's left out of the list, and the Console says which changes those were. When one change touched your entities and the game's together (a crate and a bullet deleted in one go), your entities' share of it is kept.
+- **A change to an entity the game removed afterwards** is kept: Stop brings the entity back, and Keep makes your change to it.
+- **An entity you deleted** stays deleted, whatever the game would have done with it.
+- **Undoing, while playing, a change made before Play** is a change too: the list says *Undid a change made before Play*, and Keep leaves it undone (Ctrl + Y makes it again).
+- A change you made while playing and undid again with Ctrl + Z is simply gone: after Stop, Ctrl + Y can't bring it back.
 
 You can also type `play`, `pause`, `step` and `stop` in the [Console](console.md).
 
@@ -32,9 +40,11 @@ You can also type `play`, `pause`, `step` and `stop` in the [Console](console.md
 
 **Smooth on any screen:** the game itself always runs 60 [ticks](concepts.md#game-code) a second, so it plays the same on every computer. A screen can show more frames than that (120 or 144 a second): between two ticks, the Game panel draws everything part way from where it was at the last tick to where it is now, so movement looks smooth instead of stepping. What you see is up to a sixtieth of a second behind the game, which no one can notice. While paused, it shows exactly where things are.
 
-**What waits until you stop:** saving, opening another area or project, new areas, and making or changing assemblies. If you try, the Console says *Stop playing first*: saving now would save the game's changes, which Stop is about to undo. Closing Solis while playing stops first, then asks about unsaved changes as usual.
+**What waits until you stop:** saving, opening another area or project, new areas, and making or changing assemblies. If you try, the Console says *Stop playing first*: saving now would save the game's changes, which Stop is about to undo. Quitting or closing Solis while playing stops the game first. If you changed the area while it played, **Keep** or **Undo all** is asked before anything closes; then Solis asks about unsaved changes as usual (after **Keep**, the changes you kept are unsaved, so it asks about them).
 
-**Changes from outside while playing:** if an assembly's file changes (a Git pull, or Notepad), the game shows it at once, and its copies are updated again after Stop. If the area's own file changes on disk, Solis waits until Stop to offer it.
+**Changes from outside while playing:** if an assembly's file changes (a Git pull, or Notepad), the game shows it at once, and its copies are updated again after Stop. That isn't one of your changes, so Stop doesn't ask about it, and the area you **Keep** has the updated copies too. If the area's own file changes on disk, Solis waits until Stop, and until you've answered **Keep** or **Undo all**, to offer it.
+
+**Renaming, moving or deleting the area's file while playing** (in the [Library](projects-and-the-library.md)) holds after Stop: the area keeps its new name and place, whether you **Keep** your changes or not, and Ctrl + S saves it there. If you deleted the file, the area counts as unsaved after Stop, and saving asks where to put it. That's the one thing Stop doesn't put back, because the file really did move.
 
 ## Settings
 | Setting | What it does |
@@ -49,6 +59,7 @@ Play, Pause, Step and Stop are buttons only, so a stray key never starts or stop
 
 ## Tips and common problems
 - **Problem:** I changed something while playing and it went back when I pressed Stop. **Why:** you chose **Undo all** when Stop asked. **Fix:** Undo all can't be taken back; next time choose **Keep**. A value the *game* changed (not you) always goes back: copy the component's values with ⋯ > Copy values before Stop, and paste them after.
+- **Problem:** I chose **Keep**, but one change I made while playing isn't there. **Why:** it was a change to something the game made (an entity it spawned, or one a loaded save held), and those go with the game; the Console named it when you pressed Stop. **Fix:** make the change where the entity comes from: the [assembly](assemblies.md) game code spawns, or an entity of the area itself.
 - **Problem:** the Game panel shows the editor's view. **Why:** the area has no camera. **Fix:** Entity > Add camera.
 - **Problem:** new entities appear in the Area panel while playing. **Why:** game code made them (`World:spawn`, see [Game code](game-code.md#making-and-removing-entities)). **Fix:** nothing: they go when you press Stop.
 - **Problem:** pressing keys while playing changes the area (W picks the move tool). **Why:** the editor has the keys. **Fix:** click the Game panel to give them to the game; Esc gives them back.

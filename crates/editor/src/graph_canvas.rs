@@ -239,13 +239,16 @@ pub(crate) fn bounds(boxes: &[GraphBox]) -> Rect {
 }
 
 /// Draws the canvas into the space left in `ui`, and gives back what was
-/// done to it. `accent` colours what's picked.
+/// done to it. `accent` colours what's picked. F, Delete and Esc are acted
+/// on while the keys are the graph's editor's (`keys`: the pointer rests
+/// over its tab and nothing is being typed).
 pub(crate) fn graph_canvas(
     ui: &mut Ui,
     canvas: &mut GraphCanvas,
     boxes: &[GraphBox],
     wires: &[GraphWire],
     accent: Color32,
+    keys: bool,
     menu: &mut GraphMenu<'_>,
 ) -> Vec<GraphEvent> {
     let mut events = Vec::new();
@@ -304,16 +307,18 @@ pub(crate) fn graph_canvas(
         {
             canvas.view.zoom_at(origin, p, (scroll / 200.0).exp());
         }
+    }
+    if keys {
         let (frame, delete) = ui.input(|i| {
             (
                 i.key_pressed(egui::Key::F) && i.modifiers.is_none(),
                 i.key_pressed(egui::Key::Delete),
             )
         });
-        if frame && !ui.ctx().egui_wants_keyboard_input() {
+        if frame {
             canvas.view.frame(bounds(boxes), full.size());
         }
-        if delete && !ui.ctx().egui_wants_keyboard_input() {
+        if delete {
             events.push(GraphEvent::Delete);
         }
     }
@@ -543,7 +548,7 @@ pub(crate) fn graph_canvas(
         let (pressed, escape) = ui.input(|i| {
             (
                 i.pointer.button_pressed(egui::PointerButton::Primary),
-                i.key_pressed(egui::Key::Escape),
+                keys && i.key_pressed(egui::Key::Escape),
             )
         });
         if escape {

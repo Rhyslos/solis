@@ -40,7 +40,8 @@ pub enum Edit {
         component: String,
     },
     /// Adds entities: the first, and any below it (each later one's parent
-    /// is earlier in the list). None of the IDs may be in use.
+    /// is earlier in the list, and the first one's isn't in it). None of
+    /// the IDs may be in use.
     Spawn {
         /// The entities, parents first.
         entities: Vec<(EntityId, EntityData)>,
@@ -230,6 +231,15 @@ impl Area {
                     }
                     earlier.insert(*id);
                 }
+                // The first one's parent is outside them: under one of its
+                // own it would be a loop of parents.
+                let under_its_own = entities
+                    .first()
+                    .and_then(|(_, first)| first.parent)
+                    .is_some_and(|p| earlier.contains(&p));
+                if under_its_own {
+                    return Err(EditError::NotATree);
+                }
                 for (id, data) in entities {
                     self.insert(id, data);
                 }
@@ -270,18 +280,9 @@ impl Area {
                     }
                     // A loop if the new parent is the entity or under it:
                     // a walk up from the parent, which is as long as the
-                    // tree is deep (and stops in a damaged area's loop).
-                    let mut at = Some(p);
-                    let mut steps = 0;
-                    while let Some(current) = at {
-                        if current == entity {
-                            return Err(EditError::Loop(entity));
-                        }
-                        steps += 1;
-                        if steps > self.len() {
-                            break;
-                        }
-                        at = self.get(current).and_then(|e| e.parent);
+                    // tree is deep.
+                    if p == entity || self.ancestors(p).any(|(above, _)| above == entity) {
+                        return Err(EditError::Loop(entity));
                     }
                 }
                 let e = self.get_mut(entity).ok_or(EditError::NoEntity(entity))?;
@@ -398,6 +399,12 @@ mod tests {
         let (mut s, a, b) = sample();
         let before = s.clone();
         let ghost = EntityId::random();
+        let other = EntityId::random();
+        let under = |parent| {
+            let mut data = EntityData::new("Under");
+            data.parent = Some(parent);
+            data
+        };
         let bad = [
             Edit::Rename {
                 entity: ghost,
@@ -435,11 +442,63 @@ mod tests {
                 order: "a0".into(),
             },
             Edit::Despawn { root: ghost },
+            // Entities that would be each other's parents: a loop.
+            Edit::Spawn {
+                entities: vec![(ghost, under(other)), (other, under(ghost))],
+            },
+            Edit::Spawn {
+                entities: vec![(ghost, under(ghost))],
+            },
         ];
         for edit in bad {
             assert!(s.apply(edit.clone()).is_err(), "{edit:?}");
             assert_eq!(s, before, "{edit:?}");
         }
+    }
+
+    #[test]
+    fn nothing_can_be_moved_under_itself_however_deep() {
+        // No edit makes a loop of parents: the area's readers take loops
+        // out of files, and this keeps them out afterwards (the review of
+        // Phase 9, BUG-12).
+        let mut s = Area::new();
+        let mut chain = vec![s.spawn(EntityData::new("Top"))];
+        for n in 1..40 {
+            let mut data = EntityData::new(&format!("Level {n}"));
+            data.parent = chain.last().copied();
+            chain.push(s.spawn(data));
+        }
+        let before = s.clone();
+        for (above, &entity) in chain.iter().enumerate() {
+            for &below in &chain[above..] {
+                let moved = s.apply(Edit::Reparent {
+                    entity,
+                    parent: Some(below),
+                    order: "a0".into(),
+                });
+                assert_eq!(moved, Err(EditError::Loop(entity)));
+            }
+        }
+        assert_eq!(s, before);
+        // Out from under the top, and back under the last: no loop.
+        let moved = Edit::Reparent {
+            entity: chain[1],
+            parent: None,
+            order: "a1".into(),
+        };
+        s.apply(moved).unwrap();
+        let back = Edit::Reparent {
+            entity: chain[0],
+            parent: Some(chain[39]),
+            order: "a0".into(),
+        };
+        s.apply(back).unwrap();
+        assert!(
+            !s.ancestors(chain[39])
+                .by_ref()
+                .any(|(id, _)| id == chain[39])
+        );
+        assert_eq!(s.ancestors(chain[0]).count(), 39);
     }
 
     #[test]

@@ -117,6 +117,29 @@ fn settled(
     }
 }
 
+/// A colour button whose change counts once the mouse is let go, so a
+/// drag in its picker is one undo step (and one save), as with
+/// [`settled_drag`]. Returns the colour then.
+pub(crate) fn settled_colour(
+    ui: &mut Ui,
+    salt: impl std::hash::Hash + std::fmt::Debug,
+    value: [f32; 3],
+) -> Option<[f32; 3]> {
+    let id = ui.id().with(("settled colour", salt));
+    let now = value.map(|v| (v.clamp(0.0, 1.0) * 255.0).round() as u8);
+    let mut shown: [u8; 3] = ui.data(|d| d.get_temp(id)).unwrap_or(now);
+    ui.color_edit_button_srgb(&mut shown);
+    if ui.input(|i| i.pointer.any_down()) {
+        // Still held: shown as dragged so far, and kept for when it's let
+        // go.
+        ui.data_mut(|d| d.insert_temp(id, shown));
+        None
+    } else {
+        ui.data_mut(|d| d.remove::<[u8; 3]>(id));
+        (shown != now).then(|| shown.map(|v| f32::from(v) / 255.0))
+    }
+}
+
 /// The Clips tab. Returns whether the file changed (and must be saved).
 pub(crate) fn clips_tab(ui: &mut Ui, f: &mut FramesUi<'_>) -> bool {
     let mut changed = false;
@@ -400,8 +423,10 @@ fn clip_settings(ui: &mut Ui, editor: &mut FramesEditor, clip: &animation::Clip)
     changed
 }
 
-/// The Frames tab. Returns whether the file changed.
-pub(crate) fn frames_tab(ui: &mut Ui, f: &mut FramesUi<'_>) -> bool {
+/// The Frames tab. Returns whether the file changed. Space and Delete are
+/// acted on while the keys are the tab's (`keys`: the pointer rests over
+/// it and nothing is being typed).
+pub(crate) fn frames_tab(ui: &mut Ui, f: &mut FramesUi<'_>, keys: bool) -> bool {
     let Some(sheet) = f.sheet else {
         ui.label(
             RichText::new("Choose its sprite sheet in the Clips tab to see its frames.")
@@ -416,9 +441,7 @@ pub(crate) fn frames_tab(ui: &mut Ui, f: &mut FramesUi<'_>) -> bool {
     };
     let mut changed = false;
     let own = !clip.from_aseprite;
-    // Keys, while the pointer is over the tab.
-    let over = ui.rect_contains_pointer(ui.max_rect());
-    if over && !ui.ctx().egui_wants_keyboard_input() {
+    if keys {
         let (space, delete) = ui.input_mut(|i| {
             (
                 i.consume_key(egui::Modifiers::NONE, egui::Key::Space),

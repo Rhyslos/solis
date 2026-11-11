@@ -112,13 +112,14 @@ fn a_click_in_a_view_makes_it_the_one_in_use_and_f_frames_there() {
     let id = h
         .state()
         .0
+        .open
         .document
         .area()
         .iter()
         .find(|(_, e)| e.name == "Crate")
         .unwrap()
         .0;
-    h.state_mut().0.document.selection.select_only(id);
+    h.state_mut().0.open.document.selection.select_only(id);
     h.key_press(egui::Key::F);
     h.run();
     let front_camera = h.state().0.camera();
@@ -310,6 +311,7 @@ fn a_flat_view_has_no_fog_and_adds_cameras_above_the_ground() {
     w.viewport.camera = w.viewport.camera.as_kind(ViewKind::Top);
     let id = w.add_camera();
     let at = w
+        .open
         .document
         .area()
         .get(id)

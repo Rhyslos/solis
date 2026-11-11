@@ -6,6 +6,7 @@ use crate::area_panel::{AreaPanelState, AreaRequest, area_tree};
 use crate::console::{Console, ConsoleRequest, console};
 use crate::document::Document;
 use crate::icons;
+use crate::key_owner::KeyOwner;
 use crate::library::{LibraryItem, LibraryRequest, LibraryState, ProjectInfo, library};
 use crate::menu_items::MenuState;
 use crate::models::ModelInfo;
@@ -105,6 +106,9 @@ pub(crate) struct PanelViewer<'a> {
     /// screens' pictures (decision 0089).
     pub(crate) screen: Option<ScreenUi<'a>>,
     pub(crate) map_requests: &'a mut Vec<crate::map_tab::MapRequest>,
+    /// Who the keys belong to this frame: a tab acts on keys only when
+    /// it's the one named.
+    pub(crate) keys: KeyOwner,
 }
 
 /// The screen open on the canvas, for the Canvas, Elements and
@@ -119,44 +123,37 @@ pub(crate) struct ScreenUi<'a> {
     pub(crate) game: std::sync::Arc<crate::screen_ties::ScreenGame>,
 }
 
-/// What the Clips and Frames tabs did this frame.
+/// What the tabs that come with a file did this frame.
 #[derive(Debug, Default)]
 pub(crate) struct FramesOut {
-    /// The file changed: save it.
+    /// The panel the pointer is over, if it's over one: who the keys
+    /// belong to next frame is worked out from it.
+    pub(crate) pointer_over: Option<Panel>,
+    /// The clips file changed: save it.
     pub(crate) changed: bool,
-    /// A tab was closed: close the file.
+    /// The Clips or Frames tab was closed: close the file.
     pub(crate) closed: bool,
-    /// The pointer is over one of the tabs (Ctrl+Z, Delete and Space are
-    /// theirs then).
-    pub(crate) hovered: bool,
     /// The animator file changed: save it.
     pub(crate) animator_changed: bool,
     /// The Animator tab was closed: close the file.
     pub(crate) animator_closed: bool,
-    /// The pointer is over the Animator tab (Ctrl+Z and Delete are its).
-    pub(crate) animator_hovered: bool,
-    /// The pointer is over the Map tab (Ctrl+Z is its).
-    pub(crate) map_hovered: bool,
     /// The tileset changed: save it.
     pub(crate) tileset_changed: bool,
     /// The Tileset tab was closed: close the file.
     pub(crate) tileset_closed: bool,
-    /// The pointer is over the Tileset tab (Ctrl+Z is its).
-    pub(crate) tileset_hovered: bool,
     /// Save this kind's template.
     pub(crate) tileset_template: Option<tiles::TileKind>,
+    /// The tileset whose terrains Properties shows (its path): undo and
+    /// redo over Properties are that tileset's.
+    pub(crate) properties_tileset: Option<String>,
     /// The atlas changed: save it.
     pub(crate) atlas_changed: bool,
     /// The Atlas Crop tab was closed: close the file.
     pub(crate) atlas_closed: bool,
-    /// The pointer is over the Atlas Crop tab (Ctrl+Z is its).
-    pub(crate) atlas_hovered: bool,
     /// What the Atlas Crop tab has to say in the Console.
     pub(crate) atlas_said: Option<String>,
     /// The screen on the canvas changed: save it.
     pub(crate) screen_changed: bool,
-    /// The pointer is over the canvas or Elements (Ctrl+Z is theirs).
-    pub(crate) screen_hovered: bool,
     /// Open the screen's file as code.
     pub(crate) screen_code: bool,
     /// What the canvas has to say in the Console.
@@ -267,6 +264,10 @@ impl TabViewer for PanelViewer<'_> {
 
     fn ui(&mut self, ui: &mut Ui, tab: &mut Panel) {
         self.shown.insert(*tab);
+        // Noted here for every panel alike, and nowhere else.
+        if ui.rect_contains_pointer(ui.max_rect()) {
+            self.frames_out.pointer_over = Some(*tab);
+        }
         if *tab == Panel::Viewport {
             let full = ui.max_rect();
             let mut view_ui = ui.new_child(egui::UiBuilder::new().max_rect(full));
@@ -318,6 +319,7 @@ impl TabViewer for PanelViewer<'_> {
                 if self.in_front.contains(&Panel::Tileset)
                     && let Some(tileset) = &mut self.tileset
                 {
+                    self.frames_out.properties_tileset = Some(tileset.editor.path.clone());
                     egui::ScrollArea::vertical()
                         .id_salt("tileset properties")
                         .auto_shrink(false)
@@ -365,17 +367,15 @@ impl TabViewer for PanelViewer<'_> {
                     if let Some(crate::sprite_sheets::TilesetState::Read(set, notes)) =
                         sheets.tilesets.get(path)
                     {
+                        self.frames_out.properties_tileset = Some(path.to_owned());
                         egui::Frame::new()
                             .inner_margin(theme::panel_margin())
                             .show(ui, |ui| {
-                                if let Some(changed) =
-                                    crate::map_tab::tileset_properties(ui, path, set, notes)
-                                {
-                                    self.library_requests.push(LibraryRequest::SaveTileset(
-                                        path.to_owned(),
-                                        changed,
-                                    ));
-                                }
+                                let asked =
+                                    crate::map_tab::tileset_properties(ui, path, set, notes);
+                                self.library_requests.extend(asked.into_iter().map(|edit| {
+                                    LibraryRequest::EditTileset(path.to_owned(), edit)
+                                }));
                             });
                         return;
                     }
@@ -522,9 +522,6 @@ impl TabViewer for PanelViewer<'_> {
                 }
             }
             Panel::Clips | Panel::Frames => {
-                if ui.rect_contains_pointer(ui.max_rect()) {
-                    self.frames_out.hovered = true;
-                }
                 let Some(frames) = &mut self.frames else {
                     placeholder(ui, "No clips file is open.");
                     return;
@@ -535,14 +532,11 @@ impl TabViewer for PanelViewer<'_> {
                         .show(ui, |ui| crate::frames_view::clips_tab(ui, frames))
                         .inner
                 } else {
-                    crate::frames_view::frames_tab(ui, frames)
+                    crate::frames_view::frames_tab(ui, frames, self.keys == KeyOwner::Frames)
                 };
                 self.frames_out.changed |= changed;
             }
             Panel::Map => {
-                if ui.rect_contains_pointer(ui.max_rect()) {
-                    self.frames_out.map_hovered = true;
-                }
                 let Some(map) = &self.map else {
                     placeholder(ui, "Select an entity with a Tile Map to see its map here.");
                     return;
@@ -560,9 +554,6 @@ impl TabViewer for PanelViewer<'_> {
                     });
             }
             Panel::Tileset => {
-                if ui.rect_contains_pointer(ui.max_rect()) {
-                    self.frames_out.tileset_hovered = true;
-                }
                 let Some(tileset) = &mut self.tileset else {
                     placeholder(ui, "No tileset is open.");
                     return;
@@ -592,13 +583,13 @@ impl TabViewer for PanelViewer<'_> {
                         accent: self.accent.colors().fill,
                         picture_files: &screen.picture_files,
                         readable: &screen.game.readable,
+                        keys: self.keys == KeyOwner::Canvas,
                     },
                 );
                 if out.said.is_some() {
                     self.frames_out.screen_said = out.said;
                 }
                 self.frames_out.screen_changed |= out.changed;
-                self.frames_out.screen_hovered |= out.hovered;
                 self.frames_out.screen_code |= out.open_code;
             }
             Panel::Elements => {
@@ -613,16 +604,13 @@ impl TabViewer for PanelViewer<'_> {
                             ui,
                             screen.doc,
                             self.accent.colors().fill,
+                            self.keys == KeyOwner::Elements,
                         )
                     })
                     .inner;
                 self.frames_out.screen_changed |= out.changed;
-                self.frames_out.screen_hovered |= out.hovered;
             }
             Panel::AtlasCrop => {
-                if ui.rect_contains_pointer(ui.max_rect()) {
-                    self.frames_out.atlas_hovered = true;
-                }
                 let Some((editor, picture, problem)) = &mut self.atlas else {
                     placeholder(ui, "No picture's crops are open.");
                     return;
@@ -633,6 +621,7 @@ impl TabViewer for PanelViewer<'_> {
                     picture.take(),
                     problem.as_deref(),
                     self.accent.colors().fill,
+                    self.keys == KeyOwner::Atlas,
                 );
                 self.frames_out.atlas_changed |= out.changed;
                 if out.said.is_some() {
@@ -640,15 +629,15 @@ impl TabViewer for PanelViewer<'_> {
                 }
             }
             Panel::Animator => {
-                if ui.rect_contains_pointer(ui.max_rect()) {
-                    self.frames_out.animator_hovered = true;
-                }
                 let Some(animator) = &mut self.animator else {
                     placeholder(ui, "No animator is open.");
                     return;
                 };
-                self.frames_out.animator_changed |=
-                    crate::animator_view::animator_tab(ui, animator);
+                self.frames_out.animator_changed |= crate::animator_view::animator_tab(
+                    ui,
+                    animator,
+                    self.keys == KeyOwner::Animator,
+                );
             }
             Panel::Viewport => {}
         }
@@ -679,7 +668,7 @@ impl TabViewer for PanelViewer<'_> {
 }
 
 /// The border around the viewport and the Game panel while the game
-/// runs, so it's plain that changes made now are undone on Stop.
+/// runs, so it's plain that the area goes back on Stop.
 fn playing_border(ui: &Ui, rect: egui::Rect, accent: Accent) {
     ui.painter().rect_stroke(
         rect,

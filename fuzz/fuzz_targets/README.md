@@ -25,7 +25,7 @@ One fuzz target per reader of a file a project can ship (decision 0042). Each ta
 | `sound_file.rs` | A WAV or Ogg Vorbis file: refused or read, always within the limits, every sample between -1 and 1. |
 | `tileset.rs` | A tileset (`.tileset.lst`, or an older `.soltileset`): refused or read, within the limits, each terrain's name and code used once, and written back to itself. |
 | `tile_art.rs` | A tileset's picture (the first byte chooses PNG or JPEG, or Aseprite): refused or read whole within the limits, every frame its size, then its grid found and its tiles weighed. |
-| `tile_map.rs` | A tile map file (`.tilemap.lst`, or an older `.soltilemap`): refused or read, within the limits, written back to itself, then changed cell by cell (inside and past its edges), resized and summed. |
+| `tile_map.rs` | A tile map file (`.tilemap.lst`, or an older `.soltilemap`): refused or read, within the limits, written back to itself (or refused by the writer, when it would be more than is read back), then changed cell by cell (inside and past its edges), resized and summed. |
 | `update_answer.rs` | GitHub's answer about the latest release and the installer's checksum file (split by a 0x01 byte): a release read only ever points at the repository's own downloads. |
 
 **Adding a target:** add the file here, a `[[bin]]` of the same name in `../Cargo.toml`, a row in the table above and in [`../README.md`](../README.md), and starting files in `../make-seeds.sh` with a row in [`../seeds/README.md`](../seeds/README.md). The weekly run ([`deep-checks.yml`](../../.github/workflows/deep-checks.yml)) reads its targets from `../Cargo.toml`, so it fuzzes the new one with no change to the workflow, and stops with the reason if a file here has no `[[bin]]`.

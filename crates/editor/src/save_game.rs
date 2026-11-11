@@ -88,7 +88,7 @@ pub static FORMAT: reflect::upgrade::Format<Sections> = reflect::upgrade::Format
 /// A save's text read and written again: an older save in a slot is
 /// replaced only by a save that reads back as itself (Phase 8, C2).
 pub fn save_read_back(text: &str) -> Result<String, String> {
-    Save::read(text).map(|save| save.write())
+    Save::read(text).and_then(|save| save.write())
 }
 
 /// Whether `text` reads as a save (a project's check: read, not written
@@ -335,8 +335,11 @@ fn one_line(name: &str) -> String {
 }
 
 impl Save {
-    /// The save's text.
-    pub(crate) fn write(&self) -> String {
+    /// The save's text, or why it can't be written: a tile map the game
+    /// has grown past what a save is loaded from (its file is read back
+    /// as any map file is), since a save that couldn't be loaded would be
+    /// the player's progress lost.
+    pub(crate) fn write(&self) -> Result<String, String> {
         let mut body = String::new();
         let mut section = |name: &str, text: &str| {
             body.push_str(&format!("{name} {}\n{text}\n", text.len()));
@@ -403,14 +406,13 @@ impl Save {
             })
             .collect();
         section("animators", &animators);
-        let maps: String = self
-            .tile_maps
-            .iter()
-            .map(|(id, map)| {
-                let text = tiles::map_file::write(map);
-                format!("{id} {}\n{text}\n", text.len())
-            })
-            .collect();
+        let mut maps = String::new();
+        for (id, map) in &self.tile_maps {
+            let text = tiles::map_file::write(map).map_err(|why| {
+                format!("the tile map on {id} has grown too big to be loaded again ({why})")
+            })?;
+            maps.push_str(&format!("{id} {}\n{text}\n", text.len()));
+        }
         section("tilemaps", &maps);
         section("objects", &self.objects);
         // Its exact bits, or nothing when it's as usual.
@@ -433,7 +435,8 @@ impl Save {
             self.time.to_bits(),
             self.seed,
         );
-        format!("{HEADER}\n{head}sum {:016x}\n{body}", sum_of(&head, &body))
+        let sum = sum_of(&head, &body);
+        Ok(format!("{HEADER}\n{head}sum {sum:016x}\n{body}"))
     }
 
     /// Reads a save, refusing (with why, in plain words) anything that
@@ -742,12 +745,13 @@ impl Workbench {
     /// The running game as a save (decision 0038), or why not.
     pub(crate) fn save_of_game(&mut self) -> Result<Save, String> {
         let project = self
+            .open
             .project
             .as_ref()
             .map(|p| p.name.clone())
             .ok_or("save games are kept in a project")?;
-        let registry = &self.document.registry;
-        let playing = self.playing.as_mut().ok_or("nothing is running")?;
+        let registry = &self.open.document.registry;
+        let playing = self.open.playing.as_mut().ok_or("nothing is running")?;
         // Physics built again from each body's place and motion, as loading
         // will: from here the running game and a loaded one go on alike.
         let bodies = playing.world.physics_states();
@@ -758,7 +762,7 @@ impl Workbench {
         // keeps the game's), so a loaded game must too, or it goes on
         // differently from the saved one (found by the hardening
         // milestone's invariant tests, decision 0042).
-        let mut area = self.document.area().clone();
+        let mut area = self.open.document.area().clone();
         let mut places = Vec::new();
         let ids: Vec<EntityId> = area.iter().map(|(id, _)| id).collect();
         for id in ids {
@@ -854,9 +858,8 @@ impl Workbench {
     /// the Console). A tick's saves share one: physics is built again
     /// once.
     pub(crate) fn save_text(&mut self) -> Option<String> {
-        match self.save_of_game() {
-            Ok(save) => {
-                let text = save.write();
+        match self.save_of_game().and_then(|save| save.write()) {
+            Ok(text) => {
                 if text.len() > MAX_SAVE_BYTES {
                     self.log(
                         LogLevel::Warning,
@@ -902,7 +905,7 @@ impl Workbench {
                 return;
             }
         };
-        if let Some(project) = &self.project
+        if let Some(project) = &self.open.project
             && one_line(&project.name) != save.project
         {
             self.log(
@@ -914,7 +917,7 @@ impl Workbench {
             );
             return;
         }
-        let registry = &self.document.registry;
+        let registry = &self.open.document.registry;
         let (area, values) = match (
             area::text::read(&save.area, registry),
             area::text::read(&save.values, registry),
@@ -942,7 +945,7 @@ impl Workbench {
         // The loaded game sounds afresh: what played before the load fades
         // out, and nothing queued from before it plays after.
         self.plays += 1;
-        self.game_sounds.clear();
+        self.open.game_sounds.clear();
         // Physics built from each body's place and motion, as saving built
         // the running game's.
         let mut world = world::World::from_area_without_physics(&area);
@@ -960,10 +963,10 @@ impl Workbench {
         world.projectiles_mut().restore(save.projectiles);
         world.restore_animator_values(save.animators);
         world.restore_tile_maps(save.tile_maps);
-        if self.playing.is_none() {
+        if self.open.playing.is_none() {
             self.play();
         }
-        if self.playing.is_none() {
+        if self.open.playing.is_none() {
             return;
         }
         // The area as it was saved, for the editor's panels; not undone
@@ -974,8 +977,8 @@ impl Workbench {
         } else {
             self.give_back_input();
         }
-        self.document.replace_by_game(&area);
-        let _ = self.document.take_changes();
+        self.open.document.replace_by_game(&area);
+        let _ = self.open.document.take_changes();
         let mut view = crate::game_code::ViewCache::default();
         // The player's settings aren't the game's: a load keeps them.
         view.settings = self.player_settings;
@@ -1028,7 +1031,7 @@ impl Workbench {
             );
             pending.extend(std::mem::take(&mut host.edits));
             for failure in failures {
-                let text = crate::game_code::failure_text(self.document.area(), &failure);
+                let text = crate::game_code::failure_text(self.open.document.area(), &failure);
                 self.log(LogLevel::Error, text);
             }
             // And the game-wide objects theirs (decision 0080).
@@ -1066,7 +1069,7 @@ impl Workbench {
                 ),
             }
         }
-        let Some(playing) = &mut self.playing else {
+        let Some(playing) = &mut self.open.playing else {
             return;
         };
         playing.world = world;
@@ -1079,7 +1082,8 @@ impl Workbench {
         let recorded = playing.recording.take();
         let stopped = recorded.is_some() | playing.replay.take().is_some();
         if let Some(recording) = recorded.filter(|r| !r.ticks.is_empty()) {
-            self.outbox
+            self.open
+                .outbox
                 .push(WorkbenchAction::SaveRecording(recording.write()));
         }
         self.log(

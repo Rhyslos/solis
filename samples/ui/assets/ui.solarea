@@ -1,5 +1,5 @@
 -- An area. Safe to edit by hand: one block per entity, one line per field.
-area version 1;
+area version 2;
 
 entity 2G8P49TNDKN4A {
     name = "Camera";

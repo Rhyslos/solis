@@ -282,8 +282,10 @@ impl Document {
     }
 
     /// Replaces the whole area with `area` for the running game (a save
-    /// game loaded), not as an undo step: Stop puts the area back anyway.
-    /// Returns how many edits couldn't be made.
+    /// game loaded, or copies rebuilt from an assembly that changed on
+    /// disk meanwhile), not as an undo step: Stop puts the area back, and
+    /// Keep takes only the undo steps made while playing
+    /// (`Document::follow`). Returns how many edits couldn't be made.
     pub fn replace_by_game(&mut self, area: &Area) -> usize {
         let edits = self.replace_edits(area);
         self.edit_by_game(edits)
@@ -435,10 +437,11 @@ impl Document {
 
     /// Changes the area by `edits` made by the running game (copies of
     /// assemblies it spawned, entities it took out), each on its own and
-    /// not as an undo step: Stop puts the area back anyway. They aren't
-    /// [`Self::take_changes`]' changes: the game made them in its world
-    /// too. Returns how many couldn't be made (an entity already there,
-    /// or gone).
+    /// not as an undo step: Stop puts the area back, and that they aren't
+    /// steps is how Keep tells them from the user's own edits
+    /// (`Document::follow`). They aren't [`Self::take_changes`]' changes:
+    /// the game made them in its world too. Returns how many couldn't be
+    /// made (an entity already there, or gone).
     pub fn edit_by_game(&mut self, edits: Vec<Edit>) -> usize {
         let mut failed = 0;
         for edit in edits {
@@ -482,6 +485,29 @@ impl Document {
     /// The undo and redo steps.
     pub fn history(&self) -> &History<Selection> {
         &self.history
+    }
+
+    /// From now on (Play was pressed), keeps every undo step made,
+    /// however much memory they take, so that [`Self::follow`] can make
+    /// each of them again at Stop.
+    pub(crate) fn hold_steps(&mut self) {
+        self.history.hold();
+    }
+
+    /// Makes here what the user did in `played` since it was a copy of
+    /// this document (kept at Play) that then [held its
+    /// steps](Self::hold_steps): the steps they undid are undone and the
+    /// ones they made are made, each undoable, and the selection is
+    /// theirs. Only undo steps are followed, so nothing the running game
+    /// did to `played`'s area comes with them; a step (or an entity's
+    /// share of one) that changed something only the game had is left
+    /// out, and steps wholly left out are named in what comes back.
+    pub(crate) fn follow(&mut self, played: &Self) -> area::Followed {
+        let followed = self.history.follow(&mut self.area, &played.history);
+        self.selection = played.selection.clone();
+        self.selection.retain_existing(&self.area);
+        self.touch();
+        followed
     }
 
     /// Gives the area a new revision number, as if it changed (it was put

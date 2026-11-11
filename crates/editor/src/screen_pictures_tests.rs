@@ -98,7 +98,7 @@ fn a_picture_named_in_a_screen_that_isn_t_there_is_a_problem_at_its_line() {
         ["sprites/tools.png"]
     );
     assert_eq!(w.take_wanted_pictures(), None, "taken once");
-    let pictures = w.screen_pictures.pictures.clone().unwrap();
+    let pictures = w.open.screen_pictures.pictures.clone().unwrap();
     assert_eq!(pictures.get("sprites/tools.png").unwrap().size, [32, 16]);
 }
 
@@ -132,7 +132,7 @@ fn a_crop_shows_its_part_and_a_missing_one_names_those_there_are() {
         "{}",
         problems[0]
     );
-    let pictures = w.screen_pictures.pictures.clone().unwrap();
+    let pictures = w.open.screen_pictures.pictures.clone().unwrap();
     assert_eq!(
         pictures.get("sprites/tools.png#Axe").unwrap().size,
         [16, 16]
@@ -144,7 +144,8 @@ fn a_crop_shows_its_part_and_a_missing_one_names_those_there_are() {
 fn a_name_worked_out_as_the_game_runs_is_read_shown_and_said_once_if_wrong() {
     let mut w = Workbench::new(info(), None);
     w.set_program(Some(program(&items("image chosen;"))));
-    w.document
+    w.open
+        .document
         .edit(
             "Add",
             vec![area::Edit::Spawn {
@@ -169,7 +170,10 @@ fn a_name_worked_out_as_the_game_runs_is_read_shown_and_said_once_if_wrong() {
     w.run_game(1.0 / 60.0);
     w.refresh_screen_pictures();
     assert!(
-        w.screen_pictures.seen.contains("sprites/tools.png#Hoe"),
+        w.open
+            .screen_pictures
+            .seen
+            .contains("sprites/tools.png#Hoe"),
         "seen as the screen ran"
     );
     let wrong = |w: &Workbench| {
@@ -183,7 +187,7 @@ fn a_name_worked_out_as_the_game_runs_is_read_shown_and_said_once_if_wrong() {
     // The screens carry the pictures, so they're drawn.
     w.run_game(1.0 / 60.0);
     w.refresh_screen_pictures();
-    assert!(w.game_screens.pictures[0].pictures.is_some());
+    assert!(w.open.game_screens.pictures[0].pictures.is_some());
     // The crop's cut now: shown, and nothing said again.
     with_tools(
         &mut w,
@@ -192,7 +196,7 @@ fn a_name_worked_out_as_the_game_runs_is_read_shown_and_said_once_if_wrong() {
     w.refresh_screen_pictures();
     w.run_game(1.0 / 60.0);
     w.refresh_screen_pictures();
-    let on_screen = w.game_screens.pictures[0].pictures.clone().unwrap();
+    let on_screen = w.open.game_screens.pictures[0].pictures.clone().unwrap();
     assert!(on_screen.get("sprites/tools.png#Hoe").is_some());
     assert_eq!(wrong(&w), 1);
 }

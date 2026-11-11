@@ -120,7 +120,7 @@ fn farm() -> Workbench {
         path: path.into(),
         thumbnail: None,
     };
-    w.library = vec![item("areas/town.solarea"), item("areas/farm.solarea")];
+    w.open.library = vec![item("areas/town.solarea"), item("areas/farm.solarea")];
     w.open_area(
         area::Area::new(),
         std::path::PathBuf::from("/projects/farm/assets/areas/farm.solarea"),
@@ -133,7 +133,7 @@ fn farm() -> Workbench {
 fn the_window_starts_from_the_project_and_the_open_area() {
     let mut w = farm();
     w.open_export();
-    let window = w.export_window.as_ref().unwrap();
+    let window = w.open.export_window.as_ref().unwrap();
     assert_eq!(window.playtest.name, "Farm the game");
     assert_eq!(window.playtest.area, "areas/farm.solarea");
     let folder = PathBuf::from(&window.folder);
@@ -152,7 +152,7 @@ fn the_window_starts_from_the_project_and_the_open_area() {
     }));
     w.set_last_export_folder(Some(local("/elsewhere/Farm playtest 2026-01-01")));
     w.open_export();
-    let window = w.export_window.as_ref().unwrap();
+    let window = w.open.export_window.as_ref().unwrap();
     assert_eq!(window.playtest.area, "areas/town.solarea");
     assert!(window.playtest.fullscreen);
     let folder = PathBuf::from(&window.folder);
@@ -167,7 +167,7 @@ fn the_window_starts_from_the_project_and_the_open_area() {
     }));
     w.open_export();
     assert_eq!(
-        w.export_window.as_ref().unwrap().playtest.area,
+        w.open.export_window.as_ref().unwrap().playtest.area,
         "areas/farm.solarea"
     );
 }
@@ -176,7 +176,7 @@ fn the_window_starts_from_the_project_and_the_open_area() {
 fn without_a_project_there_s_nothing_to_export() {
     let mut w = Workbench::new(info(), None);
     w.open_export();
-    assert!(w.export_window.is_none());
+    assert!(w.open.export_window.is_none());
     assert!(
         w.log_lines()
             .last()
@@ -242,14 +242,14 @@ fn file_has_export_for_playtesting_above_quit() {
     h.run();
     h.get_by_label("Export for playtesting…").click();
     h.run();
-    assert!(h.state().0.export_window.is_some());
+    assert!(h.state().0.open.export_window.is_some());
 }
 
 #[test]
 fn unsaved_changes_are_pointed_out_before_exporting() {
     let mut w = farm();
     w.add_entity();
-    assert!(w.document.is_dirty());
+    assert!(w.open.document.is_dirty());
     w.open_export();
     let mut h = harness(w);
     h.run();
@@ -286,7 +286,7 @@ fn a_project_s_file_never_chooses_the_folder() {
         let mut w = farm();
         w.set_last_export(Some(read));
         w.open_export();
-        let window = w.export_window.as_ref().unwrap();
+        let window = w.open.export_window.as_ref().unwrap();
         assert_eq!(
             Path::new(&window.folder).parent(),
             Some(Path::new("/home/me/Documents/Farm exports")),
@@ -322,9 +322,9 @@ fn only_a_whole_path_on_this_computer_is_remembered() {
         // Told to the window anyway, it's dropped: Documents instead.
         let mut w = farm();
         w.set_last_export_folder(Some(bad.clone()));
-        assert_eq!(w.last_export_folder, None, "{}", bad.display());
+        assert_eq!(w.open.last_export_folder, None, "{}", bad.display());
         w.open_export();
-        let window = w.export_window.as_ref().unwrap();
+        let window = w.open.export_window.as_ref().unwrap();
         assert!(
             window.folder.starts_with("/home/me/Documents"),
             "{}",
@@ -381,19 +381,19 @@ fn opening_the_window_never_looks_at_the_disk() {
     }));
     w.set_last_export_folder(Some(dir.join("Farm playtest 2020-01-01")));
     assert!(
-        w.last_export_folder.is_some(),
+        w.open.last_export_folder.is_some(),
         "a folder of this computer's"
     );
     w.open_export();
-    let first = PathBuf::from(&w.export_window.as_ref().unwrap().folder);
+    let first = PathBuf::from(&w.open.export_window.as_ref().unwrap().folder);
     assert_eq!(first.parent(), Some(dir.as_path()));
     std::fs::create_dir_all(&first).unwrap();
     std::fs::write(first.join("Farm.exe"), "x").unwrap();
     w.open_export();
-    let second = w.export_window.as_ref().unwrap().folder.clone();
+    let second = w.open.export_window.as_ref().unwrap().folder.clone();
     // And when an export ends: the next goes beside it, found out later.
     w.export_finished(Ok(first.clone()));
-    let after = w.export_window.as_ref().unwrap().folder.clone();
+    let after = w.open.export_window.as_ref().unwrap().folder.clone();
     let _ = std::fs::remove_dir_all(&dir);
     assert!(!second.ends_with(" (2)"), "{second}");
     assert_eq!(PathBuf::from(after), first);

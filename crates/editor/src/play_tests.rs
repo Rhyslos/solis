@@ -10,6 +10,7 @@ use area::builtin::{Light, Transform};
 use egui_kittest::kittest::Queryable;
 use glam::Vec3;
 use reflect::{EntityId, Value};
+use std::path::{Path, PathBuf};
 
 fn set_position(w: &mut Workbench, id: EntityId, at: Vec3, gesture: u64) {
     w.apply_property(
@@ -24,7 +25,8 @@ fn set_position(w: &mut Workbench, id: EntityId, at: Vec3, gesture: u64) {
 }
 
 fn position(w: &Workbench, id: EntityId) -> Vec3 {
-    w.document
+    w.open
+        .document
         .area()
         .get(id)
         .unwrap()
@@ -39,30 +41,30 @@ fn stop_puts_the_area_its_history_and_the_selection_back_exactly() {
     let (mut w, crate_id) = with_a_crate();
     let lamp = w.add_point_light();
     set_position(&mut w, crate_id, Vec3::new(1.0, 0.0, 0.0), 1);
-    w.document.selection.select_only(crate_id);
-    let area = w.document.area().clone();
-    let steps = w.document.history().undo_len();
-    let dirty = w.document.is_dirty();
-    let selection = w.document.selection.clone();
+    w.open.document.selection.select_only(crate_id);
+    let area = w.open.document.area().clone();
+    let steps = w.open.document.history().undo_len();
+    let dirty = w.open.document.is_dirty();
+    let selection = w.open.document.selection.clone();
 
     w.play();
     assert_eq!(w.play_state(), PlayState::Playing);
     // Everything changes while playing…
     set_position(&mut w, crate_id, Vec3::new(9.0, 9.0, 9.0), 2);
     w.add_entity();
-    w.document.selection.select_only(lamp);
+    w.open.document.selection.select_only(lamp);
     w.delete_selection();
     w.undo();
     w.redo();
-    assert_ne!(*w.document.area(), area);
+    assert_ne!(*w.open.document.area(), area);
 
     // …and Stop puts it all back.
     w.stop();
     assert_eq!(w.play_state(), PlayState::Editing);
-    assert_eq!(*w.document.area(), area);
-    assert_eq!(w.document.history().undo_len(), steps);
-    assert_eq!(w.document.is_dirty(), dirty);
-    assert_eq!(w.document.selection, selection);
+    assert_eq!(*w.open.document.area(), area);
+    assert_eq!(w.open.document.history().undo_len(), steps);
+    assert_eq!(w.open.document.is_dirty(), dirty);
+    assert_eq!(w.open.document.selection, selection);
     assert!(w.world().is_none());
     // Undo still undoes what was done before Play.
     w.undo();
@@ -137,7 +139,7 @@ fn saving_and_opening_wait_until_the_game_stops() {
         assert_eq!(last.level, LogLevel::Warning);
         assert!(last.text.starts_with("Stop playing first"));
     }
-    assert!(w.unsaved_prompt.is_none(), "no question about saving");
+    assert!(w.open.unsaved_prompt.is_none(), "no question about saving");
     // Other actions go through.
     let mut actions = vec![WorkbenchAction::ImportModel];
     w.hold_while_playing(&mut actions);
@@ -159,19 +161,35 @@ fn quitting_while_playing_stops_first() {
     w.request(WorkbenchAction::Quit, &mut actions);
     assert_eq!(w.play_state(), PlayState::Editing);
     assert_eq!(position(&w, crate_id), Vec3::ZERO);
-    // The crate was placed and not saved, so the question about saving
-    // is asked about the area as it was before Play.
-    assert!(w.unsaved_prompt.is_some() || actions == [WorkbenchAction::Quit]);
+    // The move made while playing is asked about first (Keep or Undo
+    // all): nothing closes, and one question is asked at a time.
+    assert_eq!(actions, []);
+    assert!(w.play_changes().is_some());
+    assert!(w.open.unsaved_prompt.is_none());
+    // Undo all: the area is as it was before Play, where the crate was
+    // placed and not saved, so the question about saving comes next.
+    w.undo_play_changes();
+    assert_eq!(w.open.unsaved_prompt, Some(WorkbenchAction::Quit));
+    assert!(w.open.outbox.is_empty(), "still not closed");
+    // With nothing changed while playing and nothing unsaved, Quit stops
+    // the game and closes.
+    let (mut w, _) = with_a_crate();
+    w.open.document.mark_saved("harbour.solarea".into());
+    w.play();
+    let mut actions = Vec::new();
+    w.request(WorkbenchAction::Quit, &mut actions);
+    assert_eq!(w.play_state(), PlayState::Editing);
+    assert_eq!(actions, [WorkbenchAction::Quit]);
     // Closing the window with unsaved changes asks first, and the game
     // plays on meanwhile (Cancel leaves it running); with nothing unsaved,
     // it stops and closes.
     let (mut w, _) = with_a_crate();
     w.play();
     assert!(!w.close_requested());
-    assert_eq!(w.unsaved_prompt, Some(WorkbenchAction::Quit));
+    assert_eq!(w.open.unsaved_prompt, Some(WorkbenchAction::Quit));
     assert_ne!(w.play_state(), PlayState::Editing, "still playing");
     let (mut w, _) = with_a_crate();
-    w.document.mark_saved("harbour.solarea".into());
+    w.open.document.mark_saved("harbour.solarea".into());
     w.play();
     assert!(w.close_requested());
     assert_eq!(w.play_state(), PlayState::Editing);
@@ -180,15 +198,18 @@ fn quitting_while_playing_stops_first() {
 #[test]
 fn a_file_changed_on_disk_while_playing_is_offered_after_stop() {
     let (mut w, _) = with_a_crate();
-    w.document.mark_saved("harbour.solarea".into());
+    w.open.document.mark_saved("harbour.solarea".into());
     w.play();
     let mut theirs = area::builtin::starter_area();
     let theirs_id = theirs.spawn(area::EntityData::new("Theirs"));
     w.offer_reload(theirs);
-    assert!(!w.document.area().contains(theirs_id), "not while playing");
+    assert!(
+        !w.open.document.area().contains(theirs_id),
+        "not while playing"
+    );
     w.stop();
     assert!(
-        w.document.area().contains(theirs_id),
+        w.open.document.area().contains(theirs_id),
         "loaded after Stop (nothing was unsaved)"
     );
 }
@@ -196,7 +217,7 @@ fn a_file_changed_on_disk_while_playing_is_offered_after_stop() {
 #[test]
 fn an_assembly_changed_while_playing_updates_its_copies_after_stop() {
     let (mut w, asset, _, lamp) = with_a_lamp_post();
-    w.document.mark_saved("harbour.solarea".into());
+    w.open.document.mark_saved("harbour.solarea".into());
     w.play();
     let (_, file) = lamp_post_file();
     let mut file = (*file).clone();
@@ -210,7 +231,8 @@ fn an_assembly_changed_while_playing_updates_its_copies_after_stop() {
     ));
     w.set_assembly(asset, std::sync::Arc::new(file));
     let strength = |w: &Workbench| {
-        w.document
+        w.open
+            .document
             .area()
             .get(lamp)
             .unwrap()
@@ -221,28 +243,32 @@ fn an_assembly_changed_while_playing_updates_its_copies_after_stop() {
     assert_eq!(strength(&w), 5.0, "the game sees it at once");
     w.stop();
     assert_eq!(strength(&w), 5.0, "and it's still there after Stop");
-    assert!(!w.document.is_dirty(), "nothing to save: the file has it");
+    assert!(
+        !w.open.document.is_dirty(),
+        "nothing to save: the file has it"
+    );
 }
 
 #[test]
 fn a_new_camera_looks_the_way_the_editor_does() {
     let (mut w, _) = with_a_crate();
     let id = w.add_camera();
-    let data = w.document.area().get(id).unwrap();
+    let data = w.open.document.area().get(id).unwrap();
     assert_eq!(data.name, "Camera 1");
     let camera = data.get::<area::builtin::Camera>().unwrap();
     assert!((camera.fov - 50.0).abs() < 1e-3);
-    let (view, position) = crate::game_panel::camera_view(w.document.area().world_matrix(id));
+    let (view, position) = crate::game_panel::camera_view(w.open.document.area().world_matrix(id));
     assert!(position.distance(w.viewport.camera.position) < 1e-4);
     let editor = w.viewport.camera.view_matrix();
     for (a, b) in view.to_cols_array().iter().zip(editor.to_cols_array()) {
         assert!((a - b).abs() < 1e-4, "{view:?} vs {editor:?}");
     }
-    assert_eq!(w.add_camera(), w.document.selection.primary().unwrap());
+    assert_eq!(w.add_camera(), w.open.document.selection.primary().unwrap());
     assert_eq!(
-        w.document
+        w.open
+            .document
             .area()
-            .get(w.document.selection.primary().unwrap())
+            .get(w.open.document.selection.primary().unwrap())
             .unwrap()
             .name,
         "Camera 2"
@@ -367,15 +393,15 @@ fn a_camera_is_listed_with_its_icon_and_added_from_the_entity_menu() {
     h.get_by_label("Add camera").click();
     h.run();
     let w = &h.state().0;
-    let id = w.document.selection.primary().unwrap();
-    assert!(w.document.area().get(id).unwrap().has("Camera"));
+    let id = w.open.document.selection.primary().unwrap();
+    assert!(w.open.document.area().get(id).unwrap().has("Camera"));
     assert!(h.query_all_by_label("Camera 1").next().is_some(), "listed");
 }
 
 #[test]
 fn a_cancelled_save_calls_off_the_quit_so_a_later_close_asks_again() {
     let (mut w, _) = with_a_crate();
-    assert!(w.document.is_dirty());
+    assert!(w.open.document.is_dirty());
     assert!(!w.close_requested(), "asks first");
     // "Save" was chosen: the quit may go ahead once the save works...
     w.may_close = true;
@@ -383,13 +409,13 @@ fn a_cancelled_save_calls_off_the_quit_so_a_later_close_asks_again() {
     // ...but the Save window was cancelled.
     w.quit_cancelled();
     assert!(!w.close_requested(), "asks again");
-    assert_eq!(w.unsaved_prompt, Some(WorkbenchAction::Quit));
+    assert_eq!(w.open.unsaved_prompt, Some(WorkbenchAction::Quit));
 }
 
 #[test]
 fn a_file_changed_on_disk_is_asked_about_only_after_stop() {
     let (mut w, _) = with_a_crate();
-    w.pending_reload = Some(area::builtin::starter_area());
+    w.open.pending_reload = Some(area::builtin::starter_area());
     w.play();
     let mut h = harness(w);
     h.run();
@@ -400,4 +426,150 @@ fn a_file_changed_on_disk_is_asked_about_only_after_stop() {
     h.state_mut().0.stop();
     h.run();
     let _ = h.get_by_label("Load the file");
+}
+
+// The open area's file moved or deleted in the Library while playing
+// (the review, BUG-05): only the document the game runs on followed, so
+// Stop put back the copy from before Play with the old path, and Ctrl+S
+// made the old file again beside the moved one (or, after a delete, the
+// area read as saved though its file was gone).
+
+const AREA_FILE: &str = "/p/assets/areas/harbour.solarea";
+
+/// What the Library did: what it moved, where to (`None`: deleted), and
+/// where the open area's file is afterwards (`None`: nowhere).
+type FileCase = (
+    &'static str,
+    &'static str,
+    Option<&'static str>,
+    Option<&'static str>,
+);
+
+const FILE_CASES: [FileCase; 5] = [
+    (
+        "renamed",
+        AREA_FILE,
+        Some("/p/assets/areas/port.solarea"),
+        Some("/p/assets/areas/port.solarea"),
+    ),
+    (
+        "moved into a folder",
+        AREA_FILE,
+        Some("/p/assets/areas/docks/harbour.solarea"),
+        Some("/p/assets/areas/docks/harbour.solarea"),
+    ),
+    (
+        "a parent folder renamed",
+        "/p/assets/areas",
+        Some("/p/assets/levels"),
+        Some("/p/assets/levels/harbour.solarea"),
+    ),
+    ("deleted", AREA_FILE, None, None),
+    ("its folder deleted", "/p/assets/areas", None, None),
+];
+
+/// A saved area with a crate, open from [`AREA_FILE`].
+fn saved_area() -> (Workbench, EntityId) {
+    let (mut w, crate_id) = with_a_crate();
+    w.mark_saved(AREA_FILE.into());
+    (w, crate_id)
+}
+
+/// Does to `w` what the Library did in `case`, as the app tells it.
+fn library_does(w: &mut Workbench, case: &FileCase) {
+    let (what, from, to, after) = *case;
+    assert_eq!(
+        w.file_moved(Path::new(from), to.map(Path::new)),
+        Some(after.map(PathBuf::from)),
+        "{what}: the app is told where the file is now"
+    );
+}
+
+/// The open area is where `case` left its file, and saving (Ctrl+S, as
+/// the app does it) goes there: `unsaved` says whether there are changes
+/// to save. With no file left, the area counts as unsaved, so saving
+/// asks where.
+fn saves_where_the_file_is(w: &mut Workbench, case: &FileCase, unsaved: bool, when: &str) {
+    let (what, _, _, after) = *case;
+    assert_eq!(w.play_state(), PlayState::Editing);
+    assert_eq!(w.document().file(), after.map(Path::new), "{what}, {when}");
+    match after {
+        Some(file) => {
+            assert_eq!(w.document().is_dirty(), unsaved, "{what}, {when}");
+            w.mark_saved(file.into());
+            assert_eq!(w.document().file(), Some(Path::new(file)));
+            assert!(!w.document().is_dirty());
+        }
+        None => assert!(w.document().is_dirty(), "{what}, {when}: unsaved"),
+    }
+}
+
+#[test]
+fn the_area_s_file_moved_or_deleted_while_playing_stays_so_after_stop() {
+    for case in &FILE_CASES {
+        let (mut w, _) = saved_area();
+        w.play();
+        library_does(&mut w, case);
+        w.stop();
+        assert!(w.play_changes().is_none());
+        saves_where_the_file_is(&mut w, case, false, "after Stop");
+    }
+}
+
+#[test]
+fn the_area_s_file_moved_or_deleted_while_playing_stays_so_after_keep_and_undo_all() {
+    for case in &FILE_CASES {
+        // An edit before the move and one after it, then Stop and Keep.
+        let (mut w, crate_id) = saved_area();
+        w.play();
+        set_position(&mut w, crate_id, Vec3::X, 1);
+        library_does(&mut w, case);
+        let lamp = w.add_point_light();
+        w.stop();
+        assert_eq!(w.play_changes().unwrap().len(), 2);
+        w.keep_play_changes();
+        assert!(w.document().area().contains(lamp));
+        saves_where_the_file_is(&mut w, case, true, "after Stop and Keep");
+        // Undo all: nothing of the user's is left to save.
+        let (mut w, crate_id) = saved_area();
+        w.play();
+        library_does(&mut w, case);
+        set_position(&mut w, crate_id, Vec3::X, 1);
+        w.stop();
+        w.undo_play_changes();
+        saves_where_the_file_is(&mut w, case, false, "after Stop and Undo all");
+    }
+}
+
+#[test]
+fn the_area_s_file_moved_or_deleted_while_keep_is_asked_stays_so_after_the_answer() {
+    for case in &FILE_CASES {
+        let (mut w, _) = saved_area();
+        w.play();
+        let lamp = w.add_point_light();
+        w.stop();
+        assert!(w.play_changes().is_some());
+        library_does(&mut w, case);
+        w.keep_play_changes();
+        assert!(w.document().area().contains(lamp));
+        saves_where_the_file_is(&mut w, case, true, "moved while asked, kept");
+    }
+}
+
+#[test]
+fn another_file_moved_while_playing_changes_nothing() {
+    let (mut w, _) = saved_area();
+    w.play();
+    assert_eq!(
+        w.file_moved(
+            Path::new("/p/assets/crate.glb"),
+            Some(Path::new("/p/assets/box.glb"))
+        ),
+        None
+    );
+    // A file whose name only starts the same isn't the area's folder.
+    assert_eq!(w.file_moved(Path::new("/p/assets/are"), None), None);
+    w.stop();
+    assert_eq!(w.document().file(), Some(Path::new(AREA_FILE)));
+    assert!(!w.document().is_dirty());
 }

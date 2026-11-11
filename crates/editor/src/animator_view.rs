@@ -113,7 +113,9 @@ fn state_line(state: &animation::State, clips: Option<&ClipSet>) -> (String, Opt
 }
 
 /// The animator tab. Returns whether the file changed (and must be saved).
-pub(crate) fn animator_tab(ui: &mut Ui, a: &mut AnimatorUi<'_>) -> bool {
+/// The graph's keys are acted on while they are the tab's (`keys`: the
+/// pointer rests over it and nothing is being typed).
+pub(crate) fn animator_tab(ui: &mut Ui, a: &mut AnimatorUi<'_>, keys: bool) -> bool {
     let mut changed = false;
     let full = ui.available_rect_before_wrap();
     let side = 220.0_f32.min(full.width() * 0.4);
@@ -134,7 +136,7 @@ pub(crate) fn animator_tab(ui: &mut Ui, a: &mut AnimatorUi<'_>) -> bool {
         egui::Stroke::new(1.0, theme::line()),
     );
     let mut graph_ui = ui.new_child(egui::UiBuilder::new().max_rect(right));
-    changed |= graph(&mut graph_ui, a);
+    changed |= graph(&mut graph_ui, a, keys);
     ui.advance_cursor_after_rect(full);
     changed
 }
@@ -398,7 +400,7 @@ fn aseprite_path(sheets: &SpriteSheets, id: AssetId) -> Option<String> {
 }
 
 /// The graph: states as boxes, transitions as arrows.
-fn graph(ui: &mut Ui, a: &mut AnimatorUi<'_>) -> bool {
+fn graph(ui: &mut Ui, a: &mut AnimatorUi<'_>, keys: bool) -> bool {
     let mut changed = false;
     let glowing = a.glowing();
     let clips = a.clips().cloned();
@@ -490,7 +492,15 @@ fn graph(ui: &mut Ui, a: &mut AnimatorUi<'_>) -> bool {
                 }
             }
         };
-        graph_canvas(ui, &mut editor.canvas, &boxes, &wires, a.accent, &mut menu)
+        graph_canvas(
+            ui,
+            &mut editor.canvas,
+            &boxes,
+            &wires,
+            a.accent,
+            keys,
+            &mut menu,
+        )
     };
     for event in events {
         match event {

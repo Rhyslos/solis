@@ -18,7 +18,7 @@ Hold the running game's entities in a form a game can run over quickly. The area
 
 - Change the area: Stop throws the world away and the area is put back.
 - Know about the editor, the window or the GPU.
-- Hang or panic on a damaged area (a parent loop, a missing parent).
+- Hang or panic on a damaged area (a parent loop, a missing parent). An entity whose parent is missing, or whose parents lead round in a loop, stands alone at the top level, exactly as the editor places it (`area::Tree::world_matrices`). The area's readers take loops out, so a loop here is one made some other way.
 
 ## Depends on
 

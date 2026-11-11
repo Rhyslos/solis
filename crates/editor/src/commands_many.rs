@@ -23,6 +23,7 @@ impl Workbench {
         gesture: u64,
     ) {
         let Some(info) = self
+            .open
             .document
             .registry
             .get(component)
@@ -31,7 +32,7 @@ impl Workbench {
         else {
             return;
         };
-        let area = self.document.area();
+        let area = self.open.document.area();
         let edits: Vec<Edit> = entities
             .iter()
             .filter_map(|&entity| {
@@ -66,11 +67,11 @@ impl Workbench {
     /// Gives every one of `entities` that lacks it the component, with its
     /// starting values.
     pub(crate) fn add_component_many(&mut self, entities: &[EntityId], component: &str) {
-        let Some(schema) = self.document.registry.get(component) else {
+        let Some(schema) = self.open.document.registry.get(component) else {
             return;
         };
         let data = ComponentData::defaults(schema);
-        let area = self.document.area();
+        let area = self.open.document.area();
         let edits: Vec<Edit> = entities
             .iter()
             .filter(|&&e| area.get(e).is_some_and(|d| !d.has(component)))
@@ -85,7 +86,7 @@ impl Workbench {
 
     /// Takes the component off every one of `entities` that has it.
     pub(crate) fn remove_component_many(&mut self, entities: &[EntityId], component: &str) {
-        let area = self.document.area();
+        let area = self.open.document.area();
         let edits: Vec<Edit> = entities
             .iter()
             .filter(|&&e| area.get(e).is_some_and(|d| d.has(component)))
@@ -99,7 +100,7 @@ impl Workbench {
 
     /// Copies `entity`'s components' values (or only `only`'s), to paste.
     pub(crate) fn copy_components(&mut self, entity: EntityId, only: Option<&str>) {
-        let Some(data) = self.document.area().get(entity) else {
+        let Some(data) = self.open.document.area().get(entity) else {
             return;
         };
         let copied: Vec<(String, ComponentData)> = data
@@ -112,16 +113,16 @@ impl Workbench {
             Some(name) => format!("{name}'s values"),
             None => format!("{} components' values", copied.len()),
         };
-        self.copied = copied;
+        self.open.copied = copied;
         self.log(LogLevel::Info, format!("Copied {what} from {}.", data.name));
     }
 
     /// Pastes the copied values (or only `only`'s) onto `entities`: fields
     /// that differ are set, and components an entity lacks are added.
     pub(crate) fn paste_components(&mut self, entities: &[EntityId], only: Option<&str>) {
-        let area = self.document.area();
+        let area = self.open.document.area();
         let mut edits = Vec::new();
-        for (name, values) in &self.copied {
+        for (name, values) in &self.open.copied {
             if only.is_some_and(|o| o != name) {
                 continue;
             }
@@ -160,10 +161,10 @@ impl Workbench {
     /// Puts every field of the component back to its starting value, on
     /// each of `entities`.
     pub(crate) fn reset_component(&mut self, entities: &[EntityId], component: &str) {
-        let Some(schema) = self.document.registry.get(component) else {
+        let Some(schema) = self.open.document.registry.get(component) else {
             return;
         };
-        let area = self.document.area();
+        let area = self.open.document.area();
         let mut edits = Vec::new();
         for &entity in entities {
             let Some(have) = area.get(entity).and_then(|d| d.components.get(component)) else {

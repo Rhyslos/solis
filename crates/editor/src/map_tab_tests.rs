@@ -176,32 +176,32 @@ fn with_no_tileset_or_values_it_says_what_to_do() {
 }
 
 #[test]
-fn a_tileset_s_properties_add_and_remove_terrains() {
+fn a_tileset_s_properties_ask_to_add_and_remove_terrains() {
     let mut h = Harness::builder()
         .with_size(vec2(360.0, 400.0))
         .build_ui_state(
-            |ui, s: &mut (Tileset, Option<Tileset>)| {
-                if let Some(changed) = tileset_properties(ui, "sprites/farm.tileset.lst", &s.0, &[])
-                {
-                    s.1 = Some(changed);
-                }
+            |ui, s: &mut (Tileset, Vec<TerrainEdit>)| {
+                let asked = tileset_properties(ui, "sprites/farm.tileset.lst", &s.0, &[]);
+                s.1.extend(asked);
             },
-            (set(), None),
+            (set(), Vec::new()),
         );
     h.run();
     assert!(h.query_by_label("farm.tileset.lst").is_some());
+    assert!(h.state().1.is_empty(), "drawing it asks for nothing");
     h.get_by_label("+ Terrain").click();
     h.run();
-    let added = h.state().1.clone().unwrap();
-    assert_eq!(added.terrains.len(), 4);
-    assert_eq!(added.terrains[3].name, "terrain");
-    assert_ne!(added.terrains[3].code, '.');
-    h.state_mut().1 = None;
     h.get_by_label("Remove tilled").click();
     h.run();
-    let removed = h.state().1.clone().unwrap();
-    assert!(removed.by_name("tilled").is_none());
-    assert_eq!(removed.terrains.len(), 2);
+    // Asked for, never made here: the workbench makes each change through
+    // the tileset's editor, so it's an undo step.
+    let tilled = h.state().0.by_name("tilled").unwrap().id;
+    assert_eq!(h.state().1, [TerrainEdit::Add, TerrainEdit::Remove(tilled)]);
+    assert_eq!(
+        h.state().0.terrains.len(),
+        3,
+        "the tileset shown is untouched"
+    );
 }
 
 #[test]

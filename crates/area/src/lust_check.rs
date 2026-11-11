@@ -547,6 +547,27 @@ impl<'a> Classes<'a> {
     }
 }
 
+/// Refuses text of more pieces than a data file may have
+/// ([`MAX_PIECES`]): what a writer asks of what it's about to write, so
+/// that it never writes a file [`Classes::check`] would refuse as too big.
+/// The text is split as the check splits it, and the check counts no
+/// piece this doesn't, so what passes here is never too big there. A
+/// piece is at least a byte, so text no longer than the limit isn't split.
+pub(crate) fn within_pieces(text: &str) -> Result<(), DataError> {
+    if text.len() <= MAX_PIECES {
+        return Ok(());
+    }
+    let mut pieces = Pieces::new(text);
+    let mut count = 0usize;
+    while pieces.next().is_some() {
+        count += 1;
+        if count > MAX_PIECES {
+            return Err(error(0, too_big()));
+        }
+    }
+    Ok(())
+}
+
 /// The mistake of a file with more pieces than Lust is handed.
 fn too_big() -> String {
     format!(

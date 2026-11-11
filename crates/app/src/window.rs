@@ -2044,6 +2044,13 @@ impl eframe::App for App {
             eframe::set_value(storage, SKIPPED_BUILD_KEY, &skipped);
             storage.flush();
         }
+        // The sound card, once its worker has it open: asked here, before
+        // the frame splits into its kinds, so an exported game and the
+        // editor both get it. What it says goes to the Console, which an
+        // exported game writes to its log.
+        if let Some((level, text)) = self.sound.poll(std::time::Instant::now()) {
+            self.workbench.log(level, text);
+        }
         // An exported game: only the game (decision 0093).
         if self.playtest.is_some() {
             self.playtest_frame(ui);
@@ -2075,8 +2082,11 @@ impl eframe::App for App {
             self.import(&path);
         }
         // A project or area chosen in a window opened before Play waits
-        // until the game stops, so it never replaces the game's copy.
-        let editing = self.workbench.play_state() == editor::PlayState::Editing;
+        // until the game stops, so it never replaces the game's copy, and
+        // until Keep or Undo all is answered, so the edits made while
+        // playing never go with the area unasked.
+        let editing = self.workbench.play_state() == editor::PlayState::Editing
+            && self.workbench.play_changes().is_none();
         if editing && let Some((purpose, folder)) = self.importer.chosen_folder() {
             match purpose {
                 FolderFor::SampleGame => self.make_sample_game(&folder),
@@ -2192,9 +2202,6 @@ impl eframe::App for App {
         }
         self.fit_window(&ctx);
         self.collect_imports();
-        if let Some((level, text)) = self.sound.poll(std::time::Instant::now()) {
-            self.workbench.log(level, text);
-        }
         if self.sounds.poll() {
             self.workbench.set_sounds(self.sounds.states());
             self.workbench.set_sound_events(self.sounds.events());
@@ -2472,7 +2479,7 @@ mod tests {
 
     /// Settings kept in memory, as eframe keeps them on disk.
     #[derive(Default)]
-    struct Memory(std::collections::HashMap<String, String>);
+    pub(super) struct Memory(std::collections::HashMap<String, String>);
 
     impl eframe::Storage for Memory {
         fn get_string(&self, key: &str) -> Option<String> {

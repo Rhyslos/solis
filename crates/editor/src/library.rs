@@ -359,8 +359,9 @@ pub(crate) enum LibraryRequest {
     NewTileset(String),
     /// Make a new tile map in this folder (Phase 9, D4).
     NewTileMap(String),
-    /// Save a tileset changed in Properties (path, the tileset).
-    SaveTileset(String, tiles::Tileset),
+    /// Change a tileset's terrains, asked for in its Properties (path, the
+    /// change).
+    EditTileset(String, crate::map_tab::TerrainEdit),
     /// Change a tile map file's tileset or size in Properties (path,
     /// tileset, size).
     ShapeTileMap(String, Option<AssetId>, [u32; 2]),

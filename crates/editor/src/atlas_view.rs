@@ -38,15 +38,21 @@ pub(crate) fn filled(rgba: &[u8], size: [u32; 2], rect: [u32; 4]) -> bool {
     })
 }
 
-/// Draws the tab: the list on the left, the picture on the right.
+/// Draws the tab: the list on the left, the picture on the right. Delete
+/// takes the picked crop out while the keys are the tab's (`keys`: the
+/// pointer rests over it and nothing is being typed).
 pub(crate) fn atlas_tab(
     ui: &mut Ui,
     editor: &mut AtlasEditor,
     picture: Option<AtlasPicture<'_>>,
     problem: Option<&str>,
     accent: Color32,
+    keys: bool,
 ) -> AtlasOut {
     let mut out = AtlasOut::default();
+    if keys && ui.input(|i| i.key_pressed(egui::Key::Delete)) && editor.delete_picked() {
+        out.changed = true;
+    }
     let full = ui.max_rect();
     let list_width = 230.0_f32.min(full.width() * 0.4);
     let list = Rect::from_min_size(full.min, Vec2::new(list_width, full.height()));
@@ -273,13 +279,6 @@ fn picture_canvas(
     {
         let crop = editor.crop_at(to_pixel(at));
         editor.pick(crop);
-    }
-    if response.hovered()
-        && editor.picked.is_some()
-        && ui.input(|i| i.key_pressed(egui::Key::Delete))
-        && editor.delete_picked()
-    {
-        out.changed = true;
     }
 }
 

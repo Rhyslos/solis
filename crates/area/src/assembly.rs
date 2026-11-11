@@ -8,6 +8,18 @@
 //! them keep working when the assembly changes, and overrides find their
 //! entity again.
 //!
+//! Expanding is also where parents that lead round in a loop are put
+//! right ([`Area::mend_loops`]): only then is every entity there, a
+//! parent may be a part of a copy, and a copy's changes can make a loop
+//! too. Each assembly's contents are mended as they're expanded, and the
+//! whole file at the end, so no area that comes out has one.
+//!
+//! A copy's part is where the copy puts it: one moved to another parent
+//! or out to the top level stays when the part the assembly has it under
+//! is removed from the copy, and goes when what it was moved under goes.
+//! Deleting a copy's root leaves a part moved out from under it as an
+//! ordinary entity ([`despawn`]).
+//!
 //! Expanding counts entities before making any (a copy's changes to parts
 //! too, since one whose part is gone becomes an entity), keeps to the same
 //! limit while it makes them, refuses assemblies that place each other in a
@@ -15,7 +27,9 @@
 //! can make the editor explode.
 
 use crate::document::{Area, EntityData, Origin};
-use crate::text::{AreaFile, FileKind, MAX_ENTITIES, MAX_NESTING, Override};
+use crate::edit::Edit;
+use crate::text::{AreaFile, FileKind, MAX_ENTITIES, MAX_NESTING, Override, ParentChange};
+use crate::tree::Mended;
 use reflect::{AssetId, EntityId, Value};
 use std::collections::{HashMap, HashSet};
 use std::fmt;
@@ -90,6 +104,8 @@ pub struct Expander<'a> {
     /// most it may hold ([`MAX_HELD`]; less in tests).
     held: usize,
     most_held: usize,
+    /// Every entity taken out of a loop of parents so far.
+    mended: Vec<Mended>,
 }
 
 /// The most entities an [`Expander`] keeps expanded at once, every
@@ -159,7 +175,15 @@ impl<'a> Expander<'a> {
             most_made: MAX_ENTITIES,
             held: 0,
             most_held: MAX_HELD,
+            mended: Vec::new(),
         }
+    }
+
+    /// The entities moved to the top level because their parents led
+    /// round in a loop, in everything expanded so far: what to tell the
+    /// user about a file just read.
+    pub fn mended(&self) -> &[Mended] {
+        &self.mended
     }
 
     /// How many entities a copy of assembly `id` is at most, counted
@@ -247,18 +271,23 @@ impl<'a> Expander<'a> {
         }
         let (file, root) = self.file(id)?;
         chain.push(id);
-        let area = self.expand_in(&file, chain)?;
+        let mut area = self.expand_in(&file, chain)?;
         chain.pop();
+        // Its copies are made from a sound tree, whatever its file says.
+        self.mended.extend(area.mend_loops());
         let found = (Arc::new(area), root);
         self.expanded.insert(id, found.clone());
         Ok(found)
     }
 
     /// Every placed assembly in `file` expanded into ordinary entities,
-    /// with its overrides.
+    /// with its overrides, and with no loop of parents: any the file had
+    /// is put right, and listed in [`Self::mended`].
     pub fn expand(&mut self, file: &AreaFile) -> Result<Area, AssemblyError> {
         self.count(file, &mut Vec::new())?;
-        self.expand_in(file, &mut Vec::new())
+        let mut area = self.expand_in(file, &mut Vec::new())?;
+        self.mended.extend(area.mend_loops());
+        Ok(area)
     }
 
     fn expand_in(
@@ -329,12 +358,17 @@ impl<'a> Expander<'a> {
             };
             let path = &paths[&id];
             found.insert(path.clone());
-            // A removed part takes everything under it.
-            if original.parent.is_some_and(|p| skipped.contains(&p)) {
+            let changes = overrides.get(path);
+            // A removed part takes everything still under it. A part this
+            // copy moved (to another parent, or out to the top level) is
+            // where it was put, not where the assembly has it, so it
+            // isn't taken along: it was once, and a part dragged out and
+            // kept was gone when the area opened again (BUG-56).
+            let moved = changes.is_some_and(|c| c.parent != ParentChange::Unchanged);
+            if !moved && original.parent.is_some_and(|p| skipped.contains(&p)) {
                 skipped.insert(id);
                 continue;
             }
-            let changes = overrides.get(path);
             if changes.is_some_and(|c| c.removed) {
                 skipped.insert(id);
                 continue;
@@ -374,7 +408,13 @@ impl<'a> Expander<'a> {
                 return Err(AssemblyError::TooBig);
             }
             let mut data = EntityData::new(changes.name.as_deref().unwrap_or("Missing part"));
-            data.parent = Some(changes.parent.unwrap_or(root));
+            // With nothing said it hangs under the copy's root, so it's
+            // found with its copy; moved somewhere, it's there.
+            data.parent = match changes.parent {
+                ParentChange::Unchanged => Some(root),
+                ParentChange::TopLevel => None,
+                ParentChange::Under(parent) => Some(parent),
+            };
             if let Some(order) = &changes.order {
                 data.order.clone_from(order);
             }
@@ -495,7 +535,7 @@ impl<'a> Expander<'a> {
                     (root, o.path.clone()),
                     Override {
                         name: Some(entity.name.clone()),
-                        parent: entity.parent,
+                        parent: ParentChange::to(entity.parent),
                         order: Some(entity.order.clone()),
                         components: entity.components.clone(),
                         ..Override::default()
@@ -505,6 +545,40 @@ impl<'a> Expander<'a> {
         }
         Ok(file)
     }
+}
+
+/// The edits that delete `roots` and everything under each (none under
+/// another). A part of a placed assembly that was moved out from under
+/// its copy isn't under the copy's root when that goes, so it stays; but
+/// it's part of nothing then, and a file has no way to say otherwise
+/// (it's written as the ordinary entity it has become). So each such
+/// part is made an ordinary entity first, in the same step: what's saved
+/// is then what opens again, and undo brings the copy back with its
+/// parts. One pass over the area, and a walk up from each part of a copy
+/// that goes.
+pub fn despawn(area: &Area, roots: &[EntityId]) -> Vec<Edit> {
+    let going: HashSet<EntityId> = roots.iter().copied().collect();
+    let goes = |id: EntityId| {
+        going.contains(&id) || area.ancestors(id).any(|(above, _)| going.contains(&above))
+    };
+    let mut copy_goes: HashMap<EntityId, bool> = HashMap::new();
+    let mut edits = Vec::new();
+    for (entity, data) in area.iter() {
+        let Some(origin) = &data.origin else {
+            continue;
+        };
+        let its_copy_goes = *copy_goes
+            .entry(origin.instance)
+            .or_insert_with(|| goes(origin.instance));
+        if its_copy_goes && !goes(entity) {
+            edits.push(Edit::SetOrigin {
+                entity,
+                origin: None,
+            });
+        }
+    }
+    edits.extend(roots.iter().map(|&root| Edit::Despawn { root }));
+    edits
 }
 
 /// Sets `component.field` of the entity at `path` inside assembly `file`
@@ -573,8 +647,10 @@ fn apply(data: &mut EntityData, changes: &Override) {
     if let Some(name) = &changes.name {
         data.name.clone_from(name);
     }
-    if let Some(parent) = changes.parent {
-        data.parent = Some(parent);
+    match changes.parent {
+        ParentChange::Unchanged => {}
+        ParentChange::TopLevel => data.parent = None,
+        ParentChange::Under(parent) => data.parent = Some(parent),
     }
     if let Some(order) = &changes.order {
         data.order.clone_from(order);
@@ -600,7 +676,7 @@ fn difference(wanted: &EntityData, actual: &EntityData, root: bool) -> Override 
             changes.name = Some(actual.name.clone());
         }
         if actual.parent != wanted.parent {
-            changes.parent = actual.parent;
+            changes.parent = ParentChange::to(actual.parent);
         }
         if actual.order != wanted.order {
             changes.order = Some(actual.order.clone());
@@ -626,6 +702,10 @@ fn difference(wanted: &EntityData, actual: &EntityData, root: bool) -> Override 
     }
     changes
 }
+
+#[cfg(test)]
+#[path = "assembly_moves_tests.rs"]
+mod moves_tests;
 
 #[cfg(test)]
 mod tests {
@@ -716,6 +796,192 @@ mod tests {
 
     fn strength(area: &Area, entity: EntityId) -> f32 {
         area.get(entity).unwrap().get::<Light>().unwrap().strength
+    }
+
+    #[test]
+    fn a_loop_only_expanding_shows_is_mended_and_named() {
+        // The review of Phase 9, BUG-12. A sign under a copy's lamp, and
+        // the copy itself under the sign: the lamp isn't in the file, so
+        // the loop is there only once the copy is expanded.
+        let lib = library(vec![(asset(100), lamp_post())]);
+        let (post, sign) = (id(20), id(21));
+        let lamp = derive(post, &[id(2)]);
+        let mut area = Area::new();
+        let mut placed = EntityData::new("Post");
+        placed.parent = Some(sign);
+        placed.origin = Some(Origin {
+            assembly: asset(100),
+            instance: post,
+            path: Vec::new(),
+        });
+        area.insert(post, placed);
+        let mut hung = EntityData::new("Sign");
+        hung.parent = Some(lamp);
+        area.insert(sign, hung);
+        // And one whose parent isn't anywhere: kept as written.
+        let mut lost = EntityData::new("Lost");
+        lost.parent = Some(id(999));
+        area.insert(id(22), lost);
+        let file = AreaFile::plain(area);
+        let mut expander = Expander::new(&lib);
+        let area = expander.expand(&file).unwrap();
+        let lowest = [post, sign, lamp].into_iter().min().unwrap();
+        let mended = expander.mended();
+        assert_eq!(mended.len(), 1);
+        assert_eq!(mended[0].entity, lowest);
+        assert_eq!(mended[0].name, area.get(lowest).unwrap().name);
+        assert_eq!(area.get(lowest).unwrap().parent, None);
+        assert_eq!(crate::Tree::of(&area).reachable().len(), area.len());
+        assert_eq!(area.get(id(22)).unwrap().parent, Some(id(999)));
+        // Sound files have nothing to mend.
+        let mut sound = Expander::new(&lib);
+        sound.expand(&town_of_posts()).unwrap();
+        assert_eq!(sound.mended(), []);
+    }
+
+    /// An area with two lamp posts placed in it.
+    fn town_of_posts() -> AreaFile {
+        let mut area = Area::new();
+        for n in [40, 41] {
+            let mut placed = EntityData::new("Post");
+            placed.origin = Some(Origin {
+                assembly: asset(100),
+                instance: id(n),
+                path: Vec::new(),
+            });
+            area.insert(id(n), placed);
+        }
+        AreaFile::plain(area)
+    }
+
+    #[test]
+    fn copies_of_an_assembly_with_a_loop_inside_are_sound() {
+        // The assembly's own file has its lamp and a shade under each
+        // other. It's mended once, as the assembly is expanded, so every
+        // copy is the same sound tree and saves with no changes.
+        let mut looped = lamp_post();
+        let mut shade = EntityData::new("Shade");
+        shade.parent = Some(id(2));
+        looped.area.insert(id(3), shade);
+        looped.area.get_mut(id(2)).unwrap().parent = Some(id(3));
+        let lib = library(vec![(asset(100), looped)]);
+        let mut expander = Expander::new(&lib);
+        let area = expander.expand(&town_of_posts()).unwrap();
+        assert_eq!(area.len(), 6);
+        let mended = expander.mended();
+        assert_eq!(mended.len(), 1, "once, not once a copy");
+        assert_eq!((mended[0].entity, mended[0].name.as_str()), (id(2), "Lamp"));
+        assert_eq!(crate::Tree::of(&area).reachable().len(), 6);
+        for post in [id(40), id(41)] {
+            let lamp = area.get(derive(post, &[id(2)])).unwrap();
+            assert_eq!(lamp.parent, None);
+            let shade = area.get(derive(post, &[id(3)])).unwrap();
+            assert_eq!(shade.parent, Some(derive(post, &[id(2)])));
+        }
+        let saved = Expander::new(&lib).collapse(&area, FileKind::Area).unwrap();
+        assert!(saved.overrides.is_empty(), "{:?}", saved.overrides);
+        assert_eq!(Expander::new(&lib).expand(&saved).unwrap(), area);
+    }
+
+    /// `area` saved and opened again: its file as collapsed, and what
+    /// reading that file's text back expands to.
+    fn saved_and_opened(area: &Area, lib: Lookup<'_>) -> (AreaFile, Area) {
+        let registry = crate::builtin::registry().unwrap();
+        let file = Expander::new(lib).collapse(area, FileKind::Area).unwrap();
+        let written = text::write_file(&file, &registry, &|_| None);
+        let read = text::read_file(&written, &registry).unwrap();
+        assert_eq!(read, file, "{written}");
+        let opened = Expander::new(lib).expand(&read).unwrap();
+        (file, opened)
+    }
+
+    fn placed_at(x: f32, y: f32) -> Transform {
+        Transform {
+            position: glam::Vec3::new(x, y, 0.0),
+            ..Transform::default()
+        }
+    }
+
+    #[test]
+    fn a_part_moved_to_the_top_level_is_saved_there() {
+        // The review of Phase 9, BUG-13: "no parent" was written the same
+        // as "the assembly's parent" (nothing), so a part dragged out of
+        // its copy came back under its old parent when the area was
+        // opened again, with its place in the world taken as a place
+        // under that parent: it had jumped.
+        let lib = library(vec![(asset(100), lamp_post())]);
+        let post = id(40);
+        let lamp = derive(post, &[id(2)]);
+        let mut area = Expander::new(&lib).expand(&town_of_posts()).unwrap();
+        area.get_mut(post).unwrap().set(&placed_at(10.0, 20.0));
+        assert_eq!(area.get(lamp).unwrap().parent, Some(post));
+        // Out to the top level, to a place of its own in the world.
+        let moved = area.get_mut(lamp).unwrap();
+        moved.parent = None;
+        moved.set(&placed_at(7.0, 5.0));
+        let there = area.world_matrix(lamp);
+        let (file, opened) = saved_and_opened(&area, &lib);
+        let change = |file: &AreaFile| file.overrides.get(&(post, vec![id(2)])).cloned();
+        assert_eq!(change(&file).unwrap().parent, ParentChange::TopLevel);
+        assert_eq!(opened.get(lamp).unwrap().parent, None);
+        assert_eq!(opened.world_matrix(lamp), there);
+        assert_eq!(opened, area);
+        // Under another entity instead.
+        let mut shed = EntityData::new("Shed").with(&placed_at(-3.0, 0.0));
+        shed.order = "a5".into();
+        area.insert(id(60), shed);
+        area.get_mut(lamp).unwrap().parent = Some(id(60));
+        let there = area.world_matrix(lamp);
+        let (file, opened) = saved_and_opened(&area, &lib);
+        assert_eq!(change(&file).unwrap().parent, ParentChange::Under(id(60)));
+        assert_eq!(opened.get(lamp).unwrap().parent, Some(id(60)));
+        assert_eq!(opened.world_matrix(lamp), there);
+        assert_eq!(opened, area);
+        // And back where the assembly has it: nothing is left to write.
+        let home = Expander::new(&lib)
+            .expected(&area, area.get(lamp).unwrap().origin.as_ref().unwrap())
+            .unwrap();
+        *area.get_mut(lamp).unwrap() = home;
+        let (file, opened) = saved_and_opened(&area, &lib);
+        assert_eq!(change(&file), None);
+        assert_eq!(opened.get(lamp).unwrap().parent, Some(post));
+        assert_eq!(opened, area);
+        // The other copy was never touched.
+        assert!(file.overrides.keys().all(|(copy, _)| *copy == post));
+    }
+
+    #[test]
+    fn a_part_gone_from_its_assembly_stays_at_the_top_level_if_moved_there() {
+        // BUG-13 again: changes to a part the assembly no longer has are
+        // kept as an entity, under its copy until it's moved.
+        let lib = library(vec![(asset(100), lamp_post())]);
+        let mut file = town_of_posts();
+        file.overrides.insert(
+            (id(40), vec![id(9)]),
+            Override {
+                name: Some("Bulb".into()),
+                ..Override::default()
+            },
+        );
+        let mut area = Expander::new(&lib).expand(&file).unwrap();
+        let bulb = derive(id(40), &[id(9)]);
+        assert_eq!(area.get(bulb).unwrap().parent, Some(id(40)));
+        let (_, opened) = saved_and_opened(&area, &lib);
+        assert_eq!(opened, area, "under its copy, as before");
+        area.get_mut(bulb).unwrap().parent = None;
+        let (file, opened) = saved_and_opened(&area, &lib);
+        let change = &file.overrides[&(id(40), vec![id(9)])];
+        assert_eq!(change.parent, ParentChange::TopLevel);
+        assert_eq!(opened.get(bulb).unwrap().parent, None);
+        assert_eq!(opened, area);
+        // A file from before, which says nothing of its parent: under
+        // its copy, as it always was.
+        let mut old = file.clone();
+        if let Some(change) = old.overrides.get_mut(&(id(40), vec![id(9)])) {
+            change.parent = ParentChange::Unchanged;
+        }
+        let opened = Expander::new(&lib).expand(&old).unwrap();
+        assert_eq!(opened.get(bulb).unwrap().parent, Some(id(40)));
     }
 
     #[test]

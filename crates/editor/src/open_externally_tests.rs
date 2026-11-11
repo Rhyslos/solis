@@ -44,7 +44,7 @@ fn asked(actions: &[WorkbenchAction]) -> Vec<String> {
 fn open_code(file: &str) -> (Workbench, Vec<String>) {
     let mut w = with_a_project();
     w.apply_property(PropertyRequest::OpenCode(file.into()), 0);
-    let asked = asked(&w.outbox);
+    let asked = asked(&w.open.outbox);
     (w, asked)
 }
 
@@ -110,9 +110,9 @@ fn open_code_never_asks_for_anything_outside_the_assets_folder() {
     ] {
         let (w, asked) = open_code(file);
         assert!(
-            w.outbox.is_empty() && asked.is_empty(),
+            w.open.outbox.is_empty() && asked.is_empty(),
             "{file}: {:?}",
-            w.outbox
+            w.open.outbox
         );
     }
 }
@@ -121,7 +121,7 @@ fn open_code_never_asks_for_anything_outside_the_assets_folder() {
 fn open_code_without_a_project_says_where_the_code_is_and_asks_for_nothing() {
     let mut w = Workbench::new(info(), None);
     w.apply_property(PropertyRequest::OpenCode("kit/mover.lst".into()), 0);
-    assert!(w.outbox.is_empty());
+    assert!(w.open.outbox.is_empty());
     assert!(
         w.log_lines()
             .iter()

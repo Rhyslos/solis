@@ -1,0 +1,23 @@
+-- An area. Safe to edit by hand: one block per entity, one line per field.
+area version 2;
+
+entity 0J4M7Q2X9T5B1 {
+    name = "Crate";
+    order = "a0";
+    assembly = "5KD8V0Q2MX7TA";  -- assemblies/crate.solassembly
+    Transform.position = [4.0, 0.0, 0.0];
+}
+
+entity 0J4M7Q2X9T5B1/6WJ8T1K5N2D4P {
+    parent = "";
+    order = "a1";
+    Transform.position = [4.0, 2.0, 0.5];
+}
+
+entity 4RC6Y1N8HT3KW {
+    name = "Shelf";
+    order = "a2";
+    Transform.position = [0.0, 3.0, 0.0];
+    Transform.rotation = [0.0, 0.0, 0.0, 1.0];
+    Transform.scale = [1.0, 1.0, 1.0];
+}

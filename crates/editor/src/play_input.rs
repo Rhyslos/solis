@@ -29,12 +29,12 @@ impl Workbench {
     /// The project's input actions changed (it opened, or its
     /// `input.solinput` was read): the next Play uses them.
     pub fn set_bindings(&mut self, bindings: input::Bindings) {
-        self.bindings = bindings;
+        self.open.bindings = bindings;
     }
 
     /// The project's input actions.
     pub fn bindings(&self) -> &input::Bindings {
-        &self.bindings
+        &self.open.bindings
     }
 
     /// The gamepad's state this frame (none: not connected), from the
@@ -42,7 +42,7 @@ impl Workbench {
     /// has the mouse and keys: a gamepad has nothing of the editor's.
     pub fn set_gamepad(&mut self, pad: Option<input::Pad>) {
         self.pad_now.clone_from(&pad);
-        if self.playing.is_some() {
+        if self.open.playing.is_some() {
             self.devices.set_pad(pad);
         } else {
             self.devices.set_pad(None);
@@ -58,13 +58,13 @@ impl Workbench {
     /// Gives the game the mouse and keys (the Game panel was clicked
     /// while playing): the pointer is hidden and held in the window.
     pub(crate) fn give_game_input(&mut self, ctx: &egui::Context) {
-        if self.playing.is_none() || self.game_input {
+        if self.open.playing.is_none() || self.game_input {
             return;
         }
         self.game_input = true;
         // A screen with buttons keeps the pointer free (free_pointer).
-        self.game_screens.freed = self.game_screens.wants_pointer();
-        if !self.game_screens.freed {
+        self.open.game_screens.freed = self.open.game_screens.wants_pointer();
+        if !self.open.game_screens.freed {
             ctx.send_viewport_cmd(egui::ViewportCommand::CursorGrab(egui::CursorGrab::Locked));
             ctx.send_viewport_cmd(egui::ViewportCommand::CursorVisible(false));
         }
@@ -85,25 +85,25 @@ impl Workbench {
         ctx: &egui::Context,
         out: crate::game_panel::GamePanelOut,
     ) {
-        if self.playing.is_none() {
-            self.game_screens.hover = None;
+        if self.open.playing.is_none() {
+            self.open.game_screens.hover = None;
             return;
         }
-        let wants = self.game_screens.wants_pointer();
+        let wants = self.open.game_screens.wants_pointer();
         // The pointer is only over buttons while it can be seen.
         let pointer = out
             .pointer
-            .filter(|_| wants && (!self.game_input || self.game_screens.freed));
-        self.game_screens.point_at(pointer, out.area);
+            .filter(|_| wants && (!self.game_input || self.open.game_screens.freed));
+        self.open.game_screens.point_at(pointer, out.area);
         if out.clicked {
-            if self.game_screens.hover.is_some() {
+            if self.open.game_screens.hover.is_some() {
                 self.press_hovered();
             } else {
                 self.give_game_input(ctx);
             }
         }
-        if self.game_input && wants != self.game_screens.freed {
-            self.game_screens.freed = wants;
+        if self.game_input && wants != self.open.game_screens.freed {
+            self.open.game_screens.freed = wants;
             let (grab, visible) = if wants {
                 (egui::CursorGrab::None, true)
             } else {
@@ -121,7 +121,7 @@ impl Workbench {
             self.game_input = false;
             self.release_pointer = true;
         }
-        self.game_screens.freed = false;
+        self.open.game_screens.freed = false;
         self.devices.release_all();
     }
 
@@ -136,7 +136,7 @@ impl Workbench {
         if !self.game_input {
             return;
         }
-        if self.playing.is_none() {
+        if self.open.playing.is_none() {
             self.give_back_input();
             return;
         }
@@ -177,10 +177,10 @@ impl Workbench {
                 // doesn't turn the game's camera.
                 egui::Event::PointerButton {
                     button, pressed, ..
-                } if !(pressed && self.game_screens.hover.is_some()) => {
+                } if !(pressed && self.open.game_screens.hover.is_some()) => {
                     self.devices.set(mouse_name(button), pressed);
                 }
-                egui::Event::MouseMoved(delta) if !self.game_screens.freed => {
+                egui::Event::MouseMoved(delta) if !self.open.game_screens.freed => {
                     self.devices.mouse_moved(glam::Vec2::new(delta.x, delta.y));
                 }
                 egui::Event::MouseWheel { unit, delta, .. } => {
@@ -218,7 +218,7 @@ impl Workbench {
         self.player_settings = self
             .player_settings
             .with(script::settings::Setting::Fullscreen(on));
-        if let Some(playing) = &mut self.playing {
+        if let Some(playing) = &mut self.open.playing {
             playing.view.settings = self.player_settings;
         }
         if self.play_only {
@@ -242,14 +242,14 @@ impl Workbench {
     /// recording in the project's `recordings` folder (Play > Play and
     /// record inputs).
     pub fn play_and_record(&mut self) {
-        if self.project.is_none() {
+        if self.open.project.is_none() {
             self.log(
                 LogLevel::Warning,
                 "Recordings are kept in a project: open or make one first (File > New project…).",
             );
             return;
         }
-        if self.playing.is_some() {
+        if self.open.playing.is_some() {
             self.log(
                 LogLevel::Info,
                 "A recording starts from Play: press Stop first, then Play and record inputs.",
@@ -261,7 +261,7 @@ impl Workbench {
         let area = self.recorded_area();
         // Played back on its own (a project's check), the area is read as
         // saved: unsaved changes would make it play back differently.
-        if area.is_some() && self.document.is_dirty() {
+        if area.is_some() && self.open.document.is_dirty() {
             self.log(
                 LogLevel::Warning,
                 "The area has unsaved changes: save it before recording, or this recording \
@@ -269,7 +269,7 @@ impl Workbench {
             );
         }
         self.play();
-        if let Some(playing) = &mut self.playing {
+        if let Some(playing) = &mut self.open.playing {
             playing.recording = Some(input::Recording {
                 seed: playing.start_seed,
                 start: playing.world.checksum(),
@@ -286,8 +286,8 @@ impl Workbench {
     /// The open area's file inside the project's assets, with `/` between
     /// folders, when it's saved there (unsaved changes aside).
     fn recorded_area(&self) -> Option<String> {
-        let assets = &self.project.as_ref()?.assets;
-        let file = self.document.file()?;
+        let assets = &self.open.project.as_ref()?.assets;
+        let file = self.open.document.file()?;
         // The same folder may be spelt differently (letter case on Windows,
         // a link): compared as the system resolves them, when it can.
         let canonical = |p: &std::path::Path| p.canonicalize().unwrap_or_else(|_| p.to_path_buf());
@@ -325,13 +325,13 @@ impl Workbench {
             );
             return;
         }
-        if self.playing.is_some() {
+        if self.open.playing.is_some() {
             self.stop();
         }
-        let kept = self.fixed_seed.replace(recording.seed);
+        let kept = self.open.fixed_seed.replace(recording.seed);
         self.play();
-        self.fixed_seed = kept;
-        let Some(playing) = &mut self.playing else {
+        self.open.fixed_seed = kept;
+        let Some(playing) = &mut self.open.playing else {
             return;
         };
         let same_start = playing.world.checksum() == recording.start;
@@ -356,13 +356,13 @@ impl Workbench {
     /// What the editor asks of the app, taken (for tools that run the game
     /// without a window, which answer saves and loads themselves).
     pub fn take_outbox(&mut self) -> Vec<WorkbenchAction> {
-        std::mem::take(&mut self.outbox)
+        std::mem::take(&mut self.open.outbox)
     }
 
     /// The recording being made, as its file's text (for tools and tests
     /// that run the game without a window; Stop saves it as usual).
     pub fn recording_text(&self) -> Option<String> {
-        let recording = self.playing.as_ref()?.recording.as_ref()?;
+        let recording = self.open.playing.as_ref()?.recording.as_ref()?;
         Some(recording.write())
     }
 
@@ -370,12 +370,12 @@ impl Workbench {
     /// it matched the recording on every one, `Err` with the tick it
     /// stopped matching by; `None` while it plays or with none.
     pub fn replayed(&self) -> Option<Result<usize, usize>> {
-        self.playing.as_ref()?.replayed
+        self.open.playing.as_ref()?.replayed
     }
 
     /// The bindings a running game uses now (with game code's rebinding).
     pub fn playing_bindings(&self) -> Option<Arc<input::Bindings>> {
-        self.playing.as_ref().map(|p| Arc::clone(&p.bindings))
+        self.open.playing.as_ref().map(|p| Arc::clone(&p.bindings))
     }
 }
 

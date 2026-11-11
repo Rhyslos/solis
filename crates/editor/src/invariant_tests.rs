@@ -149,7 +149,7 @@ fn a_crate(at: Vec3) -> EntityData {
 /// fixed seed.
 fn level() -> Workbench {
     let mut w = Workbench::new(info(), None);
-    w.project = Some(crate::library::ProjectInfo {
+    w.open.project = Some(crate::library::ProjectInfo {
         name: "Invariants".into(),
         root: std::env::temp_dir(),
         assets: std::env::temp_dir(),
@@ -251,8 +251,8 @@ fn level() -> Workbench {
             entities: vec![one],
         })
         .collect();
-    w.document.edit("Add", edits, None, None).unwrap();
-    w.fixed_seed = Some(7);
+    w.open.document.edit("Add", edits, None, None).unwrap();
+    w.open.fixed_seed = Some(7);
     w
 }
 
@@ -351,6 +351,9 @@ struct Player {
     w: Workbench,
     saves: BTreeMap<String, String>,
     sums: Sums,
+    /// The same level with no game running, given every edit made here:
+    /// what Keep should come to.
+    alone: Option<Workbench>,
 }
 
 impl Player {
@@ -359,6 +362,7 @@ impl Player {
             w,
             saves: BTreeMap::new(),
             sums: Sums::new(),
+            alone: None,
         }
     }
 
@@ -373,11 +377,12 @@ impl Player {
         // A load puts the clock back: one call is a tick, whichever way.
         for _ in 0..4 {
             self.w.play_for((world::TICK * 0.6) as f32);
-            if self.tick() != before || self.w.playing.is_none() {
+            if self.tick() != before || self.w.open.playing.is_none() {
                 break;
             }
             if self
                 .w
+                .open
                 .outbox
                 .iter()
                 .any(|a| matches!(a, WorkbenchAction::LoadGame(_)))
@@ -386,7 +391,7 @@ impl Player {
             }
         }
         self.serve();
-        if let Some(playing) = &mut self.w.playing {
+        if let Some(playing) = &mut self.w.open.playing {
             let world = playing.world.checksum();
             let game = playing.game.as_mut().map_or(0, |g| g.checksum());
             let tick = playing.world.clock().ticks;
@@ -397,7 +402,7 @@ impl Player {
     /// What the app does with the outbox: saves are kept, loads given
     /// back to game code.
     fn serve(&mut self) {
-        let asked = std::mem::take(&mut self.w.outbox);
+        let asked = std::mem::take(&mut self.w.open.outbox);
         for action in asked {
             match action {
                 WorkbenchAction::SaveGame { slot, text } => {
@@ -423,6 +428,7 @@ impl Player {
     /// The crates there are now, in ID order.
     fn crates(&self) -> Vec<EntityId> {
         self.w
+            .open
             .document
             .area()
             .iter()
@@ -460,18 +466,23 @@ impl Player {
             Edit::AddCrate { x, y } => {
                 *made += 1;
                 let at = Vec3::new(f32::from(x) * 0.5, f32::from(y) * 0.5, 1.0);
-                let _ = self.w.document.edit(
-                    "Add crate",
-                    vec![area::Edit::Spawn {
-                        entities: vec![(id(CRATES + 40 + *made), a_crate(at))],
-                    }],
-                    None,
-                    None,
-                );
+                let add = vec![area::Edit::Spawn {
+                    entities: vec![(id(CRATES + 40 + *made), a_crate(at))],
+                }];
+                if let Some(alone) = &mut self.alone {
+                    let _ = alone
+                        .open
+                        .document
+                        .edit("Add crate", add.clone(), None, None);
+                }
+                let _ = self.w.open.document.edit("Add crate", add, None, None);
                 None
             }
         };
         if let Some(request) = request {
+            if let Some(alone) = &mut self.alone {
+                alone.apply_property(request.clone(), 1000 + *made);
+            }
             self.w.apply_property(request, 1000 + *made);
             *made += 1;
         }
@@ -481,7 +492,7 @@ impl Player {
     fn play(&mut self, steps: &[Step]) {
         let mut made = 0;
         for step in steps {
-            if self.w.playing.is_none() {
+            if self.w.open.playing.is_none() {
                 return;
             }
             match step {
@@ -550,7 +561,7 @@ impl Player {
             .map(|l| l.text.clone())
             .collect();
         if let Some(world) = self.w.world() {
-            for (e, _) in self.w.document.area().iter() {
+            for (e, _) in self.w.open.document.area().iter() {
                 if let Some(m) = world.global(e)
                     && !m.is_finite()
                 {
@@ -589,7 +600,7 @@ proptest! {
         let mut first = Player::new(level());
         first.start(false);
         first.play(&before);
-        prop_assume!(first.w.playing.is_some());
+        prop_assume!(first.w.open.playing.is_some());
         let saved = first.w.save_text().expect("a save");
         let slots = first.saves.clone();
         let cut = first.tick();
@@ -621,7 +632,7 @@ proptest! {
         p.start(true);
         p.play(&steps);
         p.w.stop();
-        let recording = p.w.outbox.iter().find_map(|a| match a {
+        let recording = p.w.open.outbox.iter().find_map(|a| match a {
             WorkbenchAction::SaveRecording(text) => Some(text.clone()),
             _ => None,
         });
@@ -630,7 +641,7 @@ proptest! {
         let Some(recording) = recording else {
             return Ok(());
         };
-        p.w.outbox.clear();
+        p.w.open.outbox.clear();
         p.w.replay(&recording, "game.solrec");
         for _ in 0..4000 {
             if p.w.play_state() == crate::play::PlayState::Paused {
@@ -649,24 +660,46 @@ proptest! {
     }
 
     /// Stop puts the area, the undo history and the selection back as
-    /// they were before Play, whatever happened while playing.
+    /// they were before Play, whatever happened while playing. Keep then
+    /// makes the edits made meanwhile, and nothing the game did (spawned,
+    /// despawned, loaded): the area is the one the same edits come to with
+    /// no game running, and undoing them is the area from before Play.
     #[test]
     fn stop_puts_everything_back(steps in prop::collection::vec(step(true), 1..16)) {
         let mut p = Player::new(level());
+        let mut alone = level();
+        alone.replace_document(p.w.open.document.clone());
+        p.alone = Some(alone);
         p.w.select(id(CRATES));
-        let registry = p.w.document.registry.clone();
-        let area = area::text::write(p.w.document.area(), &registry, &|_| None);
-        let undo = p.w.document.history().undo_len();
-        let selected: Vec<EntityId> = p.w.document.selection.iter().collect();
+        let registry = p.w.open.document.registry.clone();
+        let area = area::text::write(p.w.open.document.area(), &registry, &|_| None);
+        let undo = p.w.open.document.history().undo_len();
+        let selected: Vec<EntityId> = p.w.open.document.selection.iter().collect();
         p.start(false);
         p.play(&steps);
         p.w.stop();
         prop_assert_eq!(
-            area::text::write(p.w.document.area(), &registry, &|_| None),
+            &area::text::write(p.w.open.document.area(), &registry, &|_| None),
+            &area
+        );
+        prop_assert_eq!(p.w.open.document.history().undo_len(), undo);
+        prop_assert_eq!(p.w.open.document.selection.iter().collect::<Vec<_>>(), selected);
+        prop_assert!(p.w.world().is_none());
+        let kept = p.w.play_changes().map_or(0, <[String]>::len);
+        p.w.keep_play_changes();
+        let alone = p.alone.as_ref().expect("made above");
+        prop_assert_eq!(
+            area::text::write(p.w.open.document.area(), &registry, &|_| None),
+            area::text::write(alone.open.document.area(), &registry, &|_| None)
+        );
+        prop_assert_eq!(p.w.open.document.history().undo_len(), undo + kept);
+        prop_assert_eq!(alone.open.document.history().undo_len(), undo + kept);
+        for _ in 0..kept {
+            p.w.undo();
+        }
+        prop_assert_eq!(
+            area::text::write(p.w.open.document.area(), &registry, &|_| None),
             area
         );
-        prop_assert_eq!(p.w.document.history().undo_len(), undo);
-        prop_assert_eq!(p.w.document.selection.iter().collect::<Vec<_>>(), selected);
-        prop_assert!(p.w.world().is_none());
     }
 }

@@ -38,7 +38,10 @@ fn an_empty_entity_and_many_entities_have_their_own_hint() {
     w.select(empty);
     assert!(w.hints()[0].contains("is empty"), "{:?}", w.hints());
     let lamp = w.add_point_light();
-    w.document.selection.select_all(vec![empty, lamp], lamp);
+    w.open
+        .document
+        .selection
+        .select_all(vec![empty, lamp], lamp);
     assert!(w.hints()[0].starts_with("2 entities are selected"));
 }
 

@@ -501,6 +501,50 @@ fn a_file_has_so_many_pieces() {
 }
 
 #[test]
+fn what_a_writer_is_told_fits_is_never_too_big_to_read() {
+    // The review of Phase 9, BUG-55: a tile map could be saved as a file
+    // with more pieces than are read, and never opened again. A writer
+    // now asks `fits` first, which keeps the reader's own two limits.
+    let count = |text: &str| {
+        let mut pieces = Pieces::new(text);
+        let mut count = 0usize;
+        while pieces.next().is_some() {
+            count += 1;
+        }
+        count
+    };
+    let around = count(&format!("{HEAD}lock int array a = [];\nend\n"));
+    // A file of exactly `pieces` pieces: numbers, a `,` between them.
+    let file = |pieces: usize| {
+        let inside = pieces - around;
+        let mut numbers = "1,".repeat(inside / 2);
+        if inside % 2 == 1 {
+            numbers.push('1');
+        }
+        format!("{HEAD}lock int array a = [{numbers}];\nend\n")
+    };
+    // At the limit to the piece: it fits, and the check lets it through.
+    let most = file(MAX_PIECES);
+    assert_eq!(count(&most), MAX_PIECES);
+    assert_eq!(crate::lust_data::fits(&most, 64 << 20), Ok(()));
+    assert_eq!(check(&most), Ok(()));
+    // One piece more doesn't fit, in the reader's own words.
+    let past = file(MAX_PIECES + 1);
+    let refused = crate::lust_data::fits(&past, 64 << 20).unwrap_err();
+    assert_eq!(refused, error(0, too_big()));
+    // Text no longer than the limit can't hold more pieces than it.
+    assert_eq!(within_pieces(&"1,".repeat(MAX_PIECES / 2)), Ok(()));
+    // The length, too: just long enough fits; a byte less is refused as
+    // the reader refuses it.
+    let short = format!("{HEAD}end\n");
+    assert_eq!(crate::lust_data::fits(&short, short.len()), Ok(()));
+    assert!(read(&short, "test", CLASSES, short.len()).is_ok());
+    let refused = crate::lust_data::fits(&short, short.len() - 1).unwrap_err();
+    let by_reader = read(&short, "test", CLASSES, short.len() - 1).map(drop);
+    assert_eq!(by_reader, Err(refused));
+}
+
+#[test]
 fn what_lust_takes_long_over_never_reaches_it() {
     // Each of these took Lust (rev 930afae) from seconds to more than a
     // minute to refuse, its time growing with the square of the file's

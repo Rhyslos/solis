@@ -61,7 +61,8 @@ fn with_a_walker() -> Workbench {
     let mut data = EntityData::new("Walker").with(&Transform::default());
     data.components
         .insert("Walker".into(), reflect::ComponentData::default());
-    w.document
+    w.open
+        .document
         .edit(
             "Add",
             vec![area::Edit::Spawn {
@@ -156,12 +157,12 @@ fn the_game_has_the_keys_until_esc_and_the_editor_s_are_off_meanwhile() {
     assert_eq!(h.state().0.tool(), tool, "editor keys are off");
     h.key_up(egui::Key::R);
     let walker = EntityId(reflect::Id::from_raw(WALKER_ID).unwrap());
-    h.state_mut().0.document.selection.select_only(walker);
+    h.state_mut().0.open.document.selection.select_only(walker);
     h.key_press(egui::Key::Escape);
     h.run();
     assert!(!h.state().0.game_has_input(), "Esc gives them back");
     assert!(
-        h.state().0.document.selection.contains(walker),
+        h.state().0.open.document.selection.contains(walker),
         "and isn't also the editor's Esc (Select nothing)"
     );
     h.key_press(egui::Key::R);
@@ -176,9 +177,9 @@ fn the_game_has_the_keys_until_esc_and_the_editor_s_are_off_meanwhile() {
 /// Plays the walker for `ticks` while recording, pressing W then Space
 /// on the way; the recording's text.
 fn record(w: &mut Workbench, ticks: u64) -> String {
-    w.fixed_seed = Some(5);
+    w.open.fixed_seed = Some(5);
     w.play();
-    let playing = w.playing.as_mut().unwrap();
+    let playing = w.open.playing.as_mut().unwrap();
     playing.recording = Some(input::Recording {
         area: None,
         seed: playing.world.seed(),
@@ -193,6 +194,7 @@ fn record(w: &mut Workbench, ticks: u64) -> String {
     w.devices.release_all();
     w.stop();
     let saved = w
+        .open
         .outbox
         .iter()
         .find_map(|a| match a {
@@ -200,7 +202,7 @@ fn record(w: &mut Workbench, ticks: u64) -> String {
             _ => None,
         })
         .expect("Stop saves the recording");
-    w.outbox.clear();
+    w.open.outbox.clear();
     saved
 }
 
@@ -214,7 +216,7 @@ fn a_recording_plays_back_exactly_and_a_changed_game_is_caught() {
     // Played back (in frames of two ticks, where it was recorded in
     // frames of under one: the game mustn't depend on that): the same,
     // tick by tick, then paused with the verdict.
-    w.fixed_seed = None;
+    w.open.fixed_seed = None;
     w.replay(&text, "walk.solrec");
     for _ in 0..200 {
         if w.play_state() == crate::play::PlayState::Paused {
@@ -231,11 +233,11 @@ fn a_recording_plays_back_exactly_and_a_changed_game_is_caught() {
         w.log_lines().iter().map(|l| &l.text).collect::<Vec<_>>()
     );
     assert_eq!(
-        w.fixed_seed, None,
+        w.open.fixed_seed, None,
         "the recorded seed was for that play only"
     );
     w.stop();
-    w.outbox.clear();
+    w.open.outbox.clear();
     // The walker's code changed since: the replay says where it stopped
     // matching.
     w.set_program(Some(program(&WALKER.replace("* 0.1", "* 0.2"))));
@@ -261,7 +263,7 @@ fn a_recording_plays_back_exactly_and_a_changed_game_is_caught() {
             .text
             .contains("Couldn't play back bad.solrec")
     );
-    assert!(w.playing.is_none());
+    assert!(w.open.playing.is_none());
 }
 
 #[test]
@@ -275,13 +277,13 @@ fn recording_needs_a_project_and_starts_from_play() {
             .text
             .contains("kept in a project")
     );
-    assert!(w.playing.is_none());
+    assert!(w.open.playing.is_none());
 }
 
 #[test]
 fn the_input_actions_window_binds_what_is_pressed_and_saves() {
     let mut w = Workbench::new(info(), None);
-    w.project = Some(crate::library::ProjectInfo {
+    w.open.project = Some(crate::library::ProjectInfo {
         name: "Test".into(),
         root: std::env::temp_dir(),
         assets: std::env::temp_dir(),
@@ -291,8 +293,13 @@ fn the_input_actions_window_binds_what_is_pressed_and_saves() {
     h.run();
     // Jump's +: listening, as its button starts (Jump is the third
     // action); the click itself isn't bound, so a frame or two pass.
-    h.state_mut().0.input_window.as_mut().unwrap().listening =
-        Some((2, crate::input_window::Slot::Inputs, 0));
+    h.state_mut()
+        .0
+        .open
+        .input_window
+        .as_mut()
+        .unwrap()
+        .listening = Some((2, crate::input_window::Slot::Inputs, 0));
     h.run();
     h.run();
     h.run();
@@ -316,7 +323,7 @@ fn input_actions_changed_while_playing_reach_the_game_and_paused_input_waits_for
     w.play();
     tick(&mut w);
     // Bind Move's up to I in the window's way: the game has it at once.
-    let mut bindings = w.bindings.clone();
+    let mut bindings = w.open.bindings.clone();
     bindings.get_mut("Move").unwrap().up = vec!["I".into()];
     w.change_bindings(bindings);
     w.devices.set("I", true);
@@ -356,12 +363,13 @@ fn a_recording_keeps_play_s_seed_not_the_one_a_start_set() {
     let mut w = with_a_walker();
     w.set_program(Some(program(code)));
     let id = EntityId(reflect::Id::from_raw(WALKER_ID).unwrap());
-    let mut data = w.document.area().get(id).unwrap().clone();
+    let mut data = w.open.document.area().get(id).unwrap().clone();
     data.components.clear();
     data.set(&Transform::default());
     data.components
         .insert("Drifter".into(), reflect::ComponentData::default());
-    w.document
+    w.open
+        .document
         .edit(
             "Drifter",
             vec![
@@ -374,18 +382,19 @@ fn a_recording_keeps_play_s_seed_not_the_one_a_start_set() {
             None,
         )
         .unwrap();
-    w.project = Some(crate::library::ProjectInfo {
+    w.open.project = Some(crate::library::ProjectInfo {
         name: "Seeds".into(),
         root: std::env::temp_dir(),
         assets: std::env::temp_dir(),
     });
-    w.fixed_seed = Some(7);
+    w.open.fixed_seed = Some(7);
     w.play_and_record();
     for _ in 0..40 {
         tick(&mut w);
     }
     w.stop();
     let text = w
+        .open
         .outbox
         .iter()
         .find_map(|a| match a {
@@ -394,7 +403,7 @@ fn a_recording_keeps_play_s_seed_not_the_one_a_start_set() {
         })
         .unwrap();
     assert_eq!(input::Recording::read(&text).unwrap().seed, 7);
-    w.fixed_seed = None;
+    w.open.fixed_seed = None;
     w.replay(&text, "drift.solrec");
     for _ in 0..200 {
         if w.play_state() == crate::play::PlayState::Paused {
@@ -456,6 +465,7 @@ fn alt_enter_switches_the_player_s_fullscreen_and_the_game_doesn_t_see_it() {
     assert!(
         h.state()
             .0
+            .open
             .playing
             .as_ref()
             .unwrap()

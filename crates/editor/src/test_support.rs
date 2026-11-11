@@ -1,7 +1,9 @@
 //! Helpers shared by the editor's whole-window tests: a test window, a
 //! stand-in renderer that answers picks, and small areas to work on.
 
+use crate::layout;
 use crate::models::ModelInfo;
+use crate::panel::Panel;
 use crate::viewport::{ViewportRenderer, ViewportView};
 use crate::viewport_tools::PickAnswer;
 use crate::workbench::{AppInfo, Workbench};
@@ -66,6 +68,25 @@ pub(crate) fn harness(workbench: Workbench) -> egui_kittest::Harness<'static, St
         .tap(|h| h.state_mut().0 = workbench)
 }
 
+/// Draws the editor with `panel` in front and the pointer resting over
+/// the middle of it.
+pub(crate) fn rest_over(
+    mut h: egui_kittest::Harness<'static, State>,
+    panel: Panel,
+) -> egui_kittest::Harness<'static, State> {
+    h.run();
+    layout::bring_to_front(&mut h.state_mut().0.dock, panel);
+    h.run();
+    let path = h.state().0.dock.find_tab(&panel).expect("the tab is open");
+    let body = h.state().0.dock[path.surface][path.node]
+        .get_leaf()
+        .expect("a tab group")
+        .viewport;
+    h.hover_at(body.center());
+    h.run();
+    h
+}
+
 pub(crate) trait Tap: Sized {
     fn tap(mut self, f: impl FnOnce(&mut Self)) -> Self {
         f(&mut self);
@@ -97,7 +118,7 @@ pub(crate) fn crate_model() -> ModelInfo {
 pub(crate) fn with_a_crate() -> (Workbench, EntityId) {
     let mut w = Workbench::new(info(), None);
     let id = w.add_model(crate_model(), &[], 0.1, &[]);
-    w.document.selection.clear();
+    w.open.document.selection.clear();
     (w, id)
 }
 

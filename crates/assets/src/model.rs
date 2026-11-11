@@ -2,6 +2,7 @@
 //! placing them, materials and textures, in Solis's own units (metres,
 //! Z up).
 
+use crate::lights::LampKind;
 use bytemuck::{Pod, Zeroable};
 use glam::{Mat3, Mat4, Vec3};
 use std::fmt;
@@ -295,6 +296,10 @@ impl Model {
                 && l.color.iter().all(|x| x.is_finite())
                 && l.strength.is_finite()
                 && l.range.is_none_or(f32::is_finite)
+                && match l.kind {
+                    LampKind::Spot { inner, outer } => inner.is_finite() && outer.is_finite(),
+                    LampKind::Sun | LampKind::Point => true,
+                }
         });
         meshes
             && nodes
@@ -520,5 +525,37 @@ mod tests {
             "the file is 3000 MB, more than the 1000 MB limit"
         );
         assert!(ImportError::Empty.to_string().contains("no triangles"));
+    }
+
+    #[test]
+    fn a_spotlight_s_cone_counts_as_one_of_a_model_s_numbers() {
+        // BUG-02: a cone that isn't a number got past this check, out of
+        // an import cache, and crashed the editor.
+        let torch = |inner: f32, outer: f32| Model {
+            name: "Torch".into(),
+            meshes: Vec::new(),
+            nodes: Vec::new(),
+            materials: Vec::new(),
+            textures: Vec::new(),
+            lamps: vec![crate::lights::Lamp {
+                name: "Torch".into(),
+                kind: LampKind::Spot { inner, outer },
+                position: Vec3::ZERO,
+                direction: -Vec3::Z,
+                color: [1.0; 3],
+                strength: 10.0,
+                range: None,
+            }],
+            bounds: Bounds {
+                min: Vec3::ZERO,
+                max: Vec3::ONE,
+            },
+            warnings: Vec::new(),
+        };
+        assert!(torch(0.2, 0.6).is_finite());
+        for bad in [f32::NAN, f32::INFINITY, f32::NEG_INFINITY] {
+            assert!(!torch(bad, 0.6).is_finite(), "inner {bad}");
+            assert!(!torch(0.2, bad).is_finite(), "outer {bad}");
+        }
     }
 }

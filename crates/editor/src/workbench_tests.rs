@@ -152,8 +152,9 @@ fn play_says_what_it_does() {
     h.run();
     let last = h.state().log_lines().last().map(|l| l.text.clone());
     assert!(
-        last.as_deref()
-            .is_some_and(|l| l.starts_with("Playing. Changes made now are undone")),
+        last.as_deref().is_some_and(
+            |l| l.starts_with("Playing. Stop puts the area back as it is now, and asks")
+        ),
         "{last:?}"
     );
 }
@@ -659,6 +660,70 @@ fn lights_from_a_file_join_the_model_and_leave_with_it() {
     assert_eq!(w.selection(), None);
 }
 
+/// BUG-02: a spotlight from a model's file whose cone angles aren't
+/// numbers (a damaged import cache) crashed the editor as the model was
+/// placed. Whatever the angles, the light placed is a usable one.
+#[test]
+fn a_file_s_spotlight_with_any_cone_angles_is_placed_safely() {
+    let odd = [
+        -2.0,
+        0.0,
+        0.3,
+        1.0,
+        50.0,
+        f32::MAX,
+        f32::NAN,
+        f32::INFINITY,
+        f32::NEG_INFINITY,
+    ];
+    let mut lights = Vec::new();
+    for inner in odd {
+        for outer in odd {
+            lights.push(FileLight {
+                name: String::new(),
+                kind: FileLightKind::Spot { inner, outer },
+                position: Vec3::ONE,
+                direction: -Vec3::Z,
+                color: [1.0; 3],
+                strength: 100.0,
+                range: None,
+            });
+        }
+    }
+    let mut w = Workbench::new(info(), None);
+    let model = w.add_model(crate_info(), &[], 0.1, &lights);
+    let area = w.document().area();
+    let children = area.children(Some(model));
+    assert_eq!(children.len(), lights.len());
+    for (child, from) in children.iter().zip(&lights) {
+        let entity = area.get(*child).unwrap();
+        // As the file's values hold it, and as it's read back.
+        let written = &entity.components["Light"];
+        let read = entity.get::<Light>().unwrap();
+        let (narrow, wide) = Light::CONE_RANGE;
+        for (cone, soft_edge) in [
+            (
+                written
+                    .get("cone")
+                    .and_then(reflect::Value::as_f32)
+                    .unwrap(),
+                written
+                    .get("soft_edge")
+                    .and_then(reflect::Value::as_f32)
+                    .unwrap(),
+            ),
+            (read.cone, read.soft_edge),
+        ] {
+            assert!((narrow..=wide).contains(&cone), "{from:?}: {cone}");
+            assert!((0.0..=cone).contains(&soft_edge), "{from:?}: {soft_edge}");
+        }
+    }
+    // And the viewport draws them.
+    let view = AreaView::of(area, w.models());
+    assert_eq!(view.lamps.len(), lights.len());
+    assert!(view.lamps.iter().all(|l| l.inner <= l.outer));
+}
+
 #[test]
 fn a_sun_from_a_file_sets_the_area_sun() {
     let mut w = Workbench::new(info(), None);
@@ -759,7 +824,8 @@ fn the_environment_is_shown_in_properties() {
 fn a_component_nobody_knows_is_kept_and_can_be_removed() {
     let mut w = Workbench::new(info(), None);
     let id = w.add_entity();
-    w.document
+    w.open
+        .document
         .edit(
             "Add Wobble",
             vec![Edit::AddComponent {
@@ -1189,7 +1255,7 @@ fn crowded(count: usize) -> Workbench {
     let mut w = Workbench::new(info(), None);
     let info = crate_info();
     let asset = info.asset;
-    w.models.insert(asset, info);
+    w.open.models.insert(asset, info);
     let mut entities = Vec::new();
     let mut parent = None;
     for i in 0..count {
@@ -1219,7 +1285,7 @@ fn crowded(count: usize) -> Workbench {
         });
     }
     // Spawned parents first: each group's head comes before its members.
-    w.document.edit("Fill", entities, None, None).unwrap();
+    w.open.document.edit("Fill", entities, None, None).unwrap();
     w
 }
 
@@ -1589,8 +1655,196 @@ fn with_unsaved_changes_a_reload_asks_keep_mine_or_load_the_file() {
 }
 
 #[test]
+fn a_file_with_a_loop_of_parents_opens_mended_and_says_so() {
+    // The review of Phase 9, BUG-12: a crate and a shelf written inside
+    // each other, and seven more entities each inside itself.
+    let mut w = Workbench::new(info(), None);
+    let mut area = area::Area::new();
+    let moved = |name: &str, x: f32| {
+        area::EntityData::new(name).with(&Transform {
+            position: Vec3::new(x, 0.0, 0.0),
+            scale: Vec3::splat(2.0),
+            ..Transform::default()
+        })
+    };
+    let crate_ = area.spawn(moved("Crate", 1.0));
+    let shelf = area.spawn(moved("Shelf", 2.0));
+    area.get_mut(crate_).unwrap().parent = Some(shelf);
+    area.get_mut(shelf).unwrap().parent = Some(crate_);
+    let mut owns = Vec::new();
+    for n in 0..7 {
+        let own = area.spawn(moved(&format!("Own {n}"), 3.0));
+        area.get_mut(own).unwrap().parent = Some(own);
+        owns.push(own);
+    }
+    let read = w
+        .expand_file(&area::text::AreaFile::plain(area))
+        .expect("a loop is mended, not refused");
+    let top = crate_.min(shelf);
+    assert_eq!(read.get(top).unwrap().parent, None);
+    assert_eq!(read.get(crate_.max(shelf)).unwrap().parent, Some(top));
+    let said: Vec<&str> = w.log_lines().iter().map(|l| l.text.as_str()).collect();
+    // The first five by name, the rest counted, so a file full of loops
+    // doesn't fill the Console.
+    assert_eq!(said.len(), 6, "{said:?}");
+    assert!(
+        said.iter().all(|line| line.contains("top level")),
+        "{said:?}"
+    );
+    // Which five are named goes by ID, and IDs are made at random: the
+    // five lowest of the eight tops, in order. (Asking for the crate's
+    // line by name failed three runs in eight.)
+    let mut tops: Vec<EntityId> = owns;
+    tops.push(top);
+    tops.sort();
+    for (line, id) in said.iter().zip(&tops[..5]) {
+        let name = &read.get(*id).unwrap().name;
+        assert_eq!(
+            *line,
+            format!(
+                "{name} ({id}) was inside itself: its parents led back to it. It's now at \
+                 the top level."
+            )
+        );
+    }
+    assert_eq!(
+        said[5],
+        "3 more entities were inside themselves; each is now at the top level."
+    );
+    // The editor and the game place every one of them alike.
+    w.open_area(read, "/levels/damaged.solarea".into());
+    let game = world::World::from_area(w.document().area());
+    for (id, _) in w.document().area().iter() {
+        assert_eq!(Some(w.document().world_matrix(id)), game.global(id));
+    }
+}
+
+#[test]
+fn entities_in_a_loop_made_some_other_way_are_placed_alike_and_not_walked_round() {
+    // No file read has a loop, and no edit makes one; an area handed
+    // over with one is still placed the same by the editor and the game,
+    // and the walks up from a selection end.
+    let mut area = area::builtin::starter_area();
+    let ids: Vec<EntityId> = (0..3)
+        .map(|n| {
+            area.spawn(
+                area::EntityData::new(&format!("Ring {n}")).with(&Transform {
+                    position: Vec3::new(1.0 + n as f32, 0.0, 0.0),
+                    scale: Vec3::splat(3.0),
+                    ..Transform::default()
+                }),
+            )
+        })
+        .collect();
+    for (n, &id) in ids.iter().enumerate() {
+        area.get_mut(id).unwrap().parent = Some(ids[(n + 1) % 3]);
+    }
+    let mut lost = area::EntityData::new("Lost");
+    lost.parent = Some(EntityId::random());
+    let lost = area.spawn(lost);
+    let mut w = Workbench::new(info(), None);
+    w.open_area(area, "/levels/ring.solarea".into());
+    let game = world::World::from_area(w.document().area());
+    for (id, data) in w.document().area().iter() {
+        let editor = w.document().world_matrix(id);
+        assert_eq!(Some(editor), game.global(id), "{}", data.name);
+    }
+    let own = w.document().area().get(ids[0]).unwrap().get::<Transform>();
+    assert_eq!(w.document().world_matrix(ids[0]), own.unwrap().matrix());
+    // One in a loop is above itself, so it's never a root to move; one
+    // whose parent isn't there is.
+    w.open.document.selection.select_all([ids[0], lost], ids[0]);
+    assert_eq!(w.selected_roots(), [lost]);
+}
+
+/// The open area saved and opened again: what its file's text reads
+/// back and expands to.
+fn saved_and_opened(w: &mut Workbench) -> area::Area {
+    let file = w.area_file().unwrap();
+    let registry = w.document().registry.clone();
+    let text = area::text::write_file(&file, &registry, &|_| None);
+    let read = area::text::read_file(&text, &registry).unwrap();
+    assert_eq!(read, file, "{text}");
+    w.expand_file(&read).unwrap()
+}
+
+#[test]
+fn a_part_dragged_out_of_its_copy_is_where_it_was_left_after_opening_again() {
+    // The review of Phase 9, BUG-13: a copy's part dragged to the top
+    // level in the Area panel was back under its copy after saving and
+    // opening the area again.
+    let (mut w, _, root, lamp) = with_a_lamp_post();
+    assert_eq!(w.document().area().get(lamp).unwrap().parent, Some(root));
+    w.reparent(&[lamp], None);
+    assert_eq!(w.document().area().get(lamp).unwrap().parent, None);
+    let opened = saved_and_opened(&mut w);
+    assert_eq!(opened.get(lamp).unwrap().parent, None);
+    assert_eq!(opened, *w.document().area());
+    // Under another entity.
+    let light = w.add_point_light();
+    w.reparent(&[lamp], Some(light));
+    let opened = saved_and_opened(&mut w);
+    assert_eq!(opened.get(lamp).unwrap().parent, Some(light));
+    assert_eq!(opened, *w.document().area());
+}
+
+#[test]
+fn a_part_dragged_out_outlives_the_part_it_was_under_and_its_copy() {
+    // The review of Phase 9, BUG-56. A lamp post whose lamp hangs from an
+    // arm: the lamp dragged out to the top level, then the arm deleted.
+    // Saved and opened again, the lamp was gone with the arm.
+    let id = |n| EntityId(reflect::Id::from_raw(n).unwrap());
+    let mut parts = area::Area::new();
+    for (n, name, parent) in [(1, "Post", None), (2, "Arm", Some(1)), (3, "Lamp", Some(2))] {
+        let mut part = area::EntityData::new(name).with(&Transform::default());
+        part.parent = parent.map(id);
+        parts.insert(id(n), part);
+    }
+    let file = area::text::AreaFile {
+        kind: area::text::FileKind::Assembly { root: id(1) },
+        area: parts,
+        overrides: Default::default(),
+    };
+    let asset = AssetId(reflect::Id::from_raw(901).unwrap());
+    let mut w = Workbench::new(info(), None);
+    w.set_assembly(asset, std::sync::Arc::new(file));
+    w.place_assembly(asset);
+    let root = w.selection().unwrap();
+    let arm = area::assembly::derive(root, &[id(2)]);
+    let lamp = area::assembly::derive(root, &[id(3)]);
+    w.reparent(&[lamp], None);
+    w.delete(arm);
+    assert!(w.document().area().contains(lamp));
+    let opened = saved_and_opened(&mut w);
+    assert!(opened.contains(lamp), "the lamp went with the arm");
+    assert_eq!(opened, *w.document().area());
+    // The copy itself deleted: the lamp isn't under it, so it stays, as
+    // an ordinary entity (a part of nothing), and the Console says so.
+    assert!(w.document().area().get(lamp).unwrap().origin.is_some());
+    w.delete(root);
+    let area = w.document().area();
+    assert!(!area.contains(root));
+    assert_eq!(area.get(lamp).unwrap().origin, None);
+    let said = &w.log_lines().last().unwrap().text;
+    assert!(
+        said.ends_with("A part moved out of the copy stays, as an ordinary entity."),
+        "{said}"
+    );
+    let opened = saved_and_opened(&mut w);
+    assert_eq!(opened, *w.document().area());
+    // Undo: the copy is back, and the lamp is its part again.
+    w.undo();
+    let area = w.document().area();
+    assert!(area.contains(root));
+    assert_eq!(
+        area.get(lamp).unwrap().origin.as_ref().unwrap().instance,
+        root
+    );
+}
+
+#[test]
 fn placing_an_assembly_makes_a_copy_that_saves_as_one_line() {
-    let (w, _, root, lamp) = with_a_lamp_post();
+    let (mut w, _, root, lamp) = with_a_lamp_post();
     let area = w.document().area();
     assert_eq!(area.get(lamp).unwrap().parent, Some(root));
     assert_eq!(
@@ -1978,7 +2232,7 @@ fn a_sound_picked_in_the_library_shows_in_properties_and_plays() {
     h.run();
     assert!(h.state().1.contains(&WorkbenchAction::StopSound));
     // Picking something else in the area (here, nothing) shows that.
-    h.state_mut().0.document.selection.clear();
+    h.state_mut().0.open.document.selection.clear();
     h.run();
     assert!(h.query_by_label("Sample rate").is_none());
 }

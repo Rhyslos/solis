@@ -24,11 +24,11 @@ impl Workbench {
             Tool::Scale => GizmoTool::Scale,
             Tool::Transform => GizmoTool::All,
         };
-        let world = self.document.world_matrices();
+        let world = self.open.document.world_matrices();
         let t = targets_placed(
-            self.document.area(),
+            self.open.document.area(),
             &|id| world.get(&id).copied().unwrap_or_default(),
-            &self.document.selection,
+            &self.open.document.selection,
             self.viewport.snapping.object_axes,
         )?;
         Some(Gizmo {
@@ -42,10 +42,11 @@ impl Workbench {
     /// box, or a point for anything else; and each selected collider's
     /// shape.
     fn outlines(&self) -> Vec<Outline> {
-        let area = self.document.area();
-        let hidden = self.area_panel.in_effect(&self.document).0;
-        let placed = self.document.world_matrices();
-        self.document
+        let area = self.open.document.area();
+        let hidden = self.open.area_panel.in_effect(&self.open.document).0;
+        let placed = self.open.document.world_matrices();
+        self.open
+            .document
             .selection
             .iter()
             .filter(|id| !hidden.contains(id))
@@ -58,7 +59,7 @@ impl Workbench {
                     .get::<Model>()
                     .and_then(|m| m.asset)
                     .filter(|r| r.part.is_none())
-                    .and_then(|r| self.models.get(&r.asset));
+                    .and_then(|r| self.open.models.get(&r.asset));
                 let mut marks = vec![match whole_model {
                     Some(info) => Outline::Box {
                         world,
@@ -81,7 +82,7 @@ impl Workbench {
                 // flat box, or a circle (drawn as a ball, a ring seen from
                 // above).
                 if let Some(flat) = entity.get::<area::builtin::Collider2D>() {
-                    let px = self.pixels.pixel_size();
+                    let px = self.open.pixels.pixel_size();
                     let shape = area::builtin::Collider {
                         shape: match flat.shape {
                             area::builtin::Shape2D::Circle => area::builtin::ColliderShape::Sphere,
@@ -114,7 +115,7 @@ impl Workbench {
             &sprite,
             sheet,
             glam::Mat4::IDENTITY,
-            self.pixels.pixel_size(),
+            self.open.pixels.pixel_size(),
             None,
         )?;
         let corner = glam::Vec2::new(drawn.corner[0], drawn.corner[1]);
@@ -137,43 +138,51 @@ impl Workbench {
         for event in std::mem::take(&mut self.viewport.tools.events) {
             match event {
                 ViewportEvent::GizmoStart => {
-                    let world = self.document.world_matrices();
-                    self.moving = targets_placed(
-                        self.document.area(),
+                    let world = self.open.document.world_matrices();
+                    self.open.moving = targets_placed(
+                        self.open.document.area(),
                         &|id| world.get(&id).copied().unwrap_or_default(),
-                        &self.document.selection,
+                        &self.open.document.selection,
                         self.viewport.snapping.object_axes,
                     )
                     .map(|t| (t, self.gesture));
                 }
                 ViewportEvent::GizmoChange { change, flip } => {
-                    if let Some((t, gesture)) = self.moving.take() {
+                    if let Some((t, gesture)) = self.open.moving.take() {
                         let snapping = &self.viewport.snapping;
                         let change = if self.viewport.camera.kind == crate::camera::ViewKind::TwoD {
-                            snapped_in_2d(change, &t, snapping, self.pixels, flip)
+                            snapped_in_2d(change, &t, snapping, self.open.pixels, flip)
                         } else {
                             snapped(change, &t, snapping, flip)
                         };
                         self.set_transforms(&t, Some(change), gesture);
-                        self.moving = Some((t, gesture));
+                        self.open.moving = Some((t, gesture));
                     }
                 }
-                ViewportEvent::GizmoEnd => self.moving = None,
+                ViewportEvent::GizmoEnd => self.open.moving = None,
                 ViewportEvent::GizmoCancel => {
-                    if let Some((t, gesture)) = self.moving.take() {
+                    if let Some((t, gesture)) = self.open.moving.take() {
                         self.set_transforms(&t, None, gesture);
                     }
                 }
                 ViewportEvent::Click { hit, mode } => {
-                    self.document.selection =
-                        after_click(self.document.area(), &self.document.selection, hit, mode);
-                    self.area_panel.reveal = self.document.selection.primary();
+                    self.open.document.selection = after_click(
+                        self.open.document.area(),
+                        &self.open.document.selection,
+                        hit,
+                        mode,
+                    );
+                    self.open.area_panel.reveal = self.open.document.selection.primary();
                 }
                 ViewportEvent::Drop { asset, at } => self.place_dropped(asset, at, None),
                 ViewportEvent::Box { hits, mode } => {
-                    self.document.selection =
-                        after_box(self.document.area(), &self.document.selection, &hits, mode);
-                    self.area_panel.reveal = self.document.selection.primary();
+                    self.open.document.selection = after_box(
+                        self.open.document.area(),
+                        &self.open.document.selection,
+                        &hits,
+                        mode,
+                    );
+                    self.open.area_panel.reveal = self.open.document.selection.primary();
                 }
             }
         }
@@ -183,7 +192,7 @@ impl Workbench {
     /// started, for `None`), merged into the drag's one undo step. A
     /// cancelled drag ends where it started, so it leaves no step.
     fn set_transforms(&mut self, targets: &Targets, change: Option<Change>, gesture: u64) {
-        let area = self.document.area();
+        let area = self.open.document.area();
         let new: Vec<_> = match change {
             Some(change) => moved(targets, change),
             None => targets.entities.iter().map(|t| (t.id, t.start)).collect(),
@@ -213,10 +222,10 @@ impl Workbench {
     }
 
     /// Esc cancels a drag or selects nothing; Ctrl+A selects everything;
-    /// X, Y and Z lock an axis and L switches world and object axes. Not
-    /// while typing, nor while flying.
+    /// X, Y and Z lock an axis and L switches world and object axes, where
+    /// the keys are the area's. Not while flying.
     pub(crate) fn tool_extra_keys(&mut self, ui: &egui::Ui) {
-        if ui.ctx().egui_wants_keyboard_input() || self.viewport.is_flying() {
+        if !self.keys.is_area() || self.viewport.is_flying() {
             return;
         }
         let (escape, all, x, y, z, l) = ui.input_mut(|i| {
@@ -233,8 +242,12 @@ impl Workbench {
                 plain(i, egui::Key::L),
             )
         });
-        if escape && !self.paint_escape() && !self.viewport.tools.cancel() {
-            self.document.selection.clear();
+        // Esc does one thing: the Library's drawer, while it's up, is
+        // tucked away by it (where the drawer is drawn); else a stroke, a
+        // copy held or a painting tool is given up; else a drag; and only
+        // then is nothing selected.
+        if escape && !self.drawer_open && !self.paint_escape() && !self.viewport.tools.cancel() {
+            self.open.document.selection.clear();
         }
         if all {
             self.select_all();

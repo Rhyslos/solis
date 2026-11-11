@@ -3,12 +3,20 @@
 //! The editor keeps one until the tree changes, so the Area panel, the
 //! viewport and "the first sun" don't each walk the area again every
 //! frame.
+//!
+//! Also the two things that keep a loop of parents (a damaged file) from
+//! doing harm. [`Area::mend_loops`] takes the loops out of an area as
+//! it's read, so that no area in use has one. And [`Area::ancestors`] is
+//! the one walk up through an entity's parents, which ends in a loop
+//! instead of going round: an entity it finds in one stands alone, placed
+//! by its own Transform, here and in the game's world alike.
 
 use crate::builtin::Transform;
-use crate::document::Area;
+use crate::document::{Area, EntityData};
 use glam::Mat4;
 use reflect::EntityId;
 use std::collections::HashMap;
+use std::fmt;
 
 /// An area's tree at one moment. It doesn't follow later changes: work it
 /// out again when entities are added, deleted or given another parent.
@@ -90,79 +98,158 @@ impl Tree {
 
     /// Where every entity of `area` (the area this tree is of) is in the
     /// world, worked out parents first, so each is one multiplication.
-    /// The same as [`Area::world_matrix`] for each.
+    /// The same as [`Area::world_matrix`] for each: an entity caught in a
+    /// loop of parents stands alone, at its own Transform.
     pub fn world_matrices(&self, area: &Area) -> HashMap<EntityId, Mat4> {
         let mut world: HashMap<EntityId, Mat4> = HashMap::with_capacity(self.order.len());
-        for &id in self.reachable() {
+        for (at, &id) in self.order.iter().enumerate() {
             let Some(entity) = area.get(id) else {
                 continue;
             };
             let local = entity
                 .get::<Transform>()
                 .map_or(Mat4::IDENTITY, |t| t.matrix());
-            let parent = entity.parent.and_then(|p| world.get(&p));
+            // Past the reachable ones there is no "parents first": each
+            // of those is in a loop or under one.
+            let parent = entity
+                .parent
+                .filter(|_| at < self.reachable)
+                .and_then(|p| world.get(&p));
             world.insert(id, parent.map_or(local, |p| *p * local));
-        }
-        for &id in &self.order[self.reachable..] {
-            world.insert(id, area.world_matrix(id));
         }
         world
     }
 }
 
-#[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::document::EntityData;
-    use glam::Vec3;
+/// The entities above one, nearest first: see [`Area::ancestors`].
+#[derive(Debug, Clone)]
+pub struct Ancestors<'a> {
+    area: &'a Area,
+    next: Option<EntityId>,
+    /// One entity passed on the way: meeting it again means the walk is
+    /// going round a loop. It moves up to where the walk is after 1, 2,
+    /// 4, 8… steps, so any loop is found within a few turns of it, with
+    /// nothing kept but this (Brent's way of finding a cycle).
+    mark: EntityId,
+    since_mark: usize,
+    reach: usize,
+    looped: bool,
+}
 
-    fn at(x: f32) -> Transform {
-        Transform {
-            position: Vec3::new(x, 0.0, 0.0),
-            ..Transform::default()
-        }
-    }
-
-    #[test]
-    fn the_tree_lists_parents_first_and_places_everything_like_the_area() {
-        let mut area = Area::default();
-        let ship = area.spawn(EntityData::new("Ship").with(&at(10.0)));
-        let mut mast = EntityData::new("Mast").with(&at(1.0));
-        mast.parent = Some(ship);
-        let mast = area.spawn(mast);
-        let mut sail = EntityData::new("Sail").with(&at(0.5));
-        sail.parent = Some(mast);
-        let sail = area.spawn(sail);
-        let buoy = area.spawn(EntityData::new("Buoy"));
-        let tree = Tree::of(&area);
-        assert_eq!(tree.order(), area.depth_first().as_slice());
-        assert_eq!(tree.children(Some(ship)), [mast]);
-        assert_eq!(
-            tree.first_of([sail, buoy, mast]),
-            area.first_in_tree([sail, buoy, mast])
-        );
-        assert_eq!(tree.first_of([EntityId::random()]), None);
-        let world = tree.world_matrices(&area);
-        for id in [ship, mast, sail, buoy] {
-            assert_eq!(world[&id], area.world_matrix(id));
-        }
-        assert!(!tree.in_loop(sail));
-    }
-
-    #[test]
-    fn a_loop_of_parents_is_listed_last_and_still_placed() {
-        let mut area = Area::default();
-        let a = area.spawn(EntityData::new("A").with(&at(1.0)));
-        let b = area.spawn(EntityData::new("B").with(&at(2.0)));
-        let top = area.spawn(EntityData::new("Top"));
-        area.get_mut(a).unwrap().parent = Some(b);
-        area.get_mut(b).unwrap().parent = Some(a);
-        let tree = Tree::of(&area);
-        assert_eq!(tree.reachable(), [top]);
-        assert_eq!(tree.order().len(), 3);
-        assert!(tree.in_loop(a) && tree.in_loop(b));
-        let world = tree.world_matrices(&area);
-        assert_eq!(world[&a], area.world_matrix(a));
-        assert_eq!(world.len(), 3);
+impl Ancestors<'_> {
+    /// Whether the walk ended because the parents lead round in a loop
+    /// (known once it has ended).
+    pub fn looped(&self) -> bool {
+        self.looped
     }
 }
+
+impl<'a> Iterator for Ancestors<'a> {
+    type Item = (EntityId, &'a EntityData);
+
+    fn next(&mut self) -> Option<Self::Item> {
+        let id = self.next.take()?;
+        if id == self.mark {
+            self.looped = true;
+            return None;
+        }
+        let entity = self.area.get(id)?;
+        if self.since_mark == self.reach {
+            self.mark = id;
+            self.reach = self.reach.saturating_mul(2);
+            self.since_mark = 0;
+        }
+        self.since_mark += 1;
+        self.next = entity.parent;
+        Some((id, entity))
+    }
+}
+
+/// An entity [`Area::mend_loops`] moved to the top level.
+#[derive(Debug, Clone, PartialEq, Eq)]
+pub struct Mended {
+    /// The entity.
+    pub entity: EntityId,
+    /// Its name.
+    pub name: String,
+    /// The parent it had, which led back to it.
+    pub parent: EntityId,
+}
+
+impl fmt::Display for Mended {
+    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
+        write!(
+            f,
+            "{} ({}) was inside itself: its parents led back to it. It's now at the top level",
+            self.name, self.entity
+        )
+    }
+}
+
+impl Area {
+    /// The entities above `id`: its parent, that one's parent, and so on
+    /// up to the top level or a parent that isn't in the area. In a
+    /// damaged area whose parents lead round in a loop the walk ends
+    /// (having passed an entity of the loop a few times at most) and
+    /// [`Ancestors::looped`] says so. Every walk up the tree goes through
+    /// here, so none can hang.
+    pub fn ancestors(&self, id: EntityId) -> Ancestors<'_> {
+        Ancestors {
+            area: self,
+            next: self.get(id).and_then(|e| e.parent),
+            mark: id,
+            since_mark: 1,
+            reach: 1,
+            looped: false,
+        }
+    }
+
+    /// Takes every loop of parents out of the area, and says what it
+    /// did. A loop can't be made in the editor (the edit is refused), so
+    /// one is a damaged or hand-edited file: each loop's entity with the
+    /// lowest ID is moved to the top level, which leaves the others under
+    /// it, as close to the file as a tree can be. The readers call this,
+    /// so that no area in use has a loop. One pass over the area.
+    pub fn mend_loops(&mut self) -> Vec<Mended> {
+        // Each entity is walked up from once: `walk` says which walk
+        // first passed it, so meeting one of this same walk again is a
+        // loop, and meeting one of an earlier walk is a way already known
+        // to end.
+        let mut walk: HashMap<EntityId, usize> = HashMap::with_capacity(self.len());
+        let mut cut = Vec::new();
+        let mut path = Vec::new();
+        for (number, (start, _)) in self.iter().enumerate() {
+            path.clear();
+            let mut at = Some(start);
+            while let Some(id) = at.filter(|id| self.contains(*id)) {
+                match walk.get(&id) {
+                    Some(&earlier) if earlier != number => break,
+                    Some(_) => {
+                        let from = path.iter().position(|&p| p == id).unwrap_or(0);
+                        cut.extend(path[from..].iter().copied().min());
+                        break;
+                    }
+                    None => {}
+                }
+                walk.insert(id, number);
+                path.push(id);
+                at = self.get(id).and_then(|e| e.parent);
+            }
+        }
+        cut.into_iter()
+            .filter_map(|entity: EntityId| {
+                let data = self.get_mut(entity)?;
+                let parent = data.parent.take()?;
+                Some(Mended {
+                    entity,
+                    name: data.name.clone(),
+                    parent,
+                })
+            })
+            .collect()
+    }
+}
+
+#[cfg(test)]
+#[path = "tree_tests.rs"]
+mod tests;

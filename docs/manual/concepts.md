@@ -102,7 +102,7 @@
 - <a id="playtest"></a>**Playtest build:** a folder holding your game and a program named after it, for someone else to play without the editor. It runs the game's code as Play does, so it's made in seconds; a finished release comes later. [More](playtest-export.md).
 - <a id="focus"></a>**Focus (of a screen's buttons):** the button the keys or a gamepad are on, shown with a blue ring. The arrow keys or the stick move it to the nearest button that way, and Space, Enter or A chooses it. See [Game screens](screens.md).
 - <a id="canvas"></a>**Canvas (UI editor):** where a screen is drawn in the editor's **UI** workspace to pick its pieces and change them. Each change rewrites only the letters it must in the screen's Lust file. See [The UI editor](ui-editor.md).
-- **Play mode:** running the area as a game inside the editor. Press Play to start and Stop to finish; everything changed while playing is undone by Stop. See [Play mode](play-mode.md).
+- **Play mode:** running the area as a game inside the editor. Press Play to start and Stop to finish. Stop puts the area back as it was, then asks whether to keep the changes you made yourself meanwhile; what the game did (entities it spawned or removed, values it changed) is never kept. See [Play mode](play-mode.md).
 - **Game:** what players see and do. In the editor it's shown in the **Game** panel, through the game's camera, without the editor's grid and markers.
 - **Camera:** an entity the game looks through. The game uses the first camera in the area. Its **field of view** is how wide it sees.
 - **World:** the game's own copy of the area while it runs, kept in a form a game can run over quickly. It's made when you press Play and thrown away on Stop.

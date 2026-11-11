@@ -265,7 +265,7 @@ impl Workbench {
             .remove(&workspace)
             .unwrap_or_else(|| workspace.standard());
         self.workspace = workspace;
-        if workspace == Workspace::Ui && self.screen_doc.is_some() {
+        if workspace == Workspace::Ui && self.open.screen_doc.is_some() {
             layout::open_first_beside(&mut self.dock, Panel::Canvas, Panel::Viewport);
             layout::open_first_beside(&mut self.dock, Panel::Elements, Panel::Area);
         }
@@ -285,12 +285,13 @@ impl Workbench {
     /// components alone when none is used. For the Code panel, so the Code
     /// workspace shows what each file does in this area.
     pub(crate) fn code_uses(&self) -> BTreeMap<String, String> {
-        let Some(program) = &self.program else {
+        let Some(program) = &self.open.program else {
             return BTreeMap::new();
         };
         let mut by_file: BTreeMap<String, Vec<(String, usize)>> = BTreeMap::new();
         for (component, (file, _)) in &program.places {
             let users = self
+                .open
                 .document
                 .area()
                 .iter()

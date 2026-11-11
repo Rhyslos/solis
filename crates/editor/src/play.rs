@@ -5,7 +5,9 @@
 //! ([`world::World`]). While it runs, the editor keeps working: changes
 //! reach the game, which is built again from the area when it changes.
 //! Stop throws the world away and puts the copy back, so everything is
-//! exactly as it was before Play. Saving and opening wait until then.
+//! exactly as it was before Play; the edits the user made meanwhile wait
+//! for Keep or Undo all (`play_changes.rs`). Saving and opening wait
+//! until then, and quitting stops the game and waits for that answer.
 
 use crate::console::LogLevel;
 use crate::document::Document;
@@ -40,6 +42,8 @@ pub(crate) struct Playing {
     /// Step was pressed: the next frame runs one tick while paused.
     pub(crate) step: bool,
     /// The document as it was when Play was pressed, put back on Stop.
+    /// Only its file changes meanwhile: it follows the area's file when
+    /// the Library moves or deletes it (`Workbench::file_moved`).
     pub(crate) before: Box<Document>,
     /// The assemblies as they were when Play was pressed, to rebuild
     /// copies from on Stop if any changed meanwhile.
@@ -157,7 +161,7 @@ pub(crate) fn waits_for_stop(action: &WorkbenchAction) -> bool {
 impl Workbench {
     /// Whether the game is running, and paused.
     pub fn play_state(&self) -> PlayState {
-        match &self.playing {
+        match &self.open.playing {
             None => PlayState::Editing,
             Some(p) if p.paused => PlayState::Paused,
             Some(_) => PlayState::Playing,
@@ -166,13 +170,13 @@ impl Workbench {
 
     /// The running game's world, if it's running.
     pub fn world(&self) -> Option<&world::World> {
-        self.playing.as_ref().map(|p| &p.world)
+        self.open.playing.as_ref().map(|p| &p.world)
     }
 
     /// Why Play can't be pressed now, if it can't: for its buttons to be
     /// greyed out saying so.
     pub(crate) fn why_not_play(&self) -> Option<&'static str> {
-        if self.play_changes.is_some() {
+        if self.open.play_changes.is_some() {
             Some("Keep or undo the last play's changes first")
         } else if self.play_state() == PlayState::Playing {
             Some("Already playing")
@@ -185,14 +189,14 @@ impl Workbench {
     /// Game panel comes to the front.
     pub fn play(&mut self) {
         // Changes from the last play wait for Keep or Undo all first.
-        if self.play_changes.is_some() {
+        if self.open.play_changes.is_some() {
             self.log(
                 LogLevel::Info,
                 "Keep or undo the last play's changes first, then press Play.",
             );
             return;
         }
-        if let Some(playing) = &mut self.playing {
+        if let Some(playing) = &mut self.open.playing {
             if playing.paused {
                 playing.paused = false;
                 self.log(LogLevel::Info, "Carrying on.");
@@ -201,30 +205,30 @@ impl Workbench {
         }
         // A drag or a half-typed number ends here, so it isn't part of
         // both the editor's history and the game's.
-        self.moving = None;
-        self.document.close_step();
+        self.open.moving = None;
+        self.open.document.close_step();
         // A new play: its sounds start afresh, and nothing of the last
         // play's waits to be heard in it.
         self.plays += 1;
-        self.game_sounds.clear();
-        self.quit_asked = false;
-        let mut world = world::World::from_area(self.document.area());
+        self.open.game_sounds.clear();
+        self.open.quit_asked = false;
+        let mut world = world::World::from_area(self.open.document.area());
         // A new seed each Play, unless one was chosen (`seed` in the
         // Console), so random numbers differ between plays but a play can
         // be repeated.
-        let seed = self.fixed_seed.unwrap_or_else(fresh_seed);
+        let seed = self.open.fixed_seed.unwrap_or_else(fresh_seed);
         world.set_seed(seed);
-        let _ = self.document.take_changes();
+        let _ = self.open.document.take_changes();
         let cameras = world.placed::<area::builtin::Camera>().len();
         let mut view = ViewCache::default();
         view.settings = self.player_settings;
         let (game, pending) = self.start_game(&mut world, &mut view);
-        self.playing = Some(Playing {
+        self.open.playing = Some(Playing {
             world,
             paused: false,
             step: false,
-            before: Box::new(self.document.clone()),
-            assemblies_before: self.assemblies.clone(),
+            before: Box::new(self.open.document.clone()),
+            assemblies_before: self.open.assemblies.clone(),
             reload: None,
             game,
             view,
@@ -236,7 +240,7 @@ impl Workbench {
             // The menu actions even in a project whose input actions file
             // is from before them, so its screens' buttons can be reached
             // with the keys (decision 0088).
-            bindings: Arc::new(self.bindings.clone().with_menu_actions()),
+            bindings: Arc::new(self.open.bindings.clone().with_menu_actions()),
             start_seed: seed,
             recording: None,
             recording_bytes: 0,
@@ -245,6 +249,9 @@ impl Workbench {
             replay: None,
             replayed: None,
         });
+        // Every edit made from here is kept as an undo step until Stop,
+        // which makes them again on the copy just kept, for Keep.
+        self.open.document.hold_steps();
         // Nothing held over from before Play.
         self.devices = input::Devices::new();
         if let Some(found) = self.dock.find_tab(&Panel::Game) {
@@ -258,7 +265,10 @@ impl Workbench {
         };
         self.log(
             LogLevel::Info,
-            format!("Playing. Changes made now are undone when you press Stop.{note}"),
+            format!(
+                "Playing. Stop puts the area back as it is now, and asks whether to keep the \
+                 changes you make meanwhile.{note}"
+            ),
         );
     }
 
@@ -283,22 +293,22 @@ impl Workbench {
         view: &mut ViewCache,
         say: bool,
     ) -> (Option<script::Game>, Vec<GameEdit>) {
-        if self.program.is_none() && self.rust_components.is_empty() {
+        if self.open.program.is_none() && self.open.rust_components.is_empty() {
             return (None, Vec::new());
         }
-        let mut game = match new_game(&self.rust_components) {
+        let mut game = match new_game(&self.open.rust_components) {
             Ok(game) => game,
             Err(failure) => {
                 self.tell_game(Vec::new(), &[failure]);
                 return (None, Vec::new());
             }
         };
-        game.leave_out(self.left_out.clone());
+        game.leave_out(self.open.left_out.clone());
         let mut host = PlayWorld::new(world, view, 0.0);
         let mut failures = Vec::new();
         // If the code's start fails, the rest of the game (its Rust
         // components) still runs.
-        if let Some(chunk) = self.program.clone()
+        if let Some(chunk) = self.open.program.clone()
             && let Err(mut failure) = game.load(&chunk, &mut host)
         {
             failure.at.message = format!(
@@ -308,7 +318,7 @@ impl Workbench {
             );
             failures.push(failure);
         }
-        failures.extend(sync_all(&mut game, self.document.area(), &mut host));
+        failures.extend(sync_all(&mut game, self.open.document.area(), &mut host));
         host.outside_a_tick();
         let said = std::mem::take(&mut host.said);
         // What the starts spawned lands before the first tick.
@@ -319,7 +329,7 @@ impl Workbench {
         // world thrown away after (loading a save) plays none.
         if say {
             let (tick, seed) = (world.clock().ticks, world.seed());
-            crate::game_sound::gather(&mut self.game_sounds, sounds, tick, seed);
+            crate::game_sound::gather(&mut self.open.game_sounds, sounds, tick, seed);
         }
         let said = if say { said } else { Vec::new() };
         self.tell_game(said, &failures);
@@ -355,14 +365,14 @@ impl Workbench {
             self.log(LogLevel::Info, words);
         }
         for failure in failures {
-            let text = failure_text(self.document.area(), failure);
+            let text = failure_text(self.open.document.area(), failure);
             self.log(LogLevel::Error, text);
         }
     }
 
     /// Pause: stops the game's clock, or starts it again.
     pub fn pause(&mut self) {
-        let Some(playing) = &mut self.playing else {
+        let Some(playing) = &mut self.open.playing else {
             self.log(LogLevel::Info, "Nothing is running.");
             return;
         };
@@ -378,7 +388,7 @@ impl Workbench {
     /// Step: while paused, runs exactly one tick (game code, projectiles
     /// and all), then stays paused.
     pub fn step(&mut self) {
-        match &mut self.playing {
+        match &mut self.open.playing {
             Some(playing) if playing.paused => playing.step = true,
             Some(_) => self.log(
                 LogLevel::Info,
@@ -393,14 +403,14 @@ impl Workbench {
     /// Assemblies changed on disk meanwhile update their copies again,
     /// and an area file changed on disk is offered again.
     pub fn stop(&mut self) {
-        let Some(playing) = self.playing.take() else {
+        let Some(playing) = self.open.playing.take() else {
             self.log(LogLevel::Info, "Nothing is running.");
             return;
         };
         let seconds = playing.world.clock().time;
-        self.game_sounds.clear();
-        self.game_screens.clear();
-        self.moving = None;
+        self.open.game_sounds.clear();
+        self.open.game_screens.clear();
+        self.open.moving = None;
         self.give_back_input();
         if let Some(recording) = playing.recording.filter(|r| !r.ticks.is_empty()) {
             self.log(
@@ -412,20 +422,21 @@ impl Workbench {
                     recording.ticks.len() as f64 * world::TICK
                 ),
             );
-            self.outbox
+            self.open
+                .outbox
                 .push(crate::workbench::WorkbenchAction::SaveRecording(
                     recording.write(),
                 ));
         }
-        // Changes made to the area while playing wait for Keep or Undo
-        // all (decision 0085): never thrown away silently.
-        let edited = self.document.clone();
-        let asked = self.note_play_changes(&edited, playing.before.history().state());
+        // The user's changes to the area while playing wait for Keep or
+        // Undo all (decision 0085): never thrown away silently. Not the
+        // game's: what it spawned, took out or loaded goes with it.
+        let asked = self.note_play_changes(&playing.before, &playing.assemblies_before);
         // The area as it was, but the components known now: code that
         // changed while playing keeps its components in the registry.
         self.replace_document(*playing.before);
-        self.document.touch();
-        let now = std::mem::replace(&mut self.assemblies, playing.assemblies_before);
+        self.open.document.touch();
+        let now = std::mem::replace(&mut self.open.assemblies, playing.assemblies_before);
         self.log(
             LogLevel::Info,
             if asked {
@@ -434,17 +445,26 @@ impl Workbench {
                 format!("Stopped after {seconds:.1} s; the area is back as it was.")
             },
         );
+        self.update_copies(now);
+        if let Some(area) = playing.reload {
+            self.offer_reload(area);
+        }
+    }
+
+    /// Makes the assemblies `now` (as their files are now) known, in
+    /// place of the ones known (as they were at Play, which the open
+    /// area's copies were built from): the copies of each that changed
+    /// meanwhile are rebuilt.
+    pub(crate) fn update_copies(&mut self, now: BTreeMap<AssetId, Arc<AreaFile>>) {
         for (id, file) in now {
             let changed = self
+                .open
                 .assemblies
                 .get(&id)
                 .is_none_or(|old| !Arc::ptr_eq(old, &file));
             if changed {
                 self.set_assembly(id, file);
             }
-        }
-        if let Some(area) = playing.reload {
-            self.offer_reload(area);
         }
     }
 
@@ -461,11 +481,11 @@ impl Workbench {
         let started = std::time::Instant::now();
         // Game code's share, timed apart; the rest is the world's.
         let mut code = std::time::Duration::ZERO;
-        let changes = self.document.take_changes();
-        let Some(playing) = &mut self.playing else {
+        let changes = self.open.document.take_changes();
+        let Some(playing) = &mut self.open.playing else {
             return;
         };
-        let area = self.document.area();
+        let area = self.open.document.area();
         if changes.everything {
             playing.world.rebuild(area);
         } else if !changes.entities.is_empty() {
@@ -515,7 +535,8 @@ impl Workbench {
             // Sounds asked for as components start (music, say) play
             // with the first tick's.
             let sounds = std::mem::take(&mut host.sounds);
-            dropped_sounds += crate::game_sound::gather(&mut self.game_sounds, sounds, tick, seed);
+            dropped_sounds +=
+                crate::game_sound::gather(&mut self.open.game_sounds, sounds, tick, seed);
             // What their starts spawned lands before the next tick.
             let edits = std::mem::take(&mut host.edits);
             playing.pending.extend(edits);
@@ -535,7 +556,7 @@ impl Workbench {
         for _ in 0..ran {
             // The clock moves on as the tick begins, so a frame that stops
             // early never counts ticks that didn't run.
-            let Some(playing) = &mut self.playing else {
+            let Some(playing) = &mut self.open.playing else {
                 break;
             };
             playing.world.begin_tick();
@@ -552,7 +573,7 @@ impl Workbench {
             if self.screens_out_of_step() {
                 self.refresh_game_screens();
             }
-            let Some(playing) = &mut self.playing else {
+            let Some(playing) = &mut self.open.playing else {
                 break;
             };
             // Where everything is as the tick starts: what drawing between
@@ -589,7 +610,7 @@ impl Workbench {
             let (cue_sounds, engine_events) = cues_of(
                 &playing.world,
                 cues,
-                &self.cue_sounds,
+                &self.open.cue_sounds,
                 &self.viewport.sheets.paths,
             );
             // The tick's input: played back, or sampled from the devices
@@ -612,8 +633,8 @@ impl Workbench {
             // While a screen with buttons is shown, the menu keys move
             // its focus and choose, and the game's own actions wait; what
             // game code sees (and a recording keeps) is that frame.
-            let chosen = self.game_screens.take_menu_keys(&mut frame);
-            let sent = std::mem::take(&mut self.game_screens.sent);
+            let chosen = self.open.game_screens.take_menu_keys(&mut frame);
+            let sent = std::mem::take(&mut self.open.game_screens.sent);
             if playing.replay.is_none() {
                 frame.sent = sent;
             }
@@ -628,7 +649,7 @@ impl Workbench {
             let mut saves = Vec::new();
             let (sound_tick, sound_seed) = (playing.world.clock().ticks, playing.world.seed());
             dropped_sounds += crate::game_sound::gather(
-                &mut self.game_sounds,
+                &mut self.open.game_sounds,
                 cue_sounds,
                 sound_tick,
                 sound_seed,
@@ -653,7 +674,7 @@ impl Workbench {
                 saves = std::mem::take(&mut host.saves);
                 let sounds = std::mem::take(&mut host.sounds);
                 dropped_sounds += crate::game_sound::gather(
-                    &mut self.game_sounds,
+                    &mut self.open.game_sounds,
                     sounds,
                     sound_tick,
                     sound_seed,
@@ -673,7 +694,7 @@ impl Workbench {
                 code += landing.elapsed();
                 // A new seed holds from the next tick (after the starts of
                 // what this tick spawned, which belong to this one).
-                if let (Some(seed), Some(playing)) = (seed, &mut self.playing) {
+                if let (Some(seed), Some(playing)) = (seed, &mut self.open.playing) {
                     playing.world.set_seed(seed);
                 }
             }
@@ -684,7 +705,7 @@ impl Workbench {
             }
             // Physics moves on last, with game code's moves and pushes
             // (decision 0036).
-            let Some(playing) = &mut self.playing else {
+            let Some(playing) = &mut self.open.playing else {
                 break;
             };
             let stepping = std::time::Instant::now();
@@ -782,7 +803,12 @@ impl Workbench {
             // few rounds at most; past that, it's left for the next tick).
             if saves.iter().any(|(_, load)| !load) {
                 for _ in 0..8 {
-                    if self.playing.as_ref().is_none_or(|p| p.pending.is_empty()) {
+                    if self
+                        .open
+                        .playing
+                        .as_ref()
+                        .is_none_or(|p| p.pending.is_empty())
+                    {
                         break;
                     }
                     failures.extend(self.land_edits(time, seconds));
@@ -798,11 +824,15 @@ impl Workbench {
                 );
             }
             let mut loading = false;
-            let replaying = self.playing.as_ref().is_some_and(|p| p.replay.is_some());
+            let replaying = self
+                .open
+                .playing
+                .as_ref()
+                .is_some_and(|p| p.replay.is_some());
             let mut saved_text: Option<Option<String>> = None;
             for (slot, load) in saves {
                 if load {
-                    self.outbox.push(WorkbenchAction::LoadGame(slot));
+                    self.open.outbox.push(WorkbenchAction::LoadGame(slot));
                     loading = true;
                 } else {
                     // Every slot saved this tick holds the same moment:
@@ -821,17 +851,19 @@ impl Workbench {
                     if let Some(text) = text
                         && !replaying
                     {
-                        self.outbox.push(WorkbenchAction::SaveGame { slot, text });
+                        self.open
+                            .outbox
+                            .push(WorkbenchAction::SaveGame { slot, text });
                     }
                 }
             }
             // `Window:quit()`: no more ticks.
-            let quit = self.playing.as_ref().is_some_and(|p| p.view.quit);
+            let quit = self.open.playing.as_ref().is_some_and(|p| p.view.quit);
             if loading || pause.is_some() || quit {
                 break;
             }
         }
-        let Some(playing) = &mut self.playing else {
+        let Some(playing) = &mut self.open.playing else {
             return;
         };
         let refused = playing.world.projectiles().refused() > 0 && !playing.told_too_many;
@@ -889,13 +921,18 @@ impl Workbench {
                     "Window:quit(): the exported game would close here, so play stops.",
                 );
             }
-            self.quit_asked = true;
+            self.open.quit_asked = true;
             self.stop();
             return;
         }
         // The game's screens read what this frame's ticks left (decision
         // 0087), and start again when the code changes.
-        if ran > 0 || self.game_screens.out_of_date(self.program.as_ref()) {
+        if ran > 0
+            || self
+                .open
+                .game_screens
+                .out_of_date(self.open.program.as_ref())
+        {
             self.refresh_game_screens();
         }
         if let Some(why) = pause {
@@ -908,7 +945,7 @@ impl Workbench {
             self.log(level, format!("{why} Press Pause or Play to carry on."));
         }
         if dropped_sounds > 0
-            && let Some(playing) = &mut self.playing
+            && let Some(playing) = &mut self.open.playing
             && !playing.told_too_many_sounds
         {
             playing.told_too_many_sounds = true;
@@ -952,7 +989,7 @@ impl Workbench {
     /// that isn't an assembly in the project is said once. The failures
     /// of starting the new components come back.
     fn land_edits(&mut self, time: f64, seconds: f32) -> Vec<script::Failure> {
-        let edits = match &mut self.playing {
+        let edits = match &mut self.open.playing {
             Some(playing) if !playing.pending.is_empty() => std::mem::take(&mut playing.pending),
             _ => return Vec::new(),
         };
@@ -960,18 +997,18 @@ impl Workbench {
         // Each name looked up once, not once a spawn.
         let mut named: std::collections::HashMap<String, Option<(AssetId, String)>> =
             std::collections::HashMap::new();
-        let mut room = area::text::MAX_ENTITIES.saturating_sub(self.document.area().len());
+        let mut room = area::text::MAX_ENTITIES.saturating_sub(self.open.document.area().len());
         let mut refused = 0usize;
         let mut spawned = 0usize;
         // At the end of the area's tree, one after another.
-        let mut next_order = self.document.area().order_at_end(None);
+        let mut next_order = self.open.document.area().order_at_end(None);
         let mut added: Vec<EntityId> = Vec::new();
         let mut removed: Vec<EntityId> = Vec::new();
         let mut removed_roots: Vec<EntityId> = Vec::new();
         // One expander for the tick: each assembly is expanded once, and
         // its size known before a copy is made, so thousands of spawns of
         // one too big to fit cost nothing.
-        let assemblies = &self.assemblies;
+        let assemblies = &self.open.assemblies;
         let lookup = |a| assemblies.get(&a).cloned();
         let mut expander = area::assembly::Expander::new(&lookup);
         for edit in edits {
@@ -1015,7 +1052,7 @@ impl Workbench {
                         refused += 1;
                         continue;
                     }
-                    let failed = self.document.edit_by_game(vec![Edit::Spawn {
+                    let failed = self.open.document.edit_by_game(vec![Edit::Spawn {
                         entities: entities.clone(),
                     }]);
                     if failed > 0 {
@@ -1024,19 +1061,24 @@ impl Workbench {
                     room -= entities.len();
                     spawned += 1;
                     next_order = area::order_after(Some(&next_order));
-                    if let Some(playing) = &mut self.playing {
+                    if let Some(playing) = &mut self.open.playing {
                         added.extend(playing.world.add_subtree(&entities));
                     }
                 }
                 GameEdit::Despawn(id) => {
-                    if !self.document.area().contains(id) {
+                    if !self.open.document.area().contains(id) {
                         continue;
                     }
-                    let under = match &self.playing {
+                    let under = match &self.open.playing {
                         Some(playing) => playing.world.subtree(id),
                         None => Vec::new(),
                     };
-                    if self.document.edit_by_game(vec![Edit::Despawn { root: id }]) == 0 {
+                    if self
+                        .open
+                        .document
+                        .edit_by_game(vec![Edit::Despawn { root: id }])
+                        == 0
+                    {
                         removed.extend(under);
                         removed_roots.push(id);
                     }
@@ -1045,7 +1087,7 @@ impl Workbench {
         }
         let mut failures = Vec::new();
         let mut told = Vec::new();
-        if let Some(playing) = &mut self.playing {
+        if let Some(playing) = &mut self.open.playing {
             playing.world.remove_subtrees(&removed_roots);
             let gone: std::collections::HashSet<EntityId> = removed.iter().copied().collect();
             added.retain(|id| !gone.contains(id));
@@ -1055,12 +1097,12 @@ impl Workbench {
                     let (tick, seed) = (playing.world.clock().ticks, playing.world.seed());
                     let mut host = PlayWorld::new(&mut playing.world, &mut playing.view, time);
                     host.frame_time = f64::from(seconds);
-                    failures = sync_entities(game, self.document.area(), added, &mut host);
+                    failures = sync_entities(game, self.open.document.area(), added, &mut host);
                     host.outside_a_tick();
                     told = std::mem::take(&mut host.said);
                     // Sounds the new components' starts asked for.
                     let sounds = std::mem::take(&mut host.sounds);
-                    crate::game_sound::gather(&mut self.game_sounds, sounds, tick, seed);
+                    crate::game_sound::gather(&mut self.open.game_sounds, sounds, tick, seed);
                     // What the new components' starts spawn waits for the
                     // next landing.
                     let more = std::mem::take(&mut host.edits);
@@ -1074,7 +1116,7 @@ impl Workbench {
         unknown.sort();
         unknown.dedup();
         if refused > 0
-            && let Some(playing) = &mut self.playing
+            && let Some(playing) = &mut self.open.playing
             && !playing.told_too_many_spawns
         {
             playing.told_too_many_spawns = true;
@@ -1090,7 +1132,7 @@ impl Workbench {
             );
         }
         for name in unknown {
-            let Some(playing) = &mut self.playing else {
+            let Some(playing) = &mut self.open.playing else {
                 break;
             };
             // A few names are remembered; past that, nothing more is said.
@@ -1112,11 +1154,12 @@ impl Workbench {
     /// name (`fighter`, when only one has it); its asset and name.
     fn assembly_named(&self, name: &str) -> Option<(AssetId, String)> {
         let assemblies = || {
-            self.library
+            self.open
+                .library
                 .iter()
                 .filter(|i| i.kind == crate::library::LibraryKind::Assembly)
                 .filter_map(|i| i.id.map(|id| (id, i)))
-                .filter(|(id, _)| self.assemblies.contains_key(id))
+                .filter(|(id, _)| self.open.assemblies.contains_key(id))
         };
         let wanted = name.trim_start_matches('/');
         let by_path = assemblies().find(|(_, i)| {
@@ -1133,14 +1176,27 @@ impl Workbench {
         found.map(|(id, i)| (id, i.name.clone()))
     }
 
+    /// Whether the user changed the area since Play was pressed: Stop
+    /// would ask Keep or Undo all.
+    pub(crate) fn edited_while_playing(&self) -> bool {
+        self.open.playing.as_ref().is_some_and(|playing| {
+            self.open.document.history().state() != playing.before.history().state()
+        })
+    }
+
     /// Takes out of `actions` what must wait until the game stops, saying
-    /// so in the Console. Quitting stops the game first.
+    /// so in the Console. Quitting stops the game first, and waits for
+    /// Keep or Undo all if the area was edited meanwhile.
     pub(crate) fn hold_while_playing(&mut self, actions: &mut Vec<WorkbenchAction>) {
-        if self.playing.is_none() {
+        if self.open.playing.is_none() {
             return;
         }
         if actions.contains(&WorkbenchAction::Quit) {
             self.stop();
+            if let Some(changes) = &mut self.open.play_changes {
+                actions.retain(|a| *a != WorkbenchAction::Quit);
+                changes.then = Some(WorkbenchAction::Quit);
+            }
             return;
         }
         let before = actions.len();

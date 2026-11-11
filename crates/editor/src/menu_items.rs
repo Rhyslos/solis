@@ -42,12 +42,12 @@ pub(crate) struct MenuState {
 impl MenuState {
     /// The workbench's state for its menus.
     pub(crate) fn of(workbench: &Workbench) -> Self {
-        let history = workbench.document.history();
+        let history = workbench.open.document.history();
         Self {
             undo: history.undo_label().map(|l| format!("Undo {l}")),
             redo: history.redo_label().map(|l| format!("Redo {l}")),
-            selection: workbench.document.selection.primary().is_some(),
-            project: workbench.project.is_some(),
+            selection: workbench.open.document.selection.primary().is_some(),
+            project: workbench.open.project.is_some(),
         }
     }
 }
@@ -191,14 +191,14 @@ impl Workbench {
             MenuCommand::Duplicate => self.duplicate_selection(),
             MenuCommand::Delete => self.delete_selection(),
             MenuCommand::Rename => {
-                if let Some(id) = self.document.selection.primary()
-                    && let Some(entity) = self.document.area().get(id)
+                if let Some(id) = self.open.document.selection.primary()
+                    && let Some(entity) = self.open.document.area().get(id)
                 {
                     crate::area_panel::begin_rename(ctx, id, &entity.name);
                 }
             }
             MenuCommand::SelectAll => self.select_all(),
-            MenuCommand::SelectNone => self.document.selection.clear(),
+            MenuCommand::SelectNone => self.open.document.selection.clear(),
             MenuCommand::AddEntity => {
                 self.add_entity();
             }
@@ -212,25 +212,25 @@ impl Workbench {
                 self.add_camera();
             }
             MenuCommand::CreateAssembly => {
-                if let Some(id) = self.document.selection.primary() {
-                    self.outbox.push(WorkbenchAction::CreateAssembly(id));
+                if let Some(id) = self.open.document.selection.primary() {
+                    self.open.outbox.push(WorkbenchAction::CreateAssembly(id));
                 }
             }
-            MenuCommand::ExpandAll => self.area_panel.collapsed.clear(),
+            MenuCommand::ExpandAll => self.open.area_panel.collapsed.clear(),
             MenuCommand::CollapseAll => {
-                let area = self.document.area();
+                let area = self.open.document.area();
                 let parents: Vec<_> = area.iter().filter_map(|(_, e)| e.parent).collect();
-                self.area_panel.collapsed.extend(parents);
+                self.open.area_panel.collapsed.extend(parents);
             }
         }
     }
 
     /// Selects every entity in the area (Ctrl+A).
     pub(crate) fn select_all(&mut self) {
-        let ids: Vec<_> = self.document.area().iter().map(|(id, _)| id).collect();
+        let ids: Vec<_> = self.open.document.area().iter().map(|(id, _)| id).collect();
         if let Some(&first) = ids.first() {
-            let primary = self.document.selection.primary().unwrap_or(first);
-            self.document.selection.select_all(ids, primary);
+            let primary = self.open.document.selection.primary().unwrap_or(first);
+            self.open.document.selection.select_all(ids, primary);
         }
     }
 }

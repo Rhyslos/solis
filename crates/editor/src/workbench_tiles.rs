@@ -1,9 +1,9 @@
 //! The workbench's side of tile maps (Phase 9, D4): placing a map from
-//! the Library, making new tilesets and maps, changing a tileset's
-//! terrains and a map file's tileset and size from Properties, and the
-//! Map tab beside Properties while a map is selected: its layers and
-//! values changed (each one undo step over the tab), saved at once and
-//! shown at once.
+//! the Library, making new tilesets and maps, changing a map file's
+//! tileset and size from Properties, and the Map tab beside Properties
+//! while a map is selected: its layers and values changed (each one undo
+//! step over the tab), saved at once and shown at once. A tileset is
+//! changed through its editor (`workbench_tileset.rs`), from here too.
 
 use crate::console::LogLevel;
 use crate::layout;
@@ -13,6 +13,7 @@ use crate::workbench::{Workbench, WorkbenchAction};
 use glam::Vec3;
 use reflect::{AssetId, EntityId};
 use std::sync::Arc;
+use tiles::map_file::MapFileError;
 use tiles::{TileMap, Tileset};
 
 /// The most undo steps the Map tab keeps.
@@ -23,7 +24,7 @@ const MAX_UNDO_BYTES: u64 = 256 << 20;
 
 /// The map file the Map tab is changing: its path, and its undo steps
 /// (copies of the map, which share their cells until changed).
-#[derive(Debug, Clone, Default)]
+#[derive(Debug, Clone)]
 pub(crate) struct MapEdits {
     /// The map file's path, while the tab shows one.
     pub(crate) path: Option<String>,
@@ -42,6 +43,26 @@ pub(crate) struct MapEdits {
     pub(crate) hidden: std::collections::HashSet<reflect::Id>,
     /// The tile painter's stroke under way (D6).
     pub(crate) stroke: Option<crate::workbench_paint::Stroke>,
+    /// The biggest file a map is saved as (what the reader takes,
+    /// `tiles::map_file::MAX_BYTES`; less in tests).
+    pub(crate) most_bytes: usize,
+}
+
+impl Default for MapEdits {
+    fn default() -> Self {
+        Self {
+            path: None,
+            undo: Vec::new(),
+            redo: Vec::new(),
+            hovered: None,
+            shown_values: Vec::new(),
+            chunks: false,
+            walls: false,
+            hidden: std::collections::HashSet::new(),
+            stroke: None,
+            most_bytes: tiles::map_file::MAX_BYTES,
+        }
+    }
 }
 
 impl MapEdits {
@@ -63,6 +84,17 @@ impl MapEdits {
         }
         self.redo.clear();
     }
+}
+
+/// What the Console says when a change to the map at `path` isn't made
+/// because its file couldn't be opened again (`why`, in the reader's own
+/// words): what happened, that nothing was lost, and what to do.
+fn outgrown_note(path: &str, why: &MapFileError) -> String {
+    format!(
+        "{path} wasn't changed: saved like that, the map couldn't be opened again ({why}). \
+         It's as it was. Make the map smaller, clear layers, values or exact tiles it doesn't \
+         need, or split the world into several maps, then try again."
+    )
 }
 
 /// A free path for a new file named `stem` in `folder`.
@@ -106,7 +138,7 @@ pub(crate) fn starter_tileset() -> Tileset {
 
 impl Workbench {
     fn taken(&self, path: &str) -> bool {
-        self.library.iter().any(|i| i.path == path)
+        self.open.library.iter().any(|i| i.path == path)
             || self.viewport.sheets.tilesets.contains_key(path)
             || self.viewport.sheets.tile_maps.contains_key(path)
     }
@@ -118,7 +150,7 @@ impl Workbench {
             self.taken(p)
         });
         let set = starter_tileset();
-        self.outbox.push(WorkbenchAction::SaveTileset {
+        self.open.outbox.push(WorkbenchAction::SaveTileset {
             path: path.clone().into(),
             text: tiles::tileset::write(&set),
         });
@@ -127,7 +159,7 @@ impl Workbench {
             .insert(path.clone(), TilesetState::Read(Arc::new(set), Vec::new()));
         self.show_in_library(&path);
         self.open_tileset(&path);
-        if let Some(editor) = &mut self.tileset_editor {
+        if let Some(editor) = self.open.tilesets.tab_mut() {
             editor.on_disk = false;
         }
     }
@@ -146,9 +178,16 @@ impl Workbench {
             .and_then(|t| t.terrains.first())
             .map(|t| t.code as u8);
         let map = TileMap::new(tiles::map_file::STANDARD_SIZE, tileset, fill);
-        self.outbox.push(WorkbenchAction::SaveTileMap {
+        let text = match tiles::map_file::write(&map) {
+            Ok(text) => text,
+            Err(why) => {
+                self.log(LogLevel::Error, format!("Couldn't make {path}: {why}."));
+                return;
+            }
+        };
+        self.open.outbox.push(WorkbenchAction::SaveTileMap {
             path: path.clone().into(),
-            text: tiles::map_file::write(&map),
+            text,
         });
         Arc::make_mut(&mut self.viewport.sheets)
             .tile_maps
@@ -181,7 +220,7 @@ impl Workbench {
         if !at.is_finite() {
             return None;
         }
-        let [tx, ty] = self.pixels.tile_size();
+        let [tx, ty] = self.open.pixels.tile_size();
         let mut data = area::EntityData::new(&name)
             .with(&area::builtin::Transform {
                 position: Vec3::new((at.x / tx).round() * tx, (at.y / ty).round() * ty, at.z),
@@ -193,30 +232,19 @@ impl Workbench {
                     part: None,
                 }),
             });
-        data.parent = parent.filter(|&p| self.document.area().contains(p));
+        data.parent = parent.filter(|&p| self.open.document.area().contains(p));
         Some(self.spawn_selected(data))
     }
 
-    /// Saves the tileset at `path`, changed in Properties, and shows the
-    /// change at once on every map.
-    pub(crate) fn save_tileset(&mut self, path: &str, set: Tileset) {
-        self.outbox.push(WorkbenchAction::SaveTileset {
-            path: path.into(),
-            text: tiles::tileset::write(&set),
-        });
-        Arc::make_mut(&mut self.viewport.sheets).tilesets.insert(
-            path.to_owned(),
-            TilesetState::Read(Arc::new(set), Vec::new()),
-        );
-        self.sources += 1;
-    }
-
     /// Saves the map file at `path` as `map`, and runs it at once (a
-    /// playing game's copy starts again from it).
-    pub(crate) fn save_tile_map(&mut self, path: &str, map: TileMap) {
-        self.outbox.push(WorkbenchAction::SaveTileMap {
+    /// playing game's copy starts again from it). A map whose file
+    /// couldn't be read back isn't saved or shown: nothing changes, and
+    /// the mistake says why.
+    fn save_tile_map(&mut self, path: &str, map: TileMap) -> Result<(), MapFileError> {
+        let text = tiles::map_file::write_within(&map, self.open.map_edits.most_bytes)?;
+        self.open.outbox.push(WorkbenchAction::SaveTileMap {
             path: path.into(),
-            text: tiles::map_file::write(&map),
+            text,
         });
         let sheets = Arc::make_mut(&mut self.viewport.sheets);
         sheets.tile_maps.insert(
@@ -225,6 +253,28 @@ impl Workbench {
         );
         sheets.work_out_maps();
         self.sources += 1;
+        Ok(())
+    }
+
+    /// Makes `map` the map file at `path`, saved, with `before` kept as
+    /// the undo step back. Every change to a map ends here (the Map tab's,
+    /// Properties', a painted stroke). One that would make the file too
+    /// big to open again is refused at once (BUG-55): nothing is saved,
+    /// no undo step is made, the map stays as `before`, and the Console
+    /// says why and what to do. Whether the change was made.
+    pub(crate) fn commit_map(&mut self, path: &str, before: &TileMap, map: TileMap) -> bool {
+        match self.save_tile_map(path, map) {
+            Ok(()) => {
+                self.open
+                    .map_edits
+                    .push_undo(path.to_owned(), before.clone());
+                true
+            }
+            Err(why) => {
+                self.log(LogLevel::Warning, outgrown_note(path, &why));
+                false
+            }
+        }
     }
 
     /// The map file at `path`, as read.
@@ -249,38 +299,50 @@ impl Workbench {
         if !change(&mut map) || map == *before {
             return false;
         }
-        self.map_edits.push_undo(path.to_owned(), (*before).clone());
-        self.save_tile_map(path, map);
-        true
+        self.commit_map(path, &before, map)
     }
 
     /// Undoes (or redoes) the last change made in the Map tab.
     pub(crate) fn map_undo(&mut self, redo: bool, undo: bool) {
         let popped = if redo {
-            self.map_edits.redo.pop()
+            self.open.map_edits.redo.pop()
         } else if undo {
-            self.map_edits.undo.pop()
+            self.open.map_edits.undo.pop()
         } else {
             None
         };
         let Some((path, map)) = popped else {
             return;
         };
-        if let Some(now) = self.map_file(&path) {
-            let other = if redo {
-                &mut self.map_edits.undo
+        let now = self.map_file(&path);
+        if let Err(why) = self.save_tile_map(&path, map.clone()) {
+            // The step stays where it was: nothing was undone.
+            let edits = &mut self.open.map_edits;
+            let back = if redo {
+                &mut edits.redo
             } else {
-                &mut self.map_edits.redo
+                &mut edits.undo
             };
-            other.push((path.clone(), (*now).clone()));
+            back.push((path.clone(), map));
+            self.log(LogLevel::Warning, outgrown_note(&path, &why));
+            return;
         }
-        self.save_tile_map(&path, map);
+        if let Some(now) = now {
+            let edits = &mut self.open.map_edits;
+            let other = if redo {
+                &mut edits.undo
+            } else {
+                &mut edits.redo
+            };
+            other.push((path, (*now).clone()));
+        }
     }
 
     /// The selected entity's tile map file's path, if it has one.
     pub(crate) fn selected_map_path(&self) -> Option<(EntityId, String)> {
-        let id = self.document.selection.primary()?;
+        let id = self.open.document.selection.primary()?;
         let component = self
+            .open
             .document
             .area()
             .get(id)?
@@ -293,15 +355,15 @@ impl Workbench {
     /// closes it otherwise (each frame, before the panels are drawn).
     pub(crate) fn follow_map_selection(&mut self) {
         let selected = self.selected_map_path().map(|(_, p)| p);
-        if selected != self.map_edits.path {
-            self.map_edits.hovered = None;
+        if selected != self.open.map_edits.path {
+            self.open.map_edits.hovered = None;
         }
         match (&selected, self.dock.find_tab(&Panel::Map)) {
             (Some(_), None) => layout::open_beside(&mut self.dock, Panel::Map, Panel::Properties),
             (None, Some(_)) => layout::close(&mut self.dock, Panel::Map),
             _ => {}
         }
-        self.map_edits.path = selected;
+        self.open.map_edits.path = selected;
     }
 }
 
@@ -310,7 +372,7 @@ impl Workbench {
     /// playing, otherwise its file's), with its tileset.
     pub(crate) fn map_shown(&self) -> Option<(TileMap, Option<Arc<Tileset>>)> {
         let (id, path) = self.selected_map_path()?;
-        let map = match &self.playing {
+        let map = match &self.open.playing {
             Some(playing) => playing
                 .world
                 .tile_map(id)
@@ -329,9 +391,9 @@ impl Workbench {
     pub(crate) fn set_tile_overlay(&mut self) {
         let selected = self.selected_map_path();
         let overlay = &mut self.viewport.tile_overlay;
-        overlay.hidden.clone_from(&self.map_edits.hidden);
-        overlay.chunks = self.map_edits.chunks;
-        overlay.walls = self.map_edits.walls;
+        overlay.hidden.clone_from(&self.open.map_edits.hidden);
+        overlay.chunks = self.open.map_edits.chunks;
+        overlay.walls = self.open.map_edits.walls;
         overlay.solid = None;
         overlay.map = None;
         overlay.values.clear();
@@ -339,7 +401,7 @@ impl Workbench {
         let Some((id, path)) = selected else {
             return;
         };
-        let map = match &self.playing {
+        let map = match &self.open.playing {
             Some(playing) => playing.world.tile_map(id).map(Arc::new),
             None => None,
         }
@@ -351,12 +413,14 @@ impl Workbench {
             return;
         };
         let transform = self
+            .open
             .playing
             .as_ref()
             .and_then(|p| p.world.global(id))
-            .unwrap_or_else(|| self.document.world_matrix(id));
+            .unwrap_or_else(|| self.open.document.world_matrix(id));
         let overlay = &mut self.viewport.tile_overlay;
         overlay.values = self
+            .open
             .map_edits
             .shown_values
             .iter()
@@ -364,7 +428,7 @@ impl Workbench {
             .collect();
         // Painting is for the map file, not the game's copy of it.
         let paint = &mut overlay.paint;
-        paint.allowed = self.playing.is_none() && !map.layers().is_empty();
+        paint.allowed = self.open.playing.is_none() && !map.layers().is_empty();
         paint.layers = map.layers().iter().map(|l| l.name.clone()).collect();
         paint.layer = paint.layer.min(paint.layers.len().saturating_sub(1));
         // Which terrains are solid, from the map's tileset (none solid:
@@ -384,47 +448,34 @@ impl Workbench {
     }
 
     /// Makes the terrain written `code` in the tileset of the map file at
-    /// `map_path` solid or not, and saves the tileset (decision 0071).
+    /// `map_path` solid or not, as one undo step of the tileset's, and
+    /// saves the tileset (decision 0071).
     pub(crate) fn set_terrain_solid(&mut self, map_path: &str, code: u8, solid: bool) {
-        let sheets = &self.viewport.sheets;
         let Some(set_id) = self.map_file(map_path).and_then(|m| m.tileset) else {
             return;
         };
-        let (Some(path), Some(set)) = (sheets.paths.get(&set_id), sheets.tileset(set_id)) else {
+        let Some(path) = self.viewport.sheets.paths.get(&set_id).cloned() else {
             return;
         };
-        let mut set = (**set).clone();
-        let Some(t) = set
-            .terrains
-            .iter_mut()
-            .find(|t| t.code as u32 == u32::from(code))
-        else {
-            return;
-        };
-        if t.solid == solid {
-            return;
-        }
-        t.solid = solid;
-        let path = path.clone();
-        self.save_tileset(&path, set);
+        self.change_tileset(&path, |editor| editor.set_solid(code, solid));
     }
 
     /// Takes in what the menu over the viewport asked for this frame.
     pub(crate) fn tile_overlay_done(&mut self) {
         let overlay = &mut self.viewport.tile_overlay;
         for (name, on) in std::mem::take(&mut overlay.asked) {
-            self.map_edits.shown_values.retain(|n| *n != name);
+            self.open.map_edits.shown_values.retain(|n| *n != name);
             if on {
-                self.map_edits.shown_values.push(name);
+                self.open.map_edits.shown_values.push(name);
             }
         }
         if std::mem::take(&mut overlay.chunks_asked) {
-            self.map_edits.chunks = !self.map_edits.chunks;
+            self.open.map_edits.chunks = !self.open.map_edits.chunks;
         }
         if std::mem::take(&mut overlay.walls_asked) {
-            self.map_edits.walls = !self.map_edits.walls;
+            self.open.map_edits.walls = !self.open.map_edits.walls;
         }
-        self.map_edits.hovered = overlay
+        self.open.map_edits.hovered = overlay
             .hovered
             .zip(overlay.map.as_ref())
             .map(|(cell, m)| (m.entity, cell));
@@ -433,7 +484,7 @@ impl Workbench {
     /// Makes the changes the Map tab asked for, each one undo step.
     pub(crate) fn map_requests_done(&mut self, requests: Vec<crate::map_tab::MapRequest>) {
         use crate::map_tab::MapRequest;
-        let Some(path) = self.map_edits.path.clone() else {
+        let Some(path) = self.open.map_edits.path.clone() else {
             return;
         };
         for request in requests {
@@ -452,8 +503,8 @@ impl Workbench {
                     paint.exact = true;
                 }
                 MapRequest::ToggleHidden(id) => {
-                    if !self.map_edits.hidden.remove(&id) {
-                        self.map_edits.hidden.insert(id);
+                    if !self.open.map_edits.hidden.remove(&id) {
+                        self.open.map_edits.hidden.insert(id);
                     }
                 }
                 MapRequest::AddLayer => {

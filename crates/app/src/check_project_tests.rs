@@ -229,7 +229,7 @@ fn a_file_made_just_before_a_check_gets_its_sidecar_in_that_check() {
     let map = root.join("assets/farm.tilemap.lst");
     std::fs::write(
         &map,
-        tiles::map_file::write(&tiles::TileMap::new([4, 4], None, None)),
+        tiles::map_file::write(&tiles::TileMap::new([4, 4], None, None)).unwrap(),
     )
     .unwrap();
     let project = asset_db::Project::open(&root).unwrap();
@@ -254,7 +254,7 @@ fn a_recording_plays_back_with_the_project_s_tile_maps_and_tilesets() {
     .unwrap();
     std::fs::write(
         assets.join("farm.tilemap.lst"),
-        tiles::map_file::write(&tiles::TileMap::new([4, 4], None, None)),
+        tiles::map_file::write(&tiles::TileMap::new([4, 4], None, None)).unwrap(),
     )
     .unwrap();
     let project = asset_db::Project::open(&root).unwrap();

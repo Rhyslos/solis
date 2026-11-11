@@ -301,33 +301,38 @@ impl Workbench {
     /// Whether the screens the game shows now aren't the ones last run
     /// (game code showed or hid one since).
     pub(crate) fn screens_out_of_step(&self) -> bool {
-        let Some(playing) = &self.playing else {
+        let Some(playing) = &self.open.playing else {
             return false;
         };
-        if self.program.as_ref().is_none_or(|p| p.screens.is_none()) {
+        if self
+            .open
+            .program
+            .as_ref()
+            .is_none_or(|p| p.screens.is_none())
+        {
             return false;
         }
         let now = shown_with_looks(&playing.world);
-        now.len() != self.game_screens.shown.len()
+        now.len() != self.open.game_screens.shown.len()
             || now
                 .iter()
-                .zip(&self.game_screens.shown)
+                .zip(&self.open.game_screens.shown)
                 .any(|((e, n, _), (se, sn))| e != se || n != sn)
     }
 
     pub(crate) fn refresh_game_screens(&mut self) {
-        let Some(playing) = &mut self.playing else {
-            self.game_screens.clear();
+        let Some(playing) = &mut self.open.playing else {
+            self.open.game_screens.clear();
             return;
         };
-        let program = self.program.clone().filter(|p| p.screens.is_some());
+        let program = self.open.program.clone().filter(|p| p.screens.is_some());
         let Some(program) = program else {
-            self.game_screens.clear();
+            self.open.game_screens.clear();
             return;
         };
-        let screens = &mut self.game_screens;
-        let seen = &mut self.screen_pictures.seen;
-        let shown_pictures = self.screen_pictures.pictures.clone();
+        let screens = &mut self.open.game_screens;
+        let seen = &mut self.open.screen_pictures.seen;
+        let shown_pictures = self.open.screen_pictures.pictures.clone();
         // Started with the program, and again when it changes.
         let fresh = !matches!(&screens.running, Some((_, from)) if Arc::ptr_eq(from, &program));
         let mut said = Vec::new();
@@ -408,12 +413,12 @@ impl Workbench {
             screens.show_looks();
         }
         for line in warned {
-            if self.game_screens.told.insert(line.clone()) {
+            if self.open.game_screens.told.insert(line.clone()) {
                 self.log(LogLevel::Warning, line);
             }
         }
         for line in said {
-            if self.game_screens.told.insert(line.clone()) {
+            if self.open.game_screens.told.insert(line.clone()) {
                 self.log(LogLevel::Error, line);
             }
         }
@@ -423,7 +428,7 @@ impl Workbench {
     /// and what it sends waits for the next tick's input. Says in the
     /// Console if the screen stopped.
     pub(crate) fn press_hovered(&mut self) {
-        if let Some(button) = self.game_screens.hover {
+        if let Some(button) = self.open.game_screens.hover {
             self.press(button);
         }
     }
@@ -431,13 +436,13 @@ impl Workbench {
     /// Runs button `action` of picture `picture` (decision 0088); what it
     /// sends waits for the next tick's input.
     pub(crate) fn press(&mut self, (picture, action): (usize, usize)) {
-        let Some((entity, name)) = self.game_screens.shown.get(picture).cloned() else {
+        let Some((entity, name)) = self.open.game_screens.shown.get(picture).cloned() else {
             return;
         };
-        let Some(playing) = &mut self.playing else {
+        let Some(playing) = &mut self.open.playing else {
             return;
         };
-        let Some((running, _)) = &self.game_screens.running else {
+        let Some((running, _)) = &self.open.game_screens.running else {
             return;
         };
         let mut reader = GameReader(playing.game.as_mut(), &playing.world, playing.view.settings);
@@ -450,8 +455,8 @@ impl Workbench {
                         name: event.name,
                         values: event.values,
                     };
-                    if sent.recordable() && self.game_screens.sent.len() < input::MAX_SENT {
-                        self.game_screens.sent.push(sent);
+                    if sent.recordable() && self.open.game_screens.sent.len() < input::MAX_SENT {
+                        self.open.game_screens.sent.push(sent);
                     } else {
                         dropped += 1;
                     }
@@ -486,19 +491,20 @@ impl Workbench {
     /// Starts from these player settings (an exported game's saved ones).
     pub fn set_player_settings(&mut self, settings: script::settings::PlayerSettings) {
         self.player_settings = settings.sanitized();
-        if let Some(playing) = &mut self.playing {
+        if let Some(playing) = &mut self.open.playing {
             playing.view.settings = self.player_settings;
         }
     }
 
     /// The game's screens drawn over the Game panel now, in order.
     pub fn game_screens(&self) -> &[Arc<ui::Screen>] {
-        &self.game_screens.pictures
+        &self.open.game_screens.pictures
     }
 
     /// The names of the game's screens, for a Screen's choices.
     pub(crate) fn screen_names(&self) -> Vec<String> {
-        self.program
+        self.open
+            .program
             .as_ref()
             .and_then(|p| p.screens.as_ref())
             .map(|s| s.screens.iter().map(|(n, _)| n.clone()).collect())

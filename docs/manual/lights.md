@@ -46,8 +46,8 @@ Every light is an [entity](concepts.md#the-area) with a **Light** [component](co
 | Colour | The light's colour. Slightly warm white is daylight; orange is evening. |
 | Strength | Point lights and spotlights: in watts, as in Blender, so numbers carry over: 1000 W lights a room, 100 W is a small lamp close by. The sun: in watts per square metre; 3 is the editor's clear day, 0 turns it off for a night area lit by lamps. |
 | Range | 0: the light fades on forever, getting weaker with distance, as real light does. More: it stops at this many metres. Games use ranges to keep many lamps cheap. |
-| Cone (spotlights) | How wide the light reaches, in degrees from the middle of the cone. |
-| Soft edge (spotlights) | How gradually the light fades at the cone's edge: 0° for a hard circle, more for a soft one. |
+| Cone (spotlights) | How wide the light reaches, in degrees from the middle of the cone, from 1° to 89°. |
+| Soft edge (spotlights) | How gradually the light fades at the cone's edge: 0° for a hard circle, more for a soft one, up to 89°. A soft edge wider than the cone fades the whole cone. |
 | Shadows | Whether it casts shadows. For now only the sun does. |
 | Only at night | On from dusk to dawn, by the [Environment's day and night](sky-fog-and-exposure.md): a street lamp, a lantern. With day and night off, it's always on. |
 
@@ -60,6 +60,7 @@ Every light is an [entity](concepts.md#the-area) with a **Light** [component](co
 - **Problem:** lamps far from the camera stop lighting. **Why:** up to 16 lamps light the view at once, the ones nearest the camera.
 - **Problem:** things far from the camera have no shadows. **Why:** the sun's shadows reach 200 m from the camera. The shadow map covers only what the view shows within that distance, so its detail goes where you're looking, however big the area. **Fix:** move closer; at that distance, shadows are too small to see anyway.
 - **Problem:** shadows look blurry. **Why:** the shadow map covers everything in view up to 200 m away, so looking out over a wide area spreads its pixels further. **Fix:** look from closer, or from higher up so less ground is in view.
+- **Problem:** a spotlight's cone isn't the number written in the area file. **Why:** an [area file](saving-areas.md) is text, so a number can be typed into it by hand or left there by a merge. A light only works with a cone from 1° to 89°, a soft edge from 0° to 89°, and a strength and range that aren't below 0, so a number outside that is read as the nearest one that works (a cone of -5 shines as 1°). **Fix:** set the number you meant in Properties.
 - **Problem:** I deleted the sun and everything went dark. **Why:** the sun was the only light. **Fix:** undo (Ctrl + Z), or add an entity and give it a Light (**Add component > Light**) with **Kind** set to Sun.
 
 ## Related

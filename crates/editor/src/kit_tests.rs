@@ -91,7 +91,8 @@ fn level(camera: &str, fields: &[(&str, Value)]) -> Workbench {
     let spawn = |n: u64, data: EntityData| area::Edit::Spawn {
         entities: vec![(id(n), data)],
     };
-    w.document
+    w.open
+        .document
         .edit(
             "Add",
             vec![
@@ -114,7 +115,7 @@ fn level(camera: &str, fields: &[(&str, Value)]) -> Workbench {
             None,
         )
         .unwrap();
-    w.fixed_seed = Some(3);
+    w.open.fixed_seed = Some(3);
     w
 }
 
@@ -226,7 +227,7 @@ fn the_character_climbs_a_step() {
     // Put the character beside the step, facing it along +X, and the
     // camera turned to look along +X.
     w.play();
-    let p = w.playing.as_mut().unwrap();
+    let p = w.open.playing.as_mut().unwrap();
     p.world.set_transform(
         id(PLAYER),
         Transform {
@@ -396,7 +397,7 @@ fn the_rts_camera_pans_drags_turns_and_zooms_with_the_chosen_controls() {
 fn a_recorded_walk_plays_back_exactly() {
     let mut w = third_person();
     w.play();
-    let playing = w.playing.as_mut().unwrap();
+    let playing = w.open.playing.as_mut().unwrap();
     playing.recording = Some(input::Recording {
         area: None,
         seed: playing.world.seed(),
@@ -415,6 +416,7 @@ fn a_recorded_walk_plays_back_exactly() {
     w.devices.release_all();
     w.stop();
     let text = w
+        .open
         .outbox
         .iter()
         .find_map(|a| match a {
@@ -422,7 +424,7 @@ fn a_recorded_walk_plays_back_exactly() {
             _ => None,
         })
         .expect("Stop saves the recording");
-    w.fixed_seed = None;
+    w.open.fixed_seed = None;
     w.replay(&text, "walk.solrec");
     for _ in 0..400 {
         if w.play_state() == crate::play::PlayState::Paused {
@@ -466,13 +468,14 @@ fn the_manual_s_hopper_is_sound_code_and_hops() {
     };
     let mut w = level("ThirdPersonCamera", &[]);
     w.set_program(Some(Arc::new(compiled)));
-    let mut data = w.document.area().get(id(PLAYER)).unwrap().clone();
+    let mut data = w.open.document.area().get(id(PLAYER)).unwrap().clone();
     data.components.clear();
     data.set(&Transform::default());
     data.set(&CharacterBody::default());
     data.components
         .insert("Hopper".into(), ComponentData::default());
-    w.document
+    w.open
+        .document
         .edit(
             "Hopper",
             vec![
@@ -509,7 +512,8 @@ fn the_character_rides_a_moving_platform_standing_or_walking() {
         platform
             .components
             .insert("Slider".into(), ComponentData::default());
-        w.document
+        w.open
+            .document
             .edit(
                 "Platform",
                 vec![area::Edit::Spawn {
@@ -520,7 +524,7 @@ fn the_character_rides_a_moving_platform_standing_or_walking() {
             )
             .unwrap();
         w.play();
-        let p = w.playing.as_mut().unwrap();
+        let p = w.open.playing.as_mut().unwrap();
         p.world.set_transform(
             id(PLAYER),
             Transform {

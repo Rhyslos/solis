@@ -317,7 +317,7 @@ impl Workbench {
     }
 
     fn with_selection(&mut self, run: fn(&mut Self)) -> Result<String, String> {
-        if self.document.selection.primary().is_none() {
+        if self.open.document.selection.primary().is_none() {
             return Err("nothing is selected".into());
         }
         run(self);
@@ -346,7 +346,7 @@ impl Workbench {
     /// The entities `word` names: every one with that name (any capitals),
     /// or the one with that ID.
     fn named(&self, word: &str) -> Vec<EntityId> {
-        let area = self.document.area();
+        let area = self.open.document.area();
         let by_name: Vec<EntityId> = area
             .iter()
             .filter(|(_, e)| e.name.eq_ignore_ascii_case(word))
@@ -370,7 +370,7 @@ impl Workbench {
                 return Ok(String::new());
             }
             Some("none") => {
-                self.document.selection.clear();
+                self.open.document.selection.clear();
                 return Ok(String::new());
             }
             _ => {}
@@ -384,8 +384,11 @@ impl Workbench {
             found.extend(named);
         }
         let first = found[0];
-        self.document.selection.select_all(found.clone(), first);
-        self.area_panel.reveal = Some(first);
+        self.open
+            .document
+            .selection
+            .select_all(found.clone(), first);
+        self.open.area_panel.reveal = Some(first);
         let s = if found.len() == 1 { "y" } else { "ies" };
         Ok(format!("Selected {} entit{s}.", found.len()))
     }
@@ -396,6 +399,7 @@ impl Workbench {
             return Err("find what? Give part of a name".into());
         }
         let found: Vec<String> = self
+            .open
             .document
             .area()
             .iter()
@@ -425,6 +429,7 @@ impl Workbench {
             None => (path, None),
         };
         let schema = self
+            .open
             .document
             .registry
             .iter()
@@ -461,23 +466,29 @@ impl Workbench {
                 .first()
                 .ok_or_else(|| format!("nothing is called \"{word}\""))?,
             None => self
+                .open
                 .document
                 .selection
                 .primary()
                 .ok_or("values of what? Select an entity, or give its name")?,
         };
-        let entity = self.document.area().get(id).ok_or("it isn't in the area")?;
+        let entity = self
+            .open
+            .document
+            .area()
+            .get(id)
+            .ok_or("it isn't in the area")?;
         let (name, components): (String, Vec<String>) = (
             entity.name.clone(),
             entity.components.keys().cloned().collect(),
         );
-        let mut lines = vec![if self.playing.is_some() {
+        let mut lines = vec![if self.open.playing.is_some() {
             format!("{name}, as the game has it now:")
         } else {
             format!("{name}:")
         }];
         for component in components {
-            let Some(schema) = self.document.registry.get(&component).cloned() else {
+            let Some(schema) = self.open.document.registry.get(&component).cloned() else {
                 continue;
             };
             let Some(data) = self.values_now(id, &component) else {
@@ -501,11 +512,17 @@ impl Workbench {
             .ok_or("get what? Give Component or Component.field")?;
         let (component, field) = self.field_named(path)?;
         let id = self
+            .open
             .document
             .selection
             .primary()
             .ok_or("nothing is selected")?;
-        let entity = self.document.area().get(id).ok_or("nothing is selected")?;
+        let entity = self
+            .open
+            .document
+            .area()
+            .get(id)
+            .ok_or("nothing is selected")?;
         if !entity.has(&component) {
             return Err(format!("{} has no {component}", entity.name));
         }
@@ -513,6 +530,7 @@ impl Workbench {
             .values_now(id, &component)
             .ok_or_else(|| format!("it has no {component}"))?;
         let schema = self
+            .open
             .document
             .registry
             .get(&component)
@@ -541,14 +559,15 @@ impl Workbench {
             return Err(format!("set {component}.{} to what?", field.name));
         }
         let value = parse_value(&field, value)?;
-        let selected: Vec<EntityId> = self.document.selection.iter().collect();
+        let selected: Vec<EntityId> = self.open.document.selection.iter().collect();
         if selected.is_empty() {
             return Err("nothing is selected".into());
         }
         let with: Vec<EntityId> = selected
             .into_iter()
             .filter(|&e| {
-                self.document
+                self.open
+                    .document
                     .area()
                     .get(e)
                     .is_some_and(|d| d.has(&component))
@@ -595,7 +614,7 @@ impl Workbench {
 
     /// `checksum`: the running game's checksums at this tick.
     fn checksum_command(&mut self) -> Result<String, String> {
-        let Some(playing) = &mut self.playing else {
+        let Some(playing) = &mut self.open.playing else {
             return Err("nothing is running: press Play first".to_string());
         };
         let tick = playing.world.clock().ticks;
@@ -631,6 +650,7 @@ impl Workbench {
         match args {
             [] => {
                 let running = self
+                    .open
                     .playing
                     .as_ref()
                     .map(|p| (p.start_seed, p.world.seed()));
@@ -643,7 +663,7 @@ impl Workbench {
                         format!(" (game code or a loaded save has changed it to {now} since)")
                     }
                 };
-                Ok(match (running, self.fixed_seed) {
+                Ok(match (running, self.open.fixed_seed) {
                     (Some((start, seed)), Some(_)) => format!(
                         "This play started from seed {start}, chosen for every Play{}.",
                         now(start, seed)
@@ -658,12 +678,12 @@ impl Workbench {
                 })
             }
             [word] if word == "new" => {
-                self.fixed_seed = None;
+                self.open.fixed_seed = None;
                 Ok("Each Play has a new seed from now on.".to_string())
             }
             [number] => match number.parse::<u64>() {
                 Ok(seed) if seed < 1_000_000_000_000_000 => {
-                    self.fixed_seed = Some(seed);
+                    self.open.fixed_seed = Some(seed);
                     Ok(format!("Every Play starts from seed {seed} from now on."))
                 }
                 _ => Err(format!(
@@ -675,7 +695,7 @@ impl Workbench {
     }
 
     fn stats(&self) -> String {
-        let area = self.document.area();
+        let area = self.open.document.area();
         let models = area.with::<area::builtin::Model>().count();
         let lights = area.with::<area::builtin::Light>().count();
         let lights = if lights == 1 {
@@ -688,10 +708,10 @@ impl Workbench {
              {:.0} fps ({:.1} ms a frame); {} undo steps.",
             crate::models::grouped(area.len()),
             crate::models::grouped(self.viewport.area.triangles),
-            self.document.selection.iter().count(),
+            self.open.document.selection.iter().count(),
             self.viewport.frames_per_second(),
             1000.0 / self.viewport.frames_per_second().max(1e-3),
-            self.document.history().undo_len(),
+            self.open.document.history().undo_len(),
         )
     }
 
@@ -713,6 +733,7 @@ impl Workbench {
             None => COMMANDS.iter().map(|c| c.name.to_string()).collect(),
             Some("select") => {
                 let mut names: Vec<String> = self
+                    .open
                     .document
                     .area()
                     .iter()
@@ -724,6 +745,7 @@ impl Workbench {
                 names
             }
             Some("get" | "set") if done.len() == 1 => self
+                .open
                 .document
                 .registry
                 .iter()

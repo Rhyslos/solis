@@ -28,7 +28,9 @@ const OLDER: &[Older] = &[
         ending: tiles::map_file::ENDING,
         convert: |text| {
             let read = tiles::map_file::read(text).map_err(|e| e.to_string())?;
-            Ok(tiles::map_file::write(&read.map))
+            // The older layout holds more than a Lust file that's read
+            // back can: such a map stays as it is.
+            tiles::map_file::write(&read.map).map_err(|e| e.to_string())
         },
     },
     Older {

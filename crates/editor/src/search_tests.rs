@@ -133,7 +133,7 @@ fn space_while_typing_types_a_space() {
 fn picking_an_entity_selects_it_and_a_panel_brings_it_forward() {
     let mut w = fresh();
     let lamp = w.add_point_light();
-    w.document.selection.clear();
+    w.open.document.selection.clear();
     let ctx = egui::Context::default();
     let mut actions = Vec::new();
     w.do_search(SearchTarget::Entity(lamp), &ctx, &mut actions);
@@ -242,17 +242,20 @@ fn choosing_a_file_to_place_picks_it_in_the_library_and_asks_the_computer_for_no
     ] {
         let mut w = with_files();
         // Whatever the Library was showing, the file is found there.
-        w.library_state.folder = "notes".into();
-        w.library_state.search = "plan".into();
-        w.library_state.filter = crate::library::Filter::Sounds;
+        w.open.library_state.folder = "notes".into();
+        w.open.library_state.search = "plan".into();
+        w.open.library_state.filter = crate::library::Filter::Sounds;
         w.set_library_pinned(false);
         let actions = choose(&mut w, path);
         assert_eq!(actions, [], "{path}: nothing is asked of the app");
-        assert_eq!(w.library_state.selected.as_deref(), Some(path));
-        assert_eq!(w.library_state.folder, folder, "{path}: its folder is open");
-        assert!(w.library_state.search.is_empty(), "{path}");
+        assert_eq!(w.open.library_state.selected.as_deref(), Some(path));
         assert_eq!(
-            w.library_state.filter,
+            w.open.library_state.folder, folder,
+            "{path}: its folder is open"
+        );
+        assert!(w.open.library_state.search.is_empty(), "{path}");
+        assert_eq!(
+            w.open.library_state.filter,
             crate::library::Filter::All,
             "{path}: no chip hides it"
         );
@@ -267,21 +270,21 @@ fn a_file_chosen_to_place_shows_in_properties_as_a_click_in_the_library_would() 
     let mut w = with_files();
     choose(&mut w, "sprites/hero.aseprite");
     assert_eq!(
-        w.sound_shown.as_ref().map(|(path, _)| path.as_str()),
+        w.open.sound_shown.as_ref().map(|(path, _)| path.as_str()),
         Some("sprites/hero.aseprite")
     );
     choose(&mut w, "maps/farm.tilemap.lst");
     assert_eq!(
-        w.sound_shown.as_ref().map(|(path, _)| path.as_str()),
+        w.open.sound_shown.as_ref().map(|(path, _)| path.as_str()),
         Some("maps/farm.tilemap.lst")
     );
     let mut w = with_files();
     choose(&mut w, "props/ship.glb");
-    assert_eq!(w.sound_shown, None);
+    assert_eq!(w.open.sound_shown, None);
     // A chip that shows the file is left as it is.
-    w.library_state.filter = crate::library::Filter::Models;
+    w.open.library_state.filter = crate::library::Filter::Models;
     choose(&mut w, "props/tower.solassembly");
-    assert_eq!(w.library_state.filter, crate::library::Filter::Models);
+    assert_eq!(w.open.library_state.filter, crate::library::Filter::Models);
 }
 
 #[test]
@@ -305,7 +308,7 @@ fn choosing_any_other_file_opens_it_only_if_its_kind_may_open_in_another_program
 #[test]
 fn enter_on_a_model_in_the_search_shows_it_in_the_library_and_opens_nothing() {
     let mut w = with_files();
-    w.library_state.folder = "notes".into();
+    w.open.library_state.folder = "notes".into();
     // Another tab is in front of the Library, which is pinned.
     crate::layout::bring_to_front(&mut w.dock, Panel::Console);
     let mut h = harness(w);
@@ -328,8 +331,11 @@ fn enter_on_a_model_in_the_search_shows_it_in_the_library_and_opens_nothing() {
         h.state().1.actions
     );
     let w = &h.state().0;
-    assert_eq!(w.library_state.selected.as_deref(), Some("props/ship.glb"));
-    assert_eq!(w.library_state.folder, "props");
+    assert_eq!(
+        w.open.library_state.selected.as_deref(),
+        Some("props/ship.glb")
+    );
+    assert_eq!(w.open.library_state.folder, "props");
     // Its tab came to the front, with the file in view.
     let _ = h.get_by_label("ship");
 }

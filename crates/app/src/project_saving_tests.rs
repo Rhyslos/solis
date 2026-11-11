@@ -74,7 +74,7 @@ fn savers() -> Vec<Saver> {
         Saver {
             name: "save_tile_map",
             file: "x.tilemap.lst",
-            text: tiles::map_file::write(&map.map),
+            text: tiles::map_file::write(&map.map).unwrap(),
             needs: Needs::Nothing,
             save: |p, path, text| p.save_tile_map(path, text).map(drop),
         },

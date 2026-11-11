@@ -284,10 +284,10 @@ fn the_menu_shows_renames_and_copies_and_a_missing_folder_can_be_located() {
 fn renaming_the_open_project_changes_its_name_and_nothing_else() {
     let mut w = Workbench::new(info(), None);
     w.set_project(Some(farm()));
-    let revision = w.document.revision();
+    let revision = w.open.document.revision();
     w.rename_open_project("Farm days");
     assert_eq!(w.project().unwrap().name, "Farm days");
-    assert_eq!(w.document.revision(), revision);
+    assert_eq!(w.open.document.revision(), revision);
     assert!(w.title().contains("Farm days"));
 }
 
@@ -404,7 +404,7 @@ fn solis_always_starts_on_the_launcher_and_comes_back_to_it() {
     // behind it.
     w.back_to_launcher();
     assert!(w.launcher_open());
-    assert!(w.project.is_some());
+    assert!(w.open.project.is_some());
 }
 
 #[test]
@@ -504,7 +504,7 @@ fn a_new_area_is_saved_where_it_was_asked_for_and_opened() {
     let files = made(&actions);
     assert_eq!(files[0].0, "levels/area 2.solarea", "a free name");
     assert!(files[0].1.contains("area version"));
-    let read = area::text::read(&files[0].1, &w.document.registry).expect("reads");
+    let read = area::text::read(&files[0].1, &w.open.document.registry).expect("reads");
     assert!(!read.is_empty(), "an environment, as a new area has");
     assert!(actions.iter().any(
         |a| matches!(a, WorkbenchAction::OpenAreaFile(p) if p.ends_with("levels/area 2.solarea"))

@@ -64,7 +64,8 @@ fn with_a_mover() -> (Workbench, EntityId) {
 fn mover_on(mut w: Workbench) -> (Workbench, EntityId) {
     w.set_program(Some(program(MOVER)));
     let id = EntityId::random();
-    w.document
+    w.open
+        .document
         .edit(
             "Add",
             vec![area::Edit::Spawn {
@@ -92,27 +93,27 @@ fn x_in_game(w: &Workbench, id: EntityId) -> f32 {
 fn the_program_s_components_join_the_registry_and_replace_the_last_ones() {
     let mut w = Workbench::new(info(), None);
     w.set_program(Some(program(MOVER)));
-    let schema = w.document.registry.get("Mover").expect("registered");
+    let schema = w.open.document.registry.get("Mover").expect("registered");
     assert_eq!(schema.field("speed").unwrap().default, Value::Float(6.0));
     assert_eq!(w.game_components().collect::<Vec<_>>(), ["Mover"]);
     // New code: Mover is gone, Spinner arrives.
     w.set_program(Some(program(
         "component Spinner {\n    has {\n        float turn = 1;\n    }\n}\npass Spinner;\nend\n",
     )));
-    assert!(w.document.registry.get("Mover").is_none());
-    assert!(w.document.registry.get("Spinner").is_some());
+    assert!(w.open.document.registry.get("Mover").is_none());
+    assert!(w.open.document.registry.get("Spinner").is_some());
     // Another project: none of this one's code is left.
     w.set_project(Some(crate::library::ProjectInfo {
         name: "Other".into(),
         root: "/other".into(),
         assets: "/other/assets".into(),
     }));
-    assert!(w.document.registry.get("Spinner").is_none());
+    assert!(w.open.document.registry.get("Spinner").is_none());
     w.set_program(Some(program(MOVER)));
     // No code: none left; the built-in ones stay.
     w.set_program(None);
-    assert!(w.document.registry.get("Spinner").is_none());
-    assert!(w.document.registry.get("Light").is_some());
+    assert!(w.open.document.registry.get("Spinner").is_none());
+    assert!(w.open.document.registry.get("Light").is_some());
 }
 
 #[test]
@@ -124,7 +125,8 @@ fn a_component_named_like_a_built_in_one_or_a_failing_start_is_a_problem() {
     assert_eq!(w.code_problems().len(), 1);
     assert!(w.code_problems()[0].message.contains("Light"));
     assert!(
-        w.document
+        w.open
+            .document
             .registry
             .get("Light")
             .unwrap()
@@ -185,7 +187,7 @@ fn a_change_in_properties_while_playing_reaches_the_running_component() {
         w.run_game(1.0 / 60.0);
     }
     assert!((x_in_game(&w, id) - before).abs() < 1e-5, "stopped moving");
-    let running = w.playing.as_mut().unwrap().game.as_mut().unwrap();
+    let running = w.open.playing.as_mut().unwrap().game.as_mut().unwrap();
     assert_eq!(
         running.values(id, "Mover").unwrap().get("steps"),
         Some(&Value::Int(6)),
@@ -200,7 +202,7 @@ fn a_change_in_properties_while_playing_reaches_the_running_component() {
         3,
     );
     w.run_game(1.0 / 60.0);
-    let running = w.playing.as_mut().unwrap().game.as_mut().unwrap();
+    let running = w.open.playing.as_mut().unwrap().game.as_mut().unwrap();
     assert!(running.is_empty());
 }
 
@@ -218,7 +220,8 @@ fn a_failing_component_is_reported_once_naming_its_entity() {
     });
     data.components
         .insert("Divider".into(), reflect::ComponentData::default());
-    w.document
+    w.open
+        .document
         .edit(
             "Add",
             vec![area::Edit::Spawn {
@@ -264,7 +267,7 @@ fn scale_check_playing_with_2000_lust_components() {
             }
         })
         .collect();
-    w.document.edit("Fill", spawns, None, None).unwrap();
+    w.open.document.edit("Fill", spawns, None, None).unwrap();
     w.play();
     w.run_game(1.0 / 60.0);
     let frames = 60;
@@ -325,7 +328,10 @@ fn a_lust_and_a_rust_component_on_one_entity_talk_through_events() {
         make: |_| Box::new(Bell { rung: 0 }),
     })
     .unwrap();
-    assert!(w.document.registry.get("Bell").is_some(), "in Properties");
+    assert!(
+        w.open.document.registry.get("Bell").is_some(),
+        "in Properties"
+    );
     w.set_program(Some(program(
         "fetch \"solis/world\":World;\nevent Ping();\n\
          event Rang(int times);\n\
@@ -351,7 +357,8 @@ fn a_lust_and_a_rust_component_on_one_entity_talk_through_events() {
         .insert("Ringer".into(), reflect::ComponentData::default());
     data.components
         .insert("Bell".into(), reflect::ComponentData::default());
-    w.document
+    w.open
+        .document
         .edit(
             "Add",
             vec![area::Edit::Spawn {
@@ -406,14 +413,15 @@ fn new_code_while_playing_is_swapped_in_and_keeps_where_things_are() {
         "{:?}",
         w.log_lines().last()
     );
-    let running = w.playing.as_mut().unwrap().game.as_mut().unwrap();
+    let running = w.open.playing.as_mut().unwrap().game.as_mut().unwrap();
     assert_eq!(
         running.values(id, "Mover").unwrap().get("steps"),
         Some(&Value::Int(10)),
         "the steps so far are kept"
     );
     assert!(
-        w.document
+        w.open
+            .document
             .registry
             .get("Mover")
             .unwrap()
@@ -443,12 +451,13 @@ fn a_lua_component_joins_properties_and_play_mode() {
     };
     let compiled = script::compile(&code).unwrap().unwrap();
     w.set_program(Some(Arc::new(compiled)));
-    assert!(w.document.registry.get("Spinner").is_some());
+    assert!(w.open.document.registry.get("Spinner").is_some());
     let id = EntityId::random();
     let mut data = EntityData::new("Top");
     data.components
         .insert("Spinner".into(), reflect::ComponentData::default());
-    w.document
+    w.open
+        .document
         .edit(
             "Add",
             vec![area::Edit::Spawn {
@@ -462,7 +471,7 @@ fn a_lua_component_joins_properties_and_play_mode() {
     for _ in 0..3 {
         w.run_game(1.0 / 60.0);
     }
-    let running = w.playing.as_mut().unwrap().game.as_mut().unwrap();
+    let running = w.open.playing.as_mut().unwrap().game.as_mut().unwrap();
     assert_eq!(
         running.values(id, "Spinner").unwrap().get("turns"),
         Some(&Value::Int(3))
@@ -499,7 +508,8 @@ fn a_tick_that_takes_too_long_pauses_the_game_and_says_why() {
             .insert(format!("Slow{n}"), reflect::ComponentData::default());
     }
     {
-        w.document
+        w.open
+            .document
             .edit(
                 "Add",
                 vec![area::Edit::Spawn {
@@ -516,7 +526,7 @@ fn a_tick_that_takes_too_long_pauses_the_game_and_says_why() {
     let start = std::time::Instant::now();
     w.run_game(0.1);
     assert!(start.elapsed() < std::time::Duration::from_millis(600));
-    assert!(w.playing.as_ref().unwrap().paused);
+    assert!(w.open.playing.as_ref().unwrap().paused);
     assert!(
         w.log_lines()
             .last()
@@ -536,8 +546,8 @@ fn code_changed_while_playing_keeps_its_components_after_stop() {
     w.play();
     w.set_program(Some(program(SPINNER)));
     w.stop();
-    assert!(w.document.registry.get("Spinner").is_some());
-    assert!(w.document.registry.get("Mover").is_none());
+    assert!(w.open.document.registry.get("Spinner").is_some());
+    assert!(w.open.document.registry.get("Mover").is_none());
     assert_eq!(w.game_components().collect::<Vec<_>>(), ["Spinner"]);
 }
 
@@ -569,7 +579,8 @@ fn adding_an_entity_while_playing_keeps_where_the_game_moved_things() {
     }
     let x = x_in_game(&w, id);
     assert!(x > 2.0, "{x}");
-    w.document
+    w.open
+        .document
         .edit(
             "Add",
             vec![area::Edit::Spawn {
@@ -596,8 +607,11 @@ fn new_code_the_running_game_can_t_take_leaves_the_last_program_and_registry() {
         "fetch \"solis/world\":World;\n{NEEDS_NO_CART}{}",
         SPINNER.replacen("fetch \"solis/world\":World;\n", "", 1)
     ))));
-    assert!(w.document.registry.get("Mover").is_some(), "still known");
-    assert!(w.document.registry.get("Spinner").is_none());
+    assert!(
+        w.open.document.registry.get("Mover").is_some(),
+        "still known"
+    );
+    assert!(w.open.document.registry.get("Spinner").is_none());
     assert_eq!(w.code_problems().len(), 1, "{:?}", w.code_problems());
     let x = x_in_game(&w, id);
     w.run_game(1.0 / 60.0);
@@ -659,7 +673,7 @@ fn rust_components_run_even_when_the_code_s_start_fails_at_play() {
         "said"
     );
     w.run_game(1.0 / 60.0);
-    let game = w.playing.as_mut().unwrap().game.as_mut().unwrap();
+    let game = w.open.playing.as_mut().unwrap().game.as_mut().unwrap();
     assert_eq!(
         game.values(id, "Ticker").unwrap().get("ticks"),
         Some(&Value::Int(1))
@@ -726,7 +740,7 @@ fn crowd_with(main: &str, component: &str, count: usize) -> (Workbench, Vec<Enti
             }
         })
         .collect();
-    w.document.edit("Fill", spawns, None, None).unwrap();
+    w.open.document.edit("Fill", spawns, None, None).unwrap();
     (w, ids)
 }
 
@@ -783,7 +797,14 @@ fn scale_check_pressing_play_with_2000_lust_components() {
     w.play();
     let ms = start.elapsed().as_secs_f64() * 1000.0;
     assert_eq!(
-        w.playing.as_mut().unwrap().game.as_mut().unwrap().len(),
+        w.open
+            .playing
+            .as_mut()
+            .unwrap()
+            .game
+            .as_mut()
+            .unwrap()
+            .len(),
         2_000
     );
     verdict("pressing Play with 2,000 Lust components", ms, 100.0);
@@ -831,7 +852,7 @@ fn scale_check_dragging_512_entities_with_running_components() {
                 value: Some(Value::vec3(Vec3::new(frame as f32, 0.0, 0.0))),
             })
             .collect();
-        w.document.edit("Drag", edits, None, None).unwrap();
+        w.open.document.edit("Drag", edits, None, None).unwrap();
         w.run_game(1.0 / 60.0);
     }
     let ms = start.elapsed().as_secs_f64() * 1000.0 / f64::from(frames);
@@ -885,7 +906,8 @@ fn guns_in_lust_and_lua_fire_projectiles_that_fly_and_end() {
         data.components
             .insert(gun.into(), reflect::ComponentData::default());
     }
-    w.document
+    w.open
+        .document
         .edit(
             "Add",
             vec![area::Edit::Spawn {
@@ -899,7 +921,7 @@ fn guns_in_lust_and_lua_fire_projectiles_that_fly_and_end() {
     for _ in 0..6 {
         w.run_game(1.0 / 60.0);
     }
-    let playing = w.playing.as_ref().unwrap();
+    let playing = w.open.playing.as_ref().unwrap();
     let flying = playing.world.projectiles().flying();
     assert_eq!(flying.len(), 12, "two a tick for six ticks");
     // The first pair has flown five ticks at 30 m/s; both colours fly.
@@ -909,7 +931,7 @@ fn guns_in_lust_and_lua_fire_projectiles_that_fly_and_end() {
     // The Game panel draws them.
     let scene = crate::game_panel::GameScene::of(
         &playing.world,
-        &w.models,
+        &w.open.models,
         crate::play::PlayState::Playing,
     );
     assert_eq!(scene.bolts.len(), 12);
@@ -917,10 +939,13 @@ fn guns_in_lust_and_lua_fire_projectiles_that_fly_and_end() {
     for _ in 0..30 {
         w.run_game(1.0 / 60.0);
     }
-    assert_eq!(w.playing.as_ref().unwrap().world.projectiles().len(), 30);
+    assert_eq!(
+        w.open.playing.as_ref().unwrap().world.projectiles().len(),
+        30
+    );
     // Stop lets them all go with the world.
     w.stop();
-    assert!(w.playing.is_none());
+    assert!(w.open.playing.is_none());
 }
 
 #[test]
@@ -941,7 +966,8 @@ fn past_the_projectile_limit_the_console_says_so_once() {
     let mut data = EntityData::new("Gun");
     data.components
         .insert("Gun".into(), reflect::ComponentData::default());
-    w.document
+    w.open
+        .document
         .edit(
             "Add",
             vec![area::Edit::Spawn {
@@ -953,7 +979,7 @@ fn past_the_projectile_limit_the_console_says_so_once() {
         .unwrap();
     w.play();
     // Nearly full already.
-    let projectiles = w.playing.as_mut().unwrap().world.projectiles_mut();
+    let projectiles = w.open.playing.as_mut().unwrap().world.projectiles_mut();
     for _ in 0..world::MAX_PROJECTILES - 1 {
         projectiles.fire(world::Shot {
             from: glam::Vec3::ZERO,
@@ -974,7 +1000,7 @@ fn past_the_projectile_limit_the_console_says_so_once() {
     assert_eq!(told.len(), 1, "said once");
     assert!(told[0].text.contains("1,000,000"));
     assert_eq!(
-        w.playing.as_ref().unwrap().world.projectiles().len(),
+        w.open.playing.as_ref().unwrap().world.projectiles().len(),
         world::MAX_PROJECTILES
     );
 }
@@ -1045,7 +1071,8 @@ fn game_code_spawns_copies_of_assemblies_and_takes_them_out() {
     let mut hive = EntityData::new("Hive");
     hive.components
         .insert("Hive".into(), reflect::ComponentData::default());
-    w.document
+    w.open
+        .document
         .edit(
             "Add",
             vec![area::Edit::Spawn {
@@ -1055,13 +1082,14 @@ fn game_code_spawns_copies_of_assemblies_and_takes_them_out() {
             None,
         )
         .unwrap();
-    let steps = w.document.history().undo_len();
-    let before = w.document.area().len();
+    let steps = w.open.document.history().undo_len();
+    let before = w.open.document.area().len();
     w.play();
     w.run_game(1.0 / 60.0);
     // Three made; the fourth is named in the project file but isn't an
     // assembly any more (deleted since), and the Console says so.
     let drones: Vec<EntityId> = w
+        .open
         .document
         .area()
         .iter()
@@ -1069,7 +1097,11 @@ fn game_code_spawns_copies_of_assemblies_and_takes_them_out() {
         .map(|(id, _)| id)
         .collect();
     assert_eq!(drones.len(), 3);
-    assert_eq!(w.document.history().undo_len(), steps, "not undo steps");
+    assert_eq!(
+        w.open.document.history().undo_len(),
+        steps,
+        "not undo steps"
+    );
     assert!(
         w.log_lines()
             .iter()
@@ -1079,7 +1111,7 @@ fn game_code_spawns_copies_of_assemblies_and_takes_them_out() {
     for _ in 0..3 {
         w.run_game(1.0 / 60.0);
     }
-    let playing = w.playing.as_ref().unwrap();
+    let playing = w.open.playing.as_ref().unwrap();
     for &drone in &drones {
         let z = playing.world.global(drone).unwrap().w_axis.z;
         assert!(z > 2.5, "climbing: {z}");
@@ -1088,15 +1120,19 @@ fn game_code_spawns_copies_of_assemblies_and_takes_them_out() {
     for _ in 0..10 {
         w.run_game(1.0 / 60.0);
     }
-    assert!(drones.iter().all(|&d| w.document.area().get(d).is_none()));
     assert!(
         drones
             .iter()
-            .all(|&d| w.playing.as_ref().unwrap().world.global(d).is_none())
+            .all(|&d| w.open.document.area().get(d).is_none())
+    );
+    assert!(
+        drones
+            .iter()
+            .all(|&d| w.open.playing.as_ref().unwrap().world.global(d).is_none())
     );
     // Stop puts the area back as it was.
     w.stop();
-    assert_eq!(w.document.area().len(), before);
+    assert_eq!(w.open.document.area().len(), before);
 }
 
 #[test]
@@ -1109,7 +1145,8 @@ fn spawned_entities_get_the_same_ids_every_time() {
         hive.components
             .insert("Hive".into(), reflect::ComponentData::default());
         let hive_id = EntityId(reflect::Id::from_raw(77).unwrap());
-        w.document
+        w.open
+            .document
             .edit(
                 "Add",
                 vec![area::Edit::Spawn {
@@ -1122,6 +1159,7 @@ fn spawned_entities_get_the_same_ids_every_time() {
         w.play();
         w.run_game(1.0 / 60.0);
         let mut ids: Vec<EntityId> = w
+            .open
             .document
             .area()
             .iter()
@@ -1165,7 +1203,8 @@ fn spawning_too_much_in_one_frame_is_refused_and_said_once() {
         let mut hive = EntityData::new("Hive");
         hive.components
             .insert("Hive".into(), reflect::ComponentData::default());
-        w.document
+        w.open
+            .document
             .edit(
                 "Add",
                 vec![area::Edit::Spawn {
@@ -1176,13 +1215,13 @@ fn spawning_too_much_in_one_frame_is_refused_and_said_once() {
             )
             .unwrap();
     }
-    let before = w.document.area().len();
+    let before = w.open.document.area().len();
     w.play();
     w.run_game(1.0 / 60.0);
     w.run_game(1.0 / 60.0);
     assert!(w.log_lines().iter().all(|l| !l.text.contains("stopped")));
     assert_eq!(
-        w.document.area().len(),
+        w.open.document.area().len(),
         before + crate::play::MAX_SPAWNS_PER_TICK
     );
     let told = w
@@ -1202,7 +1241,8 @@ fn spawned_entities_join_on_the_next_tick_even_within_one_frame() {
     let mut hive = EntityData::new("Hive");
     hive.components
         .insert("Hive".into(), reflect::ComponentData::default());
-    w.document
+    w.open
+        .document
         .edit(
             "Add",
             vec![area::Edit::Spawn {
@@ -1212,16 +1252,23 @@ fn spawned_entities_join_on_the_next_tick_even_within_one_frame() {
             None,
         )
         .unwrap();
-    let last = w.document.area().children(None).last().copied();
+    let last = w.open.document.area().children(None).last().copied();
     w.play();
     w.run_game((5.5 * world::TICK) as f32);
-    let playing = w.playing.as_ref().unwrap();
+    let playing = w.open.playing.as_ref().unwrap();
     let drones: Vec<EntityId> = w
+        .open
         .document
         .area()
         .children(None)
         .into_iter()
-        .filter(|&id| w.document.area().get(id).is_some_and(|e| e.name == "drone"))
+        .filter(|&id| {
+            w.open
+                .document
+                .area()
+                .get(id)
+                .is_some_and(|e| e.name == "drone")
+        })
         .collect();
     assert_eq!(drones.len(), 3);
     for &drone in &drones {
@@ -1229,7 +1276,7 @@ fn spawned_entities_join_on_the_next_tick_even_within_one_frame() {
         assert!((z - 5.0).abs() < 1e-4, "four ticks of climbing: {z}");
     }
     // They join at the end of the area's tree, in the order spawned.
-    let roots = w.document.area().children(None);
+    let roots = w.open.document.area().children(None);
     let at = roots.iter().position(|&r| Some(r) == last).unwrap();
     assert_eq!(&roots[at + 1..], &drones[..]);
     let xs: Vec<f32> = drones
@@ -1275,7 +1322,8 @@ fn an_event_sent_to_an_entity_spawned_in_the_same_tick_reaches_it() {
     let mut hive = EntityData::new("Hive");
     hive.components
         .insert("Hive".into(), reflect::ComponentData::default());
-    w.document
+    w.open
+        .document
         .edit(
             "Add",
             vec![area::Edit::Spawn {
@@ -1287,13 +1335,20 @@ fn an_event_sent_to_an_entity_spawned_in_the_same_tick_reaches_it() {
         .unwrap();
     w.play();
     w.run_game((3.5 * world::TICK) as f32);
-    let playing = w.playing.as_ref().unwrap();
+    let playing = w.open.playing.as_ref().unwrap();
     let drone = w
+        .open
         .document
         .area()
         .children(None)
         .into_iter()
-        .find(|&id| w.document.area().get(id).is_some_and(|e| e.name == "drone"))
+        .find(|&id| {
+            w.open
+                .document
+                .area()
+                .get(id)
+                .is_some_and(|e| e.name == "drone")
+        })
         .expect("spawned");
     let z = playing.world.global(drone).unwrap().w_axis.z;
     assert!((z - 7.0).abs() < 1e-4, "the launch arrived: {z}");
@@ -1393,7 +1448,8 @@ fn with_a_drunkard() -> Workbench {
     let mut data = EntityData::new("Walker").with(&Transform::default());
     data.components
         .insert("Drunkard".into(), reflect::ComponentData::default());
-    w.document
+    w.open
+        .document
         .edit(
             "Add",
             vec![area::Edit::Spawn {
@@ -1410,13 +1466,13 @@ fn with_a_drunkard() -> Workbench {
 /// the drunkard got to, and the game's checksums then.
 fn stagger(w: &mut Workbench, seed: Option<u64>, ticks: u64) -> (f32, u64, u64) {
     let id = EntityId(reflect::Id::from_raw(5).unwrap());
-    w.fixed_seed = seed;
+    w.open.fixed_seed = seed;
     w.play();
     while w.world().unwrap().clock().ticks < ticks {
         w.run_game((world::TICK * 2.0) as f32);
     }
     let x = x_in_game(w, id);
-    let playing = w.playing.as_mut().unwrap();
+    let playing = w.open.playing.as_mut().unwrap();
     let world = playing.world.checksum();
     let code = playing.game.as_mut().unwrap().checksum();
     w.stop();
@@ -1493,7 +1549,8 @@ fn kicked() -> (Workbench, EntityId) {
     kicker
         .components
         .insert("Kicker".into(), reflect::ComponentData::default());
-    w.document
+    w.open
+        .document
         .edit(
             "Add",
             vec![
@@ -1518,13 +1575,13 @@ fn kicked() -> (Workbench, EntityId) {
 fn game_code_kicks_a_crate_and_physics_slides_it_the_same_every_play() {
     let (mut w, crate_id) = kicked();
     let run = |w: &mut Workbench| {
-        w.fixed_seed = Some(1);
+        w.open.fixed_seed = Some(1);
         w.play();
         while w.world().unwrap().clock().ticks < 120 {
             w.run_game((world::TICK * 3.0) as f32);
         }
         let x = x_in_game(w, crate_id);
-        let sum = w.playing.as_ref().unwrap().world.checksum();
+        let sum = w.open.playing.as_ref().unwrap().world.checksum();
         let said: Vec<String> = w
             .log_lines()
             .iter()
@@ -1546,7 +1603,8 @@ fn game_code_kicks_a_crate_and_physics_slides_it_the_same_every_play() {
     assert_eq!((again.0, again.1), (x, sum));
     // Stop put the crate back.
     assert_eq!(
-        w.document
+        w.open
+            .document
             .area()
             .get(crate_id)
             .unwrap()
@@ -1700,6 +1758,7 @@ fn properties_shows_game_code_s_values_as_they_are_while_playing() {
     // Paused, so the frames drawn below don't run it on.
     w.pause();
     let steps = w
+        .open
         .playing
         .as_mut()
         .unwrap()
@@ -1820,7 +1879,7 @@ fn churning(language: &str) -> Workbench {
             }
         })
         .collect();
-    w.document.edit("Fill", spawns, None, None).unwrap();
+    w.open.document.edit("Fill", spawns, None, None).unwrap();
     w.play();
     w
 }
@@ -1835,6 +1894,7 @@ fn the_same_work_comes_out_the_same_in_each_language() {
             w.run_game(1.0 / 60.0);
         }
         let values = w
+            .open
             .playing
             .as_mut()
             .unwrap()
@@ -1952,7 +2012,8 @@ fn game_code_mirrors_a_sprite_with_set_flip() {
         .with(&area::builtin::Sprite::default());
     data.components
         .insert("Facer".into(), reflect::ComponentData::default());
-    w.document
+    w.open
+        .document
         .edit(
             "Add",
             vec![area::Edit::Spawn {
@@ -1980,6 +2041,7 @@ fn game_code_mirrors_a_sprite_with_set_flip() {
     assert_eq!(flipped(&w), (false, false), "facing right again");
     // The area itself is as it was: the flip is the running game's.
     let sprite = w
+        .open
         .document
         .area()
         .get(id)

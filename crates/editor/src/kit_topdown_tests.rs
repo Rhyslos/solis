@@ -71,7 +71,8 @@ fn farm(fields: &[(&str, Value)]) -> Workbench {
     let spawn = |n: u64, data: EntityData| area::Edit::Spawn {
         entities: vec![(id(n), data)],
     };
-    w.document
+    w.open
+        .document
         .edit(
             "Add",
             vec![spawn(FARMER, farmer), spawn(FENCE, fence)],
@@ -79,7 +80,7 @@ fn farm(fields: &[(&str, Value)]) -> Workbench {
             None,
         )
         .unwrap();
-    w.fixed_seed = Some(3);
+    w.open.fixed_seed = Some(3);
     w
 }
 
@@ -231,7 +232,8 @@ fn a_2d_character_knows_it_s_grounded_and_how_fast_it_goes() {
             height: 16.0,
             ..Collider2D::default()
         });
-    w.document
+    w.open
+        .document
         .edit(
             "Add",
             vec![
@@ -338,7 +340,8 @@ fn the_platformer_guide_s_code_runs_jumps_and_collects_coins() {
     let mut collects = ComponentData::default();
     collects.set("player", Value::Entity(Some(id(HERO))));
     coin.components.insert("Coin".into(), collects);
-    w.document
+    w.open
+        .document
         .edit(
             "Add",
             vec![
@@ -356,7 +359,7 @@ fn the_platformer_guide_s_code_runs_jumps_and_collects_coins() {
             None,
         )
         .unwrap();
-    w.fixed_seed = Some(3);
+    w.open.fixed_seed = Some(3);
     w.play();
     let hero_at = |w: &Workbench| {
         w.world()

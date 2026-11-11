@@ -17,7 +17,7 @@ Why values in the map, rather than an entity per plant? A field of a thousand cr
 For a few things that move or think (a scarecrow that turns, a chicken), use [sprites](sprites.md) instead.
 
 ## How to use it
-1. **Make a tileset:** in the Library, open the folder you want it in, then **New > Tileset** (right-click in the Library, or **+ New**). Solis makes `tileset.tileset.lst` with grass, tilled and water, and opens it in the **Tileset** tab, where terrains get their art (see [Tilesets and autotiling](tilesets.md)). Choose a terrain to change its name, its **code** (the one character the map file writes for it) and its colour in Properties; **+** adds one. Clicking a tileset in the Library shows its terrains in Properties too. The first terrain fills new maps.
+1. **Make a tileset:** in the Library, open the folder you want it in, then **New > Tileset** (right-click in the Library, or **+ New**). Solis makes `tileset.tileset.lst` with grass, tilled and water, and opens it in the **Tileset** tab, where terrains get their art (see [Tilesets and autotiling](tilesets.md)). Choose a terrain to change its name, its **code** (the one character the map file writes for it) and its colour in Properties; **+** adds one. Clicking a tileset in the Library shows its terrains in Properties too: change them there, add one with **+ Terrain**, or take one away with **×**. Every change to a tileset is an [undo](undo.md) step of that tileset's, wherever you make it: **Ctrl + Z** with the pointer over Properties while it shows the tileset, or over the Tileset tab, takes it back, so a terrain removed by mistake comes back with its tiles and rules. Dragging a colour is one step, made when you let go. The first terrain fills new maps.
 2. **Make a map:** **New > Tile map**. Solis makes `map.tilemap.lst`, 64 × 64 cells of the project's first tileset's first terrain. Click it in the Library to change its **Tileset** and its **Size** (in cells) in Properties.
 3. **Place it:** double-click the map in the Library (it goes where the viewport looks), or drag it into the viewport. Its top-left corner lands on a whole tile, and each cell is one tile across (the tile size in [2D settings](2d-pixel-perfect.md)). The **2D** view shows it best.
 4. **The Map tab** opens beside Properties while the map's entity is selected (select it in the Area panel). It shows:
@@ -125,7 +125,7 @@ A map file's Properties:
 | Setting | What it does |
 |---|---|
 | Tileset | The terrains its cells can be. Giving a map with an empty ground its first tileset fills the ground with that tileset's first terrain. |
-| Size | Its width and height in cells, up to 4,096 each. Making it smaller takes away the cells past its new edges. A map that big with a lot in it can be too big to open again (see the problems below). |
+| Size | Its width and height in cells, up to 4,096 each. Making it smaller takes away the cells past its new edges. A change that would make the map's file too big to open again isn't made (see the problems below). |
 
 A terrain's settings (right-click its swatch in the Map tab):
 
@@ -145,6 +145,7 @@ Value kinds:
 | Action | Shortcut |
 |---|---|
 | Undo or redo a change in the Map tab, or a painted stroke | Ctrl + Z, Ctrl + Y (pointer over the tab, or a painting tool in use) |
+| Undo or redo a change to a tileset (its terrains, **Solid**) | Ctrl + Z, Ctrl + Y (pointer over Properties while it shows the tileset, or over the Tileset tab) |
 | A terrain's settings | Right-click its swatch in the Map tab |
 | The painting tools | B, U, N, G, I (see [Painting tiles](painting-tiles.md)) |
 
@@ -155,7 +156,8 @@ Value kinds:
 - **Problem:** numbers don't show on the cells. **Why:** cells are too small to write on, or too many are in view. **Fix:** zoom in.
 - **Problem:** a value's numbers are gone after changing its kind. **Why:** a value's cells start again when its kind changes. **Fix:** Ctrl + Z over the Map tab.
 - **Problem:** on a very big map, **+** adds no layer or value, or a value's kind won't change to number. **Why:** a map's layers and values together take at most 512 MB of memory. A layer, a switch or a choice takes a byte for each cell and a number four, so the biggest map (4,096 × 4,096) has room for 32 bytes a cell: 16 layers and 4 numbers, say. **Fix:** take away a layer or value the map doesn't need, or make the map smaller.
-- **Problem:** a very big map won't open: "the map is too big to read" or "it's too big to read". **Why:** a map is kept as text, and reading text takes far more memory than the file's size, so Solis reads a map file of up to 64 MB with up to 12 million numbers, texts and symbols in it (about 2 GB of memory and 10 seconds at worst). The biggest map, 4,096 × 4,096, fits with three layers painted all over; each cell whose value isn't at its start counts too (a number in a million and a half cells is too many), and so does each exact tile. **Fix:** split a very big world into several maps, each on its own entity, and give values only to the cells that need them. Solis doesn't yet stop a map growing past this while you work on it, so open the project again now and then to check that a very big map still opens, and keep it in Git.
+- **Problem:** a change to a very big map isn't made, and the Console says *… wasn't changed: saved like that, the map couldn't be opened again*. **Why:** a map is kept as text, and reading text takes far more memory than the file's size, so Solis reads a map file of up to 64 MB with up to 12 million numbers, texts and symbols in it (about 2 GB of memory and 10 seconds at worst). The biggest map, 4,096 × 4,096, fits with three layers painted all over; each cell whose value isn't at its start counts too (a number in a million and a half cells is too many), and so does each exact tile. A map saved past that could never be opened again, so Solis checks every change as you make it (painting, filling, a new layer or value, a bigger size) and doesn't make one that would take the map past it. Nothing is lost: the map stays as it was, and undo still goes back through your earlier changes. **Fix:** split a very big world into several maps, each on its own entity, give values only to the cells that need them, and clear layers the map doesn't use; then make the change again.
+- **Problem:** a very big map won't open: "the map is too big to read" or "it's too big to read". **Why:** its file is past what Solis reads (see the problem above). Solis never saves such a file itself, so it was made by hand, by another program, or by a Solis from before this check. **Fix:** make it smaller in a text editor (take out a layer's `Cells`, or a value's cells), or go back to an earlier version of it in Git.
 - Problems lists a Tile Map with no map chosen, or whose file isn't in the project.
 
 ## Related

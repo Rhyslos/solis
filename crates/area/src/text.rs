@@ -4,7 +4,7 @@
 //!
 //! ```text
 //! -- An area. Safe to edit by hand: one block per entity, one line per field.
-//! area version 1;
+//! area version 2;
 //!
 //! entity 2B8D4NE6TV0HC {
 //!     name = "Sun";
@@ -13,6 +13,13 @@
 //!     Light.strength = 3.0;
 //! }
 //! ```
+//!
+//! A placed assembly is its root's block with an `assembly = "ID";` line,
+//! and a block named `root/part` for each part this copy changes,
+//! holding only what differs from the assembly: a new `name` or `order`,
+//! `removed = true;`, fields set, and `parent`, which names the entity the
+//! part was moved under, or is `""` for a part moved out from under every
+//! parent ([`ParentChange`]; version 2).
 //!
 //! This module only turns text into an [`Area`] and back; reading and
 //! writing files is the app's job. The reader is written for hostile
@@ -24,8 +31,9 @@ use reflect::{AssetId, AssetRef, ComponentData, EntityId, FieldKind, Registry, V
 use std::collections::BTreeMap;
 use std::fmt::{self, Write as _};
 
-/// The layout version this build writes and reads.
-pub const VERSION: u32 = 1;
+/// The layout version this build writes and reads. Version 2 gave a part
+/// of a placed assembly a way to say it has no parent (`parent = "";`).
+pub const VERSION: u32 = 2;
 
 /// Areas' and assemblies' version and upgraders (Phase 8, C1): each step
 /// turns a file read at one version into the next, after its blocks are
@@ -37,8 +45,16 @@ pub static FORMAT: reflect::upgrade::Format<AreaFile> = reflect::upgrade::Format
     name: "area",
     current: VERSION,
     version_of: |text| reflect::upgrade::header_version(text, &["area", "assembly"]),
-    steps: &[],
+    steps: &[parts_at_the_top_level],
 };
+
+/// Version 1 to 2: nothing to change. Version 2 lets a placed assembly's
+/// part say it was moved out to the top level (`parent = "";` in its
+/// block), which version 1 had no way to write, so no version 1 file
+/// holds one and every one reads as it always did.
+fn parts_at_the_top_level(_: &mut AreaFile) -> Result<(), String> {
+    Ok(())
+}
 /// The biggest area file read.
 pub const MAX_BYTES: usize = 64 << 20;
 /// The longest line read.
@@ -85,14 +101,37 @@ pub enum FileKind {
     },
 }
 
+/// What a placed assembly's change does to a part's parent. "Left where
+/// it is" and "moved out from under every parent" are different things,
+/// so they aren't both the absence of an ID: the second was once written
+/// as the first, and the part came back under its old parent (the review
+/// of Phase 9, BUG-13).
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Default)]
+pub enum ParentChange {
+    /// The parent the assembly gives it: nothing is written.
+    #[default]
+    Unchanged,
+    /// No parent: moved out to the area's top level (`parent = "";`).
+    TopLevel,
+    /// Moved under this entity (`parent = "ID";`).
+    Under(EntityId),
+}
+
+impl ParentChange {
+    /// The change that gives a part the parent `parent`.
+    pub fn to(parent: Option<EntityId>) -> Self {
+        parent.map_or(Self::TopLevel, Self::Under)
+    }
+}
+
 /// The changes a placed assembly makes to one of its entities
 /// (decision 0020): only what differs from the assembly.
 #[derive(Debug, Clone, PartialEq, Default)]
 pub struct Override {
     /// A new name.
     pub name: Option<String>,
-    /// A new parent.
-    pub parent: Option<EntityId>,
+    /// A new parent, or none.
+    pub parent: ParentChange,
     /// A new place among its siblings.
     pub order: Option<String>,
     /// Gone from this copy.
@@ -206,8 +245,12 @@ pub fn write_file(
         if let Some(name) = &changes.name {
             let _ = writeln!(body, "    name = {};", quoted(name));
         }
-        if let Some(parent) = changes.parent {
-            let _ = writeln!(body, "    parent = \"{parent}\";");
+        match changes.parent {
+            ParentChange::Unchanged => {}
+            ParentChange::TopLevel => body.push_str("    parent = \"\";\n"),
+            ParentChange::Under(parent) => {
+                let _ = writeln!(body, "    parent = \"{parent}\";");
+            }
         }
         if let Some(order) = &changes.order {
             let _ = writeln!(body, "    order = {};", quoted(order));
@@ -367,7 +410,9 @@ pub(crate) fn write_value(out: &mut String, value: &Value) {
 
 /// Reads a plain area (one with no placed assemblies) from `text`: see
 /// [`read_file`]. Placed assemblies need their contents to be read; use
-/// [`crate::assembly`].
+/// [`crate::assembly`]. Parents that lead round in a loop are put right
+/// ([`Area::mend_loops`]), as expanding a file's assemblies does, so no
+/// area read has one.
 pub fn read(text: &str, registry: &Registry) -> Result<Area, ParseError> {
     let file = read_file(text, registry)?;
     if file.kind != FileKind::Area {
@@ -382,13 +427,17 @@ pub fn read(text: &str, registry: &Registry) -> Result<Area, ParseError> {
             message: format!("{id} is a placed assembly, which needs its assembly to be read"),
         });
     }
-    Ok(file.area)
+    let mut area = file.area;
+    area.mend_loops();
+    Ok(area)
 }
 
 /// Reads an area or assembly file from `text`. Values are turned into the
 /// kinds `registry` declares (asset and entity references, decimals written
 /// as whole numbers); components it doesn't know are kept exactly as read.
-/// A file from a newer version is refused, never half-read.
+/// A file from a newer version is refused, never half-read. Parents are
+/// kept as written: one may be a part of a placed assembly, known only
+/// once the file is expanded, which is where loops of them are put right.
 pub fn read_file(text: &str, registry: &Registry) -> Result<AreaFile, ParseError> {
     if text.len() > MAX_BYTES {
         return Err(ParseError {
@@ -466,7 +515,12 @@ pub fn read_file(text: &str, registry: &Registry) -> Result<AreaFile, ParseError
                 return fail("removed = true; is only for parts of a placed assembly");
             }
             let mut entity = EntityData::new(&block.name.unwrap_or_default());
-            entity.parent = block.parent;
+            // An entity's own block: no parent line, or one saying none,
+            // is the top level.
+            entity.parent = match block.parent {
+                ParentChange::Under(parent) => Some(parent),
+                ParentChange::Unchanged | ParentChange::TopLevel => None,
+            };
             if let Some(order) = block.order {
                 entity.order = order;
             }
@@ -552,7 +606,8 @@ pub const MAX_NESTING: usize = 16;
 #[derive(Default)]
 struct Block {
     name: Option<String>,
-    parent: Option<EntityId>,
+    /// `Unchanged` when the block has no parent line.
+    parent: ParentChange,
     order: Option<String>,
     assembly: Option<AssetId>,
     removed: bool,
@@ -755,10 +810,16 @@ impl Parser<'_> {
                 entity.order = Some(t);
             }
             ("order", _) => return wrong("text"),
+            // `parent = "";` is no parent at all: how a part of a placed
+            // assembly says it was moved out to the top level.
+            ("parent", Value::Text(t)) if t.is_empty() => {
+                twice(entity.parent != ParentChange::Unchanged)?;
+                entity.parent = ParentChange::TopLevel;
+            }
             ("parent", Value::Text(t)) => match t.parse() {
                 Ok(id) => {
-                    twice(entity.parent.is_some())?;
-                    entity.parent = Some(id);
+                    twice(entity.parent != ParentChange::Unchanged)?;
+                    entity.parent = ParentChange::Under(id);
                 }
                 Err(e) => return wrong(&format!("an entity's ID ({e})")),
             },
@@ -1033,6 +1094,182 @@ mod tests {
         area
     }
 
+    fn id(n: u64) -> EntityId {
+        EntityId(reflect::Id::from_raw(n).unwrap())
+    }
+
+    /// A post placed in an area with three of its parts changed: one
+    /// renamed where it is, one moved under the shed, one moved out to the
+    /// top level.
+    fn parts_moved(version: u32) -> String {
+        format!(
+            "area version {version};\n\
+             entity 0000000000001 {{ name = \"Post\"; assembly = \"0000000000009\"; }}\n\
+             entity 0000000000001/0000000000002 {{ name = \"Left\"; }}\n\
+             entity 0000000000001/0000000000003 {{ parent = \"0000000000007\"; order = \"a3\"; }}\n\
+             entity 0000000000001/0000000000004 {{ parent = \"\"; }}\n\
+             entity 0000000000007 {{ name = \"Shed\"; }}\n"
+        )
+    }
+
+    #[test]
+    fn a_part_s_block_says_nothing_of_its_parent_names_one_or_says_none() {
+        // The review of Phase 9, BUG-13: "no parent" had no way to be
+        // written, so it was written as "unchanged".
+        let file = read_file(&parts_moved(2), &registry()).unwrap();
+        let part = |n| file.overrides[&(id(1), vec![id(n)])].parent;
+        assert_eq!(part(2), ParentChange::Unchanged);
+        assert_eq!(part(3), ParentChange::Under(id(7)));
+        assert_eq!(part(4), ParentChange::TopLevel);
+        assert_eq!(ParentChange::to(None), ParentChange::TopLevel);
+        assert_eq!(ParentChange::to(Some(id(7))), ParentChange::Under(id(7)));
+        let written = write_file(&file, &registry(), &no_paths);
+        assert!(
+            written.contains("entity 0000000000001/0000000000004 {\n    parent = \"\";\n}\n"),
+            "{written}"
+        );
+        assert!(
+            written.contains("entity 0000000000001/0000000000002 {\n    name = \"Left\";\n}\n"),
+            "{written}"
+        );
+        assert_eq!(read_file(&written, &registry()).unwrap(), file);
+        assert_eq!(write_file(&file, &registry(), &no_paths), written);
+        // An entity's own block may say it has none: the top level, which
+        // is written as no line at all.
+        let own = "area version 2;\nentity 0000000000007 { name = \"Shed\"; parent = \"\"; }";
+        let shed = read(own, &registry()).unwrap();
+        assert_eq!(shed.get(id(7)).unwrap().parent, None);
+        assert!(!write(&shed, &registry(), &no_paths).contains("parent"));
+        // Said twice, either way, is a mistake on its line.
+        for twice in [
+            "parent = \"\";\n parent = \"\";",
+            "parent = \"0000000000007\";\n parent = \"\";",
+            "parent = \"\";\n parent = \"0000000000007\";",
+        ] {
+            let text = parts_moved(2).replace("parent = \"\";", twice);
+            let found = read_file(&text, &registry()).unwrap_err();
+            assert_eq!(found.line, 6, "{twice}");
+            assert!(found.message.contains("parent is given twice"), "{found}");
+        }
+    }
+
+    #[test]
+    fn a_version_1_file_reads_as_it_always_did_and_is_written_as_version_2() {
+        // Version 2 only added `parent = "";` for a part (BUG-13). Every
+        // line a version 1 file can hold means what it meant.
+        assert_eq!(VERSION, 2);
+        assert!(FORMAT.is_complete());
+        let old = parts_moved(1).replace("parent = \"\";", "order = \"a9\";");
+        let new = parts_moved(2).replace("parent = \"\";", "order = \"a9\";");
+        assert_eq!((FORMAT.version_of)(&old), Some(1));
+        let read = read_file(&old, &registry()).unwrap();
+        assert_eq!(read, read_file(&new, &registry()).unwrap());
+        let part = |n| &read.overrides[&(id(1), vec![id(n)])];
+        assert_eq!(part(2).parent, ParentChange::Unchanged);
+        assert_eq!(part(3).parent, ParentChange::Under(id(7)));
+        assert_eq!(part(4).parent, ParentChange::Unchanged);
+        assert_eq!(part(4).order.as_deref(), Some("a9"));
+        // The real thing: the version 1 examples kept for good.
+        for fixture in [
+            include_str!("../../../tests/fixtures/area/v1/turret.solarea"),
+            include_str!("../../../tests/fixtures/area/v1/crate.solassembly"),
+        ] {
+            assert_eq!((FORMAT.version_of)(fixture), Some(1));
+            let read = read_file(fixture, &registry()).unwrap();
+            let written = write_file(&read, &registry(), &no_paths);
+            // Written now it says version 2, and nothing else differs but
+            // the comments beside asset IDs (never read).
+            assert_eq!((FORMAT.version_of)(&written), Some(2));
+            assert_eq!(read_file(&written, &registry()).unwrap(), read);
+        }
+        // A build that reads up to version 2 refuses what's newer by its
+        // first line, as a build before this one refuses version 2.
+        let newer = read_file(&parts_moved(3), &registry()).unwrap_err();
+        assert_eq!(newer.line, 1);
+        assert!(newer.message.contains("newer version"), "{newer}");
+    }
+
+    #[test]
+    fn the_version_2_example_is_what_this_build_writes() {
+        // tests/fixtures/area/v2: a yard with a crate placed in it, its
+        // lid moved out to the top level (BUG-13).
+        let yard = include_str!("../../../tests/fixtures/area/v2/yard.solarea");
+        let file = read_file(yard, &registry()).unwrap();
+        let moved: Vec<_> = (file.overrides.values())
+            .filter(|o| o.parent == ParentChange::TopLevel)
+            .collect();
+        assert_eq!(moved.len(), 1);
+        let paths = |_| Some("assemblies/crate.solassembly".to_string());
+        assert_eq!(write_file(&file, &registry(), &paths), yard);
+        let crate_ = include_str!("../../../tests/fixtures/area/v2/crate.solassembly");
+        let file = read_file(crate_, &registry()).unwrap();
+        assert_eq!(write_file(&file, &registry(), &no_paths), crate_);
+    }
+
+    #[test]
+    fn a_file_of_overrides_broken_any_way_is_read_or_refused_and_written_back() {
+        // Fuzzing the lines a copy's parts have: every prefix and
+        // thousands of corruptions are read or refused, never a crash,
+        // and whatever is read is written and read back as itself, with
+        // each part's parent as it was: unchanged, an entity, or none.
+        let registry = registry();
+        let text = parts_moved(2);
+        for end in 0..text.len() {
+            let _ = read_file(&text[..end], &registry);
+        }
+        let bytes = text.as_bytes();
+        let mut seed = 0x5EED_1234u64;
+        let mut read_back = 0;
+        for _ in 0..5000 {
+            seed ^= seed << 13;
+            seed ^= seed >> 7;
+            seed ^= seed << 17;
+            let mut broken = bytes.to_vec();
+            for _ in 0..1 + seed % 3 {
+                let at = (seed as usize / 7) % broken.len();
+                let pieces = b"{}[]\";=-.,/#\\ \nax07e";
+                broken[at] = pieces[(seed >> 20) as usize % pieces.len()];
+                seed = seed.rotate_left(11);
+            }
+            let Ok(text) = std::str::from_utf8(&broken) else {
+                continue;
+            };
+            if let Ok(file) = read_file(text, &registry) {
+                let written = write_file(&file, &registry, &no_paths);
+                assert_eq!(read_file(&written, &registry), Ok(file), "{text}");
+                read_back += 1;
+            }
+        }
+        assert!(read_back > 100, "{read_back} of the broken files were read");
+    }
+
+    #[test]
+    fn a_loop_of_parents_in_a_file_is_put_right_as_it_is_read() {
+        // The review of Phase 9, BUG-12: a crate and a shelf written
+        // inside each other, and a lid inside the crate.
+        let mut area = Area::new();
+        let crate_ = area.spawn(EntityData::new("Crate"));
+        let mut shelf = EntityData::new("Shelf");
+        shelf.parent = Some(crate_);
+        let shelf = area.spawn(shelf);
+        let mut lid = EntityData::new("Lid");
+        lid.parent = Some(crate_);
+        let lid = area.spawn(lid);
+        area.get_mut(crate_).unwrap().parent = Some(shelf);
+        let text = write(&area, &registry(), &no_paths);
+        // The file is read as written (a parent may be a part of a placed
+        // assembly, not there yet)…
+        assert_eq!(read_file(&text, &registry()).unwrap().area, area);
+        // …and an area made from it has no loop: the lower ID of the two
+        // is at the top, the other and the lid still under theirs.
+        let read = read(&text, &registry()).unwrap();
+        let (top, under) = (crate_.min(shelf), crate_.max(shelf));
+        assert_eq!(read.get(top).unwrap().parent, None);
+        assert_eq!(read.get(under).unwrap().parent, Some(top));
+        assert_eq!(read.get(lid).unwrap().parent, Some(crate_));
+        assert_eq!(crate::Tree::of(&read).reachable().len(), 3);
+    }
+
     #[test]
     fn an_area_round_trips_through_text() {
         let area = sample();
@@ -1072,7 +1309,7 @@ mod tests {
         );
         let text = write(&area, &registry(), &|_| Some("props/sun.glb".into()));
         assert!(text.contains(
-            "area version 1;\n\nentity 2B8D4NE6TV0HC {\n    name = \"Sun\";\n    order = \"a0\";\n"
+            "area version 2;\n\nentity 2B8D4NE6TV0HC {\n    name = \"Sun\";\n    order = \"a0\";\n"
         ));
         assert!(text.contains("    Light.color = [1.0, 0.95, 0.88];\n"));
         assert!(text.contains("    Light.kind = \"Sun\";\n"));
@@ -1103,7 +1340,7 @@ mod tests {
         let cases = [
             ("", 1, "empty"),
             ("scene version 1;", 1, "isn't an area file"),
-            ("area version 2;", 1, "newer version"),
+            ("area version 3;", 1, "newer version"),
             ("area version 0;", 1, "no layout version 0"),
             ("area version 1;\nentity X {}", 2, "isn't an ID"),
             (

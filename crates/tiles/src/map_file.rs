@@ -54,7 +54,8 @@ pub const ENDING: &str = ".tilemap.lst";
 /// about half of each; a number in each of a million and a half cells is
 /// too much. A map's own limits allow far more than a file this size
 /// holds (16 layers painted all over the biggest map are 306 MB of rows):
-/// such a map's file is refused as too big to read.
+/// such a map's file is refused as too big to read, and so is never
+/// written ([`write()`]).
 pub const MAX_BYTES: usize = 64 << 20;
 /// The most blocks a map file in the older layout has (every chunk of
 /// every layer of the biggest map, and its values'). The Lust layout has
@@ -163,21 +164,45 @@ fn layer_chunk(map: &TileMap, name: &str) -> Result<(usize, [u32; 2]), String> {
     Ok((layer, chunk_at(map, chunk)?))
 }
 
-/// Reads a map file.
-pub fn read(text: &str) -> Result<ReadMap, MapFileError> {
-    if text.len() > MAX_BYTES {
+/// Refuses a map file longer than `max_bytes`: the reader's first check,
+/// and the writer's.
+fn within_bytes(text: &str, max_bytes: usize) -> Result<(), MapFileError> {
+    if text.len() > max_bytes {
         return Err(MapFileError {
             line: 0,
             message: format!(
                 "the map is too big to read: its file is {} MB, and tile maps up to {} MB \
                  are read",
                 text.len() >> 20,
-                MAX_BYTES >> 20
+                max_bytes >> 20
             ),
         });
     }
+    Ok(())
+}
+
+/// Whether [`read`] would take a map file of `text` for its size: its
+/// length, and how many numbers, texts and symbols it holds
+/// (`area::lust_data::fits`, the limits the reader itself keeps).
+fn fits(text: &str, max_bytes: usize) -> Result<(), MapFileError> {
+    within_bytes(text, max_bytes)?;
+    area::lust_data::fits(text, max_bytes).map_err(|e| MapFileError {
+        line: e.line,
+        message: e.message,
+    })
+}
+
+/// Reads a map file.
+pub fn read(text: &str) -> Result<ReadMap, MapFileError> {
+    read_within(text, MAX_BYTES)
+}
+
+/// [`read`], of a file of at most `max_bytes` ([`MAX_BYTES`]; less in
+/// tests, where the edge can then be reached with a small map).
+fn read_within(text: &str, max_bytes: usize) -> Result<ReadMap, MapFileError> {
+    within_bytes(text, max_bytes)?;
     let mut read = if area::lust_data::is_data(text) {
-        let read = crate::map_lust::read(text, MAX_BYTES).map_err(|e| MapFileError {
+        let read = crate::map_lust::read(text, max_bytes).map_err(|e| MapFileError {
             line: e.line,
             message: e.message,
         })?;
@@ -481,8 +506,27 @@ fn values(
     Ok(())
 }
 
-/// Writes a map file that [`read`] reads back.
-pub fn write(map: &TileMap) -> String {
+/// Writes a map file that [`read`] reads back, or says why it can't be
+/// written: a map's own limits allow far more than a file the reader
+/// takes can hold (see [`MAX_BYTES`]), and a file that couldn't be opened
+/// again would be work lost, so it's never written (the review of Phase 9,
+/// BUG-55). Whoever changes a map asks this before keeping the change.
+pub fn write(map: &TileMap) -> Result<String, MapFileError> {
+    write_within(map, MAX_BYTES)
+}
+
+/// [`write()`], for a file of at most `max_bytes` (never more than
+/// [`MAX_BYTES`], whatever is asked): for whoever keeps maps smaller than
+/// the reader takes, and for tests, where the edge can then be reached
+/// with a small map.
+pub fn write_within(map: &TileMap, max_bytes: usize) -> Result<String, MapFileError> {
+    let text = text_of(map);
+    fits(&text, max_bytes.min(MAX_BYTES))?;
+    Ok(text)
+}
+
+/// The map's file, whether or not it could be read back.
+fn text_of(map: &TileMap) -> String {
     let [w, h] = map.size();
     let fields = [
         (

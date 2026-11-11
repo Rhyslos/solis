@@ -629,36 +629,55 @@ fn exact_tiles(ui: &mut Ui, set: &Tileset, m: &MapUi<'_>, asked: &mut Vec<MapReq
     });
 }
 
+/// A change to a tileset's terrains, asked for in its Properties. The
+/// workbench makes it through the tileset's editor, as one undo step.
+#[derive(Debug, Clone, PartialEq)]
+pub(crate) enum TerrainEdit {
+    /// Add a terrain.
+    Add,
+    /// Take this terrain away, with its tiles and rules.
+    Remove(reflect::Id),
+    /// Change this terrain's name, code or colour (`None` keeps it).
+    Set {
+        id: reflect::Id,
+        name: Option<String>,
+        code: Option<char>,
+        colour: Option<[f32; 3]>,
+    },
+}
+
 /// A tileset's Properties (clicked in the Library): its terrains, each
-/// with its colour, name and code. Gives back the tileset changed, if it
-/// was.
+/// with its colour, name and code. Gives back the changes asked for.
 pub(crate) fn tileset_properties(
     ui: &mut Ui,
     path: &str,
     set: &Tileset,
     notes: &[String],
-) -> Option<Tileset> {
-    let mut changed: Option<Tileset> = None;
+) -> Vec<TerrainEdit> {
+    let mut asked = Vec::new();
     let name = path.rsplit_once('/').map_or(path, |(_, n)| n);
     ui.horizontal(|ui| {
         ui.label(RichText::new("▦").color(theme::kind::SPRITE));
         ui.label(RichText::new(name).strong());
     });
     ui.label(RichText::new("Terrains (what a cell can be)").color(theme::text_weak()));
-    for (i, t) in set.terrains.iter().enumerate() {
+    for t in &set.terrains {
+        let set_it = |name, code, colour| TerrainEdit::Set {
+            id: t.id,
+            name,
+            code,
+            colour,
+        };
         ui.horizontal(|ui| {
-            let mut c = t.colour.map(|v| (v.clamp(0.0, 1.0) * 255.0).round() as u8);
-            if ui.color_edit_button_srgb(&mut c).changed() {
-                let mut s = changed.clone().unwrap_or_else(|| set.clone());
-                s.terrains[i].colour = c.map(|v| f32::from(v) / 255.0);
-                changed = Some(s);
+            // Once the mouse is let go: a drag in the picker is one undo
+            // step and one save, not one a frame.
+            let colour = crate::frames_view::settled_colour(ui, ("terrain", t.id), t.colour);
+            if colour.is_some() {
+                asked.push(set_it(None, None, colour));
             }
-            if let Some(n) = name_field(ui, ("terrain", t.id), &t.name, 110.0)
-                && set.by_name(&n).is_none()
-            {
-                let mut s = changed.clone().unwrap_or_else(|| set.clone());
-                s.terrains[i].name = n;
-                changed = Some(s);
+            let name = name_field(ui, ("terrain", t.id), &t.name, 110.0);
+            if name.is_some() {
+                asked.push(set_it(name, None, None));
             }
             let id = ui.id().with(("code", t.id));
             let mut code: String = ui
@@ -678,17 +697,14 @@ pub(crate) fn tileset_properties(
                 if let Some(c) = code.chars().next()
                     && r.lost_focus()
                     && c != t.code
-                    && tiles::tileset::usable_code(c)
-                    && set.by_code(c).is_none()
                 {
-                    let mut s = changed.clone().unwrap_or_else(|| set.clone());
-                    s.terrains[i].code = c;
-                    changed = Some(s);
+                    asked.push(set_it(None, Some(c), None));
                 }
             }
-            let x = ui
-                .small_button("×")
-                .on_hover_text("Take this terrain away (maps keep its code, drawn pink)");
+            let x = ui.small_button("×").on_hover_text(
+                "Take this terrain away, with its tiles and rules (maps keep its code, drawn \
+                     pink). Ctrl+Z here brings it back.",
+            );
             x.widget_info(|| {
                 egui::WidgetInfo::labeled(
                     egui::WidgetType::Button,
@@ -697,11 +713,7 @@ pub(crate) fn tileset_properties(
                 )
             });
             if x.clicked() {
-                let mut s = changed.clone().unwrap_or_else(|| set.clone());
-                let gone = s.terrains.remove(i).id;
-                s.pieces.retain(|p| p.terrain != gone);
-                s.rules.retain(|r| r.terrain != gone);
-                changed = Some(s);
+                asked.push(TerrainEdit::Remove(t.id));
             }
         });
     }
@@ -713,28 +725,8 @@ pub(crate) fn tileset_properties(
             tiles::tileset::MAX_TERRAINS
         ))
         .clicked()
-        && let Some(code) = set.free_code()
     {
-        let mut s = changed.clone().unwrap_or_else(|| set.clone());
-        let name = (1..)
-            .map(|n| {
-                if n == 1 {
-                    "terrain".to_owned()
-                } else {
-                    format!("terrain{n}")
-                }
-            })
-            .find(|n| set.by_name(n).is_none())
-            .unwrap_or_default();
-        s.terrains.push(tiles::Terrain {
-            id: reflect::Id::random(),
-            name,
-            code,
-            colour: [0.5; 3],
-            kind: tiles::TileKind::Plain,
-            solid: false,
-        });
-        changed = Some(s);
+        asked.push(TerrainEdit::Add);
     }
     ui.label(
         RichText::new("Its name, the character the map file writes for it, and its colour. The first fills new maps. Double-click the tileset in the Library to give its terrains art in the Tileset tab.")
@@ -744,7 +736,7 @@ pub(crate) fn tileset_properties(
     for note in notes {
         ui.label(RichText::new(note).small().color(theme::WARNING));
     }
-    changed
+    asked
 }
 
 /// A map file's Properties (clicked in the Library): its tileset and

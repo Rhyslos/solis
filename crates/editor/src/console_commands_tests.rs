@@ -35,7 +35,8 @@ fn answer(w: &Workbench) -> String {
 }
 
 fn position(w: &Workbench, id: EntityId) -> Vec3 {
-    w.document
+    w.open
+        .document
         .area()
         .get(id)
         .unwrap()
@@ -134,22 +135,28 @@ fn numbers_colours_choices_and_switches_are_read_for_their_field() {
 fn select_finds_entities_by_name_or_id_and_says_when_nothing_matches() {
     let (mut w, crate_id) = with_a_crate();
     let lamp = w.add_point_light();
-    w.document.selection.clear();
+    w.open.document.selection.clear();
     run(&mut w, "select crate");
     assert_eq!(
-        w.document.selection.primary(),
+        w.open.document.selection.primary(),
         Some(crate_id),
         "any capitals"
     );
     run(&mut w, r#"select "point light 1" Crate"#);
-    assert_eq!(w.document.selection.iter().count(), 2);
-    assert_eq!(w.document.selection.primary(), Some(lamp));
+    assert_eq!(w.open.document.selection.iter().count(), 2);
+    assert_eq!(w.open.document.selection.primary(), Some(lamp));
     run(&mut w, &format!("select {crate_id}"));
-    assert_eq!(w.document.selection.iter().collect::<Vec<_>>(), [crate_id]);
+    assert_eq!(
+        w.open.document.selection.iter().collect::<Vec<_>>(),
+        [crate_id]
+    );
     run(&mut w, "select none");
-    assert_eq!(w.document.selection.primary(), None);
+    assert_eq!(w.open.document.selection.primary(), None);
     run(&mut w, "select all");
-    assert_eq!(w.document.selection.iter().count(), w.document.area().len());
+    assert_eq!(
+        w.open.document.selection.iter().count(),
+        w.open.document.area().len()
+    );
     run(&mut w, "select Nothing");
     assert_eq!(said(&w).0, LogLevel::Error);
     assert!(said(&w).1.contains("nothing is called"));
@@ -161,7 +168,10 @@ fn select_finds_entities_by_name_or_id_and_says_when_nothing_matches() {
 fn set_changes_every_selected_entity_in_one_undo_step() {
     let (mut w, crate_id) = with_a_crate();
     let lamp = w.add_point_light();
-    w.document.selection.select_all([crate_id, lamp], crate_id);
+    w.open
+        .document
+        .selection
+        .select_all([crate_id, lamp], crate_id);
     run(&mut w, "set transform.position 1 2 3");
     assert_eq!(position(&w, crate_id), Vec3::new(1.0, 2.0, 3.0));
     assert_eq!(position(&w, lamp), Vec3::new(1.0, 2.0, 3.0));
@@ -172,14 +182,53 @@ fn set_changes_every_selected_entity_in_one_undo_step() {
 
     // Only the lamp has a Light; the crate is left alone.
     run(&mut w, "set Light.strength 250");
-    let light = w.document.area().get(lamp).unwrap().get::<Light>().unwrap();
+    let light = w
+        .open
+        .document
+        .area()
+        .get(lamp)
+        .unwrap()
+        .get::<Light>()
+        .unwrap();
     assert_eq!(light.strength, 250.0);
 
     // Two typed changes are two undo steps, never merged.
     run(&mut w, "set Light.strength 10");
     w.undo();
-    let light = w.document.area().get(lamp).unwrap().get::<Light>().unwrap();
+    let light = w
+        .open
+        .document
+        .area()
+        .get(lamp)
+        .unwrap()
+        .get::<Light>()
+        .unwrap();
     assert_eq!(light.strength, 250.0);
+}
+
+/// BUG-02: the Console sets a number as typed, and a cone below zero
+/// stopped the program as the viewport drew the light.
+#[test]
+fn set_can_t_give_a_light_a_cone_that_crashes_the_viewport() {
+    let mut w = Workbench::new(info(), None);
+    let torch = w.add_spotlight();
+    for (typed, cone) in [
+        ("-5", Light::CONE_RANGE.0),
+        ("0", Light::CONE_RANGE.0),
+        ("45", 45.0),
+        ("1000", Light::CONE_RANGE.1),
+    ] {
+        run(&mut w, &format!("set Light.cone {typed}"));
+        run(&mut w, &format!("set Light.soft_edge {typed}"));
+        let light = w.open.document.area().get(torch).unwrap().get::<Light>();
+        assert_eq!(light.unwrap().cone, cone, "{typed}");
+        let view = crate::area_view::AreaView::of(w.open.document.area(), w.models());
+        let lamp = view.lamps[0];
+        assert!(
+            0.0 <= lamp.inner && lamp.inner <= lamp.outer,
+            "{typed}: {lamp:?}"
+        );
+    }
 }
 
 #[test]
@@ -196,22 +245,26 @@ fn set_and_get_say_what_went_wrong() {
         assert_eq!(said(&w).0, LogLevel::Error, "{line}");
         assert!(said(&w).1.contains(wanted), "{line}: {}", said(&w).1);
     }
-    w.document.selection.select_only(crate_id);
+    w.open.document.selection.select_only(crate_id);
     run(&mut w, "set Transform.position");
     assert!(said(&w).1.contains("to what"), "{}", said(&w).1);
     run(&mut w, "set Light.strength 5");
     assert!(said(&w).1.contains("nothing selected has a Light"));
     run(&mut w, "get Light");
     assert!(said(&w).1.contains("has no Light"));
-    let before = w.document.history().undo_len();
+    let before = w.open.document.history().undo_len();
     run(&mut w, "set Transform.position 1 two 3");
-    assert_eq!(w.document.history().undo_len(), before, "nothing changed");
+    assert_eq!(
+        w.open.document.history().undo_len(),
+        before,
+        "nothing changed"
+    );
 }
 
 #[test]
 fn get_shows_a_component_or_one_setting() {
     let (mut w, crate_id) = with_a_crate();
-    w.document.selection.select_only(crate_id);
+    w.open.document.selection.select_only(crate_id);
     run(&mut w, "get Transform.position");
     assert_eq!(
         said(&w),
@@ -231,7 +284,7 @@ fn get_shows_a_component_or_one_setting() {
         "{text}"
     );
     let lamp = w.add_point_light();
-    w.document.selection.select_only(lamp);
+    w.open.document.selection.select_only(lamp);
     run(&mut w, "get Light.color");
     assert_eq!(said(&w).1, "Light.color = #ffffff");
     run(&mut w, "get Light.kind");
@@ -241,20 +294,23 @@ fn get_shows_a_component_or_one_setting() {
 #[test]
 fn the_other_commands_do_what_their_menus_do() {
     let (mut w, crate_id) = with_a_crate();
-    let entities = w.document.area().len();
+    let entities = w.open.document.area().len();
     run(&mut w, "new Harbour wall");
-    assert_eq!(w.document.area().len(), entities + 1);
-    let new = w.document.selection.primary().unwrap();
-    assert_eq!(w.document.area().get(new).unwrap().name, "Harbour wall");
+    assert_eq!(w.open.document.area().len(), entities + 1);
+    let new = w.open.document.selection.primary().unwrap();
+    assert_eq!(
+        w.open.document.area().get(new).unwrap().name,
+        "Harbour wall"
+    );
     run(&mut w, "duplicate");
-    assert_eq!(w.document.area().len(), entities + 2);
+    assert_eq!(w.open.document.area().len(), entities + 2);
     run(&mut w, "delete");
-    assert_eq!(w.document.area().len(), entities + 1);
+    assert_eq!(w.open.document.area().len(), entities + 1);
     run(&mut w, "undo");
-    assert_eq!(w.document.area().len(), entities + 2);
+    assert_eq!(w.open.document.area().len(), entities + 2);
     run(&mut w, "redo");
-    assert_eq!(w.document.area().len(), entities + 1);
-    w.document.selection.clear();
+    assert_eq!(w.open.document.area().len(), entities + 1);
+    w.open.document.selection.clear();
     run(&mut w, "delete");
     assert_eq!(said(&w), (LogLevel::Error, "nothing is selected".into()));
 
@@ -277,7 +333,7 @@ fn the_other_commands_do_what_their_menus_do() {
     run(&mut w, "look shiny");
     assert_eq!(said(&w).0, LogLevel::Error);
 
-    w.document.selection.select_only(crate_id);
+    w.open.document.selection.select_only(crate_id);
     run(&mut w, "frame");
     run(&mut w, "stats");
     assert!(
@@ -443,7 +499,7 @@ fn any_command_line_is_answered_without_a_panic() {
             assert!(!w.log_lines().is_empty(), "{line:?} got an answer");
         }
         let _ = w.complete(&line);
-        if w.document.area().len() > 200 {
+        if w.open.document.area().len() > 200 {
             w.new_area();
         }
     }
@@ -477,7 +533,10 @@ fn the_quote_key_opens_the_command_line_and_enter_runs_it() {
     h.key_press(egui::Key::Enter);
     h.run();
     h.run();
-    assert_eq!(h.state().0.document.selection.primary(), Some(crate_id));
+    assert_eq!(
+        h.state().0.open.document.selection.primary(),
+        Some(crate_id)
+    );
     assert!(h.state().0.console.input.is_empty());
     assert!(
         h.ctx
@@ -517,7 +576,7 @@ fn seed_and_checksum_say_what_they_do() {
     run(&mut w, "seed");
     assert_eq!(answer(&w), "Each Play has a new seed.");
     run(&mut w, "seed 1234");
-    assert_eq!(w.fixed_seed, Some(1234));
+    assert_eq!(w.open.fixed_seed, Some(1234));
     run(&mut w, "seed twelve");
     assert_eq!(said(&w).0, LogLevel::Error);
     run(&mut w, "checksum");
@@ -536,7 +595,7 @@ fn seed_and_checksum_say_what_they_do() {
     );
     w.stop();
     run(&mut w, "seed new");
-    assert_eq!(w.fixed_seed, None);
+    assert_eq!(w.open.fixed_seed, None);
 }
 
 #[test]
@@ -573,7 +632,8 @@ fn values_and_get_show_a_playing_game_as_game_code_has_changed_it() {
     let mut hero = area::EntityData::new("Hero").with(&Transform::default());
     hero.components
         .insert("Score".into(), reflect::ComponentData::default());
-    w.document
+    w.open
+        .document
         .edit(
             "Add",
             vec![area::Edit::Spawn {
@@ -597,7 +657,7 @@ fn values_and_get_show_a_playing_game_as_game_code_has_changed_it() {
     assert!(now.starts_with("Hero, as the game has it now:"), "{now}");
     assert!(now.contains("Score.points = 30"), "{now}");
     assert!(now.contains("Transform.position"), "Solis's own too: {now}");
-    w.document.selection.select_all([id], id);
+    w.open.document.selection.select_all([id], id);
     run(&mut w, "get Score.points");
     assert_eq!(answer(&w), "Score.points = 30");
     assert_eq!(
