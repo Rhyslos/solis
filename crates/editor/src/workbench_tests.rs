@@ -1671,9 +1671,11 @@ fn a_file_with_a_loop_of_parents_opens_mended_and_says_so() {
     let shelf = area.spawn(moved("Shelf", 2.0));
     area.get_mut(crate_).unwrap().parent = Some(shelf);
     area.get_mut(shelf).unwrap().parent = Some(crate_);
+    let mut owns = Vec::new();
     for n in 0..7 {
         let own = area.spawn(moved(&format!("Own {n}"), 3.0));
         area.get_mut(own).unwrap().parent = Some(own);
+        owns.push(own);
     }
     let read = w
         .expand_file(&area::text::AreaFile::plain(area))
@@ -1689,17 +1691,22 @@ fn a_file_with_a_loop_of_parents_opens_mended_and_says_so() {
         said.iter().all(|line| line.contains("top level")),
         "{said:?}"
     );
-    let name = &read.get(top).unwrap().name;
-    assert!(
-        said.contains(
-            &format!(
-                "{name} ({top}) was inside itself: its parents led back to it. It's now at \
+    // Which five are named goes by ID, and IDs are made at random: the
+    // five lowest of the eight tops, in order. (Asking for the crate's
+    // line by name failed three runs in eight.)
+    let mut tops: Vec<EntityId> = owns;
+    tops.push(top);
+    tops.sort();
+    for (line, id) in said.iter().zip(&tops[..5]) {
+        let name = &read.get(*id).unwrap().name;
+        assert_eq!(
+            *line,
+            format!(
+                "{name} ({id}) was inside itself: its parents led back to it. It's now at \
                  the top level."
             )
-            .as_str()
-        ),
-        "{said:?}"
-    );
+        );
+    }
     assert_eq!(
         said[5],
         "3 more entities were inside themselves; each is now at the top level."
