@@ -9,7 +9,7 @@
 //!   is collapsed, the File page shown. It is the editor's one field for
 //!   all of it.
 //! - `commands.rs` is the one table of what the editor can do by name
-//!   ([`ShellCommand`]): the ribbon's buttons, the File page's items and
+//!   (`ShellCommand`): the ribbon's buttons, the File page's items and
 //!   the search all run its entries, and show its shortcuts.
 //! - `tab_bar.rs` draws the top band; `ribbon.rs` draws a ribbon from a
 //!   table, and `ribbons/` holds one small table for each tab;
