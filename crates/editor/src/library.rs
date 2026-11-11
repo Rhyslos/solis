@@ -152,6 +152,21 @@ impl LibraryKind {
         )
     }
 
+    /// What an item's right-click menu offers to do with a file of this
+    /// kind, in the menu's order: Open, Place or both, each once. (One
+    /// that opens on a double-click and can't be placed was offered Open
+    /// twice: the review, BUG-30.)
+    fn menu_actions(self) -> &'static [MenuAction] {
+        match (
+            self.opens_on_double_click() || self == Self::Texture,
+            self.placeable(),
+        ) {
+            (true, true) => &[MenuAction::Open, MenuAction::Place],
+            (_, false) => &[MenuAction::Open],
+            (false, true) => &[MenuAction::Place],
+        }
+    }
+
     /// Whether a file of this kind at `path` may be opened in the program
     /// the computer has for it. A project can come from anyone, so only
     /// kinds whose program just shows or edits them do (a picture viewer,
@@ -923,6 +938,27 @@ fn join(folder: &str, name: &str) -> String {
     }
 }
 
+/// What an item's right-click menu offers to do with it
+/// ([`LibraryKind::menu_actions`]).
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+enum MenuAction {
+    /// Open it: in its tab in the editor, or in the computer's own
+    /// program for it.
+    Open,
+    /// Place it in the area, where the camera looks.
+    Place,
+}
+
+impl MenuAction {
+    /// Its name in the menu.
+    fn label(self) -> &'static str {
+        match self {
+            Self::Open => "Open",
+            Self::Place => "Place",
+        }
+    }
+}
+
 /// What happened to one item this frame.
 struct Picked<'a> {
     item: &'a LibraryItem,
@@ -931,6 +967,10 @@ struct Picked<'a> {
     /// Play or Stop, from a sound's ▶ or ■.
     listen: Option<LibraryRequest>,
 }
+
+/// Why Place is greyed for a file with no ID.
+const NO_ID_YET: &str =
+    "This file has no ID yet, and one is needed to place it. Try again in a moment.";
 
 /// What clicks, double-clicks, drags and right-clicks on an item ask for.
 fn item_actions(picked: Picked<'_>, state: &mut LibraryState, requests: &mut Vec<LibraryRequest>) {
@@ -980,24 +1020,21 @@ fn item_actions(picked: Picked<'_>, state: &mut LibraryState, requests: &mut Vec
             requests.push(LibraryRequest::PlaySound(item.path.clone()));
             ui.close();
         }
-        if item.kind.opens_on_double_click() && ui.button("Open").clicked() {
-            requests.push(LibraryRequest::Open(item.kind, item.path.clone()));
-            ui.close();
-        }
-        if item.kind == LibraryKind::Texture && ui.button("Open").clicked() {
-            requests.push(LibraryRequest::Open(item.kind, item.path.clone()));
-            ui.close();
-        }
-        if item.kind.placeable() {
-            if ui.button("Place").clicked()
-                && let Some(id) = item.id
-            {
-                requests.push(LibraryRequest::Place(id));
+        for action in item.kind.menu_actions() {
+            let asked = match (action, item.id) {
+                (MenuAction::Open, _) => Some(LibraryRequest::Open(item.kind, item.path.clone())),
+                (MenuAction::Place, Some(id)) => Some(LibraryRequest::Place(id)),
+                // Only a file with an ID can be placed: the item shows
+                // greyed, and says why.
+                (MenuAction::Place, None) => None,
+            };
+            let button = ui
+                .add_enabled(asked.is_some(), egui::Button::new(action.label()))
+                .on_disabled_hover_text(NO_ID_YET);
+            if let Some(asked) = asked.filter(|_| button.clicked()) {
+                requests.push(asked);
                 ui.close();
             }
-        } else if ui.button("Open").clicked() {
-            requests.push(LibraryRequest::Open(item.kind, item.path.clone()));
-            ui.close();
         }
         if ui.button("Show in Explorer").clicked() {
             requests.push(LibraryRequest::Show(item.folder().to_string()));
@@ -1545,6 +1582,43 @@ mod tests {
         );
         state.search.clear();
         assert_eq!(names(&state, true), ["turret"], "the Code panel");
+    }
+
+    /// The review, BUG-30: no kind's menu names an action twice, and
+    /// every kind's offers something.
+    #[test]
+    fn a_kind_s_menu_offers_open_or_place_or_both_each_once() {
+        use LibraryKind as K;
+        use MenuAction::{Open, Place};
+        for (kind, offered) in [
+            (K::Model, &[Place][..]),
+            (K::Assembly, &[Place]),
+            (K::Area, &[Open]),
+            (K::Texture, &[Open, Place]),
+            (K::Code, &[Open]),
+            (K::Sound, &[Open]),
+            (K::SoundEvent, &[Open]),
+            (K::SpriteSheet, &[Place]),
+            (K::SpriteClips, &[Open, Place]),
+            (K::Animator, &[Open]),
+            (K::Tileset, &[Open]),
+            (K::TileMap, &[Place]),
+            (K::Atlas, &[Open]),
+            (K::Text, &[Open]),
+            (K::Other, &[Open]),
+        ] {
+            assert_eq!(kind.menu_actions(), offered, "{kind:?}");
+            let mut labels: Vec<&str> = offered.iter().map(|a| a.label()).collect();
+            labels.sort_unstable();
+            labels.dedup();
+            assert_eq!(labels.len(), offered.len(), "{kind:?}");
+            assert!(!labels.is_empty(), "{kind:?}");
+            // What it offers follows what the kind can do.
+            assert_eq!(offered.contains(&Place), kind.placeable(), "{kind:?}");
+            if kind.opens_on_double_click() {
+                assert!(offered.contains(&Open), "{kind:?}");
+            }
+        }
     }
 
     #[test]

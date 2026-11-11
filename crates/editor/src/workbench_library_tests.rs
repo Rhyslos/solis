@@ -493,3 +493,109 @@ fn a_sprite_s_sheet_and_pivot_are_picked_from_lists() {
     h.run();
     assert_eq!(sprite(&h).sheet, None);
 }
+
+/// The review, BUG-30: an animator, a tileset and an atlas showed Open
+/// twice. Every kind's menu offers Open, Place or both, each once.
+#[test]
+fn the_right_click_menu_offers_open_and_place_once_each() {
+    use LibraryKind as K;
+    for kind in [
+        K::Model,
+        K::Assembly,
+        K::Area,
+        K::Texture,
+        K::Code,
+        K::Sound,
+        K::SoundEvent,
+        K::SpriteSheet,
+        K::SpriteClips,
+        K::Animator,
+        K::Tileset,
+        K::TileMap,
+        K::Atlas,
+        K::Text,
+        K::Other,
+    ] {
+        // A kind added to the list above is added here too, or this
+        // doesn't build.
+        let (open, place) = match kind {
+            K::Model | K::Assembly | K::SpriteSheet | K::TileMap => (0, 1),
+            K::SpriteClips | K::Texture => (1, 1),
+            K::Area
+            | K::Code
+            | K::Sound
+            | K::SoundEvent
+            | K::Animator
+            | K::Tileset
+            | K::Atlas
+            | K::Text
+            | K::Other => (1, 0),
+        };
+        let mut w = Workbench::new(info(), None);
+        w.set_project(Some(ProjectInfo {
+            name: "Harbour".into(),
+            root: "/projects/harbour".into(),
+            assets: "/projects/harbour/assets".into(),
+        }));
+        w.set_library(vec![item("thing.file", kind, Some(AssetId::random()))]);
+        let mut h = harness(w);
+        h.run();
+        h.get_all_by_label("thing")
+            .next()
+            .unwrap()
+            .click_secondary();
+        h.run();
+        let offered = |label: &str| h.query_all_by_label(label).count();
+        assert_eq!(
+            (offered("Open"), offered("Place")),
+            (open, place),
+            "{kind:?}"
+        );
+        assert_eq!(offered("Show in Explorer"), 1, "{kind:?}: the menu is open");
+    }
+}
+
+/// Place on a file with no ID did nothing and left the menu open. It's
+/// greyed now, and says why.
+#[test]
+fn place_is_greyed_for_a_file_with_no_id_yet() {
+    use egui_kittest::kittest::NodeT;
+    let mut w = Workbench::new(info(), None);
+    w.set_project(Some(ProjectInfo {
+        name: "Harbour".into(),
+        root: "/projects/harbour".into(),
+        assets: "/projects/harbour/assets".into(),
+    }));
+    w.set_library(vec![
+        item("fresh.glb", LibraryKind::Model, None),
+        item("crate.glb", LibraryKind::Model, Some(AssetId::random())),
+    ]);
+    let mut h = harness(w);
+    h.run();
+    h.get_by_label("fresh").click_secondary();
+    h.run();
+    let place = h.get_by_label("Place");
+    assert!(place.accesskit_node().is_disabled());
+    place.click();
+    h.run();
+    let placed = |h: &egui_kittest::Harness<'_, State>| {
+        h.state()
+            .1
+            .actions
+            .iter()
+            .any(|a| matches!(a, WorkbenchAction::PlaceAsset(_)))
+    };
+    assert!(!placed(&h));
+    // One with an ID is placed as before, and its menu closes.
+    h.key_press(egui::Key::Escape);
+    h.run();
+    h.get_by_label("crate").click_secondary();
+    h.run();
+    let place = h.get_by_label("Place");
+    assert!(!place.accesskit_node().is_disabled());
+    place.click();
+    h.run();
+    h.run();
+    assert!(placed(&h));
+    assert!(h.query_by_label("Place").is_none());
+}
