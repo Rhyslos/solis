@@ -105,4 +105,5 @@ Titles below are shortened; the files have the full reasoning. Decisions 0019 to
 | `0096-graphite-theme-and-rounded-panels.md` | A second theme, Graphite, and rounded panels as a separate switch, in Settings > Appearance; colours that mean something unchanged | Accepted |
 | `0097-three-tracks.md` | The plan in three tracks: 2D finished first, shared systems built once for both, 3D after; big phases split into smaller ones, the same milestones | Accepted |
 | `0098-ideas-become-milestones.md` | Every idea becomes a milestone, the editor's UI remade comes first, photo mode and built-in store features not planned | Accepted |
+| `0102-linux-checks-paused.md` | The Linux checks on GitHub are paused: lints, tests and docs run on Windows, formatting and licences stay on Linux, the window test is run by hand (0099 to 0101 arrive with the UI remake's first pull request) | Accepted (changes 0018) |
 | `0089-atlas-crop-and-the-ui-editor.md` | Atlas Crop (pictures cut from sheets, `.atlas.lst`), the UI editor's approved layout, and screens' looks, pictures and text size | Accepted (renames 0083's Cut out pictures; builds on 0087 and 0088) |

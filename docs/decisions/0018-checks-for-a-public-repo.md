@@ -1,5 +1,6 @@
 # 0018. Fuller checks, now the repository is public
 
+- **Changed by:** [0102](0102-linux-checks-paused.md) (the Linux build jobs are paused; lints and docs run on Windows)
 - **Status:** Accepted (replaces decision 0001; keeps 0010)
 - **Date:** 2026-10-22
 
