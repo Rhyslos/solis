@@ -68,6 +68,12 @@ fn put(map: &mut TileMap, layer: usize, at: [i64; 2], cell: StampCell) -> bool {
 }
 
 impl Stroke {
+    /// The map file it paints, and the map as painted so far: what the
+    /// editor shows as that file until the stroke ends.
+    pub(crate) fn shown(&self) -> (&str, &TileMap) {
+        (&self.path, &self.map)
+    }
+
     /// Paints the cells of `cells` with the brush, each as the pattern
     /// says.
     fn paint(&mut self, layer: usize, cells: impl IntoIterator<Item = [i64; 2]>) {
@@ -203,12 +209,7 @@ impl Workbench {
     /// Shows `map` as the file at `path` at once, without saving it or
     /// making an undo step (a stroke under way).
     fn show_map_now(&mut self, path: &str, map: TileMap) {
-        let sheets = Arc::make_mut(&mut self.viewport.sheets);
-        sheets.tile_maps.insert(
-            path.to_owned(),
-            crate::sprite_sheets::MapFileState::Read(Arc::new(map), Vec::new()),
-        );
-        sheets.work_out_maps();
+        self.show_file(path, crate::own_files::OwnFile::TileMap(Arc::new(map)));
     }
 
     /// Paints from this frame's mouse (after the viewport is drawn).

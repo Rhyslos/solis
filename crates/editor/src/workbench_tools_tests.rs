@@ -95,6 +95,95 @@ fn dragging_on_empty_space_draws_a_box_that_selects_what_is_inside() {
     assert!(s.contains(id) && s.contains(other));
 }
 
+fn right_button(h: &egui_kittest::Harness<'_, State>, pressed: bool, at: Pos2) {
+    h.event(egui::Event::PointerButton {
+        pos: at,
+        button: egui::PointerButton::Secondary,
+        pressed,
+        modifiers: egui::Modifiers::NONE,
+    });
+}
+
+/// The review, BUG-24: in a perspective view the right press that should
+/// cancel a box started flying instead (only a gizmo drag held flying
+/// off), so the tools never saw it: the pointer hid, the camera turned,
+/// and the box was still there afterwards to replace the selection.
+#[test]
+fn a_right_click_cancels_a_box_and_never_starts_flying() {
+    use crate::viewport_tools::Pressing;
+    let (mut w, id) = with_a_crate();
+    w.open.document.selection.select_only(id);
+    w.viewport.tool = Tool::Select;
+    let mut h = harness(w);
+    // What the box would pick if it were let go: nothing, so the crate
+    // would stop being selected.
+    h.state_mut().1.answer = Some(PickAnswer::default());
+    h.hover_at(IN_VIEW);
+    h.run();
+    assert!(
+        !h.state().0.viewport.camera.is_flat(),
+        "a view that flies with the right button"
+    );
+    press(&h, true, IN_VIEW, egui::Modifiers::NONE);
+    h.run();
+    let to = IN_VIEW + egui::vec2(120.0, 80.0);
+    h.hover_at(to);
+    h.run();
+    assert!(
+        matches!(h.state().0.viewport.tools.pressing, Pressing::Box { .. }),
+        "a box is being drawn"
+    );
+    let looking = h.state().0.viewport.camera;
+
+    right_button(&h, true, to);
+    h.run();
+    assert!(!h.state().0.viewport.is_flying(), "the press is the tools'");
+    assert_eq!(h.state().0.viewport.tools.pressing, Pressing::Nothing);
+    // Still held, and moved: the camera stays where it was.
+    h.hover_at(to + egui::vec2(40.0, 25.0));
+    h.run();
+    assert!(!h.state().0.viewport.is_flying());
+    assert_eq!(h.state().0.viewport.camera, looking);
+
+    // Both buttons let go: no box is left to pick with.
+    right_button(&h, false, to);
+    press(&h, false, to, egui::Modifiers::NONE);
+    h.run();
+    h.run();
+    assert!(h.state().1.asked.is_empty(), "nothing was picked");
+    assert_eq!(h.state().0.selection(), Some(id), "still selected");
+
+    // The right button flies again once nothing is pressed.
+    right_button(&h, true, to);
+    h.run();
+    assert!(h.state().0.viewport.is_flying());
+}
+
+/// A press that hasn't moved yet is a click on its way, which the right
+/// button doesn't cancel (as Esc doesn't): it doesn't start flying over
+/// it either, and the click still selects.
+#[test]
+fn a_right_press_during_a_click_neither_flies_nor_loses_the_click() {
+    let (w, id) = with_a_crate();
+    let mut h = harness(w);
+    h.state_mut().1.answer = Some(PickAnswer {
+        middle: Some(1),
+        ..PickAnswer::default()
+    });
+    h.hover_at(IN_VIEW);
+    h.run();
+    press(&h, true, IN_VIEW, egui::Modifiers::NONE);
+    h.run();
+    right_button(&h, true, IN_VIEW);
+    h.run();
+    assert!(!h.state().0.viewport.is_flying());
+    right_button(&h, false, IN_VIEW);
+    press(&h, false, IN_VIEW, egui::Modifiers::NONE);
+    h.run();
+    h.run();
+    assert_eq!(h.state().0.selection(), Some(id));
+}
+
 /// Where the move gizmo's X arrow is on screen, most of the way along.
 fn x_arrow(h: &egui_kittest::Harness<'_, State>) -> Pos2 {
     let w = &h.state().0;

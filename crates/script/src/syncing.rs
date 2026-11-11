@@ -1,6 +1,13 @@
 //! Making running components from the area's values, and giving running
 //! ones what changed (see [`crate::Runtime::sync_many`]). The natives are
 //! lent by the caller, once for a whole batch.
+//!
+//! "What changed" is worked out from the area's values as they were last
+//! given ([`Running::seen`]), so a value the game has changed itself is
+//! left alone when another field is edited. That alone can't tell a field
+//! set by hand to what the area already holds (ammo fired, then typed
+//! back to full): those are named by the caller, and given whatever the
+//! area held.
 
 use crate::code::CodeProblem;
 use crate::convert::to_lua;
@@ -14,6 +21,13 @@ use mlua::Table;
 use reflect::{ComponentData, EntityId};
 use std::collections::{BTreeMap, BTreeSet};
 
+/// A component to sync: its entity, its name, the area's values for it,
+/// and the names of its fields set by hand since the last time.
+pub(crate) type Edited<'a> = (EntityId, &'a str, &'a ComponentData, &'a BTreeSet<String>);
+
+/// No field set by hand: what every sync but an edit's has.
+pub(crate) static NOTHING_SET: BTreeSet<String> = BTreeSet::new();
+
 /// The loaded code, as syncing needs it.
 pub(crate) struct Syncing<'a> {
     pub(crate) luau: &'a Luau,
@@ -25,14 +39,16 @@ pub(crate) struct Syncing<'a> {
 
 impl Syncing<'_> {
     /// Makes `entity`'s component `name` run with the area's `data`, or
-    /// gives it the fields that changed. Nothing for a component there's
-    /// no code for, or one left out.
+    /// gives it the fields that changed and those in `set` (set by hand
+    /// since the last time, whether or not the area's value changed).
+    /// Nothing for a component there's no code for, or one left out.
     pub(crate) fn sync(
         &self,
         running: &mut RunningMap,
         entity: EntityId,
         name: &str,
         data: &ComponentData,
+        set: &BTreeSet<String>,
     ) -> Result<(), Failure> {
         let fail = |at: CodeProblem| Failure {
             entity: Some(entity),
@@ -44,12 +60,13 @@ impl Syncing<'_> {
         if let Some(kind) = self.rust.get(name) {
             match running.get_mut(&key) {
                 // Nothing changed: nothing to do (no copy, no call).
-                Some(already) if already.seen == *data => {}
+                Some(already) if already.seen == *data && set.is_empty() => {}
                 Some(already) => {
                     let mut changed = ComponentData::default();
                     for field in &kind.schema.fields {
                         if let Some(now) = data.get(&field.name)
-                            && already.seen.get(&field.name) != Some(now)
+                            && (already.seen.get(&field.name) != Some(now)
+                                || set.contains(&field.name))
                         {
                             changed.set(&field.name, now.clone());
                         }
@@ -86,13 +103,13 @@ impl Syncing<'_> {
             return Ok(());
         };
         if let Some(already) = running.get_mut(&key) {
-            if already.seen == *data {
+            if already.seen == *data && set.is_empty() {
                 return Ok(());
             }
             if let Instance::Lust(table) | Instance::Lua(table) = &already.instance {
                 for field in fields {
                     let now = data.get(&field.name);
-                    if now != already.seen.get(&field.name)
+                    if (now != already.seen.get(&field.name) || set.contains(&field.name))
                         && let Some(value) =
                             now.and_then(|v| to_lua(&self.luau.lua, &field.kind, v))
                     {

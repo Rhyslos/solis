@@ -11,6 +11,11 @@ use ui::view::{Node, Style};
 /// The most undo steps kept.
 const MAX_UNDO: usize = 200;
 
+/// How many of the file's texts are remembered as Solis's own
+/// (`ScreenDoc::is_own`): more saves than one check of the code can fall
+/// behind by.
+const OWN_TEXTS: usize = 16;
+
 /// A screen open for editing.
 #[derive(Debug, Clone)]
 pub(crate) struct ScreenDoc {
@@ -63,9 +68,12 @@ pub(crate) struct ScreenDoc {
     pub(crate) text_percent: u16,
     undo: Vec<String>,
     redo: Vec<String>,
-    /// The text Solis last saved, to tell its own save from a change on
-    /// disk.
-    pub(crate) saved: String,
+    /// The file's texts that are Solis's own, oldest first: the one it was
+    /// opened with (or last took in from disk), and each one saved since.
+    /// The code is checked on a worker, so the text a check was made from
+    /// can be an older one of these, arriving after a newer save: that is
+    /// no change made on disk (the review, BUG-09).
+    written: std::collections::VecDeque<String>,
 }
 
 /// Reads `name`'s screen from `text`.
@@ -170,7 +178,7 @@ impl ScreenDoc {
         Self {
             path,
             screen,
-            saved: text.clone(),
+            written: std::collections::VecDeque::from([text.clone()]),
             text,
             source,
             picked: Vec::new(),
@@ -528,16 +536,26 @@ impl ScreenDoc {
     /// The file changed on disk to `text` (not Solis's own save): taken in
     /// as one undo step.
     pub(crate) fn taken_in(&mut self, text: String) {
-        self.saved = text.clone();
+        // What Solis wrote before isn't the file's any more.
+        self.written = std::collections::VecDeque::from([text.clone()]);
         if self.change(text) {
             self.forget_places();
             self.behind = true;
         }
     }
 
-    /// Whether `text` is what's open or what Solis last saved.
+    /// Notes the text as it's being saved now.
+    pub(crate) fn saving(&mut self) {
+        self.written.push_back(self.text.clone());
+        if self.written.len() > OWN_TEXTS {
+            self.written.pop_front();
+        }
+    }
+
+    /// Whether `text` is what's open, or one of Solis's own texts of the
+    /// file (perhaps an older one, read back late).
     pub(crate) fn is_own(&self, text: &str) -> bool {
-        text == self.text || text == self.saved
+        text == self.text || self.written.iter().any(|own| own == text)
     }
 }
 

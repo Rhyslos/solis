@@ -14,6 +14,7 @@ use crate::document::Document;
 use crate::key_owner::KeyOwner;
 use crate::layout;
 use crate::library::{LibraryItem, LibraryKind, ProjectInfo};
+use crate::made_from::MadeFrom;
 use crate::models::ModelInfo;
 use crate::panel::Panel;
 use crate::panels::{PanelViewer, drop_hint};
@@ -153,49 +154,23 @@ pub enum WorkbenchAction {
     },
     /// Save the project's buses to its `mixer.solmix` (the Mixer).
     SaveMixer(sound::Mixer),
-    /// Save a sprite's clips file (`.solframes`, inside the project's
-    /// assets), making it if it isn't there yet (Phase 9, D3).
-    SaveFrames {
+    /// Save a file of one of the kinds the editor changes itself (a clips
+    /// file, an animator, a tileset, an atlas, a tile map; inside the
+    /// project's assets), making it if it isn't there yet. The app
+    /// answers every one, in order: [`Workbench::file_saved`] once it's
+    /// written (and it keeps `file` as the file from then on), or
+    /// [`Workbench::file_not_saved`] if it couldn't be, or wasn't tried.
+    SaveFile {
         /// The file.
         path: std::path::PathBuf,
-        /// What to save.
-        text: String,
-    },
-    /// Save an animator file (`.solanim`, inside the project's assets),
-    /// making it if it isn't there yet (Phase 9, D3b).
-    SaveAnimator {
-        /// The file.
-        path: std::path::PathBuf,
-        /// What to save.
-        text: String,
-    },
-    /// Save a tileset (`.tileset.lst`, inside the project's assets), making
-    /// it if it isn't there yet (Phase 9, D4).
-    SaveTileset {
-        /// The file.
-        path: std::path::PathBuf,
-        /// What to save.
-        text: String,
-    },
-    /// Save an atlas file (`.atlas.lst`, inside the project's assets, a
-    /// picture's crops; decision 0089), making it if it isn't there yet.
-    SaveAtlas {
-        /// The file.
-        path: std::path::PathBuf,
-        /// What to save.
+        /// What it holds.
+        file: crate::OwnFile,
+        /// The same, as the text to write.
         text: String,
     },
     /// Save a screen's Lust file (inside the project's assets) after a
     /// change on the UI editor's canvas (decision 0089). It must be there.
     SaveScreen {
-        /// The file.
-        path: std::path::PathBuf,
-        /// What to save.
-        text: String,
-    },
-    /// Save a tile map file (`.tilemap.lst`, inside the project's assets),
-    /// making it if it isn't there yet (Phase 9, D4).
-    SaveTileMap {
         /// The file.
         path: std::path::PathBuf,
         /// What to save.
@@ -1043,13 +1018,13 @@ impl Workbench {
                         .and_then(|t| t.picture)
                         .and_then(|p| sheets.tile_art(p))
                         .and_then(|art| {
-                            let (texture, atlas) = self
-                                .open
-                                .tile_textures
-                                .get(&(std::sync::Arc::as_ptr(art) as u64))?;
+                            let (texture, atlas) = crate::workbench_tileset::texture_of(
+                                &self.open.tile_textures,
+                                art,
+                            )?;
                             Some(crate::tileset_view::Picture {
                                 texture,
-                                atlas: *atlas,
+                                atlas,
                                 size: art.size,
                                 durations: &art.durations,
                                 art,
@@ -1103,19 +1078,18 @@ impl Workbench {
         // Image tool is in use.
         let (picture_files, screen_game) = match &self.open.screen_doc {
             Some(doc) => {
-                let from = self
-                    .open
-                    .program
-                    .as_ref()
-                    .map(|p| std::sync::Arc::as_ptr(p) as usize);
+                let program = self.open.program.as_ref();
                 let game = match &self.open.screen_game {
-                    Some((built, game)) if *built == from => std::sync::Arc::clone(game),
+                    Some((built, game)) if MadeFrom::same(built.as_ref(), program) => {
+                        std::sync::Arc::clone(game)
+                    }
                     _ => {
                         let game = std::sync::Arc::new(crate::screen_ties::screen_game(
-                            self.open.program.as_deref(),
+                            program.map(|p| &**p),
                             &self.open.document.registry,
                         ));
-                        self.open.screen_game = Some((from, std::sync::Arc::clone(&game)));
+                        let built = program.map(MadeFrom::new);
+                        self.open.screen_game = Some((built, std::sync::Arc::clone(&game)));
                         game
                     }
                 };

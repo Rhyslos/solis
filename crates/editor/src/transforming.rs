@@ -197,12 +197,21 @@ pub fn targets_placed(
 /// A world matrix's own axes, unit length; the world's when it's squashed
 /// flat.
 fn own_axes(world: Mat4) -> [Vec3; 3] {
-    let (_, rotation, _) = world.to_scale_rotation_translation();
-    if rotation.is_finite() {
-        [rotation * Vec3::X, rotation * Vec3::Y, rotation * Vec3::Z]
-    } else {
-        WORLD_AXES
+    match taken_apart(world) {
+        Some((_, rotation)) => [rotation * Vec3::X, rotation * Vec3::Y, rotation * Vec3::Z],
+        None => WORLD_AXES,
     }
+}
+
+/// A matrix's scale and rotation (unit length), or `None` when it has no
+/// one rotation to find: taking a matrix apart divides each axis by its
+/// length, so one squashed flat along an axis (a scale of 0, or one too
+/// small or too large to measure) gives "not a number". Every rotation
+/// read from a matrix here comes through this, so none is stored.
+fn taken_apart(matrix: Mat4) -> Option<(Vec3, Quat)> {
+    let (scale, rotation, _) = matrix.to_scale_rotation_translation();
+    let rotation = rotation.normalize();
+    (scale.is_finite() && rotation.is_finite()).then_some((scale, rotation))
 }
 
 /// `change` with snapping applied (turned around by `flip`, Ctrl held):
@@ -317,58 +326,80 @@ fn move_one(t: &Target, targets: &Targets, change: Change) -> Transform {
         // A parent squashed flat: nothing sensible to do.
         return t.start;
     }
+    let new = match change {
+        // Position only: rotation and scale stay exactly as they were.
+        Change::Translate(v) => Transform {
+            position: t.start.position + to_parent.transform_vector3(v),
+            ..t.start
+        },
+        Change::Rotate { axis, angle } => turned(t, targets.pivot, to_parent, axis, angle),
+        Change::Scale(f) => scaled(t, targets, to_parent, f),
+    };
+    // Only real numbers are ever stored: an entity placed at "not a
+    // number" or at infinity vanishes, and the area would save it so. A
+    // change that can't be worked out (it lands further off than a number
+    // can hold) leaves the entity as it was.
+    if new.position.is_finite() && new.rotation.is_finite() && new.scale.is_finite() {
+        new
+    } else {
+        t.start
+    }
+}
+
+/// `t` turned by `angle` around `axis` through `pivot`.
+fn turned(t: &Target, pivot: Vec3, to_parent: Mat4, axis: Vec3, angle: f32) -> Transform {
+    // A parent too thin to measure has no rotation to see the turn from:
+    // as for one squashed flat, nothing sensible to do.
+    let Some((_, parent_rotation)) = taken_apart(t.parent_world) else {
+        return t.start;
+    };
+    let turn = Quat::from_axis_angle(axis.normalize_or(Vec3::Z), angle);
+    let world_position = t.start_world.w_axis.truncate();
+    let new_world_position = pivot + turn * (world_position - pivot);
+    // The turn seen from inside the parent, applied on top of the
+    // entity's own rotation; its scale stays as it was.
+    let local_turn = parent_rotation.inverse() * turn * parent_rotation;
+    Transform {
+        position: to_parent.transform_point3(new_world_position),
+        rotation: (local_turn * t.start.rotation).normalize(),
+        scale: t.start.scale,
+    }
+}
+
+/// `t` scaled by `f` along the gizmo's axes, around its pivot.
+fn scaled(t: &Target, targets: &Targets, to_parent: Mat4, f: Vec3) -> Transform {
     let pivot = targets.pivot;
-    match change {
-        Change::Translate(v) => {
-            // Position only: rotation and scale stay exactly as they were.
-            Transform {
-                position: t.start.position + to_parent.transform_vector3(v),
-                ..t.start
-            }
-        }
-        Change::Rotate { axis, angle } => {
-            let turn = Quat::from_axis_angle(axis.normalize_or(Vec3::Z), angle);
-            let world_position = t.start_world.w_axis.truncate();
-            let new_world_position = pivot + turn * (world_position - pivot);
-            // The turn seen from inside the parent, applied on top of the
-            // entity's own rotation; its scale stays as it was.
-            let (_, parent_rotation, _) = t.parent_world.to_scale_rotation_translation();
-            let local_turn = parent_rotation.inverse() * turn * parent_rotation;
-            Transform {
-                position: to_parent.transform_point3(new_world_position),
-                rotation: (local_turn * t.start.rotation).normalize(),
-                scale: t.start.scale,
-            }
-        }
-        Change::Scale(f) => {
-            let f = Vec3::new(clamp_scale(f.x), clamp_scale(f.y), clamp_scale(f.z));
-            let axes = Mat3::from_cols(targets.axes[0], targets.axes[1], targets.axes[2]);
-            let stretch = Mat4::from_translation(pivot)
-                * Mat4::from_mat3(axes * Mat3::from_diagonal(f) * axes.transpose())
-                * Mat4::from_translation(-pivot);
-            let world = stretch * t.start_world;
-            let own = own_axes(t.start_world);
-            let aligned = (0..3).all(|i| own[i].dot(targets.axes[i]).abs() > 0.9999);
-            let position = to_parent.transform_point3(world.w_axis.truncate());
-            if aligned && t.parent_world == Mat4::IDENTITY {
-                // Along its own axes: the scale multiplies exactly, with
-                // no rounding creeping into the rotation.
-                Transform {
-                    position,
-                    rotation: t.start.rotation,
-                    scale: t.start.scale * f,
-                }
-            } else {
-                // Along other axes a turned entity would need a skew; the
-                // nearest shape without one is used (as Aventail does).
-                let (scale, rotation, _) = (to_parent * world).to_scale_rotation_translation();
-                Transform {
-                    position,
-                    rotation: rotation.normalize(),
-                    scale,
-                }
-            }
-        }
+    let f = Vec3::new(clamp_scale(f.x), clamp_scale(f.y), clamp_scale(f.z));
+    let axes = Mat3::from_cols(targets.axes[0], targets.axes[1], targets.axes[2]);
+    let stretch = Mat4::from_translation(pivot)
+        * Mat4::from_mat3(axes * Mat3::from_diagonal(f) * axes.transpose())
+        * Mat4::from_translation(-pivot);
+    let world = stretch * t.start_world;
+    let own = own_axes(t.start_world);
+    let aligned = (0..3).all(|i| own[i].dot(targets.axes[i]).abs() > 0.9999);
+    let position = to_parent.transform_point3(world.w_axis.truncate());
+    // Along its own axes: the scale multiplies exactly, with no rounding
+    // creeping into the rotation.
+    let multiplied = Transform {
+        position,
+        rotation: t.start.rotation,
+        scale: t.start.scale * f,
+    };
+    if aligned && t.parent_world == Mat4::IDENTITY {
+        return multiplied;
+    }
+    // Along other axes a turned entity would need a skew; the nearest
+    // shape without one is used (as Aventail does).
+    match taken_apart(to_parent * world) {
+        Some((scale, rotation)) => Transform {
+            position,
+            rotation,
+            scale,
+        },
+        // Squashed flat along an axis (a scale of 0), it has no one
+        // rotation to find: it keeps the one it had, and its scale
+        // multiplies (the review, BUG-23).
+        None => multiplied,
     }
 }
 

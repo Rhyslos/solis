@@ -679,7 +679,8 @@ fn align_grid(ui: &mut Ui, doc: &mut ScreenDoc, piece: &ui::source::ElementSourc
                             rect,
                             2.0,
                             if on {
-                                egui::Color32::from_rgb(0x24, 0x68, 0xd8)
+                                // The chosen accent, as every selection.
+                                ui.visuals().selection.bg_fill
                             } else {
                                 egui::Color32::TRANSPARENT
                             },

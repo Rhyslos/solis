@@ -442,6 +442,24 @@ impl Sprites {
         self.dirty |= before != self.sheets.tile_art.len();
     }
 
+    /// Takes in a file the editor changed and Solis just saved at `path`
+    /// (inside the assets), as the file from now on: nothing read later
+    /// hands the editor an older copy. The file isn't read again for this
+    /// save, only when it next changes on disk.
+    pub fn saved(&mut self, path: &str, file: editor::OwnFile) {
+        use editor::OwnFile;
+        let tried = match &file {
+            OwnFile::Frames(_) => &mut self.frames_tried,
+            OwnFile::Animator(_) => &mut self.animators_tried,
+            OwnFile::Tileset(_) | OwnFile::Atlas(_) | OwnFile::TileMap(_) => &mut self.tiles_tried,
+        };
+        if let Some(assets) = &self.assets {
+            tried.insert(path.to_owned(), stamp(&assets.join(path)));
+        }
+        self.sheets.put(path, file);
+        self.dirty = true;
+    }
+
     /// Forgets every sheet (another project was opened).
     pub fn clear(&mut self) {
         self.sheets = SpriteSheets::default();
@@ -710,6 +728,50 @@ mod tests {
         assert!(s.sheets().tile_art.contains_key("sprites/icon.png"));
         s.want_pictures([], &dir);
         assert!(s.sheets().tile_art.is_empty());
+        let _ = std::fs::remove_dir_all(&dir);
+    }
+
+    /// The review, BUG-09: what the editor saved is the file from then on,
+    /// and isn't read again until it changes on disk.
+    #[test]
+    fn a_file_the_editor_saved_is_kept_and_read_again_only_when_it_changes() {
+        use editor::OwnFile;
+        let dir = folder("saved");
+        let id = AssetId::random();
+        let file = dir.join("sprites/hero.atlas.lst");
+        let atlas = |grid: u32| {
+            let mut atlas = animation::atlas::Atlas::new("hero.png");
+            atlas.grid = [grid, grid];
+            Arc::new(atlas)
+        };
+        let held = |s: &Sprites| match s.sheets().atlases.get("sprites/hero.atlas.lst") {
+            Some(editor::sprite_sheets::AtlasState::Read(atlas, _)) => Some(Arc::clone(atlas)),
+            _ => None,
+        };
+        std::fs::write(&file, animation::atlas::write(&atlas(8))).unwrap();
+        let list = listing(&[("sprites/hero.atlas.lst", id)]);
+        let mut s = Sprites::default();
+        s.want(&list, &dir);
+        assert_eq!(s.poll(), (Vec::new(), true), "read: the editor is told");
+        assert_eq!(held(&s).unwrap().grid, [8, 8]);
+        // Saved by the editor: written, then kept as the file at once.
+        let saved = atlas(16);
+        std::fs::write(&file, animation::atlas::write(&saved)).unwrap();
+        s.saved("sprites/hero.atlas.lst", OwnFile::Atlas(Arc::clone(&saved)));
+        assert!(Arc::ptr_eq(&held(&s).unwrap(), &saved));
+        assert_eq!(s.poll(), (Vec::new(), true), "the editor is told");
+        // The watcher's listing: Solis's own save isn't read again.
+        s.want(&list, &dir);
+        assert!(Arc::ptr_eq(&held(&s).unwrap(), &saved), "not read again");
+        assert_eq!(s.poll(), (Vec::new(), false), "nothing changed");
+        // Changed on disk since (a longer file): read.
+        std::fs::write(&file, animation::atlas::write(&atlas(128))).unwrap();
+        s.want(&list, &dir);
+        assert_eq!(held(&s).unwrap().grid, [128, 128]);
+        // Gone from the project: forgotten, saved or not.
+        s.saved("sprites/hero.atlas.lst", OwnFile::Atlas(saved));
+        s.want(&listing(&[]), &dir);
+        assert!(held(&s).is_none());
         let _ = std::fs::remove_dir_all(&dir);
     }
 

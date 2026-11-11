@@ -95,6 +95,9 @@ impl Panel {
     /// The tabs a clips file opens (and closes) together.
     pub const FRAMES_TABS: [Self; 2] = [Self::Clips, Self::Frames];
 
+    /// The tabs a screen opens (and closes) together, in the UI workspace.
+    pub const SCREEN_TABS: [Self; 2] = [Self::Canvas, Self::Elements];
+
     /// Whether it comes and goes with what's open (and can be closed).
     pub fn comes_with_a_file(self) -> bool {
         Self::OPEN_WITH_A_FILE.contains(&self)

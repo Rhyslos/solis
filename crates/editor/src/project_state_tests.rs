@@ -255,6 +255,7 @@ fn assert_fresh(now: &ProjectState, fresh: &ProjectState) {
         code_checked,
         play_changes,
         cue_sounds,
+        unanswered,
         frames_editor,
         animator_editor,
         tilesets,
@@ -316,6 +317,7 @@ fn assert_fresh(now: &ProjectState, fresh: &ProjectState) {
     same(mixer, &fresh.mixer, "the Mixer");
     assert_eq!(pixels, &fresh.pixels);
     assert_eq!(code_checked, &None);
+    same(unanswered, &fresh.unanswered, "saves waiting for an answer");
     assert!(frames_editor.is_none() && animator_editor.is_none());
     same(
         tilesets,
@@ -344,7 +346,7 @@ fn assert_fresh(now: &ProjectState, fresh: &ProjectState) {
     assert!(game_screens.pictures.is_empty() && game_screens.sent.is_empty());
     same(screen_pictures, &fresh.screen_pictures, "screens' pictures");
     assert!(screen_doc.is_none() && screen_game.is_none());
-    assert_eq!(screen_from, &None);
+    assert!(screen_from.is_none());
     assert!(assembly_part_kept.borrow().is_none());
     assert_eq!(preview_forgotten, &fresh.preview_forgotten);
 }

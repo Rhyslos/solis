@@ -4,7 +4,7 @@ use crate::library::{LibraryKind, LibraryRequest};
 use crate::panel::Panel;
 use crate::sprite_sheets::{ArtState, AtlasState};
 use crate::test_support::*;
-use crate::workbench::{Workbench, WorkbenchAction};
+use crate::workbench::Workbench;
 use std::sync::Arc;
 
 fn with_project() -> Workbench {
@@ -18,16 +18,7 @@ fn with_project() -> Workbench {
 }
 
 fn saved(w: &Workbench) -> Vec<(String, String)> {
-    w.open
-        .outbox
-        .iter()
-        .filter_map(|a| match a {
-            WorkbenchAction::SaveAtlas { path, text } => {
-                Some((path.to_string_lossy().replace('\\', "/"), text.clone()))
-            }
-            _ => None,
-        })
-        .collect()
+    saved_files(&w.open.outbox, |f| matches!(f, crate::OwnFile::Atlas(_)))
 }
 
 #[test]
@@ -110,14 +101,81 @@ fn an_atlas_file_opens_its_picture_s_crops_and_a_change_on_disk_is_taken_in() {
     assert!(problem.unwrap().contains("hero.aseprite"));
     // Changed by hand: taken in, one undo step.
     atlas.grid = [8, 8];
-    Arc::make_mut(&mut w.viewport.sheets).atlases.insert(
+    let mut sheets = (*w.viewport.sheets).clone();
+    sheets.atlases.insert(
         "hero.atlas.lst".into(),
         AtlasState::Read(Arc::new(atlas.clone()), Vec::new()),
     );
-    w.atlas_read_again();
-    assert_eq!(w.open.atlas_editor.as_ref().unwrap().atlas.grid, [8, 8]);
+    w.set_sprite_sheets(sheets.clone());
+    let editor = w.open.atlas_editor.as_mut().unwrap();
+    assert_eq!(editor.atlas.grid, [8, 8]);
+    assert!(editor.undo(), "one undo step");
+    assert!(!editor.undo());
     // Gone: the tab closes.
-    Arc::make_mut(&mut w.viewport.sheets).atlases.clear();
-    w.atlas_read_again();
+    sheets.atlases.clear();
+    w.set_sprite_sheets(sheets);
     assert!(w.open.atlas_editor.is_none());
+}
+
+/// The × on the Atlas Crop tab closes the atlas file.
+#[test]
+fn the_x_on_its_tab_closes_the_atlas_file() {
+    let mut w = with_project();
+    let mut actions = Vec::new();
+    w.library_request(
+        LibraryRequest::AtlasCrop("sprites/tools.png".into()),
+        &mut actions,
+    );
+    assert!(w.open.atlas_editor.is_some());
+    let mut h = harness(w);
+    click_the_x(&mut h, Panel::AtlasCrop);
+    let w = &h.state().0;
+    assert!(w.open.atlas_editor.is_none());
+    assert!(w.dock.find_tab(&Panel::AtlasCrop).is_none());
+}
+
+/// BUG-20: the grid's size dragged for ten frames in the Atlas Crop tab is
+/// one undo step and one save, made when the mouse is let go.
+#[test]
+fn a_dragged_grid_size_is_one_step_and_one_save() {
+    let mut w = with_project();
+    let mut actions = Vec::new();
+    w.library_request(
+        LibraryRequest::AtlasCrop("sprites/tools.png".into()),
+        &mut actions,
+    );
+    let grid = w.open.atlas_editor.as_ref().unwrap().atlas.grid;
+    let mut h = harness(w);
+    h.run();
+    h.run();
+    h.state_mut().1.actions.clear();
+    let saves = |h: &egui_kittest::Harness<'static, State>| {
+        saved_files(&h.state().1.actions, |f| {
+            matches!(f, crate::OwnFile::Atlas(_))
+        })
+        .len()
+    };
+    let field = number_field_beside(&h, "Grid");
+    h.hover_at(field.center());
+    h.run();
+    h.drag_at(field.center());
+    h.run();
+    for frame in 1..=10 {
+        h.hover_at(field.center() + egui::vec2(5.0, 0.0) * frame as f32);
+        h.run();
+        assert_eq!(saves(&h), 0, "nothing saved mid-drag");
+    }
+    h.drop_at(field.center() + egui::vec2(50.0, 0.0));
+    h.run();
+    assert_eq!(saves(&h), 1, "saved once, when let go");
+    let editor = h.state_mut().0.open.atlas_editor.as_mut().unwrap();
+    assert!(
+        editor.atlas.grid[0] > grid[0] + 20,
+        "{:?}",
+        editor.atlas.grid
+    );
+    assert_eq!(editor.atlas.grid[1], grid[1]);
+    assert!(editor.undo());
+    assert_eq!(editor.atlas.grid, grid);
+    assert!(!editor.undo(), "the drag was one step");
 }

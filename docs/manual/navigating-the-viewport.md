@@ -70,6 +70,7 @@ The camera's position, direction and speed are remembered next time.
 - **Problem:** pressing W picked the Move tool instead of flying. **Why:** the right mouse button wasn't held. The tool keys work only when it isn't. **Fix:** hold the right button first, then press W.
 - **Problem:** you're lost. **Fix:** fly up with E, look down, and find where the red and green lines cross: that's the origin.
 - **Problem:** holding the right button doesn't fly. **Why:** the view is a flat one (Top, Front or Right). **Fix:** drag to slide it, or switch it to Perspective.
+- **Problem:** the right button didn't fly while you were drawing a selection box or dragging a gizmo. **Why:** with the left button held on one of those, a right click cancels it (see [Selecting and moving things](selecting-and-moving.md)). **Fix:** let go of both buttons, then hold the right one.
 - **Problem:** F or Add entity went to the wrong view. **Why:** they follow the view in use, the one with the outline. **Fix:** click in the view you want first.
 - **Problem:** flying feels too slow or too fast. **Fix:** change the speed with the wheel while holding the right button.
 

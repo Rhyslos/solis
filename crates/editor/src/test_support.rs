@@ -54,6 +54,47 @@ impl ViewportRenderer for Picker {
 
 pub(crate) type State = (Workbench, Picker);
 
+/// The saves of the editor's own files among `actions` whose file `is`
+/// picks, oldest first: each one's path and text.
+pub(crate) fn saved_files(
+    actions: &[crate::workbench::WorkbenchAction],
+    is: fn(&crate::OwnFile) -> bool,
+) -> Vec<(String, String)> {
+    actions
+        .iter()
+        .filter_map(|a| match a {
+            crate::workbench::WorkbenchAction::SaveFile { path, file, text } if is(file) => {
+                Some((path.to_string_lossy().replace('\\', "/"), text.clone()))
+            }
+            _ => None,
+        })
+        .collect()
+}
+
+/// Does the app's part of saving for it: every save of the editor's own
+/// files waiting in `w`'s outbox is taken out, kept as the file in
+/// `store` (the app's files) and answered as saved. Gives each one's
+/// path and text, oldest first.
+pub(crate) fn save_as_the_app(
+    w: &mut Workbench,
+    store: &mut crate::sprite_sheets::SpriteSheets,
+) -> Vec<(String, String)> {
+    let mut saved = Vec::new();
+    let waiting = std::mem::take(&mut w.open.outbox);
+    for action in waiting {
+        match action {
+            crate::workbench::WorkbenchAction::SaveFile { path, file, text } => {
+                let path = path.to_string_lossy().replace('\\', "/");
+                store.put(&path, file);
+                w.file_saved(&path);
+                saved.push((path, text));
+            }
+            other => w.open.outbox.push(other),
+        }
+    }
+    saved
+}
+
 pub(crate) fn harness(workbench: Workbench) -> egui_kittest::Harness<'static, State> {
     egui_kittest::Harness::builder()
         .with_size(egui::vec2(1440.0, 900.0))
@@ -85,6 +126,25 @@ pub(crate) fn rest_over(
     h.hover_at(body.center());
     h.run();
     h
+}
+
+/// Every rectangle the last frame drew: where, its fill and its border's
+/// colour.
+pub(crate) fn rects_drawn<S>(
+    h: &egui_kittest::Harness<'_, S>,
+) -> Vec<(egui::Rect, egui::Color32, egui::Color32)> {
+    fn gather(shape: &egui::Shape, found: &mut Vec<(egui::Rect, egui::Color32, egui::Color32)>) {
+        match shape {
+            egui::Shape::Vec(shapes) => shapes.iter().for_each(|s| gather(s, found)),
+            egui::Shape::Rect(r) => found.push((r.rect, r.fill, r.stroke.color)),
+            _ => {}
+        }
+    }
+    let mut found = Vec::new();
+    for clipped in &h.output().shapes {
+        gather(&clipped.shape, &mut found);
+    }
+    found
 }
 
 pub(crate) trait Tap: Sized {
@@ -153,6 +213,72 @@ pub(crate) fn click(
     press(h, false, at, modifiers);
     h.run();
     h.event(egui::Event::ModifiersChanged(egui::Modifiers::NONE));
+    h.run();
+}
+
+/// Clicks the × on `panel`'s tab, as the mouse does.
+pub(crate) fn click_the_x(h: &mut egui_kittest::Harness<'static, State>, panel: Panel) {
+    use egui_kittest::kittest::Queryable;
+    h.run();
+    h.run();
+    // The tab is the thing of that name above its panel's body.
+    let path = h.state().0.dock.find_tab(&panel).expect("the tab is open");
+    let body = h.state().0.dock[path.surface][path.node]
+        .get_leaf()
+        .expect("a tab group")
+        .viewport;
+    let tab = h
+        .get_all_by_label(panel.title())
+        .map(|n| n.rect())
+        .find(|r| r.bottom() <= body.top() + 1.0 && body.x_range().contains(r.center().x))
+        .expect("the tab is drawn");
+    // The × sits at the tab's right end.
+    click(
+        h,
+        egui::pos2(tab.right() - 11.0, tab.center().y),
+        egui::Modifiers::NONE,
+    );
+    h.run();
+}
+
+/// The number field on the row of the first thing labelled `label`, to
+/// its right.
+pub(crate) fn number_field_beside<S>(h: &egui_kittest::Harness<'_, S>, label: &str) -> egui::Rect {
+    use egui_kittest::kittest::Queryable;
+    let label = h
+        .get_all_by_label(label)
+        .next()
+        .expect("the label is drawn")
+        .rect();
+    h.get_all_by_role(egui::accesskit::Role::SpinButton)
+        .map(|n| n.rect())
+        .filter(|r| r.y_range().contains(label.center().y) && r.left() >= label.right() - 1.0)
+        .min_by(|a, b| a.left().total_cmp(&b.left()))
+        .expect("a number field beside the label")
+}
+
+/// Presses the left button at `from`, moves by `by` a frame for `frames`
+/// frames, and lets go there: a drag as the mouse makes it.
+pub(crate) fn drag_for_frames<S>(
+    h: &mut egui_kittest::Harness<'_, S>,
+    from: Pos2,
+    by: egui::Vec2,
+    frames: usize,
+) {
+    h.hover_at(from);
+    h.run();
+    h.drag_at(from);
+    h.run();
+    for frame in 1..=frames {
+        h.hover_at(from + by * frame as f32);
+        h.run();
+    }
+    h.event(egui::Event::PointerButton {
+        pos: from + by * frames as f32,
+        button: egui::PointerButton::Primary,
+        pressed: false,
+        modifiers: egui::Modifiers::NONE,
+    });
     h.run();
 }
 

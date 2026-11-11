@@ -11,10 +11,11 @@ The canvas never takes your file away from you. It changes only the letters it h
 1. In the Library, open the `ui` folder and **double-click a screen's file** (`pauseMenu`). Solis switches to the **UI** workspace and draws the screen on the **Canvas**.
 2. **Pick a piece**: click it on the canvas, or its row in **Elements** on the left. Shift-click (Ctrl-click in Elements) picks more; drag a box round pieces on an empty part of the canvas to pick everything inside it.
 3. **Change it in Properties** on the right: its words, its width and height, how what's inside it lines up, its padding, colour, corners and opacity. Every change is saved straight away, and `Ctrl + Z` over the canvas undoes it.
-4. **Move it**: drag it on the canvas to another place among its neighbours, or into another column or row; a blue line shows where it will land. In Elements, drag its row above or below another row, or onto the middle of a column's row to put it inside.
+4. **Move it**: drag it on the canvas to another place among its neighbours, or into another column or row; a blue line shows where it will land. A piece inside a `canvas` goes exactly where you drag it instead: an outline follows the pointer, and the piece is moved there when you let go (one `Ctrl + Z` puts it back). In Elements, drag its row above or below another row, or onto the middle of a column's row to put it inside.
 5. **Size it**: pick one piece and drag the small square on its right edge, bottom edge or corner.
 6. Check the screen on other screen sizes with the size list at the top left (Full HD, 4K, ultrawide, a phone), and with players' bigger text with **Text 150%** and **200%** beside it. The dashed line is the **safe area**: keep text and buttons inside it, since some TVs cut the edges off.
 7. **Open as code** (top right) opens the file in your code editor, for anything the canvas doesn't edit.
+8. **Close the screen:** the **×** on the **Canvas** or the **Elements** tab closes both. Nothing is lost: every change was saved as you made it. Double-click the file in the Library to open it again.
 
 ### Drawing new pieces
 The bar along the canvas's bottom holds the tools: **Select** (picking and moving, as above), **Box**, **Ellipse**, **Line**, **Pen**, **Text**, **Image** and **Button**. Keys `1` to `7` pick them while the pointer is over the canvas, and `E` opens them all in a ring at the pointer, so your hand never leaves the canvas.
@@ -49,7 +50,7 @@ A button's **When clicked** in Properties has a **Sends** list: the [events](gam
 | Align | Where what's inside it sits: a 3 × 3 grid, from top left to bottom right. On a column or a row this places its pieces; on text, the words. |
 | Padding | Room inside its edge, all round. |
 | Gap | Room between the pieces inside a column or a row. |
-| X, Y | Where a piece sits inside a `canvas`. Dragging it on the canvas changes these. |
+| X, Y | Where a piece sits inside a `canvas`. Dragging it on the canvas changes these, by as many of the screen's pixels as you dragged it, whatever the zoom. |
 | Colour | A button's or shape's colour, text's colour, or a column's background, from Lust's colour words (`blue`, `gray9`, `red5`). |
 | Corners | How round its corners are, in pixels. |
 | Opacity | 1 is solid, 0 is invisible. |
@@ -89,6 +90,7 @@ A button's **When clicked** in Properties has a **Sends** list: the [events](gam
 - **Problem:** a bar or a number shows as empty. **Why:** the canvas draws the screen for an entity whose values are all their starting ones (health 0, say). **Fix:** try other numbers with **Preview values**, or press Play to see it with the game's real values in the Game panel.
 - **Problem:** **Tie to…** says to give the entity a component. **Why:** the game's code has no components a screen can read yet, or has a mistake. **Fix:** write a component (`component Health { has { float hp = 20; } }`), check Problems is empty, and try again.
 - **Problem:** **Sends** has nothing to pick. **Why:** the game's code declares no events yet, so there's nothing a button could send. **Fix:** declare one in your game code (`event Pause();`, and `pass` it), and check Problems is empty.
+- **Problem:** the canvas says *The screen's view stopped: …* in place of the screen. **Why:** the screen's own code stopped with an error as its view ran (the message says what and where), so there's nothing to draw. The canvas tries a screen once each time the game's code changes, not over and over. **Fix:** put the line right as code and save: the canvas draws the screen again by itself.
 - **Problem:** dragging a piece doesn't move it where expected. **Why:** in a column or a row, pieces go one after another: a piece moves *between* its neighbours, not to any spot. **Fix:** to place pieces freely, put them in a `canvas` and drag them there.
 
 ## Related

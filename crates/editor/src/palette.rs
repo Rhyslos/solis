@@ -76,6 +76,15 @@ pub struct Palette {
     pub hover_border: Color32,
     /// A button being pressed.
     pub pressed: Color32,
+    /// The thin border around a card on the launcher's pages.
+    pub card_border: Color32,
+    /// The chosen row or page on the launcher: the panel with a cool tint.
+    pub selected: Color32,
+    /// The border round the chosen row and round a notice.
+    pub selected_border: Color32,
+    /// A notice on the launcher (what was just done, a newer build): a
+    /// quieter tint than the chosen row's.
+    pub notice: Color32,
     /// Normal text.
     pub text: Color32,
     /// Bright text: headings and the front tab.
@@ -112,6 +121,10 @@ pub(crate) const STANDARD: Palette = Palette {
     hover: grey(0x3a),
     hover_border: grey(0x4a),
     pressed: grey(0x44),
+    card_border: grey(0x30),
+    selected: Color32::from_rgb(0x2c, 0x3a, 0x4d),
+    selected_border: Color32::from_rgb(0x3f, 0x5a, 0x7a),
+    notice: Color32::from_rgb(0x23, 0x30, 0x3f),
     text: grey(0xc8),
     text_strong: grey(0xf0),
     text_weak: grey(0xa5),
@@ -123,7 +136,9 @@ pub(crate) const STANDARD: Palette = Palette {
     ground: Color32::from_rgb(0x1e, 0x21, 0x26),
 };
 
-/// The project lead's near-black palette (decision 0096).
+/// The project lead's near-black palette (decision 0096). A card's border
+/// is its hairline, and the launcher's tints are the standard ones laid on
+/// its darker panel: each as far from the panel as it is in Standard.
 pub(crate) const GRAPHITE: Palette = Palette {
     background: grey(0x09),
     panel: grey(0x14),
@@ -135,6 +150,10 @@ pub(crate) const GRAPHITE: Palette = Palette {
     hover: grey(0x2a),
     hover_border: grey(0x3a),
     pressed: grey(0x33),
+    card_border: grey(0x26),
+    selected: Color32::from_rgb(0x1a, 0x28, 0x3b),
+    selected_border: Color32::from_rgb(0x2d, 0x48, 0x68),
+    notice: Color32::from_rgb(0x11, 0x1e, 0x2d),
     text: grey(0xd6),
     text_strong: grey(0xfa),
     text_weak: grey(0x8e),
@@ -190,6 +209,10 @@ colour!(
     hover,
     hover_border,
     pressed,
+    card_border,
+    selected,
+    selected_border,
+    notice,
     text,
     text_strong,
     text_weak,

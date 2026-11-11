@@ -975,6 +975,30 @@ impl App {
         Some(if areas.is_dir() { areas } else { assets })
     }
 
+    /// Saves a file the editor changed itself (a clips file, an animator,
+    /// a tileset, an atlas, a tile map), and answers the editor. Saved,
+    /// the app keeps `file` as the file from then on, so nothing read
+    /// later hands the editor an older copy; not saved, the editor is
+    /// told why and given the files as they are, so it never goes on
+    /// showing a change that isn't in the file.
+    fn save_file(&mut self, path: &Path, file: editor::OwnFile, text: &str) {
+        let name = crate::project::slashed(path);
+        match self.projects.save_file(path, &file, text) {
+            Ok(copy) => {
+                if let (Some(copy), Some(root)) = (copy, self.projects.root()) {
+                    let note = crate::upgrades::kept_note(root, &file_name(path), &copy);
+                    self.workbench.log(LogLevel::Info, note);
+                }
+                self.sprites.saved(&name, file);
+                self.workbench.file_saved(&name);
+            }
+            Err(why) => {
+                let sheets = self.sprites.sheets().clone();
+                self.workbench.file_not_saved(&name, &why, sheets);
+            }
+        }
+    }
+
     /// Carries out the queued actions in order. A save that needs the Save
     /// window pauses the rest until it closes.
     fn run_queue(&mut self, ctx: &egui::Context) {
@@ -1058,37 +1082,8 @@ impl App {
                         ),
                     }
                 }
-                WorkbenchAction::SaveFrames { path, text } => {
-                    match self.projects.save_frames(&path, &text) {
-                        Ok(Some(copy)) => {
-                            if let Some(root) = self.projects.root() {
-                                let note =
-                                    crate::upgrades::kept_note(root, &file_name(&path), &copy);
-                                self.workbench.log(LogLevel::Info, note);
-                            }
-                        }
-                        Ok(None) => {}
-                        Err(why) => self.workbench.log(
-                            LogLevel::Error,
-                            format!("Couldn't save {}: {why}.", path.display()),
-                        ),
-                    }
-                }
-                WorkbenchAction::SaveAnimator { path, text } => {
-                    match self.projects.save_animator(&path, &text) {
-                        Ok(Some(copy)) => {
-                            if let Some(root) = self.projects.root() {
-                                let note =
-                                    crate::upgrades::kept_note(root, &file_name(&path), &copy);
-                                self.workbench.log(LogLevel::Info, note);
-                            }
-                        }
-                        Ok(None) => {}
-                        Err(why) => self.workbench.log(
-                            LogLevel::Error,
-                            format!("Couldn't save {}: {why}.", path.display()),
-                        ),
-                    }
+                WorkbenchAction::SaveFile { path, file, text } => {
+                    self.save_file(&path, file, &text);
                 }
                 WorkbenchAction::SaveScreen { path, text } => {
                     if let Err(why) = self.projects.save_screen(&path, &text) {
@@ -1096,30 +1091,6 @@ impl App {
                             LogLevel::Error,
                             format!("Couldn't save {}: {why}.", path.display()),
                         );
-                    }
-                }
-                WorkbenchAction::SaveAtlas { path, text } => {
-                    if let Err(why) = self.projects.save_atlas(&path, &text) {
-                        self.workbench.log(
-                            LogLevel::Error,
-                            format!("Couldn't save {}: {why}.", path.display()),
-                        );
-                    }
-                }
-                WorkbenchAction::SaveTileset { path, text } => {
-                    match self.projects.save_tileset(&path, &text) {
-                        Ok(Some(copy)) => {
-                            if let Some(root) = self.projects.root() {
-                                let note =
-                                    crate::upgrades::kept_note(root, &file_name(&path), &copy);
-                                self.workbench.log(LogLevel::Info, note);
-                            }
-                        }
-                        Ok(None) => {}
-                        Err(why) => self.workbench.log(
-                            LogLevel::Error,
-                            format!("Couldn't save {}: {why}.", path.display()),
-                        ),
                     }
                 }
                 WorkbenchAction::SavePicture { path, bytes } => {
@@ -1138,22 +1109,6 @@ impl App {
                         Err(why) => self.workbench.log(
                             LogLevel::Error,
                             format!("Couldn't make {}: {why}.", path.display()),
-                        ),
-                    }
-                }
-                WorkbenchAction::SaveTileMap { path, text } => {
-                    match self.projects.save_tile_map(&path, &text) {
-                        Ok(Some(copy)) => {
-                            if let Some(root) = self.projects.root() {
-                                let note =
-                                    crate::upgrades::kept_note(root, &file_name(&path), &copy);
-                                self.workbench.log(LogLevel::Info, note);
-                            }
-                        }
-                        Ok(None) => {}
-                        Err(why) => self.workbench.log(
-                            LogLevel::Error,
-                            format!("Couldn't save {}: {why}.", path.display()),
                         ),
                     }
                 }
@@ -1474,7 +1429,18 @@ impl App {
     /// Drops what waited for a save that failed or was cancelled; a quit
     /// among it is called off, so a later close asks again.
     fn drop_queue(&mut self) {
-        self.queued.clear();
+        // The editor is told of each save that won't happen now, so it
+        // doesn't go on showing a change that isn't in its file.
+        for action in std::mem::take(&mut self.queued) {
+            if let WorkbenchAction::SaveFile { path, .. } = action {
+                let sheets = self.sprites.sheets().clone();
+                self.workbench.file_not_saved(
+                    &crate::project::slashed(&path),
+                    "it waited behind the area's save, which didn't happen",
+                    sheets,
+                );
+            }
+        }
         self.workbench.quit_cancelled();
     }
 
@@ -2133,6 +2099,12 @@ impl eframe::App for App {
                 self.workbench.set_program(program);
             }
         }
+        // Models' thumbnails are drawn on the theme's backdrop: another
+        // theme, and they're made again.
+        let theme = self.workbench.appearance().theme;
+        if self.thumbnails.follow_theme(theme, self.gpu.as_ref()) {
+            self.refresh_library();
+        }
         if self.thumbnails.poll(&ctx, self.gpu.as_mut()) {
             self.show_library();
         }
@@ -2408,6 +2380,10 @@ fn explain_panic(payload: &(dyn std::any::Any + Send)) -> String {
         message.to_string()
     }
 }
+
+#[cfg(test)]
+#[path = "window_own_files_tests.rs"]
+mod own_files_tests;
 
 #[cfg(test)]
 mod tests {

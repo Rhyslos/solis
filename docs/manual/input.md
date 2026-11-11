@@ -46,7 +46,7 @@ While a screen with buttons is shown, only the four menu actions reach game code
 
 **Combinations.** A key on its own doesn't count while you hold modifiers that some action binds with it. With Turn on `Alt+Left` and Pan on `Left`, holding Alt and pressing the left arrow turns, and doesn't pan as well. The up arrow (with no `Alt+Up` bound) still pans while Alt is held.
 
-Changes are saved straight away, and a game that's playing takes them at once (any rebinding game code did in this play gives way to them). They're kept in the project's `input.solinput`, a small text file beside `project.solis` that Git can merge.
+Changes are saved straight away, and a game that's playing takes them at once (any rebinding game code did in this play gives way to them). A speed you drag shows its number as you go and counts when you let go of the mouse, and a typed one when you press Enter or click somewhere else: the change is saved, and reaches a playing game, then. They're kept in the project's `input.solinput`, a small text file beside `project.solis` that Git can merge.
 
 **In game code**, the actions are names Lust checks: Solis writes them into `solis/project.lst` as `state Action` whenever you change them here, so `Action.Jmp` is a mistake before the game runs, listing the real actions. Fetch `Input` and `Action`, and ask `Input` (in Lua, `solis.Input:held("Jump")`):
 

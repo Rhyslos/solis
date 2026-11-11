@@ -1,15 +1,18 @@
 //! The workbench's side of the Animator tab (Phase 9, D3b): opening an
 //! animator file into it and closing it, making a new one, the preview,
-//! saving each change and running it at once in the game, undo, the
-//! selected entity's state while playing, and a file changed on disk.
+//! saving each change and running it at once in the game
+//! (`Workbench::save_file`), undo, and the selected entity's state while
+//! playing. The open file follows its file on disk as every editor's does
+//! (`own_files.rs`).
 
 use crate::animator_editor::AnimatorEditor;
 use crate::animator_view::AnimatorUi;
 use crate::console::LogLevel;
 use crate::layout;
+use crate::own_files::OwnFile;
 use crate::panel::Panel;
 use crate::sprite_sheets::{AnimatorState, SpriteSheets};
-use crate::workbench::{Workbench, WorkbenchAction};
+use crate::workbench::Workbench;
 use animation::ParamValue;
 use std::collections::HashMap;
 use std::sync::Arc;
@@ -101,20 +104,9 @@ impl Workbench {
             }],
             ..animation::AnimatorFile::default()
         };
-        self.open.outbox.push(WorkbenchAction::SaveAnimator {
-            path: path.clone().into(),
-            text: animation::animator_file::write(&file),
-        });
-        let sheets = Arc::make_mut(&mut self.viewport.sheets);
-        sheets.animators.insert(
-            path.clone(),
-            AnimatorState::Read(Arc::new(file), Vec::new()),
-        );
-        sheets.work_out_animators();
+        let text = animation::animator_file::write(&file);
+        self.save_file(&path, OwnFile::Animator(Arc::new(file)), text);
         self.open_animator(&path);
-        if let Some(editor) = &mut self.open.animator_editor {
-            editor.saving();
-        }
     }
 
     /// Closes the animator file open, and its tab.
@@ -150,30 +142,18 @@ impl Workbench {
             false
         };
         if changed {
-            let mut actions = Vec::new();
-            self.save_animator(&mut actions);
-            self.open.outbox.extend(actions);
+            self.save_animator();
         }
     }
 
     /// Saves the open animator file, and runs it at once for every entity
     /// using it (in the running game too: each carries on by name).
-    pub(crate) fn save_animator(&mut self, actions: &mut Vec<WorkbenchAction>) {
-        let Some(editor) = &mut self.open.animator_editor else {
+    pub(crate) fn save_animator(&mut self) {
+        let Some(editor) = &self.open.animator_editor else {
             return;
         };
-        editor.saving();
-        actions.push(WorkbenchAction::SaveAnimator {
-            path: editor.path.clone().into(),
-            text: editor.text(),
-        });
-        let (path, file) = (editor.path.clone(), editor.file.clone());
-        let sheets = Arc::make_mut(&mut self.viewport.sheets);
-        sheets
-            .animators
-            .insert(path, AnimatorState::Read(Arc::new(file), Vec::new()));
-        sheets.work_out_animators();
-        self.sources += 1;
+        let (path, text, file) = (editor.path.clone(), editor.text(), editor.file.clone());
+        self.save_file(&path, OwnFile::Animator(Arc::new(file)), text);
     }
 
     /// While playing, the selected entity's animator state and values, if
@@ -187,35 +167,6 @@ impl Workbench {
         (self.viewport.sheets.paths.get(&file) == Some(&editor.path))
             .then(|| playing.world.animator_of(id))
             .flatten()
-    }
-
-    /// After the app reads the project's animators again: an open file
-    /// changed on disk (by hand, or by Git) is taken in, as one undo step.
-    pub(crate) fn animator_read_again(&mut self) {
-        let Some(editor) = &mut self.open.animator_editor else {
-            return;
-        };
-        match self.viewport.sheets.animators.get(&editor.path) {
-            Some(AnimatorState::Read(file, _)) if editor.is_own(file) => editor.on_disk = true,
-            Some(AnimatorState::Read(file, _)) => {
-                editor.on_disk = true;
-                editor.reload((**file).clone());
-                let path = editor.path.clone();
-                self.log(
-                    LogLevel::Info,
-                    format!("{path} changed on disk, so the Animator tab shows it as it is now (Ctrl+Z over the tab undoes that)."),
-                );
-            }
-            None if editor.on_disk => {
-                let path = editor.path.clone();
-                self.close_animator();
-                self.log(
-                    LogLevel::Warning,
-                    format!("{path} is gone, so the Animator tab closed."),
-                );
-            }
-            _ => {}
-        }
     }
 }
 

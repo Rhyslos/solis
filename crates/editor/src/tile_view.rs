@@ -15,6 +15,7 @@
 //! layers over sprites last, over everything (`render::SpriteLayer`). The
 //! app uploads a picture only when its key changes.
 
+use crate::made_from::Numbered;
 use crate::sprite_parallax::{OVER, UNDER};
 use crate::sprite_sheets::{SpriteBatch, SpriteSheets, ViewSprite};
 use glam::{Mat4, Vec2, Vec3};
@@ -69,10 +70,20 @@ type ChunkTiles = (u64, Arc<Vec<Placed>>);
 type ChunkId = (EntityId, reflect::Id, [u32; 2]);
 
 /// Each layer's picture and each chunk's tiles, kept until they change.
+///
+/// What each was made from is told by numbers that are never given twice
+/// (the review, BUG-10): a layer's cells by their stamp
+/// (`TileMap::layer_stamp`), a tileset and a picture by their number
+/// here. None is told by where it is in memory, where the next one made
+/// can turn up.
 #[derive(Debug, Default)]
 pub struct TilePictures {
     made: Mutex<HashMap<(EntityId, usize), Arc<TilePicture>>>,
+    /// Each picture's atlas, by the picture's number.
     atlases: Mutex<HashMap<u64, Arc<TilePicture>>>,
+    /// A number for each tileset and each picture drawn with, for as long
+    /// as it lasts.
+    numbers: Mutex<Numbers>,
     chunks: Mutex<HashMap<ChunkId, ChunkTiles>>,
     /// Each layer's sprites as last made, and what they were made from:
     /// kept while nothing they show changes, so a big map isn't rebuilt
@@ -82,6 +93,13 @@ pub struct TilePictures {
 
 /// A layer's finished sprites, and the key of what made them.
 type LayerSprites = (u64, Arc<Vec<ViewSprite>>, Arc<Vec<u32>>);
+
+/// The numbers the tilesets and pictures drawn with go by.
+#[derive(Debug, Default)]
+struct Numbers {
+    sets: Numbered<tiles::Tileset>,
+    art: Numbered<assets::tile_art::TileArt>,
+}
 
 /// The pictures kept are a cache, never part of what sheets are.
 impl PartialEq for TilePictures {
@@ -150,12 +168,16 @@ pub(crate) fn atlas_rgba(art: &assets::tile_art::TileArt) -> ([u32; 2], Vec<u8>)
 /// What a map is drawn with: its tileset and, if it has one, its picture.
 struct Look<'a> {
     set: Option<&'a Arc<tiles::Tileset>>,
+    /// The tileset's number (0 with none).
+    set_number: u64,
     art: Option<(&'a Arc<assets::tile_art::TileArt>, Arc<TilePicture>)>,
 }
 
 /// A number that changes when any of these chunks (the one asked for and
-/// those beside it, which its edges read) changes.
-fn chunk_key(map: &TileMap, chunk: [u32; 2], layer_cells: usize, set: usize) -> u64 {
+/// those beside it, which its edges read) changes: of the layer whose
+/// cells have the stamp `layer_cells`, drawn with the tileset numbered
+/// `set`.
+fn chunk_key(map: &TileMap, chunk: [u32; 2], layer_cells: u64, set: u64) -> u64 {
     let mut key = reflect::Checksum::new();
     for dy in -1i64..=1 {
         for dx in -1i64..=1 {
@@ -167,8 +189,8 @@ fn chunk_key(map: &TileMap, chunk: [u32; 2], layer_cells: usize, set: usize) -> 
             });
         }
     }
-    key.u64(layer_cells as u64);
-    key.u64(set as u64);
+    key.u64(layer_cells);
+    key.u64(set);
     key.finish()
 }
 
@@ -241,14 +263,16 @@ impl TilePictures {
         let mut used = std::collections::HashSet::new();
         let mut used_atlases = std::collections::HashSet::new();
         let mut used_chunks = std::collections::HashSet::new();
+        let mut numbers = lock(&self.numbers);
         for m in maps {
             let set = m.map.tileset.and_then(|t| sheets.tileset(t));
             let look = Look {
                 set,
+                set_number: set.map_or(0, |s| numbers.sets.number(s)),
                 // Its meaning shown (D6): each terrain in its colour.
                 art: set.filter(|_| meaning != Some(m.entity)).and_then(|s| {
                     let art = sheets.tile_art(s.picture?)?;
-                    let key = Arc::as_ptr(art) as u64;
+                    let key = numbers.art.number(art);
                     used_atlases.insert(key);
                     let atlas = self.atlas(key, art);
                     Some((art, atlas))
@@ -274,7 +298,7 @@ impl TilePictures {
                     self.tiles_of(m, i, &look, &chunks, cell, ms, &mut used_chunks)
                 } else {
                     used.insert((m.entity, i));
-                    let picture = self.layer_picture(m, i, set);
+                    let picture = self.layer_picture(m, i, &look);
                     let batch = colour_batch(m, i, &picture, cell);
                     pictures.push(picture);
                     batch
@@ -286,6 +310,8 @@ impl TilePictures {
                 }
             }
         }
+        numbers.sets.forget_gone();
+        numbers.art.forget_gone();
         lock(&self.made).retain(|k, _| used.contains(k));
         lock(&self.atlases).retain(|k, _| used_atlases.contains(k));
         lock(&self.chunks).retain(|k, _| used_chunks.contains(k));
@@ -295,7 +321,7 @@ impl TilePictures {
         (pictures, under)
     }
 
-    /// The atlas of picture `art` (by `key`), made once.
+    /// The atlas of picture `art` (numbered `key`), made once.
     fn atlas(&self, key: u64, art: &Arc<assets::tile_art::TileArt>) -> Arc<TilePicture> {
         let mut atlases = lock(&self.atlases);
         Arc::clone(atlases.entry(key).or_insert_with(|| {
@@ -316,17 +342,13 @@ impl TilePictures {
 
     /// Layer `i` of `m` as its colour picture, made again only when it
     /// changes.
-    fn layer_picture(
-        &self,
-        m: &ViewTileMap,
-        i: usize,
-        set: Option<&Arc<tiles::Tileset>>,
-    ) -> Arc<TilePicture> {
+    fn layer_picture(&self, m: &ViewTileMap, i: usize, look: &Look<'_>) -> Arc<TilePicture> {
+        let set = look.set;
         let size = m.map.size();
         let mut key = reflect::Checksum::new();
-        key.u64(m.map.layer_cells(i).map_or(0, |c| c.as_ptr() as u64));
+        key.u64(m.map.layer_stamp(i));
         key.u64(m.map.layer_revision(i));
-        key.u64(set.map_or(0, |t| Arc::as_ptr(t) as u64));
+        key.u64(look.set_number);
         key.u64(u64::from(size[0]) << 32 | u64::from(size[1]));
         let key = key.finish();
         let mut made = lock(&self.made);
@@ -366,13 +388,12 @@ impl TilePictures {
             };
         };
         let layer = &m.map.layers()[i];
-        let cells_ptr = m.map.layer_cells(i).map_or(0, |c| c.as_ptr() as usize);
-        let set_ptr = Arc::as_ptr(set) as usize;
+        let cells = m.map.layer_stamp(i);
         // What the layer's sprites are made from: its chunks as they are,
         // where it's drawn, the art, and the time only if tiles move.
         let keys: Vec<u64> = chunks
             .iter()
-            .map(|&c| chunk_key(&m.map, c, cells_ptr, set_ptr))
+            .map(|&c| chunk_key(&m.map, c, cells, look.set_number))
             .collect();
         let animated = set
             .pieces
@@ -388,7 +409,7 @@ impl TilePictures {
                 sum.u64(u64::from(v.to_bits()));
             }
             sum.u64(u64::from(cell[0].to_bits()) << 32 | u64::from(cell[1].to_bits()));
-            sum.u64(Arc::as_ptr(art) as u64);
+            sum.u64(atlas.key);
             sum.u64(if animated { ms } else { 0 });
             sum.u64(u64::from(layer.over));
             sum.finish()

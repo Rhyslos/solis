@@ -74,7 +74,7 @@ These are the area's keys: they wait while the pointer is over a tab with keys o
 | Select everything | Ctrl + A |
 | Snapping on or off for one drag | Hold Ctrl while dragging a gizmo |
 | Ten times finer | Hold Shift while dragging a gizmo |
-| Cancel a drag | Esc, or right click |
+| Cancel a box or a gizmo drag | Esc, or right click |
 | Lock or free an axis | X, Y, Z |
 | World or object axes | L |
 

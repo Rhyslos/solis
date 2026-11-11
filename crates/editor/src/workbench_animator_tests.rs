@@ -7,6 +7,7 @@ use super::*;
 use crate::library::{LibraryItem, LibraryKind, LibraryRequest, ProjectInfo};
 use crate::sprite_sheets::{FramesState, SheetState};
 use crate::test_support::*;
+use crate::workbench::WorkbenchAction;
 use animation::{
     AnimatorFile, Condition, Facing, Parameter, ParameterKind, Plays, State, Transition,
 };
@@ -118,12 +119,9 @@ fn with_animator() -> (Workbench, AssetId, AssetId) {
 }
 
 fn saved(actions: &[WorkbenchAction]) -> Vec<String> {
-    actions
-        .iter()
-        .filter_map(|a| match a {
-            WorkbenchAction::SaveAnimator { text, .. } => Some(text.clone()),
-            _ => None,
-        })
+    saved_files(actions, |f| matches!(f, crate::OwnFile::Animator(_)))
+        .into_iter()
+        .map(|(_, text)| text)
         .collect()
 }
 
@@ -213,7 +211,7 @@ fn a_change_is_saved_run_at_once_and_undone_over_the_tab() {
         },
         &mut actions,
     );
-    let texts = saved(&actions);
+    let texts = saved(&w.open.outbox);
     assert_eq!(texts.len(), 1);
     assert!(texts[0].contains("name = \"Hoe\";"), "{}", texts[0]);
     // Ready to run at once, for the game too.
@@ -227,16 +225,11 @@ fn a_change_is_saved_run_at_once_and_undone_over_the_tab() {
             .unwrap()
             .contains("name = \"Wave\";")
     );
-    // The app reading back Solis's own save changes nothing.
+    // The app saving it, and reading it back, changes nothing.
     let mut sheets = (*w.viewport.sheets).clone();
-    sheets.animators.insert(
-        "farmer.solanim".into(),
-        AnimatorState::Read(
-            Arc::new(w.open.animator_editor.as_ref().unwrap().file.clone()),
-            Vec::new(),
-        ),
-    );
+    save_as_the_app(&mut w, &mut sheets);
     w.set_sprite_sheets(sheets);
+    assert!(w.console.lines().iter().all(|l| !l.text.contains("disk")));
     assert!(
         w.open.animator_editor.as_mut().unwrap().redo(),
         "its redo is still there"
@@ -399,4 +392,16 @@ fn the_preview_s_values_are_set_beside_the_graph() {
         "Wave",
         "moving"
     );
+}
+
+/// The × on the Animator tab closes the animator file, and nothing else.
+#[test]
+fn the_x_on_its_tab_closes_the_animator_file() {
+    let (mut w, _, _) = with_animator();
+    w.open_animator("farmer.solanim");
+    let mut h = harness(w);
+    click_the_x(&mut h, Panel::Animator);
+    let w = &h.state().0;
+    assert!(w.open.animator_editor.is_none());
+    assert!(w.dock.find_tab(&Panel::Animator).is_none());
 }

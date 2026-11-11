@@ -3,9 +3,11 @@
 //! each tick (the game-wide objects copied in first), and each entity's
 //! `Screen` that's shown drawn over the Game panel in its order. A screen
 //! that fails keeps its last picture, and the Console says where, once
-//! for each new message.
+//! for each new message. Screens that can't start are tried once for each
+//! build of the code, not again every tick.
 
 use crate::console::LogLevel;
+use crate::made_from::MadeFrom;
 use crate::workbench::Workbench;
 use reflect::Component;
 use std::collections::{BTreeMap, BTreeSet};
@@ -14,8 +16,12 @@ use std::sync::Arc;
 /// The screens' side of playing.
 #[derive(Default)]
 pub(crate) struct GameScreens {
-    /// The screens running, and the program they were started from.
-    running: Option<(script::Screens, Arc<script::Compiled>)>,
+    /// The screens running.
+    running: Option<script::Screens>,
+    /// The build of the game's code the screens were last started from,
+    /// whether or not they started: each is tried once (the review,
+    /// BUG-11), since trying one again can only end the same way.
+    tried: Option<MadeFrom<script::Compiled>>,
     /// What's drawn over the Game panel now, in order.
     pub(crate) pictures: Vec<Arc<ui::Screen>>,
     /// Which screen each picture is, and the entity it's shown for.
@@ -57,6 +63,25 @@ impl std::fmt::Debug for GameScreens {
             .field("pictures", &self.pictures.len())
             .finish_non_exhaustive()
     }
+}
+
+#[cfg(test)]
+thread_local! {
+    /// How many times this thread has started the game's screens' code:
+    /// tests check it's once for each build of the code, never once a
+    /// frame (the review, BUG-11).
+    pub(crate) static STARTS: std::cell::Cell<u32> = const { std::cell::Cell::new(0) };
+}
+
+/// Starts the game's screens' code. This is the one place the editor's
+/// frame does: for the screens the running game shows, and for the view
+/// of the screen open on the canvas.
+pub(crate) fn start_screens(
+    code: &script::screens::ScreenCode,
+) -> Result<script::Screens, script::Failure> {
+    #[cfg(test)]
+    STARTS.with(|starts| starts.set(starts.get() + 1));
+    script::Screens::start(code)
 }
 
 impl GameScreens {
@@ -232,15 +257,20 @@ pub(crate) struct ScreensArea {
 }
 
 impl GameScreens {
-    /// Whether the screens need starting (again) for `program`: its
-    /// screens aren't the ones running, or there are none and pictures
-    /// are left.
+    /// Whether the screens need starting (again) for `program`: it's a
+    /// build they haven't been started from, or there are none and
+    /// pictures are left.
     pub(crate) fn out_of_date(&self, program: Option<&Arc<script::Compiled>>) -> bool {
-        match (program.filter(|p| p.screens.is_some()), &self.running) {
-            (Some(program), Some((_, from))) => !Arc::ptr_eq(program, from),
-            (Some(_), None) => self.told.is_empty(),
-            (None, _) => self.running.is_some() || !self.pictures.is_empty(),
+        match program.filter(|p| p.screens.is_some()) {
+            Some(program) => !self.tried_with(program),
+            None => self.running.is_some() || !self.pictures.is_empty(),
         }
+    }
+
+    /// Whether the screens were started from `program` already, whatever
+    /// came of it.
+    fn tried_with(&self, program: &Arc<script::Compiled>) -> bool {
+        self.tried.as_ref().is_some_and(|tried| tried.is(program))
     }
 }
 
@@ -333,24 +363,26 @@ impl Workbench {
         let screens = &mut self.open.game_screens;
         let seen = &mut self.open.screen_pictures.seen;
         let shown_pictures = self.open.screen_pictures.pictures.clone();
-        // Started with the program, and again when it changes.
-        let fresh = !matches!(&screens.running, Some((_, from)) if Arc::ptr_eq(from, &program));
+        // Started with the program, and again when it changes: once for
+        // each build, also when they can't start.
+        let fresh = !screens.tried_with(&program);
         let mut said = Vec::new();
         let mut warned = Vec::new();
         if fresh {
+            screens.tried = Some(MadeFrom::new(&program));
             screens.last.clear();
             screens.running = None;
             if let Some(code) = &program.screens {
                 warned.extend(code.notes.iter().cloned());
-                match script::Screens::start(code) {
-                    Ok(started) => screens.running = Some((started, Arc::clone(&program))),
+                match start_screens(code) {
+                    Ok(started) => screens.running = Some(started),
                     Err(failure) => {
                         said.push(format!("The game's screens couldn't start: {}", failure.at))
                     }
                 }
             }
         }
-        if let Some((running, _)) = &screens.running {
+        if let Some(running) = &screens.running {
             if let Some(game) = &mut playing.game {
                 running.set_objects(&game.object_values());
             }
@@ -442,7 +474,7 @@ impl Workbench {
         let Some(playing) = &mut self.open.playing else {
             return;
         };
-        let Some((running, _)) = &self.open.game_screens.running else {
+        let Some(running) = &self.open.game_screens.running else {
             return;
         };
         let mut reader = GameReader(playing.game.as_mut(), &playing.world, playing.view.settings);

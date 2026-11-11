@@ -56,6 +56,7 @@ Make a project as soon as you start something you want to keep. Without one, Sol
 - **Rename…**: type a new name. The file's ID file goes with it, so nothing using it breaks. Changing only capitals works too. Renaming the open area is fine: Solis saves to the new name. A name must work on every computer: at most 100 characters, none of `< > : " / \ | ? *`, and not a name Windows keeps for a device (`CON`, `NUL`, `COM1` …); the Console says why if it isn't.
 - **Move**: drag a file onto a folder in the tree.
 - **New**: makes something new in that folder (see below).
+- **Open** or **Place** (a sprite's clips file and a picture offer both): **Open** does what a double-click on that file does, and **Place** puts it in the area. **Place** is greyed on a file Solis hasn't given its ID yet, such as one copied in a moment ago: try again shortly.
 - **Show in Explorer** opens the folder in your system's file browser.
 - **Delete** moves the file (or folder) to the **Recycle Bin**, with its ID file, so you can get it back. Anything in the area still using it keeps showing it until Solis restarts.
 

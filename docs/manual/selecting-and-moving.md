@@ -11,7 +11,7 @@ Whenever you build an area: picking a model to change it, arranging crates, turn
 **Selecting:**
 1. Click a model or a lamp's marker in the [viewport](concepts.md#the-3d-view). It's outlined in the accent colour, and the Area panel and Properties show it.
 2. **Ctrl + click** adds another one to the selection, or takes it out if it's already selected.
-3. **Drag on empty space** to draw a box: everything you can see inside it is selected. Hold **Ctrl** while dragging to add to what's selected.
+3. **Drag on empty space** to draw a box: everything you can see inside it is selected. Hold **Ctrl** while dragging to add to what's selected. To give up on a box before letting go, press **Esc** or click the **right mouse button**: the selection stays as it was.
 4. **Esc** selects nothing; **Ctrl + A** selects everything in the area.
 
 Clicking on empty sky or ground selects nothing.
@@ -29,6 +29,8 @@ Clicking on empty sky or ground selects nothing.
 5. Let go. The whole drag is **one undo step**: Ctrl + Z puts it back.
 
 To give up on a drag before letting go, press **Esc** or click the **right mouse button**: everything goes back to where it was, and nothing is added to undo.
+
+While the left button is held on a box or a gizmo, the right button only cancels: it doesn't start flying the camera, in any kind of view. Let go of both, and it flies again.
 
 When several things are selected, the gizmo sits in the middle of them and they move together. Something inside another selected entity (a lamp inside a selected room) moves with it, not twice.
 
@@ -59,7 +61,7 @@ These are in the viewport's **bottom-right corner**. Solis remembers them on thi
 | Select, Move, Rotate, Scale, Transform | Q, W, R, S, T |
 | Snapping on or off for one drag | Hold Ctrl while dragging |
 | Ten times finer | Hold Shift while dragging |
-| Cancel a drag | Esc, or right click |
+| Cancel a box or a gizmo drag | Esc, or right click |
 | Lock or free an axis | X, Y, Z |
 | World or object axes | L |
 

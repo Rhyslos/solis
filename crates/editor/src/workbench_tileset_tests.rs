@@ -75,12 +75,9 @@ fn with_tileset() -> (Workbench, AssetId, AssetId) {
 }
 
 fn saved(actions: &[WorkbenchAction]) -> Vec<String> {
-    actions
-        .iter()
-        .filter_map(|a| match a {
-            WorkbenchAction::SaveTileset { text, .. } => Some(text.clone()),
-            _ => None,
-        })
+    saved_files(actions, |f| matches!(f, crate::OwnFile::Tileset(_)))
+        .into_iter()
+        .map(|(_, text)| text)
         .collect()
 }
 
@@ -130,11 +127,15 @@ fn a_change_is_saved_shown_at_once_and_undone_over_the_tab() {
     assert!(texts[0].contains("slot = 6"), "{}", texts[0]);
     let set = w.viewport.sheets.tileset(set_id).unwrap();
     assert!(tiles::autotile::missing_slots(set, &set.terrains[1]).is_empty());
-    w.open.outbox.clear();
+    save_as_the_app(&mut w, &mut SpriteSheets::default());
     w.tileset_undo(FARM_SET, false, true);
     assert!(!saved(&w.open.outbox)[0].contains("slot = 6"));
-    // Its own save read back changes nothing; a change by hand is taken in.
+    // Saved by the app, and read back: nothing changes. A change by hand
+    // is taken in.
     let mut sheets = (*w.viewport.sheets).clone();
+    save_as_the_app(&mut w, &mut sheets);
+    w.set_sprite_sheets(sheets.clone());
+    assert!(w.console.lines().iter().all(|l| !l.text.contains("disk")));
     let mut by_hand = w.open.tilesets.tab().unwrap().file.clone();
     by_hand.tile = [16, 16];
     sheets.tilesets.insert(
@@ -321,9 +322,12 @@ fn edit_in_properties(w: &mut Workbench, edit: crate::map_tab::TerrainEdit) {
     assert!(actions.is_empty());
 }
 
-/// Takes the tileset's saves waiting for the app, oldest first.
+/// Takes the tileset's saves waiting for the app, oldest first, each
+/// saved as the app would.
 fn take_saved(w: &mut Workbench) -> Vec<String> {
-    saved(&std::mem::take(&mut w.open.outbox))
+    let texts = saved(&w.open.outbox);
+    save_as_the_app(w, &mut SpriteSheets::default());
+    texts
 }
 
 #[test]
@@ -539,4 +543,64 @@ fn a_tileset_s_steps_follow_its_file_on_disk_and_go_with_it() {
     w.set_sprite_sheets(sheets);
     w.tileset_undo(FARM_SET, false, true);
     assert_eq!(take_saved(&mut w), Vec::<String>::new());
+}
+
+/// The × on the Tileset tab closes the tileset's tab; its undo steps stay
+/// the file's.
+#[test]
+fn the_x_on_its_tab_closes_the_tileset() {
+    let (mut w, _, _) = with_tileset();
+    w.open_tileset("farm.tileset.lst");
+    let mut h = harness(w);
+    click_the_x(&mut h, Panel::Tileset);
+    let w = &h.state().0;
+    assert!(w.open.tilesets.tab().is_none());
+    assert!(w.dock.find_tab(&Panel::Tileset).is_none());
+}
+
+/// The review, BUG-10: the Tileset tab's texture of its picture went by
+/// where the picture was in memory. A picture read again could be put
+/// where the last one was, and the tab kept showing the old one.
+#[test]
+fn a_picture_read_again_gets_its_texture_made_again() {
+    let (mut w, _, _) = with_tileset();
+    w.open_tileset(FARM_SET);
+    let ctx = egui::Context::default();
+    let texture = |w: &Workbench| {
+        let sheets = &w.viewport.sheets;
+        let art = match sheets.tile_art.get("tiles.png") {
+            Some(ArtState::Read(art)) => art,
+            _ => panic!("the picture isn't read"),
+        };
+        crate::workbench_tileset::texture_of(&w.open.tile_textures, art).map(|(t, _)| t.id())
+    };
+    assert_eq!(texture(&w), None, "not made yet");
+    w.tileset_texture(&ctx);
+    let first = texture(&w).expect("made");
+    w.tileset_texture(&ctx);
+    assert_eq!(texture(&w), Some(first), "kept");
+    assert_eq!(w.open.tile_textures.len(), 1);
+    // Read again: the picture let go, and another just like it made.
+    let mut sheets = (*w.viewport.sheets).clone();
+    sheets.tile_art.remove("tiles.png");
+    w.set_sprite_sheets(sheets.clone());
+    sheets.tile_art.insert(
+        "tiles.png".into(),
+        ArtState::Read(Arc::new(TileArt {
+            size: [32, 32],
+            frames: vec![vec![200; 32 * 32 * 4]],
+            durations: vec![100],
+        })),
+    );
+    w.set_sprite_sheets(sheets.clone());
+    assert_eq!(texture(&w), None, "the old texture isn't this picture's");
+    w.tileset_texture(&ctx);
+    let again = texture(&w).expect("made again");
+    assert_ne!(again, first);
+    assert_eq!(w.open.tile_textures.len(), 1, "the old one let go");
+    // The picture gone: nothing kept.
+    sheets.tile_art.clear();
+    w.set_sprite_sheets(sheets);
+    w.tileset_texture(&ctx);
+    assert!(w.open.tile_textures.is_empty());
 }

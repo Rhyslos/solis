@@ -253,3 +253,77 @@ fn a_value_s_kind_changes_only_within_the_map_s_memory() {
     let cells = u64::from(MAX_SIDE) * u64::from(MAX_SIDE);
     assert_eq!(map.bytes_per_cell() * cells, MAX_MAP_BYTES);
 }
+
+/// The review, BUG-10: what's made from a layer (its picture) knew the
+/// layer by where its cells were in memory, a place the next cells made
+/// can be given. A layer's stamp says the same without that: two maps
+/// have the same one only while they share the layer's very cells.
+#[test]
+fn a_layer_s_stamp_is_shared_only_while_its_cells_are() {
+    let mut a = TileMap::new([8, 8], None, Some(b'.'));
+    let stamps =
+        |m: &TileMap| -> Vec<u64> { (0..m.layers().len()).map(|i| m.layer_stamp(i)).collect() };
+    let first = stamps(&a);
+    assert!(first.iter().all(|&s| s != 0), "{first:?}");
+    assert!(first[0] != first[1] && first[1] != first[2] && first[0] != first[2]);
+    assert_eq!(a.layer_stamp(3), 0, "past the last layer");
+    // Changed where nothing shares its cells: the same cells, the same
+    // stamp, and its revision says it changed.
+    let revision = a.layer_revision(0);
+    assert_eq!(a.set_code(0, 1, 1, b't'), Ok(true));
+    assert_eq!(stamps(&a), first);
+    assert!(a.layer_revision(0) > revision);
+    // A copy shares every layer's cells, and so its stamps.
+    let mut b = a.clone();
+    assert_eq!(stamps(&b), first);
+    // The copy changed: it has cells of its own on that layer, under a
+    // stamp no cells have had. The other layers are still shared.
+    assert_eq!(b.set_code(0, 2, 2, b't'), Ok(true));
+    assert_ne!(b.layer_stamp(0), first[0]);
+    assert_eq!(stamps(&b)[1..], first[1..]);
+    assert_eq!(stamps(&a), first, "the first map keeps its own");
+    // Setting a cell to what it is already changes nothing.
+    let before = stamps(&b);
+    assert_eq!(b.set_code(1, 0, 0, 0), Ok(false));
+    assert_eq!(stamps(&b), before);
+    // Another map made the same way is another map: no stamp in common,
+    // though each cell is the same.
+    let other = TileMap::new([8, 8], None, Some(b'.'));
+    assert!(
+        stamps(&other)
+            .iter()
+            .all(|s| !first.contains(s) && !before.contains(s))
+    );
+    // The copy let go: the first map's cells aren't shared any more, and
+    // changing them again keeps their stamp.
+    drop(b);
+    assert_eq!(a.set_code(0, 3, 3, b't'), Ok(true));
+    assert_eq!(stamps(&a), first);
+}
+
+#[test]
+fn stamps_go_with_their_layers_and_new_cells_get_new_ones() {
+    let mut map = TileMap::new([8, 8], None, Some(b'.'));
+    let stamps =
+        |m: &TileMap| -> Vec<u64> { (0..m.layers().len()).map(|i| m.layer_stamp(i)).collect() };
+    let first = stamps(&map);
+    // A layer added: a stamp of its own, the others as they were.
+    map.add_layer("Roofs", true).unwrap();
+    let four = stamps(&map);
+    assert_eq!(four[..3], first[..]);
+    assert!(four[3] != 0 && !first.contains(&four[3]));
+    // Moved: each layer's stamp goes with its cells.
+    assert!(map.move_layer(0, true));
+    assert_eq!(stamps(&map), [four[1], four[0], four[2], four[3]]);
+    // Taken away: the rest keep theirs.
+    assert!(map.remove_layer(1));
+    assert_eq!(stamps(&map), [four[1], four[2], four[3]]);
+    // Resized: every layer has new cells, so new stamps.
+    assert!(map.resize([4, 4]));
+    let resized = stamps(&map);
+    assert!(
+        resized.iter().all(|s| *s != 0 && !four.contains(s)),
+        "{resized:?}"
+    );
+    assert!(resized[0] != resized[1] && resized[1] != resized[2]);
+}

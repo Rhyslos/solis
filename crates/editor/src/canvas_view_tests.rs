@@ -14,7 +14,15 @@ struct State {
 }
 
 fn harness() -> Harness<'static, State> {
-    let mut w = crate::workbench_screens::tests::opened();
+    harness_of(crate::screen_doc::tests::MENU)
+}
+
+/// A screen with a box placed freely on a `canvas`, in the middle.
+const DIAL: &str = "fetch \"solis/screen\":Ui;\n\nassembly PauseMenu {\n    view {\n        stack [width fill, height fill, center, middle] {\n            canvas [width 400, height 300] {\n                box [x 40, y 30, width 100, height 60, background red5];\n            }\n        }\n    }\n}\n\npass PauseMenu;\nend\n";
+
+/// The canvas with the screen written as `menu` open.
+fn harness_of(menu: &str) -> Harness<'static, State> {
+    let mut w = crate::workbench_screens::tests::opened_with(menu);
     w.refresh_screen();
     let doc = w.open.screen_doc.take().unwrap();
     Harness::builder()
@@ -375,4 +383,91 @@ fn the_pen_s_corners_become_lines_on_enter() {
     assert_eq!(text.matches("line [").count(), 2, "{text}");
     assert!(text.contains("canvas [width"), "{text}");
     assert!(h.state().doc.pen.is_empty());
+}
+
+/// The first picked piece's `[ ]` item `name`, as a number.
+fn number(h: &Harness<'static, State>, file: &[usize], name: &str) -> f32 {
+    let doc = &h.state().doc;
+    let piece = doc.piece(file).unwrap();
+    piece
+        .style_text(&doc.text, name)
+        .unwrap()
+        .trim()
+        .parse()
+        .unwrap()
+}
+
+/// BUG-18: a piece on a `canvas` is moved by as far as it was dragged, in
+/// the screen's pixels, at any zoom, as one undo step and one save.
+#[test]
+fn a_piece_on_a_canvas_moves_by_as_far_as_it_s_dragged_at_any_zoom() {
+    // The zoom (points per screen pixel), and the pixels 40 × 24 points
+    // are there.
+    for (zoom, by) in [
+        (1.0, [40.0, 24.0]),
+        (0.5, [80.0, 48.0]),
+        (2.0, [20.0, 12.0]),
+    ] {
+        let mut h = harness_of(DIAL);
+        h.state_mut().doc.zoom = Some(zoom);
+        h.run();
+        let before = h.state().doc.text.clone();
+        let piece = rect_of(&h, &[0, 0, 0]);
+        drag(
+            &mut h,
+            piece.center(),
+            piece.center() + Vec2::new(40.0, 24.0),
+        );
+        assert_eq!(
+            [number(&h, &[0, 0, 0], "x"), number(&h, &[0, 0, 0], "y")],
+            [40.0 + by[0], 30.0 + by[1]],
+            "at zoom {zoom}: {}",
+            h.state().doc.text
+        );
+        assert_eq!(
+            h.state().out.iter().filter(|o| o.changed).count(),
+            1,
+            "saved once, when the button came up"
+        );
+        assert_eq!(h.state().doc.picked, vec![vec![0, 0, 0]], "still picked");
+        // The canvas shows it there at once.
+        let moved = rect_of(&h, &[0, 0, 0]);
+        assert!((moved.min - piece.min - Vec2::new(40.0, 24.0)).length() < 1.5);
+        // One undo step for the whole drag.
+        assert!(h.state_mut().doc.undo());
+        assert_eq!(h.state().doc.text, before);
+        assert!(!h.state_mut().doc.undo(), "x and y were one step");
+    }
+}
+
+/// A drag that ends where it began changes nothing: no step, no save.
+#[test]
+fn a_piece_on_a_canvas_dragged_back_to_where_it_was_isn_t_a_change() {
+    let mut h = harness_of(DIAL);
+    h.state_mut().doc.zoom = Some(1.0);
+    h.run();
+    let before = h.state().doc.text.clone();
+    let c = rect_of(&h, &[0, 0, 0]).center();
+    h.hover_at(c);
+    h.event(egui::Event::PointerButton {
+        pos: c,
+        button: egui::PointerButton::Primary,
+        pressed: true,
+        modifiers: egui::Modifiers::NONE,
+    });
+    h.run();
+    for to in [c + Vec2::new(30.0, 10.0), c + Vec2::new(12.0, -8.0), c] {
+        h.hover_at(to);
+        h.run();
+    }
+    h.event(egui::Event::PointerButton {
+        pos: c,
+        button: egui::PointerButton::Primary,
+        pressed: false,
+        modifiers: egui::Modifiers::NONE,
+    });
+    h.run();
+    assert_eq!(h.state().doc.text, before);
+    assert!(!changed(&h));
+    assert!(!h.state_mut().doc.undo());
 }

@@ -10,12 +10,13 @@
 //! until then, and quitting stops the game and waits for that answer.
 
 use crate::console::LogLevel;
-use crate::document::Document;
+use crate::document::{Document, FieldsSet};
 use crate::game_code::{
     GameEdit, PlayWorld, ViewCache, failure_text, new_game, sync_all, sync_entities,
 };
 use crate::panel::Panel;
 use crate::workbench::{Workbench, WorkbenchAction};
+use area::assembly::AssemblyError;
 use area::text::AreaFile;
 use area::{Edit, EntityData};
 use reflect::{AssetId, EntityId};
@@ -60,8 +61,9 @@ pub(crate) struct Playing {
     told_too_many: bool,
     /// Whether the Console was told there were too many physics bodies.
     told_too_many_bodies: bool,
-    /// Assembly names game code spawned that weren't found, said once.
-    told_unknown: std::collections::HashSet<String>,
+    /// Assembly names game code spawned of which no copy could be made
+    /// (none by that name, or one that can't be copied), each said once.
+    told_unmade: std::collections::HashSet<String>,
     /// Whether the Console was told game code spawned too much.
     told_too_many_spawns: bool,
     /// What game code spawned and despawned that hasn't landed yet (from
@@ -117,6 +119,16 @@ pub(crate) fn collapse_saves(saves: Vec<(String, bool)>) -> (Vec<(String, bool)>
     let dropped = kept.len().saturating_sub(MAX_SAVES_PER_TICK);
     kept.truncate(MAX_SAVES_PER_TICK);
     (kept, dropped)
+}
+
+/// Why a spawn made nothing.
+enum Unmade {
+    /// No assembly in the project has the name.
+    NoSuchAssembly,
+    /// This assembly can't be copied.
+    Broken(AssetId, AssemblyError),
+    /// The entity it was to be is in the area already.
+    IdTaken,
 }
 
 /// The most copies of assemblies game code may make in one tick; more
@@ -234,7 +246,7 @@ impl Workbench {
             view,
             told_too_many: false,
             told_too_many_bodies: false,
-            told_unknown: Default::default(),
+            told_unmade: Default::default(),
             told_too_many_spawns: false,
             pending,
             // The menu actions even in a project whose input actions file
@@ -318,7 +330,12 @@ impl Workbench {
             );
             failures.push(failure);
         }
-        failures.extend(sync_all(&mut game, self.open.document.area(), &mut host));
+        failures.extend(sync_all(
+            &mut game,
+            self.open.document.area(),
+            &FieldsSet::new(),
+            &mut host,
+        ));
         host.outside_a_tick();
         let said = std::mem::take(&mut host.said);
         // What the starts spawned lands before the first tick.
@@ -519,13 +536,17 @@ impl Workbench {
             let mut host = PlayWorld::new(&mut playing.world, &mut playing.view, time);
             host.frame_time = f64::from(seconds);
             let syncing = std::time::Instant::now();
+            // With the fields set by hand, which a running component
+            // takes whatever the area held (Properties shows the game's
+            // value, so setting it to the area's is a change too).
             if changes.everything {
-                failures.extend(sync_all(game, area, &mut host));
+                failures.extend(sync_all(game, area, &changes.set, &mut host));
             } else {
                 failures.extend(sync_entities(
                     game,
                     area,
                     changes.entities.iter().copied(),
+                    &changes.set,
                     &mut host,
                 ));
             }
@@ -985,15 +1006,19 @@ impl Workbench {
     /// of assemblies join the area at the end of its tree and the world
     /// at once, despawned entities leave both, and the running game's
     /// components start and stop with them. Changes to the area that
-    /// aren't undo steps (Stop puts the area back; decision 0035). A name
-    /// that isn't an assembly in the project is said once. The failures
-    /// of starting the new components come back.
+    /// aren't undo steps (Stop puts the area back; decision 0035). A spawn
+    /// that can't be made (no assembly by that name, or one that can't be
+    /// copied) says why in the Console, once a play for each name, never
+    /// once a frame (the review, BUG-51). The failures of starting the
+    /// new components come back.
     fn land_edits(&mut self, time: f64, seconds: f32) -> Vec<script::Failure> {
         let edits = match &mut self.open.playing {
             Some(playing) if !playing.pending.is_empty() => std::mem::take(&mut playing.pending),
             _ => return Vec::new(),
         };
-        let mut unknown = Vec::new();
+        // Why nothing was made, for each name asked for in vain: the first
+        // reason this tick, however many times it was asked.
+        let mut unmade: BTreeMap<String, Unmade> = BTreeMap::new();
         // Each name looked up once, not once a spawn.
         let mut named: std::collections::HashMap<String, Option<(AssetId, String)>> =
             std::collections::HashMap::new();
@@ -1023,19 +1048,27 @@ impl Workbench {
                         .or_insert_with(|| self.assembly_named(&name))
                         .clone();
                     let Some((asset, shown)) = found else {
-                        unknown.push(name);
+                        unmade.entry(name).or_insert(Unmade::NoSuchAssembly);
                         continue;
                     };
-                    let Ok(size) = expander.size_of(asset) else {
-                        continue;
+                    let size = match expander.size_of(asset) {
+                        Ok(size) => size,
+                        Err(why) => {
+                            unmade.entry(name).or_insert(Unmade::Broken(asset, why));
+                            continue;
+                        }
                     };
                     if size > room {
                         refused += 1;
                         continue;
                     }
                     let data = EntityData::new(&shown);
-                    let Ok(mut entities) = expander.place(asset, id, &data) else {
-                        continue;
+                    let mut entities = match expander.place(asset, id, &data) {
+                        Ok(entities) => entities,
+                        Err(why) => {
+                            unmade.entry(name).or_insert(Unmade::Broken(asset, why));
+                            continue;
+                        }
                     };
                     // The copy stands where it was spawned, turned and sized
                     // as the assembly made it, after everything else.
@@ -1056,6 +1089,7 @@ impl Workbench {
                         entities: entities.clone(),
                     }]);
                     if failed > 0 {
+                        unmade.entry(name).or_insert(Unmade::IdTaken);
                         continue;
                     }
                     room -= entities.len();
@@ -1097,7 +1131,13 @@ impl Workbench {
                     let (tick, seed) = (playing.world.clock().ticks, playing.world.seed());
                     let mut host = PlayWorld::new(&mut playing.world, &mut playing.view, time);
                     host.frame_time = f64::from(seconds);
-                    failures = sync_entities(game, self.open.document.area(), added, &mut host);
+                    failures = sync_entities(
+                        game,
+                        self.open.document.area(),
+                        added,
+                        &FieldsSet::new(),
+                        &mut host,
+                    );
                     host.outside_a_tick();
                     told = std::mem::take(&mut host.said);
                     // Sounds the new components' starts asked for.
@@ -1113,8 +1153,6 @@ impl Workbench {
         for words in told {
             self.log(LogLevel::Info, words);
         }
-        unknown.sort();
-        unknown.dedup();
         if refused > 0
             && let Some(playing) = &mut self.open.playing
             && !playing.told_too_many_spawns
@@ -1131,22 +1169,71 @@ impl Workbench {
                 ),
             );
         }
-        for name in unknown {
+        for (name, why) in unmade {
             let Some(playing) = &mut self.open.playing else {
                 break;
             };
             // A few names are remembered; past that, nothing more is said.
-            if playing.told_unknown.len() < 100 && playing.told_unknown.insert(name.clone()) {
+            if playing.told_unmade.len() < 100 && playing.told_unmade.insert(name.clone()) {
+                let why = self.why_unmade(&why);
                 self.log(
                     LogLevel::Warning,
-                    format!(
-                        "Game code spawned \"{name}\", but there's no assembly by that name in \
-                         the project's assets, so nothing was made."
-                    ),
+                    format!("Game code spawned \"{name}\", but {why}, so nothing was made."),
                 );
             }
         }
         failures
+    }
+
+    /// Why a spawn made nothing, in words for the Console: files by their
+    /// names in the Library, where it knows them.
+    fn why_unmade(&self, why: &Unmade) -> String {
+        let named = |id: AssetId| {
+            let listed = self.open.library.iter().find(|item| item.id == Some(id));
+            listed.map(|item| format!("\"{}\"", item.name))
+        };
+        let (asset, why) = match why {
+            Unmade::NoSuchAssembly => {
+                return "there's no assembly by that name in the project's assets".into();
+            }
+            Unmade::IdTaken => return "the entity it was to be is already in the area".into(),
+            Unmade::Broken(asset, why) => (*asset, why),
+        };
+        match why {
+            AssemblyError::Missing(id) => match named(*id) {
+                Some(name) if *id == asset => format!("{name}'s file can't be read"),
+                Some(name) => format!("it places {name}, whose file can't be read"),
+                None => format!("it places an assembly ({id}) that isn't in the project"),
+            },
+            AssemblyError::NotAnAssembly(id) if *id == asset => {
+                "its file is an area, not an assembly".into()
+            }
+            AssemblyError::NotAnAssembly(id) => format!(
+                "it places {}, which is an area, not an assembly",
+                named(*id).unwrap_or_else(|| id.to_string())
+            ),
+            AssemblyError::Loop(chain) => {
+                let chain: Vec<String> = chain
+                    .iter()
+                    .map(|&id| named(id).unwrap_or_else(|| id.to_string()))
+                    .collect();
+                format!(
+                    "its assemblies place each other in a loop ({})",
+                    chain.join(" → ")
+                )
+            }
+            AssemblyError::TooDeep => format!(
+                "its assemblies are placed more than {} deep, one inside another",
+                area::text::MAX_NESTING
+            ),
+            AssemblyError::TooBig => format!(
+                "a copy would be more than {} entities",
+                crate::models::grouped(area::text::MAX_ENTITIES)
+            ),
+            AssemblyError::Clash(id) => {
+                format!("two of its entities would share an ID ({id})")
+            }
+        }
     }
 
     /// The assembly game code names `name`: by its file in the assets

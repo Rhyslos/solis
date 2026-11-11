@@ -6,6 +6,7 @@
 //! them, a blue line where it's playing, and its events in a lane below.
 
 use crate::frames_editor::{FramesEditor, STANDARD_ZOOM, ZOOM_RANGE};
+use crate::settled::{settled_drag, settled_number};
 use crate::theme;
 use animation::{ClipSet, Direction};
 use assets::sprite_sheet::SpriteSheet;
@@ -59,84 +60,6 @@ fn about(clip: &animation::Clip) -> String {
         0 => format!("{frames} · {}", seconds(clip.pass_seconds())),
         1 => format!("{frames} · once"),
         n => format!("{frames} · ×{n}"),
-    }
-}
-
-/// A number field whose change counts once it's let go (or typed and
-/// left), so a drag is one undo step. Returns the value then.
-pub(crate) fn settled_drag(
-    ui: &mut Ui,
-    salt: &str,
-    value: f64,
-    range: std::ops::RangeInclusive<f64>,
-    speed: f64,
-    suffix: &str,
-) -> Option<f64> {
-    settled(ui, salt, value, range, speed, suffix, None)
-}
-
-/// [`settled_drag`] for a whole number (a count of cells): never shown
-/// with a decimal point.
-pub(crate) fn settled_whole_drag(
-    ui: &mut Ui,
-    salt: &str,
-    value: f64,
-    range: std::ops::RangeInclusive<f64>,
-    speed: f64,
-) -> Option<f64> {
-    settled(ui, salt, value, range, speed, "", Some(0)).map(f64::round)
-}
-
-fn settled(
-    ui: &mut Ui,
-    salt: &str,
-    value: f64,
-    range: std::ops::RangeInclusive<f64>,
-    speed: f64,
-    suffix: &str,
-    decimals: Option<usize>,
-) -> Option<f64> {
-    let id = ui.id().with(("settled", salt));
-    let mut shown: f64 = ui.data(|d| d.get_temp(id)).unwrap_or(value);
-    let mut drag = egui::DragValue::new(&mut shown)
-        .range(range)
-        .speed(speed)
-        .suffix(suffix);
-    if let Some(d) = decimals {
-        drag = drag.fixed_decimals(d);
-    }
-    let response = ui.add(drag);
-    if response.dragged() || response.has_focus() {
-        ui.data_mut(|d| d.insert_temp(id, shown));
-        None
-    } else {
-        ui.data_mut(|d| d.remove::<f64>(id));
-        (response.drag_stopped() || response.lost_focus() || response.changed())
-            .then_some(shown)
-            .filter(|v| (v - value).abs() > f64::EPSILON)
-    }
-}
-
-/// A colour button whose change counts once the mouse is let go, so a
-/// drag in its picker is one undo step (and one save), as with
-/// [`settled_drag`]. Returns the colour then.
-pub(crate) fn settled_colour(
-    ui: &mut Ui,
-    salt: impl std::hash::Hash + std::fmt::Debug,
-    value: [f32; 3],
-) -> Option<[f32; 3]> {
-    let id = ui.id().with(("settled colour", salt));
-    let now = value.map(|v| (v.clamp(0.0, 1.0) * 255.0).round() as u8);
-    let mut shown: [u8; 3] = ui.data(|d| d.get_temp(id)).unwrap_or(now);
-    ui.color_edit_button_srgb(&mut shown);
-    if ui.input(|i| i.pointer.any_down()) {
-        // Still held: shown as dragged so far, and kept for when it's let
-        // go.
-        ui.data_mut(|d| d.insert_temp(id, shown));
-        None
-    } else {
-        ui.data_mut(|d| d.remove::<[u8; 3]>(id));
-        (shown != now).then(|| shown.map(|v| f32::from(v) / 255.0))
     }
 }
 
@@ -381,19 +304,19 @@ fn clip_settings(ui: &mut Ui, editor: &mut FramesEditor, clip: &animation::Clip)
                 };
                 ui.label(RichText::new(format!("{times} (Aseprite)")).color(theme::text_weak()));
             } else {
-                let mut repeats = clip.repeats;
-                let response = ui.add(
-                    egui::DragValue::new(&mut repeats)
-                        .range(0..=animation::frames_file::MAX_REPEATS)
-                        .speed(0.05)
-                        .custom_formatter(|n, _| match n as u32 {
-                            0 => "over and over".to_owned(),
-                            1 => "once".to_owned(),
-                            n => format!("{n} times"),
-                        }),
-                );
-                if response.changed() {
-                    changed |= editor.set_repeats(repeats);
+                let most = f64::from(animation::frames_file::MAX_REPEATS);
+                let (repeats, _) =
+                    settled_number(ui, "clip repeats", f64::from(clip.repeats), |d| {
+                        d.range(0.0..=most).speed(0.05).custom_formatter(|n, _| {
+                            match n.round() as u32 {
+                                0 => "over and over".to_owned(),
+                                1 => "once".to_owned(),
+                                n => format!("{n} times"),
+                            }
+                        })
+                    });
+                if let Some(repeats) = repeats {
+                    changed |= editor.set_repeats(repeats.round() as u32);
                 }
             }
             ui.end_row();

@@ -1,9 +1,13 @@
 //! Edit > Input actions…: the project's input actions and what sets each
 //! off ([decision 0037](../../../docs/decisions/0037-input-as-named-actions.md)),
 //! changed by pressing the key or button to bind. Every change is saved
-//! to the project's `input.solinput` at once.
+//! to the project's `input.solinput` at once; a number being dragged or
+//! typed is one change, made when it's let go (the app writes the file and
+//! has the game's code checked again on each save, so never a frame at a
+//! time).
 
 use crate::console::LogLevel;
+use crate::settled::settled_number;
 use crate::theme;
 use crate::workbench::{Workbench, WorkbenchAction};
 use egui::{RichText, Ui};
@@ -332,16 +336,34 @@ fn actions_ui(
                 });
                 if action.is_motion() {
                     ui.horizontal(|ui| {
+                        // Each counts once it's let go, so a drag is
+                        // one save.
                         ui.label("Mouse speed");
-                        changed |= ui
-                            .add(egui::DragValue::new(&mut action.mouse_speed).range(0.0..=100.0).speed(0.01))
-                            .on_hover_text("How far a pixel of mouse movement (or a notch of the wheel) goes: degrees for Look, steps for Zoom.")
-                            .changed();
+                        let (speed, field) = settled_number(
+                            ui,
+                            ("mouse speed", index),
+                            f64::from(action.mouse_speed),
+                            |d| d.range(0.0..=100.0).speed(0.01),
+                        );
+                        field.on_hover_text("How far a pixel of mouse movement (or a notch of the wheel) goes: degrees for Look, steps for Zoom.");
+                        if let Some(speed) = speed {
+                            action.mouse_speed = speed as f32;
+                            changed = true;
+                        }
                         ui.label("Stick and key speed");
-                        changed |= ui
-                            .add(egui::DragValue::new(&mut action.pad_speed).range(0.0..=10_000.0).speed(1.0))
-                            .on_hover_text("How far a stick or key held all the way goes in a second.")
-                            .changed();
+                        let (speed, field) = settled_number(
+                            ui,
+                            ("pad speed", index),
+                            f64::from(action.pad_speed),
+                            |d| d.range(0.0..=10_000.0).speed(1.0),
+                        );
+                        field.on_hover_text(
+                            "How far a stick or key held all the way goes in a second.",
+                        );
+                        if let Some(speed) = speed {
+                            action.pad_speed = speed as f32;
+                            changed = true;
+                        }
                     });
                 }
             }
@@ -421,3 +443,7 @@ fn actions_ui(
     }
     changed
 }
+
+#[cfg(test)]
+#[path = "input_window_tests.rs"]
+mod tests;

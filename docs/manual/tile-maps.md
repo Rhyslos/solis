@@ -28,7 +28,7 @@ For a few things that move or think (a scarecrow that turns, a chicken), use [sp
 5. **See the values on the map:** while the map is selected, the **Values** menu at the top of the viewport lays chosen values over the cells: a watered cell is tinted blue, and a number or a choice is written on its cell when you're zoomed in enough to read it. **Chunks** outlines the map's 32 × 32 chunks.
 6. **Play:** each placed map is the game's own copy while it runs, so the game can change it and the file stays as it was. Select the map while playing to watch its cells in the Map tab. [Save games](save-games.md) keep the map as the game left it.
 
-Every change in the Map tab is saved at once. **Ctrl + Z** and **Ctrl + Y** over the tab undo and redo them.
+Every change in the Map tab is saved at once. **Ctrl + Z** and **Ctrl + Y** over the tab undo and redo them. If a save can't be made, the Console says why and the change is taken back, kept as an undo step: see [Undo and redo](undo.md).
 
 ### Art and painting
 A terrain is drawn in its colour until its tileset gives it art: then each cell's tile is picked from its neighbours, with smooth edges (see [Tilesets and autotiling](tilesets.md)). Seen from far away, a big map is drawn in its colours again, which is much quicker.

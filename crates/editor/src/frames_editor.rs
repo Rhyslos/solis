@@ -139,6 +139,16 @@ impl FramesEditor {
         frames_file::write(&self.file)
     }
 
+    /// Takes in the file as it is on disk, as one undo step: nothing
+    /// stays picked, since its frames may not be the ones picked.
+    pub(crate) fn taken_in(&mut self, file: FramesFile) {
+        if self.change(|f| *f = file) {
+            self.selected.clear();
+            self.anchor = None;
+            self.renaming = None;
+        }
+    }
+
     /// A name for a new clip, not yet taken in `clips`: `base`, or `base 2`
     /// and so on.
     pub fn free_name(clips: &ClipSet, base: &str) -> String {
@@ -523,6 +533,29 @@ pub fn id_of(sheets: &crate::sprite_sheets::SpriteSheets, path: &str) -> Option<
         .iter()
         .find(|(_, p)| p.as_str() == path)
         .map(|(id, _)| *id)
+}
+
+impl crate::own_files::OpenFile for FramesEditor {
+    type File = FramesFile;
+
+    fn path(&self) -> &str {
+        &self.path
+    }
+
+    fn file(&self) -> &FramesFile {
+        &self.file
+    }
+
+    fn take_in(&mut self, file: FramesFile) {
+        self.taken_in(file);
+    }
+
+    fn of(held: &crate::own_files::OwnFile) -> Option<&std::sync::Arc<FramesFile>> {
+        match held {
+            crate::own_files::OwnFile::Frames(file) => Some(file),
+            _ => None,
+        }
+    }
 }
 
 #[cfg(test)]

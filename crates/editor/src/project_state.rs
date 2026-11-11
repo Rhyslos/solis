@@ -19,6 +19,7 @@ use crate::console::LogLevel;
 use crate::document::Document;
 use crate::layout;
 use crate::library::{LibraryItem, ProjectInfo};
+use crate::made_from::MadeFrom;
 use crate::models::ModelInfo;
 use crate::panel::Panel;
 use crate::properties::AssemblyPart;
@@ -101,6 +102,9 @@ pub(crate) struct ProjectState {
     /// ("sfx/footstep"), and by its file's name alone ("footstep") when
     /// no other sound event has that name.
     pub(crate) cue_sounds: HashMap<String, String>,
+    /// Saves of the project's files the app hasn't answered yet: what the
+    /// editor has that's newer than the app's (`own_files.rs`).
+    pub(crate) unanswered: crate::own_files::Unanswered,
     /// The clips file open in the Clips and Frames tabs (Phase 9, D3).
     pub(crate) frames_editor: Option<crate::frames_editor::FramesEditor>,
     /// The animator file open in the Animator tab (Phase 9, D3b).
@@ -120,7 +124,7 @@ pub(crate) struct ProjectState {
     /// Each sprite sheet's atlas as an egui picture, by path, for the
     /// Library and Properties, and which sheet each was made from.
     pub(crate) sheet_pictures: HashMap<String, egui::TextureHandle>,
-    pub(crate) sheet_pictures_from: HashMap<String, usize>,
+    pub(crate) sheet_pictures_from: HashMap<String, MadeFrom<assets::sprite_sheet::SpriteSheet>>,
     /// Where assets being placed go, when they were dropped somewhere:
     /// the point, and the entity they go under.
     pub(crate) place_targets: BTreeMap<AssetId, (glam::Vec3, Option<EntityId>)>,
@@ -155,12 +159,14 @@ pub(crate) struct ProjectState {
     pub(crate) screen_pictures: crate::screen_pictures::ScreenPictures,
     /// The screen open on the UI editor's canvas (decision 0089).
     pub(crate) screen_doc: Option<crate::screen_doc::ScreenDoc>,
-    /// The program its view was drawn from.
-    pub(crate) screen_from: Option<usize>,
+    /// The build of the game's code its view was last tried with,
+    /// whatever came of it (`Some(None)`: with none, the code having
+    /// mistakes); `None` until it's tried.
+    pub(crate) screen_from: Option<Option<MadeFrom<script::Compiled>>>,
     /// What the open screen can be tied to and send, and the build of the
     /// game's code it's for.
     pub(crate) screen_game: Option<(
-        Option<usize>,
+        Option<MadeFrom<script::Compiled>>,
         std::sync::Arc<crate::screen_ties::ScreenGame>,
     )>,
     /// What the Game panel showed last, and what it was worked out for:

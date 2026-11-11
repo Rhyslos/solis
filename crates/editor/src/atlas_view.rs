@@ -4,6 +4,7 @@
 //! button drags the picture, as in the viewport.
 
 use crate::atlas_editor::AtlasEditor;
+use crate::settled::settled_whole_drag;
 use crate::theme;
 use egui::{Color32, Pos2, Rect, RichText, Sense, Stroke, Ui, Vec2};
 
@@ -85,20 +86,15 @@ fn crop_list(
     ui.label(RichText::new(&editor.atlas.picture).strong());
     ui.horizontal(|ui| {
         ui.label("Grid");
-        let mut grid = editor.atlas.grid;
-        let w = ui.add(
-            egui::DragValue::new(&mut grid[0])
-                .range(1..=4096)
-                .suffix(" px"),
-        );
+        // Each counts once it's let go: a drag is one undo step and one
+        // save.
+        let [w, h] = editor.atlas.grid;
+        let a = settled_whole_drag(ui, "grid w", f64::from(w), 1.0..=4096.0, 1.0, " px");
         ui.label("×");
-        let h = ui.add(
-            egui::DragValue::new(&mut grid[1])
-                .range(1..=4096)
-                .suffix(" px"),
-        );
-        if (w.changed() || h.changed()) && editor.set_grid(grid) {
-            out.changed = true;
+        let b = settled_whole_drag(ui, "grid h", f64::from(h), 1.0..=4096.0, 1.0, " px");
+        if a.is_some() || b.is_some() {
+            let grid = [a.map_or(w, |v| v as u32), b.map_or(h, |v| v as u32)];
+            out.changed |= editor.set_grid(grid);
         }
     });
     if let Some(picture) = picture

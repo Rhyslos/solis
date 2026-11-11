@@ -58,18 +58,19 @@ fn crops_are_added_renamed_deleted_and_undone() {
 }
 
 #[test]
-fn every_tile_is_one_undo_step_and_saving_is_known_as_its_own() {
+fn every_tile_is_one_undo_step_and_so_is_a_file_changed_on_disk() {
     let mut e = editor();
     assert_eq!(e.crop_every_tile([32, 32], &|_| true), 4);
     assert!(e.undo());
     assert!(e.atlas.crops.is_empty());
-    let text = e.saving();
-    let on_disk = animation::atlas::read(&text).unwrap().atlas;
-    assert!(e.is_own(&on_disk));
+    // What it saves reads back as what it has: its own save, read again,
+    // is no change.
+    let on_disk = animation::atlas::read(&e.text()).unwrap().atlas;
+    assert_eq!(on_disk, e.atlas);
     let mut other = on_disk.clone();
     other.grid = [8, 8];
-    assert!(!e.is_own(&other));
     e.taken_in(other);
     assert_eq!(e.atlas.grid, [8, 8]);
     assert!(e.undo(), "taking it in is a step");
+    assert_eq!(e.atlas, on_disk);
 }

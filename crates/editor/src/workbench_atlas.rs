@@ -1,14 +1,17 @@
 //! The workbench's side of the Atlas Crop tab (decision 0089): opening a
 //! picture's crops (making its atlas file if it has none), saving each
-//! change, undo, a file changed on disk, and the picture as a texture.
+//! change (`Workbench::save_file`), undo, and the picture as a texture.
+//! The open file follows its file on disk as every editor's does
+//! (`own_files.rs`).
 
 use crate::atlas_editor::AtlasEditor;
 use crate::atlas_view::AtlasPicture;
 use crate::console::LogLevel;
 use crate::layout;
+use crate::own_files::OwnFile;
 use crate::panel::Panel;
 use crate::sprite_sheets::{ArtState, AtlasState};
-use crate::workbench::{Workbench, WorkbenchAction};
+use crate::workbench::Workbench;
 use std::sync::Arc;
 
 /// The open picture's texture: the art it was made from, and the texture.
@@ -59,18 +62,11 @@ impl Workbench {
 
     /// Saves the open atlas, and keeps it as read.
     pub(crate) fn save_open_atlas(&mut self) {
-        let Some(editor) = &mut self.open.atlas_editor else {
+        let Some(editor) = &self.open.atlas_editor else {
             return;
         };
-        let text = editor.saving();
-        let (path, atlas) = (editor.path.clone(), editor.atlas.clone());
-        self.open.outbox.push(WorkbenchAction::SaveAtlas {
-            path: path.clone().into(),
-            text,
-        });
-        Arc::make_mut(&mut self.viewport.sheets)
-            .atlases
-            .insert(path, AtlasState::Read(Arc::new(atlas), Vec::new()));
+        let (path, text, atlas) = (editor.path.clone(), editor.text(), editor.atlas.clone());
+        self.save_file(&path, OwnFile::Atlas(Arc::new(atlas)), text);
     }
 
     /// Undoes (or redoes) the atlas's last change, from Ctrl+Z (or Ctrl+Y)
@@ -81,38 +77,6 @@ impl Workbench {
         };
         if if redo { editor.redo() } else { editor.undo() } {
             self.save_open_atlas();
-        }
-    }
-
-    /// After the app reads the project's atlases again: the open file
-    /// changed on disk is taken in as one undo step; one gone closes.
-    pub(crate) fn atlas_read_again(&mut self) {
-        let Some(editor) = &mut self.open.atlas_editor else {
-            return;
-        };
-        match self.viewport.sheets.atlases.get(&editor.path) {
-            Some(AtlasState::Read(atlas, _)) if editor.is_own(atlas) => editor.on_disk = true,
-            Some(AtlasState::Read(atlas, _)) => {
-                editor.on_disk = true;
-                let path = editor.path.clone();
-                editor.taken_in((**atlas).clone());
-                self.log(
-                    LogLevel::Info,
-                    format!(
-                        "{path} changed on disk, so the Atlas Crop tab shows it as it is now \
-                         (Ctrl+Z over the tab undoes that)."
-                    ),
-                );
-            }
-            None if editor.on_disk => {
-                let path = editor.path.clone();
-                self.close_atlas();
-                self.log(
-                    LogLevel::Warning,
-                    format!("{path} is gone, so the Atlas Crop tab closed."),
-                );
-            }
-            _ => {}
         }
     }
 

@@ -235,21 +235,17 @@ fn the_preview_runs_the_animator_on_its_own_values() {
 }
 
 #[test]
-fn its_own_saves_are_told_apart_from_changes_on_disk() {
+fn a_file_changed_on_disk_is_taken_in_as_one_step() {
     let mut e = editor();
     e.add_state([0.0, 0.0]);
-    e.saving();
-    let saved = e.file.clone();
     e.add_state([200.0, 0.0]);
-    e.saving();
-    assert!(e.is_own(&saved), "an older save arriving late");
-    assert!(e.is_own(&e.file.clone()));
+    let before = e.file.clone();
     let mut hand = e.file.clone();
     hand.states[0].name = "By hand".into();
-    assert!(!e.is_own(&hand));
     e.reload(hand.clone());
     assert_eq!(e.file, hand);
     assert!(e.undo(), "a reload is one undo step");
+    assert_eq!(e.file, before);
 }
 
 #[test]

@@ -6,6 +6,7 @@
 //! a small patch to try its edges on. Properties shows the picked slot's
 //! pieces (variations, weights, animation).
 
+use crate::settled::{settled_colour, settled_drag, settled_whole_drag};
 use crate::theme;
 use crate::tileset_editor::{Step, TRY_SIZE, TilesetEditor};
 use egui::{Color32, Pos2, Rect, RichText, Sense, Stroke, Ui, Vec2, pos2, vec2};
@@ -342,9 +343,9 @@ fn terrains(ui: &mut Ui, t: &mut TilesetUi<'_>) -> bool {
         ui.label(RichText::new("Tile size").color(theme::text_weak()));
         let [w, h] = t.editor.file.tile;
         let most = f64::from(tiles::tileset::MAX_TILE);
-        let a = crate::frames_view::settled_whole_drag(ui, "tile w", f64::from(w), 1.0..=most, 0.1);
+        let a = settled_whole_drag(ui, "tile w", f64::from(w), 1.0..=most, 0.1, "");
         ui.label(RichText::new("×").color(theme::text_weak()));
-        let b = crate::frames_view::settled_whole_drag(ui, "tile h", f64::from(h), 1.0..=most, 0.1);
+        let b = settled_whole_drag(ui, "tile h", f64::from(h), 1.0..=most, 0.1, "");
         ui.label(RichText::new("px").color(theme::text_weak()));
         if a.is_some() || b.is_some() {
             let tile = [a.map_or(w, |v| v as u32), b.map_or(h, |v| v as u32)];
@@ -818,15 +819,16 @@ fn rules(ui: &mut Ui, t: &mut TilesetUi<'_>, c: &tiles::Terrain, out: &mut Tiles
                                 RichText::new(format!("{}.", n + 1)).color(theme::text_weak()),
                             );
                             ui.label("Shows slot");
-                            let mut slot = rule.slot;
-                            if ui
-                                .add(
-                                    egui::DragValue::new(&mut slot)
-                                        .range(0..=autotile::RULE_SLOTS - 1),
-                                )
-                                .changed()
-                            {
-                                out.changed |= t.editor.set_rule_slot(rule.id, slot);
+                            let slot = settled_whole_drag(
+                                ui,
+                                ("rule slot", rule.id),
+                                f64::from(rule.slot),
+                                0.0..=f64::from(autotile::RULE_SLOTS - 1),
+                                1.0,
+                                "",
+                            );
+                            if let Some(slot) = slot {
+                                out.changed |= t.editor.set_rule_slot(rule.id, slot as u32);
                             }
                         });
                         ui.horizontal(|ui| {
@@ -1041,11 +1043,10 @@ pub(crate) fn tileset_properties(ui: &mut Ui, t: &mut TilesetUi<'_>) -> bool {
             },
         );
         crate::inspector::row(ui, "Colour", "Drawn where it has no art.", |ui| {
-            let mut rgb = c.colour.map(|v| (v.clamp(0.0, 1.0) * 255.0).round() as u8);
-            if ui.color_edit_button_srgb(&mut rgb).changed() {
-                changed |=
-                    t.editor
-                        .set_terrain(c.id, None, None, Some(rgb.map(|v| f32::from(v) / 255.0)));
+            // Once the mouse is let go: a drag in the picker is one undo
+            // step and one save.
+            if let Some(colour) = settled_colour(ui, ("terrain colour", c.id), c.colour) {
+                changed |= t.editor.set_terrain(c.id, None, None, Some(colour));
             }
         });
         let x = ui
@@ -1140,11 +1141,17 @@ pub(crate) fn tileset_properties(ui: &mut Ui, t: &mut TilesetUi<'_>) -> bool {
                         let mut animation = piece.animation;
                         ui.horizontal(|ui| {
                             ui.label("Weight");
-                            ui.add(
-                                egui::DragValue::new(&mut weight)
-                                    .range(0.0..=tiles::tileset::MAX_WEIGHT)
-                                    .speed(0.05),
+                            let dragged = settled_drag(
+                                ui,
+                                ("piece weight", piece.id),
+                                f64::from(weight),
+                                0.0..=f64::from(tiles::tileset::MAX_WEIGHT),
+                                0.05,
+                                "",
                             );
+                            if let Some(w) = dragged {
+                                weight = w as f32;
+                            }
                         });
                         ui.horizontal(|ui| {
                             ui.label("Animation");
@@ -1177,18 +1184,29 @@ pub(crate) fn tileset_properties(ui: &mut Ui, t: &mut TilesetUi<'_>) -> bool {
                         });
                         if let Animation::Columns { count, ms } = &mut animation {
                             ui.horizontal(|ui| {
-                                ui.add(
-                                    egui::DragValue::new(count)
-                                        .range(2..=tiles::tileset::MAX_FRAMES)
-                                        .suffix(" frames"),
+                                let frames = settled_whole_drag(
+                                    ui,
+                                    ("piece frames", piece.id),
+                                    f64::from(*count),
+                                    2.0..=f64::from(tiles::tileset::MAX_FRAMES),
+                                    1.0,
+                                    " frames",
                                 );
-                                ui.add(
-                                    egui::DragValue::new(ms)
-                                        .range(
-                                            tiles::tileset::FRAME_MS.0..=tiles::tileset::FRAME_MS.1,
-                                        )
-                                        .suffix(" ms each"),
+                                if let Some(frames) = frames {
+                                    *count = frames as u32;
+                                }
+                                let (least, most) = tiles::tileset::FRAME_MS;
+                                let each = settled_whole_drag(
+                                    ui,
+                                    ("piece ms", piece.id),
+                                    f64::from(*ms),
+                                    f64::from(least)..=f64::from(most),
+                                    1.0,
+                                    " ms each",
                                 );
+                                if let Some(each) = each {
+                                    *ms = each as u32;
+                                }
                             });
                         }
                         if weight != piece.weight || animation != piece.animation {

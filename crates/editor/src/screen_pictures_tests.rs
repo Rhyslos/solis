@@ -232,3 +232,26 @@ fn image_names_are_gathered_from_a_view_within_limits() {
     crate::screen_pictures::names_in(&wide, &mut out);
     assert_eq!(out.len(), crate::screen_pictures::MAX_SEEN);
 }
+
+/// The review, BUG-10: the screens' pictures went by where the project's
+/// sheets were in memory. Sheets handed over again (a picture read) could
+/// be put where the last were, and the old pictures stayed.
+#[test]
+fn sheets_handed_over_again_get_the_pictures_made_again() {
+    let mut w = Workbench::new(info(), None);
+    w.set_program(Some(program(&items("image \"sprites/tools.png\";"))));
+    with_tools(&mut w, None);
+    w.refresh_screen_pictures();
+    let first = w.open.screen_pictures.pictures.clone().unwrap();
+    w.refresh_screen_pictures();
+    let kept = w.open.screen_pictures.pictures.clone().unwrap();
+    assert!(Arc::ptr_eq(&first, &kept), "kept while nothing changes");
+    // The same sheets, handed over again by the app: other sheets, though
+    // all in them is the same.
+    let sheets = (*w.viewport.sheets).clone();
+    w.set_sprite_sheets(sheets);
+    w.refresh_screen_pictures();
+    let again = w.open.screen_pictures.pictures.clone().unwrap();
+    assert!(!Arc::ptr_eq(&first, &again), "made again");
+    assert_eq!(again.get("sprites/tools.png").unwrap().size, [32, 16]);
+}
