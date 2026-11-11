@@ -1,0 +1,27 @@
+# editor/src/widgets
+
+The kit: the design's controls, each drawn exactly as the project lead's design has it (`docs/design/g-layout/specification.md`, lines 98 to 125, and the screens that show them), from the tokens and nothing else. The screens take them up one milestone at a time; egui's own controls, styled by `../theme.rs`, stay inside the panels that haven't been rebuilt yet.
+
+Every control follows the accent, the density and the interface scale through the tokens; can be reached with Tab and used with Space or Enter (and the arrow keys, along a row of choices or a slider), with a 1 px accent ring outside it while it holds the keyboard; and has a name a screen reader can say, which is also how the tests find it.
+
+| File | What it draws |
+| --- | --- |
+| `mod.rs` | What the controls share: the focus ring, a one-pixel border, words clipped to their room, and the arrow keys' step while a control holds the keyboard. |
+| `button.rs` | `Button::plain`, `Button::primary` (the accent) and `Button::light` (Play's look), with an icon, at a page's or a header's height, or as wide as their room; `dashed` ("+ Component"); `icon` (26 x 26, an icon alone, named for hover and screen readers); `link`. |
+| `toggle.rs` | The switch: 32 x 18, its knob at the right on the accent when on. |
+| `checkbox.rs` | The checkbox: a 12 x 12 rounded square, filled with the accent and ticked when on. |
+| `segmented.rs` | The segmented control: choices side by side in a dark well, the chosen one lifted. |
+| `swatch.rs` | A row of colour swatches, the chosen one ringed in its own colour (the accent's choices). |
+| `chip.rs` | Chips, in the three sizes the design draws them (the Library's kinds, the Place tab's filters, the input page's contexts), with a kind's dot. |
+| `pill.rs` | The see-through pill that floats over the viewport. |
+| `card.rs` | A card: the lifted box with a title that holds a few rows. |
+| `keycap.rs` | A keycap: bound, in conflict (amber), or waiting for a key (the accent, dashed). |
+| `slider.rs` | The slider: a thin track filled with the accent up to a round light knob. |
+| `tile.rs` | A tile: a square thumbnail over a name (cut off with "...") and a kind with its dot; chosen, it takes the accent. |
+| `rows.rs` | `setting_row` (a name and a line about it on the left, the control in a 260 px column at the right, a hairline under), `key_value`, `section_caps` and `column_header`. |
+| `field.rs` | The field (24 tall, its border the accent while the keyboard is in it): `text_field`, `number_field` (with an axis letter) and `dropdown`, which is meant to be the one drop-down everywhere. The editing inside is egui's own. |
+| `dashed.rs` | A dashed outline round a rounded rectangle, which egui can't draw itself. |
+| `sheet.rs` | Test only: the widget sheet, one page with every control in each of its states. |
+| `tests.rs` | Each control measured against the tokens, found by its name, pressed, and driven from the keyboard; the sheet's colours held against the design's own pictures (the switch from screen 8, the keycap from 13, a card from 1); the focus ring; borders at 150%; and the sheet as an approved picture. |
+
+**To add a control:** take every colour and size from `../tokens.rs` and `../tokens/` (add the token there if the design has a value they lack), give it `Sense::click()` and a `WidgetInfo` so it can be focused and found, draw `focus_ring`, put it on the sheet in each of its states, and test it there.

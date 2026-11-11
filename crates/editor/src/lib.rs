@@ -92,6 +92,7 @@ pub mod transforming;
 pub mod updates;
 pub mod viewport;
 mod viewport_tools;
+pub mod widgets;
 pub mod workbench;
 mod workbench_animator;
 mod workbench_atlas;

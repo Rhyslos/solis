@@ -470,6 +470,9 @@ pub mod share {
     pub const WARNING_ROW: f32 = 0.06;
     /// An error's row in the Console (of the error colour).
     pub const ERROR_ROW: f32 = 0.08;
+    /// How much lighter a filled button is under the pointer (of
+    /// white). Solis's own.
+    pub const LIFT: f32 = 0.12;
 }
 
 /// A selected row of a tree or a list: the accent mixed into a shelf
@@ -512,6 +515,11 @@ pub fn vline(painter: &egui::Painter, x: f32, y: egui::Rangef, colour: Color32) 
 /// grey.
 pub fn active_button(accent: Accent) -> Color32 {
     mix(accent.colour(), ribbon(), share::ACTIVE_BUTTON)
+}
+
+/// A keycap waiting for a key: the accent mixed into a panel.
+pub fn listening(accent: Accent) -> Color32 {
+    mix(accent.colour(), panel(), share::LISTENING)
 }
 
 /// The "changed from defaults" pill; a notice on a File page.
