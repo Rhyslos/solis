@@ -16,6 +16,12 @@ libfuzzer_sys::fuzz_target!(|data: &[u8]| {
         notes: Vec::new(),
     };
     let Ok(Some(compiled)) = script::compile(&code) else {
+        // A check that was given up on is a failure to report, with this
+        // input: while it runs, nothing after it would be checked at all.
+        assert!(
+            !script::check_unfinished(),
+            "checking this code never finished"
+        );
         return;
     };
     let Ok(mut runtime) = script::Runtime::new() else {

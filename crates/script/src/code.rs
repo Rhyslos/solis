@@ -2,6 +2,8 @@
 //! (CONTRIBUTING rule 9), and checked by the Lust compiler. Both are slow
 //! enough to run on a worker, never on the frame.
 
+pub use crate::check_turns::NotStarted;
+use crate::check_turns::{Checked, Turns};
 use area::lust_guard::{Found, MAX_PREFIX_RUN};
 use reflect::ComponentSchema;
 use std::io::Read;
@@ -15,10 +17,11 @@ pub const MAX_TOTAL_BYTES: u64 = 16 << 20;
 pub const MAX_FILES: usize = 10_000;
 /// The game's first file, which Lust starts from.
 pub const ENTRY: &str = "main.lst";
-/// The stack the compiler (and the code's start, to read its components)
-/// runs with. Lust keeps its own nesting limit and stack since 2.0.0-alpha.35;
-/// this is room to spare for Luau compiling what Lust made.
-const COMPILER_STACK: usize = 64 << 20;
+
+/// Whose turn it is to check the game's code, in this program: every check
+/// takes it ([`compile`], so the editor, an exported game and
+/// `--check-project` alike).
+static TURNS: Turns = Turns::new();
 
 /// A project's Lust files, read.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
@@ -276,7 +279,10 @@ pub fn check(code: &Code) -> Vec<CodeProblem> {
 /// mistake too.
 ///
 /// Runs on a thread of its own with a large stack, so call it from a
-/// worker. Code nested too deep is a mistake Lust finds.
+/// worker. Code nested too deep is a mistake Lust finds. A check that
+/// takes longer than [`COMPILE_LIMIT`] is given up on, and until its
+/// thread ends no other is started: the one mistake then says so (see
+/// [`try_compile`]).
 pub fn compile(code: &Code) -> Result<Option<Compiled>, Vec<CodeProblem>> {
     compile_within(code, crate::luau::Limits::default())
 }
@@ -288,64 +294,41 @@ pub(crate) fn compile_within(
     code: &Code,
     limits: crate::luau::Limits,
 ) -> Result<Option<Compiled>, Vec<CodeProblem>> {
+    attempt(code, limits).unwrap_or_else(|NotStarted(waiting)| Err(vec![waiting]))
+}
+
+/// [`compile`], saying apart the check that wasn't started because one
+/// given up on earlier is still running (`Err`): then the caller can check
+/// again when [`check_unfinished`] says it has ended (the editor does).
+pub fn try_compile(code: &Code) -> Result<Result<Option<Compiled>, Vec<CodeProblem>>, NotStarted> {
+    attempt(code, crate::luau::Limits::default())
+}
+
+/// Whether a check that was given up on is still running: while it is,
+/// no code is checked.
+pub fn check_unfinished() -> bool {
+    TURNS.unfinished()
+}
+
+fn attempt(code: &Code, limits: crate::luau::Limits) -> Result<Checked, NotStarted> {
     if code.is_empty() {
-        return Ok(None);
+        return Ok(Ok(None));
     }
-    let code = code.clone();
-    let (sender, answer) = std::sync::mpsc::channel();
-    let worker = std::thread::Builder::new()
-        .name("lust compiler".into())
-        .stack_size(COMPILER_STACK)
-        .spawn(move || {
-            let _ = sender.send(compile_here(&code, limits));
-        });
-    let worker = match worker {
-        Ok(worker) => worker,
-        Err(why) => {
-            return Err(vec![CodeProblem {
-                file: ENTRY.to_string(),
-                line: 0,
-                column: 0,
-                message: format!(
-                    "the code couldn't be checked: there was no room to start ({why})"
-                ),
-            }]);
-        }
-    };
-    // A compiler that never finishes (a case no guard here knows yet) is
-    // given up on, not waited for forever: the code is reported as not
-    // checked, so the editor isn't left waiting. Its thread is left to
-    // finish on its own.
-    match answer.recv_timeout(limits.compile) {
-        // It answered: its thread is ending, and is waited for, so nothing
-        // of it is left behind (found by fuzzing).
-        Ok(result) => {
-            let _ = worker.join();
-            result
-        }
-        Err(std::sync::mpsc::RecvTimeoutError::Timeout) => Err(vec![CodeProblem {
-            file: ENTRY.to_string(),
-            line: 0,
-            column: 0,
-            message: format!(
-                "checking the code took more than {} seconds, so it was given up on. Something \
-                 in it is more than the checker can handle: undo the last change, or look for \
-                 something unusual (please report it)",
-                limits.compile.as_secs()
-            ),
-        }]),
-        Err(std::sync::mpsc::RecvTimeoutError::Disconnected) => Err(vec![compiler_stopped()]),
-    }
+    TURNS.check(code, limits, compile_here)
 }
 
 /// The longest checking the code may take before it's given up on.
 pub const COMPILE_LIMIT: std::time::Duration = std::time::Duration::from_secs(30);
 
-/// Problems for runs of `!` longer than [`MAX_PREFIX_RUN`]. The Lust
-/// compiler's nesting limit counts `not` and `-` but not `!`, and a long
-/// run takes it time that grows with the square of its length (a file of
-/// them, hours), so one is refused before compiling. Found as Lust reads
-/// the text, outside comments and strings ([`area::lust_guard`]).
+/// Problems for runs of `!` longer than [`MAX_PREFIX_RUN`], refused
+/// before compiling. To the Lust compiler (rev 930afae) each `!` is a
+/// mistake of its own ("Lust writes not, not !"), and its time grows with
+/// the square of the number of mistakes: 128,000 in a row take it about 8
+/// seconds, so a file full of them (1 MB) would take about ten minutes,
+/// well past [`COMPILE_LIMIT`]. Any symbol Lust doesn't use costs it the
+/// same (`@` was measured alike), and those aren't looked for here: they
+/// meet the limit. Found as Lust reads the text, outside comments and
+/// strings ([`area::lust_guard`]).
 fn long_prefix_chains(files: &[(String, String)]) -> Vec<CodeProblem> {
     let mut problems = Vec::new();
     for (path, text) in files {
@@ -365,17 +348,23 @@ fn long_prefix_chains(files: &[(String, String)]) -> Vec<CodeProblem> {
     problems
 }
 
-/// Problems for two components, classes or objects with the same name,
-/// in one file or two. The Lust compiler (rev a60cf87) never finishes
-/// such code, so it's found here first (by the hardening milestone's
-/// fuzzing, decision 0042), with what to do about it. Found as
+/// Problems for two components, classes, objects, nodes or schemas with
+/// the same name (two of one kind, or one of each), in one file or two.
+/// The Lust compiler (rev 930afae) never finishes such code, so it's found
+/// here first (by the hardening milestone's fuzzing, decision 0042), with
+/// what to do about it. Two things sharing a name any other way (an
+/// assembly, a state, an event) Lust says itself. Found as
 /// [`long_prefix_chains`] finds its runs.
 fn shared_names(files: &[(String, String)]) -> Vec<CodeProblem> {
     let mut problems = Vec::new();
     let mut seen: std::collections::HashMap<&str, (&str, u32)> = std::collections::HashMap::new();
     for (path, text) in files {
         for (line, found) in area::lust_guard::scan(text) {
-            let Found::Declared(word @ ("component" | "class" | "object"), name) = found else {
+            let Found::Declared(
+                word @ ("component" | "class" | "object" | "node" | "schema"),
+                name,
+            ) = found
+            else {
                 continue;
             };
             match seen.get(name) {
@@ -542,7 +531,7 @@ fn check_entry(code: &Code) -> Vec<CodeProblem> {
 }
 
 /// What's said when the compiler itself crashed.
-fn compiler_stopped() -> CodeProblem {
+pub(crate) fn compiler_stopped() -> CodeProblem {
     CodeProblem {
         file: ENTRY.to_string(),
         line: 0,
@@ -607,7 +596,8 @@ mod tests {
     #[test]
     fn two_things_with_one_name_are_a_mistake_never_a_hang() {
         // The hardening milestone's fuzzing: two components (or classes,
-        // or objects) with one name never finished checking.
+        // or objects) with one name never finished checking. Nor do nodes
+        // and schemas, alone or with one of the others (BUG-50).
         let check = |files: Vec<(&str, &str)>| {
             let start = std::time::Instant::now();
             let got = compile(&Code {
@@ -626,6 +616,10 @@ mod tests {
             "component h{}component h{}",
             "class Health {}\n\ncomponent Health {}\nend\n",
             "object Ship {}\nobject Ship {}\nend\n",
+            "node Cave {}\nnode Cave {}\nend\n",
+            "schema NewUser {}\nschema NewUser {}\nend\n",
+            "node Health {}\nclass Health {}\nend\n",
+            "component Health {}\n\nschema Health {}\nend\n",
         ] {
             let problems = check(vec![("main.lst", text)]).unwrap_err();
             assert!(
@@ -656,9 +650,37 @@ mod tests {
     }
 
     #[test]
+    fn an_assembly_sharing_a_name_is_a_mistake_lust_finds_by_itself() {
+        // Measured against the pinned Lust (BUG-50): an assembly with the
+        // name of another thing is checked in no time, so the guard
+        // leaves it to Lust, whose words say what's wrong.
+        for text in [
+            "assembly Loot {}\nassembly Loot {}\nend\n",
+            "assembly Loot {}\nclass Loot {}\nend\n",
+            "component Loot {}\nassembly Loot {}\nend\n",
+        ] {
+            let code = Code {
+                files: vec![("main.lst".into(), text.into())],
+                lua: Vec::new(),
+                notes: Vec::new(),
+            };
+            assert!(shared_names(&code.files).is_empty(), "{text}");
+            let problems = compile(&code).unwrap_err();
+            assert_eq!(problems[0].line, 2, "{problems:?}");
+            assert!(
+                problems[0]
+                    .message
+                    .contains("Two things can't share a name"),
+                "{problems:?}"
+            );
+        }
+    }
+
+    #[test]
     fn a_long_run_of_prefix_operators_is_refused_quickly() {
-        // The third security audit: `!!!!…true` isn't counted by the Lust
-        // compiler's nesting limit and took it minutes.
+        // The third security audit: `!!!!…true` wasn't counted by the Lust
+        // compiler's nesting limit and took it minutes. (The pinned Lust
+        // takes each `!` for a mistake, and is as slow over many mistakes.)
         let bangs = "!".repeat(100_000);
         let main = format!("bool b = {bangs}true;\nend\n");
         let start = std::time::Instant::now();

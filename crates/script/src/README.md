@@ -9,7 +9,8 @@ Game code (decision 0028): a project's Lust, checked and turned into Lua by the 
 | File | What it does | Main items |
 | --- | --- | --- |
 | `lib.rs` | Lists the modules and what the crate offers; checks save-slot names. | `valid_slot` |
-| `code.rs` | Gathers every `.lst` file in a project's assets within limits and checks and compiles it, on a worker; finds uses of renamed natives' old names, for warnings. | `Code`, `Compiled`, `CodeProblem`, `gather`, `check`, `renamed_uses` |
+| `code.rs` | Gathers every `.lst` file in a project's assets within limits and checks and compiles it, on a worker; finds uses of renamed natives' old names, for warnings. | `Code`, `Compiled`, `CodeProblem`, `gather`, `check`, `compile`, `try_compile`, `check_unfinished`, `renamed_uses` |
+| `check_turns.rs` | Checks of the code take turns, each on a thread with a large stack and a time limit; one that never finishes is given up on and kept, and no other starts until its thread ends (the author is told which check that was and what changed since). Tests in `check_turns_tests.rs`, with a stand-in for a compiler that never finishes. | `NotStarted` |
 | `describe.rs` | The engine described to Lust: the `solis/*.lst` files a project gets, made from the list of native methods so they always match (decision 0016), plus the ready-made components in [`kit/`](kit/README.md). Natives renamed on purpose keep their old names for a while (`RENAMED`). | `NATIVES`, `Native`, `RENAMED`, `descriptions` |
 | `interface.rs` | Everything game code can call as one text, compared by a test with `docs/game-code-interface.txt`, so the interface changes only on purpose (Phase 8, C3). Its Lua names are asked of a real Luau with the natives lent, so it lists what Lua can reach. | `snapshot` |
 | `lust_program.rs` | The game's Lust loaded into Luau, with its components' fields, schemas and events, and its game-wide objects. | |

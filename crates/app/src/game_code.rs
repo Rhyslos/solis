@@ -2,7 +2,9 @@
 //! files describing the engine to Lust written into a project when it
 //! opens, and the project's Lust read and checked whenever something in
 //! its assets changes, and turned into Lua for the editor to run. Only a
-//! check that found different code reports.
+//! check that found different code reports. Code that couldn't be checked,
+//! because an earlier check never finished and is still running
+//! (`script::try_compile`), is checked by itself when that one ends.
 
 use script::{Code, CodeProblem};
 use std::hash::{Hash, Hasher};
@@ -26,24 +28,47 @@ pub struct Checked {
     pub program: Option<Option<Arc<script::Compiled>>>,
 }
 
-/// A worker's answer: the code's hash, what was read, and the program or
-/// its mistakes (nothing when the code is what the last reported check
+/// What became of a check: the program or its mistakes, or that it
+/// wasn't started (`script::try_compile`).
+type Attempt = Result<Result<Option<script::Compiled>, Vec<CodeProblem>>, script::NotStarted>;
+
+/// A worker's answer: the code's hash, what was read, and what became of
+/// its check (nothing when the code is what the last reported check
 /// found: it isn't compiled again).
-type Answer = (
-    u64,
-    Code,
-    Option<Result<Option<script::Compiled>, Vec<CodeProblem>>>,
-);
+type Answer = (u64, Code, Option<Attempt>);
+
+/// How the code is checked, and whether a check that was given up on is
+/// still running: `script`'s own, but for tests, which mustn't start a
+/// check that never finishes.
+#[derive(Clone, Copy)]
+struct Checker {
+    check: fn(&Code) -> Attempt,
+    unfinished: fn() -> bool,
+}
+
+impl Default for Checker {
+    fn default() -> Self {
+        Self {
+            check: script::try_compile,
+            unfinished: script::check_unfinished,
+        }
+    }
+}
 
 /// One check at a time, and whether another is wanted after it.
 #[derive(Default)]
 pub struct GameCode {
-    /// The check running, and when it started.
-    running: Option<(Receiver<Answer>, Instant)>,
+    /// The check running, when it started, and the folder it checks.
+    running: Option<(Receiver<Answer>, Instant, PathBuf)>,
     /// The folder to check again when the running check ends.
     again: Option<PathBuf>,
     /// The code the last reported check found, by its hash.
     last: Option<u64>,
+    /// The code (by its hash) that wasn't checked because a check that
+    /// was given up on is still running, and its folder: checked when
+    /// that one ends.
+    held: Option<(u64, PathBuf)>,
+    checker: Checker,
     /// The notes [`GameCode::describe_again`] last gave.
     told: Vec<String>,
     /// The sprites' clips (`sheet/clip` paths) and cues, for the project
@@ -318,6 +343,8 @@ impl GameCode {
         }
         let (sender, receiver) = channel();
         let last = self.last;
+        let check = self.checker.check;
+        let folder = assets.clone();
         let started = std::thread::Builder::new()
             .name("game code".into())
             .spawn(move || {
@@ -325,11 +352,11 @@ impl GameCode {
                 let found = hash(&code);
                 // Most changes in the assets aren't code (a model, the
                 // area saved): then there's nothing to compile.
-                let compiled = (last != Some(found)).then(|| script::compile(&code));
+                let compiled = (last != Some(found)).then(|| check(&code));
                 let _ = sender.send((found, code, compiled));
             });
         if started.is_ok() {
-            self.running = Some((receiver, Instant::now()));
+            self.running = Some((receiver, Instant::now(), folder));
         }
     }
 
@@ -339,6 +366,7 @@ impl GameCode {
         self.running = None;
         self.again = None;
         self.last = None;
+        self.held = None;
     }
 
     /// Whether a check is running.
@@ -349,7 +377,16 @@ impl GameCode {
     /// A finished check's findings, if the code changed since the last
     /// one reported. Never waits.
     pub fn poll(&mut self) -> Option<Checked> {
-        let (receiver, started) = self.running.as_ref()?;
+        // The check that was given up on has ended: the code that
+        // couldn't be checked while it ran is checked now, whatever the
+        // last report was about.
+        if self.running.is_none() && self.held.is_some() && !(self.checker.unfinished)() {
+            self.last = None;
+            if let Some((_, assets)) = self.held.take() {
+                self.check(assets);
+            }
+        }
+        let (receiver, started, _) = self.running.as_ref()?;
         let (found, code, compiled) = match receiver.try_recv() {
             Ok(done) => done,
             Err(std::sync::mpsc::TryRecvError::Empty) if started.elapsed() > GIVE_UP => {
@@ -384,11 +421,26 @@ impl GameCode {
                 return None;
             }
         };
-        self.running = None;
+        let (_, _, checked_folder) = self.running.take()?;
         if let Some(assets) = self.again.take() {
             self.check(assets);
         }
-        let compiled = compiled.filter(|_| self.last != Some(found))?;
+        let compiled = match compiled.filter(|_| self.last != Some(found))? {
+            Ok(compiled) => compiled,
+            // Not checked: a check that was given up on is still running,
+            // and no other starts until it ends (`script::try_compile`).
+            // Said once for this code, which is checked when it has ended.
+            Err(script::NotStarted(waiting)) => {
+                let told = self.held.as_ref().is_some_and(|(held, _)| *held == found);
+                self.held = Some((found, checked_folder));
+                return (!told).then(|| Checked {
+                    problems: vec![waiting],
+                    notes: code.notes,
+                    program: None,
+                });
+            }
+        };
+        self.held = None;
         self.last = Some(found);
         let (problems, program) = match compiled {
             // Code that runs, but calls a native by an old name: warned
@@ -619,6 +671,117 @@ mod tests {
 }
 
 #[cfg(test)]
+mod unfinished {
+    use super::*;
+    use std::sync::atomic::{AtomicBool, AtomicUsize, Ordering};
+
+    /// Whether the stand-in's check that was given up on is still running.
+    static STILL_RUNNING: AtomicBool = AtomicBool::new(true);
+    /// How often the stand-in was asked to check.
+    static ASKED: AtomicUsize = AtomicUsize::new(0);
+
+    /// A stand-in for `script::try_compile` after a check was given up on:
+    /// nothing is started while that one runs (nothing here really hangs).
+    fn stand_in(_code: &Code) -> Attempt {
+        ASKED.fetch_add(1, Ordering::SeqCst);
+        if STILL_RUNNING.load(Ordering::SeqCst) {
+            Err(script::NotStarted(CodeProblem {
+                file: script::code::ENTRY.to_string(),
+                line: 0,
+                column: 0,
+                message: "the code wasn't checked".to_string(),
+            }))
+        } else {
+            Ok(Ok(None))
+        }
+    }
+
+    fn still_running() -> bool {
+        STILL_RUNNING.load(Ordering::SeqCst)
+    }
+
+    /// The answer of the check running, if it has anything to report.
+    fn finished(code: &mut GameCode) -> Option<Checked> {
+        let start = Instant::now();
+        while code.waiting() && start.elapsed().as_secs() < 30 {
+            if let Some(done) = code.poll() {
+                return Some(done);
+            }
+            std::thread::sleep(Duration::from_millis(5));
+        }
+        None
+    }
+
+    #[test]
+    fn code_not_checked_while_a_check_never_finishes_is_checked_by_itself_when_it_ends() {
+        let assets = std::env::temp_dir()
+            .join(format!("solis-game-code-{}", std::process::id()))
+            .join("unfinished");
+        let _ = std::fs::remove_dir_all(&assets);
+        std::fs::create_dir_all(&assets).unwrap();
+        std::fs::write(assets.join("main.lst"), "end\n").unwrap();
+        let asked = || ASKED.load(Ordering::SeqCst);
+        let mut code = GameCode {
+            checker: Checker {
+                check: stand_in,
+                unfinished: still_running,
+            },
+            ..GameCode::default()
+        };
+        // A save while the check that was given up on runs: said, and the
+        // last program that worked stays.
+        code.check(assets.clone());
+        let told = finished(&mut code).expect("told why");
+        assert_eq!(told.problems.len(), 1);
+        assert_eq!(told.problems[0].message, "the code wasn't checked");
+        assert!(told.program.is_none());
+        // Frame after frame, nothing more is asked for while it runs.
+        for _ in 0..100 {
+            assert!(code.poll().is_none());
+            assert!(!code.waiting());
+        }
+        assert_eq!(asked(), 1);
+        // Something else in the assets changes: the same code is asked
+        // about, and nothing is said a second time.
+        code.check(assets.clone());
+        assert!(finished(&mut code).is_none());
+        assert_eq!(asked(), 2);
+        // The code changes: said for the new code.
+        std::fs::write(assets.join("main.lst"), "\nend\n").unwrap();
+        code.check(assets.clone());
+        assert_eq!(finished(&mut code).expect("told again").problems.len(), 1);
+        assert_eq!(asked(), 3);
+        // The check ends: the next frame starts checking the code, with
+        // nothing saved, and its findings are reported.
+        STILL_RUNNING.store(false, Ordering::SeqCst);
+        let checked = code
+            .poll()
+            .or_else(|| finished(&mut code))
+            .expect("checked at last");
+        assert!(checked.problems.is_empty());
+        assert!(matches!(checked.program, Some(None)));
+        assert_eq!(asked(), 4);
+        // And that's all: nothing is held any more.
+        for _ in 0..100 {
+            assert!(code.poll().is_none());
+            assert!(!code.waiting());
+        }
+        assert_eq!(asked(), 4);
+        // Another project: nothing of this one is checked later.
+        STILL_RUNNING.store(true, Ordering::SeqCst);
+        std::fs::write(assets.join("main.lst"), "\n\nend\n").unwrap();
+        code.check(assets.clone());
+        assert!(finished(&mut code).is_some());
+        code.forget();
+        STILL_RUNNING.store(false, Ordering::SeqCst);
+        assert!(code.poll().is_none());
+        assert!(!code.waiting());
+        assert_eq!(asked(), 5);
+        let _ = std::fs::remove_dir_all(&assets);
+    }
+}
+
+#[cfg(test)]
 mod stuck {
     use super::*;
 
@@ -629,7 +792,7 @@ mod stuck {
         let long_ago = Instant::now()
             .checked_sub(GIVE_UP + Duration::from_secs(1))
             .unwrap();
-        code.running = Some((receiver, long_ago));
+        code.running = Some((receiver, long_ago, PathBuf::new()));
         let found = code.poll().expect("given up on");
         assert!(found.problems[0].message.contains("stopped waiting"));
         assert!(found.program.is_none(), "the last program stays");
