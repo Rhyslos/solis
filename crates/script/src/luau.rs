@@ -35,9 +35,57 @@ pub const TICK_LIMIT: Duration = Duration::from_millis(250);
 /// start, each Lua file's, and reading their components.
 pub const LOAD_LIMIT: Duration = Duration::from_secs(1);
 
+/// How long game code may run before it's stopped, and how long checking
+/// it may take: a game's are always [`Limits::default`]. They're kept on
+/// the real clock, so a thread that is kept off the processor uses them
+/// up while it runs nothing. A test that compares one run of a game with
+/// another gives its game `Limits::unhurried`: on a busy machine a tick
+/// could otherwise be cut short, and the two runs would differ though
+/// nothing was wrong.
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub(crate) struct Limits {
+    /// One call into game code ([`TIME_LIMIT`]).
+    pub(crate) call: Duration,
+    /// All the game code in one tick ([`TICK_LIMIT`]).
+    pub(crate) tick: Duration,
+    /// All the starts of a load, a swap or a sync ([`LOAD_LIMIT`]).
+    pub(crate) load: Duration,
+    /// Checking and compiling the code, start to end
+    /// ([`crate::code::COMPILE_LIMIT`]).
+    pub(crate) compile: Duration,
+}
+
+impl Default for Limits {
+    fn default() -> Self {
+        Self {
+            call: TIME_LIMIT,
+            tick: TICK_LIMIT,
+            load: LOAD_LIMIT,
+            compile: crate::code::COMPILE_LIMIT,
+        }
+    }
+}
+
+#[cfg(test)]
+impl Limits {
+    /// Limits no busy machine reaches (an hour each): only code that
+    /// never ends is stopped, and the test with it.
+    pub(crate) fn unhurried() -> Self {
+        let long = Duration::from_secs(3600);
+        Self {
+            call: long,
+            tick: long,
+            load: long,
+            compile: long,
+        }
+    }
+}
+
 /// The deadlines game code runs against.
 #[derive(Debug, Default)]
 pub(crate) struct Clock {
+    /// How long game code is given.
+    limits: Cell<Limits>,
     /// When the call running now must end.
     call: Cell<Option<Instant>>,
     /// When everything running now (a tick, a load) must end, and how
@@ -58,6 +106,16 @@ pub(crate) struct Clock {
 const READ_EVERY: u32 = 32;
 
 impl Clock {
+    /// How long game code is given.
+    pub(crate) fn limits(&self) -> Limits {
+        self.limits.get()
+    }
+
+    /// Gives game code other limits from now on (see [`Limits`]).
+    pub(crate) fn set_limits(&self, limits: Limits) {
+        self.limits.set(limits);
+    }
+
     /// Runs one call into game code with the time limit watching it: it
     /// ends by [`TIME_LIMIT`] from now, or when the whole tick or load
     /// must, whichever comes first. A call inside another keeps the outer
@@ -66,7 +124,7 @@ impl Clock {
         if self.call.get().is_some() {
             return run();
         }
-        let mut until = Instant::now() + TIME_LIMIT;
+        let mut until = Instant::now() + self.limits.get().call;
         if let Some((all, _)) = self.all.get() {
             until = until.min(all);
         }
@@ -135,7 +193,7 @@ impl Clock {
             _ => format!(
                 "this took longer than {} ms, so it was stopped (is there a loop that never \
                  ends?)",
-                TIME_LIMIT.as_millis()
+                self.limits.get().call.as_millis()
             ),
         })
     }

@@ -3,7 +3,7 @@
 //! code still runs then: random numbers and spawned entities are told
 //! apart by the tick's number, which always goes up.
 
-use super::tests::{SpawnWorld, TestWorld, compiled, id};
+use super::tests::{SpawnWorld, TestWorld, compiled, id, unhurried};
 use super::*;
 use reflect::Value;
 use std::collections::HashSet;
@@ -32,7 +32,7 @@ fn rolls(shards: usize, speeds: &[f64]) -> (Vec<(u64, EntityId)>, Vec<EntityId>)
     let names: Vec<String> = (1..=ROLLERS_PLAYING).map(|n| format!("R{n}")).collect();
     let names: Vec<&str> = names.iter().map(String::as_str).collect();
     let mut world = SpawnWorld(TestWorld::with(&names), Vec::new());
-    let mut game = Game::new(shards).unwrap();
+    let mut game = unhurried(shards);
     assert_eq!(game.shards(), shards);
     game.load(&compiled(ROLLERS), &mut world).unwrap();
     let empty = ComponentData::default();

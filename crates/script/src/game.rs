@@ -782,6 +782,8 @@ enum Job {
     ObjectChecksum,
     Round(Vec<(u32, Event)>, WorldView, u32),
     FinishTick,
+    #[cfg(test)]
+    Limits(crate::luau::Limits),
 }
 
 /// A shard's answer.
@@ -878,6 +880,11 @@ fn work(runtime: &mut Runtime, job: Job) -> Done {
             Done::Phase(phase, host.kept)
         }
         Job::FinishTick => Done::Finished(runtime.finish_tick()),
+        #[cfg(test)]
+        Job::Limits(limits) => {
+            runtime.set_limits(limits);
+            Done::Nothing
+        }
     }
 }
 
@@ -1028,6 +1035,15 @@ impl Game {
     /// How many shards it runs on.
     pub fn shards(&self) -> usize {
         self.shards.len()
+    }
+
+    /// Gives every shard's game code other time limits (see
+    /// [`crate::luau::Limits`]): for tests that compare one run with
+    /// another, which a tick cut short on a busy machine would make
+    /// differ.
+    #[cfg(test)]
+    pub(crate) fn set_limits(&mut self, limits: crate::luau::Limits) {
+        let _ = self.all(|_| Job::Limits(limits));
     }
 
     /// Which shard runs `entity`'s components: by its ID, so the same

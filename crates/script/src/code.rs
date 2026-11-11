@@ -278,6 +278,16 @@ pub fn check(code: &Code) -> Vec<CodeProblem> {
 /// Runs on a thread of its own with a large stack, so call it from a
 /// worker. Code nested too deep is a mistake Lust finds.
 pub fn compile(code: &Code) -> Result<Option<Compiled>, Vec<CodeProblem>> {
+    compile_within(code, crate::luau::Limits::default())
+}
+
+/// [`compile`], with the code's own start and the whole of the checking
+/// given `limits` (a game's, but for tests that must come out the same on
+/// a busy machine: see [`crate::luau::Limits`]).
+pub(crate) fn compile_within(
+    code: &Code,
+    limits: crate::luau::Limits,
+) -> Result<Option<Compiled>, Vec<CodeProblem>> {
     if code.is_empty() {
         return Ok(None);
     }
@@ -287,7 +297,7 @@ pub fn compile(code: &Code) -> Result<Option<Compiled>, Vec<CodeProblem>> {
         .name("lust compiler".into())
         .stack_size(COMPILER_STACK)
         .spawn(move || {
-            let _ = sender.send(compile_here(&code));
+            let _ = sender.send(compile_here(&code, limits));
         });
     let worker = match worker {
         Ok(worker) => worker,
@@ -306,7 +316,7 @@ pub fn compile(code: &Code) -> Result<Option<Compiled>, Vec<CodeProblem>> {
     // given up on, not waited for forever: the code is reported as not
     // checked, so the editor isn't left waiting. Its thread is left to
     // finish on its own.
-    match answer.recv_timeout(COMPILE_LIMIT) {
+    match answer.recv_timeout(limits.compile) {
         // It answered: its thread is ending, and is waited for, so nothing
         // of it is left behind (found by fuzzing).
         Ok(result) => {
@@ -321,7 +331,7 @@ pub fn compile(code: &Code) -> Result<Option<Compiled>, Vec<CodeProblem>> {
                 "checking the code took more than {} seconds, so it was given up on. Something \
                  in it is more than the checker can handle: undo the last change, or look for \
                  something unusual (please report it)",
-                COMPILE_LIMIT.as_secs()
+                limits.compile.as_secs()
             ),
         }]),
         Err(std::sync::mpsc::RecvTimeoutError::Disconnected) => Err(vec![compiler_stopped()]),
@@ -387,8 +397,11 @@ fn shared_names(files: &[(String, String)]) -> Vec<CodeProblem> {
     problems
 }
 
-/// [`compile`], on this thread.
-fn compile_here(code: &Code) -> Result<Option<Compiled>, Vec<CodeProblem>> {
+/// [`compile_within`], on this thread.
+fn compile_here(
+    code: &Code,
+    limits: crate::luau::Limits,
+) -> Result<Option<Compiled>, Vec<CodeProblem>> {
     let mut problems = Vec::new();
     let mut lust = None;
     if !code.files.is_empty() {
@@ -446,6 +459,7 @@ fn compile_here(code: &Code) -> Result<Option<Compiled>, Vec<CodeProblem>> {
     // Starting it here reads its components, so the editor needn't on the
     // frame.
     let started = crate::Runtime::new().and_then(|mut runtime| {
+        runtime.set_limits(limits);
         runtime
             .load(&compiled, &mut crate::NoHost)
             .map(|()| runtime)
