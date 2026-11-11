@@ -206,6 +206,120 @@ fn a_change_in_properties_while_playing_reaches_the_running_component() {
     assert!(running.is_empty());
 }
 
+/// The running Mover's `steps` on `id`.
+fn steps_in_game(w: &mut Workbench, id: EntityId) -> i64 {
+    match w.values_now(id, "Mover").unwrap().get("steps") {
+        Some(Value::Int(steps)) => *steps,
+        other => panic!("{other:?}"),
+    }
+}
+
+/// The review, BUG-54 (issue 57): Properties shows the running value (5
+/// steps counted), the area still holds the one it started with (0), and
+/// setting the field to 0 changed nothing in the area, so the running
+/// component was never given it. A change made in Properties reaches the
+/// game whatever the area held.
+#[test]
+fn a_field_set_to_what_the_area_already_holds_still_reaches_the_running_component() {
+    let (mut w, id) = with_a_mover();
+    w.play();
+    for _ in 0..5 {
+        w.run_game(1.0 / 60.0);
+    }
+    assert_eq!(steps_in_game(&mut w, id), 5);
+    let in_area = |w: &Workbench| {
+        let area = w.open.document.area();
+        area.get(id).unwrap().components["Mover"]
+            .get("steps")
+            .cloned()
+    };
+    assert_eq!(in_area(&w), Some(Value::Int(0)), "the area's is 0 still");
+    w.apply_property(
+        PropertyRequest::SetField {
+            entity: id,
+            component: "Mover".into(),
+            field: "steps".into(),
+            value: Value::Int(0),
+        },
+        2,
+    );
+    w.run_game(1.0 / 60.0);
+    assert_eq!(steps_in_game(&mut w, id), 1, "counting again from 0");
+    assert_eq!(in_area(&w), Some(Value::Int(0)));
+    // Given once: the next change to the entity (its speed) doesn't put
+    // the steps back again.
+    w.apply_property(
+        PropertyRequest::SetField {
+            entity: id,
+            component: "Mover".into(),
+            field: "speed".into(),
+            value: Value::Float(1.0),
+        },
+        3,
+    );
+    w.run_game(1.0 / 60.0);
+    assert_eq!(
+        steps_in_game(&mut w, id),
+        2,
+        "what the game counted is kept"
+    );
+}
+
+/// BUG-54 with several entities at once (Properties with several
+/// selected, the Console's `set`): a Transform set to the place the area
+/// holds puts the entity back there, and in a frame that also builds
+/// everything again (an entity was added) each running component is
+/// still given its field.
+#[test]
+fn fields_set_on_several_entities_reach_the_game_when_everything_is_built_again() {
+    let (w, first) = with_a_mover();
+    let (mut w, second) = mover_on(w);
+    w.play();
+    for _ in 0..5 {
+        w.run_game(1.0 / 60.0);
+    }
+    assert_eq!(steps_in_game(&mut w, first), 5);
+    assert_eq!(steps_in_game(&mut w, second), 5);
+    assert!(x_in_game(&w, first) > 0.4, "the game moved it");
+    w.apply_property(
+        PropertyRequest::SetFieldMany {
+            entities: vec![first],
+            component: "Transform".into(),
+            field: "position".into(),
+            value: Value::vec3(Vec3::ZERO),
+            part: None,
+        },
+        2,
+    );
+    w.run_game(1.0 / 60.0);
+    let x = x_in_game(&w, first);
+    assert!((x - 0.1).abs() < 1e-4, "a tick on from the area's: {x}");
+    w.apply_property(
+        PropertyRequest::SetFieldMany {
+            entities: vec![first, second],
+            component: "Mover".into(),
+            field: "steps".into(),
+            value: Value::Int(0),
+            part: None,
+        },
+        3,
+    );
+    w.open
+        .document
+        .edit(
+            "Add",
+            vec![area::Edit::Spawn {
+                entities: vec![(EntityId::random(), EntityData::new("Crate"))],
+            }],
+            None,
+            None,
+        )
+        .unwrap();
+    w.run_game(1.0 / 60.0);
+    assert_eq!(steps_in_game(&mut w, first), 1);
+    assert_eq!(steps_in_game(&mut w, second), 1);
+}
+
 #[test]
 fn a_failing_component_is_reported_once_naming_its_entity() {
     let mut w = Workbench::new(info(), None);

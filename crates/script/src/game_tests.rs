@@ -762,6 +762,63 @@ fn a_flood_of_sounds_is_capped() {
     );
 }
 
+/// The review, BUG-54: fields set by hand reach their own entity's
+/// component on whichever shard it runs, and no other's.
+#[test]
+fn fields_set_by_hand_reach_their_component_on_any_number_of_shards() {
+    const COUNTER: &str = "component Counter {\n\
+            has {\n\
+                int count = 0;\n\
+                int kept = 0;\n\
+            }\n\
+            method update(float dt) {\n\
+                count = count + 1;\n\
+                kept = kept + 1;\n\
+            }\n\
+        }\n\
+        pass Counter;\nend\n";
+    for shards in [1, 4] {
+        let names: Vec<String> = (1..=9).map(|n| format!("C{n}")).collect();
+        let names: Vec<&str> = names.iter().map(String::as_str).collect();
+        let mut world = TestWorld::with(&names);
+        let mut game = Game::new(shards).unwrap();
+        game.load(&compiled(COUNTER), &mut world).unwrap();
+        let mut area = ComponentData::default();
+        area.set("count", Value::Int(0));
+        area.set("kept", Value::Int(0));
+        let all = || (1..=9u64).map(|n| (id(n), "Counter", &area));
+        assert!(game.sync_many(all(), &mut world).is_empty());
+        for _ in 0..3 {
+            assert!(game.tick(1.0 / 60.0, &mut world).failures.is_empty());
+        }
+        // The odd ones' count is set by hand to the 0 the area holds.
+        let set: BTreeMap<(EntityId, String), BTreeSet<String>> = (1..=9u64)
+            .filter(|n| n % 2 == 1)
+            .map(|n| {
+                (
+                    (id(n), "Counter".to_string()),
+                    BTreeSet::from(["count".to_string()]),
+                )
+            })
+            .collect();
+        assert!(game.sync_edited(all(), &set, &mut world).is_empty());
+        for n in 1..=9u64 {
+            let values = game.values(id(n), "Counter").unwrap();
+            let count = if n % 2 == 1 { 0 } else { 3 };
+            assert_eq!(
+                values.get("count"),
+                Some(&Value::Int(count)),
+                "{shards} shards, C{n}"
+            );
+            assert_eq!(
+                values.get("kept"),
+                Some(&Value::Int(3)),
+                "C{n}'s other field"
+            );
+        }
+    }
+}
+
 #[test]
 fn set_bus_volume_lands_within_zero_to_one() {
     const OPTIONS: &str = "fetch \"solis/project\":Bus;\nfetch \"solis/sound\":Audio;\n\n\

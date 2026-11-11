@@ -26,7 +26,7 @@ use crate::luau::Luau;
 pub use crate::luau::{LOAD_LIMIT, MEMORY_LIMIT, TICK_LIMIT, TIME_LIMIT};
 use crate::lust_program::{self, LustProgram, changes, located};
 use crate::rust_component::RustKind;
-use crate::syncing::Syncing;
+use crate::syncing::{Edited, NOTHING_SET, Syncing};
 use crate::ticking::{Instance, Phase, RunningMap, Ticking, caught, plain};
 use mlua::{Table, Value as LuaValue};
 use reflect::{ComponentData, ComponentSchema, EntityId};
@@ -506,6 +506,24 @@ impl Runtime {
         components: impl IntoIterator<Item = (EntityId, &'a str, &'a ComponentData)>,
         host: &mut dyn Host,
     ) -> Vec<Failure> {
+        self.sync_edited(
+            components
+                .into_iter()
+                .map(|(e, n, d)| (e, n, d, &NOTHING_SET)),
+            host,
+        )
+    }
+
+    /// [`Runtime::sync_many`], each component with the names of its
+    /// fields set by hand since the last time: a running component is
+    /// given those as the area holds them now even when that's what the
+    /// area held before, because the game may have changed its own value
+    /// since. See `Game::sync_edited`.
+    pub(crate) fn sync_edited<'a>(
+        &mut self,
+        components: impl IntoIterator<Item = Edited<'a>>,
+        host: &mut dyn Host,
+    ) -> Vec<Failure> {
         let code = Syncing {
             luau: &self.luau,
             lust: self.lust.as_ref(),
@@ -519,7 +537,7 @@ impl Runtime {
         let luau = &self.luau;
         let lent = luau.clock.within(LOAD_LIMIT, || {
             with_natives(luau, lust_env, host, Some(&self.send), |lent| {
-                for (entity, name, data) in components {
+                for (entity, name, data, set) in components {
                     // What a new component's start changes lands in order.
                     lent.borrow_mut().at(&crate::ticking::Order {
                         major: entity.0.raw(),
@@ -527,7 +545,7 @@ impl Runtime {
                         seq: 0,
                         entity: entity.0.raw(),
                     });
-                    if let Err(failure) = code.sync(running, entity, name, data) {
+                    if let Err(failure) = code.sync(running, entity, name, data, set) {
                         failures.push(failure);
                     }
                 }

@@ -23,7 +23,7 @@ use crate::rust_component::RustKind;
 use crate::ticking::{Order, Phase};
 use glam::{Mat4, Quat, Vec3};
 use reflect::{ComponentData, ComponentSchema, EntityId};
-use std::collections::{BTreeSet, HashMap};
+use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::sync::Arc;
 use std::sync::mpsc::{Receiver, Sender, channel};
 
@@ -747,6 +747,10 @@ fn spawned_id(order: &Order, phase: u32, time: f64) -> Option<EntityId> {
     reflect::Id::from_raw(hash | 1).map(EntityId)
 }
 
+/// A component for a shard to sync: its entity, its name, the area's
+/// values, and its fields set by hand (see [`Game::sync_edited`]).
+type ToSync = (EntityId, String, ComponentData, BTreeSet<String>);
+
 /// What a shard is asked to do.
 enum Job {
     AddRust(RustKind),
@@ -754,7 +758,7 @@ enum Job {
     Swap(Arc<Compiled>, WorldView),
     Unload,
     LeaveOut(BTreeSet<String>),
-    Sync(Vec<(EntityId, String, ComponentData)>, WorldView),
+    Sync(Vec<ToSync>, WorldView),
     RetainOnly(Arc<BTreeSet<(EntityId, String)>>),
     RetainOn(Vec<(EntityId, Vec<String>)>),
     Values(EntityId, String),
@@ -819,8 +823,10 @@ fn work(runtime: &mut Runtime, job: Job) -> Done {
         }
         Job::Sync(components, view) => {
             let mut host = ViewHost::new(view, PHASE_SYNC);
-            let failures = runtime.sync_many(
-                components.iter().map(|(e, n, d)| (*e, n.as_str(), d)),
+            let failures = runtime.sync_edited(
+                components
+                    .iter()
+                    .map(|(e, n, d, set)| (*e, n.as_str(), d, set)),
                 &mut host,
             );
             Done::Synced(failures, host.kept)
@@ -1272,14 +1278,31 @@ impl Game {
         components: impl IntoIterator<Item = (EntityId, &'a str, &'a ComponentData)>,
         world: &mut dyn GameWorld,
     ) -> Vec<Failure> {
-        let mut shares: Vec<Vec<(EntityId, String, ComponentData)>> =
-            (0..self.shards.len()).map(|_| Vec::new()).collect();
+        self.sync_edited(components, &BTreeMap::new(), world)
+    }
+
+    /// [`Game::sync_many`] after edits made by hand: `set` names the
+    /// fields set since the last sync, by entity and component. A running
+    /// component is given each of those as the area holds it now, even
+    /// when that's what the area held before. Comparing with the area's
+    /// last values (all `sync_many` has) can't see such an edit, and the
+    /// game may have changed its own value since: ammo fired, then typed
+    /// back to full.
+    pub fn sync_edited<'a>(
+        &mut self,
+        components: impl IntoIterator<Item = (EntityId, &'a str, &'a ComponentData)>,
+        set: &BTreeMap<(EntityId, String), BTreeSet<String>>,
+        world: &mut dyn GameWorld,
+    ) -> Vec<Failure> {
+        let mut shares: Vec<Vec<ToSync>> = (0..self.shards.len()).map(|_| Vec::new()).collect();
         // Where each was asked for, so failures are told in that order
         // whichever shard ran them.
         let mut asked: HashMap<(EntityId, String), usize> = HashMap::new();
         for (entity, name, data) in components {
-            asked.insert((entity, name.to_string()), asked.len());
-            shares[self.shard_of(entity)].push((entity, name.to_string(), data.clone()));
+            let key = (entity, name.to_string());
+            let fields = set.get(&key).cloned().unwrap_or_default();
+            shares[self.shard_of(entity)].push((entity, key.1.clone(), data.clone(), fields));
+            asked.insert(key, asked.len());
         }
         if shares.iter().all(Vec::is_empty) {
             return Vec::new();

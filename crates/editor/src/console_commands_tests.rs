@@ -614,8 +614,9 @@ fn ui_test_shows_and_hides_a_sample_hud() {
     assert_eq!(w.log_lines().last().unwrap().level, LogLevel::Error);
 }
 
-#[test]
-fn values_and_get_show_a_playing_game_as_game_code_has_changed_it() {
+/// A workbench whose game code is a Score adding 10 points a tick, on an
+/// entity called Hero.
+fn hero_with_a_score() -> (Workbench, EntityId) {
     let code = script::Code {
         files: vec![(
             "main.lst".into(),
@@ -643,15 +644,26 @@ fn values_and_get_show_a_playing_game_as_game_code_has_changed_it() {
             None,
         )
         .unwrap();
-    run(&mut w, "values Hero");
-    assert!(answer(&w).contains("Score.points = 0"), "{}", answer(&w));
-    w.play();
-    for _ in 0..3 {
+    (w, id)
+}
+
+/// Runs the game for `ticks` whole ticks.
+fn play_ticks(w: &mut Workbench, ticks: usize) {
+    for _ in 0..ticks {
         let until = w.world().unwrap().clock().ticks + 1;
         while w.world().unwrap().clock().ticks < until {
             w.run_game((world::TICK * 0.6) as f32);
         }
     }
+}
+
+#[test]
+fn values_and_get_show_a_playing_game_as_game_code_has_changed_it() {
+    let (mut w, id) = hero_with_a_score();
+    run(&mut w, "values Hero");
+    assert!(answer(&w).contains("Score.points = 0"), "{}", answer(&w));
+    w.play();
+    play_ticks(&mut w, 3);
     run(&mut w, "values Hero");
     let now = answer(&w);
     assert!(now.starts_with("Hero, as the game has it now:"), "{now}");
@@ -667,4 +679,38 @@ fn values_and_get_show_a_playing_game_as_game_code_has_changed_it() {
     );
     run(&mut w, "values Nobody");
     assert!(said(&w).1.contains("nothing is called"), "{:?}", said(&w));
+}
+
+/// The review, BUG-54: `get` shows the game's value, so `set` to the
+/// value the area already holds is a change too. It made no edit at all,
+/// and the game never had it.
+#[test]
+fn set_while_playing_reaches_the_game_even_with_the_value_the_area_holds() {
+    let (mut w, id) = hero_with_a_score();
+    w.open.document.selection.select_all([id], id);
+    let steps = w.open.document.history().undo_len();
+    // Not playing: the area holds 0 already, so nothing is changed.
+    run(&mut w, "set Score.points 0");
+    assert_eq!(w.open.document.history().undo_len(), steps);
+    w.play();
+    play_ticks(&mut w, 3);
+    run(&mut w, "get Score.points");
+    assert_eq!(answer(&w), "Score.points = 30");
+    run(&mut w, "set Score.points 0");
+    play_ticks(&mut w, 1);
+    run(&mut w, "get Score.points");
+    assert_eq!(answer(&w), "Score.points = 10", "from 0 again");
+    // A change of yours, so Stop asks about it; keeping it leaves the
+    // area holding what it held.
+    w.stop();
+    assert_eq!(
+        w.play_changes().unwrap(),
+        ["Change Score.points on 1 entities"]
+    );
+    w.keep_play_changes();
+    let points = w.values_now(id, "Score").unwrap().get("points").cloned();
+    assert!(
+        matches!(points, None | Some(reflect::Value::Int(0))),
+        "{points:?}"
+    );
 }

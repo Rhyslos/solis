@@ -4,6 +4,7 @@
 //! ([decision 0028](../../../docs/decisions/0028-lust-runs-as-luau-while-editing.md)).
 
 use crate::console::LogLevel;
+use crate::document::FieldsSet;
 use crate::workbench::Workbench;
 use area::Area;
 use glam::Mat4;
@@ -214,7 +215,12 @@ impl Workbench {
             }
         }
         game.leave_out(left_out.clone());
-        let failures = sync_all(game, self.open.document.area(), &mut world);
+        let failures = sync_all(
+            game,
+            self.open.document.area(),
+            &FieldsSet::new(),
+            &mut world,
+        );
         world.outside_a_tick();
         let said = std::mem::take(&mut world.said);
         // What starts spawned lands before the next tick.
@@ -653,11 +659,14 @@ impl GameWorld for PlayWorld<'_> {
 }
 
 /// Makes the game components of each of `ids` in `area` run (or gives
-/// them their changed fields), and stops those an entity no longer has.
+/// them their changed fields, and those in `set`: the fields set by hand,
+/// which a running component takes even when the area's value is what it
+/// was), and stops those an entity no longer has.
 pub(crate) fn sync_entities(
     game: &mut Game,
     area: &Area,
     ids: impl IntoIterator<Item = EntityId> + Clone,
+    set: &FieldsSet,
     world: &mut dyn GameWorld,
 ) -> Vec<Failure> {
     let components = ids.clone().into_iter().flat_map(|id| {
@@ -671,7 +680,7 @@ pub(crate) fn sync_entities(
     let wanted: Vec<_> = components
         .filter(|(_, name, _)| game.has_component(name))
         .collect();
-    let failures = game.sync_many(wanted, world);
+    let failures = game.sync_edited(wanted, set, world);
     game.retain_on(ids.into_iter().map(|id| {
         let keep = area
             .get(id)
@@ -684,7 +693,12 @@ pub(crate) fn sync_entities(
 
 /// [`sync_entities`] for every entity in `area`, stopping components of
 /// entities that are gone.
-pub(crate) fn sync_all(game: &mut Game, area: &Area, world: &mut dyn GameWorld) -> Vec<Failure> {
+pub(crate) fn sync_all(
+    game: &mut Game,
+    area: &Area,
+    set: &FieldsSet,
+    world: &mut dyn GameWorld,
+) -> Vec<Failure> {
     let wanted: Vec<_> = area
         .iter()
         .flat_map(|(id, entity)| {
@@ -699,7 +713,7 @@ pub(crate) fn sync_all(game: &mut Game, area: &Area, world: &mut dyn GameWorld) 
         .iter()
         .map(|(id, name, _)| (*id, (*name).to_string()))
         .collect();
-    let failures = game.sync_many(wanted, world);
+    let failures = game.sync_edited(wanted, set, world);
     game.retain_only(kept);
     failures
 }

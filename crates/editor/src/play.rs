@@ -10,7 +10,7 @@
 //! until then, and quitting stops the game and waits for that answer.
 
 use crate::console::LogLevel;
-use crate::document::Document;
+use crate::document::{Document, FieldsSet};
 use crate::game_code::{
     GameEdit, PlayWorld, ViewCache, failure_text, new_game, sync_all, sync_entities,
 };
@@ -318,7 +318,12 @@ impl Workbench {
             );
             failures.push(failure);
         }
-        failures.extend(sync_all(&mut game, self.open.document.area(), &mut host));
+        failures.extend(sync_all(
+            &mut game,
+            self.open.document.area(),
+            &FieldsSet::new(),
+            &mut host,
+        ));
         host.outside_a_tick();
         let said = std::mem::take(&mut host.said);
         // What the starts spawned lands before the first tick.
@@ -519,13 +524,17 @@ impl Workbench {
             let mut host = PlayWorld::new(&mut playing.world, &mut playing.view, time);
             host.frame_time = f64::from(seconds);
             let syncing = std::time::Instant::now();
+            // With the fields set by hand, which a running component
+            // takes whatever the area held (Properties shows the game's
+            // value, so setting it to the area's is a change too).
             if changes.everything {
-                failures.extend(sync_all(game, area, &mut host));
+                failures.extend(sync_all(game, area, &changes.set, &mut host));
             } else {
                 failures.extend(sync_entities(
                     game,
                     area,
                     changes.entities.iter().copied(),
+                    &changes.set,
                     &mut host,
                 ));
             }
@@ -1097,7 +1106,13 @@ impl Workbench {
                     let (tick, seed) = (playing.world.clock().ticks, playing.world.seed());
                     let mut host = PlayWorld::new(&mut playing.world, &mut playing.view, time);
                     host.frame_time = f64::from(seconds);
-                    failures = sync_entities(game, self.open.document.area(), added, &mut host);
+                    failures = sync_entities(
+                        game,
+                        self.open.document.area(),
+                        added,
+                        &FieldsSet::new(),
+                        &mut host,
+                    );
                     host.outside_a_tick();
                     told = std::mem::take(&mut host.said);
                     // Sounds the new components' starts asked for.

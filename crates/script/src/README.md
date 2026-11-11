@@ -26,7 +26,7 @@ Game code (decision 0028): a project's Lust, checked and turned into Lua by the 
 | `luau.rs` | The Luau game code runs in, made safe: time limits per call, per tick and per load, a memory cap, no access to files, and no way to another file's globals or Solis's own (`sandboxed_lua` takes out `require`, `loadstring`, `getfenv` and `setfenv`; Solis's own Lua is all made in `Luau::new`, before any game code). | `TIME_LIMIT`, `TICK_LIMIT`, `Clock` |
 | `interrupt.rs` | The watchman inside Luau that stops code running past its time limit, set cheaply (decision 0034). | |
 | `runtime.rs` | One Luau holding the game's running components, one per entity and component name; swapping in new code while the game runs. | `Runtime`, `Failure`, `Ticked`, `Swapped` |
-| `syncing.rs` | Making running components from the area's values, and passing on what changed. | |
+| `syncing.rs` | Making running components from the area's values, and passing on what changed or was set by hand. | |
 | `ticking.rs` | One tick: the game-wide objects' `update`s, every component's `update` in one order, then delivering events. An `Order` also says which entity's code is running (who caused a sound). | `Order` |
 | `events.rs` | Events between components: queued by `send`, delivered after the tick's updates in a fixed order, so a game runs the same way every time. | `Event` |
 | `host.rs` | What game code can ask of the engine: the `Host` that answers the native methods, lent to Luau only while game code runs. | `Host`, `NoHost`, `Shot` |

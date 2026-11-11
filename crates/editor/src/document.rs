@@ -8,7 +8,7 @@ use area::{Area, Edit, EditError, History, MergeKey, Tree};
 use glam::Mat4;
 use reflect::{Component, EntityId, Registry};
 use std::cell::RefCell;
-use std::collections::{BTreeSet, HashMap};
+use std::collections::{BTreeMap, BTreeSet, HashMap};
 use std::sync::Arc;
 
 /// What's selected: a set of entities, and the one Properties shows.
@@ -120,6 +120,9 @@ pub struct Document {
 /// [`Document::world_matrices`].
 pub type Placed = Arc<HashMap<EntityId, Mat4>>;
 
+/// Fields set by hand, by entity and component: see [`Changes::set`].
+pub type FieldsSet = BTreeMap<(EntityId, String), BTreeSet<String>>;
+
 /// What changed in the area since last asked.
 #[derive(Debug, Clone, Default, PartialEq, Eq)]
 pub struct Changes {
@@ -131,6 +134,12 @@ pub struct Changes {
     /// Whether anything more changed: entities added, deleted or moved to
     /// another parent, an undo or redo, or a whole new area.
     pub everything: bool,
+    /// The fields set by hand, by entity and component, whether or not
+    /// the area's value changed: the running game is given each as it is
+    /// now, since it may have changed its own value meanwhile (a counter
+    /// set back to what it started at). A Transform's aren't listed:
+    /// `moved` says the same of those.
+    pub set: FieldsSet,
 }
 
 impl Changes {
@@ -139,9 +148,22 @@ impl Changes {
         for edit in edits {
             match edit {
                 Edit::SetField {
-                    entity, component, ..
+                    entity,
+                    component,
+                    field,
+                    ..
+                } => {
+                    self.entities.insert(*entity);
+                    if component == Transform::NAME {
+                        self.moved.insert(*entity);
+                    } else {
+                        self.set
+                            .entry((*entity, component.clone()))
+                            .or_default()
+                            .insert(field.clone());
+                    }
                 }
-                | Edit::AddComponent {
+                Edit::AddComponent {
                     entity, component, ..
                 }
                 | Edit::RemoveComponent { entity, component } => {
@@ -156,7 +178,9 @@ impl Changes {
                 _ => self.everything = true,
             }
         }
-        // Past a few hundred, building everything again is as quick.
+        // Past a few hundred, building everything again is as quick. The
+        // fields set stay listed: building again gives the game only what
+        // differs from the area's last values.
         if self.entities.len() > MAX_CHANGED_ENTITIES {
             self.everything = true;
             self.entities.clear();
@@ -430,6 +454,9 @@ impl Document {
         self.changes.entities.extend(changes.entities);
         self.changes.moved.extend(changes.moved);
         self.changes.everything |= changes.everything;
+        for (of, fields) in changes.set {
+            self.changes.set.entry(of).or_default().extend(fields);
+        }
         self.selection = after;
         self.selection.retain_existing(&self.area);
         Ok(())
@@ -696,5 +723,46 @@ mod tests {
             .is_err()
         );
         assert!(d.take_changes().is_empty());
+    }
+
+    /// The review, BUG-54: a field set is listed whether or not its value
+    /// changed (the running game may hold another), until it's taken.
+    #[test]
+    fn changes_list_the_fields_set_even_to_the_value_they_had() {
+        let mut d = Document::default();
+        let _ = d.take_changes();
+        // By what it is: entities come in the order of their random IDs.
+        let sun = d.area().with::<area::builtin::Light>().next().unwrap().0;
+        let held = d.area().get(sun).unwrap().components["Light"]
+            .get("strength")
+            .cloned();
+        let set = |d: &mut Document, component: &str, field: &str, value| {
+            d.edit(
+                "Set",
+                vec![Edit::SetField {
+                    entity: sun,
+                    component: component.into(),
+                    field: field.into(),
+                    value,
+                }],
+                None,
+                None,
+            )
+        };
+        set(&mut d, "Light", "strength", held.clone()).unwrap();
+        set(&mut d, "Light", "range", held).unwrap();
+        let position = Some(reflect::Value::vec3(glam::Vec3::ONE));
+        set(&mut d, Transform::NAME, "position", position).unwrap();
+        // One that fails (no such component) lists nothing.
+        assert!(set(&mut d, "Nonsense", "field", None).is_err());
+        let changes = d.take_changes();
+        assert!(!changes.everything);
+        assert_eq!(changes.entities.iter().copied().collect::<Vec<_>>(), [sun]);
+        let fields = |names: &[&str]| names.iter().map(|n| n.to_string()).collect();
+        let expected: FieldsSet =
+            [((sun, "Light".to_string()), fields(&["range", "strength"]))].into();
+        assert_eq!(changes.set, expected, "a Transform's are `moved`");
+        assert!(changes.moved.contains(&sun));
+        assert!(d.take_changes().set.is_empty(), "taken once");
     }
 }

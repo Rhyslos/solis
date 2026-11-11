@@ -33,6 +33,12 @@ impl Workbench {
             return;
         };
         let area = self.open.document.area();
+        // While the game plays, what's shown as an entity's value (in
+        // Properties, by the Console's `get`) is the game's, which may
+        // have moved on from the area's: setting the value the area
+        // already holds is a change too, made so that it's given to the
+        // game (`Changes::set`).
+        let playing = self.open.playing.is_some();
         let edits: Vec<Edit> = entities
             .iter()
             .filter_map(|&entity| {
@@ -51,7 +57,7 @@ impl Workbench {
                     }
                     _ => value.clone(),
                 };
-                (new != *old).then(|| Edit::SetField {
+                (playing || new != *old).then(|| Edit::SetField {
                     entity,
                     component: component.to_string(),
                     field: field.to_string(),

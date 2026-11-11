@@ -464,6 +464,48 @@ fn a_value_you_set_is_kept_as_you_set_it_though_the_game_changes_it_every_tick()
     );
 }
 
+/// The review, BUG-54: a value set back to what the area holds reaches
+/// the game, is one of your changes like any other, and keeping it leaves
+/// the area exactly as it was before Play.
+#[test]
+fn a_value_set_to_what_the_area_holds_reaches_the_game_and_keeping_it_changes_nothing() {
+    let mut w = with_a_busy_game();
+    w.apply_property(
+        PropertyRequest::SetField {
+            entity: id(CART),
+            component: "Counter".into(),
+            field: "count".into(),
+            value: Value::Int(7),
+        },
+        1,
+    );
+    let before = w.document().area().clone();
+    let count = |w: &mut Workbench| {
+        w.values_now(id(CART), "Counter")
+            .unwrap()
+            .get("count")
+            .cloned()
+    };
+    w.play();
+    run(&mut w, 3);
+    assert_eq!(count(&mut w), Some(Value::Int(10)));
+    w.apply_property(
+        PropertyRequest::SetField {
+            entity: id(CART),
+            component: "Counter".into(),
+            field: "count".into(),
+            value: Value::Int(7),
+        },
+        2,
+    );
+    run(&mut w, 1);
+    assert_eq!(count(&mut w), Some(Value::Int(8)), "the game took the 7");
+    w.stop();
+    assert_eq!(w.play_changes().unwrap(), ["Change Counter.count"]);
+    w.keep_play_changes();
+    assert_eq!(*w.document().area(), before);
+}
+
 /// Five edits of different kinds: a move, a new component, a delete, a
 /// new parent and a new name.
 fn five_edits(w: &mut Workbench) {

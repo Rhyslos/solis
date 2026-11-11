@@ -4,7 +4,7 @@ use crate::convert::label;
 use crate::host::NoHost;
 use glam::{Quat, Vec3};
 use reflect::{FieldKind, Value};
-use std::collections::HashMap;
+use std::collections::{BTreeSet, HashMap};
 use std::time::{Duration, Instant};
 
 /// A small world for game code: entities with names, places and turns,
@@ -329,4 +329,109 @@ fn labels_read_naturally() {
     assert_eq!(label("ammo"), "Ammo");
     assert_eq!(label("lastShot"), "Last shot");
     assert_eq!(label("max_hp"), "Max hp");
+}
+
+/// A Rust component counting its ticks.
+struct Tally(i64);
+
+impl crate::RustComponent for Tally {
+    fn update(&mut self, _cx: &mut crate::Context<'_>, _dt: f64) {
+        self.0 += 1;
+    }
+    fn values(&self) -> ComponentData {
+        let mut data = ComponentData::default();
+        data.set("count", Value::Int(self.0));
+        data
+    }
+    fn set(&mut self, data: &ComponentData) {
+        if let Some(Value::Int(count)) = data.get("count") {
+            self.0 = *count;
+        }
+    }
+}
+
+/// The review, BUG-54 (issue 57): the editor shows a running component's
+/// values as the game has them, so a field set there to what the area
+/// already holds is a change too; but the area's values are what they
+/// were, and nothing was given. In each language.
+#[test]
+fn a_field_set_by_hand_is_given_whatever_the_area_held_in_lust_lua_and_rust() {
+    let mut compiled = chunk(GUN);
+    compiled.lua = vec![(
+        "spinner.lua".into(),
+        "local S = component(\"Spinner\", { { \"turns\", \"int\", 0 } })\n\
+         function S:update(dt) self.turns = self.turns + 1 end\n"
+            .into(),
+    )];
+    let mut runtime = Runtime::new().unwrap();
+    runtime.add_rust(RustKind {
+        schema: ComponentSchema {
+            name: "Tally".into(),
+            help: String::new(),
+            fields: vec![reflect::FieldInfo::new(
+                "count",
+                "Count",
+                FieldKind::Int,
+                Value::Int(0),
+            )],
+        },
+        make: |data| Box::new(Tally(reflect::Fields(data).int("count", 0))),
+    });
+    runtime.load(&compiled, &mut NoHost).unwrap();
+    let me = id(7);
+    // Each component's counting field, and what the area holds for it.
+    let kinds = [
+        ("Gun", "ammo", 30),
+        ("Spinner", "turns", 0),
+        ("Tally", "count", 0),
+    ];
+    let area = kinds.map(|(_, field, start)| {
+        let mut data = ComponentData::default();
+        data.set(field, Value::Int(start));
+        data
+    });
+    let all = || (0..3).map(|i| (me, kinds[i].0, &area[i]));
+    let now = |runtime: &Runtime| {
+        kinds.map(
+            |(name, field, _)| match runtime.values(me, name).unwrap().get(field) {
+                Some(Value::Int(n)) => *n,
+                other => panic!("{name}.{field} is {other:?}"),
+            },
+        )
+    };
+    assert!(runtime.sync_many(all(), &mut NoHost).is_empty());
+    for _ in 0..5 {
+        assert!(runtime.tick(1.0 / 60.0, &mut NoHost).failures.is_empty());
+    }
+    assert_eq!(now(&runtime), [25, 5, 5]);
+    // The area's values again, nothing set by hand (another field of the
+    // entity changed, say): what the game counted is kept.
+    assert!(runtime.sync_many(all(), &mut NoHost).is_empty());
+    assert_eq!(now(&runtime), [25, 5, 5]);
+
+    // Each set by hand to what the area holds: given.
+    let set = kinds.map(|(_, field, _)| BTreeSet::from([field.to_string()]));
+    let edited = (0..3).map(|i| (me, kinds[i].0, &area[i], &set[i]));
+    assert!(runtime.sync_edited(edited, &mut NoHost).is_empty());
+    assert_eq!(now(&runtime), [30, 0, 0]);
+    let shot = runtime.values(me, "Gun").unwrap().get("lastShot").cloned();
+    let Some(Value::Float(shot)) = shot else {
+        panic!("{shot:?}");
+    };
+    assert!(
+        shot > 0.55,
+        "a field not set keeps the game's value: {shot}"
+    );
+
+    // Once: the game counts on, and the next sync leaves it be.
+    assert!(runtime.tick(1.0 / 60.0, &mut NoHost).failures.is_empty());
+    assert!(runtime.sync_many(all(), &mut NoHost).is_empty());
+    assert_eq!(now(&runtime), [29, 1, 1]);
+
+    // A field the component hasn't, or one the area has no value for:
+    // nothing is given and nothing fails.
+    let odd = BTreeSet::from(["nonsense".to_string(), "lastShot".to_string()]);
+    let edited = (0..3).map(|i| (me, kinds[i].0, &area[i], &odd));
+    assert!(runtime.sync_edited(edited, &mut NoHost).is_empty());
+    assert_eq!(now(&runtime), [29, 1, 1]);
 }
