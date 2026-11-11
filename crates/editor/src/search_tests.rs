@@ -150,7 +150,7 @@ fn picking_an_entity_selects_it_and_a_panel_brings_it_forward() {
     assert_eq!(w.selection(), None);
     // A File action goes to the app.
     w.do_search(
-        SearchTarget::App(WorkbenchAction::SaveArea),
+        SearchTarget::Command(crate::shell::ShellCommand::SaveArea),
         &ctx,
         &mut actions,
     );
@@ -158,18 +158,23 @@ fn picking_an_entity_selects_it_and_a_panel_brings_it_forward() {
 }
 
 #[test]
-fn workspaces_can_be_switched_from_the_search() {
+fn tabs_can_be_switched_from_the_search() {
     let mut w = fresh();
     let items = w.search_items();
-    let code = results(&items, "code workspace")[0].clone();
-    assert_eq!(code.name, "Code workspace");
+    let debug = results(&items, "debug tab")[0].clone();
+    assert_eq!(debug.name, "Debug tab");
     let ctx = egui::Context::default();
-    w.do_search(code.target, &ctx, &mut Vec::new());
+    w.do_search(debug.target, &ctx, &mut Vec::new());
+    assert_eq!(w.ribbon_tab(), crate::shell::RibbonTab::Debug);
     assert_eq!(w.workspace(), crate::workspace::Workspace::Code);
+    let names: Vec<String> = w.search_items().into_iter().map(|i| i.name).collect();
     assert!(
-        !w.search_items().iter().any(|i| i.name == "Code workspace"),
-        "the one in use isn't offered"
+        !names.contains(&"Debug tab".to_string()),
+        "the one in front isn't offered"
     );
+    // A tab that isn't built is never something to do.
+    assert!(!names.contains(&"Shading tab".to_string()));
+    assert!(!names.contains(&"VFX tab".to_string()));
 }
 
 const ASSETS: &str = "/projects/farm/assets";

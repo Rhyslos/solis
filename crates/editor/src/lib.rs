@@ -73,6 +73,7 @@ mod settings_appearance;
 mod settings_window;
 mod settled;
 mod sheet_view;
+pub mod shell;
 mod sound_event_view;
 pub mod sound_view;
 pub mod splash;

@@ -112,6 +112,44 @@ pub(crate) fn harness(workbench: Workbench) -> egui_kittest::Harness<'static, St
         .tap(|h| h.state_mut().0 = workbench)
 }
 
+/// Does the editor's command called `name` (as the search lists it), as
+/// choosing it there, on the ribbon or on a File page does, and gives
+/// what it asks the app for. Fails if no command has that name now, or
+/// if it can't be done now.
+pub(crate) fn do_command(
+    workbench: &mut Workbench,
+    ctx: &egui::Context,
+    name: &str,
+) -> Vec<crate::workbench::WorkbenchAction> {
+    use crate::shell::ShellCommand;
+    let command = ShellCommand::named(name, workbench)
+        .unwrap_or_else(|| panic!("no command is called {name:?} now"));
+    assert_eq!(
+        command.why_not(workbench),
+        None,
+        "{name:?} can't be done now"
+    );
+    let mut actions = Vec::new();
+    command.run(workbench, ctx, &mut actions);
+    actions
+}
+
+/// [`do_command`] in the test window, drawn before and after.
+pub(crate) fn run(h: &mut egui_kittest::Harness<'_, State>, name: &str) {
+    h.run();
+    let ctx = h.ctx.clone();
+    let (workbench, picker) = h.state_mut();
+    let actions = do_command(workbench, &ctx, name);
+    picker.actions.extend(actions);
+    h.run();
+}
+
+/// Brings `tab` to the front, as a click on it in the tab bar does.
+pub(crate) fn ribbon_tab(h: &mut egui_kittest::Harness<'_, State>, tab: crate::shell::RibbonTab) {
+    h.state_mut().0.show_tab(tab);
+    h.run();
+}
+
 /// Draws the editor with `panel` in front and the pointer resting over
 /// the middle of it.
 pub(crate) fn rest_over(

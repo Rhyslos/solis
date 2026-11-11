@@ -319,6 +319,9 @@ pub struct Workbench {
     pub(crate) other_layouts: BTreeMap<crate::workspace::Workspace, DockState<Panel>>,
     /// One search for everything (decision 0085).
     pub(crate) search: crate::search::SearchState,
+    /// The frame: the tab in front, the ribbon, the File page (decision
+    /// 0099).
+    pub(crate) shell: crate::shell::Shell,
     /// The program's logo, for the top bar (the app hands it over).
     pub(crate) logo: Option<egui::TextureId>,
     /// The docked panel the pointer rested over when the last frame was
@@ -422,6 +425,7 @@ impl Workbench {
             workspace: crate::workspace::Workspace::Level,
             other_layouts: BTreeMap::new(),
             search: crate::search::SearchState::default(),
+            shell: crate::shell::Shell::default(),
             logo: None,
             pointer_over: None,
             keys: KeyOwner::default(),
@@ -839,6 +843,7 @@ impl Workbench {
         // follow the density read it there, and so does everything that
         // draws an unfinished part or leaves it out.
         crate::interface_look::use_look(self.interface_look());
+        self.settle_tab();
         self.profiler.add(
             crate::profiler::Stage::Sound,
             std::mem::take(&mut self.sound_spent),

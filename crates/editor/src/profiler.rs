@@ -85,7 +85,7 @@ impl Sample {
 }
 
 /// How many frames the panel remembers.
-const KEPT: usize = 240;
+pub(crate) const KEPT: usize = 240;
 
 /// Records each frame's times.
 #[derive(Debug, Default)]
@@ -93,6 +93,10 @@ pub struct Profiler {
     started: Option<Instant>,
     spent: [Duration; 6],
     history: VecDeque<Sample>,
+    /// Whether the CPU's stages are left out of the panel (Debug, Show).
+    pub(crate) hide_cpu: bool,
+    /// Whether the GPU's times are left out of the panel (Debug, Show).
+    pub(crate) hide_gpu: bool,
 }
 
 impl Profiler {
@@ -221,16 +225,18 @@ pub(crate) fn profiler_panel(ui: &mut Ui, profiler: &Profiler) {
         ))
         .strong(),
     );
-    graph(ui, profiler);
-    ui.horizontal_wrapped(|ui| {
-        for (stage, ms) in Stage::ALL.iter().zip(average.cpu) {
-            let (rect, _) = ui.allocate_exact_size(vec2(10.0, 10.0), Sense::hover());
-            ui.painter().rect_filled(rect, 2.0, stage.color());
-            ui.label(format!("{} {ms:.2} ms", stage.name()));
-            ui.add_space(8.0);
-        }
-    });
-    ui.add_space(4.0);
+    if !profiler.hide_cpu {
+        graph(ui, profiler);
+        ui.horizontal_wrapped(|ui| {
+            for (stage, ms) in Stage::ALL.iter().zip(average.cpu) {
+                let (rect, _) = ui.allocate_exact_size(vec2(10.0, 10.0), Sense::hover());
+                ui.painter().rect_filled(rect, 2.0, stage.color());
+                ui.label(format!("{} {ms:.2} ms", stage.name()));
+                ui.add_space(8.0);
+            }
+        });
+        ui.add_space(4.0);
+    }
     let gpu = match (average.drawn.gpu, average.drawn.gpu_timing) {
         (Some(t), _) => format!(
             "The GPU takes {:.2} ms a frame: shadows {:.2} ms, models {:.2} ms, the last \
@@ -247,7 +253,9 @@ pub(crate) fn profiler_panel(ui: &mut Ui, profiler: &Profiler) {
         }
         (None, _) => "The GPU's own times arrive once something is drawn.".to_string(),
     };
-    ui.label(gpu);
+    if !profiler.hide_gpu {
+        ui.label(gpu);
+    }
     let d = average.drawn;
     ui.label(
         RichText::new(format!(

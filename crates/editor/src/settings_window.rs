@@ -206,6 +206,15 @@ impl Workbench {
         }
     }
 
+    /// Opens the project's own settings: the same window, on its 2D
+    /// page.
+    pub(crate) fn open_project_settings(&mut self) {
+        self.settings_window = Some(SettingsWindow {
+            page: Page::TwoD,
+            ..self.settings_window.take().unwrap_or_default()
+        });
+    }
+
     /// Sets the accent colour for the whole editor (remembered next time).
     pub(crate) fn choose_accent(&mut self, ctx: &egui::Context, accent: Accent) {
         self.choose_interface_look(

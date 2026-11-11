@@ -91,6 +91,58 @@ impl Workbench {
         self.search_list(ui, actions);
     }
 
+    /// The search box in the top bar: clicking it opens the search.
+    pub(crate) fn search_box(&mut self, ui: &mut Ui) {
+        let width = ui.available_width().clamp(120.0, 320.0);
+        let (rect, response) =
+            ui.allocate_exact_size(egui::vec2(width, 24.0), egui::Sense::click());
+        let painter = ui.painter();
+        let hovered = response.hovered();
+        painter.rect(
+            rect,
+            5.0,
+            theme::field(),
+            egui::Stroke::new(
+                1.0,
+                if hovered {
+                    theme::text_weak()
+                } else {
+                    theme::button_border()
+                },
+            ),
+            egui::StrokeKind::Inside,
+        );
+        let icon = egui::Rect::from_center_size(
+            rect.left_center() + egui::vec2(14.0, 0.0),
+            egui::vec2(12.0, 12.0),
+        );
+        icons::icon(painter, icon, Icon::Search, theme::text_weak());
+        painter.text(
+            rect.left_center() + egui::vec2(26.0, 0.0),
+            egui::Align2::LEFT_CENTER,
+            "Search or do anything…",
+            egui::FontId::proportional(12.5),
+            theme::text_weak(),
+        );
+        painter.text(
+            rect.right_center() - egui::vec2(8.0, 0.0),
+            egui::Align2::RIGHT_CENTER,
+            "Space",
+            egui::FontId::proportional(11.0),
+            theme::text_weak(),
+        );
+        response.widget_info(|| {
+            egui::WidgetInfo::labeled(egui::WidgetType::Button, true, "Search or do anything")
+        });
+        let response = response.on_hover_text(
+            "Finds any action, file, entity or panel and does it: press Space with nothing being \
+             typed",
+        );
+        if response.clicked() {
+            self.open_search();
+        }
+    }
+
     pub(crate) fn menus(&mut self, ui: &mut Ui, actions: &mut Vec<WorkbenchAction>) {
         self.file_menu(ui, actions);
         self.edit_menu(ui);

@@ -217,6 +217,7 @@ impl Workbench {
             );
         }
         self.workspace = saved.current;
+        self.shell.tab = crate::shell::RibbonTab::of_workspace(saved.current);
         if let Some(dock) = layouts.remove(&saved.current) {
             self.dock = dock;
         }
