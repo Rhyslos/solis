@@ -671,7 +671,7 @@ pub(crate) fn tileset_properties(
         ui.horizontal(|ui| {
             // Once the mouse is let go: a drag in the picker is one undo
             // step and one save, not one a frame.
-            let colour = crate::frames_view::settled_colour(ui, ("terrain", t.id), t.colour);
+            let colour = crate::settled::settled_colour(ui, ("terrain", t.id), t.colour);
             if colour.is_some() {
                 asked.push(set_it(None, None, colour));
             }
@@ -784,20 +784,22 @@ pub(crate) fn map_file_properties(
         |ui| {
             let [w, h] = map.size();
             let max = f64::from(tiles::map::MAX_SIDE);
-            let a = crate::frames_view::settled_whole_drag(
+            let a = crate::settled::settled_whole_drag(
                 ui,
-                &format!("map w {path}"),
+                ("map w", path),
                 f64::from(w),
                 1.0..=max,
                 0.2,
+                "",
             );
             ui.label(RichText::new("×").color(theme::text_weak()));
-            let b = crate::frames_view::settled_whole_drag(
+            let b = crate::settled::settled_whole_drag(
                 ui,
-                &format!("map h {path}"),
+                ("map h", path),
                 f64::from(h),
                 1.0..=max,
                 0.2,
+                "",
             );
             ui.label(RichText::new("cells").color(theme::text_weak()));
             if a.is_some() || b.is_some() {

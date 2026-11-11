@@ -211,3 +211,40 @@ fn a_damaged_clips_file_isn_t_opened_and_says_why() {
             .any(|l| l.text.contains("Couldn't open walker.solframes: line 3"))
     );
 }
+
+/// BUG-20: how many times a clip plays, dragged for ten frames in the
+/// Clips tab, is one undo step and one save, made when the mouse is let
+/// go.
+#[test]
+fn a_dragged_number_in_the_clips_tab_is_one_step_and_one_save() {
+    let (mut w, _, _) = with_clips();
+    w.open_frames("walker.solframes");
+    let mut h = harness(w);
+    h.run();
+    h.run();
+    let saves = |h: &egui_kittest::Harness<'static, State>| saved(&h.state().1.actions).len();
+    for (label, by) in [("Plays", 30.0), ("Speed", 12.0)] {
+        h.state_mut().1.actions.clear();
+        let field = number_field_beside(&h, label);
+        h.hover_at(field.center());
+        h.run();
+        h.drag_at(field.center());
+        h.run();
+        for frame in 1..=10 {
+            h.hover_at(field.center() + egui::vec2(by, 0.0) * frame as f32);
+            h.run();
+            assert_eq!(saves(&h), 0, "{label}: nothing saved mid-drag");
+        }
+        h.drop_at(field.center() + egui::vec2(by, 0.0) * 10.0);
+        h.run();
+        assert_eq!(saves(&h), 1, "{label}: saved once, when let go");
+    }
+    let editor = h.state_mut().0.open.frames_editor.as_mut().unwrap();
+    let wave = &editor.file.clips[0];
+    assert!(wave.repeats > 1, "{} times", wave.repeats);
+    assert!(wave.speed > 1.5, "{} times as fast", wave.speed);
+    // One step a drag.
+    assert!(editor.undo());
+    assert!(editor.undo());
+    assert!(!editor.undo());
+}

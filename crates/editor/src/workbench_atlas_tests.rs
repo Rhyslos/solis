@@ -138,3 +138,47 @@ fn the_x_on_its_tab_closes_the_atlas_file() {
     assert!(w.open.atlas_editor.is_none());
     assert!(w.dock.find_tab(&Panel::AtlasCrop).is_none());
 }
+
+/// BUG-20: the grid's size dragged for ten frames in the Atlas Crop tab is
+/// one undo step and one save, made when the mouse is let go.
+#[test]
+fn a_dragged_grid_size_is_one_step_and_one_save() {
+    let mut w = with_project();
+    let mut actions = Vec::new();
+    w.library_request(
+        LibraryRequest::AtlasCrop("sprites/tools.png".into()),
+        &mut actions,
+    );
+    let grid = w.open.atlas_editor.as_ref().unwrap().atlas.grid;
+    let mut h = harness(w);
+    h.run();
+    h.run();
+    h.state_mut().1.actions.clear();
+    let saves = |h: &egui_kittest::Harness<'static, State>| {
+        let saved = |a: &&WorkbenchAction| matches!(a, WorkbenchAction::SaveAtlas { .. });
+        h.state().1.actions.iter().filter(saved).count()
+    };
+    let field = number_field_beside(&h, "Grid");
+    h.hover_at(field.center());
+    h.run();
+    h.drag_at(field.center());
+    h.run();
+    for frame in 1..=10 {
+        h.hover_at(field.center() + egui::vec2(5.0, 0.0) * frame as f32);
+        h.run();
+        assert_eq!(saves(&h), 0, "nothing saved mid-drag");
+    }
+    h.drop_at(field.center() + egui::vec2(50.0, 0.0));
+    h.run();
+    assert_eq!(saves(&h), 1, "saved once, when let go");
+    let editor = h.state_mut().0.open.atlas_editor.as_mut().unwrap();
+    assert!(
+        editor.atlas.grid[0] > grid[0] + 20,
+        "{:?}",
+        editor.atlas.grid
+    );
+    assert_eq!(editor.atlas.grid[1], grid[1]);
+    assert!(editor.undo());
+    assert_eq!(editor.atlas.grid, grid);
+    assert!(!editor.undo(), "the drag was one step");
+}

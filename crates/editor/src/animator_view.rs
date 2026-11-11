@@ -782,7 +782,7 @@ fn state_properties(ui: &mut Ui, a: &mut AnimatorUi<'_>, state: &animation::Stat
         "Speed",
         "How fast its clips play: 1 at their own speed.",
         |ui| {
-            if let Some(v) = crate::frames_view::settled_drag(
+            if let Some(v) = crate::settled::settled_drag(
                 ui,
                 "state speed",
                 f64::from(state.speed),
@@ -913,9 +913,9 @@ fn condition_row(
                         out = Some(Condition::Below(n.clone(), *v));
                     }
                 });
-            if let Some(new) = crate::frames_view::settled_drag(
+            if let Some(new) = crate::settled::settled_drag(
                 ui,
-                &format!("cond {} {}", salt.0, salt.1),
+                ("cond", salt.0, salt.1),
                 f64::from(*v),
                 -1.0e9..=1.0e9,
                 0.01,

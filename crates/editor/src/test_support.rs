@@ -181,6 +181,47 @@ pub(crate) fn click_the_x(h: &mut egui_kittest::Harness<'static, State>, panel: 
     h.run();
 }
 
+/// The number field on the row of the first thing labelled `label`, to
+/// its right.
+pub(crate) fn number_field_beside<S>(h: &egui_kittest::Harness<'_, S>, label: &str) -> egui::Rect {
+    use egui_kittest::kittest::Queryable;
+    let label = h
+        .get_all_by_label(label)
+        .next()
+        .expect("the label is drawn")
+        .rect();
+    h.get_all_by_role(egui::accesskit::Role::SpinButton)
+        .map(|n| n.rect())
+        .filter(|r| r.y_range().contains(label.center().y) && r.left() >= label.right() - 1.0)
+        .min_by(|a, b| a.left().total_cmp(&b.left()))
+        .expect("a number field beside the label")
+}
+
+/// Presses the left button at `from`, moves by `by` a frame for `frames`
+/// frames, and lets go there: a drag as the mouse makes it.
+pub(crate) fn drag_for_frames<S>(
+    h: &mut egui_kittest::Harness<'_, S>,
+    from: Pos2,
+    by: egui::Vec2,
+    frames: usize,
+) {
+    h.hover_at(from);
+    h.run();
+    h.drag_at(from);
+    h.run();
+    for frame in 1..=frames {
+        h.hover_at(from + by * frame as f32);
+        h.run();
+    }
+    h.event(egui::Event::PointerButton {
+        pos: from + by * frames as f32,
+        button: egui::PointerButton::Primary,
+        pressed: false,
+        modifiers: egui::Modifiers::NONE,
+    });
+    h.run();
+}
+
 /// A lamp-post assembly file: a post with a lamp under it.
 pub(crate) fn lamp_post_file() -> (AssetId, std::sync::Arc<area::text::AreaFile>) {
     let id = |n| EntityId(reflect::Id::from_raw(n).unwrap());

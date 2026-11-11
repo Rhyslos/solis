@@ -67,6 +67,7 @@ mod screen_props;
 mod screen_ties;
 mod search;
 mod settings_window;
+mod settled;
 mod sheet_view;
 mod sound_event_view;
 pub mod sound_view;
