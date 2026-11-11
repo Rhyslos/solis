@@ -196,7 +196,7 @@ Sizes are new or rewritten lines of code, then lines of tests, then lines remove
 - The saved panel arrangements (`panel_layout2`, `workspaces`, `library_pinned`) are still read and written: the dock is still there until M4.
 - **Fonts:** all three new weights are bundled (Inter Medium and Bold from Inter's own release, the same one as the Regular and SemiBold already there; JetBrains Mono Bold from the family's own package). The font table still has one place where a weight can stand in for one whose file is missing. Nothing in today's editor is drawn in Medium or Bold yet: the type styles that use them (`tokens/text.rs`) are taken up as the frame and the screens are built.
 - **The scene list's selected row is the accent at 22%**, not 16%: the design's first screen and the mock-up both say so, and a test samples it. 16% is for selected tiles, table rows and cards (Inventory d.4, corrected).
-- **The kinds' colours (`theme::kind`) are unchanged**: taking only the design's seven would make Solis's sixteen hard to tell apart (a picture and game code, a sound and a sprite sheet would nearly match). They wait for decision D17.
+- **The kinds' colours (`theme::kind`) are unchanged**: taking only the design's seven would make Solis's sixteen hard to tell apart (a picture and game code, a sound and a sprite sheet would nearly match). They wait for decision D17, which is still open and blocks M7 (the Library), not M2.
 - **Picture tests** are `picture_tests.rs` with `picture_support.rs` (the harness and Solis's own comparer), drawing through `egui_kittest`'s `wgpu` feature; approved pictures are compared on Linux, sampled colours everywhere. The side-by-side sheet is written by an ignored test from the editor's own small test area; the sample project `tests/fixtures/ui-sample/` is left for the milestone that first has the design's layout to fill (M4 or M5), since today's layout can't be laid beside the design's screens part for part.
 - egui's own controls can't take every shape of the design; what is left for the kit (M2) is listed in the pull request: the accent border of a focused field, number fields and drop-downs as dark fields, the checkbox's and toggle's own shapes, tooltips apart from menus.
 
@@ -232,7 +232,7 @@ Sizes are new or rewritten lines of code, then lines of tests, then lines remove
 
 **Risks.** The 45 redrawn icons are a matter of taste: the sheet goes to the lead first. Custom widgets lose egui's keyboard handling unless each is given focus and key support (Tab, Space, arrows): budget for it.
 
-**Ask or mock up first.** D2 and the placeholder mock-up; the icon sheet (mock-up round 1); D17 (colours for Solis's kinds of file).
+**Ask or mock up first.** D2 and the placeholder mock-up; the icon sheet (mock-up round 1): both settled. (D17, the colours for Solis's kinds of file, was first listed here; it is still open and waits for M7, where the kinds are shown as chips.)
 
 **Findings.** DEBT-03 (six copies of one drop-down in `inspector.rs`): `widgets::field::dropdown` is written to be the one; the copies go in M5. DOC-04: placeholder texts name phases only through `Phase::title()`.
 
@@ -346,7 +346,7 @@ The ribbon tabs switch what today's workspaces switch: Home is Level, Animate is
 
 **Risks.** Two Libraries now exist (the tab and the shelf's Assets column) over one state: decide once which parts are shared (the folder and the search are per place; the selection is one).
 
-**Ask or mock up first.** D15 rows 10, 18, 19, 20. Mock-up round 2: Solis's kinds as chips (with D17's colours); Details for a sound, a sprite sheet and a text file.
+**Ask or mock up first.** **D17** (the colours for Solis's kinds of file: still open, and this milestone can't start without it); D15 rows 10, 18, 19, 20. Mock-up round 2: Solis's kinds as chips (in D17's proposed colours, so the project lead decides on the picture); Details for a sound, a sprite sheet and a text file.
 
 **Findings.** DEBT-08 (`library.rs`) is answered by the split. BUG-31, BUG-32, BUG-53 (file work on the window's thread when assets change): the new browser asks for nothing new from the app per frame; the facts it shows come from what the app already holds.
 
@@ -568,9 +568,6 @@ Recommended: yes to both. Accents: Blue stays Blue; Petrol blue, Marine green an
 **D2. What does a placeholder look like, and how much of an unbuilt screen is drawn?** *Settled 2026-11-11 (the project lead, on the mock-ups): look A, which is the recommended look below; a whole unbuilt screen is its ribbon and shelf tabs as placeholders and one centred page card.*
 Recommended: section 3.2's look (in place, lowest readable grey, a small hollow square mark, no hover, a hover text naming the phase, a click that says so in the status bar), and for a whole unbuilt screen its ribbon and shelf tabs as placeholders with one placeholder page in the center. Alternatives for the look: a dashed outline (but dashes already mean "add" in the design); a small "soon" tag (no room on a 50 px button). Alternative for whole screens: a still copy of the mock-up with its sample content, dimmed (pretty, but it shows a crane Solis doesn't have and takes a session per screen), or only the tab and a page with no ribbon (less to look at, loses the design's layout).
 
-**D17. Colours for the kinds of file the design doesn't have.** *Still open.*
-The design gives seven (folder, mesh, material, texture, animation, audio, prefab). Recommended: model = its mesh cyan #5FC4D6; picture and sprite sheet = texture #E57F6A; clips and animator = animation #B48CFF; sound and sound event = audio #E8B04A; assembly = prefab #7FB2FF; area = #C8C8C8 (the design draws areas with a grey ring, Screen 3's Used by); code and text = #8FB8F0; tileset and tile map = material green #6CC28A; screen = #C38CFF. Alternative: keep today's sixteen kind colours (`theme::kind`), which were chosen to differ more.
-
 ### Before M3
 
 **D4. Which words does the interface show?** *Settled 2026-11-11 (the project lead): Solis's words, and the design's names where Solis has none: the "Recommended on screen" column below. "Check in" waits for Shared 11.* The spec's samples use other words than Solis's. Recommended: Solis's own words everywhere, since the manual, the game code's calls and every earlier decision use them. The lead may prefer the design's for some; each is listed:
@@ -612,6 +609,9 @@ The design gives seven (folder, mesh, material, texture, animation, audio, prefa
 **D14. The running game: its own document tab, or inside the viewport?** *Settled 2026-11-11 (the project lead): its own Game tab beside the area's tab, to the front on Play.* The spec says Play runs the game "in the viewport" (spec 178). Solis keeps the editor's view and the game's view apart, so the area can be watched and changed while the game plays. Recommended: a **Game** tab beside the area's tab in the same group, brought to the front on Play. Alternative: one picture that switches, as the spec reads.
 
 ### Before M5 to M9
+
+**D17. Colours for the kinds of file the design doesn't have.** *Still open: it waits for the project lead to see mock-up round 2 (the Library's chips in the proposed colours), and blocks M7, the Library. It was first sorted under M2, which doesn't need it: until it is answered `theme::kind` keeps today's sixteen colours.*
+The design gives seven (folder, mesh, material, texture, animation, audio, prefab). Recommended: model = its mesh cyan #5FC4D6; picture and sprite sheet = texture #E57F6A; clips and animator = animation #B48CFF; sound and sound event = audio #E8B04A; assembly = prefab #7FB2FF; area = #C8C8C8 (the design draws areas with a grey ring, Screen 3's Used by); code and text = #8FB8F0; tileset and tile map = material green #6CC28A; screen = #C38CFF. Alternative: keep today's sixteen kind colours (`theme::kind`), which were chosen to differ more.
 
 **D15. New keys and mouse actions** (rule 17). *Still open, row by row; asked before the milestone that builds each. (The clashes with today's keys are settled: today's keys stay.)* These are new; the numbers are Inventory part (c)'s rows:
 
