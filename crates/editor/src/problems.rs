@@ -25,8 +25,10 @@ pub enum ProblemKind {
     MissingAssembly,
     /// An entity whose parent isn't in the area (perhaps after a merge).
     MissingParent,
-    /// Entities that are each other's parents (a damaged file): they're
-    /// placed differently by the editor and the game until it's fixed.
+    /// Entities that are each other's parents. Files with such a loop are
+    /// put right as they're read, so this is one made some other way: each
+    /// entity in it stands alone, in the editor and the game alike, until
+    /// it's fixed.
     ParentLoop,
     /// A Sprite with no sheet chosen, or whose sheet isn't in the project.
     MissingSpriteSheet,

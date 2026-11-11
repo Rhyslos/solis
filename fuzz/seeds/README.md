@@ -5,7 +5,7 @@ Real files the fuzzers start from, one folder for each target in [`../fuzz_targe
 | Folder | What it holds |
 | --- | --- |
 | `animator/` | An animator file (`.solanim`), as the fixture of version 1. |
-| `area_file/` | Area files (`.solarea`), including the turret sample's. |
+| `area_file/` | Area files (`.solarea`), including the turret sample's, and one whose entities are inside each other in loops (one its own parent, two and three in a ring, a chain hanging under a ring) or under a parent that isn't in the file. |
 | `aseprite/` | Two small Aseprite files written by the `assets` crate's tests: the walker, and one in indexed colour (a palette). |
 | `atlas/` | Atlas files (`.atlas.lst`): the fixture of version 1, and a hostile one from `crates/animation/tests/data` that the reader refuses (a control character in its picture's name, which was read but not written back: the file the fuzzer's first run found, made small). |
 | `frames/` | A sprite's clips file (`.solframes`), as the fixture of version 1. |
@@ -27,4 +27,4 @@ Real files the fuzzers start from, one folder for each target in [`../fuzz_targe
 | `tileset/` | Tilesets: the fixtures of version 1 and of version 2 (`.soltileset`; art, every kind, rules) and of version 4 (`.tileset.lst`), and a hostile one from `crates/tiles/tests/data` that the reader refuses (two classes with one name, which it never finished reading: the file the fuzzer's first run found, made small). |
 | `update_answer/` | A release answer and its checksum file, joined by a 0x01 byte. |
 
-Most are made by [`../make-seeds.sh`](../make-seeds.sh) from the crates' tests, the sample models, the samples and the example files in `tests/fixtures`; run it again after a file format changes. `mixer/`, `pixels/`, `sound_event/` and `text_file/` were written by hand, and the script leaves them alone. What each fuzzing run finds goes in `fuzz/corpus/`, which isn't committed.
+Most are made by [`../make-seeds.sh`](../make-seeds.sh) from the crates' tests, the sample models, the samples and the example files in `tests/fixtures`; run it again after a file format changes. `mixer/`, `pixels/`, `sound_event/`, `text_file/` and `area_file/parent-loops.solarea` were written by hand, and the script leaves them alone. What each fuzzing run finds goes in `fuzz/corpus/`, which isn't committed.

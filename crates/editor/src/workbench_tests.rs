@@ -1655,8 +1655,104 @@ fn with_unsaved_changes_a_reload_asks_keep_mine_or_load_the_file() {
 }
 
 #[test]
+fn a_file_with_a_loop_of_parents_opens_mended_and_says_so() {
+    // The review of Phase 9, BUG-12: a crate and a shelf written inside
+    // each other, and seven more entities each inside itself.
+    let mut w = Workbench::new(info(), None);
+    let mut area = area::Area::new();
+    let moved = |name: &str, x: f32| {
+        area::EntityData::new(name).with(&Transform {
+            position: Vec3::new(x, 0.0, 0.0),
+            scale: Vec3::splat(2.0),
+            ..Transform::default()
+        })
+    };
+    let crate_ = area.spawn(moved("Crate", 1.0));
+    let shelf = area.spawn(moved("Shelf", 2.0));
+    area.get_mut(crate_).unwrap().parent = Some(shelf);
+    area.get_mut(shelf).unwrap().parent = Some(crate_);
+    for n in 0..7 {
+        let own = area.spawn(moved(&format!("Own {n}"), 3.0));
+        area.get_mut(own).unwrap().parent = Some(own);
+    }
+    let read = w
+        .expand_file(&area::text::AreaFile::plain(area))
+        .expect("a loop is mended, not refused");
+    let top = crate_.min(shelf);
+    assert_eq!(read.get(top).unwrap().parent, None);
+    assert_eq!(read.get(crate_.max(shelf)).unwrap().parent, Some(top));
+    let said: Vec<&str> = w.log_lines().iter().map(|l| l.text.as_str()).collect();
+    // The first five by name, the rest counted, so a file full of loops
+    // doesn't fill the Console.
+    assert_eq!(said.len(), 6, "{said:?}");
+    assert!(
+        said.iter().all(|line| line.contains("top level")),
+        "{said:?}"
+    );
+    let name = &read.get(top).unwrap().name;
+    assert!(
+        said.contains(
+            &format!(
+                "{name} ({top}) was inside itself: its parents led back to it. It's now at \
+                 the top level."
+            )
+            .as_str()
+        ),
+        "{said:?}"
+    );
+    assert_eq!(
+        said[5],
+        "3 more entities were inside themselves; each is now at the top level."
+    );
+    // The editor and the game place every one of them alike.
+    w.open_area(read, "/levels/damaged.solarea".into());
+    let game = world::World::from_area(w.document().area());
+    for (id, _) in w.document().area().iter() {
+        assert_eq!(Some(w.document().world_matrix(id)), game.global(id));
+    }
+}
+
+#[test]
+fn entities_in_a_loop_made_some_other_way_are_placed_alike_and_not_walked_round() {
+    // No file read has a loop, and no edit makes one; an area handed
+    // over with one is still placed the same by the editor and the game,
+    // and the walks up from a selection end.
+    let mut area = area::builtin::starter_area();
+    let ids: Vec<EntityId> = (0..3)
+        .map(|n| {
+            area.spawn(
+                area::EntityData::new(&format!("Ring {n}")).with(&Transform {
+                    position: Vec3::new(1.0 + n as f32, 0.0, 0.0),
+                    scale: Vec3::splat(3.0),
+                    ..Transform::default()
+                }),
+            )
+        })
+        .collect();
+    for (n, &id) in ids.iter().enumerate() {
+        area.get_mut(id).unwrap().parent = Some(ids[(n + 1) % 3]);
+    }
+    let mut lost = area::EntityData::new("Lost");
+    lost.parent = Some(EntityId::random());
+    let lost = area.spawn(lost);
+    let mut w = Workbench::new(info(), None);
+    w.open_area(area, "/levels/ring.solarea".into());
+    let game = world::World::from_area(w.document().area());
+    for (id, data) in w.document().area().iter() {
+        let editor = w.document().world_matrix(id);
+        assert_eq!(Some(editor), game.global(id), "{}", data.name);
+    }
+    let own = w.document().area().get(ids[0]).unwrap().get::<Transform>();
+    assert_eq!(w.document().world_matrix(ids[0]), own.unwrap().matrix());
+    // One in a loop is above itself, so it's never a root to move; one
+    // whose parent isn't there is.
+    w.open.document.selection.select_all([ids[0], lost], ids[0]);
+    assert_eq!(w.selected_roots(), [lost]);
+}
+
+#[test]
 fn placing_an_assembly_makes_a_copy_that_saves_as_one_line() {
-    let (w, _, root, lamp) = with_a_lamp_post();
+    let (mut w, _, root, lamp) = with_a_lamp_post();
     let area = w.document().area();
     assert_eq!(area.get(lamp).unwrap().parent, Some(root));
     assert_eq!(

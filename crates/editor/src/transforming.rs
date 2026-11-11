@@ -154,22 +154,7 @@ pub fn targets_placed(
     object_axes: bool,
 ) -> Option<Targets> {
     let selected: Vec<EntityId> = selection.iter().collect();
-    let inside_another = |id: EntityId| {
-        let mut parent = area.get(id).and_then(|e| e.parent);
-        // A damaged area's loop of parents ends the walk.
-        let mut steps = 0;
-        while let Some(p) = parent {
-            if selection.contains(p) {
-                return true;
-            }
-            steps += 1;
-            if steps > area.len() {
-                break;
-            }
-            parent = area.get(p).and_then(|e| e.parent);
-        }
-        false
-    };
+    let inside_another = |id: EntityId| area.ancestors(id).any(|(p, _)| selection.contains(p));
     let entities: Vec<Target> = selected
         .into_iter()
         .filter(|&id| !inside_another(id))

@@ -237,26 +237,26 @@ impl Area {
     }
 
     /// Where `id` is in the world: its transform after its parents'. An
-    /// entity without a `Transform` sits where its parent is. A loop in a
-    /// damaged area stops the walk instead of hanging.
+    /// entity without a `Transform` sits where its parent is. One caught
+    /// in a loop of parents (a damaged area) stands alone, at its own
+    /// transform, as [`crate::Tree::world_matrices`] and the game's world
+    /// place it.
     pub fn world_matrix(&self, id: EntityId) -> glam::Mat4 {
-        let mut matrix = glam::Mat4::IDENTITY;
-        let mut at = Some(id);
-        let mut steps = 0;
-        while let Some(current) = at {
-            let Some(entity) = self.entities.get(&current) else {
-                break;
-            };
-            if let Some(t) = entity.get::<crate::builtin::Transform>() {
-                matrix = t.matrix() * matrix;
-            }
-            steps += 1;
-            if steps > self.entities.len() {
-                break;
-            }
-            at = entity.parent;
+        let placed = |entity: &EntityData, inner: glam::Mat4| {
+            entity
+                .get::<crate::builtin::Transform>()
+                .map_or(inner, |t| t.matrix() * inner)
+        };
+        let own = self
+            .entities
+            .get(&id)
+            .map_or(glam::Mat4::IDENTITY, |e| placed(e, glam::Mat4::IDENTITY));
+        let mut matrix = own;
+        let mut above = self.ancestors(id);
+        for (_, entity) in above.by_ref() {
+            matrix = placed(entity, matrix);
         }
-        matrix
+        if above.looped() { own } else { matrix }
     }
 
     /// Every entity with a `T` component, with it, sorted by ID.
@@ -367,9 +367,10 @@ mod tests {
         let child = s.spawn(child);
         let at = s.world_matrix(child).transform_point3(glam::Vec3::ZERO);
         assert!(at.abs_diff_eq(glam::Vec3::new(10.0, 2.0, 0.0), 1e-6));
-        // A loop ends.
+        // A loop ends, and each entity in it stands alone.
         s.get_mut(parent).unwrap().parent = Some(child);
-        assert!(s.world_matrix(child).is_finite());
+        let at = s.world_matrix(child).transform_point3(glam::Vec3::ZERO);
+        assert_eq!(at, glam::Vec3::new(0.0, 2.0, 0.0));
     }
 
     #[test]

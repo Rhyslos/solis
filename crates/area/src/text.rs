@@ -367,7 +367,9 @@ pub(crate) fn write_value(out: &mut String, value: &Value) {
 
 /// Reads a plain area (one with no placed assemblies) from `text`: see
 /// [`read_file`]. Placed assemblies need their contents to be read; use
-/// [`crate::assembly`].
+/// [`crate::assembly`]. Parents that lead round in a loop are put right
+/// ([`Area::mend_loops`]), as expanding a file's assemblies does, so no
+/// area read has one.
 pub fn read(text: &str, registry: &Registry) -> Result<Area, ParseError> {
     let file = read_file(text, registry)?;
     if file.kind != FileKind::Area {
@@ -382,13 +384,17 @@ pub fn read(text: &str, registry: &Registry) -> Result<Area, ParseError> {
             message: format!("{id} is a placed assembly, which needs its assembly to be read"),
         });
     }
-    Ok(file.area)
+    let mut area = file.area;
+    area.mend_loops();
+    Ok(area)
 }
 
 /// Reads an area or assembly file from `text`. Values are turned into the
 /// kinds `registry` declares (asset and entity references, decimals written
 /// as whole numbers); components it doesn't know are kept exactly as read.
-/// A file from a newer version is refused, never half-read.
+/// A file from a newer version is refused, never half-read. Parents are
+/// kept as written: one may be a part of a placed assembly, known only
+/// once the file is expanded, which is where loops of them are put right.
 pub fn read_file(text: &str, registry: &Registry) -> Result<AreaFile, ParseError> {
     if text.len() > MAX_BYTES {
         return Err(ParseError {
@@ -1031,6 +1037,33 @@ mod tests {
             .components
             .insert("Marker".into(), ComponentData::default());
         area
+    }
+
+    #[test]
+    fn a_loop_of_parents_in_a_file_is_put_right_as_it_is_read() {
+        // The review of Phase 9, BUG-12: a crate and a shelf written
+        // inside each other, and a lid inside the crate.
+        let mut area = Area::new();
+        let crate_ = area.spawn(EntityData::new("Crate"));
+        let mut shelf = EntityData::new("Shelf");
+        shelf.parent = Some(crate_);
+        let shelf = area.spawn(shelf);
+        let mut lid = EntityData::new("Lid");
+        lid.parent = Some(crate_);
+        let lid = area.spawn(lid);
+        area.get_mut(crate_).unwrap().parent = Some(shelf);
+        let text = write(&area, &registry(), &no_paths);
+        // The file is read as written (a parent may be a part of a placed
+        // assembly, not there yet)…
+        assert_eq!(read_file(&text, &registry()).unwrap().area, area);
+        // …and an area made from it has no loop: the lower ID of the two
+        // is at the top, the other and the lid still under theirs.
+        let read = read(&text, &registry()).unwrap();
+        let (top, under) = (crate_.min(shelf), crate_.max(shelf));
+        assert_eq!(read.get(top).unwrap().parent, None);
+        assert_eq!(read.get(under).unwrap().parent, Some(top));
+        assert_eq!(read.get(lid).unwrap().parent, Some(crate_));
+        assert_eq!(crate::Tree::of(&read).reachable().len(), 3);
     }
 
     #[test]

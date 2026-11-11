@@ -1,0 +1,73 @@
+-- An area. Safe to edit by hand: one block per entity, one line per field.
+area version 1;
+
+entity 0000000000001 {
+    name = "Its own parent";
+    parent = "0000000000001";
+    order = "a0";
+    Transform.position = [1.0, 0.0, 0.0];
+    Transform.rotation = [0.0, 0.0, 0.0, 1.0];
+    Transform.scale = [2.0, 2.0, 2.0];
+}
+
+entity 0000000000002 {
+    name = "Crate";
+    parent = "0000000000003";
+    order = "a0";
+    Transform.position = [2.0, 0.0, 0.0];
+    Transform.rotation = [0.0, 0.0, 0.0, 1.0];
+    Transform.scale = [2.0, 2.0, 2.0];
+}
+
+entity 0000000000003 {
+    name = "Shelf";
+    parent = "0000000000002";
+    order = "a0";
+    Transform.position = [3.0, 0.0, 0.0];
+    Transform.rotation = [0.0, 0.0, 0.0, 1.0];
+    Transform.scale = [0.5, 0.5, 0.5];
+}
+
+entity 0000000000004 {
+    name = "Ring one";
+    parent = "0000000000005";
+    order = "a0";
+}
+
+entity 0000000000005 {
+    name = "Ring two";
+    parent = "0000000000006";
+    order = "a0";
+}
+
+entity 0000000000006 {
+    name = "Ring three";
+    parent = "0000000000004";
+    order = "a0";
+}
+
+entity 0000000000007 {
+    name = "Under the ring";
+    parent = "0000000000006";
+    order = "a1";
+}
+
+entity 0000000000008 {
+    name = "Under that";
+    parent = "0000000000007";
+    order = "a0";
+    Transform.position = [0.0, 4.0, 0.0];
+    Transform.rotation = [0.0, 0.0, 0.0, 1.0];
+    Transform.scale = [1.0, 1.0, 1.0];
+}
+
+entity 0000000000009 {
+    name = "Parent not in the file";
+    parent = "00000000000ZZ";
+    order = "a0";
+}
+
+entity 000000000000A {
+    name = "Sound";
+    order = "a0";
+}

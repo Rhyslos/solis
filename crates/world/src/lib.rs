@@ -235,20 +235,25 @@ impl World {
     /// physics is built next anyway ([`Self::rebuild_physics`]: a rebuild,
     /// a save loaded), or one thrown away, so it isn't built twice.
     pub fn from_area_without_physics(area: &Area) -> Self {
-        let tree = area.depth_first();
+        let tree = area::Tree::of(area);
+        let count = tree.order().len();
         let mut ecs = hecs::World::new();
-        let mut by_id = reflect::IdMap::with_capacity_and_hasher(tree.len(), Default::default());
+        let mut by_id = reflect::IdMap::with_capacity_and_hasher(count, Default::default());
         let mut place: reflect::IdMap<usize> =
-            reflect::IdMap::with_capacity_and_hasher(tree.len(), Default::default());
-        let mut order = Vec::with_capacity(tree.len());
-        for id in tree {
+            reflect::IdMap::with_capacity_and_hasher(count, Default::default());
+        let mut order = Vec::with_capacity(count);
+        for &id in tree.order() {
             let Some(data) = area.get(id) else {
                 continue;
             };
             let mut builder = components_of(id, data);
-            // A parent that comes later in the order is part of a loop
-            // in a damaged area: the entity is treated as standing alone.
-            let parent = data.parent.and_then(|p| place.get(&p).copied());
+            // An entity caught in a loop of parents (a damaged area; the
+            // readers take loops out) stands alone, as the editor places
+            // it (`area::Tree::world_matrices`).
+            let parent = data
+                .parent
+                .filter(|_| !tree.in_loop(id))
+                .and_then(|p| place.get(&p).copied());
             builder.add(Place(order.len()));
             let entity = ecs.spawn(builder.build());
             by_id.insert(id, entity);

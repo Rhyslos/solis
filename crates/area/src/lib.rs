@@ -22,7 +22,7 @@ mod tree;
 pub use document::{Area, EntityData, Origin, order_after};
 pub use edit::{Edit, EditError};
 pub use history::{DEFAULT_LIMIT_BYTES, Followed, History, MergeKey, Step, Undone, Weigh};
-pub use tree::Tree;
+pub use tree::{Ancestors, Mended, Tree};
 
 #[cfg(test)]
 mod gap_tests;

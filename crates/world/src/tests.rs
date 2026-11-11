@@ -164,6 +164,59 @@ fn a_damaged_area_with_a_parent_loop_still_builds() {
     world.step(TICK);
 }
 
+/// Areas whose parents go wrong in each way a damaged file's can: two
+/// and three entities in a loop, one that is its own parent, a chain
+/// hanging under a loop, and a parent that isn't there. Each with a
+/// Transform that moves and scales, so a loop gone round shows.
+fn damaged_areas() -> Vec<Area> {
+    let placed = |name: &str, n: f32, parent: Option<EntityId>| {
+        let mut data = EntityData::new(name).with(&Transform {
+            position: Vec3::new(n, 2.0 * n, 0.0),
+            scale: Vec3::splat(1.0 + n),
+            ..Transform::default()
+        });
+        data.parent = parent;
+        data
+    };
+    let ids: Vec<EntityId> = (0..6).map(|_| EntityId::random()).collect();
+    let build = |parents: &[Option<usize>]| {
+        let mut area = Area::new();
+        for (i, parent) in parents.iter().enumerate() {
+            let parent = parent.map(|p| ids.get(p).copied().unwrap_or_else(EntityId::random));
+            area.insert(ids[i], placed(&format!("E{i}"), i as f32 + 1.0, parent));
+        }
+        area
+    };
+    vec![
+        build(&[Some(1), Some(0)]),
+        build(&[Some(1), Some(2), Some(0)]),
+        build(&[Some(2), Some(0), Some(1)]),
+        build(&[Some(0)]),
+        // 0 and 1 are a loop; 2, 3 and 4 hang under it in a chain; 5 is
+        // sound.
+        build(&[Some(1), Some(0), Some(1), Some(2), Some(3), None]),
+        // A parent that isn't in the area (99), and a child of that one.
+        build(&[Some(99), Some(0), None]),
+    ]
+}
+
+#[test]
+fn the_editor_and_the_game_place_a_damaged_area_alike() {
+    // The editor draws from the tree's matrices and the game from the
+    // world's: with a loop of parents they used to disagree (the review
+    // of Phase 9, BUG-12).
+    for area in damaged_areas() {
+        let world = World::from_area(&area);
+        let editor = area::Tree::of(&area).world_matrices(&area);
+        for (id, data) in area.iter() {
+            let game = world.global(id).unwrap();
+            assert!(game.is_finite(), "{}", data.name);
+            assert_eq!(editor[&id], game, "{} in {area:?}", data.name);
+            assert_eq!(area.world_matrix(id), game, "{} alone", data.name);
+        }
+    }
+}
+
 #[test]
 fn a_big_area_builds_and_steps() {
     // The scale target's order of size (DESIGN.md §2): checked for being

@@ -707,7 +707,7 @@ impl Workbench {
         // …laid over the new contents. If they can't be (an assembly it
         // now places isn't read yet), the old file stays in use, so saving
         // never writes the copies against contents they weren't built from.
-        let rebuilt = {
+        let (rebuilt, mended) = {
             let lookup = |asset| {
                 if asset == id {
                     Some(file.clone())
@@ -715,11 +715,14 @@ impl Workbench {
                     self.open.assemblies.get(&asset).cloned()
                 }
             };
-            Expander::new(&lookup).expand(&collapsed)
+            let mut expander = Expander::new(&lookup);
+            let rebuilt = expander.expand(&collapsed);
+            (rebuilt, expander.mended().to_vec())
         };
         if rebuilt.is_ok() {
             self.open.assemblies.insert(id, file);
             self.sources += 1;
+            self.log_mended(&mended);
         }
         let name = self.asset_name(id);
         match rebuilt {
@@ -761,13 +764,41 @@ impl Workbench {
     }
 
     /// `file` (an area as read) with its placed assemblies expanded, from
-    /// the assemblies known.
+    /// the assemblies known. Entities whose parents led round in a loop (a
+    /// damaged file) come out at the top level, and the Console says
+    /// which.
     pub fn expand_file(
-        &self,
+        &mut self,
         file: &AreaFile,
     ) -> Result<area::Area, area::assembly::AssemblyError> {
-        let lookup = |asset| self.open.assemblies.get(&asset).cloned();
-        Expander::new(&lookup).expand(file)
+        let (area, mended) = {
+            let lookup = |asset| self.open.assemblies.get(&asset).cloned();
+            let mut expander = Expander::new(&lookup);
+            let area = expander.expand(file);
+            (area, expander.mended().to_vec())
+        };
+        if area.is_ok() {
+            self.log_mended(&mended);
+        }
+        area
+    }
+
+    /// Says in the Console which entities were taken out of a loop of
+    /// parents: the first few each, then how many more, so a file full of
+    /// them doesn't fill it.
+    fn log_mended(&mut self, mended: &[area::Mended]) {
+        const EACH: usize = 5;
+        for one in mended.iter().take(EACH) {
+            self.log(LogLevel::Warning, format!("{one}."));
+        }
+        if let Some(more) = mended.len().checked_sub(EACH).filter(|&more| more > 0) {
+            self.log(
+                LogLevel::Warning,
+                format!(
+                    "{more} more entities were inside themselves; each is now at the top level."
+                ),
+            );
+        }
     }
 
     /// The open area as a file: placed assemblies as their root plus what
@@ -939,17 +970,11 @@ impl Workbench {
             .into_iter()
             .filter(|&id| selection.contains(id))
             .filter(|&id| {
-                // No selected entity above it.
-                let mut at = area.get(id).and_then(|e| e.parent);
-                let mut steps = 0;
-                while let Some(p) = at {
-                    if selection.contains(p) || steps > area.len() {
-                        return false;
-                    }
-                    steps += 1;
-                    at = area.get(p).and_then(|e| e.parent);
-                }
-                true
+                // No selected entity above it (one in a loop of parents
+                // is above itself).
+                let mut above = area.ancestors(id);
+                let under_another = above.by_ref().any(|(p, _)| selection.contains(p));
+                !under_another && !above.looped()
             })
             .collect()
     }
