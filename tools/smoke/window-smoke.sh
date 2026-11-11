@@ -98,7 +98,7 @@ quit() {
     # File is after the logo.
     xdotool mousemove 55 16 click 1
     sleep 1
-    xdotool mousemove 76 "${QUIT_Y:-347}" click 1
+    xdotool mousemove 76 "${QUIT_Y:-367}" click 1
     sleep 2
     # With unsaved changes (an imported model), Solis asks first: answer
     # Don't save, in the middle of the window.
@@ -127,10 +127,13 @@ echo "Sky at (300, 90): $R $G $B (expected a dark neutral grey)"
     fail "the sky is tinted, not neutral: ($R, $G, $B)"
 grep -q "No 3D view" "$OUT/app.log" && fail "the 3D view could not be shown"
 
-# 2. W picks the Move tool: its button in the tool bar lights up.
+# 2. W picks the Move tool: its button in the tool bar lights up. Only
+#    the buttons themselves are compared: the bar is a little see-through
+#    (the design's pill), so the viewport moving behind and around it must
+#    not count.
 xdotool key --window "$WINDOW_ID" w || true
 shot move-tool
-TOOL_CHANGE="$(changed_pixels first move-tool 200x50+560+595)"
+TOOL_CHANGE="$(changed_pixels first move-tool 160x26+578+603)"
 echo "Pixels changed in the tool bar by pressing W: $TOOL_CHANGE"
 [ "$TOOL_CHANGE" -gt 100 ] || fail "W did not pick the Move tool"
 
@@ -153,7 +156,7 @@ shot flown
 FLY_CHANGE="$(changed_pixels move-tool flown 800x450+280+100)"
 echo "Pixels changed in the viewport by flying: $FLY_CHANGE"
 [ "$FLY_CHANGE" -gt 5000 ] || fail "right mouse and W did not fly the camera"
-TOOL_AFTER="$(changed_pixels move-tool flown 200x50+560+595)"
+TOOL_AFTER="$(changed_pixels move-tool flown 160x26+578+603)"
 echo "Pixels changed in the tool bar by flying: $TOOL_AFTER"
 [ "$TOOL_AFTER" -lt 100 ] || fail "W picked a tool while flying"
 

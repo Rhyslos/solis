@@ -817,7 +817,7 @@ fn folder_tree(
                 let open = state.folder == folder && state.search.is_empty();
                 if open {
                     ui.painter()
-                        .rect_filled(rect, 3.0, accent.colors().fill.gamma_multiply(0.45));
+                        .rect_filled(rect, 3.0, crate::tokens::select_row(accent));
                 } else if response.hovered() {
                     ui.painter().rect_filled(rect, 3.0, theme::hover());
                 }
@@ -1406,7 +1406,7 @@ fn list(
                 let selected = state.selected.as_deref() == Some(item.path.as_str());
                 if selected {
                     ui.painter()
-                        .rect_filled(rect, 3.0, accent.colors().fill.gamma_multiply(0.45));
+                        .rect_filled(rect, 3.0, crate::tokens::select_row(accent));
                 } else if response.hovered() {
                     ui.painter().rect_filled(rect, 3.0, theme::hover());
                 }

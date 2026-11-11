@@ -101,7 +101,7 @@ fn area_row(
     });
     if selected {
         ui.painter()
-            .rect_filled(row, 3.0, accent.colors().fill.gamma_multiply(0.45));
+            .rect_filled(row, 3.0, crate::tokens::select_row(accent));
     } else if response.hovered() {
         ui.painter().rect_filled(row, 3.0, theme::hover());
     }
