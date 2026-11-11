@@ -248,7 +248,8 @@ pub(crate) struct Luau {
     lend: Function,
     /// The classes `component` made since it was last asked.
     made: Function,
-    /// A `send_event` that drops what it's given, for the code's starts.
+    /// A `send_event` that drops what it's given, for game code's starts:
+    /// the code's own, and a component's fields' starting values.
     pub(crate) discard: Function,
     /// Puts the guard on a game-wide object ([`crate::objects::WRAP`]).
     pub(crate) wrap_object: Function,

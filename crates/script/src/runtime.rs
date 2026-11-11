@@ -500,7 +500,10 @@ impl Runtime {
 
     /// [`Runtime::sync`] for many components at once, with the natives
     /// lent once and all the game code it runs (new components' starts)
-    /// sharing [`LOAD_LIMIT`]. Gives back the failures.
+    /// sharing [`LOAD_LIMIT`]. Gives back the failures. An event a start
+    /// sends goes nowhere, as one the code's own start sends does
+    /// ([`Runtime::load`], [`Runtime::swap`]): one rule wherever game
+    /// code starts.
     pub fn sync_many<'a>(
         &mut self,
         components: impl IntoIterator<Item = (EntityId, &'a str, &'a ComponentData)>,
@@ -536,7 +539,11 @@ impl Runtime {
         let lust_env = self.lust.as_ref().map(|p| &p.env);
         let luau = &self.luau;
         let lent = luau.clock.within(LOAD_LIMIT, || {
-            with_natives(luau, lust_env, host, Some(&self.send), |lent| {
+            // A start's sends are dropped. Kept, they would wait in the
+            // queue for the next tick, which hands whatever waits there
+            // to the first component it runs: another sender, and another
+            // order, on every number of shards.
+            with_natives(luau, lust_env, host, Some(&luau.discard), |lent| {
                 for (entity, name, data, set) in components {
                     // What a new component's start changes lands in order.
                     lent.borrow_mut().at(&crate::ticking::Order {

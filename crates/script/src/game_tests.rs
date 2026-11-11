@@ -829,6 +829,81 @@ fn fields_set_by_hand_reach_their_component_on_any_number_of_shards() {
     }
 }
 
+/// The review, BUG-48: what a component sends while it starts (a field's
+/// starting value calling a method that sends) goes nowhere, as what the
+/// code's own start sends does. It used to wait for the next tick, where
+/// each shard put it down to whichever of its components updated first,
+/// so the bell below heard the ringers in another order on every number
+/// of shards.
+#[test]
+fn what_a_starting_component_sends_goes_nowhere_on_any_number_of_shards() {
+    const RINGERS: &str = "fetch \"solis/world\":World;\n\n\
+        event Rang(float number);\n\
+        method float ring() {\n\
+            float number = World:random();\n\
+            send Rang(number) to World:find(\"Bell\");\n\
+            return number;\n\
+        }\n\
+        component Ringer {\n\
+            has {\n\
+                float rang = ring();\n\
+            }\n\
+        }\n\
+        component Bell {\n\
+            has {\n\
+                int heard = 0;\n\
+                float mix = 0;\n\
+            }\n\
+            on Rang(float number) {\n\
+                heard = heard + 1;\n\
+                mix = mix / 2 + number + World:random();\n\
+                World:say(\"rang \" + number.text());\n\
+            }\n\
+        }\n\
+        pass Ringer, Bell;\nend\n";
+    const RINGERS_PLAYING: u64 = 12;
+    let run = |shards: usize| {
+        let mut names: Vec<String> = (1..=RINGERS_PLAYING).map(|n| format!("R{n}")).collect();
+        names.push("Bell".into());
+        let names: Vec<&str> = names.iter().map(String::as_str).collect();
+        let mut world = TestWorld::with(&names);
+        let mut game = Game::new(shards).unwrap();
+        assert_eq!(game.shards(), shards);
+        game.load(&compiled(RINGERS), &mut world).unwrap();
+        let empty = ComponentData::default();
+        let bell = id(RINGERS_PLAYING + 1);
+        let mut components: Vec<(EntityId, &str, &ComponentData)> = (1..=RINGERS_PLAYING)
+            .map(|n| (id(n), "Ringer", &empty))
+            .collect();
+        components.push((bell, "Bell", &empty));
+        assert!(game.sync_many(components, &mut world).is_empty());
+        let mut sums = Vec::new();
+        for t in 1..=3_u64 {
+            world.set_clock(t, t as f64 / 60.0);
+            let ticked = game.tick(1.0 / 60.0, &mut world);
+            assert!(ticked.failures.is_empty(), "{:?}", ticked.failures);
+            sums.push(game.checksum());
+        }
+        // Every ringer started: each rolled a number of its own.
+        let rang: std::collections::HashSet<u64> = (1..=RINGERS_PLAYING)
+            .map(
+                |n| match game.values(id(n), "Ringer").unwrap().get("rang") {
+                    Some(Value::Float(number)) => number.to_bits(),
+                    other => panic!("R{n} rang {other:?}"),
+                },
+            )
+            .collect();
+        assert_eq!(rang.len(), RINGERS_PLAYING as usize);
+        (world.said, sums, game.values(bell, "Bell").unwrap())
+    };
+    let one = run(1);
+    for shards in [2, 4] {
+        assert_eq!(run(shards), one, "on {shards} shards");
+    }
+    assert_eq!(one.2.get("heard"), Some(&Value::Int(0)), "{:?}", one.0);
+    assert!(one.0.is_empty(), "{:?}", one.0);
+}
+
 #[test]
 fn set_bus_volume_lands_within_zero_to_one() {
     const OPTIONS: &str = "fetch \"solis/project\":Bus;\nfetch \"solis/sound\":Audio;\n\n\
