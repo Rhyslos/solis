@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+<meta charset="utf-8">
+<title>G — Material</title>
+<script src="1cf7df8f-0221-4ad0-910b-c45daef3fedc"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<style></style>
+<style>
+body{margin:0;background:#0e0e0e;font-family:Inter,system-ui,sans-serif;color:#e6e6e6;font-size:12px;-webkit-font-smoothing:antialiased}
+*{box-sizing:border-box}
+a{color:#7fb2ff}a:hover{color:#a9cbff}
+button{font:inherit;color:inherit;background:none;border:0;padding:0;cursor:pointer}
+input{font:inherit;color:inherit}
+.mono{font-family:'JetBrains Mono',ui-monospace,monospace}
+.ib{width:26px;height:26px;display:inline-flex;align-items:center;justify-content:center;border-radius:5px;color:#a6a6a6}
+.ib:hover{background:#262626;color:#e6e6e6}
+.rt{height:30px;display:inline-flex;align-items:center;padding:0 12px;font-size:12px;color:#a6a6a6;border-bottom:2px solid transparent}
+.rg{display:flex;flex-direction:column;padding:4px 10px 2px;border-right:1px solid #262626;flex:none}
+.rgb{display:flex;gap:2px;flex:1;align-items:center}
+.rgl{font-size:10px;color:#8c8c8c;text-align:center;letter-spacing:.04em}
+.big{width:50px;height:44px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;border-radius:6px;color:#c8c8c8;font-size:10px}
+.big:hover{background:#242424}
+.sm{height:20px;display:flex;align-items:center;gap:6px;padding:0 8px;border-radius:4px;color:#c8c8c8;font-size:11px;white-space:nowrap}
+.sm:hover{background:#242424}
+.chk{width:12px;height:12px;border-radius:3px;border:1px solid #3a3a3a;display:inline-block;flex:none}
+.etab{height:30px;display:inline-flex;align-items:center;gap:7px;padding:0 12px;font-size:11.5px;color:#8c8c8c;border-right:1px solid #0e0e0e;background:#141414}
+.pill{height:24px;display:inline-flex;align-items:center;gap:6px;padding:0 8px;border-radius:5px;background:rgba(18,18,18,.85);border:1px solid #2e2e2e;color:#c8c8c8;font-size:11px}
+.shelfbar{height:34px;display:flex;align-items:center;gap:4px;padding:0 10px;background:#141414;border-top:1px solid #262626;border-bottom:1px solid #262626;flex:none}
+.stab{height:26px;padding:0 12px;border-radius:6px;font-size:12px;color:#a6a6a6}
+.ch{height:30px;display:flex;align-items:center;gap:8px;padding:0 12px;border-bottom:1px solid #262626;font-size:11.5px;font-weight:600;color:#c8c8c8;flex:none}
+.col{display:flex;flex-direction:column;min-width:0;background:#1a1a1a}
+.row{height:24px;display:flex;align-items:center;gap:6px;padding:0 12px;color:#c8c8c8;white-space:nowrap;font-size:11.5px}
+.card{flex:1 1 190px;min-width:180px;background:#1f1f1f;border:1px solid #2a2a2a;border-radius:8px;padding:10px;display:flex;flex-direction:column;gap:8px}
+.ct{font-size:11.5px;font-weight:600;color:#e6e6e6}
+.field{height:24px;background:#121212;border:1px solid #2c2c2c;border-radius:5px;padding:0 7px;display:flex;align-items:center;gap:6px;font-family:'JetBrains Mono',ui-monospace,monospace;font-size:11px;color:#e6e6e6;min-width:0}
+.lbl{color:#a6a6a6;font-size:11.5px}
+.thumb{aspect-ratio:1/1;border-radius:6px;background:#242424;border:1px solid #2c2c2c;display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden}
+.tname{font-size:11px;color:#d0d0d0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ttype{font-size:10.5px;color:#8c8c8c;display:flex;align-items:center;gap:5px}
+.dot{width:7px;height:7px;border-radius:2px;display:inline-block;flex:none}
+.seg{display:flex;padding:2px;background:#0e0e0e;border:1px solid #262626;border-radius:6px}
+.seg button{height:20px;padding:0 9px;border-radius:4px;font-size:11px;color:#a6a6a6;font-weight:500}
+.kv{display:grid;grid-template-columns:96px minmax(0,1fr);gap:7px 10px;font-size:11.5px}
+.k{color:#8c8c8c}.v{color:#e6e6e6;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.code{font-family:'JetBrains Mono',ui-monospace,monospace;font-size:11.5px;line-height:19px;white-space:pre;color:#d4d4d4}
+.slider{flex:1;height:4px;border-radius:2px;background:#2c2c2c;position:relative}
+.trk{height:26px;display:flex;align-items:center;gap:6px;padding:0 12px;border-bottom:1px solid #1e1e1e;white-space:nowrap;font-size:11.5px;color:#c8c8c8}
+.lane{height:26px;position:relative;border-bottom:1px solid #1e1e1e}
+.key{position:absolute;top:8px;width:10px;height:10px;margin-left:-5px;transform:rotate(45deg);border-radius:1.5px;background:#d4d4d4}
+.gkey{position:absolute;top:9px;width:8px;height:8px;margin-left:-4px;transform:rotate(45deg);border-radius:1.5px;background:#8c8c8c}
+.log{display:flex;gap:12px;align-items:baseline;padding:3px 14px;font-family:'JetBrains Mono',ui-monospace,monospace;font-size:11px;line-height:1.55;white-space:nowrap}
+.node{position:absolute;background:#222222;border:1px solid #363636;border-radius:8px;box-shadow:0 6px 18px rgba(0,0,0,.35)}
+.nh{height:28px;display:flex;align-items:center;gap:7px;padding:0 10px;border-radius:7px 7px 0 0;font-size:11.5px;font-weight:600;color:#e6e6e6;border-bottom:1px solid #2e2e2e;background:#2a2a2a}
+.nb{padding:6px 0}
+.pr{height:24px;position:relative;display:flex;align-items:center;padding:0 12px;font-size:11px;color:#c8c8c8}
+.pin{position:absolute;top:7px;width:10px;height:10px;border-radius:50%;border:2px solid}
+.pin.in{left:-6px}.pin.out{right:-6px}
+.bsnav{height:36px;display:flex;align-items:center;gap:10px;padding:0 14px;border-radius:7px;color:#a6a6a6;font-size:13px;font-weight:500;width:100%}
+.bsnav:hover{background:#1e1e1e;color:#e6e6e6}
+.sett{display:grid;grid-template-columns:minmax(0,1fr) 260px;gap:16px;align-items:center;padding:12px 0;border-bottom:1px solid #222222}
+.sd{font-size:11.5px;color:#8c8c8c;margin-top:3px;line-height:1.45}
+</style>
+</helmet>
+<div style="width: 100%; min-height: 900px; display: flex; flex-direction: column; background: #0e0e0e">
+  <header style="height: 34px; display: flex; align-items: flex-end; gap: 4px; padding: 0 10px; background: #0e0e0e">
+    <div style="align-self: center; width: 20px; height: 20px; border-radius: 5px; background: #e6e6e6; display: flex; align-items: center; justify-content: center; margin-right: 8px"><svg width="12" height="12" sc-camel-view-box="0 0 16 16" fill="none" stroke="#0e0e0e" stroke-width="2" aria-hidden="true"><path d="M8 1.5l5.5 3v7L8 14.5 2.5 11.5v-7z"></path></svg></div>
+    <nav style="display: flex" role="tablist" aria-label="Ribbon"><button class="rt" role="tab">File</button><button class="rt" role="tab">Home</button><button class="rt" role="tab">Library</button><button class="rt" role="tab" aria-selected="true" style="color: #ffffff; background: #181818; border-radius: 6px 6px 0 0; border-bottom-color: {{accent}}">Shading</button><button class="rt" role="tab">Animate</button><button class="rt" role="tab">VFX</button><button class="rt" role="tab">Audio</button><button class="rt" role="tab">Debug</button><button class="rt" role="tab">Build</button></nav>
+    <span style="flex: 1"></span>
+    <button style="align-self: center; height: 24px; width: 380px; max-width: 36%; display: flex; align-items: center; gap: 8px; padding: 0 10px; border-radius: 6px; background: #181818; border: 1px solid #262626; color: #8c8c8c; font-size: 11.5px"><svg width="12" height="12" sc-camel-view-box="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><circle cx="7" cy="7" r="4.5"></circle><path d="M10.5 10.5L14 14"></path></svg><span style="flex: 1; text-align: left">Search or run a command</span><span class="mono" style="font-size: 10px">Ctrl K</span></button>
+    <span style="flex: 1"></span>
+    <span style="align-self: center; font-size: 11.5px; color: #a6a6a6; white-space: nowrap">Harbor_Prototype <span style="color: #5a5a5a">/</span> <span style="color: #e6e6e6">Docks_Night</span></span>
+    <button class="ib" style="align-self: center; margin-left: 6px" aria-label="Collapse ribbon"><svg width="12" height="12" sc-camel-view-box="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 10l4-4 4 4"></path></svg></button>
+  </header>
+  <div style="height: 66px; display: flex; background: #181818; border-bottom: 1px solid #262626; overflow-x: auto" role="toolbar" aria-label="Shading ribbon"><div class="rg"><div class="rgb"><button class="big" style="background: color-mix(in srgb, {{accent}} 22%, transparent); color: #ffffff"><svg width="18" height="18" sc-camel-view-box="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" aria-hidden="true"><path d="M3 8.5l3 3 7-7"></path></svg>Apply</button><button class="big" style=""><svg width="18" height="18" sc-camel-view-box="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" aria-hidden="true"><path d="M3 2.5h8l2.5 2.5v8.5h-10.5z"></path><path d="M5.5 2.5v3.5h5V2.5"></path></svg>Save</button></div><span class="rgl">Material</span></div><div class="rg"><div class="rgb"><button class="big" style=""><svg width="18" height="18" sc-camel-view-box="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" aria-hidden="true"><rect x="2" y="2" width="12" height="12" rx="1.5"></rect><path d="M2 11l4-4 3 3 2-2 3 3"></path></svg>Texture</button><button class="big" style=""><svg width="18" height="18" sc-camel-view-box="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" aria-hidden="true"><path d="M3 5h4M5 3v4M9.5 4.5l3 3M12.5 4.5l-3 3M3 11.5h4M9 10h4M9 13h4"></path></svg>Math</button><button class="big" style=""><svg width="18" height="18" sc-camel-view-box="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" aria-hidden="true"><path d="M2 4h7M12 4h2M2 12h2M7 12h7"></path><circle cx="10.5" cy="4" r="1.5"></circle><circle cx="5.5" cy="12" r="1.5"></circle></svg>Param</button></div><span class="rgl">Add node</span></div><div class="rg"><div class="rgb" style="flex-direction: column; align-items: stretch; justify-content: center; gap: 1px"><button class="sm">Auto-layout</button><button class="sm">Comment frame</button><button class="sm">Wires: Curved ▾</button></div><span class="rgl">Graph</span></div><div class="rg"><div class="rgb" style="flex-direction: column; align-items: stretch; justify-content: center; gap: 1px"><button class="sm">Shape: Sphere ▾</button><button class="sm"><span class="chk" style="background: {{accent}}; border-color: {{accent}}"></span>Lit</button><button class="sm"><span class="chk" style="background: {{accent}}; border-color: {{accent}}"></span>Live update</button></div><span class="rgl">Preview</span></div></div>
+  <div style="height: 430px; display: flex; gap: 1px; background: #1e1e1e; flex: none; flex-wrap: wrap">
+    <section style="flex: 3 1 560px; min-width: 0; display: flex; flex-direction: column; background: #141414" aria-label="Node graph">
+      <div style="height: 30px; display: flex; background: #0e0e0e; flex: none"><span class="etab" style="background: #1c1c1c; color: #e6e6e6; box-shadow: inset 0 1px 0 {{accent}}"><span class="dot" style="background: #6cc28a"></span> M_Steel_Painted</span><span class="etab">M_Rust</span><span class="etab">MF_Triplanar</span></div>
+      <div style="flex: 1; position: relative; overflow: hidden; background-color: #141414; background-image: radial-gradient(#2a2a2a 1px, transparent 1px); background-size: 20px 20px"><div style="position: absolute; left: 24px; top: 30px; width: 860px; height: 380px">
+      <div style="position: absolute; left: 14px; top: 6px; width: 202px; height: 352px; border-radius: 10px; background: rgba(255,255,255,.03); border: 1px solid #333333"><span style="position: absolute; top: -20px; left: 4px; font-size: 11px; font-weight: 600; color: #a6a6a6">Surface textures</span></div>
+      <svg width="860" height="380" sc-camel-view-box="0 0 860 380" style="position: absolute; inset: 0" aria-hidden="true"><g fill="none" stroke-width="2">
+        <path d="M200 64C260 64 390 168 450 168" stroke="#e8c95a"></path><path d="M200 214C260 214 390 144 450 144" stroke="#e8c95a"></path>
+        <path d="M200 112C230 112 220 304 250 304" stroke="#9a9a9a"></path><path d="M200 324C225 324 225 328 250 328" stroke="#9a9a9a"></path>
+        <path d="M400 304C430 304 420 192 450 192" stroke="#9a9a9a"></path><path d="M600 144C630 144 620 94 650 94" stroke="{{accent}}" stroke-width="2.5"></path></g></svg>
+      <div class="node" style="left: 30px; top: 16px; width: 170px"><div class="nh"><span class="dot" style="background: #e57f6a"></span>Texture Sample</div><div class="nb" style="position: relative"><span style="position: absolute; left: 10px; top: 8px; width: 46px; height: 46px; border-radius: 5px; background: repeating-linear-gradient(45deg,#4a4a4a 0 5px,#3a3a3a 5px 10px)"></span><div class="pr" style="justify-content: flex-end">RGB<span class="pin out" style="border-color: #e8c95a; background: #e8c95a"></span></div><div class="pr" style="justify-content: flex-end">R<span class="pin out" style="border-color: #9a9a9a;"></span></div><div class="pr" style="justify-content: flex-end">A<span class="pin out" style="border-color: #9a9a9a; background: #9a9a9a"></span></div></div></div>
+      <div class="node" style="left: 30px; top: 166px; width: 170px"><div class="nh"><span class="dot" style="background: #e57f6a"></span>Texture Sample</div><div class="nb" style="position: relative"><span style="position: absolute; left: 10px; top: 8px; width: 46px; height: 46px; border-radius: 5px; background: linear-gradient(135deg,#c0c0c0,#5e5e5e)"></span><div class="pr" style="justify-content: flex-end">RGB<span class="pin out" style="border-color: #e8c95a; background: #e8c95a"></span></div><div class="pr" style="justify-content: flex-end">R<span class="pin out" style="border-color: #9a9a9a;"></span></div><div class="pr" style="justify-content: flex-end">A<span class="pin out" style="border-color: #9a9a9a;"></span></div></div></div>
+      <div class="node" style="left: 30px; top: 290px; width: 170px"><div class="nh"><span class="dot" style="background: #6cc28a"></span>Parameter</div><div class="nb"><div class="pr" style="justify-content: space-between">Rust_Amount<span class="pin out" style="border-color: #9a9a9a; background: #9a9a9a"></span></div></div></div>
+      <div class="node" style="left: 250px; top: 256px; width: 150px"><div class="nh">Multiply</div><div class="nb"><div class="pr" style="justify-content: space-between"><span class="pin in" style="border-color: #9a9a9a; background: #9a9a9a"></span>A<span>Result</span><span class="pin out" style="border-color: #9a9a9a; background: #9a9a9a"></span></div><div class="pr"><span class="pin in" style="border-color: #9a9a9a; background: #9a9a9a"></span>B</div></div></div>
+      <div class="node" style="left: 450px; top: 96px; width: 150px; border-color: {{accent}}; box-shadow: 0 0 0 1px {{accent}}, 0 8px 24px rgba(0,0,0,.45)"><div class="nh">Lerp</div><div class="nb"><div class="pr" style="justify-content: space-between"><span class="pin in" style="border-color: #e8c95a; background: #e8c95a"></span>A<span>Result</span><span class="pin out" style="border-color: #e8c95a; background: #e8c95a"></span></div><div class="pr"><span class="pin in" style="border-color: #e8c95a; background: #e8c95a"></span>B</div><div class="pr"><span class="pin in" style="border-color: #9a9a9a; background: #9a9a9a"></span>Alpha</div></div></div>
+      <div class="node" style="left: 650px; top: 46px; width: 190px"><div class="nh" style="background: #303030"><svg width="12" height="12" sc-camel-view-box="0 0 16 16" fill="none" stroke="#c8c8c8" stroke-width="1.6" aria-hidden="true"><circle cx="8" cy="8" r="6"></circle><path d="M5 5a4 4 0 014-1"></path></svg>Material Output</div><div class="nb"><div class="pr"><span class="pin in" style="border-color: #e8c95a; background: #e8c95a"></span>Base Color</div><div class="pr" style="justify-content: space-between"><span class="pin in" style="border-color: #9a9a9a;"></span>Metallic<span class="mono" style="color: #8c8c8c; font-size: 10.5px">1.0</span></div><div class="pr" style="justify-content: space-between"><span class="pin in" style="border-color: #9a9a9a;"></span>Roughness<span class="mono" style="color: #8c8c8c; font-size: 10.5px">0.62</span></div><div class="pr"><span class="pin in" style="border-color: #e8c95a;"></span>Normal</div><div class="pr"><span class="pin in" style="border-color: #9a9a9a;"></span>Emissive</div></div></div>
+    </div>
+        <div style="position: absolute; left: 50%; bottom: 12px; transform: translateX(-50%); display: flex; align-items: center; gap: 8px; height: 28px; padding: 0 12px; border-radius: 8px; background: rgba(24,24,24,.92); border: 1px solid #2e2e2e; font-size: 11.5px; color: #a6a6a6"><span class="mono" style="font-size: 10px; padding: 1px 5px; border-radius: 3px; background: #2c2c2c; color: #e6e6e6">Tab</span>Add node<span style="width: 1px; height: 14px; background: #2e2e2e"></span><span class="mono" style="font-size: 10px; padding: 1px 5px; border-radius: 3px; background: #2c2c2c; color: #e6e6e6">F</span>Frame selection</div>
+      </div>
+    </section>
+    <section style="flex: 1 1 280px; min-width: 0; display: flex; flex-direction: column; background: #111111" aria-label="Preview">
+      <div style="height: 30px; display: flex; align-items: center; padding: 0 12px; background: #0e0e0e; font-size: 11.5px; color: #c8c8c8">Preview</div>
+      <div style="flex: 1; display: flex; align-items: center; justify-content: center">
+        <svg width="220" height="220" sc-camel-view-box="0 0 190 190" role="img" aria-label="Material preview sphere"><defs><radialGradient id="gms" cx=".36" cy=".32" r=".75"><stop offset="0" stop-color="#f0f0f0"></stop><stop offset=".35" stop-color="#8e8e8e"></stop><stop offset=".75" stop-color="#2c2c2c"></stop><stop offset="1" stop-color="#151515"></stop></radialGradient><radialGradient id="gmr" cx=".5" cy=".5" r=".5"><stop offset="0" stop-color="#6a6a6a" stop-opacity=".8"></stop><stop offset="1" stop-color="#6a6a6a" stop-opacity="0"></stop></radialGradient><clipPath id="gmc"><circle cx="95" cy="95" r="78"></circle></clipPath></defs><ellipse cx="95" cy="178" rx="60" ry="6" fill="#000" opacity=".5"></ellipse><circle cx="95" cy="95" r="78" fill="url(#gms)"></circle><g clip-path="url(#gmc)"><circle cx="128" cy="130" r="40" fill="url(#gmr)"></circle><circle cx="60" cy="140" r="28" fill="url(#gmr)"></circle></g></svg>
+      </div>
+      <div style="height: 30px; display: flex; align-items: center; gap: 8px; padding: 0 12px; border-top: 1px solid #1e1e1e; font-size: 11px; color: #8c8c8c"><span style="width: 6px; height: 6px; border-radius: 50%; background: #4fc28a"></span>Compiled · 64 instructions · 2 samplers</div>
+    </section>
+  </div>
+  <div class="shelfbar" role="tablist" aria-label="Shelf"><span style="width: 36px; height: 4px; border-radius: 2px; background: #3a3a3a; margin-right: 10px" aria-hidden="true"></span><button class="stab" role="tab" aria-selected="true" style="background: #262626; color: #ffffff; font-weight: 500">Parameters</button><button class="stab" role="tab">Node · Lerp</button><button class="stab" role="tab">Palette</button><button class="stab" role="tab">Instances · 6</button><span style="flex: 1"></span></div>
+  <div style="flex: 1; display: flex; flex-wrap: wrap; gap: 1px; background: #262626; min-height: 300px">
+    <div class="col" style="flex: 999 1 560px" aria-label="Parameters">
+      <div class="ch">M_Steel_Painted<span style="font-weight: 400; color: #8c8c8c">5 parameters</span></div>
+      <div style="flex: 1; display: flex; gap: 10px; padding: 10px; flex-wrap: wrap; align-content: flex-start">
+        <div class="card"><span class="ct">Surface</span><div style="display: flex; flex-direction: column; gap: 6px"><div style="display: flex; justify-content: space-between"><span class="lbl">Rust_Amount</span><span class="mono" style="font-size: 11px">0.35</span></div><div class="slider"><div style="width: 35%; height: 4px; border-radius: 2px; background: {{accent}}"></div><span style="position: absolute; left: 35%; top: -4px; margin-left: -6px; width: 12px; height: 12px; border-radius: 50%; background: #e6e6e6"></span></div></div><div style="display: flex; flex-direction: column; gap: 6px"><div style="display: flex; justify-content: space-between"><span class="lbl">Roughness</span><span class="mono" style="font-size: 11px">0.62</span></div><div class="slider"><div style="width: 62%; height: 4px; border-radius: 2px; background: {{accent}}"></div><span style="position: absolute; left: 62%; top: -4px; margin-left: -6px; width: 12px; height: 12px; border-radius: 50%; background: #e6e6e6"></span></div></div></div>
+        <div class="card"><span class="ct">Color</span><div style="display: grid; grid-template-columns: 74px minmax(0, 1fr); gap: 6px 8px; align-items: center"><span class="lbl">Paint_Tint</span><div class="field"><span style="width: 12px; height: 12px; border-radius: 3px; background: #c9c9c9"></span>#C9C9C9</div><span class="lbl">Two-sided</span><span class="chk"></span></div></div>
+        <div class="card"><span class="ct">Tiling</span><div style="display: grid; grid-template-columns: 74px minmax(0, 1fr); gap: 6px 8px; align-items: center"><span class="lbl">Rust_Tiling</span><div class="field">4.0</div><span class="lbl">UV set</span><div class="field" style="font-family: Inter, sans-serif">UV0 ▾</div></div></div>
+      </div>
+    </div>
+    <div class="col" style="flex: 1 1 280px; max-width: 320px" aria-label="Pin types">
+      <div class="ch">Pin types</div>
+      <div style="padding: 12px; display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 10px; font-size: 11.5px; color: #a6a6a6">
+        <span style="display: flex; align-items: center; gap: 6px"><span style="width: 10px; height: 10px; border-radius: 50%; border: 2px solid #9a9a9a"></span>Float</span>
+        <span style="display: flex; align-items: center; gap: 6px"><span style="width: 10px; height: 10px; border-radius: 50%; border: 2px solid #e8c95a"></span>Vector3</span>
+        <span style="display: flex; align-items: center; gap: 6px"><span style="width: 10px; height: 10px; border-radius: 50%; border: 2px solid #c38cff"></span>Color</span>
+        <span style="display: flex; align-items: center; gap: 6px"><span style="width: 10px; height: 10px; border-radius: 2px; border: 2px solid #e57f6a"></span>Texture</span>
+      </div>
+    </div>
+  </div>
+  <footer style="height: 24px; display: flex; align-items: center; gap: 14px; padding: 0 12px; background: #161616; border-top: 1px solid #262626; color: #a6a6a6; font-size: 11px; flex: none">
+    <span style="display: flex; align-items: center; gap: 6px"><span style="width: 6px; height: 6px; border-radius: 50%; background: #4fc28a"></span>Ready</span><span>main · 4 changes</span><span><span style="color: #f06a6a">●</span> 1  <span style="color: #e8b04a">●</span> 1</span>
+    <span style="flex: 1"></span><span>Lerp selected</span><span class="mono">v0.1.0</span>
+  </footer>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script="" data-props="{&quot;accent&quot;:{&quot;editor&quot;:&quot;color&quot;,&quot;default&quot;:&quot;#5c9cff&quot;,&quot;options&quot;:[&quot;#5c9cff&quot;,&quot;#d4d4d4&quot;,&quot;#f2994a&quot;,&quot;#4fc2a8&quot;]},&quot;$preview&quot;:{&quot;width&quot;:1440,&quot;height&quot;:900}}">
+class Component extends DCLogic {
+  renderVals() {
+    return { accent: this.props.accent ?? '#5c9cff' };
+  }
+}
+</script>
+
+
+</body></html>

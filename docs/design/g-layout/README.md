@@ -26,6 +26,8 @@ The project lead's design for the editor's interface, the "G layout": a tab bar,
 | Folder | Approved | What it adds |
 | --- | --- | --- |
 | [`additions/round-1/`](additions/round-1/README.md) | 2026-11-11 | A placeholder's look and the hidden state, the tab bar for Solis's tabs, the collapsed ribbon, Home's ribbon stopped, playing and paused, the Game tab, the Debug ribbon's Session group, the document tab's menus, the Console on the shelf, the dialog card, and the sheets of new icons |
+| [`additions/round-2/`](additions/round-2/README.md) | 2026-11-11 | The everyday screens (M5 to M9): Hints, the viewport's pills and menus, the toolbox, Properties as cards, the Area column, placing, colours for Solis's kinds of file, Library details, Recent projects with Solis's examples, Learn, Updates and About, Preferences' other tabs, Project settings (2D, Build, Input), and every new key and mouse action. Templates at screen size. |
+| [`additions/round-3/`](additions/round-3/README.md) | 2026-11-11 | Solis's 2D editors and the rest (M10 to M15): painting a tile map, the tileset editor, picture crops, sprite clips and frames, the animator graph, the game-screen editor, Audio and Debug with what Solis has, the Build tab, the unbuilt screens, dragging a document tab. Templates at screen size. |
 
 ## How the pictures are used
 
@@ -36,4 +38,5 @@ The project lead's design for the editor's interface, the "G layout": a tab bar,
 ## What isn't here
 
 - **The mock-up's HTML and the PDF copies** stay with the project lead: they are large, and the specification and pictures say the same. Where the specification leaves a value out and the HTML had one, the value is written down in the plan's inventory ([`shared-1-ui-remake-inventory.md`](../../plans/shared-1-ui-remake-inventory.md), part d) and in `crates/editor/src/tokens.rs`.
-- **Parts the design doesn't draw that are still to be mocked up** (Solis's 2D editors, the Library's chips for Solis's kinds of file, the pages of File the design names but leaves undrawn, and more). Each is drawn in the design's own language on its screens and approved by the project lead before it is built; the plan lists them and records each approval. Once approved, a round's pictures join `additions/`.
+- **Every part the design doesn't draw has now been mocked up and approved** (rounds 1 to 3, 2026-11-11). Anything new that turns up while building is drawn in the design's language on its screens and approved before it is built, as these were.
+- **`markup/`** holds the mock-up's own markup and styles, one text file a screen (`01-home-level-editor.html.txt` …): the place to read an exact size, colour or icon path the specification leaves out. It is read as data, never built or shipped.

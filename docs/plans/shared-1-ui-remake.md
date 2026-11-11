@@ -45,6 +45,38 @@ Shown to the project lead in the same pictures and not objected to, so treated a
 17. **All of mock-up round 1 is approved as drawn,** including what had not been shown before: the Debug ribbon with its Session group, the document tab's "+" and right-click menus, the Console's tools on the shelf bar, and the shared dialog card. The approved pictures are in the repository: [`docs/design/g-layout/additions/round-1/`](../design/g-layout/additions/round-1/README.md).
 
 
+**2026-11-11, 19:59, two mouse actions for the ribbon (rule 17):**
+
+18. **The mouse wheel over the ribbon scrolls it sideways** when it doesn't fit. **A Create button's list of kinds** opens from a small arrow on the button or a right-click; a plain click makes the usual kind; no long press. (Decision 0103.)
+
+**2026-11-11, about 20:40, on the second round of mock-ups** ([`additions/round-2`](../design/g-layout/additions/round-2/README.md)), each asked as a question:
+
+19. **Hints: a card under Properties** (`01-hints-card-a`), chosen over a strip pinned to the bottom of the shelf. Its known cost: it is below the fold when component cards are tall.
+20. **Placing (D16): the Place shelf tab being in front is the mode** (`06-placing-a`). No ribbon button.
+21. **Colours for the kinds of file (D17): option A** (mapped onto the design's colours, `07-library-kinds-a`) **but with option B's colour** (today's `theme::kind`) **for three kinds: sound events, code files and areas.** The Library's milestone (M7) makes one final sheet of every kind's colour for the project lead to check.
+22. **Templates (D8): `09-recent-projects-a`:** the blank project and Solis's four examples (real), then the design's templates as unfinished parts, without VR / XR.
+23. **How Solis starts (D7): in the full editor window,** on the Recent projects page. Decision 0090's small launcher window goes; its two promises stay (always the projects page first; nothing reopened by itself).
+24. **2D settings (D9): a tab of their own** in Project settings, right after General.
+25. **New keys and mouse actions (D15): every recommended answer approved** (`14-keys-and-mouse`): F2 and Delete over the Library or the Assets column act on the picked file, on the entity everywhere else · dragging a field's label changes its value (dragging the value stays) · Shift while dropping a file keeps it loaded for more copies · placing without snapping for one drop is **Ctrl** · R while dragging a file in turns the ghost by the ribbon's Angle step · click-then-click placing and a key that drops under the pointer: **not now** (unfinished part) · a double-click in the Library tab only selects (Place places; the shelf's Assets and Place columns still place) · dragging a tile onto the Home tab: **not now** · all four arrow keys walk the project cards · Backspace clears a picked binding (× stays; while listening, Backspace is a key to bind) · over the Frames tab Left and Right step one frame, Up and Down jump to the next event · a fine fader move is **Shift** · a click on a meter resets its peak (the two drags later) · a click on a bar of the frame-time graph picks that frame · a dragged document tab lands on the left or right half of the center or on another group's tab strip.
+26. **The rest of round 2 is approved as drawn.**
+
+**2026-11-11, 22:57 and 23:15, on the third round of mock-ups** ([`additions/round-3`](../design/g-layout/additions/round-3/README.md)): "All of these look fine as templates, can't wait to see them in engine!", then each choice asked as a question:
+
+27. **A tile map's paint tools are in the ribbon** of a contextual tab, HOME TOOLS · Tile map (`01-tile-map-painting-a`).
+28. **A clip's settings are their own Clip shelf tab** (`04-sprite-clips-a`).
+29. **The game-screen editor's drawing tools are a toolbox** (`07-ui-editor-a`).
+30. **The mixer's Master strip is last,** on the right; the Bus ribbon group stays.
+31. **Two new actions approved:** clicking a layer's row paints on that layer; Esc puts a dragged document tab back.
+32. **The rest of round 3 is approved as drawn.** All three mock-up rounds are now approved: nothing more is needed from the project lead for M4 to M16 except questions that come up while building.
+
+**2026-11-11, how the work is run:**
+
+33. **Choices come as questions.** "Give me them in question form next time so i pay better attention": every choice goes to the project lead as a question to click, one per choice, with the pictures named in it, never as a list in a message.
+34. **Stop after the UI** (21:03): "after the UI update is done, i would like for you to stop working on the next updates and fixes." When Shared 1 is merged, nothing else starts: the paused code review does not resume and the next phase does not begin until the project lead says so.
+35. **Paused to save usage** (23:35): "i will need you to record all your progress and stop here." The work stopped with M3 built. **Where it stands and how to pick it up: [`shared-1-ui-remake-handover.md`](shared-1-ui-remake-handover.md).** Before resuming, ask the project lead how to continue: milestone by milestone as planned, four pull requests (one a phase), or one; the last two with a leaner process (no working in-between states, the manual once at the end), which bends the rules "one milestone per pull request" and "documentation in every pull request" and is the project lead's call.
+
+**What the mock-up rounds found out** (to be folded into the milestones as they are built): the Model component has one setting today (the model), so the Model card's Material and Shadows are unfinished parts and need table lines (M5) · Solis is Z up · "Used by" is unbuilt for every kind but code · a screen is a Lust file shown as Code today · the ready-made input actions share keys on purpose, so a "same input" warning must not mark them · there is no eraser or stamp tool (a right-drag empties; the Eyedropper's copy is the stamp) and no align or distribute · draw calls are measured today (the inventory says unbuilt: wrong) · Solo and ducking exist · the toolbox with nine tools exactly fills the design's viewport height, so it must scroll or wrap when the shelf is taller · six small icons are new in round 3 (minus, add state, transition, start here, wall, take a frame out).
+
 **In numbers** (Inventory b.15): the design has 332 elements. 124 exist in Solis today (40 of them pure shell that this phase builds), 44 partly, and 164 are placeholders, 62 of those being three whole unbuilt screens. In the other direction, 29 pieces of today's interface have no place in the design (Inventory part (a)); each has a proposed place that follows the design's own patterns and needs a mock-up, as do the pages the design names but leaves undrawn (Build, Learn, and several sub-tabs of Preferences and Project settings).
 
 ---

@@ -1,0 +1,137 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+<meta charset="utf-8">
+<title>G — File, Project settings</title>
+<script src="2c384abb-4405-4f3e-8186-ce637615fe25"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<style></style>
+<style>
+body{margin:0;background:#0e0e0e;font-family:Inter,system-ui,sans-serif;color:#e6e6e6;font-size:12px;-webkit-font-smoothing:antialiased}
+*{box-sizing:border-box}
+a{color:#7fb2ff}a:hover{color:#a9cbff}
+button{font:inherit;color:inherit;background:none;border:0;padding:0;cursor:pointer}
+input{font:inherit;color:inherit}
+.mono{font-family:'JetBrains Mono',ui-monospace,monospace}
+.ib{width:26px;height:26px;display:inline-flex;align-items:center;justify-content:center;border-radius:5px;color:#a6a6a6}
+.ib:hover{background:#262626;color:#e6e6e6}
+.rt{height:30px;display:inline-flex;align-items:center;padding:0 12px;font-size:12px;color:#a6a6a6;border-bottom:2px solid transparent}
+.rg{display:flex;flex-direction:column;padding:4px 10px 2px;border-right:1px solid #262626;flex:none}
+.rgb{display:flex;gap:2px;flex:1;align-items:center}
+.rgl{font-size:10px;color:#8c8c8c;text-align:center;letter-spacing:.04em}
+.big{width:50px;height:44px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;border-radius:6px;color:#c8c8c8;font-size:10px}
+.big:hover{background:#242424}
+.sm{height:20px;display:flex;align-items:center;gap:6px;padding:0 8px;border-radius:4px;color:#c8c8c8;font-size:11px;white-space:nowrap}
+.sm:hover{background:#242424}
+.chk{width:12px;height:12px;border-radius:3px;border:1px solid #3a3a3a;display:inline-block;flex:none}
+.etab{height:30px;display:inline-flex;align-items:center;gap:7px;padding:0 12px;font-size:11.5px;color:#8c8c8c;border-right:1px solid #0e0e0e;background:#141414}
+.pill{height:24px;display:inline-flex;align-items:center;gap:6px;padding:0 8px;border-radius:5px;background:rgba(18,18,18,.85);border:1px solid #2e2e2e;color:#c8c8c8;font-size:11px}
+.shelfbar{height:34px;display:flex;align-items:center;gap:4px;padding:0 10px;background:#141414;border-top:1px solid #262626;border-bottom:1px solid #262626;flex:none}
+.stab{height:26px;padding:0 12px;border-radius:6px;font-size:12px;color:#a6a6a6}
+.ch{height:30px;display:flex;align-items:center;gap:8px;padding:0 12px;border-bottom:1px solid #262626;font-size:11.5px;font-weight:600;color:#c8c8c8;flex:none}
+.col{display:flex;flex-direction:column;min-width:0;background:#1a1a1a}
+.row{height:24px;display:flex;align-items:center;gap:6px;padding:0 12px;color:#c8c8c8;white-space:nowrap;font-size:11.5px}
+.card{flex:1 1 190px;min-width:180px;background:#1f1f1f;border:1px solid #2a2a2a;border-radius:8px;padding:10px;display:flex;flex-direction:column;gap:8px}
+.ct{font-size:11.5px;font-weight:600;color:#e6e6e6}
+.field{height:24px;background:#121212;border:1px solid #2c2c2c;border-radius:5px;padding:0 7px;display:flex;align-items:center;gap:6px;font-family:'JetBrains Mono',ui-monospace,monospace;font-size:11px;color:#e6e6e6;min-width:0}
+.lbl{color:#a6a6a6;font-size:11.5px}
+.thumb{aspect-ratio:1/1;border-radius:6px;background:#242424;border:1px solid #2c2c2c;display:flex;align-items:center;justify-content:center;position:relative;overflow:hidden}
+.tname{font-size:11px;color:#d0d0d0;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.ttype{font-size:10.5px;color:#8c8c8c;display:flex;align-items:center;gap:5px}
+.dot{width:7px;height:7px;border-radius:2px;display:inline-block;flex:none}
+.seg{display:flex;padding:2px;background:#0e0e0e;border:1px solid #262626;border-radius:6px}
+.seg button{height:20px;padding:0 9px;border-radius:4px;font-size:11px;color:#a6a6a6;font-weight:500}
+.kv{display:grid;grid-template-columns:96px minmax(0,1fr);gap:7px 10px;font-size:11.5px}
+.k{color:#8c8c8c}.v{color:#e6e6e6;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.code{font-family:'JetBrains Mono',ui-monospace,monospace;font-size:11.5px;line-height:19px;white-space:pre;color:#d4d4d4}
+.slider{flex:1;height:4px;border-radius:2px;background:#2c2c2c;position:relative}
+.trk{height:26px;display:flex;align-items:center;gap:6px;padding:0 12px;border-bottom:1px solid #1e1e1e;white-space:nowrap;font-size:11.5px;color:#c8c8c8}
+.lane{height:26px;position:relative;border-bottom:1px solid #1e1e1e}
+.key{position:absolute;top:8px;width:10px;height:10px;margin-left:-5px;transform:rotate(45deg);border-radius:1.5px;background:#d4d4d4}
+.gkey{position:absolute;top:9px;width:8px;height:8px;margin-left:-4px;transform:rotate(45deg);border-radius:1.5px;background:#8c8c8c}
+.log{display:flex;gap:12px;align-items:baseline;padding:3px 14px;font-family:'JetBrains Mono',ui-monospace,monospace;font-size:11px;line-height:1.55;white-space:nowrap}
+.node{position:absolute;background:#222222;border:1px solid #363636;border-radius:8px;box-shadow:0 6px 18px rgba(0,0,0,.35)}
+.nh{height:28px;display:flex;align-items:center;gap:7px;padding:0 10px;border-radius:7px 7px 0 0;font-size:11.5px;font-weight:600;color:#e6e6e6;border-bottom:1px solid #2e2e2e;background:#2a2a2a}
+.nb{padding:6px 0}
+.pr{height:24px;position:relative;display:flex;align-items:center;padding:0 12px;font-size:11px;color:#c8c8c8}
+.pin{position:absolute;top:7px;width:10px;height:10px;border-radius:50%;border:2px solid}
+.pin.in{left:-6px}.pin.out{right:-6px}
+.bsnav{height:36px;display:flex;align-items:center;gap:10px;padding:0 14px;border-radius:7px;color:#a6a6a6;font-size:13px;font-weight:500;width:100%}
+.bsnav:hover{background:#1e1e1e;color:#e6e6e6}
+.sett{display:grid;grid-template-columns:minmax(0,1fr) 260px;gap:16px;align-items:center;padding:12px 0;border-bottom:1px solid #222222}
+.sd{font-size:11.5px;color:#8c8c8c;margin-top:3px;line-height:1.45}
+
+.kc{height:22px;min-width:22px;display:inline-flex;align-items:center;justify-content:center;padding:0 7px;border-radius:5px;background:#262626;border:1px solid #3a3a3a;border-bottom-width:2px;font-family:'JetBrains Mono',ui-monospace,monospace;font-size:10.5px;color:#e6e6e6;white-space:nowrap}
+.pad{height:22px;display:inline-flex;align-items:center;justify-content:center;padding:0 7px;background:#1e1e1e;border:1px solid #444444;font-family:'JetBrains Mono',ui-monospace,monospace;font-size:10.5px;color:#d0d0d0;white-space:nowrap}
+.ir{display:grid;grid-template-columns:minmax(150px,1.3fr) 88px minmax(0,1.4fr) minmax(0,1fr) 92px;align-items:center;gap:10px;min-height:38px;padding:0 14px;border-bottom:1px solid #222222;font-size:12px}
+.ig{height:28px;display:flex;align-items:center;gap:8px;padding:0 14px;font-size:10.5px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:#8c8c8c;background:#161616;border-bottom:1px solid #222222}
+.strip{width:104px;flex:none;display:flex;flex-direction:column;background:#1a1a1a;border:1px solid #262626;border-radius:8px;overflow:hidden}
+.slot{height:20px;display:flex;align-items:center;gap:5px;padding:0 6px;margin:0 6px;border-radius:4px;background:#222222;font-size:10.5px;color:#c8c8c8}
+.mod{border-radius:7px;background:#1f1f1f;border:1px solid #2a2a2a;padding:8px 10px;display:flex;flex-direction:column;gap:5px}
+.modh{display:flex;align-items:center;gap:6px;font-size:11.5px;font-weight:600;color:#e6e6e6}
+.mkv{display:grid;grid-template-columns:72px minmax(0,1fr);gap:3px 8px;font-size:11px}
+.mkv .k{color:#8c8c8c}
+.stg{font-size:10px;font-weight:600;letter-spacing:.08em;text-transform:uppercase;color:#8c8c8c;padding:6px 2px 2px}
+</style>
+</helmet>
+<div style="width: 100%; min-height: 900px; display: flex; flex-direction: column; background: #0e0e0e">
+  <header style="height: 34px; display: flex; align-items: flex-end; gap: 4px; padding: 0 10px; background: #0e0e0e">
+    <div style="align-self: center; width: 20px; height: 20px; border-radius: 5px; background: #e6e6e6; display: flex; align-items: center; justify-content: center; margin-right: 8px"><svg width="12" height="12" sc-camel-view-box="0 0 16 16" fill="none" stroke="#0e0e0e" stroke-width="2" aria-hidden="true"><path d="M8 1.5l5.5 3v7L8 14.5 2.5 11.5v-7z"></path></svg></div>
+    <nav style="display: flex" role="tablist" aria-label="Ribbon"><button class="rt" role="tab" aria-selected="true" style="color: #ffffff; background: #181818; border-radius: 6px 6px 0 0; border-bottom-color: {{accent}}">File</button><button class="rt" role="tab">Home</button><button class="rt" role="tab">Library</button><button class="rt" role="tab">Shading</button><button class="rt" role="tab">Animate</button><button class="rt" role="tab">VFX</button><button class="rt" role="tab">Audio</button><button class="rt" role="tab">Debug</button><button class="rt" role="tab">Build</button></nav>
+    <span style="flex: 1"></span>
+    <button style="align-self: center; height: 24px; width: 380px; max-width: 36%; display: flex; align-items: center; gap: 8px; padding: 0 10px; border-radius: 6px; background: #181818; border: 1px solid #262626; color: #8c8c8c; font-size: 11.5px"><svg width="12" height="12" sc-camel-view-box="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><circle cx="7" cy="7" r="4.5"></circle><path d="M10.5 10.5L14 14"></path></svg><span style="flex: 1; text-align: left">Search or run a command</span><span class="mono" style="font-size: 10px">Ctrl K</span></button>
+    <span style="flex: 1"></span>
+    <span style="align-self: center; font-size: 11.5px; color: #a6a6a6; white-space: nowrap">Harbor_Prototype <span style="color: #5a5a5a">/</span> <span style="color: #e6e6e6">Docks_Night</span></span>
+    <button class="ib" style="align-self: center; margin-left: 6px" aria-label="Collapse ribbon"><svg width="12" height="12" sc-camel-view-box="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 10l4-4 4 4"></path></svg></button>
+  </header>
+  <div style="flex: 1; display: flex; flex-wrap: wrap; min-height: 0; background: #141414">
+    <nav style="flex: 1 1 220px; max-width: 240px; display: flex; flex-direction: column; gap: 2px; padding: 16px 10px; background: #181818; border-right: 1px solid #262626" aria-label="File menu">
+      <button class="bsnav" style="color: #c8c8c8; margin-bottom: 8px"><svg width="15" height="15" sc-camel-view-box="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6" aria-hidden="true"><path d="M10 3L5 8l5 5"></path></svg>Back to editor</button><button class="bsnav" style=""><svg width="15" height="15" sc-camel-view-box="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" aria-hidden="true"><circle cx="8" cy="8" r="6"></circle><path d="M8 4.5V8l2.5 1.5"></path></svg>Recent projects</button><button class="bsnav" style=""><svg width="15" height="15" sc-camel-view-box="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" aria-hidden="true"><path d="M8 3v10M3 8h10"></path></svg>New project</button><button class="bsnav" style=""><svg width="15" height="15" sc-camel-view-box="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" aria-hidden="true"><path d="M1.5 4.5a1 1 0 011-1h3.5l1.5 1.5h6a1 1 0 011 1v1"></path><path d="M1.5 12.5L3.5 7h11l-2 5.5z"></path></svg>Open…</button><button class="bsnav" style=""><svg width="15" height="15" sc-camel-view-box="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" aria-hidden="true"><path d="M3 2.5h8l2.5 2.5v8.5h-10.5z"></path><path d="M5.5 2.5v3.5h5V2.5"></path></svg>Save all</button><span style="height: 1px; background: #262626; margin: 8px 6px"></span><button class="bsnav" style="background: #1e1e1e; color: #ffffff"><svg width="15" height="15" sc-camel-view-box="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" aria-hidden="true"><circle cx="8" cy="8" r="2.5"></circle><path d="M8 1.5v2M8 12.5v2M1.5 8h2M12.5 8h2M3.4 3.4l1.4 1.4M11.2 11.2l1.4 1.4M3.4 12.6l1.4-1.4M11.2 4.8l1.4-1.4"></path></svg>Project settings</button><button class="bsnav" style=""><svg width="15" height="15" sc-camel-view-box="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" aria-hidden="true"><path d="M2 4h7M12 4h2M2 12h2M7 12h7"></path><circle cx="10.5" cy="4" r="1.5"></circle><circle cx="5.5" cy="12" r="1.5"></circle></svg>Preferences</button><button class="bsnav" style=""><svg width="15" height="15" sc-camel-view-box="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" aria-hidden="true"><path d="M6 2h4v3h3v4h-3v5H6V9H3V5h3z"></path></svg>Plugins</button><span style="height: 1px; background: #262626; margin: 8px 6px"></span><button class="bsnav" style=""><svg width="15" height="15" sc-camel-view-box="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" aria-hidden="true"><path d="M2 3.5h4.5A1.5 1.5 0 018 5v8.5a1.5 1.5 0 00-1.5-1.5H2zM14 3.5H9.5A1.5 1.5 0 008 5v8.5a1.5 1.5 0 011.5-1.5H14z"></path></svg>Learn</button><button class="bsnav" style=""><svg width="15" height="15" sc-camel-view-box="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" aria-hidden="true"><path d="M6 2.5H3v11h3M10 5l3 3-3 3M13 8H6"></path></svg>Exit</button>
+    </nav>
+    <main style="flex: 999 1 560px; min-width: 0; padding: 28px 36px; display: flex; flex-direction: column; gap: 22px">
+      <div style="display: flex; align-items: center; gap: 14px; flex-wrap: wrap"><div style="flex: 1; min-width: 260px; display: flex; flex-direction: column; gap: 4px"><h1 style="margin: 0; font-size: 22px; font-weight: 700">Project settings</h1><span style="color: #8c8c8c; font-size: 12.5px">Shared with everyone on Harbor_Prototype. Stored in <span class="mono" style="font-size: 11.5px; color: #c8c8c8">/Config</span> and tracked in version control.</span></div>
+        <span style="height: 26px; display: inline-flex; align-items: center; gap: 6px; padding: 0 10px; border-radius: 13px; background: color-mix(in srgb, {{accent}} 14%, #141414); color: #e6e6e6; font-size: 11.5px"><span style="width: 6px; height: 6px; border-radius: 50%; background: {{accent}}"></span>4 changed from defaults</span>
+        <label style="height: 32px; width: 280px; display: flex; align-items: center; gap: 8px; padding: 0 10px; background: #0e0e0e; border: 1px solid #2c2c2c; border-radius: 7px; color: #8c8c8c"><svg width="14" height="14" sc-camel-view-box="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><circle cx="7" cy="7" r="4.5"></circle><path d="M10.5 10.5L14 14"></path></svg><input placeholder="Search project settings" aria-label="Search project settings" style="flex: 1; background: none; border: 0; outline: none; font-size: 12.5px; min-width: 0"></label></div>
+      <div style="display: flex; border-bottom: 1px solid #262626; flex-wrap: wrap"><button style="height: 30px; padding: 0 2px; margin-right: 18px; font-size: 12.5px; color: #ffffff; box-shadow: inset 0 -2px 0 {{accent}}; font-weight: 500">General</button><button style="height: 30px; padding: 0 2px; margin-right: 18px; font-size: 12.5px; color: #a6a6a6">Rendering</button><button style="height: 30px; padding: 0 2px; margin-right: 18px; font-size: 12.5px; color: #a6a6a6">Physics</button><button style="height: 30px; padding: 0 2px; margin-right: 18px; font-size: 12.5px; color: #a6a6a6">Input</button><button style="height: 30px; padding: 0 2px; margin-right: 18px; font-size: 12.5px; color: #a6a6a6">Audio</button><button style="height: 30px; padding: 0 2px; margin-right: 18px; font-size: 12.5px; color: #a6a6a6">Platforms</button><button style="height: 30px; padding: 0 2px; margin-right: 18px; font-size: 12.5px; color: #a6a6a6">Build</button><button style="height: 30px; padding: 0 2px; margin-right: 18px; font-size: 12.5px; color: #a6a6a6">Plugins</button></div>
+
+      <div style="display: flex; gap: 32px; flex-wrap: wrap">
+        <section style="flex: 999 1 480px; min-width: 0; max-width: 780px; padding-left: 14px" aria-label="General project settings"><div style="font-size: 10.5px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: #8c8c8c; margin-top: 18px">Identity</div><div class="sett"><div style="position: relative"><div style="font-size: 12.5px; font-weight: 500">Project name</div><div class="sd">Shown in the window title, builds and the Project hub.</div></div><div style="display: flex; justify-content: flex-end"><span class="field" style="width: 260px; font-family: Inter, sans-serif">Harbor_Prototype</span></div></div><div class="sett"><div style="position: relative"><div style="font-size: 12.5px; font-weight: 500">Company</div><div class="sd">Used for save-file folders and build metadata.</div></div><div style="display: flex; justify-content: flex-end"><span class="field" style="width: 260px; font-family: Inter, sans-serif">[STUDIO NAME]</span></div></div><div class="sett"><div style="position: relative"><span title="Changed from default" style="position: absolute; left: -14px; top: 6px; width: 6px; height: 6px; border-radius: 50%; background: {{accent}}"></span><div style="font-size: 12.5px; font-weight: 500">Version <a href="#" style="font-size: 11px; font-weight: 400; margin-left: 6px">Reset</a></div><div class="sd">Your game’s version, not the engine’s. Builds stamp it.</div></div><div style="display: flex; justify-content: flex-end"><span class="field" style="width: 120px;">0.3.0</span></div></div><div class="sett"><div style="position: relative"><div style="font-size: 12.5px; font-weight: 500">Project icon</div><div class="sd">Window, taskbar and build icon. PNG, at least 256 × 256 px.</div></div><div style="display: flex; justify-content: flex-end"><div style="display: flex; align-items: center; gap: 10px"><span style="width: 44px; height: 44px; border-radius: 10px; background: #262626; border: 1px solid #3a3a3a; display: flex; align-items: center; justify-content: center"><svg width="22" height="22" sc-camel-view-box="0 0 16 16" fill="none" stroke="#c8c8c8" stroke-width="1.2" aria-hidden="true"><path d="M8 1.5l5.5 3v7L8 14.5 2.5 11.5v-7z"></path><path d="M2.5 4.5L8 7.5l5.5-3M8 7.5v7"></path></svg></span><button style="height: 26px; padding: 0 10px; border-radius: 6px; background: #262626; border: 1px solid #333333; font-size: 11.5px">Change…</button></div></div></div><div style="font-size: 10.5px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: #8c8c8c; margin-top: 18px">Startup</div><div class="sett"><div style="position: relative"><div style="font-size: 12.5px; font-weight: 500">Game start level</div><div class="sd">The first level loaded when the built game starts.</div></div><div style="display: flex; justify-content: flex-end"><span class="field" style="width: 200px; font-family: Inter, sans-serif; justify-content: space-between">MainMenu<span style="color: #8c8c8c">▾</span></span></div></div><div class="sett"><div style="position: relative"><span title="Changed from default" style="position: absolute; left: -14px; top: 6px; width: 6px; height: 6px; border-radius: 50%; background: {{accent}}"></span><div style="font-size: 12.5px; font-weight: 500">Editor start level <a href="#" style="font-size: 11px; font-weight: 400; margin-left: 6px">Reset</a></div><div class="sd">Opened when the project opens in the editor.</div></div><div style="display: flex; justify-content: flex-end"><span class="field" style="width: 200px; font-family: Inter, sans-serif; justify-content: space-between">Docks_Night<span style="color: #8c8c8c">▾</span></span></div></div><div class="sett"><div style="position: relative"><div style="font-size: 12.5px; font-weight: 500">Default game mode</div><div class="sd">Rules, player and camera used when a level sets none.</div></div><div style="display: flex; justify-content: flex-end"><span class="field" style="width: 200px; font-family: Inter, sans-serif; justify-content: space-between">GM_Harbor<span style="color: #8c8c8c">▾</span></span></div></div><div class="sett"><div style="position: relative"><span title="Changed from default" style="position: absolute; left: -14px; top: 6px; width: 6px; height: 6px; border-radius: 50%; background: {{accent}}"></span><div style="font-size: 12.5px; font-weight: 500">Target frame rate <a href="#" style="font-size: 11px; font-weight: 400; margin-left: 6px">Reset</a></div><div class="sd">Frame-rate cap for the built game. Players can override it.</div></div><div style="display: flex; justify-content: flex-end"><div class="seg"><button>30</button><button style="background: #2c2c2c; color: #ffffff">60</button><button>120</button><button>Unlimited</button></div></div></div><div style="font-size: 10.5px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: #8c8c8c; margin-top: 18px">Engine</div><div class="sett"><div style="position: relative"><div style="font-size: 12.5px; font-weight: 500">Engine version</div><div class="sd">The engine this project is built with.</div></div><div style="display: flex; justify-content: flex-end"><div style="display: flex; align-items: center; gap: 10px"><span class="mono" style="font-size: 11.5px">v0.1.0</span><span style="font-size: 11px; color: #8fd4a8">up to date</span><a href="#" style="font-size: 11.5px">Check now</a></div></div></div><div class="sett"><div style="position: relative"><div style="font-size: 12.5px; font-weight: 500">Scripting</div><div class="sd">How game logic is written. Coding happens through Ledger for now; the built-in code editor comes later.</div></div><div style="display: flex; justify-content: flex-end"><span class="field" style="width: 200px; font-family: Inter, sans-serif; justify-content: space-between">Ledger<span style="color: #8c8c8c">▾</span></span></div></div><div class="sett"><div style="position: relative"><span title="Changed from default" style="position: absolute; left: -14px; top: 6px; width: 6px; height: 6px; border-radius: 50%; background: {{accent}}"></span><div style="font-size: 12.5px; font-weight: 500">Units and axes <a href="#" style="font-size: 11px; font-weight: 400; margin-left: 6px">Reset</a></div><div class="sd">World units and which axis points up. Changing this re-imports assets.</div></div><div style="display: flex; justify-content: flex-end"><div style="display: flex; gap: 8px; align-items: center"><span class="field" style="width: 110px; font-family: Inter, sans-serif; justify-content: space-between">Meters<span style="color: #8c8c8c">▾</span></span><div class="seg"><button style="background: #2c2c2c; color: #ffffff">Y up</button><button>Z up</button></div></div></div></div></section>
+        <aside style="flex: 1 1 280px; max-width: 330px; display: flex; flex-direction: column; gap: 12px" aria-label="Project settings summary">
+          <div style="border-radius: 10px; background: #1a1a1a; border: 1px solid #2a2a2a; padding: 14px; display: flex; flex-direction: column; gap: 10px">
+            <span style="font-size: 12.5px; font-weight: 600">Changed from defaults</span>
+            <div style="display: flex; flex-direction: column; gap: 7px; font-size: 11.5px">
+              <div style="display: flex; gap: 8px; align-items: baseline"><span style="width: 6px; height: 6px; border-radius: 50%; background: {{accent}}; flex: none"></span><span style="flex: 1">Version</span><span class="mono" style="color: #8c8c8c">0.1.0 → 0.3.0</span></div>
+              <div style="display: flex; gap: 8px; align-items: baseline"><span style="width: 6px; height: 6px; border-radius: 50%; background: {{accent}}; flex: none"></span><span style="flex: 1">Editor start level</span><span class="mono" style="color: #8c8c8c">none → Docks_Night</span></div>
+              <div style="display: flex; gap: 8px; align-items: baseline"><span style="width: 6px; height: 6px; border-radius: 50%; background: {{accent}}; flex: none"></span><span style="flex: 1">Target frame rate</span><span class="mono" style="color: #8c8c8c">30 → 60</span></div>
+              <div style="display: flex; gap: 8px; align-items: baseline"><span style="width: 6px; height: 6px; border-radius: 50%; background: {{accent}}; flex: none"></span><span style="flex: 1">Physics › Gravity <span style="font-size: 10px; padding: 1px 5px; border-radius: 3px; background: #262626; color: #a6a6a6">Physics</span></span><span class="mono" style="color: #8c8c8c">-9.81 → -12.0</span></div>
+            </div>
+          </div>
+          <div style="border-radius: 10px; background: #1a1a1a; border: 1px solid #2a2a2a; padding: 14px; display: flex; flex-direction: column; gap: 8px">
+            <span style="font-size: 12.5px; font-weight: 600; display: flex; align-items: center; gap: 8px"><svg width="13" height="13" sc-camel-view-box="0 0 16 16" fill="none" stroke="#a6a6a6" stroke-width="1.5" aria-hidden="true"><circle cx="4" cy="3.5" r="1.5"></circle><circle cx="4" cy="12.5" r="1.5"></circle><circle cx="12" cy="6" r="1.5"></circle><path d="M4 5v6M12 7.5c0 3-8 2-8 3.5"></path></svg>Version control</span>
+            <span style="font-size: 11.5px; color: #a6a6a6; line-height: 1.5"><span class="mono" style="color: #c8c8c8">Config/Project.ini</span> has changes that are not checked in. Teammates get them after you check in.</span>
+            <div style="display: flex; gap: 6px"><button style="height: 28px; padding: 0 12px; border-radius: 6px; background: {{accent}}; color: #0e0e0e; font-weight: 600; font-size: 11.5px">Check in</button><button style="height: 28px; padding: 0 12px; border-radius: 6px; background: #262626; border: 1px solid #333333; font-size: 11.5px">Review</button></div>
+          </div>
+          <div style="font-size: 11px; color: #8c8c8c; line-height: 1.5; padding: 0 4px">A dot before a setting marks a value changed from the engine default. Personal settings such as theme and shortcuts live in Preferences.</div>
+        </aside>
+      </div>
+</main>
+  </div>
+  <footer style="height: 24px; display: flex; align-items: center; gap: 14px; padding: 0 12px; background: #161616; border-top: 1px solid #262626; color: #a6a6a6; font-size: 11px; flex: none">
+    <span style="display: flex; align-items: center; gap: 6px"><span style="width: 6px; height: 6px; border-radius: 50%; background: #4fc28a"></span>Ready</span><span>main · 4 changes</span><span><span style="color: #f06a6a">●</span> 1  <span style="color: #e8b04a">●</span> 1</span>
+    <span style="flex: 1"></span><span>Saved · not checked in</span><span class="mono">v0.1.0</span>
+  </footer>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script="" data-props="{&quot;accent&quot;:{&quot;editor&quot;:&quot;color&quot;,&quot;default&quot;:&quot;#5c9cff&quot;,&quot;options&quot;:[&quot;#5c9cff&quot;,&quot;#d4d4d4&quot;,&quot;#f2994a&quot;,&quot;#4fc2a8&quot;]},&quot;$preview&quot;:{&quot;width&quot;:1440,&quot;height&quot;:900}}">
+class Component extends DCLogic {
+  renderVals() {
+    return { accent: this.props.accent ?? '#5c9cff' };
+  }
+}
+</script>
+
+
+</body></html>

@@ -1,0 +1,329 @@
+<!DOCTYPE html>
+<html lang="en"><head>
+<meta charset="utf-8">
+<title>Level editor</title>
+<script src="42fd5c3f-5234-44be-836c-201d5024958d"></script>
+</head>
+<body>
+<x-dc>
+<helmet>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<style></style>
+<style>
+body{margin:0;background:#0e0e0e;font-family:Inter,system-ui,sans-serif;color:#e6e6e6;font-size:12px;-webkit-font-smoothing:antialiased}
+*{box-sizing:border-box}
+a{color:#7fb2ff}a:hover{color:#a9cbff}
+button{font:inherit;color:inherit;background:none;border:0;padding:0;cursor:pointer}
+input{font:inherit;color:inherit}
+.mono{font-family:'JetBrains Mono',ui-monospace,monospace}
+.ib{width:26px;height:26px;display:inline-flex;align-items:center;justify-content:center;border-radius:5px;color:#a6a6a6}
+.ib:hover{background:#262626;color:#e6e6e6}
+.rt{height:30px;display:inline-flex;align-items:center;padding:0 12px;font-size:12px;color:#a6a6a6;border-bottom:2px solid transparent}
+.rg{display:flex;flex-direction:column;padding:4px 10px 2px;border-right:1px solid #262626;flex:none}
+.rgb{display:flex;gap:2px;flex:1;align-items:center}
+.rgl{font-size:10px;color:#8c8c8c;text-align:center;letter-spacing:.04em}
+.big{width:50px;height:44px;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:4px;border-radius:6px;color:#c8c8c8;font-size:10px}
+.big:hover{background:#242424}
+.sm{height:20px;display:flex;align-items:center;gap:6px;padding:0 8px;border-radius:4px;color:#c8c8c8;font-size:11px;white-space:nowrap}
+.sm:hover{background:#242424}
+.nav{height:30px;display:flex;align-items:center;gap:10px;padding:0 12px;margin:0 6px;border-radius:6px;color:#a6a6a6;font-size:12px;font-weight:500;width:calc(100% - 12px)}
+.nav:hover{background:#1e1e1e;color:#e6e6e6}
+.row{height:24px;display:flex;align-items:center;gap:6px;padding:0 10px;color:#c8c8c8;white-space:nowrap;font-size:11.5px}
+.etab{height:30px;display:inline-flex;align-items:center;gap:7px;padding:0 12px;font-size:11.5px;color:#8c8c8c;border-right:1px solid #0e0e0e;background:#141414}
+.tool{width:34px;height:34px;display:flex;align-items:center;justify-content:center;border-radius:7px;color:#a6a6a6}
+.tool:hover{background:#242424;color:#e6e6e6}
+.pill{height:24px;display:inline-flex;align-items:center;gap:6px;padding:0 8px;border-radius:5px;background:rgba(18,18,18,.85);border:1px solid #2e2e2e;color:#c8c8c8;font-size:11px}
+.code{font-family:'JetBrains Mono',ui-monospace,monospace;font-size:11.5px;line-height:19px;white-space:pre;color:#d4d4d4}
+.ln{display:inline-block;width:30px;text-align:right;padding-right:12px;color:#5e5e5e}
+.k{color:#8fb8f0}.s{color:#b8cf9a}.c{color:#7a7a7a}.n{color:#e0b878}.t{color:#c8c8c8;font-weight:500}
+.ch{height:30px;display:flex;align-items:center;gap:8px;padding:0 12px;border-bottom:1px solid #262626;font-size:11.5px;font-weight:600;color:#c8c8c8;flex:none}
+.card{flex:1 1 190px;min-width:180px;background:#1f1f1f;border:1px solid #2a2a2a;border-radius:8px;padding:10px;display:flex;flex-direction:column;gap:8px}
+.ct{font-size:11.5px;font-weight:600;color:#e6e6e6}
+.field{height:24px;background:#121212;border:1px solid #2c2c2c;border-radius:5px;padding:0 7px;display:flex;align-items:center;gap:6px;font-family:'JetBrains Mono',ui-monospace,monospace;font-size:11px;color:#e6e6e6;min-width:0}
+.lbl{color:#a6a6a6;font-size:11.5px}
+.ax{font-size:10px;font-weight:700}
+.thumb{aspect-ratio:1/1;border-radius:6px;background:#242424;border:1px solid #2c2c2c;display:flex;align-items:center;justify-content:center}
+.trk{height:26px;display:flex;align-items:center;gap:6px;padding:0 12px;border-bottom:1px solid #1e1e1e;white-space:nowrap;font-size:11.5px;color:#c8c8c8}
+.lane{height:26px;position:relative;border-bottom:1px solid #1e1e1e}
+.key{position:absolute;top:8px;width:10px;height:10px;margin-left:-5px;transform:rotate(45deg);border-radius:1.5px;background:#d4d4d4}
+.gkey{position:absolute;top:9px;width:8px;height:8px;margin-left:-4px;transform:rotate(45deg);border-radius:1.5px;background:#8c8c8c}
+.seg{display:flex;padding:2px;background:#0e0e0e;border:1px solid #262626;border-radius:6px}
+.seg button{height:20px;padding:0 9px;border-radius:4px;font-size:11px;color:#a6a6a6;font-weight:500}
+</style>
+</helmet>
+<div style="width: 100%; min-height: 900px; display: flex; flex-direction: column; background: #0e0e0e">
+
+  <header style="height: 34px; display: flex; align-items: flex-end; gap: 4px; padding: 0 10px; background: #0e0e0e">
+    <div style="align-self: center; width: 20px; height: 20px; border-radius: 5px; background: #e6e6e6; display: flex; align-items: center; justify-content: center; margin-right: 8px"><svg width="12" height="12" sc-camel-view-box="0 0 16 16" fill="none" stroke="#0e0e0e" stroke-width="2" aria-hidden="true"><path d="M8 1.5l5.5 3v7L8 14.5 2.5 11.5v-7z"></path></svg></div>
+    <nav style="display: flex" role="tablist" aria-label="Ribbon"><button class="rt" role="tab">File</button><button class="rt" role="tab" aria-selected="true" style="color: #ffffff; background: #181818; border-radius: 6px 6px 0 0; border-bottom-color: {{accent}}">Home</button><button class="rt" role="tab">Library</button><button class="rt" role="tab">Shading</button><button class="rt" role="tab">Animate</button><button class="rt" role="tab">VFX</button><button class="rt" role="tab">Audio</button><button class="rt" role="tab">Debug</button><button class="rt" role="tab">Build</button></nav>
+    <span style="flex: 1"></span>
+    <button style="align-self: center; height: 24px; width: 380px; max-width: 36%; display: flex; align-items: center; gap: 8px; padding: 0 10px; border-radius: 6px; background: #181818; border: 1px solid #262626; color: #8c8c8c; font-size: 11.5px"><svg width="12" height="12" sc-camel-view-box="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" aria-hidden="true"><circle cx="7" cy="7" r="4.5"></circle><path d="M10.5 10.5L14 14"></path></svg><span style="flex: 1; text-align: left">Search or run a command</span><span class="mono" style="font-size: 10px">Ctrl K</span></button>
+    <span style="flex: 1"></span>
+    <span style="align-self: center; font-size: 11.5px; color: #a6a6a6; white-space: nowrap">Harbor_Prototype <span style="color: #5a5a5a">/</span> <span style="color: #e6e6e6">Docks_Night</span></span>
+    <button class="ib" style="align-self: center; margin-left: 6px" aria-label="Collapse ribbon"><svg width="12" height="12" sc-camel-view-box="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M4 10l4-4 4 4"></path></svg></button>
+  </header>
+
+  <!-- Compact ribbon (F3) -->
+  <div style="height: 66px; display: flex; background: #181818; border-bottom: 1px solid #262626; overflow-x: auto" role="toolbar" aria-label="Home ribbon">
+    <div class="rg">
+      <div class="rgb">
+        <button class="big"><svg width="18" height="18" sc-camel-view-box="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" aria-hidden="true"><path d="M8 1.5l5.5 3v7L8 14.5 2.5 11.5v-7z"></path><path d="M2.5 4.5L8 7.5l5.5-3M8 7.5v7"></path></svg>Mesh</button>
+        <button class="big"><svg width="18" height="18" sc-camel-view-box="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" aria-hidden="true"><circle cx="8" cy="7" r="3.5"></circle><path d="M6.5 12.5h3M7 14.5h2"></path></svg>Light</button>
+        <button class="big"><svg width="18" height="18" sc-camel-view-box="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" aria-hidden="true"><rect x="1.5" y="4.5" width="9" height="7" rx="1"></rect><path d="M10.5 7l4-2v6l-4-2"></path></svg>Camera</button>
+        <button class="big"><svg width="18" height="18" sc-camel-view-box="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" stroke-dasharray="2 1.5" aria-hidden="true"><rect x="2" y="2" width="12" height="12" rx="1"></rect></svg>Volume</button>
+      </div>
+      <span class="rgl">Create</span>
+    </div>
+    <div class="rg">
+      <div class="rgb" style="flex-direction: column; align-items: stretch; justify-content: center; gap: 1px">
+        <button class="sm"><span style="width: 12px; height: 12px; border-radius: 3px; background: {{accent}}"></span>Grid · 0.25</button>
+        <button class="sm"><span style="width: 12px; height: 12px; border-radius: 3px; border: 1px solid #3a3a3a"></span>Angle · 15°</button>
+      </div>
+      <span class="rgl">Snapping</span>
+    </div>
+    <div class="rg">
+      <div class="rgb">
+        <button class="big"><svg width="18" height="18" sc-camel-view-box="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" aria-hidden="true"><circle cx="8" cy="8" r="3"></circle><path d="M8 1v2M8 13v2M1 8h2M13 8h2M3 3l1.4 1.4M11.6 11.6L13 13M3 13l1.4-1.4M11.6 4.4L13 3"></path></svg>Bake</button>
+        <div style="display: flex; flex-direction: column; gap: 1px"><button class="sm">Quality: Preview ▾</button><button class="sm">Light map view</button></div>
+      </div>
+      <span class="rgl">Lighting</span>
+    </div>
+    <div class="rg">
+      <div class="rgb">
+        <button class="big"><svg width="18" height="18" sc-camel-view-box="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" aria-hidden="true"><path d="M3 2.5h8l2.5 2.5v8.5h-10.5z"></path><path d="M5.5 2.5v3.5h5V2.5"></path></svg>Save</button>
+        <button class="big"><svg width="18" height="18" sc-camel-view-box="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" aria-hidden="true"><path d="M2 13l3-3M6 2h8v8l-5 5-7-7z"></path></svg>Build</button>
+      </div>
+      <span class="rgl">Project</span>
+    </div>
+    <span style="flex: 1"></span>
+    <div class="rg" style="border-right: 0; border-left: 1px solid #262626">
+      <div class="rgb">
+        <button class="big" style="background: #e6e6e6; color: #0e0e0e; font-weight: 600"><svg width="16" height="16" sc-camel-view-box="0 0 16 16" aria-hidden="true"><path d="M4 2.5l9 5.5-9 5.5z" fill="currentColor"></path></svg>Play</button>
+        <button class="big"><svg width="18" height="18" sc-camel-view-box="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.3" aria-hidden="true"><circle cx="8" cy="8" r="6"></circle><path d="M6.5 5.5l4 2.5-4 2.5z"></path></svg>Simulate</button>
+      </div>
+      <span class="rgl">Play</span>
+    </div>
+  </div>
+
+  <div style="flex: 1; display: flex; flex-wrap: wrap; min-height: 0">
+
+
+    <div style="flex: 999 1 640px; min-width: 0; display: flex; flex-direction: column">
+      <!-- Split editor groups (C3) with toolbox (F2) -->
+      <div style="height: 400px; display: flex; gap: 1px; background: #1e1e1e; flex-wrap: wrap">
+        <section style="flex: 3 1 480px; min-width: 0; display: flex; flex-direction: column; background: #1c1c1c" aria-label="Viewport group">
+          <div style="height: 30px; display: flex; background: #0e0e0e"><span class="etab" style="background: #1c1c1c; color: #e6e6e6; box-shadow: inset 0 1px 0 {{accent}}">Docks_Night.level</span><span class="etab">Docks_Day.level</span></div>
+          <div style="flex: 1; display: flex; min-height: 0">
+            <nav style="flex: 0 0 44px; display: flex; flex-direction: column; align-items: center; gap: 2px; padding: 6px 0; background: #141414; border-right: 1px solid #262626" aria-label="Toolbox">
+              <button class="tool" aria-label="Select"><svg width="15" height="15" sc-camel-view-box="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 2l9 5-4 1.2L6.2 12z"></path></svg></button>
+              <button class="tool" aria-label="Move" style="background: {{accent}}; color: #0e0e0e"><svg width="15" height="15" sc-camel-view-box="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.6"><path d="M8 1.5v13M1.5 8h13M8 1.5L6 3.5M8 1.5l2 2M8 14.5l-2-2M8 14.5l2-2M1.5 8l2-2M1.5 8l2 2M14.5 8l-2-2M14.5 8l-2 2"></path></svg></button>
+              <button class="tool" aria-label="Rotate"><svg width="15" height="15" sc-camel-view-box="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M13 8a5 5 0 11-1.5-3.6M13 2.5v3h-3"></path></svg></button>
+              <button class="tool" aria-label="Scale"><svg width="15" height="15" sc-camel-view-box="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="2" y="6" width="8" height="8" rx="1"></rect><path d="M9 2h5v5M14 2L8.5 7.5"></path></svg></button>
+              <span style="width: 22px; height: 1px; background: #2c2c2c; margin: 4px 0"></span>
+              <button class="tool" aria-label="Pose bones"><svg width="15" height="15" sc-camel-view-box="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><circle cx="4" cy="12" r="1.5"></circle><circle cx="12" cy="4" r="1.5"></circle><path d="M5 11l6-6"></path></svg></button>
+              <button class="tool" aria-label="Motion path"><svg width="15" height="15" sc-camel-view-box="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5" stroke-dasharray="2 2"><path d="M2 12c3-8 9-8 12 0"></path></svg></button>
+              <button class="tool" aria-label="Add key"><svg width="15" height="15" sc-camel-view-box="0 0 16 16" fill="currentColor"><rect x="4.5" y="4.5" width="7" height="7" rx="1" transform="rotate(45 8 8)"></rect></svg></button>
+              <button class="tool" aria-label="Measure"><svg width="15" height="15" sc-camel-view-box="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M2 11L11 2l3 3-9 9zM5 8l1.5 1.5M7.5 5.5L9 7"></path></svg></button>
+            </nav>
+            <div style="flex: 1; position: relative; overflow: hidden">
+              <svg width="100%" height="100%" sc-camel-view-box="0 0 640 370" sc-camel-preserve-aspect-ratio="xMidYMid slice" style="position: absolute; inset: 0" role="img" aria-label="Viewport with selected crane and its motion path">
+                <defs><linearGradient id="gsky" x1="0" y1="0" x2="0" y2="1"><stop offset="0" stop-color="#141414"></stop><stop offset="1" stop-color="#2a2a2a"></stop></linearGradient></defs>
+                <rect width="640" height="165" fill="url(#gsky)"></rect><rect y="165" width="640" height="205" fill="#202020"></rect>
+                <g stroke="#ffffff" stroke-opacity=".05"><path d="M320 165L-600 370M320 165L-150 370M320 165L320 370M320 165L790 370M320 165L1240 370M0 172H640M0 182H640M0 198H640M0 220H640M0 252H640M0 300H640"></path></g>
+                <path d="M130 240L185 222L240 240L185 258Z" fill="#5c5c5c"></path><path d="M130 240L185 258L185 312L130 294Z" fill="#424242"></path><path d="M185 258L240 240L240 294L185 312Z" fill="#343434"></path>
+                <path d="M450 220L490 207L530 220L490 233Z" fill="#555555"></path><path d="M450 220L490 233L490 274L450 261Z" fill="#3c3c3c"></path><path d="M490 233L530 220L530 261L490 274Z" fill="#2f2f2f"></path>
+                <g stroke="{{accent}}" stroke-width="1.5"><path d="M318 110L336 117L336 318L318 311Z" fill="#6e6e6e"></path><path d="M336 117L354 110L354 311L336 318Z" fill="#525252"></path><path d="M318 110L336 103L354 110L336 117Z" fill="#8c8c8c"></path><path d="M340 103L214 62L214 73L340 117Z" fill="#7b7b7b"></path></g>
+                <path d="M214 73 Q 300 36 430 66" fill="none" stroke="{{accent}}" stroke-width="1.3" stroke-dasharray="4 4"></path>
+                <circle cx="214" cy="73" r="3.5" fill="{{accent}}"></circle><circle cx="430" cy="66" r="3" fill="#d4d4d4"></circle>
+                <g stroke-width="2.5" stroke-linecap="round"><path d="M336 230L396 250" stroke="#e5534b"></path><path d="M336 230V168" stroke="#6cc24a"></path><path d="M336 230L292 255" stroke="#4c8dff"></path></g>
+              </svg>
+              <div style="position: absolute; top: 8px; left: 8px; display: flex; gap: 6px"><button class="pill">Perspective ▾</button><button class="pill">Lit ▾</button></div>
+              <div style="position: absolute; top: 8px; right: 8px"><span class="pill mono">6.9 ms · 144 fps</span></div>
+            </div>
+          </div>
+        </section>
+        <section style="flex: 2 1 340px; min-width: 0; display: flex; flex-direction: column; background: #161616" aria-label="Code group">
+          <div style="height: 30px; display: flex; background: #0e0e0e"><span class="etab" style="background: #161616; color: #e6e6e6">CraneController.cs</span><span class="etab">HookPhysics.cs</span></div>
+          <div style="height: 22px; display: flex; align-items: center; padding: 0 12px; font-size: 11px; color: #8c8c8c; border-bottom: 1px solid #1e1e1e">Scripts › Harbor › <span style="color: #c8c8c8; margin-left: 4px">CraneController.Tick</span></div>
+          <div style="flex: 1; padding: 6px 0; overflow: hidden">
+<div class="code"><span class="ln">76</span><span class="k">public override void</span> <span class="t">Tick</span>(<span class="k">float</span> dt)</div>
+<div class="code"><span class="ln">77</span>{</div>
+<div class="code"><span class="ln">78</span>    <span class="c">// swing toward the target hook</span></div>
+<div class="code"><span class="ln">79</span>    <span class="k">var</span> yaw = Transform.Rotation.Y;</div>
+<div class="code"><span class="ln">80</span>    <span class="k">var</span> goal = Mathf.Clamp(TargetYaw, <span class="n">-90f</span>, <span class="n">90f</span>);</div>
+<div class="code"><span class="ln">81</span></div>
+<div class="code"><span class="ln">82</span>    yaw = Mathf.MoveTowards(yaw, goal, Speed * dt);</div>
+<div class="code"><span class="ln">83</span>    Transform.Rotation = Rotation.FromYaw(yaw);</div>
+<div class="code" style="background: rgba(240,106,106,.1); box-shadow: inset 2px 0 0 #f06a6a"><span class="ln" style="color: #f08a84">84</span>    Hook.Attach(Target.Position);</div>
+<div class="code"><span class="ln"></span>    <span style="color: #f08a84">● Target was destroyed (frame 1832)</span></div>
+<div class="code"><span class="ln">85</span></div>
+<div class="code"><span class="ln">86</span>    <span class="k">if</span> (Loop &amp;&amp; Mathf.Approx(yaw, goal))</div>
+<div class="code"><span class="ln">87</span>        TargetYaw = -TargetYaw;</div>
+<div class="code"><span class="ln">88</span>    Events.Emit(<span class="s">"crane.tick"</span>, yaw);</div>
+<div class="code"><span class="ln">89</span>}</div>
+          </div>
+        </section>
+      </div>
+
+      <!-- Shelf bar (F1 + F2) -->
+      <div style="height: 34px; display: flex; align-items: center; gap: 4px; padding: 0 10px; background: #141414; border-top: 1px solid #262626; border-bottom: 1px solid #262626" role="tablist" aria-label="Shelf">
+        <span style="width: 36px; height: 4px; border-radius: 2px; background: #3a3a3a; margin-right: 10px" aria-hidden="true"></span>
+        <sc-for list="{{tabs}}" as="t" hint-placeholder-count="4">
+          <button role="tab" sc-camel-on-click="{{t.pick}}" style="{{t.style}}">{{t.label}}</button>
+        </sc-for>
+        <span style="flex: 1"></span>
+        <div style="display: flex; align-items: center; gap: 2px" role="group" aria-label="Transport">
+          <button class="ib" aria-label="Previous key"><svg width="11" height="11" sc-camel-view-box="0 0 16 16" fill="currentColor"><path d="M12 3L5 8l7 5z"></path><rect x="3" y="3" width="2" height="10"></rect></svg></button>
+          <button class="ib" aria-label="Play animation"><svg width="11" height="11" sc-camel-view-box="0 0 16 16" fill="currentColor"><path d="M4 2.5l9 5.5-9 5.5z"></path></svg></button>
+          <button class="ib" aria-label="Next key"><svg width="11" height="11" sc-camel-view-box="0 0 16 16" fill="currentColor"><path d="M4 3l7 5-7 5z"></path><rect x="11" y="3" width="2" height="10"></rect></svg></button>
+        </div>
+        <span class="mono" style="font-size: 11px; color: #a6a6a6; padding: 0 6px">0096 / 0240</span>
+      </div>
+
+      <!-- Shelf content -->
+      <div style="flex: 1; display: flex; flex-wrap: wrap; gap: 1px; background: #262626; min-height: 290px">
+
+        <sc-if value="{{isObject}}" hint-placeholder-val="{{true}}">
+          <div style="flex: 1 1 220px; max-width: 240px; display: flex; flex-direction: column; background: #1a1a1a" aria-label="Scene list">
+            <div class="ch">Scene<span style="flex: 1"></span><span style="font-weight: 400; color: #8c8c8c">214</span></div>
+            <div style="padding: 4px 0">
+              <div class="row"><span style="color: #8c8c8c">▾</span>Props</div>
+              <div class="row" style="padding-left: 28px; background: color-mix(in srgb, {{accent}} 22%, transparent); color: #ffffff">Crane_Arm_02</div>
+              <div class="row" style="padding-left: 28px">Crate_Stack_A</div>
+              <div class="row" style="padding-left: 28px">Crate_Stack_B</div>
+              <div class="row" style="padding-left: 28px">Bollard_x12</div>
+              <div class="row"><span style="color: #8c8c8c">▸</span>Lighting</div>
+              <div class="row"><span style="color: #8c8c8c">▸</span>Terrain</div>
+              <div class="row"><span style="color: #8c8c8c">▸</span>Gameplay</div>
+            </div>
+          </div>
+          <div style="flex: 999 1 520px; min-width: 0; display: flex; flex-direction: column; background: #1a1a1a" aria-label="Inspector">
+            <div class="ch"><svg width="13" height="13" sc-camel-view-box="0 0 16 16" fill="none" stroke="{{accent}}" stroke-width="1.5" aria-hidden="true"><path d="M8 1.5l5.5 3v7L8 14.5 2.5 11.5v-7z"></path></svg><span style="color: #ffffff">Crane_Arm_02</span><span style="font-weight: 400; color: #8c8c8c">Static mesh · Props</span><span style="flex: 1"></span><button style="height: 22px; padding: 0 10px; border-radius: 5px; border: 1px dashed #3a3a3a; color: #a6a6a6; font-size: 11px; font-weight: 500">+ Component</button></div>
+            <div style="flex: 1; display: flex; gap: 10px; padding: 10px; flex-wrap: wrap; align-content: flex-start">
+              <div class="card">
+                <span class="ct">Transform</span>
+                <div style="display: grid; grid-template-columns: 44px repeat(3, minmax(0, 1fr)); gap: 5px 4px; align-items: center">
+                  <span class="lbl">Pos</span><div class="field"><span class="ax" style="color: #f08a84">X</span>12.5</div><div class="field"><span class="ax" style="color: #8fd47a">Y</span>0</div><div class="field"><span class="ax" style="color: #7fb2ff">Z</span>-4.7</div>
+                  <span class="lbl">Rot</span><div class="field"><span class="ax" style="color: #f08a84">X</span>0</div><div class="field" style="border-color: {{accent}}"><span class="ax" style="color: #8fd47a">Y</span>35</div><div class="field"><span class="ax" style="color: #7fb2ff">Z</span>0</div>
+                  <span class="lbl">Scale</span><div class="field"><span class="ax" style="color: #f08a84">X</span>1</div><div class="field"><span class="ax" style="color: #8fd47a">Y</span>1</div><div class="field"><span class="ax" style="color: #7fb2ff">Z</span>1</div>
+                </div>
+              </div>
+              <div class="card">
+                <span class="ct">Mesh Renderer</span>
+                <div style="display: grid; grid-template-columns: 64px minmax(0, 1fr); gap: 5px 6px; align-items: center">
+                  <span class="lbl">Mesh</span><div class="field">SM_Crane_Arm</div>
+                  <span class="lbl">Material</span><div class="field">M_Steel</div>
+                  <span class="lbl">Shadows</span><span style="width: 28px; height: 16px; border-radius: 8px; background: {{accent}}; position: relative; display: inline-block"><span style="position: absolute; right: 2px; top: 2px; width: 12px; height: 12px; border-radius: 50%; background: #0e0e0e"></span></span>
+                </div>
+              </div>
+              <div class="card">
+                <span class="ct">CraneController</span>
+                <div style="display: grid; grid-template-columns: 64px minmax(0, 1fr); gap: 5px 6px; align-items: center">
+                  <span class="lbl">Speed</span><div class="field">0.8</div>
+                  <span class="lbl">Target</span><div class="field" style="color: #f08a84">None</div>
+                  <span class="lbl">Loop</span><span style="width: 14px; height: 14px; border-radius: 3px; background: {{accent}}"></span>
+                </div>
+              </div>
+            </div>
+          </div>
+          <div style="flex: 1 1 280px; max-width: 320px; display: flex; flex-direction: column; background: #1a1a1a" aria-label="Assets">
+            <div class="ch">Assets<span style="font-weight: 400; color: #8c8c8c">Harbor</span></div>
+            <div style="flex: 1; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 8px; padding: 10px; align-content: start">
+              <div style="display: flex; flex-direction: column; gap: 4px"><span class="thumb" style="box-shadow: inset 0 0 0 2px {{accent}}"><svg width="26" height="26" sc-camel-view-box="0 0 16 16" fill="none" stroke="#a6a6a6" stroke-width=".9" aria-hidden="true"><path d="M8 1.5l5.5 3v7L8 14.5 2.5 11.5v-7z"></path><path d="M2.5 4.5L8 7.5l5.5-3M8 7.5v7"></path></svg></span><span style="font-size: 10.5px; color: #c8c8c8; overflow: hidden; text-overflow: ellipsis; white-space: nowrap">SM_Crane</span></div>
+              <div style="display: flex; flex-direction: column; gap: 4px"><span class="thumb"><svg width="26" height="26" sc-camel-view-box="0 0 16 16" fill="none" stroke="#a6a6a6" stroke-width=".9" aria-hidden="true"><path d="M8 1.5l5.5 3v7L8 14.5 2.5 11.5v-7z"></path><path d="M2.5 4.5L8 7.5l5.5-3M8 7.5v7"></path></svg></span><span style="font-size: 10.5px; color: #c8c8c8; overflow: hidden; text-overflow: ellipsis; white-space: nowrap">SM_Crate</span></div>
+              <div style="display: flex; flex-direction: column; gap: 4px"><span class="thumb"><span style="width: 60%; aspect-ratio: 1/1; border-radius: 50%; background: radial-gradient(circle at 35% 30%, #e6e6e6, #6e6e6e 50%, #1e1e1e)"></span></span><span style="font-size: 10.5px; color: #c8c8c8; overflow: hidden; text-overflow: ellipsis; white-space: nowrap">M_Steel</span></div>
+              <div style="display: flex; flex-direction: column; gap: 4px"><span class="thumb" style="background: repeating-linear-gradient(45deg,#3a3a3a 0 6px,#2c2c2c 6px 12px)"></span><span style="font-size: 10.5px; color: #c8c8c8; overflow: hidden; text-overflow: ellipsis; white-space: nowrap">T_Rust</span></div>
+              <div style="display: flex; flex-direction: column; gap: 4px"><span class="thumb"><svg width="22" height="22" sc-camel-view-box="0 0 16 16" fill="none" stroke="#b48cff" stroke-width="1" aria-hidden="true"><path d="M2 12c2-6 4 2 6-4s4 2 6-4"></path></svg></span><span style="font-size: 10.5px; color: #c8c8c8; overflow: hidden; text-overflow: ellipsis; white-space: nowrap">AN_Swing</span></div>
+              <div style="display: flex; flex-direction: column; gap: 4px"><span class="thumb"><svg width="22" height="22" sc-camel-view-box="0 0 16 16" fill="none" stroke="#e8b04a" stroke-width="1" aria-hidden="true"><path d="M3 6v4h3l4 3V3L6 6z"></path><path d="M12 6a3 3 0 010 4"></path></svg></span><span style="font-size: 10.5px; color: #c8c8c8; overflow: hidden; text-overflow: ellipsis; white-space: nowrap">SFX_Creak</span></div>
+              <div style="display: flex; flex-direction: column; gap: 4px"><span class="thumb" style="border-style: dashed"><svg width="16" height="16" sc-camel-view-box="0 0 16 16" fill="none" stroke="#8c8c8c" stroke-width="1.5" aria-hidden="true"><path d="M8 3v10M3 8h10"></path></svg></span><span style="font-size: 10.5px; color: #8c8c8c">Import</span></div>
+            </div>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{isAnim}}" hint-placeholder-val="{{false}}">
+          <div style="flex: 0 0 220px; display: flex; flex-direction: column; background: #1a1a1a" aria-label="Tracks">
+            <div class="ch">SEQ_Crane_Intro</div>
+            <div style="height: 22px; border-bottom: 1px solid #262626"></div>
+            <div class="trk" style="background: #1e1e1e; font-weight: 600; color: #e6e6e6">▾ Crane_Arm_02</div>
+            <div class="trk" style="padding-left: 28px; background: color-mix(in srgb, {{accent}} 18%, transparent); color: #ffffff">Rotation Y<span style="flex: 1"></span><span class="mono" style="font-size: 10.5px">35.0°</span></div>
+            <div class="trk" style="padding-left: 28px">Location</div>
+            <div class="trk" style="background: #1e1e1e; font-weight: 600; color: #e6e6e6">▾ Harbor_Lamp_01</div>
+            <div class="trk" style="padding-left: 28px">Intensity</div>
+            <div class="trk" style="background: #1e1e1e; font-weight: 600; color: #e6e6e6">Audio</div>
+          </div>
+          <div style="flex: 1 1 400px; min-width: 0; position: relative; background: #161616" aria-label="Dope sheet">
+            <div style="height: 30px; border-bottom: 1px solid #262626; display: flex; align-items: center; padding: 0 10px; gap: 8px"><div class="seg"><button style="background: #2c2c2c; color: #ffffff">Keys</button><button>Curves</button></div></div>
+            <div class="mono" style="height: 22px; position: relative; border-bottom: 1px solid #262626; font-size: 10px; color: #8c8c8c; background: repeating-linear-gradient(90deg, #2c2c2c 0 1px, transparent 1px 12.5%)">
+              <span style="position: absolute; left: 4px; top: 5px">0</span><span style="position: absolute; left: calc(25% + 4px); top: 5px">60</span><span style="position: absolute; left: calc(50% + 4px); top: 5px">120</span><span style="position: absolute; left: calc(75% + 4px); top: 5px">180</span>
+            </div>
+            <div class="lane" style="background: #1a1a1a"><span class="gkey" style="left: 2%"></span><span class="gkey" style="left: 20%"></span><span class="gkey" style="left: 40%"></span><span class="gkey" style="left: 62.5%"></span></div>
+            <div class="lane" style="background: color-mix(in srgb, {{accent}} 8%, transparent)"><span class="key" style="left: 2%"></span><span class="key" style="left: 20%"></span><span class="key" style="left: 40%; background: {{accent}}; box-shadow: 0 0 0 2px #161616, 0 0 0 3px {{accent}}"></span><span class="key" style="left: 62.5%"></span><span class="key" style="left: 87.5%"></span></div>
+            <div class="lane"><span class="key" style="left: 2%"></span><span class="key" style="left: 62.5%"></span></div>
+            <div class="lane" style="background: #1a1a1a"><span class="gkey" style="left: 25%"></span><span class="gkey" style="left: 75%"></span></div>
+            <div class="lane"><span class="key" style="left: 25%"></span><span class="key" style="left: 30%"></span><span class="key" style="left: 75%"></span></div>
+            <div class="lane" style="background: #1a1a1a"><span style="position: absolute; top: 4px; height: 18px; left: 12.5%; width: 70%; border-radius: 4px; background: #2c2c2c; border: 1px solid #3a3a3a; font-size: 10.5px; color: #c8c8c8; display: flex; align-items: center; padding: 0 8px">SFX_Crane_Creak</span></div>
+            <div style="position: absolute; top: 30px; bottom: 0; left: 40%; width: 0">
+              <span class="mono" style="position: absolute; top: 2px; left: -16px; width: 32px; height: 18px; border-radius: 4px; background: {{accent}}; color: #0e0e0e; font-size: 10.5px; font-weight: 700; display: flex; align-items: center; justify-content: center">96</span>
+              <span style="position: absolute; top: 20px; bottom: 0; left: -1px; width: 2px; background: {{accent}}"></span>
+            </div>
+          </div>
+          <div style="flex: 0 1 240px; display: flex; flex-direction: column; background: #1a1a1a" aria-label="Key details">
+            <div class="ch">Key · Rotation Y</div>
+            <div style="padding: 12px; display: grid; grid-template-columns: 60px minmax(0, 1fr); gap: 8px; align-items: center">
+              <span class="lbl">Frame</span><div class="field">96</div>
+              <span class="lbl">Value</span><div class="field">35.0°</div>
+              <span class="lbl">Ease</span><div class="seg"><button>Step</button><button>Linear</button><button style="background: #2c2c2c; color: #ffffff">Smooth</button></div>
+            </div>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{isConsole}}" hint-placeholder-val="{{false}}">
+          <div style="flex: 1; background: #141414; padding: 6px 0" aria-label="Console">
+            <div class="code" style="padding: 2px 14px; color: #c8c8c8"><span style="color: #6e6e6e">10:21:06</span>  <span style="color: #a6a6a6">INFO </span> Entered play mode · Docks_Night</div>
+            <div class="code" style="padding: 2px 14px"><span style="color: #6e6e6e">10:21:07</span>  <span style="color: #e8b04a">WARN </span> Crane_Arm_02 collider overlaps Crate_Stack_A</div>
+            <div class="code" style="padding: 2px 14px; background: rgba(240,106,106,.09)"><span style="color: #6e6e6e">10:21:12</span>  <span style="color: #f06a6a">ERROR</span> NullReference in CraneController.Tick() <a href="#" style="font-family: Inter, sans-serif">CraneController.cs:84</a></div>
+            <div class="code" style="padding: 2px 14px; color: #c8c8c8"><span style="color: #6e6e6e">10:21:12</span>  <span style="color: #e8b04a">WARN </span> Frame time 22.4 ms exceeded budget</div>
+          </div>
+        </sc-if>
+
+        <sc-if value="{{isProblems}}" hint-placeholder-val="{{false}}">
+          <div style="flex: 1; background: #141414; padding: 8px 0" aria-label="Problems">
+            <div style="height: 26px; display: flex; align-items: center; gap: 8px; padding: 0 14px; color: #c8c8c8"><svg width="13" height="13" sc-camel-view-box="0 0 16 16" fill="none" stroke="#f06a6a" stroke-width="1.6" aria-hidden="true"><circle cx="8" cy="8" r="6"></circle><path d="M5.5 5.5l5 5M10.5 5.5l-5 5"></path></svg>Missing reference: SM_Pier_Plank on Pier_Segment_07<span style="color: #8c8c8c">Docks_Night</span></div>
+            <div style="height: 26px; display: flex; align-items: center; gap: 8px; padding: 0 14px; color: #c8c8c8"><svg width="13" height="13" sc-camel-view-box="0 0 16 16" fill="none" stroke="#e8b04a" stroke-width="1.6" aria-hidden="true"><path d="M8 2l6.5 11.5h-13z"></path><path d="M8 6.5v3"></path></svg>Lighting is out of date (2 lights moved)<a href="#">Bake now</a></div>
+          </div>
+        </sc-if>
+      </div>
+    </div>
+  </div>
+
+  <footer style="height: 24px; display: flex; align-items: center; gap: 14px; padding: 0 12px; background: #161616; border-top: 1px solid #262626; color: #a6a6a6; font-size: 11px">
+    <span style="display: flex; align-items: center; gap: 6px"><span style="width: 6px; height: 6px; border-radius: 50%; background: #4fc28a"></span>Ready</span><span>main · 4 changes</span><span><span style="color: #f06a6a">●</span> 1  <span style="color: #e8b04a">●</span> 1</span>
+    <span style="flex: 1"></span><span>Ln 84, Col 9</span><span>Snap 0.25 · World</span><span class="mono">v0.1.0</span>
+  </footer>
+</div>
+</x-dc>
+<script type="text/x-dc" data-dc-script="" data-props="{&quot;accent&quot;:{&quot;editor&quot;:&quot;color&quot;,&quot;default&quot;:&quot;#5c9cff&quot;,&quot;options&quot;:[&quot;#5c9cff&quot;,&quot;#d4d4d4&quot;,&quot;#f2994a&quot;,&quot;#4fc2a8&quot;]},&quot;$preview&quot;:{&quot;width&quot;:1440,&quot;height&quot;:900}}">
+class Component extends DCLogic {
+  constructor(props) {
+    super(props);
+    this.state = { tab: 'object' };
+  }
+  renderVals() {
+    const accent = this.props.accent ?? '#5c9cff';
+    const tab = this.state.tab;
+    const defs = [['object', 'Object'], ['animation', 'Animation'], ['console', 'Console'], ['problems', 'Problems · 2']];
+    const tabs = defs.map((d) => ({
+      label: d[1],
+      pick: () => this.setState({ tab: d[0] }),
+      style: 'height: 26px; padding: 0 12px; border-radius: 6px; font-size: 12px; ' + (tab === d[0] ? 'background: #262626; color: #ffffff; font-weight: 500' : 'color: #a6a6a6')
+    }));
+    return {
+      accent, tabs,
+      isObject: tab === 'object', isAnim: tab === 'animation', isConsole: tab === 'console', isProblems: tab === 'problems'
+    };
+  }
+}
+</script>
+
+
+</body></html>
