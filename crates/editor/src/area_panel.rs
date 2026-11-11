@@ -222,7 +222,7 @@ fn looks(entity: &EntityData, models: &BTreeMap<AssetId, ModelInfo>) -> (Icon, C
         } else {
             "no sheet".to_owned()
         };
-        return (Icon::Viewport, theme::kind::SPRITE, note);
+        return (Icon::Sprite, theme::kind::SPRITE, note);
     }
     if entity.has("Camera") {
         return (Icon::Camera, theme::kind::CAMERA, "Camera".into());
@@ -232,9 +232,9 @@ fn looks(entity: &EntityData, models: &BTreeMap<AssetId, ModelInfo>) -> (Icon, C
     }
     // The root of a placed assembly.
     if entity.origin.as_ref().is_some_and(|o| o.path.is_empty()) {
-        return (Icon::Area, theme::kind::ASSEMBLY, String::new());
+        return (Icon::Assembly, theme::kind::ASSEMBLY, String::new());
     }
-    (Icon::Area, theme::kind::OTHER, String::new())
+    (Icon::Empty, theme::kind::OTHER, String::new())
 }
 
 /// Something the user asked for in the Area panel. Like Properties, the

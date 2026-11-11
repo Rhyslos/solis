@@ -78,7 +78,7 @@ impl Workbench {
                     }
                     if let Some((file, front)) = tileset {
                         let (clicked, closed) =
-                            document_tab(ui, bar, self.accent, Icon::Layers, &file, front, true);
+                            document_tab(ui, bar, self.accent, Icon::Tileset, &file, front, true);
                         if closed {
                             self.close_tileset();
                         } else if clicked {
