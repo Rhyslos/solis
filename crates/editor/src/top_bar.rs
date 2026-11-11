@@ -520,7 +520,7 @@ impl Workbench {
             ui.painter().rect_stroke(
                 play.rect,
                 4.0,
-                egui::Stroke::new(2.0, Color32::WHITE),
+                egui::Stroke::new(2.0, theme::on_accent()),
                 egui::StrokeKind::Inside,
             );
         }
@@ -561,7 +561,7 @@ pub(crate) fn icon_button(
     let color = if !enabled {
         theme::text_weak().gamma_multiply(0.6)
     } else if fill.is_some() {
-        Color32::WHITE
+        theme::on_accent()
     } else {
         theme::text_console()
     };

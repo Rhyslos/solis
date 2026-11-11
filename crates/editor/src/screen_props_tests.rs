@@ -156,10 +156,14 @@ fn with_nothing_to_read_ties_say_how_to_get_some() {
 #[test]
 fn the_align_grid_marks_the_chosen_square_in_the_chosen_accent() {
     use crate::theme::{self, Accent};
-    for accent in [Accent::Plum, Accent::Blue, Accent::Gold] {
+    for accent in [Accent::Purple, Accent::Blue, Accent::Orange] {
         // The stack: centred and in the middle.
         let mut h = harness(vec![0]);
-        theme::restyle(&h.ctx, accent, theme::Appearance::default());
+        let look = theme::InterfaceLook {
+            accent,
+            ..theme::InterfaceLook::default()
+        };
+        theme::restyle(&h.ctx, look);
         h.run();
         // The square, not the words beside the grid.
         let button = egui::accesskit::Role::Button;
@@ -178,4 +182,5 @@ fn the_align_grid_marks_the_chosen_square_in_the_chosen_accent() {
             .map(|(_, fill, _)| *fill);
         assert_eq!(fill, Some(egui::Color32::TRANSPARENT));
     }
+    crate::interface_look::use_look(theme::InterfaceLook::default());
 }

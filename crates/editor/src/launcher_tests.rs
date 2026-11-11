@@ -598,37 +598,45 @@ fn a_newer_build_is_a_bar_over_the_projects_not_a_question() {
     assert!(h.state().0.restarting());
 }
 
-/// The review, BUG-29: the launcher drew its cards, its chosen row and its
-/// notices in the standard theme's colours whatever the theme.
+/// The launcher's cards, its chosen row and its notices are the design's:
+/// the accent in use mixed into a neutral surface, never a colour of its
+/// own (the review, BUG-29, found them written as numbers).
 #[test]
-fn the_launcher_wears_the_chosen_theme() {
-    use crate::theme::{self, Appearance, Theme};
-    for chosen in Theme::ALL {
+fn the_launcher_s_tints_are_the_accent_in_use_mixed_into_the_surface() {
+    use crate::theme::{self, Accent, InterfaceLook};
+    use crate::tokens;
+    for chosen in Accent::ALL {
         let mut w = launcher_with(some_projects());
         w.launcher_notice("Made a copy.");
         let mut h = harness(w);
-        let look = Appearance {
-            theme: chosen,
-            rounded: false,
+        let look = InterfaceLook {
+            accent: chosen,
+            ..InterfaceLook::default()
         };
-        theme::restyle(&h.ctx, theme::Accent::default(), look);
+        theme::restyle(&h.ctx, look);
         h.run();
         h.get_by_label("Playground").click();
         h.run();
         let drawn = rects_drawn(&h);
         let fills = |colour| drawn.iter().any(|(_, fill, _)| *fill == colour);
         let borders = |colour| drawn.iter().any(|(_, _, border)| *border == colour);
-        let palette = chosen.palette();
-        assert!(fills(palette.selected), "{}", chosen.name());
-        assert!(fills(palette.notice), "{}", chosen.name());
-        assert!(borders(palette.selected_border), "{}", chosen.name());
-        assert!(borders(palette.card_border), "{}", chosen.name());
-        for other in Theme::ALL.into_iter().filter(|t| *t != chosen) {
-            let palette = other.palette();
-            assert!(!fills(palette.selected), "{}", chosen.name());
-            assert!(!fills(palette.notice), "{}", chosen.name());
-            assert!(!borders(palette.selected_border), "{}", chosen.name());
+        assert!(fills(tokens::select_row(chosen)), "{}", chosen.name());
+        assert!(fills(tokens::changes_pill(chosen)), "{}", chosen.name());
+        assert!(
+            borders(tokens::open_card_border(chosen)),
+            "{}",
+            chosen.name()
+        );
+        assert!(borders(tokens::card_border()), "{}", chosen.name());
+        for other in Accent::ALL.into_iter().filter(|a| *a != chosen) {
+            assert!(!fills(tokens::select_row(other)), "{}", chosen.name());
+            assert!(!fills(tokens::changes_pill(other)), "{}", chosen.name());
+            assert!(
+                !borders(tokens::open_card_border(other)),
+                "{}",
+                chosen.name()
+            );
         }
     }
-    crate::palette::use_appearance(Appearance::default());
+    crate::interface_look::use_look(InterfaceLook::default());
 }

@@ -166,7 +166,7 @@ fn rows(
                 }
                 let x = rect.left() + depth as f32 * 14.0 + 6.0;
                 let ink = if picked {
-                    Color32::WHITE
+                    theme::on_accent()
                 } else {
                     theme::text()
                 };
@@ -218,7 +218,7 @@ fn rows(
                         sum,
                         egui::FontId::proportional(11.0),
                         if picked {
-                            Color32::WHITE
+                            theme::on_accent()
                         } else {
                             theme::text_weak()
                         },

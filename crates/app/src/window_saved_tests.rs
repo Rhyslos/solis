@@ -1,0 +1,303 @@
+//! Settings saved by builds before the design's look still start the
+//! editor (CONTRIBUTING.md, rule 23): the three files in
+//! `tests/fixtures/editor-settings/before-g-layout/`, written by the last
+//! build before decision 0100, each read by this build's own reader.
+
+use super::super::tests::Memory;
+use super::super::{
+    ACCENT_KEY, AUTO_UPDATE_KEY, EDITOR_SIZE_KEY, FIRST_SIZE, INTERFACE_LOOK_KEY, OLD_ACCENT_KEY,
+};
+use super::*;
+use editor::theme::{Accent, Density, Scale};
+use eframe::Storage as _;
+use std::collections::HashMap;
+use std::path::Path;
+
+/// The settings in one of the files, as eframe would hand them over.
+fn settings(name: &str) -> Memory {
+    let path = Path::new(env!("CARGO_MANIFEST_DIR"))
+        .join("..")
+        .join("..")
+        .join("tests")
+        .join("fixtures")
+        .join("editor-settings")
+        .join("before-g-layout")
+        .join(name);
+    let text = std::fs::read_to_string(&path).unwrap_or_else(|e| panic!("{}: {e}", path.display()));
+    // eframe's file is a map of keys to values in its own text form, and
+    // eframe's reader is the one that knows it: the whole file is handed
+    // to it as one value.
+    let mut whole = Memory::default();
+    whole.set_string("file", text);
+    let pairs: HashMap<String, String> = eframe::get_value(&whole, "file")
+        .unwrap_or_else(|| panic!("{name} isn't a settings file eframe can read"));
+    assert!(pairs.len() >= 8, "{name} holds only {} keys", pairs.len());
+    let mut storage = Memory::default();
+    for (key, value) in pairs {
+        storage.set_string(&key, value);
+    }
+    storage
+}
+
+fn info() -> AppInfo {
+    AppInfo {
+        name: crate::branding::APP_NAME.to_string(),
+        version: "0.0.1".to_string(),
+    }
+}
+
+/// Starts the editor from `storage` as the window does, without a window.
+fn started(storage: &Memory) -> (Saved, Workbench) {
+    let mut saved = Saved::read(Some(storage));
+    let mut workbench = saved.workbench(info());
+    saved.settle(&mut workbench);
+    (saved, workbench)
+}
+
+#[test]
+fn a_first_run_s_settings_start_the_new_look_with_everything_else_kept() {
+    let storage = settings("standard-blue.ron");
+    let (saved, workbench) = started(&storage);
+    // The standard theme and its blue become Neutral dark and its blue.
+    assert_eq!(saved.look, InterfaceLook::default());
+    assert_eq!(workbench.interface_look(), InterfaceLook::default());
+    assert_eq!(workbench.accent(), Accent::Blue);
+    // What the look doesn't touch is as it was saved.
+    assert_eq!(saved.editor_size, FIRST_SIZE);
+    assert_eq!(saved.known.saved().len(), 2);
+    assert!(saved.auto_update);
+    assert_eq!(saved.skipped, None);
+    assert!(workbench.hints_on());
+    assert!(workbench.library_pinned());
+    assert_eq!(workbench.camera(), Camera::default());
+    assert_eq!(workbench.look(), Look::default());
+    assert_eq!(workbench.snapping(), editor::Snapping::default());
+    assert_eq!(workbench.overlays(), Overlays::default());
+    assert!(workbench.console_history().is_empty());
+    assert_eq!(workbench.workspace(), editor::workspace::Workspace::Level);
+}
+
+#[test]
+fn graphite_rounded_panels_and_plum_become_the_one_theme_and_purple() {
+    let storage = settings("graphite-rounded-plum.ron");
+    let (saved, workbench) = started(&storage);
+    // Any theme becomes Neutral dark, rounded panels mean nothing now,
+    // and Plum is mapped to the nearest of the five.
+    assert_eq!(
+        saved.look,
+        InterfaceLook {
+            accent: Accent::Purple,
+            ..InterfaceLook::default()
+        }
+    );
+    assert_eq!(workbench.accent(), Accent::Purple);
+    assert_eq!(workbench.interface_look().scale, Scale::default());
+    assert_eq!(workbench.interface_look().density, Density::Default);
+    // Everything else that was changed is still changed.
+    assert_eq!(saved.editor_size, [1600.0, 1000.0]);
+    assert_eq!(saved.skipped, Some(79));
+    assert!(!saved.auto_update);
+    assert!(!workbench.auto_update());
+    let known = saved.known.saved();
+    assert_eq!(known.len(), 2);
+    assert!(known.iter().any(|k| k.pinned), "the pin");
+    assert!(!workbench.hints_on());
+    assert!(!workbench.library_pinned());
+    assert_eq!(
+        workbench.camera().position,
+        glam::Vec3::new(12.0, -7.5, 3.25)
+    );
+    assert_eq!(workbench.look().kind, editor::LookKind::Stylized);
+    assert_eq!(workbench.look().bands, 4);
+    assert_eq!(workbench.snapping().grid_step, 0.25);
+    assert_eq!(workbench.snapping().angle_step, 45.0);
+    assert_ne!(workbench.overlays(), Overlays::default());
+    assert_eq!(workbench.console_history(), ["help", "time 18"]);
+    // The rearranged panels are still where they were put: the dock is
+    // still there in this build.
+    // (The camera and look above are read through the saved views, which
+    // win over the single camera and look of older settings.)
+    assert_eq!(workbench.workspace(), editor::workspace::Workspace::Animate);
+    assert!(storage.get_string(super::super::VIEWS_KEY).is_some());
+}
+
+#[test]
+fn settings_from_before_the_second_accent_key_start_too() {
+    let storage = settings("before-accent2.ron");
+    assert!(storage.get_string(ACCENT_KEY).is_none());
+    assert!(storage.get_string(OLD_ACCENT_KEY).is_some());
+    let (saved, workbench) = started(&storage);
+    // Amber under the oldest key was the standard of its day: nobody
+    // chose it, so it becomes today's standard.
+    assert_eq!(saved.look, InterfaceLook::default());
+    assert_eq!(workbench.accent(), Accent::Blue);
+    // The recent projects of that time become the known projects.
+    assert_eq!(saved.known.saved().len(), 2);
+    assert_eq!(saved.editor_size, FIRST_SIZE, "never saved then");
+    assert!(saved.auto_update, "never saved then");
+    assert_eq!(
+        workbench.camera().position,
+        glam::Vec3::new(12.0, -7.5, 3.25)
+    );
+    assert_eq!(workbench.console_history(), ["help"]);
+    assert!(workbench.hints_on());
+}
+
+#[test]
+fn the_old_keys_are_read_once_and_then_left_exactly_as_they_were() {
+    for name in [
+        "standard-blue.ron",
+        "graphite-rounded-plum.ron",
+        "before-accent2.ron",
+    ] {
+        let mut storage = settings(name);
+        let before: HashMap<String, String> = storage.0.clone();
+        let (saved, _) = started(&storage);
+        assert_eq!(storage.0, before, "{name}: reading changed the settings");
+        // The new build saves its look under its own key...
+        eframe::set_value(&mut storage, INTERFACE_LOOK_KEY, &saved.look);
+        for (key, value) in &before {
+            assert_eq!(storage.0.get(key), Some(value), "{name}: {key} was touched");
+        }
+        // ...and from then on the old accent is not looked at again: a
+        // choice made in the new build is not overruled by it.
+        let chosen = InterfaceLook {
+            accent: Accent::Grey,
+            scale: Scale::from(125),
+            density: Density::Compact,
+            ..InterfaceLook::default()
+        };
+        eframe::set_value(&mut storage, INTERFACE_LOOK_KEY, &chosen);
+        assert_eq!(Saved::read(Some(&storage)).look, chosen, "{name}");
+    }
+}
+
+#[test]
+fn every_earlier_accent_under_either_key_is_mapped() {
+    for (key, saved, accent) in [
+        (ACCENT_KEY, "Blue", Accent::Blue),
+        (ACCENT_KEY, "PetrolBlue", Accent::Teal),
+        (ACCENT_KEY, "Green", Accent::Teal),
+        (ACCENT_KEY, "Olive", Accent::Teal),
+        (ACCENT_KEY, "Red", Accent::Orange),
+        (ACCENT_KEY, "Copper", Accent::Orange),
+        (ACCENT_KEY, "Orange", Accent::Orange),
+        (ACCENT_KEY, "Amber", Accent::Orange),
+        (ACCENT_KEY, "Gold", Accent::Orange),
+        (ACCENT_KEY, "Plum", Accent::Purple),
+        (OLD_ACCENT_KEY, "Amber", Accent::Blue),
+        (OLD_ACCENT_KEY, "Red", Accent::Orange),
+        (OLD_ACCENT_KEY, "Green", Accent::Teal),
+        (OLD_ACCENT_KEY, "Plum", Accent::Purple),
+    ] {
+        let mut storage = Memory::default();
+        storage.set_string(key, saved.to_string());
+        assert_eq!(
+            Saved::read(Some(&storage)).look.accent,
+            accent,
+            "{key}: {saved}"
+        );
+    }
+    // The newer of the two keys wins.
+    let mut storage = Memory::default();
+    storage.set_string(OLD_ACCENT_KEY, "Red".to_string());
+    storage.set_string(ACCENT_KEY, "Plum".to_string());
+    assert_eq!(Saved::read(Some(&storage)).look.accent, Accent::Purple);
+}
+
+#[test]
+fn no_settings_and_damaged_settings_both_start_as_standard() {
+    let fresh = Saved::read(None);
+    assert_eq!(fresh.look, InterfaceLook::default());
+    assert_eq!(fresh.editor_size, FIRST_SIZE);
+    assert!(fresh.auto_update);
+    // Every key holding nonsense: nothing is an error, everything is its
+    // standard value.
+    let mut storage = Memory::default();
+    for key in [
+        INTERFACE_LOOK_KEY,
+        ACCENT_KEY,
+        OLD_ACCENT_KEY,
+        AUTO_UPDATE_KEY,
+        EDITOR_SIZE_KEY,
+        super::super::LAYOUT_KEY,
+        super::super::WORKSPACES_KEY,
+        super::super::CAMERA_KEY,
+        super::super::KNOWN_PROJECTS_KEY,
+        super::super::VIEWS_KEY,
+    ] {
+        storage.set_string(key, "(((not a value".to_string());
+    }
+    let (saved, workbench) = started(&storage);
+    assert_eq!(saved.look, InterfaceLook::default());
+    assert_eq!(saved.editor_size, FIRST_SIZE);
+    assert!(saved.known.saved().is_empty());
+    assert_eq!(workbench.camera(), Camera::default());
+    assert_eq!(workbench.accent(), Accent::Blue);
+}
+
+/// A small generator of numbers that is the same on every run.
+struct Dice(u32);
+
+impl Dice {
+    fn roll(&mut self) -> u32 {
+        self.0 ^= self.0 << 13;
+        self.0 ^= self.0 >> 17;
+        self.0 ^= self.0 << 5;
+        self.0
+    }
+}
+
+#[test]
+fn damaged_looks_and_accents_never_stop_the_editor_starting() {
+    let good = {
+        let mut storage = Memory::default();
+        let look = InterfaceLook {
+            accent: Accent::Teal,
+            scale: Scale::from(175),
+            density: Density::Comfortable,
+            ribbon_labels: false,
+            hide_unfinished: true,
+        };
+        eframe::set_value(&mut storage, INTERFACE_LOOK_KEY, &look);
+        storage.get_string(INTERFACE_LOOK_KEY).unwrap()
+    };
+    let mut dice = Dice(0x9e37_79b9);
+    let mut kept = 0;
+    for round in 0..4000 {
+        let mut bytes = good.clone().into_bytes();
+        for _ in 0..1 + dice.roll() % 3 {
+            if bytes.is_empty() {
+                break;
+            }
+            let at = dice.roll() as usize % bytes.len();
+            match dice.roll() % 5 {
+                0 => bytes[at] = (dice.roll() >> 8) as u8,
+                1 => bytes.truncate(at),
+                2 => bytes.insert(at, b"(,:9"[dice.roll() as usize % 4]),
+                // Gentler damage, which often still reads: another digit,
+                // a switch flipped.
+                3 => {
+                    if let Some(digit) = bytes.iter_mut().find(|b| b.is_ascii_digit()) {
+                        *digit = b'0' + (dice.roll() % 10) as u8;
+                    }
+                }
+                _ => {
+                    let text = String::from_utf8_lossy(&bytes).replace("true", "false");
+                    bytes = text.into_bytes();
+                }
+            }
+        }
+        let text = String::from_utf8_lossy(&bytes).into_owned();
+        let mut storage = Memory::default();
+        // The same damage under the look's key or an old accent's.
+        let key = [INTERFACE_LOOK_KEY, ACCENT_KEY, OLD_ACCENT_KEY][round % 3];
+        storage.set_string(key, text);
+        let look = Saved::read(Some(&storage)).look;
+        assert!(Scale::STEPS.contains(&look.scale.percent()));
+        assert!(Accent::ALL.contains(&look.accent));
+        kept += usize::from(look != InterfaceLook::default());
+    }
+    assert!(kept > 50, "only {kept} damaged looks still read");
+    assert!(kept < 4000, "no damage was refused");
+}

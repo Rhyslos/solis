@@ -920,7 +920,7 @@ pub(crate) fn pixel_corner(
                 let on = snapping.pixel_snap != PixelSnap::Off;
                 let text = format!("Snap: {} ▴", snapping.pixel_snap.name());
                 let label = if on {
-                    RichText::new(text).color(Color32::WHITE)
+                    RichText::new(text).color(theme::on_accent())
                 } else {
                     RichText::new(text)
                 };
@@ -987,7 +987,7 @@ fn grid_text(step: f32) -> String {
 /// A button that switches `on`, filled with the accent while on.
 fn toggle(ui: &mut Ui, on: &mut bool, text: &str, hint: &str, accent: Accent) {
     let label = if *on {
-        RichText::new(text).color(Color32::WHITE)
+        RichText::new(text).color(theme::on_accent())
     } else {
         RichText::new(text)
     };

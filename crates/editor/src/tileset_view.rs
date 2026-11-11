@@ -495,8 +495,7 @@ fn picture_column(ui: &mut Ui, t: &mut TilesetUi<'_>) -> bool {
                     p.size[1] as f32 / p.atlas[1].max(1) as f32,
                 ),
             );
-            ui.painter()
-                .rect_filled(rect, 0.0, Color32::from_rgb(0x12, 0x12, 0x12));
+            ui.painter().rect_filled(rect, 0.0, crate::tokens::field());
             ui.painter().image(p.texture.id(), rect, uv, Color32::WHITE);
             let (tw, th) = (set.tile[0] as f32 * z, set.tile[1] as f32 * z);
             let grid_line = Stroke::new(1.0, Color32::from_white_alpha(46));
@@ -799,7 +798,7 @@ fn rules(ui: &mut Ui, t: &mut TilesetUi<'_>, c: &tiles::Terrain, out: &mut Tiles
                         } else if resp.hovered() {
                             theme::hover()
                         } else {
-                            Color32::from_rgb(0x2c, 0x2c, 0x2c)
+                            crate::tokens::field_border()
                         };
                         ui.painter().rect_filled(r, 2.0, fill);
                         ui.painter().text(
@@ -907,8 +906,7 @@ fn try_it(ui: &mut Ui, t: &mut TilesetUi<'_>) {
     let cell = ((ui.available_width() - 4.0) / w as f32).clamp(16.0, 48.0);
     let (rect, response) =
         ui.allocate_exact_size(vec2(cell * w as f32, cell * h as f32), Sense::click());
-    ui.painter()
-        .rect_filled(rect, 0.0, Color32::from_rgb(0x12, 0x12, 0x12));
+    ui.painter().rect_filled(rect, 0.0, crate::tokens::field());
     if let (Some(map), None) = (t.editor.try_map(), &t.picture) {
         // No picture yet: each cell in its terrain's colour.
         for layer in 0..2 {

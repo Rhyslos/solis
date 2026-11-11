@@ -514,7 +514,7 @@ fn contents(
                     } else {
                         "Export"
                     })
-                    .color(egui::Color32::WHITE),
+                    .color(crate::theme::on_accent()),
                 )
                 .fill(accent),
             );

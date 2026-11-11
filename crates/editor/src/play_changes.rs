@@ -241,7 +241,7 @@ impl Workbench {
                 let colors = self.accent.colors();
                 let keep = ui
                     .add(
-                        egui::Button::new(RichText::new("Keep").color(Color32::WHITE).strong())
+                        egui::Button::new(RichText::new("Keep").color(theme::on_accent()).strong())
                             .fill(colors.fill)
                             .min_size(egui::vec2(90.0, 26.0)),
                     )

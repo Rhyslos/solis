@@ -668,9 +668,11 @@ fn menu_row(
                 ui.add_enabled_ui(open, |ui| {
                     let colors = accent.colors();
                     let new = egui::containers::menu::MenuButton::from_button(
-                        egui::Button::new(RichText::new("+ New ▾").color(Color32::WHITE).strong())
-                            .fill(colors.fill)
-                            .corner_radius(4.0),
+                        egui::Button::new(
+                            RichText::new("+ New ▾").color(theme::on_accent()).strong(),
+                        )
+                        .fill(colors.fill)
+                        .corner_radius(4.0),
                     )
                     .ui(ui, |ui| new_items(ui, &state.folder, requests));
                     new.0.widget_info(|| {

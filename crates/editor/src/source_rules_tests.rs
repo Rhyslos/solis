@@ -1,11 +1,11 @@
 //! Rules about the source text itself, which the compiler can't check.
 //! Each test reads the files as `theme`'s `symbols_have_glyphs` does.
 //!
-//! - **No colour written as numbers outside the palette** ([decision 0096](../../../docs/decisions/0096-graphite-theme-and-rounded-panels.md)).
-//!   A neutral colour belongs in `palette.rs`, with a value for every
-//!   theme; a colour that means something belongs in `theme.rs`. The ones
-//!   written elsewhere are counted in [`KEPT`], each with why it's no
-//!   theme's: one more anywhere fails.
+//! - **No colour written as numbers outside the tokens** ([decision 0100](../../../docs/decisions/0100-one-theme-five-accents.md)).
+//!   A colour of the design belongs in `tokens.rs`; `theme.rs` keeps the
+//!   few Solis draws that the design doesn't have yet. The ones written
+//!   elsewhere are counted in [`KEPT`], each with what it is: one more
+//!   anywhere fails.
 //! - **No gap in the middle of a sentence.** A message broken over two
 //!   lines of code without its `\` keeps the next line's indentation, and
 //!   shows it as a run of spaces.
@@ -79,12 +79,14 @@ fn colours_written(code: &str) -> usize {
         .count()
 }
 
-/// The colours written as numbers outside `palette.rs` and `theme.rs`: the
-/// file, how many, and why they belong to no theme. Colours that mean
-/// something keep theirs in every theme (decision 0060); the greys here
-/// that don't were drawn before the themes and wait for a value in each
-/// (the review, BUG-29).
-const KEPT: [(&str, usize, &str); 16] = [
+/// The colours written as numbers outside `tokens.rs` and `theme.rs`: the
+/// file, how many, and what they are. Gone through when the design's
+/// tokens arrived (decision 0100): a grey that is one of the design's now
+/// reads its token. What is left means something on its own screen (a
+/// meter's green, a build's tag), shades or lights what is under it, or
+/// is a grey the design has no name for; each goes, or takes a token,
+/// when its screen is rebuilt to the design.
+const KEPT: [(&str, usize, &str); 14] = [
     (
         "atlas_view.rs",
         3,
@@ -94,11 +96,6 @@ const KEPT: [(&str, usize, &str); 16] = [
         "canvas_view.rs",
         4,
         "over a game's screen: a missing picture's grey, the dashed frame, code's yellow mark",
-    ),
-    (
-        "day_colours.rs",
-        1,
-        "the hour ticks under the day's own colours",
     ),
     (
         "frames_view.rs",
@@ -112,8 +109,8 @@ const KEPT: [(&str, usize, &str); 16] = [
     ),
     (
         "graph_canvas.rs",
-        6,
-        "the live state's blue and a condition's amber chip; the graph's own greys",
+        4,
+        "the live state's blue and a condition's amber chip; a node's name and border",
     ),
     (
         "launcher.rs",
@@ -140,11 +137,6 @@ const KEPT: [(&str, usize, &str); 16] = [
         1,
         "the blue that says the game is running",
     ),
-    (
-        "play_only.rs",
-        1,
-        "an exported game's words on black, outside the editor",
-    ),
     ("profiler.rs", 6, "a colour for each part of a frame's time"),
     (
         "tile_view.rs",
@@ -153,8 +145,8 @@ const KEPT: [(&str, usize, &str); 16] = [
     ),
     (
         "tileset_view.rs",
-        8,
-        "a tileset's picture: its backdrop and grid, a missing tile's pink and red, pictograms",
+        5,
+        "over a tileset's picture: its grid, a missing tile's pink and red, pictograms",
     ),
     (
         "viewport_tools.rs",
@@ -170,7 +162,7 @@ fn no_colour_is_written_as_numbers_outside_the_palette() {
     // The app draws the editor's window, so the rule is the same there.
     for (path, text) in sources_of(&["editor", "app"]) {
         let name = name_of(&path);
-        if name.ends_with("tests.rs") || name == "palette.rs" || name == "theme.rs" {
+        if name.ends_with("tests.rs") || name == "tokens.rs" || name == "theme.rs" {
             continue;
         }
         let found = colours_written(&code_of(&text));
@@ -188,8 +180,8 @@ fn no_colour_is_written_as_numbers_outside_the_palette() {
     }
     assert!(
         wrong.is_empty(),
-        "A neutral colour goes in palette.rs with a value for every theme, and one that means \
-         something in theme.rs. If one belongs to no theme, count it in KEPT and say why.\n{}",
+        "A colour of the design goes in tokens.rs, and is read from there. If one is no token \
+         of the design's, count it in KEPT and say what it is.\n{}",
         wrong.join("\n")
     );
 }

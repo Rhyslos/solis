@@ -1043,7 +1043,11 @@ fn tools_bar(ui: &mut Ui, area: Rect, doc: &mut ScreenDoc, pictures: &[String], 
                         ui.painter(),
                         rect,
                         tool,
-                        if on { Color32::WHITE } else { theme::text() },
+                        if on {
+                            theme::on_accent()
+                        } else {
+                            theme::text()
+                        },
                     );
                     r.widget_info(|| {
                         egui::WidgetInfo::selected(egui::WidgetType::Button, true, on, tool.name())

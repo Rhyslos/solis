@@ -7,7 +7,7 @@ Solis is a Rust program split into small, single-purpose crates. **Lower layers 
 | Layer | Name | Crates | Rule |
 | --- | --- | --- | --- |
 | 3 | App | `app`, `updater` | Opens the window, owns the frame loop, wires the rest together. No feature logic. `updater` finds, downloads and checks new builds on GitHub (decision 0043). |
-| 2 | Editor | `editor` | The editor's interface: top bar, dockable panels, status bar, theme. Never needed by a game. |
+| 2 | Editor | `editor` | The editor's interface: top bar, dockable panels, status bar, and its look, made from the design's tokens (`tokens.rs`; the design is `docs/design/g-layout/`, decisions 0099 and 0100). Never needed by a game. |
 | 1 | Engine | `render`, `assets`, `asset_db`, `world`, `script`, `physics`, `input`, `sound`, `animation`, `tiles`, `ui` | What games run on. Knows nothing about the editor. `assets` reads model files; `render` draws; `asset_db` keeps the project's assets by stable ID; `world` holds the running game's entities; `script` runs game code; `physics` wraps Rapier (3D, and Rapier2D for 2D in `physics::flat`); `input` turns keys and buttons into named actions; `sound` wraps Kira and reads sound files; `animation` plays clips of frames by time and reads sprites' clips files; `tiles` holds tilesets and tile maps, reads their files and autotiles; `ui` lays game UI's screens out on any screen. |
 | 0 | Core | `reflect`, `area` | Shared building blocks with no GPU, window or interface. `reflect` holds IDs, values and component schemas, and the one way a file is opened (`ordinary_file`); `area` holds the area document and the built-in components. |
 

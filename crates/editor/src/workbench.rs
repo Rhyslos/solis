@@ -255,8 +255,10 @@ pub struct Workbench {
     pub(crate) open: ProjectState,
     pub(crate) dock: DockState<Panel>,
     pub(crate) accent: Accent,
-    /// The theme and whether panels are rounded (decision 0096).
-    pub(crate) appearance: theme::Appearance,
+    /// The interface's scale, density and switches (decision 0100). Its
+    /// accent is `accent` above, which the drawing code reads; the two
+    /// are set together and read together (`interface_look`).
+    pub(crate) interface: theme::InterfaceLook,
     pub(crate) viewport: Viewport,
     pub(crate) console: Console,
     /// Whether files are being dragged over the window.
@@ -393,7 +395,7 @@ impl Workbench {
             open: ProjectState::default(),
             dock: layout::restore(saved_layout),
             accent: Accent::default(),
-            appearance: theme::Appearance::default(),
+            interface: theme::InterfaceLook::default(),
             viewport: Viewport::default(),
             console: Console::default(),
             files_hovering: false,
@@ -439,17 +441,11 @@ impl Workbench {
         }
     }
 
-    /// Uses `accent` (as saved last time).
+    /// Uses `look` (as saved last time): its accent, scale and density.
     #[must_use]
-    pub fn with_accent(mut self, accent: Accent) -> Self {
-        self.accent = accent;
-        self
-    }
-
-    /// Uses `appearance` (as saved last time).
-    #[must_use]
-    pub fn with_appearance(mut self, appearance: theme::Appearance) -> Self {
-        self.appearance = appearance;
+    pub fn with_interface_look(mut self, look: theme::InterfaceLook) -> Self {
+        self.accent = look.accent;
+        self.interface = look;
         self
     }
 
@@ -682,9 +678,12 @@ impl Workbench {
         self.accent
     }
 
-    /// The theme and rounded panels, for saving.
-    pub fn appearance(&self) -> theme::Appearance {
-        self.appearance
+    /// The interface's look (accent, scale, density), for saving.
+    pub fn interface_look(&self) -> theme::InterfaceLook {
+        theme::InterfaceLook {
+            accent: self.accent,
+            ..self.interface
+        }
     }
 
     /// Uses `camera` (as saved last time), with anything unusable in it
@@ -878,7 +877,7 @@ impl Workbench {
         let seconds = ui.input(|i| i.stable_dt);
         self.run_game(seconds);
         egui::Panel::top("top_bar")
-            .frame(theme::top_bar_frame().fill(self.tinted(theme::header())))
+            .frame(theme::top_bar_frame().fill(self.tinted(theme::background())))
             .exact_size(34.0)
             .show(ui, |ui| self.top_bar(ui, &mut actions));
         egui::Panel::bottom("status_bar")

@@ -424,9 +424,9 @@ fn toolbar(ui: &mut Ui, f: &mut FramesUi<'_>, sheet: &SpriteSheet, clip: &animat
             f.editor.time = 0.0;
         }
         let play = egui::Button::new(if f.editor.playing {
-            "Pause"
+            RichText::new("Pause")
         } else {
-            "▶ Play"
+            RichText::new("▶ Play").color(theme::on_accent())
         })
         .fill(if f.editor.playing {
             theme::field()

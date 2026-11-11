@@ -412,7 +412,7 @@ impl Workbench {
                     ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                         if let Some((label, action)) = button {
                             let go = egui::Button::new(
-                                RichText::new(label).color(Color32::WHITE).strong(),
+                                RichText::new(label).color(theme::on_accent()).strong(),
                             )
                             .fill(fill);
                             if ui.add(go).clicked() {
@@ -620,7 +620,7 @@ impl Workbench {
                     Align2::CENTER_CENTER,
                     "New",
                     FontId::proportional(11.0),
-                    Color32::WHITE,
+                    theme::on_accent(),
                 );
             }
             painter.text(
@@ -692,7 +692,7 @@ impl Workbench {
             ui.with_layout(egui::Layout::right_to_left(egui::Align::Center), |ui| {
                 let new = egui::Button::new(
                     RichText::new("+ New project")
-                        .color(Color32::WHITE)
+                        .color(theme::on_accent())
                         .strong(),
                 )
                 .fill(fill)
@@ -1336,7 +1336,7 @@ impl Workbench {
                 ui.add_space(8.0);
                 ui.horizontal(|ui| {
                     let big = |text: &str| {
-                        egui::Button::new(RichText::new(text).color(Color32::WHITE).strong())
+                        egui::Button::new(RichText::new(text).color(theme::on_accent()).strong())
                             .fill(fill)
                             .min_size(vec2(0.0, 32.0))
                     };
@@ -1492,7 +1492,7 @@ impl Workbench {
                                 .add(
                                     egui::Button::new(
                                         RichText::new("Make it in a folder…")
-                                            .color(Color32::WHITE)
+                                            .color(theme::on_accent())
                                             .strong(),
                                     )
                                     .fill(fill),

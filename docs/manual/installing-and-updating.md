@@ -21,7 +21,7 @@ Solis is now in the Start menu (with its logo, a glowing swirl round a dark cent
 
 **How updates work:**
 1. When Solis starts, it asks GitHub in the background whether there's a newer build, and opens the [launcher](launcher.md) straight away: nothing waits for the answer, and offline nothing happens.
-2. If there's a newer build, a blue bar over your projects says so: *Build 58 is out*. **Updates** in the sidebar gets a **New** mark.
+2. If there's a newer build, a bar over your projects, outlined in the accent colour, says so: *Build 58 is out*. **Updates** in the sidebar gets a **New** mark.
 3. Choose:
    - **Update now:** the bar says *Downloading build 58…* while Solis checks the download's [SHA-256](concepts.md#getting-solis) against the one GitHub published (and throws it away if they differ). Then it says the build is downloaded: **Restart to update** closes Solis (asking about unsaved work first), installs it and opens the new build; or keep working, and it installs when you close Solis.
    - **See what's new:** the Updates page, with what the build brings.
