@@ -2,7 +2,8 @@
 //! [decision 0053](../../../docs/decisions/0053-compatibility-before-2d.md)).
 //!
 //! [`snapshot`] lists everything a game's Lust, Lua or Rust can reach in
-//! Solis: each native with its Lust, the names Lua's `solis` offers, the
+//! Solis: each native with its Lust, the names Lua's `solis` offers (asked
+//! of a real Luau with the natives lent, so it's what Lua can reach), the
 //! methods of the traits Rust components use, and the ready-made
 //! components' names and fields. A test compares it with
 //! `docs/game-code-interface.txt`, so a change to what games call can't
@@ -37,19 +38,14 @@ pub fn snapshot() -> String {
         out.push_str(&format!("{}: {}\n", event.file, event.lust));
     }
     out.push_str("\n## Lua (solis.<name>)\n\n");
-    let mut lua = lent_names(include_str!("host.rs"));
+    let mut lua = match lua_ways() {
+        Ok(ways) => ways,
+        Err(err) => vec![format!("(Luau couldn't be asked: {err})")],
+    };
     lua.push("send".to_owned());
     lua.sort();
-    // As Lua writes them: solis.World:say, solis.entity.moveTo.
-    for name in lua {
-        let shown = match name.split_once('_') {
-            Some(("entity", method)) => format!("entity.{method}"),
-            Some((object, method)) if object.starts_with(char::is_uppercase) => {
-                format!("{object}:{method}")
-            }
-            _ => name,
-        };
-        out.push_str(&format!("solis.{shown}\n"));
+    for way in lua {
+        out.push_str(&format!("solis.{way}\n"));
     }
     out.push_str("\n## Lua's own names Solis adds or changes (its prelude)\n\n");
     for line in crate::luau::PRELUDE.lines() {
@@ -99,26 +95,25 @@ pub fn snapshot() -> String {
     out
 }
 
-/// The names Lust's and Lua's natives are lent under: each
-/// `natives.raw_set(` followed by its name.
-fn lent_names(source: &str) -> Vec<String> {
-    // Not the file's tests, which lend made-up natives of their own.
-    let source = source.split("#[cfg(test)]").next().unwrap_or_default();
-    let mut names: Vec<String> = source
-        .split("natives.raw_set(")
-        .skip(1)
-        .filter_map(|after| {
-            let start = after.find('"')? + 1;
-            let end = start + after[start..].find('"')?;
-            // Only a name straight after the call, not one further on.
-            let name = &after[start..end];
-            // `send_event` is Lua's `solis.send` underneath, never called by name.
-            (after[..start - 1].trim().is_empty() && name != "send_event").then(|| name.to_owned())
+/// Each native as Lua writes it after `solis.` while the game runs
+/// (`World:say`, `entity.moveTo`, `facingAlong`). A real Luau with the
+/// natives lent is asked, so a native Lua can't reach the way it's
+/// described shows here (once `solis` left out four engine objects, and
+/// this list, then made from the natives' names alone, never showed it).
+fn lua_ways() -> mlua::Result<Vec<String>> {
+    let luau = crate::luau::Luau::new()?;
+    let mut host = crate::host::NoHost;
+    let ways = crate::host::with_natives(&luau, None, &mut host, None, |_| luau.ways())?;
+    Ok(ways
+        .iter()
+        .map(|way| match way.as_slice() {
+            // An entity's method is handed the entity; an engine object's
+            // is called on the object.
+            [owner, method] if owner == "entity" => format!("entity.{method}"),
+            [owner, method] => format!("{owner}:{method}"),
+            names => names.join("."),
         })
-        .collect();
-    names.sort();
-    names.dedup();
-    names
+        .collect())
 }
 
 /// The `fn` lines (up to their `;` or `{`, joined onto one line) of the
@@ -220,6 +215,29 @@ mod tests {
                 new.join("\n  ")
             );
         }
+    }
+
+    /// The names Lust's and Lua's natives are lent under: each
+    /// `natives.raw_set(` followed by its name.
+    fn lent_names(source: &str) -> Vec<String> {
+        // Not the file's tests, which lend made-up natives of their own.
+        let source = source.split("#[cfg(test)]").next().unwrap_or_default();
+        let mut names: Vec<String> = source
+            .split("natives.raw_set(")
+            .skip(1)
+            .filter_map(|after| {
+                let start = after.find('"')? + 1;
+                let end = start + after[start..].find('"')?;
+                // Only a name straight after the call, not one further on.
+                let name = &after[start..end];
+                // `send_event` is Lua's `solis.send` underneath, never called by name.
+                (after[..start - 1].trim().is_empty() && name != "send_event")
+                    .then(|| name.to_owned())
+            })
+            .collect();
+        names.sort();
+        names.dedup();
+        names
     }
 
     #[test]

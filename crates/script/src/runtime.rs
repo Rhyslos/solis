@@ -1040,6 +1040,10 @@ mod hostile_tests;
 mod seams_tests;
 
 #[cfg(test)]
+#[path = "runtime_reach_tests.rs"]
+mod reach_tests;
+
+#[cfg(test)]
 #[path = "runtime_speed_tests.rs"]
 mod speed_tests;
 

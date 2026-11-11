@@ -201,12 +201,17 @@ impl Clock {
 
 /// Lua run once in every Luau: `component`; `vec3(x, y, z)`, a Luau
 /// vector (they add, take away and scale, as Lust's do); and `solis`, which reaches the native
-/// methods while game code runs. It gives back two functions for Solis
-/// alone: one lends `solis` the natives, the other hands over the
-/// components `component` made.
+/// methods while game code runs. It's given the names `solis` groups the
+/// natives under (`describe::owners`: every engine object, and `entity`),
+/// and gives back three functions for Solis alone: one lends `solis` the
+/// natives, one hands over the components `component` made, and one says
+/// how game code reaches each native lent ([`Luau::ways`]).
 pub(crate) const PRELUDE: &str = r#"
 local made = {}
 local natives = nil
+-- The names `solis` groups the natives under: the engine objects and
+-- `entity`. Solis hands them over from its own list of natives.
+local owners = ...
 function component(name, fields)
   if type(name) ~= "string" then
     error("component needs a name first, such as component(\"Spinner\", { … })", 2)
@@ -271,7 +276,7 @@ local function group(prefix)
   return setmetatable({}, inside)
 end
 local groups = {}
-for _, name in ipairs({ "World", "Saves", "Input", "Physics", "Audio", "entity" }) do
+for _, name in ipairs(owners) do
   groups[name] = group(name)
 end
 table.freeze(groups)
@@ -290,7 +295,29 @@ function solis.send(to, name, ...)
   if not send then error("events can only be sent while the game runs", 2) end
   send(to, name, table.pack(...))
 end
-return function(n) natives = n end, function() local m = made; made = {}; return m end
+-- For Solis alone (its list of what game code can call): each native lent
+-- now, as the names game code writes after `solis` to reach it, found by
+-- asking `solis` itself: { "World", "say" }, or { "facingAlong" }.
+local sub = string.sub
+local function ways()
+  local found = {}
+  for key, native in pairs(natives or {}) do
+    if key ~= "send_event" then
+      local way = { key }
+      for name, inside in pairs(groups) do
+        local method = sub(key, #name + 2)
+        if sub(key, 1, #name + 1) == name .. "_" and inside[method] == native then
+          way = { name, method }
+        end
+      end
+      if #way == 2 or solis[key] == native then
+        found[#found + 1] = way
+      end
+    end
+  end
+  return found
+end
+return function(n) natives = n end, function() local m = made; made = {}; return m end, ways
 "#;
 
 /// The Luau game code runs in, with its deadlines and Solis's own parts.
@@ -306,6 +333,8 @@ pub(crate) struct Luau {
     lend: Function,
     /// The classes `component` made since it was last asked.
     made: Function,
+    /// How game code reaches each native lent now ([`Self::ways`]).
+    ways: Function,
     /// A `send_event` that drops what it's given, for game code's starts:
     /// the code's own, and a component's fields' starting values.
     pub(crate) discard: Function,
@@ -353,7 +382,13 @@ impl Luau {
         // the globals it reads are the libraries' own, read-only from the
         // next step on. Lua made later would read the thread's globals,
         // which stay writable.
-        let (lend, made): (Function, Function) = lua.load(PRELUDE).set_name("=solis").eval()?;
+        // `solis` groups the natives under their owners in the engine's
+        // own list, so an engine object added there is within Lua's reach
+        // with nothing more to remember.
+        let (lend, made, ways): (Function, Function, Function) = lua
+            .load(PRELUDE)
+            .set_name("=solis")
+            .call(crate::describe::owners())?;
         let wrap_object = lua.load(crate::objects::WRAP).set_name("=objects").eval()?;
         // The libraries, the prelude's tables and the globals themselves
         // become read-only.
@@ -370,6 +405,7 @@ impl Luau {
             through,
             lend,
             made,
+            ways,
             discard,
             wrap_object,
         })
@@ -397,6 +433,14 @@ impl Luau {
     /// The classes `component` made since this was last asked.
     pub(crate) fn made(&self) -> mlua::Result<Table> {
         self.made.call(())
+    }
+
+    /// Each native lent now, as the names game code writes after `solis`
+    /// to reach it (`["World", "say"]` for `solis.World:say`,
+    /// `["facingAlong"]` for `solis.facingAlong`), in no set order. Asked
+    /// of `solis` itself, so it's what Lua can reach, not what was meant.
+    pub(crate) fn ways(&self) -> mlua::Result<Vec<Vec<String>>> {
+        self.ways.call(())
     }
 }
 
