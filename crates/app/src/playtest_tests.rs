@@ -29,7 +29,6 @@ fn farm() -> Playtest {
         area: "ui.solarea".into(),
         fullscreen: false,
         size: [1600, 900],
-        folder: None,
     }
 }
 
@@ -53,7 +52,8 @@ fn an_export_holds_the_program_renamed_the_game_and_what_to_play() {
     assert_eq!(found.root, folder.join("game"));
     assert_eq!(found.playtest.name, "Turret test");
     assert_eq!(found.playtest.area, "ui.solarea");
-    assert_eq!(found.playtest.folder, None, "where it went isn't shipped");
+    let shipped = std::fs::read_to_string(folder.join(PLAYTEST_FILE)).unwrap();
+    assert!(!shipped.contains("folder"), "where it went isn't shipped");
     // And the editor itself, anywhere else, doesn't.
     assert!(beside(&program).is_none());
     let _ = std::fs::remove_dir_all(&dir);
@@ -187,10 +187,7 @@ fn the_crash_log_says_what_happened_and_what_was_said() {
 fn a_project_remembers_how_it_was_exported() {
     let dir = scratch("remember");
     assert_eq!(last_export(&dir), None);
-    let p = Playtest {
-        folder: Some(dir.join("out")),
-        ..farm()
-    };
+    let p = farm();
     remember_export(&dir, &p).unwrap();
     assert_eq!(
         last_export(&dir),
@@ -199,6 +196,127 @@ fn a_project_remembers_how_it_was_exported() {
             ..p
         })
     );
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+/// What a project's own file says of its last export, written as it's
+/// kept in the project.
+fn write_last_export(root: &Path, text: &str) {
+    let own = root.join(asset_db::CACHE_FOLDER);
+    std::fs::create_dir_all(&own).unwrap();
+    std::fs::write(own.join(LAST_EXPORT), text).unwrap();
+}
+
+/// SEC-04: the project's own file said where the export goes. A project
+/// from someone else could name a folder on their server, which the
+/// window then looked inside as it opened.
+#[test]
+fn a_project_s_file_never_says_where_to_export() {
+    let dir = scratch("hostile-folder");
+    for folder in [
+        r"\\server.example\share\x",
+        "//server.example/share/x",
+        "../../../x",
+        "/mnt/elsewhere/x",
+        r"C:\elsewhere\x",
+    ] {
+        write_last_export(
+            &dir,
+            &format!("playtest 1\nname Farm\narea ui.solarea\nfolder {folder}\n"),
+        );
+        let read = last_export(&dir).unwrap();
+        assert_eq!(
+            read,
+            Playtest {
+                name: "Farm".into(),
+                area: "ui.solarea".into(),
+                ..Playtest::default()
+            },
+            "{folder}"
+        );
+        // Remembered again, the file holds no folder at all.
+        remember_export(&dir, &read).unwrap();
+        let kept = std::fs::read_to_string(dir.join(asset_db::CACHE_FOLDER).join(LAST_EXPORT));
+        assert!(!kept.unwrap().contains("folder"), "{folder}");
+    }
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+/// Everything else the project's file says is put right as it's read, or
+/// the file is passed over: nothing in it is used as it stands.
+#[test]
+fn a_project_s_last_export_is_read_as_a_stranger_s_file() {
+    let dir = scratch("hostile-last");
+    let long = "n".repeat(5_000);
+    write_last_export(
+        &dir,
+        &format!(
+            "playtest 1\nname ..\\{long}:\u{7}?\narea ui.solarea\nwindow fullscreen 4000000000 1\n"
+        ),
+    );
+    let read = last_export(&dir).unwrap();
+    assert!(!read.name.is_empty() && read.name.len() <= editor::export_dialog::MAX_NAME);
+    assert_eq!(editor::export_dialog::game_name(&read.name), read.name);
+    assert!(read.name.chars().all(|c| c == 'n'), "{}", read.name);
+    assert!(read.size.iter().all(|s| (320..=16_384).contains(s)));
+    // An area outside the assets, or none: not read at all.
+    for area in [
+        "../../secret.solarea",
+        "/etc/x.solarea",
+        r"C:\x.solarea",
+        "",
+    ] {
+        write_last_export(&dir, &format!("playtest 1\nname Farm\narea {area}\n"));
+        assert_eq!(last_export(&dir), None, "{area}");
+    }
+    // Too big to be one, or not text: not read.
+    write_last_export(
+        &dir,
+        &format!("playtest 1\narea ui.solarea\n{}", "x".repeat(20_000)),
+    );
+    assert_eq!(last_export(&dir), None);
+    let own = dir.join(asset_db::CACHE_FOLDER);
+    std::fs::write(own.join(LAST_EXPORT), [0xFF, 0xFE, 0x00, 0x80]).unwrap();
+    assert_eq!(last_export(&dir), None);
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+#[test]
+fn a_second_export_the_same_day_gets_a_folder_of_its_own() {
+    let dir = scratch("unused");
+    let first = dir.join("Farm playtest 2026-11-06");
+    assert_eq!(unused(first.clone()), first, "nothing there yet");
+    std::fs::create_dir_all(&first).unwrap();
+    assert_eq!(unused(first.clone()), first, "an empty folder is fine");
+    std::fs::write(first.join("Farm.exe"), "x").unwrap();
+    let second = dir.join("Farm playtest 2026-11-06 (2)");
+    assert_eq!(unused(first.clone()), second);
+    std::fs::create_dir_all(&second).unwrap();
+    std::fs::write(second.join("Farm.exe"), "x").unwrap();
+    assert_eq!(unused(first), dir.join("Farm playtest 2026-11-06 (3)"));
+    let _ = std::fs::remove_dir_all(&dir);
+}
+
+/// Once Export is pressed: the window's own suggestion moves beside an
+/// earlier export, and a folder the person chose is never swapped (the
+/// export refuses it instead).
+#[test]
+fn only_the_window_s_own_folder_is_numbered_and_only_when_exporting() {
+    let dir = scratch("folder-for");
+    let (root, program) = project(&dir);
+    let used = dir.join("out").join("Turret playtest");
+    export(&root, &program, &farm(), &used).unwrap();
+    let request = |suggested| editor::export_dialog::ExportRequest {
+        playtest: farm(),
+        folder: used.clone(),
+        suggested,
+    };
+    let beside = folder_for(&request(true));
+    assert_eq!(beside, dir.join("out").join("Turret playtest (2)"));
+    export(&root, &program, &farm(), &beside).unwrap();
+    assert_eq!(folder_for(&request(false)), used, "chosen: as given");
+    let why = export(&root, &program, &farm(), &folder_for(&request(false))).unwrap_err();
+    assert!(why.contains("already has files"), "{why}");
     let _ = std::fs::remove_dir_all(&dir);
 }
 

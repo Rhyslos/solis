@@ -301,6 +301,9 @@ pub struct Workbench {
     pub(crate) export_window: Option<crate::export_dialog::ExportWindow>,
     /// How the open project was last exported, to start from.
     pub(crate) last_export: Option<crate::export_dialog::Playtest>,
+    /// Where the open project was last exported on this computer, if the
+    /// app remembers.
+    pub(crate) last_export_folder: Option<std::path::PathBuf>,
     /// The Documents folder, for exports to go in by default.
     pub(crate) documents: Option<std::path::PathBuf>,
     /// How updating is going, as the app last said.
@@ -580,6 +583,7 @@ impl Workbench {
             settings_window: None,
             export_window: None,
             last_export: None,
+            last_export_folder: None,
             documents: None,
             update: Default::default(),
             release_notes: None,
@@ -756,6 +760,7 @@ impl Workbench {
             self.forget_preview = true;
             self.export_window = None;
             self.last_export = None;
+            self.last_export_folder = None;
             self.unsaved_prompt = None;
             self.library_state = Default::default();
             if let Some(p) = &project {
