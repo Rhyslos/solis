@@ -192,3 +192,181 @@ fn saved_settings_out_of_range_come_back_to_the_defaults() {
     assert_eq!(s.angle_step, 15.0);
     assert_eq!(Snapping::default().sanitized(), Snapping::default());
 }
+
+fn is_real(t: &Transform) -> bool {
+    t.position.is_finite() && t.rotation.is_finite() && t.scale.is_finite()
+}
+
+/// The review, BUG-23: a child squashed flat along an axis (a scale of 0)
+/// has no one rotation to be found from its matrix, and scaling it stored
+/// "not a number" as its rotation, so it vanished and was saved that way.
+#[test]
+fn scaling_a_flat_child_keeps_its_rotation_and_multiplies_its_scale() {
+    let flat = Transform {
+        position: Vec3::new(1.0, 0.0, 0.0),
+        rotation: Quat::from_rotation_z(0.3),
+        scale: Vec3::new(1.0, 0.0, 1.0),
+    };
+    let (area, ids) = area_with(&[
+        ("P", at(Vec3::new(10.0, 0.0, 0.0)), None),
+        ("C", flat, Some(0)),
+    ]);
+    let t = targets(&area, &select(&[ids[1]]), false).unwrap();
+    let new = moved(&t, Change::Scale(Vec3::new(2.0, 1.0, 3.0)))[0].1;
+    assert!(is_real(&new), "{new:?}");
+    assert_eq!(new.rotation, flat.rotation);
+    assert_eq!(new.scale, Vec3::new(2.0, 0.0, 3.0));
+    assert!(new.position.abs_diff_eq(flat.position, 1e-5), "{new:?}");
+}
+
+/// BUG-23's other way in: no parent, scaled along another entity's axes.
+#[test]
+fn scaling_a_flat_entity_along_anothers_axes_keeps_real_numbers() {
+    let turned = Transform {
+        rotation: Quat::from_rotation_z(0.7),
+        ..at(Vec3::new(4.0, 0.0, 0.0))
+    };
+    let flat = Transform {
+        position: Vec3::new(0.0, 2.0, 0.0),
+        rotation: Quat::from_rotation_y(0.4),
+        scale: Vec3::new(1.0, 1.0, 0.0),
+    };
+    let (area, ids) = area_with(&[("Flat", flat, None), ("Turned", turned, None)]);
+    // The one selected last gives the axes.
+    let t = targets(&area, &select(&ids), true).unwrap();
+    assert!(t.axes[0].abs_diff_eq(turned.rotation * Vec3::X, 1e-6));
+    let new = moved(&t, Change::Scale(Vec3::new(2.0, 1.0, 1.0)));
+    let new_flat = new.iter().find(|(id, _)| *id == ids[0]).unwrap().1;
+    assert!(is_real(&new_flat), "{new_flat:?}");
+    assert_eq!(new_flat.rotation, flat.rotation);
+    assert_eq!(new_flat.scale, Vec3::new(2.0, 1.0, 0.0));
+    let new_turned = new.iter().find(|(id, _)| *id == ids[1]).unwrap().1;
+    assert_eq!(
+        new_turned.scale,
+        Vec3::new(2.0, 1.0, 1.0),
+        "the other as ever"
+    );
+}
+
+/// The same mistake when turning: a parent too thin to measure (its
+/// matrix can still be turned inside out, so the check for a flat parent
+/// let it by) has no rotation to be found either.
+#[test]
+fn turning_under_a_parent_too_thin_to_measure_changes_nothing() {
+    let thin = Transform {
+        scale: Vec3::new(1e-25, 1.0, 1.0),
+        ..at(Vec3::ZERO)
+    };
+    let child = Transform {
+        rotation: Quat::from_rotation_x(0.2),
+        ..at(Vec3::new(0.0, 1.0, 0.0))
+    };
+    let (area, ids) = area_with(&[("P", thin, None), ("C", child, Some(0))]);
+    let t = targets(&area, &select(&[ids[1]]), false).unwrap();
+    assert!(
+        t.entities[0].parent_world.inverse().is_finite(),
+        "this parent passes the flat check"
+    );
+    let new = moved(
+        &t,
+        Change::Rotate {
+            axis: Vec3::Z,
+            angle: 0.5,
+        },
+    )[0]
+    .1;
+    assert_eq!(new, child);
+}
+
+/// A move that lands further off than a number can hold (seen from inside
+/// a very thin parent) changes nothing.
+#[test]
+fn a_move_past_the_largest_number_changes_nothing() {
+    let thin = Transform {
+        scale: Vec3::new(1e-30, 1.0, 1.0),
+        ..at(Vec3::ZERO)
+    };
+    let child = at(Vec3::new(0.0, 1.0, 0.0));
+    let (area, ids) = area_with(&[("P", thin, None), ("C", child, Some(0))]);
+    let t = targets(&area, &select(&[ids[1]]), false).unwrap();
+    assert!(t.entities[0].parent_world.inverse().is_finite());
+    let new = moved(&t, Change::Translate(Vec3::new(1e9, 0.0, 0.0)))[0].1;
+    assert_eq!(new, child);
+    // A move it can hold still lands.
+    let near = moved(&t, Change::Translate(Vec3::new(0.0, 2.0, 0.0)))[0].1;
+    assert_eq!(near.position, Vec3::new(0.0, 3.0, 0.0));
+}
+
+/// Every kind of drag, on every awkward shape and parent: whatever comes
+/// out is made of real numbers.
+#[test]
+fn no_drag_ever_gives_a_transform_that_is_not_a_number() {
+    let scales = [
+        Vec3::ONE,
+        Vec3::new(1.0, 0.0, 1.0),
+        Vec3::ZERO,
+        Vec3::new(1e-25, 1.0, 1.0),
+        Vec3::splat(1e-30),
+        Vec3::new(-1.0, 2.0, 0.5),
+        Vec3::splat(1e20),
+        Vec3::new(1e30, 1.0, 1e-30),
+    ];
+    let rotations = [
+        Quat::IDENTITY,
+        Quat::from_rotation_z(0.7),
+        Quat::from_euler(glam::EulerRot::XYZ, 1.0, 2.0, 3.0),
+    ];
+    let changes = [
+        Change::Translate(Vec3::new(1.0, -2.0, 0.5)),
+        Change::Translate(Vec3::splat(1e30)),
+        Change::Rotate {
+            axis: Vec3::Z,
+            angle: 0.5,
+        },
+        Change::Rotate {
+            axis: Vec3::ZERO,
+            angle: 100.0,
+        },
+        Change::Scale(Vec3::new(2.0, 1.0, 1.0)),
+        Change::Scale(Vec3::new(0.0, f32::NAN, -3.0)),
+        Change::Scale(Vec3::splat(1e30)),
+    ];
+    let mut tried = 0;
+    for parent_scale in scales {
+        for parent_rotation in rotations {
+            for scale in scales {
+                for rotation in rotations {
+                    let parent = Transform {
+                        position: Vec3::new(3.0, 0.0, -1.0),
+                        rotation: parent_rotation,
+                        scale: parent_scale,
+                    };
+                    let child = Transform {
+                        position: Vec3::new(0.5, 1.0, 0.0),
+                        rotation,
+                        scale,
+                    };
+                    let (area, ids) = area_with(&[
+                        ("P", parent, None),
+                        ("C", child, Some(0)),
+                        ("Alone", child, None),
+                        ("Other", at(Vec3::new(-2.0, 0.0, 4.0)), None),
+                    ]);
+                    for object_axes in [false, true] {
+                        let t = targets(&area, &select(&ids[1..]), object_axes).unwrap();
+                        for change in changes {
+                            for (_, new) in moved(&t, change) {
+                                assert!(
+                                    is_real(&new),
+                                    "{parent:?} {child:?} {change:?} gave {new:?}"
+                                );
+                                tried += 1;
+                            }
+                        }
+                    }
+                }
+            }
+        }
+    }
+    assert_eq!(tried, 8 * 3 * 8 * 3 * 2 * 7 * 3);
+}
