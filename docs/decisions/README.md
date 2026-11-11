@@ -11,7 +11,7 @@ Titles below are shortened; the files have the full reasoning. Decisions 0019 to
 | `0001-builds-on-demand.md` | Builds ran on demand, not on every update | Replaced by 0018 |
 | `0002-engine-in-rust-games-in-lust.md` | The engine is Rust; games are Lust | Accepted |
 | `0003-games-in-rust-lust-or-lua.md` | Games can be written in Lust, Rust or Lua | Accepted (extends 0002) |
-| `0004-editor-layout.md` | The editor's layout: panels and tabs, everything dockable | Accepted |
+| `0004-editor-layout.md` | The editor's layout: panels and tabs, everything dockable | Accepted; layout replaced by 0099, theme by 0100 |
 | `0005-netcode-in-layers.md` | Netcode in layers: the shared parts built in, the model optional | Accepted |
 | `0006-git-built-in.md` | Git built into the editor, for teams | Accepted |
 | `0007-mit-licence-and-separate-from-aventail.md` | MIT licence, and a project separate from Aventail (whose code may be adapted) | Accepted |
@@ -67,8 +67,8 @@ Titles below are shortened; the files have the full reasoning. Decisions 0019 to
 | `0057-animation-near-live-far-baked.md` | Animation: live poses near, baked clips far, one state machine for 2D and 3D | Accepted |
 | `0058-listeners-and-who-hears-what.md` | A Listener component, and "Heard by" on sound events | Accepted (extends 0056) |
 | `0059-2d-first.md` | 2D first: Phase 7 is sound only, animation's groundwork moves to 2D, 3D animation becomes Phase 16 | Accepted (reorders 0054 and 0057) |
-| `0060-amber-and-colours-that-mean-something.md` | Amber by default; Play, Stop, warnings and kinds keep their own colours | Accepted (changes 0004's standard accent) |
-| `0061-settings-window-and-no-layout-presets.md` | Edit → Settings… with pages and a search box; layout presets removed, Reset layout kept | Accepted (changes 0004) |
+| `0060-amber-and-colours-that-mean-something.md` | Amber by default; Play, Stop, warnings and kinds keep their own colours | Accepted (changes 0004's standard accent); changed by 0100 |
+| `0061-settings-window-and-no-layout-presets.md` | Edit → Settings… with pages and a search box; layout presets removed, Reset layout kept | Accepted (changes 0004); window replaced by 0099 |
 | `0062-2d-on-the-ground-drawn-small-scaled-whole.md` | 2D on the ground seen from above, 2D cameras, `pixels.solpix`, the pixel stage and the 2D view | Accepted (builds on 0054) |
 | `0063-sprites-read-from-aseprite-cut-out-front-from-the-foot.md` | Sprites read from `.aseprite` files by our own reader, one atlas per file, cut out with front and behind from the foot, colours as painted | Accepted (builds on 0054 and 0062) |
 | `0064-frame-animation-clips-files-and-tabs.md` | Clips from Aseprite tags and `.solframes` clips files, the Clips and Frames tabs, clip time as game state, events as sounds and `AnimationCue`, Preview animation | Accepted (builds on 0057 and 0063) |
@@ -77,7 +77,7 @@ Titles below are shortened; the files have the full reasoning. Decisions 0019 to
 | `0067-tile-maps.md` | Tile maps: terrains in a tileset file, a map file per map placed by a Tile Map, the map's own layers and cell values, in the checksum and saves (version 5); the Map tab | Accepted (builds on 0059, 0063 and 0065) |
 | `0068-tile-art-and-autotiling.md` | Tile art and autotiling: a picture per tileset, terrain kinds (16-tile, 47-tile, edges, rules), pieces and variations, missing tiles pink, tileset format 2, the Tileset tab | Accepted (builds on 0067) |
 | `0069-the-tile-painter.md` | The tile painter: tools on the viewport's tool bar (B, U, N, G, I), the Map tab's swatches as palette, copies flipped and turned, exact tiles in tile map format 2, a stroke one undo step | Accepted (builds on 0067 and 0068) |
-| `0070-usable-first.md` | Usable first: the audit chose a revamp, a new build order around the farming game, blue as the standard accent, nothing shown that isn't built, New in the Library, a start page | Accepted (changes the build order and 0060's standard colour) |
+| `0070-usable-first.md` | Usable first: the audit chose a revamp, a new build order around the farming game, blue as the standard accent, nothing shown that isn't built, New in the Library, a start page | Accepted (changes the build order and 0060's standard colour); changed by 0101 |
 | `0071-2d-physics-and-top-down-movement.md` | 2D physics and top-down movement: a separate 2D world (Rapier2D), solid terrains per tileset, walls merged per chunk, a Collider2D in pixels, the Walls switch, the kit's TopDownController, the arrow keys walk too | Accepted (builds on 0036, 0054, 0062, 0067 and 0070) |
 | `0072-lust-alpha-59-and-the-engine-folder.md` | Lust alpha 59: the engine's folder found from the first line of its description files, the compiler's notes in the Console, `this` instead of `me` | Accepted (builds on 0002, 0065 and the Lust proposal of 2 November) |
 | `0073-world-and-entity-calls-as-methods.md` | World and entity calls as methods (`position()`, `target:moveTo(p)`, `World:say`, `Saves:saveTo`), the project's assemblies as `state Assembly` in `solis/project.lst`, old calls as mistakes that say the new way | Accepted (carries out 0065 for the world and entity calls; builds on 0072) |
@@ -92,17 +92,20 @@ Titles below are shortened; the files have the full reasoning. Decisions 0019 to
 | `0082-the-2d-follow-camera-and-cells-at-places.md` | The kit's FollowCamera2D, and turning places into a map's cells and back | Accepted |
 | `0083-game-ui-on-any-screen.md` | Game UI's anchors, scale rules and screen previews; pictures cut from sheets | Accepted |
 | `0084-game-ui-text.md` | Game UI text: `ab_glyph` and single-channel distance images in one atlas, instead of the plan's `parley` and `fdsm` | Accepted (carries out 0083's text) |
-| `0085-the-editor-overhaul.md` | The editor overhaul from the 4 November mock-up, in seven milestones before the game UI editor | Accepted (carries out 0070's UI overhaul; builds on 0004) |
-| `0086-the-launcher.md` | The launcher inside Solis: projects (pin, search, sort, rename, copy, scan, the build each was saved with), Learn and Updates | Accepted (grows 0070's start page; builds on 0043 and 0045) |
+| `0085-the-editor-overhaul.md` | The editor overhaul from the 4 November mock-up, in seven milestones before the game UI editor | Accepted (carries out 0070's UI overhaul; builds on 0004); changed by 0099 and 0101 |
+| `0086-the-launcher.md` | The launcher inside Solis: projects (pin, search, sort, rename, copy, scan, the build each was saved with), Learn and Updates | Accepted (grows 0070's start page; builds on 0043 and 0045); changed by 0099 |
 | `0087-screens-through-the-engine.md` | Screens are Lust's own views read through the engine (objects, `Ui:entity()`, a reading method per component); no new Lust words | Accepted (replaces the game UI plan's choices 3 and 4) |
 | `0088-menus-send-events.md` | Menus: buttons send events into the next tick's input; `showScreen` and `hideScreen` on the entity, screens as project states | Accepted (builds on 0087) |
-| `0090-always-through-the-launcher.md` | Solis always starts on the launcher in a small window; closing the editor returns to it; a newer build is a bar in the launcher, not a question at start | Accepted (changes 0086 and 0045) |
+| `0090-always-through-the-launcher.md` | Solis always starts on the launcher in a small window; closing the editor returns to it; a newer build is a bar in the launcher, not a question at start | Accepted (changes 0086 and 0045); changed by 0099 |
 | `0091-player-settings-and-the-window.md` | The game's own menu offers text size, UI size, fullscreen and resolution through `Screens:` and `Window:` calls; Alt+Enter switches fullscreen; the settings are the player's, not the game's | Accepted |
 | `0092-day-and-night-and-lamps-on-sprites.md` | Day and night on the Environment (length, start, colour stops) with `World:timeOfDay` and `setTimeOfDay`, kept in saves; Light sprites lights sprites by the day and the lamps; Only at night on every Light | Accepted |
 | `0093-the-playtest-export.md` | File > Export for playtesting: Solis renamed after the game with `playtest.txt` and the project in `game/`, opening straight into the game; `Window:quit()`; the player's settings, saves, log and crash log in Saved Games/<Game> | Accepted |
 | `0094-parallax-layers.md` | Parallax layers: a Parallax component on a sprite (scroll across and up, repeat, in front), drawn where placed when the camera looks at it; behind ones before everything, slowest first; each layer its own small picture, slid smoothly, through a 2D camera | Accepted |
 | `0095-rules-from-the-video-editor.md` | Rules from the project lead's video editor project: no name-dropping, folder READMEs and CLAUDE.md always current, readable code, competing approaches compared for big systems | Accepted |
-| `0096-graphite-theme-and-rounded-panels.md` | A second theme, Graphite, and rounded panels as a separate switch, in Settings > Appearance; colours that mean something unchanged | Accepted |
+| `0096-graphite-theme-and-rounded-panels.md` | A second theme, Graphite, and rounded panels as a separate switch, in Settings > Appearance; colours that mean something unchanged | Replaced by 0100 |
 | `0097-three-tracks.md` | The plan in three tracks: 2D finished first, shared systems built once for both, 3D after; big phases split into smaller ones, the same milestones | Accepted |
 | `0098-ideas-become-milestones.md` | Every idea becomes a milestone, the editor's UI remade comes first, photo mode and built-in store features not planned | Accepted |
+| `0099-the-g-layout.md` | The G layout: the editor's frame becomes a tab bar, ribbon, editor groups, shelf and status bar, to the project lead's own design in `docs/design/g-layout/`; built as Shared 1a to 1d; today's keys and Solis's words stay; the running game is a Game tab; no play tint; a UI ribbon tab | Accepted (replaces 0004's layout and 0061's window; changes 0085, 0086 and 0090) |
+| `0100-one-theme-five-accents.md` | One theme, Neutral dark, and five accents with dark text on them; old accents mapped; Play is the one light button; interface scale and density | Accepted (replaces 0096; changes 0060) |
+| `0101-unfinished-parts-as-placeholders.md` | Unfinished parts are shown in place as quiet placeholders with a hollow square mark, and one setting, Hide unfinished parts, hides them all | Accepted (changes 0070 and 0085) |
 | `0089-atlas-crop-and-the-ui-editor.md` | Atlas Crop (pictures cut from sheets, `.atlas.lst`), the UI editor's approved layout, and screens' looks, pictures and text size | Accepted (renames 0083's Cut out pictures; builds on 0087 and 0088) |

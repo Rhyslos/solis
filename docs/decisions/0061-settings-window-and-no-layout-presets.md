@@ -1,6 +1,6 @@
 # 0061. A Settings window, and no layout presets
 
-- **Status:** Accepted (changes 0004's Window → Layouts)
+- **Status:** Accepted (changes 0004's Window → Layouts). Its Settings window is replaced by [decision 0099](0099-the-g-layout.md)'s File pages (Preferences and Project settings) in Shared 1b; "no layout presets" stands.
 - **Date:** 2026-10-28
 
 ## Problem

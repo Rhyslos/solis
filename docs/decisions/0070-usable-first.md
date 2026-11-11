@@ -1,6 +1,6 @@
 # 0070. Usable first: the engine audit, a new build order, blue, and nothing shown that isn't built
 
-- **Status:** Accepted (changes the build order in ROADMAP.md, and 0060's standard colour)
+- **Status:** Accepted (changes the build order in ROADMAP.md, and 0060's standard colour). Changed by [decision 0101](0101-unfinished-parts-as-placeholders.md): unfinished parts are now shown, marked as placeholders, and one setting hides them; nothing unfinished is shown unmarked.
 - **Date:** 2026-11-04
 
 ## Problem

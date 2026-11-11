@@ -1,6 +1,6 @@
 # 0060. Amber by default, and colours that mean something keep theirs
 
-- **Status:** Accepted (changes the standard accent of 0004)
+- **Status:** Accepted (changes the standard accent of 0004). Changed by [decision 0100](0100-one-theme-five-accents.md): colours that mean something still keep theirs, with new values, but Play is no longer blue (it is the one light button), and there are five accents with dark text on them.
 - **Date:** 2026-10-28
 
 ## Problem

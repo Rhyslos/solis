@@ -1,6 +1,6 @@
 # 0086. The launcher: projects and updates inside Solis
 
-- **Status:** Accepted (the project lead, 2026-11-05; grows the start page of decision 0070; builds on 0043 and 0045)
+- **Status:** Accepted (the project lead, 2026-11-05; grows the start page of decision 0070; builds on 0043 and 0045). Changed by [decision 0099](0099-the-g-layout.md): the launcher becomes the File tab's Recent projects, Learn and Updates pages in Shared 1b; everything it does stands.
 - **Date:** 2026-11-05
 
 ## Problem

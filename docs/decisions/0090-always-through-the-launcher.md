@@ -1,6 +1,6 @@
 # 0090. Always through the launcher
 
-- **Status:** Accepted (the project lead, 2026-11-06: "We go through the launcher, always, no 2 ways around it"; changes 0086 and 0045)
+- **Status:** Accepted (the project lead, 2026-11-06: "We go through the launcher, always, no 2 ways around it"; changes 0086 and 0045). Changed by [decision 0099](0099-the-g-layout.md): the launcher becomes a File page in Shared 1b, and whether it keeps its small window is asked then; always starting on the list of projects, and never reopening one, stand.
 - **Date:** 2026-11-06
 
 ## Problem

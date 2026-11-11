@@ -1,6 +1,6 @@
 # 0096: The Graphite theme and rounded panels
 
-- **Status:** Accepted
+- **Status:** Replaced by [decision 0100](0100-one-theme-five-accents.md) (the project lead, 2026-11-11: both themes and the rounded panels switch are removed; one theme and five accents remain)
 - **Date:** 2026-11-10
 
 ## Problem
