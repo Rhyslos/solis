@@ -573,3 +573,283 @@ fn another_file_moved_while_playing_changes_nothing() {
     assert_eq!(w.document().file(), Some(Path::new(AREA_FILE)));
     assert!(!w.document().is_dirty());
 }
+
+/// The review, BUG-51: a spawn that can't be made says why in the
+/// Console, once a play for each assembly, however often it's asked for.
+mod spawns_that_cannot_be_made {
+    use super::*;
+    use crate::game_code::GameEdit;
+    use crate::library::{LibraryItem, LibraryKind};
+    use area::text::{AreaFile, FileKind};
+    use area::{Area, EntityData, Origin};
+    use reflect::{AssetId, Id};
+    use std::sync::Arc;
+
+    /// How many frames each test plays.
+    const FRAMES: u64 = 40;
+
+    fn id(n: u64) -> EntityId {
+        EntityId(Id::from_raw(n).unwrap())
+    }
+
+    fn asset(n: u64) -> AssetId {
+        AssetId(Id::from_raw(n).unwrap())
+    }
+
+    /// An assembly of one entity, and one more for each of `places`: a
+    /// copy of that assembly, under the root.
+    fn assembly(places: &[AssetId]) -> AreaFile {
+        let mut area = Area::new();
+        area.insert(id(1), EntityData::new("Root"));
+        for (n, &placed) in places.iter().enumerate() {
+            let instance = id(100 + n as u64);
+            let mut copy = EntityData::new("Copy");
+            copy.parent = Some(id(1));
+            copy.origin = Some(Origin {
+                assembly: placed,
+                instance,
+                path: Vec::new(),
+            });
+            area.insert(instance, copy);
+        }
+        AreaFile {
+            kind: FileKind::Assembly { root: id(1) },
+            area,
+            overrides: Default::default(),
+        }
+    }
+
+    /// A workbench that knows `files` as assemblies, each in the Library
+    /// under its name, playing a new area.
+    fn playing(files: Vec<(AssetId, &str, AreaFile)>) -> Workbench {
+        let mut w = knowing(files);
+        w.play();
+        w
+    }
+
+    /// A workbench that knows `files` as assemblies, each in the Library
+    /// under its name.
+    fn knowing(files: Vec<(AssetId, &str, AreaFile)>) -> Workbench {
+        let mut w = Workbench::new(info(), None);
+        let mut library = Vec::new();
+        for (asset, name, file) in files {
+            w.set_assembly(asset, Arc::new(file));
+            library.push(LibraryItem {
+                id: Some(asset),
+                kind: LibraryKind::Assembly,
+                name: name.into(),
+                path: format!("{name}.solasm"),
+                thumbnail: None,
+            });
+        }
+        w.set_library(library);
+        w
+    }
+
+    /// Game code asks for a copy of `name` every frame, as entity `first`
+    /// and the ones after it.
+    fn spawn_every_frame(w: &mut Workbench, name: &str, first: u64) {
+        for frame in 0..FRAMES {
+            let asked = GameEdit::Spawn(id(first + frame), name.into(), Vec3::ZERO);
+            w.open.playing.as_mut().unwrap().pending.push(asked);
+            w.run_game(1.0 / 60.0);
+        }
+    }
+
+    /// The Console's lines about spawning `name`.
+    fn said_about<'a>(w: &'a Workbench, name: &str) -> Vec<&'a str> {
+        let about = format!("spawned \"{name}\"");
+        w.log_lines()
+            .iter()
+            .filter(|l| l.text.contains(&about))
+            .map(|l| l.text.as_str())
+            .collect()
+    }
+
+    /// Spawning "squad" every frame says `why` once, as a warning, and
+    /// makes nothing.
+    fn says_once(mut w: Workbench, why: &str) {
+        let before = w.open.document.area().len();
+        spawn_every_frame(&mut w, "squad", 5000);
+        let said = said_about(&w, "squad");
+        assert_eq!(said.len(), 1, "{said:?}");
+        assert!(said[0].contains(why), "{}", said[0]);
+        assert!(said[0].ends_with("so nothing was made."), "{}", said[0]);
+        assert_eq!(w.open.document.area().len(), before);
+        // Plain words: no ID stands where a name is known.
+        assert!(!said[0].contains(&asset(10).to_string()), "{}", said[0]);
+    }
+
+    #[test]
+    fn a_part_whose_file_is_missing_is_said_once() {
+        let w = playing(vec![(asset(10), "squad", assembly(&[asset(999)]))]);
+        says_once(w, "isn't in the project");
+    }
+
+    /// An exported game lands its spawns through the same code.
+    #[test]
+    fn an_exported_game_says_it_once_too() {
+        let mut w = knowing(vec![(asset(10), "squad", assembly(&[asset(999)]))]);
+        w.set_play_only();
+        w.play();
+        says_once(w, "isn't in the project");
+    }
+
+    #[test]
+    fn a_part_whose_file_cannot_be_read_is_named() {
+        // In the Library, but never read as an assembly.
+        let mut w = playing(vec![(asset(10), "squad", assembly(&[asset(11)]))]);
+        let mut library = w.open.library.clone();
+        library.push(LibraryItem {
+            id: Some(asset(11)),
+            kind: LibraryKind::Assembly,
+            name: "scout".into(),
+            path: "scout.solasm".into(),
+            thumbnail: None,
+        });
+        w.set_library(library);
+        says_once(w, "it places \"scout\", whose file can't be read");
+    }
+
+    #[test]
+    fn an_area_spawned_as_an_assembly_is_said_once() {
+        let mut town = assembly(&[]);
+        town.kind = FileKind::Area;
+        let w = playing(vec![(asset(10), "squad", town)]);
+        says_once(w, "its file is an area, not an assembly");
+    }
+
+    #[test]
+    fn a_part_that_is_an_area_is_said_once() {
+        let mut town = assembly(&[]);
+        town.kind = FileKind::Area;
+        let w = playing(vec![
+            (asset(10), "squad", assembly(&[asset(11)])),
+            (asset(11), "town", town),
+        ]);
+        says_once(w, "\"town\", which is an area, not an assembly");
+    }
+
+    #[test]
+    fn assemblies_placing_each_other_in_a_loop_are_said_once() {
+        let w = playing(vec![
+            (asset(10), "squad", assembly(&[asset(11)])),
+            (asset(11), "scout", assembly(&[asset(10)])),
+        ]);
+        says_once(w, "in a loop (\"squad\" → \"scout\" → \"squad\")");
+    }
+
+    #[test]
+    fn assemblies_placed_too_deep_are_said_once() {
+        let deep = area::text::MAX_NESTING as u64 + 2;
+        let mut files: Vec<(AssetId, String, AreaFile)> = (0..deep)
+            .map(|level| {
+                let name = if level == 0 {
+                    "squad".to_string()
+                } else {
+                    format!("level{level}")
+                };
+                (asset(10 + level), name, assembly(&[asset(11 + level)]))
+            })
+            .collect();
+        files.push((asset(10 + deep), "last".into(), assembly(&[])));
+        let files = files
+            .iter()
+            .map(|(asset, name, file)| (*asset, name.as_str(), file.clone()))
+            .collect();
+        says_once(playing(files), "placed more than 16 deep");
+    }
+
+    #[test]
+    fn a_copy_too_big_to_make_is_said_once() {
+        // Ten copies of ten copies… eight times over: a hundred million.
+        let mut files = vec![(asset(20), "one".to_string(), assembly(&[]))];
+        for level in 1..=8u64 {
+            let name = if level == 8 {
+                "squad".to_string()
+            } else {
+                format!("crowd{level}")
+            };
+            files.push((asset(20 + level), name, assembly(&[asset(19 + level); 10])));
+        }
+        let files = files
+            .iter()
+            .map(|(asset, name, file)| (*asset, name.as_str(), file.clone()))
+            .collect();
+        says_once(playing(files), "more than 1,000,000 entities");
+    }
+
+    #[test]
+    fn two_parts_that_would_share_an_id_are_said_once() {
+        // A part of its own with the ID a placed copy's part gets.
+        let mut scout = assembly(&[]);
+        let mut part = EntityData::new("Part");
+        part.parent = Some(id(1));
+        scout.area.insert(id(2), part);
+        let mut squad = assembly(&[asset(11)]);
+        let mut twin = EntityData::new("Twin");
+        twin.parent = Some(id(1));
+        squad
+            .area
+            .insert(area::assembly::derive(id(100), &[id(2)]), twin);
+        let w = playing(vec![
+            (asset(10), "squad", squad),
+            (asset(11), "scout", scout),
+        ]);
+        says_once(w, "two of its entities would share an ID");
+    }
+
+    #[test]
+    fn a_copy_whose_id_is_taken_is_said_once_and_others_are_still_made() {
+        let mut w = playing(vec![(asset(10), "squad", assembly(&[]))]);
+        let before = w.open.document.area().len();
+        // The first is made; asking for the same entity again can't be.
+        for _ in 0..FRAMES {
+            let asked = GameEdit::Spawn(id(5000), "squad".into(), Vec3::ZERO);
+            w.open.playing.as_mut().unwrap().pending.push(asked);
+            w.run_game(1.0 / 60.0);
+        }
+        assert!(w.open.document.area().contains(id(5000)));
+        assert_eq!(w.open.document.area().len(), before + 1);
+        let said = said_about(&w, "squad");
+        assert_eq!(said.len(), 1, "{said:?}");
+        assert!(said[0].contains("already in the area"), "{}", said[0]);
+        // Another entity of the same assembly is still made.
+        spawn_every_frame(&mut w, "squad", 6000);
+        assert_eq!(w.open.document.area().len(), before + 1 + FRAMES as usize);
+        assert_eq!(said_about(&w, "squad").len(), 1);
+    }
+
+    #[test]
+    fn each_assembly_s_reason_is_its_own_and_a_new_play_says_it_again() {
+        let mut w = playing(vec![
+            (asset(10), "squad", assembly(&[asset(999)])),
+            (asset(12), "patrol", assembly(&[asset(12)])),
+            (asset(13), "scout", assembly(&[])),
+        ]);
+        let before = w.open.document.area().len();
+        for frame in 0..FRAMES {
+            let pending = &mut w.open.playing.as_mut().unwrap().pending;
+            for (n, name) in ["squad", "patrol", "nobody", "scout"]
+                .into_iter()
+                .enumerate()
+            {
+                let entity = id(7000 + frame * 10 + n as u64);
+                pending.push(GameEdit::Spawn(entity, name.into(), Vec3::ZERO));
+            }
+            w.run_game(1.0 / 60.0);
+        }
+        assert_eq!(said_about(&w, "squad").len(), 1);
+        assert_eq!(said_about(&w, "patrol").len(), 1);
+        assert_eq!(said_about(&w, "nobody").len(), 1);
+        assert!(said_about(&w, "patrol")[0].contains("in a loop"));
+        assert!(said_about(&w, "nobody")[0].contains("no assembly by that name"));
+        assert!(said_about(&w, "scout").is_empty());
+        assert_eq!(w.open.document.area().len(), before + FRAMES as usize);
+        // The next play is a new one: it says so again, once.
+        w.stop();
+        w.play();
+        spawn_every_frame(&mut w, "squad", 5000);
+        assert_eq!(said_about(&w, "squad").len(), 2);
+    }
+}

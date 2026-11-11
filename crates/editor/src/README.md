@@ -105,7 +105,7 @@ Tests: files ending `_tests.rs` hold the tests of the file with the same start (
 
 | File | What it does | Main items |
 | --- | --- | --- |
-| `play.rs` | Play mode: the area running as a game beside the editor, built from a copy of the document. | `PlayState` |
+| `play.rs` | Play mode: the area running as a game beside the editor, built from a copy of the document. What game code spawns and despawns lands here (`land_edits`); a spawn that can't be made says why in the Console, once a play for each assembly. | `PlayState` |
 | `game_code.rs` | Game code in the editor: its components in the registry, and the program running against the game's world (decision 0028). | |
 | `play_input.rs` | The game's input in the editor: clicking the Game panel gives the game the mouse and keys; recording and replaying input; Alt+Enter switches the player's fullscreen setting. In an exported game, Esc is the game's and a lost focus keeps the keys. | |
 | `save_game.rs` | Save games: the whole running game, so loading carries on exactly (decision 0038). Older saves load through `FORMAT`'s upgraders (Phase 8, C2), saying what couldn't be carried over; a component the game's code no longer has is left out and said. Game-wide objects are an `objects` section (decision 0080; tests in `save_game_objects_tests.rs`). | `Save`, `FORMAT` |
