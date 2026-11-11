@@ -824,3 +824,105 @@ fn hidden_what_is_real_has_the_room_an_unbuilt_page_had() {
     assert_eq!(at(&picture, middle), tokens::viewport());
     standard_again();
 }
+
+/// Parts that are ways of working or drawings over something else, with
+/// no control of their own to draw: the plan's inventory says "not
+/// drawn" of each. They are in the table so they are counted and
+/// planned, and the walk below doesn't expect to meet them.
+const NOTHING_TO_DRAW: [(UnbuiltId, &str); 8] = [
+    (
+        UnbuiltId::HomeViewMotionCurve,
+        "a drawing over the viewport, not a control",
+    ),
+    (
+        UnbuiltId::PlaceClickToPlace,
+        "a way of placing: click a tile, then the area",
+    ),
+    (UnbuiltId::LibMultiSelect, "a way of selecting"),
+    (UnbuiltId::LibDragToHome, "a way of dragging"),
+    (
+        UnbuiltId::DebugStatus,
+        "its place in the status bar says what is real",
+    ),
+    (
+        UnbuiltId::RecentCardBadge,
+        "a project is neither 2D nor 3D: no badge is drawn",
+    ),
+    (UnbuiltId::InputGroups, "the actions are one flat list"),
+    (
+        UnbuiltId::CrossBakeNow,
+        "the problem it belongs to can't arise yet",
+    ),
+];
+
+/// The unfinished parts the editor draws somewhere today. Each milestone
+/// that builds a screen adds that screen's parts here, until this is the
+/// whole table less [`NOTHING_TO_DRAW`]; the last milestone of the phase
+/// replaces the list with that sum.
+const DRAWN_SO_FAR: [UnbuiltId; 1] = [UnbuiltId::PrefsCodeSplit];
+
+/// Walks the editor in `look`: every workspace, each page of the
+/// Settings window, and the launcher. Gives every unfinished part noted
+/// as drawn on the way, and the name of everything on screen described
+/// as not built.
+fn walk(look: InterfaceLook) -> (BTreeSet<UnbuiltId>, Vec<String>) {
+    use crate::settings_window::Page;
+    use crate::test_support::{harness, info};
+    use crate::workbench::Workbench;
+    let mut h = harness(Workbench::new(info(), None).with_interface_look(look));
+    theme::restyle(&h.ctx, look);
+    let mut noted = BTreeSet::new();
+    let mut described = Vec::new();
+    let mut look_around = |h: &mut Harness<'static, crate::test_support::State>| {
+        h.run();
+        h.run();
+        noted.extend(drawn(&h.ctx));
+        described.extend(
+            h.query_all(
+                By::new().predicate(|node| node.description().as_deref() == Some(DESCRIPTION)),
+            )
+            .map(|node| node.accesskit_node().label().unwrap_or_default()),
+        );
+    };
+    for workspace in crate::workspace::Workspace::ALL {
+        h.state_mut().0.switch_workspace(workspace);
+        look_around(&mut h);
+    }
+    for page in [Page::Appearance, Page::TwoD] {
+        h.state_mut().0.open_settings();
+        h.state_mut().0.settings_window.as_mut().unwrap().page = page;
+        look_around(&mut h);
+    }
+    h.state_mut().0.settings_window = None;
+    h.state_mut().0.launch_launcher();
+    look_around(&mut h);
+    described.sort();
+    described.dedup();
+    standard_again();
+    (noted, described)
+}
+
+#[test]
+fn walking_the_editor_meets_every_part_it_should_and_nothing_else_says_not_built() {
+    let (noted, described) = walk(InterfaceLook::default());
+    let mut wanted: Vec<UnbuiltId> = DRAWN_SO_FAR.to_vec();
+    wanted.sort();
+    assert_eq!(noted.into_iter().collect::<Vec<_>>(), wanted);
+    // Everything on screen that says it isn't built came from the
+    // mechanism: its names are exactly the names of the parts drawn.
+    let mut names: Vec<String> = wanted.iter().map(|id| get(*id).name.to_owned()).collect();
+    names.sort();
+    assert_eq!(described, names);
+    // A part with nothing to draw is never one the walk expects.
+    for (id, why) in NOTHING_TO_DRAW {
+        assert!(!DRAWN_SO_FAR.contains(&id), "{id:?}: {why}");
+        assert!(!why.is_empty());
+    }
+}
+
+#[test]
+fn walking_the_editor_with_them_hidden_meets_none() {
+    let (noted, described) = walk(hiding());
+    assert!(noted.is_empty(), "{noted:?}");
+    assert_eq!(described, Vec::<String>::new());
+}

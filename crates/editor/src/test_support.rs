@@ -106,6 +106,9 @@ pub(crate) fn harness(workbench: Workbench) -> egui_kittest::Harness<'static, St
             },
             (Workbench::new(info(), None), Picker::default()),
         )
+        // The editor's own fonts, as the app loads them before its first
+        // frame: the design's controls ask for their weights by name.
+        .tap(|h| h.ctx.set_fonts(crate::fonts::fonts()))
         .tap(|h| h.state_mut().0 = workbench)
 }
 

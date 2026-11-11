@@ -625,13 +625,15 @@ fn the_launcher_s_tints_are_the_accent_in_use_mixed_into_the_surface() {
     use crate::theme::{self, Accent, InterfaceLook};
     use crate::tokens;
     for chosen in Accent::ALL {
-        let mut w = launcher_with(some_projects());
-        w.launcher_notice("Made a copy.");
-        let mut h = harness(w);
         let look = InterfaceLook {
             accent: chosen,
             ..InterfaceLook::default()
         };
+        // The editor holds the look it draws with, as the app hands it
+        // over.
+        let mut w = launcher_with(some_projects()).with_interface_look(look);
+        w.launcher_notice("Made a copy.");
+        let mut h = harness(w);
         theme::restyle(&h.ctx, look);
         h.run();
         h.get_by_label("Playground").click();

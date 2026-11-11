@@ -69,6 +69,7 @@ mod screen_pictures;
 mod screen_props;
 mod screen_ties;
 mod search;
+mod settings_appearance;
 mod settings_window;
 mod settled;
 mod sheet_view;

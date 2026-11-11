@@ -1,7 +1,9 @@
 //! Edit > Settings…: the editor's settings in one window, a page per
 //! subject with a search box ([decision 0061](../../../docs/decisions/0061-settings-window-and-no-layout-presets.md)).
 //! Pages appear as they get settings: the editor's own (Appearance: the
-//! accent colour and Reset layout), kept on this computer, and the open
+//! accent colour, scale, density, Reset layout, hints and Hide unfinished
+//! parts, drawn with the design's own controls by
+//! `settings_appearance.rs`), kept on this computer, and the open
 //! project's (2D, Phase 9 D1: the base resolution, pixels per unit, tile
 //! size and scaling), kept in the project's `pixels.solpix` so they travel
 //! with it. None of them is part of the area, so undo leaves them alone.
@@ -42,12 +44,13 @@ impl Page {
 
 /// One setting: its name and its hint, which the search box looks in.
 #[derive(Debug, Clone, Copy, PartialEq, Eq)]
-enum Setting {
+pub(crate) enum Setting {
     Accent,
     Scale,
     Density,
     Layout,
     Hints,
+    HideUnfinished,
     BaseResolution,
     PixelsPerUnit,
     TileSize,
@@ -57,22 +60,26 @@ enum Setting {
 impl Setting {
     fn page(self) -> Page {
         match self {
-            Self::Accent | Self::Scale | Self::Density | Self::Layout | Self::Hints => {
-                Page::Appearance
-            }
+            Self::Accent
+            | Self::Scale
+            | Self::Density
+            | Self::Layout
+            | Self::Hints
+            | Self::HideUnfinished => Page::Appearance,
             Self::BaseResolution | Self::PixelsPerUnit | Self::TileSize | Self::Scaling => {
                 Page::TwoD
             }
         }
     }
 
-    fn name(self) -> &'static str {
+    pub(crate) fn name(self) -> &'static str {
         match self {
             Self::Accent => "Accent colour",
             Self::Scale => "Interface scale",
             Self::Density => "Density",
             Self::Layout => "Panel layout",
             Self::Hints => "Hints",
+            Self::HideUnfinished => "Hide unfinished parts",
             Self::BaseResolution => "Base resolution",
             Self::PixelsPerUnit => "Pixels per unit",
             Self::TileSize => "Tile size",
@@ -80,7 +87,7 @@ impl Setting {
         }
     }
 
-    fn hint(self) -> &'static str {
+    pub(crate) fn hint(self) -> &'static str {
         match self {
             Self::Accent => {
                 "Marks what's chosen and selected. Play, Stop and warnings keep their own colours."
@@ -98,6 +105,10 @@ impl Setting {
                 "The Hints panel says what's selected and what you can do with it. Turn it off \
                  once you know your way around."
             }
+            Self::HideUnfinished => {
+                "Some parts of the editor are still to come: they are shown in grey with a \
+                 small square mark. Turn this on to hide them all."
+            }
             Self::BaseResolution => {
                 "The size the game is drawn at, in pixels, before it's scaled up to fill the \
                  screen."
@@ -113,12 +124,13 @@ impl Setting {
         }
     }
 
-    const ALL: [Self; 9] = [
+    const ALL: [Self; 10] = [
         Self::Accent,
         Self::Scale,
         Self::Density,
         Self::Layout,
         Self::Hints,
+        Self::HideUnfinished,
         Self::BaseResolution,
         Self::PixelsPerUnit,
         Self::TileSize,
@@ -142,7 +154,7 @@ pub(crate) struct SettingsWindow {
 }
 
 /// What a click in the window asks for, carried out once it's drawn.
-enum Request {
+pub(crate) enum Request {
     Accent(Accent),
     /// How large the interface is drawn.
     Scale(theme::Scale),
@@ -151,13 +163,23 @@ enum Request {
     ResetLayout,
     /// Hints on or off.
     Hints(bool),
+    /// Unfinished parts hidden or shown.
+    HideUnfinished(bool),
     /// The Appearance page as it was at first: the standard accent, scale
-    /// and density, and hints on.
+    /// and density, hints on, and unfinished parts shown.
     ResetAppearance,
     /// New 2D settings, and whether to save them now (not while a number
     /// is being dragged).
     Pixels(PixelSettings, bool),
 }
+
+/// The Settings window's size when it first opens: room for the
+/// Appearance page's rows, each with its control beside its words.
+const WINDOW_SIZE: egui::Vec2 = egui::vec2(920.0, 740.0);
+/// The room left round the Settings window at the least.
+const WINDOW_MARGIN: f32 = 24.0;
+/// The width of the list of pages at the window's left.
+const PAGES_W: f32 = 170.0;
 
 /// Common base resolutions for a pixel-art game, offered in the menu.
 pub(crate) const BASE_SIZES: [[u32; 2]; 6] = [
@@ -242,6 +264,18 @@ impl Workbench {
         }
     }
 
+    /// Hides every unfinished part of the editor, or shows them again
+    /// (remembered next time).
+    pub(crate) fn hide_unfinished(&mut self, ctx: &egui::Context, hide: bool) {
+        self.choose_interface_look(
+            ctx,
+            theme::InterfaceLook {
+                hide_unfinished: hide,
+                ..self.interface_look()
+            },
+        );
+    }
+
     /// Puts every panel of the workspace in use back where it started.
     pub fn reset_layout(&mut self) {
         self.reset_workspace();
@@ -264,14 +298,19 @@ impl Workbench {
             pixels: self.open.pixels,
             project: self.open.project.is_some(),
         };
+        // A size of its own, never its page's: a setting that makes the
+        // page longer or shorter (Density, Hide unfinished parts) must not
+        // move the window from under the pointer. It is never larger than
+        // the editor's window, whatever the interface scale.
+        let room = ctx.content_rect().size() - egui::Vec2::splat(WINDOW_MARGIN);
         egui::Window::new("Settings")
             .open(&mut open)
             .collapsible(false)
             // Opens in the middle of the window, clear of the menus.
             .pivot(egui::Align2::CENTER_CENTER)
             .default_pos(ctx.content_rect().center())
-            .default_width(720.0)
-            .default_height(420.0)
+            .default_size(WINDOW_SIZE.min(room))
+            .max_size(room)
             .show(ctx, |ui| {
                 request = contents(ui, &mut window, &now);
             });
@@ -291,6 +330,7 @@ impl Workbench {
             }
             Some(Request::ResetLayout) => self.reset_layout(),
             Some(Request::Hints(on)) => self.hints = on,
+            Some(Request::HideUnfinished(on)) => self.hide_unfinished(ctx, on),
             Some(Request::ResetAppearance) => {
                 // The switches that aren't on this page keep their choice.
                 let standard = theme::InterfaceLook::default();
@@ -300,6 +340,7 @@ impl Workbench {
                         accent: standard.accent,
                         scale: standard.scale,
                         density: standard.density,
+                        hide_unfinished: standard.hide_unfinished,
                         ..now.look
                     },
                 );
@@ -315,11 +356,12 @@ impl Workbench {
 }
 
 /// The settings as they are, for the window to show.
-struct Now {
-    /// The accent, scale and density in use.
-    look: theme::InterfaceLook,
+pub(crate) struct Now {
+    /// The accent, scale and density in use, and whether unfinished
+    /// parts are hidden.
+    pub(crate) look: theme::InterfaceLook,
     /// Whether the Hints panel shows hints.
-    hints: bool,
+    pub(crate) hints: bool,
     pixels: PixelSettings,
     /// Whether a project is open (its settings can be changed).
     project: bool,
@@ -345,81 +387,118 @@ fn contents(ui: &mut Ui, window: &mut SettingsWindow, now: &Now) -> Option<Reque
         found
     };
     ui.horizontal_top(|ui| {
-        ui.vertical(|ui| {
-            ui.set_width(170.0);
-            ui.add(
-                egui::TextEdit::singleline(&mut window.search)
-                    .hint_text("Search settings")
-                    .desired_width(170.0),
-            );
-            ui.add_space(6.0);
-            for (heading, project) in [("Editor", false), ("This project", true)] {
-                ui.label(RichText::new(heading).color(theme::text_weak()).size(11.0));
-                for page in Page::ALL.into_iter().filter(|p| p.is_project() == project) {
-                    let chosen = words.is_empty() && window.page == page;
-                    if ui.selectable_label(chosen, page.name()).clicked() {
-                        window.page = page;
-                        window.search.clear();
-                    }
-                }
-                ui.add_space(6.0);
-            }
-        });
+        ui.vertical(|ui| pages_list(ui, window, words.is_empty()));
         ui.separator();
-        ui.vertical(|ui| {
-            let heading = if words.is_empty() {
-                window.page.name()
-            } else {
-                "Search results"
-            };
-            ui.heading(heading);
-            if words.is_empty() && window.page == Page::TwoD {
-                let line = if now.project {
-                    "For this project's 2D games: kept in the project, so everyone working on it \
-                     shares them."
-                } else {
-                    "These belong to a project: open or make one to change them."
-                };
-                ui.label(RichText::new(line).color(theme::text_weak()).size(11.0));
-            }
-            ui.add_space(4.0);
-            if shown.is_empty() {
-                ui.label(RichText::new("No setting matches that.").color(theme::text_weak()));
-            }
-            for setting in shown {
-                if let Some(r) = row(ui, setting, now) {
-                    request = Some(r);
-                }
-                ui.separator();
-            }
-            ui.add_space(8.0);
-            let footer = if words.is_empty() && window.page == Page::TwoD {
-                fits(now.pixels)
-            } else {
-                "The editor's settings are kept on this computer, a project's in the project."
-                    .to_owned()
-            };
-            ui.label(RichText::new(footer).color(theme::text_weak()).size(11.0));
-            ui.add_space(8.0);
-            // The 2D page's settings are the project's: nothing to reset
-            // without one.
-            let can_reset = window.page != Page::TwoD || now.project;
-            if words.is_empty()
-                && ui
-                    .add_enabled(can_reset, egui::Button::new("Reset this page"))
-                    .on_hover_text("Puts this page's settings back as they were at first")
-                    .on_disabled_hover_text("Open a project first: these settings are its own")
-                    .clicked()
-            {
-                request = match window.page {
-                    Page::Appearance => Some(Request::ResetAppearance),
-                    Page::TwoD => now
-                        .project
-                        .then(|| Request::Pixels(PixelSettings::default(), true)),
-                };
-            }
-        });
+        // The page scrolls inside the window, which keeps its own size.
+        egui::ScrollArea::vertical()
+            .auto_shrink([false, false])
+            .show(ui, |ui| {
+                // Downwards, whatever the row of panes it stands in.
+                ui.with_layout(egui::Layout::top_down(egui::Align::Min), |ui| {
+                    request = page_body(ui, window.page, &words, shown, now);
+                });
+            });
     });
+    request
+}
+
+/// The search box and the list of pages, at the window's left.
+fn pages_list(ui: &mut Ui, window: &mut SettingsWindow, browsing: bool) {
+    ui.set_width(PAGES_W);
+    ui.add(
+        egui::TextEdit::singleline(&mut window.search)
+            .hint_text("Search settings")
+            .desired_width(PAGES_W),
+    );
+    ui.add_space(6.0);
+    for (heading, project) in [("Editor", false), ("This project", true)] {
+        ui.label(RichText::new(heading).color(theme::text_weak()).size(11.0));
+        for page in Page::ALL.into_iter().filter(|p| p.is_project() == project) {
+            let chosen = browsing && window.page == page;
+            if ui.selectable_label(chosen, page.name()).clicked() {
+                window.page = page;
+                window.search.clear();
+            }
+        }
+        ui.add_space(6.0);
+    }
+}
+
+/// A page's settings (or, while searching, the settings found), with
+/// the line under them and Reset this page.
+fn page_body(
+    ui: &mut Ui,
+    page: Page,
+    words: &str,
+    shown: Vec<Setting>,
+    now: &Now,
+) -> Option<Request> {
+    let mut request = None;
+    let browsing = words.is_empty();
+    ui.heading(if browsing {
+        page.name()
+    } else {
+        "Search results"
+    });
+    if browsing && page == Page::TwoD {
+        let line = if now.project {
+            "For this project's 2D games: kept in the project, so everyone working on it \
+             shares them."
+        } else {
+            "These belong to a project: open or make one to change them."
+        };
+        ui.label(RichText::new(line).color(theme::text_weak()).size(11.0));
+    }
+    ui.add_space(4.0);
+    if shown.is_empty() {
+        ui.label(RichText::new("No setting matches that.").color(theme::text_weak()));
+    }
+    if browsing && page == Page::Appearance {
+        // The page as the design lays it out, in sections.
+        request = crate::settings_appearance::page(ui, now);
+    } else {
+        for setting in shown {
+            // A setting found by searching is drawn as on its page.
+            let asked = if setting.page() == Page::Appearance {
+                crate::settings_appearance::row(ui, setting, now)
+            } else {
+                let asked = row(ui, setting, now);
+                ui.separator();
+                asked
+            };
+            if asked.is_some() {
+                request = asked;
+            }
+        }
+    }
+    ui.add_space(8.0);
+    let footer = if browsing && page == Page::TwoD {
+        fits(now.pixels)
+    } else {
+        "The editor's settings are kept on this computer, a project's in the project.".to_owned()
+    };
+    ui.label(RichText::new(footer).color(theme::text_weak()).size(11.0));
+    ui.add_space(8.0);
+    // The 2D page's settings are the project's: nothing to reset without
+    // one.
+    let can_reset = page != Page::TwoD || now.project;
+    let reset = browsing
+        && ui
+            .add_enabled_ui(can_reset, |ui| {
+                crate::widgets::button::Button::plain("Reset this page").show(ui)
+            })
+            .inner
+            .on_hover_text("Puts this page's settings back as they were at first")
+            .on_disabled_hover_text("Open a project first: these settings are its own")
+            .clicked();
+    if reset {
+        request = match page {
+            Page::Appearance => Some(Request::ResetAppearance),
+            Page::TwoD => now
+                .project
+                .then(|| Request::Pixels(PixelSettings::default(), true)),
+        };
+    }
     request
 }
 
@@ -452,11 +531,10 @@ fn size_text([w, h]: [u32; 2]) -> String {
     format!("{w} × {h}")
 }
 
-/// One setting's row: its name and hint on the left, its control on the
-/// right.
+/// One 2D setting's row: its name and hint on the left, its control on
+/// the right. (The Appearance page's rows are `settings_appearance.rs`'s.)
 fn row(ui: &mut Ui, setting: Setting, now: &Now) -> Option<Request> {
     let mut request = None;
-    let accent = now.look.accent;
     ui.horizontal(|ui| {
         ui.vertical(|ui| {
             ui.set_width(330.0);
@@ -467,79 +545,9 @@ fn row(ui: &mut Ui, setting: Setting, now: &Now) -> Option<Request> {
                     .size(11.0),
             );
         });
-        match setting {
-            Setting::Hints => {
-                let mut on = now.hints;
-                if ui.checkbox(&mut on, "Show hints").changed() {
-                    request = Some(Request::Hints(on));
-                }
-            }
-            Setting::Accent => {
-                egui::ComboBox::from_id_salt("settings-accent")
-                    .selected_text(accent.name())
-                    .width(150.0)
-                    .show_ui(ui, |ui| {
-                        for choice in Accent::ALL {
-                            ui.horizontal(|ui| {
-                                let (swatch, _) = ui.allocate_exact_size(
-                                    egui::vec2(16.0, 10.0),
-                                    egui::Sense::hover(),
-                                );
-                                ui.painter().rect_filled(swatch, 3.0, choice.colors().fill);
-                                if ui
-                                    .selectable_label(accent == choice, choice.name())
-                                    .clicked()
-                                {
-                                    request = Some(Request::Accent(choice));
-                                }
-                            });
-                        }
-                    });
-            }
-            Setting::Scale => {
-                egui::ComboBox::from_id_salt("settings-scale")
-                    .selected_text(now.look.scale.name())
-                    .width(150.0)
-                    .show_ui(ui, |ui| {
-                        for choice in theme::Scale::ALL {
-                            if ui
-                                .selectable_label(now.look.scale == choice, choice.name())
-                                .clicked()
-                            {
-                                request = Some(Request::Scale(choice));
-                            }
-                        }
-                    });
-            }
-            Setting::Density => {
-                egui::ComboBox::from_id_salt("settings-density")
-                    .selected_text(now.look.density.name())
-                    .width(150.0)
-                    .show_ui(ui, |ui| {
-                        for choice in theme::Density::ALL {
-                            if ui
-                                .selectable_label(now.look.density == choice, choice.name())
-                                .clicked()
-                            {
-                                request = Some(Request::Density(choice));
-                            }
-                        }
-                    });
-            }
-            Setting::Layout => {
-                if ui.button("Reset layout").clicked() {
-                    request = Some(Request::ResetLayout);
-                }
-            }
-            Setting::BaseResolution
-            | Setting::PixelsPerUnit
-            | Setting::TileSize
-            | Setting::Scaling => {
-                ui.add_enabled_ui(now.project, |ui| {
-                    request = pixel_control(ui, setting, now.pixels);
-                });
-            }
-        }
+        ui.add_enabled_ui(now.project, |ui| {
+            request = pixel_control(ui, setting, now.pixels);
+        });
     });
     request
 }
@@ -643,7 +651,12 @@ fn pixel_control(ui: &mut Ui, setting: Setting, s: PixelSettings) -> Option<Requ
                     }
                 });
         }
-        Setting::Accent | Setting::Scale | Setting::Density | Setting::Layout | Setting::Hints => {}
+        Setting::Accent
+        | Setting::Scale
+        | Setting::Density
+        | Setting::Layout
+        | Setting::Hints
+        | Setting::HideUnfinished => {}
     }
     if changed.get() && new != s {
         // Saved once the drag ends, not every step of it.
@@ -656,234 +669,5 @@ fn pixel_control(ui: &mut Ui, setting: Setting, s: PixelSettings) -> Option<Requ
 }
 
 #[cfg(test)]
-mod tests {
-    use super::*;
-    use crate::panel::Panel;
-    use crate::test_support::*;
-    use egui_kittest::kittest::Queryable;
-
-    /// Opens Edit > Settings… by clicking, as a person would.
-    fn opened() -> egui_kittest::Harness<'static, State> {
-        let mut h = harness(Workbench::new(info(), None));
-        h.run();
-        h.get_all_by_label("Edit").next().unwrap().click();
-        h.run();
-        h.get_by_label("Settings…").click();
-        h.run();
-        h
-    }
-
-    #[test]
-    fn edit_settings_opens_the_window_on_appearance() {
-        let h = opened();
-        assert!(h.state().0.settings_window.is_some());
-        assert!(h.query_by_label("Accent colour").is_some());
-        assert!(h.query_by_label("Reset layout").is_some());
-    }
-
-    /// Opens the drop-down beside `setting` and picks `choice` in it.
-    fn choose(h: &mut egui_kittest::Harness<'static, State>, nth: usize, choice: &str) {
-        h.get_all_by_role(egui::accesskit::Role::ComboBox)
-            .nth(nth)
-            .unwrap()
-            .click();
-        h.run();
-        h.get_by_label(choice).click();
-        h.run();
-    }
-
-    #[test]
-    fn choosing_an_accent_changes_the_editor_s_colour() {
-        let mut h = opened();
-        // The accent restyles the editor, whose headings need its fonts.
-        h.ctx.set_fonts(theme::fonts());
-        h.run();
-        // The accent's drop-down is the page's first.
-        choose(&mut h, 0, "Purple");
-        assert_eq!(h.state().0.accent(), Accent::Purple);
-        assert_eq!(h.state().0.interface_look().accent, Accent::Purple);
-        let style = h.ctx.global_style();
-        assert_eq!(
-            style.visuals.selection.bg_fill,
-            crate::tokens::select_row(Accent::Purple)
-        );
-        // Reset this page puts the standard one back.
-        h.get_by_label("Reset this page").click();
-        h.run();
-        assert_eq!(h.state().0.accent(), Accent::default());
-    }
-
-    #[test]
-    fn the_five_accents_are_offered_and_the_old_ones_are_gone() {
-        let mut h = opened();
-        h.ctx.set_fonts(theme::fonts());
-        h.run();
-        h.get_all_by_role(egui::accesskit::Role::ComboBox)
-            .next()
-            .unwrap()
-            .click();
-        h.run();
-        for accent in Accent::ALL {
-            assert!(h.query_all_by_label(accent.name()).next().is_some());
-        }
-        for gone in ["Plum", "Marine green", "Petrol blue", "Amber", "Gold"] {
-            assert!(h.query_by_label(gone).is_none(), "{gone}");
-        }
-    }
-
-    #[test]
-    fn the_theme_and_rounded_panels_settings_are_gone() {
-        let h = opened();
-        for gone in ["Theme", "Rounded panels", "Use rounded panels", "Graphite"] {
-            assert!(h.query_by_label(gone).is_none(), "{gone}");
-        }
-        assert!(!Setting::ALL.iter().any(|s| s.matches("graphite")));
-        assert!(!Setting::ALL.iter().any(|s| s.matches("rounded")));
-    }
-
-    #[test]
-    fn interface_scale_draws_everything_larger_and_reset_puts_it_back() {
-        let mut h = opened();
-        h.ctx.set_fonts(theme::fonts());
-        h.run();
-        assert!(h.query_by_label("Interface scale").is_some());
-        let wide = h.ctx.content_rect().width();
-        choose(&mut h, 1, "150%");
-        h.run();
-        assert_eq!(h.state().0.interface_look().scale.percent(), 150);
-        assert_eq!(h.ctx.zoom_factor(), 1.5);
-        // Each point is now a pixel and a half, so the same window holds
-        // two thirds as many points across.
-        assert_eq!(h.ctx.pixels_per_point(), 1.5);
-        let narrow = h.ctx.content_rect().width();
-        assert!((narrow * 1.5 - wide).abs() < 1.0, "{wide} then {narrow}");
-        // The accent kept its choice.
-        assert_eq!(h.state().0.accent(), Accent::default());
-        h.get_by_label("Reset this page").click();
-        h.run();
-        h.run();
-        assert_eq!(
-            h.state().0.interface_look(),
-            theme::InterfaceLook::default()
-        );
-        assert_eq!(h.ctx.zoom_factor(), 1.0);
-    }
-
-    #[test]
-    fn density_makes_buttons_and_fields_taller_or_shorter() {
-        let mut h = opened();
-        h.ctx.set_fonts(theme::fonts());
-        // The standard look first, as the app applies it when it starts.
-        theme::restyle(&h.ctx, theme::InterfaceLook::default());
-        h.run();
-        assert!(h.query_by_label("Density").is_some());
-        let height = |h: &egui_kittest::Harness<'static, State>| {
-            h.get_by_label("Reset layout").rect().height()
-        };
-        assert_eq!(height(&h), 24.0);
-        choose(&mut h, 2, "Compact");
-        h.run();
-        assert_eq!(
-            h.state().0.interface_look().density,
-            theme::Density::Compact
-        );
-        assert_eq!(height(&h), 22.0);
-        choose(&mut h, 2, "Comfortable");
-        h.run();
-        assert_eq!(height(&h), 28.0);
-        h.get_by_label("Reset this page").click();
-        h.run();
-        h.run();
-        assert_eq!(height(&h), 24.0);
-        theme::restyle(&h.ctx, theme::InterfaceLook::default());
-    }
-
-    #[test]
-    fn reset_this_page_leaves_the_switches_of_other_pages_alone() {
-        let mut w = Workbench::new(info(), None).with_interface_look(theme::InterfaceLook {
-            accent: Accent::Teal,
-            hide_unfinished: true,
-            ribbon_labels: false,
-            ..theme::InterfaceLook::default()
-        });
-        w.open_settings();
-        let mut h = harness(w);
-        h.ctx.set_fonts(theme::fonts());
-        h.run();
-        h.get_by_label("Reset this page").click();
-        h.run();
-        let look = h.state().0.interface_look();
-        assert_eq!(look.accent, Accent::default());
-        assert!(look.hide_unfinished);
-        assert!(!look.ribbon_labels);
-        theme::restyle(&h.ctx, theme::InterfaceLook::default());
-    }
-
-    #[test]
-    fn reset_layout_puts_the_panels_back() {
-        let mut h = opened();
-        let console = h.state().0.dock.find_tab(&Panel::Console).unwrap();
-        h.state_mut().0.dock.remove_tab(console);
-        h.state_mut().0.dock.push_to_first_leaf(Panel::Console);
-        h.get_all_by_label("Reset layout").next().unwrap().click();
-        h.run();
-        // Every panel is back in its standard tab group.
-        let dock = &h.state().0.dock;
-        let standard = crate::layout::standard();
-        for panel in Panel::ALL {
-            let group = |d: &egui_dock::DockState<Panel>| {
-                let path = d.find_tab(&panel).unwrap();
-                d[path.surface][path.node].tabs().unwrap().to_vec()
-            };
-            assert_eq!(group(dock), group(&standard), "{panel:?}");
-        }
-    }
-
-    #[test]
-    fn the_search_box_narrows_the_settings() {
-        let mut w = Workbench::new(info(), None);
-        w.open_settings();
-        w.settings_window.as_mut().unwrap().search = "layout".into();
-        let mut h = harness(w);
-        h.run();
-        assert!(h.query_by_label("Reset layout").is_some());
-        assert!(h.query_by_label("Accent colour").is_none());
-        h.state_mut().0.settings_window.as_mut().unwrap().search = "zebra".into();
-        h.run();
-        assert!(h.query_by_label("No setting matches that.").is_some());
-    }
-
-    #[test]
-    fn the_window_menu_has_reset_layout_and_no_presets() {
-        let mut h = harness(Workbench::new(info(), None));
-        h.run();
-        h.get_by_label("Window").click();
-        h.run();
-        assert!(h.query_by_label("Reset layout").is_some());
-        for gone in ["Layouts", "Wide screen", "Small screen", "Accent colour"] {
-            assert!(h.query_by_label(gone).is_none(), "{gone}");
-        }
-    }
-
-    #[test]
-    fn search_finds_settings_by_name_hint_or_page() {
-        assert!(Setting::Accent.matches("accent"));
-        assert!(Setting::Accent.matches("colour"));
-        assert!(Setting::Layout.matches("panel"));
-        assert!(Setting::Layout.matches("appearance"));
-        assert!(Setting::Scale.matches("scale"));
-        assert!(Setting::Scale.matches("larger"));
-        assert!(Setting::Density.matches("compact"));
-        // Every word must be found.
-        assert!(Setting::Accent.matches("accent colour"));
-        assert!(!Setting::Accent.matches("accent zebra"));
-        assert!(Setting::ALL.iter().all(|s| s.matches("")));
-    }
-
-    #[test]
-    fn every_setting_is_on_a_listed_page() {
-        for setting in Setting::ALL {
-            assert!(Page::ALL.contains(&setting.page()), "{}", setting.name());
-        }
-    }
-}
+#[path = "settings_window_tests.rs"]
+mod tests;

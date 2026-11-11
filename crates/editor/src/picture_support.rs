@@ -309,8 +309,12 @@ pub(crate) fn editor_window(
         .build_ui_state(
             move |inset, workbench: &mut Workbench| {
                 if !themed {
+                    // The fonts are in force from the next frame (the app
+                    // loads them before its first): nothing is drawn in
+                    // this one.
                     theme::apply(inset.ctx(), look);
                     themed = true;
+                    return;
                 }
                 let _ = workbench.show(&mut edge_to_edge(inset), &mut renderer);
             },

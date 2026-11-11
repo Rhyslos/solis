@@ -835,6 +835,10 @@ impl Workbench {
         renderer: &mut dyn ViewportRenderer,
     ) -> Vec<WorkbenchAction> {
         self.profiler.begin();
+        // The look the editor holds is the one in use: the sizes that
+        // follow the density read it there, and so does everything that
+        // draws an unfinished part or leaves it out.
+        crate::interface_look::use_look(self.interface_look());
         self.profiler.add(
             crate::profiler::Stage::Sound,
             std::mem::take(&mut self.sound_spent),
