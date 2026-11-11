@@ -245,3 +245,163 @@ fn a_dragged_number_in_the_clips_tab_is_one_step_and_one_save() {
     assert!(editor.undo());
     assert!(!editor.undo());
 }
+
+/// The clips file open in its tabs, and the project's files as the app
+/// has them.
+fn with_clips_open() -> (Workbench, SpriteSheets) {
+    let (mut w, _, _) = with_clips();
+    let store = (*w.viewport.sheets).clone();
+    w.open_frames(CLIPS);
+    (w, store)
+}
+
+const CLIPS: &str = "walker.solframes";
+
+/// The open clips file, as its editor has it.
+fn open_file(w: &Workbench) -> animation::FramesFile {
+    w.open.frames_editor.as_ref().unwrap().file.clone()
+}
+
+/// The clips file changed outside Solis: another clip added, "blink".
+fn changed_by_hand(
+    store: &mut SpriteSheets,
+    file: &animation::FramesFile,
+) -> animation::FramesFile {
+    let mut by_hand = file.clone();
+    let mut blink = by_hand.clips[0].clone();
+    blink.name = "blink".into();
+    by_hand.clips.push(blink);
+    store.put(CLIPS, crate::OwnFile::Frames(Arc::new(by_hand.clone())));
+    by_hand
+}
+
+/// The review, BUG-08: the Clips and Frames tabs never looked at their
+/// file again once it was open, unlike the Animator, Tileset and Atlas
+/// Crop tabs. A file changed on disk (a Git pull) stayed as it had been
+/// on screen.
+#[test]
+fn a_clips_file_changed_on_disk_is_taken_in_as_one_undo_step() {
+    let (mut w, mut store) = with_clips_open();
+    let before = open_file(&w);
+    let by_hand = changed_by_hand(&mut store, &before);
+    w.set_sprite_sheets(store.clone());
+    assert_eq!(open_file(&w), by_hand, "shown as it is now");
+    let told: Vec<&str> = w
+        .console
+        .lines()
+        .iter()
+        .filter(|l| l.text.contains("on disk"))
+        .map(|l| l.text.as_str())
+        .collect();
+    assert_eq!(
+        told,
+        [
+            "walker.solframes changed on disk, so the Clips and Frames tabs show it as it is now \
+          (Ctrl+Z over them undoes that)."
+        ]
+    );
+    // Read again unchanged: nothing more to take in or say.
+    w.set_sprite_sheets(store.clone());
+    assert_eq!(
+        w.console
+            .lines()
+            .iter()
+            .filter(|l| l.text.contains("on disk"))
+            .count(),
+        1
+    );
+    // One undo step: Ctrl+Z over the tabs puts the file back as it was
+    // here, and saves that.
+    assert!(
+        saved(&w.open.outbox).is_empty(),
+        "taking it in saves nothing"
+    );
+    w.frames_undo(false, true);
+    assert_eq!(open_file(&w), before);
+    assert_eq!(
+        saved(&w.open.outbox),
+        [animation::frames_file::write(&before)]
+    );
+    w.frames_undo(false, true);
+    assert_eq!(open_file(&w), before, "one step, not two");
+}
+
+/// BUG-08's failure: the next change in the tab after the file changed on
+/// disk saved the copy the tab still had over the new file, without a
+/// word.
+#[test]
+fn a_change_after_the_file_changed_on_disk_never_writes_the_older_copy_over_it() {
+    let (mut w, mut store) = with_clips_open();
+    let by_hand = changed_by_hand(&mut store, &open_file(&w));
+    w.set_sprite_sheets(store.clone());
+    // A change in the Clips tab: the first clip twice as fast.
+    let editor = w.open.frames_editor.as_mut().unwrap();
+    assert!(editor.set_speed(2.0));
+    w.save_frames();
+    let mut wanted = by_hand;
+    wanted.clips[0].speed = 2.0;
+    let texts = saved(&w.open.outbox);
+    assert_eq!(texts, [animation::frames_file::write(&wanted)]);
+    assert!(texts[0].contains("blink"), "what was added by hand is kept");
+    // And Ctrl+Z after such a change undoes it alone, the file by hand
+    // still there.
+    w.frames_undo(false, true);
+    assert!(saved(&w.open.outbox)[1].contains("blink"));
+}
+
+/// BUG-08: a clips file deleted while open stayed open, and the next
+/// change made the file again where it had been.
+#[test]
+fn a_clips_file_gone_from_the_project_closes_its_tabs() {
+    let (mut w, mut store) = with_clips_open();
+    store.frames.clear();
+    w.set_sprite_sheets(store);
+    assert!(w.open.frames_editor.is_none());
+    for panel in Panel::FRAMES_TABS {
+        assert!(w.dock.find_tab(&panel).is_none(), "{panel:?}");
+    }
+    let last = w.console.lines().last().unwrap();
+    assert_eq!(
+        last.text,
+        "walker.solframes is gone, so the Clips and Frames tabs closed."
+    );
+    // Nothing is left to make the file again with.
+    w.frames_undo(false, true);
+    w.save_frames();
+    assert!(saved(&w.open.outbox).is_empty());
+}
+
+/// BUG-08: opening the clips file that's already open made its editor
+/// anew, and its undo steps were gone.
+#[test]
+fn opening_the_clips_file_already_open_keeps_its_editor_and_undo_steps() {
+    let (mut w, _) = with_clips_open();
+    let before = open_file(&w);
+    let editor = w.open.frames_editor.as_mut().unwrap();
+    assert!(editor.set_speed(2.0));
+    editor.zoom = 500.0;
+    w.save_frames();
+    // Double-clicked in the Library again, with a tab closed meanwhile.
+    layout::close(&mut w.dock, Panel::Frames);
+    let mut actions = Vec::new();
+    w.library_request(
+        LibraryRequest::Open(LibraryKind::SpriteClips, CLIPS.into()),
+        &mut actions,
+    );
+    for panel in Panel::FRAMES_TABS {
+        assert!(w.dock.find_tab(&panel).is_some(), "{panel:?} is open");
+    }
+    let editor = w.open.frames_editor.as_ref().unwrap();
+    assert_eq!(editor.zoom, 500.0, "the same editor");
+    assert_eq!(editor.can_undo_redo(), (true, false), "with its undo step");
+    w.frames_undo(false, true);
+    assert_eq!(open_file(&w), before);
+    // Another clips file takes its place, as before.
+    let mut store = (*w.viewport.sheets).clone();
+    store.put("other.solframes", crate::OwnFile::Frames(Arc::default()));
+    w.set_sprite_sheets(store);
+    w.open_frames("other.solframes");
+    let editor = w.open.frames_editor.as_ref().unwrap();
+    assert_eq!(editor.path, "other.solframes");
+    assert_eq!(editor.can_undo_redo(), (false, false));
+}

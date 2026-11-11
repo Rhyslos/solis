@@ -1,7 +1,8 @@
 //! The workbench's side of the Clips and Frames tabs (Phase 9, D3):
 //! opening a clips file into them and closing it, playing its clip,
 //! saving each change and showing it at once on every sprite
-//! (`Workbench::save_file`), and undo.
+//! (`Workbench::save_file`), and undo. The open file follows its file on
+//! disk as every editor's does (`own_files.rs`).
 
 use crate::console::LogLevel;
 use crate::frames_editor::FramesEditor;
@@ -96,12 +97,21 @@ impl Workbench {
                 return;
             }
         };
-        let clips = file
-            .sheet
-            .and_then(|id| sheets.get(id))
-            .map(|sheet| animation::ClipSet::of_sheet(sheet, Some(&file)))
-            .unwrap_or_default();
-        self.open.frames_editor = Some(FramesEditor::new(path.to_owned(), file, &clips));
+        // The file that's open already keeps its editor, with its undo
+        // steps and what's chosen: only its tabs come back.
+        if self
+            .open
+            .frames_editor
+            .as_ref()
+            .is_none_or(|e| e.path != path)
+        {
+            let clips = file
+                .sheet
+                .and_then(|id| sheets.get(id))
+                .map(|sheet| animation::ClipSet::of_sheet(sheet, Some(&file)))
+                .unwrap_or_default();
+            self.open.frames_editor = Some(FramesEditor::new(path.to_owned(), file, &clips));
+        }
         layout::open_beside(&mut self.dock, Panel::Clips, Panel::Properties);
         layout::open_beside(&mut self.dock, Panel::Frames, Panel::Library);
     }

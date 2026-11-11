@@ -230,3 +230,28 @@ fn playing_in_the_frames_tab_loops_or_stops_at_the_end() {
     e.choose("idle");
     assert_eq!(e.time, 0.0);
 }
+
+/// The review, BUG-08: the file as it is on disk is taken in as one undo
+/// step, and nothing stays picked that may not be there any more.
+#[test]
+fn a_file_changed_on_disk_is_taken_in_as_one_step() {
+    let (mut e, _) = editor();
+    let before = e.file.clone();
+    e.pick(0, false, false);
+    e.renaming = Some(("walk".into(), "walk".into()));
+    // The same file, read again: no step, and what's picked stays.
+    e.taken_in(before.clone());
+    assert_eq!(e.can_undo_redo(), (false, false));
+    assert_eq!(e.selected, [0]);
+    // Changed by hand: taken in, nothing picked, one step back.
+    let mut by_hand = before.clone();
+    by_hand.first = "idle".into();
+    e.taken_in(by_hand.clone());
+    assert_eq!(e.file, by_hand);
+    assert!(e.selected.is_empty() && e.anchor.is_none() && e.renaming.is_none());
+    assert!(e.undo());
+    assert_eq!(e.file, before);
+    assert!(!e.undo(), "one step, not two");
+    assert!(e.redo());
+    assert_eq!(e.file, by_hand);
+}

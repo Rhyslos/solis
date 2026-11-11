@@ -324,7 +324,7 @@ impl Workbench {
         };
         self.take_sheets(sheets);
         let mut what = None;
-        for told in self.follow_files(Some(path)) {
+        for told in self.follow_files() {
             if told.path == path {
                 what = told.not_saved();
             } else {
@@ -356,7 +356,7 @@ impl Workbench {
     /// from disk and what it saved for the editor. Open files follow them.
     pub fn set_sprite_sheets(&mut self, sheets: SpriteSheets) {
         self.take_sheets(sheets);
-        for told in self.follow_files(None) {
+        for told in self.follow_files() {
             self.tell(&told);
         }
     }
@@ -386,9 +386,8 @@ impl Workbench {
 
     /// Makes every open file's editor follow its file as the project's
     /// files now hold it, closing the tabs of one that's gone. Gives what
-    /// each did, for the Console. `not_saved` is the file whose save just
-    /// failed, if that's why.
-    fn follow_files(&mut self, not_saved: Option<&str>) -> Vec<Told> {
+    /// each did, for the Console.
+    fn follow_files(&mut self) -> Vec<Told> {
         let sheets = Arc::clone(&self.viewport.sheets);
         let mut told = Vec::new();
         if let Some(editor) = &mut self.open.animator_editor {
@@ -415,11 +414,7 @@ impl Workbench {
                 self.close_atlas();
             }
         }
-        // The clips file follows only a save of its own that failed: it
-        // doesn't follow its file on disk yet.
-        if let Some(editor) = &mut self.open.frames_editor
-            && not_saved == Some(editor.path.as_str())
-        {
+        if let Some(editor) = &mut self.open.frames_editor {
             let followed = follow(editor, &sheets);
             told.push(Told {
                 path: editor.path.clone(),
